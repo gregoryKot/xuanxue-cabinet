@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: typecheck (shared + api)
+        run: |
+          npm run typecheck --workspace=shared
+          npm run typecheck --workspace=api
+      - name: shared vitest
+        run: npm run test --workspace=shared
+      - name: coverage ratchet (runs jest --coverage)
+        run: node scripts/check-coverage-ratchet.mjs
+      - name: jest под TZ=Australia/Sydney (тест перехода летнего времени)
+        run: TZ=Australia/Sydney npm test --workspace=api
+      - name: eslint ratchet
+        run: node scripts/check-eslint-ratchet.mjs
+      - name: jscpd ratchet
+        run: node scripts/check-jscpd-ratchet.mjs
+      - name: file-size ratchet
+        run: node scripts/check-file-size-ratchet.mjs
+      - name: robot-phrases ratchet
+        run: node scripts/check-robot-phrases.mjs
+      - name: npm audit (prod deps, high+)
+        run: npm audit --omit=dev --audit-level=high
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: typecheck
+        run: npm run typecheck --workspace=web
+      - name: vitest
+        run: npm test --workspace=web
+      - name: vite build
+        run: npm run build --workspace=web
+
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: route collisions
+        run: node scripts/check-route-collisions.mjs
