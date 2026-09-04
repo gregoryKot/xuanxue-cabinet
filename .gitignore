@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.jest-cache/
+.env
+.env.*
+!.env.example
+.DS_Store
+.claude/
+
+# Реальные ссылки Zoom, пароли и токены каналов живут только локально
+api/seed/*.local.json

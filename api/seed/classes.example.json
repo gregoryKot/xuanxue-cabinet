@@ -1,0 +1,17 @@
+{
+  "_comment": "Пример формата сида. Реальный файл — classes.local.json (в .gitignore). weekday: 0 = воскресенье … 6 = суббота, время в поясе tz.",
+  "tz": "Asia/Jerusalem",
+  "classes": [
+    {
+      "title": "Медитация чжи-гуань",
+      "groupLabel": "",
+      "format": "online",
+      "rules": [
+        { "weekday": 0, "time": "08:00", "durationMin": 60 },
+        { "weekday": 3, "time": "08:00", "durationMin": 60 }
+      ],
+      "zoomLink": "https://zoom.us/j/000000000",
+      "zoomPassword": ""
+    }
+  ]
+}
