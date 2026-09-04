@@ -1,0 +1,22 @@
+{
+  "scripts/check-coverage-ratchet.mjs": 160,
+  "scripts/check-robot-phrases.mjs": 152,
+  "api/src/utils/encryption.ts": 138,
+  "scripts/check-file-size-ratchet.mjs": 129,
+  "scripts/check-eslint-ratchet.mjs": 95,
+  "scripts/check-jscpd-ratchet.mjs": 76,
+  "web/src/components/Skeleton.tsx": 69,
+  "eslint.config.mjs": 55,
+  "scripts/check-route-collisions.mjs": 47,
+  "api/src/app.module.ts": 27,
+  "api/src/health/health.controller.ts": 24,
+  "web/src/App.tsx": 20,
+  "shared/src/index.ts": 19,
+  "api/src/main.ts": 17,
+  "web/src/main.tsx": 16,
+  "web/vite.config.ts": 12,
+  "api/src/users/user-data.registry.ts": 11,
+  "api/jest.config.js": 9,
+  "shared/vitest.config.ts": 7,
+  "web/src/setupTests.ts": 1
+}

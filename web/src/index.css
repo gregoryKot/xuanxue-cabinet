@@ -1,0 +1,23 @@
+:root {
+  color-scheme: light;
+  --surface: #e7e5e2;
+  --surface-2: #f2f0ed;
+}
+
+body {
+  margin: 0;
+}
+
+/* Скелетоны загрузки — правило CLAUDE.md «форма контента, а не спиннер». */
+@keyframes xuanxue-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
