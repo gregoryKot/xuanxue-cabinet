@@ -97,9 +97,13 @@ for (const dir of SCAN_DIRS) {
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
 if (UPDATE) {
-  const sorted = Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)));
+  const sorted = Object.fromEntries(
+    Object.entries(counts).sort(([a], [b]) => a.localeCompare(b)),
+  );
   writeFileSync(BASELINE_PATH, JSON.stringify(sorted, null, 2) + '\n');
-  console.log(`Бейслайн обновлён: ${total} конструкций в ${Object.keys(counts).length} файлах.`);
+  console.log(
+    `Бейслайн обновлён: ${total} конструкций в ${Object.keys(counts).length} файлах.`,
+  );
   process.exit(0);
 }
 
@@ -107,7 +111,9 @@ let baseline;
 try {
   baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
 } catch {
-  console.error('Нет бейслайна — сгенерируй: node scripts/check-robot-phrases.mjs --update');
+  console.error(
+    'Нет бейслайна — сгенерируй: node scripts/check-robot-phrases.mjs --update',
+  );
   process.exit(1);
 }
 
@@ -140,7 +146,9 @@ if (grown.length || born.length) {
 
 const baseTotal = Object.values(baseline).reduce((a, b) => a + b, 0);
 if (VERBOSE) {
-  for (const [file, ds] of Object.entries(details).sort((a, b) => b[1].length - a[1].length)) {
+  for (const [file, ds] of Object.entries(details).sort(
+    (a, b) => b[1].length - a[1].length,
+  )) {
     console.log(`${file} (${ds.length})`);
     for (const d of ds) console.log(d);
   }

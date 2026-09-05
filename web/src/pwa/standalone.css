@@ -1,0 +1,10 @@
+/* Safe-area в установленном приложении (ADR-0006, CLAUDE.md «Приложение на
+   телефоне»): в браузере вкладка сама рисует чёлку/индикатор, а в standalone
+   контент обязан сам не залезать под них. Вне standalone отступов нет —
+   на iOS/Android в браузере env() всё равно возвращает 0. */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

@@ -55,7 +55,9 @@ let baseline;
 try {
   baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
 } catch {
-  console.error('Нет бейслайна — сгенерируй: node scripts/check-jscpd-ratchet.mjs --update');
+  console.error(
+    'Нет бейслайна — сгенерируй: node scripts/check-jscpd-ratchet.mjs --update',
+  );
   process.exit(1);
 }
 

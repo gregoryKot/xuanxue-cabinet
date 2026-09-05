@@ -73,7 +73,9 @@ if (total > baseline.total) {
       if (hits.length) {
         console.error(`      ${f.filePath}: ${hits.length}`);
         for (const m of hits.slice(0, 5))
-          console.error(`         стр. ${m.line}: ${JSON.stringify(m.message).slice(0, 160)}`);
+          console.error(
+            `         стр. ${m.line}: ${JSON.stringify(m.message).slice(0, 160)}`,
+          );
       }
     }
   }

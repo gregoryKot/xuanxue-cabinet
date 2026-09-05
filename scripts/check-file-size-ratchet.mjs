@@ -26,14 +26,24 @@ const EXCLUDE = [
   /(^|\/)build\//,
   /\.d\.ts$/,
   /\.(spec|test)\.(ts|tsx|js|jsx)$/,
+  // Конфиги (eslint, vite, jest) растут вместе с числом правил и порогов —
+  // это не логика приложения, ограничивать их размер бессмысленно.
+  /(^|\/)[\w.-]*\.config\.(ts|js|mjs|cjs)$/,
 ];
 
 function listFiles() {
-  const res = spawnSync('git', ['ls-files'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  // --others --exclude-standard: ещё не закоммиченные файлы тоже считаются —
+  // иначе новый файл невидим для храповика до первого коммита и не попадает
+  // в бейслайн при --update.
+  const res = spawnSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard'],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
   if (res.status !== 0) {
     console.error('❌ git ls-files не отработал:\n' + (res.stderr || ''));
     process.exit(1);
@@ -106,7 +116,9 @@ if (grown.length || newBig.length) {
     );
   }
   if (newBig.length) {
-    console.error(`❌ файл-храповик: новые файлы больше потолка ${NEW_FILE_LIMIT} строк:`);
+    console.error(
+      `❌ файл-храповик: новые файлы больше потолка ${NEW_FILE_LIMIT} строк:`,
+    );
     for (const { f, now } of newBig.sort((a, b) => b.now - a.now))
       console.error(`   ${f}: ${now}`);
     console.error(
