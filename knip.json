@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.mjs"],
+      "project": ["scripts/**/*.mjs"]
+    },
+    "api": {
+      "entry": [
+        "src/main.ts",
+        "src/utils/encryption.ts",
+        "src/users/user-data.registry.ts",
+        "test/**/*.e2e-spec.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "web": {
+      "entry": ["src/components/Skeleton.tsx"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "shared": {
+      "project": ["src/**/*.ts"]
+    }
+  },
+  "ignoreDependencies": ["pino-pretty"]
+}

@@ -35,15 +35,22 @@ describe('encryption', () => {
     expect(rotatedMod.decrypt(cipher)).toBe('секретная ссылка на zoom');
     // Новый текст шифруется уже текущим (новым) ключом.
     const freshCipher = rotatedMod.encrypt('новый текст');
-    const onlyOldMod = loadWithEnv({ ENCRYPTION_KEY: KEY_A, ENCRYPTION_KEY_OLD: undefined });
+    const onlyOldMod = loadWithEnv({
+      ENCRYPTION_KEY: KEY_A,
+      ENCRYPTION_KEY_OLD: undefined,
+    });
     expect(onlyOldMod.decrypt(freshCipher)).not.toBe('новый текст');
   });
 
   it('испорченный шифротекст не расшифровывается молча', () => {
     const mod = loadWithEnv({ ENCRYPTION_KEY: KEY_A, ENCRYPTION_KEY_OLD: undefined });
     const cipher = mod.encrypt('текст для порчи');
-    const bytes = Buffer.from(cipher!, 'base64');
-    bytes[bytes.length - 1] ^= 0xff; // портим последний байт данных
+    if (cipher === null) throw new Error('encrypt вернул null для непустого текста');
+    const bytes = Buffer.from(cipher, 'base64');
+    const lastIndex = bytes.length - 1;
+    const lastByte = bytes[lastIndex];
+    if (lastByte === undefined) throw new Error('пустой буфер шифротекста');
+    bytes[lastIndex] = lastByte ^ 0xff; // портим последний байт данных
     const tampered = bytes.toString('base64');
 
     expect(mod.decrypt(tampered)).not.toBe('текст для порчи');

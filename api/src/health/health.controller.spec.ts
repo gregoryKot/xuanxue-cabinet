@@ -26,4 +26,11 @@ describe('HealthController', () => {
     const controller = await buildController(1);
     expect(controller.check().version).toBe(pkg.version);
   });
+
+  it('uptimeSec — неотрицательное целое число', async () => {
+    const controller = await buildController(1);
+    const { uptimeSec } = controller.check();
+    expect(Number.isInteger(uptimeSec)).toBe(true);
+    expect(uptimeSec).toBeGreaterThanOrEqual(0);
+  });
 });

@@ -1,5 +1,7 @@
-// Общие типы и константы для api и web (правило CLAUDE.md §3: общий код —
-// сразу в shared, а не копипастой между фронтендами).
+// Общие типы и константы для api и web (CLAUDE.md, раздел «Структура и слои»:
+// общий код — сразу в shared, а не копипастой между пакетами).
+
+export type { ApiErrorBody, ApiErrorCode } from './api-error';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

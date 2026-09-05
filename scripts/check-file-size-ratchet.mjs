@@ -3,8 +3,11 @@
 // 300»). Унаследовано из telegram-bot-2 (там правило без гейта пропустило
 // 76+ файлов сверх потолка) — здесь гейт с первого дня.
 //
-//   1. Файл из бейслайна может только УМЕНЬШАТЬСЯ. Рост роняет CI.
-//   2. Новый файл (не в бейслайне) не имеет права родиться больше
+//   1. Файл до SOFT_LIMIT=150 строк растёт свободно — правка в три строки не
+//      должна требовать --update (первый же CI-прогон показал такой шум).
+//   2. Файл выше SOFT_LIMIT может только УМЕНЬШАТЬСЯ: пересечь 150 или вырасти,
+//      уже будучи больше, — осознанное решение через --update, видное в PR.
+//   3. Новый файл (не в бейслайне) не имеет права родиться больше
 //      NEW_FILE_LIMIT=300 строк.
 //
 // Снизил размер — зафиксируй: node scripts/check-file-size-ratchet.mjs --update
@@ -16,6 +19,7 @@ const ROOT = join(import.meta.dirname, '..');
 const BASELINE_PATH = join(ROOT, 'scripts', 'file-size-baseline.json');
 const UPDATE = process.argv.includes('--update');
 
+const SOFT_LIMIT = 150;
 const NEW_FILE_LIMIT = 300;
 
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
@@ -26,14 +30,24 @@ const EXCLUDE = [
   /(^|\/)build\//,
   /\.d\.ts$/,
   /\.(spec|test)\.(ts|tsx|js|jsx)$/,
+  // Конфиги (eslint, vite, jest) растут вместе с числом правил и порогов —
+  // это не логика приложения, ограничивать их размер бессмысленно.
+  /(^|\/)[\w.-]*\.config\.(ts|js|mjs|cjs)$/,
 ];
 
 function listFiles() {
-  const res = spawnSync('git', ['ls-files'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  // --others --exclude-standard: ещё не закоммиченные файлы тоже считаются —
+  // иначе новый файл невидим для храповика до первого коммита и не попадает
+  // в бейслайн при --update.
+  const res = spawnSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard'],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
   if (res.status !== 0) {
     console.error('❌ git ls-files не отработал:\n' + (res.stderr || ''));
     process.exit(1);
@@ -88,7 +102,8 @@ const grown = [];
 const newBig = [];
 for (const [f, n] of Object.entries(sizes)) {
   if (f in baseline) {
-    if (n > baseline[f]) grown.push({ f, was: baseline[f], now: n });
+    // Рост ниже SOFT_LIMIT — обычная жизнь файла; выше — только с --update.
+    if (n > baseline[f] && n > SOFT_LIMIT) grown.push({ f, was: baseline[f], now: n });
   } else if (n > NEW_FILE_LIMIT) {
     newBig.push({ f, now: n });
   }
@@ -96,7 +111,9 @@ for (const [f, n] of Object.entries(sizes)) {
 
 if (grown.length || newBig.length) {
   if (grown.length) {
-    console.error('❌ файл-храповик: файлы выросли сверх зафиксированного размера:');
+    console.error(
+      `❌ файл-храповик: файлы больше ${SOFT_LIMIT} строк выросли сверх зафиксированного размера:`,
+    );
     for (const { f, was, now } of grown.sort((a, b) => b.now - b.was - (a.now - a.was)))
       console.error(`   ${f}: ${was} → ${now} (+${now - was})`);
     console.error(
@@ -106,7 +123,9 @@ if (grown.length || newBig.length) {
     );
   }
   if (newBig.length) {
-    console.error(`❌ файл-храповик: новые файлы больше потолка ${NEW_FILE_LIMIT} строк:`);
+    console.error(
+      `❌ файл-храповик: новые файлы больше потолка ${NEW_FILE_LIMIT} строк:`,
+    );
     for (const { f, now } of newBig.sort((a, b) => b.now - a.now))
       console.error(`   ${f}: ${now}`);
     console.error(

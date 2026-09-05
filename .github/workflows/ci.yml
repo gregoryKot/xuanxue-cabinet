@@ -9,6 +9,16 @@ on:
 env:
   NODE_VERSION: '22'
 
+# Один прогон на пуш/ветку — новый пуш отменяет предыдущий CI той же ветки.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# По умолчанию Actions выдаёт GITHUB_TOKEN с правами на запись — джобам ниже
+# он не нужен шире, чем на чтение репозитория.
+permissions:
+  contents: read
+
 jobs:
   api:
     runs-on: ubuntu-latest
@@ -20,6 +30,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: сборка shared (api и web резолвят @xuanxue/shared из shared/dist)
+        run: npm run build --workspace=shared
       - name: typecheck (shared + api)
         run: |
           npm run typecheck --workspace=shared
@@ -30,6 +42,10 @@ jobs:
         run: node scripts/check-coverage-ratchet.mjs
       - name: jest под TZ=Australia/Sydney (тест перехода летнего времени)
         run: TZ=Australia/Sydney npm test --workspace=api
+      - name: e2e (реальный AppModule, ownership-смок)
+        run: npm run test:e2e --workspace=api
+      - name: сверка .env.example со всеми env, которые реально читает api
+        run: node scripts/check-env-example.mjs
       - name: eslint ratchet
         run: node scripts/check-eslint-ratchet.mjs
       - name: jscpd ratchet
@@ -51,20 +67,94 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: сборка shared (web резолвит @xuanxue/shared из shared/dist)
+        run: npm run build --workspace=shared
       - name: typecheck
         run: npm run typecheck --workspace=web
-      - name: vitest
-        run: npm test --workspace=web
+      - name: vitest с покрытием
+        run: npm run test:cov --workspace=web
       - name: vite build
         run: npm run build --workspace=web
+      - name: pwa-гейт (манифест, иконки, service worker)
+        run: node scripts/check-pwa.mjs
+      - name: бюджет стартового JS (gzip)
+        run: node scripts/check-bundle-size.mjs
 
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    # gitleaks-action читает список коммитов PR через API — при глобальном
+    # `contents: read` получает 403 «Resource not accessible by integration».
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          # gitleaks сканирует коммиты PR — без полной истории ему нечего сравнивать.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
       - name: route collisions
         run: node scripts/check-route-collisions.mjs
+      - run: npm ci
+      - name: prettier — формат всего репозитория
+        run: npm run format:check
+      - name: knip — мёртвый код и неиспользуемые зависимости
+        run: npx knip
+      - name: gitleaks — секреты в диффе/истории
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    # Аналог джобы migrations из telegram-bot-2: Dockerfile и его env-контракт
+    # (ValidationPipe/validateEnv, health-check) должны падать здесь, а не при
+    # автодеплое на Railway.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      - name: сборка docker-образа
+        run: docker build -t xuanxue .
+      - name: запуск контейнера (host-сеть — видит services.mongo на localhost)
+        run: |
+          ENC_KEY=$(printf '0%.0s' {1..64})
+          docker run -d --name xuanxue --network host \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e MONGODB_URI=mongodb://127.0.0.1:27017/ci \
+            -e ENCRYPTION_KEY="$ENC_KEY" \
+            -e JWT_SECRET=ci-secret-ci-secret-ci-secret-1234 \
+            -e PUBLIC_URL=http://localhost:3000 \
+            xuanxue
+      - name: ждём /api/health и проверяем status=ok, mongo=up
+        run: |
+          ok=""
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health -o /tmp/health.json; then ok=1; break; fi
+            sleep 1
+          done
+          if [ -z "$ok" ]; then
+            echo "::error::/api/health не ответил за 30 секунд"
+            docker logs xuanxue
+            exit 1
+          fi
+          cat /tmp/health.json
+          node -e "
+            const h = require('/tmp/health.json');
+            if (h.status !== 'ok' || h.mongo !== 'up') {
+              console.error('health-check вернул неожиданное тело:', h);
+              process.exit(1);
+            }
+          "
+      - name: логи контейнера
+        if: always()
+        run: docker logs xuanxue || true

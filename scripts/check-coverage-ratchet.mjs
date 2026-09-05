@@ -49,12 +49,16 @@ let summary;
 try {
   summary = JSON.parse(readFileSync(SUMMARY_PATH, 'utf8'));
 } catch {
-  console.error(`❌ не найден ${SUMMARY_PATH} — jest не сгенерировал coverage-summary.json.`);
+  console.error(
+    `❌ не найден ${SUMMARY_PATH} — jest не сгенерировал coverage-summary.json.`,
+  );
   process.exit(1);
 }
 
 function relPath(absPath) {
-  return absPath.startsWith(API_ROOT + '/') ? absPath.slice(API_ROOT.length + 1) : absPath;
+  return absPath.startsWith(API_ROOT + '/')
+    ? absPath.slice(API_ROOT.length + 1)
+    : absPath;
 }
 
 function dirLinesPct(prefix) {
@@ -85,14 +89,20 @@ if (UPDATE) {
   for (const dir of floorDirs) {
     const pct = dirLinesPct(dir);
     if (pct === null) {
-      console.error(`❌ --update: под "${dir}" не найдено ни одного файла в coverage-summary.json.`);
+      console.error(
+        `❌ --update: под "${dir}" не найдено ни одного файла в coverage-summary.json.`,
+      );
       process.exit(1);
     }
     floors[dir] = Math.max(0, Math.round((pct - 2) * 100) / 100);
   }
   writeFileSync(
     BASELINE_PATH,
-    JSON.stringify({ lines: current.lines, branches: current.branches, floors }, null, 2) + '\n',
+    JSON.stringify(
+      { lines: current.lines, branches: current.branches, floors },
+      null,
+      2,
+    ) + '\n',
   );
   console.log(
     `Бейслайн обновлён: lines ${current.lines}%, branches ${current.branches}%, ` +
@@ -105,7 +115,9 @@ let baseline;
 try {
   baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
 } catch {
-  console.error('Нет бейслайна — сгенерируй: node scripts/check-coverage-ratchet.mjs --update');
+  console.error(
+    'Нет бейслайна — сгенерируй: node scripts/check-coverage-ratchet.mjs --update',
+  );
   process.exit(1);
 }
 
@@ -146,7 +158,10 @@ if (failures.length > 0 || floorFailures.length > 0) {
   process.exit(1);
 }
 
-if (current.lines - baseline.lines > EPSILON || current.branches - baseline.branches > EPSILON) {
+if (
+  current.lines - baseline.lines > EPSILON ||
+  current.branches - baseline.branches > EPSILON
+) {
   console.log(
     `✓ coverage-храповик: lines ${current.lines}% (было ${baseline.lines}%), ` +
       `branches ${current.branches}% (было ${baseline.branches}%) — стало лучше, ` +

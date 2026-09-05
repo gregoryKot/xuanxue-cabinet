@@ -1,0 +1,75 @@
+// Проверяет, что REDACT_PATHS реально срабатывает в pino, а не просто
+// существует как список строк — храповик редакции логов (CLAUDE.md
+// «Безопасность»). Пишем в буфер в памяти вместо файла/stdout.
+import pino from 'pino';
+import { REDACT_PATHS } from './redact-paths';
+
+class MemoryStream {
+  chunks: string[] = [];
+  write(chunk: string): boolean {
+    this.chunks.push(chunk);
+    return true;
+  }
+}
+
+function logSample(): Record<string, unknown> {
+  const stream = new MemoryStream();
+  const logger = pino({ redact: { paths: REDACT_PATHS, censor: '[Redacted]' } }, stream);
+  logger.info(
+    {
+      req: {
+        headers: { authorization: 'Bearer secret', cookie: 'sid=1' },
+        body: { email: 'user@example.com', name: 'Мария' },
+      },
+      user: {
+        token: 't',
+        accessToken: 'at',
+        refreshToken: 'rt',
+        secret: 's',
+        name: 'Мария',
+      },
+      channel: {
+        config: { apiKey: 'k' },
+        zoomLink: 'https://zoom.example/1',
+        zoomPassword: 'pw',
+        title: 'Средняя группа',
+      },
+    },
+    'проверка редакции',
+  );
+  return JSON.parse(stream.chunks.join('')) as Record<string, unknown>;
+}
+
+describe('REDACT_PATHS', () => {
+  it('вырезает секреты заголовков, тела и вложенных объектов', () => {
+    const logged = logSample();
+    const req = logged.req as Record<string, unknown>;
+    const headers = req.headers as Record<string, unknown>;
+    const body = req.body as Record<string, unknown>;
+    const user = logged.user as Record<string, unknown>;
+    const channel = logged.channel as Record<string, unknown>;
+
+    expect(headers.authorization).toBe('[Redacted]');
+    expect(headers.cookie).toBe('[Redacted]');
+    expect(body.email).toBe('[Redacted]');
+    expect(user.token).toBe('[Redacted]');
+    expect(user.accessToken).toBe('[Redacted]');
+    expect(user.refreshToken).toBe('[Redacted]');
+    expect(user.secret).toBe('[Redacted]');
+    expect(channel.config).toBe('[Redacted]');
+    expect(channel.zoomLink).toBe('[Redacted]');
+    expect(channel.zoomPassword).toBe('[Redacted]');
+  });
+
+  it('не трогает соседние не-секретные поля', () => {
+    const logged = logSample();
+    const req = logged.req as Record<string, unknown>;
+    const body = req.body as Record<string, unknown>;
+    const user = logged.user as Record<string, unknown>;
+    const channel = logged.channel as Record<string, unknown>;
+
+    expect(body.name).toBe('Мария');
+    expect(user.name).toBe('Мария');
+    expect(channel.title).toBe('Средняя группа');
+  });
+});

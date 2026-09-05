@@ -7,6 +7,12 @@
 //   ENCRYPTION_KEY     — текущий ключ, им шифруется ВСЁ новое.
 //   ENCRYPTION_KEY_OLD — старые ключи через запятую, пробуются только при расшифровке.
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { Logger } from '@nestjs/common';
+
+// Статический логгер модуля (не DI-сервис — файл не инстанцируется Nest'ом,
+// это набор чистых функций шифрования). no-console запрещает console.* в
+// api/src — CLAUDE.md, раздел «Обработка ошибок».
+const logger = new Logger('Encryption');
 
 function loadKeys(): { current: Buffer | null; all: Buffer[] } {
   const parse = (hex: string): Buffer | null =>
@@ -52,9 +58,9 @@ function warnDecryptFailure(): void {
   const now = Date.now();
   if (now - lastDecryptWarnAt < 60_000) return;
   lastDecryptWarnAt = now;
-  console.warn(
-    '[encryption] decrypt: blob похож на шифротекст, но не расшифровался ' +
-      'ни одним ключом — возможна порча данных или неполная ротация ENCRYPTION_KEY',
+  logger.warn(
+    'decrypt: blob похож на шифротекст, но не расшифровался ни одним ключом — ' +
+      'возможна порча данных или неполная ротация ENCRYPTION_KEY',
   );
 }
 

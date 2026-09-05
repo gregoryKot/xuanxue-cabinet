@@ -3,25 +3,41 @@
   "private": true,
   "version": "0.1.0",
   "description": "Кабинет школы тайцзицюань «Сюань-Сюэ» — монорепо (api, web, shared).",
-  "workspaces": ["shared", "api", "web"],
+  "workspaces": [
+    "shared",
+    "api",
+    "web"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run start:dev --workspace=api\" \"npm run dev --workspace=web\"",
+    "dev": "npm run build --workspace=shared && concurrently -n api,web -c blue,green \"npm run start:dev --workspace=api\" \"npm run dev --workspace=web\"",
     "build": "npm run build --workspace=shared && npm run build --workspace=web && npm run build --workspace=api",
     "test": "npm run test --workspace=shared && npm run test --workspace=api && npm run test --workspace=web",
     "lint": "eslint .",
-    "typecheck": "npm run typecheck --workspace=shared && npm run typecheck --workspace=api && npm run typecheck --workspace=web"
+    "typecheck": "npm run typecheck --workspace=shared && npm run typecheck --workspace=api && npm run typecheck --workspace=web",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "knip",
+    "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
+    "check": "npm run build --workspace=shared && npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:e2e --workspace=api && npm run build --workspace=web && npm run gates && npm run knip"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "concurrently": "^10.0.5",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.12.0",
     "jscpd": "^5.1.2",
+    "knip": "^6.34.0",
     "prettier": "^3.9.6",
+    "sharp": "^0.35.4",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.69.0"
   }
