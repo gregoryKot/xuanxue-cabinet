@@ -44,3 +44,4 @@
 | [0006](0006-pwa-and-web-push.md)                 | Устанавливаемое приложение (PWA) и push как канал доставки        |
 | [0007](0007-quality-gates-ratchets.md)           | Качество кода держат храповики в CI, а не договорённости          |
 | [0008](0008-no-threads-channel.md)               | Канала Threads нет: Telegram, ВК, ручной режим для Facebook       |
+| [0009](0009-school-scoped-data-roles.md)         | Данные школы скоупятся по роли, не по владельцу                   |

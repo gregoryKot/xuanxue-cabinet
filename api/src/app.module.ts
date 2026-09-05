@@ -6,10 +6,16 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { validateEnv } from './config/env.validation';
+import { validateEnv, type NodeEnv } from './config/env.validation';
 import { LoggingModule } from './logging/logging.module';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
+import { DatabaseModule } from './database/database.module';
 import { MigrationsModule } from './migrations/migrations.module';
+import { ClassesModule } from './classes/classes.module';
+import { LessonsModule } from './lessons/lessons.module';
+import { ChannelsModule } from './channels/channels.module';
+import { BroadcastsModule } from './broadcasts/broadcasts.module';
+import { DeliveriesModule } from './deliveries/deliveries.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -20,6 +26,10 @@ import { HealthController } from './health/health.controller';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         uri: config.get<string>('MONGODB_URI'),
+        // В production индексы строит только IndexSyncService при старте
+        // (CLAUDE.md «Данные») — автостроение на живом трафике конкурирует
+        // с этим и маскирует ошибку индекса до первого рестарта.
+        autoIndex: config.get<NodeEnv>('NODE_ENV') !== 'production',
       }),
     }),
     ScheduleModule.forRoot(),
@@ -27,7 +37,13 @@ import { HealthController } from './health/health.controller';
     // идентичность бакетируется по IP; верифицированный JWT/initData —
     // задача будущих модулей auth, ThrottlerGuard переопределяется там же).
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    DatabaseModule,
     MigrationsModule,
+    ClassesModule,
+    LessonsModule,
+    ChannelsModule,
+    BroadcastsModule,
+    DeliveriesModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'web', 'dist'),

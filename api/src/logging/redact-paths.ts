@@ -13,6 +13,15 @@ export const REDACT_PATHS: string[] = [
   '*.password',
   '*.zoomPassword',
   '*.zoomLink',
+  // fast-redact сравнивает имя ключа точно — `*.zoomLink` не вырезает
+  // разовую ссылку занятия, у неё своё имя поля (lessons.zoomLinkOverride).
+  '*.zoomLinkOverride',
+  '*.zoomPasswordOverride',
+  // Свободный текст учителя (lessons.note) — личные заметки, не для лога.
+  '*.note',
+  // Текст рассылки (broadcasts.text) всегда содержит ссылку Zoom с паролем
+  // (SECURITY §1 п.3) — тот же секрет, что и zoomLink, но под другим полем.
+  '*.text',
   '*.token',
   '*.accessToken',
   '*.refreshToken',

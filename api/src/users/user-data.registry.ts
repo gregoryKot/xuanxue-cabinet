@@ -4,8 +4,21 @@
 // или не переносятся при merge. Наследовано из telegram-bot-2
 // (USER_DATA_TABLES / USER_OWNED_TABLES), адаптировано под Mongoose.
 //
-// Этап 0: моделей ещё нет, список пуст. Этап 1 добавит сюда имена коллекций
-// по мере появления схем (ученики, занятия, рассылки).
+// Этап 1: данные школы (classes, lessons, channels, broadcasts, deliveries)
+// принадлежат школе, а не пользователю (ADR-0009) — userId у них нет, список
+// остаётся пуст. У них есть ссылки НА пользователя (кто ведёт, кто создал) —
+// они не про владение и сюда не входят, но их обязан переписать/обнулить тот
+// же merge/delete, поэтому у них свой реестр ниже.
 export const USER_OWNED_COLLECTIONS = [] as const;
 
 export type UserOwnedCollection = (typeof USER_OWNED_COLLECTIONS)[number];
+
+// Ссылки на пользователя в данных школы: слияние аккаунтов переписывает их на
+// новый id (`$set`), удаление аккаунта — обнуляет (`$unset`). Не признак
+// владения (ADR-0009) — просто поле, которое не должно указывать в никуда.
+export const USER_REFERENCE_PATHS = [
+  { model: 'ClassRecord', path: 'leaderId' },
+  { model: 'LessonRecord', path: 'leaderId' },
+  { model: 'ChannelRecord', path: 'createdBy' },
+  { model: 'BroadcastRecord', path: 'createdBy' },
+] as const;
