@@ -24,9 +24,9 @@
     "check": "npm run build --workspace=shared && npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:e2e --workspace=api && npm run build --workspace=web && npm run gates && npm run knip"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "concurrently": "^10.0.5",
-    "eslint": "^9.39.5",
+    "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import-x": "^4.17.1",
@@ -38,7 +38,7 @@
     "knip": "^6.34.0",
     "prettier": "^3.9.6",
     "sharp": "^0.35.4",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.69.0"
   }
 }
