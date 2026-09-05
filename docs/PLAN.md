@@ -126,9 +126,9 @@ xuanxue-cabinet/
 | Коллекция                   | Поля                                                                                                                                                                                          | Комментарий                                                                                                                                                                                  |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `users`                     | name, email, telegramId, googleId, roles[], tz, status, createdAt                                                                                                                             | status: invited / active / blocked                                                                                                                                                           |
-| `classes`                   | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0009). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                            |
+| `classes`                   | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                            |
 | `lessons`                   | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания. Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые |
-| `channels`                  | type, title, config (зашифровано), createdBy, active                                                                                                                                          | type: telegram / vk / manual / webpush. Данные школы (ADR-0009)                                                                                                                              |
+| `channels`                  | type, title, config (зашифровано), createdBy, active                                                                                                                                          | type: telegram / vk / manual / webpush. Данные школы (ADR-0010)                                                                                                                              |
 | `broadcasts`                | kind, text, scheduledAt, channelIds[], lessonId?, status, createdBy?, telegramFileId?, sentAt?, previewSentAt?                                                                                | kind: lesson_link / recording / manual. Уникальный частичный индекс (lessonId, kind) для lesson_link: повторная ссылка на занятие — обновление существующего документа, не новый             |
 | `deliveries`                | broadcastId, channelId, status, attempts, nextAttemptAt, error, sentAt, externalId                                                                                                            | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки                                                                                                            |
 | `push_subscriptions`        | userId, endpoint (зашифрован), keys (зашифрованы), device, lastSeenAt, prefs{lessonLink, recording, payment}                                                                                  | Одна запись на устройство. 404/410 от push-сервиса удаляет запись. В `USER_OWNED_COLLECTIONS`                                                                                                |
@@ -148,7 +148,8 @@ xuanxue-cabinet/
 ### Этап 0. Скелет и правила — 1–2 дня
 
 Репозиторий, workspaces, CI с храповиками, `CLAUDE.md` с перенесёнными правилами,
-деплой пустого приложения на Railway с health-check, подключение Atlas, домен.
+деплой пустого приложения на Railway с health-check, подключение Atlas, домен
+`xuanxue.su` (ADR-0009).
 PWA-оболочка: manifest, иконки, service worker, гейт `check-pwa.mjs`. Рантайм-каркас
 api: валидация env, логи с requestId и редакцией, конверт ошибок, троттлинг, helmet,
 раннер миграций, e2e-инфраструктура. Фронт-каркас: http-клиент, ErrorBoundary,
@@ -280,7 +281,7 @@ api: валидация env, логи с requestId и редакцией, кон
 | GET/POST              | `/broadcasts`, `/broadcasts/:id/deliveries`     | учитель |
 | POST                  | `/deliveries/:id/mark-sent`                     | учитель |
 
-Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0009): без сессии
+Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0010): без сессии
 401, `guest`/`student` 403, `teacher`/`admin` 200, `config` канала не утекает
 ни в одном ответе ни одной роли.
 
@@ -336,7 +337,7 @@ api: валидация env, логи с requestId и редакцией, кон
 | Railway усыпляет сервис на дешёвом плане                                          | Взять план без сна; проверка в CI-смоке, что тик планировщика идёт                                       |
 | Письма попадают в спам                                                            | Свой домен, SPF/DKIM/DMARC на этапе 0, отправка через Resend                                             |
 | Бот ВК не может писать в беседу                                                   | Бота сообщества нужно добавить в беседу с правами. Проверка «отправить тест»                             |
-| Учителя двое, а каналы общие                                                      | Данные школы, не учителя (ADR-0009); `config` канала write-only ни для одной роли. Проверить на этапе 5  |
+| Учителя двое, а каналы общие                                                      | Данные школы, не учителя (ADR-0010); `config` канала write-only ни для одной роли. Проверить на этапе 5  |
 | Веб-пуши на iOS ненадёжны (только установленное приложение 16.4+, нет разрешения) | Telegram и email остаются; подсказка установить приложение; запасной путь — обёртка Capacitor тем же SPA |
 | Service worker залипает на старой версии после деплоя                             | `autoUpdate` + тост; `sw.js` без кеша; проверка на телефоне после первого деплоя (RUNBOOK §8.4)          |
 
@@ -376,5 +377,5 @@ api: валидация env, логи с requestId и редакцией, кон
 - Кто ведёт каждый слот, если не Дима.
 - Список чатов и каналов, куда сейчас уходят ссылки, и кто в них админ.
 - Где лежат записи: облако Zoom, YouTube, Диск.
-- Домен для кабинета и почта, с которой будут уходить письма.
+- Почта, с которой будут уходить письма (домен есть — `xuanxue.su`, ADR-0009).
 - Три–пять учеников-добровольцев для первой недели.

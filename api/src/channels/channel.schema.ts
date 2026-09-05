@@ -1,4 +1,4 @@
-// Канал рассылки (данные школы, ADR-0009): Telegram, ВК, ручной режим для
+// Канал рассылки (данные школы, ADR-0010): Telegram, ВК, ручной режим для
 // Facebook. `config` — токен/chatId, зашифрован целиком как JSON и никогда
 // не покидает сервер (ни в одном toDto, ни для одной роли — SECURITY §3).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';

@@ -1,4 +1,4 @@
-// Рассылка (данные школы, ADR-0009): `text` содержит ссылку Zoom с паролем
+// Рассылка (данные школы, ADR-0010): `text` содержит ссылку Zoom с паролем
 // (SECURITY §1 п.3), шифруется целиком. `telegramFileId` — для рассылок
 // записи видеофайлом, бот публикует по file_id без перезаливки (PLAN §6).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';

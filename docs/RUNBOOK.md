@@ -26,11 +26,46 @@ Merge в `main` → GitHub → Railway собирает `Dockerfile` и пере
 
 После деплоя проверить (две минуты):
 
-1. `curl -fsS https://<домен>/api/health` → `"status":"ok"`, `"mongo":"up"`, версия новая.
+1. `curl -fsS https://xuanxue.su/api/health` → `"status":"ok"`, `"mongo":"up"`, версия новая.
 2. В логах Railway нет `error` за первую минуту (фильтр `level:50` для pino).
 3. Открыть кабинет с телефона: приложение обновилось (тост «новая версия» или свежая
    сборка после перезапуска). Залипание старого service worker — см. 8.4.
 4. Планировщик тикает: в логе раз в минуту `scheduler.tick` (с этапа 1).
+
+### 2.1 Домен xuanxue.su и DNS
+
+Домен зарегистрирован 2026-09-05 (ADR-0009). Единственный публичный адрес кабинета —
+`https://xuanxue.su`; служебный `*.up.railway.app` пользователям не показывается.
+
+Привязка (делается один раз, повторяется только при пересоздании сервиса):
+
+1. Railway → Service → Settings → Networking → **Custom Domain** → `xuanxue.su`, затем
+   ещё раз → `www.xuanxue.su`. Railway покажет, куда направить каждую запись.
+2. У регистратора в DNS-зоне `xuanxue.su`:
+   - `www` — `CNAME` на значение из Railway;
+   - апекс (`@`) — `CNAME`/`ALIAS`-запись на то же значение. Если панель регистратора
+     не умеет `CNAME` на апексе (частая ситуация в зоне `.su`), перенести DNS-зону на
+     бесплатный Cloudflare (режим «DNS only», серое облако) — там апекс-CNAME работает
+     через flattening. `A`-записи не подходят: у Railway нет статического IP.
+3. Ждать статуса «Verified» в Railway (обычно минуты, по TTL — до суток). Сертификат
+   Let's Encrypt Railway выпускает и продлевает сам, ничего настраивать не нужно.
+4. Railway → Variables: `PUBLIC_URL=https://xuanxue.su`. Перезапуск: приложение само
+   переставит вебхук бота на новый адрес (`setWebhook` при старте, см. 6.2).
+
+Проверка:
+
+```bash
+curl -fsSI https://xuanxue.su/ | head -1          # HTTP/2 200
+curl -fsS  https://xuanxue.su/api/health           # "status":"ok"
+curl -fsSI https://www.xuanxue.su/ | head -1       # тот же сервис
+curl -s "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo"   # url = https://xuanxue.su/api/telegram/webhook
+```
+
+Сменить домен = все сессии, установленные приложения и подписки на пуши сгорают
+(cookie, scope PWA и push привязаны к origin). Не делать без предупреждения Димы и Маши.
+
+Почта с домена (`SPF`, `DKIM`, `DMARC`) настраивается на этапе 1 вместе с Resend;
+записи выдаёт Resend при добавлении домена, они не пересекаются с записями выше.
 
 ## 3. Откат
 
