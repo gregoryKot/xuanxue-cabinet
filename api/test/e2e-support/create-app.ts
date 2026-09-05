@@ -2,6 +2,7 @@
 // ту же configureApp(), что и main.ts (правило CLAUDE.md «одна механика —
 // одно место») — иначе e2e тестирует не то поведение, что видит пользователь
 // в проде (другие пайпы/фильтры/префикс).
+import { randomBytes } from 'crypto';
 import { Test } from '@nestjs/testing';
 import { ExpressAdapter, type NestExpressApplication } from '@nestjs/platform-express';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -17,8 +18,10 @@ export interface TestApp {
 function setTestEnv(mongoUri: string): void {
   process.env.NODE_ENV = 'test';
   process.env.MONGODB_URI = mongoUri;
-  process.env.ENCRYPTION_KEY = 'a1'.repeat(32);
-  process.env.JWT_SECRET = 'e2e-test-jwt-secret-32-characters-min';
+  // Ключи генерируются на каждый прогон: литерал секрета в коде — находка
+  // gitleaks, даже тестовая, и привычка хранить «заглушки» в репозитории.
+  process.env.ENCRYPTION_KEY = randomBytes(32).toString('hex');
+  process.env.JWT_SECRET = randomBytes(32).toString('hex');
   process.env.PUBLIC_URL = 'http://localhost:3000';
   // Логи запросов не нужны в выводе тестов — при падении смотрят ответ, не лог.
   process.env.LOG_LEVEL = 'silent';
