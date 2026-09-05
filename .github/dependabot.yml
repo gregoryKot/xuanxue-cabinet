@@ -6,6 +6,11 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
+    ignore:
+      # Драйвер mongodb в api пинится под версию, которую тянет Mongoose (~7.5):
+      # отдельный бамп даёт две копии драйвера и ломает типы Db в tsc (PR #6, #10).
+      # Обновляется вместе с mongoose.
+      - dependency-name: 'mongodb'
     groups:
       minor-and-patch:
         update-types: ['minor', 'patch']
