@@ -1,10 +1,10 @@
 // Реальный Mongo в памяти вместо мока: раннер держит логику блокировок и
 // денормализованного состояния (какие миграции применены), read-after-write
 // связка «применил → записалось → второй прогон не повторяет» важнее мока.
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import mongoose, { type Connection } from 'mongoose';
+import type { Connection } from 'mongoose';
 import { MigrationRunner } from './migration.runner';
 import type { Migration } from './migrations';
+import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 // Та же форма документа, что и в migration.runner.ts (id — строка, не
 // ObjectId по умолчанию) — иначе driver-типы mongodb требуют ObjectId для `_id`.
@@ -15,7 +15,7 @@ interface MigrationsDoc {
 }
 
 describe('MigrationRunner', () => {
-  let mongod: MongoMemoryServer;
+  let memory: MemoryMongo;
   let connection: Connection;
   let runner: MigrationRunner;
 
@@ -25,13 +25,12 @@ describe('MigrationRunner', () => {
   }
 
   beforeAll(async () => {
-    mongod = await MongoMemoryServer.create();
-    connection = await mongoose.createConnection(mongod.getUri()).asPromise();
+    memory = await openMemoryMongo();
+    connection = memory.connection;
   }, 60_000);
 
   afterAll(async () => {
-    await connection.close();
-    await mongod.stop();
+    await memory.stop();
   });
 
   beforeEach(async () => {

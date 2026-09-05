@@ -13,6 +13,19 @@ export const REDACT_PATHS: string[] = [
   '*.password',
   '*.zoomPassword',
   '*.zoomLink',
+  // fast-redact сравнивает имя ключа точно — `*.zoomLink` не вырезает
+  // разовую ссылку занятия, у неё своё имя поля (lessons.zoomLinkOverride).
+  '*.zoomLinkOverride',
+  '*.zoomPasswordOverride',
+  // Свободный текст учителя (lessons.note) — личные заметки, не для лога.
+  '*.note',
+  // Текст рассылки (broadcasts.text) всегда содержит ссылку Zoom с паролем
+  // (SECURITY §1 п.3) — тот же секрет, что и zoomLink, но под другим полем.
+  '*.text',
+  // deliveries.error сюда сознательно не входит: `*.error` вырезал бы поле
+  // error из любой строки лога и ослепил бы отладку. Токен канала из текста
+  // ошибки провайдера вычищается у источника — в адаптере, до записи в базу
+  // и до лога (SECURITY §6).
   '*.token',
   '*.accessToken',
   '*.refreshToken',

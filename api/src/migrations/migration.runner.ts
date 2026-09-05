@@ -9,6 +9,7 @@ import { DateTime } from 'luxon';
 import type { Db } from 'mongodb';
 import type { Connection } from 'mongoose';
 import { MIGRATIONS, type Migration } from './migrations';
+import { MONGO_DUPLICATE_KEY_CODE } from '../common/mongo-error-codes';
 
 const COLLECTION = 'migrations';
 const LOCK_ID = '__lock';
@@ -96,6 +97,8 @@ export class MigrationRunner implements OnApplicationBootstrap {
 
 function isDuplicateKeyError(err: unknown): boolean {
   return (
-    typeof err === 'object' && err !== null && (err as { code?: number }).code === 11000
+    typeof err === 'object' &&
+    err !== null &&
+    (err as { code?: number }).code === MONGO_DUPLICATE_KEY_CODE
   );
 }

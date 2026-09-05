@@ -34,6 +34,16 @@ function logSample(): Record<string, unknown> {
         zoomPassword: 'pw',
         title: 'Средняя группа',
       },
+      lesson: {
+        zoomLinkOverride: 'https://zoom.example/2',
+        zoomPasswordOverride: '2222',
+        note: 'заметка учителя',
+        topic: 'пятое занятие',
+      },
+      broadcast: {
+        text: 'ссылка https://zoom.example/2 пароль 1111',
+        kind: 'lesson_link',
+      },
     },
     'проверка редакции',
   );
@@ -48,6 +58,8 @@ describe('REDACT_PATHS', () => {
     const body = req.body as Record<string, unknown>;
     const user = logged.user as Record<string, unknown>;
     const channel = logged.channel as Record<string, unknown>;
+    const lesson = logged.lesson as Record<string, unknown>;
+    const broadcast = logged.broadcast as Record<string, unknown>;
 
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
@@ -59,6 +71,10 @@ describe('REDACT_PATHS', () => {
     expect(channel.config).toBe('[Redacted]');
     expect(channel.zoomLink).toBe('[Redacted]');
     expect(channel.zoomPassword).toBe('[Redacted]');
+    expect(lesson.zoomLinkOverride).toBe('[Redacted]');
+    expect(lesson.zoomPasswordOverride).toBe('[Redacted]');
+    expect(lesson.note).toBe('[Redacted]');
+    expect(broadcast.text).toBe('[Redacted]');
   });
 
   it('не трогает соседние не-секретные поля', () => {
@@ -67,9 +83,13 @@ describe('REDACT_PATHS', () => {
     const body = req.body as Record<string, unknown>;
     const user = logged.user as Record<string, unknown>;
     const channel = logged.channel as Record<string, unknown>;
+    const lesson = logged.lesson as Record<string, unknown>;
+    const broadcast = logged.broadcast as Record<string, unknown>;
 
     expect(body.name).toBe('Мария');
     expect(user.name).toBe('Мария');
     expect(channel.title).toBe('Средняя группа');
+    expect(lesson.topic).toBe('пятое занятие');
+    expect(broadcast.kind).toBe('lesson_link');
   });
 });
