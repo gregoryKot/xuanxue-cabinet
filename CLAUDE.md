@@ -328,7 +328,7 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 ### Каналы
 
 Один интерфейс `ChannelAdapter { send(message, config): Promise<Result> }`, по реализации
-на тип: telegram, vk, threads, manual. Импорт SDK мессенджера вне `api/src/channels/`
+на тип: telegram, vk, manual. Импорт SDK мессенджера вне `api/src/channels/`
 и `api/src/telegram/` запрещён eslint. Тесты через фейковый адаптер.
 
 ### Доставка идемпотентна

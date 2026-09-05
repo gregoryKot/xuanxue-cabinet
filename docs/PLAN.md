@@ -79,7 +79,6 @@ https://drive.google.com/file/d/…
 | Хостинг         | Railway, один сервис                                                                | API + статика + вебхук бота. Нужен план без «засыпания», иначе планировщик не сработает                   |
 | Telegram        | telegraf, вебхук                                                                    | Бот для учеников и учителя, рассылка в группы                                                             |
 | ВКонтакте       | API сообщества                                                                      | Сообщения в беседу, куда добавлен бот сообщества                                                          |
-| Threads         | Threads API от аккаунта учителя                                                     | Официальная публикация. Группы Facebook закрыты для API с 2024 года                                       |
 | Facebook-группа | Полуручной режим                                                                    | Система готовит текст, шлёт учителю кнопку «скопировать», учитель вставляет сам                           |
 | Email           | Resend                                                                              | Вход по ссылке и канал для учеников без Telegram                                                          |
 | Планировщик     | `@nestjs/schedule`, тик раз в минуту + коллекция `deliveries` с уникальным индексом | Без Redis. Идемпотентность через уникальный индекс, а не через память процесса                            |
@@ -129,7 +128,7 @@ xuanxue-cabinet/
 | `users`                     | name, email, telegramId, googleId, roles[], tz, status, createdAt                                                                                                 | status: invited / active / blocked                                                                                                                   |
 | `classes`                   | title, groupLabel, format, location, zoomLink, zoomPassword, teacherId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, morningPostAt, active | Около 30 слотов. format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                              |
 | `lessons`                   | classId, startsAt, topic, status, zoomLinkOverride, recordings[{title, url \| telegramFileId}], note                                                              | Конкретное занятие в конкретный день. Планировщик создаёт на 4 недели вперёд, учитель заранее вписывает темы, отменяет, переносит, добавляет разовые |
-| `channels`                  | type, title, config (зашифровано), ownerId                                                                                                                        | type: telegram / vk / threads / manual                                                                                                               |
+| `channels`                  | type, title, config (зашифровано), ownerId                                                                                                                        | type: telegram / vk / manual                                                                                                                         |
 | `broadcasts`                | kind, text, scheduledAt, channelIds[], lessonId?, status, createdBy                                                                                               | kind: lesson_link / recording / manual                                                                                                               |
 | `deliveries`                | broadcastId, channelId, status, error, sentAt, externalId                                                                                                         | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки                                                                    |
 | `push_subscriptions`        | userId, endpoint (зашифрован), keys (зашифрованы), device, lastSeenAt, prefs{lessonLink, recording, payment}                                                      | Одна запись на устройство. 404/410 от push-сервиса удаляет запись. В `USER_OWNED_COLLECTIONS`                                                        |
@@ -221,7 +220,7 @@ api: валидация env, логи с requestId и редакцией, кон
    После занятия — кнопка «Добавить запись»: ссылка на Drive или видео. Добавил —
    рассылка уходит сама.
 4. **Каналы.** Подключение: Telegram-канал (добавить бота админом), ВК (токен
-   сообщества и беседа), Threads (вход через Meta), «Вручную» для Facebook.
+   сообщества и беседа), «Вручную» для Facebook.
    Проверка «отправить тест».
 5. **Рассылки.** Разовая: текст, время, каналы, предпросмотр. Журнал: что, куда, когда,
    с какой ошибкой. Ручные доставки ждут кнопки «скопировать» и «отметить отправленным».
@@ -332,7 +331,6 @@ api: валидация env, логи с requestId и редакцией, кон
 | Риск                                                                              | Что делаем                                                                                               |
 | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Группы Facebook недоступны через API                                              | Полуручной режим с кнопкой «скопировать». Честно сказать Маше, что это предел                            |
-| Threads API требует одобрения приложения Meta                                     | Подать заявку на этапе 0, до одобрения — тоже полуручной режим                                           |
 | Railway усыпляет сервис на дешёвом плане                                          | Взять план без сна; проверка в CI-смоке, что тик планировщика идёт                                       |
 | Письма попадают в спам                                                            | Свой домен, SPF/DKIM/DMARC на этапе 0, отправка через Resend                                             |
 | Бот ВК не может писать в беседу                                                   | Бота сообщества нужно добавить в беседу с правами. Проверка «отправить тест»                             |

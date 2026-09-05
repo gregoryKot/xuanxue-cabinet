@@ -17,7 +17,7 @@
 минут, затем уведомление учителю.
 
 Отправка в мессенджер — только через `ChannelAdapter { send(message, config) }`, по
-реализации на тип канала (telegram, vk, threads, manual, webpush).
+реализации на тип канала (telegram, vk, manual, webpush).
 
 ## Альтернативы
 
