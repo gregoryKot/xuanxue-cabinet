@@ -75,10 +75,11 @@ Railway → Variables. Изменение = перезапуск сервиса.
 1. Сгенерировать: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
 2. В Railway: `ENCRYPTION_KEY_OLD=<старый>`, `ENCRYPTION_KEY=<новый>`. Перезапуск.
    С этого момента чтение идёт обоими ключами, запись — новым.
-3. Запустить перешифровку: `npm run rotate-encryption --workspace=api` (появляется с
-   первой зашифрованной коллекцией; обходит `MODEL_DEFINITIONS`
-   (`api/src/common/model.registry.ts`) и берёт `encryptSchemaFrom(fieldPolicy)` для
-   каждой модели — другого реестра шифруемых полей в проекте нет).
+3. Запустить перешифровку: `npm run rotate-encryption --workspace=api` — команда ещё
+   не написана: до первой ротации её нужно сделать по `MODEL_DEFINITIONS`
+   (`api/src/common/model.registry.ts`), обойдя список и взяв
+   `encryptSchemaFrom(fieldPolicy)` для каждой модели — другого реестра шифруемых
+   полей в проекте нет.
 4. Убрать `ENCRYPTION_KEY_OLD`. Перезапуск.
 
 Никогда не менять `ENCRYPTION_KEY` без шага 2–3: данные превратятся в мусор.

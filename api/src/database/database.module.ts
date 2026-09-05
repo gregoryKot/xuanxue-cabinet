@@ -5,6 +5,5 @@ import { IndexSyncService } from './index-sync.service';
 // неоткуда не нужно (тот же приём, что у MigrationsModule).
 @Module({
   providers: [IndexSyncService],
-  exports: [IndexSyncService],
 })
 export class DatabaseModule {}

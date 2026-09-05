@@ -1,11 +1,10 @@
 // Домен школы (ADR-0009): перечисления и составные типы для занятий, каналов,
-// рассылок и доставок. Отдельный файл, а не прямо в index.ts — иначе
-// WEEKDAY_LABELS_RU в index.ts и типы здесь пришлось бы жить в одном месте,
-// а index.ts заодно реэкспортирует и другие модули (api-error.ts): один
-// файл на предметную область, index.ts — только сборка реэкспортов.
+// рассылок и доставок. Один файл на предметную область; index.ts — реэкспорт
+// и общие константы.
 
 /** День недели по Luxon/JS: 0 = воскресенье … 6 = суббота. */
-export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
+export type Weekday = (typeof WEEKDAYS)[number];
 
 export const CHANNEL_TYPES = ['telegram', 'vk', 'manual', 'webpush'] as const;
 export type ChannelType = (typeof CHANNEL_TYPES)[number];
@@ -37,12 +36,5 @@ export interface ScheduleRule {
 export interface Recording {
   title: string;
   url?: string;
-  telegramFileId?: string;
-}
-
-/** Контракт ChannelAdapter.send — текст поста и, для видео, file_id в Telegram
- * (бот публикует по file_id без перезаливки — PLAN §6, ограничение 50 МБ). */
-export interface OutgoingMessage {
-  text: string;
   telegramFileId?: string;
 }

@@ -14,9 +14,9 @@ export type {
   DeliveryStatus,
   ScheduleRule,
   Recording,
-  OutgoingMessage,
 } from './domain';
 export {
+  WEEKDAYS,
   CHANNEL_TYPES,
   CLASS_FORMATS,
   LESSON_STATUSES,

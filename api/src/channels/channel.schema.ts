@@ -5,6 +5,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { CHANNEL_TYPES, type ChannelType } from '@xuanxue/shared';
 import { encJson, plain, type FieldPolicy } from '../common/field-policy';
+import { USER_MODEL_NAME } from '../users/user-data.registry';
 
 @Schema({ timestamps: true, collection: 'channels' })
 export class ChannelRecord {
@@ -20,8 +21,8 @@ export class ChannelRecord {
   @Prop({ type: Boolean, default: true })
   active!: boolean;
 
-  // Появится вместе с моделью пользователей — см. USER_REFERENCE_PATHS.
-  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: false })
+  // См. USER_REFERENCE_PATHS.
+  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
 }
 

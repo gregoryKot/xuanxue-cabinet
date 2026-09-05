@@ -1,8 +1,12 @@
-// Сверка реестров со схемами Mongoose (правило CLAUDE.md №4/чеклист «Новая
-// коллекция», ADR-0009): забытая модель или забытая ссылка на пользователя
-// падает здесь, а не обнаруживается инцидентом на проде.
+// Сверка реестров со схемами Mongoose (CLAUDE.md, раздел «Данные», чеклист
+// новой коллекции; ADR-0009): забытая модель или забытая ссылка на
+// пользователя падает здесь, а не обнаруживается инцидентом на проде.
 import { MODEL_DEFINITIONS } from '../common/model.registry';
-import { USER_OWNED_COLLECTIONS, USER_REFERENCE_PATHS } from './user-data.registry';
+import {
+  USER_MODEL_NAME,
+  USER_OWNED_COLLECTIONS,
+  USER_REFERENCE_PATHS,
+} from './user-data.registry';
 
 describe('USER_OWNED_COLLECTIONS', () => {
   it('модели с путём userId в схеме совпадают со списком реестра', () => {
@@ -25,7 +29,7 @@ describe('USER_REFERENCE_PATHS', () => {
           // path.options типизирован как AnyObject (mongoose) — сужаем явно,
           // без этого eslint (no-unsafe-member-access) ругается на .ref.
           const { ref } = type.options as { ref?: string };
-          return ref === 'User';
+          return ref === USER_MODEL_NAME;
         })
         .map(([path]) => ({ model: def.name, path })),
     );

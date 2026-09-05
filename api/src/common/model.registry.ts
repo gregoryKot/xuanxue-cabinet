@@ -1,9 +1,8 @@
 // Единая точка для тестов-сверок: шифрование (encryption-coverage.spec),
 // userId-реестр (user-data.registry.spec), уникальные индексы
-// (model.registry.spec). Тот же список — единственный реестр для скрипта
-// ротации ключа (`rotate-encryption`, RUNBOOK §6.1 шаг 3): он берёт
-// `encryptSchemaFrom(fieldPolicy)` отсюда для каждой модели, второго списка
-// шифруемых полей в проекте нет.
+// (model.registry.spec). Скрипт ротации ключа (RUNBOOK §6.1 шаг 3) обязан
+// обходить этот список и брать `encryptSchemaFrom(fieldPolicy)` для каждой
+// модели — другого реестра шифруемых полей в проекте нет.
 import type { Schema } from 'mongoose';
 import { ClassRecord, ClassSchema, CLASS_FIELD_POLICY } from '../classes/class.schema';
 import {

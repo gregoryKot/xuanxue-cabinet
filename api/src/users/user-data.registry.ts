@@ -11,6 +11,12 @@
 // же merge/delete, поэтому у них свой реестр ниже.
 export const USER_OWNED_COLLECTIONS = [] as const;
 
+// Имя модели пользователей по конвенции *Record этого проекта — схема
+// появится вместе со входом. Ссылки на пользователя (`ref:`) в других схемах
+// заводятся уже сейчас, до неё, чтобы `USER_REFERENCE_PATHS` не разъезжался
+// с литералом по буквам.
+export const USER_MODEL_NAME = 'UserRecord';
+
 export type UserOwnedCollection = (typeof USER_OWNED_COLLECTIONS)[number];
 
 // Ссылки на пользователя в данных школы: слияние аккаунтов переписывает их на

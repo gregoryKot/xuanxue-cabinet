@@ -3,20 +3,29 @@
 // «{ведущий}», фильтр «мои»), не признак владения документом.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
-import { CLASS_FORMATS, SCHOOL_TZ, type ClassFormat } from '@xuanxue/shared';
+import {
+  CLASS_FORMATS,
+  SCHOOL_TZ,
+  WEEKDAYS,
+  type ClassFormat,
+  type ScheduleRule,
+  type Weekday,
+} from '@xuanxue/shared';
 import { enc, plain, type FieldPolicy } from '../common/field-policy';
+import { USER_MODEL_NAME } from '../users/user-data.registry';
 
 const DEFAULT_LEAD_MINUTES = 30;
-const RULE_TIME_RE = /^\d{2}:\d{2}$/;
+// 99:99 не должно проходить — HH от 00 до 23, mm от 00 до 59.
+const RULE_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Субдокумент правила расписания. `_id` НЕ отключён (Mongoose даёт его
-// бесплатно) — планировщик будущих PR ссылается на конкретное правило
+// бесплатно) — планировщик ссылается на конкретное правило
 // (`lessons.ruleId`), чтобы отличить «время правила поменяли» от «правило
 // удалили, добавили новое», не сравнивая поля вручную.
 @Schema({ _id: true })
-class ScheduleRule {
-  @Prop({ type: Number, required: true, min: 0, max: 6 })
-  weekday!: number;
+class ScheduleRuleSubdoc implements ScheduleRule {
+  @Prop({ type: Number, enum: WEEKDAYS, required: true })
+  weekday!: Weekday;
 
   @Prop({ type: String, required: true, match: RULE_TIME_RE })
   time!: string;
@@ -24,7 +33,7 @@ class ScheduleRule {
   @Prop({ type: Number, required: true })
   durationMin!: number;
 }
-const ScheduleRuleSchema = SchemaFactory.createForClass(ScheduleRule);
+const ScheduleRuleSchema = SchemaFactory.createForClass(ScheduleRuleSubdoc);
 
 @Schema({ timestamps: true, collection: 'classes' })
 export class ClassRecord {
@@ -46,8 +55,8 @@ export class ClassRecord {
   @Prop({ type: String, required: false })
   zoomPassword?: string;
 
-  // Появятся вместе с моделью пользователей — см. USER_REFERENCE_PATHS.
-  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: false })
+  // См. USER_REFERENCE_PATHS.
+  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   leaderId?: Types.ObjectId;
 
   @Prop({ type: [ScheduleRuleSchema], default: [] })

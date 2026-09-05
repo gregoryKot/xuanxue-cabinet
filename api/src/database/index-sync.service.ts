@@ -25,7 +25,9 @@ export class IndexSyncService implements OnApplicationBootstrap {
         await model.syncIndexes();
       } catch (err) {
         failed.push(name);
-        this.logger.error(`syncIndexes упал для коллекции ${name}: ${errorMessage(err)}`);
+        const message = errorMessage(err);
+        const stack = err instanceof Error ? err.stack : undefined;
+        this.logger.error(`syncIndexes упал для коллекции ${name}: ${message}`, stack);
       }
     }
     if (failed.length > 0) {

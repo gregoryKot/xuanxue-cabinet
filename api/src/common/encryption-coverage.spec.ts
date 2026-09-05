@@ -31,6 +31,12 @@ function collectPaths(schema: Schema, prefix = ''): FlatPath[] {
     const path = prefix ? `${prefix}.${name}` : name;
     if (type.schema) {
       out.push(...collectPaths(type.schema, path));
+    } else if (type.instance === 'Array' && type.getEmbeddedSchemaType()) {
+      // Массив примитивов (`[String]`): Mongoose даёт instance 'Array', а тип
+      // элемента — в getEmbeddedSchemaType(). Путь оставляем верхнего уровня,
+      // чтобы политика могла шифровать поле целиком через encryptRecord.
+      const element = type.getEmbeddedSchemaType();
+      if (element) out.push({ path, type: element });
     } else {
       out.push({ path, type });
     }

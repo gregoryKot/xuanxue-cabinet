@@ -36,6 +36,7 @@ function logSample(): Record<string, unknown> {
       },
       lesson: {
         zoomLinkOverride: 'https://zoom.example/2',
+        zoomPasswordOverride: '2222',
         note: 'заметка учителя',
         topic: 'пятое занятие',
       },
@@ -71,6 +72,7 @@ describe('REDACT_PATHS', () => {
     expect(channel.zoomLink).toBe('[Redacted]');
     expect(channel.zoomPassword).toBe('[Redacted]');
     expect(lesson.zoomLinkOverride).toBe('[Redacted]');
+    expect(lesson.zoomPasswordOverride).toBe('[Redacted]');
     expect(lesson.note).toBe('[Redacted]');
     expect(broadcast.text).toBe('[Redacted]');
   });

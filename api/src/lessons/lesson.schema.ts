@@ -4,12 +4,12 @@
 // фактическое начало в UTC, меняется отдельно при переносе.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
-import { LESSON_STATUSES, type LessonStatus } from '@xuanxue/shared';
+import { LESSON_STATUSES, type LessonStatus, type Recording } from '@xuanxue/shared';
 import { enc, plain, type FieldPolicy } from '../common/field-policy';
+import { USER_MODEL_NAME } from '../users/user-data.registry';
 
-// Запись занятия: ссылка (Drive, облако Zoom) или файл в Telegram по file_id.
 @Schema({ _id: true })
-class Recording {
+class RecordingSubdoc implements Recording {
   @Prop({ type: String, required: true })
   title!: string;
 
@@ -19,7 +19,7 @@ class Recording {
   @Prop({ type: String, required: false })
   telegramFileId?: string;
 }
-const RecordingSchema = SchemaFactory.createForClass(Recording);
+const RecordingSchema = SchemaFactory.createForClass(RecordingSubdoc);
 
 @Schema({ timestamps: true, collection: 'lessons' })
 export class LessonRecord {
@@ -41,13 +41,13 @@ export class LessonRecord {
   @Prop({ type: String, enum: LESSON_STATUSES, default: 'scheduled' })
   status!: LessonStatus;
 
-  // Переопределение ведущего на одно занятие — появится вместе с моделью пользователей.
-  @Prop({ type: SchemaTypes.ObjectId, ref: 'User', required: false })
+  // См. USER_REFERENCE_PATHS.
+  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   leaderId?: Types.ObjectId;
 
-  // Ссылка на конкретное правило класса (rules._id) — планировщик будущих PR
-  // отличает «правило поменяли» от «правило удалили, новое добавили» без
-  // сравнения полей вручную; у разового занятия отсутствует.
+  // Ссылка на конкретное правило класса (rules._id) — планировщик отличает
+  // «правило поменяли» от «правило удалили, новое добавили» без сравнения
+  // полей вручную; у разового занятия отсутствует.
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   ruleId?: Types.ObjectId;
 
@@ -67,7 +67,7 @@ export class LessonRecord {
   note?: string;
 
   // Бот один раз спрашивает «Запись?» после занятия — отметка, чтобы не
-  // спрашивать на каждом тике планировщика (появится вместе с ботом учителя).
+  // спрашивать повторно на каждом тике планировщика.
   @Prop({ type: Date, required: false })
   recordingPromptedAt?: Date;
 }
@@ -88,8 +88,6 @@ export const LESSON_FIELD_POLICY: FieldPolicy = {
   zoomPasswordOverride: enc,
   note: enc,
   'recordings.title': plain('публикуется в посте'),
-  // Риск утечки — просмотр записи прошедшего занятия, не вход на живое
-  // (не входит в модель угроз SECURITY §1); принятый риск — SECURITY §11.
   'recordings.url': plain('ссылка на запись, принятый риск SECURITY §11'),
   'recordings.telegramFileId': plain('работает только у бота, снаружи бесполезен'),
 };
