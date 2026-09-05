@@ -46,3 +46,4 @@
 | [0008](0008-no-threads-channel.md)               | Канала Threads нет: Telegram, ВК, ручной режим для Facebook       |
 | [0009](0009-domain-xuanxue-su.md)                | Домен `xuanxue.su` — единый origin сайта, API, вебхука и писем    |
 | [0010](0010-school-scoped-data-roles.md)         | Данные школы скоупятся по роли, не по владельцу                   |
+| [0011](0011-template-syntax.md)                  | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`     |

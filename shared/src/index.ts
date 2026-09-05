@@ -24,6 +24,15 @@ export {
   BROADCAST_STATUSES,
   DELIVERY_STATUSES,
 } from './domain';
+export type { TemplatePlaceholder, TemplateValues } from './templates';
+export {
+  TEMPLATE_PLACEHOLDERS,
+  renderTemplate,
+  findUnknownPlaceholders,
+} from './templates';
+export type { TemplateKind } from './default-templates';
+export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
+export { formatDurationRu } from './format-duration';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';
