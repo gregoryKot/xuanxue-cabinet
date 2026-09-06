@@ -21,6 +21,15 @@ export class ChannelRecord {
   @Prop({ type: Boolean, default: true })
   active!: boolean;
 
+  // Адрес назначения без секрета: chatId телеграма, String(peerId) ВК, ''
+  // для ручного канала. `config` зашифрован недетерминированно (encJson) —
+  // искать по нему нельзя, а следующий PR (бот) при добавлении в группу
+  // должен найти или создать канал по chatId идемпотентно
+  // (ChannelsService.upsertTelegramChat). Заполняется сервисом из config при
+  // create/update — одна функция targetOf (channel.mapper.ts).
+  @Prop({ type: String, default: '' })
+  target!: string;
+
   // См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
@@ -28,8 +37,19 @@ export class ChannelRecord {
 
 export const ChannelSchema = SchemaFactory.createForClass(ChannelRecord);
 ChannelSchema.index({ type: 1 });
+// Второй канал того же типа с тем же адресом не создаётся дважды —
+// идемпотентность upsertTelegramChat и защита от дубля при ручном создании.
+// Частичный: у ручного канала target === '' и дублей не считает (иначе все
+// manual-каналы конкурировали бы за один слот индекса).
+ChannelSchema.index(
+  { type: 1, target: 1 },
+  { unique: true, partialFilterExpression: { target: { $gt: '' } } },
+);
 
 export const CHANNEL_FIELD_POLICY: FieldPolicy = {
   title: plain('название для админа в кабинете, не секрет'),
   config: encJson,
+  target: plain(
+    'адрес назначения без секрета: по нему бот находит канал, когда его добавили в группу; chatId/peerId не секреты — SECURITY §3',
+  ),
 };

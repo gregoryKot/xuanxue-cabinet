@@ -29,10 +29,13 @@ export const REDACT_PATHS: string[] = [
   '*.text',
   // deliveries.error сюда сознательно не входит: `*.error` вырезал бы поле
   // error из любой строки лога и ослепил бы отладку. Токен канала из текста
-  // ошибки провайдера вычищается у источника — в адаптере, до записи в базу
-  // и до лога (SECURITY §6).
+  // ошибки провайдера вычищается в ChannelsService (test()) и в сервисе
+  // доставок, до записи в базу и до лога (SECURITY §6).
   '*.token',
   '*.accessToken',
+  // Форма ВК (`access_token` в теле запроса messages.send) — snake_case,
+  // отдельно от camelCase accessToken выше.
+  '*.access_token',
   '*.refreshToken',
   '*.config',
   '*.secret',

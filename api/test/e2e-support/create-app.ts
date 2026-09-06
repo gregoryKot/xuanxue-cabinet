@@ -3,7 +3,7 @@
 // одно место») — иначе e2e тестирует не то поведение, что видит пользователь
 // в проде (другие пайпы/фильтры/префикс).
 import { randomBytes } from 'crypto';
-import { Test } from '@nestjs/testing';
+import { Test, type TestingModuleBuilder } from '@nestjs/testing';
 import { ExpressAdapter, type NestExpressApplication } from '@nestjs/platform-express';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
@@ -41,7 +41,17 @@ function setTestEnv(mongoUri: string): void {
   process.env.SCHEDULER_ENABLED = 'false';
 }
 
-export async function createTestApp(): Promise<TestApp> {
+/**
+ * `overrides` — точка расширения для e2e, которым нужен настоящий AppModule,
+ * но с одной подменённой зависимостью (channels.e2e-spec.ts: фейковый
+ * `TelegramClientFactory`, чтобы `/channels/:id/test` не ходил в сеть).
+ * Не `NODE_ENV`-проверка внутри самого сервиса (SECURITY §2 — никаких
+ * обходов по окружению в бизнес-коде): подмена — только в тестовой сборке
+ * модуля, прод-код о её существовании не знает.
+ */
+export async function createTestApp(
+  overrides?: (builder: TestingModuleBuilder) => void,
+): Promise<TestApp> {
   const mongod = await MongoMemoryServer.create();
   try {
     setTestEnv(mongod.getUri());
@@ -54,7 +64,9 @@ export async function createTestApp(): Promise<TestApp> {
     const { AppModule } = await import('../../src/app.module');
     const { configureApp } = await import('../../src/app.setup');
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const builder = Test.createTestingModule({ imports: [AppModule] });
+    overrides?.(builder);
+    const moduleRef = await builder.compile();
     // Явный ExpressAdapter — та же причина, что в main.ts: @nestjs/platform-express
     // лежит в api/node_modules, автозагрузка адаптера из @nestjs/core (корневой
     // node_modules) его не находит. У @nestjs/testing есть свой (рабочий здесь)

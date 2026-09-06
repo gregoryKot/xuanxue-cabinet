@@ -36,6 +36,10 @@ function logSample(): Record<string, unknown> {
         email: 'maria@example.com',
         telegramId: 12345,
       },
+      vk: {
+        access_token: 'vk1.a.secret',
+        peer_id: 2000000001,
+      },
       channel: {
         config: { apiKey: 'k' },
         zoomLink: 'https://zoom.example/1',
@@ -70,6 +74,7 @@ describe('REDACT_PATHS', () => {
     const channel = logged.channel as Record<string, unknown>;
     const lesson = logged.lesson as Record<string, unknown>;
     const broadcast = logged.broadcast as Record<string, unknown>;
+    const vk = logged.vk as Record<string, unknown>;
 
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
@@ -83,6 +88,7 @@ describe('REDACT_PATHS', () => {
     expect(user.email).toBe('[Redacted]');
     expect(user.telegramId).toBe('[Redacted]');
     expect(channel.config).toBe('[Redacted]');
+    expect(vk.access_token).toBe('[Redacted]');
     expect(channel.zoomLink).toBe('[Redacted]');
     expect(channel.zoomPassword).toBe('[Redacted]');
     expect(lesson.zoomLinkOverride).toBe('[Redacted]');
@@ -101,8 +107,10 @@ describe('REDACT_PATHS', () => {
     const channel = logged.channel as Record<string, unknown>;
     const lesson = logged.lesson as Record<string, unknown>;
     const broadcast = logged.broadcast as Record<string, unknown>;
+    const vk = logged.vk as Record<string, unknown>;
 
     expect(resHeaders['content-type']).toBe('application/json');
+    expect(vk.peer_id).toBe(2000000001);
     expect(body.name).toBe('Мария');
     expect(user.name).toBe('Мария');
     expect(channel.title).toBe('Средняя группа');

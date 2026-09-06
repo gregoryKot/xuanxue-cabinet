@@ -8,6 +8,7 @@ import mongoose, { type Connection } from 'mongoose';
 import { MODEL_DEFINITIONS } from './model.registry';
 import { MONGO_DUPLICATE_KEY_CODE } from './mongo-error-codes';
 import { CLASS_FIELD_POLICY } from '../classes/class.schema';
+import { ChannelRecord } from '../channels/channel.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
@@ -74,6 +75,26 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     await Lesson.create({ classId, startsAt, durationMin: 60 });
     await expect(
       Lesson.create({ classId, startsAt, durationMin: 60 }),
+    ).resolves.toBeDefined();
+  });
+
+  it('channels: второй telegram с тем же target падает, два manual с target "" создаются', async () => {
+    const Channel = connection.model<ChannelRecord>(ChannelRecord.name);
+    await Channel.create({
+      type: 'telegram',
+      title: 'A',
+      config: 'x',
+      target: '@school',
+    });
+    await expect(
+      Channel.create({ type: 'telegram', title: 'B', config: 'y', target: '@school' }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+
+    // Частичный индекс: target === '' у ручного канала не считается дублем —
+    // иначе все manual-каналы конкурировали бы за один слот индекса.
+    await Channel.create({ type: 'manual', title: 'Facebook', config: 'z', target: '' });
+    await expect(
+      Channel.create({ type: 'manual', title: 'Boosty', config: 'w', target: '' }),
     ).resolves.toBeDefined();
   });
 
