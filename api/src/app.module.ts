@@ -13,6 +13,7 @@ import { DatabaseModule } from './database/database.module';
 import { MigrationsModule } from './migrations/migrations.module';
 import { ClassesModule } from './classes/classes.module';
 import { LessonsModule } from './lessons/lessons.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
@@ -34,7 +35,16 @@ import { AuthModule } from './auth/auth.module';
         autoIndex: config.get<NodeEnv>('NODE_ENV') !== 'production',
       }),
     }),
-    ScheduleModule.forRoot(),
+    // Тик планировщика (SchedulerModule) можно выключить в e2e/юнит-тестах —
+    // реальный тик остаётся в проде и в Docker-смоке CI (CLAUDE.md
+    // «Деплой»): create-app.ts выставляет SCHEDULER_ENABLED='false' перед
+    // импортом AppModule.
+    ScheduleModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        cronJobs: config.get<string>('SCHEDULER_ENABLED') !== 'false',
+      }),
+    }),
     // По умолчанию — по IP (правило CLAUDE.md №4: неверифицированная
     // идентичность бакетируется по IP; верифицированный JWT/initData —
     // задача будущих модулей auth, ThrottlerGuard переопределяется там же).
@@ -43,6 +53,7 @@ import { AuthModule } from './auth/auth.module';
     MigrationsModule,
     ClassesModule,
     LessonsModule,
+    SchedulerModule,
     ChannelsModule,
     BroadcastsModule,
     DeliveriesModule,

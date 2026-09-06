@@ -96,6 +96,11 @@ export class EnvSchema {
       'LOG_LEVEL должен быть одним из: fatal, error, warn, info, debug, trace, silent',
   })
   LOG_LEVEL: LogLevel = 'info';
+
+  // Строкой, не `@Type(() => Boolean)` — он превращает любую непустую
+  // строку, включая 'false', в true. Выключают только в e2e (create-app.ts).
+  @IsIn(['true', 'false'], { message: 'SCHEDULER_ENABLED должен быть true или false' })
+  SCHEDULER_ENABLED: 'true' | 'false' = 'true';
 }
 
 // Поля, где пустая строка (`VAR=` в .env) равносильна отсутствию переменной —
@@ -111,6 +116,7 @@ const EMPTY_AS_ABSENT: (keyof EnvSchema)[] = [
   'BOOTSTRAP_ADMIN_TELEGRAM_ID',
   'PUBLIC_URL',
   'MONGODB_URI',
+  'SCHEDULER_ENABLED',
 ];
 
 export function validateEnv(raw: Record<string, unknown>): EnvSchema {

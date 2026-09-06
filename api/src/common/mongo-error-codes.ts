@@ -14,3 +14,18 @@ export function isDuplicateKeyError(err: unknown): boolean {
     (err as { code?: number }).code === MONGO_DUPLICATE_KEY_CODE
   );
 }
+
+/** `insertMany(docs, { ordered: false })` при гонке двух тиков планировщика
+ * занятий: Mongoose декорирует ошибку полем `writeErrors` (по одному на
+ * упавший документ), а при единственной ошибке иногда отдаёт только
+ * верхнеуровневый `code`, без массива. И то, и другое — «это дубли, часть
+ * документов всё равно вставилась» ТОЛЬКО если КАЖДАЯ ошибка — E11000; любая
+ * другая ошибка в пачке должна уйти наверх, а не потеряться молча. */
+export function isDuplicateKeyBulkError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const writeErrors = (err as { writeErrors?: unknown }).writeErrors;
+  if (Array.isArray(writeErrors) && writeErrors.length > 0) {
+    return writeErrors.every((writeError) => isDuplicateKeyError(writeError));
+  }
+  return isDuplicateKeyError(err);
+}

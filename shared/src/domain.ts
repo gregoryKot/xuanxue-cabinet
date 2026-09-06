@@ -38,6 +38,12 @@ export interface ScheduleRule {
  * (CLAUDE.md, раздел «Структура и слои» — `api → shared`, не наоборот). */
 export const RULE_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+/** За сколько минут до занятия слать ссылку по умолчанию (`classes.leadMinutes`).
+ * Тот же дефолт использует планировщик занятий для класса, документ которого
+ * пропал из базы — свой `leadMinutes` спросить уже не у кого, а второй
+ * литерал «30» рядом разойдётся при следующей правке. */
+export const DEFAULT_LEAD_MINUTES = 30;
+
 /** Запись занятия: ссылка (Drive, облако Zoom) или файл в Telegram по file_id. */
 export interface Recording {
   title: string;

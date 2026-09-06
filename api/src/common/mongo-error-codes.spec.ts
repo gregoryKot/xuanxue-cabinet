@@ -1,4 +1,8 @@
-import { isDuplicateKeyError, MONGO_DUPLICATE_KEY_CODE } from './mongo-error-codes';
+import {
+  isDuplicateKeyBulkError,
+  isDuplicateKeyError,
+  MONGO_DUPLICATE_KEY_CODE,
+} from './mongo-error-codes';
 
 describe('isDuplicateKeyError', () => {
   it('узнаёт E11000 по коду драйвера', () => {
@@ -10,5 +14,36 @@ describe('isDuplicateKeyError', () => {
     expect(isDuplicateKeyError(new Error('x'))).toBe(false);
     expect(isDuplicateKeyError(null)).toBe(false);
     expect(isDuplicateKeyError('E11000')).toBe(false);
+  });
+});
+
+describe('isDuplicateKeyBulkError', () => {
+  it('единственная ошибка без writeErrors — по верхнеуровневому коду', () => {
+    expect(isDuplicateKeyBulkError({ code: MONGO_DUPLICATE_KEY_CODE })).toBe(true);
+    expect(isDuplicateKeyBulkError({ code: 121 })).toBe(false);
+  });
+
+  it('несколько writeErrors, все E11000 — дубли', () => {
+    expect(
+      isDuplicateKeyBulkError({
+        writeErrors: [
+          { code: MONGO_DUPLICATE_KEY_CODE },
+          { code: MONGO_DUPLICATE_KEY_CODE },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it('хотя бы одна writeError не E11000 — наверх', () => {
+    expect(
+      isDuplicateKeyBulkError({
+        writeErrors: [{ code: MONGO_DUPLICATE_KEY_CODE }, { code: 121 }],
+      }),
+    ).toBe(false);
+  });
+
+  it('не-объекты — нет', () => {
+    expect(isDuplicateKeyBulkError(null)).toBe(false);
+    expect(isDuplicateKeyBulkError('E11000')).toBe(false);
   });
 });
