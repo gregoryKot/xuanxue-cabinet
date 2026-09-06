@@ -8,7 +8,7 @@ import type { ApiErrorBody, ClassDto, UserRole } from '@xuanxue/shared';
 import { ClassRecord } from '../src/classes/class.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
-import { createUserWithSession } from './e2e-support/session';
+import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
 const ZOOM_LINK = 'https://us02web.zoom.us/j/123';
 const VALID_BODY = {
@@ -32,10 +32,6 @@ describe('Classes (e2e)', () => {
     return testApp.app.getHttpServer();
   }
 
-  function withCsrf(req: request.Test): request.Test {
-    return req.set('x-requested-with', 'fetch');
-  }
-
   function postClass(cookie: string, body: Record<string, unknown>): request.Test {
     return withCsrf(request(server()).post('/api/classes'))
       .set('Cookie', cookie)
@@ -53,8 +49,7 @@ describe('Classes (e2e)', () => {
   }
 
   async function sessionFor(roles: UserRole[]): Promise<string> {
-    const { cookie } = await createUserWithSession(testApp.app, { name: 'Тест', roles });
-    return cookie;
+    return sessionCookieFor(testApp.app, roles);
   }
 
   it('GET /classes без cookie — 401 в конверте', async () => {

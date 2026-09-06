@@ -50,3 +50,6 @@ await request(server()).get('/api/classes').set('Cookie', cookie);
 Мутирующий запрос (`POST`/`PATCH`/`PUT`/`DELETE`) в тесте всегда добавляет
 заголовок `x-requested-with` — CSRF-гвард требует его для любого мутирующего
 маршрута, кроме `@SkipCsrf()` (SECURITY §2).
+
+`test/e2e-support/http.ts` — общие `withCsrf(req)` и `sessionCookieFor(app, roles)`
+(обёртка над `createUserWithSession` выше) для любого нового `*.e2e-spec.ts`.

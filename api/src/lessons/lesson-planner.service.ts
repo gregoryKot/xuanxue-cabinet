@@ -6,11 +6,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime, IANAZone } from 'luxon';
 import { Model } from 'mongoose';
+import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../common/error-info';
 import { ClassRecord } from '../classes/class.schema';
 import type { LeanClass } from '../classes/class.mapper';
 import { LessonRecord } from './lesson.schema';
-import { PLANNING_HORIZON_WEEKS } from './lesson-occurrences';
 import { reconcileClass, untouchedLessonIds } from './lesson-reconcile';
 import {
   deleteLessons,

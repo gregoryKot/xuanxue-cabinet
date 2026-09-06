@@ -11,24 +11,24 @@ import type {
   ListClassesQuery,
   UpdateClassInput,
 } from '@xuanxue/shared';
-import { LIST_LIMIT_DEFAULT, NULLABLE_CLASS_FIELDS } from '@xuanxue/shared';
+import {
+  CLASS_NOT_FOUND_MESSAGE,
+  LIST_LIMIT_DEFAULT,
+  NULLABLE_CLASS_FIELDS,
+} from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
+import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { CLASS_FIELD_POLICY, ClassRecord } from './class.schema';
 import { toClassDto, type LeanClass } from './class.mapper';
-import { mapRules, splitUpdate } from './classes.update';
+import { mapRules } from './classes.update';
 
 const ENCRYPT_SCHEMA = encryptSchemaFrom(CLASS_FIELD_POLICY);
-const NOT_FOUND_MESSAGE = 'Занятие не найдено. Обновите список.';
+const NOT_FOUND_MESSAGE = CLASS_NOT_FOUND_MESSAGE;
 const HAS_LESSONS_MESSAGE =
-  'У этого занятия уже есть даты в расписании. Выключите его вместо удаления.';
-
-interface UpdateCommand {
-  $set: Record<string, unknown>;
-  $unset?: Record<string, ''>;
-}
+  'У этого занятия уже есть даты занятий. Выключите его вместо удаления.';
 
 @Injectable()
 export class ClassesService {
