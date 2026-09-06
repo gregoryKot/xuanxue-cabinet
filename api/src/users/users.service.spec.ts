@@ -16,6 +16,10 @@ describe('UsersService', () => {
     memory = await openMemoryMongo();
     connection = memory.connection;
     model = connection.model<UserRecord>(UserRecord.name, UserSchema);
+    // Индексы Mongoose строит в фоне после компиляции модели; без явного
+    // ожидания гонка двух первых входов иногда бежала без уникального
+    // индекса и создавала двух пользователей (мигающий тест в CI).
+    await model.syncIndexes();
     service = new UsersService(model);
   }, 60_000);
 
