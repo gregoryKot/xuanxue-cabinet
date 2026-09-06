@@ -32,6 +32,12 @@ export interface ScheduleRule {
   durationMin: number;
 }
 
+/** Формат `ScheduleRule.time`: HH от 00 до 23, mm от 00 до 59 — 99:99 не
+ * проходит. Общий источник для схемы Mongoose (`class.schema.ts`) и DTO
+ * (`schedule-rule.dto.ts`): DTO не должен зависеть от схемы Mongoose
+ * (CLAUDE.md, раздел «Структура и слои» — `api → shared`, не наоборот). */
+export const RULE_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 /** Запись занятия: ссылка (Drive, облако Zoom) или файл в Telegram по file_id. */
 export interface Recording {
   title: string;

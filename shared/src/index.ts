@@ -23,6 +23,7 @@ export {
   BROADCAST_KINDS,
   BROADCAST_STATUSES,
   DELIVERY_STATUSES,
+  RULE_TIME_RE,
 } from './domain';
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {
@@ -41,6 +42,20 @@ export {
   MUTATING_METHODS,
   isMutatingMethod,
 } from './auth';
+export type {
+  ClassDto,
+  CreateClassInput,
+  UpdateClassInput,
+  ListClassesQuery,
+  ScheduleRuleDto,
+  ScheduleRuleInput,
+} from './classes';
+export {
+  CLASS_LIMITS,
+  LIST_LIMIT_DEFAULT,
+  LIST_LIMIT_MAX,
+  NULLABLE_CLASS_FIELDS,
+} from './classes';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';
