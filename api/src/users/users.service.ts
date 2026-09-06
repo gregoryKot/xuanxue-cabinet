@@ -8,6 +8,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
 import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
+import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { UserRecord } from './user.schema';
 
 /** Внутреннее представление пользователя — шире MeDto: гварду нужны status и
@@ -71,28 +72,47 @@ export class UsersService {
     name: string;
     roles: UserRole[];
   }): Promise<UserLean> {
-    const doc = await this.model
-      .findOneAndUpdate(
-        { telegramId: input.telegramId },
-        {
-          $setOnInsert: {
-            telegramId: input.telegramId,
-            name: input.name,
-            roles: input.roles,
-            tz: SCHOOL_TZ,
-            status: 'active',
-          },
-        },
-        { upsert: true, returnDocument: 'after' },
-      )
-      .lean<UserDoc>();
+    const doc =
+      (await this.upsertByTelegramId(input)) ??
+      (await this.findByTelegramId(input.telegramId));
     if (!doc) {
-      // upsert: true, new: true всегда возвращает документ (вставленный или
-      // найденный конкурентом) — эта ветка недостижима, но noUncheckedIndexedAccess
-      // и запрет на `!` требуют явной обработки null вместо утверждения типа.
-      throw new Error('createFromTelegram: findOneAndUpdate не вернул документ');
+      // upsert либо вернул документ, либо упал на дубликате — и тогда конкурент
+      // его уже записал; пустой ответ здесь означает сбой базы, не гонку.
+      throw new Error('createFromTelegram: пользователь не найден после upsert');
     }
-    return toLean(doc);
+    return doc;
+  }
+
+  /** null — только если upsert упал на E11000: Mongo повторяет upsert при
+   * гонке по уникальному индексу не всегда (частичный индекс telegramId),
+   * и без этой ветки второй из двух одновременных первых входов получал 500.
+   * Вызывающий код перечитывает документ, который записал конкурент. */
+  private async upsertByTelegramId(input: {
+    telegramId: number;
+    name: string;
+    roles: UserRole[];
+  }): Promise<UserLean | null> {
+    try {
+      const doc = await this.model
+        .findOneAndUpdate(
+          { telegramId: input.telegramId },
+          {
+            $setOnInsert: {
+              telegramId: input.telegramId,
+              name: input.name,
+              roles: input.roles,
+              tz: SCHOOL_TZ,
+              status: 'active',
+            },
+          },
+          { upsert: true, returnDocument: 'after' },
+        )
+        .lean<UserDoc>();
+      return doc ? toLean(doc) : null;
+    } catch (err) {
+      if (isDuplicateKeyError(err)) return null;
+      throw err;
+    }
   }
 
   /** Время — параметром (CLAUDE.md «Время»): вызывающий код решает, что
