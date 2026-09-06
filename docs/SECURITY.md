@@ -118,8 +118,11 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   занятия, не вход на живое — вне модели угроз §1) — см. §11.
 - Текст ошибки провайдера (`deliveries.error`) может содержать токен канала
   (`bot<id>:<token>` в URL Telegram, `access_token=` у ВК) — до записи в базу
-  и до лога он проходит scrub секретов канала, шифрование самой записи это не
-  заменяет: делают адаптеры каналов.
+  и до лога он проходит scrub секретов канала (`api/src/channels/channel-secrets.ts`,
+  `scrubChannelSecrets`), шифрование самой записи это не заменяет. Одна точка
+  вызова — `ChannelsService`, не каждый адаптер по отдельности: адаптеры
+  возвращают `SendResult.error` как есть, scrub применяется один раз перед
+  ответом клиенту и перед будущей записью в `deliveries` (следующий PR).
 - Ротация только с ре-шифрованием: `ENCRYPTION_KEY_OLD` читается как fallback, пишется
   всегда текущим ключом. Порядок — в RUNBOOK.
 - Гейт: `encryption-coverage.spec.ts` требует решения
@@ -130,6 +133,8 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
 
 ## 6. Секреты и конфигурация
 
+- Scrub секретов канала (§5) реализован — `channel-secrets.ts` покрыт тестом
+  на все три вхождения (`config.token`, `BOT_TOKEN`, `access_token=…`).
 - Все переменные — через `api/src/config/env.validation.ts`. Хардкод запрещён.
 - `.env`, `api/seed/*.local.json` — в `.gitignore`. Gitleaks в CI.
 - В логи не попадают: пароли, ссылки Zoom, токены, cookie, `authorization`, email.

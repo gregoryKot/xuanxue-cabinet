@@ -72,6 +72,23 @@ export {
   LESSON_LIMITS,
   LESSON_DEFAULT_DURATION_MIN,
 } from './lessons';
+export type {
+  TelegramChannelConfig,
+  VkChannelConfig,
+  ManualChannelConfig,
+  ChannelConfig,
+  ChannelDto,
+  CreateChannelInput,
+  UpdateChannelInput,
+  ListChannelsQuery,
+  ChannelTestResult,
+} from './channels';
+export {
+  isTelegramChannelConfig,
+  isVkChannelConfig,
+  CHANNEL_LIMITS,
+  CHANNEL_NOT_FOUND_MESSAGE,
+} from './channels';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

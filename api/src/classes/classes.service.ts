@@ -4,7 +4,7 @@
 // контроллер только валидирует тело и зовёт эти методы.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import type {
   ClassDto,
   CreateClassInput,
@@ -18,6 +18,7 @@ import {
 } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
+import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { LessonRecord } from '../lessons/lesson.schema';
@@ -52,7 +53,7 @@ export class ClassesService {
   }
 
   async getById(id: string): Promise<ClassDto> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<LeanClass>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     return toClassDto(decryptRecord(doc, ENCRYPT_SCHEMA));
@@ -71,7 +72,7 @@ export class ClassesService {
   }
 
   async update(id: string, input: UpdateClassInput): Promise<ClassDto> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    assertObjectId(id, NOT_FOUND_MESSAGE);
     const { rules, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_CLASS_FIELDS);
     if (rules !== undefined) $set.rules = mapRules(rules);
@@ -87,7 +88,7 @@ export class ClassesService {
   }
 
   async remove(id: string): Promise<void> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    assertObjectId(id, NOT_FOUND_MESSAGE);
     const hasLessons = await this.lessonModel.exists({ classId: id });
     if (hasLessons) throw new ConflictError(HAS_LESSONS_MESSAGE);
     const { deletedCount } = await this.model.deleteOne({ _id: id });

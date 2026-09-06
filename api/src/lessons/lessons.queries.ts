@@ -3,9 +3,9 @@
 // одиночные чтения/удаления живут рядом со своими текстами ошибок.
 import type { Model, Types } from 'mongoose';
 import type { LessonDto } from '@xuanxue/shared';
-import { Types as MongooseTypes } from 'mongoose';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
+import { assertObjectId } from '../common/object-id';
 import { decryptRecord } from '../utils/encryption';
 import type { ClassRecord } from '../classes/class.schema';
 import { LESSON_FIELD_POLICY, type LessonRecord } from './lesson.schema';
@@ -18,7 +18,7 @@ const DURATION_FROM_SCHEDULE =
   'Длительность этой даты берётся из расписания. Поменяйте правило занятия.';
 
 export function assertLessonId(id: string): void {
-  if (!MongooseTypes.ObjectId.isValid(id)) throw new NotFoundError(LESSON_NOT_FOUND);
+  assertObjectId(id, LESSON_NOT_FOUND);
 }
 
 export async function findLessonDto(
