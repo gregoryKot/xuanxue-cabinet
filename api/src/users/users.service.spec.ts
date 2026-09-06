@@ -58,6 +58,18 @@ describe('UsersService', () => {
     await expect(service.findByTelegramId(999_999)).resolves.toBeNull();
   });
 
+  it('два параллельных createFromTelegram с одним telegramId — один документ', async () => {
+    const [first, second] = await Promise.all([
+      service.createFromTelegram({ telegramId: 444, name: 'Первый', roles: ['teacher'] }),
+      service.createFromTelegram({ telegramId: 444, name: 'Второй', roles: ['admin'] }),
+    ]);
+
+    expect(first.id).toBe(second.id);
+    expect(first).toEqual(second);
+    const count = await model.countDocuments({ telegramId: 444 });
+    expect(count).toBe(1);
+  });
+
   it('touchLogin проставляет lastLoginAt из переданного now, не Date.now()', async () => {
     const created = await service.createFromTelegram({
       telegramId: 333,

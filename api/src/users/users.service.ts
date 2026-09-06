@@ -7,7 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import type { UserRole, UserStatus } from '@xuanxue/shared';
+import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
 
 /** Внутреннее представление пользователя — шире MeDto: гварду нужны status и
@@ -59,14 +59,40 @@ export class UsersService {
 
   /** Для бота (вход через Telegram, «Ученик появляется … после входа»,
    * SECURITY §2): роли по умолчанию пустые ([] — гость), админ назначает их
-   * в интерфейсе. */
+   * в интерфейсе.
+   *
+   * Атомарный upsert по уникальному индексу telegramId, а не findOne+create:
+   * два параллельных первых входа (двойной клик, два тика вебхука) иначе
+   * создают двух пользователей до того, как первый успеет записаться.
+   * `$setOnInsert` — роли и остальные поля пишутся только при вставке:
+   * повторный вход существующего пользователя их не трогает. */
   async createFromTelegram(input: {
     telegramId: number;
     name: string;
     roles: UserRole[];
   }): Promise<UserLean> {
-    const created = await this.model.create(input);
-    return toLean(created);
+    const doc = await this.model
+      .findOneAndUpdate(
+        { telegramId: input.telegramId },
+        {
+          $setOnInsert: {
+            telegramId: input.telegramId,
+            name: input.name,
+            roles: input.roles,
+            tz: SCHOOL_TZ,
+            status: 'active',
+          },
+        },
+        { upsert: true, returnDocument: 'after' },
+      )
+      .lean<UserDoc>();
+    if (!doc) {
+      // upsert: true, new: true всегда возвращает документ (вставленный или
+      // найденный конкурентом) — эта ветка недостижима, но noUncheckedIndexedAccess
+      // и запрет на `!` требуют явной обработки null вместо утверждения типа.
+      throw new Error('createFromTelegram: findOneAndUpdate не вернул документ');
+    }
+    return toLean(doc);
   }
 
   /** Время — параметром (CLAUDE.md «Время»): вызывающий код решает, что

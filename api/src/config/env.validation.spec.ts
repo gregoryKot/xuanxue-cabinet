@@ -110,4 +110,41 @@ describe('validateEnv', () => {
       validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x', PORT: '999999' }),
     ).toThrow(/PORT/);
   });
+
+  it('BOOTSTRAP_ADMIN_TELEGRAM_ID: валидное число проходит и приводится к number', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      BOOTSTRAP_ADMIN_TELEGRAM_ID: '123456789',
+    });
+    expect(env.BOOTSTRAP_ADMIN_TELEGRAM_ID).toBe(123456789);
+  });
+
+  it('BOOTSTRAP_ADMIN_TELEGRAM_ID: пустая строка — отсутствует, не 0', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      BOOTSTRAP_ADMIN_TELEGRAM_ID: '',
+    });
+    expect(env.BOOTSTRAP_ADMIN_TELEGRAM_ID).toBeUndefined();
+  });
+
+  it('BOOTSTRAP_ADMIN_TELEGRAM_ID: не заданное — отсутствует', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' });
+    expect(env.BOOTSTRAP_ADMIN_TELEGRAM_ID).toBeUndefined();
+  });
+
+  it('BOOTSTRAP_ADMIN_TELEGRAM_ID: не число или не положительное — падает', () => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        BOOTSTRAP_ADMIN_TELEGRAM_ID: 'не-число',
+      }),
+    ).toThrow(/BOOTSTRAP_ADMIN_TELEGRAM_ID/);
+
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        BOOTSTRAP_ADMIN_TELEGRAM_ID: '0',
+      }),
+    ).toThrow(/BOOTSTRAP_ADMIN_TELEGRAM_ID/);
+  });
 });

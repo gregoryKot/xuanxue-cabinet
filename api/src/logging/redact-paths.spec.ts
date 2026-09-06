@@ -19,7 +19,7 @@ function logSample(): Record<string, unknown> {
     {
       req: {
         headers: { authorization: 'Bearer secret', cookie: 'sid=1' },
-        body: { email: 'user@example.com', name: 'Мария' },
+        body: { email: 'user@example.com', name: 'Мария', hash: 'a'.repeat(64) },
       },
       res: {
         headers: {
@@ -74,6 +74,7 @@ describe('REDACT_PATHS', () => {
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
+    expect(body.hash).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');
     expect(user.accessToken).toBe('[Redacted]');

@@ -33,7 +33,7 @@ export {
 export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
-export type { UserRole, UserStatus, MeDto } from './auth';
+export type { UserRole, UserStatus, MeDto, TelegramLoginInput } from './auth';
 export {
   USER_ROLES,
   USER_STATUSES,

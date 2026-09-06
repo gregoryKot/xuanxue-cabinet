@@ -74,6 +74,16 @@ export class EnvSchema {
   })
   BOT_TOKEN?: string;
 
+  // Вход через Telegram: при первом входе с этим Telegram ID
+  // пользователь получает роли admin и teacher. Переменную убирают после
+  // первого входа админа — дальше роли назначаются в интерфейсе.
+  @IsOptional()
+  @Type(() => Number)
+  @Min(1, {
+    message: 'BOOTSTRAP_ADMIN_TELEGRAM_ID должен быть положительным числом (Telegram ID)',
+  })
+  BOOTSTRAP_ADMIN_TELEGRAM_ID?: number;
+
   @IsOptional()
   @IsUrl(
     { require_tld: false, require_protocol: true, protocols: ['http', 'https'] },
@@ -98,6 +108,7 @@ const EMPTY_AS_ABSENT: (keyof EnvSchema)[] = [
   'ENCRYPTION_KEY_OLD',
   'JWT_SECRET',
   'BOT_TOKEN',
+  'BOOTSTRAP_ADMIN_TELEGRAM_ID',
   'PUBLIC_URL',
   'MONGODB_URI',
 ];

@@ -21,6 +21,22 @@ export interface MeDto {
 }
 
 /**
+ * Тело `POST /auth/telegram` — поля Telegram Login Widget (SECURITY §2).
+ * Имена полей — snake_case: формат задаёт виджет Telegram, а не наш API
+ * (единственное отклонение от camelCase в CLAUDE.md, раздел «API» — контракт
+ * внешний, менять его нельзя).
+ */
+export interface TelegramLoginInput {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
+
+/**
  * Заголовок CSRF-защиты (SECURITY §2, ADR-0012): обязателен для любого
  * мутирующего запроса, кроме помеченных `@SkipCsrf()` (вебхук Telegram).
  * Кросс-доменная HTML-форма его не поставит — обычный `fetch` из web ставит

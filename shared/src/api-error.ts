@@ -10,6 +10,9 @@ export type ApiErrorCode =
   | 'not_found'
   | 'conflict'
   | 'rate_limited'
+  // Функция входа выключена конфигурацией (вход через Telegram без
+  // BOT_TOKEN) — не ошибка клиента, сервис сам не готов её обслужить.
+  | 'not_available'
   | 'internal_error'
   | 'http_error'
   | 'network'

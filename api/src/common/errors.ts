@@ -39,3 +39,11 @@ export class UnauthorizedError extends DomainError {
   readonly code = 'unauthorized';
   readonly status = 401;
 }
+
+// Функция выключена конфигурацией (вход через Telegram без BOT_TOKEN) — не
+// вина клиента и не отказ в доступе: сервис сам не готов её обслужить,
+// 503, а не 403/500.
+export class NotAvailableError extends DomainError {
+  readonly code = 'not_available';
+  readonly status = 503;
+}
