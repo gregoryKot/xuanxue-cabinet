@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { IsString, validate } from 'class-validator';
-import { OptionalNotNull, TrimString } from './validation';
+import { ListLimit, OptionalNotNull, TrimString } from './validation';
 
 class OptionalNotNullFixture {
   @OptionalNotNull()
@@ -12,6 +12,11 @@ class TrimStringFixture {
   @TrimString()
   @IsString()
   title!: string;
+}
+
+class ListLimitFixture {
+  @ListLimit()
+  limit?: number;
 }
 
 describe('OptionalNotNull', () => {
@@ -50,5 +55,28 @@ describe('TrimString', () => {
   it('не строку — не трогает, дальше решает @IsString()', () => {
     const instance = plainToInstance(TrimStringFixture, { title: 42 });
     expect(instance.title).toBe(42);
+  });
+});
+
+describe('ListLimit', () => {
+  it('не задан — валиден, сервис подставит дефолт', async () => {
+    const errors = await validate(plainToInstance(ListLimitFixture, {}));
+    expect(errors).toHaveLength(0);
+  });
+
+  it('валидное число из query-строки — приводится к number', async () => {
+    const instance = plainToInstance(ListLimitFixture, { limit: '50' });
+    expect(instance.limit).toBe(50);
+    expect(await validate(instance)).toHaveLength(0);
+  });
+
+  it('0 — падает: меньше минимума', async () => {
+    const errors = await validate(plainToInstance(ListLimitFixture, { limit: '0' }));
+    expect(errors).not.toHaveLength(0);
+  });
+
+  it('не число — падает', async () => {
+    const errors = await validate(plainToInstance(ListLimitFixture, { limit: 'много' }));
+    expect(errors).not.toHaveLength(0);
   });
 });

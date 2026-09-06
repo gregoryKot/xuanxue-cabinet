@@ -8,7 +8,7 @@ import type { ApiErrorBody, LessonDto, UserRole } from '@xuanxue/shared';
 import { ClassRecord } from '../src/classes/class.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
-import { createUserWithSession } from './e2e-support/session';
+import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
 const FROM = '2026-09-01T00:00:00Z';
 const TO = '2026-09-08T00:00:00Z';
@@ -42,13 +42,8 @@ describe('Lessons (e2e)', () => {
     return testApp.app.getHttpServer();
   }
 
-  function withCsrf(req: request.Test): request.Test {
-    return req.set('x-requested-with', 'fetch');
-  }
-
   async function sessionFor(roles: UserRole[]): Promise<string> {
-    const { cookie } = await createUserWithSession(testApp.app, { name: 'Тест', roles });
-    return cookie;
+    return sessionCookieFor(testApp.app, roles);
   }
 
   async function createClass(rulesDurationMin = 45): Promise<string> {
@@ -82,29 +77,59 @@ describe('Lessons (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
-  it('ученик: GET /lessons — 403', async () => {
-    const cookie = await sessionFor(['student']);
+  it('POST /lessons: без сессии — 401 (не 403), с сессией без x-requested-with — 403', async () => {
+    const classId = await createClass();
+    const body = { classId, startsAt: STARTS_AT };
+
+    const noSession = await withCsrf(request(server()).post('/api/lessons')).send(body);
+    expect(noSession.status).toBe(401);
+
+    const cookie = await sessionFor(['teacher']);
+    const noCsrf = await request(server())
+      .post('/api/lessons')
+      .set('Cookie', cookie)
+      .send(body);
+    expect(noCsrf.status).toBe(403);
+  });
+
+  it.each([
+    ['ученик', ['student'] as UserRole[]],
+    ['гость', [] as UserRole[]],
+  ])('%s: GET и POST /lessons — 403', async (_label, roles) => {
+    const cookie = await sessionFor(roles);
+    const classId = await createClass();
+
+    const getRes = await request(server())
+      .get('/api/lessons')
+      .query({ from: FROM, to: TO })
+      .set('Cookie', cookie);
+    expect(getRes.status).toBe(403);
+
+    const postRes = await postLesson(cookie, { classId, startsAt: STARTS_AT });
+    expect(postRes.status).toBe(403);
+  });
+
+  it('админ: GET /lessons — 200', async () => {
+    const cookie = await sessionFor(['admin']);
     const res = await request(server())
       .get('/api/lessons')
       .query({ from: FROM, to: TO })
       .set('Cookie', cookie);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 
-  it('учитель: GET /lessons без from/to — 400 в конверте', async () => {
+  it('учитель: GET /lessons без from/to — 400 в конверте, окно 5 недель — тоже 400', async () => {
     const cookie = await sessionFor(['teacher']);
-    const res = await request(server()).get('/api/lessons').set('Cookie', cookie);
-    expect(res.status).toBe(400);
-    expect((res.body as ApiErrorBody).code).toBe('invalid_input');
-  });
 
-  it('учитель: GET /lessons окно 5 недель — 400', async () => {
-    const cookie = await sessionFor(['teacher']);
-    const res = await request(server())
+    const noWindow = await request(server()).get('/api/lessons').set('Cookie', cookie);
+    expect(noWindow.status).toBe(400);
+    expect((noWindow.body as ApiErrorBody).code).toBe('invalid_input');
+
+    const wideWindow = await request(server())
       .get('/api/lessons')
       .query({ from: FROM, to: '2026-10-13T00:00:00Z' })
       .set('Cookie', cookie);
-    expect(res.status).toBe(400);
+    expect(wideWindow.status).toBe(400);
   });
 
   it('учитель: GET /lessons?limit=1 при двух датах — 1 в ответе', async () => {
@@ -122,7 +147,7 @@ describe('Lessons (e2e)', () => {
   });
 
   describe('учитель', () => {
-    it('POST разового занятия → 201 без plannedAt, длительность из правила класса; GET видит его', async () => {
+    it('POST разового занятия → 201 без plannedAt и без документа Mongoose; GET видит его; без смещения зоны — 400', async () => {
       const cookie = await sessionFor(['teacher']);
       const classId = await createClass(45);
 
@@ -131,6 +156,9 @@ describe('Lessons (e2e)', () => {
       const dto = created.body as LessonDto;
       expect(dto.plannedAt).toBeUndefined();
       expect(dto.durationMin).toBe(45);
+      // Документ Mongoose наружу не возвращается (CLAUDE.md, раздел «API»).
+      expect(created.body as Record<string, unknown>).not.toHaveProperty('_id');
+      expect(created.body as Record<string, unknown>).not.toHaveProperty('__v');
 
       const list = await request(server())
         .get('/api/lessons')
@@ -138,9 +166,15 @@ describe('Lessons (e2e)', () => {
         .set('Cookie', cookie);
       expect(list.status).toBe(200);
       expect((list.body as LessonDto[]).some((l) => l.id === dto.id)).toBe(true);
+
+      const noOffset = await postLesson(cookie, {
+        classId,
+        startsAt: '2026-09-03T16:00:00',
+      });
+      expect(noOffset.status).toBe(400);
     });
 
-    it('PATCH темы и zoomLinkOverride → 200, ссылка зашифрована в сырой Mongo', async () => {
+    it('PATCH темы и zoomLinkOverride → 200, ссылка зашифрована в Mongo; recordingPromptedAt скрыт', async () => {
       const cookie = await sessionFor(['teacher']);
       const classId = await createClass();
       const created = await postLesson(cookie, { classId, startsAt: STARTS_AT });
@@ -160,28 +194,35 @@ describe('Lessons (e2e)', () => {
       });
       expect(raw?.zoomLinkOverride).toBeDefined();
       expect(raw?.zoomLinkOverride).not.toBe(link);
+
+      // Служебная метка бота («Запись?» задаётся один раз) — планировщик
+      // проставляет её напрямую через модель, наружу она не должна уйти.
+      await lessonModel.updateOne(
+        { _id: dto.id },
+        { $set: { recordingPromptedAt: new Date() } },
+      );
+      const reread = await request(server())
+        .get(`/api/lessons/${dto.id}`)
+        .set('Cookie', cookie);
+      expect(reread.body as Record<string, unknown>).not.toHaveProperty(
+        'recordingPromptedAt',
+      );
     });
 
-    it('PATCH { topic: null } — 400 (topic не входит в NULLABLE_LESSON_FIELDS)', async () => {
+    it('PATCH { topic: null } — 400, PATCH { note: null } — 200 и поле пропадает', async () => {
       const cookie = await sessionFor(['teacher']);
       const classId = await createClass();
       const created = await postLesson(cookie, { classId, startsAt: STARTS_AT });
       const dto = created.body as LessonDto;
 
-      const patched = await patchLesson(cookie, dto.id, { topic: null });
-      expect(patched.status).toBe(400);
-    });
+      // topic не входит в NULLABLE_LESSON_FIELDS — null там ошибка формы.
+      const topicPatched = await patchLesson(cookie, dto.id, { topic: null });
+      expect(topicPatched.status).toBe(400);
 
-    it('PATCH { note: null } — 200, поля нет в ответе', async () => {
-      const cookie = await sessionFor(['teacher']);
-      const classId = await createClass();
-      const created = await postLesson(cookie, { classId, startsAt: STARTS_AT });
-      const dto = created.body as LessonDto;
       await patchLesson(cookie, dto.id, { note: 'Перенесли' });
-
-      const patched = await patchLesson(cookie, dto.id, { note: null });
-      expect(patched.status).toBe(200);
-      expect(patched.body as Record<string, unknown>).not.toHaveProperty('note');
+      const notePatched = await patchLesson(cookie, dto.id, { note: null });
+      expect(notePatched.status).toBe(200);
+      expect(notePatched.body as Record<string, unknown>).not.toHaveProperty('note');
     });
 
     it('POST /lessons/:id/recording с url → 201, title из названия класса; без url/file_id — 400', async () => {
@@ -207,7 +248,7 @@ describe('Lessons (e2e)', () => {
       expect(withoutSource.status).toBe(400);
     });
 
-    it('DELETE даты из расписания (plannedAt есть) — 409, дата остаётся', async () => {
+    it('DELETE даты из расписания — 409, дата остаётся; DELETE разовой — 204, затем 404', async () => {
       const cookie = await sessionFor(['teacher']);
       const classId = await createClass();
       const planned = await lessonModel.create({
@@ -217,28 +258,21 @@ describe('Lessons (e2e)', () => {
         durationMin: 60,
       });
 
-      const res = await withCsrf(
+      const plannedRes = await withCsrf(
         request(server()).delete(`/api/lessons/${planned._id.toString()}`),
       ).set('Cookie', cookie);
-      expect(res.status).toBe(409);
-
+      expect(plannedRes.status).toBe(409);
       const stillThere = await request(server())
         .get(`/api/lessons/${planned._id.toString()}`)
         .set('Cookie', cookie);
       expect(stillThere.status).toBe(200);
-    });
 
-    it('DELETE разовой даты — 204, затем GET — 404', async () => {
-      const cookie = await sessionFor(['teacher']);
-      const classId = await createClass();
       const created = await postLesson(cookie, { classId, startsAt: STARTS_AT });
       const dto = created.body as LessonDto;
-
       const deleted = await withCsrf(
         request(server()).delete(`/api/lessons/${dto.id}`),
       ).set('Cookie', cookie);
       expect(deleted.status).toBe(204);
-
       const afterDelete = await request(server())
         .get(`/api/lessons/${dto.id}`)
         .set('Cookie', cookie);

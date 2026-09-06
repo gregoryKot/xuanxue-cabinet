@@ -76,6 +76,25 @@ describe('LessonsService', () => {
     ).rejects.toThrow('Занятие не найдено');
   });
 
+  it('list: дата ровно в to не попадает — граница исключающая', async () => {
+    const classId = await createClass();
+    await service.create({ classId, startsAt: TO });
+
+    const list = await service.list({ from: FROM, to: TO });
+
+    expect(list).toHaveLength(0);
+  });
+
+  it('list: без limit отдаёт все совпадения', async () => {
+    const classId = await createClass();
+    await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+    await service.create({ classId, startsAt: '2026-09-04T16:00:00Z' });
+
+    const list = await service.list({ from: FROM, to: TO });
+
+    expect(list.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('zoomLinkOverride зашифрован в сырой Mongo, расшифрован в DTO', async () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
@@ -131,6 +150,68 @@ describe('LessonsService', () => {
     expect(updated.recordings[0]?.title).toBe('Цигун для начинающих');
   });
 
+  it('addRecording: класс удалён — title записи пустая строка', async () => {
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+    await classModel.deleteOne({ _id: classId });
+
+    const updated = await service.addRecording(created.id, {
+      url: 'https://drive.example/rec',
+    });
+
+    expect(updated.recordings[0]?.title).toBe('');
+  });
+
+  it('addRecording: повтор того же url не плодит вторую запись, другой url — плодит', async () => {
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+    const url = 'https://drive.example/rec';
+
+    await service.addRecording(created.id, { url });
+    const afterRepeat = await service.addRecording(created.id, { url });
+    expect(afterRepeat.recordings).toHaveLength(1);
+
+    const afterOther = await service.addRecording(created.id, {
+      url: 'https://drive.example/rec-2',
+    });
+    expect(afterOther.recordings).toHaveLength(2);
+  });
+
+  it('addRecording: мусорный id — NotFoundError', async () => {
+    await expect(
+      service.addRecording('not-an-id', { url: 'https://drive.example/rec' }),
+    ).rejects.toThrow('не найдена');
+  });
+
+  it('update: мусорный id — NotFoundError', async () => {
+    await expect(service.update('not-an-id', { topic: 'Тема' })).rejects.toThrow(
+      'не найдена',
+    );
+  });
+
+  it('update durationMin: у даты из расписания — ConflictError', async () => {
+    const classId = await createClass();
+    const planned = await lessonModel.create({
+      classId,
+      plannedAt: new Date('2026-09-03T16:00:00Z'),
+      startsAt: new Date('2026-09-03T16:00:00Z'),
+      durationMin: 60,
+    });
+
+    await expect(
+      service.update(planned._id.toString(), { durationMin: 90 }),
+    ).rejects.toThrow('берётся из расписания');
+  });
+
+  it('update durationMin: у разовой даты — меняется', async () => {
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+
+    const updated = await service.update(created.id, { durationMin: 90 });
+
+    expect(updated.durationMin).toBe(90);
+  });
+
   it('remove: дату из расписания (с plannedAt) удалить нельзя — ConflictError', async () => {
     const classId = await createClass();
     const planned = await lessonModel.create({
@@ -140,9 +221,7 @@ describe('LessonsService', () => {
       durationMin: 60,
     });
 
-    await expect(service.remove(planned._id.toString())).rejects.toThrow(
-      'отмените занятие',
-    );
+    await expect(service.remove(planned._id.toString())).rejects.toThrow('Отмените её');
     await expect(service.getById(planned._id.toString())).resolves.toBeDefined();
   });
 
@@ -159,5 +238,9 @@ describe('LessonsService', () => {
     await expect(service.remove('507f1f77bcf86cd799439011')).rejects.toThrow(
       'не найдена',
     );
+  });
+
+  it('remove: мусорный id — NotFoundError', async () => {
+    await expect(service.remove('not-an-id')).rejects.toThrow('не найдена');
   });
 });

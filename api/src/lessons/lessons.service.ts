@@ -2,7 +2,8 @@
 // Инкапсулирует шифрование секретов (zoomLinkOverride/zoomPasswordOverride/
 // note, CLAUDE.md «Данные») — контроллер только валидирует тело и зовёт эти
 // методы (образец — ClassesService). Подготовка тела create/addRecording —
-// в lessons.create.ts/lessons.recording.ts, здесь не влезала бы в лимит.
+// в lessons.create.ts/lessons.recording.ts, одиночные запросы и тексты
+// ошибок — в lessons.queries.ts.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -13,27 +14,33 @@ import type {
   ListLessonsQuery,
   UpdateLessonInput,
 } from '@xuanxue/shared';
-import { LIST_LIMIT_MAX, NULLABLE_LESSON_FIELDS } from '@xuanxue/shared';
-import { ConflictError, NotFoundError } from '../common/errors';
-import { encryptSchemaFrom } from '../common/field-policy';
-import { splitUpdate } from '../common/patch-update';
+import {
+  CLASS_NOT_FOUND_MESSAGE,
+  LIST_LIMIT_MAX,
+  NULLABLE_LESSON_FIELDS,
+} from '@xuanxue/shared';
+import { NotFoundError } from '../common/errors';
+import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { ClassRecord } from '../classes/class.schema';
-import { LESSON_FIELD_POLICY, LessonRecord } from './lesson.schema';
+import { LessonRecord } from './lesson.schema';
 import { toLessonDto, type LeanLesson } from './lesson.mapper';
 import { assertListWindow, parseUtcIso } from './lesson-dates';
 import { buildCreatePayload } from './lessons.create';
-import { assertHasRecordingSource, buildRecordingPush } from './lessons.recording';
-
-const ENCRYPT_SCHEMA = encryptSchemaFrom(LESSON_FIELD_POLICY);
-const LESSON_NOT_FOUND = 'Дата занятия не найдена. Обновите расписание.';
-const CLASS_NOT_FOUND = 'Занятие не найдено. Обновите список.';
-const CANNOT_DELETE_PLANNED = 'Эта дата из расписания: отмените занятие вместо удаления';
-
-interface UpdateCommand {
-  $set: Record<string, unknown>;
-  $unset?: Record<string, ''>;
-}
+import {
+  LESSON_ENCRYPT_SCHEMA,
+  LESSON_NOT_FOUND,
+  assertDurationEditable,
+  assertLessonId,
+  deleteOneOffLesson,
+  findClassTitle,
+  findLessonDto,
+} from './lessons.queries';
+import {
+  assertHasRecordingSource,
+  buildRecordingDuplicateConditions,
+  buildRecordingPush,
+} from './lessons.recording';
 
 @Injectable()
 export class LessonsService {
@@ -47,7 +54,7 @@ export class LessonsService {
     const to = parseUtcIso(query.to, 'to');
     assertListWindow(from, to);
     if (query.classId !== undefined && !Types.ObjectId.isValid(query.classId)) {
-      throw new NotFoundError(CLASS_NOT_FOUND);
+      throw new NotFoundError(CLASS_NOT_FOUND_MESSAGE);
     }
 
     const filter: Record<string, unknown> = {
@@ -62,33 +69,35 @@ export class LessonsService {
       // показывает весь горизонт целиком (30 слотов × 4 недели < 200).
       .limit(query.limit ?? LIST_LIMIT_MAX)
       .lean<LeanLesson[]>();
-    return docs.map((doc) => toLessonDto(decryptRecord(doc, ENCRYPT_SCHEMA)));
+    return docs.map((doc) => toLessonDto(decryptRecord(doc, LESSON_ENCRYPT_SCHEMA)));
   }
 
-  async getById(id: string): Promise<LessonDto> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundError(LESSON_NOT_FOUND);
-    const doc = await this.model.findById(id).lean<LeanLesson>();
-    if (!doc) throw new NotFoundError(LESSON_NOT_FOUND);
-    return toLessonDto(decryptRecord(doc, ENCRYPT_SCHEMA));
+  getById(id: string): Promise<LessonDto> {
+    return findLessonDto(this.model, id);
   }
 
   async create(input: CreateLessonInput): Promise<LessonDto> {
     const cls = await this.classModel
       .findById(input.classId, { rules: 1 })
-      .lean<{ rules: { durationMin: number }[] } | null>();
-    if (!cls) throw new NotFoundError(CLASS_NOT_FOUND);
+      .lean<{ rules?: { durationMin: number }[] } | null>();
+    if (!cls) throw new NotFoundError(CLASS_NOT_FOUND_MESSAGE);
 
-    // Явный тип через спред, не LessonCreatePayload напрямую: encryptRecord
-    // обобщён по T extends Record<string, unknown>, и конкретный интерфейс
-    // без индексной сигнатуры в этот constraint не проходит (как в
-    // ClassesService.create — там та же причина у payload).
-    const payload: Record<string, unknown> = { ...buildCreatePayload(input, cls.rules) };
-    const created = await this.model.create(encryptRecord(payload, ENCRYPT_SCHEMA));
+    // Спред в Record: encryptRecord обобщён по T extends Record<string, unknown>,
+    // интерфейс без индексной сигнатуры туда не проходит (как в ClassesService).
+    // `rules ?? []` — документ без поля не должен уронить подбор длительности.
+    const payload: Record<string, unknown> = {
+      ...buildCreatePayload(input, cls.rules ?? []),
+    };
+    const created = await this.model.create(
+      encryptRecord(payload, LESSON_ENCRYPT_SCHEMA),
+    );
     return this.getById(created._id.toString());
   }
 
   async update(id: string, input: UpdateLessonInput): Promise<LessonDto> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundError(LESSON_NOT_FOUND);
+    assertLessonId(id);
+    if (input.durationMin !== undefined) await assertDurationEditable(this.model, id);
+
     const { startsAt, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_LESSON_FIELDS);
     // Перенос startsAt меняет только фактическое время начала — plannedAt
@@ -97,32 +106,22 @@ export class LessonsService {
       $set.startsAt = parseUtcIso(startsAt, 'startsAt').toJSDate();
     }
 
-    const update: UpdateCommand = { $set: encryptRecord($set, ENCRYPT_SCHEMA) };
+    const update: UpdateCommand = { $set: encryptRecord($set, LESSON_ENCRYPT_SCHEMA) };
     if (Object.keys($unset).length > 0) update.$unset = $unset;
 
     const doc = await this.model
       .findOneAndUpdate({ _id: id }, update, { returnDocument: 'after' })
       .lean<LeanLesson>();
     if (!doc) throw new NotFoundError(LESSON_NOT_FOUND);
-    return toLessonDto(decryptRecord(doc, ENCRYPT_SCHEMA));
+    return toLessonDto(decryptRecord(doc, LESSON_ENCRYPT_SCHEMA));
   }
 
-  // Только разовая дата удаляется целиком: у даты из расписания планировщик
-  // сам решает её судьбу при следующем тике, вручную — только отмена.
-  async remove(id: string): Promise<void> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundError(LESSON_NOT_FOUND);
-    const { deletedCount } = await this.model.deleteOne({
-      _id: id,
-      plannedAt: { $exists: false },
-    });
-    if (deletedCount > 0) return;
-    const stillExists = await this.model.exists({ _id: id });
-    if (stillExists) throw new ConflictError(CANNOT_DELETE_PLANNED);
-    throw new NotFoundError(LESSON_NOT_FOUND);
+  remove(id: string): Promise<void> {
+    return deleteOneOffLesson(this.model, id);
   }
 
   async addRecording(id: string, input: AddRecordingInput): Promise<LessonDto> {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundError(LESSON_NOT_FOUND);
+    assertLessonId(id);
     assertHasRecordingSource(input);
 
     const lesson = await this.model
@@ -130,14 +129,15 @@ export class LessonsService {
       .lean<{ classId: Types.ObjectId } | null>();
     if (!lesson) throw new NotFoundError(LESSON_NOT_FOUND);
 
-    const cls = await this.classModel
-      .findById(lesson.classId, { title: 1 })
-      .lean<{ title: string } | null>();
-    // Рассылка записи здесь не создаётся — это задача сервиса рассылок
-    // (следующий PR), здесь только сохранение.
+    const title = await findClassTitle(this.classModel, lesson.classId);
+    // Повтор того же url/telegramFileId (бот присылает запрос заново после
+    // таймаута ответа) не должен плодить вторую запись — идемпотентность по
+    // явному ключу (CLAUDE.md «API»), не по флагу в памяти. Рассылка записи
+    // здесь не создаётся — это задача сервиса рассылок (следующий PR), здесь
+    // только сохранение.
     await this.model.updateOne(
-      { _id: id },
-      { $push: { recordings: buildRecordingPush(input, cls?.title ?? '') } },
+      { _id: id, $nor: buildRecordingDuplicateConditions(input) },
+      { $push: { recordings: buildRecordingPush(input, title) } },
     );
     return this.getById(id);
   }

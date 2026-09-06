@@ -120,9 +120,7 @@ describe('ClassesService', () => {
       durationMin: 60,
     });
 
-    await expect(service.remove(created.id)).rejects.toThrow(
-      'уже есть даты в расписании',
-    );
+    await expect(service.remove(created.id)).rejects.toThrow('уже есть даты занятий');
     await expect(service.getById(created.id)).resolves.toMatchObject({
       title: 'С занятием',
     });

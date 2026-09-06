@@ -26,3 +26,19 @@ export function buildRecordingPush(
     telegramFileId: input.telegramFileId,
   };
 }
+
+/** Условия для `$nor` в `updateOne` — повтор того же url/telegramFileId не
+ * плодит вторую запись (CLAUDE.md «API»: повторяемое действие идемпотентно
+ * по явному ключу, не по флагу в памяти). Поле, которого нет во входе, в
+ * проверке не участвует; `assertHasRecordingSource` гарантирует, что хотя бы
+ * одно условие тут будет — пустой `$nor` Mongo не принимает. */
+export function buildRecordingDuplicateConditions(
+  input: AddRecordingInput,
+): Record<string, unknown>[] {
+  const conditions: Record<string, unknown>[] = [];
+  if (input.url !== undefined) conditions.push({ 'recordings.url': input.url });
+  if (input.telegramFileId !== undefined) {
+    conditions.push({ 'recordings.telegramFileId': input.telegramFileId });
+  }
+  return conditions;
+}

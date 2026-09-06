@@ -311,7 +311,9 @@ api: валидация env, логи с requestId и редакцией, кон
   правилами одним сохранением рассасывается за один-два тика, не падает ошибкой.
   Класса нет в базе — все его будущие занятия удаляются независимо от тронутости:
   без класса их нельзя отрендерить (нет названия, ссылки). Занятие, чей `startsAt`
-  ближе `leadMinutes` класса — не трогаем вовсе: ссылка могла уже уйти.
+  ближе `leadMinutes` класса — не трогаем вовсе: ссылка могла уже уйти. Длительность
+  даты из расписания следует правилу и меняется только через него; у разовой даты —
+  своя, PATCH меняет её напрямую.
 - Раз в минуту: для каждого занятия, у которого `startsAt - leadMinutes` наступило и
   нет `broadcast` вида `lesson_link`, создать рассылку и доставки. Контракт для этого
   шага (реализация — следующий PR): рассылка уходит только когда
@@ -333,11 +335,14 @@ api: валидация env, логи с requestId и редакцией, кон
 | POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все       |
 | GET/POST/PATCH/DELETE | `/classes` (реализовано)                        | учитель   |
 | POST                  | `/classes/:id/send-now`                         | учитель   |
-| GET/POST/PATCH/DELETE | `/lessons?from&to&classId` (реализовано)        | учитель   |
+| GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)        | учитель   |
 | POST                  | `/lessons/:id/recording` (реализовано)          | учитель   |
 | GET/POST/DELETE       | `/channels`, `/channels/:id/test`               | учитель   |
 | GET/POST              | `/broadcasts`, `/broadcasts/:id/deliveries`     | учитель   |
 | POST                  | `/deliveries/:id/mark-sent`                     | учитель   |
+
+`GET /lessons` принимает `?from&to&classId`: окно дат обязательно и не шире
+горизонта планировщика, `classId` фильтрует список.
 
 Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0010): без сессии
 401, без ролей (`roles: []`) и `student` — 403, `teacher`/`admin` — 200,

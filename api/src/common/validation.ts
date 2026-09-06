@@ -1,8 +1,12 @@
 // Общие хелперы-декораторы class-validator для DTO занятий и не только
 // (CLAUDE.md, раздел «API»: `null` в PATCH допустим только у полей, что это
 // прямо разрешают).
-import { Transform, type TransformFnParams } from 'class-transformer';
-import { ValidateIf } from 'class-validator';
+import { applyDecorators } from '@nestjs/common';
+import { Transform, Type, type TransformFnParams } from 'class-transformer';
+import { IsInt, IsOptional, Max, Min, ValidateIf } from 'class-validator';
+import { LIST_LIMIT_MAX } from '@xuanxue/shared';
+
+const LIST_LIMIT_MIN = 1;
 
 /**
  * Замена `@IsOptional()` для полей, где `null` — не «поле не прислали», а
@@ -22,5 +26,19 @@ export function OptionalNotNull(): PropertyDecorator {
 export function TrimString(): PropertyDecorator {
   return Transform(({ value }: TransformFnParams): unknown =>
     typeof value === 'string' ? value.trim() : (value as unknown),
+  );
+}
+
+/** Query-параметр `limit` списковых DTO (classes, lessons) — один декоратор
+ * на оба домена (CLAUDE.md «одна механика — один компонент»): необязателен
+ * (сервис подставляет дефолт), но если задан — целое число в границах
+ * `1..LIST_LIMIT_MAX` («дай всё» запрещён, CLAUDE.md «API»). */
+export function ListLimit(): PropertyDecorator {
+  return applyDecorators(
+    IsOptional(),
+    Type(() => Number),
+    IsInt(),
+    Min(LIST_LIMIT_MIN),
+    Max(LIST_LIMIT_MAX),
   );
 }

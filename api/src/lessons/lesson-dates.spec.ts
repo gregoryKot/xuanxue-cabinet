@@ -17,6 +17,19 @@ describe('parseUtcIso', () => {
   it('дата в формате ДД.ММ.ГГГГ — InvalidInputError (не ISO 8601)', () => {
     expect(() => parseUtcIso('10.09.2026', 'from')).toThrow(InvalidInputError);
   });
+
+  it('без смещения — InvalidInputError (не молча в UTC)', () => {
+    expect(() => parseUtcIso('2026-09-10T19:00:00', 'startsAt')).toThrow('со смещением');
+  });
+
+  it('только дата, без времени и смещения — InvalidInputError', () => {
+    expect(() => parseUtcIso('2026-09-10', 'startsAt')).toThrow('со смещением');
+  });
+
+  it('со смещением +03:00 — переводится в UTC', () => {
+    const dt = parseUtcIso('2026-09-10T19:00:00+03:00', 'startsAt');
+    expect(dt.toISO()).toBe('2026-09-10T16:00:00.000Z');
+  });
 });
 
 describe('assertListWindow', () => {

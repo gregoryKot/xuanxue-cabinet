@@ -8,6 +8,13 @@ export interface SplitUpdate {
   $unset: Record<string, ''>;
 }
 
+/** Команда для `findOneAndUpdate`: `$unset` добавляется только непустым —
+ * пустой оператор Mongo отвергает. Одна форма у всех сервисов с PATCH. */
+export interface UpdateCommand {
+  $set: Record<string, unknown>;
+  $unset?: Record<string, ''>;
+}
+
 /**
  * `null` в PATCH — явный сброс поля (`$unset`), но только у полей из
  * `nullableFields` (`NULLABLE_CLASS_FIELDS`/`NULLABLE_LESSON_FIELDS`, shared) —

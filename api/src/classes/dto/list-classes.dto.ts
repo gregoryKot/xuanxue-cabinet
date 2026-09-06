@@ -1,11 +1,10 @@
 // Query GET /classes. Лимит по умолчанию LIST_LIMIT_DEFAULT, максимум
 // LIST_LIMIT_MAX — «дай всё» запрещён (CLAUDE.md, раздел «API»).
-import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
-import { LIST_LIMIT_MAX, type ListClassesQuery } from '@xuanxue/shared';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsOptional } from 'class-validator';
+import type { ListClassesQuery } from '@xuanxue/shared';
 import { booleanFromQuery } from '../../common/query-transforms';
-
-const MIN_LIMIT = 1;
+import { ListLimit } from '../../common/validation';
 
 export class ListClassesDto implements ListClassesQuery {
   @IsOptional()
@@ -13,10 +12,6 @@ export class ListClassesDto implements ListClassesQuery {
   @IsBoolean()
   active?: boolean;
 
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(MIN_LIMIT)
-  @Max(LIST_LIMIT_MAX)
+  @ListLimit()
   limit?: number;
 }

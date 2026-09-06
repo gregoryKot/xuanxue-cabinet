@@ -8,7 +8,7 @@ import { ClassesService } from './classes.service';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: ClassRecord.name, schema: ClassSchema }]),
-    // remove() проверяет lessons.countDocuments({ classId }) — только модель,
+    // remove() проверяет lessons.exists({ classId }) — только модель,
     // не весь LessonsModule (его контроллер/сервис здесь не нужны, а полный
     // импорт замкнул бы цикл: LessonsModule сам зависит от ClassesModule
     // ради модели ClassRecord, см. lesson-model.module.ts).

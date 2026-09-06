@@ -57,6 +57,7 @@ export {
   LIST_LIMIT_DEFAULT,
   LIST_LIMIT_MAX,
   NULLABLE_CLASS_FIELDS,
+  CLASS_NOT_FOUND_MESSAGE,
 } from './classes';
 export type {
   RecordingDto,

@@ -104,3 +104,8 @@ export const CLASS_LIMITS = {
 /** Общие для всех списковых DTO — «дай всё» запрещён (CLAUDE.md, раздел «API»). */
 export const LIST_LIMIT_DEFAULT = 50;
 export const LIST_LIMIT_MAX = 200;
+
+/** Класса с таким id нет — общий текст `classes.service.ts` (сам класс) и
+ * `lessons.service.ts` (несуществующий `classId` у даты занятия): один текст,
+ * одно место (CLAUDE.md «Без магических чисел и строк»). */
+export const CLASS_NOT_FOUND_MESSAGE = 'Занятие не найдено. Обновите список.';
