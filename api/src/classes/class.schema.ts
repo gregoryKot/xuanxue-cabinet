@@ -5,6 +5,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import {
   CLASS_FORMATS,
+  RULE_TIME_RE,
   SCHOOL_TZ,
   WEEKDAYS,
   type ClassFormat,
@@ -15,8 +16,6 @@ import { enc, plain, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 
 const DEFAULT_LEAD_MINUTES = 30;
-// 99:99 не должно проходить — HH от 00 до 23, mm от 00 до 59.
-const RULE_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // Субдокумент правила расписания. `_id` НЕ отключён (Mongoose даёт его
 // бесплатно) — планировщик ссылается на конкретное правило

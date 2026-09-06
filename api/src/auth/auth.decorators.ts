@@ -1,9 +1,10 @@
 // Декораторы для AuthGuard (SetMetadata читается через Reflector) и
 // извлечения текущего пользователя (@CurrentUser в сигнатуре контроллера).
-// Roles()/SkipCsrf() появятся с первым потребителем (контроллер занятий) —
-// сами ключи (ROLES_KEY, SKIP_CSRF_KEY) уже читает гвард, метаданные пока
-// проставляют только тесты напрямую через фейковый Reflector.
+// SkipCsrf() ждёт своего первого потребителя (вебхук Telegram) — сам ключ
+// (SKIP_CSRF_KEY) уже читает гвард, метаданные пока проставляют только тесты
+// напрямую через фейковый Reflector.
 import { createParamDecorator, SetMetadata, type ExecutionContext } from '@nestjs/common';
+import type { UserRole } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import type { RequestLike } from './http-like';
 
@@ -15,6 +16,11 @@ export const Public = (): ReturnType<typeof SetMetadata> =>
 
 export const SKIP_CSRF_KEY = 'skipCsrf';
 export const ROLES_KEY = 'roles';
+/** Маршрут виден только сессии хотя бы с одной из перечисленных ролей
+ * (ADR-0010: данные школы — по роли, не по владельцу). Первый потребитель —
+ * `ClassesController`. */
+export const Roles = (...roles: UserRole[]): ReturnType<typeof SetMetadata> =>
+  SetMetadata(ROLES_KEY, roles);
 
 export const CurrentUser = createParamDecorator(
   (_: unknown, ctx: ExecutionContext): UserLean => {
