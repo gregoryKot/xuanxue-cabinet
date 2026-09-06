@@ -17,6 +17,8 @@ import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { HealthController } from './health/health.controller';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -44,6 +46,11 @@ import { HealthController } from './health/health.controller';
     ChannelsModule,
     BroadcastsModule,
     DeliveriesModule,
+    UsersModule,
+    // Гвард сессии (AuthGuard) — APP_GUARD внутри этого модуля, применяется
+    // после ThrottlerGuard выше (@nestjs/core scanner: провайдеры AppModule
+    // раньше провайдеров импортированных модулей).
+    AuthModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'web', 'dist'),

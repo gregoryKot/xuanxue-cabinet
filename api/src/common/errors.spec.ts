@@ -3,6 +3,7 @@ import {
   ForbiddenError,
   InvalidInputError,
   NotFoundError,
+  UnauthorizedError,
 } from './errors';
 
 describe('доменные ошибки', () => {
@@ -11,6 +12,7 @@ describe('доменные ошибки', () => {
     [ForbiddenError, 403, 'forbidden'],
     [ConflictError, 409, 'conflict'],
     [InvalidInputError, 400, 'invalid_input'],
+    [UnauthorizedError, 401, 'unauthorized'],
   ] as const)('%p: статус %i, код %s', (ErrorClass, status, code) => {
     const err = new ErrorClass('текст для пользователя');
     expect(err.status).toBe(status);

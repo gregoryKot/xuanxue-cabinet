@@ -33,6 +33,14 @@ export {
 export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
+export type { UserRole, UserStatus, MeDto } from './auth';
+export {
+  USER_ROLES,
+  USER_STATUSES,
+  CSRF_HEADER,
+  MUTATING_METHODS,
+  isMutatingMethod,
+} from './auth';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

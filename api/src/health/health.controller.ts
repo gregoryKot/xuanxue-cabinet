@@ -3,6 +3,7 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { SkipThrottle } from '@nestjs/throttler';
 import { ConnectionStates, type Connection } from 'mongoose';
 import pkg from '../../package.json';
+import { Public } from '../auth/auth.decorators';
 
 export interface HealthStatus {
   status: 'ok';
@@ -12,7 +13,10 @@ export interface HealthStatus {
 }
 
 // Вне троттлинга и вне автологов nestjs-pino (см. logging.module.ts) —
-// Railway и мониторинг дёргают этот путь каждую минуту.
+// Railway и мониторинг дёргают этот путь каждую минуту. @Public() — без
+// него AuthGuard требовал бы сессию, а мониторинг её не имеет (SECURITY §3:
+// единственные исключения из-под гварда — health и вебхук).
+@Public()
 @SkipThrottle()
 @Controller('health')
 export class HealthController {

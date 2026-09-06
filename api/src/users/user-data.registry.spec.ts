@@ -2,11 +2,18 @@
 // новой коллекции; ADR-0010): забытая модель или забытая ссылка на
 // пользователя падает здесь, а не обнаруживается инцидентом на проде.
 import { MODEL_DEFINITIONS } from '../common/model.registry';
+import { UserRecord } from './user.schema';
 import {
   USER_MODEL_NAME,
   USER_OWNED_COLLECTIONS,
   USER_REFERENCE_PATHS,
 } from './user-data.registry';
+
+describe('USER_MODEL_NAME', () => {
+  it('совпадает с UserRecord.name — иначе USER_REFERENCE_PATHS сверяется не с той моделью', () => {
+    expect(UserRecord.name).toBe(USER_MODEL_NAME);
+  });
+});
 
 describe('USER_OWNED_COLLECTIONS', () => {
   it('модели с путём userId в схеме совпадают со списком реестра', () => {
