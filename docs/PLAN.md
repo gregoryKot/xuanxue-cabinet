@@ -292,7 +292,9 @@ api: валидация env, логи с requestId и редакцией, кон
   **Реализовано** — `LessonPlannerService` (`api/src/lessons/`, решения о
   переносе/удалении/вставке — `lesson-reconcile.ts`, запросы —
   `lesson-planner.queries.ts`) и `SchedulerService` (`api/src/scheduler/`),
-  лог `scheduler.tick` раз в минуту (RUNBOOK §2 п.4).
+  лог `scheduler.tick` раз в минуту (RUNBOOK §2 п.4). Разовое занятие вне
+  расписания учитель создаёт через `POST /lessons` без `plannedAt` —
+  планировщик такие даты не трогает вовсе, они не участвуют в согласовании ниже.
   Согласование с текущим расписанием (тот же тик): изменили или удалили правило,
   выключили или удалили класс — будущие занятия пересчитываются, но
   **тронутое занятие планировщик не удаляет и не переносит**. Тронуто — вписана
@@ -331,8 +333,8 @@ api: валидация env, логи с requestId и редакцией, кон
 | POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все       |
 | GET/POST/PATCH/DELETE | `/classes` (реализовано)                        | учитель   |
 | POST                  | `/classes/:id/send-now`                         | учитель   |
-| GET                   | `/lessons?from&to`                              | учитель   |
-| POST                  | `/lessons/:id/recording`                        | учитель   |
+| GET/POST/PATCH/DELETE | `/lessons?from&to&classId` (реализовано)        | учитель   |
+| POST                  | `/lessons/:id/recording` (реализовано)          | учитель   |
 | GET/POST/DELETE       | `/channels`, `/channels/:id/test`               | учитель   |
 | GET/POST              | `/broadcasts`, `/broadcasts/:id/deliveries`     | учитель   |
 | POST                  | `/deliveries/:id/mark-sent`                     | учитель   |

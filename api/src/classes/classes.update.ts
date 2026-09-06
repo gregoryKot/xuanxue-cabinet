@@ -1,45 +1,9 @@
-// Чистые функции подготовки PATCH-запроса — без похода в базу, юнит-тест без
-// Mongo (CLAUDE.md, раздел «Тесты»).
+// Чистые функции подготовки правил расписания в PATCH-запросе — без похода в
+// базу, юнит-тест без Mongo (CLAUDE.md, раздел «Тесты»). `splitUpdate` уехал
+// в `api/src/common/patch-update.ts` — теперь у неё два потребителя
+// (classes, lessons), общая механика не должна жить в домене одного из них.
 import { Types } from 'mongoose';
 import type { ScheduleRule, ScheduleRuleInput } from '@xuanxue/shared';
-import { InvalidInputError } from '../common/errors';
-
-export interface SplitUpdate {
-  $set: Record<string, unknown>;
-  $unset: Record<string, ''>;
-}
-
-/**
- * `null` в PATCH — явный сброс поля (`$unset`), но только у полей из
- * `nullableFields` (`NULLABLE_CLASS_FIELDS`, shared) — остальные `null`
- * ловит `@IsOptional()`/`OptionalNotNull()` ещё в DTO (400 от
- * `ValidationPipe`). Проверка здесь — защита в глубину на случай, если
- * сервис вызовут напрямую или DTO разойдётся со списком: `null` вне списка
- * не должен молча превратиться в `$unset` неположенного поля.
- * Отсутствующее поле (`undefined`) не трогаем вовсе, чтобы не затирать то,
- * что не прислали.
- */
-export function splitUpdate(
-  input: Record<string, unknown>,
-  nullableFields: readonly string[],
-): SplitUpdate {
-  const $set: Record<string, unknown> = {};
-  const $unset: Record<string, ''> = {};
-  for (const [key, value] of Object.entries(input)) {
-    if (value === undefined) continue;
-    if (value === null) {
-      if (!nullableFields.includes(key)) {
-        throw new InvalidInputError(
-          `Поле «${key}» нельзя очистить. Укажите значение или уберите поле из запроса.`,
-        );
-      }
-      $unset[key] = '';
-    } else {
-      $set[key] = value;
-    }
-  }
-  return { $set, $unset };
-}
 
 /** Идентификатор правила для `@ArrayUnique()` в ClassFieldsDto (сравнение
  * должно быть по `id` существующего правила, а не по ссылке на объект).

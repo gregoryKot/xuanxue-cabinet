@@ -50,3 +50,9 @@ export interface Recording {
   url?: string;
   telegramFileId?: string;
 }
+
+/** На сколько недель вперёд планировщик держит `lessons` заполненными
+ * (docs/PLAN.md §6 «Планировщик»); тем же числом ограничено окно списка
+ * `GET /lessons` — экран «Планирование» показывает весь горизонт целиком,
+ * запрашивать больше незачем. */
+export const PLANNING_HORIZON_WEEKS = 4;

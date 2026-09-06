@@ -14,11 +14,12 @@ import type {
 import { LIST_LIMIT_DEFAULT, NULLABLE_CLASS_FIELDS } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
+import { splitUpdate } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { CLASS_FIELD_POLICY, ClassRecord } from './class.schema';
 import { toClassDto, type LeanClass } from './class.mapper';
-import { mapRules, splitUpdate } from './classes.update';
+import { mapRules } from './classes.update';
 
 const ENCRYPT_SCHEMA = encryptSchemaFrom(CLASS_FIELD_POLICY);
 const NOT_FOUND_MESSAGE = 'Занятие не найдено. Обновите список.';

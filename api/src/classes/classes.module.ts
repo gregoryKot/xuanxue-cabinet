@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { LessonsModule } from '../lessons/lessons.module';
+import { LessonModelModule } from '../lessons/lesson-model.module';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesController } from './classes.controller';
 import { ClassesService } from './classes.service';
@@ -8,9 +8,11 @@ import { ClassesService } from './classes.service';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: ClassRecord.name, schema: ClassSchema }]),
-    // remove() проверяет lessons.countDocuments({ classId }) — модуль экспортирует
-    // MongooseModule, свой контроллер/сервис у него не подключаем.
-    LessonsModule,
+    // remove() проверяет lessons.countDocuments({ classId }) — только модель,
+    // не весь LessonsModule (его контроллер/сервис здесь не нужны, а полный
+    // импорт замкнул бы цикл: LessonsModule сам зависит от ClassesModule
+    // ради модели ClassRecord, см. lesson-model.module.ts).
+    LessonModelModule,
   ],
   controllers: [ClassesController],
   providers: [ClassesService],

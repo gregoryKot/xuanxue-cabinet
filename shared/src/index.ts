@@ -25,6 +25,7 @@ export {
   DELIVERY_STATUSES,
   RULE_TIME_RE,
   DEFAULT_LEAD_MINUTES,
+  PLANNING_HORIZON_WEEKS,
 } from './domain';
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {
@@ -57,6 +58,19 @@ export {
   LIST_LIMIT_MAX,
   NULLABLE_CLASS_FIELDS,
 } from './classes';
+export type {
+  RecordingDto,
+  LessonDto,
+  ListLessonsQuery,
+  CreateLessonInput,
+  UpdateLessonInput,
+  AddRecordingInput,
+} from './lessons';
+export {
+  NULLABLE_LESSON_FIELDS,
+  LESSON_LIMITS,
+  LESSON_DEFAULT_DURATION_MIN,
+} from './lessons';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

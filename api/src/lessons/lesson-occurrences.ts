@@ -6,10 +6,6 @@ import type { Types } from 'mongoose';
 import { RULE_TIME_RE, type Weekday } from '@xuanxue/shared';
 import type { LeanScheduleRule } from '../classes/class.schema';
 
-/** На сколько недель вперёд планировщик держит `lessons` заполненными
- * (docs/PLAN.md §6 «Планировщик»). */
-export const PLANNING_HORIZON_WEEKS = 4;
-
 // Школа хранит день недели как 0 = воскресенье … 6 = суббота (ADR-0003,
 // docs/PLAN.md §1 — неделя начинается с воскресенья); Luxon.DateTime#weekday
 // — ISO: 1 = понедельник … 7 = воскресенье. Перевод явный, а не формулой без
