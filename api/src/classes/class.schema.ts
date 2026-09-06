@@ -5,6 +5,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import {
   CLASS_FORMATS,
+  DEFAULT_LEAD_MINUTES,
   RULE_TIME_RE,
   SCHOOL_TZ,
   WEEKDAYS,
@@ -14,8 +15,6 @@ import {
 } from '@xuanxue/shared';
 import { enc, plain, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
-
-const DEFAULT_LEAD_MINUTES = 30;
 
 // Субдокумент правила расписания. `_id` НЕ отключён (Mongoose даёт его
 // бесплатно) — планировщик ссылается на конкретное правило
@@ -33,6 +32,14 @@ class ScheduleRuleSubdoc implements ScheduleRule {
   durationMin!: number;
 }
 const ScheduleRuleSchema = SchemaFactory.createForClass(ScheduleRuleSubdoc);
+
+/** Правило расписания как его отдаёт `.lean()` — Mongoose не снимает `_id`
+ * даже у субдокумента в массиве (`_id: true` выше), но публичный контракт
+ * `ScheduleRule` (shared) о нём не знает: `_id` — деталь хранения, нужная
+ * планировщику занятий для ссылки `lessons.ruleId`. */
+export interface LeanScheduleRule extends ScheduleRule {
+  _id: Types.ObjectId;
+}
 
 @Schema({ timestamps: true, collection: 'classes' })
 export class ClassRecord {

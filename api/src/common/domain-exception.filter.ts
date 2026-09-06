@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import type { ApiErrorBody, ApiErrorCode } from '@xuanxue/shared';
+import { errorMessage, errorStack } from './error-info';
 import { DomainError } from './errors';
 
 const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз через минуту.';
@@ -61,11 +62,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       return fromHttpException(exception, requestId);
     }
-    const stack = exception instanceof Error ? exception.stack : undefined;
-    const message = exception instanceof Error ? exception.message : String(exception);
     this.logger.error(
-      `Необработанная ошибка (requestId=${requestId ?? '-'}): ${message}`,
-      stack,
+      `Необработанная ошибка (requestId=${requestId ?? '-'}): ${errorMessage(exception)}`,
+      errorStack(exception),
     );
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

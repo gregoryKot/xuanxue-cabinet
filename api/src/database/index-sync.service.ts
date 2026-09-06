@@ -7,6 +7,7 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
+import { errorMessage, errorStack } from '../common/error-info';
 
 @Injectable()
 export class IndexSyncService implements OnApplicationBootstrap {
@@ -25,9 +26,10 @@ export class IndexSyncService implements OnApplicationBootstrap {
         await model.syncIndexes();
       } catch (err) {
         failed.push(name);
-        const message = errorMessage(err);
-        const stack = err instanceof Error ? err.stack : undefined;
-        this.logger.error(`syncIndexes упал для коллекции ${name}: ${message}`, stack);
+        this.logger.error(
+          `syncIndexes упал для коллекции ${name}: ${errorMessage(err)}`,
+          errorStack(err),
+        );
       }
     }
     if (failed.length > 0) {
@@ -37,8 +39,4 @@ export class IndexSyncService implements OnApplicationBootstrap {
       );
     }
   }
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

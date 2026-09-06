@@ -78,6 +78,30 @@ describe('validateEnv', () => {
     expect(env.ENCRYPTION_KEY).toBeUndefined();
     expect(env.JWT_SECRET).toBeUndefined();
     expect(env.PUBLIC_URL).toBeUndefined();
+    expect(env.SCHEDULER_ENABLED).toBe('true');
+  });
+
+  it('SCHEDULER_ENABLED=false проходит строкой, не превращается в true', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      SCHEDULER_ENABLED: 'false',
+    });
+    expect(env.SCHEDULER_ENABLED).toBe('false');
+  });
+
+  it('SCHEDULER_ENABLED вне true/false падает, пустая строка — дефолт', () => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        SCHEDULER_ENABLED: 'yes',
+      }),
+    ).toThrow(/SCHEDULER_ENABLED/);
+
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      SCHEDULER_ENABLED: '',
+    });
+    expect(env.SCHEDULER_ENABLED).toBe('true');
   });
 
   it('вне production заданный, но кривой ENCRYPTION_KEY всё равно падает', () => {

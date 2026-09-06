@@ -34,6 +34,11 @@ function setTestEnv(mongoUri: string): void {
   process.env.BOOTSTRAP_ADMIN_TELEGRAM_ID = String(TEST_BOOTSTRAP_ADMIN_TELEGRAM_ID);
   // Логи запросов не нужны в выводе тестов — при падении смотрят ответ, не лог.
   process.env.LOG_LEVEL = 'silent';
+  // Реальный AppModule в e2e держит ScheduleModule с cron раз в минуту — тик
+  // планировщика занятий на настоящем времени лишний в коротких e2e и
+  // рискует гонкой с app.close(); юнит-тесты LessonPlannerService/
+  // SchedulerService идут напрямую, без этого приложения.
+  process.env.SCHEDULER_ENABLED = 'false';
 }
 
 export async function createTestApp(): Promise<TestApp> {

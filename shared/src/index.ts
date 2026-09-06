@@ -24,6 +24,7 @@ export {
   BROADCAST_STATUSES,
   DELIVERY_STATUSES,
   RULE_TIME_RE,
+  DEFAULT_LEAD_MINUTES,
 } from './domain';
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {
