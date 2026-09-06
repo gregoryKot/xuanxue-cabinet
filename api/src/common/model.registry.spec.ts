@@ -11,6 +11,7 @@ import { CLASS_FIELD_POLICY } from '../classes/class.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
+import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
@@ -95,6 +96,48 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     } as const;
     await Broadcast.create(manual);
     await expect(Broadcast.create(manual)).resolves.toBeDefined();
+  });
+
+  it('users: два без telegramId создаются, два с одинаковым telegramId — конфликт', async () => {
+    const User = connection.model<UserRecord>(UserRecord.name);
+    await expect(
+      User.create({ name: 'Без Telegram 1', roles: [] }),
+    ).resolves.toBeDefined();
+    await expect(
+      User.create({ name: 'Без Telegram 2', roles: [] }),
+    ).resolves.toBeDefined();
+
+    await User.create({ name: 'Мария', telegramId: 42, roles: ['admin'] });
+    await expect(
+      User.create({ name: 'Двойник', telegramId: 42, roles: [] }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+  });
+
+  it('users: явный telegramId: null не занимает ключ частичного индекса (в отличие от sparse)', async () => {
+    // Через драйвер напрямую, не через Model.create: telegramId: null — не
+    // форма, которую допускает тип UserRecord (там telegramId — number |
+    // undefined), но именно её мы проверяем на уровне индекса — партиция
+    // фильтрует по $type: 'number', и BSON null под это не подходит.
+    const users = connection.collection('users');
+    await expect(
+      users.insertOne({ name: 'Явный null 1', telegramId: null, roles: [] }),
+    ).resolves.toBeDefined();
+    await expect(
+      users.insertOne({ name: 'Явный null 2', telegramId: null, roles: [] }),
+    ).resolves.toBeDefined();
+  });
+
+  it('users: email и googleId — та же частичная уникальность', async () => {
+    const User = connection.model<UserRecord>(UserRecord.name);
+    await User.create({ name: 'Дима', email: 'dima@example.com', roles: ['teacher'] });
+    await expect(
+      User.create({ name: 'Двойник', email: 'dima@example.com', roles: [] }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+
+    await User.create({ name: 'Гугл', googleId: 'g-1', roles: [] });
+    await expect(
+      User.create({ name: 'Гугл-двойник', googleId: 'g-1', roles: [] }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
   });
 
   it('encryptRecord/decryptRecord по CLASS_FIELD_POLICY: zoomLink шифруется и читается', () => {

@@ -125,7 +125,7 @@ xuanxue-cabinet/
 
 | Коллекция                   | Поля                                                                                                                                                                                          | Комментарий                                                                                                                                                                                    |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`                     | name, email, telegramId, googleId, roles[], tz, status, createdAt                                                                                                                             | status: invited / active / blocked                                                                                                                                                             |
+| `users`                     | name, email, telegramId, googleId, roles[], tz, status, lastLoginAt, createdAt                                                                                                                | status: invited / active / blocked                                                                                                                                                             |
 | `classes`                   | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                              |
 | `lessons`                   | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания. Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые   |
 | `channels`                  | type, title, config (зашифровано), createdBy, active                                                                                                                                          | type: telegram / vk / manual / webpush. Данные школы (ADR-0010)                                                                                                                                |
@@ -293,20 +293,22 @@ api: валидация env, логи с requestId и редакцией, кон
 
 ### API
 
-| Метод                 | Путь                                            | Кто     |
-| --------------------- | ----------------------------------------------- | ------- |
-| POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все     |
-| GET/POST/PATCH/DELETE | `/classes`                                      | учитель |
-| POST                  | `/classes/:id/send-now`                         | учитель |
-| GET                   | `/lessons?from&to`                              | учитель |
-| POST                  | `/lessons/:id/recording`                        | учитель |
-| GET/POST/DELETE       | `/channels`, `/channels/:id/test`               | учитель |
-| GET/POST              | `/broadcasts`, `/broadcasts/:id/deliveries`     | учитель |
-| POST                  | `/deliveries/:id/mark-sent`                     | учитель |
+| Метод                 | Путь                                            | Кто       |
+| --------------------- | ----------------------------------------------- | --------- |
+| GET                   | `/auth/me`                                      | с сессией |
+| POST                  | `/auth/logout`                                  | с сессией |
+| POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все       |
+| GET/POST/PATCH/DELETE | `/classes`                                      | учитель   |
+| POST                  | `/classes/:id/send-now`                         | учитель   |
+| GET                   | `/lessons?from&to`                              | учитель   |
+| POST                  | `/lessons/:id/recording`                        | учитель   |
+| GET/POST/DELETE       | `/channels`, `/channels/:id/test`               | учитель   |
+| GET/POST              | `/broadcasts`, `/broadcasts/:id/deliveries`     | учитель   |
+| POST                  | `/deliveries/:id/mark-sent`                     | учитель   |
 
 Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0010): без сессии
-401, `guest`/`student` 403, `teacher`/`admin` 200, `config` канала не утекает
-ни в одном ответе ни одной роли.
+401, без ролей (`roles: []`) и `student` — 403, `teacher`/`admin` — 200,
+`config` канала не утекает ни в одном ответе ни одной роли.
 
 ### Тесты, без которых этап не закрыт
 

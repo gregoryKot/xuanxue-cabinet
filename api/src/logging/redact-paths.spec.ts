@@ -21,12 +21,20 @@ function logSample(): Record<string, unknown> {
         headers: { authorization: 'Bearer secret', cookie: 'sid=1' },
         body: { email: 'user@example.com', name: 'Мария' },
       },
+      res: {
+        headers: {
+          'set-cookie': 'session=tok; HttpOnly',
+          'content-type': 'application/json',
+        },
+      },
       user: {
         token: 't',
         accessToken: 'at',
         refreshToken: 'rt',
         secret: 's',
         name: 'Мария',
+        email: 'maria@example.com',
+        telegramId: 12345,
       },
       channel: {
         config: { apiKey: 'k' },
@@ -56,6 +64,8 @@ describe('REDACT_PATHS', () => {
     const req = logged.req as Record<string, unknown>;
     const headers = req.headers as Record<string, unknown>;
     const body = req.body as Record<string, unknown>;
+    const res = logged.res as Record<string, unknown>;
+    const resHeaders = res.headers as Record<string, unknown>;
     const user = logged.user as Record<string, unknown>;
     const channel = logged.channel as Record<string, unknown>;
     const lesson = logged.lesson as Record<string, unknown>;
@@ -64,10 +74,13 @@ describe('REDACT_PATHS', () => {
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
+    expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');
     expect(user.accessToken).toBe('[Redacted]');
     expect(user.refreshToken).toBe('[Redacted]');
     expect(user.secret).toBe('[Redacted]');
+    expect(user.email).toBe('[Redacted]');
+    expect(user.telegramId).toBe('[Redacted]');
     expect(channel.config).toBe('[Redacted]');
     expect(channel.zoomLink).toBe('[Redacted]');
     expect(channel.zoomPassword).toBe('[Redacted]');
@@ -81,11 +94,14 @@ describe('REDACT_PATHS', () => {
     const logged = logSample();
     const req = logged.req as Record<string, unknown>;
     const body = req.body as Record<string, unknown>;
+    const res = logged.res as Record<string, unknown>;
+    const resHeaders = res.headers as Record<string, unknown>;
     const user = logged.user as Record<string, unknown>;
     const channel = logged.channel as Record<string, unknown>;
     const lesson = logged.lesson as Record<string, unknown>;
     const broadcast = logged.broadcast as Record<string, unknown>;
 
+    expect(resHeaders['content-type']).toBe('application/json');
     expect(body.name).toBe('Мария');
     expect(user.name).toBe('Мария');
     expect(channel.title).toBe('Средняя группа');

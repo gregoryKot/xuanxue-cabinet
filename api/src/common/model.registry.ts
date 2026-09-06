@@ -25,6 +25,7 @@ import {
   DeliverySchema,
   DELIVERY_FIELD_POLICY,
 } from '../deliveries/delivery.schema';
+import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -51,4 +52,5 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     schema: DeliverySchema,
     fieldPolicy: DELIVERY_FIELD_POLICY,
   },
+  { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
 ];

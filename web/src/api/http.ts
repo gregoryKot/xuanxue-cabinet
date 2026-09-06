@@ -1,7 +1,12 @@
 // Единственная точка сетевых запросов (CLAUDE.md, «одна механика — один
 // компонент»): eslint запрещает глобальный fetch вне web/src/api/**, чтобы
 // формат ошибок и credentials не разъезжались по компонентам.
-import type { ApiErrorBody, ApiErrorCode } from '@xuanxue/shared';
+import {
+  CSRF_HEADER,
+  isMutatingMethod,
+  type ApiErrorBody,
+  type ApiErrorCode,
+} from '@xuanxue/shared';
 
 /** Ошибка похода в API — статус, код бэкенда и (если есть) детали/requestId. */
 export class ApiError extends Error {
@@ -49,6 +54,10 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   const { method = 'GET', body, signal } = init;
   const headers: Record<string, string> = { accept: 'application/json' };
   if (body !== undefined) headers['content-type'] = 'application/json';
+  // CSRF-заголовок (SECURITY §2, ADR-0012) — гвард требует его для любого
+  // мутирующего запроса, кроме @SkipCsrf(). Кросс-доменная форма его не
+  // поставит, обычный fetch с credentials — всегда.
+  if (isMutatingMethod(method)) headers[CSRF_HEADER] = 'fetch';
 
   let response: Response;
   try {

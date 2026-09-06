@@ -2,6 +2,7 @@
 // компонент»): формат ошибок и заголовки проверяются здесь один раз, а не в
 // каждом компоненте, который ходит в API.
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CSRF_HEADER } from '@xuanxue/shared';
 import { ApiError, apiFetch } from './http';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -66,6 +67,19 @@ describe('apiFetch — успешные ответы', () => {
     expect((options.headers as Record<string, string>)['content-type']).toBe(
       'application/json',
     );
+  });
+
+  it('ставит CSRF-заголовок на мутирующих методах, но не на GET', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiFetch('/lessons', { method: 'PATCH', body: { title: 'x' } });
+    await apiFetch('/lessons');
+
+    const [, patchOptions] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [, getOptions] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect((patchOptions.headers as Record<string, string>)[CSRF_HEADER]).toBe('fetch');
+    expect((getOptions.headers as Record<string, string>)[CSRF_HEADER]).toBeUndefined();
   });
 });
 

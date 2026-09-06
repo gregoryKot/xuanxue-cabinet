@@ -31,4 +31,12 @@ export const REDACT_PATHS: string[] = [
   '*.refreshToken',
   '*.config',
   '*.secret',
+  // Пользователь (ADR-0012, user.schema.ts): email и telegramId — PII и
+  // ключ входа, могут попасть в лог не только через req.body (email уже
+  // покрыт выше), а из любого объекта пользователя, который залогируют.
+  '*.email',
+  '*.telegramId',
+  // pino-http логирует res.getHeaders() целиком — свежий Set-Cookie при
+  // входе и при rolling-перевыпуске содержит токен сессии открытым текстом.
+  'res.headers["set-cookie"]',
 ];

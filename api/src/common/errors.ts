@@ -32,3 +32,10 @@ export class InvalidInputError extends DomainError {
   readonly code = 'invalid_input';
   readonly status = 400;
 }
+
+// Нет сессии, битая подпись, протухший токен — ADR-0012, SECURITY §2.
+// Отдельно от ForbiddenError: 401 значит «войдите», 403 значит «вы вошли, но это не для вас».
+export class UnauthorizedError extends DomainError {
+  readonly code = 'unauthorized';
+  readonly status = 401;
+}

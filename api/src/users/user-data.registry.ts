@@ -11,10 +11,10 @@
 // же merge/delete, поэтому у них свой реестр ниже.
 export const USER_OWNED_COLLECTIONS = [] as const;
 
-// Имя модели пользователей по конвенции *Record этого проекта — схема
-// появится вместе со входом. Ссылки на пользователя (`ref:`) в других схемах
-// заводятся уже сейчас, до неё, чтобы `USER_REFERENCE_PATHS` не разъезжался
-// с литералом по буквам.
+// Имя модели пользователей по конвенции *Record этого проекта — совпадает с
+// UserRecord.name в user.schema.ts (сверка — user-data.registry.spec.ts).
+// Ссылки на пользователя (`ref:`) в других схемах сверяются с этим литералом
+// в USER_REFERENCE_PATHS ниже.
 export const USER_MODEL_NAME = 'UserRecord';
 
 export type UserOwnedCollection = (typeof USER_OWNED_COLLECTIONS)[number];
