@@ -17,6 +17,11 @@ import { DomainError } from './errors';
 
 const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз через минуту.';
 const VALIDATION_MESSAGE = 'Проверьте, пожалуйста, введённые данные.';
+// ThrottlerException несёт свой английский текст ('ThrottlerException: Too
+// Many Requests') — он не проходит мимо fromHttpException() (правило
+// CLAUDE.md «Ошибки»: текст исключения наружу не уходит без перевода).
+const RATE_LIMIT_MESSAGE =
+  'Слишком много запросов. Подождите минуту и попробуйте ещё раз.';
 
 // Минимальные интерфейсы вместо @types/express (которого нет в зависимостях
 // api/) — фильтру нужны только `req.id` (пишет pino-http, см.
@@ -73,6 +78,17 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
 function fromHttpException(exception: HttpException, requestId?: string): ApiErrorBody {
   const status = exception.getStatus();
+  // Литерал 429, не HttpStatus.TOO_MANY_REQUESTS — та же причина, что у
+  // codeForStatus() ниже: number из getStatus() против enum не проходит
+  // eslint no-unsafe-enum-comparison.
+  if (status === 429) {
+    return {
+      statusCode: status,
+      code: codeForStatus(status),
+      message: RATE_LIMIT_MESSAGE,
+      requestId,
+    };
+  }
   const body = exception.getResponse();
   const rawMessage =
     typeof body === 'object' && body !== null && 'message' in body ? body.message : body;

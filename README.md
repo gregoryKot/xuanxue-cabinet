@@ -39,6 +39,12 @@ npm run dev               # api на :3000, web на :5173
 Реальные ссылки Zoom для первого импорта лежат в `api/seed/classes.local.json`,
 файл в `.gitignore`. Формат — `api/seed/classes.example.json`.
 
+Вход через Telegram (`POST /auth/telegram`) локально не проверить: виджет
+Telegram Login работает только с публичным доменом, у `localhost` его нет.
+До PR I (`/start` в боте, вход по `update.message.from.id` без виджета)
+локальный вход в кабинет не настроить без ручной подмены cookie — см.
+`api/test/e2e-support/session.ts`, как её делают тесты.
+
 ## Перед PR
 
 ```bash

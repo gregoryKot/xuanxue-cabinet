@@ -1,8 +1,9 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { ThrottlerException } from '@nestjs/throttler';
 import type { Logger } from 'nestjs-pino';
 import { DomainExceptionFilter } from './domain-exception.filter';
-import { ConflictError, NotFoundError } from './errors';
+import { ConflictError, NotAvailableError, NotFoundError } from './errors';
 import type { ApiErrorBody } from '@xuanxue/shared';
 
 // Простые типизированные заглушки вместо jest.fn(): jest.Mock без явных
@@ -76,6 +77,29 @@ describe('DomainExceptionFilter', () => {
     });
   });
 
+  it('NotAvailableError (вход через Telegram без BOT_TOKEN) → 503 в конверте', () => {
+    const { logger, errorCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host, getStatusCode, getJsonBody } = buildHost('req-4');
+
+    filter.catch(
+      new NotAvailableError(
+        'Вход через Telegram пока не подключён. Попросите администратора включить его',
+      ),
+      host,
+    );
+
+    expect(getStatusCode()).toBe(503);
+    expect(getJsonBody()).toEqual({
+      statusCode: 503,
+      code: 'not_available',
+      message:
+        'Вход через Telegram пока не подключён. Попросите администратора включить его',
+      requestId: 'req-4',
+    });
+    expect(errorCalls).toHaveLength(0);
+  });
+
   it('HttpException с массивом message (ValidationPipe) → details[]', () => {
     const { logger } = buildLogger();
     const filter = new DomainExceptionFilter(logger);
@@ -94,6 +118,23 @@ describe('DomainExceptionFilter', () => {
       details: ['title должен быть строкой', 'time обязателен'],
       requestId: 'req-2',
     });
+  });
+
+  it('ThrottlerException (429) → русский текст константой, не английский из библиотеки', () => {
+    const { logger, errorCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host, getStatusCode, getJsonBody } = buildHost('req-5');
+
+    filter.catch(new ThrottlerException(), host);
+
+    expect(getStatusCode()).toBe(429);
+    expect(getJsonBody()).toEqual({
+      statusCode: 429,
+      code: 'rate_limited',
+      message: 'Слишком много запросов. Подождите минуту и попробуйте ещё раз.',
+      requestId: 'req-5',
+    });
+    expect(errorCalls).toHaveLength(0);
   });
 
   it('обычный HttpException (не валидационный) → свой статус и текст', () => {

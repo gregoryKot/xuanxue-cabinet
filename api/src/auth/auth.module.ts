@@ -13,12 +13,14 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { SESSION_SECRET } from './session-token';
+import { TelegramAuthService } from './telegram-auth.service';
 
 @Module({
   imports: [UsersModule],
   controllers: [AuthController],
   providers: [
     AuthService,
+    TelegramAuthService,
     { provide: APP_GUARD, useClass: AuthGuard },
     {
       provide: SESSION_SECRET,

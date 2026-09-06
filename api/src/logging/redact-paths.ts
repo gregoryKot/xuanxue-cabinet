@@ -10,6 +10,11 @@ export const REDACT_PATHS: string[] = [
   'req.headers.cookie',
   // Email — PII, даже если пришёл в теле легитимного запроса (вход по ссылке).
   'req.body.email',
+  // Подпись виджета Telegram Login (POST /auth/telegram) — не секрет после
+  // проверки (её вычисляют из открытых полей и BOT_TOKEN, не наоборот), но
+  // редакция дёшева: путь на два уровня (req.body.hash), *.hash ниже её не
+  // достаёт — wildcard fast-redact разворачивается только на одном уровне.
+  'req.body.hash',
   '*.password',
   '*.zoomPassword',
   '*.zoomLink',
@@ -36,6 +41,9 @@ export const REDACT_PATHS: string[] = [
   // покрыт выше), а из любого объекта пользователя, который залогируют.
   '*.email',
   '*.telegramId',
+  // Подпись виджета (см. req.body.hash выше) — на случай, если её залогируют
+  // не только из req.body, а из другого объекта одним уровнем вложенности.
+  '*.hash',
   // pino-http логирует res.getHeaders() целиком — свежий Set-Cookie при
   // входе и при rolling-перевыпуске содержит токен сессии открытым текстом.
   'res.headers["set-cookie"]',

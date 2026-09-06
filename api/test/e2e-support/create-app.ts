@@ -12,6 +12,13 @@ export interface TestApp {
   close: () => Promise<void>;
 }
 
+// Тестовые BOT_TOKEN/BOOTSTRAP_ADMIN_TELEGRAM_ID — общие для всех e2e на
+// приложении из этого файла (auth-telegram.e2e-spec.ts подписывает ими
+// тела запросов). Формат токена — как настоящий (числовой id бота, потом
+// секрет), но сам секрет — randomBytes на процесс, не литерал (gitleaks).
+export const TEST_BOT_TOKEN = `123456:${randomBytes(18).toString('hex').slice(0, 35)}`;
+export const TEST_BOOTSTRAP_ADMIN_TELEGRAM_ID = 900_000_001;
+
 // Валидный тестовый конфиг окружения (env.validation.ts) — процесс без
 // реального .env. process.env трогаем напрямую только здесь и в самом
 // env.validation.ts/encryption.ts, как и разрешает CLAUDE.md.
@@ -23,6 +30,8 @@ function setTestEnv(mongoUri: string): void {
   process.env.ENCRYPTION_KEY = randomBytes(32).toString('hex');
   process.env.JWT_SECRET = randomBytes(32).toString('hex');
   process.env.PUBLIC_URL = 'http://localhost:3000';
+  process.env.BOT_TOKEN = TEST_BOT_TOKEN;
+  process.env.BOOTSTRAP_ADMIN_TELEGRAM_ID = String(TEST_BOOTSTRAP_ADMIN_TELEGRAM_ID);
   // Логи запросов не нужны в выводе тестов — при падении смотрят ответ, не лог.
   process.env.LOG_LEVEL = 'silent';
 }
