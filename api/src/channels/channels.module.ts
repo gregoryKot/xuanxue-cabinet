@@ -16,6 +16,7 @@ import { ChannelsService } from './channels.service';
 import { ManualAdapter } from './manual.adapter';
 import { TELEGRAM_CLIENT_FACTORY, createTelegramClient } from './telegram-client';
 import { TelegramAdapter } from './telegram.adapter';
+import { VkAdapter } from './vk.adapter';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TelegramAdapter } from './telegram.adapter';
     ChannelConfigService,
     ChannelAdapterRegistry,
     TelegramAdapter,
+    VkAdapter,
     ManualAdapter,
     { provide: TELEGRAM_CLIENT_FACTORY, useValue: createTelegramClient },
     {

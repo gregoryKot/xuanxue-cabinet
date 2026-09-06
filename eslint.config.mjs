@@ -60,6 +60,9 @@ export default tseslint.config(
       '**/coverage/**',
       '**/*.d.ts',
       '**/*.config.{ts,js,mjs,cjs}',
+      // Worktree агентов Claude Code (.claude/ в .gitignore) — иначе eslint
+      // линтит вторую копию репозитория и падает на её файлах.
+      '.claude/**',
     ],
   },
   js.configs.recommended,
