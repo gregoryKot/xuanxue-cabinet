@@ -45,4 +45,13 @@ describe('DeliveriesController', () => {
     // deliveries.service.spec.ts.
     expect(markSent).toHaveBeenCalledWith('d1', expect.any(DateTime));
   });
+
+  it('list() передаёт query в сервис', async () => {
+    const list = jest.fn().mockResolvedValue([DELIVERY_DTO]);
+    const controller = await buildController({ list });
+    const query = { status: 'failed' as const };
+
+    await expect(controller.list(query)).resolves.toEqual([DELIVERY_DTO]);
+    expect(list).toHaveBeenCalledWith(query);
+  });
 });

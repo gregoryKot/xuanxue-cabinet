@@ -205,4 +205,54 @@ describe('DeliveryRunnerService.run — сбои до адаптера и cancel
     const broadcast = await ctx.broadcastModel.findById(broadcastId).lean();
     expect(broadcast?.status).toBe('sent');
   });
+
+  it('refreshBroadcastStatus не переигрывает уже cancelled рассылку — sent-доставки её не поднимают', async () => {
+    const broadcastId = new mongoose.Types.ObjectId();
+    // Учитель отменил рассылку (POST /broadcasts/:id/cancel), но одна
+    // доставка была уже 'sending' в момент отмены и всё равно ушла —
+    // refreshBroadcastStatus после её исхода не должен вернуть 'sent'.
+    await ctx.deliveryModel.create({
+      broadcastId,
+      channelId: new mongoose.Types.ObjectId(),
+      status: 'sent',
+    });
+    await ctx.broadcastModel.create({
+      _id: broadcastId,
+      kind: 'lesson_link',
+      channelIds: [],
+      scheduledAt: NOW.toJSDate(),
+      text: 'x',
+      status: 'cancelled',
+    });
+
+    await refreshBroadcastStatus(ctx.deliveryModel, ctx.broadcastModel, broadcastId, NOW);
+
+    const broadcast = await ctx.broadcastModel.findById(broadcastId).lean();
+    expect(broadcast?.status).toBe('cancelled');
+  });
+
+  it('рассылку отменили ровно между захватом доставки и preflight — доставка cancelled, адаптер не зовётся, broadcast остаётся cancelled', async () => {
+    const send = jest.fn<Promise<SendResult>, unknown[]>();
+    const notifier = fakeNotifier();
+    const runner = buildRunner(ctx, { type: 'telegram', send }, notifier);
+    const { broadcastId } = await seedDelivery(ctx);
+    // Раннер уже забрал доставку на прошлой миллисекунде (claimDelivery), а
+    // POST /broadcasts/:id/cancel случился прямо перед тем, как run() дошёл
+    // до preflight этой же доставки — status: 'cancelled' уже в базе.
+    await ctx.broadcastModel.updateOne(
+      { _id: broadcastId },
+      { $set: { status: 'cancelled' } },
+    );
+
+    const result = await runner.run(NOW);
+
+    expect(result).toEqual({ sent: 0, failed: 0 });
+    expect(send).not.toHaveBeenCalled();
+    expect(notifier.calls).toHaveLength(0);
+    const delivery = await ctx.deliveryModel.findOne({}).lean();
+    expect(delivery?.status).toBe('cancelled');
+    expect(delivery?.lockedAt).toBeUndefined();
+    const broadcast = await ctx.broadcastModel.findById(broadcastId).lean();
+    expect(broadcast?.status).toBe('cancelled');
+  });
 });

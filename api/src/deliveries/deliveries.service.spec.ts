@@ -2,6 +2,7 @@
 // ручного канала, mark-sent меняет статус и пересчитывает broadcast.
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
+import type { DeliveryStatus } from '@xuanxue/shared';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { encrypt, encryptRecord } from '../utils/encryption';
 import {
@@ -51,7 +52,7 @@ describe('DeliveriesService', () => {
 
   async function seed(
     channelType: 'manual' | 'telegram',
-    deliveryStatus: 'manual' | 'pending' | 'sent',
+    deliveryStatus: DeliveryStatus,
   ) {
     const channel = await channelModel.create({
       type: channelType,
@@ -164,5 +165,49 @@ describe('DeliveriesService', () => {
     expect(dto.error).toBe('Чат не найден');
     const raw = await deliveryModel.findById(delivery._id).lean();
     expect(raw?.error).not.toBe('Чат не найден');
+  });
+
+  describe('list — экран «проблемы»', () => {
+    it('без status — все доставки, свежие сверху', async () => {
+      const first = await seed('manual', 'sent');
+      const second = await seed('telegram', 'failed');
+      // createdAt различаются явно — порядок не должен зависеть от
+      // случайного зазора между двумя create() в одном тике (CLAUDE.md
+      // «Детерминизм»).
+      await deliveryModel.updateOne(
+        { _id: first.delivery._id },
+        { $set: { createdAt: NOW.minus({ minutes: 1 }).toJSDate() } },
+      );
+      await deliveryModel.updateOne(
+        { _id: second.delivery._id },
+        { $set: { createdAt: NOW.toJSDate() } },
+      );
+
+      const found = await service.list({});
+
+      expect(found.map((d) => d.id)).toEqual([
+        second.delivery._id.toString(),
+        first.delivery._id.toString(),
+      ]);
+    });
+
+    it('status сужает список', async () => {
+      await seed('manual', 'sent');
+      const failed = await seed('telegram', 'failed');
+
+      const found = await service.list({ status: 'failed' });
+
+      expect(found).toHaveLength(1);
+      expect(found[0]?.id).toBe(failed.delivery._id.toString());
+    });
+
+    it('limit ограничивает выдачу', async () => {
+      await seed('manual', 'pending');
+      await seed('manual', 'pending');
+
+      const found = await service.list({ limit: 1 });
+
+      expect(found).toHaveLength(1);
+    });
   });
 });

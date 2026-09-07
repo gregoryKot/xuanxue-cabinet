@@ -59,6 +59,15 @@ export class BroadcastRecord {
 
 export const BroadcastSchema = SchemaFactory.createForClass(BroadcastRecord);
 BroadcastSchema.index({ status: 1, scheduledAt: 1 });
+// Сводка (`GET /summary`, docs/PLAN.md §6) считает `broadcastsSent` за
+// период по `sentAt`, не по `scheduledAt` — своя пара индекс/запрос: та же
+// (`status`, время) форма, что и выше, но `sentAt` есть только у `sent`.
+BroadcastSchema.index({ status: 1, sentAt: 1 });
+// Журнал (`GET /broadcasts?from&to&status?&kind?`, docs/PLAN.md §6) сортирует
+// по scheduledAt desc и почти всегда без status/kind в фильтре — индекс выше
+// начинается с status и не помогает сорту без него; отдельный индекс на
+// голый scheduledAt закрывает именно эту форму запроса.
+BroadcastSchema.index({ scheduledAt: -1 });
 // Второй тик планировщика не создаёт вторую ссылку на то же занятие: гонка
 // двух тиков/инстансов упирается в этот индекс (та же идея, что у deliveries,
 // ADR-0004). Частичный — у recording/manual может быть несколько на занятие,

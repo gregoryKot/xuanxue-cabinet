@@ -259,8 +259,27 @@ recordingKey)` (`broadcast.schema.ts`, `recordingKey` — url или `file_id`
    по типу канала, не по статусу доставки: `pending` и `manual` у ручного канала
    оба переходят в `sent` (учитель может отправить раньше тика раннера, текст уже
    виден). `broadcast.status` становится `sent`, только когда `sent` все его
-   доставки: `manual`-доставка не в счёт, пока учитель не нажал кнопку. Экраны,
-   предпросмотр и журнал — следующий PR.
+   доставки: `manual`-доставка не в счёт, пока учитель не нажал кнопку. Журнал
+   (`GET /broadcasts?from&to&status?&kind?&limit`, `api/src/broadcasts/
+broadcast-journal.ts`) — окно обязательно и не шире `JOURNAL_RANGE_MAX_WEEKS`
+   (8 недель), свежие рассылки сверху — свой индекс `{ scheduledAt: -1 }`
+   (`broadcast.schema.ts`): составной `{status, scheduledAt}` не помогает сорту
+   без фильтра по статусу, а в журнале он не обязателен. `GET
+/broadcasts/:id/deliveries` — доставки одной рассылки, `text` так же только у
+   `manual`. `GET /deliveries?status&limit` — последние доставки для экрана
+   «проблемы», без окна дат, тот же приём индекса — `{ createdAt: -1 }`
+   (`delivery.schema.ts`). Отмена (`POST
+/broadcasts/:id/cancel`, `broadcast-journal.queries.ts`) — атомарный переход
+   `scheduled` → `cancelled` (`updateOne` с условием на статус в фильтре, не
+   read-then-write: раннер меняет статус той же рассылки в те же миллисекунды);
+   `pending`- и `manual`-доставки становятся `cancelled` тем же приёмом, что и у
+   раннера при отмене занятия (`cancelPendingDeliveries`, docs/RUNBOOK.md §8.9);
+   раннер, дошедший до `sending`-доставки уже отменённой рассылки, сам видит
+   `broadcast.status === 'cancelled'` на preflight и не зовёт адаптер
+   (`delivery-runner.preflight.ts`); `refreshBroadcastStatus` не поднимает
+   `cancelled` обратно в `sent`/`failed`. Уже отправленную/провалившуюся/
+   отменённую отменять нечего — 409 с текстом под конкретный статус. Экраны и
+   предпросмотр перед отправкой — следующий PR.
 6. **Шаблоны.** Два текста, по умолчанию повторяющие нынешние посты канала слово в
    слово (утренний анонс из §1 сюда не входит — появится после подтверждения Димой,
    вопрос в §10):
@@ -417,25 +436,26 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 
 ### API
 
-| Метод                 | Путь                                             | Кто       |
-| --------------------- | ------------------------------------------------ | --------- |
-| GET                   | `/auth/me`                                       | с сессией |
-| POST                  | `/auth/logout`                                   | с сессией |
-| POST                  | `/auth/email`, `/auth/telegram`, `/auth/google`  | все       |
-| GET/POST/PATCH/DELETE | `/classes` (реализовано)                         | учитель   |
-| POST                  | `/classes/:id/send-now`                          | учитель   |
-| GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)         | учитель   |
-| POST                  | `/lessons/:id/recording` (реализовано)           | учитель   |
-| GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано)  | учитель   |
-| POST/GET              | `/broadcasts`, `/broadcasts/:id` (реализовано)   | учитель   |
-| GET/POST              | `/deliveries/:id`, `:id/mark-sent` (реализовано) | учитель   |
+| Метод                 | Путь                                            | Кто       |
+| --------------------- | ----------------------------------------------- | --------- |
+| GET                   | `/auth/me`                                      | с сессией |
+| POST                  | `/auth/logout`                                  | с сессией |
+| POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все       |
+| GET/POST/PATCH/DELETE | `/classes` (реализовано)                        | учитель   |
+| POST                  | `/classes/:id/send-now`                         | учитель   |
+| GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)        | учитель   |
+| POST                  | `/lessons/:id/recording` (реализовано)          | учитель   |
+| GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано) | учитель   |
+| GET/POST              | `/broadcasts`, `/broadcasts/:id`,               |           |
+|                       | `/broadcasts/:id/deliveries` (реализовано)      | учитель   |
+| POST                  | `/broadcasts/:id/cancel` (реализовано)          | учитель   |
+| GET/POST              | `/deliveries`, `/deliveries/:id`,               |           |
+|                       | `:id/mark-sent` (реализовано)                   | учитель   |
 
 `GET /lessons` принимает `?from&to&classId`: окно дат обязательно и не шире
-горизонта планировщика, `classId` фильтрует список.
-
-Список рассылок и журнал доставок (`GET /broadcasts`, `GET
-/broadcasts/:id/deliveries`) — следующий PR: пока каждую рассылку/доставку
-можно прочитать только по `id`.
+горизонта планировщика, `classId` фильтрует список. `GET /broadcasts` — так же
+`?from&to&status?&kind?&limit`, окно обязательно и не шире 8 недель
+(`JOURNAL_RANGE_MAX_WEEKS`). `GET /deliveries` — `?status?&limit`, без окна дат.
 
 Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0010): без сессии
 401, без ролей (`roles: []`) и `student` — 403, `teacher`/`admin` — 200,

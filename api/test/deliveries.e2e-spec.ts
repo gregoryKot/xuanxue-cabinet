@@ -5,7 +5,12 @@ import { getModelToken } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import { Types, type Model } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, DeliveryDto, UserRole } from '@xuanxue/shared';
+import type {
+  ApiErrorBody,
+  DeliveryDto,
+  DeliveryStatus,
+  UserRole,
+} from '@xuanxue/shared';
 import { BroadcastRecord } from '../src/broadcasts/broadcast.schema';
 import { ChannelRecord } from '../src/channels/channel.schema';
 import { DeliveryRecord } from '../src/deliveries/delivery.schema';
@@ -54,7 +59,7 @@ describe('Deliveries (e2e)', () => {
 
   async function seed(
     channelType: 'manual' | 'telegram',
-    deliveryStatus: 'manual' | 'pending' | 'sent',
+    deliveryStatus: DeliveryStatus,
   ): Promise<{ deliveryId: string; broadcastId: string }> {
     const channel = await channelModel.create({
       type: channelType,
@@ -195,5 +200,37 @@ describe('Deliveries (e2e)', () => {
       .get(`/api/deliveries/${deliveryId}`)
       .set('Cookie', cookie);
     expect(res.status).toBe(200);
+  });
+
+  describe('GET /deliveries — экран «проблемы»', () => {
+    it('без status — все доставки; ученик/гость — 403', async () => {
+      await seed('manual', 'sent');
+      await seed('telegram', 'failed');
+      const cookie = await sessionFor(['teacher']);
+
+      const res = await request(server()).get('/api/deliveries').set('Cookie', cookie);
+      expect(res.status).toBe(200);
+      expect(res.body as DeliveryDto[]).toHaveLength(2);
+
+      const forbidden = await request(server())
+        .get('/api/deliveries')
+        .set('Cookie', await sessionFor(['student']));
+      expect(forbidden.status).toBe(403);
+    });
+
+    it('status сужает список', async () => {
+      await seed('manual', 'sent');
+      const failed = await seed('telegram', 'failed');
+      const cookie = await sessionFor(['teacher']);
+
+      const res = await request(server())
+        .get('/api/deliveries?status=failed')
+        .set('Cookie', cookie);
+
+      expect(res.status).toBe(200);
+      const found = res.body as DeliveryDto[];
+      expect(found).toHaveLength(1);
+      expect(found[0]?.id).toBe(failed.deliveryId);
+    });
   });
 });

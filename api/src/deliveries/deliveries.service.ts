@@ -5,7 +5,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import type { ChannelType, DeliveryDto, DeliveryStatus } from '@xuanxue/shared';
+import {
+  LIST_LIMIT_DEFAULT,
+  type ChannelType,
+  type DeliveryDto,
+  type DeliveryStatus,
+  type ListDeliveriesQuery,
+} from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { assertObjectId } from '../common/object-id';
@@ -48,6 +54,21 @@ export class DeliveriesService {
     if (!doc) throw new NotFoundError(DELIVERY_NOT_FOUND);
     const text = await this.manualText(doc);
     return toDeliveryDto(decryptRecord(doc, ENCRYPT_SCHEMA), text);
+  }
+
+  /** Экран «проблемы» (docs/PLAN.md §6): последние доставки, свежие сверху,
+   * без текста — учитель открывает конкретную по `GET /:id`, когда нужен
+   * (текст только у ручного канала, лишний запрос к broadcast здесь на
+   * каждую доставку списка того не стоит). */
+  async list(query: ListDeliveriesQuery): Promise<DeliveryDto[]> {
+    const filter: Record<string, unknown> = {};
+    if (query.status !== undefined) filter.status = query.status;
+    const docs = await this.model
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .limit(query.limit ?? LIST_LIMIT_DEFAULT)
+      .lean<LeanDelivery[]>();
+    return docs.map((doc) => toDeliveryDto(decryptRecord(doc, ENCRYPT_SCHEMA)));
   }
 
   /** Решение по ТИПУ канала доставки, не по её текущему статусу: у ручного

@@ -1,10 +1,9 @@
 // Проверки перед вызовом адаптера — вынесено из delivery-runner.service.ts
-// (файл-лимит 150 строк, CLAUDE.md «Храповики»): канал удалён/неактивен,
-// рассылка не найдена, занятие отменено/удалено, текст не расшифровался.
+// (файл-лимит 150 строк): канал удалён/неактивен, рассылка не найдена или
+// отменена учителем, занятие отменено/удалено, текст не расшифровался.
 // Каждый стоп-путь сам применяет исход к БД — сервису остаётся только выйти
-// с готовым результатом тика. `failNoRetry` — тоже здесь: она обслуживает
-// именно эти сбои (канал удалён, рассылка не найдена, текст не
-// расшифровался), других вызывающих у неё нет.
+// с готовым результатом тика. `failNoRetry` — тоже здесь, других вызывающих
+// у неё нет.
 import type { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
@@ -21,6 +20,7 @@ import {
   type ClaimedDelivery,
 } from './delivery-runner.queries';
 import {
+  applyCancelledOutcome,
   refreshBroadcastStatus,
   stopForCancelledLesson,
   stopForInactiveChannel,
@@ -47,8 +47,7 @@ export type PreflightResult =
   | { ok: false; result: 'failed' | 'other' };
 
 /** Всё, что может остановить доставку до вызова адаптера. `ok: false` —
- * исход уже записан в БД (включая пересчёт статуса broadcast), сервису
- * остаётся вернуть `result` из своего `deliverOne`. */
+ * исход уже записан в БД, сервису остаётся вернуть `result`. */
 export async function runPreflight(
   deps: PreflightDeps,
   delivery: ClaimedDelivery,
@@ -58,8 +57,7 @@ export async function runPreflight(
   try {
     channel = await deps.channelConfig.readConfig(delivery.channelId.toString());
   } catch (err) {
-    // Канал удалили между планированием и отправкой — досылать некому,
-    // повтор не поможет (RUNBOOK §8.1).
+    // Канал удалили между планированием и отправкой — повтор не поможет (RUNBOOK §8.1).
     const result = await failNoRetry(
       deps,
       delivery,
@@ -74,6 +72,12 @@ export async function runPreflight(
   if (!broadcast) {
     const result = await failNoRetry(deps, delivery, now, 'Рассылка не найдена.');
     return { ok: false, result };
+  }
+
+  // Учитель нажал «Отменить» между claimDelivery и этой проверкой — доставка тоже cancelled.
+  if (broadcast.status === 'cancelled') {
+    await applyCancelledOutcome(deps.deliveryModel, delivery._id);
+    return { ok: false, result: 'other' };
   }
 
   if (broadcast.lessonId) {
@@ -115,11 +119,9 @@ export async function runPreflight(
   return { ok: true, channel, text, telegramFileId: broadcast.telegramFileId };
 }
 
-/** Сбой до/вне адаптера — сразу `failed` без повтора: адаптер тут ни при
- * чём, следующая попытка упадёт на том же месте, а зависшая в 'sending'
- * доставка страшнее лишней записи в журнал. `detail` — для лога (может
- * содержать текст исключения), в error доставки не идёт: там — короткая
- * формулировка для учителя/RUNBOOK. */
+/** Сбой до/вне адаптера — сразу `failed` без повтора: следующая попытка
+ * упадёт на том же месте, а зависшая в 'sending' доставка страшнее лишней
+ * записи в журнал. `detail` — только в лог, не в error доставки. */
 async function failNoRetry(
   deps: PreflightDeps,
   delivery: ClaimedDelivery,
