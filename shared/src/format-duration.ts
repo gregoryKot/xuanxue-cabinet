@@ -1,33 +1,8 @@
 // «{длительность}» в шаблонах постов (docs/PLAN.md §6): 30 → «30 минут»,
-// 90 → «1,5 часа». Склонение — через встроенный Intl.PluralRules('ru'), а не
-// самодельное правило по остатку от 10: такое правило ошибается на 111–114 и
-// 211–214 («111 минута» вместо «111 минут») и не покрывает дробные часы
-// (CLAUDE.md, раздел «Зависимости»: предпочитаем встроенное библиотеке).
-
-const RU_PLURAL_RULES = new Intl.PluralRules('ru');
-
-interface PluralForms {
-  readonly one: string;
-  readonly few: string;
-  readonly many: string;
-  readonly other: string;
-}
-
-function pluralForm(n: number, forms: PluralForms): string {
-  const category = RU_PLURAL_RULES.select(n);
-  switch (category) {
-    case 'one':
-      return forms.one;
-    case 'few':
-      return forms.few;
-    case 'many':
-      return forms.many;
-    case 'zero':
-    case 'two':
-    case 'other':
-      return forms.other;
-  }
-}
+// 90 → «1,5 часа». Склонение — pluralRu (plural-ru.ts), общий примитив на
+// Intl.PluralRules('ru'), не самодельное правило по остатку от 10: такое
+// правило ошибается на 111–114 и 211–214 и не покрывает дробные часы.
+import { pluralRu, type PluralForms } from './plural-ru';
 
 const MINUTE_FORMS: PluralForms = {
   one: 'минута',
@@ -48,8 +23,8 @@ const HOUR_FORMS: PluralForms = { one: 'час', few: 'часа', many: 'час�
 export function formatDurationRu(minutes: number): string {
   if (!Number.isInteger(minutes) || minutes <= 0) return '';
   const isWholeHours = minutes % 30 === 0 && minutes >= 60;
-  if (!isWholeHours) return `${minutes} ${pluralForm(minutes, MINUTE_FORMS)}`;
+  if (!isWholeHours) return `${minutes} ${pluralRu(minutes, MINUTE_FORMS)}`;
   const hours = minutes / 60;
   const hoursText = String(hours).replace('.', ',');
-  return `${hoursText} ${pluralForm(hours, HOUR_FORMS)}`;
+  return `${hoursText} ${pluralRu(hours, HOUR_FORMS)}`;
 }
