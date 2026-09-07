@@ -21,8 +21,29 @@ export type BroadcastKind = (typeof BROADCAST_KINDS)[number];
 export const BROADCAST_STATUSES = ['scheduled', 'sent', 'failed', 'cancelled'] as const;
 export type BroadcastStatus = (typeof BROADCAST_STATUSES)[number];
 
-export const DELIVERY_STATUSES = ['pending', 'sent', 'failed', 'manual'] as const;
+// 'sending' — доставка захвачена раннером (findOneAndUpdate из pending),
+// второй тик/инстанс не берёт её же (ADR-0004). Захват старше
+// DELIVERY_STALE_LOCK_MIN минут считается брошенным (инстанс упал
+// посреди отправки) и снова доступен для захвата. 'cancelled' — канал
+// выключили или занятие отменили/удалили между планированием и отправкой:
+// слать уже некому и незачем, это не сбой (docs/PLAN.md §6).
+export const DELIVERY_STATUSES = [
+  'pending',
+  'sending',
+  'sent',
+  'failed',
+  'manual',
+  'cancelled',
+] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+/** Повтор доставки после ошибки — через 2, потом 10 минут (docs/PLAN.md §6
+ * «Доставка»); после второй неудачи — уведомление учителю, не третья попытка. */
+export const DELIVERY_RETRY_DELAYS_MIN = [2, 10] as const;
+
+/** Захват `sending` старше этого — брошен (упавший инстанс), раннер второго
+ * тика подбирает доставку заново, а не ждёт её вечно. */
+export const DELIVERY_STALE_LOCK_MIN = 10;
 
 /** Правило расписания в поясе класса (ADR-0003) — разворачивается в UTC. */
 export interface ScheduleRule {

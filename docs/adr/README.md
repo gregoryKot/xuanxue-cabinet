@@ -49,3 +49,4 @@
 | [0011](0011-template-syntax.md)                  | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`         |
 | [0012](0012-session-hmac-jwt-builtin-crypto.md)  | Сессия: HMAC-JWT и cookie на встроенном crypto, rolling 90/7 дней     |
 | [0013](0013-model-module-breaks-domain-cycle.md) | Отдельный модуль модели разрывает цикл Nest-модулей Classes ↔ Lessons |
+| [0014](0014-delivery-lease-at-least-once.md)     | Доставка — at-least-once через лизинг захвата, не exactly-once        |

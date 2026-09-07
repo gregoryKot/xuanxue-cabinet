@@ -23,9 +23,18 @@ export class DeliveryRecord {
   @Prop({ type: Date, required: false })
   nextAttemptAt?: Date;
 
+  // Захват DeliveryRunnerService (findOneAndUpdate pending → sending):
+  // второй инстанс отличает «взято сейчас» от «взято и брошено» по этому
+  // времени, не по флагу в памяти (ADR-0004).
+  @Prop({ type: Date, required: false })
+  lockedAt?: Date;
+
   // Текст ошибки провайдера может содержать фрагменты запроса с токеном —
-  // scrub секретов канала делает адаптер канала до записи и до лога
-  // (SECURITY §6), здесь запись в базу уже под шифрованием.
+  // scrub секретов канала делает DeliveryRunnerService.deliverOne до записи и
+  // до лога (SECURITY §6); само поле дополнительно шифруется по
+  // DELIVERY_FIELD_POLICY (error: enc) — обе меры нужны обе: scrub чистит
+  // текст, который иначе попал бы в лог как есть, шифрование прячет то, что
+  // осталось, от прямого чтения коллекции.
   @Prop({ type: String, required: false })
   error?: string;
 

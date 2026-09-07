@@ -32,8 +32,13 @@ export class ChannelConfigService {
 
   /** Расшифрованный config для отправки — не DTO, HTTP им не пользуется
    * (ответ идёт только через toChannelDto). Тем же способом его читает
-   * ChannelsService.test() и будущий сервис доставок. */
-  async readConfig(id: string): Promise<{ type: ChannelType; config: ChannelConfig }> {
+   * ChannelsService.test() и DeliveryRunnerService. `active` — чтобы раннер
+   * узнал о выключенном канале в момент отправки, а не только на создании
+   * доставок: выключили между планированием и тиком — доставка cancelled,
+   * не failed (docs/PLAN.md §6). */
+  async readConfig(
+    id: string,
+  ): Promise<{ type: ChannelType; config: ChannelConfig; active: boolean }> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<LeanChannelWithConfig>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
@@ -41,7 +46,11 @@ export class ChannelConfigService {
     // decryptRecord — общая функция на все схемы (не параметризована по
     // конкретному полю): тип config после расшифровки остаётся `string`, как
     // в схеме, хотя на деле это уже разобранный JSON-объект — приводим явно.
-    return { type: decrypted.type, config: decrypted.config as unknown as ChannelConfig };
+    return {
+      type: decrypted.type,
+      config: decrypted.config as unknown as ChannelConfig,
+      active: decrypted.active,
+    };
   }
 
   /** Найти существующий Telegram-канал по chatId или создать новый —

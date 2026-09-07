@@ -3,14 +3,44 @@
 // LessonsModule зависит от ClassesModule ради модели класса. Планировщику
 // нужны обе модели — SchedulerModule импортирует оба домена напрямую; ни
 // ClassesModule, ни LessonsModule про SchedulerModule не знают — цикла нет.
+// BroadcastPlannerService и DeliveryRunnerService живут физически в своих
+// доменах (broadcasts/, deliveries/), но провайдер — здесь: тот же приём,
+// что уже был с LessonPlannerService (ADR-0013 «Отдельный модуль модели
+// разрывает цикл»). BroadcastsModule/DeliveriesModule/ChannelsModule/
+// SettingsModule — модельные модули (только forFeature), сама логика тика
+// собирается на этом уровне.
 import { Module } from '@nestjs/common';
+import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
+import { BroadcastsModule } from '../broadcasts/broadcasts.module';
+import { ChannelsModule } from '../channels/channels.module';
 import { ClassesModule } from '../classes/classes.module';
+import { LogTeacherNotifier, TEACHER_NOTIFIER } from '../deliveries/teacher-notifier';
+import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
+import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonsModule } from '../lessons/lessons.module';
+import { SettingsModule } from '../settings/settings.module';
+import { UsersModule } from '../users/users.module';
 import { SchedulerService } from './scheduler.service';
 
 @Module({
-  imports: [ClassesModule, LessonsModule],
-  providers: [LessonPlannerService, SchedulerService],
+  imports: [
+    ClassesModule,
+    LessonsModule,
+    ChannelsModule,
+    BroadcastsModule,
+    DeliveriesModule,
+    SettingsModule,
+    // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
+    // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
+    UsersModule,
+  ],
+  providers: [
+    LessonPlannerService,
+    BroadcastPlannerService,
+    DeliveryRunnerService,
+    { provide: TEACHER_NOTIFIER, useClass: LogTeacherNotifier },
+    SchedulerService,
+  ],
 })
 export class SchedulerModule {}

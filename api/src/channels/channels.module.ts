@@ -41,6 +41,13 @@ import { VkAdapter } from './vk.adapter';
       inject: [TelegramAdapter, ManualAdapter],
     },
   ],
-  exports: [MongooseModule, ChannelsService, ChannelConfigService],
+  // ChannelAdapterRegistry — тоже наружу: DeliveryRunnerService (G1,
+  // api/src/deliveries/) шлёт через тот же реестр адаптеров, не заводит свой.
+  exports: [
+    MongooseModule,
+    ChannelsService,
+    ChannelConfigService,
+    ChannelAdapterRegistry,
+  ],
 })
 export class ChannelsModule {}
