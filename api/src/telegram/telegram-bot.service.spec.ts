@@ -2,15 +2,22 @@
 // документации Telegram) — реальная маршрутизация Telegraf, хендлеры
 // подменены jest.fn() (их собственная логика — в спеках хендлеров рядом с
 // кодом, с настоящей Mongo). Сеть не трогаем: test-support/telegraf-factory.ts.
+import { DateTime } from 'luxon';
 import type { Update } from 'telegraf/types';
+import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
+import type { MessageHandler } from './handlers/message.handler';
 import type { StartHandler } from './handlers/start.handler';
 import {
+  CALLBACK_UPDATE,
   CHAT_MEMBER_UPDATE,
   START_UPDATE,
+  TEXT_MESSAGE_UPDATE,
   TOKEN,
   fakeConfig,
+  fakeExtraHandlers,
   fakeHandler,
+  fakeHandlerWithNow,
 } from './test-support/bot-service.fixtures';
 import { createFakeTelegrafFactory } from './test-support/telegraf-factory';
 import { createTelegraf } from './telegraf-instance';
@@ -25,6 +32,7 @@ describe('TelegramBotService — маршрутизация', () => {
       createTelegraf,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -42,6 +50,7 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
 
@@ -62,6 +71,7 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
 
@@ -80,6 +90,7 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
     // Встроенный обработчик telegraf печатал бы апдейт в console.error и
@@ -104,11 +115,113 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
 
     await expect(
       service.handleUpdate(body as unknown as Update),
     ).resolves.toBeUndefined();
+  });
+
+  it('callback_query роутится в CallbackQueryHandler со свежим DateTime.utc()', async () => {
+    const callbackQuery = fakeHandlerWithNow();
+    const message = fakeHandlerWithNow();
+    const { factory } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      callbackQuery as unknown as CallbackQueryHandler,
+      message as unknown as MessageHandler,
+    );
+    service.onApplicationBootstrap();
+
+    await service.handleUpdate(CALLBACK_UPDATE);
+
+    expect(callbackQuery.handle).toHaveBeenCalledTimes(1);
+    expect(message.handle).not.toHaveBeenCalled();
+    const [ctx, now] = callbackQuery.handle.mock.calls[0] ?? [];
+    expect(ctx?.callbackQuery).toMatchObject({ data: 'cancel:000000000000000000000000' });
+    expect(now).toBeInstanceOf(DateTime);
+  });
+
+  it('текстовое сообщение роутится в MessageHandler со свежим DateTime.utc()', async () => {
+    const callbackQuery = fakeHandlerWithNow();
+    const message = fakeHandlerWithNow();
+    const { factory } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      callbackQuery as unknown as CallbackQueryHandler,
+      message as unknown as MessageHandler,
+    );
+    service.onApplicationBootstrap();
+
+    await service.handleUpdate(TEXT_MESSAGE_UPDATE);
+
+    expect(message.handle).toHaveBeenCalledTimes(1);
+    expect(callbackQuery.handle).not.toHaveBeenCalled();
+    const [ctx, now] = message.handle.mock.calls[0] ?? [];
+    expect(ctx?.message).toMatchObject({ text: 'новая тема занятия' });
+    expect(now).toBeInstanceOf(DateTime);
+  });
+});
+
+describe('TelegramBotService.sendMessage — проактивная отправка', () => {
+  it('без бота (BOT_TOKEN не задан) — молча ничего не делает', async () => {
+    const service = new TelegramBotService(
+      fakeConfig({}),
+      createTelegraf,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await expect(service.sendMessage('111', 'Привет')).resolves.toBeUndefined();
+  });
+
+  it('с ботом — уходит через callApi("sendMessage")', async () => {
+    const { factory, sendMessageCalls } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await service.sendMessage('111', 'Привет', [
+      [{ text: 'Отменить', callback_data: 'cancel:1' }],
+    ]);
+
+    expect(sendMessageCalls).toEqual([
+      {
+        chatId: '111',
+        text: 'Привет',
+        replyMarkup: {
+          inline_keyboard: [[{ text: 'Отменить', callback_data: 'cancel:1' }]],
+        },
+      },
+    ]);
+  });
+
+  it('сбой сети — не бросает, только warn в лог', async () => {
+    const { factory } = createFakeTelegrafFactory({ failSendMessage: true });
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await expect(service.sendMessage('111', 'Привет')).resolves.toBeUndefined();
   });
 });

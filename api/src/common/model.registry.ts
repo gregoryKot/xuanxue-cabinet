@@ -31,6 +31,11 @@ import {
   SettingsSchema,
   SETTINGS_FIELD_POLICY,
 } from '../settings/settings.schema';
+import {
+  BotSessionRecord,
+  BotSessionSchema,
+  BOT_SESSION_FIELD_POLICY,
+} from '../telegram/bot-session.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -62,5 +67,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: SettingsRecord.name,
     schema: SettingsSchema,
     fieldPolicy: SETTINGS_FIELD_POLICY,
+  },
+  {
+    name: BotSessionRecord.name,
+    schema: BotSessionSchema,
+    fieldPolicy: BOT_SESSION_FIELD_POLICY,
   },
 ];

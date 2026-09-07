@@ -1,8 +1,11 @@
-// Уведомление учителю про исчерпанный повтор доставки (docs/PLAN.md §6,
-// CLAUDE.md «Логи»: «сбой доставки после повторов → уведомление учителю в
-// Telegram»). Интерфейс отделяет DeliveryRunnerService от способа доставки —
-// бот появится отдельным PR и подменит только реализацию, не раннер.
-import { Injectable, Logger } from '@nestjs/common';
+// Уведомление учителю про исчерпанный повтор доставки и про сбой шага
+// планировщика (docs/PLAN.md §6, CLAUDE.md «Логи»: «сбой доставки после
+// повторов → уведомление учителю в Telegram; ошибки планировщика → DM
+// админу»). Интерфейс отделяет DeliveryRunnerService/SchedulerService от
+// способа доставки — реализация (TelegramTeacherNotifier, api/src/telegram/)
+// шлёт сообщение в личный чат учителя/админа, лог остаётся её собственным
+// fallback-путём, если писать некому (нет ни одного чата в TeacherChats).
+import type { DateTime } from 'luxon';
 
 export interface FailedDeliveryContext {
   deliveryId: string;
@@ -13,27 +16,13 @@ export interface FailedDeliveryContext {
 }
 
 export interface TeacherNotifier {
-  notifyDeliveryFailed(context: FailedDeliveryContext): Promise<void>;
+  /** `now` — параметром (CLAUDE.md «Время»): вызывающий код (раннер) уже
+   * держит момент тика, реализация не имеет права звать DateTime.utc() сама. */
+  notifyDeliveryFailed(context: FailedDeliveryContext, now: DateTime): Promise<void>;
+
+  /** Сбой шага тика планировщика (SchedulerService.step) — `step` — русское
+   * имя шага из лога ('занятия'/'рассылки'/'доставки'/'предпросмотр'/…). */
+  notifySchedulerFailed(step: string, error: string, now: DateTime): Promise<void>;
 }
 
 export const TEACHER_NOTIFIER = Symbol('TEACHER_NOTIFIER');
-
-/**
- * Заглушка до бота: у DeliveryRunnerService уже есть единственная страховка
- * от тихого отказа — этот error-лог (RUNBOOK §8.1, `requestId` здесь не при
- * чём — тик планировщика, не HTTP-запрос). Настоящая доставка DM учителю —
- * TelegramTeacherNotifier, придёт вместе с ботом и подменит провайдер по
- * токену TEACHER_NOTIFIER, раннер не меняется.
- */
-@Injectable()
-export class LogTeacherNotifier implements TeacherNotifier {
-  private readonly logger = new Logger(LogTeacherNotifier.name);
-
-  notifyDeliveryFailed(context: FailedDeliveryContext): Promise<void> {
-    this.logger.error(
-      `доставка ${context.deliveryId} (рассылка ${context.broadcastId}, канал ` +
-        `${context.channelId}) не отправлена после повторов: ${context.error}`,
-    );
-    return Promise.resolve();
-  }
-}

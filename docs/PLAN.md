@@ -123,19 +123,20 @@ xuanxue-cabinet/
 Коллекции MongoDB. Свободный текст и секреты каналов шифруются AES-256-GCM ключом
 из `ENCRYPTION_KEY`, как в текущем проекте.
 
-| Коллекция                   | Поля                                                                                                                                                                                          | Комментарий                                                                                                                                                                                       |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`                     | name, email, telegramId, googleId, roles[], tz, status, lastLoginAt, createdAt                                                                                                                | status: invited / active / blocked                                                                                                                                                                |
-| `classes`                   | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                                 |
-| `lessons`                   | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания. Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые      |
-| `channels`                  | type, title, config (зашифровано), target, createdBy, active                                                                                                                                  | type: telegram / vk / manual / webpush. Данные школы (ADR-0010). `target` — chatId/peerId без секрета, уникален в паре с type                                                                     |
-| `broadcasts`                | kind, text, scheduledAt, channelIds[], lessonId?, recordingKey?, status, createdBy?, telegramFileId?, sentAt?, previewSentAt?                                                                 | kind: lesson_link / recording / manual. Уникальные частичные индексы: (lessonId, kind) для lesson_link, (lessonId, recordingKey) для recording — повтор обновляет существующий документ, не новый |
-| `deliveries`                | broadcastId, channelId, status, attempts, nextAttemptAt, error, sentAt, externalId                                                                                                            | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки                                                                                                                 |
-| `push_subscriptions`        | userId, endpoint (зашифрован), keys (зашифрованы), device, lastSeenAt, prefs{lessonLink, recording, payment}                                                                                  | Одна запись на устройство. 404/410 от push-сервиса удаляет запись. В `USER_OWNED_COLLECTIONS`                                                                                                     |
-| `payments`                  | userId, month, amount, currency, status, screenshotUrl, confirmedBy                                                                                                                           | Этап 2. Абонемент на месяц, валюта ILS                                                                                                                                                            |
-| `materials`                 | title, url, kind, classIds[], access                                                                                                                                                          | Этап 3                                                                                                                                                                                            |
-| `exams`, `exam_submissions` | см. этап 4                                                                                                                                                                                    | Этап 4                                                                                                                                                                                            |
-| `settings`                  | один документ школы: templates{lesson_link, recording}, tz                                                                                                                                    | Ключи `templates` = `BroadcastKind` (shared/src/domain.ts), кроме `manual`. Учитель меняет тексты с экрана «Шаблоны» (§6 п.6), не разработчик. Утренний анонс не входит — не подтверждён (§10)    |
+| Коллекция                   | Поля                                                                                                                                                                                          | Комментарий                                                                                                                                                                                                                                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`                     | name, email, telegramId, googleId, roles[], tz, status, lastLoginAt, createdAt                                                                                                                | status: invited / active / blocked                                                                                                                                                                                                                                                       |
+| `classes`                   | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                                                                                                                        |
+| `lessons`                   | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания. Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые                                                                                             |
+| `channels`                  | type, title, config (зашифровано), target, createdBy, active                                                                                                                                  | type: telegram / vk / manual / webpush. Данные школы (ADR-0010). `target` — chatId/peerId без секрета, уникален в паре с type                                                                                                                                                            |
+| `broadcasts`                | kind, text, scheduledAt, channelIds[], lessonId?, recordingKey?, status, createdBy?, telegramFileId?, sentAt?, previewSentAt?                                                                 | kind: lesson_link / recording / manual. Уникальные частичные индексы: (lessonId, kind) для lesson_link, (lessonId, recordingKey) для recording — повтор обновляет существующий документ, не новый                                                                                        |
+| `deliveries`                | broadcastId, channelId, status, attempts, nextAttemptAt, error, sentAt, externalId                                                                                                            | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки                                                                                                                                                                                                        |
+| `bot_sessions`              | chatId, kind, lessonId, expiresAt                                                                                                                                                             | Ожидание бота в личном чате учителя («Изменить тему», следующий PR — «Запись?»). Уникальный индекс chatId — один документ на чат, новое ожидание вытесняет старое; TTL по expiresAt (10 минут). Ключ — chatId Telegram, персональных данных нет: без userId, не в USER_OWNED_COLLECTIONS |
+| `push_subscriptions`        | userId, endpoint (зашифрован), keys (зашифрованы), device, lastSeenAt, prefs{lessonLink, recording, payment}                                                                                  | Одна запись на устройство. 404/410 от push-сервиса удаляет запись. В `USER_OWNED_COLLECTIONS`                                                                                                                                                                                            |
+| `payments`                  | userId, month, amount, currency, status, screenshotUrl, confirmedBy                                                                                                                           | Этап 2. Абонемент на месяц, валюта ILS                                                                                                                                                                                                                                                   |
+| `materials`                 | title, url, kind, classIds[], access                                                                                                                                                          | Этап 3                                                                                                                                                                                                                                                                                   |
+| `exams`, `exam_submissions` | см. этап 4                                                                                                                                                                                    | Этап 4                                                                                                                                                                                                                                                                                   |
+| `settings`                  | один документ школы: templates{lesson_link, recording}, tz                                                                                                                                    | Ключи `templates` = `BroadcastKind` (shared/src/domain.ts), кроме `manual`. Учитель меняет тексты с экрана «Шаблоны» (§6 п.6), не разработчик. Утренний анонс не входит — не подтверждён (§10)                                                                                           |
 
 Реестр «таблиц с userId» для удаления аккаунта и тест-сверка со схемами — переносится
 из текущего проекта в виде правила и теста.
@@ -378,13 +379,32 @@ Telegraf-инстанс, регистрация вебхука при старт
 
 Дальше бот:
 
-- за 5 минут до автоматической рассылки присылает предпросмотр с кнопками «Отменить»
-  и «Изменить тему»;
+- за `PREVIEW_MINUTES` (5) минут до автоматической рассылки присылает предпросмотр с
+  кнопками «Отменить» и «Изменить тему». **Реализовано** — `PreviewService`
+  (`api/src/broadcasts/preview.service.ts`), четвёртый шаг тика
+  (`SchedulerService.runTick`): планировщик рассылок (`BroadcastPlannerService`) создаёт
+  `broadcast` заранее — окно `decideBroadcast` расширено на те же `PREVIEW_MINUTES`
+  (`shared/src/domain.ts`), `scheduledAt`/`nextAttemptAt` доставок при этом — момент
+  фактической отправки (`startsAt − leadMinutes`), не момент создания документа, раннер
+  забирает доставки вовремя. `previewSentAt` ставится условным апдейтом ДО отправки
+  (дубли при двух инстансах исключены); каждому чату из `TeacherChats`
+  (`api/src/telegram/teacher-chats.ts` — учителя/админы с активным личным каналом, кто
+  нажал `/start`). Кнопка «Отменить» (`cancel:{broadcastId}`) зовёт
+  `BroadcastsService.cancel`; «Изменить тему» (`topic:{lessonId}`) заводит ожидание в
+  `bot_sessions` (TTL 10 минут) — следующее текстовое сообщение чата сохраняет тему
+  (`LessonsService.update`) и пересобирает текст ещё не отправленной рассылки
+  (`TopicRebuildService`, `api/src/broadcasts/topic-rebuild.service.ts`).
+- сбой шага тика (Mongo недоступна и т. п.) — тем же путём: `TelegramTeacherNotifier`
+  (`api/src/telegram/telegram-teacher-notifier.ts`, провайдер `TEACHER_NOTIFIER` вместо
+  прежней лог-заглушки) шлёт DM учителю, не чаще раза в 10 минут на один и тот же шаг;
+  ни одного подключённого чата — лог `error`, тем же приёмом, что и раньше сбой доставки
+  (`notifyDeliveryFailed`, тот же провайдер, текст — «Не ушла рассылка «{класс}
+  {время}» в канал «{канал}»: {ошибка}»).
 - после занятия спрашивает «Запись?»: ответ ссылкой или видеофайлом запускает рассылку.
   Видео бот публикует в канал по `file_id` без перезаливки, поэтому лимит загрузки
-  в 50 МБ не мешает. Проверить в первые дни этапа;
-- для Facebook присылает готовый текст с кнопкой «Скопировал, отправил»;
-- по команде `/тема` показывает ближайшие занятия и даёт вписать тему.
+  в 50 МБ не мешает. Проверить в первые дни этапа — следующий PR;
+- для Facebook присылает готовый текст с кнопкой «Скопировал, отправил» — следующий PR;
+- по команде `/тема` показывает ближайшие занятия и даёт вписать тему — следующий PR.
 
 ### Планировщик
 
@@ -420,15 +440,21 @@ Telegraf-инстанс, регистрация вебхука при старт
   `broadcast-planner.decide.ts`, запросы на чтение — `broadcast-planner.queries.ts`,
   запись — `broadcast-planner.inserts.ts`, рендер поста — `post-renderer.ts`)
   вызывается из `SchedulerService.tick()` после планировщика занятий. Занятие в
-  окне `(now − DEFAULT_LEAD_MINUTES, now + leadMinutes класса]` и
-  `status === 'scheduled'` — рендер поста по шаблону `settings.templates.lesson_link`
+  окне `(now − DEFAULT_LEAD_MINUTES, now + leadMinutes класса + PREVIEW_MINUTES]` —
+  верхняя граница расширена на `PREVIEW_MINUTES` (5), чтобы `broadcast` появился
+  заранее и бот успел прислать предпросмотр (см. «Telegram-бот для учителя» выше) —
+  и `status === 'scheduled'` — рендер поста по шаблону `settings.templates.lesson_link`
   (`SettingsService.get()`, `api/src/settings/`, документ школы с дефолтами из
   `shared/src/default-templates.ts`; `{ведущий}` — имя `lessons.leaderId ??
 classes.leaderId`, одно чтение `UsersService.findById()` на занятие, только
-  если ведущий назначен) → `insert` `broadcast` (`kind: 'lesson_link'`) +
-  `deliveries pending` на каждый **активный** канал класса (`channels.active`,
+  если ведущий назначен; `{минут}` считается на момент фактической отправки, не
+  момент создания документа, чтобы не отставать от реальности на ширину окна
+  предпросмотра) → `insert` `broadcast` (`kind: 'lesson_link'`, `scheduledAt` —
+  момент фактической отправки, `startsAt − leadMinutes`) + `deliveries pending` с
+  тем же `nextAttemptAt` на каждый **активный** канал класса (`channels.active`,
   проверяется на момент создания заново — класс может ссылаться и на давно
-  выключенный канал); повторный тик падает на партиционном уникальном индексе
+  выключенный канал) — раннер не берёт их раньше своего часа; повторный тик падает
+  на партиционном уникальном индексе
   `(lessonId, kind)` и ничего не создаёт второй раз, но если первый тик успел
   создать только `broadcast` и упал до `deliveries` — второй тик достраивает
   недостающие доставки по тому же `broadcast` (ADR-0004). Класс не найден,
@@ -461,8 +487,9 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
   `nextAttemptAt` через `DELIVERY_RETRY_DELAYS_MIN` (2, потом 10 минут); повторы
   исчерпаны, `retryable: false`, или сбой до/вне адаптера (канал удалён,
   рассылка не найдена, текст не расшифровался) — сразу `failed` без повтора +
-  `TeacherNotifier.notifyDeliveryFailed()` (заглушка `LogTeacherNotifier` —
-  `error` в лог, настоящий DM учителю придёт вместе с ботом). `broadcast.status`
+  `TeacherNotifier.notifyDeliveryFailed()` — `TelegramTeacherNotifier`
+  (`api/src/telegram/telegram-teacher-notifier.ts`) шлёт DM каждому чату из
+  `TeacherChats`, ни одного подключённого — `error` в лог. `broadcast.status`
   пересчитывается по своим доставкам: хоть одна `failed` → `failed`; все `sent`
   (`cancelled`-доставки не мешают, если отменены не все) → `sent`, с `sentAt`;
   отменены все → `cancelled`; иначе остаётся `scheduled` — `manual`-доставка

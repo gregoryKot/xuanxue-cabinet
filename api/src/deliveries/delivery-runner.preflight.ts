@@ -1,9 +1,6 @@
-// Проверки перед вызовом адаптера — вынесено из delivery-runner.service.ts
-// (файл-лимит 150 строк): канал удалён/неактивен, рассылка не найдена или
-// отменена учителем, занятие отменено/удалено, текст не расшифровался.
-// Каждый стоп-путь сам применяет исход к БД — сервису остаётся только выйти
-// с готовым результатом тика. `failNoRetry` — тоже здесь, других вызывающих
-// у неё нет.
+// Проверки перед вызовом адаптера (вынесено из delivery-runner.service.ts):
+// канал удалён/неактивен, рассылка не найдена или отменена, занятие отменено,
+// текст не расшифровался. Каждый стоп-путь сам применяет исход к БД.
 import type { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
@@ -134,12 +131,15 @@ async function failNoRetry(
   );
   const outcome = failNoRetryOutcome(delivery.attempts, error);
   await applyOutcome(deps.deliveryModel, delivery._id, outcome);
-  await deps.notifier.notifyDeliveryFailed({
-    deliveryId: delivery._id.toString(),
-    broadcastId: delivery.broadcastId.toString(),
-    channelId: delivery.channelId.toString(),
-    error,
-  });
+  await deps.notifier.notifyDeliveryFailed(
+    {
+      deliveryId: delivery._id.toString(),
+      broadcastId: delivery.broadcastId.toString(),
+      channelId: delivery.channelId.toString(),
+      error,
+    },
+    now,
+  );
   await refreshBroadcastStatus(
     deps.deliveryModel,
     deps.broadcastModel,

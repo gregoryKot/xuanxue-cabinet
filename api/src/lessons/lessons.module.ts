@@ -5,9 +5,11 @@
 // там же). BroadcastsModule — ради RecordingBroadcastService (addRecording()
 // зовёт её после $push записи, docs/PLAN.md §6 «Записи»): цикла тоже нет —
 // BroadcastsModule берёт LessonRecord из LessonModelModule, не из
-// LessonsModule (тот же приём, ADR-0013). Экспортирует только
-// LessonModelModule — SchedulerModule получает ClassRecord/BroadcastRecord/…
-// из своих собственных прямых импортов, менять их не пришлось.
+// LessonsModule (тот же приём, ADR-0013). LessonModelModule — SchedulerModule
+// получает ClassRecord/BroadcastRecord/… из своих собственных прямых
+// импортов, менять их не пришлось. LessonsService — дополнительно для
+// TelegramModule (update() у /тема и «Изменить тему», addRecording() у
+// «Запись?»).
 import { Module } from '@nestjs/common';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { ClassesModule } from '../classes/classes.module';
@@ -19,6 +21,6 @@ import { LessonsService } from './lessons.service';
   imports: [LessonModelModule, ClassesModule, BroadcastsModule],
   controllers: [LessonsController],
   providers: [LessonsService],
-  exports: [LessonModelModule],
+  exports: [LessonModelModule, LessonsService],
 })
 export class LessonsModule {}

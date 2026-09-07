@@ -14,6 +14,8 @@ import { DeliveryModelModule } from './delivery-model.module';
   imports: [DeliveryModelModule, BroadcastModelModule, ChannelsModule],
   controllers: [DeliveriesController],
   providers: [DeliveriesService],
-  exports: [DeliveryModelModule],
+  // DeliveriesService — дополнительно для TelegramModule (markSent() у
+  // кнопки «Скопировал, отправил», PLAN.md §6).
+  exports: [DeliveryModelModule, DeliveriesService],
 })
 export class DeliveriesModule {}

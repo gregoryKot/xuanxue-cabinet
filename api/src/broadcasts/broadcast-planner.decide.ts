@@ -2,7 +2,7 @@
 // «Тесты»): вынесено из сервиса ради отдельного юнит-теста и размера файла.
 // Правила окна и условий — docs/PLAN.md §6 «Планировщик».
 import { DateTime } from 'luxon';
-import { DEFAULT_LEAD_MINUTES, type ClassFormat } from '@xuanxue/shared';
+import { DEFAULT_LEAD_MINUTES, PREVIEW_MINUTES, type ClassFormat } from '@xuanxue/shared';
 
 export interface DecideClassInput {
   active: boolean;
@@ -30,8 +30,12 @@ export type PlanDecision =
 
 /**
  * Занятие «в окне» — `startsAt` от `now - DEFAULT_LEAD_MINUTES` (не включая)
- * до `now + leadMinutes` класса. Нижняя граница фиксирована: если тик стоял
- * дольше получаса, досылать ссылку в прошлое уже нет смысла.
+ * до `now + leadMinutes + PREVIEW_MINUTES` класса. Нижняя граница
+ * фиксирована: если тик стоял дольше получаса, досылать ссылку в прошлое уже
+ * нет смысла. Верхняя граница расширена на `PREVIEW_MINUTES` — `broadcast`
+ * создаётся с запасом, чтобы бот успел прислать предпросмотр (PLAN.md §6)
+ * до фактической отправки: сам момент отправки хранит `scheduledAt`
+ * (broadcast-planner.send.ts), не факт создания документа.
  */
 export function decideBroadcast(
   lesson: DecideLessonInput,
@@ -40,7 +44,7 @@ export function decideBroadcast(
 ): PlanDecision {
   const leadMinutes = cls?.leadMinutes ?? DEFAULT_LEAD_MINUTES;
   const startsAt = DateTime.fromJSDate(lesson.startsAt, { zone: 'utc' });
-  const windowEnd = now.plus({ minutes: leadMinutes });
+  const windowEnd = now.plus({ minutes: leadMinutes + PREVIEW_MINUTES });
   const windowStart = now.minus({ minutes: DEFAULT_LEAD_MINUTES });
 
   if (startsAt > windowEnd) return { kind: 'not_due' };

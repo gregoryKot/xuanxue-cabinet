@@ -8,6 +8,7 @@ import {
   CHAT_MEMBER_UPDATE,
   TOKEN,
   fakeConfig,
+  fakeExtraHandlers,
   fakeHandler,
   flush,
 } from './test-support/bot-service.fixtures';
@@ -48,6 +49,7 @@ describe('TelegramBotService — прогрев botInfo (ensureBotInfo)', () => 
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -81,6 +83,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -90,8 +93,12 @@ describe('TelegramBotService — регистрация вебхука при с
       {
         url: `https://xuanxue.su${TELEGRAM_WEBHOOK_PATH}`,
         secretToken: 'test-secret',
+        allowedUpdates: ['message', 'my_chat_member', 'callback_query'],
       },
     ]);
+    // Без callback_query бот не увидел бы нажатия кнопок предпросмотра
+    // (PLAN.md §6) — Telegram шлёт только подписанные типы апдейтов.
+    expect(webhookCalls[0]?.allowedUpdates).toContain('callback_query');
   });
 
   it('PUBLIC_URL с завершающим слэшем (защита в глубину — валидатор его и так запрещает) — путь без двойного слэша', async () => {
@@ -101,6 +108,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -121,6 +129,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -145,6 +154,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     // onApplicationBootstrap синхронный и ничего внутри не await'ит — вызов
@@ -166,6 +176,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     expect(() => service.onApplicationBootstrap()).not.toThrow();

@@ -3,23 +3,28 @@
 // LessonsModule зависит от ClassesModule ради модели класса. Планировщику
 // нужны обе модели — SchedulerModule импортирует оба домена напрямую; ни
 // ClassesModule, ни LessonsModule про SchedulerModule не знают — цикла нет.
-// BroadcastPlannerService и DeliveryRunnerService живут физически в своих
-// доменах (broadcasts/, deliveries/), но провайдер — здесь: тот же приём,
-// что уже был с LessonPlannerService (ADR-0013 «Отдельный модуль модели
-// разрывает цикл»). BroadcastsModule/DeliveriesModule/ChannelsModule/
+// BroadcastPlannerService/DeliveryRunnerService/PreviewService живут физически
+// в своих доменах (broadcasts/, deliveries/), но провайдер — здесь: тот же
+// приём, что уже был с LessonPlannerService (ADR-0013 «Отдельный модуль
+// модели разрывает цикл»). BroadcastsModule/DeliveriesModule/ChannelsModule/
 // SettingsModule — модельные модули (только forFeature), сама логика тика
-// собирается на этом уровне.
+// собирается на этом уровне. TelegramModule — TelegramBotService/TeacherChats
+// для проактивной отправки (предпросмотр, уведомления об ошибках); ни
+// TelegramModule, ни его собственные импорты про SchedulerModule не знают.
 import { Module } from '@nestjs/common';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
+import { PreviewService } from '../broadcasts/preview.service';
 import { ChannelsModule } from '../channels/channels.module';
 import { ClassesModule } from '../classes/classes.module';
-import { LogTeacherNotifier, TEACHER_NOTIFIER } from '../deliveries/teacher-notifier';
+import { TEACHER_NOTIFIER } from '../deliveries/teacher-notifier';
 import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonsModule } from '../lessons/lessons.module';
 import { SettingsModule } from '../settings/settings.module';
+import { TelegramModule } from '../telegram/telegram.module';
+import { TelegramTeacherNotifier } from '../telegram/telegram-teacher-notifier';
 import { UsersModule } from '../users/users.module';
 import { SchedulerService } from './scheduler.service';
 
@@ -34,12 +39,17 @@ import { SchedulerService } from './scheduler.service';
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
     // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
     UsersModule,
+    TelegramModule,
   ],
   providers: [
     LessonPlannerService,
     BroadcastPlannerService,
     DeliveryRunnerService,
-    { provide: TEACHER_NOTIFIER, useClass: LogTeacherNotifier },
+    PreviewService,
+    // Только по токену — второй провайдер класса без токена (было раньше)
+    // создавал второй экземпляр TelegramTeacherNotifier с собственным
+    // Map-дедупом notifySchedulerFailed, никем не используемый.
+    { provide: TEACHER_NOTIFIER, useClass: TelegramTeacherNotifier },
     SchedulerService,
   ],
 })

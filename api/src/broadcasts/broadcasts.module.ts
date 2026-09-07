@@ -20,6 +20,7 @@ import { BroadcastModelModule } from './broadcast-model.module';
 import { BroadcastsController } from './broadcasts.controller';
 import { BroadcastsService } from './broadcasts.service';
 import { RecordingBroadcastService } from './recording-broadcast.service';
+import { TopicRebuildService } from './topic-rebuild.service';
 
 @Module({
   imports: [
@@ -32,9 +33,15 @@ import { RecordingBroadcastService } from './recording-broadcast.service';
     UsersModule,
   ],
   controllers: [BroadcastsController],
-  providers: [BroadcastsService, RecordingBroadcastService],
+  providers: [BroadcastsService, RecordingBroadcastService, TopicRebuildService],
   // RecordingBroadcastService — наружу для LessonsModule; BroadcastModelModule
-  // — для SchedulerModule/DeliveriesModule, как и раньше.
-  exports: [BroadcastModelModule, RecordingBroadcastService],
+  // — для SchedulerModule/DeliveriesModule, как и раньше; BroadcastsService/
+  // TopicRebuildService — для TelegramModule (кнопка «Отменить», тема из бота).
+  exports: [
+    BroadcastModelModule,
+    BroadcastsService,
+    RecordingBroadcastService,
+    TopicRebuildService,
+  ],
 })
 export class BroadcastsModule {}

@@ -5,14 +5,18 @@
 // (CLAUDE.md «Логика вне контроллеров»).
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DateTime } from 'luxon';
 import type { Telegraf } from 'telegraf';
-import type { Update } from 'telegraf/types';
+import type { InlineKeyboardButton, Update } from 'telegraf/types';
 import {
   TELEGRAM_CALL_TIMEOUT_MS,
   withTelegramSignal,
 } from '../channels/telegram-client';
 import { errorMessage, errorStack } from '../common/error-info';
+import { sendBotMessage } from './bot-send';
+import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
+import { MessageHandler } from './handlers/message.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TELEGRAF_FACTORY, type TelegrafFactory } from './telegraf-instance';
 
@@ -20,9 +24,7 @@ import { TELEGRAF_FACTORY, type TelegrafFactory } from './telegraf-instance';
 // экспортирует префикс наружу — заводить экспорт ради одного потребителя
 // сейчас не стоит, префикс задокументирован здесь же.
 export const TELEGRAM_WEBHOOK_PATH = '/api/telegram/webhook';
-// callback_query добавится вместе с кнопками «Отменить»/«Изменить тему» (I2);
-// пока хендлера для них нет, Telegram не должен присылать лишний тип апдейта.
-const ALLOWED_UPDATES = ['message', 'my_chat_member'] as const;
+const ALLOWED_UPDATES = ['message', 'my_chat_member', 'callback_query'] as const;
 
 @Injectable()
 export class TelegramBotService implements OnApplicationBootstrap {
@@ -34,6 +36,8 @@ export class TelegramBotService implements OnApplicationBootstrap {
     @Inject(TELEGRAF_FACTORY) private readonly telegrafFactory: TelegrafFactory,
     private readonly chatMemberHandler: ChatMemberHandler,
     private readonly startHandler: StartHandler,
+    private readonly callbackQueryHandler: CallbackQueryHandler,
+    private readonly messageHandler: MessageHandler,
   ) {}
 
   // Не async: ни один вызов внутри не await'ится (прогрев и регистрация —
@@ -54,6 +58,12 @@ export class TelegramBotService implements OnApplicationBootstrap {
     });
     bot.start((ctx) => this.startHandler.handle(ctx));
     bot.on('my_chat_member', (ctx) => this.chatMemberHandler.handle(ctx));
+    // DateTime.utc() — на каждый апдейт заново (CLAUDE.md «Время»): здесь, а
+    // не в самих хендлерах, единственное место, где бот зовёт «сейчас».
+    bot.on('callback_query', (ctx) =>
+      this.callbackQueryHandler.handle(ctx, DateTime.utc()),
+    );
+    bot.on('message', (ctx) => this.messageHandler.handle(ctx, DateTime.utc()));
     this.bot = bot;
 
     // Прогрев botInfo и регистрация вебхука идут в сеть — ни один не должен
@@ -77,6 +87,23 @@ export class TelegramBotService implements OnApplicationBootstrap {
       await this.bot.handleUpdate(update);
     } catch (err) {
       this.logger.error(`telegram.webhook: ${errorMessage(err)}`, errorStack(err));
+    }
+  }
+
+  /** Проактивная отправка вне ответа на апдейт (предпросмотр, «Запись?»,
+   * ручные каналы, уведомления об ошибках). Без бота — молча ничего не
+   * делает; сбой сети — warn в лог, не наружу: тик планировщика не должен
+   * падать из-за упавшей отправки. */
+  async sendMessage(
+    chatId: string,
+    text: string,
+    buttons?: InlineKeyboardButton[][],
+  ): Promise<void> {
+    if (!this.bot) return;
+    try {
+      await sendBotMessage(this.bot, chatId, text, buttons);
+    } catch (err) {
+      this.logger.warn(`telegram.sendMessage(${chatId}): ${errorMessage(err)}`);
     }
   }
 

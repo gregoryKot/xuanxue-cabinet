@@ -16,9 +16,9 @@ function activeClass(overrides: Partial<DecideClassInput> = {}): DecideClassInpu
 }
 
 describe('decideBroadcast', () => {
-  it('ещё рано — startsAt дальше now + leadMinutes', () => {
+  it('ещё рано — startsAt дальше now + leadMinutes + PREVIEW_MINUTES', () => {
     const decision = decideBroadcast(
-      { startsAt: NOW.plus({ minutes: 31 }).toJSDate() },
+      { startsAt: NOW.plus({ minutes: 36 }).toJSDate() },
       activeClass(),
       NOW,
     );
@@ -28,6 +28,15 @@ describe('decideBroadcast', () => {
   it('точно на границе окна (now + leadMinutes) — уже пора', () => {
     const decision = decideBroadcast(
       { startsAt: NOW.plus({ minutes: 30 }).toJSDate() },
+      activeClass(),
+      NOW,
+    );
+    expect(decision).toEqual({ kind: 'send' });
+  });
+
+  it('в расширенном окне предпросмотра (now + leadMinutes + 5) — тоже пора: broadcast создаётся заранее для предпросмотра', () => {
+    const decision = decideBroadcast(
+      { startsAt: NOW.plus({ minutes: 35 }).toJSDate() },
       activeClass(),
       NOW,
     );
@@ -109,6 +118,20 @@ describe('decideBroadcast', () => {
       activeClass({ zoomLink: undefined }),
       NOW,
     );
+    expect(decision).toEqual({ kind: 'send' });
+  });
+
+  it('у класса нет leadMinutes (легаси-документ) — DEFAULT_LEAD_MINUTES, не Invalid Date', () => {
+    // undefined через as unknown: DecideClassInput.leadMinutes типизирован как
+    // обязательный number, но старый документ Mongo может не содержать поля —
+    // именно этот рантайм-случай и закрывает cls?.leadMinutes ?? DEFAULT_LEAD_MINUTES.
+    const decision = decideBroadcast(
+      { startsAt: NOW.plus({ minutes: 25 }).toJSDate() },
+      activeClass({ leadMinutes: undefined as unknown as number }),
+      NOW,
+    );
+    // DEFAULT_LEAD_MINUTES = 30 (shared/src/domain.ts) — занятие через 25
+    // минут уже в окне «пора слать», не «not_due» и не Invalid Date/NaN.
     expect(decision).toEqual({ kind: 'send' });
   });
 
