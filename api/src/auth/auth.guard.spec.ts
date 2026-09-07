@@ -10,7 +10,7 @@ import { UsersService } from '../users/users.service';
 import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import type { RequestLike, ResponseLike } from './http-like';
+import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { signSession, verifySession } from './session-token';
 
 const SECRET = 'a'.repeat(32);

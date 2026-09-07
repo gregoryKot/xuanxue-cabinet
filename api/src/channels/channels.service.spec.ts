@@ -50,7 +50,7 @@ describe('ChannelsService', () => {
     // тест на дубль иногда бежал бы без него (мигающий тест, тот же урок,
     // что в users.service.spec.ts).
     await model.syncIndexes();
-    channelConfig = new ChannelConfigService(model);
+    channelConfig = new ChannelConfigService(model, classModel);
     service = new ChannelsService(
       model,
       classModel,

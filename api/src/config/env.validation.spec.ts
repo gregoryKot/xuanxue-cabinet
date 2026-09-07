@@ -43,6 +43,12 @@ describe('validateEnv', () => {
     expect(() => validateEnv(rest)).toThrow(/PUBLIC_URL/);
   });
 
+  it('PUBLIC_URL с завершающим слэшем падает', () => {
+    expect(() =>
+      validateEnv({ ...VALID_PROD, PUBLIC_URL: 'https://cabinet.xuanxue.example/' }),
+    ).toThrow(/PUBLIC_URL/);
+  });
+
   it('кривой ENCRYPTION_KEY (не 64 hex) падает', () => {
     expect(() => validateEnv({ ...VALID_PROD, ENCRYPTION_KEY: 'not-hex' })).toThrow(
       /ENCRYPTION_KEY/,
@@ -67,6 +73,19 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...VALID_PROD, BOT_TOKEN: 'not-a-token' })).toThrow(
       /BOT_TOKEN/,
     );
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
+
+  it('кривой TELEGRAM_WEBHOOK_SECRET падает, отсутствующий — нет', () => {
+    expect(() =>
+      validateEnv({ ...VALID_PROD, TELEGRAM_WEBHOOK_SECRET: 'секрет с пробелом' }),
+    ).toThrow(/TELEGRAM_WEBHOOK_SECRET/);
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
+
+  it('валидный TELEGRAM_WEBHOOK_SECRET проходит, production не требует его', () => {
+    const env = validateEnv({ ...VALID_PROD, TELEGRAM_WEBHOOK_SECRET: 'a1B2_c3-D4' });
+    expect(env.TELEGRAM_WEBHOOK_SECRET).toBe('a1B2_c3-D4');
     expect(() => validateEnv(VALID_PROD)).not.toThrow();
   });
 

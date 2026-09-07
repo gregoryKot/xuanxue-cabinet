@@ -23,10 +23,10 @@ export class ChannelRecord {
 
   // Адрес назначения без секрета: chatId телеграма, String(peerId) ВК, ''
   // для ручного канала. `config` зашифрован недетерминированно (encJson) —
-  // искать по нему нельзя, а следующий PR (бот) при добавлении в группу
-  // должен найти или создать канал по chatId идемпотентно
-  // (ChannelsService.upsertTelegramChat). Заполняется сервисом из config при
-  // create/update — одна функция targetOf (channel.mapper.ts).
+  // искать по нему нельзя, а бот (api/src/telegram/, ADR-0015) при
+  // добавлении в группу находит или создаёт канал по chatId идемпотентно
+  // (ChannelConfigService.upsertTelegramChat). Заполняется сервисом из config
+  // при create/update — одна функция targetOf (channel.mapper.ts).
   @Prop({ type: String, default: '' })
   target!: string;
 

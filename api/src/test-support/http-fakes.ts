@@ -1,7 +1,7 @@
 // Общие фейки для auth-спеков без HTTP-стека и без Mongo — дублировались в
 // auth.guard.spec, auth.controller.spec, auth.service.spec.
 import { ConfigService } from '@nestjs/config';
-import type { ResponseLike } from '../auth/http-like';
+import type { ResponseLike } from '../common/http-headers';
 
 export function fakeResponse(): ResponseLike & { headers: Record<string, string> } {
   const headers: Record<string, string> = {};

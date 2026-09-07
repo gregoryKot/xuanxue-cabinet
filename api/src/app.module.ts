@@ -22,6 +22,7 @@ import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { SeedModule } from './seed/seed.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { SeedModule } from './seed/seed.module';
     // после ThrottlerGuard выше (@nestjs/core scanner: провайдеры AppModule
     // раньше провайдеров импортированных модулей).
     AuthModule,
+    TelegramModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'web', 'dist'),

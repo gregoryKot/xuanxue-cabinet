@@ -1,6 +1,7 @@
-// ChannelAdapter для Telegram: клиент API Telegram (telegraf), без бота,
-// сцен и вебхука — их привозит следующий PR. plain text, без parse_mode
-// (PLAN §6: подстановки не экранируются, посты идут как обычный текст).
+// ChannelAdapter для Telegram: клиент API Telegram (telegraf); сам бот,
+// сцены и вебхук — в api/src/telegram/ (ADR-0015). plain text, без
+// parse_mode (PLAN §6: подстановки не экранируются, посты идут как обычный
+// текст).
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -11,14 +12,13 @@ import {
 import { scrubChannelSecrets } from './channel-secrets';
 import type { ChannelAdapter, OutgoingMessage, SendResult } from './channel-adapter';
 import {
+  TELEGRAM_CALL_TIMEOUT_MS,
   TELEGRAM_CLIENT_FACTORY,
+  withTelegramSignal,
   type TelegramApiClient,
   type TelegramClientFactory,
 } from './telegram-client';
 
-// Один бюджет времени на отправку целиком: длинная подпись у видео — это
-// sendVideo + sendMessage одним логическим действием, не два раздельных лимита.
-const TELEGRAM_TIMEOUT_MS = 10_000;
 // Лимит подписи sendVideo (Bot API) — длиннее подпись не проходит, шлём
 // видео без неё и следом обычным сообщением.
 const CAPTION_LIMIT = 1024;
@@ -28,14 +28,6 @@ const NOT_ADMIN_MESSAGE =
   'Бот не админ канала. Добавьте бота администратором и повторите тест.';
 const CHAT_NOT_FOUND_MESSAGE = 'Чат не найден. Проверьте адрес канала.';
 const TEMPORARY_MESSAGE = 'Telegram временно недоступен. Повторите позже.';
-
-// telegraf типизирует `signal` через устаревший пакет `abort-controller`,
-// структурно несовместимый с нативным AbortSignal.timeout() при одинаковом
-// рантайм-поведении — приводим один раз здесь, не на каждый вызов callApi.
-type CallApiOptions = NonNullable<Parameters<TelegramApiClient['callApi']>[2]>;
-function withSignal(signal: AbortSignal): CallApiOptions {
-  return { signal } as unknown as CallApiOptions;
-}
 
 @Injectable()
 export class TelegramAdapter implements ChannelAdapter {
@@ -56,7 +48,7 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     const client = this.clientFactory(token);
-    const signal = AbortSignal.timeout(TELEGRAM_TIMEOUT_MS);
+    const signal = AbortSignal.timeout(TELEGRAM_CALL_TIMEOUT_MS);
     try {
       const externalId = message.telegramFileId
         ? await this.sendVideo(
@@ -82,7 +74,7 @@ export class TelegramAdapter implements ChannelAdapter {
     const result = await client.callApi(
       'sendMessage',
       { chat_id: chatId, text },
-      withSignal(signal),
+      withTelegramSignal(signal),
     );
     return String(result.message_id);
   }
@@ -98,14 +90,14 @@ export class TelegramAdapter implements ChannelAdapter {
       const result = await client.callApi(
         'sendVideo',
         { chat_id: chatId, video: fileId, caption: text },
-        withSignal(signal),
+        withTelegramSignal(signal),
       );
       return String(result.message_id);
     }
     await client.callApi(
       'sendVideo',
       { chat_id: chatId, video: fileId },
-      withSignal(signal),
+      withTelegramSignal(signal),
     );
     return this.sendText(client, chatId, text, signal);
   }
