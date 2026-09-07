@@ -22,12 +22,11 @@ import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord } from '../classes/class.schema';
-import { LessonRecord } from './lesson.schema';
+import { LESSON_ENCRYPT_SCHEMA, LessonRecord } from './lesson.schema';
 import { toLessonDto, type LeanLesson } from './lesson.mapper';
 import { assertListWindow, parseUtcIso } from './lesson-dates';
 import { buildCreatePayload } from './lessons.create';
 import {
-  LESSON_ENCRYPT_SCHEMA,
   LESSON_NOT_FOUND,
   assertDurationEditable,
   assertLessonId,

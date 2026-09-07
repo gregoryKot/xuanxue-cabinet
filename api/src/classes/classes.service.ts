@@ -17,16 +17,14 @@ import {
   NULLABLE_CLASS_FIELDS,
 } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
-import { encryptSchemaFrom } from '../common/field-policy';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { LessonRecord } from '../lessons/lesson.schema';
-import { CLASS_FIELD_POLICY, ClassRecord } from './class.schema';
+import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from './class.schema';
 import { toClassDto, type LeanClass } from './class.mapper';
 import { mapRules } from './classes.update';
 
-const ENCRYPT_SCHEMA = encryptSchemaFrom(CLASS_FIELD_POLICY);
 const NOT_FOUND_MESSAGE = CLASS_NOT_FOUND_MESSAGE;
 const HAS_LESSONS_MESSAGE =
   'У этого занятия уже есть даты занятий. Выключите его вместо удаления.';
@@ -49,14 +47,14 @@ export class ClassesService {
       .sort({ title: 1 })
       .limit(query.limit ?? LIST_LIMIT_DEFAULT)
       .lean<LeanClass[]>();
-    return docs.map((doc) => toClassDto(decryptRecord(doc, ENCRYPT_SCHEMA)));
+    return docs.map((doc) => toClassDto(decryptRecord(doc, CLASS_ENCRYPT_SCHEMA)));
   }
 
   async getById(id: string): Promise<ClassDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<LeanClass>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
-    return toClassDto(decryptRecord(doc, ENCRYPT_SCHEMA));
+    return toClassDto(decryptRecord(doc, CLASS_ENCRYPT_SCHEMA));
   }
 
   // leaderId принимается как есть: проверка, что это существующий учитель,
@@ -67,7 +65,7 @@ export class ClassesService {
     if (rules !== undefined) payload.rules = mapRules(rules);
     // CreateClassDto (implements CreateClassInput) уже проверен ValidationPipe —
     // форма payload совпадает с ClassRecord, spread просто не виден TS.
-    const created = await this.model.create(encryptRecord(payload, ENCRYPT_SCHEMA));
+    const created = await this.model.create(encryptRecord(payload, CLASS_ENCRYPT_SCHEMA));
     return this.getById(created._id.toString());
   }
 
@@ -77,14 +75,14 @@ export class ClassesService {
     const { $set, $unset } = splitUpdate(rest, NULLABLE_CLASS_FIELDS);
     if (rules !== undefined) $set.rules = mapRules(rules);
 
-    const update: UpdateCommand = { $set: encryptRecord($set, ENCRYPT_SCHEMA) };
+    const update: UpdateCommand = { $set: encryptRecord($set, CLASS_ENCRYPT_SCHEMA) };
     if (Object.keys($unset).length > 0) update.$unset = $unset;
 
     const doc = await this.model
       .findOneAndUpdate({ _id: id }, update, { returnDocument: 'after' })
       .lean<LeanClass>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
-    return toClassDto(decryptRecord(doc, ENCRYPT_SCHEMA));
+    return toClassDto(decryptRecord(doc, CLASS_ENCRYPT_SCHEMA));
   }
 
   async remove(id: string): Promise<void> {

@@ -5,7 +5,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { LESSON_STATUSES, type LessonStatus, type Recording } from '@xuanxue/shared';
-import { enc, plain, type FieldPolicy } from '../common/field-policy';
+import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 
 @Schema({ _id: true })
@@ -91,3 +91,7 @@ export const LESSON_FIELD_POLICY: FieldPolicy = {
   'recordings.url': plain('ссылка на запись, принятый риск SECURITY §11'),
   'recordings.telegramFileId': plain('работает только у бота, снаружи бесполезен'),
 };
+
+/** Схема шифрования занятия — та же причина, что у CLASS_ENCRYPT_SCHEMA:
+ * разовая ссылка и заметка читаются в нескольких местах. */
+export const LESSON_ENCRYPT_SCHEMA = encryptSchemaFrom(LESSON_FIELD_POLICY);

@@ -10,10 +10,12 @@ import {
   type LessonStatus,
 } from '@xuanxue/shared';
 import type { ChannelRecord } from '../channels/channel.schema';
-import type { ClassRecord } from '../classes/class.schema';
-import type { LessonRecord } from '../lessons/lesson.schema';
+import { CLASS_ENCRYPT_SCHEMA, type ClassRecord } from '../classes/class.schema';
+import { LESSON_ENCRYPT_SCHEMA, type LessonRecord } from '../lessons/lesson.schema';
+import { decryptRecord } from '../utils/encryption';
 
-export interface PlannerClass {
+// type, не interface: decryptRecord требует индексную сигнатуру (как LeanLesson).
+export type PlannerClass = {
   _id: Types.ObjectId;
   title: string;
   groupLabel: string;
@@ -25,7 +27,7 @@ export interface PlannerClass {
   leadMinutes: number;
   active: boolean;
   leaderId?: Types.ObjectId;
-}
+};
 
 const CLASS_PROJECTION = {
   title: 1,
@@ -40,7 +42,7 @@ const CLASS_PROJECTION = {
   leaderId: 1,
 } as const;
 
-export interface PlannerLesson {
+export type PlannerLesson = {
   _id: Types.ObjectId;
   classId: Types.ObjectId;
   topic: string;
@@ -50,7 +52,7 @@ export interface PlannerLesson {
   zoomLinkOverride?: string;
   zoomPasswordOverride?: string;
   leaderId?: Types.ObjectId;
-}
+};
 
 const LESSON_PROJECTION = {
   classId: 1,
@@ -63,8 +65,13 @@ const LESSON_PROJECTION = {
   leaderId: 1,
 } as const;
 
-export function findClasses(classModel: Model<ClassRecord>): Promise<PlannerClass[]> {
-  return classModel.find({}, CLASS_PROJECTION).lean<PlannerClass[]>();
+// Ссылка и пароль класса лежат шифротекстом (CLASS_FIELD_POLICY): без
+// decryptRecord в пост ушёл бы base64 вместо ссылки Zoom.
+export async function findClasses(
+  classModel: Model<ClassRecord>,
+): Promise<PlannerClass[]> {
+  const docs = await classModel.find({}, CLASS_PROJECTION).lean<PlannerClass[]>();
+  return docs.map((doc) => decryptRecord(doc, CLASS_ENCRYPT_SCHEMA));
 }
 
 // Запас ниже DEFAULT_LEAD_MINUTES для нижней границы запроса: decideBroadcast
@@ -88,7 +95,7 @@ const DUE_LOOKBACK_MINUTES = DEFAULT_LEAD_MINUTES * 2;
  * классов (`send` дальше отсеет то, что рано для своего класса); финальное
  * решение по каждому занятию — decideBroadcast.
  */
-export function findDueLessons(
+export async function findDueLessons(
   lessonModel: Model<LessonRecord>,
   classes: readonly PlannerClass[],
   now: DateTime,
@@ -97,7 +104,7 @@ export function findDueLessons(
     (max, cls) => Math.max(max, cls.leadMinutes),
     DEFAULT_LEAD_MINUTES,
   );
-  return lessonModel
+  const docs = await lessonModel
     .find(
       {
         status: 'scheduled',
@@ -109,6 +116,8 @@ export function findDueLessons(
       LESSON_PROJECTION,
     )
     .lean<PlannerLesson[]>();
+  // Разовая ссылка занятия тоже зашифрована (LESSON_FIELD_POLICY).
+  return docs.map((doc) => decryptRecord(doc, LESSON_ENCRYPT_SCHEMA));
 }
 
 /** Один класс по id — для рассылки записи (RecordingBroadcastService,
@@ -116,11 +125,14 @@ export function findDueLessons(
  * которая тянет школу целиком ради тика планировщика. Та же проекция —
  * recordingValues (post-renderer.ts) не смотрит на zoomLink/leadMinutes, но
  * RenderClassInput требует их в типе, как и lessonLinkValues. */
-export function findClassForRecording(
+export async function findClassForRecording(
   classModel: Model<ClassRecord>,
   classId: Types.ObjectId,
 ): Promise<PlannerClass | null> {
-  return classModel.findById(classId, CLASS_PROJECTION).lean<PlannerClass | null>();
+  const doc = await classModel
+    .findById(classId, CLASS_PROJECTION)
+    .lean<PlannerClass | null>();
+  return doc === null ? null : decryptRecord(doc, CLASS_ENCRYPT_SCHEMA);
 }
 
 /** Активные каналы класса на момент отправки (CLAUDE.md «Только активные
