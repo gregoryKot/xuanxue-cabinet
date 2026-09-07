@@ -111,6 +111,18 @@ export function findDueLessons(
     .lean<PlannerLesson[]>();
 }
 
+/** Один класс по id — для рассылки записи (RecordingBroadcastService,
+ * broadcasts/recording-broadcast.service.ts): своя функция, не findClasses(),
+ * которая тянет школу целиком ради тика планировщика. Та же проекция —
+ * recordingValues (post-renderer.ts) не смотрит на zoomLink/leadMinutes, но
+ * RenderClassInput требует их в типе, как и lessonLinkValues. */
+export function findClassForRecording(
+  classModel: Model<ClassRecord>,
+  classId: Types.ObjectId,
+): Promise<PlannerClass | null> {
+  return classModel.findById(classId, CLASS_PROJECTION).lean<PlannerClass | null>();
+}
+
 /** Активные каналы класса на момент отправки (CLAUDE.md «Только активные
  * каналы»): пустой результат — сигнал сервису для cancelled-плейсхолдера, не
  * ошибка. */

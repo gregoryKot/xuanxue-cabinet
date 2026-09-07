@@ -6,7 +6,7 @@ import type { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
 import type { BroadcastRecord } from './broadcast.schema';
-import { insertCancelledPlaceholder } from './broadcast-planner.inserts';
+import { insertCancelledPlaceholder } from './broadcast.inserts';
 
 /** cancelled-плейсхолдер + лог — лог только если плейсхолдер реально создан
  * этим вызовом: второй тик на том же занятии молчит (индекс lessonId+kind).
@@ -20,7 +20,11 @@ export async function cancelPlanningWithLog(
   now: DateTime,
   level: 'warn' | 'error',
 ): Promise<false> {
-  const created = await insertCancelledPlaceholder(broadcastModel, lessonId, reason, now);
+  const created = await insertCancelledPlaceholder(
+    broadcastModel,
+    { kind: 'lesson_link', lessonId, reason },
+    now,
+  );
   if (!created) return false;
   const id = lessonId.toString();
   if (level === 'error') {

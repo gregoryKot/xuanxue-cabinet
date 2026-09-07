@@ -8,7 +8,7 @@ import type { TemplateKind } from '@xuanxue/shared';
 import type { ChannelRecord } from '../channels/channel.schema';
 import type { DeliveryRecord } from '../deliveries/delivery.schema';
 import type { UsersService } from '../users/users.service';
-import { insertBroadcastWithDeliveries } from './broadcast-planner.inserts';
+import { insertBroadcastWithDeliveries } from './broadcast.inserts';
 import { cancelPlanningWithLog } from './broadcast-planner.log';
 import {
   findActiveChannelIds,
@@ -48,10 +48,16 @@ export async function sendLessonBroadcast(
   }
 
   const text = await buildLessonLinkText(deps.usersService, lesson, cls, templates, now);
-  return insertBroadcastWithDeliveries(deps.broadcastModel, deps.deliveryModel, {
-    lessonId: lesson._id,
-    channelIds: activeChannelIds,
-    scheduledAt: now.toJSDate(),
-    text,
-  });
+  const { isNew } = await insertBroadcastWithDeliveries(
+    deps.broadcastModel,
+    deps.deliveryModel,
+    {
+      kind: 'lesson_link',
+      lessonId: lesson._id,
+      channelIds: activeChannelIds,
+      scheduledAt: now.toJSDate(),
+      text,
+    },
+  );
+  return isNew;
 }

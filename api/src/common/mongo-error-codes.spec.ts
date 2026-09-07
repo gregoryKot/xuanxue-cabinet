@@ -34,6 +34,25 @@ describe('isDuplicateKeyBulkError', () => {
     ).toBe(true);
   });
 
+  it('writeErrors с кодом во вложенном err (реальная форма MongoBulkWriteError) — дубли', () => {
+    expect(
+      isDuplicateKeyBulkError({
+        writeErrors: [
+          { err: { code: MONGO_DUPLICATE_KEY_CODE, index: 0 }, index: 0 },
+          { err: { code: MONGO_DUPLICATE_KEY_CODE, index: 1 }, index: 1 },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it('вложенный err с другим кодом — наверх', () => {
+    expect(
+      isDuplicateKeyBulkError({
+        writeErrors: [{ err: { code: 121, index: 0 }, index: 0 }],
+      }),
+    ).toBe(false);
+  });
+
   it('хотя бы одна writeError не E11000 — наверх', () => {
     expect(
       isDuplicateKeyBulkError({
@@ -45,5 +64,10 @@ describe('isDuplicateKeyBulkError', () => {
   it('не-объекты — нет', () => {
     expect(isDuplicateKeyBulkError(null)).toBe(false);
     expect(isDuplicateKeyBulkError('E11000')).toBe(false);
+  });
+
+  it('элемент writeErrors не объект — не дубль, а неизвестная ошибка наверх', () => {
+    expect(isDuplicateKeyBulkError({ writeErrors: [42] })).toBe(false);
+    expect(isDuplicateKeyBulkError({ writeErrors: [null] })).toBe(false);
   });
 });
