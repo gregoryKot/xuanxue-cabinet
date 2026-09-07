@@ -12,6 +12,13 @@ const THEME_COLOR = '#1f3b2f';
 const BACKGROUND_COLOR = '#f2f0ed';
 
 export default defineConfig({
+  // В разработке web живёт на :5173, а api — на :3000 (README, RUNBOOK §1).
+  // http.ts ходит по относительному `/api/...` — без прокси запросы упирались
+  // бы в сам dev-сервер Vite. В проде прокси не нужен: Nest раздаёт web/dist
+  // и /api с одного порта.
+  server: {
+    proxy: { '/api': 'http://localhost:3000' },
+  },
   plugins: [
     react(),
     // PWA (ADR-0006, CLAUDE.md «Приложение на телефоне»): манифест и service
