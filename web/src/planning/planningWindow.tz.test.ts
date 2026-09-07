@@ -23,4 +23,12 @@ describe('planningWindow — переход зимнего времени Asia/J
     const diffMs = new Date(to).getTime() - new Date(from).getTime();
     expect(diffMs).toBe(28 * 24 * 60 * 60 * 1000);
   });
+
+  it('окно 4 недели от 2026-03-22 — ровно 28 суток в UTC через переход на летнее время', () => {
+    // 2026-03-22 — воскресенье; перевод на летнее время в Израиле — 2026-03-27,
+    // внутри этого окна.
+    const { from, to } = planningWindow(new Date('2026-03-22T10:00:00Z'));
+    const diffMs = new Date(to).getTime() - new Date(from).getTime();
+    expect(diffMs).toBe(28 * 24 * 60 * 60 * 1000);
+  });
 });

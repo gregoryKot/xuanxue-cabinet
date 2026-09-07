@@ -1,8 +1,8 @@
 // Оболочка кабинета — шапка и нижняя навигация (CLAUDE.md «Мобильный экран
 // первым»). Пункты навигации появляются вместе с экраном, который открывают
-// (PR K, по одному на патч) — список в navItems.ts. Больше 5 пунктов на
-// 360px не умещаются подписью в строку — иконка сверху и короткое слово
-// вместо «Ещё» (ревью п.11, PLAN §6). Роль без teacher/admin (ученик) —
+// (PR K, по одному на патч) — список в navItems.ts. 6 пунктов на 360px не
+// умещаются подписью в строку — иконка сверху и короткое слово вместо «Ещё»
+// (pr-k3-fixes.md п.10, PLAN §6). Роль без teacher/admin (ученик) —
 // StudentScreen вместо содержимого маршрута, но шапка с «Выйти» остаётся.
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -32,6 +32,11 @@ const navStyle: CSSProperties = {
 
 const navLinkStyle = (isActive: boolean): CSSProperties => ({
   flex: 1,
+  // `minWidth: 0` — иначе flex-item не сжимается уже своего содержимого, и
+  // 6 пунктов на 360px толкают body в горизонтальный скролл (pr-k3-fixes.md
+  // п.10): вместе с overflowWrap подписи ниже это держит навигацию в ширине
+  // экрана без теста на ширину — проверка стилями, не пикселями.
+  minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -46,6 +51,7 @@ const navLabelStyle: CSSProperties = {
   fontSize: 11,
   lineHeight: 1.1,
   textAlign: 'center',
+  overflowWrap: 'anywhere',
 };
 
 const LOGOUT_FAILED_MESSAGE = 'Не удалось выйти. Попробуйте ещё раз.';

@@ -65,6 +65,64 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('учитель на /broadcasts — маршрут «Рассылки» открывает BroadcastsScreen (pr-k3-fixes.md п.20)', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me')
+        return Promise.resolve({
+          id: 'u1',
+          name: 'Дима',
+          roles: ['teacher'],
+          tz: 'Asia/Jerusalem',
+        });
+      if (path.startsWith('/broadcasts')) return Promise.resolve([]);
+      if (path.startsWith('/deliveries')) return Promise.resolve([]);
+      if (path.startsWith('/channels')) return Promise.resolve([]);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/broadcasts']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Новая рассылка' }),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /templates — маршрут «Шаблоны» открывает TemplatesScreen (pr-k3-fixes.md п.20)', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me')
+        return Promise.resolve({
+          id: 'u1',
+          name: 'Дима',
+          roles: ['teacher'],
+          tz: 'Asia/Jerusalem',
+        });
+      if (path.startsWith('/settings'))
+        return Promise.resolve({
+          templates: { lesson_link: 'Анонс', recording: 'Запись' },
+          tz: 'Asia/Jerusalem',
+          updatedAt: '2026-01-01T00:00:00Z',
+        });
+      if (path.startsWith('/lessons')) return Promise.resolve([]);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/templates']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Анонс занятия' }),
+    ).toBeInTheDocument();
+  });
+
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({});
