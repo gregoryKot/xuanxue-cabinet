@@ -46,6 +46,12 @@ export class TelegramBotService implements OnApplicationBootstrap {
       return;
     }
     const bot = this.telegrafFactory(token);
+    // Свой обработчик ошибок вместо встроенного в telegraf: тот печатает весь
+    // апдейт через console.error (PII мимо редакции pino, CLAUDE.md «Логи») и
+    // ставит process.exitCode = 1 — процесс завершался бы кодом ошибки.
+    bot.catch((err) => {
+      this.logger.error(`telegram.update: ${errorMessage(err)}`, errorStack(err));
+    });
     bot.start((ctx) => this.startHandler.handle(ctx));
     bot.on('my_chat_member', (ctx) => this.chatMemberHandler.handle(ctx));
     this.bot = bot;
