@@ -14,6 +14,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import type { LessonDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
 import { AddRecordingDto } from './dto/add-recording.dto';
@@ -60,6 +61,6 @@ export class LessonsController {
     @Param('id') id: string,
     @Body() body: AddRecordingDto,
   ): Promise<LessonDto> {
-    return this.lessonsService.addRecording(id, body);
+    return this.lessonsService.addRecording(id, body, DateTime.utc());
   }
 }

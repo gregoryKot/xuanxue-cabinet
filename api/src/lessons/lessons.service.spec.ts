@@ -1,7 +1,13 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): read-after-write, шифрование секретов, PATCH null → $unset,
-// запрет удаления даты из расписания, дефолт title записи.
+// запрет удаления даты из расписания, дефолт title записи. addRecording
+// зовёт RecordingBroadcastService.ensureForRecording всегда (идемпотентность
+// самой рассылки — на уникальном индексе (lessonId, recordingKey), не здесь)
+// — фейк считает вызовы и запоминает переданный url, сама рассылка
+// (broadcast+доставки, cancelled) проверена в recording-broadcast.service.spec.ts.
+import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
+import type { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from './lesson.schema';
 import { LessonsService } from './lessons.service';
@@ -9,12 +15,36 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 
 const FROM = '2026-09-01T00:00:00Z';
 const TO = '2026-09-08T00:00:00Z';
+const NOW = DateTime.fromISO('2026-09-03T12:00:00Z', { zone: 'utc' });
+
+function fakeRecordingBroadcast(): RecordingBroadcastService & {
+  calls: number;
+  urls: (string | undefined)[];
+} {
+  const fake = {
+    calls: 0,
+    urls: [] as (string | undefined)[],
+    ensureForRecording(_lessonId: unknown, recording: { url?: string }): Promise<void> {
+      fake.calls += 1;
+      fake.urls.push(recording.url);
+      return Promise.resolve();
+    },
+  };
+  return fake as unknown as RecordingBroadcastService & {
+    calls: number;
+    urls: (string | undefined)[];
+  };
+}
 
 describe('LessonsService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
+  let recordingBroadcast: RecordingBroadcastService & {
+    calls: number;
+    urls: (string | undefined)[];
+  };
   let service: LessonsService;
 
   beforeAll(async () => {
@@ -22,7 +52,8 @@ describe('LessonsService', () => {
     connection = memory.connection;
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
-    service = new LessonsService(lessonModel, classModel);
+    recordingBroadcast = fakeRecordingBroadcast();
+    service = new LessonsService(lessonModel, classModel, recordingBroadcast);
   }, 60_000);
 
   afterAll(async () => {
@@ -30,6 +61,8 @@ describe('LessonsService', () => {
   });
 
   afterEach(async () => {
+    recordingBroadcast.calls = 0;
+    recordingBroadcast.urls = [];
     await lessonModel.deleteMany({});
     await classModel.deleteMany({});
   });
@@ -134,7 +167,7 @@ describe('LessonsService', () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
 
-    await expect(service.addRecording(created.id, {})).rejects.toThrow(
+    await expect(service.addRecording(created.id, {}, NOW)).rejects.toThrow(
       'ссылку на запись',
     );
   });
@@ -143,9 +176,11 @@ describe('LessonsService', () => {
     const classId = await createClass({ title: 'Цигун для начинающих' });
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
 
-    const updated = await service.addRecording(created.id, {
-      url: 'https://drive.example/rec',
-    });
+    const updated = await service.addRecording(
+      created.id,
+      { url: 'https://drive.example/rec' },
+      NOW,
+    );
 
     expect(updated.recordings[0]?.title).toBe('Цигун для начинающих');
   });
@@ -155,31 +190,41 @@ describe('LessonsService', () => {
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
     await classModel.deleteOne({ _id: classId });
 
-    const updated = await service.addRecording(created.id, {
-      url: 'https://drive.example/rec',
-    });
+    const updated = await service.addRecording(
+      created.id,
+      { url: 'https://drive.example/rec' },
+      NOW,
+    );
 
     expect(updated.recordings[0]?.title).toBe('');
   });
 
-  it('addRecording: повтор того же url не плодит вторую запись, другой url — плодит', async () => {
+  it('addRecording: повтор того же url не плодит вторую запись, но рассылку зовёт снова тем же url; другой url — плодит запись', async () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
     const url = 'https://drive.example/rec';
 
-    await service.addRecording(created.id, { url });
-    const afterRepeat = await service.addRecording(created.id, { url });
+    await service.addRecording(created.id, { url }, NOW);
+    const afterRepeat = await service.addRecording(created.id, { url }, NOW);
     expect(afterRepeat.recordings).toHaveLength(1);
+    // Идемпотентность самой рассылки — не здесь, а в уникальном индексе
+    // (lessonId, recordingKey): сервис зовётся на каждый addRecording, чтобы
+    // достроить недостающие доставки, если первый вызов упал раньше них.
+    expect(recordingBroadcast.calls).toBe(2);
+    expect(recordingBroadcast.urls).toEqual([url, url]);
 
-    const afterOther = await service.addRecording(created.id, {
-      url: 'https://drive.example/rec-2',
-    });
+    const afterOther = await service.addRecording(
+      created.id,
+      { url: 'https://drive.example/rec-2' },
+      NOW,
+    );
     expect(afterOther.recordings).toHaveLength(2);
+    expect(recordingBroadcast.calls).toBe(3);
   });
 
   it('addRecording: мусорный id — NotFoundError', async () => {
     await expect(
-      service.addRecording('not-an-id', { url: 'https://drive.example/rec' }),
+      service.addRecording('not-an-id', { url: 'https://drive.example/rec' }, NOW),
     ).rejects.toThrow('не найдена');
   });
 

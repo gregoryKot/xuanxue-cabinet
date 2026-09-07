@@ -43,6 +43,14 @@ export class BroadcastRecord {
   @Prop({ type: String, required: false })
   telegramFileId?: string;
 
+  // Ключ идемпотентности рассылки записи (url или file_id — что из двух дала
+  // AddRecordingInput, buildRecordingKey в recording-broadcast.service.ts):
+  // url публикуется в самом посте, отдельным полем он нужен только затем,
+  // чтобы искать по нему повторный вызов addRecording с тем же источником
+  // (уникальный индекс ниже), не по факту изменения документа занятия.
+  @Prop({ type: String, required: false })
+  recordingKey?: string;
+
   // Бот шлёт предпросмотр с «Отменить»/«Изменить тему» один раз, не на
   // каждом тике планировщика.
   @Prop({ type: Date, required: false })
@@ -64,8 +72,23 @@ BroadcastSchema.index(
     partialFilterExpression: { kind: 'lesson_link', lessonId: { $type: 'objectId' } },
   },
 );
+// Тот же приём для recording (docs/PLAN.md §6 «Записи»): повтор addRecording
+// с тем же url/file_id — обновление существующей рассылки записи, не новая.
+// Частичный по kind: у lesson_link/manual поля recordingKey нет вовсе — им
+// эта пара ключа не нужна и в индекс не попадают ($type: 'string' отсеивает
+// undefined).
+BroadcastSchema.index(
+  { lessonId: 1, recordingKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { kind: 'recording', recordingKey: { $type: 'string' } },
+  },
+);
 
 export const BROADCAST_FIELD_POLICY: FieldPolicy = {
   text: enc,
   telegramFileId: plain('id видео в Telegram, доступ есть только у бота'),
+  recordingKey: plain(
+    'url или file_id записи, ключ идемпотентности; url публикуется в посте',
+  ),
 };

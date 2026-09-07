@@ -15,6 +15,17 @@ export function isDuplicateKeyError(err: unknown): boolean {
   );
 }
 
+/** Элемент `writeErrors` реального `MongoBulkWriteError` — код лежит не на
+ * верхнем уровне элемента, а во вложенном `err` (`{ err: { code, ... },
+ * index }`, проверено против настоящего драйвера, не мока — CLAUDE.md
+ * «Тесты»). Плоская форма `{ code }` тоже проверяется — так функция читает и
+ * то, что кладут тесты/старые версии драйвера, и то, что кладёт текущий. */
+function isDuplicateKeyWriteError(writeError: unknown): boolean {
+  if (isDuplicateKeyError(writeError)) return true;
+  if (typeof writeError !== 'object' || writeError === null) return false;
+  return isDuplicateKeyError((writeError as { err?: unknown }).err);
+}
+
 /** `insertMany(docs, { ordered: false })` при гонке двух тиков планировщика
  * занятий: Mongoose декорирует ошибку полем `writeErrors` (по одному на
  * упавший документ), а при единственной ошибке иногда отдаёт только
@@ -25,7 +36,7 @@ export function isDuplicateKeyBulkError(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false;
   const writeErrors = (err as { writeErrors?: unknown }).writeErrors;
   if (Array.isArray(writeErrors) && writeErrors.length > 0) {
-    return writeErrors.every((writeError) => isDuplicateKeyError(writeError));
+    return writeErrors.every((writeError) => isDuplicateKeyWriteError(writeError));
   }
   return isDuplicateKeyError(err);
 }

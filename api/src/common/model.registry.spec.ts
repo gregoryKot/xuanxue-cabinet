@@ -98,7 +98,7 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     ).resolves.toBeDefined();
   });
 
-  it('broadcasts: второй lesson_link для занятия падает, recording — нет', async () => {
+  it('broadcasts: второй lesson_link для занятия падает, recording без recordingKey — нет', async () => {
     const Broadcast = connection.model<BroadcastRecord>(BroadcastRecord.name);
     const lessonId = new mongoose.Types.ObjectId();
     const channelIds = [new mongoose.Types.ObjectId()];
@@ -107,6 +107,10 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     await expect(
       Broadcast.create({ ...base, kind: 'lesson_link' }),
     ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+    // Без recordingKey частичный индекс (lessonId, recordingKey) не видит
+    // документ ($type: 'string' отсеивает отсутствующее поле) — несколько
+    // recording без ключа на одно занятие создаются свободно.
+    await expect(Broadcast.create({ ...base, kind: 'recording' })).resolves.toBeDefined();
     await expect(Broadcast.create({ ...base, kind: 'recording' })).resolves.toBeDefined();
     // Ручная отправка ссылки без занятия — индекс частичный, ключ null не занят.
     const manual = {
@@ -117,6 +121,34 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     } as const;
     await Broadcast.create(manual);
     await expect(Broadcast.create(manual)).resolves.toBeDefined();
+  });
+
+  it('broadcasts: второй recording с тем же (lessonId, recordingKey) падает, другой url — нет', async () => {
+    const Broadcast = connection.model<BroadcastRecord>(BroadcastRecord.name);
+    const lessonId = new mongoose.Types.ObjectId();
+    const channelIds = [new mongoose.Types.ObjectId()];
+    const base = {
+      kind: 'recording' as const,
+      lessonId,
+      channelIds,
+      scheduledAt: FIXED_DATE,
+      text: 'т',
+    };
+    await Broadcast.create({ ...base, recordingKey: 'https://drive.example/rec' });
+    await expect(
+      Broadcast.create({ ...base, recordingKey: 'https://drive.example/rec' }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+    await expect(
+      Broadcast.create({ ...base, recordingKey: 'https://drive.example/rec-2' }),
+    ).resolves.toBeDefined();
+    // Другое занятие с тем же url — не дубль, частичный индекс скопирован по lessonId.
+    await expect(
+      Broadcast.create({
+        ...base,
+        lessonId: new mongoose.Types.ObjectId(),
+        recordingKey: 'https://drive.example/rec',
+      }),
+    ).resolves.toBeDefined();
   });
 
   it('users: два без telegramId создаются, два с одинаковым telegramId — конфликт', async () => {

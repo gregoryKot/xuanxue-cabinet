@@ -2,6 +2,7 @@
 // Роли/CSRF/404 проверяет e2e (lessons.e2e-spec.ts) на настоящем гварде —
 // здесь только «контроллер зовёт сервис и возвращает его ответ».
 import { Test } from '@nestjs/testing';
+import { DateTime } from 'luxon';
 import type { LessonDto } from '@xuanxue/shared';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
@@ -78,6 +79,8 @@ describe('LessonsController', () => {
     const body = { url: 'https://drive.example/rec' };
 
     await expect(controller.addRecording('l1', body)).resolves.toEqual(LESSON_DTO);
-    expect(addRecording).toHaveBeenCalledWith('l1', body);
+    // `now` — DateTime.utc() контроллера, конкретный момент не важен здесь
+    // (проверяется в lessons.service.spec.ts/recording-broadcast.service.spec.ts).
+    expect(addRecording).toHaveBeenCalledWith('l1', body, expect.any(DateTime));
   });
 });
