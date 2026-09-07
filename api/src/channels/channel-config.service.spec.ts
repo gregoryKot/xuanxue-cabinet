@@ -31,16 +31,29 @@ describe('ChannelConfigService', () => {
     await model.deleteMany({});
   });
 
-  it('readConfig: расшифровывает config, возвращает тип и объект', async () => {
+  it('readConfig: расшифровывает config, возвращает тип, объект и active', async () => {
     const created = await service.upsertTelegramChat({
       chatId: '@school',
       title: 'Школа',
     });
 
-    const { type, config } = await service.readConfig(created.id);
+    const { type, config, active } = await service.readConfig(created.id);
 
     expect(type).toBe('telegram');
     expect(config).toEqual({ chatId: '@school' });
+    expect(active).toBe(true);
+  });
+
+  it('readConfig: выключенный канал — active: false (раннер отменяет доставку, не failed)', async () => {
+    const created = await service.upsertTelegramChat({
+      chatId: '@off',
+      title: 'Выключенный',
+    });
+    await model.updateOne({ _id: created.id }, { $set: { active: false } });
+
+    const { active } = await service.readConfig(created.id);
+
+    expect(active).toBe(false);
   });
 
   it('readConfig: невалидный ObjectId — NotFoundError, не CastError', async () => {

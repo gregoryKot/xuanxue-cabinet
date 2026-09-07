@@ -17,6 +17,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
+import { SettingsModule } from './settings/settings.module';
 import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -57,6 +58,7 @@ import { AuthModule } from './auth/auth.module';
     ChannelsModule,
     BroadcastsModule,
     DeliveriesModule,
+    SettingsModule,
     UsersModule,
     // Гвард сессии (AuthGuard) — APP_GUARD внутри этого модуля, применяется
     // после ThrottlerGuard выше (@nestjs/core scanner: провайдеры AppModule
