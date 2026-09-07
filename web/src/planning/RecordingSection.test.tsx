@@ -55,6 +55,22 @@ describe('RecordingSection — форма добавления', () => {
     );
   });
 
+  it('название записи (необязательное) уходит в onAdd вместе со ссылкой', async () => {
+    const user = userEvent.setup();
+    const { onAdd } = renderSection();
+
+    await user.type(screen.getByLabelText('Название записи'), 'Часть 2');
+    await user.type(screen.getByLabelText('Ссылка на запись'), 'https://youtu.be/2');
+    await user.click(screen.getByRole('button', { name: 'Добавить запись' }));
+
+    await waitFor(() =>
+      expect(onAdd).toHaveBeenCalledWith('l1', {
+        title: 'Часть 2',
+        url: 'https://youtu.be/2',
+      }),
+    );
+  });
+
   it('пустая ссылка — клиентская ошибка на поле «Ссылка на запись», onAdd не вызывается', async () => {
     const user = userEvent.setup();
     const { onAdd } = renderSection();

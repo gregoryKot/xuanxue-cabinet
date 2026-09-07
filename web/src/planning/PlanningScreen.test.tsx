@@ -133,6 +133,32 @@ describe('PlanningScreen — классы не загрузились, заня�
     );
   });
 
+  it('«Попробовать ещё раз» у ошибки классов повторяет только /classes', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('../api/http');
+    mockByPath({
+      '/lessons': [makeLesson()],
+      '/classes': new ApiError('Не удалось загрузить расписание.', 503, 'unknown'),
+    });
+    renderScreen();
+    const alert = await screen.findByRole('alert');
+    const lessonsCallsBefore = mockedApiFetch.mock.calls.filter(([p]) =>
+      String(p).startsWith('/lessons'),
+    ).length;
+
+    await user.click(within(alert).getByRole('button', { name: 'Попробовать ещё раз' }));
+
+    await waitFor(() =>
+      expect(
+        mockedApiFetch.mock.calls.filter(([p]) => String(p).startsWith('/classes'))
+          .length,
+      ).toBe(2),
+    );
+    expect(
+      mockedApiFetch.mock.calls.filter(([p]) => String(p).startsWith('/lessons')).length,
+    ).toBe(lessonsCallsBefore);
+  });
+
   it('«Разовое занятие» — ни одного класса: объяснение и ссылка на «Расписание», без формы', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
