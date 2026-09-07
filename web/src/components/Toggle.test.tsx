@@ -17,4 +17,14 @@ describe('Toggle', () => {
 
     expect(onChange).toHaveBeenCalledWith(true);
   });
+
+  it('disabled — переключатель недоступен, клик не вызывает onChange', async () => {
+    const onChange = vi.fn();
+    render(<Toggle label="Включён" checked={false} disabled onChange={onChange} />);
+
+    expect(screen.getByLabelText('Включён')).toBeDisabled();
+    await userEvent.click(screen.getByLabelText('Включён'));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

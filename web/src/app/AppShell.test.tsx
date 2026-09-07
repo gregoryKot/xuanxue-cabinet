@@ -63,6 +63,15 @@ describe('AppShell — учитель', () => {
     expect(screen.getByRole('link', { name: 'Расписание' })).toBeInTheDocument();
   });
 
+  it('нижняя навигация — все четыре пункта (ревью п.17)', async () => {
+    renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    for (const label of ['Сводка', 'Расписание', 'Планирование', 'Каналы']) {
+      expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
+    }
+  });
+
   it('«Выйти» — POST /auth/logout, затем переход на /login', async () => {
     const user = userEvent.setup();
     renderShell(TEACHER);

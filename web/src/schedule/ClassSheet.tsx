@@ -5,18 +5,27 @@
 // useClassForm, здесь только разметка и подключение хуков. Оболочка листа —
 // SheetShell (общая с planning/LessonSheet.tsx).
 import type { FormEvent } from 'react';
-import type { ClassDto, CreateClassInput, UpdateClassInput } from '@xuanxue/shared';
+import type {
+  ChannelDto,
+  ClassDto,
+  CreateClassInput,
+  UpdateClassInput,
+} from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { FormServerError } from '../components/FormServerError';
 import { SheetShell } from '../components/SheetShell';
 import { useDialog } from '../hooks/useDialog';
 import { useHistorySheet } from '../hooks/useHistorySheet';
+import { ClassChannelsField } from './ClassChannelsField';
 import { ClassFormFields } from './ClassFormFields';
 import { RuleFields } from './RuleFields';
 import { useClassForm } from './useClassForm';
 
 interface ClassSheetProps {
   classDto: ClassDto | null;
+  /** Каналы рассылки — грузятся один раз на «Расписании» (ScheduleScreen),
+   * лист их не запрашивает сам (ревью п.1). */
+  channels: ChannelDto[];
   onClose: () => void;
   onCreate: (input: CreateClassInput) => Promise<void>;
   onUpdate: (id: string, input: UpdateClassInput) => Promise<void>;
@@ -25,6 +34,7 @@ interface ClassSheetProps {
 
 export function ClassSheet({
   classDto,
+  channels,
   onClose,
   onCreate,
   onUpdate,
@@ -60,6 +70,11 @@ export function ClassSheet({
       <RuleFields
         rules={form.state.rules}
         onChange={(rules) => form.setField('rules', rules)}
+      />
+      <ClassChannelsField
+        channels={channels}
+        selectedIds={form.state.channelIds}
+        onChange={(channelIds) => form.setField('channelIds', channelIds)}
       />
 
       <FormServerError error={form.serverError} />

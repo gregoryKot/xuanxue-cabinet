@@ -177,6 +177,90 @@ describe('useHistorySheet — нет двойного закрытия при р
   });
 });
 
+describe('useHistorySheet — вложенные листы (ревью п.16)', () => {
+  function Inner({ onClose }: { onClose: () => void }) {
+    useHistorySheet(onClose);
+    return null;
+  }
+
+  it('монтирование вложенного листа (PUSH) не закрывает внешний', () => {
+    const outerClose = vi.fn();
+    const innerClose = vi.fn();
+    function Outer() {
+      useHistorySheet(outerClose);
+      const [showInner, setShowInner] = useState(false);
+      return (
+        <div>
+          <button onClick={() => setShowInner(true)}>open inner</button>
+          {showInner && <Inner onClose={innerClose} />}
+        </div>
+      );
+    }
+
+    const { getByText } = render(
+      <MemoryRouter initialEntries={['/hub', '/target']} initialIndex={1}>
+        <Outer />
+      </MemoryRouter>,
+    );
+
+    act(() => {
+      getByText('open inner').click();
+    });
+
+    expect(outerClose).not.toHaveBeenCalled();
+    expect(innerClose).not.toHaveBeenCalled();
+  });
+
+  it('«Назад» закрывает вложенный лист первым, внешний остаётся; второе «Назад» закрывает внешний', () => {
+    const snap = makeSnapshot();
+    const outerClose = vi.fn();
+    const innerClose = vi.fn();
+    function Outer() {
+      useHistorySheet(outerClose);
+      const [showInner, setShowInner] = useState(false);
+      return (
+        <div>
+          <button onClick={() => setShowInner(true)}>open inner</button>
+          {showInner && (
+            <Inner
+              onClose={() => {
+                innerClose();
+                setShowInner(false);
+              }}
+            />
+          )}
+        </div>
+      );
+    }
+    const NavSpy = makeNavSpy(snap);
+
+    const { getByText } = render(
+      <MemoryRouter initialEntries={['/hub', '/target']} initialIndex={1}>
+        <NavSpy />
+        <Outer />
+      </MemoryRouter>,
+    );
+
+    // Вложенный лист монтируется отдельным шагом (как в ChannelSheet/
+    // LessonSheet — по клику, а не в одном коммите с внешним) — иначе оба
+    // pushState гонятся в одном цикле эффектов и порядок push перепутывается.
+    act(() => {
+      getByText('open inner').click();
+    });
+
+    act(() => {
+      void (snap.nav as NavigateFunction)(-1);
+    });
+    expect(innerClose).toHaveBeenCalledTimes(1);
+    expect(outerClose).not.toHaveBeenCalled();
+
+    act(() => {
+      void (snap.nav as NavigateFunction)(-1);
+    });
+    expect(outerClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('useHistorySheet — размонтирование', () => {
   it('unmount() всего дерева хука не бросает исключений', () => {
     const snap = makeSnapshot();
