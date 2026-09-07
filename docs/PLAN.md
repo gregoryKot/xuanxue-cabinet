@@ -232,7 +232,8 @@ recordingKey)` (`broadcast.schema.ts`, `recordingKey` — url или `file_id`
    не запускает вторую; класс выключен/удалён, все каналы выключены или
    неожиданный сбой (Mongo, настройки) — `broadcast` `cancelled` с причиной,
    как у ссылки на занятие — тихого отказа рассылки записи нет. Записи лежат
-   на YouTube (ответ владельца от 2026-09-06,
+   на YouTube (ответ владельца
+   от 2026-09-06,
    закрывает вопрос §10): `{ссылка}` записи — ссылка YouTube; Telegram получает
    видео по `file_id` напрямую; ВК ссылку YouTube вставляет в текст сообщения и
    не прикрепляет видео файлом — `video.save` требует пользовательского токена
@@ -247,6 +248,19 @@ recordingKey)` (`broadcast.schema.ts`, `recordingKey` — url или `file_id`
    подключения (виджеты форм под каждый тип) — фронтовая часть, следующий PR.
 5. **Рассылки.** Разовая: текст, время, каналы, предпросмотр. Журнал: что, куда, когда,
    с какой ошибкой. Ручные доставки ждут кнопки «скопировать» и «отметить отправленным».
+   **Реализовано** — разовая рассылка (`POST /broadcasts`, `GET /broadcasts/:id`,
+   `api/src/broadcasts/broadcasts.service.ts`): каналы должны существовать и быть
+   активны, иначе `InvalidInputError` по первому проблемному каналу (по имени, не
+   id); повтор `POST /broadcasts` создаёт вторую рассылку — у разовой нет ключа
+   идемпотентности, в отличие от ссылки на занятие и записи, защита от двойного
+   клика (предпросмотр или ключ) появится вместе с экраном. Ручная доставка (`GET
+/deliveries/:id` — поле `text` только у канала `manual`, `POST
+/deliveries/:id/mark-sent`, `api/src/deliveries/deliveries.service.ts`) — решение
+   по типу канала, не по статусу доставки: `pending` и `manual` у ручного канала
+   оба переходят в `sent` (учитель может отправить раньше тика раннера, текст уже
+   виден). `broadcast.status` становится `sent`, только когда `sent` все его
+   доставки: `manual`-доставка не в счёт, пока учитель не нажал кнопку. Экраны,
+   предпросмотр и журнал — следующий PR.
 6. **Шаблоны.** Два текста, по умолчанию повторяющие нынешние посты канала слово в
    слово (утренний анонс из §1 сюда не входит — появится после подтверждения Димой,
    вопрос в §10):
@@ -377,30 +391,37 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
   рассылка не найдена, текст не расшифровался) — сразу `failed` без повтора +
   `TeacherNotifier.notifyDeliveryFailed()` (заглушка `LogTeacherNotifier` —
   `error` в лог, настоящий DM учителю придёт вместе с ботом). `broadcast.status`
-  пересчитывается по своим доставкам: хоть одна `failed` → `failed`; все
-  `sent`/`manual` (`cancelled`-доставки не мешают, если отменены не все) →
-  `sent`; отменены все → `cancelled`; иначе остаётся `scheduled`.
+  пересчитывается по своим доставкам: хоть одна `failed` → `failed`; все `sent`
+  (`cancelled`-доставки не мешают, если отменены не все) → `sent`, с `sentAt`;
+  отменены все → `cancelled`; иначе остаётся `scheduled` — `manual`-доставка
+  в этот пересчёт не входит: она получает `sent` только по кнопке «отметить
+  отправленным» (`POST /deliveries/:id/mark-sent`, PLAN §6 «Рассылки»), до
+  этого `broadcast` ждёт её так же, как незавершённой доставки в другой канал.
 - Один интерфейс `ChannelAdapter { send(message, config) }`, реализации —
   `api/src/channels/` (telegram, manual реализованы; vk, webpush — следующие
   этапы). Тесты доставки — с фейковым адаптером, реальные вызовы не идут.
 
 ### API
 
-| Метод                 | Путь                                            | Кто       |
-| --------------------- | ----------------------------------------------- | --------- |
-| GET                   | `/auth/me`                                      | с сессией |
-| POST                  | `/auth/logout`                                  | с сессией |
-| POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все       |
-| GET/POST/PATCH/DELETE | `/classes` (реализовано)                        | учитель   |
-| POST                  | `/classes/:id/send-now`                         | учитель   |
-| GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)        | учитель   |
-| POST                  | `/lessons/:id/recording` (реализовано)          | учитель   |
-| GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано) | учитель   |
-| GET/POST              | `/broadcasts`, `/broadcasts/:id/deliveries`     | учитель   |
-| POST                  | `/deliveries/:id/mark-sent`                     | учитель   |
+| Метод                 | Путь                                             | Кто       |
+| --------------------- | ------------------------------------------------ | --------- |
+| GET                   | `/auth/me`                                       | с сессией |
+| POST                  | `/auth/logout`                                   | с сессией |
+| POST                  | `/auth/email`, `/auth/telegram`, `/auth/google`  | все       |
+| GET/POST/PATCH/DELETE | `/classes` (реализовано)                         | учитель   |
+| POST                  | `/classes/:id/send-now`                          | учитель   |
+| GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)         | учитель   |
+| POST                  | `/lessons/:id/recording` (реализовано)           | учитель   |
+| GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано)  | учитель   |
+| POST/GET              | `/broadcasts`, `/broadcasts/:id` (реализовано)   | учитель   |
+| GET/POST              | `/deliveries/:id`, `:id/mark-sent` (реализовано) | учитель   |
 
 `GET /lessons` принимает `?from&to&classId`: окно дат обязательно и не шире
 горизонта планировщика, `classId` фильтрует список.
+
+Список рассылок и журнал доставок (`GET /broadcasts`, `GET
+/broadcasts/:id/deliveries`) — следующий PR: пока каждую рассылку/доставку
+можно прочитать только по `id`.
 
 Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0010): без сессии
 401, без ролей (`roles: []`) и `student` — 403, `teacher`/`admin` — 200,
