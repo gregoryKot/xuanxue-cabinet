@@ -67,3 +67,21 @@ export function SkeletonList({
     </div>
   );
 }
+
+/** Сетка карточек одной высоты — форма совпадает с сеткой чисел «Сводки»
+ * (`repeat(auto-fit, minmax(150px, 1fr))`), не вертикальный список. */
+export function SkeletonGrid({ items = 5, h = 64 }: { items?: number; h?: number }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+        gap: 10,
+      }}
+    >
+      {Array.from({ length: items }).map((_, i) => (
+        <Skeleton key={i} h={h} radius={12} />
+      ))}
+    </div>
+  );
+}

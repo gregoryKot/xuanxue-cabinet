@@ -3,7 +3,7 @@
 // связка с submit/remove и их сетевыми ошибками.
 import { useState } from 'react';
 import type { ClassDto, CreateClassInput, UpdateClassInput } from '@xuanxue/shared';
-import { ApiError } from '../api/http';
+import { errorFrom, type FormError } from '../components/FormServerError';
 import {
   initialClassFormState,
   toCreateInput,
@@ -11,17 +11,6 @@ import {
   validateClassForm,
   type ClassFormState,
 } from './classFormInput';
-
-interface FormError {
-  message: string;
-  details?: string[];
-}
-
-function errorFrom(err: unknown, fallback: string): FormError {
-  return err instanceof ApiError
-    ? { message: err.message, details: err.details }
-    : { message: fallback };
-}
 
 export interface UseClassFormResult {
   state: ClassFormState;

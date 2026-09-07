@@ -159,4 +159,18 @@ describe('useClassForm — правка и удаление', () => {
 
     expect(result.current.serverError?.message).toBe('Есть запланированные занятия.');
   });
+
+  it('неизвестная ошибка при удалении — общий текст', async () => {
+    const onRemove = vi.fn().mockRejectedValue(new Error('boom'));
+    const cls = makeClass();
+    const { result } = renderHook(() => useClassForm(cls, vi.fn(), vi.fn(), onRemove));
+
+    await act(async () => {
+      await result.current.remove();
+    });
+
+    expect(result.current.serverError?.message).toBe(
+      'Не удалось удалить. Попробуйте ещё раз.',
+    );
+  });
 });

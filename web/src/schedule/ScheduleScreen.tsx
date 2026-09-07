@@ -6,6 +6,8 @@
 import { useMemo, useState } from 'react';
 import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { ClassSheet } from './ClassSheet';
@@ -37,18 +39,17 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <section style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{EXPLANATION}</p>
+    <section style={screenSectionStyle}>
+      <p style={screenExplanationStyle}>{EXPLANATION}</p>
 
       {!loading && <Button onClick={openCreate}>Добавить занятие</Button>}
 
       {error && (
-        <div role="alert" style={{ color: 'var(--danger)' }}>
-          <p style={{ margin: '0 0 8px' }}>{error}</p>
-          <Button variant="secondary" onClick={() => void reload()}>
-            Обновить
-          </Button>
-        </div>
+        <LoadErrorBanner
+          message={error}
+          onRetry={() => void reload()}
+          retryLabel="Обновить"
+        />
       )}
 
       {loading && !error && <SkeletonList rows={5} h={56} />}

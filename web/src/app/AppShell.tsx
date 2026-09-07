@@ -1,6 +1,7 @@
 // Оболочка кабинета — шапка и нижняя навигация (CLAUDE.md «Мобильный экран
-// первым»). Сейчас один пункт «Расписание»: будущие разделы появятся вместе
-// с экранами, которые они открывают. Роль без teacher/admin (ученик) —
+// первым»). Пункты навигации появляются вместе с экраном, который открывают
+// (PR K, по одному на патч): «Сводка», «Расписание», «Планирование» — дальше
+// «Каналы», «Рассылки», «Шаблоны». Роль без teacher/admin (ученик) —
 // StudentScreen вместо содержимого маршрута, но шапка с «Выйти» остаётся.
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -79,8 +80,14 @@ export function AppShell() {
 
       {isTeacher && (
         <nav style={navStyle} aria-label="Разделы кабинета">
+          <NavLink to="/summary" style={({ isActive }) => navLinkStyle(isActive)}>
+            Сводка
+          </NavLink>
           <NavLink to="/schedule" style={({ isActive }) => navLinkStyle(isActive)}>
             Расписание
+          </NavLink>
+          <NavLink to="/planning" style={({ isActive }) => navLinkStyle(isActive)}>
+            Планирование
           </NavLink>
         </nav>
       )}
