@@ -5,7 +5,6 @@
 // (CLAUDE.md «Логика вне контроллеров»).
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DateTime } from 'luxon';
 import type { Telegraf } from 'telegraf';
 import type { InlineKeyboardButton, Update } from 'telegraf/types';
 import {
@@ -18,6 +17,8 @@ import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { StartHandler } from './handlers/start.handler';
+import { TopicCommandHandler } from './handlers/topic-command.handler';
+import { registerHandlers } from './register-handlers';
 import { TELEGRAF_FACTORY, type TelegrafFactory } from './telegraf-instance';
 
 // Литерал, не константа из app.setup.ts: там `app.setGlobalPrefix('api')` не
@@ -37,6 +38,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly chatMemberHandler: ChatMemberHandler,
     private readonly startHandler: StartHandler,
     private readonly callbackQueryHandler: CallbackQueryHandler,
+    private readonly topicCommandHandler: TopicCommandHandler,
     private readonly messageHandler: MessageHandler,
   ) {}
 
@@ -56,14 +58,13 @@ export class TelegramBotService implements OnApplicationBootstrap {
     bot.catch((err) => {
       this.logger.error(`telegram.update: ${errorMessage(err)}`, errorStack(err));
     });
-    bot.start((ctx) => this.startHandler.handle(ctx));
-    bot.on('my_chat_member', (ctx) => this.chatMemberHandler.handle(ctx));
-    // DateTime.utc() — на каждый апдейт заново (CLAUDE.md «Время»): здесь, а
-    // не в самих хендлерах, единственное место, где бот зовёт «сейчас».
-    bot.on('callback_query', (ctx) =>
-      this.callbackQueryHandler.handle(ctx, DateTime.utc()),
-    );
-    bot.on('message', (ctx) => this.messageHandler.handle(ctx, DateTime.utc()));
+    registerHandlers(bot, {
+      chatMemberHandler: this.chatMemberHandler,
+      startHandler: this.startHandler,
+      callbackQueryHandler: this.callbackQueryHandler,
+      topicCommandHandler: this.topicCommandHandler,
+      messageHandler: this.messageHandler,
+    });
     this.bot = bot;
 
     // Прогрев botInfo и регистрация вебхука идут в сеть — ни один не должен

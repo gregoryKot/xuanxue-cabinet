@@ -10,6 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
 import { PREVIEW_MINUTES } from '@xuanxue/shared';
+import { claimOnce } from '../common/claim-once';
 import { decrypt } from '../utils/encryption';
 import { inlineButton } from '../telegram/callback-data';
 import { TeacherChats } from '../telegram/teacher-chats';
@@ -68,22 +69,12 @@ export class PreviewService {
 
     let claimed = 0;
     for (const broadcast of due) {
-      if (await this.claim(broadcast._id, now)) {
+      if (await claimOnce(this.broadcastModel, broadcast._id, 'previewSentAt', now)) {
         await this.sendToTeachers(broadcast, chats);
         claimed += 1;
       }
     }
     return { claimed };
-  }
-
-  /** `modifiedCount === 1` — этот вызов реально «забрал» рассылку; второй
-   * инстанс/тик увидит `previewSentAt` уже занятым и не пришлёт дубль. */
-  private async claim(id: Types.ObjectId, now: DateTime): Promise<boolean> {
-    const { modifiedCount } = await this.broadcastModel.updateOne(
-      { _id: id, previewSentAt: { $exists: false } },
-      { $set: { previewSentAt: now.toJSDate() } },
-    );
-    return modifiedCount === 1;
   }
 
   /** `TelegramBotService.sendMessage` сама глотает сбой сети (warn в лог) —

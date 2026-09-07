@@ -43,6 +43,11 @@ export class DeliveryRecord {
 
   @Prop({ type: String, required: false })
   externalId?: string;
+
+  // Бот шлёт «Скопировал, отправил» по доставке в ручной канал один раз, не
+  // на каждом тике (PLAN.md §6 «Telegram-бот для учителя»).
+  @Prop({ type: Date, required: false })
+  manualPromptedAt?: Date;
 }
 
 export const DeliverySchema = SchemaFactory.createForClass(DeliveryRecord);

@@ -3,6 +3,7 @@
 // фейки (сеть проверяют их собственные спеки).
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
+import { claimOnce } from '../common/claim-once';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { encryptRecord } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -195,24 +196,17 @@ describe('PreviewService.sendPending', () => {
   it('previewSentAt заняли между выборкой и захватом (гонка) — вторая попытка пропускает', async () => {
     const broadcast = await createBroadcast();
     // Симулируем гонку: пока sendPending() строит список due, previewSentAt
-    // уже поставлен другим инстансом — claim() внутри должен вернуть false.
+    // уже поставлен другим инстансом — общий claimOnce (api/src/common/
+    // claim-once.ts, тот же, что зовёт сам PreviewService) должен вернуть
+    // false, не найдя документ без поля.
     await broadcastModel.updateOne(
       { _id: broadcast._id },
       { $set: { previewSentAt: NOW.toJSDate() } },
     );
-    const bot = fakeBot();
-    const service = new PreviewService(
-      broadcastModel,
-      fakeTeacherChats() as never,
-      bot as unknown as TelegramBotService,
-    );
-    // find() внутри sendPending фильтрует по previewSentAt: {$exists:false} —
-    // документ уже не попадёт в due, поэтому claim()==false проверяем напрямую.
-    const claim = (
-      service as unknown as { claim(id: unknown, now: DateTime): Promise<boolean> }
-    ).claim.bind(service);
 
-    await expect(claim(broadcast._id, NOW)).resolves.toBe(false);
+    await expect(
+      claimOnce(broadcastModel, broadcast._id, 'previewSentAt', NOW),
+    ).resolves.toBe(false);
   });
 
   it('текст не расшифровался — не шлёт, previewSentAt всё равно ставится', async () => {

@@ -8,6 +8,7 @@ import type { Context } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import type { CallbackQueryHandler } from '../handlers/callback-query.handler';
 import type { MessageHandler } from '../handlers/message.handler';
+import type { TopicCommandHandler } from '../handlers/topic-command.handler';
 
 export const TOKEN = '123456:test-token-not-real-0000000000';
 
@@ -26,7 +27,7 @@ export function fakeHandler(): { handle: jest.Mock<Promise<void>, [Context]> } {
   return { handle: jest.fn<Promise<void>, [Context]>().mockResolvedValue(undefined) };
 }
 
-/** callback_query/message — хендлеры с сигнатурой `handle(ctx, now)`
+/** callback_query/`/тема`/message — хендлеры с сигнатурой `handle(ctx, now)`
  * (CLAUDE.md «Время»: TelegramBotService сам зовёт DateTime.utc() на каждый
  * апдейт и передаёт хендлеру). */
 export function fakeHandlerWithNow(): {
@@ -37,11 +38,16 @@ export function fakeHandlerWithNow(): {
   };
 }
 
-/** callback_query/message-хендлеры — маршрутизацию каждого из них (и что им
- * приходит свежий DateTime.utc()) проверяет telegram-bot.service.spec.ts. */
-export function fakeExtraHandlers(): [CallbackQueryHandler, MessageHandler] {
+/** callback_query/`/тема`/message-хендлеры — маршрутизацию каждого из них (и
+ * что им приходит свежий DateTime.utc()) проверяет telegram-bot.service.spec.ts. */
+export function fakeExtraHandlers(): [
+  CallbackQueryHandler,
+  TopicCommandHandler,
+  MessageHandler,
+] {
   return [
     fakeHandlerWithNow() as unknown as CallbackQueryHandler,
+    fakeHandlerWithNow() as unknown as TopicCommandHandler,
     fakeHandlerWithNow() as unknown as MessageHandler,
   ];
 }
@@ -104,3 +110,19 @@ export const TEXT_MESSAGE_UPDATE = {
     text: 'новая тема занятия',
   },
 } as unknown as Update;
+
+/** Апдейты `/тема` — маршрутизация в hears() (регэксп после кириллического
+ * `\b`-бага, правка по ревью PR I2b): голая команда, с `@botname` (Telegram
+ * дописывает его в группах) и похожее, но не совпадающее слово. */
+export function topicCommandUpdate(text: string, updateId = 5): Update {
+  return {
+    update_id: updateId,
+    message: {
+      message_id: 4,
+      date: 0,
+      chat: { id: 111, type: 'private', first_name: 'Дима' },
+      from: { id: 111, is_bot: false, first_name: 'Дима' },
+      text,
+    },
+  } as unknown as Update;
+}

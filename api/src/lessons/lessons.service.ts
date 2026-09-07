@@ -36,6 +36,7 @@ import {
 } from './lessons.queries';
 import {
   assertHasRecordingSource,
+  assertValidRecordingUrl,
   buildRecordingDuplicateConditions,
   buildRecordingPush,
 } from './lessons.recording';
@@ -126,6 +127,7 @@ export class LessonsService {
   ): Promise<LessonDto> {
     assertLessonId(id);
     assertHasRecordingSource(input);
+    assertValidRecordingUrl(input.url);
 
     const lesson = await this.model
       .findById(id, { classId: 1 })

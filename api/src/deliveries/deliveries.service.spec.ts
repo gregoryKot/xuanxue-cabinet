@@ -147,9 +147,17 @@ describe('DeliveriesService', () => {
     );
   });
 
-  it('markSent: несуществующий id — NotFoundError', async () => {
+  it('markSent: рассылку отменили между отправкой в канал и нажатием — «Рассылка отменена»', async () => {
+    const { delivery } = await seed('manual', 'cancelled');
+
+    await expect(service.markSent(delivery._id.toString(), NOW)).rejects.toThrow(
+      'Рассылка отменена, отправлять не нужно.',
+    );
+  });
+
+  it('markSent: несуществующий id — NotFoundError, текст ведёт в журнал рассылок (второй потребитель — бот)', async () => {
     await expect(service.markSent('507f1f77bcf86cd799439011', NOW)).rejects.toThrow(
-      'не найдена',
+      'Доставка не найдена. Откройте журнал рассылок.',
     );
   });
 

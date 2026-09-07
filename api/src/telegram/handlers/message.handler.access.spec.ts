@@ -7,13 +7,13 @@ import { LessonsService } from '../../lessons/lessons.service';
 import { UsersService } from '../../users/users.service';
 import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
+import { TeacherChats } from '../teacher-chats';
 import { MessageHandler } from './message.handler';
+import { fakeCtx } from './message.handler.fake-ctx';
+import { NOW, seedLesson } from './message.handler.seed';
+import { seedTeacher } from '../test-support/seed-teacher';
 import {
   clearMessageHandlerTest,
-  fakeCtx,
-  NOW,
-  seedLesson,
-  seedTeacher,
   setupMessageHandlerTest,
   type MessageHandlerTestContext,
 } from './message.handler.test-support';
@@ -59,7 +59,7 @@ describe('MessageHandler — доступ и сбои', () => {
   });
 
   it('сообщение из группы — игнорируется', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const { ctx: msgCtx, replies } = fakeCtx({
       chatId: 111,
       chatType: 'group',
@@ -78,7 +78,7 @@ describe('MessageHandler — доступ и сбои', () => {
   ): MessageHandler {
     const usersService = new UsersService(ctx.userModel);
     return new MessageHandler(
-      usersService,
+      new TeacherChats(usersService, ctx.channelModel),
       new BotSessionService(ctx.botSessionModel),
       { update } as unknown as LessonsService,
       new TopicRebuildService(
@@ -93,11 +93,13 @@ describe('MessageHandler — доступ и сбои', () => {
         ),
         usersService,
       ),
+      ctx.broadcastModel,
+      ctx.classModel,
     );
   }
 
   it('неожиданный сбой (LessonsService.update упал) — просит попробовать ещё раз, ожидание не закрывается', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     await ctx.botSessionModel.create({
       chatId: 111,
@@ -117,7 +119,7 @@ describe('MessageHandler — доступ и сбои', () => {
   });
 
   it('LessonsService.update — NotFoundError (занятие отменили): понятный текст, ожидание закрывается', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     await ctx.botSessionModel.create({
       chatId: 111,

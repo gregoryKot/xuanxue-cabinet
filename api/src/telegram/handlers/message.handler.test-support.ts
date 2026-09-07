@@ -1,15 +1,9 @@
-// Общая обвязка для message.handler.spec.ts и message.handler.access.spec.ts —
-// один файл был больше спек-лимита в 300 строк (CLAUDE.md «Файлы»), тесты
-// разделены по смыслу (поток темы vs доступ), обвязка — общая, чтобы не
-// дублировать её (jscpd).
-import { DateTime } from 'luxon';
+// Подъём Mongo + сборка MessageHandler для трёх message.handler.*.spec.ts
+// (спек-лимит 300 строк — CLAUDE.md «Файлы»). fakeCtx/messageOf —
+// message.handler.fake-ctx.ts, seedTeacher/seedLesson — message.handler.seed.ts
+// (файл-лимит 150 у каждого).
 import type { Connection, Model } from 'mongoose';
-import type { Context } from 'telegraf';
-import {
-  CLASS_ENCRYPT_SCHEMA,
-  ClassRecord,
-  ClassSchema,
-} from '../../classes/class.schema';
+import { ClassRecord, ClassSchema } from '../../classes/class.schema';
 import { RecordingBroadcastService } from '../../broadcasts/recording-broadcast.service';
 import { BroadcastRecord, BroadcastSchema } from '../../broadcasts/broadcast.schema';
 import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
@@ -20,37 +14,12 @@ import { LessonsService } from '../../lessons/lessons.service';
 import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
 import { SettingsService } from '../../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
-import { encryptRecord } from '../../utils/encryption';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { TeacherChats } from '../teacher-chats';
 import { MessageHandler } from './message.handler';
-
-export const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
-
-export function fakeCtx(options: {
-  chatId?: number;
-  chatType?: 'private' | 'group';
-  text?: string;
-  noFrom?: boolean;
-}): { ctx: Context; replies: string[] } {
-  const replies: string[] = [];
-  const ctx = {
-    chat:
-      options.chatId === undefined
-        ? undefined
-        : { id: options.chatId, type: options.chatType ?? 'private' },
-    from:
-      options.chatId === undefined || options.noFrom ? undefined : { id: options.chatId },
-    message: options.text === undefined ? undefined : { text: options.text },
-    reply: (text: string) => {
-      replies.push(text);
-      return Promise.resolve(true);
-    },
-  } as unknown as Context;
-  return { ctx, replies };
-}
 
 export interface MessageHandlerTestContext {
   memory: MemoryMongo;
@@ -59,6 +28,7 @@ export interface MessageHandlerTestContext {
   lessonModel: Model<LessonRecord>;
   classModel: Model<ClassRecord>;
   broadcastModel: Model<BroadcastRecord>;
+  channelModel: Model<ChannelRecord>;
   botSessionModel: Model<BotSessionRecord>;
   settingsModel: Model<SettingsRecord>;
   handler: MessageHandler;
@@ -107,10 +77,12 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     usersService,
   );
   const handler = new MessageHandler(
-    usersService,
+    new TeacherChats(usersService, channelModel),
     new BotSessionService(botSessionModel),
     lessonsService,
     topicRebuild,
+    broadcastModel,
+    classModel,
   );
   return {
     memory,
@@ -119,6 +91,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     lessonModel,
     classModel,
     broadcastModel,
+    channelModel,
     botSessionModel,
     settingsModel,
     handler,
@@ -133,41 +106,7 @@ export async function clearMessageHandlerTest(
     ctx.lessonModel.deleteMany({}),
     ctx.classModel.deleteMany({}),
     ctx.broadcastModel.deleteMany({}),
+    ctx.channelModel.deleteMany({}),
     ctx.botSessionModel.deleteMany({}),
   ]);
-}
-
-export async function seedTeacher(
-  userModel: Model<UserRecord>,
-  chatId: number,
-): Promise<void> {
-  await userModel.create({ name: 'Мария', telegramId: chatId, roles: ['teacher'] });
-}
-
-export async function seedLesson(
-  classModel: Model<ClassRecord>,
-  lessonModel: Model<LessonRecord>,
-) {
-  const cls = await classModel.create(
-    encryptRecord(
-      {
-        title: 'цигун для глаз',
-        groupLabel: '',
-        format: 'online',
-        zoomLink: 'https://zoom.example/1',
-        tz: 'Asia/Jerusalem',
-        leadMinutes: 30,
-        active: true,
-        channelIds: [],
-      },
-      CLASS_ENCRYPT_SCHEMA,
-    ),
-  );
-  return lessonModel.create({
-    classId: cls._id,
-    startsAt: NOW.plus({ minutes: 10 }).toJSDate(),
-    durationMin: 60,
-    topic: 'старая тема',
-    status: 'scheduled',
-  });
 }

@@ -4,7 +4,7 @@
 // разбор и построение в одном месте, не по одной реализации на кнопку.
 import type { InlineKeyboardButton } from 'telegraf/types';
 
-const CALLBACK_ACTIONS = ['cancel', 'topic'] as const;
+const CALLBACK_ACTIONS = ['cancel', 'topic', 'norec', 'sent'] as const;
 export type CallbackAction = (typeof CALLBACK_ACTIONS)[number];
 
 function isCallbackAction(value: string): value is CallbackAction {

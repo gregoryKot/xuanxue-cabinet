@@ -172,6 +172,18 @@ describe('LessonsService', () => {
     );
   });
 
+  it('addRecording: url мимо DTO (как шлёт бот) с неверным протоколом — InvalidInputError', async () => {
+    // Бот собирает вход из текста сообщения (recording-source.ts), не через
+    // AddRecordingDto/class-validator — addRecording обязан проверить сам
+    // (lessons.recording.ts, assertValidRecordingUrl).
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+
+    await expect(
+      service.addRecording(created.id, { url: 'ftp://example.com/rec' }, NOW),
+    ).rejects.toThrow('ссылку на запись');
+  });
+
   it('addRecording без title — title класса по умолчанию', async () => {
     const classId = await createClass({ title: 'Цигун для начинающих' });
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
