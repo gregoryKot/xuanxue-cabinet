@@ -41,10 +41,16 @@ function stubTelegramWidget(user: TelegramLoginInput) {
   window.Telegram = { Login: { auth } };
 }
 
-function fireScriptLoad() {
-  document.head
-    .querySelector('script[src*="telegram-widget"]')
-    ?.dispatchEvent(new Event('load'));
+/** Скрипт виджета вставляет useEffect — он выполняется после коммита, а
+ * findByRole резолвится по мутации DOM раньше него: без ожидания под
+ * нагрузкой CI `load` уходил в пустоту и кнопка оставалась выключенной. */
+async function fireScriptLoad() {
+  const script = await waitFor(() => {
+    const found = document.head.querySelector('script[src*="telegram-widget"]');
+    expect(found).not.toBeNull();
+    return found;
+  });
+  script?.dispatchEvent(new Event('load'));
 }
 
 afterEach(() => {
@@ -111,7 +117,7 @@ describe('LoginScreen — вход', () => {
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    fireScriptLoad();
+    await fireScriptLoad();
     await waitFor(() => expect(button).not.toBeDisabled());
 
     const fakeTelegramUser: TelegramLoginInput = {
@@ -141,7 +147,7 @@ describe('LoginScreen — вход', () => {
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    fireScriptLoad();
+    await fireScriptLoad();
     await waitFor(() => expect(button).not.toBeDisabled());
 
     stubTelegramWidget({ id: 1, first_name: 'X', auth_date: 1, hash: 'a'.repeat(64) });
@@ -157,7 +163,7 @@ describe('LoginScreen — вход', () => {
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    fireScriptLoad();
+    await fireScriptLoad();
     await waitFor(() => expect(button).not.toBeDisabled());
     window.Telegram = {
       Login: {
@@ -180,7 +186,7 @@ describe('LoginScreen — вход', () => {
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    fireScriptLoad();
+    await fireScriptLoad();
     await waitFor(() => expect(button).not.toBeDisabled());
     stubTelegramWidget({ id: 1, first_name: 'X', auth_date: 1, hash: 'a'.repeat(64) });
 
