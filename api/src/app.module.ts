@@ -18,6 +18,7 @@ import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { SettingsModule } from './settings/settings.module';
+import { SummaryModule } from './summary/summary.module';
 import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -61,6 +62,7 @@ import { TelegramModule } from './telegram/telegram.module';
     BroadcastsModule,
     DeliveriesModule,
     SettingsModule,
+    SummaryModule,
     UsersModule,
     // Без контроллера и планировщика — сервис для одноразового CLI-импорта
     // (seed-classes.ts, PLAN.md §9), в HTTP-приложении бездействует.

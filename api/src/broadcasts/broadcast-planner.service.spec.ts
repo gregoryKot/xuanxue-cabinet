@@ -45,14 +45,15 @@ describe('BroadcastPlannerService.plan', () => {
       SettingsRecord.name,
       SettingsSchema,
     );
+    const usersService = new UsersService(userModel);
     service = new BroadcastPlannerService(
       classModel,
       lessonModel,
       broadcastModel,
       deliveryModel,
       channelModel,
-      new SettingsService(settingsModel),
-      new UsersService(userModel),
+      new SettingsService(settingsModel, lessonModel, classModel, usersService),
+      usersService,
     );
   }, 60_000);
 

@@ -48,14 +48,15 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
       SettingsRecord.name,
       SettingsSchema,
     );
+    const usersService = new UsersService(userModel);
     service = new RecordingBroadcastService(
       lessonModel,
       classModel,
       channelModel,
       broadcastModel,
       deliveryModel,
-      new SettingsService(settingsModel),
-      new UsersService(userModel),
+      new SettingsService(settingsModel, lessonModel, classModel, usersService),
+      usersService,
     );
   }, 60_000);
 

@@ -10,8 +10,10 @@ import { renderLessonPost } from './post-renderer';
 import type { PlannerClass, PlannerLesson } from './broadcast-planner.queries';
 
 /** {ведущий} = имя lessons.leaderId ?? classes.leaderId — одно чтение на
- * занятие, только если ведущий назначен. */
-async function resolveLeaderName(
+ * занятие, только если ведущий назначен. Экспортирована — тем же приёмом
+ * резолвит имя предпросмотр шаблона (settings-preview.ts, docs/PLAN.md §6
+ * «Шаблоны»), не копией. */
+export async function resolveLeaderName(
   usersService: UsersService,
   leaderId: Types.ObjectId | undefined,
 ): Promise<string | undefined> {

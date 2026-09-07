@@ -38,6 +38,8 @@ export {
 export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
+export type { PluralForms } from './plural-ru';
+export { pluralRu } from './plural-ru';
 export type { UserRole, UserStatus, MeDto, TelegramLoginInput } from './auth';
 export {
   USER_ROLES,
@@ -99,6 +101,15 @@ export type {
   ListDeliveriesQuery,
 } from './broadcasts';
 export { BROADCAST_LIMITS, JOURNAL_RANGE_MAX_WEEKS } from './broadcasts';
+export type {
+  SettingsDto,
+  UpdateSettingsInput,
+  PreviewTemplateInput,
+  PreviewTemplateResult,
+} from './settings';
+export { SETTINGS_LIMITS } from './settings';
+export type { SummaryPeriod, NextLessonSummary, SummaryDto } from './summary';
+export { SUMMARY_PERIOD_DAYS } from './summary';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';
