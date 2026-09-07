@@ -16,6 +16,9 @@ import { ClassesService } from './classes.service';
   ],
   controllers: [ClassesController],
   providers: [ClassesService],
-  exports: [MongooseModule],
+  // ClassesService экспортирован для SeedModule (PR H): импорт занятий из
+  // сида переиспользует create() — там же шифрование zoomLink/zoomPassword,
+  // дублировать его в семинге нельзя (CLAUDE.md «Одна механика»).
+  exports: [MongooseModule, ClassesService],
 })
 export class ClassesModule {}

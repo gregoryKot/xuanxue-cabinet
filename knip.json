@@ -8,6 +8,7 @@
     "api": {
       "entry": [
         "src/main.ts",
+        "src/seed/seed-classes.ts",
         "src/utils/encryption.ts",
         "src/users/user-data.registry.ts",
         "test/**/*.e2e-spec.ts"

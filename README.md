@@ -32,12 +32,19 @@ scripts/    CI-храповики и их бейслайны
 ```bash
 nvm use                   # Node из .nvmrc
 npm ci
-cp .env.example .env      # заполнить MONGODB_URI; секреты вне production не обязательны
+cp .env.example api/.env  # npm run --workspace=api стартует с cwd внутри api/, .env — тоже там
 npm run dev               # api на :3000, web на :5173
 ```
 
 Реальные ссылки Zoom для первого импорта лежат в `api/seed/classes.local.json`,
-файл в `.gitignore`. Формат — `api/seed/classes.example.json`.
+файл в `.gitignore`. Формат — `api/seed/classes.example.json`. Импорт:
+
+```bash
+npm run seed:classes --workspace=api -- api/seed/classes.local.json
+```
+
+Команда идемпотентна: класс, у которого уже есть точное совпадение названия
+и подписи группы, пропускается, а не дублируется — перезапускать безопасно.
 
 Вход через Telegram (`POST /auth/telegram`) локально не проверить: виджет
 Telegram Login работает только с публичным доменом, у `localhost` его нет.
