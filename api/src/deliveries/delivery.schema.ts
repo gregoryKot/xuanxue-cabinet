@@ -48,6 +48,15 @@ export class DeliveryRecord {
 export const DeliverySchema = SchemaFactory.createForClass(DeliveryRecord);
 DeliverySchema.index({ broadcastId: 1, channelId: 1 }, { unique: true });
 DeliverySchema.index({ status: 1, nextAttemptAt: 1 });
+// Сводка (`GET /summary`, docs/PLAN.md §6) считает deliveriesFailed/pending/
+// manualWaiting за период по `createdAt` (timestamps: true) — свой индекс,
+// `nextAttemptAt` выше для этого запроса не подходит: `createdAt` есть у
+// каждой доставки, `nextAttemptAt` — только у части `pending`.
+DeliverySchema.index({ status: 1, createdAt: 1 });
+// Экран «проблемы» (`GET /deliveries?status?&limit`, docs/PLAN.md §6) сортирует
+// по createdAt desc; без status в query индекс выше не помогает сорту так же,
+// как {status,scheduledAt} у broadcasts — отдельный индекс на голый createdAt.
+DeliverySchema.index({ createdAt: -1 });
 
 export const DELIVERY_FIELD_POLICY: FieldPolicy = {
   error: enc,

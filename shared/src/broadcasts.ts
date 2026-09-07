@@ -1,7 +1,6 @@
-// DTO и константы API рассылок/доставок (`/broadcasts`, `/deliveries`).
-// Общий контракт api и web (CLAUDE.md, раздел «Слои») — по образцу
-// shared/src/lessons.ts. Список и журнал (docs/PLAN.md §6 «Рассылки») —
-// следующий PR, здесь только разовая рассылка и ручная доставка.
+// DTO и константы API рассылок/доставок (`/broadcasts`, `/deliveries`) —
+// разовая рассылка, журнал и отмена (docs/PLAN.md §6 «Рассылки»). Общий
+// контракт api и web (CLAUDE.md, раздел «Слои») — по образцу shared/src/lessons.ts.
 import type { BroadcastKind, BroadcastStatus, DeliveryStatus } from './domain';
 
 export interface BroadcastDto {
@@ -42,4 +41,25 @@ export interface CreateBroadcastInput {
   scheduledAt?: string;
 }
 
+/** Query `GET /broadcasts` — окно `from..to` обязательно (список без периода
+ * — «дай всё», запрещено CLAUDE.md «API»), `status`/`kind` сужают журнал. */
+export interface ListBroadcastsQuery {
+  from: string;
+  to: string;
+  status?: BroadcastStatus;
+  kind?: BroadcastKind;
+  limit?: number;
+}
+
+/** Query `GET /deliveries` — «последние проблемы», без окна дат: экран
+ * смотрит на текущий статус доставки, не на период (docs/PLAN.md §6). */
+export interface ListDeliveriesQuery {
+  status?: DeliveryStatus;
+  limit?: number;
+}
+
 export const BROADCAST_LIMITS = { text: 4096, channelsMax: 20 } as const; // 4096 — лимит Telegram
+
+/** Шире, чем нужно смотреть в журнале за один запрос: дальше — открывать
+ * новое окно, не тянуть всю историю школы разом (CLAUDE.md «API»). */
+export const JOURNAL_RANGE_MAX_WEEKS = 8;

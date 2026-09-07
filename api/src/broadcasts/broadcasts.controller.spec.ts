@@ -55,4 +55,32 @@ describe('BroadcastsController', () => {
     // broadcasts.service.spec.ts.
     expect(createManual).toHaveBeenCalledWith(body, 'u1', expect.any(DateTime));
   });
+
+  it('list() передаёт query в сервис', async () => {
+    const list = jest.fn().mockResolvedValue([BROADCAST_DTO]);
+    const controller = await buildController({ list });
+    const query = { from: '2026-09-01T00:00:00Z', to: '2026-09-08T00:00:00Z' };
+
+    await expect(controller.list(query)).resolves.toEqual([BROADCAST_DTO]);
+    expect(list).toHaveBeenCalledWith(query);
+  });
+
+  it('listDeliveries() передаёт id в сервис', async () => {
+    const listDeliveries = jest.fn().mockResolvedValue([]);
+    const controller = await buildController({ listDeliveries });
+
+    await expect(controller.listDeliveries('b1')).resolves.toEqual([]);
+    expect(listDeliveries).toHaveBeenCalledWith('b1');
+  });
+
+  it('cancel() передаёт id в сервис', async () => {
+    const cancel = jest.fn().mockResolvedValue({ ...BROADCAST_DTO, status: 'cancelled' });
+    const controller = await buildController({ cancel });
+
+    await expect(controller.cancel('b1')).resolves.toEqual({
+      ...BROADCAST_DTO,
+      status: 'cancelled',
+    });
+    expect(cancel).toHaveBeenCalledWith('b1');
+  });
 });
