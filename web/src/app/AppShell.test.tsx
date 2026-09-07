@@ -55,19 +55,19 @@ const STUDENT: MeDto = {
 };
 
 describe('AppShell — учитель', () => {
-  it('шапка, нижняя навигация «Расписание» и вложенный маршрут', async () => {
+  it('шапка, нижняя навигация «Занятия» и вложенный маршрут', async () => {
     renderShell(TEACHER);
 
     expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
     expect(screen.getByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Расписание' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
   });
 
-  it('нижняя навигация — все четыре пункта (ревью п.17)', async () => {
+  it('нижняя навигация — все шесть пунктов (pr-k3-fixes.md п.10)', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
-    for (const label of ['Сводка', 'Расписание', 'Планирование', 'Каналы']) {
+    for (const label of ['Сводка', 'Занятия', 'План', 'Каналы', 'Рассылки', 'Шаблоны']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
   });
@@ -116,6 +116,36 @@ describe('AppShell — учитель', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Сбой сервера');
     expect(screen.getByText('Содержимое расписания')).toBeInTheDocument();
   });
+
+  it('ошибка при «Выйти» (не ApiError) — общий текст', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(TEACHER);
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/logout') return Promise.reject(new Error('network down'));
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/schedule']}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<p>Экран входа</p>} />
+            <Route element={<AppShell />}>
+              <Route path="/schedule" element={<p>Содержимое расписания</p>} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByText('Содержимое расписания');
+
+    await user.click(screen.getByRole('button', { name: 'Выйти' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось выйти. Попробуйте ещё раз.',
+    );
+  });
 });
 
 describe('AppShell — ученик (без роли teacher/admin)', () => {
@@ -126,7 +156,7 @@ describe('AppShell — ученик (без роли teacher/admin)', () => {
       await screen.findByText('Кабинет для учителя. Расписание школы — на сайте.'),
     ).toBeInTheDocument();
     expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Расписание' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
   });
 
   it('«Выйти» доступна и ученику', async () => {

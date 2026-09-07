@@ -16,6 +16,8 @@ const ScheduleScreen = lazy(() => import('../schedule/ScheduleScreen'));
 const SummaryScreen = lazy(() => import('../summary/SummaryScreen'));
 const PlanningScreen = lazy(() => import('../planning/PlanningScreen'));
 const ChannelsScreen = lazy(() => import('../channels/ChannelsScreen'));
+const BroadcastsScreen = lazy(() => import('../broadcasts/BroadcastsScreen'));
+const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -36,6 +38,8 @@ export default function App() {
                 <Route path="/schedule" element={<ScheduleScreen />} />
                 <Route path="/planning" element={<PlanningScreen />} />
                 <Route path="/channels" element={<ChannelsScreen />} />
+                <Route path="/broadcasts" element={<BroadcastsScreen />} />
+                <Route path="/templates" element={<TemplatesScreen />} />
                 <Route path="/" element={<Navigate to="/summary" replace />} />
               </Route>
             </Route>

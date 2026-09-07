@@ -1,6 +1,7 @@
 // Иконки нижней навигации — простые линии 20×20, `currentColor` берёт цвет
 // активной/неактивной ссылки сам (CLAUDE.md «Мобильный экран первым»: с
-// иконкой подпись остаётся короче на 360px, когда пунктов больше 5, ревью п.11).
+// иконкой подпись остаётся короче на 360px, когда пунктов больше 5 —
+// ревью пункт 10 pr-k3-fixes.md, PLAN §6).
 // `aria-hidden` — подпись рядом уже называет раздел, дублировать нечем.
 import type { SVGProps } from 'react';
 
@@ -48,6 +49,24 @@ export function ChannelsIcon() {
     <svg {...shared}>
       <path d="M3 8v4l3 1 9 3V4L6 7z" />
       <path d="M6 13v3a2 2 0 0 0 2 2h1" />
+    </svg>
+  );
+}
+
+export function BroadcastsIcon() {
+  return (
+    <svg {...shared}>
+      <path d="M17 3 3 9.5l6 2 2 6z" />
+      <path d="M17 3 9.5 11.5" />
+    </svg>
+  );
+}
+
+export function TemplatesIcon() {
+  return (
+    <svg {...shared}>
+      <rect x="4" y="2" width="12" height="16" rx="1.5" />
+      <path d="M7 6h6M7 9.5h6M7 13h4" />
     </svg>
   );
 }
