@@ -37,6 +37,18 @@ export interface TelegramLoginInput {
 }
 
 /**
+ * Ответ `GET /auth/config` (`@Public()`, без сессии) — конфигурация экрана
+ * входа. `telegramBotId` — числовой id бота (префикс `BOT_TOKEN` до
+ * двоеточия), нужен `window.Telegram.Login.auth()` (см. LoginScreen.tsx);
+ * без него кнопки входа нет. `publicUrl` — ссылка на сайт школы для гостя
+ * без роли (RequireAuth.tsx).
+ */
+export interface AuthConfigDto {
+  telegramBotId?: number;
+  publicUrl?: string;
+}
+
+/**
  * Заголовок CSRF-защиты (SECURITY §2, ADR-0012): обязателен для любого
  * мутирующего запроса, кроме помеченных `@SkipCsrf()` (вебхук Telegram).
  * Кросс-доменная HTML-форма его не поставит — обычный `fetch` из web ставит

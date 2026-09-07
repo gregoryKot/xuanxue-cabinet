@@ -2,10 +2,29 @@
   color-scheme: light;
   --surface: #e7e5e2;
   --surface-2: #f2f0ed;
+  /* Общие токены оформления (PR J1) — один источник цвета для всех компонентов
+     кабинета, вместо литерала в каждом inline-style (CLAUDE.md «Без магических
+     чисел и строк»). Тёмная тема не нужна (CLAUDE.md «Фронтенд»). */
+  --ink: #1f3b2f;
+  --ink-soft: #55645d;
+  --accent: #1f3b2f;
+  --accent-contrast: #f2f0ed;
+  --danger: #a3312a;
+  --border: #d8d5d0;
+  --focus: #4b8bfa;
 }
 
 body {
   margin: 0;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: system-ui, sans-serif;
+}
+
+/* Видимый фокус с клавиатуры на любом контроле (CLAUDE.md «Доступность»). */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* Скелетоны загрузки — правило CLAUDE.md «форма контента, а не спиннер». */
@@ -19,5 +38,6 @@ body {
   * {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }

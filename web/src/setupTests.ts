@@ -8,3 +8,20 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+// jsdom не реализует matchMedia (useIsMobile.ts, переключатель список/сетка
+// расписания на 768px) — по умолчанию «не мобильный», тесты конкретной ветки
+// переопределяют через vi.stubGlobal('matchMedia', ...).
+if (!window.matchMedia) {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}

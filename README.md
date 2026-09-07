@@ -46,11 +46,14 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 Команда идемпотентна: класс, у которого уже есть точное совпадение названия
 и подписи группы, пропускается, а не дублируется — перезапускать безопасно.
 
-Вход через Telegram (`POST /auth/telegram`) локально не проверить: виджет
-Telegram Login работает только с публичным доменом, у `localhost` его нет.
-До PR I (`/start` в боте, вход по `update.message.from.id` без виджета)
-локальный вход в кабинет не настроить без ручной подмены cookie — см.
-`api/test/e2e-support/session.ts`, как её делают тесты.
+Вход через Telegram (`window.Telegram.Login.auth()`, `POST /auth/telegram`) локально
+не проверить: попап на `oauth.telegram.org` работает только с доменом, привязанным к
+боту в BotFather (`/setdomain`) — у `localhost` такого домена нет. `BOT_TOKEN` — тот же,
+что у вебхука бота (`.env.example`); отдельная переменная для виджета не нужна,
+`GET /auth/config` сам достаёт числовой id бота из `BOT_TOKEN`. `/start` в боте
+регистрирует чат как канал рассылки (docs/PLAN.md §6, «Каналы»), но сессию кабинета не
+выдаёт. Локальный вход — только ручная подмена cookie, см. `api/test/e2e-support/session.ts`,
+как её делают тесты.
 
 ## Перед PR
 

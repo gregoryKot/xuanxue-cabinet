@@ -12,10 +12,12 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
-import type { MeDto } from '@xuanxue/shared';
+import type { AuthConfigDto, MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
+import { botIdFromToken } from './bot-id-from-token';
 import { CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
@@ -33,7 +35,22 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly telegramAuthService: TelegramAuthService,
+    private readonly configService: ConfigService,
   ) {}
+
+  // Без сессии: экран входа спрашивает конфигурацию до того, как она
+  // появится. telegramBotId — числовой префикс BOT_TOKEN (валидатор
+  // гарантирует формат) для `window.Telegram.Login.auth()` на фронте —
+  // без него кнопка входа не показывается. publicUrl — ссылка на сайт школы
+  // для гостя без роли (RequireAuth.tsx).
+  @Public()
+  @Get('config')
+  getConfig(): AuthConfigDto {
+    return {
+      telegramBotId: botIdFromToken(this.configService.get<string>('BOT_TOKEN')),
+      publicUrl: this.configService.get<string>('PUBLIC_URL'),
+    };
+  }
 
   @Get('me')
   me(@CurrentUser() user: UserLean): MeDto {

@@ -40,7 +40,13 @@ export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
 export type { PluralForms } from './plural-ru';
 export { pluralRu } from './plural-ru';
-export type { UserRole, UserStatus, MeDto, TelegramLoginInput } from './auth';
+export type {
+  UserRole,
+  UserStatus,
+  MeDto,
+  TelegramLoginInput,
+  AuthConfigDto,
+} from './auth';
 export {
   USER_ROLES,
   USER_STATUSES,

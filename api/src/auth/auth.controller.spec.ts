@@ -2,6 +2,7 @@
 // health.controller.spec.ts: без HTTP, без Mongo.
 import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import type { TelegramLoginInput } from '@xuanxue/shared';
 import { fakeResponse } from '../test-support/http-fakes';
 import type { UserLean } from '../users/users.service';
@@ -23,16 +24,41 @@ async function buildController(
   telegramLogin: TelegramAuthService['login'] = () => {
     return Promise.reject(new Error('не ожидался вызов в этом тесте'));
   },
+  env: Record<string, string | undefined> = {},
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
     providers: [
       { provide: AuthService, useValue: { logoutCookie: () => 'session=; Max-Age=0' } },
       { provide: TelegramAuthService, useValue: { login: telegramLogin } },
+      { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
     ],
   }).compile();
   return module.get(AuthController);
 }
+
+describe('AuthController.getConfig', () => {
+  it('без BOT_TOKEN — telegramBotId отсутствует', async () => {
+    const controller = await buildController(undefined, {
+      PUBLIC_URL: 'https://x.example',
+    });
+    expect(controller.getConfig()).toEqual({
+      telegramBotId: undefined,
+      publicUrl: 'https://x.example',
+    });
+  });
+
+  it('с BOT_TOKEN — telegramBotId — числовой префикс токена', async () => {
+    const controller = await buildController(undefined, {
+      BOT_TOKEN: '123456:abcDEFghi-token_padding_here',
+      PUBLIC_URL: 'https://xuanxue.su',
+    });
+    expect(controller.getConfig()).toEqual({
+      telegramBotId: 123456,
+      publicUrl: 'https://xuanxue.su',
+    });
+  });
+});
 
 describe('AuthController.me', () => {
   it('возвращает MeDto для пользователя, которого положил гвард', async () => {

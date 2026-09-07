@@ -45,6 +45,19 @@ interface ApiFetchInit {
 const NETWORK_ERROR_MESSAGE =
   'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
 const UNKNOWN_ERROR_MESSAGE = 'Сервер не ответил. Попробуйте ещё раз.';
+const UNAUTHORIZED_STATUS = 401;
+
+// Сессия протухла/отозвана посреди работы (не только при первой загрузке) —
+// AuthProvider подписывается сюда, чтобы сбросить себя и увести на /login
+// из любого запроса, а не только из своего собственного /auth/me (CLAUDE.md
+// «Продукт»/ревью п.12). Модульная переменная, не React-контекст: apiFetch —
+// обычная функция вне дерева компонентов.
+type UnauthorizedListener = () => void;
+let unauthorizedListener: UnauthorizedListener | null = null;
+
+export function setUnauthorizedListener(listener: UnauthorizedListener | null): void {
+  unauthorizedListener = listener;
+}
 
 /**
  * Запрос к API с префиксом `/api`. Бросает `ApiError` на сетевой сбой,
@@ -81,9 +94,11 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     } catch {
       throw new ApiError(UNKNOWN_ERROR_MESSAGE, response.status, 'unknown');
     }
+    const status = envelope.statusCode ?? response.status;
+    if (status === UNAUTHORIZED_STATUS) unauthorizedListener?.();
     throw new ApiError(
       envelope.message ?? UNKNOWN_ERROR_MESSAGE,
-      envelope.statusCode ?? response.status,
+      status,
       envelope.code ?? 'unknown',
       envelope.details,
       envelope.requestId,

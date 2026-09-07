@@ -83,6 +83,16 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
+  // @xuanxue/shared — npm-workspace пакет, в node_modules он симлинк на
+  // ../shared (CommonJS-сборка, ADR-0016: так его читает api). Vite резолвит
+  // симлинк по реальному пути вне node_modules и по умолчанию не считает его
+  // «зависимостью для commonjs-интеропа» — именованные экспорты dist/index.js
+  // пропадали в `vite build` (первый рантайм-импорт значения, не типа, из
+  // web/src — до PR J1 такого не было). `include` явно возвращает путь под
+  // commonjs-обработку, не трогая резолв путей для всего остального.
+  build: {
+    commonjsOptions: { include: [/node_modules/, /shared[\\/]dist/] },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
@@ -100,10 +110,10 @@ export default defineConfig({
       // autoUpdate — встроенный храповик: порог поднимается сам при росте
       // покрытия, снижение роняет CI (CLAUDE.md, раздел «Храповики»).
       thresholds: {
-        lines: 90,
-        branches: 88,
-        functions: 84,
-        statements: 90,
+        lines: 99.85,
+        branches: 95.78,
+        functions: 97.95,
+        statements: 99.85,
         autoUpdate: true,
       },
     },
