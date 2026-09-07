@@ -15,6 +15,10 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.spec.ts',
     '!src/main.ts',
+    // Ещё одна точка входа (CLI импорта сида, PR H) — проводка без ветвлений,
+    // логика вынесена в seed.service.ts/seed-file.ts и покрыта юнит-тестами;
+    // ручная проверка CLI — PLAN.md §9, RUNBOOK §2.2.
+    '!src/seed/seed-classes.ts',
     '!src/app.setup.ts',
     '!src/**/*.module.ts',
   ],

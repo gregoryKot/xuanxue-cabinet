@@ -38,6 +38,12 @@ if (process.env.NODE_ENV === 'production' && !CURRENT_KEY) {
   );
 }
 
+/** Ключ настроен (валидный ENCRYPTION_KEY). В отличие от encrypt() (тихо
+ * хранит plain text вне production), SeedService сам решает отказаться. */
+export function isEncryptionConfigured(): boolean {
+  return CURRENT_KEY !== null;
+}
+
 export function encrypt(text: string | null | undefined): string | null {
   if (!text) return text ?? null;
   if (!CURRENT_KEY) {

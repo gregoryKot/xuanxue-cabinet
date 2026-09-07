@@ -59,6 +59,17 @@ describe('encryption', () => {
     expect(mod.decrypt(tampered)).toBe(tampered);
   });
 
+  it('isEncryptionConfigured: false без ключа, true с валидным', () => {
+    const withoutKey = loadWithEnv({
+      ENCRYPTION_KEY: undefined,
+      ENCRYPTION_KEY_OLD: undefined,
+    });
+    expect(withoutKey.isEncryptionConfigured()).toBe(false);
+
+    const withKey = loadWithEnv({ ENCRYPTION_KEY: KEY_A, ENCRYPTION_KEY_OLD: undefined });
+    expect(withKey.isEncryptionConfigured()).toBe(true);
+  });
+
   it('encryptRecord/decryptRecord: связка сохранения и чтения по схеме', () => {
     const mod = loadWithEnv({ ENCRYPTION_KEY: KEY_A, ENCRYPTION_KEY_OLD: undefined });
     const schema = { strings: ['note'], jsonArrays: ['items'] };

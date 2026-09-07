@@ -21,6 +21,7 @@ import { SettingsModule } from './settings/settings.module';
 import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
@@ -60,6 +61,9 @@ import { AuthModule } from './auth/auth.module';
     DeliveriesModule,
     SettingsModule,
     UsersModule,
+    // Без контроллера и планировщика — сервис для одноразового CLI-импорта
+    // (seed-classes.ts, PLAN.md §9), в HTTP-приложении бездействует.
+    SeedModule,
     // Гвард сессии (AuthGuard) — APP_GUARD внутри этого модуля, применяется
     // после ThrottlerGuard выше (@nestjs/core scanner: провайдеры AppModule
     // раньше провайдеров импортированных модулей).
