@@ -4,12 +4,11 @@
 import { encryptSchemaFrom } from '../../common/field-policy';
 import { decrypt, encryptRecord } from '../../utils/encryption';
 import { BROADCAST_FIELD_POLICY } from '../../broadcasts/broadcast.schema';
+import { fakeCtx } from './message.handler.fake-ctx';
+import { NOW, seedLesson } from './message.handler.seed';
+import { seedTeacher } from '../test-support/seed-teacher';
 import {
   clearMessageHandlerTest,
-  fakeCtx,
-  NOW,
-  seedLesson,
-  seedTeacher,
   setupMessageHandlerTest,
   type MessageHandlerTestContext,
 } from './message.handler.test-support';
@@ -32,7 +31,7 @@ describe('MessageHandler — поток темы', () => {
   });
 
   it('активное ожидание темы + текст, рассылка ещё scheduled — тема сохраняется, сессия закрывается', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     // Реалистичное предусловие: кнопка «Изменить тему» приходит из
     // предпросмотра, а предпросмотр шлётся только для уже существующей
@@ -70,7 +69,7 @@ describe('MessageHandler — поток темы', () => {
   });
 
   it('активное ожидание темы, но рассылка уже ушла (или её никогда не было) — тема сохраняется с пометкой', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     await ctx.botSessionModel.create({
       chatId: 111,
@@ -90,7 +89,7 @@ describe('MessageHandler — поток темы', () => {
   });
 
   it('пересобирает текст scheduled-рассылки этого занятия', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     await ctx.broadcastModel.create(
       encryptRecord(
@@ -120,7 +119,7 @@ describe('MessageHandler — поток темы', () => {
   });
 
   it('без активного ожидания — тихо игнорирует сообщение', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const { ctx: msgCtx, replies } = fakeCtx({ chatId: 111, text: 'привет' });
 
     await ctx.handler.handle(msgCtx, NOW);
@@ -129,7 +128,7 @@ describe('MessageHandler — поток темы', () => {
   });
 
   it('видео вместо текста при ожидании темы — ждём дальше, сессия не закрывается', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     await ctx.botSessionModel.create({
       chatId: 111,
@@ -146,7 +145,7 @@ describe('MessageHandler — поток темы', () => {
   });
 
   it('команда (текст с "/") при ожидании темы — не становится темой, ждём дальше', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     await ctx.botSessionModel.create({
       chatId: 111,
@@ -165,7 +164,7 @@ describe('MessageHandler — поток темы', () => {
   });
 
   it('ожидание истекло (expiresAt < now) — бот занятие не трогает, отвечает, что истекло', async () => {
-    await seedTeacher(ctx.userModel, 111);
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
     await ctx.botSessionModel.create({
       chatId: 111,

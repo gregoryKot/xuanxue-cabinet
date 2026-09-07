@@ -11,8 +11,10 @@ import { errorMessage, errorStack } from '../common/error-info';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import { PreviewService } from '../broadcasts/preview.service';
 import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
+import { ManualPromptService } from '../deliveries/manual-prompt.service';
 import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-notifier';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
+import { RecordingPromptService } from '../lessons/recording-prompt.service';
 
 @Injectable()
 export class SchedulerService implements OnApplicationShutdown {
@@ -27,6 +29,8 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly broadcastPlanner: BroadcastPlannerService,
     private readonly deliveryRunner: DeliveryRunnerService,
     private readonly previewService: PreviewService,
+    private readonly recordingPromptService: RecordingPromptService,
+    private readonly manualPromptService: ManualPromptService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
   ) {}
 
@@ -58,10 +62,17 @@ export class SchedulerService implements OnApplicationShutdown {
     const { claimed: previewsClaimed } = (await this.step('предпросмотр', now, (n) =>
       this.previewService.sendPending(n),
     )) ?? { claimed: 0 };
+    const { prompted: recordingsPrompted } = (await this.step('запись', now, (n) =>
+      this.recordingPromptService.prompt(n),
+    )) ?? { prompted: 0 };
+    const { prompted: manualPrompted } = (await this.step('ручные каналы', now, (n) =>
+      this.manualPromptService.prompt(n),
+    )) ?? { prompted: 0 };
 
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
-        `sent=${sent} failed=${failed} previews=${previewsClaimed}`,
+        `sent=${sent} failed=${failed} previews=${previewsClaimed} ` +
+        `recordingPrompts=${recordingsPrompted} manualPrompts=${manualPrompted}`,
     );
   }
 

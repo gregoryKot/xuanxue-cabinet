@@ -1,5 +1,6 @@
-// Кнопки предпросмотра (docs/PLAN.md §6): «Отменить»/«Изменить тему» — один
-// роутер по префиксу callback data (CLAUDE.md «Ошибки»: действие:параметр).
+// Кнопки бота (docs/PLAN.md §6): «Отменить»/«Изменить тему» у предпросмотра,
+// «Записи не будет» у «Запись?», «Скопировал, отправил» у ручного канала —
+// один роутер по префиксу callback data (CLAUDE.md «Ошибки»: действие:параметр).
 // `answerCbQuery()` до обращения к БД — иначе Telegram показывает
 // пользователю крутилку до тайм-аута. Отправитель сверяется с TeacherChats —
 // чужой callback молча игнорируется, warn в лог без PII (только chatId).
@@ -11,10 +12,17 @@ import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
 import { BroadcastsService } from '../../broadcasts/broadcasts.service';
 import { errorMessage, errorStack } from '../../common/error-info';
+import { DeliveriesService } from '../../deliveries/deliveries.service';
 import { BotSessionService } from '../bot-session.service';
 import { parseCallbackData, type CallbackAction } from '../callback-data';
 import { TeacherChats } from '../teacher-chats';
-import { GENERIC_ERROR, handleCancel, handleTopicButton } from './callback-actions';
+import {
+  GENERIC_ERROR,
+  handleCancel,
+  handleNoRecording,
+  handleSent,
+  handleTopicButton,
+} from './callback-actions';
 
 @Injectable()
 export class CallbackQueryHandler {
@@ -24,6 +32,7 @@ export class CallbackQueryHandler {
     private readonly teacherChats: TeacherChats,
     private readonly broadcastsService: BroadcastsService,
     private readonly botSessions: BotSessionService,
+    private readonly deliveriesService: DeliveriesService,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -66,6 +75,8 @@ export class CallbackQueryHandler {
     if (action === 'topic') {
       return handleTopicButton(ctx, this.botSessions, chatId, id, now);
     }
+    if (action === 'norec') return handleNoRecording(ctx, this.botSessions, chatId, id);
+    if (action === 'sent') return handleSent(ctx, this.deliveriesService, id, now);
   }
 
   private async isTeacherChat(chatId: number, now: DateTime): Promise<boolean> {

@@ -25,10 +25,18 @@ import { toDeliveryDto, type LeanDelivery } from './delivery.mapper';
 const ENCRYPT_SCHEMA = encryptSchemaFrom(DELIVERY_FIELD_POLICY);
 const BROADCAST_ENCRYPT_SCHEMA = encryptSchemaFrom(BROADCAST_FIELD_POLICY);
 const DELIVERY_NOT_FOUND = 'Доставка не найдена. Обновите страницу.';
+// markSent зовут два потребителя — экран «проблемы» и бот (кнопка
+// «Скопировал, отправил»): «Обновите страницу» у бота бессмысленно, поэтому
+// у markSent свой текст «не найдена» с действием, доступным из обоих мест.
+const MARK_SENT_NOT_FOUND = 'Доставка не найдена. Откройте журнал рассылок.';
 // VOICE.md: что случилось и что делать — здесь делать нечего, кнопка нажата
 // не туда, поэтому текст объясняет, почему нажимать не нужно.
 const NOT_MANUAL_MESSAGE = 'Эта доставка уходит сама. Отмечать не нужно.';
 const ALREADY_SENT_MESSAGE = 'Уже отправлено.';
+// Рассылку отменили (BroadcastsService.cancel) между тем, как доставка ушла
+// в ручной канал, и тем, как учитель успел нажать кнопку — «Уже отправлено»
+// тут неправда и не помогает: нажимать вообще было не на что.
+const CANCELLED_MESSAGE = 'Рассылка отменена, отправлять не нужно.';
 /** pending/manual — статусы доставки в ручной канал, которые кнопка может
  * закрыть: pending — учитель успел раньше тика раннера (текст уже виден в
  * GET /deliveries/:id, ждать нечего), manual — обычный путь после тика. */
@@ -78,11 +86,11 @@ export class DeliveriesService {
    * гонку двойного клика: второй запрос не находит документ для апдейта
    * (`status` уже не в MARKABLE_STATUSES) и получает «уже отправлено». */
   async markSent(id: string, now: DateTime): Promise<DeliveryDto> {
-    assertObjectId(id, DELIVERY_NOT_FOUND);
+    assertObjectId(id, MARK_SENT_NOT_FOUND);
     const current = await this.model
       .findById(id, { broadcastId: 1, channelId: 1 })
       .lean<DeliveryChannelOnly | null>();
-    if (!current) throw new NotFoundError(DELIVERY_NOT_FOUND);
+    if (!current) throw new NotFoundError(MARK_SENT_NOT_FOUND);
 
     const channel = await this.channelModel
       .findById(current.channelId, { type: 1 })
@@ -93,7 +101,7 @@ export class DeliveriesService {
       { _id: id, status: { $in: MARKABLE_STATUSES } },
       { $set: { status: 'sent', sentAt: now.toJSDate() } },
     );
-    if (modifiedCount === 0) throw new ConflictError(ALREADY_SENT_MESSAGE);
+    if (modifiedCount === 0) throw new ConflictError(await this.notMarkedReason(id));
 
     await refreshBroadcastStatus(
       this.model,
@@ -102,6 +110,16 @@ export class DeliveriesService {
       now,
     );
     return this.getById(id);
+  }
+
+  /** `updateOne` не нашёл документ в MARKABLE_STATUSES — кнопка нажата
+   * поздно, но по двум разным причинам (двойной клик vs рассылку отменили
+   * между отправкой в ручной канал и нажатием), у них разный текст. */
+  private async notMarkedReason(id: string): Promise<string> {
+    const doc = await this.model
+      .findById(id, { status: 1 })
+      .lean<{ status: DeliveryStatus } | null>();
+    return doc?.status === 'cancelled' ? CANCELLED_MESSAGE : ALREADY_SENT_MESSAGE;
   }
 
   /** Текст рассылки — только когда сама доставка идёт через ручной канал

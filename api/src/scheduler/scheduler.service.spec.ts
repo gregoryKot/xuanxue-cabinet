@@ -4,8 +4,10 @@ import { DateTime } from 'luxon';
 import type { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import type { PreviewService } from '../broadcasts/preview.service';
 import type { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
+import type { ManualPromptService } from '../deliveries/manual-prompt.service';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
+import type { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { SchedulerService } from './scheduler.service';
 
 function buildService(overrides: {
@@ -13,6 +15,8 @@ function buildService(overrides: {
   planBroadcasts?: BroadcastPlannerService['plan'];
   runDeliveries?: DeliveryRunnerService['run'];
   sendPreviews?: PreviewService['sendPending'];
+  promptRecordings?: RecordingPromptService['prompt'];
+  promptManual?: ManualPromptService['prompt'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
 }): {
   service: SchedulerService;
@@ -28,6 +32,10 @@ function buildService(overrides: {
     overrides.runDeliveries ?? jest.fn().mockResolvedValue({ sent: 0, failed: 0 });
   const sendPreviews =
     overrides.sendPreviews ?? jest.fn().mockResolvedValue({ claimed: 0 });
+  const promptRecordings =
+    overrides.promptRecordings ?? jest.fn().mockResolvedValue({ prompted: 0 });
+  const promptManual =
+    overrides.promptManual ?? jest.fn().mockResolvedValue({ prompted: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -39,6 +47,8 @@ function buildService(overrides: {
     { plan: planBroadcasts } as unknown as BroadcastPlannerService,
     { run: runDeliveries } as unknown as DeliveryRunnerService,
     { sendPending: sendPreviews } as unknown as PreviewService,
+    { prompt: promptRecordings } as unknown as RecordingPromptService,
+    { prompt: promptManual } as unknown as ManualPromptService,
     notifier,
   );
   return { service, notifySchedulerFailed: notifySchedulerFailed as jest.Mock };
@@ -61,11 +71,21 @@ describe('SchedulerService.tick', () => {
       (_now: DateTime): ReturnType<PreviewService['sendPending']> =>
         Promise.resolve({ claimed: 2 }),
     );
+    const promptRecordings = jest.fn(
+      (_now: DateTime): ReturnType<RecordingPromptService['prompt']> =>
+        Promise.resolve({ prompted: 1 }),
+    );
+    const promptManual = jest.fn(
+      (_now: DateTime): ReturnType<ManualPromptService['prompt']> =>
+        Promise.resolve({ prompted: 1 }),
+    );
     const { service } = buildService({
       plan,
       planBroadcasts,
       runDeliveries,
       sendPreviews,
+      promptRecordings,
+      promptManual,
     });
 
     await expect(service.tick()).resolves.toBeUndefined();
@@ -74,6 +94,8 @@ describe('SchedulerService.tick', () => {
     expect(planBroadcasts).toHaveBeenCalledTimes(1);
     expect(runDeliveries).toHaveBeenCalledTimes(1);
     expect(sendPreviews).toHaveBeenCalledTimes(1);
+    expect(promptRecordings).toHaveBeenCalledTimes(1);
+    expect(promptManual).toHaveBeenCalledTimes(1);
     const [calledWith] = plan.mock.calls[0] ?? [];
     expect(calledWith).toBeInstanceOf(DateTime);
     // Все шаги делят один now — рассылка не может считать «позже», чем видел
@@ -81,6 +103,8 @@ describe('SchedulerService.tick', () => {
     expect(planBroadcasts.mock.calls[0]?.[0]).toBe(calledWith);
     expect(runDeliveries.mock.calls[0]?.[0]).toBe(calledWith);
     expect(sendPreviews.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(promptRecordings.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(promptManual.mock.calls[0]?.[0]).toBe(calledWith);
   });
 
   it('ошибка шага рассылок не останавливает шаг доставок и предпросмотра', async () => {
@@ -115,6 +139,22 @@ describe('SchedulerService.tick', () => {
   it('ошибка шага доставок не мешает итоговому логу', async () => {
     const runDeliveries = jest.fn().mockRejectedValue(new Error('канал упал'));
     const { service } = buildService({ runDeliveries });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  it('ошибка шага «запись» не останавливает шаг ручных каналов', async () => {
+    const promptRecordings = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const promptManual = jest.fn().mockResolvedValue({ prompted: 0 });
+    const { service } = buildService({ promptRecordings, promptManual });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+    expect(promptManual).toHaveBeenCalledTimes(1);
+  });
+
+  it('ошибка шага ручных каналов не мешает итоговому логу', async () => {
+    const promptManual = jest.fn().mockRejectedValue(new Error('бот молчит'));
+    const { service } = buildService({ promptManual });
 
     await expect(service.tick()).resolves.toBeUndefined();
   });

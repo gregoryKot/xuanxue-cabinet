@@ -6,8 +6,11 @@ import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
 import { BotSessionRecord, type BotSessionKind } from './bot-session.schema';
 
-// Предпросмотр «Изменить тему» ждёт ответ недолго (PLAN.md §6).
+// Предпросмотр «Изменить тему» и команда /тема ждут ответ недолго — 10 минут
+// (PLAN.md §6); «Запись?» ждёт куда дольше — учитель может смонтировать и
+// залить видео не сразу, 12 часов.
 const TOPIC_WAIT_MINUTES = 10;
+const RECORDING_WAIT_HOURS = 12;
 
 export interface BotSessionLean {
   kind: BotSessionKind;
@@ -26,6 +29,19 @@ export class BotSessionService {
     await this.set(chatId, 'topic', lessonId, now.plus({ minutes: TOPIC_WAIT_MINUTES }));
   }
 
+  async startRecordingWait(
+    chatId: number,
+    lessonId: string,
+    now: DateTime,
+  ): Promise<void> {
+    await this.set(
+      chatId,
+      'recording',
+      lessonId,
+      now.plus({ hours: RECORDING_WAIT_HOURS }),
+    );
+  }
+
   /** Активное (не истёкшее) ожидание чата — TTL-индекс подчищает документ с
    * задержкой до минуты (SERVER-точность монитора Mongo), поэтому фильтр по
    * `expiresAt` здесь же, не только надежда на TTL. */
@@ -39,17 +55,27 @@ export class BotSessionService {
     await this.model.deleteOne({ chatId });
   }
 
+  /** Закрывает ожидание, только если оно про ЭТО занятие («Записи не будет»
+   * под конкретным «Запись?» — CLAUDE.md «Ноль нагрузки» наоборот: чужую,
+   * более новую просьбу той же кнопкой не гасим). Учитель успел получить
+   * второй вопрос «Запись?» по другому занятию раньше, чем ответил на
+   * первый, — «Записи не будет» под первым не должно погасить ожидание
+   * второго. */
+  async clearIfLesson(chatId: number, lessonId: string): Promise<void> {
+    await this.model.deleteOne({ chatId, lessonId: new Types.ObjectId(lessonId) });
+  }
+
   /** Документ есть, но `expiresAt` уже прошёл — отличить «никогда не ждали»
    * (тихо игнорируем чужое сообщение) от «ждали, но учитель не успел»: во
-   * втором случае бот отвечает, что ожидание истекло, а не молчит. TTL может
-   * не успеть подчистить документ (задержка до минуты, как в get()) — фильтр
-   * по `expiresAt` тот же приём. */
-  async hasExpired(chatId: number, now: DateTime): Promise<boolean> {
-    const count = await this.model.countDocuments({
-      chatId,
-      expiresAt: { $lte: now.toJSDate() },
-    });
-    return count > 0;
+   * втором случае бот отвечает, что ожидание истекло, а не молчит, причём
+   * текст разный для темы и записи (message.handler.ts) — поэтому возвращаем
+   * `kind`, а не просто факт. TTL может не успеть подчистить документ
+   * (задержка до минуты, как в get()) — фильтр по `expiresAt` тот же приём. */
+  async hasExpired(chatId: number, now: DateTime): Promise<BotSessionKind | null> {
+    const doc = await this.model
+      .findOne({ chatId, expiresAt: { $lte: now.toJSDate() } }, { kind: 1 })
+      .lean<{ kind: BotSessionKind } | null>();
+    return doc?.kind ?? null;
   }
 
   private async set(

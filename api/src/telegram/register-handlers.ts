@@ -1,0 +1,42 @@
+// Регистрация хендлеров бота — вынесено из telegram-bot.service.ts (файл-
+// лимит 150 строк, CLAUDE.md «Храповики»): сборка Telegraf-инстанса и вебхук
+// остаются в сервисе, разбор апдейта по типу — здесь.
+import { DateTime } from 'luxon';
+import type { Telegraf } from 'telegraf';
+import type { CallbackQueryHandler } from './handlers/callback-query.handler';
+import type { ChatMemberHandler } from './handlers/chat-member.handler';
+import type { MessageHandler } from './handlers/message.handler';
+import type { StartHandler } from './handlers/start.handler';
+import type { TopicCommandHandler } from './handlers/topic-command.handler';
+
+// /тема — кириллица, entity 'bot_command' её не разбирает (BotFather требует
+// латиницу), поэтому hears() по тексту, не command(). `\b` тут не работает:
+// в JS `\w` — только ASCII, кириллица для него не «словесный» символ, между
+// «а» в «тема» и пробелом/концом строки границы слова нет и `\b` не матчится
+// никогда (баг, найден на ревью PR I2b) — вместо этого явный список
+// разделителей: конец строки, пробел или `@botname`.
+const TOPIC_COMMAND_PATTERN = /^\/тема(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
+
+export interface BotHandlers {
+  chatMemberHandler: ChatMemberHandler;
+  startHandler: StartHandler;
+  callbackQueryHandler: CallbackQueryHandler;
+  topicCommandHandler: TopicCommandHandler;
+  messageHandler: MessageHandler;
+}
+
+/** `DateTime.utc()` — на каждый апдейт заново (CLAUDE.md «Время»): здесь, а
+ * не в самих хендлерах, единственное место, где бот зовёт «сейчас». Порядок
+ * hears() до on('message') важен — Telegraf сам зовёт next(), когда регэксп
+ * не совпал, и сообщение попадает в MessageHandler. */
+export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
+  bot.start((ctx) => handlers.startHandler.handle(ctx));
+  bot.on('my_chat_member', (ctx) => handlers.chatMemberHandler.handle(ctx));
+  bot.on('callback_query', (ctx) =>
+    handlers.callbackQueryHandler.handle(ctx, DateTime.utc()),
+  );
+  bot.hears(TOPIC_COMMAND_PATTERN, (ctx) =>
+    handlers.topicCommandHandler.handle(ctx, DateTime.utc()),
+  );
+  bot.on('message', (ctx) => handlers.messageHandler.handle(ctx, DateTime.utc()));
+}

@@ -1,7 +1,8 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок сервисов — CLAUDE.md
 // «Тесты»): действия кнопок «Отменить»/«Изменить тему» и общие ошибки —
 // маршрутизацию Telegraf проверяет telegram-bot.service.spec.ts, доступ
-// (чужой чат, группа, невалидные данные) — callback-query.handler.access.spec.ts.
+// (чужой чат, группа, невалидные данные) — callback-query.handler.access.spec.ts,
+// «Записи не будет»/«Скопировал, отправил» — callback-query.handler.norec-sent.spec.ts.
 import { Types } from 'mongoose';
 import type { BroadcastsService } from '../../broadcasts/broadcasts.service';
 import type { BotSessionService } from '../bot-session.service';

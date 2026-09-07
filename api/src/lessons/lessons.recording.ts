@@ -1,15 +1,40 @@
 // Подготовка добавляемой записи занятия — чистая логика, юнит-тест без Mongo
 // (CLAUDE.md «Тесты»).
-import type { AddRecordingInput, Recording } from '@xuanxue/shared';
+import { LESSON_LIMITS, type AddRecordingInput, type Recording } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
 
 const NO_RECORDING_SOURCE = 'Добавьте ссылку на запись или отправьте видео боту';
+const INVALID_RECORDING_URL =
+  'Не получилось разобрать ссылку на запись. Проверьте, что это https-адрес, и пришлите ещё раз.';
 
 /** Хотя бы одно из url/telegramFileId обязательно — иначе запись нечем
  * открыть: ни ссылки, ни файла у бота. */
 export function assertHasRecordingSource(input: AddRecordingInput): void {
   if (input.url === undefined && input.telegramFileId === undefined) {
     throw new InvalidInputError(NO_RECORDING_SOURCE);
+  }
+}
+
+/** Единственное место, где проверяется ссылка на запись (CLAUDE.md «Одна
+ * механика — один компонент») — оба входа идут через `addRecording`
+ * (LessonsService), у которого этот вызов один: DTO/HTTP уже провалидирован
+ * class-validator'ом (`AddRecordingDto`), но бот шлёт `url` мимо DTO
+ * (RecordingSource из текста сообщения) — без этой проверки его строка
+ * дошла бы до базы и до поста рассылки без единой проверки формата. */
+export function assertValidRecordingUrl(url: string | undefined): void {
+  if (url === undefined) return;
+  if (url.length > LESSON_LIMITS.url) throw new InvalidInputError(INVALID_RECORDING_URL);
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new InvalidInputError(INVALID_RECORDING_URL);
+  }
+  // `host === ''` — защита в глубину, не мёртвый код только теоретически:
+  // WHATWG `URL` уже бросает на пустом host для https (special scheme), но
+  // явная проверка не завязана на это поведение парсера остаться таким.
+  if (parsed.protocol !== 'https:' || parsed.host === '') {
+    throw new InvalidInputError(INVALID_RECORDING_URL);
   }
 }
 

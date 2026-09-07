@@ -1,8 +1,7 @@
 // Ожидание бота в личном чате учителя — «жду тему» после кнопки «Изменить
-// тему» из предпросмотра (PLAN.md §6); kind расширится 'recording' —
-// «жду запись» после «Занятие закончилось» (следующий PR). Один активный
-// документ на чат (уникальный индекс `chatId`): новое ожидание вытесняет
-// старое — учитель отвечает на последнее, что видит. TTL-индекс на
+// тему»/команды /тема, «жду запись» после «Занятие закончилось» (PLAN.md §6).
+// Один активный документ на чат (уникальный индекс `chatId`): новое ожидание
+// вытесняет старое — учитель отвечает на последнее, что видит. TTL-индекс на
 // `expiresAt` — Mongo сама подчищает истёкшие ожидания, раннер бота не
 // обязан помнить про них сам.
 //
@@ -13,7 +12,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import type { FieldPolicy } from '../common/field-policy';
 
-const BOT_SESSION_KINDS = ['topic'] as const;
+const BOT_SESSION_KINDS = ['topic', 'recording'] as const;
 export type BotSessionKind = (typeof BOT_SESSION_KINDS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })

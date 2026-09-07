@@ -8,6 +8,7 @@ import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { StartHandler } from './handlers/start.handler';
+import type { TopicCommandHandler } from './handlers/topic-command.handler';
 import {
   CALLBACK_UPDATE,
   CHAT_MEMBER_UPDATE,
@@ -18,6 +19,7 @@ import {
   fakeExtraHandlers,
   fakeHandler,
   fakeHandlerWithNow,
+  topicCommandUpdate,
 } from './test-support/bot-service.fixtures';
 import { createFakeTelegrafFactory } from './test-support/telegraf-factory';
 import { createTelegraf } from './telegraf-instance';
@@ -134,6 +136,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
       callbackQuery as unknown as CallbackQueryHandler,
+      fakeHandler() as unknown as TopicCommandHandler,
       message as unknown as MessageHandler,
     );
     service.onApplicationBootstrap();
@@ -147,6 +150,56 @@ describe('TelegramBotService — маршрутизация', () => {
     expect(now).toBeInstanceOf(DateTime);
   });
 
+  it.each([
+    ['/тема', 5],
+    ['/тема@bot', 6],
+  ])(
+    '%s роутится в TopicCommandHandler со свежим DateTime.utc(), не в MessageHandler',
+    async (text, updateId) => {
+      const topicCommand = fakeHandlerWithNow();
+      const message = fakeHandlerWithNow();
+      const { factory } = createFakeTelegrafFactory();
+      const service = new TelegramBotService(
+        fakeConfig({ BOT_TOKEN: TOKEN }),
+        factory,
+        fakeHandler() as unknown as ChatMemberHandler,
+        fakeHandler() as unknown as StartHandler,
+        fakeHandlerWithNow() as unknown as CallbackQueryHandler,
+        topicCommand as unknown as TopicCommandHandler,
+        message as unknown as MessageHandler,
+      );
+      service.onApplicationBootstrap();
+
+      await service.handleUpdate(topicCommandUpdate(text, updateId));
+
+      expect(topicCommand.handle).toHaveBeenCalledTimes(1);
+      expect(message.handle).not.toHaveBeenCalled();
+      const [, now] = topicCommand.handle.mock.calls[0] ?? [];
+      expect(now).toBeInstanceOf(DateTime);
+    },
+  );
+
+  it('/темы (похожее слово, не команда) — роутится в MessageHandler, не в TopicCommandHandler', async () => {
+    const topicCommand = fakeHandlerWithNow();
+    const message = fakeHandlerWithNow();
+    const { factory } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      fakeHandlerWithNow() as unknown as CallbackQueryHandler,
+      topicCommand as unknown as TopicCommandHandler,
+      message as unknown as MessageHandler,
+    );
+    service.onApplicationBootstrap();
+
+    await service.handleUpdate(topicCommandUpdate('/темы'));
+
+    expect(message.handle).toHaveBeenCalledTimes(1);
+    expect(topicCommand.handle).not.toHaveBeenCalled();
+  });
+
   it('текстовое сообщение роутится в MessageHandler со свежим DateTime.utc()', async () => {
     const callbackQuery = fakeHandlerWithNow();
     const message = fakeHandlerWithNow();
@@ -157,6 +210,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
       callbackQuery as unknown as CallbackQueryHandler,
+      fakeHandler() as unknown as TopicCommandHandler,
       message as unknown as MessageHandler,
     );
     service.onApplicationBootstrap();

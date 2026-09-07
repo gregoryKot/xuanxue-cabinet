@@ -41,14 +41,34 @@ describe('BotSessionService', () => {
     expect(session?.lessonId.toString()).toBe(lessonId);
   });
 
+  it('startRecordingWait → get возвращает kind/lessonId', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    await service.startRecordingWait(111, lessonId, NOW);
+
+    const session = await service.get(111, NOW);
+
+    expect(session?.kind).toBe('recording');
+    expect(session?.lessonId.toString()).toBe(lessonId);
+  });
+
+  it('recording-ожидание не истекает за 10 минут (12 часов, дольше темы)', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    await service.startRecordingWait(111, lessonId, NOW);
+
+    const session = await service.get(111, NOW.plus({ minutes: 11 }));
+
+    expect(session).not.toBeNull();
+  });
+
   it('новое ожидание вытесняет старое — один документ на чат', async () => {
     const first = new Types.ObjectId().toString();
     const second = new Types.ObjectId().toString();
     await service.startTopicWait(111, first, NOW);
-    await service.startTopicWait(111, second, NOW);
+    await service.startRecordingWait(111, second, NOW);
 
     const session = await service.get(111, NOW);
 
+    expect(session?.kind).toBe('recording');
     expect(session?.lessonId.toString()).toBe(second);
     await expect(model.countDocuments({ chatId: 111 })).resolves.toBe(1);
   });
@@ -75,21 +95,48 @@ describe('BotSessionService', () => {
     expect(await service.get(999, NOW)).toBeNull();
   });
 
-  it('hasExpired — false, если ожидания для чата не было вовсе', async () => {
-    expect(await service.hasExpired(999, NOW)).toBe(false);
+  it('hasExpired — null, если ожидания для чата не было вовсе', async () => {
+    expect(await service.hasExpired(999, NOW)).toBeNull();
   });
 
-  it('hasExpired — false, пока ожидание ещё активно', async () => {
+  it('hasExpired — null, пока ожидание ещё активно', async () => {
     const lessonId = new Types.ObjectId().toString();
     await service.startTopicWait(111, lessonId, NOW);
 
-    expect(await service.hasExpired(111, NOW)).toBe(false);
+    expect(await service.hasExpired(111, NOW)).toBeNull();
   });
 
-  it('hasExpired — true, когда expiresAt уже в прошлом', async () => {
+  it('hasExpired — kind "topic", когда истёкшее ожидание было темой', async () => {
     const lessonId = new Types.ObjectId().toString();
     await service.startTopicWait(111, lessonId, NOW);
 
-    expect(await service.hasExpired(111, NOW.plus({ minutes: 11 }))).toBe(true);
+    expect(await service.hasExpired(111, NOW.plus({ minutes: 11 }))).toBe('topic');
+  });
+
+  it('hasExpired — kind "recording", когда истёкшее ожидание было записью', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    await service.startRecordingWait(111, lessonId, NOW);
+
+    expect(await service.hasExpired(111, NOW.plus({ hours: 13 }))).toBe('recording');
+  });
+
+  it('clearIfLesson — закрывает ожидание, если оно про это занятие', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    await service.startRecordingWait(111, lessonId, NOW);
+
+    await service.clearIfLesson(111, lessonId);
+
+    expect(await service.get(111, NOW)).toBeNull();
+  });
+
+  it('clearIfLesson — не трогает ожидание другого занятия', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    const otherLessonId = new Types.ObjectId().toString();
+    await service.startRecordingWait(111, lessonId, NOW);
+
+    await service.clearIfLesson(111, otherLessonId);
+
+    const session = await service.get(111, NOW);
+    expect(session?.lessonId.toString()).toBe(lessonId);
   });
 });

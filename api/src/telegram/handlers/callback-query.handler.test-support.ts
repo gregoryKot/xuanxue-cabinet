@@ -1,21 +1,26 @@
-// Общая обвязка для callback-query.handler.spec.ts (действия кнопок) и
-// callback-query.handler.access.spec.ts (доступ) — один файл был больше
-// спек-лимита в 300 строк (CLAUDE.md «Файлы»), обвязка общая, чтобы не
+// Общая обвязка для callback-query.handler.spec.ts (cancel/topic),
+// callback-query.handler.access.spec.ts (доступ) и
+// callback-query.handler.norec-sent.spec.ts (norec/sent) — один файл был
+// больше спек-лимита в 300 строк (CLAUDE.md «Файлы»), обвязка общая, чтобы не
 // дублировать её (jscpd).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import type { Context } from 'telegraf';
 import { BroadcastsService } from '../../broadcasts/broadcasts.service';
-import { BroadcastRecord } from '../../broadcasts/broadcast.schema';
-import { ChannelRecord } from '../../channels/channel.schema';
-import { DeliveryRecord } from '../../deliveries/delivery.schema';
+import { BroadcastRecord, BroadcastSchema } from '../../broadcasts/broadcast.schema';
+import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
+import { DeliveriesService } from '../../deliveries/deliveries.service';
+import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
-import { UserRecord } from '../../users/user.schema';
+import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
-import { BotSessionRecord } from '../bot-session.schema';
+import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { seedTeacher } from '../test-support/seed-teacher';
 import { TeacherChats } from '../teacher-chats';
 import { CallbackQueryHandler } from './callback-query.handler';
+
+export { seedTeacher };
 
 export const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 
@@ -66,6 +71,7 @@ export function buildHandler(
   overrides: {
     broadcastsService?: BroadcastsService;
     botSessions?: BotSessionService;
+    deliveriesService?: DeliveriesService;
   } = {},
 ): CallbackQueryHandler {
   return new CallbackQueryHandler(
@@ -73,23 +79,35 @@ export function buildHandler(
     overrides.broadcastsService ??
       new BroadcastsService(ctx.broadcastModel, ctx.deliveryModel, ctx.channelModel),
     overrides.botSessions ?? new BotSessionService(ctx.botSessionModel),
+    overrides.deliveriesService ??
+      new DeliveriesService(ctx.deliveryModel, ctx.broadcastModel, ctx.channelModel),
   );
 }
 
 export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestContext> {
   const memory = await openMemoryMongo();
   const connection = memory.connection;
-  const broadcastModel = connection.model<BroadcastRecord>(BroadcastRecord.name);
-  const deliveryModel = connection.model<DeliveryRecord>(DeliveryRecord.name);
-  const channelModel = connection.model<ChannelRecord>(ChannelRecord.name);
-  const userModel = connection.model<UserRecord>(UserRecord.name);
-  const botSessionModel = connection.model<BotSessionRecord>(BotSessionRecord.name);
+  const broadcastModel = connection.model<BroadcastRecord>(
+    BroadcastRecord.name,
+    BroadcastSchema,
+  );
+  const deliveryModel = connection.model<DeliveryRecord>(
+    DeliveryRecord.name,
+    DeliverySchema,
+  );
+  const channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
+  const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
+  const botSessionModel = connection.model<BotSessionRecord>(
+    BotSessionRecord.name,
+    BotSessionSchema,
+  );
   await botSessionModel.syncIndexes();
   const teacherChats = new TeacherChats(new UsersService(userModel), channelModel);
   const handler = new CallbackQueryHandler(
     teacherChats,
     new BroadcastsService(broadcastModel, deliveryModel, channelModel),
     new BotSessionService(botSessionModel),
+    new DeliveriesService(deliveryModel, broadcastModel, channelModel),
   );
   return {
     memory,
@@ -113,19 +131,4 @@ export async function clearCallbackHandlerTest(
     ctx.userModel.deleteMany({}),
     ctx.botSessionModel.deleteMany({}),
   ]);
-}
-
-export async function seedTeacher(
-  userModel: Model<UserRecord>,
-  channelModel: Model<ChannelRecord>,
-  chatId: number,
-): Promise<void> {
-  await userModel.create({ name: 'Мария', telegramId: chatId, roles: ['teacher'] });
-  await channelModel.create({
-    type: 'telegram',
-    title: 'x',
-    config: '{}',
-    target: String(chatId),
-    active: true,
-  });
 }
