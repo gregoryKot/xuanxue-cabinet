@@ -22,6 +22,7 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     startMinutes: 1140,
     tz: 'Asia/Jerusalem',
     active: true,
+    channelCount: 0,
     ...overrides,
   };
 }

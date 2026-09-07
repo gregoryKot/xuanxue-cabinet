@@ -1,7 +1,8 @@
 // Оболочка кабинета — шапка и нижняя навигация (CLAUDE.md «Мобильный экран
 // первым»). Пункты навигации появляются вместе с экраном, который открывают
-// (PR K, по одному на патч): «Сводка», «Расписание», «Планирование» — дальше
-// «Каналы», «Рассылки», «Шаблоны». Роль без teacher/admin (ученик) —
+// (PR K, по одному на патч) — список в navItems.ts. Больше 5 пунктов на
+// 360px не умещаются подписью в строку — иконка сверху и короткое слово
+// вместо «Ещё» (ревью п.11, PLAN §6). Роль без teacher/admin (ученик) —
 // StudentScreen вместо содержимого маршрута, но шапка с «Выйти» остаётся.
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
@@ -9,6 +10,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ApiError, apiFetch } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
 import { Button } from '../components/Button';
+import { NAV_ITEMS } from './navItems';
 import { StudentScreen } from './StudentScreen';
 
 const TEACHER_ROLES = new Set(['teacher', 'admin']);
@@ -30,13 +32,21 @@ const navStyle: CSSProperties = {
 
 const navLinkStyle = (isActive: boolean): CSSProperties => ({
   flex: 1,
-  textAlign: 'center',
-  padding: '12px 8px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 2,
+  padding: '8px 2px',
   minHeight: 44,
   textDecoration: 'none',
   color: isActive ? 'var(--accent)' : 'var(--ink-soft)',
   fontWeight: isActive ? 600 : 400,
 });
+const navLabelStyle: CSSProperties = {
+  fontSize: 11,
+  lineHeight: 1.1,
+  textAlign: 'center',
+};
 
 const LOGOUT_FAILED_MESSAGE = 'Не удалось выйти. Попробуйте ещё раз.';
 
@@ -80,15 +90,12 @@ export function AppShell() {
 
       {isTeacher && (
         <nav style={navStyle} aria-label="Разделы кабинета">
-          <NavLink to="/summary" style={({ isActive }) => navLinkStyle(isActive)}>
-            Сводка
-          </NavLink>
-          <NavLink to="/schedule" style={({ isActive }) => navLinkStyle(isActive)}>
-            Расписание
-          </NavLink>
-          <NavLink to="/planning" style={({ isActive }) => navLinkStyle(isActive)}>
-            Планирование
-          </NavLink>
+          {NAV_ITEMS.map(({ to, label, Icon }) => (
+            <NavLink key={to} to={to} style={({ isActive }) => navLinkStyle(isActive)}>
+              <Icon />
+              <span style={navLabelStyle}>{label}</span>
+            </NavLink>
+          ))}
         </nav>
       )}
     </div>

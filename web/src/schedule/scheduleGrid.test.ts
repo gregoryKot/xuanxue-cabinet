@@ -105,4 +105,15 @@ describe('buildScheduleGrid', () => {
 
     expect(grid[1][0]?.tz).toBe('Europe/Moscow');
   });
+
+  it('слот несёт число каналов рассылки занятия (ревью п.1)', () => {
+    const cls = makeClass({
+      channelIds: ['ch1', 'ch2'],
+      rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
+    });
+
+    const grid = buildScheduleGrid([cls]);
+
+    expect(grid[1][0]?.channelCount).toBe(2);
+  });
 });

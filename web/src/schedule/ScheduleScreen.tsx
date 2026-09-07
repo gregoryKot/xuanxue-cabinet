@@ -5,6 +5,7 @@
 // ≥768px — сетка семи колонок (CLAUDE.md «Мобильный экран первым»).
 import { useMemo, useState } from 'react';
 import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
+import { useChannels } from '../channels/useChannels';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
@@ -20,6 +21,10 @@ const EXPLANATION = `Здесь расписание школы. Впишите 
 
 export default function ScheduleScreen() {
   const { classes, loading, error, reload, create, update, remove } = useClasses();
+  // Активные каналы грузятся один раз здесь и передаются в лист занятия —
+  // не на каждое открытие листа (ревью п.1). Список каналов read-only на
+  // этом экране, мутации ему не нужны.
+  const { channels: activeChannels } = useChannels(true);
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetClassId, setSheetClassId] = useState<string | null>(null);
@@ -69,6 +74,7 @@ export default function ScheduleScreen() {
       {sheetOpen && (
         <ClassSheet
           classDto={selectedClass}
+          channels={activeChannels ?? []}
           onClose={() => setSheetOpen(false)}
           onCreate={create}
           onUpdate={update}

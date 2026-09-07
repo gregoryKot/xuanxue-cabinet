@@ -17,6 +17,7 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     startMinutes: 19 * 60,
     tz: BROWSER_TZ,
     active: true,
+    channelCount: 0,
     ...overrides,
   };
 }
@@ -36,7 +37,19 @@ describe('SlotCard', () => {
     );
 
     expect(screen.getByText(/выключено/)).toBeInTheDocument();
-    expect(screen.getByText('Онлайн')).toBeInTheDocument();
+    expect(screen.getByText(/^Онлайн · без каналов$/)).toBeInTheDocument();
+  });
+
+  it('без каналов — серым «без каналов» на карточке (ревью п.1)', () => {
+    render(<SlotCard slot={makeSlot({ channelCount: 0 })} onSelect={vi.fn()} />);
+
+    expect(screen.getByText(/без каналов/)).toBeInTheDocument();
+  });
+
+  it('с каналами — число со склонением на карточке (ревью п.1)', () => {
+    render(<SlotCard slot={makeSlot({ channelCount: 2 })} onSelect={vi.fn()} />);
+
+    expect(screen.getByText(/2 канала/)).toBeInTheDocument();
   });
 
   it('клик вызывает onSelect', async () => {

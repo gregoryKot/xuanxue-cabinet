@@ -37,6 +37,10 @@ export interface ClassFormState {
   active: boolean;
   tz: string;
   rules: RuleDraft[];
+  /** Каналы рассылки для этого занятия (ревью п.1, docs/PLAN.md §6 п.1) —
+   * ссылка и запись уходят только сюда; Telegram-группа с ботом
+   * подключается ко всем занятиям сама, отдельно от этого списка. */
+  channelIds: string[];
 }
 
 export function initialClassFormState(classDto: ClassDto | null): ClassFormState {
@@ -49,6 +53,7 @@ export function initialClassFormState(classDto: ClassDto | null): ClassFormState
     leadMinutesText: String(classDto?.leadMinutes ?? DEFAULT_LEAD_MINUTES),
     active: classDto?.active ?? true,
     tz: classDto?.tz ?? SCHOOL_TZ,
+    channelIds: classDto?.channelIds ?? [],
     rules:
       classDto?.rules.map((rule) => ({
         id: rule.id,
@@ -105,6 +110,7 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
     leadMinutes: Number(state.leadMinutesText),
     active: state.active,
     tz: state.tz,
+    channelIds: state.channelIds,
     rules: toRules(state.rules),
   };
 }
@@ -119,6 +125,7 @@ export function toUpdateInput(state: ClassFormState): UpdateClassInput {
     leadMinutes: Number(state.leadMinutesText),
     active: state.active,
     tz: state.tz,
+    channelIds: state.channelIds,
     rules: toRules(state.rules),
   };
 }

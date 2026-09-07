@@ -7,6 +7,7 @@ import {
   listCardStyle,
   listCardTitleStyle,
 } from '../components/listCardStyles';
+import { formatChannelCount } from './channelCountLabel';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 import type { ScheduleSlot } from './scheduleGrid';
 import { tzBadge } from './timezoneLabel';
@@ -28,6 +29,8 @@ export function SlotCard({ slot, onSelect }: SlotCardProps) {
         {slot.groupLabel ? `${slot.groupLabel} · ` : ''}
         {CLASS_FORMAT_LABELS_RU[slot.format]}
         {badge && ` · ${badge}`}
+        {' · '}
+        {formatChannelCount(slot.channelCount)}
       </div>
     </button>
   );

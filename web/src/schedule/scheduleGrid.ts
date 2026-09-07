@@ -22,6 +22,9 @@ export interface ScheduleSlot {
   startMinutes: number;
   tz: string;
   active: boolean;
+  /** Число каналов рассылки у занятия (`ClassDto.channelIds.length`) —
+   * SlotCard показывает его или «без каналов» (ревью п.1). */
+  channelCount: number;
 }
 
 export type ScheduleGrid = Record<Weekday, ScheduleSlot[]>;
@@ -81,6 +84,7 @@ export function buildScheduleGrid(classes: ClassDto[]): ScheduleGrid {
         startMinutes,
         tz: cls.tz,
         active: cls.active,
+        channelCount: cls.channelIds.length,
       });
     }
   }

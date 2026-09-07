@@ -5,9 +5,27 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ClassDto, CreateClassInput, UpdateClassInput } from '@xuanxue/shared';
+import type {
+  ChannelDto,
+  ClassDto,
+  CreateClassInput,
+  UpdateClassInput,
+} from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { ClassSheet } from './ClassSheet';
+
+function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
+  return {
+    id: 'ch1',
+    type: 'vk',
+    title: 'ВК школы',
+    active: true,
+    target: '777',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
 
 function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   return {
@@ -32,6 +50,7 @@ interface RenderSheetOverrides {
   onCreate?: (input: CreateClassInput) => Promise<void>;
   onUpdate?: (id: string, input: UpdateClassInput) => Promise<void>;
   onRemove?: (id: string) => Promise<void>;
+  channels?: ChannelDto[];
 }
 
 function renderSheet(classDto: ClassDto | null, overrides: RenderSheetOverrides = {}) {
@@ -39,11 +58,13 @@ function renderSheet(classDto: ClassDto | null, overrides: RenderSheetOverrides 
   const onCreate = overrides.onCreate ?? vi.fn().mockResolvedValue(undefined);
   const onUpdate = overrides.onUpdate ?? vi.fn().mockResolvedValue(undefined);
   const onRemove = overrides.onRemove ?? vi.fn().mockResolvedValue(undefined);
+  const channels = overrides.channels ?? [];
 
   render(
     <MemoryRouter initialEntries={['/schedule']}>
       <ClassSheet
         classDto={classDto}
+        channels={channels}
         onClose={onClose}
         onCreate={onCreate}
         onUpdate={onUpdate}
@@ -174,6 +195,44 @@ describe('ClassSheet — правила расписания (ревью п.11)'
 
     expect(screen.queryByLabelText('День недели')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
+  });
+});
+
+describe('ClassSheet — каналы рассылки (ревью п.1)', () => {
+  it('нет ни одного канала — подсказка со ссылкой на «Каналы»', () => {
+    renderSheet(makeClass(), { channels: [] });
+
+    expect(screen.getByText(/Каналов пока нет/)).toBeInTheDocument();
+  });
+
+  it('отметка канала уходит в channelIds при сохранении', async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSheet(makeClass({ channelIds: [] }), {
+      channels: [makeChannel({ id: 'ch1' })],
+    });
+
+    await user.click(screen.getByLabelText('ВК · ВК школы'));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ channelIds: ['ch1'] }),
+    );
+  });
+
+  it('снятие отметки убирает канал из channelIds при сохранении', async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSheet(makeClass({ channelIds: ['ch1'] }), {
+      channels: [makeChannel({ id: 'ch1' })],
+    });
+
+    await user.click(screen.getByLabelText('ВК · ВК школы'));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ channelIds: [] }),
+    );
   });
 });
 

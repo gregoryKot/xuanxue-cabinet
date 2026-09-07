@@ -249,7 +249,7 @@ describe('LessonSheet — отмена и возврат в расписание
     const onUpdate = vi
       .fn()
       .mockRejectedValue(new ApiError('Занятие уже отменено.', 409, 'conflict'));
-    renderSheet(makeLesson(), { onUpdate });
+    const { onClose } = renderSheet(makeLesson(), { onUpdate });
 
     await user.click(screen.getByRole('button', { name: 'Отменить занятие' }));
     await user.click(
@@ -258,6 +258,9 @@ describe('LessonSheet — отмена и возврат в расписание
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Занятие уже отменено.');
     expect(screen.getByRole('heading', { name: 'Дата занятия' })).toBeInTheDocument();
+    // Регрессия: открытие/закрытие вложенного ConfirmDialog не должно само по
+    // себе закрывать внешний лист (useHistorySheet — ревью п.18).
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 

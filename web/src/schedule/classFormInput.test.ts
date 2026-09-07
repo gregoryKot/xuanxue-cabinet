@@ -37,6 +37,7 @@ function baseState(overrides: Partial<ClassFormState> = {}): ClassFormState {
     leadMinutesText: '30',
     active: true,
     tz: 'Asia/Jerusalem',
+    channelIds: [],
     rules: [{ weekday: 1, time: '19:00', durationMinText: '60' }],
     ...overrides,
   };
@@ -58,6 +59,11 @@ describe('initialClassFormState', () => {
     expect(state.rules).toEqual([
       { id: 'r1', weekday: 2, time: '19:00', durationMinText: '60' },
     ]);
+  });
+
+  it('существующее занятие — channelIds переносятся как есть (ревью п.1)', () => {
+    const state = initialClassFormState(makeClass({ channelIds: ['ch1', 'ch2'] }));
+    expect(state.channelIds).toEqual(['ch1', 'ch2']);
   });
 });
 
@@ -127,5 +133,11 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
     const input = toCreateInput(baseState());
     expect(input.leadMinutes).toBe(30);
     expect(input.rules?.[0]).toMatchObject({ durationMin: 60 });
+  });
+
+  it('channelIds уходят в тело запроса как есть — создание и правка (ревью п.1)', () => {
+    const state = baseState({ channelIds: ['ch1', 'ch2'] });
+    expect(toCreateInput(state).channelIds).toEqual(['ch1', 'ch2']);
+    expect(toUpdateInput(state).channelIds).toEqual(['ch1', 'ch2']);
   });
 });
