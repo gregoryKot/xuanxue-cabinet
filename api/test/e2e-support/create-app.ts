@@ -52,13 +52,24 @@ function setTestEnv(mongoUri: string): void {
  * Не `NODE_ENV`-проверка внутри самого сервиса (SECURITY §2 — никаких
  * обходов по окружению в бизнес-коде): подмена — только в тестовой сборке
  * модуля, прод-код о её существовании не знает.
+ *
+ * `envOverrides` — точечная правка process.env поверх setTestEnv() (напр.
+ * auth-config.e2e-spec.ts проверяет ответ без BOT_TOKEN: `{ BOT_TOKEN:
+ * undefined }` удаляет переменную). Применяется до импорта AppModule —
+ * ConfigModule.forRoot({ validate }) читает env синхронно при загрузке
+ * модуля (см. комментарий ниже), после импорта менять уже поздно.
  */
 export async function createTestApp(
   overrides?: (builder: TestingModuleBuilder) => void,
+  envOverrides?: Record<string, string | undefined>,
 ): Promise<TestApp> {
   const mongod = await MongoMemoryServer.create();
   try {
     setTestEnv(mongod.getUri());
+    for (const [key, value] of Object.entries(envOverrides ?? {})) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
 
     // Импорт AppModule ОБЯЗАН быть динамическим и ПОСЛЕ setTestEnv(): у
     // @Module() декоратора ConfigModule.forRoot({ validate }) выполняется

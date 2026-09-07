@@ -136,6 +136,13 @@ Railway — дальше роли назначаются в интерфейсе
 `curl https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo` — `url` должен
 быть `https://xuanxue.su/api/telegram/webhook`, `last_error_message` пуст.
 
+Вход через Telegram (`window.Telegram.Login.auth()`, LoginScreen.tsx) открывает
+попап на `oauth.telegram.org` и требует, чтобы домен кабинета был указан в
+BotFather (`/setdomain`) для этого бота — иначе попап откажет с ошибкой домена.
+Проверить один раз после мержа: зайти на `https://xuanxue.su/login`, нажать
+«Войти через Telegram», убедиться, что попап открывается и после подтверждения
+возвращает в кабинет с сессией.
+
 ## 6. Ротация секретов
 
 ### 6.1 `ENCRYPTION_KEY` — только с ре-шифрованием

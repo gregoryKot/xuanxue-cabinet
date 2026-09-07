@@ -3,7 +3,7 @@
 // каждом компоненте, который ходит в API.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CSRF_HEADER } from '@xuanxue/shared';
-import { ApiError, apiFetch } from './http';
+import { ApiError, apiFetch, setUnauthorizedListener } from './http';
 
 function jsonResponse(status: number, body: unknown): Response {
   return {
@@ -132,5 +132,47 @@ describe('apiFetch — сетевой сбой', () => {
     expect(error.message).toBe(
       'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     );
+  });
+});
+
+describe('apiFetch — 401 оповещает подписчика (AuthProvider)', () => {
+  afterEach(() => {
+    setUnauthorizedListener(null);
+  });
+
+  it('401 вызывает зарегистрированный listener перед тем, как бросить ApiError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(401, {
+          statusCode: 401,
+          code: 'unauthorized',
+          message: 'Войдите',
+        }),
+      ),
+    );
+    const listener = vi.fn();
+    setUnauthorizedListener(listener);
+
+    await expectApiError(apiFetch('/classes'));
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('403 listener не трогает', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(403, { statusCode: 403, code: 'forbidden', message: 'Нельзя' }),
+        ),
+    );
+    const listener = vi.fn();
+    setUnauthorizedListener(listener);
+
+    await expectApiError(apiFetch('/classes'));
+
+    expect(listener).not.toHaveBeenCalled();
   });
 });

@@ -34,20 +34,21 @@
 
 Отменённое решение не удаляется: статус меняется, добавляется ссылка на новое.
 
-| №                                                        | Решение                                                               |
-| -------------------------------------------------------- | --------------------------------------------------------------------- |
-| [0001](0001-stack-nestjs-mongoose-react.md)              | NestJS + Mongoose + React, монорепо с `shared/`                       |
-| [0002](0002-single-service-railway-atlas.md)             | Один сервис на Railway, база в MongoDB Atlas                          |
-| [0003](0003-time-model-luxon.md)                         | Правила расписания в поясе школы, события в UTC, только Luxon         |
-| [0004](0004-idempotent-delivery-unique-index.md)         | Идемпотентная доставка через уникальный индекс, без Redis             |
-| [0005](0005-passwordless-auth.md)                        | Вход без паролей: email-ссылка, Telegram, Google; одна форма «вы»     |
-| [0006](0006-pwa-and-web-push.md)                         | Устанавливаемое приложение (PWA) и push как канал доставки            |
-| [0007](0007-quality-gates-ratchets.md)                   | Качество кода держат храповики в CI, а не договорённости              |
-| [0008](0008-no-threads-channel.md)                       | Канала Threads нет: Telegram, ВК, ручной режим для Facebook           |
-| [0009](0009-domain-xuanxue-su.md)                        | Домен `xuanxue.su` — единый origin сайта, API, вебхука и писем        |
-| [0010](0010-school-scoped-data-roles.md)                 | Данные школы скоупятся по роли, не по владельцу                       |
-| [0011](0011-template-syntax.md)                          | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`         |
-| [0012](0012-session-hmac-jwt-builtin-crypto.md)          | Сессия: HMAC-JWT и cookie на встроенном crypto, rolling 90/7 дней     |
-| [0013](0013-model-module-breaks-domain-cycle.md)         | Отдельный модуль модели разрывает цикл Nest-модулей Classes ↔ Lessons |
-| [0014](0014-delivery-lease-at-least-once.md)             | Доставка — at-least-once через лизинг захвата, не exactly-once        |
-| [0015](0015-telegram-chats-self-register-as-channels.md) | Каналы Telegram регистрирует бот, не админ                            |
+| №                                                        | Решение                                                                |
+| -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [0001](0001-stack-nestjs-mongoose-react.md)              | NestJS + Mongoose + React, монорепо с `shared/`                        |
+| [0002](0002-single-service-railway-atlas.md)             | Один сервис на Railway, база в MongoDB Atlas                           |
+| [0003](0003-time-model-luxon.md)                         | Правила расписания в поясе школы, события в UTC, только Luxon          |
+| [0004](0004-idempotent-delivery-unique-index.md)         | Идемпотентная доставка через уникальный индекс, без Redis              |
+| [0005](0005-passwordless-auth.md)                        | Вход без паролей: email-ссылка, Telegram, Google; одна форма «вы»      |
+| [0006](0006-pwa-and-web-push.md)                         | Устанавливаемое приложение (PWA) и push как канал доставки             |
+| [0007](0007-quality-gates-ratchets.md)                   | Качество кода держат храповики в CI, а не договорённости               |
+| [0008](0008-no-threads-channel.md)                       | Канала Threads нет: Telegram, ВК, ручной режим для Facebook            |
+| [0009](0009-domain-xuanxue-su.md)                        | Домен `xuanxue.su` — единый origin сайта, API, вебхука и писем         |
+| [0010](0010-school-scoped-data-roles.md)                 | Данные школы скоупятся по роли, не по владельцу                        |
+| [0011](0011-template-syntax.md)                          | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`          |
+| [0012](0012-session-hmac-jwt-builtin-crypto.md)          | Сессия: HMAC-JWT и cookie на встроенном crypto, rolling 90/7 дней      |
+| [0013](0013-model-module-breaks-domain-cycle.md)         | Отдельный модуль модели разрывает цикл Nest-модулей Classes ↔ Lessons  |
+| [0014](0014-delivery-lease-at-least-once.md)             | Доставка — at-least-once через лизинг захвата, не exactly-once         |
+| [0015](0015-telegram-chats-self-register-as-channels.md) | Каналы Telegram регистрирует бот, не админ                             |
+| [0016](0016-shared-cjs-and-vite.md)                      | `shared` остаётся CommonJS, web подключает его через `commonjsOptions` |
