@@ -1,6 +1,6 @@
 // Смоук-тест маршрутов (CLAUDE.md «Тесты»: ветвление есть — гость на /login,
-// «/» уводит на /schedule) — сами экраны и их логика проверены отдельными
-// тестами (LoginScreen, RequireAuth, ScheduleScreen).
+// «/» уводит на /summary) — сами экраны и их логика проверены отдельными
+// тестами (LoginScreen, RequireAuth, ScheduleScreen, SummaryScreen).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';

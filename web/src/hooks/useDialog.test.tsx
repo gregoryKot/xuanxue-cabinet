@@ -49,6 +49,24 @@ describe('useDialog', () => {
     expect(document.body.style.overflow).not.toBe('hidden');
   });
 
+  it('два открытых диалога — Esc закрывает только верхний, не оба разом', () => {
+    // ConfirmDialog поверх LessonSheet: оба useDialog слушают document
+    // (ревью п.8) — без стека один Esc вызвал бы оба onClose.
+    const onCloseOuter = vi.fn();
+    const onCloseInner = vi.fn();
+    render(
+      <div>
+        <Dialog onClose={onCloseOuter} />
+        <Dialog onClose={onCloseInner} />
+      </div>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onCloseInner).toHaveBeenCalledTimes(1);
+    expect(onCloseOuter).not.toHaveBeenCalled();
+  });
+
   it('возвращает фокус на элемент, с которого лист открыли', async () => {
     const user = userEvent.setup();
     function Wrapper({ show }: { show: boolean }) {

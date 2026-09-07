@@ -34,6 +34,14 @@ body {
   }
 }
 
+/* Короткая подсветка карточки после перехода по якорю `#lesson-{id}`
+   (web/src/hooks/useScrollToHash.ts) — box-shadow, не background: инлайновый
+   `background: #fff` карточки (listCardStyles.ts) иначе перекрыл бы класс. */
+.xuanxue-hash-highlight {
+  box-shadow: 0 0 0 3px var(--focus);
+  transition: box-shadow 1.2s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

@@ -72,82 +72,57 @@ describe('useClasses — загрузка', () => {
     );
   });
 
-  it('reload() дважды подряд — учитывается только ответ последнего вызова', async () => {
-    let resolveFirst: ((value: ClassDto[]) => void) | undefined;
-    mockedApiFetch.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveFirst = resolve;
-        }),
-    );
-    mockedApiFetch.mockResolvedValueOnce([makeClass({ id: 'second' })]);
-
-    const { result } = renderHook(() => useClasses());
-    await act(async () => {
-      await result.current.reload();
-    });
-
-    // Первый (самый ранний) запрос отвечает ПОСЛЕ второго — его результат
-    // не должен затереть уже применённый ответ второго вызова.
-    act(() => {
-      resolveFirst?.([makeClass({ id: 'stale' })]);
-    });
-
-    expect(result.current.classes?.[0]?.id).toBe('second');
-  });
+  // Гонка запросов (устаревший ответ не перезаписывает новый) — тест общей
+  // логики лежит в hooks/useAbortableFetch.test.ts, здесь незачем повторять.
 });
 
-describe('useClasses — мутации', () => {
-  it('create() зовёт POST, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValue([]);
-    const { result } = renderHook(() => useClasses());
-    await waitFor(() => expect(result.current.loading).toBe(false));
+interface MutationCase {
+  name: string;
+  call: (result: ReturnType<typeof useClasses>) => Promise<void>;
+  path: string;
+  method: string;
+}
 
-    mockedApiFetch.mockResolvedValueOnce(makeClass());
-    mockedApiFetch.mockResolvedValueOnce([makeClass()]);
-    await act(async () => {
-      await result.current.create({ title: 'Новое', format: 'online' });
-    });
+const MUTATIONS: MutationCase[] = [
+  {
+    name: 'create',
+    call: (result) => result.create({ title: 'Новое', format: 'online' }),
+    path: '/classes',
+    method: 'POST',
+  },
+  {
+    name: 'update',
+    call: (result) => result.update('c1', { title: 'Правка' }),
+    path: '/classes/c1',
+    method: 'PATCH',
+  },
+  {
+    name: 'remove',
+    call: (result) => result.remove('c1'),
+    path: '/classes/c1',
+    method: 'DELETE',
+  },
+];
 
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/classes',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    expect(result.current.classes).toHaveLength(1);
-  });
+describe('useClasses — мутации (read-after-write)', () => {
+  it.each(MUTATIONS)(
+    '$name() — $method $path, затем перечитывает список',
+    async ({ call, path, method }) => {
+      mockedApiFetch.mockResolvedValueOnce([makeClass()]);
+      const { result } = renderHook(() => useClasses());
+      await waitFor(() => expect(result.current.loading).toBe(false));
 
-  it('update() зовёт PATCH по id, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValue([makeClass()]);
-    const { result } = renderHook(() => useClasses());
-    await waitFor(() => expect(result.current.loading).toBe(false));
+      mockedApiFetch.mockResolvedValueOnce(undefined);
+      mockedApiFetch.mockResolvedValueOnce([]);
+      await act(async () => {
+        await call(result.current);
+      });
 
-    mockedApiFetch.mockResolvedValueOnce(makeClass());
-    mockedApiFetch.mockResolvedValueOnce([makeClass()]);
-    await act(async () => {
-      await result.current.update('c1', { title: 'Правка' });
-    });
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/classes/c1',
-      expect.objectContaining({ method: 'PATCH' }),
-    );
-  });
-
-  it('remove() зовёт DELETE по id, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValue([makeClass()]);
-    const { result } = renderHook(() => useClasses());
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await act(async () => {
-      await result.current.remove('c1');
-    });
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/classes/c1',
-      expect.objectContaining({ method: 'DELETE' }),
-    );
-    expect(result.current.classes).toHaveLength(0);
-  });
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        path,
+        expect.objectContaining({ method }),
+      );
+      expect(result.current.classes).toHaveLength(0);
+    },
+  );
 });

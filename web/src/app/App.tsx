@@ -13,6 +13,8 @@ import { AppShell } from './AppShell';
 
 const LoginScreen = lazy(() => import('../auth/LoginScreen'));
 const ScheduleScreen = lazy(() => import('../schedule/ScheduleScreen'));
+const SummaryScreen = lazy(() => import('../summary/SummaryScreen'));
+const PlanningScreen = lazy(() => import('../planning/PlanningScreen'));
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -29,8 +31,10 @@ export default function App() {
             <Route path="/login" element={<LoginScreen />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
+                <Route path="/summary" element={<SummaryScreen />} />
                 <Route path="/schedule" element={<ScheduleScreen />} />
-                <Route path="/" element={<Navigate to="/schedule" replace />} />
+                <Route path="/planning" element={<PlanningScreen />} />
+                <Route path="/" element={<Navigate to="/summary" replace />} />
               </Route>
             </Route>
             {/* Неизвестный путь — на главную, а не белый экран 404. */}

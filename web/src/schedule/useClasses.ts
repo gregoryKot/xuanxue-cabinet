@@ -2,17 +2,18 @@
 // «Read-after-write»): после create/update/remove список перечитывается
 // заново — на одном экране без денормализации optimistic-обновление лишнее.
 // create/update/remove не глотают ошибку — её показывает форма (ClassSheet).
-// reload() отменяет предыдущий запрос при повторном вызове (двойной клик
-// «Обновить», размонтирование экрана посреди загрузки) — AbortController +
-// сверка id запроса против setState из уже устаревшего ответа (ревью п.13).
-import { useCallback, useEffect, useRef, useState } from 'react';
+// Гонка запросов и разбор ошибки — в общем useAbortableFetch (используется
+// также useLessons/useSummary — иначе jscpd ловит дубль AbortController +
+// сверки id запроса).
+import { useCallback } from 'react';
 import {
   LIST_LIMIT_MAX,
   type ClassDto,
   type CreateClassInput,
   type UpdateClassInput,
 } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { apiFetch } from '../api/http';
+import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить расписание. Попробуйте ещё раз.';
 
@@ -27,38 +28,10 @@ export interface UseClassesResult {
 }
 
 export function useClasses(): UseClassesResult {
-  const [classes, setClasses] = useState<ClassDto[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const requestId = useRef(0);
-  const abortController = useRef<AbortController | null>(null);
-
-  const reload = useCallback(async () => {
-    abortController.current?.abort();
-    const controller = new AbortController();
-    abortController.current = controller;
-    const thisRequest = (requestId.current += 1);
-
-    setLoading(true);
-    setError(null);
-    try {
-      const list = await apiFetch<ClassDto[]>(`/classes?limit=${LIST_LIMIT_MAX}`, {
-        signal: controller.signal,
-      });
-      if (requestId.current !== thisRequest) return; // пришёл более новый reload()
-      setClasses(list);
-    } catch (err) {
-      if (requestId.current !== thisRequest) return;
-      setError(err instanceof ApiError ? err.message : LOAD_ERROR_MESSAGE);
-    } finally {
-      if (requestId.current === thisRequest) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void reload();
-    return () => abortController.current?.abort();
-  }, [reload]);
+  const { data, loading, error, reload } = useAbortableFetch(
+    (signal) => apiFetch<ClassDto[]>(`/classes?limit=${LIST_LIMIT_MAX}`, { signal }),
+    LOAD_ERROR_MESSAGE,
+  );
 
   const create = useCallback(
     async (input: CreateClassInput) => {
@@ -84,5 +57,5 @@ export function useClasses(): UseClassesResult {
     [reload],
   );
 
-  return { classes, loading, error, reload, create, update, remove };
+  return { classes: data, loading, error, reload, create, update, remove };
 }
