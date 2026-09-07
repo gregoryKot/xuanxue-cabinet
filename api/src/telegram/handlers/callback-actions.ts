@@ -7,7 +7,9 @@ import type { BroadcastsService } from '../../broadcasts/broadcasts.service';
 import { ConflictError, NotFoundError } from '../../common/errors';
 import type { BotSessionService } from '../bot-session.service';
 
-const GENERIC_ERROR = 'Что-то пошло не так. Попробуйте ещё раз.';
+// Экспортирована — callback-query.handler.ts зовёт её же в своём catch, не
+// повторяет литерал (CLAUDE.md «Одна механика — один компонент»).
+export const GENERIC_ERROR = 'Что-то пошло не так. Попробуйте ещё раз.';
 
 /** Ошибка домена (рассылка уже отправлена/отменена) — текст уже готов по
  * VOICE (broadcast-journal.queries.ts), его и показываем; неизвестная

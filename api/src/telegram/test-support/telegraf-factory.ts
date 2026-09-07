@@ -23,6 +23,7 @@ const FAKE_BOT_INFO: UserFromGetMe = {
 interface WebhookCall {
   url: string;
   secretToken?: string;
+  allowedUpdates?: string[];
 }
 
 interface SendMessageCall {
@@ -55,6 +56,7 @@ export function createFakeTelegrafFactory(
         webhookCalls.push({
           url: (payload?.url as string | undefined) ?? '',
           secretToken: payload?.secret_token as string | undefined,
+          allowedUpdates: payload?.allowed_updates as string[] | undefined,
         });
         return Promise.resolve(true);
       }

@@ -26,6 +26,11 @@ const SCHEDULER_WARN_INTERVAL_MIN = 10;
 @Injectable()
 export class TelegramTeacherNotifier implements TeacherNotifier {
   private readonly logger = new Logger(TelegramTeacherNotifier.name);
+  // Дедуп — в памяти инстанса, не в БД: при деплое, пока крутятся два
+  // инстанса (старый ещё не остановлен), у каждого свой Map — учитель может
+  // получить два DM за одно и то же окно в 10 минут. Это осознанная цена
+  // (тот же компромисс, что at-least-once у доставок, ADR-0014), не баг —
+  // RUNBOOK §8.10.
   private readonly lastSchedulerWarnAt = new Map<string, DateTime>();
 
   constructor(
@@ -52,11 +57,22 @@ export class TelegramTeacherNotifier implements TeacherNotifier {
     await this.broadcast(text, now);
   }
 
-  async notifySchedulerFailed(step: string, error: string, now: DateTime): Promise<void> {
+  async notifySchedulerFailed(
+    step: string,
+    _error: string,
+    now: DateTime,
+  ): Promise<void> {
     const last = this.lastSchedulerWarnAt.get(step);
     if (last && now.diff(last, 'minutes').minutes < SCHEDULER_WARN_INTERVAL_MIN) return;
     this.lastSchedulerWarnAt.set(step, now);
-    await this.broadcast(`Шаг планировщика «${step}» не выполнился: ${error}`, now);
+    // Причина ошибки — только в лог (errorMessage/errorStack у вызывающего
+    // SchedulerService.step), в DM учителю сырое исключение не уходит
+    // (CLAUDE.md «Ошибки»): он не программист, ему нужно «что делать».
+    await this.broadcast(
+      `Рассылки могли задержаться: не отработал шаг «${step}». Проверьте журнал ` +
+        'рассылок; если повторится — напишите разработчику.',
+      now,
+    );
   }
 
   private async broadcast(text: string, now: DateTime): Promise<void> {

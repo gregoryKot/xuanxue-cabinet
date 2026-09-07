@@ -108,7 +108,7 @@ describe('TopicRebuildService.rebuild', () => {
     );
     await lessonModel.updateOne({ _id: lesson._id }, { $set: { topic: 'новая тема' } });
 
-    await service.rebuild(lesson._id, NOW);
+    await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(true);
 
     const updated = await broadcastModel.findById(broadcast._id).lean();
     expect(decrypt(updated?.text)).toContain('новая тема');
@@ -137,7 +137,7 @@ describe('TopicRebuildService.rebuild', () => {
       ),
     );
 
-    await service.rebuild(lesson._id, NOW);
+    await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(false);
 
     const updated = await broadcastModel.findById(broadcast._id).lean();
     expect(decrypt(updated?.text)).toBe('причина отмены');
@@ -153,7 +153,7 @@ describe('TopicRebuildService.rebuild', () => {
       status: 'scheduled',
     });
 
-    await expect(service.rebuild(lesson._id, NOW)).resolves.toBeUndefined();
+    await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(false);
   });
 
   it('занятие удалено между сохранением темы и пересборкой — тихо выходит', async () => {
@@ -180,7 +180,7 @@ describe('TopicRebuildService.rebuild', () => {
     );
     await lessonModel.deleteOne({ _id: lesson._id });
 
-    await expect(service.rebuild(lesson._id, NOW)).resolves.toBeUndefined();
+    await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(false);
   });
 
   it('занятие есть, но класс уже удалён — тихо выходит, не бросает', async () => {
@@ -207,7 +207,7 @@ describe('TopicRebuildService.rebuild', () => {
     );
     await classModel.deleteOne({ _id: cls._id });
 
-    await expect(service.rebuild(lesson._id, NOW)).resolves.toBeUndefined();
+    await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(false);
 
     const untouched = await broadcastModel.findById(broadcast._id).lean();
     expect(decrypt(untouched?.text)).toBe('старый текст');
@@ -245,6 +245,6 @@ describe('TopicRebuildService.rebuild', () => {
       { findById: jest.fn() } as unknown as UsersService,
     );
 
-    await expect(failingService.rebuild(lesson._id, NOW)).resolves.toBeUndefined();
+    await expect(failingService.rebuild(lesson._id, NOW)).resolves.toBe(false);
   });
 });

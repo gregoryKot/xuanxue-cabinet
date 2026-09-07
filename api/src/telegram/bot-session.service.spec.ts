@@ -74,4 +74,22 @@ describe('BotSessionService', () => {
   it('нет ожидания для чата — get возвращает null', async () => {
     expect(await service.get(999, NOW)).toBeNull();
   });
+
+  it('hasExpired — false, если ожидания для чата не было вовсе', async () => {
+    expect(await service.hasExpired(999, NOW)).toBe(false);
+  });
+
+  it('hasExpired — false, пока ожидание ещё активно', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    await service.startTopicWait(111, lessonId, NOW);
+
+    expect(await service.hasExpired(111, NOW)).toBe(false);
+  });
+
+  it('hasExpired — true, когда expiresAt уже в прошлом', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    await service.startTopicWait(111, lessonId, NOW);
+
+    expect(await service.hasExpired(111, NOW.plus({ minutes: 11 }))).toBe(true);
+  });
 });

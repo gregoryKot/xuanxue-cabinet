@@ -1,4 +1,5 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»).
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
@@ -92,8 +93,22 @@ describe('TeacherChats', () => {
     expect(chats).toEqual([]);
   });
 
-  it('пустой список — не падает, повторный вызов раньше часа не дублирует warn (по факту не бросает)', async () => {
-    await expect(teacherChats.list(NOW)).resolves.toEqual([]);
-    await expect(teacherChats.list(NOW.plus({ minutes: 1 }))).resolves.toEqual([]);
+  it('пустой список — warn один раз в час, не на каждый вызов', async () => {
+    // Свой инстанс, не общий `teacherChats` из describe: тесты выше уже
+    // видели пустой список на том же NOW (например «канал выключен») и
+    // выставили lastEmptyWarnAt на общем инстансе — с ним диф был бы 0.
+    const freshChats = new TeacherChats(new UsersService(userModel), channelModel);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    // Два вызова в пределах часа — один и тот же warn, второй раз не дублируется.
+    await freshChats.list(NOW);
+    await freshChats.list(NOW.plus({ minutes: 1 }));
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    // Третий вызов через 61 минуту после первого — час истёк, warn снова.
+    await freshChats.list(NOW.plus({ minutes: 61 }));
+    expect(warn).toHaveBeenCalledTimes(2);
+
+    warn.mockRestore();
   });
 });

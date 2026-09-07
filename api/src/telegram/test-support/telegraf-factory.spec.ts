@@ -20,10 +20,15 @@ describe('createFakeTelegrafFactory', () => {
     await bot.telegram.callApi('setWebhook', {
       url: 'https://xuanxue.su/api/telegram/webhook',
       secret_token: 's',
+      allowed_updates: ['message', 'callback_query'],
     });
 
     expect(webhookCalls).toEqual([
-      { url: 'https://xuanxue.su/api/telegram/webhook', secretToken: 's' },
+      {
+        url: 'https://xuanxue.su/api/telegram/webhook',
+        secretToken: 's',
+        allowedUpdates: ['message', 'callback_query'],
+      },
     ]);
   });
 

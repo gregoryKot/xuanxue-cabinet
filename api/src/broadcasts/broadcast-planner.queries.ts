@@ -6,6 +6,7 @@ import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
 import {
   DEFAULT_LEAD_MINUTES,
+  PREVIEW_MINUTES,
   type ClassFormat,
   type LessonStatus,
 } from '@xuanxue/shared';
@@ -92,8 +93,12 @@ const DUE_LOOKBACK_MINUTES = DEFAULT_LEAD_MINUTES * 2;
  * `scheduled`-занятия из истории школы на каждом тике (занятие без broadcast
  * статус не меняет само по себе, и в базе оно осталось бы `scheduled`
  * навсегда). Верхнюю границу считаем по максимальному `leadMinutes` среди
- * классов (`send` дальше отсеет то, что рано для своего класса); финальное
- * решение по каждому занятию — decideBroadcast.
+ * классов плюс `PREVIEW_MINUTES` — тем же запасом, что в decideBroadcast
+ * (окно расширено, чтобы broadcast появился заранее для предпросмотра бота,
+ * PLAN.md §6): без этого запаса здесь Mongo-запрос отсекал бы занятие ещё до
+ * decideBroadcast, и «в расширенном окне» из decideBroadcast было бы
+ * недостижимо. `send` дальше отсеет то, что рано для своего класса —
+ * финальное решение по каждому занятию — decideBroadcast.
  */
 export async function findDueLessons(
   lessonModel: Model<LessonRecord>,
@@ -110,7 +115,7 @@ export async function findDueLessons(
         status: 'scheduled',
         startsAt: {
           $gt: now.minus({ minutes: DUE_LOOKBACK_MINUTES }).toJSDate(),
-          $lte: now.plus({ minutes: maxLeadMinutes }).toJSDate(),
+          $lte: now.plus({ minutes: maxLeadMinutes + PREVIEW_MINUTES }).toJSDate(),
         },
       },
       LESSON_PROJECTION,

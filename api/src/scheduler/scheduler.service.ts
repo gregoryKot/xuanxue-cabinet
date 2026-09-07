@@ -55,13 +55,13 @@ export class SchedulerService implements OnApplicationShutdown {
     const { sent, failed } = (await this.step('доставки', now, (n) =>
       this.deliveryRunner.run(n),
     )) ?? { sent: 0, failed: 0 };
-    const { sent: previewsSent } = (await this.step('предпросмотр', now, (n) =>
+    const { claimed: previewsClaimed } = (await this.step('предпросмотр', now, (n) =>
       this.previewService.sendPending(n),
-    )) ?? { sent: 0 };
+    )) ?? { claimed: 0 };
 
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
-        `sent=${sent} failed=${failed} previews=${previewsSent}`,
+        `sent=${sent} failed=${failed} previews=${previewsClaimed}`,
     );
   }
 

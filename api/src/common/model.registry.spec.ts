@@ -12,6 +12,7 @@ import { ChannelRecord } from '../channels/channel.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
+import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -190,6 +191,25 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     await User.create({ name: 'Гугл', googleId: 'g-1', roles: [] });
     await expect(
       User.create({ name: 'Гугл-двойник', googleId: 'g-1', roles: [] }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+  });
+
+  it('bot_sessions: второй insert с тем же chatId падает — один документ на чат', async () => {
+    const BotSession = connection.model<BotSessionRecord>(BotSessionRecord.name);
+    const lessonId = new mongoose.Types.ObjectId();
+    await BotSession.create({
+      chatId: 111,
+      kind: 'topic',
+      lessonId,
+      expiresAt: FIXED_DATE,
+    });
+    await expect(
+      BotSession.create({
+        chatId: 111,
+        kind: 'topic',
+        lessonId: new mongoose.Types.ObjectId(),
+        expiresAt: FIXED_DATE,
+      }),
     ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
   });
 

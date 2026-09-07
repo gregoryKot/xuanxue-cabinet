@@ -39,6 +39,19 @@ export class BotSessionService {
     await this.model.deleteOne({ chatId });
   }
 
+  /** Документ есть, но `expiresAt` уже прошёл — отличить «никогда не ждали»
+   * (тихо игнорируем чужое сообщение) от «ждали, но учитель не успел»: во
+   * втором случае бот отвечает, что ожидание истекло, а не молчит. TTL может
+   * не успеть подчистить документ (задержка до минуты, как в get()) — фильтр
+   * по `expiresAt` тот же приём. */
+  async hasExpired(chatId: number, now: DateTime): Promise<boolean> {
+    const count = await this.model.countDocuments({
+      chatId,
+      expiresAt: { $lte: now.toJSDate() },
+    });
+    return count > 0;
+  }
+
   private async set(
     chatId: number,
     kind: BotSessionKind,

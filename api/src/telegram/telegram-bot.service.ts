@@ -5,6 +5,7 @@
 // (CLAUDE.md «Логика вне контроллеров»).
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DateTime } from 'luxon';
 import type { Telegraf } from 'telegraf';
 import type { InlineKeyboardButton, Update } from 'telegraf/types';
 import {
@@ -57,8 +58,12 @@ export class TelegramBotService implements OnApplicationBootstrap {
     });
     bot.start((ctx) => this.startHandler.handle(ctx));
     bot.on('my_chat_member', (ctx) => this.chatMemberHandler.handle(ctx));
-    bot.on('callback_query', (ctx) => this.callbackQueryHandler.handle(ctx));
-    bot.on('message', (ctx) => this.messageHandler.handle(ctx));
+    // DateTime.utc() — на каждый апдейт заново (CLAUDE.md «Время»): здесь, а
+    // не в самих хендлерах, единственное место, где бот зовёт «сейчас».
+    bot.on('callback_query', (ctx) =>
+      this.callbackQueryHandler.handle(ctx, DateTime.utc()),
+    );
+    bot.on('message', (ctx) => this.messageHandler.handle(ctx, DateTime.utc()));
     this.bot = bot;
 
     // Прогрев botInfo и регистрация вебхука идут в сеть — ни один не должен

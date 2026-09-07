@@ -23,7 +23,10 @@ interface DuePreview {
 }
 
 export interface PreviewResult {
-  sent: number;
+  /** Рассылок, для которых этот вызов «забрал» отправку предпросмотра
+   * (условный апдейт previewSentAt сработал) — не число реально доставленных
+   * учителям сообщений: учителей может быть несколько или ни одного. */
+  claimed: number;
 }
 
 @Injectable()
@@ -44,20 +47,33 @@ export class PreviewService {
           kind: 'lesson_link',
           status: 'scheduled',
           previewSentAt: { $exists: false },
-          scheduledAt: { $lte: now.plus({ minutes: PREVIEW_MINUTES }).toJSDate() },
+          // Нижняя граница отсекает scheduledAt в прошлом: догоняющий тик
+          // или легаси-документ с уже наступившим временем отправки — раннер
+          // доставок заберёт его сам в этот же тик, предпросмотр для
+          // события, которое вот-вот (или уже) ушло, только путает учителя.
+          scheduledAt: {
+            $gte: now.toJSDate(),
+            $lte: now.plus({ minutes: PREVIEW_MINUTES }).toJSDate(),
+          },
         },
         { lessonId: 1, text: 1 },
       )
       .lean<DuePreview[]>();
+    if (due.length === 0) return { claimed: 0 };
 
-    let sent = 0;
+    // Один список чатов на весь тик — за то время, что тик перебирает
+    // рассылки, состав подключённых учителей не меняется, а TeacherChats
+    // сама решает, когда логировать пустой список (не чаще раза в час).
+    const chats = await this.teacherChats.list(now);
+
+    let claimed = 0;
     for (const broadcast of due) {
       if (await this.claim(broadcast._id, now)) {
-        await this.sendToTeachers(broadcast, now);
-        sent += 1;
+        await this.sendToTeachers(broadcast, chats);
+        claimed += 1;
       }
     }
-    return { sent };
+    return { claimed };
   }
 
   /** `modifiedCount === 1` — этот вызов реально «забрал» рассылку; второй
@@ -72,7 +88,10 @@ export class PreviewService {
 
   /** `TelegramBotService.sendMessage` сама глотает сбой сети (warn в лог) —
    * здесь только «нечем послать» (текст не расшифровался). */
-  private async sendToTeachers(broadcast: DuePreview, now: DateTime): Promise<void> {
+  private async sendToTeachers(
+    broadcast: DuePreview,
+    chats: readonly { chatId: string }[],
+  ): Promise<void> {
     const text = decrypt(broadcast.text);
     if (!text) {
       this.logger.error(
@@ -89,7 +108,6 @@ export class PreviewService {
         ]
       : [[inlineButton('Отменить', 'cancel', broadcast._id.toString())]];
 
-    const chats = await this.teacherChats.list(now);
     await Promise.all(
       chats.map((chat) => this.bot.sendMessage(chat.chatId, text, buttons)),
     );

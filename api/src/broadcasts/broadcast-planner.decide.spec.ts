@@ -121,6 +121,20 @@ describe('decideBroadcast', () => {
     expect(decision).toEqual({ kind: 'send' });
   });
 
+  it('у класса нет leadMinutes (легаси-документ) — DEFAULT_LEAD_MINUTES, не Invalid Date', () => {
+    // undefined через as unknown: DecideClassInput.leadMinutes типизирован как
+    // обязательный number, но старый документ Mongo может не содержать поля —
+    // именно этот рантайм-случай и закрывает cls?.leadMinutes ?? DEFAULT_LEAD_MINUTES.
+    const decision = decideBroadcast(
+      { startsAt: NOW.plus({ minutes: 25 }).toJSDate() },
+      activeClass({ leadMinutes: undefined as unknown as number }),
+      NOW,
+    );
+    // DEFAULT_LEAD_MINUTES = 30 (shared/src/domain.ts) — занятие через 25
+    // минут уже в окне «пора слать», не «not_due» и не Invalid Date/NaN.
+    expect(decision).toEqual({ kind: 'send' });
+  });
+
   it('both — тоже рассылается, не только online', () => {
     const decision = decideBroadcast(
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },

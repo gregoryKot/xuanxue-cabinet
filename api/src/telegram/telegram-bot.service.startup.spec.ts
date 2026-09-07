@@ -93,8 +93,12 @@ describe('TelegramBotService — регистрация вебхука при с
       {
         url: `https://xuanxue.su${TELEGRAM_WEBHOOK_PATH}`,
         secretToken: 'test-secret',
+        allowedUpdates: ['message', 'my_chat_member', 'callback_query'],
       },
     ]);
+    // Без callback_query бот не увидел бы нажатия кнопок предпросмотра
+    // (PLAN.md §6) — Telegram шлёт только подписанные типы апдейтов.
+    expect(webhookCalls[0]?.allowedUpdates).toContain('callback_query');
   });
 
   it('PUBLIC_URL с завершающим слэшем (защита в глубину — валидатор его и так запрещает) — путь без двойного слэша', async () => {

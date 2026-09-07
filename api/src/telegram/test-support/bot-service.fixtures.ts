@@ -3,6 +3,7 @@
 // конфига и хендлеров, апдейты по образцу документации Telegram. Вынесены,
 // чтобы два спека не дублировали блок (jscpd) и укладывались в 300 строк.
 import type { ConfigService } from '@nestjs/config';
+import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import type { CallbackQueryHandler } from '../handlers/callback-query.handler';
@@ -25,13 +26,23 @@ export function fakeHandler(): { handle: jest.Mock<Promise<void>, [Context]> } {
   return { handle: jest.fn<Promise<void>, [Context]>().mockResolvedValue(undefined) };
 }
 
-/** callback_query/message-хендлеры — маршрутизацию каждого из них проверяют
- * свои спеки рядом с кодом; здесь достаточно заглушки, чтобы TelegramBotService
- * собирался в спеках маршрутизации my_chat_member/start. */
+/** callback_query/message — хендлеры с сигнатурой `handle(ctx, now)`
+ * (CLAUDE.md «Время»: TelegramBotService сам зовёт DateTime.utc() на каждый
+ * апдейт и передаёт хендлеру). */
+export function fakeHandlerWithNow(): {
+  handle: jest.Mock<Promise<void>, [Context, DateTime]>;
+} {
+  return {
+    handle: jest.fn<Promise<void>, [Context, DateTime]>().mockResolvedValue(undefined),
+  };
+}
+
+/** callback_query/message-хендлеры — маршрутизацию каждого из них (и что им
+ * приходит свежий DateTime.utc()) проверяет telegram-bot.service.spec.ts. */
 export function fakeExtraHandlers(): [CallbackQueryHandler, MessageHandler] {
   return [
-    fakeHandler() as unknown as CallbackQueryHandler,
-    fakeHandler() as unknown as MessageHandler,
+    fakeHandlerWithNow() as unknown as CallbackQueryHandler,
+    fakeHandlerWithNow() as unknown as MessageHandler,
   ];
 }
 
@@ -62,5 +73,34 @@ export const START_UPDATE = {
     from: { id: 111, is_bot: false, first_name: 'Дима' },
     text: '/start',
     entities: [{ offset: 0, length: 6, type: 'bot_command' }],
+  },
+} as unknown as Update;
+
+// Апдейт из документации Telegram (callback_query: нажатие кнопки предпросмотра).
+export const CALLBACK_UPDATE = {
+  update_id: 3,
+  callback_query: {
+    id: 'cbq1',
+    from: { id: 111, is_bot: false, first_name: 'Дима' },
+    message: {
+      message_id: 2,
+      date: 0,
+      chat: { id: 111, type: 'private', first_name: 'Дима' },
+      text: 'Предпросмотр рассылки',
+    },
+    chat_instance: '1',
+    data: 'cancel:000000000000000000000000',
+  },
+} as unknown as Update;
+
+// Апдейт из документации Telegram (message: текстовое сообщение в личном чате).
+export const TEXT_MESSAGE_UPDATE = {
+  update_id: 4,
+  message: {
+    message_id: 3,
+    date: 0,
+    chat: { id: 111, type: 'private', first_name: 'Дима' },
+    from: { id: 111, is_bot: false, first_name: 'Дима' },
+    text: 'новая тема занятия',
   },
 } as unknown as Update;

@@ -46,7 +46,9 @@ import { SchedulerService } from './scheduler.service';
     BroadcastPlannerService,
     DeliveryRunnerService,
     PreviewService,
-    TelegramTeacherNotifier,
+    // Только по токену — второй провайдер класса без токена (было раньше)
+    // создавал второй экземпляр TelegramTeacherNotifier с собственным
+    // Map-дедупом notifySchedulerFailed, никем не используемый.
     { provide: TEACHER_NOTIFIER, useClass: TelegramTeacherNotifier },
     SchedulerService,
   ],

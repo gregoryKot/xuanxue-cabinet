@@ -26,7 +26,8 @@ function buildService(overrides: {
     overrides.planBroadcasts ?? jest.fn().mockResolvedValue({ broadcasts: 0 });
   const runDeliveries =
     overrides.runDeliveries ?? jest.fn().mockResolvedValue({ sent: 0, failed: 0 });
-  const sendPreviews = overrides.sendPreviews ?? jest.fn().mockResolvedValue({ sent: 0 });
+  const sendPreviews =
+    overrides.sendPreviews ?? jest.fn().mockResolvedValue({ claimed: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -58,7 +59,7 @@ describe('SchedulerService.tick', () => {
     );
     const sendPreviews = jest.fn(
       (_now: DateTime): ReturnType<PreviewService['sendPending']> =>
-        Promise.resolve({ sent: 2 }),
+        Promise.resolve({ claimed: 2 }),
     );
     const { service } = buildService({
       plan,
@@ -85,7 +86,7 @@ describe('SchedulerService.tick', () => {
   it('ошибка шага рассылок не останавливает шаг доставок и предпросмотра', async () => {
     const planBroadcasts = jest.fn().mockRejectedValue(new Error('mongo упал'));
     const runDeliveries = jest.fn().mockResolvedValue({ sent: 0, failed: 0 });
-    const sendPreviews = jest.fn().mockResolvedValue({ sent: 0 });
+    const sendPreviews = jest.fn().mockResolvedValue({ claimed: 0 });
     const { service } = buildService({ planBroadcasts, runDeliveries, sendPreviews });
 
     await expect(service.tick()).resolves.toBeUndefined();

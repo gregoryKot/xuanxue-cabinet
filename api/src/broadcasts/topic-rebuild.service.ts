@@ -34,18 +34,23 @@ export class TopicRebuildService {
     private readonly usersService: UsersService,
   ) {}
 
-  async rebuild(lessonId: Types.ObjectId, now: DateTime): Promise<void> {
+  /** `true` — нашли ещё не отправленную рассылку и пересобрали её текст;
+   * `false` — нечего пересобирать (рассылка уже ушла/отменена, самой
+   * рассылки для занятия ещё нет, занятие/класс пропали) или пересборка
+   * упала. Вызывающий код (message.handler.ts) по этому флагу решает, писать
+   * ли учителю «пост уже ушёл со старой темой». */
+  async rebuild(lessonId: Types.ObjectId, now: DateTime): Promise<boolean> {
     try {
       const broadcast = await this.broadcastModel
         .findOne({ lessonId, kind: 'lesson_link', status: 'scheduled' }, { _id: 1 })
         .lean<{ _id: Types.ObjectId } | null>();
-      if (!broadcast) return;
+      if (!broadcast) return false;
 
       const lessonDoc = await this.lessonModel.findById(lessonId).lean<PlannerLesson>();
-      if (!lessonDoc) return;
+      if (!lessonDoc) return false;
       const lesson = decryptRecord(lessonDoc, LESSON_ENCRYPT_SCHEMA);
       const cls = await findClassForRecording(this.classModel, lesson.classId);
-      if (!cls) return;
+      if (!cls) return false;
 
       const settings = await this.settingsService.get();
       const text = await buildLessonLinkText(
@@ -59,6 +64,7 @@ export class TopicRebuildService {
         { _id: broadcast._id },
         { $set: encryptRecord({ text }, ENCRYPT_SCHEMA) },
       );
+      return true;
     } catch (err) {
       // Тема уже сохранена в lessons (LessonsService.update прошёл раньше) —
       // сбой пересборки текста поста не должен выглядеть как отказ бота.
@@ -66,6 +72,7 @@ export class TopicRebuildService {
         `пересборка текста рассылки занятия ${lessonId.toString()} упала: ${errorMessage(err)}`,
         errorStack(err),
       );
+      return false;
     }
   }
 }

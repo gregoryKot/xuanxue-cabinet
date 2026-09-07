@@ -7,7 +7,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
+import {
+  LIST_LIMIT_DEFAULT,
+  SCHOOL_TZ,
+  type UserRole,
+  type UserStatus,
+} from '@xuanxue/shared';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { UserRecord } from './user.schema';
 
@@ -69,6 +74,9 @@ export class UsersService {
         { telegramId: { $exists: true }, roles: { $in: ['teacher', 'admin'] } },
         { name: 1, telegramId: 1 },
       )
+      // Список внутренний (TeacherChats), но без лимита — «дай всё» тем же
+      // запрещённым приёмом, что и у публичных списков (CLAUDE.md «API»).
+      .limit(LIST_LIMIT_DEFAULT)
       .lean<{ _id: Types.ObjectId; name: string; telegramId: number }[]>();
     return docs.map((doc) => ({
       id: doc._id.toString(),

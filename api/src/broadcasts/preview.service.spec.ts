@@ -83,7 +83,7 @@ describe('PreviewService.sendPending', () => {
 
     const result = await service.sendPending(NOW);
 
-    expect(result).toEqual({ sent: 1 });
+    expect(result).toEqual({ claimed: 1 });
     expect(bot.sendMessage).toHaveBeenCalledTimes(1);
     const [chatId, text, buttons] = bot.sendMessage.mock.calls[0] as [
       string,
@@ -127,7 +127,7 @@ describe('PreviewService.sendPending', () => {
 
     const result = await service.sendPending(NOW);
 
-    expect(result).toEqual({ sent: 0 });
+    expect(result).toEqual({ claimed: 0 });
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -142,7 +142,39 @@ describe('PreviewService.sendPending', () => {
 
     const result = await service.sendPending(NOW);
 
-    expect(result).toEqual({ sent: 0 });
+    expect(result).toEqual({ claimed: 0 });
+  });
+
+  it('scheduledAt в прошлом (догоняющий тик / легаси scheduled) — предпросмотр не шлём', async () => {
+    await createBroadcast({ scheduledAt: NOW.minus({ minutes: 1 }).toJSDate() });
+    const bot = fakeBot();
+    const service = new PreviewService(
+      broadcastModel,
+      fakeTeacherChats() as never,
+      bot as unknown as TelegramBotService,
+    );
+
+    const result = await service.sendPending(NOW);
+
+    expect(result).toEqual({ claimed: 0 });
+    expect(bot.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('несколько due рассылок — teacherChats.list зовётся один раз на весь тик', async () => {
+    await createBroadcast();
+    await createBroadcast();
+    const bot = fakeBot();
+    const teacherChats = fakeTeacherChats();
+    const service = new PreviewService(
+      broadcastModel,
+      teacherChats as never,
+      bot as unknown as TelegramBotService,
+    );
+
+    const result = await service.sendPending(NOW);
+
+    expect(result).toEqual({ claimed: 2 });
+    expect(teacherChats.list).toHaveBeenCalledTimes(1);
   });
 
   it('рассылка уже не scheduled (раннер успел раньше) — предпросмотр не шлёт', async () => {
@@ -156,7 +188,7 @@ describe('PreviewService.sendPending', () => {
 
     const result = await service.sendPending(NOW);
 
-    expect(result).toEqual({ sent: 0 });
+    expect(result).toEqual({ claimed: 0 });
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -203,7 +235,7 @@ describe('PreviewService.sendPending', () => {
 
     const result = await service.sendPending(NOW);
 
-    expect(result).toEqual({ sent: 1 });
+    expect(result).toEqual({ claimed: 1 });
     expect(bot.sendMessage).not.toHaveBeenCalled();
     const updated = await broadcastModel.findById(broadcast._id).lean();
     expect(updated?.previewSentAt).toBeInstanceOf(Date);
@@ -220,7 +252,7 @@ describe('PreviewService.sendPending', () => {
 
     const result = await service.sendPending(NOW);
 
-    expect(result).toEqual({ sent: 1 });
+    expect(result).toEqual({ claimed: 1 });
     expect(bot.sendMessage).not.toHaveBeenCalled();
     const updated = await broadcastModel.findById(broadcast._id).lean();
     expect(updated?.previewSentAt).toBeInstanceOf(Date);
