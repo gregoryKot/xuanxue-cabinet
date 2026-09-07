@@ -91,6 +91,8 @@ export {
   CHANNEL_LIMITS,
   CHANNEL_NOT_FOUND_MESSAGE,
 } from './channels';
+export type { BroadcastDto, DeliveryDto, CreateBroadcastInput } from './broadcasts';
+export { BROADCAST_LIMITS } from './broadcasts';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

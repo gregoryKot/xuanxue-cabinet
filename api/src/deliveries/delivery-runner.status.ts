@@ -38,13 +38,14 @@ function cancelDeliveryForLesson(
 }
 
 /** Broadcast.status по своим deliveries (docs/PLAN.md §6): хоть одна
- * `failed` → `failed`; все `sent`/`manual` → `sent` (+ `sentAt`) — `manual`
- * считается доставленным здесь же: кнопка «отметил отправленным» появится в
- * следующем PR, а до неё рассылка с ручным каналом не должна висеть
- * «scheduled» вечно. `cancelled`-доставки (канал выключили после создания)
- * не мешают остальным каналам — учитываются, только если отменены все,
- * тогда и сам broadcast — `cancelled`; иначе — остаётся `scheduled`,
- * пересчёт не трогает документ зря. */
+ * `failed` → `failed`; все `sent` → `sent` (+ `sentAt`) — `manual`-доставка
+ * этот список не закрывает: она ждёт кнопку «отметить отправленным»
+ * (`DeliveriesService.markSent`) и становится `sent` только по нажатию;
+ * до тех пор broadcast остаётся `scheduled`, даже если остальные каналы уже
+ * разослали пост. `cancelled`-доставки (канал выключили после создания) не
+ * мешают остальным каналам — учитываются, только если отменены все, тогда и
+ * сам broadcast — `cancelled`; иначе — остаётся `scheduled`, пересчёт не
+ * трогает документ зря. */
 export async function refreshBroadcastStatus(
   deliveryModel: Model<DeliveryRecord>,
   broadcastModel: Model<BroadcastRecord>,
@@ -68,7 +69,7 @@ export async function refreshBroadcastStatus(
     );
     return;
   }
-  if (relevant.every((d) => d.status === 'sent' || d.status === 'manual')) {
+  if (relevant.every((d) => d.status === 'sent')) {
     await broadcastModel.updateOne(
       { _id: broadcastId },
       { $set: { status: 'sent', sentAt: now.toJSDate() } },

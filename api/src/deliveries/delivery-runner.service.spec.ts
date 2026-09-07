@@ -110,7 +110,7 @@ describe('DeliveryRunnerService.run', () => {
     expect(delivery?.status).toBe('sent');
   });
 
-  it('manual — доставка manual, ждёт кнопки «отметить отправленным» (G2)', async () => {
+  it('manual — доставка manual, broadcast остаётся scheduled до кнопки «отметить отправленным»', async () => {
     // upsertTelegramChat создаёт только telegram; для manual создаём напрямую.
     const manualChannel = await ctx.channelModel.create({
       type: 'manual',
@@ -141,7 +141,8 @@ describe('DeliveryRunnerService.run', () => {
     const delivery = await ctx.deliveryModel.findOne({}).lean();
     expect(delivery?.status).toBe('manual');
     const stored = await ctx.broadcastModel.findById(broadcast._id).lean();
-    expect(stored?.status).toBe('sent'); // manual считается «доставлено» вместе с sent
+    // manual больше не закрывает broadcast сама — ждёт mark-sent.
+    expect(stored?.status).toBe('scheduled');
   });
 
   it('зависший sending старше 10 минут — повторный тик подбирает его снова', async () => {
