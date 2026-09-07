@@ -4,14 +4,12 @@
 import type { Model, Types } from 'mongoose';
 import type { LessonDto } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
-import { encryptSchemaFrom } from '../common/field-policy';
 import { assertObjectId } from '../common/object-id';
 import { decryptRecord } from '../utils/encryption';
 import type { ClassRecord } from '../classes/class.schema';
-import { LESSON_FIELD_POLICY, type LessonRecord } from './lesson.schema';
+import { LESSON_ENCRYPT_SCHEMA, type LessonRecord } from './lesson.schema';
 import { toLessonDto, type LeanLesson } from './lesson.mapper';
 
-export const LESSON_ENCRYPT_SCHEMA = encryptSchemaFrom(LESSON_FIELD_POLICY);
 export const LESSON_NOT_FOUND = 'Дата занятия не найдена. Обновите расписание.';
 const CANNOT_DELETE_PLANNED = 'Эту дату создало расписание. Отмените её вместо удаления.';
 const DURATION_FROM_SCHEDULE =

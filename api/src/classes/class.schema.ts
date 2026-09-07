@@ -13,7 +13,7 @@ import {
   type ScheduleRule,
   type Weekday,
 } from '@xuanxue/shared';
-import { enc, plain, type FieldPolicy } from '../common/field-policy';
+import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 
 // Субдокумент правила расписания. `_id` НЕ отключён (Mongoose даёт его
@@ -93,3 +93,8 @@ export const CLASS_FIELD_POLICY: FieldPolicy = {
   'rules.time': plain('время слота, нужно для выборок'),
   tz: plain('IANA-зона для выборок'),
 };
+
+/** Схема шифрования класса — одна на все места чтения и записи (сервис,
+ * планировщик рассылок, предпросмотр): читающий класс мимо неё получит
+ * шифротекст вместо ссылки Zoom. */
+export const CLASS_ENCRYPT_SCHEMA = encryptSchemaFrom(CLASS_FIELD_POLICY);

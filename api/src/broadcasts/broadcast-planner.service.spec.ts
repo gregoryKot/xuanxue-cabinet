@@ -4,7 +4,7 @@
 import { DateTime } from 'luxon';
 import mongoose, { type Connection, type Model, type Types } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
-import { ClassRecord, ClassSchema } from '../classes/class.schema';
+import { CLASS_ENCRYPT_SCHEMA, ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { DeliveryRecord, DeliverySchema } from '../deliveries/delivery.schema';
 import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
@@ -13,7 +13,7 @@ import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import { BroadcastRecord, BroadcastSchema } from './broadcast.schema';
 import { BroadcastPlannerService } from './broadcast-planner.service';
-import { decrypt } from '../utils/encryption';
+import { decrypt, encryptRecord } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
@@ -87,17 +87,23 @@ describe('BroadcastPlannerService.plan', () => {
 
   async function createClass(overrides: Partial<ClassRecord> = {}) {
     const channelIds = overrides.channelIds ?? [(await createChannel())._id];
-    return classModel.create({
-      title: 'цигун для глаз',
-      groupLabel: '',
-      format: 'online',
-      zoomLink: 'https://zoom.example/1',
-      tz: 'Asia/Jerusalem',
-      leadMinutes: 30,
-      active: true,
-      ...overrides,
-      channelIds,
-    });
+    // Как в проде: ссылка класса лежит шифротекстом — планировщик её расшифровывает.
+    return classModel.create(
+      encryptRecord(
+        {
+          title: 'цигун для глаз',
+          groupLabel: '',
+          format: 'online',
+          zoomLink: 'https://zoom.example/1',
+          tz: 'Asia/Jerusalem',
+          leadMinutes: 30,
+          active: true,
+          ...overrides,
+          channelIds,
+        },
+        CLASS_ENCRYPT_SCHEMA,
+      ),
+    );
   }
 
   async function createLesson(
