@@ -1,8 +1,7 @@
-// Валидация переменных окружения при старте приложения. Подключается как
-// `ConfigModule.forRoot({ isGlobal: true, validate: validateEnv })` —
-// падение при старте с понятным списком проблем лучше молчаливого дефолта
-// или обвала где-то в глубине бизнес-логики (правило CLAUDE.md «Безопасность»:
-// env только через ConfigService).
+// Валидация env при старте (ConfigModule.forRoot({ validate: validateEnv })) —
+// падение с понятным списком проблем лучше молчаливого дефолта (CLAUDE.md
+// «Безопасность»). Регэкспы и сообщения — в ./env.rules.ts (комментарий там,
+// почему сам класс не переехал).
 import { plainToInstance, Type } from 'class-transformer';
 import {
   IsIn,
@@ -15,63 +14,60 @@ import {
   MinLength,
   validateSync,
 } from 'class-validator';
+import {
+  BOOTSTRAP_ADMIN_TELEGRAM_ID_MESSAGE,
+  BOT_TOKEN_MESSAGE,
+  BOT_TOKEN_RE,
+  ENCRYPTION_KEY_MESSAGE,
+  ENCRYPTION_KEY_OLD_MESSAGE,
+  HEX64_LIST_RE,
+  HEX64_RE,
+  JWT_SECRET_MESSAGE,
+  LOG_LEVEL_MESSAGE,
+  LOG_LEVELS,
+  MONGO_URI_RE,
+  MONGODB_URI_MESSAGE,
+  NODE_ENV_MESSAGE,
+  NODE_ENVS,
+  NO_TRAILING_SLASH_RE,
+  PORT_MESSAGE,
+  PUBLIC_URL_MESSAGE,
+  PUBLIC_URL_TRAILING_SLASH_MESSAGE,
+  SCHEDULER_ENABLED_MESSAGE,
+  TELEGRAM_WEBHOOK_SECRET_MESSAGE,
+  TELEGRAM_WEBHOOK_SECRET_RE,
+} from './env.rules';
 
-export type NodeEnv = 'development' | 'test' | 'production';
-// 'silent' — только для тестов: e2e не должны засыпать вывод логами запросов.
-export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
-
-const NODE_ENVS: NodeEnv[] = ['development', 'test', 'production'];
-const LOG_LEVELS: LogLevel[] = [
-  'fatal',
-  'error',
-  'warn',
-  'info',
-  'debug',
-  'trace',
-  'silent',
-];
-const MONGO_URI_RE = /^mongodb(\+srv)?:\/\//;
-const HEX64_RE = /^[0-9a-fA-F]{64}$/;
-const HEX64_LIST_RE = /^[0-9a-fA-F]{64}(\s*,\s*[0-9a-fA-F]{64})*$/;
-const BOT_TOKEN_RE = /^\d+:[\w-]{30,}$/;
+export type NodeEnv = (typeof NODE_ENVS)[number];
+export type LogLevel = (typeof LOG_LEVELS)[number];
 
 export class EnvSchema {
-  @IsIn(NODE_ENVS, {
-    message: 'NODE_ENV должен быть одним из: development, test, production',
-  })
+  @IsIn(NODE_ENVS, { message: NODE_ENV_MESSAGE })
   NODE_ENV: NodeEnv = 'development';
 
   @Type(() => Number)
-  @Min(1, { message: 'PORT должен быть числом от 1 до 65535' })
-  @Max(65535, { message: 'PORT должен быть числом от 1 до 65535' })
+  @Min(1, { message: PORT_MESSAGE })
+  @Max(65535, { message: PORT_MESSAGE })
   PORT: number = 3000;
 
   @IsNotEmpty({ message: 'MONGODB_URI обязателен' })
-  @Matches(MONGO_URI_RE, {
-    message: 'MONGODB_URI должен начинаться с mongodb:// или mongodb+srv://',
-  })
+  @Matches(MONGO_URI_RE, { message: MONGODB_URI_MESSAGE })
   MONGODB_URI!: string;
 
   @IsOptional()
-  @Matches(HEX64_RE, {
-    message: 'ENCRYPTION_KEY должен быть строкой из 64 hex-символов (32 байта)',
-  })
+  @Matches(HEX64_RE, { message: ENCRYPTION_KEY_MESSAGE })
   ENCRYPTION_KEY?: string;
 
   @IsOptional()
-  @Matches(HEX64_LIST_RE, {
-    message: 'ENCRYPTION_KEY_OLD должен быть списком 64-hex ключей через запятую',
-  })
+  @Matches(HEX64_LIST_RE, { message: ENCRYPTION_KEY_OLD_MESSAGE })
   ENCRYPTION_KEY_OLD?: string;
 
   @IsOptional()
-  @MinLength(32, { message: 'JWT_SECRET должен быть не короче 32 символов' })
+  @MinLength(32, { message: JWT_SECRET_MESSAGE })
   JWT_SECRET?: string;
 
   @IsOptional()
-  @Matches(BOT_TOKEN_RE, {
-    message: 'BOT_TOKEN должен быть в формате <числовой id>:<токен>',
-  })
+  @Matches(BOT_TOKEN_RE, { message: BOT_TOKEN_MESSAGE })
   BOT_TOKEN?: string;
 
   // Вход через Telegram: при первом входе с этим Telegram ID
@@ -79,27 +75,30 @@ export class EnvSchema {
   // первого входа админа — дальше роли назначаются в интерфейсе.
   @IsOptional()
   @Type(() => Number)
-  @Min(1, {
-    message: 'BOOTSTRAP_ADMIN_TELEGRAM_ID должен быть положительным числом (Telegram ID)',
-  })
+  @Min(1, { message: BOOTSTRAP_ADMIN_TELEGRAM_ID_MESSAGE })
   BOOTSTRAP_ADMIN_TELEGRAM_ID?: number;
 
   @IsOptional()
   @IsUrl(
     { require_tld: false, require_protocol: true, protocols: ['http', 'https'] },
-    { message: 'PUBLIC_URL должен быть корректным http(s) URL' },
+    { message: PUBLIC_URL_MESSAGE },
   )
+  @Matches(NO_TRAILING_SLASH_RE, { message: PUBLIC_URL_TRAILING_SLASH_MESSAGE })
   PUBLIC_URL?: string;
 
-  @IsIn(LOG_LEVELS, {
-    message:
-      'LOG_LEVEL должен быть одним из: fatal, error, warn, info, debug, trace, silent',
-  })
+  // Секрет вебхука бота (SECURITY §2): сравнивается с заголовком
+  // x-telegram-bot-api-secret-token через timingSafeEqual. Не задан — вебхук
+  // выключен (503), как вход через Telegram без BOT_TOKEN.
+  @IsOptional()
+  @Matches(TELEGRAM_WEBHOOK_SECRET_RE, { message: TELEGRAM_WEBHOOK_SECRET_MESSAGE })
+  TELEGRAM_WEBHOOK_SECRET?: string;
+
+  @IsIn(LOG_LEVELS, { message: LOG_LEVEL_MESSAGE })
   LOG_LEVEL: LogLevel = 'info';
 
   // Строкой, не `@Type(() => Boolean)` — он превращает любую непустую
   // строку, включая 'false', в true. Выключают только в e2e (create-app.ts).
-  @IsIn(['true', 'false'], { message: 'SCHEDULER_ENABLED должен быть true или false' })
+  @IsIn(['true', 'false'], { message: SCHEDULER_ENABLED_MESSAGE })
   SCHEDULER_ENABLED: 'true' | 'false' = 'true';
 }
 
@@ -115,6 +114,7 @@ const EMPTY_AS_ABSENT: (keyof EnvSchema)[] = [
   'BOT_TOKEN',
   'BOOTSTRAP_ADMIN_TELEGRAM_ID',
   'PUBLIC_URL',
+  'TELEGRAM_WEBHOOK_SECRET',
   'MONGODB_URI',
   'SCHEDULER_ENABLED',
 ];

@@ -16,6 +16,7 @@ import {
   BroadcastRecord,
   BroadcastSchema,
 } from '../broadcasts/broadcast.schema';
+import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { encryptRecord } from '../utils/encryption';
@@ -70,6 +71,7 @@ export async function setupRunnerTest(): Promise<RunnerTestContext> {
   );
   const channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
   const lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
+  const classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
   return {
     memory,
     connection,
@@ -77,7 +79,7 @@ export async function setupRunnerTest(): Promise<RunnerTestContext> {
     broadcastModel,
     channelModel,
     lessonModel,
-    channelConfig: new ChannelConfigService(channelModel),
+    channelConfig: new ChannelConfigService(channelModel, classModel),
   };
 }
 

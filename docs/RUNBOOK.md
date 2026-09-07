@@ -128,6 +128,14 @@ Railway → Variables. Изменение = перезапуск сервиса.
 роли admin и teacher. После первого входа Димы её можно убрать из
 Railway — дальше роли назначаются в интерфейсе, не через переменную.
 
+`TELEGRAM_WEBHOOK_SECRET` — секрет вебхука бота (ADR-0015, SECURITY §2).
+Сгенерировать: `node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"`.
+Не задан — вебхук выключен (503), `/start` и авторегистрация чатов не
+работают, остальной кабинет — без изменений. Проверить, что вебхук
+действительно зарегистрирован с этим секретом:
+`curl https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo` — `url` должен
+быть `https://xuanxue.su/api/telegram/webhook`, `last_error_message` пуст.
+
 ## 6. Ротация секретов
 
 ### 6.1 `ENCRYPTION_KEY` — только с ре-шифрованием
@@ -228,8 +236,10 @@ broadcastId: ObjectId('…') })`. `pending` с `nextAttemptAt` в будущем
 ### 8.2 Бот молчит
 
 `getWebhookInfo`: `last_error_message` и `pending_update_count`. Если URL не наш или
-пустой — перезапустить сервис (он ставит вебхук при старте). Если 401 — токен сменился,
-см. 6.2.
+пустой — проверить `PUBLIC_URL` и `TELEGRAM_WEBHOOK_SECRET` в Railway (без них
+приложение не регистрирует вебхук при старте, только пишет `warn` в лог), затем
+перезапустить сервис. Если 401 — токен сменился, см. 6.2. Запрос на `/api/telegram/webhook`
+без секрета или с чужим — 403 в логе, это нормально (сканеры, не Telegram).
 
 ### 8.3 Mongo `down` в health
 

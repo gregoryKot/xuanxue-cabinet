@@ -8,6 +8,9 @@
 export const REDACT_PATHS: string[] = [
   'req.headers.authorization',
   'req.headers.cookie',
+  // Секрет вебхука бота (ADR-0015, SECURITY §2) — тот же уровень, что
+  // authorization/cookie: заголовок неотличим от самого секрета.
+  'req.headers["x-telegram-bot-api-secret-token"]',
   // Email — PII, даже если пришёл в теле легитимного запроса (вход по ссылке).
   'req.body.email',
   // Подпись виджета Telegram Login (POST /auth/telegram) — не секрет после

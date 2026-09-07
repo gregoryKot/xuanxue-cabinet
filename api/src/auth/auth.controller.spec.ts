@@ -7,7 +7,7 @@ import { fakeResponse } from '../test-support/http-fakes';
 import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import type { RequestLike } from './http-like';
+import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
 
 const USER: UserLean = {

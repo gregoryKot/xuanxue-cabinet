@@ -18,7 +18,11 @@ function logSample(): Record<string, unknown> {
   logger.info(
     {
       req: {
-        headers: { authorization: 'Bearer secret', cookie: 'sid=1' },
+        headers: {
+          authorization: 'Bearer secret',
+          cookie: 'sid=1',
+          'x-telegram-bot-api-secret-token': 'webhook-secret',
+        },
         body: { email: 'user@example.com', name: 'Мария', hash: 'a'.repeat(64) },
       },
       res: {
@@ -78,6 +82,7 @@ describe('REDACT_PATHS', () => {
 
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
+    expect(headers['x-telegram-bot-api-secret-token']).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
     expect(body.hash).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');

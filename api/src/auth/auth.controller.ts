@@ -18,7 +18,7 @@ import type { MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
-import type { RequestLike, ResponseLike } from './http-like';
+import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramLoginDto } from './telegram-login.dto';
 import { toMeDto } from './user.mapper';
@@ -52,7 +52,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: ResponseLike,
   ): Promise<MeDto> {
     // req.body, не body: подпись Telegram считается по сырому телу целиком
-    // (см. комментарий у RequestLike.body в http-like.ts).
+    // (см. комментарий у RequestLike.body в common/http-headers.ts).
     const rawBody = req.body ?? {};
     const { user, cookie } = await this.telegramAuthService.login(
       body,

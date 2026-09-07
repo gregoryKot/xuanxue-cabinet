@@ -34,7 +34,7 @@ HTTP-запросы, подделывает тело, заголовки, cookie
 | Email-ссылка                  | токен из письма          | хранится только `sha256(token)`; TTL 15 минут; одно использование; привязан к email; потребляется POST-запросом со страницы, а не самим GET по ссылке (сканеры почты открывают ссылки) |
 | Виджет Telegram (реализовано) | поля виджета + `hash`    | HMAC-SHA256 по `sha256(BOT_TOKEN)`, `auth_date` не старше суток, сравнение `timingSafeEqual`                                                                                           |
 | Google                        | `code` + `state`         | `state` из httpOnly cookie, PKCE, проверка `aud`, `iss`, `exp` id-токена                                                                                                               |
-| Бот `/start`                  | `update.message.from.id` | Telegram ID берётся из update, вебхук защищён `secret_token` (заголовок `X-Telegram-Bot-Api-Secret-Token`)                                                                             |
+| Бот `/start` (реализовано)    | `update.message.from.id` | Telegram ID берётся из update, вебхук защищён `secret_token` (заголовок `X-Telegram-Bot-Api-Secret-Token`, `TelegramWebhookGuard`, ADR-0015)                                           |
 
 Инварианты:
 

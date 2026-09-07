@@ -39,9 +39,8 @@ if (res.error) {
   process.exit(1);
 }
 if (res.status !== 0) {
-  console.error(
-    '❌ jest завершился с ошибкой (упавшие тесты?) — coverage-храповик не проверяется.',
-  );
+  // status/signal в логе: иначе SIGKILL по памяти не отличить от упавшего теста.
+  console.error(`❌ jest упал: status=${res.status} signal=${res.signal}`);
   process.exit(res.status ?? 1);
 }
 
