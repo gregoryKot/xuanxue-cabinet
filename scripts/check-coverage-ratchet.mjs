@@ -39,8 +39,11 @@ if (res.error) {
   process.exit(1);
 }
 if (res.status !== 0) {
+  // Код и сигнал — в лог: «все тесты прошли, а jest вернул не ноль» без них
+  // не отличить от SIGKILL по памяти или падения воркера после отчёта.
   console.error(
-    '❌ jest завершился с ошибкой (упавшие тесты?) — coverage-храповик не проверяется.',
+    `❌ jest завершился с ошибкой (упавшие тесты?) — coverage-храповик не проверяется. ` +
+      `status=${String(res.status)} signal=${String(res.signal)}`,
   );
   process.exit(res.status ?? 1);
 }
