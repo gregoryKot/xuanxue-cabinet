@@ -25,13 +25,26 @@ interface WebhookCall {
   secretToken?: string;
 }
 
+interface SendMessageCall {
+  chatId: string;
+  text: string;
+  replyMarkup?: unknown;
+}
+
 export interface FakeTelegraf {
   factory: TelegrafFactory;
   webhookCalls: WebhookCall[];
+  sendMessageCalls: SendMessageCall[];
 }
 
-export function createFakeTelegrafFactory(): FakeTelegraf {
+/** `failSendMessage` — проактивная отправка (PreviewService и т. п.) должна
+ * пережить сбой сети, не уронить тик планировщика: спеки проверяют это без
+ * настоящего обрыва соединения. */
+export function createFakeTelegrafFactory(
+  options: { failSendMessage?: boolean } = {},
+): FakeTelegraf {
   const webhookCalls: WebhookCall[] = [];
+  const sendMessageCalls: SendMessageCall[] = [];
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
     bot.telegram.callApi = ((method: string, payload?: Record<string, unknown>) => {
@@ -45,9 +58,18 @@ export function createFakeTelegrafFactory(): FakeTelegraf {
         });
         return Promise.resolve(true);
       }
+      if (method === 'sendMessage') {
+        if (options.failSendMessage) return Promise.reject(new Error('сеть недоступна'));
+        sendMessageCalls.push({
+          chatId: String((payload?.chat_id as string | number | undefined) ?? ''),
+          text: (payload?.text as string | undefined) ?? '',
+          replyMarkup: payload?.reply_markup,
+        });
+        return Promise.resolve(true);
+      }
       return Promise.resolve(undefined);
     }) as unknown as Telegraf['telegram']['callApi'];
     return bot;
   };
-  return { factory, webhookCalls };
+  return { factory, webhookCalls, sendMessageCalls };
 }

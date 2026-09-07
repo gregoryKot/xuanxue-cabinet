@@ -1,6 +1,6 @@
 // Прямая проверка фейка (без сети, без Mongo) — сам он используется другими
-// спеками не полностью: 'getMe'/'setWebhook' там есть, а сторонний метод
-// bot.telegram.callApi ни один продуктовый код пока не зовёт.
+// спеками не полностью: 'getMe'/'setWebhook'/'sendMessage' там есть, а
+// сторонний метод bot.telegram.callApi ни один продуктовый код пока не зовёт.
 import { createFakeTelegrafFactory } from './telegraf-factory';
 
 describe('createFakeTelegrafFactory', () => {
@@ -27,12 +27,44 @@ describe('createFakeTelegrafFactory', () => {
     ]);
   });
 
+  it('sendMessage — записывает вызов (chatId, text, клавиатура)', async () => {
+    const { factory, sendMessageCalls } = createFakeTelegrafFactory();
+    const bot = factory('123456:token');
+
+    await bot.telegram.callApi('sendMessage', {
+      chat_id: '111',
+      text: 'Привет',
+      reply_markup: {
+        inline_keyboard: [[{ text: 'Отменить', callback_data: 'cancel:1' }]],
+      },
+    });
+
+    expect(sendMessageCalls).toEqual([
+      {
+        chatId: '111',
+        text: 'Привет',
+        replyMarkup: {
+          inline_keyboard: [[{ text: 'Отменить', callback_data: 'cancel:1' }]],
+        },
+      },
+    ]);
+  });
+
+  it('sendMessage с failSendMessage — отклоняется', async () => {
+    const { factory } = createFakeTelegrafFactory({ failSendMessage: true });
+    const bot = factory('123456:token');
+
+    await expect(
+      bot.telegram.callApi('sendMessage', { chat_id: '1', text: 'x' }),
+    ).rejects.toThrow('сеть недоступна');
+  });
+
   it('неизвестный метод — резолвится в undefined, не падает', async () => {
     const { factory } = createFakeTelegrafFactory();
     const bot = factory('123456:token');
 
     await expect(
-      bot.telegram.callApi('sendMessage', { chat_id: '1', text: 'x' }),
+      bot.telegram.callApi('editMessageText', { chat_id: '1', text: 'x' }),
     ).resolves.toBeUndefined();
   });
 });

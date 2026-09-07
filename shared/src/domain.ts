@@ -65,6 +65,12 @@ export const RULE_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
  * литерал «30» рядом разойдётся при следующей правке. */
 export const DEFAULT_LEAD_MINUTES = 30;
 
+/** За сколько минут до отправки бот шлёт учителю предпросмотр с кнопками
+ * «Отменить»/«Изменить тему» (docs/PLAN.md §6 «Telegram-бот для учителя»).
+ * Планировщик рассылок создаёт `broadcast` пораньше — на это же число минут
+ * — чтобы предпросмотр успел прийти до самой отправки. */
+export const PREVIEW_MINUTES = 5;
+
 /** Запись занятия: ссылка (Drive, облако Zoom) или файл в Telegram по file_id. */
 export interface Recording {
   title: string;

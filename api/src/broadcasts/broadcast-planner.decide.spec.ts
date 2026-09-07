@@ -16,9 +16,9 @@ function activeClass(overrides: Partial<DecideClassInput> = {}): DecideClassInpu
 }
 
 describe('decideBroadcast', () => {
-  it('ещё рано — startsAt дальше now + leadMinutes', () => {
+  it('ещё рано — startsAt дальше now + leadMinutes + PREVIEW_MINUTES', () => {
     const decision = decideBroadcast(
-      { startsAt: NOW.plus({ minutes: 31 }).toJSDate() },
+      { startsAt: NOW.plus({ minutes: 36 }).toJSDate() },
       activeClass(),
       NOW,
     );
@@ -28,6 +28,15 @@ describe('decideBroadcast', () => {
   it('точно на границе окна (now + leadMinutes) — уже пора', () => {
     const decision = decideBroadcast(
       { startsAt: NOW.plus({ minutes: 30 }).toJSDate() },
+      activeClass(),
+      NOW,
+    );
+    expect(decision).toEqual({ kind: 'send' });
+  });
+
+  it('в расширенном окне предпросмотра (now + leadMinutes + 5) — тоже пора: broadcast создаётся заранее для предпросмотра', () => {
+    const decision = decideBroadcast(
+      { startsAt: NOW.plus({ minutes: 35 }).toJSDate() },
       activeClass(),
       NOW,
     );

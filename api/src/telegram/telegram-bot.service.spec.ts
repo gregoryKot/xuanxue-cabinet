@@ -10,6 +10,7 @@ import {
   START_UPDATE,
   TOKEN,
   fakeConfig,
+  fakeExtraHandlers,
   fakeHandler,
 } from './test-support/bot-service.fixtures';
 import { createFakeTelegrafFactory } from './test-support/telegraf-factory';
@@ -25,6 +26,7 @@ describe('TelegramBotService — маршрутизация', () => {
       createTelegraf,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -42,6 +44,7 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
 
@@ -62,6 +65,7 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
 
@@ -80,6 +84,7 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
     // Встроенный обработчик telegraf печатал бы апдейт в console.error и
@@ -104,11 +109,67 @@ describe('TelegramBotService — маршрутизация', () => {
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
     service.onApplicationBootstrap();
 
     await expect(
       service.handleUpdate(body as unknown as Update),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('TelegramBotService.sendMessage — проактивная отправка', () => {
+  it('без бота (BOT_TOKEN не задан) — молча ничего не делает', async () => {
+    const service = new TelegramBotService(
+      fakeConfig({}),
+      createTelegraf,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await expect(service.sendMessage('111', 'Привет')).resolves.toBeUndefined();
+  });
+
+  it('с ботом — уходит через callApi("sendMessage")', async () => {
+    const { factory, sendMessageCalls } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await service.sendMessage('111', 'Привет', [
+      [{ text: 'Отменить', callback_data: 'cancel:1' }],
+    ]);
+
+    expect(sendMessageCalls).toEqual([
+      {
+        chatId: '111',
+        text: 'Привет',
+        replyMarkup: {
+          inline_keyboard: [[{ text: 'Отменить', callback_data: 'cancel:1' }]],
+        },
+      },
+    ]);
+  });
+
+  it('сбой сети — не бросает, только warn в лог', async () => {
+    const { factory } = createFakeTelegrafFactory({ failSendMessage: true });
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await expect(service.sendMessage('111', 'Привет')).resolves.toBeUndefined();
   });
 });

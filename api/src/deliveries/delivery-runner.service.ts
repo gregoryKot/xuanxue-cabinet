@@ -99,12 +99,15 @@ export class DeliveryRunnerService {
     const outcome = nextDeliveryOutcome(scrubbed, delivery.attempts, now);
     await applyOutcome(this.deliveryModel, delivery._id, outcome);
     if (outcome.status === 'failed' && outcome.notifyTeacher) {
-      await this.notifier.notifyDeliveryFailed({
-        deliveryId: delivery._id.toString(),
-        broadcastId: delivery.broadcastId.toString(),
-        channelId: delivery.channelId.toString(),
-        error: outcome.error,
-      });
+      await this.notifier.notifyDeliveryFailed(
+        {
+          deliveryId: delivery._id.toString(),
+          broadcastId: delivery.broadcastId.toString(),
+          channelId: delivery.channelId.toString(),
+          error: outcome.error,
+        },
+        now,
+      );
     }
     await refreshBroadcastStatus(
       this.deliveryModel,

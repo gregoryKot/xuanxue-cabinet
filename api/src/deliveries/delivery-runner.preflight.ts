@@ -134,12 +134,13 @@ async function failNoRetry(
   );
   const outcome = failNoRetryOutcome(delivery.attempts, error);
   await applyOutcome(deps.deliveryModel, delivery._id, outcome);
-  await deps.notifier.notifyDeliveryFailed({
+  const context = {
     deliveryId: delivery._id.toString(),
     broadcastId: delivery.broadcastId.toString(),
     channelId: delivery.channelId.toString(),
     error,
-  });
+  };
+  await deps.notifier.notifyDeliveryFailed(context, now);
   await refreshBroadcastStatus(
     deps.deliveryModel,
     deps.broadcastModel,

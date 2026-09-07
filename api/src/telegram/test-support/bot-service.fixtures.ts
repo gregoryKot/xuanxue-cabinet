@@ -5,6 +5,8 @@
 import type { ConfigService } from '@nestjs/config';
 import type { Context } from 'telegraf';
 import type { Update } from 'telegraf/types';
+import type { CallbackQueryHandler } from '../handlers/callback-query.handler';
+import type { MessageHandler } from '../handlers/message.handler';
 
 export const TOKEN = '123456:test-token-not-real-0000000000';
 
@@ -21,6 +23,16 @@ export function fakeConfig(values: Record<string, string>): ConfigService {
 
 export function fakeHandler(): { handle: jest.Mock<Promise<void>, [Context]> } {
   return { handle: jest.fn<Promise<void>, [Context]>().mockResolvedValue(undefined) };
+}
+
+/** callback_query/message-хендлеры — маршрутизацию каждого из них проверяют
+ * свои спеки рядом с кодом; здесь достаточно заглушки, чтобы TelegramBotService
+ * собирался в спеках маршрутизации my_chat_member/start. */
+export function fakeExtraHandlers(): [CallbackQueryHandler, MessageHandler] {
+  return [
+    fakeHandler() as unknown as CallbackQueryHandler,
+    fakeHandler() as unknown as MessageHandler,
+  ];
 }
 
 // Апдейт из документации Telegram (my_chat_member: бот добавлен в группу).

@@ -8,6 +8,7 @@ import {
   CHAT_MEMBER_UPDATE,
   TOKEN,
   fakeConfig,
+  fakeExtraHandlers,
   fakeHandler,
   flush,
 } from './test-support/bot-service.fixtures';
@@ -48,6 +49,7 @@ describe('TelegramBotService — прогрев botInfo (ensureBotInfo)', () => 
       factory,
       chatMember as unknown as ChatMemberHandler,
       start as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -81,6 +83,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -101,6 +104,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -121,6 +125,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     service.onApplicationBootstrap();
@@ -145,6 +150,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     // onApplicationBootstrap синхронный и ничего внутри не await'ит — вызов
@@ -166,6 +172,7 @@ describe('TelegramBotService — регистрация вебхука при с
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
     );
 
     expect(() => service.onApplicationBootstrap()).not.toThrow();

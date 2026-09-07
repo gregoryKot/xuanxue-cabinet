@@ -58,6 +58,25 @@ export class UsersService {
     return doc ? toLean(doc) : null;
   }
 
+  /** Учителя и админы с подключённым Telegram — кому бот вообще может
+   * писать (TeacherChats, api/src/telegram/teacher-chats.ts, PLAN.md §6):
+   * дальше TeacherChats сверяет каждого с активным личным каналом. */
+  async listTeacherContacts(): Promise<
+    { id: string; name: string; telegramId: number }[]
+  > {
+    const docs = await this.model
+      .find(
+        { telegramId: { $exists: true }, roles: { $in: ['teacher', 'admin'] } },
+        { name: 1, telegramId: 1 },
+      )
+      .lean<{ _id: Types.ObjectId; name: string; telegramId: number }[]>();
+    return docs.map((doc) => ({
+      id: doc._id.toString(),
+      name: doc.name,
+      telegramId: doc.telegramId,
+    }));
+  }
+
   /** Для бота (вход через Telegram, «Ученик появляется … после входа»,
    * SECURITY §2): роли по умолчанию пустые ([] — гость), админ назначает их
    * в интерфейсе.
