@@ -42,7 +42,7 @@ export function ClassSheet({
 }: ClassSheetProps) {
   const goBack = useHistorySheet(onClose);
   const { headingRef } = useDialog(goBack);
-  const form = useClassForm(classDto, onCreate, onUpdate, onRemove);
+  const form = useClassForm(classDto, channels, onCreate, onUpdate, onRemove);
   const noRules = form.state.rules.length === 0;
 
   async function handleSubmit(event: FormEvent) {

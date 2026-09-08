@@ -7,6 +7,7 @@ import { mkdtemp, writeFile, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import type { Connection, Model } from 'mongoose';
+import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { ClassesService } from '../classes/classes.service';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
@@ -43,6 +44,7 @@ describe('SeedService', () => {
   let connection: Connection;
   let classModel: Model<ClassRecord>;
   let lessonModel: Model<LessonRecord>;
+  let channelModel: Model<ChannelRecord>;
   let classesService: ClassesService;
   let seedService: SeedService;
   let dir: string;
@@ -52,7 +54,8 @@ describe('SeedService', () => {
     connection = memory.connection;
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    classesService = new ClassesService(classModel, lessonModel);
+    channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
+    classesService = new ClassesService(classModel, lessonModel, channelModel);
     seedService = new SeedService(classModel, classesService);
     dir = await mkdtemp(join(tmpdir(), 'xuanxue-seed-'));
   }, 60_000);
@@ -64,6 +67,7 @@ describe('SeedService', () => {
 
   afterEach(async () => {
     await classModel.deleteMany({});
+    await channelModel.deleteMany({});
   });
 
   async function writeSeed(content: unknown): Promise<string> {
@@ -94,6 +98,26 @@ describe('SeedService', () => {
       'Медитация чжи-гуань',
       'Цзибеньгун',
     ]);
+  });
+
+  it('импорт без channelIds в файле — классы получают активные Telegram-каналы (фикс «занятие без каналов»)', async () => {
+    const telegram = await channelModel.create({
+      type: 'telegram',
+      title: 'Группа учеников',
+      config: '{}',
+      target: '@group',
+      active: true,
+    });
+    const path = await writeSeed(VALID_SEED);
+
+    await seedService.importClasses(path);
+
+    // Read-after-write: то же, что увидит планировщик через
+    // ClassesService.list — не сырой Mongo.
+    const list = await classesService.list({});
+    for (const cls of list) {
+      expect(cls.channelIds).toEqual([telegram._id.toString()]);
+    }
   });
 
   it('zoomLink/zoomPassword в сырой Mongo — шифротекст, не сам секрет', async () => {
@@ -178,7 +202,11 @@ describe('SeedService', () => {
     );
     const { SeedService: FreshSeedService } =
       freshRequire<SeedServiceModule>('./seed.service');
-    const freshClassesService = new FreshClassesService(classModel, lessonModel);
+    const freshClassesService = new FreshClassesService(
+      classModel,
+      lessonModel,
+      channelModel,
+    );
     const freshSeedService = new FreshSeedService(classModel, freshClassesService);
 
     try {

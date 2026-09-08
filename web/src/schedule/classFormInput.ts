@@ -12,6 +12,7 @@ import {
   DEFAULT_LEAD_MINUTES,
   RULE_TIME_RE,
   SCHOOL_TZ,
+  type ChannelDto,
   type ClassDto,
   type ClassFormat,
   type CreateClassInput,
@@ -43,7 +44,18 @@ export interface ClassFormState {
   channelIds: string[];
 }
 
-export function initialClassFormState(classDto: ClassDto | null): ClassFormState {
+/** Каналы, которые сервер подставит новому занятию по умолчанию
+ * (ClassesService.create — активные Telegram-каналы, docs/adr/0015): форма
+ * отмечает их заранее, чтобы список чекбоксов не расходился с тем, что
+ * реально уйдёт в POST (учитель видит и может снять отметку до сохранения). */
+function defaultChannelIds(channels: ChannelDto[]): string[] {
+  return channels.filter((c) => c.type === 'telegram' && c.active).map((c) => c.id);
+}
+
+export function initialClassFormState(
+  classDto: ClassDto | null,
+  channels: ChannelDto[] = [],
+): ClassFormState {
   return {
     title: classDto?.title ?? '',
     groupLabel: classDto?.groupLabel ?? '',
@@ -53,7 +65,7 @@ export function initialClassFormState(classDto: ClassDto | null): ClassFormState
     leadMinutesText: String(classDto?.leadMinutes ?? DEFAULT_LEAD_MINUTES),
     active: classDto?.active ?? true,
     tz: classDto?.tz ?? SCHOOL_TZ,
-    channelIds: classDto?.channelIds ?? [],
+    channelIds: classDto?.channelIds ?? defaultChannelIds(channels),
     rules:
       classDto?.rules.map((rule) => ({
         id: rule.id,

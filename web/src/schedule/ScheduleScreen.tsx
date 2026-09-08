@@ -29,7 +29,17 @@ export default function ScheduleScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetClassId, setSheetClassId] = useState<string | null>(null);
 
-  const grid = useMemo(() => buildScheduleGrid(classes ?? []), [classes]);
+  // Только id — SlotCard/channelCountLabel считают пересечение с
+  // channelIds занятия, чтобы выключенный канал не попадал в счётчик
+  // (ревью п.4).
+  const activeChannelIds = useMemo(
+    () => new Set((activeChannels ?? []).map((channel) => channel.id)),
+    [activeChannels],
+  );
+  const grid = useMemo(
+    () => buildScheduleGrid(classes ?? [], activeChannelIds),
+    [classes, activeChannelIds],
+  );
   const totalSlots = useMemo(() => Object.values(grid).flat().length, [grid]);
   const selectedClass = classes?.find((cls) => cls.id === sheetClassId) ?? null;
 

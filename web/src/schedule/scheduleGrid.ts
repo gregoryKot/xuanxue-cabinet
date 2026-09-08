@@ -11,6 +11,7 @@ import {
   type ScheduleRuleDto,
   type Weekday,
 } from '@xuanxue/shared';
+import { countActiveChannels } from './channelCountLabel';
 
 export interface ScheduleSlot {
   classId: string;
@@ -22,8 +23,10 @@ export interface ScheduleSlot {
   startMinutes: number;
   tz: string;
   active: boolean;
-  /** Число каналов рассылки у занятия (`ClassDto.channelIds.length`) —
-   * SlotCard показывает его или «без каналов» (ревью п.1). */
+  /** Число АКТИВНЫХ каналов рассылки у занятия (channelIds ∩ активные
+   * каналы кабинета) — SlotCard показывает его или «без каналов» (ревью
+   * п.1). Выключенный канал в channelIds не считается: рассылку он не
+   * получит. */
   channelCount: number;
 }
 
@@ -67,8 +70,13 @@ function emptyGrid(): ScheduleGrid {
  * осознанно: слот в сетке появляется, когда у него есть хоть одно время.
  * Правило с нечисловым временем (`timeToMinutes` вернул NaN) тоже
  * пропускается — показать его в сетке нечем, а падать из-за одной плохой
- * записи не должен весь экран. */
-export function buildScheduleGrid(classes: ClassDto[]): ScheduleGrid {
+ * записи не должен весь экран. `activeChannelIds` — id активных каналов
+ * кабинета (ScheduleScreen грузит их один раз через useChannels(true)): без
+ * него channelCount считал бы и давно выключенные каналы (ревью п.4). */
+export function buildScheduleGrid(
+  classes: ClassDto[],
+  activeChannelIds: ReadonlySet<string> = new Set(),
+): ScheduleGrid {
   const grid = emptyGrid();
   for (const cls of classes) {
     for (const rule of cls.rules) {
@@ -84,7 +92,7 @@ export function buildScheduleGrid(classes: ClassDto[]): ScheduleGrid {
         startMinutes,
         tz: cls.tz,
         active: cls.active,
-        channelCount: cls.channelIds.length,
+        channelCount: countActiveChannels(cls.channelIds, activeChannelIds),
       });
     }
   }

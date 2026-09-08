@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ChannelModelModule } from '../channels/channel-model.module';
 import { LessonModelModule } from '../lessons/lesson-model.module';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesController } from './classes.controller';
@@ -13,6 +14,10 @@ import { ClassesService } from './classes.service';
     // импорт замкнул бы цикл: LessonsModule сам зависит от ClassesModule
     // ради модели ClassRecord, см. lesson-model.module.ts).
     LessonModelModule,
+    // create() подставляет активные Telegram-каналы новому занятию по
+    // умолчанию (fix «новое занятие без каналов») — только модель, тот же
+    // приём (ADR-0013, channel-model.module.ts).
+    ChannelModelModule,
   ],
   controllers: [ClassesController],
   providers: [ClassesService],

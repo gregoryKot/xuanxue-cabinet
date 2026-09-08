@@ -4,7 +4,7 @@
 // контроллер только валидирует тело и зовёт эти методы.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, type Types } from 'mongoose';
 import type {
   ClassDto,
   CreateClassInput,
@@ -16,6 +16,7 @@ import {
   LIST_LIMIT_DEFAULT,
   NULLABLE_CLASS_FIELDS,
 } from '@xuanxue/shared';
+import { ChannelRecord } from '../channels/channel.schema';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
@@ -34,6 +35,7 @@ export class ClassesService {
   constructor(
     @InjectModel(ClassRecord.name) private readonly model: Model<ClassRecord>,
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
+    @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
   ) {}
 
   async list(query: ListClassesQuery): Promise<ClassDto[]> {
@@ -63,10 +65,29 @@ export class ClassesService {
     const { rules, ...rest } = input;
     const payload: Record<string, unknown> = { ...rest };
     if (rules !== undefined) payload.rules = mapRules(rules);
+    // channelIds не передан учителем (undefined, не []) — занятие подписывается
+    // на все активные Telegram-каналы по умолчанию. Иначе класс, созданный
+    // ПОСЛЕ подключения бота (docs/adr/0015 — «чат сам становится каналом»
+    // только в момент upsertTelegramChat), получал бы channelIds: [], и
+    // каждая ссылка на занятие молча отменялась бы «у класса нет каналов
+    // рассылки». Явный [] или список от учителя — его выбор, ничего не
+    // подставляем (та же логика — в SeedService.importClasses, который зовёт
+    // этот же create()).
+    if (payload.channelIds === undefined) {
+      payload.channelIds = await this.defaultTelegramChannelIds();
+    }
     // CreateClassDto (implements CreateClassInput) уже проверен ValidationPipe —
     // форма payload совпадает с ClassRecord, spread просто не виден TS.
     const created = await this.model.create(encryptRecord(payload, CLASS_ENCRYPT_SCHEMA));
     return this.getById(created._id.toString());
+  }
+
+  private async defaultTelegramChannelIds(): Promise<string[]> {
+    const docs = await this.channelModel
+      .find({ type: 'telegram', active: true })
+      .select('_id')
+      .lean<{ _id: Types.ObjectId }[]>();
+    return docs.map((doc) => doc._id.toString());
   }
 
   async update(id: string, input: UpdateClassInput): Promise<ClassDto> {

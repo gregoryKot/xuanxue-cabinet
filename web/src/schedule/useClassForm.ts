@@ -2,7 +2,12 @@
 // classFormInput.ts (чистая логика, тестируется без React); здесь только
 // связка с submit/remove и их сетевыми ошибками.
 import { useState } from 'react';
-import type { ClassDto, CreateClassInput, UpdateClassInput } from '@xuanxue/shared';
+import type {
+  ChannelDto,
+  ClassDto,
+  CreateClassInput,
+  UpdateClassInput,
+} from '@xuanxue/shared';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import {
   initialClassFormState,
@@ -24,12 +29,13 @@ export interface UseClassFormResult {
 
 export function useClassForm(
   classDto: ClassDto | null,
+  channels: ChannelDto[],
   onCreate: (input: CreateClassInput) => Promise<void>,
   onUpdate: (id: string, input: UpdateClassInput) => Promise<void>,
   onRemove: (id: string) => Promise<void>,
 ): UseClassFormResult {
   const [state, setState] = useState<ClassFormState>(() =>
-    initialClassFormState(classDto),
+    initialClassFormState(classDto, channels),
   );
   const [validationError, setValidationError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<FormError | null>(null);

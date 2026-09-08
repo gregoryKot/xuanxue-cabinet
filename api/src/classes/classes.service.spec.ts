@@ -2,6 +2,7 @@
 // «Тесты»): шифрование секретов и read-after-write, PATCH null → $unset,
 // запрет удаления класса с занятиями (clarification 7 ТЗ PR D).
 import type { Connection, Model } from 'mongoose';
+import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesService } from './classes.service';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
@@ -12,6 +13,7 @@ describe('ClassesService', () => {
   let connection: Connection;
   let model: Model<ClassRecord>;
   let lessonModel: Model<LessonRecord>;
+  let channelModel: Model<ChannelRecord>;
   let service: ClassesService;
 
   beforeAll(async () => {
@@ -19,7 +21,8 @@ describe('ClassesService', () => {
     connection = memory.connection;
     model = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    service = new ClassesService(model, lessonModel);
+    channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
+    service = new ClassesService(model, lessonModel, channelModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -29,6 +32,7 @@ describe('ClassesService', () => {
   afterEach(async () => {
     await model.deleteMany({});
     await lessonModel.deleteMany({});
+    await channelModel.deleteMany({});
   });
 
   it('create → getById: read-after-write, zoomLink расшифрован в ответе', async () => {
@@ -46,6 +50,77 @@ describe('ClassesService', () => {
 
     const found = await service.getById(created.id);
     expect(found.zoomLink).toBe('https://us02web.zoom.us/j/123');
+  });
+
+  it('create без channelIds — подставляются активные Telegram-каналы (фикс «занятие без каналов»)', async () => {
+    const telegram = await channelModel.create({
+      type: 'telegram',
+      title: 'Группа учеников',
+      config: '{}',
+      target: '@group',
+      active: true,
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'Выключенный',
+      config: '{}',
+      target: '@off',
+      active: false,
+    });
+    await channelModel.create({
+      type: 'vk',
+      title: 'ВК школы',
+      config: '{}',
+      target: '777',
+      active: true,
+    });
+
+    const created = await service.create({ title: 'Новое занятие', format: 'online' });
+
+    expect(created.channelIds).toEqual([telegram._id.toString()]);
+  });
+
+  it('create с явным channelIds: [] — остаётся пустым, активные каналы не подставляются', async () => {
+    await channelModel.create({
+      type: 'telegram',
+      title: 'Группа учеников',
+      config: '{}',
+      target: '@group',
+      active: true,
+    });
+
+    const created = await service.create({
+      title: 'Занятие без рассылки',
+      format: 'online',
+      channelIds: [],
+    });
+
+    expect(created.channelIds).toEqual([]);
+  });
+
+  it('create с явным channelIds — список учителя не расширяется активными каналами', async () => {
+    const chosen = await channelModel.create({
+      type: 'telegram',
+      title: 'Выбранный вручную',
+      config: '{}',
+      target: '@chosen',
+      active: true,
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'Другой активный',
+      config: '{}',
+      target: '@other',
+      active: true,
+    });
+
+    const created = await service.create({
+      title: 'Занятие с выбором',
+      format: 'online',
+      channelIds: [chosen._id.toString()],
+    });
+
+    expect(created.channelIds).toEqual([chosen._id.toString()]);
   });
 
   it('update zoomPassword → getById видит новое значение', async () => {
