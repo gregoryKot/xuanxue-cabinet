@@ -48,4 +48,24 @@ describe('UsersService.createFromTelegram при E11000', () => {
       service.createFromTelegram({ telegramId: 7, name: 'x', roles: [] }),
     ).rejects.toThrow('down');
   });
+
+  it('E11000, но конкурента при перечитывании уже нет — явная ошибка сервера', async () => {
+    // Защита в глубину: по индексу дубликат есть, а findOne(telegramId) не
+    // находит документ (гипотетическая рассинхронизация с базой) — сервис не
+    // должен молча вернуть undefined вызывающему коду.
+    const model = {
+      findOneAndUpdate: () => ({
+        lean: () =>
+          Promise.reject(
+            Object.assign(new Error('E11000'), { code: MONGO_DUPLICATE_KEY_CODE }),
+          ),
+      }),
+      findOne: () => ({ lean: () => Promise.resolve(null) }),
+    } as unknown as Model<UserRecord>;
+    const service = new UsersService(model);
+
+    await expect(
+      service.createFromTelegram({ telegramId: 7, name: 'x', roles: [] }),
+    ).rejects.toThrow('пользователь не найден после upsert');
+  });
 });

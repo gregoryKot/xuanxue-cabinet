@@ -122,6 +122,8 @@ export type {
 export { SETTINGS_LIMITS, NULLABLE_SETTINGS_FIELDS } from './settings';
 export type { SummaryPeriod, NextLessonSummary, SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
+export type { UserDto, ListUsersQuery, UpdateUserRolesInput } from './users';
+export { USER_NOT_FOUND_MESSAGE, SELF_DEMOTE_MESSAGE, LAST_ADMIN_MESSAGE } from './users';
 export { FIELD_LABELS_RU } from './field-labels';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */

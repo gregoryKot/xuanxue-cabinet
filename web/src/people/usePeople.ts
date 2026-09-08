@@ -1,0 +1,34 @@
+// Данные экрана «Люди» — список и назначение ролей (CLAUDE.md
+// «Read-after-write»): после PATCH список перечитывается заново, как у
+// useChannels. Гонка запросов и разбор ошибки — в общем hooks/useAbortableFetch.ts.
+import { useCallback } from 'react';
+import { LIST_LIMIT_MAX, type UpdateUserRolesInput, type UserDto } from '@xuanxue/shared';
+import { apiFetch } from '../api/http';
+import { useAbortableFetch } from '../hooks/useAbortableFetch';
+
+const LOAD_ERROR_MESSAGE = 'Не удалось загрузить список людей. Попробуйте ещё раз.';
+
+export interface UsePeopleResult {
+  people: UserDto[] | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+  updateRoles: (id: string, input: UpdateUserRolesInput) => Promise<void>;
+}
+
+export function usePeople(): UsePeopleResult {
+  const { data, loading, error, reload } = useAbortableFetch(
+    (signal) => apiFetch<UserDto[]>(`/users?limit=${LIST_LIMIT_MAX}`, { signal }),
+    LOAD_ERROR_MESSAGE,
+  );
+
+  const updateRoles = useCallback(
+    async (id: string, input: UpdateUserRolesInput) => {
+      await apiFetch(`/users/${id}`, { method: 'PATCH', body: input });
+      await reload();
+    },
+    [reload],
+  );
+
+  return { people: data, loading, error, reload, updateRoles };
+}

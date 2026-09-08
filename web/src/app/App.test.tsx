@@ -123,6 +123,63 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('admin на /people — маршрут «Люди» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me')
+        return Promise.resolve({
+          id: 'a1',
+          name: 'Маша',
+          roles: ['admin'],
+          tz: 'Asia/Jerusalem',
+        });
+      if (path.startsWith('/users')) return Promise.resolve([]);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/people']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText(/Здесь те, кто хотя бы раз вошёл в кабинет через Telegram/),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель без admin на /people — уводит на «Сводку», не «Люди»', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me')
+        return Promise.resolve({
+          id: 'u1',
+          name: 'Дима',
+          roles: ['teacher'],
+          tz: 'Asia/Jerusalem',
+        });
+      if (path.startsWith('/summary'))
+        return Promise.resolve({
+          period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
+          broadcastsSent: 0,
+          broadcastsCancelled: 0,
+          deliveriesFailed: 0,
+          deliveriesPending: 0,
+          manualWaiting: 0,
+          emptyMessage: 'Пока нечего показать.',
+        });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/people']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Пока нечего показать.')).toBeInTheDocument();
+  });
+
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({});
