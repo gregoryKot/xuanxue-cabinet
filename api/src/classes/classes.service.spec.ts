@@ -6,6 +6,7 @@ import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesService } from './classes.service';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
+import { UserRecord, UserSchema } from '../users/user.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 describe('ClassesService', () => {
@@ -14,6 +15,7 @@ describe('ClassesService', () => {
   let model: Model<ClassRecord>;
   let lessonModel: Model<LessonRecord>;
   let channelModel: Model<ChannelRecord>;
+  let userModel: Model<UserRecord>;
   let service: ClassesService;
 
   beforeAll(async () => {
@@ -22,7 +24,8 @@ describe('ClassesService', () => {
     model = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    service = new ClassesService(model, lessonModel, channelModel);
+    userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
+    service = new ClassesService(model, lessonModel, channelModel, userModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -33,6 +36,7 @@ describe('ClassesService', () => {
     await model.deleteMany({});
     await lessonModel.deleteMany({});
     await channelModel.deleteMany({});
+    await userModel.deleteMany({});
   });
 
   it('create → getById: read-after-write, zoomLink расшифрован в ответе', async () => {
@@ -240,5 +244,61 @@ describe('ClassesService', () => {
     await expect(service.remove('507f1f77bcf86cd799439011')).rejects.toThrow(
       'Занятие не найдено',
     );
+  });
+
+  describe('leaderId — проверка через assertTeacherExists (аудит В4)', () => {
+    it('create с id учителя — leaderId в ответе', async () => {
+      const teacher = await userModel.create({ name: 'Дмитрий', roles: ['teacher'] });
+
+      const created = await service.create({
+        title: 'С ведущим',
+        format: 'online',
+        leaderId: teacher._id.toString(),
+      });
+
+      expect(created.leaderId).toBe(teacher._id.toString());
+    });
+
+    it('create с id ученика — InvalidInputError, класс не создаётся', async () => {
+      const student = await userModel.create({ name: 'Гриша', roles: ['student'] });
+
+      await expect(
+        service.create({
+          title: 'С неверным ведущим',
+          format: 'online',
+          leaderId: student._id.toString(),
+        }),
+      ).rejects.toThrow('не найден среди учителей');
+      await expect(model.countDocuments({})).resolves.toBe(0);
+    });
+
+    it('update с id заблокированного учителя — InvalidInputError, класс не меняется', async () => {
+      const created = await service.create({ title: 'Занятие', format: 'online' });
+      const blocked = await userModel.create({
+        name: 'Уволенный',
+        roles: ['teacher'],
+        status: 'blocked',
+      });
+
+      await expect(
+        service.update(created.id, { leaderId: blocked._id.toString() }),
+      ).rejects.toThrow('не найден среди учителей');
+      await expect(service.getById(created.id)).resolves.toMatchObject({
+        leaderId: undefined,
+      });
+    });
+
+    it('update с leaderId: null — ведущий снимается без проверки', async () => {
+      const teacher = await userModel.create({ name: 'Дмитрий', roles: ['teacher'] });
+      const created = await service.create({
+        title: 'Занятие',
+        format: 'online',
+        leaderId: teacher._id.toString(),
+      });
+
+      const updated = await service.update(created.id, { leaderId: null });
+
+      expect(updated.leaderId).toBeUndefined();
+    });
   });
 });

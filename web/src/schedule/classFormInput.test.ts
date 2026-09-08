@@ -51,6 +51,7 @@ function baseState(overrides: Partial<ClassFormState> = {}): ClassFormState {
     active: true,
     tz: 'Asia/Jerusalem',
     channelIds: [],
+    leaderId: '',
     rules: [{ weekday: 1, time: '19:00', durationMinText: '60' }],
     ...overrides,
   };
@@ -63,6 +64,17 @@ describe('initialClassFormState', () => {
     expect(state.tz).toBe('Asia/Jerusalem');
     expect(state.leadMinutesText).toBe('30');
     expect(state.rules).toEqual([]);
+    expect(state.leaderId).toBe('');
+  });
+
+  it('существующее занятие с ведущим — leaderId переносится как есть', () => {
+    const state = initialClassFormState(makeClass({ leaderId: 't1' }));
+    expect(state.leaderId).toBe('t1');
+  });
+
+  it('существующее занятие без ведущего — leaderId пустой (не undefined)', () => {
+    const state = initialClassFormState(makeClass({ leaderId: undefined }));
+    expect(state.leaderId).toBe('');
   });
 
   it('существующее занятие — поля и durationMin/leadMinutes переведены в строки', () => {
@@ -173,5 +185,17 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
     const state = baseState({ channelIds: ['ch1', 'ch2'] });
     expect(toCreateInput(state).channelIds).toEqual(['ch1', 'ch2']);
     expect(toUpdateInput(state).channelIds).toEqual(['ch1', 'ch2']);
+  });
+
+  it('leaderId выбран — уходит как есть в POST и PATCH (аудит В4)', () => {
+    const state = baseState({ leaderId: 't1' });
+    expect(toCreateInput(state).leaderId).toBe('t1');
+    expect(toUpdateInput(state).leaderId).toBe('t1');
+  });
+
+  it('leaderId «— не указан —»: создание — undefined (не отправляем поле), правка — null (сброс)', () => {
+    const state = baseState({ leaderId: '' });
+    expect(toCreateInput(state).leaderId).toBeUndefined();
+    expect(toUpdateInput(state).leaderId).toBeNull();
   });
 });

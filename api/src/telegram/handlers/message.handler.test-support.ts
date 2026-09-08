@@ -74,6 +74,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     classModel,
     recordingBroadcast,
     broadcastModel,
+    userModel,
   );
   const topicRebuild = new TopicRebuildService(
     broadcastModel,

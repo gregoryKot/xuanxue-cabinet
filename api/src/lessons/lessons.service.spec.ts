@@ -10,6 +10,7 @@ import type { Connection, Model } from 'mongoose';
 import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema';
 import type { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
+import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonRecord, LessonSchema } from './lesson.schema';
 import { LessonsService } from './lessons.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -43,6 +44,7 @@ describe('LessonsService', () => {
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
   let broadcastModel: Model<BroadcastRecord>;
+  let userModel: Model<UserRecord>;
   let recordingBroadcast: RecordingBroadcastService & {
     calls: number;
     urls: (string | undefined)[];
@@ -58,12 +60,14 @@ describe('LessonsService', () => {
       BroadcastRecord.name,
       BroadcastSchema,
     );
+    userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     recordingBroadcast = fakeRecordingBroadcast();
     service = new LessonsService(
       lessonModel,
       classModel,
       recordingBroadcast,
       broadcastModel,
+      userModel,
     );
   }, 60_000);
 
@@ -77,6 +81,7 @@ describe('LessonsService', () => {
     await lessonModel.deleteMany({});
     await classModel.deleteMany({});
     await broadcastModel.deleteMany({});
+    await userModel.deleteMany({});
   });
 
   async function createClass(overrides: Partial<ClassRecord> = {}): Promise<string> {
@@ -188,6 +193,42 @@ describe('LessonsService', () => {
 
     expect(updated.note).toBeUndefined();
     expect(JSON.stringify(updated)).not.toContain('note');
+  });
+
+  it('PATCH leaderId с id учителя — сохраняется, попадает в DTO (аудит В4)', async () => {
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+    const teacher = await userModel.create({ name: 'Дмитрий', roles: ['teacher'] });
+
+    const updated = await service.update(created.id, {
+      leaderId: teacher._id.toString(),
+    });
+
+    expect(updated.leaderId).toBe(teacher._id.toString());
+  });
+
+  it('PATCH leaderId с id ученика — InvalidInputError, дата занятия не меняется', async () => {
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+    const student = await userModel.create({ name: 'Гриша', roles: ['student'] });
+
+    await expect(
+      service.update(created.id, { leaderId: student._id.toString() }),
+    ).rejects.toThrow('не найден среди учителей');
+    await expect(service.getById(created.id)).resolves.toMatchObject({
+      leaderId: undefined,
+    });
+  });
+
+  it('PATCH leaderId: null — ведущий снимается без проверки', async () => {
+    const classId = await createClass();
+    const teacher = await userModel.create({ name: 'Дмитрий', roles: ['teacher'] });
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+    await service.update(created.id, { leaderId: teacher._id.toString() });
+
+    const updated = await service.update(created.id, { leaderId: null });
+
+    expect(updated.leaderId).toBeUndefined();
   });
 
   it('PATCH startsAt переносит время, но не создаёт plannedAt', async () => {

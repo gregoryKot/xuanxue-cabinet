@@ -62,6 +62,15 @@ describe('initialLessonFormState', () => {
     expect(state.note).toBe('заметка');
     expect(state.startsAtLocal).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   });
+
+  it('правка с ведущим — leaderId переносится, без ведущего — пустая строка', () => {
+    expect(initialLessonFormState(makeLesson({ leaderId: 't1' }), []).leaderId).toBe(
+      't1',
+    );
+    expect(initialLessonFormState(makeLesson({ leaderId: undefined }), []).leaderId).toBe(
+      '',
+    );
+  });
 });
 
 describe('validateLessonForm', () => {
@@ -125,5 +134,15 @@ describe('toCreateInput / toUpdateInput', () => {
     };
     expect(toCreateInput(state).startsAt).toBe('');
     expect(toUpdateInput(state).startsAt).toBe('');
+  });
+
+  it('toUpdateInput — leaderId выбран, уходит как есть (аудит В4)', () => {
+    const state = { ...initialLessonFormState(makeLesson(), []), leaderId: 't1' };
+    expect(toUpdateInput(state).leaderId).toBe('t1');
+  });
+
+  it('toUpdateInput — leaderId «— не указан —» — null (явный сброс)', () => {
+    const state = initialLessonFormState(makeLesson({ leaderId: 't1' }), []);
+    expect(toUpdateInput({ ...state, leaderId: '' }).leaderId).toBeNull();
   });
 });

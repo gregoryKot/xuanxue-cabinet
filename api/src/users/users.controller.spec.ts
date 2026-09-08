@@ -1,8 +1,9 @@
 // Test.createTestingModule с фейком сервиса — образец broadcasts.controller.spec.ts:
 // без HTTP, без Mongo. Роли/CSRF/404 проверяет e2e (users.e2e-spec.ts).
 import { Test } from '@nestjs/testing';
-import type { UserDto } from '@xuanxue/shared';
+import type { TeacherOptionDto, UserDto } from '@xuanxue/shared';
 import type { UserLean } from './users.service';
+import { TeachersService } from './teachers.service';
 import { UserRolesService } from './user-roles.service';
 import { UsersController } from './users.controller';
 
@@ -24,10 +25,14 @@ const ADMIN: UserLean = {
 
 async function buildController(
   service: Partial<UserRolesService> = {},
+  teachersService: Partial<TeachersService> = {},
 ): Promise<UsersController> {
   const module = await Test.createTestingModule({
     controllers: [UsersController],
-    providers: [{ provide: UserRolesService, useValue: service }],
+    providers: [
+      { provide: UserRolesService, useValue: service },
+      { provide: TeachersService, useValue: teachersService },
+    ],
   }).compile();
   return module.get(UsersController);
 }
@@ -63,5 +68,16 @@ describe('UsersController', () => {
     // запроса не содержит id вызывающего (SECURITY §2: снятие admin у себя).
     expect(updateRoles).toHaveBeenCalledWith('u1', ['teacher'], 'admin-1');
     expect(result.id).toBe('u1');
+  });
+
+  it('listTeachers() делегирует TeachersService.listTeachers()', async () => {
+    const teachers: TeacherOptionDto[] = [{ id: 't1', name: 'Дмитрий' }];
+    const listTeachers = jest.fn().mockResolvedValue(teachers);
+    const controller = await buildController({}, { listTeachers });
+
+    const result = await controller.listTeachers();
+
+    expect(listTeachers).toHaveBeenCalledWith();
+    expect(result).toEqual(teachers);
   });
 });

@@ -22,6 +22,8 @@ import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord } from '../classes/class.schema';
+import { assertLeaderIdIfProvided } from '../users/assert-teacher';
+import { UserRecord } from '../users/user.schema';
 import { findLinkBroadcastStatusByLessonId } from './lesson-broadcast-status';
 import { LESSON_ENCRYPT_SCHEMA, LessonRecord } from './lesson.schema';
 import { toLessonDto, type LeanLesson } from './lesson.mapper';
@@ -49,6 +51,7 @@ export class LessonsService {
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
     private readonly recordingBroadcast: RecordingBroadcastService,
     @InjectModel(BroadcastRecord.name) private readonly broadcast: Model<BroadcastRecord>,
+    @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
   ) {}
 
   async list(query: ListLessonsQuery): Promise<LessonDto[]> {
@@ -103,6 +106,7 @@ export class LessonsService {
   async update(id: string, input: UpdateLessonInput): Promise<LessonDto> {
     assertLessonId(id);
     if (input.durationMin !== undefined) await assertDurationEditable(this.model, id);
+    await assertLeaderIdIfProvided(this.userModel, input.leaderId);
     const { startsAt, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_LESSON_FIELDS);
     // Перенос startsAt меняет только фактическое время начала — plannedAt

@@ -11,6 +11,7 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useTeachers } from '../people/useTeachers';
 import { ClassSheet } from './ClassSheet';
 import { ScheduleDayList } from './ScheduleDayList';
 import { ScheduleGridView } from './ScheduleGridView';
@@ -25,6 +26,8 @@ export default function ScheduleScreen() {
   // не на каждое открытие листа (ревью п.1). Список каналов read-only на
   // этом экране, мутации ему не нужны.
   const { channels: activeChannels } = useChannels(true);
+  // Учителя для select'а «Ведущий» — тот же приём (аудит В4).
+  const teachersState = useTeachers();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetClassId, setSheetClassId] = useState<string | null>(null);
@@ -85,6 +88,9 @@ export default function ScheduleScreen() {
         <ClassSheet
           classDto={selectedClass}
           channels={activeChannels ?? []}
+          teachers={teachersState.teachers ?? []}
+          teachersError={teachersState.error}
+          onRetryTeachers={() => void teachersState.reload()}
           onClose={() => setSheetOpen(false)}
           onCreate={create}
           onUpdate={update}

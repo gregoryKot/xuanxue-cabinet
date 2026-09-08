@@ -1,10 +1,17 @@
 // GET /users, PATCH /users/:id — экран «Люди» (docs/PLAN.md §6, блокер
 // аудита Б3): список вошедших через Telegram и назначение ролей. Только
 // admin — назначение ролей не отдаётся учителю (SECURITY §3, ADR-0010).
+// GET /users/teachers — исключение: список для select'а «Ведущий»
+// (docs/PLAN.md §6 п.2, аудит В4) виден и teacher, и admin, поэтому у
+// маршрута свой `@Roles`, переопределяющий `@Roles('admin')` класса
+// (Reflector.getAllAndOverride — метод приоритетнее класса, auth.guard.ts).
+// Маршрут объявлен раньше `:id` — `check-route-collisions.mjs`, Nest matches
+// по порядку регистрации.
 import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
-import type { UserDto } from '@xuanxue/shared';
+import type { TeacherOptionDto, UserDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { UserLean } from './users.service';
+import { TeachersService } from './teachers.service';
 import { UserRolesService } from './user-roles.service';
 import { ListUsersDto } from './dto/list-users.dto';
 import { UpdateUserRolesDto } from './dto/update-user-roles.dto';
@@ -13,7 +20,16 @@ import { toUserDto } from './user.mapper';
 @Controller('users')
 @Roles('admin')
 export class UsersController {
-  constructor(private readonly userRolesService: UserRolesService) {}
+  constructor(
+    private readonly userRolesService: UserRolesService,
+    private readonly teachersService: TeachersService,
+  ) {}
+
+  @Get('teachers')
+  @Roles('teacher', 'admin')
+  async listTeachers(): Promise<TeacherOptionDto[]> {
+    return this.teachersService.listTeachers();
+  }
 
   @Get()
   async list(@Query() query: ListUsersDto): Promise<UserDto[]> {

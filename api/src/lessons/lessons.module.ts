@@ -13,12 +13,15 @@
 import { Module } from '@nestjs/common';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { ClassesModule } from '../classes/classes.module';
+import { UserModelModule } from '../users/user-model.module';
 import { LessonModelModule } from './lesson-model.module';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
 
 @Module({
-  imports: [LessonModelModule, ClassesModule, BroadcastsModule],
+  // UserModelModule — update() проверяет leaderId через assertTeacherExists
+  // (аудит В4), тот же приём, что у ClassesModule.
+  imports: [LessonModelModule, ClassesModule, BroadcastsModule, UserModelModule],
   controllers: [LessonsController],
   providers: [LessonsService],
   exports: [LessonModelModule, LessonsService],

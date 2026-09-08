@@ -49,8 +49,14 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
 }
 
 function mockByPath(handlers: Record<string, unknown>) {
+  // '/users/teachers' — дефолт []: экран грузит его на каждом монтировании
+  // (useTeachers, аудит В4), но почти ни один тест здесь не проверяет
+  // ведущего — без дефолта пришлось бы дописывать путь в каждый вызов.
+  // Тест, которому нужен конкретный ответ или сбой, передаёт свой — он
+  // перекрывает дефолт (spread ниже).
+  const withDefaults = { '/users/teachers': [], ...handlers };
   mockedApiFetch.mockImplementation((path: string) => {
-    for (const [prefix, value] of Object.entries(handlers)) {
+    for (const [prefix, value] of Object.entries(withDefaults)) {
       if (path.startsWith(prefix)) {
         return value instanceof Error ? Promise.reject(value) : Promise.resolve(value);
       }

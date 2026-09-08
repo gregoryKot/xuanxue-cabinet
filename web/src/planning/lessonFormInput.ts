@@ -22,6 +22,11 @@ export interface LessonFormState {
   zoomLinkOverride: string;
   zoomPasswordOverride: string;
   note: string;
+  /** id учителя из GET /users/teachers, пустая строка — «не указан»
+   * (LeaderField, аудит В4). Только правка — при создании разового занятия
+   * ведущего не выбирают (CreateLessonInput его не принимает: без
+   * назначения он наследуется от класса расписания). */
+  leaderId: string;
 }
 
 export function initialLessonFormState(
@@ -36,6 +41,7 @@ export function initialLessonFormState(
     zoomLinkOverride: lessonDto?.zoomLinkOverride ?? '',
     zoomPasswordOverride: lessonDto?.zoomPasswordOverride ?? '',
     note: lessonDto?.note ?? '',
+    leaderId: lessonDto?.leaderId ?? '',
   };
 }
 
@@ -85,5 +91,8 @@ export function toUpdateInput(state: LessonFormState): UpdateLessonInput {
     zoomLinkOverride: state.zoomLinkOverride.trim() || null,
     zoomPasswordOverride: state.zoomPasswordOverride.trim() || null,
     note: state.note.trim() || null,
+    // Пустой вариант «— не указан —» — явный сброс (null, leaderId входит в
+    // NULLABLE_LESSON_FIELDS), не «оставить как было» (ревью п.8).
+    leaderId: state.leaderId || null,
   };
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ChannelModelModule } from '../channels/channel-model.module';
 import { LessonModelModule } from '../lessons/lesson-model.module';
+import { UserModelModule } from '../users/user-model.module';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesController } from './classes.controller';
 import { ClassesService } from './classes.service';
@@ -18,6 +19,9 @@ import { ClassesService } from './classes.service';
     // умолчанию (fix «новое занятие без каналов») — только модель, тот же
     // приём (ADR-0013, channel-model.module.ts).
     ChannelModelModule,
+    // create()/update() проверяют leaderId через assertTeacherExists (аудит
+    // В4) — только модель UserRecord, тот же приём.
+    UserModelModule,
   ],
   controllers: [ClassesController],
   providers: [ClassesService],

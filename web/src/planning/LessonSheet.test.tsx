@@ -9,6 +9,7 @@ import type {
   ClassDto,
   CreateLessonInput,
   LessonDto,
+  TeacherOptionDto,
   UpdateLessonInput,
 } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
@@ -54,6 +55,7 @@ interface RenderSheetOverrides {
 
 interface RenderSheetOptions extends RenderSheetOverrides {
   classes?: ClassDto[];
+  teachers?: TeacherOptionDto[];
 }
 
 function renderSheet(lessonDto: LessonDto | null, overrides: RenderSheetOptions = {}) {
@@ -67,6 +69,7 @@ function renderSheet(lessonDto: LessonDto | null, overrides: RenderSheetOptions 
       <LessonSheet
         lessonDto={lessonDto}
         classes={overrides.classes ?? [makeClass()]}
+        teachers={overrides.teachers ?? []}
         onClose={onClose}
         onCreate={onCreate}
         onUpdate={onUpdate}
@@ -182,6 +185,48 @@ describe('LessonSheet — правка занятия', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Проверьте поля.');
     expect(alert).toHaveTextContent('topic: слишком длинная');
+  });
+
+  it('ведущий — select с подсказкой про расписание, выбор уходит в leaderId', async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSheet(makeLesson(), {
+      teachers: [{ id: 't1', name: 'Дмитрий' }],
+    });
+
+    expect(
+      screen.getByText('Если не указан — ведущий занятия из расписания'),
+    ).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Ведущий'), 't1');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        'l1',
+        expect.objectContaining({ leaderId: 't1' }),
+      ),
+    );
+  });
+
+  it('«— не указан —» у занятия с ведущим — PATCH с leaderId: null', async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSheet(makeLesson({ leaderId: 't1' }), {
+      teachers: [{ id: 't1', name: 'Дмитрий' }],
+    });
+
+    await user.selectOptions(screen.getByLabelText('Ведущий'), '— не указан —');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        'l1',
+        expect.objectContaining({ leaderId: null }),
+      ),
+    );
+  });
+
+  it('создание разового занятия — поля «Ведущий» нет (наследуется от расписания)', () => {
+    renderSheet(null);
+    expect(screen.queryByLabelText('Ведущий')).not.toBeInTheDocument();
   });
 
   it('не-ApiError сбой при сохранении — общий текст', async () => {

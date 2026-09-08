@@ -42,6 +42,10 @@ export interface ClassFormState {
    * ссылка и запись уходят только сюда; Telegram-группа с ботом
    * подключается ко всем занятиям сама, отдельно от этого списка. */
   channelIds: string[];
+  /** id учителя из GET /users/teachers, пустая строка — «не указан»
+   * (LeaderField, аудит В4). Сервер проверяет, что это существующий
+   * teacher/admin (assertTeacherExists) — форма отправляет id как есть. */
+  leaderId: string;
 }
 
 /** Каналы, которые сервер подставит новому занятию по умолчанию
@@ -66,6 +70,7 @@ export function initialClassFormState(
     active: classDto?.active ?? true,
     tz: classDto?.tz ?? SCHOOL_TZ,
     channelIds: classDto?.channelIds ?? defaultChannelIds(channels),
+    leaderId: classDto?.leaderId ?? '',
     rules:
       classDto?.rules.map((rule) => ({
         id: rule.id,
@@ -119,6 +124,7 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
     format: state.format,
     zoomLink: state.zoomLink.trim() || undefined,
     zoomPassword: state.zoomPassword.trim() || undefined,
+    leaderId: state.leaderId || undefined,
     leadMinutes: Number(state.leadMinutesText),
     active: state.active,
     tz: state.tz,
@@ -134,6 +140,10 @@ export function toUpdateInput(state: ClassFormState): UpdateClassInput {
     format: state.format,
     zoomLink: state.zoomLink.trim() || null,
     zoomPassword: state.zoomPassword.trim() || null,
+    // Пустой вариант «— не указан —» — явный сброс (null, leaderId входит в
+    // NULLABLE_CLASS_FIELDS), не «оставить как было» (ревью п.8, как у
+    // zoomLink/zoomPassword выше).
+    leaderId: state.leaderId || null,
     leadMinutes: Number(state.leadMinutesText),
     active: state.active,
     tz: state.tz,
