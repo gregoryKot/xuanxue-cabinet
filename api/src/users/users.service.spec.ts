@@ -74,6 +74,33 @@ describe('UsersService', () => {
     expect(count).toBe(1);
   });
 
+  it('listTeacherContacts: только teacher/admin с telegramId, без student', async () => {
+    const teacher = await service.createFromTelegram({
+      telegramId: 501,
+      name: 'Учитель',
+      roles: ['teacher'],
+    });
+    await service.createFromTelegram({
+      telegramId: 502,
+      name: 'Ученик с Telegram',
+      roles: ['student'],
+    });
+    const admin = await service.createFromTelegram({
+      telegramId: 503,
+      name: 'Админ',
+      roles: ['admin'],
+    });
+
+    const contacts = await service.listTeacherContacts();
+    const ids = contacts.map((c) => c.id);
+    expect(ids).toEqual(expect.arrayContaining([teacher.id, admin.id]));
+    expect(contacts.find((c) => c.name === 'Ученик с Telegram')).toBeUndefined();
+    expect(contacts.find((c) => c.id === teacher.id)).toMatchObject({
+      name: 'Учитель',
+      telegramId: 501,
+    });
+  });
+
   it('touchLogin проставляет lastLoginAt из переданного now, не Date.now()', async () => {
     const created = await service.createFromTelegram({
       telegramId: 333,

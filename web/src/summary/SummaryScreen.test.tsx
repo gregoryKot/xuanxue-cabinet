@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import SummaryScreen from './SummaryScreen';
@@ -10,6 +11,24 @@ vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
   return { ...actual, apiFetch: vi.fn() };
 });
+
+const NON_ADMIN_ME: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: ['teacher'],
+  tz: 'Asia/Jerusalem',
+};
+
+// useAuth замокан отдельно от apiFetch (не через реальный AuthProvider):
+// он бы сам звал /auth/me и путал очередь mockResolvedValueOnce/
+// mockRejectedValueOnce, которую тесты ниже выстраивают под /summary.
+const mockedUseAuth = vi.fn(() => ({
+  me: NON_ADMIN_ME,
+  status: 'ok' as const,
+  refresh: vi.fn(),
+  clear: vi.fn(),
+}));
+vi.mock('../auth/AuthProvider', () => ({ useAuth: () => mockedUseAuth() }));
 
 const mockedApiFetch = vi.mocked(apiFetch);
 
@@ -23,6 +42,12 @@ function renderScreen() {
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+  mockedUseAuth.mockReturnValue({
+    me: NON_ADMIN_ME,
+    status: 'ok',
+    refresh: vi.fn(),
+    clear: vi.fn(),
+  });
 });
 
 describe('SummaryScreen — загрузка', () => {
@@ -121,5 +146,50 @@ describe('SummaryScreen — числа и ближайшее занятие', ()
 
     await screen.findByText('Рассылок отправлено');
     expect(screen.queryByText(/Ближайшее занятие/)).not.toBeInTheDocument();
+  });
+});
+
+describe('SummaryScreen — вход на «Люди»', () => {
+  it('учитель без admin — ссылки «Люди» нет', async () => {
+    mockedApiFetch.mockResolvedValue({
+      period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
+      broadcastsSent: 0,
+      broadcastsCancelled: 0,
+      deliveriesFailed: 0,
+      deliveriesPending: 0,
+      manualWaiting: 0,
+      emptyMessage: 'Пока нечего показать.',
+    });
+
+    renderScreen();
+
+    await screen.findByText('Пока нечего показать.');
+    expect(screen.queryByRole('link', { name: 'Люди' })).not.toBeInTheDocument();
+  });
+
+  it('admin — ссылка «Люди» ведёт на /people', async () => {
+    mockedUseAuth.mockReturnValue({
+      me: { id: 'u2', name: 'Маша', roles: ['admin'], tz: 'Asia/Jerusalem' },
+      status: 'ok',
+      refresh: vi.fn(),
+      clear: vi.fn(),
+    });
+    mockedApiFetch.mockResolvedValue({
+      period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
+      broadcastsSent: 0,
+      broadcastsCancelled: 0,
+      deliveriesFailed: 0,
+      deliveriesPending: 0,
+      manualWaiting: 0,
+      emptyMessage: 'Пока нечего показать.',
+    });
+
+    renderScreen();
+
+    const link = await screen.findByRole('link', { name: 'Люди' });
+    expect(link).toHaveAttribute('href', '/people');
+    expect(
+      screen.getByText('кто вошёл в кабинет и кто ведёт занятия'),
+    ).toBeInTheDocument();
   });
 });

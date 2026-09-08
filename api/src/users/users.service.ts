@@ -1,8 +1,7 @@
-// Единственная точка чтения/записи UserRecord. Сам вход (проверка виджета,
-// выпуск сессии) — в api/src/auth/ (вход через Telegram добавит вызовы
-// createFromTelegram и findByTelegramId из /auth/telegram); этот сервис —
-// только CRUD с типизированным возвратом (правило CLAUDE.md: контроллер/
-// гвард не лезут в Mongoose напрямую).
+// Единственная точка чтения/записи UserRecord. Вход (виджет, сессия) — в
+// api/src/auth/; здесь только CRUD с типизированным возвратом (контроллер/
+// гвард не лезут в Mongoose напрямую, CLAUDE.md). Список и назначение ролей
+// «Люди» — в user-roles.service.ts, чтобы этот файл не вырос за 150 строк.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -30,9 +29,10 @@ export interface UserLean {
   lastLoginAt?: Date;
 }
 
-type UserDoc = UserRecord & { _id: Types.ObjectId };
+export type UserDoc = UserRecord & { _id: Types.ObjectId };
 
-function toLean(doc: UserDoc): UserLean {
+/** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация. */
+export function toLean(doc: UserDoc): UserLean {
   return {
     id: doc._id.toString(),
     name: doc.name,
