@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { TeacherOptionDto, UserDto } from '@xuanxue/shared';
 import type { UserLean } from './users.service';
 import { TeachersService } from './teachers.service';
+import { UserDeletionService } from './user-deletion.service';
 import { UserRolesService } from './user-roles.service';
 import { UsersController } from './users.controller';
 
@@ -26,12 +27,14 @@ const ADMIN: UserLean = {
 async function buildController(
   service: Partial<UserRolesService> = {},
   teachersService: Partial<TeachersService> = {},
+  deletionService: Partial<UserDeletionService> = {},
 ): Promise<UsersController> {
   const module = await Test.createTestingModule({
     controllers: [UsersController],
     providers: [
       { provide: UserRolesService, useValue: service },
       { provide: TeachersService, useValue: teachersService },
+      { provide: UserDeletionService, useValue: deletionService },
     ],
   }).compile();
   return module.get(UsersController);
@@ -68,6 +71,15 @@ describe('UsersController', () => {
     // запроса не содержит id вызывающего (SECURITY §2: снятие admin у себя).
     expect(updateRoles).toHaveBeenCalledWith('u1', ['teacher'], 'admin-1');
     expect(result.id).toBe('u1');
+  });
+
+  it('remove() передаёт id из пути и id вызывающего из сессии в deleteAllUserData', async () => {
+    const deleteAllUserData = jest.fn().mockResolvedValue(undefined);
+    const controller = await buildController({}, {}, { deleteAllUserData });
+
+    await controller.remove('u1', ADMIN);
+
+    expect(deleteAllUserData).toHaveBeenCalledWith('u1', 'admin-1');
   });
 
   it('listTeachers() делегирует TeachersService.listTeachers()', async () => {

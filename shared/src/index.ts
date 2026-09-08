@@ -132,6 +132,7 @@ export {
   USER_NOT_FOUND_MESSAGE,
   SELF_DEMOTE_MESSAGE,
   LAST_ADMIN_MESSAGE,
+  SELF_DELETE_MESSAGE,
   LEADER_NOT_FOUND_MESSAGE,
 } from './users';
 export { FIELD_LABELS_RU } from './field-labels';

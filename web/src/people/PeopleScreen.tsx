@@ -28,7 +28,7 @@ const listStyle: CSSProperties = {
 
 export default function PeopleScreen() {
   const { me } = useAuth();
-  const { people, loading, error, reload, updateRoles } = usePeople();
+  const { people, loading, error, reload, updateRoles, remove } = usePeople();
   // «Пока никто, кроме вас» — считаем по чужим строкам, не по длине списка
   // целиком: сам admin тоже входил через Telegram и есть в GET /users.
   const others = people?.filter((person) => person.id !== me?.id) ?? [];
@@ -53,6 +53,7 @@ export default function PeopleScreen() {
               person={person}
               isSelf={person.id === me?.id}
               onChangeRoles={(roles) => updateRoles(person.id, { roles })}
+              onRemove={() => remove(person.id)}
             />
           ))}
         </ul>

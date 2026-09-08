@@ -16,6 +16,7 @@ import {
 } from '@xuanxue/shared';
 import { ForbiddenError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
+import { isLastAdmin } from './last-admin';
 import { UserRecord } from './user.schema';
 import { toLean, UsersService, type UserDoc, type UserLean } from './users.service';
 
@@ -43,7 +44,8 @@ export class UserRolesService {
    * другого маршрута). Два ограничения защищают школу от «остаться без
    * доступа»: нельзя снять admin у самого себя (currentUserId, проверка не
    * зависит от гонки — id и так неизменны) и нельзя снять admin у последнего
-   * администратора в базе (isLastAdmin, комментарий там же про гонку).
+   * администратора в базе (isLastAdmin — last-admin.ts, общая с
+   * UserDeletionService.deleteAllUserData, комментарий там же про гонку).
    * Апдейт условный по `roles` из уже прочитанного `target`: если роли
    * поменялись между чтением и записью (двойной клик, второй админ успел
    * раньше), `findOneAndUpdate` не находит документ, и вызывающий получает
@@ -61,7 +63,7 @@ export class UserRolesService {
     const losesAdmin = target.roles.includes('admin') && !roles.includes('admin');
     if (losesAdmin) {
       if (id === currentUserId) throw new ForbiddenError(SELF_DEMOTE_MESSAGE);
-      if (await this.isLastAdmin(id)) throw new ForbiddenError(LAST_ADMIN_MESSAGE);
+      if (await isLastAdmin(this.model, id)) throw new ForbiddenError(LAST_ADMIN_MESSAGE);
     }
 
     const doc = await this.model
@@ -73,20 +75,5 @@ export class UserRolesService {
       .lean<UserDoc>();
     if (!doc) throw new NotFoundError(USER_NOT_FOUND_MESSAGE);
     return toLean(doc);
-  }
-
-  /** Считает других админов, не общее число admin: `id` у нас уже с ролью
-   * admin (проверено в updateRoles до вызова) — интересует, остаётся ли
-   * школа хоть с одним, если снять её здесь. Не защищает от гонки, когда
-   * два админа снимают роль друг у друга в один момент (оба видят «есть
-   * ещё один» и проходят проверку) — школа маленькая, действие редкое,
-   * полноценная блокировка (транзакция) для этого случая не стоит своей
-   * сложности сейчас; если вырастет — усилить, как markSent в deliveries. */
-  private async isLastAdmin(id: string): Promise<boolean> {
-    const otherAdmins = await this.model.countDocuments({
-      _id: { $ne: id },
-      roles: 'admin',
-    });
-    return otherAdmins === 0;
   }
 }
