@@ -104,7 +104,8 @@ export class TelegramBotService implements OnApplicationBootstrap {
     try {
       await sendBotMessage(this.bot, chatId, text, buttons);
     } catch (err) {
-      this.logger.warn(`telegram.sendMessage(${chatId}): ${errorMessage(err)}`);
+      // chatId — полем объекта, не в тексте (SECURITY §1 п.2, §4): им управляет redact-paths.ts.
+      this.logger.warn({ chatId }, `telegram.sendMessage: ${errorMessage(err)}`);
     }
   }
 

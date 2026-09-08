@@ -60,8 +60,9 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 
 ```bash
 npm run check             # tsc, eslint, prettier, тесты (jest api дважды — TZ=Australia/Sydney
-                           # и с покрытием), npm audit, все храповики — то же, что CI, кроме
-                           # gitleaks (бинаря нет локально) и Docker-смока: они только в CI
+                           # и с покрытием; vitest web — с покрытием и под TZ=Australia/Sydney),
+                           # npm audit, все храповики — то же, что CI, кроме gitleaks (бинаря
+                           # нет локально) и Docker-смока: они только в CI
 ```
 
 `prettier --check` в `check` стоит после тестов, а не перед: `vitest` в

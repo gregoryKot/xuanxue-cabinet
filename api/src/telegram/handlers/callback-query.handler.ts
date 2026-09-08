@@ -53,7 +53,10 @@ export class CallbackQueryHandler {
         ctx.chat?.type !== 'private' ||
         !(await this.isTeacherChat(chatId, now))
       ) {
-        this.logger.warn(`callback от чата без доступа: chatId=${chatId ?? 'н/д'}`);
+        // chatId — полем объекта, не в тексте: список редакции
+        // (redact-paths.ts) управляет полями, не текстом строки
+        // (SECURITY §1 п.2, §4).
+        this.logger.warn({ chatId: chatId ?? null }, 'callback от чата без доступа');
         return;
       }
 
