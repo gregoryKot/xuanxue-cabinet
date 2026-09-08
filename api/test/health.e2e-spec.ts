@@ -1,4 +1,6 @@
 import request from 'supertest';
+import { getConnectionToken } from '@nestjs/mongoose';
+import type { Connection } from 'mongoose';
 import type { ApiErrorBody } from '@xuanxue/shared';
 import type { HealthStatus } from '../src/health/health.controller';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -49,4 +51,24 @@ describe('Health (e2e)', () => {
 
     expect(res.headers['x-request-id']).toBe('trace-42');
   });
+
+  // Отдельное приложение: закрываем его соединение с Mongo, восстанавливать
+  // не нужно — тест закрывает testApp целиком в finally (см. задачу PR).
+  it('GET /api/health — 503, degraded, mongo down, когда соединение с Mongo закрыто', async () => {
+    const downApp = await createTestApp();
+    try {
+      const connection = downApp.app.get<Connection>(getConnectionToken());
+      await connection.close();
+
+      const res = await request(downApp.app.getHttpServer()).get('/api/health');
+
+      expect(res.status).toBe(503);
+      const body = res.body as HealthStatus;
+      expect(body).toMatchObject({ status: 'degraded', mongo: 'down' });
+    } finally {
+      // Соединение уже закрыто вручную — app.close() не должен падать на
+      // повторном закрытии, но на всякий случай не даём этому уронить тест.
+      await downApp.close().catch(() => undefined);
+    }
+  }, 60_000);
 });

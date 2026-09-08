@@ -1,15 +1,22 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Res } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { SkipThrottle } from '@nestjs/throttler';
-import { ConnectionStates, type Connection } from 'mongoose';
+import type { Connection } from 'mongoose';
 import pkg from '../../package.json';
 import { Public } from '../auth/auth.decorators';
+import { healthOutcome } from './health-outcome';
 
 export interface HealthStatus {
-  status: 'ok';
+  status: 'ok' | 'degraded';
   version: string;
   mongo: 'up' | 'down';
   uptimeSec: number;
+}
+
+// Только код ответа — не весь ResponseLike (common/http-headers.ts): тому
+// нужен setHeader для cookie, здесь ничего, кроме статуса, не меняется.
+interface HealthResponseLike {
+  status(code: number): unknown;
 }
 
 // Вне троттлинга и вне автологов nestjs-pino (см. logging.module.ts) —
@@ -22,12 +29,19 @@ export interface HealthStatus {
 export class HealthController {
   constructor(@InjectConnection() private readonly connection: Connection) {}
 
+  // 503 при недоступной Mongo — тем же телом, не конвертом ошибок
+  // (ApiErrorBody): health читают люди и Railway, которому важен только код
+  // ответа (RUNBOOK §2 — трафик переключается после успешного GET). Поэтому
+  // код ответа выставляется через @Res({ passthrough: true }), а не бросок
+  // DomainError/HttpException — тело остаётся HealthStatus как есть.
   @Get()
-  check(): HealthStatus {
+  check(@Res({ passthrough: true }) res: HealthResponseLike): HealthStatus {
+    const outcome = healthOutcome(this.connection.readyState);
+    res.status(outcome.httpStatus);
     return {
-      status: 'ok',
+      status: outcome.status,
       version: pkg.version,
-      mongo: this.connection.readyState === ConnectionStates.connected ? 'up' : 'down',
+      mongo: outcome.mongo,
       uptimeSec: Math.floor(process.uptime()),
     };
   }
