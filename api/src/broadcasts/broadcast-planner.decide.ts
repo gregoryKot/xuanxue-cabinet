@@ -3,6 +3,7 @@
 // Правила окна и условий — docs/PLAN.md §6 «Планировщик».
 import { DateTime } from 'luxon';
 import { DEFAULT_LEAD_MINUTES, PREVIEW_MINUTES, type ClassFormat } from '@xuanxue/shared';
+import { CANCEL_REASON } from './broadcast-cancel-reasons';
 
 export interface DecideClassInput {
   active: boolean;
@@ -59,12 +60,12 @@ function skipReason(
   lesson: DecideLessonInput,
   cls: DecideClassInput | undefined,
 ): string | undefined {
-  if (!cls) return 'занятие без класса в базе';
-  if (!cls.active) return 'класс выключен';
-  if (cls.channelIds.length === 0) return 'у класса нет каналов рассылки';
+  if (!cls) return CANCEL_REASON.noClass;
+  if (!cls.active) return CANCEL_REASON.classDisabled;
+  if (cls.channelIds.length === 0) return CANCEL_REASON.noChannels;
   if (cls.format !== 'online' && cls.format !== 'both') {
-    return 'офлайн-занятие, ссылка не рассылается';
+    return CANCEL_REASON.offline;
   }
-  if (!(lesson.zoomLinkOverride ?? cls.zoomLink)) return 'нет ссылки на занятие';
+  if (!(lesson.zoomLinkOverride ?? cls.zoomLink)) return CANCEL_REASON.noLink;
   return undefined;
 }

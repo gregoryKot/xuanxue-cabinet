@@ -9,6 +9,7 @@ import { SummaryService } from './summary.service';
 const SUMMARY_DTO: SummaryDto = {
   period: { from: '2026-08-07T18:00:00.000Z', to: '2026-09-06T18:00:00.000Z' },
   broadcastsSent: 1,
+  broadcastsCancelled: 0,
   deliveriesFailed: 0,
   deliveriesPending: 0,
   manualWaiting: 0,

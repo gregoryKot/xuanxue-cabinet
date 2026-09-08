@@ -55,6 +55,13 @@ export class BroadcastRecord {
   // каждом тике планировщика.
   @Prop({ type: Date, required: false })
   previewSentAt?: Date;
+
+  // DM учителю про автоматическую отмену (channelIds: [] — плейсхолдер от
+  // insertCancelledPlaceholder, не ручная отмена учителем через «Рассылки»)
+  // ставится раз на рассылку тем же приёмом, что previewSentAt (claimOnce,
+  // BroadcastCancelNotifyService, docs/PLAN.md §6 «Планировщик»).
+  @Prop({ type: Date, required: false })
+  teacherNotifiedAt?: Date;
 }
 
 export const BroadcastSchema = SchemaFactory.createForClass(BroadcastRecord);

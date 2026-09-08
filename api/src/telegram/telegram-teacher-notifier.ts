@@ -12,10 +12,12 @@ import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
 import type {
+  CancelledBroadcastContext,
   FailedDeliveryContext,
   TeacherNotifier,
 } from '../deliveries/teacher-notifier';
 import { LessonRecord } from '../lessons/lesson.schema';
+import { cancelledBroadcastMessage } from './broadcast-cancel-message';
 import { TeacherChats } from './teacher-chats';
 import { TelegramBotService } from './telegram-bot.service';
 
@@ -73,6 +75,19 @@ export class TelegramTeacherNotifier implements TeacherNotifier {
         'рассылок; если повторится — напишите разработчику.',
       now,
     );
+  }
+
+  /** «класс выключен» и причины без сформулированного действия — `undefined`
+   * от cancelledBroadcastMessage, DM не шлём (тихий отказ лучше, чем шум по
+   * решению самого учителя, docs/PLAN.md §6). */
+  async notifyBroadcastCancelled(
+    context: CancelledBroadcastContext,
+    now: DateTime,
+  ): Promise<void> {
+    const name = await this.broadcastName(context.broadcastId);
+    const text = cancelledBroadcastMessage(context.reason, name);
+    if (!text) return;
+    await this.broadcast(text, now);
   }
 
   private async broadcast(text: string, now: DateTime): Promise<void> {

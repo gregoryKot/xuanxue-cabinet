@@ -114,6 +114,27 @@ describe('SummaryService.get', () => {
     expect(result.broadcastsSent).toBe(0);
   });
 
+  it('broadcastsCancelled — только автоматический плейсхолдер (channelIds пуст), не ручная отмена учителем', async () => {
+    await broadcastModel.create({
+      kind: 'lesson_link',
+      channelIds: [], // insertCancelledPlaceholder — признак автоматической отмены
+      scheduledAt: NOW.toJSDate(),
+      text: 'у класса нет каналов рассылки',
+      status: 'cancelled',
+    });
+    await broadcastModel.create({
+      kind: 'manual',
+      channelIds: [new Types.ObjectId()], // BroadcastsService.cancel — учитель нажал сам
+      scheduledAt: NOW.toJSDate(),
+      text: 'x',
+      status: 'cancelled',
+    });
+
+    const result = await service.get(NOW);
+
+    expect(result.broadcastsCancelled).toBe(1);
+  });
+
   it('failed/pending доставки — свои счётчики', async () => {
     const broadcast = await broadcastModel.create({
       kind: 'manual',

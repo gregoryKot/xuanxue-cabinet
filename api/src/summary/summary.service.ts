@@ -15,6 +15,7 @@ import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { formatSummary } from './summary.format';
 import {
+  countBroadcastsCancelled,
   countBroadcastsSent,
   countDeliveriesByStatus,
   countManualWaiting,
@@ -38,19 +39,28 @@ export class SummaryService {
     const to = now.toJSDate();
     const [
       broadcastsSent,
+      broadcastsCancelled,
       deliveriesFailed,
       deliveriesPending,
       manualWaiting,
       nextLesson,
     ] = await Promise.all([
       countBroadcastsSent(this.broadcastModel, from, to),
+      countBroadcastsCancelled(this.broadcastModel, from, to),
       countDeliveriesByStatus(this.deliveryModel, 'failed', from, to),
       countDeliveriesByStatus(this.deliveryModel, 'pending', from, to),
       countManualWaiting(this.deliveryModel, this.channelModel, from, to),
       findNextLesson(this.lessonModel, this.classModel, to),
     ]);
     return formatSummary(
-      { broadcastsSent, deliveriesFailed, deliveriesPending, manualWaiting, nextLesson },
+      {
+        broadcastsSent,
+        broadcastsCancelled,
+        deliveriesFailed,
+        deliveriesPending,
+        manualWaiting,
+        nextLesson,
+      },
       now,
     );
   }

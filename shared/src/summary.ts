@@ -14,6 +14,10 @@ export interface NextLessonSummary {
 export interface SummaryDto {
   period: SummaryPeriod;
   broadcastsSent: number;
+  /** Отменено самим планировщиком/рассылкой записи (нет каналов, нет ссылки,
+   * тик опоздал и т. п.) — не ручная отмена учителем через «Рассылки»
+   * (docs/PLAN.md §6 «Планировщик», карточка ведёт в журнал с фильтром). */
+  broadcastsCancelled: number;
   deliveriesFailed: number;
   deliveriesPending: number;
   manualWaiting: number;

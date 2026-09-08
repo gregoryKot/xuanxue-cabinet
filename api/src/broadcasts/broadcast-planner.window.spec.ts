@@ -31,6 +31,7 @@ function fakeNotifier(): TeacherNotifier {
   return {
     notifyDeliveryFailed: () => Promise.resolve(),
     notifySchedulerFailed: () => Promise.resolve(),
+    notifyBroadcastCancelled: () => Promise.resolve(),
   };
 }
 

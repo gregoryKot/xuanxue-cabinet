@@ -1,6 +1,6 @@
 // Единственный маппер BroadcastRecord (lean, уже расшифрованный) →
 // BroadcastDto (CLAUDE.md, раздел «API»: документ Mongoose наружу не
-// возвращается — previewSentAt в DTO нет).
+// возвращается — previewSentAt/teacherNotifiedAt в DTO нет).
 import type { Types } from 'mongoose';
 import type { BroadcastDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';

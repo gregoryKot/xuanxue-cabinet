@@ -19,6 +19,7 @@ import { LessonRecord } from '../lessons/lesson.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
+import { CANCEL_REASON as REASON } from './broadcast-cancel-reasons';
 import { buildRecordingText } from './broadcast-planner.render';
 import { findActiveChannelIds, findClassForRecording } from './broadcast-planner.queries';
 import {
@@ -123,15 +124,12 @@ export class RecordingBroadcastService {
     if (!lesson) return;
 
     const cls = await findClassForRecording(this.classModel, lesson.classId);
-    if (!cls) return this.cancel(lessonId, recording, 'занятие без класса в базе', now);
-    if (!cls.active) return this.cancel(lessonId, recording, 'класс выключен', now);
+    if (!cls) return this.cancel(lessonId, recording, REASON.noClass, now);
+    if (!cls.active) return this.cancel(lessonId, recording, REASON.classDisabled, now);
 
-    const activeChannelIds = await findActiveChannelIds(
-      this.channelModel,
-      cls.channelIds,
-    );
-    if (activeChannelIds.length === 0) {
-      return this.cancel(lessonId, recording, 'все каналы класса выключены', now);
+    const activeIds = await findActiveChannelIds(this.channelModel, cls.channelIds);
+    if (activeIds.length === 0) {
+      return this.cancel(lessonId, recording, REASON.allChannelsDisabled, now);
     }
 
     const settings = await this.settingsService.get();
@@ -147,7 +145,7 @@ export class RecordingBroadcastService {
       kind: 'recording',
       lessonId,
       recordingKey: recordingKeyOf(recording),
-      channelIds: activeChannelIds,
+      channelIds: activeIds,
       telegramFileId: recording.telegramFileId,
       text,
       scheduledAt: now.toJSDate(),
