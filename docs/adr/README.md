@@ -53,3 +53,4 @@
 | [0015](0015-telegram-chats-self-register-as-channels.md) | Каналы Telegram регистрирует бот, не админ                             |
 | [0016](0016-shared-cjs-and-vite.md)                      | `shared` остаётся CommonJS, web подключает его через `commonjsOptions` |
 | [0017](0017-mongo-backups.md)                            | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions           |
+| [0018](0018-istanbul-coverage-for-web.md)                | Покрытие web через istanbul, не v8 — детерминированные пороги          |
