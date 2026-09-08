@@ -87,6 +87,10 @@ const TELEGRAM_INPUT: TelegramLoginInput = {
   auth_date: Math.floor(DateTime.utc().toSeconds()),
   hash: 'a'.repeat(64),
 };
+// loginWithTelegram теперь принимает `@Body()` нетипизированным
+// (parse-telegram-login-body.ts валидирует сам) — тестам нужен обычный
+// Record, не интерфейс TelegramLoginInput без индексной сигнатуры.
+const TELEGRAM_RAW_BODY: Record<string, unknown> = { ...TELEGRAM_INPUT };
 
 function fakeRequest(body: Record<string, unknown>): RequestLike {
   return { method: 'POST', headers: {}, body };
@@ -100,8 +104,8 @@ describe('AuthController.loginWithTelegram', () => {
     const res = fakeResponse();
 
     const me = await controller.loginWithTelegram(
-      TELEGRAM_INPUT,
-      fakeRequest({ ...TELEGRAM_INPUT }),
+      TELEGRAM_RAW_BODY,
+      fakeRequest(TELEGRAM_RAW_BODY),
       res,
     );
 
@@ -122,13 +126,26 @@ describe('AuthController.loginWithTelegram', () => {
     });
     const rawBody = { ...TELEGRAM_INPUT, unknown_field: 'от клиента' };
 
+    await controller.loginWithTelegram(rawBody, fakeRequest(rawBody), fakeResponse());
+
+    expect(receivedRawBody).toEqual(rawBody);
+  });
+
+  it('req.body отсутствует — сервису передаётся {}, а не undefined', async () => {
+    let receivedRawBody: Record<string, unknown> | undefined;
+    const controller = await buildController((_dto, rawBody) => {
+      receivedRawBody = rawBody;
+      return Promise.resolve({ user: USER, cookie: 'session=tok' });
+    });
+    const requestWithoutBody: RequestLike = { method: 'POST', headers: {} };
+
     await controller.loginWithTelegram(
-      TELEGRAM_INPUT,
-      fakeRequest(rawBody),
+      TELEGRAM_RAW_BODY,
+      requestWithoutBody,
       fakeResponse(),
     );
 
-    expect(receivedRawBody).toEqual(rawBody);
+    expect(receivedRawBody).toEqual({});
   });
 
   it('ошибка TelegramAuthService.login() пробрасывается наружу без Set-Cookie', async () => {
@@ -139,8 +156,8 @@ describe('AuthController.loginWithTelegram', () => {
 
     await expect(
       controller.loginWithTelegram(
-        TELEGRAM_INPUT,
-        fakeRequest({ ...TELEGRAM_INPUT }),
+        TELEGRAM_RAW_BODY,
+        fakeRequest(TELEGRAM_RAW_BODY),
         res,
       ),
     ).rejects.toThrow('подпись не сошлась');

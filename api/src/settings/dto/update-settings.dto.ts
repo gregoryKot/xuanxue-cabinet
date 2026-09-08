@@ -18,9 +18,16 @@ import { Type } from 'class-transformer';
 import { SETTINGS_LIMITS, type UpdateSettingsInput } from '@xuanxue/shared';
 import { OptionalNotNull } from '../../common/validation';
 
-const NOT_EMPTY_MESSAGE = 'Шаблон не может быть пустым.';
+// Продолжение фразы «Шаблон «…»: …» (validation-messages.ts) — без повтора
+// слова «Шаблон», дефолтное сообщение matches ничего не сказало бы про
+// пустоту (regex тут — способ проверки, не смысл ограничения).
+const NOT_EMPTY_MESSAGE = 'не может быть пустым.';
 
-class UpdateTemplatesDto {
+// export: field-labels-coverage.spec.ts сверяет её поля отдельно от
+// UpdateSettingsDto — как вложенный класс `@ValidateNested()` она не
+// проверяется через инспекцию UpdateSettingsDto напрямую (см. комментарий
+// там же).
+export class UpdateTemplatesDto {
   @OptionalNotNull()
   @IsString()
   @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
