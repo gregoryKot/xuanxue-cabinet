@@ -2,7 +2,7 @@
 // занятия и предпросмотр (docs/PLAN.md §6 «Шаблоны»). Два инстанса на экране
 // (анонс/запись) — CLAUDE.md «Одна механика — один компонент»: сама механика
 // «текст + плейсхолдеры + предпросмотр» одна, разный только `kind`.
-import { useState, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { DEFAULT_TEMPLATES, type LessonDto, type TemplateKind } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
@@ -12,7 +12,8 @@ import { formatDateTime } from '../lib/formatDate';
 import { tzBadge } from '../schedule/timezoneLabel';
 import { PlaceholderChips } from './PlaceholderChips';
 import { TEMPLATE_KIND_LABELS_RU } from './templateKindLabels';
-import { usePreview } from './usePreview';
+import { useAutoPreview } from './useAutoPreview';
+import { useInsertAtCursor } from './useInsertAtCursor';
 import { validateTemplateText } from './templateValidation';
 
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
@@ -46,11 +47,16 @@ export function TemplateEditor({
   serverError,
   schoolTz,
 }: TemplateEditorProps) {
-  const [lessonId, setLessonId] = useState('');
-  const preview = usePreview();
   const dirty = text !== savedText;
   const validationError = validateTemplateText(text);
   const badge = schoolTz ? tzBadge(schoolTz) : null;
+  const { lessonId, setLessonId, preview } = useAutoPreview(
+    kind,
+    lessons,
+    savedText,
+    dirty,
+  );
+  const { textareaRef, insertAtCursor } = useInsertAtCursor(text, onChange);
 
   return (
     <section style={sectionStyle}>
@@ -58,6 +64,7 @@ export function TemplateEditor({
 
       <Field label="Текст шаблона" error={validationError ?? undefined}>
         <textarea
+          ref={textareaRef}
           style={{ ...inputStyle, minHeight: 140 }}
           value={text}
           onChange={(e) => onChange(e.target.value)}
@@ -68,7 +75,7 @@ export function TemplateEditor({
           {serverError}
         </p>
       )}
-      <PlaceholderChips />
+      <PlaceholderChips onInsert={insertAtCursor} />
       <Button
         type="button"
         variant="secondary"
@@ -111,7 +118,7 @@ export function TemplateEditor({
         pending={preview.pending}
         onClick={() => void preview.preview(kind, lessonId)}
       >
-        Показать предпросмотр
+        Обновить предпросмотр
       </Button>
 
       {preview.error && (

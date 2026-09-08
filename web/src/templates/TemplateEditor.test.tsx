@@ -1,9 +1,10 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts») — TemplateEditor
-// вызывает его через usePreview.
-import { render, screen, waitFor } from '@testing-library/react';
+// вызывает его через useAutoPreview → usePreview.
+import { useState } from 'react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_TEMPLATES, type LessonDto } from '@xuanxue/shared';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_TEMPLATES, type LessonDto, type TemplateKind } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { TemplateEditor } from './TemplateEditor';
@@ -14,6 +15,12 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+beforeEach(() => {
+  // Дефолт для тестов, которым сам факт автозапроса не важен — без него
+  // необработанный промис после теста сыпал бы предупреждениями act().
+  mockedApiFetch.mockResolvedValue({ text: 'предпросмотр' });
+});
 
 afterEach(() => {
   mockedApiFetch.mockReset();
@@ -32,6 +39,31 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
   };
+}
+
+// Управляемая обёртка для тестов вставки чипом: text/savedText держит сама,
+// как TemplatesScreen.tsx.
+function ControlledEditor({
+  kind,
+  initialText = '',
+  lessons = [],
+}: {
+  kind: TemplateKind;
+  initialText?: string;
+  lessons?: LessonDto[];
+}) {
+  const [text, setText] = useState(initialText);
+  return (
+    <TemplateEditor
+      kind={kind}
+      text={text}
+      savedText={text}
+      onChange={setText}
+      lessons={lessons}
+      lessonsError={null}
+      onRetryLessons={vi.fn()}
+    />
+  );
 }
 
 describe('TemplateEditor — текст и валидация', () => {
@@ -111,8 +143,34 @@ describe('TemplateEditor — текст и валидация', () => {
   });
 });
 
+describe('TemplateEditor — вставка подстановки по клику (отзыв владельца 2026-09-08)', () => {
+  it('клик по чипу вставляет {имя} в позицию курсора и возвращает фокус в textarea', async () => {
+    const user = userEvent.setup();
+    render(<ControlledEditor kind="lesson_link" initialText="Привет мир" />);
+
+    const textarea = screen.getByLabelText<HTMLTextAreaElement>('Текст шаблона');
+    await user.click(textarea);
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+    await user.click(screen.getByRole('button', { name: '{тема}' }));
+
+    await waitFor(() => expect(textarea).toHaveValue('Привет мир{тема}'));
+    expect(textarea).toHaveFocus();
+    expect(textarea.selectionStart).toBe('Привет мир{тема}'.length);
+  });
+
+  it('пояснения к подстановкам открываются списком, не нажимая чип', async () => {
+    const user = userEvent.setup();
+    render(<ControlledEditor kind="lesson_link" />);
+
+    await user.click(screen.getByText('Что подставится в пост'));
+
+    expect(screen.getByText(/Ссылка на Zoom/)).toBeInTheDocument();
+  });
+});
+
 describe('TemplateEditor — выбор занятия и предпросмотр', () => {
-  it('несохранённые правки — предупреждение, предпросмотр недоступен', () => {
+  it('несохранённые правки — предупреждение, автозапроса нет, кнопка недоступна', async () => {
     render(
       <TemplateEditor
         kind="lesson_link"
@@ -126,27 +184,32 @@ describe('TemplateEditor — выбор занятия и предпросмот
     );
 
     expect(screen.getByText(/Сначала сохраните/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Показать предпросмотр' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Обновить предпросмотр' })).toBeDisabled();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 
-  it('без выбранного занятия предпросмотр недоступен', () => {
+  it('нет занятий — автовыбора нет, предпросмотр недоступен', () => {
     render(
       <TemplateEditor
         kind="lesson_link"
         text="текст"
         savedText="текст"
         onChange={vi.fn()}
-        lessons={[makeLesson()]}
+        lessons={[]}
         lessonsError={null}
         onRetryLessons={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Показать предпросмотр' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Обновить предпросмотр' })).toBeDisabled();
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 
-  it('выбор занятия и клик — POST /settings/preview, результат на экране', async () => {
-    const user = userEvent.setup();
+  it('занятие подставляется само, предпросмотр приходит без нажатия кнопки', async () => {
     mockedApiFetch.mockResolvedValueOnce({ text: 'Через 30 минут занятие' });
 
     render(
@@ -161,9 +224,7 @@ describe('TemplateEditor — выбор занятия и предпросмот
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText('Предпросмотр на занятии'), 'l1');
-    await user.click(screen.getByRole('button', { name: 'Показать предпросмотр' }));
-
+    expect(await screen.findByLabelText('Предпросмотр на занятии')).toHaveValue('l1');
     expect(mockedApiFetch).toHaveBeenCalledWith('/settings/preview', {
       method: 'POST',
       body: { kind: 'lesson_link', lessonId: 'l1' },
@@ -174,7 +235,6 @@ describe('TemplateEditor — выбор занятия и предпросмот
   });
 
   it('recordingIsStandIn — пометка под предпросмотром', async () => {
-    const user = userEvent.setup();
     mockedApiFetch.mockResolvedValueOnce({
       text: 'Тема занятия',
       recordingIsStandIn: true,
@@ -192,14 +252,10 @@ describe('TemplateEditor — выбор занятия и предпросмот
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText('Предпросмотр на занятии'), 'l1');
-    await user.click(screen.getByRole('button', { name: 'Показать предпросмотр' }));
-
     expect(await screen.findByText(/Записи у занятия ещё нет/)).toBeInTheDocument();
   });
 
-  it('сбой предпросмотра — текст ошибки', async () => {
-    const user = userEvent.setup();
+  it('сбой предпросмотра — текст ошибки виден без нажатия кнопки', async () => {
     const { ApiError } = await import('../api/http');
     mockedApiFetch.mockRejectedValueOnce(
       new ApiError('Занятие не найдено.', 404, 'not_found'),
@@ -217,15 +273,64 @@ describe('TemplateEditor — выбор занятия и предпросмот
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText('Предпросмотр на занятии'), 'l1');
-    await user.click(screen.getByRole('button', { name: 'Показать предпросмотр' }));
-
     await waitFor(() =>
       expect(screen.getByText('Занятие не найдено.')).toBeInTheDocument(),
     );
   });
 
-  it('темы у занятия нет — плейсхолдер в списке выбора', () => {
+  it('«Обновить предпросмотр» повторяет запрос по клику', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue({ text: 'Через 30 минут занятие' });
+
+    render(
+      <TemplateEditor
+        kind="lesson_link"
+        text="текст"
+        savedText="текст"
+        onChange={vi.fn()}
+        lessons={[makeLesson()]}
+        lessonsError={null}
+        onRetryLessons={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledTimes(1));
+
+    await user.click(screen.getByRole('button', { name: 'Обновить предпросмотр' }));
+
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledTimes(2));
+  });
+
+  it('смена занятия в списке — предпросмотр перезапрашивается для него', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue({ text: 'Через 30 минут занятие' });
+
+    render(
+      <TemplateEditor
+        kind="lesson_link"
+        text="текст"
+        savedText="текст"
+        onChange={vi.fn()}
+        lessons={[makeLesson(), makeLesson({ id: 'l2', topic: 'Толкающие руки' })]}
+        lessonsError={null}
+        onRetryLessons={vi.fn()}
+      />,
+    );
+
+    // Автовыбор взял ближайшее (первое) занятие и сам сходил за предпросмотром.
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledTimes(1));
+
+    await user.selectOptions(screen.getByRole('combobox'), 'l2');
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenLastCalledWith('/settings/preview', {
+        method: 'POST',
+        body: { kind: 'lesson_link', lessonId: 'l2' },
+      }),
+    );
+  });
+
+  it('темы у занятия нет — плейсхолдер в списке выбора', async () => {
     render(
       <TemplateEditor
         kind="lesson_link"
@@ -239,11 +344,12 @@ describe('TemplateEditor — выбор занятия и предпросмот
     );
 
     expect(screen.getByRole('option', { name: /Тема не задана/ })).toBeInTheDocument();
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
   });
 });
 
 describe('TemplateEditor — бейдж пояса школы (pr-k3-fixes.md п.22)', () => {
-  it('пояс школы отличается от браузерного — бейдж рядом со временем занятия', () => {
+  it('пояс школы отличается от браузерного — бейдж рядом со временем занятия', async () => {
     render(
       <TemplateEditor
         kind="lesson_link"
@@ -260,6 +366,7 @@ describe('TemplateEditor — бейдж пояса школы (pr-k3-fixes.md п
     expect(
       screen.getByRole('option', { name: /Pacific\/Kiritimati/ }),
     ).toBeInTheDocument();
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
   });
 });
 
@@ -283,10 +390,11 @@ describe('TemplateEditor — ошибка загрузки занятий (pr-k3
       'Не удалось загрузить занятия для предпросмотра.',
     );
     expect(screen.queryByLabelText('Предпросмотр на занятии')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Показать предпросмотр' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Обновить предпросмотр' })).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
     expect(onRetryLessons).toHaveBeenCalledTimes(1);
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 });
 
