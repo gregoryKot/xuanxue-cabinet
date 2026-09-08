@@ -119,7 +119,7 @@ export type {
   PreviewTemplateInput,
   PreviewTemplateResult,
 } from './settings';
-export { SETTINGS_LIMITS } from './settings';
+export { SETTINGS_LIMITS, NULLABLE_SETTINGS_FIELDS } from './settings';
 export type { SummaryPeriod, NextLessonSummary, SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
 export { FIELD_LABELS_RU } from './field-labels';

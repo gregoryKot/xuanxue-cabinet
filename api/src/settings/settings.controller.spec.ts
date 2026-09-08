@@ -40,6 +40,15 @@ describe('SettingsController', () => {
     expect(update).toHaveBeenCalledWith(body);
   });
 
+  it('update() передаёт schoolSiteUrl (включая null — сброс) в сервис как есть', async () => {
+    const update = jest.fn().mockResolvedValue(SETTINGS_DTO);
+    const controller = await buildController({ update });
+    const body = { schoolSiteUrl: null };
+
+    await expect(controller.update(body)).resolves.toEqual(SETTINGS_DTO);
+    expect(update).toHaveBeenCalledWith(body);
+  });
+
   it('preview() передаёт тело и now в сервис', async () => {
     const preview = jest.fn().mockResolvedValue({ text: 'Через 10 минут занятие' });
     const controller = await buildController({ preview });

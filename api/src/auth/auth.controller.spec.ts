@@ -3,13 +3,20 @@
 import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import type { TelegramLoginInput } from '@xuanxue/shared';
+import type { SettingsDto, TelegramLoginInput } from '@xuanxue/shared';
 import { fakeResponse } from '../test-support/http-fakes';
+import { SettingsService } from '../settings/settings.service';
 import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
+
+const SETTINGS_WITHOUT_SITE: SettingsDto = {
+  templates: { lesson_link: 'ссылка', recording: 'запись' },
+  tz: 'Asia/Jerusalem',
+  updatedAt: '2026-09-06T18:00:00.000Z',
+};
 
 const USER: UserLean = {
   id: 'u1',
@@ -25,6 +32,7 @@ async function buildController(
     return Promise.reject(new Error('не ожидался вызов в этом тесте'));
   },
   env: Record<string, string | undefined> = {},
+  settings: SettingsDto = SETTINGS_WITHOUT_SITE,
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
@@ -32,6 +40,7 @@ async function buildController(
       { provide: AuthService, useValue: { logoutCookie: () => 'session=; Max-Age=0' } },
       { provide: TelegramAuthService, useValue: { login: telegramLogin } },
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
+      { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
     ],
   }).compile();
   return module.get(AuthController);
@@ -39,23 +48,22 @@ async function buildController(
 
 describe('AuthController.getConfig', () => {
   it('без BOT_TOKEN — telegramBotId отсутствует', async () => {
-    const controller = await buildController(undefined, {
-      PUBLIC_URL: 'https://x.example',
-    });
-    expect(controller.getConfig()).toEqual({
+    const controller = await buildController(undefined, {}, SETTINGS_WITHOUT_SITE);
+    await expect(controller.getConfig()).resolves.toEqual({
       telegramBotId: undefined,
-      publicUrl: 'https://x.example',
+      schoolSiteUrl: undefined,
     });
   });
 
-  it('с BOT_TOKEN — telegramBotId — числовой префикс токена', async () => {
-    const controller = await buildController(undefined, {
-      BOT_TOKEN: '123456:abcDEFghi-token_padding_here',
-      PUBLIC_URL: 'https://xuanxue.su',
-    });
-    expect(controller.getConfig()).toEqual({
+  it('с BOT_TOKEN и заполненным адресом сайта — оба поля в ответе', async () => {
+    const controller = await buildController(
+      undefined,
+      { BOT_TOKEN: '123456:abcDEFghi-token_padding_here' },
+      { ...SETTINGS_WITHOUT_SITE, schoolSiteUrl: 'https://xuanxue.su' },
+    );
+    await expect(controller.getConfig()).resolves.toEqual({
       telegramBotId: 123456,
-      publicUrl: 'https://xuanxue.su',
+      schoolSiteUrl: 'https://xuanxue.su',
     });
   });
 });

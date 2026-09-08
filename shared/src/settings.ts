@@ -6,14 +6,30 @@ import type { TemplateKind } from './default-templates';
 export interface SettingsDto {
   templates: Record<TemplateKind, string>;
   tz: string;
+  /** Адрес сайта школы — единственная ссылка на расписание для ученика и
+   * незнакомца, у которых нет роли в кабинете (В6 аудита, ADR-0009-доп.):
+   * `PUBLIC_URL` — адрес самого кабинета, не сайта школы, и наружу не
+   * отдаётся. Поля нет, если учитель ещё не заполнил экран «Шаблоны». */
+  schoolSiteUrl?: string;
   updatedAt: string; // ISO UTC с Z
 }
 
-/** PATCH: шаблон, которого нет в теле, не трогается — учитель правит один
- * текст за раз, а не оба сразу (образец — UpdateClassInput). */
+/**
+ * PATCH: шаблон, которого нет в теле, не трогается — учитель правит один
+ * текст за раз, а не оба сразу (образец — UpdateClassInput). `schoolSiteUrl:
+ * null` — явный сброс (NULLABLE_SETTINGS_FIELDS ниже, splitUpdate,
+ * common/patch-update.ts): пустое поле формы значит «сайта нет», не
+ * «оставить как было».
+ */
 export interface UpdateSettingsInput {
   templates?: Partial<Record<TemplateKind, string>>;
+  schoolSiteUrl?: string | null;
 }
+
+/** Единственное nullable-поле UpdateSettingsInput — источник правды для DTO
+ * (`@IsOptional()` вместо `OptionalNotNull()`) и для `splitUpdate`, тот же
+ * приём, что у NULLABLE_CLASS_FIELDS/NULLABLE_LESSON_FIELDS. */
+export const NULLABLE_SETTINGS_FIELDS = ['schoolSiteUrl'] as const;
 
 /** Тело `POST /settings/preview` — рендер сохранённого шаблона (из базы, не
  * то, что учитель напечатал в форме и ещё не нажал «Сохранить») на реальном
@@ -34,4 +50,5 @@ export interface PreviewTemplateResult {
 
 export const SETTINGS_LIMITS = {
   templateMaxLength: 2000,
+  schoolSiteUrlMaxLength: 500,
 } as const;

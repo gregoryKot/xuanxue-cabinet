@@ -112,6 +112,22 @@ describe('SettingsService', () => {
       expect(settings.templates.recording).toBe(DEFAULT_TEMPLATES.recording);
     });
 
+    it('schoolSiteUrl — сохраняется, get видит его после (read-after-write)', async () => {
+      await service.update({ schoolSiteUrl: 'https://xuanxue.su' });
+
+      const settings = await service.get();
+      expect(settings.schoolSiteUrl).toBe('https://xuanxue.su');
+    });
+
+    it('schoolSiteUrl: null — снимает адрес (поля нет), не сохраняет литерал null', async () => {
+      await service.update({ schoolSiteUrl: 'https://xuanxue.su' });
+
+      await service.update({ schoolSiteUrl: null });
+
+      const settings = await service.get();
+      expect(settings.schoolSiteUrl).toBeUndefined();
+    });
+
     it('без templates в теле — не трогает базу, отдаёт текущее', async () => {
       const before = await service.get();
 

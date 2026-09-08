@@ -1,21 +1,21 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»):
 // findByTelegramId и upsertTelegramChat читают/пишут по-настоящему. ctx —
 // фейковый объект с `.from` и `.reply` (маршрутизацию Telegraf проверяет
-// telegram-bot.service.spec.ts).
-import type { ConfigService } from '@nestjs/config';
+// telegram-bot.service.spec.ts). SettingsService — настоящий (LessonModel/
+// ClassModel этой же memory-Mongo), чтобы schoolSiteUrl шёл по реальному
+// сервису, не фейку с одним методом.
 import type { Connection, Model } from 'mongoose';
 import type { Context } from 'telegraf';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../../classes/class.schema';
+import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
+import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
+import { SettingsService } from '../../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { StartHandler } from './start.handler';
-
-function fakeConfig(publicUrl: string | undefined): ConfigService {
-  return { get: () => publicUrl } as unknown as ConfigService;
-}
 
 function fakeCtx(
   telegramId: number | undefined,
@@ -42,6 +42,9 @@ describe('StartHandler', () => {
   let userModel: Model<UserRecord>;
   let channelModel: Model<ChannelRecord>;
   let classModel: Model<ClassRecord>;
+  let lessonModel: Model<LessonRecord>;
+  let settingsModel: Model<SettingsRecord>;
+  let settingsService: SettingsService;
   let handler: StartHandler;
 
   beforeAll(async () => {
@@ -50,9 +53,17 @@ describe('StartHandler', () => {
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
+    lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
+    settingsModel = connection.model<SettingsRecord>(SettingsRecord.name, SettingsSchema);
     await channelModel.syncIndexes();
+    settingsService = new SettingsService(
+      settingsModel,
+      lessonModel,
+      classModel,
+      new UsersService(userModel),
+    );
     handler = new StartHandler(
-      fakeConfig('http://localhost:3000'),
+      settingsService,
       new UsersService(userModel),
       new ChannelConfigService(channelModel, classModel),
     );
@@ -66,6 +77,7 @@ describe('StartHandler', () => {
     await userModel.deleteMany({});
     await channelModel.deleteMany({});
     await classModel.deleteMany({});
+    await settingsModel.deleteMany({});
   });
 
   it('учитель — личный чат становится каналом, ответ с текстом подключения', async () => {
@@ -94,13 +106,15 @@ describe('StartHandler', () => {
     expect(await channelModel.countDocuments({ target: '222' })).toBe(1);
   });
 
-  it('чужой Telegram ID — отказ, канал не создан', async () => {
+  it('чужой Telegram ID — отказ со ссылкой на сайт школы, канал не создан', async () => {
+    await settingsService.update({ schoolSiteUrl: 'https://xuanxue.su' });
+
     const { ctx, replies } = fakeCtx(999);
     await handler.handle(ctx);
 
     expect(await channelModel.countDocuments({})).toBe(0);
     expect(replies).toHaveLength(1);
-    expect(replies[0]).toContain('http://localhost:3000');
+    expect(replies[0]).toContain('https://xuanxue.su');
     expect(replies[0]).not.toContain('Вы подключены');
   });
 
@@ -129,15 +143,10 @@ describe('StartHandler', () => {
     expect(await channelModel.countDocuments({})).toBe(0);
   });
 
-  it('PUBLIC_URL не задан — отказ без падения, без «на сайте …»', async () => {
-    const noUrlHandler = new StartHandler(
-      fakeConfig(undefined),
-      new UsersService(userModel),
-      new ChannelConfigService(channelModel, classModel),
-    );
+  it('schoolSiteUrl не задан (учитель ещё не заполнил экран «Шаблоны») — отказ без падения, без «на сайте …»', async () => {
     const { ctx, replies } = fakeCtx(888);
 
-    await noUrlHandler.handle(ctx);
+    await handler.handle(ctx);
 
     expect(replies[0]).toBe('Этот бот для учителя школы Сюань-Сюэ.');
     expect(replies[0]).not.toContain('на сайте');
@@ -145,7 +154,7 @@ describe('StartHandler', () => {
 
   it('ошибка UsersService — логируется, не выбрасывается, ответа нет', async () => {
     const failingHandler = new StartHandler(
-      fakeConfig('http://localhost:3000'),
+      settingsService,
       {
         findByTelegramId: jest.fn().mockRejectedValue(new Error('mongo down')),
       } as unknown as UsersService,

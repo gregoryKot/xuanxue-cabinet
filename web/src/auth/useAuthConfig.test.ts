@@ -27,7 +27,7 @@ describe('useAuthConfig', () => {
   });
 
   it('успешный ответ без бота — status ok, telegramBotId отсутствует (не «нет связи»)', async () => {
-    const config: AuthConfigDto = { publicUrl: 'https://xuanxue.su' };
+    const config: AuthConfigDto = { schoolSiteUrl: 'https://xuanxue.su' };
     mockedApiFetch.mockResolvedValue(config);
 
     const { result } = renderHook(() => useAuthConfig());
@@ -39,7 +39,7 @@ describe('useAuthConfig', () => {
   it('успешный ответ с ботом — telegramBotId заполнен', async () => {
     const config: AuthConfigDto = {
       telegramBotId: 123456,
-      publicUrl: 'https://x.example',
+      schoolSiteUrl: 'https://x.example',
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -60,7 +60,10 @@ describe('useAuthConfig', () => {
 
   it('reload() повторяет запрос', async () => {
     mockedApiFetch.mockRejectedValueOnce(new Error('сеть недоступна'));
-    const config: AuthConfigDto = { telegramBotId: 1, publicUrl: 'https://x.example' };
+    const config: AuthConfigDto = {
+      telegramBotId: 1,
+      schoolSiteUrl: 'https://x.example',
+    };
     mockedApiFetch.mockResolvedValueOnce(config);
 
     const { result } = renderHook(() => useAuthConfig());
@@ -82,7 +85,10 @@ describe('useAuthConfig', () => {
           resolveFirst = resolve;
         }),
     );
-    const fresh: AuthConfigDto = { telegramBotId: 2, publicUrl: 'https://fresh.example' };
+    const fresh: AuthConfigDto = {
+      telegramBotId: 2,
+      schoolSiteUrl: 'https://fresh.example',
+    };
     mockedApiFetch.mockResolvedValueOnce(fresh);
 
     const { result } = renderHook(() => useAuthConfig());
@@ -91,7 +97,7 @@ describe('useAuthConfig', () => {
     });
 
     act(() => {
-      resolveFirst?.({ telegramBotId: 1, publicUrl: 'https://stale.example' });
+      resolveFirst?.({ telegramBotId: 1, schoolSiteUrl: 'https://stale.example' });
     });
 
     expect(result.current.config).toEqual(fresh);

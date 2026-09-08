@@ -19,13 +19,13 @@ describe('GET /auth/config (e2e), без BOT_TOKEN', () => {
     await testApp.close();
   });
 
-  it('200 без cookie, telegramBotId отсутствует, publicUrl остаётся', async () => {
+  it('200 без cookie, telegramBotId отсутствует, schoolSiteUrl не задан — поля нет', async () => {
     const res = await request(testApp.app.getHttpServer()).get('/api/auth/config');
 
     expect(res.status).toBe(200);
     const body = res.body as AuthConfigDto;
     expect(body.telegramBotId).toBeUndefined();
-    expect(body.publicUrl).toBe('http://localhost:3000');
-    expect(Object.keys(body).sort()).toEqual(['publicUrl']);
+    expect(body.schoolSiteUrl).toBeUndefined();
+    expect(Object.keys(body)).toEqual([]);
   });
 });

@@ -17,6 +17,7 @@ import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
 import type { AuthConfigDto, MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
+import { SettingsService } from '../settings/settings.service';
 import { botIdFromToken } from './bot-id-from-token';
 import { CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
@@ -36,19 +37,22 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly telegramAuthService: TelegramAuthService,
     private readonly configService: ConfigService,
+    private readonly settingsService: SettingsService,
   ) {}
 
-  // Без сессии: экран входа спрашивает конфигурацию до того, как она
-  // появится. telegramBotId — числовой префикс BOT_TOKEN (валидатор
-  // гарантирует формат) для `window.Telegram.Login.auth()` на фронте —
-  // без него кнопка входа не показывается. publicUrl — ссылка на сайт школы
-  // для гостя без роли (RequireAuth.tsx).
+  // Без сессии: экран входа и StudentScreen спрашивают конфигурацию до
+  // того, как появится роль. telegramBotId — числовой префикс BOT_TOKEN
+  // (валидатор гарантирует формат) для `window.Telegram.Login.auth()` на
+  // фронте — без него кнопка входа не показывается. schoolSiteUrl — адрес
+  // сайта школы из настроек (не `PUBLIC_URL`: это адрес самого кабинета,
+  // В6 аудита, ADR-0009-доп.) для гостя без роли и незнакомца в боте.
   @Public()
   @Get('config')
-  getConfig(): AuthConfigDto {
+  async getConfig(): Promise<AuthConfigDto> {
+    const settings = await this.settingsService.get();
     return {
       telegramBotId: botIdFromToken(this.configService.get<string>('BOT_TOKEN')),
-      publicUrl: this.configService.get<string>('PUBLIC_URL'),
+      schoolSiteUrl: settings.schoolSiteUrl,
     };
   }
 

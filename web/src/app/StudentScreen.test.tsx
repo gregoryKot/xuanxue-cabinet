@@ -16,27 +16,25 @@ afterEach(() => {
 });
 
 describe('StudentScreen', () => {
-  it('показывает объяснение и ссылку на сайт школы, когда publicUrl есть', async () => {
-    mockedApiFetch.mockResolvedValue({ publicUrl: 'https://xuanxue.su' });
+  it('учитель заполнил адрес сайта школы — ссылка на сайт', async () => {
+    mockedApiFetch.mockResolvedValue({ schoolSiteUrl: 'https://xuanxue.su' });
 
     render(<StudentScreen />);
 
-    expect(
-      screen.getByText('Кабинет для учителя. Расписание школы — на сайте.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Кабинет для учителя.')).toBeInTheDocument();
     expect(
       await screen.findByRole('link', { name: 'https://xuanxue.su' }),
     ).toHaveAttribute('href', 'https://xuanxue.su');
+    expect(screen.queryByText('Расписание вам пришлёт учитель.')).not.toBeInTheDocument();
   });
 
-  it('без publicUrl ссылки нет, но объяснение остаётся', () => {
+  it('без адреса сайта школы — без ссылки, текст «Расписание вам пришлёт учитель»', () => {
     mockedApiFetch.mockResolvedValue({});
 
     render(<StudentScreen />);
 
-    expect(
-      screen.getByText('Кабинет для учителя. Расписание школы — на сайте.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Кабинет для учителя.')).toBeInTheDocument();
+    expect(screen.getByText('Расписание вам пришлёт учитель.')).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });

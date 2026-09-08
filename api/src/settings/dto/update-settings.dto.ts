@@ -7,9 +7,13 @@
 // фрагмента, за которым явный `\n`) — обрезка молча испортила бы вёрстку
 // поста. «Не пустой» проверяем отдельно — `\S` где-то в строке, не сам факт
 // непустой длины (иначе шаблон из одних пробелов/переводов строк прошёл бы).
+// schoolSiteUrl — адрес сайта школы (В6 аудита, ADR-0009-доп.): единственное
+// nullable-поле формы, `null` снимает настройку (NULLABLE_SETTINGS_FIELDS,
+// settings.service.ts).
 import {
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   MaxLength,
   ValidateNested,
@@ -46,4 +50,13 @@ export class UpdateSettingsDto implements UpdateSettingsInput {
   @ValidateNested()
   @Type(() => UpdateTemplatesDto)
   templates?: UpdateTemplatesDto;
+
+  // `null` — явный сброс (В6 аудита: пустое поле формы значит «сайта нет»,
+  // не «оставить как было»), поэтому `@IsOptional()` — она, в отличие от
+  // OptionalNotNull(), пропускает и undefined, и null (та же пара декораторов,
+  // что у zoomLink в update-class.dto.ts).
+  @IsOptional()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(SETTINGS_LIMITS.schoolSiteUrlMaxLength)
+  schoolSiteUrl?: string | null;
 }

@@ -637,6 +637,7 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 
 | Метод                 | Путь                                            | Кто       |
 | --------------------- | ----------------------------------------------- | --------- |
+| GET                   | `/auth/config` (реализовано)                    | все       |
 | GET                   | `/auth/me`                                      | с сессией |
 | POST                  | `/auth/logout`                                  | с сессией |
 | POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все       |
