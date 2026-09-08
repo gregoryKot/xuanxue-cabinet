@@ -44,6 +44,9 @@ export function fakeNotifier(): TeacherNotifier & { calls: FailedDeliveryContext
     notifySchedulerFailed() {
       return Promise.resolve();
     },
+    notifyBroadcastCancelled() {
+      return Promise.resolve();
+    },
   };
 }
 

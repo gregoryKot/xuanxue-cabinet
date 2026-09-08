@@ -54,9 +54,9 @@ function mockByPath(handlers: Record<string, unknown>) {
   });
 }
 
-function renderScreen() {
+function renderScreen(initialEntries: string[] = ['/broadcasts']) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <BroadcastsScreen />
     </MemoryRouter>,
   );
@@ -148,6 +148,34 @@ describe('BroadcastsScreen — журнал', () => {
         expect.anything(),
       ),
     );
+  });
+
+  it('открыт по ссылке из «Сводки» (?status=cancelled) — фильтр статуса стоит сразу, без лишнего запроса', async () => {
+    mockByPath({
+      '/broadcasts': [makeBroadcast({ status: 'cancelled' })],
+      '/deliveries': [],
+      '/channels': [makeChannel()],
+    });
+
+    renderScreen(['/broadcasts?status=cancelled']);
+
+    expect(await screen.findByLabelText<HTMLSelectElement>(/Статус/)).toHaveValue(
+      'cancelled',
+    );
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        expect.stringMatching(/status=cancelled/),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('битый параметр статуса в ссылке — как будто фильтра нет, не падает', async () => {
+    mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
+
+    renderScreen(['/broadcasts?status=bogus']);
+
+    expect(await screen.findByLabelText<HTMLSelectElement>(/Статус/)).toHaveValue('');
   });
 
   it('«Новая рассылка» открывает лист, сохранение шлёт POST', async () => {

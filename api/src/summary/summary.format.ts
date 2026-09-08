@@ -13,6 +13,7 @@ import { toIsoUtc } from '../common/iso-date';
 
 export interface SummaryCounts {
   broadcastsSent: number;
+  broadcastsCancelled: number;
   deliveriesFailed: number;
   deliveriesPending: number;
   manualWaiting: number;
@@ -47,6 +48,7 @@ export function formatSummary(counts: SummaryCounts, now: DateTime): SummaryDto 
   };
   const allZero =
     counts.broadcastsSent === 0 &&
+    counts.broadcastsCancelled === 0 &&
     counts.deliveriesFailed === 0 &&
     counts.deliveriesPending === 0 &&
     counts.manualWaiting === 0;
@@ -54,6 +56,7 @@ export function formatSummary(counts: SummaryCounts, now: DateTime): SummaryDto 
     return {
       period,
       broadcastsSent: 0,
+      broadcastsCancelled: 0,
       deliveriesFailed: 0,
       deliveriesPending: 0,
       manualWaiting: 0,

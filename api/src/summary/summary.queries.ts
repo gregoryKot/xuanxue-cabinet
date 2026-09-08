@@ -18,6 +18,24 @@ export function countBroadcastsSent(
   return model.countDocuments({ status: 'sent', sentAt: { $gte: from, $lte: to } });
 }
 
+/** Отменено самим планировщиком/рассылкой записи (insertCancelledPlaceholder,
+ * broadcast.inserts.ts), не учителем через «Рассылки» — тот же признак
+ * `channelIds: []`, что у BroadcastCancelNotifyService (docs/PLAN.md §6
+ * «Планировщик»). `scheduledAt` у такого плейсхолдера — момент самой отмены
+ * (`now` тика/вызова), не меняется задним числом — та же форма (status,
+ * время), что у countBroadcastsSent. */
+export function countBroadcastsCancelled(
+  model: Model<BroadcastRecord>,
+  from: Date,
+  to: Date,
+): Promise<number> {
+  return model.countDocuments({
+    status: 'cancelled',
+    channelIds: { $size: 0 },
+    scheduledAt: { $gte: from, $lte: to },
+  });
+}
+
 export function countDeliveriesByStatus(
   model: Model<DeliveryRecord>,
   status: DeliveryStatus,

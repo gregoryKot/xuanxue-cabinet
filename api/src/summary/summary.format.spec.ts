@@ -4,6 +4,7 @@ import { formatSummary } from './summary.format';
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 const ZERO_COUNTS = {
   broadcastsSent: 0,
+  broadcastsCancelled: 0,
   deliveriesFailed: 0,
   deliveriesPending: 0,
   manualWaiting: 0,
@@ -34,6 +35,13 @@ describe('formatSummary', () => {
 
     expect(result.emptyMessage).toBeUndefined();
     expect(result.broadcastsSent).toBe(1);
+  });
+
+  it('только broadcastsCancelled ненулевой — без emptyMessage', () => {
+    const result = formatSummary({ ...ZERO_COUNTS, broadcastsCancelled: 2 }, NOW);
+
+    expect(result.emptyMessage).toBeUndefined();
+    expect(result.broadcastsCancelled).toBe(2);
   });
 
   it('все счётчики нулевые, но есть ближайшее занятие — без emptyMessage', () => {

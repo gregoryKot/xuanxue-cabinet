@@ -1,6 +1,7 @@
 // Юнит-тест на фейках шагов (CLAUDE.md «Тесты»: детерминизм — без
 // setTimeout-ожиданий, свой resolve() вместо реальных часов).
 import { DateTime } from 'luxon';
+import type { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import type { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import type { PreviewService } from '../broadcasts/preview.service';
 import type { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
@@ -13,6 +14,7 @@ import { SchedulerService } from './scheduler.service';
 function buildService(overrides: {
   plan?: LessonPlannerService['plan'];
   planBroadcasts?: BroadcastPlannerService['plan'];
+  notifyCancelled?: BroadcastCancelNotifyService['notifyPending'];
   runDeliveries?: DeliveryRunnerService['run'];
   sendPreviews?: PreviewService['sendPending'];
   promptRecordings?: RecordingPromptService['prompt'];
@@ -28,6 +30,8 @@ function buildService(overrides: {
   const plan = overrides.plan ?? jest.fn().mockResolvedValue({ created: 0, removed: 0 });
   const planBroadcasts =
     overrides.planBroadcasts ?? jest.fn().mockResolvedValue({ broadcasts: 0 });
+  const notifyCancelled =
+    overrides.notifyCancelled ?? jest.fn().mockResolvedValue({ claimed: 0 });
   const runDeliveries =
     overrides.runDeliveries ?? jest.fn().mockResolvedValue({ sent: 0, failed: 0 });
   const sendPreviews =
@@ -41,10 +45,12 @@ function buildService(overrides: {
   const notifier: TeacherNotifier = {
     notifyDeliveryFailed: jest.fn().mockResolvedValue(undefined),
     notifySchedulerFailed,
+    notifyBroadcastCancelled: jest.fn().mockResolvedValue(undefined),
   };
   const service = new SchedulerService(
     { plan } as unknown as LessonPlannerService,
     { plan: planBroadcasts } as unknown as BroadcastPlannerService,
+    { notifyPending: notifyCancelled } as unknown as BroadcastCancelNotifyService,
     { run: runDeliveries } as unknown as DeliveryRunnerService,
     { sendPending: sendPreviews } as unknown as PreviewService,
     { prompt: promptRecordings } as unknown as RecordingPromptService,
@@ -62,6 +68,10 @@ describe('SchedulerService.tick', () => {
     const planBroadcasts = jest.fn(
       (_now: DateTime): ReturnType<BroadcastPlannerService['plan']> =>
         Promise.resolve({ broadcasts: 3 }),
+    );
+    const notifyCancelled = jest.fn(
+      (_now: DateTime): ReturnType<BroadcastCancelNotifyService['notifyPending']> =>
+        Promise.resolve({ claimed: 1 }),
     );
     const runDeliveries = jest.fn(
       (_now: DateTime): ReturnType<DeliveryRunnerService['run']> =>
@@ -82,6 +92,7 @@ describe('SchedulerService.tick', () => {
     const { service } = buildService({
       plan,
       planBroadcasts,
+      notifyCancelled,
       runDeliveries,
       sendPreviews,
       promptRecordings,
@@ -92,6 +103,7 @@ describe('SchedulerService.tick', () => {
 
     expect(plan).toHaveBeenCalledTimes(1);
     expect(planBroadcasts).toHaveBeenCalledTimes(1);
+    expect(notifyCancelled).toHaveBeenCalledTimes(1);
     expect(runDeliveries).toHaveBeenCalledTimes(1);
     expect(sendPreviews).toHaveBeenCalledTimes(1);
     expect(promptRecordings).toHaveBeenCalledTimes(1);
@@ -101,10 +113,20 @@ describe('SchedulerService.tick', () => {
     // Все шаги делят один now — рассылка не может считать «позже», чем видел
     // планировщик занятий в этом же тике.
     expect(planBroadcasts.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(notifyCancelled.mock.calls[0]?.[0]).toBe(calledWith);
     expect(runDeliveries.mock.calls[0]?.[0]).toBe(calledWith);
     expect(sendPreviews.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptRecordings.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptManual.mock.calls[0]?.[0]).toBe(calledWith);
+  });
+
+  it('ошибка шага отмен не останавливает шаг доставок', async () => {
+    const notifyCancelled = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const runDeliveries = jest.fn().mockResolvedValue({ sent: 0, failed: 0 });
+    const { service } = buildService({ notifyCancelled, runDeliveries });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+    expect(runDeliveries).toHaveBeenCalledTimes(1);
   });
 
   it('ошибка шага рассылок не останавливает шаг доставок и предпросмотра', async () => {

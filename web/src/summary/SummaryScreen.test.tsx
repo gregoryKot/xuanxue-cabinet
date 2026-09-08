@@ -47,6 +47,7 @@ describe('SummaryScreen — сбой загрузки', () => {
     mockedApiFetch.mockResolvedValueOnce({
       period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
       broadcastsSent: 0,
+      broadcastsCancelled: 0,
       deliveriesFailed: 0,
       deliveriesPending: 0,
       manualWaiting: 0,
@@ -63,6 +64,7 @@ describe('SummaryScreen — пустая база', () => {
     mockedApiFetch.mockResolvedValue({
       period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
       broadcastsSent: 0,
+      broadcastsCancelled: 0,
       deliveriesFailed: 0,
       deliveriesPending: 0,
       manualWaiting: 0,
@@ -81,6 +83,7 @@ describe('SummaryScreen — числа и ближайшее занятие', ()
     mockedApiFetch.mockResolvedValue({
       period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
       broadcastsSent: 12,
+      broadcastsCancelled: 5,
       deliveriesFailed: 1,
       deliveriesPending: 2,
       manualWaiting: 3,
@@ -99,12 +102,16 @@ describe('SummaryScreen — числа и ближайшее занятие', ()
     expect(manualCard.closest('a')).toBeNull();
     const lessonLink = screen.getByText(/Ближайшее занятие — Тайцзицюань/).closest('a');
     expect(lessonLink).toHaveAttribute('href', '/planning#lesson-l1');
+    const cancelledLink = screen.getByText('Отменено автоматикой').closest('a');
+    expect(cancelledLink).toHaveAttribute('href', '/broadcasts?status=cancelled');
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 
   it('без ближайшего занятия — карточка не рендерится', async () => {
     mockedApiFetch.mockResolvedValue({
       period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
       broadcastsSent: 1,
+      broadcastsCancelled: 0,
       deliveriesFailed: 0,
       deliveriesPending: 0,
       manualWaiting: 0,

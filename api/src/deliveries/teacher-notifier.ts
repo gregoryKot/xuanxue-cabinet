@@ -15,6 +15,17 @@ export interface FailedDeliveryContext {
   error: string;
 }
 
+export interface CancelledBroadcastContext {
+  broadcastId: string;
+  /** Не используется для резолва имени (broadcastId уже даёт занятие+класс),
+   * но входит в контекст для симметрии с FailedDeliveryContext.deliveryId. */
+  lessonId?: string;
+  /** Причина из broadcast.text (insertCancelledPlaceholder,
+   * broadcast.inserts.ts) — например CANCEL_REASON.noChannels
+   * (broadcast-cancel-reasons.ts). */
+  reason: string;
+}
+
 export interface TeacherNotifier {
   /** `now` — параметром (CLAUDE.md «Время»): вызывающий код (раннер) уже
    * держит момент тика, реализация не имеет права звать DateTime.utc() сама. */
@@ -23,6 +34,16 @@ export interface TeacherNotifier {
   /** Сбой шага тика планировщика (SchedulerService.step) — `step` — русское
    * имя шага из лога ('занятия'/'рассылки'/'доставки'/'предпросмотр'/…). */
   notifySchedulerFailed(step: string, error: string, now: DateTime): Promise<void>;
+
+  /** Планировщик или рассылка записи сами отменили рассылку — тихий отказ
+   * (CLAUDE.md «Логи»), учитель должен узнать и понять, что сделать
+   * (docs/PLAN.md §6 «Планировщик»). По причине, которую не сформулировать
+   * действием (класс выключен — решение самого учителя; данные-аномалии),
+   * реализация ничего не шлёт. */
+  notifyBroadcastCancelled(
+    context: CancelledBroadcastContext,
+    now: DateTime,
+  ): Promise<void>;
 }
 
 export const TEACHER_NOTIFIER = Symbol('TEACHER_NOTIFIER');

@@ -8,6 +8,7 @@ import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DateTime } from 'luxon';
 import { errorMessage, errorStack } from '../common/error-info';
+import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import { PreviewService } from '../broadcasts/preview.service';
 import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
@@ -27,6 +28,7 @@ export class SchedulerService implements OnApplicationShutdown {
   constructor(
     private readonly plannerService: LessonPlannerService,
     private readonly broadcastPlanner: BroadcastPlannerService,
+    private readonly broadcastCancelNotify: BroadcastCancelNotifyService,
     private readonly deliveryRunner: DeliveryRunnerService,
     private readonly previewService: PreviewService,
     private readonly recordingPromptService: RecordingPromptService,
@@ -56,6 +58,9 @@ export class SchedulerService implements OnApplicationShutdown {
     const { broadcasts } = (await this.step('рассылки', now, (n) =>
       this.broadcastPlanner.plan(n),
     )) ?? { broadcasts: 0 };
+    const { claimed: cancelNotified } = (await this.step('отмены', now, (n) =>
+      this.broadcastCancelNotify.notifyPending(n),
+    )) ?? { claimed: 0 };
     const { sent, failed } = (await this.step('доставки', now, (n) =>
       this.deliveryRunner.run(n),
     )) ?? { sent: 0, failed: 0 };
@@ -71,8 +76,9 @@ export class SchedulerService implements OnApplicationShutdown {
 
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
-        `sent=${sent} failed=${failed} previews=${previewsClaimed} ` +
-        `recordingPrompts=${recordingsPrompted} manualPrompts=${manualPrompted}`,
+        `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
+        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ` +
+        `manualPrompts=${manualPrompted}`,
     );
   }
 

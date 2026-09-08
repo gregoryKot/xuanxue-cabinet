@@ -6,6 +6,7 @@
 // (не грузится и не в ошибке), а секция сама этого не знает. Фильтры и
 // пустое состояние — отдельные компоненты (CLAUDE.md «Файлы» — 150 строк).
 import { useMemo, useState, type CSSProperties } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { JOURNAL_RANGE_MAX_WEEKS, type BroadcastStatus } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -18,6 +19,7 @@ import { BroadcastCard } from './BroadcastCard';
 import { BroadcastFilters } from './BroadcastFilters';
 import { BroadcastSheet } from './BroadcastSheet';
 import { DEFAULT_JOURNAL_RANGE_WEEKS } from './broadcastWindow';
+import { initialStatusFromQuery } from './broadcastStatusFilter';
 import { EmptyJournalState } from './EmptyJournalState';
 import { ManualDeliveriesSection } from './ManualDeliveriesSection';
 import { useBroadcasts } from './useBroadcasts';
@@ -39,8 +41,11 @@ const journalListStyle: CSSProperties = {
 };
 
 export default function BroadcastsScreen() {
+  const [searchParams] = useSearchParams();
   const [rangeWeeks, setRangeWeeks] = useState(DEFAULT_JOURNAL_RANGE_WEEKS);
-  const [status, setStatus] = useState<BroadcastStatus | ''>('');
+  const [status, setStatus] = useState<BroadcastStatus | ''>(() =>
+    initialStatusFromQuery(searchParams.get('status')),
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
   const broadcastsState = useBroadcasts(rangeWeeks, status);
   const channelsState = useChannels();

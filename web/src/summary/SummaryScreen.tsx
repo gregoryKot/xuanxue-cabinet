@@ -48,6 +48,13 @@ export default function SummaryScreen() {
             value={String(summary.manualWaiting)}
             label="Ждут отправки вручную"
           />
+          {/* Ссылка ведёт в журнал с готовым фильтром — «почему» смотрят там
+              же, не на самой «Сводке» (docs/PLAN.md §6 «Планировщик»). */}
+          <SummaryCard
+            value={String(summary.broadcastsCancelled)}
+            label="Отменено автоматикой"
+            href="/broadcasts?status=cancelled"
+          />
           {summary.nextLesson && (
             <SummaryCard
               value={formatDateTime(summary.nextLesson.startsAt)}

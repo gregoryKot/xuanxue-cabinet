@@ -7,7 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
-import { DEFAULT_LEAD_MINUTES, type TemplateKind } from '@xuanxue/shared';
+import type { TemplateKind } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../common/error-info';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
@@ -15,6 +15,7 @@ import { LessonRecord } from '../lessons/lesson.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
+import { TOO_LATE_REASON } from './broadcast-cancel-reasons';
 import { decideBroadcast } from './broadcast-planner.decide';
 import { cancelPlanningWithLog } from './broadcast-planner.log';
 import {
@@ -88,7 +89,7 @@ export class BroadcastPlannerService {
           this.broadcastModel,
           this.logger,
           lesson._id,
-          `тик опоздал: занятие началось больше ${DEFAULT_LEAD_MINUTES} минут назад`,
+          TOO_LATE_REASON,
           now,
           'error',
         );

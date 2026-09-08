@@ -15,6 +15,7 @@ const mockedApiFetch = vi.mocked(apiFetch);
 const SUMMARY: SummaryDto = {
   period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
   broadcastsSent: 12,
+  broadcastsCancelled: 2,
   deliveriesFailed: 1,
   deliveriesPending: 2,
   manualWaiting: 3,

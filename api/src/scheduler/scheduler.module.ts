@@ -3,17 +3,21 @@
 // LessonsModule зависит от ClassesModule ради модели класса. Планировщику
 // нужны обе модели — SchedulerModule импортирует оба домена напрямую; ни
 // ClassesModule, ни LessonsModule про SchedulerModule не знают — цикла нет.
-// BroadcastPlannerService/DeliveryRunnerService/PreviewService/
-// RecordingPromptService/ManualPromptService живут физически в своих доменах
-// (broadcasts/, deliveries/, lessons/), но провайдер — здесь: тот же приём,
-// что уже был с LessonPlannerService (ADR-0013 «Отдельный модуль модели
-// разрывает цикл»). BroadcastsModule/DeliveriesModule/ChannelsModule/
-// SettingsModule — модельные модули (только forFeature), сама логика тика
-// собирается на этом уровне. TelegramModule — TelegramBotService/TeacherChats/
-// BotSessionService для проактивной отправки (предпросмотр, «Запись?»,
-// ручные каналы, уведомления об ошибках); ни TelegramModule, ни его
-// собственные импорты про SchedulerModule не знают.
+// BroadcastPlannerService/BroadcastCancelNotifyService/DeliveryRunnerService/
+// PreviewService/RecordingPromptService/ManualPromptService живут физически в
+// своих доменах (broadcasts/, deliveries/, lessons/), но провайдер — здесь:
+// тот же приём, что уже был с LessonPlannerService (ADR-0013 «Отдельный
+// модуль модели разрывает цикл»). BroadcastCancelNotifyService именно поэтому
+// здесь, а не провайдером BroadcastsModule: ему нужен TEACHER_NOTIFIER
+// (TelegramModule), а BroadcastsModule не может импортировать TelegramModule
+// — тот сам импортирует BroadcastsModule (цикл). BroadcastsModule/
+// DeliveriesModule/ChannelsModule/SettingsModule — модельные модули (только
+// forFeature), сама логика тика собирается на этом уровне. TelegramModule —
+// TelegramBotService/TeacherChats/BotSessionService для проактивной отправки
+// (предпросмотр, «Запись?», ручные каналы, уведомления об ошибках); ни
+// TelegramModule, ни его собственные импорты про SchedulerModule не знают.
 import { Module } from '@nestjs/common';
+import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { PreviewService } from '../broadcasts/preview.service';
@@ -48,6 +52,7 @@ import { SchedulerService } from './scheduler.service';
   providers: [
     LessonPlannerService,
     BroadcastPlannerService,
+    BroadcastCancelNotifyService,
     DeliveryRunnerService,
     PreviewService,
     RecordingPromptService,
