@@ -10,3 +10,7 @@ coverage/
 
 # Реальные ссылки Zoom, пароли и токены каналов живут только локально
 api/seed/*.local.json
+
+# Локальные бэкапы Mongo (scripts/backup-mongo.sh) — даже зашифрованные, в
+# репозиторий не кладём (CLAUDE.md, «Данные (MongoDB)»)
+backups/

@@ -52,3 +52,4 @@
 | [0014](0014-delivery-lease-at-least-once.md)             | Доставка — at-least-once через лизинг захвата, не exactly-once         |
 | [0015](0015-telegram-chats-self-register-as-channels.md) | Каналы Telegram регистрирует бот, не админ                             |
 | [0016](0016-shared-cjs-and-vite.md)                      | `shared` остаётся CommonJS, web подключает его через `commonjsOptions` |
+| [0017](0017-mongo-backups.md)                            | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions           |

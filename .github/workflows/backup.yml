@@ -1,0 +1,61 @@
+name: Backup Mongo
+
+# Раз в сутки — свой бэкап поверх Atlas M0, который бэкапы не делает
+# (CLAUDE.md, «Данные (MongoDB)»; docs/RUNBOOK.md §7). 03:17 UTC — вне пиков
+# нагрузки на бесплатный кластер, минута смещена от ровного часа, чтобы не
+# попадать в одну секунду с чужими cron-джобами GitHub на *:00.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+env:
+  # Версия mongodb-database-tools закреплена явно — «латест» ломается без
+  # предупреждения при следующем мажоре. Бампить руками при необходимости.
+  MONGODB_TOOLS_VERSION: '100.9.4'
+
+# Бэкап раз в сутки не должен идти параллельно второй раз (ручной запуск
+# наложился на расписание) — второй прогон ждёт, а не пишет поверх.
+concurrency:
+  group: backup-mongo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: mongodb-database-tools (mongodump)
+        run: |
+          curl -fsSL -o /tmp/tools.tgz \
+            "https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-${MONGODB_TOOLS_VERSION}.tgz"
+          tar -xzf /tmp/tools.tgz -C /tmp
+          sudo mv "/tmp/mongodb-database-tools-ubuntu2204-x86_64-${MONGODB_TOOLS_VERSION}/bin/"* /usr/local/bin/
+          mongodump --version
+
+      - name: бэкап (scripts/backup-mongo.sh)
+        env:
+          # Секреты GitHub Actions, не переменные приложения — не входят в
+          # .env.example и в api/src/config/env.validation.ts (RUNBOOK §7).
+          BACKUP_MONGODB_URI: ${{ secrets.BACKUP_MONGODB_URI }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: ./scripts/backup-mongo.sh
+
+      - name: путь к файлу бэкапа для следующего шага
+        id: backup_file
+        run: echo "path=$(ls backups/*.archive.gz.enc)" >> "$GITHUB_OUTPUT"
+
+      # Внешнее хранилище на первое время — артефакты Actions (retention
+      # 90 дней). S3/аналог — отдельный PR при появлении реальных данных,
+      # отмечено в RUNBOOK §7.
+      - name: загрузить бэкап как artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongo-backup-${{ github.run_id }}
+          path: ${{ steps.backup_file.outputs.path }}
+          retention-days: 90
