@@ -88,7 +88,7 @@ describe('SendNowService.sendNow', () => {
     );
   });
 
-  it('scheduled — переставляет scheduledAt и nextAttemptAt pending-доставок на сейчас', async () => {
+  it('scheduled, доставка не захвачена — переставляет scheduledAt/nextAttemptAt И подхватывает свежий текст (учитель успел поправить ссылку)', async () => {
     const cls = await createClass(ctx);
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
     const later = NOW.plus({ minutes: 40 });
@@ -97,7 +97,7 @@ describe('SendNowService.sendNow', () => {
       lessonId: lesson._id,
       channelIds: cls.channelIds,
       scheduledAt: later.toJSDate(),
-      text: 'x',
+      text: 'старая ссылка',
       status: 'scheduled',
     });
     const broadcastBefore = await ctx.broadcastModel
@@ -114,8 +114,120 @@ describe('SendNowService.sendNow', () => {
 
     expect(dto.id).toBe(broadcastBefore?._id.toString());
     expect(new Date(dto.scheduledAt).getTime()).toBeLessThan(later.toJSDate().getTime());
+    // Ревью п.2: рассылку ещё не забрал раннер — свежий рендер (та же ссылка
+    // класса, что и раньше, но текст пересобран заново) заменяет старый.
+    expect(dto.text).not.toBe('старая ссылка');
     const delivery = await ctx.deliveryModel.findOne({ broadcastId: dto.id }).lean();
     expect(delivery?.nextAttemptAt?.getTime()).toBeLessThan(later.toJSDate().getTime());
+  });
+
+  it('scheduled, доставка уже захвачена раннером (sending) — текст не меняем, ускоряем только оставшиеся pending (ревью п.2/п.6)', async () => {
+    const cls = await createClass(ctx, { channelIds: [] });
+    const channelA = await createChannel(ctx);
+    const channelB = await createChannel(ctx);
+    await ctx.classModel.updateOne(
+      { _id: cls._id },
+      { $set: { channelIds: [channelA._id, channelB._id] } },
+    );
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
+    const broadcast = await ctx.broadcastModel.create({
+      kind: 'lesson_link',
+      lessonId: lesson._id,
+      channelIds: [channelA._id, channelB._id],
+      scheduledAt: NOW.toJSDate(),
+      text: 'старая ссылка',
+      status: 'scheduled',
+    });
+    await ctx.deliveryModel.create([
+      {
+        broadcastId: broadcast._id,
+        channelId: channelA._id,
+        status: 'sending',
+        lockedAt: NOW.toJSDate(),
+      },
+      {
+        broadcastId: broadcast._id,
+        channelId: channelB._id,
+        status: 'pending',
+        nextAttemptAt: NOW.plus({ hours: 1 }).toJSDate(),
+      },
+    ]);
+
+    const dto = await ctx.service.sendNow(lesson._id.toString(), NOW);
+
+    // Канал A уже в пути со старым текстом — врать «пересобрано» нельзя.
+    expect(dto.text).toBe('старая ссылка');
+    const pendingAfter = await ctx.deliveryModel
+      .findOne({ broadcastId: broadcast._id, channelId: channelB._id })
+      .lean();
+    expect(pendingAfter?.nextAttemptAt?.getTime()).toBeLessThanOrEqual(
+      NOW.toJSDate().getTime(),
+    );
+    const sendingAfter = await ctx.deliveryModel
+      .findOne({ broadcastId: broadcast._id, channelId: channelA._id })
+      .lean();
+    expect(sendingAfter?.status).toBe('sending');
+  });
+
+  it('канал выключили после провала — его доставка cancelled, у нового канала появляется pending (ревью п.3а)', async () => {
+    const droppedChannel = await createChannel(ctx, { active: false });
+    const keptChannel = await createChannel(ctx);
+    const cls = await createClass(ctx, { channelIds: [keptChannel._id] });
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
+    const broadcast = await ctx.broadcastModel.create({
+      kind: 'lesson_link',
+      lessonId: lesson._id,
+      channelIds: [droppedChannel._id],
+      scheduledAt: NOW.toJSDate(),
+      text: 'старая ссылка',
+      status: 'failed',
+    });
+    await ctx.deliveryModel.create({
+      broadcastId: broadcast._id,
+      channelId: droppedChannel._id,
+      status: 'failed',
+    });
+
+    const dto = await ctx.service.sendNow(lesson._id.toString(), NOW);
+
+    expect(dto.status).toBe('scheduled');
+    expect(dto.channelIds).toEqual([keptChannel._id.toString()]);
+    await expect(
+      ctx.deliveryModel
+        .findOne({ broadcastId: broadcast._id, channelId: droppedChannel._id })
+        .lean(),
+    ).resolves.toMatchObject({ status: 'cancelled' });
+    await expect(
+      ctx.deliveryModel
+        .findOne({ broadcastId: broadcast._id, channelId: keptChannel._id })
+        .lean(),
+    ).resolves.toMatchObject({ status: 'pending' });
+  });
+
+  it('все подключённые каналы уже sent — ConflictError, статус не меняется (ревью п.3б)', async () => {
+    const channel = await createChannel(ctx);
+    const cls = await createClass(ctx, { channelIds: [channel._id] });
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
+    const broadcast = await ctx.broadcastModel.create({
+      kind: 'lesson_link',
+      lessonId: lesson._id,
+      channelIds: [channel._id],
+      scheduledAt: NOW.toJSDate(),
+      text: 'x',
+      status: 'failed',
+    });
+    await ctx.deliveryModel.create({
+      broadcastId: broadcast._id,
+      channelId: channel._id,
+      status: 'sent',
+    });
+
+    await expect(ctx.service.sendNow(lesson._id.toString(), NOW)).rejects.toMatchObject({
+      message: expect.stringContaining('во все подключённые каналы') as unknown,
+    });
+    await expect(
+      ctx.broadcastModel.findById(broadcast._id).lean(),
+    ).resolves.toMatchObject({ status: 'failed' });
   });
 
   it('cancelled (too_late-плейсхолдер) — оживает в scheduled с доставками на активные каналы', async () => {

@@ -4,12 +4,8 @@
 // HTTP); здесь — вход и read-after-write через настоящий GET /broadcasts
 // (CLAUDE.md «Тесты»). Общие хелперы/модели — lessons-fixtures.ts (тот же
 // приём, что у lessons-broadcast-status.e2e-spec.ts).
-import { getModelToken } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
 import request from 'supertest';
 import type { ApiErrorBody, BroadcastDto } from '@xuanxue/shared';
-import { ChannelRecord } from '../src/channels/channel.schema';
-import { DeliveryRecord } from '../src/deliveries/delivery.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { withCsrf } from './e2e-support/http';
 import { createLessonTestHelpers, STARTS_AT } from './e2e-support/lessons-fixtures';
@@ -22,13 +18,12 @@ describe('POST /lessons/:id/send-now (e2e)', () => {
     classModel,
     lessonModel,
     broadcastModel,
+    channelModel,
+    deliveryModel,
     createClass,
+    createSendableClass,
     postLesson,
   } = createLessonTestHelpers(() => testApp);
-  const channelModel = (): Model<ChannelRecord> =>
-    testApp.app.get(getModelToken(ChannelRecord.name), { strict: false });
-  const deliveryModel = (): Model<DeliveryRecord> =>
-    testApp.app.get(getModelToken(DeliveryRecord.name), { strict: false });
 
   beforeAll(async () => {
     testApp = await createTestApp();
@@ -45,20 +40,6 @@ describe('POST /lessons/:id/send-now (e2e)', () => {
     await deliveryModel().deleteMany({});
     await channelModel().deleteMany({});
   });
-
-  async function createSendableClass(): Promise<string> {
-    const channel = await channelModel().create({
-      type: 'telegram',
-      title: 'Канал школы',
-      config: '{}',
-      target: '',
-      active: true,
-    });
-    return createClass({
-      zoomLink: 'https://zoom.example/1',
-      channelIds: [channel._id],
-    });
-  }
 
   function sendNow(cookie: string, lessonId: string): request.Test {
     return withCsrf(request(server()).post(`/api/lessons/${lessonId}/send-now`)).set(
@@ -130,7 +111,7 @@ describe('POST /lessons/:id/send-now (e2e)', () => {
     await expect(broadcastModel().countDocuments({ lessonId })).resolves.toBe(1);
   });
 
-  it('sent — 409, без ссылки — 400', async () => {
+  it('sent — 409, без ссылки — 400, невалидный ObjectId — 404', async () => {
     const cookie = await sessionFor(['teacher']);
     const classId = await createSendableClass();
     const sentLesson = await postLesson(cookie, { classId, startsAt: STARTS_AT });
@@ -155,5 +136,10 @@ describe('POST /lessons/:id/send-now (e2e)', () => {
     const noLinkRes = await sendNow(cookie, (noLinkLesson.body as { id: string }).id);
     expect(noLinkRes.status).toBe(400);
     expect((noLinkRes.body as ApiErrorBody).message).toContain('нет ссылки');
+
+    // `id` из пути — просто строка (SECURITY §3): не похожая на ObjectId
+    // строка не должна улетать в Mongoose как CastError/500.
+    const badIdRes = await sendNow(cookie, 'not-an-object-id');
+    expect(badIdRes.status).toBe(404);
   });
 });

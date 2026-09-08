@@ -17,6 +17,7 @@ import { LessonModelModule } from '../lessons/lesson-model.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { BroadcastModelModule } from './broadcast-model.module';
+import { BroadcastModels } from './broadcast-models.provider';
 import { BroadcastsController } from './broadcasts.controller';
 import { BroadcastsService } from './broadcasts.service';
 import { RecordingBroadcastService } from './recording-broadcast.service';
@@ -35,6 +36,7 @@ import { TopicRebuildService } from './topic-rebuild.service';
   ],
   controllers: [BroadcastsController],
   providers: [
+    BroadcastModels,
     BroadcastsService,
     RecordingBroadcastService,
     TopicRebuildService,

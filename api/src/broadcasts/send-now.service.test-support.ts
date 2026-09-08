@@ -13,6 +13,7 @@ import { SettingsRecord } from '../settings/settings.schema';
 import { SettingsService } from '../settings/settings.service';
 import { UserRecord } from '../users/user.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { BroadcastModels } from './broadcast-models.provider';
 import { BroadcastRecord } from './broadcast.schema';
 import { BroadcastsService } from './broadcasts.service';
 import { openTestModels } from './broadcast-planner.service.test-support';
@@ -60,12 +61,15 @@ export async function setupSendNowTest(): Promise<SendNowTestContext> {
     deliveryModel,
     channelModel,
   );
-  const service = new SendNowService(
+  const models = new BroadcastModels(
     lessonModel,
     classModel,
     channelModel,
     broadcastModel,
     deliveryModel,
+  );
+  const service = new SendNowService(
+    models,
     settingsService,
     usersService,
     broadcastsService,

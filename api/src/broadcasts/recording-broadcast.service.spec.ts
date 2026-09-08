@@ -16,6 +16,7 @@ import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import { decrypt } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { BroadcastModels } from './broadcast-models.provider';
 import { BroadcastRecord, BroadcastSchema } from './broadcast.schema';
 import { RecordingBroadcastService } from './recording-broadcast.service';
 
@@ -49,12 +50,15 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
       SettingsSchema,
     );
     const usersService = new UsersService(userModel);
-    service = new RecordingBroadcastService(
+    const models = new BroadcastModels(
       lessonModel,
       classModel,
       channelModel,
       broadcastModel,
       deliveryModel,
+    );
+    service = new RecordingBroadcastService(
+      models,
       new SettingsService(settingsModel, lessonModel, classModel, usersService),
       usersService,
     );

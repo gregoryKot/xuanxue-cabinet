@@ -5,7 +5,6 @@
 import type { ButtonHTMLAttributes, CSSProperties } from 'react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
-type Variant = ButtonVariant;
 
 const base: CSSProperties = {
   minHeight: 44,
@@ -18,7 +17,7 @@ const base: CSSProperties = {
   cursor: 'pointer',
 };
 
-const variants: Record<Variant, CSSProperties> = {
+const variants: Record<ButtonVariant, CSSProperties> = {
   primary: { background: 'var(--accent)', color: 'var(--accent-contrast)' },
   secondary: {
     background: 'transparent',
@@ -33,7 +32,7 @@ const variants: Record<Variant, CSSProperties> = {
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: Variant;
+  variant?: ButtonVariant;
   pending?: boolean;
 }
 
