@@ -59,8 +59,15 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 ## Перед PR
 
 ```bash
-npm run check             # tsc, eslint, prettier, тесты, все храповики — то же, что CI
+npm run check             # tsc, eslint, prettier, тесты (jest api дважды — TZ=Australia/Sydney
+                           # и с покрытием), npm audit, все храповики — то же, что CI, кроме
+                           # gitleaks (бинаря нет локально) и Docker-смока: они только в CI
 ```
+
+`prettier --check` в `check` стоит после тестов, а не перед: `vitest` в
+`web/vite.config.ts` сам переписывает `thresholds` при `autoUpdate` (см. CLAUDE.md,
+храповик `check-coverage-ratchet.mjs`) — если проверять формат раньше, локальный
+прогон зелёный, а CI падает на уже изменённом файле (PR #35, #45).
 
 Заголовок PR — по Conventional Commits (`feat:`, `fix:`, `chore:` …): после squash он
 становится сообщением коммита в `main`. Merge в `main` = деплой на Railway.

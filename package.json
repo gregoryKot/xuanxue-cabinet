@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "knip": "knip",
     "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
-    "check": "npm run build --workspace=shared && npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:e2e --workspace=api && npm run build --workspace=web && npm run gates && npm run knip"
+    "check": "npm run build --workspace=shared && npm run typecheck && npm run lint && npm run test --workspace=shared && TZ=Australia/Sydney npm run test --workspace=api && npm run test:cov --workspace=web && npm run format:check && npm run test:e2e --workspace=api && npm run build --workspace=web && npm run gates && npm run knip && npm audit --omit=dev --audit-level=high"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
