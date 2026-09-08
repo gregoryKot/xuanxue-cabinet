@@ -129,6 +129,11 @@ jobs:
       - name: запуск контейнера (host-сеть — видит services.mongo на localhost)
         run: |
           ENC_KEY=$(printf '0%.0s' {1..64})
+          # BOT_TOKEN и TELEGRAM_WEBHOOK_SECRET теперь обязательны в
+          # production (env.validation.ts) — смок поднимает контейнер именно
+          # как production, поэтому без них он не стартует. Значения
+          # заведомо нерабочие (не настоящий токен бота), нужны только для
+          # прохождения формата (BOT_TOKEN_RE / TELEGRAM_WEBHOOK_SECRET_RE).
           docker run -d --name xuanxue --network host \
             -e NODE_ENV=production \
             -e PORT=3000 \
@@ -136,6 +141,8 @@ jobs:
             -e ENCRYPTION_KEY="$ENC_KEY" \
             -e JWT_SECRET=ci-secret-ci-secret-ci-secret-1234 \
             -e PUBLIC_URL=http://localhost:3000 \
+            -e BOT_TOKEN=1234567:ci-fake-value-for-smoke-only-0000 \
+            -e TELEGRAM_WEBHOOK_SECRET=ci-fake-webhook-secret \
             -e SCHEDULER_ENABLED=true \
             -e RAILWAY_GIT_COMMIT_SHA="$GITHUB_SHA" \
             xuanxue
