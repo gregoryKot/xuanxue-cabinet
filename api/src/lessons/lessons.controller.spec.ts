@@ -3,9 +3,21 @@
 // здесь только «контроллер зовёт сервис и возвращает его ответ».
 import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
-import type { LessonDto } from '@xuanxue/shared';
+import type { BroadcastDto, LessonDto } from '@xuanxue/shared';
+import { SendNowService } from '../broadcasts/send-now.service';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
+
+const BROADCAST_DTO: BroadcastDto = {
+  id: 'b1',
+  kind: 'lesson_link',
+  status: 'scheduled',
+  text: 'x',
+  scheduledAt: '2026-09-01T00:00:00.000Z',
+  channelIds: ['c1'],
+  createdAt: '2026-09-01T00:00:00.000Z',
+  updatedAt: '2026-09-01T00:00:00.000Z',
+};
 
 const LESSON_DTO: LessonDto = {
   id: 'l1',
@@ -21,10 +33,14 @@ const LESSON_DTO: LessonDto = {
 
 async function buildController(
   service: Partial<LessonsService> = {},
+  sendNowService: Partial<SendNowService> = {},
 ): Promise<LessonsController> {
   const module = await Test.createTestingModule({
     controllers: [LessonsController],
-    providers: [{ provide: LessonsService, useValue: service }],
+    providers: [
+      { provide: LessonsService, useValue: service },
+      { provide: SendNowService, useValue: sendNowService },
+    ],
   }).compile();
   return module.get(LessonsController);
 }
@@ -82,5 +98,14 @@ describe('LessonsController', () => {
     // `now` — DateTime.utc() контроллера, конкретный момент не важен здесь
     // (проверяется в lessons.service.spec.ts/recording-broadcast.service.spec.ts).
     expect(addRecording).toHaveBeenCalledWith('l1', body, expect.any(DateTime));
+  });
+
+  it('sendNow() передаёт id в SendNowService', async () => {
+    const sendNow = jest.fn().mockResolvedValue(BROADCAST_DTO);
+    const controller = await buildController({}, { sendNow });
+
+    await expect(controller.sendNow('l1')).resolves.toEqual(BROADCAST_DTO);
+    // `now` — тот же приём, что у addRecording() выше.
+    expect(sendNow).toHaveBeenCalledWith('l1', expect.any(DateTime));
   });
 });

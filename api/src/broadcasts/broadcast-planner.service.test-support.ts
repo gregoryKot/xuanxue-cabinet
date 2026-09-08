@@ -32,9 +32,22 @@ export interface PlannerTestContext {
   service: BroadcastPlannerService;
 }
 
-export async function setupPlannerTest(): Promise<PlannerTestContext> {
-  const memory = await openMemoryMongo();
-  const connection = memory.connection;
+export interface TestModels {
+  classModel: Model<ClassRecord>;
+  lessonModel: Model<LessonRecord>;
+  broadcastModel: Model<BroadcastRecord>;
+  deliveryModel: Model<DeliveryRecord>;
+  channelModel: Model<ChannelRecord>;
+  userModel: Model<UserRecord>;
+  settingsModel: Model<SettingsRecord>;
+  usersService: UsersService;
+}
+
+/** Резолв моделей + `UsersService` из соединения `openMemoryMongo()` — общий
+ * шаг для setupPlannerTest() ниже и send-now.service.test-support.ts
+ * (SendNowService поднимает те же модели ради своего сервиса, CLAUDE.md
+ * «Одна механика — один компонент», jscpd). */
+export function openTestModels(connection: Connection): TestModels {
   const classModel = connection.model<ClassRecord>(ClassRecord.name);
   const lessonModel = connection.model<LessonRecord>(LessonRecord.name);
   const broadcastModel = connection.model<BroadcastRecord>(BroadcastRecord.name);
@@ -43,6 +56,31 @@ export async function setupPlannerTest(): Promise<PlannerTestContext> {
   const userModel = connection.model<UserRecord>(UserRecord.name);
   const settingsModel = connection.model<SettingsRecord>(SettingsRecord.name);
   const usersService = new UsersService(userModel);
+  return {
+    classModel,
+    lessonModel,
+    broadcastModel,
+    deliveryModel,
+    channelModel,
+    userModel,
+    settingsModel,
+    usersService,
+  };
+}
+
+export async function setupPlannerTest(): Promise<PlannerTestContext> {
+  const memory = await openMemoryMongo();
+  const connection = memory.connection;
+  const {
+    classModel,
+    lessonModel,
+    broadcastModel,
+    deliveryModel,
+    channelModel,
+    userModel,
+    settingsModel,
+    usersService,
+  } = openTestModels(connection);
   const service = new BroadcastPlannerService(
     classModel,
     lessonModel,
@@ -77,10 +115,18 @@ export async function clearPlannerTest(ctx: PlannerTestContext): Promise<void> {
   ]);
 }
 
+/** `Pick`, не полный `PlannerTestContext` — send-now.service.test-support.ts
+ * (SendNowService) собирает свой контекст без `service: BroadcastPlannerService`
+ * и переиспользует эти три фикстуры как есть (CLAUDE.md «Одна механика —
+ * один компонент»), не копирует их. */
+type ChannelFixtureContext = Pick<PlannerTestContext, 'channelModel'>;
+type ClassFixtureContext = Pick<PlannerTestContext, 'classModel' | 'channelModel'>;
+type LessonFixtureContext = Pick<PlannerTestContext, 'lessonModel'>;
+
 /** Активный telegram-канал — по умолчанию у класса есть хотя бы один такой
  * (findActiveChannelIds иначе не находит ничего и рассылка не создаётся). */
 export async function createChannel(
-  ctx: PlannerTestContext,
+  ctx: ChannelFixtureContext,
   overrides: Partial<ChannelRecord> = {},
 ) {
   return ctx.channelModel.create({
@@ -94,7 +140,7 @@ export async function createChannel(
 }
 
 export async function createClass(
-  ctx: PlannerTestContext,
+  ctx: ClassFixtureContext,
   overrides: Partial<ClassRecord> = {},
 ) {
   const channelIds = overrides.channelIds ?? [(await createChannel(ctx))._id];
@@ -118,7 +164,7 @@ export async function createClass(
 }
 
 export async function createLesson(
-  ctx: PlannerTestContext,
+  ctx: LessonFixtureContext,
   classId: Types.ObjectId,
   startsAt: Date,
   overrides: Partial<LessonRecord> = {},

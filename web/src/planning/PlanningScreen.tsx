@@ -110,6 +110,7 @@ export default function PlanningScreen() {
           onCreate={lessonsState.create}
           onUpdate={lessonsState.update}
           onAddRecording={lessonsState.addRecording}
+          onSendNow={lessonsState.sendNow}
         />
       )}
     </section>

@@ -4,7 +4,8 @@
 // подпись кнопки остаётся видимой и понятной).
 import type { ButtonHTMLAttributes, CSSProperties } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger';
+type Variant = ButtonVariant;
 
 const base: CSSProperties = {
   minHeight: 44,

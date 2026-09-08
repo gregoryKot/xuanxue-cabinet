@@ -118,7 +118,7 @@ describe('Lessons (e2e)', () => {
   describe('учитель', () => {
     it('POST разового занятия → 201 без plannedAt и без документа Mongoose; GET видит его; без смещения зоны — 400', async () => {
       const cookie = await sessionFor(['teacher']);
-      const classId = await createClass(45);
+      const classId = await createClass({ rulesDurationMin: 45 });
 
       const created = await postLesson(cookie, { classId, startsAt: STARTS_AT });
       expect(created.status).toBe(201);

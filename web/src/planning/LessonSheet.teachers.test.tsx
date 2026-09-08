@@ -38,6 +38,7 @@ describe('LessonSheet — ошибка загрузки учителей (ауд
           onCreate={vi.fn().mockResolvedValue(undefined)}
           onUpdate={vi.fn().mockResolvedValue(undefined)}
           onAddRecording={vi.fn().mockResolvedValue(undefined)}
+          onSendNow={vi.fn().mockResolvedValue(undefined)}
         />
       </MemoryRouter>,
     );
@@ -64,6 +65,7 @@ describe('LessonSheet — ошибка загрузки учителей (ауд
           onCreate={vi.fn().mockResolvedValue(undefined)}
           onUpdate={vi.fn().mockResolvedValue(undefined)}
           onAddRecording={vi.fn().mockResolvedValue(undefined)}
+          onSendNow={vi.fn().mockResolvedValue(undefined)}
         />
       </MemoryRouter>,
     );
@@ -87,6 +89,7 @@ describe('LessonSheet — ошибка загрузки учителей (ауд
           onCreate={vi.fn().mockResolvedValue(undefined)}
           onUpdate={vi.fn().mockResolvedValue(undefined)}
           onAddRecording={vi.fn().mockResolvedValue(undefined)}
+          onSendNow={vi.fn().mockResolvedValue(undefined)}
         />
       </MemoryRouter>,
     );

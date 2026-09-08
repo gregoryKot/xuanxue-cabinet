@@ -3,7 +3,7 @@
 // чтобы оба спека уместились в лимит файл-храповика (CLAUDE.md «Храповики»),
 // без дублей (jscpd), как channels-fixtures.ts для channels.e2e-spec.ts.
 import { getModelToken } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import type { Model, Types } from 'mongoose';
 import request from 'supertest';
 import type { UserRole } from '@xuanxue/shared';
 import { BroadcastRecord } from '../../src/broadcasts/broadcast.schema';
@@ -28,11 +28,32 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
   const broadcastModel = (): Model<BroadcastRecord> =>
     getApp().app.get(getModelToken(BroadcastRecord.name), { strict: false });
 
-  async function createClass(rulesDurationMin = 45): Promise<string> {
+  // `zoomLink`/`channelIds` — только send-now.e2e-spec.ts (нужен реально
+  // рассылаемый класс: ссылка и активный канал), остальные вызовы этого
+  // хелпера их не передают и получают прежнее поведение без изменений.
+  // Пишем `zoomLink` как есть, БЕЗ encryptRecord: `encryptRecord`/`encrypt`
+  // живут в `utils/encryption.ts`, который читает `ENCRYPTION_KEY` один раз
+  // при импорте модуля (`loadKeys()` на верхнем уровне файла) — статический
+  // import отсюда исполнился бы до `setTestEnv()` в createTestApp() (этот
+  // файл импортируется до `beforeAll`) и навсегда закэшировал бы пустой ключ
+  // для всего e2e-приложения (create-app.ts объясняет тот же приём для
+  // AppModule). `decrypt()` сам понимает лёгаси-открытый текст и возвращает
+  // его как есть (utils/encryption.ts) — рассылке этого достаточно, тест не
+  // про шифрование класса (оно уже проверено в classes.e2e-spec.ts).
+  async function createClass(
+    overrides: {
+      rulesDurationMin?: number;
+      zoomLink?: string;
+      channelIds?: Types.ObjectId[];
+    } = {},
+  ): Promise<string> {
+    const { rulesDurationMin = 45, zoomLink, channelIds } = overrides;
     const cls = await classModel().create({
       title: 'Тайцзицюань',
       format: 'online',
       rules: [{ weekday: 4, time: '19:00', durationMin: rulesDurationMin }],
+      zoomLink,
+      channelIds,
     });
     return cls._id.toString();
   }

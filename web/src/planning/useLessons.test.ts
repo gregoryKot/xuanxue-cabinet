@@ -80,6 +80,12 @@ const MUTATIONS: MutationCase[] = [
     path: '/lessons/l1/recording',
     method: 'POST',
   },
+  {
+    name: 'sendNow',
+    call: (result) => result.sendNow('l1'),
+    path: '/lessons/l1/send-now',
+    method: 'POST',
+  },
 ];
 
 describe('useLessons — мутации (read-after-write)', () => {

@@ -656,9 +656,9 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 | POST                  | `/auth/logout`                                  | с сессией      |
 | POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все            |
 | GET/POST/PATCH/DELETE | `/classes` (реализовано)                        | учитель        |
-| POST                  | `/classes/:id/send-now`                         | учитель        |
 | GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)        | учитель        |
 | POST                  | `/lessons/:id/recording` (реализовано)          | учитель        |
+| POST                  | `/lessons/:id/send-now` (реализовано)           | учитель        |
 | GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано) | учитель        |
 | GET/POST              | `/broadcasts`, `/broadcasts/:id`,               |                |
 |                       | `/broadcasts/:id/deliveries` (реализовано)      | учитель        |
@@ -678,6 +678,16 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 `POST /broadcasts` идемпотентно по `idempotencyKey` в теле (UUID от клиента,
 CLAUDE.md «API»): повтор с тем же ключом возвращает уже созданную рассылку, а
 не плодит вторую.
+
+`POST /lessons/:id/send-now` (аудит В12) — раньше в этой таблице стоял
+`/classes/:id/send-now`: поправлено на `/lessons`, потому что действие
+относится к конкретной дате занятия, а не к слоту расписания (у слота нет
+своей рассылки, есть только у каждой сгенерированной из него даты).
+Существующая `scheduled`-рассылка `lesson_link` торопится к отправке
+(`scheduledAt` — `now`), `cancelled`/`failed` — пересоздаётся текстом на
+текущий момент, `sent` — 409 (уже ушла). Кнопка «Отправить ссылку сейчас» —
+в листе даты занятия на «Планировании» (п.3 выше); эндпоинт остаётся
+запасным путём и для RUNBOOK §8.1.
 
 Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0010): без сессии
 401, без ролей (`roles: []`) и `student` — 403, `teacher`/`admin` — 200,

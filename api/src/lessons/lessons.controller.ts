@@ -15,8 +15,9 @@ import {
   Query,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { LessonDto } from '@xuanxue/shared';
+import type { BroadcastDto, LessonDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
+import { SendNowService } from '../broadcasts/send-now.service';
 import { AddRecordingDto } from './dto/add-recording.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { ListLessonsDto } from './dto/list-lessons.dto';
@@ -26,7 +27,10 @@ import { LessonsService } from './lessons.service';
 @Controller('lessons')
 @Roles('teacher', 'admin')
 export class LessonsController {
-  constructor(private readonly lessonsService: LessonsService) {}
+  constructor(
+    private readonly lessonsService: LessonsService,
+    private readonly sendNowService: SendNowService,
+  ) {}
 
   @Get()
   list(@Query() query: ListLessonsDto): Promise<LessonDto[]> {
@@ -62,5 +66,13 @@ export class LessonsController {
     @Body() body: AddRecordingDto,
   ): Promise<LessonDto> {
     return this.lessonsService.addRecording(id, body, DateTime.utc());
+  }
+
+  // Аудит В12: PLAN §6 обещал POST /classes/:id/send-now, действие относится
+  // к дате занятия, не к слоту — маршрут на /lessons (docs/PLAN.md §6 «API»).
+  @Post(':id/send-now')
+  @HttpCode(HttpStatus.OK)
+  sendNow(@Param('id') id: string): Promise<BroadcastDto> {
+    return this.sendNowService.sendNow(id, DateTime.utc());
   }
 }

@@ -20,6 +20,7 @@ import { useDialog } from '../hooks/useDialog';
 import { useHistorySheet } from '../hooks/useHistorySheet';
 import { LessonFormFields } from './LessonFormFields';
 import { RecordingSection } from './RecordingSection';
+import { SendNowButton } from './SendNowButton';
 import { useLessonForm } from './useLessonForm';
 
 interface LessonSheetProps {
@@ -34,6 +35,7 @@ interface LessonSheetProps {
   onCreate: (input: CreateLessonInput) => Promise<void>;
   onUpdate: (id: string, input: UpdateLessonInput) => Promise<void>;
   onAddRecording: (id: string, input: AddRecordingInput) => Promise<void>;
+  onSendNow: (id: string) => Promise<void>;
 }
 
 export function LessonSheet({
@@ -46,6 +48,7 @@ export function LessonSheet({
   onCreate,
   onUpdate,
   onAddRecording,
+  onSendNow,
 }: LessonSheetProps) {
   const goBack = useHistorySheet(onClose);
   const { headingRef } = useDialog(goBack);
@@ -61,16 +64,10 @@ export function LessonSheet({
     if (await form.submit()) goBack();
   }
 
-  async function handleConfirmCancel() {
-    // Результат игнорируем — ConfirmDialog сам закрывается после ответа
-    // сервера (успех или сбой), лист занятия остаётся открытым: сбой
-    // (ApiError) показывается в нём же, а не пропадает вместе с диалогом
-    // подтверждения.
+  // ConfirmDialog ждёт этот промис перед закрытием (успех или сбой) — сбой
+  // (ApiError) остаётся видимым в самом листе, а не пропадает вместе с диалогом.
+  async function handleConfirmCancel(): Promise<void> {
     await form.cancelLesson();
-  }
-
-  async function handleRestore() {
-    await form.restoreLesson();
   }
 
   return (
@@ -114,12 +111,16 @@ export function LessonSheet({
                 type="button"
                 variant="secondary"
                 pending={form.pending}
-                onClick={() => void handleRestore()}
+                onClick={() => void form.restoreLesson()}
               >
                 Вернуть в расписание
               </Button>
             )}
           </div>
+        )}
+
+        {lessonDto && !cancelled && (
+          <SendNowButton lessonId={lessonDto.id} onSendNow={onSendNow} />
         )}
 
         {lessonDto && (
