@@ -251,8 +251,9 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 
 ## Приложение на телефоне и уведомления
 
-Кабинет с первого дня — устанавливаемое приложение (PWA) с push-уведомлениями.
-Решение и ограничения iOS — [ADR-0006](docs/adr/0006-pwa-and-web-push.md). Правила:
+Кабинет с первого дня — устанавливаемое приложение (PWA); push-уведомления —
+этап 2 (docs/PLAN.md §5), Telegram и email закрывают этап 1 сами. Решение и
+ограничения iOS — [ADR-0006](docs/adr/0006-pwa-and-web-push.md). Правила:
 
 - Manifest и service worker собирает `vite-plugin-pwa` при обычном `npm run build`.
   Гейт: `scripts/check-pwa.mjs` после сборки (manifest, иконки 192/512, SW).

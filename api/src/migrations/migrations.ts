@@ -8,5 +8,6 @@ export interface Migration {
   up: (db: Db) => Promise<void>;
 }
 
-// Этап 0: моделей и данных для миграции ещё нет.
+// Этап 1: модели есть, но ни одна ещё не требовала миграции данных —
+// реестр пуст, раннер и коллекция `migrations` готовы к первой записи.
 export const MIGRATIONS: Migration[] = [];
