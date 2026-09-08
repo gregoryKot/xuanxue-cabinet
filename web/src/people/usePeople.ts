@@ -14,6 +14,7 @@ export interface UsePeopleResult {
   error: string | null;
   reload: () => Promise<void>;
   updateRoles: (id: string, input: UpdateUserRolesInput) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 }
 
 export function usePeople(): UsePeopleResult {
@@ -30,5 +31,16 @@ export function usePeople(): UsePeopleResult {
     [reload],
   );
 
-  return { people: data, loading, error, reload, updateRoles };
+  // DELETE /users/:id — весь набор данных пользователя разом (аудит В11,
+  // UserDeletionService.deleteAllUserData); read-after-write тем же приёмом,
+  // что updateRoles.
+  const remove = useCallback(
+    async (id: string) => {
+      await apiFetch(`/users/${id}`, { method: 'DELETE' });
+      await reload();
+    },
+    [reload],
+  );
+
+  return { people: data, loading, error, reload, updateRoles, remove };
 }

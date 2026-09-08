@@ -35,7 +35,11 @@ describe('ConfirmDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Отменить занятие' }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    // handleConfirm — async (не await'ится самим обработчиком клика), goBack()
+    // после него уходит отдельным микротаском — под нагрузкой полного прогона
+    // (много файлов параллельно) он не всегда успевает до конца user.click(),
+    // мигал в CI (CLAUDE.md «Детерминизм»: мигающий тест чинится в тот же день).
+    await waitFor(() => expect(onCancel).toHaveBeenCalledTimes(1));
   });
 
   it('дожидается асинхронного onConfirm перед закрытием', async () => {

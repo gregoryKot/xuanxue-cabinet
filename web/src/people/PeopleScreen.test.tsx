@@ -1,7 +1,7 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts») и useAuth (экран
 // сравнивает id строки с me.id, чтобы найти себя) — по образцу
 // summary/SummaryScreen.test.tsx.
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -126,5 +126,31 @@ describe('PeopleScreen — список', () => {
       expect.objectContaining({ method: 'PATCH', body: { roles: ['teacher'] } }),
     );
     await waitFor(() => expect(screen.getByLabelText('Учитель — Гриша')).toBeChecked());
+  });
+
+  it('сбой удаления — текст ошибки виден на строке (usePeople.remove)', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('../api/http');
+    // Себя (admin-1 === me.id) кнопка «Удалить данные» не показывает —
+    // в списке только одна такая кнопка, у чужой строки Гриши.
+    mockedApiFetch.mockResolvedValueOnce([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Гриша');
+
+    mockedApiFetch.mockRejectedValueOnce(
+      new ApiError('Пользователь не найден. Обновите список.', 404, 'not_found'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Удалить данные' }));
+    const dialog = screen.getByRole('dialog', { name: 'Удалить данные?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить данные' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Пользователь не найден. Обновите список.',
+    );
   });
 });

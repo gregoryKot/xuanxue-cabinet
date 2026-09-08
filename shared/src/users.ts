@@ -53,6 +53,11 @@ export const SELF_DEMOTE_MESSAGE =
 export const LAST_ADMIN_MESSAGE =
   'Это последний администратор школы. Сначала назначьте другого, потом снимайте эту роль здесь.';
 
+/** Нельзя удалить свой же аккаунт — некому будет подтвердить и вернуть себе
+ * доступ после удаления (UserDeletionService.deleteAllUserData, аудит В11). */
+export const SELF_DELETE_MESSAGE =
+  'Свой аккаунт удалить нельзя — попросите об этом другого администратора.';
+
 /** `leaderId` у занятия/даты занятия — не существующий teacher/admin с
  * активным статусом (аудит В4: раньше принимался как есть, без проверки).
  * Общий текст для ClassesService и LessonsService (assert-teacher.ts). */

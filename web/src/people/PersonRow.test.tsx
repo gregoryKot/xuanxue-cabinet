@@ -1,5 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+// MemoryRouter — ConfirmDialog внутри строки держит useHistorySheet
+// (react-router), как в BroadcastCard.test.tsx.
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { UserDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
@@ -23,17 +26,21 @@ function renderRow(
   onChangeRoles: (roles: UserDto['roles']) => Promise<void> = vi
     .fn()
     .mockResolvedValue(undefined),
+  onRemove: () => Promise<void> = vi.fn().mockResolvedValue(undefined),
 ) {
   render(
-    <ul>
-      <PersonRow
-        person={makePerson(overrides)}
-        isSelf={isSelf}
-        onChangeRoles={onChangeRoles}
-      />
-    </ul>,
+    <MemoryRouter initialEntries={['/hub', '/people']} initialIndex={1}>
+      <ul>
+        <PersonRow
+          person={makePerson(overrides)}
+          isSelf={isSelf}
+          onChangeRoles={onChangeRoles}
+          onRemove={onRemove}
+        />
+      </ul>
+    </MemoryRouter>,
   );
-  return { onChangeRoles };
+  return { onChangeRoles, onRemove };
 }
 
 describe('PersonRow', () => {
@@ -121,6 +128,59 @@ describe('PersonRow', () => {
     resolveChange();
     await waitFor(() =>
       expect(screen.getByLabelText('Администратор — Гриша')).not.toBeDisabled(),
+    );
+  });
+
+  it('«Удалить данные» есть у чужой строки', () => {
+    renderRow({ roles: [] }, false);
+    expect(screen.getByRole('button', { name: 'Удалить данные' })).toBeInTheDocument();
+  });
+
+  it('«Удалить данные» нет у своей строки — себя не удалить', () => {
+    renderRow({ roles: ['admin'] }, true);
+    expect(
+      screen.queryByRole('button', { name: 'Удалить данные' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('клик по «Удалить данные» открывает подтверждение, «Удалить данные» в диалоге зовёт onRemove', async () => {
+    const user = userEvent.setup();
+    const { onRemove } = renderRow({ roles: [] });
+
+    await user.click(screen.getByRole('button', { name: 'Удалить данные' }));
+    const dialog = screen.getByRole('dialog', { name: 'Удалить данные?' });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText(/Аккаунт и вход в кабинет пропадут/)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить данные' }));
+
+    expect(onRemove).toHaveBeenCalled();
+  });
+
+  it('отмена в диалоге — onRemove не вызван', async () => {
+    const user = userEvent.setup();
+    const { onRemove } = renderRow({ roles: [] });
+
+    await user.click(screen.getByRole('button', { name: 'Удалить данные' }));
+    await user.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  it('сбой удаления — alert с текстом ошибки', async () => {
+    const user = userEvent.setup();
+    const onRemove = vi
+      .fn()
+      .mockRejectedValue(new ApiError('Свой аккаунт удалить нельзя.', 403, 'forbidden'));
+    renderRow({ roles: [] }, false, undefined, onRemove);
+
+    await user.click(screen.getByRole('button', { name: 'Удалить данные' }));
+    const dialog = screen.getByRole('dialog', { name: 'Удалить данные?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить данные' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Свой аккаунт удалить нельзя.',
     );
   });
 });

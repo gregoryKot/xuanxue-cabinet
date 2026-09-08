@@ -5,8 +5,8 @@
 // (model.registry.spec.ts).
 //
 // retention: коллекция живёт, пока жив аккаунт — полное удаление идёт через
-// deleteAllUserData (CLAUDE.md «Персональные данные учеников»), отдельного
-// TTL нет.
+// UserDeletionService.deleteAllUserData (CLAUDE.md «Персональные данные
+// учеников», DELETE /users/:id, аудит В11), отдельного TTL нет.
 // telegramId — Number, не String/Mixed, в USER_FIELD_POLICY (шифрование) не
 // попадает — но это PII и ключ входа, причина фиксируется здесь, а не в policy.
 // lastLoginAt — Date, та же причина не попасть в USER_FIELD_POLICY; нужен для

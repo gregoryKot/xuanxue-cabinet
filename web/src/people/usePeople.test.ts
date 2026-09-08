@@ -45,3 +45,22 @@ describe('usePeople — updateRoles (read-after-write)', () => {
     );
   });
 });
+
+describe('usePeople — remove (read-after-write)', () => {
+  it('DELETE /users/:id, затем перечитывает список', async () => {
+    mockedApiFetch.mockResolvedValueOnce([]);
+    const { result } = renderHook(() => usePeople());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockedApiFetch.mockResolvedValueOnce(undefined);
+    mockedApiFetch.mockResolvedValueOnce([]);
+    await result.current.remove('u1');
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/users/u1',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    // Перечитывание — второй вызов apiFetch, тот же /users?limit, что при загрузке.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(3);
+  });
+});
