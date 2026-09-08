@@ -1,15 +1,20 @@
 // Экран входа — до первого действия объясняет, что это и зачем (CLAUDE.md
 // «Продукт»). Один способ входа — кнопка «Войти через Telegram»
-// (window.Telegram.Login.auth(), см. useTelegramLogin.ts); email/Google —
-// следующие PR. Уже вошедшего уводит на /schedule, не показывая эту форму.
+// (window.Telegram.Login.auth(), см. useTelegramLogin.ts) на десктопе и
+// автозавершение из #tgAuthResult= на мобильном (useTelegramAuthResultLogin.ts,
+// баг с прода 2026-09-08); email/Google — следующие PR. Уже вошедшего уводит
+// на /schedule, не показывая эту форму.
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import type { TelegramLoginInput } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { ApiError } from '../api/http';
 import { Button } from '../components/Button';
 import { SkeletonLines } from '../components/Skeleton';
 import { useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
+import {
+  postTelegramLogin,
+  useTelegramAuthResultLogin,
+} from './useTelegramAuthResultLogin';
 import { useTelegramLogin } from './useTelegramLogin';
 
 const NOT_CONFIGURED_MESSAGE =
@@ -22,6 +27,7 @@ export default function LoginScreen() {
   const { status: authStatus, refresh } = useAuth();
   const { config, status: configStatus, reload } = useAuthConfig();
   const { ready, login } = useTelegramLogin(config?.telegramBotId);
+  const { pending: autoPending, error: autoError } = useTelegramAuthResultLogin(refresh);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,9 +67,16 @@ export default function LoginScreen() {
         Войдите через Telegram — тем же аккаунтом, которым вы читаете канал школы.
       </p>
 
-      {configStatus === 'loading' && <SkeletonLines widths={['70%', '40%']} />}
+      {/* Фрагмент #tgAuthResult= есть — вход уже идёт сам, кнопку не
+          показываем: на телефоне она иначе на мгновение мигает раньше
+          скелетона (CLAUDE.md «Фронтенд» — скелетон по форме контента). */}
+      {autoPending && <SkeletonLines widths={['70%', '40%']} />}
 
-      {configStatus === 'offline' && (
+      {!autoPending && configStatus === 'loading' && (
+        <SkeletonLines widths={['70%', '40%']} />
+      )}
+
+      {!autoPending && configStatus === 'offline' && (
         <div role="alert">
           <p style={{ margin: '0 0 8px' }}>{OFFLINE_MESSAGE}</p>
           <Button variant="secondary" onClick={() => void reload()}>
@@ -72,11 +85,11 @@ export default function LoginScreen() {
         </div>
       )}
 
-      {configStatus === 'ok' && !config?.telegramBotId && (
+      {!autoPending && configStatus === 'ok' && !config?.telegramBotId && (
         <p role="alert">{NOT_CONFIGURED_MESSAGE}</p>
       )}
 
-      {configStatus === 'ok' && config?.telegramBotId && (
+      {!autoPending && configStatus === 'ok' && config?.telegramBotId && (
         <Button
           pending={pending}
           disabled={!ready}
@@ -86,15 +99,11 @@ export default function LoginScreen() {
         </Button>
       )}
 
-      {error && (
+      {(error || autoError) && (
         <p role="alert" style={{ color: 'var(--danger)' }}>
-          {error}
+          {error ?? autoError}
         </p>
       )}
     </main>
   );
-}
-
-function postTelegramLogin(user: TelegramLoginInput) {
-  return apiFetch('/auth/telegram', { method: 'POST', body: user });
 }

@@ -53,11 +53,27 @@ async function fireScriptLoad() {
   script?.dispatchEvent(new Event('load'));
 }
 
+/** Тот же способ, что у telegram-widget.js: JSON → base64 → base64url без
+ * паддинга (см. telegramAuthResult.test.ts). */
+function toTgAuthResultHash(user: TelegramLoginInput): string {
+  // first_name часто кириллица («Дима») — голый btoa(JSON.stringify(...))
+  // падает на не-Latin1 символах, поэтому кодируем в сырые UTF-8-байты, как
+  // это делает сервер Telegram (см. telegramAuthResult.test.ts).
+  const bytes = new TextEncoder().encode(JSON.stringify(user));
+  const binaryString = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+  const encoded = btoa(binaryString)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return `#tgAuthResult=${encoded}`;
+}
+
 afterEach(() => {
   mockedApiFetch.mockReset();
   __resetTelegramWidgetForTests();
   delete window.Telegram;
   document.head.innerHTML = '';
+  window.location.hash = ''; // мобильный сценарий оставляет фрагмент — чистим между тестами
 });
 
 function renderScreen() {
@@ -195,6 +211,79 @@ describe('LoginScreen — вход', () => {
     expect(
       await screen.findByText('Не удалось войти. Попробуйте ещё раз.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('LoginScreen — мобильный вход через #tgAuthResult= (баг с прода 2026-09-08)', () => {
+  it('фрагмент в адресе → POST /auth/telegram сам, refresh, редирект на /schedule, фрагмент убран', async () => {
+    const fakeTelegramUser: TelegramLoginInput = {
+      id: 42,
+      first_name: 'Дима',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    };
+    window.location.hash = toTgAuthResultHash(fakeTelegramUser);
+
+    const me: MeDto = {
+      id: 'u1',
+      name: 'Дима',
+      roles: ['teacher'],
+      tz: 'Asia/Jerusalem',
+    };
+    mockRoutes(
+      () => Promise.resolve({ telegramBotId: 123456 }),
+      () => Promise.resolve(me),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/auth/telegram',
+      expect.objectContaining({ method: 'POST', body: fakeTelegramUser }),
+    );
+    expect(window.location.hash).toBe('');
+  });
+
+  it('фрагмент в адресе, но POST падает — текст ошибки виден, на /schedule не уводит', async () => {
+    window.location.hash = toTgAuthResultHash({
+      id: 42,
+      first_name: 'Дима',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    });
+
+    mockRoutes(
+      () => Promise.resolve({ telegramBotId: 123456 }),
+      () =>
+        Promise.reject(new ApiError('Подпись виджета не сошлась.', 401, 'unauthorized')),
+    );
+
+    renderScreen();
+
+    expect(await screen.findByText('Подпись виджета не сошлась.')).toBeInTheDocument();
+    expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
+  });
+
+  it('фрагмент в адресе, POST падает не ApiError — общий текст ошибки', async () => {
+    window.location.hash = toTgAuthResultHash({
+      id: 42,
+      first_name: 'Дима',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    });
+
+    mockRoutes(
+      () => Promise.resolve({ telegramBotId: 123456 }),
+      () => Promise.reject(new Error('boom')),
+    );
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('Не удалось войти. Попробуйте ещё раз.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
   });
 });
 
