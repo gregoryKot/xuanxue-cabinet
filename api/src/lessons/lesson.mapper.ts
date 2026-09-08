@@ -2,7 +2,12 @@
 // (CLAUDE.md, раздел «API»: документ Mongoose наружу не возвращается —
 // `recordingPromptedAt` в DTO нет ни строкой, ни намёком).
 import type { Types } from 'mongoose';
-import type { LessonDto, Recording, RecordingDto } from '@xuanxue/shared';
+import type {
+  BroadcastStatus,
+  LessonDto,
+  Recording,
+  RecordingDto,
+} from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
 import type { LessonRecord } from './lesson.schema';
 
@@ -19,7 +24,17 @@ export type LeanLesson = Omit<LessonRecord, 'recordings'> & {
   updatedAt: Date;
 };
 
-export function toLessonDto(doc: LeanLesson): LessonDto {
+/**
+ * `linkBroadcastStatus` — статус рассылки-ссылки этого занятия (`kind:
+ * 'lesson_link'`), если она уже создана планировщиком; отдельный параметр,
+ * не поле LeanLesson — рассылка лежит в другой коллекции, LessonsService.list
+ * находит статусы одним `find({ lessonId: { $in }, kind: 'lesson_link' })`
+ * на весь список и передаёт сюда по одному (docs/PLAN.md §6 п.3, без N+1).
+ */
+export function toLessonDto(
+  doc: LeanLesson,
+  linkBroadcastStatus?: BroadcastStatus,
+): LessonDto {
   return {
     id: doc._id.toString(),
     classId: doc.classId.toString(),
@@ -34,6 +49,9 @@ export function toLessonDto(doc: LeanLesson): LessonDto {
     zoomPasswordOverride: doc.zoomPasswordOverride,
     recordings: doc.recordings.map(toRecordingDto),
     note: doc.note,
+    broadcast: linkBroadcastStatus
+      ? { status: linkBroadcastStatus, kind: 'lesson_link' }
+      : undefined,
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
   };

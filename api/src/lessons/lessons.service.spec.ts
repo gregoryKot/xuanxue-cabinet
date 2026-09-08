@@ -7,6 +7,7 @@
 // (broadcast+доставки, cancelled) проверена в recording-broadcast.service.spec.ts.
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
+import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema';
 import type { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from './lesson.schema';
@@ -41,6 +42,7 @@ describe('LessonsService', () => {
   let connection: Connection;
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
+  let broadcastModel: Model<BroadcastRecord>;
   let recordingBroadcast: RecordingBroadcastService & {
     calls: number;
     urls: (string | undefined)[];
@@ -52,8 +54,17 @@ describe('LessonsService', () => {
     connection = memory.connection;
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
+    broadcastModel = connection.model<BroadcastRecord>(
+      BroadcastRecord.name,
+      BroadcastSchema,
+    );
     recordingBroadcast = fakeRecordingBroadcast();
-    service = new LessonsService(lessonModel, classModel, recordingBroadcast);
+    service = new LessonsService(
+      lessonModel,
+      classModel,
+      recordingBroadcast,
+      broadcastModel,
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -65,6 +76,7 @@ describe('LessonsService', () => {
     recordingBroadcast.urls = [];
     await lessonModel.deleteMany({});
     await classModel.deleteMany({});
+    await broadcastModel.deleteMany({});
   });
 
   async function createClass(overrides: Partial<ClassRecord> = {}): Promise<string> {
@@ -126,6 +138,33 @@ describe('LessonsService', () => {
     const list = await service.list({ from: FROM, to: TO });
 
     expect(list.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('list: занятие с рассылкой ссылки — поле broadcast со статусом, без рассылки — поле отсутствует', async () => {
+    const classId = await createClass();
+    const withBroadcast = await service.create({
+      classId,
+      startsAt: '2026-09-03T16:00:00Z',
+    });
+    const withoutBroadcast = await service.create({
+      classId,
+      startsAt: '2026-09-04T16:00:00Z',
+    });
+    await broadcastModel.create({
+      kind: 'lesson_link',
+      lessonId: withBroadcast.id,
+      text: 'Ссылка на занятие',
+      scheduledAt: new Date('2026-09-03T15:30:00Z'),
+      channelIds: [],
+      status: 'sent',
+    });
+
+    const list = await service.list({ from: FROM, to: TO });
+
+    const withDto = list.find((l) => l.id === withBroadcast.id);
+    const withoutDto = list.find((l) => l.id === withoutBroadcast.id);
+    expect(withDto?.broadcast).toEqual({ status: 'sent', kind: 'lesson_link' });
+    expect(withoutDto?.broadcast).toBeUndefined();
   });
 
   it('zoomLinkOverride зашифрован в сырой Mongo, расшифрован в DTO', async () => {

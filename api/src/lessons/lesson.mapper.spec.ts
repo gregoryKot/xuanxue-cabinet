@@ -55,9 +55,21 @@ describe('toLessonDto', () => {
         },
       ],
       note: 'Перенесли из-за праздника',
+      broadcast: undefined,
       createdAt: '2026-09-01T10:00:00.000Z',
       updatedAt: '2026-09-02T11:00:00.000Z',
     });
+  });
+
+  it('передан статус рассылки ссылки — поле broadcast со status и kind', () => {
+    const dto = toLessonDto(fullLesson(), 'sent');
+    expect(dto.broadcast).toEqual({ status: 'sent', kind: 'lesson_link' });
+  });
+
+  it('статус рассылки не передан — поля broadcast в ответе нет', () => {
+    const dto = toLessonDto(fullLesson());
+    expect(dto.broadcast).toBeUndefined();
+    expect(JSON.stringify(dto)).not.toContain('broadcast');
   });
 
   it('разовое занятие без необязательных полей — ключи отсутствуют, не мусор', () => {

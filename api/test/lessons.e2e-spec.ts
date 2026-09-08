@@ -1,32 +1,34 @@
 // e2e на /lessons — данные школы (ADR-0010): доступ по роли, не по владельцу
 // (e2e-support/README.md, «данные школы»). Настоящий AppModule на
-// MongoMemoryServer — те же гвард/пайпы/фильтры, что видит браузер.
-import { getModelToken } from '@nestjs/mongoose';
-import { Types, type Model } from 'mongoose';
+// MongoMemoryServer — те же гвард/пайпы/фильтры, что видит браузер. Статус
+// рассылки на карточке — lessons-broadcast-status.e2e-spec.ts (тот же файл
+// хелперов, чтобы спек уместился в лимит, CLAUDE.md «Храповики»).
+import { Types } from 'mongoose';
 import request from 'supertest';
 import type { ApiErrorBody, LessonDto, UserRole } from '@xuanxue/shared';
-import { ClassRecord } from '../src/classes/class.schema';
-import { LessonRecord } from '../src/lessons/lesson.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
-import { sessionCookieFor, withCsrf } from './e2e-support/http';
-
-const FROM = '2026-09-01T00:00:00Z';
-const TO = '2026-09-08T00:00:00Z';
-const STARTS_AT = '2026-09-03T16:00:00Z';
+import { withCsrf } from './e2e-support/http';
+import {
+  createLessonTestHelpers,
+  FROM,
+  STARTS_AT,
+  TO,
+} from './e2e-support/lessons-fixtures';
 
 describe('Lessons (e2e)', () => {
   let testApp: TestApp;
-  let classModel: Model<ClassRecord>;
-  let lessonModel: Model<LessonRecord>;
+  const {
+    server,
+    sessionFor,
+    classModel,
+    lessonModel,
+    createClass,
+    postLesson,
+    patchLesson,
+  } = createLessonTestHelpers(() => testApp);
 
   beforeAll(async () => {
     testApp = await createTestApp();
-    classModel = testApp.app.get<Model<ClassRecord>>(getModelToken(ClassRecord.name), {
-      strict: false,
-    });
-    lessonModel = testApp.app.get<Model<LessonRecord>>(getModelToken(LessonRecord.name), {
-      strict: false,
-    });
   }, 60_000);
 
   afterAll(async () => {
@@ -34,42 +36,9 @@ describe('Lessons (e2e)', () => {
   });
 
   afterEach(async () => {
-    await lessonModel.deleteMany({});
-    await classModel.deleteMany({});
+    await lessonModel().deleteMany({});
+    await classModel().deleteMany({});
   });
-
-  function server(): ReturnType<TestApp['app']['getHttpServer']> {
-    return testApp.app.getHttpServer();
-  }
-
-  async function sessionFor(roles: UserRole[]): Promise<string> {
-    return sessionCookieFor(testApp.app, roles);
-  }
-
-  async function createClass(rulesDurationMin = 45): Promise<string> {
-    const cls = await classModel.create({
-      title: 'Тайцзицюань',
-      format: 'online',
-      rules: [{ weekday: 4, time: '19:00', durationMin: rulesDurationMin }],
-    });
-    return cls._id.toString();
-  }
-
-  function postLesson(cookie: string, body: Record<string, unknown>): request.Test {
-    return withCsrf(request(server()).post('/api/lessons'))
-      .set('Cookie', cookie)
-      .send(body);
-  }
-
-  function patchLesson(
-    cookie: string,
-    id: string,
-    body: Record<string, unknown>,
-  ): request.Test {
-    return withCsrf(request(server()).patch(`/api/lessons/${id}`))
-      .set('Cookie', cookie)
-      .send(body);
-  }
 
   it('GET /lessons без cookie — 401 в конверте', async () => {
     const res = await request(server()).get('/api/lessons').query({ from: FROM, to: TO });
@@ -189,7 +158,7 @@ describe('Lessons (e2e)', () => {
       expect((patched.body as LessonDto).topic).toBe('Пятое занятие цикла');
       expect((patched.body as LessonDto).zoomLinkOverride).toBe(link);
 
-      const raw = await lessonModel.collection.findOne<{ zoomLinkOverride?: string }>({
+      const raw = await lessonModel().collection.findOne<{ zoomLinkOverride?: string }>({
         _id: new Types.ObjectId(dto.id),
       });
       expect(raw?.zoomLinkOverride).toBeDefined();
@@ -197,7 +166,7 @@ describe('Lessons (e2e)', () => {
 
       // Служебная метка бота («Запись?» задаётся один раз) — планировщик
       // проставляет её напрямую через модель, наружу она не должна уйти.
-      await lessonModel.updateOne(
+      await lessonModel().updateOne(
         { _id: dto.id },
         { $set: { recordingPromptedAt: new Date() } },
       );
@@ -251,7 +220,7 @@ describe('Lessons (e2e)', () => {
     it('DELETE даты из расписания — 409, дата остаётся; DELETE разовой — 204, затем 404', async () => {
       const cookie = await sessionFor(['teacher']);
       const classId = await createClass();
-      const planned = await lessonModel.create({
+      const planned = await lessonModel().create({
         classId,
         plannedAt: new Date(STARTS_AT),
         startsAt: new Date(STARTS_AT),

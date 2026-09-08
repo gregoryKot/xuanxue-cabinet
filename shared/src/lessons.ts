@@ -2,11 +2,19 @@
 // (CLAUDE.md, раздел «Слои») — по образцу shared/src/classes.ts. Словарь
 // продукта: «занятие» — класс/слот расписания (classes), «дата занятия» —
 // конкретная встреча (lessons).
-import type { LessonStatus, Recording } from './domain';
+import type { BroadcastStatus, LessonStatus, Recording } from './domain';
 
 /** Запись в ответе API — с id субдокумента (лежит в массиве lessons.recordings). */
 export interface RecordingDto extends Recording {
   id: string;
+}
+
+/** Статус ссылки на занятие для карточки «Планирования» (docs/PLAN.md §6
+ * п.3) — только `lesson_link`, у рассылки записи свой цикл и своя карточка
+ * (секция «Запись»), сюда не подмешивается. */
+interface LessonBroadcastDto {
+  status: BroadcastStatus;
+  kind: 'lesson_link';
 }
 
 export interface LessonDto {
@@ -25,6 +33,9 @@ export interface LessonDto {
   zoomPasswordOverride?: string;
   recordings: RecordingDto[];
   note?: string;
+  /** Отсутствует, пока планировщик ещё не создал рассылку ссылки на это
+   * занятие (окно до отправки шире, чем горизонт `/broadcasts`). */
+  broadcast?: LessonBroadcastDto;
   createdAt: string;
   updatedAt: string; // ISO UTC с Z
 }
