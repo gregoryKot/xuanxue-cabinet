@@ -51,6 +51,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // broadcasts/deliveries — /broadcasts, /deliveries.
   text: 'Текст',
   scheduledAt: 'Время отправки',
+  idempotencyKey: 'Ключ повтора',
   from: 'Начало периода',
   to: 'Конец периода',
   kind: 'Тип',

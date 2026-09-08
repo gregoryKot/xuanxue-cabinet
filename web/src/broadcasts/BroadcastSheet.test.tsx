@@ -50,6 +50,7 @@ describe('BroadcastSheet', () => {
       expect(onCreate).toHaveBeenCalledWith({
         text: 'Через 30 минут занятие',
         channelIds: ['ch1'],
+        idempotencyKey: expect.any(String) as string,
       }),
     );
   });

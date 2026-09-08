@@ -48,7 +48,11 @@ describe('BroadcastsController', () => {
   it('create() передаёт тело, id учителя из сессии и now в сервис', async () => {
     const createManual = jest.fn().mockResolvedValue(BROADCAST_DTO);
     const controller = await buildController({ createManual });
-    const body = { text: 'Итоги месяца', channelIds: ['c1'] };
+    const body = {
+      text: 'Итоги месяца',
+      channelIds: ['c1'],
+      idempotencyKey: '00000000-0000-4000-8000-000000000001',
+    };
 
     await expect(controller.create(body, TEACHER)).resolves.toEqual(BROADCAST_DTO);
     // `now` — DateTime.utc() контроллера, конкретный момент проверен в

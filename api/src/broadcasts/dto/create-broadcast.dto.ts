@@ -9,9 +9,16 @@ import {
   IsMongoId,
   IsNotEmpty,
   IsString,
+  Length,
+  Matches,
   MaxLength,
 } from 'class-validator';
-import { BROADCAST_LIMITS, type CreateBroadcastInput } from '@xuanxue/shared';
+import {
+  BROADCAST_LIMITS,
+  IDEMPOTENCY_KEY_LIMITS,
+  IDEMPOTENCY_KEY_RE,
+  type CreateBroadcastInput,
+} from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
 export class CreateBroadcastDto implements CreateBroadcastInput {
@@ -32,4 +39,15 @@ export class CreateBroadcastDto implements CreateBroadcastInput {
   @OptionalNotNull()
   @IsISO8601({ strict: true })
   scheduledAt?: string;
+
+  // Ключ двойного клика/ретрая (CLAUDE.md «API»): без него повтор POST
+  // создавал бы вторую рассылку и второй пост в канале.
+  @IsString()
+  // Тексты — продолжение «Ключ повтора: …» (formatValidationErrors добавляет
+  // подпись поля из FIELD_LABELS_RU); `isLength` в словаре constraintText нет.
+  @Length(IDEMPOTENCY_KEY_LIMITS.min, IDEMPOTENCY_KEY_LIMITS.max, {
+    message: `от ${IDEMPOTENCY_KEY_LIMITS.min} до ${IDEMPOTENCY_KEY_LIMITS.max} символов.`,
+  })
+  @Matches(IDEMPOTENCY_KEY_RE, { message: 'только латинские буквы, цифры и дефис.' })
+  idempotencyKey!: string;
 }

@@ -1,7 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { CreateBroadcastInput } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { useBroadcastForm } from './useBroadcastForm';
+
+const UUID_RE = /^[0-9a-f-]{36}$/;
 
 describe('useBroadcastForm — submit()', () => {
   it('невалидная форма — validationError, onCreate не зовётся', async () => {
@@ -34,7 +37,46 @@ describe('useBroadcastForm — submit()', () => {
     });
 
     expect(ok).toBe(true);
-    expect(onCreate).toHaveBeenCalledWith({ text: 'Текст рассылки', channelIds: ['c1'] });
+    expect(onCreate).toHaveBeenCalledWith({
+      text: 'Текст рассылки',
+      channelIds: ['c1'],
+      idempotencyKey: expect.stringMatching(UUID_RE) as string,
+    });
+  });
+
+  it('повтор после сбоя — тот же idempotencyKey, успех потом — новый на следующей отправке', async () => {
+    const onCreate = vi
+      .fn<(input: CreateBroadcastInput) => Promise<void>>()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useBroadcastForm(onCreate));
+    act(() => {
+      result.current.setField('text', 'Текст');
+      result.current.setField('channelIds', ['c1']);
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+    await act(async () => {
+      await result.current.submit();
+    });
+    const calls = onCreate.mock.calls;
+    const firstKey = calls[0]?.[0].idempotencyKey;
+    const secondKey = calls[1]?.[0].idempotencyKey;
+    expect(firstKey).toBeDefined();
+    // Сбой не меняет ключ — повтор клика после ошибки считается тем же
+    // запросом, не новой рассылкой.
+    expect(secondKey).toBe(firstKey);
+
+    await act(async () => {
+      await result.current.submit();
+    });
+    const thirdKey = calls[2]?.[0].idempotencyKey;
+    // Успех освобождает ключ — следующая (независимая) отправка новая.
+    expect(thirdKey).toBeDefined();
+    expect(thirdKey).not.toBe(secondKey);
   });
 
   it('повторный submit во время pending — не вызывает onCreate дважды', async () => {

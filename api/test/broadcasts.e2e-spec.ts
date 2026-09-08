@@ -1,6 +1,10 @@
 // e2e на /broadcasts — данные школы (ADR-0010): доступ по роли, не по
 // владельцу (e2e-support/README.md, «данные школы»). Настоящий AppModule на
-// MongoMemoryServer.
+// MongoMemoryServer. Идемпотентность POST (тот же/другой idempotencyKey,
+// «без ключа — 400») — отдельно, broadcasts-idempotency.e2e-spec.ts (файл-лимит
+// e2e, CLAUDE.md «Храповики»); здесь `postBroadcast` просто подставляет
+// случайный ключ, если тест не задал свой явно.
+import { randomUUID } from 'crypto';
 import { getModelToken } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import { Types, type Model } from 'mongoose';
@@ -65,9 +69,12 @@ describe('Broadcasts (e2e)', () => {
   }
 
   function postBroadcast(cookie: string, body: Record<string, unknown>): request.Test {
+    // idempotencyKey по умолчанию — тесты в этом файле не про идемпотентность
+    // (та часть — broadcasts-idempotency.e2e-spec.ts); `body.idempotencyKey`,
+    // если тест его задал сам, перекрывает дефолт (порядок spread).
     return withCsrf(request(server()).post('/api/broadcasts'))
       .set('Cookie', cookie)
-      .send(body);
+      .send({ idempotencyKey: randomUUID(), ...body });
   }
 
   it('POST /broadcasts без cookie — 401 в конверте', async () => {
@@ -191,20 +198,6 @@ describe('Broadcasts (e2e)', () => {
       });
 
       expect(res.status).toBe(400);
-    });
-
-    it('повторный POST с теми же данными — вторая рассылка (нет ключа идемпотентности у manual)', async () => {
-      const cookie = await sessionFor(['teacher']);
-      const channelId = await createChannel();
-      const body = { text: 'Итог месяца', channelIds: [channelId] };
-
-      const first = await postBroadcast(cookie, body);
-      const second = await postBroadcast(cookie, body);
-
-      expect(first.status).toBe(201);
-      expect(second.status).toBe(201);
-      expect((first.body as BroadcastDto).id).not.toBe((second.body as BroadcastDto).id);
-      await expect(broadcastModel.countDocuments({})).resolves.toBe(2);
     });
 
     it('GET /:id — 200 с ранее созданной рассылкой; несуществующий — 404', async () => {

@@ -51,8 +51,15 @@ export function validateBroadcastForm(
   return null;
 }
 
-export function toCreateInput(state: BroadcastFormState): CreateBroadcastInput {
-  const input: CreateBroadcastInput = { text: state.text, channelIds: state.channelIds };
+/** Без `idempotencyKey` — его добавляет useBroadcastForm.ts (ключ на форму,
+ * не на попытку: живёт в состоянии хука, не в чистой сборке тела). */
+export function toCreateInput(
+  state: BroadcastFormState,
+): Omit<CreateBroadcastInput, 'idempotencyKey'> {
+  const input: Omit<CreateBroadcastInput, 'idempotencyKey'> = {
+    text: state.text,
+    channelIds: state.channelIds,
+  };
   if (!state.scheduleNow) {
     input.scheduledAt = fromDatetimeLocalValue(state.scheduledAtLocal) ?? undefined;
   }

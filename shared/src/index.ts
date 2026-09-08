@@ -107,7 +107,12 @@ export type {
   ListBroadcastsQuery,
   ListDeliveriesQuery,
 } from './broadcasts';
-export { BROADCAST_LIMITS, JOURNAL_RANGE_MAX_WEEKS } from './broadcasts';
+export {
+  BROADCAST_LIMITS,
+  JOURNAL_RANGE_MAX_WEEKS,
+  IDEMPOTENCY_KEY_LIMITS,
+  IDEMPOTENCY_KEY_RE,
+} from './broadcasts';
 export type {
   SettingsDto,
   UpdateSettingsInput,
