@@ -68,7 +68,12 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     new SettingsService(settingsModel, lessonModel, classModel, usersService),
     usersService,
   );
-  const lessonsService = new LessonsService(lessonModel, classModel, recordingBroadcast);
+  const lessonsService = new LessonsService(
+    lessonModel,
+    classModel,
+    recordingBroadcast,
+    broadcastModel,
+  );
   const topicRebuild = new TopicRebuildService(
     broadcastModel,
     lessonModel,

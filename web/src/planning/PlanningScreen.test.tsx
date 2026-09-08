@@ -250,6 +250,20 @@ describe('PlanningScreen — список занятий', () => {
     expect(screen.getByText(/Отменено/)).toBeInTheDocument();
   });
 
+  it('занятие с рассылкой ссылки — бейдж статуса; без рассылки — бейджа нет', async () => {
+    mockByPath({
+      '/lessons': [
+        makeLesson({ id: 'l3', broadcast: { status: 'sent', kind: 'lesson_link' } }),
+        makeLesson({ id: 'l4' }),
+      ],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText('Ссылка ушла')).toBeInTheDocument();
+  });
+
   it('есть запись — пометка «запись есть»; класс не найден — «—»', async () => {
     mockByPath({
       '/lessons': [
