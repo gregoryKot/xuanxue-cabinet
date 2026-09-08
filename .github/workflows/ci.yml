@@ -200,6 +200,6 @@ jobs:
       - name: восстановить во вторую базу
         run: |
           FILE=$(ls backups/*.archive.gz.enc)
-          RESTORE_MONGODB_URI="$TARGET_URI" ./scripts/restore-mongo.sh "$FILE" --yes
+          RESTORE_MONGODB_URI="$TARGET_URI" ./scripts/restore-mongo.sh "$FILE" --yes --from-db=backuptest
       - name: сравнить исходную и восстановленную базы
         run: node scripts/ci-backup-restore-check.mjs verify "$SOURCE_URI" "$TARGET_URI"
