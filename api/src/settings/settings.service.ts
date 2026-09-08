@@ -10,6 +10,7 @@ import { Model } from 'mongoose';
 import type { DateTime } from 'luxon';
 import {
   DEFAULT_TEMPLATES,
+  NULLABLE_SETTINGS_FIELDS,
   SCHOOL_TZ,
   type PreviewTemplateInput,
   type PreviewTemplateResult,
@@ -19,6 +20,7 @@ import {
 import { NotFoundError } from '../common/errors';
 import { toIsoUtc } from '../common/iso-date';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
+import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { ClassRecord } from '../classes/class.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { UsersService } from '../users/users.service';
@@ -28,7 +30,9 @@ import { assertKnownPlaceholders, templatesSetFrom } from './settings-templates'
 
 const SETTINGS_NOT_FOUND = 'Настройки школы не найдены. Повторите запрос.';
 
-type LeanSettings = Pick<SettingsRecord, 'templates' | 'tz'> & { updatedAt: Date };
+type LeanSettings = Pick<SettingsRecord, 'templates' | 'tz' | 'schoolSiteUrl'> & {
+  updatedAt: Date;
+};
 
 function toSettingsDto(doc: LeanSettings): SettingsDto {
   return {
@@ -37,6 +41,7 @@ function toSettingsDto(doc: LeanSettings): SettingsDto {
       recording: doc.templates.recording,
     },
     tz: doc.tz,
+    schoolSiteUrl: doc.schoolSiteUrl,
     updatedAt: toIsoUtc(doc.updatedAt),
   };
 }
@@ -88,28 +93,33 @@ export class SettingsService {
     }
   }
 
-  /** PATCH `templates` (docs/PLAN.md §6 «Шаблоны») — плейсхолдеры проверены
-   * ещё до записи (assertKnownPlaceholders), `get()` до апдейта гарантирует,
-   * что документ школы уже существует (тот же upsert, что и у обычного
-   * чтения) — $set по несуществующему `_id` в production (`autoIndex:
-   * false`, но upsert тут не выставлен намеренно) молча ничего не изменил бы. */
+  /** PATCH `templates`/`schoolSiteUrl` (docs/PLAN.md §6 «Шаблоны», В6
+   * аудита) — плейсхолдеры проверены ещё до записи (assertKnownPlaceholders),
+   * `get()` до апдейта гарантирует, что документ школы уже существует (тот
+   * же upsert, что и у обычного чтения) — $set по несуществующему `_id` в
+   * production (`autoIndex: false`, но upsert тут не выставлен намеренно)
+   * молча ничего не изменил бы. `schoolSiteUrl: null` — явный сброс через
+   * `splitUpdate` (NULLABLE_SETTINGS_FIELDS), та же механика, что у
+   * classes/lessons (common/patch-update.ts). */
   async update(input: UpdateSettingsInput): Promise<SettingsDto> {
     if (input.templates) assertKnownPlaceholders(input.templates);
-    const $set = input.templates ? templatesSetFrom(input.templates) : {};
-    // `{}` в теле (оба шаблона опциональны) или объект, где оба значения
-    // undefined (class-transformer материализует поля DTO, даже когда в
-    // запросе их не было — Object.keys(input.templates) тут не пустой,
-    // проверяем реальный $set) — писать нечего: пустой `$set` MongoDB
-    // отвергает, а обновлять `updatedAt` без изменения — вводить учителя в
-    // заблуждение («когда обновили в последний раз» стало бы неправдой).
-    if (Object.keys($set).length === 0) return this.get();
+    const { templates, ...rest } = input;
+    const { $set, $unset } = splitUpdate(rest, NULLABLE_SETTINGS_FIELDS);
+    if (templates) Object.assign($set, templatesSetFrom(templates));
+    // Пустой `$set` и `$unset` разом (тело `{}`, оба шаблона опциональны,
+    // или объект, где всё значения undefined — class-transformer
+    // материализует поля DTO даже для пустого тела) — писать нечего: MongoDB
+    // отвергает пустой `$set`, а обновлять `updatedAt` без изменения —
+    // вводить учителя в заблуждение («когда обновили в последний раз» стало
+    // бы неправдой).
+    if (Object.keys($set).length === 0 && Object.keys($unset).length === 0) {
+      return this.get();
+    }
     await this.get();
+    const update: UpdateCommand = { $set };
+    if (Object.keys($unset).length > 0) update.$unset = $unset;
     const doc = await this.model
-      .findOneAndUpdate(
-        { _id: SETTINGS_SCHOOL_ID },
-        { $set },
-        { returnDocument: 'after' },
-      )
+      .findOneAndUpdate({ _id: SETTINGS_SCHOOL_ID }, update, { returnDocument: 'after' })
       .lean<LeanSettings>();
     if (!doc) throw new NotFoundError(SETTINGS_NOT_FOUND);
     return toSettingsDto(doc);

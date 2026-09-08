@@ -115,6 +115,51 @@ describe('Settings (e2e)', () => {
     );
   });
 
+  it('PATCH schoolSiteUrl — GET после видит адрес (read-after-write)', async () => {
+    const cookie = await sessionFor(['teacher']);
+
+    const patched = await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({ schoolSiteUrl: 'https://xuanxue.su' });
+    expect(patched.status).toBe(200);
+    expect((patched.body as SettingsDto).schoolSiteUrl).toBe('https://xuanxue.su');
+
+    const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+    expect((got.body as SettingsDto).schoolSiteUrl).toBe('https://xuanxue.su');
+  });
+
+  it('PATCH schoolSiteUrl: null снимает адрес — GET после видит, что поля нет', async () => {
+    const cookie = await sessionFor(['teacher']);
+    await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({ schoolSiteUrl: 'https://xuanxue.su' });
+
+    const patched = await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({ schoolSiteUrl: null });
+    expect(patched.status).toBe(200);
+    expect((patched.body as SettingsDto).schoolSiteUrl).toBeUndefined();
+
+    const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+    expect((got.body as SettingsDto).schoolSiteUrl).toBeUndefined();
+  });
+
+  it('PATCH schoolSiteUrl без https:// — 400 по-русски, ничего не сохранилось', async () => {
+    const cookie = await sessionFor(['teacher']);
+
+    const res = await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({ schoolSiteUrl: 'http://xuanxue.su' });
+
+    expect(res.status).toBe(400);
+    expect((res.body as ApiErrorBody).details).toEqual(
+      expect.arrayContaining(['Адрес сайта школы: должна начинаться с https://.']),
+    );
+
+    const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+    expect((got.body as SettingsDto).schoolSiteUrl).toBeUndefined();
+  });
+
   it('PATCH { templates: {} } — 200, updatedAt не двигается (ничего не пишет)', async () => {
     const cookie = await sessionFor(['teacher']);
     const before = (await request(server()).get('/api/settings').set('Cookie', cookie))

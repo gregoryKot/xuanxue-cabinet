@@ -152,9 +152,7 @@ describe('AppShell — ученик (без роли teacher/admin)', () => {
   it('вместо маршрута — StudentScreen, без нижней навигации', async () => {
     renderShell(STUDENT);
 
-    expect(
-      await screen.findByText('Кабинет для учителя. Расписание школы — на сайте.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Кабинет для учителя.')).toBeInTheDocument();
     expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
   });

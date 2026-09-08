@@ -5,8 +5,10 @@
 // BroadcastsService.cancel(), TopicRebuildService, модель BroadcastRecord;
 // LessonsModule — LessonsService.update()/addRecording(), модель LessonRecord;
 // DeliveriesModule — DeliveriesService.markSent(); ClassesModule — модель
-// ClassRecord (/тема, TopicCommandHandler). Ни один из них не импортирует
-// TelegramModule обратно — цикла нет (ADR-0013).
+// ClassRecord (/тема, TopicCommandHandler); SettingsModule —
+// SettingsService.get() (StartHandler, адрес сайта школы для незнакомца, В6
+// аудита). Ни один из них не импортирует TelegramModule обратно — цикла нет
+// (ADR-0013).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
@@ -14,6 +16,7 @@ import { ChannelsModule } from '../channels/channels.module';
 import { ClassesModule } from '../classes/classes.module';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { LessonsModule } from '../lessons/lessons.module';
+import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
 import { BotSessionService } from './bot-session.service';
@@ -39,6 +42,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     LessonsModule,
     DeliveriesModule,
     ClassesModule,
+    SettingsModule,
   ],
   controllers: [TelegramController],
   providers: [

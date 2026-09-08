@@ -30,6 +30,12 @@ export class SettingsRecord {
 
   @Prop({ type: String, required: true, default: SCHOOL_TZ })
   tz!: string;
+
+  // Не required и без default: пока учитель не заполнил экран «Шаблоны»,
+  // поля просто нет (В6 аудита) — GET /auth/config тогда не показывает
+  // ссылку никому, а не отдаёт пустую строку как настоящий адрес.
+  @Prop({ type: String })
+  schoolSiteUrl?: string;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(SettingsRecord);
@@ -38,4 +44,7 @@ export const SETTINGS_FIELD_POLICY: FieldPolicy = {
   'templates.lessonLink': plain('текст поста пишет учитель, публикуется как есть'),
   'templates.recording': plain('текст поста пишет учитель, публикуется как есть'),
   tz: plain('часовой пояс школы, нужен для выборок'),
+  schoolSiteUrl: plain(
+    'публичный адрес сайта школы — отдаётся всем через GET /auth/config',
+  ),
 };

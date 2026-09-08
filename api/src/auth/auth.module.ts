@@ -8,6 +8,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
+import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
@@ -16,7 +17,11 @@ import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 
 @Module({
-  imports: [UsersModule],
+  // SettingsModule — GET /auth/config берёт schoolSiteUrl из
+  // SettingsService.get() (В6 аудита); SettingsModule сам не импортирует
+  // AuthModule (импортирует ClassesModule/LessonModelModule/UsersModule) —
+  // цикла нет (ADR-0013, тот же приём, что у TelegramModule).
+  imports: [UsersModule, SettingsModule],
   controllers: [AuthController],
   providers: [
     AuthService,

@@ -220,3 +220,124 @@ describe('TemplatesScreen — оба редактора', () => {
     expect(screen.getByRole('heading', { name: 'Анонс занятия' })).toBeInTheDocument();
   });
 });
+
+// Секция «Школа» (В6 аудита, docs/adr/0009-domain-xuanxue-su.md дополнение) —
+// та же PATCH-механика, что у шаблонов (useSettings.ts), отдельная кнопка
+// «Сохранить адрес» не мешает «Сохранить» у шаблонов рядом (SchoolSiteField.tsx).
+describe('TemplatesScreen — адрес сайта школы', () => {
+  it('поле пустое, пока учитель не заполнил — «Сохранить адрес» неактивна', async () => {
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(screen.getByLabelText('Адрес сайта школы')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Сохранить адрес' })).toBeDisabled();
+  });
+
+  it('сохранённый адрес показан в поле', async () => {
+    mockByPath({
+      '/settings': makeSettings({ schoolSiteUrl: 'https://xuanxue.su' }),
+      '/lessons': [],
+    });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    // SchoolSiteField синхронизирует значение своим отдельным эффектом
+    // (useSchoolSiteField.ts) — на кадр позже, чем появляется заголовок
+    // выше; findByDisplayValue дожидается его, а не проверяет DOM сразу.
+    expect(await screen.findByDisplayValue('https://xuanxue.su')).toHaveAccessibleName(
+      'Адрес сайта школы',
+    );
+  });
+
+  it('«Сохранить адрес» — PATCH /settings с { schoolSiteUrl }', async () => {
+    const user = userEvent.setup();
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    await user.type(screen.getByLabelText('Адрес сайта школы'), 'https://xuanxue.su');
+
+    mockedApiFetch.mockResolvedValueOnce({});
+    mockByPath({
+      '/settings': makeSettings({
+        schoolSiteUrl: 'https://xuanxue.su',
+        updatedAt: '2026-01-02T00:00:00Z',
+      }),
+      '/lessons': [],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить адрес' }));
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/settings',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: { schoolSiteUrl: 'https://xuanxue.su' },
+        }),
+      ),
+    );
+  });
+
+  it('поле очищено — «Сохранить адрес» шлёт schoolSiteUrl: null (снятие)', async () => {
+    const user = userEvent.setup();
+    mockByPath({
+      '/settings': makeSettings({ schoolSiteUrl: 'https://xuanxue.su' }),
+      '/lessons': [],
+    });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    // SchoolSiteField синхронизирует поле своим эффектом на кадр позже
+    // заголовка выше (useSchoolSiteField.ts) — без ожидания «Очистить» могло
+    // бы сработать раньше синхронизации, и эффект тут же вернул бы старое
+    // значение обратно поверх правки учителя.
+    const field = await screen.findByDisplayValue('https://xuanxue.su');
+    await user.clear(field);
+
+    mockedApiFetch.mockResolvedValueOnce({});
+    mockByPath({
+      '/settings': makeSettings({ updatedAt: '2026-01-02T00:00:00Z' }),
+      '/lessons': [],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить адрес' }));
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/settings',
+        expect.objectContaining({ method: 'PATCH', body: { schoolSiteUrl: null } }),
+      ),
+    );
+  });
+
+  it('сбой сохранения — ошибка сервера видна под полем', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('../api/http');
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    await user.type(screen.getByLabelText('Адрес сайта школы'), 'http://xuanxue.su');
+
+    mockedApiFetch.mockRejectedValueOnce(
+      new ApiError(
+        'Адрес сайта школы: должна начинаться с https://.',
+        400,
+        'invalid_input',
+      ),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить адрес' }));
+
+    expect(
+      await screen.findByText('Адрес сайта школы: должна начинаться с https://.'),
+    ).toBeInTheDocument();
+  });
+});
