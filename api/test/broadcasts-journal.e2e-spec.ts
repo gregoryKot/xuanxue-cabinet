@@ -3,6 +3,7 @@
 // по владельцу (e2e-support/README.md). Разовая рассылка (POST/GET :id) —
 // broadcasts.e2e-spec.ts, файл-лимит e2e 300 строк не даёт держать всё в
 // одном (CLAUDE.md «Храповики»).
+import { randomUUID } from 'crypto';
 import { getModelToken } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import { Types, type Model } from 'mongoose';
@@ -75,7 +76,11 @@ describe('Журнал рассылок (e2e)', () => {
   async function postBroadcast(cookie: string, channelId: string): Promise<BroadcastDto> {
     const res = await withCsrf(request(server()).post('/api/broadcasts'))
       .set('Cookie', cookie)
-      .send({ text: 'Итог месяца', channelIds: [channelId] });
+      .send({
+        text: 'Итог месяца',
+        channelIds: [channelId],
+        idempotencyKey: randomUUID(),
+      });
     return res.body as BroadcastDto;
   }
 
@@ -128,7 +133,11 @@ describe('Журнал рассылок (e2e)', () => {
       const telegramId = await createChannel({ type: 'telegram', title: 'Канал школы' });
       const res = await withCsrf(request(server()).post('/api/broadcasts'))
         .set('Cookie', cookie)
-        .send({ text: 'Общий текст', channelIds: [manualId, telegramId] });
+        .send({
+          text: 'Общий текст',
+          channelIds: [manualId, telegramId],
+          idempotencyKey: randomUUID(),
+        });
       const created = res.body as BroadcastDto;
 
       const got = await request(server())

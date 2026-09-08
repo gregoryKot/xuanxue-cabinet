@@ -60,9 +60,10 @@ export class BroadcastsService {
       ? parseUtcIso(input.scheduledAt, 'scheduledAt')
       : now;
 
-    // manual — без естественного ключа (naturalKeyFilter, broadcast.inserts.ts):
-    // повторный POST создаёт вторую рассылку, а не находит первую
-    // (docs/PLAN.md §6) — защита от двойного клика придёт вместе с экраном.
+    // manual — естественный ключ (createdBy, idempotencyKey) от клиента
+    // (naturalKeyFilter, broadcast.inserts.ts): повторный POST с тем же
+    // ключом находит уже созданную рассылку, а не плодит вторую (двойной
+    // клик, ретрай сети — CLAUDE.md «API», docs/PLAN.md §6).
     const { broadcastId } = await insertBroadcastWithDeliveries(
       this.model,
       this.deliveryModel,
@@ -73,6 +74,7 @@ export class BroadcastsService {
         deliveryNextAttemptAt: scheduledAt.toJSDate(),
         text: input.text,
         createdBy: new Types.ObjectId(createdBy),
+        idempotencyKey: input.idempotencyKey,
       },
     );
     return this.getById(broadcastId.toString());

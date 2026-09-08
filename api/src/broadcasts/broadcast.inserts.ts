@@ -26,6 +26,9 @@ export interface BroadcastInsertPayload {
   recordingKey?: string;
   telegramFileId?: string;
   createdBy?: Types.ObjectId;
+  /** Только kind 'manual' — ключ идемпотентности от клиента (уникальный индекс
+   * (createdBy, idempotencyKey), broadcast.schema.ts). */
+  idempotencyKey?: string;
   channelIds: Types.ObjectId[];
   scheduledAt: Date;
   text: string;
@@ -38,12 +41,17 @@ export interface BroadcastInsertPayload {
 
 /** Естественный ключ для поиска уже созданной рассылки при E11000: у
  * lesson_link — (lessonId, kind) через частичный индекс, у recording —
- * (lessonId, recordingKey) через свой; у manual ключа нет вовсе — разовая
- * рассылка не дедуплицируется (повтор POST создаёт вторую, PLAN §6), поэтому
- * `undefined` — сигнал не искать существующий документ, а пробросить E11000
- * как настоящую (неожиданную) ошибку. */
+ * (lessonId, recordingKey) через свой, у manual — (createdBy, idempotencyKey)
+ * через свой (CLAUDE.md «API»: повтор с тем же ключом возвращает уже
+ * созданное, docs/PLAN.md §6). Без ключа (клиент без idempotencyKey — не
+ * должно случаться, DTO требует поле) — `undefined` — сигнал не искать
+ * существующий документ, а пробросить E11000 как настоящую (неожиданную)
+ * ошибку. */
 function naturalKeyFilter(
-  payload: Pick<BroadcastInsertPayload, 'kind' | 'lessonId' | 'recordingKey'>,
+  payload: Pick<
+    BroadcastInsertPayload,
+    'kind' | 'lessonId' | 'recordingKey' | 'createdBy' | 'idempotencyKey'
+  >,
 ): Record<string, unknown> | undefined {
   if (payload.kind === 'lesson_link' && payload.lessonId) {
     return { lessonId: payload.lessonId, kind: 'lesson_link' };
@@ -54,6 +62,9 @@ function naturalKeyFilter(
     payload.recordingKey !== undefined
   ) {
     return { lessonId: payload.lessonId, recordingKey: payload.recordingKey };
+  }
+  if (payload.kind === 'manual' && payload.idempotencyKey !== undefined) {
+    return { createdBy: payload.createdBy, idempotencyKey: payload.idempotencyKey };
   }
   return undefined;
 }
@@ -90,6 +101,7 @@ export async function insertBroadcastWithDeliveries(
           recordingKey: payload.recordingKey,
           telegramFileId: payload.telegramFileId,
           createdBy: payload.createdBy,
+          idempotencyKey: payload.idempotencyKey,
           channelIds: payload.channelIds,
           scheduledAt: payload.scheduledAt,
           text: payload.text,
@@ -106,8 +118,9 @@ export async function insertBroadcastWithDeliveries(
       ? await broadcastModel.findOne(filter).lean<{ _id: Types.ObjectId } | null>()
       : null;
     // Индекс сообщил о дубле, а документа не находим (или ключа для поиска
-    // нет вовсе, как у manual) — расхождение хуже молчания: пробрасываем
-    // исходную ошибку, не глотаем её как обычный E11000.
+    // нет вовсе — только теоретически, DTO делает idempotencyKey обязательным)
+    // — расхождение хуже молчания: пробрасываем исходную ошибку, не глотаем
+    // её как обычный E11000.
     if (!existing) throw err;
     isNew = false;
     broadcastId = existing._id;

@@ -56,6 +56,13 @@ export class BroadcastRecord {
   @Prop({ type: Date, required: false })
   previewSentAt?: Date;
 
+  // Ключ идемпотентности разовой рассылки (kind 'manual', CreateBroadcastInput
+  // из shared, CLAUDE.md «API»): у lesson_link/recording естественный ключ уже
+  // есть (lessonId+kind / lessonId+recordingKey), у ручной — нет, поэтому свой
+  // ключ от клиента. Отсутствует у рассылок планировщика (createdBy тоже).
+  @Prop({ type: String, required: false })
+  idempotencyKey?: string;
+
   // DM учителю про автоматическую отмену (channelIds: [] — плейсхолдер от
   // insertCancelledPlaceholder, не ручная отмена учителем через «Рассылки»)
   // ставится раз на рассылку тем же приёмом, что previewSentAt (claimOnce,
@@ -100,6 +107,16 @@ BroadcastSchema.index(
     partialFilterExpression: { kind: 'recording', recordingKey: { $type: 'string' } },
   },
 );
+// Повторный POST /broadcasts с тем же idempotencyKey (двойной клик, ретрай
+// сети — docs/PLAN.md §6 «Рассылки», CLAUDE.md «API») находит уже созданную
+// рассылку, а не создаёт вторую. `createdBy` в паре — ключ не общий на всю
+// школу: два учителя, независимо сгенерировавших одинаковый UUID (практически
+// невозможно, но индекс не должен на этом молчаливо полагаться), не столкнутся.
+// Частичный — у lesson_link/recording от планировщика поля нет вовсе.
+BroadcastSchema.index(
+  { createdBy: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $exists: true } } },
+);
 
 export const BROADCAST_FIELD_POLICY: FieldPolicy = {
   text: enc,
@@ -107,4 +124,5 @@ export const BROADCAST_FIELD_POLICY: FieldPolicy = {
   recordingKey: plain(
     'url или file_id записи, ключ идемпотентности; url публикуется в посте',
   ),
+  idempotencyKey: plain('UUID клиента для индекса — не секрет и не текст пользователя'),
 };

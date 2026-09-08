@@ -1,5 +1,6 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты» — не мок модели): проверка
 // активных каналов, шифрование текста, deliveries pending с nextAttemptAt.
+import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
@@ -58,7 +59,11 @@ describe('BroadcastsService', () => {
     const channel = await createChannel();
 
     const dto = await service.createManual(
-      { text: 'Итог месяца', channelIds: [channel._id.toString()] },
+      {
+        text: 'Итог месяца',
+        channelIds: [channel._id.toString()],
+        idempotencyKey: randomUUID(),
+      },
       CREATED_BY,
       NOW,
     );
@@ -86,6 +91,7 @@ describe('BroadcastsService', () => {
         text: 'Через два часа',
         channelIds: [channel._id.toString()],
         scheduledAt: scheduledAt.toISO() ?? undefined,
+        idempotencyKey: randomUUID(),
       },
       CREATED_BY,
       NOW,
@@ -100,7 +106,11 @@ describe('BroadcastsService', () => {
   it('createManual: несуществующий канал — InvalidInputError «удалён», без записи в базу', async () => {
     await expect(
       service.createManual(
-        { text: 'x', channelIds: ['507f1f77bcf86cd799439011'] },
+        {
+          text: 'x',
+          channelIds: ['507f1f77bcf86cd799439011'],
+          idempotencyKey: randomUUID(),
+        },
         CREATED_BY,
         NOW,
       ),
@@ -113,7 +123,7 @@ describe('BroadcastsService', () => {
 
     await expect(
       service.createManual(
-        { text: 'x', channelIds: [off._id.toString()] },
+        { text: 'x', channelIds: [off._id.toString()], idempotencyKey: randomUUID() },
         CREATED_BY,
         NOW,
       ),
@@ -124,7 +134,11 @@ describe('BroadcastsService', () => {
     const channel = await createChannel();
 
     const dto = await service.createManual(
-      { text: 'x', channelIds: [channel._id.toString(), channel._id.toString()] },
+      {
+        text: 'x',
+        channelIds: [channel._id.toString(), channel._id.toString()],
+        idempotencyKey: randomUUID(),
+      },
       CREATED_BY,
       NOW,
     );
@@ -133,12 +147,41 @@ describe('BroadcastsService', () => {
     expect(deliveries).toHaveLength(1);
   });
 
-  it('createManual: повторный вызов с теми же данными создаёт вторую рассылку (естественного ключа у manual нет)', async () => {
+  // Read-after-write (CLAUDE.md «Тесты»): повтор находит созданное первым
+  // вызовом, а не создаёт второй документ — та же гарантия, что у ссылки на
+  // занятие и записи (naturalKeyFilter, broadcast.inserts.ts).
+  it('createManual: повторный вызов с тем же idempotencyKey — та же рассылка, доставка одна', async () => {
     const channel = await createChannel();
-    const input = { text: 'Итог месяца', channelIds: [channel._id.toString()] };
+    const input = {
+      text: 'Итог месяца',
+      channelIds: [channel._id.toString()],
+      idempotencyKey: randomUUID(),
+    };
 
     const first = await service.createManual(input, CREATED_BY, NOW);
     const second = await service.createManual(input, CREATED_BY, NOW);
+
+    expect(first.id).toBe(second.id);
+    await expect(broadcastModel.countDocuments({ kind: 'manual' })).resolves.toBe(1);
+    await expect(deliveryModel.countDocuments({ broadcastId: first.id })).resolves.toBe(
+      1,
+    );
+  });
+
+  it('createManual: другой idempotencyKey у того же учителя — вторая рассылка', async () => {
+    const channel = await createChannel();
+    const base = { text: 'Итог месяца', channelIds: [channel._id.toString()] };
+
+    const first = await service.createManual(
+      { ...base, idempotencyKey: randomUUID() },
+      CREATED_BY,
+      NOW,
+    );
+    const second = await service.createManual(
+      { ...base, idempotencyKey: randomUUID() },
+      CREATED_BY,
+      NOW,
+    );
 
     expect(first.id).not.toBe(second.id);
     await expect(broadcastModel.countDocuments({ kind: 'manual' })).resolves.toBe(2);
@@ -155,12 +198,20 @@ describe('BroadcastsService', () => {
     it('окно, статус и вид сужают список; свежие сверху', async () => {
       const channel = await createChannel();
       const inWindow = await service.createManual(
-        { text: 'в окне', channelIds: [channel._id.toString()] },
+        {
+          text: 'в окне',
+          channelIds: [channel._id.toString()],
+          idempotencyKey: randomUUID(),
+        },
         CREATED_BY,
         NOW,
       );
       await service.createManual(
-        { text: 'позже окна', channelIds: [channel._id.toString()] },
+        {
+          text: 'позже окна',
+          channelIds: [channel._id.toString()],
+          idempotencyKey: randomUUID(),
+        },
         CREATED_BY,
         NOW.plus({ days: 10 }),
       );
@@ -212,6 +263,7 @@ describe('BroadcastsService', () => {
         {
           text: 'Общий текст',
           channelIds: [manual._id.toString(), telegram._id.toString()],
+          idempotencyKey: randomUUID(),
         },
         CREATED_BY,
         NOW,
@@ -253,7 +305,7 @@ describe('BroadcastsService', () => {
     it('scheduled → cancelled, pending-доставки тоже cancelled', async () => {
       const channel = await createChannel();
       const dto = await service.createManual(
-        { text: 'x', channelIds: [channel._id.toString()] },
+        { text: 'x', channelIds: [channel._id.toString()], idempotencyKey: randomUUID() },
         CREATED_BY,
         NOW,
       );
@@ -269,7 +321,7 @@ describe('BroadcastsService', () => {
     it('уже отправленную — ConflictError «Уже отправлено. Отменить нечего.»', async () => {
       const channel = await createChannel();
       const dto = await service.createManual(
-        { text: 'x', channelIds: [channel._id.toString()] },
+        { text: 'x', channelIds: [channel._id.toString()], idempotencyKey: randomUUID() },
         CREATED_BY,
         NOW,
       );

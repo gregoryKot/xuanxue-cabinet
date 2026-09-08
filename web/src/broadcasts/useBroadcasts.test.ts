@@ -75,14 +75,22 @@ describe('useBroadcasts — мутации (read-after-write)', () => {
     mockedApiFetch.mockResolvedValueOnce({});
     mockedApiFetch.mockResolvedValueOnce([]);
     await act(async () => {
-      await result.current.create({ text: 'Текст', channelIds: ['ch1'] });
+      await result.current.create({
+        text: 'Текст',
+        channelIds: ['ch1'],
+        idempotencyKey: '00000000-0000-4000-8000-000000000001',
+      });
     });
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/broadcasts',
       expect.objectContaining({
         method: 'POST',
-        body: { text: 'Текст', channelIds: ['ch1'] },
+        body: {
+          text: 'Текст',
+          channelIds: ['ch1'],
+          idempotencyKey: '00000000-0000-4000-8000-000000000001',
+        },
       }),
     );
     const lastCall = mockedApiFetch.mock.calls.at(-1);

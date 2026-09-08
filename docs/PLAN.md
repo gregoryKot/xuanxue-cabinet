@@ -294,9 +294,11 @@ recordingKey)` (`broadcast.schema.ts`, `recordingKey` — url или `file_id`
    **Реализовано** — разовая рассылка (`POST /broadcasts`, `GET /broadcasts/:id`,
    `api/src/broadcasts/broadcasts.service.ts`): каналы должны существовать и быть
    активны, иначе `InvalidInputError` по первому проблемному каналу (по имени, не
-   id); повтор `POST /broadcasts` создаёт вторую рассылку — у разовой нет ключа
-   идемпотентности, в отличие от ссылки на занятие и записи, защита от двойного
-   клика (предпросмотр или ключ) появится вместе с экраном. Ручная доставка (`GET
+   id); `idempotencyKey` (UUID клиента, обязателен в теле) — естественный ключ
+   разовой у уникального индекса `(createdBy, idempotencyKey)`
+   (`broadcast.schema.ts`), тот же приём, что у ссылки на занятие и записи:
+   повтор с тем же ключом (двойной клик, ретрай сети) возвращает уже созданную
+   рассылку, не плодит вторую. Ручная доставка (`GET
 /deliveries/:id` — поле `text` только у канала `manual`, `POST
 /deliveries/:id/mark-sent`, `api/src/deliveries/deliveries.service.ts`) — решение
    по типу канала, не по статусу доставки: `pending` и `manual` у ручного канала
@@ -655,6 +657,9 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 горизонта планировщика, `classId` фильтрует список. `GET /broadcasts` — так же
 `?from&to&status?&kind?&limit`, окно обязательно и не шире 8 недель
 (`JOURNAL_RANGE_MAX_WEEKS`). `GET /deliveries` — `?status?&limit`, без окна дат.
+`POST /broadcasts` идемпотентно по `idempotencyKey` в теле (UUID от клиента,
+CLAUDE.md «API»): повтор с тем же ключом возвращает уже созданную рассылку, а
+не плодит вторую.
 
 Каждый эндпоинт — DTO с class-validator; e2e на доступ (ADR-0010): без сессии
 401, без ролей (`roles: []`) и `student` — 403, `teacher`/`admin` — 200,
