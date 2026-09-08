@@ -13,3 +13,14 @@ export function formatChannelCount(count: number): string {
   if (count === 0) return 'без каналов';
   return `${count} ${pluralRu(count, CHANNEL_WORD_FORMS)}`;
 }
+
+/** Занятие хранит channelIds выключенных и удалённых каналов (учитель мог
+ * выключить канал на экране «Каналы», занятие об этом не узнаёт) — карточка
+ * слота считает только те, что реально получат рассылку, иначе «2 канала»
+ * на слоте с одним выключенным вводит в заблуждение. */
+export function countActiveChannels(
+  channelIds: string[],
+  activeChannelIds: ReadonlySet<string>,
+): number {
+  return channelIds.filter((id) => activeChannelIds.has(id)).length;
+}

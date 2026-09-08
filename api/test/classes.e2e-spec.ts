@@ -8,6 +8,7 @@ import type { ApiErrorBody, ClassDto, UserRole } from '@xuanxue/shared';
 import { ClassRecord } from '../src/classes/class.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
+import { telegramBody } from './e2e-support/channels-fixtures';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
 const ZOOM_LINK = 'https://us02web.zoom.us/j/123';
@@ -44,6 +45,12 @@ describe('Classes (e2e)', () => {
     body: Record<string, unknown>,
   ): request.Test {
     return withCsrf(request(server()).patch(`/api/classes/${id}`))
+      .set('Cookie', cookie)
+      .send(body);
+  }
+
+  function postChannel(cookie: string, body: Record<string, unknown>): request.Test {
+    return withCsrf(request(server()).post('/api/channels'))
       .set('Cookie', cookie)
       .send(body);
   }
@@ -223,6 +230,19 @@ describe('Classes (e2e)', () => {
         .set('Cookie', cookie);
       expect(res.status).toBe(200);
       expect((res.body as ClassDto[]).length).toBe(2);
+    });
+
+    it('POST /classes без channelIds при существующем Telegram-канале — канал в ответе (фикс «занятие без каналов»)', async () => {
+      const cookie = await sessionFor(['teacher']);
+      const channel = await postChannel(cookie, telegramBody());
+      expect(channel.status).toBe(201);
+
+      const res = await postClass(cookie, VALID_BODY);
+
+      expect(res.status).toBe(201);
+      expect((res.body as ClassDto).channelIds).toContain(
+        (channel.body as { id: string }).id,
+      );
     });
 
     it('DELETE занятия с датой в расписании — 409, занятие остаётся', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ClassDto } from '@xuanxue/shared';
+import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import {
   initialClassFormState,
   toCreateInput,
@@ -7,6 +7,19 @@ import {
   validateClassForm,
   type ClassFormState,
 } from './classFormInput';
+
+function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
+  return {
+    id: 'ch1',
+    type: 'telegram',
+    title: 'Группа учеников',
+    active: true,
+    target: '@group',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
 
 function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   return {
@@ -64,6 +77,27 @@ describe('initialClassFormState', () => {
   it('существующее занятие — channelIds переносятся как есть (ревью п.1)', () => {
     const state = initialClassFormState(makeClass({ channelIds: ['ch1', 'ch2'] }));
     expect(state.channelIds).toEqual(['ch1', 'ch2']);
+  });
+
+  it('создание: активные Telegram-каналы отмечены заранее — совпадает с тем, что уйдёт в POST', () => {
+    const channels = [
+      makeChannel({ id: 'ch1' }),
+      makeChannel({ id: 'ch2', active: false }),
+      makeChannel({ id: 'ch3', type: 'vk' }),
+    ];
+    const state = initialClassFormState(null, channels);
+    expect(state.channelIds).toEqual(['ch1']);
+  });
+
+  it('создание без каналов в кабинете — channelIds пустой', () => {
+    const state = initialClassFormState(null, []);
+    expect(state.channelIds).toEqual([]);
+  });
+
+  it('существующее занятие — Telegram-каналы кабинета не подмешиваются в channelIds', () => {
+    const channels = [makeChannel({ id: 'ch9' })];
+    const state = initialClassFormState(makeClass({ channelIds: [] }), channels);
+    expect(state.channelIds).toEqual([]);
   });
 });
 
