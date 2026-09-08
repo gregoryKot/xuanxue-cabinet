@@ -1,7 +1,8 @@
 // Тело POST /auth/telegram. Поля — snake_case: контракт Telegram Login
 // Widget, не наш API (см. комментарий у TelegramLoginInput в shared/src/auth.ts).
-// Рантайм-валидация — глобальный ValidationPipe({ whitelist: true, transform:
-// true }) (CLAUDE.md «Новый эндпоинт = DTO с class-validator»).
+// Рантайм-валидация — не глобальный ValidationPipe (тот с forbidNonWhitelisted,
+// app.setup.ts), а parseTelegramLoginBody (parse-telegram-login-body.ts) со
+// своим class-validator({ whitelist: true }) без этой опции — см. причину там.
 //
 // В подписи Telegram этот DTO не участвует: isValidTelegramLogin считает
 // data-check-string по сырому `req.body`, а не по значениям этих полей
@@ -49,6 +50,8 @@ export class TelegramLoginDto implements TelegramLoginInput {
   @IsInt()
   auth_date!: number;
 
-  @Matches(TELEGRAM_HASH_RE, { message: 'hash должен быть строкой из 64 hex-символов' })
+  // Продолжение фразы «Подпись входа: …» (validation-messages.ts) — без
+  // повтора имени поля и согласовано с родом подписи-слова (не «hash»).
+  @Matches(TELEGRAM_HASH_RE, { message: 'должна быть строкой из 64 hex-символов.' })
   hash!: string;
 }

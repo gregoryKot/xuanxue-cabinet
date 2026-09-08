@@ -117,6 +117,7 @@ export type {
 export { SETTINGS_LIMITS } from './settings';
 export type { SummaryPeriod, NextLessonSummary, SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
+export { FIELD_LABELS_RU } from './field-labels';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

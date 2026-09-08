@@ -21,8 +21,8 @@ import { botIdFromToken } from './bot-id-from-token';
 import { CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
+import { parseTelegramLoginBody } from './parse-telegram-login-body';
 import { TelegramAuthService } from './telegram-auth.service';
-import { TelegramLoginDto } from './telegram-login.dto';
 import { toMeDto } from './user.mapper';
 
 // Троттлинг по IP (глобальный ThrottlerGuard бакетирует неверифицированных,
@@ -64,16 +64,19 @@ export class AuthController {
   @Post('telegram')
   @HttpCode(HttpStatus.OK)
   async loginWithTelegram(
-    @Body() body: TelegramLoginDto,
+    // Нетипизированное тело — не TelegramLoginDto: под глобальный
+    // ValidationPipe (forbidNonWhitelisted, app.setup.ts) эта форма не
+    // должна попадать, см. parse-telegram-login-body.ts. Валидируем сами.
+    @Body() rawBody: Record<string, unknown>,
     @Req() req: RequestLike,
     @Res({ passthrough: true }) res: ResponseLike,
   ): Promise<MeDto> {
+    const body = await parseTelegramLoginBody(rawBody);
     // req.body, не body: подпись Telegram считается по сырому телу целиком
     // (см. комментарий у RequestLike.body в common/http-headers.ts).
-    const rawBody = req.body ?? {};
     const { user, cookie } = await this.telegramAuthService.login(
       body,
-      rawBody,
+      req.body ?? {},
       DateTime.utc(),
     );
     res.setHeader('Set-Cookie', cookie);

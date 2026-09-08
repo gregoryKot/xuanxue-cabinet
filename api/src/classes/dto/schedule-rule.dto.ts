@@ -18,7 +18,10 @@ export class ScheduleRuleDto implements ScheduleRuleInput {
   @IsIn(WEEKDAYS)
   weekday!: Weekday;
 
-  @Matches(RULE_TIME_RE, { message: 'Время — в формате ЧЧ:ММ, например 19:00.' })
+  // Продолжение фразы «Правило N, Время: …» (validation-messages.ts) — без
+  // повтора имени поля, дефолтное сообщение «must match RULE_TIME_RE
+  // regular expression» ничего не сказало бы про формат ЧЧ:ММ.
+  @Matches(RULE_TIME_RE, { message: 'в формате ЧЧ:ММ, например 19:00.' })
   time!: string;
 
   @IsInt()

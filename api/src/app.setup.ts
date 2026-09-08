@@ -2,12 +2,13 @@
 // test/e2e-support/create-app.ts (e2e), чтобы поведение сервера не
 // расходилось с тем, что видят тесты (правило CLAUDE.md «одна механика —
 // одно место»). Сюда НЕ входит .listen() — в e2e его не вызывают.
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { CSP_DIRECTIVES } from './security/csp';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
+import { formatValidationErrors } from './common/validation-messages';
 
 export function configureApp(app: NestExpressApplication): void {
   // nestjs-pino вместо встроенного логгера Nest — правило CLAUDE.md «Ошибки»:
@@ -31,6 +32,22 @@ export function configureApp(app: NestExpressApplication): void {
   app.useBodyParser('json', { limit: '1mb' });
 
   app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      // Неизвестное поле в форме кабинета — опечатка или рассинхрон
+      // фронта с DTO, не «прислали лишнее и ладно» (CLAUDE.md «Ошибки»:
+      // details должны говорить, что не так). Единственное исключение —
+      // POST /auth/telegram: этот пайп на него вообще не срабатывает
+      // (`@Body()` там нетипизированный, см. parse-telegram-login-body.ts) —
+      // виджет Telegram подписывает HMAC'ом все переданные поля целиком,
+      // лишние безопасно отбрасывать молча, а не ронять вход всей школе,
+      // если Telegram однажды добавит виджету новое необязательное поле.
+      forbidNonWhitelisted: true,
+      transform: true,
+      exceptionFactory: (errors) =>
+        new BadRequestException(formatValidationErrors(errors)),
+    }),
+  );
   app.useGlobalFilters(app.get(DomainExceptionFilter));
 }
