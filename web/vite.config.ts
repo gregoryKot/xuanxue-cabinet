@@ -105,7 +105,11 @@ export default defineConfig({
     setupFiles: ['./src/setupTests.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
-      provider: 'v8',
+      // istanbul, не v8 (ADR-0018): v8 считает ветки по счётчикам исполнения
+      // блоков, число веток плавает между машинами на одном и том же коде
+      // (PR #57, 98.28 локально против 98.27 в CI). istanbul инструментирует
+      // по AST — число веток фиксировано кодом, порог детерминирован.
+      provider: 'istanbul',
       reporter: ['text', 'json-summary'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
@@ -117,10 +121,10 @@ export default defineConfig({
       // autoUpdate — встроенный храповик: порог поднимается сам при росте
       // покрытия, снижение роняет CI (CLAUDE.md, раздел «Храповики»).
       thresholds: {
-        lines: 99.95,
-        branches: 98.27,
-        functions: 99.38,
-        statements: 99.95,
+        lines: 99.84,
+        branches: 97.55,
+        functions: 99.16,
+        statements: 99.37,
         autoUpdate: true,
       },
     },
