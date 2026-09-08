@@ -38,7 +38,7 @@ DTO в `api` объявляется как `class CreateClassDto implements Crea
 ### 1. Ничего не мержится с красным CI
 
 PR проходит: `tsc` (три пакета), `jest` + e2e (дважды: TZ=Australia/Sydney и с покрытием),
-`vitest` с покрытием, `eslint`, `prettier --check`, `knip`, `npm audit`, `gitleaks`,
+`vitest` с покрытием и под TZ=Australia/Sydney, `eslint`, `prettier --check`, `knip`, `npm audit`, `gitleaks`,
 сборка web, сборка Docker-образа с проверкой `/api/health`, все храповики из `scripts/`.
 Локально то же самое одной командой: `npm run check` — кроме `gitleaks` (бинаря нет
 локально) и Docker-смока, они остаются только в CI. Ручной прогон «по памяти» — не

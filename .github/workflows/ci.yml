@@ -73,6 +73,8 @@ jobs:
         run: npm run typecheck --workspace=web
       - name: vitest с покрытием
         run: npm run test:cov --workspace=web
+      - name: vitest под TZ=Australia/Sydney (тест перехода летнего времени)
+        run: TZ=Australia/Sydney npm run test --workspace=web
       - name: vite build
         run: npm run build --workspace=web
       - name: pwa-гейт (манифест, иконки, service worker)
