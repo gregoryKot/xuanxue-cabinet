@@ -14,6 +14,7 @@ import {
   MinLength,
   validateSync,
 } from 'class-validator';
+import { productionRequiredMessages } from './env.production-required';
 import {
   BOOTSTRAP_ADMIN_TELEGRAM_ID_MESSAGE,
   BOT_TOKEN_MESSAGE,
@@ -89,8 +90,11 @@ export class EnvSchema {
   PUBLIC_URL?: string;
 
   // Секрет вебхука бота (SECURITY §2): сравнивается с заголовком
-  // x-telegram-bot-api-secret-token через timingSafeEqual. Не задан — вебхук
-  // выключен (503), как вход через Telegram без BOT_TOKEN.
+  // x-telegram-bot-api-secret-token через timingSafeEqual. В production
+  // обязателен (см. ниже) — без него бот молча не работал на проде, и
+  // единственным сигналом был 503 на вебхуке, которого никто не видел, —
+  // нашли вручную при первом тестировании (2026-09-08). 503 остаётся
+  // поведением только вне production (dev/test).
   @IsOptional()
   @Matches(TELEGRAM_WEBHOOK_SECRET_RE, { message: TELEGRAM_WEBHOOK_SECRET_MESSAGE })
   TELEGRAM_WEBHOOK_SECRET?: string;
@@ -138,14 +142,10 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
   const errors = validateSync(instance, { whitelist: true });
   const messages = errors.flatMap((error) => Object.values(error.constraints ?? {}));
 
-  // Кросс-полевые правила («обязателен в production»): class-validator
-  // @ValidateIf применяет одно условие ко ВСЕМ декораторам поля сразу, поэтому
-  // «обязателен в prod, но формат проверяется всегда» проще и понятнее
-  // выразить явной проверкой здесь, чем городить кастомный валидатор.
+  // Кросс-полевые правила «обязателен в production» — env.production-required.ts
+  // (почему списком, а не декоратором, — там же).
   if (instance.NODE_ENV === 'production') {
-    if (!instance.ENCRYPTION_KEY) messages.push('ENCRYPTION_KEY обязателен в production');
-    if (!instance.JWT_SECRET) messages.push('JWT_SECRET обязателен в production');
-    if (!instance.PUBLIC_URL) messages.push('PUBLIC_URL обязателен в production');
+    messages.push(...productionRequiredMessages(instance));
   }
 
   if (messages.length > 0) {

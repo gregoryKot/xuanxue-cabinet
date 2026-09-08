@@ -7,6 +7,8 @@ const VALID_PROD: Record<string, unknown> = {
   ENCRYPTION_KEY: 'a1'.repeat(32),
   JWT_SECRET: 'x'.repeat(32),
   PUBLIC_URL: 'https://cabinet.xuanxue.example',
+  BOT_TOKEN: `123456789:${'x'.repeat(30)}`,
+  TELEGRAM_WEBHOOK_SECRET: 'a1B2_c3-D4',
   LOG_LEVEL: 'info',
 };
 
@@ -43,6 +45,18 @@ describe('validateEnv', () => {
     expect(() => validateEnv(rest)).toThrow(/PUBLIC_URL/);
   });
 
+  it('production без BOT_TOKEN падает', () => {
+    const { BOT_TOKEN: _drop, ...rest } = VALID_PROD;
+    expect(() => validateEnv(rest)).toThrow(/BOT_TOKEN обязателен в production/);
+  });
+
+  it('production без TELEGRAM_WEBHOOK_SECRET падает', () => {
+    const { TELEGRAM_WEBHOOK_SECRET: _drop, ...rest } = VALID_PROD;
+    expect(() => validateEnv(rest)).toThrow(
+      /TELEGRAM_WEBHOOK_SECRET обязателен в production/,
+    );
+  });
+
   it('PUBLIC_URL с завершающим слэшем падает', () => {
     expect(() =>
       validateEnv({ ...VALID_PROD, PUBLIC_URL: 'https://cabinet.xuanxue.example/' }),
@@ -69,27 +83,39 @@ describe('validateEnv', () => {
     expect(env.ENCRYPTION_KEY_OLD).toContain(',');
   });
 
-  it('кривой BOT_TOKEN падает, отсутствующий — нет', () => {
+  it('кривой BOT_TOKEN падает в production, валидный проходит', () => {
     expect(() => validateEnv({ ...VALID_PROD, BOT_TOKEN: 'not-a-token' })).toThrow(
       /BOT_TOKEN/,
     );
     expect(() => validateEnv(VALID_PROD)).not.toThrow();
   });
 
-  it('кривой TELEGRAM_WEBHOOK_SECRET падает, отсутствующий — нет', () => {
+  it('кривой BOT_TOKEN падает и вне production (формат проверяется всегда)', () => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        BOT_TOKEN: 'not-a-token',
+      }),
+    ).toThrow(/BOT_TOKEN/);
+  });
+
+  it('кривой TELEGRAM_WEBHOOK_SECRET падает в production, валидный проходит', () => {
     expect(() =>
       validateEnv({ ...VALID_PROD, TELEGRAM_WEBHOOK_SECRET: 'секрет с пробелом' }),
     ).toThrow(/TELEGRAM_WEBHOOK_SECRET/);
     expect(() => validateEnv(VALID_PROD)).not.toThrow();
   });
 
-  it('валидный TELEGRAM_WEBHOOK_SECRET проходит, production не требует его', () => {
-    const env = validateEnv({ ...VALID_PROD, TELEGRAM_WEBHOOK_SECRET: 'a1B2_c3-D4' });
-    expect(env.TELEGRAM_WEBHOOK_SECRET).toBe('a1B2_c3-D4');
-    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  it('кривой TELEGRAM_WEBHOOK_SECRET падает и вне production (формат проверяется всегда)', () => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        TELEGRAM_WEBHOOK_SECRET: 'секрет с пробелом',
+      }),
+    ).toThrow(/TELEGRAM_WEBHOOK_SECRET/);
   });
 
-  it('development без секретов проходит с дефолтами', () => {
+  it('development без секретов, BOT_TOKEN и TELEGRAM_WEBHOOK_SECRET проходит с дефолтами', () => {
     const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/xuanxue' });
     expect(env.NODE_ENV).toBe('development');
     expect(env.PORT).toBe(3000);
@@ -97,6 +123,8 @@ describe('validateEnv', () => {
     expect(env.ENCRYPTION_KEY).toBeUndefined();
     expect(env.JWT_SECRET).toBeUndefined();
     expect(env.PUBLIC_URL).toBeUndefined();
+    expect(env.BOT_TOKEN).toBeUndefined();
+    expect(env.TELEGRAM_WEBHOOK_SECRET).toBeUndefined();
     expect(env.SCHEDULER_ENABLED).toBe('true');
   });
 
