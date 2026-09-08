@@ -9,6 +9,7 @@ import type {
   ChannelDto,
   ClassDto,
   CreateClassInput,
+  TeacherOptionDto,
   UpdateClassInput,
 } from '@xuanxue/shared';
 import { Button } from '../components/Button';
@@ -26,6 +27,12 @@ interface ClassSheetProps {
   /** Каналы рассылки — грузятся один раз на «Расписании» (ScheduleScreen),
    * лист их не запрашивает сам (ревью п.1). */
   channels: ChannelDto[];
+  /** Учителя для select'а «Ведущий» — тот же приём, что channels выше
+   * (аудит В4). Сбой загрузки не прячет форму — просто пустой список сверх
+   * «— не указан —», ниже показана строка с ошибкой и повтором. */
+  teachers: TeacherOptionDto[];
+  teachersError?: string | null;
+  onRetryTeachers?: () => void;
   onClose: () => void;
   onCreate: (input: CreateClassInput) => Promise<void>;
   onUpdate: (id: string, input: UpdateClassInput) => Promise<void>;
@@ -35,6 +42,9 @@ interface ClassSheetProps {
 export function ClassSheet({
   classDto,
   channels,
+  teachers,
+  teachersError,
+  onRetryTeachers,
   onClose,
   onCreate,
   onUpdate,
@@ -66,6 +76,9 @@ export function ClassSheet({
         state={form.state}
         setField={form.setField}
         error={form.validationError}
+        teachers={teachers}
+        teachersError={teachersError}
+        onRetryTeachers={onRetryTeachers}
       />
       <RuleFields
         rules={form.state.rules}

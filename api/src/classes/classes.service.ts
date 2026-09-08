@@ -22,6 +22,8 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { LessonRecord } from '../lessons/lesson.schema';
+import { assertLeaderIdIfProvided } from '../users/assert-teacher';
+import { UserRecord } from '../users/user.schema';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from './class.schema';
 import { toClassDto, type LeanClass } from './class.mapper';
 import { mapRules } from './classes.update';
@@ -36,6 +38,7 @@ export class ClassesService {
     @InjectModel(ClassRecord.name) private readonly model: Model<ClassRecord>,
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
     @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
+    @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
   ) {}
 
   async list(query: ListClassesQuery): Promise<ClassDto[]> {
@@ -59,9 +62,8 @@ export class ClassesService {
     return toClassDto(decryptRecord(doc, CLASS_ENCRYPT_SCHEMA));
   }
 
-  // leaderId принимается как есть: проверка, что это существующий учитель,
-  // появится вместе с экраном выбора ведущего.
   async create(input: CreateClassInput): Promise<ClassDto> {
+    await assertLeaderIdIfProvided(this.userModel, input.leaderId);
     const { rules, ...rest } = input;
     const payload: Record<string, unknown> = { ...rest };
     if (rules !== undefined) payload.rules = mapRules(rules);
@@ -92,6 +94,7 @@ export class ClassesService {
 
   async update(id: string, input: UpdateClassInput): Promise<ClassDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
+    await assertLeaderIdIfProvided(this.userModel, input.leaderId);
     const { rules, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_CLASS_FIELDS);
     if (rules !== undefined) $set.rules = mapRules(rules);

@@ -2,8 +2,15 @@
 // разрастался за 150 строк (CLAUDE.md «Файлы»: выноси подкомпоненты).
 // leadMinutesText — текст, не число: пустое поле не подменяется нулём
 // молча (ревью п.10), проверка диапазона — validateClassForm.
-import { CLASS_FORMATS, CLASS_LIMITS, type ClassFormat } from '@xuanxue/shared';
+import {
+  CLASS_FORMATS,
+  CLASS_LIMITS,
+  type ClassFormat,
+  type TeacherOptionDto,
+} from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
+import { LeaderField } from '../components/LeaderField';
+import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Toggle } from '../components/Toggle';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
@@ -12,9 +19,22 @@ interface ClassFormFieldsProps {
   state: ClassFormState;
   setField: <K extends keyof ClassFormState>(key: K, value: ClassFormState[K]) => void;
   error: string | null;
+  /** Учителя для select'а «Ведущий» — грузятся один раз на «Расписании»
+   * (ScheduleScreen), как каналы (ревью п.1, аудит В4). Сбой загрузки не
+   * прячет остальные поля формы — только строка с ошибкой над списком. */
+  teachers: TeacherOptionDto[];
+  teachersError?: string | null;
+  onRetryTeachers?: () => void;
 }
 
-export function ClassFormFields({ state, setField, error }: ClassFormFieldsProps) {
+export function ClassFormFields({
+  state,
+  setField,
+  error,
+  teachers,
+  teachersError,
+  onRetryTeachers,
+}: ClassFormFieldsProps) {
   return (
     <>
       <Field label="Название" error={error ?? undefined}>
@@ -49,6 +69,19 @@ export function ClassFormFields({ state, setField, error }: ClassFormFieldsProps
           ))}
         </select>
       </Field>
+
+      {teachersError && (
+        <LoadErrorBanner
+          message={teachersError}
+          onRetry={onRetryTeachers ?? (() => {})}
+          retryLabel="Обновить"
+        />
+      )}
+      <LeaderField
+        value={state.leaderId}
+        onChange={(leaderId) => setField('leaderId', leaderId)}
+        teachers={teachers}
+      />
 
       <Field label="Ссылка Zoom" hint={`Время в поясе ${state.tz}`}>
         <input

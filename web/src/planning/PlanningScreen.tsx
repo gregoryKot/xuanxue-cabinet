@@ -8,6 +8,7 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
+import { useTeachers } from '../people/useTeachers';
 import { useClasses } from '../schedule/useClasses';
 import { groupLessonsByDay } from './groupLessonsByDay';
 import { LessonDayGroup } from './LessonDayGroup';
@@ -19,6 +20,8 @@ const EXPLANATION = `Здесь занятия на ${PLANNING_HORIZON_WEEKS} н
 export default function PlanningScreen() {
   const lessonsState = useLessons();
   const classesState = useClasses();
+  // Учителя для select'а «Ведущий» — тот же приём, что classesState (аудит В4).
+  const teachersState = useTeachers();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetLessonId, setSheetLessonId] = useState<string | null>(null);
 
@@ -100,6 +103,9 @@ export default function PlanningScreen() {
         <LessonSheet
           lessonDto={selectedLesson}
           classes={classesState.classes ?? []}
+          teachers={teachersState.teachers ?? []}
+          teachersError={teachersState.error}
+          onRetryTeachers={() => void teachersState.reload()}
           onClose={() => setSheetOpen(false)}
           onCreate={lessonsState.create}
           onUpdate={lessonsState.update}

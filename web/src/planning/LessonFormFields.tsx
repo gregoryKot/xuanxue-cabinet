@@ -3,8 +3,10 @@
 // (CreateLessonInput его принимает, UpdateLessonInput — нет, docs/PLAN.md §6
 // п.3); ссылка/пароль Zoom на один раз и заметка — только при правке.
 import { Link } from 'react-router-dom';
-import { CLASS_LIMITS, type ClassDto } from '@xuanxue/shared';
+import { CLASS_LIMITS, type ClassDto, type TeacherOptionDto } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
+import { LeaderField } from '../components/LeaderField';
+import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import type { LessonFormState } from './lessonFormInput';
 
 interface LessonFormFieldsProps {
@@ -13,6 +15,12 @@ interface LessonFormFieldsProps {
   error: string | null;
   isCreate: boolean;
   classes: ClassDto[];
+  /** Учителя для select'а «Ведущий» — грузятся один раз на «Планировании»
+   * (PlanningScreen), как классы (ревью п.1, аудит В4). Сбой загрузки не
+   * прячет остальные поля формы — только строка с ошибкой над списком. */
+  teachers: TeacherOptionDto[];
+  teachersError?: string | null;
+  onRetryTeachers?: () => void;
 }
 
 export function LessonFormFields({
@@ -21,6 +29,9 @@ export function LessonFormFields({
   error,
   isCreate,
   classes,
+  teachers,
+  teachersError,
+  onRetryTeachers,
 }: LessonFormFieldsProps) {
   // Разовое занятие привязывается к классу расписания — без единого класса
   // форме нечего показывать (ревью п.9): вместо тупика с пустым селектом —
@@ -84,6 +95,19 @@ export function LessonFormFields({
 
       {!isCreate && (
         <>
+          {teachersError && (
+            <LoadErrorBanner
+              message={teachersError}
+              onRetry={onRetryTeachers ?? (() => {})}
+              retryLabel="Обновить"
+            />
+          )}
+          <LeaderField
+            value={state.leaderId}
+            onChange={(leaderId) => setField('leaderId', leaderId)}
+            teachers={teachers}
+            hint="Если не указан — ведущий занятия из расписания"
+          />
           <Field
             label="Ссылка Zoom на это занятие"
             hint="Оставьте пустым — берётся из расписания"

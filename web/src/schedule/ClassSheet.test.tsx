@@ -9,6 +9,7 @@ import type {
   ChannelDto,
   ClassDto,
   CreateClassInput,
+  TeacherOptionDto,
   UpdateClassInput,
 } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
@@ -51,6 +52,7 @@ interface RenderSheetOverrides {
   onUpdate?: (id: string, input: UpdateClassInput) => Promise<void>;
   onRemove?: (id: string) => Promise<void>;
   channels?: ChannelDto[];
+  teachers?: TeacherOptionDto[];
 }
 
 function renderSheet(classDto: ClassDto | null, overrides: RenderSheetOverrides = {}) {
@@ -59,12 +61,14 @@ function renderSheet(classDto: ClassDto | null, overrides: RenderSheetOverrides 
   const onUpdate = overrides.onUpdate ?? vi.fn().mockResolvedValue(undefined);
   const onRemove = overrides.onRemove ?? vi.fn().mockResolvedValue(undefined);
   const channels = overrides.channels ?? [];
+  const teachers = overrides.teachers ?? [];
 
   render(
     <MemoryRouter initialEntries={['/schedule']}>
       <ClassSheet
         classDto={classDto}
         channels={channels}
+        teachers={teachers}
         onClose={onClose}
         onCreate={onCreate}
         onUpdate={onUpdate}
@@ -152,6 +156,41 @@ describe('ClassSheet — поля формы', () => {
 
     expect(onCreate).toHaveBeenCalledWith(
       expect.objectContaining({ zoomLink: undefined, zoomPassword: undefined }),
+    );
+  });
+});
+
+describe('ClassSheet — ведущий (аудит В4)', () => {
+  it('выбор ведущего уходит в leaderId при сохранении', async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSheet(makeClass(), {
+      teachers: [
+        { id: 't1', name: 'Дмитрий' },
+        { id: 't2', name: 'Мария' },
+      ],
+    });
+
+    await user.selectOptions(screen.getByLabelText('Ведущий'), 't2');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ leaderId: 't2' }),
+    );
+  });
+
+  it('«— не указан —» у занятия с ведущим — PATCH с leaderId: null', async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSheet(makeClass({ leaderId: 't1' }), {
+      teachers: [{ id: 't1', name: 'Дмитрий' }],
+    });
+
+    await user.selectOptions(screen.getByLabelText('Ведущий'), '— не указан —');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ leaderId: null }),
     );
   });
 });

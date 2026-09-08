@@ -9,6 +9,7 @@ import type {
   ClassDto,
   CreateLessonInput,
   LessonDto,
+  TeacherOptionDto,
   UpdateLessonInput,
 } from '@xuanxue/shared';
 import { Button } from '../components/Button';
@@ -24,6 +25,11 @@ import { useLessonForm } from './useLessonForm';
 interface LessonSheetProps {
   lessonDto: LessonDto | null;
   classes: ClassDto[];
+  /** Учителя для select'а «Ведущий» — грузятся один раз на «Планировании»
+   * (аудит В4), тот же приём, что classes. */
+  teachers: TeacherOptionDto[];
+  teachersError?: string | null;
+  onRetryTeachers?: () => void;
   onClose: () => void;
   onCreate: (input: CreateLessonInput) => Promise<void>;
   onUpdate: (id: string, input: UpdateLessonInput) => Promise<void>;
@@ -33,6 +39,9 @@ interface LessonSheetProps {
 export function LessonSheet({
   lessonDto,
   classes,
+  teachers,
+  teachersError,
+  onRetryTeachers,
   onClose,
   onCreate,
   onUpdate,
@@ -79,6 +88,9 @@ export function LessonSheet({
           error={form.validationError}
           isCreate={!lessonDto}
           classes={classes}
+          teachers={teachers}
+          teachersError={teachersError}
+          onRetryTeachers={onRetryTeachers}
         />
 
         {!noClasses && <FormServerError error={form.serverError} />}
