@@ -16,6 +16,7 @@
 
 NestJS + Mongoose, React + Vite (PWA), MongoDB Atlas, Railway. Один сервис: API раздаёт
 статику фронта, принимает вебхук Telegram-бота и крутит планировщик рассылок.
+Бэкап базы — раз в сутки зашифрованным дампом в GitHub Actions (RUNBOOK §7).
 
 ## Структура
 

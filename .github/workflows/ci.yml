@@ -158,3 +158,48 @@ jobs:
       - name: логи контейнера
         if: always()
         run: docker logs xuanxue || true
+
+  backup-restore:
+    # Проверка scripts/backup-mongo.sh + scripts/restore-mongo.sh на каждом PR,
+    # а не «раз в квартал по памяти» (CLAUDE.md, «Данные (MongoDB)»; RUNBOOK §7):
+    # засеваем документы, бэкапим, восстанавливаем во вторую базу того же mongod,
+    # сравниваем содержимое.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      # Тестовая фраза только для CI-прогона, не секрет — реальная живёт в
+      # GitHub Actions Secrets (.github/workflows/backup.yml, RUNBOOK §7).
+      BACKUP_PASSPHRASE: ci-only-passphrase-not-a-real-secret
+      SOURCE_URI: mongodb://127.0.0.1:27017/backuptest
+      TARGET_URI: mongodb://127.0.0.1:27017/backuptest-restored
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: mongodb-database-tools (mongodump/mongorestore)
+        run: |
+          VER=100.9.4
+          curl -fsSL -o /tmp/tools.tgz \
+            "https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-${VER}.tgz"
+          tar -xzf /tmp/tools.tgz -C /tmp
+          sudo mv "/tmp/mongodb-database-tools-ubuntu2204-x86_64-${VER}/bin/"* /usr/local/bin/
+      - name: засеять исходную базу
+        run: node scripts/ci-backup-restore-check.mjs seed "$SOURCE_URI"
+      - name: бэкап
+        env:
+          BACKUP_MONGODB_URI: ${{ env.SOURCE_URI }}
+        run: ./scripts/backup-mongo.sh
+      - name: восстановить во вторую базу
+        run: |
+          FILE=$(ls backups/*.archive.gz.enc)
+          RESTORE_MONGODB_URI="$TARGET_URI" ./scripts/restore-mongo.sh "$FILE" --yes
+      - name: сравнить исходную и восстановленную базы
+        run: node scripts/ci-backup-restore-check.mjs verify "$SOURCE_URI" "$TARGET_URI"
