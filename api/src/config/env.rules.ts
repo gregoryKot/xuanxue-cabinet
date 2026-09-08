@@ -28,6 +28,11 @@ export const TELEGRAM_WEBHOOK_SECRET_RE = /^[A-Za-z0-9_-]{1,256}$/;
 // источник и других ссылок (рассылки, email-вход) — запрещаем на входе, а не
 // только для одного потребителя.
 export const NO_TRAILING_SLASH_RE = /[^/]$/;
+// RAILWAY_GIT_COMMIT_SHA — полный SHA-1 коммита, Railway ставит саму
+// переменную (см. env.validation.ts); формат не жёсткий, потому что значение
+// приходит от платформы, не от человека — только «это похоже на SHA», чтобы
+// опечатка в чужой Railway-переменной с тем же именем не прошла тихо.
+export const GIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
 
 export const NODE_ENV_MESSAGE =
   'NODE_ENV должен быть одним из: development, test, production';
@@ -49,3 +54,5 @@ export const TELEGRAM_WEBHOOK_SECRET_MESSAGE =
 export const LOG_LEVEL_MESSAGE =
   'LOG_LEVEL должен быть одним из: fatal, error, warn, info, debug, trace, silent';
 export const SCHEDULER_ENABLED_MESSAGE = 'SCHEDULER_ENABLED должен быть true или false';
+export const RAILWAY_GIT_COMMIT_SHA_MESSAGE =
+  'RAILWAY_GIT_COMMIT_SHA должен быть SHA коммита (7-40 hex-символов)';

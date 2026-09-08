@@ -20,6 +20,7 @@ import {
   BOT_TOKEN_RE,
   ENCRYPTION_KEY_MESSAGE,
   ENCRYPTION_KEY_OLD_MESSAGE,
+  GIT_SHA_RE,
   HEX64_LIST_RE,
   HEX64_RE,
   JWT_SECRET_MESSAGE,
@@ -33,6 +34,7 @@ import {
   PORT_MESSAGE,
   PUBLIC_URL_MESSAGE,
   PUBLIC_URL_TRAILING_SLASH_MESSAGE,
+  RAILWAY_GIT_COMMIT_SHA_MESSAGE,
   SCHEDULER_ENABLED_MESSAGE,
   TELEGRAM_WEBHOOK_SECRET_MESSAGE,
   TELEGRAM_WEBHOOK_SECRET_RE,
@@ -100,6 +102,12 @@ export class EnvSchema {
   // строку, включая 'false', в true. Выключают только в e2e (create-app.ts).
   @IsIn(['true', 'false'], { message: SCHEDULER_ENABLED_MESSAGE })
   SCHEDULER_ENABLED: 'true' | 'false' = 'true';
+
+  // Ставит Railway сама — SHA коммита деплоя, /api/health отдаёт короткий
+  // вариант (health-commit.ts, RUNBOOK §2 п.1). Локально не нужна.
+  @IsOptional()
+  @Matches(GIT_SHA_RE, { message: RAILWAY_GIT_COMMIT_SHA_MESSAGE })
+  RAILWAY_GIT_COMMIT_SHA?: string;
 }
 
 // Поля, где пустая строка (`VAR=` в .env) равносильна отсутствию переменной —
@@ -117,6 +125,7 @@ const EMPTY_AS_ABSENT: (keyof EnvSchema)[] = [
   'TELEGRAM_WEBHOOK_SECRET',
   'MONGODB_URI',
   'SCHEDULER_ENABLED',
+  'RAILWAY_GIT_COMMIT_SHA',
 ];
 
 export function validateEnv(raw: Record<string, unknown>): EnvSchema {

@@ -2,8 +2,8 @@
 // сообщества. `video.save` (прикрепить видео с YouTube по ссылке) сюда
 // сознательно не входит: этот метод требует пользовательского токена со
 // scope `video`, а у школы — токен сообщества (PLAN §8, риск про ВК).
-// Ссылку в текст кладёт составитель поста — адаптер поле `videoUrl` только
-// игнорирует, ВК сам рисует превью по ссылке из текста.
+// Ссылку в текст кладёт составитель поста — ВК сам рисует превью по ссылке
+// из текста, отдельного поля под видео-ссылку в OutgoingMessage нет.
 import { randomInt } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { isVkChannelConfig, type ChannelConfig, type ChannelType } from '@xuanxue/shared';

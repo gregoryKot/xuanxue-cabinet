@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { HealthController } from './health.controller';
 import pkg from '../../package.json';
@@ -17,10 +18,19 @@ function fakeStatusResponse(): { status: jest.Mock; code: number | undefined } {
   return state;
 }
 
-async function buildController(readyState: number): Promise<HealthController> {
+async function buildController(
+  readyState: number,
+  railwayCommitSha?: string,
+): Promise<HealthController> {
   const module = await Test.createTestingModule({
     controllers: [HealthController],
-    providers: [{ provide: getConnectionToken(), useValue: { readyState } }],
+    providers: [
+      { provide: getConnectionToken(), useValue: { readyState } },
+      {
+        provide: ConfigService,
+        useValue: { get: () => railwayCommitSha },
+      },
+    ],
   }).compile();
   return module.get(HealthController);
 }
@@ -50,5 +60,18 @@ describe('HealthController', () => {
     const { uptimeSec } = controller.check(fakeStatusResponse());
     expect(Number.isInteger(uptimeSec)).toBe(true);
     expect(uptimeSec).toBeGreaterThanOrEqual(0);
+  });
+
+  it('RAILWAY_GIT_COMMIT_SHA задан — commit: первые 7 символов', async () => {
+    const controller = await buildController(1, 'a1b2c3d4e5f6789');
+    expect(controller.check(fakeStatusResponse()).commit).toBe('a1b2c3d');
+  });
+
+  it('RAILWAY_GIT_COMMIT_SHA не задан (локальный запуск) — commit undefined', async () => {
+    // JSON.stringify выкидывает ключ со значением undefined из тела ответа
+    // (её и видит клиент) — здесь проверяется значение до сериализации,
+    // «поле отсутствует в HTTP-ответе» — health.e2e-spec.ts.
+    const controller = await buildController(1);
+    expect(controller.check(fakeStatusResponse()).commit).toBeUndefined();
   });
 });

@@ -190,4 +190,30 @@ describe('validateEnv', () => {
       }),
     ).toThrow(/BOOTSTRAP_ADMIN_TELEGRAM_ID/);
   });
+
+  it('RAILWAY_GIT_COMMIT_SHA: валидный SHA проходит, отсутствующий — тоже', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      RAILWAY_GIT_COMMIT_SHA: 'a1b2c3d4e5f60718293a4b5c6d7e8f901234567',
+    });
+    expect(env.RAILWAY_GIT_COMMIT_SHA).toBe('a1b2c3d4e5f60718293a4b5c6d7e8f901234567');
+    expect(
+      validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' }).RAILWAY_GIT_COMMIT_SHA,
+    ).toBeUndefined();
+  });
+
+  it('RAILWAY_GIT_COMMIT_SHA: не hex или короче 7 символов — падает; пустая строка — отсутствует', () => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        RAILWAY_GIT_COMMIT_SHA: 'не-sha',
+      }),
+    ).toThrow(/RAILWAY_GIT_COMMIT_SHA/);
+
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      RAILWAY_GIT_COMMIT_SHA: '',
+    });
+    expect(env.RAILWAY_GIT_COMMIT_SHA).toBeUndefined();
+  });
 });

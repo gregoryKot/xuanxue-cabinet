@@ -8,10 +8,6 @@ export interface OutgoingMessage {
   /** Видео уже загружено в Telegram — шлём по file_id без перезаливки
    * (лимит 50 МБ бота не мешает, PLAN §6 «Бот»). */
   telegramFileId?: string;
-  /** Ссылка на запись (YouTube) — ВК вставляет её в текст и не прикладывает
-   * файлом (нужен пользовательский токен, см. `vk.adapter.ts`); поле здесь
-   * остаётся для будущего адаптера с таким токеном. */
-  videoUrl?: string;
 }
 
 export type SendResult =

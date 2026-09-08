@@ -85,6 +85,7 @@ describe('MessageHandler — доступ и сбои', () => {
         ctx.broadcastModel,
         ctx.lessonModel,
         ctx.classModel,
+        ctx.deliveryModel,
         new SettingsService(
           ctx.settingsModel,
           ctx.lessonModel,

@@ -146,20 +146,6 @@ describe('VkAdapter', () => {
     });
   });
 
-  it('videoUrl игнорируется адаптером — YouTube-ссылка уходит только через text', async () => {
-    const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({}));
-    const adapter = new VkAdapter();
-
-    await adapter.send(
-      { text: 'Запись: https://youtu.be/x', videoUrl: 'https://youtu.be/x' },
-      { token: 't', peerId: 1 },
-    );
-
-    const [, init] = fetchSpy.mock.calls[0] ?? [];
-    const body = (init?.body as URLSearchParams).toString();
-    expect(body).not.toContain('video.save');
-  });
-
   it('ошибка ВК уходит в logger.warn без токена', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(
