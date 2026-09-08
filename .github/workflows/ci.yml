@@ -134,27 +134,45 @@ jobs:
             -e ENCRYPTION_KEY="$ENC_KEY" \
             -e JWT_SECRET=ci-secret-ci-secret-ci-secret-1234 \
             -e PUBLIC_URL=http://localhost:3000 \
+            -e SCHEDULER_ENABLED=true \
             xuanxue
-      - name: ждём /api/health и проверяем status=ok, mongo=up
+      - name: ждём /api/health и проверяем код 200, status=ok, mongo=up
         run: |
-          ok=""
+          code=""
           for i in $(seq 1 30); do
-            if curl -fsS http://localhost:3000/api/health -o /tmp/health.json; then ok=1; break; fi
+            code=$(curl -fsS -o /tmp/health.json -w '%{http_code}' http://localhost:3000/api/health) && break
+            code=""
             sleep 1
           done
-          if [ -z "$ok" ]; then
+          if [ -z "$code" ]; then
             echo "::error::/api/health не ответил за 30 секунд"
             docker logs xuanxue
             exit 1
           fi
           cat /tmp/health.json
           node -e "
+            const code = Number(process.argv[1]);
             const h = require('/tmp/health.json');
-            if (h.status !== 'ok' || h.mongo !== 'up') {
-              console.error('health-check вернул неожиданное тело:', h);
+            if (code !== 200 || h.status !== 'ok' || h.mongo !== 'up') {
+              console.error('health-check вернул неожиданный код/тело:', code, h);
               process.exit(1);
             }
-          "
+          " "$code"
+      # PLAN §8 риск «Railway усыпляет сервис на дешёвом плане»: смок должен
+      # ловить именно это, а не только то, что процесс поднялся. Тик — раз в
+      # минуту (SchedulerService), поэтому ждём чуть больше минуты.
+      - name: ждём тик планировщика (scheduler.tick в логах, PLAN §8)
+        run: |
+          found=""
+          for i in $(seq 1 70); do
+            if docker logs xuanxue 2>&1 | grep -q 'scheduler.tick'; then found=1; break; fi
+            sleep 1
+          done
+          if [ -z "$found" ]; then
+            echo "::error::scheduler.tick не появился в логах за 70 секунд — планировщик не тикает"
+            docker logs xuanxue
+            exit 1
+          fi
       - name: логи контейнера
         if: always()
         run: docker logs xuanxue || true
