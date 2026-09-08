@@ -7,7 +7,11 @@
 export const CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
   scriptSrc: ["'self'", 'https://telegram.org', 'https://oauth.telegram.org'],
-  frameSrc: ['https://oauth.telegram.org', 'https://accounts.google.com'],
+  // accounts.google.com сюда не входит: вход через Google ещё не реализован
+  // (ADR-0005 — принято архитектурно, но код появится отдельным PR, PLAN.md
+  // §5 «Вход»), а неиспользуемая поверхность CSP — тот же риск, что лишняя
+  // env-переменная (SECURITY §6). Добавить обратно вместе с самим OAuth-потоком.
+  frameSrc: ['https://oauth.telegram.org'],
   connectSrc: ["'self'", 'https://oauth.telegram.org'],
   imgSrc: ["'self'", 'data:', 'https:'],
   styleSrc: ["'self'"],

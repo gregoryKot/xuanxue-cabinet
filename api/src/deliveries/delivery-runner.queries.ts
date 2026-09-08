@@ -15,6 +15,13 @@ import type { LessonRecord } from '../lessons/lesson.schema';
 
 const ENCRYPT_SCHEMA = encryptSchemaFrom(DELIVERY_FIELD_POLICY);
 
+// «Дай всё» запрещено (CLAUDE.md «API») даже для внутреннего запроса
+// планировщика: без предела один тик, догоняющий большую очередь (простой,
+// восстановление после инцидента), вычитал бы её всю разом. Остаток
+// подберёт следующий тик минуту спустя — раннер и так рассчитан на
+// повторные проходы (ADR-0014).
+export const CLAIM_BATCH_LIMIT = 100;
+
 export interface ClaimableDelivery {
   _id: Types.ObjectId;
 }
@@ -46,7 +53,10 @@ export function findClaimable(
       { status: 'sending', lockedAt: { $lte: staleThreshold } },
     ],
   };
-  return deliveryModel.find(filter, { _id: 1 }).lean<ClaimableDelivery[]>();
+  return deliveryModel
+    .find(filter, { _id: 1 })
+    .limit(CLAIM_BATCH_LIMIT)
+    .lean<ClaimableDelivery[]>();
 }
 
 /** Атомарный захват одной доставки: `null`, если её захватил кто-то ещё

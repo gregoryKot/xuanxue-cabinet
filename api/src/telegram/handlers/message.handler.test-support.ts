@@ -28,6 +28,7 @@ export interface MessageHandlerTestContext {
   lessonModel: Model<LessonRecord>;
   classModel: Model<ClassRecord>;
   broadcastModel: Model<BroadcastRecord>;
+  deliveryModel: Model<DeliveryRecord>;
   channelModel: Model<ChannelRecord>;
   botSessionModel: Model<BotSessionRecord>;
   settingsModel: Model<SettingsRecord>;
@@ -78,6 +79,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     broadcastModel,
     lessonModel,
     classModel,
+    deliveryModel,
     new SettingsService(settingsModel, lessonModel, classModel, usersService),
     usersService,
   );
@@ -96,6 +98,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     lessonModel,
     classModel,
     broadcastModel,
+    deliveryModel,
     channelModel,
     botSessionModel,
     settingsModel,
@@ -111,6 +114,7 @@ export async function clearMessageHandlerTest(
     ctx.lessonModel.deleteMany({}),
     ctx.classModel.deleteMany({}),
     ctx.broadcastModel.deleteMany({}),
+    ctx.deliveryModel.deleteMany({}),
     ctx.channelModel.deleteMany({}),
     ctx.botSessionModel.deleteMany({}),
   ]);

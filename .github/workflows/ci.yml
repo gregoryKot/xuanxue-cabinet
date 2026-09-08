@@ -135,8 +135,12 @@ jobs:
             -e JWT_SECRET=ci-secret-ci-secret-ci-secret-1234 \
             -e PUBLIC_URL=http://localhost:3000 \
             -e SCHEDULER_ENABLED=true \
+            -e RAILWAY_GIT_COMMIT_SHA="$GITHUB_SHA" \
             xuanxue
-      - name: ждём /api/health и проверяем код 200, status=ok, mongo=up
+      # RUNBOOK §2 п.1: после деплоя commit должен совпадать с последним
+      # коммитом main — здесь проверяем ту же связку version+commit, которую
+      # Railway ставит по-настоящему через RAILWAY_GIT_COMMIT_SHA.
+      - name: ждём /api/health и проверяем код 200, status=ok, mongo=up, commit
         run: |
           code=""
           for i in $(seq 1 30); do
@@ -152,12 +156,18 @@ jobs:
           cat /tmp/health.json
           node -e "
             const code = Number(process.argv[1]);
+            const expectedCommit = process.argv[2].slice(0, 7);
             const h = require('/tmp/health.json');
-            if (code !== 200 || h.status !== 'ok' || h.mongo !== 'up') {
+            if (
+              code !== 200 ||
+              h.status !== 'ok' ||
+              h.mongo !== 'up' ||
+              h.commit !== expectedCommit
+            ) {
               console.error('health-check вернул неожиданный код/тело:', code, h);
               process.exit(1);
             }
-          " "$code"
+          " "$code" "$GITHUB_SHA"
       # PLAN §8 риск «Railway усыпляет сервис на дешёвом плане»: смок должен
       # ловить именно это, а не только то, что процесс поднялся. Тик — раз в
       # минуту (SchedulerService), поэтому ждём чуть больше минуты.

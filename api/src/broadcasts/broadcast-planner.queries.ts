@@ -6,6 +6,7 @@ import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
 import {
   DEFAULT_LEAD_MINUTES,
+  LIST_LIMIT_MAX,
   PREVIEW_MINUTES,
   type ClassFormat,
   type LessonStatus,
@@ -67,11 +68,15 @@ const LESSON_PROJECTION = {
 } as const;
 
 // Ссылка и пароль класса лежат шифротекстом (CLASS_FIELD_POLICY): без
-// decryptRecord в пост ушёл бы base64 вместо ссылки Zoom.
+// decryptRecord в пост ушёл бы base64 вместо ссылки Zoom. `.limit(LIST_LIMIT_MAX)`
+// — «дай всё» запрещено даже тику планировщика (CLAUDE.md «API»).
 export async function findClasses(
   classModel: Model<ClassRecord>,
 ): Promise<PlannerClass[]> {
-  const docs = await classModel.find({}, CLASS_PROJECTION).lean<PlannerClass[]>();
+  const docs = await classModel
+    .find({}, CLASS_PROJECTION)
+    .limit(LIST_LIMIT_MAX)
+    .lean<PlannerClass[]>();
   return docs.map((doc) => decryptRecord(doc, CLASS_ENCRYPT_SCHEMA));
 }
 

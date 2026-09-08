@@ -43,6 +43,11 @@ function setTestEnv(mongoUri: string): void {
   // рискует гонкой с app.close(); юнит-тесты LessonPlannerService/
   // SchedulerService идут напрямую, без этого приложения.
   process.env.SCHEDULER_ENABLED = 'false';
+  // Ставит только Railway (health.controller.ts, RUNBOOK §2 п.1) — health.e2e-spec.ts
+  // проверяет, что без неё `commit` реально отсутствует в теле ответа
+  // (CLAUDE.md «Детерминизм»: тест не должен зависеть от того, есть ли эта
+  // переменная в окружении, где запущен CI).
+  delete process.env.RAILWAY_GIT_COMMIT_SHA;
 }
 
 /**

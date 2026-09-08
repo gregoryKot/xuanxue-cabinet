@@ -1,14 +1,21 @@
 import { Controller, Get, Res } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Connection } from 'mongoose';
 import pkg from '../../package.json';
 import { Public } from '../auth/auth.decorators';
 import { healthOutcome } from './health-outcome';
+import { shortCommitSha } from './health-commit';
 
 export interface HealthStatus {
   status: 'ok' | 'degraded';
   version: string;
+  /** Короткий SHA коммита, из которого собран образ — только там, где задан
+   * RAILWAY_GIT_COMMIT_SHA (Railway, docker-смок CI); локально отсутствует
+   * (RUNBOOK §2 п.1: «версия новая» непроверяема одним `version` из
+   * package.json, который в проде не меняется). */
+  commit?: string;
   mongo: 'up' | 'down';
   uptimeSec: number;
 }
@@ -27,7 +34,10 @@ interface HealthResponseLike {
 @SkipThrottle()
 @Controller('health')
 export class HealthController {
-  constructor(@InjectConnection() private readonly connection: Connection) {}
+  constructor(
+    @InjectConnection() private readonly connection: Connection,
+    private readonly config: ConfigService,
+  ) {}
 
   // 503 при недоступной Mongo — тем же телом, не конвертом ошибок
   // (ApiErrorBody): health читают люди и Railway, которому важен только код
@@ -41,6 +51,7 @@ export class HealthController {
     return {
       status: outcome.status,
       version: pkg.version,
+      commit: shortCommitSha(this.config.get<string>('RAILWAY_GIT_COMMIT_SHA')),
       mongo: outcome.mongo,
       uptimeSec: Math.floor(process.uptime()),
     };

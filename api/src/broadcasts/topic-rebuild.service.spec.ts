@@ -1,9 +1,10 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты») — шифрование текста рассылки,
 // чтение занятия/класса, пересборка по актуальному шаблону.
 import { DateTime } from 'luxon';
-import type { Connection, Model } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord, ClassSchema } from '../classes/class.schema';
 import { encryptSchemaFrom } from '../common/field-policy';
+import { DeliveryRecord, DeliverySchema } from '../deliveries/delivery.schema';
 import { decrypt, encryptRecord } from '../utils/encryption';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
@@ -27,6 +28,7 @@ describe('TopicRebuildService.rebuild', () => {
   let broadcastModel: Model<BroadcastRecord>;
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
+  let deliveryModel: Model<DeliveryRecord>;
   let service: TopicRebuildService;
 
   beforeAll(async () => {
@@ -38,6 +40,7 @@ describe('TopicRebuildService.rebuild', () => {
     );
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
+    deliveryModel = connection.model<DeliveryRecord>(DeliveryRecord.name, DeliverySchema);
     const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     const settingsModel = connection.model<SettingsRecord>(
       SettingsRecord.name,
@@ -48,6 +51,7 @@ describe('TopicRebuildService.rebuild', () => {
       broadcastModel,
       lessonModel,
       classModel,
+      deliveryModel,
       new SettingsService(settingsModel, lessonModel, classModel, usersService),
       usersService,
     );
@@ -62,6 +66,7 @@ describe('TopicRebuildService.rebuild', () => {
       broadcastModel.deleteMany({}),
       lessonModel.deleteMany({}),
       classModel.deleteMany({}),
+      deliveryModel.deleteMany({}),
       connection.model(SettingsRecord.name).deleteMany({}),
     ]);
   });
@@ -112,6 +117,45 @@ describe('TopicRebuildService.rebuild', () => {
 
     const updated = await broadcastModel.findById(broadcast._id).lean();
     expect(decrypt(updated?.text)).toContain('новая тема');
+  });
+
+  it('раннер уже забрал доставку (status sending) — текст не трогаем, false (ревью п.6)', async () => {
+    const cls = await createClass();
+    const lesson = await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.plus({ minutes: 10 }).toJSDate(),
+      durationMin: 60,
+      topic: 'старая тема',
+      status: 'scheduled',
+    });
+    const broadcast = await broadcastModel.create(
+      encryptRecord(
+        {
+          kind: 'lesson_link',
+          lessonId: lesson._id,
+          channelIds: [],
+          scheduledAt: NOW.toJSDate(),
+          text: 'старый текст',
+          status: 'scheduled',
+        },
+        ENCRYPT_SCHEMA,
+      ),
+    );
+    // Раннер захватил доставку этим же тиком (DeliveryRunnerService.run —
+    // claimDelivery) — broadcast.status при этом ещё 'scheduled', пересборка
+    // должна это заметить сама, не полагаясь на статус рассылки.
+    await deliveryModel.create({
+      broadcastId: broadcast._id,
+      channelId: new Types.ObjectId(),
+      status: 'sending',
+      lockedAt: NOW.toJSDate(),
+    });
+    await lessonModel.updateOne({ _id: lesson._id }, { $set: { topic: 'новая тема' } });
+
+    await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(false);
+
+    const untouched = await broadcastModel.findById(broadcast._id).lean();
+    expect(decrypt(untouched?.text)).toBe('старый текст');
   });
 
   it('рассылка уже cancelled — текст не трогаем', async () => {
@@ -239,6 +283,7 @@ describe('TopicRebuildService.rebuild', () => {
       broadcastModel,
       lessonModel,
       classModel,
+      deliveryModel,
       {
         get: jest.fn().mockRejectedValue(new Error('mongo упал')),
       } as unknown as SettingsService,

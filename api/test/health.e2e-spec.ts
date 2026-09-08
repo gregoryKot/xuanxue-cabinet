@@ -32,6 +32,16 @@ describe('Health (e2e)', () => {
     expect((requestId as string).length).toBeGreaterThan(0);
   });
 
+  // create-app.ts не задаёт RAILWAY_GIT_COMMIT_SHA (её ставит только Railway
+  // и docker-смок CI, RUNBOOK §2 п.1) — в e2e поле должно реально отсутствовать
+  // в теле JSON-ответа, не просто быть undefined в объекте до сериализации
+  // (health.controller.spec.ts проверяет это на уровне контроллера).
+  it('GET /api/health — без RAILWAY_GIT_COMMIT_SHA поля commit нет в теле ответа', async () => {
+    const res = await request(server()).get('/api/health');
+
+    expect('commit' in (res.body as HealthStatus)).toBe(false);
+  });
+
   it('GET /api/nope — 404 в едином конверте ошибок, с code и requestId', async () => {
     const res = await request(server()).get('/api/nope');
 
