@@ -4,6 +4,7 @@
 // (файл-лимит 150 у каждого).
 import type { Connection, Model } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../../classes/class.schema';
+import { BroadcastModels } from '../../broadcasts/broadcast-models.provider';
 import { RecordingBroadcastService } from '../../broadcasts/recording-broadcast.service';
 import { BroadcastRecord, BroadcastSchema } from '../../broadcasts/broadcast.schema';
 import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
@@ -60,12 +61,15 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
   );
   await botSessionModel.syncIndexes();
   const usersService = new UsersService(userModel);
-  const recordingBroadcast = new RecordingBroadcastService(
+  const broadcastModels = new BroadcastModels(
     lessonModel,
     classModel,
     channelModel,
     broadcastModel,
     deliveryModel,
+  );
+  const recordingBroadcast = new RecordingBroadcastService(
+    broadcastModels,
     new SettingsService(settingsModel, lessonModel, classModel, usersService),
     usersService,
   );

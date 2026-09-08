@@ -51,6 +51,7 @@ interface RenderSheetOverrides {
   onCreate?: (input: CreateLessonInput) => Promise<void>;
   onUpdate?: (id: string, input: UpdateLessonInput) => Promise<void>;
   onAddRecording?: (id: string, input: AddRecordingInput) => Promise<void>;
+  onSendNow?: (id: string) => Promise<void>;
 }
 
 interface RenderSheetOptions extends RenderSheetOverrides {
@@ -63,6 +64,7 @@ function renderSheet(lessonDto: LessonDto | null, overrides: RenderSheetOptions 
   const onCreate = overrides.onCreate ?? vi.fn().mockResolvedValue(undefined);
   const onUpdate = overrides.onUpdate ?? vi.fn().mockResolvedValue(undefined);
   const onAddRecording = overrides.onAddRecording ?? vi.fn().mockResolvedValue(undefined);
+  const onSendNow = overrides.onSendNow ?? vi.fn().mockResolvedValue(undefined);
 
   render(
     <MemoryRouter initialEntries={['/planning']}>
@@ -74,11 +76,12 @@ function renderSheet(lessonDto: LessonDto | null, overrides: RenderSheetOptions 
         onCreate={onCreate}
         onUpdate={onUpdate}
         onAddRecording={onAddRecording}
+        onSendNow={onSendNow}
       />
     </MemoryRouter>,
   );
 
-  return { onClose, onCreate, onUpdate, onAddRecording };
+  return { onClose, onCreate, onUpdate, onAddRecording, onSendNow };
 }
 
 describe('LessonSheet — создание разового занятия', () => {
@@ -326,5 +329,31 @@ describe('LessonSheet — секция «Запись» встроена', () =>
   it('создание занятия — секции «Запись» нет', () => {
     renderSheet(null);
     expect(screen.queryByText('Запись')).not.toBeInTheDocument();
+  });
+});
+
+describe('LessonSheet — «Отправить ссылку сейчас» (аудит В12)', () => {
+  it('есть у обычного занятия, подтверждение зовёт onSendNow с id', async () => {
+    const user = userEvent.setup();
+    const { onSendNow } = renderSheet(makeLesson());
+
+    await user.click(screen.getByRole('button', { name: 'Отправить ссылку сейчас' }));
+    await user.click(screen.getByRole('button', { name: 'Отправить сейчас' }));
+
+    await waitFor(() => expect(onSendNow).toHaveBeenCalledWith('l1'));
+  });
+
+  it('отменённое занятие — кнопки нет', () => {
+    renderSheet(makeLesson({ status: 'cancelled' }));
+    expect(
+      screen.queryByRole('button', { name: 'Отправить ссылку сейчас' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('создание разового занятия — кнопки нет (нечего отправлять до сохранения)', () => {
+    renderSheet(null);
+    expect(
+      screen.queryByRole('button', { name: 'Отправить ссылку сейчас' }),
+    ).not.toBeInTheDocument();
   });
 });

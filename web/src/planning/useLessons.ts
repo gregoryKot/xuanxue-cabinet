@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 import {
   LIST_LIMIT_MAX,
   type AddRecordingInput,
+  type BroadcastDto,
   type CreateLessonInput,
   type LessonDto,
   type UpdateLessonInput,
@@ -24,6 +25,10 @@ export interface UseLessonsResult {
   create: (input: CreateLessonInput) => Promise<void>;
   update: (id: string, input: UpdateLessonInput) => Promise<void>;
   addRecording: (id: string, input: AddRecordingInput) => Promise<void>;
+  /** «Отправить ссылку сейчас» (docs/PLAN.md §6 п.3, аудит В12) — тот же
+   * read-after-write, что у остальных мутаций: список статусов на карточках
+   * перечитывается, чтобы бейдж занятия обновился сразу. */
+  sendNow: (id: string) => Promise<void>;
 }
 
 export function useLessons(): UseLessonsResult {
@@ -59,5 +64,13 @@ export function useLessons(): UseLessonsResult {
     [reload],
   );
 
-  return { lessons: data, loading, error, reload, create, update, addRecording };
+  const sendNow = useCallback(
+    async (id: string) => {
+      await apiFetch<BroadcastDto>(`/lessons/${id}/send-now`, { method: 'POST' });
+      await reload();
+    },
+    [reload],
+  );
+
+  return { lessons: data, loading, error, reload, create, update, addRecording, sendNow };
 }

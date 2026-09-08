@@ -17,9 +17,11 @@ import { LessonModelModule } from '../lessons/lesson-model.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { BroadcastModelModule } from './broadcast-model.module';
+import { BroadcastModels } from './broadcast-models.provider';
 import { BroadcastsController } from './broadcasts.controller';
 import { BroadcastsService } from './broadcasts.service';
 import { RecordingBroadcastService } from './recording-broadcast.service';
+import { SendNowService } from './send-now.service';
 import { TopicRebuildService } from './topic-rebuild.service';
 
 @Module({
@@ -33,15 +35,25 @@ import { TopicRebuildService } from './topic-rebuild.service';
     UsersModule,
   ],
   controllers: [BroadcastsController],
-  providers: [BroadcastsService, RecordingBroadcastService, TopicRebuildService],
+  providers: [
+    BroadcastModels,
+    BroadcastsService,
+    RecordingBroadcastService,
+    TopicRebuildService,
+    SendNowService,
+  ],
   // RecordingBroadcastService — наружу для LessonsModule; BroadcastModelModule
   // — для SchedulerModule/DeliveriesModule, как и раньше; BroadcastsService/
-  // TopicRebuildService — для TelegramModule (кнопка «Отменить», тема из бота).
+  // TopicRebuildService — для TelegramModule (кнопка «Отменить», тема из бота);
+  // SendNowService — для LessonsModule (POST /lessons/:id/send-now, аудит В12);
+  // сам собран из тех же моделей/сервисов, что уже импортированы сюда для
+  // RecordingBroadcastService, отдельный модуль под него не понадобился.
   exports: [
     BroadcastModelModule,
     BroadcastsService,
     RecordingBroadcastService,
     TopicRebuildService,
+    SendNowService,
   ],
 })
 export class BroadcastsModule {}

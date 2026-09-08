@@ -8,25 +8,20 @@
 // Активные каналы/текст поста — те же функции, что у него же
 // (broadcast-planner.queries.ts/render.ts), не копия.
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
-import type { Model, Types } from 'mongoose';
+import type { Types } from 'mongoose';
 import type { Recording } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../common/error-info';
-import { ChannelRecord } from '../channels/channel.schema';
-import { ClassRecord } from '../classes/class.schema';
-import { LessonRecord } from '../lessons/lesson.schema';
-import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
 import { CANCEL_REASON as REASON } from './broadcast-cancel-reasons';
 import { buildRecordingText } from './broadcast-planner.render';
 import { findActiveChannelIds, findClassForRecording } from './broadcast-planner.queries';
+import { BroadcastModels } from './broadcast-models.provider';
 import {
   insertBroadcastWithDeliveries,
   insertCancelledPlaceholder,
 } from './broadcast.inserts';
-import { BroadcastRecord } from './broadcast.schema';
 
 interface RecordingLesson {
   classId: Types.ObjectId;
@@ -57,13 +52,7 @@ export class RecordingBroadcastService {
   private readonly logger = new Logger(RecordingBroadcastService.name);
 
   constructor(
-    @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
-    @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
-    @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
-    @InjectModel(BroadcastRecord.name)
-    private readonly broadcastModel: Model<BroadcastRecord>,
-    @InjectModel(DeliveryRecord.name)
-    private readonly deliveryModel: Model<DeliveryRecord>,
+    private readonly models: BroadcastModels,
     private readonly settingsService: SettingsService,
     private readonly usersService: UsersService,
   ) {}
@@ -92,7 +81,7 @@ export class RecordingBroadcastService {
       );
       try {
         await insertCancelledPlaceholder(
-          this.broadcastModel,
+          this.models.broadcastModel,
           {
             kind: 'recording',
             lessonId,
@@ -116,18 +105,21 @@ export class RecordingBroadcastService {
     recording: Recording,
     now: DateTime,
   ): Promise<void> {
-    const lesson = await this.lessonModel
+    const lesson = await this.models.lessonModel
       .findById(lessonId, LESSON_PROJECTION)
       .lean<RecordingLesson | null>();
     // Занятие удалили между $push записи и этим вызовом — крайне редкий
     // случай (не транзакция), слать уже некому и незачем логировать как сбой.
     if (!lesson) return;
 
-    const cls = await findClassForRecording(this.classModel, lesson.classId);
+    const cls = await findClassForRecording(this.models.classModel, lesson.classId);
     if (!cls) return this.cancel(lessonId, recording, REASON.noClass, now);
     if (!cls.active) return this.cancel(lessonId, recording, REASON.classDisabled, now);
 
-    const activeIds = await findActiveChannelIds(this.channelModel, cls.channelIds);
+    const activeIds = await findActiveChannelIds(
+      this.models.channelModel,
+      cls.channelIds,
+    );
     if (activeIds.length === 0) {
       return this.cancel(lessonId, recording, REASON.allChannelsDisabled, now);
     }
@@ -141,15 +133,19 @@ export class RecordingBroadcastService {
       settings.templates,
       now,
     );
-    await insertBroadcastWithDeliveries(this.broadcastModel, this.deliveryModel, {
-      kind: 'recording',
-      lessonId,
-      recordingKey: recordingKeyOf(recording),
-      channelIds: activeIds,
-      telegramFileId: recording.telegramFileId,
-      text,
-      scheduledAt: now.toJSDate(),
-    });
+    await insertBroadcastWithDeliveries(
+      this.models.broadcastModel,
+      this.models.deliveryModel,
+      {
+        kind: 'recording',
+        lessonId,
+        recordingKey: recordingKeyOf(recording),
+        channelIds: activeIds,
+        telegramFileId: recording.telegramFileId,
+        text,
+        scheduledAt: now.toJSDate(),
+      },
+    );
   }
 
   private async cancel(
@@ -159,7 +155,7 @@ export class RecordingBroadcastService {
     now: DateTime,
   ): Promise<void> {
     await insertCancelledPlaceholder(
-      this.broadcastModel,
+      this.models.broadcastModel,
       { kind: 'recording', lessonId, recordingKey: recordingKeyOf(recording), reason },
       now,
     );

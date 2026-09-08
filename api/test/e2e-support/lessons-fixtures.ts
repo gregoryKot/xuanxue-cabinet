@@ -3,12 +3,15 @@
 // чтобы оба спека уместились в лимит файл-храповика (CLAUDE.md «Храповики»),
 // без дублей (jscpd), как channels-fixtures.ts для channels.e2e-spec.ts.
 import { getModelToken } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import type { Model, Types } from 'mongoose';
 import request from 'supertest';
 import type { UserRole } from '@xuanxue/shared';
+import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from '../../src/classes/class.schema';
 import { BroadcastRecord } from '../../src/broadcasts/broadcast.schema';
-import { ClassRecord } from '../../src/classes/class.schema';
+import { ChannelRecord } from '../../src/channels/channel.schema';
+import { DeliveryRecord } from '../../src/deliveries/delivery.schema';
 import { LessonRecord } from '../../src/lessons/lesson.schema';
+import { encryptRecord } from '../../src/utils/encryption';
 import { sessionCookieFor, withCsrf } from './http';
 import type { TestApp } from './create-app';
 
@@ -27,14 +30,55 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
     getApp().app.get(getModelToken(LessonRecord.name), { strict: false });
   const broadcastModel = (): Model<BroadcastRecord> =>
     getApp().app.get(getModelToken(BroadcastRecord.name), { strict: false });
+  const channelModel = (): Model<ChannelRecord> =>
+    getApp().app.get(getModelToken(ChannelRecord.name), { strict: false });
+  const deliveryModel = (): Model<DeliveryRecord> =>
+    getApp().app.get(getModelToken(DeliveryRecord.name), { strict: false });
 
-  async function createClass(rulesDurationMin = 45): Promise<string> {
-    const cls = await classModel().create({
-      title: 'Тайцзицюань',
-      format: 'online',
-      rules: [{ weekday: 4, time: '19:00', durationMin: rulesDurationMin }],
-    });
+  // `zoomLink`/`channelIds` — только send-now.e2e-spec.ts (нужен реально
+  // рассылаемый класс: ссылка и активный канал), остальные вызовы этого
+  // хелпера их не передают и получают прежнее поведение без изменений.
+  // `zoomLink` пишем через encryptRecord — как и прод-код (ClassesService),
+  // не открытым текстом: test/jest-e2e.config.js подключает test/jest.setup.ts
+  // в setupFiles, ENCRYPTION_KEY стоит в process.env раньше любого импорта
+  // src/**, поэтому utils/encryption.ts кэширует настоящий ключ, а не пустой.
+  async function createClass(
+    overrides: {
+      rulesDurationMin?: number;
+      zoomLink?: string;
+      channelIds?: Types.ObjectId[];
+    } = {},
+  ): Promise<string> {
+    const { rulesDurationMin = 45, zoomLink, channelIds } = overrides;
+    const cls = await classModel().create(
+      encryptRecord(
+        {
+          title: 'Тайцзицюань',
+          format: 'online',
+          rules: [{ weekday: 4, time: '19:00', durationMin: rulesDurationMin }],
+          zoomLink,
+          channelIds,
+        },
+        CLASS_ENCRYPT_SCHEMA,
+      ),
+    );
     return cls._id.toString();
+  }
+
+  /** Класс с реальной ссылкой и активным каналом — send-now.e2e-spec.ts
+   * (нужен класс, куда реально можно отправить). */
+  async function createSendableClass(): Promise<string> {
+    const channel = await channelModel().create({
+      type: 'telegram',
+      title: 'Канал школы',
+      config: '{}',
+      target: '',
+      active: true,
+    });
+    return createClass({
+      zoomLink: 'https://zoom.example/1',
+      channelIds: [channel._id],
+    });
   }
 
   function postLesson(cookie: string, body: Record<string, unknown>): request.Test {
@@ -60,7 +104,10 @@ export function createLessonTestHelpers(getApp: () => TestApp) {
     classModel,
     lessonModel,
     broadcastModel,
+    channelModel,
+    deliveryModel,
     createClass,
+    createSendableClass,
     postLesson,
     patchLesson,
   };

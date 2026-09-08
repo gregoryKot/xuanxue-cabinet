@@ -7,7 +7,7 @@
 // или сбой (`goBack()` — тот же путь, что у «Отмена») — иначе сообщение об
 // ошибке остаётся невидимым под оверлеем подтверждения.
 import type { CSSProperties } from 'react';
-import { Button } from './Button';
+import { Button, type ButtonVariant } from './Button';
 import { useDialog } from '../hooks/useDialog';
 import { useHistorySheet } from '../hooks/useHistorySheet';
 
@@ -37,6 +37,11 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel: string;
   pending?: boolean;
+  /** Стиль кнопки подтверждения — по умолчанию `danger` (необратимое
+   * действие: отмена занятия/рассылки, удаление канала). «Отправить сейчас»
+   * (docs/PLAN.md §6 п.3) не разрушительно — передаёт `primary`, чтобы
+   * красная кнопка не читалась как предупреждение об опасности. */
+  confirmVariant?: ButtonVariant;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
@@ -46,6 +51,7 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   pending,
+  confirmVariant = 'danger',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -80,7 +86,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             type="button"
-            variant="danger"
+            variant={confirmVariant}
             pending={pending}
             onClick={() => void handleConfirm()}
           >
