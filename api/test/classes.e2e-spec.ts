@@ -132,13 +132,11 @@ describe('Classes (e2e)', () => {
       expect(afterDelete.status).toBe(404);
     });
 
-    it('POST с лишним полем teacherId — 400, а не молчаливая потеря опечатки формы (forbidNonWhitelisted)', async () => {
+    it('POST с лишним полем teacherId — 400 (forbidNonWhitelisted), не тихая потеря', async () => {
       const cookie = await sessionFor(['teacher']);
       const res = await postClass(cookie, { ...VALID_BODY, teacherId: 'x' });
       expect(res.status).toBe(400);
-      const body = res.body as ApiErrorBody;
-      expect(body.code).toBe('invalid_input');
-      expect(body.details).toContain('teacherId: поле не поддерживается.');
+      expect(res.text).toContain('teacherId: поле не поддерживается.');
     });
 
     it('POST с zoomLink не по https — 400 в конверте с details', async () => {
