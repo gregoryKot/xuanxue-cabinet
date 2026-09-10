@@ -19,7 +19,23 @@ afterEach(() => {
   __resetTelegramWidgetForTests();
   delete window.Telegram;
   document.head.innerHTML = '';
+  vi.unstubAllGlobals();
 });
+
+/** Сенсорный экран: попап там ненадёжен, поэтому вход идёт переходом
+ * (telegramAuthRedirect.ts). По умолчанию в тестах — мышь. */
+function stubCoarsePointer() {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('coarse'),
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
 
 describe('useTelegramLogin', () => {
   it('без botId скрипт не грузится, ready остаётся false', () => {
@@ -90,6 +106,34 @@ describe('useTelegramLogin', () => {
     };
 
     await expect(result.current.login()).resolves.toBeNull();
+  });
+
+  // Отзыв владельца 2026-09-10: на телефоне вход возвращал к кнопке «Войти».
+  // Виджет всегда делает window.open, а на сенсорном экране это отдельная
+  // вкладка (или блок попапов) — вход завершался не там, где начинался.
+  it('телефон: скрипт виджета не грузится, кнопка готова сразу', async () => {
+    stubCoarsePointer();
+
+    const { result } = renderHook(() => useTelegramLogin(123456));
+
+    expect(document.head.querySelector('script[src*="telegram-widget"]')).toBeNull();
+    await waitFor(() => expect(result.current.ready).toBe(true));
+  });
+
+  it('телефон: login() уводит вкладку на Telegram и резолвится null', async () => {
+    stubCoarsePointer();
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      origin: 'https://xuanxue.su',
+      href: 'https://xuanxue.su/login',
+      assign,
+    });
+
+    const { result } = renderHook(() => useTelegramLogin(123456));
+
+    await expect(result.current.login()).resolves.toBeNull();
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(String(assign.mock.calls[0]?.[0])).toContain('oauth.telegram.org/auth');
   });
 
   it('login() без botId отклоняется', async () => {

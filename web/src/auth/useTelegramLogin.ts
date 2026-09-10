@@ -7,6 +7,7 @@
 // уже разрешает frameSrc/connectSrc для него).
 import { useCallback, useEffect, useState } from 'react';
 import type { TelegramLoginInput } from '@xuanxue/shared';
+import { redirectToTelegramAuth, usesRedirectFlow } from './telegramAuthRedirect';
 
 const WIDGET_SRC = 'https://telegram.org/js/telegram-widget.js?22';
 
@@ -53,6 +54,10 @@ export function __resetTelegramWidgetForTests(): void {
 
 export interface UseTelegramLoginResult {
   ready: boolean;
+  /** Данные входа — когда вход прошёл попапом (десктоп). `null` — когда
+   * входить нечем: попап закрыли без входа или мы увели вкладку на Telegram
+   * (телефон, telegramAuthRedirect.ts) и результат придёт фрагментом
+   * `#tgAuthResult=` уже на возврате. Оба случая — не ошибка. */
   login: () => Promise<TelegramLoginInput | null>;
 }
 
@@ -61,6 +66,12 @@ export function useTelegramLogin(botId: number | undefined): UseTelegramLoginRes
 
   useEffect(() => {
     if (!botId) return;
+    // На телефоне вход идёт переходом, виджет там не нужен вовсе — кнопка
+    // готова сразу, лишнего запроса к telegram.org нет.
+    if (usesRedirectFlow()) {
+      setReady(true);
+      return;
+    }
     let cancelled = false;
     loadWidgetScript()
       .then(() => {
@@ -75,6 +86,10 @@ export function useTelegramLogin(botId: number | undefined): UseTelegramLoginRes
   }, [botId]);
 
   const login = useCallback((): Promise<TelegramLoginInput | null> => {
+    if (botId && usesRedirectFlow()) {
+      redirectToTelegramAuth(botId);
+      return Promise.resolve(null);
+    }
     return new Promise((resolve, reject) => {
       if (!botId || !window.Telegram) {
         reject(
