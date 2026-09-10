@@ -7,7 +7,11 @@ import { useState, type CSSProperties } from 'react';
 import type { ChannelDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import {
+  primaryActionStyle,
+  screenExplanationStyle,
+  screenSectionStyle,
+} from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { ChannelCard } from './ChannelCard';
 import { ChannelSheet } from './ChannelSheet';
@@ -47,7 +51,11 @@ export default function ChannelsScreen() {
     <section style={screenSectionStyle}>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
 
-      {channels !== null && <Button onClick={openCreate}>Добавить канал</Button>}
+      {channels !== null && (
+        <Button style={primaryActionStyle} onClick={openCreate}>
+          Добавить канал
+        </Button>
+      )}
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 
