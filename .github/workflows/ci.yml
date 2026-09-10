@@ -54,8 +54,11 @@ jobs:
         run: node scripts/check-file-size-ratchet.mjs
       - name: robot-phrases ratchet
         run: node scripts/check-robot-phrases.mjs
+      # Не голый `npm audit`: у уязвимости бывает нет исправленной версии, и
+      # тогда красным становится каждый PR. Гейт умеет исключения с причиной и
+      # сроком пересмотра — scripts/audit-allowlist.json.
       - name: npm audit (prod deps, high+)
-        run: npm audit --omit=dev --audit-level=high
+        run: node scripts/check-npm-audit.mjs
 
   web:
     runs-on: ubuntu-latest
