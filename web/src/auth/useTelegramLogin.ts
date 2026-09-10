@@ -52,13 +52,21 @@ export function __resetTelegramWidgetForTests(): void {
   scriptPromise = null;
 }
 
+/** Чем закончилась попытка входа. Три исхода вместо «пользователь или null»:
+ * «ушли на Telegram» и «вход не подтвердился» выглядят на экране по-разному —
+ * в первом случае ждём возврата, во втором человеку надо сказать, что вход не
+ * состоялся, иначе окно Telegram закрывается и не происходит ничего (отзыв
+ * владельца 2026-09-10, CLAUDE.md «Логи»: тихий отказ — самая дорогая ошибка). */
+// Не экспортируем: тип живёт внутри контракта хука, отдельного имени наружу
+// не нужно (knip ловит экспорт, которым никто не пользуется).
+type TelegramLoginOutcome =
+  | { kind: 'user'; user: TelegramLoginInput }
+  | { kind: 'redirected' }
+  | { kind: 'cancelled' };
+
 export interface UseTelegramLoginResult {
   ready: boolean;
-  /** Данные входа — когда вход прошёл попапом (десктоп). `null` — когда
-   * входить нечем: попап закрыли без входа или мы увели вкладку на Telegram
-   * (телефон, telegramAuthRedirect.ts) и результат придёт фрагментом
-   * `#tgAuthResult=` уже на возврате. Оба случая — не ошибка. */
-  login: () => Promise<TelegramLoginInput | null>;
+  login: () => Promise<TelegramLoginOutcome>;
 }
 
 export function useTelegramLogin(botId: number | undefined): UseTelegramLoginResult {
@@ -85,10 +93,10 @@ export function useTelegramLogin(botId: number | undefined): UseTelegramLoginRes
     };
   }, [botId]);
 
-  const login = useCallback((): Promise<TelegramLoginInput | null> => {
+  const login = useCallback((): Promise<TelegramLoginOutcome> => {
     if (botId && usesRedirectFlow()) {
       redirectToTelegramAuth(botId);
-      return Promise.resolve(null);
+      return Promise.resolve({ kind: 'redirected' });
     }
     return new Promise((resolve, reject) => {
       if (!botId || !window.Telegram) {
@@ -98,7 +106,10 @@ export function useTelegramLogin(botId: number | undefined): UseTelegramLoginRes
         return;
       }
       window.Telegram.Login.auth({ bot_id: botId, request_access: 'write' }, (user) => {
-        resolve(user || null); // false — пользователь закрыл попап без входа
+        // false — попап закрылся, а вход не подтвердился: человек закрыл окно
+        // сам, либо браузер не отдал виджету cookie oauth.telegram.org
+        // (Safari режет третьесторонние) и его дозапрос вернул пустоту.
+        resolve(user ? { kind: 'user', user } : { kind: 'cancelled' });
       });
     });
   }, [botId]);

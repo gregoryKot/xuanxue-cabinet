@@ -82,16 +82,16 @@ describe('useTelegramLogin', () => {
       },
     };
 
-    const user = await result.current.login();
+    const outcome = await result.current.login();
 
-    expect(user).toEqual(fakeUser);
+    expect(outcome).toEqual({ kind: 'user', user: fakeUser });
     expect(window.Telegram.Login.auth).toHaveBeenCalledWith(
       { bot_id: 123456, request_access: 'write' },
       expect.any(Function),
     );
   });
 
-  it('пользователь закрыл попап (callback(false)) — login() резолвится null', async () => {
+  it('попап закрылся без подтверждения (callback(false)) — исход cancelled', async () => {
     const { result } = renderHook(() => useTelegramLogin(123456));
     act(() => fireScriptLoad());
     await waitFor(() => expect(result.current.ready).toBe(true));
@@ -105,7 +105,7 @@ describe('useTelegramLogin', () => {
       },
     };
 
-    await expect(result.current.login()).resolves.toBeNull();
+    await expect(result.current.login()).resolves.toEqual({ kind: 'cancelled' });
   });
 
   // Отзыв владельца 2026-09-10: на телефоне вход возвращал к кнопке «Войти».
@@ -120,7 +120,7 @@ describe('useTelegramLogin', () => {
     await waitFor(() => expect(result.current.ready).toBe(true));
   });
 
-  it('телефон: login() уводит вкладку на Telegram и резолвится null', async () => {
+  it('телефон: login() уводит вкладку на Telegram, исход redirected', async () => {
     stubCoarsePointer();
     const assign = vi.fn();
     vi.stubGlobal('location', {
@@ -131,9 +131,23 @@ describe('useTelegramLogin', () => {
 
     const { result } = renderHook(() => useTelegramLogin(123456));
 
-    await expect(result.current.login()).resolves.toBeNull();
+    await expect(result.current.login()).resolves.toEqual({ kind: 'redirected' });
     expect(assign).toHaveBeenCalledTimes(1);
     expect(String(assign.mock.calls[0]?.[0])).toContain('oauth.telegram.org/auth');
+  });
+
+  // Экран входа закрыли раньше, чем ответил telegram.org: обработчики скрипта
+  // общие на модуль (scriptPromise), и без флага они дёргали бы setState уже
+  // размонтированного хука — предупреждение React и утечка.
+  it.each([
+    ['загрузился', fireScriptLoad],
+    ['не загрузился', fireScriptError],
+  ])('скрипт %s после размонтирования — ready не трогаем', async (_label, fire) => {
+    const { result, unmount } = renderHook(() => useTelegramLogin(123456));
+
+    unmount();
+    act(() => fire());
+    await waitFor(() => expect(result.current.ready).toBe(false));
   });
 
   it('login() без botId отклоняется', async () => {

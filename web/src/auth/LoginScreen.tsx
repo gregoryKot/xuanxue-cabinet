@@ -21,6 +21,12 @@ const NOT_CONFIGURED_MESSAGE =
   'Вход через Telegram не настроен. Напишите администратору школы.';
 const OFFLINE_MESSAGE = 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
 const LOGIN_FAILED_MESSAGE = 'Не удалось войти. Попробуйте ещё раз.';
+// Окно Telegram закрылось, а подтверждения не пришло. Так бывает, когда его
+// закрыли сами, и когда браузер не отдал виджету cookie Telegram (Safari режет
+// третьесторонние). Молчать здесь нельзя: экран выглядит так, будто нажатие не
+// сработало (отзыв владельца 2026-09-10).
+const LOGIN_CANCELLED_MESSAGE =
+  'Telegram закрыл окно, а вход не подтвердился. Попробуйте ещё раз и разрешите всплывающие окна для сайта, если браузер их блокирует.';
 
 export default function LoginScreen() {
   const navigate = useNavigate();
@@ -37,9 +43,15 @@ export default function LoginScreen() {
     setError(null);
     setPending(true);
     try {
-      const user = await login();
-      if (!user) return; // попап закрыт без входа — не ошибка
-      await postTelegramLogin(user);
+      const outcome = await login();
+      // Увели вкладку на Telegram (телефон) — ждать здесь нечего, результат
+      // придёт фрагментом адреса на возврате (useTelegramAuthResultLogin).
+      if (outcome.kind === 'redirected') return;
+      if (outcome.kind === 'cancelled') {
+        setError(LOGIN_CANCELLED_MESSAGE);
+        return;
+      }
+      await postTelegramLogin(outcome.user);
       await refresh();
       void navigate('/schedule', { replace: true });
     } catch (err) {
