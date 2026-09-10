@@ -107,6 +107,11 @@ export class EnvSchema {
   @IsIn(['true', 'false'], { message: SCHEDULER_ENABLED_MESSAGE })
   SCHEDULER_ENABLED: 'true' | 'false' = 'true';
 
+  // Разовый импорт ссылок Zoom (миграция 0002, .env.example и RUNBOOK §2.2).
+  // Форму разбирает сама миграция — её сообщение точнее любого регэкспа тут.
+  @IsOptional()
+  CLASS_ZOOM_LINKS?: string;
+
   // Ставит Railway сама — SHA коммита деплоя, /api/health отдаёт короткий
   // вариант (health-commit.ts, RUNBOOK §2 п.1). Локально не нужна.
   @IsOptional()

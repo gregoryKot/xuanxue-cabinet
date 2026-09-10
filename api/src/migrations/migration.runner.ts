@@ -4,6 +4,7 @@
 // OnApplicationBootstrap — этот хук у Nest всегда отрабатывает раньше, чем
 // HTTP-сервер начинает слушать порт (и в проде, и в `app.init()` под e2e).
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import type { Db } from 'mongodb';
@@ -27,7 +28,10 @@ interface MigrationsDoc {
 export class MigrationRunner implements OnApplicationBootstrap {
   private readonly logger = new Logger(MigrationRunner.name);
 
-  constructor(@InjectConnection() private readonly connection: Connection) {}
+  constructor(
+    @InjectConnection() private readonly connection: Connection,
+    private readonly config: ConfigService,
+  ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     await this.run();
@@ -86,7 +90,7 @@ export class MigrationRunner implements OnApplicationBootstrap {
     for (const migration of migrations) {
       if (applied.has(migration.id)) continue;
       this.logger.log(`Применяю миграцию ${migration.id}`);
-      await migration.up(db);
+      await migration.up(db, this.config);
       await collection.insertOne({
         _id: migration.id,
         appliedAt: DateTime.utc().toJSDate(),
