@@ -55,3 +55,4 @@
 | [0017](0017-mongo-backups.md)                            | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions           |
 | [0018](0018-istanbul-coverage-for-web.md)                | Покрытие web через istanbul, не v8 — детерминированные пороги          |
 | [0019](0019-school-schedule-seeded-by-migration.md)      | Расписание школы приносит миграция, ссылки Zoom — экран «Занятия»      |
+| [0020](0020-telegram-login-redirect-on-touch.md)         | Вход через Telegram с телефона — переходом вкладки, не попапом         |

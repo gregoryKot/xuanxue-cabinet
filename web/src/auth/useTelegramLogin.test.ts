@@ -19,7 +19,23 @@ afterEach(() => {
   __resetTelegramWidgetForTests();
   delete window.Telegram;
   document.head.innerHTML = '';
+  vi.unstubAllGlobals();
 });
+
+/** Сенсорный экран: попап там ненадёжен, поэтому вход идёт переходом
+ * (telegramAuthRedirect.ts). По умолчанию в тестах — мышь. */
+function stubCoarsePointer() {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('coarse'),
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
 
 describe('useTelegramLogin', () => {
   it('без botId скрипт не грузится, ready остаётся false', () => {
@@ -66,16 +82,16 @@ describe('useTelegramLogin', () => {
       },
     };
 
-    const user = await result.current.login();
+    const outcome = await result.current.login();
 
-    expect(user).toEqual(fakeUser);
+    expect(outcome).toEqual({ kind: 'user', user: fakeUser });
     expect(window.Telegram.Login.auth).toHaveBeenCalledWith(
       { bot_id: 123456, request_access: 'write' },
       expect.any(Function),
     );
   });
 
-  it('пользователь закрыл попап (callback(false)) — login() резолвится null', async () => {
+  it('попап закрылся без подтверждения (callback(false)) — исход cancelled', async () => {
     const { result } = renderHook(() => useTelegramLogin(123456));
     act(() => fireScriptLoad());
     await waitFor(() => expect(result.current.ready).toBe(true));
@@ -89,7 +105,49 @@ describe('useTelegramLogin', () => {
       },
     };
 
-    await expect(result.current.login()).resolves.toBeNull();
+    await expect(result.current.login()).resolves.toEqual({ kind: 'cancelled' });
+  });
+
+  // Отзыв владельца 2026-09-10: на телефоне вход возвращал к кнопке «Войти».
+  // Виджет всегда делает window.open, а на сенсорном экране это отдельная
+  // вкладка (или блок попапов) — вход завершался не там, где начинался.
+  it('телефон: скрипт виджета не грузится, кнопка готова сразу', async () => {
+    stubCoarsePointer();
+
+    const { result } = renderHook(() => useTelegramLogin(123456));
+
+    expect(document.head.querySelector('script[src*="telegram-widget"]')).toBeNull();
+    await waitFor(() => expect(result.current.ready).toBe(true));
+  });
+
+  it('телефон: login() уводит вкладку на Telegram, исход redirected', async () => {
+    stubCoarsePointer();
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      origin: 'https://xuanxue.su',
+      href: 'https://xuanxue.su/login',
+      assign,
+    });
+
+    const { result } = renderHook(() => useTelegramLogin(123456));
+
+    await expect(result.current.login()).resolves.toEqual({ kind: 'redirected' });
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(String(assign.mock.calls[0]?.[0])).toContain('oauth.telegram.org/auth');
+  });
+
+  // Экран входа закрыли раньше, чем ответил telegram.org: обработчики скрипта
+  // общие на модуль (scriptPromise), и без флага они дёргали бы setState уже
+  // размонтированного хука — предупреждение React и утечка.
+  it.each([
+    ['загрузился', fireScriptLoad],
+    ['не загрузился', fireScriptError],
+  ])('скрипт %s после размонтирования — ready не трогаем', async (_label, fire) => {
+    const { result, unmount } = renderHook(() => useTelegramLogin(123456));
+
+    unmount();
+    act(() => fire());
+    await waitFor(() => expect(result.current.ready).toBe(false));
   });
 
   it('login() без botId отклоняется', async () => {

@@ -108,6 +108,26 @@ describe('LoginScreen — конфигурация', () => {
     expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
   });
 
+  // «Повторить» после сетевого сбоя обязана перезапросить конфигурацию:
+  // иначе кнопка есть, а нажатие ничего не делает — тот же тихий отказ.
+  it('«Повторить» после сбоя перезапрашивает конфигурацию и показывает кнопку входа', async () => {
+    const user = userEvent.setup();
+    let attempt = 0;
+    mockRoutes(() => {
+      attempt += 1;
+      return attempt === 1
+        ? Promise.reject(new Error('сеть недоступна'))
+        : Promise.resolve({ telegramBotId: 123456 });
+    });
+    renderScreen();
+
+    await user.click(await screen.findByRole('button', { name: 'Повторить' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Войти через Telegram' }),
+    ).toBeInTheDocument();
+  });
+
   it('с ботом — кнопка «Войти через Telegram»', async () => {
     mockRoutes(() => Promise.resolve({ telegramBotId: 123456 }));
     renderScreen();
@@ -173,7 +193,11 @@ describe('LoginScreen — вход', () => {
     expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
   });
 
-  it('попап закрыт без входа (callback(false)) — тихо, без текста ошибки', async () => {
+  // Раньше этот случай проходил молча, и экран выглядел так, будто нажатие не
+  // сработало: окно Telegram открылось, закрылось, и ничего (отзыв владельца
+  // 2026-09-10). Так бывает и когда окно закрыли сами, и когда браузер не отдал
+  // виджету cookie Telegram — Safari режет третьесторонние.
+  it('попап закрылся без подтверждения — объяснение на экране, без POST', async () => {
     const user = userEvent.setup();
     mockRoutes(() => Promise.resolve({ telegramBotId: 123456 }));
     renderScreen();
@@ -190,7 +214,7 @@ describe('LoginScreen — вход', () => {
     await user.click(button);
 
     expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/telegram', expect.anything());
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('вход не подтвердился');
   });
 
   it('неизвестная ошибка (не ApiError) — общий текст', async () => {
