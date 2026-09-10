@@ -33,6 +33,24 @@ describe('AppNav', () => {
     expect(nav.style.flexDirection).toBe('column');
   });
 
+  // Панель уезжала вверх вместе со списком занятий (отзыв владельца
+  // 2026-09-10): на телефоне она должна оставаться на месте, иначе до другого
+  // раздела приходится прокручивать весь список обратно.
+  it('телефон — панель прибита к низу экрана', () => {
+    renderNav(true);
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    expect(nav.style.position).toBe('sticky');
+    expect(nav.style.bottom).toBe('0px');
+  });
+
+  it('широкий экран — колонка слева ничего не прибивает', () => {
+    renderNav(false);
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    expect(nav.style.position).toBe('');
+  });
+
   it('подписи пунктов видны в обоих видах — иконка без слова не читается', () => {
     const { unmount } = renderNav(true);
     expect(screen.getByText('Занятия')).toBeInTheDocument();
