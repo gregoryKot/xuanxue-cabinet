@@ -8,7 +8,12 @@ import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
 import { useChannels } from '../channels/useChannels';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import {
+  primaryActionStyle,
+  screenExplanationStyle,
+  screenSectionStyle,
+  wideScreenSectionStyle,
+} from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTeachers } from '../people/useTeachers';
@@ -57,10 +62,15 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <section style={screenSectionStyle}>
+    // Сетка недели занимает всю ширину, список на телефоне — обычную колонку.
+    <section style={isMobile ? screenSectionStyle : wideScreenSectionStyle}>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
 
-      {!loading && <Button onClick={openCreate}>Добавить занятие</Button>}
+      {!loading && (
+        <Button style={primaryActionStyle} onClick={openCreate}>
+          Добавить занятие
+        </Button>
+      )}
 
       {error && (
         <LoadErrorBanner

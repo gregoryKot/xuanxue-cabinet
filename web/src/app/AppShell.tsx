@@ -1,16 +1,19 @@
-// Оболочка кабинета — шапка и нижняя навигация (CLAUDE.md «Мобильный экран
-// первым»). Пункты навигации появляются вместе с экраном, который открывают
-// (PR K, по одному на патч) — список в navItems.ts. 6 пунктов на 360px не
-// умещаются подписью в строку — иконка сверху и короткое слово вместо «Ещё»
-// (pr-k3-fixes.md п.10, PLAN §6). Роль без teacher/admin (ученик) —
+// Оболочка кабинета — шапка и навигация (CLAUDE.md «Мобильный экран первым»).
+// Пункты навигации появляются вместе с экраном, который открывают (PR K, по
+// одному на патч) — список в navItems.ts; сама навигация в двух видах —
+// AppNav.tsx. На широком экране она уходит в колонку слева, а содержимое
+// живёт в колонке ограниченной ширины: телефонный макет во всю ширину
+// монитора растягивал карточку с одной строкой текста на 1400 пикселей
+// (отзыв владельца 2026-09-09). Роль без teacher/admin (ученик) —
 // StudentScreen вместо содержимого маршрута, но шапка с «Выйти» остаётся.
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { ApiError, apiFetch } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
 import { Button } from '../components/Button';
-import { NAV_ITEMS } from './navItems';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { AppNav } from './AppNav';
 import { StudentScreen } from './StudentScreen';
 
 const TEACHER_ROLES = new Set(['teacher', 'admin']);
@@ -24,41 +27,12 @@ const headerStyle: CSSProperties = {
   background: '#fff',
 };
 
-const navStyle: CSSProperties = {
-  display: 'flex',
-  borderTop: '1px solid var(--border)',
-  background: '#fff',
-};
-
-const navLinkStyle = (isActive: boolean): CSSProperties => ({
-  flex: 1,
-  // `minWidth: 0` — иначе flex-item не сжимается уже своего содержимого, и
-  // 6 пунктов на 360px толкают body в горизонтальный скролл (pr-k3-fixes.md
-  // п.10): вместе с overflowWrap подписи ниже это держит навигацию в ширине
-  // экрана без теста на ширину — проверка стилями, не пикселями.
-  minWidth: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 2,
-  padding: '8px 2px',
-  minHeight: 44,
-  textDecoration: 'none',
-  color: isActive ? 'var(--accent)' : 'var(--ink-soft)',
-  fontWeight: isActive ? 600 : 400,
-});
-const navLabelStyle: CSSProperties = {
-  fontSize: 11,
-  lineHeight: 1.1,
-  textAlign: 'center',
-  overflowWrap: 'anywhere',
-};
-
 const LOGOUT_FAILED_MESSAGE = 'Не удалось выйти. Попробуйте ещё раз.';
 
 export function AppShell() {
   const navigate = useNavigate();
   const { me, clear } = useAuth();
+  const isMobile = useIsMobile();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isTeacher = me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false;
@@ -92,18 +66,14 @@ export function AppShell() {
         </p>
       )}
 
-      <div style={{ flex: 1 }}>{isTeacher ? <Outlet /> : <StudentScreen />}</div>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        {isTeacher && !isMobile && <AppNav isMobile={false} />}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {isTeacher ? <Outlet /> : <StudentScreen />}
+        </div>
+      </div>
 
-      {isTeacher && (
-        <nav style={navStyle} aria-label="Разделы кабинета">
-          {NAV_ITEMS.map(({ to, label, Icon }) => (
-            <NavLink key={to} to={to} style={({ isActive }) => navLinkStyle(isActive)}>
-              <Icon />
-              <span style={navLabelStyle}>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-      )}
+      {isTeacher && isMobile && <AppNav isMobile />}
     </div>
   );
 }

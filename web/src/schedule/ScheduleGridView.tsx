@@ -1,12 +1,16 @@
-// Недельная сетка Вс…Сб (CLAUDE.md «Мобильный экран первым»): дни — колонки в
-// горизонтальном скролле, читаемо уже на 360px без переноса карточек.
+// Недельная сетка Вс…Сб (CLAUDE.md «Мобильный экран первым»): дни — семь
+// равных колонок `minmax(0, 1fr)` вместо фиксированной ширины: на мониторе
+// неделя видна целиком, а не три с половиной дня с обрезанным четвёртым
+// (отзыв владельца 2026-09-09). Пол по ширине колонки не нужен: сетку
+// показывает только широкий экран, на телефоне ScheduleScreen рисует список.
 import type { CSSProperties } from 'react';
 import { WEEKDAYS } from '@xuanxue/shared';
 import { DaySlots } from './DaySlots';
 import type { ScheduleGrid } from './scheduleGrid';
 
 const scrollStyle: CSSProperties = {
-  display: 'flex',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
   gap: 12,
   overflowX: 'auto',
   paddingBottom: 8,
@@ -15,8 +19,7 @@ const columnStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
-  minWidth: 148,
-  flexShrink: 0,
+  minWidth: 0,
 };
 
 interface ScheduleGridViewProps {

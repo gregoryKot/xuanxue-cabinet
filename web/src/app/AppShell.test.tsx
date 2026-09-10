@@ -54,6 +54,35 @@ const STUDENT: MeDto = {
   tz: 'Asia/Jerusalem',
 };
 
+describe('AppShell — навигация по ширине экрана', () => {
+  // Ветка «телефон»: по умолчанию matchMedia в setupTests отвечает «широкий
+  // экран», поэтому нижняя панель без подмены не рисуется вовсе (отзыв
+  // владельца 2026-09-09 — на мониторе она выглядела обрезком телефона).
+  it('на телефоне навигация снизу, шириной колонки не задана', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }),
+    );
+    renderShell(TEACHER);
+
+    const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
+    expect(nav.style.width).toBe('');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('на широком экране навигация — колонка слева', async () => {
+    renderShell(TEACHER);
+
+    const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
+    expect(nav.style.flexDirection).toBe('column');
+  });
+});
+
 describe('AppShell — учитель', () => {
   it('шапка, нижняя навигация «Занятия» и вложенный маршрут', async () => {
     renderShell(TEACHER);
