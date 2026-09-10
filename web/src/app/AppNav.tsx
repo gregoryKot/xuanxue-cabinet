@@ -14,6 +14,14 @@ const bottomStyle: CSSProperties = {
   display: 'flex',
   borderTop: '1px solid var(--border)',
   background: '#fff',
+  // Панель прибита к низу экрана, а не уезжает вверх вместе со списком
+  // (отзыв владельца 2026-09-10). sticky, а не fixed: элемент остаётся в
+  // потоке последним в колонке AppShell, поэтому под него не нужна распорка по
+  // высоте — контент не залезает под панель на последнем экране списка.
+  position: 'sticky',
+  bottom: 0,
+  // Выше карточек и листов расписания, ниже тоста обновления (zIndex 100).
+  zIndex: 10,
 };
 const sideStyle: CSSProperties = {
   width: SIDE_NAV_WIDTH_PX,
