@@ -2,6 +2,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { Db } from 'mongodb';
 import { seedSchoolClasses } from './0001-school-classes.migration';
 import { fillClassZoomLinks } from './0002-class-zoom-links.migration';
+import { attachChannelsToClasses } from './0004-attach-channels-to-classes.migration';
 
 // Реестр миграций Mongo. Порядок массива — порядок применения. `id` — ключ
 // записи о применении в коллекции `migrations`; менять id уже закоммиченной
@@ -15,4 +16,10 @@ export interface Migration {
   up: (db: Db, config: ConfigService) => Promise<void>;
 }
 
-export const MIGRATIONS: Migration[] = [seedSchoolClasses, fillClassZoomLinks];
+// Номер 0003 зарезервирован под перенос ссылок Zoom в сам репозиторий: он
+// ждёт отдельного решения и в реестр пока не входит.
+export const MIGRATIONS: Migration[] = [
+  seedSchoolClasses,
+  fillClassZoomLinks,
+  attachChannelsToClasses,
+];
