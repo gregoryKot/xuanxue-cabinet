@@ -1,25 +1,25 @@
-import type { ConfigService } from '@nestjs/config';
 import type { Db } from 'mongodb';
 import { seedSchoolClasses } from './0001-school-classes.migration';
-import { fillClassZoomLinks } from './0002-class-zoom-links.migration';
+import { fillSchoolZoomLinks } from './0003-school-zoom-links.migration';
 import { attachChannelsToClasses } from './0004-attach-channels-to-classes.migration';
 
 // Реестр миграций Mongo. Порядок массива — порядок применения. `id` — ключ
 // записи о применении в коллекции `migrations`; менять id уже закоммиченной
 // миграции нельзя — раннер решит, что это новая, и применит её повторно.
 //
-// `config` — тот же ConfigService, что у всего приложения: миграции читают
-// окружение через него, а не из process.env (CLAUDE.md «Конфигурация»).
-// Миграции, которым окружение не нужно, аргумент просто не берут.
+// Номер 0002 пропущен намеренно: та миграция читала ссылки Zoom из переменной
+// окружения и прожила сутки — ссылки оказались не секретом и переехали в сам
+// репозиторий (ADR-0019, второе дополнение). На проде её id уже записан как
+// применённый, поэтому номер не переиспользуется. По той же причине 0003 стоит
+// в списке после 0004: 0004 уехала на прод раньше, чем нашлось решение по
+// ссылкам, и порядок здесь описывает то, что уже случилось.
 export interface Migration {
   id: string;
-  up: (db: Db, config: ConfigService) => Promise<void>;
+  up: (db: Db) => Promise<void>;
 }
 
-// Номер 0003 зарезервирован под перенос ссылок Zoom в сам репозиторий: он
-// ждёт отдельного решения и в реестр пока не входит.
 export const MIGRATIONS: Migration[] = [
   seedSchoolClasses,
-  fillClassZoomLinks,
   attachChannelsToClasses,
+  fillSchoolZoomLinks,
 ];
