@@ -1,7 +1,6 @@
 // Реальный Mongo в памяти вместо мока: раннер держит логику блокировок и
 // денормализованного состояния (какие миграции применены), read-after-write
 // связка «применил → записалось → второй прогон не повторяет» важнее мока.
-import { ConfigService } from '@nestjs/config';
 import type { Connection } from 'mongoose';
 import { MigrationRunner } from './migration.runner';
 import type { Migration } from './migrations';
@@ -36,9 +35,7 @@ describe('MigrationRunner', () => {
 
   beforeEach(async () => {
     await connection.db?.collection('migrations').deleteMany({});
-    // Пустой ConfigService: раннер только передаёт его миграциям, сам не
-    // читает — миграции этого спека окружение не трогают.
-    runner = new MigrationRunner(connection, new ConfigService({}));
+    runner = new MigrationRunner(connection);
   });
 
   async function appliedIds(): Promise<string[]> {
@@ -143,7 +140,7 @@ describe('MigrationRunner', () => {
 
   it('без установленного соединения с БД бросает понятную ошибку', async () => {
     const brokenConnection = { db: undefined } as unknown as Connection;
-    const brokenRunner = new MigrationRunner(brokenConnection, new ConfigService({}));
+    const brokenRunner = new MigrationRunner(brokenConnection);
 
     await expect(brokenRunner.run([])).rejects.toThrow(/соединение/);
   });
