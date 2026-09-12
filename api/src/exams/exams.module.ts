@@ -16,6 +16,8 @@ import { ExamItemsService } from './exam-items.service';
 import { ExamRecord, ExamSchema } from './exam.schema';
 import { ExamsController } from './exams.controller';
 import { ExamsService } from './exams.service';
+import { MyExamsController } from './my-exams.controller';
+import { MyExamsService } from './my-exams.service';
 
 @Module({
   imports: [
@@ -25,8 +27,13 @@ import { ExamsService } from './exams.service';
       { name: ExamAttemptRecord.name, schema: ExamAttemptSchema },
     ]),
   ],
-  controllers: [ExamItemsController, ExamsController, ExamAttemptsController],
-  providers: [ExamItemsService, ExamsService, ExamAttemptsService],
+  controllers: [
+    ExamItemsController,
+    ExamsController,
+    ExamAttemptsController,
+    MyExamsController,
+  ],
+  providers: [ExamItemsService, ExamsService, ExamAttemptsService, MyExamsService],
   exports: [MongooseModule, ExamItemsService, ExamsService, ExamAttemptsService],
 })
 export class ExamsModule {}

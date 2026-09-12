@@ -17,13 +17,16 @@ import { UserModelModule } from '../users/user-model.module';
 import { LessonModelModule } from './lesson-model.module';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
+import { MyLessonsController } from './my-lessons.controller';
+import { MyLessonsService } from './my-lessons.service';
 
 @Module({
   // UserModelModule — update() проверяет leaderId через assertTeacherExists
-  // (аудит В4), тот же приём, что у ClassesModule.
+  // (аудит В4), тот же приём, что у ClassesModule. ClassesModule даёт и
+  // ClassRecord для MyLessonsService (`/me/lessons`, ТЗ student-api.md).
   imports: [LessonModelModule, ClassesModule, BroadcastsModule, UserModelModule],
-  controllers: [LessonsController],
-  providers: [LessonsService],
+  controllers: [LessonsController, MyLessonsController],
+  providers: [LessonsService, MyLessonsService],
   exports: [LessonModelModule, LessonsService],
 })
 export class LessonsModule {}
