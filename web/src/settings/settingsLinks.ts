@@ -9,7 +9,14 @@ export interface SettingsLink {
   to: string;
   title: string;
   hint: string;
-  icon: 'schedule' | 'channels' | 'templates' | 'broadcasts' | 'people' | 'examItems';
+  icon:
+    | 'schedule'
+    | 'channels'
+    | 'templates'
+    | 'broadcasts'
+    | 'people'
+    | 'examItems'
+    | 'exams';
   adminOnly?: boolean;
 }
 
@@ -43,6 +50,12 @@ export const SETTINGS_LINKS: SettingsLink[] = [
     title: 'Вопросы для экзамена',
     hint: 'Из них собирается экзамен. Один вопрос можно поставить в несколько экзаменов.',
     icon: 'examItems',
+  },
+  {
+    to: '/exams',
+    title: 'Экзамены',
+    hint: 'Формы из вопросов банка — блоки, порядок, лимит времени и попытки.',
+    icon: 'exams',
   },
   {
     to: '/people',

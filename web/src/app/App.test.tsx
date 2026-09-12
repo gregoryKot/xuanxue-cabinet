@@ -141,6 +141,14 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('учитель на /exams — маршрут «Экзамены» открывает ExamsScreen', async () => {
+    mockRoute(TEACHER, { '/exams': [] });
+
+    renderAt('/exams');
+
+    expect(await screen.findByText(/собирается из вопросов банка/)).toBeInTheDocument();
+  });
+
   it('учитель на /settings — маршрут «Настройки» открывает SettingsScreen', async () => {
     mockRoute(TEACHER);
 

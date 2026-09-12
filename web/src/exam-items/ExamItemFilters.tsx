@@ -1,8 +1,8 @@
 // Фильтры банка вопросов — статус, тип, тег (ТЗ 4.2 «Что должен увидеть
 // учитель»), по образцу broadcasts/BroadcastFilters.tsx. Тег — свободный
-// текст, не перечисление: запрос уходит по уходу с поля или «Enter», а не на
-// каждое нажатие клавиши — иначе список мигал бы на каждую букву.
-import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
+// текст, не перечисление: коммит поля (уход с поля/Enter) — useTextFilterField,
+// общая механика с уровнем формы экзамена (exams/ExamFilters.tsx).
+import type { CSSProperties } from 'react';
 import {
   EXAM_ITEM_KINDS,
   EXAM_ITEM_STATUSES,
@@ -10,6 +10,7 @@ import {
   type ExamItemStatus,
 } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
+import { useTextFilterField } from '../hooks/useTextFilterField';
 import { EXAM_ITEM_KIND_LABELS_RU, EXAM_ITEM_STATUS_LABELS_RU } from './examItemLabels';
 
 export interface ExamItemFilterValues {
@@ -26,21 +27,7 @@ interface ExamItemFiltersProps {
 }
 
 export function ExamItemFilters({ values, onChange }: ExamItemFiltersProps) {
-  const [tagText, setTagText] = useState(values.tag);
-  // Внешний сброс фильтра (например, кнопкой «Сбросить») должен отразиться
-  // в поле — иначе после сброса в инпуте остался бы старый текст.
-  useEffect(() => setTagText(values.tag), [values.tag]);
-
-  function commitTag() {
-    const trimmed = tagText.trim();
-    if (trimmed !== values.tag) onChange({ ...values, tag: trimmed });
-  }
-
-  function handleTagKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== 'Enter') return;
-    event.preventDefault();
-    commitTag();
-  }
+  const tagFilter = useTextFilterField(values.tag, (tag) => onChange({ ...values, tag }));
 
   return (
     <div style={filtersStyle}>
@@ -79,10 +66,10 @@ export function ExamItemFilters({ values, onChange }: ExamItemFiltersProps) {
       <Field label="Тег">
         <input
           style={inputStyle}
-          value={tagText}
-          onChange={(e) => setTagText(e.target.value)}
-          onBlur={commitTag}
-          onKeyDown={handleTagKeyDown}
+          value={tagFilter.text}
+          onChange={(e) => tagFilter.setText(e.target.value)}
+          onBlur={tagFilter.commit}
+          onKeyDown={tagFilter.handleKeyDown}
         />
       </Field>
     </div>
