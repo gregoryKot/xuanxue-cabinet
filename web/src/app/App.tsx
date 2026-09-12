@@ -21,6 +21,7 @@ const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
 const PeopleScreen = lazy(() => import('../people/PeopleScreen'));
 const ExamItemsScreen = lazy(() => import('../exam-items/ExamItemsScreen'));
 const ExamsScreen = lazy(() => import('../exams/ExamsScreen'));
+const AttemptScreen = lazy(() => import('../attempt/AttemptScreen'));
 const NotificationsScreen = lazy(() => import('../notifications/NotificationsScreen'));
 
 const routeFallback = (
@@ -50,6 +51,12 @@ export default function App() {
                     notifications-web.md, docs/adr/0025). Доступна и ученику:
                     AppShell.tsx рисует здесь Outlet независимо от роли. */}
                 <Route path="/notifications" element={<NotificationsScreen />} />
+                {/* Экран сдачи — доступен любой роли (ТЗ student-exams.md:
+                    учитель тоже проходит форму изнутри), вход — кнопка
+                    «Начать»/«Продолжить» на StudentExamsSection.tsx. Как
+                    «/notifications», AppShell.tsx отдаёт под него Outlet и
+                    ученику, минуя StudentScreen. */}
+                <Route path="/attempts/:id" element={<AttemptScreen />} />
                 {/* «Ученики» — четвёртый пункт NAV_ITEMS (navItems.ts), но
                     маршрут доступен только admin (RequireAdmin, docs/PLAN.md
                     §6, блокер аудита Б3) — GET /users того же требует. */}

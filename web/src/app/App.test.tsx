@@ -207,6 +207,37 @@ describe('App', () => {
     expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
   });
 
+  // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за
+  // ролевым гвардом, как «/notifications» чуть выше.
+  it('ученик на /attempts/:id — открывает экран сдачи, не StudentScreen', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: ['student'],
+      tz: 'Asia/Jerusalem',
+    };
+    mockRoute(student, {
+      '/attempts': [
+        {
+          id: 'a1',
+          examId: 'e1',
+          examTitle: 'Форма первого уровня',
+          userId: 's1',
+          status: 'in_progress',
+          blocks: [],
+          answers: [],
+          startedAt: '2026-09-01T00:00:00Z',
+          expired: false,
+        },
+      ],
+    });
+
+    renderAt('/attempts/a1');
+
+    expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
+    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
+  });
+
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {
     mockRoute(null);
 

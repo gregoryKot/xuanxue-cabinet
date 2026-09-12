@@ -38,6 +38,9 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
                 за ролевым гвардом (ТЗ notifications-web.md): проверяем, что
                 AppShell отдаёт под него Outlet и ученику. */}
             <Route path="/notifications" element={<p>Экран уведомлений</p>} />
+            {/* Экран сдачи — та же исключительная логика (ТЗ
+                student-exams.md): ученик должен попасть на сам маршрут. */}
+            <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
           </Route>
         </Routes>
       </AuthProvider>
@@ -202,6 +205,16 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     renderShell(STUDENT, '/notifications');
 
     expect(await screen.findByText('Экран уведомлений')).toBeInTheDocument();
+    expect(screen.queryByText('Ближайших занятий пока нет.')).not.toBeInTheDocument();
+  });
+
+  // То же самое для экрана сдачи (ТЗ student-exams.md) — вход в него не
+  // ролевая настройка, а кнопка на экране ученика, но сам маршрут должен
+  // открываться, а не подменяться StudentScreen.
+  it('на «/attempts/:id» — сам маршрут, не StudentScreen', async () => {
+    renderShell(STUDENT, '/attempts/a1');
+
+    expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
     expect(screen.queryByText('Ближайших занятий пока нет.')).not.toBeInTheDocument();
   });
 });
