@@ -18,6 +18,7 @@ import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { ExamsModule } from './exams/exams.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
 import { HealthController } from './health/health.controller';
@@ -63,6 +64,7 @@ import { TelegramModule } from './telegram/telegram.module';
     BroadcastsModule,
     DeliveriesModule,
     ExamsModule,
+    NotificationsModule,
     SettingsModule,
     SummaryModule,
     UsersModule,
