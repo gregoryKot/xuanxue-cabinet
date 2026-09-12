@@ -19,6 +19,10 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve({});
     if (path === '/auth/logout') return Promise.resolve(undefined);
+    // StudentScreen (ученик без роли) грузит свои ближайшие занятия —
+    // student/useMyLessons.ts; здесь список не важен, важно, что маршрут не
+    // виснет на незамоканном пути.
+    if (path === '/me/lessons') return Promise.resolve([]);
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 
@@ -165,7 +169,7 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
   it('вместо маршрута — StudentScreen, без нижней навигации', async () => {
     renderShell(STUDENT);
 
-    expect(await screen.findByText('Кабинет для учителя.')).toBeInTheDocument();
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
     expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
   });
@@ -183,7 +187,7 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
   // ученику, хотя нижней навигации у него нет вовсе.
   it('подвал — ссылка «Уведомления» видна и ученику', async () => {
     renderShell(STUDENT);
-    await screen.findByText('Кабинет для учителя.');
+    await screen.findByText('Ближайших занятий пока нет.');
 
     expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
       'href',
@@ -197,6 +201,6 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     renderShell(STUDENT, '/notifications');
 
     expect(await screen.findByText('Экран уведомлений')).toBeInTheDocument();
-    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ближайших занятий пока нет.')).not.toBeInTheDocument();
   });
 });
