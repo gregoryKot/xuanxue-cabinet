@@ -70,3 +70,21 @@ export function TemplatesIcon() {
     </svg>
   );
 }
+
+export function SettingsIcon() {
+  return (
+    <svg {...shared}>
+      <circle cx="10" cy="10" r="2.5" />
+      <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1L4.7 4.7" />
+    </svg>
+  );
+}
+
+export function PeopleIcon() {
+  return (
+    <svg {...shared}>
+      <circle cx="8" cy="7" r="3" />
+      <path d="M2.5 17c0-3 2.5-5 5.5-5s5.5 2 5.5 5M14 4.2a3 3 0 0 1 0 5.6M15.5 12.4c1.4.7 2.3 2 2.3 3.6" />
+    </svg>
+  );
+}

@@ -1,10 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { apiFetch } from '../api/http';
+import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
 import { AppShell } from './AppShell';
 
@@ -13,11 +12,7 @@ vi.mock('../api/http', async () => {
   return { ...actual, apiFetch: vi.fn() };
 });
 
-const mockedApiFetch = vi.mocked(apiFetch);
-
-afterEach(() => {
-  mockedApiFetch.mockReset();
-});
+resetApiFetchBetweenTests();
 
 function renderShell(me: MeDto) {
   mockedApiFetch.mockImplementation((path: string) => {
@@ -92,88 +87,18 @@ describe('AppShell — учитель', () => {
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
   });
 
-  it('нижняя навигация — все шесть пунктов (pr-k3-fixes.md п.10)', async () => {
+  // Пунктов три, и это потолок (navItems.ts, отзыв владельца 2026-09-11):
+  // каналы, шаблоны, слоты расписания и люди ушли в «Настройки» одной
+  // страницей. Тест ловит возврат вкладок наравне с ежедневным.
+  it('нижняя навигация — ровно три пункта', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
-    for (const label of ['Сводка', 'Занятия', 'План', 'Каналы', 'Рассылки', 'Шаблоны']) {
-      expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
-    }
-  });
-
-  it('«Выйти» — POST /auth/logout, затем переход на /login', async () => {
-    const user = userEvent.setup();
-    renderShell(TEACHER);
-    await screen.findByText('Содержимое расписания');
-
-    await user.click(screen.getByRole('button', { name: 'Выйти' }));
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/auth/logout',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    expect(await screen.findByText('Экран входа')).toBeInTheDocument();
-  });
-
-  it('ошибка при «Выйти» (ApiError) — текст ошибки, маршрут не меняется', async () => {
-    const { ApiError } = await import('../api/http');
-    const user = userEvent.setup();
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/me') return Promise.resolve(TEACHER);
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/logout')
-        return Promise.reject(new ApiError('Сбой сервера', 500, 'unknown'));
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/schedule']}>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<p>Экран входа</p>} />
-            <Route element={<AppShell />}>
-              <Route path="/schedule" element={<p>Содержимое расписания</p>} />
-            </Route>
-          </Routes>
-        </AuthProvider>
-      </MemoryRouter>,
-    );
-    await screen.findByText('Содержимое расписания');
-
-    await user.click(screen.getByRole('button', { name: 'Выйти' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Сбой сервера');
-    expect(screen.getByText('Содержимое расписания')).toBeInTheDocument();
-  });
-
-  it('ошибка при «Выйти» (не ApiError) — общий текст', async () => {
-    const user = userEvent.setup();
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/me') return Promise.resolve(TEACHER);
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/logout') return Promise.reject(new Error('network down'));
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-
-    render(
-      <MemoryRouter initialEntries={['/schedule']}>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<p>Экран входа</p>} />
-            <Route element={<AppShell />}>
-              <Route path="/schedule" element={<p>Содержимое расписания</p>} />
-            </Route>
-          </Routes>
-        </AuthProvider>
-      </MemoryRouter>,
-    );
-    await screen.findByText('Содержимое расписания');
-
-    await user.click(screen.getByRole('button', { name: 'Выйти' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Не удалось выйти. Попробуйте ещё раз.',
-    );
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    const labels = within(nav)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+    expect(labels).toEqual(['Сводка', 'Занятия', 'Настройки']);
   });
 });
 
@@ -186,6 +111,8 @@ describe('AppShell — ученик (без роли teacher/admin)', () => {
     expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
   });
 
+  // «Выйти» ученику нужна: навигации у него нет, до «Настроек» он не дойдёт
+  // (StudentScreen.tsx).
   it('«Выйти» доступна и ученику', async () => {
     renderShell(STUDENT);
     await waitFor(() =>

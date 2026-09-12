@@ -121,10 +121,10 @@ export default defineConfig({
       // autoUpdate — встроенный храповик: порог поднимается сам при росте
       // покрытия, снижение роняет CI (CLAUDE.md, раздел «Храповики»).
       thresholds: {
-        lines: 99.92,
-        branches: 97.94,
-        functions: 99.41,
-        statements: 99.49,
+        lines: 99.93,
+        branches: 97.95,
+        functions: 99.61,
+        statements: 99.56,
         autoUpdate: true,
       },
     },

@@ -4,6 +4,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import App from './App';
@@ -19,18 +20,42 @@ afterEach(() => {
   mockedApiFetch.mockReset();
 });
 
+const TEACHER: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: ['teacher'],
+  tz: 'Asia/Jerusalem',
+};
+const ADMIN: MeDto = { id: 'a1', name: 'Маша', roles: ['admin'], tz: 'Asia/Jerusalem' };
+
+/** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
+ * всех тестах файла, различается только то, что отдаёт сам экран. Раньше этот
+ * блок был скопирован в каждый тест — jscpd поймал (CLAUDE.md «Дубли»). */
+function mockRoute(me: MeDto | null, screenData: Record<string, unknown> = {}) {
+  mockedApiFetch.mockImplementation((path: string) => {
+    if (path === '/auth/config') return Promise.resolve({});
+    if (path === '/auth/me') {
+      return me ? Promise.resolve(me) : Promise.reject(new Error('нет сессии'));
+    }
+    const prefix = Object.keys(screenData).find((key) => path.startsWith(key));
+    if (prefix) return Promise.resolve(screenData[prefix]);
+    return Promise.reject(new Error(`неожиданный путь: ${path}`));
+  });
+}
+
+function renderAt(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  );
+}
+
 describe('App', () => {
   it('гость на «/» — попадает на экран входа', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      return Promise.reject(new Error('нет сессии'));
-    });
+    mockRoute(null);
 
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/');
 
     expect(await screen.findByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
     expect(
@@ -41,24 +66,9 @@ describe('App', () => {
   });
 
   it('учитель на /channels — маршрут «Каналы» открывает ChannelsScreen (ревью п.17)', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'u1',
-          name: 'Дима',
-          roles: ['teacher'],
-          tz: 'Asia/Jerusalem',
-        });
-      if (path.startsWith('/channels')) return Promise.resolve([]);
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
+    mockRoute(TEACHER, { '/channels': [] });
 
-    render(
-      <MemoryRouter initialEntries={['/channels']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/channels');
 
     expect(
       await screen.findByText(/Telegram-группа подключается сама/),
@@ -93,55 +103,47 @@ describe('App', () => {
   });
 
   it('учитель на /templates — маршрут «Шаблоны» открывает TemplatesScreen (pr-k3-fixes.md п.20)', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'u1',
-          name: 'Дима',
-          roles: ['teacher'],
-          tz: 'Asia/Jerusalem',
-        });
-      if (path.startsWith('/settings'))
-        return Promise.resolve({
-          templates: { lesson_link: 'Анонс', recording: 'Запись' },
-          tz: 'Asia/Jerusalem',
-          updatedAt: '2026-01-01T00:00:00Z',
-        });
-      if (path.startsWith('/lessons')) return Promise.resolve([]);
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    mockRoute(TEACHER, {
+      '/settings': {
+        templates: { lesson_link: 'Анонс', recording: 'Запись' },
+        tz: 'Asia/Jerusalem',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+      '/lessons': [],
     });
 
-    render(
-      <MemoryRouter initialEntries={['/templates']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/templates');
 
     expect(
       await screen.findByRole('heading', { name: 'Анонс занятия' }),
     ).toBeInTheDocument();
   });
 
-  it('admin на /people — маршрут «Люди» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'a1',
-          name: 'Маша',
-          roles: ['admin'],
-          tz: 'Asia/Jerusalem',
-        });
-      if (path.startsWith('/users')) return Promise.resolve([]);
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
+  // «Занятия» — ежедневный экран и один из трёх пунктов навигации
+  // (navItems.ts), смоук на него обязателен.
+  it('учитель на /planning — маршрут «Занятия» открывает PlanningScreen', async () => {
+    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
 
-    render(
-      <MemoryRouter initialEntries={['/people']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/planning');
+
+    expect(
+      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /settings — маршрут «Настройки» открывает SettingsScreen', async () => {
+    mockRoute(TEACHER);
+
+    renderAt('/settings');
+
+    expect(await screen.findByRole('heading', { name: 'Настройки' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Каналы/ })).toBeInTheDocument();
+  });
+
+  it('admin на /people — маршрут «Люди» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {
+    mockRoute(ADMIN, { '/users': [] });
+
+    renderAt('/people');
 
     expect(
       await screen.findByText(/Здесь те, кто хотя бы раз вошёл в кабинет через Telegram/),
@@ -149,48 +151,27 @@ describe('App', () => {
   });
 
   it('учитель без admin на /people — уводит на «Сводку», не «Люди»', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'u1',
-          name: 'Дима',
-          roles: ['teacher'],
-          tz: 'Asia/Jerusalem',
-        });
-      if (path.startsWith('/summary'))
-        return Promise.resolve({
-          period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
-          broadcastsSent: 0,
-          broadcastsCancelled: 0,
-          deliveriesFailed: 0,
-          deliveriesPending: 0,
-          manualWaiting: 0,
-          emptyMessage: 'Пока нечего показать.',
-        });
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    mockRoute(TEACHER, {
+      '/summary': {
+        period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
+        broadcastsSent: 0,
+        broadcastsCancelled: 0,
+        deliveriesFailed: 0,
+        deliveriesPending: 0,
+        manualWaiting: 0,
+        emptyMessage: 'Пока нечего показать.',
+      },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/people']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/people');
 
     expect(await screen.findByText('Пока нечего показать.')).toBeInTheDocument();
   });
 
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      return Promise.reject(new Error('нет сессии'));
-    });
+    mockRoute(null);
 
-    render(
-      <MemoryRouter initialEntries={['/что-то-неизвестное']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/что-то-неизвестное');
 
     expect(await screen.findByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
   });
