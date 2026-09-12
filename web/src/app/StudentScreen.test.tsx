@@ -1,11 +1,13 @@
-// «Выйти» больше не рисует сам экран — кнопка переехала в подвал AppShell,
-// общий с учителем (её механику проверяют AppShell.test.tsx и
-// LogoutButton.test.tsx). Экран сам читает только конфиг входа
-// (useAuthConfig) — ни роутер, ни AuthProvider ему больше не нужны.
+// Тонкая сборка экрана ученика (ТЗ student-screen.md): расписание рисует
+// StudentLessonsScreen (своя проверка — student/StudentLessonsScreen.test.tsx),
+// здесь — только ссылка на сайт школы поверх него. Два запроса сразу
+// (/auth/config, /me/lessons) — mockApiByPath, а не очередь
+// mockResolvedValueOnce (test-support/apiFetchMock.ts: порядок запросов
+// зависит от порядка хуков).
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
-import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { StudentScreen } from './StudentScreen';
 
 vi.mock('../api/http', async () => {
@@ -16,28 +18,25 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 
 function renderStudent(config: Record<string, unknown>) {
-  mockedApiFetch.mockResolvedValue(config);
+  mockApiByPath({ '/auth/config': config, '/me/lessons': [] });
   return render(<StudentScreen />);
 }
 
 describe('StudentScreen', () => {
-  it('учитель заполнил адрес сайта школы — ссылка на сайт', async () => {
+  it('учитель заполнил адрес сайта школы — ссылка ниже расписания', async () => {
     renderStudent({ schoolSiteUrl: 'https://xuanxue.su' });
 
-    expect(screen.getByText('Кабинет для учителя.')).toBeInTheDocument();
-    expect(
-      await screen.findByRole('link', { name: 'https://xuanxue.su' }),
-    ).toHaveAttribute('href', 'https://xuanxue.su');
-    expect(screen.queryByText('Расписание вам пришлёт учитель.')).not.toBeInTheDocument();
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'https://xuanxue.su' })).toHaveAttribute(
+      'href',
+      'https://xuanxue.su',
+    );
   });
 
-  it('без адреса сайта школы — без ссылки, текст «Расписание вам пришлёт учитель»', async () => {
+  it('без адреса сайта школы — без ссылки', async () => {
     renderStudent({});
 
-    expect(screen.getByText('Кабинет для учителя.')).toBeInTheDocument();
-    expect(
-      await screen.findByText('Расписание вам пришлёт учитель.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });
