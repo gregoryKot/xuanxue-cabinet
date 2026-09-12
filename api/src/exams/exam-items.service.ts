@@ -23,6 +23,7 @@ import { toIsoUtc } from '../common/iso-date';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
+import { hasContentChanged } from './exam-item-content-change';
 import { assertOptionsForKind, mapOptions } from './exam-item-options';
 import {
   EXAM_ITEM_ENCRYPT_SCHEMA,
@@ -98,17 +99,16 @@ export class ExamItemsService {
 
     const { options, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_ITEM_FIELDS);
-    if (options !== undefined) {
-      $set.options = mapOptions(assertOptionsForKind(current.kind, options));
-    }
+    const nextOptions =
+      options === undefined
+        ? undefined
+        : mapOptions(assertOptionsForKind(current.kind, options));
+    if (nextOptions !== undefined) $set.options = nextOptions;
 
-    // Содержательное поле (ТЗ 4.2, п.3) — только эти четыре, не tags/status:
-    // смена только раздела программы или статуса не поднимает версию.
-    const contentChanged =
-      input.prompt !== undefined ||
-      input.hint !== undefined ||
-      input.criteria !== undefined ||
-      options !== undefined;
+    // Версия поднимается по сути правки, а не по факту присланного поля
+    // (exam-item-content-change.ts): экран шлёт все содержательные поля
+    // разом, и сохранение без единой правки не должно засорять историю.
+    const contentChanged = hasContentChanged(input, nextOptions, current);
     if (contentChanged && current.status === 'published') {
       $set.version = current.version + 1;
       $set.history = [
