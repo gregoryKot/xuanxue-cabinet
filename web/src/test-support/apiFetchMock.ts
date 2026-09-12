@@ -15,3 +15,18 @@ export function resetApiFetchBetweenTests(): void {
     mockedApiFetch.mockReset();
   });
 }
+
+/** Ответы сети по префиксу пути: экраны кабинета грузят по два-три разных
+ * ресурса сразу (сводка + занятия + классы), и очередь `mockResolvedValueOnce`
+ * на таком экране зависит от порядка запросов — то есть от порядка хуков.
+ * `Error` в значении означает «этот путь отвечает ошибкой». */
+export function mockApiByPath(handlers: Record<string, unknown>): void {
+  mockedApiFetch.mockImplementation((path: string) => {
+    for (const [prefix, value] of Object.entries(handlers)) {
+      if (path.startsWith(prefix)) {
+        return value instanceof Error ? Promise.reject(value) : Promise.resolve(value);
+      }
+    }
+    return Promise.reject(new Error(`неожиданный путь: ${path}`));
+  });
+}

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ClassDto, LessonDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
+import { mockApiByPath } from '../test-support/apiFetchMock';
 import PlanningScreen from './PlanningScreen';
 
 vi.mock('../api/http', async () => {
@@ -54,15 +55,7 @@ function mockByPath(handlers: Record<string, unknown>) {
   // ведущего — без дефолта пришлось бы дописывать путь в каждый вызов.
   // Тест, которому нужен конкретный ответ или сбой, передаёт свой — он
   // перекрывает дефолт (spread ниже).
-  const withDefaults = { '/users/teachers': [], ...handlers };
-  mockedApiFetch.mockImplementation((path: string) => {
-    for (const [prefix, value] of Object.entries(withDefaults)) {
-      if (path.startsWith(prefix)) {
-        return value instanceof Error ? Promise.reject(value) : Promise.resolve(value);
-      }
-    }
-    return Promise.reject(new Error(`неожиданный путь: ${path}`));
-  });
+  mockApiByPath({ '/users/teachers': [], ...handlers });
 }
 
 function renderScreen() {

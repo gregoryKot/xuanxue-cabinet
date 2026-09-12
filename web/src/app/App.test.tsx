@@ -152,6 +152,10 @@ describe('App', () => {
 
   it('учитель без admin на /people — уводит на «Сводку», не «Люди»', async () => {
     mockRoute(TEACHER, {
+      // «Сводка» с недавних пор грузит ещё занятия и классы: сверху у неё
+      // блок «Сегодня» (summary/TodaySection.tsx).
+      '/lessons': [],
+      '/classes': [],
       '/summary': {
         period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
         broadcastsSent: 0,
