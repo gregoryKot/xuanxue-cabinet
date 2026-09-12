@@ -37,6 +37,30 @@ export class NotificationPrefsService {
     return { enabled: applyOverrides(defaultNotifications(roles), doc?.overrides ?? []) };
   }
 
+  /** То же, что `get()`, но для целого списка людей одним запросом — нужна
+   * TeacherChats.listFor (ТЗ notifications-delivery.md §1): «не читай
+   * настройки по одному человеку в цикле, одна выборка по списку userId».
+   * Порядок и состав ключей результата — как во входном списке, включая
+   * людей без документа (дефолт роли без overrides). */
+  async getManyEnabled(
+    users: readonly { id: string; roles: UserRole[] }[],
+  ): Promise<Map<string, NotificationKind[]>> {
+    if (users.length === 0) return new Map();
+    const docs = await this.model
+      .find({ userId: { $in: users.map((u) => u.id) } }, { userId: 1, overrides: 1 })
+      .lean<(Pick<NotificationPrefsRecord, 'overrides'> & { userId: string })[]>();
+    const overridesByUserId = new Map(docs.map((doc) => [doc.userId, doc.overrides]));
+    return new Map(
+      users.map((user) => [
+        user.id,
+        applyOverrides(
+          defaultNotifications(user.roles),
+          overridesByUserId.get(user.id) ?? [],
+        ),
+      ]),
+    );
+  }
+
   /** Второе нажатие той же кнопки в боте ничего не ломает (ТЗ
    * notifications-api.md): апдейт существующего элемента overrides и
    * добавление нового различаются запросом (`overrides.kind` совпадает /

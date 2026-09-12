@@ -1,10 +1,13 @@
 // Callback data кнопок бота — формат «действие:параметр» (CLAUDE.md
 // «Ошибки»: «callback data действие:параметр, параметры валидируются»).
-// Параметр — всегда ObjectId (id рассылки/занятия/доставки), поэтому
-// разбор и построение в одном месте, не по одной реализации на кнопку.
+// Параметр у cancel/topic/norec/sent — ObjectId (id рассылки/занятия/
+// доставки), у notif — NotificationKind (кнопка «Уведомления»); разбор и
+// построение — в одном месте, не по одной реализации на кнопку. Валидация
+// формата параметра — за вызывающим кодом (по действию известно, что
+// проверять), эта строка одинакова для обоих видов параметра.
 import type { InlineKeyboardButton } from 'telegraf/types';
 
-const CALLBACK_ACTIONS = ['cancel', 'topic', 'norec', 'sent'] as const;
+const CALLBACK_ACTIONS = ['cancel', 'topic', 'norec', 'sent', 'notif'] as const;
 export type CallbackAction = (typeof CALLBACK_ACTIONS)[number];
 
 function isCallbackAction(value: string): value is CallbackAction {

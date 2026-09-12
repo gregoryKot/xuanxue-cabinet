@@ -192,6 +192,7 @@ export {
   NOTIFICATION_HINTS,
   DEFAULT_NOTIFICATIONS_BY_ROLE,
   defaultNotifications,
+  isNotificationKind,
 } from './notifications';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */

@@ -66,10 +66,11 @@ export class UsersService {
   /** Учителя, помощники учителя и админы с подключённым Telegram — кому бот
    * вообще может писать (TeacherChats, api/src/telegram/teacher-chats.ts,
    * PLAN.md §6): помощник учителя правами равен учителю, поэтому в списке —
-   * дальше TeacherChats сверяет каждого с активным личным каналом. Бухгалтер
+   * дальше TeacherChats сверяет каждого с активным личным каналом и с его
+   * настройкой уведомлений (roles — для дефолта по роли, listFor). Бухгалтер
    * и ученик сюда не попадают — бот с ними проактивно не говорит. */
   async listTeacherContacts(): Promise<
-    { id: string; name: string; telegramId: number }[]
+    { id: string; name: string; telegramId: number; roles: UserRole[] }[]
   > {
     const docs = await this.model
       .find(
@@ -77,16 +78,19 @@ export class UsersService {
           telegramId: { $exists: true },
           roles: { $in: ['teacher', 'assistant', 'admin'] },
         },
-        { name: 1, telegramId: 1 },
+        { name: 1, telegramId: 1, roles: 1 },
       )
       // Список внутренний (TeacherChats), но без лимита — «дай всё» тем же
       // запрещённым приёмом, что и у публичных списков (CLAUDE.md «API»).
       .limit(LIST_LIMIT_DEFAULT)
-      .lean<{ _id: Types.ObjectId; name: string; telegramId: number }[]>();
+      .lean<
+        { _id: Types.ObjectId; name: string; telegramId: number; roles: UserRole[] }[]
+      >();
     return docs.map((doc) => ({
       id: doc._id.toString(),
       name: doc.name,
       telegramId: doc.telegramId,
+      roles: doc.roles,
     }));
   }
 

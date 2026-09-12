@@ -14,6 +14,7 @@ import { errorMessage, errorStack } from '../../common/error-info';
 import { LessonRecord } from '../../lessons/lesson.schema';
 import { inlineButton } from '../callback-data';
 import { TeacherChats } from '../teacher-chats';
+import { resolvePrivateTeacherChatId } from './private-teacher-chat';
 
 const UPCOMING_LESSONS_LIMIT = 5;
 const NO_LESSONS_MESSAGE = 'Ближайших занятий нет.';
@@ -36,10 +37,8 @@ export class TopicCommandHandler {
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
     try {
-      if (ctx.chat?.type !== 'private') return;
-      const chatId = ctx.chat.id;
-      const chats = await this.teacherChats.list(now);
-      if (!chats.some((c) => c.chatId === String(chatId))) return;
+      const chatId = await resolvePrivateTeacherChatId(ctx, this.teacherChats, now);
+      if (chatId === null) return;
 
       // Только активные классы (как RecordingPromptService) — выключенному
       // классу спрашивать тему не о чем, кнопка вела бы в занятие, которое

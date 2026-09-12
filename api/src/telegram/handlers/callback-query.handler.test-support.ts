@@ -11,13 +11,15 @@ import { BroadcastRecord, BroadcastSchema } from '../../broadcasts/broadcast.sch
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { DeliveriesService } from '../../deliveries/deliveries.service';
 import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
+import { NotificationPrefsRecord } from '../../notifications/notification-prefs.schema';
+import { NotificationPrefsService } from '../../notifications/notification-prefs.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { buildTeacherChats } from '../test-support/build-teacher-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
-import { TeacherChats } from '../teacher-chats';
 import { CallbackQueryHandler } from './callback-query.handler';
 
 export { seedTeacher };
@@ -60,27 +62,36 @@ export interface CallbackHandlerTestContext {
   channelModel: Model<ChannelRecord>;
   userModel: Model<UserRecord>;
   botSessionModel: Model<BotSessionRecord>;
+  notificationPrefsModel: Model<NotificationPrefsRecord>;
   handler: CallbackQueryHandler;
 }
 
 /** Свежий хендлер на тех же моделях, с необязательной подменой одного из
  * сервисов (тест сбоя `BroadcastsService.cancel`/`BotSessionService.startTopicWait`) —
- * TeacherChats при этом настоящий, доступ по-прежнему проверяется реально. */
+ * TeacherChats/NotificationPrefsService при этом настоящие, доступ и
+ * настройка по-прежнему проверяются реально. */
 export function buildHandler(
   ctx: CallbackHandlerTestContext,
   overrides: {
     broadcastsService?: BroadcastsService;
     botSessions?: BotSessionService;
     deliveriesService?: DeliveriesService;
+    // Только для handleNotificationToggle (гонка «чат отвязан между проверкой
+    // доступа и резолвом userId») — identity-проверка идёт через
+    // buildTeacherChats на настоящем UsersService, не через эту подмену.
+    usersService?: UsersService;
   } = {},
 ): CallbackQueryHandler {
+  const usersService = new UsersService(ctx.userModel);
   return new CallbackQueryHandler(
-    new TeacherChats(new UsersService(ctx.userModel), ctx.channelModel),
+    buildTeacherChats(ctx.connection, usersService, ctx.channelModel),
     overrides.broadcastsService ??
       new BroadcastsService(ctx.broadcastModel, ctx.deliveryModel, ctx.channelModel),
     overrides.botSessions ?? new BotSessionService(ctx.botSessionModel),
     overrides.deliveriesService ??
       new DeliveriesService(ctx.deliveryModel, ctx.broadcastModel, ctx.channelModel),
+    overrides.usersService ?? usersService,
+    new NotificationPrefsService(ctx.notificationPrefsModel),
   );
 }
 
@@ -101,13 +112,18 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     BotSessionRecord.name,
     BotSessionSchema,
   );
+  const notificationPrefsModel = connection.model<NotificationPrefsRecord>(
+    NotificationPrefsRecord.name,
+  );
   await botSessionModel.syncIndexes();
-  const teacherChats = new TeacherChats(new UsersService(userModel), channelModel);
+  const usersService = new UsersService(userModel);
   const handler = new CallbackQueryHandler(
-    teacherChats,
+    buildTeacherChats(connection, usersService, channelModel),
     new BroadcastsService(broadcastModel, deliveryModel, channelModel),
     new BotSessionService(botSessionModel),
     new DeliveriesService(deliveryModel, broadcastModel, channelModel),
+    usersService,
+    new NotificationPrefsService(notificationPrefsModel),
   );
   return {
     memory,
@@ -117,6 +133,7 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     channelModel,
     userModel,
     botSessionModel,
+    notificationPrefsModel,
     handler,
   };
 }
@@ -130,5 +147,6 @@ export async function clearCallbackHandlerTest(
     ctx.channelModel.deleteMany({}),
     ctx.userModel.deleteMany({}),
     ctx.botSessionModel.deleteMany({}),
+    ctx.notificationPrefsModel.deleteMany({}),
   ]);
 }

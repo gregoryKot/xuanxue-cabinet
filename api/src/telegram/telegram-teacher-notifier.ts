@@ -90,8 +90,12 @@ export class TelegramTeacherNotifier implements TeacherNotifier {
     await this.broadcast(text, now);
   }
 
+  /** Все три уведомления этого класса (сбой доставки, сбой шага планировщика,
+   * отмена рассылки) — один вид `delivery_failed`, «Пост не ушёл» (ТЗ
+   * notifications-delivery.md §2): кто его выключил, тому не пишем, лог
+   * остаётся собственным fallback-путём, если писать некому вовсе. */
   private async broadcast(text: string, now: DateTime): Promise<void> {
-    const chats = await this.teacherChats.list(now);
+    const chats = await this.teacherChats.listFor('delivery_failed', now);
     if (chats.length === 0) {
       this.logger.error(text);
       return;

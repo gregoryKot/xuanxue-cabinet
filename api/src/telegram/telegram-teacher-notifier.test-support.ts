@@ -4,6 +4,7 @@
 // чтобы не дублировать её (jscpd).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
+import type { NotificationKind } from '@xuanxue/shared';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
@@ -17,9 +18,13 @@ export const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
 export function fakeTeacherChats(chats: TeacherChat[] = [CHAT]): {
-  list: jest.Mock<Promise<TeacherChat[]>, [DateTime]>;
+  listFor: jest.Mock<Promise<TeacherChat[]>, [NotificationKind, DateTime]>;
 } {
-  return { list: jest.fn<Promise<TeacherChat[]>, [DateTime]>().mockResolvedValue(chats) };
+  return {
+    listFor: jest
+      .fn<Promise<TeacherChat[]>, [NotificationKind, DateTime]>()
+      .mockResolvedValue(chats),
+  };
 }
 
 export function fakeBot(): {

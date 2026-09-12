@@ -206,4 +206,34 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
     ).resolves.toBeUndefined();
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
+
+  it('спрашивает TeacherChats именно про delivery_failed, не другой вид', async () => {
+    const broadcast = await ctx.broadcastModel.create({
+      kind: 'manual',
+      channelIds: [],
+      scheduledAt: NOW.toJSDate(),
+      text: 'т',
+      status: 'failed',
+    });
+    const channel = await ctx.channelModel.create({
+      type: 'manual',
+      title: 'Facebook',
+      config: '{}',
+      target: '',
+    });
+    const teacherChats = fakeTeacherChats();
+    const { notifier } = buildNotifier(ctx, teacherChats);
+
+    await notifier.notifyDeliveryFailed(
+      {
+        deliveryId: 'd1',
+        broadcastId: broadcast._id.toString(),
+        channelId: channel._id.toString(),
+        error: 'x',
+      },
+      NOW,
+    );
+
+    expect(teacherChats.listFor).toHaveBeenCalledWith('delivery_failed', NOW);
+  });
 });

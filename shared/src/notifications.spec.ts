@@ -3,6 +3,7 @@ import { USER_ROLES } from './auth';
 import {
   DEFAULT_NOTIFICATIONS_BY_ROLE,
   defaultNotifications,
+  isNotificationKind,
   NOTIFICATION_HINTS,
   NOTIFICATION_KINDS,
   NOTIFICATION_LABELS,
@@ -44,6 +45,12 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
       DEFAULT_NOTIFICATIONS_BY_ROLE.teacher,
     );
   });
+
+  it('у каждой роли набор непустой — бот всегда может показать хотя бы один переключатель', () => {
+    for (const role of USER_ROLES) {
+      expect(DEFAULT_NOTIFICATIONS_BY_ROLE[role].length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe('defaultNotifications', () => {
@@ -82,5 +89,19 @@ describe('defaultNotifications', () => {
       'recording_request',
       'delivery_failed',
     ]);
+  });
+});
+
+describe('isNotificationKind', () => {
+  it('каждый вид из NOTIFICATION_KINDS проходит проверку', () => {
+    for (const kind of NOTIFICATION_KINDS) {
+      expect(isNotificationKind(kind)).toBe(true);
+    }
+  });
+
+  it('чужая/битая строка — false, не бросает', () => {
+    expect(isNotificationKind('payment')).toBe(false);
+    expect(isNotificationKind('')).toBe(false);
+    expect(isNotificationKind('__proto__')).toBe(false);
   });
 });

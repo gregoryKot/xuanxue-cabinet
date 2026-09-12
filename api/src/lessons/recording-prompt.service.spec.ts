@@ -16,7 +16,7 @@ const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
 function fakeTeacherChats(chats: TeacherChat[] = [CHAT]) {
-  return { list: jest.fn().mockResolvedValue(chats) };
+  return { listFor: jest.fn().mockResolvedValue(chats) };
 }
 
 function fakeBot(): {
@@ -217,6 +217,22 @@ describe('RecordingPromptService.prompt', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
     const updated = await lessonModel.findById(lesson._id).lean();
     expect(updated?.recordingPromptedAt).toBeUndefined();
+  });
+
+  it('спрашивает TeacherChats именно про recording_request, не другой вид', async () => {
+    const cls = await createClass();
+    await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.minus({ hours: 1, minutes: 5 }).toJSDate(),
+      durationMin: 60,
+      status: 'scheduled',
+    });
+    const teacherChats = fakeTeacherChats();
+    const { service } = build(teacherChats);
+
+    await service.prompt(NOW);
+
+    expect(teacherChats.listFor).toHaveBeenCalledWith('recording_request', NOW);
   });
 
   it('занятие ровно на границе LOOKBACK_DAYS (7 дней назад) — ещё спрашивает', async () => {

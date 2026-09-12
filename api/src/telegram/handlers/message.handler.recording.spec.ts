@@ -8,7 +8,7 @@ import type { LessonsService } from '../../lessons/lessons.service';
 import { UsersService } from '../../users/users.service';
 import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
-import { TeacherChats } from '../teacher-chats';
+import { buildTeacherChats } from '../test-support/build-teacher-chats';
 import { MessageHandler } from './message.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
 import { NOW, seedLesson } from './message.handler.seed';
@@ -247,7 +247,7 @@ function buildHandlerWithFailingAddRecording(
 ): MessageHandler {
   const usersService = new UsersService(ctx.userModel);
   return new MessageHandler(
-    new TeacherChats(usersService, ctx.channelModel),
+    buildTeacherChats(ctx.connection, usersService, ctx.channelModel),
     new BotSessionService(ctx.botSessionModel),
     { addRecording } as unknown as LessonsService,
     new TopicRebuildService(

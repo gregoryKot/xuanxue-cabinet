@@ -110,10 +110,12 @@ describe('UsersService', () => {
     expect(contacts.find((c) => c.id === teacher.id)).toMatchObject({
       name: 'Учитель',
       telegramId: 501,
+      roles: ['teacher'],
     });
     expect(contacts.find((c) => c.id === assistant.id)).toMatchObject({
       name: 'Помощник',
       telegramId: 504,
+      roles: ['assistant'],
     });
   });
 

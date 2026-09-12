@@ -53,7 +53,9 @@ export class RecordingPromptService {
     // уведомление), у «Запись?» это единственный канал сбора записи: если
     // сейчас никто не подключил бота, claim() навсегда закрыл бы вопрос —
     // спрашивать нужно на следующем тике, когда учитель нажмёт /start.
-    const chats = await this.teacherChats.list(now);
+    // recording_request — вид уведомления «Напоминание про запись» (ТЗ
+    // notifications-delivery.md §2): кто его выключил, тому не пишем.
+    const chats = await this.teacherChats.listFor('recording_request', now);
     if (chats.length === 0) return { prompted: 0 };
 
     const candidates = await this.lessonModel

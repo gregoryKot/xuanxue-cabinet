@@ -4,10 +4,14 @@
 // что делает каждое действие.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
+import type { NotificationKind } from '@xuanxue/shared';
 import type { BroadcastsService } from '../../broadcasts/broadcasts.service';
 import { ConflictError, NotFoundError } from '../../common/errors';
 import type { DeliveriesService } from '../../deliveries/deliveries.service';
+import type { NotificationPrefsService } from '../../notifications/notification-prefs.service';
+import type { UsersService } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
+import { buildNotificationsMenu } from './notifications-menu';
 
 // Экспортирована — callback-query.handler.ts зовёт её же в своём catch, не
 // повторяет литерал (CLAUDE.md «Одна механика — один компонент»).
@@ -75,4 +79,29 @@ export async function handleSent(
   } catch (err) {
     await ctx.editMessageText(userFacingError(err)).catch(() => null);
   }
+}
+
+/** Кнопка-тумблер экрана «Уведомления» (ТЗ notifications-delivery.md §3):
+ * личность отправителя (teacher/assistant/admin с активным чатом) уже
+ * проверена в CallbackQueryHandler.handle — здесь только резолв userId/roles
+ * по chatId для самой настройки. Пользователь не найден (чат отвязан между
+ * проверкой доступа и этим вызовом) — тихо игнорируем, как чужой параметр. */
+export async function handleNotificationToggle(
+  ctx: Context,
+  users: UsersService,
+  notificationPrefs: NotificationPrefsService,
+  chatId: number,
+  kind: NotificationKind,
+): Promise<void> {
+  const user = await users.findByTelegramId(chatId);
+  if (!user) return;
+
+  const current = await notificationPrefs.get(user.id, user.roles);
+  await notificationPrefs.set(user.id, kind, !current.enabled.includes(kind));
+  const updated = await notificationPrefs.get(user.id, user.roles);
+
+  const menu = buildNotificationsMenu(user.roles, updated.enabled);
+  await ctx
+    .editMessageText(menu.text, { reply_markup: { inline_keyboard: menu.buttons } })
+    .catch(() => null);
 }

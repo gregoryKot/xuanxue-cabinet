@@ -20,6 +20,13 @@ describe('parseCallbackData', () => {
   it('пустой параметр — null', () => {
     expect(parseCallbackData('cancel:')).toBeNull();
   });
+
+  it('notif: — параметр вида уведомления, не ObjectId', () => {
+    expect(parseCallbackData('notif:post_draft')).toEqual({
+      action: 'notif',
+      id: 'post_draft',
+    });
+  });
 });
 
 describe('inlineButton', () => {

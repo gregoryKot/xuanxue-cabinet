@@ -16,6 +16,7 @@ import { sendBotMessage } from './bot-send';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
 import { MessageHandler } from './handlers/message.handler';
+import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
 import { registerHandlers } from './register-handlers';
@@ -39,6 +40,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly startHandler: StartHandler,
     private readonly callbackQueryHandler: CallbackQueryHandler,
     private readonly topicCommandHandler: TopicCommandHandler,
+    private readonly notificationsCommandHandler: NotificationsCommandHandler,
     private readonly messageHandler: MessageHandler,
   ) {}
 
@@ -63,6 +65,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
       startHandler: this.startHandler,
       callbackQueryHandler: this.callbackQueryHandler,
       topicCommandHandler: this.topicCommandHandler,
+      notificationsCommandHandler: this.notificationsCommandHandler,
       messageHandler: this.messageHandler,
     });
     this.bot = bot;
