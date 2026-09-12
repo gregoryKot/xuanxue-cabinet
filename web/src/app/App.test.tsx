@@ -131,6 +131,16 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('учитель на /exam-items — маршрут «Вопросы для экзамена» открывает ExamItemsScreen', async () => {
+    mockRoute(TEACHER, { '/exam-items': [] });
+
+    renderAt('/exam-items');
+
+    expect(
+      await screen.findByText(/Из этих вопросов собирается экзамен/),
+    ).toBeInTheDocument();
+  });
+
   it('учитель на /settings — маршрут «Настройки» открывает SettingsScreen', async () => {
     mockRoute(TEACHER);
 
