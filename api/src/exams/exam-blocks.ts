@@ -7,7 +7,10 @@ import { InvalidInputError } from '../common/errors';
 import type { ExamBlockRecord } from './exam.schema';
 import { keepOrGenerateId } from './sub-id';
 
-const QUESTION_FORMS = {
+/** Склонение «вопроса» — одно на файл блоков и на сервис формы: оба считают
+ * вопросы в тексте ошибки (CLAUDE.md «Без магических чисел и строк»:
+ * повторяющийся текст пользователю — константа в одном месте). */
+export const QUESTION_FORMS = {
   one: 'вопрос',
   few: 'вопроса',
   many: 'вопросов',

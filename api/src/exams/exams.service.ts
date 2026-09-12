@@ -22,7 +22,12 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { removeIfDraft } from '../common/remove-if-draft';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
-import { assertNoRepeatedItems, hasAnyQuestion, mapBlocks } from './exam-blocks';
+import {
+  assertNoRepeatedItems,
+  hasAnyQuestion,
+  mapBlocks,
+  QUESTION_FORMS,
+} from './exam-blocks';
 import { ExamItemRecord } from './exam-item.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord, type ExamBlockRecord } from './exam.schema';
 import { toExamDto, type LeanExam, type RawLeanExam } from './exam.mapper';
@@ -35,13 +40,6 @@ const NOT_DRAFT_MESSAGE =
   'ссылаться попытки учеников. Опубликованную переведите в архив вместо удаления.';
 const EMPTY_EXAM_MESSAGE =
   'В форме нет ни одного вопроса. Добавьте хотя бы один блок с вопросом, потом публикуйте.';
-
-const QUESTION_FORMS = {
-  one: 'вопрос',
-  few: 'вопроса',
-  many: 'вопросов',
-  other: 'вопроса',
-} as const;
 
 @Injectable()
 export class ExamsService {
