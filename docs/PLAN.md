@@ -503,15 +503,19 @@ Telegraf-инстанс, регистрация вебхука при старт
 
 Дальше бот:
 
-- за `PREVIEW_MINUTES` (5) минут до автоматической рассылки присылает предпросмотр с
-  кнопками «Отменить» и «Изменить тему». **Реализовано** — `PreviewService`
-  (`api/src/broadcasts/preview.service.ts`), четвёртый шаг тика
-  (`SchedulerService.runTick`): планировщик рассылок (`BroadcastPlannerService`) создаёт
-  `broadcast` заранее — окно `decideBroadcast` расширено на те же `PREVIEW_MINUTES`
-  (`shared/src/domain.ts`), `scheduledAt`/`nextAttemptAt` доставок при этом — момент
-  фактической отправки (`startsAt − leadMinutes`), не момент создания документа, раннер
-  забирает доставки вовремя. `previewSentAt` ставится условным апдейтом ДО отправки
-  (дубли при двух инстансах исключены); каждому чату из `TeacherChats`
+- за `settings.previewMinutes` минут до автоматической рассылки присылает предпросмотр с
+  кнопками «Отменить» и «Изменить тему». Настройка школы (экран «Шаблоны», секция
+  «Школа»), не константа кода (CLAUDE.md «Кабинет учителя: всё настраивается в
+  интерфейсе») — целое от 1 до 1440, дефолт 5 (`DEFAULT_PREVIEW_MINUTES`,
+  `shared/src/domain.ts`, только для документа школы без поля — старая база). **Реализовано**
+  — `PreviewService` (`api/src/broadcasts/preview.service.ts`, читает значение через
+  `SettingsService.get()`), четвёртый шаг тика (`SchedulerService.runTick`): планировщик
+  рассылок (`BroadcastPlannerService`) создаёт `broadcast` заранее — окно
+  `decideBroadcast` расширено на то же число минут, `scheduledAt`/`nextAttemptAt` доставок
+  при этом — момент фактической отправки (`startsAt − leadMinutes`), не момент создания
+  документа, раннер забирает доставки вовремя. `previewSentAt` ставится условным
+  апдейтом ДО отправки (дубли при двух инстансах исключены); каждому чату из
+  `TeacherChats`
   (`api/src/telegram/teacher-chats.ts` — учителя/админы с активным личным каналом, кто
   нажал `/start`). Кнопка «Отменить» (`cancel:{broadcastId}`) зовёт
   `BroadcastsService.cancel`; «Изменить тему» (`topic:{lessonId}`) заводит ожидание в
@@ -602,9 +606,10 @@ Telegraf-инстанс, регистрация вебхука при старт
   `broadcast-planner.decide.ts`, запросы на чтение — `broadcast-planner.queries.ts`,
   запись — `broadcast-planner.inserts.ts`, рендер поста — `post-renderer.ts`)
   вызывается из `SchedulerService.tick()` после планировщика занятий. Занятие в
-  окне `(now − DEFAULT_LEAD_MINUTES, now + leadMinutes класса + PREVIEW_MINUTES]` —
-  верхняя граница расширена на `PREVIEW_MINUTES` (5), чтобы `broadcast` появился
-  заранее и бот успел прислать предпросмотр (см. «Telegram-бот для учителя» выше) —
+  окне `(now − DEFAULT_LEAD_MINUTES, now + leadMinutes класса + settings.previewMinutes]` —
+  верхняя граница расширена на `settings.previewMinutes` (настройка школы, дефолт 5),
+  чтобы `broadcast` появился заранее и бот успел прислать предпросмотр (см.
+  «Telegram-бот для учителя» выше) —
   и `status === 'scheduled'` — рендер поста по шаблону `settings.templates.lesson_link`
   (`SettingsService.get()`, `api/src/settings/`, документ школы с дефолтами из
   `shared/src/default-templates.ts`; `{ведущий}` — имя `lessons.leaderId ??

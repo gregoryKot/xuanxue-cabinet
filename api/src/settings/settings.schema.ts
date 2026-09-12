@@ -36,6 +36,13 @@ export class SettingsRecord {
   // ссылку никому, а не отдаёт пустую строку как настоящий адрес.
   @Prop({ type: String })
   schoolSiteUrl?: string;
+
+  // Тоже не required и без default: старая база до этой настройки не имеет
+  // поля вовсе — settings.service.ts подставляет DEFAULT_PREVIEW_MINUTES
+  // явно при чтении (toSettingsDto), не полагаясь на Mongoose-default,
+  // который `.lean()` не применяет к уже существующим документам.
+  @Prop({ type: Number })
+  previewMinutes?: number;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(SettingsRecord);

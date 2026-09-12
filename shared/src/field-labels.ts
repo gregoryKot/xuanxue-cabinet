@@ -63,6 +63,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   lesson_link: 'Шаблон «Ссылка на занятие»',
   recording: 'Шаблон «Запись»',
   schoolSiteUrl: 'Адрес сайта школы',
+  previewMinutes: 'За сколько минут показывать черновик поста',
 
   // users — /users (экран «Люди»).
   roles: 'Роли',

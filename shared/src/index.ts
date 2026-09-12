@@ -28,7 +28,7 @@ export {
   RULE_TIME_RE,
   DEFAULT_LEAD_MINUTES,
   PLANNING_HORIZON_WEEKS,
-  PREVIEW_MINUTES,
+  DEFAULT_PREVIEW_MINUTES,
 } from './domain';
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {
