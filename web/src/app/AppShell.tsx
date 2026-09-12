@@ -1,15 +1,19 @@
-// Оболочка кабинета — шапка и навигация (CLAUDE.md «Мобильный экран первым»).
-// Пунктов навигации три, список — navItems.ts, сама навигация в двух видах —
-// AppNav.tsx: на телефоне нижняя панель, на широком экране колонка слева.
+// Оболочка кабинета — шапка, навигация и подвал (CLAUDE.md «Мобильный экран
+// первым»). Пунктов навигации четыре, список — navItems.ts, сама навигация в
+// двух видах — AppNav.tsx: на телефоне нижняя панель, на широком экране
+// колонка слева (docs/adr/0025-navigation-by-domain.md).
 //
-// В шапке только название школы. «Выйти» переехало в «Настройки» (у учителя)
-// и на экран ученика: кнопка висела в шапке на каждом экране, хотя нужна раз
-// в жизни (отзыв владельца 2026-09-12). Роль без teacher/assistant/admin
-// (ученик, бухгалтер) — StudentScreen вместо содержимого маршрута: у
-// бухгалтера прав пока нет нигде (деньги — этап 3, docs/PLAN.md).
+// В шапке только название школы. «Выйти» — в подвале под содержимым: кнопка
+// нужна раз в жизни, а не на каждом экране (отзыв владельца 2026-09-12).
+// Один подвал на обе роли — ученик отдал сюда свою кнопку (StudentScreen.tsx,
+// её механику по-прежнему проверяют AppShell.test.tsx и LogoutButton.test.tsx).
+// Роль без teacher/assistant/admin (ученик, бухгалтер) — StudentScreen вместо
+// содержимого маршрута: у бухгалтера прав пока нет нигде (деньги — этап 3,
+// docs/PLAN.md).
 import type { CSSProperties } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import { LogoutButton } from '../auth/LogoutButton';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
 import { StudentScreen } from './StudentScreen';
@@ -24,6 +28,15 @@ const headerStyle: CSSProperties = {
   background: '#fff',
 };
 
+const footerStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '10px 16px',
+  fontSize: 13,
+  color: 'var(--ink-soft)',
+};
+
 export function AppShell() {
   const { me } = useAuth();
   const isMobile = useIsMobile();
@@ -36,13 +49,19 @@ export function AppShell() {
       </header>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        {isTeacher && !isMobile && <AppNav isMobile={false} />}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {isTeacher ? <Outlet /> : <StudentScreen />}
+        {isTeacher && !isMobile && <AppNav isMobile={false} me={me} />}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {isTeacher ? <Outlet /> : <StudentScreen />}
+          </div>
+          <footer style={footerStyle}>
+            <span>Вы вошли как {me?.name ?? '—'} ·</span>
+            <LogoutButton />
+          </footer>
         </div>
       </div>
 
-      {isTeacher && isMobile && <AppNav isMobile />}
+      {isTeacher && isMobile && <AppNav isMobile me={me} />}
     </div>
   );
 }

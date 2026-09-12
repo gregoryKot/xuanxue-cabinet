@@ -226,6 +226,28 @@ describe('ClassSheet — правила расписания (ревью п.11)'
     );
   });
 
+  it('две строки — правка второй не трогает первую', async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSheet(makeClass());
+
+    await user.click(screen.getByRole('button', { name: 'Добавить время' }));
+    await user.selectOptions(
+      screen.getAllByLabelText('День недели')[1] as HTMLElement,
+      '5',
+    );
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        rules: [
+          expect.objectContaining({ id: 'r1', weekday: 2 }),
+          expect.objectContaining({ weekday: 5 }),
+        ],
+      }),
+    );
+  });
+
   it('убирает строку правила — при пустом списке «Сохранить» снова недоступна', async () => {
     const user = userEvent.setup();
     renderSheet(makeClass());

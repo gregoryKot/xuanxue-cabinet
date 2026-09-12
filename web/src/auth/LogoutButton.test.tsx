@@ -1,6 +1,6 @@
-// Кнопка выхода — один компонент на «Настройки» и экран ученика, поэтому её
+// Кнопка выхода — один компонент в подвале AppShell.tsx, поэтому её
 // разметка (в том числе `role="alert"` с текстом ошибки) проверяется здесь, а
-// не копией в тесте каждого экрана.
+// не копией в тесте AppShell.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -19,7 +19,7 @@ resetApiFetchBetweenTests();
 
 function renderButton() {
   return render(
-    <MemoryRouter initialEntries={['/settings']}>
+    <MemoryRouter initialEntries={['/planning']}>
       <AuthProvider>
         <LogoutButton />
       </AuthProvider>

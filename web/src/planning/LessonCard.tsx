@@ -1,6 +1,9 @@
 // Карточка одной даты занятия в «Планировании» — время, класс, тема, статус
 // (CLAUDE.md «Одна механика — один компонент», по образцу schedule/SlotCard.tsx).
-// `id="lesson-{id}"` — якорь для ссылки со «Сводки» на конкретное занятие.
+// `id="lesson-{id}"` — якорь для внешней ссылки на конкретное занятие (бот,
+// уведомление). Блок «Сегодня» на этом же экране (PlanningToday.tsx) рисует
+// те же занятия ещё раз — там якорь выключают (`anchor={false}`), иначе два
+// элемента с одним `id` ломают его и невалидны в HTML.
 // Стиль карточки — общий с schedule/SlotCard.tsx (components/listCardStyles.ts).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
@@ -41,16 +44,23 @@ interface LessonCardProps {
   lesson: LessonDto;
   className: string;
   onSelect: () => void;
+  /** `false` — без DOM `id` (см. комментарий выше). По умолчанию `true`. */
+  anchor?: boolean;
 }
 
-export function LessonCard({ lesson, className, onSelect }: LessonCardProps) {
+export function LessonCard({
+  lesson,
+  className,
+  onSelect,
+  anchor = true,
+}: LessonCardProps) {
   const cancelled = lesson.status === 'cancelled';
   const broadcast = lesson.broadcast;
   return (
     <div>
       <button
         type="button"
-        id={`lesson-${lesson.id}`}
+        id={anchor ? `lesson-${lesson.id}` : undefined}
         style={{ ...listCardStyle, color: cancelled ? 'var(--ink-soft)' : 'inherit' }}
         onClick={onSelect}
       >

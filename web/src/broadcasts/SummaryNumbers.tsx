@@ -1,6 +1,6 @@
-// Числа за период — вторая половина «Сводки», под сегодняшним днём
-// (CLAUDE.md «Продуктовая фича = число в „Сводке“»). Отдельный компонент,
-// чтобы сам экран остался коротким и читался сверху вниз.
+// Числа за период — верх «Рассылок» (CLAUDE.md «Продуктовая фича = число в
+// своём разделе», docs/adr/0025-navigation-by-domain.md). Отдельный
+// компонент, чтобы сам экран остался коротким и читался сверху вниз.
 import type { CSSProperties } from 'react';
 import type { SummaryDto } from '@xuanxue/shared';
 import { SummaryCard } from './SummaryCard';
@@ -18,8 +18,8 @@ export function SummaryNumbers({ summary }: { summary: SummaryDto }) {
       <SummaryCard value={String(summary.deliveriesFailed)} label="Ошибок доставки" />
       <SummaryCard value={String(summary.deliveriesPending)} label="Ждут отправки" />
       <SummaryCard value={String(summary.manualWaiting)} label="Ждут отправки вручную" />
-      {/* Ссылка ведёт в журнал с готовым фильтром — «почему» смотрят там же,
-          не на самой «Сводке» (docs/PLAN.md §6 «Планировщик»). */}
+      {/* Ссылка ведёт в журнал ниже с готовым фильтром — «почему» смотрят там
+          же, не в самих числах (docs/PLAN.md §6 «Планировщик»). */}
       <SummaryCard
         value={String(summary.broadcastsCancelled)}
         label="Отменено автоматикой"

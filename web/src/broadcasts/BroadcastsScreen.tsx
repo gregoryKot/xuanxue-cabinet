@@ -1,23 +1,24 @@
-// «Рассылки» — журнал того, что ушло и что ждёт (docs/PLAN.md §6 п.5).
-// Блок «Ждут отправки вручную» — то, что нужно сделать прямо сейчас, поэтому
-// сверху, до журнала (CLAUDE.md «Каждая фича объясняет откуда это и зачем»).
-// `useManualDeliveries()` живёт здесь, не в секции (pr-k3-fixes.md п.7):
-// `useScrollToHash` для якоря `#manual` ждёт, пока блок точно отрисован
-// (не грузится и не в ошибке), а секция сама этого не знает. Фильтры и
-// пустое состояние — отдельные компоненты (CLAUDE.md «Файлы» — 150 строк).
+// «Рассылки» — числа за 30 дней, потом журнал (docs/PLAN.md §6 п.5,
+// docs/adr/0025). Вход в «Каналы» и «Шаблоны постов» — карточками внизу, не
+// пунктами меню. «Ждут отправки вручную» — сверху журнала, это нужно сделать
+// прямо сейчас. Числа, фильтры, пустое состояние — отдельные компоненты
+// (CLAUDE.md «Файлы»).
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { JOURNAL_RANGE_MAX_WEEKS, type BroadcastStatus } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { useChannels } from '../channels/useChannels';
+import { ChannelsIcon, TemplatesIcon } from '../app/navIcons';
 import { useScrollToHash } from '../hooks/useScrollToHash';
 import { useSettings } from '../templates/useSettings';
 import { BroadcastCard } from './BroadcastCard';
 import { BroadcastFilters } from './BroadcastFilters';
 import { BroadcastSheet } from './BroadcastSheet';
+import { BroadcastsSummary } from './BroadcastsSummary';
 import { DEFAULT_JOURNAL_RANGE_WEEKS } from './broadcastWindow';
 import { initialStatusFromQuery } from './broadcastStatusFilter';
 import { EmptyJournalState } from './EmptyJournalState';
@@ -30,7 +31,9 @@ import { useManualDeliveries } from './useManualDeliveries';
 const EXPLANATION =
   'Журнал показывает, что ушло, что ждёт и что не отправилось. Разовую рассылку с ' +
   'текстом на все выбранные каналы можно отправить прямо отсюда.';
-
+const CHANNELS_LINK_HINT =
+  'Куда уходят посты. Telegram-группа подключается сама, когда в неё добавили бота.';
+const TEMPLATES_LINK_HINT = 'Тексты, которыми бот пишет в канал, и адрес сайта школы.';
 const journalListStyle: CSSProperties = {
   margin: 0,
   padding: 0,
@@ -50,12 +53,9 @@ export default function BroadcastsScreen() {
   const broadcastsState = useBroadcasts(rangeWeeks, status);
   const channelsState = useChannels();
   const manualState = useManualDeliveries();
-  // Только для бейджа пояса школы рядом со временем (pr-k3-fixes.md п.22) —
-  // сбой или загрузка настроек не блокируют журнал: badge просто не покажется.
+  // Только для бейджа пояса школы (pr-k3-fixes.md п.22).
   const settingsState = useSettings();
-
   useScrollToHash(!manualState.loading && !manualState.error);
-
   const channelsById = useMemo(
     () => new Map((channelsState.channels ?? []).map((channel) => [channel.id, channel])),
     [channelsState.channels],
@@ -64,7 +64,6 @@ export default function BroadcastsScreen() {
     () => (channelsState.channels ?? []).filter((channel) => channel.active),
     [channelsState.channels],
   );
-
   const loading = broadcastsState.loading || channelsState.loading;
   const error = broadcastsState.error ?? channelsState.error;
   const isEmpty = !loading && !error && broadcastsState.broadcasts?.length === 0;
@@ -74,9 +73,8 @@ export default function BroadcastsScreen() {
     void channelsState.reload();
   }
 
-  // Композитный onSent (pr-k3-fixes.md п.8): «Отметить отправленным» меняет
-  // статус доставки, а следом может закрыть и саму рассылку (все доставки
-  // sent) — читаем оба списка заново, а не только тот, где нажали кнопку.
+  // Композитный onSent (pr-k3-fixes.md п.8): доставка вручную может следом
+  // закрыть и саму рассылку — читаем оба списка заново, не только тот.
   async function handleDeliverySent() {
     await manualState.reload();
     await broadcastsState.reload();
@@ -85,9 +83,8 @@ export default function BroadcastsScreen() {
   return (
     <section style={screenSectionStyle}>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
-
+      <BroadcastsSummary />
       {!loading && <Button onClick={() => setSheetOpen(true)}>Новая рассылка</Button>}
-
       <ManualDeliveriesSection
         deliveries={manualState.deliveries}
         loading={manualState.loading}
@@ -96,18 +93,14 @@ export default function BroadcastsScreen() {
         channelsById={channelsById}
         onSent={handleDeliverySent}
       />
-
       <BroadcastFilters
         rangeWeeks={rangeWeeks}
         onRangeWeeksChange={setRangeWeeks}
         status={status}
         onStatusChange={setStatus}
       />
-
       {error && <LoadErrorBanner message={error} onRetry={retry} />}
-
       {loading && !error && <SkeletonList rows={4} h={90} />}
-
       {isEmpty && (
         <EmptyJournalState
           isFiltered={status !== ''}
@@ -116,7 +109,6 @@ export default function BroadcastsScreen() {
           onWidenRange={() => setRangeWeeks(JOURNAL_RANGE_MAX_WEEKS)}
         />
       )}
-
       {!loading &&
         !error &&
         broadcastsState.broadcasts &&
@@ -134,7 +126,18 @@ export default function BroadcastsScreen() {
             ))}
           </ul>
         )}
-
+      <SectionLink
+        to="/channels"
+        title="Каналы"
+        hint={CHANNELS_LINK_HINT}
+        Icon={ChannelsIcon}
+      />
+      <SectionLink
+        to="/templates"
+        title="Шаблоны постов"
+        hint={TEMPLATES_LINK_HINT}
+        Icon={TemplatesIcon}
+      />
       {sheetOpen && (
         <BroadcastSheet
           channels={activeChannels}

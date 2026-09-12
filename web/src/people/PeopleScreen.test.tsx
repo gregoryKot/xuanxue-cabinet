@@ -1,6 +1,5 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts») и useAuth (экран
-// сравнивает id строки с me.id, чтобы найти себя) — по образцу
-// summary/SummaryScreen.test.tsx.
+// сравнивает id строки с me.id, чтобы найти себя).
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';

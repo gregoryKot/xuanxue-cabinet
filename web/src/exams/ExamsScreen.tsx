@@ -1,7 +1,10 @@
 // Экран «Экзамены» — конструктор формы, собранной из вопросов банка
 // (docs/PLAN.md §11, ТЗ 4.3). Список и лист — по образцу
-// exam-items/ExamItemsScreen.tsx (соседний экран того же домена).
+// exam-items/ExamItemsScreen.tsx. Вход в банк вопросов — карточкой внизу, не
+// пунктом меню (docs/adr/0025-navigation-by-domain.md). Сюда же встанут
+// проверка работ и статистика — слои 4.6–4.8.
 import { useState, type CSSProperties } from 'react';
+import { ExamItemsIcon } from '../app/navIcons';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
@@ -9,6 +12,7 @@ import {
   screenExplanationStyle,
   screenSectionStyle,
 } from '../components/screenLayout';
+import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { ExamCard } from './ExamCard';
 import { ExamFilters, type ExamFilterValues } from './ExamFilters';
@@ -19,6 +23,8 @@ const EXPLANATION =
   'Форма собирается из вопросов банка блоками — один вопрос можно поставить в несколько экзаменов.';
 const EMPTY_MESSAGE = 'Экзаменов пока нет. Соберите первый из вопросов банка.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами экзаменов нет.';
+const EXAM_ITEMS_LINK_HINT =
+  'Из них собирается экзамен. Один вопрос можно поставить в несколько экзаменов.';
 
 const EMPTY_FILTERS: ExamFilterValues = { status: '', level: '' };
 
@@ -77,6 +83,13 @@ export default function ExamsScreen() {
           ))}
         </ul>
       )}
+
+      <SectionLink
+        to="/exam-items"
+        title="Вопросы"
+        hint={EXAM_ITEMS_LINK_HINT}
+        Icon={ExamItemsIcon}
+      />
 
       {sheetOpen && (
         <ExamSheet

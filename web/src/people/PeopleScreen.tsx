@@ -1,9 +1,10 @@
-// «Люди» — те, кто хоть раз вошёл в кабинет через Telegram, и назначение
+// «Ученики» — те, кто хоть раз вошёл в кабинет через Telegram, и назначение
 // ролей учитель/админ (docs/PLAN.md §6, блокер аудита Б3: до этого экрана
 // вторую роль назначали правкой Atlas руками). Доступен только admin —
-// маршрут /people защищён RequireAdmin (App.tsx), вход — карточка «Люди» на
-// «Сводке» (SummaryScreen.tsx), в нижнюю навигацию не входит (navItems.ts —
-// предел 6 пунктов на 360px).
+// маршрут /people защищён RequireAdmin (App.tsx) и скрыт в навигации от
+// остальных (navItems.ts, docs/adr/0025-navigation-by-domain.md). Заголовок
+// экрана — здесь, в отличие от других разделов: раньше вход был скрытой
+// ссылкой на «Сводке», теперь это полноценный пункт меню.
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -35,6 +36,7 @@ export default function PeopleScreen() {
 
   return (
     <section style={screenSectionStyle}>
+      <h1 style={{ fontSize: 22, margin: 0 }}>Ученики</h1>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
