@@ -14,7 +14,7 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-function renderShell(me: MeDto) {
+function renderShell(me: MeDto, initialPath = '/schedule') {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve({});
@@ -23,12 +23,16 @@ function renderShell(me: MeDto) {
   });
 
   return render(
-    <MemoryRouter initialEntries={['/schedule']}>
+    <MemoryRouter initialEntries={[initialPath]}>
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route element={<AppShell />}>
             <Route path="/schedule" element={<p>Содержимое расписания</p>} />
+            {/* Личная настройка человека — маршрут внутри AppShell, но не
+                за ролевым гвардом (ТЗ notifications-web.md): проверяем, что
+                AppShell отдаёт под него Outlet и ученику. */}
+            <Route path="/notifications" element={<p>Экран уведомлений</p>} />
           </Route>
         </Routes>
       </AuthProvider>
@@ -134,6 +138,18 @@ describe('AppShell — учитель', () => {
     expect(screen.getByText(/Вы вошли как Дима/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
   });
+
+  // Личная настройка, не раздел домена — ссылка живёт в общем подвале, не в
+  // NAV_ITEMS (docs/adr/0025-navigation-by-domain.md).
+  it('подвал — ссылка «Уведомления»', async () => {
+    renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
+      'href',
+      '/notifications',
+    );
+  });
 });
 
 describe('AppShell — помощник учителя', () => {
@@ -161,5 +177,26 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Выйти' })).toBeEnabled(),
     );
+  });
+
+  // Подвал общий (ТЗ notifications-web.md): ссылка на «Уведомления» видна и
+  // ученику, хотя нижней навигации у него нет вовсе.
+  it('подвал — ссылка «Уведомления» видна и ученику', async () => {
+    renderShell(STUDENT);
+    await screen.findByText('Кабинет для учителя.');
+
+    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
+      'href',
+      '/notifications',
+    );
+  });
+
+  // Маршрут не спрятан за ролевым гвардом: ученик на «/notifications»
+  // видит не StudentScreen, а сам экран.
+  it('на «/notifications» — сам маршрут, не StudentScreen', async () => {
+    renderShell(STUDENT, '/notifications');
+
+    expect(await screen.findByText('Экран уведомлений')).toBeInTheDocument();
+    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
   });
 });

@@ -9,9 +9,12 @@
 // её механику по-прежнему проверяют AppShell.test.tsx и LogoutButton.test.tsx).
 // Роль без teacher/assistant/admin (ученик, бухгалтер) — StudentScreen вместо
 // содержимого маршрута: у бухгалтера прав пока нет нигде (деньги — этап 3,
-// docs/PLAN.md).
+// docs/PLAN.md). Исключение — «/notifications»: личная настройка человека
+// доступна любой роли, поэтому для неё Outlet рисуется всегда, даже
+// ученику (ТЗ notifications-web.md, docs/adr/0025-navigation-by-domain.md —
+// в нижнюю навигацию при этом экран не входит, ссылка только в подвале).
 import type { CSSProperties } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -19,6 +22,7 @@ import { AppNav } from './AppNav';
 import { StudentScreen } from './StudentScreen';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
+const NOTIFICATIONS_PATH = '/notifications';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -40,7 +44,9 @@ const footerStyle: CSSProperties = {
 export function AppShell() {
   const { me } = useAuth();
   const isMobile = useIsMobile();
+  const { pathname } = useLocation();
   const isTeacher = me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false;
+  const showOutlet = isTeacher || pathname === NOTIFICATIONS_PATH;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -52,10 +58,12 @@ export function AppShell() {
         {isTeacher && !isMobile && <AppNav isMobile={false} me={me} />}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            {isTeacher ? <Outlet /> : <StudentScreen />}
+            {showOutlet ? <Outlet /> : <StudentScreen />}
           </div>
           <footer style={footerStyle}>
             <span>Вы вошли как {me?.name ?? '—'} ·</span>
+            <Link to={NOTIFICATIONS_PATH}>Уведомления</Link>
+            <span>·</span>
             <LogoutButton />
           </footer>
         </div>

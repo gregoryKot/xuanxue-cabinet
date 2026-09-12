@@ -180,6 +180,33 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  // Личная настройка человека — маршрут не за RequireAdmin и не за
+  // isTeacher-веткой AppShell.tsx, доступен и ученику (ТЗ notifications-web.md).
+  it('учитель на /notifications — маршрут «Уведомления» открывает NotificationsScreen', async () => {
+    mockRoute(TEACHER, { '/me/notifications': { enabled: [] } });
+
+    renderAt('/notifications');
+
+    expect(
+      await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/),
+    ).toBeInTheDocument();
+  });
+
+  it('ученик на /notifications — тоже открывает NotificationsScreen, не StudentScreen', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: ['student'],
+      tz: 'Asia/Jerusalem',
+    };
+    mockRoute(student, { '/me/notifications': { enabled: [] } });
+
+    renderAt('/notifications');
+
+    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
+    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
+  });
+
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {
     mockRoute(null);
 
