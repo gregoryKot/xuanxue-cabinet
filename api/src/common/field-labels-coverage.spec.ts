@@ -19,6 +19,11 @@ import { ListClassesDto } from '../classes/dto/list-classes.dto';
 import { ScheduleRuleDto } from '../classes/dto/schedule-rule.dto';
 import { UpdateClassDto } from '../classes/dto/update-class.dto';
 import { ListDeliveriesDto } from '../deliveries/dto/list-deliveries.dto';
+import { CreateExamItemDto } from '../exams/dto/create-exam-item.dto';
+import { ExamItemFieldsDto } from '../exams/dto/exam-item-fields.dto';
+import { ExamItemOptionDto } from '../exams/dto/exam-item-option.dto';
+import { ListExamItemsDto } from '../exams/dto/list-exam-items.dto';
+import { UpdateExamItemDto } from '../exams/dto/update-exam-item.dto';
 import { AddRecordingDto } from '../lessons/dto/add-recording.dto';
 import { CreateLessonDto } from '../lessons/dto/create-lesson.dto';
 import { ListLessonsDto } from '../lessons/dto/list-lessons.dto';
@@ -51,6 +56,11 @@ const DTO_CLASSES: DtoConstructor[] = [
   ScheduleRuleDto,
   UpdateClassDto,
   ListDeliveriesDto,
+  CreateExamItemDto,
+  ExamItemFieldsDto,
+  ExamItemOptionDto,
+  ListExamItemsDto,
+  UpdateExamItemDto,
   AddRecordingDto,
   CreateLessonDto,
   ListLessonsDto,
