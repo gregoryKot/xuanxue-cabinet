@@ -1,4 +1,4 @@
-// CRUD занятий — доступ только учителю/админу (данные школы, ADR-0010).
+// CRUD занятий — доступ учителю, помощнику учителя и админу (данные школы, ADR-0010).
 // Контроллер только валидирует тело/query и зовёт сервис: шифрование секретов,
 // PATCH `null` → `$unset`, id субдокументов правил — в ClassesService.
 import {
@@ -21,7 +21,7 @@ import { ListClassesDto } from './dto/list-classes.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 
 @Controller('classes')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 

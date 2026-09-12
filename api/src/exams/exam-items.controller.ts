@@ -1,4 +1,4 @@
-// CRUD банка вопросов — доступ только учителю/админу (данные школы,
+// CRUD банка вопросов — доступ учителю, помощнику учителя и админу (данные школы,
 // ADR-0010). Контроллер только валидирует тело/query и зовёт сервис: версии,
 // шифрование, проверка вариантов — в ExamItemsService.
 import {
@@ -23,7 +23,7 @@ import { ListExamItemsDto } from './dto/list-exam-items.dto';
 import { UpdateExamItemDto } from './dto/update-exam-item.dto';
 
 @Controller('exam-items')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class ExamItemsController {
   constructor(private readonly examItemsService: ExamItemsService) {}
 

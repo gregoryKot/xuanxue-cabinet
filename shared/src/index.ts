@@ -50,6 +50,7 @@ export type {
 } from './auth';
 export {
   USER_ROLES,
+  ROLE_LABELS,
   USER_STATUSES,
   CSRF_HEADER,
   MUTATING_METHODS,

@@ -44,6 +44,11 @@ describe('GET /users/teachers (e2e)', () => {
   it.each([
     ['ученик', ['student'] as UserRole[]],
     ['гость', [] as UserRole[]],
+    // UsersController целиком (включая этот маршрут) не отдан assistant —
+    // помощник учителя видит расписание и занятия, но не список пользователей
+    // (docs/SECURITY.md §2).
+    ['помощник учителя', ['assistant'] as UserRole[]],
+    ['бухгалтер', ['accountant'] as UserRole[]],
   ])('%s: GET /users/teachers — 403', async (_label, roles) => {
     const cookie = await sessionCookieFor(testApp.app, roles);
     const res = await request(server()).get('/api/users/teachers').set('Cookie', cookie);

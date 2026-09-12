@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { UserDto } from '@xuanxue/shared';
+import { ROLE_LABELS, USER_ROLES, type UserDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { PersonRow } from './PersonRow';
 
@@ -79,6 +79,29 @@ describe('PersonRow', () => {
 
     await user.click(screen.getByLabelText('Администратор — Гриша'));
     expect(onChangeRoles).toHaveBeenCalledWith(['teacher']);
+  });
+
+  it('переключатель на каждую роль из USER_ROLES, подпись — из ROLE_LABELS', () => {
+    renderRow();
+    for (const role of USER_ROLES) {
+      expect(screen.getByLabelText(`${ROLE_LABELS[role]} — Гриша`)).toBeInTheDocument();
+    }
+  });
+
+  it('включить «Помощник учителя» — зовёт onChangeRoles с добавленной ролью', async () => {
+    const user = userEvent.setup();
+    const { onChangeRoles } = renderRow({ roles: [] });
+
+    await user.click(screen.getByLabelText('Помощник учителя — Гриша'));
+    expect(onChangeRoles).toHaveBeenCalledWith(['assistant']);
+  });
+
+  it('включить «Бухгалтер» — зовёт onChangeRoles с добавленной ролью', async () => {
+    const user = userEvent.setup();
+    const { onChangeRoles } = renderRow({ roles: [] });
+
+    await user.click(screen.getByLabelText('Бухгалтер — Гриша'));
+    expect(onChangeRoles).toHaveBeenCalledWith(['accountant']);
   });
 
   it('свой профиль — переключатель admin выключен, подсказка видна', () => {

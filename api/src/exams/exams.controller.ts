@@ -1,4 +1,4 @@
-// CRUD формы экзамена — доступ только учителю/админу (данные школы,
+// CRUD формы экзамена — доступ учителю, помощнику учителя и админу (данные школы,
 // ADR-0010). Контроллер только валидирует тело/query и зовёт сервис:
 // шифрование и правила ТЗ 4.3 (блоки, публикация, удаление) — в ExamsService.
 import {
@@ -22,7 +22,7 @@ import { ListExamsDto } from './dto/list-exams.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 
 @Controller('exams')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class ExamsController {
   constructor(private readonly examsService: ExamsService) {}
 

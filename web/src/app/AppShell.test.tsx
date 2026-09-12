@@ -48,6 +48,12 @@ const STUDENT: MeDto = {
   roles: ['student'],
   tz: 'Asia/Jerusalem',
 };
+const ASSISTANT: MeDto = {
+  id: 'u3',
+  name: 'Помощник',
+  roles: ['assistant'],
+  tz: 'Asia/Jerusalem',
+};
 
 describe('AppShell — навигация по ширине экрана', () => {
   // Ветка «телефон»: по умолчанию matchMedia в setupTests отвечает «широкий
@@ -102,7 +108,16 @@ describe('AppShell — учитель', () => {
   });
 });
 
-describe('AppShell — ученик (без роли teacher/admin)', () => {
+describe('AppShell — помощник учителя', () => {
+  it('правами равен учителю — тот же маршрут и та же навигация', async () => {
+    renderShell(ASSISTANT);
+
+    expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
+  });
+});
+
+describe('AppShell — ученик (без роли teacher/assistant/admin)', () => {
   it('вместо маршрута — StudentScreen, без нижней навигации', async () => {
     renderShell(STUDENT);
 

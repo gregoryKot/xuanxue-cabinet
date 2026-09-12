@@ -1,11 +1,11 @@
-// Строка списка «Люди» — имя, дата входа, два переключателя роли, удаление
-// данных (CLAUDE.md «Одна механика — один компонент», образец —
-// ChannelCard.tsx). Не карточка с клиентом: строка сама не открывается
-// никуда, переключатель роли — сразу мутация (PATCH /users/:id), удаление —
-// через общий ConfirmDialog (образец — ChannelSheet.tsx), необратимо и
-// поэтому с подтверждением.
+// Строка списка «Люди» — имя, дата входа, переключатель роли на каждую роль
+// из USER_ROLES (CLAUDE.md «Одна механика — один компонент», образец —
+// ChannelCard.tsx), удаление данных. Не карточка с клиентом: строка сама не
+// открывается никуда, переключатель роли — сразу мутация (PATCH /users/:id),
+// удаление — через общий ConfirmDialog (образец — ChannelSheet.tsx),
+// необратимо и поэтому с подтверждением.
 import { useState, type CSSProperties } from 'react';
-import type { UserDto, UserRole } from '@xuanxue/shared';
+import { ROLE_LABELS, USER_ROLES, type UserDto, type UserRole } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
@@ -99,18 +99,17 @@ export function PersonRow({ person, isSelf, onChangeRoles, onRemove }: PersonRow
       </div>
 
       <div style={actionsRowStyle}>
-        <Toggle
-          label={`Учитель — ${person.name}`}
-          checked={person.roles.includes('teacher')}
-          disabled={pending}
-          onChange={(checked) => toggle('teacher', checked)}
-        />
-        <Toggle
-          label={`Администратор — ${person.name}`}
-          checked={person.roles.includes('admin')}
-          disabled={pending || isSelf}
-          onChange={(checked) => toggle('admin', checked)}
-        />
+        {USER_ROLES.map((role) => (
+          <Toggle
+            key={role}
+            label={`${ROLE_LABELS[role]} — ${person.name}`}
+            checked={person.roles.includes(role)}
+            // Снять admin у себя нельзя из интерфейса (SELF_ADMIN_HINT ниже) —
+            // остальные роли у своей же строки переключаются свободно.
+            disabled={pending || (role === 'admin' && isSelf)}
+            onChange={(checked) => toggle(role, checked)}
+          />
+        ))}
         {!isSelf && (
           <Button
             type="button"

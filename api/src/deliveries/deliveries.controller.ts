@@ -1,5 +1,5 @@
 // GET /deliveries, GET /deliveries/:id, POST /deliveries/:id/mark-sent —
-// доступ только учителю/админу (данные школы, ADR-0010).
+// доступ учителю, помощнику учителя и админу (данные школы, ADR-0010).
 import {
   Controller,
   Get,
@@ -16,7 +16,7 @@ import { DeliveriesService } from './deliveries.service';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
 
 @Controller('deliveries')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class DeliveriesController {
   constructor(private readonly deliveriesService: DeliveriesService) {}
 

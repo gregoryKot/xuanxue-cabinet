@@ -1,4 +1,4 @@
-// CRUD каналов — доступ только учителю/админу (данные школы, ADR-0010).
+// CRUD каналов — доступ учителю, помощнику учителя и админу (данные школы, ADR-0010).
 // Контроллер только валидирует тело/query и зовёт сервис: проверка config по
 // типу, шифрование, поиск адаптера — в ChannelsService.
 import {
@@ -21,7 +21,7 @@ import { ListChannelsDto } from './dto/list-channels.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
 
 @Controller('channels')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class ChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}
 

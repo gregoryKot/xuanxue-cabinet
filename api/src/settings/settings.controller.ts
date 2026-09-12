@@ -1,5 +1,5 @@
 // GET/PATCH /settings, POST /settings/preview — шаблоны школы (docs/PLAN.md
-// §6 «Шаблоны»), доступ только учителю/админу (данные школы, ADR-0010).
+// §6 «Шаблоны»), доступ учителю, помощнику учителя и админу (данные школы, ADR-0010).
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { PreviewTemplateResult, SettingsDto } from '@xuanxue/shared';
@@ -9,7 +9,7 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SettingsService } from './settings.service';
 
 @Controller('settings')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 

@@ -4,8 +4,9 @@
 //
 // В шапке только название школы. «Выйти» переехало в «Настройки» (у учителя)
 // и на экран ученика: кнопка висела в шапке на каждом экране, хотя нужна раз
-// в жизни (отзыв владельца 2026-09-12). Роль без teacher/admin (ученик) —
-// StudentScreen вместо содержимого маршрута.
+// в жизни (отзыв владельца 2026-09-12). Роль без teacher/assistant/admin
+// (ученик, бухгалтер) — StudentScreen вместо содержимого маршрута: у
+// бухгалтера прав пока нет нигде (деньги — этап 3, docs/PLAN.md).
 import type { CSSProperties } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -13,7 +14,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
 import { StudentScreen } from './StudentScreen';
 
-const TEACHER_ROLES = new Set(['teacher', 'admin']);
+const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 
 const headerStyle: CSSProperties = {
   display: 'flex',

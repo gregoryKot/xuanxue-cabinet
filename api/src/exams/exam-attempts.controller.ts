@@ -1,10 +1,11 @@
 // Попытка сдачи экзамена — данные ученика (ADR-0010): владение по `userId` из
-// сессии, не по роли. Роли `teacher`/`admin` допущены к тем же маршрутам, что
-// и `student` — учителю полезно пройти форму изнутри, как ученик, до того как
-// её увидит первый сдающий (ТЗ 4.4, п.1); владение всё равно проверяется по
-// `user.id`, отдельного пути для учителя нет. Список — исключение: там
-// `teacher`/`admin` видят все попытки школы (ExamAttemptsService.list, роль,
-// не владение — ADR-0010), гость (`roles: []`) не видит ничего.
+// сессии, не по роли. Роли `teacher`/`assistant`/`admin` допущены к тем же
+// маршрутам, что и `student` (помощник учителя правами равен учителю) —
+// учителю полезно пройти форму изнутри, как ученик, до того как её увидит
+// первый сдающий (ТЗ 4.4, п.1); владение всё равно проверяется по `user.id`,
+// отдельного пути для учителя нет. Список — исключение: там `teacher`/
+// `assistant`/`admin` видят все попытки школы (ExamAttemptsService.list,
+// роль, не владение — ADR-0010), гость (`roles: []`) не видит ничего.
 //
 // Два разных корня маршрутов (`exams/:examId/attempts`, `attempts/...`) —
 // `@Controller()` без общего префикса, полный путь у каждого хендлера:
@@ -32,7 +33,7 @@ import { ListAttemptsDto } from './dto/list-attempts.dto';
 import { SaveAttemptAnswersDto } from './dto/save-attempt-answers.dto';
 
 @Controller()
-@Roles('student', 'teacher', 'admin')
+@Roles('student', 'teacher', 'assistant', 'admin')
 export class ExamAttemptsController {
   constructor(private readonly examAttemptsService: ExamAttemptsService) {}
 
