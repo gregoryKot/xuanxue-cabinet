@@ -95,15 +95,36 @@ describe('buildScheduleGrid', () => {
     expect(grid[3].map((slot) => slot.title)).toEqual(['Нормальное']);
   });
 
-  it('слот несёт tz занятия', () => {
+  it('онлайн без ссылки Zoom — linkMissing у слота', () => {
     const cls = makeClass({
-      tz: 'Europe/Moscow',
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
     });
 
     const grid = buildScheduleGrid([cls]);
 
-    expect(grid[1][0]?.tz).toBe('Europe/Moscow');
+    expect(grid[1][0]?.linkMissing).toBe(true);
+  });
+
+  it('онлайн со ссылкой — linkMissing false', () => {
+    const cls = makeClass({
+      zoomLink: 'https://us02web.zoom.us/j/1',
+      rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
+    });
+
+    const grid = buildScheduleGrid([cls]);
+
+    expect(grid[1][0]?.linkMissing).toBe(false);
+  });
+
+  it('офлайн без ссылки — не «без ссылки»: ссылки там и не должно быть', () => {
+    const cls = makeClass({
+      format: 'offline',
+      rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
+    });
+
+    const grid = buildScheduleGrid([cls]);
+
+    expect(grid[1][0]?.linkMissing).toBe(false);
   });
 
   it('слот несёт число активных каналов рассылки занятия (ревью п.1)', () => {

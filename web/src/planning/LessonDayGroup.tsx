@@ -4,7 +4,6 @@
 // календарной дате конкретные занятия, данные и типы разные.
 import type { CSSProperties } from 'react';
 import type { ClassDto } from '@xuanxue/shared';
-import { tzBadge } from '../schedule/timezoneLabel';
 import { LessonCard } from './LessonCard';
 import type { LessonDayGroupData } from './groupLessonsByDay';
 
@@ -36,7 +35,6 @@ export function LessonDayGroup({
             key={lesson.id}
             lesson={lesson}
             className={cls?.title ?? '—'}
-            tzBadgeText={cls ? tzBadge(cls.tz) : null}
             onSelect={() => onSelectLesson(lesson.id)}
           />
         );

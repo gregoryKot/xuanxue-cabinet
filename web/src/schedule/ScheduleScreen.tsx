@@ -11,6 +11,7 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
   primaryActionStyle,
   screenExplanationStyle,
+  screenHintStyle,
   screenSectionStyle,
   wideScreenSectionStyle,
 } from '../components/screenLayout';
@@ -21,6 +22,7 @@ import { ClassSheet } from './ClassSheet';
 import { ScheduleDayList } from './ScheduleDayList';
 import { ScheduleGridView } from './ScheduleGridView';
 import { buildScheduleGrid } from './scheduleGrid';
+import { scheduleTzNote } from './timezoneLabel';
 import { useClasses } from './useClasses';
 
 const EXPLANATION = `Здесь расписание школы. Впишите ссылку Zoom в занятие, и ученики получат её за ${DEFAULT_LEAD_MINUTES} минут до начала сами.`;
@@ -49,6 +51,13 @@ export default function ScheduleScreen() {
     [classes, activeChannelIds],
   );
   const totalSlots = useMemo(() => Object.values(grid).flat().length, [grid]);
+  // Пояс подписан один раз под объяснением, а не припиской у каждого слота:
+  // одиннадцать строк «Asia/Jerusalem» подряд ничего не сообщают
+  // (отзыв владельца 2026-09-12).
+  const tzNote = useMemo(
+    () => scheduleTzNote((classes ?? []).map((cls) => cls.tz)),
+    [classes],
+  );
   const selectedClass = classes?.find((cls) => cls.id === sheetClassId) ?? null;
 
   function openCreate() {
@@ -65,6 +74,7 @@ export default function ScheduleScreen() {
     // Сетка недели занимает всю ширину, список на телефоне — обычную колонку.
     <section style={isMobile ? screenSectionStyle : wideScreenSectionStyle}>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      {tzNote && <p style={screenHintStyle}>{tzNote}</p>}
 
       {!loading && (
         <Button style={primaryActionStyle} onClick={openCreate}>

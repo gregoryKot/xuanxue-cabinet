@@ -173,3 +173,41 @@ describe('ScheduleScreen — лист занятия', () => {
     });
   });
 });
+
+describe('ScheduleScreen — пояс и ссылки (отзыв владельца 2026-09-12)', () => {
+  it('два занятия в поясе школы — подпись про часы школы одна на экран', async () => {
+    mockedApiFetch.mockResolvedValue([
+      makeClass(),
+      makeClass({
+        id: 'c2',
+        rules: [{ id: 'r2', weekday: 4, time: '08:00', durationMin: 60 }],
+      }),
+    ]);
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('Время в сетке — по часам школы (Asia/Jerusalem).'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Asia\/Jerusalem/)).toHaveLength(1);
+  });
+
+  it('онлайн-занятие без ссылки Zoom — «без ссылки» на карточке слота', async () => {
+    mockedApiFetch.mockResolvedValue([makeClass()]);
+
+    renderScreen();
+
+    expect(await screen.findByText('без ссылки')).toBeInTheDocument();
+  });
+
+  it('ссылка заполнена — пометки нет', async () => {
+    mockedApiFetch.mockResolvedValue([
+      makeClass({ zoomLink: 'https://us02web.zoom.us/j/1' }),
+    ]);
+
+    renderScreen();
+
+    await screen.findByText(/19:00–20:00/);
+    expect(screen.queryByText('без ссылки')).not.toBeInTheDocument();
+  });
+});
