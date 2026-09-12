@@ -20,8 +20,8 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     format: 'online',
     timeLabel: '19:00–20:00',
     startMinutes: 1140,
-    tz: 'Asia/Jerusalem',
     active: true,
+    linkMissing: false,
     channelCount: 0,
     ...overrides,
   };

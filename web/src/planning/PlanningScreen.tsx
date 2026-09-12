@@ -8,11 +8,13 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
   primaryActionStyle,
   screenExplanationStyle,
+  screenHintStyle,
   screenSectionStyle,
 } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
 import { useTeachers } from '../people/useTeachers';
+import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { groupLessonsByDay } from './groupLessonsByDay';
 import { LessonDayGroup } from './LessonDayGroup';
@@ -20,6 +22,10 @@ import { LessonSheet } from './LessonSheet';
 import { useLessons } from './useLessons';
 
 const EXPLANATION = `Здесь занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд, из расписания. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
+// Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
+// отличается от строчки расписания (отзыв владельца 2026-09-12).
+const ONE_OFF_HINT =
+  'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
@@ -36,6 +42,13 @@ export default function PlanningScreen() {
   const groups = useMemo(
     () => groupLessonsByDay(lessonsState.lessons ?? []),
     [lessonsState.lessons],
+  );
+  // Время занятий на этом экране показано по часам зрителя. Без подписи оно
+  // читается как время школы, а приписка у каждой строки была частоколом
+  // (отзыв владельца 2026-09-12).
+  const tzNote = useMemo(
+    () => planningTzNote((classesState.classes ?? []).map((cls) => cls.tz)),
+    [classesState.classes],
   );
   const selectedLesson =
     lessonsState.lessons?.find((lesson) => lesson.id === sheetLessonId) ?? null;
@@ -72,11 +85,15 @@ export default function PlanningScreen() {
   return (
     <section style={screenSectionStyle}>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      {tzNote && <p style={screenHintStyle}>{tzNote}</p>}
 
       {!lessonsState.loading && (
-        <Button style={primaryActionStyle} onClick={openCreate}>
-          Разовое занятие
-        </Button>
+        <div>
+          <Button style={primaryActionStyle} onClick={openCreate}>
+            Разовое занятие
+          </Button>
+          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>{ONE_OFF_HINT}</p>
+        </div>
       )}
 
       {lessonsError && <LoadErrorBanner message={lessonsError} onRetry={retryLessons} />}

@@ -21,8 +21,11 @@ export interface ScheduleSlot {
   format: ClassDto['format'];
   timeLabel: string;
   startMinutes: number;
-  tz: string;
   active: boolean;
+  /** Онлайн-занятие без ссылки Zoom: рассылка уйдёт без неё, ученик
+   * останется за дверью. SlotCard показывает «без ссылки» прямо в сетке
+   * (отзыв владельца 2026-09-12). У офлайна ссылки и не должно быть. */
+  linkMissing: boolean;
   /** Число АКТИВНЫХ каналов рассылки у занятия (channelIds ∩ активные
    * каналы кабинета) — SlotCard показывает его или «без каналов» (ревью
    * п.1). Выключенный канал в channelIds не считается: рассылку он не
@@ -90,8 +93,8 @@ export function buildScheduleGrid(
         format: cls.format,
         timeLabel: formatTimeRange(rule),
         startMinutes,
-        tz: cls.tz,
         active: cls.active,
+        linkMissing: cls.format !== 'offline' && !cls.zoomLink,
         channelCount: countActiveChannels(cls.channelIds, activeChannelIds),
       });
     }

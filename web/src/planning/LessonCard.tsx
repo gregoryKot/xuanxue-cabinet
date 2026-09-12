@@ -40,16 +40,10 @@ const cancelledLinkStyle: CSSProperties = {
 interface LessonCardProps {
   lesson: LessonDto;
   className: string;
-  tzBadgeText: string | null;
   onSelect: () => void;
 }
 
-export function LessonCard({
-  lesson,
-  className,
-  tzBadgeText,
-  onSelect,
-}: LessonCardProps) {
+export function LessonCard({ lesson, className, onSelect }: LessonCardProps) {
   const cancelled = lesson.status === 'cancelled';
   const broadcast = lesson.broadcast;
   return (
@@ -61,8 +55,7 @@ export function LessonCard({
         onClick={onSelect}
       >
         <div style={listCardTitleStyle}>
-          {formatTime(lesson.startsAt)}
-          {tzBadgeText && ` · ${tzBadgeText}`} · {className}
+          {formatTime(lesson.startsAt)} · {className}
         </div>
         <div style={listCardMetaStyle}>
           {lesson.topic || 'Тема не задана'}

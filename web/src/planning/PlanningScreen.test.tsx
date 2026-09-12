@@ -287,3 +287,31 @@ describe('PlanningScreen — список занятий', () => {
     expect(screen.getByText(/· —$/)).toBeInTheDocument();
   });
 });
+
+describe('PlanningScreen — подписи (отзыв владельца 2026-09-12)', () => {
+  it('три занятия одного класса — пояс школы назван один раз, не в каждой строке', async () => {
+    mockByPath({
+      '/lessons': [
+        makeLesson(),
+        makeLesson({ id: 'l2', startsAt: '2026-09-09T16:00:00.000Z' }),
+        makeLesson({ id: 'l3', startsAt: '2026-09-10T16:00:00.000Z' }),
+      ],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('Время — по вашим часам. Школа живёт по Asia/Jerusalem.'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Asia\/Jerusalem/)).toHaveLength(1);
+  });
+
+  it('рядом с кнопкой сказано, что такое разовое занятие', async () => {
+    mockByPath({ '/lessons': [], '/classes': [makeClass()] });
+
+    renderScreen();
+
+    expect(await screen.findByText(/семинар, перенос, замена/)).toBeInTheDocument();
+  });
+});

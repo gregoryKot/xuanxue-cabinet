@@ -4,8 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { SlotCard } from './SlotCard';
 import type { ScheduleSlot } from './scheduleGrid';
 
-const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
 function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
   return {
     classId: 'c1',
@@ -15,8 +13,8 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     format: 'online',
     timeLabel: '19:00–20:00',
     startMinutes: 19 * 60,
-    tz: BROWSER_TZ,
     active: true,
+    linkMissing: false,
     channelCount: 0,
     ...overrides,
   };
@@ -61,15 +59,15 @@ describe('SlotCard', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
-  it('пояс занятия отличается от браузерного — приписка в конце строки', () => {
-    render(<SlotCard slot={makeSlot({ tz: 'Pacific/Auckland' })} onSelect={vi.fn()} />);
+  it('онлайн без ссылки Zoom — «без ссылки» прямо в сетке', () => {
+    render(<SlotCard slot={makeSlot({ linkMissing: true })} onSelect={vi.fn()} />);
 
-    expect(screen.getByText(/Онлайн · Pacific\/Auckland/)).toBeInTheDocument();
+    expect(screen.getByText('без ссылки')).toBeInTheDocument();
   });
 
-  it('пояс занятия совпадает с браузерным — приписки нет', () => {
-    render(<SlotCard slot={makeSlot({ tz: BROWSER_TZ })} onSelect={vi.fn()} />);
+  it('ссылка есть — пометки нет', () => {
+    render(<SlotCard slot={makeSlot()} onSelect={vi.fn()} />);
 
-    expect(screen.queryByText(BROWSER_TZ, { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByText('без ссылки')).not.toBeInTheDocument();
   });
 });

@@ -37,3 +37,11 @@ export const screenExplanationStyle: CSSProperties = {
   margin: 0,
   color: 'var(--ink-soft)',
 };
+
+/** Мелкая приписка под объяснением: часовой пояс, что значит кнопка. Тише
+ * объяснения — читают её один раз и больше к ней не возвращаются. */
+export const screenHintStyle: CSSProperties = {
+  margin: '-10px 0 0',
+  fontSize: 13,
+  color: 'var(--ink-soft)',
+};

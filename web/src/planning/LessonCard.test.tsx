@@ -25,12 +25,7 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
 function renderCard(lesson: LessonDto) {
   return render(
     <MemoryRouter>
-      <LessonCard
-        lesson={lesson}
-        className="Тайцзицюань"
-        tzBadgeText={null}
-        onSelect={vi.fn()}
-      />
+      <LessonCard lesson={lesson} className="Тайцзицюань" onSelect={vi.fn()} />
     </MemoryRouter>,
   );
 }
@@ -64,7 +59,6 @@ describe('LessonCard', () => {
         <LessonCard
           lesson={makeLesson({ broadcast: { status: 'cancelled', kind: 'lesson_link' } })}
           className="Тайцзицюань"
-          tzBadgeText={null}
           onSelect={onSelect}
         />
       </MemoryRouter>,
