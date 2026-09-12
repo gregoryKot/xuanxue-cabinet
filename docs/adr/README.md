@@ -56,3 +56,5 @@
 | [0018](0018-istanbul-coverage-for-web.md)                | Покрытие web через istanbul, не v8 — детерминированные пороги          |
 | [0019](0019-school-schedule-seeded-by-migration.md)      | Расписание школы приносит миграция, ссылки Zoom — экран «Занятия»      |
 | [0020](0020-telegram-login-redirect-on-touch.md)         | Вход через Telegram с телефона — переходом вкладки, не попапом         |
+| [0021](0021-exam-media-on-r2.md)                         | Видео экзаменов — Cloudflare R2, загрузка мимо нашего сервера          |
+| [0022](0022-exam-model-item-bank-and-snapshot.md)        | Экзамен: банк вопросов с версиями, снимок формы в попытке, рубрика     |
