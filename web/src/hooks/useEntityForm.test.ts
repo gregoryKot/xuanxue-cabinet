@@ -1,0 +1,159 @@
+// useExamItemForm.test.ts и exams/useExamForm.test.ts проверяют конкретные
+// домены (и не дублируют этот файл — jscpd не смотрит на *.test.ts); здесь —
+// сама оркестрация на фейковой сущности, без домена.
+import { act, renderHook } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../api/http';
+import { useEntityForm } from './useEntityForm';
+
+interface FakeEntity {
+  id: string;
+  name: string;
+  status: 'draft' | 'published';
+}
+
+interface FakeFormState {
+  name: string;
+}
+
+function baseConfig(
+  entity: FakeEntity | null,
+  overrides: Partial<
+    Parameters<
+      typeof useEntityForm<
+        FakeEntity,
+        FakeFormState,
+        { name: string },
+        { name?: string; status?: 'draft' | 'published' },
+        'draft' | 'published'
+      >
+    >[0]
+  > = {},
+) {
+  return {
+    entity,
+    getId: (e: FakeEntity) => e.id,
+    initialState: (e: FakeEntity | null) => ({ name: e?.name ?? '' }),
+    validate: (state: FakeFormState) => (state.name.trim() ? null : 'Название пустое.'),
+    toCreateInput: (state: FakeFormState) => ({ name: state.name }),
+    toUpdateInput: (state: FakeFormState) => ({ name: state.name }),
+    onCreate: vi.fn().mockResolvedValue(undefined),
+    onUpdate: vi.fn().mockResolvedValue(undefined),
+    onRemove: vi.fn().mockResolvedValue(undefined),
+    saveErrorMessage: 'Не удалось сохранить.',
+    removeErrorMessage: 'Не удалось удалить.',
+    statusErrorMessage: 'Не удалось изменить статус.',
+    ...overrides,
+  };
+}
+
+describe('useEntityForm — создание', () => {
+  it('невалидное состояние — onCreate не зовётся, validationError выставлен', async () => {
+    const config = baseConfig(null);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(config.onCreate).not.toHaveBeenCalled();
+    expect(result.current.validationError).toBe('Название пустое.');
+  });
+
+  it('валидное состояние — onCreate зовётся с телом из toCreateInput', async () => {
+    const config = baseConfig(null);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    act(() => result.current.setField('name', 'Тест'));
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.submit();
+    });
+
+    expect(ok).toBe(true);
+    expect(config.onCreate).toHaveBeenCalledWith({ name: 'Тест' });
+  });
+
+  it('ApiError от onCreate — serverError с деталями', async () => {
+    const config = baseConfig(null, {
+      onCreate: vi
+        .fn()
+        .mockRejectedValue(new ApiError('Конфликт', 409, 'conflict', ['д'])),
+    });
+    const { result } = renderHook(() => useEntityForm(config));
+    act(() => result.current.setField('name', 'Тест'));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.serverError).toEqual({ message: 'Конфликт', details: ['д'] });
+  });
+});
+
+describe('useEntityForm — правка/удаление/статус', () => {
+  const entity: FakeEntity = { id: 'e1', name: 'Существующее', status: 'draft' };
+
+  it('submit с сущностью — onUpdate зовётся по её id', async () => {
+    const config = baseConfig(entity);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(config.onUpdate).toHaveBeenCalledWith('e1', { name: 'Существующее' });
+  });
+
+  it('remove() без сущности — false, onRemove не зовётся', async () => {
+    const config = baseConfig(null);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    let ok = true;
+    await act(async () => {
+      ok = await result.current.remove();
+    });
+
+    expect(ok).toBe(false);
+    expect(config.onRemove).not.toHaveBeenCalled();
+  });
+
+  it('remove() с сущностью — onRemove по её id', async () => {
+    const config = baseConfig(entity);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.remove();
+    });
+
+    expect(ok).toBe(true);
+    expect(config.onRemove).toHaveBeenCalledWith('e1');
+  });
+
+  it('changeStatus() шлёт только { status }, не поля формы', async () => {
+    const config = baseConfig(entity);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.changeStatus('published');
+    });
+
+    expect(ok).toBe(true);
+    expect(config.onUpdate).toHaveBeenCalledWith('e1', { status: 'published' });
+  });
+
+  it('ошибка changeStatus() — общий текст в serverError', async () => {
+    const config = baseConfig(entity, {
+      onUpdate: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    const { result } = renderHook(() => useEntityForm(config));
+
+    await act(async () => {
+      await result.current.changeStatus('published');
+    });
+
+    expect(result.current.serverError?.message).toBe('Не удалось изменить статус.');
+  });
+});

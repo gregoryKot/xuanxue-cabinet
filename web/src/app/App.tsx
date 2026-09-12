@@ -22,6 +22,7 @@ const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
 const PeopleScreen = lazy(() => import('../people/PeopleScreen'));
 const SettingsScreen = lazy(() => import('../settings/SettingsScreen'));
 const ExamItemsScreen = lazy(() => import('../exam-items/ExamItemsScreen'));
+const ExamsScreen = lazy(() => import('../exams/ExamsScreen'));
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -45,6 +46,7 @@ export default function App() {
                 <Route path="/broadcasts" element={<BroadcastsScreen />} />
                 <Route path="/templates" element={<TemplatesScreen />} />
                 <Route path="/exam-items" element={<ExamItemsScreen />} />
+                <Route path="/exams" element={<ExamsScreen />} />
                 <Route path="/settings" element={<SettingsScreen />} />
                 {/* Не в NAV_ITEMS (navItems.ts — 6 пунктов предел на 360px):
                     вход только карточкой «Люди» на «Сводке», доступно только

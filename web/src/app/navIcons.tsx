@@ -89,6 +89,15 @@ export function ExamItemsIcon() {
   );
 }
 
+export function ExamsIcon() {
+  return (
+    <svg {...shared}>
+      <path d="M4 4h9l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+      <path d="M13 4v3h3M7 11h6M7 14h4" />
+    </svg>
+  );
+}
+
 export function PeopleIcon() {
   return (
     <svg {...shared}>

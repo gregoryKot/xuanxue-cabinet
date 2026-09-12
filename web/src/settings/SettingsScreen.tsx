@@ -16,6 +16,7 @@ import {
   BroadcastsIcon,
   ChannelsIcon,
   ExamItemsIcon,
+  ExamsIcon,
   PeopleIcon,
   ScheduleIcon,
   TemplatesIcon,
@@ -30,6 +31,7 @@ const ICONS = {
   broadcasts: BroadcastsIcon,
   people: PeopleIcon,
   examItems: ExamItemsIcon,
+  exams: ExamsIcon,
 } as const;
 
 const listStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
