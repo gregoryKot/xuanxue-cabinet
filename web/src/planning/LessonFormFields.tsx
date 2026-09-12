@@ -7,6 +7,7 @@ import { CLASS_LIMITS, type ClassDto, type TeacherOptionDto } from '@xuanxue/sha
 import { Field, inputStyle } from '../components/Field';
 import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { inheritedZoomHint } from './inheritedZoom';
 import type { LessonFormState } from './lessonFormInput';
 
 interface LessonFormFieldsProps {
@@ -110,7 +111,7 @@ export function LessonFormFields({
           />
           <Field
             label="Ссылка Zoom на это занятие"
-            hint="Оставьте пустым — берётся из расписания"
+            hint={inheritedZoomHint(classes.find((cls) => cls.id === state.classId))}
           >
             <input
               style={inputStyle}
