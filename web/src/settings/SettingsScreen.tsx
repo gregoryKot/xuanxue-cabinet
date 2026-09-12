@@ -15,6 +15,7 @@ import { LogoutButton } from '../auth/LogoutButton';
 import {
   BroadcastsIcon,
   ChannelsIcon,
+  ExamItemsIcon,
   PeopleIcon,
   ScheduleIcon,
   TemplatesIcon,
@@ -28,6 +29,7 @@ const ICONS = {
   templates: TemplatesIcon,
   broadcasts: BroadcastsIcon,
   people: PeopleIcon,
+  examItems: ExamItemsIcon,
 } as const;
 
 const listStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };

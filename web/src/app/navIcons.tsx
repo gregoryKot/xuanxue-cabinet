@@ -80,6 +80,15 @@ export function SettingsIcon() {
   );
 }
 
+export function ExamItemsIcon() {
+  return (
+    <svg {...shared}>
+      <rect x="4" y="2" width="12" height="16" rx="1.5" />
+      <path d="M7 7l1.5 1.5L11 6M7 11.5h6M7 14.5h4" />
+    </svg>
+  );
+}
+
 export function PeopleIcon() {
   return (
     <svg {...shared}>

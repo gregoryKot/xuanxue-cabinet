@@ -9,7 +9,7 @@ export interface SettingsLink {
   to: string;
   title: string;
   hint: string;
-  icon: 'schedule' | 'channels' | 'templates' | 'broadcasts' | 'people';
+  icon: 'schedule' | 'channels' | 'templates' | 'broadcasts' | 'people' | 'examItems';
   adminOnly?: boolean;
 }
 
@@ -37,6 +37,12 @@ export const SETTINGS_LINKS: SettingsLink[] = [
     title: 'Журнал рассылок',
     hint: 'Что ушло, что ждёт и что не отправилось — с причиной.',
     icon: 'broadcasts',
+  },
+  {
+    to: '/exam-items',
+    title: 'Вопросы для экзамена',
+    hint: 'Из них собирается экзамен. Один вопрос можно поставить в несколько экзаменов.',
+    icon: 'examItems',
   },
   {
     to: '/people',
