@@ -1,16 +1,18 @@
-// Первый экран ученика (docs/PLAN.md §11, слой 4.1; ТЗ student-screen.md) —
-// ближайшие занятия школы. Сам экран и карточка занятия — в web/src/student/
-// (CLAUDE.md «Файлы»: один экран — один каталог); здесь только тонкая
-// сборка со ссылкой на сайт школы, если учитель её заполнил на экране
-// «Шаблоны» (settings.schoolSiteUrl, В6 аудита: раньше здесь была ссылка на
-// сам кабинет — тупик для ученика и незнакомца). Ссылка — ниже расписания,
-// не вместо него (ТЗ, п.4): занятия — то, ради чего ученик сюда зашёл.
+// Первый экран ученика (docs/PLAN.md §11, слои 4.1 и 4.4; ТЗ
+// student-screen.md, student-exams.md) — ближайшие занятия школы и, под
+// ними, экзамены. Сам экран и его разделы — в web/src/student/ (CLAUDE.md
+// «Файлы»: один экран — один каталог); здесь только тонкая сборка со
+// ссылкой на сайт школы, если учитель её заполнил на экране «Шаблоны»
+// (settings.schoolSiteUrl, В6 аудита: раньше здесь была ссылка на сам
+// кабинет — тупик для ученика и незнакомца). Ссылка — в самом низу, не
+// вместо занятий и экзаменов (ТЗ, п.4): ради них ученик сюда зашёл.
 //
 // «Выйти» — в подвале AppShell.tsx, общем для учителя и ученика: своя кнопка
 // здесь дублировала бы её на этом же экране (её механику проверяют
 // AppShell.test.tsx и LogoutButton.test.tsx).
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { screenExplanationStyle } from '../components/screenLayout';
+import { StudentExamsSection } from '../student/StudentExamsSection';
 import { StudentLessonsScreen } from '../student/StudentLessonsScreen';
 
 // Тот же боковой отступ, что у StudentLessonsScreen (components/
@@ -24,6 +26,9 @@ export function StudentScreen() {
   return (
     <>
       <StudentLessonsScreen />
+      <div style={{ padding: '0 16px' }}>
+        <StudentExamsSection />
+      </div>
       {config?.schoolSiteUrl && (
         <p style={schoolSiteLinkStyle}>
           Ещё расписание и запись — на сайте школы:{' '}

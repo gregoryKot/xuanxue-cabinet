@@ -19,10 +19,11 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve({});
     if (path === '/auth/logout') return Promise.resolve(undefined);
-    // StudentScreen (ученик без роли) грузит свои ближайшие занятия —
-    // student/useMyLessons.ts; здесь список не важен, важно, что маршрут не
-    // виснет на незамоканном пути.
+    // StudentScreen (ученик без роли) грузит свои ближайшие занятия и
+    // экзамены — student/useMyLessons.ts, student/useMyExams.ts; здесь
+    // список не важен, важно, что маршрут не виснет на незамоканном пути.
     if (path === '/me/lessons') return Promise.resolve([]);
+    if (path === '/me/exams') return Promise.resolve([]);
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 
