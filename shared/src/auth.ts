@@ -1,8 +1,30 @@
 // Роли, статусы и константы входа/сессии — общий контракт api и web
 // (CLAUDE.md, раздел «Слои»): гварды и DTO в api и CSRF/мутирующие методы в
 // web/src/api/http.ts используют одни и те же значения, расхождение ловит tsc.
-export const USER_ROLES = ['admin', 'teacher', 'student'] as const;
+export const USER_ROLES = [
+  'admin',
+  'teacher',
+  'assistant',
+  'accountant',
+  'student',
+] as const;
 export type UserRole = (typeof USER_ROLES)[number];
+
+/**
+ * Подписи ролей по-русски — единственный источник для web и бота (CLAUDE.md
+ * «Без магических чисел и строк»): экран «Люди» строит переключатели циклом
+ * по `USER_ROLES` с этими подписями, а не перечисляет роли руками. Помощник
+ * учителя правами равен учителю (везде, где `@Roles('teacher', 'admin')`, —
+ * и `'assistant'`), бухгалтер пока не имеет прав нигде (деньги — этап 3,
+ * docs/PLAN.md).
+ */
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Администратор',
+  teacher: 'Учитель',
+  assistant: 'Помощник учителя',
+  accountant: 'Бухгалтер',
+  student: 'Ученик',
+};
 
 export const USER_STATUSES = ['invited', 'active', 'blocked'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];

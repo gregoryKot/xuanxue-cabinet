@@ -93,6 +93,44 @@ describe('TeacherChats', () => {
     expect(chats).toEqual([]);
   });
 
+  // Помощник учителя правами равен учителю (CLAUDE.md, docs/PLAN.md §«Роли») —
+  // бот пишет ему так же, как учителю.
+  it('помощник учителя с активным личным каналом — в списке', async () => {
+    const assistant = await userModel.create({
+      name: 'Пётр',
+      telegramId: 555,
+      roles: ['assistant'],
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'Личные сообщения: Пётр',
+      config: '{}',
+      target: '555',
+      active: true,
+    });
+
+    const chats = await teacherChats.list(NOW);
+
+    expect(chats).toEqual([
+      { chatId: '555', userId: assistant._id.toString(), name: 'Пётр' },
+    ]);
+  });
+
+  it('бухгалтер с личным каналом — не в списке: прав нет, деньги — этап 3', async () => {
+    await userModel.create({ name: 'Бухгалтер', telegramId: 666, roles: ['accountant'] });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'x',
+      config: '{}',
+      target: '666',
+      active: true,
+    });
+
+    const chats = await teacherChats.list(NOW);
+
+    expect(chats).toEqual([]);
+  });
+
   it('пустой список — warn один раз в час, не на каждый вызов', async () => {
     // Свой инстанс, не общий `teacherChats` из describe: тесты выше уже
     // видели пустой список на том же NOW (например «канал выключен») и

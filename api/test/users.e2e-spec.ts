@@ -44,6 +44,10 @@ describe('Users (e2e)', () => {
     ['гость', [] as UserRole[]],
     ['ученик', ['student'] as UserRole[]],
     ['учитель', ['teacher'] as UserRole[]],
+    // Помощник учителя правами равен учителю везде, кроме UsersController
+    // (docs/SECURITY.md §2): назначение ролей и удаление данных — только admin.
+    ['помощник учителя', ['assistant'] as UserRole[]],
+    ['бухгалтер', ['accountant'] as UserRole[]],
   ])('%s: GET и PATCH /users — 403', async (_label, roles) => {
     const cookie = await sessionFor(roles);
     const other = await createUser();

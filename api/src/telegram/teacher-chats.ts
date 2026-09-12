@@ -1,8 +1,9 @@
-// Кому пишет бот (ADR-0015, docs/PLAN.md §6): учителя/админы с telegramId, у
-// кого есть активный личный канал (channels type telegram, target =
-// String(telegramId)) — то есть кто нажал /start. Один источник для всех
-// проактивных отправителей (предпросмотр, «Запись?», ручные каналы,
-// уведомления об ошибках) — CLAUDE.md «Одна механика — один компонент».
+// Кому пишет бот (ADR-0015, docs/PLAN.md §6): учителя/помощники учителя/
+// админы с telegramId, у кого есть активный личный канал (channels type
+// telegram, target = String(telegramId)) — то есть кто нажал /start. Один
+// источник для всех проактивных отправителей (предпросмотр, «Запись?»,
+// ручные каналы, уведомления об ошибках) — CLAUDE.md «Одна механика — один
+// компонент».
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';

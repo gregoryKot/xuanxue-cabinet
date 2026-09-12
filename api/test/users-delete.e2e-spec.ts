@@ -47,6 +47,10 @@ describe('DELETE /users/:id (e2e)', () => {
     ['гость', [] as UserRole[]],
     ['ученик', ['student'] as UserRole[]],
     ['учитель', ['teacher'] as UserRole[]],
+    // Помощник учителя правами равен учителю везде, кроме UsersController
+    // (docs/SECURITY.md §2): удаление данных остаётся только у admin.
+    ['помощник учителя', ['assistant'] as UserRole[]],
+    ['бухгалтер', ['accountant'] as UserRole[]],
   ])('%s: DELETE /users/:id — 403', async (_label, roles) => {
     const cookie = await sessionFor(roles);
     const target = await createUser();
