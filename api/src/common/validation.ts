@@ -29,16 +29,18 @@ export function TrimString(): PropertyDecorator {
   );
 }
 
-/** Query-параметр `limit` списковых DTO (classes, lessons) — один декоратор
- * на оба домена (CLAUDE.md «одна механика — один компонент»): необязателен
- * (сервис подставляет дефолт), но если задан — целое число в границах
- * `1..LIST_LIMIT_MAX` («дай всё» запрещён, CLAUDE.md «API»). */
-export function ListLimit(): PropertyDecorator {
+/** Query-параметр `limit` списковых DTO — один декоратор на все домены
+ * (CLAUDE.md «одна механика — один компонент»): необязателен (сервис
+ * подставляет дефолт), но если задан — целое число в границах `1..max`
+ * («дай всё» запрещён, CLAUDE.md «API»). `max` — свой потолок списка
+ * (`LIST_LIMIT_MAX` по умолчанию; `/me/lessons` короче — своя пара
+ * MY_LESSONS_LIMIT_*, shared/src/lessons.ts). */
+export function ListLimit(max: number = LIST_LIMIT_MAX): PropertyDecorator {
   return applyDecorators(
     IsOptional(),
     Type(() => Number),
     IsInt(),
     Min(LIST_LIMIT_MIN),
-    Max(LIST_LIMIT_MAX),
+    Max(max),
   );
 }

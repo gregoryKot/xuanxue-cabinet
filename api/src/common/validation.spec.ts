@@ -19,6 +19,11 @@ class ListLimitFixture {
   limit?: number;
 }
 
+class ListLimitCustomMaxFixture {
+  @ListLimit(10)
+  limit?: number;
+}
+
 describe('OptionalNotNull', () => {
   it('undefined — валидация пропущена, ошибок нет', async () => {
     const errors = await validate(Object.assign(new OptionalNotNullFixture(), {}));
@@ -78,5 +83,17 @@ describe('ListLimit', () => {
   it('не число — падает', async () => {
     const errors = await validate(plainToInstance(ListLimitFixture, { limit: 'много' }));
     expect(errors).not.toHaveLength(0);
+  });
+
+  it('свой потолок max: в границах — валиден, выше — падает', async () => {
+    const inBound = await validate(
+      plainToInstance(ListLimitCustomMaxFixture, { limit: '10' }),
+    );
+    expect(inBound).toHaveLength(0);
+
+    const overBound = await validate(
+      plainToInstance(ListLimitCustomMaxFixture, { limit: '11' }),
+    );
+    expect(overBound).not.toHaveLength(0);
   });
 });

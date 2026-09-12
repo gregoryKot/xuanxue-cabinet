@@ -78,6 +78,8 @@ export type {
   CreateLessonInput,
   UpdateLessonInput,
   AddRecordingInput,
+  MyLessonDto,
+  ListMyLessonsQuery,
 } from './lessons';
 export type {
   ExamItemKind,
@@ -104,6 +106,9 @@ export type {
   ExamAttemptDto,
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
+  MyExamAttemptSummaryDto,
+  MyExamDto,
+  ListMyExamsQuery,
 } from './exams';
 export {
   EXAM_ITEM_KINDS,
@@ -127,6 +132,8 @@ export {
   NULLABLE_LESSON_FIELDS,
   LESSON_LIMITS,
   LESSON_DEFAULT_DURATION_MIN,
+  MY_LESSONS_LIMIT_DEFAULT,
+  MY_LESSONS_LIMIT_MAX,
 } from './lessons';
 export type {
   TelegramChannelConfig,
