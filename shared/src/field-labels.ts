@@ -88,4 +88,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   required: 'Обязательность блока',
   timeLimitMin: 'Лимит времени',
   attemptsAllowed: 'Число попыток',
+
+  // me/notifications — настройка уведомлений (ТЗ notifications-api.md).
+  // kind — общая подпись «Тип» выше (broadcasts.kind), здесь вид уведомления.
+  enabled: 'Включено',
 };

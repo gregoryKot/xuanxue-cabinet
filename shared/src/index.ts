@@ -181,6 +181,18 @@ export {
   LEADER_NOT_FOUND_MESSAGE,
 } from './users';
 export { FIELD_LABELS_RU } from './field-labels';
+export type {
+  NotificationKind,
+  NotificationPrefsDto,
+  UpdateNotificationPrefsInput,
+} from './notifications';
+export {
+  NOTIFICATION_KINDS,
+  NOTIFICATION_LABELS,
+  NOTIFICATION_HINTS,
+  DEFAULT_NOTIFICATIONS_BY_ROLE,
+  defaultNotifications,
+} from './notifications';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

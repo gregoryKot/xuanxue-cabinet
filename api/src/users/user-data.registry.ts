@@ -12,7 +12,13 @@
 //
 // Этап 4, слой 4.4: первая коллекция с userId — попытка сдачи экзамена
 // (данные ученика, ADR-0022 + PLAN §11): удаление аккаунта уносит и её.
-export const USER_OWNED_COLLECTIONS = ['ExamAttemptRecord'] as const;
+//
+// notification_prefs (ТЗ notifications-api.md) — вторая: настройки уведомлений
+// живут, пока жив аккаунт, удаление уносит их тем же путём.
+export const USER_OWNED_COLLECTIONS = [
+  'ExamAttemptRecord',
+  'NotificationPrefsRecord',
+] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
 // UserRecord.name в user.schema.ts (сверка — user-data.registry.spec.ts).

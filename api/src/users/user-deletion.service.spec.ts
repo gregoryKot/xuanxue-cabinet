@@ -8,6 +8,7 @@ import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
+import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserDeletionService } from './user-deletion.service';
@@ -36,6 +37,7 @@ describe('UserDeletionService', () => {
   let broadcastModel: Model<BroadcastRecord>;
   let botSessionModel: Model<BotSessionRecord>;
   let attemptModel: Model<ExamAttemptRecord>;
+  let notificationPrefsModel: Model<NotificationPrefsRecord>;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -46,6 +48,9 @@ describe('UserDeletionService', () => {
     broadcastModel = memory.connection.model<BroadcastRecord>(BroadcastRecord.name);
     botSessionModel = memory.connection.model<BotSessionRecord>(BotSessionRecord.name);
     attemptModel = memory.connection.model<ExamAttemptRecord>(ExamAttemptRecord.name);
+    notificationPrefsModel = memory.connection.model<NotificationPrefsRecord>(
+      NotificationPrefsRecord.name,
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -61,6 +66,7 @@ describe('UserDeletionService', () => {
       broadcastModel.deleteMany({}),
       botSessionModel.deleteMany({}),
       attemptModel.deleteMany({}),
+      notificationPrefsModel.deleteMany({}),
     ]);
   });
 
@@ -158,6 +164,32 @@ describe('UserDeletionService', () => {
 
     expect(await attemptModel.countDocuments({ userId: student.id })).toBe(0);
     expect(await attemptModel.countDocuments({ userId: other.id })).toBe(1);
+  });
+
+  // Вторая коллекция с userId (ТЗ notifications-api.md) — та же ветка
+  // USER_OWNED_COLLECTIONS, что и попытки экзамена выше, отдельным тестом:
+  // забытая здесь модель ловится сверкой в user-data.registry.spec.ts, а
+  // фактическое поведение deleteMany — только настоящим тестом на Mongo.
+  it('удаляет настройки уведомлений ученика и не трогает чужие', async () => {
+    const student = await users.createFromTelegram({
+      telegramId: 5012,
+      name: 'Ученик с настройками',
+      roles: ['student'],
+    });
+    const other = await users.createFromTelegram({
+      telegramId: 5013,
+      name: 'Другой ученик',
+      roles: ['student'],
+    });
+    await notificationPrefsModel.create([
+      { userId: student.id, overrides: [{ kind: 'lesson_soon', enabled: false }] },
+      { userId: other.id, overrides: [{ kind: 'lesson_soon', enabled: false }] },
+    ]);
+
+    await deletion.deleteAllUserData(student.id, 'кто-то-другой');
+
+    expect(await notificationPrefsModel.countDocuments({ userId: student.id })).toBe(0);
+    expect(await notificationPrefsModel.countDocuments({ userId: other.id })).toBe(1);
   });
 
   it('обнуляет leaderId в классе и занятии — $unset, документы остаются', async () => {

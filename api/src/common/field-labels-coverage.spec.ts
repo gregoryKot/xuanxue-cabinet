@@ -33,6 +33,7 @@ import { AddRecordingDto } from '../lessons/dto/add-recording.dto';
 import { CreateLessonDto } from '../lessons/dto/create-lesson.dto';
 import { ListLessonsDto } from '../lessons/dto/list-lessons.dto';
 import { UpdateLessonDto } from '../lessons/dto/update-lesson.dto';
+import { UpdateNotificationPrefsDto } from '../notifications/dto/update-notification-prefs.dto';
 import { PreviewSettingsDto } from '../settings/dto/preview-settings.dto';
 import {
   UpdateSettingsDto,
@@ -75,6 +76,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   CreateLessonDto,
   ListLessonsDto,
   UpdateLessonDto,
+  UpdateNotificationPrefsDto,
   PreviewSettingsDto,
   UpdateSettingsDto,
   UpdateTemplatesDto,
