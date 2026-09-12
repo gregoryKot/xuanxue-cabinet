@@ -1,27 +1,27 @@
 // Первый экран после входа (docs/PLAN.md §6 п.7, маршрут `/` → `/summary`).
-// Объясняет за пять секунд, что здесь и зачем (CLAUDE.md «Продукт»), дальше —
-// числа за 30 дней; пустая база — честное `emptyMessage` из API, а не нули
-// (CLAUDE.md «Продуктовая фича = число в „Сводке“»).
-import type { CSSProperties } from 'react';
+// Сверху — что сегодня, дальше числа за 30 дней: учитель открывает кабинет
+// перед занятием, а не ради статистики (отзыв владельца 2026-09-12).
+// Пустая база — честное `emptyMessage` из API, а не нули (CLAUDE.md
+// «Продуктовая фича = число в „Сводке“»).
+import { useMemo, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { SUMMARY_PERIOD_DAYS } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { hasRole } from '../auth/hasRole';
-import { formatDateTime } from '../lib/formatDate';
 import { SkeletonGrid } from '../components/Skeleton';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
-import { SummaryCard } from './SummaryCard';
+import { useLessons } from '../planning/useLessons';
+import { useClasses } from '../schedule/useClasses';
+import { SummaryNumbers } from './SummaryNumbers';
+import { TodaySection } from './TodaySection';
+import { pickTodayLessons } from './todayLessons';
 import { useSummary } from './useSummary';
 
-const EXPLANATION = `Здесь сводка за последние ${SUMMARY_PERIOD_DAYS} дней: сколько постов ушло, что не отправилось и какое занятие ближе всего.`;
+const EXPLANATION =
+  'Здесь видно, что у вас сегодня и что кабинет сделал сам за последний месяц.';
+const PERIOD_HEADING = `За ${SUMMARY_PERIOD_DAYS} дней`;
 const PEOPLE_LINK_HINT = 'кто вошёл в кабинет и кто ведёт занятия';
-
-const grid: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-  gap: 10,
-};
 
 // Не SummaryCard: там число — здесь ссылка без числа (не путать «сколько
 // людей» с настройкой ролей, PLAN §6 п.7 явно оставляет числа отдельно).
@@ -43,27 +43,41 @@ const peopleLinkHintStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',
 };
+const periodHeadingStyle: CSSProperties = {
+  fontWeight: 600,
+  fontSize: 13,
+  color: 'var(--ink-soft)',
+};
 
 export default function SummaryScreen() {
   const { me } = useAuth();
   const { summary, loading, error, reload } = useSummary();
+  const lessonsState = useLessons();
+  const classesState = useClasses();
   const isAdmin = hasRole(me, 'admin');
+
+  const todayLessons = useMemo(
+    () => (lessonsState.lessons ? pickTodayLessons(lessonsState.lessons) : null),
+    [lessonsState.lessons],
+  );
+  const classTitleById = useMemo(
+    () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls.title])),
+    [classesState.classes],
+  );
 
   return (
     <section style={screenSectionStyle}>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
 
-      {/* Вход на «Люди» — назначение ролей учитель/админ (RequireAdmin,
-          App.tsx). Не в NAV_ITEMS: 6 пунктов — предел на 360px
-          (navItems.ts). */}
-      {isAdmin && (
-        <div>
-          <Link to="/people" style={peopleLinkStyle}>
-            Люди
-          </Link>
-          <p style={peopleLinkHintStyle}>{PEOPLE_LINK_HINT}</p>
-        </div>
-      )}
+      <TodaySection
+        lessons={todayLessons}
+        classTitleById={classTitleById}
+        error={lessonsState.error}
+        onRetry={() => void lessonsState.reload()}
+        nextLesson={summary?.nextLesson}
+      />
+
+      <span style={periodHeadingStyle}>{PERIOD_HEADING}</span>
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 
@@ -74,33 +88,18 @@ export default function SummaryScreen() {
       )}
 
       {!loading && !error && summary && !summary.emptyMessage && (
-        <div style={grid}>
-          <SummaryCard
-            value={String(summary.broadcastsSent)}
-            label="Рассылок отправлено"
-          />
-          <SummaryCard value={String(summary.deliveriesFailed)} label="Ошибок доставки" />
-          <SummaryCard value={String(summary.deliveriesPending)} label="Ждут отправки" />
-          {/* Без href: маршрута «Рассылки» в этом патче ещё нет, ссылку
-              добавит K3 (catch-all иначе увёл бы обратно на «Сводку»). */}
-          <SummaryCard
-            value={String(summary.manualWaiting)}
-            label="Ждут отправки вручную"
-          />
-          {/* Ссылка ведёт в журнал с готовым фильтром — «почему» смотрят там
-              же, не на самой «Сводке» (docs/PLAN.md §6 «Планировщик»). */}
-          <SummaryCard
-            value={String(summary.broadcastsCancelled)}
-            label="Отменено автоматикой"
-            href="/broadcasts?status=cancelled"
-          />
-          {summary.nextLesson && (
-            <SummaryCard
-              value={formatDateTime(summary.nextLesson.startsAt)}
-              label={`Ближайшее занятие — ${summary.nextLesson.title}`}
-              href={`/planning#lesson-${summary.nextLesson.lessonId}`}
-            />
-          )}
+        <SummaryNumbers summary={summary} />
+      )}
+
+      {/* Вход на «Люди» — назначение ролей учитель/админ (RequireAdmin,
+          App.tsx). Не в NAV_ITEMS: три пункта — весь низ экрана
+          (navItems.ts). */}
+      {isAdmin && (
+        <div>
+          <Link to="/people" style={peopleLinkStyle}>
+            Люди
+          </Link>
+          <p style={peopleLinkHintStyle}>{PEOPLE_LINK_HINT}</p>
         </div>
       )}
     </section>
