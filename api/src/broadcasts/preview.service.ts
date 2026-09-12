@@ -65,7 +65,10 @@ export class PreviewService {
     // Один список чатов на весь тик — за то время, что тик перебирает
     // рассылки, состав подключённых учителей не меняется, а TeacherChats
     // сама решает, когда логировать пустой список (не чаще раза в час).
-    const chats = await this.teacherChats.list(now);
+    // post_draft — вид уведомления «Черновик поста» (ТЗ
+    // notifications-delivery.md §2): кто выключил его себе, тому предпросмотр
+    // не приходит, остальным — как раньше.
+    const chats = await this.teacherChats.listFor('post_draft', now);
 
     let claimed = 0;
     for (const broadcast of due) {

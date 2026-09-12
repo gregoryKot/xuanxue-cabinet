@@ -21,7 +21,7 @@ const ENCRYPT_SCHEMA = encryptSchemaFrom(BROADCAST_FIELD_POLICY);
 const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
 function fakeTeacherChats(chats: TeacherChat[] = [CHAT]) {
-  return { list: jest.fn().mockResolvedValue(chats) };
+  return { listFor: jest.fn().mockResolvedValue(chats) };
 }
 
 function fakeBot(): {
@@ -161,7 +161,7 @@ describe('PreviewService.sendPending', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('несколько due рассылок — teacherChats.list зовётся один раз на весь тик', async () => {
+  it('несколько due рассылок — teacherChats.listFor зовётся один раз на весь тик', async () => {
     await createBroadcast();
     await createBroadcast();
     const bot = fakeBot();
@@ -175,7 +175,22 @@ describe('PreviewService.sendPending', () => {
     const result = await service.sendPending(NOW);
 
     expect(result).toEqual({ claimed: 2 });
-    expect(teacherChats.list).toHaveBeenCalledTimes(1);
+    expect(teacherChats.listFor).toHaveBeenCalledTimes(1);
+  });
+
+  it('спрашивает TeacherChats именно про post_draft, не другой вид', async () => {
+    await createBroadcast();
+    const bot = fakeBot();
+    const teacherChats = fakeTeacherChats();
+    const service = new PreviewService(
+      broadcastModel,
+      teacherChats as never,
+      bot as unknown as TelegramBotService,
+    );
+
+    await service.sendPending(NOW);
+
+    expect(teacherChats.listFor).toHaveBeenCalledWith('post_draft', NOW);
   });
 
   it('рассылка уже не scheduled (раннер успел раньше) — предпросмотр не шлёт', async () => {

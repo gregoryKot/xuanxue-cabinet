@@ -9,7 +9,8 @@ import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
-import { TeacherChats } from '../teacher-chats';
+import type { TeacherChats } from '../teacher-chats';
+import { buildTeacherChats } from '../test-support/build-teacher-chats';
 import { TopicCommandHandler } from './topic-command.handler';
 
 // Фиксированное «сейчас» (CLAUDE.md «Время»: детерминизм тестов) — не
@@ -45,7 +46,7 @@ describe('TopicCommandHandler', () => {
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     handler = new TopicCommandHandler(
-      new TeacherChats(new UsersService(userModel), channelModel),
+      buildTeacherChats(connection, new UsersService(userModel), channelModel),
       lessonModel,
       classModel,
     );

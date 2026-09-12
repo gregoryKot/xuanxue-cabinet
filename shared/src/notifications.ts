@@ -16,6 +16,12 @@ export const NOTIFICATION_KINDS = [
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
+/** Валидатор параметра из внешнего входа (callback data бота, query) — один
+ * guard на весь проект, не по одной проверке `includes` на каждого потребителя. */
+export function isNotificationKind(value: string): value is NotificationKind {
+  return (NOTIFICATION_KINDS as readonly string[]).includes(value);
+}
+
 /** Короткая подпись вида уведомления для экрана и бота — единственное место,
  * где перечислены названия (как `ROLE_LABELS` у ролей). */
 export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {

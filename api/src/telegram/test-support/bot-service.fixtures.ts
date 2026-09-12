@@ -8,6 +8,7 @@ import type { Context } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import type { CallbackQueryHandler } from '../handlers/callback-query.handler';
 import type { MessageHandler } from '../handlers/message.handler';
+import type { NotificationsCommandHandler } from '../handlers/notifications-command.handler';
 import type { TopicCommandHandler } from '../handlers/topic-command.handler';
 
 export const TOKEN = '123456:test-token-not-real-0000000000';
@@ -38,16 +39,19 @@ export function fakeHandlerWithNow(): {
   };
 }
 
-/** callback_query/`/тема`/message-хендлеры — маршрутизацию каждого из них (и
- * что им приходит свежий DateTime.utc()) проверяет telegram-bot.service.spec.ts. */
+/** callback_query/`/тема`/`/уведомления`/message-хендлеры — маршрутизацию
+ * каждого из них (и что им приходит свежий DateTime.utc()) проверяет
+ * telegram-bot.service.spec.ts. */
 export function fakeExtraHandlers(): [
   CallbackQueryHandler,
   TopicCommandHandler,
+  NotificationsCommandHandler,
   MessageHandler,
 ] {
   return [
     fakeHandlerWithNow() as unknown as CallbackQueryHandler,
     fakeHandlerWithNow() as unknown as TopicCommandHandler,
+    fakeHandlerWithNow() as unknown as NotificationsCommandHandler,
     fakeHandlerWithNow() as unknown as MessageHandler,
   ];
 }
