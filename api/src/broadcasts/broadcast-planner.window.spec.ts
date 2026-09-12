@@ -6,7 +6,7 @@
 // раннер, не только проверка поля в базе. Базовое поведение тика —
 // broadcast-planner.service.spec.ts (файл-лимит спеков, CLAUDE.md «Файлы»).
 import type { ConfigService } from '@nestjs/config';
-import { PREVIEW_MINUTES } from '@xuanxue/shared';
+import { DEFAULT_PREVIEW_MINUTES } from '@xuanxue/shared';
 import type { SendResult } from '../channels/channel-adapter';
 import { ChannelAdapterRegistry } from '../channels/channel-adapter.registry';
 import { ChannelConfigService } from '../channels/channel-config.service';
@@ -14,6 +14,7 @@ import { ManualAdapter } from '../channels/manual.adapter';
 import { decrypt } from '../utils/encryption';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
 import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
+import { SettingsRecord } from '../settings/settings.schema';
 import {
   clearPlannerTest,
   createClass,
@@ -69,10 +70,11 @@ describe('BroadcastPlannerService.plan — расширенное окно пр�
 
   it('занятие в расширенном окне: scheduledAt/nextAttemptAt = startsAt − lead; раннер берёт только по наступлении момента', async () => {
     const cls = await createClass(ctx); // leadMinutes: 30
-    // startsAt = now + lead + 3 мин — в окне (верхняя граница now + lead + PREVIEW_MINUTES),
+    // startsAt = now + lead + 3 мин — в окне (верхняя граница now + lead +
+    // DEFAULT_PREVIEW_MINUTES — школа без документа настроек в этом тесте),
     // но раньше самого момента отправки на 3 минуты: сейчас только предпросмотр.
     const startsAt = NOW.plus({ minutes: 30 + 3 });
-    expect(30 + 3).toBeLessThanOrEqual(30 + PREVIEW_MINUTES); // сценарий реально в окне
+    expect(30 + 3).toBeLessThanOrEqual(30 + DEFAULT_PREVIEW_MINUTES); // сценарий реально в окне
     const lesson = await createLesson(ctx, cls._id, startsAt.toJSDate());
 
     const planResult = await ctx.service.plan(NOW);
@@ -129,5 +131,27 @@ describe('BroadcastPlannerService.plan — расширенное окно пр�
     // Реально до занятия 10 минут — не «через 30» (leadMinutes) и не
     // отрицательное число (sendAt в прошлом).
     expect(text).toContain('Через 10 минут');
+  });
+
+  // ТЗ preview-minutes.md: previewMinutes — настройка школы, не константа —
+  // окно тика реально шире/уже вместе с ней, не только
+  // decideBroadcast в отрыве от Mongo (broadcast-planner.decide.spec.ts).
+  it('previewMinutes школы шире дефолта — занятие в расширенном окне создаёт broadcast раньше', async () => {
+    await ctx.connection.model(SettingsRecord.name).create({
+      _id: 'school',
+      templates: { lessonLink: 'через {минут} минут', recording: 'запись' },
+      tz: 'Asia/Jerusalem',
+      previewMinutes: 20,
+    });
+    const cls = await createClass(ctx); // leadMinutes: 30
+    // now + lead + 12 — вне дефолтного окна предпросмотра (30 + 5), но
+    // внутри окна school.previewMinutes = 20 (30 + 20).
+    const startsAt = NOW.plus({ minutes: 30 + 12 });
+    expect(30 + 12).toBeGreaterThan(30 + DEFAULT_PREVIEW_MINUTES);
+    await createLesson(ctx, cls._id, startsAt.toJSDate());
+
+    const result = await ctx.service.plan(NOW);
+
+    expect(result).toEqual({ broadcasts: 1 });
   });
 });

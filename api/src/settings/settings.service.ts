@@ -18,33 +18,17 @@ import {
   type UpdateSettingsInput,
 } from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
-import { toIsoUtc } from '../common/iso-date';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { ClassRecord } from '../classes/class.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { UsersService } from '../users/users.service';
 import { previewTemplate } from './settings-preview';
+import { toSettingsDto, type LeanSettings } from './settings.mapper';
 import { SettingsRecord, SETTINGS_SCHOOL_ID } from './settings.schema';
 import { assertKnownPlaceholders, templatesSetFrom } from './settings-templates';
 
 const SETTINGS_NOT_FOUND = 'Настройки школы не найдены. Повторите запрос.';
-
-type LeanSettings = Pick<SettingsRecord, 'templates' | 'tz' | 'schoolSiteUrl'> & {
-  updatedAt: Date;
-};
-
-function toSettingsDto(doc: LeanSettings): SettingsDto {
-  return {
-    templates: {
-      lesson_link: doc.templates.lessonLink,
-      recording: doc.templates.recording,
-    },
-    tz: doc.tz,
-    schoolSiteUrl: doc.schoolSiteUrl,
-    updatedAt: toIsoUtc(doc.updatedAt),
-  };
-}
 
 @Injectable()
 export class SettingsService {

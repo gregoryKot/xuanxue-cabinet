@@ -7,7 +7,6 @@ import type { Model, Types } from 'mongoose';
 import {
   DEFAULT_LEAD_MINUTES,
   LIST_LIMIT_MAX,
-  PREVIEW_MINUTES,
   type ClassFormat,
   type LessonStatus,
 } from '@xuanxue/shared';
@@ -96,19 +95,20 @@ const DUE_LOOKBACK_MINUTES = DEFAULT_LEAD_MINUTES * 2;
  * Кандидаты «уже пора, скоро пора или недавно непоправимо опоздали».
  * Нижняя граница держит окно конечным — без неё выборка тянула бы вообще все
  * `scheduled`-занятия из истории школы на каждом тике (занятие без broadcast
- * статус не меняет само по себе, и в базе оно осталось бы `scheduled`
- * навсегда). Верхнюю границу считаем по максимальному `leadMinutes` среди
- * классов плюс `PREVIEW_MINUTES` — тем же запасом, что в decideBroadcast
- * (окно расширено, чтобы broadcast появился заранее для предпросмотра бота,
- * PLAN.md §6): без этого запаса здесь Mongo-запрос отсекал бы занятие ещё до
- * decideBroadcast, и «в расширенном окне» из decideBroadcast было бы
- * недостижимо. `send` дальше отсеет то, что рано для своего класса —
+ * статус не меняет само по себе, и осталось бы `scheduled` навсегда).
+ * Верхнюю границу считаем по максимальному `leadMinutes` среди классов плюс
+ * `previewMinutes` (настройка школы из `SettingsService.get()`) — тем же
+ * запасом, что в decideBroadcast (окно расширено, чтобы broadcast появился
+ * заранее для предпросмотра бота, PLAN.md §6): без запаса здесь Mongo-запрос
+ * отсекал бы занятие ещё до decideBroadcast, и «в расширенном окне» оттуда
+ * было бы недостижимо. `send` дальше отсеет то, что рано для своего класса —
  * финальное решение по каждому занятию — decideBroadcast.
  */
 export async function findDueLessons(
   lessonModel: Model<LessonRecord>,
   classes: readonly PlannerClass[],
   now: DateTime,
+  previewMinutes: number,
 ): Promise<PlannerLesson[]> {
   const maxLeadMinutes = classes.reduce(
     (max, cls) => Math.max(max, cls.leadMinutes),
@@ -120,7 +120,7 @@ export async function findDueLessons(
         status: 'scheduled',
         startsAt: {
           $gt: now.minus({ minutes: DUE_LOOKBACK_MINUTES }).toJSDate(),
-          $lte: now.plus({ minutes: maxLeadMinutes + PREVIEW_MINUTES }).toJSDate(),
+          $lte: now.plus({ minutes: maxLeadMinutes + previewMinutes }).toJSDate(),
         },
       },
       LESSON_PROJECTION,

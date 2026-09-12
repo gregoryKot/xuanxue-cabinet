@@ -4,7 +4,7 @@
 // здесь только то, что делает сам сервис (оркестровка + запись в базу).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
-import { DEFAULT_TEMPLATES } from '@xuanxue/shared';
+import { DEFAULT_PREVIEW_MINUTES, DEFAULT_TEMPLATES } from '@xuanxue/shared';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
@@ -59,8 +59,24 @@ describe('SettingsService', () => {
         recording: DEFAULT_TEMPLATES.recording,
       });
       expect(settings.tz).toBe('Asia/Jerusalem');
+      expect(settings.previewMinutes).toBe(DEFAULT_PREVIEW_MINUTES);
       expect(settings.updatedAt).toEqual(expect.any(String));
       await expect(model.countDocuments({})).resolves.toBe(1);
+    });
+
+    it('документ без поля previewMinutes (старая база) — дефолт, не undefined/NaN', async () => {
+      // Легаси-документ: создан до этой настройки, поля просто нет —
+      // previewMinutes необязателен в схеме (settings.schema.ts), create()
+      // без него не отличить от документа, который никогда его не писал.
+      await model.create({
+        _id: 'school',
+        templates: { lessonLink: DEFAULT_TEMPLATES.lesson_link, recording: 'x' },
+        tz: 'Asia/Jerusalem',
+      });
+
+      const settings = await service.get();
+
+      expect(settings.previewMinutes).toBe(DEFAULT_PREVIEW_MINUTES);
     });
 
     it('второй вызов не создаёт второй документ и отдаёт тот же результат', async () => {
@@ -117,6 +133,13 @@ describe('SettingsService', () => {
 
       const settings = await service.get();
       expect(settings.schoolSiteUrl).toBe('https://xuanxue.su');
+    });
+
+    it('previewMinutes — сохраняется, get видит его после (read-after-write)', async () => {
+      await service.update({ previewMinutes: 10 });
+
+      const settings = await service.get();
+      expect(settings.previewMinutes).toBe(10);
     });
 
     it('schoolSiteUrl: null — снимает адрес (поля нет), не сохраняет литерал null', async () => {
@@ -251,6 +274,7 @@ describe('SettingsService.get — гонка E11000 (фейк модели)', ()
     await expect(raceService.get()).resolves.toEqual({
       templates: { lesson_link: 'шаблон', recording: 'запись' },
       tz: 'Asia/Jerusalem',
+      previewMinutes: DEFAULT_PREVIEW_MINUTES, // фейковый doc без поля — дефолт
       updatedAt: '2026-09-06T18:00:00.000Z',
     });
     expect(findByIdCalls).toBe(2);

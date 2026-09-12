@@ -1,5 +1,6 @@
 // Чистая логика, без Mongo и DI (CLAUDE.md «Тесты»).
 import { DateTime } from 'luxon';
+import { DEFAULT_PREVIEW_MINUTES } from '@xuanxue/shared';
 import { decideBroadcast, type DecideClassInput } from './broadcast-planner.decide';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
@@ -16,11 +17,12 @@ function activeClass(overrides: Partial<DecideClassInput> = {}): DecideClassInpu
 }
 
 describe('decideBroadcast', () => {
-  it('ещё рано — startsAt дальше now + leadMinutes + PREVIEW_MINUTES', () => {
+  it('ещё рано — startsAt дальше now + leadMinutes + previewMinutes', () => {
     const decision = decideBroadcast(
       { startsAt: NOW.plus({ minutes: 36 }).toJSDate() },
       activeClass(),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'not_due' });
   });
@@ -30,6 +32,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 30 }).toJSDate() },
       activeClass(),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'send' });
   });
@@ -39,8 +42,22 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 35 }).toJSDate() },
       activeClass(),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'send' });
+  });
+
+  // previewMinutes теперь параметр (настройка школы, не константа) —
+  // тест на само поведение, не на дефолт: то же
+  // startsAt, что «ещё рано» с дефолтным окном, «уже пора» с окном шире.
+  it('previewMinutes из настроек шире 5 — окно расширяется вместе с ним', () => {
+    const startsAt = NOW.plus({ minutes: 38 }).toJSDate(); // leadMinutes 30 + 8
+
+    const withDefault = decideBroadcast({ startsAt }, activeClass(), NOW, 5);
+    expect(withDefault).toEqual({ kind: 'not_due' });
+
+    const withWiderPreview = decideBroadcast({ startsAt }, activeClass(), NOW, 10);
+    expect(withWiderPreview).toEqual({ kind: 'send' });
   });
 
   it('тик опоздал на несколько минут — всё равно слать', () => {
@@ -48,6 +65,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.minus({ minutes: 5 }).toJSDate() },
       activeClass(),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'send' });
   });
@@ -57,6 +75,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.minus({ minutes: 31 }).toJSDate() },
       activeClass(),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'too_late' });
   });
@@ -66,6 +85,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
       undefined,
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'skip', reason: 'занятие без класса в базе' });
   });
@@ -75,6 +95,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
       activeClass({ active: false }),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'skip', reason: 'класс выключен' });
   });
@@ -84,6 +105,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
       activeClass({ channelIds: [] }),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'skip', reason: 'у класса нет каналов рассылки' });
   });
@@ -93,6 +115,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
       activeClass({ format: 'offline', zoomLink: undefined }),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({
       kind: 'skip',
@@ -105,6 +128,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
       activeClass({ zoomLink: undefined }),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'skip', reason: 'нет ссылки на занятие' });
   });
@@ -117,6 +141,7 @@ describe('decideBroadcast', () => {
       },
       activeClass({ zoomLink: undefined }),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'send' });
   });
@@ -129,6 +154,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 25 }).toJSDate() },
       activeClass({ leadMinutes: undefined as unknown as number }),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     // DEFAULT_LEAD_MINUTES = 30 (shared/src/domain.ts) — занятие через 25
     // минут уже в окне «пора слать», не «not_due» и не Invalid Date/NaN.
@@ -140,6 +166,7 @@ describe('decideBroadcast', () => {
       { startsAt: NOW.plus({ minutes: 1 }).toJSDate() },
       activeClass({ format: 'both' }),
       NOW,
+      DEFAULT_PREVIEW_MINUTES,
     );
     expect(decision).toEqual({ kind: 'send' });
   });

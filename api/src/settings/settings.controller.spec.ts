@@ -2,13 +2,14 @@
 // без HTTP, без Mongo. Роли/CSRF/404 проверяет e2e (settings.e2e-spec.ts).
 import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
-import type { SettingsDto } from '@xuanxue/shared';
+import { DEFAULT_PREVIEW_MINUTES, type SettingsDto } from '@xuanxue/shared';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 
 const SETTINGS_DTO: SettingsDto = {
   templates: { lesson_link: 'ссылка', recording: 'запись' },
   tz: 'Asia/Jerusalem',
+  previewMinutes: DEFAULT_PREVIEW_MINUTES,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 

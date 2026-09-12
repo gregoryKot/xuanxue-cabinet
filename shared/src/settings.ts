@@ -11,6 +11,11 @@ export interface SettingsDto {
    * `PUBLIC_URL` — адрес самого кабинета, не сайта школы, и наружу не
    * отдаётся. Поля нет, если учитель ещё не заполнил экран «Шаблоны». */
   schoolSiteUrl?: string;
+  /** За сколько минут до отправки бот показывает учителю черновик поста
+   * (docs/PLAN.md §6 «Telegram-бот для учителя») — настройка школы, не
+   * константа (CLAUDE.md «Кабинет учителя: всё настраивается в интерфейсе»);
+   * старая база без поля отдаёт `DEFAULT_PREVIEW_MINUTES` (domain.ts). */
+  previewMinutes: number;
   updatedAt: string; // ISO UTC с Z
 }
 
@@ -24,6 +29,10 @@ export interface SettingsDto {
 export interface UpdateSettingsInput {
   templates?: Partial<Record<TemplateKind, string>>;
   schoolSiteUrl?: string | null;
+  /** Целое число минут (`SETTINGS_LIMITS.previewMinutesMin`…`Max`) — не
+   * входит в NULLABLE_SETTINGS_FIELDS: сбросить в «нет значения» нельзя,
+   * только заменить другим числом. */
+  previewMinutes?: number;
 }
 
 /** Единственное nullable-поле UpdateSettingsInput — источник правды для DTO
@@ -51,4 +60,6 @@ export interface PreviewTemplateResult {
 export const SETTINGS_LIMITS = {
   templateMaxLength: 2000,
   schoolSiteUrlMaxLength: 500,
+  previewMinutesMin: 1,
+  previewMinutesMax: 1440,
 } as const;

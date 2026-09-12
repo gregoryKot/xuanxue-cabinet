@@ -48,18 +48,32 @@ export class BroadcastPlannerService {
   ) {}
 
   async plan(now: DateTime): Promise<BroadcastPlanResult> {
+    // settings — до findDueLessons: previewMinutes расширяет верхнюю границу
+    // окна выборки тем же числом, что и decideBroadcast ниже (иначе занятие
+    // «в расширенном окне» decideBroadcast сюда просто не попало бы).
+    const settings = await this.settingsService.get();
     const classes = await findClasses(this.classModel);
-    const lessons = await findDueLessons(this.lessonModel, classes, now);
+    const lessons = await findDueLessons(
+      this.lessonModel,
+      classes,
+      now,
+      settings.previewMinutes,
+    );
     if (lessons.length === 0) return { broadcasts: 0 };
 
     const classById = new Map(classes.map((cls) => [cls._id.toString(), cls]));
-    const settings = await this.settingsService.get();
 
     let broadcasts = 0;
     for (const lesson of lessons) {
       try {
         const cls = classById.get(lesson.classId.toString());
-        const created = await this.planLesson(lesson, cls, now, settings.templates);
+        const created = await this.planLesson(
+          lesson,
+          cls,
+          now,
+          settings.templates,
+          settings.previewMinutes,
+        );
         if (created) broadcasts += 1;
       } catch (err) {
         // Одно занятие не блокирует остальные — тот же приём, что у
@@ -78,8 +92,9 @@ export class BroadcastPlannerService {
     cls: PlannerClass | undefined,
     now: DateTime,
     templates: Record<TemplateKind, string>,
+    previewMinutes: number,
   ): Promise<boolean> {
-    const decision = decideBroadcast(lesson, cls, now);
+    const decision = decideBroadcast(lesson, cls, now, previewMinutes);
     switch (decision.kind) {
       case 'not_due':
         return false;
