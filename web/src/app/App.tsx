@@ -21,6 +21,7 @@ const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
 const PeopleScreen = lazy(() => import('../people/PeopleScreen'));
 const ExamItemsScreen = lazy(() => import('../exam-items/ExamItemsScreen'));
 const ExamsScreen = lazy(() => import('../exams/ExamsScreen'));
+const NotificationsScreen = lazy(() => import('../notifications/NotificationsScreen'));
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -44,6 +45,11 @@ export default function App() {
                 <Route path="/templates" element={<TemplatesScreen />} />
                 <Route path="/exam-items" element={<ExamItemsScreen />} />
                 <Route path="/exams" element={<ExamsScreen />} />
+                {/* Личная настройка человека, не раздел домена — вход из
+                    подвала AppShell.tsx, не из NAV_ITEMS (ТЗ
+                    notifications-web.md, docs/adr/0025). Доступна и ученику:
+                    AppShell.tsx рисует здесь Outlet независимо от роли. */}
+                <Route path="/notifications" element={<NotificationsScreen />} />
                 {/* «Ученики» — четвёртый пункт NAV_ITEMS (navItems.ts), но
                     маршрут доступен только admin (RequireAdmin, docs/PLAN.md
                     §6, блокер аудита Б3) — GET /users того же требует. */}
