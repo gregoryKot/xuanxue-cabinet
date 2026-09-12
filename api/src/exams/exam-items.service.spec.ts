@@ -132,6 +132,73 @@ describe('ExamItemsService', () => {
       expect(updated.history[0]?.replacedAt).toBe(NOW.toUTC().toISO());
     });
 
+    // Экран «Вопросы» шлёт все содержательные поля разом, поэтому «открыл,
+    // ничего не тронул, сохранил» доходило до сервиса как правка и клало в
+    // историю пустую запись (ревью 2026-09-12).
+    it('сохранение без единой правки — version тот же, history пуст', async () => {
+      const created = await service.create(
+        {
+          kind: 'single',
+          prompt: 'Что делает поясница?',
+          hint: 'Коротко',
+          options: [
+            { text: 'Расслабляется', correct: true },
+            { text: 'Напрягается', correct: false },
+          ],
+        },
+        AUTHOR_ID,
+      );
+      const published = await service.update(created.id, { status: 'published' }, NOW);
+
+      const updated = await service.update(
+        created.id,
+        {
+          prompt: published.prompt,
+          hint: published.hint,
+          criteria: null,
+          options: published.options.map((option) => ({
+            id: option.id,
+            text: option.text,
+            correct: option.correct,
+          })),
+        },
+        NOW,
+      );
+
+      expect(updated.version).toBe(1);
+      expect(updated.history).toEqual([]);
+    });
+
+    it('правка одного варианта у опубликованного — version растёт', async () => {
+      const created = await service.create(
+        {
+          kind: 'single',
+          prompt: 'Вопрос',
+          options: [
+            { text: 'Верный', correct: true },
+            { text: 'Неверный', correct: false },
+          ],
+        },
+        AUTHOR_ID,
+      );
+      const published = await service.update(created.id, { status: 'published' }, NOW);
+
+      const updated = await service.update(
+        created.id,
+        {
+          options: published.options.map((option, index) => ({
+            id: option.id,
+            text: index === 0 ? 'Верный, но иначе' : option.text,
+            correct: option.correct,
+          })),
+        },
+        NOW,
+      );
+
+      expect(updated.version).toBe(2);
+      expect(updated.history[0]?.options[0]?.text).toBe('Верный');
+    });
+
     it('вторая правка опубликованного — новая редакция первой в history', async () => {
       const created = await service.create({ kind: 'text', prompt: 'v1' }, AUTHOR_ID);
       await service.update(created.id, { status: 'published' }, NOW);
