@@ -5,12 +5,6 @@ export interface SummaryPeriod {
   to: string;
 }
 
-export interface NextLessonSummary {
-  lessonId: string;
-  title: string;
-  startsAt: string;
-}
-
 export interface SummaryDto {
   period: SummaryPeriod;
   broadcastsSent: number;
@@ -21,8 +15,7 @@ export interface SummaryDto {
   deliveriesFailed: number;
   deliveriesPending: number;
   manualWaiting: number;
-  nextLesson?: NextLessonSummary;
-  /** Чистая база — ни рассылок, ни ближайшего занятия: честное «пока нечего
+  /** Чистая база — ни одной рассылки за период: честное «пока нечего
    * показать» вместо нулей и «NaN» (VOICE.md). */
   emptyMessage?: string;
 }

@@ -165,7 +165,7 @@ export type {
   PreviewTemplateResult,
 } from './settings';
 export { SETTINGS_LIMITS, NULLABLE_SETTINGS_FIELDS } from './settings';
-export type { SummaryPeriod, NextLessonSummary, SummaryDto } from './summary';
+export type { SummaryPeriod, SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
 export type {
   UserDto,

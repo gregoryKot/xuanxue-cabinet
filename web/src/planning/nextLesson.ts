@@ -1,8 +1,7 @@
 // Ближайшее занятие после `now` — из уже загруженного списка `/lessons`
 // (CLAUDE.md «Тесты»: чистая логика — юнит без React). Блок «Сегодня»
-// показывает его, когда сегодня пусто. Не ходим в `/summary` ради одного
-// поля: `SummaryDto.nextLesson` остаётся в API — им пользуется бот
-// (docs/adr/0025-navigation-by-domain.md).
+// показывает его, когда сегодня пусто. Не ходим в `/summary`: эндпоинт
+// отдаёт только числа раздела «Рассылки» (docs/adr/0025-navigation-by-domain.md).
 import type { LessonDto } from '@xuanxue/shared';
 
 /** `now` — параметр ради теста (CLAUDE.md «Детерминизм»). */

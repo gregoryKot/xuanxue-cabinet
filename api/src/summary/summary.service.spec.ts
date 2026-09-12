@@ -6,9 +6,7 @@ import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
 import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
-import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { DeliveryRecord, DeliverySchema } from '../deliveries/delivery.schema';
-import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { SummaryService } from './summary.service';
 
@@ -20,8 +18,6 @@ describe('SummaryService.get', () => {
   let broadcastModel: Model<BroadcastRecord>;
   let deliveryModel: Model<DeliveryRecord>;
   let channelModel: Model<ChannelRecord>;
-  let lessonModel: Model<LessonRecord>;
-  let classModel: Model<ClassRecord>;
   let service: SummaryService;
 
   beforeAll(async () => {
@@ -33,15 +29,7 @@ describe('SummaryService.get', () => {
     );
     deliveryModel = connection.model<DeliveryRecord>(DeliveryRecord.name, DeliverySchema);
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
-    service = new SummaryService(
-      broadcastModel,
-      deliveryModel,
-      channelModel,
-      lessonModel,
-      classModel,
-    );
+    service = new SummaryService(broadcastModel, deliveryModel, channelModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -53,8 +41,6 @@ describe('SummaryService.get', () => {
       broadcastModel.deleteMany({}),
       deliveryModel.deleteMany({}),
       channelModel.deleteMany({}),
-      lessonModel.deleteMany({}),
-      classModel.deleteMany({}),
     ]);
   });
 
@@ -74,7 +60,7 @@ describe('SummaryService.get', () => {
     const result = await service.get(NOW);
 
     expect(result.emptyMessage).toBe(
-      'Пока нечего показать: ни одной рассылки за 30 дней. Ближайших занятий не запланировано.',
+      'Пока нечего показать: ни одной рассылки за 30 дней.',
     );
   });
 
@@ -189,73 +175,5 @@ describe('SummaryService.get', () => {
     const result = await service.get(NOW);
 
     expect(result.manualWaiting).toBe(1);
-  });
-
-  it('nextLesson — ближайшее scheduled занятие впереди, с названием класса', async () => {
-    const cls = await classModel.create({
-      title: 'Цигун для глаз',
-      groupLabel: '',
-      format: 'online',
-      tz: 'Asia/Jerusalem',
-      leadMinutes: 30,
-      active: true,
-      channelIds: [],
-    });
-    const soon = await lessonModel.create({
-      classId: cls._id,
-      startsAt: NOW.plus({ hours: 1 }).toJSDate(),
-      durationMin: 60,
-      status: 'scheduled',
-    });
-    await lessonModel.create({
-      classId: cls._id,
-      startsAt: NOW.plus({ hours: 2 }).toJSDate(),
-      durationMin: 60,
-      status: 'scheduled',
-    });
-
-    const result = await service.get(NOW);
-
-    expect(result.nextLesson).toEqual({
-      lessonId: soon._id.toString(),
-      title: 'Цигун для глаз',
-      startsAt: soon.startsAt.toISOString(),
-    });
-  });
-
-  it('nextLesson: класс занятия пропал из базы — nextLesson не отдаётся, не падает', async () => {
-    await lessonModel.create({
-      classId: new Types.ObjectId(),
-      startsAt: NOW.plus({ hours: 1 }).toJSDate(),
-      durationMin: 60,
-      status: 'scheduled',
-    });
-
-    const result = await service.get(NOW);
-
-    expect(result.nextLesson).toBeUndefined();
-  });
-
-  it('нет ни рассылок, ни занятий — emptyMessage; отменённое занятие в счёт не идёт', async () => {
-    const cls = await classModel.create({
-      title: 'Цигун для глаз',
-      groupLabel: '',
-      format: 'online',
-      tz: 'Asia/Jerusalem',
-      leadMinutes: 30,
-      active: true,
-      channelIds: [],
-    });
-    await lessonModel.create({
-      classId: cls._id,
-      startsAt: NOW.plus({ hours: 1 }).toJSDate(),
-      durationMin: 60,
-      status: 'cancelled',
-    });
-
-    const result = await service.get(NOW);
-
-    expect(result.nextLesson).toBeUndefined();
-    expect(result.emptyMessage).toBeDefined();
   });
 });
