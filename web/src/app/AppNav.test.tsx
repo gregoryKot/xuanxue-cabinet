@@ -6,9 +6,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { AppNav, SIDE_NAV_WIDTH_PX } from './AppNav';
 
+// Открыт «/planning» — пункт «Занятия» активен: подсветка активной ссылки
+// разная у нижней панели и боковой колонки, и без активного пункта половина
+// стилей не проверялась бы вовсе.
 function renderNav(isMobile: boolean) {
   return render(
-    <MemoryRouter initialEntries={['/schedule']}>
+    <MemoryRouter initialEntries={['/planning']}>
       <AppNav isMobile={isMobile} />
     </MemoryRouter>,
   );

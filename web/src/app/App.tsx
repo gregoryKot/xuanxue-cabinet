@@ -20,6 +20,7 @@ const ChannelsScreen = lazy(() => import('../channels/ChannelsScreen'));
 const BroadcastsScreen = lazy(() => import('../broadcasts/BroadcastsScreen'));
 const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
 const PeopleScreen = lazy(() => import('../people/PeopleScreen'));
+const SettingsScreen = lazy(() => import('../settings/SettingsScreen'));
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="/channels" element={<ChannelsScreen />} />
                 <Route path="/broadcasts" element={<BroadcastsScreen />} />
                 <Route path="/templates" element={<TemplatesScreen />} />
+                <Route path="/settings" element={<SettingsScreen />} />
                 {/* Не в NAV_ITEMS (navItems.ts — 6 пунктов предел на 360px):
                     вход только карточкой «Люди» на «Сводке», доступно только
                     admin (RequireAdmin, docs/PLAN.md §6, блокер аудита Б3). */}

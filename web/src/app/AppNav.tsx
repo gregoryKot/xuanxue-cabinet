@@ -22,6 +22,12 @@ const bottomStyle: CSSProperties = {
   bottom: 0,
   // Выше карточек и листов расписания, ниже тоста обновления (zIndex 100).
   zIndex: 10,
+  // Полоска «Домой» на iPhone лежала прямо на подписях (отзыв владельца
+  // 2026-09-12, скриншот: «План» и «Каналы» перечёркнуты). Без медиазапроса
+  // на display-mode: env() сам отдаёт 0 там, где безопасной зоны нет, —
+  // пустоты в обычном браузере не появляется, а в установленном приложении
+  // подписи выходят из-под полоски.
+  paddingBottom: 'env(safe-area-inset-bottom)',
 };
 const sideStyle: CSSProperties = {
   width: SIDE_NAV_WIDTH_PX,
@@ -44,9 +50,9 @@ const bottomLinkStyle = (isActive: boolean): CSSProperties => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  gap: 2,
-  padding: '8px 2px',
-  minHeight: 44,
+  gap: 4,
+  padding: '10px 4px',
+  minHeight: 48,
   textDecoration: 'none',
   color: isActive ? 'var(--accent)' : 'var(--ink-soft)',
   fontWeight: isActive ? 600 : 400,
@@ -65,9 +71,11 @@ const sideLinkStyle = (isActive: boolean): CSSProperties => ({
   background: isActive ? 'var(--surface-2)' : 'transparent',
 });
 
+// 13px вместо 11: пунктов стало три, ширины хватает (отзыв владельца
+// 2026-09-12 «меню мелкое»).
 const bottomLabelStyle: CSSProperties = {
-  fontSize: 11,
-  lineHeight: 1.1,
+  fontSize: 13,
+  lineHeight: 1.2,
   textAlign: 'center',
   overflowWrap: 'anywhere',
 };
