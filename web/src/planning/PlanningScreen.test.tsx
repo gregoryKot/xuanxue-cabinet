@@ -94,7 +94,9 @@ describe('PlanningScreen — сбой загрузки', () => {
     mockByPath({ '/lessons': [], '/classes': [makeClass()] });
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
 
-    expect(await screen.findByText(/занятий нет/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/В ближайшие \d+ недели занятий нет/),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
@@ -105,7 +107,11 @@ describe('PlanningScreen — пустое окно', () => {
 
     renderScreen();
 
-    expect(await screen.findByText(/занятий нет/)).toBeInTheDocument();
+    // «Сегодня занятий нет.» тоже на экране (PlanningToday.tsx) — regex
+    // нарочно шире и ловит именно объяснение под списком на 4 недели.
+    expect(
+      await screen.findByText(/В ближайшие \d+ недели занятий нет/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Расписании/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Разовое занятие' })).toBeInTheDocument();
   });

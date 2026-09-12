@@ -11,14 +11,13 @@ const ZERO_COUNTS = {
 };
 
 describe('formatSummary', () => {
-  it('пустая база — все нули и нет занятий: emptyMessage, без "0/NaN/мусора" в тексте', () => {
+  it('пустая база — все нули: emptyMessage, без "0/NaN/мусора" в тексте', () => {
     const result = formatSummary(ZERO_COUNTS, NOW);
 
     expect(result.emptyMessage).toBe(
-      'Пока нечего показать: ни одной рассылки за 30 дней. Ближайших занятий не запланировано.',
+      'Пока нечего показать: ни одной рассылки за 30 дней.',
     );
     expect(result.broadcastsSent).toBe(0);
-    expect(result.nextLesson).toBeUndefined();
   });
 
   it('период — 30 дней назад от now, до now, ISO UTC', () => {
@@ -42,18 +41,5 @@ describe('formatSummary', () => {
 
     expect(result.emptyMessage).toBeUndefined();
     expect(result.broadcastsCancelled).toBe(2);
-  });
-
-  it('все счётчики нулевые, но есть ближайшее занятие — без emptyMessage', () => {
-    const nextLesson = {
-      lessonId: 'l1',
-      title: 'Цигун для глаз',
-      startsAt: '2026-09-08T16:00:00.000Z',
-    };
-
-    const result = formatSummary({ ...ZERO_COUNTS, nextLesson }, NOW);
-
-    expect(result.emptyMessage).toBeUndefined();
-    expect(result.nextLesson).toEqual(nextLesson);
   });
 });

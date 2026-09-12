@@ -1,6 +1,7 @@
 // Смоук-тест маршрутов (CLAUDE.md «Тесты»: ветвление есть — гость на /login,
-// «/» уводит на /summary) — сами экраны и их логика проверены отдельными
-// тестами (LoginScreen, RequireAuth, ScheduleScreen, SummaryScreen).
+// «/» уводит на /planning, docs/adr/0025-navigation-by-domain.md) — сами
+// экраны и их логика проверены отдельными тестами (LoginScreen, RequireAuth,
+// ScheduleScreen, PlanningScreen).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -65,6 +66,16 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
+    mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
+
+    renderAt('/schedule');
+
+    expect(
+      await screen.findByRole('button', { name: 'Добавить занятие' }),
+    ).toBeInTheDocument();
+  });
+
   it('учитель на /channels — маршрут «Каналы» открывает ChannelsScreen (ревью п.17)', async () => {
     mockRoute(TEACHER, { '/channels': [] });
 
@@ -76,26 +87,16 @@ describe('App', () => {
   });
 
   it('учитель на /broadcasts — маршрут «Рассылки» открывает BroadcastsScreen (pr-k3-fixes.md п.20)', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'u1',
-          name: 'Дима',
-          roles: ['teacher'],
-          tz: 'Asia/Jerusalem',
-        });
-      if (path.startsWith('/broadcasts')) return Promise.resolve([]);
-      if (path.startsWith('/deliveries')) return Promise.resolve([]);
-      if (path.startsWith('/channels')) return Promise.resolve([]);
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    mockRoute(TEACHER, {
+      '/broadcasts': [],
+      '/deliveries': [],
+      '/channels': [],
+      // Числа за 30 дней вверху экрана (BroadcastsSummary.tsx) — эндпоинт
+      // /summary остаётся в API и без своего экрана (docs/adr/0025).
+      '/summary': { emptyMessage: 'Пока нечего показать.' },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/broadcasts']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/broadcasts');
 
     expect(
       await screen.findByRole('button', { name: 'Новая рассылка' }),
@@ -149,16 +150,7 @@ describe('App', () => {
     expect(await screen.findByText(/собирается из вопросов банка/)).toBeInTheDocument();
   });
 
-  it('учитель на /settings — маршрут «Настройки» открывает SettingsScreen', async () => {
-    mockRoute(TEACHER);
-
-    renderAt('/settings');
-
-    expect(await screen.findByRole('heading', { name: 'Настройки' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Каналы/ })).toBeInTheDocument();
-  });
-
-  it('admin на /people — маршрут «Люди» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {
+  it('admin на /people — маршрут «Ученики» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {
     mockRoute(ADMIN, { '/users': [] });
 
     renderAt('/people');
@@ -168,26 +160,24 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('учитель без admin на /people — уводит на «Сводку», не «Люди»', async () => {
-    mockRoute(TEACHER, {
-      // «Сводка» с недавних пор грузит ещё занятия и классы: сверху у неё
-      // блок «Сегодня» (summary/TodaySection.tsx).
-      '/lessons': [],
-      '/classes': [],
-      '/summary': {
-        period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
-        broadcastsSent: 0,
-        broadcastsCancelled: 0,
-        deliveriesFailed: 0,
-        deliveriesPending: 0,
-        manualWaiting: 0,
-        emptyMessage: 'Пока нечего показать.',
-      },
-    });
+  it('учитель без admin на /people — уводит на «Занятия», не «Ученики»', async () => {
+    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
 
     renderAt('/people');
 
-    expect(await screen.findByText('Пока нечего показать.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на «/» — уводит на «Занятия»', async () => {
+    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
+
+    renderAt('/');
+
+    expect(
+      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
+    ).toBeInTheDocument();
   });
 
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {

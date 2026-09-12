@@ -43,9 +43,15 @@ function makeBroadcast(overrides: Partial<BroadcastDto> = {}): BroadcastDto {
   };
 }
 
+// `/summary` — дефолт «пока нечего показать» (числа BroadcastsSummary.tsx
+// грузятся на каждом монтировании, этот файл их не проверяет).
 function mockByPath(handlers: Record<string, unknown>) {
+  const withDefaults = {
+    '/summary': { emptyMessage: 'Пока нечего показать.' },
+    ...handlers,
+  };
   mockedApiFetch.mockImplementation((path: string) => {
-    for (const [prefix, value] of Object.entries(handlers)) {
+    for (const [prefix, value] of Object.entries(withDefaults)) {
       if (path.startsWith(prefix)) {
         return value instanceof Error ? Promise.reject(value) : Promise.resolve(value);
       }

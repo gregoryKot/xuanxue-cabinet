@@ -67,9 +67,7 @@ describe('Summary (e2e)', () => {
 
     expect(res.status).toBe(200);
     const dto = res.body as SummaryDto;
-    expect(dto.emptyMessage).toBe(
-      'Пока нечего показать: ни одной рассылки за 30 дней. Ближайших занятий не запланировано.',
-    );
+    expect(dto.emptyMessage).toBe('Пока нечего показать: ни одной рассылки за 30 дней.');
   });
 
   it('после одной sent-доставки — broadcastsSent = 1, без emptyMessage', async () => {

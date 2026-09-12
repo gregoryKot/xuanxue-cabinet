@@ -18,14 +18,6 @@ const shared: SVGProps<SVGSVGElement> = {
   focusable: false,
 };
 
-export function SummaryIcon() {
-  return (
-    <svg {...shared}>
-      <path d="M4 16V9M10 16V4M16 16v-6" />
-    </svg>
-  );
-}
-
 export function ScheduleIcon() {
   return (
     <svg {...shared}>
@@ -67,15 +59,6 @@ export function TemplatesIcon() {
     <svg {...shared}>
       <rect x="4" y="2" width="12" height="16" rx="1.5" />
       <path d="M7 6h6M7 9.5h6M7 13h4" />
-    </svg>
-  );
-}
-
-export function SettingsIcon() {
-  return (
-    <svg {...shared}>
-      <circle cx="10" cy="10" r="2.5" />
-      <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1L4.7 4.7" />
     </svg>
   );
 }

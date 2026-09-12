@@ -5,7 +5,6 @@ import type { DateTime } from 'luxon';
 import {
   pluralRu,
   SUMMARY_PERIOD_DAYS,
-  type NextLessonSummary,
   type PluralForms,
   type SummaryDto,
 } from '@xuanxue/shared';
@@ -17,7 +16,6 @@ export interface SummaryCounts {
   deliveriesFailed: number;
   deliveriesPending: number;
   manualWaiting: number;
-  nextLesson?: NextLessonSummary;
 }
 
 const DAY_FORMS: PluralForms = { one: 'день', few: 'дня', many: 'дней', other: 'дней' };
@@ -29,18 +27,14 @@ function periodPhrase(): string {
 }
 
 // VOICE.md: конкретика вместо «0/NaN/мусора» — честное «пока нечего
-// показать», не молчаливые нули на чистой базе. Две отдельные фразы, не одна
-// на оба факта: «нет рассылок» и «нет занятий впереди» — разные причины,
-// учитель должен понимать, чего именно в кабинете ещё не произошло.
+// показать», не молчаливые нули на чистой базе.
 function noBroadcastsPhrase(): string {
   return `Пока нечего показать: ни одной рассылки за ${periodPhrase()}.`;
 }
-const NO_UPCOMING_LESSON_PHRASE = 'Ближайших занятий не запланировано.';
 
-/** Все счётчики нулевые и нет ближайшего занятия — школа ещё не начала
- * работу в кабинете, а не «всё сломано»: emptyMessage вместо нулей.
- * Частичные данные (хоть один счётчик или nextLesson есть) — без него,
- * числа говорят сами за себя. */
+/** Все счётчики нулевые — по разделу «Рассылки» ещё нечего показать, а не
+ * «всё сломано»: emptyMessage вместо нулей. Хоть один счётчик ненулевой —
+ * без него, числа говорят сами за себя. */
 export function formatSummary(counts: SummaryCounts, now: DateTime): SummaryDto {
   const period = {
     from: toIsoUtc(now.minus({ days: SUMMARY_PERIOD_DAYS }).toJSDate()),
@@ -52,7 +46,7 @@ export function formatSummary(counts: SummaryCounts, now: DateTime): SummaryDto 
     counts.deliveriesFailed === 0 &&
     counts.deliveriesPending === 0 &&
     counts.manualWaiting === 0;
-  if (allZero && !counts.nextLesson) {
+  if (allZero) {
     return {
       period,
       broadcastsSent: 0,
@@ -60,7 +54,7 @@ export function formatSummary(counts: SummaryCounts, now: DateTime): SummaryDto 
       deliveriesFailed: 0,
       deliveriesPending: 0,
       manualWaiting: 0,
-      emptyMessage: `${noBroadcastsPhrase()} ${NO_UPCOMING_LESSON_PHRASE}`,
+      emptyMessage: noBroadcastsPhrase(),
     };
   }
   return { period, ...counts };

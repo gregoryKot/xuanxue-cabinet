@@ -11,6 +11,6 @@ export function RequireAdmin() {
   const { me } = useAuth();
   const isAdmin = hasRole(me, 'admin');
 
-  if (!isAdmin) return <Navigate to="/summary" replace />;
+  if (!isAdmin) return <Navigate to="/planning" replace />;
   return <Outlet />;
 }

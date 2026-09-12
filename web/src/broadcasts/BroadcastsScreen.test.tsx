@@ -43,9 +43,18 @@ function makeBroadcast(overrides: Partial<BroadcastDto> = {}): BroadcastDto {
   };
 }
 
+// `/summary` — дефолт «пока нечего показать»: числа за 30 дней
+// (BroadcastsSummary.tsx) грузятся на каждом монтировании экрана, а почти ни
+// один тест здесь их не проверяет — без дефолта пришлось бы дописывать путь
+// в каждый вызов. Тест, которому нужен конкретный ответ или сбой, передаёт
+// свой — он перекрывает дефолт (spread ниже).
 function mockByPath(handlers: Record<string, unknown>) {
+  const withDefaults = {
+    '/summary': { emptyMessage: 'Пока нечего показать.' },
+    ...handlers,
+  };
   mockedApiFetch.mockImplementation((path: string) => {
-    for (const [prefix, value] of Object.entries(handlers)) {
+    for (const [prefix, value] of Object.entries(withDefaults)) {
       if (path.startsWith(prefix)) {
         return value instanceof Error ? Promise.reject(value) : Promise.resolve(value);
       }
@@ -150,7 +159,7 @@ describe('BroadcastsScreen — журнал', () => {
     );
   });
 
-  it('открыт по ссылке из «Сводки» (?status=cancelled) — фильтр статуса стоит сразу, без лишнего запроса', async () => {
+  it('открыт по ссылке с ?status=cancelled — фильтр статуса стоит сразу, без лишнего запроса', async () => {
     mockByPath({
       '/broadcasts': [makeBroadcast({ status: 'cancelled' })],
       '/deliveries': [],

@@ -14,13 +14,11 @@ import { AppShell } from './AppShell';
 
 const LoginScreen = lazy(() => import('../auth/LoginScreen'));
 const ScheduleScreen = lazy(() => import('../schedule/ScheduleScreen'));
-const SummaryScreen = lazy(() => import('../summary/SummaryScreen'));
 const PlanningScreen = lazy(() => import('../planning/PlanningScreen'));
 const ChannelsScreen = lazy(() => import('../channels/ChannelsScreen'));
 const BroadcastsScreen = lazy(() => import('../broadcasts/BroadcastsScreen'));
 const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
 const PeopleScreen = lazy(() => import('../people/PeopleScreen'));
-const SettingsScreen = lazy(() => import('../settings/SettingsScreen'));
 const ExamItemsScreen = lazy(() => import('../exam-items/ExamItemsScreen'));
 const ExamsScreen = lazy(() => import('../exams/ExamsScreen'));
 
@@ -39,7 +37,6 @@ export default function App() {
             <Route path="/login" element={<LoginScreen />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
-                <Route path="/summary" element={<SummaryScreen />} />
                 <Route path="/schedule" element={<ScheduleScreen />} />
                 <Route path="/planning" element={<PlanningScreen />} />
                 <Route path="/channels" element={<ChannelsScreen />} />
@@ -47,14 +44,13 @@ export default function App() {
                 <Route path="/templates" element={<TemplatesScreen />} />
                 <Route path="/exam-items" element={<ExamItemsScreen />} />
                 <Route path="/exams" element={<ExamsScreen />} />
-                <Route path="/settings" element={<SettingsScreen />} />
-                {/* Не в NAV_ITEMS (navItems.ts — 6 пунктов предел на 360px):
-                    вход только карточкой «Люди» на «Сводке», доступно только
-                    admin (RequireAdmin, docs/PLAN.md §6, блокер аудита Б3). */}
+                {/* «Ученики» — четвёртый пункт NAV_ITEMS (navItems.ts), но
+                    маршрут доступен только admin (RequireAdmin, docs/PLAN.md
+                    §6, блокер аудита Б3) — GET /users того же требует. */}
                 <Route element={<RequireAdmin />}>
                   <Route path="/people" element={<PeopleScreen />} />
                 </Route>
-                <Route path="/" element={<Navigate to="/summary" replace />} />
+                <Route path="/" element={<Navigate to="/planning" replace />} />
               </Route>
             </Route>
             {/* Неизвестный путь — на главную, а не белый экран 404. */}

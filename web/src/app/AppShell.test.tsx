@@ -42,6 +42,12 @@ const TEACHER: MeDto = {
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
 };
+const ADMIN: MeDto = {
+  id: 'a1',
+  name: 'Маша',
+  roles: ['admin'],
+  tz: 'Asia/Jerusalem',
+};
 const STUDENT: MeDto = {
   id: 'u2',
   name: 'Ученик',
@@ -93,10 +99,11 @@ describe('AppShell — учитель', () => {
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
   });
 
-  // Пунктов три, и это потолок (navItems.ts, отзыв владельца 2026-09-11):
-  // каналы, шаблоны, слоты расписания и люди ушли в «Настройки» одной
-  // страницей. Тест ловит возврат вкладок наравне с ежедневным.
-  it('нижняя навигация — ровно три пункта', async () => {
+  // Четыре домена — потолок навигации (navItems.ts, отзыв владельца
+  // 2026-09-12: «меню всё ещё сложное»); «Ученики» — только у админа.
+  // Фильтр по роли и подсветку раздела детально проверяет AppNav.test.tsx —
+  // здесь только то, что AppShell передаёт в AppNav настоящего `me`.
+  it('нижняя навигация — три пункта у учителя, «Ученики» скрыт', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
@@ -104,7 +111,28 @@ describe('AppShell — учитель', () => {
     const labels = within(nav)
       .getAllByRole('link')
       .map((link) => link.textContent);
-    expect(labels).toEqual(['Сводка', 'Занятия', 'Настройки']);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены']);
+  });
+
+  it('нижняя навигация — у админа ещё и «Ученики»', async () => {
+    renderShell(ADMIN);
+    await screen.findByText('Содержимое расписания');
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    const labels = within(nav)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+  });
+
+  // Подвал заменил кнопку «Выйти» из бывших «Настроек» (отзыв владельца
+  // 2026-09-12: висела на каждом экране, хотя нужна раз в жизни).
+  it('подвал под содержимым — имя вошедшего и «Выйти»', async () => {
+    renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    expect(screen.getByText(/Вы вошли как Дима/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
   });
 });
 
@@ -126,8 +154,8 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
   });
 
-  // «Выйти» ученику нужна: навигации у него нет, до «Настроек» он не дойдёт
-  // (StudentScreen.tsx).
+  // «Выйти» ученику нужна: навигации у него нет, кнопка — в общем подвале
+  // (StudentScreen.tsx отдал сюда свою).
   it('«Выйти» доступна и ученику', async () => {
     renderShell(STUDENT);
     await waitFor(() =>

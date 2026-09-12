@@ -5,8 +5,10 @@
 // Вынесено из AppShell.tsx: там иначе два набора стилей и ветка на файл в
 // 150 строк (CLAUDE.md «Храповики», «Логика вне компонентов»).
 import type { CSSProperties } from 'react';
-import { NavLink } from 'react-router-dom';
-import { NAV_ITEMS } from './navItems';
+import { Link, useLocation } from 'react-router-dom';
+import type { MeDto } from '@xuanxue/shared';
+import { hasRole } from '../auth/hasRole';
+import { activeSectionPath, NAV_ITEMS } from './navItems';
 
 export const SIDE_NAV_WIDTH_PX = 208;
 
@@ -43,9 +45,10 @@ const sideStyle: CSSProperties = {
 const bottomLinkStyle = (isActive: boolean): CSSProperties => ({
   flex: 1,
   // `minWidth: 0` — иначе flex-item не сжимается уже своего содержимого, и
-  // 6 пунктов на 360px толкают body в горизонтальный скролл (pr-k3-fixes.md
-  // п.10): вместе с overflowWrap подписи ниже это держит навигацию в ширине
-  // экрана без теста на ширину — проверка стилями, не пикселями.
+  // четыре подписи на 360px толкают body в горизонтальный скролл
+  // (pr-k3-fixes.md п.10): вместе с overflowWrap подписи ниже это держит
+  // навигацию в ширине экрана без теста на ширину — проверка стилями, не
+  // пикселями.
   minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
@@ -71,8 +74,6 @@ const sideLinkStyle = (isActive: boolean): CSSProperties => ({
   background: isActive ? 'var(--surface-2)' : 'transparent',
 });
 
-// 13px вместо 11: пунктов стало три, ширины хватает (отзыв владельца
-// 2026-09-12 «меню мелкое»).
 const bottomLabelStyle: CSSProperties = {
   fontSize: 13,
   lineHeight: 1.2,
@@ -82,23 +83,36 @@ const bottomLabelStyle: CSSProperties = {
 
 interface AppNavProps {
   isMobile: boolean;
+  me: MeDto | null;
 }
 
-export function AppNav({ isMobile }: AppNavProps) {
+export function AppNav({ isMobile, me }: AppNavProps) {
+  const { pathname } = useLocation();
+  const active = activeSectionPath(pathname);
+  const isAdmin = hasRole(me, 'admin');
+  const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
   const linkStyle = isMobile ? bottomLinkStyle : sideLinkStyle;
 
   return (
     <nav style={isMobile ? bottomStyle : sideStyle} aria-label="Разделы кабинета">
-      {NAV_ITEMS.map(({ to, label, Icon }) => (
-        <NavLink key={to} to={to} style={({ isActive }) => linkStyle(isActive)}>
-          <Icon />
-          {isMobile ? (
-            <span style={bottomLabelStyle}>{label}</span>
-          ) : (
-            <span>{label}</span>
-          )}
-        </NavLink>
-      ))}
+      {items.map(({ to, label, Icon }) => {
+        const isActive = active === to;
+        return (
+          <Link
+            key={to}
+            to={to}
+            aria-current={isActive ? 'page' : undefined}
+            style={linkStyle(isActive)}
+          >
+            <Icon />
+            {isMobile ? (
+              <span style={bottomLabelStyle}>{label}</span>
+            ) : (
+              <span>{label}</span>
+            )}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

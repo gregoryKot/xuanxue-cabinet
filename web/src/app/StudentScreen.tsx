@@ -5,9 +5,9 @@
 // (settings.schoolSiteUrl, В6 аудита: раньше здесь была ссылка на сам
 // кабинет — тупик для ученика и незнакомца).
 //
-// «Выйти» здесь, а не в шапке: у учителя кнопка живёт в «Настройках», а
-// ученик до них не доходит — навигации у него нет (AppShell.tsx).
-import { LogoutButton } from '../auth/LogoutButton';
+// «Выйти» — в подвале AppShell.tsx, общем для учителя и ученика: своя кнопка
+// здесь дублировала бы её на этом же экране (её механику проверяют
+// AppShell.test.tsx и LogoutButton.test.tsx).
 import { useAuthConfig } from '../auth/useAuthConfig';
 
 export function StudentScreen() {
@@ -24,7 +24,6 @@ export function StudentScreen() {
       ) : (
         <p style={{ margin: 0 }}>Расписание вам пришлёт учитель.</p>
       )}
-      <LogoutButton />
     </main>
   );
 }
