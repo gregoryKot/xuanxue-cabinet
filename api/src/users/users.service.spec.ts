@@ -74,7 +74,7 @@ describe('UsersService', () => {
     expect(count).toBe(1);
   });
 
-  it('listTeacherContacts: только teacher/admin с telegramId, без student', async () => {
+  it('listTeacherContacts: teacher/assistant/admin с telegramId, без student и accountant', async () => {
     const teacher = await service.createFromTelegram({
       telegramId: 501,
       name: 'Учитель',
@@ -90,14 +90,30 @@ describe('UsersService', () => {
       name: 'Админ',
       roles: ['admin'],
     });
+    // Помощник учителя правами равен учителю — бот пишет и ему.
+    const assistant = await service.createFromTelegram({
+      telegramId: 504,
+      name: 'Помощник',
+      roles: ['assistant'],
+    });
+    await service.createFromTelegram({
+      telegramId: 505,
+      name: 'Бухгалтер с Telegram',
+      roles: ['accountant'],
+    });
 
     const contacts = await service.listTeacherContacts();
     const ids = contacts.map((c) => c.id);
-    expect(ids).toEqual(expect.arrayContaining([teacher.id, admin.id]));
+    expect(ids).toEqual(expect.arrayContaining([teacher.id, admin.id, assistant.id]));
     expect(contacts.find((c) => c.name === 'Ученик с Telegram')).toBeUndefined();
+    expect(contacts.find((c) => c.name === 'Бухгалтер с Telegram')).toBeUndefined();
     expect(contacts.find((c) => c.id === teacher.id)).toMatchObject({
       name: 'Учитель',
       telegramId: 501,
+    });
+    expect(contacts.find((c) => c.id === assistant.id)).toMatchObject({
+      name: 'Помощник',
+      telegramId: 504,
     });
   });
 

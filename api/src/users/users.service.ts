@@ -63,15 +63,20 @@ export class UsersService {
     return doc ? toLean(doc) : null;
   }
 
-  /** Учителя и админы с подключённым Telegram — кому бот вообще может
-   * писать (TeacherChats, api/src/telegram/teacher-chats.ts, PLAN.md §6):
-   * дальше TeacherChats сверяет каждого с активным личным каналом. */
+  /** Учителя, помощники учителя и админы с подключённым Telegram — кому бот
+   * вообще может писать (TeacherChats, api/src/telegram/teacher-chats.ts,
+   * PLAN.md §6): помощник учителя правами равен учителю, поэтому в списке —
+   * дальше TeacherChats сверяет каждого с активным личным каналом. Бухгалтер
+   * и ученик сюда не попадают — бот с ними проактивно не говорит. */
   async listTeacherContacts(): Promise<
     { id: string; name: string; telegramId: number }[]
   > {
     const docs = await this.model
       .find(
-        { telegramId: { $exists: true }, roles: { $in: ['teacher', 'admin'] } },
+        {
+          telegramId: { $exists: true },
+          roles: { $in: ['teacher', 'assistant', 'admin'] },
+        },
         { name: 1, telegramId: 1 },
       )
       // Список внутренний (TeacherChats), но без лимита — «дай всё» тем же

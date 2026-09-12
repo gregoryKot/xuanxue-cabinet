@@ -81,11 +81,26 @@ describe('PersonRow', () => {
     expect(onChangeRoles).toHaveBeenCalledWith(['teacher']);
   });
 
-  it('переключатель на каждую роль из USER_ROLES, подпись — из ROLE_LABELS', () => {
+  it('переключатель на каждую роль из USER_ROLES кроме student, подпись — из ROLE_LABELS', () => {
     renderRow();
-    for (const role of USER_ROLES) {
+    const assignableRoles = USER_ROLES.filter((role) => role !== 'student');
+    expect(assignableRoles).toHaveLength(4);
+    for (const role of assignableRoles) {
       expect(screen.getByLabelText(`${ROLE_LABELS[role]} — Гриша`)).toBeInTheDocument();
     }
+    expect(
+      screen.queryByLabelText(`${ROLE_LABELS.student} — Гриша`),
+    ).not.toBeInTheDocument();
+  });
+
+  it('без ролей — подсказка «человек — ученик»', () => {
+    renderRow({ roles: [] });
+    expect(screen.getByText(/человек — ученик/)).toBeInTheDocument();
+  });
+
+  it('с ролью (например, учитель) — подсказки «человек — ученик» нет', () => {
+    renderRow({ roles: ['teacher'] });
+    expect(screen.queryByText(/человек — ученик/)).not.toBeInTheDocument();
   });
 
   it('включить «Помощник учителя» — зовёт onChangeRoles с добавленной ролью', async () => {
