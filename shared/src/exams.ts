@@ -189,3 +189,93 @@ export const EXAM_LIMITS = {
 } as const;
 
 export const EXAM_NOT_FOUND_MESSAGE = 'Экзамен не найден. Обновите список.';
+
+// Попытка сдачи экзамена (`/exams/:id/attempts`, `/attempts`, слой 4.4,
+// docs/PLAN.md §11, ADR-0022 + дополнение 2026-09-12). В момент старта
+// попытка сохраняет снимок формы — блоки, вопросы в редакции и порядке на
+// момент старта — и дальше живёт им, не бланком. Снимок хранит и правильные
+// ответы («correct» у вариантов), и критерии проверки: они понадобятся при
+// проверке (слой 4.6), а взять их потом из банка нельзя — вопрос могли
+// переписать. Но ученику они не уходят — DTO ниже устроены соответственно:
+// `AttemptOptionDto`/`AttemptQuestionDto` не несут ни `correct`, ни
+// `criteria`, в отличие от `ExamItemOptionDto`/`ExamItemDto` выше.
+
+export const EXAM_ATTEMPT_STATUSES = ['in_progress', 'submitted', 'graded'] as const;
+export type ExamAttemptStatus = (typeof EXAM_ATTEMPT_STATUSES)[number];
+
+/** Вариант в снимке — как его видит ученик: без отметки «верный». */
+export interface AttemptOptionDto {
+  id: string;
+  text: string;
+}
+
+export interface AttemptQuestionDto {
+  itemId: string;
+  version: number;
+  kind: ExamItemKind;
+  prompt: string;
+  hint?: string;
+  options: AttemptOptionDto[];
+}
+
+export interface AttemptBlockDto {
+  id: string;
+  title: string;
+  required: boolean;
+  questions: AttemptQuestionDto[];
+}
+
+export interface AttemptAnswerDto {
+  itemId: string;
+  text?: string;
+  optionIds?: string[];
+}
+
+export interface ExamAttemptDto {
+  id: string;
+  examId: string;
+  examTitle: string;
+  userId: string;
+  status: ExamAttemptStatus;
+  blocks: AttemptBlockDto[];
+  answers: AttemptAnswerDto[];
+  startedAt: string; // ISO UTC с Z
+  /** Есть, только если у формы стоит лимит времени. */
+  deadlineAt?: string;
+  submittedAt?: string;
+  /** Сдано не человеком, а временем. */
+  expired: boolean;
+}
+
+export interface SaveAttemptAnswersInput {
+  answers: AttemptAnswerDto[];
+}
+
+export interface ListAttemptsQuery {
+  examId?: string;
+  status?: ExamAttemptStatus;
+  limit?: number;
+}
+
+export const ATTEMPT_LIMITS = { answerText: 5000, optionsPerAnswer: 10 } as const;
+
+export const ATTEMPT_NOT_FOUND_MESSAGE = 'Попытка не найдена. Обновите страницу.';
+
+// Правило ТЗ 4.4, п.1: старт попытки на неопубликованной форме — отказ.
+export const EXAM_NOT_PUBLISHED_MESSAGE =
+  'Этот экзамен ещё не открыт для сдачи. Обратитесь к учителю.';
+
+// Правило ТЗ 4.4, п.4/6/7: сохранить ответ или сдать можно только попытку в
+// работе — свою и до дедлайна. Дедлайн — отдельное сообщение ниже, здесь про
+// «уже сдана».
+export const ATTEMPT_NOT_IN_PROGRESS_MESSAGE =
+  'Эта попытка уже сдана. Открыть новую можно, если учитель разрешил ещё одну.';
+
+// Правило ТЗ 4.4, п.7: время считает сервер — запрос после дедлайна получает
+// отказ, а не тихое сохранение мимо часов, которых уже нет.
+export const ATTEMPT_EXPIRED_MESSAGE =
+  'Время экзамена вышло. Попытка закрыта, ответ не сохранён.';
+
+// Правило ТЗ 4.4, п.5: ответ на вопрос не из снимка — не молчаливый мусор.
+export const ATTEMPT_UNKNOWN_ITEM_MESSAGE =
+  'Это вопрос не из вашей попытки. Обновите страницу и отвечайте на вопросы с экрана.';

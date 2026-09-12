@@ -95,6 +95,14 @@ export type {
   CreateExamInput,
   UpdateExamInput,
   ListExamsQuery,
+  ExamAttemptStatus,
+  AttemptOptionDto,
+  AttemptQuestionDto,
+  AttemptBlockDto,
+  AttemptAnswerDto,
+  ExamAttemptDto,
+  SaveAttemptAnswersInput,
+  ListAttemptsQuery,
 } from './exams';
 export {
   EXAM_ITEM_KINDS,
@@ -106,6 +114,13 @@ export {
   NULLABLE_EXAM_FIELDS,
   EXAM_LIMITS,
   EXAM_NOT_FOUND_MESSAGE,
+  EXAM_ATTEMPT_STATUSES,
+  ATTEMPT_LIMITS,
+  ATTEMPT_NOT_FOUND_MESSAGE,
+  EXAM_NOT_PUBLISHED_MESSAGE,
+  ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
+  ATTEMPT_EXPIRED_MESSAGE,
+  ATTEMPT_UNKNOWN_ITEM_MESSAGE,
 } from './exams';
 export {
   NULLABLE_LESSON_FIELDS,

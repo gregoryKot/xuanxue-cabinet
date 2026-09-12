@@ -12,6 +12,7 @@ import { ChannelRecord } from '../channels/channel.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
+import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
@@ -211,6 +212,27 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
         expiresAt: FIXED_DATE,
       }),
     ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+  });
+
+  it('exam_attempts: второй insert с той же тройкой (examId, userId, attemptNo) падает', async () => {
+    const ExamAttempt = connection.model<ExamAttemptRecord>(ExamAttemptRecord.name);
+    const examId = new mongoose.Types.ObjectId();
+    const userId = new mongoose.Types.ObjectId();
+    const base = {
+      examId,
+      examTitle: 'т',
+      userId,
+      attemptNo: 1,
+      blocks: '[]',
+      answers: '[]',
+      startedAt: FIXED_DATE,
+    };
+    await ExamAttempt.create(base);
+    await expect(ExamAttempt.create(base)).rejects.toMatchObject({
+      code: MONGO_DUPLICATE_KEY_CODE,
+    });
+    // Вторая попытка того же ученика по той же форме — другой attemptNo, не дубль.
+    await expect(ExamAttempt.create({ ...base, attemptNo: 2 })).resolves.toBeDefined();
   });
 
   it('encryptRecord/decryptRecord по CLASS_FIELD_POLICY: zoomLink шифруется и читается', () => {

@@ -9,7 +9,10 @@
 // остаётся пуст. У них есть ссылки НА пользователя (кто ведёт, кто создал) —
 // они не про владение и сюда не входят, но их обязан переписать/обнулить тот
 // же merge/delete, поэтому у них свой реестр ниже.
-export const USER_OWNED_COLLECTIONS = [] as const;
+//
+// Этап 4, слой 4.4: первая коллекция с userId — попытка сдачи экзамена
+// (данные ученика, ADR-0022 + PLAN §11): удаление аккаунта уносит и её.
+export const USER_OWNED_COLLECTIONS = ['ExamAttemptRecord'] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
 // UserRecord.name в user.schema.ts (сверка — user-data.registry.spec.ts).

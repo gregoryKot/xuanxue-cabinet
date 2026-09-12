@@ -1,100 +1,55 @@
 // Ссылки Zoom школы — в занятия, созданные миграцией 0001.
 //
-// Решение владельца 2026-09-10 (ADR-0019, второе дополнение): эти ссылки не
-// секрет — школа публикует их в своём Telegram-канале каждую неделю вместе с
-// паролем. Значит им место здесь, рядом с расписанием, и деплой заполняет
-// занятия сам: ни переменных окружения, ни ключей от базы ни у кого просить не
-// нужно. Правило SECURITY.md «настоящих ссылок в репозитории нет» остаётся для
-// всего остального — токенов каналов, ключей, паролей от почты; здесь оно
-// снято осознанно и только для этих одиннадцати ссылок.
+// Ссылки лежат в `api/seed/zoom-links.local.json` — файл не в репозитории
+// (`.gitignore`, как `classes.local.json`). До 2026-09-12 они были записаны
+// прямо здесь: школа публикует их в своём канале каждую неделю вместе с
+// паролем, и владелец счёл их не секретом (ADR-0019, второе дополнение).
+// Решение отменено, когда репозиторий решили сделать публичным: ссылка,
+// которую школа рассылает своим, и ссылка, которую видит любой прохожий из
+// поисковика, — разные вещи. Правило SECURITY.md «настоящих ссылок в
+// репозитории нет» снова действует без исключений.
 //
-// В базе ссылка всё равно лежит зашифрованной, как и раньше (политика полей
-// класса, `enc`): публичность ссылки — не повод менять формат хранения.
+// Файла нет — миграция ничего не делает. На проде она уже применилась, и
+// повторно не запускается (реестр `migrations`); новой установке ссылки
+// впишут в кабинете, и это видно по метке «без ссылки» в расписании.
 //
+// В базе ссылка лежит зашифрованной (политика полей класса, `enc`).
 // Уже вписанную ссылку миграция не трогает: сделанное учителем в кабинете
-// важнее того, что записано здесь.
+// важнее того, что записано в файле.
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import type { Db } from 'mongodb';
 import { encrypt } from '../utils/encryption';
 
 const COLLECTION = 'classes';
-// Один на все занятия школы (PLAN.md §9).
-const PASSWORD = '11111';
+export const SEED_PATH = join(__dirname, '..', '..', 'seed', 'zoom-links.local.json');
 
 interface ClassZoomLink {
   title: string;
   groupLabel: string;
   zoomLink: string;
+  zoomPassword: string;
 }
 
-// Ссылка принадлежит слоту, а не дню: у «Утреннего занятия» она одна на три дня
-// недели, у «Цзибеньгуна» — на два. Пары (title, groupLabel) те же, что создаёт
-// 0001-school-classes.
-const CLASS_ZOOM_LINKS: ClassZoomLink[] = [
-  {
-    title: 'Медитация чжи-гуань',
-    groupLabel: '',
-    zoomLink: 'https://us02web.zoom.us/j/88282438752',
-  },
-  {
-    title: 'Медитация чжи-гуань',
-    groupLabel: 'четверг',
-    zoomLink: 'https://us02web.zoom.us/j/89870137292',
-  },
-  {
-    title: 'Цигун для глаз',
-    groupLabel: '',
-    zoomLink: 'https://us02web.zoom.us/j/82592094975',
-  },
-  {
-    title: 'Утреннее занятие школы Сюань-Сюэ',
-    groupLabel: '',
-    zoomLink: 'https://zoom.us/j/602464521',
-  },
-  {
-    title: 'Цзибеньгун',
-    groupLabel: 'средняя группа',
-    zoomLink:
-      'https://us02web.zoom.us/j/86410665272?pwd=bDNqODlLWXdWZUtBVzNub2JBeTNLUT09',
-  },
-  {
-    title: 'Тайцзицюань',
-    groupLabel: '',
-    zoomLink: 'https://us02web.zoom.us/j/85190691093',
-  },
-  {
-    title: 'Тайцзицюань',
-    groupLabel: 'среда',
-    zoomLink: 'https://us02web.zoom.us/j/84040366773',
-  },
-  {
-    title: 'Ицзиньцзин и Бадуаньцзинь',
-    groupLabel: '',
-    zoomLink: 'https://us02web.zoom.us/j/84634026453',
-  },
-  {
-    title: 'Цзибеньгун',
-    groupLabel: '',
-    zoomLink:
-      'https://us02web.zoom.us/j/87584887738?pwd=WEV3WEdTZlk1UnFUZnVzcWNMbUtsQT09',
-  },
-  {
-    title: 'Основы Дхармы',
-    groupLabel: '',
-    zoomLink: 'https://zoom.us/j/136641835',
-  },
-  {
-    title: 'Медитация для начинающих',
-    groupLabel: '',
-    zoomLink: 'https://zoom.us/j/728469365',
-  },
-];
+/** Ссылка принадлежит слоту, а не дню: у «Утреннего занятия» она одна на три
+ * дня недели. Пары (title, groupLabel) — те же, что создаёт 0001. Файла нет
+ * или он битый — пустой список: миграция не имеет права уронить старт
+ * приложения из-за отсутствующего локального файла. */
+function readSeed(): ClassZoomLink[] {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(SEED_PATH, 'utf8'));
+    return Array.isArray(parsed) ? (parsed as ClassZoomLink[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 export const fillSchoolZoomLinks = {
   id: '0003-school-zoom-links',
   async up(db: Db): Promise<void> {
     const collection = db.collection(COLLECTION);
 
-    for (const { title, groupLabel, zoomLink } of CLASS_ZOOM_LINKS) {
+    for (const { title, groupLabel, zoomLink, zoomPassword } of readSeed()) {
       // Занятия может и не быть — например, учитель завёл своё с другим
       // названием. Это не ошибка: updateOne просто ничего не найдёт, ссылку
       // впишут в карточке.
@@ -103,7 +58,7 @@ export const fillSchoolZoomLinks = {
         {
           $set: {
             zoomLink: encrypt(zoomLink),
-            zoomPassword: encrypt(PASSWORD),
+            zoomPassword: encrypt(zoomPassword),
             updatedAt: new Date(),
           },
         },

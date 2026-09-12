@@ -1,10 +1,12 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»):
 // deleteMany/updateMany по реестру и read-after-write на каждой части —
 // мок модели пропустил бы саму механику $unset и фильтров.
-import type { Model, Types } from 'mongoose';
+import { Types } from 'mongoose';
+import type { Model } from 'mongoose';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
+import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -33,6 +35,7 @@ describe('UserDeletionService', () => {
   let channelModel: Model<ChannelRecord>;
   let broadcastModel: Model<BroadcastRecord>;
   let botSessionModel: Model<BotSessionRecord>;
+  let attemptModel: Model<ExamAttemptRecord>;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -42,6 +45,7 @@ describe('UserDeletionService', () => {
     channelModel = memory.connection.model<ChannelRecord>(ChannelRecord.name);
     broadcastModel = memory.connection.model<BroadcastRecord>(BroadcastRecord.name);
     botSessionModel = memory.connection.model<BotSessionRecord>(BotSessionRecord.name);
+    attemptModel = memory.connection.model<ExamAttemptRecord>(ExamAttemptRecord.name);
   }, 60_000);
 
   afterAll(async () => {
@@ -56,6 +60,7 @@ describe('UserDeletionService', () => {
       channelModel.deleteMany({}),
       broadcastModel.deleteMany({}),
       botSessionModel.deleteMany({}),
+      attemptModel.deleteMany({}),
     ]);
   });
 
@@ -115,6 +120,44 @@ describe('UserDeletionService', () => {
     await deletion.deleteAllUserData(admin.id, 'кто-то-другой');
 
     expect(await users.findById(admin.id)).toBeNull();
+  });
+
+  // Первая коллекция во владении ученика (USER_OWNED_COLLECTIONS перестал
+  // быть пустым вместе со слоем 4.4) — до неё ветка deleteMany по реестру
+  // работала вхолостую и ничем не проверялась.
+  it('удаляет попытки экзамена ученика и не трогает чужие', async () => {
+    const student = await users.createFromTelegram({
+      telegramId: 5010,
+      name: 'Ученик',
+      roles: ['student'],
+    });
+    const other = await users.createFromTelegram({
+      telegramId: 5011,
+      name: 'Другой ученик',
+      roles: ['student'],
+    });
+    const examId = new Types.ObjectId();
+    await attemptModel.create([
+      {
+        examId,
+        examTitle: 'Экзамен',
+        userId: new Types.ObjectId(student.id),
+        attemptNo: 1,
+        startedAt: new Date('2026-09-12T09:00:00.000Z'),
+      },
+      {
+        examId,
+        examTitle: 'Экзамен',
+        userId: new Types.ObjectId(other.id),
+        attemptNo: 1,
+        startedAt: new Date('2026-09-12T09:00:00.000Z'),
+      },
+    ]);
+
+    await deletion.deleteAllUserData(student.id, 'кто-то-другой');
+
+    expect(await attemptModel.countDocuments({ userId: student.id })).toBe(0);
+    expect(await attemptModel.countDocuments({ userId: other.id })).toBe(1);
   });
 
   it('обнуляет leaderId в классе и занятии — $unset, документы остаются', async () => {

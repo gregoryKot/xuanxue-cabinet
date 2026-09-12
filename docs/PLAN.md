@@ -123,20 +123,20 @@ xuanxue-cabinet/
 Коллекции MongoDB. Свободный текст и секреты каналов шифруются AES-256-GCM ключом
 из `ENCRYPTION_KEY`, как в текущем проекте.
 
-| Коллекция                   | Поля                                                                                                                                                                                          | Комментарий                                                                                                                                                                                                                                                                                                                                 |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`                     | name, email, telegramId, googleId, roles[], tz, status, lastLoginAt, createdAt                                                                                                                | status: invited / active / blocked. Уникальные частичные индексы: telegramId, email, googleId — один ключ входа = одна учётная запись (SECURITY §2). Живёт, пока жив аккаунт; удаление — `DELETE /users/:id`, кнопка «Удалить данные» на «Люди», не по расписанию                                                                           |
-| `classes`                   | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                                                                                                                                                                           |
-| `lessons`                   | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания: уникальный частичный индекс (classId, plannedAt). Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые                                                                                              |
-| `channels`                  | type, title, config (зашифровано), target, createdBy, active                                                                                                                                  | type: telegram / vk / manual / webpush. Данные школы (ADR-0010). `target` — chatId/peerId без секрета, уникальный частичный индекс (type, target)                                                                                                                                                                                           |
-| `broadcasts`                | kind, text, scheduledAt, channelIds[], lessonId?, recordingKey?, status, createdBy?, telegramFileId?, sentAt?, previewSentAt?                                                                 | kind: lesson_link / recording / manual. Уникальные частичные индексы: (lessonId, kind) для lesson_link, (lessonId, recordingKey) для recording — повтор обновляет существующий документ, не новый                                                                                                                                           |
-| `deliveries`                | broadcastId, channelId, status, attempts, nextAttemptAt, error, sentAt, externalId, manualPromptedAt?                                                                                         | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки. `manualPromptedAt` — бот прислал текст+кнопку «Скопировал, отправил» для ручного канала (status manual), условный апдейт ДО отправки, один раз                                                                                                           |
-| `bot_sessions`              | chatId, kind, lessonId, expiresAt                                                                                                                                                             | Ожидание бота в личном чате учителя: kind topic («Изменить тему»/`/тема`, TTL 10 минут) или kind recording («Запись?», TTL 12 часов). Уникальный индекс chatId — один документ на чат, новое ожидание вытесняет старое; TTL-индекс — по expiresAt. Ключ — chatId Telegram, персональных данных нет: без userId, не в USER_OWNED_COLLECTIONS |
-| `push_subscriptions`        | userId, endpoint (зашифрован), keys (зашифрованы), device, lastSeenAt, prefs{lessonLink, recording, payment}                                                                                  | Одна запись на устройство. 404/410 от push-сервиса удаляет запись. В `USER_OWNED_COLLECTIONS`                                                                                                                                                                                                                                               |
-| `payments`                  | userId, month, amount, currency, status, screenshotUrl, confirmedBy                                                                                                                           | Этап 2. Абонемент на месяц, валюта ILS                                                                                                                                                                                                                                                                                                      |
-| `materials`                 | title, url, kind, classIds[], access                                                                                                                                                          | Этап 3                                                                                                                                                                                                                                                                                                                                      |
-| `exams`, `exam_submissions` | см. этап 4                                                                                                                                                                                    | Этап 4                                                                                                                                                                                                                                                                                                                                      |
-| `settings`                  | один документ школы: templates{lesson_link, recording}, tz                                                                                                                                    | Ключи `templates` = `BroadcastKind` (shared/src/domain.ts), кроме `manual`. Учитель меняет тексты с экрана «Шаблоны» (§6 п.6), не разработчик. Утренний анонс не входит — не подтверждён (§10)                                                                                                                                              |
+| Коллекция                              | Поля                                                                                                                                                                                          | Комментарий                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`                                | name, email, telegramId, googleId, roles[], tz, status, lastLoginAt, createdAt                                                                                                                | status: invited / active / blocked. Уникальные частичные индексы: telegramId, email, googleId — один ключ входа = одна учётная запись (SECURITY §2). Живёт, пока жив аккаунт; удаление — `DELETE /users/:id`, кнопка «Удалить данные» на «Люди», не по расписанию                                                                           |
+| `classes`                              | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                                                                                                                                                                           |
+| `lessons`                              | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания: уникальный частичный индекс (classId, plannedAt). Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые                                                                                              |
+| `channels`                             | type, title, config (зашифровано), target, createdBy, active                                                                                                                                  | type: telegram / vk / manual / webpush. Данные школы (ADR-0010). `target` — chatId/peerId без секрета, уникальный частичный индекс (type, target)                                                                                                                                                                                           |
+| `broadcasts`                           | kind, text, scheduledAt, channelIds[], lessonId?, recordingKey?, status, createdBy?, telegramFileId?, sentAt?, previewSentAt?                                                                 | kind: lesson_link / recording / manual. Уникальные частичные индексы: (lessonId, kind) для lesson_link, (lessonId, recordingKey) для recording — повтор обновляет существующий документ, не новый                                                                                                                                           |
+| `deliveries`                           | broadcastId, channelId, status, attempts, nextAttemptAt, error, sentAt, externalId, manualPromptedAt?                                                                                         | Уникальный индекс (broadcastId, channelId). Это и есть защита от двойной отправки. `manualPromptedAt` — бот прислал текст+кнопку «Скопировал, отправил» для ручного канала (status manual), условный апдейт ДО отправки, один раз                                                                                                           |
+| `bot_sessions`                         | chatId, kind, lessonId, expiresAt                                                                                                                                                             | Ожидание бота в личном чате учителя: kind topic («Изменить тему»/`/тема`, TTL 10 минут) или kind recording («Запись?», TTL 12 часов). Уникальный индекс chatId — один документ на чат, новое ожидание вытесняет старое; TTL-индекс — по expiresAt. Ключ — chatId Telegram, персональных данных нет: без userId, не в USER_OWNED_COLLECTIONS |
+| `push_subscriptions`                   | userId, endpoint (зашифрован), keys (зашифрованы), device, lastSeenAt, prefs{lessonLink, recording, payment}                                                                                  | Одна запись на устройство. 404/410 от push-сервиса удаляет запись. В `USER_OWNED_COLLECTIONS`                                                                                                                                                                                                                                               |
+| `payments`                             | userId, month, amount, currency, status, screenshotUrl, confirmedBy                                                                                                                           | Этап 2. Абонемент на месяц, валюта ILS                                                                                                                                                                                                                                                                                                      |
+| `materials`                            | title, url, kind, classIds[], access                                                                                                                                                          | Этап 3                                                                                                                                                                                                                                                                                                                                      |
+| `exams`, `exam_items`, `exam_attempts` | см. §11                                                                                                                                                                                       | Этап 4                                                                                                                                                                                                                                                                                                                                      |
+| `settings`                             | один документ школы: templates{lesson_link, recording}, tz                                                                                                                                    | Ключи `templates` = `BroadcastKind` (shared/src/domain.ts), кроме `manual`. Учитель меняет тексты с экрана «Шаблоны» (§6 п.6), не разработчик. Утренний анонс не входит — не подтверждён (§10)                                                                                                                                              |
 
 Реестр «таблиц с userId» для удаления аккаунта (`USER_OWNED_COLLECTIONS`) и реестр ссылок
 на пользователя из данных школы (`USER_REFERENCE_PATHS`) — `api/src/users/user-data.registry.ts`,
@@ -939,3 +939,62 @@ Telegram — вставляет ссылку (VK Видео, Rutube, Яндек�
 1. Показать, как экзамен проходит сейчас: что спрашивают, что показывают на видео, по
    каким признакам засчитывают. Рубрика пишется с его слов, не выдумывается.
 2. Решить, кто проверяет, кроме Димы: от этого зависит, нужна ли очередь на двоих.
+
+## 12. ТЗ этапа 4б: бот как первый интерфейс
+
+Решение — [ADR-0024](adr/0024-bot-first-cabinet-as-fallback.md): каждое частое
+действие доступно в боте, кабинет остаётся резервом. Слои 4.2–4.4 написаны так,
+что правила живут в сервисах, — бот становится вторым клиентом тех же сервисов,
+а не второй реализацией логики.
+
+### Порядок
+
+**4б.1. Обобщённый автомат диалогов.** `bot_sessions` умеет ждать не только тему
+и запись занятия: вид ожидания плюс полезная нагрузка вместо обязательного
+`lessonId`. Одно активное ожидание на чат, TTL остаётся. Старые виды ожидания
+(`topic`, `recording`) переезжают на новую форму без смены поведения — тесты
+занятий не меняются.
+
+**4б.2. Ученик проходит экзамен в боте.** `/экзамены` (и кнопка в уведомлении):
+что задано, что уже сдано. Старт — тот же `ExamAttemptsService.start`, снимок и
+лимит попыток работают сами. Дальше вопрос за вопросом: варианты — инлайн-кнопки,
+свободный ответ — сообщение, видео — видеосообщение (ADR-0023). Каждый ответ
+уходит в попытку сразу — автосохранение получается само собой. «Назад» к
+предыдущему вопросу, «Сдать» в конце, дедлайн считает сервер. Зависит от слоя 4.4.
+
+**4б.3. Учитель заводит вопрос в боте.** Четыре шага: тип, формулировка,
+варианты (для выбора), готово. Критерии проверки — необязательный шаг. Вопрос
+появляется черновиком, публикация — кнопкой там же.
+
+**4б.4. Учитель собирает экзамен в боте.** Список опубликованных вопросов с
+отметками, «Собрать экзамен» из отмеченных, название, лимит времени, число
+попыток — и отправка ученикам. Блоков и перетасовки здесь нет: это структурная
+работа, она остаётся в кабинете (ADR-0024).
+
+**4б.5. Проверка в боте.** Сданное приходит учителю сообщением: кто, какой
+экзамен, ответы, видео. Кнопки «Зачёт», «Доработать», «Незачёт» и комментарий
+сообщением. Автопроверенные варианты показаны сразу — человек смотрит то, что
+машина проверить не может.
+
+**4б.6. Результат ученику в боте** — совпадает со слоем 4.7: уведомление тем же
+`ChannelAdapter`, что и рассылки.
+
+### Границы
+
+- Сборка формы с блоками, массовая правка банка, длинные критерии рубрики и
+  «Сводка» в бот не переносятся — в переписке они хуже (ADR-0024).
+- Кабинет не замораживается: у кого нет Telegram, работает через него целиком.
+- Бот не получает своей логики. Правило, которого нет в сервисе, не появляется
+  в хендлере — оно добавляется в сервис и начинает действовать в обоих
+  интерфейсах сразу.
+
+### Тесты, без которых этап не закрыт
+
+- Ответ, пришедший из бота, и ответ, пришедший из кабинета, попадают в одну
+  попытку и не затирают друг друга.
+- Дедлайн в боте закрывает попытку так же, как в кабинете (тот же сервис).
+- Чужой `attemptId` в callback-данных не даёт доступа: владение проверяется по
+  `userId` из сопоставленного `telegramId`, а не по параметру.
+- Хендлер, упавший на середине диалога, не оставляет ожидание навсегда — TTL и
+  понятная фраза в чат.
+- Видео, отправленное боту, привязывается к нужной попытке того, кто его прислал.
