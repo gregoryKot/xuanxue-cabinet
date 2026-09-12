@@ -28,4 +28,5 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ChannelRecord', path: 'createdBy' },
   { model: 'BroadcastRecord', path: 'createdBy' },
   { model: 'ExamItemRecord', path: 'authorId' },
+  { model: 'ExamRecord', path: 'createdBy' },
 ] as const;

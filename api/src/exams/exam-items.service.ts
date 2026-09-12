@@ -18,10 +18,11 @@ import {
   LIST_LIMIT_DEFAULT,
   NULLABLE_EXAM_ITEM_FIELDS,
 } from '@xuanxue/shared';
-import { ConflictError, NotFoundError } from '../common/errors';
+import { NotFoundError } from '../common/errors';
 import { toIsoUtc } from '../common/iso-date';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
+import { removeIfDraft } from '../common/remove-if-draft';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { hasContentChanged } from './exam-item-content-change';
 import { assertOptionsForKind, mapOptions } from './exam-item-options';
@@ -136,13 +137,7 @@ export class ExamItemsService {
 
   async remove(id: string): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    // Одним запросом на условии status: 'draft' — без гонки между проверкой
-    // статуса и удалением (второй запрос ниже только объясняет причину 0).
-    const { deletedCount } = await this.model.deleteOne({ _id: id, status: 'draft' });
-    if (deletedCount > 0) return;
-    const stillThere = await this.model.exists({ _id: id });
-    if (stillThere) throw new ConflictError(NOT_DRAFT_MESSAGE);
-    throw new NotFoundError(NOT_FOUND_MESSAGE);
+    await removeIfDraft(this.model, id, NOT_FOUND_MESSAGE, NOT_DRAFT_MESSAGE);
   }
 
   /** `options`/`history` хранятся строкой (encJson, exam-item.schema.ts) —

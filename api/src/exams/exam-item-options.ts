@@ -1,7 +1,6 @@
 // Чистые функции проверки и подготовки вариантов ответа — без похода в базу,
 // юнит-тест без Mongo (CLAUDE.md, раздел «Тесты»). Правило combines type+
 // options (ТЗ 4.2, п.2) — про сочетание полей, поэтому в сервисе, не в DTO.
-import { Types } from 'mongoose';
 import {
   EXAM_ITEM_LIMITS,
   type ExamItemKind,
@@ -9,6 +8,7 @@ import {
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
 import type { ExamItemOptionRecord } from './exam-item.schema';
+import { keepOrGenerateId } from './sub-id';
 
 const NO_OPTIONS_KINDS: readonly ExamItemKind[] = ['text', 'video'];
 const HAS_OPTIONS_KINDS: readonly ExamItemKind[] = ['single', 'multiple'];
@@ -54,11 +54,12 @@ export function assertOptionsForKind(
 
 /** Список для записи в базу (потом шифруется целиком через `encJson`,
  * exam-item.schema.ts). `id` есть у существующего варианта — сохраняется как
- * есть; без `id` — новый, сервис создаёт его сам (тот же приём, что у
+ * есть; без `id` — новый, сервис создаёт его сам (`keepOrGenerateId`,
+ * sub-id.ts — тот же приём, что у блоков формы экзамена, exam-blocks.ts, и у
  * `ScheduleRuleInput`/`mapRules` в classes/classes.update.ts). */
 export function mapOptions(options: ExamItemOptionInput[]): ExamItemOptionRecord[] {
   return options.map((option) => ({
-    id: option.id ?? new Types.ObjectId().toString(),
+    id: keepOrGenerateId(option.id),
     text: option.text,
     correct: option.correct ?? false,
   }));

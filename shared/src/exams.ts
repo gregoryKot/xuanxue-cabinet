@@ -99,3 +99,93 @@ export const EXAM_ITEM_LIMITS = {
 } as const;
 
 export const EXAM_ITEM_NOT_FOUND_MESSAGE = 'Вопрос не найден. Обновите список.';
+
+// Форма экзамена, собранная из вопросов банка (`/exams`, слой 4.3,
+// docs/PLAN.md §11, ADR-0022 + дополнение 2026-09-12). Форма ссылается на
+// вопрос только по `itemId`, без номера версии — версию, которую видел
+// сдающий, закрепляет попытка в момент старта (слой 4.4), не форма: иначе
+// правка опечатки в вопросе не доехала бы ни до одного экзамена (дополнение
+// к ADR-0022 внизу файла).
+
+export const EXAM_STATUSES = ['draft', 'published', 'archived'] as const;
+export type ExamStatus = (typeof EXAM_STATUSES)[number];
+
+/** Блок формы: вопросы одной темы, показываются вместе. */
+export interface ExamBlockDto {
+  id: string;
+  title: string; // «Теория», «Форма» — может быть пустым
+  itemIds: string[]; // порядок внутри блока — порядок массива
+  shuffle: boolean; // перемешивать вопросы внутри блока у каждого сдающего
+  required: boolean; // блок нельзя пропустить
+}
+
+/** `id` есть у существующего блока (сервис сохраняет его как есть при правке
+ * — см. `mapBlocks`, `exam-blocks.ts`); без `id` — новый блок, сервис создаёт
+ * `id` сам. Тот же приём, что у `ExamItemOptionInput` выше и у
+ * `ScheduleRuleInput` (shared/src/classes.ts). */
+export interface ExamBlockInput {
+  id?: string;
+  title?: string;
+  itemIds: string[];
+  shuffle?: boolean;
+  required?: boolean;
+}
+
+export interface ExamDto {
+  id: string;
+  title: string;
+  description: string; // что это за экзамен — текст для ученика, может быть пустым
+  level: string; // для какого уровня; пустая строка — для всех
+  blocks: ExamBlockDto[];
+  timeLimitMin?: number; // нет — без ограничения
+  attemptsAllowed: number; // по умолчанию 1 (PLAN §11: «по умолчанию попытка одна»)
+  status: ExamStatus;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string; // ISO UTC с Z
+}
+
+export interface CreateExamInput {
+  title: string;
+  description?: string;
+  level?: string;
+  blocks?: ExamBlockInput[];
+  timeLimitMin?: number;
+  attemptsAllowed?: number;
+}
+
+/**
+ * PATCH: `null` — явный сброс, но только у полей из NULLABLE_EXAM_FIELDS
+ * ниже, как NULLABLE_CLASS_FIELDS у занятий. `status` меняется отдельным
+ * полем — переход в `published` сервис проверяет по правилам ТЗ 4.3, п.1–2
+ * (форма непустая, все вопросы блоков опубликованы в банке).
+ */
+export interface UpdateExamInput {
+  title?: string;
+  description?: string | null;
+  level?: string | null;
+  blocks?: ExamBlockInput[];
+  timeLimitMin?: number | null;
+  attemptsAllowed?: number;
+  status?: ExamStatus;
+}
+export const NULLABLE_EXAM_FIELDS = ['description', 'level', 'timeLimitMin'] as const;
+
+export interface ListExamsQuery {
+  status?: ExamStatus;
+  level?: string;
+  limit?: number;
+}
+
+export const EXAM_LIMITS = {
+  title: 200,
+  description: 2000,
+  level: 60,
+  blockTitle: 120,
+  blocksMax: 20,
+  itemsPerBlockMax: 50,
+  timeLimitMinMax: 600,
+  attemptsMax: 10,
+} as const;
+
+export const EXAM_NOT_FOUND_MESSAGE = 'Экзамен не найден. Обновите список.';

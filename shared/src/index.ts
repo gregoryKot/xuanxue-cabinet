@@ -88,6 +88,13 @@ export type {
   CreateExamItemInput,
   UpdateExamItemInput,
   ListExamItemsQuery,
+  ExamStatus,
+  ExamBlockDto,
+  ExamBlockInput,
+  ExamDto,
+  CreateExamInput,
+  UpdateExamInput,
+  ListExamsQuery,
 } from './exams';
 export {
   EXAM_ITEM_KINDS,
@@ -95,6 +102,10 @@ export {
   NULLABLE_EXAM_ITEM_FIELDS,
   EXAM_ITEM_LIMITS,
   EXAM_ITEM_NOT_FOUND_MESSAGE,
+  EXAM_STATUSES,
+  NULLABLE_EXAM_FIELDS,
+  EXAM_LIMITS,
+  EXAM_NOT_FOUND_MESSAGE,
 } from './exams';
 export {
   NULLABLE_LESSON_FIELDS,
