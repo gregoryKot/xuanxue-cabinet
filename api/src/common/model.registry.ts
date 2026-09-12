@@ -25,6 +25,11 @@ import {
   DeliverySchema,
   DELIVERY_FIELD_POLICY,
 } from '../deliveries/delivery.schema';
+import {
+  ExamItemRecord,
+  ExamItemSchema,
+  EXAM_ITEM_FIELD_POLICY,
+} from '../exams/exam-item.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import {
   SettingsRecord,
@@ -61,6 +66,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: DeliveryRecord.name,
     schema: DeliverySchema,
     fieldPolicy: DELIVERY_FIELD_POLICY,
+  },
+  {
+    name: ExamItemRecord.name,
+    schema: ExamItemSchema,
+    fieldPolicy: EXAM_ITEM_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
   {

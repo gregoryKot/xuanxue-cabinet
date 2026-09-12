@@ -66,4 +66,14 @@ export const FIELD_LABELS_RU: Record<string, string> = {
 
   // users — /users (экран «Люди»).
   roles: 'Роли',
+
+  // exam-items — /exam-items (банк вопросов экзамена). kind — общая подпись
+  // «Тип» выше (broadcasts.kind), здесь свой тип вопроса — тот же смысл.
+  prompt: 'Формулировка',
+  hint: 'Подсказка',
+  criteria: 'Критерии проверки',
+  options: 'Варианты ответа',
+  correct: 'Правильный вариант',
+  tags: 'Теги',
+  tag: 'Тег',
 };

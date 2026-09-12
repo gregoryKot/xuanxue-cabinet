@@ -16,6 +16,7 @@ import { constraintText } from './validation-constraint-text';
 // внутри `@IsArray`).
 const ARRAY_ITEM_LABEL_RU: Partial<Record<string, string>> = {
   rules: 'Правило',
+  options: 'Вариант',
 };
 
 function fieldLabel(name: string): string {

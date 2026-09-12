@@ -78,6 +78,24 @@ export type {
   UpdateLessonInput,
   AddRecordingInput,
 } from './lessons';
+export type {
+  ExamItemKind,
+  ExamItemStatus,
+  ExamItemOptionDto,
+  ExamItemOptionInput,
+  ExamItemVersionDto,
+  ExamItemDto,
+  CreateExamItemInput,
+  UpdateExamItemInput,
+  ListExamItemsQuery,
+} from './exams';
+export {
+  EXAM_ITEM_KINDS,
+  EXAM_ITEM_STATUSES,
+  NULLABLE_EXAM_ITEM_FIELDS,
+  EXAM_ITEM_LIMITS,
+  EXAM_ITEM_NOT_FOUND_MESSAGE,
+} from './exams';
 export {
   NULLABLE_LESSON_FIELDS,
   LESSON_LIMITS,

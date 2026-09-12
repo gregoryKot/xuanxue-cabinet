@@ -17,6 +17,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
+import { ExamsModule } from './exams/exams.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
 import { HealthController } from './health/health.controller';
@@ -61,6 +62,7 @@ import { TelegramModule } from './telegram/telegram.module';
     ChannelsModule,
     BroadcastsModule,
     DeliveriesModule,
+    ExamsModule,
     SettingsModule,
     SummaryModule,
     UsersModule,
