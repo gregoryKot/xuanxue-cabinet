@@ -1,0 +1,85 @@
+// Форма экзамена, собранная из вопросов банка (ADR-0022 + дополнение
+// 2026-09-12, PLAN §11 слой 4.3) — данные школы (ADR-0010): доступ по роли
+// teacher/admin, не по владельцу. Форма ссылается на вопрос только по
+// `itemId`, БЕЗ номера версии — редакцию закрепляет попытка в момент старта
+// (слой 4.4): дополнение к ADR-0022 прямо запрещает фиксировать версию
+// здесь, иначе правка опечатки в вопросе не доедет ни до одного экзамена.
+// `blocks` — свободный текст (заголовок блока) внутри, поэтому целиком
+// строкой через `encJson`, тем же приёмом, что `options`/`history` у
+// exam-item.schema.ts: encryptRecord/decryptRecord шифруют только поля
+// верхнего уровня, а вложенный `title` молча остался бы открытым текстом.
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { SchemaTypes, Types } from 'mongoose';
+import { EXAM_STATUSES } from '@xuanxue/shared';
+import type { ExamStatus } from '@xuanxue/shared';
+import {
+  enc,
+  encJson,
+  plain,
+  encryptSchemaFrom,
+  type FieldPolicy,
+} from '../common/field-policy';
+import { USER_MODEL_NAME } from '../users/user-data.registry';
+
+/** Блок формы как он хранится в базе (внутри `blocks`, строка JSON) — `id`
+ * генерирует сервис (keepOrGenerateId, sub-id.ts), как `id` варианта вопроса
+ * (ExamItemOptionRecord, exam-item.schema.ts). Форма совпадает с
+ * `ExamBlockDto` из shared. */
+export interface ExamBlockRecord {
+  id: string;
+  title: string;
+  itemIds: string[];
+  shuffle: boolean;
+  required: boolean;
+}
+
+const DEFAULT_ATTEMPTS_ALLOWED = 1;
+
+@Schema({ timestamps: true, collection: 'exams' })
+export class ExamRecord {
+  @Prop({ type: String, required: true })
+  title!: string;
+
+  @Prop({ type: String, default: '' })
+  description!: string;
+
+  @Prop({ type: String, default: '' })
+  level!: string;
+
+  // Хранится строкой целиком (encJson) — см. комментарий в начале файла.
+  @Prop({ type: String, default: '[]' })
+  blocks!: string;
+
+  @Prop({ type: Number, required: false })
+  timeLimitMin?: number;
+
+  @Prop({ type: Number, default: DEFAULT_ATTEMPTS_ALLOWED })
+  attemptsAllowed!: number;
+
+  @Prop({ type: String, enum: EXAM_STATUSES, default: 'draft' })
+  status!: ExamStatus;
+
+  // Кто создал — не признак владения (данные школы, ADR-0010), просто
+  // ссылка, при правке не меняется. См. USER_REFERENCE_PATHS.
+  @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
+  createdBy?: Types.ObjectId;
+}
+
+export const ExamSchema = SchemaFactory.createForClass(ExamRecord);
+// Экран «Экзамены»: фильтр по статусу, сортировка по недавней правке.
+ExamSchema.index({ status: 1, updatedAt: -1 });
+// Фильтр по уровню.
+ExamSchema.index({ level: 1 });
+
+export const EXAM_FIELD_POLICY: FieldPolicy = {
+  title: enc,
+  description: enc,
+  blocks: encJson,
+  level: plain('фильтр в списке; не персональные данные'),
+  status: plain('перечисление, нужно для выборок'),
+};
+
+/** Схема шифрования формы — одна на все места чтения и записи (сервис,
+ * будущий снимок попытки экзамена): читающий форму мимо неё получит
+ * шифротекст вместо названия/описания. */
+export const EXAM_ENCRYPT_SCHEMA = encryptSchemaFrom(EXAM_FIELD_POLICY);

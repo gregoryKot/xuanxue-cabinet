@@ -30,6 +30,7 @@ import {
   ExamItemSchema,
   EXAM_ITEM_FIELD_POLICY,
 } from '../exams/exam-item.schema';
+import { ExamRecord, ExamSchema, EXAM_FIELD_POLICY } from '../exams/exam.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import {
   SettingsRecord,
@@ -71,6 +72,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: ExamItemRecord.name,
     schema: ExamItemSchema,
     fieldPolicy: EXAM_ITEM_FIELD_POLICY,
+  },
+  {
+    name: ExamRecord.name,
+    schema: ExamSchema,
+    fieldPolicy: EXAM_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
   {

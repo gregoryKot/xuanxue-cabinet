@@ -24,6 +24,11 @@ import { ExamItemFieldsDto } from '../exams/dto/exam-item-fields.dto';
 import { ExamItemOptionDto } from '../exams/dto/exam-item-option.dto';
 import { ListExamItemsDto } from '../exams/dto/list-exam-items.dto';
 import { UpdateExamItemDto } from '../exams/dto/update-exam-item.dto';
+import { CreateExamDto } from '../exams/dto/create-exam.dto';
+import { ExamBlockDto } from '../exams/dto/exam-block.dto';
+import { ExamFieldsDto } from '../exams/dto/exam-fields.dto';
+import { ListExamsDto } from '../exams/dto/list-exams.dto';
+import { UpdateExamDto } from '../exams/dto/update-exam.dto';
 import { AddRecordingDto } from '../lessons/dto/add-recording.dto';
 import { CreateLessonDto } from '../lessons/dto/create-lesson.dto';
 import { ListLessonsDto } from '../lessons/dto/list-lessons.dto';
@@ -61,6 +66,11 @@ const DTO_CLASSES: DtoConstructor[] = [
   ExamItemOptionDto,
   ListExamItemsDto,
   UpdateExamItemDto,
+  CreateExamDto,
+  ExamBlockDto,
+  ExamFieldsDto,
+  ListExamsDto,
+  UpdateExamDto,
   AddRecordingDto,
   CreateLessonDto,
   ListLessonsDto,

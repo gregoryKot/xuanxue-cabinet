@@ -76,4 +76,16 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   correct: 'Правильный вариант',
   tags: 'Теги',
   tag: 'Тег',
+
+  // exams — /exams (конструктор экзамена, ТЗ 4.3). title/status — общие
+  // подписи выше (classes.title, lessons.status), здесь тот же смысл:
+  // название формы, статус формы.
+  description: 'Описание',
+  level: 'Уровень',
+  blocks: 'Блоки',
+  itemIds: 'Вопросы блока',
+  shuffle: 'Перемешивание',
+  required: 'Обязательность блока',
+  timeLimitMin: 'Лимит времени',
+  attemptsAllowed: 'Число попыток',
 };
