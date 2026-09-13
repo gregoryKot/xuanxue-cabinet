@@ -83,6 +83,7 @@ describe('ExamAttemptsController', () => {
       examId: 'e1',
       examTitle: 'Экзамен',
       userId: 'u1',
+      userName: 'Ученик',
       status: 'submitted',
       blocks: [],
       rubric: [],

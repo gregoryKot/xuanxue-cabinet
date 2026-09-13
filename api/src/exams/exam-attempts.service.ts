@@ -7,11 +7,9 @@
 // exam-attempt-lifecycle.ts, чтобы этот файл оставался диспетчером правил, а
 // не Mongo-запросов (CLAUDE.md «Файлы», лимит размера).
 //
-// Вопросы блоков читаются через `ExamsService`/`ExamItemsService`, а не
-// напрямую через их модели: там уже есть проверка published-статуса формы,
-// шифрование и декрипт содержимого вопроса (prompt/hint/criteria/options) —
-// дублировать эту расшифровку здесь было бы вторым местом одной механики
-// (CLAUDE.md «Одна механика — один компонент»).
+// Вопросы блоков читаются через `ExamsService`/`ExamItemsService` (там уже
+// проверка published-статуса, шифрование и декрипт вопроса) — не дублируем
+// расшифровку второй раз (CLAUDE.md «Одна механика — один компонент»).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -33,6 +31,7 @@ import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
+import { UserNamesService } from '../users/user-names.service';
 import type { UserLean } from '../users/users.service';
 import { ExamItemsService } from './exam-items.service';
 import { assertAnswersKnown, mergeAnswers } from './exam-attempt-answers';
@@ -69,11 +68,11 @@ export class ExamAttemptsService {
     @InjectModel(ExamAttemptRecord.name) private readonly model: Model<ExamAttemptRecord>,
     private readonly examsService: ExamsService,
     private readonly examItemsService: ExamItemsService,
+    private readonly userNamesService: UserNamesService,
   ) {}
 
-  /** ТЗ 4.4, п.1–3: экзамен должен быть опубликован; незаконченная попытка
-   * возвращается, а не заводится новая; больше `attemptsAllowed` попыток не
-   * заводится — атомарно, через уникальный индекс, не «посчитали и вставили». */
+  /** ТЗ 4.4, п.1–3: форма опубликована; незаконченная попытка возвращается
+   * без нового старта; больше `attemptsAllowed` — атомарно, по индексу. */
   async start(examId: string, userId: string, now: DateTime): Promise<ExamAttemptDto> {
     const exam = await this.examsService.getById(examId);
     if (exam.status !== 'published') {
@@ -129,9 +128,8 @@ export class ExamAttemptsService {
     }
   }
 
-  /** ТЗ 4.4, п.4–5: только владелец, только `in_progress`, только до
-   * дедлайна; ответы заменяют по `itemId`, остальные не трогаются; чужой
-   * `itemId` — 400. */
+  /** ТЗ 4.4, п.4–5: владелец, только `in_progress`, до дедлайна; ответы
+   * заменяют по `itemId`, остальные не трогаются; чужой `itemId` — 400. */
   async saveAnswers(
     attemptId: string,
     userId: string,
@@ -176,9 +174,8 @@ export class ExamAttemptsService {
     return toAttemptDto(decryptAttempt(updated));
   }
 
-  /** ТЗ 4.4, п.9: ученику — только свои, учителю/админу — все, фильтры
-   * `examId`/`status`, лимит как везде (данные ученика — по владельцу,
-   * SECURITY §3; для роли teacher/admin — как данные школы, по роли). */
+  /** ТЗ 4.4, п.9: ученику — только свои (SECURITY §3, по владельцу), сотруднику
+   * — все, фильтры `examId`/`status`, лимит как везде. */
   async list(
     query: ListAttemptsQuery,
     user: UserLean,
@@ -199,13 +196,16 @@ export class ExamAttemptsService {
     const attempts = await Promise.all(
       docs.map((doc) => closeIfExpiredAttempt(this.model, decryptAttempt(doc), now)),
     );
-    return attempts.map(toAttemptDto);
+    // Имя — только сотруднику, одним запросом на весь список (shared/exams.ts).
+    const names = isStaff
+      ? await this.userNamesService.namesByIds(attempts.map((a) => a.userId.toString()))
+      : undefined;
+    return attempts.map((a) => toAttemptDto(a, names?.get(a.userId.toString())));
   }
 
   /** Владелец из сессии, не из пути (SECURITY §3) — чужой `id` получает
-   * `ATTEMPT_NOT_FOUND_MESSAGE`, не 403: не подтверждаем даже факт
-   * существования чужой попытки. Лениво закрывает попытку по дедлайну —
-   * «любой запрос после дедлайна» (ТЗ 4.4, п.7), не только явный тик. */
+   * `ATTEMPT_NOT_FOUND_MESSAGE`, не 403, факт чужой попытки не подтверждаем.
+   * Лениво закрывает по дедлайну — любой запрос после него (ТЗ 4.4, п.7). */
   private async loadOwn(
     attemptId: string,
     userId: string,

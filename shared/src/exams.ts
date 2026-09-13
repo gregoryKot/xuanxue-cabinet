@@ -29,10 +29,9 @@ export interface ExamItemOptionInput {
   correct?: boolean;
 }
 
-/** Прошлая редакция опубликованного вопроса — правка содержательного поля
- * (prompt/hint/criteria/options) кладёт сюда снимок ДО правки, а `version`
- * поднимается на 1 (ADR-0022: сданные работы ссылаются на конкретную
- * редакцию, правка вопроса не должна менять смысл уже сданного). */
+/** Прошлая редакция опубликованного вопроса: правка содержательного поля
+ * кладёт сюда снимок до правки, `version` растёт на 1 (ADR-0022) — сданные
+ * работы ссылаются на редакцию, правка не меняет смысл уже сданного. */
 export interface ExamItemVersionDto {
   version: number;
   prompt: string;
@@ -121,10 +120,9 @@ export interface ExamBlockDto {
   required: boolean; // блок нельзя пропустить
 }
 
-/** `id` есть у существующего блока (сервис сохраняет его как есть при правке
- * — см. `mapBlocks`, `exam-blocks.ts`); без `id` — новый блок, сервис создаёт
- * `id` сам. Тот же приём, что у `ExamItemOptionInput` выше и у
- * `ScheduleRuleInput` (shared/src/classes.ts). */
+/** `id` есть у существующего блока (правка сохраняет его как есть,
+ * `mapBlocks`); без `id` — новый, сервис создаёт сам. Тот же приём, что у
+ * `ExamItemOptionInput` выше и `ScheduleRuleInput` (shared/src/classes.ts). */
 export interface ExamBlockInput {
   id?: string;
   title?: string;
@@ -245,6 +243,9 @@ export interface ExamAttemptDto {
   examId: string;
   examTitle: string;
   userId: string;
+  /** Только сотруднику школы (учитель, помощник, админ) — ученику своя
+   * попытка и так подписана, поле не приходит. */
+  userName?: string;
   status: ExamAttemptStatus;
   blocks: AttemptBlockDto[];
   answers: AttemptAnswerDto[];
@@ -274,9 +275,8 @@ export const ATTEMPT_NOT_FOUND_MESSAGE = 'Попытка не найдена. О
 export const EXAM_NOT_PUBLISHED_MESSAGE =
   'Этот экзамен ещё не открыт для сдачи. Обратитесь к учителю.';
 
-// Правило ТЗ 4.4, п.4/6/7: сохранить ответ или сдать можно только попытку в
-// работе — свою и до дедлайна. Дедлайн — отдельное сообщение ниже, здесь про
-// «уже сдана».
+// Правило ТЗ 4.4, п.4/6/7: сохранить ответ или сдать можно только попытку
+// в работе, до дедлайна — тот отдельным сообщением ниже, здесь «уже сдана».
 export const ATTEMPT_NOT_IN_PROGRESS_MESSAGE =
   'Эта попытка уже сдана. Открыть новую можно, если учитель разрешил ещё одну.';
 

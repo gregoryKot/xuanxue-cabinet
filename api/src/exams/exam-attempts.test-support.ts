@@ -4,6 +4,8 @@
 // CLAUDE.md «Файлы»/«Храповики», jscpd).
 import type { Connection, Model } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { UserNamesService } from '../users/user-names.service';
+import { UserRecord, UserSchema } from '../users/user.schema';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
@@ -24,8 +26,10 @@ export interface AttemptsTestContext {
   examModel: Model<ExamRecord>;
   itemModel: Model<ExamItemRecord>;
   gradingModel: Model<ExamGradingRecord>;
+  userModel: Model<UserRecord>;
   examsService: ExamsService;
   examItemsService: ExamItemsService;
+  userNamesService: UserNamesService;
   service: ExamAttemptsService;
   gradingsService: ExamGradingsService;
 }
@@ -43,13 +47,21 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     ExamGradingRecord.name,
     ExamGradingSchema,
   );
+  const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
   const examsService = new ExamsService(examModel, itemModel);
   const examItemsService = new ExamItemsService(itemModel);
-  const service = new ExamAttemptsService(attemptModel, examsService, examItemsService);
+  const userNamesService = new UserNamesService(userModel);
+  const service = new ExamAttemptsService(
+    attemptModel,
+    examsService,
+    examItemsService,
+    userNamesService,
+  );
   const gradingsService = new ExamGradingsService(
     attemptModel,
     gradingModel,
     examsService,
+    userNamesService,
   );
   return {
     memory,
@@ -57,8 +69,10 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     examModel,
     itemModel,
     gradingModel,
+    userModel,
     examsService,
     examItemsService,
+    userNamesService,
     service,
     gradingsService,
   };
@@ -69,4 +83,5 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.examModel.deleteMany({});
   await ctx.itemModel.deleteMany({});
   await ctx.gradingModel.deleteMany({});
+  await ctx.userModel.deleteMany({});
 }

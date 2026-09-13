@@ -13,6 +13,7 @@ import { Model } from 'mongoose';
 import {
   ATTEMPT_NOT_FOUND_MESSAGE,
   ATTEMPT_NOT_SUBMITTED_MESSAGE,
+  DELETED_USER_NAME,
   type AttemptReviewDto,
   type ExamGradingDto,
   type PutGradingInput,
@@ -21,6 +22,7 @@ import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
+import { UserNamesService } from '../users/user-names.service';
 import { buildReviewBlocks } from './exam-attempt-review';
 import { buildGradingCriteria } from './exam-grading-criteria';
 import {
@@ -45,6 +47,7 @@ export class ExamGradingsService {
     @InjectModel(ExamGradingRecord.name)
     private readonly gradingModel: Model<ExamGradingRecord>,
     private readonly examsService: ExamsService,
+    private readonly userNamesService: UserNamesService,
   ) {}
 
   /** ТЗ 4.6, п.3: ответы рядом с критериями вопроса и правильностью
@@ -54,11 +57,15 @@ export class ExamGradingsService {
     const attempt = await this.loadAttempt(attemptId);
     const exam = await this.examsService.getById(attempt.examId.toString());
     const grading = await this.findGradingDto(attemptId);
+    const userId = attempt.userId.toString();
+    // Не пустая строка, если аккаунт уже удалён (аудит В11): DELETED_USER_NAME.
+    const names = await this.userNamesService.namesByIds([userId]);
     return {
       attemptId: attempt._id.toString(),
       examId: attempt.examId.toString(),
       examTitle: attempt.examTitle,
-      userId: attempt.userId.toString(),
+      userId,
+      userName: names.get(userId) ?? DELETED_USER_NAME,
       status: attempt.status,
       blocks: buildReviewBlocks(attempt.blocks, attempt.answers),
       rubric: exam.rubric,

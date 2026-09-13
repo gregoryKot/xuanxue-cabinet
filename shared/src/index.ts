@@ -136,19 +136,18 @@ export type {
 } from './exam-rubric';
 export { DEFAULT_RUBRIC, GRADING_OUTCOMES } from './exam-rubric';
 export type { MyExamAttemptSummaryDto, MyExamDto, ListMyExamsQuery } from './my-exams';
-export type {
-  AttemptOptionCheckDto,
-  AttemptReviewOptionDto,
-  AttemptReviewQuestionDto,
-  AttemptReviewBlockDto,
-  AttemptReviewDto,
-  GradingCriterionInput,
-  PutGradingInput,
-  ExamGradingDto,
-} from './exam-grading';
 export {
+  type AttemptOptionCheckDto,
+  type AttemptReviewOptionDto,
+  type AttemptReviewQuestionDto,
+  type AttemptReviewBlockDto,
+  type AttemptReviewDto,
+  type GradingCriterionInput,
+  type PutGradingInput,
+  type ExamGradingDto,
   GRADING_LIMITS,
   ATTEMPT_NOT_SUBMITTED_MESSAGE,
+  DELETED_USER_NAME,
   unknownCriterionMessage,
   invalidScoreMessage,
 } from './exam-grading';
