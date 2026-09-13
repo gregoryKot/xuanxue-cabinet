@@ -1,10 +1,10 @@
-// Тонкая сборка экрана ученика (ТЗ student-screen.md): расписание рисует
-// StudentLessonsScreen (своя проверка — student/StudentLessonsScreen.test.tsx),
-// здесь — только ссылка на сайт школы поверх него. Два запроса сразу
-// (/auth/config, /me/lessons) — mockApiByPath, а не очередь
-// mockResolvedValueOnce (test-support/apiFetchMock.ts: порядок запросов
-// зависит от порядка хуков).
+// Тонкая сборка экрана ученика (ТЗ student-screen.md, student-exams.md):
+// расписание и экзамены рисуют свои разделы (проверки — в student/), здесь —
+// только ссылка на сайт школы поверх них. Три запроса сразу (/auth/config,
+// /me/lessons, /me/exams) — mockApiByPath, а не очередь mockResolvedValueOnce
+// (test-support/apiFetchMock.ts: порядок запросов зависит от порядка хуков).
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
@@ -18,8 +18,14 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 
 function renderStudent(config: Record<string, unknown>) {
-  mockApiByPath({ '/auth/config': config, '/me/lessons': [] });
-  return render(<StudentScreen />);
+  mockApiByPath({ '/auth/config': config, '/me/lessons': [], '/me/exams': [] });
+  // MemoryRouter — StudentExamsSection зовёт useNavigate (переход на экран
+  // сдачи после старта попытки), которому нужен контекст роутера.
+  return render(
+    <MemoryRouter>
+      <StudentScreen />
+    </MemoryRouter>,
+  );
 }
 
 describe('StudentScreen', () => {

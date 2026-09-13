@@ -9,10 +9,11 @@
 // её механику по-прежнему проверяют AppShell.test.tsx и LogoutButton.test.tsx).
 // Роль без teacher/assistant/admin (ученик, бухгалтер) — StudentScreen вместо
 // содержимого маршрута: у бухгалтера прав пока нет нигде (деньги — этап 3,
-// docs/PLAN.md). Исключение — «/notifications»: личная настройка человека
-// доступна любой роли, поэтому для неё Outlet рисуется всегда, даже
-// ученику (ТЗ notifications-web.md, docs/adr/0025-navigation-by-domain.md —
-// в нижнюю навигацию при этом экран не входит, ссылка только в подвале).
+// docs/PLAN.md). Исключения — «/notifications» (личная настройка человека,
+// ТЗ notifications-web.md) и «/attempts/:id» (экран сдачи, ТЗ
+// student-exams.md): оба доступны любой роли, поэтому под них Outlet
+// рисуется всегда, даже ученику (в нижнюю навигацию не входят — вход в
+// экзамен только кнопкой на StudentExamsSection.tsx, docs/adr/0025).
 import type { CSSProperties } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -23,6 +24,7 @@ import { StudentScreen } from './StudentScreen';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 const NOTIFICATIONS_PATH = '/notifications';
+const ATTEMPT_PATH_PREFIX = '/attempts/';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -46,7 +48,10 @@ export function AppShell() {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   const isTeacher = me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false;
-  const showOutlet = isTeacher || pathname === NOTIFICATIONS_PATH;
+  const showOutlet =
+    isTeacher ||
+    pathname === NOTIFICATIONS_PATH ||
+    pathname.startsWith(ATTEMPT_PATH_PREFIX);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
