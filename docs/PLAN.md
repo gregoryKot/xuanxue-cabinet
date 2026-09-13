@@ -579,8 +579,13 @@ Telegraf-инстанс, регистрация вебхука при старт
   нажал `/start`). Кнопка «Отменить» (`cancel:{broadcastId}`) зовёт
   `BroadcastsService.cancel`; «Изменить тему» (`topic:{lessonId}`) заводит ожидание в
   `bot_sessions` (TTL 10 минут) — следующее текстовое сообщение чата сохраняет тему
-  (`LessonsService.update`) и пересобирает текст ещё не отправленной рассылки
-  (`TopicRebuildService`, `api/src/broadcasts/topic-rebuild.service.ts`).
+  (`LessonsService.update`) и пересобирает текст рассылки, если ни одна её
+  доставка ещё не покинула `pending` (`TopicRebuildService`,
+  `api/src/broadcasts/topic-rebuild.service.ts`, проверка перед рендером и
+  повторно перед записью). Гарантии «раннер точно не успел отправить старый
+  текст» это не даёт — окно в одну операцию с БД между второй проверкой и
+  записью остаётся (аудит 2026-09-12, M7); полное закрытие требует версии
+  доставок.
 - сбой шага тика (Mongo недоступна и т. п.) — тем же путём: `TelegramTeacherNotifier`
   (`api/src/telegram/telegram-teacher-notifier.ts`, провайдер `TEACHER_NOTIFIER` вместо
   прежней лог-заглушки) шлёт DM учителю, не чаще раза в 10 минут на один и тот же шаг;
