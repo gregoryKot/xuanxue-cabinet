@@ -65,10 +65,10 @@ npm run check             # tsc, eslint, prettier, тесты (jest api дваж
                            # нет локально) и Docker-смока: они только в CI
 ```
 
-`prettier --check` в `check` стоит после тестов, а не перед: `vitest` в
-`web/vite.config.ts` сам переписывает `thresholds` при `autoUpdate` (см. CLAUDE.md,
-храповик `check-coverage-ratchet.mjs`) — если проверять формат раньше, локальный
-прогон зелёный, а CI падает на уже изменённом файле (PR #35, #45).
+Пороги покрытия web и shared живут не в конфиге, а в `scripts/vitest-coverage-baseline.json`:
+`scripts/check-vitest-coverage-ratchet.mjs <web|shared>` сам гоняет vitest и сравнивает
+покрытие с бейслайном, ничего не переписывая в дереве — рост покрытия фиксируется
+явным `--update` (аудит 2026-09-12, H2 и M5).
 
 Заголовок PR — по Conventional Commits (`feat:`, `fix:`, `chore:` …): после squash он
 становится сообщением коммита в `main`. Merge в `main` = деплой на Railway.
