@@ -122,7 +122,7 @@ export default defineConfig({
       // покрытия, снижение роняет CI (CLAUDE.md, раздел «Храповики»).
       thresholds: {
         lines: 99.95,
-        branches: 98.62,
+        branches: 98.63,
         functions: 99.88,
         statements: 99.75,
         autoUpdate: true,

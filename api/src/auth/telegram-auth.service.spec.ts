@@ -6,6 +6,7 @@ import { createHash, createHmac, randomBytes } from 'crypto';
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { TelegramLoginInput, UserRole, UserStatus } from '@xuanxue/shared';
+import type { GroupMembershipService } from '../channels/group-membership.service';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import type { UserLean, UsersService } from '../users/users.service';
 import type { AuthService } from './auth.service';
@@ -45,6 +46,14 @@ function fakeAuthService(): AuthService {
   return {
     issueSession: () => ({ token: 't', cookie: 'session=tok' }),
   } as unknown as AuthService;
+}
+
+// По умолчанию — не участник ни одной группы: большинство тестов проверяют
+// ветку invited и не должны зависеть от членства.
+function fakeGroupMembership(isMember = false): GroupMembershipService {
+  return {
+    isMemberOfSchoolGroup: () => Promise.resolve(isMember),
+  } as unknown as GroupMembershipService;
 }
 
 interface NewUserInput {
@@ -90,6 +99,7 @@ describe('TelegramAuthService.login', () => {
       fakeConfig({}),
       fakeUsers({ onTouch: () => (touched = true) }),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
 
     const input = validInput();
@@ -104,6 +114,7 @@ describe('TelegramAuthService.login', () => {
       fakeConfig({ BOT_TOKEN }),
       fakeUsers({}),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
     const tampered = { ...validInput(), hash: 'a'.repeat(64) };
 
@@ -118,6 +129,7 @@ describe('TelegramAuthService.login', () => {
       fakeConfig({ BOT_TOKEN, BOOTSTRAP_ADMIN_TELEGRAM_ID: BOOTSTRAP_ID }),
       fakeUsers({ existing: null, onCreate: (input) => (createdRoles = input.roles) }),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
 
     const input = validInput({ id: BOOTSTRAP_ID });
@@ -133,6 +145,7 @@ describe('TelegramAuthService.login', () => {
       fakeConfig({ BOT_TOKEN, BOOTSTRAP_ADMIN_TELEGRAM_ID: BOOTSTRAP_ID }),
       fakeUsers({ existing: null, onCreate: (input) => (createdRoles = input.roles) }),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
 
     const input = validInput({ id: 1 });
@@ -152,6 +165,7 @@ describe('TelegramAuthService.login', () => {
         onTouch: (id) => (touchedId = id),
       }),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
 
     const input = validInput();
@@ -181,6 +195,7 @@ describe('TelegramAuthService.login', () => {
         onCreate: () => (created = true),
       }),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
 
     const input = validInput({ id: BOOTSTRAP_ID });
@@ -197,6 +212,7 @@ describe('TelegramAuthService.login', () => {
       fakeConfig({ BOT_TOKEN, BOOTSTRAP_ADMIN_TELEGRAM_ID: BOOTSTRAP_ID }),
       fakeUsers({ existing: null, onCreate: (input) => (createdStatus = input.status) }),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
 
     const input = validInput({ id: BOOTSTRAP_ID });
@@ -205,12 +221,13 @@ describe('TelegramAuthService.login', () => {
     expect(createdStatus).toBe('active');
   });
 
-  it('любой другой первый вход — статус invited, ждёт подтверждения школы', async () => {
+  it('новый вход, не состоит в группе учеников — статус invited, ждёт подтверждения школы', async () => {
     let created: NewUserInput | undefined;
     const service = new TelegramAuthService(
       fakeConfig({ BOT_TOKEN, BOOTSTRAP_ADMIN_TELEGRAM_ID: BOOTSTRAP_ID }),
       fakeUsers({ existing: null, onCreate: (input) => (created = input) }),
       fakeAuthService(),
+      fakeGroupMembership(false),
     );
 
     const input = validInput({ id: 777 });
@@ -220,12 +237,53 @@ describe('TelegramAuthService.login', () => {
     expect(created?.roles).toEqual([]);
   });
 
+  // ADR-0026, владелец 2026-09-12: «если человек участник группы, то можно» —
+  // подтверждение не должно ложиться на ученика (CLAUDE.md «Ноль нагрузки на
+  // ученика»).
+  it('новый вход, уже состоит в группе учеников — статус active сразу, без ручного подтверждения', async () => {
+    let created: NewUserInput | undefined;
+    const service = new TelegramAuthService(
+      fakeConfig({ BOT_TOKEN, BOOTSTRAP_ADMIN_TELEGRAM_ID: BOOTSTRAP_ID }),
+      fakeUsers({ existing: null, onCreate: (input) => (created = input) }),
+      fakeAuthService(),
+      fakeGroupMembership(true),
+    );
+
+    const input = validInput({ id: 777 });
+    await service.login(input, { ...input }, DateTime.utc());
+
+    expect(created?.status).toBe('active');
+    expect(created?.roles).toEqual([]);
+  });
+
+  it('существующий пользователь — членство в группе не проверяется (статус не трогаем)', async () => {
+    let checked = false;
+    const groupMembership: GroupMembershipService = {
+      isMemberOfSchoolGroup: () => {
+        checked = true;
+        return Promise.resolve(true);
+      },
+    } as unknown as GroupMembershipService;
+    const service = new TelegramAuthService(
+      fakeConfig({ BOT_TOKEN }),
+      fakeUsers({ existing: BASE_USER }),
+      fakeAuthService(),
+      groupMembership,
+    );
+
+    const input = validInput();
+    await service.login(input, { ...input }, DateTime.utc());
+
+    expect(checked).toBe(false);
+  });
+
   it('заблокированный пользователь — ForbiddenError', async () => {
     const blocked: UserLean = { ...BASE_USER, status: 'blocked' };
     const service = new TelegramAuthService(
       fakeConfig({ BOT_TOKEN }),
       fakeUsers({ existing: blocked }),
       fakeAuthService(),
+      fakeGroupMembership(),
     );
 
     const input = validInput();

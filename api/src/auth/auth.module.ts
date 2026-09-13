@@ -8,6 +8,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
+import { ChannelsModule } from '../channels/channels.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
@@ -20,8 +21,12 @@ import { TelegramAuthService } from './telegram-auth.service';
   // SettingsModule — GET /auth/config берёт schoolSiteUrl из
   // SettingsService.get() (В6 аудита); SettingsModule сам не импортирует
   // AuthModule (импортирует ClassesModule/LessonModelModule/UsersModule) —
-  // цикла нет (ADR-0013, тот же приём, что у TelegramModule).
-  imports: [UsersModule, SettingsModule],
+  // цикла нет (ADR-0013, тот же приём, что у TelegramModule). ChannelsModule —
+  // GroupMembershipService для автоподтверждения по группе (ADR-0026);
+  // ChannelsModule импортирует ClassesModule и сам AuthModule не импортирует
+  // (проверено — ни ChannelsModule, ни его импорты на AuthModule не ссылаются) —
+  // цикла нет.
+  imports: [UsersModule, SettingsModule, ChannelsModule],
   controllers: [AuthController],
   providers: [
     AuthService,
