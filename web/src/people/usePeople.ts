@@ -15,6 +15,7 @@ export interface UsePeopleResult {
   reload: () => Promise<void>;
   updateRoles: (id: string, input: UpdateUserRolesInput) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  approve: (id: string) => Promise<void>;
 }
 
 export function usePeople(): UsePeopleResult {
@@ -42,5 +43,16 @@ export function usePeople(): UsePeopleResult {
     [reload],
   );
 
-  return { people: data, loading, error, reload, updateRoles, remove };
+  // POST /users/:id/approve (ADR-0026) — подтверждает ждущего human; тот же
+  // read-after-write, что у updateRoles: список перечитывается, чтобы
+  // «Ждёт подтверждения» пропало на строке сразу после ответа сервера.
+  const approve = useCallback(
+    async (id: string) => {
+      await apiFetch(`/users/${id}/approve`, { method: 'POST' });
+      await reload();
+    },
+    [reload],
+  );
+
+  return { people: data, loading, error, reload, updateRoles, remove, approve };
 }

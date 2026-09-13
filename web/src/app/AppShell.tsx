@@ -14,17 +14,24 @@
 // student-exams.md): оба доступны любой роли, поэтому под них Outlet
 // рисуется всегда, даже ученику (в нижнюю навигацию не входят — вход в
 // экзамен только кнопкой на StudentExamsSection.tsx, docs/adr/0025).
+//
+// status: 'invited' (ADR-0026) перекрывает всё это — первый вход ждёт
+// подтверждения школы, разделов у него ещё нет ни одного, поэтому
+// PendingApprovalScreen встаёт впереди проверки роли и пути, а навигация не
+// рисуется вовсе (isTeacher ниже для invited всегда false).
 import type { CSSProperties } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
+import { PendingApprovalScreen } from './PendingApprovalScreen';
 import { StudentScreen } from './StudentScreen';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 const NOTIFICATIONS_PATH = '/notifications';
 const ATTEMPT_PATH_PREFIX = '/attempts/';
+const PENDING_STATUS = 'invited';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -47,7 +54,12 @@ export function AppShell() {
   const { me } = useAuth();
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const isTeacher = me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false;
+  const isPending = me?.status === PENDING_STATUS;
+  // invited не бывает teacher/admin (школа подтверждает раньше, чем даёт
+  // роль) — но проверка явная, а не понадеявшись на это: рисовать навигацию
+  // человеку, который ещё ничего не видит, нельзя.
+  const isTeacher =
+    !isPending && (me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false);
   const showOutlet =
     isTeacher ||
     pathname === NOTIFICATIONS_PATH ||
@@ -63,12 +75,25 @@ export function AppShell() {
         {isTeacher && !isMobile && <AppNav isMobile={false} me={me} />}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            {showOutlet ? <Outlet /> : <StudentScreen />}
+            {isPending ? (
+              <PendingApprovalScreen />
+            ) : showOutlet ? (
+              <Outlet />
+            ) : (
+              <StudentScreen />
+            )}
           </div>
           <footer style={footerStyle}>
             <span>Вы вошли как {me?.name ?? '—'} ·</span>
-            <Link to={NOTIFICATIONS_PATH}>Уведомления</Link>
-            <span>·</span>
+            {/* Ждущему подтверждения ссылка на уведомления никуда не ведёт:
+                AppShell рисует ему экран ожидания на любом пути, а API
+                закрыт до подтверждения (ADR-0026). */}
+            {!isPending && (
+              <>
+                <Link to={NOTIFICATIONS_PATH}>Уведомления</Link>
+                <span>·</span>
+              </>
+            )}
             <LogoutButton />
           </footer>
         </div>

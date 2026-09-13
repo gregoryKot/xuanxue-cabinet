@@ -152,4 +152,67 @@ describe('PeopleScreen — список', () => {
       'Пользователь не найден. Обновите список.',
     );
   });
+
+  it('ждущий подтверждения — вверху списка, независимо от порядка ответа API', async () => {
+    mockedApiFetch.mockResolvedValue([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
+      makePerson({ id: 'u2', name: 'Ждан', roles: [], status: 'invited' }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Гриша');
+
+    const names = screen.getAllByText(/^(Маша|Гриша|Ждан)$/).map((el) => el.textContent);
+    expect(names).toEqual(['Ждан', 'Маша', 'Гриша']);
+  });
+
+  it('«Подтвердить» на invited-строке — POST /users/:id/approve и список перечитан', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValueOnce([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Гриша');
+
+    mockedApiFetch.mockResolvedValueOnce({});
+    mockedApiFetch.mockResolvedValueOnce([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'active' }),
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/users/u1/approve',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument(),
+    );
+  });
+
+  it('сбой подтверждения — текст ошибки виден на строке (usePeople.approve)', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('../api/http');
+    mockedApiFetch.mockResolvedValueOnce([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Гриша');
+
+    mockedApiFetch.mockRejectedValueOnce(
+      new ApiError('Этому человеку доступ закрыт.', 409, 'conflict'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Этому человеку доступ закрыт.',
+    );
+  });
 });

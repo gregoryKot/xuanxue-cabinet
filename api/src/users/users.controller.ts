@@ -1,6 +1,7 @@
-// GET /users, PATCH /users/:id, DELETE /users/:id — экран «Люди» (docs/PLAN.md
-// §6, блокер аудита Б3): список вошедших через Telegram, назначение ролей и
-// удаление всех данных (аудит В11). Только admin — назначение ролей и
+// GET /users, POST /users/:id/approve, PATCH /users/:id, DELETE /users/:id —
+// экран «Ученики» (docs/PLAN.md §6, блокер аудита Б3): список вошедших через
+// Telegram, подтверждение человека (ADR-0026), назначение ролей и удаление
+// всех данных (аудит В11). Только admin — назначение ролей и
 // удаление не отдаются учителю (SECURITY §3, ADR-0010). GET /users/teachers —
 // исключение: список для select'а «Ведущий» (docs/PLAN.md §6 п.2, аудит В4)
 // виден и teacher, и admin, поэтому у маршрута свой `@Roles`, переопределяющий
@@ -15,6 +16,7 @@ import {
   HttpCode,
   Param,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import type { TeacherOptionDto, UserDto } from '@xuanxue/shared';
@@ -46,6 +48,16 @@ export class UsersController {
   async list(@Query() query: ListUsersDto): Promise<UserDto[]> {
     const users = await this.userRolesService.list(query);
     return users.map(toUserDto);
+  }
+
+  // Подтверждение школой (ADR-0026) — отдельный маршрут, не PATCH с телом:
+  // одно действие, одно нажатие, повтор безопасен. Объявлен до `:id`
+  // — Nest матчит по порядку регистрации (check-route-collisions.mjs).
+  @Post(':id/approve')
+  @HttpCode(200)
+  async approve(@Param('id') id: string): Promise<UserDto> {
+    const user = await this.userRolesService.approve(id);
+    return toUserDto(user);
   }
 
   @Patch(':id')

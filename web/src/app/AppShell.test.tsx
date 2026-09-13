@@ -76,6 +76,13 @@ const ASSISTANT: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
 };
+const INVITED: MeDto = {
+  id: 'u4',
+  name: 'Новенький',
+  roles: [],
+  tz: 'Asia/Jerusalem',
+  status: 'invited',
+};
 
 describe('AppShell — навигация по ширине экрана', () => {
   // Ветка «телефон»: по умолчанию matchMedia в setupTests отвечает «широкий
@@ -161,6 +168,55 @@ describe('AppShell — учитель', () => {
       'href',
       '/notifications',
     );
+  });
+});
+
+describe('AppShell — status: invited (ADR-0026)', () => {
+  it('вместо маршрута — экран ожидания, содержимое маршрута не рисуется', async () => {
+    renderShell(INVITED);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Ждём подтверждения' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
+  });
+
+  // Тот же статус со status: 'active' (STUDENT) не должен показывать экран
+  // ожидания — граница между ними держится на одном поле MeDto.status.
+  it('status: active — экрана ожидания нет', async () => {
+    renderShell(STUDENT);
+
+    await screen.findByText('Ближайших занятий пока нет.');
+    expect(
+      screen.queryByRole('heading', { name: 'Ждём подтверждения' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('без нижней/боковой навигации', async () => {
+    renderShell(INVITED);
+    await screen.findByRole('heading', { name: 'Ждём подтверждения' });
+
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
+  });
+
+  // Подвал общий (StudentScreen тоже его использует) — «Выйти» остаётся
+  // доступной и на экране ожидания: человек мог войти чужим аккаунтом.
+  it('подвал — «Выйти» доступна', async () => {
+    renderShell(INVITED);
+    await screen.findByRole('heading', { name: 'Ждём подтверждения' });
+
+    expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+  });
+
+  // Ссылка на маршрут, который invited всё равно не откроет (API закрыт до
+  // подтверждения), только сбивала бы с толку — в отличие от подвала
+  // ученика (STUDENT ниже), где та же ссылка рабочая.
+  it('подвал — ссылки «Уведомления» нет', async () => {
+    renderShell(INVITED);
+    await screen.findByRole('heading', { name: 'Ждём подтверждения' });
+
+    expect(screen.queryByRole('link', { name: 'Уведомления' })).not.toBeInTheDocument();
   });
 });
 

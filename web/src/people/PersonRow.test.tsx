@@ -27,6 +27,9 @@ function renderRow(
     .fn()
     .mockResolvedValue(undefined),
   onRemove: () => Promise<void> = vi.fn().mockResolvedValue(undefined),
+  // Пятый параметр, не третий-четвёртый: существующие вызовы с позиционными
+  // undefined (см. «сбой удаления» ниже) не должны сдвигаться.
+  onApprove: () => Promise<void> = vi.fn().mockResolvedValue(undefined),
 ) {
   render(
     <MemoryRouter initialEntries={['/hub', '/people']} initialIndex={1}>
@@ -35,12 +38,13 @@ function renderRow(
           person={makePerson(overrides)}
           isSelf={isSelf}
           onChangeRoles={onChangeRoles}
+          onApprove={onApprove}
           onRemove={onRemove}
         />
       </ul>
     </MemoryRouter>,
   );
-  return { onChangeRoles, onRemove };
+  return { onChangeRoles, onRemove, onApprove };
 }
 
 describe('PersonRow', () => {
@@ -220,5 +224,63 @@ describe('PersonRow', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Свой аккаунт удалить нельзя.',
     );
+  });
+
+  it('status: invited — рядом с датой видна подпись «Ждёт подтверждения»', () => {
+    renderRow({ status: 'invited' });
+    expect(screen.getByText(/Ждёт подтверждения/)).toBeInTheDocument();
+  });
+
+  it('status: active — подписи «Ждёт подтверждения» нет', () => {
+    renderRow({ status: 'active' });
+    expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
+  });
+
+  it('«Подтвердить» есть у чужой invited-строки', () => {
+    renderRow({ status: 'invited' });
+    expect(screen.getByRole('button', { name: 'Подтвердить' })).toBeInTheDocument();
+  });
+
+  it('«Подтвердить» нет у активной строки', () => {
+    renderRow({ status: 'active' });
+    expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
+  });
+
+  it('«Подтвердить» нет у своей строки, даже если она invited', () => {
+    renderRow({ status: 'invited', roles: ['admin'] }, true);
+    expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
+  });
+
+  it('клик по «Подтвердить» зовёт onApprove', async () => {
+    const user = userEvent.setup();
+    const { onApprove } = renderRow({ status: 'invited' });
+
+    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
+
+    expect(onApprove).toHaveBeenCalled();
+  });
+
+  it('сбой подтверждения — alert с текстом ошибки', async () => {
+    const user = userEvent.setup();
+    const onApprove = vi
+      .fn()
+      .mockRejectedValue(new ApiError('Этому человеку доступ закрыт.', 409, 'conflict'));
+    renderRow({ status: 'invited' }, false, undefined, undefined, onApprove);
+
+    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Этому человеку доступ закрыт.',
+    );
+  });
+
+  it('сбой подтверждения не из API — общий текст, а не пустой alert', async () => {
+    const user = userEvent.setup();
+    const onApprove = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
+    renderRow({ status: 'invited' }, false, undefined, undefined, onApprove);
+
+    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
+
+    expect(await screen.findByRole('alert')).not.toHaveTextContent('Failed to fetch');
   });
 });

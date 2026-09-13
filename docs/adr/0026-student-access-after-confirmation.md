@@ -25,8 +25,8 @@
 доходит только до `GET /auth/me` (декоратор `@AllowPending()`) — расписания, экзаменов
 и уведомлений не видит. Кабинет показывает ему экран ожидания. Подтверждает школа:
 кнопкой на «Учениках» или автоматически, если человек состоит в группе учеников в
-Telegram (отдельный PR). Первый администратор (`BOOTSTRAP_ADMIN_TELEGRAM_ID`) приходит
-сразу `active` — подтверждать его некому.
+Telegram. Первый администратор (`BOOTSTRAP_ADMIN_TELEGRAM_ID`) приходит сразу `active`
+— подтверждать его некому.
 
 ## Альтернативы
 
@@ -50,4 +50,6 @@ Telegram (отдельный PR). Первый администратор (`BOOT
 
 Гейты: `api/test/pending-approval.e2e-spec.ts` (`invited` не видит `zoomLink`,
 `active` без ролей начинает попытку), `auth.guard.spec.ts` (ветка статуса),
-`telegram-auth.service.spec.ts` (новый — `invited`, первый админ — `active`).
+`telegram-auth.service.spec.ts` (новый — `invited`, первый админ — `active`, участник
+группы — `active`), `group-membership.service.spec.ts` (личный чат и широковещательный
+канал не подтверждают, ошибка Bot API не роняет вход).

@@ -241,4 +241,18 @@ describe('ChannelConfigService', () => {
     await expect(service.deactivateTelegramChat('@unknown')).resolves.toBeUndefined();
     expect(await model.countDocuments({ type: 'telegram' })).toBe(0);
   });
+
+  it('listActiveTelegramChatIds: только активные telegram-каналы, выключенный не попадает', async () => {
+    await service.upsertTelegramChat({ chatId: '@active', title: 'Активный' });
+    await service.upsertTelegramChat({ chatId: '@off', title: 'Выключенный' });
+    await service.deactivateTelegramChat('@off');
+
+    const chatIds = await service.listActiveTelegramChatIds();
+
+    expect(chatIds).toEqual(['@active']);
+  });
+
+  it('listActiveTelegramChatIds: каналов нет — пустой список, не падает', async () => {
+    await expect(service.listActiveTelegramChatIds()).resolves.toEqual([]);
+  });
 });
