@@ -1,4 +1,4 @@
-// Query GET /me/exams (ТЗ student-api.md). Лимит по умолчанию
+// Query GET /me/exams (ТЗ docs/PLAN.md §11). Лимит по умолчанию
 // LIST_LIMIT_DEFAULT, максимум LIST_LIMIT_MAX — «дай всё» запрещён
 // (CLAUDE.md, раздел «API»); ТЗ не называет своей пары, как у /me/lessons,
 // поэтому общая — как у /exams.

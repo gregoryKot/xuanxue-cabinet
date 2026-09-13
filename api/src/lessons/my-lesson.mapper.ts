@@ -1,5 +1,5 @@
 // Маппер LessonRecord + ClassRecord (lean, уже расшифрованные) → MyLessonDto
-// (`/me/lessons`, ТЗ student-api.md). Чистая функция без Mongo и DI — эффективная
+// (`/me/lessons`, ТЗ docs/PLAN.md §11). Чистая функция без Mongo и DI — эффективная
 // ссылка/пароль Zoom считаются тем же правилом, что и в посте занятия
 // (broadcasts/post-renderer.ts: override занятия важнее ссылки класса, пароль
 // разовой ссылки не наследуется от пароля класса) — здесь отдельная копия

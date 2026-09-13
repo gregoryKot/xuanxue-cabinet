@@ -62,7 +62,8 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 npm run check             # tsc, eslint, prettier, тесты (jest api дважды — TZ=Australia/Sydney
                            # и с покрытием; vitest web — с покрытием и под TZ=Australia/Sydney),
                            # npm audit, все храповики — то же, что CI, кроме gitleaks (бинаря
-                           # нет локально) и Docker-смока: они только в CI
+                           # нет локально), Docker-смока и проверки бэкапа-восстановления
+                           # (backup-restore, нужен mongodump): они только в CI
 ```
 
 Пороги покрытия web и shared живут не в конфиге, а в `scripts/vitest-coverage-baseline.json`:

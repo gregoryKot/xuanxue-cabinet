@@ -1,5 +1,5 @@
 // GET /me/exams — опубликованные формы и положение ученика по ним (ТЗ
-// student-api.md). Без @Roles: доступно любой роли, включая гостя без
+// docs/PLAN.md §11). Без @Roles: доступно любой роли, включая гостя без
 // единой роли — тот же приём, что у NotificationPrefsController
 // (`/me/notifications`) и MyLessonsController (`/me/lessons`); `userId` —
 // только из сессии, не из query.
