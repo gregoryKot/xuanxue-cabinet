@@ -116,7 +116,7 @@ describe('CallbackQueryHandler — действия кнопок', () => {
     expect(editCalls).toEqual(['Напишите тему одним сообщением.']);
     const session = await ctx.botSessionModel.findOne({ chatId: 111 }).lean();
     expect(session?.kind).toBe('topic');
-    expect(session?.lessonId.toString()).toBe(lessonId.toString());
+    expect(session?.lessonId?.toString()).toBe(lessonId.toString());
   });
 
   it('невалидный id в data — игнорируется, не падает', async () => {

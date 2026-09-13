@@ -15,6 +15,7 @@ import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
+import { MediaAssetRecord } from '../media/media-asset.schema';
 import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -253,6 +254,24 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     // Другая попытка — свой attemptId, не дубль.
     await expect(
       ExamGrading.create({ ...base, attemptId: new mongoose.Types.ObjectId() }),
+    ).resolves.toBeDefined();
+  });
+
+  it('media_assets: второй insert с kind "link" для той же попытки падает, "telegram" — нет', async () => {
+    const MediaAsset = connection.model<MediaAssetRecord>(MediaAssetRecord.name);
+    const attemptId = new mongoose.Types.ObjectId();
+    const userId = new mongoose.Types.ObjectId();
+    const base = { attemptId, userId, receivedAt: FIXED_DATE };
+    await MediaAsset.create({ ...base, kind: 'link', url: 'https://vk.com/video1' });
+    await expect(
+      MediaAsset.create({ ...base, kind: 'link', url: 'https://vk.com/video2' }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+    // Видео из Telegram («кружок» + обычное) не ограничено количеством.
+    await expect(
+      MediaAsset.create({ ...base, kind: 'telegram', fileId: 'f1', fileUniqueId: 'u1' }),
+    ).resolves.toBeDefined();
+    await expect(
+      MediaAsset.create({ ...base, kind: 'telegram', fileId: 'f2', fileUniqueId: 'u2' }),
     ).resolves.toBeDefined();
   });
 

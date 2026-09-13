@@ -7,14 +7,18 @@ import { Model, Types } from 'mongoose';
 import { BotSessionRecord, type BotSessionKind } from './bot-session.schema';
 
 // Предпросмотр «Изменить тему» и команда /тема ждут ответ недолго — 10 минут
-// (PLAN.md §6); «Запись?» ждёт куда дольше — учитель может смонтировать и
-// залить видео не сразу, 12 часов.
+// (PLAN.md §6); «Запись?» и видео экзамена ждут куда дольше — снять и найти
+// время на отправку можно не сразу, 12 часов.
 const TOPIC_WAIT_MINUTES = 10;
 const RECORDING_WAIT_HOURS = 12;
+const EXAM_MEDIA_WAIT_HOURS = 12;
 
 export interface BotSessionLean {
   kind: BotSessionKind;
-  lessonId: Types.ObjectId;
+  /** Есть только у kind 'topic'/'recording'. */
+  lessonId?: Types.ObjectId;
+  /** Есть только у kind 'examMedia'. */
+  attemptId?: Types.ObjectId;
 }
 
 @Injectable()
@@ -42,12 +46,36 @@ export class BotSessionService {
     );
   }
 
+  /** Ждём видео экзамена после deep link `t.me/<бот>?start=exam_<attemptId>`
+   * (ADR-0023, PLAN §11 слой 4.5) — открыт ЛЮБОМУ пользователю Telegram, не
+   * через `set()`: то ведёт только `lessonId`, это — только `attemptId`. */
+  async startExamMediaWait(
+    chatId: number,
+    attemptId: string,
+    now: DateTime,
+  ): Promise<void> {
+    await this.model.updateOne(
+      { chatId },
+      {
+        $set: {
+          kind: 'examMedia',
+          attemptId: new Types.ObjectId(attemptId),
+          expiresAt: now.plus({ hours: EXAM_MEDIA_WAIT_HOURS }).toJSDate(),
+        },
+      },
+      { upsert: true },
+    );
+  }
+
   /** Активное (не истёкшее) ожидание чата — TTL-индекс подчищает документ с
    * задержкой до минуты (SERVER-точность монитора Mongo), поэтому фильтр по
    * `expiresAt` здесь же, не только надежда на TTL. */
   async get(chatId: number, now: DateTime): Promise<BotSessionLean | null> {
     return this.model
-      .findOne({ chatId, expiresAt: { $gt: now.toJSDate() } }, { kind: 1, lessonId: 1 })
+      .findOne(
+        { chatId, expiresAt: { $gt: now.toJSDate() } },
+        { kind: 1, lessonId: 1, attemptId: 1 },
+      )
       .lean<BotSessionLean | null>();
   }
 
@@ -80,7 +108,7 @@ export class BotSessionService {
 
   private async set(
     chatId: number,
-    kind: BotSessionKind,
+    kind: 'topic' | 'recording',
     lessonId: string,
     expiresAt: DateTime,
   ): Promise<void> {

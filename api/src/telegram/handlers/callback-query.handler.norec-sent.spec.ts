@@ -69,7 +69,7 @@ describe('CallbackQueryHandler — norec/sent', () => {
 
     expect(editCalls).toEqual(['Хорошо, записи не будет.']);
     const session = await ctx.botSessionModel.findOne({ chatId: 111 }).lean();
-    expect(session?.lessonId.toString()).toBe(lessonB.toString());
+    expect(session?.lessonId?.toString()).toBe(lessonB.toString());
   });
 
   it('norec: без активного ожидания — тоже отвечает (idempotent)', async () => {

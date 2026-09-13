@@ -4,6 +4,7 @@
 // как `implements` этих типов, расхождение ловит tsc. Веб-экран — следующий
 // слой, здесь только контракт бэкенда.
 
+import type { ExamMediaDto } from './exam-media';
 import type { RubricCriterionDto, RubricCriterionInput } from './exam-rubric';
 
 export const EXAM_ITEM_KINDS = ['text', 'single', 'multiple', 'video'] as const;
@@ -258,6 +259,8 @@ export interface ExamAttemptDto {
   submittedAt?: string;
   /** Сдано не человеком, а временем. */
   expired: boolean;
+  /** Видео экзамена (ADR-0023) — опционально ради текущих web-фикстур. */
+  media?: ExamMediaDto[];
 }
 
 export interface SaveAttemptAnswersInput {

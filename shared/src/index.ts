@@ -135,6 +135,16 @@ export type {
   GradingCriterionDto,
 } from './exam-rubric';
 export { DEFAULT_RUBRIC, GRADING_OUTCOMES } from './exam-rubric';
+export {
+  type ExamMediaKind,
+  type ExamMediaDto,
+  type AddExamMediaLinkInput,
+  type AddExamMediaManualInput,
+  EXAM_MEDIA_KINDS,
+  EXAM_MEDIA_LIMITS,
+  EXAM_MEDIA_INVALID_URL_MESSAGE,
+  EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
+} from './exam-media';
 export type { MyExamAttemptSummaryDto, MyExamDto, ListMyExamsQuery } from './my-exams';
 export type {
   AttemptOptionCheckDto,
