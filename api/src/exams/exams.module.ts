@@ -10,6 +10,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
+import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
+import { ExamGradingsService } from './exam-gradings.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsController } from './exam-items.controller';
 import { ExamItemsService } from './exam-items.service';
@@ -25,6 +27,7 @@ import { MyExamsService } from './my-exams.service';
       { name: ExamItemRecord.name, schema: ExamItemSchema },
       { name: ExamRecord.name, schema: ExamSchema },
       { name: ExamAttemptRecord.name, schema: ExamAttemptSchema },
+      { name: ExamGradingRecord.name, schema: ExamGradingSchema },
     ]),
   ],
   controllers: [
@@ -33,7 +36,13 @@ import { MyExamsService } from './my-exams.service';
     ExamAttemptsController,
     MyExamsController,
   ],
-  providers: [ExamItemsService, ExamsService, ExamAttemptsService, MyExamsService],
+  providers: [
+    ExamItemsService,
+    ExamsService,
+    ExamAttemptsService,
+    ExamGradingsService,
+    MyExamsService,
+  ],
   exports: [MongooseModule, ExamItemsService, ExamsService, ExamAttemptsService],
 })
 export class ExamsModule {}

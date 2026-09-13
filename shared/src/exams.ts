@@ -4,6 +4,8 @@
 // как `implements` этих типов, расхождение ловит tsc. Веб-экран — следующий
 // слой, здесь только контракт бэкенда.
 
+import type { RubricCriterionDto, RubricCriterionInput } from './exam-rubric';
+
 export const EXAM_ITEM_KINDS = ['text', 'single', 'multiple', 'video'] as const;
 export type ExamItemKind = (typeof EXAM_ITEM_KINDS)[number];
 
@@ -137,6 +139,7 @@ export interface ExamDto {
   description: string; // что это за экзамен — текст для ученика, может быть пустым
   level: string; // для какого уровня; пустая строка — для всех
   blocks: ExamBlockDto[];
+  rubric: RubricCriterionDto[];
   timeLimitMin?: number; // нет — без ограничения
   attemptsAllowed: number; // по умолчанию 1 (PLAN §11: «по умолчанию попытка одна»)
   status: ExamStatus;
@@ -150,6 +153,7 @@ export interface CreateExamInput {
   description?: string;
   level?: string;
   blocks?: ExamBlockInput[];
+  rubric?: RubricCriterionInput[]; // не прислали — сервис подставит DEFAULT_RUBRIC
   timeLimitMin?: number;
   attemptsAllowed?: number;
 }
@@ -165,6 +169,7 @@ export interface UpdateExamInput {
   description?: string | null;
   level?: string | null;
   blocks?: ExamBlockInput[];
+  rubric?: RubricCriterionInput[]; // прислали — заменяет набор целиком, как blocks
   timeLimitMin?: number | null;
   attemptsAllowed?: number;
   status?: ExamStatus;
@@ -186,6 +191,10 @@ export const EXAM_LIMITS = {
   itemsPerBlockMax: 50,
   timeLimitMinMax: 600,
   attemptsMax: 10,
+  rubricCriterionTitle: 120,
+  rubricCriterionDescription: 500,
+  rubricMax: 10,
+  rubricMaxScoreMax: 100,
 } as const;
 
 export const EXAM_NOT_FOUND_MESSAGE = 'Экзамен не найден. Обновите список.';
@@ -279,40 +288,3 @@ export const ATTEMPT_EXPIRED_MESSAGE =
 // Правило ТЗ 4.4, п.5: ответ на вопрос не из снимка — не молчаливый мусор.
 export const ATTEMPT_UNKNOWN_ITEM_MESSAGE =
   'Это вопрос не из вашей попытки. Обновите страницу и отвечайте на вопросы с экрана.';
-
-// Экран ученика (`/me/exams`, docs/PLAN.md §11 слой 4.1 API) — опубликованные
-// формы и положение самого ученика по каждой: сколько попыток он уже начал и
-// что с последней (её `id`, чтобы экран мог открыть «продолжить»/посмотреть
-// сдачу). Не ExamDto — ученику до старта попытки не нужны блоки формы
-// (вопросы открывает `/exams/:id/attempts`, слой 4.4), только положение.
-//
-// Поля `result` в этом DTO намеренно нет: рубрика и оценка — коллекция
-// `exam_gradings` (ADR-0022, слой 4.6), которой ещё нет ни в схеме, ни в
-// коде, — взять результат неоткуда. Добавится вместе со слоем 4.6, а не
-// раньше (CLAUDE.md: демо-данные и выдуманные поля в рантайме не живут).
-
-/** Положение по последней попытке — только то, что нужно экрану ученика:
- * открыть её (`id`) и понять, что с ней (`status`). Остальное — на экране
- * самой попытки (`GET /attempts`), не здесь. */
-export interface MyExamAttemptSummaryDto {
-  id: string;
-  status: ExamAttemptStatus;
-}
-
-export interface MyExamDto {
-  id: string;
-  title: string;
-  description: string;
-  level: string;
-  attemptsAllowed: number;
-  /** Сколько попыток этот ученик уже начал по этой форме (включая
-   * незаконченные) — не «сколько осталось»: экран сам сравнит с
-   * `attemptsAllowed`, а форма ответа за вычитание не отвечает. */
-  attemptsUsed: number;
-  /** Отсутствует, если ученик ещё не начинал попытку по этой форме. */
-  lastAttempt?: MyExamAttemptSummaryDto;
-}
-
-export interface ListMyExamsQuery {
-  limit?: number;
-}

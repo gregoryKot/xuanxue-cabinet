@@ -3,7 +3,7 @@
 import type { Types } from 'mongoose';
 import type { ExamDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
-import type { ExamBlockRecord, ExamRecord } from './exam.schema';
+import type { ExamBlockRecord, ExamRecord, RubricCriterionRecord } from './exam.schema';
 
 /** ExamRecord как его отдаёт `.lean()` до расшифровки — `blocks` ещё строка
  * (encJson, exam.schema.ts), не разобранный массив. `Pick<T, keyof T>` вместо
@@ -19,8 +19,9 @@ export type RawLeanExam = Pick<ExamRecord, keyof ExamRecord> & {
 /** То же самое после `decryptRecord` и разбора JSON (см.
  * `ExamsService.decrypt`) — `blocks` уже настоящий массив, форма совпадает с
  * `ExamBlockDto` из shared. */
-export type LeanExam = Omit<RawLeanExam, 'blocks'> & {
+export type LeanExam = Omit<RawLeanExam, 'blocks' | 'rubric'> & {
   blocks: ExamBlockRecord[];
+  rubric: RubricCriterionRecord[];
 };
 
 export function toExamDto(doc: LeanExam): ExamDto {
@@ -35,6 +36,7 @@ export function toExamDto(doc: LeanExam): ExamDto {
     description: doc.description ?? '',
     level: doc.level ?? '',
     blocks: doc.blocks,
+    rubric: doc.rubric,
     timeLimitMin: doc.timeLimitMin,
     attemptsAllowed: doc.attemptsAllowed,
     status: doc.status,

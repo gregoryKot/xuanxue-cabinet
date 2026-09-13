@@ -6,12 +6,11 @@
 // тело и зовёт.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import {
   EXAM_NOT_FOUND_MESSAGE,
   LIST_LIMIT_DEFAULT,
   NULLABLE_EXAM_FIELDS,
-  pluralRu,
   type CreateExamInput,
   type ExamDto,
   type ListExamsQuery,
@@ -22,14 +21,16 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { removeIfDraft } from '../common/remove-if-draft';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
-import {
-  assertNoRepeatedItems,
-  hasAnyQuestion,
-  mapBlocks,
-  QUESTION_FORMS,
-} from './exam-blocks';
+import { assertNoRepeatedItems, hasAnyQuestion, mapBlocks } from './exam-blocks';
+import { assertItemsEligible } from './exam-items-eligible';
+import { defaultRubric, mapRubric } from './exam-rubric';
 import { ExamItemRecord } from './exam-item.schema';
-import { EXAM_ENCRYPT_SCHEMA, ExamRecord, type ExamBlockRecord } from './exam.schema';
+import {
+  EXAM_ENCRYPT_SCHEMA,
+  ExamRecord,
+  type ExamBlockRecord,
+  type RubricCriterionRecord,
+} from './exam.schema';
 import { toExamDto, type LeanExam, type RawLeanExam } from './exam.mapper';
 
 const NOT_FOUND_MESSAGE = EXAM_NOT_FOUND_MESSAGE;
@@ -68,12 +69,16 @@ export class ExamsService {
   }
 
   async create(input: CreateExamInput, createdBy: string): Promise<ExamDto> {
-    const { blocks, ...rest } = input;
+    const { blocks, rubric, ...rest } = input;
     const mappedBlocks = mapBlocks(blocks);
     if (mappedBlocks !== undefined) await this.assertBlocksSavable(mappedBlocks);
 
     const payload: Record<string, unknown> = { ...rest, createdBy };
     if (mappedBlocks !== undefined) payload.blocks = mappedBlocks;
+    // Не прислали рубрику — набор по умолчанию (ТЗ 4.6, п.1), не пустой
+    // массив: проверять можно с первого дня, не дожидаясь, пока учитель
+    // напишет свою.
+    payload.rubric = mapRubric(rubric) ?? defaultRubric();
 
     const created = await this.model.create(encryptRecord(payload, EXAM_ENCRYPT_SCHEMA));
     return this.getById(created._id.toString());
@@ -85,7 +90,7 @@ export class ExamsService {
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = this.decrypt(doc);
 
-    const { blocks, status, ...rest } = input;
+    const { blocks, status, rubric, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_FIELDS);
 
     const nextBlocks = mapBlocks(blocks);
@@ -93,6 +98,8 @@ export class ExamsService {
       await this.assertBlocksSavable(nextBlocks);
       $set.blocks = nextBlocks;
     }
+    const nextRubric = mapRubric(rubric);
+    if (nextRubric !== undefined) $set.rubric = nextRubric;
     if (status === 'published') {
       await this.assertPublishable(nextBlocks ?? current.blocks);
     }
@@ -118,7 +125,7 @@ export class ExamsService {
    * черновик формы уже не должен ссылаться на чужой/удалённый/неопубликованный id. */
   private async assertBlocksSavable(blocks: ExamBlockRecord[]): Promise<void> {
     assertNoRepeatedItems(blocks);
-    await this.assertItemsEligible(blocks);
+    await assertItemsEligible(this.itemModel, blocks);
   }
 
   /** ТЗ 4.3, п.1 и п.2: пустую форму публиковать нельзя, и вопрос могли
@@ -126,25 +133,7 @@ export class ExamsService {
    * повторная проверка на переходе в `published`, не только при сохранении. */
   private async assertPublishable(blocks: ExamBlockRecord[]): Promise<void> {
     if (!hasAnyQuestion(blocks)) throw new InvalidInputError(EMPTY_EXAM_MESSAGE);
-    await this.assertItemsEligible(blocks);
-  }
-
-  private async assertItemsEligible(blocks: ExamBlockRecord[]): Promise<void> {
-    const ids = [...new Set(blocks.flatMap((block) => block.itemIds))];
-    if (ids.length === 0) return;
-    const validObjectIds = ids.filter((id) => Types.ObjectId.isValid(id));
-    const published = await this.itemModel
-      .find({ _id: { $in: validObjectIds }, status: 'published' })
-      .select('_id')
-      .lean<{ _id: Types.ObjectId }[]>();
-    const publishedIds = new Set(published.map((doc) => doc._id.toString()));
-    const notEligibleCount = ids.filter((id) => !publishedIds.has(id)).length;
-    if (notEligibleCount === 0) return;
-    throw new InvalidInputError(
-      `В блоках ${notEligibleCount} ${pluralRu(notEligibleCount, QUESTION_FORMS)} не ` +
-        'из опубликованного банка: вопрос удалили или ещё не опубликовали. Уберите их ' +
-        'из блока или опубликуйте вопрос в «Вопросах».',
-    );
+    await assertItemsEligible(this.itemModel, blocks);
   }
 
   /** `blocks` хранится строкой (encJson, exam.schema.ts) — decryptRecord (не
@@ -156,6 +145,7 @@ export class ExamsService {
     return {
       ...decrypted,
       blocks: decrypted.blocks as unknown as ExamBlockRecord[],
+      rubric: decrypted.rubric as unknown as RubricCriterionRecord[],
     };
   }
 }

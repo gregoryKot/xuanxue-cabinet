@@ -7,6 +7,7 @@ import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
+import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
@@ -37,6 +38,7 @@ describe('UserDeletionService', () => {
   let broadcastModel: Model<BroadcastRecord>;
   let botSessionModel: Model<BotSessionRecord>;
   let attemptModel: Model<ExamAttemptRecord>;
+  let gradingModel: Model<ExamGradingRecord>;
   let notificationPrefsModel: Model<NotificationPrefsRecord>;
 
   beforeAll(async () => {
@@ -48,6 +50,7 @@ describe('UserDeletionService', () => {
     broadcastModel = memory.connection.model<BroadcastRecord>(BroadcastRecord.name);
     botSessionModel = memory.connection.model<BotSessionRecord>(BotSessionRecord.name);
     attemptModel = memory.connection.model<ExamAttemptRecord>(ExamAttemptRecord.name);
+    gradingModel = memory.connection.model<ExamGradingRecord>(ExamGradingRecord.name);
     notificationPrefsModel = memory.connection.model<NotificationPrefsRecord>(
       NotificationPrefsRecord.name,
     );
@@ -66,6 +69,7 @@ describe('UserDeletionService', () => {
       broadcastModel.deleteMany({}),
       botSessionModel.deleteMany({}),
       attemptModel.deleteMany({}),
+      gradingModel.deleteMany({}),
       notificationPrefsModel.deleteMany({}),
     ]);
   });
@@ -190,6 +194,51 @@ describe('UserDeletionService', () => {
 
     expect(await notificationPrefsModel.countDocuments({ userId: student.id })).toBe(0);
     expect(await notificationPrefsModel.countDocuments({ userId: other.id })).toBe(1);
+  });
+
+  // Третья коллекция с userId (слой 4.6, ADR-0022) — оценка попытки по
+  // рубрике: userId здесь про ученика, чью работу проверили, не про того,
+  // кто проверял (graderId — обычная ссылка, см. тест ниже).
+  it('удаляет оценки экзамена ученика и не трогает чужие', async () => {
+    const student = await users.createFromTelegram({
+      telegramId: 5014,
+      name: 'Ученик с оценкой',
+      roles: ['student'],
+    });
+    const other = await users.createFromTelegram({
+      telegramId: 5015,
+      name: 'Другой ученик',
+      roles: ['student'],
+    });
+    const teacher = await users.createFromTelegram({
+      telegramId: 5016,
+      name: 'Проверяющий',
+      roles: ['teacher'],
+    });
+    const attemptId = new Types.ObjectId();
+    await gradingModel.create([
+      {
+        attemptId,
+        examId: new Types.ObjectId(),
+        userId: new Types.ObjectId(student.id),
+        graderId: new Types.ObjectId(teacher.id),
+        outcome: 'passed',
+        gradedAt: new Date('2026-09-13T09:00:00.000Z'),
+      },
+      {
+        attemptId: new Types.ObjectId(),
+        examId: new Types.ObjectId(),
+        userId: new Types.ObjectId(other.id),
+        graderId: new Types.ObjectId(teacher.id),
+        outcome: 'passed',
+        gradedAt: new Date('2026-09-13T09:00:00.000Z'),
+      },
+    ]);
+
+    await deletion.deleteAllUserData(student.id, 'кто-то-другой');
+
+    expect(await gradingModel.countDocuments({ userId: student.id })).toBe(0);
+    expect(await gradingModel.countDocuments({ userId: other.id })).toBe(1);
   });
 
   it('обнуляет leaderId в классе и занятии — $unset, документы остаются', async () => {

@@ -21,7 +21,7 @@ describe('MyExamsService', () => {
 
   beforeAll(async () => {
     ctx = await setupAttemptsTest();
-    service = new MyExamsService(ctx.examModel, ctx.attemptModel);
+    service = new MyExamsService(ctx.examModel, ctx.attemptModel, ctx.gradingModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -141,5 +141,57 @@ describe('MyExamsService', () => {
   it('пустая база — пустой список, не ошибка', async () => {
     const list = await service.list({}, USER_A, NOW);
     expect(list).toEqual([]);
+  });
+
+  // Слой 4.6: результат появляется в /me/exams, когда учитель его выставил —
+  // баллы по критериям рубрики ученику можно (его собственная работа),
+  // критерии проверки вопроса этот сервис не читает вовсе.
+  it('оценка выставлена — lastAttempt несёт outcome, comment и баллы по критериям', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createExam({ itemId });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.submit(started.id, USER_A, NOW);
+    const exam = await ctx.examsService.getById(examId);
+    const criterion = exam.rubric[0];
+    if (!criterion) throw new Error('ожидался критерий по умолчанию');
+    await ctx.gradingsService.grade(
+      started.id,
+      '507f1f77bcf86cd799439014',
+      {
+        criteria: [{ id: criterion.id, score: criterion.maxScore, comment: 'чётко' }],
+        comment: 'Общий комментарий учителя',
+        outcome: 'passed',
+      },
+      NOW,
+    );
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list[0]?.lastAttempt).toEqual({
+      id: started.id,
+      status: 'graded',
+      outcome: 'passed',
+      comment: 'Общий комментарий учителя',
+      criteria: [
+        {
+          id: criterion.id,
+          title: criterion.title,
+          maxScore: criterion.maxScore,
+          score: criterion.maxScore,
+          comment: 'чётко',
+        },
+      ],
+    });
+  });
+
+  it('оценка ещё не выставлена — lastAttempt без outcome/comment/criteria', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createExam({ itemId });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list[0]?.lastAttempt?.outcome).toBeUndefined();
+    expect(list[0]?.lastAttempt).toEqual({ id: started.id, status: 'in_progress' });
   });
 });

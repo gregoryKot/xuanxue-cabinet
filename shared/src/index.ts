@@ -106,9 +106,6 @@ export type {
   ExamAttemptDto,
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
-  MyExamAttemptSummaryDto,
-  MyExamDto,
-  ListMyExamsQuery,
 } from './exams';
 export {
   EXAM_ITEM_KINDS,
@@ -128,6 +125,30 @@ export {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_UNKNOWN_ITEM_MESSAGE,
 } from './exams';
+export type {
+  RubricCriterionDto,
+  RubricCriterionInput,
+  GradingOutcome,
+  GradingCriterionDto,
+} from './exam-rubric';
+export { DEFAULT_RUBRIC, GRADING_OUTCOMES } from './exam-rubric';
+export type { MyExamAttemptSummaryDto, MyExamDto, ListMyExamsQuery } from './my-exams';
+export type {
+  AttemptOptionCheckDto,
+  AttemptReviewOptionDto,
+  AttemptReviewQuestionDto,
+  AttemptReviewBlockDto,
+  AttemptReviewDto,
+  GradingCriterionInput,
+  PutGradingInput,
+  ExamGradingDto,
+} from './exam-grading';
+export {
+  GRADING_LIMITS,
+  ATTEMPT_NOT_SUBMITTED_MESSAGE,
+  unknownCriterionMessage,
+  invalidScoreMessage,
+} from './exam-grading';
 export {
   NULLABLE_LESSON_FIELDS,
   LESSON_LIMITS,
