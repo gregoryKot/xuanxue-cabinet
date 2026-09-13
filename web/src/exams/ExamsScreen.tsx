@@ -4,7 +4,7 @@
 // пунктом меню (docs/adr/0025-navigation-by-domain.md). Сюда же встанут
 // проверка работ и статистика — слои 4.6–4.8.
 import { useState, type CSSProperties } from 'react';
-import { ExamItemsIcon } from '../app/navIcons';
+import { ExamItemsIcon, GradingIcon } from '../app/navIcons';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
@@ -14,6 +14,8 @@ import {
 } from '../components/screenLayout';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
+import { formatGradingQueueHint } from '../grading/gradingQueueHint';
+import { useGradingQueue } from '../grading/useGradingQueue';
 import { ExamCard } from './ExamCard';
 import { ExamFilters, type ExamFilterValues } from './ExamFilters';
 import { ExamSheet } from './ExamSheet';
@@ -40,6 +42,7 @@ const listStyle: CSSProperties = {
 export default function ExamsScreen() {
   const [filters, setFilters] = useState<ExamFilterValues>(EMPTY_FILTERS);
   const { exams, loading, error, reload, create, update, remove } = useExams(filters);
+  const gradingQueue = useGradingQueue();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetExamId, setSheetExamId] = useState<string | null>(null);
 
@@ -89,6 +92,13 @@ export default function ExamsScreen() {
         title="Вопросы"
         hint={EXAM_ITEMS_LINK_HINT}
         Icon={ExamItemsIcon}
+      />
+
+      <SectionLink
+        to="/grading"
+        title="Проверка работ"
+        hint={formatGradingQueueHint(gradingQueue.attempts?.length ?? null)}
+        Icon={GradingIcon}
       />
 
       {sheetOpen && (

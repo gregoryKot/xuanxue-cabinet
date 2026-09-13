@@ -27,7 +27,12 @@ export const NAV_ITEMS: NavItem[] = [
     Icon: BroadcastsIcon,
     childPaths: ['/channels', '/templates'],
   },
-  { to: '/exams', label: 'Экзамены', Icon: ExamsIcon, childPaths: ['/exam-items'] },
+  {
+    to: '/exams',
+    label: 'Экзамены',
+    Icon: ExamsIcon,
+    childPaths: ['/exam-items', '/grading'],
+  },
   { to: '/people', label: 'Ученики', Icon: PeopleIcon, adminOnly: true, childPaths: [] },
 ];
 

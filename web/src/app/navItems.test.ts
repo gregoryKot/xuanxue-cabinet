@@ -15,8 +15,9 @@ describe('activeSectionPath', () => {
     expect(activeSectionPath('/templates')).toBe('/broadcasts');
   });
 
-  it('/exam-items — подэкран «Экзаменов»', () => {
+  it('/exam-items и /grading — подэкраны «Экзаменов»', () => {
     expect(activeSectionPath('/exam-items')).toBe('/exams');
+    expect(activeSectionPath('/grading')).toBe('/exams');
   });
 
   it('путь вне навигации — null', () => {

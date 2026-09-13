@@ -150,11 +150,40 @@ describe('App', () => {
   });
 
   it('учитель на /exams — маршрут «Экзамены» открывает ExamsScreen', async () => {
-    mockRoute(TEACHER, { '/exams': [] });
+    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
 
     renderAt('/exams');
 
     expect(await screen.findByText(/собирается из вопросов банка/)).toBeInTheDocument();
+  });
+
+  it('учитель на /grading — маршрут «Проверка работ» открывает GradingQueueScreen', async () => {
+    mockRoute(TEACHER, { '/attempts': [] });
+
+    renderAt('/grading');
+
+    expect(
+      await screen.findByText('Пока нечего проверять — сданных работ нет.'),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /grading/:attemptId — открывается карточка проверки работы', async () => {
+    mockRoute(TEACHER, {
+      '/attempts/a1/review': {
+        attemptId: 'a1',
+        examId: 'e1',
+        examTitle: 'Форма первого уровня',
+        userId: 'u1',
+        userName: 'Иван Иванов',
+        status: 'submitted',
+        blocks: [],
+        rubric: [],
+      },
+    });
+
+    renderAt('/grading/a1');
+
+    expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
   });
 
   it('admin на /people — маршрут «Ученики» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {

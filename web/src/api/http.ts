@@ -34,7 +34,7 @@ export class ApiError extends Error {
 /** Конверт ошибки бэкенда (тип общий с api через shared); поля могут отсутствовать у прокси/CDN. */
 type ErrorEnvelope = Partial<ApiErrorBody>;
 
-type ApiMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type ApiMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 interface ApiFetchInit {
   method?: ApiMethod;
