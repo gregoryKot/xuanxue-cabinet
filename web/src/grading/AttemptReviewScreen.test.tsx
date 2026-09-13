@@ -88,7 +88,9 @@ describe('AttemptReviewScreen — сбой загрузки', () => {
 describe('AttemptReviewScreen — повтор и путь без id', () => {
   it('«Попробовать ещё раз» повторяет запрос карточки', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockRejectedValueOnce(new ApiError('Сеть подвела', 500, 'internal_error'));
+    mockedApiFetch.mockRejectedValueOnce(
+      new ApiError('Сеть подвела', 500, 'internal_error'),
+    );
 
     renderAt('a1');
     await screen.findByRole('alert');
