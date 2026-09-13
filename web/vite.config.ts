@@ -117,16 +117,13 @@ export default defineConfig({
         'src/setupTests.ts',
         'src/vite-env.d.ts',
         'src/**/*.test.{ts,tsx}',
+        // Инфраструктура тестов (фейки, обёртки рендера) — не продуктовый код,
+        // не должна засчитываться в покрытие (аудит 2026-09-12, M2).
+        'src/test-support/**',
       ],
-      // autoUpdate — встроенный храповик: порог поднимается сам при росте
-      // покрытия, снижение роняет CI (CLAUDE.md, раздел «Храповики»).
-      thresholds: {
-        lines: 99.95,
-        branches: 98.63,
-        functions: 99.88,
-        statements: 99.75,
-        autoUpdate: true,
-      },
+      // Порог живёт не здесь: scripts/check-vitest-coverage-ratchet.mjs
+      // (аудит 2026-09-12, H2) — thresholds.autoUpdate переписывал этот файл
+      // при росте покрытия и срезал финальный \n, что ломало prettier --check.
     },
   },
 });
