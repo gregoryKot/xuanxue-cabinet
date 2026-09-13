@@ -46,7 +46,7 @@ function renderScreen() {
 
 describe('ExamsScreen — загрузка', () => {
   it('показывает скелетон, пока список не пришёл', () => {
-    mockApiByPath({ '/exams': new Promise(() => {}) });
+    mockApiByPath({ '/exams': new Promise(() => {}), '/attempts': [] });
 
     const { container } = renderScreen();
 
@@ -67,7 +67,7 @@ describe('ExamsScreen — сбой загрузки', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
     const retry = screen.getByRole('button', { name: 'Попробовать ещё раз' });
 
-    mockApiByPath({ '/exams': [makeExam()] });
+    mockApiByPath({ '/exams': [makeExam()], '/attempts': [] });
     await user.click(retry);
 
     expect(await screen.findByText('Итоговый экзамен')).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('ExamsScreen — сбой загрузки', () => {
 
 describe('ExamsScreen — пустая база', () => {
   it('честный текст и кнопка «Новый экзамен»', async () => {
-    mockApiByPath({ '/exams': [] });
+    mockApiByPath({ '/exams': [], '/attempts': [] });
 
     renderScreen();
 
@@ -91,7 +91,7 @@ describe('ExamsScreen — пустая база', () => {
 
 describe('ExamsScreen — список форм', () => {
   it('рендерит карточку с названием и статусом', async () => {
-    mockApiByPath({ '/exams': [makeExam()] });
+    mockApiByPath({ '/exams': [makeExam()], '/attempts': [] });
 
     renderScreen();
 
@@ -103,7 +103,7 @@ describe('ExamsScreen — список форм', () => {
 describe('ExamsScreen — фильтр по статусу', () => {
   it('смена фильтра уходит в query запроса', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [] });
+    mockApiByPath({ '/exams': [], '/attempts': [] });
 
     renderScreen();
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
@@ -119,10 +119,46 @@ describe('ExamsScreen — фильтр по статусу', () => {
   });
 });
 
+describe('ExamsScreen — вход в проверку работ', () => {
+  it('пустая очередь — честный текст на карточке-ссылке', async () => {
+    mockApiByPath({ '/exams': [], '/attempts': [] });
+
+    renderScreen();
+
+    expect(await screen.findByText('Проверка работ')).toBeInTheDocument();
+    expect(await screen.findByText('Пока нечего проверять.')).toBeInTheDocument();
+  });
+
+  it('есть сданные работы — число на карточке-ссылке', async () => {
+    mockApiByPath({
+      '/exams': [],
+      '/attempts': [
+        {
+          id: 'a1',
+          examId: 'e1',
+          examTitle: 'Форма первого уровня',
+          userId: 'u1',
+          userName: 'Иван Иванов',
+          status: 'submitted',
+          blocks: [],
+          answers: [],
+          startedAt: '2026-09-01T00:00:00Z',
+          submittedAt: '2026-09-01T01:00:00Z',
+          expired: false,
+        },
+      ],
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText('1 работа ждёт проверки.')).toBeInTheDocument();
+  });
+});
+
 describe('ExamsScreen — лист формы', () => {
   it('«Новый экзамен» открывает пустой лист', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [], '/exam-items': [] });
+    mockApiByPath({ '/exams': [], '/exam-items': [], '/attempts': [] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новый экзамен' }));
@@ -134,7 +170,7 @@ describe('ExamsScreen — лист формы', () => {
 
   it('«Закрыть» на листе закрывает его, список остаётся', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [], '/exam-items': [] });
+    mockApiByPath({ '/exams': [], '/exam-items': [], '/attempts': [] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новый экзамен' }));
@@ -147,7 +183,7 @@ describe('ExamsScreen — лист формы', () => {
 
   it('открыть карточку — лист правки с заполненным названием', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [makeExam()], '/exam-items': [] });
+    mockApiByPath({ '/exams': [makeExam()], '/exam-items': [], '/attempts': [] });
 
     renderScreen();
     await user.click(await screen.findByText('Итоговый экзамен'));

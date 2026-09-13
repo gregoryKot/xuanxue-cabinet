@@ -33,6 +33,7 @@ import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
+import { UserNamesService } from '../users/user-names.service';
 import type { UserLean } from '../users/users.service';
 import { ExamItemsService } from './exam-items.service';
 import { assertAnswersKnown, mergeAnswers } from './exam-attempt-answers';
@@ -69,6 +70,7 @@ export class ExamAttemptsService {
     @InjectModel(ExamAttemptRecord.name) private readonly model: Model<ExamAttemptRecord>,
     private readonly examsService: ExamsService,
     private readonly examItemsService: ExamItemsService,
+    private readonly userNamesService: UserNamesService,
   ) {}
 
   /** ТЗ 4.4, п.1–3: экзамен должен быть опубликован; незаконченная попытка
@@ -199,7 +201,16 @@ export class ExamAttemptsService {
     const attempts = await Promise.all(
       docs.map((doc) => closeIfExpiredAttempt(this.model, decryptAttempt(doc), now)),
     );
-    return attempts.map(toAttemptDto);
+    // Имя ученика — только сотруднику школы и одним запросом на весь
+    // список, не по документу (ExamAttemptDto.userName, shared/src/exams.ts).
+    const names = isStaff
+      ? await this.userNamesService.namesByIds(
+          attempts.map((attempt) => attempt.userId.toString()),
+        )
+      : undefined;
+    return attempts.map((attempt) =>
+      toAttemptDto(attempt, names?.get(attempt.userId.toString())),
+    );
   }
 
   /** Владелец из сессии, не из пути (SECURITY §3) — чужой `id` получает

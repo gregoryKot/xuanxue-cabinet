@@ -245,6 +245,10 @@ export interface ExamAttemptDto {
   examId: string;
   examTitle: string;
   userId: string;
+  /** Только сотруднику школы (учитель, помощник, админ): в очереди проверки
+   * нужно видеть, чью работу открываешь. Ученику не приходит — своя попытка
+   * и так подписана экзаменом. */
+  userName?: string;
   status: ExamAttemptStatus;
   blocks: AttemptBlockDto[];
   answers: AttemptAnswerDto[];

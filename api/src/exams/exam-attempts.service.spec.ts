@@ -4,6 +4,7 @@
 // (exam-attempts.time.spec.ts, тот же приём, что у
 // telegram-teacher-notifier.time.spec.ts, «файл-лимит спеков», CLAUDE.md «Файлы»).
 import { DateTime } from 'luxon';
+import { Types } from 'mongoose';
 import type { UserLean } from '../users/users.service';
 import {
   AUTHOR_ID,
@@ -395,6 +396,31 @@ describe('ExamAttemptsService', () => {
     );
 
     expect(asAssistant).toHaveLength(2);
+  });
+
+  // Экран «Проверка работ» (слой 4.6): голый userId учителю бесполезен —
+  // нужно имя, одним запросом на список (UserNamesService), не N+1. Ученику
+  // своя попытка и так подписана, поле не приходит вовсе (shared/exams.ts).
+  it('сотрудник видит имя ученика в списке попыток, ученик своё имя не получает', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    await ctx.userModel.create({
+      _id: new Types.ObjectId(USER_A),
+      name: 'Ученик Иванов',
+      roles: [],
+      status: 'active',
+    });
+    await ctx.service.start(examId, USER_A, NOW);
+
+    const asTeacher = await ctx.service.list(
+      {},
+      staffUser(true, '507f1f77bcf86cd799439014'),
+      NOW,
+    );
+    expect(asTeacher[0]?.userName).toBe('Ученик Иванов');
+
+    const asStudent = await ctx.service.list({}, staffUser(false, USER_A), NOW);
+    expect(asStudent[0]?.userName).toBeUndefined();
   });
 
   // Ученик — это подтверждённый человек без ролей (ADR-0026), роли

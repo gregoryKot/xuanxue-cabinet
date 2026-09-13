@@ -147,6 +147,7 @@ export type {
   ExamGradingDto,
 } from './exam-grading';
 export {
+  DELETED_USER_NAME,
   GRADING_LIMITS,
   ATTEMPT_NOT_SUBMITTED_MESSAGE,
   unknownCriterionMessage,

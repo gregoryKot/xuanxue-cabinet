@@ -79,12 +79,17 @@ export function decryptAttempt(doc: RawLeanExamAttempt): LeanExamAttempt {
   };
 }
 
-export function toAttemptDto(doc: LeanExamAttempt): ExamAttemptDto {
+/** `userName` параметром, не запросом внутри маппера (CLAUDE.md «API»:
+ * маппер — единственная точка сборки DTO, но в базу сам не ходит) — сотруднику
+ * его подставляет `ExamAttemptsService.list` одним запросом на весь список,
+ * ученику (или другим вызывающим) не передаётся вовсе. */
+export function toAttemptDto(doc: LeanExamAttempt, userName?: string): ExamAttemptDto {
   return {
     id: doc._id.toString(),
     examId: doc.examId.toString(),
     examTitle: doc.examTitle,
     userId: doc.userId.toString(),
+    userName,
     status: doc.status,
     blocks: doc.blocks.map(toStudentBlock),
     answers: doc.answers,

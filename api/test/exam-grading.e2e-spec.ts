@@ -1,7 +1,6 @@
 // e2e проверки работ (слой 4.6, ADR-0022): карточка проверки и оценка —
 // только у учителя, ученику этот маршрут закрыт вовсе, а в его собственный
-// ответ не уходят ни правильные варианты, ни критерии проверки вопросов.
-// Настоящий AppModule на MongoMemoryServer.
+// ответ не уходят ни правильные варианты, ни критерии проверки вопросов. Настоящий AppModule на MongoMemoryServer.
 import type {
   AttemptReviewDto,
   ExamAttemptDto,
@@ -105,7 +104,7 @@ describe('Проверка работ по рубрике (e2e)', () => {
     const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
     const exam = await publishedExam(teacherCookie);
     const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
-      name: 'Ученик',
+      name: 'Ученик Петров',
       roles: ['student'],
     });
     const attempt = await submittedAttempt(exam.id, studentCookie);
@@ -115,6 +114,7 @@ describe('Проверка работ по рубрике (e2e)', () => {
       .set('Cookie', teacherCookie);
     expect(review.status).toBe(200);
     const reviewBody = review.body as AttemptReviewDto;
+    expect(reviewBody.userName).toBe('Ученик Петров'); // не голый userId (слой 4.6)
     const question = reviewBody.blocks[0]?.questions[0];
     expect(question?.criteria).toBe('Смотреть на колено и центр тяжести');
 

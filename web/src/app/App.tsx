@@ -21,6 +21,8 @@ const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
 const PeopleScreen = lazy(() => import('../people/PeopleScreen'));
 const ExamItemsScreen = lazy(() => import('../exam-items/ExamItemsScreen'));
 const ExamsScreen = lazy(() => import('../exams/ExamsScreen'));
+const GradingQueueScreen = lazy(() => import('../grading/GradingQueueScreen'));
+const AttemptReviewScreen = lazy(() => import('../grading/AttemptReviewScreen'));
 const AttemptScreen = lazy(() => import('../attempt/AttemptScreen'));
 const NotificationsScreen = lazy(() => import('../notifications/NotificationsScreen'));
 
@@ -46,6 +48,14 @@ export default function App() {
                 <Route path="/templates" element={<TemplatesScreen />} />
                 <Route path="/exam-items" element={<ExamItemsScreen />} />
                 <Route path="/exams" element={<ExamsScreen />} />
+                {/* Проверка работ (слой 4.6) — тот же раздел «Экзамены», вход
+                    карточкой на ExamsScreen.tsx, не пункт меню (ADR-0025).
+                    Роль на самом маршруте не нужна: AppShell.tsx уже отдаёт
+                    Outlet только TEACHER_ROLES, ученик здесь не окажется
+                    (как /exam-items), а API дополнительно закрыт ролью на
+                    контроллере (ExamAttemptsController). */}
+                <Route path="/grading" element={<GradingQueueScreen />} />
+                <Route path="/grading/:attemptId" element={<AttemptReviewScreen />} />
                 {/* Личная настройка человека, не раздел домена — вход из
                     подвала AppShell.tsx, не из NAV_ITEMS (ТЗ
                     notifications-web.md, docs/adr/0025). Доступна и ученику:

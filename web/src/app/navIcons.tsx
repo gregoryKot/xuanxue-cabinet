@@ -81,6 +81,15 @@ export function ExamsIcon() {
   );
 }
 
+export function GradingIcon() {
+  return (
+    <svg {...shared}>
+      <rect x="4" y="2" width="12" height="16" rx="1.5" />
+      <path d="M7 10l2 2 4-4" />
+    </svg>
+  );
+}
+
 export function PeopleIcon() {
   return (
     <svg {...shared}>

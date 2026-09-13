@@ -5,8 +5,14 @@
 // равно нужен общий контекст DI; заводить отдельный модуль ради разделения
 // добавило бы только ре-экспорт MongooseModule без другой пользы (CLAUDE.md
 // «Файлы»: не создавай без нужды).
+//
+// Импортирует UsersModule ради UserNamesService (слой 4.6: имя ученика в
+// карточке проверки и списке попыток). Цикла нет — UsersModule ничего не
+// знает про exams (сверено grep'ом, ExamAttemptRecord/ExamGradingRecord
+// заходят в users только как имя модели в user-data.registry.ts, не импорт).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { UsersModule } from '../users/users.module';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
@@ -23,6 +29,7 @@ import { MyExamsService } from './my-exams.service';
 
 @Module({
   imports: [
+    UsersModule,
     MongooseModule.forFeature([
       { name: ExamItemRecord.name, schema: ExamItemSchema },
       { name: ExamRecord.name, schema: ExamSchema },

@@ -61,6 +61,10 @@ export interface AttemptReviewDto {
   examId: string;
   examTitle: string;
   userId: string;
+  /** Маршрут и так только для учителя (роль на контроллере) — имя приходит
+   * всегда, не опционально, как в `ExamAttemptDto` (exams.ts). Аккаунт
+   * удалён — `DELETED_USER_NAME`, не пустая строка. */
+  userName: string;
   status: ExamAttemptStatus;
   blocks: AttemptReviewBlockDto[];
   /** Текущая рубрика экзамена — по ней ставится новая оценка. Уже
@@ -108,6 +112,11 @@ export interface ExamGradingDto {
 }
 
 export const GRADING_LIMITS = { comment: 2000, criterionComment: 1000 } as const;
+
+// `userName` в `ExamAttemptDto` и `AttemptReviewDto` — человека могли уже
+// удалить (аудит В11, `UserDeletionService.deleteAllUserData`); честная
+// заглушка вместо пустой строки, одна на оба маршрута.
+export const DELETED_USER_NAME = 'Аккаунт удалён';
 
 // Правило ТЗ 4.6, п.2: проверить можно только сданную (или уже проверенную —
 // повторный PUT переписывает оценку) работу, не черновик в работе.
