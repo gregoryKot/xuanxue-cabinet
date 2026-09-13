@@ -1,4 +1,4 @@
-// Query GET /me/lessons (ТЗ student-api.md). Лимит по умолчанию
+// Query GET /me/lessons (ТЗ docs/PLAN.md §11). Лимит по умолчанию
 // MY_LESSONS_LIMIT_DEFAULT (10), максимум MY_LESSONS_LIMIT_MAX (50) — своя
 // пара, короче общей LIST_LIMIT_DEFAULT/MAX (shared/src/lessons.ts):
 // экрану ученика короткий список, не окно планирования учителя.

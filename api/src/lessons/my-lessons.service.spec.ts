@@ -1,7 +1,7 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): фильтр «вперёд от now», отменённые/прошедшие занятия, эффективные
 // ссылка/пароль Zoom (join с классом), лимит по умолчанию и максимум (ТЗ
-// student-api.md, «GET /api/me/lessons»).
+// docs/PLAN.md §11, «GET /api/me/lessons»).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
