@@ -44,7 +44,7 @@ export function ExamItemSheet({
   onRemove,
 }: ExamItemSheetProps) {
   const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
   const form = useExamItemForm(item, onCreate, onUpdate, onRemove);
   const removeConfirm = useConfirmedRemove(form.remove, goBack);
 
@@ -63,6 +63,7 @@ export function ExamItemSheet({
         titleId="exam-item-sheet-title"
         title={item ? 'Вопрос' : 'Новый вопрос'}
         headingRef={headingRef}
+        containerRef={containerRef}
         onSubmit={(e) => void handleSubmit(e)}
         onClose={goBack}
       >

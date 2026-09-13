@@ -51,7 +51,7 @@ export function ClassSheet({
   onRemove,
 }: ClassSheetProps) {
   const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
   const form = useClassForm(classDto, channels, onCreate, onUpdate, onRemove);
   const noRules = form.state.rules.length === 0;
 
@@ -69,6 +69,7 @@ export function ClassSheet({
       titleId="class-sheet-title"
       title={classDto ? 'Занятие' : 'Новое занятие'}
       headingRef={headingRef}
+      containerRef={containerRef}
       onSubmit={(e) => void handleSubmit(e)}
       onClose={goBack}
     >
