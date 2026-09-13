@@ -18,6 +18,12 @@ import { MediaAssetsService } from './media-assets.service';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 
+// Похожи на настоящие file_id Telegram и заведомо не встречаются в hex
+// ObjectId: короткое «f1» однажды нашлось внутри случайного id, и тест
+// про «fileId не уходит наружу» покраснел на ровном месте.
+const FILE_ID = 'BgADBAADrwAD-video-file-id';
+const FILE_UNIQUE_ID = 'AgADrwAD-unique-id';
+
 describe('MediaAssetsService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
@@ -78,7 +84,12 @@ describe('MediaAssetsService', () => {
       const result = await service.attachTelegramVideo(
         attemptId,
         USER_A,
-        { fileId: 'f1', fileUniqueId: 'u1', durationSec: 12, sizeBytes: 1024 },
+        {
+          fileId: FILE_ID,
+          fileUniqueId: FILE_UNIQUE_ID,
+          durationSec: 12,
+          sizeBytes: 1024,
+        },
         NOW,
       );
 
@@ -86,12 +97,12 @@ describe('MediaAssetsService', () => {
       expect(result?.media.kind).toBe('telegram');
       expect(result?.media.durationSec).toBe(12);
       // fileId/fileUniqueId никогда не покидают сервис в DTO.
-      expect(JSON.stringify(result?.media)).not.toContain('f1');
+      expect(JSON.stringify(result?.media)).not.toContain(FILE_ID);
 
       const raw = await mediaModel
         .findOne({ attemptId: new Types.ObjectId(attemptId) })
         .lean();
-      expect(raw?.fileId).not.toBe('f1'); // зашифровано в базе
+      expect(raw?.fileId).not.toBe(FILE_ID); // зашифровано в базе
     });
 
     it('чужой attemptId — ничего не привязано, без уточнения причины', async () => {
@@ -100,7 +111,7 @@ describe('MediaAssetsService', () => {
       const result = await service.attachTelegramVideo(
         attemptId,
         USER_B,
-        { fileId: 'f1', fileUniqueId: 'u1' },
+        { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
         NOW,
       );
 
@@ -112,7 +123,7 @@ describe('MediaAssetsService', () => {
       const result = await service.attachTelegramVideo(
         new Types.ObjectId().toString(),
         USER_A,
-        { fileId: 'f1', fileUniqueId: 'u1' },
+        { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
         NOW,
       );
 
@@ -125,7 +136,7 @@ describe('MediaAssetsService', () => {
       const result = await service.attachTelegramVideo(
         attemptId,
         undefined,
-        { fileId: 'f1', fileUniqueId: 'u1' },
+        { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
         NOW,
       );
 
@@ -138,13 +149,13 @@ describe('MediaAssetsService', () => {
       await service.attachTelegramVideo(
         attemptId,
         USER_A,
-        { fileId: 'f1', fileUniqueId: 'u1' },
+        { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
         NOW,
       );
       await service.attachTelegramVideo(
         attemptId,
         USER_A,
-        { fileId: 'f2', fileUniqueId: 'u2' },
+        { fileId: 'BgAAOTHER-file-id', fileUniqueId: 'AgADOTHER-unique' },
         NOW,
       );
 
