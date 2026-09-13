@@ -26,21 +26,44 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   student: 'Ученик',
 };
 
+/**
+ * Роли, которые работают со школой, а не учатся в ней: у помощника учителя
+ * права учителя (ROLE_LABELS выше), у админа — тем более. Один список на
+ * api и бота (`isStaffRole`) вместо повторения тройки по файлам; `@Roles()`
+ * остаётся с явным перечислением — декоратору нужны сами значения.
+ */
+export const STAFF_ROLES: readonly UserRole[] = ['teacher', 'assistant', 'admin'];
+
+/** Хоть одна роль из STAFF_ROLES — «человек школы», а не ученик. */
+export function isStaffRole(roles: readonly UserRole[]): boolean {
+  return roles.some((role) => STAFF_ROLES.includes(role));
+}
+
 export const USER_STATUSES = ['invited', 'active', 'blocked'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
 /**
- * Профиль текущей сессии для интерфейса. Пользователь без единой роли
- * (`roles: []`) — гость (SECURITY §2): ничего не видит, кроме этого ответа.
- * Email, telegramId, googleId и status сюда намеренно не входят — это ключи
- * входа и служебное состояние, не профиль для интерфейса.
+ * Профиль текущей сессии для интерфейса. Ученик — это `active` без ролей
+ * учителя (ADR-0026): роль `student` не назначается, её нет в кабинете.
+ * Email, telegramId и googleId сюда намеренно не входят — это ключи входа,
+ * не профиль для интерфейса.
+ *
+ * `status` входит с ADR-0026: вошедший в первый раз ждёт подтверждения
+ * (`invited`), и экран должен показать ему ожидание, а не пустое расписание.
  */
 export interface MeDto {
   id: string;
   name: string;
   roles: UserRole[];
   tz: string;
+  status: UserStatus;
 }
+
+/** Вошёл, но школа ещё не подтвердила (ADR-0026) — ответ любого маршрута
+ * с данными, пока статус `invited`. Текст говорит, что происходит и чего
+ * ждать (docs/VOICE.md), а не «доступа нет». */
+export const PENDING_APPROVAL_MESSAGE =
+  'Вы вошли, осталось дождаться подтверждения. Учитель откроет доступ, обычно в тот же день.';
 
 /**
  * Тело `POST /auth/telegram` — поля Telegram Login Widget (SECURITY §2).

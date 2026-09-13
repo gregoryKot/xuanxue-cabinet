@@ -21,6 +21,7 @@ import {
   ATTEMPT_NOT_FOUND_MESSAGE,
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
+  isStaffRole,
   LIST_LIMIT_DEFAULT,
   pluralRu,
   type AttemptAnswerDto,
@@ -183,7 +184,8 @@ export class ExamAttemptsService {
     user: UserLean,
     now: DateTime,
   ): Promise<ExamAttemptDto[]> {
-    const isStaff = user.roles.includes('teacher') || user.roles.includes('admin');
+    // Помощник учителя правами равен учителю (STAFF_ROLES, shared/auth.ts).
+    const isStaff = isStaffRole(user.roles);
     const filter: Record<string, unknown> = {};
     if (!isStaff) filter.userId = user.id;
     if (query.examId !== undefined) filter.examId = query.examId;

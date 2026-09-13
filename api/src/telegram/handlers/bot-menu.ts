@@ -3,15 +3,9 @@
 // ничего нет»). Чистая логика без Mongo и без Telegram (CLAUDE.md «Логика
 // вне контроллеров»): кому что положено — проверяется юнит-тестом, сами
 // экраны рисуют bot-schedule.ts и notifications-menu.ts.
-import type { UserRole } from '@xuanxue/shared';
+import { isStaffRole, type UserRole } from '@xuanxue/shared';
 import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
-
-// Тот же набор ролей, что `@Roles('teacher', 'assistant', 'admin')` почти на
-// каждом контроллере и `UsersService.listTeacherContacts` (TeacherChats) —
-// именованная константа, чтобы меню и StartHandler сверялись с одним
-// списком, а не с литералом в каждом месте.
-export const BOT_STAFF_ROLES: readonly UserRole[] = ['teacher', 'assistant', 'admin'];
 
 export type BotMenuAudience = 'staff' | 'student' | 'stranger';
 
@@ -20,7 +14,7 @@ export type BotMenuAudience = 'staff' | 'student' | 'stranger';
  * ролей, включая того, кто просто вошёл в кабинет через Telegram-виджет. */
 export function classifyBotMenuAudience(roles: UserRole[] | null): BotMenuAudience {
   if (!roles) return 'stranger';
-  return roles.some((role) => BOT_STAFF_ROLES.includes(role)) ? 'staff' : 'student';
+  return isStaffRole(roles) ? 'staff' : 'student';
 }
 
 export interface BotMenu {

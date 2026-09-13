@@ -8,12 +8,16 @@
 //       всех, включая @Public();
 //   (b) @Public() → пропускает без сессии;
 //   (c) cookie → AuthService.verifySession → UsersService.findById →
-//       blocked → @Roles;
+//       blocked → invited без @AllowPending() → @Roles;
 //   (d) rolling-перевыпуск cookie, если токену больше SESSION_RENEW_AFTER_DAYS.
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DateTime } from 'luxon';
-import { isMutatingMethod, type UserRole } from '@xuanxue/shared';
+import {
+  isMutatingMethod,
+  PENDING_APPROVAL_MESSAGE,
+  type UserRole,
+} from '@xuanxue/shared';
 import { ForbiddenError, UnauthorizedError } from '../common/errors';
 import {
   asSingleHeader,
@@ -22,7 +26,12 @@ import {
 } from '../common/http-headers';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
-import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
+import {
+  ALLOW_PENDING_KEY,
+  IS_PUBLIC_KEY,
+  ROLES_KEY,
+  SKIP_CSRF_KEY,
+} from './auth.decorators';
 import { hasCsrfHeader } from './csrf';
 import { readCookie, SESSION_COOKIE } from './session-cookie';
 import { shouldRenew } from './session-renewal';
@@ -61,6 +70,14 @@ export class AuthGuard implements CanActivate {
     const user = await this.usersService.findById(payload.sub);
     if (!user) throw new UnauthorizedError(SESSION_MESSAGE);
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
+    // Ждёт подтверждения школы (ADR-0026): сессия есть, данных школы нет —
+    // ни расписания со ссылками Zoom, ни экзаменов.
+    if (
+      user.status === 'invited' &&
+      !this.metadata<boolean>(context, ALLOW_PENDING_KEY)
+    ) {
+      throw new ForbiddenError(PENDING_APPROVAL_MESSAGE);
+    }
 
     const required = this.metadata<UserRole[]>(context, ROLES_KEY);
     if (

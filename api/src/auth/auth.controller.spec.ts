@@ -81,6 +81,7 @@ describe('AuthController.me', () => {
       name: 'Мария',
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     });
   });
 });
@@ -128,6 +129,7 @@ describe('AuthController.loginWithTelegram', () => {
       name: 'Мария',
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     });
   });
 

@@ -19,7 +19,7 @@ import type { AuthConfigDto, MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { SettingsService } from '../settings/settings.service';
 import { botIdFromToken } from './bot-id-from-token';
-import { CurrentUser, Public } from './auth.decorators';
+import { AllowPending, CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { parseTelegramLoginBody } from './parse-telegram-login-body';
@@ -56,6 +56,9 @@ export class AuthController {
     };
   }
 
+  // @AllowPending: тот, кто ждёт подтверждения (ADR-0026), должен увидеть
+  // своё имя и статус — экран ожидания строится из этого ответа.
+  @AllowPending()
   @Get('me')
   me(@CurrentUser() user: UserLean): MeDto {
     // AuthGuard уже сходил в UsersService.findById перед тем, как пропустить

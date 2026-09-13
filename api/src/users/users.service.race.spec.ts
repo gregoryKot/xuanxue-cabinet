@@ -37,6 +37,7 @@ describe('UsersService.createFromTelegram при E11000', () => {
       telegramId: 7,
       name: 'Второй',
       roles: ['admin'],
+      status: 'active',
     });
     expect(user.id).toBe(existing._id.toString());
     expect(user.roles).toEqual([]);
@@ -45,7 +46,12 @@ describe('UsersService.createFromTelegram при E11000', () => {
   it('другая ошибка базы уходит наверх', async () => {
     const service = new UsersService(fakeModel(() => Promise.reject(new Error('down'))));
     await expect(
-      service.createFromTelegram({ telegramId: 7, name: 'x', roles: [] }),
+      service.createFromTelegram({
+        telegramId: 7,
+        name: 'x',
+        roles: [],
+        status: 'active',
+      }),
     ).rejects.toThrow('down');
   });
 
@@ -65,7 +71,12 @@ describe('UsersService.createFromTelegram при E11000', () => {
     const service = new UsersService(model);
 
     await expect(
-      service.createFromTelegram({ telegramId: 7, name: 'x', roles: [] }),
+      service.createFromTelegram({
+        telegramId: 7,
+        name: 'x',
+        roles: [],
+        status: 'active',
+      }),
     ).rejects.toThrow('пользователь не найден после upsert');
   });
 });

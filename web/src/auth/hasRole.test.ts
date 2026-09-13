@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import { hasRole } from './hasRole';
 
-const me: MeDto = { id: 'u1', name: 'Маша', roles: ['teacher'], tz: 'Asia/Jerusalem' };
+const me: MeDto = {
+  id: 'u1',
+  name: 'Маша',
+  roles: ['teacher'],
+  tz: 'Asia/Jerusalem',
+  status: 'active',
+};
 
 describe('hasRole', () => {
   it('роль есть → true, нет → false', () => {

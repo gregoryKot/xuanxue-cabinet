@@ -47,6 +47,7 @@ describe('RequireAdmin', () => {
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -76,7 +77,13 @@ describe('RequireAdmin', () => {
   });
 
   it('admin — рендерит вложенный маршрут', async () => {
-    const me: MeDto = { id: 'u2', name: 'Маша', roles: ['admin'], tz: 'Asia/Jerusalem' };
+    const me: MeDto = {
+      id: 'u2',
+      name: 'Маша',
+      roles: ['admin'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    };
     mockedApiFetch.mockResolvedValue(me);
 
     renderGuarded();

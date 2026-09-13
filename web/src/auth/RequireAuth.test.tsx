@@ -58,6 +58,7 @@ describe('RequireAuth', () => {
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -68,7 +69,13 @@ describe('RequireAuth', () => {
 
   it('«Повторить» на офлайне вызывает /auth/me снова', async () => {
     mockedApiFetch.mockRejectedValueOnce(new ApiError('Нет связи', 0, 'network'));
-    const me: MeDto = { id: 'u1', name: 'Дима', roles: ['admin'], tz: 'Asia/Jerusalem' };
+    const me: MeDto = {
+      id: 'u1',
+      name: 'Дима',
+      roles: ['admin'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    };
     mockedApiFetch.mockResolvedValueOnce(me);
 
     const user = userEvent.setup();

@@ -17,12 +17,14 @@ const STUDENT: MeDto = {
   name: 'Ученик',
   roles: ['student'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
 const TEACHER: MeDto = {
   id: 'u2',
   name: 'Учитель',
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
 
 describe('useNotificationPrefs — виды по роли', () => {

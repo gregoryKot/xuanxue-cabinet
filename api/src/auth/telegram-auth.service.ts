@@ -54,16 +54,23 @@ export class TelegramAuthService {
     return { user, cookie };
   }
 
-  /** Роли по умолчанию пустые — гость (SECURITY §2); первый вход с
-   * BOOTSTRAP_ADMIN_TELEGRAM_ID получает admin+teacher (CLAUDE.md
-   * «Кабинет учителя»: дальше роли назначаются в интерфейсе, не в env). */
+  /** Роли по умолчанию пустые — ученик появляется как `active` без ролей
+   * (ADR-0026); первый вход с BOOTSTRAP_ADMIN_TELEGRAM_ID получает
+   * admin+teacher (CLAUDE.md «Кабинет учителя»: дальше роли назначаются в
+   * интерфейсе, не в env).
+   *
+   * Статус нового человека — `invited`: ссылки и пароли Zoom видит только
+   * тот, кого школа подтвердила (SECURITY §2, угроза №1 — зум-бомбинг).
+   * Первый админ — исключение: подтверждать его некому. */
   private async createUser(input: TelegramLoginInput): Promise<UserLean> {
     const bootstrapId = this.config.get<number>('BOOTSTRAP_ADMIN_TELEGRAM_ID');
-    const roles: UserRole[] = bootstrapId === input.id ? ['admin', 'teacher'] : [];
+    const isBootstrapAdmin = bootstrapId === input.id;
+    const roles: UserRole[] = isBootstrapAdmin ? ['admin', 'teacher'] : [];
     return this.usersService.createFromTelegram({
       telegramId: input.id,
       name: fullName(input),
       roles,
+      status: isBootstrapAdmin ? 'active' : 'invited',
     });
   }
 }

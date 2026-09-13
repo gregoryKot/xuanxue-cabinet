@@ -7,7 +7,12 @@ import { ForbiddenError, UnauthorizedError } from '../common/errors';
 import { fakeConfig, fakeResponse } from '../test-support/http-fakes';
 import type { UserLean } from '../users/users.service';
 import { UsersService } from '../users/users.service';
-import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
+import {
+  ALLOW_PENDING_KEY,
+  IS_PUBLIC_KEY,
+  ROLES_KEY,
+  SKIP_CSRF_KEY,
+} from './auth.decorators';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
@@ -145,6 +150,36 @@ describe('AuthGuard — сессия', () => {
       fakeUsersService(activeUser({ status: 'blocked' })),
     );
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  // ADR-0026: вошёл, но школа ещё не подтвердила — сессия есть, данных нет.
+  it('статус invited без @AllowPending() — 403', async () => {
+    const token = signSession({ userId: 'u1', issuedAt: NOW }, SECRET);
+    const { context, reflector } = fakeContext(
+      { headers: { cookie: `session=${token}` } },
+      fakeResponse(),
+    );
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(activeUser({ roles: [], status: 'invited' })),
+    );
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      'осталось дождаться подтверждения',
+    );
+  });
+
+  it('статус invited с @AllowPending() — проходит (экран ожидания знает, кто вошёл)', async () => {
+    const token = signSession({ userId: 'u1', issuedAt: NOW }, SECRET);
+    const { context, reflector } = fakeContext(
+      { headers: { cookie: `session=${token}` } },
+      fakeResponse(),
+      { [ALLOW_PENDING_KEY]: true },
+    );
+    const guard = buildGuard(
+      reflector,
+      fakeUsersService(activeUser({ roles: [], status: 'invited' })),
+    );
+    await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
   it('валидная сессия без @Roles — доступ есть, req.user заполнен полным UserLean', async () => {

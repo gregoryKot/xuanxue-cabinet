@@ -41,6 +41,7 @@ describe('UsersService', () => {
       telegramId: 111,
       name: 'Дима',
       roles: ['teacher'],
+      status: 'active',
     });
     expect(created).toMatchObject({ name: 'Дима', telegramId: 111, roles: ['teacher'] });
 
@@ -53,6 +54,7 @@ describe('UsersService', () => {
       telegramId: 222,
       name: 'Маша',
       roles: [],
+      status: 'active',
     });
     const found = await service.findByTelegramId(222);
     expect(found).toMatchObject({ id: created.id, name: 'Маша' });
@@ -64,8 +66,18 @@ describe('UsersService', () => {
 
   it('два параллельных createFromTelegram с одним telegramId — один документ', async () => {
     const [first, second] = await Promise.all([
-      service.createFromTelegram({ telegramId: 444, name: 'Первый', roles: ['teacher'] }),
-      service.createFromTelegram({ telegramId: 444, name: 'Второй', roles: ['admin'] }),
+      service.createFromTelegram({
+        telegramId: 444,
+        name: 'Первый',
+        roles: ['teacher'],
+        status: 'active',
+      }),
+      service.createFromTelegram({
+        telegramId: 444,
+        name: 'Второй',
+        roles: ['admin'],
+        status: 'active',
+      }),
     ]);
 
     expect(first.id).toBe(second.id);
@@ -79,27 +91,32 @@ describe('UsersService', () => {
       telegramId: 501,
       name: 'Учитель',
       roles: ['teacher'],
+      status: 'active',
     });
     await service.createFromTelegram({
       telegramId: 502,
       name: 'Ученик с Telegram',
       roles: ['student'],
+      status: 'active',
     });
     const admin = await service.createFromTelegram({
       telegramId: 503,
       name: 'Админ',
       roles: ['admin'],
+      status: 'active',
     });
     // Помощник учителя правами равен учителю — бот пишет и ему.
     const assistant = await service.createFromTelegram({
       telegramId: 504,
       name: 'Помощник',
       roles: ['assistant'],
+      status: 'active',
     });
     await service.createFromTelegram({
       telegramId: 505,
       name: 'Бухгалтер с Telegram',
       roles: ['accountant'],
+      status: 'active',
     });
 
     const contacts = await service.listTeacherContacts();
@@ -124,6 +141,7 @@ describe('UsersService', () => {
       telegramId: 333,
       name: 'Ученик',
       roles: ['student'],
+      status: 'active',
     });
     const now = DateTime.fromISO('2026-09-05T10:00:00Z');
 

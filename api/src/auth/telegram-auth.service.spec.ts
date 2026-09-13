@@ -5,7 +5,7 @@
 import { createHash, createHmac, randomBytes } from 'crypto';
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
-import type { TelegramLoginInput, UserRole } from '@xuanxue/shared';
+import type { TelegramLoginInput, UserRole, UserStatus } from '@xuanxue/shared';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import type { UserLean, UsersService } from '../users/users.service';
 import type { AuthService } from './auth.service';
@@ -47,10 +47,17 @@ function fakeAuthService(): AuthService {
   } as unknown as AuthService;
 }
 
+interface NewUserInput {
+  telegramId: number;
+  name: string;
+  roles: UserRole[];
+  status: UserStatus;
+}
+
 interface UsersFakeOptions {
   existing?: UserLean | null;
   created?: UserLean;
-  onCreate?: (input: { telegramId: number; name: string; roles: UserRole[] }) => void;
+  onCreate?: (input: NewUserInput) => void;
   onTouch?: (id: string) => void;
 }
 
@@ -65,11 +72,7 @@ const BASE_USER: UserLean = {
 function fakeUsers(options: UsersFakeOptions): UsersService {
   return {
     findByTelegramId: () => Promise.resolve(options.existing ?? null),
-    createFromTelegram: (input: {
-      telegramId: number;
-      name: string;
-      roles: UserRole[];
-    }) => {
+    createFromTelegram: (input: NewUserInput) => {
       options.onCreate?.(input);
       return Promise.resolve(options.created ?? BASE_USER);
     },
@@ -185,6 +188,36 @@ describe('TelegramAuthService.login', () => {
 
     expect(created).toBe(false);
     expect(result.user.roles).toEqual([]);
+  });
+
+  // ADR-0026: подтверждать первого админа некому — он входит сразу.
+  it('новый пользователь с BOOTSTRAP_ADMIN_TELEGRAM_ID — статус active', async () => {
+    let createdStatus: UserStatus | undefined;
+    const service = new TelegramAuthService(
+      fakeConfig({ BOT_TOKEN, BOOTSTRAP_ADMIN_TELEGRAM_ID: BOOTSTRAP_ID }),
+      fakeUsers({ existing: null, onCreate: (input) => (createdStatus = input.status) }),
+      fakeAuthService(),
+    );
+
+    const input = validInput({ id: BOOTSTRAP_ID });
+    await service.login(input, { ...input }, DateTime.utc());
+
+    expect(createdStatus).toBe('active');
+  });
+
+  it('любой другой первый вход — статус invited, ждёт подтверждения школы', async () => {
+    let created: NewUserInput | undefined;
+    const service = new TelegramAuthService(
+      fakeConfig({ BOT_TOKEN, BOOTSTRAP_ADMIN_TELEGRAM_ID: BOOTSTRAP_ID }),
+      fakeUsers({ existing: null, onCreate: (input) => (created = input) }),
+      fakeAuthService(),
+    );
+
+    const input = validInput({ id: 777 });
+    await service.login(input, { ...input }, DateTime.utc());
+
+    expect(created?.status).toBe('invited');
+    expect(created?.roles).toEqual([]);
   });
 
   it('заблокированный пользователь — ForbiddenError', async () => {
