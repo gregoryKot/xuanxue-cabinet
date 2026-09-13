@@ -30,27 +30,29 @@ describe('NotificationPrefsService', () => {
 
   it('без документа — дефолт роли как есть', async () => {
     expect(await service.get('u1', ['student'])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message'],
+      enabled: ['lesson_soon', 'teacher_message', 'exam_result'],
     });
   });
 
   it('гость (без ролей) — дефолт как у ученика', async () => {
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message'],
+      enabled: ['lesson_soon', 'teacher_message', 'exam_result'],
     });
   });
 
   it('выключил вид уведомления → прочитал: его нет (read-after-write)', async () => {
     await service.set('u1', 'teacher_message', false);
 
-    expect(await service.get('u1', ['student'])).toEqual({ enabled: ['lesson_soon'] });
+    expect(await service.get('u1', ['student'])).toEqual({
+      enabled: ['lesson_soon', 'exam_result'],
+    });
   });
 
   it('включил вид сверх дефолта роли → прочитал: он есть', async () => {
     await service.set('u1', 'payments', true);
 
     expect(await service.get('u1', ['student'])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message', 'payments'],
+      enabled: ['lesson_soon', 'teacher_message', 'exam_result', 'payments'],
     });
   });
 
@@ -59,7 +61,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'lesson_soon', false);
 
     expect(await service.get('u1', ['student'])).toEqual({
-      enabled: ['teacher_message'],
+      enabled: ['teacher_message', 'exam_result'],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
   });
@@ -69,7 +71,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'lesson_soon', true);
 
     expect(await service.get('u1', ['student'])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message'],
+      enabled: ['lesson_soon', 'teacher_message', 'exam_result'],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
   });
@@ -78,9 +80,11 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'teacher_message', false);
     await service.set('u2', 'payments', true);
 
-    expect(await service.get('u1', ['student'])).toEqual({ enabled: ['lesson_soon'] });
+    expect(await service.get('u1', ['student'])).toEqual({
+      enabled: ['lesson_soon', 'exam_result'],
+    });
     expect(await service.get('u2', ['student'])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message', 'payments'],
+      enabled: ['lesson_soon', 'teacher_message', 'exam_result', 'payments'],
     });
   });
 
@@ -105,7 +109,10 @@ describe('NotificationPrefsService', () => {
 
       expect(result).toEqual(
         new Map([
-          ['u1', ['post_draft', 'recording_request', 'delivery_failed']],
+          [
+            'u1',
+            ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
+          ],
           ['u2', ['payments']],
         ]),
       );
@@ -119,11 +126,16 @@ describe('NotificationPrefsService', () => {
         { id: 'u2', roles: ['teacher'] },
       ]);
 
-      expect(result.get('u1')).toEqual(['recording_request', 'delivery_failed']);
+      expect(result.get('u1')).toEqual([
+        'recording_request',
+        'delivery_failed',
+        'attempt_submitted',
+      ]);
       expect(result.get('u2')).toEqual([
         'post_draft',
         'recording_request',
         'delivery_failed',
+        'attempt_submitted',
       ]);
     });
 

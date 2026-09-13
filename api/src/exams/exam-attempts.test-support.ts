@@ -8,6 +8,7 @@ import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
+import { fakeExamNotifier, type FakeExamNotifier } from './exam-notifier.test-support';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
 import { ExamGradingsService } from './exam-gradings.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
@@ -30,6 +31,7 @@ export interface AttemptsTestContext {
   examsService: ExamsService;
   examItemsService: ExamItemsService;
   userNamesService: UserNamesService;
+  examNotifier: FakeExamNotifier;
   service: ExamAttemptsService;
   gradingsService: ExamGradingsService;
 }
@@ -51,17 +53,20 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   const examsService = new ExamsService(examModel, itemModel);
   const examItemsService = new ExamItemsService(itemModel);
   const userNamesService = new UserNamesService(userModel);
+  const examNotifier = fakeExamNotifier();
   const service = new ExamAttemptsService(
     attemptModel,
     examsService,
     examItemsService,
     userNamesService,
+    examNotifier,
   );
   const gradingsService = new ExamGradingsService(
     attemptModel,
     gradingModel,
     examsService,
     userNamesService,
+    examNotifier,
   );
   return {
     memory,
@@ -73,6 +78,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     examsService,
     examItemsService,
     userNamesService,
+    examNotifier,
     service,
     gradingsService,
   };
@@ -84,4 +90,8 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.itemModel.deleteMany({});
   await ctx.gradingModel.deleteMany({});
   await ctx.userModel.deleteMany({});
+  // Иначе вызовы ExamNotifier из одного теста утекают в счётчик следующего —
+  // общий ctx на файл (afterEach), не свой инстанс на тест.
+  ctx.examNotifier.notifyAttemptSubmitted.mockClear();
+  ctx.examNotifier.notifyExamGraded.mockClear();
 }

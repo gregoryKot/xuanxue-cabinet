@@ -10,12 +10,28 @@
 // карточке проверки и списке попыток). Цикла нет — UsersModule ничего не
 // знает про exams (сверено grep'ом, ExamAttemptRecord/ExamGradingRecord
 // заходят в users только как имя модели в user-data.registry.ts, не импорт).
+//
+// Импортирует TelegramModule ради EXAM_NOTIFIER (слой 4.7, PLAN §11) — тот
+// же приём, что у TEACHER_NOTIFIER в scheduler.module.ts: реализация
+// (TelegramExamNotifier) физически живёт в api/src/telegram (Telegraf вне
+// telegram/channels запрещён eslint), но собирается здесь — сами
+// ExamAttemptsService/ExamGradingsService/MyExamsService и так живут в этом
+// модуле, отдельного «модуля-сборщика» под них, в отличие от
+// scheduler-сервисов, не заводили. Цикла нет — TelegramModule и его
+// собственные импорты (ChannelsModule/UsersModule/BroadcastsModule/
+// LessonsModule/DeliveriesModule/ClassesModule/SettingsModule/
+// NotificationsModule) про ExamsModule не знают (сверено grep'ом): порт
+// ExamNotifier — единственное, что TelegramExamNotifier берёт из exams/, и
+// это только тип (import type), не рантайм-зависимость модуля.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { TelegramModule } from '../telegram/telegram.module';
+import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import { UsersModule } from '../users/users.module';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
+import { EXAM_NOTIFIER } from './exam-notifier';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
 import { ExamGradingsService } from './exam-gradings.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
@@ -30,6 +46,7 @@ import { MyExamsService } from './my-exams.service';
 @Module({
   imports: [
     UsersModule,
+    TelegramModule,
     MongooseModule.forFeature([
       { name: ExamItemRecord.name, schema: ExamItemSchema },
       { name: ExamRecord.name, schema: ExamSchema },
@@ -49,6 +66,7 @@ import { MyExamsService } from './my-exams.service';
     ExamAttemptsService,
     ExamGradingsService,
     MyExamsService,
+    { provide: EXAM_NOTIFIER, useClass: TelegramExamNotifier },
   ],
   exports: [MongooseModule, ExamItemsService, ExamsService, ExamAttemptsService],
 })

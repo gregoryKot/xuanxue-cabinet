@@ -12,7 +12,7 @@ import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { decrypt } from '../utils/encryption';
 import { inlineButton } from '../telegram/callback-data';
-import { TeacherChats, type TeacherChat } from '../telegram/teacher-chats';
+import { PersonalChats, type PersonalChat } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { DeliveryRecord } from './delivery.schema';
 
@@ -41,7 +41,7 @@ export class ManualPromptService {
     @InjectModel(BroadcastRecord.name)
     private readonly broadcastModel: Model<BroadcastRecord>,
     @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly bot: TelegramBotService,
   ) {}
 
@@ -50,7 +50,7 @@ export class ManualPromptService {
     // (тот же приём): здесь получатель — единственный способ, которым текст
     // вообще уходит человеку (кнопка «Скопировал, отправил» — не сама
     // отправка), без него claim() без возврата навсегда потерял бы доставку.
-    const chats = await this.teacherChats.list(now);
+    const chats = await this.personalChats.list(now);
     if (chats.length === 0) return { prompted: 0 };
 
     const due = await this.deliveryModel
@@ -72,7 +72,7 @@ export class ManualPromptService {
 
   private async promptTeachers(
     delivery: DueManualDelivery,
-    chats: readonly TeacherChat[],
+    chats: readonly PersonalChat[],
   ): Promise<boolean> {
     const [broadcast, channel] = await Promise.all([
       this.broadcastModel

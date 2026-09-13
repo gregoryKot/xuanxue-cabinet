@@ -1,12 +1,12 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты») — условный апдейт
-// manualPromptedAt ДО отправки, текст+название канала; TeacherChats/бот —
+// manualPromptedAt ДО отправки, текст+название канала; PersonalChats/бот —
 // фейки.
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { encryptRecord } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import type { TeacherChat } from '../telegram/teacher-chats';
+import type { PersonalChat } from '../telegram/personal-chats';
 import type { TelegramBotService } from '../telegram/telegram-bot.service';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import {
@@ -19,9 +19,9 @@ import { ManualPromptService } from './manual-prompt.service';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 const ENCRYPT_SCHEMA = encryptSchemaFrom(BROADCAST_FIELD_POLICY);
-const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
+const CHAT: PersonalChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
-function fakeTeacherChats(chats: TeacherChat[] = [CHAT]) {
+function fakePersonalChats(chats: PersonalChat[] = [CHAT]) {
   return { list: jest.fn().mockResolvedValue(chats) };
 }
 
@@ -93,12 +93,12 @@ describe('ManualPromptService.prompt', () => {
     return { delivery, broadcast, channel };
   }
 
-  function build(teacherChats = fakeTeacherChats(), bot = fakeBot()) {
+  function build(personalChats = fakePersonalChats(), bot = fakeBot()) {
     const service = new ManualPromptService(
       deliveryModel,
       broadcastModel,
       channelModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
     );
     return { service, bot };
@@ -154,7 +154,7 @@ describe('ManualPromptService.prompt', () => {
 
   it('ни одного учителя не подключено — не забирает и не ставит manualPromptedAt (иначе тик подключения теряет доставку навсегда)', async () => {
     const { delivery } = await seedManualDelivery();
-    const { service, bot } = build(fakeTeacherChats([]));
+    const { service, bot } = build(fakePersonalChats([]));
 
     const result = await service.prompt(NOW);
 
@@ -167,19 +167,19 @@ describe('ManualPromptService.prompt', () => {
   it('гонка двух тиков на одной доставке — сообщение уходит один раз, prompted суммарно 1', async () => {
     const { delivery } = await seedManualDelivery();
     const bot = fakeBot();
-    const teacherChats = fakeTeacherChats();
+    const personalChats = fakePersonalChats();
     const serviceA = new ManualPromptService(
       deliveryModel,
       broadcastModel,
       channelModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
     );
     const serviceB = new ManualPromptService(
       deliveryModel,
       broadcastModel,
       channelModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
     );
 

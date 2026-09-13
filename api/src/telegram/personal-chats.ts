@@ -1,13 +1,17 @@
-// Кому пишет бот (ADR-0015, docs/PLAN.md §6): учителя/помощники учителя/
-// админы с telegramId, у кого есть активный личный канал (channels type
-// telegram, target = String(telegramId)) — то есть кто нажал /start. Один
-// источник для всех проактивных отправителей (предпросмотр, «Запись?»,
-// ручные каналы, уведомления об ошибках) — CLAUDE.md «Одна механика — один
-// компонент». `list()` — все подключённые (identity-проверки хендлеров: чей
-// это callback/сообщение), `listFor(kind)` — те же люди, у кого вдобавок
-// включён этот вид уведомления (ТЗ notifications-delivery.md §1): дефолт роли
-// с личными переключениями поверх, одна выборка `notification_prefs` на весь
-// список — не по человеку в цикле (NotificationPrefsService.getManyEnabled).
+// Личный чат с ботом (ADR-0015, docs/PLAN.md §6, §11 слой 4.7) — активный
+// channels type telegram, target = String(telegramId), то есть человек нажал
+// /start. `list()`/`listFor(kind)` — учителя/помощники/админы (весь штат
+// школы, CLAUDE.md «Одна механика — один компонент»): предпросмотр, «Запись?»,
+// ручные каналы, уведомления об ошибках, очередь проверки экзаменов.
+// `list()` — все подключённые (identity-проверки хендлеров: чей это
+// callback/сообщение), `listFor(kind)` — те же люди, у кого вдобавок включён
+// этот вид уведомления: дефолт роли с личными переключениями поверх, одна
+// выборка `notification_prefs` на весь список — не по человеку в цикле
+// (NotificationPrefsService.getManyEnabled). `chatFor(userId, kind)` —
+// та же механика точечно для ОДНОГО конкретного человека любой роли, включая
+// ученика (результат экзамена, слой 4.7): весь штат школы поднимать не нужно
+// ради одного адресата, а исход и логирование пустоты («ни у кого нет бота»)
+// здесь неуместны — молчание для одного человека норма, не авария.
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
@@ -17,13 +21,13 @@ import { ChannelRecord } from '../channels/channel.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { UsersService } from '../users/users.service';
 
-export interface TeacherChat {
+export interface PersonalChat {
   chatId: string;
   userId: string;
   name: string;
 }
 
-interface ActiveContact extends TeacherChat {
+interface ActiveContact extends PersonalChat {
   roles: UserRole[];
 }
 
@@ -34,8 +38,8 @@ interface ActiveContact extends TeacherChat {
 const EMPTY_WARN_INTERVAL_MIN = 60;
 
 @Injectable()
-export class TeacherChats {
-  private readonly logger = new Logger(TeacherChats.name);
+export class PersonalChats {
+  private readonly logger = new Logger(PersonalChats.name);
   private lastEmptyWarnAt: DateTime | null = null;
   private readonly lastEmptyDebugAtByKind = new Map<NotificationKind, DateTime>();
 
@@ -45,16 +49,16 @@ export class TeacherChats {
     private readonly notificationPrefsService: NotificationPrefsService,
   ) {}
 
-  async list(now: DateTime): Promise<TeacherChat[]> {
+  async list(now: DateTime): Promise<PersonalChat[]> {
     const contacts = await this.activeContacts();
     // roles — только для listFor(); наружу list() отдаёт исходную форму
-    // TeacherChat, не расширенную (иначе поле «протекает» в чужой контракт —
+    // PersonalChat, не расширенную (иначе поле «протекает» в чужой контракт —
     // все вызывающие места собирают его через `.toEqual`/`.map` по трём полям).
     const chats = contacts.map(({ chatId, userId, name }) => ({ chatId, userId, name }));
     return this.warnIfEmpty(chats, now);
   }
 
-  async listFor(kind: NotificationKind, now: DateTime): Promise<TeacherChat[]> {
+  async listFor(kind: NotificationKind, now: DateTime): Promise<PersonalChat[]> {
     const contacts = await this.activeContacts();
     if (contacts.length === 0) return this.debugIfEmptyForKind([], now, kind);
 
@@ -69,6 +73,29 @@ export class TeacherChats {
       .filter((c) => (enabledByUser.get(c.userId) as NotificationKind[]).includes(kind))
       .map(({ chatId, userId, name }) => ({ chatId, userId, name }));
     return this.debugIfEmptyForKind(chats, now, kind);
+  }
+
+  /** Личный чат одного конкретного человека — если у него активный канал и
+   * включён этот вид уведомления. В отличие от list()/listFor() не сверяется
+   * со штатом школы (usersService.listTeacherContacts — там только
+   * teacher/assistant/admin): подходит и ученику. `null` — не ошибка, не
+   * подключил бота или выключил вид (см. комментарий в начале файла); вызов
+   * не логирует пустой результат — это выбор одного человека, не поломка
+   * всего канала оповещений. */
+  async chatFor(userId: string, kind: NotificationKind): Promise<PersonalChat | null> {
+    const user = await this.usersService.findById(userId);
+    if (!user?.telegramId) return null;
+
+    const target = String(user.telegramId);
+    const channel = await this.channelModel
+      .findOne({ type: 'telegram', target, active: true }, { _id: 1 })
+      .lean();
+    if (!channel) return null;
+
+    const prefs = await this.notificationPrefsService.get(userId, user.roles);
+    if (!prefs.enabled.includes(kind)) return null;
+
+    return { chatId: target, userId: user.id, name: user.name };
   }
 
   /** Общий первый шаг list()/listFor() — контакт с ролью (уже отфильтрован
@@ -93,7 +120,7 @@ export class TeacherChats {
       }));
   }
 
-  private warnIfEmpty(chats: TeacherChat[], now: DateTime): TeacherChat[] {
+  private warnIfEmpty(chats: PersonalChat[], now: DateTime): PersonalChat[] {
     if (chats.length > 0) return chats;
     const dueForWarn =
       !this.lastEmptyWarnAt ||
@@ -114,10 +141,10 @@ export class TeacherChats {
    * выбор человека, не сбой, поэтому debug, не warn (ТЗ
    * notifications-delivery.md §2: «шаг тика не падает»). */
   private debugIfEmptyForKind(
-    chats: TeacherChat[],
+    chats: PersonalChat[],
     now: DateTime,
     kind: NotificationKind,
-  ): TeacherChat[] {
+  ): PersonalChat[] {
     if (chats.length > 0) return chats;
     const last = this.lastEmptyDebugAtByKind.get(kind);
     const dueForLog =

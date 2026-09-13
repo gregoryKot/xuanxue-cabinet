@@ -12,7 +12,7 @@ import { MyLessonsService } from '../../lessons/my-lessons.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
-import { buildTeacherChats } from '../test-support/build-teacher-chats';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
 import { MenuCommandHandler } from './menu-command.handler';
 
@@ -53,7 +53,7 @@ describe('MenuCommandHandler', () => {
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     const usersService = new UsersService(userModel);
     handler = new MenuCommandHandler(
-      buildTeacherChats(connection, usersService, channelModel),
+      buildPersonalChats(connection, usersService, channelModel),
       new MyLessonsService(lessonModel, classModel),
     );
   }, 60_000);
@@ -155,7 +155,7 @@ describe('MenuCommandHandler', () => {
   it('база упала на середине — бот молчит, ошибка уходит в лог, апдейт не падает', async () => {
     await seedTeacher(userModel, channelModel, 111);
     const broken = new MenuCommandHandler(
-      buildTeacherChats(connection, new UsersService(userModel), channelModel),
+      buildPersonalChats(connection, new UsersService(userModel), channelModel),
       {
         list: () => Promise.reject(new Error('Mongo недоступна')),
       } as unknown as MyLessonsService,

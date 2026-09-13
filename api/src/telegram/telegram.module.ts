@@ -1,14 +1,14 @@
 // Бот Telegram (ADR-0015): вебхук + авторегистрация чатов как каналов, кнопки
 // предпросмотра/«Запись?»/ручных каналов, /тема, /уведомления (PLAN.md §6, §13).
-// ChannelsModule — ChannelConfigService и модель ChannelRecord (TeacherChats);
-// UsersModule — UsersService (/start, TeacherChats, MessageHandler);
+// ChannelsModule — ChannelConfigService и модель ChannelRecord (PersonalChats);
+// UsersModule — UsersService (/start, PersonalChats, MessageHandler);
 // BroadcastsModule — BroadcastsService.cancel(), TopicRebuildService, модель
 // BroadcastRecord; LessonsModule — LessonsService.update()/addRecording(),
 // модель LessonRecord; DeliveriesModule — DeliveriesService.markSent();
 // ClassesModule — модель ClassRecord (/тема, TopicCommandHandler);
 // SettingsModule — SettingsService.get() (StartHandler, адрес сайта школы для
 // незнакомца, В6 аудита); NotificationsModule — NotificationPrefsService
-// (TeacherChats.listFor, кнопки «Уведомления»). Ни один из них не
+// (PersonalChats.listFor, кнопки «Уведомления»). Ни один из них не
 // импортирует TelegramModule обратно — цикла нет (ADR-0013).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -29,7 +29,7 @@ import { MenuCommandHandler } from './handlers/menu-command.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
-import { TeacherChats } from './teacher-chats';
+import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, createTelegraf } from './telegraf-instance';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramController } from './telegram.controller';
@@ -60,14 +60,14 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     NotificationsCommandHandler,
     MenuCommandHandler,
     MessageHandler,
-    TeacherChats,
+    PersonalChats,
     BotSessionService,
     { provide: TELEGRAF_FACTORY, useValue: createTelegraf },
   ],
   // TelegramBotService — SchedulerModule (проактивная отправка предпросмотра,
-  // «Запись?», ручных каналов и уведомлений); TeacherChats/BotSessionService —
+  // «Запись?», ручных каналов и уведомлений); PersonalChats/BotSessionService —
   // тот же вызывающий код (PreviewService/RecordingPromptService/
   // ManualPromptService/TelegramTeacherNotifier).
-  exports: [TelegramBotService, TeacherChats, BotSessionService],
+  exports: [TelegramBotService, PersonalChats, BotSessionService],
 })
 export class TelegramModule {}

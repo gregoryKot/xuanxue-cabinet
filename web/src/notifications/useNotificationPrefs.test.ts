@@ -33,7 +33,11 @@ describe('useNotificationPrefs — виды по роли', () => {
     const { result } = renderHook(() => useNotificationPrefs(STUDENT));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual(['lesson_soon', 'teacher_message']);
+    expect(result.current.kinds).toEqual([
+      'lesson_soon',
+      'teacher_message',
+      'exam_result',
+    ]);
     expect(result.current.enabled).toEqual(['lesson_soon']);
   });
 
@@ -46,6 +50,7 @@ describe('useNotificationPrefs — виды по роли', () => {
       'post_draft',
       'recording_request',
       'delivery_failed',
+      'attempt_submitted',
     ]);
   });
 
@@ -54,7 +59,11 @@ describe('useNotificationPrefs — виды по роли', () => {
     const { result } = renderHook(() => useNotificationPrefs(null));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual(['lesson_soon', 'teacher_message']);
+    expect(result.current.kinds).toEqual([
+      'lesson_soon',
+      'teacher_message',
+      'exam_result',
+    ]);
   });
 });
 

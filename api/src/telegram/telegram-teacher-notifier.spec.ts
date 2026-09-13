@@ -5,7 +5,7 @@ import { Types } from 'mongoose';
 import {
   buildNotifier,
   clearNotifierTest,
-  fakeTeacherChats,
+  fakePersonalChats,
   NOW,
   setupNotifierTest,
   type NotifierTestContext,
@@ -191,7 +191,7 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
       config: '{}',
       target: '',
     });
-    const { notifier, bot } = buildNotifier(ctx, fakeTeacherChats([]));
+    const { notifier, bot } = buildNotifier(ctx, fakePersonalChats([]));
 
     await expect(
       notifier.notifyDeliveryFailed(
@@ -207,7 +207,7 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('спрашивает TeacherChats именно про delivery_failed, не другой вид', async () => {
+  it('спрашивает PersonalChats именно про delivery_failed, не другой вид', async () => {
     const broadcast = await ctx.broadcastModel.create({
       kind: 'manual',
       channelIds: [],
@@ -221,8 +221,8 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
       config: '{}',
       target: '',
     });
-    const teacherChats = fakeTeacherChats();
-    const { notifier } = buildNotifier(ctx, teacherChats);
+    const personalChats = fakePersonalChats();
+    const { notifier } = buildNotifier(ctx, personalChats);
 
     await notifier.notifyDeliveryFailed(
       {
@@ -234,6 +234,6 @@ describe('TelegramTeacherNotifier.notifyDeliveryFailed', () => {
       NOW,
     );
 
-    expect(teacherChats.listFor).toHaveBeenCalledWith('delivery_failed', NOW);
+    expect(personalChats.listFor).toHaveBeenCalledWith('delivery_failed', NOW);
   });
 });

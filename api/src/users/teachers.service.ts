@@ -2,7 +2,7 @@
 // §6 п.2, аудит В4). Отдельный файл, не метод в UsersService: тот уже на
 // пределе файла-храповика (CLAUDE.md «Храповики», как и у
 // user-roles.service.ts). Роли здесь — только teacher/admin, не то же самое,
-// что у UsersService.listTeacherContacts (тот с assistant — TeacherChats,
+// что у UsersService.listTeacherContacts (тот с assistant — PersonalChats,
 // помощник учителя пишет боту так же, как учитель): вести занятие как
 // leaderId помощник пока не может, это выбор ведущего, а не контакт бота.
 import { Injectable } from '@nestjs/common';

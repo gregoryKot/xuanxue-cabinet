@@ -13,7 +13,7 @@
 // — тот сам импортирует BroadcastsModule (цикл). BroadcastsModule/
 // DeliveriesModule/ChannelsModule/SettingsModule — модельные модули (только
 // forFeature), сама логика тика собирается на этом уровне. TelegramModule —
-// TelegramBotService/TeacherChats/BotSessionService для проактивной отправки
+// TelegramBotService/PersonalChats/BotSessionService для проактивной отправки
 // (предпросмотр, «Запись?», ручные каналы, уведомления об ошибках); ни
 // TelegramModule, ни его собственные импорты про SchedulerModule не знают.
 import { Module } from '@nestjs/common';

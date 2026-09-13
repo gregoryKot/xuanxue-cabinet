@@ -19,7 +19,7 @@ import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
-import { buildTeacherChats } from '../test-support/build-teacher-chats';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { MessageHandler } from './message.handler';
 
 export interface MessageHandlerTestContext {
@@ -89,7 +89,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     usersService,
   );
   const handler = new MessageHandler(
-    buildTeacherChats(connection, usersService, channelModel),
+    buildPersonalChats(connection, usersService, channelModel),
     new BotSessionService(botSessionModel),
     lessonsService,
     topicRebuild,

@@ -15,7 +15,7 @@ import { claimOnce } from '../common/claim-once';
 import { decrypt } from '../utils/encryption';
 import { SettingsService } from '../settings/settings.service';
 import { inlineButton } from '../telegram/callback-data';
-import { TeacherChats } from '../telegram/teacher-chats';
+import { PersonalChats } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { BroadcastRecord } from './broadcast.schema';
 
@@ -39,7 +39,7 @@ export class PreviewService {
   constructor(
     @InjectModel(BroadcastRecord.name)
     private readonly broadcastModel: Model<BroadcastRecord>,
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly bot: TelegramBotService,
     private readonly settingsService: SettingsService,
   ) {}
@@ -67,12 +67,12 @@ export class PreviewService {
     if (due.length === 0) return { claimed: 0 };
 
     // Один список чатов на весь тик — за то время, что тик перебирает
-    // рассылки, состав подключённых учителей не меняется, а TeacherChats
+    // рассылки, состав подключённых учителей не меняется, а PersonalChats
     // сама решает, когда логировать пустой список (не чаще раза в час).
     // post_draft — вид уведомления «Черновик поста» (ТЗ
     // notifications-delivery.md §2): кто выключил его себе, тому предпросмотр
     // не приходит, остальным — как раньше.
-    const chats = await this.teacherChats.listFor('post_draft', now);
+    const chats = await this.personalChats.listFor('post_draft', now);
 
     let claimed = 0;
     for (const broadcast of due) {

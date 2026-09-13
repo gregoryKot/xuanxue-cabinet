@@ -10,7 +10,7 @@ import { NotificationPrefsService } from '../notifications/notification-prefs.se
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
-import { TeacherChats } from './teacher-chats';
+import { PersonalChats } from './personal-chats';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 
@@ -20,7 +20,7 @@ let userModel: Model<UserRecord>;
 let channelModel: Model<ChannelRecord>;
 let notificationPrefsModel: Model<NotificationPrefsRecord>;
 let notificationPrefsService: NotificationPrefsService;
-let teacherChats: TeacherChats;
+let personalChats: PersonalChats;
 
 async function seedConnectedTeacher(telegramId: number, name: string): Promise<string> {
   const teacher = await userModel.create({ name, telegramId, roles: ['teacher'] });
@@ -43,7 +43,7 @@ beforeAll(async () => {
     NotificationPrefsRecord.name,
   );
   notificationPrefsService = new NotificationPrefsService(notificationPrefsModel);
-  teacherChats = new TeacherChats(
+  personalChats = new PersonalChats(
     new UsersService(userModel),
     channelModel,
     notificationPrefsService,
@@ -60,7 +60,7 @@ afterEach(async () => {
   await notificationPrefsModel.deleteMany({});
 });
 
-describe('TeacherChats.list', () => {
+describe('PersonalChats.list', () => {
   it('учитель с активным личным каналом — в списке', async () => {
     const teacher = await userModel.create({
       name: 'Мария',
@@ -75,7 +75,7 @@ describe('TeacherChats.list', () => {
       active: true,
     });
 
-    const chats = await teacherChats.list(NOW);
+    const chats = await personalChats.list(NOW);
 
     expect(chats).toEqual([
       { chatId: '111', userId: teacher._id.toString(), name: 'Мария' },
@@ -85,7 +85,7 @@ describe('TeacherChats.list', () => {
   it('учитель без /start (канала нет) — не в списке', async () => {
     await userModel.create({ name: 'Дима', telegramId: 222, roles: ['admin'] });
 
-    const chats = await teacherChats.list(NOW);
+    const chats = await personalChats.list(NOW);
 
     expect(chats).toEqual([]);
   });
@@ -100,7 +100,7 @@ describe('TeacherChats.list', () => {
       active: false,
     });
 
-    const chats = await teacherChats.list(NOW);
+    const chats = await personalChats.list(NOW);
 
     expect(chats).toEqual([]);
   });
@@ -115,7 +115,7 @@ describe('TeacherChats.list', () => {
       active: true,
     });
 
-    const chats = await teacherChats.list(NOW);
+    const chats = await personalChats.list(NOW);
 
     expect(chats).toEqual([]);
   });
@@ -136,7 +136,7 @@ describe('TeacherChats.list', () => {
       active: true,
     });
 
-    const chats = await teacherChats.list(NOW);
+    const chats = await personalChats.list(NOW);
 
     expect(chats).toEqual([
       { chatId: '555', userId: assistant._id.toString(), name: 'Пётр' },
@@ -153,16 +153,16 @@ describe('TeacherChats.list', () => {
       active: true,
     });
 
-    const chats = await teacherChats.list(NOW);
+    const chats = await personalChats.list(NOW);
 
     expect(chats).toEqual([]);
   });
 
   it('пустой список — warn один раз в час, не на каждый вызов', async () => {
-    // Свой инстанс, не общий `teacherChats` из describe: тесты выше уже
+    // Свой инстанс, не общий `personalChats` из describe: тесты выше уже
     // видели пустой список на том же NOW (например «канал выключен») и
     // выставили lastEmptyWarnAt на общем инстансе — с ним диф был бы 0.
-    const freshChats = new TeacherChats(
+    const freshChats = new PersonalChats(
       new UsersService(userModel),
       channelModel,
       notificationPrefsService,
@@ -182,11 +182,11 @@ describe('TeacherChats.list', () => {
   });
 });
 
-describe('TeacherChats.listFor', () => {
+describe('PersonalChats.listFor', () => {
   it('дефолт роли — учитель в списке для post_draft, без единого переключения', async () => {
     const teacherId = await seedConnectedTeacher(111, 'Мария');
 
-    const chats = await teacherChats.listFor('post_draft', NOW);
+    const chats = await personalChats.listFor('post_draft', NOW);
 
     expect(chats).toEqual([{ chatId: '111', userId: teacherId, name: 'Мария' }]);
   });
@@ -199,7 +199,7 @@ describe('TeacherChats.listFor', () => {
       overrides: [{ kind: 'post_draft', enabled: false }],
     });
 
-    const chats = await teacherChats.listFor('post_draft', NOW);
+    const chats = await personalChats.listFor('post_draft', NOW);
 
     expect(chats.map((c) => c.name)).toEqual(['Пётр']);
   });
@@ -211,7 +211,7 @@ describe('TeacherChats.listFor', () => {
       overrides: [{ kind: 'post_draft', enabled: false }],
     });
 
-    const chats = await teacherChats.listFor('recording_request', NOW);
+    const chats = await personalChats.listFor('recording_request', NOW);
 
     expect(chats.map((c) => c.name)).toEqual(['Мария']);
   });
@@ -223,7 +223,7 @@ describe('TeacherChats.listFor', () => {
       overrides: [{ kind: 'delivery_failed', enabled: false }],
     });
 
-    await expect(teacherChats.listFor('delivery_failed', NOW)).resolves.toEqual([]);
+    await expect(personalChats.listFor('delivery_failed', NOW)).resolves.toEqual([]);
   });
 
   it('одна выборка notification_prefs на весь список, не по человеку в цикле', async () => {
@@ -232,7 +232,7 @@ describe('TeacherChats.listFor', () => {
     await seedConnectedTeacher(333, 'Ольга');
     const getManySpy = jest.spyOn(NotificationPrefsService.prototype, 'getManyEnabled');
 
-    await teacherChats.listFor('post_draft', NOW);
+    await personalChats.listFor('post_draft', NOW);
 
     expect(getManySpy).toHaveBeenCalledTimes(1);
     expect(getManySpy.mock.calls[0]?.[0]).toHaveLength(3);
@@ -244,7 +244,7 @@ describe('TeacherChats.listFor', () => {
       .spyOn(Logger.prototype, 'debug')
       .mockImplementation(() => undefined);
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    const freshChats = new TeacherChats(
+    const freshChats = new PersonalChats(
       new UsersService(userModel),
       channelModel,
       notificationPrefsService,

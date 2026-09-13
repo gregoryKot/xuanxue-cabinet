@@ -3,15 +3,16 @@
 import { buildNotificationsMenu } from './notifications-menu';
 
 describe('buildNotificationsMenu', () => {
-  it('учитель, всё включено — три вида, кнопки «Выключить»', () => {
+  it('учитель, всё включено — четыре вида, кнопки «Выключить»', () => {
     const menu = buildNotificationsMenu(
       ['teacher'],
-      ['post_draft', 'recording_request', 'delivery_failed'],
+      ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
     );
 
     expect(menu.text).toContain('Черновик поста — включено');
     expect(menu.text).toContain('Напоминание про запись — включено');
     expect(menu.text).toContain('Пост не ушёл — включено');
+    expect(menu.text).toContain('Работа на проверку — включено');
     expect(menu.buttons).toEqual([
       [{ text: 'Выключить: Черновик поста', callback_data: 'notif:post_draft' }],
       [
@@ -21,13 +22,19 @@ describe('buildNotificationsMenu', () => {
         },
       ],
       [{ text: 'Выключить: Пост не ушёл', callback_data: 'notif:delivery_failed' }],
+      [
+        {
+          text: 'Выключить: Работа на проверку',
+          callback_data: 'notif:attempt_submitted',
+        },
+      ],
     ]);
   });
 
   it('один вид выключен — его кнопка «Включить», текст «выключено»', () => {
     const menu = buildNotificationsMenu(
       ['teacher'],
-      ['recording_request', 'delivery_failed'],
+      ['recording_request', 'delivery_failed', 'attempt_submitted'],
     );
 
     expect(menu.text).toContain('Черновик поста — выключено');
@@ -37,7 +44,10 @@ describe('buildNotificationsMenu', () => {
   });
 
   it('ученик видит только свои виды, не учительские', () => {
-    const menu = buildNotificationsMenu(['student'], ['lesson_soon', 'teacher_message']);
+    const menu = buildNotificationsMenu(
+      ['student'],
+      ['lesson_soon', 'teacher_message', 'exam_result'],
+    );
 
     expect(menu.text).not.toContain('Черновик поста');
     expect(menu.buttons).toEqual([
@@ -48,6 +58,7 @@ describe('buildNotificationsMenu', () => {
           callback_data: 'notif:teacher_message',
         },
       ],
+      [{ text: 'Выключить: Результат экзамена', callback_data: 'notif:exam_result' }],
     ]);
   });
 
@@ -59,6 +70,7 @@ describe('buildNotificationsMenu', () => {
       'Выключить: Черновик поста',
       'Включить: Напоминание про запись',
       'Включить: Пост не ушёл',
+      'Включить: Работа на проверку',
       'Включить: Оплаты и долги',
     ]);
   });
@@ -66,6 +78,6 @@ describe('buildNotificationsMenu', () => {
   it('без ролей (гость) — дефолт ученика', () => {
     const menu = buildNotificationsMenu([], ['lesson_soon', 'teacher_message']);
 
-    expect(menu.buttons).toHaveLength(2);
+    expect(menu.buttons).toHaveLength(3);
   });
 });

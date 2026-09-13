@@ -9,9 +9,11 @@ import type { UserRole } from './auth';
 export const NOTIFICATION_KINDS = [
   'lesson_soon', // занятие скоро — ученику
   'teacher_message', // сообщение от учителя — ученику
+  'exam_result', // работу проверили — ученику (слой 4.7)
   'post_draft', // черновик поста перед занятием, с кнопкой «Исправить»
   'recording_request', // в минуту окончания занятия — «пришлите видео»
   'delivery_failed', // пост не ушёл в канал
+  'attempt_submitted', // ученик сдал работу — ждёт проверки (слой 4.7)
   'payments', // оплаты и долги (этап 3)
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -27,9 +29,11 @@ export function isNotificationKind(value: string): value is NotificationKind {
 export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {
   lesson_soon: 'Занятие скоро',
   teacher_message: 'Сообщение от учителя',
+  exam_result: 'Результат экзамена',
   post_draft: 'Черновик поста',
   recording_request: 'Напоминание про запись',
   delivery_failed: 'Пост не ушёл',
+  attempt_submitted: 'Работа на проверку',
   payments: 'Оплаты и долги',
 };
 
@@ -39,20 +43,29 @@ export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {
 export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
   lesson_soon: 'Придёт перед началом занятия — за сколько, настраивает школа.',
   teacher_message: 'Придёт, когда учитель напишет вам лично.',
+  exam_result: 'Придёт, когда учитель проверит вашу работу и выставит результат.',
   post_draft: 'Придёт перед занятием — успеете поправить текст кнопкой «Исправить».',
   recording_request: 'Придёт в минуту, когда занятие закончится, — пришлите видео.',
   delivery_failed: 'Придёт, если пост не дошёл до канала.',
+  attempt_submitted: 'Придёт, когда ученик сдаст экзамен, — работа ждёт вашей проверки.',
   payments: 'Придёт, когда изменится оплата или долг ученика.',
 };
 
 /** Дефолт по роли (отзыв владельца 2026-09-12): помощник учителя получает
  * то же, что учитель, — он равен учителю почти везде (shared/src/auth.ts).
  * Бухгалтер — только оплаты, они ждут этапа 3 (docs/PLAN.md §4), но контракт
- * не откладываем — включать нечего, пока `payments` не отправляется. */
+ * не откладываем — включать нечего, пока `payments` не отправляется.
+ *
+ * `attempt_submitted` (слой 4.7, PLAN §11) — только у учителя и помощника:
+ * они проверяют работы, очередь проверки — их дело. Админ получает тот же
+ * набор, что учитель, без этого вида: он не проверяет работы, и очередь
+ * чужих экзаменов ему не нужна (отзыв владельца 2026-09-12) — единственное
+ * расхождение набора админа с учителем, поэтому дальше не выражено общей
+ * переменной, а прямо видно построчно. */
 export const DEFAULT_NOTIFICATIONS_BY_ROLE: Record<UserRole, NotificationKind[]> = {
-  student: ['lesson_soon', 'teacher_message'],
-  teacher: ['post_draft', 'recording_request', 'delivery_failed'],
-  assistant: ['post_draft', 'recording_request', 'delivery_failed'],
+  student: ['lesson_soon', 'teacher_message', 'exam_result'],
+  teacher: ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
+  assistant: ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
   admin: ['post_draft', 'recording_request', 'delivery_failed'],
   accountant: ['payments'],
 };

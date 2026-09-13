@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
 import { StudentExamCard } from './StudentExamCard';
@@ -89,5 +90,81 @@ describe('StudentExamCard', () => {
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent('Нет связи с сервером.');
+  });
+
+  it('работа проверена — вместо кнопки итог, баллы и комментарий учителя', () => {
+    const exam = makeExam({
+      attemptsAllowed: 1,
+      attemptsUsed: 1,
+      lastAttempt: {
+        id: 'a1',
+        status: 'graded',
+        outcome: 'needs_work',
+        comment: 'Проверьте стойку в начале формы.',
+        criteria: [{ id: 'c1', title: 'Устойчивость и центр', maxScore: 5, score: 3 }],
+      },
+    });
+    render(
+      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
+    );
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText('Нужно доработать')).toBeInTheDocument();
+    expect(screen.getByText('Устойчивость и центр: 3 из 5')).toBeInTheDocument();
+    expect(screen.getByText(/Проверьте стойку в начале формы\./)).toBeInTheDocument();
+    expect(screen.queryByText('Экзамен проверен')).not.toBeInTheDocument();
+  });
+
+  // Слой 4.7: «нужно доработать» без кнопки — тупик. Попытка ещё есть —
+  // значит, ученик может пройти заново прямо с этой карточки.
+  it('работу вернули на доработку, попытка осталась — кнопка «Пройти ещё раз» рядом с итогом', async () => {
+    const onStart = vi.fn();
+    const user = userEvent.setup();
+    const exam = makeExam({
+      attemptsAllowed: 2,
+      attemptsUsed: 1,
+      lastAttempt: {
+        id: 'a1',
+        status: 'graded',
+        outcome: 'needs_work',
+        comment: 'Проверьте стойку в начале формы.',
+        criteria: [{ id: 'c1', title: 'Устойчивость и центр', maxScore: 5, score: 3 }],
+      },
+    });
+    render(
+      <StudentExamCard exam={exam} pending={false} error={null} onStart={onStart} />,
+    );
+
+    expect(screen.getByText('Нужно доработать')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Пройти ещё раз' }));
+
+    expect(onStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('работа отправлена, но ещё не проверена — оценки и итога нет', () => {
+    const exam = makeExam({
+      attemptsAllowed: 1,
+      attemptsUsed: 1,
+      lastAttempt: { id: 'a1', status: 'submitted' },
+    });
+    render(
+      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
+    );
+
+    expect(screen.getByText('Отправлено, ждём проверки')).toBeInTheDocument();
+    expect(screen.queryByText(/из \d+$/)).not.toBeInTheDocument();
+  });
+
+  it('помечено проверенным, но оценка ещё не пришла — запасной текст, не «мусор»', () => {
+    const exam = makeExam({
+      attemptsAllowed: 1,
+      attemptsUsed: 1,
+      lastAttempt: { id: 'a1', status: 'graded' },
+    });
+    render(
+      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
+    );
+
+    expect(screen.getByText('Экзамен проверен')).toBeInTheDocument();
   });
 });

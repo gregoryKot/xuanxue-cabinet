@@ -340,7 +340,7 @@ describe('UserDeletionService', () => {
       durationMin: 45,
     });
     // Содержимое ожидания тут не важно — важен ключ chatId = telegramId учителя
-    // (teacher-chats.ts: String(telegramId) как chatId личного чата).
+    // (personal-chats.ts: String(telegramId) как chatId личного чата).
     await botSessionModel.create({
       chatId: 5009,
       kind: 'topic',

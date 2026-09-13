@@ -7,7 +7,7 @@ import { LessonsService } from '../../lessons/lessons.service';
 import { UsersService } from '../../users/users.service';
 import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
-import { buildTeacherChats } from '../test-support/build-teacher-chats';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { MessageHandler } from './message.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
 import { NOW, seedLesson } from './message.handler.seed';
@@ -78,7 +78,7 @@ describe('MessageHandler — доступ и сбои', () => {
   ): MessageHandler {
     const usersService = new UsersService(ctx.userModel);
     return new MessageHandler(
-      buildTeacherChats(ctx.connection, usersService, ctx.channelModel),
+      buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
       new BotSessionService(ctx.botSessionModel),
       { update } as unknown as LessonsService,
       new TopicRebuildService(

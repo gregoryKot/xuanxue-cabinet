@@ -72,9 +72,9 @@ export class UsersService {
   }
 
   /** Учителя, помощники учителя и админы с подключённым Telegram — кому бот
-   * вообще может писать (TeacherChats, api/src/telegram/teacher-chats.ts,
+   * вообще может писать (PersonalChats, api/src/telegram/personal-chats.ts,
    * PLAN.md §6): помощник учителя правами равен учителю, поэтому в списке —
-   * дальше TeacherChats сверяет каждого с активным личным каналом и с его
+   * дальше PersonalChats сверяет каждого с активным личным каналом и с его
    * настройкой уведомлений (roles — для дефолта по роли, listFor). Бухгалтер
    * и ученик сюда не попадают — бот с ними проактивно не говорит. */
   async listTeacherContacts(): Promise<
@@ -88,7 +88,7 @@ export class UsersService {
         },
         { name: 1, telegramId: 1, roles: 1 },
       )
-      // Список внутренний (TeacherChats), но без лимита — «дай всё» тем же
+      // Список внутренний (PersonalChats), но без лимита — «дай всё» тем же
       // запрещённым приёмом, что и у публичных списков (CLAUDE.md «API»).
       .limit(LIST_LIMIT_DEFAULT)
       .lean<
