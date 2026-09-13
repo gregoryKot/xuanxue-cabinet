@@ -2,6 +2,7 @@
 // переход на экран сдачи (ТЗ п.1). Навигацию проверяем через настоящий
 // react-router (MemoryRouter + Routes), как App.test.tsx.
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
@@ -53,6 +54,18 @@ describe('StudentExamsSection', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Нет связи с сервером.');
     expect(screen.getByRole('button', { name: 'Обновить' })).toBeInTheDocument();
+  });
+
+  it('«Обновить» после сбоя перечитывает список экзаменов', async () => {
+    mockedApiFetch
+      .mockRejectedValueOnce(new ApiError('Нет связи с сервером.', 0, 'network'))
+      .mockResolvedValueOnce([EXAM]);
+    renderSection();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Обновить' }));
+
+    expect(await screen.findByText(EXAM.title)).toBeInTheDocument();
   });
 
   it('«Начать» — стартует попытку и уводит на экран сдачи', async () => {

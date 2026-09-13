@@ -85,6 +85,49 @@ function renderAttempt(
   return { onSubmit, reload };
 }
 
+describe('AttemptInProgress — подсказка и оставшееся время', () => {
+  it('у вопроса есть подсказка — она видна ученику (она для него и написана)', () => {
+    const attempt = makeAttempt();
+    const block = attempt.blocks[0];
+    if (!block) throw new Error('в фикстуре должен быть блок');
+    const question = block.questions[0];
+    if (!question) throw new Error('в фикстуре должен быть вопрос');
+    question.hint = 'Считайте по схеме из методички.';
+
+    render(
+      <MemoryRouter>
+        <AttemptInProgress
+          attempt={attempt}
+          reload={() => Promise.resolve()}
+          onSubmit={() => Promise.resolve()}
+          submitting={false}
+          submitError={null}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Считайте по схеме из методички.')).toBeInTheDocument();
+  });
+
+  it('лимит времени ещё не вышел — на экране видно, сколько осталось', () => {
+    render(
+      <MemoryRouter>
+        <AttemptInProgress
+          attempt={makeAttempt({
+            deadlineAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          })}
+          reload={() => Promise.resolve()}
+          onSubmit={() => Promise.resolve()}
+          submitting={false}
+          submitError={null}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/осталось/i)).toBeInTheDocument();
+  });
+});
+
 describe('AttemptInProgress', () => {
   it('видео-вопрос — честная строка, без поля загрузки', () => {
     renderAttempt(makeAttempt());

@@ -32,8 +32,11 @@ export function AttemptQuestionChoice({
   onChange,
 }: AttemptQuestionChoiceProps) {
   function toggle(optionId: string, checked: boolean) {
+    // Радиокнопка присылает `change` только когда её выбрали: «отжать» её
+    // мышью или клавиатурой нельзя, поэтому ветки «сняли отметку» у `single`
+    // не существует — она была бы мёртвым кодом.
     if (kind === 'single') {
-      onChange(checked ? [optionId] : []);
+      onChange([optionId]);
       return;
     }
     onChange(

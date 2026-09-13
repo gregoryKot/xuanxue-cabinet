@@ -3,6 +3,7 @@
 // по id). Форма ответа и «Отправлено» — свои тесты в AttemptInProgress.test.tsx
 // и AttemptSubmitted.test.tsx, здесь только маршрутизация между ними.
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto } from '@xuanxue/shared';
@@ -66,6 +67,35 @@ describe('AttemptScreen', () => {
     renderAt('a1');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Нет связи с сервером.');
+  });
+
+  it('после сбоя «Повторить» перечитывает попытку и открывает форму', async () => {
+    mockedApiFetch
+      .mockRejectedValueOnce(new ApiError('Нет связи с сервером.', 0, 'network'))
+      .mockResolvedValueOnce([IN_PROGRESS]);
+    renderAt('a1');
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
+
+    expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
+  });
+
+  // Маршрут без :id руками не собрать, но React Router может отдать undefined —
+  // экран не должен падать, а должен честно сказать, что попытки нет.
+  it('без идентификатора в адресе — «попытка не найдена», без падения', async () => {
+    mockedApiFetch.mockResolvedValueOnce([IN_PROGRESS]);
+    render(
+      <MemoryRouter initialEntries={['/attempts']}>
+        <Routes>
+          <Route path="/attempts" element={<AttemptScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Попытка не найдена. Обновите страницу.',
+    );
   });
 
   it('такой попытки нет в списке своих — текст «попытка не найдена»', async () => {
