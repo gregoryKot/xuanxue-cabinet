@@ -90,8 +90,9 @@ JSX и стили — нет.
 Мигающий тест чинится или удаляется в тот же день; `retry` запрещён.
 
 Каждый пойманный на проде баг → регрессионный тест с комментарием-ссылкой на инцидент.
-Гейты: coverage-храповик api (`scripts/check-coverage-ratchet.mjs`), пороги vitest с
-`autoUpdate` в `web/vite.config.ts` — оба могут только расти.
+Гейты: coverage-храповик api (`scripts/check-coverage-ratchet.mjs`) и coverage-храповик
+vitest для web и shared (`scripts/check-vitest-coverage-ratchet.mjs`) — оба могут только
+расти.
 
 ### 3. Новый эндпоинт = DTO с class-validator + e2e на владение
 
@@ -118,9 +119,6 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-jscpd-ratchet.mjs` — дубли ≥70 токенов не растут. Повторяешь блок — в модуль,
   хук или `shared/`.
 - `check-coverage-ratchet.mjs` — покрытие api не падает, жёсткий пол на `api/src/utils`.
-- `check-web-coverage-ratchet.mjs` — то же для web: бейслайн в `scripts/`, сам гоняет
-  vitest с покрытием. Порогов в `web/vite.config.ts` нет — vitest не переписывает
-  конфиг и не оставляет грязное дерево после `npm run check` (аудит 2026-09-12, H2).
 - `check-robot-phrases.mjs` — канцелярит и «это не X, это Y» в user-facing тексте.
 - `check-route-collisions.mjs` — один маршрут, один контроллер.
 - `check-env-example.mjs` — каждая читаемая env-переменная описана в `.env.example`.

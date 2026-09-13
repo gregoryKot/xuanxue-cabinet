@@ -117,11 +117,6 @@ npx prettier --check web/vite.config.ts   # [warn] Code style issues found
   репозитории (98.6) уже отстаёт от факта (98.64) — «порог может только расти»
   не работает, работает только «не ниже записанного».
 
-**Закрыто 2026-09-13:** `thresholds` из `web/vite.config.ts` убраны целиком, храповик —
-`scripts/check-web-coverage-ratchet.mjs` с бейслайном `scripts/web-coverage-baseline.json`
-(общая с api логика — `scripts/coverage-ratchet-lib.mjs`); подключён в `gates` и в джобу
-`web`. Конфиг vitest больше никто не переписывает.
-
 Фикс (small): убрать `autoUpdate`, завести `scripts/check-web-coverage-ratchet.mjs`
 по образцу api (читает `coverage/coverage-summary.json`, бейслайн в
 `scripts/`, `--update` для поднятия) и подключить в `gates` и в джобу `web`.

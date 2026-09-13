@@ -36,8 +36,8 @@ jobs:
         run: |
           npm run typecheck --workspace=shared
           npm run typecheck --workspace=api
-      - name: shared vitest
-        run: npm run test --workspace=shared
+      - name: shared vitest с покрытием
+        run: node scripts/check-vitest-coverage-ratchet.mjs shared
       - name: coverage ratchet (runs jest --coverage)
         run: node scripts/check-coverage-ratchet.mjs
       - name: jest под TZ=Australia/Sydney (тест перехода летнего времени)
@@ -74,8 +74,8 @@ jobs:
         run: npm run build --workspace=shared
       - name: typecheck
         run: npm run typecheck --workspace=web
-      - name: храповик покрытия (внутри — vitest с покрытием)
-        run: node scripts/check-web-coverage-ratchet.mjs
+      - name: vitest с покрытием
+        run: node scripts/check-vitest-coverage-ratchet.mjs web
       - name: vitest под TZ=Australia/Sydney (тест перехода летнего времени)
         run: TZ=Australia/Sydney npm run test --workspace=web
       - name: vite build

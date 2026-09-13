@@ -14,14 +14,14 @@
   "scripts": {
     "dev": "npm run build --workspace=shared && concurrently -n api,web -c blue,green \"npm run start:dev --workspace=api\" \"npm run dev --workspace=web\"",
     "build": "npm run build --workspace=shared && npm run build --workspace=web && npm run build --workspace=api",
-    "test": "npm run test --workspace=shared && npm run test --workspace=api && npm run test:cov --workspace=web",
+    "test": "node scripts/check-vitest-coverage-ratchet.mjs shared && npm run test --workspace=api && node scripts/check-vitest-coverage-ratchet.mjs web",
     "lint": "eslint .",
     "typecheck": "npm run typecheck --workspace=shared && npm run typecheck --workspace=api && npm run typecheck --workspace=web",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
-    "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-web-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
-    "check": "npm run build --workspace=shared && npm run typecheck && npm run lint && npm run test --workspace=shared && TZ=Australia/Sydney npm run test --workspace=api && TZ=Australia/Sydney npm run test --workspace=web && npm run format:check && npm run test:e2e --workspace=api && npm run build --workspace=web && npm run gates && npm run knip && node scripts/check-npm-audit.mjs"
+    "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
+    "check": "npm run build --workspace=shared && npm run typecheck && npm run lint && node scripts/check-vitest-coverage-ratchet.mjs shared && TZ=Australia/Sydney npm run test --workspace=api && node scripts/check-vitest-coverage-ratchet.mjs web && TZ=Australia/Sydney npm run test --workspace=web && npm run format:check && npm run test:e2e --workspace=api && npm run build --workspace=web && npm run gates && npm run knip && node scripts/check-npm-audit.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

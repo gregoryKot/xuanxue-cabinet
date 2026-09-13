@@ -117,13 +117,13 @@ export default defineConfig({
         'src/setupTests.ts',
         'src/vite-env.d.ts',
         'src/**/*.test.{ts,tsx}',
+        // Инфраструктура тестов (фейки, обёртки рендера) — не продуктовый код,
+        // не должна засчитываться в покрытие (аудит 2026-09-12, M2).
+        'src/test-support/**',
       ],
-      // Порога здесь больше нет: раньше thresholds.autoUpdate сам переписывал
-      // этот файл при росте покрытия (без финального \n) и ронял
-      // `prettier --check` на чистом дереве (docs/audits/2026-09-12-quality-audit.md,
-      // находка H2). Храповик — внешний scripts/check-web-coverage-ratchet.mjs
-      // с бейслайном в scripts/web-coverage-baseline.json; он сам запускает
-      // vitest с этим же --coverage. Файл vitest больше не трогает.
+      // Порог живёт не здесь: scripts/check-vitest-coverage-ratchet.mjs
+      // (аудит 2026-09-12, H2) — thresholds.autoUpdate переписывал этот файл
+      // при росте покрытия и срезал финальный \n, что ломало prettier --check.
     },
   },
 });
