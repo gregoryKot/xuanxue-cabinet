@@ -148,7 +148,8 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   `zoomPassword`, `lessons.zoomLinkOverride` и `zoomPasswordOverride`,
   `lessons.note` (свободный текст учителя), `broadcasts.text` (внутри всегда
   ссылка Zoom с паролем — п.3 выше), `deliveries.error`, `push_subscriptions.endpoint`
-  и ключи, ссылки на скриншоты оплат.
+  и ключи, ссылки на скриншоты оплат, `media_assets.fileId`/`fileUniqueId`/`url`
+  (ведут к видео экзамена, ADR-0023) и `media_assets.note` (свободный текст).
 - Не шифруются: идентификаторы, даты, перечисления, поля для выборок и индексов.
   Исключение с принятым риском — `lessons.recordings.url` (запись прошедшего
   занятия, не вход на живое — вне модели угроз §1) — см. §11.

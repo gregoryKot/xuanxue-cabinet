@@ -12,7 +12,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import type { FieldPolicy } from '../common/field-policy';
 
-const BOT_SESSION_KINDS = ['topic', 'recording'] as const;
+// 'examMedia' (ADR-0023, PLAN §11 слой 4.5) — ждём видео для попытки после
+// deep link `t.me/<бот>?start=exam_<attemptId>`; в отличие от topic/recording
+// заводится ЛЮБОМУ пользователю Telegram, не только штату школы (экзамен
+// сдают ученики) — несёт `attemptId`, не `lessonId`.
+const BOT_SESSION_KINDS = ['topic', 'recording', 'examMedia'] as const;
 export type BotSessionKind = (typeof BOT_SESSION_KINDS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })
@@ -25,8 +29,16 @@ export class BotSessionRecord {
   @Prop({ type: String, enum: BOT_SESSION_KINDS, required: true })
   kind!: BotSessionKind;
 
-  @Prop({ type: SchemaTypes.ObjectId, required: true })
-  lessonId!: Types.ObjectId;
+  // Только 'topic'/'recording'. Не $unset при переключении на 'examMedia' и
+  // обратно (см. bot-session.service.ts) — читатели ветвятся по `kind`
+  // раньше, чем смотрят на lessonId/attemptId, поэтому лишнее поле от
+  // прошлого ожидания безвредно.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  lessonId?: Types.ObjectId;
+
+  // Только 'examMedia'.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  attemptId?: Types.ObjectId;
 
   @Prop({ type: Date, required: true })
   expiresAt!: Date;

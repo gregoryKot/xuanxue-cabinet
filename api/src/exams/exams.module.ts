@@ -23,8 +23,15 @@
 // NotificationsModule) про ExamsModule не знают (сверено grep'ом): порт
 // ExamNotifier — единственное, что TelegramExamNotifier берёт из exams/, и
 // это только тип (import type), не рантайм-зависимость модуля.
+//
+// Импортирует MediaModule ради MediaAssetsService (слой 4.5, ADR-0023):
+// ExamAttemptsController подмешивает media в ответ (exam-attempt-media.ts).
+// Цикла нет — MediaModule берёт модель ExamAttemptRecord через
+// ExamAttemptModelModule (тонкая регистрация модели рядом, без контроллеров
+// и сервисов этого файла), а не через ExamsModule целиком.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { MediaModule } from '../media/media.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import { UsersModule } from '../users/users.module';
@@ -47,6 +54,7 @@ import { MyExamsService } from './my-exams.service';
   imports: [
     UsersModule,
     TelegramModule,
+    MediaModule,
     MongooseModule.forFeature([
       { name: ExamItemRecord.name, schema: ExamItemSchema },
       { name: ExamRecord.name, schema: ExamSchema },

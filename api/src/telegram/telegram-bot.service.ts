@@ -114,6 +114,15 @@ export class TelegramBotService implements OnApplicationBootstrap {
     }
   }
 
+  /** Имя бота в Telegram (`@имя`) — нужно кабинету, чтобы собрать deep link
+   * «Отправить видео» (`t.me/<имя>?start=exam_<id>`, ADR-0023). Берём из
+   * уже прогретого `botInfo`, не зовём getMe на каждый запрос конфигурации;
+   * бота нет или прогрев не удался — `undefined`, и кнопка просто не
+   * показывается (кабинет не обещает того, чего не может). */
+  botUsername(): string | undefined {
+    return this.bot?.botInfo?.username;
+  }
+
   /** telegraf зовёт `telegram.getMe()` лениво, но кэширует даже ОТКЛОНЁННЫЙ
    * промис в приватном `botInfoCall` (telegraf.js, handleUpdate) — после
    * первого сетевого сбоя бот молчал бы навсегда. Выставляем публичное

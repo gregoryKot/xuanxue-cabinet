@@ -18,6 +18,7 @@ import { DateTime } from 'luxon';
 import type { AuthConfigDto, MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { SettingsService } from '../settings/settings.service';
+import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { botIdFromToken } from './bot-id-from-token';
 import { AllowPending, CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
@@ -38,6 +39,7 @@ export class AuthController {
     private readonly telegramAuthService: TelegramAuthService,
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
+    private readonly telegramBotService: TelegramBotService,
   ) {}
 
   // Без сессии: экран входа и StudentScreen спрашивают конфигурацию до
@@ -52,6 +54,7 @@ export class AuthController {
     const settings = await this.settingsService.get();
     return {
       telegramBotId: botIdFromToken(this.configService.get<string>('BOT_TOKEN')),
+      telegramBotUsername: this.telegramBotService.botUsername(),
       schoolSiteUrl: settings.schoolSiteUrl,
     };
   }

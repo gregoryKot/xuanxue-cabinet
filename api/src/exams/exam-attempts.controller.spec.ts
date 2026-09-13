@@ -4,10 +4,21 @@
 // настоящем гварде — здесь только «контроллер зовёт сервис и возвращает его ответ».
 import { Test } from '@nestjs/testing';
 import type { AttemptReviewDto, ExamAttemptDto, ExamGradingDto } from '@xuanxue/shared';
+import { MediaAssetsService } from '../media/media-assets.service';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamGradingsService } from './exam-gradings.service';
+
+/** По умолчанию — без видео (пустой список): маршрутизацию к
+ * MediaAssetsService проверяет media-assets.service.spec.ts и
+ * exam-attempt-media.spec.ts, здесь — что контроллер её действительно зовёт. */
+function fakeMediaAssetsService(): Partial<MediaAssetsService> {
+  return {
+    listForAttempt: jest.fn().mockResolvedValue([]),
+    listForAttempts: jest.fn().mockResolvedValue(new Map()),
+  };
+}
 
 const USER: UserLean = {
   id: 'u1',
@@ -27,17 +38,20 @@ const ATTEMPT_DTO: ExamAttemptDto = {
   answers: [],
   startedAt: '2026-09-12T10:00:00.000Z',
   expired: false,
+  media: [],
 };
 
 async function buildController(
   service: Partial<ExamAttemptsService> = {},
   gradingsService: Partial<ExamGradingsService> = {},
+  mediaAssetsService: Partial<MediaAssetsService> = fakeMediaAssetsService(),
 ): Promise<ExamAttemptsController> {
   const module = await Test.createTestingModule({
     controllers: [ExamAttemptsController],
     providers: [
       { provide: ExamAttemptsService, useValue: service },
       { provide: ExamGradingsService, useValue: gradingsService },
+      { provide: MediaAssetsService, useValue: mediaAssetsService },
     ],
   }).compile();
   return module.get(ExamAttemptsController);
@@ -87,6 +101,7 @@ describe('ExamAttemptsController', () => {
       status: 'submitted',
       blocks: [],
       rubric: [],
+      media: [],
     };
     const getReview = jest.fn().mockResolvedValue(reviewDto);
     const controller = await buildController({}, { getReview });

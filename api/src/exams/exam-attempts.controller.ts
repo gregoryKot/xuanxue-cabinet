@@ -33,7 +33,13 @@ import {
 import { DateTime } from 'luxon';
 import type { AttemptReviewDto, ExamAttemptDto, ExamGradingDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { MediaAssetsService } from '../media/media-assets.service';
 import type { UserLean } from '../users/users.service';
+import {
+  withAttemptMedia,
+  withAttemptsMedia,
+  withReviewMedia,
+} from './exam-attempt-media';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamGradingsService } from './exam-gradings.service';
 import { ListAttemptsDto } from './dto/list-attempts.dto';
@@ -47,6 +53,7 @@ export class ExamAttemptsController {
   constructor(
     private readonly examAttemptsService: ExamAttemptsService,
     private readonly examGradingsService: ExamGradingsService,
+    private readonly mediaAssetsService: MediaAssetsService,
   ) {}
 
   // Не всегда создаёт новую попытку (идемпотентный старт — ТЗ 4.4, п.3), но
@@ -55,45 +62,55 @@ export class ExamAttemptsController {
   // здесь на «создал/вернул старую» ради статуса не стоит.
   @Post('exams/:examId/attempts')
   @HttpCode(HttpStatus.CREATED)
-  start(
+  async start(
     @Param('examId') examId: string,
     @CurrentUser() user: UserLean,
   ): Promise<ExamAttemptDto> {
-    return this.examAttemptsService.start(examId, user.id, DateTime.utc());
+    const attempt = await this.examAttemptsService.start(examId, user.id, DateTime.utc());
+    return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 
   @Patch('attempts/:id/answers')
-  saveAnswers(
+  async saveAnswers(
     @Param('id') id: string,
     @Body() body: SaveAttemptAnswersDto,
     @CurrentUser() user: UserLean,
   ): Promise<ExamAttemptDto> {
-    return this.examAttemptsService.saveAnswers(id, user.id, body, DateTime.utc());
+    const attempt = await this.examAttemptsService.saveAnswers(
+      id,
+      user.id,
+      body,
+      DateTime.utc(),
+    );
+    return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 
   @Post('attempts/:id/submit')
   @HttpCode(HttpStatus.OK)
-  submit(
+  async submit(
     @Param('id') id: string,
     @CurrentUser() user: UserLean,
   ): Promise<ExamAttemptDto> {
-    return this.examAttemptsService.submit(id, user.id, DateTime.utc());
+    const attempt = await this.examAttemptsService.submit(id, user.id, DateTime.utc());
+    return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 
   @Get('attempts')
-  list(
+  async list(
     @Query() query: ListAttemptsDto,
     @CurrentUser() user: UserLean,
   ): Promise<ExamAttemptDto[]> {
-    return this.examAttemptsService.list(query, user, DateTime.utc());
+    const attempts = await this.examAttemptsService.list(query, user, DateTime.utc());
+    return withAttemptsMedia(this.mediaAssetsService, attempts);
   }
 
   // Слой 4.6: карточка проверки и оценка — закрыты ученику: на классе ролей
   // нет, @Roles стоит на самих хендлерах.
   @Get('attempts/:id/review')
   @Roles(...STAFF_ONLY_ROLES)
-  review(@Param('id') id: string): Promise<AttemptReviewDto> {
-    return this.examGradingsService.getReview(id);
+  async review(@Param('id') id: string): Promise<AttemptReviewDto> {
+    const review = await this.examGradingsService.getReview(id);
+    return withReviewMedia(this.mediaAssetsService, review);
   }
 
   @Put('attempts/:id/grading')

@@ -38,7 +38,7 @@ describe('BotSessionService', () => {
     const session = await service.get(111, NOW);
 
     expect(session?.kind).toBe('topic');
-    expect(session?.lessonId.toString()).toBe(lessonId);
+    expect(session?.lessonId?.toString()).toBe(lessonId);
   });
 
   it('startRecordingWait → get возвращает kind/lessonId', async () => {
@@ -48,7 +48,7 @@ describe('BotSessionService', () => {
     const session = await service.get(111, NOW);
 
     expect(session?.kind).toBe('recording');
-    expect(session?.lessonId.toString()).toBe(lessonId);
+    expect(session?.lessonId?.toString()).toBe(lessonId);
   });
 
   it('recording-ожидание не истекает за 10 минут (12 часов, дольше темы)', async () => {
@@ -69,7 +69,7 @@ describe('BotSessionService', () => {
     const session = await service.get(111, NOW);
 
     expect(session?.kind).toBe('recording');
-    expect(session?.lessonId.toString()).toBe(second);
+    expect(session?.lessonId?.toString()).toBe(second);
     await expect(model.countDocuments({ chatId: 111 })).resolves.toBe(1);
   });
 
@@ -129,6 +129,39 @@ describe('BotSessionService', () => {
     expect(await service.get(111, NOW)).toBeNull();
   });
 
+  it('startExamMediaWait → get возвращает kind/attemptId, открыт любому chatId', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW);
+
+    const session = await service.get(555, NOW);
+
+    expect(session?.kind).toBe('examMedia');
+    expect(session?.attemptId?.toString()).toBe(attemptId);
+    expect(session?.lessonId).toBeUndefined();
+  });
+
+  it('examMedia-ожидание не истекает за час (12 часов, как «Запись?»)', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW);
+
+    const session = await service.get(555, NOW.plus({ hours: 1 }));
+
+    expect(session).not.toBeNull();
+  });
+
+  it('examMedia-ожидание вытесняет ожидание темы того же чата', async () => {
+    const lessonId = new Types.ObjectId().toString();
+    const attemptId = new Types.ObjectId().toString();
+    await service.startTopicWait(555, lessonId, NOW);
+
+    await service.startExamMediaWait(555, attemptId, NOW);
+
+    const session = await service.get(555, NOW);
+    expect(session?.kind).toBe('examMedia');
+    expect(session?.attemptId?.toString()).toBe(attemptId);
+    await expect(model.countDocuments({ chatId: 555 })).resolves.toBe(1);
+  });
+
   it('clearIfLesson — не трогает ожидание другого занятия', async () => {
     const lessonId = new Types.ObjectId().toString();
     const otherLessonId = new Types.ObjectId().toString();
@@ -137,6 +170,6 @@ describe('BotSessionService', () => {
     await service.clearIfLesson(111, otherLessonId);
 
     const session = await service.get(111, NOW);
-    expect(session?.lessonId.toString()).toBe(lessonId);
+    expect(session?.lessonId?.toString()).toBe(lessonId);
   });
 });

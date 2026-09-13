@@ -10,6 +10,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import { ChannelsModule } from '../channels/channels.module';
 import { SettingsModule } from '../settings/settings.module';
+import { TelegramModule } from '../telegram/telegram.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
@@ -26,7 +27,7 @@ import { TelegramAuthService } from './telegram-auth.service';
   // ChannelsModule импортирует ClassesModule и сам AuthModule не импортирует
   // (проверено — ни ChannelsModule, ни его импорты на AuthModule не ссылаются) —
   // цикла нет.
-  imports: [UsersModule, SettingsModule, ChannelsModule],
+  imports: [UsersModule, SettingsModule, ChannelsModule, TelegramModule],
   controllers: [AuthController],
   providers: [
     AuthService,

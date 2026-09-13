@@ -1,6 +1,7 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»): кто
 // может писать боту (chatId, from, роль, тип чата) и сбой сервиса внутри
 // потока темы. Сам поток темы — message.handler.spec.ts.
+import { Types } from 'mongoose';
 import { SettingsService } from '../../settings/settings.service';
 import { NotFoundError } from '../../common/errors';
 import { LessonsService } from '../../lessons/lessons.service';
@@ -8,7 +9,9 @@ import { UsersService } from '../../users/users.service';
 import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
+import type { ExamMediaMessageHandler } from './exam-media-message.handler';
 import { MessageHandler } from './message.handler';
+import { RecordingWaitHandler } from './recording-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
 import { NOW, seedLesson } from './message.handler.seed';
 import { seedTeacher } from '../test-support/seed-teacher';
@@ -58,6 +61,28 @@ describe('MessageHandler — доступ и сбои', () => {
     expect(replies).toEqual([]);
   });
 
+  it('kind examMedia — зовёт ExamMediaMessageHandler, даже для не-штата школы (ADR-0023)', async () => {
+    const attemptId = new Types.ObjectId();
+    await ctx.botSessionModel.create({
+      chatId: 555,
+      kind: 'examMedia',
+      attemptId,
+      expiresAt: NOW.plus({ hours: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx } = fakeCtx({ chatId: 555, videoFileId: 'v1' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(ctx.examMediaHandler.handle).toHaveBeenCalledTimes(1);
+    const [, telegramId, session] = ctx.examMediaHandler.handle.mock.calls[0] as [
+      unknown,
+      number,
+      { attemptId: Types.ObjectId },
+    ];
+    expect(telegramId).toBe(555);
+    expect(session.attemptId.toString()).toBe(attemptId.toString());
+  });
+
   it('сообщение из группы — игнорируется', async () => {
     await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const { ctx: msgCtx, replies } = fakeCtx({
@@ -94,8 +119,13 @@ describe('MessageHandler — доступ и сбои', () => {
         ),
         usersService,
       ),
-      ctx.broadcastModel,
-      ctx.classModel,
+      new RecordingWaitHandler(
+        new BotSessionService(ctx.botSessionModel),
+        { update } as unknown as LessonsService,
+        ctx.broadcastModel,
+        ctx.classModel,
+      ),
+      { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
     );
   }
 

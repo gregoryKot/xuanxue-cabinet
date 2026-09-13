@@ -2,6 +2,7 @@
 // проверки учителя и оценка. Отдельный файл от exams.ts (CLAUDE.md
 // «Храповики»: файл-лимит размера) — своя, достаточно большая подсистема
 // поверх типов формы/попытки, а не продолжение самого экзамена.
+import type { ExamMediaDto } from './exam-media';
 import type { ExamAttemptStatus, ExamItemKind } from './exams';
 import type {
   GradingCriterionDto,
@@ -73,6 +74,10 @@ export interface AttemptReviewDto {
   rubric: RubricCriterionDto[];
   /** Есть, только если оценка уже выставлена. */
   grading?: ExamGradingDto;
+  /** Видео экзамена (слой 4.5, ADR-0023) — учитель видит в карточке проверки.
+   * Опционально в типе по той же причине, что у `ExamAttemptDto.media`
+   * (exams.ts): существующие фикстуры web/ не тронуты правкой контракта. */
+  media?: ExamMediaDto[];
 }
 
 // Оценка попытки по рубрике (`exam_gradings`, `PUT /attempts/:id/grading`) —

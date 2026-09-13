@@ -57,6 +57,11 @@ import {
   BotSessionSchema,
   BOT_SESSION_FIELD_POLICY,
 } from '../telegram/bot-session.schema';
+import {
+  MediaAssetRecord,
+  MediaAssetSchema,
+  MEDIA_ASSET_FIELD_POLICY,
+} from '../media/media-asset.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -118,5 +123,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: BotSessionRecord.name,
     schema: BotSessionSchema,
     fieldPolicy: BOT_SESSION_FIELD_POLICY,
+  },
+  {
+    name: MediaAssetRecord.name,
+    schema: MediaAssetSchema,
+    fieldPolicy: MEDIA_ASSET_FIELD_POLICY,
   },
 ];

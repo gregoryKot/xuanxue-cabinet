@@ -106,7 +106,7 @@ describe('RecordingPromptService.prompt', () => {
     expect(updated?.recordingPromptedAt).toBeInstanceOf(Date);
     const session = await botSessionModel.findOne({ chatId: 111 }).lean();
     expect(session?.kind).toBe('recording');
-    expect(session?.lessonId.toString()).toBe(lesson._id.toString());
+    expect(session?.lessonId?.toString()).toBe(lesson._id.toString());
   });
 
   it('DST Asia/Jerusalem: конец занятия — по UTC-разнице, не по локальной стрелке', async () => {

@@ -20,7 +20,9 @@ import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
+import type { ExamMediaMessageHandler } from './exam-media-message.handler';
 import { MessageHandler } from './message.handler';
+import { RecordingWaitHandler } from './recording-wait.handler';
 
 export interface MessageHandlerTestContext {
   memory: MemoryMongo;
@@ -34,6 +36,10 @@ export interface MessageHandlerTestContext {
   botSessionModel: Model<BotSessionRecord>;
   settingsModel: Model<SettingsRecord>;
   handler: MessageHandler;
+  // Тип object-фейка, не класса (тот же приём, что fakeHandler() у
+  // TelegramBotService) — иначе `expect(examMediaHandler.handle)` в спеке
+  // ловит eslint unbound-method: ссылка на метод класса без вызова.
+  examMediaHandler: { handle: jest.Mock };
 }
 
 export async function setupMessageHandlerTest(): Promise<MessageHandlerTestContext> {
@@ -88,13 +94,24 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     new SettingsService(settingsModel, lessonModel, classModel, usersService),
     usersService,
   );
+  const recordingWaitHandler = new RecordingWaitHandler(
+    new BotSessionService(botSessionModel),
+    lessonsService,
+    broadcastModel,
+    classModel,
+  );
+  // Видео экзамена — своя ветка диспетчера; саму механику (привязка,
+  // пересылка) проверяет exam-media-message.handler.spec.ts своими фейками,
+  // здесь — фейк с проверяемым вызовом: message.handler.access.spec.ts
+  // подтверждает, что MessageHandler зовёт именно его при kind: 'examMedia'.
+  const examMediaHandler = { handle: jest.fn() };
   const handler = new MessageHandler(
     buildPersonalChats(connection, usersService, channelModel),
     new BotSessionService(botSessionModel),
     lessonsService,
     topicRebuild,
-    broadcastModel,
-    classModel,
+    recordingWaitHandler,
+    examMediaHandler as unknown as ExamMediaMessageHandler,
   );
   return {
     memory,
@@ -108,6 +125,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     botSessionModel,
     settingsModel,
     handler,
+    examMediaHandler,
   };
 }
 

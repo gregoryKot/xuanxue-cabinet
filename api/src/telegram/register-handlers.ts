@@ -36,7 +36,7 @@ export interface BotHandlers {
  * hears() до on('message') важен — Telegraf сам зовёт next(), когда регэксп
  * не совпал, и сообщение попадает в MessageHandler. */
 export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
-  bot.start((ctx) => handlers.startHandler.handle(ctx));
+  bot.start((ctx) => handlers.startHandler.handle(ctx, DateTime.utc()));
   bot.on('my_chat_member', (ctx) => handlers.chatMemberHandler.handle(ctx));
   bot.on('callback_query', (ctx) =>
     handlers.callbackQueryHandler.handle(ctx, DateTime.utc()),
