@@ -82,7 +82,7 @@ describe('renderLessonPost — подстановки на примерах по
     });
 
     expect(renderLessonPost('recording', params)).toBe(
-      'Самомассаж (нижняя часть лица, МФР, сидя). Занятие 30 минут, ведёт Мария — https://drive.google.com/file/d/x',
+      'Самомассаж (нижняя часть лица, МФР, сидя), ведёт Мария — https://drive.google.com/file/d/x',
     );
   });
 
