@@ -13,6 +13,7 @@ import { SettingsService } from '../settings/settings.service';
 import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { TelegramBotService } from '../telegram/telegram-bot.service';
 import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
 
@@ -38,6 +39,9 @@ async function buildController(
   },
   env: Record<string, string | undefined> = {},
   settings: SettingsDto = SETTINGS_WITHOUT_SITE,
+  // Имя бота приходит из уже прогретого botInfo — в тестах подменяем фейком,
+  // сети тут нет (CLAUDE.md «Тесты»).
+  botUsername: string | undefined = undefined,
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
@@ -46,6 +50,7 @@ async function buildController(
       { provide: TelegramAuthService, useValue: { login: telegramLogin } },
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
       { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
+      { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },
     ],
   }).compile();
   return module.get(AuthController);
@@ -56,6 +61,7 @@ describe('AuthController.getConfig', () => {
     const controller = await buildController(undefined, {}, SETTINGS_WITHOUT_SITE);
     await expect(controller.getConfig()).resolves.toEqual({
       telegramBotId: undefined,
+      telegramBotUsername: undefined,
       schoolSiteUrl: undefined,
     });
   });
@@ -68,7 +74,22 @@ describe('AuthController.getConfig', () => {
     );
     await expect(controller.getConfig()).resolves.toEqual({
       telegramBotId: 123456,
+      telegramBotUsername: undefined,
       schoolSiteUrl: 'https://xuanxue.su',
+    });
+  });
+
+  // Имя бота нужно кабинету для ссылки «Отправить видео» (ADR-0023): бот
+  // ответил при старте — имя есть; не ответил — поля нет, и кнопки не будет.
+  it('бот прогрет — имя бота в ответе', async () => {
+    const controller = await buildController(
+      undefined,
+      { BOT_TOKEN: '123456:abcDEFghi-token_padding_here' },
+      SETTINGS_WITHOUT_SITE,
+      'xuanxue_bot',
+    );
+    await expect(controller.getConfig()).resolves.toMatchObject({
+      telegramBotUsername: 'xuanxue_bot',
     });
   });
 });

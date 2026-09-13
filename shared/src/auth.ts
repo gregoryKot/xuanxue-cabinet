@@ -92,6 +92,11 @@ export interface TelegramLoginInput {
  */
 export interface AuthConfigDto {
   telegramBotId?: number;
+  /** Имя бота (`@имя` без собачки) — из него кабинет собирает ссылку в чат
+   * с ботом: `t.me/<имя>?start=exam_<attemptId>` для отправки видео
+   * экзамена (ADR-0023). Нет бота или Telegram не ответил при старте —
+   * поля нет, и кнопка не показывается. */
+  telegramBotUsername?: string;
   schoolSiteUrl?: string;
 }
 
