@@ -11,23 +11,23 @@ import type { Context } from 'telegraf';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { NotificationPrefsService } from '../../notifications/notification-prefs.service';
 import { UsersService } from '../../users/users.service';
-import { TeacherChats } from '../teacher-chats';
+import { PersonalChats } from '../personal-chats';
 import { buildNotificationsMenu } from './notifications-menu';
-import { resolvePrivateTeacherChatId } from './private-teacher-chat';
+import { resolvePrivatePersonalChatId } from './private-teacher-chat';
 
 @Injectable()
 export class NotificationsCommandHandler {
   private readonly logger = new Logger(NotificationsCommandHandler.name);
 
   constructor(
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly usersService: UsersService,
     private readonly notificationPrefsService: NotificationPrefsService,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
     try {
-      const chatId = await resolvePrivateTeacherChatId(ctx, this.teacherChats, now);
+      const chatId = await resolvePrivatePersonalChatId(ctx, this.personalChats, now);
       if (chatId === null) return;
 
       const user = await this.usersService.findByTelegramId(chatId);

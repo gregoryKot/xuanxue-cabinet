@@ -1,15 +1,15 @@
-// Чистая логика с фейковым TeacherChats (без Mongo — сама выборка проверена
-// в teacher-chats.spec.ts, CLAUDE.md «Тесты»).
+// Чистая логика с фейковым PersonalChats (без Mongo — сама выборка проверена
+// в personal-chats.spec.ts, CLAUDE.md «Тесты»).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import type { TeacherChat, TeacherChats } from '../teacher-chats';
-import { resolvePrivateTeacherChatId } from './private-teacher-chat';
+import type { PersonalChat, PersonalChats } from '../personal-chats';
+import { resolvePrivatePersonalChatId } from './private-teacher-chat';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
-const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
+const CHAT: PersonalChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
-function fakeTeacherChats(chats: TeacherChat[] = [CHAT]): TeacherChats {
-  return { list: jest.fn().mockResolvedValue(chats) } as unknown as TeacherChats;
+function fakePersonalChats(chats: PersonalChat[] = [CHAT]): PersonalChats {
+  return { list: jest.fn().mockResolvedValue(chats) } as unknown as PersonalChats;
 }
 
 function ctxOf(
@@ -21,34 +21,38 @@ function ctxOf(
   } as Context;
 }
 
-describe('resolvePrivateTeacherChatId', () => {
+describe('resolvePrivatePersonalChatId', () => {
   it('личный чат подключённого учителя — возвращает chatId', async () => {
-    const chatId = await resolvePrivateTeacherChatId(ctxOf(111), fakeTeacherChats(), NOW);
+    const chatId = await resolvePrivatePersonalChatId(
+      ctxOf(111),
+      fakePersonalChats(),
+      NOW,
+    );
     expect(chatId).toBe(111);
   });
 
   it('групповой чат — null', async () => {
-    const chatId = await resolvePrivateTeacherChatId(
+    const chatId = await resolvePrivatePersonalChatId(
       ctxOf(111, 'group'),
-      fakeTeacherChats(),
+      fakePersonalChats(),
       NOW,
     );
     expect(chatId).toBeNull();
   });
 
   it('нет ctx.chat — null', async () => {
-    const chatId = await resolvePrivateTeacherChatId(
+    const chatId = await resolvePrivatePersonalChatId(
       ctxOf(undefined),
-      fakeTeacherChats(),
+      fakePersonalChats(),
       NOW,
     );
     expect(chatId).toBeNull();
   });
 
-  it('чат не в TeacherChats.list (чужой/не подключён) — null', async () => {
-    const chatId = await resolvePrivateTeacherChatId(
+  it('чат не в PersonalChats.list (чужой/не подключён) — null', async () => {
+    const chatId = await resolvePrivatePersonalChatId(
       ctxOf(999),
-      fakeTeacherChats([CHAT]),
+      fakePersonalChats([CHAT]),
       NOW,
     );
     expect(chatId).toBeNull();

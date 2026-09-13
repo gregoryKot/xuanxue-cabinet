@@ -393,7 +393,7 @@ broadcastId: ObjectId('…') })`. `pending` с `nextAttemptAt` в будущем
    так же) — уже без токена (scrub, SECURITY §6): «Бот не админ канала», «Чат не
    найден» и т. п. — расшифровка кодов та же, что в §8.7.
 6. `failed` (три попытки исчерпаны) — `TelegramTeacherNotifier` шлёт DM в личный
-   чат каждому учителю/помощнику/админу из `TeacherChats.listFor('delivery_failed', …)`
+   чат каждому учителю/помощнику/админу из `PersonalChats.listFor('delivery_failed', …)`
    («Не ушла рассылка «{класс} {время}» в канал «{канал}»: {ошибка}. Проверьте
    канал на экране «Каналы» или отправьте вручную.»); ни одного подключённого
    чата (или все выключили этот вид в «Уведомления») — то же самое `error` в
@@ -543,7 +543,7 @@ Service worker в режиме `autoUpdate`: новая версия подхв�
 ### 8.10 Предпросмотр (или DM об ошибке) не пришёл
 
 Один и тот же чеклист для предпросмотра рассылки и для DM о сбое доставки/шага
-тика — оба идут через одну `TeacherChats` (`api/src/telegram/teacher-chats.ts`),
+тика — оба идут через одну `PersonalChats` (`api/src/telegram/personal-chats.ts`),
 предпросмотр и DM о сбое — через `listFor(kind, …)`, `kind` — `post_draft` у
 предпросмотра, `delivery_failed` у DM.
 
@@ -595,7 +595,7 @@ Service worker в режиме `autoUpdate`: новая версия подхв�
 1. Общая проверка получателей та же, что и в §8.10 (`/start`, активный личный
    канал, `notification_prefs.overrides` с `kind: 'recording_request'`) — если
    предпросмотры тоже не приходят, искать причину там; получатели —
-   `TeacherChats.listFor('recording_request', now)`.
+   `PersonalChats.listFor('recording_request', now)`.
 2. `db.lessons.findOne({ _id: ObjectId('…') })` — `recordingPromptedAt` уже
    стоит? Значит бот уже спрашивал (условный апдейт ставится ДО отправки —
    второй раз не спросит на следующем тике, это не повтор и не баг).

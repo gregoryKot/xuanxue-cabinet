@@ -38,7 +38,7 @@ export class NotificationPrefsService {
   }
 
   /** То же, что `get()`, но для целого списка людей одним запросом — нужна
-   * TeacherChats.listFor (ТЗ notifications-delivery.md §1): «не читай
+   * PersonalChats.listFor (ТЗ notifications-delivery.md §1): «не читай
    * настройки по одному человеку в цикле, одна выборка по списку userId».
    * Порядок и состав ключей результата — как во входном списке, включая
    * людей без документа (дефолт роли без overrides). */

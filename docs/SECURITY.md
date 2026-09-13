@@ -127,7 +127,7 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   `new Date(строка)` запрещён eslint.
 - `callback_data` бота: формат `действие:параметр`, параметры сверяются с ожидаемым
   набором до любого обращения к БД; отправитель (`chatId` апдейта) сверяется с
-  `TeacherChats` (`api/src/telegram/teacher-chats.ts` — учитель/админ с активным
+  `PersonalChats` (`api/src/telegram/personal-chats.ts` — учитель/админ с активным
   личным каналом) — чужой `chatId` получает `answerCbQuery()` и молчание, warn в лог
   без остальных PII: `chatId` — полем объекта (`this.logger.warn({ chatId }, '…')`),
   не в тексте строки, иначе редакция по путям (`redact-paths.ts`) не сможет им

@@ -40,9 +40,11 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
     );
   });
 
-  it('админ получает набор учителя', () => {
+  it('админ получает набор учителя без «работа на проверку» — админ не проверяет работы', () => {
     expect(DEFAULT_NOTIFICATIONS_BY_ROLE.admin).toEqual(
-      DEFAULT_NOTIFICATIONS_BY_ROLE.teacher,
+      DEFAULT_NOTIFICATIONS_BY_ROLE.teacher.filter(
+        (kind) => kind !== 'attempt_submitted',
+      ),
     );
   });
 
@@ -54,15 +56,20 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
 });
 
 describe('defaultNotifications', () => {
-  it('ученик — занятие скоро и сообщение от учителя', () => {
-    expect(defaultNotifications(['student'])).toEqual(['lesson_soon', 'teacher_message']);
+  it('ученик — занятие скоро, сообщение от учителя, результат экзамена', () => {
+    expect(defaultNotifications(['student'])).toEqual([
+      'lesson_soon',
+      'teacher_message',
+      'exam_result',
+    ]);
   });
 
-  it('учитель — черновик, запрос записи, сбой отправки', () => {
+  it('учитель — черновик, запрос записи, сбой отправки, работа на проверку', () => {
     expect(defaultNotifications(['teacher'])).toEqual([
       'post_draft',
       'recording_request',
       'delivery_failed',
+      'attempt_submitted',
     ]);
   });
 
@@ -79,6 +86,7 @@ describe('defaultNotifications', () => {
       'post_draft',
       'recording_request',
       'delivery_failed',
+      'attempt_submitted',
       'payments',
     ]);
   });
@@ -88,7 +96,13 @@ describe('defaultNotifications', () => {
       'post_draft',
       'recording_request',
       'delivery_failed',
+      'attempt_submitted',
     ]);
+  });
+
+  it('вторая роль добавляет вид, которого нет у первой (админ + учитель — вместе с «работа на проверку»)', () => {
+    expect(defaultNotifications(['admin', 'teacher'])).toContain('attempt_submitted');
+    expect(defaultNotifications(['admin'])).not.toContain('attempt_submitted');
   });
 });
 

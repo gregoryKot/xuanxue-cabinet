@@ -3,7 +3,7 @@
 // тумблеры у «Уведомления» — один роутер по префиксу callback data (CLAUDE.md
 // «Ошибки»: действие:параметр). `answerCbQuery()` до обращения к БД — иначе
 // Telegram показывает пользователю крутилку до тайм-аута. Отправитель
-// сверяется с TeacherChats — чужой callback молча игнорируется, warn в лог
+// сверяется с PersonalChats — чужой callback молча игнорируется, warn в лог
 // без PII (только chatId). `now` — параметром от TelegramBotService
 // (CLAUDE.md «Время»): хендлер сам DateTime.utc() не зовёт.
 import { Injectable, Logger } from '@nestjs/common';
@@ -18,7 +18,7 @@ import { NotificationPrefsService } from '../../notifications/notification-prefs
 import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
 import { parseCallbackData, type CallbackAction } from '../callback-data';
-import { TeacherChats } from '../teacher-chats';
+import { PersonalChats } from '../personal-chats';
 import { isMenuScreenAction } from './bot-menu';
 import {
   GENERIC_ERROR,
@@ -36,7 +36,7 @@ export class CallbackQueryHandler {
   private readonly logger = new Logger(CallbackQueryHandler.name);
 
   constructor(
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly broadcastsService: BroadcastsService,
     private readonly botSessions: BotSessionService,
     private readonly deliveriesService: DeliveriesService,
@@ -61,7 +61,7 @@ export class CallbackQueryHandler {
       if (
         chatId === undefined ||
         ctx.chat?.type !== 'private' ||
-        !(await this.isTeacherChat(chatId, now))
+        !(await this.isPersonalChat(chatId, now))
       ) {
         // chatId — полем объекта, не в тексте: список редакции
         // (redact-paths.ts) управляет полями, не текстом строки
@@ -114,8 +114,8 @@ export class CallbackQueryHandler {
     }
   }
 
-  private async isTeacherChat(chatId: number, now: DateTime): Promise<boolean> {
-    const chats = await this.teacherChats.list(now);
+  private async isPersonalChat(chatId: number, now: DateTime): Promise<boolean> {
+    const chats = await this.personalChats.list(now);
     return chats.some((c) => c.chatId === String(chatId));
   }
 }

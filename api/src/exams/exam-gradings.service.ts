@@ -6,7 +6,7 @@
 // USER_OWNED_COLLECTIONS) — по `userId` идёт удаление аккаунта. Инкапсулирует
 // шифрование (criteria/comment) и идемпотентность PUT — контроллер только
 // валидирует тело и зовёт.
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
@@ -23,6 +23,8 @@ import { assertObjectId } from '../common/object-id';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
 import { UserNamesService } from '../users/user-names.service';
+import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
+import { notifyExamGraded } from './notify-exam-graded';
 import { buildReviewBlocks } from './exam-attempt-review';
 import { buildGradingCriteria } from './exam-grading-criteria';
 import {
@@ -48,6 +50,7 @@ export class ExamGradingsService {
     private readonly gradingModel: Model<ExamGradingRecord>,
     private readonly examsService: ExamsService,
     private readonly userNamesService: UserNamesService,
+    @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
   ) {}
 
   /** ТЗ 4.6, п.3: ответы рядом с критериями вопроса и правильностью
@@ -77,7 +80,9 @@ export class ExamGradingsService {
    * уникальному индексу `attemptId` (upsert; гонка двух PUT — E11000 ловит
    * второй апдейт, тот же приём, что старт попытки, ExamAttemptsService.start).
    * После успеха попытка переходит в `graded`. Проверить можно только
-   * сданную (или уже проверенную) работу, не черновик в работе. */
+   * сданную (или уже проверенную) работу, не черновик в работе. Уведомление
+   * ученику (слой 4.7, PLAN §11) — на каждый вызов, включая переписанную
+   * оценку: без требования «раз за жизнь попытки», в отличие от attempt_submitted. */
   async grade(
     attemptId: string,
     graderId: string,
@@ -125,6 +130,9 @@ export class ExamGradingsService {
 
     const dto = await this.findGradingDto(attemptId);
     if (!dto) throw new Error('grade: оценка не найдена сразу после сохранения');
+
+    // Не ждём и не роняем PUT из-за бота (CLAUDE.md «Встраивание в сервисы»).
+    notifyExamGraded(this.examNotifier, attempt, input.outcome, input.comment, now);
     return dto;
   }
 

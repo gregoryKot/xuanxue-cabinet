@@ -10,19 +10,19 @@ import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema';
-import type { TeacherChat } from './teacher-chats';
+import type { PersonalChat } from './personal-chats';
 import type { TelegramBotService } from './telegram-bot.service';
 import { TelegramTeacherNotifier } from './telegram-teacher-notifier';
 
 export const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
-const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
+const CHAT: PersonalChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
-export function fakeTeacherChats(chats: TeacherChat[] = [CHAT]): {
-  listFor: jest.Mock<Promise<TeacherChat[]>, [NotificationKind, DateTime]>;
+export function fakePersonalChats(chats: PersonalChat[] = [CHAT]): {
+  listFor: jest.Mock<Promise<PersonalChat[]>, [NotificationKind, DateTime]>;
 } {
   return {
     listFor: jest
-      .fn<Promise<TeacherChat[]>, [NotificationKind, DateTime]>()
+      .fn<Promise<PersonalChat[]>, [NotificationKind, DateTime]>()
       .mockResolvedValue(chats),
   };
 }
@@ -73,20 +73,20 @@ export async function clearNotifierTest(ctx: NotifierTestContext): Promise<void>
 
 export function buildNotifier(
   ctx: NotifierTestContext,
-  teacherChats = fakeTeacherChats(),
+  personalChats = fakePersonalChats(),
   bot = fakeBot(),
 ): {
   notifier: TelegramTeacherNotifier;
-  teacherChats: ReturnType<typeof fakeTeacherChats>;
+  personalChats: ReturnType<typeof fakePersonalChats>;
   bot: ReturnType<typeof fakeBot>;
 } {
   const notifier = new TelegramTeacherNotifier(
-    teacherChats as never,
+    personalChats as never,
     bot as unknown as TelegramBotService,
     ctx.broadcastModel,
     ctx.channelModel,
     ctx.lessonModel,
     ctx.classModel,
   );
-  return { notifier, teacherChats, bot };
+  return { notifier, personalChats, bot };
 }

@@ -17,7 +17,7 @@ import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
 import { buildMenuHandler } from '../test-support/build-menu-handler';
-import { buildTeacherChats } from '../test-support/build-teacher-chats';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
 import { CallbackQueryHandler } from './callback-query.handler';
 
@@ -66,7 +66,7 @@ export interface CallbackHandlerTestContext {
 
 /** Свежий хендлер на тех же моделях, с необязательной подменой одного из
  * сервисов (тест сбоя `BroadcastsService.cancel`/`BotSessionService.startTopicWait`) —
- * TeacherChats/NotificationPrefsService при этом настоящие, доступ и
+ * PersonalChats/NotificationPrefsService при этом настоящие, доступ и
  * настройка по-прежнему проверяются реально. */
 export function buildHandler(
   ctx: CallbackHandlerTestContext,
@@ -75,13 +75,13 @@ export function buildHandler(
     botSessions?: BotSessionService;
     deliveriesService?: DeliveriesService;
     // Только для гонки «чат отвязан между проверкой доступа и резолвом
-    // userId»: сам доступ идёт через buildTeacherChats.
+    // userId»: сам доступ идёт через buildPersonalChats.
     usersService?: UsersService;
   } = {},
 ): CallbackQueryHandler {
   const usersService = new UsersService(ctx.userModel);
   return new CallbackQueryHandler(
-    buildTeacherChats(ctx.connection, usersService, ctx.channelModel),
+    buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
     overrides.broadcastsService ??
       new BroadcastsService(ctx.broadcastModel, ctx.deliveryModel, ctx.channelModel),
     overrides.botSessions ?? new BotSessionService(ctx.botSessionModel),
@@ -116,7 +116,7 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
   await botSessionModel.syncIndexes();
   const usersService = new UsersService(userModel);
   const handler = new CallbackQueryHandler(
-    buildTeacherChats(connection, usersService, channelModel),
+    buildPersonalChats(connection, usersService, channelModel),
     new BroadcastsService(broadcastModel, deliveryModel, channelModel),
     new BotSessionService(botSessionModel),
     new DeliveriesService(deliveryModel, broadcastModel, channelModel),

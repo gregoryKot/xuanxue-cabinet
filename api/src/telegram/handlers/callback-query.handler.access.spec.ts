@@ -1,5 +1,5 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»): кто
-// может нажимать кнопки (chatId, from, личный чат, TeacherChats) и невалидные
+// может нажимать кнопки (chatId, from, личный чат, PersonalChats) и невалидные
 // callback data. Сами действия кнопок — callback-query.handler.spec.ts.
 import { Types } from 'mongoose';
 import {
@@ -74,7 +74,7 @@ describe('CallbackQueryHandler — доступ', () => {
     expect(editCalls).toEqual([]);
   });
 
-  it('чужой чат (не в TeacherChats) — тихо игнорируется, БД не трогает', async () => {
+  it('чужой чат (не в PersonalChats) — тихо игнорируется, БД не трогает', async () => {
     const broadcast = await ctx.broadcastModel.create({
       kind: 'lesson_link',
       channelIds: [],

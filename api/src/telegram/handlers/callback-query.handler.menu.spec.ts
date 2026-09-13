@@ -75,7 +75,7 @@ describe('CallbackQueryHandler — menu (главное меню)', () => {
   it('пользователь пропал между проверкой доступа и отрисовкой — сообщение не трогается', async () => {
     await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     // Подменяем только резолв userId: доступ по-прежнему проверяется
-    // настоящим TeacherChats (тот же приём, что в спеке тумблеров).
+    // настоящим PersonalChats (тот же приём, что в спеке тумблеров).
     const handler = buildHandler(ctx, {
       usersService: {
         findByTelegramId: () => Promise.resolve(null),

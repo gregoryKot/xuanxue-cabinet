@@ -1,5 +1,5 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты») — условный апдейт previewSentAt
-// ДО отправки, окно settings.previewMinutes, кнопки; TeacherChats/
+// ДО отправки, окно settings.previewMinutes, кнопки; PersonalChats/
 // TelegramBotService/SettingsService — фейки (сеть/база проверяют
 // собственные спеки, settings.service.spec.ts).
 import { DateTime } from 'luxon';
@@ -10,7 +10,7 @@ import { encryptSchemaFrom } from '../common/field-policy';
 import { encryptRecord } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import type { SettingsService } from '../settings/settings.service';
-import type { TeacherChat } from '../telegram/teacher-chats';
+import type { PersonalChat } from '../telegram/personal-chats';
 import type { TelegramBotService } from '../telegram/telegram-bot.service';
 import {
   BROADCAST_FIELD_POLICY,
@@ -21,9 +21,9 @@ import { PreviewService } from './preview.service';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 const ENCRYPT_SCHEMA = encryptSchemaFrom(BROADCAST_FIELD_POLICY);
-const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
+const CHAT: PersonalChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
-function fakeTeacherChats(chats: TeacherChat[] = [CHAT]) {
+function fakePersonalChats(chats: PersonalChat[] = [CHAT]) {
   return { listFor: jest.fn().mockResolvedValue(chats) };
 }
 
@@ -87,10 +87,10 @@ describe('PreviewService.sendPending', () => {
   it('в окне settings.previewMinutes (дефолт) — шлёт каждому учителю, ставит previewSentAt', async () => {
     const broadcast = await createBroadcast();
     const bot = fakeBot();
-    const teacherChats = fakeTeacherChats();
+    const personalChats = fakePersonalChats();
     const service = new PreviewService(
       broadcastModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -120,7 +120,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -136,7 +136,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -152,7 +152,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -172,7 +172,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
       fakeSettings(10),
     );
@@ -190,7 +190,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -201,14 +201,14 @@ describe('PreviewService.sendPending', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('несколько due рассылок — teacherChats.listFor зовётся один раз на весь тик', async () => {
+  it('несколько due рассылок — personalChats.listFor зовётся один раз на весь тик', async () => {
     await createBroadcast();
     await createBroadcast();
     const bot = fakeBot();
-    const teacherChats = fakeTeacherChats();
+    const personalChats = fakePersonalChats();
     const service = new PreviewService(
       broadcastModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -216,23 +216,23 @@ describe('PreviewService.sendPending', () => {
     const result = await service.sendPending(NOW);
 
     expect(result).toEqual({ claimed: 2 });
-    expect(teacherChats.listFor).toHaveBeenCalledTimes(1);
+    expect(personalChats.listFor).toHaveBeenCalledTimes(1);
   });
 
-  it('спрашивает TeacherChats именно про post_draft, не другой вид', async () => {
+  it('спрашивает PersonalChats именно про post_draft, не другой вид', async () => {
     await createBroadcast();
     const bot = fakeBot();
-    const teacherChats = fakeTeacherChats();
+    const personalChats = fakePersonalChats();
     const service = new PreviewService(
       broadcastModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
 
     await service.sendPending(NOW);
 
-    expect(teacherChats.listFor).toHaveBeenCalledWith('post_draft', NOW);
+    expect(personalChats.listFor).toHaveBeenCalledWith('post_draft', NOW);
   });
 
   it('рассылка уже не scheduled (раннер успел раньше) — предпросмотр не шлёт', async () => {
@@ -240,7 +240,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -281,7 +281,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );
@@ -299,7 +299,7 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats([]) as never,
+      fakePersonalChats([]) as never,
       bot as unknown as TelegramBotService,
       fakeSettings(),
     );

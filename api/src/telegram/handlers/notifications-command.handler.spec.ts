@@ -10,7 +10,7 @@ import { NotificationPrefsService } from '../../notifications/notification-prefs
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
-import { buildTeacherChats } from '../test-support/build-teacher-chats';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
 import { NotificationsCommandHandler } from './notifications-command.handler';
 
@@ -49,7 +49,7 @@ describe('NotificationsCommandHandler', () => {
     );
     const usersService = new UsersService(userModel);
     handler = new NotificationsCommandHandler(
-      buildTeacherChats(connection, usersService, channelModel),
+      buildPersonalChats(connection, usersService, channelModel),
       usersService,
       new NotificationPrefsService(notificationPrefsModel),
     );
@@ -67,7 +67,7 @@ describe('NotificationsCommandHandler', () => {
     ]);
   });
 
-  it('учитель — список из трёх видов, все включены по умолчанию', async () => {
+  it('учитель — список из четырёх видов, все включены по умолчанию', async () => {
     await seedTeacher(userModel, channelModel, 111);
     const { ctx, replies } = fakeCtx(111);
 
@@ -77,6 +77,7 @@ describe('NotificationsCommandHandler', () => {
     expect(replies[0]?.text).toContain('Черновик поста — включено');
     expect(replies[0]?.text).toContain('Напоминание про запись — включено');
     expect(replies[0]?.text).toContain('Пост не ушёл — включено');
+    expect(replies[0]?.text).toContain('Работа на проверку — включено');
     expect(replies[0]?.buttons).toEqual([
       [{ text: 'Выключить: Черновик поста', callback_data: 'notif:post_draft' }],
       [
@@ -86,6 +87,12 @@ describe('NotificationsCommandHandler', () => {
         },
       ],
       [{ text: 'Выключить: Пост не ушёл', callback_data: 'notif:delivery_failed' }],
+      [
+        {
+          text: 'Выключить: Работа на проверку',
+          callback_data: 'notif:attempt_submitted',
+        },
+      ],
     ]);
   });
 
@@ -113,7 +120,7 @@ describe('NotificationsCommandHandler', () => {
     expect(replies[0]?.text).toContain('Пост не ушёл — выключено');
   });
 
-  it('чужой чат (не в TeacherChats) — тихо игнорируется', async () => {
+  it('чужой чат (не в PersonalChats) — тихо игнорируется', async () => {
     const { ctx, replies } = fakeCtx(999);
 
     await handler.handle(ctx, NOW);
@@ -143,7 +150,7 @@ describe('NotificationsCommandHandler', () => {
       findByTelegramId: jest.fn().mockResolvedValue(null),
     } as unknown as UsersService;
     const racyHandler = new NotificationsCommandHandler(
-      buildTeacherChats(connection, new UsersService(userModel), channelModel),
+      buildPersonalChats(connection, new UsersService(userModel), channelModel),
       missingUserService,
       new NotificationPrefsService(notificationPrefsModel),
     );

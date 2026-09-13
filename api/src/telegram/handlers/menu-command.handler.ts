@@ -8,17 +8,17 @@ import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { MyLessonsService } from '../../lessons/my-lessons.service';
-import { TeacherChats } from '../teacher-chats';
+import { PersonalChats } from '../personal-chats';
 import { buildBotMenu, buildHelpText, type BotMenu } from './bot-menu';
 import { formatScheduleScreen, SCHEDULE_LESSONS_LIMIT } from './bot-schedule';
-import { resolvePrivateTeacherChatId } from './private-teacher-chat';
+import { resolvePrivatePersonalChatId } from './private-teacher-chat';
 
 @Injectable()
 export class MenuCommandHandler {
   private readonly logger = new Logger(MenuCommandHandler.name);
 
   constructor(
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly myLessonsService: MyLessonsService,
   ) {}
 
@@ -53,7 +53,7 @@ export class MenuCommandHandler {
     build: () => Promise<BotMenu>,
   ): Promise<void> {
     try {
-      const chatId = await resolvePrivateTeacherChatId(ctx, this.teacherChats, now);
+      const chatId = await resolvePrivatePersonalChatId(ctx, this.personalChats, now);
       if (chatId === null) return;
       const menu = await build();
       await ctx

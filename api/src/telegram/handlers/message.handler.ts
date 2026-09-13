@@ -14,7 +14,7 @@ import { ClassRecord } from '../../classes/class.schema';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { LessonsService } from '../../lessons/lessons.service';
 import { BotSessionService } from '../bot-session.service';
-import { TeacherChats } from '../teacher-chats';
+import { PersonalChats } from '../personal-chats';
 import { saveOrExplain } from './message-save';
 import { buildRecordingConfirmation } from './recording-confirmation';
 import { extractRecordingSource } from './recording-source';
@@ -32,7 +32,7 @@ export class MessageHandler {
   private readonly logger = new Logger(MessageHandler.name);
 
   constructor(
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly botSessions: BotSessionService,
     private readonly lessonsService: LessonsService,
     private readonly topicRebuild: TopicRebuildService,
@@ -49,7 +49,7 @@ export class MessageHandler {
       if (ctx.chat?.type !== 'private') return;
       const from = ctx.from;
       if (!from) return;
-      const chats = await this.teacherChats.list(now);
+      const chats = await this.personalChats.list(now);
       if (!chats.some((c) => c.chatId === String(from.id))) return;
 
       const session = await this.botSessions.get(from.id, now);

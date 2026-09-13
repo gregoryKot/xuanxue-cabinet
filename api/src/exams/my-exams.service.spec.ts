@@ -21,7 +21,12 @@ describe('MyExamsService', () => {
 
   beforeAll(async () => {
     ctx = await setupAttemptsTest();
-    service = new MyExamsService(ctx.examModel, ctx.attemptModel, ctx.gradingModel);
+    service = new MyExamsService(
+      ctx.examModel,
+      ctx.attemptModel,
+      ctx.gradingModel,
+      ctx.examNotifier,
+    );
   }, 60_000);
 
   afterAll(async () => {

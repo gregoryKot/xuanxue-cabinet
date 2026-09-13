@@ -1,4 +1,4 @@
-// Учитель/админ, за которого TeacherChats отдаёт этот чат — роль и активный
+// Учитель/админ, за которого PersonalChats отдаёт этот чат — роль и активный
 // личный канал (ADR-0015: нажал /start). Общий для test-support
 // callback-query.handler.*.spec.ts и message.handler.*.spec.ts (CLAUDE.md
 // «Одна механика — один компонент», jscpd — раньше две копии).

@@ -7,7 +7,7 @@
 // это разбор собственной работы ученика (PLAN §11 «Границы»). Критерии
 // проверки вопроса (`ExamItemDto.criteria`) сюда не попадают в принципе —
 // этот сервис их не читает вовсе.
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
@@ -16,7 +16,9 @@ import {
   type ListMyExamsQuery,
   type MyExamDto,
 } from '@xuanxue/shared';
+import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { closeIfExpiredAttempt } from './exam-attempt-lifecycle';
+import { attemptSubmittedCallback } from './notify-attempt-submitted';
 import {
   decryptAttempt,
   type LeanExamAttempt,
@@ -58,6 +60,7 @@ export class MyExamsService {
     private readonly attemptModel: Model<ExamAttemptRecord>,
     @InjectModel(ExamGradingRecord.name)
     private readonly gradingModel: Model<ExamGradingRecord>,
+    @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
   ) {}
 
   async list(
@@ -100,7 +103,6 @@ export class MyExamsService {
       .find({ examId: { $in: examIds }, userId })
       .sort({ attemptNo: -1 })
       .lean<RawLeanExamAttempt[]>();
-
     const latestByExamId = new Map<string, LeanExamAttempt>();
     const attemptsUsedByExamId = new Map<string, number>();
     for (const doc of docs) {
@@ -113,13 +115,12 @@ export class MyExamsService {
     const gradingByAttemptId = await this.loadGradings(
       [...latestByExamId.values()].map((attempt) => attempt._id.toString()),
     );
-
     const result = new Map<string, AttemptSummary>();
+    const notify = attemptSubmittedCallback(this.examNotifier, now);
     for (const [key, attempt] of latestByExamId) {
-      // Дедлайн мог истечь между стартом попытки и этим запросом — статус
-      // должен быть правдой прямо сейчас, тем же правилом, что у /attempts
-      // (ExamAttemptsService.list).
-      const closed = await closeIfExpiredAttempt(this.attemptModel, attempt, now);
+      // Дедлайн мог истечь — та же лениво-закрывающая проверка и
+      // уведомление учителю, что у /attempts (ExamAttemptsService.list).
+      const closed = await closeIfExpiredAttempt(this.attemptModel, attempt, now, notify);
       const grading = gradingByAttemptId.get(closed._id.toString());
       result.set(key, {
         attemptsUsed: attemptsUsedByExamId.get(key) ?? 0,

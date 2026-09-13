@@ -12,7 +12,7 @@
 // шифрование и декрипт содержимого вопроса (prompt/hint/criteria/options) —
 // дублировать эту расшифровку здесь было бы вторым местом одной механики
 // (CLAUDE.md «Одна механика — один компонент»).
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
@@ -23,22 +23,25 @@ import {
   EXAM_NOT_PUBLISHED_MESSAGE,
   isStaffRole,
   LIST_LIMIT_DEFAULT,
-  pluralRu,
-  type AttemptAnswerDto,
   type ExamAttemptDto,
   type ListAttemptsQuery,
   type SaveAttemptAnswersInput,
 } from '@xuanxue/shared';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
-import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
 import { UserNamesService } from '../users/user-names.service';
 import type { UserLean } from '../users/users.service';
+import { attemptsExceededMessage } from './attempts-exceeded-message';
+import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
+import { createAttempt } from './exam-attempt-start';
 import { ExamItemsService } from './exam-items.service';
 import { assertAnswersKnown, mergeAnswers } from './exam-attempt-answers';
 import { closeIfExpiredAttempt, findInProgressAttempt } from './exam-attempt-lifecycle';
-import { buildAttemptBlocks } from './exam-attempt-snapshot';
+import {
+  attemptSubmittedCallback,
+  notifyAttemptSubmitted,
+} from './notify-attempt-submitted';
 import { EXAM_ATTEMPT_ENCRYPT_SCHEMA, ExamAttemptRecord } from './exam-attempt.schema';
 import {
   decryptAttempt,
@@ -48,22 +51,6 @@ import {
 } from './exam-attempt.mapper';
 import { ExamsService } from './exams.service';
 
-// Склонение «попытки» в тексте отказа при превышении attemptsAllowed —
-// своя форма, отдельная от QUESTION_FORMS (exam-blocks.ts): разные слова.
-const ATTEMPT_FORMS = {
-  one: 'попытку',
-  few: 'попытки',
-  many: 'попыток',
-  other: 'попытки',
-} as const;
-
-function attemptsExceededMessage(attemptsUsed: number): string {
-  return (
-    `Вы использовали ${attemptsUsed} ${pluralRu(attemptsUsed, ATTEMPT_FORMS)} из ` +
-    'разрешённых на этот экзамен. Попросите учителя открыть ещё одну попытку.'
-  );
-}
-
 @Injectable()
 export class ExamAttemptsService {
   constructor(
@@ -71,6 +58,7 @@ export class ExamAttemptsService {
     private readonly examsService: ExamsService,
     private readonly examItemsService: ExamItemsService,
     private readonly userNamesService: UserNamesService,
+    @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
   ) {}
 
   /** ТЗ 4.4, п.1–3: экзамен должен быть опубликован; незаконченная попытка
@@ -83,52 +71,29 @@ export class ExamAttemptsService {
     }
 
     const existing = await findInProgressAttempt(this.model, examId, userId);
-    if (existing)
-      return toAttemptDto(await closeIfExpiredAttempt(this.model, existing, now));
+    if (existing) {
+      const closed = await closeIfExpiredAttempt(
+        this.model,
+        existing,
+        now,
+        attemptSubmittedCallback(this.examNotifier, now),
+      );
+      return toAttemptDto(closed);
+    }
 
     const attemptsUsed = await this.model.countDocuments({ examId, userId });
     if (attemptsUsed >= exam.attemptsAllowed) {
       throw new InvalidInputError(attemptsExceededMessage(attemptsUsed));
     }
 
-    const itemIds = [...new Set(exam.blocks.flatMap((block) => block.itemIds))];
-    const items = await Promise.all(
-      itemIds.map((id) => this.examItemsService.getById(id)),
-    );
-    const itemsById = new Map(items.map((item) => [item.id, item]));
-    const blocks = buildAttemptBlocks(exam.blocks, itemsById, Math.random);
-    const deadlineAt = exam.timeLimitMin
-      ? now.plus({ minutes: exam.timeLimitMin })
-      : undefined;
-
-    const payload: Record<string, unknown> = {
-      examId,
-      examTitle: exam.title,
+    return createAttempt(
+      this.model,
+      this.examItemsService,
+      exam,
       userId,
-      attemptNo: attemptsUsed + 1,
-      status: 'in_progress',
-      blocks,
-      answers: [] as AttemptAnswerDto[],
-      startedAt: now.toJSDate(),
-      deadlineAt: deadlineAt?.toJSDate(),
-    };
-
-    try {
-      const created = await this.model.create(
-        encryptRecord(payload, EXAM_ATTEMPT_ENCRYPT_SCHEMA),
-      );
-      const doc = await this.model.findById(created._id).lean<RawLeanExamAttempt>();
-      if (!doc) throw new Error('start: попытка не найдена сразу после создания');
-      return toAttemptDto(decryptAttempt(doc));
-    } catch (err) {
-      if (!isDuplicateKeyError(err)) throw err;
-      // Гонка двух стартов подряд (двойной клик на телефоне) — конкурент уже
-      // занял этот attemptNo первым; не плодим вторую попытку, отдаём его
-      // (идемпотентность, ТЗ 4.4, п.3).
-      const raced = await findInProgressAttempt(this.model, examId, userId);
-      if (raced) return toAttemptDto(raced);
-      throw err;
-    }
+      attemptsUsed,
+      now,
+    );
   }
 
   /** ТЗ 4.4, п.4–5: только владелец, только `in_progress`, только до
@@ -175,7 +140,11 @@ export class ExamAttemptsService {
       )
       .lean<RawLeanExamAttempt>();
     if (!updated) throw new InvalidInputError(ATTEMPT_EXPIRED_MESSAGE);
-    return toAttemptDto(decryptAttempt(updated));
+    const decrypted = decryptAttempt(updated);
+    // Выиграл гонку findOneAndUpdate выше — ровно одно уведомление на
+    // попытку (тот же приём, что closeIfExpiredAttempt, её комментарий-шапка).
+    notifyAttemptSubmitted(this.examNotifier, decrypted, now);
+    return toAttemptDto(decrypted);
   }
 
   /** ТЗ 4.4, п.9: ученику — только свои, учителю/админу — все, фильтры
@@ -198,8 +167,11 @@ export class ExamAttemptsService {
       .sort({ startedAt: -1 })
       .limit(query.limit ?? LIST_LIMIT_DEFAULT)
       .lean<RawLeanExamAttempt[]>();
+    const onClose = attemptSubmittedCallback(this.examNotifier, now);
     const attempts = await Promise.all(
-      docs.map((doc) => closeIfExpiredAttempt(this.model, decryptAttempt(doc), now)),
+      docs.map((doc) =>
+        closeIfExpiredAttempt(this.model, decryptAttempt(doc), now, onClose),
+      ),
     );
     // Имя ученика — только сотруднику школы и одним запросом на весь
     // список, не по документу (ExamAttemptDto.userName, shared/src/exams.ts).
@@ -227,7 +199,12 @@ export class ExamAttemptsService {
       .findOne({ _id: attemptId, userId })
       .lean<RawLeanExamAttempt>();
     if (!doc) throw new NotFoundError(ATTEMPT_NOT_FOUND_MESSAGE);
-    return closeIfExpiredAttempt(this.model, decryptAttempt(doc), now);
+    return closeIfExpiredAttempt(
+      this.model,
+      decryptAttempt(doc),
+      now,
+      attemptSubmittedCallback(this.examNotifier, now),
+    );
   }
 
   private assertOpenForChange(attempt: LeanExamAttempt): void {

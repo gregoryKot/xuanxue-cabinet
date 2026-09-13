@@ -4,6 +4,22 @@
 // Mongo, не мока (CLAUDE.md «Тесты») — тот же приём, что у `claimOnce`
 // (common/claim-once.ts): модель параметром, условный апдейт внутри держит
 // гонку без блокировок на уровне приложения.
+//
+// `onExpiredClose` (слой 4.7, PLAN §11) — необязательный колбэк, вызывающий
+// код может передать сюда «отправь уведомление об авто-сдаче». Ровно одна
+// причина: только этот файл знает, ЭТОТ ли вызов только что выиграл гонку
+// `findOneAndUpdate` и правда перевёл попытку в `submitted` (ветка `updated`
+// ниже) — снаружи (после `await`) все конкурирующие вызовы возвращают один и
+// тот же итоговый статус, и различить «я перевёл» от «кто-то уже перевёл до
+// меня» по одному только возврату нельзя. Колбэк — не async и не await'ится
+// здесь (уведомление — сайд-эффект, не часть смысла lifecycle-функции; сам
+// он ловит свои ошибки, не бросает — ExamNotifier). Отдельного поля-отметки
+// «уведомление отправлено» в схеме попытки не заводим: единственность и так
+// гарантирована условием `status: 'in_progress'` в фильтре апдейта ниже —
+// Mongo пропускает через него ровно один конкурентный вызов на документ, а
+// второй раз этот же документ сюда не попадёт (статус уже не `in_progress`,
+// функция выходит на первой строке). Поле дублировало бы гарантию, которая
+// уже есть.
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import {
@@ -33,6 +49,7 @@ export async function closeIfExpiredAttempt(
   model: Model<ExamAttemptRecord>,
   attempt: LeanExamAttempt,
   now: DateTime,
+  onExpiredClose?: (closed: LeanExamAttempt) => void,
 ): Promise<LeanExamAttempt> {
   if (attempt.status !== 'in_progress' || !attempt.deadlineAt) return attempt;
   if (now.toJSDate() < attempt.deadlineAt) return attempt;
@@ -44,7 +61,11 @@ export async function closeIfExpiredAttempt(
       { returnDocument: 'after' },
     )
     .lean<RawLeanExamAttempt>();
-  if (updated) return decryptAttempt(updated);
+  if (updated) {
+    const closed = decryptAttempt(updated);
+    onExpiredClose?.(closed);
+    return closed;
+  }
 
   // Конкурентный запрос уже закрыл её первым — отдаём актуальное состояние.
   const fresh = await model.findById(attempt._id).lean<RawLeanExamAttempt>();

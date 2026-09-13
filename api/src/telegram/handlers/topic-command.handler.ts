@@ -13,8 +13,8 @@ import { ClassRecord } from '../../classes/class.schema';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { LessonRecord } from '../../lessons/lesson.schema';
 import { inlineButton } from '../callback-data';
-import { TeacherChats } from '../teacher-chats';
-import { resolvePrivateTeacherChatId } from './private-teacher-chat';
+import { PersonalChats } from '../personal-chats';
+import { resolvePrivatePersonalChatId } from './private-teacher-chat';
 
 const UPCOMING_LESSONS_LIMIT = 5;
 const NO_LESSONS_MESSAGE = 'Ближайших занятий нет.';
@@ -30,14 +30,14 @@ export class TopicCommandHandler {
   private readonly logger = new Logger(TopicCommandHandler.name);
 
   constructor(
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
     try {
-      const chatId = await resolvePrivateTeacherChatId(ctx, this.teacherChats, now);
+      const chatId = await resolvePrivatePersonalChatId(ctx, this.personalChats, now);
       if (chatId === null) return;
 
       // Только активные классы (как RecordingPromptService) — выключенному

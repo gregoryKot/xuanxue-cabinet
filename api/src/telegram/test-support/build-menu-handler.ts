@@ -8,7 +8,7 @@ import { LessonRecord } from '../../lessons/lesson.schema';
 import { MyLessonsService } from '../../lessons/my-lessons.service';
 import type { UsersService } from '../../users/users.service';
 import { MenuCommandHandler } from '../handlers/menu-command.handler';
-import { buildTeacherChats } from './build-teacher-chats';
+import { buildPersonalChats } from './build-personal-chats';
 
 export function buildMenuHandler(
   connection: Connection,
@@ -16,7 +16,7 @@ export function buildMenuHandler(
   channelModel: Model<ChannelRecord>,
 ): MenuCommandHandler {
   return new MenuCommandHandler(
-    buildTeacherChats(connection, usersService, channelModel),
+    buildPersonalChats(connection, usersService, channelModel),
     new MyLessonsService(
       connection.model<LessonRecord>(LessonRecord.name),
       connection.model<ClassRecord>(ClassRecord.name),
