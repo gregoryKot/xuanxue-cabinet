@@ -15,9 +15,15 @@
 //
 // notification_prefs (ТЗ notifications-api.md) — вторая: настройки уведомлений
 // живут, пока жив аккаунт, удаление уносит их тем же путём.
+//
+// Этап 4, слой 4.6: оценка попытки по рубрике (exam_gradings, ADR-0022,
+// PLAN §11) — тоже данные ученика (чьи баллы), срок хранения «вместе с
+// попыткой». `graderId` (кто проверил) — не признак владения, обычная ссылка
+// на пользователя, см. USER_REFERENCE_PATHS ниже.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
+  'ExamGradingRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
@@ -38,4 +44,5 @@ export const USER_REFERENCE_PATHS = [
   { model: 'BroadcastRecord', path: 'createdBy' },
   { model: 'ExamItemRecord', path: 'authorId' },
   { model: 'ExamRecord', path: 'createdBy' },
+  { model: 'ExamGradingRecord', path: 'graderId' },
 ] as const;

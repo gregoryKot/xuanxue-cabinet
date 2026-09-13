@@ -1,9 +1,12 @@
-// GET /me/exams (ТЗ student-api.md, PLAN §11 слой 4.1) — опубликованные
+// GET /me/exams (ТЗ student-api.md, PLAN §11 слой 4.1 и 4.6) — опубликованные
 // формы плюс положение самого ученика по каждой из них (`userId` — только
-// из сессии, чужие попытки сюда не попадают ни при каком запросе).
+// из сессии, чужие попытки и чужие оценки сюда не попадают ни при каком
+// запросе).
 //
-// `result` в ответе намеренно нет — см. комментарий у MyExamDto (shared/src/
-// exams.ts): рубрика и оценка (`exam_gradings`, слой 4.6) ещё не существуют.
+// Итог и баллы по критериям рубрики (слой 4.6, `exam_gradings`) — можно:
+// это разбор собственной работы ученика (PLAN §11 «Границы»). Критерии
+// проверки вопроса (`ExamItemDto.criteria`) сюда не попадают в принципе —
+// этот сервис их не читает вовсе.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -20,6 +23,12 @@ import {
   type RawLeanExamAttempt,
 } from './exam-attempt.mapper';
 import { ExamAttemptRecord } from './exam-attempt.schema';
+import {
+  decryptGrading,
+  type LeanExamGrading,
+  type RawLeanExamGrading,
+} from './exam-grading.mapper';
+import { ExamGradingRecord } from './exam-grading.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord } from './exam.schema';
 import { decryptRecord } from '../utils/encryption';
 import {
@@ -47,6 +56,8 @@ export class MyExamsService {
     @InjectModel(ExamRecord.name) private readonly examModel: Model<ExamRecord>,
     @InjectModel(ExamAttemptRecord.name)
     private readonly attemptModel: Model<ExamAttemptRecord>,
+    @InjectModel(ExamGradingRecord.name)
+    private readonly gradingModel: Model<ExamGradingRecord>,
   ) {}
 
   async list(
@@ -99,17 +110,40 @@ export class MyExamsService {
       if (!latestByExamId.has(key)) latestByExamId.set(key, attempt);
     }
 
+    const gradingByAttemptId = await this.loadGradings(
+      [...latestByExamId.values()].map((attempt) => attempt._id.toString()),
+    );
+
     const result = new Map<string, AttemptSummary>();
     for (const [key, attempt] of latestByExamId) {
       // Дедлайн мог истечь между стартом попытки и этим запросом — статус
       // должен быть правдой прямо сейчас, тем же правилом, что у /attempts
       // (ExamAttemptsService.list).
       const closed = await closeIfExpiredAttempt(this.attemptModel, attempt, now);
+      const grading = gradingByAttemptId.get(closed._id.toString());
       result.set(key, {
         attemptsUsed: attemptsUsedByExamId.get(key) ?? 0,
-        lastAttempt: { id: closed._id.toString(), status: closed.status },
+        lastAttempt: {
+          id: closed._id.toString(),
+          status: closed.status,
+          outcome: grading?.outcome,
+          comment: grading?.comment,
+          criteria: grading?.criteria,
+        },
       });
     }
     return result;
+  }
+
+  /** Одним запросом на все последние попытки (не N+1, тот же приём, что
+   * у попыток выше) — оценка, если она уже выставлена (слой 4.6). */
+  private async loadGradings(
+    attemptIds: string[],
+  ): Promise<Map<string, LeanExamGrading>> {
+    if (attemptIds.length === 0) return new Map();
+    const docs = await this.gradingModel
+      .find({ attemptId: { $in: attemptIds } })
+      .lean<RawLeanExamGrading[]>();
+    return new Map(docs.map((doc) => [doc.attemptId.toString(), decryptGrading(doc)]));
   }
 }

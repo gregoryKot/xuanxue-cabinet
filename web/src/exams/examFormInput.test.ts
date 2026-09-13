@@ -17,6 +17,7 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     blocks: [
       { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true, required: true },
     ],
+    rubric: [],
     timeLimitMin: 40,
     attemptsAllowed: 2,
     status: 'draft',

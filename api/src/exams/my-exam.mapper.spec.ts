@@ -26,6 +26,24 @@ describe('toMyExamDto', () => {
     expect(dto.lastAttempt).toEqual({ id: 'attempt-1', status: 'submitted' });
   });
 
+  it('оценка выставлена — outcome/comment/criteria переданы как есть (слой 4.6)', () => {
+    const dto = toMyExamDto(exam(), 1, {
+      id: 'attempt-1',
+      status: 'graded',
+      outcome: 'passed',
+      comment: 'Хорошая работа',
+      criteria: [{ id: 'c1', title: 'Устойчивость', maxScore: 5, score: 4 }],
+    });
+
+    expect(dto.lastAttempt).toEqual({
+      id: 'attempt-1',
+      status: 'graded',
+      outcome: 'passed',
+      comment: 'Хорошая работа',
+      criteria: [{ id: 'c1', title: 'Устойчивость', maxScore: 5, score: 4 }],
+    });
+  });
+
   it('description/level отсутствуют в документе (после $unset) — пустая строка, не undefined', () => {
     const dto = toMyExamDto(
       exam({

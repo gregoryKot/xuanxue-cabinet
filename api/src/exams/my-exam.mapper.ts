@@ -3,7 +3,12 @@
 // (сколько попыток использовано, что с последней) считает вызывающий код
 // (MyExamsService): здесь только сборка ответа из готовых чисел.
 import type { Types } from 'mongoose';
-import type { ExamAttemptStatus, MyExamDto } from '@xuanxue/shared';
+import type {
+  ExamAttemptStatus,
+  GradingCriterionDto,
+  GradingOutcome,
+  MyExamDto,
+} from '@xuanxue/shared';
 
 export interface MyExamInput {
   _id: Types.ObjectId;
@@ -13,9 +18,16 @@ export interface MyExamInput {
   attemptsAllowed: number;
 }
 
+/** Оценка последней попытки, если она уже выставлена (слой 4.6) — баллы по
+ * критериям рубрики можно показать ученику как есть (его собственная
+ * работа), критерии проверки вопроса сюда не попадают: это другая сущность
+ * (`ExamItemDto.criteria`), MyExamsService её не читает. */
 export interface MyExamLastAttemptInput {
   id: string;
   status: ExamAttemptStatus;
+  outcome?: GradingOutcome;
+  comment?: string;
+  criteria?: GradingCriterionDto[];
 }
 
 export function toMyExamDto(

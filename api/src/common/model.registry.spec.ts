@@ -13,6 +13,7 @@ import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
+import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
@@ -233,6 +234,26 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     });
     // Вторая попытка того же ученика по той же форме — другой attemptNo, не дубль.
     await expect(ExamAttempt.create({ ...base, attemptNo: 2 })).resolves.toBeDefined();
+  });
+
+  it('exam_gradings: второй insert с тем же attemptId падает (одна оценка на попытку)', async () => {
+    const ExamGrading = connection.model<ExamGradingRecord>(ExamGradingRecord.name);
+    const base = {
+      attemptId: new mongoose.Types.ObjectId(),
+      examId: new mongoose.Types.ObjectId(),
+      userId: new mongoose.Types.ObjectId(),
+      graderId: new mongoose.Types.ObjectId(),
+      outcome: 'passed' as const,
+      gradedAt: FIXED_DATE,
+    };
+    await ExamGrading.create(base);
+    await expect(ExamGrading.create(base)).rejects.toMatchObject({
+      code: MONGO_DUPLICATE_KEY_CODE,
+    });
+    // Другая попытка — свой attemptId, не дубль.
+    await expect(
+      ExamGrading.create({ ...base, attemptId: new mongoose.Types.ObjectId() }),
+    ).resolves.toBeDefined();
   });
 
   it('encryptRecord/decryptRecord по CLASS_FIELD_POLICY: zoomLink шифруется и читается', () => {

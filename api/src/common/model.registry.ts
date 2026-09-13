@@ -36,6 +36,11 @@ import {
   ExamAttemptSchema,
   EXAM_ATTEMPT_FIELD_POLICY,
 } from '../exams/exam-attempt.schema';
+import {
+  ExamGradingRecord,
+  ExamGradingSchema,
+  EXAM_GRADING_FIELD_POLICY,
+} from '../exams/exam-grading.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import {
   NotificationPrefsRecord,
@@ -92,6 +97,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: ExamAttemptRecord.name,
     schema: ExamAttemptSchema,
     fieldPolicy: EXAM_ATTEMPT_FIELD_POLICY,
+  },
+  {
+    name: ExamGradingRecord.name,
+    schema: ExamGradingSchema,
+    fieldPolicy: EXAM_GRADING_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
   {

@@ -6,13 +6,18 @@
 // отдельного пути для учителя нет. Список — исключение: там `teacher`/
 // `assistant`/`admin` видят все попытки школы (ExamAttemptsService.list,
 // роль, не владение — ADR-0010), гость (`roles: []`) не видит ничего.
+// Проверка (слой 4.6, `review`/`grading` ниже) — та же схема: роль на
+// хендлере переопределяет класс (`getAllAndOverride`, AuthGuard) и закрывает
+// маршрут ученику вовсе — учитель видит чужую работу по сути своей роли, не
+// как исключение из владения.
 //
 // Два разных корня маршрутов (`exams/:examId/attempts`, `attempts/...`) —
 // `@Controller()` без общего префикса, полный путь у каждого хендлера:
 // `ExamsController` уже занял `exams` под форму, заводить свой `@Controller`
 // с тем же префиксом ради одного вложенного POST избыточно (CLAUDE.md
-// «Файлы»), а `@Controller('attempts')` для остальных трёх оставил бы старт
-// не под ним — один файл, один сервис, явные пути.
+// «Файлы»), а `@Controller('attempts')` для остальных оставил бы старт не
+// под ним — один файл, один сервис на попытку плюс сервис проверки
+// (слой 4.6 — своя коллекция, ExamGradingsService), явные пути.
 import {
   Body,
   Controller,
@@ -22,20 +27,28 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import type { AttemptReviewDto, ExamAttemptDto, ExamGradingDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
+import { ExamGradingsService } from './exam-gradings.service';
 import { ListAttemptsDto } from './dto/list-attempts.dto';
+import { PutGradingDto } from './dto/put-grading.dto';
 import { SaveAttemptAnswersDto } from './dto/save-attempt-answers.dto';
+
+const STAFF_ONLY_ROLES = ['teacher', 'assistant', 'admin'] as const;
 
 @Controller()
 @Roles('student', 'teacher', 'assistant', 'admin')
 export class ExamAttemptsController {
-  constructor(private readonly examAttemptsService: ExamAttemptsService) {}
+  constructor(
+    private readonly examAttemptsService: ExamAttemptsService,
+    private readonly examGradingsService: ExamGradingsService,
+  ) {}
 
   // Не всегда создаёт новую попытку (идемпотентный старт — ТЗ 4.4, п.3), но
   // и первый вызов, и повторный возвращают ресурс попытки — 201 как у
@@ -74,5 +87,24 @@ export class ExamAttemptsController {
     @CurrentUser() user: UserLean,
   ): Promise<ExamAttemptDto[]> {
     return this.examAttemptsService.list(query, user, DateTime.utc());
+  }
+
+  // Слой 4.6: карточка проверки и оценка — закрыты ученику, роль на хендлере
+  // переопределяет класс (@Roles('student', ...) выше), AuthGuard читает
+  // ближайшую метаданную (getAllAndOverride, auth.guard.ts).
+  @Get('attempts/:id/review')
+  @Roles(...STAFF_ONLY_ROLES)
+  review(@Param('id') id: string): Promise<AttemptReviewDto> {
+    return this.examGradingsService.getReview(id);
+  }
+
+  @Put('attempts/:id/grading')
+  @Roles(...STAFF_ONLY_ROLES)
+  grade(
+    @Param('id') id: string,
+    @Body() body: PutGradingDto,
+    @CurrentUser() user: UserLean,
+  ): Promise<ExamGradingDto> {
+    return this.examGradingsService.grade(id, user.id, body, DateTime.utc());
   }
 }
