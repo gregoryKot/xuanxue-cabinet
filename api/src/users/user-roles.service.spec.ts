@@ -179,5 +179,56 @@ describe('UserRolesService', () => {
 
       await solo.stop();
     }, 30_000);
+
+    it('гонка двух admin, снимающих роль друг у друга — второй теряет admin между записью и перепроверкой, откат и ForbiddenError (аудит M11)', async () => {
+      const solo = await openMemoryMongo();
+      const soloModel = solo.connection.model<UserRecord>(UserRecord.name, UserSchema);
+      await soloModel.syncIndexes();
+      const { roles: soloRoles, users: soloUsers } = openService(solo);
+      const first = await soloUsers.createFromTelegram({
+        telegramId: 4001,
+        name: 'Админ А',
+        roles: ['admin'],
+        status: 'active',
+      });
+      const second = await soloUsers.createFromTelegram({
+        telegramId: 4002,
+        name: 'Админ Б',
+        roles: ['admin'],
+        status: 'active',
+      });
+
+      // Первый вызов countDocuments внутри updateRoles(first) — дешёвая
+      // isLastAdmin-проверка ДО записи: должна честно увидеть second и
+      // пропустить дальше (иначе до записи и до перепроверки дело не
+      // дойдёт — не воспроизведём саму гонку). Второй вызов — уже
+      // rollbackIfNoAdminLeft ПОСЛЕ того, как admin снят у first: сюда
+      // подставляем конкурирующую операцию, которая тем же путём успела
+      // снять admin у second первой, и только затем отдаём настоящий счёт.
+      const originalCountDocuments = soloModel.countDocuments.bind(soloModel);
+      jest
+        .spyOn(soloModel, 'countDocuments')
+        .mockImplementationOnce(((filter: unknown) =>
+          originalCountDocuments(filter as never)) as never)
+        .mockImplementationOnce((async (filter: unknown) => {
+          await soloModel.updateOne(
+            { _id: second.id, roles: ['admin'] },
+            { $set: { roles: [] } },
+          );
+          return originalCountDocuments(filter as never);
+        }) as never);
+
+      await expect(soloRoles.updateRoles(first.id, [], 'кто-то-третий')).rejects.toThrow(
+        'последний администратор',
+      );
+
+      // Откат вернул admin тому, у кого его сняли последней записью,
+      // — школа не осталась без администратора ни на одну операцию.
+      const survivor = await soloUsers.findById(first.id);
+      expect(survivor?.roles).toContain('admin');
+      expect(await originalCountDocuments({ roles: 'admin' })).toBeGreaterThanOrEqual(1);
+
+      await solo.stop();
+    }, 30_000);
   });
 });
