@@ -1,8 +1,6 @@
-// Единственная точка сборки бота: создаёт Telegraf-инстанс через фабрику,
-// навешивает хендлеры (/start, my_chat_member — ADR-0015), регистрирует
-// вебхук у Telegram при старте. Контроллер зовёт только handleUpdate() —
-// сам разбор апдейта и подбор хендлера остаются здесь, не в контроллере
-// (CLAUDE.md «Логика вне контроллеров»).
+// Единственная точка сборки бота: Telegraf-инстанс через фабрику, хендлеры
+// (ADR-0015), вебхук и меню команд при старте. Контроллер зовёт только
+// handleUpdate() — разбор апдейта остаётся здесь, не в контроллере.
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Telegraf } from 'telegraf';
@@ -16,10 +14,12 @@ import { sendBotMessage } from './bot-send';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
 import { MessageHandler } from './handlers/message.handler';
+import { MenuCommandHandler } from './handlers/menu-command.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
 import { registerHandlers } from './register-handlers';
+import { registerBotCommands } from './bot-commands';
 import { TELEGRAF_FACTORY, type TelegrafFactory } from './telegraf-instance';
 
 // Литерал, не константа из app.setup.ts: там `app.setGlobalPrefix('api')` не
@@ -41,12 +41,11 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly callbackQueryHandler: CallbackQueryHandler,
     private readonly topicCommandHandler: TopicCommandHandler,
     private readonly notificationsCommandHandler: NotificationsCommandHandler,
+    private readonly menuCommandHandler: MenuCommandHandler,
     private readonly messageHandler: MessageHandler,
   ) {}
 
-  // Не async: ни один вызов внутри не await'ится (прогрев и регистрация —
-  // намеренно fire-and-forget, см. комментарий ниже), а `Promise<void>` в
-  // сигнатуре нужен только для совместимости с OnApplicationBootstrap.
+  // Не async: внутри всё намеренно fire-and-forget (см. ниже).
   onApplicationBootstrap(): void {
     const token = this.config.get<string>('BOT_TOKEN');
     if (!token) {
@@ -54,9 +53,9 @@ export class TelegramBotService implements OnApplicationBootstrap {
       return;
     }
     const bot = this.telegrafFactory(token);
-    // Свой обработчик ошибок вместо встроенного в telegraf: тот печатает весь
-    // апдейт через console.error (PII мимо редакции pino, CLAUDE.md «Логи») и
-    // ставит process.exitCode = 1 — процесс завершался бы кодом ошибки.
+    // Свой обработчик ошибок вместо встроенного в telegraf: тот печатает
+    // апдейт целиком через console.error (PII мимо редакции pino) и ставит
+    // process.exitCode = 1 — процесс завершался бы кодом ошибки.
     bot.catch((err) => {
       this.logger.error(`telegram.update: ${errorMessage(err)}`, errorStack(err));
     });
@@ -66,24 +65,27 @@ export class TelegramBotService implements OnApplicationBootstrap {
       callbackQueryHandler: this.callbackQueryHandler,
       topicCommandHandler: this.topicCommandHandler,
       notificationsCommandHandler: this.notificationsCommandHandler,
+      menuCommandHandler: this.menuCommandHandler,
       messageHandler: this.messageHandler,
     });
     this.bot = bot;
 
-    // Прогрев botInfo и регистрация вебхука идут в сеть — ни один не должен
-    // задержать старт приложения (health-check, остальные модули), поэтому
-    // не await, ошибки уходят в лог отдельным catch у каждого промиса.
+    // Сетевые вызовы старта — не await, ошибки в лог: они не должны
+    // задерживать подъём приложения. Пустое меню команд читается как
+    // «бот ничего не умеет» (bot-commands.ts), поэтому оно тоже здесь.
     void this.ensureBotInfo(bot).catch((err) => {
       this.logger.warn(`telegram.getMe (прогрев при старте): ${errorMessage(err)}`);
     });
     void this.registerWebhook(bot).catch((err) => {
       this.logger.error(`telegram.setWebhook: ${errorMessage(err)}`, errorStack(err));
     });
+    void registerBotCommands(bot).catch((err) => {
+      this.logger.warn(`telegram.setMyCommands: ${errorMessage(err)}`);
+    });
   }
 
-  /** Ответ 200 всегда — Telegram ретраит апдейт при не-200 (дубли доставки,
-   * CLAUDE.md «Ошибки»/«Telegram»), поэтому любая ошибка обработки, включая
-   * отказ ensureBotInfo(), уходит в error-лог, а не наружу. */
+  /** Ответ 200 всегда — Telegram ретраит апдейт при не-200 (дубли доставки),
+   * поэтому любая ошибка обработки уходит в error-лог, а не наружу. */
   async handleUpdate(update: Update): Promise<void> {
     if (!this.bot) return;
     try {
@@ -112,13 +114,11 @@ export class TelegramBotService implements OnApplicationBootstrap {
     }
   }
 
-  /** telegraf сам лениво зовёт `telegram.getMe()` при первом апдейте, но
-   * кэширует даже ОТКЛОНЁННЫЙ промис в приватном `botInfoCall`
-   * (node_modules/telegraf/lib/telegraf.js, handleUpdate) — после первого
-   * сетевого сбоя бот молчал бы навсегда без единой повторной попытки. Мы
-   * сами выставляем публичное `bot.botInfo` раньше, чем telegraf успевает
-   * туда заглянуть, — он видит готовое значение и свой кэш не трогает; при
-   * отказе просто не выставляем `botInfo`, следующий апдейт пробует снова. */
+  /** telegraf зовёт `telegram.getMe()` лениво, но кэширует даже ОТКЛОНЁННЫЙ
+   * промис в приватном `botInfoCall` (telegraf.js, handleUpdate) — после
+   * первого сетевого сбоя бот молчал бы навсегда. Выставляем публичное
+   * `bot.botInfo` сами раньше, чем telegraf туда заглянет; при отказе не
+   * выставляем ничего — следующий апдейт пробует снова. */
   private async ensureBotInfo(bot: Telegraf): Promise<void> {
     if (bot.botInfo) return;
     const signal = AbortSignal.timeout(TELEGRAM_CALL_TIMEOUT_MS);

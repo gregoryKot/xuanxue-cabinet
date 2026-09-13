@@ -36,6 +36,8 @@ export interface FakeTelegraf {
   factory: TelegrafFactory;
   webhookCalls: WebhookCall[];
   sendMessageCalls: SendMessageCall[];
+  /** Команды, которые бот зарегистрировал в меню Telegram (bot-commands.ts). */
+  commandCalls: { command: string; description: string }[][];
 }
 
 /** `failSendMessage` — проактивная отправка (PreviewService и т. п.) должна
@@ -46,6 +48,7 @@ export function createFakeTelegrafFactory(
 ): FakeTelegraf {
   const webhookCalls: WebhookCall[] = [];
   const sendMessageCalls: SendMessageCall[] = [];
+  const commandCalls: { command: string; description: string }[][] = [];
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
     bot.telegram.callApi = ((method: string, payload?: Record<string, unknown>) => {
@@ -58,6 +61,13 @@ export function createFakeTelegrafFactory(
           secretToken: payload?.secret_token as string | undefined,
           allowedUpdates: payload?.allowed_updates as string[] | undefined,
         });
+        return Promise.resolve(true);
+      }
+      if (method === 'setMyCommands') {
+        commandCalls.push(
+          (payload?.commands as { command: string; description: string }[] | undefined) ??
+            [],
+        );
         return Promise.resolve(true);
       }
       if (method === 'sendMessage') {
@@ -73,5 +83,5 @@ export function createFakeTelegrafFactory(
     }) as unknown as Telegraf['telegram']['callApi'];
     return bot;
   };
-  return { factory, webhookCalls, sendMessageCalls };
+  return { factory, webhookCalls, sendMessageCalls, commandCalls };
 }

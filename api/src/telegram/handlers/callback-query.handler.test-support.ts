@@ -1,8 +1,6 @@
-// Общая обвязка для callback-query.handler.spec.ts (cancel/topic),
-// callback-query.handler.access.spec.ts (доступ) и
-// callback-query.handler.norec-sent.spec.ts (norec/sent) — один файл был
-// больше спек-лимита в 300 строк (CLAUDE.md «Файлы»), обвязка общая, чтобы не
-// дублировать её (jscpd).
+// Общая обвязка для callback-query.handler.*.spec.ts (cancel/topic, доступ,
+// norec/sent, уведомления, меню): одним файлом спеки не влезали в лимит 300
+// строк, а обвязка у них одна (jscpd).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import type { Context } from 'telegraf';
@@ -18,6 +16,7 @@ import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { buildMenuHandler } from '../test-support/build-menu-handler';
 import { buildTeacherChats } from '../test-support/build-teacher-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
 import { CallbackQueryHandler } from './callback-query.handler';
@@ -31,6 +30,8 @@ export function fakeCtx(options: {
   chatType?: 'private' | 'group';
   data?: string;
   noFrom?: boolean;
+  /** Правку сообщения отклонили (его удалили, бота выкинули). */
+  failEdit?: boolean;
 }): { ctx: Context; editCalls: string[] } {
   const editCalls: string[] = [];
   const ctx = {
@@ -42,14 +43,11 @@ export function fakeCtx(options: {
       options.chatId === undefined || options.noFrom ? undefined : { id: options.chatId },
     callbackQuery: options.data === undefined ? undefined : { data: options.data },
     answerCbQuery: () => Promise.resolve(true),
-    editMessageText: (text: string) => {
-      editCalls.push(text);
-      return Promise.resolve(true);
-    },
-    reply: (text: string) => {
-      editCalls.push(text);
-      return Promise.resolve(true);
-    },
+    editMessageText: (text: string) =>
+      options.failEdit
+        ? Promise.reject(new Error('сообщение недоступно'))
+        : Promise.resolve(Boolean(editCalls.push(text))),
+    reply: (text: string) => Promise.resolve(Boolean(editCalls.push(text))),
   } as unknown as Context;
   return { ctx, editCalls };
 }
@@ -76,9 +74,8 @@ export function buildHandler(
     broadcastsService?: BroadcastsService;
     botSessions?: BotSessionService;
     deliveriesService?: DeliveriesService;
-    // Только для handleNotificationToggle (гонка «чат отвязан между проверкой
-    // доступа и резолвом userId») — identity-проверка идёт через
-    // buildTeacherChats на настоящем UsersService, не через эту подмену.
+    // Только для гонки «чат отвязан между проверкой доступа и резолвом
+    // userId»: сам доступ идёт через buildTeacherChats.
     usersService?: UsersService;
   } = {},
 ): CallbackQueryHandler {
@@ -92,6 +89,7 @@ export function buildHandler(
       new DeliveriesService(ctx.deliveryModel, ctx.broadcastModel, ctx.channelModel),
     overrides.usersService ?? usersService,
     new NotificationPrefsService(ctx.notificationPrefsModel),
+    buildMenuHandler(ctx.connection, usersService, ctx.channelModel),
   );
 }
 
@@ -124,6 +122,7 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     new DeliveriesService(deliveryModel, broadcastModel, channelModel),
     usersService,
     new NotificationPrefsService(notificationPrefsModel),
+    buildMenuHandler(connection, usersService, channelModel),
   );
   return {
     memory,

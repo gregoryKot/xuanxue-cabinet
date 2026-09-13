@@ -6,6 +6,7 @@ import type { Telegraf } from 'telegraf';
 import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
 import type { MessageHandler } from './handlers/message.handler';
+import type { MenuCommandHandler } from './handlers/menu-command.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { StartHandler } from './handlers/start.handler';
 import type { TopicCommandHandler } from './handlers/topic-command.handler';
@@ -26,6 +27,7 @@ export interface BotHandlers {
   callbackQueryHandler: CallbackQueryHandler;
   topicCommandHandler: TopicCommandHandler;
   notificationsCommandHandler: NotificationsCommandHandler;
+  menuCommandHandler: MenuCommandHandler;
   messageHandler: MessageHandler;
 }
 
@@ -38,6 +40,16 @@ export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
   bot.on('my_chat_member', (ctx) => handlers.chatMemberHandler.handle(ctx));
   bot.on('callback_query', (ctx) =>
     handlers.callbackQueryHandler.handle(ctx, DateTime.utc()),
+  );
+  // Латинские команды — те, что Telegram показывает в меню (bot-commands.ts).
+  bot.command('menu', (ctx) => handlers.menuCommandHandler.showMenu(ctx, DateTime.utc()));
+  bot.command('schedule', (ctx) =>
+    handlers.menuCommandHandler.showSchedule(ctx, DateTime.utc()),
+  );
+  bot.command('help', (ctx) => handlers.menuCommandHandler.showHelp(ctx, DateTime.utc()));
+  bot.command('topic', (ctx) => handlers.topicCommandHandler.handle(ctx, DateTime.utc()));
+  bot.command('notifications', (ctx) =>
+    handlers.notificationsCommandHandler.handle(ctx, DateTime.utc()),
   );
   bot.hears(TOPIC_COMMAND_PATTERN, (ctx) =>
     handlers.topicCommandHandler.handle(ctx, DateTime.utc()),

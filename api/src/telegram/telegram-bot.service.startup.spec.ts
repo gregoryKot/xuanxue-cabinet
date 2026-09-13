@@ -182,4 +182,43 @@ describe('TelegramBotService — регистрация вебхука при с
     expect(() => service.onApplicationBootstrap()).not.toThrow();
     await flush();
   });
+
+  it('при старте регистрируется список команд — меню бота не остаётся пустым', async () => {
+    const fake = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      fake.factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+
+    service.onApplicationBootstrap();
+    await flush();
+
+    expect(fake.commandCalls).toHaveLength(1);
+    expect(fake.commandCalls[0]?.map((c) => c.command)).toContain('menu');
+  });
+
+  it('setMyCommands отклонён — меню без команд, но приложение поднялось', async () => {
+    const factory: TelegrafFactory = (token) => {
+      const bot = createTelegraf(token);
+      bot.telegram.callApi = ((method: string) => {
+        if (method === 'setMyCommands') return Promise.reject(new Error('сеть'));
+        if (method === 'getMe') return Promise.resolve({ id: 1, is_bot: true });
+        return Promise.resolve(true);
+      }) as unknown as Telegraf['telegram']['callApi'];
+      return bot;
+    };
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+
+    expect(() => service.onApplicationBootstrap()).not.toThrow();
+    await flush();
+  });
 });
