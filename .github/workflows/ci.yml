@@ -111,6 +111,8 @@ jobs:
       - run: npm ci
       - name: prettier — формат всего репозитория
         run: npm run format:check
+      - name: мёртвые экспорты shared/src/index.ts
+        run: node scripts/check-shared-exports.mjs
       - name: knip — мёртвый код и неиспользуемые зависимости
         run: npx knip
       - name: gitleaks — секреты в диффе/истории
