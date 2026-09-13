@@ -22,6 +22,8 @@ import {
   fakeHandlerWithNow,
   topicCommandUpdate,
 } from './test-support/bot-service.fixtures';
+import { botCommandUpdate } from './test-support/bot-command-update';
+import type { MenuCommandHandler } from './handlers/menu-command.handler';
 import { createFakeTelegrafFactory } from './test-support/telegraf-factory';
 import { createTelegraf } from './telegraf-instance';
 import { TelegramBotService } from './telegram-bot.service';
@@ -139,6 +141,7 @@ describe('TelegramBotService — маршрутизация', () => {
       callbackQuery as unknown as CallbackQueryHandler,
       fakeHandler() as unknown as TopicCommandHandler,
       fakeHandler() as unknown as NotificationsCommandHandler,
+      fakeHandler() as unknown as MenuCommandHandler,
       message as unknown as MessageHandler,
     );
     service.onApplicationBootstrap();
@@ -169,6 +172,7 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeHandlerWithNow() as unknown as CallbackQueryHandler,
         topicCommand as unknown as TopicCommandHandler,
         fakeHandler() as unknown as NotificationsCommandHandler,
+        fakeHandler() as unknown as MenuCommandHandler,
         message as unknown as MessageHandler,
       );
       service.onApplicationBootstrap();
@@ -199,6 +203,7 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeHandlerWithNow() as unknown as CallbackQueryHandler,
         fakeHandler() as unknown as TopicCommandHandler,
         notificationsCommand as unknown as NotificationsCommandHandler,
+        fakeHandler() as unknown as MenuCommandHandler,
         message as unknown as MessageHandler,
       );
       service.onApplicationBootstrap();
@@ -224,6 +229,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandlerWithNow() as unknown as CallbackQueryHandler,
       topicCommand as unknown as TopicCommandHandler,
       fakeHandler() as unknown as NotificationsCommandHandler,
+      fakeHandler() as unknown as MenuCommandHandler,
       message as unknown as MessageHandler,
     );
     service.onApplicationBootstrap();
@@ -246,6 +252,7 @@ describe('TelegramBotService — маршрутизация', () => {
       callbackQuery as unknown as CallbackQueryHandler,
       fakeHandler() as unknown as TopicCommandHandler,
       fakeHandler() as unknown as NotificationsCommandHandler,
+      fakeHandler() as unknown as MenuCommandHandler,
       message as unknown as MessageHandler,
     );
     service.onApplicationBootstrap();
@@ -312,5 +319,79 @@ describe('TelegramBotService.sendMessage — проактивная отправ
     service.onApplicationBootstrap();
 
     await expect(service.sendMessage('111', 'Привет')).resolves.toBeUndefined();
+  });
+
+  // `/topic@имя_бота` Telegraf сверяет с настоящим username бота — в фейке он
+  // свой, поэтому проверяем голую команду; форму с @ покрывают спеки
+  // кириллических `/тема@bot` выше (там сверка идёт регэкспом).
+  it('/topic — латинская команда роутится в TopicCommandHandler', async () => {
+    const topicCommand = fakeHandlerWithNow();
+    const { factory } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      fakeHandlerWithNow() as unknown as CallbackQueryHandler,
+      topicCommand as unknown as TopicCommandHandler,
+      fakeHandler() as unknown as NotificationsCommandHandler,
+      fakeHandler() as unknown as MenuCommandHandler,
+      fakeHandlerWithNow() as unknown as MessageHandler,
+    );
+    service.onApplicationBootstrap();
+
+    await service.handleUpdate(botCommandUpdate('/topic', 15));
+
+    expect(topicCommand.handle).toHaveBeenCalledTimes(1);
+  });
+
+  it('/notifications — латинская команда роутится в NotificationsCommandHandler', async () => {
+    const notifications = fakeHandlerWithNow();
+    const { factory } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      fakeHandlerWithNow() as unknown as CallbackQueryHandler,
+      fakeHandler() as unknown as TopicCommandHandler,
+      notifications as unknown as NotificationsCommandHandler,
+      fakeHandler() as unknown as MenuCommandHandler,
+      fakeHandlerWithNow() as unknown as MessageHandler,
+    );
+    service.onApplicationBootstrap();
+
+    await service.handleUpdate(botCommandUpdate('/notifications', 17));
+
+    expect(notifications.handle).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['/menu', 'showMenu'],
+    ['/schedule', 'showSchedule'],
+    ['/help', 'showHelp'],
+  ])('%s роутится в MenuCommandHandler', async (text, method) => {
+    const menu = {
+      showMenu: jest.fn().mockResolvedValue(undefined),
+      showSchedule: jest.fn().mockResolvedValue(undefined),
+      showHelp: jest.fn().mockResolvedValue(undefined),
+    };
+    const { factory } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      fakeHandlerWithNow() as unknown as CallbackQueryHandler,
+      fakeHandler() as unknown as TopicCommandHandler,
+      fakeHandler() as unknown as NotificationsCommandHandler,
+      menu as unknown as MenuCommandHandler,
+      fakeHandlerWithNow() as unknown as MessageHandler,
+    );
+    service.onApplicationBootstrap();
+
+    await service.handleUpdate(botCommandUpdate(text, 21));
+
+    expect(menu[method as keyof typeof menu]).toHaveBeenCalledTimes(1);
   });
 });

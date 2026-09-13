@@ -27,6 +27,8 @@ import { MyLessonsService } from './my-lessons.service';
   imports: [LessonModelModule, ClassesModule, BroadcastsModule, UserModelModule],
   controllers: [LessonsController, MyLessonsController],
   providers: [LessonsService, MyLessonsService],
-  exports: [LessonModelModule, LessonsService],
+  // MyLessonsService — ещё и боту: экран «Ближайшие занятия» показывает тот
+  // же подбор, что `GET /me/lessons` (menu-command.handler.ts).
+  exports: [LessonModelModule, LessonsService, MyLessonsService],
 })
 export class LessonsModule {}

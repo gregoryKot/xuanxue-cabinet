@@ -14,14 +14,17 @@ import { ChannelConfigService } from '../../channels/channel-config.service';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { SettingsService } from '../../settings/settings.service';
 import { UsersService } from '../../users/users.service';
+import { BOT_STAFF_ROLES, buildBotMenu, buildStrangerMessage } from './bot-menu';
 
 // leadMinutes задаётся на класс (docs/PLAN.md §6) — у личного чата учителя
 // нет одного числа минут на все занятия, поэтому текст не называет его.
+// Дальше идёт само меню кнопками (bot-menu.ts): раньше /start отвечал этой
+// строкой и заканчивался, и всё остальное, что бот умеет, оставалось
+// невидимым (отзыв владельца 2026-09-12).
 const TEACHER_MESSAGE =
   'Вы подключены: ссылки на занятия будут приходить сюда заранее — за столько ' +
   'минут, сколько указано у занятия. Добавьте бота в группу учеников — он начнёт ' +
   'слать туда же.';
-const STRANGER_MESSAGE_BASE = 'Этот бот для учителя школы Сюань-Сюэ.';
 
 function personalChatTitle(name: string): string {
   return `Личные сообщения: ${name}`;
@@ -44,12 +47,16 @@ export class StartHandler {
 
     try {
       const user = await this.usersService.findByTelegramId(from.id);
-      if (user && (user.roles.includes('teacher') || user.roles.includes('admin'))) {
+      if (user && user.roles.some((role) => BOT_STAFF_ROLES.includes(role))) {
         await this.channelConfig.upsertTelegramChat({
           chatId: String(from.id),
           title: personalChatTitle(user.name),
         });
+        const menu = buildBotMenu();
         await ctx.reply(TEACHER_MESSAGE);
+        await ctx
+          .reply(menu.text, { reply_markup: { inline_keyboard: menu.buttons } })
+          .catch(() => null);
         return;
       }
       await ctx.reply(await this.strangerMessage());
@@ -60,7 +67,6 @@ export class StartHandler {
 
   private async strangerMessage(): Promise<string> {
     const { schoolSiteUrl } = await this.settingsService.get();
-    if (!schoolSiteUrl) return STRANGER_MESSAGE_BASE;
-    return `${STRANGER_MESSAGE_BASE} Расписание — на сайте ${schoolSiteUrl}`;
+    return buildStrangerMessage(schoolSiteUrl);
   }
 }

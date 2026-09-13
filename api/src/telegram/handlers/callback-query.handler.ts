@@ -19,6 +19,7 @@ import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
 import { parseCallbackData, type CallbackAction } from '../callback-data';
 import { TeacherChats } from '../teacher-chats';
+import { isMenuScreenAction } from './bot-menu';
 import {
   GENERIC_ERROR,
   handleCancel,
@@ -27,6 +28,8 @@ import {
   handleSent,
   handleTopicButton,
 } from './callback-actions';
+import { MenuCommandHandler } from './menu-command.handler';
+import { handleMenuScreen } from './menu-screens';
 
 @Injectable()
 export class CallbackQueryHandler {
@@ -39,6 +42,7 @@ export class CallbackQueryHandler {
     private readonly deliveriesService: DeliveriesService,
     private readonly usersService: UsersService,
     private readonly notificationPrefsService: NotificationPrefsService,
+    private readonly menuCommandHandler: MenuCommandHandler,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -86,6 +90,19 @@ export class CallbackQueryHandler {
     }
     if (action === 'norec') return handleNoRecording(ctx, this.botSessions, chatId, id);
     if (action === 'sent') return handleSent(ctx, this.deliveriesService, id, now);
+    if (action === 'menu' && isMenuScreenAction(id)) {
+      return handleMenuScreen(
+        ctx,
+        {
+          menu: this.menuCommandHandler,
+          users: this.usersService,
+          prefs: this.notificationPrefsService,
+        },
+        id,
+        chatId,
+        now,
+      );
+    }
     if (action === 'notif' && isNotificationKind(id)) {
       return handleNotificationToggle(
         ctx,
@@ -103,9 +120,11 @@ export class CallbackQueryHandler {
   }
 }
 
-/** cancel/topic/norec/sent — id всегда ObjectId; notif — id всегда
- * NotificationKind (кнопка «Уведомления»). Битый/чужой параметр — тихо
+/** cancel/topic/norec/sent — id всегда ObjectId; notif — NotificationKind
+ * (кнопка «Уведомления»); menu — экран меню. Битый/чужой параметр — тихо
  * игнорируется вызывающим кодом, не ошибка. */
 function isValidParam(action: CallbackAction, id: string): boolean {
-  return action === 'notif' ? isNotificationKind(id) : Types.ObjectId.isValid(id);
+  if (action === 'notif') return isNotificationKind(id);
+  if (action === 'menu') return isMenuScreenAction(id);
+  return Types.ObjectId.isValid(id);
 }

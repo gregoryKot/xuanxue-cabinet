@@ -25,6 +25,7 @@ import { BotSessionService } from './bot-session.service';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
 import { MessageHandler } from './handlers/message.handler';
+import { MenuCommandHandler } from './handlers/menu-command.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
@@ -57,6 +58,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     CallbackQueryHandler,
     TopicCommandHandler,
     NotificationsCommandHandler,
+    MenuCommandHandler,
     MessageHandler,
     TeacherChats,
     BotSessionService,

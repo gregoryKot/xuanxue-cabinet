@@ -20,6 +20,7 @@ import { StartHandler } from './start.handler';
 function fakeCtx(
   telegramId: number | undefined,
   chatType: 'private' | 'group' = 'private',
+  failSecondReply = false,
 ): {
   ctx: Context;
   replies: string[];
@@ -29,6 +30,11 @@ function fakeCtx(
     chat: { type: chatType },
     from: telegramId === undefined ? undefined : { id: telegramId },
     reply: (text: string) => {
+      // Второе сообщение — меню: человек мог заблокировать бота между двумя
+      // ответами, и это не повод падать.
+      if (failSecondReply && replies.length === 1) {
+        return Promise.reject(new Error('бот заблокирован'));
+      }
       replies.push(text);
       return Promise.resolve();
     },
@@ -80,7 +86,7 @@ describe('StartHandler', () => {
     await settingsModel.deleteMany({});
   });
 
-  it('учитель — личный чат становится каналом, ответ с текстом подключения', async () => {
+  it('учитель — личный чат становится каналом, ответ с текстом подключения и меню', async () => {
     const teacher = await userModel.create({
       name: 'Мария',
       telegramId: 111,
@@ -93,8 +99,11 @@ describe('StartHandler', () => {
     const channel = await channelModel.findOne({ target: '111' }).lean();
     expect(channel?.active).toBe(true);
     expect(channel?.title).toBe(`Личные сообщения: ${teacher.name}`);
-    expect(replies).toHaveLength(1);
+    // Два сообщения: «вы подключены» и следом меню кнопками — раньше /start
+    // заканчивался первым и человек не видел, что бот ещё что-то умеет.
+    expect(replies).toHaveLength(2);
     expect(replies[0]).toContain('Вы подключены');
+    expect(replies[1]).toContain('/topic');
   });
 
   it('админ — тоже получает личный канал', async () => {
@@ -164,5 +173,20 @@ describe('StartHandler', () => {
 
     await expect(failingHandler.handle(ctx)).resolves.toBeUndefined();
     expect(replies).toHaveLength(0);
+  });
+
+  it('меню не доставилось (бота заблокировали) — /start всё равно отработал', async () => {
+    const teacher = await userModel.create({
+      name: 'Мария',
+      telegramId: 111,
+      roles: ['teacher'],
+    });
+    const { ctx, replies } = fakeCtx(111, 'private', true);
+
+    await expect(handler.handle(ctx)).resolves.toBeUndefined();
+
+    expect(replies).toHaveLength(1);
+    const channel = await channelModel.findOne({ target: '111' }).lean();
+    expect(channel?.title).toBe(`Личные сообщения: ${teacher.name}`);
   });
 });
