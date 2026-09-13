@@ -31,7 +31,7 @@ describe('renderTemplate — реальные посты (PLAN.md §1)', () => {
     );
   });
 
-  it('запись со всеми полями', () => {
+  it('запись со всеми полями — без длительности, её убрали из дефолта', () => {
     expect(
       renderTemplate(DEFAULT_TEMPLATES.recording, {
         название: 'Самомассаж (нижняя часть лица, МФР, сидя)',
@@ -40,11 +40,11 @@ describe('renderTemplate — реальные посты (PLAN.md §1)', () => {
         ссылка: 'https://drive.google.com/file/d/x',
       }),
     ).toBe(
-      'Самомассаж (нижняя часть лица, МФР, сидя). Занятие 30 минут, ведёт Мария — https://drive.google.com/file/d/x',
+      'Самомассаж (нижняя часть лица, МФР, сидя), ведёт Мария — https://drive.google.com/file/d/x',
     );
   });
 
-  it('запись без темы, длительности и ведущего', () => {
+  it('запись без темы и ведущего', () => {
     expect(
       renderTemplate(DEFAULT_TEMPLATES.recording, {
         название: 'Самомассаж',
