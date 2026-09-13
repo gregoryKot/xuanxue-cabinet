@@ -29,6 +29,7 @@ describe('TopicRebuildService.rebuild', () => {
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
   let deliveryModel: Model<DeliveryRecord>;
+  let settingsService: SettingsService;
   let service: TopicRebuildService;
 
   beforeAll(async () => {
@@ -47,12 +48,18 @@ describe('TopicRebuildService.rebuild', () => {
       SettingsSchema,
     );
     const usersService = new UsersService(userModel);
+    settingsService = new SettingsService(
+      settingsModel,
+      lessonModel,
+      classModel,
+      usersService,
+    );
     service = new TopicRebuildService(
       broadcastModel,
       lessonModel,
       classModel,
       deliveryModel,
-      new SettingsService(settingsModel, lessonModel, classModel, usersService),
+      settingsService,
       usersService,
     );
   }, 60_000);
@@ -153,6 +160,60 @@ describe('TopicRebuildService.rebuild', () => {
     await lessonModel.updateOne({ _id: lesson._id }, { $set: { topic: 'новая тема' } });
 
     await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(false);
+
+    const untouched = await broadcastModel.findById(broadcast._id).lean();
+    expect(decrypt(untouched?.text)).toBe('старый текст');
+  });
+
+  it('доставку захватывают в окне между проверками (M7 аудита) — текст не трогаем', async () => {
+    const cls = await createClass();
+    const lesson = await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.plus({ minutes: 10 }).toJSDate(),
+      durationMin: 60,
+      topic: 'старая тема',
+      status: 'scheduled',
+    });
+    const broadcast = await broadcastModel.create(
+      encryptRecord(
+        {
+          kind: 'lesson_link',
+          lessonId: lesson._id,
+          channelIds: [],
+          scheduledAt: NOW.toJSDate(),
+          text: 'старый текст',
+          status: 'scheduled',
+        },
+        ENCRYPT_SCHEMA,
+      ),
+    );
+    const delivery = await deliveryModel.create({
+      broadcastId: broadcast._id,
+      channelId: new Types.ObjectId(),
+      status: 'pending',
+    });
+    await lessonModel.updateOne({ _id: lesson._id }, { $set: { topic: 'новая тема' } });
+
+    // Первая проверка доставок видит `pending` и пропускает дальше — раннер
+    // захватывает доставку уже после неё, в окне из нескольких `await`
+    // (занятие, класс, настройки, рендер). Без реального планировщика и
+    // setTimeout воспроизводим это подменой одного из промежуточных шагов
+    // (settingsService.get): к моменту его вызова доставка становится
+    // `sending`, и вторая проверка перед `updateOne` должна это заметить.
+    const originalGet = settingsService.get.bind(settingsService);
+    const getSpy = jest.spyOn(settingsService, 'get').mockImplementationOnce(async () => {
+      await deliveryModel.updateOne(
+        { _id: delivery._id },
+        { $set: { status: 'sending', lockedAt: NOW.toJSDate() } },
+      );
+      return originalGet();
+    });
+
+    try {
+      await expect(service.rebuild(lesson._id, NOW)).resolves.toBe(false);
+    } finally {
+      getSpy.mockRestore();
+    }
 
     const untouched = await broadcastModel.findById(broadcast._id).lean();
     expect(decrypt(untouched?.text)).toBe('старый текст');
