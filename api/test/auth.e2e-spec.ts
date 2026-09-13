@@ -31,7 +31,7 @@ describe('Auth (e2e)', () => {
     expect(body.code).toBe('unauthorized');
   });
 
-  it('GET /auth/me с валидной cookie — MeDto без email/telegramId/status', async () => {
+  it('GET /auth/me с валидной cookie — MeDto без ключей входа', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Мария',
       roles: ['admin'],
@@ -44,7 +44,9 @@ describe('Auth (e2e)', () => {
     expect(body).toMatchObject({ name: 'Мария', roles: ['admin'] });
     expect(body.email).toBeUndefined();
     expect(body.telegramId).toBeUndefined();
-    expect(body.status).toBeUndefined();
+    // `status` наружу идёт с ADR-0026: по нему кабинет решает, показать
+    // расписание или экран ожидания подтверждения.
+    expect(body.status).toBe('active');
   });
 
   it('заблокированный пользователь — 403', async () => {

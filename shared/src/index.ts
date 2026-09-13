@@ -51,7 +51,10 @@ export type {
 export {
   USER_ROLES,
   ROLE_LABELS,
+  STAFF_ROLES,
+  isStaffRole,
   USER_STATUSES,
+  PENDING_APPROVAL_MESSAGE,
   CSRF_HEADER,
   MUTATING_METHODS,
   isMutatingMethod,

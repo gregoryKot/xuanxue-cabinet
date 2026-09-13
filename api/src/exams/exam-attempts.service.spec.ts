@@ -373,6 +373,54 @@ describe('ExamAttemptsService', () => {
     );
     expect(asTeacher).toHaveLength(2);
   });
+
+  // Помощник учителя правами равен учителю (STAFF_ROLES, shared/auth.ts) —
+  // раньше проверка перечисляла teacher и admin и помощника не считала.
+  it('помощник учителя видит все попытки школы', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.start(examId, USER_B, NOW);
+
+    const asAssistant = await ctx.service.list(
+      {},
+      {
+        id: '507f1f77bcf86cd799439015',
+        name: 'Помощник',
+        roles: ['assistant'],
+        tz: 'Asia/Jerusalem',
+        status: 'active',
+      },
+      NOW,
+    );
+
+    expect(asAssistant).toHaveLength(2);
+  });
+
+  // Ученик — это подтверждённый человек без ролей (ADR-0026), роли
+  // `student` больше нет в гвардах: список должен скоупиться по владению
+  // и для него.
+  it('подтверждённый человек без ролей видит только свои попытки', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.start(examId, USER_B, NOW);
+
+    const asStudent = await ctx.service.list(
+      {},
+      {
+        id: USER_A,
+        name: 'Ученик',
+        roles: [],
+        tz: 'Asia/Jerusalem',
+        status: 'active',
+      },
+      NOW,
+    );
+
+    expect(asStudent).toHaveLength(1);
+    expect(asStudent[0]?.userId).toBe(USER_A);
+  });
 });
 
 /** `UserLean` для `list()` — сервис читает только `id`/`roles` (ExamAttemptsService.list). */

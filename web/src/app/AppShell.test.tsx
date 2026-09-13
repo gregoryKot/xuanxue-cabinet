@@ -53,24 +53,28 @@ const TEACHER: MeDto = {
   name: 'Дима',
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
 const ADMIN: MeDto = {
   id: 'a1',
   name: 'Маша',
   roles: ['admin'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
 const STUDENT: MeDto = {
   id: 'u2',
   name: 'Ученик',
   roles: ['student'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
 const ASSISTANT: MeDto = {
   id: 'u3',
   name: 'Помощник',
   roles: ['assistant'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
 
 describe('AppShell — навигация по ширине экрана', () => {

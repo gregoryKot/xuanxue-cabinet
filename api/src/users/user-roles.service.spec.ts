@@ -40,11 +40,13 @@ describe('UserRolesService', () => {
         telegramId: 1001,
         name: 'Раньше',
         roles: ['teacher'],
+        status: 'active',
       });
       const newer = await users.createFromTelegram({
         telegramId: 1002,
         name: 'Позже',
         roles: ['teacher'],
+        status: 'active',
       });
       await users.touchLogin(older.id, DateTime.fromISO('2026-01-01T00:00:00Z'));
       await users.touchLogin(newer.id, DateTime.fromISO('2026-02-01T00:00:00Z'));
@@ -72,6 +74,7 @@ describe('UserRolesService', () => {
         telegramId: 2001,
         name: 'Гриша',
         roles: [],
+        status: 'active',
       });
 
       const updated = await roles.updateRoles(user.id, ['teacher'], 'другой-админ');
@@ -92,6 +95,7 @@ describe('UserRolesService', () => {
         telegramId: 2005,
         name: 'Настя',
         roles: ['teacher'],
+        status: 'active',
       });
       // Второй админ успел применить свою правку между чтением target внутри
       // updateRoles и условным findOneAndUpdate — имитируем подменой чтения:
@@ -115,6 +119,7 @@ describe('UserRolesService', () => {
         telegramId: 2002,
         name: 'Маша',
         roles: ['admin'],
+        status: 'active',
       });
       // Второй админ — иначе сработала бы проверка «последний админ» раньше
       // проверки самоснятия, и текст ошибки был бы не тот, что тестируем.
@@ -122,6 +127,7 @@ describe('UserRolesService', () => {
         telegramId: 2003,
         name: 'Второй админ',
         roles: ['admin'],
+        status: 'active',
       });
 
       await expect(roles.updateRoles(admin.id, [], admin.id)).rejects.toThrow(
@@ -140,6 +146,7 @@ describe('UserRolesService', () => {
         telegramId: 3001,
         name: 'Единственный админ',
         roles: ['admin'],
+        status: 'active',
       });
 
       await expect(
@@ -158,11 +165,13 @@ describe('UserRolesService', () => {
         telegramId: 3002,
         name: 'Админ 1',
         roles: ['admin'],
+        status: 'active',
       });
       await soloUsers.createFromTelegram({
         telegramId: 3003,
         name: 'Админ 2',
         roles: ['admin'],
+        status: 'active',
       });
 
       const updated = await soloRoles.updateRoles(first.id, ['teacher'], 'кто-то-другой');

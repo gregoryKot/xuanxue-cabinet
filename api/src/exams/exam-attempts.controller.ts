@@ -1,15 +1,15 @@
 // Попытка сдачи экзамена — данные ученика (ADR-0010): владение по `userId` из
-// сессии, не по роли. Роли `teacher`/`assistant`/`admin` допущены к тем же
-// маршрутам, что и `student` (помощник учителя правами равен учителю) —
-// учителю полезно пройти форму изнутри, как ученик, до того как её увидит
-// первый сдающий (ТЗ 4.4, п.1); владение всё равно проверяется по `user.id`,
-// отдельного пути для учителя нет. Список — исключение: там `teacher`/
-// `assistant`/`admin` видят все попытки школы (ExamAttemptsService.list,
-// роль, не владение — ADR-0010), гость (`roles: []`) не видит ничего.
-// Проверка (слой 4.6, `review`/`grading` ниже) — та же схема: роль на
-// хендлере переопределяет класс (`getAllAndOverride`, AuthGuard) и закрывает
-// маршрут ученику вовсе — учитель видит чужую работу по сути своей роли, не
-// как исключение из владения.
+// сессии, не по роли. Роли на классе нет вовсе (ADR-0026): ученик — это
+// подтверждённый человек без ролей учителя, и требовать от него роль значило
+// бы не пускать на экзамен никого (H1 аудита 2026-09-12). Дверь сторожит
+// AuthGuard: сессия есть и статус `active`. Учитель и помощник проходят
+// форму теми же маршрутами — им полезно увидеть её изнутри до первого
+// сдающего (ТЗ 4.4, п.1), владение всё равно по `user.id`. Список —
+// исключение: `teacher`/`assistant`/`admin` видят там все попытки школы
+// (ExamAttemptsService.list, роль, а не владение — ADR-0010).
+// Проверка (слой 4.6, `review`/`grading` ниже) закрыта ученику ролью на
+// хендлере — учитель видит чужую работу по сути своей роли, не как
+// исключение из владения.
 //
 // Два разных корня маршрутов (`exams/:examId/attempts`, `attempts/...`) —
 // `@Controller()` без общего префикса, полный путь у каждого хендлера:
@@ -43,7 +43,6 @@ import { SaveAttemptAnswersDto } from './dto/save-attempt-answers.dto';
 const STAFF_ONLY_ROLES = ['teacher', 'assistant', 'admin'] as const;
 
 @Controller()
-@Roles('student', 'teacher', 'assistant', 'admin')
 export class ExamAttemptsController {
   constructor(
     private readonly examAttemptsService: ExamAttemptsService,
@@ -89,9 +88,8 @@ export class ExamAttemptsController {
     return this.examAttemptsService.list(query, user, DateTime.utc());
   }
 
-  // Слой 4.6: карточка проверки и оценка — закрыты ученику, роль на хендлере
-  // переопределяет класс (@Roles('student', ...) выше), AuthGuard читает
-  // ближайшую метаданную (getAllAndOverride, auth.guard.ts).
+  // Слой 4.6: карточка проверки и оценка — закрыты ученику: на классе ролей
+  // нет, @Roles стоит на самих хендлерах.
   @Get('attempts/:id/review')
   @Roles(...STAFF_ONLY_ROLES)
   review(@Param('id') id: string): Promise<AttemptReviewDto> {

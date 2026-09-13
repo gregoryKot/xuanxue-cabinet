@@ -7,8 +7,20 @@ import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import { AppNav, SIDE_NAV_WIDTH_PX } from './AppNav';
 
-const TEACHER: MeDto = { id: 'u1', name: 'Дима', roles: ['teacher'], tz: 'UTC' };
-const ADMIN: MeDto = { id: 'a1', name: 'Маша', roles: ['admin'], tz: 'UTC' };
+const TEACHER: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: ['teacher'],
+  tz: 'UTC',
+  status: 'active',
+};
+const ADMIN: MeDto = {
+  id: 'a1',
+  name: 'Маша',
+  roles: ['admin'],
+  tz: 'UTC',
+  status: 'active',
+};
 
 function renderNav(isMobile: boolean, me: MeDto | null = TEACHER, path = '/planning') {
   return render(

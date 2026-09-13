@@ -20,6 +20,7 @@ const STUDENT: MeDto = {
   name: 'Ученик',
   roles: ['student'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
 
 function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] }) {

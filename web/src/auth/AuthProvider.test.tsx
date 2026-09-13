@@ -33,6 +33,7 @@ describe('AuthProvider — статусы', () => {
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -65,6 +66,7 @@ describe('AuthProvider — статусы', () => {
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockedApiFetch.mockResolvedValue(me);
     const { result } = renderAuth();

@@ -19,6 +19,14 @@ export const SKIP_CSRF_KEY = 'skipCsrf';
 export const SkipCsrf = (): ReturnType<typeof SetMetadata> =>
   SetMetadata(SKIP_CSRF_KEY, true);
 
+export const ALLOW_PENDING_KEY = 'allowPending';
+/** Маршрут открыт и тому, кто ещё ждёт подтверждения школы (`invited`,
+ * ADR-0026). Таких маршрутов ровно два: `GET /auth/me` — иначе экран
+ * ожидания не узнает, кто вошёл, — и выход. Всё остальное с данными школы
+ * закрыто до подтверждения. */
+export const AllowPending = (): ReturnType<typeof SetMetadata> =>
+  SetMetadata(ALLOW_PENDING_KEY, true);
+
 export const ROLES_KEY = 'roles';
 /** Маршрут виден только сессии хотя бы с одной из перечисленных ролей
  * (ADR-0010: данные школы — по роли, не по владельцу). Первый потребитель —

@@ -26,8 +26,15 @@ const TEACHER: MeDto = {
   name: 'Дима',
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
 };
-const ADMIN: MeDto = { id: 'a1', name: 'Маша', roles: ['admin'], tz: 'Asia/Jerusalem' };
+const ADMIN: MeDto = {
+  id: 'a1',
+  name: 'Маша',
+  roles: ['admin'],
+  tz: 'Asia/Jerusalem',
+  status: 'active',
+};
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
  * всех тестах файла, различается только то, что отдаёт сам экран. Раньше этот
@@ -198,6 +205,7 @@ describe('App', () => {
       name: 'Ваня',
       roles: ['student'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
 
@@ -215,6 +223,7 @@ describe('App', () => {
       name: 'Ваня',
       roles: ['student'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockRoute(student, {
       '/attempts': [

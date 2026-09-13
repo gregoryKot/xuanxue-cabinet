@@ -16,21 +16,23 @@ function fullUser(): UserLean {
 }
 
 describe('toMeDto', () => {
-  it('переносит id, name, roles, tz', () => {
+  it('переносит id, name, roles, tz, status', () => {
     expect(toMeDto(fullUser())).toEqual({
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     });
   });
 
-  it('не содержит email, telegramId, googleId, status', () => {
+  // `status` с ADR-0026 наружу идёт — по нему кабинет показывает экран
+  // ожидания; ключи входа не идут по-прежнему.
+  it('не содержит email, telegramId, googleId', () => {
     const dto = toMeDto(fullUser()) as unknown as Record<string, unknown>;
     expect(dto.email).toBeUndefined();
     expect(dto.telegramId).toBeUndefined();
     expect(dto.googleId).toBeUndefined();
-    expect(dto.status).toBeUndefined();
-    expect(Object.keys(dto).sort()).toEqual(['id', 'name', 'roles', 'tz']);
+    expect(Object.keys(dto).sort()).toEqual(['id', 'name', 'roles', 'status', 'tz']);
   });
 });

@@ -79,18 +79,30 @@ describe('Exam attempts (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
-  it('гость (roles: []) — 403 на старт, сохранение, сдачу и список', async () => {
+  // ADR-0026: подтверждённый человек без ролей — это ученик, роль `student`
+  // в гвардах не требуется. Список при этом скоупится по владению: чужих
+  // попыток он не видит (ExamAttemptsService.list).
+  it('подтверждённый без ролей — начинает попытку, в списке только своя', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId } = await createPublishedExam(teacherCookie);
-    const guestCookie = await sessionFor([]);
+    const otherCookie = await sessionFor([]);
+    const studentCookie = await sessionFor([]);
 
+    await withCsrf(request(server()).post(`/api/exams/${examId}/attempts`)).set(
+      'Cookie',
+      otherCookie,
+    );
     const start = await withCsrf(
       request(server()).post(`/api/exams/${examId}/attempts`),
-    ).set('Cookie', guestCookie);
-    expect(start.status).toBe(403);
+    ).set('Cookie', studentCookie);
+    expect(start.status).toBe(201);
+    const mine = (start.body as ExamAttemptDto).id;
 
-    const list = await request(server()).get('/api/attempts').set('Cookie', guestCookie);
-    expect(list.status).toBe(403);
+    const list = await request(server())
+      .get('/api/attempts')
+      .set('Cookie', studentCookie);
+    expect(list.status).toBe(200);
+    expect((list.body as ExamAttemptDto[]).map((a) => a.id)).toEqual([mine]);
   });
 
   it('ученик: старт → ответ на старт не содержит correct и criteria', async () => {

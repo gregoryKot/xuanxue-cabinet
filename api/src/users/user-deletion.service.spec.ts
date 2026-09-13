@@ -91,11 +91,13 @@ describe('UserDeletionService', () => {
       telegramId: 5001,
       name: 'Себя не удалить',
       roles: ['admin'],
+      status: 'active',
     });
     await users.createFromTelegram({
       telegramId: 5002,
       name: 'Второй админ',
       roles: ['admin'],
+      status: 'active',
     });
 
     await expect(deletion.deleteAllUserData(admin.id, admin.id)).rejects.toThrow(
@@ -108,6 +110,7 @@ describe('UserDeletionService', () => {
       telegramId: 5003,
       name: 'Единственный админ',
       roles: ['admin'],
+      status: 'active',
     });
 
     await expect(
@@ -120,11 +123,13 @@ describe('UserDeletionService', () => {
       telegramId: 5004,
       name: 'Первый админ',
       roles: ['admin'],
+      status: 'active',
     });
     await users.createFromTelegram({
       telegramId: 5005,
       name: 'Второй админ',
       roles: ['admin'],
+      status: 'active',
     });
 
     await deletion.deleteAllUserData(admin.id, 'кто-то-другой');
@@ -140,11 +145,13 @@ describe('UserDeletionService', () => {
       telegramId: 5010,
       name: 'Ученик',
       roles: ['student'],
+      status: 'active',
     });
     const other = await users.createFromTelegram({
       telegramId: 5011,
       name: 'Другой ученик',
       roles: ['student'],
+      status: 'active',
     });
     const examId = new Types.ObjectId();
     await attemptModel.create([
@@ -179,11 +186,13 @@ describe('UserDeletionService', () => {
       telegramId: 5012,
       name: 'Ученик с настройками',
       roles: ['student'],
+      status: 'active',
     });
     const other = await users.createFromTelegram({
       telegramId: 5013,
       name: 'Другой ученик',
       roles: ['student'],
+      status: 'active',
     });
     await notificationPrefsModel.create([
       { userId: student.id, overrides: [{ kind: 'lesson_soon', enabled: false }] },
@@ -204,16 +213,19 @@ describe('UserDeletionService', () => {
       telegramId: 5014,
       name: 'Ученик с оценкой',
       roles: ['student'],
+      status: 'active',
     });
     const other = await users.createFromTelegram({
       telegramId: 5015,
       name: 'Другой ученик',
       roles: ['student'],
+      status: 'active',
     });
     const teacher = await users.createFromTelegram({
       telegramId: 5016,
       name: 'Проверяющий',
       roles: ['teacher'],
+      status: 'active',
     });
     const attemptId = new Types.ObjectId();
     await gradingModel.create([
@@ -246,6 +258,7 @@ describe('UserDeletionService', () => {
       telegramId: 5006,
       name: 'Ведущий',
       roles: ['teacher'],
+      status: 'active',
     });
     const cls = await classModel.create({
       title: 'Тайцзицюань',
@@ -276,11 +289,13 @@ describe('UserDeletionService', () => {
       telegramId: 5007,
       name: 'Автор',
       roles: ['admin'],
+      status: 'active',
     });
     await users.createFromTelegram({
       telegramId: 5008,
       name: 'Второй админ',
       roles: ['admin'],
+      status: 'active',
     });
     const channel = await channelModel.create({
       type: 'manual',
@@ -313,6 +328,7 @@ describe('UserDeletionService', () => {
       telegramId: 5009,
       name: 'Учитель с ботом',
       roles: ['teacher'],
+      status: 'active',
     });
     const cls = await classModel.create({
       title: 'Класс для ожидания',

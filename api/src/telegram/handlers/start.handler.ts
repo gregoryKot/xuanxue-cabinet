@@ -9,12 +9,13 @@
 // добавлении бота с командой в описании) — там это не про личный канал
 // учителя, отвечать/создавать канал не нужно (обрабатывает my_chat_member).
 import { Injectable, Logger } from '@nestjs/common';
+import { isStaffRole } from '@xuanxue/shared';
 import type { Context } from 'telegraf';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { SettingsService } from '../../settings/settings.service';
 import { UsersService } from '../../users/users.service';
-import { BOT_STAFF_ROLES, buildBotMenu, buildStrangerMessage } from './bot-menu';
+import { buildBotMenu, buildStrangerMessage } from './bot-menu';
 
 // leadMinutes задаётся на класс (docs/PLAN.md §6) — у личного чата учителя
 // нет одного числа минут на все занятия, поэтому текст не называет его.
@@ -47,7 +48,7 @@ export class StartHandler {
 
     try {
       const user = await this.usersService.findByTelegramId(from.id);
-      if (user && user.roles.some((role) => BOT_STAFF_ROLES.includes(role))) {
+      if (user && isStaffRole(user.roles)) {
         await this.channelConfig.upsertTelegramChat({
           chatId: String(from.id),
           title: personalChatTitle(user.name),

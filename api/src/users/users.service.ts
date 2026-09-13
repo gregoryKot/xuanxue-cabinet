@@ -31,6 +31,14 @@ export interface UserLean {
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
 
+/** Что известно о человеке в момент первого входа через Telegram. */
+export interface NewTelegramUser {
+  telegramId: number;
+  name: string;
+  roles: UserRole[];
+  status: UserStatus;
+}
+
 /** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация. */
 export function toLean(doc: UserDoc): UserLean {
   return {
@@ -94,20 +102,17 @@ export class UsersService {
     }));
   }
 
-  /** Для бота (вход через Telegram, «Ученик появляется … после входа»,
-   * SECURITY §2): роли по умолчанию пустые ([] — гость), админ назначает их
-   * в интерфейсе.
+  /** Первый вход через Telegram (SECURITY §2, ADR-0026): роли по умолчанию
+   * пустые, статус задаёт вызывающий — обычный человек приходит как
+   * `invited` и ждёт подтверждения, и только известные школе (первый админ,
+   * участник группы учеников) сразу `active`.
    *
    * Атомарный upsert по уникальному индексу telegramId, а не findOne+create:
    * два параллельных первых входа (двойной клик, два тика вебхука) иначе
    * создают двух пользователей до того, как первый успеет записаться.
    * `$setOnInsert` — роли и остальные поля пишутся только при вставке:
    * повторный вход существующего пользователя их не трогает. */
-  async createFromTelegram(input: {
-    telegramId: number;
-    name: string;
-    roles: UserRole[];
-  }): Promise<UserLean> {
+  async createFromTelegram(input: NewTelegramUser): Promise<UserLean> {
     const doc =
       (await this.upsertByTelegramId(input)) ??
       (await this.findByTelegramId(input.telegramId));
@@ -123,11 +128,7 @@ export class UsersService {
    * гонке по уникальному индексу не всегда (частичный индекс telegramId),
    * и без этой ветки второй из двух одновременных первых входов получал 500.
    * Вызывающий код перечитывает документ, который записал конкурент. */
-  private async upsertByTelegramId(input: {
-    telegramId: number;
-    name: string;
-    roles: UserRole[];
-  }): Promise<UserLean | null> {
+  private async upsertByTelegramId(input: NewTelegramUser): Promise<UserLean | null> {
     try {
       const doc = await this.model
         .findOneAndUpdate(
@@ -138,7 +139,7 @@ export class UsersService {
               name: input.name,
               roles: input.roles,
               tz: SCHOOL_TZ,
-              status: 'active',
+              status: input.status,
             },
           },
           { upsert: true, returnDocument: 'after' },

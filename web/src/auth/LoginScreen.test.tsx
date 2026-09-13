@@ -145,6 +145,7 @@ describe('LoginScreen — вход', () => {
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockRoutes(
       () => Promise.resolve({ telegramBotId: 123456 }),
@@ -253,6 +254,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
     };
     mockRoutes(
       () => Promise.resolve({ telegramBotId: 123456 }),
