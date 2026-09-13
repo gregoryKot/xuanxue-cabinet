@@ -117,3 +117,53 @@ describe('useAttemptReview — отправка оценки', () => {
     expect(result.current.review?.status).toBe('submitted');
   });
 });
+
+describe('useAttemptReview — ручная отметка видео', () => {
+  it('успех: POST на media/manual, потом перечитанная карточка с media (read-after-write)', async () => {
+    const withMedia = makeReview({
+      media: [
+        {
+          id: 'm1',
+          attemptId: 'a1',
+          kind: 'manual',
+          receivedAt: '2026-09-12T00:00:00Z',
+        },
+      ],
+    });
+    mockedApiFetch
+      .mockResolvedValueOnce(makeReview())
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(withMedia);
+    const { result } = renderHook(() => useAttemptReview('a1'));
+    await waitFor(() => expect(result.current.review).not.toBeNull());
+
+    let succeeded = false;
+    await act(async () => {
+      succeeded = await result.current.markMediaManual();
+    });
+
+    expect(succeeded).toBe(true);
+    expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/manual', {
+      method: 'POST',
+      body: {},
+    });
+    await waitFor(() => expect(result.current.review?.media).toEqual(withMedia.media));
+    expect(result.current.markMediaError).toBeNull();
+  });
+
+  it('сбой сервера — ошибка видна, false возвращается', async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce(makeReview())
+      .mockRejectedValueOnce(new ApiError('Сеть подвела', 500, 'internal_error'));
+    const { result } = renderHook(() => useAttemptReview('a1'));
+    await waitFor(() => expect(result.current.review).not.toBeNull());
+
+    let succeeded = true;
+    await act(async () => {
+      succeeded = await result.current.markMediaManual();
+    });
+
+    expect(succeeded).toBe(false);
+    expect(result.current.markMediaError?.message).toBe('Сеть подвела');
+  });
+});

@@ -70,9 +70,20 @@ describe('AttemptScreen', () => {
   });
 
   it('после сбоя «Повторить» перечитывает попытку и открывает форму', async () => {
-    mockedApiFetch
-      .mockRejectedValueOnce(new ApiError('Нет связи с сервером.', 0, 'network'))
-      .mockResolvedValueOnce([IN_PROGRESS]);
+    // По пути, не по очереди: экран параллельно зовёт /auth/config (имя бота
+    // для deep link «Отправить видео», useAuthConfig в AttemptScreen.tsx) —
+    // позиционная очередь mockResolvedValueOnce отдала бы второй ответ ему,
+    // а не повторному /attempts, и тест держался бы на порядке эффектов.
+    let attemptsCallCount = 0;
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path.startsWith('/attempts')) {
+        attemptsCallCount += 1;
+        return attemptsCallCount === 1
+          ? Promise.reject(new ApiError('Нет связи с сервером.', 0, 'network'))
+          : Promise.resolve([IN_PROGRESS]);
+      }
+      return Promise.resolve({});
+    });
     renderAt('a1');
     expect(await screen.findByRole('alert')).toBeInTheDocument();
 

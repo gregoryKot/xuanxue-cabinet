@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import { AttemptSubmitted } from './AttemptSubmitted';
 
@@ -22,7 +22,12 @@ function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
 function renderSubmitted(attempt: ExamAttemptDto) {
   return render(
     <MemoryRouter>
-      <AttemptSubmitted attempt={attempt} />
+      <AttemptSubmitted
+        attempt={attempt}
+        onAddMediaLink={vi.fn().mockResolvedValue(true)}
+        addingMediaLink={false}
+        addMediaLinkError={null}
+      />
     </MemoryRouter>,
   );
 }

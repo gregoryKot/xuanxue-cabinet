@@ -11,6 +11,7 @@ import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить карточку проверки. Попробуйте ещё раз.';
 const SAVE_ERROR_MESSAGE = 'Не удалось сохранить оценку. Попробуйте ещё раз.';
+const MARK_MEDIA_ERROR_MESSAGE = 'Не удалось отметить видео. Попробуйте ещё раз.';
 
 export interface UseAttemptReviewResult {
   review: AttemptReviewDto | null;
@@ -20,6 +21,10 @@ export interface UseAttemptReviewResult {
   submitGrading: (input: PutGradingInput) => Promise<boolean>;
   saving: boolean;
   saveError: FormError | null;
+  /** Третий путь привязки видео — учитель отмечает вручную (ADR-0023). */
+  markMediaManual: () => Promise<boolean>;
+  markingMedia: boolean;
+  markMediaError: FormError | null;
 }
 
 export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
@@ -48,5 +53,36 @@ export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
     [attemptId, reload],
   );
 
-  return { review: data, loading, error, reload, submitGrading, saving, saveError };
+  const [markingMedia, setMarkingMedia] = useState(false);
+  const [markMediaError, setMarkMediaError] = useState<FormError | null>(null);
+
+  // Read-after-write: перечитываем карточку на успех — `media` в ответе уже
+  // содержит новую запись `kind: 'manual'` с сервера, не собранную на клиенте.
+  const markMediaManual = useCallback(async (): Promise<boolean> => {
+    setMarkingMedia(true);
+    setMarkMediaError(null);
+    try {
+      await apiFetch(`/attempts/${attemptId}/media/manual`, { method: 'POST', body: {} });
+      await reload();
+      return true;
+    } catch (err) {
+      setMarkMediaError(errorFrom(err, MARK_MEDIA_ERROR_MESSAGE));
+      return false;
+    } finally {
+      setMarkingMedia(false);
+    }
+  }, [attemptId, reload]);
+
+  return {
+    review: data,
+    loading,
+    error,
+    reload,
+    submitGrading,
+    saving,
+    saveError,
+    markMediaManual,
+    markingMedia,
+    markMediaError,
+  };
 }
