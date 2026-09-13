@@ -21,6 +21,7 @@ const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 // Похожи на настоящие file_id Telegram и заведомо не встречаются в hex
 // ObjectId: короткое «f1» однажды нашлось внутри случайного id, и тест
 // про «fileId не уходит наружу» покраснел на ровном месте.
+const PLAIN_EXAM_TITLE = 'Форма без шифрования';
 const FILE_ID = 'BgADBAADrwAD-video-file-id';
 const FILE_UNIQUE_ID = 'AgADrwAD-unique-id';
 
@@ -55,21 +56,25 @@ describe('MediaAssetsService', () => {
     await mediaModel.deleteMany({});
   });
 
-  async function seedAttempt(userId: string, examTitle = 'Форма первого уровня') {
+  async function seedAttempt(
+    userId: string,
+    options: { examTitle?: string; plainTitle?: boolean } = {},
+  ) {
+    const examTitle = options.examTitle ?? 'Форма первого уровня';
+    const record = {
+      examId: new Types.ObjectId(),
+      examTitle,
+      userId: new Types.ObjectId(userId),
+      attemptNo: 1,
+      status: 'in_progress' as const,
+      blocks: '[]',
+      answers: '[]',
+      startedAt: NOW.toJSDate(),
+    };
+    // `plainTitle` — документ, записанный до шифрования названия (или при
+    // другом ключе): сервис обязан показать строку как есть, а не пустоту.
     const created = await attemptModel.create(
-      encryptRecord(
-        {
-          examId: new Types.ObjectId(),
-          examTitle,
-          userId: new Types.ObjectId(userId),
-          attemptNo: 1,
-          status: 'in_progress',
-          blocks: '[]',
-          answers: '[]',
-          startedAt: NOW.toJSDate(),
-        },
-        EXAM_ATTEMPT_ENCRYPT_SCHEMA,
-      ),
+      options.plainTitle ? record : encryptRecord(record, EXAM_ATTEMPT_ENCRYPT_SCHEMA),
     );
     return created._id.toString();
   }
@@ -117,6 +122,25 @@ describe('MediaAssetsService', () => {
 
       expect(result).toBeNull();
       await expect(mediaModel.countDocuments({})).resolves.toBe(0);
+    });
+
+    // Старая попытка могла быть записана до шифрования названия (или
+    // ключ сменили): decrypt возвращает null, и тогда берём строку как есть,
+    // а не показываем пустоту (та же защита, что у остальных мапперов).
+    it('examTitle лежит незашифрованным — берётся как есть', async () => {
+      const attemptId = await seedAttempt(USER_A, {
+        examTitle: PLAIN_EXAM_TITLE,
+        plainTitle: true,
+      });
+
+      const attached = await service.attachTelegramVideo(
+        attemptId,
+        USER_A,
+        { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
+        NOW,
+      );
+
+      expect(attached?.examTitle).toBe(PLAIN_EXAM_TITLE);
     });
 
     it('несуществующий attemptId — null, не падает', async () => {
@@ -264,6 +288,30 @@ describe('MediaAssetsService', () => {
     it('пустой список id — пустая карта, без запроса к базе', async () => {
       const byAttempt = await service.listForAttempts([]);
       expect(byAttempt.size).toBe(0);
+    });
+  });
+
+  describe('listForAttempt', () => {
+    it('у попытки есть видео — отдаёт его', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      await service.addLink(attemptId, USER_A, 'https://vk.com/video', NOW);
+
+      const media = await service.listForAttempt(attemptId);
+
+      expect(media).toHaveLength(1);
+      expect(media[0]?.url).toBe('https://vk.com/video');
+    });
+
+    // Попытка без видео — пустой список, не `undefined`: карточка проверки
+    // и экран ученика рисуют «видео нет», а не падают на отсутствии ключа.
+    it('видео ещё не присылали — пустой список', async () => {
+      const attemptId = await seedAttempt(USER_A);
+
+      await expect(service.listForAttempt(attemptId)).resolves.toEqual([]);
+    });
+
+    it('id не в форме ObjectId — тоже пустой список, не ошибка', async () => {
+      await expect(service.listForAttempt('не-id')).resolves.toEqual([]);
     });
   });
 });
