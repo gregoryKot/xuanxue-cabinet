@@ -141,7 +141,7 @@ describe('TelegramAdapter', () => {
     expect(firstSignal).toBe(secondSignal);
   });
 
-  it('ошибка Telegram 429 — временно недоступен, retryable', async () => {
+  it('ошибка Telegram 429 без retry_after — временно недоступен, retryable', async () => {
     const callApi: CallApiMock = jest
       .fn<CallApiReturn, CallApiArgs>()
       .mockRejectedValue(Object.assign(new Error('Too Many Requests'), { code: 429 }));
@@ -156,12 +156,53 @@ describe('TelegramAdapter', () => {
     });
   });
 
+  // M2: retry_after не читался вовсе — повтор через 2 минуты мог попасть в
+  // ещё действующий лимит Telegram.
+  it('ошибка Telegram 429 с parameters.retry_after — retryAfterSec в результате', async () => {
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Too Many Requests: retry after 30'), {
+        code: 429,
+        description: 'Too Many Requests: retry after 30',
+        parameters: { retry_after: 30 },
+      }),
+    );
+    const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
+
+    const result = await adapter.send({ text: 'x' }, { chatId: '@school' });
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: 'Telegram временно недоступен. Повторите позже.',
+      retryable: true,
+      retryAfterSec: 30,
+    });
+  });
+
   it('ошибка Telegram 403 (бот не админ) — не retryable, текст с действием', async () => {
-    const callApi: CallApiMock = jest
-      .fn<CallApiReturn, CallApiArgs>()
-      .mockRejectedValue(
-        Object.assign(new Error('Forbidden: bot is not a member'), { code: 403 }),
-      );
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Forbidden: bot is not a member'), {
+        code: 403,
+        description: 'Forbidden: bot is not a member',
+      }),
+    );
+    const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
+
+    const result = await adapter.send({ text: 'x' }, { chatId: '@school' });
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: 'Бот не админ канала. Добавьте бота администратором и повторите тест.',
+      retryable: false,
+    });
+  });
+
+  it('ошибка Telegram 403 (бота удалили из чата) — тот же текст «не админ»', async () => {
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Forbidden: bot was kicked from the group chat'), {
+        code: 403,
+        description: 'Forbidden: bot was kicked from the group chat',
+      }),
+    );
     const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
 
     const result = await adapter.send({ text: 'x' }, { chatId: '@school' });
@@ -174,11 +215,12 @@ describe('TelegramAdapter', () => {
   });
 
   it('ошибка Telegram 400 (чат не найден) — не retryable, текст с действием', async () => {
-    const callApi: CallApiMock = jest
-      .fn<CallApiReturn, CallApiArgs>()
-      .mockRejectedValue(
-        Object.assign(new Error('Bad Request: chat not found'), { code: 400 }),
-      );
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Bad Request: chat not found'), {
+        code: 400,
+        description: 'Bad Request: chat not found',
+      }),
+    );
     const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
 
     const result = await adapter.send({ text: 'x' }, { chatId: '@school' });
@@ -188,6 +230,107 @@ describe('TelegramAdapter', () => {
       error: 'Чат не найден. Проверьте адрес канала.',
       retryable: false,
     });
+  });
+
+  // M2: раньше messageForCode(400) всегда возвращал «чат не найден» — учитель
+  // шёл проверять бота в чате, хотя дело было в тексте поста.
+  it('ошибка Telegram 400 (пост длиннее лимита) — текст про лимит поста, не «чат не найден»', async () => {
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Bad Request: message is too long'), {
+        code: 400,
+        description: 'Bad Request: message is too long',
+      }),
+    );
+    const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
+
+    const result = await adapter.send({ text: 'x' }, { chatId: '@school' });
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: 'Пост длиннее лимита Telegram (4096 знаков). Сократите шаблон или тему.',
+      retryable: false,
+    });
+  });
+
+  it('ошибка Telegram 400 (неверный file_id) — текст про запись', async () => {
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Bad Request: wrong file identifier/HTTP URL specified'), {
+        code: 400,
+        description: 'Bad Request: wrong file identifier/HTTP URL specified',
+      }),
+    );
+    const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
+
+    const result = await adapter.send(
+      { text: 'x', telegramFileId: 'stale-file-id' },
+      { chatId: '@school' },
+    );
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: 'Telegram не нашёл видео по file_id — пришлите запись боту заново.',
+      retryable: false,
+    });
+  });
+
+  it('ошибка Telegram 400 (подпись длиннее лимита) — текст про подпись', async () => {
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Bad Request: message caption is too long'), {
+        code: 400,
+        description: 'Bad Request: message caption is too long',
+      }),
+    );
+    const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
+
+    const result = await adapter.send(
+      { text: 'x', telegramFileId: 'file123' },
+      { chatId: '@school' },
+    );
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: 'Подпись к видео длиннее 1024 знаков. Сократите текст занятия.',
+      retryable: false,
+    });
+  });
+
+  it('ошибка Telegram 400 с неизвестным description — текст Telegram как есть', async () => {
+    const callApi: CallApiMock = jest.fn<CallApiReturn, CallApiArgs>().mockRejectedValue(
+      Object.assign(new Error('Bad Request: something unexpected'), {
+        code: 400,
+        description: 'Bad Request: something unexpected',
+      }),
+    );
+    const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
+
+    const result = await adapter.send({ text: 'x' }, { chatId: '@school' });
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: 'Telegram отклонил сообщение: Bad Request: something unexpected',
+      retryable: false,
+    });
+  });
+
+  // SECURITY §5: description Telegram теоретически может содержать
+  // BOT_TOKEN (в URL) — тот же scrub, что и для лога, обязан отработать и
+  // здесь, а не только в logger.warn.
+  it('description с BOT_TOKEN — токен вычищен из текста ошибки 400', async () => {
+    const description = `Bad Request: webhook for bot${BOT_TOKEN} failed, something unexpected`;
+    const callApi: CallApiMock = jest
+      .fn<CallApiReturn, CallApiArgs>()
+      .mockRejectedValue(
+        Object.assign(new Error(description), { code: 400, description }),
+      );
+    const adapter = adapterWith(fakeClient(callApi), BOT_TOKEN);
+
+    const result = await adapter.send({ text: 'x' }, { chatId: '@school' });
+
+    expect(result.status).toBe('failed');
+    if (result.status === 'failed') {
+      expect(result.error).not.toContain(BOT_TOKEN);
+      expect(result.error).toContain('[секрет]');
+    }
   });
 
   it('неизвестный код ошибки Telegram — не retryable, текст с кодом', async () => {
