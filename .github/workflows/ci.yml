@@ -74,8 +74,8 @@ jobs:
         run: npm run build --workspace=shared
       - name: typecheck
         run: npm run typecheck --workspace=web
-      - name: vitest с покрытием
-        run: npm run test:cov --workspace=web
+      - name: храповик покрытия (внутри — vitest с покрытием)
+        run: node scripts/check-web-coverage-ratchet.mjs
       - name: vitest под TZ=Australia/Sydney (тест перехода летнего времени)
         run: TZ=Australia/Sydney npm run test --workspace=web
       - name: vite build

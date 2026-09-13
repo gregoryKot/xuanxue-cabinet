@@ -118,15 +118,12 @@ export default defineConfig({
         'src/vite-env.d.ts',
         'src/**/*.test.{ts,tsx}',
       ],
-      // autoUpdate — встроенный храповик: порог поднимается сам при росте
-      // покрытия, снижение роняет CI (CLAUDE.md, раздел «Храповики»).
-      thresholds: {
-        lines: 99.95,
-        branches: 98.63,
-        functions: 99.88,
-        statements: 99.75,
-        autoUpdate: true,
-      },
+      // Порога здесь больше нет: раньше thresholds.autoUpdate сам переписывал
+      // этот файл при росте покрытия (без финального \n) и ронял
+      // `prettier --check` на чистом дереве (docs/audits/2026-09-12-quality-audit.md,
+      // находка H2). Храповик — внешний scripts/check-web-coverage-ratchet.mjs
+      // с бейслайном в scripts/web-coverage-baseline.json; он сам запускает
+      // vitest с этим же --coverage. Файл vitest больше не трогает.
     },
   },
 });
