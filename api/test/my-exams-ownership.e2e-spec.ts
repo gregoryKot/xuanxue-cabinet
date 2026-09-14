@@ -56,11 +56,11 @@ describe('/me/exams — владение (e2e)', () => {
 
     const { cookie: cookieA } = await createUserWithSession(testApp.app, {
       name: 'Ученик А',
-      roles: ['student'],
+      roles: [],
     });
     const { cookie: cookieB } = await createUserWithSession(testApp.app, {
       name: 'Ученик Б',
-      roles: ['student'],
+      roles: [],
     });
 
     const started = await withCsrf(
@@ -103,7 +103,7 @@ describe('/me/exams — владение (e2e)', () => {
     const examId = await createPublishedExam(teacherCookie);
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Ученик',
-      roles: ['student'],
+      roles: [],
     });
 
     const res = await request(server()).get('/api/me/exams').set('Cookie', cookie);

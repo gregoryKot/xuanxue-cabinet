@@ -85,16 +85,12 @@ describe('PersonRow', () => {
     expect(onChangeRoles).toHaveBeenCalledWith(['teacher']);
   });
 
-  it('переключатель на каждую роль из USER_ROLES кроме student, подпись — из ROLE_LABELS', () => {
+  it('переключатель на каждую роль из USER_ROLES, подпись — из ROLE_LABELS', () => {
     renderRow();
-    const assignableRoles = USER_ROLES.filter((role) => role !== 'student');
-    expect(assignableRoles).toHaveLength(4);
-    for (const role of assignableRoles) {
+    expect(USER_ROLES).toHaveLength(4);
+    for (const role of USER_ROLES) {
       expect(screen.getByLabelText(`${ROLE_LABELS[role]} — Гриша`)).toBeInTheDocument();
     }
-    expect(
-      screen.queryByLabelText(`${ROLE_LABELS.student} — Гриша`),
-    ).not.toBeInTheDocument();
   });
 
   it('без ролей — подсказка «человек — ученик»', () => {

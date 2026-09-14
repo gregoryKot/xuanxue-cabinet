@@ -11,7 +11,7 @@ import { MediaAssetsService } from './media-assets.service';
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
-  roles: ['student'],
+  roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
 };

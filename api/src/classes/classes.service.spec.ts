@@ -260,7 +260,7 @@ describe('ClassesService', () => {
     });
 
     it('create с id ученика — InvalidInputError, класс не создаётся', async () => {
-      const student = await userModel.create({ name: 'Гриша', roles: ['student'] });
+      const student = await userModel.create({ name: 'Гриша', roles: [] });
 
       await expect(
         service.create({

@@ -454,7 +454,7 @@ function staffUser(isStaff: boolean, id: string): UserLean {
   return {
     id,
     name: 'Тест',
-    roles: isStaff ? ['teacher'] : ['student'],
+    roles: isStaff ? ['teacher'] : [],
     tz: 'Asia/Jerusalem',
     status: 'active',
   };

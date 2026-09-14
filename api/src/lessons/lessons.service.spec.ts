@@ -210,7 +210,7 @@ describe('LessonsService', () => {
   it('PATCH leaderId с id ученика — InvalidInputError, дата занятия не меняется', async () => {
     const classId = await createClass();
     const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
-    const student = await userModel.create({ name: 'Гриша', roles: ['student'] });
+    const student = await userModel.create({ name: 'Гриша', roles: [] });
 
     await expect(
       service.update(created.id, { leaderId: student._id.toString() }),

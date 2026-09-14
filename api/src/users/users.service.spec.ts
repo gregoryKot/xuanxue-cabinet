@@ -86,7 +86,7 @@ describe('UsersService', () => {
     expect(count).toBe(1);
   });
 
-  it('listTeacherContacts: teacher/assistant/admin с telegramId, без student и accountant', async () => {
+  it('listTeacherContacts: teacher/assistant/admin с telegramId, без ученика и accountant', async () => {
     const teacher = await service.createFromTelegram({
       telegramId: 501,
       name: 'Учитель',
@@ -96,7 +96,7 @@ describe('UsersService', () => {
     await service.createFromTelegram({
       telegramId: 502,
       name: 'Ученик с Telegram',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     const admin = await service.createFromTelegram({
@@ -140,7 +140,7 @@ describe('UsersService', () => {
     const created = await service.createFromTelegram({
       telegramId: 333,
       name: 'Ученик',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     const now = DateTime.fromISO('2026-09-05T10:00:00Z');

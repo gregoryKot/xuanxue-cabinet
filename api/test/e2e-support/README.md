@@ -5,8 +5,8 @@
 
 Два класса данных, два теста (ADR-0010). **Данные ученика** — по владельцу из
 сессии, шаги 1–6 ниже. **Данные школы** (`classes`, `lessons`, `channels`,
-`broadcasts`, `deliveries`) — по роли: без сессии 401, без ролей (`roles: []`)
-и `student` — 403, `teacher`/`assistant`/`admin` — 200 (помощник учителя
+`broadcasts`, `deliveries`) — по роли: без сессии 401, без ролей (`roles: []`,
+ученик — ADR-0026) — 403, `teacher`/`assistant`/`admin` — 200 (помощник учителя
 правами равен учителю везде, кроме `UsersController` — там `assistant` не
 допущен, назначение ролей и удаление данных остаются только у admin);
 отдельно — секретных полей (`config` канала) нет в ответе ни у одной роли,
@@ -36,7 +36,7 @@
 ```ts
 const { userId, cookie } = await createUserWithSession(testApp.app, {
   name: 'Мария',
-  roles: ['admin'], // [] — гость (SECURITY §2), ['teacher'], ['student'], …
+  roles: ['admin'], // [] — ученик (ADR-0026), ['teacher'], …
 });
 
 await request(server()).get('/api/classes').set('Cookie', cookie);

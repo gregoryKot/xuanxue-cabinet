@@ -58,7 +58,7 @@ describe('Видео экзамена — ссылка и ручная отме�
     it('валидная ссылка — сохраняется и видна владельцу в GET /attempts', async () => {
       const { cookie } = await createUserWithSession(testApp.app, {
         name: 'Ученик',
-        roles: ['student'],
+        roles: [],
       });
       const attemptId = await startedAttempt(cookie);
 
@@ -79,7 +79,7 @@ describe('Видео экзамена — ссылка и ручная отме�
     it('мусор вместо ссылки — 400 с русским текстом, ничего не сохранено', async () => {
       const { cookie } = await createUserWithSession(testApp.app, {
         name: 'Ученик',
-        roles: ['student'],
+        roles: [],
       });
       const attemptId = await startedAttempt(cookie);
 
@@ -101,11 +101,11 @@ describe('Видео экзамена — ссылка и ручная отме�
     it('чужая попытка — 404, не 403 (не подтверждаем существование)', async () => {
       const { cookie: cookieA } = await createUserWithSession(testApp.app, {
         name: 'Ученик А',
-        roles: ['student'],
+        roles: [],
       });
       const { cookie: cookieB } = await createUserWithSession(testApp.app, {
         name: 'Ученик Б',
-        roles: ['student'],
+        roles: [],
       });
       const attemptId = await startedAttempt(cookieA);
 
@@ -122,7 +122,7 @@ describe('Видео экзамена — ссылка и ручная отме�
     it('вторая ссылка на ту же попытку — 409, первая остаётся', async () => {
       const { cookie } = await createUserWithSession(testApp.app, {
         name: 'Ученик',
-        roles: ['student'],
+        roles: [],
       });
       const attemptId = await startedAttempt(cookie);
       await withCsrf(request(server()).post(`/api/attempts/${attemptId}/media/link`))
@@ -147,7 +147,7 @@ describe('Видео экзамена — ссылка и ручная отме�
     it('ученику — 403', async () => {
       const { cookie } = await createUserWithSession(testApp.app, {
         name: 'Ученик',
-        roles: ['student'],
+        roles: [],
       });
       const attemptId = await startedAttempt(cookie);
 
@@ -163,7 +163,7 @@ describe('Видео экзамена — ссылка и ручная отме�
     it('учителю — 201, отметка видна в карточке проверки, а не только владельцу', async () => {
       const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
         name: 'Ученик',
-        roles: ['student'],
+        roles: [],
       });
       const attemptId = await startedAttempt(studentCookie);
       const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);

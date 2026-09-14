@@ -84,10 +84,7 @@ describe('Exam items (e2e)', () => {
     expect(res.status).toBe(403);
   });
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])('%s: GET, POST, PATCH и DELETE /exam-items — 403', async (_label, roles) => {
+  it('ученик: GET, POST, PATCH и DELETE /exam-items — 403', async () => {
     // Вопрос учителя — цель для PATCH/DELETE ниже: без своего ресурса роль
     // без teacher/admin не проверить (данные школы, ADR-0010 — по роли, а не
     // владельцу, поэтому здесь один общий вопрос, а не «чужой» и «свой»).
@@ -95,7 +92,7 @@ describe('Exam items (e2e)', () => {
     const created = await postItem(teacherCookie, VALID_BODY);
     const itemId = (created.body as ExamItemDto).id;
 
-    const cookie = await sessionFor(roles);
+    const cookie = await sessionFor([]);
 
     const getRes = await request(server()).get('/api/exam-items').set('Cookie', cookie);
     expect(getRes.status).toBe(403);

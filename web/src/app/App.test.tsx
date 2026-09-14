@@ -232,7 +232,7 @@ describe('App', () => {
     const student: MeDto = {
       id: 's1',
       name: 'Ваня',
-      roles: ['student'],
+      roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
     };
@@ -250,7 +250,7 @@ describe('App', () => {
     const student: MeDto = {
       id: 's1',
       name: 'Ваня',
-      roles: ['student'],
+      roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
     };

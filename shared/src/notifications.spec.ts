@@ -7,6 +7,7 @@ import {
   NOTIFICATION_HINTS,
   NOTIFICATION_KINDS,
   NOTIFICATION_LABELS,
+  STUDENT_NOTIFICATIONS,
 } from './notifications';
 
 describe('NOTIFICATION_LABELS / NOTIFICATION_HINTS', () => {
@@ -56,12 +57,8 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
 });
 
 describe('defaultNotifications', () => {
-  it('ученик — занятие скоро, сообщение от учителя, результат экзамена', () => {
-    expect(defaultNotifications(['student'])).toEqual([
-      'lesson_soon',
-      'teacher_message',
-      'exam_result',
-    ]);
+  it('ученик (без ролей) — занятие скоро, сообщение от учителя, результат экзамена', () => {
+    expect(defaultNotifications([])).toEqual(STUDENT_NOTIFICATIONS);
   });
 
   it('учитель — черновик, запрос записи, сбой отправки, работа на проверку', () => {
@@ -75,10 +72,6 @@ describe('defaultNotifications', () => {
 
   it('бухгалтер — только оплаты', () => {
     expect(defaultNotifications(['accountant'])).toEqual(['payments']);
-  });
-
-  it('без ролей (гость) — как у ученика', () => {
-    expect(defaultNotifications([])).toEqual(defaultNotifications(['student']));
   });
 
   it('две роли — объединение наборов, в каноническом порядке', () => {

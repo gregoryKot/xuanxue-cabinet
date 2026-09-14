@@ -54,7 +54,10 @@ export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
 /** Дефолт по роли (отзыв владельца 2026-09-12): помощник учителя получает
  * то же, что учитель, — он равен учителю почти везде (shared/src/auth.ts).
  * Бухгалтер — только оплаты, они ждут этапа 3 (docs/PLAN.md §4), но контракт
- * не откладываем — включать нечего, пока `payments` не отправляется.
+ * не откладываем — включать нечего, пока `payments` не отправляется. Ученик
+ * (человек без единой роли отсюда, ADR-0026) сюда не входит — у него нет
+ * роли, чтобы быть ключом `Record<UserRole, …>`, его дефолт — отдельная
+ * константа `STUDENT_NOTIFICATIONS` ниже.
  *
  * `attempt_submitted` (слой 4.7, PLAN §11) — только у учителя и помощника:
  * они проверяют работы, очередь проверки — их дело. Админ получает тот же
@@ -63,20 +66,28 @@ export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
  * расхождение набора админа с учителем, поэтому дальше не выражено общей
  * переменной, а прямо видно построчно. */
 export const DEFAULT_NOTIFICATIONS_BY_ROLE: Record<UserRole, NotificationKind[]> = {
-  student: ['lesson_soon', 'teacher_message', 'exam_result'],
   teacher: ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
   assistant: ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
   admin: ['post_draft', 'recording_request', 'delivery_failed'],
   accountant: ['payments'],
 };
 
+/** Дефолт ученика — человека без единой роли учителя (ADR-0026). Именованная
+ * константа, не запись в `DEFAULT_NOTIFICATIONS_BY_ROLE`: тот `Record`
+ * ограничен `UserRole`, а ученик — не роль. */
+export const STUDENT_NOTIFICATIONS: NotificationKind[] = [
+  'lesson_soon',
+  'teacher_message',
+  'exam_result',
+];
+
 /** Дефолт для конкретного человека — объединение наборов всех его ролей
  * (роли равноправны, вторая роль только добавляет виды). Человек без единой
- * роли (гость, SECURITY §2) дефолтится как ученик — так у него уже есть
- * осмысленный набор, если роль назначат позже. Порядок результата — всегда
- * канонический (`NOTIFICATION_KINDS`), не порядок объединения множеств. */
+ * роли — ученик (ADR-0026) — получает `STUDENT_NOTIFICATIONS`. Порядок
+ * результата — всегда канонический (`NOTIFICATION_KINDS`), не порядок
+ * объединения множеств. */
 export function defaultNotifications(roles: UserRole[]): NotificationKind[] {
-  if (roles.length === 0) return DEFAULT_NOTIFICATIONS_BY_ROLE.student;
+  if (roles.length === 0) return STUDENT_NOTIFICATIONS;
   const enabled = new Set<NotificationKind>();
   for (const role of roles) {
     for (const kind of DEFAULT_NOTIFICATIONS_BY_ROLE[role]) enabled.add(kind);

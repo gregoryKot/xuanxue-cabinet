@@ -52,8 +52,8 @@ describe('MessageHandler — доступ и сбои', () => {
     expect(replies).toEqual([]);
   });
 
-  it('ученик (роль student) — игнорируется', async () => {
-    await ctx.userModel.create({ name: 'Ученик', telegramId: 222, roles: ['student'] });
+  it('ученик (без ролей) — игнорируется', async () => {
+    await ctx.userModel.create({ name: 'Ученик', telegramId: 222, roles: [] });
     const { ctx: msgCtx, replies } = fakeCtx({ chatId: 222, text: 'тема' });
 
     await ctx.handler.handle(msgCtx, NOW);

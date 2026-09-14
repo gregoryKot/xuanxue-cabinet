@@ -60,7 +60,7 @@ describe('POST /lessons/:id/send-now (e2e)', () => {
     const teacherCookie = await sessionFor(['teacher']);
     const classId = await createSendableClass();
     const created = await postLesson(teacherCookie, { classId, startsAt: STARTS_AT });
-    const studentCookie = await sessionFor(['student']);
+    const studentCookie = await sessionFor([]);
 
     const res = await sendNow(studentCookie, (created.body as { id: string }).id);
     expect(res.status).toBe(403);

@@ -65,7 +65,7 @@ const ADMIN: MeDto = {
 const STUDENT: MeDto = {
   id: 'u2',
   name: 'Ученик',
-  roles: ['student'],
+  roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
 };

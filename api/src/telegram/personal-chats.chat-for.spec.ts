@@ -51,7 +51,7 @@ describe('PersonalChats.chatFor', () => {
     const student = await userModel.create({
       name: 'Ольга',
       telegramId: 111,
-      roles: ['student'],
+      roles: [],
     });
     await channelModel.create({
       type: 'telegram',
@@ -77,7 +77,7 @@ describe('PersonalChats.chatFor', () => {
   });
 
   it('есть аккаунт, но не подключал бота (telegramId не задан) — null', async () => {
-    const student = await userModel.create({ name: 'Ольга', roles: ['student'] });
+    const student = await userModel.create({ name: 'Ольга', roles: [] });
 
     await expect(
       personalChats.chatFor(student._id.toString(), 'exam_result'),
@@ -88,7 +88,7 @@ describe('PersonalChats.chatFor', () => {
     const student = await userModel.create({
       name: 'Ольга',
       telegramId: 222,
-      roles: ['student'],
+      roles: [],
     });
 
     await expect(
@@ -100,7 +100,7 @@ describe('PersonalChats.chatFor', () => {
     const student = await userModel.create({
       name: 'Ольга',
       telegramId: 333,
-      roles: ['student'],
+      roles: [],
     });
     await channelModel.create({
       type: 'telegram',
@@ -119,7 +119,7 @@ describe('PersonalChats.chatFor', () => {
     const student = await userModel.create({
       name: 'Ольга',
       telegramId: 444,
-      roles: ['student'],
+      roles: [],
     });
     await channelModel.create({
       type: 'telegram',

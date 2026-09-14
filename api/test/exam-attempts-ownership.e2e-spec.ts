@@ -52,11 +52,11 @@ describe('Exam attempts — владение (e2e)', () => {
 
     const { cookie: cookieA } = await createUserWithSession(testApp.app, {
       name: 'Ученик А',
-      roles: ['student'],
+      roles: [],
     });
     const { cookie: cookieB } = await createUserWithSession(testApp.app, {
       name: 'Ученик Б',
-      roles: ['student'],
+      roles: [],
     });
 
     const startedA = await withCsrf(
@@ -101,11 +101,11 @@ describe('Exam attempts — владение (e2e)', () => {
     const { examId } = await createPublishedExam(teacherCookie);
     const { cookie: cookieA } = await createUserWithSession(testApp.app, {
       name: 'Ученик А',
-      roles: ['student'],
+      roles: [],
     });
     const { cookie: cookieB } = await createUserWithSession(testApp.app, {
       name: 'Ученик Б',
-      roles: ['student'],
+      roles: [],
     });
 
     const startedA = await withCsrf(

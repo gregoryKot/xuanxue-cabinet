@@ -83,7 +83,7 @@ describe('Проверка работ по рубрике (e2e)', () => {
     const exam = await publishedExam(teacherCookie);
     const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
       name: 'Ученик',
-      roles: ['student'],
+      roles: [],
     });
     const attempt = await submittedAttempt(exam.id, studentCookie);
 
@@ -105,7 +105,7 @@ describe('Проверка работ по рубрике (e2e)', () => {
     const exam = await publishedExam(teacherCookie);
     const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
       name: 'Ученик Петров',
-      roles: ['student'],
+      roles: [],
     });
     const attempt = await submittedAttempt(exam.id, studentCookie);
 
@@ -148,7 +148,7 @@ describe('Проверка работ по рубрике (e2e)', () => {
     const exam = await publishedExam(teacherCookie);
     const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
       name: 'Ученик',
-      roles: ['student'],
+      roles: [],
     });
     const attempt = await submittedAttempt(exam.id, studentCookie);
     const review = await request(server())
