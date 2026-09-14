@@ -6,20 +6,16 @@ import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { ATTEMPT_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
+import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import { GENERIC_ERROR } from './callback-actions';
 import { examUserFacingError } from './exam-attempt-error';
 import type { OptionId } from './exam-callback-ids';
-import {
-  buildFinishedScreen,
-  buildQuestionScreen,
-  flattenAttemptQuestions,
-} from './exam-question-screen';
+import { buildFinishedScreen, flattenAttemptQuestions } from './exam-question-screen';
+import { renderAttemptScreen } from './exam-question-render';
+import type { BotMenu } from './bot-menu';
 
-async function render(
-  ctx: Context,
-  view: { text: string; buttons: ReturnType<typeof buildQuestionScreen>['buttons'] },
-): Promise<void> {
+async function render(ctx: Context, view: BotMenu): Promise<void> {
   await ctx
     .editMessageText(view.text, { reply_markup: { inline_keyboard: view.buttons } })
     .catch(() => null);
@@ -42,7 +38,9 @@ function nextOptionIds(
 export async function handleExamOption(
   ctx: Context,
   examBot: ExamBotPort,
+  botSessions: BotSessionService,
   user: UserLean,
+  chatId: number,
   ids: OptionId,
   now: DateTime,
 ): Promise<void> {
@@ -87,7 +85,8 @@ export async function handleExamOption(
       question.kind === 'single' && ids.questionIndex < questions.length - 1
         ? ids.questionIndex + 1
         : ids.questionIndex;
-    await render(ctx, buildQuestionScreen(updated, nextIndex));
+    const view = await renderAttemptScreen(botSessions, chatId, updated, nextIndex, now);
+    await render(ctx, view);
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
   }
@@ -96,13 +95,16 @@ export async function handleExamOption(
 export async function handleExamSubmit(
   ctx: Context,
   examBot: ExamBotPort,
+  botSessions: BotSessionService,
   user: UserLean,
+  chatId: number,
   attemptId: string,
   now: DateTime,
 ): Promise<void> {
   try {
     const attempt = await examBot.submitAttempt(attemptId, user, now);
-    await render(ctx, buildFinishedScreen(attempt, true));
+    const view = await renderAttemptScreen(botSessions, chatId, attempt, 0, now, true);
+    await render(ctx, view);
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
   }

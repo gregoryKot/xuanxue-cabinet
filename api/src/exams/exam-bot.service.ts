@@ -5,6 +5,11 @@
 // TelegramModule ради EXAM_NOTIFIER, обратный импорт закольцевал бы граф).
 // Регистрация в конструкторе: провайдеры всех модулей строятся раньше, чем
 // бот получит первый апдейт.
+//
+// `.media` подмешиваем тем же приёмом, что ExamAttemptsController
+// (exam-attempt-media.ts) — экрану вопроса-видео бота (ТЗ 4б.2 часть 2,
+// exam-question-screen.ts) нужно знать, привязано ли уже видео, а сервис
+// попыток сам этого не знает (media_assets — коллекция MediaModule).
 import { Injectable } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import {
@@ -13,6 +18,8 @@ import {
   type ExamAttemptDto,
   type MyExamDto,
 } from '@xuanxue/shared';
+import { MediaAssetsService } from '../media/media-assets.service';
+import { withAttemptMedia } from './exam-attempt-media';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
 import type { ExamBotPort } from '../telegram/exam-bot.port';
 import type { UserLean } from '../users/users.service';
@@ -24,6 +31,7 @@ export class ExamBotService implements ExamBotPort {
   constructor(
     private readonly myExamsService: MyExamsService,
     private readonly examAttemptsService: ExamAttemptsService,
+    private readonly mediaAssetsService: MediaAssetsService,
     registry: ExamBotPortRegistry,
   ) {
     registry.set(this);
@@ -33,8 +41,13 @@ export class ExamBotService implements ExamBotPort {
     return this.myExamsService.list({}, user.id, now);
   }
 
-  startAttempt(examId: string, user: UserLean, now: DateTime): Promise<ExamAttemptDto> {
-    return this.examAttemptsService.start(examId, user.id, now);
+  async startAttempt(
+    examId: string,
+    user: UserLean,
+    now: DateTime,
+  ): Promise<ExamAttemptDto> {
+    const attempt = await this.examAttemptsService.start(examId, user.id, now);
+    return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 
   /** `GET /attempts/:id` у сервиса нет — тот же приём, что у веб-кабинета
@@ -54,28 +67,31 @@ export class ExamBotService implements ExamBotPort {
       { ...user, roles: [] },
       now,
     );
-    return attempts.find((attempt) => attempt.id === attemptId) ?? null;
+    const attempt = attempts.find((a) => a.id === attemptId);
+    return attempt ? withAttemptMedia(this.mediaAssetsService, attempt) : null;
   }
 
-  saveAnswer(
+  async saveAnswer(
     attemptId: string,
     user: UserLean,
     answer: AttemptAnswerDto,
     now: DateTime,
   ): Promise<ExamAttemptDto> {
-    return this.examAttemptsService.saveAnswers(
+    const attempt = await this.examAttemptsService.saveAnswers(
       attemptId,
       user.id,
       { answers: [answer] },
       now,
     );
+    return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 
-  submitAttempt(
+  async submitAttempt(
     attemptId: string,
     user: UserLean,
     now: DateTime,
   ): Promise<ExamAttemptDto> {
-    return this.examAttemptsService.submit(attemptId, user.id, now);
+    const attempt = await this.examAttemptsService.submit(attemptId, user.id, now);
+    return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 }

@@ -7,6 +7,7 @@
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { CallbackAction } from '../callback-data';
+import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import type { UsersService } from '../../users/users.service';
 import { handleExamOption, handleExamSubmit } from './exam-attempt-answer';
@@ -28,24 +29,28 @@ export async function routeExamCallback(
   chatId: number,
   usersService: UsersService,
   examBot: ExamBotPort,
+  botSessions: BotSessionService,
   now: DateTime,
 ): Promise<void> {
   const user = await usersService.findByTelegramId(chatId);
   if (!user) return;
 
   if (action === 'exam') {
-    await handleExamStart(ctx, examBot, user, id, now);
+    await handleExamStart(ctx, examBot, botSessions, user, chatId, id, now);
     return;
   }
   if (action === 'es') {
-    await handleExamSubmit(ctx, examBot, user, id, now);
+    await handleExamSubmit(ctx, examBot, botSessions, user, chatId, id, now);
     return;
   }
   if (action === 'eq') {
     const parsed = parseQuestionId(id);
-    if (parsed) await handleExamQuestion(ctx, examBot, user, parsed, now);
+    if (parsed) {
+      await handleExamQuestion(ctx, examBot, botSessions, user, chatId, parsed, now);
+    }
     return;
   }
   const parsed = parseOptionId(id);
-  if (parsed) await handleExamOption(ctx, examBot, user, parsed, now);
+  if (parsed)
+    await handleExamOption(ctx, examBot, botSessions, user, chatId, parsed, now);
 }

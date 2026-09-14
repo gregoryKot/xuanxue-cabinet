@@ -172,4 +172,46 @@ describe('BotSessionService', () => {
     const session = await service.get(111, NOW);
     expect(session?.lessonId?.toString()).toBe(lessonId);
   });
+
+  it('startExamMediaWait с номером вопроса — get возвращает questionIndex', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW, 2);
+
+    const session = await service.get(555, NOW);
+
+    expect(session?.kind).toBe('examMedia');
+    expect(session?.questionIndex).toBe(2);
+  });
+
+  it('startExamMediaWait без номера вопроса стирает номер прошлого захода в поток бота', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW, 3);
+
+    await service.startExamMediaWait(555, attemptId, NOW);
+
+    const session = await service.get(555, NOW);
+    expect(session?.questionIndex).toBeNull();
+  });
+
+  it('startExamTextWait → get возвращает kind/attemptId/questionIndex', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamTextWait(555, attemptId, 1, NOW);
+
+    const session = await service.get(555, NOW);
+
+    expect(session?.kind).toBe('examText');
+    expect(session?.attemptId?.toString()).toBe(attemptId);
+    expect(session?.questionIndex).toBe(1);
+  });
+
+  it('examText-ожидание вытесняет examMedia того же чата — один документ', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW, 0);
+
+    await service.startExamTextWait(555, attemptId, 1, NOW);
+
+    const session = await service.get(555, NOW);
+    expect(session?.kind).toBe('examText');
+    await expect(model.countDocuments({ chatId: 555 })).resolves.toBe(1);
+  });
 });

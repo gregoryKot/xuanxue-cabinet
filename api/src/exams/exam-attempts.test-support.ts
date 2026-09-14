@@ -3,6 +3,8 @@
 // спеков, тот же приём, что у telegram-teacher-notifier.test-support.ts,
 // CLAUDE.md «Файлы»/«Храповики», jscpd).
 import type { Connection, Model } from 'mongoose';
+import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
+import { MediaAssetsService } from '../media/media-assets.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
@@ -28,12 +30,16 @@ export interface AttemptsTestContext {
   itemModel: Model<ExamItemRecord>;
   gradingModel: Model<ExamGradingRecord>;
   userModel: Model<UserRecord>;
+  mediaModel: Model<MediaAssetRecord>;
   examsService: ExamsService;
   examItemsService: ExamItemsService;
   userNamesService: UserNamesService;
   examNotifier: FakeExamNotifier;
   service: ExamAttemptsService;
   gradingsService: ExamGradingsService;
+  // Слой 4.5 (ADR-0023) — нужен спекам про видео вопроса внутри потока
+  // вопросов бота (exam-attempt-flow.spec.ts, ТЗ 4б.2 часть 2).
+  mediaAssetsService: MediaAssetsService;
 }
 
 export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
@@ -50,6 +56,10 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     ExamGradingSchema,
   );
   const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
+  const mediaModel = connection.model<MediaAssetRecord>(
+    MediaAssetRecord.name,
+    MediaAssetSchema,
+  );
   const examsService = new ExamsService(examModel, itemModel);
   const examItemsService = new ExamItemsService(itemModel);
   const userNamesService = new UserNamesService(userModel);
@@ -68,6 +78,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     userNamesService,
     examNotifier,
   );
+  const mediaAssetsService = new MediaAssetsService(mediaModel, attemptModel);
   return {
     memory,
     attemptModel,
@@ -75,12 +86,14 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     itemModel,
     gradingModel,
     userModel,
+    mediaModel,
     examsService,
     examItemsService,
     userNamesService,
     examNotifier,
     service,
     gradingsService,
+    mediaAssetsService,
   };
 }
 
@@ -90,6 +103,7 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.itemModel.deleteMany({});
   await ctx.gradingModel.deleteMany({});
   await ctx.userModel.deleteMany({});
+  await ctx.mediaModel.deleteMany({});
   // Иначе вызовы ExamNotifier из одного теста утекают в счётчик следующего —
   // общий ctx на файл (afterEach), не свой инстанс на тест.
   ctx.examNotifier.notifyAttemptSubmitted.mockClear();

@@ -99,20 +99,49 @@ describe('buildQuestionScreen', () => {
     expect(view.buttons[1]?.[0]?.text).toBe('☐ Пять');
   });
 
-  it('text — честная строка про кабинет, без кнопок-вариантов', () => {
+  it('text — просит написать ответ сообщением, без кнопок-вариантов', () => {
     const q = question({ kind: 'text', options: [] });
     const view = buildQuestionScreen(attempt([q]), 0);
-    expect(view.text).toContain('принимается в кабинете');
+    expect(view.text).toContain('Напишите ответ сообщением');
     // Только навигация («Сдать» — единственный вопрос, последний).
     expect(view.buttons).toEqual([
       [{ text: 'Сдать', callback_data: `es:${ATTEMPT_ID}` }],
     ]);
   });
 
-  it('video — честная строка про видео в кабинете, без кнопок-вариантов', () => {
+  it('text — уже отвечен: эхо сохранённого текста, не повторная просьба', () => {
+    const q = question({ kind: 'text', options: [] });
+    const view = buildQuestionScreen(
+      attempt([q], { answers: [{ itemId: 'i1', text: 'Мой ответ' }] }),
+      0,
+    );
+    expect(view.text).toContain('Ваш ответ: «Мой ответ»');
+    expect(view.text).not.toContain('Напишите ответ сообщением');
+  });
+
+  it('video — просит прислать видео, без кнопок-вариантов', () => {
     const q = question({ kind: 'video', options: [] });
     const view = buildQuestionScreen(attempt([q]), 0);
-    expect(view.text).toContain('Видео этого вопроса ждёт вас на экране «Отправлено»');
+    expect(view.text).toContain('Снимите или пришлите видео сюда');
+  });
+
+  it('video — уже привязано (attempt.media непусто) — «видео получено»', () => {
+    const q = question({ kind: 'video', options: [] });
+    const view = buildQuestionScreen(
+      attempt([q], {
+        media: [
+          {
+            id: 'm1',
+            attemptId: ATTEMPT_ID,
+            kind: 'telegram',
+            receivedAt: '2026-09-12T10:00:00.000Z',
+          },
+        ],
+      }),
+      0,
+    );
+    expect(view.text).toContain('Видео получено.');
+    expect(view.text).not.toContain('Снимите или пришлите видео сюда');
   });
 
   it('первый вопрос — нет «Назад», есть «Дальше»', () => {

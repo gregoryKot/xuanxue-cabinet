@@ -11,12 +11,14 @@ import {
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../../common/errors';
 import type { UserLean } from '../../users/users.service';
+import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { GENERIC_ERROR } from './callback-actions';
 import { handleExamQuestion, handleExamStart } from './exam-attempt-navigation';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const ATTEMPT_ID = '507f1f77bcf86cd799439011';
+const CHAT_ID = 111;
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
@@ -76,7 +78,7 @@ describe('handleExamStart', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await handleExamStart(ctx, port, USER, 'e1', NOW);
+    await handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW);
 
     expect(port.startAttempt).toHaveBeenCalledWith('e1', USER, NOW);
     expect(edits[0]).toContain('Вопрос 1 из 1');
@@ -90,7 +92,7 @@ describe('handleExamStart', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await handleExamStart(ctx, port, USER, 'e1', NOW);
+    await handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW);
 
     expect(edits).toEqual([EXAM_NOT_PUBLISHED_MESSAGE]);
   });
@@ -101,7 +103,9 @@ describe('handleExamStart', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await expect(handleExamStart(ctx, port, USER, 'e1', NOW)).resolves.toBeUndefined();
+    await expect(
+      handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW),
+    ).resolves.toBeUndefined();
     expect(edits).toEqual([GENERIC_ERROR]);
   });
 
@@ -113,7 +117,7 @@ describe('handleExamStart', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await handleExamStart(ctx, port, USER, 'e1', NOW);
+    await handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW);
 
     expect(edits).toEqual([ATTEMPT_EXPIRED_MESSAGE]);
   });
@@ -124,7 +128,9 @@ describe('handleExamStart', () => {
     });
     const { ctx } = fakeCtx({ failEdit: true });
 
-    await expect(handleExamStart(ctx, port, USER, 'e1', NOW)).resolves.toBeUndefined();
+    await expect(
+      handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -148,7 +154,15 @@ describe('handleExamQuestion', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await handleExamQuestion(ctx, port, USER, { attemptId: ATTEMPT_ID, index: 1 }, NOW);
+    await handleExamQuestion(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, index: 1 },
+      NOW,
+    );
 
     expect(port.loadOwnAttempt).toHaveBeenCalledWith(ATTEMPT_ID, USER, NOW);
     expect(edits[0]).toContain('Вопрос 2 из 2');
@@ -158,7 +172,15 @@ describe('handleExamQuestion', () => {
     const port = fakeExamBotPort({ loadOwnAttempt: jest.fn().mockResolvedValue(null) });
     const { ctx, edits } = fakeCtx();
 
-    await handleExamQuestion(ctx, port, USER, { attemptId: ATTEMPT_ID, index: 0 }, NOW);
+    await handleExamQuestion(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, index: 0 },
+      NOW,
+    );
 
     expect(edits).toEqual([ATTEMPT_NOT_FOUND_MESSAGE]);
   });
@@ -170,7 +192,15 @@ describe('handleExamQuestion', () => {
     const { ctx, edits } = fakeCtx();
 
     await expect(
-      handleExamQuestion(ctx, port, USER, { attemptId: ATTEMPT_ID, index: 0 }, NOW),
+      handleExamQuestion(
+        ctx,
+        port,
+        fakeBotSessionService(),
+        USER,
+        CHAT_ID,
+        { attemptId: ATTEMPT_ID, index: 0 },
+        NOW,
+      ),
     ).resolves.toBeUndefined();
     expect(edits).toEqual([GENERIC_ERROR]);
   });

@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import type { UserLean, UsersService } from '../../users/users.service';
+import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { buildOptionId, buildQuestionId } from './exam-callback-ids';
 import { isExamCallbackAction, routeExamCallback } from './exam-callback-router';
@@ -78,7 +79,16 @@ describe('routeExamCallback', () => {
     const port = fakeExamBotPort();
     const { ctx, edits } = fakeCtx();
 
-    await routeExamCallback(ctx, 'exam', 'e1', 111, fakeUsers(null), port, NOW);
+    await routeExamCallback(
+      ctx,
+      'exam',
+      'e1',
+      111,
+      fakeUsers(null),
+      port,
+      fakeBotSessionService(),
+      NOW,
+    );
 
     expect(port.startAttempt).not.toHaveBeenCalled();
     expect(edits).toEqual([]);
@@ -90,7 +100,16 @@ describe('routeExamCallback', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await routeExamCallback(ctx, 'exam', 'e1', 111, fakeUsers(USER), port, NOW);
+    await routeExamCallback(
+      ctx,
+      'exam',
+      'e1',
+      111,
+      fakeUsers(USER),
+      port,
+      fakeBotSessionService(),
+      NOW,
+    );
 
     expect(port.startAttempt).toHaveBeenCalledWith('e1', USER, NOW);
     expect(edits[0]).toContain('Вопрос 1 из 1');
@@ -102,7 +121,16 @@ describe('routeExamCallback', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await routeExamCallback(ctx, 'es', ATTEMPT_ID, 111, fakeUsers(USER), port, NOW);
+    await routeExamCallback(
+      ctx,
+      'es',
+      ATTEMPT_ID,
+      111,
+      fakeUsers(USER),
+      port,
+      fakeBotSessionService(),
+      NOW,
+    );
 
     expect(port.submitAttempt).toHaveBeenCalledWith(ATTEMPT_ID, USER, NOW);
     expect(edits).toEqual(['Работа отправлена. Учитель проверит и пришлёт результат.']);
@@ -121,6 +149,7 @@ describe('routeExamCallback', () => {
       111,
       fakeUsers(USER),
       port,
+      fakeBotSessionService(),
       NOW,
     );
 
@@ -142,6 +171,7 @@ describe('routeExamCallback', () => {
       111,
       fakeUsers(USER),
       port,
+      fakeBotSessionService(),
       NOW,
     );
 
@@ -157,7 +187,16 @@ describe('routeExamCallback', () => {
     const port = fakeExamBotPort();
     const { ctx, edits } = fakeCtx();
 
-    await routeExamCallback(ctx, 'eq', 'не-id:0', 111, fakeUsers(USER), port, NOW);
+    await routeExamCallback(
+      ctx,
+      'eq',
+      'не-id:0',
+      111,
+      fakeUsers(USER),
+      port,
+      fakeBotSessionService(),
+      NOW,
+    );
 
     expect(port.loadOwnAttempt).not.toHaveBeenCalled();
     expect(edits).toEqual([]);

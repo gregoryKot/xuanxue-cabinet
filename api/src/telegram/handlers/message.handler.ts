@@ -1,9 +1,11 @@
 // Текстовое/видео/документ-сообщение вне ответа на кнопку (docs/PLAN.md §6):
-// активное ожидание чата решает, что это — тема, запись или видео экзамена
-// (ADR-0023, слой 4.5). Видео экзамена ждём от ЛЮБОГО пользователя Telegram
-// (экзамен сдают ученики) — проверяем это ожидание ДО гейта `personalChats`
-// ниже, который остаётся штатным для темы/записи (SECURITY.md §4: только
-// личный чат учителя/админа с активным каналом — как у CallbackQueryHandler).
+// активное ожидание чата решает, что это — тема, запись, видео экзамена
+// (ADR-0023, слой 4.5) или свободный текст ответа на вопрос экзамена (ТЗ
+// 4б.2 часть 2). Видео и текст экзамена ждём от ЛЮБОГО пользователя Telegram
+// (экзамен сдают ученики) — проверяем оба этих ожидания ДО гейта
+// `personalChats` ниже, который остаётся штатным для темы/записи
+// (SECURITY.md §4: только личный чат учителя/админа с активным каналом — как
+// у CallbackQueryHandler).
 // `now` — параметром (CLAUDE.md «Время»), хендлер сам DateTime.utc() не зовёт.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
@@ -16,6 +18,7 @@ import { LessonsService } from '../../lessons/lessons.service';
 import { BotSessionService } from '../bot-session.service';
 import { PersonalChats } from '../personal-chats';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
+import { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { saveOrExplain } from './message-save';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { extractRecordingSource } from './recording-source';
@@ -39,6 +42,7 @@ export class MessageHandler {
     private readonly topicRebuild: TopicRebuildService,
     private readonly recordingWaitHandler: RecordingWaitHandler,
     private readonly examMediaHandler: ExamMediaMessageHandler,
+    private readonly examTextHandler: ExamTextAnswerHandler,
   ) {}
 
   private readonly logSaveError = (message: string, stack?: string): void =>
@@ -53,6 +57,10 @@ export class MessageHandler {
       const session = await this.botSessions.get(from.id, now);
       if (session?.kind === 'examMedia') {
         await this.examMediaHandler.handle(ctx, from.id, session, now);
+        return;
+      }
+      if (session?.kind === 'examText') {
+        await this.examTextHandler.handle(ctx, from.id, session, now);
         return;
       }
 

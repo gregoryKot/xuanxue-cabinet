@@ -8,12 +8,14 @@ import {
   type ExamAttemptDto,
 } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
+import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { GENERIC_ERROR } from './callback-actions';
 import { handleExamOption, handleExamSubmit } from './exam-attempt-answer';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const ATTEMPT_ID = '507f1f77bcf86cd799439011';
+const CHAT_ID = 111;
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
@@ -98,7 +100,9 @@ describe('handleExamOption', () => {
     await handleExamOption(
       ctx,
       port,
+      fakeBotSessionService(),
       USER,
+      CHAT_ID,
       { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
       NOW,
     );
@@ -127,12 +131,51 @@ describe('handleExamOption', () => {
     await handleExamOption(
       ctx,
       port,
+      fakeBotSessionService(),
       USER,
+      CHAT_ID,
       { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
       NOW,
     );
 
     expect(edits[0]).toContain('Вопрос 2 из 2');
+  });
+
+  it('single, следующий вопрос — text — ставит examText-ожидание под него', async () => {
+    const textQ: AttemptQuestionDto = {
+      itemId: 'i2',
+      version: 1,
+      kind: 'text',
+      prompt: 'Опишите форму словами',
+      options: [],
+    };
+    const current = attempt([SINGLE_Q, textQ]);
+    const saved = attempt([SINGLE_Q, textQ], {
+      answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+    });
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(current),
+      saveAnswer: jest.fn().mockResolvedValue(saved),
+    });
+    const botSessions = fakeBotSessionService();
+    const { ctx } = fakeCtx();
+
+    await handleExamOption(
+      ctx,
+      port,
+      botSessions,
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
+      NOW,
+    );
+
+    expect(botSessions.startExamTextWait).toHaveBeenCalledWith(
+      CHAT_ID,
+      ATTEMPT_ID,
+      1,
+      NOW,
+    );
   });
 
   it('multiple — переключает вариант и остаётся на том же вопросе', async () => {
@@ -151,7 +194,9 @@ describe('handleExamOption', () => {
     await handleExamOption(
       ctx,
       port,
+      fakeBotSessionService(),
       USER,
+      CHAT_ID,
       { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 1 },
       NOW,
     );
@@ -182,7 +227,9 @@ describe('handleExamOption', () => {
     await handleExamOption(
       ctx,
       port,
+      fakeBotSessionService(),
       USER,
+      CHAT_ID,
       { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
       NOW,
     );
@@ -202,7 +249,9 @@ describe('handleExamOption', () => {
     await handleExamOption(
       ctx,
       port,
+      fakeBotSessionService(),
       USER,
+      CHAT_ID,
       { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
       NOW,
     );
@@ -222,7 +271,9 @@ describe('handleExamOption', () => {
     await handleExamOption(
       ctx,
       port,
+      fakeBotSessionService(),
       USER,
+      CHAT_ID,
       { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
       NOW,
     );
@@ -240,7 +291,9 @@ describe('handleExamOption', () => {
     await handleExamOption(
       ctx,
       port,
+      fakeBotSessionService(),
       USER,
+      CHAT_ID,
       { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 9 },
       NOW,
     );
@@ -260,7 +313,9 @@ describe('handleExamOption', () => {
       handleExamOption(
         ctx,
         port,
+        fakeBotSessionService(),
         USER,
+        CHAT_ID,
         { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
         NOW,
       ),
@@ -282,7 +337,9 @@ describe('handleExamOption', () => {
       handleExamOption(
         ctx,
         port,
+        fakeBotSessionService(),
         USER,
+        CHAT_ID,
         { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
         NOW,
       ),
@@ -299,7 +356,15 @@ describe('handleExamSubmit', () => {
     });
     const { ctx, edits } = fakeCtx();
 
-    await handleExamSubmit(ctx, port, USER, ATTEMPT_ID, NOW);
+    await handleExamSubmit(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      ATTEMPT_ID,
+      NOW,
+    );
 
     expect(port.submitAttempt).toHaveBeenCalledWith(ATTEMPT_ID, USER, NOW);
     expect(edits).toEqual(['Работа отправлена. Учитель проверит и пришлёт результат.']);
@@ -312,7 +377,15 @@ describe('handleExamSubmit', () => {
     const { ctx, edits } = fakeCtx();
 
     await expect(
-      handleExamSubmit(ctx, port, USER, ATTEMPT_ID, NOW),
+      handleExamSubmit(
+        ctx,
+        port,
+        fakeBotSessionService(),
+        USER,
+        CHAT_ID,
+        ATTEMPT_ID,
+        NOW,
+      ),
     ).resolves.toBeUndefined();
 
     expect(edits).toEqual([GENERIC_ERROR]);
