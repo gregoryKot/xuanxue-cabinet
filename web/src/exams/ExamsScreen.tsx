@@ -14,6 +14,8 @@ import {
 } from '../components/screenLayout';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
+import { formatExamItemsLinkHint } from '../exam-items/examItemsLinkHint';
+import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
 import { formatGradingQueueHint } from '../grading/gradingQueueHint';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { ExamCard } from './ExamCard';
@@ -25,8 +27,6 @@ const EXPLANATION =
   'Форма собирается из вопросов банка блоками — один вопрос можно поставить в несколько экзаменов.';
 const EMPTY_MESSAGE = 'Экзаменов пока нет. Соберите первый из вопросов банка.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами экзаменов нет.';
-const EXAM_ITEMS_LINK_HINT =
-  'Из них собирается экзамен. Один вопрос можно поставить в несколько экзаменов.';
 
 const EMPTY_FILTERS: ExamFilterValues = { status: '', level: '' };
 
@@ -43,6 +43,7 @@ export default function ExamsScreen() {
   const [filters, setFilters] = useState<ExamFilterValues>(EMPTY_FILTERS);
   const { exams, loading, error, reload, create, update, remove } = useExams(filters);
   const gradingQueue = useGradingQueue();
+  const itemStatsSummary = useExamItemStatsSummary();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetExamId, setSheetExamId] = useState<string | null>(null);
 
@@ -90,7 +91,7 @@ export default function ExamsScreen() {
       <SectionLink
         to="/exam-items"
         title="Вопросы"
-        hint={EXAM_ITEMS_LINK_HINT}
+        hint={formatExamItemsLinkHint(itemStatsSummary.summary?.strugglingCount ?? null)}
         Icon={ExamItemsIcon}
       />
 

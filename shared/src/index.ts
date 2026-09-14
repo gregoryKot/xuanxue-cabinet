@@ -145,6 +145,7 @@ export {
   EXAM_MEDIA_INVALID_URL_MESSAGE,
   EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
 } from './exam-media';
+export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamAttemptSummaryDto, MyExamDto, ListMyExamsQuery } from './my-exams';
 export type {
   AttemptOptionCheckDto,

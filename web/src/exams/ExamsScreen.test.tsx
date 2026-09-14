@@ -1,5 +1,8 @@
 // Мокаем apiFetch по префиксу пути (test-support/apiFetchMock.ts) — экран
-// грузит /exams, а открытый лист сам грузит банк /exam-items для блоков.
+// грузит /exams, /attempts (очередь проверки) и /exam-items/stats-summary
+// (число на карточке «Вопросы»), а открытый лист сам грузит банк /exam-items
+// для блоков. `/exam-items/stats-summary` — ключ раньше общего `/exam-items`
+// в объектах ниже: mockApiByPath матчит по первому подходящему префиксу.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -36,6 +39,8 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
   };
 }
 
+const NO_STRUGGLING = { '/exam-items/stats-summary': { strugglingCount: 0 } };
+
 function renderScreen() {
   return render(
     <MemoryRouter>
@@ -46,7 +51,7 @@ function renderScreen() {
 
 describe('ExamsScreen — загрузка', () => {
   it('показывает скелетон, пока список не пришёл', () => {
-    mockApiByPath({ '/exams': new Promise(() => {}), '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': new Promise(() => {}), '/attempts': [] });
 
     const { container } = renderScreen();
 
@@ -67,7 +72,7 @@ describe('ExamsScreen — сбой загрузки', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
     const retry = screen.getByRole('button', { name: 'Попробовать ещё раз' });
 
-    mockApiByPath({ '/exams': [makeExam()], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [makeExam()], '/attempts': [] });
     await user.click(retry);
 
     expect(await screen.findByText('Итоговый экзамен')).toBeInTheDocument();
@@ -77,7 +82,7 @@ describe('ExamsScreen — сбой загрузки', () => {
 
 describe('ExamsScreen — пустая база', () => {
   it('честный текст и кнопка «Новый экзамен»', async () => {
-    mockApiByPath({ '/exams': [], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
 
     renderScreen();
 
@@ -91,7 +96,7 @@ describe('ExamsScreen — пустая база', () => {
 
 describe('ExamsScreen — список форм', () => {
   it('рендерит карточку с названием и статусом', async () => {
-    mockApiByPath({ '/exams': [makeExam()], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [makeExam()], '/attempts': [] });
 
     renderScreen();
 
@@ -103,7 +108,7 @@ describe('ExamsScreen — список форм', () => {
 describe('ExamsScreen — фильтр по статусу', () => {
   it('смена фильтра уходит в query запроса', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
 
     renderScreen();
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
@@ -121,7 +126,7 @@ describe('ExamsScreen — фильтр по статусу', () => {
 
 describe('ExamsScreen — вход в проверку работ', () => {
   it('пустая очередь — честный текст на карточке-ссылке', async () => {
-    mockApiByPath({ '/exams': [], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
 
     renderScreen();
 
@@ -131,6 +136,7 @@ describe('ExamsScreen — вход в проверку работ', () => {
 
   it('есть сданные работы — число на карточке-ссылке', async () => {
     mockApiByPath({
+      ...NO_STRUGGLING,
       '/exams': [],
       '/attempts': [
         {
@@ -155,10 +161,38 @@ describe('ExamsScreen — вход в проверку работ', () => {
   });
 });
 
+describe('ExamsScreen — вход в вопросы банка', () => {
+  it('без спотыкающихся вопросов — только объяснение раздела, без числа', async () => {
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(
+        'Из них собирается экзамен — один вопрос можно поставить в несколько экзаменов.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('есть спотыкающиеся вопросы — число дописано к объяснению раздела', async () => {
+    mockApiByPath({
+      '/exam-items/stats-summary': { strugglingCount: 2 },
+      '/exams': [],
+      '/attempts': [],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(/2 вопроса путают больше половины ответивших\./),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('ExamsScreen — лист формы', () => {
   it('«Новый экзамен» открывает пустой лист', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [], '/exam-items': [], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/exam-items': [], '/attempts': [] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новый экзамен' }));
@@ -170,7 +204,7 @@ describe('ExamsScreen — лист формы', () => {
 
   it('«Закрыть» на листе закрывает его, список остаётся', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [], '/exam-items': [], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/exam-items': [], '/attempts': [] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новый экзамен' }));
@@ -183,7 +217,12 @@ describe('ExamsScreen — лист формы', () => {
 
   it('открыть карточку — лист правки с заполненным названием', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/exams': [makeExam()], '/exam-items': [], '/attempts': [] });
+    mockApiByPath({
+      ...NO_STRUGGLING,
+      '/exams': [makeExam()],
+      '/exam-items': [],
+      '/attempts': [],
+    });
 
     renderScreen();
     await user.click(await screen.findByText('Итоговый экзамен'));

@@ -41,6 +41,7 @@ import { ExamAttemptsService } from './exam-attempts.service';
 import { EXAM_NOTIFIER } from './exam-notifier';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
 import { ExamGradingsService } from './exam-gradings.service';
+import { ExamItemStatsService } from './exam-item-stats.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsController } from './exam-items.controller';
 import { ExamItemsService } from './exam-items.service';
@@ -70,6 +71,7 @@ import { MyExamsService } from './my-exams.service';
   ],
   providers: [
     ExamItemsService,
+    ExamItemStatsService,
     ExamsService,
     ExamAttemptsService,
     ExamGradingsService,
