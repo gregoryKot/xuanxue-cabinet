@@ -3,8 +3,13 @@
 // настоящем гварде — здесь только «контроллер зовёт сервис и возвращает его ответ».
 import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
-import type { ExamItemDto } from '@xuanxue/shared';
+import type {
+  ExamItemDto,
+  ExamItemStatsDto,
+  ExamItemStatsSummaryDto,
+} from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
+import { ExamItemStatsService } from './exam-item-stats.service';
 import { ExamItemsController } from './exam-items.controller';
 import { ExamItemsService } from './exam-items.service';
 
@@ -31,10 +36,14 @@ const ITEM_DTO: ExamItemDto = {
 
 async function buildController(
   service: Partial<ExamItemsService> = {},
+  statsService: Partial<ExamItemStatsService> = {},
 ): Promise<ExamItemsController> {
   const module = await Test.createTestingModule({
     controllers: [ExamItemsController],
-    providers: [{ provide: ExamItemsService, useValue: service }],
+    providers: [
+      { provide: ExamItemsService, useValue: service },
+      { provide: ExamItemStatsService, useValue: statsService },
+    ],
   }).compile();
   return module.get(ExamItemsController);
 }
@@ -82,5 +91,23 @@ describe('ExamItemsController', () => {
 
     await controller.remove('i1');
     expect(remove).toHaveBeenCalledWith('i1');
+  });
+
+  it('getStats() передаёт id в ExamItemStatsService', async () => {
+    const stats: ExamItemStatsDto = { itemId: 'i1', kind: 'text', askedCount: 0 };
+    const getStats = jest.fn().mockResolvedValue(stats);
+    const controller = await buildController({}, { getStats });
+
+    await expect(controller.getStats('i1')).resolves.toEqual(stats);
+    expect(getStats).toHaveBeenCalledWith('i1');
+  });
+
+  it('getStatsSummary() возвращает результат ExamItemStatsService', async () => {
+    const summary: ExamItemStatsSummaryDto = { strugglingCount: 2 };
+    const getSummary = jest.fn().mockResolvedValue(summary);
+    const controller = await buildController({}, { getSummary });
+
+    await expect(controller.getStatsSummary()).resolves.toEqual(summary);
+    expect(getSummary).toHaveBeenCalledWith();
   });
 });
