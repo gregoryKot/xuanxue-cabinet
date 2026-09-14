@@ -8,7 +8,6 @@
 // (CLAUDE.md «Время»): хендлер сам DateTime.utc() не зовёт.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
-import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
 import { isNotificationKind } from '@xuanxue/shared';
 import { BroadcastsService } from '../../broadcasts/broadcasts.service';
@@ -18,6 +17,7 @@ import { NotificationPrefsService } from '../../notifications/notification-prefs
 import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
 import { parseCallbackData, type CallbackAction } from '../callback-data';
+import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { PersonalChats } from '../personal-chats';
 import { isMenuScreenAction } from './bot-menu';
 import {
@@ -28,6 +28,9 @@ import {
   handleSent,
   handleTopicButton,
 } from './callback-actions';
+import { isValidCallbackParam } from './callback-params';
+import { isExamCallbackAction, routeExamCallback } from './exam-callback-router';
+import { ExamCommandHandler } from './exam-command.handler';
 import { MenuCommandHandler } from './menu-command.handler';
 import { handleMenuScreen } from './menu-screens';
 
@@ -43,6 +46,8 @@ export class CallbackQueryHandler {
     private readonly usersService: UsersService,
     private readonly notificationPrefsService: NotificationPrefsService,
     private readonly menuCommandHandler: MenuCommandHandler,
+    private readonly examBotPorts: ExamBotPortRegistry,
+    private readonly examCommandHandler: ExamCommandHandler,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -51,26 +56,44 @@ export class CallbackQueryHandler {
       const query = ctx.callbackQuery;
       const data = query && 'data' in query ? query.data : undefined;
       const parsed = data ? parseCallbackData(data) : null;
-      if (!parsed || !isValidParam(parsed.action, parsed.id)) return;
+      if (!parsed || !isValidCallbackParam(parsed.action, parsed.id)) return;
+      const { action, id } = parsed;
 
       // Личный чат и отправитель — тем же приёмом, что message.handler.ts:
       // identity для доступа — ctx.from.id, не ctx.chat.id (в личном чате
       // они совпадают, но from.id — источник истины и там, где бот когда-то
       // окажется в группе).
       const chatId = ctx.from?.id;
-      if (
-        chatId === undefined ||
-        ctx.chat?.type !== 'private' ||
-        !(await this.isPersonalChat(chatId, now))
-      ) {
-        // chatId — полем объекта, не в тексте: список редакции
-        // (redact-paths.ts) управляет полями, не текстом строки
-        // (SECURITY §1 п.2, §4).
+      if (chatId === undefined || ctx.chat?.type !== 'private') {
         this.logger.warn({ chatId: chatId ?? null }, 'callback от чата без доступа');
         return;
       }
 
-      await this.dispatch(ctx, parsed.action, parsed.id, chatId, now);
+      // Экзамен сдают ученики — до проверки PersonalChats (та пускает
+      // только штат с активным личным каналом), тот же приём, что
+      // MessageHandler для сессии examMedia (exam-callback-router.ts).
+      if (isExamCallbackAction(action)) {
+        await routeExamCallback(
+          ctx,
+          action,
+          id,
+          chatId,
+          this.usersService,
+          this.examBotPorts.get(),
+          now,
+        );
+        return;
+      }
+
+      if (!(await this.isPersonalChat(chatId, now))) {
+        // chatId — полем объекта, не в тексте: список редакции
+        // (redact-paths.ts) управляет полями, не текстом строки
+        // (SECURITY §1 п.2, §4).
+        this.logger.warn({ chatId }, 'callback от чата без доступа');
+        return;
+      }
+
+      await this.dispatch(ctx, action, id, chatId, now);
     } catch (err) {
       this.logger.error(`telegram.callback_query: ${errorMessage(err)}`, errorStack(err));
       await ctx.reply(GENERIC_ERROR).catch(() => null);
@@ -97,6 +120,7 @@ export class CallbackQueryHandler {
           menu: this.menuCommandHandler,
           users: this.usersService,
           prefs: this.notificationPrefsService,
+          exams: this.examCommandHandler,
         },
         id,
         chatId,
@@ -118,13 +142,4 @@ export class CallbackQueryHandler {
     const chats = await this.personalChats.list(now);
     return chats.some((c) => c.chatId === String(chatId));
   }
-}
-
-/** cancel/topic/norec/sent — id всегда ObjectId; notif — NotificationKind
- * (кнопка «Уведомления»); menu — экран меню. Битый/чужой параметр — тихо
- * игнорируется вызывающим кодом, не ошибка. */
-function isValidParam(action: CallbackAction, id: string): boolean {
-  if (action === 'notif') return isNotificationKind(id);
-  if (action === 'menu') return isMenuScreenAction(id);
-  return Types.ObjectId.isValid(id);
 }

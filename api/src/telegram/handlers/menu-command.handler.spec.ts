@@ -100,6 +100,7 @@ describe('MenuCommandHandler', () => {
     expect(replies).toHaveLength(1);
     expect(replies[0]?.buttons).toEqual([
       [{ text: 'Ближайшие занятия', callback_data: 'menu:schedule' }],
+      [{ text: 'Экзамены', callback_data: 'menu:exams' }],
       [{ text: 'Уведомления', callback_data: 'menu:notifications' }],
     ]);
   });
@@ -149,7 +150,7 @@ describe('MenuCommandHandler', () => {
     await handler.showHelp(ctx, NOW);
 
     expect(replies[0]?.text).toContain('/schedule');
-    expect(replies[0]?.buttons).toHaveLength(2);
+    expect(replies[0]?.buttons).toHaveLength(3);
   });
 
   it('база упала на середине — бот молчит, ошибка уходит в лог, апдейт не падает', async () => {

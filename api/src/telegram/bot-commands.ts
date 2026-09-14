@@ -12,6 +12,7 @@ export const BOT_COMMANDS = [
   { command: 'menu', description: 'Меню бота' },
   { command: 'schedule', description: 'Ближайшие занятия' },
   { command: 'topic', description: 'Вписать тему занятия' },
+  { command: 'exams', description: 'Экзамены' },
   { command: 'notifications', description: 'Что вам присылать' },
   { command: 'help', description: 'Что умеет бот' },
 ] as const;

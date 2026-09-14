@@ -3,7 +3,6 @@
 // строк, а обвязка у них одна (jscpd).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
-import type { Context } from 'telegraf';
 import { BroadcastsService } from '../../broadcasts/broadcasts.service';
 import { BroadcastRecord, BroadcastSchema } from '../../broadcasts/broadcast.schema';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
@@ -16,43 +15,19 @@ import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { ExamBotPortRegistry } from '../exam-bot-port.registry';
+import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { buildMenuHandler } from '../test-support/build-menu-handler';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
 import { CallbackQueryHandler } from './callback-query.handler';
+import { ExamCommandHandler } from './exam-command.handler';
 
 export { seedTeacher };
 
 export const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 
-export function fakeCtx(options: {
-  chatId?: number;
-  chatType?: 'private' | 'group';
-  data?: string;
-  noFrom?: boolean;
-  /** Правку сообщения отклонили (его удалили, бота выкинули). */
-  failEdit?: boolean;
-}): { ctx: Context; editCalls: string[] } {
-  const editCalls: string[] = [];
-  const ctx = {
-    chat:
-      options.chatId === undefined
-        ? undefined
-        : { id: options.chatId, type: options.chatType ?? 'private' },
-    from:
-      options.chatId === undefined || options.noFrom ? undefined : { id: options.chatId },
-    callbackQuery: options.data === undefined ? undefined : { data: options.data },
-    answerCbQuery: () => Promise.resolve(true),
-    editMessageText: (text: string) =>
-      options.failEdit
-        ? Promise.reject(new Error('сообщение недоступно'))
-        : Promise.resolve(Boolean(editCalls.push(text))),
-    reply: (text: string) => Promise.resolve(Boolean(editCalls.push(text))),
-  } as unknown as Context;
-  return { ctx, editCalls };
-}
-
-export interface CallbackHandlerTestContext {
+export interface CallbackHandlerModels {
   memory: MemoryMongo;
   connection: Connection;
   broadcastModel: Model<BroadcastRecord>;
@@ -61,6 +36,9 @@ export interface CallbackHandlerTestContext {
   userModel: Model<UserRecord>;
   botSessionModel: Model<BotSessionRecord>;
   notificationPrefsModel: Model<NotificationPrefsRecord>;
+}
+
+export interface CallbackHandlerTestContext extends CallbackHandlerModels {
   handler: CallbackQueryHandler;
 }
 
@@ -69,7 +47,7 @@ export interface CallbackHandlerTestContext {
  * PersonalChats/NotificationPrefsService при этом настоящие, доступ и
  * настройка по-прежнему проверяются реально. */
 export function buildHandler(
-  ctx: CallbackHandlerTestContext,
+  ctx: CallbackHandlerModels,
   overrides: {
     broadcastsService?: BroadcastsService;
     botSessions?: BotSessionService;
@@ -77,6 +55,7 @@ export function buildHandler(
     // Только для гонки «чат отвязан между проверкой доступа и резолвом
     // userId»: сам доступ идёт через buildPersonalChats.
     usersService?: UsersService;
+    examBotPorts?: ExamBotPortRegistry;
   } = {},
 ): CallbackQueryHandler {
   const usersService = new UsersService(ctx.userModel);
@@ -90,7 +69,17 @@ export function buildHandler(
     overrides.usersService ?? usersService,
     new NotificationPrefsService(ctx.notificationPrefsModel),
     buildMenuHandler(ctx.connection, usersService, ctx.channelModel),
+    overrides.examBotPorts ?? examRegistry(),
+    new ExamCommandHandler(overrides.usersService ?? usersService, examRegistry()),
   );
+}
+
+/** Реестр с фейковым портом — хендлеру экзаменов он нужен в конструкторе,
+ * но кнопки экзамена проверяются своими спеками (exam-*.spec.ts). */
+function examRegistry(): ExamBotPortRegistry {
+  const registry = new ExamBotPortRegistry();
+  registry.set(fakeExamBotPort());
+  return registry;
 }
 
 export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestContext> {
@@ -114,17 +103,9 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     NotificationPrefsRecord.name,
   );
   await botSessionModel.syncIndexes();
-  const usersService = new UsersService(userModel);
-  const handler = new CallbackQueryHandler(
-    buildPersonalChats(connection, usersService, channelModel),
-    new BroadcastsService(broadcastModel, deliveryModel, channelModel),
-    new BotSessionService(botSessionModel),
-    new DeliveriesService(deliveryModel, broadcastModel, channelModel),
-    usersService,
-    new NotificationPrefsService(notificationPrefsModel),
-    buildMenuHandler(connection, usersService, channelModel),
-  );
-  return {
+  // Хендлер собирается тем же buildHandler, что и в тестах с подменой сервиса:
+  // две сборки одного конструктора разъезжались бы при каждом новом параметре.
+  const models: CallbackHandlerModels = {
     memory,
     connection,
     broadcastModel,
@@ -133,8 +114,8 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     userModel,
     botSessionModel,
     notificationPrefsModel,
-    handler,
   };
+  return { ...models, handler: buildHandler(models) };
 }
 
 export async function clearCallbackHandlerTest(

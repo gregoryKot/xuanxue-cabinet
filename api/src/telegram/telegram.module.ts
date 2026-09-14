@@ -28,8 +28,10 @@ import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
 import { BotSessionService } from './bot-session.service';
+import { ExamBotPortRegistry } from './exam-bot-port.registry';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
+import { ExamCommandHandler } from './handlers/exam-command.handler';
 import { ExamMediaMessageHandler } from './handlers/exam-media-message.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
@@ -71,6 +73,8 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     MessageHandler,
     RecordingWaitHandler,
     ExamMediaMessageHandler,
+    ExamCommandHandler,
+    ExamBotPortRegistry,
     PersonalChats,
     BotSessionService,
     { provide: TELEGRAF_FACTORY, useValue: createTelegraf },
@@ -79,6 +83,9 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
   // «Запись?», ручных каналов и уведомлений); PersonalChats/BotSessionService —
   // тот же вызывающий код (PreviewService/RecordingPromptService/
   // ManualPromptService/TelegramTeacherNotifier).
-  exports: [TelegramBotService, PersonalChats, BotSessionService],
+  // ExamBotPortRegistry — наружу: ExamsModule кладёт в него реализацию
+  // ExamBotPort (exams/exam-bot.service.ts), импортировать exams/ отсюда
+  // нельзя (цикл, см. комментарий в exam-bot-port.registry.ts).
+  exports: [TelegramBotService, PersonalChats, BotSessionService, ExamBotPortRegistry],
 })
 export class TelegramModule {}

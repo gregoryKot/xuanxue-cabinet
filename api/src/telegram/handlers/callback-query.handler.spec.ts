@@ -9,12 +9,12 @@ import type { BotSessionService } from '../bot-session.service';
 import {
   buildHandler,
   clearCallbackHandlerTest,
-  fakeCtx,
   NOW,
   seedTeacher,
   setupCallbackHandlerTest,
   type CallbackHandlerTestContext,
 } from './callback-query.handler.test-support';
+import { fakeCtx } from './callback-query.handler.fake-ctx';
 
 describe('CallbackQueryHandler — действия кнопок', () => {
   let ctx: CallbackHandlerTestContext;

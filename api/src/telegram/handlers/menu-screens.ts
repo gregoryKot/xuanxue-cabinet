@@ -13,6 +13,7 @@ import {
   type BotMenu,
   type MenuScreenAction,
 } from './bot-menu';
+import type { ExamCommandHandler } from './exam-command.handler';
 import type { MenuCommandHandler } from './menu-command.handler';
 import { buildNotificationsMenu } from './notifications-menu';
 
@@ -20,6 +21,7 @@ interface MenuScreenDeps {
   menu: MenuCommandHandler;
   users: UsersService;
   prefs: NotificationPrefsService;
+  exams: ExamCommandHandler;
 }
 
 export async function handleMenuScreen(
@@ -44,6 +46,9 @@ async function menuScreenView(
 ): Promise<BotMenu | null> {
   if (screen === 'back') return buildBotMenu();
   if (screen === 'schedule') return deps.menu.scheduleScreen(now);
+  // Экран экзаменов — тот же рендер, что у /exams и /экзамены: один экран
+  // на три входа (exam-command.handler.ts).
+  if (screen === 'exams') return deps.exams.listScreen(chatId, now);
   // Экран уведомлений тот же, что у команды и у тумблеров: один рендер на
   // три входа (notifications-menu.ts).
   const user = await deps.users.findByTelegramId(chatId);
