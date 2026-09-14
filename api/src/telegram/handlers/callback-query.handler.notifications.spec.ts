@@ -5,12 +5,12 @@ import type { UsersService } from '../../users/users.service';
 import {
   buildHandler,
   clearCallbackHandlerTest,
-  fakeCtx,
   NOW,
   seedTeacher,
   setupCallbackHandlerTest,
   type CallbackHandlerTestContext,
 } from './callback-query.handler.test-support';
+import { fakeCtx } from './callback-query.handler.fake-ctx';
 
 describe('CallbackQueryHandler — notif (Уведомления)', () => {
   let ctx: CallbackHandlerTestContext;

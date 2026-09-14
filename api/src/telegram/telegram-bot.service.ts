@@ -13,6 +13,7 @@ import { errorMessage, errorStack } from '../common/error-info';
 import { sendBotMessage } from './bot-send';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
+import { ExamCommandHandler } from './handlers/exam-command.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
@@ -43,6 +44,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly notificationsCommandHandler: NotificationsCommandHandler,
     private readonly menuCommandHandler: MenuCommandHandler,
     private readonly messageHandler: MessageHandler,
+    private readonly examCommandHandler: ExamCommandHandler,
   ) {}
 
   // Не async: внутри всё намеренно fire-and-forget (см. ниже).
@@ -67,6 +69,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
       notificationsCommandHandler: this.notificationsCommandHandler,
       menuCommandHandler: this.menuCommandHandler,
       messageHandler: this.messageHandler,
+      examCommandHandler: this.examCommandHandler,
     });
     this.bot = bot;
 

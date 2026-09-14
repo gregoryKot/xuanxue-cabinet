@@ -4,12 +4,12 @@
 import { Types } from 'mongoose';
 import {
   clearCallbackHandlerTest,
-  fakeCtx,
   NOW,
   seedTeacher,
   setupCallbackHandlerTest,
   type CallbackHandlerTestContext,
 } from './callback-query.handler.test-support';
+import { fakeCtx } from './callback-query.handler.fake-ctx';
 
 describe('CallbackQueryHandler — norec/sent', () => {
   let ctx: CallbackHandlerTestContext;

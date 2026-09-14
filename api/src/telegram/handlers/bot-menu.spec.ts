@@ -25,12 +25,13 @@ describe('classifyBotMenuAudience', () => {
 });
 
 describe('buildBotMenu', () => {
-  it('две кнопки экранов и подсказка про тему занятия', () => {
+  it('три кнопки экранов и подсказка про тему занятия', () => {
     const menu = buildBotMenu();
 
     expect(menu.text).toContain('/topic');
     expect(menu.buttons.flat().map((b) => b.text)).toEqual([
       'Ближайшие занятия',
+      'Экзамены',
       'Уведомления',
     ]);
   });
@@ -40,7 +41,7 @@ describe('buildBotMenu', () => {
 
     expect(
       menu.buttons.flat().map((b) => ('callback_data' in b ? b.callback_data : '')),
-    ).toEqual(['menu:schedule', 'menu:notifications']);
+    ).toEqual(['menu:schedule', 'menu:exams', 'menu:notifications']);
   });
 });
 
@@ -63,6 +64,10 @@ describe('buildHelpText', () => {
     expect(buildHelpText('student')).not.toContain('/topic');
   });
 
+  it('ученику рассказываем про экзамены в боте', () => {
+    expect(buildHelpText('student')).toContain('/exams');
+  });
+
   it('незнакомцу — тот же отказ, что у /start', () => {
     expect(buildHelpText('stranger', 'https://xuanxue.su')).toContain('Сюань-Сюэ');
   });
@@ -72,6 +77,7 @@ describe('isMenuScreenAction', () => {
   it('свои экраны пропускает, чужое значение — нет', () => {
     expect(isMenuScreenAction('schedule')).toBe(true);
     expect(isMenuScreenAction('notifications')).toBe(true);
+    expect(isMenuScreenAction('exams')).toBe(true);
     expect(isMenuScreenAction('back')).toBe(true);
     expect(isMenuScreenAction('делай-что-хочешь')).toBe(false);
   });

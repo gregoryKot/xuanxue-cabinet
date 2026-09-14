@@ -29,6 +29,12 @@
 // Цикла нет — MediaModule берёт модель ExamAttemptRecord через
 // ExamAttemptModelModule (тонкая регистрация модели рядом, без контроллеров
 // и сервисов этого файла), а не через ExamsModule целиком.
+//
+// ExamBotService (слой 4б.2, ADR-0024) — бот, второй клиент
+// ExamAttemptsService/MyExamsService: в отличие от EXAM_NOTIFIER выше, для
+// него нет DI в обратную сторону (TelegramModule на ExamsModule не
+// импортируется — цикл), поэтому провайдер кладёт себя в
+// api/src/telegram/exam-bot.port.ts сам, без записи в exports.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MediaModule } from '../media/media.module';
@@ -38,6 +44,7 @@ import { UsersModule } from '../users/users.module';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
+import { ExamBotService } from './exam-bot.service';
 import { EXAM_NOTIFIER } from './exam-notifier';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
 import { ExamGradingsService } from './exam-gradings.service';
@@ -77,6 +84,10 @@ import { MyExamsService } from './my-exams.service';
     ExamGradingsService,
     MyExamsService,
     { provide: EXAM_NOTIFIER, useClass: TelegramExamNotifier },
+    // Бот — второй клиент этих же сервисов (ADR-0024, слой 4б.2): кладёт
+    // себя в ExamBotPort сама в конструкторе, комментарий там же — почему
+    // не обычный экспорт/импорт модуля (цикл с TelegramModule).
+    ExamBotService,
   ],
   exports: [MongooseModule, ExamItemsService, ExamsService, ExamAttemptsService],
 })

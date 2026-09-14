@@ -7,6 +7,7 @@ import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import type { CallbackQueryHandler } from '../handlers/callback-query.handler';
+import type { ExamCommandHandler } from '../handlers/exam-command.handler';
 import type { MenuCommandHandler } from '../handlers/menu-command.handler';
 import type { MessageHandler } from '../handlers/message.handler';
 import type { NotificationsCommandHandler } from '../handlers/notifications-command.handler';
@@ -40,15 +41,16 @@ export function fakeHandlerWithNow(): {
   };
 }
 
-/** callback_query/`/тема`/`/уведомления`/message-хендлеры — маршрутизацию
- * каждого из них (и что им приходит свежий DateTime.utc()) проверяет
- * telegram-bot.service.spec.ts. */
+/** callback_query/`/тема`/`/уведомления`/message/`/экзамены`-хендлеры —
+ * маршрутизацию каждого из них (и что им приходит свежий DateTime.utc())
+ * проверяют telegram-bot.service.spec.ts и register-handlers.exams.spec.ts. */
 export function fakeExtraHandlers(): [
   CallbackQueryHandler,
   TopicCommandHandler,
   NotificationsCommandHandler,
   MenuCommandHandler,
   MessageHandler,
+  ExamCommandHandler,
 ] {
   return [
     fakeHandlerWithNow() as unknown as CallbackQueryHandler,
@@ -56,6 +58,7 @@ export function fakeExtraHandlers(): [
     fakeHandlerWithNow() as unknown as NotificationsCommandHandler,
     fakeHandlerWithNow() as unknown as MenuCommandHandler,
     fakeHandlerWithNow() as unknown as MessageHandler,
+    fakeHandlerWithNow() as unknown as ExamCommandHandler,
   ];
 }
 
