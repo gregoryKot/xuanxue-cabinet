@@ -75,4 +75,36 @@ describe('nextDeliveryOutcome', () => {
       notifyTeacher: true,
     });
   });
+
+  // M2: retry_after Telegram (429) больше стандартной задержки первой
+  // попытки (2 минуты = 120 с) — ждём его, не бьёмся в тот же лимит.
+  it('429 с retry_after больше стандартной задержки — ждём retry_after, не стандартные 2 минуты', () => {
+    const outcome = nextDeliveryOutcome(
+      { status: 'failed', error: 'таймаут', retryable: true, retryAfterSec: 300 },
+      0,
+      NOW,
+    );
+    expect(outcome).toEqual({
+      status: 'pending',
+      attempts: 1,
+      nextAttemptAt: NOW.plus({ seconds: 301 }).toJSDate(),
+      error: 'Telegram просит подождать 300 с.',
+    });
+  });
+
+  // M2: retry_after меньше стандартной задержки — стандартная задержка не
+  // укорачивается, повтор всё равно приходит на плановые 2 минуты.
+  it('429 с retry_after меньше стандартной задержки — nextAttemptAt не раньше стандартной', () => {
+    const outcome = nextDeliveryOutcome(
+      { status: 'failed', error: 'таймаут', retryable: true, retryAfterSec: 5 },
+      0,
+      NOW,
+    );
+    expect(outcome).toEqual({
+      status: 'pending',
+      attempts: 1,
+      nextAttemptAt: NOW.plus({ minutes: 2 }).toJSDate(),
+      error: 'Telegram просит подождать 5 с.',
+    });
+  });
 });
