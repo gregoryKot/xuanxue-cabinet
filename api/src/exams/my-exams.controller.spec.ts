@@ -12,7 +12,7 @@ import { MyExamsService } from './my-exams.service';
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
-  roles: ['student'],
+  roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
 };

@@ -144,13 +144,13 @@ describe('UserDeletionService', () => {
     const student = await users.createFromTelegram({
       telegramId: 5010,
       name: 'Ученик',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     const other = await users.createFromTelegram({
       telegramId: 5011,
       name: 'Другой ученик',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     const examId = new Types.ObjectId();
@@ -185,13 +185,13 @@ describe('UserDeletionService', () => {
     const student = await users.createFromTelegram({
       telegramId: 5012,
       name: 'Ученик с настройками',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     const other = await users.createFromTelegram({
       telegramId: 5013,
       name: 'Другой ученик',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     await notificationPrefsModel.create([
@@ -212,13 +212,13 @@ describe('UserDeletionService', () => {
     const student = await users.createFromTelegram({
       telegramId: 5014,
       name: 'Ученик с оценкой',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     const other = await users.createFromTelegram({
       telegramId: 5015,
       name: 'Другой ученик',
-      roles: ['student'],
+      roles: [],
       status: 'active',
     });
     const teacher = await users.createFromTelegram({

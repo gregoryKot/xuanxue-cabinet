@@ -40,7 +40,7 @@ describe('assertTeacherExists', () => {
   });
 
   it('ученик — ошибка «не найден среди учителей»', async () => {
-    const student = await model.create({ name: 'Гриша', roles: ['student'] });
+    const student = await model.create({ name: 'Гриша', roles: [] });
     await expect(assertTeacherExists(model, student._id.toString())).rejects.toThrow(
       'не найден среди учителей',
     );
@@ -94,7 +94,7 @@ describe('assertLeaderIdIfProvided — обёртка для PATCH (ClassesServi
   });
 
   it('строка с id ученика — та же ошибка, что у assertTeacherExists', async () => {
-    const student = await model.create({ name: 'Гриша', roles: ['student'] });
+    const student = await model.create({ name: 'Гриша', roles: [] });
     await expect(assertLeaderIdIfProvided(model, student._id.toString())).rejects.toThrow(
       'не найден среди учителей',
     );

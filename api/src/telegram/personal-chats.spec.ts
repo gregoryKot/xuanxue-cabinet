@@ -105,8 +105,8 @@ describe('PersonalChats.list', () => {
     expect(chats).toEqual([]);
   });
 
-  it('ученик (роль student) с личным каналом — не в списке: не учитель и не админ', async () => {
-    await userModel.create({ name: 'Ученик', telegramId: 444, roles: ['student'] });
+  it('ученик (без ролей) с личным каналом — не в списке: не учитель и не админ', async () => {
+    await userModel.create({ name: 'Ученик', telegramId: 444, roles: [] });
     await channelModel.create({
       type: 'telegram',
       title: 'x',

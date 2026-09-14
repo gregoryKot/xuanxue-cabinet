@@ -15,7 +15,7 @@ resetApiFetchBetweenTests();
 const STUDENT: MeDto = {
   id: 'u1',
   name: 'Ученик',
-  roles: ['student'],
+  roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
 };

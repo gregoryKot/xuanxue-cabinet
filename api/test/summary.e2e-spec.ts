@@ -55,7 +55,7 @@ describe('Summary (e2e)', () => {
     const anon = await request(server()).get('/api/summary');
     expect(anon.status).toBe(401);
 
-    const cookie = await sessionFor(['student']);
+    const cookie = await sessionFor([]);
     const res = await request(server()).get('/api/summary').set('Cookie', cookie);
     expect(res.status).toBe(403);
   });

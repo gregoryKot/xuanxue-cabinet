@@ -29,8 +29,13 @@ describe('NotificationPrefsService', () => {
   });
 
   it('без документа — дефолт роли как есть', async () => {
-    expect(await service.get('u1', ['student'])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message', 'exam_result'],
+    expect(await service.get('u1', ['teacher'])).toEqual({
+      enabled: [
+        'post_draft',
+        'recording_request',
+        'delivery_failed',
+        'attempt_submitted',
+      ],
     });
   });
 
@@ -43,7 +48,7 @@ describe('NotificationPrefsService', () => {
   it('выключил вид уведомления → прочитал: его нет (read-after-write)', async () => {
     await service.set('u1', 'teacher_message', false);
 
-    expect(await service.get('u1', ['student'])).toEqual({
+    expect(await service.get('u1', [])).toEqual({
       enabled: ['lesson_soon', 'exam_result'],
     });
   });
@@ -51,7 +56,7 @@ describe('NotificationPrefsService', () => {
   it('включил вид сверх дефолта роли → прочитал: он есть', async () => {
     await service.set('u1', 'payments', true);
 
-    expect(await service.get('u1', ['student'])).toEqual({
+    expect(await service.get('u1', [])).toEqual({
       enabled: ['lesson_soon', 'teacher_message', 'exam_result', 'payments'],
     });
   });
@@ -60,7 +65,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'lesson_soon', false);
     await service.set('u1', 'lesson_soon', false);
 
-    expect(await service.get('u1', ['student'])).toEqual({
+    expect(await service.get('u1', [])).toEqual({
       enabled: ['teacher_message', 'exam_result'],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
@@ -70,7 +75,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'lesson_soon', false);
     await service.set('u1', 'lesson_soon', true);
 
-    expect(await service.get('u1', ['student'])).toEqual({
+    expect(await service.get('u1', [])).toEqual({
       enabled: ['lesson_soon', 'teacher_message', 'exam_result'],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
@@ -80,10 +85,10 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'teacher_message', false);
     await service.set('u2', 'payments', true);
 
-    expect(await service.get('u1', ['student'])).toEqual({
+    expect(await service.get('u1', [])).toEqual({
       enabled: ['lesson_soon', 'exam_result'],
     });
-    expect(await service.get('u2', ['student'])).toEqual({
+    expect(await service.get('u2', [])).toEqual({
       enabled: ['lesson_soon', 'teacher_message', 'exam_result', 'payments'],
     });
   });

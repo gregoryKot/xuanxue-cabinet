@@ -35,9 +35,8 @@ describe('TeachersService', () => {
     expect(teachers.map((t) => t.name)).toEqual(['Анна', 'Ярослав']);
   });
 
-  it('ученик, гость и заблокированный учитель — не в списке', async () => {
-    await model.create({ name: 'Ученик', roles: ['student'] });
-    await model.create({ name: 'Гость', roles: [] });
+  it('ученик и заблокированный учитель — не в списке', async () => {
+    await model.create({ name: 'Ученик', roles: [] });
     await model.create({ name: 'Уволенный', roles: ['teacher'], status: 'blocked' });
 
     const teachers = await service.listTeachers();

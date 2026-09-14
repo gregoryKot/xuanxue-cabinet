@@ -31,7 +31,8 @@
 
 - Гварды маршрутов проверяют роль из БД, не сверяют `_id` документа с
   пользователем сессии; e2e на владение (SECURITY §3) — без сессии 401,
-  `guest`/`student` 403, `teacher`/`admin` 200, `config` отсутствует в ответе.
+  без ролей (ученик, ADR-0026) 403, `teacher`/`admin` 200, `config` отсутствует
+  в ответе.
 - Ссылки на пользователя без владения (`leaderId`, `createdBy`) не покрыты
   `USER_OWNED_COLLECTIONS` — заведён отдельный реестр `USER_REFERENCE_PATHS`
   (`api/src/users/user-data.registry.ts`), по нему merge/удаление аккаунта

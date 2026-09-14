@@ -27,11 +27,11 @@ describe('Настройки уведомлений — владение (e2e)',
   it('А выключает своё уведомление — у Б дефолт остаётся как был', async () => {
     const { cookie: cookieA } = await createUserWithSession(testApp.app, {
       name: 'Ученик А',
-      roles: ['student'],
+      roles: [],
     });
     const { cookie: cookieB } = await createUserWithSession(testApp.app, {
       name: 'Ученик Б',
-      roles: ['student'],
+      roles: [],
     });
 
     const patchA = await withCsrf(request(server()).patch('/api/me/notifications'))
@@ -64,11 +64,11 @@ describe('Настройки уведомлений — владение (e2e)',
   it('чужой userId в теле — 400, не подмена (whitelist: true его не пропускает)', async () => {
     const { userId: userIdB, cookie: cookieB } = await createUserWithSession(
       testApp.app,
-      { name: 'Ученик Б', roles: ['student'] },
+      { name: 'Ученик Б', roles: [] },
     );
     const { cookie: cookieA } = await createUserWithSession(testApp.app, {
       name: 'Ученик А',
-      roles: ['student'],
+      roles: [],
     });
 
     const res = await withCsrf(request(server()).patch('/api/me/notifications'))

@@ -42,8 +42,7 @@ describe('GET /users/teachers (e2e)', () => {
   });
 
   it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
+    ['ученик', [] as UserRole[]],
     // UsersController целиком (включая этот маршрут) не отдан assistant —
     // помощник учителя видит расписание и занятия, но не список пользователей
     // (docs/SECURITY.md §2).
@@ -56,7 +55,7 @@ describe('GET /users/teachers (e2e)', () => {
   });
 
   it('учитель: 200, список без ПДн — teacher/admin активные, без ученика и заблокированного', async () => {
-    await userModel().create({ name: 'Ученик', roles: ['student'] });
+    await userModel().create({ name: 'Ученик', roles: [] });
     await userModel().create({
       name: 'Уволенный',
       roles: ['teacher'],

@@ -1,13 +1,11 @@
 // Роли, статусы и константы входа/сессии — общий контракт api и web
 // (CLAUDE.md, раздел «Слои»): гварды и DTO в api и CSRF/мутирующие методы в
 // web/src/api/http.ts используют одни и те же значения, расхождение ловит tsc.
-export const USER_ROLES = [
-  'admin',
-  'teacher',
-  'assistant',
-  'accountant',
-  'student',
-] as const;
+// Ролей учителя четыре. Ученик — не роль: это подтверждённый человек
+// (`status: 'active'`) без единой роли отсюда (ADR-0026), поэтому в списке
+// его нет и назначать нечего — экран «Люди» строит переключатели прямо по
+// USER_ROLES.
+export const USER_ROLES = ['admin', 'teacher', 'assistant', 'accountant'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 /**
@@ -23,7 +21,6 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   teacher: 'Учитель',
   assistant: 'Помощник учителя',
   accountant: 'Бухгалтер',
-  student: 'Ученик',
 };
 
 /**
@@ -44,7 +41,7 @@ export type UserStatus = (typeof USER_STATUSES)[number];
 
 /**
  * Профиль текущей сессии для интерфейса. Ученик — это `active` без ролей
- * учителя (ADR-0026): роль `student` не назначается, её нет в кабинете.
+ * учителя (ADR-0026), отдельной роли для него нет и в кабинете.
  * Email, telegramId и googleId сюда намеренно не входят — это ключи входа,
  * не профиль для интерфейса.
  *

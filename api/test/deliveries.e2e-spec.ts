@@ -90,12 +90,9 @@ describe('Deliveries (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])('%s: GET и POST mark-sent — 403', async (_label, roles) => {
+  it('ученик: GET и POST mark-sent — 403', async () => {
     const { deliveryId } = await seed('manual', 'manual');
-    const cookie = await sessionFor(roles);
+    const cookie = await sessionFor([]);
 
     const getRes = await request(server())
       .get(`/api/deliveries/${deliveryId}`)
@@ -214,7 +211,7 @@ describe('Deliveries (e2e)', () => {
 
       const forbidden = await request(server())
         .get('/api/deliveries')
-        .set('Cookie', await sessionFor(['student']));
+        .set('Cookie', await sessionFor([]));
       expect(forbidden.status).toBe(403);
     });
 

@@ -4,7 +4,7 @@
 // `overrides` — сеть не трогаем, сам механизм подмены смотри в create-app.ts.
 import { Types } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, ChannelDto, UserRole } from '@xuanxue/shared';
+import type { ApiErrorBody, ChannelDto } from '@xuanxue/shared';
 import { TELEGRAM_CLIENT_FACTORY } from '../src/channels/telegram-client';
 import { createTestApp, TEST_BOT_TOKEN, type TestApp } from './e2e-support/create-app';
 import { createFakeTelegramClient } from './e2e-support/fake-telegram-client';
@@ -45,11 +45,8 @@ describe('Channels (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])('%s: GET и POST /channels — 403', async (_label, roles) => {
-    const cookie = await sessionFor(roles);
+  it('ученик: GET и POST /channels — 403', async () => {
+    const cookie = await sessionFor([]);
 
     expect(
       (await request(server()).get('/api/channels').set('Cookie', cookie)).status,

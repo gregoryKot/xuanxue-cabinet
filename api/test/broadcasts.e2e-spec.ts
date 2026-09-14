@@ -86,11 +86,8 @@ describe('Broadcasts (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])('%s: POST /broadcasts — 403', async (_label, roles) => {
-    const cookie = await sessionFor(roles);
+  it('ученик: POST /broadcasts — 403', async () => {
+    const cookie = await sessionFor([]);
     const channelId = await createChannel();
 
     const res = await postBroadcast(cookie, { text: 'x', channelIds: [channelId] });

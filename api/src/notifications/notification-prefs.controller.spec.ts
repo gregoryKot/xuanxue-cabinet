@@ -12,7 +12,7 @@ import { NotificationPrefsService } from './notification-prefs.service';
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
-  roles: ['student'],
+  roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
 };

@@ -106,7 +106,7 @@ describe('TelegramExamNotifier', () => {
       await connectPerson(111, 'Мария', ['teacher']);
       await connectPerson(222, 'Пётр', ['assistant']);
       await connectPerson(333, 'Дима', ['admin']);
-      const studentId = await connectPerson(444, 'Ученик', ['student']);
+      const studentId = await connectPerson(444, 'Ученик', []);
       const bot = fakeBot();
 
       await buildNotifier(bot).notifyAttemptSubmitted(
@@ -150,7 +150,7 @@ describe('TelegramExamNotifier', () => {
 
     it('текст несёт имя ученика и ссылку на карточку проверки', async () => {
       await connectPerson(111, 'Мария', ['teacher']);
-      const studentId = await connectPerson(444, 'Ольга', ['student']);
+      const studentId = await connectPerson(444, 'Ольга', []);
       const bot = fakeBot();
 
       await buildNotifier(bot).notifyAttemptSubmitted(
@@ -166,7 +166,7 @@ describe('TelegramExamNotifier', () => {
 
   describe('notifyExamGraded', () => {
     it('уходит тому самому ученику, у кого включён exam_result', async () => {
-      const studentId = await connectPerson(555, 'Ученик', ['student']);
+      const studentId = await connectPerson(555, 'Ученик', []);
       const bot = fakeBot();
 
       await buildNotifier(bot).notifyExamGraded(
@@ -181,7 +181,7 @@ describe('TelegramExamNotifier', () => {
     });
 
     it('ученик выключил exam_result — не уходит', async () => {
-      const studentId = await connectPerson(555, 'Ученик', ['student']);
+      const studentId = await connectPerson(555, 'Ученик', []);
       await notificationPrefsModel.create({
         userId: studentId,
         overrides: [{ kind: 'exam_result', enabled: false }],

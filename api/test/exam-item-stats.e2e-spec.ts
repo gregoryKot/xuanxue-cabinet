@@ -95,27 +95,21 @@ describe('Exam item stats (e2e)', () => {
     );
   }
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])(
-    '%s: GET /exam-items/:id/stats и /exam-items/stats-summary — 403',
-    async (_label, roles) => {
-      const teacherCookie = await sessionFor(['teacher']);
-      const { item } = await createPublishedSingleChoiceExam(teacherCookie);
-      const cookie = await sessionFor(roles);
+  it('ученик: GET /exam-items/:id/stats и /exam-items/stats-summary — 403', async () => {
+    const teacherCookie = await sessionFor(['teacher']);
+    const { item } = await createPublishedSingleChoiceExam(teacherCookie);
+    const cookie = await sessionFor([]);
 
-      const statsRes = await request(server())
-        .get(`/api/exam-items/${item.id}/stats`)
-        .set('Cookie', cookie);
-      expect(statsRes.status).toBe(403);
+    const statsRes = await request(server())
+      .get(`/api/exam-items/${item.id}/stats`)
+      .set('Cookie', cookie);
+    expect(statsRes.status).toBe(403);
 
-      const summaryRes = await request(server())
-        .get('/api/exam-items/stats-summary')
-        .set('Cookie', cookie);
-      expect(summaryRes.status).toBe(403);
-    },
-  );
+    const summaryRes = await request(server())
+      .get('/api/exam-items/stats-summary')
+      .set('Cookie', cookie);
+    expect(summaryRes.status).toBe(403);
+  });
 
   it('учитель: два верных, один неверный — askedCount 3, correctCount 2, доля по вариантам', async () => {
     const teacherCookie = await sessionFor(['teacher']);

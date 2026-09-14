@@ -60,12 +60,13 @@ describe('/me/lessons (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
+  // roles: [] — ученик (ADR-0026, отдельной роли для него нет): видит то же
+  // расписание, что и любая роль школы — список не пустеет по умолчанию.
   const ROLE_CASES: { roles: UserRole[] }[] = [
-    { roles: ['student'] },
+    { roles: [] },
     { roles: ['teacher'] },
     { roles: ['assistant'] },
     { roles: ['admin'] },
-    { roles: [] },
   ];
 
   it.each(ROLE_CASES)(
@@ -81,23 +82,8 @@ describe('/me/lessons (e2e)', () => {
     },
   );
 
-  it('гость без роли получает тот же список, что ученик — не пустой ответ по умолчанию', async () => {
-    await createUpcomingLesson();
-    const guestCookie = await sessionCookieFor(testApp.app, []);
-    const studentCookie = await sessionCookieFor(testApp.app, ['student']);
-
-    const guestRes = await request(server())
-      .get('/api/me/lessons')
-      .set('Cookie', guestCookie);
-    const studentRes = await request(server())
-      .get('/api/me/lessons')
-      .set('Cookie', studentCookie);
-
-    expect(guestRes.body).toEqual(studentRes.body);
-  });
-
   it('limit выше 50 — 400, «дай всё» запрещён', async () => {
-    const cookie = await sessionCookieFor(testApp.app, ['student']);
+    const cookie = await sessionCookieFor(testApp.app, []);
     const res = await request(server())
       .get('/api/me/lessons')
       .query({ limit: 51 })

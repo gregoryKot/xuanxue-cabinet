@@ -204,10 +204,7 @@ describe('AuthGuard — @Roles', () => {
       fakeResponse(),
       { [ROLES_KEY]: ['admin'] },
     );
-    const guard = buildGuard(
-      reflector,
-      fakeUsersService(activeUser({ roles: ['student'] })),
-    );
+    const guard = buildGuard(reflector, fakeUsersService(activeUser({ roles: [] })));
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenError);
   });
 

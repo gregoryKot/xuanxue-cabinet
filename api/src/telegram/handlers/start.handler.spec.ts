@@ -142,8 +142,8 @@ describe('StartHandler', () => {
     expect(replies[0]).not.toContain('Вы подключены');
   });
 
-  it('ученик (роль student, без teacher/admin) — отказ, без канала', async () => {
-    await userModel.create({ name: 'Ученик', telegramId: 333, roles: ['student'] });
+  it('ученик (без ролей учителя) — отказ, без канала', async () => {
+    await userModel.create({ name: 'Ученик', telegramId: 333, roles: [] });
 
     const { ctx, replies } = fakeCtx(333);
     await handler.handle(ctx, NOW);

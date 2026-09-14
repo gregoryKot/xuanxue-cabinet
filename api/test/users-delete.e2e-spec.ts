@@ -44,8 +44,7 @@ describe('DELETE /users/:id (e2e)', () => {
   });
 
   it.each([
-    ['гость', [] as UserRole[]],
-    ['ученик', ['student'] as UserRole[]],
+    ['ученик', [] as UserRole[]],
     ['учитель', ['teacher'] as UserRole[]],
     // Помощник учителя правами равен учителю везде, кроме UsersController
     // (docs/SECURITY.md §2): удаление данных остаётся только у admin.

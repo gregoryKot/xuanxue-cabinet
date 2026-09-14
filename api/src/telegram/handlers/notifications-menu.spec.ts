@@ -45,7 +45,7 @@ describe('buildNotificationsMenu', () => {
 
   it('ученик видит только свои виды, не учительские', () => {
     const menu = buildNotificationsMenu(
-      ['student'],
+      [],
       ['lesson_soon', 'teacher_message', 'exam_result'],
     );
 

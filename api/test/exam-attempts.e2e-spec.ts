@@ -108,7 +108,7 @@ describe('Exam attempts (e2e)', () => {
   it('ученик: старт → ответ на старт не содержит correct и criteria', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId } = await createPublishedExam(teacherCookie);
-    const studentCookie = await sessionFor(['student']);
+    const studentCookie = await sessionFor([]);
 
     const started = await withCsrf(
       request(server()).post(`/api/exams/${examId}/attempts`),
@@ -129,7 +129,7 @@ describe('Exam attempts (e2e)', () => {
   it('ученик: повторный старт при незаконченной попытке — та же попытка', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId } = await createPublishedExam(teacherCookie);
-    const studentCookie = await sessionFor(['student']);
+    const studentCookie = await sessionFor([]);
 
     const first = await withCsrf(
       request(server()).post(`/api/exams/${examId}/attempts`),
@@ -157,7 +157,7 @@ describe('Exam attempts (e2e)', () => {
         title: 'Черновик формы',
         blocks: [{ itemIds: [(item.body as ExamItemDto).id] }],
       });
-    const studentCookie = await sessionFor(['student']);
+    const studentCookie = await sessionFor([]);
 
     const res = await withCsrf(
       request(server()).post(`/api/exams/${(exam.body as ExamDto).id}/attempts`),
@@ -170,7 +170,7 @@ describe('Exam attempts (e2e)', () => {
   it('ученик: автосохранение частями, ответ на чужой itemId — 400, сдача — submitted', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId, itemId } = await createPublishedExam(teacherCookie);
-    const studentCookie = await sessionFor(['student']);
+    const studentCookie = await sessionFor([]);
     const started = await withCsrf(
       request(server()).post(`/api/exams/${examId}/attempts`),
     ).set('Cookie', studentCookie);
@@ -210,7 +210,7 @@ describe('Exam attempts (e2e)', () => {
   it('ученик: превышение числа попыток — 400 с понятным текстом', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId } = await createPublishedExam(teacherCookie, { attemptsAllowed: 1 });
-    const studentCookie = await sessionFor(['student']);
+    const studentCookie = await sessionFor([]);
     const started = await withCsrf(
       request(server()).post(`/api/exams/${examId}/attempts`),
     ).set('Cookie', studentCookie);
@@ -242,8 +242,8 @@ describe('Exam attempts (e2e)', () => {
   it('GET /attempts: ученику только свои, учителю — все, лимит и фильтр examId работают', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId } = await createPublishedExam(teacherCookie);
-    const studentCookie = await sessionFor(['student']);
-    const otherStudentCookie = await sessionFor(['student']);
+    const studentCookie = await sessionFor([]);
+    const otherStudentCookie = await sessionFor([]);
     await withCsrf(request(server()).post(`/api/exams/${examId}/attempts`)).set(
       'Cookie',
       studentCookie,

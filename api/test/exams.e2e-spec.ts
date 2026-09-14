@@ -89,10 +89,7 @@ describe('Exams (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])('%s: GET, POST, PATCH и DELETE /exams — 403', async (_label, roles) => {
+  it('ученик: GET, POST, PATCH и DELETE /exams — 403', async () => {
     // Форма учителя — цель для PATCH/DELETE ниже: без своего ресурса роль
     // без teacher/admin не проверить (данные школы, ADR-0010 — по роли, а не
     // владельцу, поэтому здесь один общий экзамен, а не «чужой» и «свой»).
@@ -100,7 +97,7 @@ describe('Exams (e2e)', () => {
     const created = await postExam(teacherCookie, VALID_BODY);
     const examId = (created.body as ExamDto).id;
 
-    const cookie = await sessionFor(roles);
+    const cookie = await sessionFor([]);
 
     const getRes = await request(server()).get('/api/exams').set('Cookie', cookie);
     expect(getRes.status).toBe(403);

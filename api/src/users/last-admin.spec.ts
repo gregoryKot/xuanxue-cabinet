@@ -36,7 +36,7 @@ describe('isLastAdmin', () => {
   it('учитель и ученик в базе не считаются админами', async () => {
     const admin = await model.create({ name: 'Админ', roles: ['admin'] });
     await model.create({ name: 'Учитель', roles: ['teacher'] });
-    await model.create({ name: 'Ученик', roles: ['student'] });
+    await model.create({ name: 'Ученик', roles: [] });
     expect(await isLastAdmin(model, admin._id.toString())).toBe(true);
   });
 });
