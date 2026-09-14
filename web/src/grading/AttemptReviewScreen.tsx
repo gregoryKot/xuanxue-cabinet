@@ -7,13 +7,24 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
 import { AttemptReviewBlock } from './AttemptReviewBlock';
+import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { GradingForm } from './GradingForm';
 import { useAttemptReview } from './useAttemptReview';
 
 export default function AttemptReviewScreen() {
   const { attemptId } = useParams<{ attemptId: string }>();
-  const { review, loading, error, reload, submitGrading, saving, saveError } =
-    useAttemptReview(attemptId ?? '');
+  const {
+    review,
+    loading,
+    error,
+    reload,
+    submitGrading,
+    saving,
+    saveError,
+    markMediaManual,
+    markingMedia,
+    markMediaError,
+  } = useAttemptReview(attemptId ?? '');
 
   if (loading) {
     return (
@@ -38,6 +49,13 @@ export default function AttemptReviewScreen() {
       </p>
       <h1 style={{ margin: 0, fontSize: 18 }}>{review.examTitle}</h1>
       <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{review.userName}</p>
+
+      <AttemptReviewMedia
+        media={review.media ?? []}
+        onMarkManual={markMediaManual}
+        marking={markingMedia}
+        markError={markMediaError}
+      />
 
       {review.blocks.map((block) => (
         <AttemptReviewBlock key={block.id} block={block} />

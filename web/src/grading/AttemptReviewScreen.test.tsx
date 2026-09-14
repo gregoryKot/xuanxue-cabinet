@@ -257,3 +257,56 @@ describe('AttemptReviewScreen — отправка оценки', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('AttemptReviewScreen — видео (ADR-0023)', () => {
+  it('видео нет — кнопка ручной отметки шлёт POST и перечитывает карточку', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/attempts': makeReview() });
+
+    renderAt('a1');
+    await screen.findByText('Видео пока не получено.');
+
+    mockedApiFetch.mockResolvedValueOnce(undefined);
+    mockedApiFetch.mockResolvedValueOnce(
+      makeReview({
+        media: [
+          {
+            id: 'm1',
+            attemptId: 'a1',
+            kind: 'manual',
+            receivedAt: '2026-09-12T00:00:00Z',
+          },
+        ],
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Отметить, что видео принято' }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/manual', {
+      method: 'POST',
+      body: {},
+    });
+    expect(await screen.findByText('Отмечено вручную, без подписи.')).toBeInTheDocument();
+  });
+
+  it('видео получено по ссылке — карточка показывает кликабельную ссылку', async () => {
+    mockApiByPath({
+      '/attempts': makeReview({
+        media: [
+          {
+            id: 'm1',
+            attemptId: 'a1',
+            kind: 'link',
+            url: 'https://example.com/v',
+            receivedAt: '2026-09-12T00:00:00Z',
+          },
+        ],
+      }),
+    });
+
+    renderAt('a1');
+
+    expect(
+      await screen.findByRole('link', { name: 'Открыть ссылку на видео' }),
+    ).toHaveAttribute('href', 'https://example.com/v');
+  });
+});

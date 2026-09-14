@@ -133,7 +133,7 @@ describe('AttemptInProgress', () => {
     renderAttempt(makeAttempt());
 
     expect(
-      screen.getByText('Видео примем в боте, это следующий шаг.'),
+      screen.getByText(/Видео пришлёте боту после того, как отправите работу/),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText(/видео/i)).not.toBeInTheDocument();
   });

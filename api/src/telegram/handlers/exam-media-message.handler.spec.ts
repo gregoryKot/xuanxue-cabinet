@@ -184,6 +184,26 @@ describe('ExamMediaMessageHandler', () => {
     expect(copiedTo).toEqual(['202']);
   });
 
+  // Защита в глубину: Telegraf даёт `ctx.chat`/`ctx.message` на любом
+  // сообщении, но типы допускают их отсутствие — пересылать тогда нечего,
+  // и падать на этом бот не должен (привязка уже произошла).
+  it('в контексте нет чата — видео привязано, пересылки нет, без падения', async () => {
+    const { handler } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Форма' },
+      teacherChats: [{ chatId: '900', userId: 't1', name: 'Учитель' }],
+    });
+    const { ctx, replies, copiedTo } = fakeCtx({ video: true });
+    const ctxWithoutChat = { ...ctx, chat: undefined } as unknown as typeof ctx;
+
+    await handler.handle(ctxWithoutChat, 111, SESSION, NOW);
+
+    expect(replies).toContain(
+      'Видео получено, спасибо! Учитель уже может его посмотреть.',
+    );
+    expect(copiedTo).toEqual([]);
+  });
+
   it('нет attemptId в сессии (защита в глубину) — ничего не делает', async () => {
     const { handler, clear } = buildHandler({});
     const { ctx, replies } = fakeCtx({ video: true });

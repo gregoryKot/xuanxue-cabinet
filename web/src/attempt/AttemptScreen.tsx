@@ -4,7 +4,11 @@
 // AppShell.tsx отдаёт под него Outlet, как под «/notifications». Сам экран —
 // только загрузка/ошибка/выбор состояния; форма ответа — AttemptInProgress.tsx
 // (своя причина, см. её комментарий), терминальные статусы — AttemptSubmitted.tsx.
+// useAuthConfig — тот же хук, что LoginScreen.tsx: имя бота для deep link
+// «Отправить видео» (ADR-0023) публично и не зависит от роли, отдельного
+// маршрута под него заводить незачем.
 import { useParams } from 'react-router-dom';
+import { useAuthConfig } from '../auth/useAuthConfig';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenSectionStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
@@ -14,9 +18,19 @@ import { useAttempt } from './useAttempt';
 
 export default function AttemptScreen() {
   const { id } = useParams<{ id: string }>();
-  const { attempt, loading, error, reload, submit, submitting, submitError } = useAttempt(
-    id ?? '',
-  );
+  const {
+    attempt,
+    loading,
+    error,
+    reload,
+    submit,
+    submitting,
+    submitError,
+    addMediaLink,
+    addingMediaLink,
+    addMediaLinkError,
+  } = useAttempt(id ?? '');
+  const { config } = useAuthConfig();
 
   if (loading) {
     return (
@@ -35,7 +49,15 @@ export default function AttemptScreen() {
   }
 
   if (attempt.status !== 'in_progress') {
-    return <AttemptSubmitted attempt={attempt} />;
+    return (
+      <AttemptSubmitted
+        attempt={attempt}
+        telegramBotUsername={config?.telegramBotUsername}
+        onAddMediaLink={addMediaLink}
+        addingMediaLink={addingMediaLink}
+        addMediaLinkError={addMediaLinkError}
+      />
+    );
   }
 
   return (

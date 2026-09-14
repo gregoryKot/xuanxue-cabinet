@@ -1,9 +1,9 @@
 {
   "web": {
     "lines": 99.95,
-    "branches": 98.63,
+    "branches": 98.74,
     "functions": 99.88,
-    "statements": 99.75
+    "statements": 99.77
   },
   "shared": {
     "lines": 97.91,
