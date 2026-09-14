@@ -5,20 +5,24 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
 import { BotSessionRecord, type BotSessionKind } from './bot-session.schema';
+import { examAnswerWaitUpdate } from './exam-answer-wait';
 
 // Предпросмотр «Изменить тему» и команда /тема ждут ответ недолго — 10 минут
-// (PLAN.md §6); «Запись?» и видео экзамена ждут куда дольше — снять и найти
-// время на отправку можно не сразу, 12 часов.
+// (PLAN.md §6); «Запись?» ждёт куда дольше — снять запись можно не сразу
+// (EXAM_ANSWER_WAIT_HOURS в exam-answer-wait.ts — то же число для ответа на
+// вопрос экзамена, по той же причине).
 const TOPIC_WAIT_MINUTES = 10;
 const RECORDING_WAIT_HOURS = 12;
-const EXAM_MEDIA_WAIT_HOURS = 12;
 
 export interface BotSessionLean {
   kind: BotSessionKind;
   /** Есть только у kind 'topic'/'recording'. */
   lessonId?: Types.ObjectId;
-  /** Есть только у kind 'examMedia'. */
+  /** Есть только у kind 'examMedia'/'examText'. */
   attemptId?: Types.ObjectId;
+  /** Номер вопроса (bot-session.schema.ts) — есть у 'examText' всегда, у
+   * 'examMedia' только внутри потока вопросов бота. */
+  questionIndex?: number | null;
 }
 
 @Injectable()
@@ -46,23 +50,38 @@ export class BotSessionService {
     );
   }
 
-  /** Ждём видео экзамена после deep link `t.me/<бот>?start=exam_<attemptId>`
-   * (ADR-0023, PLAN §11 слой 4.5) — открыт ЛЮБОМУ пользователю Telegram, не
-   * через `set()`: то ведёт только `lessonId`, это — только `attemptId`. */
+  /** Ждём видео экзамена — либо после deep link
+   * `t.me/<бот>?start=exam_<attemptId>` (ADR-0023, `questionIndex` не
+   * передан), либо с экрана вопроса-видео внутри потока бота (ТЗ 4б.2 часть
+   * 2, `questionIndex` передан) — открыт ЛЮБОМУ пользователю Telegram, не
+   * через `set()`: то ведёт только `lessonId`, это — только `attemptId`.
+   * Само содержимое апдейта — exam-answer-wait.ts, комментарий там же. */
   async startExamMediaWait(
     chatId: number,
     attemptId: string,
     now: DateTime,
+    questionIndex?: number,
   ): Promise<void> {
     await this.model.updateOne(
       { chatId },
-      {
-        $set: {
-          kind: 'examMedia',
-          attemptId: new Types.ObjectId(attemptId),
-          expiresAt: now.plus({ hours: EXAM_MEDIA_WAIT_HOURS }).toJSDate(),
-        },
-      },
+      { $set: examAnswerWaitUpdate('examMedia', attemptId, questionIndex, now) },
+      { upsert: true },
+    );
+  }
+
+  /** Ждём свободный текст ответа на вопрос попытки (ТЗ 4б.2 часть 2) — экран
+   * вопроса ставит это ожидание при каждом показе text-вопроса
+   * (exam-question-render.ts), номер вопроса обязателен: без него закрывать
+   * ожидание после ответа было бы нечем адресовать. */
+  async startExamTextWait(
+    chatId: number,
+    attemptId: string,
+    questionIndex: number,
+    now: DateTime,
+  ): Promise<void> {
+    await this.model.updateOne(
+      { chatId },
+      { $set: examAnswerWaitUpdate('examText', attemptId, questionIndex, now) },
       { upsert: true },
     );
   }
@@ -74,7 +93,7 @@ export class BotSessionService {
     return this.model
       .findOne(
         { chatId, expiresAt: { $gt: now.toJSDate() } },
-        { kind: 1, lessonId: 1, attemptId: 1 },
+        { kind: 1, lessonId: 1, attemptId: 1, questionIndex: 1 },
       )
       .lean<BotSessionLean | null>();
   }

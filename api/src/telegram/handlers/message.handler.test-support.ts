@@ -21,6 +21,7 @@ import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
+import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { MessageHandler } from './message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 
@@ -40,6 +41,7 @@ export interface MessageHandlerTestContext {
   // TelegramBotService) — иначе `expect(examMediaHandler.handle)` в спеке
   // ловит eslint unbound-method: ссылка на метод класса без вызова.
   examMediaHandler: { handle: jest.Mock };
+  examTextHandler: { handle: jest.Mock };
 }
 
 export async function setupMessageHandlerTest(): Promise<MessageHandlerTestContext> {
@@ -105,6 +107,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
   // здесь — фейк с проверяемым вызовом: message.handler.access.spec.ts
   // подтверждает, что MessageHandler зовёт именно его при kind: 'examMedia'.
   const examMediaHandler = { handle: jest.fn() };
+  const examTextHandler = { handle: jest.fn() };
   const handler = new MessageHandler(
     buildPersonalChats(connection, usersService, channelModel),
     new BotSessionService(botSessionModel),
@@ -112,6 +115,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     topicRebuild,
     recordingWaitHandler,
     examMediaHandler as unknown as ExamMediaMessageHandler,
+    examTextHandler as unknown as ExamTextAnswerHandler,
   );
   return {
     memory,
@@ -126,6 +130,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     settingsModel,
     handler,
     examMediaHandler,
+    examTextHandler,
   };
 }
 

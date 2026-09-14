@@ -16,15 +16,18 @@ import { inlineButton } from '../callback-data';
 import { backToMenuButton, type BotMenu } from './bot-menu';
 import { buildOptionId, buildQuestionId } from './exam-callback-ids';
 
-// Вопросы text/video в этой части не отвечаются в боте (PLAN.md §12 слой
-// 4б.2, «дальше — следующим PR»): видео всё ещё принимает только отдельный
-// путь через deep link из кабинета (ADR-0023, один видеофайл на попытку, не
-// на вопрос) — притворяться, что его можно прислать прямо на этом экране,
-// нельзя (задача, «не выдумывай заглушку, которая притворяется рабочей»).
-const TEXT_QUESTION_NOTE =
-  'Ответ на этот вопрос принимается в кабинете — там есть поле для текста, здесь его пока нет.';
-const VIDEO_QUESTION_NOTE =
-  'Видео этого вопроса ждёт вас на экране «Отправлено» в кабинете — пришлёте его боту, когда сдадите работу.';
+// Вопросы text/video отвечаются прямо здесь (ТЗ 4б.2 часть 2): подсказка на
+// экране — вся инструкция, кнопки не нужно, ждём просто следующее сообщение
+// в чат. Ожидание ответа ставит exam-question-render.ts при каждом показе
+// этого экрана (bot-session.service.ts, kind 'examText'/'examMedia' с
+// номером вопроса) — сам экран, как и раньше, чистая функция без Mongo.
+// Кабинет остаётся запасным путём (ADR-0024): у видео там же добавляется
+// ссылка или ручная отметка учителя (ADR-0023) — это не первое, что видит
+// ученик, но никуда не делось.
+const TEXT_QUESTION_PROMPT = 'Напишите ответ сообщением — обычным текстом, прямо сюда.';
+const VIDEO_QUESTION_PROMPT =
+  'Снимите или пришлите видео сюда — видеосообщение, «кружок» или файл с видео.';
+const VIDEO_RECEIVED_NOTE = 'Видео получено. Пришлите другое — заменит это.';
 
 const BACK_LABEL = 'Назад';
 const NEXT_LABEL = 'Дальше';
@@ -80,9 +83,21 @@ function navButtons(
   return buttons;
 }
 
-function questionNote(kind: AttemptQuestionDto['kind']): string | null {
-  if (kind === 'text') return TEXT_QUESTION_NOTE;
-  if (kind === 'video') return VIDEO_QUESTION_NOTE;
+/** `answer`/`hasVideo` отражают уже сохранённое — эхо своего текста, чтобы
+ * было видно, что ответ принят (и что новое сообщение его заменит), «видео
+ * получено» вместо повторной просьбы прислать. */
+function questionNote(
+  question: AttemptQuestionDto,
+  answer: AttemptAnswerDto | undefined,
+  hasVideo: boolean,
+): string | null {
+  if (question.kind === 'text') {
+    return answer?.text
+      ? `Ваш ответ: «${answer.text}»\n\nПришлите новый — заменит этот.`
+      : TEXT_QUESTION_PROMPT;
+  }
+  if (question.kind === 'video')
+    return hasVideo ? VIDEO_RECEIVED_NOTE : VIDEO_QUESTION_PROMPT;
   return null;
 }
 
@@ -98,7 +113,8 @@ export function buildQuestionScreen(attempt: ExamAttemptDto, index: number): Bot
   const answer = findAnswer(attempt.answers, question.itemId);
   const headerLine = `Вопрос ${index + 1} из ${questions.length}`;
   const promptLines = [question.prompt, question.hint].filter(Boolean).join('\n');
-  const note = questionNote(question.kind);
+  const hasVideo = (attempt.media ?? []).length > 0;
+  const note = questionNote(question, answer, hasVideo);
   const text = [headerLine, promptLines, note].filter(Boolean).join('\n\n');
 
   const optionRows =

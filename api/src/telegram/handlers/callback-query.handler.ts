@@ -80,6 +80,7 @@ export class CallbackQueryHandler {
           chatId,
           this.usersService,
           this.examBotPorts.get(),
+          this.botSessions,
           now,
         );
         return;

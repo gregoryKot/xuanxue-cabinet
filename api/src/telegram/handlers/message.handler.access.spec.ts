@@ -10,6 +10,7 @@ import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
+import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { MessageHandler } from './message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
@@ -83,6 +84,30 @@ describe('MessageHandler — доступ и сбои', () => {
     expect(session.attemptId.toString()).toBe(attemptId.toString());
   });
 
+  it('kind examText — зовёт ExamTextAnswerHandler, даже для не-штата школы', async () => {
+    const attemptId = new Types.ObjectId();
+    await ctx.botSessionModel.create({
+      chatId: 555,
+      kind: 'examText',
+      attemptId,
+      questionIndex: 1,
+      expiresAt: NOW.plus({ hours: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx } = fakeCtx({ chatId: 555, text: 'мой ответ' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(ctx.examTextHandler.handle).toHaveBeenCalledTimes(1);
+    const [, telegramId, session] = ctx.examTextHandler.handle.mock.calls[0] as [
+      unknown,
+      number,
+      { attemptId: Types.ObjectId; questionIndex: number },
+    ];
+    expect(telegramId).toBe(555);
+    expect(session.attemptId.toString()).toBe(attemptId.toString());
+    expect(session.questionIndex).toBe(1);
+  });
+
   it('сообщение из группы — игнорируется', async () => {
     await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const { ctx: msgCtx, replies } = fakeCtx({
@@ -126,6 +151,7 @@ describe('MessageHandler — доступ и сбои', () => {
         ctx.classModel,
       ),
       { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
+      { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
     );
   }
 

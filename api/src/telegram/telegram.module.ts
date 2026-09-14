@@ -33,6 +33,7 @@ import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
 import { ExamCommandHandler } from './handlers/exam-command.handler';
 import { ExamMediaMessageHandler } from './handlers/exam-media-message.handler';
+import { ExamTextAnswerHandler } from './handlers/exam-text-answer.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
@@ -73,6 +74,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     MessageHandler,
     RecordingWaitHandler,
     ExamMediaMessageHandler,
+    ExamTextAnswerHandler,
     ExamCommandHandler,
     ExamBotPortRegistry,
     PersonalChats,

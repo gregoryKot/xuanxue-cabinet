@@ -12,11 +12,16 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import type { FieldPolicy } from '../common/field-policy';
 
-// 'examMedia' (ADR-0023, PLAN §11 слой 4.5) — ждём видео для попытки после
-// deep link `t.me/<бот>?start=exam_<attemptId>`; в отличие от topic/recording
-// заводится ЛЮБОМУ пользователю Telegram, не только штату школы (экзамен
-// сдают ученики) — несёт `attemptId`, не `lessonId`.
-const BOT_SESSION_KINDS = ['topic', 'recording', 'examMedia'] as const;
+// 'examMedia' (ADR-0023, PLAN §11 слой 4.5) — ждём видео для попытки; либо
+// после deep link `t.me/<бот>?start=exam_<attemptId>` из кабинета (тогда
+// `questionIndex` не задан), либо с экрана вопроса-видео внутри самого бота
+// (ТЗ 4б.2, часть 2 — `questionIndex` задан, после привязки бот сразу
+// показывает следующий вопрос). В отличие от topic/recording заводится
+// ЛЮБОМУ пользователю Telegram, не только штату школы (экзамен сдают
+// ученики) — несёт `attemptId`, не `lessonId`.
+// 'examText' (ТЗ 4б.2, часть 2) — ждём свободный текст ответа на вопрос
+// попытки; всегда с `questionIndex`, тем же приёмом, что examMedia.
+const BOT_SESSION_KINDS = ['topic', 'recording', 'examMedia', 'examText'] as const;
 export type BotSessionKind = (typeof BOT_SESSION_KINDS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })
@@ -36,9 +41,19 @@ export class BotSessionRecord {
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   lessonId?: Types.ObjectId;
 
-  // Только 'examMedia'.
+  // Только 'examMedia'/'examText'.
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   attemptId?: Types.ObjectId;
+
+  // Номер вопроса в снимке попытки (attempt.blocks[].questions[], НЕ itemId —
+  // exam-callback-ids.ts объясняет, почему номером), не своим id: всегда у
+  // 'examText', у 'examMedia' — только когда вопрос открыт из потока вопросов
+  // бота, а не по deep link из кабинета (см. комментарий у kind выше).
+  // `null`, не просто отсутствие поля, у 'examMedia' без вопроса — иначе
+  // старый номер вопроса пережил бы переключение с потока бота на deep link
+  // того же чата (bot-session.service.ts, startExamMediaWait).
+  @Prop({ type: Number, required: false })
+  questionIndex?: number | null;
 
   @Prop({ type: Date, required: true })
   expiresAt!: Date;

@@ -1,11 +1,13 @@
 // Видео экзамена сообщением боту (ADR-0023, docs/PLAN.md §11 слой 4.5) —
-// диспетчер message.handler.ts зовёт после /start exam_<attemptId>
-// (StartHandler заводит ожидание kind: 'examMedia' в BotSessionService,
-// единственном хранилище диалоговых ожиданий бота, CLAUDE.md «не заводи
-// второе»). В отличие от темы/записи ждём ЛЮБОГО пользователя, не только
-// штат школы — экзамен сдают ученики; привязка проверяется в
-// MediaAssetsService (SECURITY §3, ADR-0023): чужой или несуществующий
-// attemptId не даёт ничего.
+// диспетчер message.handler.ts зовёт либо после /start exam_<attemptId>
+// (StartHandler, deep link из кабинета), либо с экрана вопроса-видео внутри
+// потока вопросов бота (ТЗ 4б.2 часть 2) — оба заводят ожидание kind:
+// 'examMedia' в BotSessionService, единственном хранилище диалоговых
+// ожиданий бота (CLAUDE.md «не заводи второе»), различаются `questionIndex`
+// (bot-session.schema.ts, комментарий у kind). В отличие от темы/записи ждём
+// ЛЮБОГО пользователя, не только штат школы — экзамен сдают ученики;
+// привязка проверяется в MediaAssetsService (SECURITY §3, ADR-0023): чужой
+// или несуществующий attemptId не даёт ничего.
 //
 // Пересылка учителю — `copyMessage` по `file_id`, без перезаливки (ADR-0023):
 // подпись («кто, какой экзамен») шлём отдельным сообщением ДО копии — у
@@ -20,7 +22,9 @@ import { MediaAssetsService } from '../../media/media-assets.service';
 import { UsersService } from '../../users/users.service';
 import type { BotSessionLean } from '../bot-session.service';
 import { BotSessionService } from '../bot-session.service';
+import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { PersonalChats, type PersonalChat } from '../personal-chats';
+import { renderExamMediaAnswer } from './exam-media-answer';
 import { extractExamVideoSource } from './exam-video-source';
 
 const NOT_A_VIDEO_MESSAGE =
@@ -38,6 +42,7 @@ export class ExamMediaMessageHandler {
     private readonly mediaAssets: MediaAssetsService,
     private readonly usersService: UsersService,
     private readonly personalChats: PersonalChats,
+    private readonly examBotPorts: ExamBotPortRegistry,
   ) {}
 
   async handle(
@@ -66,8 +71,25 @@ export class ExamMediaMessageHandler {
       return;
     }
 
-    await ctx.reply(RECEIVED_MESSAGE).catch(() => null);
     await this.forwardToTeachers(ctx, user?.name ?? 'Ученик', attached.examTitle, now);
+
+    // Вопрос-видео потока бота (ТЗ 4б.2 часть 2) — сразу следующий экран,
+    // не отдельное «получено» (сам переход это и подтверждает); deep link
+    // из кабинета (ADR-0023) — экрана вопроса нет, обычное подтверждение.
+    if (session.questionIndex != null && user) {
+      await renderExamMediaAnswer(
+        ctx,
+        this.examBotPorts.get(),
+        this.botSessions,
+        telegramId,
+        user,
+        session.attemptId.toString(),
+        session.questionIndex,
+        now,
+      );
+      return;
+    }
+    await ctx.reply(RECEIVED_MESSAGE).catch(() => null);
   }
 
   private async forwardToTeachers(

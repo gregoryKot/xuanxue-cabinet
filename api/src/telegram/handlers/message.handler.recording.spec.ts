@@ -10,6 +10,7 @@ import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
+import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { MessageHandler } from './message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
@@ -272,5 +273,6 @@ function buildHandlerWithFailingAddRecording(
       ctx.classModel,
     ),
     { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
+    { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
   );
 }

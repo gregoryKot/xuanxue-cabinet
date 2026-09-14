@@ -5,7 +5,11 @@
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
-import type { BotSessionLean, BotSessionService } from '../bot-session.service';
+import type { ExamAttemptDto } from '@xuanxue/shared';
+import type { BotSessionLean } from '../bot-session.service';
+import { fakeBotSessionService } from '../bot-session.service.test-support';
+import { ExamBotPortRegistry } from '../exam-bot-port.registry';
+import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import type { PersonalChats } from '../personal-chats';
 import type { MediaAssetsService } from '../../media/media-assets.service';
 import type { UsersService } from '../../users/users.service';
@@ -63,9 +67,14 @@ function buildHandler(overrides: {
   userId?: string;
   attached?: { media: { id: string }; examTitle: string } | null;
   teacherChats?: { chatId: string; userId: string; name: string }[];
-}): { handler: ExamMediaMessageHandler; clear: jest.Mock } {
-  const clear = jest.fn().mockResolvedValue(undefined);
-  const botSessions = { clear } as unknown as BotSessionService;
+  loadOwnAttempt?: ExamAttemptDto | null;
+}): {
+  handler: ExamMediaMessageHandler;
+  clear: jest.Mock;
+  registry: ExamBotPortRegistry;
+} {
+  const botSessions = fakeBotSessionService();
+  const clear = botSessions.clear;
   const mediaAssets = {
     attachTelegramVideo: jest.fn().mockResolvedValue(overrides.attached ?? null),
   } as unknown as MediaAssetsService;
@@ -79,20 +88,34 @@ function buildHandler(overrides: {
   const personalChats = {
     list: jest.fn().mockResolvedValue(overrides.teacherChats ?? []),
   } as unknown as PersonalChats;
+  const registry = new ExamBotPortRegistry();
+  registry.set(
+    fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(overrides.loadOwnAttempt ?? null),
+    }),
+  );
   return {
     handler: new ExamMediaMessageHandler(
       botSessions,
       mediaAssets,
       usersService,
       personalChats,
+      registry,
     ),
     clear,
+    registry,
   };
 }
 
 const SESSION: BotSessionLean = {
   kind: 'examMedia',
   attemptId: new Types.ObjectId(ATTEMPT_ID),
+};
+
+const IN_FLOW_SESSION: BotSessionLean = {
+  kind: 'examMedia',
+  attemptId: new Types.ObjectId(ATTEMPT_ID),
+  questionIndex: 0,
 };
 
 describe('ExamMediaMessageHandler', () => {
@@ -212,5 +235,49 @@ describe('ExamMediaMessageHandler', () => {
 
     expect(replies).toEqual([]);
     expect(clear).not.toHaveBeenCalled();
+  });
+
+  it('сессия с questionIndex (поток вопросов бота) — следующий экран, не «получено»', async () => {
+    const attempt: ExamAttemptDto = {
+      id: ATTEMPT_ID,
+      examId: 'e1',
+      examTitle: 'Форма',
+      userId: 'u1',
+      status: 'in_progress',
+      blocks: [
+        {
+          id: 'b1',
+          title: '',
+          required: true,
+          questions: [
+            { itemId: 'i1', version: 1, kind: 'video', prompt: 'Видео', options: [] },
+          ],
+        },
+      ],
+      answers: [],
+      startedAt: NOW.toISO() ?? '',
+      expired: false,
+      media: [
+        {
+          id: 'm1',
+          attemptId: ATTEMPT_ID,
+          kind: 'telegram',
+          receivedAt: NOW.toISO() ?? '',
+        },
+      ],
+    };
+    const { handler } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Форма' },
+      loadOwnAttempt: attempt,
+    });
+    const { ctx, replies } = fakeCtx({ video: true });
+
+    await handler.handle(ctx, 111, IN_FLOW_SESSION, NOW);
+
+    expect(replies).not.toContain(
+      'Видео получено, спасибо! Учитель уже может его посмотреть.',
+    );
+    expect(replies.some((r) => r.includes('Видео получено.'))).toBe(true);
   });
 });
