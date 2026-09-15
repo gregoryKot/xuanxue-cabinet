@@ -11,9 +11,11 @@ import {
 import { fakeResponse } from '../test-support/http-fakes';
 import { SettingsService } from '../settings/settings.service';
 import type { UserLean } from '../users/users.service';
+import { InviteLinkService } from '../users/invite-link.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EmailAuthService } from './email-auth.service';
+import { JoinByInviteService } from './join-by-invite.service';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
@@ -61,6 +63,18 @@ async function buildController(
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
       { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
       { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },
+      {
+        provide: InviteLinkService,
+        useValue: {
+          isValid: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
+        },
+      },
+      {
+        provide: JoinByInviteService,
+        useValue: {
+          join: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
+        },
+      },
     ],
   }).compile();
   return module.get(AuthController);
@@ -140,6 +154,70 @@ describe('AuthController.logout', () => {
     const res = fakeResponse();
     controller.logout(res);
     expect(res.headers['Set-Cookie']).toBe('session=; Max-Age=0');
+  });
+});
+
+describe('AuthController.checkInvite', () => {
+  it('проксирует InviteLinkService.isValid()', async () => {
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: {} },
+        { provide: TelegramAuthService, useValue: {} },
+        { provide: EmailAuthService, useValue: {} },
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SettingsService, useValue: {} },
+        { provide: TelegramBotService, useValue: {} },
+        {
+          provide: InviteLinkService,
+          useValue: {
+            isValid: (code: string) => Promise.resolve(code === 'a'.repeat(32)),
+          },
+        },
+        { provide: JoinByInviteService, useValue: {} },
+      ],
+    }).compile();
+    const controller = module.get(AuthController);
+
+    await expect(controller.checkInvite({ code: 'a'.repeat(32) })).resolves.toEqual({
+      valid: true,
+    });
+    await expect(controller.checkInvite({ code: 'b'.repeat(32) })).resolves.toEqual({
+      valid: false,
+    });
+  });
+});
+
+describe('AuthController.join', () => {
+  it('передаёт код и пользователя сессии в JoinByInviteService.join()', async () => {
+    let received: { userId: string; code: string } | undefined;
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: {} },
+        { provide: TelegramAuthService, useValue: {} },
+        { provide: EmailAuthService, useValue: {} },
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SettingsService, useValue: {} },
+        { provide: TelegramBotService, useValue: {} },
+        { provide: InviteLinkService, useValue: {} },
+        {
+          provide: JoinByInviteService,
+          useValue: {
+            join: (user: UserLean, code: string) => {
+              received = { userId: user.id, code };
+              return Promise.resolve({ ...USER, status: 'active' });
+            },
+          },
+        },
+      ],
+    }).compile();
+    const controller = module.get(AuthController);
+
+    const result = await controller.join({ code: 'a'.repeat(32) }, USER);
+
+    expect(received).toEqual({ userId: 'u1', code: 'a'.repeat(32) });
+    expect(result.status).toBe('active');
   });
 });
 

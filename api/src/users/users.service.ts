@@ -27,6 +27,7 @@ export interface UserLean {
   tz: string;
   status: UserStatus;
   lastLoginAt?: Date;
+  joinedViaInviteAt?: Date;
 }
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
@@ -51,6 +52,7 @@ export function toLean(doc: UserDoc): UserLean {
     tz: doc.tz,
     status: doc.status,
     lastLoginAt: doc.lastLoginAt,
+    joinedViaInviteAt: doc.joinedViaInviteAt,
   };
 }
 
@@ -148,5 +150,16 @@ export class UsersService {
    * считать «сейчас», сервис не трогает Date.now()/DateTime.utc() сам. */
   async touchLogin(id: string, now: DateTime): Promise<void> {
     await this.model.updateOne({ _id: id }, { $set: { lastLoginAt: now.toJSDate() } });
+  }
+
+  /** Пометка входа по ссылке-приглашению школы (ADR-0030,
+   * join-by-invite.service.ts) — число «По ссылке пришли» на «Людях»
+   * строится по этому полю. Время — параметром, та же причина, что у
+   * touchLogin выше. */
+  async markJoinedViaInvite(id: string, now: DateTime): Promise<void> {
+    await this.model.updateOne(
+      { _id: id },
+      { $set: { joinedViaInviteAt: now.toJSDate() } },
+    );
   }
 }

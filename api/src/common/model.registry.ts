@@ -43,6 +43,11 @@ import {
 } from '../exams/exam-grading.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import {
+  InviteLinkRecord,
+  InviteLinkSchema,
+  INVITE_LINK_FIELD_POLICY,
+} from '../users/invite-link.schema';
+import {
   EmailLoginTokenRecord,
   EmailLoginTokenSchema,
   EMAIL_LOGIN_TOKEN_FIELD_POLICY,
@@ -114,6 +119,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     fieldPolicy: EXAM_GRADING_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
+  {
+    name: InviteLinkRecord.name,
+    schema: InviteLinkSchema,
+    fieldPolicy: INVITE_LINK_FIELD_POLICY,
+  },
   {
     name: EmailLoginTokenRecord.name,
     schema: EmailLoginTokenSchema,

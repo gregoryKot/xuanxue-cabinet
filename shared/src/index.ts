@@ -230,6 +230,16 @@ export {
   SELF_DELETE_MESSAGE,
   LEADER_NOT_FOUND_MESSAGE,
 } from './users';
+export type {
+  InviteLinkDto,
+  JoinByInviteInput,
+  CheckInviteResultDto,
+} from './invite-link';
+export {
+  INVITE_CODE_RE,
+  INVITE_LINK_NOT_AVAILABLE_MESSAGE,
+  INVITE_LINK_INVALID_MESSAGE,
+} from './invite-link';
 export { FIELD_LABELS_RU } from './field-labels';
 export type {
   NotificationKind,

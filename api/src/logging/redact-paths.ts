@@ -13,6 +13,10 @@ export const REDACT_PATHS: string[] = [
   'req.headers["x-telegram-bot-api-secret-token"]',
   // Email — PII, даже если пришёл в теле легитимного запроса (вход по ссылке).
   'req.body.email',
+  // Код ссылки-приглашения школы (ADR-0030, POST /auth/join, /auth/join/check,
+  // /auth/email/request) — capability-URL, тот же уровень, что email/hash.
+  'req.body.code',
+  'req.body.inviteCode',
   // Подпись виджета Telegram Login (POST /auth/telegram) — не секрет после
   // проверки (её вычисляют из открытых полей и BOT_TOKEN, не наоборот), но
   // редакция дёшева: путь на два уровня (req.body.hash), *.hash ниже её не

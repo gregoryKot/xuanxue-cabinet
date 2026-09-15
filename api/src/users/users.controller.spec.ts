@@ -1,8 +1,9 @@
 // Test.createTestingModule с фейком сервиса — образец broadcasts.controller.spec.ts:
 // без HTTP, без Mongo. Роли/CSRF/404 проверяет e2e (users.e2e-spec.ts).
 import { Test } from '@nestjs/testing';
-import type { TeacherOptionDto, UserDto } from '@xuanxue/shared';
+import type { InviteLinkDto, TeacherOptionDto, UserDto } from '@xuanxue/shared';
 import type { UserLean } from './users.service';
+import { InviteLinkService } from './invite-link.service';
 import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserRolesService } from './user-roles.service';
@@ -28,6 +29,7 @@ async function buildController(
   service: Partial<UserRolesService> = {},
   teachersService: Partial<TeachersService> = {},
   deletionService: Partial<UserDeletionService> = {},
+  inviteLinkService: Partial<InviteLinkService> = {},
 ): Promise<UsersController> {
   const module = await Test.createTestingModule({
     controllers: [UsersController],
@@ -35,6 +37,7 @@ async function buildController(
       { provide: UserRolesService, useValue: service },
       { provide: TeachersService, useValue: teachersService },
       { provide: UserDeletionService, useValue: deletionService },
+      { provide: InviteLinkService, useValue: inviteLinkService },
     ],
   }).compile();
   return module.get(UsersController);
@@ -57,6 +60,7 @@ describe('UsersController', () => {
         status: 'active',
         hasTelegram: false,
         lastLoginAt: undefined,
+        joinedViaInvite: false,
       },
     ]);
   });
@@ -91,5 +95,27 @@ describe('UsersController', () => {
 
     expect(listTeachers).toHaveBeenCalledWith();
     expect(result).toEqual(teachers);
+  });
+
+  it('getInviteLink() делегирует InviteLinkService.getCurrent()', async () => {
+    const dto: InviteLinkDto = { url: 'https://xuanxue.su/join/abc' };
+    const getCurrent = jest.fn().mockResolvedValue(dto);
+    const controller = await buildController({}, {}, {}, { getCurrent });
+
+    const result = await controller.getInviteLink();
+
+    expect(getCurrent).toHaveBeenCalledWith();
+    expect(result).toEqual(dto);
+  });
+
+  it('rotateInviteLink() передаёт id вызывающего из сессии в rotate()', async () => {
+    const dto: InviteLinkDto = { url: 'https://xuanxue.su/join/def' };
+    const rotate = jest.fn().mockResolvedValue(dto);
+    const controller = await buildController({}, {}, {}, { rotate });
+
+    const result = await controller.rotateInviteLink(ADMIN);
+
+    expect(rotate).toHaveBeenCalledWith('admin-1');
+    expect(result).toEqual(dto);
   });
 });

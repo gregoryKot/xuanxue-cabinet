@@ -65,3 +65,4 @@
 | [0027](0027-student-personal-channel-not-broadcast.md)   | Личный канал ученика — не канал школы, не получатель рассылок           |
 | [0028](0028-telegram-login-redirect-everywhere.md)       | Вход через Telegram — переходом вкладки на любом устройстве, без попапа |
 | [0029](0029-email-login-via-resend-fetch.md)             | Вход по email-ссылке: Resend через fetch, без SDK                       |
+| [0030](0030-school-invite-link.md)                       | Ссылка-приглашение школы — третий путь `invited` → `active`             |

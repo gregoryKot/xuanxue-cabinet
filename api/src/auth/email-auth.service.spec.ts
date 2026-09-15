@@ -7,6 +7,7 @@ import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import type { EmailLoginUserService } from '../users/email-login-user.service';
+import type { InviteLinkService } from '../users/invite-link.service';
 import type { UserLean, UsersService } from '../users/users.service';
 import type { MailService } from '../mail/mail.service';
 import type { AuthService } from './auth.service';
@@ -80,12 +81,19 @@ function fakeAuthService(): AuthService {
   } as unknown as AuthService;
 }
 
+function fakeInviteLink(
+  isValid: (code: string) => Promise<boolean> = () => Promise.resolve(false),
+): InviteLinkService {
+  return { isValid } as unknown as InviteLinkService;
+}
+
 interface BuildOptions {
   config?: ConfigService;
   tokens?: EmailLoginTokenService;
   mail?: MailService;
   emailUsers?: EmailLoginUserService;
   users?: UsersService;
+  inviteLink?: InviteLinkService;
 }
 
 function buildService(options: BuildOptions = {}): EmailAuthService {
@@ -96,6 +104,7 @@ function buildService(options: BuildOptions = {}): EmailAuthService {
     options.emailUsers ?? fakeEmailUsers({}),
     options.users ?? fakeUsersService(),
     fakeAuthService(),
+    options.inviteLink ?? fakeInviteLink(),
   );
 }
 
@@ -157,6 +166,41 @@ describe('EmailAuthService.requestLink', () => {
 
     expect(issuedFor).toBe('ученик@example.com');
     expect(sentTo).toBe('ученик@example.com');
+    expect(sentLink).toBe(`https://xuanxue.su/login/email?token=${'a'.repeat(64)}`);
+  });
+
+  it('валидный inviteCode — ссылка содержит join=<code> (ADR-0030)', async () => {
+    let sentLink: string | undefined;
+    const code = 'b'.repeat(32);
+    const service = buildService({
+      tokens: fakeTokens(() => Promise.resolve('a'.repeat(64))),
+      mail: fakeMail((input) => {
+        sentLink = input.link;
+        return Promise.resolve();
+      }),
+      inviteLink: fakeInviteLink((c) => Promise.resolve(c === code)),
+    });
+
+    await service.requestLink('a@example.com', NOW, code);
+
+    expect(sentLink).toBe(
+      `https://xuanxue.su/login/email?token=${'a'.repeat(64)}&join=${code}`,
+    );
+  });
+
+  it('невалидный inviteCode — молча игнорируется, ссылка без join=', async () => {
+    let sentLink: string | undefined;
+    const service = buildService({
+      tokens: fakeTokens(() => Promise.resolve('a'.repeat(64))),
+      mail: fakeMail((input) => {
+        sentLink = input.link;
+        return Promise.resolve();
+      }),
+      inviteLink: fakeInviteLink(() => Promise.resolve(false)),
+    });
+
+    await service.requestLink('a@example.com', NOW, 'c'.repeat(32));
+
     expect(sentLink).toBe(`https://xuanxue.su/login/email?token=${'a'.repeat(64)}`);
   });
 

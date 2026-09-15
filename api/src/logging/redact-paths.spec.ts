@@ -23,7 +23,13 @@ function logSample(): Record<string, unknown> {
           cookie: 'sid=1',
           'x-telegram-bot-api-secret-token': 'webhook-secret',
         },
-        body: { email: 'user@example.com', name: 'Мария', hash: 'a'.repeat(64) },
+        body: {
+          email: 'user@example.com',
+          name: 'Мария',
+          hash: 'a'.repeat(64),
+          code: 'b'.repeat(32),
+          inviteCode: 'c'.repeat(32),
+        },
       },
       res: {
         headers: {
@@ -85,6 +91,8 @@ describe('REDACT_PATHS', () => {
     expect(headers['x-telegram-bot-api-secret-token']).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
     expect(body.hash).toBe('[Redacted]');
+    expect(body.code).toBe('[Redacted]');
+    expect(body.inviteCode).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');
     expect(user.accessToken).toBe('[Redacted]');

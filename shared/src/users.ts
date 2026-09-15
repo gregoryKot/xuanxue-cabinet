@@ -18,6 +18,10 @@ export interface UserDto {
    * не называется `telegramId`, чтобы не тянуть за собой сам идентификатор. */
   hasTelegram: boolean;
   lastLoginAt?: string;
+  /** Стал `active` по ссылке-приглашению школы, а не ручным подтверждением
+   * или членством в группе (ADR-0030) — число «По ссылке пришли» на
+   * «Людях» строится по этому полю. */
+  joinedViaInvite: boolean;
 }
 
 export interface ListUsersQuery {

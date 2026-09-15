@@ -13,6 +13,7 @@ import {
 } from '@xuanxue/shared';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import { EmailLoginUserService } from '../users/email-login-user.service';
+import { InviteLinkService } from '../users/invite-link.service';
 import { UsersService, type UserLean } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { AuthService } from './auth.service';
@@ -32,6 +33,7 @@ export class EmailAuthService {
     private readonly emailUsers: EmailLoginUserService,
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
+    private readonly inviteLinkService: InviteLinkService,
   ) {}
 
   /** Email-вход подключён конфигурацией — общая проверка для
@@ -49,8 +51,12 @@ export class EmailAuthService {
   /** Ответ клиенту один и тот же независимо от исхода (контроллер): здесь —
    * либо реально отправленное письмо, либо тихий выход по cooldown, либо
    * NotAvailableError, если фича выключена конфигурацией. Существование
-   * аккаунта нигде из этого не раскрывается. */
-  async requestLink(email: string, now: DateTime): Promise<void> {
+   * аккаунта нигде из этого не раскрывается. `inviteCode` (ADR-0030,
+   * страница `/join/:code`) — невалидный код молча игнорируется (та же
+   * причина: не раскрывать наружу, какой код настоящий), валидный уходит в
+   * ссылку письма параметром `join`, `/login/email` потом зовёт `/auth/join`
+   * сам после verify(). */
+  async requestLink(email: string, now: DateTime, inviteCode?: string): Promise<void> {
     const publicUrl = this.readPublicUrl();
     if (!publicUrl) throw new NotAvailableError(EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE);
 
@@ -60,7 +66,11 @@ export class EmailAuthService {
     // (EMAIL_LOGIN_RESEND_COOLDOWN_MIN); ответ клиенту не меняется.
     if (!token) return;
 
-    const link = `${publicUrl}/login/email?token=${token}`;
+    const join =
+      inviteCode && (await this.inviteLinkService.isValid(inviteCode))
+        ? `&join=${inviteCode}`
+        : '';
+    const link = `${publicUrl}/login/email?token=${token}${join}`;
     await this.mail.sendLoginLink({ to: normalized, link });
   }
 

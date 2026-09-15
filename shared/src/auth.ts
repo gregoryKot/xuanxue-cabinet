@@ -86,9 +86,13 @@ export interface TelegramLoginInput {
 }
 
 /** Тело `POST /auth/email/request` (ADR-0005, ADR-0029) — ответ один и тот
- * же для известного и неизвестного email (SECURITY §2). */
+ * же для известного и неизвестного email (SECURITY §2). `inviteCode` —
+ * опциональный код ссылки-приглашения (ADR-0030), пришедший со страницы
+ * `/join/:code`: неверный код тут молча игнорируется — письмо всё равно
+ * уходит, существование ссылок наружу не раскрываем. */
 export interface RequestEmailLoginInput {
   email: string;
+  inviteCode?: string;
 }
 
 /** Тело `POST /auth/email/verify` — токен из ссылки в письме, 64 hex. */

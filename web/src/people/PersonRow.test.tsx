@@ -16,6 +16,7 @@ function makePerson(overrides: Partial<UserDto> = {}): UserDto {
     status: 'active',
     hasTelegram: true,
     lastLoginAt: '2026-09-01T10:00:00Z',
+    joinedViaInvite: false,
     ...overrides,
   };
 }
