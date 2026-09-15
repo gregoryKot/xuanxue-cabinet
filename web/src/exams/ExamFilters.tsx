@@ -8,13 +8,10 @@
 // уже загруженному списку (examSearch.ts): бэкенд текстовый поиск по title
 // не отдаёт, заводить новый эндпоинт ради строки заголовка не стоит.
 import type { CSSProperties } from 'react';
-import { EXAM_STATUSES, type ExamStatus } from '@xuanxue/shared';
+import { EXAM_STATUSES } from '@xuanxue/shared';
 import { inputStyle } from '../components/Field';
 import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
-
-export interface ExamFilterValues {
-  status: ExamStatus | '';
-}
+import type { ExamListFilters } from './useExams';
 
 const ALL_OPTION = { status: '' as const, label: 'Все' };
 const SEARCH_LABEL = 'Поиск по названию';
@@ -64,8 +61,8 @@ const searchWrapStyle: CSSProperties = {
 const searchInputStyle: CSSProperties = { ...inputStyle, width: '100%' };
 
 interface ExamFiltersProps {
-  values: ExamFilterValues;
-  onChange: (values: ExamFilterValues) => void;
+  values: ExamListFilters;
+  onChange: (values: ExamListFilters) => void;
   search: string;
   onSearchChange: (search: string) => void;
 }

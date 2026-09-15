@@ -1,12 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ExamFilters, type ExamFilterValues } from './ExamFilters';
+import { ExamFilters } from './ExamFilters';
+import type { ExamListFilters } from './useExams';
 
-const EMPTY: ExamFilterValues = { status: '' };
+const EMPTY: ExamListFilters = { status: '' };
 
 function renderFilters(
-  values: ExamFilterValues = EMPTY,
+  values: ExamListFilters = EMPTY,
   onChange = vi.fn(),
   search = '',
   onSearchChange = vi.fn(),

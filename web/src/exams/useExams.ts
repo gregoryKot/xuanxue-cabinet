@@ -13,9 +13,12 @@ import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить экзамены. Попробуйте ещё раз.';
 
-export interface ExamFilters {
+/** Фильтры списка форм — одно определение на хук и на строку фильтров
+ * (ExamFilters.tsx): раньше та же форма объявлялась там вторым именем
+ * `ExamFilterValues`, и два имени одной вещи расходились бы при первой же
+ * правке. Имя не `ExamFilters` — так называется компонент строки фильтров. */
+export interface ExamListFilters {
   status: ExamStatus | '';
-  level: string;
 }
 
 export interface UseExamsResult {
@@ -28,14 +31,13 @@ export interface UseExamsResult {
   remove: (id: string) => Promise<void>;
 }
 
-function buildListPath(filters: ExamFilters): string {
+function buildListPath(filters: ExamListFilters): string {
   const params = [`limit=${LIST_LIMIT_MAX}`];
   if (filters.status) params.push(`status=${filters.status}`);
-  if (filters.level) params.push(`level=${encodeURIComponent(filters.level)}`);
   return `/exams?${params.join('&')}`;
 }
 
-export function useExams(filters: ExamFilters): UseExamsResult {
+export function useExams(filters: ExamListFilters): UseExamsResult {
   const { data, loading, error, reload } = useAbortableFetch(
     (signal) => apiFetch<ExamDto[]>(buildListPath(filters), { signal }),
     LOAD_ERROR_MESSAGE,
@@ -50,7 +52,7 @@ export function useExams(filters: ExamFilters): UseExamsResult {
       return;
     }
     void reload();
-  }, [filters.status, filters.level, reload]);
+  }, [filters.status, reload]);
 
   const create = useCallback(
     async (input: CreateExamInput) => {

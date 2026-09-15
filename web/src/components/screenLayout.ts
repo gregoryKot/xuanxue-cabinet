@@ -57,3 +57,16 @@ export const screenHintStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',
 };
+
+/** Текстовая ссылка-переход внутри экрана («Открыть очередь», «Открыть
+ * банк»). Заводится здесь, а не рядом с первым использованием: у `<a>` нет
+ * своей строки в index.css, поэтому без явного цвета браузер красит ссылку
+ * системным синим с подчёркиванием — мимо палитры (docs/adr/0031). Линия
+ * снизу вместо подчёркивания: подчёркивание вплотную режет выносные элементы
+ * кириллицы (у, р, ц), а отступ до линии их пропускает. */
+export const textLinkStyle: CSSProperties = {
+  color: 'var(--ink)',
+  textDecoration: 'none',
+  borderBottom: '1px solid var(--control-border)',
+  paddingBottom: 2,
+};

@@ -18,18 +18,18 @@ import { SkeletonList } from '../components/Skeleton';
 import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { ExamCard } from './ExamCard';
-import { ExamFilters, type ExamFilterValues } from './ExamFilters';
+import { ExamFilters } from './ExamFilters';
 import { ExamsSectionStats } from './ExamsSectionStats';
 import { ExamSheet } from './ExamSheet';
 import { matchesExamSearch } from './examSearch';
-import { useExams } from './useExams';
+import { useExams, type ExamListFilters } from './useExams';
 
 const EXPLANATION =
   'Форма собирается из вопросов банка блоками — один вопрос можно поставить в несколько экзаменов.';
 const EMPTY_MESSAGE = 'Экзаменов пока нет. Соберите первый из вопросов банка.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами экзаменов нет.';
 
-const EMPTY_FILTERS: ExamFilterValues = { status: '' };
+const EMPTY_FILTERS: ExamListFilters = { status: '' };
 
 const headerRowStyle: CSSProperties = {
   display: 'flex',
@@ -47,12 +47,9 @@ const titleColumnStyle: CSSProperties = {
 const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 
 export default function ExamsScreen() {
-  const [filters, setFilters] = useState<ExamFilterValues>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<ExamListFilters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
-  const { exams, loading, error, reload, create, update, remove } = useExams({
-    status: filters.status,
-    level: '',
-  });
+  const { exams, loading, error, reload, create, update, remove } = useExams(filters);
   const gradingQueue = useGradingQueue();
   const itemStatsSummary = useExamItemStatsSummary();
   const [sheetOpen, setSheetOpen] = useState(false);

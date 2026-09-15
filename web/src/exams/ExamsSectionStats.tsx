@@ -13,6 +13,7 @@
 // вопросы (CLAUDE.md «Демо-данные в рантайм-коде не живут»).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { textLinkStyle } from '../components/screenLayout';
 import { formatExamItemsLinkHint } from '../exam-items/examItemsLinkHint';
 import {
   formatGradingQueueCountLabel,
@@ -50,10 +51,9 @@ const numberLabelStyle: CSSProperties = {
 };
 const captionStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 const linkStyle: CSSProperties = {
+  ...textLinkStyle,
   alignSelf: 'flex-start',
   fontSize: 15,
-  borderBottom: '1px solid var(--control-border)',
-  paddingBottom: 2,
 };
 
 export function ExamsSectionStats({
