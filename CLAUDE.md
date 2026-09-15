@@ -124,6 +124,8 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-robot-phrases.mjs` — канцелярит и «это не X, это Y» в user-facing тексте.
 - `check-route-collisions.mjs` — один маршрут, один контроллер.
 - `check-env-example.mjs` — каждая читаемая env-переменная описана в `.env.example`.
+- `check-shared-exports.mjs` — имя из барабана `shared/src/index.ts`, которое никто не
+  импортирует, роняет CI (`knip` этого не видит: `api` и `web` тянут `dist`, не исходники).
 - `knip` — неиспользуемые файлы, экспорты и зависимости роняют CI.
 
 ### 6. Дубли и мёртвый код

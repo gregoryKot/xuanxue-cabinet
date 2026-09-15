@@ -34,7 +34,7 @@ export interface ExamItemOptionInput {
  * (prompt/hint/criteria/options) кладёт сюда снимок ДО правки, а `version`
  * поднимается на 1 (ADR-0022: сданные работы ссылаются на конкретную
  * редакцию, правка вопроса не должна менять смысл уже сданного). */
-export interface ExamItemVersionDto {
+interface ExamItemVersionDto {
   version: number;
   prompt: string;
   hint?: string;
