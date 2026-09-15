@@ -167,6 +167,16 @@ describe('App', () => {
     expect(await screen.findByText(/собирается из вопросов банка/)).toBeInTheDocument();
   });
 
+  it('учитель на /exams/new — маршрут редактора экзамена (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/exam-items': [] });
+
+    renderAt('/exams/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Новый экзамен' }),
+    ).toBeInTheDocument();
+  });
+
   it('учитель на /grading — маршрут «Проверка работ» открывает GradingQueueScreen', async () => {
     mockRoute(TEACHER, { '/attempts': [] });
 

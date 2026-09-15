@@ -1,0 +1,115 @@
+// Поиск вопроса в банке — всегда на месте под списком выбранных (макет
+// Form.dc.html). Кнопки-переключателя «показать/скрыть список вопросов»
+// больше нет: она занимала весь экран и прятала главное действие раздела.
+// Уже добавленные вопросы отсюда исчезают, а не показываются неактивными —
+// список и так короче.
+import { useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
+import { EXAM_LIMITS, type ExamItemDto } from '@xuanxue/shared';
+import { inputStyle } from '../components/Field';
+import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { textLinkButtonStyle, textLinkStyle } from '../components/screenLayout';
+import { formatExamItemMeta } from '../exam-items/examItemLabels';
+import { filterBankCandidates } from './examQuestionList';
+
+const SEARCH_LABEL = 'Найти вопрос в банке — по тексту или тегу';
+// Банк ещё грузится: список пуст независимо от того, есть ли вопросы, и это
+// не повод заявлять «в банке пусто» (баг с прода — учитель завёл вопросы и не
+// нашёл их здесь, CLAUDE.md «Загрузка»).
+const LOADING_TEXT = 'Загружаем вопросы…';
+const EMPTY_BANK_TEXT = 'В банке пока нет вопросов';
+const BANK_LINK_TEXT = 'Открыть банк вопросов';
+const NO_MATCH_TEXT = 'По этому запросу ничего не нашлось.';
+const ALL_CHOSEN_TEXT = 'Все вопросы банка уже в экзамене.';
+const LIMIT_TEXT = `Больше ${EXAM_LIMITS.itemsPerBlockMax} вопросов в один экзамен не поместится.`;
+
+const wrapStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
+const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
+const rowStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+  padding: '10px 0',
+  borderBottom: '1px solid var(--line)',
+};
+const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
+const noteStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
+
+interface ExamBankSearchProps {
+  bankItems: ExamItemDto[] | null;
+  bankLoading: boolean;
+  bankError: string | null;
+  onRetryBank: () => void;
+  chosenIds: string[];
+  onAdd: (itemId: string) => void;
+}
+
+export function ExamBankSearch({
+  bankItems,
+  bankLoading,
+  bankError,
+  onRetryBank,
+  chosenIds,
+  onAdd,
+}: ExamBankSearchProps) {
+  const [query, setQuery] = useState('');
+  const items = bankItems ?? [];
+  const candidates = filterBankCandidates(items, query, chosenIds);
+  const hasPublished = items.some((item) => item.status === 'published');
+  const atLimit = chosenIds.length >= EXAM_LIMITS.itemsPerBlockMax;
+
+  if (bankError) return <LoadErrorBanner message={bankError} onRetry={onRetryBank} />;
+
+  return (
+    <div style={wrapStyle}>
+      <label>
+        <span className="xuanxue-sr-only">{SEARCH_LABEL}</span>
+        <input
+          type="search"
+          style={inputStyle}
+          placeholder={SEARCH_LABEL}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </label>
+
+      {bankLoading && <p style={noteStyle}>{LOADING_TEXT}</p>}
+
+      {!bankLoading && !hasPublished && (
+        <p style={noteStyle}>
+          {EMPTY_BANK_TEXT}.{' '}
+          <Link to="/exam-items" style={textLinkStyle}>
+            {BANK_LINK_TEXT}
+          </Link>
+        </p>
+      )}
+
+      {!bankLoading && hasPublished && atLimit && <p style={noteStyle}>{LIMIT_TEXT}</p>}
+
+      {!bankLoading && hasPublished && !atLimit && candidates.length === 0 && (
+        <p style={noteStyle}>{query.trim() ? NO_MATCH_TEXT : ALL_CHOSEN_TEXT}</p>
+      )}
+
+      {!atLimit && candidates.length > 0 && (
+        <ul style={listStyle}>
+          {candidates.map((item) => (
+            <li key={item.id} style={rowStyle}>
+              <div>
+                <div>{item.prompt}</div>
+                <div style={metaStyle}>{formatExamItemMeta(item)}</div>
+              </div>
+              <button
+                type="button"
+                style={textLinkButtonStyle}
+                onClick={() => onAdd(item.id)}
+              >
+                Добавить
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

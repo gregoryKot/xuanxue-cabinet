@@ -27,7 +27,7 @@ describe('ExamCard', () => {
 
     expect(screen.getByText('Итоговый экзамен')).toBeInTheDocument();
     expect(
-      screen.getByText('Пока без блоков · 1 попытка · без ограничения'),
+      screen.getByText('Пока без вопросов · 1 попытка · без ограничения'),
     ).toBeInTheDocument();
     expect(screen.getByText('Черновик')).toBeInTheDocument();
   });
@@ -38,7 +38,7 @@ describe('ExamCard', () => {
     expect(screen.getByText('Опубликован')).toBeInTheDocument();
   });
 
-  it('блоки с вопросами — их число в строке метаданных', () => {
+  it('вопросы экзамена — их число в строке метаданных, без слова «блок»', () => {
     render(
       <ExamCard
         exam={makeExam({
@@ -55,7 +55,7 @@ describe('ExamCard', () => {
       />,
     );
 
-    expect(screen.getByText(/2 вопроса · 1 блок/)).toBeInTheDocument();
+    expect(screen.getByText(/^2 вопроса · 1 попытка/)).toBeInTheDocument();
   });
 
   it('с лимитом времени — минуты через общий форматтер', () => {

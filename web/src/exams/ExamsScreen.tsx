@@ -1,11 +1,13 @@
-// Экран «Экзамены» — конструктор формы, собранной из вопросов банка
-// (docs/PLAN.md §11, ТЗ 4.3). Список и лист — по образцу
-// exam-items/ExamItemsScreen.tsx. Числа раздела — ExamsSectionStats.tsx, не
+// Экран «Экзамены» — список экзаменов, собранных из вопросов банка
+// (docs/PLAN.md §11, ТЗ 4.3). Правка и создание — отдельная страница
+// `/exams/new` и `/exams/:examId` (ExamEditorScreen.tsx, ADR-0033): отсюда
+// только переход. Числа раздела — ExamsSectionStats.tsx, не
 // пункт меню (docs/adr/0025-navigation-by-domain.md). Облик — направление
 // «тихо и благородно» (docs/adr/0031), макет Main.dc.html: заголовок
 // антиквой, переключатели статуса вместо select, строка списка вместо
 // карточки. Сюда же встанут проверка работ и статистика — слои 4.6–4.8.
 import { useState, type CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
@@ -20,12 +22,11 @@ import { useGradingQueue } from '../grading/useGradingQueue';
 import { ExamCard } from './ExamCard';
 import { ExamFilters } from './ExamFilters';
 import { ExamsSectionStats } from './ExamsSectionStats';
-import { ExamSheet } from './ExamSheet';
 import { matchesExamSearch } from './examSearch';
 import { useExams, type ExamListFilters } from './useExams';
 
 const EXPLANATION =
-  'Форма собирается из вопросов банка блоками — один вопрос можно поставить в несколько экзаменов.';
+  'Экзамен собирается из вопросов банка — один вопрос можно поставить в несколько экзаменов.';
 const EMPTY_MESSAGE = 'Экзаменов пока нет. Соберите первый из вопросов банка.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами экзаменов нет.';
 
@@ -49,26 +50,14 @@ const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 export default function ExamsScreen() {
   const [filters, setFilters] = useState<ExamListFilters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
-  const { exams, loading, error, reload, create, update, remove } = useExams(filters);
+  const { exams, loading, error, reload } = useExams(filters);
   const gradingQueue = useGradingQueue();
   const itemStatsSummary = useExamItemStatsSummary();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetExamId, setSheetExamId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const selectedExam = exams?.find((exam) => exam.id === sheetExamId) ?? null;
   const visibleExams =
     exams?.filter((exam) => matchesExamSearch(exam.title, search)) ?? null;
   const isFiltered = filters.status !== '' || search.trim() !== '';
-
-  function openCreate() {
-    setSheetExamId(null);
-    setSheetOpen(true);
-  }
-
-  function openEdit(id: string) {
-    setSheetExamId(id);
-    setSheetOpen(true);
-  }
 
   return (
     <section style={screenSectionStyle}>
@@ -78,7 +67,7 @@ export default function ExamsScreen() {
           <p style={screenExplanationStyle}>{EXPLANATION}</p>
         </div>
         {!loading && (
-          <Button style={primaryActionStyle} onClick={openCreate}>
+          <Button style={primaryActionStyle} onClick={() => void navigate('/exams/new')}>
             Новый экзамен
           </Button>
         )}
@@ -102,7 +91,11 @@ export default function ExamsScreen() {
       {!loading && !error && visibleExams && visibleExams.length > 0 && (
         <ul style={listStyle}>
           {visibleExams.map((exam) => (
-            <ExamCard key={exam.id} exam={exam} onSelect={() => openEdit(exam.id)} />
+            <ExamCard
+              key={exam.id}
+              exam={exam}
+              onSelect={() => void navigate(`/exams/${exam.id}`)}
+            />
           ))}
         </ul>
       )}
@@ -111,16 +104,6 @@ export default function ExamsScreen() {
         queueCount={gradingQueue.attempts?.length ?? null}
         strugglingCount={itemStatsSummary.summary?.strugglingCount ?? null}
       />
-
-      {sheetOpen && (
-        <ExamSheet
-          exam={selectedExam}
-          onClose={() => setSheetOpen(false)}
-          onCreate={create}
-          onUpdate={update}
-          onRemove={remove}
-        />
-      )}
     </section>
   );
 }

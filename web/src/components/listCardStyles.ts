@@ -14,6 +14,11 @@ export const listCardStyle: CSSProperties = {
   width: '100%',
   textAlign: 'left',
   padding: '20px 4px',
+  // `<button>` приносит свою рамку 2px outset со всех сторон, а `borderBottom`
+  // ниже переопределяет только низ — три стороны оставались браузерными, и
+  // список выглядел обведённым тёмной рамкой (снимок редактора 2026-09-15).
+  border: 'none',
+  borderRadius: 0,
   borderBottom: '1px solid var(--line)',
   background: 'transparent',
   font: 'inherit',

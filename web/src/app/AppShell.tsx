@@ -24,6 +24,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
 import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
+import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
 import { PendingApprovalScreen } from './PendingApprovalScreen';
@@ -105,7 +106,9 @@ export function AppShell() {
                 закрыт до подтверждения (ADR-0026). */}
             {!isPending && (
               <>
-                <Link to={NOTIFICATIONS_PATH}>Уведомления</Link>
+                <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
+                  Уведомления
+                </Link>
                 <span>·</span>
               </>
             )}
