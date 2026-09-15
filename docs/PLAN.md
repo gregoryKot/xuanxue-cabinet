@@ -554,8 +554,23 @@ broadcast-journal.ts`) — окно обязательно и не шире `JOU
    `POST /auth/join/check` (`@Public()`, до входа). `POST /auth/email/request`
    принимает опциональный `inviteCode` — ссылка в письме несёт `join=<code>`,
    `/login/email` довершает вход. Число «По ссылке пришли: N» на «Людях» —
-   по `UserDto.joinedViaInvite`. Экран `/join/:code` и блок на «Людях» —
-   следующий PR (см. ниже).
+   по `UserDto.joinedViaInvite`. **Реализовано на web** — блок «Ссылка-
+   приглашение» на «Людях» (`InviteLinkCard.tsx`, `useInviteLink.ts`):
+   «Скопировать» (`useCopyText.ts`, общий с «Рассылками»), «Создать новую» с
+   подтверждением (общий `ConfirmDialog`), «Создать ссылку», когда её ещё
+   нет; число `formatJoinedViaInviteCount.ts` строкой под объяснением
+   экрана. Публичный маршрут `/join/:code` (`web/src/join/JoinScreen.tsx`,
+   `useJoinByInvite.ts`) сначала проверяет код (`POST /auth/join/check`) —
+   недействующий показывает текст и кнопку «На страницу входа», не гонит
+   логиниться зря; действующий и гость видит карточку «Вас пригласили…» с
+   кнопкой Telegram (общий `TelegramLoginSection.tsx`, вынесен из
+   `LoginScreen.tsx`, `navigateAfterLogin: false` — экран сам решает, что
+   дальше) и формой почты (`inviteCode` в `EmailLoginForm.tsx`); вошедший
+   (включая `invited`) присоединяется сам, без лишнего клика, и уходит на
+   «Расписание». `EmailLoginCallbackScreen.tsx` читает `join` из query и
+   зовёт `POST /auth/join` после `verify()` — сбой присоединения не
+   блокирует сам вход, экран «Вы вошли» с текстом ошибки и кнопкой
+   «Перейти в кабинет».
 
 Первый экран после входа объясняет за пять секунд, что здесь и зачем — сейчас это
 «Занятия» (п.3): «Здесь занятия на 4 недели вперёд, из расписания. Впишите тему

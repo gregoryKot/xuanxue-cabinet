@@ -1,5 +1,8 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts») и useAuth (экран
-// сравнивает id строки с me.id, чтобы найти себя).
+// сравнивает id строки с me.id, чтобы найти себя). Маршрутизация по path, не
+// последовательная очередь mockResolvedValueOnce: InviteLinkCard (ADR-0030)
+// шлёт свой GET /users/invite-link независимо от usePeople, и с очередью,
+// общей на все пути, эти два запроса перехватывали бы чужие ответы.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -38,6 +41,24 @@ function makePerson(overrides: Partial<UserDto> = {}): UserDto {
   };
 }
 
+/** Маршрутизатор apiFetch: `/users/invite-link` — фиксированный ответ (сама
+ * карточка не в фокусе этих тестов, см. InviteLinkCard.test.tsx), остальные
+ * пути — очередь `queueUsers`/`queueError`, потреблённая по одной на вызов,
+ * тем же порядком, что раньше делал `mockResolvedValueOnce`. */
+function mockPeopleApi() {
+  const queue: Array<() => Promise<unknown>> = [];
+  mockedApiFetch.mockImplementation((path: string) => {
+    if (path === '/users/invite-link') return Promise.resolve({ url: null });
+    const next = queue.shift();
+    if (!next) return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    return next();
+  });
+  return {
+    queueUsers: (value: unknown) => queue.push(() => Promise.resolve(value)),
+    queueError: (err: Error) => queue.push(() => Promise.reject(err)),
+  };
+}
+
 function renderScreen() {
   return render(
     <MemoryRouter>
@@ -62,14 +83,13 @@ describe('PeopleScreen — сбой загрузки', () => {
   it('ApiError — текст ошибки и «Попробовать ещё раз», клик повторяет запрос', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Сервис недоступен', 503, 'unknown'),
-    );
+    const { queueUsers, queueError } = mockPeopleApi();
+    queueError(new ApiError('Сервис недоступен', 503, 'unknown'));
 
     renderScreen();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
-    mockedApiFetch.mockResolvedValueOnce([makePerson()]);
+    queueUsers([makePerson()]);
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
 
     expect(await screen.findByText('Гриша')).toBeInTheDocument();
@@ -78,9 +98,8 @@ describe('PeopleScreen — сбой загрузки', () => {
 
 describe('PeopleScreen — пустой список', () => {
   it('только сам admin в базе — честный текст, а не пустой список', async () => {
-    mockedApiFetch.mockResolvedValue([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-    ]);
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] })]);
 
     renderScreen();
 
@@ -92,7 +111,8 @@ describe('PeopleScreen — пустой список', () => {
 
 describe('PeopleScreen — список', () => {
   it('строка на каждого человека, включая себя', async () => {
-    mockedApiFetch.mockResolvedValue([
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
     ]);
@@ -103,9 +123,24 @@ describe('PeopleScreen — список', () => {
     expect(screen.getByText('Маша')).toBeInTheDocument();
   });
 
+  it('число «По ссылке пришли» считает только joinedViaInvite (ADR-0030)', async () => {
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], joinedViaInvite: true }),
+      makePerson({ id: 'u2', name: 'Ждан', roles: [] }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Гриша');
+
+    expect(screen.getByText('По ссылке пришли: 1')).toBeInTheDocument();
+  });
+
   it('переключатель роли вызывает PATCH и обновлённая роль видна в списке', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockResolvedValueOnce([
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
     ]);
@@ -113,8 +148,8 @@ describe('PeopleScreen — список', () => {
     renderScreen();
     await screen.findByText('Гриша');
 
-    mockedApiFetch.mockResolvedValueOnce({});
-    mockedApiFetch.mockResolvedValueOnce([
+    queueUsers({});
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: ['teacher'] }),
     ]);
@@ -131,9 +166,10 @@ describe('PeopleScreen — список', () => {
   it('сбой удаления — текст ошибки виден на строке (usePeople.remove)', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
+    const { queueUsers, queueError } = mockPeopleApi();
     // Себя (admin-1 === me.id) кнопка «Удалить данные» не показывает —
     // в списке только одна такая кнопка, у чужой строки Гриши.
-    mockedApiFetch.mockResolvedValueOnce([
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
     ]);
@@ -141,7 +177,7 @@ describe('PeopleScreen — список', () => {
     renderScreen();
     await screen.findByText('Гриша');
 
-    mockedApiFetch.mockRejectedValueOnce(
+    queueError(
       new ApiError('Пользователь не найден. Обновите список.', 404, 'not_found'),
     );
 
@@ -155,11 +191,13 @@ describe('PeopleScreen — список', () => {
   });
 
   it('ждущий подтверждения — вверху списка, независимо от порядка ответа API', async () => {
-    mockedApiFetch.mockResolvedValue([
+    const { queueUsers } = mockPeopleApi();
+    const people = [
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
       makePerson({ id: 'u2', name: 'Ждан', roles: [], status: 'invited' }),
-    ]);
+    ];
+    queueUsers(people);
 
     renderScreen();
     await screen.findByText('Гриша');
@@ -170,7 +208,8 @@ describe('PeopleScreen — список', () => {
 
   it('«Подтвердить» на invited-строке — POST /users/:id/approve и список перечитан', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockResolvedValueOnce([
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
     ]);
@@ -178,8 +217,8 @@ describe('PeopleScreen — список', () => {
     renderScreen();
     await screen.findByText('Гриша');
 
-    mockedApiFetch.mockResolvedValueOnce({});
-    mockedApiFetch.mockResolvedValueOnce([
+    queueUsers({});
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'active' }),
     ]);
@@ -198,7 +237,8 @@ describe('PeopleScreen — список', () => {
   it('сбой подтверждения — текст ошибки виден на строке (usePeople.approve)', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
-    mockedApiFetch.mockResolvedValueOnce([
+    const { queueUsers, queueError } = mockPeopleApi();
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
     ]);
@@ -206,9 +246,7 @@ describe('PeopleScreen — список', () => {
     renderScreen();
     await screen.findByText('Гриша');
 
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Этому человеку доступ закрыт.', 409, 'conflict'),
-    );
+    queueError(new ApiError('Этому человеку доступ закрыт.', 409, 'conflict'));
 
     await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
 

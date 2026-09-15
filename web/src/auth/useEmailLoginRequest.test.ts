@@ -41,6 +41,18 @@ describe('useEmailLoginRequest', () => {
     });
   });
 
+  it('с inviteCode (ADR-0030) — POST несёт inviteCode в теле', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginRequest('a'.repeat(32)));
+
+    await act(() => result.current.request('a@example.com'));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
+      method: 'POST',
+      body: { email: 'a@example.com', inviteCode: 'a'.repeat(32) },
+    });
+  });
+
   it('ApiError — status error, текст с сервера', async () => {
     mockedApiFetch.mockRejectedValue(
       new ApiError('Email-вход пока не подключён.', 503, 'not_available'),

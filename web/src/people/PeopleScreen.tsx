@@ -11,6 +11,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
+import { formatJoinedViaInviteCount } from './formatJoinedViaInviteCount';
+import { InviteLinkCard } from './InviteLinkCard';
 import { PersonRow } from './PersonRow';
 import { usePeople } from './usePeople';
 
@@ -48,9 +50,17 @@ export default function PeopleScreen() {
       <h1 style={{ fontSize: 22, margin: 0 }}>Ученики</h1>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
 
+      <InviteLinkCard />
+
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 
       {loading && people === null && !error && <SkeletonList rows={4} h={96} />}
+
+      {!error && people && (
+        <p style={{ margin: 0, color: 'var(--ink-soft)' }}>
+          {formatJoinedViaInviteCount(people.filter((p) => p.joinedViaInvite).length)}
+        </p>
+      )}
 
       {!error && people && others.length === 0 && (
         <p style={{ margin: 0 }}>{EMPTY_MESSAGE}</p>

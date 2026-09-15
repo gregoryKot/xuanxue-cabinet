@@ -19,23 +19,32 @@ export interface UseEmailLoginRequestResult {
   request: (email: string) => Promise<void>;
 }
 
-export function useEmailLoginRequest(): UseEmailLoginRequestResult {
+/** `inviteCode` — код ссылки-приглашения школы (ADR-0030) со страницы
+ * `/join/:code`: сервер молча игнорирует неверный код, письмо уходит в
+ * любом случае (SECURITY §2 — существование ссылок наружу не раскрываем). */
+export function useEmailLoginRequest(inviteCode?: string): UseEmailLoginRequestResult {
   const [status, setStatus] = useState<EmailLoginRequestStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const sentOnceRef = useRef(false);
 
-  const request = useCallback(async (email: string) => {
-    setStatus('pending');
-    setError(null);
-    try {
-      await apiFetch<void>('/auth/email/request', { method: 'POST', body: { email } });
-      sentOnceRef.current = true;
-      setStatus('sent');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
-      setStatus('error');
-    }
-  }, []);
+  const request = useCallback(
+    async (email: string) => {
+      setStatus('pending');
+      setError(null);
+      try {
+        await apiFetch<void>('/auth/email/request', {
+          method: 'POST',
+          body: inviteCode ? { email, inviteCode } : { email },
+        });
+        sentOnceRef.current = true;
+        setStatus('sent');
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
+        setStatus('error');
+      }
+    },
+    [inviteCode],
+  );
 
   return { status, error, sentOnce: sentOnceRef.current, request };
 }

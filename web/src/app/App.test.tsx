@@ -286,6 +286,34 @@ describe('App', () => {
     expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
   });
 
+  it('гость на /join/:code с действующим кодом — маршрут открывает JoinScreen (ADR-0030)', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me') return Promise.reject(new Error('нет сессии'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt(`/join/${'a'.repeat(32)}`);
+
+    expect(
+      await screen.findByText('Вас пригласили в кабинет школы Сюань-Сюэ'),
+    ).toBeInTheDocument();
+  });
+
+  it('гость на /join/:code с недействующим кодом — «Ссылка не подошла»', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me') return Promise.reject(new Error('нет сессии'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: false });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt(`/join/${'a'.repeat(32)}`);
+
+    expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
+  });
+
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {
     mockRoute(null);
 
