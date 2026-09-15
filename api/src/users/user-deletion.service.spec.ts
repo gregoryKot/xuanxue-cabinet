@@ -118,6 +118,50 @@ describe('UserDeletionService', () => {
     ).rejects.toThrow('последний администратор');
   });
 
+  it('гонка удаления и снятия роли: конкурент теряет admin между резервированием и перепроверкой — откат, ForbiddenError, admin остаётся (аудит M11)', async () => {
+    const admin1 = await users.createFromTelegram({
+      telegramId: 5020,
+      name: 'Админ А',
+      roles: ['admin'],
+      status: 'active',
+    });
+    const admin2 = await users.createFromTelegram({
+      telegramId: 5021,
+      name: 'Админ Б',
+      roles: ['admin'],
+      status: 'active',
+    });
+
+    // Первый вызов countDocuments — дешёвая isLastAdmin-проверка ДО
+    // резервирования: должна честно увидеть admin2 и пропустить дальше.
+    // Второй — уже перепроверка rollbackIfNoAdminLeft ПОСЛЕ того, как
+    // резервирующий $pull снял admin с admin1: сюда подставляем
+    // конкурирующую операцию (второй админ снимает admin сам с себя тем же
+    // путём, что и updateRoles) и только затем отдаём настоящий счёт.
+    const originalCountDocuments = userModel.countDocuments.bind(userModel);
+    jest
+      .spyOn(userModel, 'countDocuments')
+      .mockImplementationOnce(((filter: unknown) =>
+        originalCountDocuments(filter as never)) as never)
+      .mockImplementationOnce((async (filter: unknown) => {
+        await userModel.updateOne(
+          { _id: admin2.id, roles: 'admin' },
+          { $pull: { roles: 'admin' } },
+        );
+        return originalCountDocuments(filter as never);
+      }) as never);
+
+    await expect(deletion.deleteAllUserData(admin1.id, 'кто-то-третий')).rejects.toThrow(
+      'последний администратор',
+    );
+
+    // Резервирование откатилось, до удаления данных дело не дошло — admin1
+    // остаётся администратором и остаётся в базе.
+    const survivor = await users.findById(admin1.id);
+    expect(survivor?.roles).toContain('admin');
+    expect(await originalCountDocuments({ roles: 'admin' })).toBeGreaterThanOrEqual(1);
+  });
+
   it('не последний админ — удаляется, документ users исчезает (read-after-write)', async () => {
     const admin = await users.createFromTelegram({
       telegramId: 5004,
