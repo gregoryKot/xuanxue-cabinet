@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Field } from './Field';
+import { Field, inputStyle } from './Field';
 
 describe('Field', () => {
   it('связывает подпись с полем через label — поле находится по тексту подписи', () => {
@@ -33,5 +33,11 @@ describe('Field', () => {
 
     expect(screen.getByText('Подсказка')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  // Направление «тихо и благородно» поменяло рамку и радиус поля — цель
+  // нажатия ≥44px (CLAUDE.md «Доступность») должна остаться на месте.
+  it('inputStyle держит высоту цели нажатия ≥44px', () => {
+    expect(inputStyle.minHeight).toBe(44);
   });
 });
