@@ -14,6 +14,16 @@
     <!-- Манифест статический (web/public/manifest.webmanifest, ADR-0032) —
          нужен только для установки ярлыка на телефон, service worker нет. -->
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Сессию браузер начинает спрашивать ещё при разборе HTML, параллельно
+         со скачиванием главного JS. Измерено на проде 2026-09-15: TTFB
+         0.5–1.1 с, а GET /api/auth/me уходил только после того, как
+         выполнился JS и смонтировался AuthProvider, — лишний round-trip в
+         начале загрузки. apiFetch() затем берёт этот ответ из preload-кеша:
+         совпадают адрес, режим (cors) и credentials (include, см.
+         web/src/api/http.ts) — это и даёт crossorigin="use-credentials".
+         Именно <link rel=preload>, а не инлайн-скрипт: CSP запрещает инлайн
+         (api/src/security/csp.ts), а connect-src 'self' preload не мешает. -->
+    <link rel="preload" href="/api/auth/me" as="fetch" crossorigin="use-credentials" />
     <title>Сюань-Сюэ</title>
   </head>
   <body>

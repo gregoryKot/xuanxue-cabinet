@@ -241,6 +241,11 @@ describe('PlanningScreen — список занятий', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     );
+    // Как в ExamItemsScreen.test: закрытие листа идёт через popstate,
+    // ждём его явно, иначе покрытие onClose плавает под нагрузкой (задача #59).
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Разовое занятие' })).toBeNull(),
+    );
   });
 
   it('тема не задана — карточка показывает заглушку, отменённое занятие — серым', async () => {

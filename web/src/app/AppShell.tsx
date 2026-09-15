@@ -28,6 +28,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
 import { PendingApprovalScreen } from './PendingApprovalScreen';
 import { StudentScreen } from './StudentScreen';
+import { usePrefetchRoutes } from './usePrefetchRoutes';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 const NOTIFICATIONS_PATH = '/notifications';
@@ -73,6 +74,10 @@ export function AppShell() {
     isTeacher ||
     pathname === NOTIFICATIONS_PATH ||
     pathname.startsWith(ATTEMPT_PATH_PREFIX);
+  // Сюда добираются уже с подтверждённой сессией (RequireAuth выше) и
+  // нарисованным первым экраном — самое время дотянуть остальные разделы в
+  // простое браузера, чтобы переход по меню не ждал сети.
+  usePrefetchRoutes(isTeacher);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
