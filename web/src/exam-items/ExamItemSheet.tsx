@@ -10,8 +10,10 @@ import type {
   UpdateExamItemInput,
 } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormServerError } from '../components/FormServerError';
 import { SheetShell } from '../components/SheetShell';
+import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
 import { useDialog } from '../hooks/useDialog';
 import { useHistorySheet } from '../hooks/useHistorySheet';
 import { ExamItemFormFields } from './ExamItemFormFields';
@@ -44,14 +46,11 @@ export function ExamItemSheet({
   const goBack = useHistorySheet(onClose);
   const { headingRef } = useDialog(goBack);
   const form = useExamItemForm(item, onCreate, onUpdate, onRemove);
+  const removeConfirm = useConfirmedRemove(form.remove, goBack);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (await form.submit()) goBack();
-  }
-
-  async function handleRemove() {
-    if (await form.remove()) goBack();
   }
 
   async function handleChangeStatus(status: ExamItemStatus) {
@@ -59,48 +58,61 @@ export function ExamItemSheet({
   }
 
   return (
-    <SheetShell
-      titleId="exam-item-sheet-title"
-      title={item ? 'Вопрос' : 'Новый вопрос'}
-      headingRef={headingRef}
-      onSubmit={(e) => void handleSubmit(e)}
-      onClose={goBack}
-    >
-      {item?.status === 'published' && (
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
-          {VERSION_WARNING}
-        </p>
-      )}
+    <>
+      <SheetShell
+        titleId="exam-item-sheet-title"
+        title={item ? 'Вопрос' : 'Новый вопрос'}
+        headingRef={headingRef}
+        onSubmit={(e) => void handleSubmit(e)}
+        onClose={goBack}
+      >
+        {item?.status === 'published' && (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
+            {VERSION_WARNING}
+          </p>
+        )}
 
-      <ExamItemFormFields
-        state={form.state}
-        setField={form.setField}
-        error={form.validationError}
-        isCreate={!item}
-      />
-
-      {hasOptions(form.state.kind) && (
-        <ExamItemOptionsField
-          kind={form.state.kind}
-          options={form.state.options}
-          onChange={(options) => form.setField('options', options)}
+        <ExamItemFormFields
+          state={form.state}
+          setField={form.setField}
+          error={form.validationError}
+          isCreate={!item}
         />
-      )}
 
-      <FormServerError error={form.serverError} />
+        {hasOptions(form.state.kind) && (
+          <ExamItemOptionsField
+            kind={form.state.kind}
+            options={form.state.options}
+            onChange={(options) => form.setField('options', options)}
+          />
+        )}
 
-      <Button type="submit" pending={form.pending}>
-        Сохранить
-      </Button>
+        <FormServerError error={form.serverError} />
 
-      {item && (
-        <ExamItemStatusControls
-          status={item.status}
+        <Button type="submit" pending={form.pending}>
+          Сохранить
+        </Button>
+
+        {item && (
+          <ExamItemStatusControls
+            status={item.status}
+            pending={form.pending}
+            onChangeStatus={(status) => void handleChangeStatus(status)}
+            onRemove={removeConfirm.requestRemove}
+          />
+        )}
+      </SheetShell>
+
+      {removeConfirm.confirming && (
+        <ConfirmDialog
+          title="Удалить вопрос?"
+          message="Черновик вопроса исчезнет вместе с формулировкой и вариантами ответа. Отменить нельзя."
+          confirmLabel="Удалить"
           pending={form.pending}
-          onChangeStatus={(status) => void handleChangeStatus(status)}
-          onRemove={() => void handleRemove()}
+          onConfirm={removeConfirm.confirmRemove}
+          onCancel={removeConfirm.cancelRemove}
         />
       )}
-    </SheetShell>
+    </>
   );
 }

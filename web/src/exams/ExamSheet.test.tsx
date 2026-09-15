@@ -217,14 +217,53 @@ describe('ExamSheet — статус и удаление', () => {
     expect(screen.queryByText(/Статус:/)).not.toBeInTheDocument();
   });
 
-  it('черновик — есть «Удалить», клик зовёт onRemove', async () => {
+  it('черновик — «Удалить» открывает подтверждение, onRemove не зовётся до ответа', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([]);
     const { onRemove } = renderSheet(makeExam({ status: 'draft' }));
 
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
 
-    expect(onRemove).toHaveBeenCalledWith('x1');
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Удалить форму?' })).toBeInTheDocument();
+  });
+
+  it('отказ в диалоге подтверждения — ничего не удаляется, диалог закрывается', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue([]);
+    const { onRemove, onClose } = renderSheet(makeExam({ status: 'draft' }));
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    await user.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('dialog', { name: 'Удалить форму?' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('подтверждение и успешное удаление закрывают весь лист ровно одним переходом назад', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue([]);
+    const { onRemove, onClose } = renderSheet(makeExam({ status: 'draft' }));
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    expect(screen.getByRole('dialog', { name: 'Удалить форму?' })).toBeInTheDocument();
+
+    await user.click(
+      screen.getAllByRole('button', { name: 'Удалить' })[1] as HTMLElement,
+    );
+
+    await waitFor(() => expect(onRemove).toHaveBeenCalledWith('x1'));
+    // Один переход назад закрывает весь лист (не два navigate(-1) подряд —
+    // ConfirmDialog делает свой единственный goBack(), закрытие всего листа —
+    // отдельный эффект после него, hooks/useConfirmedRemove.ts), поэтому
+    // onClose вызывается ровно один раз.
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByRole('dialog', { name: 'Удалить форму?' }),
+    ).not.toBeInTheDocument();
   });
 
   it('сбой удаления — лист остаётся открытым с текстом ошибки', async () => {
@@ -233,17 +272,20 @@ describe('ExamSheet — статус и удаление', () => {
     const onRemove = vi
       .fn()
       .mockRejectedValue(new ApiError('Удалить можно только черновик.', 409, 'conflict'));
-    renderSheet(makeExam({ status: 'draft' }), { onRemove });
+    const { onClose } = renderSheet(makeExam({ status: 'draft' }), { onRemove });
 
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    await user.click(
+      screen.getAllByRole('button', { name: 'Удалить' })[1] as HTMLElement,
+    );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Удалить можно только черновик.',
     );
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('сбой смены статуса — лист остаётся открытым с текстом ошибки', async () => {
+  it('сбой смены статуса — лист остаётся открытым, статус на экране не менялся, ошибка видна', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([]);
     const onUpdate = vi
@@ -259,6 +301,9 @@ describe('ExamSheet — статус и удаление', () => {
       'В форме нет ни одного вопроса.',
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // Родитель не перечитывал форму (onUpdate упал) — статус на экране всё
+    // ещё «черновик», кнопка публикации по-прежнему предложена.
+    expect(screen.getByRole('button', { name: 'Опубликовать' })).toBeInTheDocument();
   });
 
   it('опубликована — кнопки «Удалить» нет, есть объяснение про попытки учеников', () => {
@@ -277,7 +322,30 @@ describe('ExamSheet — статус и удаление', () => {
     await user.click(screen.getByRole('button', { name: 'Опубликовать' }));
 
     await waitFor(() =>
-      expect(onUpdate).toHaveBeenCalledWith('x1', { status: 'published' }),
+      expect(onUpdate).toHaveBeenCalledWith(
+        'x1',
+        expect.objectContaining({ status: 'published' }),
+      ),
+    );
+  });
+
+  // Блокер аудита 2026-09-15 №1: «Опубликовать» отправлял только { status },
+  // молча теряя правки, наменянные в форме до клика — ученики получали
+  // экзамен с прежними настройками.
+  it('«Опубликовать» с несохранёнными правками отправляет и правки, и статус одним запросом', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue([]);
+    const { onUpdate } = renderSheet(makeExam({ status: 'draft', attemptsAllowed: 1 }));
+
+    await user.clear(screen.getByLabelText('Число попыток'));
+    await user.type(screen.getByLabelText('Число попыток'), '3');
+    await user.click(screen.getByRole('button', { name: 'Опубликовать' }));
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        'x1',
+        expect.objectContaining({ status: 'published', attemptsAllowed: 3 }),
+      ),
     );
   });
 });

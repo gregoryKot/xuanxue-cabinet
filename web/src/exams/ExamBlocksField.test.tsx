@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { ExamBlocksField } from './ExamBlocksField';
@@ -33,15 +34,17 @@ function renderField(
   const onChange = vi.fn();
   const onPublishItem = overrides.onPublishItem ?? vi.fn();
   render(
-    <ExamBlocksField
-      blocks={blocks}
-      onChange={onChange}
-      bankItems={overrides.bankItems ?? []}
-      bankLoading={overrides.bankLoading ?? false}
-      bankError={overrides.bankError ?? null}
-      onRetryBank={vi.fn()}
-      onPublishItem={onPublishItem}
-    />,
+    <MemoryRouter initialEntries={['/exams']}>
+      <ExamBlocksField
+        blocks={blocks}
+        onChange={onChange}
+        bankItems={overrides.bankItems ?? []}
+        bankLoading={overrides.bankLoading ?? false}
+        bankError={overrides.bankError ?? null}
+        onRetryBank={vi.fn()}
+        onPublishItem={onPublishItem}
+      />
+    </MemoryRouter>,
   );
   return { onChange, onPublishItem };
 }
@@ -78,7 +81,7 @@ describe('ExamBlocksField — блоки', () => {
     ]);
   });
 
-  it('«Убрать блок» удаляет нужный блок', async () => {
+  it('«Убрать блок» спрашивает подтверждение, ничего не меняет до ответа', async () => {
     const user = userEvent.setup();
     const blocks: ExamBlockDraft[] = [
       { id: 'b1', title: 'Первый', itemIds: [], shuffle: false, required: false },
@@ -87,7 +90,67 @@ describe('ExamBlocksField — блоки', () => {
 
     await user.click(screen.getByRole('button', { name: 'Убрать блок' }));
 
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Убрать блок?' })).toBeInTheDocument();
+  });
+
+  it('отказ в диалоге подтверждения — блок остаётся', async () => {
+    const user = userEvent.setup();
+    const blocks: ExamBlockDraft[] = [
+      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false, required: false },
+    ];
+    const { onChange } = renderField(blocks);
+
+    await user.click(screen.getByRole('button', { name: 'Убрать блок' }));
+    await user.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('dialog', { name: 'Убрать блок?' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('подтверждение — «Убрать блок» удаляет нужный блок вместе с его вопросами', async () => {
+    const user = userEvent.setup();
+    const blocks: ExamBlockDraft[] = [
+      {
+        id: 'b1',
+        title: 'Первый',
+        itemIds: ['i1', 'i2'],
+        shuffle: false,
+        required: false,
+      },
+    ];
+    const { onChange } = renderField(blocks, { bankItems: [] });
+
+    await user.click(screen.getByRole('button', { name: 'Убрать блок' }));
+    const dialog = screen.getByRole('dialog', { name: 'Убрать блок?' });
+    expect(dialog).toHaveTextContent('2');
+    await user.click(
+      screen.getAllByRole('button', { name: 'Убрать блок' })[1] as HTMLElement,
+    );
+
     expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it('подтверждение удаления пустого блока (без вопросов) — текст без числа, блок удаляется', async () => {
+    const user = userEvent.setup();
+    const blocks: ExamBlockDraft[] = [
+      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false, required: false },
+      { id: 'b2', title: 'Второй', itemIds: ['i1'], shuffle: false, required: false },
+    ];
+    const { onChange } = renderField(blocks, { bankItems: [] });
+
+    await user.click(
+      screen.getAllByRole('button', { name: 'Убрать блок' })[0] as HTMLElement,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Убрать блок?' });
+    expect(dialog).toHaveTextContent('Блок исчезнет. Отменить нельзя.');
+    await user.click(
+      screen.getAllByRole('button', { name: 'Убрать блок' })[2] as HTMLElement,
+    );
+
+    expect(onChange).toHaveBeenCalledWith([blocks[1]]);
   });
 
   it('галочки «перемешивать»/«обязателен» меняют состояние блока', async () => {

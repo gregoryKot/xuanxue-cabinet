@@ -1,9 +1,10 @@
 // Блоки формы — добавить/убрать/переименовать блок, вопросы внутри (ТЗ 4.3,
 // «Лист»). Правки блоков — чистые функции examBlocksInput.ts, здесь только
 // разметка и подключение к состоянию формы.
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { EXAM_LIMITS, type ExamItemDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { ExamBlockCard } from './ExamBlockCard';
 import {
@@ -22,6 +23,11 @@ import {
 
 const wrapperStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12 };
 const legendStyle: CSSProperties = { fontSize: 15, fontWeight: 600 };
+
+interface PendingBlockRemoval {
+  index: number;
+  block: ExamBlockDraft;
+}
 
 interface ExamBlocksFieldProps {
   blocks: ExamBlockDraft[];
@@ -44,6 +50,14 @@ export function ExamBlocksField({
 }: ExamBlocksFieldProps) {
   const used = usedItemIds(blocks);
   const items = bankItems ?? [];
+  // Подтверждение перед удалением блока (CLAUDE.md «Разрушительные действия
+  // срабатывают с одного касания» — аудит 2026-09-15): «Убрать блок» уносит
+  // все вопросы блока и их порядок безвозвратно, а на телефоне кнопка стоит
+  // вплотную с полем названия. Храним сам блок вместе с его индексом (а не
+  // только индекс) — чтобы в диалоге и его тексте не понадобился поиск
+  // `blocks[i]` с `noUncheckedIndexedAccess` (это добавило бы обработку
+  // «не нашли», недостижимую в реальности и непокрытую тестом).
+  const [pendingRemove, setPendingRemove] = useState<PendingBlockRemoval | null>(null);
 
   return (
     <div style={wrapperStyle}>
@@ -64,7 +78,7 @@ export function ExamBlocksField({
           onToggleRequired={(required) =>
             onChange(setBlockRequired(blocks, index, required))
           }
-          onRemoveBlock={() => onChange(removeBlock(blocks, index))}
+          onRemoveBlock={() => setPendingRemove({ index, block })}
           onAddItem={(itemId) => onChange(addItemToBlock(blocks, index, itemId))}
           onPublishItem={onPublishItem}
           onRemoveItem={(itemId) => onChange(removeItemFromBlock(blocks, index, itemId))}
@@ -81,6 +95,23 @@ export function ExamBlocksField({
       >
         Добавить блок
       </Button>
+
+      {pendingRemove && (
+        <ConfirmDialog
+          title="Убрать блок?"
+          message={
+            pendingRemove.block.itemIds.length > 0
+              ? `Блок и все его вопросы (${pendingRemove.block.itemIds.length}) исчезнут вместе с порядком. Отменить нельзя.`
+              : 'Блок исчезнет. Отменить нельзя.'
+          }
+          confirmLabel="Убрать блок"
+          onConfirm={() => {
+            onChange(removeBlock(blocks, pendingRemove.index));
+            setPendingRemove(null);
+          }}
+          onCancel={() => setPendingRemove(null)}
+        />
+      )}
     </div>
   );
 }
