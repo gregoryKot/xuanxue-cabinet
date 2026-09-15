@@ -1,9 +1,10 @@
-// Завершение мобильного входа через Telegram (см. telegramAuthResult.ts —
-// баг с прода, найден 2026-09-08). При открытии экрана входа читаем
-// #tgAuthResult= из адреса и, если он есть, идём тем же путём, что и клик по
-// кнопке на десктопе: POST /auth/telegram → refresh() сессии → /schedule.
-// Логика вынесена из LoginScreen.tsx в хук (CLAUDE.md «Логика вне
-// компонентов» и файловый храповик — компонент иначе не помещается в лимит).
+// Завершение входа через Telegram после возврата (см. telegramAuthResult.ts —
+// баг с прода, найден 2026-09-08). Кнопка на LoginScreen.tsx лишь уводит
+// вкладку на Telegram (ADR-0028); при возврате на /login читаем
+// #tgAuthResult= из адреса и, если он есть, отправляем на сервер сами:
+// POST /auth/telegram → refresh() сессии → /schedule. Логика вынесена из
+// LoginScreen.tsx в хук (CLAUDE.md «Логика вне компонентов» и файловый
+// храповик — компонент иначе не помещается в лимит).
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { TelegramLoginInput } from '@xuanxue/shared';
@@ -12,9 +13,10 @@ import { readTelegramAuthResult } from './telegramAuthResult';
 
 const LOGIN_FAILED_MESSAGE = 'Не удалось войти. Попробуйте ещё раз.';
 
-/** POST /auth/telegram — общий шаг для клика по кнопке (LoginScreen.tsx) и
- * для автозавершения из фрагмента ниже: один путь на сервер, не два. */
-export function postTelegramLogin(user: TelegramLoginInput): Promise<void> {
+// POST /auth/telegram — теперь единственный вызывающий этот хук: кнопка
+// (LoginScreen.tsx) сама лишь уводит вкладку на Telegram (ADR-0028), сервер
+// получает подтверждённый вход только отсюда, при возврате.
+function postTelegramLogin(user: TelegramLoginInput): Promise<void> {
   return apiFetch('/auth/telegram', { method: 'POST', body: user });
 }
 

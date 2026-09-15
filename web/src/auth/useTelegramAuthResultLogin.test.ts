@@ -1,9 +1,6 @@
 // useNavigate замокан отдельно от react-router-dom (не через MemoryRouter +
 // рендер целого экрана, как в LoginScreen.test.tsx): хук тут проверяется в
-// изоляции, без побочного эффекта useTelegramLogin.ts (загрузка виджета) —
-// иначе таймингово-зависимая ветка `cancelled` в том хуке шумит в общем
-// отчёте покрытия между прогонами (ревью до этого файла поймало флуктуацию
-// глобального порога branches).
+// изоляции, без остального экрана и его состояний.
 import { renderHook, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';

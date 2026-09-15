@@ -88,9 +88,10 @@ export interface TelegramLoginInput {
 /**
  * Ответ `GET /auth/config` (`@Public()`, без сессии) — конфигурация экрана
  * входа. `telegramBotId` — числовой id бота (префикс `BOT_TOKEN` до
- * двоеточия), нужен `window.Telegram.Login.auth()` (см. LoginScreen.tsx);
- * без него кнопки входа нет. `schoolSiteUrl` — адрес сайта школы из настроек
- * (`settings.schoolSiteUrl`, экран «Шаблоны»), для гостя без роли
+ * двоеточия), нужен для перехода на Telegram (`redirectToTelegramAuth`, см.
+ * LoginScreen.tsx, ADR-0028); без него кнопки входа нет. `schoolSiteUrl` —
+ * адрес сайта школы из настроек (`settings.schoolSiteUrl`, экран «Шаблоны»),
+ * для гостя без роли
  * (StudentScreen.tsx) и незнакомца в боте: не `PUBLIC_URL` — тот адрес
  * самого кабинета, а не сайта школы (В6 аудита, ADR-0009-доп.).
  */

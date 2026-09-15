@@ -242,9 +242,10 @@ api: валидация env, логи с requestId и редакцией, кон
 ### Экраны сайта
 
 1. **Вход.** Email → ссылка на почту. Кнопки «Войти через Telegram», «Войти через Google».
-   **Реализовано** — только Telegram, своей кнопкой через
-   `window.Telegram.Login.auth()` (`data-onauth` виджета выполнялся бы через
-   `eval`, наша CSP `script-src` без `'unsafe-eval'` его бы заблокировала):
+   **Реализовано** — только Telegram, переходом текущей вкладки на
+   `oauth.telegram.org` на любом устройстве, без попапа и виджета
+   (`redirectToTelegramAuth`, ADR-0028 — заменил попап `window.Telegram.Login.auth()`,
+   ненадёжный из-за блокировки попапов и третьесторонних cookie):
    `GET /auth/config` отдаёт `telegramBotId` (числовой префикс `BOT_TOKEN`),
    без него — «Вход через Telegram не настроен»; `web/src/auth/LoginScreen.tsx`.
    Email-ссылка и Google — следующие PR.

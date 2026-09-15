@@ -2,24 +2,7 @@
 // проверяем ровно то, от чего зависит возврат: bot_id, origin, доступ на
 // запись и return_to. Ошибка в любом из них выглядит как «вход не работает».
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  redirectToTelegramAuth,
-  telegramAuthUrl,
-  usesRedirectFlow,
-} from './telegramAuthRedirect';
-
-function stubPointer(coarse: boolean) {
-  vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query.includes('coarse') ? coarse : false,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  }));
-}
+import { redirectToTelegramAuth, telegramAuthUrl } from './telegramAuthRedirect';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -46,18 +29,6 @@ describe('telegramAuthUrl', () => {
     const url = new URL(telegramAuthUrl(1, 'https://xuanxue.su', returnTo));
 
     expect(url.searchParams.get('return_to')).toBe(returnTo);
-  });
-});
-
-describe('usesRedirectFlow', () => {
-  it('палец (pointer: coarse) — да', () => {
-    stubPointer(true);
-    expect(usesRedirectFlow()).toBe(true);
-  });
-
-  it('мышь — нет, остаётся попап', () => {
-    stubPointer(false);
-    expect(usesRedirectFlow()).toBe(false);
   });
 });
 
