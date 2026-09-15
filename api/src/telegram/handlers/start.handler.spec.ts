@@ -85,7 +85,6 @@ describe('StartHandler', () => {
     );
     handler = new StartHandler(
       settingsService,
-      new UsersService(userModel),
       new ChannelConfigService(channelModel, classModel),
       new BotSessionService(botSessionModel),
       new BotUserAccessService(new UsersService(userModel)),
@@ -145,14 +144,83 @@ describe('StartHandler', () => {
     expect(replies[0]).not.toContain('Вы подключены');
   });
 
-  it('ученик (без ролей учителя) — отказ, без канала', async () => {
-    await userModel.create({ name: 'Ученик', telegramId: 333, roles: [] });
+  it('ученик (active, без ролей учителя) — подключается, личный канал не рассылочный (ADR-0027)', async () => {
+    const student = await userModel.create({ name: 'Ольга', telegramId: 333, roles: [] });
 
     const { ctx, replies } = fakeCtx(333);
     await handler.handle(ctx, NOW);
 
+    const channel = await channelModel.findOne({ target: '333' }).lean();
+    expect(channel?.active).toBe(true);
+    expect(channel?.title).toBe(`Личные сообщения: ${student.name}`);
+    // Личный канал ученика — не канал школы: рассылки занятий, экран
+    // «Каналы» и подписка нового занятия видят только broadcastEligible
+    // !== false (channel-config.service.spec.ts, channels.service.spec.ts,
+    // classes.service.spec.ts).
+    expect(channel?.broadcastEligible).toBe(false);
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toContain('Экзамены можно сдать');
+    expect(replies[0]).not.toContain('Этот бот для учителя');
+  });
+
+  it('ученик — /start НЕ подключает его ко всем активным классам (в отличие от штата)', async () => {
+    const active = await classModel.create({
+      title: 'Тайцзицюань',
+      format: 'online',
+      active: true,
+    });
+    await userModel.create({ name: 'Ольга', telegramId: 333, roles: [] });
+
+    const { ctx } = fakeCtx(333);
+    await handler.handle(ctx, NOW);
+
+    const classAfter = await classModel.findById(active._id).lean();
+    expect(classAfter?.channelIds).toHaveLength(0);
+  });
+
+  it('заблокированный штат — ACCESS_MESSAGE, без канала', async () => {
+    await userModel.create({
+      name: 'Мария',
+      telegramId: 551,
+      roles: ['teacher'],
+      status: 'blocked',
+    });
+
+    const { ctx, replies } = fakeCtx(551);
+    await handler.handle(ctx, NOW);
+
+    expect(replies).toEqual([ACCESS_MESSAGE]);
     expect(await channelModel.countDocuments({})).toBe(0);
-    expect(replies[0]).toContain('Этот бот для учителя');
+  });
+
+  it('неподтверждённый (invited) ученик — PENDING_APPROVAL_MESSAGE, без канала', async () => {
+    await userModel.create({
+      name: 'Ольга',
+      telegramId: 552,
+      roles: [],
+      status: 'invited',
+    });
+
+    const { ctx, replies } = fakeCtx(552);
+    await handler.handle(ctx, NOW);
+
+    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
+    expect(await channelModel.countDocuments({})).toBe(0);
+  });
+
+  it('заблокированный ученик — ACCESS_MESSAGE, без канала', async () => {
+    await userModel.create({
+      name: 'Ольга',
+      telegramId: 553,
+      roles: [],
+      status: 'blocked',
+    });
+
+    const { ctx, replies } = fakeCtx(553);
+    await handler.handle(ctx, NOW);
+
+    expect(replies).toEqual([ACCESS_MESSAGE]);
+    expect(await channelModel.countDocuments({})).toBe(0);
   });
 
   it('апдейт без from — ничего не делает, не падает', async () => {
@@ -179,13 +247,12 @@ describe('StartHandler', () => {
     expect(replies[0]).not.toContain('на сайте');
   });
 
-  it('ошибка UsersService — логируется, не выбрасывается, ответа нет', async () => {
+  it('ошибка UsersService (внутри BotUserAccessService) — логируется, не выбрасывается, ответа нет', async () => {
     const failingUsers = {
       findByTelegramId: jest.fn().mockRejectedValue(new Error('mongo down')),
     } as unknown as UsersService;
     const failingHandler = new StartHandler(
       settingsService,
-      failingUsers,
       new ChannelConfigService(channelModel, classModel),
       new BotSessionService(botSessionModel),
       new BotUserAccessService(failingUsers),
@@ -262,13 +329,14 @@ describe('StartHandler', () => {
       expect(replies[0]).toContain('Снимите или пришлите видео');
     });
 
-    it('битый payload (не 24 hex-символа) — обычный /start, без ожидания видео', async () => {
+    it('битый payload (не 24 hex-символа) — обычный /start, ученик подключается, без ожидания видео', async () => {
       await userModel.create({ name: 'Ученик', telegramId: 446, roles: [] });
       const { ctx, replies } = fakeCtx(446, 'private', false, 'exam_not-an-id');
 
       await handler.handle(ctx, NOW);
 
-      expect(replies[0]).toContain('Этот бот для учителя');
+      expect(replies[0]).toContain('Экзамены можно сдать');
+      expect(await channelModel.countDocuments({ target: '446' })).toBe(1);
       expect(await botSessionModel.countDocuments({})).toBe(0);
     });
   });

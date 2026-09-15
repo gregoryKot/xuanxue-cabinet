@@ -14,17 +14,12 @@ import {
 import { ClassRecord } from '../classes/class.schema';
 import { NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
-import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { assertObjectId } from '../common/object-id';
-import { decryptRecord, encryptRecord } from '../utils/encryption';
+import { decryptRecord } from '../utils/encryption';
 import { assertConfigForType } from './assert-channel-config';
 import { CHANNEL_FIELD_POLICY, ChannelRecord } from './channel.schema';
-import {
-  targetOf,
-  toChannelDto,
-  type LeanChannel,
-  type LeanChannelWithConfig,
-} from './channel.mapper';
+import { findOrReviveChannel } from './find-or-revive-channel';
+import { targetOf, toChannelDto, type LeanChannelWithConfig } from './channel.mapper';
 
 const ENCRYPT_SCHEMA = encryptSchemaFrom(CHANNEL_FIELD_POLICY);
 const NOT_FOUND_MESSAGE = CHANNEL_NOT_FOUND_MESSAGE;
@@ -76,7 +71,7 @@ export class ChannelConfigService {
     assertConfigForType('telegram', config);
     const target = targetOf('telegram', config);
     const title = input.title.slice(0, CHANNEL_LIMITS.title);
-    const { doc, created } = await this.findOrReviveChannel(target, title, config);
+    const { doc, created } = await findOrReviveChannel(this.model, target, title, config);
     if (created) {
       await this.classModel.updateMany(
         { active: true },
@@ -86,12 +81,37 @@ export class ChannelConfigService {
     return toChannelDto(doc);
   }
 
-  /** chatId активных Telegram-каналов — для GroupMembershipService
-   * (автоподтверждение по группе, ADR-0026). Лимит — LIST_LIMIT_MAX, «дай
-   * всё» запрещён (CLAUDE.md «API»); `target` для telegram — это chatId. */
+  /** Личный канал ОДНОГО ученика по /start (ADR-0027, docs/PLAN.md §11
+   * слой 4.7) — тот же идемпотентный upsert, что и у канала школы выше, но
+   * ДВЕ разницы намеренно: `broadcastEligible: false` (только при создании —
+   * см. комментарий в findOrReviveChannel про revive) и НИКАКОГО подключения
+   * к классам. Иначе первый же /start ученика превратил бы его личный чат в
+   * получателя рассылок всех занятий школы (нашлось на аудите 2026-09-15:
+   * `PersonalChats.chatFor` для ученика всегда отдавал `null`, потому что
+   * канал в принципе не заводился, — этот метод и закрывает разрыв). */
+  async upsertPersonalTelegramChat(input: {
+    chatId: string;
+    title: string;
+  }): Promise<ChannelDto> {
+    const config: ChannelConfig = { chatId: input.chatId };
+    assertConfigForType('telegram', config);
+    const target = targetOf('telegram', config);
+    const title = input.title.slice(0, CHANNEL_LIMITS.title);
+    const { doc } = await findOrReviveChannel(this.model, target, title, config, {
+      broadcastEligible: false,
+    });
+    return toChannelDto(doc);
+  }
+
+  /** chatId активных Telegram-каналов ШКОЛЫ — для GroupMembershipService
+   * (автоподтверждение по группе, ADR-0026). Личные каналы учеников
+   * (`broadcastEligible: false`, ADR-0027) сюда не попадают: это не группы,
+   * проверять членство в них незачем и небезопасно тратить вызовы Bot API.
+   * Лимит — LIST_LIMIT_MAX, «дай всё» запрещён (CLAUDE.md «API»); `target`
+   * для telegram — это chatId. */
   async listActiveTelegramChatIds(): Promise<string[]> {
     const docs = await this.model
-      .find({ type: 'telegram', active: true })
+      .find({ type: 'telegram', active: true, broadcastEligible: { $ne: false } })
       .select('target')
       .limit(LIST_LIMIT_MAX)
       .lean<{ target: string }[]>();
@@ -106,45 +126,5 @@ export class ChannelConfigService {
       { type: 'telegram', target: chatId },
       { $set: { active: false } },
     );
-  }
-
-  /** `created: true` — только что вставленный документ (вызывающий код
-   * подключает его ко всем активным классам); `created: false` — документ
-   * уже существовал (E11000), только «оживлён» active:true и title. */
-  private async findOrReviveChannel(
-    target: string,
-    title: string,
-    config: ChannelConfig,
-  ): Promise<{ doc: LeanChannel; created: boolean }> {
-    const payload: Record<string, unknown> = {
-      type: 'telegram',
-      title,
-      config,
-      target,
-      active: true,
-    };
-    try {
-      const created = await this.model.create(encryptRecord(payload, ENCRYPT_SCHEMA));
-      const doc = await this.model
-        .findById(created._id)
-        .select('-config')
-        .lean<LeanChannel>();
-      if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
-      return { doc, created: true };
-    } catch (err) {
-      if (!isDuplicateKeyError(err)) throw err;
-      // Бот снова добавлен в чат, который раньше кикнул его (active:false) —
-      // «оживляем» канал и обновляем название на случай, если чат переименован.
-      const existing = await this.model
-        .findOneAndUpdate(
-          { type: 'telegram', target },
-          { $set: { active: true, title } },
-          { returnDocument: 'after' },
-        )
-        .select('-config')
-        .lean<LeanChannel>();
-      if (!existing) throw err;
-      return { doc: existing, created: false };
-    }
   }
 }

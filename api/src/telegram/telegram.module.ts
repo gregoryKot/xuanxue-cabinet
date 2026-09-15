@@ -1,7 +1,8 @@
 // Бот Telegram (ADR-0015): вебхук + авторегистрация чатов как каналов, кнопки
 // предпросмотра/«Запись?»/ручных каналов, /тема, /уведомления (PLAN.md §6, §13).
 // ChannelsModule — ChannelConfigService и модель ChannelRecord (PersonalChats);
-// UsersModule — UsersService (/start, PersonalChats, MessageHandler);
+// UsersModule — UsersService (PersonalChats, MessageHandler,
+// BotUserAccessService — /start и остальной доступ бота идут через неё);
 // BroadcastsModule — BroadcastsService.cancel(), TopicRebuildService, модель
 // BroadcastRecord; LessonsModule — LessonsService.update()/addRecording(),
 // модель LessonRecord; DeliveriesModule — DeliveriesService.markSent();
