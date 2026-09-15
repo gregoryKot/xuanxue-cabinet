@@ -43,6 +43,11 @@ import {
 } from '../exams/exam-grading.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import {
+  EmailLoginTokenRecord,
+  EmailLoginTokenSchema,
+  EMAIL_LOGIN_TOKEN_FIELD_POLICY,
+} from '../auth/email-login-token.schema';
+import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
   NOTIFICATION_PREFS_FIELD_POLICY,
@@ -109,6 +114,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     fieldPolicy: EXAM_GRADING_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
+  {
+    name: EmailLoginTokenRecord.name,
+    schema: EmailLoginTokenSchema,
+    fieldPolicy: EMAIL_LOGIN_TOKEN_FIELD_POLICY,
+  },
   {
     name: NotificationPrefsRecord.name,
     schema: NotificationPrefsSchema,

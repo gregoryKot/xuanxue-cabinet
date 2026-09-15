@@ -7,14 +7,19 @@ import { randomBytes } from 'crypto';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { MongooseModule } from '@nestjs/mongoose';
 import { Logger } from 'nestjs-pino';
 import { ChannelsModule } from '../channels/channels.module';
+import { MailModule } from '../mail/mail.module';
 import { SettingsModule } from '../settings/settings.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
+import { EmailAuthService } from './email-auth.service';
+import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
+import { EmailLoginTokenService } from './email-login-token.service';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 
@@ -26,12 +31,25 @@ import { TelegramAuthService } from './telegram-auth.service';
   // GroupMembershipService для автоподтверждения по группе (ADR-0026);
   // ChannelsModule импортирует ClassesModule и сам AuthModule не импортирует
   // (проверено — ни ChannelsModule, ни его импорты на AuthModule не ссылаются) —
-  // цикла нет.
-  imports: [UsersModule, SettingsModule, ChannelsModule, TelegramModule],
+  // цикла нет. MailModule — MailService для email-входа (ADR-0029), своего
+  // AuthModule не импортирует. EmailLoginTokenRecord регистрируется здесь
+  // же (не в UsersModule): токен не про пользователя, он про сам вход.
+  imports: [
+    UsersModule,
+    SettingsModule,
+    ChannelsModule,
+    TelegramModule,
+    MailModule,
+    MongooseModule.forFeature([
+      { name: EmailLoginTokenRecord.name, schema: EmailLoginTokenSchema },
+    ]),
+  ],
   controllers: [AuthController],
   providers: [
     AuthService,
     TelegramAuthService,
+    EmailAuthService,
+    EmailLoginTokenService,
     { provide: APP_GUARD, useClass: AuthGuard },
     {
       provide: SESSION_SECRET,

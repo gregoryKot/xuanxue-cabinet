@@ -23,20 +23,26 @@ import { botIdFromToken } from './bot-id-from-token';
 import { AllowPending, CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
+import { EmailAuthService } from './email-auth.service';
 import { parseTelegramLoginBody } from './parse-telegram-login-body';
+import { RequestEmailLoginDto } from './request-email-login.dto';
 import { TelegramAuthService } from './telegram-auth.service';
 import { toMeDto } from './user.mapper';
+import { VerifyEmailLoginDto } from './verify-email-login.dto';
 
 // Троттлинг по IP (глобальный ThrottlerGuard бакетирует неверифицированных,
 // CLAUDE.md №4) — отдельный, более жёсткий лимит на попытки входа, чем
-// общие 120/мин на всё API.
+// общие 120/мин на всё API. Один лимит на Telegram и email — тот же профиль
+// злоупотребления (перебор), SECURITY §2.
 const TELEGRAM_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
+const EMAIL_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly telegramAuthService: TelegramAuthService,
+    private readonly emailAuthService: EmailAuthService,
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
     private readonly telegramBotService: TelegramBotService,
@@ -88,6 +94,35 @@ export class AuthController {
     const { user, cookie } = await this.telegramAuthService.login(
       body,
       req.body ?? {},
+      DateTime.utc(),
+    );
+    res.setHeader('Set-Cookie', cookie);
+    return toMeDto(user);
+  }
+
+  // Ответ всегда 204, независимо от того, найден email в базе или нет и
+  // ушло ли письмо из-за cooldown (EmailAuthService.requestLink) — на
+  // «неизвестном» email нельзя отвечать иначе, это раскрывало бы, кто уже
+  // зарегистрирован (SECURITY §2). Исключение — сама фича выключена
+  // конфигурацией: тогда NotAvailableError (503), 204 не изображаем.
+  @Public()
+  @Throttle(EMAIL_LOGIN_THROTTLE)
+  @Post('email/request')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async requestEmailLogin(@Body() body: RequestEmailLoginDto): Promise<void> {
+    await this.emailAuthService.requestLink(body.email, DateTime.utc());
+  }
+
+  @Public()
+  @Throttle(EMAIL_LOGIN_THROTTLE)
+  @Post('email/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmailLogin(
+    @Body() body: VerifyEmailLoginDto,
+    @Res({ passthrough: true }) res: ResponseLike,
+  ): Promise<MeDto> {
+    const { user, cookie } = await this.emailAuthService.verify(
+      body.token,
       DateTime.utc(),
     );
     res.setHeader('Set-Cookie', cookie);

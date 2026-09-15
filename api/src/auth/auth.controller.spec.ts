@@ -13,6 +13,7 @@ import { SettingsService } from '../settings/settings.service';
 import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { EmailAuthService } from './email-auth.service';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
@@ -48,6 +49,13 @@ async function buildController(
     providers: [
       { provide: AuthService, useValue: { logoutCookie: () => 'session=; Max-Age=0' } },
       { provide: TelegramAuthService, useValue: { login: telegramLogin } },
+      {
+        provide: EmailAuthService,
+        useValue: {
+          requestLink: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
+          verify: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
+        },
+      },
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
       { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
       { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },

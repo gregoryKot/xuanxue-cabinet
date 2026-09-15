@@ -248,7 +248,10 @@ api: валидация env, логи с requestId и редакцией, кон
    ненадёжный из-за блокировки попапов и третьесторонних cookie):
    `GET /auth/config` отдаёт `telegramBotId` (числовой префикс `BOT_TOKEN`),
    без него — «Вход через Telegram не настроен»; `web/src/auth/LoginScreen.tsx`.
-   Email-ссылка и Google — следующие PR.
+   Email-ссылка (ADR-0029) — API реализован (`POST /auth/email/request`,
+   `POST /auth/email/verify`), без `RESEND_API_KEY`/`MAIL_FROM` выключена
+   (503, «не подключён»); экран входа на почту во фронтенде — следующий PR.
+   Google — следующий PR.
 2. **Расписание.** Недельная сетка с воскресенья по субботу, как на сайте школы: слот =
    название, время, формат, ведущий. Карточка слота: ссылка Zoom, пароль, каналы,
    «за сколько минут слать», выключатель. Утренний анонс — после подтверждения Димой
@@ -778,28 +781,29 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 
 ### API
 
-| Метод                 | Путь                                            | Кто            |
-| --------------------- | ----------------------------------------------- | -------------- |
-| GET                   | `/auth/config` (реализовано)                    | все            |
-| GET                   | `/auth/me`                                      | с сессией      |
-| POST                  | `/auth/logout`                                  | с сессией      |
-| POST                  | `/auth/email`, `/auth/telegram`, `/auth/google` | все            |
-| GET/POST/PATCH/DELETE | `/classes` (реализовано)                        | учитель        |
-| GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)        | учитель        |
-| POST                  | `/lessons/:id/recording` (реализовано)          | учитель        |
-| POST                  | `/lessons/:id/send-now` (реализовано)           | учитель        |
-| GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано) | учитель        |
-| GET/POST              | `/broadcasts`, `/broadcasts/:id`,               |                |
-|                       | `/broadcasts/:id/deliveries` (реализовано)      | учитель        |
-| POST                  | `/broadcasts/:id/cancel` (реализовано)          | учитель        |
-| GET/POST              | `/deliveries`, `/deliveries/:id`,               |                |
-|                       | `:id/mark-sent` (реализовано)                   | учитель        |
-| GET/PATCH/POST        | `/settings`, `/settings/preview` (реализовано)  | учитель        |
-| GET                   | `/summary` (реализовано)                        | учитель        |
-| GET                   | `/users` (реализовано)                          | админ          |
-| PATCH                 | `/users/:id` (реализовано)                      | админ          |
-| DELETE                | `/users/:id` (реализовано)                      | админ          |
-| GET                   | `/users/teachers` (реализовано)                 | учитель, админ |
+| Метод                 | Путь                                                                | Кто            |
+| --------------------- | ------------------------------------------------------------------- | -------------- |
+| GET                   | `/auth/config` (реализовано)                                        | все            |
+| GET                   | `/auth/me`                                                          | с сессией      |
+| POST                  | `/auth/logout`                                                      | с сессией      |
+| POST                  | `/auth/email/request`, `/auth/email/verify` (реализовано, ADR-0029) | все            |
+| POST                  | `/auth/telegram` (реализовано), `/auth/google`                      | все            |
+| GET/POST/PATCH/DELETE | `/classes` (реализовано)                                            | учитель        |
+| GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)                            | учитель        |
+| POST                  | `/lessons/:id/recording` (реализовано)                              | учитель        |
+| POST                  | `/lessons/:id/send-now` (реализовано)                               | учитель        |
+| GET/POST/PATCH/DELETE | `/channels`, `/channels/:id/test` (реализовано)                     | учитель        |
+| GET/POST              | `/broadcasts`, `/broadcasts/:id`,                                   |                |
+|                       | `/broadcasts/:id/deliveries` (реализовано)                          | учитель        |
+| POST                  | `/broadcasts/:id/cancel` (реализовано)                              | учитель        |
+| GET/POST              | `/deliveries`, `/deliveries/:id`,                                   |                |
+|                       | `:id/mark-sent` (реализовано)                                       | учитель        |
+| GET/PATCH/POST        | `/settings`, `/settings/preview` (реализовано)                      | учитель        |
+| GET                   | `/summary` (реализовано)                                            | учитель        |
+| GET                   | `/users` (реализовано)                                              | админ          |
+| PATCH                 | `/users/:id` (реализовано)                                          | админ          |
+| DELETE                | `/users/:id` (реализовано)                                          | админ          |
+| GET                   | `/users/teachers` (реализовано)                                     | учитель, админ |
 
 `GET /lessons` принимает `?from&to&classId`: окно дат обязательно и не шире
 горизонта планировщика, `classId` фильтрует список. `GET /broadcasts` — так же
