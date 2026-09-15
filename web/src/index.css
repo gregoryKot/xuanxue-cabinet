@@ -145,6 +145,24 @@ body {
   transition: box-shadow 1.2s ease;
 }
 
+/* Разбор попытки (grading/AttemptReviewScreen.tsx) — одна колонка на
+   телефоне (CLAUDE.md «Мобильный экран первым» сильнее макета Review.dc.html),
+   две — на экране, где колонке рубрики хватает места рядом с ответами. Класс,
+   не инлайн-стиль: `CSSProperties` не умеет медиа-запрос. */
+.xuanxue-review-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+@media (min-width: 760px) {
+  .xuanxue-review-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+    gap: 40px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

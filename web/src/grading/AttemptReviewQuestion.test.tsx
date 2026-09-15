@@ -98,4 +98,31 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
 
     expect(screen.queryByText(/Выбрано верно/)).not.toBeInTheDocument();
   });
+
+  it('автопроверка без ошибок — метка «Верно»', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({
+          kind: 'single',
+          options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+          optionsCheck: {
+            correctSelectedCount: 1,
+            correctTotalCount: 1,
+            incorrectSelectedCount: 0,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Верно')).toBeInTheDocument();
+  });
+});
+
+describe('AttemptReviewQuestion — вопрос без вариантов', () => {
+  it('метка «Смотрите вы» — машина текст/видео не проверяет', () => {
+    render(<AttemptReviewQuestion index={0} question={makeQuestion()} />);
+
+    expect(screen.getByText('Смотрите вы')).toBeInTheDocument();
+  });
 });
