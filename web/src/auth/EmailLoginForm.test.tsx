@@ -24,6 +24,21 @@ describe('EmailLoginForm', () => {
     expect(screen.getByRole('button', { name: 'Получить ссылку' })).toBeDisabled();
   });
 
+  it('inviteCode (ADR-0030) — уходит в теле запроса вместе с email', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue(undefined);
+    render(<EmailLoginForm inviteCode={'a'.repeat(32)} />);
+
+    await user.type(screen.getByLabelText('Почта'), 'a@example.com');
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+
+    await screen.findByText(/Письмо отправлено/);
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
+      method: 'POST',
+      body: { email: 'a@example.com', inviteCode: 'a'.repeat(32) },
+    });
+  });
+
   it('успех — «Письмо отправлено на …», форма пропадает', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue(undefined);

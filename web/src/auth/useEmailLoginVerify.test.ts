@@ -73,4 +73,57 @@ describe('useEmailLoginVerify', () => {
       'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     );
   });
+
+  it('joinCode (ADR-0030) — после verify зовёт POST /auth/join, потом переход на /schedule', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
+
+    await act(() => result.current.verify('t'.repeat(64)));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/join', {
+      method: 'POST',
+      body: { code: 'a'.repeat(32) },
+    });
+    expect(navigateMock).toHaveBeenCalledWith('/schedule', { replace: true });
+    expect(result.current.joinError).toBeNull();
+  });
+
+  it('join упал — joinError виден, вход не блокирован, на /schedule не уводит сам', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/email/verify') return Promise.resolve(undefined);
+      if (path === '/auth/join')
+        return Promise.reject(
+          new ApiError('Ссылка-приглашение не действует.', 401, 'unauthorized'),
+        );
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
+
+    await act(() => result.current.verify('t'.repeat(64)));
+
+    expect(result.current.joinError).toBe('Ссылка-приглашение не действует.');
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(navigateMock).not.toHaveBeenCalled();
+
+    result.current.continueToSchedule();
+    expect(navigateMock).toHaveBeenCalledWith('/schedule', { replace: true });
+  });
+
+  it('join упал не ApiError — общий текст «Нет связи…» в joinError', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/email/verify') return Promise.resolve(undefined);
+      if (path === '/auth/join') return Promise.reject(new Error('boom'));
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
+
+    await act(() => result.current.verify('t'.repeat(64)));
+
+    expect(result.current.joinError).toBe(
+      'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
+    );
+  });
 });

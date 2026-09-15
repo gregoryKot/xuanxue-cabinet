@@ -14,6 +14,7 @@ import { AppShell } from './AppShell';
 
 const LoginScreen = lazy(() => import('../auth/LoginScreen'));
 const EmailLoginCallbackScreen = lazy(() => import('../auth/EmailLoginCallbackScreen'));
+const JoinScreen = lazy(() => import('../join/JoinScreen'));
 const ScheduleScreen = lazy(() => import('../schedule/ScheduleScreen'));
 const PlanningScreen = lazy(() => import('../planning/PlanningScreen'));
 const ChannelsScreen = lazy(() => import('../channels/ChannelsScreen'));
@@ -43,6 +44,10 @@ export default function App() {
             {/* Ссылка из письма входа (ADR-0029) — публичный маршрут, как
                 /login: страница сама решает по токену, что показать. */}
             <Route path="/login/email" element={<EmailLoginCallbackScreen />} />
+            {/* Ссылка-приглашение школы (ADR-0030) — публичный маршрут: до
+                входа проверяет код сама (useJoinByInvite.ts), внутрь
+                RequireAuth не идёт — гостю ещё нечего показывать из кабинета. */}
+            <Route path="/join/:code" element={<JoinScreen />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route path="/schedule" element={<ScheduleScreen />} />

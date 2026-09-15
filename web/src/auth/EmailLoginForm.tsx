@@ -10,9 +10,15 @@ import { useEmailLoginRequest } from './useEmailLoginRequest';
 
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 
-export function EmailLoginForm() {
+interface EmailLoginFormProps {
+  /** Код ссылки-приглашения школы (ADR-0030), когда форма открыта с
+   * `/join/:code` — уходит вместе с запросом ссылки на почту. */
+  inviteCode?: string;
+}
+
+export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
   const [email, setEmail] = useState('');
-  const { status, error, sentOnce, request } = useEmailLoginRequest();
+  const { status, error, sentOnce, request } = useEmailLoginRequest(inviteCode);
 
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();

@@ -146,6 +146,53 @@ describe('EmailLoginCallbackScreen — валидный токен', () => {
   });
 });
 
+describe('EmailLoginCallbackScreen — join (ADR-0030)', () => {
+  const CODE = 'a'.repeat(32);
+
+  it('join в query — после verify зовёт POST /auth/join, потом /schedule', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/email/verify') return Promise.resolve(ME);
+      if (path === '/auth/join') return Promise.resolve(ME);
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen(`?token=${VALID_TOKEN}&join=${CODE}`);
+
+    await user.click(await screen.findByRole('button', { name: 'Войти' }));
+
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/join', {
+      method: 'POST',
+      body: { code: CODE },
+    });
+  });
+
+  it('join упал — «Вы вошли» с текстом ошибки, «Перейти в кабинет» ведёт на /schedule', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/email/verify') return Promise.resolve(ME);
+      if (path === '/auth/join')
+        return Promise.reject(
+          new ApiError('Ссылка-приглашение не действует.', 401, 'unauthorized'),
+        );
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen(`?token=${VALID_TOKEN}&join=${CODE}`);
+
+    await user.click(await screen.findByRole('button', { name: 'Войти' }));
+
+    expect(await screen.findByText('Вы вошли')).toBeInTheDocument();
+    expect(screen.getByText('Ссылка-приглашение не действует.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Перейти в кабинет' }));
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+  });
+});
+
 describe('EmailLoginCallbackScreen — уже вошедшего уводит на /schedule', () => {
   it('authStatus ok — редирект, карточка не показывается', async () => {
     mockMe('ok');

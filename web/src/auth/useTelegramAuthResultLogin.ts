@@ -25,9 +25,18 @@ export interface UseTelegramAuthResultLoginResult {
   error: string | null;
 }
 
+export interface UseTelegramAuthResultLoginOptions {
+  /** По умолчанию — переход на /schedule после успешного входа (LoginScreen).
+   * `false` — экран сам решает, что дальше (JoinScreen.tsx: ссылка-приглашение,
+   * ADR-0030, ведёт на /schedule только после своего POST /auth/join). */
+  navigateAfterLogin?: boolean;
+}
+
 export function useTelegramAuthResultLogin(
   refresh: () => Promise<void>,
+  options: UseTelegramAuthResultLoginOptions = {},
 ): UseTelegramAuthResultLoginResult {
+  const { navigateAfterLogin = true } = options;
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +61,14 @@ export function useTelegramAuthResultLogin(
     setPending(true);
     postTelegramLogin(user)
       .then(() => refresh())
-      .then(() => navigate('/schedule', { replace: true }))
+      .then(() => {
+        if (navigateAfterLogin) void navigate('/schedule', { replace: true });
+      })
       .catch((err: unknown) => {
         setError(err instanceof ApiError ? err.message : LOGIN_FAILED_MESSAGE);
       })
       .finally(() => setPending(false));
-  }, [navigate, refresh]);
+  }, [navigate, refresh, navigateAfterLogin]);
 
   return { pending, error };
 }

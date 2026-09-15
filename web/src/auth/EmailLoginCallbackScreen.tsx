@@ -20,7 +20,18 @@ export default function EmailLoginCallbackScreen() {
   const { status: authStatus, refresh } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { status: verifyStatus, error, verify } = useEmailLoginVerify(refresh);
+  // join — код ссылки-приглашения школы (ADR-0030), сервер положил его в
+  // ссылку письма (EmailAuthService.requestLink), если он был валиден на
+  // момент запроса. undefined, если параметра нет — verify() тогда просто
+  // не зовёт /auth/join (см. useEmailLoginVerify.ts).
+  const joinCode = searchParams.get('join') ?? undefined;
+  const {
+    status: verifyStatus,
+    error,
+    joinError,
+    verify,
+    continueToSchedule,
+  } = useEmailLoginVerify(refresh, joinCode);
 
   if (authStatus === 'ok') return <Navigate to="/schedule" replace />;
 
@@ -41,6 +52,26 @@ export default function EmailLoginCallbackScreen() {
           </p>
           <Button onClick={goToLogin} style={{ width: '100%' }}>
             На страницу входа
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  // joinError — вход уже состоялся (verify прошёл), не упал сам вход
+  // (useEmailLoginVerify.ts, ADR-0030): отдельный экран с действием, не
+  // общая ветка `error` ниже — «Запросить новую» здесь не к месту, ссылка
+  // уже потрачена.
+  if (joinError) {
+    return (
+      <main style={loginPageStyle}>
+        <div style={loginCardStyle}>
+          <h1 style={loginTitleStyle}>Вы вошли</h1>
+          <p role="alert" style={{ ...loginExplanationStyle, color: 'var(--danger)' }}>
+            {joinError}
+          </p>
+          <Button onClick={continueToSchedule} style={{ width: '100%' }}>
+            Перейти в кабинет
           </Button>
         </div>
       </main>

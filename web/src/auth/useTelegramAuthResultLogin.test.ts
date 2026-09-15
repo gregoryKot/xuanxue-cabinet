@@ -105,6 +105,20 @@ describe('useTelegramAuthResultLogin', () => {
     );
   });
 
+  it('navigateAfterLogin: false (JoinScreen, ADR-0030) — refresh() есть, navigate не вызван', async () => {
+    window.location.hash = toTgAuthResultHash(fakeUser);
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useTelegramAuthResultLogin(refresh, { navigateAfterLogin: false }),
+    );
+
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(result.current.pending).toBe(false);
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
   it('StrictMode вызывает эффект дважды — POST уходит один раз (startedRef)', async () => {
     window.location.hash = toTgAuthResultHash(fakeUser);
     mockedApiFetch.mockResolvedValue(undefined);
