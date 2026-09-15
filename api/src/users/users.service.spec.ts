@@ -150,4 +150,22 @@ describe('UsersService', () => {
     const found = await service.findById(created.id);
     expect(found?.lastLoginAt?.toISOString()).toBe(now.toJSDate().toISOString());
   });
+
+  // Read-after-write (CLAUDE.md «Тесты») — mark-joined-via-invite.ts: число
+  // «По ссылке пришли» на «Людях» (formatJoinedViaInviteCount.ts) строится
+  // по joinedViaInviteAt, не отдельным флагом.
+  it('markJoinedViaInvite проставляет joinedViaInviteAt из переданного now', async () => {
+    const created = await service.createFromTelegram({
+      telegramId: 444,
+      name: 'Пришёл по ссылке',
+      roles: [],
+      status: 'invited',
+    });
+    const now = DateTime.fromISO('2026-09-15T12:00:00Z');
+
+    await service.markJoinedViaInvite(created.id, now);
+
+    const found = await service.findById(created.id);
+    expect(found?.joinedViaInviteAt?.toISOString()).toBe(now.toJSDate().toISOString());
+  });
 });

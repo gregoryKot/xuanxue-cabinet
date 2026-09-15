@@ -43,6 +43,11 @@ import {
 } from '../exams/exam-grading.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import {
+  InviteLinkRecord,
+  InviteLinkSchema,
+  INVITE_LINK_FIELD_POLICY,
+} from '../users/invite-link.schema';
+import {
   EmailLoginTokenRecord,
   EmailLoginTokenSchema,
   EMAIL_LOGIN_TOKEN_FIELD_POLICY,
@@ -78,11 +83,7 @@ interface ModelDefinition {
 export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
   { name: ClassRecord.name, schema: ClassSchema, fieldPolicy: CLASS_FIELD_POLICY },
   { name: LessonRecord.name, schema: LessonSchema, fieldPolicy: LESSON_FIELD_POLICY },
-  {
-    name: ChannelRecord.name,
-    schema: ChannelSchema,
-    fieldPolicy: CHANNEL_FIELD_POLICY,
-  },
+  { name: ChannelRecord.name, schema: ChannelSchema, fieldPolicy: CHANNEL_FIELD_POLICY },
   {
     name: BroadcastRecord.name,
     schema: BroadcastSchema,
@@ -98,11 +99,7 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     schema: ExamItemSchema,
     fieldPolicy: EXAM_ITEM_FIELD_POLICY,
   },
-  {
-    name: ExamRecord.name,
-    schema: ExamSchema,
-    fieldPolicy: EXAM_FIELD_POLICY,
-  },
+  { name: ExamRecord.name, schema: ExamSchema, fieldPolicy: EXAM_FIELD_POLICY },
   {
     name: ExamAttemptRecord.name,
     schema: ExamAttemptSchema,
@@ -114,6 +111,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     fieldPolicy: EXAM_GRADING_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
+  {
+    name: InviteLinkRecord.name,
+    schema: InviteLinkSchema,
+    fieldPolicy: INVITE_LINK_FIELD_POLICY,
+  },
   {
     name: EmailLoginTokenRecord.name,
     schema: EmailLoginTokenSchema,

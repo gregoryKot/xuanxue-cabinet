@@ -1,7 +1,10 @@
 // /auth/me, /auth/logout и /auth/telegram — под глобальным AuthGuard.
 // /auth/logout и /auth/telegram помечены @Public(): выход обязан чистить
 // cookie даже без валидной сессии, вход — способ её получить. CSRF-проверка
-// (x-requested-with) при этом всё равно действует для обоих, см. auth.guard.ts.
+// (x-requested-with) при этом всё равно действует, см. auth.guard.ts.
+// POST /auth/join и /auth/join/check (ADR-0030) — в JoinController рядом:
+// оба контроллера вместе не влезали бы в один файл до 150 строк
+// (file-size-ratchet).
 import {
   Body,
   Controller,
@@ -113,7 +116,7 @@ export class AuthController {
   @Post('email/request')
   @HttpCode(HttpStatus.NO_CONTENT)
   async requestEmailLogin(@Body() body: RequestEmailLoginDto): Promise<void> {
-    await this.emailAuthService.requestLink(body.email, DateTime.utc());
+    await this.emailAuthService.requestLink(body.email, DateTime.utc(), body.inviteCode);
   }
 
   @Public()

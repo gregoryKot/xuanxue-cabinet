@@ -6,13 +6,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import {
-  LIST_LIMIT_DEFAULT,
-  SCHOOL_TZ,
-  type UserRole,
-  type UserStatus,
-} from '@xuanxue/shared';
+import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
+import {
+  listTeacherContacts as listTeacherContactsQuery,
+  type TeacherContact,
+} from './list-teacher-contacts';
+import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
 import { upsertUserByKey } from './upsert-user-by-key';
 
 /** Внутреннее представление пользователя — шире MeDto: гварду нужны status и
@@ -27,6 +27,7 @@ export interface UserLean {
   tz: string;
   status: UserStatus;
   lastLoginAt?: Date;
+  joinedViaInviteAt?: Date;
 }
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
@@ -51,6 +52,7 @@ export function toLean(doc: UserDoc): UserLean {
     tz: doc.tz,
     status: doc.status,
     lastLoginAt: doc.lastLoginAt,
+    joinedViaInviteAt: doc.joinedViaInviteAt,
   };
 }
 
@@ -71,35 +73,11 @@ export class UsersService {
     return doc ? toLean(doc) : null;
   }
 
-  /** Учителя, помощники учителя и админы с подключённым Telegram — кому бот
-   * вообще может писать (PersonalChats, api/src/telegram/personal-chats.ts,
-   * PLAN.md §6): помощник учителя правами равен учителю, поэтому в списке —
-   * дальше PersonalChats сверяет каждого с активным личным каналом и с его
-   * настройкой уведомлений (roles — для дефолта по роли, listFor). Бухгалтер
-   * и ученик сюда не попадают — бот с ними проактивно не говорит. */
-  async listTeacherContacts(): Promise<
-    { id: string; name: string; telegramId: number; roles: UserRole[] }[]
-  > {
-    const docs = await this.model
-      .find(
-        {
-          telegramId: { $exists: true },
-          roles: { $in: ['teacher', 'assistant', 'admin'] },
-        },
-        { name: 1, telegramId: 1, roles: 1 },
-      )
-      // Список внутренний (PersonalChats), но без лимита — «дай всё» тем же
-      // запрещённым приёмом, что и у публичных списков (CLAUDE.md «API»).
-      .limit(LIST_LIMIT_DEFAULT)
-      .lean<
-        { _id: Types.ObjectId; name: string; telegramId: number; roles: UserRole[] }[]
-      >();
-    return docs.map((doc) => ({
-      id: doc._id.toString(),
-      name: doc.name,
-      telegramId: doc.telegramId,
-      roles: doc.roles,
-    }));
+  /** Логика — в list-teacher-contacts.ts (та же причина выноса, что у
+   * upsert-user-by-key.ts: файл не растёт за 150 строк). Кому и зачем — см.
+   * комментарий там же и personal-chats.ts. */
+  async listTeacherContacts(): Promise<TeacherContact[]> {
+    return listTeacherContactsQuery(this.model);
   }
 
   /** Первый вход через Telegram (SECURITY §2, ADR-0026): роли по умолчанию
@@ -148,5 +126,11 @@ export class UsersService {
    * считать «сейчас», сервис не трогает Date.now()/DateTime.utc() сам. */
   async touchLogin(id: string, now: DateTime): Promise<void> {
     await this.model.updateOne({ _id: id }, { $set: { lastLoginAt: now.toJSDate() } });
+  }
+
+  /** Логика — в mark-joined-via-invite.ts (та же причина выноса, что у
+   * upsert-user-by-key.ts: файл не растёт за 150 строк). */
+  async markJoinedViaInvite(id: string, now: DateTime): Promise<void> {
+    await markJoinedViaInviteWrite(this.model, id, now);
   }
 }

@@ -19,9 +19,10 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import type { TeacherOptionDto, UserDto } from '@xuanxue/shared';
+import type { InviteLinkDto, TeacherOptionDto, UserDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { UserLean } from './users.service';
+import { InviteLinkService } from './invite-link.service';
 import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserRolesService } from './user-roles.service';
@@ -36,12 +37,26 @@ export class UsersController {
     private readonly userRolesService: UserRolesService,
     private readonly teachersService: TeachersService,
     private readonly userDeletionService: UserDeletionService,
+    private readonly inviteLinkService: InviteLinkService,
   ) {}
 
   @Get('teachers')
   @Roles('teacher', 'admin')
   async listTeachers(): Promise<TeacherOptionDto[]> {
     return this.teachersService.listTeachers();
+  }
+
+  // Ссылка-приглашение школы (ADR-0030) — литеральный сегмент, не `:id`,
+  // коллизии с маршрутами ниже нет (check-route-collisions.mjs).
+  @Get('invite-link')
+  async getInviteLink(): Promise<InviteLinkDto> {
+    return this.inviteLinkService.getCurrent();
+  }
+
+  @Post('invite-link')
+  @HttpCode(200)
+  async rotateInviteLink(@CurrentUser() currentUser: UserLean): Promise<InviteLinkDto> {
+    return this.inviteLinkService.rotate(currentUser.id);
   }
 
   @Get()

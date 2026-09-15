@@ -143,6 +143,77 @@ describe('AuthController.logout', () => {
   });
 });
 
+describe('AuthController.requestEmailLogin', () => {
+  it('передаёт email, now и inviteCode из тела в EmailAuthService.requestLink()', async () => {
+    let received: { email: string; inviteCode: string | undefined } | undefined;
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: {} },
+        { provide: TelegramAuthService, useValue: {} },
+        {
+          provide: EmailAuthService,
+          useValue: {
+            requestLink: (email: string, _now: DateTime, inviteCode?: string) => {
+              received = { email, inviteCode };
+              return Promise.resolve();
+            },
+          },
+        },
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SettingsService, useValue: {} },
+        { provide: TelegramBotService, useValue: {} },
+      ],
+    }).compile();
+    const controller = module.get(AuthController);
+
+    await controller.requestEmailLogin({
+      email: 'maria@example.com',
+      inviteCode: 'a'.repeat(32),
+    });
+
+    expect(received).toEqual({ email: 'maria@example.com', inviteCode: 'a'.repeat(32) });
+  });
+});
+
+describe('AuthController.verifyEmailLogin', () => {
+  it('ставит Set-Cookie из результата EmailAuthService.verify() и возвращает MeDto', async () => {
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: {} },
+        { provide: TelegramAuthService, useValue: {} },
+        {
+          provide: EmailAuthService,
+          useValue: {
+            verify: () => Promise.resolve({ user: USER, cookie: 'session=email-tok' }),
+          },
+        },
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SettingsService, useValue: {} },
+        { provide: TelegramBotService, useValue: {} },
+      ],
+    }).compile();
+    const controller = module.get(AuthController);
+    const res = fakeResponse();
+
+    const me = await controller.verifyEmailLogin({ token: 'a'.repeat(64) }, res);
+
+    expect(res.headers['Set-Cookie']).toBe('session=email-tok');
+    expect(me).toEqual({
+      id: 'u1',
+      name: 'Мария',
+      roles: ['admin'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    });
+  });
+});
+
+// AuthController.checkInvite и AuthController.join переехали в
+// JoinController (join.controller.spec.ts) — контроллер вынесен отдельным
+// файлом (ревью владельца 2026-09-15, file-size-ratchet).
+
 const TELEGRAM_INPUT: TelegramLoginInput = {
   id: 42,
   first_name: 'Мария',

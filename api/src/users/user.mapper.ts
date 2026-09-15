@@ -13,5 +13,6 @@ export function toUserDto(user: UserLean): UserDto {
     status: user.status,
     hasTelegram: user.telegramId !== undefined,
     lastLoginAt: user.lastLoginAt ? toIsoUtc(user.lastLoginAt) : undefined,
+    joinedViaInvite: user.joinedViaInviteAt !== undefined,
   };
 }

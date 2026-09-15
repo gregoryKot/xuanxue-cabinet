@@ -7,6 +7,7 @@
 // список, иначе его поля тест не увидит.
 import { getMetadataStorage } from 'class-validator';
 import { FIELD_LABELS_RU } from '@xuanxue/shared';
+import { JoinByInviteDto } from '../auth/join-by-invite.dto';
 import { TelegramLoginDto } from '../auth/telegram-login.dto';
 import { CreateBroadcastDto } from '../broadcasts/dto/create-broadcast.dto';
 import { ListBroadcastsDto } from '../broadcasts/dto/list-broadcasts.dto';
@@ -51,6 +52,7 @@ type DtoConstructor = new (...args: never[]) => object;
 // добавлены отдельной строкой.
 const DTO_CLASSES: DtoConstructor[] = [
   TelegramLoginDto,
+  JoinByInviteDto,
   CreateBroadcastDto,
   ListBroadcastsDto,
   CreateChannelDto,
