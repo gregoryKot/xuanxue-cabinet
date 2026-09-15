@@ -26,6 +26,16 @@ const NO_REMOVE_EXPLANATIONS: Record<'published' | 'archived', string> = {
   archived: 'Удалить нельзя — на экзамен в архиве могли остаться ссылки в попытках.',
 };
 
+/** Черновику — только «Опубликовать» (макет Form.dc.html): архив ему незачем,
+ * у него есть удаление ниже. Опубликованному и архивному — все переходы из
+ * общей таблицы: удалять их нельзя, архив — единственный выход. */
+function statusActions(status: ExamStatus) {
+  const actions = draftPublishedArchivedTransitions(status);
+  return status === 'draft'
+    ? actions.filter((action) => action.nextStatus === 'published')
+    : actions;
+}
+
 const actionsRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -82,7 +92,7 @@ export function ExamEditorFooter({
               · {STATUS_EXPLANATIONS[status]}
             </span>
             <span style={statusActionsStyle}>
-              {draftPublishedArchivedTransitions(status).map((action) => (
+              {statusActions(status).map((action) => (
                 <Button
                   key={action.nextStatus}
                   type="button"
