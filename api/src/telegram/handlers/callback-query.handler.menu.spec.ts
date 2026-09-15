@@ -1,5 +1,6 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты»): кнопки главного меню бота —
 // переход правкой того же сообщения, а не новой копией меню в чате.
+import { ACCESS_MESSAGE } from '@xuanxue/shared';
 import type { UsersService } from '../../users/users.service';
 import {
   buildHandler,
@@ -87,6 +88,50 @@ describe('CallbackQueryHandler — menu (главное меню)', () => {
     });
 
     await handler.handle(cbCtx, NOW);
+
+    expect(editCalls).toHaveLength(0);
+  });
+
+  // Ученик не штат школы (PersonalChats.list его не видит), но «Экзамены» и
+  // «В меню» открыты и ему (ADR-0027, docs/PLAN.md §11 слой 4.7) — той же
+  // причиной, что и у самих кнопок экзамена: сдающий не обязан быть штатом.
+  it('menu:exams — открыт ученику (без ролей штата), не только штату', async () => {
+    await ctx.userModel.create({ name: 'Ольга', telegramId: 777, roles: [] });
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 777, data: 'menu:exams' });
+
+    await ctx.handler.handle(cbCtx, NOW);
+
+    expect(editCalls).toHaveLength(1);
+  });
+
+  it('menu:back — ученику показывает его меню (Экзамены), не штатное («Ближайшие занятия»)', async () => {
+    await ctx.userModel.create({ name: 'Ольга', telegramId: 778, roles: [] });
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 778, data: 'menu:back' });
+
+    await ctx.handler.handle(cbCtx, NOW);
+
+    expect(editCalls[0]).toContain('Экзамены можно сдать');
+    expect(editCalls[0]).not.toContain('/topic');
+  });
+
+  it('menu:back — заблокированный получает отказ, не меню', async () => {
+    await ctx.userModel.create({
+      name: 'Ольга',
+      telegramId: 779,
+      roles: [],
+      status: 'blocked',
+    });
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 779, data: 'menu:back' });
+
+    await ctx.handler.handle(cbCtx, NOW);
+
+    expect(editCalls).toEqual([ACCESS_MESSAGE]);
+  });
+
+  it('menu:exams/menu:back — незнакомец молча игнорируется', async () => {
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 780, data: 'menu:back' });
+
+    await ctx.handler.handle(cbCtx, NOW);
 
     expect(editCalls).toHaveLength(0);
   });

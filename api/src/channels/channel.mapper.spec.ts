@@ -8,6 +8,7 @@ function lean(overrides: Partial<LeanChannel> = {}): LeanChannel {
     title: 'Основной канал',
     active: true,
     target: '@school',
+    broadcastEligible: true,
     createdAt: new Date('2026-09-01T00:00:00.000Z'),
     updatedAt: new Date('2026-09-01T00:00:00.000Z'),
     ...overrides,

@@ -34,6 +34,7 @@ import { isExamCallbackAction, routeExamCallback } from './exam-callback-router'
 import { ExamCommandHandler } from './exam-command.handler';
 import { MenuCommandHandler } from './menu-command.handler';
 import { handleMenuScreen } from './menu-screens';
+import { handleOpenMenuScreen } from './open-menu-screen';
 
 @Injectable()
 export class CallbackQueryHandler {
@@ -84,6 +85,23 @@ export class CallbackQueryHandler {
           this.examBotPorts.get(),
           this.botSessions,
           now,
+        );
+        return;
+      }
+
+      // «Экзамены» и «В меню» из главного меню — тем же путём, что и выше:
+      // экзамен сдают ученики, и меню (ADR-0027, docs/PLAN.md §11 слой 4.7)
+      // показывает и штату, и ученику кнопку «Экзамены». «Ближайшие
+      // занятия»/«Уведомления» штата ниже по-прежнему только для
+      // PersonalChats — их у ученика в меню нет вовсе.
+      if (action === 'menu' && (id === 'exams' || id === 'back')) {
+        await handleOpenMenuScreen(
+          ctx,
+          id,
+          chatId,
+          now,
+          this.botAccess,
+          this.examCommandHandler,
         );
         return;
       }
