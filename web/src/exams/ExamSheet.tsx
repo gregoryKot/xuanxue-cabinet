@@ -80,6 +80,7 @@ export function ExamSheet({
         bankLoading={bank.loading}
         bankError={bank.error}
         onRetryBank={() => void bank.reload()}
+        onPublishItem={(itemId) => void bank.update(itemId, { status: 'published' })}
       />
 
       <Button type="button" variant="secondary" onClick={() => setPreviewOpen(true)}>

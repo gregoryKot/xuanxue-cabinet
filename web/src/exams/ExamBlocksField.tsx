@@ -30,6 +30,7 @@ interface ExamBlocksFieldProps {
   bankLoading: boolean;
   bankError: string | null;
   onRetryBank: () => void;
+  onPublishItem: (itemId: string) => void;
 }
 
 export function ExamBlocksField({
@@ -39,6 +40,7 @@ export function ExamBlocksField({
   bankLoading,
   bankError,
   onRetryBank,
+  onPublishItem,
 }: ExamBlocksFieldProps) {
   const used = usedItemIds(blocks);
   const items = bankItems ?? [];
@@ -64,6 +66,7 @@ export function ExamBlocksField({
           }
           onRemoveBlock={() => onChange(removeBlock(blocks, index))}
           onAddItem={(itemId) => onChange(addItemToBlock(blocks, index, itemId))}
+          onPublishItem={onPublishItem}
           onRemoveItem={(itemId) => onChange(removeItemFromBlock(blocks, index, itemId))}
           onMoveItemUp={(itemIndex) => onChange(moveItemUp(blocks, index, itemIndex))}
           onMoveItemDown={(itemIndex) => onChange(moveItemDown(blocks, index, itemIndex))}
