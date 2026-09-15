@@ -16,6 +16,10 @@
 // не проверяется — ответ на /start одинаков для чужого и несуществующего
 // attemptId (не подтверждаем существование, SECURITY §3); саму привязку
 // проверяет MediaAssetsService, когда видео придёт (exam-media-message.handler.ts).
+// Но ИЗВЕСТНОГО человека со статусом blocked/invited к ожиданию видео пускать
+// нельзя (SECURITY §9, ADR-0026) — поэтому перед стартом ожидания заходим
+// через BotUserAccessService.resolve(): анонимный отправитель (`unknown`)
+// по-прежнему проходит без проверки роли, как и было задумано.
 import { Injectable, Logger } from '@nestjs/common';
 import { isStaffRole } from '@xuanxue/shared';
 import type { DateTime } from 'luxon';
@@ -26,6 +30,7 @@ import { errorMessage, errorStack } from '../../common/error-info';
 import { SettingsService } from '../../settings/settings.service';
 import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
+import { BotUserAccessService } from '../bot-user-access.service';
 import { buildBotMenu, buildStrangerMessage } from './bot-menu';
 
 const EXAM_MEDIA_PAYLOAD_PATTERN = /^exam_([0-9a-fA-F]{24})$/;
@@ -74,6 +79,7 @@ export class StartHandler {
     private readonly usersService: UsersService,
     private readonly channelConfig: ChannelConfigService,
     private readonly botSessions: BotSessionService,
+    private readonly botAccess: BotUserAccessService,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -84,8 +90,7 @@ export class StartHandler {
     try {
       const examAttemptId = examAttemptIdFromPayload(startPayload(ctx));
       if (examAttemptId) {
-        await this.botSessions.startExamMediaWait(from.id, examAttemptId, now);
-        await ctx.reply(EXAM_MEDIA_WAIT_MESSAGE).catch(() => null);
+        await this.handleExamDeepLink(ctx, from.id, examAttemptId, now);
         return;
       }
 
@@ -106,6 +111,25 @@ export class StartHandler {
     } catch (err) {
       this.logger.error(`telegram.start: ${errorMessage(err)}`, errorStack(err));
     }
+  }
+
+  /** `unknown` — анонимный отправитель без аккаунта, ожидание заводим как
+   * раньше (комментарий вверху файла). `denied` — известный blocked/invited,
+   * ожидание НЕ заводим и отвечаем отказом, не «пришлите видео»: тихо
+   * пускать заблокированного к отправке — не вариант (SECURITY §9). */
+  private async handleExamDeepLink(
+    ctx: Context,
+    telegramId: number,
+    examAttemptId: string,
+    now: DateTime,
+  ): Promise<void> {
+    const access = await this.botAccess.resolve(telegramId);
+    if (access.kind === 'denied') {
+      await ctx.reply(access.message).catch(() => null);
+      return;
+    }
+    await this.botSessions.startExamMediaWait(telegramId, examAttemptId, now);
+    await ctx.reply(EXAM_MEDIA_WAIT_MESSAGE).catch(() => null);
   }
 
   private async strangerMessage(): Promise<string> {

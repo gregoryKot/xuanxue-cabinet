@@ -28,6 +28,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
 import { BotSessionService } from './bot-session.service';
+import { BotUserAccessService } from './bot-user-access.service';
 import { ExamBotPortRegistry } from './exam-bot-port.registry';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
@@ -79,6 +80,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     ExamBotPortRegistry,
     PersonalChats,
     BotSessionService,
+    BotUserAccessService,
     { provide: TELEGRAF_FACTORY, useValue: createTelegraf },
   ],
   // TelegramBotService — SchedulerModule (проактивная отправка предпросмотра,

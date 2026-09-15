@@ -5,7 +5,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
-import type { TelegramLoginInput, UserRole, UserStatus } from '@xuanxue/shared';
+import {
+  ACCESS_MESSAGE,
+  type TelegramLoginInput,
+  type UserRole,
+  type UserStatus,
+} from '@xuanxue/shared';
 import { GroupMembershipService } from '../channels/group-membership.service';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import { UsersService, type UserLean } from '../users/users.service';
@@ -16,7 +21,6 @@ const NOT_AVAILABLE_MESSAGE =
   'Вход через Telegram пока не подключён. Попросите администратора включить его';
 const SIGNATURE_MESSAGE =
   'Не удалось подтвердить вход через Telegram. Попробуйте ещё раз';
-const ACCESS_MESSAGE = 'Доступа нет. Обратитесь к администратору школы.';
 
 export interface TelegramLoginResult {
   user: UserLean;

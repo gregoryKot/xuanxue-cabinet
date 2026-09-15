@@ -16,6 +16,7 @@ import { DeliveriesService } from '../../deliveries/deliveries.service';
 import { NotificationPrefsService } from '../../notifications/notification-prefs.service';
 import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
+import { BotUserAccessService } from '../bot-user-access.service';
 import { parseCallbackData, type CallbackAction } from '../callback-data';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { PersonalChats } from '../personal-chats';
@@ -48,6 +49,7 @@ export class CallbackQueryHandler {
     private readonly menuCommandHandler: MenuCommandHandler,
     private readonly examBotPorts: ExamBotPortRegistry,
     private readonly examCommandHandler: ExamCommandHandler,
+    private readonly botAccess: BotUserAccessService,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -78,7 +80,7 @@ export class CallbackQueryHandler {
           action,
           id,
           chatId,
-          this.usersService,
+          this.botAccess,
           this.examBotPorts.get(),
           this.botSessions,
           now,

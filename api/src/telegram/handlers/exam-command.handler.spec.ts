@@ -1,10 +1,17 @@
-// Фейковый ExamBotPort и фейковый UsersService, без Mongo и без сети
+// Фейковый ExamBotPort и фейковый BotUserAccessService, без Mongo и без сети
 // (CLAUDE.md «Тесты»): /exams, /экзамены — то же самое, что MyExamsService
-// отдаёт кабинету (через порт), незнакомцу бот не отвечает.
+// отдаёт кабинету (через порт), незнакомцу бот не отвечает, blocked/invited —
+// отказ вместо списка (SECURITY §9, ADR-0026).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import type { MyExamDto } from '@xuanxue/shared';
-import type { UserLean, UsersService } from '../../users/users.service';
+import {
+  ACCESS_MESSAGE,
+  PENDING_APPROVAL_MESSAGE,
+  type MyExamDto,
+} from '@xuanxue/shared';
+import type { UserLean } from '../../users/users.service';
+import type { BotUserAccessService } from '../bot-user-access.service';
+import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { ExamCommandHandler } from './exam-command.handler';
@@ -25,12 +32,6 @@ const EXAM: MyExamDto = {
   attemptsAllowed: 1,
   attemptsUsed: 0,
 };
-
-function fakeUsers(user: UserLean | null): UsersService {
-  return {
-    findByTelegramId: jest.fn().mockResolvedValue(user),
-  } as unknown as UsersService;
-}
 
 function stubExams(exams: MyExamDto[]) {
   const port = fakeExamBotPort({ listMyExams: jest.fn().mockResolvedValue(exams) });
@@ -54,7 +55,10 @@ function fakeCtx(chatType: 'private' | 'group' = 'private'): {
 describe('ExamCommandHandler.handle', () => {
   it('известный человек — список экзаменов новым сообщением', async () => {
     const { registry, listMyExams } = stubExams([EXAM]);
-    const handler = new ExamCommandHandler(fakeUsers(USER), registry);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess(activeAccess(USER)),
+      registry,
+    );
     const { ctx, replies } = fakeCtx();
 
     await handler.handle(ctx, NOW);
@@ -65,7 +69,10 @@ describe('ExamCommandHandler.handle', () => {
 
   it('незнакомец — бот молчит', async () => {
     const { registry } = stubExams([]);
-    const handler = new ExamCommandHandler(fakeUsers(null), registry);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess({ kind: 'unknown' }),
+      registry,
+    );
     const { ctx, replies } = fakeCtx();
 
     await handler.handle(ctx, NOW);
@@ -73,9 +80,40 @@ describe('ExamCommandHandler.handle', () => {
     expect(replies).toEqual([]);
   });
 
+  it('заблокированный — отказ тем же текстом, что в вебе, список не запрашивается', async () => {
+    const { registry, listMyExams } = stubExams([EXAM]);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
+      registry,
+    );
+    const { ctx, replies } = fakeCtx();
+
+    await handler.handle(ctx, NOW);
+
+    expect(replies).toEqual([ACCESS_MESSAGE]);
+    expect(listMyExams).not.toHaveBeenCalled();
+  });
+
+  it('неподтверждённый (invited) — отказ ожиданием подтверждения, список не запрашивается', async () => {
+    const { registry, listMyExams } = stubExams([EXAM]);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
+      registry,
+    );
+    const { ctx, replies } = fakeCtx();
+
+    await handler.handle(ctx, NOW);
+
+    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
+    expect(listMyExams).not.toHaveBeenCalled();
+  });
+
   it('не личный чат — бот молчит', async () => {
     const { registry } = stubExams([EXAM]);
-    const handler = new ExamCommandHandler(fakeUsers(USER), registry);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess(activeAccess(USER)),
+      registry,
+    );
     const { ctx, replies } = fakeCtx('group');
 
     await handler.handle(ctx, NOW);
@@ -85,10 +123,10 @@ describe('ExamCommandHandler.handle', () => {
 
   it('сбой при сборке экрана — бот молчит, апдейт не падает', async () => {
     const { registry } = stubExams([EXAM]);
-    const failingUsers = {
-      findByTelegramId: jest.fn().mockRejectedValue(new Error('Mongo недоступна')),
-    } as unknown as UsersService;
-    const handler = new ExamCommandHandler(failingUsers, registry);
+    const failingAccess = {
+      resolve: jest.fn().mockRejectedValue(new Error('Mongo недоступна')),
+    } as unknown as BotUserAccessService;
+    const handler = new ExamCommandHandler(failingAccess, registry);
     const { ctx, replies } = fakeCtx();
 
     await expect(handler.handle(ctx, NOW)).resolves.toBeUndefined();
@@ -99,7 +137,10 @@ describe('ExamCommandHandler.handle', () => {
 describe('ExamCommandHandler.listScreen', () => {
   it('переиспользуется кнопкой меню — тот же результат, что у команды', async () => {
     const { registry } = stubExams([EXAM]);
-    const handler = new ExamCommandHandler(fakeUsers(USER), registry);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess(activeAccess(USER)),
+      registry,
+    );
 
     const menu = await handler.listScreen(111, NOW);
 
@@ -108,8 +149,24 @@ describe('ExamCommandHandler.listScreen', () => {
 
   it('незнакомец — null, не пустой экран', async () => {
     const { registry } = stubExams([]);
-    const handler = new ExamCommandHandler(fakeUsers(null), registry);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess({ kind: 'unknown' }),
+      registry,
+    );
 
     expect(await handler.listScreen(111, NOW)).toBeNull();
+  });
+
+  it('заблокированный — экран отказа с кнопкой «В меню»', async () => {
+    const { registry } = stubExams([EXAM]);
+    const handler = new ExamCommandHandler(
+      fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
+      registry,
+    );
+
+    const menu = await handler.listScreen(111, NOW);
+
+    expect(menu?.text).toBe(ACCESS_MESSAGE);
+    expect(menu?.buttons.flat().map((b) => b.text)).toContain('В меню');
   });
 });

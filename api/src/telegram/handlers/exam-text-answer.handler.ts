@@ -6,13 +6,18 @@
 // Следующий экран — НОВЫМ сообщением (replyAttemptScreen), не
 // editMessageText: пришло не нажатие кнопки, у входящего текстового
 // сообщения нет message_id экрана бота, который редактировать.
+//
+// Личность — через BotUserAccessService.resolve(), не напрямую
+// UsersService: blocked/invited получают отказ и сессия закрывается — иначе
+// заблокированный продолжал бы отвечать на вопросы открытой попытки
+// (SECURITY §9, ADR-0026).
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { ATTEMPT_LIMITS, ATTEMPT_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../../common/error-info';
 import type { UserLean } from '../../users/users.service';
-import { UsersService } from '../../users/users.service';
+import { BotUserAccessService } from '../bot-user-access.service';
 import type { BotSessionLean } from '../bot-session.service';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
@@ -28,7 +33,7 @@ export class ExamTextAnswerHandler {
 
   constructor(
     private readonly botSessions: BotSessionService,
-    private readonly usersService: UsersService,
+    private readonly botAccess: BotUserAccessService,
     private readonly examBotPorts: ExamBotPortRegistry,
   ) {}
 
@@ -48,12 +53,17 @@ export class ExamTextAnswerHandler {
     }
 
     try {
-      const user = await this.usersService.findByTelegramId(telegramId);
-      if (!user) return; // сессия открыта незнакомцу быть не может — защита в глубину
+      const access = await this.botAccess.resolve(telegramId);
+      if (access.kind === 'unknown') return; // сессия открыта незнакомцу быть не может — защита в глубину
+      if (access.kind === 'denied') {
+        await this.botSessions.clear(telegramId);
+        await ctx.reply(access.message).catch(() => null);
+        return;
+      }
       await this.saveAndAdvance(
         ctx,
         telegramId,
-        user,
+        access.user,
         session.attemptId.toString(),
         session.questionIndex,
         text,

@@ -8,6 +8,7 @@ import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
+import { ACCESS_MESSAGE, PENDING_APPROVAL_MESSAGE } from '@xuanxue/shared';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../../classes/class.schema';
@@ -19,6 +20,7 @@ import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { BotUserAccessService } from '../bot-user-access.service';
 import { StartHandler } from './start.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -86,6 +88,7 @@ describe('StartHandler', () => {
       new UsersService(userModel),
       new ChannelConfigService(channelModel, classModel),
       new BotSessionService(botSessionModel),
+      new BotUserAccessService(new UsersService(userModel)),
     );
   }, 60_000);
 
@@ -177,13 +180,15 @@ describe('StartHandler', () => {
   });
 
   it('ошибка UsersService — логируется, не выбрасывается, ответа нет', async () => {
+    const failingUsers = {
+      findByTelegramId: jest.fn().mockRejectedValue(new Error('mongo down')),
+    } as unknown as UsersService;
     const failingHandler = new StartHandler(
       settingsService,
-      {
-        findByTelegramId: jest.fn().mockRejectedValue(new Error('mongo down')),
-      } as unknown as UsersService,
+      failingUsers,
       new ChannelConfigService(channelModel, classModel),
       new BotSessionService(botSessionModel),
+      new BotUserAccessService(failingUsers),
     );
     const { ctx, replies } = fakeCtx(777);
 
@@ -207,7 +212,7 @@ describe('StartHandler', () => {
   });
 
   describe('deep link «Отправить видео» (exam_<attemptId>, ADR-0023)', () => {
-    it('/start exam_<attemptId> — заводит ожидание, отвечает без обращения к UsersService', async () => {
+    it('/start exam_<attemptId>, анонимный отправитель (нет аккаунта) — заводит ожидание', async () => {
       const attemptId = new Types.ObjectId().toString();
       const { ctx, replies } = fakeCtx(444, 'private', false, `exam_${attemptId}`);
 
@@ -220,8 +225,30 @@ describe('StartHandler', () => {
       const session = await botSessionModel.findOne({ chatId: 444 }).lean();
       expect(session?.kind).toBe('examMedia');
       expect(session?.attemptId?.toString()).toBe(attemptId);
-      // Не создаёт канал и не трогает UsersService — работает и для ученика.
+      // Не создаёт канал — работает и для ученика без личного канала.
       expect(await channelModel.countDocuments({})).toBe(0);
+    });
+
+    it('заблокированный — отказ тем же текстом, что в вебе, ожидание не заводится', async () => {
+      const attemptId = new Types.ObjectId().toString();
+      await userModel.create({ name: 'Ученик', telegramId: 447, status: 'blocked' });
+      const { ctx, replies } = fakeCtx(447, 'private', false, `exam_${attemptId}`);
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([ACCESS_MESSAGE]);
+      expect(await botSessionModel.countDocuments({ chatId: 447 })).toBe(0);
+    });
+
+    it('неподтверждённый (invited) — отказ ожиданием подтверждения, ожидание не заводится', async () => {
+      const attemptId = new Types.ObjectId().toString();
+      await userModel.create({ name: 'Ученик', telegramId: 448, status: 'invited' });
+      const { ctx, replies } = fakeCtx(448, 'private', false, `exam_${attemptId}`);
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
+      expect(await botSessionModel.countDocuments({ chatId: 448 })).toBe(0);
     });
 
     it('чужой/несуществующий attemptId в ссылке — тот же ответ, ничего не подтверждает', async () => {
