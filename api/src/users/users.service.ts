@@ -12,8 +12,8 @@ import {
   type UserRole,
   type UserStatus,
 } from '@xuanxue/shared';
-import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { UserRecord } from './user.schema';
+import { upsertUserByKey } from './upsert-user-by-key';
 
 /** Внутреннее представление пользователя — шире MeDto: гварду нужны status и
  * roles, а не только то, что видит интерфейс (toMeDto в auth/to-me.dto.ts). */
@@ -127,29 +127,21 @@ export class UsersService {
   /** null — только если upsert упал на E11000: Mongo повторяет upsert при
    * гонке по уникальному индексу не всегда (частичный индекс telegramId),
    * и без этой ветки второй из двух одновременных первых входов получал 500.
-   * Вызывающий код перечитывает документ, который записал конкурент. */
+   * Вызывающий код перечитывает документ, который записал конкурент.
+   * Сам upsert — общий приём с email-входом, см. upsert-user-by-key.ts. */
   private async upsertByTelegramId(input: NewTelegramUser): Promise<UserLean | null> {
-    try {
-      const doc = await this.model
-        .findOneAndUpdate(
-          { telegramId: input.telegramId },
-          {
-            $setOnInsert: {
-              telegramId: input.telegramId,
-              name: input.name,
-              roles: input.roles,
-              tz: SCHOOL_TZ,
-              status: input.status,
-            },
-          },
-          { upsert: true, returnDocument: 'after' },
-        )
-        .lean<UserDoc>();
-      return doc ? toLean(doc) : null;
-    } catch (err) {
-      if (isDuplicateKeyError(err)) return null;
-      throw err;
-    }
+    const doc = await upsertUserByKey<UserDoc>(
+      this.model,
+      { telegramId: input.telegramId },
+      {
+        telegramId: input.telegramId,
+        name: input.name,
+        roles: input.roles,
+        tz: SCHOOL_TZ,
+        status: input.status,
+      },
+    );
+    return doc ? toLean(doc) : null;
   }
 
   /** Время — параметром (CLAUDE.md «Время»): вызывающий код решает, что

@@ -46,6 +46,8 @@ export type {
   UserStatus,
   MeDto,
   TelegramLoginInput,
+  RequestEmailLoginInput,
+  VerifyEmailLoginInput,
   AuthConfigDto,
 } from './auth';
 export {
@@ -56,6 +58,9 @@ export {
   USER_STATUSES,
   PENDING_APPROVAL_MESSAGE,
   ACCESS_MESSAGE,
+  EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE,
+  EMAIL_LOGIN_EXPIRED_MESSAGE,
+  EMAIL_LOGIN_SEND_FAILED_MESSAGE,
   CSRF_HEADER,
   MUTATING_METHODS,
   isMutatingMethod,

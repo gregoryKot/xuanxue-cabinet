@@ -85,6 +85,31 @@ export interface TelegramLoginInput {
   hash: string;
 }
 
+/** Тело `POST /auth/email/request` (ADR-0005, ADR-0029) — ответ один и тот
+ * же для известного и неизвестного email (SECURITY §2). */
+export interface RequestEmailLoginInput {
+  email: string;
+}
+
+/** Тело `POST /auth/email/verify` — токен из ссылки в письме, 64 hex. */
+export interface VerifyEmailLoginInput {
+  token: string;
+}
+
+/** Email-вход выключен конфигурацией — нет RESEND_API_KEY/MAIL_FROM/PUBLIC_URL
+ * (ADR-0029), не обязателен в production. */
+export const EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE =
+  'Вход по почте пока не подключён. Войдите через Telegram или напишите администратору школы.';
+
+/** Один текст на «протухла» и «уже использована» (SECURITY §2) — иначе
+ * формулировка подсказывала бы постороннему, какая причина верна. */
+export const EMAIL_LOGIN_EXPIRED_MESSAGE =
+  'Ссылка устарела или уже использована. Запросите новую на странице входа.';
+
+/** Resend ответил ошибкой — не тихий отказ (CLAUDE.md «Логи»). */
+export const EMAIL_LOGIN_SEND_FAILED_MESSAGE =
+  'Не удалось отправить письмо. Попробуйте ещё раз через минуту.';
+
 /**
  * Ответ `GET /auth/config` (`@Public()`, без сессии) — конфигурация экрана
  * входа. `telegramBotId` — числовой id бота (префикс `BOT_TOKEN` до

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ChannelsModule } from '../channels/channels.module';
 import { UserRecord, UserSchema } from './user.schema';
+import { EmailLoginUserService } from './email-login-user.service';
 import { StudentMembershipApprovalService } from './student-membership-approval.service';
 import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
@@ -28,9 +29,16 @@ import { UsersService } from './users.service';
     UserDeletionService,
     UserNamesService,
     StudentMembershipApprovalService,
+    EmailLoginUserService,
   ],
   // StudentMembershipApprovalService — наружу для AuthModule (перепроверка
   // при входе) и TelegramModule (ChatMemberJoinHandler, апдейт chat_member).
-  exports: [UsersService, UserNamesService, StudentMembershipApprovalService],
+  // EmailLoginUserService — наружу для AuthModule (EmailAuthService, ADR-0029).
+  exports: [
+    UsersService,
+    UserNamesService,
+    StudentMembershipApprovalService,
+    EmailLoginUserService,
+  ],
 })
 export class UsersModule {}
