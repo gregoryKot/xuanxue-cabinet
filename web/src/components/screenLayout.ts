@@ -38,6 +38,18 @@ export const screenExplanationStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 
+/** Заголовок раздела антиквой (направление «тихо и благородно», docs/adr/
+ * 0031) — первый экран, который его заводит («Экзамены»); следующие экраны
+ * серии берут готовый стиль, а не повторяют числа. */
+export const screenTitleStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: 'var(--font-display)',
+  fontWeight: 300,
+  fontSize: 34,
+  lineHeight: 1,
+  color: 'var(--ink)',
+};
+
 /** Мелкая приписка под объяснением: часовой пояс, что значит кнопка. Тише
  * объяснения — читают её один раз и больше к ней не возвращаются. */
 export const screenHintStyle: CSSProperties = {

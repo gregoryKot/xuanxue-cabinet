@@ -6,9 +6,9 @@
     "statements": 99.77
   },
   "shared": {
-    "lines": 98.05,
-    "branches": 89.79,
+    "lines": 98.1,
+    "branches": 91.83,
     "functions": 82.6,
-    "statements": 97.59
+    "statements": 97.64
   }
 }
