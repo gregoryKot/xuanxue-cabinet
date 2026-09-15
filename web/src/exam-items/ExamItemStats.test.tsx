@@ -48,7 +48,9 @@ describe('ExamItemStats — сбой загрузки', () => {
     render(<ExamItemStats itemId="i1" />);
     await screen.findByRole('alert');
 
-    mockApiByPath({ '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0 } });
+    mockApiByPath({
+      '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0, usedInExamsCount: 0 },
+    });
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
 
     expect(
@@ -59,7 +61,9 @@ describe('ExamItemStats — сбой загрузки', () => {
 
 describe('ExamItemStats — карточка без чисел', () => {
   it('вопрос, который ещё не задавали — честный текст, ни одного числа-мусора', async () => {
-    mockApiByPath({ '/exam-items': { itemId: 'i1', kind: 'single', askedCount: 0 } });
+    mockApiByPath({
+      '/exam-items': { itemId: 'i1', kind: 'single', askedCount: 0, usedInExamsCount: 0 },
+    });
 
     render(<ExamItemStats itemId="i1" />);
 
@@ -77,6 +81,7 @@ describe('ExamItemStats — карточка с числами', () => {
         itemId: 'i1',
         kind: 'single',
         askedCount: 3,
+        usedInExamsCount: 0,
         correctCount: 2,
         correctRate: 2 / 3,
         options: [
@@ -99,7 +104,7 @@ describe('ExamItemStats — карточка с числами', () => {
 
   it('вопрос без вариантов, но уже заданный — только сводка, без списка', async () => {
     mockApiByPath({
-      '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 4 },
+      '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 4, usedInExamsCount: 0 },
     });
 
     render(<ExamItemStats itemId="i1" />);
@@ -108,8 +113,35 @@ describe('ExamItemStats — карточка с числами', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
+  it('вопрос используется в форме — предупреждение перед удалением/архивацией', async () => {
+    mockApiByPath({
+      '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0, usedInExamsCount: 2 },
+    });
+
+    render(<ExamItemStats itemId="i1" />);
+
+    expect(
+      await screen.findByText(
+        'Стоит в 2 экзаменах — нельзя удалить или заархивировать, не убрав его оттуда.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('вопрос нигде не используется — предупреждения нет', async () => {
+    mockApiByPath({
+      '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0, usedInExamsCount: 0 },
+    });
+
+    render(<ExamItemStats itemId="i1" />);
+
+    await screen.findByText('Этот вопрос ещё никому не задавали.');
+    expect(screen.queryByText(/Стоит в/)).not.toBeInTheDocument();
+  });
+
   it('успешная загрузка снимает скелетон', async () => {
-    mockApiByPath({ '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0 } });
+    mockApiByPath({
+      '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0, usedInExamsCount: 0 },
+    });
 
     const { container } = render(<ExamItemStats itemId="i1" />);
 

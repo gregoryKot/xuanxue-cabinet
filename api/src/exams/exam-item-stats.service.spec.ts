@@ -46,8 +46,8 @@ describe('ExamItemStatsService', () => {
     );
     examModel = memory.connection.model<ExamRecord>(ExamRecord.name, ExamSchema);
     const userModel = memory.connection.model<UserRecord>(UserRecord.name, UserSchema);
-    examItemsService = new ExamItemsService(itemModel);
-    examsService = new ExamsService(examModel, itemModel);
+    examItemsService = new ExamItemsService(itemModel, examModel);
+    examsService = new ExamsService(examModel, itemModel, attemptModel);
     attemptsService = new ExamAttemptsService(
       attemptModel,
       examsService,
@@ -55,7 +55,12 @@ describe('ExamItemStatsService', () => {
       new UserNamesService(userModel),
       fakeExamNotifier(),
     );
-    statsService = new ExamItemStatsService(attemptModel, itemModel, examItemsService);
+    statsService = new ExamItemStatsService(
+      attemptModel,
+      itemModel,
+      examModel,
+      examItemsService,
+    );
   }, 60_000);
 
   afterAll(async () => {

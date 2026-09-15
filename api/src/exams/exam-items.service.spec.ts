@@ -3,8 +3,11 @@
 // (ТЗ 4.2, п.3), запрет удаления не-черновика.
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
+import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
+import { ExamRecord, ExamSchema } from './exam.schema';
+import { ExamsService } from './exams.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -14,13 +17,24 @@ describe('ExamItemsService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let model: Model<ExamItemRecord>;
+  let examModel: Model<ExamRecord>;
   let service: ExamItemsService;
+  let examsService: ExamsService;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
     connection = memory.connection;
     model = connection.model<ExamItemRecord>(ExamItemRecord.name, ExamItemSchema);
-    service = new ExamItemsService(model);
+    examModel = connection.model<ExamRecord>(ExamRecord.name, ExamSchema);
+    const attemptModel = connection.model<ExamAttemptRecord>(
+      ExamAttemptRecord.name,
+      ExamAttemptSchema,
+    );
+    service = new ExamItemsService(model, examModel);
+    // Только чтобы завести реальный неархивированный экзамен, ссылающийся на
+    // вопрос (защита от удаления/архивации, exam-item-references.ts) — без
+    // отдельного мока формы, тем же приёмом, что exam-item-stats.service.spec.ts.
+    examsService = new ExamsService(examModel, model, attemptModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -29,6 +43,7 @@ describe('ExamItemsService', () => {
 
   afterEach(async () => {
     await model.deleteMany({});
+    await examModel.deleteMany({});
   });
 
   it('create → getById: read-after-write, prompt расшифрован в ответе', async () => {
@@ -400,6 +415,69 @@ describe('ExamItemsService', () => {
       await expect(service.remove('507f1f77bcf86cd799439011')).rejects.toThrow(
         'Вопрос не найден',
       );
+    });
+  });
+
+  // Блокеры аудита 2026-09-15 №1 и №2: removeIfDraft/архивация проверяли
+  // только статус самого вопроса, не ссылки из exams.blocks[].itemIds —
+  // удаление или архивация вопроса, стоящего в неархивированном экзамене,
+  // ломали форму для всех сдающих молча.
+  describe('используется в экзамене (блокеры аудита 2026-09-15 №1 и №2)', () => {
+    async function referencedDraftItem(): Promise<{
+      itemId: string;
+      examId: string;
+      examTitle: string;
+    }> {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      await service.update(item.id, { status: 'published' }, NOW);
+      const exam = await examsService.create(
+        { title: 'Итоговый экзамен', blocks: [{ itemIds: [item.id] }] },
+        AUTHOR_ID,
+      );
+      // Учитель откатил вопрос назад в черновик, не убрав его из формы —
+      // ровно случай, который старая removeIfDraft пропускала (блокер №1).
+      await service.update(item.id, { status: 'draft' }, NOW);
+      return { itemId: item.id, examId: exam.id, examTitle: exam.title };
+    }
+
+    it('черновик, стоящий в форме экзамена, — ConflictError с названием формы, вопрос остаётся', async () => {
+      const { itemId, examTitle } = await referencedDraftItem();
+
+      await expect(service.remove(itemId)).rejects.toThrow(`«${examTitle}»`);
+      await expect(service.getById(itemId)).resolves.toMatchObject({ status: 'draft' });
+    });
+
+    it('опубликованный, стоящий в форме экзамена, — архивировать нельзя, названа форма', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+      const exam = await examsService.create(
+        { title: 'Промежуточный экзамен', blocks: [{ itemIds: [published.id] }] },
+        AUTHOR_ID,
+      );
+
+      await expect(
+        service.update(published.id, { status: 'archived' }, NOW),
+      ).rejects.toThrow(`«${exam.title}»`);
+      await expect(service.getById(published.id)).resolves.toMatchObject({
+        status: 'published',
+      });
+    });
+
+    it('вопрос, который нигде не стоит, — удаляется как раньше', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+
+      await service.remove(item.id);
+
+      await expect(service.getById(item.id)).rejects.toThrow('Вопрос не найден');
+    });
+
+    it('вопрос из архивированного экзамена — удаляется: архивная форма не в счёте', async () => {
+      const { itemId, examId } = await referencedDraftItem();
+      await examsService.update(examId, { status: 'archived' });
+
+      await service.remove(itemId);
+
+      await expect(service.getById(itemId)).rejects.toThrow('Вопрос не найден');
     });
   });
 

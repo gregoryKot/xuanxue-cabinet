@@ -24,10 +24,15 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { removeIfDraft } from '../common/remove-if-draft';
 import { encryptRecord } from '../utils/encryption';
+import {
+  assertItemNotUsedForArchive,
+  assertItemNotUsedForRemove,
+} from './exam-item-references';
 import { hasContentChanged } from './exam-item-content-change';
 import { assertOptionsForKind, mapOptions } from './exam-item-options';
 import { EXAM_ITEM_ENCRYPT_SCHEMA, ExamItemRecord } from './exam-item.schema';
 import { decryptExamItem, toExamItemDto, type RawLeanExamItem } from './exam-item.mapper';
+import { ExamRecord } from './exam.schema';
 
 const NOT_FOUND_MESSAGE = EXAM_ITEM_NOT_FOUND_MESSAGE;
 // VOICE.md: что случилось и что сделать. Вопрос без записей всё равно можно
@@ -40,6 +45,7 @@ const NOT_DRAFT_MESSAGE =
 export class ExamItemsService {
   constructor(
     @InjectModel(ExamItemRecord.name) private readonly model: Model<ExamItemRecord>,
+    @InjectModel(ExamRecord.name) private readonly examModel: Model<ExamRecord>,
   ) {}
 
   async list(query: ListExamItemsQuery): Promise<ExamItemDto[]> {
@@ -89,6 +95,11 @@ export class ExamItemsService {
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExamItem(doc);
 
+    // Архивация рвёт ссылку так же, как удаление (exam-item-references.ts).
+    if (input.status === 'archived') {
+      await assertItemNotUsedForArchive(this.examModel, id);
+    }
+
     const { options, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_ITEM_FIELDS);
     const nextOptions =
@@ -128,6 +139,9 @@ export class ExamItemsService {
 
   async remove(id: string): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
+    // Ссылка на форму — раньше и конкретнее «не черновика» ниже (называет
+    // форму, а не просто велит архивировать); без ссылки идём в removeIfDraft.
+    await assertItemNotUsedForRemove(this.examModel, id);
     await removeIfDraft(this.model, id, NOT_FOUND_MESSAGE, NOT_DRAFT_MESSAGE);
   }
 }
