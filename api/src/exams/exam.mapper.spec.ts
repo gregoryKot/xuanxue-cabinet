@@ -12,9 +12,8 @@ function fullExam(): LeanExam {
     title: 'Экзамен по третьей форме',
     description: 'Проверка формы и теории',
     level: 'начальный',
-    blocks: [
-      { id: 'b1', title: 'Форма', itemIds: ['i1'], shuffle: true, required: true },
-    ],
+    blocks: [{ id: 'b1', title: 'Форма', itemIds: ['i1'], shuffle: true }],
+    shuffleOptions: true,
     timeLimitMin: 30,
     attemptsAllowed: 2,
     status: 'published',
@@ -32,9 +31,8 @@ describe('toExamDto', () => {
       title: 'Экзамен по третьей форме',
       description: 'Проверка формы и теории',
       level: 'начальный',
-      blocks: [
-        { id: 'b1', title: 'Форма', itemIds: ['i1'], shuffle: true, required: true },
-      ],
+      blocks: [{ id: 'b1', title: 'Форма', itemIds: ['i1'], shuffle: true }],
+      shuffleOptions: true,
       timeLimitMin: 30,
       attemptsAllowed: 2,
       status: 'published',
@@ -65,6 +63,22 @@ describe('toExamDto', () => {
 
     expect(dto.timeLimitMin).toBeUndefined();
     expect(dto.createdBy).toBeUndefined();
+  });
+
+  it('required в записи блока (форма старше ADR-0033) — наружу не уходит', () => {
+    const doc = fullExam();
+    doc.blocks = [
+      { id: 'b1', title: 'Форма', itemIds: ['i1'], shuffle: false, required: true },
+    ];
+
+    expect(toExamDto(doc).blocks[0]).not.toHaveProperty('required');
+  });
+
+  it('shuffleOptions нет в документе (форма старше ADR-0033) — false, не undefined', () => {
+    const doc = fullExam();
+    doc.shuffleOptions = undefined as unknown as boolean;
+
+    expect(toExamDto(doc).shuffleOptions).toBe(false);
   });
 
   it('блоков нет — пустой массив', () => {

@@ -1,5 +1,6 @@
 // Чистая логика — юнит-тест без Mongo и без DI (CLAUDE.md «Тесты»).
 import type { ExamBlockDto, ExamItemDto } from '@xuanxue/shared';
+import { checkOptionAnswer } from './exam-attempt-review';
 import { buildAttemptBlocks, shuffleOnce } from './exam-attempt-snapshot';
 
 function fixedSequence(values: number[]): () => number {
@@ -28,7 +29,18 @@ function item(overrides: Partial<ExamItemDto> & { id: string }): ExamItemDto {
 }
 
 function block(overrides: Partial<ExamBlockDto> & { itemIds: string[] }): ExamBlockDto {
-  return { id: 'b1', title: 'Блок', required: false, shuffle: false, ...overrides };
+  return { id: 'b1', title: 'Блок', shuffle: false, ...overrides };
+}
+
+/** Один вызов на все тесты ниже — перемешивание вариантов выключено, если
+ * тест не просит обратного. */
+function build(
+  blocks: ExamBlockDto[],
+  itemsById: ReadonlyMap<string, ExamItemDto>,
+  random: () => number,
+  shuffleOptions = false,
+) {
+  return buildAttemptBlocks({ blocks, itemsById, shuffleOptions, random });
 }
 
 describe('shuffleOnce', () => {
@@ -55,6 +67,25 @@ describe('shuffleOnce', () => {
   });
 });
 
+/** Вопрос с тремя вариантами — на нём проверяются и перемешивание вариантов,
+ * и безразличие автопроверки к их порядку. */
+function singleChoiceItem(): ReadonlyMap<string, ExamItemDto> {
+  return new Map([
+    [
+      'i1',
+      item({
+        id: 'i1',
+        kind: 'single',
+        options: [
+          { id: 'o1', text: 'первый', correct: true },
+          { id: 'o2', text: 'второй', correct: false },
+          { id: 'o3', text: 'третий', correct: false },
+        ],
+      }),
+    ],
+  ]);
+}
+
 describe('buildAttemptBlocks', () => {
   it('без shuffle — порядок вопросов в блоке как в itemIds', () => {
     const itemsById = new Map([
@@ -63,7 +94,7 @@ describe('buildAttemptBlocks', () => {
     ]);
     const blocks = [block({ itemIds: ['i2', 'i1'], shuffle: false })];
 
-    const snapshot = buildAttemptBlocks(blocks, itemsById, () => 0);
+    const snapshot = build(blocks, itemsById, () => 0);
 
     expect(snapshot[0]?.questions.map((q) => q.itemId)).toEqual(['i2', 'i1']);
   });
@@ -76,11 +107,7 @@ describe('buildAttemptBlocks', () => {
     ]);
     const blocks = [block({ itemIds: ['i1', 'i2', 'i3'], shuffle: true })];
 
-    const snapshot = buildAttemptBlocks(
-      blocks,
-      itemsById,
-      fixedSequence([0.9, 0.1, 0.5]),
-    );
+    const snapshot = build(blocks, itemsById, fixedSequence([0.9, 0.1, 0.5]));
 
     expect(snapshot[0]?.questions.map((q) => q.itemId)).toEqual(['i2', 'i3', 'i1']);
   });
@@ -102,7 +129,7 @@ describe('buildAttemptBlocks', () => {
     ]);
     const blocks = [block({ itemIds: ['i1'] })];
 
-    const snapshot = buildAttemptBlocks(blocks, itemsById, () => 0);
+    const snapshot = build(blocks, itemsById, () => 0);
 
     const question = snapshot[0]?.questions[0];
     expect(question?.criteria).toBe('колено уходит внутрь — незачёт');
@@ -112,9 +139,43 @@ describe('buildAttemptBlocks', () => {
     ]);
   });
 
+  it('shuffleOptions — варианты внутри вопроса перемешаны, набор id тот же', () => {
+    const blocks = [block({ itemIds: ['i1'] })];
+
+    const snapshot = build(
+      blocks,
+      singleChoiceItem(),
+      fixedSequence([0.9, 0.1, 0.5]),
+      true,
+    );
+
+    const options = snapshot[0]?.questions[0]?.options ?? [];
+    expect(options.map((o) => o.id)).toEqual(['o2', 'o3', 'o1']);
+    expect([...options].map((o) => o.id).sort()).toEqual(['o1', 'o2', 'o3']);
+  });
+
+  // ADR-0033: автопроверка идёт по `option.id` (exam-attempt-review.ts), а не
+  // по месту в списке — перемешивание не должно менять ни одной цифры.
+  it('автопроверка после перемешивания вариантов даёт тот же результат', () => {
+    const blocks = [block({ itemIds: ['i1'] })];
+    const answer = ['o1'];
+
+    const plain = build(blocks, singleChoiceItem(), () => 0);
+    const shuffled = build(
+      blocks,
+      singleChoiceItem(),
+      fixedSequence([0.9, 0.1, 0.5]),
+      true,
+    );
+
+    expect(checkOptionAnswer(shuffled[0]?.questions[0]?.options ?? [], answer)).toEqual(
+      checkOptionAnswer(plain[0]?.questions[0]?.options ?? [], answer),
+    );
+  });
+
   it('вопрос блока не найден среди загруженных — программная ошибка (не DomainError)', () => {
     const blocks = [block({ itemIds: ['missing'] })];
 
-    expect(() => buildAttemptBlocks(blocks, new Map(), () => 0)).toThrow('не найден');
+    expect(() => build(blocks, new Map(), () => 0)).toThrow('не найден');
   });
 });

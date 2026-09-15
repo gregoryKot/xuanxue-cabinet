@@ -79,6 +79,9 @@ export class ExamItemsService {
       tags: input.tags ?? [],
       authorId,
     };
+    // Не прислали — схемный default (`published`, ADR-0033); `undefined` в
+    // payload его бы не перебил, но и лишнего ключа в документе не надо.
+    if (input.status !== undefined) payload.status = input.status;
     const created = await this.model.create(
       encryptRecord(payload, EXAM_ITEM_ENCRYPT_SCHEMA),
     );

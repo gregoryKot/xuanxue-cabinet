@@ -391,7 +391,6 @@ describe('ExamMediaMessageHandler', () => {
         {
           id: 'b1',
           title: '',
-          required: true,
           questions: [
             { itemId: 'i1', version: 1, kind: 'video', prompt: 'Видео', options: [] },
           ],

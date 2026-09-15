@@ -122,10 +122,10 @@ describe('Exam items (e2e)', () => {
   });
 
   describe('учитель', () => {
-    it('CRUD целиком: create → get → patch → list → delete → 404', async () => {
+    it('CRUD целиком: create черновика → get → patch → list → delete → 404', async () => {
       const cookie = await sessionFor(['teacher']);
 
-      const created = await postItem(cookie, VALID_BODY);
+      const created = await postItem(cookie, { ...VALID_BODY, status: 'draft' });
       expect(created.status).toBe(201);
       const dto = created.body as ExamItemDto;
       expect(dto.prompt).toBe(VALID_BODY.prompt);

@@ -31,7 +31,7 @@ function attempt(
     examTitle: 'Форма',
     userId: 'u1',
     status: 'in_progress',
-    blocks: [{ id: 'b1', title: '', required: true, questions }],
+    blocks: [{ id: 'b1', title: '', questions }],
     answers: [],
     startedAt: NOW.toISO() ?? '',
     expired: false,

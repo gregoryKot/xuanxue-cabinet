@@ -19,6 +19,7 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     description: '',
     level: '',
     blocks: [],
+    shuffleOptions: false,
     rubric: [],
     attemptsAllowed: 1,
     status: 'draft',

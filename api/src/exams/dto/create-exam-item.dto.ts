@@ -5,8 +5,10 @@ import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import {
   EXAM_ITEM_KINDS,
   EXAM_ITEM_LIMITS,
+  EXAM_ITEM_STATUSES,
   type CreateExamItemInput,
   type ExamItemKind,
+  type ExamItemStatus,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ExamItemFieldsDto } from './exam-item-fields.dto';
@@ -30,4 +32,10 @@ export class CreateExamItemDto extends ExamItemFieldsDto implements CreateExamIt
   @IsString()
   @MaxLength(EXAM_ITEM_LIMITS.criteria)
   criteria?: string;
+
+  // Не прислали — схема ставит `published` (ADR-0033). Явный `draft` —
+  // «завожу вопрос, но пока прячу».
+  @OptionalNotNull()
+  @IsIn(EXAM_ITEM_STATUSES)
+  status?: ExamItemStatus;
 }

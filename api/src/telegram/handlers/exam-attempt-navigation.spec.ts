@@ -38,7 +38,6 @@ function attempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
       {
         id: 'b1',
         title: 'Теория',
-        required: true,
         questions: [
           {
             itemId: 'i1',
@@ -141,7 +140,6 @@ describe('handleExamQuestion', () => {
         {
           id: 'b1',
           title: 'Теория',
-          required: true,
           questions: [
             { itemId: 'i1', version: 1, kind: 'single', prompt: 'Вопрос 1', options: [] },
             { itemId: 'i2', version: 1, kind: 'single', prompt: 'Вопрос 2', options: [] },

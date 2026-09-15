@@ -29,7 +29,16 @@ function toAttemptOption(option: ExamItemOptionDto): AttemptOptionRecord {
   return { id: option.id, text: option.text, correct: option.correct };
 }
 
-function toAttemptQuestion(item: ExamItemDto): AttemptQuestionRecord {
+/** Порядок вариантов фиксируется здесь же, в снимке (ADR-0033): проверка
+ * ответа идёт по `option.id` (exam-attempt-review.ts, `checkOptionAnswer`),
+ * порядку она безразлична, а сдающий видит один и тот же экран при каждом
+ * открытии попытки. */
+function toAttemptQuestion(
+  item: ExamItemDto,
+  shuffleOptions: boolean,
+  random: () => number,
+): AttemptQuestionRecord {
+  const options = item.options.map(toAttemptOption);
   return {
     itemId: item.id,
     version: item.version,
@@ -37,8 +46,19 @@ function toAttemptQuestion(item: ExamItemDto): AttemptQuestionRecord {
     prompt: item.prompt,
     hint: item.hint,
     criteria: item.criteria,
-    options: item.options.map(toAttemptOption),
+    options: shuffleOptions ? shuffleOnce(options, random) : options,
   };
+}
+
+/** Параметров больше трёх — объект (CLAUDE.md «Код»). Не экспортируется:
+ * зовущая сторона строит объект по месту, лишний экспорт из файла —
+ * мёртвый для knip. */
+interface BuildAttemptBlocksInput {
+  blocks: readonly ExamBlockDto[];
+  itemsById: ReadonlyMap<string, ExamItemDto>;
+  /** Флаг формы: перемешивать варианты ответа внутри каждого вопроса. */
+  shuffleOptions: boolean;
+  random: () => number;
 }
 
 /**
@@ -49,17 +69,17 @@ function toAttemptQuestion(item: ExamItemDto): AttemptQuestionRecord {
  * ExamsService.assertItemsEligible, а опубликованный вопрос не удаляется,
  * removeIfDraft), поэтому падаем явно, а не молча теряем блок.
  */
-export function buildAttemptBlocks(
-  blocks: readonly ExamBlockDto[],
-  itemsById: ReadonlyMap<string, ExamItemDto>,
-  random: () => number,
-): AttemptBlockRecord[] {
+export function buildAttemptBlocks({
+  blocks,
+  itemsById,
+  shuffleOptions,
+  random,
+}: BuildAttemptBlocksInput): AttemptBlockRecord[] {
   return blocks.map((block) => {
     const orderedIds = block.shuffle ? shuffleOnce(block.itemIds, random) : block.itemIds;
     return {
       id: block.id,
       title: block.title,
-      required: block.required,
       questions: orderedIds.map((itemId) => {
         const item = itemsById.get(itemId);
         if (!item) {
@@ -67,7 +87,7 @@ export function buildAttemptBlocks(
             `buildAttemptBlocks: вопрос ${itemId} не найден среди загруженных банка`,
           );
         }
-        return toAttemptQuestion(item);
+        return toAttemptQuestion(item, shuffleOptions, random);
       }),
     };
   });

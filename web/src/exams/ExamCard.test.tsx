@@ -11,6 +11,7 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     description: '',
     level: '',
     blocks: [],
+    shuffleOptions: false,
     rubric: [],
     attemptsAllowed: 1,
     status: 'draft',
@@ -47,7 +48,6 @@ describe('ExamCard', () => {
               title: '',
               itemIds: ['i1', 'i2'],
               shuffle: false,
-              required: false,
             },
           ],
         })}

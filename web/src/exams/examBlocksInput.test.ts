@@ -9,7 +9,6 @@ import {
   removeBlock,
   removeItemFromBlock,
   renameBlock,
-  setBlockRequired,
   setBlockShuffle,
   swap,
   toBlockInputs,
@@ -24,6 +23,7 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     description: '',
     level: '',
     blocks: [],
+    shuffleOptions: false,
     rubric: [],
     attemptsAllowed: 1,
     status: 'draft',
@@ -46,14 +46,13 @@ describe('initialBlockDrafts', () => {
           title: 'Теория',
           itemIds: ['i1', 'i2'],
           shuffle: true,
-          required: true,
         },
       ],
     });
     const drafts = initialBlockDrafts(exam);
 
     expect(drafts).toEqual([
-      { id: 'b1', title: 'Теория', itemIds: ['i1', 'i2'], shuffle: true, required: true },
+      { id: 'b1', title: 'Теория', itemIds: ['i1', 'i2'], shuffle: true },
     ]);
     drafts[0]?.itemIds.push('i3');
     expect(exam.blocks[0]?.itemIds).toEqual(['i1', 'i2']);
@@ -63,10 +62,10 @@ describe('initialBlockDrafts', () => {
 describe('toBlockInputs', () => {
   it('обрезает пробелы в названии блока', () => {
     const drafts: ExamBlockDraft[] = [
-      { title: '  Форма  ', itemIds: ['i1'], shuffle: false, required: false },
+      { title: '  Форма  ', itemIds: ['i1'], shuffle: false },
     ];
     expect(toBlockInputs(drafts)).toEqual([
-      { id: undefined, title: 'Форма', itemIds: ['i1'], shuffle: false, required: false },
+      { id: undefined, title: 'Форма', itemIds: ['i1'], shuffle: false },
     ]);
   });
 });
@@ -74,7 +73,7 @@ describe('toBlockInputs', () => {
 describe('addBlock / removeBlock', () => {
   it('addBlock добавляет пустой блок в конец', () => {
     const result = addBlock([]);
-    expect(result).toEqual([{ title: '', itemIds: [], shuffle: false, required: false }]);
+    expect(result).toEqual([{ title: '', itemIds: [], shuffle: false }]);
   });
 
   it('removeBlock убирает блок по индексу, остальные не трогает', () => {
@@ -85,10 +84,8 @@ describe('addBlock / removeBlock', () => {
   });
 });
 
-describe('renameBlock / setBlockShuffle / setBlockRequired', () => {
-  const blocks: ExamBlockDraft[] = [
-    { title: '', itemIds: [], shuffle: false, required: false },
-  ];
+describe('renameBlock / setBlockShuffle', () => {
+  const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
 
   it('renameBlock меняет только title нужного блока', () => {
     expect(renameBlock(blocks, 0, 'Теория')[0]?.title).toBe('Теория');
@@ -96,10 +93,6 @@ describe('renameBlock / setBlockShuffle / setBlockRequired', () => {
 
   it('setBlockShuffle переключает флаг', () => {
     expect(setBlockShuffle(blocks, 0, true)[0]?.shuffle).toBe(true);
-  });
-
-  it('setBlockRequired переключает флаг', () => {
-    expect(setBlockRequired(blocks, 0, true)[0]?.required).toBe(true);
   });
 
   it('индекс вне диапазона — блоки не меняются', () => {
@@ -110,8 +103,8 @@ describe('renameBlock / setBlockShuffle / setBlockRequired', () => {
 describe('usedItemIds', () => {
   it('собирает id по всем блокам сразу', () => {
     const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: ['i1', 'i2'], shuffle: false, required: false },
-      { title: '', itemIds: ['i2', 'i3'], shuffle: false, required: false },
+      { title: '', itemIds: ['i1', 'i2'], shuffle: false },
+      { title: '', itemIds: ['i2', 'i3'], shuffle: false },
     ];
     expect(usedItemIds(blocks)).toEqual(new Set(['i1', 'i2', 'i3']));
   });
@@ -119,16 +112,14 @@ describe('usedItemIds', () => {
 
 describe('addItemToBlock', () => {
   it('добавляет вопрос в конец блока', () => {
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: ['i1'], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: ['i1'], shuffle: false }];
     expect(addItemToBlock(blocks, 0, 'i2')[0]?.itemIds).toEqual(['i1', 'i2']);
   });
 
   it('уже добавленный в любом блоке вопрос — второй раз не добавляется', () => {
     const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: ['i1'], shuffle: false, required: false },
-      { title: '', itemIds: [], shuffle: false, required: false },
+      { title: '', itemIds: ['i1'], shuffle: false },
+      { title: '', itemIds: [], shuffle: false },
     ];
     const result = addItemToBlock(blocks, 1, 'i1');
     expect(result).toEqual(blocks);
@@ -138,7 +129,7 @@ describe('addItemToBlock', () => {
 describe('removeItemFromBlock', () => {
   it('убирает вопрос из нужного блока по id', () => {
     const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: ['i1', 'i2'], shuffle: false, required: false },
+      { title: '', itemIds: ['i1', 'i2'], shuffle: false },
     ];
     expect(removeItemFromBlock(blocks, 0, 'i1')[0]?.itemIds).toEqual(['i2']);
   });
@@ -146,7 +137,7 @@ describe('removeItemFromBlock', () => {
 
 describe('moveItemUp / moveItemDown', () => {
   const blocks: ExamBlockDraft[] = [
-    { title: '', itemIds: ['i1', 'i2', 'i3'], shuffle: false, required: false },
+    { title: '', itemIds: ['i1', 'i2', 'i3'], shuffle: false },
   ];
 
   it('moveItemUp меняет местами с предыдущим', () => {

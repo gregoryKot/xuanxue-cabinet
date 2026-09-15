@@ -88,9 +88,9 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   maxScore: 'Максимум баллов',
   score: 'Балл',
   outcome: 'Итог',
-  itemIds: 'Вопросы блока',
-  shuffle: 'Перемешивание',
-  required: 'Обязательность блока',
+  itemIds: 'Вопросы',
+  shuffle: 'Перемешивание вопросов',
+  shuffleOptions: 'Перемешивание вариантов ответа',
   timeLimitMin: 'Лимит времени',
   attemptsAllowed: 'Число попыток',
 

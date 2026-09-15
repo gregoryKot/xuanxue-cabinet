@@ -28,7 +28,6 @@ function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
       {
         id: 'b1',
         title: 'Теория',
-        required: true,
         questions: [
           {
             itemId: 'q1',

@@ -17,7 +17,10 @@ export const QUESTION_FORMS = {
   other: 'вопроса',
 } as const;
 
-/** Блок с `id` — существующий, сохраняется как есть; без `id` — новый блок,
+/** `required` здесь больше не пишется (ADR-0033) — у старых документов поле
+ * останется до первого сохранения формы, в контракт оно всё равно не уходит.
+ *
+ * Блок с `id` — существующий, сохраняется как есть; без `id` — новый блок,
  * сервис создаёт его сам (keepOrGenerateId, sub-id.ts — тот же приём, что у
  * варианта вопроса, exam-item-options.ts/mapOptions). `undefined` на входе
  * (блоки в PATCH не прислали) — не трогаем массив вовсе. */
@@ -30,7 +33,6 @@ export function mapBlocks(
     title: block.title ?? '',
     itemIds: block.itemIds,
     shuffle: block.shuffle ?? false,
-    required: block.required ?? false,
   }));
 }
 

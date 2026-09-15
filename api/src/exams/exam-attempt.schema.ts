@@ -44,13 +44,16 @@ export interface AttemptQuestionRecord {
   options: AttemptOptionRecord[];
 }
 
-/** Блок в снимке — порядок вопросов внутри уже зафиксирован (перемешивание
- * блока с `shuffle`, если оно было, случилось один раз при старте,
- * exam-attempt-snapshot.ts). */
+/** Блок в снимке — порядок вопросов и порядок вариантов внутри вопроса уже
+ * зафиксированы (перемешивание `shuffle` у блока и `shuffleOptions` у формы,
+ * если они были, случилось один раз при старте, exam-attempt-snapshot.ts). */
 export interface AttemptBlockRecord {
   id: string;
   title: string;
-  required: boolean;
+  /** Историческое, в контракт не отдаётся (ADR-0033) — снимки старых попыток
+   * его хранят, и переписывать их нельзя: попытка живёт тем, что видел
+   * сдающий. */
+  required?: boolean;
   questions: AttemptQuestionRecord[];
 }
 

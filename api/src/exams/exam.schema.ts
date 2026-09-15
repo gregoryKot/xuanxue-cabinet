@@ -30,7 +30,11 @@ export interface ExamBlockRecord {
   title: string;
   itemIds: string[];
   shuffle: boolean;
-  required: boolean;
+  /** Историческое, в контракт не отдаётся (ADR-0033: «Блок обязателен» ни на
+   * что не влияло) — старые документы его хранят, переписывать их незачем:
+   * `blocks` зашифрован целиком, а следующее сохранение формы уберёт поле
+   * само (mapBlocks его больше не пишет). */
+  required?: boolean;
 }
 
 /** Критерий рубрики как он хранится в базе (внутри `rubric`, строка JSON) —
@@ -70,6 +74,12 @@ export class ExamRecord {
   @Prop({ type: String, default: '[]' })
   rubric!: string;
 
+  // Перемешивать варианты ответа внутри вопроса у каждого сдающего
+  // (ADR-0033). Перемешивание вопросов живёт у блока (`blocks[].shuffle`), а
+  // это — у формы: вариантами оно распоряжается одинаково по всему экзамену.
+  @Prop({ type: Boolean, default: false })
+  shuffleOptions!: boolean;
+
   @Prop({ type: Number, required: false })
   timeLimitMin?: number;
 
@@ -98,6 +108,7 @@ export const EXAM_FIELD_POLICY: FieldPolicy = {
   rubric: encJson,
   level: plain('фильтр в списке; не персональные данные'),
   status: plain('перечисление, нужно для выборок'),
+  shuffleOptions: plain('флаг, не персональные данные'),
 };
 
 /** Схема шифрования формы — одна на все места чтения и записи (сервис,

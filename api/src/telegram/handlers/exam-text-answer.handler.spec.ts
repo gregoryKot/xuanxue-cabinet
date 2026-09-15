@@ -33,7 +33,7 @@ function attempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
     examTitle: 'Форма',
     userId: 'u1',
     status: 'in_progress',
-    blocks: [{ id: 'b1', title: '', required: true, questions: [TEXT_Q] }],
+    blocks: [{ id: 'b1', title: '', questions: [TEXT_Q] }],
     answers: [],
     startedAt: NOW.toISO() ?? '',
     expired: false,
@@ -145,7 +145,7 @@ describe('ExamTextAnswerHandler', () => {
   it('ответ сохранён, есть следующий вопрос — экран этого вопроса', async () => {
     const q2: AttemptQuestionDto = { ...TEXT_Q, itemId: 'i2', prompt: 'Вопрос 2' };
     const current = attempt({
-      blocks: [{ id: 'b1', title: '', required: true, questions: [TEXT_Q, q2] }],
+      blocks: [{ id: 'b1', title: '', questions: [TEXT_Q, q2] }],
     });
     const saved = { ...current, answers: [{ itemId: 'i1', text: 'мой ответ' }] };
     const { handler } = buildHandler({

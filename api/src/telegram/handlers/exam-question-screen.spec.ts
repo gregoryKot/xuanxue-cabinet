@@ -38,7 +38,7 @@ function attempt(
     examTitle: 'Форма третьего уровня',
     userId: 'u1',
     status: 'in_progress',
-    blocks: [{ id: 'b1', title: 'Теория', required: true, questions }],
+    blocks: [{ id: 'b1', title: 'Теория', questions }],
     answers: [],
     startedAt: '2026-09-12T10:00:00.000Z',
     expired: false,
@@ -53,8 +53,8 @@ describe('flattenAttemptQuestions', () => {
     const a: ExamAttemptDto = {
       ...attempt([q1]),
       blocks: [
-        { id: 'b1', title: 'Теория', required: true, questions: [q1] },
-        { id: 'b2', title: 'Практика', required: true, questions: [q2] },
+        { id: 'b1', title: 'Теория', questions: [q1] },
+        { id: 'b2', title: 'Практика', questions: [q2] },
       ],
     };
     expect(flattenAttemptQuestions(a).map((q) => q.itemId)).toEqual(['i1', 'i2']);

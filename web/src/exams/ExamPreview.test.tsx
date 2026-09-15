@@ -76,11 +76,9 @@ describe('ExamPreview — базовое', () => {
   });
 
   it('банк ещё грузится — текст загрузки, не «недоступен»', () => {
-    renderPreview(
-      [{ title: 'Теория', itemIds: ['i1'], shuffle: false, required: false }],
-      [],
-      { bankLoading: true },
-    );
+    renderPreview([{ title: 'Теория', itemIds: ['i1'], shuffle: false }], [], {
+      bankLoading: true,
+    });
     expect(screen.getByText(/Загружаем вопросы/)).toBeInTheDocument();
     expect(screen.queryByText(/недоступен/)).not.toBeInTheDocument();
   });
@@ -101,7 +99,7 @@ describe('ExamPreview — базовое', () => {
 describe('ExamPreview — блоки и вопросы по порядку', () => {
   it('блоки и вопросы рендерятся в порядке из state', () => {
     const blocks: ExamBlockDraft[] = [
-      { title: 'Теория', itemIds: ['i2', 'i1'], shuffle: false, required: false },
+      { title: 'Теория', itemIds: ['i2', 'i1'], shuffle: false },
     ];
     const bankItems = [
       makeItem({ id: 'i1', prompt: 'Первый по id' }),
@@ -114,9 +112,7 @@ describe('ExamPreview — блоки и вопросы по порядку', () 
   });
 
   it('перемешиваемый блок — сказано, что порядок будет другим', () => {
-    const blocks: ExamBlockDraft[] = [
-      { title: 'Форма', itemIds: ['i1'], shuffle: true, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: 'Форма', itemIds: ['i1'], shuffle: true }];
     renderPreview(blocks, [makeItem()]);
 
     expect(screen.getByText(/будет другим у каждого сдающего/)).toBeInTheDocument();
@@ -124,20 +120,19 @@ describe('ExamPreview — блоки и вопросы по порядку', () 
 
   it('без перемешивания — заметки про порядок нет', () => {
     const blocks: ExamBlockDraft[] = [
-      { title: 'Форма', itemIds: ['i1'], shuffle: false, required: false },
+      { title: 'Форма', itemIds: ['i1'], shuffle: false },
     ];
     renderPreview(blocks, [makeItem()]);
 
     expect(screen.queryByText(/будет другим/)).not.toBeInTheDocument();
   });
 
-  it('обязательный блок — помечен в заголовке', () => {
-    const blocks: ExamBlockDraft[] = [
-      { title: 'Форма', itemIds: [], shuffle: false, required: true },
-    ];
-    renderPreview(blocks, []);
+  // Пустой предпросмотр честно говорит, что показывать нечего (CLAUDE.md
+  // «Продуктовая фича»: на пустых данных — не пустота и не «0», а фраза).
+  it('вопросов ещё нет — так и сказано, а не пустой экран', () => {
+    renderPreview([{ title: 'Форма', itemIds: [], shuffle: false }], []);
 
-    expect(screen.getByText(/Форма · обязателен/)).toBeInTheDocument();
+    expect(screen.getByText('В блоке пока нет вопросов.')).toBeInTheDocument();
   });
 });
 
@@ -150,10 +145,7 @@ describe('ExamPreview — типы вопросов', () => {
         { id: 'o2', text: '108', correct: false },
       ],
     });
-    renderPreview(
-      [{ title: '', itemIds: ['i1'], shuffle: false, required: false }],
-      [item],
-    );
+    renderPreview([{ title: '', itemIds: ['i1'], shuffle: false }], [item]);
 
     const radios = screen.getAllByRole('radio');
     expect(radios).toHaveLength(2);
@@ -166,10 +158,7 @@ describe('ExamPreview — типы вопросов', () => {
       kind: 'multiple',
       options: [{ id: 'o1', text: 'A', correct: true }],
     });
-    renderPreview(
-      [{ title: '', itemIds: ['i1'], shuffle: false, required: false }],
-      [item],
-    );
+    renderPreview([{ title: '', itemIds: ['i1'], shuffle: false }], [item]);
 
     const checkbox = screen.getByRole('checkbox');
     expect(checkbox).toBeDisabled();
@@ -177,39 +166,27 @@ describe('ExamPreview — типы вопросов', () => {
 
   it('video — объяснение, что придёт видео', () => {
     const item = makeItem({ kind: 'video' });
-    renderPreview(
-      [{ title: '', itemIds: ['i1'], shuffle: false, required: false }],
-      [item],
-    );
+    renderPreview([{ title: '', itemIds: ['i1'], shuffle: false }], [item]);
 
     expect(screen.getByText(/придёт видео/)).toBeInTheDocument();
   });
 
   it('text — неактивное поле ответа', () => {
     const item = makeItem({ kind: 'text' });
-    renderPreview(
-      [{ title: '', itemIds: ['i1'], shuffle: false, required: false }],
-      [item],
-    );
+    renderPreview([{ title: '', itemIds: ['i1'], shuffle: false }], [item]);
 
     expect(screen.getByLabelText('Ответ ученика')).toBeDisabled();
   });
 
   it('вопрос с подсказкой — подсказка видна ученику', () => {
     const item = makeItem({ hint: 'Смотрите в стойку' });
-    renderPreview(
-      [{ title: '', itemIds: ['i1'], shuffle: false, required: false }],
-      [item],
-    );
+    renderPreview([{ title: '', itemIds: ['i1'], shuffle: false }], [item]);
 
     expect(screen.getByText('Смотрите в стойку')).toBeInTheDocument();
   });
 
   it('вопрос не найден в банке — честный текст', () => {
-    renderPreview(
-      [{ title: '', itemIds: ['missing'], shuffle: false, required: false }],
-      [],
-    );
+    renderPreview([{ title: '', itemIds: ['missing'], shuffle: false }], []);
 
     expect(screen.getByText(/Вопрос недоступен/)).toBeInTheDocument();
   });

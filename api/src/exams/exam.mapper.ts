@@ -1,7 +1,7 @@
 // Единственный маппер ExamRecord (lean, уже расшифрованный) → ExamDto
 // (CLAUDE.md, раздел «API»: документ Mongoose наружу не возвращается).
 import type { Types } from 'mongoose';
-import type { ExamDto } from '@xuanxue/shared';
+import type { ExamBlockDto, ExamDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
 import { decryptRecord } from '../utils/encryption';
 import {
@@ -46,6 +46,18 @@ export function decryptExam(doc: RawLeanExam): LeanExam {
   };
 }
 
+/** Блок собирается наружу по полям, а не отдаётся «как лежит в базе»
+ * (CLAUDE.md «API»): у форм старше ADR-0033 в записи остался `required`, и
+ * массив как есть отдал бы клиенту поле, которого в контракте больше нет. */
+function toBlockDto(block: ExamBlockRecord): ExamBlockDto {
+  return {
+    id: block.id,
+    title: block.title,
+    itemIds: block.itemIds,
+    shuffle: block.shuffle,
+  };
+}
+
 export function toExamDto(doc: LeanExam): ExamDto {
   return {
     id: doc._id.toString(),
@@ -57,7 +69,11 @@ export function toExamDto(doc: LeanExam): ExamDto {
     // Document, не голого запроса), поэтому здесь — на возврате в DTO.
     description: doc.description ?? '',
     level: doc.level ?? '',
-    blocks: doc.blocks,
+    blocks: doc.blocks.map(toBlockDto),
+    // `?? false` — у форм, созданных до ADR-0033, поля в документе нет, а
+    // `.lean()` схемный default не переприменяет (та же причина, что у
+    // description/level выше).
+    shuffleOptions: doc.shuffleOptions ?? false,
     rubric: doc.rubric,
     timeLimitMin: doc.timeLimitMin,
     attemptsAllowed: doc.attemptsAllowed,

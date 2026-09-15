@@ -31,7 +31,12 @@ export async function createAttempt(
   const itemIds = [...new Set(exam.blocks.flatMap((block) => block.itemIds))];
   const items = await Promise.all(itemIds.map((id) => examItemsService.getById(id)));
   const itemsById = new Map(items.map((item) => [item.id, item]));
-  const blocks = buildAttemptBlocks(exam.blocks, itemsById, Math.random);
+  const blocks = buildAttemptBlocks({
+    blocks: exam.blocks,
+    itemsById,
+    shuffleOptions: exam.shuffleOptions,
+    random: Math.random,
+  });
   const deadlineAt = exam.timeLimitMin
     ? now.plus({ minutes: exam.timeLimitMin })
     : undefined;
