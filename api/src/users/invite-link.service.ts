@@ -11,10 +11,12 @@ import { Model } from 'mongoose';
 import {
   INVITE_CODE_RE,
   INVITE_LINK_NOT_AVAILABLE_MESSAGE,
+  INVITE_TELEGRAM_START_PREFIX,
   type InviteLinkDto,
 } from '@xuanxue/shared';
 import { NotAvailableError } from '../common/errors';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
+import { BotIdentityService } from '../telegram/bot-identity.service';
 import { INVITE_LINK_ENCRYPT_SCHEMA, InviteLinkRecord } from './invite-link.schema';
 
 function hashCode(code: string): string {
@@ -25,19 +27,20 @@ function hashCode(code: string): string {
 export class InviteLinkService {
   constructor(
     private readonly config: ConfigService,
+    private readonly botIdentity: BotIdentityService,
     @InjectModel(InviteLinkRecord.name)
     private readonly model: Model<InviteLinkRecord>,
   ) {}
 
   /** `url: null` — ссылку ещё ни разу не создавали, `PUBLIC_URL` не задан —
-   * `NotAvailableError` (видит только admin на «Людях», CLAUDE.md
+   * `NotAvailableError` (видит только admin/teacher на «Людях», CLAUDE.md
    * «Конфигурация»: без адреса сайта ссылку всё равно не собрать). */
   async getCurrent(): Promise<InviteLinkDto> {
     const publicUrl = this.requirePublicUrl();
     const doc = await this.model.findOne({}).lean<{ code: string } | null>();
-    if (!doc) return { url: null };
+    if (!doc) return { url: null, telegramUrl: null };
     const { code } = decryptRecord(doc, INVITE_LINK_ENCRYPT_SCHEMA);
-    return { url: `${publicUrl}/join/${code}` };
+    return this.toDto(publicUrl, code);
   }
 
   /** «Создать новую» = `deleteMany` + `create`, не правка старого документа
@@ -53,7 +56,19 @@ export class InviteLinkService {
         INVITE_LINK_ENCRYPT_SCHEMA,
       ),
     );
-    return { url: `${publicUrl}/join/${code}` };
+    return this.toDto(publicUrl, code);
+  }
+
+  /** `telegramUrl: null`, если бот не прогрелся (имя ещё не известно) — тот
+   * же случай, что `telegramBotUsername` в `AuthConfigDto` (auth.ts). */
+  private toDto(publicUrl: string, code: string): InviteLinkDto {
+    const botUsername = this.botIdentity.get();
+    return {
+      url: `${publicUrl}/join/${code}`,
+      telegramUrl: botUsername
+        ? `https://t.me/${botUsername}?start=${INVITE_TELEGRAM_START_PREFIX}${code}`
+        : null,
+    };
   }
 
   /** По хешу — сырой код в базе не хранится дольше, чем нужно на один

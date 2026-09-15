@@ -20,7 +20,10 @@ import { NotificationPrefsService } from '../notifications/notification-prefs.se
 import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
 import { SettingsService } from '../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import type { InviteLinkService } from '../users/invite-link.service';
+import { JoinByInviteService } from '../users/join-by-invite.service';
 import { UserNamesService } from '../users/user-names.service';
+import { UserRolesService } from '../users/user-roles.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
@@ -95,11 +98,22 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
       classModel,
       usersService,
     );
+    const inertInviteLinkService = {
+      isValid: () => Promise.resolve(false),
+    } as unknown as InviteLinkService;
     startHandler = new StartHandler(
       settingsService,
       new ChannelConfigService(channelModel, classModel),
       new BotSessionService(botSessionModel),
       new BotUserAccessService(usersService),
+      usersService,
+      new JoinByInviteService(
+        inertInviteLinkService,
+        new UserRolesService(userModel, usersService),
+        usersService,
+      ),
+      inertInviteLinkService,
+      fakeConfig(),
     );
     userNamesService = new UserNamesService(userModel);
     personalChats = new PersonalChats(

@@ -1,38 +1,43 @@
 // /start — единственная точка входа для личного чата с ботом (docs/PLAN.md
 // §6, §11 слой 4.7, ADR-0015, ADR-0027). Доступ — единой точкой
 // BotUserAccessService.resolve() (не UsersService.findByTelegramId напрямую,
-// SECURITY §9): `active` подключается (штат — welcomeConnectedUser даёт
-// канал школы, ученик — личный канал, ADR-0027), `denied` (blocked/invited)
-// получает готовый отказ (ACCESS_MESSAGE/PENDING_APPROVAL_MESSAGE), `unknown`
-// (нет записи в users) — вежливый отказ по VOICE, без канала: адрес сайта
-// школы (settings.schoolSiteUrl) в отказе, если учитель его заполнил на
-// экране «Шаблоны» — не PUBLIC_URL, тот адрес самого кабинета, а
-// незнакомцу в кабинет смотреть нечего (В6 аудита, ADR-0009-доп.).
+// SECURITY §9): `active` подключается (штат — welcomeConnectedUser даёт канал
+// школы, ученик — личный канал, ADR-0027), `denied` (blocked/invited) получает
+// готовый отказ, `unknown` (нет записи в users) — вежливый отказ по VOICE с
+// адресом сайта школы, если он заполнен (settings.schoolSiteUrl, не PUBLIC_URL).
 // Только приватный чат: Telegram шлёт /start и в группах (например, при
 // добавлении бота с командой в описании) — там это не про личный канал
 // человека, отвечать/создавать канал не нужно (обрабатывает my_chat_member).
 //
 // Второй payload формата `exam_<attemptId>` (ADR-0023, PLAN §11 слой 4.5) —
 // deep link «Отправить видео» из кабинета, открыт ЛЮБОМУ пользователю
-// Telegram, не только штату школы: заводит ожидание видео в
-// BotSessionService и выходит раньше проверки роли. Владение попыткой здесь
-// не проверяется — ответ на /start одинаков для чужого и несуществующего
-// attemptId (не подтверждаем существование, SECURITY §3); саму привязку
-// проверяет MediaAssetsService, когда видео придёт (exam-media-message.handler.ts).
-// Но ИЗВЕСТНОГО человека со статусом blocked/invited к ожиданию видео пускать
-// нельзя (SECURITY §9, ADR-0026) — поэтому перед стартом ожидания заходим
-// через BotUserAccessService.resolve(): анонимный отправитель (`unknown`)
-// по-прежнему проходит без проверки роли, как и было задумано.
+// Telegram: заводит ожидание видео в BotSessionService раньше проверки роли.
+// Владение попыткой не проверяется — ответ одинаков для чужого и
+// несуществующего attemptId (SECURITY §3), саму привязку проверяет
+// MediaAssetsService, когда видео придёт. ИЗВЕСТНОГО blocked/invited к
+// ожиданию не пускаем (SECURITY §9) — BotUserAccessService.resolve() перед
+// стартом ожидания, `unknown` по-прежнему проходит без роли.
+//
+// Третий payload `join_<code>` (ADR-0030 «Бот», уточнение 2026-09-15) — та же
+// ссылка, что и на сайте (join-invite-deep-link.ts): валидный код заводит
+// незнакомца из Telegram-идентичности апдейта и сразу ведёт в active через
+// JoinByInviteService.join(); невалидный — аккаунт не заводим.
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
+import { INVITE_CODE_RE, INVITE_TELEGRAM_START_PREFIX } from '@xuanxue/shared';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { SettingsService } from '../../settings/settings.service';
+import { InviteLinkService } from '../../users/invite-link.service';
+import { JoinByInviteService } from '../../users/join-by-invite.service';
+import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import { buildStrangerMessage } from './bot-menu';
+import { handleInviteDeepLink } from './join-invite-deep-link';
 import { welcomeConnectedUser } from './start-welcome';
 
 const EXAM_MEDIA_PAYLOAD_PATTERN = /^exam_([0-9a-fA-F]{24})$/;
@@ -54,6 +59,14 @@ function examAttemptIdFromPayload(payload: string | undefined): string | null {
   return attemptId && Types.ObjectId.isValid(attemptId) ? attemptId : null;
 }
 
+/** `null` — не ссылка-приглашение (обычный /start, чужая команда, битый
+ * код) — формат сверяем тем же `INVITE_CODE_RE`, что и DTO `/auth/join`. */
+function inviteCodeFromPayload(payload: string | undefined): string | null {
+  if (!payload?.startsWith(INVITE_TELEGRAM_START_PREFIX)) return null;
+  const code = payload.slice(INVITE_TELEGRAM_START_PREFIX.length);
+  return INVITE_CODE_RE.test(code) ? code : null;
+}
+
 const EXAM_MEDIA_WAIT_MESSAGE =
   'Снимите или пришлите видео прямо сюда — обычным сообщением, «кружком» ' +
   'или файлом. Как только дойдёт, учитель сможет его посмотреть.';
@@ -67,6 +80,10 @@ export class StartHandler {
     private readonly channelConfig: ChannelConfigService,
     private readonly botSessions: BotSessionService,
     private readonly botAccess: BotUserAccessService,
+    private readonly usersService: UsersService,
+    private readonly joinByInviteService: JoinByInviteService,
+    private readonly inviteLinkService: InviteLinkService,
+    private readonly config: ConfigService,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -75,9 +92,20 @@ export class StartHandler {
     if (!from) return;
 
     try {
-      const examAttemptId = examAttemptIdFromPayload(startPayload(ctx));
+      const payload = startPayload(ctx);
+      const examAttemptId = examAttemptIdFromPayload(payload);
       if (examAttemptId) {
         await this.handleExamDeepLink(ctx, from.id, examAttemptId, now);
+        return;
+      }
+      const inviteCode = inviteCodeFromPayload(payload);
+      if (inviteCode) {
+        await handleInviteDeepLink(ctx, from, inviteCode, now, {
+          usersService: this.usersService,
+          joinByInviteService: this.joinByInviteService,
+          inviteLinkService: this.inviteLinkService,
+          publicUrl: this.config.get<string>('PUBLIC_URL'),
+        });
         return;
       }
 

@@ -11,6 +11,7 @@ import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { TopicCommandHandler } from './handlers/topic-command.handler';
+import { BotIdentityService } from './bot-identity.service';
 import {
   TOKEN,
   fakeConfig,
@@ -42,6 +43,7 @@ function buildService(): {
     fakeHandlerWithNow() as unknown as MenuCommandHandler,
     message as unknown as MessageHandler,
     exams as unknown as ExamCommandHandler,
+    new BotIdentityService(),
   );
   service.onApplicationBootstrap();
   return { service, exams, message };

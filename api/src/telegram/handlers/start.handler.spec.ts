@@ -7,8 +7,13 @@
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
+import type { ConfigService } from '@nestjs/config';
 import type { Context } from 'telegraf';
-import { ACCESS_MESSAGE, PENDING_APPROVAL_MESSAGE } from '@xuanxue/shared';
+import {
+  ACCESS_MESSAGE,
+  INVITE_LINK_INVALID_MESSAGE,
+  PENDING_APPROVAL_MESSAGE,
+} from '@xuanxue/shared';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../../classes/class.schema';
@@ -16,12 +21,25 @@ import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
 import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
 import { SettingsService } from '../../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
+import type { InviteLinkService } from '../../users/invite-link.service';
+import { JoinByInviteService } from '../../users/join-by-invite.service';
+import { UserRolesService } from '../../users/user-roles.service';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import { StartHandler } from './start.handler';
+
+const VALID_INVITE_CODE = 'a'.repeat(32);
+function fakeInviteLinkService(): InviteLinkService {
+  return {
+    isValid: (code: string) => Promise.resolve(code === VALID_INVITE_CODE),
+  } as unknown as InviteLinkService;
+}
+function fakeConfigWithPublicUrl(): ConfigService {
+  return { get: () => 'https://xuanxue.su' } as unknown as ConfigService;
+}
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 
@@ -30,6 +48,7 @@ function fakeCtx(
   chatType: 'private' | 'group' = 'private',
   failSecondReply = false,
   startPayload?: string,
+  firstName = 'Тест',
 ): {
   ctx: Context;
   replies: string[];
@@ -37,7 +56,8 @@ function fakeCtx(
   const replies: string[] = [];
   const ctx = {
     chat: { type: chatType },
-    from: telegramId === undefined ? undefined : { id: telegramId },
+    from:
+      telegramId === undefined ? undefined : { id: telegramId, first_name: firstName },
     message: { text: startPayload ? `/start ${startPayload}` : '/start' },
     reply: (text: string) => {
       // Второе сообщение — меню: человек мог заблокировать бота между двумя
@@ -88,6 +108,14 @@ describe('StartHandler', () => {
       new ChannelConfigService(channelModel, classModel),
       new BotSessionService(botSessionModel),
       new BotUserAccessService(new UsersService(userModel)),
+      new UsersService(userModel),
+      new JoinByInviteService(
+        fakeInviteLinkService(),
+        new UserRolesService(userModel, new UsersService(userModel)),
+        new UsersService(userModel),
+      ),
+      fakeInviteLinkService(),
+      fakeConfigWithPublicUrl(),
     );
   }, 60_000);
 
@@ -256,6 +284,14 @@ describe('StartHandler', () => {
       new ChannelConfigService(channelModel, classModel),
       new BotSessionService(botSessionModel),
       new BotUserAccessService(failingUsers),
+      new UsersService(userModel),
+      new JoinByInviteService(
+        fakeInviteLinkService(),
+        new UserRolesService(userModel, new UsersService(userModel)),
+        new UsersService(userModel),
+      ),
+      fakeInviteLinkService(),
+      fakeConfigWithPublicUrl(),
     );
     const { ctx, replies } = fakeCtx(777);
 
@@ -338,6 +374,124 @@ describe('StartHandler', () => {
       expect(replies[0]).toContain('Экзамены можно сдать');
       expect(await channelModel.countDocuments({ target: '446' })).toBe(1);
       expect(await botSessionModel.countDocuments({})).toBe(0);
+    });
+  });
+
+  // Ссылка-приглашение школы через бота (ADR-0030 «Бот») — тот же код, что
+  // и на сайте (/join/<code>), JoinByInviteService.join() общий с вебом.
+  describe('deep link «Ссылка-приглашение» (join_<code>, ADR-0030)', () => {
+    it('invited + верный код — active, read-after-write в GET-эквиваленте (findByTelegramId)', async () => {
+      await userModel.create({
+        name: 'Ждёт подтверждения',
+        telegramId: 601,
+        roles: [],
+        status: 'invited',
+      });
+      const { ctx, replies } = fakeCtx(
+        601,
+        'private',
+        false,
+        `join_${VALID_INVITE_CODE}`,
+      );
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([
+        'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su',
+      ]);
+      const after = await userModel.findOne({ telegramId: 601 }).lean();
+      expect(after?.status).toBe('active');
+      expect(after?.joinedViaInviteAt).toBeInstanceOf(Date);
+    });
+
+    it('неверный код — INVITE_LINK_INVALID_MESSAGE, статус не меняется', async () => {
+      await userModel.create({
+        name: 'Ждёт подтверждения',
+        telegramId: 602,
+        roles: [],
+        status: 'invited',
+      });
+      const { ctx, replies } = fakeCtx(602, 'private', false, 'join_' + '0'.repeat(32));
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([INVITE_LINK_INVALID_MESSAGE]);
+      expect((await userModel.findOne({ telegramId: 602 }).lean())?.status).toBe(
+        'invited',
+      );
+    });
+
+    it('заблокированный — ACCESS_MESSAGE даже с верным кодом, статус не меняется', async () => {
+      await userModel.create({
+        name: 'Заблокирован',
+        telegramId: 603,
+        roles: [],
+        status: 'blocked',
+      });
+      const { ctx, replies } = fakeCtx(
+        603,
+        'private',
+        false,
+        `join_${VALID_INVITE_CODE}`,
+      );
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([ACCESS_MESSAGE]);
+      expect((await userModel.findOne({ telegramId: 603 }).lean())?.status).toBe(
+        'blocked',
+      );
+    });
+
+    it('незнакомец + верный код — создаётся invited из Telegram-идентичности и сразу active', async () => {
+      const { ctx, replies } = fakeCtx(
+        604,
+        'private',
+        false,
+        `join_${VALID_INVITE_CODE}`,
+        'Аня',
+      );
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([
+        'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su',
+      ]);
+      const created = await userModel.findOne({ telegramId: 604 }).lean();
+      expect(created?.status).toBe('active');
+      expect(created?.name).toBe('Аня');
+      expect(created?.roles).toEqual([]);
+      expect(created?.joinedViaInviteAt).toBeInstanceOf(Date);
+    });
+
+    it('незнакомец + неверный код — INVITE_LINK_INVALID_MESSAGE, аккаунт не создаётся', async () => {
+      const { ctx, replies } = fakeCtx(606, 'private', false, 'join_' + '0'.repeat(32));
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([INVITE_LINK_INVALID_MESSAGE]);
+      expect(await userModel.countDocuments({ telegramId: 606 })).toBe(0);
+    });
+
+    it('active повторно — 200-эквивалент без ошибки, статус не меняется', async () => {
+      await userModel.create({
+        name: 'Уже в кабинете',
+        telegramId: 605,
+        roles: [],
+        status: 'active',
+      });
+      const { ctx, replies } = fakeCtx(
+        605,
+        'private',
+        false,
+        `join_${VALID_INVITE_CODE}`,
+      );
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies).toEqual([
+        'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su',
+      ]);
     });
   });
 });
