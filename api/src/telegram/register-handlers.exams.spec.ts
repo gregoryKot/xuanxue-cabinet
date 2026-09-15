@@ -3,6 +3,7 @@
 // (entity 'bot_command' кириллицу не разбирает, register-handlers.ts). Сеть не
 // трогаем: фабрика Telegraf подменена (test-support/telegraf-factory.ts).
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
+import type { ChatMemberJoinHandler } from './handlers/chat-member-join.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
 import type { StartHandler } from './handlers/start.handler';
 import type { MessageHandler } from './handlers/message.handler';
@@ -33,6 +34,7 @@ function buildService(): {
     fakeConfig({ BOT_TOKEN: TOKEN }),
     factory,
     fakeHandler() as unknown as ChatMemberHandler,
+    fakeHandler() as unknown as ChatMemberJoinHandler,
     fakeHandler() as unknown as StartHandler,
     fakeHandlerWithNow() as unknown as CallbackQueryHandler,
     fakeHandlerWithNow() as unknown as TopicCommandHandler,

@@ -2,7 +2,10 @@
 // предпросмотра/«Запись?»/ручных каналов, /тема, /уведомления (PLAN.md §6, §13).
 // ChannelsModule — ChannelConfigService и модель ChannelRecord (PersonalChats);
 // UsersModule — UsersService (PersonalChats, MessageHandler,
-// BotUserAccessService — /start и остальной доступ бота идут через неё);
+// BotUserAccessService — /start и остальной доступ бота идут через неё) и
+// StudentMembershipApprovalService (ChatMemberJoinHandler — апдейт
+// chat_member подтверждает `invited`-человека, вступившего в группу
+// учеников, тот же код, что при входе через Telegram, ADR-0026);
 // BroadcastsModule — BroadcastsService.cancel(), TopicRebuildService, модель
 // BroadcastRecord; LessonsModule — LessonsService.update()/addRecording(),
 // модель LessonRecord; DeliveriesModule — DeliveriesService.markSent();
@@ -33,6 +36,7 @@ import { BotUserAccessService } from './bot-user-access.service';
 import { ExamBotPortRegistry } from './exam-bot-port.registry';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
+import { ChatMemberJoinHandler } from './handlers/chat-member-join.handler';
 import { ExamCommandHandler } from './handlers/exam-command.handler';
 import { ExamMediaMessageHandler } from './handlers/exam-media-message.handler';
 import { ExamTextAnswerHandler } from './handlers/exam-text-answer.handler';
@@ -68,6 +72,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     TelegramBotService,
     TelegramWebhookGuard,
     ChatMemberHandler,
+    ChatMemberJoinHandler,
     StartHandler,
     CallbackQueryHandler,
     TopicCommandHandler,

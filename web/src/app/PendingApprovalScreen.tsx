@@ -3,6 +3,8 @@
 // показывает этот экран вместо Outlet/StudentScreen и прячет навигацию —
 // подтверждённых разделов у invited-человека пока нет. «Выйти» — по-прежнему
 // в общем подвале AppShell, здесь своей кнопки нет.
+import { useEffect } from 'react';
+import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
 import { PENDING_APPROVAL_MESSAGE } from '@xuanxue/shared';
@@ -20,6 +22,21 @@ const SCHOOL_SITE_HINT_PREFIX =
 
 export function PendingApprovalScreen() {
   const { config } = useAuthConfig();
+  const { refresh } = useAuth();
+
+  // Подтверждение теперь приходит и без кнопки админа — на следующий вход
+  // или сразу, апдейтом Telegram о вступлении в группу (ADR-0026 п.2). Кто
+  // застрял на этом экране, того само не перерисует: опрос сервера по
+  // таймеру запрещён (CLAUDE.md «Загрузка»), поэтому перепроверяем при
+  // возврате на вкладку — том самом моменте, когда человек, скорее всего,
+  // и посмотрит на экран снова после того, как его подтвердили.
+  useEffect(() => {
+    function handleVisibilityChange(): void {
+      if (document.visibilityState === 'visible') void refresh();
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refresh]);
 
   return (
     <section style={screenSectionStyle}>

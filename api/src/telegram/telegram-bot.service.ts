@@ -5,14 +5,12 @@ import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs
 import { ConfigService } from '@nestjs/config';
 import type { Telegraf } from 'telegraf';
 import type { InlineKeyboardButton, Update } from 'telegraf/types';
-import {
-  TELEGRAM_CALL_TIMEOUT_MS,
-  withTelegramSignal,
-} from '../channels/telegram-client';
 import { errorMessage, errorStack } from '../common/error-info';
+import { ensureBotInfo, registerWebhook } from './bot-startup';
 import { sendBotMessage } from './bot-send';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
+import { ChatMemberJoinHandler } from './handlers/chat-member-join.handler';
 import { ExamCommandHandler } from './handlers/exam-command.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
@@ -23,11 +21,9 @@ import { registerHandlers } from './register-handlers';
 import { registerBotCommands } from './bot-commands';
 import { TELEGRAF_FACTORY, type TelegrafFactory } from './telegraf-instance';
 
-// Литерал, не константа из app.setup.ts: там `app.setGlobalPrefix('api')` не
-// экспортирует префикс наружу — заводить экспорт ради одного потребителя
-// сейчас не стоит, префикс задокументирован здесь же.
-export const TELEGRAM_WEBHOOK_PATH = '/api/telegram/webhook';
-const ALLOWED_UPDATES = ['message', 'my_chat_member', 'callback_query'] as const;
+// Реэкспорт для существующих потребителей (телеграм-контроллер, тесты) —
+// путь вебхука теперь объявлен в bot-startup.ts вместе с его регистрацией.
+export { TELEGRAM_WEBHOOK_PATH } from './bot-startup';
 
 @Injectable()
 export class TelegramBotService implements OnApplicationBootstrap {
@@ -38,6 +34,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly config: ConfigService,
     @Inject(TELEGRAF_FACTORY) private readonly telegrafFactory: TelegrafFactory,
     private readonly chatMemberHandler: ChatMemberHandler,
+    private readonly chatMemberJoinHandler: ChatMemberJoinHandler,
     private readonly startHandler: StartHandler,
     private readonly callbackQueryHandler: CallbackQueryHandler,
     private readonly topicCommandHandler: TopicCommandHandler,
@@ -63,6 +60,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     });
     registerHandlers(bot, {
       chatMemberHandler: this.chatMemberHandler,
+      chatMemberJoinHandler: this.chatMemberJoinHandler,
       startHandler: this.startHandler,
       callbackQueryHandler: this.callbackQueryHandler,
       topicCommandHandler: this.topicCommandHandler,
@@ -76,10 +74,10 @@ export class TelegramBotService implements OnApplicationBootstrap {
     // Сетевые вызовы старта — не await, ошибки в лог: они не должны
     // задерживать подъём приложения. Пустое меню команд читается как
     // «бот ничего не умеет» (bot-commands.ts), поэтому оно тоже здесь.
-    void this.ensureBotInfo(bot).catch((err) => {
+    void ensureBotInfo(bot).catch((err) => {
       this.logger.warn(`telegram.getMe (прогрев при старте): ${errorMessage(err)}`);
     });
-    void this.registerWebhook(bot).catch((err) => {
+    void registerWebhook(bot, this.config, this.logger).catch((err) => {
       this.logger.error(`telegram.setWebhook: ${errorMessage(err)}`, errorStack(err));
     });
     void registerBotCommands(bot).catch((err) => {
@@ -92,7 +90,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
   async handleUpdate(update: Update): Promise<void> {
     if (!this.bot) return;
     try {
-      await this.ensureBotInfo(this.bot);
+      await ensureBotInfo(this.bot);
       await this.bot.handleUpdate(update);
     } catch (err) {
       this.logger.error(`telegram.webhook: ${errorMessage(err)}`, errorStack(err));
@@ -136,42 +134,5 @@ export class TelegramBotService implements OnApplicationBootstrap {
    * показывается (кабинет не обещает того, чего не может). */
   botUsername(): string | undefined {
     return this.bot?.botInfo?.username;
-  }
-
-  /** telegraf зовёт `telegram.getMe()` лениво, но кэширует даже ОТКЛОНЁННЫЙ
-   * промис в приватном `botInfoCall` (telegraf.js, handleUpdate) — после
-   * первого сетевого сбоя бот молчал бы навсегда. Выставляем публичное
-   * `bot.botInfo` сами раньше, чем telegraf туда заглянет; при отказе не
-   * выставляем ничего — следующий апдейт пробует снова. */
-  private async ensureBotInfo(bot: Telegraf): Promise<void> {
-    if (bot.botInfo) return;
-    const signal = AbortSignal.timeout(TELEGRAM_CALL_TIMEOUT_MS);
-    bot.botInfo = await bot.telegram.callApi('getMe', {}, withTelegramSignal(signal));
-  }
-
-  /** Регистрация только при полном комплекте: BOT_TOKEN (уже проверен выше),
-   * PUBLIC_URL и TELEGRAM_WEBHOOK_SECRET заданы, NODE_ENV=production —
-   * иначе локальная разработка на каждом старте пыталась бы перехватить
-   * вебхук прод-бота. `new URL(path, base)`, не конкатенация строк: устойчиво
-   * к завершающему слэшу в PUBLIC_URL (валидатор его и так запрещает —
-   * вторая линия защиты от «//» в пути). */
-  private async registerWebhook(bot: Telegraf): Promise<void> {
-    const nodeEnv = this.config.get<string>('NODE_ENV');
-    const publicUrl = this.config.get<string>('PUBLIC_URL');
-    const secretToken = this.config.get<string>('TELEGRAM_WEBHOOK_SECRET');
-    if (nodeEnv !== 'production' || !publicUrl || !secretToken) {
-      this.logger.warn(
-        'Вебхук бота не зарегистрирован: нужны production, PUBLIC_URL и ' +
-          'TELEGRAM_WEBHOOK_SECRET (RUNBOOK §5).',
-      );
-      return;
-    }
-    const url = new URL(TELEGRAM_WEBHOOK_PATH, publicUrl).toString();
-    const signal = AbortSignal.timeout(TELEGRAM_CALL_TIMEOUT_MS);
-    await bot.telegram.callApi(
-      'setWebhook',
-      { url, secret_token: secretToken, allowed_updates: [...ALLOWED_UPDATES] },
-      withTelegramSignal(signal),
-    );
   }
 }

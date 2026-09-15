@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import type { Telegraf } from 'telegraf';
 import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
+import type { ChatMemberJoinHandler } from './handlers/chat-member-join.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
@@ -25,6 +26,7 @@ const EXAMS_COMMAND_PATTERN = /^\/экзамены(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
 
 export interface BotHandlers {
   chatMemberHandler: ChatMemberHandler;
+  chatMemberJoinHandler: ChatMemberJoinHandler;
   startHandler: StartHandler;
   callbackQueryHandler: CallbackQueryHandler;
   topicCommandHandler: TopicCommandHandler;
@@ -41,6 +43,9 @@ export interface BotHandlers {
 export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
   bot.start((ctx) => handlers.startHandler.handle(ctx, DateTime.utc()));
   bot.on('my_chat_member', (ctx) => handlers.chatMemberHandler.handle(ctx));
+  // chat_member — статус ДРУГОГО участника чата (человека, не бота);
+  // отдельный апдейт от my_chat_member выше (chat-member-join.handler.ts).
+  bot.on('chat_member', (ctx) => handlers.chatMemberJoinHandler.handle(ctx));
   bot.on('callback_query', (ctx) =>
     handlers.callbackQueryHandler.handle(ctx, DateTime.utc()),
   );
