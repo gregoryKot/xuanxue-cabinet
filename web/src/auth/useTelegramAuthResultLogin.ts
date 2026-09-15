@@ -2,13 +2,15 @@
 // баг с прода, найден 2026-09-08). Кнопка на LoginScreen.tsx лишь уводит
 // вкладку на Telegram (ADR-0028); при возврате на /login читаем
 // #tgAuthResult= из адреса и, если он есть, отправляем на сервер сами:
-// POST /auth/telegram → refresh() сессии → /schedule. Логика вынесена из
-// LoginScreen.tsx в хук (CLAUDE.md «Логика вне компонентов» и файловый
+// POST /auth/telegram → refresh() сессии → сохранённый адрес или домашний
+// экран (postLoginPath, аудит L2 — раньше жёстко /schedule). Логика вынесена
+// из LoginScreen.tsx в хук (CLAUDE.md «Логика вне компонентов» и файловый
 // храповик — компонент иначе не помещается в лимит).
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { TelegramLoginInput } from '@xuanxue/shared';
 import { ApiError, apiFetch } from '../api/http';
+import { postLoginPath } from './returnTo';
 import { readTelegramAuthResult } from './telegramAuthResult';
 
 const LOGIN_FAILED_MESSAGE = 'Не удалось войти. Попробуйте ещё раз.';
@@ -26,9 +28,10 @@ export interface UseTelegramAuthResultLoginResult {
 }
 
 export interface UseTelegramAuthResultLoginOptions {
-  /** По умолчанию — переход на /schedule после успешного входа (LoginScreen).
-   * `false` — экран сам решает, что дальше (JoinScreen.tsx: ссылка-приглашение,
-   * ADR-0030, ведёт на /schedule только после своего POST /auth/join). */
+  /** По умолчанию — переход на postLoginPath() после успешного входа
+   * (LoginScreen). `false` — экран сам решает, что дальше (JoinScreen.tsx:
+   * ссылка-приглашение, ADR-0030, ведёт дальше только после своего
+   * POST /auth/join). */
   navigateAfterLogin?: boolean;
 }
 
@@ -62,7 +65,7 @@ export function useTelegramAuthResultLogin(
     postTelegramLogin(user)
       .then(() => refresh())
       .then(() => {
-        if (navigateAfterLogin) void navigate('/schedule', { replace: true });
+        if (navigateAfterLogin) void navigate(postLoginPath(), { replace: true });
       })
       .catch((err: unknown) => {
         setError(err instanceof ApiError ? err.message : LOGIN_FAILED_MESSAGE);

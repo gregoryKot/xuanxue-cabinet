@@ -56,7 +56,7 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const goBack = useHistorySheet(onCancel);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
 
   async function handleConfirm() {
     await onConfirm();
@@ -65,6 +65,13 @@ export function ConfirmDialog({
 
   return (
     <div
+      // Колбэк, а не containerRef напрямую — див ждёт ref на HTMLDivElement,
+      // а useDialog отдаёт RefObject<HTMLElement | null> (M3, общий для
+      // любого корня диалога); присваивание значения-подтипа обходится без
+      // `as`-каста.
+      ref={(node) => {
+        containerRef.current = node;
+      }}
       style={overlayStyle}
       role="dialog"
       aria-modal="true"

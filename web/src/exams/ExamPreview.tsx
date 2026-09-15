@@ -50,10 +50,16 @@ export function ExamPreview({
   onClose,
 }: ExamPreviewProps) {
   const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
 
   return (
     <div
+      // Колбэк вместо containerRef напрямую — див ждёт ref на HTMLDivElement,
+      // useDialog отдаёт RefObject<HTMLElement | null> (M3); присваивание
+      // значения-подтипа не требует `as`-каста.
+      ref={(node) => {
+        containerRef.current = node;
+      }}
       style={overlayStyle}
       role="dialog"
       aria-modal="true"

@@ -1,8 +1,9 @@
 // Экран входа — до первого действия объясняет, что это и зачем (CLAUDE.md
 // «Продукт»). Единственный способ входа, на любом устройстве, — переход
 // текущей вкладки на Telegram (TelegramLoginSection.tsx, общий с
-// JoinScreen.tsx, ADR-0030). Уже вошедшего уводит на /schedule, не показывая
-// эту форму. Google — следующий PR.
+// JoinScreen.tsx, ADR-0030). Уже вошедшего уводит на сохранённый адрес или
+// домашний экран, не показывая эту форму (аудит L2 — раньше жёстко на
+// /schedule, мимо экрана, с которого человек пришёл). Google — следующий PR.
 import { Navigate } from 'react-router-dom';
 import { EmailLoginForm } from './EmailLoginForm';
 import {
@@ -15,12 +16,13 @@ import {
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
+import { postLoginPath } from './returnTo';
 
 export default function LoginScreen() {
   const { status: authStatus } = useAuth();
   const { config, status: configStatus, reload } = useAuthConfig();
 
-  if (authStatus === 'ok') return <Navigate to="/schedule" replace />;
+  if (authStatus === 'ok') return <Navigate to={postLoginPath()} replace />;
 
   return (
     <main style={loginPageStyle}>

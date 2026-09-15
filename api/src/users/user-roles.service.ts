@@ -18,7 +18,7 @@ import {
 } from '@xuanxue/shared';
 import { ForbiddenError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
-import { isLastAdmin } from './last-admin';
+import { isLastAdmin, rollbackIfNoAdminLeft } from './last-admin';
 import { UserRecord } from './user.schema';
 import { toLean, UsersService, type UserDoc, type UserLean } from './users.service';
 
@@ -74,12 +74,13 @@ export class UserRolesService {
    * другого маршрута). Два ограничения защищают школу от «остаться без
    * доступа»: нельзя снять admin у самого себя (currentUserId, проверка не
    * зависит от гонки — id и так неизменны) и нельзя снять admin у последнего
-   * администратора в базе (isLastAdmin — last-admin.ts, общая с
-   * UserDeletionService.deleteAllUserData, комментарий там же про гонку).
-   * Апдейт условный по `roles` из уже прочитанного `target`: если роли
-   * поменялись между чтением и записью (двойной клик, второй админ успел
-   * раньше), `findOneAndUpdate` не находит документ, и вызывающий получает
-   * понятный NotFoundError вместо тихой перезаписи чужого решения.
+   * администратора в базе. Апдейт условный по `roles` из уже прочитанного
+   * `target`: если роли поменялись между чтением и записью (двойной клик,
+   * второй админ успел раньше), `findOneAndUpdate` не находит документ, и
+   * вызывающий получает понятный NotFoundError вместо тихой перезаписи чужого
+   * решения. `isLastAdmin` — дешёвая проверка до записи; `rollbackIfNoAdminLeft`
+   * после уже применённой записи закрывает гонку между двумя такими проверками
+   * (last-admin.ts, аудит M11) — общая с UserDeletionService.deleteAllUserData.
    */
   async updateRoles(
     id: string,
@@ -104,6 +105,13 @@ export class UserRolesService {
       )
       .lean<UserDoc>();
     if (!doc) throw new NotFoundError(USER_NOT_FOUND_MESSAGE);
+
+    if (losesAdmin) {
+      await rollbackIfNoAdminLeft(this.model, () =>
+        this.model.updateOne({ _id: id, roles }, { $addToSet: { roles: 'admin' } }),
+      );
+    }
+
     return toLean(doc);
   }
 }

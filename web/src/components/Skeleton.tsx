@@ -3,6 +3,12 @@
 // Shimmer глушится reduced-motion блоком в index.css. Портировано из
 // telegram-bot-2/schema-miniapp/src/components/Skeleton.tsx — структура та
 // же, без привязки к Telegram safe-area.
+//
+// Тона взяты не из --surface/--surface-2 (подложка/бумага, направление
+// «тихо и благородно»): подложка почти сливается с бумагой страницы
+// (контраст 1.06:1), и скелетон на самой бумаге стал бы не «светиться
+// серым», а попросту исчезать. --border (линия) заметно темнее бумаги и
+// держит скелетон видимым, откуда бы он ни рендерился.
 import type { CSSProperties } from 'react';
 
 export function Skeleton({
@@ -25,7 +31,7 @@ export function Skeleton({
         borderRadius: radius,
         flexShrink: 0,
         background:
-          'linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%)',
+          'linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%)',
         backgroundSize: '200% auto',
         animation: 'xuanxue-shimmer 1.5s linear infinite',
         ...style,

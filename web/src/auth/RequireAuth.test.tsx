@@ -7,6 +7,7 @@ import type * as HttpModule from '../api/http';
 import { apiFetch, ApiError } from '../api/http';
 import { AuthProvider } from './AuthProvider';
 import { RequireAuth } from './RequireAuth';
+import { consumeReturnTo } from './returnTo';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -17,16 +18,18 @@ const mockedApiFetch = vi.mocked(apiFetch);
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+  sessionStorage.clear();
 });
 
-function renderGuarded() {
+function renderGuarded(initialEntry = '/schedule') {
   return render(
-    <MemoryRouter initialEntries={['/schedule']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route element={<RequireAuth />}>
             <Route path="/schedule" element={<p>Расписание</p>} />
+            <Route path="/exams" element={<p>Экзамены</p>} />
           </Route>
         </Routes>
       </AuthProvider>
@@ -65,6 +68,31 @@ describe('RequireAuth', () => {
     renderGuarded();
 
     expect(await screen.findByText('Расписание')).toBeInTheDocument();
+  });
+
+  it('гость на /exams?tab=x — путь запоминается для возврата после входа (аудит L2)', async () => {
+    mockedApiFetch.mockRejectedValue(new Error('нет сессии'));
+
+    renderGuarded('/exams?tab=x');
+
+    expect(await screen.findByText('Экран входа')).toBeInTheDocument();
+    expect(consumeReturnTo()).toBe('/exams?tab=x');
+  });
+
+  it('вошедший — редиректа на /login нет, ничего не сохраняется', async () => {
+    const me: MeDto = {
+      id: 'u1',
+      name: 'Дима',
+      roles: ['teacher'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    };
+    mockedApiFetch.mockResolvedValue(me);
+
+    renderGuarded('/exams');
+
+    expect(await screen.findByText('Экзамены')).toBeInTheDocument();
+    expect(consumeReturnTo()).toBeNull();
   });
 
   it('«Повторить» на офлайне вызывает /auth/me снова', async () => {

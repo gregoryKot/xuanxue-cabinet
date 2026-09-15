@@ -19,7 +19,7 @@ import type { GradingCriterionDto, GradingOutcome } from './exam-rubric';
  * поле рубрики (`GradingCriterionDto`), не question-level критерий (правило
  * PLAN §11 «Границы»: итог качественный, баллы по рубрике — разбор
  * собственной работы, не рейтинг между учениками). */
-export interface MyExamAttemptSummaryDto {
+interface MyExamAttemptSummaryDto {
   id: string;
   status: ExamAttemptStatus;
   outcome?: GradingOutcome;

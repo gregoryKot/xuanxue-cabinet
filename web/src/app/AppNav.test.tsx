@@ -129,4 +129,17 @@ describe('AppNav — подсветка раздела', () => {
       expect(link).not.toHaveAttribute('aria-current');
     }
   });
+
+  // Направление «тихо и благородно» (docs/adr/0031): активный пункт помечен
+  // не заливкой, а декоративной точкой-маркером — проверяем структуру
+  // (есть/нет скрытого от скринридера маркера), не цвет.
+  it('активный пункт — с декоративным маркером, у остальных его нет', () => {
+    renderNav(true, TEACHER, '/broadcasts');
+
+    const active = screen.getByRole('link', { name: /Рассылки/ });
+    expect(active.querySelector('.xuanxue-nav-dot')).not.toBeNull();
+
+    const inactive = screen.getByRole('link', { name: /Занятия/ });
+    expect(inactive.querySelector('.xuanxue-nav-dot')).toBeNull();
+  });
 });

@@ -10,6 +10,7 @@ import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { AuthProvider } from './AuthProvider';
 import LoginScreen from './LoginScreen';
+import { saveReturnTo } from './returnTo';
 import type * as TelegramAuthRedirectModule from './telegramAuthRedirect';
 import { redirectToTelegramAuth } from './telegramAuthRedirect';
 
@@ -59,6 +60,7 @@ afterEach(() => {
   mockedApiFetch.mockReset();
   redirectToTelegramAuthSpy.mockClear();
   window.location.hash = ''; // мобильный сценарий оставляет фрагмент — чистим между тестами
+  sessionStorage.clear();
 });
 
 function renderScreen() {
@@ -68,6 +70,8 @@ function renderScreen() {
         <Routes>
           <Route path="/login" element={<LoginScreen />} />
           <Route path="/schedule" element={<p>Расписание</p>} />
+          <Route path="/" element={<p>Занятия</p>} />
+          <Route path="/exams" element={<p>Экзамены</p>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -141,7 +145,7 @@ describe('LoginScreen — вход', () => {
 });
 
 describe('LoginScreen — мобильный вход через #tgAuthResult= (баг с прода 2026-09-08)', () => {
-  it('фрагмент в адресе → POST /auth/telegram сам, refresh, редирект на /schedule, фрагмент убран', async () => {
+  it('фрагмент в адресе → POST /auth/telegram сам, refresh, редирект на домашний экран (нет returnTo), фрагмент убран', async () => {
     const fakeTelegramUser: TelegramLoginInput = {
       id: 42,
       first_name: 'Дима',
@@ -167,12 +171,41 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
 
     renderScreen();
 
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/auth/telegram',
       expect.objectContaining({ method: 'POST', body: fakeTelegramUser }),
     );
     expect(window.location.hash).toBe('');
+  });
+
+  it('фрагмент в адресе, сохранён returnTo /exams (аудит L2) — редирект туда, не на домашний', async () => {
+    saveReturnTo('/exams');
+    window.location.hash = toTgAuthResultHash({
+      id: 42,
+      first_name: 'Дима',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    });
+
+    const me: MeDto = {
+      id: 'u1',
+      name: 'Дима',
+      roles: ['teacher'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    };
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/telegram') return Promise.resolve(me);
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText('Экзамены')).toBeInTheDocument();
   });
 
   it('фрагмент в адресе, но POST падает — текст ошибки виден, на /schedule не уводит', async () => {
@@ -279,8 +312,8 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
   });
 });
 
-describe('LoginScreen — уже вошедшего уводит на /schedule', () => {
-  it('authStatus ok — редирект, форма не показывается', async () => {
+describe('LoginScreen — уже вошедшего уводит на сохранённый адрес или домашний (аудит L2)', () => {
+  function mockAlreadyLoggedIn() {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({});
       if (path === '/auth/me')
@@ -292,10 +325,23 @@ describe('LoginScreen — уже вошедшего уводит на /schedule'
         });
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
+  }
+
+  it('authStatus ok, нет returnTo — редирект на домашний экран, форма не показывается', async () => {
+    mockAlreadyLoggedIn();
 
     renderScreen();
 
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
     expect(screen.queryByText('Кабинет школы Сюань-Сюэ')).not.toBeInTheDocument();
+  });
+
+  it('authStatus ok, есть returnTo /exams — редирект туда, не на домашний', async () => {
+    saveReturnTo('/exams');
+    mockAlreadyLoggedIn();
+
+    renderScreen();
+
+    expect(await screen.findByText('Экзамены')).toBeInTheDocument();
   });
 });

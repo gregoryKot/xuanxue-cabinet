@@ -1,5 +1,5 @@
 // Маппер ExamRecord (lean, уже расшифрованный) → MyExamDto (`/me/exams`, ТЗ
-// student-api.md) — чистая функция без Mongo и DI. Положение ученика
+// docs/PLAN.md §11) — чистая функция без Mongo и DI. Положение ученика
 // (сколько попыток использовано, что с последней) считает вызывающий код
 // (MyExamsService): здесь только сборка ответа из готовых чисел.
 import type { Types } from 'mongoose';

@@ -118,8 +118,20 @@ describe('AppShell — учитель', () => {
     renderShell(TEACHER);
 
     expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
-    expect(screen.getByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
+    expect(screen.getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
+  });
+
+  // Направление «тихо и благородно» (docs/adr/0031-visual-direction-quiet-and-
+  // noble.md): в шапке знак-печать рядом с названием. Печать декоративная —
+  // aria-hidden, название рядом уже называет раздел словами.
+  it('шапка — знак-печать и название школы (docs/adr/0031)', async () => {
+    renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    const header = screen.getByRole('banner');
+    expect(within(header).getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
+    expect(header.querySelector('[aria-hidden="true"]')).not.toBeNull();
   });
 
   // Четыре домена — потолок навигации (navItems.ts, отзыв владельца

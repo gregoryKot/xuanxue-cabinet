@@ -3,7 +3,7 @@
 // двух видах — AppNav.tsx: на телефоне нижняя панель, на широком экране
 // колонка слева (docs/adr/0025-navigation-by-domain.md).
 //
-// В шапке только название школы. «Выйти» — в подвале под содержимым: кнопка
+// В шапке — знак-печать и название школы, больше ничего. «Выйти» — в подвале под содержимым: кнопка
 // нужна раз в жизни, а не на каждом экране (отзыв владельца 2026-09-12).
 // Один подвал на обе роли — ученик отдал сюда свою кнопку (StudentScreen.tsx,
 // её механику по-прежнему проверяют AppShell.test.tsx и LogoutButton.test.tsx).
@@ -36,9 +36,29 @@ const PENDING_STATUS = 'invited';
 const headerStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
+  gap: 10,
   padding: '12px 16px',
-  borderBottom: '1px solid var(--border)',
-  background: '#fff',
+  borderBottom: '1px solid var(--line)',
+  background: 'var(--paper)',
+};
+
+// Знак-печать рядом с названием (направление «тихо и благородно», docs/adr/
+// 0031-visual-direction-quiet-and-noble.md) — декоративный, название школы
+// рядом уже называет раздел словами, дублировать нечем (aria-hidden в JSX).
+const sealStyle: CSSProperties = {
+  width: 26,
+  height: 26,
+  flexShrink: 0,
+  borderRadius: 3,
+  background: 'var(--cinnabar)',
+  border: '2px solid var(--paper)',
+};
+
+const shellTitleStyle: CSSProperties = {
+  fontFamily: 'var(--font-display)',
+  fontWeight: 500,
+  fontSize: 21,
+  color: 'var(--ink)',
 };
 
 const footerStyle: CSSProperties = {
@@ -68,7 +88,8 @@ export function AppShell() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header style={headerStyle}>
-        <span style={{ fontWeight: 600 }}>Кабинет школы Сюань-Сюэ</span>
+        <span style={sealStyle} aria-hidden="true" />
+        <span style={shellTitleStyle}>Школа Сюань-Сюэ</span>
       </header>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>

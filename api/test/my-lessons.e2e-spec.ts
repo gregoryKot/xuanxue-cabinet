@@ -1,4 +1,4 @@
-// e2e на /me/lessons (ТЗ student-api.md) — расписание школы, не данные
+// e2e на /me/lessons (ТЗ docs/PLAN.md §11) — расписание школы, не данные
 // пользователя: доступ по сессии, не по роли и не по владельцу (тот же
 // приём, что у notifications-ownership.e2e-spec.ts для /me/notifications).
 // Настоящий AppModule на MongoMemoryServer.

@@ -114,6 +114,12 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/main.tsx',
+        // Регистрация шрифтов — только side-effect импорты CSS, без логики
+        // (docs/adr/0031-visual-direction-quiet-and-noble.md); тест на
+        // `import` без ветвлений ничего не проверяет, а исполняется файл
+        // только из main.tsx, который тесты не рендерят и который сам
+        // исключён строкой выше.
+        'src/fonts.ts',
         'src/setupTests.ts',
         'src/vite-env.d.ts',
         'src/**/*.test.{ts,tsx}',

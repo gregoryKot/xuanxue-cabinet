@@ -28,7 +28,7 @@ export function ChannelSheet({
   onRemove,
 }: ChannelSheetProps) {
   const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
   const form = useChannelForm(channelDto, onCreate, onUpdate, onRemove);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -62,6 +62,7 @@ export function ChannelSheet({
         titleId="channel-sheet-title"
         title={channelDto ? 'Канал' : 'Новый канал'}
         headingRef={headingRef}
+        containerRef={containerRef}
         onSubmit={(e) => void handleSubmit(e)}
         onClose={goBack}
       >

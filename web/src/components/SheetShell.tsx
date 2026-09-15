@@ -36,6 +36,10 @@ interface SheetShellProps {
   titleId: string;
   title: string;
   headingRef: RefObject<HTMLHeadingElement | null>;
+  /** Тот же контейнер, что useDialog запирает по Tab и метит соседей `inert`
+   * (аудит M3) — обязан сидеть на узле с role="dialog", иначе ловушка фокуса
+   * не находит контролы листа. */
+  containerRef: RefObject<HTMLElement | null>;
   onSubmit: (event: FormEvent) => void;
   onClose: () => void;
   children: ReactNode;
@@ -45,12 +49,25 @@ export function SheetShell({
   titleId,
   title,
   headingRef,
+  containerRef,
   onSubmit,
   onClose,
   children,
 }: SheetShellProps) {
   return (
-    <div style={overlayStyle} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <div
+      // Колбэк, а не containerRef напрямую: RefObject<HTMLElement | null> —
+      // общий тип результата useDialog (M3), div ждёт RefObject<HTMLDivElement>,
+      // и это не сужение через `as` (CLAUDE.md не любит лишние касты), а
+      // обычное присваивание значения-подтипа в переменную типа-предка.
+      ref={(node) => {
+        containerRef.current = node;
+      }}
+      style={overlayStyle}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <form style={sheetStyle} onSubmit={onSubmit}>
         <div style={headerStyle}>
           <h2

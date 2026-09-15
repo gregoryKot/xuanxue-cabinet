@@ -26,5 +26,19 @@ COPY --from=build /app/shared/dist ./shared/dist
 COPY --from=build /app/api/dist ./api/dist
 COPY --from=build /app/web/dist ./web/dist
 
+# Аудит L1: раньше процесс работал от root — базовый образ node:22-alpine уже
+# содержит пользователя node (uid 1000), отдельно создавать не нужно. Один
+# chown одним слоем проще пяти --chown на разных COPY/RUN. Приложение ничего
+# не пишет на диск в рантайме — grep по writeFile/mkdir/fs.* в api/src нашёл
+# только чтение (readFileSync в migrations/0003-school-zoom-links.migration.ts,
+# необязательный локальный файл-сид), поэтому node достаточно read-only
+# доступа к /app, отдельный writable-каталог не нужен.
+RUN chown -R node:node /app
+USER node
+
+# HEALTHCHECK не добавляем: снаружи контейнера его делает Railway по
+# railway.json (healthcheckPath), а CI-джоба docker проверяет /api/health
+# отдельным шагом (.github/workflows/ci.yml) — свой HEALTHCHECK внутри образа
+# был бы третьей, ничего не добавляющей проверкой того же самого.
 EXPOSE 3000
 CMD ["node", "api/dist/main.js"]
