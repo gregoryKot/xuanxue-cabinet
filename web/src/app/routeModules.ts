@@ -66,6 +66,18 @@ export const ROUTE_MODULES = {
     warm: true,
   },
   exams: { path: '/exams', load: () => import('../exams/ExamsScreen'), warm: true },
+  // `/exams/new` раньше `/exams/:examId`: matchRouteLoader берёт первое
+  // совпадение, а статический сегмент должен выигрывать у параметра.
+  examNew: {
+    path: '/exams/new',
+    load: () => import('../exams/ExamEditorScreen'),
+    warm: true,
+  },
+  examEditor: {
+    path: '/exams/:examId',
+    load: () => import('../exams/ExamEditorScreen'),
+    warm: true,
+  },
   grading: {
     path: '/grading',
     load: () => import('../grading/GradingQueueScreen'),

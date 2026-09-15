@@ -1,19 +1,17 @@
 // Предпросмотр «глазами ученика» (ТЗ 4.3, обязательная часть): показывает
-// форму так, как её увидит сдающий — блоки с заголовками, вопросы по
-// порядку, варианты неактивны. Это просмотр, а не сдача: ничего не
-// сохраняется и не отправляется, formы здесь вовсе нет. Полноэкранный слой
-// поверх листа формы — как ConfirmDialog (CLAUDE.md «Фронтенд»): свой
-// useHistorySheet/useDialog, «Назад» браузера закрывает только предпросмотр.
+// экзамен так, как его увидит сдающий — вопросы по порядку, варианты
+// неактивны. Это просмотр, а не сдача: ничего не сохраняется и не
+// отправляется, формы здесь вовсе нет. Настоящий полноэкранный слой поверх
+// страницы редактора — свой useHistorySheet/useDialog (CLAUDE.md «Фронтенд»),
+// «Назад» браузера закрывает только предпросмотр.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { useDialog } from '../hooks/useDialog';
 import { useHistorySheet } from '../hooks/useHistorySheet';
-import type { ExamBlockDraft } from './examBlocksInput';
-import { ExamPreviewBlock } from './ExamPreviewBlock';
+import { ExamPreviewQuestions } from './ExamPreviewQuestions';
 
 const LOADING_TEXT = 'Загружаем вопросы…';
-const EMPTY_TEXT = 'В форме пока нет блоков — сдающий увидит пустой экзамен.';
 
 const overlayStyle: CSSProperties = {
   position: 'fixed',
@@ -35,7 +33,9 @@ const descriptionStyle: CSSProperties = { color: 'var(--ink-soft)' };
 interface ExamPreviewProps {
   title: string;
   description: string;
-  blocks: ExamBlockDraft[];
+  itemIds: string[];
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
   bankItems: ExamItemDto[];
   bankLoading: boolean;
   onClose: () => void;
@@ -44,7 +44,9 @@ interface ExamPreviewProps {
 export function ExamPreview({
   title,
   description,
-  blocks,
+  itemIds,
+  shuffleQuestions,
+  shuffleOptions,
   bankItems,
   bankLoading,
   onClose,
@@ -78,12 +80,13 @@ export function ExamPreview({
 
       {bankLoading ? (
         <p>{LOADING_TEXT}</p>
-      ) : blocks.length === 0 ? (
-        <p>{EMPTY_TEXT}</p>
       ) : (
-        blocks.map((block, index) => (
-          <ExamPreviewBlock key={block.id ?? index} block={block} bankItems={bankItems} />
-        ))
+        <ExamPreviewQuestions
+          itemIds={itemIds}
+          shuffleQuestions={shuffleQuestions}
+          shuffleOptions={shuffleOptions}
+          bankItems={bankItems}
+        />
       )}
     </div>
   );

@@ -25,6 +25,7 @@ const TemplatesScreen = lazy(ROUTE_MODULES.templates.load);
 const PeopleScreen = lazy(ROUTE_MODULES.people.load);
 const ExamItemsScreen = lazy(ROUTE_MODULES.examItems.load);
 const ExamsScreen = lazy(ROUTE_MODULES.exams.load);
+const ExamEditorScreen = lazy(ROUTE_MODULES.examEditor.load);
 const GradingQueueScreen = lazy(ROUTE_MODULES.grading.load);
 const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
@@ -71,6 +72,16 @@ export default function App() {
                   element={<ExamItemsScreen />}
                 />
                 <Route path={ROUTE_MODULES.exams.path} element={<ExamsScreen />} />
+                {/* Редактор экзамена — страница со своим адресом, а не лист
+                    поверх списка (ADR-0033): на него ссылаются из списка, его
+                    можно открыть по ссылке и вернуться «Назад» браузера.
+                    `/exams/new` объявлен раньше `/exams/:examId` — статический
+                    кусок пути должен выигрывать у параметра. */}
+                <Route path={ROUTE_MODULES.examNew.path} element={<ExamEditorScreen />} />
+                <Route
+                  path={ROUTE_MODULES.examEditor.path}
+                  element={<ExamEditorScreen />}
+                />
                 {/* Проверка работ (слой 4.6) — тот же раздел «Экзамены», вход
                     карточкой на ExamsScreen.tsx, не пункт меню (ADR-0025).
                     Роль на самом маршруте не нужна: AppShell.tsx уже отдаёт

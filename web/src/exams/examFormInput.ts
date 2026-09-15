@@ -1,6 +1,6 @@
 // Чистая логика формы экзамена — состояние, валидация и сборка тела запроса
-// (кроме блоков — examBlocksInput.ts), вынесена из useExamForm.ts, чтобы
-// проверять без React (CLAUDE.md «Тесты»), по образцу
+// (порядок вопросов и поиск по банку — examQuestionList.ts), вынесена из
+// useExamForm.ts, чтобы проверять без React (CLAUDE.md «Тесты»), по образцу
 // exam-items/examItemFormInput.ts. timeLimitMin/attemptsAllowed хранятся в
 // форме строкой — пустое поле иначе мгновенно становится 0/NaN, и пользователь
 // не может стереть цифру, чтобы напечатать новую (тот же приём, что
@@ -12,10 +12,10 @@ import {
   type UpdateExamInput,
 } from '@xuanxue/shared';
 import {
-  initialBlockDrafts,
+  initialQuestionIds,
+  initialShuffleQuestions,
   toBlockInputs,
-  type ExamBlockDraft,
-} from './examBlocksInput';
+} from './examQuestionList';
 
 // Минимумы не вынесены в EXAM_LIMITS (shared) — там только верхние границы;
 // то же самое минимальное значение 1 продублировано локальной константой на
@@ -30,7 +30,10 @@ export interface ExamFormState {
   level: string;
   timeLimitMinText: string;
   attemptsAllowedText: string;
-  blocks: ExamBlockDraft[];
+  /** Один список вопросов на весь экзамен (ADR-0033). */
+  questionIds: string[];
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
 }
 
 export function initialExamFormState(exam: ExamDto | null): ExamFormState {
@@ -40,7 +43,9 @@ export function initialExamFormState(exam: ExamDto | null): ExamFormState {
     level: exam?.level ?? '',
     timeLimitMinText: exam?.timeLimitMin ? String(exam.timeLimitMin) : '',
     attemptsAllowedText: String(exam?.attemptsAllowed ?? DEFAULT_ATTEMPTS_ALLOWED),
-    blocks: initialBlockDrafts(exam),
+    questionIds: initialQuestionIds(exam),
+    shuffleQuestions: initialShuffleQuestions(exam),
+    shuffleOptions: exam?.shuffleOptions ?? false,
   };
 }
 
@@ -50,9 +55,9 @@ function isValidInt(text: string, min: number, max: number): boolean {
 }
 
 /** `null` — форма валидна, иначе текст первой найденной ошибки. Правила
- * блоков (вопрос опубликован, не повторяется, форма непустая для публикации)
- * проверяет сервер — экран показывает его ответ как есть (ТЗ 4.3, «Лист»:
- * «серверные ошибки показывать как есть»), а не дублирует их здесь. */
+ * содержимого (вопрос опубликован, не повторяется, экзамен непустой для
+ * публикации) проверяет сервер — экран показывает его ответ как есть, а не
+ * дублирует их здесь. */
 export function validateExamForm(state: ExamFormState): string | null {
   if (!state.title.trim()) return 'Впишите название экзамена.';
   if (
@@ -77,7 +82,8 @@ export function toCreateInput(state: ExamFormState): CreateExamInput {
     title: state.title.trim(),
     description: state.description.trim() || undefined,
     level: state.level.trim() || undefined,
-    blocks: toBlockInputs(state.blocks),
+    blocks: toBlockInputs(state.questionIds, state.shuffleQuestions, null),
+    shuffleOptions: state.shuffleOptions,
     timeLimitMin: state.timeLimitMinText.trim()
       ? Number(state.timeLimitMinText)
       : undefined,
@@ -87,13 +93,19 @@ export function toCreateInput(state: ExamFormState): CreateExamInput {
 
 /** Пустые description/level/timeLimitMin — явный сброс (`null`,
  * NULLABLE_EXAM_FIELDS в shared/src/exams.ts), не «оставить как было» — тот же
- * приём, что у hint/criteria в exam-items/examItemFormInput.ts. */
-export function toUpdateInput(state: ExamFormState): UpdateExamInput {
+ * приём, что у hint/criteria в exam-items/examItemFormInput.ts. `exam` нужен
+ * ради `id` первого блока: без него сервер завёл бы блок заново при каждом
+ * сохранении. */
+export function toUpdateInput(
+  state: ExamFormState,
+  exam: ExamDto | null,
+): UpdateExamInput {
   return {
     title: state.title.trim(),
     description: state.description.trim() || null,
     level: state.level.trim() || null,
-    blocks: toBlockInputs(state.blocks),
+    blocks: toBlockInputs(state.questionIds, state.shuffleQuestions, exam),
+    shuffleOptions: state.shuffleOptions,
     timeLimitMin: state.timeLimitMinText.trim() ? Number(state.timeLimitMinText) : null,
     attemptsAllowed: Number(state.attemptsAllowedText),
   };

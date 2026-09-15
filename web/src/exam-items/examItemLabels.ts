@@ -3,7 +3,7 @@
 // broadcasts/broadcastLabels.ts. Подписи статуса общие с формой экзамена (тот
 // же набор статусов, exams/ExamCard.tsx и другие) — lib/statusTransitions.ts,
 // здесь только реэкспорт под именем этого домена.
-import type { ExamItemKind } from '@xuanxue/shared';
+import type { ExamItemDto, ExamItemKind } from '@xuanxue/shared';
 import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
 
 export const EXAM_ITEM_KIND_LABELS_RU: Record<ExamItemKind, string> = {
@@ -14,3 +14,13 @@ export const EXAM_ITEM_KIND_LABELS_RU: Record<ExamItemKind, string> = {
 };
 
 export const EXAM_ITEM_STATUS_LABELS_RU = DRAFT_PUBLISHED_ARCHIVED_LABELS_RU;
+
+/** Служебная строка под формулировкой вопроса — тип и теги через « · »
+ * (макет Form.dc.html). Один форматтер на список вопросов экзамена и на
+ * поиск по банку рядом с ним: две строки одного вида в соседних файлах
+ * разошлись бы при первой правке (CLAUDE.md «Одна механика — один
+ * компонент»). */
+export function formatExamItemMeta(item: Pick<ExamItemDto, 'kind' | 'tags'>): string {
+  const kind = EXAM_ITEM_KIND_LABELS_RU[item.kind];
+  return item.tags.length > 0 ? `${kind} · ${item.tags.join(', ')}` : kind;
+}

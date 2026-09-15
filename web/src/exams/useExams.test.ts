@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -109,55 +109,4 @@ describe('useExams — загрузка', () => {
       ),
     );
   });
-});
-
-interface MutationCase {
-  name: string;
-  call: (result: ReturnType<typeof useExams>) => Promise<void>;
-  path: string;
-  method: string;
-}
-
-const MUTATIONS: MutationCase[] = [
-  {
-    name: 'create',
-    call: (result) => result.create({ title: 'Новый экзамен' }),
-    path: '/exams',
-    method: 'POST',
-  },
-  {
-    name: 'update',
-    call: (result) => result.update('x1', { title: 'Правка' }),
-    path: '/exams/x1',
-    method: 'PATCH',
-  },
-  {
-    name: 'remove',
-    call: (result) => result.remove('x1'),
-    path: '/exams/x1',
-    method: 'DELETE',
-  },
-];
-
-describe('useExams — мутации (read-after-write)', () => {
-  it.each(MUTATIONS)(
-    '$name() — $method $path, затем перечитывает список',
-    async ({ call, path, method }) => {
-      mockedApiFetch.mockResolvedValueOnce([makeExam()]);
-      const { result } = renderHook(() => useExams(NO_FILTERS));
-      await waitFor(() => expect(result.current.loading).toBe(false));
-
-      mockedApiFetch.mockResolvedValueOnce(undefined);
-      mockedApiFetch.mockResolvedValueOnce([]);
-      await act(async () => {
-        await call(result.current);
-      });
-
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        path,
-        expect.objectContaining({ method }),
-      );
-      expect(result.current.exams).toHaveLength(0);
-    },
-  );
 });

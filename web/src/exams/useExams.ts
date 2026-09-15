@@ -1,13 +1,8 @@
-// Данные экрана «Экзамены» — список с фильтрами и мутации (CLAUDE.md
-// «Read-after-write»), по образцу exam-items/useExamItems.ts.
-import { useCallback, useEffect, useRef } from 'react';
-import {
-  LIST_LIMIT_MAX,
-  type CreateExamInput,
-  type ExamDto,
-  type ExamStatus,
-  type UpdateExamInput,
-} from '@xuanxue/shared';
+// Данные экрана «Экзамены» — только список с фильтрами: создание, правка и
+// удаление уехали на страницу редактора (useExamEditor.ts, ADR-0033), и после
+// них экран возвращается сюда, перечитывая список с нуля.
+import { useEffect, useRef } from 'react';
+import { LIST_LIMIT_MAX, type ExamDto, type ExamStatus } from '@xuanxue/shared';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -26,9 +21,6 @@ export interface UseExamsResult {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
-  create: (input: CreateExamInput) => Promise<void>;
-  update: (id: string, input: UpdateExamInput) => Promise<void>;
-  remove: (id: string) => Promise<void>;
 }
 
 function buildListPath(filters: ExamListFilters): string {
@@ -54,29 +46,5 @@ export function useExams(filters: ExamListFilters): UseExamsResult {
     void reload();
   }, [filters.status, reload]);
 
-  const create = useCallback(
-    async (input: CreateExamInput) => {
-      await apiFetch('/exams', { method: 'POST', body: input });
-      await reload();
-    },
-    [reload],
-  );
-
-  const update = useCallback(
-    async (id: string, input: UpdateExamInput) => {
-      await apiFetch(`/exams/${id}`, { method: 'PATCH', body: input });
-      await reload();
-    },
-    [reload],
-  );
-
-  const remove = useCallback(
-    async (id: string) => {
-      await apiFetch(`/exams/${id}`, { method: 'DELETE' });
-      await reload();
-    },
-    [reload],
-  );
-
-  return { exams: data, loading, error, reload, create, update, remove };
+  return { exams: data, loading, error, reload };
 }

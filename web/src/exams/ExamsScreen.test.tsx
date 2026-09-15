@@ -1,11 +1,12 @@
 // Мокаем apiFetch по префиксу пути (test-support/apiFetchMock.ts) — экран
 // грузит /exams, /attempts (очередь проверки) и /exam-items/stats-summary
-// (число на «Банк вопросов») — открытый лист сам грузит банк /exam-items для
-// блоков. `/exam-items/stats-summary` — ключ раньше общего `/exam-items` в
-// объектах ниже: mockApiByPath матчит по первому подходящему префиксу.
+// (число на «Банк вопросов»). `/exam-items/stats-summary` — ключ раньше
+// общего `/exam-items` в объектах ниже: mockApiByPath матчит по первому
+// подходящему префиксу. Редактор экзамена — отдельная страница со своим
+// адресом (ADR-0033), здесь проверяется только переход на неё.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -42,10 +43,20 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
 
 const NO_STRUGGLING = { '/exam-items/stats-summary': { strugglingCount: 0 } };
 
+/** Куда ушёл экран: путь редактора рисуется текстом, и тест читает его
+ * глазами пользователя, а не через мок useNavigate. */
+function PathProbe() {
+  return <p>Открыт адрес {useLocation().pathname}</p>;
+}
+
 function renderScreen() {
   return render(
-    <MemoryRouter>
-      <ExamsScreen />
+    <MemoryRouter initialEntries={['/exams']}>
+      <Routes>
+        <Route path="/exams" element={<ExamsScreen />} />
+        <Route path="/exams/new" element={<PathProbe />} />
+        <Route path="/exams/:examId" element={<PathProbe />} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -105,7 +116,7 @@ describe('ExamsScreen — список форм', () => {
     const title = await screen.findByText('Итоговый экзамен');
     const row = title.closest('li') as HTMLLIElement;
     expect(
-      within(row).getByText('Пока без блоков · 1 попытка · без ограничения'),
+      within(row).getByText('Пока без вопросов · 1 попытка · без ограничения'),
     ).toBeInTheDocument();
     expect(within(row).getByText('Черновик')).toBeInTheDocument();
   });
@@ -212,46 +223,24 @@ describe('ExamsScreen — вход в вопросы банка', () => {
   });
 });
 
-describe('ExamsScreen — лист формы', () => {
-  it('«Новый экзамен» открывает пустой лист', async () => {
+describe('ExamsScreen — переход в редактор', () => {
+  it('«Новый экзамен» ведёт на /exams/new', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/exam-items': [], '/attempts': [] });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новый экзамен' }));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Новый экзамен' }),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Открыт адрес /exams/new')).toBeInTheDocument();
   });
 
-  it('«Закрыть» на листе закрывает его, список остаётся', async () => {
+  it('строка списка ведёт на адрес своего экзамена', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/exam-items': [], '/attempts': [] });
-
-    renderScreen();
-    await user.click(await screen.findByRole('button', { name: 'Новый экзамен' }));
-    await screen.findByRole('heading', { name: 'Новый экзамен' });
-
-    await user.click(screen.getByRole('button', { name: 'Закрыть' }));
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  });
-
-  it('открыть строку списка — лист правки с заполненным названием', async () => {
-    const user = userEvent.setup();
-    mockApiByPath({
-      ...NO_STRUGGLING,
-      '/exams': [makeExam()],
-      '/exam-items': [],
-      '/attempts': [],
-    });
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [makeExam()], '/attempts': [] });
 
     renderScreen();
     await user.click(await screen.findByText('Итоговый экзамен'));
 
-    const dialogTitle = await screen.findByRole('heading', { name: 'Экзамен' });
-    const sheet = dialogTitle.closest('form') as HTMLFormElement;
-    expect(sheet.querySelector('input')).toHaveValue('Итоговый экзамен');
+    expect(screen.getByText('Открыт адрес /exams/x1')).toBeInTheDocument();
   });
 });
