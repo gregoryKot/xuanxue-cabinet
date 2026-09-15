@@ -30,7 +30,11 @@ export default function LoginScreen() {
           Здесь расписание, ссылки на занятия и записи для учителей.
         </p>
 
-        <TelegramLoginSection config={config} configStatus={configStatus} onReload={reload}>
+        <TelegramLoginSection
+          config={config}
+          configStatus={configStatus}
+          onReload={reload}
+        >
           {/* Нет Telegram — email-путь (ADR-0029), выключен по умолчанию, пока
               школа не подключит Resend (SECURITY §2): без этого условия форма
               звала бы 503 на каждый ввод. */}
