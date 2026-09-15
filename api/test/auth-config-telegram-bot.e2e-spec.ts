@@ -44,7 +44,10 @@ describe('GET /auth/config (e2e), с BOT_TOKEN', () => {
     const body = res.body as AuthConfigDto;
     expect(body.telegramBotId).toBe(123456);
     expect(body.schoolSiteUrl).toBeUndefined();
-    expect(Object.keys(body)).toEqual(['telegramBotId']);
+    // Без RESEND_API_KEY/MAIL_FROM в этом файле — emailLoginEnabled всегда
+    // false, но поле всё равно присутствует (не опционально, shared/src/auth.ts).
+    expect(body.emailLoginEnabled).toBe(false);
+    expect(Object.keys(body)).toEqual(['telegramBotId', 'emailLoginEnabled']);
   });
 
   it('read-after-write: учитель сохранил schoolSiteUrl — гость видит его в /auth/config без cookie', async () => {

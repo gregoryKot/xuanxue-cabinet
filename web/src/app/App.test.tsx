@@ -73,6 +73,16 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('гость на /login/email без токена — маршрут открывает EmailLoginCallbackScreen (ADR-0029)', async () => {
+    mockRoute(null);
+
+    renderAt('/login/email');
+
+    expect(
+      await screen.findByText('Ссылка неполная. Запросите новую на странице входа.'),
+    ).toBeInTheDocument();
+  });
+
   it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
     mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
 

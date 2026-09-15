@@ -13,6 +13,7 @@ import { UpdateToast } from '../pwa/UpdateToast';
 import { AppShell } from './AppShell';
 
 const LoginScreen = lazy(() => import('../auth/LoginScreen'));
+const EmailLoginCallbackScreen = lazy(() => import('../auth/EmailLoginCallbackScreen'));
 const ScheduleScreen = lazy(() => import('../schedule/ScheduleScreen'));
 const PlanningScreen = lazy(() => import('../planning/PlanningScreen'));
 const ChannelsScreen = lazy(() => import('../channels/ChannelsScreen'));
@@ -39,6 +40,9 @@ export default function App() {
         <Suspense fallback={routeFallback}>
           <Routes>
             <Route path="/login" element={<LoginScreen />} />
+            {/* Ссылка из письма входа (ADR-0029) — публичный маршрут, как
+                /login: страница сама решает по токену, что показать. */}
+            <Route path="/login/email" element={<EmailLoginCallbackScreen />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route path="/schedule" element={<ScheduleScreen />} />

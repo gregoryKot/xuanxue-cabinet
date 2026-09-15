@@ -43,6 +43,7 @@ async function buildController(
   // Имя бота приходит из уже прогретого botInfo — в тестах подменяем фейком,
   // сети тут нет (CLAUDE.md «Тесты»).
   botUsername: string | undefined = undefined,
+  emailLoginEnabled = false,
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
@@ -54,6 +55,7 @@ async function buildController(
         useValue: {
           requestLink: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
           verify: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
+          isEnabled: () => emailLoginEnabled,
         },
       },
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
@@ -71,6 +73,7 @@ describe('AuthController.getConfig', () => {
       telegramBotId: undefined,
       telegramBotUsername: undefined,
       schoolSiteUrl: undefined,
+      emailLoginEnabled: false,
     });
   });
 
@@ -84,6 +87,7 @@ describe('AuthController.getConfig', () => {
       telegramBotId: 123456,
       telegramBotUsername: undefined,
       schoolSiteUrl: 'https://xuanxue.su',
+      emailLoginEnabled: false,
     });
   });
 
@@ -98,6 +102,21 @@ describe('AuthController.getConfig', () => {
     );
     await expect(controller.getConfig()).resolves.toMatchObject({
       telegramBotUsername: 'xuanxue_bot',
+    });
+  });
+
+  // EmailAuthService.isEnabled() — источник поля целиком (CLAUDE.md «Дубли»):
+  // контроллер не пересчитывает условие сам, только проксирует.
+  it('EmailAuthService.isEnabled() true — emailLoginEnabled true в ответе', async () => {
+    const controller = await buildController(
+      undefined,
+      {},
+      SETTINGS_WITHOUT_SITE,
+      undefined,
+      true,
+    );
+    await expect(controller.getConfig()).resolves.toMatchObject({
+      emailLoginEnabled: true,
     });
   });
 });

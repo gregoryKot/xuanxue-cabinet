@@ -54,7 +54,9 @@ export class AuthController {
   // перехода на Telegram (ADR-0028) — без него кнопка входа не показывается.
   // schoolSiteUrl — адрес сайта школы из настроек (не `PUBLIC_URL`: это
   // адрес самого кабинета, В6 аудита, ADR-0009-доп.) для гостя без роли и
-  // незнакомца в боте.
+  // незнакомца в боте. emailLoginEnabled — та же проверка, что перед
+  // отправкой письма (EmailAuthService.isEnabled(), ADR-0029), один метод на
+  // оба места, не дублируем список из трёх переменных (CLAUDE.md «Дубли»).
   @Public()
   @Get('config')
   async getConfig(): Promise<AuthConfigDto> {
@@ -63,6 +65,7 @@ export class AuthController {
       telegramBotId: botIdFromToken(this.configService.get<string>('BOT_TOKEN')),
       telegramBotUsername: this.telegramBotService.botUsername(),
       schoolSiteUrl: settings.schoolSiteUrl,
+      emailLoginEnabled: this.emailAuthService.isEnabled(),
     };
   }
 

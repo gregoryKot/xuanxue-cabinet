@@ -34,13 +34,25 @@ export class EmailAuthService {
     private readonly authService: AuthService,
   ) {}
 
+  /** Email-вход подключён конфигурацией — общая проверка для
+   * `requestLink()` и `GET /auth/config` (`AuthController.getConfig`,
+   * CLAUDE.md «Дубли»): экран входа показывает форму почты только когда
+   * сервер реально готов её обработать. */
+  isEnabled(): boolean {
+    return Boolean(
+      this.config.get<string>('RESEND_API_KEY') &&
+      this.config.get<string>('MAIL_FROM') &&
+      this.config.get<string>('PUBLIC_URL'),
+    );
+  }
+
   /** Ответ клиенту один и тот же независимо от исхода (контроллер): здесь —
    * либо реально отправленное письмо, либо тихий выход по cooldown, либо
    * NotAvailableError, если фича выключена конфигурацией. Существование
    * аккаунта нигде из этого не раскрывается. */
   async requestLink(email: string, now: DateTime): Promise<void> {
-    const cfg = this.readConfig();
-    if (!cfg) throw new NotAvailableError(EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE);
+    const publicUrl = this.readPublicUrl();
+    if (!publicUrl) throw new NotAvailableError(EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE);
 
     const normalized = email.toLowerCase();
     const token = await this.tokens.issue(normalized, now);
@@ -48,7 +60,7 @@ export class EmailAuthService {
     // (EMAIL_LOGIN_RESEND_COOLDOWN_MIN); ответ клиенту не меняется.
     if (!token) return;
 
-    const link = `${cfg.publicUrl}/login/email?token=${token}`;
+    const link = `${publicUrl}/login/email?token=${token}`;
     await this.mail.sendLoginLink({ to: normalized, link });
   }
 
@@ -65,14 +77,11 @@ export class EmailAuthService {
     return { user, cookie };
   }
 
-  /** Все три переменные разом — без ссылки (PUBLIC_URL) письмо некуда
-   * слать, без ключа/адреса отправителя Resend не отправит его сам
-   * (MailService — вторая линия обороны на этот случай). */
-  private readConfig(): { publicUrl: string } | null {
-    const apiKey = this.config.get<string>('RESEND_API_KEY');
-    const from = this.config.get<string>('MAIL_FROM');
-    const publicUrl = this.config.get<string>('PUBLIC_URL');
-    if (!apiKey || !from || !publicUrl) return null;
-    return { publicUrl };
+  /** `publicUrl` отдельно от `isEnabled()`: письмо собирает ссылку из него,
+   * а проверка «все три переменные разом» уже сделана выше — здесь читаем
+   * само значение только когда фича включена. */
+  private readPublicUrl(): string | null {
+    if (!this.isEnabled()) return null;
+    return this.config.get<string>('PUBLIC_URL') ?? null;
   }
 }

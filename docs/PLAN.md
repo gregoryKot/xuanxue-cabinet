@@ -242,16 +242,22 @@ api: валидация env, логи с requestId и редакцией, кон
 ### Экраны сайта
 
 1. **Вход.** Email → ссылка на почту. Кнопки «Войти через Telegram», «Войти через Google».
-   **Реализовано** — только Telegram, переходом текущей вкладки на
+   **Реализовано** — Telegram и email. Telegram — переходом текущей вкладки на
    `oauth.telegram.org` на любом устройстве, без попапа и виджета
    (`redirectToTelegramAuth`, ADR-0028 — заменил попап `window.Telegram.Login.auth()`,
    ненадёжный из-за блокировки попапов и третьесторонних cookie):
    `GET /auth/config` отдаёт `telegramBotId` (числовой префикс `BOT_TOKEN`),
    без него — «Вход через Telegram не настроен»; `web/src/auth/LoginScreen.tsx`.
-   Email-ссылка (ADR-0029) — API реализован (`POST /auth/email/request`,
-   `POST /auth/email/verify`), без `RESEND_API_KEY`/`MAIL_FROM` выключена
-   (503, «не подключён»); экран входа на почту во фронтенде — следующий PR.
-   Google — следующий PR.
+   Email-ссылка (ADR-0029) — форма «Нет Telegram? Войдите по почте» под
+   кнопкой Telegram, видна только когда `GET /auth/config` отдаёт
+   `emailLoginEnabled: true` (заданы `RESEND_API_KEY`, `MAIL_FROM`,
+   `PUBLIC_URL`); без них — 503 и форма скрыта, а не звала бы впустую
+   (`web/src/auth/EmailLoginForm.tsx`, `useEmailLoginRequest.ts`). Ссылка из
+   письма ведёт на `/login/email?token=…` — карточка «Подтвердите вход» с
+   одной кнопкой «Войти»: токен тратится POST-ом по нажатию, не при
+   открытии страницы (SECURITY §2, сканеры почты открывают ссылки сами)
+   (`EmailLoginCallbackScreen.tsx`, `useEmailLoginVerify.ts`). Google —
+   следующий PR.
 2. **Расписание.** Недельная сетка с воскресенья по субботу, как на сайте школы: слот =
    название, время, формат, ведущий. Карточка слота: ссылка Zoom, пароль, каналы,
    «за сколько минут слать», выключатель. Утренний анонс — после подтверждения Димой

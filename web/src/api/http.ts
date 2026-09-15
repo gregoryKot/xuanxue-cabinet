@@ -42,7 +42,10 @@ interface ApiFetchInit {
   signal?: AbortSignal;
 }
 
-const NETWORK_ERROR_MESSAGE =
+// Экспортирован: тот же текст нужен экранам, которые сами ловят сетевой сбой
+// вне apiFetch (LoginScreen, RequireAuth, экран входа по email) — общий
+// модуль вместо третьего литерала (CLAUDE.md «Без магических чисел и строк»).
+export const NETWORK_ERROR_MESSAGE =
   'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
 const UNKNOWN_ERROR_MESSAGE = 'Сервер не ответил. Попробуйте ещё раз.';
 const UNAUTHORIZED_STATUS = 401;
