@@ -81,10 +81,13 @@ export class PersonalChats {
    * teacher/assistant/admin): подходит и ученику. `null` — не ошибка, не
    * подключил бота или выключил вид (см. комментарий в начале файла); вызов
    * не логирует пустой результат — это выбор одного человека, не поломка
-   * всего канала оповещений. */
+   * всего канала оповещений. Статус `active` — обязателен (SECURITY §9,
+   * ADR-0026): заблокированному или неподтверждённому проактивные уведомления
+   * (например, результат экзамена) уходить не должны — та же граница, что у
+   * входящих сообщений бота (BotUserAccessService), только для исходящих. */
   async chatFor(userId: string, kind: NotificationKind): Promise<PersonalChat | null> {
     const user = await this.usersService.findById(userId);
-    if (!user?.telegramId) return null;
+    if (!user?.telegramId || user.status !== 'active') return null;
 
     const target = String(user.telegramId);
     const channel = await this.channelModel

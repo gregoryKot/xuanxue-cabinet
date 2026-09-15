@@ -7,7 +7,8 @@
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import type { Context } from 'telegraf';
-import type { UserLean, UsersService } from '../../users/users.service';
+import type { UserLean } from '../../users/users.service';
+import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
@@ -32,12 +33,6 @@ const CHAT_ID = 111;
 
 function user(id: string): UserLean {
   return { id, name: 'Ученик', roles: [], tz: 'Asia/Jerusalem', status: 'active' };
-}
-
-function fakeUsersService(byId: UserLean): UsersService {
-  return {
-    findByTelegramId: jest.fn().mockResolvedValue(byId),
-  } as unknown as UsersService;
 }
 
 function fakeCtx(overrides: { text?: string; video?: boolean } = {}): {
@@ -307,8 +302,8 @@ describe('бот — второй клиент ExamAttemptsService (интегр
     expect(session?.questionIndex).toBe(0);
     if (!session) throw new Error('unreachable');
 
-    const usersService = fakeUsersService(user(USER_A));
-    const textHandler = new ExamTextAnswerHandler(botSessions, usersService, registry);
+    const botAccess = fakeBotUserAccess(activeAccess(user(USER_A)));
+    const textHandler = new ExamTextAnswerHandler(botSessions, botAccess, registry);
     const message = fakeCtx({ text: 'Форма выглядит так' });
     await textHandler.handle(message.ctx, CHAT_ID, session, NOW);
 
@@ -343,11 +338,11 @@ describe('бот — второй клиент ExamAttemptsService (интегр
     expect(session?.questionIndex).toBe(0);
     if (!session) throw new Error('unreachable');
 
-    const usersService = fakeUsersService(user(USER_A));
+    const botAccess = fakeBotUserAccess(activeAccess(user(USER_A)));
     const mediaHandler = new ExamMediaMessageHandler(
       botSessions,
       ctx.mediaAssetsService,
-      usersService,
+      botAccess,
       NO_TEACHER_CHATS,
       registry,
     );

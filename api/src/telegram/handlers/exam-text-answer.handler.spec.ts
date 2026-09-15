@@ -1,16 +1,19 @@
 // Чистая логика с фейками коллабораторов, без Mongo и без сети (CLAUDE.md
 // «Тесты», образец — exam-media-message.handler.spec.ts): сохранение через
 // ExamBotPort.saveAnswer и переход к следующему вопросу — не сама работа с
-// Mongo (та проверена в exam-attempt-flow.spec.ts).
+// Mongo (та проверена в exam-attempt-flow.spec.ts). blocked/invited — отказ
+// и закрытая сессия, ответ не сохраняется (SECURITY §9, ADR-0026).
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
+import { ACCESS_MESSAGE, PENDING_APPROVAL_MESSAGE } from '@xuanxue/shared';
 import type { AttemptQuestionDto, ExamAttemptDto } from '@xuanxue/shared';
 import type { BotSessionLean } from '../bot-session.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
-import type { UsersService } from '../../users/users.service';
+import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
+import type { BotUserAccessService } from '../bot-user-access.service';
 import { ExamTextAnswerHandler } from './exam-text-answer.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -71,28 +74,29 @@ function buildHandler(overrides: {
   userId?: string;
   loadOwnAttempt?: ExamAttemptDto | null;
   saveAnswer?: ExamAttemptDto;
+  botAccess?: BotUserAccessService;
 }) {
   const botSessions = fakeBotSessionService();
-  const usersService = {
-    findByTelegramId: jest.fn().mockResolvedValue(
+  const botAccess =
+    overrides.botAccess ??
+    fakeBotUserAccess(
       overrides.userId
-        ? {
+        ? activeAccess({
             id: overrides.userId,
             name: 'Ученик',
             roles: [],
             tz: 'UTC',
             status: 'active',
-          }
-        : null,
-    ),
-  } as unknown as UsersService;
+          })
+        : { kind: 'unknown' },
+    );
   const port = fakeExamBotPort({
     loadOwnAttempt: jest.fn().mockResolvedValue(overrides.loadOwnAttempt ?? null),
     saveAnswer: jest.fn().mockResolvedValue(overrides.saveAnswer ?? attempt()),
   });
   const registry = new ExamBotPortRegistry();
   registry.set(port);
-  const handler = new ExamTextAnswerHandler(botSessions, usersService, registry);
+  const handler = new ExamTextAnswerHandler(botSessions, botAccess, registry);
   return { handler, botSessions, port };
 }
 
@@ -176,25 +180,47 @@ describe('ExamTextAnswerHandler', () => {
 
   it('сервис отказал — общий текст ошибки, не падает', async () => {
     const botSessions = fakeBotSessionService();
-    const usersService = {
-      findByTelegramId: jest.fn().mockResolvedValue({
-        id: 'u1',
-        name: 'Ученик',
-        roles: [],
-        tz: 'UTC',
-        status: 'active',
-      }),
-    } as unknown as UsersService;
+    const botAccess = fakeBotUserAccess(
+      activeAccess({ id: 'u1', name: 'Ученик', roles: [], tz: 'UTC', status: 'active' }),
+    );
     const registry = new ExamBotPortRegistry();
     registry.set(
       fakeExamBotPort({
         loadOwnAttempt: jest.fn().mockRejectedValue(new Error('boom')),
       }),
     );
-    const handler = new ExamTextAnswerHandler(botSessions, usersService, registry);
+    const handler = new ExamTextAnswerHandler(botSessions, botAccess, registry);
     const { ctx, replies } = fakeCtx('мой ответ');
 
     await expect(handler.handle(ctx, 111, SESSION, NOW)).resolves.toBeUndefined();
     expect(replies).toEqual(['Что-то пошло не так. Попробуйте ещё раз.']);
+  });
+
+  it('заблокированный — отказ тем же текстом, что в вебе, сессия закрывается, ответ не сохраняется', async () => {
+    const { handler, botSessions, port } = buildHandler({
+      botAccess: fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
+      loadOwnAttempt: attempt(),
+    });
+    const { ctx, replies } = fakeCtx('мой ответ');
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(replies).toEqual([ACCESS_MESSAGE]);
+    expect(botSessions.clear).toHaveBeenCalledWith(111);
+    expect(port.saveAnswer).not.toHaveBeenCalled();
+  });
+
+  it('неподтверждённый (invited) — отказ ожиданием подтверждения, сессия закрывается', async () => {
+    const { handler, botSessions, port } = buildHandler({
+      botAccess: fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
+      loadOwnAttempt: attempt(),
+    });
+    const { ctx, replies } = fakeCtx('мой ответ');
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
+    expect(botSessions.clear).toHaveBeenCalledWith(111);
+    expect(port.saveAnswer).not.toHaveBeenCalled();
   });
 });

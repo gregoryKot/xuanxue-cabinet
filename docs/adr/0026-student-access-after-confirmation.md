@@ -53,3 +53,10 @@ Telegram. Первый администратор (`BOOTSTRAP_ADMIN_TELEGRAM_ID`
 `telegram-auth.service.spec.ts` (новый — `invited`, первый админ — `active`, участник
 группы — `active`), `group-membership.service.spec.ts` (личный чат и широковещательный
 канал не подтверждают, ошибка Bot API не роняет вход).
+
+То же правило — и в боте (аудит 2026-09-15): `bot-user-access.service.spec.ts`
+(отображение статуса на решение доступа) плюс `blocked`/`invited`-кейсы в
+`exam-command.handler.spec.ts`, `exam-callback-router.spec.ts`,
+`exam-text-answer.handler.spec.ts`, `exam-media-message.handler.spec.ts`,
+`start.handler.spec.ts` (deep link) и `personal-chats.chat-for.spec.ts`
+(проактивное уведомление о результате).

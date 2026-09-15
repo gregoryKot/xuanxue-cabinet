@@ -15,6 +15,7 @@ import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { BotUserAccessService } from '../bot-user-access.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { buildMenuHandler } from '../test-support/build-menu-handler';
@@ -70,7 +71,11 @@ export function buildHandler(
     new NotificationPrefsService(ctx.notificationPrefsModel),
     buildMenuHandler(ctx.connection, usersService, ctx.channelModel),
     overrides.examBotPorts ?? examRegistry(),
-    new ExamCommandHandler(overrides.usersService ?? usersService, examRegistry()),
+    new ExamCommandHandler(
+      new BotUserAccessService(overrides.usersService ?? usersService),
+      examRegistry(),
+    ),
+    new BotUserAccessService(overrides.usersService ?? usersService),
   );
 }
 

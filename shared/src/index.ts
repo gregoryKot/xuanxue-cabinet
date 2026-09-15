@@ -55,6 +55,7 @@ export {
   isStaffRole,
   USER_STATUSES,
   PENDING_APPROVAL_MESSAGE,
+  ACCESS_MESSAGE,
   CSRF_HEADER,
   MUTATING_METHODS,
   isMutatingMethod,

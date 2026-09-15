@@ -1,10 +1,16 @@
-// Фейковый ExamBotPort и фейковый UsersService, без Mongo и без сети
+// Фейковый ExamBotPort и фейковый BotUserAccessService, без Mongo и без сети
 // (CLAUDE.md «Тесты»): маршрутизация exam/eq/eo/es к нужному хендлеру,
-// незнакомец — тихо игнорируется.
+// незнакомец — тихо игнорируется, blocked/invited — отказ (SECURITY §9,
+// ADR-0026).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import type { ExamAttemptDto } from '@xuanxue/shared';
-import type { UserLean, UsersService } from '../../users/users.service';
+import {
+  ACCESS_MESSAGE,
+  PENDING_APPROVAL_MESSAGE,
+  type ExamAttemptDto,
+} from '@xuanxue/shared';
+import type { UserLean } from '../../users/users.service';
+import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { buildOptionId, buildQuestionId } from './exam-callback-ids';
@@ -57,12 +63,6 @@ function fakeCtx(): { ctx: Context; edits: string[] } {
   return { ctx, edits };
 }
 
-function fakeUsers(user: UserLean | null): UsersService {
-  return {
-    findByTelegramId: jest.fn().mockResolvedValue(user),
-  } as unknown as UsersService;
-}
-
 describe('isExamCallbackAction', () => {
   it('exam/eq/eo/es — да, прочие — нет', () => {
     expect(isExamCallbackAction('exam')).toBe(true);
@@ -84,7 +84,7 @@ describe('routeExamCallback', () => {
       'exam',
       'e1',
       111,
-      fakeUsers(null),
+      fakeBotUserAccess({ kind: 'unknown' }),
       port,
       fakeBotSessionService(),
       NOW,
@@ -105,7 +105,7 @@ describe('routeExamCallback', () => {
       'exam',
       'e1',
       111,
-      fakeUsers(USER),
+      fakeBotUserAccess(activeAccess(USER)),
       port,
       fakeBotSessionService(),
       NOW,
@@ -126,7 +126,7 @@ describe('routeExamCallback', () => {
       'es',
       ATTEMPT_ID,
       111,
-      fakeUsers(USER),
+      fakeBotUserAccess(activeAccess(USER)),
       port,
       fakeBotSessionService(),
       NOW,
@@ -147,7 +147,7 @@ describe('routeExamCallback', () => {
       'eq',
       buildQuestionId(ATTEMPT_ID, 0),
       111,
-      fakeUsers(USER),
+      fakeBotUserAccess(activeAccess(USER)),
       port,
       fakeBotSessionService(),
       NOW,
@@ -169,7 +169,7 @@ describe('routeExamCallback', () => {
       'eo',
       buildOptionId(ATTEMPT_ID, 0, 0),
       111,
-      fakeUsers(USER),
+      fakeBotUserAccess(activeAccess(USER)),
       port,
       fakeBotSessionService(),
       NOW,
@@ -192,7 +192,7 @@ describe('routeExamCallback', () => {
       'eq',
       'не-id:0',
       111,
-      fakeUsers(USER),
+      fakeBotUserAccess(activeAccess(USER)),
       port,
       fakeBotSessionService(),
       NOW,
@@ -200,5 +200,49 @@ describe('routeExamCallback', () => {
 
     expect(port.loadOwnAttempt).not.toHaveBeenCalled();
     expect(edits).toEqual([]);
+  });
+
+  it('заблокированный — отказ тем же текстом, что в вебе, порт не зовётся', async () => {
+    const port = fakeExamBotPort({
+      startAttempt: jest.fn().mockResolvedValue(attempt()),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await routeExamCallback(
+      ctx,
+      'exam',
+      'e1',
+      111,
+      fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
+      port,
+      fakeBotSessionService(),
+      NOW,
+    );
+
+    expect(port.startAttempt).not.toHaveBeenCalled();
+    expect(edits).toEqual([ACCESS_MESSAGE]);
+  });
+
+  it('неподтверждённый (invited) — отказ ожиданием подтверждения, порт не зовётся', async () => {
+    const port = fakeExamBotPort({
+      saveAnswer: jest.fn().mockResolvedValue(attempt()),
+      loadOwnAttempt: jest.fn().mockResolvedValue(attempt()),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await routeExamCallback(
+      ctx,
+      'eo',
+      buildOptionId(ATTEMPT_ID, 0, 0),
+      111,
+      fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
+      port,
+      fakeBotSessionService(),
+      NOW,
+    );
+
+    expect(port.loadOwnAttempt).not.toHaveBeenCalled();
+    expect(port.saveAnswer).not.toHaveBeenCalled();
+    expect(edits).toEqual([PENDING_APPROVAL_MESSAGE]);
   });
 });

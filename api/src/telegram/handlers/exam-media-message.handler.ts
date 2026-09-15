@@ -5,9 +5,14 @@
 // 'examMedia' в BotSessionService, единственном хранилище диалоговых
 // ожиданий бота (CLAUDE.md «не заводи второе»), различаются `questionIndex`
 // (bot-session.schema.ts, комментарий у kind). В отличие от темы/записи ждём
-// ЛЮБОГО пользователя, не только штат школы — экзамен сдают ученики;
-// привязка проверяется в MediaAssetsService (SECURITY §3, ADR-0023): чужой
-// или несуществующий attemptId не даёт ничего.
+// ЛЮБОГО пользователя, не только штат школы — экзамен сдают ученики, в т.ч.
+// анонимного отправителя без аккаунта (deep link открыт кому угодно,
+// ADR-0023); привязка проверяется в MediaAssetsService (SECURITY §3): чужой
+// или несуществующий attemptId не даёт ничего. Но ИЗВЕСТНОГО человека со
+// статусом blocked/invited видео принимать нельзя (SECURITY §9, ADR-0026) —
+// поэтому личность идёт через BotUserAccessService.resolve(), не напрямую
+// UsersService: `unknown` (нет аккаунта) остаётся анонимной отправкой как
+// раньше, `denied` — отказ и закрытая сессия, `active` — обычный пользователь.
 //
 // Пересылка учителю — `copyMessage` по `file_id`, без перезаливки (ADR-0023):
 // подпись («кто, какой экзамен») шлём отдельным сообщением ДО копии — у
@@ -19,7 +24,7 @@ import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { errorMessage } from '../../common/error-info';
 import { MediaAssetsService } from '../../media/media-assets.service';
-import { UsersService } from '../../users/users.service';
+import { BotUserAccessService } from '../bot-user-access.service';
 import type { BotSessionLean } from '../bot-session.service';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
@@ -40,7 +45,7 @@ export class ExamMediaMessageHandler {
   constructor(
     private readonly botSessions: BotSessionService,
     private readonly mediaAssets: MediaAssetsService,
-    private readonly usersService: UsersService,
+    private readonly botAccess: BotUserAccessService,
     private readonly personalChats: PersonalChats,
     private readonly examBotPorts: ExamBotPortRegistry,
   ) {}
@@ -58,7 +63,16 @@ export class ExamMediaMessageHandler {
       return;
     }
 
-    const user = await this.usersService.findByTelegramId(telegramId);
+    const access = await this.botAccess.resolve(telegramId);
+    if (access.kind === 'denied') {
+      await this.botSessions.clear(telegramId);
+      await ctx.reply(access.message).catch(() => null);
+      return;
+    }
+    // `unknown` — анонимная отправка без аккаунта, разрешена по замыслу
+    // deep link (ADR-0023): `attachTelegramVideo` тогда получает
+    // `userId: undefined`, как и раньше.
+    const user = access.kind === 'active' ? access.user : undefined;
     const attached = await this.mediaAssets.attachTelegramVideo(
       session.attemptId.toString(),
       user?.id,

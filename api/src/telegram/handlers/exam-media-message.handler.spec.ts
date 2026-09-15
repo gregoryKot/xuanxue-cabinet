@@ -1,18 +1,24 @@
 // Чистая логика с фейками коллабораторов, без Mongo и без сети (CLAUDE.md
 // «Тесты», образец — соседние спеки хендлеров бота): маршрутизация к
 // MediaAssetsService и пересылка учителям — не сама привязка (та проверена
-// против настоящей Mongo в media-assets.service.spec.ts).
+// против настоящей Mongo в media-assets.service.spec.ts). blocked/invited —
+// отказ и закрытая сессия, видео не привязывается (SECURITY §9, ADR-0026).
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import {
+  ACCESS_MESSAGE,
+  PENDING_APPROVAL_MESSAGE,
+  type ExamAttemptDto,
+} from '@xuanxue/shared';
 import type { BotSessionLean } from '../bot-session.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import type { PersonalChats } from '../personal-chats';
 import type { MediaAssetsService } from '../../media/media-assets.service';
-import type { UsersService } from '../../users/users.service';
+import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
+import type { BotUserAccessService } from '../bot-user-access.service';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -68,23 +74,30 @@ function buildHandler(overrides: {
   attached?: { media: { id: string }; examTitle: string } | null;
   teacherChats?: { chatId: string; userId: string; name: string }[];
   loadOwnAttempt?: ExamAttemptDto | null;
+  botAccess?: BotUserAccessService;
 }): {
   handler: ExamMediaMessageHandler;
   clear: jest.Mock;
   registry: ExamBotPortRegistry;
+  attachTelegramVideo: jest.Mock;
 } {
   const botSessions = fakeBotSessionService();
   const clear = botSessions.clear;
-  const mediaAssets = {
-    attachTelegramVideo: jest.fn().mockResolvedValue(overrides.attached ?? null),
-  } as unknown as MediaAssetsService;
-  const usersService = {
-    findByTelegramId: jest
-      .fn()
-      .mockResolvedValue(
-        overrides.userId ? { id: overrides.userId, name: 'Ученик Иванов' } : null,
-      ),
-  } as unknown as UsersService;
+  const attachTelegramVideo = jest.fn().mockResolvedValue(overrides.attached ?? null);
+  const mediaAssets = { attachTelegramVideo } as unknown as MediaAssetsService;
+  const botAccess =
+    overrides.botAccess ??
+    fakeBotUserAccess(
+      overrides.userId
+        ? activeAccess({
+            id: overrides.userId,
+            name: 'Ученик Иванов',
+            roles: [],
+            tz: 'UTC',
+            status: 'active',
+          })
+        : { kind: 'unknown' },
+    );
   const personalChats = {
     list: jest.fn().mockResolvedValue(overrides.teacherChats ?? []),
   } as unknown as PersonalChats;
@@ -98,12 +111,13 @@ function buildHandler(overrides: {
     handler: new ExamMediaMessageHandler(
       botSessions,
       mediaAssets,
-      usersService,
+      botAccess,
       personalChats,
       registry,
     ),
     clear,
     registry,
+    attachTelegramVideo,
   };
 }
 
@@ -279,5 +293,31 @@ describe('ExamMediaMessageHandler', () => {
       'Видео получено, спасибо! Учитель уже может его посмотреть.',
     );
     expect(replies.some((r) => r.includes('Видео получено.'))).toBe(true);
+  });
+
+  it('заблокированный — отказ тем же текстом, что в вебе, сессия закрывается, видео не привязывается', async () => {
+    const { handler, clear, attachTelegramVideo } = buildHandler({
+      botAccess: fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
+    });
+    const { ctx, replies } = fakeCtx({ video: true });
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(replies).toEqual([ACCESS_MESSAGE]);
+    expect(clear).toHaveBeenCalledWith(111);
+    expect(attachTelegramVideo).not.toHaveBeenCalled();
+  });
+
+  it('неподтверждённый (invited) — отказ ожиданием подтверждения, сессия закрывается', async () => {
+    const { handler, clear, attachTelegramVideo } = buildHandler({
+      botAccess: fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
+    });
+    const { ctx, replies } = fakeCtx({ video: true });
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
+    expect(clear).toHaveBeenCalledWith(111);
+    expect(attachTelegramVideo).not.toHaveBeenCalled();
   });
 });
