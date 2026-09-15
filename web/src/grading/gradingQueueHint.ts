@@ -17,3 +17,9 @@ export function formatGradingQueueHint(count: number | null): string {
     `${pluralRu(count, WAIT_VERB_FORMS)} проверки.`
   );
 }
+
+/** Подпись рядом с числом на «Экзаменах» (ExamsSectionStats.tsx) — число
+ * показано отдельно крупной цифрой, здесь только пояснение, чьи это работы. */
+export function formatGradingQueueCountLabel(count: number): string {
+  return `${pluralRu(count, WORK_FORMS)} учеников`;
+}

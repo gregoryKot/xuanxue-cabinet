@@ -1,9 +1,9 @@
 // Мокаем apiFetch по префиксу пути (test-support/apiFetchMock.ts) — экран
 // грузит /exams, /attempts (очередь проверки) и /exam-items/stats-summary
-// (число на карточке «Вопросы»), а открытый лист сам грузит банк /exam-items
-// для блоков. `/exam-items/stats-summary` — ключ раньше общего `/exam-items`
-// в объектах ниже: mockApiByPath матчит по первому подходящему префиксу.
-import { render, screen, waitFor } from '@testing-library/react';
+// (число на «Банк вопросов») — открытый лист сам грузит банк /exam-items для
+// блоков. `/exam-items/stats-summary` — ключ раньше общего `/exam-items` в
+// объектах ниже: mockApiByPath матчит по первому подходящему префиксу.
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -81,11 +81,12 @@ describe('ExamsScreen — сбой загрузки', () => {
 });
 
 describe('ExamsScreen — пустая база', () => {
-  it('честный текст и кнопка «Новый экзамен»', async () => {
+  it('честный текст, заголовок раздела и кнопка «Новый экзамен»', async () => {
     mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
 
     renderScreen();
 
+    expect(screen.getByRole('heading', { name: 'Экзамены' })).toBeInTheDocument();
     expect(
       await screen.findByText(/Экзаменов пока нет\. Соберите первый/),
     ).toBeInTheDocument();
@@ -95,25 +96,29 @@ describe('ExamsScreen — пустая база', () => {
 });
 
 describe('ExamsScreen — список форм', () => {
-  it('рендерит карточку с названием и статусом', async () => {
+  it('рендерит строку с названием, метаданными и статусом', async () => {
     mockApiByPath({ ...NO_STRUGGLING, '/exams': [makeExam()], '/attempts': [] });
 
     renderScreen();
 
-    expect(await screen.findByText('Итоговый экзамен')).toBeInTheDocument();
-    expect(screen.getByText(/Черновик · Пока без блоков/)).toBeInTheDocument();
+    const title = await screen.findByText('Итоговый экзамен');
+    const row = title.closest('li') as HTMLLIElement;
+    expect(
+      within(row).getByText('Пока без блоков · 1 попытка · без ограничения'),
+    ).toBeInTheDocument();
+    expect(within(row).getByText('Черновик')).toBeInTheDocument();
   });
 });
 
 describe('ExamsScreen — фильтр по статусу', () => {
-  it('смена фильтра уходит в query запроса', async () => {
+  it('переключатель статуса уходит в query запроса', async () => {
     const user = userEvent.setup();
     mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
 
     renderScreen();
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
 
-    await user.selectOptions(screen.getByLabelText('Статус'), 'published');
+    await user.click(screen.getByRole('button', { name: 'Опубликован' }));
 
     await waitFor(() => {
       const examCalls = mockedApiFetch.mock.calls
@@ -124,17 +129,33 @@ describe('ExamsScreen — фильтр по статусу', () => {
   });
 });
 
+describe('ExamsScreen — поиск по названию', () => {
+  it('название не совпадает с запросом — честный текст «нет по фильтрам»', async () => {
+    mockApiByPath({ ...NO_STRUGGLING, '/exams': [makeExam()], '/attempts': [] });
+
+    renderScreen();
+    await screen.findByText('Итоговый экзамен');
+
+    await userEvent.type(screen.getByLabelText('Поиск по названию'), 'толкающие');
+
+    expect(
+      await screen.findByText('С такими фильтрами экзаменов нет.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Итоговый экзамен')).not.toBeInTheDocument();
+  });
+});
+
 describe('ExamsScreen — вход в проверку работ', () => {
-  it('пустая очередь — честный текст на карточке-ссылке', async () => {
+  it('пустая очередь — честный текст под меткой «Ждут проверки»', async () => {
     mockApiByPath({ ...NO_STRUGGLING, '/exams': [], '/attempts': [] });
 
     renderScreen();
 
-    expect(await screen.findByText('Проверка работ')).toBeInTheDocument();
+    expect(await screen.findByText('Ждут проверки')).toBeInTheDocument();
     expect(await screen.findByText('Пока нечего проверять.')).toBeInTheDocument();
   });
 
-  it('есть сданные работы — число на карточке-ссылке', async () => {
+  it('есть сданные работы — цифра и подпись', async () => {
     mockApiByPath({
       ...NO_STRUGGLING,
       '/exams': [],
@@ -157,7 +178,8 @@ describe('ExamsScreen — вход в проверку работ', () => {
 
     renderScreen();
 
-    expect(await screen.findByText('1 работа ждёт проверки.')).toBeInTheDocument();
+    expect(await screen.findByText('1')).toBeInTheDocument();
+    expect(screen.getByText('работа учеников')).toBeInTheDocument();
   });
 });
 
@@ -215,7 +237,7 @@ describe('ExamsScreen — лист формы', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('открыть карточку — лист правки с заполненным названием', async () => {
+  it('открыть строку списка — лист правки с заполненным названием', async () => {
     const user = userEvent.setup();
     mockApiByPath({
       ...NO_STRUGGLING,

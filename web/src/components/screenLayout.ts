@@ -38,10 +38,35 @@ export const screenExplanationStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 
+/** Заголовок раздела антиквой (направление «тихо и благородно», docs/adr/
+ * 0031) — первый экран, который его заводит («Экзамены»); следующие экраны
+ * серии берут готовый стиль, а не повторяют числа. */
+export const screenTitleStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: 'var(--font-display)',
+  fontWeight: 300,
+  fontSize: 34,
+  lineHeight: 1,
+  color: 'var(--ink)',
+};
+
 /** Мелкая приписка под объяснением: часовой пояс, что значит кнопка. Тише
  * объяснения — читают её один раз и больше к ней не возвращаются. */
 export const screenHintStyle: CSSProperties = {
   margin: '-10px 0 0',
   fontSize: 13,
   color: 'var(--ink-soft)',
+};
+
+/** Текстовая ссылка-переход внутри экрана («Открыть очередь», «Открыть
+ * банк»). Заводится здесь, а не рядом с первым использованием: у `<a>` нет
+ * своей строки в index.css, поэтому без явного цвета браузер красит ссылку
+ * системным синим с подчёркиванием — мимо палитры (docs/adr/0031). Линия
+ * снизу вместо подчёркивания: подчёркивание вплотную режет выносные элементы
+ * кириллицы (у, р, ц), а отступ до линии их пропускает. */
+export const textLinkStyle: CSSProperties = {
+  color: 'var(--ink)',
+  textDecoration: 'none',
+  borderBottom: '1px solid var(--control-border)',
+  paddingBottom: 2,
 };
