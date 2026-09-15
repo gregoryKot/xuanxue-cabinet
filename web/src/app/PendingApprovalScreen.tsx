@@ -6,7 +6,11 @@
 import { useEffect } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import {
+  screenExplanationStyle,
+  screenSectionStyle,
+  screenTitleStyle,
+} from '../components/screenLayout';
 import { PENDING_APPROVAL_MESSAGE } from '@xuanxue/shared';
 
 // Заголовок и текст ожидания — не «нет доступа»: человек уже вошёл, дальше
@@ -40,7 +44,7 @@ export function PendingApprovalScreen() {
 
   return (
     <section style={screenSectionStyle}>
-      <h1 style={{ fontSize: 22, margin: 0 }}>{TITLE}</h1>
+      <h1 style={screenTitleStyle}>{TITLE}</h1>
       <p style={screenExplanationStyle}>{PENDING_APPROVAL_MESSAGE}</p>
       <p style={screenExplanationStyle}>{LONG_WAIT_HINT}</p>
       {config?.schoolSiteUrl && (

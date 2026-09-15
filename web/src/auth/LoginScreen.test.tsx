@@ -269,7 +269,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
   });
 
-  it('emailLoginEnabled: true — форма есть, отправка → «Письмо отправлено»', async () => {
+  it('emailLoginEnabled: true — форма есть, отправка → «Письмо ушло»', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config')
@@ -282,11 +282,9 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     renderScreen();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
 
-    expect(
-      await screen.findByText(/Письмо отправлено на a@example\.com/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Письмо ушло на a@example\.com/)).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
       method: 'POST',
       body: { email: 'a@example.com' },
@@ -306,7 +304,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     renderScreen();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
 
     expect(await screen.findByText(/Нет связи с сервером/)).toBeInTheDocument();
   });
@@ -333,7 +331,7 @@ describe('LoginScreen — уже вошедшего уводит на сохра
     renderScreen();
 
     expect(await screen.findByText('Занятия')).toBeInTheDocument();
-    expect(screen.queryByText('Кабинет школы Сюань-Сюэ')).not.toBeInTheDocument();
+    expect(screen.queryByText('Кабинет школы')).not.toBeInTheDocument();
   });
 
   it('authStatus ok, есть returnTo /exams — редирект туда, не на домашний', async () => {

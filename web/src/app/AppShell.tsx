@@ -23,6 +23,7 @@ import type { CSSProperties } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
+import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
 import { PendingApprovalScreen } from './PendingApprovalScreen';
@@ -40,18 +41,6 @@ const headerStyle: CSSProperties = {
   padding: '12px 16px',
   borderBottom: '1px solid var(--line)',
   background: 'var(--paper)',
-};
-
-// Знак-печать рядом с названием (направление «тихо и благородно», docs/adr/
-// 0031-visual-direction-quiet-and-noble.md) — декоративный, название школы
-// рядом уже называет раздел словами, дублировать нечем (aria-hidden в JSX).
-const sealStyle: CSSProperties = {
-  width: 26,
-  height: 26,
-  flexShrink: 0,
-  borderRadius: 3,
-  background: 'var(--cinnabar)',
-  border: '2px solid var(--paper)',
 };
 
 const shellTitleStyle: CSSProperties = {
@@ -88,8 +77,8 @@ export function AppShell() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header style={headerStyle}>
-        <span style={sealStyle} aria-hidden="true" />
-        <span style={shellTitleStyle}>Школа Сюань-Сюэ</span>
+        <SchoolMark />
+        <span style={shellTitleStyle}>{SCHOOL_NAME}</span>
       </header>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>

@@ -2,18 +2,30 @@
 // JoinScreen.tsx (ADR-0030: одна и та же кнопка, разное «что дальше» после
 // входа). Вынесено, чтобы не копировать логику config/offline/autoPending
 // между двумя экранами (CLAUDE.md «Одна механика — один компонент», jscpd).
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import type { AuthConfigDto } from '@xuanxue/shared';
 import { NETWORK_ERROR_MESSAGE } from '../api/http';
 import { Button } from '../components/Button';
 import { SkeletonLines } from '../components/Skeleton';
+import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
 import { useAuth } from './AuthProvider';
-import { loginCaptionStyle } from './loginScreenStyles';
 import { redirectToTelegramAuth } from './telegramAuthRedirect';
 import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
 
 const NOT_CONFIGURED_MESSAGE =
   'Вход через Telegram не настроен. Напишите администратору школы.';
+
+// Ошибка живёт там же, где остальные ошибки форм кабинета (Field,
+// FormServerError): под действием, которое её вызвало, цветом --danger.
+const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
+
+// Сообщение и «Повторить» — одним блоком: у абзацев на этом экране margin
+// снят, вертикальный ритм держит flex-gap колонки.
+const offlineBlockStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+};
 
 interface TelegramLoginSectionProps {
   config: AuthConfigDto | null;
@@ -57,8 +69,8 @@ export function TelegramLoginSection({
       )}
 
       {!autoPending && configStatus === 'offline' && (
-        <div role="alert">
-          <p style={{ margin: '0 0 8px' }}>{NETWORK_ERROR_MESSAGE}</p>
+        <div role="alert" style={offlineBlockStyle}>
+          <p style={screenExplanationStyle}>{NETWORK_ERROR_MESSAGE}</p>
           <Button
             variant="secondary"
             onClick={() => void onReload()}
@@ -70,7 +82,9 @@ export function TelegramLoginSection({
       )}
 
       {!autoPending && configStatus === 'ok' && !telegramBotId && (
-        <p role="alert">{NOT_CONFIGURED_MESSAGE}</p>
+        <p role="alert" style={screenExplanationStyle}>
+          {NOT_CONFIGURED_MESSAGE}
+        </p>
       )}
 
       {!autoPending && configStatus === 'ok' && telegramBotId && (
@@ -82,14 +96,12 @@ export function TelegramLoginSection({
           >
             Войти через Telegram
           </Button>
-          <p style={loginCaptionStyle}>
-            Тем же аккаунтом, которым вы читаете канал школы
-          </p>
+          <p style={screenHintStyle}>Тем же аккаунтом, которым вы читаете канал школы</p>
         </>
       )}
 
       {autoError && (
-        <p role="alert" style={{ color: 'var(--danger)', margin: 0 }}>
+        <p role="alert" style={errorTextStyle}>
           {autoError}
         </p>
       )}

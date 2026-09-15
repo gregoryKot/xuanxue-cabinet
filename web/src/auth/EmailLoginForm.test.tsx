@@ -21,7 +21,9 @@ afterEach(() => {
 describe('EmailLoginForm', () => {
   it('пустое поле — кнопка недоступна', () => {
     render(<EmailLoginForm />);
-    expect(screen.getByRole('button', { name: 'Получить ссылку' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Получить ссылку для входа' }),
+    ).toBeDisabled();
   });
 
   it('inviteCode (ADR-0030) — уходит в теле запроса вместе с email', async () => {
@@ -30,26 +32,24 @@ describe('EmailLoginForm', () => {
     render(<EmailLoginForm inviteCode={'a'.repeat(32)} />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
 
-    await screen.findByText(/Письмо отправлено/);
+    await screen.findByText(/Письмо ушло/);
     expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
       method: 'POST',
       body: { email: 'a@example.com', inviteCode: 'a'.repeat(32) },
     });
   });
 
-  it('успех — «Письмо отправлено на …», форма пропадает', async () => {
+  it('успех — «Письмо ушло на …», форма пропадает', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue(undefined);
     render(<EmailLoginForm />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
 
-    expect(
-      await screen.findByText(/Письмо отправлено на a@example\.com/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Письмо ушло на a@example\.com/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
   });
 
@@ -59,8 +59,8 @@ describe('EmailLoginForm', () => {
     render(<EmailLoginForm />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
-    await screen.findByText(/Письмо отправлено/);
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await screen.findByText(/Письмо ушло/);
 
     await user.click(screen.getByRole('button', { name: 'Отправить ещё раз' }));
 
@@ -69,7 +69,7 @@ describe('EmailLoginForm', () => {
       method: 'POST',
       body: { email: 'a@example.com' },
     });
-    expect(await screen.findByText(/Письмо отправлено/)).toBeInTheDocument();
+    expect(await screen.findByText(/Письмо ушло/)).toBeInTheDocument();
   });
 
   it('ошибка до первого успеха — текст под полем, форма остаётся', async () => {
@@ -80,7 +80,7 @@ describe('EmailLoginForm', () => {
     render(<EmailLoginForm />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
 
     expect(await screen.findByText('Email-вход пока не подключён.')).toBeInTheDocument();
     expect(screen.getByLabelText('Почта')).toBeInTheDocument();
@@ -91,14 +91,14 @@ describe('EmailLoginForm', () => {
     mockedApiFetch.mockResolvedValueOnce(undefined);
     render(<EmailLoginForm />);
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
-    await screen.findByText(/Письмо отправлено/);
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await screen.findByText(/Письмо ушло/);
 
     mockedApiFetch.mockRejectedValueOnce(new Error('boom'));
     await user.click(screen.getByRole('button', { name: 'Отправить ещё раз' }));
 
     expect(await screen.findByText(/Нет связи с сервером/)).toBeInTheDocument();
-    expect(screen.getByText(/Письмо отправлено/)).toBeInTheDocument();
+    expect(screen.getByText(/Письмо ушло/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
   });
 });
