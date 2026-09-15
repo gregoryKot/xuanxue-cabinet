@@ -20,7 +20,6 @@ import { AuthService } from './auth.service';
 import { EmailAuthService } from './email-auth.service';
 import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
 import { EmailLoginTokenService } from './email-login-token.service';
-import { JoinByInviteService } from './join-by-invite.service';
 import { JoinController } from './join.controller';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
@@ -52,10 +51,10 @@ import { TelegramAuthService } from './telegram-auth.service';
     TelegramAuthService,
     EmailAuthService,
     EmailLoginTokenService,
-    // Ссылка-приглашение школы (ADR-0030): InviteLinkService/UserRolesService
-    // приходят как экспорт UsersModule (импортирован выше), второй провайдер
-    // здесь не заводим.
-    JoinByInviteService,
+    // Ссылка-приглашение школы (ADR-0030): InviteLinkService/UserRolesService/
+    // JoinByInviteService приходят как экспорт UsersModule (импортирован
+    // выше, JoinByInviteService живёт там же — join-by-invite.service.ts,
+    // комментарий в users.module.ts), второй провайдер здесь не заводим.
     { provide: APP_GUARD, useClass: AuthGuard },
     {
       provide: SESSION_SECRET,

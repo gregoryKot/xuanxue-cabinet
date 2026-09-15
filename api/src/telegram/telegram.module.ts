@@ -19,6 +19,9 @@
 // частности берёт модель ExamAttemptRecord через ExamAttemptModelModule
 // (api/src/exams/), не через ExamsModule — тот сам импортирует TelegramModule
 // (EXAM_NOTIFIER, слой 4.7) и импорт в обратную сторону закольцевал бы граф.
+// BotIdentityModule — TelegramBotService пишет туда имя бота при прогреве;
+// UsersModule (InviteLinkService, ADR-0030 «Бот») читает оттуда же, не
+// импортируя TelegramModule целиком (см. bot-identity.service.ts).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
@@ -30,6 +33,7 @@ import { MediaModule } from '../media/media.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
+import { BotIdentityModule } from './bot-identity.module';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
 import { BotSessionService } from './bot-session.service';
 import { BotUserAccessService } from './bot-user-access.service';
@@ -66,6 +70,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     SettingsModule,
     NotificationsModule,
     MediaModule,
+    BotIdentityModule,
   ],
   controllers: [TelegramController],
   providers: [

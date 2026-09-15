@@ -48,6 +48,32 @@ describe('ErrorBoundary', () => {
     expect(spy).toHaveBeenCalled();
   });
 
+  // `window.location.reload` в jsdom нельзя заспайить через vi.spyOn
+  // (свойство не переопределяется) — подменяем весь объект location, как
+  // единственно рабочий способ проверить обработчик кнопки «Обновить».
+  it('кнопка «Обновить» вызывает window.location.reload', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const user = userEvent.setup();
+    const reload = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { ...originalLocation, reload },
+      configurable: true,
+      writable: true,
+    });
+
+    renderBoundary(<Boom />);
+    await user.click(screen.getByRole('button', { name: 'Обновить' }));
+
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      configurable: true,
+      writable: true,
+    });
+  });
+
   // Аудит L7: раньше единственный выход с упавшего экрана был перезагрузкой
   // всей вкладки — переход на другой маршрут должен сам восстанавливать его.
   // Ссылка на /b — вне ErrorBoundary (как навигация AppShell в App.tsx), её

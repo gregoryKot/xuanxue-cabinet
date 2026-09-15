@@ -4,6 +4,7 @@
 import type { Connection, Model } from 'mongoose';
 import type { ConfigService } from '@nestjs/config';
 import { NotAvailableError } from '../common/errors';
+import { BotIdentityService } from '../telegram/bot-identity.service';
 import { InviteLinkRecord, InviteLinkSchema } from './invite-link.schema';
 import { InviteLinkService } from './invite-link.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -37,12 +38,18 @@ describe('InviteLinkService', () => {
 
   function service(
     env: Record<string, string | undefined> = { PUBLIC_URL },
+    botUsername?: string,
   ): InviteLinkService {
-    return new InviteLinkService(fakeConfig(env), model);
+    const botIdentity = new BotIdentityService();
+    botIdentity.set(botUsername);
+    return new InviteLinkService(fakeConfig(env), botIdentity, model);
   }
 
-  it('getCurrent: ссылки ещё нет — url: null', async () => {
-    await expect(service().getCurrent()).resolves.toEqual({ url: null });
+  it('getCurrent: ссылки ещё нет — url и telegramUrl: null', async () => {
+    await expect(service().getCurrent()).resolves.toEqual({
+      url: null,
+      telegramUrl: null,
+    });
   });
 
   it('getCurrent/rotate без PUBLIC_URL — NotAvailableError', async () => {
@@ -53,10 +60,22 @@ describe('InviteLinkService', () => {
 
   it('rotate → getCurrent: read-after-write, url ведёт на /join/<code>', async () => {
     const svc = service();
-    const { url } = await svc.rotate(ADMIN_ID);
+    const { url, telegramUrl } = await svc.rotate(ADMIN_ID);
     expect(url).toMatch(new RegExp(`^${PUBLIC_URL}/join/[0-9a-f]{32}$`));
+    // Бот не прогрет (botUsername не задан в service()) — телеграм-ссылки нет.
+    expect(telegramUrl).toBeNull();
 
-    await expect(svc.getCurrent()).resolves.toEqual({ url });
+    await expect(svc.getCurrent()).resolves.toEqual({ url, telegramUrl: null });
+  });
+
+  // ADR-0030 «Бот»: telegramUrl собирается тем же кодом, что и url — сервер,
+  // не фронт, единственный источник формата t.me/<бот>?start=join_<code>.
+  it('бот прогрет — telegramUrl тем же кодом, что и url', async () => {
+    const svc = service({ PUBLIC_URL }, 'xuanxue_bot');
+    const { url, telegramUrl } = await svc.rotate(ADMIN_ID);
+    const code = url?.split('/join/')[1];
+
+    expect(telegramUrl).toBe(`https://t.me/xuanxue_bot?start=join_${code}`);
   });
 
   it('код из rotate() валиден для isValid()', async () => {

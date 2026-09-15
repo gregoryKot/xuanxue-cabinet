@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Telegraf } from 'telegraf';
 import type { InlineKeyboardButton, Update } from 'telegraf/types';
 import { errorMessage, errorStack } from '../common/error-info';
+import { BotIdentityService } from './bot-identity.service';
 import { ensureBotInfo, registerWebhook } from './bot-startup';
 import { sendBotMessage } from './bot-send';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
@@ -42,6 +43,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly menuCommandHandler: MenuCommandHandler,
     private readonly messageHandler: MessageHandler,
     private readonly examCommandHandler: ExamCommandHandler,
+    private readonly botIdentity: BotIdentityService,
   ) {}
 
   // Не async: внутри всё намеренно fire-and-forget (см. ниже).
@@ -74,9 +76,11 @@ export class TelegramBotService implements OnApplicationBootstrap {
     // Сетевые вызовы старта — не await, ошибки в лог: они не должны
     // задерживать подъём приложения. Пустое меню команд читается как
     // «бот ничего не умеет» (bot-commands.ts), поэтому оно тоже здесь.
-    void ensureBotInfo(bot).catch((err) => {
-      this.logger.warn(`telegram.getMe (прогрев при старте): ${errorMessage(err)}`);
-    });
+    void ensureBotInfo(bot)
+      .then(() => this.syncBotIdentity())
+      .catch((err) => {
+        this.logger.warn(`telegram.getMe (прогрев при старте): ${errorMessage(err)}`);
+      });
     void registerWebhook(bot, this.config, this.logger).catch((err) => {
       this.logger.error(`telegram.setWebhook: ${errorMessage(err)}`, errorStack(err));
     });
@@ -91,6 +95,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     if (!this.bot) return;
     try {
       await ensureBotInfo(this.bot);
+      this.syncBotIdentity();
       await this.bot.handleUpdate(update);
     } catch (err) {
       this.logger.error(`telegram.webhook: ${errorMessage(err)}`, errorStack(err));
@@ -134,5 +139,12 @@ export class TelegramBotService implements OnApplicationBootstrap {
    * показывается (кабинет не обещает того, чего не может). */
   botUsername(): string | undefined {
     return this.bot?.botInfo?.username;
+  }
+
+  /** Зеркалит имя бота в BotIdentityService — единственный способ узнать
+   * его за пределами TelegramModule (InviteLinkService, ADR-0030). Вызывать
+   * после каждой точки, где `bot.botInfo` мог обновиться. */
+  private syncBotIdentity(): void {
+    this.botIdentity.set(this.bot?.botInfo?.username);
   }
 }

@@ -5,9 +5,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import { ATTEMPT_EXPIRED_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { apiFetch } from '../api/http';
+import { apiFetch, ApiError } from '../api/http';
 import { AttemptInProgress } from './AttemptInProgress';
 
 vi.mock('../api/http', async () => {
@@ -180,6 +180,21 @@ describe('AttemptInProgress', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Отправить' }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  // Заголовок useAttemptAutosave.ts: сервер отклонил сохранение по дедлайну —
+  // `onExpired` зовёт `reload` (сама передача колбэка проверена здесь, детали
+  // «не повторять бесконечно» — в useAttemptAutosave.test.ts).
+  it('сервер отклонил PATCH как «время вышло» — попытка перечитывается через reload', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(ATTEMPT_EXPIRED_MESSAGE, 400, 'invalid_input'),
+    );
+    const user = userEvent.setup();
+    const { reload } = renderAttempt(makeAttempt());
+
+    await user.click(screen.getByRole('radio', { name: 'Пять' }));
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
   });
 
   // Блокер аудита 2026-09-15 «Дедлайн решает сервер» (ТЗ 4.4, п.7): раньше

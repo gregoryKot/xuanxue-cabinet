@@ -1,8 +1,10 @@
-// Ссылка-приглашение школы (ADR-0030) — блок на «Людях», для admin и teacher
-// (RequirePeopleAccess, уточнение владельца 2026-09-15) — API того же
-// требует (`@Roles('teacher', 'admin')`, users.controller.ts). Объяснение до
-// действия (CLAUDE.md «Продукт»): что это и что случится, если её отправить.
-// «Скопировать» —
+// Ссылка-приглашение школы (ADR-0030, «Бот») — блок на «Людях», для admin и
+// teacher (RequirePeopleAccess, уточнение владельца 2026-09-15) — API того
+// же требует (`@Roles('teacher', 'admin')`, users.controller.ts). Объяснение
+// до действия (CLAUDE.md «Продукт»): что это и что случится, если её
+// отправить. Два способа дать одну и ту же ссылку — сайт и бот — строка на
+// каждый (CopyRow ниже), формат telegramUrl собирает сервер (InviteLinkDto),
+// фронт его не пересобирает (единственный источник формата). «Скопировать» —
 // общий useCopyText (broadcasts/useCopyText.ts, CLAUDE.md «Одна механика —
 // один компонент»); «Создать новую» — общий ConfirmDialog, тот же приём, что
 // удаление строки на PersonRow.tsx рядом.
@@ -27,6 +29,8 @@ const cardStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 10,
 };
+const rowStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 };
+const labelStyle: CSSProperties = { fontSize: 12, color: 'var(--ink-soft)' };
 const urlRowStyle: CSSProperties = {
   display: 'flex',
   gap: 8,
@@ -44,9 +48,31 @@ const codeStyle: CSSProperties = {
 };
 const alertTextStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--danger)' };
 
+/** Одна строка «код + Скопировать» — сайт и бот отличаются только подписью и
+ * значением, своя `useCopyText()` на строку (независимый «Скопировано» на
+ * каждой). */
+function CopyRow({ label, url }: { label: string; url: string }) {
+  const { copied, error, copy } = useCopyText();
+  return (
+    <div style={rowStyle}>
+      <span style={labelStyle}>{label}</span>
+      <div style={urlRowStyle}>
+        <code style={codeStyle}>{url}</code>
+        <Button variant="secondary" onClick={() => void copy(url)}>
+          {copied ? 'Скопировано' : 'Скопировать'}
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" style={alertTextStyle}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function InviteLinkCard() {
   const { link, loading, error, reload, rotating, rotateError, rotate } = useInviteLink();
-  const { copied, error: copyError, copy } = useCopyText();
   const [confirmingRotate, setConfirmingRotate] = useState(false);
 
   async function confirmRotate(): Promise<void> {
@@ -74,24 +100,16 @@ export function InviteLinkCard() {
 
       {!error && link?.url && (
         <>
-          <div style={urlRowStyle}>
-            <code style={codeStyle}>{link.url}</code>
-            <Button variant="secondary" onClick={() => void copy(link.url as string)}>
-              {copied ? 'Скопировано' : 'Скопировать'}
-            </Button>
-            <Button
-              variant="danger"
-              disabled={rotating}
-              onClick={() => setConfirmingRotate(true)}
-            >
-              Создать новую
-            </Button>
-          </div>
-          {copyError && (
-            <p role="alert" style={alertTextStyle}>
-              {copyError}
-            </p>
-          )}
+          <CopyRow label="Для сайта" url={link.url} />
+          {link.telegramUrl && <CopyRow label="Для Telegram" url={link.telegramUrl} />}
+          <Button
+            variant="danger"
+            disabled={rotating}
+            onClick={() => setConfirmingRotate(true)}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            Создать новую
+          </Button>
         </>
       )}
 

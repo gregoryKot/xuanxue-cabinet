@@ -231,6 +231,7 @@ export type {
 } from './invite-link';
 export {
   INVITE_CODE_RE,
+  INVITE_TELEGRAM_START_PREFIX,
   INVITE_LINK_NOT_AVAILABLE_MESSAGE,
   INVITE_LINK_INVALID_MESSAGE,
 } from './invite-link';
