@@ -104,9 +104,15 @@ jobs:
           cache: npm
       - name: route collisions
         run: node scripts/check-route-collisions.mjs
+      - name: тесты скриптов-храповиков (node:test)
+        run: node --test scripts/*.test.mjs
+      - name: потолок CLAUDE.md
+        run: node scripts/check-claude-md-size.mjs
       - run: npm ci
       - name: prettier — формат всего репозитория
         run: npm run format:check
+      - name: мёртвые экспорты shared/src/index.ts
+        run: node scripts/check-shared-exports.mjs
       - name: knip — мёртвый код и неиспользуемые зависимости
         run: npx knip
       - name: gitleaks — секреты в диффе/истории

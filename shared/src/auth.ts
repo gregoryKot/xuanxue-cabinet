@@ -28,8 +28,8 @@ export const ROLE_LABELS: Record<UserRole, string> = {
  * права учителя (ROLE_LABELS выше), у админа — тем более. Один список на
  * api и бота (`isStaffRole`) вместо повторения тройки по файлам; `@Roles()`
  * остаётся с явным перечислением — декоратору нужны сами значения.
- */
-export const STAFF_ROLES: readonly UserRole[] = ['teacher', 'assistant', 'admin'];
+ * Не экспортируется (аудит M8): наружу нужна только `isStaffRole`. */
+const STAFF_ROLES: readonly UserRole[] = ['teacher', 'assistant', 'admin'];
 
 /** Хоть одна роль из STAFF_ROLES — «человек школы», а не ученик. */
 export function isStaffRole(roles: readonly UserRole[]): boolean {
@@ -137,8 +137,9 @@ export const CSRF_HEADER = 'x-requested-with';
 
 /** Методы, которые CSRF-гвард в api (`auth/csrf.ts`) и http-клиент в web
  * (`api/http.ts`) считают мутирующими — общий список, чтобы фронт и бэк не
- * разъехались по тому, что требует заголовка. */
-export const MUTATING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'] as const;
+ * разъехались по тому, что требует заголовка. Не экспортируется (аудит M8):
+ * обе стороны зовут только `isMutatingMethod`. */
+const MUTATING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'] as const;
 
 const MUTATING_METHODS_SET = new Set<string>(MUTATING_METHODS);
 

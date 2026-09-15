@@ -53,7 +53,6 @@ export type {
 export {
   USER_ROLES,
   ROLE_LABELS,
-  STAFF_ROLES,
   isStaffRole,
   USER_STATUSES,
   PENDING_APPROVAL_MESSAGE,
@@ -62,7 +61,6 @@ export {
   EMAIL_LOGIN_EXPIRED_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
   CSRF_HEADER,
-  MUTATING_METHODS,
   isMutatingMethod,
 } from './auth';
 export type {
@@ -95,7 +93,6 @@ export type {
   ExamItemStatus,
   ExamItemOptionDto,
   ExamItemOptionInput,
-  ExamItemVersionDto,
   ExamItemDto,
   CreateExamItemInput,
   UpdateExamItemInput,
@@ -152,7 +149,7 @@ export {
   EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
 } from './exam-media';
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
-export type { MyExamAttemptSummaryDto, MyExamDto, ListMyExamsQuery } from './my-exams';
+export type { MyExamDto, ListMyExamsQuery } from './my-exams';
 export type {
   AttemptOptionCheckDto,
   AttemptReviewOptionDto,
@@ -178,9 +175,6 @@ export {
   MY_LESSONS_LIMIT_MAX,
 } from './lessons';
 export type {
-  TelegramChannelConfig,
-  VkChannelConfig,
-  ManualChannelConfig,
   ChannelConfig,
   ChannelDto,
   CreateChannelInput,
@@ -214,7 +208,7 @@ export type {
   PreviewTemplateResult,
 } from './settings';
 export { SETTINGS_LIMITS, NULLABLE_SETTINGS_FIELDS } from './settings';
-export type { SummaryPeriod, SummaryDto } from './summary';
+export type { SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
 export type {
   UserDto,
@@ -250,7 +244,6 @@ export {
   NOTIFICATION_KINDS,
   NOTIFICATION_LABELS,
   NOTIFICATION_HINTS,
-  DEFAULT_NOTIFICATIONS_BY_ROLE,
   defaultNotifications,
   isNotificationKind,
 } from './notifications';

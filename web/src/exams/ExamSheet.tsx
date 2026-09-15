@@ -43,7 +43,7 @@ export function ExamSheet({
   onRemove,
 }: ExamSheetProps) {
   const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
   const form = useExamForm(exam, onCreate, onUpdate, onRemove);
   const bank = useExamItems(BANK_FILTERS);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -64,6 +64,7 @@ export function ExamSheet({
         titleId="exam-sheet-title"
         title={exam ? 'Экзамен' : 'Новый экзамен'}
         headingRef={headingRef}
+        containerRef={containerRef}
         onSubmit={(e) => void handleSubmit(e)}
         onClose={goBack}
       >

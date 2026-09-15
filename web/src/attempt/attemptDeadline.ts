@@ -1,10 +1,10 @@
 // Сколько осталось до дедлайна попытки (ТЗ п.2) — чистая функция без DOM,
 // юнит-тест без похода в сеть (CLAUDE.md «Тесты»). Считает не бизнес-правило
 // (время экзамена закрывает сервер — ExamAttemptsService.closeIfExpiredAttempt,
-// ТЗ 4.4 п.7), а только то, что показать на экране прямо сейчас; поэтому
-// `new Date` здесь не в бизнес-логике, а в отображении, как в lib/formatDate.ts
-// (eslint не запрещает его в web/src — CLAUDE.md «Время» действует через
-// гейт, а гейт стоит только на api/shared, где считается настоящий дедлайн).
+// ТЗ 4.4 п.7), а только то, что показать на экране прямо сейчас.
+// `Date.parse`, не `new Date(deadlineAt).getTime()` — тот же результат без
+// конструктора с аргументом (запрещён NO_DATE_CTOR в web, CLAUDE.md «Время»,
+// M10 аудита 2026-09-12): нужно только число миллисекунд для вычитания.
 import { pluralRu } from '@xuanxue/shared';
 
 const MINUTE_FORMS = { one: 'минута', few: 'минуты', many: 'минут', other: 'минуты' };
@@ -24,7 +24,7 @@ export function getAttemptTimeStatus(
 ): AttemptTimeStatus {
   if (!deadlineAt) return { hasDeadline: false, expired: false, label: null };
 
-  const remainingMs = new Date(deadlineAt).getTime() - nowMs;
+  const remainingMs = Date.parse(deadlineAt) - nowMs;
   if (remainingMs <= 0) return { hasDeadline: true, expired: true, label: null };
 
   const minutes = Math.floor(remainingMs / 60_000);

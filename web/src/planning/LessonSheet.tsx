@@ -51,7 +51,7 @@ export function LessonSheet({
   onSendNow,
 }: LessonSheetProps) {
   const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
   const form = useLessonForm(lessonDto, classes, onCreate, onUpdate);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const cancelled = lessonDto?.status === 'cancelled';
@@ -76,6 +76,7 @@ export function LessonSheet({
         titleId="lesson-sheet-title"
         title={lessonDto ? 'Дата занятия' : 'Разовое занятие'}
         headingRef={headingRef}
+        containerRef={containerRef}
         onSubmit={(e) => void handleSubmit(e)}
         onClose={goBack}
       >

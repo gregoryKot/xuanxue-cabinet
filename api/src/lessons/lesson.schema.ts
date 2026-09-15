@@ -75,6 +75,12 @@ export class LessonRecord {
 export const LessonSchema = SchemaFactory.createForClass(LessonRecord);
 LessonSchema.index({ classId: 1, startsAt: 1 });
 LessonSchema.index({ startsAt: 1 });
+// Аудит L8: под фильтр планировщика рассылок (findDueLessons,
+// broadcast-planner.queries.ts) — `{ status: 'scheduled', startsAt: {$gt,
+// $lte} }` на каждом тике. При нынешних объёмах не заметно, но без индекса
+// это full collection scan, растущий с историей занятий школы.
+// syncIndexes() строит его на старте (api/src/database/index-sync.service.ts).
+LessonSchema.index({ status: 1, startsAt: 1 });
 // Второй тик планировщика не создаёт занятие повторно (ADR-0004 — та же
 // идея, что у deliveries). Частичный: у разового занятия plannedAt нет.
 LessonSchema.index(
