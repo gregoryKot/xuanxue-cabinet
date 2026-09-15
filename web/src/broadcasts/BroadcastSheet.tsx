@@ -18,7 +18,7 @@ interface BroadcastSheetProps {
 
 export function BroadcastSheet({ channels, onClose, onCreate }: BroadcastSheetProps) {
   const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+  const { headingRef, containerRef } = useDialog(goBack);
   const form = useBroadcastForm(onCreate);
 
   async function handleSubmit(event: FormEvent) {
@@ -31,6 +31,7 @@ export function BroadcastSheet({ channels, onClose, onCreate }: BroadcastSheetPr
       titleId="broadcast-sheet-title"
       title="Новая рассылка"
       headingRef={headingRef}
+      containerRef={containerRef}
       onSubmit={(e) => void handleSubmit(e)}
       onClose={goBack}
     >
