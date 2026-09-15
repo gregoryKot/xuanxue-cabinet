@@ -54,7 +54,7 @@ jobs:
       # 90 дней). S3/аналог — отдельный PR при появлении реальных данных,
       # отмечено в RUNBOOK §7.
       - name: загрузить бэкап как artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mongo-backup-${{ github.run_id }}
           path: ${{ steps.backup_file.outputs.path }}
