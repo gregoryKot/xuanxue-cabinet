@@ -10,6 +10,7 @@ import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { AuthProvider } from './AuthProvider';
 import EmailLoginCallbackScreen from './EmailLoginCallbackScreen';
+import { saveReturnTo } from './returnTo';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -40,6 +41,7 @@ function mockMe(result: 'guest' | 'ok' = 'guest') {
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+  sessionStorage.clear();
 });
 
 function renderScreen(search: string) {
@@ -50,6 +52,8 @@ function renderScreen(search: string) {
           <Route path="/login/email" element={<EmailLoginCallbackScreen />} />
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route path="/schedule" element={<p>Расписание</p>} />
+          <Route path="/" element={<p>Занятия</p>} />
+          <Route path="/exams" element={<p>Экзамены</p>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -96,7 +100,7 @@ describe('EmailLoginCallbackScreen — валидный токен', () => {
     );
   });
 
-  it('клик «Войти» — POST /auth/email/verify, refresh, переход на /schedule', async () => {
+  it('клик «Войти», нет returnTo — POST /auth/email/verify, refresh, переход на домашний экран', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
@@ -108,11 +112,27 @@ describe('EmailLoginCallbackScreen — валидный токен', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Войти' }));
 
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/auth/email/verify',
       expect.objectContaining({ method: 'POST', body: { token: VALID_TOKEN } }),
     );
+  });
+
+  it('клик «Войти», сохранён returnTo /exams (аудит L2) — переход туда', async () => {
+    saveReturnTo('/exams');
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/email/verify') return Promise.resolve(ME);
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen(`?token=${VALID_TOKEN}`);
+
+    await user.click(await screen.findByRole('button', { name: 'Войти' }));
+
+    expect(await screen.findByText('Экзамены')).toBeInTheDocument();
   });
 
   it('401 от сервера — текст с сервера, кнопка «Запросить новую» ведёт на /login', async () => {
@@ -149,7 +169,7 @@ describe('EmailLoginCallbackScreen — валидный токен', () => {
 describe('EmailLoginCallbackScreen — join (ADR-0030)', () => {
   const CODE = 'a'.repeat(32);
 
-  it('join в query — после verify зовёт POST /auth/join, потом /schedule', async () => {
+  it('join в query, нет returnTo — после verify зовёт POST /auth/join, потом домашний экран', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
@@ -162,14 +182,14 @@ describe('EmailLoginCallbackScreen — join (ADR-0030)', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Войти' }));
 
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith('/auth/join', {
       method: 'POST',
       body: { code: CODE },
     });
   });
 
-  it('join упал — «Вы вошли» с текстом ошибки, «Перейти в кабинет» ведёт на /schedule', async () => {
+  it('join упал — «Вы вошли» с текстом ошибки, «Перейти в кабинет» ведёт на домашний экран', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
@@ -189,16 +209,24 @@ describe('EmailLoginCallbackScreen — join (ADR-0030)', () => {
     expect(screen.getByText('Ссылка-приглашение не действует.')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Перейти в кабинет' }));
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
   });
 });
 
-describe('EmailLoginCallbackScreen — уже вошедшего уводит на /schedule', () => {
-  it('authStatus ok — редирект, карточка не показывается', async () => {
+describe('EmailLoginCallbackScreen — уже вошедшего уводит на сохранённый адрес или домашний (аудит L2)', () => {
+  it('authStatus ok, нет returnTo — редирект на домашний экран, карточка не показывается', async () => {
     mockMe('ok');
     renderScreen(`?token=${VALID_TOKEN}`);
 
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
     expect(screen.queryByText('Подтвердите вход')).not.toBeInTheDocument();
+  });
+
+  it('authStatus ok, есть returnTo /exams — редирект туда', async () => {
+    saveReturnTo('/exams');
+    mockMe('ok');
+    renderScreen(`?token=${VALID_TOKEN}`);
+
+    expect(await screen.findByText('Экзамены')).toBeInTheDocument();
   });
 });

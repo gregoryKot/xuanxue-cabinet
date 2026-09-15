@@ -3,10 +3,12 @@
 // открывают ссылки из письма и молча сожгли бы одноразовый токен раньше
 // пользователя. Логика вынесена из EmailLoginCallbackScreen.tsx (CLAUDE.md
 // «Логика вне компонентов»), тот же приём, что useTelegramAuthResultLogin.ts:
-// POST → refresh() сессии → переход на /schedule.
+// POST → refresh() сессии → сохранённый адрес или домашний экран
+// (postLoginPath, аудит L2 — раньше жёстко /schedule).
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { postLoginPath } from './returnTo';
 
 type EmailLoginVerifyStatus = 'idle' | 'pending' | 'error';
 
@@ -34,7 +36,7 @@ export function useEmailLoginVerify(
   const [joinError, setJoinError] = useState<string | null>(null);
 
   const continueToSchedule = useCallback(() => {
-    void navigate('/schedule', { replace: true });
+    void navigate(postLoginPath(), { replace: true });
   }, [navigate]);
 
   const verify = useCallback(

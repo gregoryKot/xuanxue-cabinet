@@ -8,6 +8,7 @@ import type { TelegramLoginInput } from '@xuanxue/shared';
 import type * as RouterModule from 'react-router-dom';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
+import { saveReturnTo } from './returnTo';
 import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
 
 vi.mock('../api/http', async () => {
@@ -45,6 +46,7 @@ afterEach(() => {
   mockedApiFetch.mockReset();
   navigateMock.mockReset();
   window.location.hash = '';
+  sessionStorage.clear();
 });
 
 describe('useTelegramAuthResultLogin', () => {
@@ -59,7 +61,7 @@ describe('useTelegramAuthResultLogin', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('фрагмент есть → POST /auth/telegram, refresh(), навигация на /schedule, фрагмент убран', async () => {
+  it('фрагмент есть, нет сохранённого returnTo → POST /auth/telegram, refresh(), навигация на «/», фрагмент убран', async () => {
     window.location.hash = toTgAuthResultHash(fakeUser);
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
@@ -67,7 +69,7 @@ describe('useTelegramAuthResultLogin', () => {
     const { result } = renderHook(() => useTelegramAuthResultLogin(refresh));
 
     await waitFor(() =>
-      expect(navigateMock).toHaveBeenCalledWith('/schedule', { replace: true }),
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
     );
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/auth/telegram',
@@ -77,6 +79,19 @@ describe('useTelegramAuthResultLogin', () => {
     expect(window.location.hash).toBe('');
     expect(result.current.pending).toBe(false);
     expect(result.current.error).toBeNull();
+  });
+
+  it('фрагмент есть, сохранён returnTo /exams (аудит L2) — навигация на него, не на «/»', async () => {
+    saveReturnTo('/exams');
+    window.location.hash = toTgAuthResultHash(fakeUser);
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+
+    renderHook(() => useTelegramAuthResultLogin(refresh));
+
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith('/exams', { replace: true }),
+    );
   });
 
   it('POST падает с ApiError — error это её текст, navigate не вызван', async () => {

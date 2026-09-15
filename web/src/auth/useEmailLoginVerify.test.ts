@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as RouterModule from 'react-router-dom';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
+import { saveReturnTo } from './returnTo';
 import { useEmailLoginVerify } from './useEmailLoginVerify';
 
 vi.mock('../api/http', async () => {
@@ -23,10 +24,11 @@ const mockedApiFetch = vi.mocked(apiFetch);
 afterEach(() => {
   mockedApiFetch.mockReset();
   navigateMock.mockReset();
+  sessionStorage.clear();
 });
 
 describe('useEmailLoginVerify', () => {
-  it('успех — POST /auth/email/verify, refresh(), переход на /schedule', async () => {
+  it('успех, нет сохранённого returnTo — POST /auth/email/verify, refresh(), переход на «/»', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useEmailLoginVerify(refresh));
@@ -38,8 +40,19 @@ describe('useEmailLoginVerify', () => {
       body: { token: 'a'.repeat(64) },
     });
     expect(refresh).toHaveBeenCalledTimes(1);
-    expect(navigateMock).toHaveBeenCalledWith('/schedule', { replace: true });
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
     expect(result.current.error).toBeNull();
+  });
+
+  it('успех, сохранён returnTo /planning?week=2 (аудит L2) — переход туда', async () => {
+    saveReturnTo('/planning?week=2');
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginVerify(refresh));
+
+    await act(() => result.current.verify('a'.repeat(64)));
+
+    expect(navigateMock).toHaveBeenCalledWith('/planning?week=2', { replace: true });
   });
 
   it('ApiError — status error, текст с сервера, refresh() и переход не вызваны', async () => {
@@ -74,7 +87,7 @@ describe('useEmailLoginVerify', () => {
     );
   });
 
-  it('joinCode (ADR-0030) — после verify зовёт POST /auth/join, потом переход на /schedule', async () => {
+  it('joinCode (ADR-0030) — после verify зовёт POST /auth/join, потом переход на «/»', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
@@ -85,11 +98,11 @@ describe('useEmailLoginVerify', () => {
       method: 'POST',
       body: { code: 'a'.repeat(32) },
     });
-    expect(navigateMock).toHaveBeenCalledWith('/schedule', { replace: true });
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
     expect(result.current.joinError).toBeNull();
   });
 
-  it('join упал — joinError виден, вход не блокирован, на /schedule не уводит сам', async () => {
+  it('join упал — joinError виден, вход не блокирован, редирект не уводит сам', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/email/verify') return Promise.resolve(undefined);
       if (path === '/auth/join')
@@ -108,7 +121,7 @@ describe('useEmailLoginVerify', () => {
     expect(navigateMock).not.toHaveBeenCalled();
 
     result.current.continueToSchedule();
-    expect(navigateMock).toHaveBeenCalledWith('/schedule', { replace: true });
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
   });
 
   it('join упал не ApiError — общий текст «Нет связи…» в joinError', async () => {
