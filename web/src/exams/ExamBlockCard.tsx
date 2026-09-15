@@ -35,6 +35,7 @@ interface ExamBlockCardProps {
   onToggleRequired: (required: boolean) => void;
   onRemoveBlock: () => void;
   onAddItem: (itemId: string) => void;
+  onPublishItem: (itemId: string) => void;
   onRemoveItem: (itemId: string) => void;
   onMoveItemUp: (itemIndex: number) => void;
   onMoveItemDown: (itemIndex: number) => void;
@@ -51,6 +52,7 @@ export function ExamBlockCard({
   onToggleRequired,
   onRemoveBlock,
   onAddItem,
+  onPublishItem,
   onRemoveItem,
   onMoveItemUp,
   onMoveItemDown,
@@ -113,8 +115,10 @@ export function ExamBlockCard({
       {pickerOpen && (
         <ExamItemPicker
           bankItems={bankItems}
+          bankLoading={bankLoading}
           usedItemIds={usedItemIds}
           onAdd={onAddItem}
+          onPublish={onPublishItem}
         />
       )}
     </div>

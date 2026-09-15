@@ -282,6 +282,41 @@ describe('ExamSheet — статус и удаление', () => {
   });
 });
 
+describe('ExamSheet — публикация черновика из пикера', () => {
+  // Баг с прода: учитель завёл и опубликовал вопрос на «Вопросах» — а форма
+  // экзамена его не видела, потому что новый вопрос всегда черновик.
+  // Публикация из пикера — тот же PATCH .../exam-items/:id со
+  // { status: 'published' }, что и на экране «Вопросы» (useExamItems.update),
+  // и после него банк перечитывается (read-after-write, CLAUDE.md «Тесты»):
+  // вопрос переезжает из группы черновиков в кандидаты и становится доступен
+  // для «Добавить».
+  it('«Опубликовать» шлёт PATCH со status: published, вопрос становится кандидатом', async () => {
+    const user = userEvent.setup();
+    const draft = makeBankItem({ id: 'i1', status: 'draft', prompt: 'Стойка мабу' });
+    mockedApiFetch.mockResolvedValueOnce([draft]);
+    renderSheet(makeExam());
+
+    await user.click(screen.getByRole('button', { name: 'Добавить блок' }));
+    await user.click(screen.getByRole('button', { name: 'Добавить вопрос' }));
+    await waitFor(() => screen.getByText('Стойка мабу'));
+    expect(screen.queryByRole('button', { name: 'Добавить' })).not.toBeInTheDocument();
+
+    mockedApiFetch.mockResolvedValueOnce({ ...draft, status: 'published' });
+    mockedApiFetch.mockResolvedValueOnce([{ ...draft, status: 'published' }]);
+
+    // Экран экзамена тоже черновик и своей кнопкой «Опубликовать»
+    // (ExamStatusControls) — берём кнопку именно у строки вопроса в пикере.
+    const draftRow = screen.getByText('Стойка мабу').closest('li') as HTMLElement;
+    await user.click(within(draftRow).getByRole('button', { name: 'Опубликовать' }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/exam-items/i1', {
+      method: 'PATCH',
+      body: { status: 'published' },
+    });
+    expect(await screen.findByRole('button', { name: 'Добавить' })).toBeInTheDocument();
+  });
+});
+
 describe('ExamSheet — предпросмотр', () => {
   it('открывает предпросмотр поверх листа, название формы видно там же', async () => {
     const user = userEvent.setup();
