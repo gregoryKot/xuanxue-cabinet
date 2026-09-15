@@ -282,7 +282,8 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
 - Поймать ошибку и вернуть успех.
 - Токен в `localStorage`, `sessionStorage`, URL.
 - Эндпоинт без гварда «временно».
-- Кеширование `/api/*` в service worker.
+- Кеширующего service worker нет (ADR-0032); если когда-нибудь появится —
+  `/api/*` в него не попадает.
 - Прямой вызов SDK мессенджера вне `api/src/channels/` и `api/src/telegram/`.
 
 ## 9. Реагирование на инциденты

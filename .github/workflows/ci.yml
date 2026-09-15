@@ -80,7 +80,7 @@ jobs:
         run: TZ=Australia/Sydney npm run test --workspace=web
       - name: vite build
         run: npm run build --workspace=web
-      - name: pwa-гейт (манифест, иконки, service worker)
+      - name: pwa-гейт (манифест, иконки, заглушка service worker)
         run: node scripts/check-pwa.mjs
       - name: бюджет стартового JS (gzip)
         run: node scripts/check-bundle-size.mjs

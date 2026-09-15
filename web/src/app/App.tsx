@@ -1,7 +1,7 @@
 // Маршруты кабинета (React.lazy на экраны — CLAUDE.md «Фронтенд»: тяжёлые
 // экраны не тянутся в стартовый бандл). AuthProvider — единственный источник
-// сессии для всего дерева (ErrorBoundary и тост обновления PWA — здесь, а не
-// в main.tsx: main.tsx остаётся тонкой точкой входа).
+// сессии для всего дерева (ErrorBoundary — здесь, а не в main.tsx: main.tsx
+// остаётся тонкой точкой входа).
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthProvider';
@@ -9,7 +9,6 @@ import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
 import { RequireAuth } from '../auth/RequireAuth';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SkeletonLines } from '../components/Skeleton';
-import { UpdateToast } from '../pwa/UpdateToast';
 import { AppShell } from './AppShell';
 
 const LoginScreen = lazy(() => import('../auth/LoginScreen'));
@@ -91,7 +90,6 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
-        <UpdateToast />
       </AuthProvider>
     </ErrorBoundary>
   );

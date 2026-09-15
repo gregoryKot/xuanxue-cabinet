@@ -7,7 +7,7 @@
     "jsx": "react-jsx",
     "outDir": "dist-types",
     "noEmit": true,
-    "types": ["vite/client", "vite-plugin-pwa/client"]
+    "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }
