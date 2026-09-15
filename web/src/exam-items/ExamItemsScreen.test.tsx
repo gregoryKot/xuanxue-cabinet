@@ -141,6 +141,12 @@ describe('ExamItemsScreen — лист вопроса', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
+    // Лист закрывается через «Назад» истории (useHistorySheet → popstate),
+    // а это асинхронно: без явного ожидания тест успевал закончиться раньше
+    // onClose, и покрытие этой строки плавало под нагрузкой (задача #59).
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Новый вопрос' })).toBeNull(),
+    );
   });
 
   it('открыть карточку — лист правки с заполненной формулировкой', async () => {

@@ -26,6 +26,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { SeedModule } from './seed/seed.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { staticAssetsOptions } from './static/static-cache-control';
 
 @Module({
   imports: [
@@ -77,10 +78,11 @@ import { TelegramModule } from './telegram/telegram.module';
     AuthModule,
     TelegramModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'web', 'dist'),
-      exclude: ['/api/{*splat}'],
-    }),
+    // Заголовки кеша (хэшированные ассеты — на год, index.html/sw.js —
+    // no-cache) живут в static/static-cache-control.ts вместе с тестом.
+    ServeStaticModule.forRoot(
+      staticAssetsOptions(join(__dirname, '..', '..', 'web', 'dist')),
+    ),
   ],
   controllers: [HealthController],
   providers: [DomainExceptionFilter, { provide: APP_GUARD, useClass: ThrottlerGuard }],
