@@ -60,8 +60,8 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     MediaAssetRecord.name,
     MediaAssetSchema,
   );
-  const examsService = new ExamsService(examModel, itemModel);
-  const examItemsService = new ExamItemsService(itemModel);
+  const examsService = new ExamsService(examModel, itemModel, attemptModel);
+  const examItemsService = new ExamItemsService(itemModel, examModel);
   const userNamesService = new UserNamesService(userModel);
   const examNotifier = fakeExamNotifier();
   const service = new ExamAttemptsService(

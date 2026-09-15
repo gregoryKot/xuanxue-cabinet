@@ -3,7 +3,13 @@
 import type { Types } from 'mongoose';
 import type { ExamDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
-import type { ExamBlockRecord, ExamRecord, RubricCriterionRecord } from './exam.schema';
+import { decryptRecord } from '../utils/encryption';
+import {
+  EXAM_ENCRYPT_SCHEMA,
+  type ExamBlockRecord,
+  type ExamRecord,
+  type RubricCriterionRecord,
+} from './exam.schema';
 
 /** ExamRecord как его отдаёт `.lean()` до расшифровки — `blocks` ещё строка
  * (encJson, exam.schema.ts), не разобранный массив. `Pick<T, keyof T>` вместо
@@ -16,13 +22,29 @@ export type RawLeanExam = Pick<ExamRecord, keyof ExamRecord> & {
   updatedAt: Date;
 };
 
-/** То же самое после `decryptRecord` и разбора JSON (см.
- * `ExamsService.decrypt`) — `blocks` уже настоящий массив, форма совпадает с
- * `ExamBlockDto` из shared. */
+/** То же самое после `decryptRecord` и разбора JSON (см. `decryptExam` ниже)
+ * — `blocks` уже настоящий массив, форма совпадает с `ExamBlockDto` из
+ * shared. */
 export type LeanExam = Omit<RawLeanExam, 'blocks' | 'rubric'> & {
   blocks: ExamBlockRecord[];
   rubric: RubricCriterionRecord[];
 };
+
+/** `blocks`/`rubric` хранятся строкой (encJson, exam.schema.ts) —
+ * decryptRecord (не параметризована по конкретному полю, как и у
+ * `decryptExamItem`, exam-item.mapper.ts) возвращает их с тем же типом
+ * `string`, хотя на деле это уже разобранный JSON; приводим явно один раз
+ * здесь — единственное место расшифровки ПОЛНОГО документа формы
+ * (ExamsService). exam-item-references.ts расшифровывает частичную выборку
+ * `title`+`blocks` отдельно — там нет остальных полей `RawLeanExam`. */
+export function decryptExam(doc: RawLeanExam): LeanExam {
+  const decrypted = decryptRecord(doc, EXAM_ENCRYPT_SCHEMA);
+  return {
+    ...decrypted,
+    blocks: decrypted.blocks as unknown as ExamBlockRecord[],
+    rubric: decrypted.rubric as unknown as RubricCriterionRecord[],
+  };
+}
 
 export function toExamDto(doc: LeanExam): ExamDto {
   return {

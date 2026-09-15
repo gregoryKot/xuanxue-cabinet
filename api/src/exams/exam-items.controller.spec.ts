@@ -94,7 +94,12 @@ describe('ExamItemsController', () => {
   });
 
   it('getStats() передаёт id в ExamItemStatsService', async () => {
-    const stats: ExamItemStatsDto = { itemId: 'i1', kind: 'text', askedCount: 0 };
+    const stats: ExamItemStatsDto = {
+      itemId: 'i1',
+      kind: 'text',
+      askedCount: 0,
+      usedInExamsCount: 0,
+    };
     const getStats = jest.fn().mockResolvedValue(stats);
     const controller = await buildController({}, { getStats });
 

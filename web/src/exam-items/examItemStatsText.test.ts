@@ -3,13 +3,14 @@ import type { ExamItemStatsDto } from '@xuanxue/shared';
 import {
   formatAskedSummary,
   formatOptionLine,
+  formatUsageSummary,
   NEVER_ASKED_MESSAGE,
 } from './examItemStatsText';
 
 type ExamItemOptionStatsDto = NonNullable<ExamItemStatsDto['options']>[number];
 
 function makeStats(overrides: Partial<ExamItemStatsDto> = {}): ExamItemStatsDto {
-  return { itemId: 'i1', kind: 'text', askedCount: 0, ...overrides };
+  return { itemId: 'i1', kind: 'text', askedCount: 0, usedInExamsCount: 0, ...overrides };
 }
 
 describe('formatAskedSummary', () => {
@@ -61,6 +62,24 @@ describe('formatOptionLine', () => {
   it('ни разу не выбрали — «0 раз», не пусто', () => {
     expect(formatOptionLine(makeOption({ chosenCount: 0 }))).toBe(
       '«пять» — выбрали 0 раз.',
+    );
+  });
+});
+
+describe('formatUsageSummary', () => {
+  it('нигде не используется — null, нечего показывать', () => {
+    expect(formatUsageSummary(makeStats({ usedInExamsCount: 0 }))).toBeNull();
+  });
+
+  it('в одном экзамене — единственное число', () => {
+    expect(formatUsageSummary(makeStats({ usedInExamsCount: 1 }))).toBe(
+      'Стоит в 1 экзамене — нельзя удалить или заархивировать, не убрав его оттуда.',
+    );
+  });
+
+  it('в нескольких экзаменах — множественное число', () => {
+    expect(formatUsageSummary(makeStats({ usedInExamsCount: 3 }))).toBe(
+      'Стоит в 3 экзаменах — нельзя удалить или заархивировать, не убрав его оттуда.',
     );
   });
 });

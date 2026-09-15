@@ -19,6 +19,7 @@ import type {
 } from '@xuanxue/shared';
 import { decryptAttempt, type RawLeanExamAttempt } from './exam-attempt.mapper';
 import { ExamAttemptRecord } from './exam-attempt.schema';
+import { findExamsReferencingItem } from './exam-item-references';
 import {
   accumulateAttemptStats,
   computeExamItemStats,
@@ -28,6 +29,7 @@ import {
 import { decryptExamItem, type RawLeanExamItem } from './exam-item.mapper';
 import { ExamItemRecord } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
+import { ExamRecord } from './exam.schema';
 
 // Попытка «в работе» не в счёт (ТЗ 4.8: ученик мог не закончить её или ещё
 // передумает менять ответ) — считаются только сданные.
@@ -41,15 +43,20 @@ export class ExamItemStatsService {
     @InjectModel(ExamAttemptRecord.name)
     private readonly attemptModel: Model<ExamAttemptRecord>,
     @InjectModel(ExamItemRecord.name) private readonly itemModel: Model<ExamItemRecord>,
+    @InjectModel(ExamRecord.name) private readonly examModel: Model<ExamRecord>,
     private readonly examItemsService: ExamItemsService,
   ) {}
 
   /** Статистика одного вопроса — 404 у несуществующего/битого id тот же, что
-   * у остальных ручек банка (ExamItemsService.getById). */
+   * у остальных ручек банка (ExamItemsService.getById). `usedInExamsCount` —
+   * тот же запрос, что и защита от удаления/архивации (exam-item-references.
+   * ts, CLAUDE.md «Одна механика — один компонент»), не второй счётчик. */
   async getStats(itemId: string): Promise<ExamItemStatsDto> {
     const item = await this.examItemsService.getById(itemId);
     const accByItem = await this.loadAccumulators();
-    return computeExamItemStats(item.id, item.kind, item.options, accByItem);
+    const stats = computeExamItemStats(item.id, item.kind, item.options, accByItem);
+    const { titles } = await findExamsReferencingItem(this.examModel, itemId);
+    return { ...stats, usedInExamsCount: titles.length };
   }
 
   /** Одно число для карточки-ссылки «Вопросы» на «Экзаменах» (CLAUDE.md

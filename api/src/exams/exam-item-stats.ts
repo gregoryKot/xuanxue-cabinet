@@ -80,13 +80,16 @@ export function accumulateAttemptStats(
 }
 
 /** Статистика одного вопроса — `currentOptions` берётся из сегодняшнего
- * вопроса банка (не из снимков попыток, см. комментарий в начале файла). */
+ * вопроса банка (не из снимков попыток, см. комментарий в начале файла).
+ * Без `usedInExamsCount`: это чистая функция по попыткам, а «в скольких
+ * экзаменах используется» — отдельный запрос к базе (exam-item-references.ts,
+ * ExamItemStatsService.getStats добавляет поле сама). */
 export function computeExamItemStats(
   itemId: string,
   kind: ExamItemKind,
   currentOptions: readonly ExamItemOptionRecord[],
   accByItem: ReadonlyMap<string, ItemStatsAccumulator>,
-): ExamItemStatsDto {
+): Omit<ExamItemStatsDto, 'usedInExamsCount'> {
   const acc = accByItem.get(itemId) ?? emptyAccumulator();
   const hasOptions = currentOptions.length > 0;
   const options: ExamItemOptionStatsDto[] | undefined = hasOptions

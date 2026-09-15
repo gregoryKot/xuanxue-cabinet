@@ -33,3 +33,19 @@ export function formatOptionLine(option: ExamItemOptionStatsDto): string {
   const suffix = option.correct ? ' Верный вариант.' : '';
   return `«${option.text}» — выбрали ${times}.${suffix}`;
 }
+
+// Прописной падеж не меняется по числу («в двух экзаменах», «в пяти
+// экзаменах») — pluralRu тут не нужен, только «один» против «больше одного».
+const EXAM_NOUN = { one: 'экзамене', many: 'экзаменах' };
+
+/**
+ * В скольких неархивированных экзаменах вопрос стоит — предупреждение
+ * заранее (аудит 2026-09-15, п.3): удалить или заархивировать такой вопрос
+ * нельзя, API откажет с названиями этих форм. Вопрос нигде не стоит — `null`,
+ * нечего показывать (CLAUDE.md «Продукт»: пусто, не «0 экзаменов»).
+ */
+export function formatUsageSummary(stats: ExamItemStatsDto): string | null {
+  if (stats.usedInExamsCount === 0) return null;
+  const noun = stats.usedInExamsCount === 1 ? EXAM_NOUN.one : EXAM_NOUN.many;
+  return `Стоит в ${stats.usedInExamsCount} ${noun} — нельзя удалить или заархивировать, не убрав его оттуда.`;
+}
