@@ -89,8 +89,9 @@ interface AppNavProps {
 export function AppNav({ isMobile, me }: AppNavProps) {
   const { pathname } = useLocation();
   const active = activeSectionPath(pathname);
-  const isAdmin = hasRole(me, 'admin');
-  const items = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const items = NAV_ITEMS.filter(
+    (item) => !item.roles || item.roles.some((role) => hasRole(me, role)),
+  );
   const linkStyle = isMobile ? bottomLinkStyle : sideLinkStyle;
 
   return (

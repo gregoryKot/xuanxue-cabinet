@@ -51,6 +51,32 @@ describe('useAbortableFetch — загрузка', () => {
   });
 });
 
+describe('useAbortableFetch — enabled: false (ADR-0030)', () => {
+  it('не зовёт load(), loading сразу false, data null', () => {
+    const load = vi.fn().mockResolvedValue('готово');
+    const { result } = renderHook(() =>
+      useAbortableFetch(load, FALLBACK, { enabled: false }),
+    );
+
+    expect(load).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toBeNull();
+  });
+
+  it('reload() всё равно работает по явному вызову', async () => {
+    const load = vi.fn().mockResolvedValue('готово');
+    const { result } = renderHook(() =>
+      useAbortableFetch(load, FALLBACK, { enabled: false }),
+    );
+
+    await act(async () => {
+      await result.current.reload();
+    });
+
+    expect(result.current.data).toBe('готово');
+  });
+});
+
 describe('useAbortableFetch — гонка запросов (ревью п.13)', () => {
   it('устаревший успешный ответ не перезаписывает новый', async () => {
     let resolveFirst: ((value: string) => void) | undefined;

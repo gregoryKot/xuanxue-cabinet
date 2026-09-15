@@ -196,8 +196,8 @@ describe('App', () => {
     expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
   });
 
-  it('admin на /people — маршрут «Ученики» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {
-    mockRoute(ADMIN, { '/users': [] });
+  it('admin на /people — маршрут «Ученики» открывает PeopleScreen (RequirePeopleAccess, блокер аудита Б3)', async () => {
+    mockRoute(ADMIN, { '/users': [], '/users/invite-link': { url: null } });
 
     renderAt('/people');
 
@@ -206,14 +206,36 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('учитель без admin на /people — уводит на «Занятия», не «Ученики»', async () => {
-    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
+  // ADR-0030 (уточнение владельца 2026-09-15): ссылку-приглашение отдаёт и
+  // учитель — маршрут открыт ему, но список учеников остаётся admin
+  // (SECURITY §3), PeopleScreen сам не зовёт GET /users для teacher.
+  it('учитель на /people — видит карточку ссылки, не список учеников', async () => {
+    mockRoute(TEACHER, { '/users/invite-link': { url: null } });
 
     renderAt('/people');
 
-    expect(
-      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Ссылка-приглашение')).toBeInTheDocument();
+  });
+
+  it('ученик без роли на /people — уводит на «Занятия», но там для него StudentScreen, не PeopleScreen', async () => {
+    // AppShell.tsx: у роли без teacher/assistant/admin Outlet маршрута
+    // /planning не рисуется вовсе — вместо него StudentScreen (свои
+    // эндпоинты /me/lessons и /me/exams, не /lessons и /classes
+    // PlanningScreen). Тест проверяет сам редирект RequirePeopleAccess, а
+    // не PlanningScreen — тому отдельный смоук чуть выше.
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    };
+    mockRoute(student, { '/me/lessons': [], '/me/exams': [] });
+
+    renderAt('/people');
+
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
   });
 
   it('учитель на «/» — уводит на «Занятия»', async () => {
@@ -226,7 +248,7 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  // Личная настройка человека — маршрут не за RequireAdmin и не за
+  // Личная настройка человека — маршрут не за RequirePeopleAccess и не за
   // isTeacher-веткой AppShell.tsx, доступен и ученику (ТЗ notifications-web.md).
   it('учитель на /notifications — маршрут «Уведомления» открывает NotificationsScreen', async () => {
     mockRoute(TEACHER, { '/me/notifications': { enabled: [] } });

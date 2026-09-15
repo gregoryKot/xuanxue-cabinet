@@ -29,6 +29,16 @@ describe('usePeople — загрузка', () => {
   });
 });
 
+describe('usePeople — enabled: false (ADR-0030, учитель на «Люди»)', () => {
+  it('не зовёт GET /users, people остаётся null, loading false', () => {
+    const { result } = renderHook(() => usePeople(false));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.people).toBeNull();
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('usePeople — updateRoles (read-after-write)', () => {
   it('PATCH /users/:id, затем перечитывает список', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);

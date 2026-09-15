@@ -5,7 +5,7 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthProvider';
-import { RequireAdmin } from '../auth/RequireAdmin';
+import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
 import { RequireAuth } from '../auth/RequireAuth';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SkeletonLines } from '../components/Skeleton';
@@ -76,10 +76,12 @@ export default function App() {
                     «/notifications», AppShell.tsx отдаёт под него Outlet и
                     ученику, минуя StudentScreen. */}
                 <Route path="/attempts/:id" element={<AttemptScreen />} />
-                {/* «Ученики» — четвёртый пункт NAV_ITEMS (navItems.ts), но
-                    маршрут доступен только admin (RequireAdmin, docs/PLAN.md
-                    §6, блокер аудита Б3) — GET /users того же требует. */}
-                <Route element={<RequireAdmin />}>
+                {/* «Ученики» — четвёртый пункт NAV_ITEMS (navItems.ts).
+                    Маршрут открыт admin и teacher (RequirePeopleAccess,
+                    docs/PLAN.md §6, ADR-0030 — ссылку-приглашение отдаёт и
+                    учитель); роспись ролей и удаление данных внутри экрана
+                    остаются только у admin (SECURITY §3). */}
+                <Route element={<RequirePeopleAccess />}>
                   <Route path="/people" element={<PeopleScreen />} />
                 </Route>
                 <Route path="/" element={<Navigate to="/planning" replace />} />

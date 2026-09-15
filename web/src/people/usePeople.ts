@@ -18,10 +18,15 @@ export interface UsePeopleResult {
   approve: (id: string) => Promise<void>;
 }
 
-export function usePeople(): UsePeopleResult {
+/** `enabled` — по умолчанию `true`; `false` (ADR-0030) — teacher на /people
+ * видит только ссылку-приглашение (InviteLinkCard.tsx), список учеников
+ * остаётся admin (SECURITY §3), и звать `GET /users` от его имени незачем —
+ * сервер всё равно ответит 403. */
+export function usePeople(enabled = true): UsePeopleResult {
   const { data, loading, error, reload } = useAbortableFetch(
     (signal) => apiFetch<UserDto[]>(`/users?limit=${LIST_LIMIT_MAX}`, { signal }),
     LOAD_ERROR_MESSAGE,
+    { enabled },
   );
 
   const updateRoles = useCallback(

@@ -1,8 +1,12 @@
-// e2e на /users/invite-link (ADR-0030) — доступ только admin (данные школы,
-// ADR-0010), в ответе нет codeHash/code в открытом виде. Настоящий AppModule
-// на MongoMemoryServer.
+// e2e на /users/invite-link (ADR-0030) — доступ admin и teacher (уточнение
+// владельца: ссылку раздаёт и учитель, не только админ — помощник учителя и
+// бухгалтер сюда не входят, список ролей называет владелец явно), в ответе
+// нет codeHash/code в открытом виде. Настоящий AppModule на MongoMemoryServer.
+import { getModelToken } from '@nestjs/mongoose';
+import type { Model } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, InviteLinkDto } from '@xuanxue/shared';
+import type { ApiErrorBody, InviteLinkDto, UserRole } from '@xuanxue/shared';
+import { InviteLinkRecord } from '../src/users/invite-link.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
@@ -15,6 +19,17 @@ describe('Invite link (e2e)', () => {
 
   afterAll(async () => {
     await testApp.close();
+  });
+
+  // Ссылка одна на школу (ADR-0030) — тесты на «GET без ссылки» и на роли
+  // не должны видеть то, что создал предыдущий тест этого файла (учитель или
+  // admin), read-after-write-тесты внутри своего it() создают ссылку сами.
+  afterEach(async () => {
+    const model = testApp.app.get<Model<InviteLinkRecord>>(
+      getModelToken(InviteLinkRecord.name),
+      { strict: false },
+    );
+    await model.deleteMany({});
   });
 
   function server(): ReturnType<TestApp['app']['getHttpServer']> {
@@ -43,12 +58,22 @@ describe('Invite link (e2e)', () => {
     expect((res.body as ApiErrorBody).code).toBe('unauthorized');
   });
 
-  it('учитель и ученик — 403', async () => {
-    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-    const studentCookie = await sessionCookieFor(testApp.app, []);
+  it.each([
+    ['ученик', [] as UserRole[]],
+    ['помощник учителя', ['assistant'] as UserRole[]],
+    ['бухгалтер', ['accountant'] as UserRole[]],
+  ])('%s — 403', async (_label, roles) => {
+    const cookie = await sessionCookieFor(testApp.app, roles);
 
-    expect((await getInviteLink(teacherCookie)).status).toBe(403);
-    expect((await getInviteLink(studentCookie)).status).toBe(403);
+    expect((await getInviteLink(cookie)).status).toBe(403);
+    expect((await postInviteLink(cookie)).status).toBe(403);
+  });
+
+  it('учитель: GET и POST — 200, как у admin', async () => {
+    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
+
+    expect((await getInviteLink(teacherCookie)).status).toBe(200);
+    expect((await postInviteLink(teacherCookie)).status).toBe(200);
   });
 
   it('admin: GET без ссылки — url: null, POST создаёт, повторный GET её отдаёт', async () => {

@@ -5,8 +5,8 @@ import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { AuthProvider } from './AuthProvider';
-import { RequireAdmin } from './RequireAdmin';
 import { RequireAuth } from './RequireAuth';
+import { RequirePeopleAccess } from './RequirePeopleAccess';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -19,10 +19,10 @@ afterEach(() => {
   mockedApiFetch.mockReset();
 });
 
-// Вложено под RequireAuth, как в App.tsx (RequireAdmin сам не ждёт загрузку
-// сессии — он всегда стоит внутри уже подтверждённой RequireAuth, ревью п.1):
-// без этой обёртки `me` в первом рендере ещё `null`, и тест ловил бы гонку,
-// а не настоящее поведение маршрута.
+// Вложено под RequireAuth, как в App.tsx (RequirePeopleAccess сам не ждёт
+// загрузку сессии — он всегда стоит внутри уже подтверждённой RequireAuth,
+// ревью п.1): без этой обёртки `me` в первом рендере ещё `null`, и тест
+// ловил бы гонку, а не настоящее поведение маршрута.
 function renderGuarded() {
   return render(
     <MemoryRouter initialEntries={['/people']}>
@@ -30,7 +30,7 @@ function renderGuarded() {
         <Routes>
           <Route element={<RequireAuth />}>
             <Route path="/planning" element={<p>Занятия</p>} />
-            <Route element={<RequireAdmin />}>
+            <Route element={<RequirePeopleAccess />}>
               <Route path="/people" element={<p>Люди</p>} />
             </Route>
           </Route>
@@ -40,12 +40,27 @@ function renderGuarded() {
   );
 }
 
-describe('RequireAdmin', () => {
-  it('учитель без admin — редирект на /planning', async () => {
+describe('RequirePeopleAccess', () => {
+  it('ученик без роли — редирект на /planning', async () => {
     const me: MeDto = {
       id: 'u1',
-      name: 'Дима',
-      roles: ['teacher'],
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    };
+    mockedApiFetch.mockResolvedValue(me);
+
+    renderGuarded();
+
+    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+  });
+
+  it('бухгалтер — редирект на /planning (не учитель и не admin)', async () => {
+    const me: MeDto = {
+      id: 'u3',
+      name: 'Оля',
+      roles: ['accountant'],
       tz: 'Asia/Jerusalem',
       status: 'active',
     };
@@ -65,7 +80,7 @@ describe('RequireAdmin', () => {
         <AuthProvider>
           <Routes>
             <Route path="/planning" element={<p>Занятия</p>} />
-            <Route element={<RequireAdmin />}>
+            <Route element={<RequirePeopleAccess />}>
               <Route path="/people" element={<p>Люди</p>} />
             </Route>
           </Routes>
@@ -81,6 +96,21 @@ describe('RequireAdmin', () => {
       id: 'u2',
       name: 'Маша',
       roles: ['admin'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+    };
+    mockedApiFetch.mockResolvedValue(me);
+
+    renderGuarded();
+
+    expect(await screen.findByText('Люди')).toBeInTheDocument();
+  });
+
+  it('учитель — тоже рендерит вложенный маршрут (ADR-0030, ссылка-приглашение)', async () => {
+    const me: MeDto = {
+      id: 'u4',
+      name: 'Дима',
+      roles: ['teacher'],
       tz: 'Asia/Jerusalem',
       status: 'active',
     };
