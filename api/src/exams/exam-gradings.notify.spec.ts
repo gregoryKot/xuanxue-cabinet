@@ -93,6 +93,28 @@ describe('ExamGradingsService — уведомление exam_result', () => {
     expect(secondCall?.[0]).toMatchObject({ outcome: 'passed' });
   });
 
+  it('повторный идентичный PUT — второго уведомления нет (аудит 2026-09, находка 3)', async () => {
+    const { attemptId, criterionId } = await submittedAttempt();
+    const input = {
+      criteria: [{ id: criterionId, score: 1 }],
+      comment: 'Поправьте стойку',
+      outcome: 'needs_work' as const,
+    };
+
+    await ctx.gradingsService.grade(attemptId, GRADER_ID, input, NOW);
+    // Учитель нажал «Сохранить» ещё раз теми же значениями (ответ не дошёл
+    // из-за сети) — запись идемпотентна (тот же attemptId), уведомление
+    // повторяться не должно.
+    await ctx.gradingsService.grade(
+      attemptId,
+      GRADER_ID,
+      { ...input },
+      NOW.plus({ minutes: 1 }),
+    );
+
+    expect(ctx.examNotifier.notifyExamGraded).toHaveBeenCalledTimes(1);
+  });
+
   it('оценка не сохранена (попытка в работе) — уведомление не уходит', async () => {
     const item = await ctx.examItemsService.create(
       { kind: 'text', prompt: 'x' },

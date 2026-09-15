@@ -75,6 +75,9 @@ function fakeCtx(overrides: { text?: string; video?: boolean } = {}): {
 
 const NO_TEACHER_CHATS: PersonalChats = {
   list: jest.fn().mockResolvedValue([]),
+  // `listFor` — пересылка видео экзамена спрашивает его, не `list()`
+  // (аудит 2026-09, находка 1, exam-media-forward.ts).
+  listFor: jest.fn().mockResolvedValue([]),
 } as unknown as PersonalChats;
 
 describe('бот — второй клиент ExamAttemptsService (интеграция, Mongo)', () => {

@@ -284,7 +284,9 @@ describe('TelegramBotService.sendMessage — проактивная отправ
     );
     service.onApplicationBootstrap();
 
-    await expect(service.sendMessage('111', 'Привет')).resolves.toBeUndefined();
+    // `false` — сообщение не ушло (аудит 2026-09, находка 2): вызывающий код
+    // должен уметь отличить это от успеха, не только увидеть warn в логе.
+    await expect(service.sendMessage('111', 'Привет')).resolves.toBe(false);
   });
 
   it('с ботом — уходит через callApi("sendMessage")', async () => {
@@ -298,9 +300,11 @@ describe('TelegramBotService.sendMessage — проактивная отправ
     );
     service.onApplicationBootstrap();
 
-    await service.sendMessage('111', 'Привет', [
-      [{ text: 'Отменить', callback_data: 'cancel:1' }],
-    ]);
+    await expect(
+      service.sendMessage('111', 'Привет', [
+        [{ text: 'Отменить', callback_data: 'cancel:1' }],
+      ]),
+    ).resolves.toBe(true);
 
     expect(sendMessageCalls).toEqual([
       {
@@ -324,7 +328,7 @@ describe('TelegramBotService.sendMessage — проактивная отправ
     );
     service.onApplicationBootstrap();
 
-    await expect(service.sendMessage('111', 'Привет')).resolves.toBeUndefined();
+    await expect(service.sendMessage('111', 'Привет')).resolves.toBe(false);
   });
 
   // `/topic@имя_бота` Telegraf сверяет с настоящим username бота — в фейке он

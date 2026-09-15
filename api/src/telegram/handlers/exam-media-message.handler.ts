@@ -14,21 +14,22 @@
 // UsersService: `unknown` (нет аккаунта) остаётся анонимной отправкой как
 // раньше, `denied` — отказ и закрытая сессия, `active` — обычный пользователь.
 //
-// Пересылка учителю — `copyMessage` по `file_id`, без перезаливки (ADR-0023):
-// подпись («кто, какой экзамен») шлём отдельным сообщением ДО копии — у
-// video_note («кружок») подписи не бывает вовсе, единый приём для всех видов
-// вложения проще, чем разбирать, что поддерживает caption у copyMessage, а
-// что нет.
-import { Injectable, Logger } from '@nestjs/common';
+// Пересылка учителю — `copyMessage` по `file_id`, без перезаливки (ADR-0023),
+// подпись («кто, какой экзамен») отдельным сообщением: у video_note
+// («кружок») подписи не бывает вовсе, единый приём для всех видов вложения
+// проще, чем разбирать, что поддерживает caption у copyMessage, а что нет.
+// Сама пересылка, состав адресатов и эскалация тихого отказа — в
+// exam-media-forward.ts (аудит 2026-09, находки 1 и 2, файл-лимит CLAUDE.md).
+import { Injectable } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import { errorMessage } from '../../common/error-info';
 import { MediaAssetsService } from '../../media/media-assets.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import type { BotSessionLean } from '../bot-session.service';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
-import { PersonalChats, type PersonalChat } from '../personal-chats';
+import { PersonalChats } from '../personal-chats';
+import { forwardExamVideoToTeachers } from './exam-media-forward';
 import { renderExamMediaAnswer } from './exam-media-answer';
 import { extractExamVideoSource } from './exam-video-source';
 
@@ -40,8 +41,6 @@ const RECEIVED_MESSAGE = 'Видео получено, спасибо! Учит�
 
 @Injectable()
 export class ExamMediaMessageHandler {
-  private readonly logger = new Logger(ExamMediaMessageHandler.name);
-
   constructor(
     private readonly botSessions: BotSessionService,
     private readonly mediaAssets: MediaAssetsService,
@@ -85,7 +84,14 @@ export class ExamMediaMessageHandler {
       return;
     }
 
-    await this.forwardToTeachers(ctx, user?.name ?? 'Ученик', attached.examTitle, now);
+    await forwardExamVideoToTeachers(
+      ctx,
+      this.personalChats,
+      user?.name ?? 'Ученик',
+      attached.examTitle,
+      session.attemptId.toString(),
+      now,
+    );
 
     // Вопрос-видео потока бота (ТЗ 4б.2 часть 2) — сразу следующий экран,
     // не отдельное «получено» (сам переход это и подтверждает); deep link
@@ -104,43 +110,5 @@ export class ExamMediaMessageHandler {
       return;
     }
     await ctx.reply(RECEIVED_MESSAGE).catch(() => null);
-  }
-
-  private async forwardToTeachers(
-    ctx: Context,
-    studentName: string,
-    examTitle: string,
-    now: DateTime,
-  ): Promise<void> {
-    const message = ctx.message;
-    const chat = ctx.chat;
-    if (!chat || !message) return;
-
-    const chats = await this.personalChats.list(now);
-    const caption = `Видео от ${studentName} — экзамен «${examTitle}».`;
-    await Promise.all(
-      chats.map((teacherChat: PersonalChat) =>
-        this.forwardOne(ctx, teacherChat.chatId, chat.id, message.message_id, caption),
-      ),
-    );
-  }
-
-  private async forwardOne(
-    ctx: Context,
-    toChatId: string,
-    fromChatId: number,
-    messageId: number,
-    caption: string,
-  ): Promise<void> {
-    try {
-      await ctx.telegram.sendMessage(toChatId, caption);
-      await ctx.telegram.copyMessage(toChatId, fromChatId, messageId);
-    } catch (err) {
-      // chatId — полем объекта, не в тексте (SECURITY §1 п.2, §4).
-      this.logger.warn(
-        { chatId: toChatId },
-        `telegram.examMedia.forward: ${errorMessage(err)}`,
-      );
-    }
   }
 }

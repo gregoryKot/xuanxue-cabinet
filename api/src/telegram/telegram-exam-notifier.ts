@@ -4,10 +4,15 @@
 // TelegramTeacherNotifier); «работу проверили» — тому самому ученику, если у
 // него есть личный чат и включён `exam_result` (PersonalChats.chatFor).
 // Тексты — отдельными чистыми модулями (attempt-submitted-message.ts,
-// exam-graded-message.ts). Отправка — best-effort: сбой (в т.ч. Mongo при
-// резолве имени/чата) ловится здесь и уходит в Logger.warn, не наружу
-// (CLAUDE.md «Логи», «Ошибки») — вызывающий сервис (ExamAttemptsService/
-// ExamGradingsService) не должен падать или ждать бота.
+// exam-graded-message.ts). Отправка — best-effort: сбой резолва (в т.ч.
+// Mongo при чтении имени/чата) ловится try/catch и уходит в Logger.warn, не
+// наружу (CLAUDE.md «Логи», «Ошибки») — вызывающий сервис (ExamAttemptsService/
+// ExamGradingsService) не должен падать или ждать бота. Сбой самой отправки
+// (бот.sendMessage вернул `false`) — отдельная ветка (аудит 2026-09, находка
+// 2): раньше он тонул внутри TelegramBotService тем же `warn`, и здесь его
+// никто не видел — заблокированный бот учителя или удалённый чат ученика
+// считались успешной доставкой. Если адресату уведомление в итоге не дошло —
+// `error` с ключом для поиска (attemptId, вид уведомления), без PII.
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
@@ -50,7 +55,18 @@ export class TelegramExamNotifier implements ExamNotifier {
         context.attemptId,
         this.config.get<string>('PUBLIC_URL'),
       );
-      await Promise.all(chats.map((chat) => this.bot.sendMessage(chat.chatId, text)));
+      const delivered = await Promise.all(
+        chats.map((chat) => this.bot.sendMessage(chat.chatId, text)),
+      );
+      if (delivered.every((ok) => !ok)) {
+        // Никто из адресатов не получил уведомление — тихий отказ дороже
+        // всего именно здесь (CLAUDE.md «Логи»): error, не warn, чтобы не
+        // потеряться среди обычных сетевых предупреждений.
+        this.logger.error(
+          `exam.notifyAttemptSubmitted: доставка не удалась ни одному из ${delivered.length} чатов`,
+          { attemptId: context.attemptId, kind: 'attempt_submitted' },
+        );
+      }
     } catch (err) {
       this.logger.warn(`exam.notifyAttemptSubmitted: ${errorMessage(err)}`, {
         attemptId: context.attemptId,
@@ -73,7 +89,13 @@ export class TelegramExamNotifier implements ExamNotifier {
         context.comment,
         this.config.get<string>('PUBLIC_URL'),
       );
-      await this.bot.sendMessage(chat.chatId, text);
+      const delivered = await this.bot.sendMessage(chat.chatId, text);
+      if (!delivered) {
+        this.logger.error(`exam.notifyExamGraded: доставка не удалась`, {
+          attemptId: context.attemptId,
+          kind: 'exam_result',
+        });
+      }
     } catch (err) {
       this.logger.warn(`exam.notifyExamGraded: ${errorMessage(err)}`, {
         attemptId: context.attemptId,

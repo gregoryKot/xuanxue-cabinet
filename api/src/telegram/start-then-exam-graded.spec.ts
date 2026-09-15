@@ -47,9 +47,9 @@ function fakeStartCtx(telegramId: number): Context {
   } as unknown as Context;
 }
 
-function fakeBot(): { sendMessage: jest.Mock<Promise<void>, [string, string]> } {
+function fakeBot(): { sendMessage: jest.Mock<Promise<boolean>, [string, string]> } {
   return {
-    sendMessage: jest.fn<Promise<void>, [string, string]>().mockResolvedValue(undefined),
+    sendMessage: jest.fn<Promise<boolean>, [string, string]>().mockResolvedValue(true),
   };
 }
 
