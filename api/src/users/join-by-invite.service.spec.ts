@@ -3,9 +3,9 @@
 // active покрыт e2e (auth-join.e2e-spec.ts) — здесь только ветвления.
 import { DateTime } from 'luxon';
 import { ForbiddenError, UnauthorizedError } from '../common/errors';
-import type { InviteLinkService } from '../users/invite-link.service';
-import type { UserRolesService } from '../users/user-roles.service';
-import type { UserLean, UsersService } from '../users/users.service';
+import type { InviteLinkService } from './invite-link.service';
+import type { UserRolesService } from './user-roles.service';
+import type { UserLean, UsersService } from './users.service';
 import { JoinByInviteService } from './join-by-invite.service';
 
 const NOW = DateTime.fromISO('2026-09-15T10:00:00Z');

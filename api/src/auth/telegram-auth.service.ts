@@ -105,6 +105,12 @@ export class TelegramAuthService {
   }
 }
 
-function fullName(input: TelegramLoginInput): string {
+/** Экспортирован для join-invite-deep-link.ts (ADR-0030 «Бот», уточнение
+ * владельца 2026-09-15): валидный код ссылки-приглашения заводит человека
+ * из Telegram-идентичности тем же способом, что и первый вход через
+ * виджет — вторая реализация не пишется. Параметр — подмножество
+ * `TelegramLoginInput`, а не сам тип: конструктору имени не нужны подпись
+ * и `auth_date`, только first_name/last_name. */
+export function fullName(input: { first_name: string; last_name?: string }): string {
   return [input.first_name, input.last_name].filter(Boolean).join(' ');
 }

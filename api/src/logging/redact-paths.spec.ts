@@ -29,6 +29,7 @@ function logSample(): Record<string, unknown> {
           hash: 'a'.repeat(64),
           code: 'b'.repeat(32),
           inviteCode: 'c'.repeat(32),
+          message: { text: '/start join_' + 'd'.repeat(32), chat: { id: 1 } },
         },
       },
       res: {
@@ -93,6 +94,7 @@ describe('REDACT_PATHS', () => {
     expect(body.hash).toBe('[Redacted]');
     expect(body.code).toBe('[Redacted]');
     expect(body.inviteCode).toBe('[Redacted]');
+    expect((body.message as Record<string, unknown>).text).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');
     expect(user.accessToken).toBe('[Redacted]');
@@ -125,6 +127,7 @@ describe('REDACT_PATHS', () => {
     expect(resHeaders['content-type']).toBe('application/json');
     expect(vk.peer_id).toBe(2000000001);
     expect(body.name).toBe('Мария');
+    expect((body.message as Record<string, unknown>).chat).toEqual({ id: 1 });
     expect(user.name).toBe('Мария');
     expect(channel.title).toBe('Средняя группа');
     expect(lesson.topic).toBe('пятое занятие');

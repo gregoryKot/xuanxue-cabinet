@@ -108,7 +108,7 @@ describe('UsersController', () => {
   });
 
   it('getInviteLink() делегирует InviteLinkService.getCurrent()', async () => {
-    const dto: InviteLinkDto = { url: 'https://xuanxue.su/join/abc' };
+    const dto: InviteLinkDto = { url: 'https://xuanxue.su/join/abc', telegramUrl: null };
     const getCurrent = jest.fn().mockResolvedValue(dto);
     const controller = await buildController({}, {}, {}, { getCurrent });
 
@@ -119,7 +119,10 @@ describe('UsersController', () => {
   });
 
   it('rotateInviteLink() передаёт id вызывающего из сессии в rotate()', async () => {
-    const dto: InviteLinkDto = { url: 'https://xuanxue.su/join/def' };
+    const dto: InviteLinkDto = {
+      url: 'https://xuanxue.su/join/def',
+      telegramUrl: 'https://t.me/xuanxue_bot?start=join_def',
+    };
     const rotate = jest.fn().mockResolvedValue(dto);
     const controller = await buildController({}, {}, {}, { rotate });
 

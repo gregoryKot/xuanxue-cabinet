@@ -44,6 +44,43 @@ teacher видит внутри экрана только карточку сс�
 (сервер и так ответил бы 403, но лишний запрос с ожидаемым отказом — не
 тихий обход, а просто ненужный, CLAUDE.md «API»).
 
+**Бот** (уточнение 2026-09-15, владелец): та же ссылка работает и через
+Telegram-бота, не только сайт — часть учеников удобнее приглашать прямо в
+чат с ботом, отдельной ссылки заводить незачем (CLAUDE.md «Одна механика —
+один компонент»). `InviteLinkDto` теперь `{ url, telegramUrl }`: сервер, не
+фронт, собирает `telegramUrl` = `t.me/<бот>?start=join_<code>` — единственный
+источник формата (`INVITE_TELEGRAM_START_PREFIX` в `shared/src/invite-link.ts`).
+Имя бота `InviteLinkService` (в `users/`) берёт из `BotIdentityService`
+(`api/src/telegram/bot-identity.service.ts`) — отдельный модуль без своих
+зависимостей: `TelegramModule` уже импортирует `UsersModule`, обратный импорт
+закольцевал бы граф (ADR-0013), `TelegramBotService` пишет туда имя бота при
+прогреве (`getMe`), `InviteLinkService` читает. По той же причине
+`JoinByInviteService` переехал из `api/src/auth/` в `api/src/users/`
+(`join-by-invite.service.ts`) — иначе `TelegramModule` не мог бы получить его
+для `/start`, не импортируя `AuthModule` целиком (тот уже импортирует
+`TelegramModule`); метод теперь возвращает `UserLean`, а не `MeDto` —
+маппинг в конкретный ответ (веб `toMeDto`, бот — текст) остаётся у
+вызывающего, не у сервиса.
+
+На стороне бота — третий payload `/start join_<code>` (после `exam_<attemptId>`,
+ADR-0023) в `StartHandler`, логика — в `join-invite-deep-link.ts`
+(файл-лимит 150 строк). **Уточнение 2026-09-15 (владелец, в тот же день):**
+смысл ссылки — новый ученик открывает её из канала и сразу в школе, поэтому
+незнакомцу (нет записи в `users`) с ВАЛИДНЫМ кодом бот заводит аккаунт из
+Telegram-идентичности апдейта (`telegramId`, `fullName(from)` —
+`TelegramAuthService.fullName`, тот же способ, что и первый вход через
+виджет на сайте, `UsersService.createFromTelegram`, `invited` без ролей) и
+сразу ведёт его через `JoinByInviteService.join()` в `active` — второго
+`/start` не требуется. НЕВАЛИДНЫЙ код и незнакомец — код проверяем
+`InviteLinkService.isValid()` ДО создания и по-прежнему НЕ заводим аккаунт
+(мусорные `/start` не должны плодить пользователей, SECURITY §2) — ответ
+`INVITE_LINK_INVALID_MESSAGE`. Известному человеку (уже есть запись в
+`users`) — тот же `JoinByInviteService.join()`: `invited` + верный код →
+`active` и `joinedViaInviteAt`, ответ «Вы в кабинете школы Сюань-Сюэ.
+Расписание и ссылки на занятия — здесь: `${PUBLIC_URL}`»; неверный код —
+`INVITE_LINK_INVALID_MESSAGE`; `blocked` — `ACCESS_MESSAGE`, тот же текст, что
+у остальных отказов бота.
+
 ## Альтернативы
 
 - Личные ссылки на каждого будущего ученика (учитель вводит email/имя заранее) —
@@ -74,12 +111,21 @@ teacher видит внутри экрана только карточку сс�
 пришли: N» на «Людях» (CLAUDE.md «Продуктовая фича = число в своём разделе»).
 
 Гейты: `invite-link.service.spec.ts` (rotate инвалидирует старую ссылку,
-read-after-write), `join-by-invite.service.spec.ts` (ветвления по статусу),
-`invite-link.e2e-spec.ts` (доступ admin и teacher — 200, ученик/помощник
-учителя/бухгалтер — 403, codeHash не в ответе), `auth-join.e2e-spec.ts`
-(invited→active read-after-write, неверный код, `blocked`, повтор на
-`active`, троттлинг check), `RequirePeopleAccess.test.tsx` и
-`AppNav.test.tsx` (роль admin/teacher видит «Ученики», остальные — нет),
-`PeopleScreen.teacher.test.tsx` (учитель не зовёт `GET /users`).
+read-after-write, `telegramUrl` собирается тем же кодом, что `url`),
+`join-by-invite.service.spec.ts` (ветвления по статусу), `invite-link.e2e-spec.ts`
+(доступ admin и teacher — 200, ученик/помощник учителя/бухгалтер — 403,
+codeHash не в ответе), `auth-join.e2e-spec.ts` (invited→active read-after-write
+и через сайт, и через бота, неверный код, `blocked`, повтор на `active`,
+троттлинг check), `RequirePeopleAccess.test.tsx` и `AppNav.test.tsx` (роль
+admin/teacher видит «Ученики», остальные — нет), `PeopleScreen.teacher.test.tsx`
+(учитель не зовёт `GET /users`), `InviteLinkCard.test.tsx` (строка «Для
+Telegram» только при `telegramUrl`, копируется независимо от «Для сайта»),
+`join-invite-deep-link.spec.ts` (незнакомец+валидный код создаёт и ведёт в
+active, незнакомец+невалидный код не создаёт, известный/верный/неверный
+код/`blocked`/без `PUBLIC_URL`, юнит с фейковым `ctx`), `start.handler.spec.ts`
+(describe «join_<code>», против настоящей Mongo, включая создание
+незнакомца), `telegram-webhook.e2e-spec.ts` (`/start join_<code>` через
+вебхук, read-after-write `GET /users`, включая незнакомый Telegram ID),
+`redact-paths.spec.ts` (`req.body.message.text` вебхука не в логах).
 `docs/SECURITY.md` §2 — третий путь в `active` без ручного подтверждения и
-кто управляет ссылкой.
+кто управляет ссылкой; `docs/PLAN.md` §6 и `docs/RUNBOOK.md` §5 — бот.

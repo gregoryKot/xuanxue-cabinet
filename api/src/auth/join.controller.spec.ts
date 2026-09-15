@@ -4,7 +4,7 @@
 import { Test } from '@nestjs/testing';
 import type { UserLean } from '../users/users.service';
 import { InviteLinkService } from '../users/invite-link.service';
-import { JoinByInviteService } from './join-by-invite.service';
+import { JoinByInviteService } from '../users/join-by-invite.service';
 import { JoinController } from './join.controller';
 
 const USER: UserLean = {

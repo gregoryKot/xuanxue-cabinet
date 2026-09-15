@@ -17,6 +17,12 @@ export const REDACT_PATHS: string[] = [
   // /auth/email/request) — capability-URL, тот же уровень, что email/hash.
   'req.body.code',
   'req.body.inviteCode',
+  // Тело апдейта Telegram-вебхука (POST /api/telegram/webhook) — тот же код
+  // ссылки-приглашения приходит текстом `/start join_<code>` (ADR-0030
+  // «Бот»), а не полем `code`/`inviteCode`; `*.text` (ниже) редактирует
+  // только двухуровневые пути (`broadcast.text`), сюда не достаёт —
+  // fast-redact `*` разворачивается на один сегмент за раз.
+  'req.body.message.text',
   // Подпись виджета Telegram Login (POST /auth/telegram) — не секрет после
   // проверки (её вычисляют из открытых полей и BOT_TOKEN, не наоборот), но
   // редакция дёшева: путь на два уровня (req.body.hash), *.hash ниже её не

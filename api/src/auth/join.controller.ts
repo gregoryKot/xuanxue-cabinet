@@ -10,9 +10,10 @@ import { DateTime } from 'luxon';
 import type { CheckInviteResultDto, MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { InviteLinkService } from '../users/invite-link.service';
+import { JoinByInviteService } from '../users/join-by-invite.service';
 import { AllowPending, CurrentUser, Public } from './auth.decorators';
 import { JoinByInviteDto } from './join-by-invite.dto';
-import { JoinByInviteService } from './join-by-invite.service';
+import { toMeDto } from './user.mapper';
 
 // POST /auth/join/check — до входа (@Public()), тот же профиль перебора
 // кода, что и у остальных публичных маршрутов входа. POST /auth/join сам —
@@ -40,7 +41,8 @@ export class JoinController {
     @Body() body: JoinByInviteDto,
     @CurrentUser() user: UserLean,
   ): Promise<MeDto> {
-    return this.joinByInviteService.join(user, body.code, DateTime.utc());
+    const joined = await this.joinByInviteService.join(user, body.code, DateTime.utc());
+    return toMeDto(joined);
   }
 
   // До входа: страница /join/<code> должна сказать «ссылка не действует»,

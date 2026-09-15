@@ -12,6 +12,7 @@ import type { MessageHandler } from './handlers/message.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { StartHandler } from './handlers/start.handler';
 import type { TopicCommandHandler } from './handlers/topic-command.handler';
+import { BotIdentityService } from './bot-identity.service';
 import {
   CALLBACK_UPDATE,
   CHAT_MEMBER_JOIN_UPDATE,
@@ -178,6 +179,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandler() as unknown as MenuCommandHandler,
       message as unknown as MessageHandler,
       fakeHandlerWithNow() as unknown as ExamCommandHandler,
+      new BotIdentityService(),
     );
     service.onApplicationBootstrap();
 
@@ -211,6 +213,7 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeHandler() as unknown as MenuCommandHandler,
         message as unknown as MessageHandler,
         fakeHandlerWithNow() as unknown as ExamCommandHandler,
+        new BotIdentityService(),
       );
       service.onApplicationBootstrap();
 
@@ -244,6 +247,7 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeHandler() as unknown as MenuCommandHandler,
         message as unknown as MessageHandler,
         fakeHandlerWithNow() as unknown as ExamCommandHandler,
+        new BotIdentityService(),
       );
       service.onApplicationBootstrap();
 
@@ -272,6 +276,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandler() as unknown as MenuCommandHandler,
       message as unknown as MessageHandler,
       fakeHandlerWithNow() as unknown as ExamCommandHandler,
+      new BotIdentityService(),
     );
     service.onApplicationBootstrap();
 
@@ -297,6 +302,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandler() as unknown as MenuCommandHandler,
       message as unknown as MessageHandler,
       fakeHandlerWithNow() as unknown as ExamCommandHandler,
+      new BotIdentityService(),
     );
     service.onApplicationBootstrap();
 
@@ -389,6 +395,7 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeHandler() as unknown as MenuCommandHandler,
       fakeHandlerWithNow() as unknown as MessageHandler,
       fakeHandlerWithNow() as unknown as ExamCommandHandler,
+      new BotIdentityService(),
     );
     service.onApplicationBootstrap();
 
@@ -412,6 +419,7 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeHandler() as unknown as MenuCommandHandler,
       fakeHandlerWithNow() as unknown as MessageHandler,
       fakeHandlerWithNow() as unknown as ExamCommandHandler,
+      new BotIdentityService(),
     );
     service.onApplicationBootstrap();
 
@@ -443,6 +451,7 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       menu as unknown as MenuCommandHandler,
       fakeHandlerWithNow() as unknown as MessageHandler,
       fakeHandlerWithNow() as unknown as ExamCommandHandler,
+      new BotIdentityService(),
     );
     service.onApplicationBootstrap();
 

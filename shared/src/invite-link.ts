@@ -8,13 +8,23 @@
  * (маршрут `/join/:code`). */
 export const INVITE_CODE_RE = /^[0-9a-f]{32}$/;
 
+/** Префикс payload `/start` бота для этой ссылки (ADR-0030 «Бот») —
+ * `t.me/<бот>?start=join_<code>`, отличает её от других deep-link'ов бота
+ * (`exam_<attemptId>`, ADR-0023). Собирается в InviteLinkService (сервер —
+ * источник формата), разбирается в start.handler.ts. */
+export const INVITE_TELEGRAM_START_PREFIX = 'join_';
+
 /**
- * Ответ `GET /users/invite-link` и `POST /users/invite-link` (только admin).
- * `url: null` — ссылку ещё ни разу не создавали, экран «Люди» показывает
- * кнопку «Создать ссылку» вместо самой ссылки.
+ * Ответ `GET /users/invite-link` и `POST /users/invite-link` (admin и
+ * teacher). `url: null` — ссылку ещё ни разу не создавали, экран «Люди»
+ * показывает кнопку «Создать ссылку» вместо самой ссылки. `telegramUrl` —
+ * та же ссылка через бота, `null` вместе с `url` или если имя бота ещё не
+ * известно (бот не прогрелся, тот же случай, что telegramBotUsername в
+ * AuthConfigDto).
  */
 export interface InviteLinkDto {
   url: string | null;
+  telegramUrl: string | null;
 }
 
 /** Тело `POST /auth/join` и `POST /auth/join/check` — код из адреса

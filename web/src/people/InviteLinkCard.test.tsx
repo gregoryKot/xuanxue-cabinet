@@ -76,6 +76,74 @@ describe('InviteLinkCard — ссылка есть', () => {
     expect(screen.getByRole('button', { name: 'Создать новую' })).toBeInTheDocument();
   });
 
+  // ADR-0030 «Бот»: telegramUrl — null, если бот ещё не прогрелся, вторая
+  // строка вообще не рисуется (не обещаем ссылку, которой нет).
+  it('без telegramUrl — строки «Для Telegram» нет', async () => {
+    mockWithUrl();
+    renderCard();
+    await screen.findByText(URL);
+
+    expect(screen.queryByText('Для Telegram')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Скопировать' })).toHaveLength(1);
+  });
+
+  it('с telegramUrl — вторая строка «Для Telegram», копируется независимо от первой', async () => {
+    const user = userEvent.setup();
+    const TELEGRAM_URL = 'https://t.me/xuanxue_bot?start=join_' + 'b'.repeat(32);
+    mockedApiFetch.mockResolvedValue({ url: URL, telegramUrl: TELEGRAM_URL });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    renderCard();
+    await screen.findByText(URL);
+
+    expect(screen.getByText('Для сайта')).toBeInTheDocument();
+    expect(screen.getByText('Для Telegram')).toBeInTheDocument();
+    expect(screen.getByText(TELEGRAM_URL)).toBeInTheDocument();
+
+    const [siteCopy, telegramCopy] = screen.getAllByRole('button', {
+      name: 'Скопировать',
+    });
+    await user.click(telegramCopy as HTMLElement);
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(TELEGRAM_URL));
+    // Скопирована только вторая строка — первая осталась «Скопировать».
+    expect(siteCopy).toHaveTextContent('Скопировать');
+  });
+
+  // Каждая строка — свой useCopyText (шапка файла): отказ на «Для Telegram»
+  // не должен трогать «Для сайта» — раньше был один общий copyError на
+  // карточку, теперь у каждой строки свой.
+  it('с telegramUrl — отказ на «Для Telegram» не задевает «Для сайта»', async () => {
+    const user = userEvent.setup();
+    const TELEGRAM_URL = 'https://t.me/xuanxue_bot?start=join_' + 'b'.repeat(32);
+    mockedApiFetch.mockResolvedValue({ url: URL, telegramUrl: TELEGRAM_URL });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    });
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- сохраняем ссылку только для restore ниже, `this` нативному DOM-методу не нужен
+    const originalExecCommand = document.execCommand;
+    document.execCommand = vi.fn().mockReturnValue(false);
+    renderCard();
+    await screen.findByText(URL);
+
+    const [, telegramCopy] = screen.getAllByRole('button', { name: 'Скопировать' });
+    await user.click(telegramCopy as HTMLElement);
+
+    expect(
+      await screen.findByText(
+        'Не удалось скопировать — выделите текст и скопируйте вручную.',
+      ),
+    ).toBeInTheDocument();
+    // Ошибка ровно одна — у строки «Для сайта» copy не вызывался, её ошибки нет.
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Скопировать' })).toHaveLength(2);
+    document.execCommand = originalExecCommand;
+  });
+
   it('«Создать новую» → подтверждение → read-after-write: новый url на месте старого', async () => {
     const user = userEvent.setup();
     const NEW_URL = 'https://xuanxue.su/join/' + 'c'.repeat(32);
