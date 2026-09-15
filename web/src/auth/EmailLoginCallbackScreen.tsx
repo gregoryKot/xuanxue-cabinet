@@ -4,20 +4,21 @@
 // сожгли бы его раньше пользователя. Логика запроса — useEmailLoginVerify.ts.
 // Уже вошедшего (открыл ссылку письма при активной сессии) уводит на
 // сохранённый адрес или домашний экран, не жёстко на /schedule (аудит L2).
+// Облик — та же колонка на бумаге, что у экрана входа (EntryColumn.tsx).
+import type { CSSProperties } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { EntryColumn } from '../components/EntryColumn';
+import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { useAuth } from './AuthProvider';
 import { EMAIL_LOGIN_TOKEN_RE } from './email-login-token-format';
-import {
-  loginCardStyle,
-  loginExplanationStyle,
-  loginPageStyle,
-  loginTitleStyle,
-} from './loginScreenStyles';
 import { postLoginPath } from './returnTo';
 import { useEmailLoginVerify } from './useEmailLoginVerify';
 
 const INCOMPLETE_LINK_MESSAGE = 'Ссылка неполная. Запросите новую на странице входа.';
+
+const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
+const fullWidthStyle: CSSProperties = { width: '100%' };
 
 export default function EmailLoginCallbackScreen() {
   const { status: authStatus, refresh } = useAuth();
@@ -47,17 +48,17 @@ export default function EmailLoginCallbackScreen() {
 
   if (!hasValidToken) {
     return (
-      <main style={loginPageStyle}>
-        <div style={loginCardStyle}>
-          <h1 style={loginTitleStyle}>Ссылка не подошла</h1>
-          <p role="alert" style={loginExplanationStyle}>
-            {INCOMPLETE_LINK_MESSAGE}
-          </p>
-          <Button onClick={goToLogin} style={{ width: '100%' }}>
-            На страницу входа
-          </Button>
-        </div>
-      </main>
+      <EntryColumn>
+        <h1 style={screenTitleStyle}>Ссылка не подошла</h1>
+        <p role="alert" style={screenExplanationStyle}>
+          {INCOMPLETE_LINK_MESSAGE}
+        </p>
+        {/* Контур, не киноварь: человек сюда не шёл, это тупик с одним
+            выходом, а не главное действие экрана (docs/adr/0031). */}
+        <Button variant="secondary" onClick={goToLogin} style={fullWidthStyle}>
+          На страницу входа
+        </Button>
+      </EntryColumn>
     );
   }
 
@@ -67,44 +68,40 @@ export default function EmailLoginCallbackScreen() {
   // уже потрачена.
   if (joinError) {
     return (
-      <main style={loginPageStyle}>
-        <div style={loginCardStyle}>
-          <h1 style={loginTitleStyle}>Вы вошли</h1>
-          <p role="alert" style={{ ...loginExplanationStyle, color: 'var(--danger)' }}>
-            {joinError}
-          </p>
-          <Button onClick={continueToSchedule} style={{ width: '100%' }}>
-            Перейти в кабинет
-          </Button>
-        </div>
-      </main>
+      <EntryColumn>
+        <h1 style={screenTitleStyle}>Вы вошли</h1>
+        <p role="alert" style={errorTextStyle}>
+          {joinError}
+        </p>
+        <Button onClick={continueToSchedule} style={fullWidthStyle}>
+          Перейти в кабинет
+        </Button>
+      </EntryColumn>
     );
   }
 
   return (
-    <main style={loginPageStyle}>
-      <div style={loginCardStyle}>
-        <h1 style={loginTitleStyle}>Подтвердите вход</h1>
-        <p style={loginExplanationStyle}>Нажмите «Войти», чтобы открыть кабинет.</p>
-        {error ? (
-          <>
-            <p role="alert" style={{ color: 'var(--danger)', margin: 0 }}>
-              {error}
-            </p>
-            <Button variant="secondary" onClick={goToLogin} style={{ width: '100%' }}>
-              Запросить новую
-            </Button>
-          </>
-        ) : (
-          <Button
-            pending={verifyStatus === 'pending'}
-            onClick={() => void verify(token)}
-            style={{ width: '100%' }}
-          >
-            Войти
+    <EntryColumn>
+      <h1 style={screenTitleStyle}>Подтвердите вход</h1>
+      <p style={screenExplanationStyle}>Нажмите «Войти», чтобы открыть кабинет.</p>
+      {error ? (
+        <>
+          <p role="alert" style={errorTextStyle}>
+            {error}
+          </p>
+          <Button variant="secondary" onClick={goToLogin} style={fullWidthStyle}>
+            Запросить новую
           </Button>
-        )}
-      </div>
-    </main>
+        </>
+      ) : (
+        <Button
+          pending={verifyStatus === 'pending'}
+          onClick={() => void verify(token)}
+          style={fullWidthStyle}
+        >
+          Войти
+        </Button>
+      )}
+    </EntryColumn>
   );
 }

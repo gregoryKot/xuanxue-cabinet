@@ -65,7 +65,7 @@ describe('App', () => {
 
     renderAt('/');
 
-    expect(await screen.findByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
+    expect(await screen.findByText('Кабинет школы')).toBeInTheDocument();
     expect(
       await screen.findByText(
         'Вход через Telegram не настроен. Напишите администратору школы.',
@@ -318,9 +318,7 @@ describe('App', () => {
 
     renderAt(`/join/${'a'.repeat(32)}`);
 
-    expect(
-      await screen.findByText('Вас пригласили в кабинет школы Сюань-Сюэ'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Вас пригласили в школу')).toBeInTheDocument();
   });
 
   it('гость на /join/:code с недействующим кодом — «Ссылка не подошла»', async () => {
@@ -341,6 +339,6 @@ describe('App', () => {
 
     renderAt('/что-то-неизвестное');
 
-    expect(await screen.findByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
+    expect(await screen.findByText('Кабинет школы')).toBeInTheDocument();
   });
 });

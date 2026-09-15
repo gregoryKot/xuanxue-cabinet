@@ -81,9 +81,7 @@ describe('JoinScreen — сеть недоступна при проверке',
     await user.click(screen.getByRole('button', { name: 'Повторить' }));
 
     await waitFor(() =>
-      expect(
-        screen.getByText('Вас пригласили в кабинет школы Сюань-Сюэ'),
-      ).toBeInTheDocument(),
+      expect(screen.getByText('Вас пригласили в школу')).toBeInTheDocument(),
     );
   });
 });
@@ -101,9 +99,7 @@ describe('JoinScreen — ссылка действует, гость', () => {
 
     renderScreen();
 
-    expect(
-      await screen.findByText('Вас пригласили в кабинет школы Сюань-Сюэ'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Вас пригласили в школу')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Войти через Telegram' }),
     ).toBeInTheDocument();

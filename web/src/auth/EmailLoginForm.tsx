@@ -1,14 +1,17 @@
-// Форма «Нет Telegram? Войдите по почте» (ADR-0029) — логика в
-// useEmailLoginRequest.ts, этот компонент только рендерит по её состоянию
-// (CLAUDE.md «Логика вне компонентов»). Показывается на LoginScreen.tsx
-// только при config.emailLoginEnabled — без ключа Resend сервер ответит 503.
+// Вход по почте (ADR-0029) — второй путь под линией «или по почте» на
+// LoginScreen.tsx и JoinScreen.tsx. Логика в useEmailLoginRequest.ts, этот
+// компонент только рендерит по её состоянию (CLAUDE.md «Логика вне
+// компонентов»). Показывается только при config.emailLoginEnabled — без
+// ключа Resend сервер ответит 503.
 import { useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { useEmailLoginRequest } from './useEmailLoginRequest';
 
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
+const sentTextStyle = { margin: 0 };
 
 interface EmailLoginFormProps {
   /** Код ссылки-приглашения школы (ADR-0030), когда форма открыта с
@@ -32,20 +35,20 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
   if (sentOnce) {
     return (
       <div style={formStyle}>
-        <p style={{ margin: 0 }}>
-          Письмо отправлено на {email}. Откройте ссылку из него, она работает 15 минут. Не
+        <p style={sentTextStyle}>
+          Письмо ушло на {email}. Откройте ссылку из него, она работает 15 минут. Не
           пришло — проверьте «Спам».
         </p>
         <FormServerError error={error ? { message: error } : null} />
-        <Button
-          type="button"
-          variant="secondary"
-          pending={status === 'pending'}
+        {/* Текстовая ссылка, а не кнопка: повтор отправки — действие
+            второго плана, контурная кнопка во всю ширину звала бы нажать
+            её первой (docs/adr/0031). */}
+        <TextLinkButton
+          disabled={status === 'pending'}
           onClick={() => void request(email)}
-          style={{ width: '100%' }}
         >
           Отправить ещё раз
-        </Button>
+        </TextLinkButton>
       </div>
     );
   }
@@ -72,7 +75,7 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
         disabled={!email.trim()}
         style={{ width: '100%' }}
       >
-        Получить ссылку
+        Получить ссылку для входа
       </Button>
     </form>
   );
