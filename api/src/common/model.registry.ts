@@ -83,11 +83,7 @@ interface ModelDefinition {
 export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
   { name: ClassRecord.name, schema: ClassSchema, fieldPolicy: CLASS_FIELD_POLICY },
   { name: LessonRecord.name, schema: LessonSchema, fieldPolicy: LESSON_FIELD_POLICY },
-  {
-    name: ChannelRecord.name,
-    schema: ChannelSchema,
-    fieldPolicy: CHANNEL_FIELD_POLICY,
-  },
+  { name: ChannelRecord.name, schema: ChannelSchema, fieldPolicy: CHANNEL_FIELD_POLICY },
   {
     name: BroadcastRecord.name,
     schema: BroadcastSchema,
@@ -103,11 +99,7 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     schema: ExamItemSchema,
     fieldPolicy: EXAM_ITEM_FIELD_POLICY,
   },
-  {
-    name: ExamRecord.name,
-    schema: ExamSchema,
-    fieldPolicy: EXAM_FIELD_POLICY,
-  },
+  { name: ExamRecord.name, schema: ExamSchema, fieldPolicy: EXAM_FIELD_POLICY },
   {
     name: ExamAttemptRecord.name,
     schema: ExamAttemptSchema,

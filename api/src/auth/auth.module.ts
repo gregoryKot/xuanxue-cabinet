@@ -21,6 +21,7 @@ import { EmailAuthService } from './email-auth.service';
 import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
 import { EmailLoginTokenService } from './email-login-token.service';
 import { JoinByInviteService } from './join-by-invite.service';
+import { JoinController } from './join.controller';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 
@@ -45,7 +46,7 @@ import { TelegramAuthService } from './telegram-auth.service';
       { name: EmailLoginTokenRecord.name, schema: EmailLoginTokenSchema },
     ]),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, JoinController],
   providers: [
     AuthService,
     TelegramAuthService,

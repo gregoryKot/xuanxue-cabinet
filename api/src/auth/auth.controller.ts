@@ -1,9 +1,10 @@
 // /auth/me, /auth/logout и /auth/telegram — под глобальным AuthGuard.
-// /auth/logout, /auth/telegram и /auth/join/check помечены @Public(): выход
-// обязан чистить cookie даже без валидной сессии, вход — способ её получить,
-// проверка ссылки-приглашения (ADR-0030) — до входа, ей ещё нечего охранять.
-// CSRF-проверка (x-requested-with) при этом всё равно действует, см.
-// auth.guard.ts.
+// /auth/logout и /auth/telegram помечены @Public(): выход обязан чистить
+// cookie даже без валидной сессии, вход — способ её получить. CSRF-проверка
+// (x-requested-with) при этом всё равно действует, см. auth.guard.ts.
+// POST /auth/join и /auth/join/check (ADR-0030) — в JoinController рядом:
+// оба контроллера вместе не влезали бы в один файл до 150 строк
+// (file-size-ratchet).
 import {
   Body,
   Controller,
@@ -17,9 +18,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
-import type { AuthConfigDto, CheckInviteResultDto, MeDto } from '@xuanxue/shared';
+import type { AuthConfigDto, MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
-import { InviteLinkService } from '../users/invite-link.service';
 import { SettingsService } from '../settings/settings.service';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { botIdFromToken } from './bot-id-from-token';
@@ -27,8 +27,6 @@ import { AllowPending, CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { EmailAuthService } from './email-auth.service';
-import { JoinByInviteDto } from './join-by-invite.dto';
-import { JoinByInviteService } from './join-by-invite.service';
 import { parseTelegramLoginBody } from './parse-telegram-login-body';
 import { RequestEmailLoginDto } from './request-email-login.dto';
 import { TelegramAuthService } from './telegram-auth.service';
@@ -41,14 +39,6 @@ import { VerifyEmailLoginDto } from './verify-email-login.dto';
 // злоупотребления (перебор), SECURITY §2.
 const TELEGRAM_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 const EMAIL_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
-// POST /auth/join/check — до входа (@Public()), тот же профиль перебора
-// кода, что и у остальных публичных маршрутов входа. POST /auth/join сам —
-// без отдельного Throttle: у нас нет верифицированной идентичности для
-// троттлинга сессии (нет getTracker() поверх сессии/initData нигде в
-// проекте, CLAUDE.md №4), а бакетировать вошедшего по IP отдельным лимитом
-// не даёт ничего сверх общего ThrottlerGuard (120/мин/IP, AppModule) — код
-// приглашения 128 бит, перебор не грозит ни при каком разумном лимите.
-const INVITE_CHECK_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
 @Controller('auth')
 export class AuthController {
@@ -59,8 +49,6 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
     private readonly telegramBotService: TelegramBotService,
-    private readonly inviteLinkService: InviteLinkService,
-    private readonly joinByInviteService: JoinByInviteService,
   ) {}
 
   // Без сессии: экран входа и StudentScreen спрашивают конфигурацию до
@@ -145,29 +133,6 @@ export class AuthController {
     );
     res.setHeader('Set-Cookie', cookie);
     return toMeDto(user);
-  }
-
-  // @AllowPending: ссылка-приглашение (ADR-0030) — третий путь из invited в
-  // active, наравне с ручным подтверждением и членством в группе. Вошедший
-  // active открывает её же — ответ тот же, без изменений.
-  @AllowPending()
-  @Post('join')
-  @HttpCode(HttpStatus.OK)
-  async join(
-    @Body() body: JoinByInviteDto,
-    @CurrentUser() user: UserLean,
-  ): Promise<MeDto> {
-    return this.joinByInviteService.join(user, body.code, DateTime.utc());
-  }
-
-  // До входа: страница /join/<code> должна сказать «ссылка не действует»,
-  // не гнать человека логиниться зря (ADR-0030).
-  @Public()
-  @Throttle(INVITE_CHECK_THROTTLE)
-  @Post('join/check')
-  @HttpCode(HttpStatus.OK)
-  async checkInvite(@Body() body: JoinByInviteDto): Promise<CheckInviteResultDto> {
-    return { valid: await this.inviteLinkService.isValid(body.code) };
   }
 
   @Public()

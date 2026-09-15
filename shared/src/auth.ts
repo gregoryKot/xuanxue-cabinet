@@ -62,11 +62,9 @@ export interface MeDto {
 export const PENDING_APPROVAL_MESSAGE =
   'Вы вошли, осталось дождаться подтверждения. Учитель откроет доступ, обычно в тот же день.';
 
-/** `status: 'blocked'` (тоже роль без прав) и несовпадение роли — один и тот
- * же отказ и в вебе (`AuthGuard`), и в боте (`BotUserAccessService`, слой
- * 4б.2/ADR-0024): единственный источник текста, не выдумываем формулировку
- * дважды по каналам (CLAUDE.md «Обращение — только "вы"»). За что именно
- * заблокирован человек — не объясняем (докладка не для него). */
+/** `status: 'blocked'` и несовпадение роли — один отказ и в вебе (`AuthGuard`),
+ * и в боте (`BotUserAccessService`, ADR-0024): единственный источник текста
+ * (CLAUDE.md «Обращение — только "вы"»). За что заблокирован — не объясняем. */
 export const ACCESS_MESSAGE = 'Доступа нет. Обратитесь к администратору школы.';
 
 /**
@@ -86,10 +84,9 @@ export interface TelegramLoginInput {
 }
 
 /** Тело `POST /auth/email/request` (ADR-0005, ADR-0029) — ответ один и тот
- * же для известного и неизвестного email (SECURITY §2). `inviteCode` —
- * опциональный код ссылки-приглашения (ADR-0030), пришедший со страницы
- * `/join/:code`: неверный код тут молча игнорируется — письмо всё равно
- * уходит, существование ссылок наружу не раскрываем. */
+ * же для известного и неизвестного email (SECURITY §2). `inviteCode` — код
+ * со страницы `/join/:code` (ADR-0030, invite-link.ts): неверный молча
+ * игнорируется, письмо всё равно уходит. */
 export interface RequestEmailLoginInput {
   email: string;
   inviteCode?: string;
@@ -125,21 +122,17 @@ export const EMAIL_LOGIN_SEND_FAILED_MESSAGE =
  * почты тогда скрыта, а не зовёт впустую 503. */
 export interface AuthConfigDto {
   telegramBotId?: number;
-  /** Имя бота (`@имя` без собачки) — из него кабинет собирает ссылку в чат
-   * с ботом: `t.me/<имя>?start=exam_<attemptId>` для отправки видео
-   * экзамена (ADR-0023). Нет бота или Telegram не ответил при старте —
-   * поля нет, и кнопка не показывается. */
+  /** Имя бота (`@имя` без собачки) — из него кабинет собирает ссылку в чат:
+   * `t.me/<имя>?start=exam_<attemptId>` (ADR-0023). Нет бота или Telegram не
+   * ответил при старте — поля нет, кнопки не будет. */
   telegramBotUsername?: string;
   schoolSiteUrl?: string;
   emailLoginEnabled: boolean;
 }
 
-/**
- * Заголовок CSRF-защиты (SECURITY §2, ADR-0012): обязателен для любого
- * мутирующего запроса, кроме помеченных `@SkipCsrf()` (вебхук Telegram).
- * Кросс-доменная HTML-форма его не поставит — обычный `fetch` из web ставит
- * всегда (см. http.ts).
- */
+/** Заголовок CSRF-защиты (SECURITY §2, ADR-0012): обязателен для любого
+ * мутирующего запроса, кроме `@SkipCsrf()` (вебхук Telegram) — кросс-доменная
+ * форма его не поставит, `fetch` из web ставит всегда (см. http.ts). */
 export const CSRF_HEADER = 'x-requested-with';
 
 /** Методы, которые CSRF-гвард в api (`auth/csrf.ts`) и http-клиент в web

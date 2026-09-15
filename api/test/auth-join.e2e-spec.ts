@@ -7,7 +7,7 @@
 // auth-telegram.e2e-spec.ts. /auth/join — без отдельного Throttle (только
 // общий ThrottlerGuard 120/мин/IP, см. комментарий в auth.controller.ts).
 import request from 'supertest';
-import type { ApiErrorBody, InviteLinkDto, MeDto } from '@xuanxue/shared';
+import type { ApiErrorBody, InviteLinkDto, MeDto, UserDto } from '@xuanxue/shared';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 import { createUserWithSession } from './e2e-support/session';
@@ -55,9 +55,13 @@ describe('POST /auth/join, /auth/join/check (e2e)', () => {
       .send({ code });
   }
 
-  it('invited + верный код — active, GET /auth/me тоже active (read-after-write)', async () => {
+  // Read-after-write дважды (CLAUDE.md «Тесты»): GET /auth/me — статус
+  // active видит сам вошедший; GET /users (admin) — joinedViaInviteAt
+  // (markJoinedViaInvite, пишется отдельным вызовом от approve()) — по нему
+  // строится «По ссылке пришли» на «Людях» (formatJoinedViaInviteCount.ts).
+  it('invited + верный код — active, GET /auth/me и GET /users это подтверждают', async () => {
     const code = await currentInviteCode();
-    const { cookie } = await createUserWithSession(testApp.app, {
+    const { cookie, userId } = await createUserWithSession(testApp.app, {
       name: 'Ждёт подтверждения',
       roles: [],
       status: 'invited',
@@ -69,6 +73,11 @@ describe('POST /auth/join, /auth/join/check (e2e)', () => {
 
     const me = await request(server()).get('/api/auth/me').set('Cookie', cookie);
     expect((me.body as MeDto).status).toBe('active');
+
+    const adminCookie = await sessionCookieFor(testApp.app, ['admin']);
+    const list = await request(server()).get('/api/users').set('Cookie', adminCookie);
+    const person = (list.body as UserDto[]).find((u) => u.id === userId);
+    expect(person?.joinedViaInvite).toBe(true);
   });
 
   it('неверный код — 401', async () => {

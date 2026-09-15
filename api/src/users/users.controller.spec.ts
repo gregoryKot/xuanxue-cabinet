@@ -65,6 +65,16 @@ describe('UsersController', () => {
     ]);
   });
 
+  it('approve() передаёт id из пути в UserRolesService.approve() и маппит ответ', async () => {
+    const approve = jest.fn().mockResolvedValue({ ...USER_LEAN, status: 'active' });
+    const controller = await buildController({ approve });
+
+    const result = await controller.approve('u1');
+
+    expect(approve).toHaveBeenCalledWith('u1');
+    expect(result.status).toBe('active');
+  });
+
   it('updateRoles() передаёт id из пути, роли из тела и id вызывающего из сессии', async () => {
     const updateRoles = jest.fn().mockResolvedValue(USER_LEAN);
     const controller = await buildController({ updateRoles });
