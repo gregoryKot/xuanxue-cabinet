@@ -7,8 +7,11 @@ import type { CSSProperties, ReactNode } from 'react';
 export const inputStyle: CSSProperties = {
   minHeight: 44,
   padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid var(--border)',
+  borderRadius: 3,
+  // Приглушённая рамка контролов (не --line — та для разделителей/рамок
+  // карточек, тут нужнее чуть заметнее): поле стоит на белом, страница —
+  // на тёплой бумаге почти того же тона, боковую рамку не заменить фоном.
+  border: '1px solid var(--control-border)',
   font: 'inherit',
   background: '#fff',
   color: 'inherit',

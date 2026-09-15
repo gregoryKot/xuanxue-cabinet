@@ -2,6 +2,11 @@
 // один компонент»): цель ≥44×44 (CLAUDE.md «Доступность»), `pending` —
 // единственное разрешённое место спиннера/занятости (aria-busy, не текст —
 // подпись кнопки остаётся видимой и понятной).
+//
+// Роли различает не только цвет (низкое зрение, чёрно-белая печать): у
+// первичной — заливка, у вторичной — контур без заливки, у опасной — нет ни
+// заливки, ни контура, только текст. Три разных силуэта, не три оттенка
+// одной формы (docs/adr/0031-visual-direction-quiet-and-noble.md).
 import type { ButtonHTMLAttributes, CSSProperties } from 'react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
@@ -10,7 +15,7 @@ const base: CSSProperties = {
   minHeight: 44,
   minWidth: 44,
   padding: '10px 18px',
-  borderRadius: 8,
+  borderRadius: 3,
   border: '1px solid transparent',
   font: 'inherit',
   fontWeight: 600,
@@ -18,16 +23,18 @@ const base: CSSProperties = {
 };
 
 const variants: Record<ButtonVariant, CSSProperties> = {
-  primary: { background: 'var(--accent)', color: 'var(--accent-contrast)' },
+  // Единственное место на экране, где заливка — киноварь (правило акцента,
+  // CLAUDE.md «Правило проекта»): главное действие экрана.
+  primary: { background: 'var(--cinnabar)', color: 'var(--cinnabar-contrast)' },
   secondary: {
     background: 'transparent',
-    color: 'var(--accent)',
-    borderColor: 'var(--border)',
+    color: 'var(--ink)',
+    borderColor: 'var(--control-border)',
   },
   danger: {
     background: 'transparent',
     color: 'var(--danger)',
-    borderColor: 'var(--danger)',
+    borderColor: 'transparent',
   },
 };
 
