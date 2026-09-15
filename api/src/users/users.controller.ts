@@ -47,13 +47,19 @@ export class UsersController {
   }
 
   // Ссылка-приглашение школы (ADR-0030) — литеральный сегмент, не `:id`,
-  // коллизии с маршрутами ниже нет (check-route-collisions.mjs).
+  // коллизии с маршрутами ниже нет (check-route-collisions.mjs). Доступна
+  // admin и teacher (уточнение владельца 2026-09-15: ссылку раздаёт и
+  // учитель) — тот же приём переопределения `@Roles('admin')` класса, что у
+  // `listTeachers()` выше; помощник учителя и бухгалтер сюда не входят —
+  // список ролей называет владелец явно, не общее «учитель = помощник».
   @Get('invite-link')
+  @Roles('teacher', 'admin')
   async getInviteLink(): Promise<InviteLinkDto> {
     return this.inviteLinkService.getCurrent();
   }
 
   @Post('invite-link')
+  @Roles('teacher', 'admin')
   @HttpCode(200)
   async rotateInviteLink(@CurrentUser() currentUser: UserLean): Promise<InviteLinkDto> {
     return this.inviteLinkService.rotate(currentUser.id);

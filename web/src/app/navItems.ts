@@ -6,14 +6,16 @@
 // заводится внутри своего раздела, а не пятым пунктом сюда
 // (docs/adr/0025-navigation-by-domain.md).
 import type { ComponentType } from 'react';
+import type { UserRole } from '@xuanxue/shared';
 import { BroadcastsIcon, ExamsIcon, PeopleIcon, PlanningIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
   label: string;
   Icon: ComponentType;
-  /** Только для админа (GET /users под `@Roles('admin')`, не трогаем). */
-  adminOnly?: boolean;
+  /** Пункт виден только с одной из перечисленных ролей; без поля — виден
+   * всем. `/people` — admin и teacher (RequirePeopleAccess, ADR-0030). */
+  roles?: UserRole[];
   /** Дочерние маршруты раздела — по ним `activeSectionPath` подсвечивает
    * пункт меню, когда открыт не сам раздел, а его подэкран. */
   childPaths: string[];
@@ -33,7 +35,13 @@ export const NAV_ITEMS: NavItem[] = [
     Icon: ExamsIcon,
     childPaths: ['/exam-items', '/grading'],
   },
-  { to: '/people', label: 'Ученики', Icon: PeopleIcon, adminOnly: true, childPaths: [] },
+  {
+    to: '/people',
+    label: 'Ученики',
+    Icon: PeopleIcon,
+    roles: ['admin', 'teacher'],
+    childPaths: [],
+  },
 ];
 
 /** Какой пункт меню подсветить для текущего пути — сам раздел или один из

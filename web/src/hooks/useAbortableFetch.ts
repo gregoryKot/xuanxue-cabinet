@@ -13,6 +13,14 @@ export interface UseAbortableFetchResult<T> {
   reload: () => Promise<void>;
 }
 
+export interface UseAbortableFetchOptions {
+  /** По умолчанию `true`. `false` — хук не запрашивает данные сам при
+   * монтировании (например, `usePeople({ enabled: isAdmin })`, ADR-0030:
+   * учитель видит `/people`, но список учеников — только admin, и звать
+   * `GET /users` от его имени незачем — сервер всё равно ответит 403). */
+  enabled?: boolean;
+}
+
 /**
  * `load` вызывается заново на каждый `reload()` с актуальным `AbortSignal`;
  * держим последнюю версию в ref, а не в зависимостях `useCallback` — иначе
@@ -22,10 +30,12 @@ export interface UseAbortableFetchResult<T> {
 export function useAbortableFetch<T>(
   load: (signal: AbortSignal) => Promise<T>,
   fallbackErrorMessage: string,
+  options: UseAbortableFetchOptions = {},
 ): UseAbortableFetchResult<T> {
+  const { enabled = true } = options;
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const requestId = useRef(0);
   const abortController = useRef<AbortController | null>(null);
   const loadRef = useRef(load);
@@ -54,9 +64,10 @@ export function useAbortableFetch<T>(
   }, [fallbackErrorMessage]);
 
   useEffect(() => {
+    if (!enabled) return;
     void reload();
     return () => abortController.current?.abort();
-  }, [reload]);
+  }, [reload, enabled]);
 
   return { data, loading, error, reload };
 }

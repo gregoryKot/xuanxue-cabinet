@@ -540,15 +540,19 @@ broadcast-journal.ts`) — окно обязательно и не шире `JOU
    администратора нельзя и удалить. **Реализовано** — `GET /users`,
    `PATCH /users/:id`, `DELETE /users/:id` (`api/src/users/`), экран
    `web/src/people/PeopleScreen.tsx`; четвёртый пункт навигации (`navItems.ts`,
-   `adminOnly: true`), маршрут `/people` под `RequireAdmin` — раньше был
-   скрытой ссылкой «Люди» на «Сводке», теперь полноценный раздел
+   `roles: ['admin', 'teacher']` — до уточнения ниже был `adminOnly: true`),
+   маршрут `/people` под `RequirePeopleAccess` — раньше был скрытой ссылкой
+   «Люди» на «Сводке», теперь полноценный раздел
    (docs/adr/0025-navigation-by-domain.md).
 
    **Ссылка-приглашение школы** (решение владельца 2026-09-15, ADR-0030) —
    третий путь `invited` → `active`, без ручного подтверждения и без
    членства в группе: одна ссылка `${PUBLIC_URL}/join/<code>` на школу,
    «Создать новую» делает прежнюю недействительной (тот же приём — отзыв при
-   утечке). **Реализовано на API** — `GET/POST /users/invite-link` (admin,
+   утечке). Управляют ссылкой admin и teacher (уточнение владельца
+   2026-09-15 — ссылку раздаёт и учитель, не только админ; помощник учителя
+   и бухгалтер — нет). **Реализовано на API** — `GET/POST /users/invite-link`
+   (`@Roles('teacher', 'admin')`, тот же приём, что у `GET /users/teachers`,
    `InviteLinkDto { url: string | null }`), `POST /auth/join` (вошедший,
    включая `invited`, переиспользует `UserRolesService.approve()`),
    `POST /auth/join/check` (`@Public()`, до входа). `POST /auth/email/request`

@@ -60,9 +60,10 @@ describe('AppNav — раскладка', () => {
   });
 });
 
-describe('AppNav — пункты и роль (отзыв владельца 2026-09-12)', () => {
-  it('не-админ — три пункта, «Ученики» скрыт', () => {
-    renderNav(true, TEACHER);
+describe('AppNav — пункты и роль (отзыв владельца 2026-09-12, уточнение ADR-0030)', () => {
+  it('ученик без роли — три пункта, «Ученики» скрыт', () => {
+    const student: MeDto = { ...TEACHER, roles: [] };
+    renderNav(true, student);
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     const labels = screen
@@ -75,6 +76,15 @@ describe('AppNav — пункты и роль (отзыв владельца 202
 
   it('админ — четыре пункта, «Ученики» последним', () => {
     renderNav(true, ADMIN);
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+  });
+
+  // ADR-0030 (уточнение владельца 2026-09-15): ссылку-приглашение раздаёт и
+  // учитель — «Ученики» открыт ему тоже, не только admin.
+  it('учитель — тоже видит «Ученики» (ADR-0030, ссылка-приглашение)', () => {
+    renderNav(true, TEACHER);
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
