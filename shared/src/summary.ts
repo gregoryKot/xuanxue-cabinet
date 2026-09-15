@@ -1,5 +1,6 @@
 // DTO и константы API сводки школы (`/summary`, docs/PLAN.md §6): числа для
-// админа/учителя (CLAUDE.md «Продуктовая фича = число в „Сводке“»).
+// админа/учителя (CLAUDE.md «Продуктовая фича = число в своём разделе»,
+// ADR-0025).
 export interface SummaryPeriod {
   from: string;
   to: string;

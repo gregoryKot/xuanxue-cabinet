@@ -1,7 +1,7 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок — CLAUDE.md
 // «Тесты»): только опубликованные формы, положение ученика по каждой
 // (attemptsUsed/lastAttempt), владение по userId, дедлайн закрывается тем же
-// правилом, что у /attempts (ТЗ student-api.md, «GET /api/me/exams»).
+// правилом, что у /attempts (ТЗ docs/PLAN.md §11, «GET /api/me/exams»).
 import { DateTime } from 'luxon';
 import {
   AUTHOR_ID,

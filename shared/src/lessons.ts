@@ -129,6 +129,6 @@ export interface ListMyLessonsQuery {
 
 /** Лимит списка «мои занятия» — своя пара, не LIST_LIMIT_DEFAULT/MAX
  * (shared/src/classes.ts): ученику короткий список на экран, не окно
- * планирования учителя (ТЗ student-api.md). */
+ * планирования учителя (ТЗ docs/PLAN.md §11). */
 export const MY_LESSONS_LIMIT_DEFAULT = 10;
 export const MY_LESSONS_LIMIT_MAX = 50;

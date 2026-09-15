@@ -23,7 +23,7 @@ import { MyLessonsService } from './my-lessons.service';
 @Module({
   // UserModelModule — update() проверяет leaderId через assertTeacherExists
   // (аудит В4), тот же приём, что у ClassesModule. ClassesModule даёт и
-  // ClassRecord для MyLessonsService (`/me/lessons`, ТЗ student-api.md).
+  // ClassRecord для MyLessonsService (`/me/lessons`, ТЗ docs/PLAN.md §11).
   imports: [LessonModelModule, ClassesModule, BroadcastsModule, UserModelModule],
   controllers: [LessonsController, MyLessonsController],
   providers: [LessonsService, MyLessonsService],
