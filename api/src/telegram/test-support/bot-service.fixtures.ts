@@ -80,6 +80,18 @@ export const CHAT_MEMBER_UPDATE = {
   },
 } as unknown as Update;
 
+// chat_member — статус человека, не бота (другой хендлер, ADR-0026 п.2).
+export const CHAT_MEMBER_JOIN_UPDATE = {
+  update_id: 6,
+  chat_member: {
+    chat: { id: -100555, type: 'group', title: 'Ученики' },
+    from: { id: 10, is_bot: false, first_name: 'Дима' },
+    date: 0,
+    old_chat_member: { user: { id: 42, is_bot: false }, status: 'left' },
+    new_chat_member: { user: { id: 42, is_bot: false }, status: 'member' },
+  },
+} as unknown as Update;
+
 export const START_UPDATE = {
   update_id: 2,
   message: {

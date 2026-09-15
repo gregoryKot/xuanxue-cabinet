@@ -2,6 +2,11 @@
 // telegram-login.ts; сессия и cookie — AuthService.issueSession, тот же
 // узел, что и у остальных путей входа (ADR-0012); UserRecord — только через
 // UsersService (CLAUDE.md: контроллер/сервис не лезут в Mongoose напрямую).
+// `invited`-человек, вошедший ДО того, как его добавили в группу учеников,
+// не застревает там навсегда (CLAUDE.md «Ноль нагрузки на ученика»): каждый
+// следующий вход перепроверяет членство тем же кодом, что и первый
+// (StudentMembershipApprovalService — общий с ChatMemberJoinHandler,
+// который ловит момент вступления апдейтом chat_member, ADR-0026).
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
@@ -13,6 +18,7 @@ import {
 } from '@xuanxue/shared';
 import { GroupMembershipService } from '../channels/group-membership.service';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
+import { StudentMembershipApprovalService } from '../users/student-membership-approval.service';
 import { UsersService, type UserLean } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { isValidTelegramLogin } from './telegram-login';
@@ -34,6 +40,7 @@ export class TelegramAuthService {
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
     private readonly groupMembership: GroupMembershipService,
+    private readonly membershipApproval: StudentMembershipApprovalService,
   ) {}
 
   /** `input` — типизированные поля (id, имя) для создания/поиска
@@ -52,7 +59,9 @@ export class TelegramAuthService {
     }
 
     const existing = await this.usersService.findByTelegramId(input.id);
-    const user = existing ?? (await this.createUser(input));
+    const user = existing
+      ? await this.membershipApproval.confirmIfMember(existing)
+      : await this.createUser(input);
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 
     await this.usersService.touchLogin(user.id, now);
@@ -81,8 +90,11 @@ export class TelegramAuthService {
    * Первый админ — исключение: подтверждать его некому. Остальные входят
    * сразу `active`, если уже состоят в группе учеников школы в Telegram —
    * подтверждение не должно ложиться на ученика (владелец 2026-09-12,
-   * ADR-0026, CLAUDE.md «Ноль нагрузки на ученика»). Проверка членства —
-   * только здесь, для нового человека: у существующего статус не трогаем. */
+   * ADR-0026, CLAUDE.md «Ноль нагрузки на ученика»). Для нового человека
+   * группу проверяем прямо здесь (создавать документ ещё не с чем
+   * подтверждать); у существующего того же статуса — та же проверка, но
+   * через `StudentMembershipApprovalService.confirmIfMember` в `login()`
+   * выше, на каждый следующий вход, а не только на первый. */
   private async statusForNewUser(
     telegramId: number,
     isBootstrapAdmin: boolean,
