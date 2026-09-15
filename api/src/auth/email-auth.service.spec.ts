@@ -99,6 +99,23 @@ function buildService(options: BuildOptions = {}): EmailAuthService {
   );
 }
 
+describe('EmailAuthService.isEnabled', () => {
+  it('все три переменные заданы — true', () => {
+    const service = buildService({ config: fakeConfig(AVAILABLE_CONFIG) });
+    expect(service.isEnabled()).toBe(true);
+  });
+
+  it.each(['RESEND_API_KEY', 'MAIL_FROM', 'PUBLIC_URL'])(
+    'нет %s — false',
+    (missingKey) => {
+      const service = buildService({
+        config: fakeConfig({ ...AVAILABLE_CONFIG, [missingKey]: undefined }),
+      });
+      expect(service.isEnabled()).toBe(false);
+    },
+  );
+});
+
 describe('EmailAuthService.requestLink', () => {
   it.each(['RESEND_API_KEY', 'MAIL_FROM', 'PUBLIC_URL'])(
     'нет %s — NotAvailableError, токен не выпускается',

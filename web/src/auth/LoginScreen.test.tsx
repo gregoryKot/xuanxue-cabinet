@@ -225,6 +225,60 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
   });
 });
 
+describe('LoginScreen — блок email (emailLoginEnabled)', () => {
+  it('emailLoginEnabled: false — блока «Войдите по почте» нет', async () => {
+    mockRoutes(() =>
+      Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: false }),
+    );
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'Войти через Telegram' });
+    expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
+  });
+
+  it('emailLoginEnabled: true — форма есть, отправка → «Письмо отправлено»', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: true });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/email/request') return Promise.resolve(undefined);
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen();
+
+    await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+
+    expect(
+      await screen.findByText(/Письмо отправлено на a@example\.com/),
+    ).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
+      method: 'POST',
+      body: { email: 'a@example.com' },
+    });
+  });
+
+  it('сетевой сбой при запросе ссылки — «Нет связи…» под полем', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: true });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/email/request') return Promise.reject(new Error('boom'));
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen();
+
+    await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
+    await user.click(screen.getByRole('button', { name: 'Получить ссылку' }));
+
+    expect(await screen.findByText(/Нет связи с сервером/)).toBeInTheDocument();
+  });
+});
+
 describe('LoginScreen — уже вошедшего уводит на /schedule', () => {
   it('authStatus ok — редирект, форма не показывается', async () => {
     mockedApiFetch.mockImplementation((path: string) => {

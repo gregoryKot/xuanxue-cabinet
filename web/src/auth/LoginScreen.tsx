@@ -8,13 +8,16 @@
 // уводит на /schedule, не показывая эту форму. Email и Google — следующие PR.
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { NETWORK_ERROR_MESSAGE } from '../api/http';
 import { Button } from '../components/Button';
 import { SkeletonLines } from '../components/Skeleton';
 import { useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
+import { EmailLoginForm } from './EmailLoginForm';
 import {
   loginCaptionStyle,
   loginCardStyle,
+  loginDividerStyle,
   loginExplanationStyle,
   loginPageStyle,
   loginTitleStyle,
@@ -24,7 +27,7 @@ import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
 
 const NOT_CONFIGURED_MESSAGE =
   'Вход через Telegram не настроен. Напишите администратору школы.';
-const OFFLINE_MESSAGE = 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
+const OFFLINE_MESSAGE = NETWORK_ERROR_MESSAGE;
 
 export default function LoginScreen() {
   const { status: authStatus, refresh } = useAuth();
@@ -100,6 +103,16 @@ export default function LoginScreen() {
           <p role="alert" style={{ color: 'var(--danger)', margin: 0 }}>
             {autoError}
           </p>
+        )}
+
+        {/* Нет Telegram — email-путь (ADR-0029), выключен по умолчанию, пока
+            школа не подключит Resend (SECURITY §2): без этого условия форма
+            звала бы 503 на каждый ввод. */}
+        {!autoPending && configStatus === 'ok' && config?.emailLoginEnabled && (
+          <>
+            <hr style={loginDividerStyle} />
+            <EmailLoginForm />
+          </>
         )}
       </div>
     </main>

@@ -42,3 +42,12 @@ export const loginCaptionStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',
 };
+
+// Разделитель перед формой входа по email (LoginScreen.tsx) — только линия,
+// без «или» текстом: подпись под блоком уже объясняет, что это альтернатива.
+export const loginDividerStyle: CSSProperties = {
+  border: 0,
+  borderTop: '1px solid var(--border)',
+  margin: 0,
+  width: '100%',
+};

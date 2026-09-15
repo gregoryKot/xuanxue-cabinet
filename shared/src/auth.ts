@@ -112,14 +112,13 @@ export const EMAIL_LOGIN_SEND_FAILED_MESSAGE =
 
 /**
  * Ответ `GET /auth/config` (`@Public()`, без сессии) — конфигурация экрана
- * входа. `telegramBotId` — числовой id бота (префикс `BOT_TOKEN` до
- * двоеточия), нужен для перехода на Telegram (`redirectToTelegramAuth`, см.
- * LoginScreen.tsx, ADR-0028); без него кнопки входа нет. `schoolSiteUrl` —
- * адрес сайта школы из настроек (`settings.schoolSiteUrl`, экран «Шаблоны»),
- * для гостя без роли
- * (StudentScreen.tsx) и незнакомца в боте: не `PUBLIC_URL` — тот адрес
- * самого кабинета, а не сайта школы (В6 аудита, ADR-0009-доп.).
- */
+ * входа. `telegramBotId` — числовой id бота (префикс `BOT_TOKEN`), нужен
+ * для перехода на Telegram (`redirectToTelegramAuth`, ADR-0028); без него
+ * кнопки входа нет. `schoolSiteUrl` — адрес сайта школы из настроек, для
+ * гостя без роли и незнакомца в боте (не `PUBLIC_URL` — тот адрес самого
+ * кабинета, В6 аудита, ADR-0009-доп.). `emailLoginEnabled` — не опционально:
+ * `false` без `RESEND_API_KEY`/`MAIL_FROM`/`PUBLIC_URL` (ADR-0029), форма
+ * почты тогда скрыта, а не зовёт впустую 503. */
 export interface AuthConfigDto {
   telegramBotId?: number;
   /** Имя бота (`@имя` без собачки) — из него кабинет собирает ссылку в чат
@@ -128,6 +127,7 @@ export interface AuthConfigDto {
    * поля нет, и кнопка не показывается. */
   telegramBotUsername?: string;
   schoolSiteUrl?: string;
+  emailLoginEnabled: boolean;
 }
 
 /**
