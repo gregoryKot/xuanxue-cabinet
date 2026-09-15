@@ -182,19 +182,40 @@ describe('AttemptInProgress', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it('дедлайн истёк — видно сообщение и попытка перечитывается один раз', async () => {
+  // Блокер аудита 2026-09-15 «Дедлайн решает сервер» (ТЗ 4.4, п.7): раньше
+  // этот компонент сам решал «экзамен окончен» по местным часам и показывал
+  // терминальный экран навсегда, даже когда сервер потом отвечал, что
+  // попытка ещё жива. Теперь «конец экзамена» решает только AttemptScreen.tsx
+  // по attempt.status с сервера — этот компонент лишь спрашивает сервер
+  // (reload) и продолжает показывать форму, пока он не ответит.
+  it('локальный дедлайн истёк — попытка перечитывается один раз, но терминальный экран здесь не рисуется', async () => {
     const { reload } = renderAttempt(
       makeAttempt({ deadlineAt: new Date(Date.now() - 1000).toISOString() }),
     );
 
-    expect(
-      await screen.findByText(
-        'Время экзамена вышло. Попытка закрыта, ответ не сохранён.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Вернуться к экзаменам' }),
-    ).toBeInTheDocument();
     await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByText('Время экзамена вышло. Попытка закрыта, ответ не сохранён.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeInTheDocument();
+  });
+
+  it('часы телефона спешат — сервер ещё не закрыл попытку: экзамен остаётся рабочим, не запертым навсегда', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderAttempt(
+      // Дедлайн уже в прошлом по местным часам, но сервер прислал именно эту
+      // попытку через GET /attempts со статусом in_progress — расхождение
+      // часов клиента и сервера, ровно то, что нельзя запирать.
+      makeAttempt({
+        deadlineAt: new Date(Date.now() - 1000).toISOString(),
+        status: 'in_progress',
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+    const dialog = screen.getByRole('dialog', { name: 'Отправить экзамен?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Отправить' }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

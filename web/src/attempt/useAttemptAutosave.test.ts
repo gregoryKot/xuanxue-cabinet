@@ -1,7 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ATTEMPT_EXPIRED_MESSAGE } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { apiFetch } from '../api/http';
+import { apiFetch, ApiError } from '../api/http';
 import { useAttemptAutosave } from './useAttemptAutosave';
 
 vi.mock('../api/http', async () => {
@@ -238,6 +239,54 @@ describe('useAttemptAutosave — уход с экрана', () => {
     });
 
     expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('useAttemptAutosave — дедлайн решает сервер', () => {
+  it('сервер отклонил сохранение по дедлайну — не повторяет бесконечно, зовёт onExpired один раз', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(ATTEMPT_EXPIRED_MESSAGE, 400, 'invalid_input'),
+    );
+    const onExpired = vi.fn();
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, [], onExpired));
+
+    act(() => result.current.setText('item-1', 'поздно'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(result.current.status).toBe('error');
+    expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+
+    // Иначе кабинет «минутами пишет ответы в пустоту» (блокер аудита
+    // 2026-09-15): без этой проверки повтор продолжал бы стучаться в уже
+    // закрытую попытку каждые 4 секунды.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('обычный сетевой сбой — по-прежнему повторяет сам, onExpired не зовётся', async () => {
+    mockedApiFetch.mockRejectedValueOnce(new Error('сеть недоступна'));
+    mockedApiFetch.mockResolvedValueOnce(undefined);
+    const onExpired = vi.fn();
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, [], onExpired));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(result.current.status).toBe('error');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe('saved');
+    expect(onExpired).not.toHaveBeenCalled();
   });
 });
 
