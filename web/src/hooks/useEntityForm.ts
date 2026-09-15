@@ -96,13 +96,27 @@ export function useEntityForm<
 
   async function changeStatus(status: TStatus): Promise<boolean> {
     if (!entity) return false;
+
+    // Кнопка статуса («Опубликовать»/«В архив»/«Вернуть в черновик») обещает
+    // одно действие, не «сохраните сами, а потом ещё раз нажмите сюда»:
+    // раньше сюда уходил только `{ status }`, и лист закрывался как после
+    // сохранения, молча выбрасывая всё, что учитель успел наменять в форме
+    // (аудит 2026-09-15, блокер №1 — заново собранный экзамен публиковался с
+    // прежними блоками, исправленный вопрос — с прежней формулировкой).
+    // Теперь смена статуса — то же тело, что у «Сохранить» (toUpdateInput),
+    // плюс новый статус поверх; валидация та же, что у «Сохранить» — незачем
+    // публиковать заведомо невалидную форму отдельным запросом.
+    const invalid = config.validate(state);
+    setValidationError(invalid);
+    if (invalid) return false;
+
     setServerError(null);
     setPending(true);
     try {
-      // Cast обоснован конкретными доменами: у UpdateExamItemInput/UpdateExamInput
-      // все поля опциональны, `{ status }` — валидное значение обоих типов;
-      // обобщённый TUpdateInput этого структурно не знает.
-      await config.onUpdate(config.getId(entity), { status } as TUpdateInput);
+      await config.onUpdate(config.getId(entity), {
+        ...config.toUpdateInput(state),
+        status,
+      });
       return true;
     } catch (err) {
       setServerError(errorFrom(err, config.statusErrorMessage));

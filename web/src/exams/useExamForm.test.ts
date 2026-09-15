@@ -99,10 +99,14 @@ describe('useExamForm — правка, удаление, смена стату�
     expect(onRemove).not.toHaveBeenCalled();
   });
 
-  it('changeStatus() шлёт только status, не поля формы', async () => {
+  it('changeStatus() отправляет несохранённые правки формы вместе со статусом', async () => {
+    // Блокер аудита 2026-09-15 №1: «Опубликовать» с новым лимитом времени
+    // должен нести этот лимит на сервер, а не только { status }.
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     const exam = makeExam();
     const { result } = renderHook(() => useExamForm(exam, vi.fn(), onUpdate, vi.fn()));
+
+    act(() => result.current.setField('timeLimitMinText', '45'));
 
     let ok = false;
     await act(async () => {
@@ -110,7 +114,10 @@ describe('useExamForm — правка, удаление, смена стату�
     });
 
     expect(ok).toBe(true);
-    expect(onUpdate).toHaveBeenCalledWith('x1', { status: 'published' });
+    expect(onUpdate).toHaveBeenCalledWith(
+      'x1',
+      expect.objectContaining({ timeLimitMin: 45, status: 'published' }),
+    );
   });
 
   it('ошибка changeStatus() — сообщение сервера в serverError (ТЗ 4.3: показывать как есть)', async () => {

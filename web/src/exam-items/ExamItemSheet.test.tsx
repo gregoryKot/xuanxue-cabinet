@@ -184,13 +184,41 @@ describe('ExamItemSheet — правка', () => {
 });
 
 describe('ExamItemSheet — удаление', () => {
-  it('черновик — кнопка «Удалить» вызывает onRemove', async () => {
+  it('черновик — «Удалить» открывает подтверждение, onRemove не зовётся до ответа', async () => {
     const user = userEvent.setup();
     const { onRemove } = renderSheet(makeItem({ status: 'draft' }));
 
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
 
-    expect(onRemove).toHaveBeenCalledWith('e1');
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Удалить вопрос?' })).toBeInTheDocument();
+  });
+
+  it('отказ в диалоге подтверждения — ничего не удаляется', async () => {
+    const user = userEvent.setup();
+    const { onRemove, onClose } = renderSheet(makeItem({ status: 'draft' }));
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    await user.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('dialog', { name: 'Удалить вопрос?' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('подтверждение — зовёт onRemove и закрывает весь лист ровно одним переходом назад', async () => {
+    const user = userEvent.setup();
+    const { onRemove, onClose } = renderSheet(makeItem({ status: 'draft' }));
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    await user.click(
+      screen.getAllByRole('button', { name: 'Удалить' })[1] as HTMLElement,
+    );
+
+    await waitFor(() => expect(onRemove).toHaveBeenCalledWith('e1'));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it('опубликованный — кнопки «Удалить» нет, есть объяснение', () => {
@@ -212,18 +240,22 @@ describe('ExamItemSheet — удаление', () => {
     expect(screen.queryByText(/Статус:/)).not.toBeInTheDocument();
   });
 
-  it('409 при удалении — текст сервера остаётся на листе', async () => {
+  it('409 при удалении — текст сервера остаётся на листе, лист не закрывается', async () => {
     const user = userEvent.setup();
     const onRemove = vi
       .fn()
       .mockRejectedValue(new ApiError('Удалить можно только черновик.', 409, 'conflict'));
-    renderSheet(makeItem({ status: 'draft' }), { onRemove });
+    const { onClose } = renderSheet(makeItem({ status: 'draft' }), { onRemove });
 
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    await user.click(
+      screen.getAllByRole('button', { name: 'Удалить' })[1] as HTMLElement,
+    );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Удалить можно только черновик.',
     );
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 
@@ -235,7 +267,10 @@ describe('ExamItemSheet — действия со статусом', () => {
     await user.click(screen.getByRole('button', { name: 'Опубликовать' }));
 
     await waitFor(() =>
-      expect(onUpdate).toHaveBeenCalledWith('e1', { status: 'published' }),
+      expect(onUpdate).toHaveBeenCalledWith(
+        'e1',
+        expect.objectContaining({ status: 'published' }),
+      ),
     );
   });
 
@@ -251,17 +286,25 @@ describe('ExamItemSheet — действия со статусом', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('смена статуса не задевает поля формы в теле запроса', async () => {
+  // Блокер аудита 2026-09-15 №1: смена статуса отправляла только
+  // { status }, молча теряя правку формулировки, наменянную до клика —
+  // ученики получали вопрос с прежним текстом.
+  it('«В архив» с несохранённой правкой формулировки — отправляет и правку, и статус', async () => {
     const user = userEvent.setup();
     const { onUpdate } = renderSheet(makeItem({ status: 'draft' }));
 
+    await user.clear(screen.getByLabelText('Формулировка'));
+    await user.type(screen.getByLabelText('Формулировка'), 'Исправленный вопрос');
     await user.click(screen.getByRole('button', { name: 'В архив' }));
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
-    expect(onUpdate).toHaveBeenCalledWith('e1', { status: 'archived' });
+    expect(onUpdate).toHaveBeenCalledWith(
+      'e1',
+      expect.objectContaining({ prompt: 'Исправленный вопрос', status: 'archived' }),
+    );
   });
 
-  it('ошибка смены статуса — текст сервера на листе', async () => {
+  it('ошибка смены статуса — текст сервера на листе, статус на экране не менялся', async () => {
     const user = userEvent.setup();
     const onUpdate = vi
       .fn()
@@ -273,5 +316,6 @@ describe('ExamItemSheet — действия со статусом', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Не удалось. Попробуйте ещё раз.',
     );
+    expect(screen.getByRole('button', { name: 'Опубликовать' })).toBeInTheDocument();
   });
 });

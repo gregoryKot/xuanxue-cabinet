@@ -198,12 +198,16 @@ describe('useExamItemForm — правка, удаление, смена ста�
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
-  it('changeStatus() шлёт только status, не поля формы', async () => {
+  it('changeStatus() отправляет несохранённую правку формулировки вместе со статусом', async () => {
+    // Блокер аудита 2026-09-15 №1: «Опубликовать» исправленную формулировку
+    // должен уйти на сервер, а не только { status } с прежним текстом.
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     const item = makeItem();
     const { result } = renderHook(() =>
       useExamItemForm(item, vi.fn(), onUpdate, vi.fn()),
     );
+
+    act(() => result.current.setField('prompt', 'Исправленная формулировка'));
 
     let ok = false;
     await act(async () => {
@@ -211,7 +215,13 @@ describe('useExamItemForm — правка, удаление, смена ста�
     });
 
     expect(ok).toBe(true);
-    expect(onUpdate).toHaveBeenCalledWith('e1', { status: 'published' });
+    expect(onUpdate).toHaveBeenCalledWith(
+      'e1',
+      expect.objectContaining({
+        prompt: 'Исправленная формулировка',
+        status: 'published',
+      }),
+    );
   });
 
   it('ошибка changeStatus() — общий текст в serverError', async () => {

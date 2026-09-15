@@ -131,7 +131,7 @@ describe('useEntityForm — правка/удаление/статус', () => {
     expect(config.onRemove).toHaveBeenCalledWith('e1');
   });
 
-  it('changeStatus() шлёт только { status }, не поля формы', async () => {
+  it('changeStatus() без правок — шлёт status вместе с текущими полями формы', async () => {
     const config = baseConfig(entity);
     const { result } = renderHook(() => useEntityForm(config));
 
@@ -141,19 +141,62 @@ describe('useEntityForm — правка/удаление/статус', () => {
     });
 
     expect(ok).toBe(true);
-    expect(config.onUpdate).toHaveBeenCalledWith('e1', { status: 'published' });
+    // toUpdateInput(state) здесь — { name: 'Существующее' } (поле не менялось),
+    // status добавляется поверх: та же форма запроса, что у submit().
+    expect(config.onUpdate).toHaveBeenCalledWith('e1', {
+      name: 'Существующее',
+      status: 'published',
+    });
   });
 
-  it('ошибка changeStatus() — общий текст в serverError', async () => {
+  it('changeStatus() с несохранёнными правками — шлёт и правки, и статус одним запросом', async () => {
+    // Блокер аудита 2026-09-15 №1: «Опубликовать» отправлял только смену
+    // статуса и закрывал лист, молча теряя всё, что наменяли в форме.
+    const config = baseConfig(entity);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    act(() => result.current.setField('name', 'Правка перед публикацией'));
+
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.changeStatus('published');
+    });
+
+    expect(ok).toBe(true);
+    expect(config.onUpdate).toHaveBeenCalledWith('e1', {
+      name: 'Правка перед публикацией',
+      status: 'published',
+    });
+  });
+
+  it('changeStatus() с невалидной формой — onUpdate не зовётся, validationError выставлен', async () => {
+    const config = baseConfig(entity);
+    const { result } = renderHook(() => useEntityForm(config));
+
+    act(() => result.current.setField('name', '   '));
+
+    let ok = true;
+    await act(async () => {
+      ok = await result.current.changeStatus('published');
+    });
+
+    expect(ok).toBe(false);
+    expect(config.onUpdate).not.toHaveBeenCalled();
+    expect(result.current.validationError).toBe('Название пустое.');
+  });
+
+  it('ошибка changeStatus() — статус не меняется (false), общий текст в serverError', async () => {
     const config = baseConfig(entity, {
       onUpdate: vi.fn().mockRejectedValue(new Error('boom')),
     });
     const { result } = renderHook(() => useEntityForm(config));
 
+    let ok = true;
     await act(async () => {
-      await result.current.changeStatus('published');
+      ok = await result.current.changeStatus('published');
     });
 
+    expect(ok).toBe(false);
     expect(result.current.serverError?.message).toBe('Не удалось изменить статус.');
   });
 });
