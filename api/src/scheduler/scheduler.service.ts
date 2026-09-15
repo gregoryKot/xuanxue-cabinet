@@ -14,6 +14,7 @@ import { PreviewService } from '../broadcasts/preview.service';
 import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import { ManualPromptService } from '../deliveries/manual-prompt.service';
 import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-notifier';
+import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 
@@ -33,6 +34,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly previewService: PreviewService,
     private readonly recordingPromptService: RecordingPromptService,
     private readonly manualPromptService: ManualPromptService,
+    private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
   ) {}
 
@@ -73,12 +75,21 @@ export class SchedulerService implements OnApplicationShutdown {
     const { prompted: manualPrompted } = (await this.step('ручные каналы', now, (n) =>
       this.manualPromptService.prompt(n),
     )) ?? { prompted: 0 };
+    // Блокер аудита 2026-09-15 (ТЗ 4.4, п.7): без этого шага просроченная
+    // попытка закрывалась только тогда, когда кто-то трогал именно её, и
+    // могла остаться незакрытой навсегда, если ученик не вернулся —
+    // exam-deadline-close.service.ts, её комментарий-шапка.
+    const { closed: examAttemptsClosed } = (await this.step(
+      'дедлайны экзаменов',
+      now,
+      (n) => this.examDeadlineCloseService.closeDue(n),
+    )) ?? { closed: 0 };
 
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
         `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ` +
-        `manualPrompts=${manualPrompted}`,
+        `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed}`,
     );
   }
 

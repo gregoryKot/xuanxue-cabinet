@@ -6,8 +6,8 @@
 // гонять сравнение всего списка — счётчик ниже только просит React
 // перерисовать поле, которое уже показывает актуальное значение из ref.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AttemptAnswerDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { ATTEMPT_EXPIRED_MESSAGE, type AttemptAnswerDto } from '@xuanxue/shared';
+import { apiFetch, ApiError } from '../api/http';
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -26,6 +26,14 @@ export interface UseAttemptAutosaveResult {
 export function useAttemptAutosave(
   attemptId: string,
   initialAnswers: readonly AttemptAnswerDto[],
+  // Дедлайн решает сервер (ТЗ 4.4, п.7, «Дедлайн решает сервер») — сервер
+  // ответил «время вышло» на PATCH, а не местные часы решили это сами.
+  // Повторять сохранение дальше некуда, оно будет отклонено тем же образом
+  // (гонка исключена — попытка на сервере уже закрыта): зовём `onExpired`
+  // один раз, чтобы экран перечитал попытку и показал честный статус
+  // (AttemptInProgress.tsx → useAttempt.reload), вместо бесконечного «пишет
+  // ответы в пустоту» каждые 4 секунды.
+  onExpired?: () => void,
 ): UseAttemptAutosaveResult {
   const answers = useRef(new Map(initialAnswers.map((a) => [a.itemId, a])));
   const dirty = useRef(new Set<string>());
@@ -57,10 +65,14 @@ export function useAttemptAutosave(
       await apiFetch(`/attempts/${attemptId}/answers`, { method: 'PATCH', body });
       for (const id of ids) dirty.current.delete(id);
       setStatus('saved');
-    } catch {
+    } catch (err) {
       setStatus('error');
-      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
-      retryTimer.current = window.setTimeout(() => void runSave(), RETRY_DELAY_MS);
+      if (err instanceof ApiError && err.message === ATTEMPT_EXPIRED_MESSAGE) {
+        onExpired?.();
+      } else {
+        if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
+        retryTimer.current = window.setTimeout(() => void runSave(), RETRY_DELAY_MS);
+      }
     } finally {
       saving.current = false;
       if (rerunPending.current) {
@@ -68,7 +80,7 @@ export function useAttemptAutosave(
         void runSave();
       }
     }
-  }, [attemptId]);
+  }, [attemptId, onExpired]);
 
   const scheduleSave = useCallback(() => {
     if (debounceTimer.current !== null) window.clearTimeout(debounceTimer.current);

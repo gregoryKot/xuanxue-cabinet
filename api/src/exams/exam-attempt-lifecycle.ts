@@ -71,3 +71,44 @@ export async function closeIfExpiredAttempt(
   const fresh = await model.findById(attempt._id).lean<RawLeanExamAttempt>();
   return fresh ? decryptAttempt(fresh) : attempt;
 }
+
+/** Пакетная зачистка просроченных `in_progress` попыток — шаг тика
+ * планировщика (ExamDeadlineCloseService, ТЗ 4.4 п.7). До этой функции
+ * попытка закрывалась только лениво, когда кто-то трогал ИМЕННО её
+ * (start/saveAnswers/submit/list — см. шапку файла); ученик, который не
+ * вернулся в кабинет и не открыл бота после дедлайна, не закрывал свою
+ * попытку никогда, а очередь учителя (`GET /attempts?status=submitted`)
+ * фильтрует по статусу в Mongo раньше, чем срабатывает ленивое закрытие, —
+ * просроченная попытка вовсе не попадает в выборку для .map() и остаётся
+ * невидимой (блокер аудита 2026-09-15). Здесь — обратный порядок: сначала
+ * находим кандидатов по `deadlineAt` без учёта фильтра статуса очереди,
+ * потом закрываем каждого через ту же `closeIfExpiredAttempt` — тот же
+ * условный `findOneAndUpdate` держит идемпотентность и гонку со вторым
+ * тиком/инстансом при деплое (её комментарий-шапка), а `onExpiredClose`
+ * вызывается только у того вызова, который реально выиграл гонку, поэтому
+ * счётчик ниже не задваивается конкурентным тиком.
+ *
+ * `limit` — не «дай всё» (CLAUDE.md «API»): при массовом наплыве просрочек
+ * (сотни учеников на одном экзамене) следующий тик доберёт остаток, тот же
+ * приём, что у RecordingPromptService/DeliveryRunnerService. */
+export async function closeExpiredAttempts(
+  model: Model<ExamAttemptRecord>,
+  now: DateTime,
+  limit: number,
+  onExpiredClose?: (closed: LeanExamAttempt) => void,
+): Promise<number> {
+  const candidates = await model
+    .find({ status: 'in_progress', deadlineAt: { $lte: now.toJSDate() } })
+    .limit(limit)
+    .lean<RawLeanExamAttempt[]>();
+
+  let closedByThisCall = 0;
+  const countingCallback = (closed: LeanExamAttempt): void => {
+    closedByThisCall += 1;
+    onExpiredClose?.(closed);
+  };
+  for (const raw of candidates) {
+    await closeIfExpiredAttempt(model, decryptAttempt(raw), now, countingCallback);
+  }
+  return closedByThisCall;
+}

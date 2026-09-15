@@ -2,19 +2,17 @@
 // данные ученика (ADR-0010): роль admits student/teacher/admin, владение —
 // по userId из сессии (см. exam-attempts-ownership.e2e-spec.ts). Настоящий
 // AppModule на MongoMemoryServer — те же гвард/пайпы/фильтры, что видит браузер.
-import type {
-  ApiErrorBody,
-  ExamAttemptDto,
-  ExamDto,
-  ExamItemDto,
-  UserRole,
-} from '@xuanxue/shared';
+import type { ApiErrorBody, ExamAttemptDto, ExamDto, ExamItemDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
-import { sessionCookieFor, withCsrf } from './e2e-support/http';
+import { createExamAttemptsTestHelpers } from './e2e-support/exam-attempts-fixtures';
+import { withCsrf } from './e2e-support/http';
 
 describe('Exam attempts (e2e)', () => {
   let testApp: TestApp;
+  const { server, sessionFor, createPublishedExam } = createExamAttemptsTestHelpers(
+    () => testApp,
+  );
 
   beforeAll(async () => {
     testApp = await createTestApp();
@@ -23,53 +21,6 @@ describe('Exam attempts (e2e)', () => {
   afterAll(async () => {
     await testApp.close();
   });
-
-  function server(): ReturnType<TestApp['app']['getHttpServer']> {
-    return testApp.app.getHttpServer();
-  }
-
-  async function sessionFor(roles: UserRole[]): Promise<string> {
-    return sessionCookieFor(testApp.app, roles);
-  }
-
-  // Опубликованный вопрос и опубликованная форма — через настоящие эндпоинты
-  // учителя (не напрямую через модель): здесь не тестируется сам банк/форма,
-  // у них свои e2e (exam-items.e2e-spec.ts, exams.e2e-spec.ts), важно только,
-  // что попытка стартует на реальной опубликованной форме.
-  async function createPublishedExam(
-    teacherCookie: string,
-    options: { attemptsAllowed?: number } = {},
-  ): Promise<{ examId: string; itemId: string }> {
-    const item = await withCsrf(request(server()).post('/api/exam-items'))
-      .set('Cookie', teacherCookie)
-      .send({
-        kind: 'single',
-        prompt: 'Сколько форм в базовом комплексе?',
-        criteria: 'принимается любой ответ близкий к программе',
-        options: [
-          { text: 'пять', correct: true },
-          { text: 'три', correct: false },
-        ],
-      });
-    const itemId = (item.body as ExamItemDto).id;
-    await withCsrf(request(server()).patch(`/api/exam-items/${itemId}`))
-      .set('Cookie', teacherCookie)
-      .send({ status: 'published' });
-
-    const exam = await withCsrf(request(server()).post('/api/exams'))
-      .set('Cookie', teacherCookie)
-      .send({
-        title: 'Экзамен по третьей форме',
-        blocks: [{ title: 'Форма', itemIds: [itemId] }],
-        attemptsAllowed: options.attemptsAllowed,
-      });
-    const examId = (exam.body as ExamDto).id;
-    await withCsrf(request(server()).patch(`/api/exams/${examId}`))
-      .set('Cookie', teacherCookie)
-      .send({ status: 'published' });
-
-    return { examId, itemId };
-  }
 
   it('POST /exams/:id/attempts без cookie — 401 в конверте', async () => {
     const res = await withCsrf(

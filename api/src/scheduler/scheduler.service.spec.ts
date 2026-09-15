@@ -7,6 +7,7 @@ import type { PreviewService } from '../broadcasts/preview.service';
 import type { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import type { ManualPromptService } from '../deliveries/manual-prompt.service';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
+import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
 import type { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { SchedulerService } from './scheduler.service';
@@ -19,6 +20,7 @@ function buildService(overrides: {
   sendPreviews?: PreviewService['sendPending'];
   promptRecordings?: RecordingPromptService['prompt'];
   promptManual?: ManualPromptService['prompt'];
+  closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
 }): {
   service: SchedulerService;
@@ -40,6 +42,8 @@ function buildService(overrides: {
     overrides.promptRecordings ?? jest.fn().mockResolvedValue({ prompted: 0 });
   const promptManual =
     overrides.promptManual ?? jest.fn().mockResolvedValue({ prompted: 0 });
+  const closeExamDeadlines =
+    overrides.closeExamDeadlines ?? jest.fn().mockResolvedValue({ closed: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -55,6 +59,7 @@ function buildService(overrides: {
     { sendPending: sendPreviews } as unknown as PreviewService,
     { prompt: promptRecordings } as unknown as RecordingPromptService,
     { prompt: promptManual } as unknown as ManualPromptService,
+    { closeDue: closeExamDeadlines } as unknown as ExamDeadlineCloseService,
     notifier,
   );
   return { service, notifySchedulerFailed: notifySchedulerFailed as jest.Mock };
@@ -89,6 +94,10 @@ describe('SchedulerService.tick', () => {
       (_now: DateTime): ReturnType<ManualPromptService['prompt']> =>
         Promise.resolve({ prompted: 1 }),
     );
+    const closeExamDeadlines = jest.fn(
+      (_now: DateTime): ReturnType<ExamDeadlineCloseService['closeDue']> =>
+        Promise.resolve({ closed: 1 }),
+    );
     const { service } = buildService({
       plan,
       planBroadcasts,
@@ -97,6 +106,7 @@ describe('SchedulerService.tick', () => {
       sendPreviews,
       promptRecordings,
       promptManual,
+      closeExamDeadlines,
     });
 
     await expect(service.tick()).resolves.toBeUndefined();
@@ -108,6 +118,7 @@ describe('SchedulerService.tick', () => {
     expect(sendPreviews).toHaveBeenCalledTimes(1);
     expect(promptRecordings).toHaveBeenCalledTimes(1);
     expect(promptManual).toHaveBeenCalledTimes(1);
+    expect(closeExamDeadlines).toHaveBeenCalledTimes(1);
     const [calledWith] = plan.mock.calls[0] ?? [];
     expect(calledWith).toBeInstanceOf(DateTime);
     // Все шаги делят один now — рассылка не может считать «позже», чем видел
@@ -118,6 +129,7 @@ describe('SchedulerService.tick', () => {
     expect(sendPreviews.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptRecordings.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptManual.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(closeExamDeadlines.mock.calls[0]?.[0]).toBe(calledWith);
   });
 
   it('ошибка шага отмен не останавливает шаг доставок', async () => {
@@ -177,6 +189,16 @@ describe('SchedulerService.tick', () => {
   it('ошибка шага ручных каналов не мешает итоговому логу', async () => {
     const promptManual = jest.fn().mockRejectedValue(new Error('бот молчит'));
     const { service } = buildService({ promptManual });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  // Блокер аудита 2026-09-15 (ТЗ 4.4, п.7): этот шаг — единственный способ
+  // закрыть попытку ученика, который не вернулся в кабинет, и он не должен
+  // зависеть от исхода остальных шагов тика.
+  it('ошибка шага «дедлайны экзаменов» не мешает итоговому логу', async () => {
+    const closeExamDeadlines = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const { service } = buildService({ closeExamDeadlines });
 
     await expect(service.tick()).resolves.toBeUndefined();
   });

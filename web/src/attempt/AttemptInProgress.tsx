@@ -4,9 +4,19 @@
 // монтируется только когда `attempt` уже точно загружен — на экране
 // загрузки/ошибки его ещё нет. Так автосохранение не стартует со снимком-
 // пустышкой, полученным до ответа сервера.
+//
+// «Экзамен закончен» решает только сервер (ТЗ 4.4, п.7, блокер аудита
+// 2026-09-15 «Дедлайн решает сервер»): этот компонент вообще не показывает
+// свой терминальный экран — AttemptScreen.tsx уже переключает на
+// AttemptSubmitted по `attempt.status`, пришедшему с сервера. Локальный
+// `timeStatus` из attemptDeadline.ts — только отображение (её же
+// комментарий-шапка): часы телефона, что спешат, раньше запирали ученика
+// в честной попытке навсегда (`timeStatus.expired` не меняется обратно, даже
+// когда сервер отвечает «ещё не время»), а часы, что отстают, оставляли
+// автосохранение писать в уже закрытую попытку без единого слова об этом —
+// вторую половину чинит `onExpired` в useAttemptAutosave.
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ATTEMPT_EXPIRED_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
+import type { ExamAttemptDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormServerError, type FormError } from '../components/FormServerError';
@@ -40,7 +50,11 @@ export function AttemptInProgress({
   submitting,
   submitError,
 }: AttemptInProgressProps) {
-  const autosave = useAttemptAutosave(attempt.id, attempt.answers);
+  // `reload` как `onExpired` — сервер отклонил сохранение по дедлайну,
+  // перечитываем попытку и показываем то, что скажет она (см. комментарий
+  // в шапке файла и в самом useAttemptAutosave). Обёртка в `() => void ...`
+  // — `onExpired` синхронный, а `reload()` возвращает `Promise<void>`.
+  const autosave = useAttemptAutosave(attempt.id, attempt.answers, () => void reload());
   const now = useNow(NOW_REFRESH_MS);
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
   const timeStatus = getAttemptTimeStatus(attempt.deadlineAt, now);
@@ -49,22 +63,15 @@ export function AttemptInProgress({
   // Локальный отсчёт добежал до нуля раньше, чем об этом узнал сервер —
   // перечитываем попытку один раз, чтобы увидеть настоящий статус
   // (ExamAttemptsService.closeIfExpiredAttempt закрывает её на любом
-  // запросе, включая этот GET /attempts).
+  // запросе, включая этот GET /attempts). Сам факт локального «времени
+  // вышло» экран не показывает как приговор — только как повод спросить
+  // сервер: часы телефона спешат чаще, чем отстают, и «заперли до звонка
+  // учителю» хуже, чем лишний перезапрос.
   useEffect(() => {
     if (!timeStatus.expired || reloadedForExpiry.current) return;
     reloadedForExpiry.current = true;
     void reload();
   }, [timeStatus.expired, reload]);
-
-  if (timeStatus.expired) {
-    return (
-      <section style={screenSectionStyle}>
-        <h1 style={{ margin: 0, fontSize: 18 }}>{attempt.examTitle}</h1>
-        <p role="alert">{ATTEMPT_EXPIRED_MESSAGE}</p>
-        <Link to="/">Вернуться к экзаменам</Link>
-      </section>
-    );
-  }
 
   const saveLabel = formatSaveStatus(autosave.status);
 
