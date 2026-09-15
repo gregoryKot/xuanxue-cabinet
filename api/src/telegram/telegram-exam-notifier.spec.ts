@@ -4,6 +4,7 @@
 // уже покрыт своим спеком). Кто получает уведомление — дело дефолтов роли
 // (shared/src/notifications.ts) и личных переключений, оба проверены здесь
 // сквозь весь путь: attempt_submitted и exam_result — слой 4.7, PLAN §11.
+import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
@@ -27,9 +28,13 @@ const ATTEMPT_CONTEXT = {
   examTitle: 'Экзамен по третьей форме',
 };
 
-function fakeBot(): { sendMessage: jest.Mock<Promise<void>, [string, string]> } {
+function fakeBot(delivered = true): {
+  sendMessage: jest.Mock<Promise<boolean>, [string, string]>;
+} {
   return {
-    sendMessage: jest.fn<Promise<void>, [string, string]>().mockResolvedValue(undefined),
+    sendMessage: jest
+      .fn<Promise<boolean>, [string, string]>()
+      .mockResolvedValue(delivered),
   };
 }
 
@@ -162,6 +167,29 @@ describe('TelegramExamNotifier', () => {
       expect(text).toContain('Ольга');
       expect(text).toContain(`${PUBLIC_URL}/grading/${ATTEMPT_CONTEXT.attemptId}`);
     });
+
+    it('сбой доставки всем адресатам — эскалация error-логом, не тишина (аудит 2026-09, находка 2)', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      const studentId = await connectPerson(444, 'Ученик', []);
+      const bot = fakeBot(false); // sendMessage «дошёл», но с false — бот заблокирован
+      const error = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      await buildNotifier(bot).notifyAttemptSubmitted(
+        { ...ATTEMPT_CONTEXT, userId: studentId },
+        NOW,
+      );
+
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining('доставка не удалась'),
+        expect.objectContaining({
+          attemptId: ATTEMPT_CONTEXT.attemptId,
+          kind: 'attempt_submitted',
+        }),
+      );
+      error.mockRestore();
+    });
   });
 
   describe('notifyExamGraded', () => {
@@ -206,6 +234,28 @@ describe('TelegramExamNotifier', () => {
         ),
       ).resolves.toBeUndefined();
       expect(bot.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('сбой доставки — эскалация error-логом, не тишина (аудит 2026-09, находка 2)', async () => {
+      const studentId = await connectPerson(555, 'Ученик', []);
+      const bot = fakeBot(false);
+      const error = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      await buildNotifier(bot).notifyExamGraded(
+        { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
+        NOW,
+      );
+
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining('доставка не удалась'),
+        expect.objectContaining({
+          attemptId: ATTEMPT_CONTEXT.attemptId,
+          kind: 'exam_result',
+        }),
+      );
+      error.mockRestore();
     });
   });
 });

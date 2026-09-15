@@ -24,6 +24,7 @@ import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
 import { UserNamesService } from '../users/user-names.service';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
+import { didGradingChange } from './grading-changed';
 import { notifyExamGraded } from './notify-exam-graded';
 import { buildReviewBlocks } from './exam-attempt-review';
 import { buildGradingCriteria } from './exam-grading-criteria';
@@ -93,6 +94,9 @@ export class ExamGradingsService {
     if (attempt.status === 'in_progress') {
       throw new InvalidInputError(ATTEMPT_NOT_SUBMITTED_MESSAGE);
     }
+    // Снимок «до записи» — только для сравнения в didGradingChange() ниже
+    // (аудит 2026-09, находка 3), сам ответ строится из dto «после записи».
+    const previousDto = await this.findGradingDto(attemptId);
     const exam = await this.examsService.getById(attempt.examId.toString());
     const criteria = buildGradingCriteria(exam.rubric, input.criteria);
 
@@ -132,7 +136,13 @@ export class ExamGradingsService {
     if (!dto) throw new Error('grade: оценка не найдена сразу после сохранения');
 
     // Не ждём и не роняем PUT из-за бота (CLAUDE.md «Встраивание в сервисы»).
-    notifyExamGraded(this.examNotifier, attempt, input.outcome, input.comment, now);
+    // Уведомление — только если решение или комментарий реально изменились
+    // (аудит 2026-09, находка 3): повторный идемпотентный PUT с теми же
+    // значениями (учитель нажал «Сохранить» дважды после сетевого сбоя) не
+    // должен слать ученику второе «Нужно доработать».
+    if (didGradingChange(previousDto, input)) {
+      notifyExamGraded(this.examNotifier, attempt, input.outcome, input.comment, now);
+    }
     return dto;
   }
 

@@ -102,18 +102,30 @@ export class TelegramBotService implements OnApplicationBootstrap {
   /** Проактивная отправка вне ответа на апдейт (предпросмотр, «Запись?»,
    * ручные каналы, уведомления об ошибках). Без бота — молча ничего не
    * делает; сбой сети — warn в лог, не наружу: тик планировщика не должен
-   * падать из-за упавшей отправки. */
+   * падать из-за упавшей отправки.
+   *
+   * Возвращает `true`/`false` вместо прежнего `void` (аудит 2026-09, находка
+   * 2): раньше сбой был виден только этому warn, вызывающий код не мог его
+   * отличить от успеха — TelegramExamNotifier ловил свой `try/catch` вокруг
+   * сбоев резолва чата/имени, но не вокруг самой отправки, и она молча
+   * считалась успешной. Существующие вызовы (recording-prompt,
+   * manual-prompt, preview.service, teacher-notifier) результат по-прежнему
+   * не читают — их поведение не меняется, они как слали best-effort, так и
+   * шлют; новые (TelegramExamNotifier, exam-media-forward.ts) проверяют его,
+   * чтобы эскалировать тотальный сбой отдельным `error`, а не тем же `warn`. */
   async sendMessage(
     chatId: string,
     text: string,
     buttons?: InlineKeyboardButton[][],
-  ): Promise<void> {
-    if (!this.bot) return;
+  ): Promise<boolean> {
+    if (!this.bot) return false;
     try {
       await sendBotMessage(this.bot, chatId, text, buttons);
+      return true;
     } catch (err) {
       // chatId — полем объекта, не в тексте (SECURITY §1 п.2, §4): им управляет redact-paths.ts.
       this.logger.warn({ chatId }, `telegram.sendMessage: ${errorMessage(err)}`);
+      return false;
     }
   }
 

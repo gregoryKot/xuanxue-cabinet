@@ -3,6 +3,7 @@
 // MediaAssetsService и пересылка учителям — не сама привязка (та проверена
 // против настоящей Mongo в media-assets.service.spec.ts). blocked/invited —
 // отказ и закрытая сессия, видео не привязывается (SECURITY §9, ADR-0026).
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
@@ -28,6 +29,10 @@ function fakeCtx(overrides: {
   video?: boolean;
   chatId?: number;
   messageId?: number;
+  // Чат целиком недоступен (бот заблокирован/удалён) — падают ОБА вызова,
+  // как на реальном Telegram API, не только подпись (аудит 2026-09, находка
+  // 2: раньше тест ронял только sendMessage, что не отличало «чат недоступен»
+  // от «видео не проходит по формату», а порядок был caption-первым).
   failForwardToChatId?: string;
 }): {
   ctx: Context;
@@ -61,6 +66,9 @@ function fakeCtx(overrides: {
         return Promise.resolve();
       },
       copyMessage: (toChatId: string) => {
+        if (toChatId === overrides.failForwardToChatId) {
+          return Promise.reject(new Error('бот заблокирован'));
+        }
         copiedTo.push(toChatId);
         return Promise.resolve();
       },
@@ -80,6 +88,7 @@ function buildHandler(overrides: {
   clear: jest.Mock;
   registry: ExamBotPortRegistry;
   attachTelegramVideo: jest.Mock;
+  personalChats: { listFor: jest.Mock };
 } {
   const botSessions = fakeBotSessionService();
   const clear = botSessions.clear;
@@ -98,9 +107,12 @@ function buildHandler(overrides: {
           })
         : { kind: 'unknown' },
     );
+  // `listFor`, не `list` (аудит 2026-09, находка 1): пересылка идёт тем же
+  // адресатам, что и текстовое «работу сдали» — штат с включённым видом
+  // attempt_submitted, не весь штат с подключённым ботом.
   const personalChats = {
-    list: jest.fn().mockResolvedValue(overrides.teacherChats ?? []),
-  } as unknown as PersonalChats;
+    listFor: jest.fn().mockResolvedValue(overrides.teacherChats ?? []),
+  };
   const registry = new ExamBotPortRegistry();
   registry.set(
     fakeExamBotPort({
@@ -112,12 +124,13 @@ function buildHandler(overrides: {
       botSessions,
       mediaAssets,
       botAccess,
-      personalChats,
+      personalChats as unknown as PersonalChats,
       registry,
     ),
     clear,
     registry,
     attachTelegramVideo,
+    personalChats,
   };
 }
 
@@ -158,7 +171,7 @@ describe('ExamMediaMessageHandler', () => {
   });
 
   it('видео привязано — подтверждение, пересылка каждому учителю с подписью и copyMessage', async () => {
-    const { handler, clear } = buildHandler({
+    const { handler, clear, personalChats } = buildHandler({
       userId: 'u1',
       attached: { media: { id: 'm1' }, examTitle: 'Форма первого уровня' },
       teacherChats: [
@@ -183,6 +196,29 @@ describe('ExamMediaMessageHandler', () => {
       { chatId: '202', text: 'Видео от Ученик Иванов — экзамен «Форма первого уровня».' },
     ]);
     expect(copiedTo).toEqual(['201', '202']);
+    // Находка 1: те же адресаты, что у текстового attempt_submitted — не
+    // весь штат с подключённым ботом (personalChats.list).
+    expect(personalChats.listFor).toHaveBeenCalledWith('attempt_submitted', NOW);
+  });
+
+  it('сотрудник выключил attempt_submitted — видео ему не пересылается (аудит 2026-09, находка 1)', async () => {
+    // `listFor` сам решает, кто в списке (PersonalChats.listFor,
+    // personal-chats.spec.ts/telegram-exam-notifier.spec.ts) — здесь
+    // достаточно проверить, что пересылка спрашивает именно этот список, а
+    // не `list()` (весь штат с подключённым ботом мимо переключателя).
+    const { handler, personalChats } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Экзамен' },
+      // Учитель выключил вид уведомления — listFor его уже не отдаёт.
+      teacherChats: [{ chatId: '202', userId: 't2', name: 'Дима' }],
+    });
+    const { ctx, sentMessages, copiedTo } = fakeCtx({ video: true });
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(sentMessages.map((m) => m.chatId)).toEqual(['202']);
+    expect(copiedTo).toEqual(['202']);
+    expect(personalChats.listFor).toHaveBeenCalledWith('attempt_submitted', NOW);
   });
 
   it('никто из штата не подключил бота — привязка есть, пересылать некому, не падает', async () => {
@@ -219,6 +255,99 @@ describe('ExamMediaMessageHandler', () => {
       { chatId: '202', text: 'Видео от Ученик Иванов — экзамен «Экзамен».' },
     ]);
     expect(copiedTo).toEqual(['202']);
+  });
+
+  it('видео не прошло (copyMessage упал) — подпись без видео не отправляем (аудит 2026-09, находка 2)', async () => {
+    const { handler } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Экзамен' },
+      teacherChats: [{ chatId: '201', userId: 't1', name: 'Мария' }],
+    });
+    const chatId = 111;
+    const messageId = 42;
+    const sentMessages: { chatId: string; text: string }[] = [];
+    const copiedTo: string[] = [];
+    const ctx = {
+      chat: { id: chatId, type: 'private' },
+      message: {
+        message_id: messageId,
+        video: { file_id: 'f1', file_unique_id: 'u1', duration: 30 },
+      },
+      reply: () => Promise.resolve(),
+      telegram: {
+        sendMessage: (toChatId: string, text: string) => {
+          sentMessages.push({ chatId: toChatId, text });
+          return Promise.resolve();
+        },
+        // Видео не проходит по формату/размеру — copyMessage падает первым.
+        copyMessage: () => Promise.reject(new Error('видео слишком большое')),
+      },
+    } as unknown as Context;
+    // Единственный адресат — сбой видео здесь эскалируется своим error
+    // (проверено отдельным тестом ниже); тут глушим, чтобы не шуметь в вывод.
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    // Подпись без видео учителю бесполезна — раньше уходила первой и
+    // оставалась сиротой, теперь не уходит вовсе.
+    expect(sentMessages).toEqual([]);
+    expect(copiedTo).toEqual([]);
+    error.mockRestore();
+  });
+
+  it('видео дошло, подпись упала — видео не теряем ради подписи', async () => {
+    const { handler } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Экзамен' },
+      teacherChats: [{ chatId: '201', userId: 't1', name: 'Мария' }],
+    });
+    const chatId = 111;
+    const messageId = 42;
+    const sentMessages: { chatId: string; text: string }[] = [];
+    const copiedTo: string[] = [];
+    const ctx = {
+      chat: { id: chatId, type: 'private' },
+      message: {
+        message_id: messageId,
+        video: { file_id: 'f1', file_unique_id: 'u1', duration: 30 },
+      },
+      reply: () => Promise.resolve(),
+      telegram: {
+        sendMessage: () => Promise.reject(new Error('рейт-лимит')),
+        copyMessage: (toChatId: string) => {
+          copiedTo.push(toChatId);
+          return Promise.resolve();
+        },
+      },
+    } as unknown as Context;
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(copiedTo).toEqual(['201']); // главное — видео — дошло
+    expect(sentMessages).toEqual([]); // подпись потеряна, но не эскалируем
+  });
+
+  it('видео не дошло вообще никому — error-лог с attemptId (эскалация, не тишина)', async () => {
+    const { handler } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Экзамен' },
+      teacherChats: [{ chatId: '201', userId: 't1', name: 'Мария' }],
+    });
+    const { ctx } = fakeCtx({ video: true, failForwardToChatId: '201' });
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('видео не дошло'),
+      expect.objectContaining({ attemptId: ATTEMPT_ID, kind: 'attempt_submitted' }),
+    );
+    error.mockRestore();
   });
 
   // Защита в глубину: Telegraf даёт `ctx.chat`/`ctx.message` на любом
