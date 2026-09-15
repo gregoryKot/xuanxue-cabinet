@@ -6,12 +6,14 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <!-- Тот же тон, что theme_color манифеста (web/vite.config.ts, ADR-0006). -->
+    <!-- Тот же тон, что theme_color манифеста (web/public/manifest.webmanifest). -->
     <meta name="theme-color" content="#1f3b2f" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
     <meta name="apple-mobile-web-app-title" content="Сюань-Сюэ" />
-    <!-- Ссылку на manifest.webmanifest вставляет vite-plugin-pwa сам. -->
+    <!-- Манифест статический (web/public/manifest.webmanifest, ADR-0032) —
+         нужен только для установки ярлыка на телефон, service worker нет. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>Сюань-Сюэ</title>
   </head>
   <body>

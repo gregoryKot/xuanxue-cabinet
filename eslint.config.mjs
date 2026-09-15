@@ -82,6 +82,13 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
   {
+    // Килсвитч service worker (ADR-0032) — единственный файл репозитория,
+    // который выполняется в контексте service worker, не браузера: `self`,
+    // `caches` и `clients` из этого окружения, не из globals.browser.
+    files: ['web/public/sw.js'],
+    languageOptions: { globals: { ...globals.serviceworker } },
+  },
+  {
     files: TS_GLOBS,
     extends: [...tseslint.configs.recommendedTypeChecked],
     plugins: { 'import-x': importX },

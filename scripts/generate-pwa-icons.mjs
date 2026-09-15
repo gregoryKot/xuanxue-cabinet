@@ -22,8 +22,9 @@ const ROOT = join(import.meta.dirname, '..');
 const SVG_PATH = join(ROOT, 'web', 'public', 'icons', 'icon.svg');
 const OUT_DIR = join(ROOT, 'web', 'public', 'icons');
 
-// Тот же тон, что theme_color манифеста (web/vite.config.ts) — фон круга
-// иконки, чтобы обрезка маской или флатенинг не оставляли шов другого цвета.
+// Тот же тон, что theme_color манифеста (web/public/manifest.webmanifest) —
+// фон круга иконки, чтобы обрезка маской или флатенинг не оставляли шов
+// другого цвета.
 const SOLID_BG = '#1f3b2f';
 // Доля площади квадрата, которую занимает символ в maskable-варианте.
 const MASKABLE_SAFE_ZONE = 0.8;

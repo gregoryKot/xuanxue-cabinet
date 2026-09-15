@@ -67,3 +67,4 @@
 | [0029](0029-email-login-via-resend-fetch.md)             | Вход по email-ссылке: Resend через fetch, без SDK                        |
 | [0030](0030-school-invite-link.md)                       | Ссылка-приглашение школы — третий путь `invited` → `active`              |
 | [0031](0031-visual-direction-quiet-and-noble.md)         | Визуальное направление «тихо и благородно» — шрифты и палитра фундамента |
+| [0032](0032-no-service-worker.md)                        | Service worker убран, манифест остаётся — килсвитч по старому адресу     |
