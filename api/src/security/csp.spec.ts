@@ -5,16 +5,16 @@
 import { CSP_DIRECTIVES } from './csp';
 
 describe('CSP_DIRECTIVES', () => {
-  it('frameSrc — только Telegram: Google-вход ещё не реализован (ADR-0005)', () => {
-    expect(CSP_DIRECTIVES.frameSrc).toEqual(['https://oauth.telegram.org']);
+  // Виджет Telegram и его попап убраны (ADR-0028): вход — переход вкладки
+  // на oauth.telegram.org, CSP такую навигацию не ограничивает. Ни
+  // telegram.org, ни oauth.telegram.org внешним источником больше не нужны.
+  it('frameSrc не объявлен — фреймов на чужой домен не осталось', () => {
+    expect(CSP_DIRECTIVES).not.toHaveProperty('frameSrc');
   });
 
-  it('scriptSrc не пускает произвольные домены — self и Telegram', () => {
-    expect(CSP_DIRECTIVES.scriptSrc).toEqual([
-      "'self'",
-      'https://telegram.org',
-      'https://oauth.telegram.org',
-    ]);
+  it('scriptSrc и connectSrc не пускают произвольные домены — только self', () => {
+    expect(CSP_DIRECTIVES.scriptSrc).toEqual(["'self'"]);
+    expect(CSP_DIRECTIVES.connectSrc).toEqual(["'self'"]);
   });
 
   it('objectSrc и frameAncestors закрыты полностью', () => {

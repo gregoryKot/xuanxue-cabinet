@@ -47,9 +47,9 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 Команда идемпотентна: класс, у которого уже есть точное совпадение названия
 и подписи группы, пропускается, а не дублируется — перезапускать безопасно.
 
-Вход через Telegram (`window.Telegram.Login.auth()`, `POST /auth/telegram`) локально
-не проверить: попап на `oauth.telegram.org` работает только с доменом, привязанным к
-боту в BotFather (`/setdomain`) — у `localhost` такого домена нет. `BOT_TOKEN` — тот же,
+Вход через Telegram (переход на `oauth.telegram.org`, `POST /auth/telegram`) локально
+не проверить: переход работает только с доменом, привязанным к боту в BotFather
+(`/setdomain`) — у `localhost` такого домена нет. `BOT_TOKEN` — тот же,
 что у вебхука бота (`.env.example`); отдельная переменная для виджета не нужна,
 `GET /auth/config` сам достаёт числовой id бота из `BOT_TOKEN`. `/start` в боте
 регистрирует чат как канал рассылки (docs/PLAN.md §6, «Каналы»), но сессию кабинета не

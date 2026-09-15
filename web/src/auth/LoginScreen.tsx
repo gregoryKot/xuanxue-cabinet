@@ -1,121 +1,107 @@
 // Экран входа — до первого действия объясняет, что это и зачем (CLAUDE.md
-// «Продукт»). Один способ входа — кнопка «Войти через Telegram»
-// (window.Telegram.Login.auth(), см. useTelegramLogin.ts) на десктопе и
-// автозавершение из #tgAuthResult= на мобильном (useTelegramAuthResultLogin.ts,
-// баг с прода 2026-09-08); email/Google — следующие PR. Уже вошедшего уводит
-// на /schedule, не показывая эту форму.
+// «Продукт»). Единственный способ входа, на любом устройстве, — переход
+// текущей вкладки на Telegram (`redirectToTelegramAuth`,
+// telegramAuthRedirect.ts): попап `window.Telegram.Login.auth()` убран —
+// на десктопе он оказался так же ненадёжен, как на телефоне (ADR-0028,
+// отзыв владельца 2026-09-15). Возврат с Telegram дочитывает
+// useTelegramAuthResultLogin.ts (баг с прода 2026-09-08). Уже вошедшего
+// уводит на /schedule, не показывая эту форму. Email и Google — следующие PR.
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { ApiError } from '../api/http';
+import { Navigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { SkeletonLines } from '../components/Skeleton';
 import { useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
 import {
-  postTelegramLogin,
-  useTelegramAuthResultLogin,
-} from './useTelegramAuthResultLogin';
-import { useTelegramLogin } from './useTelegramLogin';
+  loginCaptionStyle,
+  loginCardStyle,
+  loginExplanationStyle,
+  loginPageStyle,
+  loginTitleStyle,
+} from './loginScreenStyles';
+import { redirectToTelegramAuth } from './telegramAuthRedirect';
+import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
 
 const NOT_CONFIGURED_MESSAGE =
   'Вход через Telegram не настроен. Напишите администратору школы.';
 const OFFLINE_MESSAGE = 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
-const LOGIN_FAILED_MESSAGE = 'Не удалось войти. Попробуйте ещё раз.';
-// Окно Telegram закрылось, а подтверждения не пришло. Так бывает, когда его
-// закрыли сами, и когда браузер не отдал виджету cookie Telegram (Safari режет
-// третьесторонние). Молчать здесь нельзя: экран выглядит так, будто нажатие не
-// сработало (отзыв владельца 2026-09-10).
-const LOGIN_CANCELLED_MESSAGE =
-  'Telegram закрыл окно, а вход не подтвердился. Попробуйте ещё раз и разрешите всплывающие окна для сайта, если браузер их блокирует.';
 
 export default function LoginScreen() {
-  const navigate = useNavigate();
   const { status: authStatus, refresh } = useAuth();
   const { config, status: configStatus, reload } = useAuthConfig();
-  const { ready, login } = useTelegramLogin(config?.telegramBotId);
   const { pending: autoPending, error: autoError } = useTelegramAuthResultLogin(refresh);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Локальная переменная, не config?.telegramBotId в каждом месте: TS
+  // сужает `number | undefined` до `number` по ней и в замыкании кнопки
+  // ниже, а хук `!config?.telegramBotId` не сужается через обращение к
+  // свойству — пришлось бы либо повторять проверку в обработчике (и она
+  // осталась бы веткой, которую нечем покрыть тестом), либо писать `as number`.
+  const telegramBotId = config?.telegramBotId;
 
   if (authStatus === 'ok') return <Navigate to="/schedule" replace />;
 
-  async function handleLoginClick() {
-    setError(null);
+  function handleLoginClick(botId: number) {
+    // Вкладка сейчас уйдёт на Telegram — кнопка остаётся занятой до
+    // возврата, повторное нажатие тут не нужно и не поможет.
     setPending(true);
-    try {
-      const outcome = await login();
-      // Увели вкладку на Telegram (телефон) — ждать здесь нечего, результат
-      // придёт фрагментом адреса на возврате (useTelegramAuthResultLogin).
-      if (outcome.kind === 'redirected') return;
-      if (outcome.kind === 'cancelled') {
-        setError(LOGIN_CANCELLED_MESSAGE);
-        return;
-      }
-      await postTelegramLogin(outcome.user);
-      await refresh();
-      void navigate('/schedule', { replace: true });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : LOGIN_FAILED_MESSAGE);
-    } finally {
-      setPending(false);
-    }
+    redirectToTelegramAuth(botId);
   }
 
   return (
-    <main
-      style={{
-        padding: 24,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-        maxWidth: 420,
-      }}
-    >
-      <h1 style={{ fontSize: 22, margin: 0 }}>Кабинет школы Сюань-Сюэ</h1>
-      <p style={{ margin: 0 }}>
-        Здесь расписание, ссылки на занятия и записи для учителей.
-      </p>
-      <p style={{ margin: 0, color: 'var(--ink-soft)' }}>
-        Войдите через Telegram — тем же аккаунтом, которым вы читаете канал школы.
-      </p>
-
-      {/* Фрагмент #tgAuthResult= есть — вход уже идёт сам, кнопку не
-          показываем: на телефоне она иначе на мгновение мигает раньше
-          скелетона (CLAUDE.md «Фронтенд» — скелетон по форме контента). */}
-      {autoPending && <SkeletonLines widths={['70%', '40%']} />}
-
-      {!autoPending && configStatus === 'loading' && (
-        <SkeletonLines widths={['70%', '40%']} />
-      )}
-
-      {!autoPending && configStatus === 'offline' && (
-        <div role="alert">
-          <p style={{ margin: '0 0 8px' }}>{OFFLINE_MESSAGE}</p>
-          <Button variant="secondary" onClick={() => void reload()}>
-            Повторить
-          </Button>
-        </div>
-      )}
-
-      {!autoPending && configStatus === 'ok' && !config?.telegramBotId && (
-        <p role="alert">{NOT_CONFIGURED_MESSAGE}</p>
-      )}
-
-      {!autoPending && configStatus === 'ok' && config?.telegramBotId && (
-        <Button
-          pending={pending}
-          disabled={!ready}
-          onClick={() => void handleLoginClick()}
-        >
-          Войти через Telegram
-        </Button>
-      )}
-
-      {(error || autoError) && (
-        <p role="alert" style={{ color: 'var(--danger)' }}>
-          {error ?? autoError}
+    <main style={loginPageStyle}>
+      <div style={loginCardStyle}>
+        <h1 style={loginTitleStyle}>Кабинет школы Сюань-Сюэ</h1>
+        <p style={loginExplanationStyle}>
+          Здесь расписание, ссылки на занятия и записи для учителей.
         </p>
-      )}
+
+        {/* Фрагмент #tgAuthResult= есть — вход уже идёт сам, кнопку не
+            показываем: на телефоне она иначе на мгновение мигает раньше
+            скелетона (CLAUDE.md «Фронтенд» — скелетон по форме контента). */}
+        {autoPending && <SkeletonLines widths={['70%', '40%']} />}
+
+        {!autoPending && configStatus === 'loading' && (
+          <SkeletonLines widths={['70%', '40%']} />
+        )}
+
+        {!autoPending && configStatus === 'offline' && (
+          <div role="alert">
+            <p style={{ margin: '0 0 8px' }}>{OFFLINE_MESSAGE}</p>
+            <Button
+              variant="secondary"
+              onClick={() => void reload()}
+              style={{ width: '100%' }}
+            >
+              Повторить
+            </Button>
+          </div>
+        )}
+
+        {!autoPending && configStatus === 'ok' && !telegramBotId && (
+          <p role="alert">{NOT_CONFIGURED_MESSAGE}</p>
+        )}
+
+        {!autoPending && configStatus === 'ok' && telegramBotId && (
+          <>
+            <Button
+              pending={pending}
+              onClick={() => handleLoginClick(telegramBotId)}
+              style={{ width: '100%' }}
+            >
+              Войти через Telegram
+            </Button>
+            <p style={loginCaptionStyle}>
+              Тем же аккаунтом, которым вы читаете канал школы
+            </p>
+          </>
+        )}
+
+        {autoError && (
+          <p role="alert" style={{ color: 'var(--danger)', margin: 0 }}>
+            {autoError}
+          </p>
+        )}
+      </div>
     </main>
   );
 }

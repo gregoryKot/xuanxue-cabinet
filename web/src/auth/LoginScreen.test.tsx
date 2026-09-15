@@ -1,6 +1,6 @@
-// LoginScreen сам не грузит виджет (jsdom не исполняет удалённые скрипты) —
-// script и window.Telegram.Login.auth подставляются вручную, как в
-// useTelegramLogin.test.ts.
+// Клик по кнопке теперь не ждёт ничего в этой вкладке — он сразу уводит
+// браузер на Telegram (redirectToTelegramAuth), поэтому в тестах эта функция
+// замокана: настоящий window.location.assign увёл бы jsdom со страницы.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -10,47 +10,34 @@ import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { AuthProvider } from './AuthProvider';
 import LoginScreen from './LoginScreen';
-import { __resetTelegramWidgetForTests } from './useTelegramLogin';
+import type * as TelegramAuthRedirectModule from './telegramAuthRedirect';
+import { redirectToTelegramAuth } from './telegramAuthRedirect';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
   return { ...actual, apiFetch: vi.fn() };
 });
 
-const mockedApiFetch = vi.mocked(apiFetch);
+// Настоящий redirectToTelegramAuth зовёт window.location.assign — в jsdom
+// это увело бы страницу и оборвало тест, поэтому подменяем именно его,
+// оставляя telegramAuthUrl настоящим (им пользуется telegramAuthRedirect.test.ts).
+vi.mock('./telegramAuthRedirect', async () => {
+  const actual = await vi.importActual<typeof TelegramAuthRedirectModule>(
+    './telegramAuthRedirect',
+  );
+  return { ...actual, redirectToTelegramAuth: vi.fn() };
+});
 
-function mockRoutes(
-  config: () => Promise<unknown>,
-  telegramLogin: () => Promise<MeDto> = () => Promise.reject(new Error('не ожидался')),
-) {
+const mockedApiFetch = vi.mocked(apiFetch);
+const redirectToTelegramAuthSpy = vi.mocked(redirectToTelegramAuth);
+
+function mockRoutes(config: () => Promise<unknown>) {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === '/auth/config') return config();
     if (path === '/auth/me')
       return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
-    if (path === '/auth/telegram') return telegramLogin();
     return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
   });
-}
-
-/** window.Telegram фейк с типизированным callback — без него vi.fn(...)
- * выводит параметры как `any` (eslint no-unsafe-call/no-unsafe-return). */
-function stubTelegramWidget(user: TelegramLoginInput) {
-  const auth = vi.fn((_options: unknown, callback: (u: TelegramLoginInput) => void) => {
-    callback(user);
-  });
-  window.Telegram = { Login: { auth } };
-}
-
-/** Скрипт виджета вставляет useEffect — он выполняется после коммита, а
- * findByRole резолвится по мутации DOM раньше него: без ожидания под
- * нагрузкой CI `load` уходил в пустоту и кнопка оставалась выключенной. */
-async function fireScriptLoad() {
-  const script = await waitFor(() => {
-    const found = document.head.querySelector('script[src*="telegram-widget"]');
-    expect(found).not.toBeNull();
-    return found;
-  });
-  script?.dispatchEvent(new Event('load'));
 }
 
 /** Тот же способ, что у telegram-widget.js: JSON → base64 → base64url без
@@ -70,9 +57,7 @@ function toTgAuthResultHash(user: TelegramLoginInput): string {
 
 afterEach(() => {
   mockedApiFetch.mockReset();
-  __resetTelegramWidgetForTests();
-  delete window.Telegram;
-  document.head.innerHTML = '';
+  redirectToTelegramAuthSpy.mockClear();
   window.location.hash = ''; // мобильный сценарий оставляет фрагмент — чистим между тестами
 });
 
@@ -138,104 +123,20 @@ describe('LoginScreen — конфигурация', () => {
 });
 
 describe('LoginScreen — вход', () => {
-  it('успешный вход: клик → auth() → POST /auth/telegram → редирект на /schedule', async () => {
-    const user = userEvent.setup();
-    const me: MeDto = {
-      id: 'u1',
-      name: 'Дима',
-      roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
-      status: 'active',
-    };
-    mockRoutes(
-      () => Promise.resolve({ telegramBotId: 123456 }),
-      () => Promise.resolve(me),
-    );
-    renderScreen();
-
-    const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    await fireScriptLoad();
-    await waitFor(() => expect(button).not.toBeDisabled());
-
-    const fakeTelegramUser: TelegramLoginInput = {
-      id: 42,
-      first_name: 'Дима',
-      auth_date: 1_700_000_000,
-      hash: 'a'.repeat(64),
-    };
-    stubTelegramWidget(fakeTelegramUser);
-
-    await user.click(button);
-
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/auth/telegram',
-      expect.objectContaining({ method: 'POST', body: fakeTelegramUser }),
-    );
-  });
-
-  it('ошибка входа (ApiError) — текст ошибки, без редиректа', async () => {
-    const user = userEvent.setup();
-    mockRoutes(
-      () => Promise.resolve({ telegramBotId: 123456 }),
-      () =>
-        Promise.reject(new ApiError('Подпись виджета не сошлась.', 401, 'unauthorized')),
-    );
-    renderScreen();
-
-    const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    await fireScriptLoad();
-    await waitFor(() => expect(button).not.toBeDisabled());
-
-    stubTelegramWidget({ id: 1, first_name: 'X', auth_date: 1, hash: 'a'.repeat(64) });
-    await user.click(button);
-
-    expect(await screen.findByText('Подпись виджета не сошлась.')).toBeInTheDocument();
-    expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
-  });
-
-  // Раньше этот случай проходил молча, и экран выглядел так, будто нажатие не
-  // сработало: окно Telegram открылось, закрылось, и ничего (отзыв владельца
-  // 2026-09-10). Так бывает и когда окно закрыли сами, и когда браузер не отдал
-  // виджету cookie Telegram — Safari режет третьесторонние.
-  it('попап закрылся без подтверждения — объяснение на экране, без POST', async () => {
+  it('клик уводит вкладку на Telegram с botId и оставляет кнопку занятой', async () => {
     const user = userEvent.setup();
     mockRoutes(() => Promise.resolve({ telegramBotId: 123456 }));
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    await fireScriptLoad();
-    await waitFor(() => expect(button).not.toBeDisabled());
-    window.Telegram = {
-      Login: {
-        auth: vi.fn((_options: unknown, callback: (u: false) => void) => callback(false)),
-      },
-    };
-
     await user.click(button);
 
+    expect(redirectToTelegramAuthSpy).toHaveBeenCalledWith(123456);
+    expect(redirectToTelegramAuthSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(button).toBeDisabled());
+    // Никакого запроса в этой вкладке: результат придёт фрагментом адреса
+    // на возврате (useTelegramAuthResultLogin), а не отсюда.
     expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/telegram', expect.anything());
-    expect(await screen.findByRole('alert')).toHaveTextContent('вход не подтвердился');
-  });
-
-  it('неизвестная ошибка (не ApiError) — общий текст', async () => {
-    const user = userEvent.setup();
-    mockRoutes(
-      () => Promise.resolve({ telegramBotId: 123456 }),
-      () => Promise.reject(new Error('boom')),
-    );
-    renderScreen();
-
-    const button = await screen.findByRole('button', { name: 'Войти через Telegram' });
-    await fireScriptLoad();
-    await waitFor(() => expect(button).not.toBeDisabled());
-    stubTelegramWidget({ id: 1, first_name: 'X', auth_date: 1, hash: 'a'.repeat(64) });
-
-    await user.click(button);
-
-    expect(
-      await screen.findByText('Не удалось войти. Попробуйте ещё раз.'),
-    ).toBeInTheDocument();
   });
 });
 
@@ -256,10 +157,13 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       tz: 'Asia/Jerusalem',
       status: 'active',
     };
-    mockRoutes(
-      () => Promise.resolve({ telegramBotId: 123456 }),
-      () => Promise.resolve(me),
-    );
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/telegram') return Promise.resolve(me);
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
 
     renderScreen();
 
@@ -279,11 +183,16 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       hash: 'a'.repeat(64),
     });
 
-    mockRoutes(
-      () => Promise.resolve({ telegramBotId: 123456 }),
-      () =>
-        Promise.reject(new ApiError('Подпись виджета не сошлась.', 401, 'unauthorized')),
-    );
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/telegram')
+        return Promise.reject(
+          new ApiError('Подпись виджета не сошлась.', 401, 'unauthorized'),
+        );
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
 
     renderScreen();
 
@@ -299,10 +208,13 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       hash: 'a'.repeat(64),
     });
 
-    mockRoutes(
-      () => Promise.resolve({ telegramBotId: 123456 }),
-      () => Promise.reject(new Error('boom')),
-    );
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/telegram') return Promise.reject(new Error('boom'));
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
 
     renderScreen();
 
