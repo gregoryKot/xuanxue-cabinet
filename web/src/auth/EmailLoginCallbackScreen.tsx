@@ -2,6 +2,8 @@
 // тратится POST-ом по нажатию «Войти», не при открытии страницы (SECURITY
 // §2) — сканеры почтовых клиентов открывают ссылки из письма сами и молча
 // сожгли бы его раньше пользователя. Логика запроса — useEmailLoginVerify.ts.
+// Уже вошедшего (открыл ссылку письма при активной сессии) уводит на
+// сохранённый адрес или домашний экран, не жёстко на /schedule (аудит L2).
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { useAuth } from './AuthProvider';
@@ -12,6 +14,7 @@ import {
   loginPageStyle,
   loginTitleStyle,
 } from './loginScreenStyles';
+import { postLoginPath } from './returnTo';
 import { useEmailLoginVerify } from './useEmailLoginVerify';
 
 const INCOMPLETE_LINK_MESSAGE = 'Ссылка неполная. Запросите новую на странице входа.';
@@ -33,7 +36,7 @@ export default function EmailLoginCallbackScreen() {
     continueToSchedule,
   } = useEmailLoginVerify(refresh, joinCode);
 
-  if (authStatus === 'ok') return <Navigate to="/schedule" replace />;
+  if (authStatus === 'ok') return <Navigate to={postLoginPath()} replace />;
 
   const token = searchParams.get('token');
   const hasValidToken = token !== null && EMAIL_LOGIN_TOKEN_RE.test(token);
