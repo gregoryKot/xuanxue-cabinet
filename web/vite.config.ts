@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { TEST_TIMEOUT_MS } from './src/test-support/testTimeouts';
 
 // Тот же тёмно-зелёный/чернильный тон, что заливка круга в
 // web/public/icons/icon.svg (scripts/generate-pwa-icons.mjs) — единый цвет
@@ -104,6 +105,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // Бюджет теста должен быть шире одного ожидания элемента: тест делает
+    // два-три findBy* подряд, и при равных числах vitest успевал убить тест
+    // первым (см. src/test-support/testTimeouts.ts).
+    testTimeout: TEST_TIMEOUT_MS,
     coverage: {
       // istanbul, не v8 (ADR-0018): v8 считает ветки по счётчикам исполнения
       // блоков, число веток плавает между машинами на одном и том же коде
