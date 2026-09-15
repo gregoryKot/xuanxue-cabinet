@@ -1,5 +1,5 @@
-// Один блок формы — название, галочки «перемешивать»/«обязателен», список
-// вопросов с порядком, добавление вопроса (ТЗ 4.3, «Лист»).
+// Один блок формы — название, галочка «перемешивать», список вопросов с
+// порядком, добавление вопроса (ТЗ 4.3, «Лист»).
 import { useState, type CSSProperties } from 'react';
 import { EXAM_LIMITS, type ExamItemDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
@@ -32,7 +32,6 @@ interface ExamBlockCardProps {
   usedItemIds: ReadonlySet<string>;
   onRename: (title: string) => void;
   onToggleShuffle: (shuffle: boolean) => void;
-  onToggleRequired: (required: boolean) => void;
   onRemoveBlock: () => void;
   onAddItem: (itemId: string) => void;
   onPublishItem: (itemId: string) => void;
@@ -49,7 +48,6 @@ export function ExamBlockCard({
   usedItemIds,
   onRename,
   onToggleShuffle,
-  onToggleRequired,
   onRemoveBlock,
   onAddItem,
   onPublishItem,
@@ -83,14 +81,6 @@ export function ExamBlockCard({
             onChange={(e) => onToggleShuffle(e.target.checked)}
           />
           Перемешивать вопросы
-        </label>
-        <label style={checkboxLabelStyle}>
-          <input
-            type="checkbox"
-            checked={block.required}
-            onChange={(e) => onToggleRequired(e.target.checked)}
-          />
-          Блок обязателен
         </label>
       </div>
 

@@ -14,9 +14,8 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     title: 'Форма ученика',
     description: 'Итоговый экзамен',
     level: 'начальный',
-    blocks: [
-      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true, required: true },
-    ],
+    blocks: [{ id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true }],
+    shuffleOptions: false,
     rubric: [],
     timeLimitMin: 40,
     attemptsAllowed: 2,
@@ -56,7 +55,7 @@ describe('initialExamFormState', () => {
     expect(state.timeLimitMinText).toBe('40');
     expect(state.attemptsAllowedText).toBe('2');
     expect(state.blocks).toEqual([
-      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true, required: true },
+      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true },
     ]);
   });
 
@@ -143,15 +142,13 @@ describe('toCreateInput / toUpdateInput', () => {
 
   it('блоки уходят через toBlockInputs (id сохраняется у существующего блока)', () => {
     const state = baseState({
-      blocks: [
-        { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false, required: false },
-      ],
+      blocks: [{ id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false }],
     });
     expect(toCreateInput(state).blocks).toEqual([
-      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false, required: false },
+      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false },
     ]);
     expect(toUpdateInput(state).blocks).toEqual([
-      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false, required: false },
+      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false },
     ]);
   });
 });

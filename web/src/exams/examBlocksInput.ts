@@ -1,5 +1,6 @@
 // Чистая логика блоков формы экзамена — добавить/убрать блок, переименовать,
-// галочки, добавить/убрать/переставить вопрос внутри блока (ТЗ 4.3, «Лист»).
+// перемешивание, добавить/убрать/переставить вопрос внутри блока (ТЗ 4.3,
+// «Лист»). «Блок обязателен» ушло из контракта (ADR-0033).
 // Вынесена из ExamBlocksField.tsx, чтобы проверять без React (CLAUDE.md
 // «Тесты»), по образцу exam-items/examItemFormInput.ts.
 import type { ExamBlockInput, ExamDto } from '@xuanxue/shared';
@@ -9,7 +10,6 @@ export interface ExamBlockDraft {
   title: string;
   itemIds: string[];
   shuffle: boolean;
-  required: boolean;
 }
 
 export function initialBlockDrafts(exam: ExamDto | null): ExamBlockDraft[] {
@@ -19,7 +19,6 @@ export function initialBlockDrafts(exam: ExamDto | null): ExamBlockDraft[] {
       title: block.title,
       itemIds: [...block.itemIds],
       shuffle: block.shuffle,
-      required: block.required,
     })) ?? []
   );
 }
@@ -30,12 +29,11 @@ export function toBlockInputs(blocks: ExamBlockDraft[]): ExamBlockInput[] {
     title: block.title.trim(),
     itemIds: block.itemIds,
     shuffle: block.shuffle,
-    required: block.required,
   }));
 }
 
 function newBlockDraft(): ExamBlockDraft {
-  return { title: '', itemIds: [], shuffle: false, required: false };
+  return { title: '', itemIds: [], shuffle: false };
 }
 
 export function addBlock(blocks: ExamBlockDraft[]): ExamBlockDraft[] {
@@ -72,14 +70,6 @@ export function setBlockShuffle(
   shuffle: boolean,
 ): ExamBlockDraft[] {
   return mapBlockAt(blocks, index, (block) => ({ ...block, shuffle }));
-}
-
-export function setBlockRequired(
-  blocks: ExamBlockDraft[],
-  index: number,
-  required: boolean,
-): ExamBlockDraft[] {
-  return mapBlockAt(blocks, index, (block) => ({ ...block, required }));
 }
 
 /** Вопрос по всей форме, не только по текущему блоку (ТЗ 4.3, п.4 — сервер

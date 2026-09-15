@@ -34,7 +34,7 @@ function attempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
     examTitle: 'Форма',
     userId: USER.id,
     status: 'in_progress',
-    blocks: [{ id: 'b1', title: '', required: true, questions: [VIDEO_Q] }],
+    blocks: [{ id: 'b1', title: '', questions: [VIDEO_Q] }],
     answers: [],
     startedAt: NOW.toISO() ?? '',
     expired: false,
@@ -95,7 +95,7 @@ describe('renderExamMediaAnswer', () => {
     const port = fakeExamBotPort({
       loadOwnAttempt: jest.fn().mockResolvedValue(
         attempt({
-          blocks: [{ id: 'b1', title: '', required: true, questions: [VIDEO_Q, q2] }],
+          blocks: [{ id: 'b1', title: '', questions: [VIDEO_Q, q2] }],
           media: [
             {
               id: 'm1',

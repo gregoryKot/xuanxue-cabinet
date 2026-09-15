@@ -59,9 +59,22 @@ describe('ExamItemsService', () => {
     const found = await service.getById(created.id);
     expect(found.prompt).toBe('Опишите форму «пэнбу»');
     expect(found.authorId).toBe(AUTHOR_ID);
-    expect(found.status).toBe('draft');
+    // ADR-0033: новый вопрос сразу годен к сборке формы, отдельного шага
+    // «опубликовать» больше нет.
+    expect(found.status).toBe('published');
     expect(found.version).toBe(1);
     expect(found.history).toEqual([]);
+  });
+
+  it('status: draft при создании — вопрос остаётся спрятанным (ADR-0033)', async () => {
+    const created = await service.create(
+      { kind: 'text', prompt: 'Пока прячу', status: 'draft' },
+      AUTHOR_ID,
+    );
+
+    await expect(service.getById(created.id)).resolves.toMatchObject({
+      status: 'draft',
+    });
   });
 
   it('single с двумя вариантами и одним верным — options в ответе с id', async () => {
@@ -116,7 +129,7 @@ describe('ExamItemsService', () => {
   describe('версии опубликованного вопроса (ТЗ 4.2, п.3)', () => {
     it('правка prompt у черновика — version не растёт, history пуст', async () => {
       const created = await service.create(
-        { kind: 'text', prompt: 'Черновик' },
+        { kind: 'text', prompt: 'Черновик', status: 'draft' },
         AUTHOR_ID,
       );
 
@@ -258,7 +271,7 @@ describe('ExamItemsService', () => {
 
     it('PATCH hint: null у черновика — поле исчезает из ответа', async () => {
       const created = await service.create(
-        { kind: 'text', prompt: 'p', hint: 'h' },
+        { kind: 'text', prompt: 'p', hint: 'h', status: 'draft' },
         AUTHOR_ID,
       );
 
@@ -382,7 +395,10 @@ describe('ExamItemsService', () => {
 
   describe('удаление — только черновик (ТЗ 4.2, п.4)', () => {
     it('черновик удаляется', async () => {
-      const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const created = await service.create(
+        { kind: 'text', prompt: 'p', status: 'draft' },
+        AUTHOR_ID,
+      );
 
       await service.remove(created.id);
 
@@ -464,7 +480,10 @@ describe('ExamItemsService', () => {
     });
 
     it('вопрос, который нигде не стоит, — удаляется как раньше', async () => {
-      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const item = await service.create(
+        { kind: 'text', prompt: 'p', status: 'draft' },
+        AUTHOR_ID,
+      );
 
       await service.remove(item.id);
 
@@ -483,12 +502,11 @@ describe('ExamItemsService', () => {
 
   describe('список', () => {
     it('фильтр по status', async () => {
-      const draft = await service.create({ kind: 'text', prompt: 'Черновик' }, AUTHOR_ID);
-      const published = await service.create(
-        { kind: 'text', prompt: 'Опубликован' },
+      const draft = await service.create(
+        { kind: 'text', prompt: 'Черновик', status: 'draft' },
         AUTHOR_ID,
       );
-      await service.update(published.id, { status: 'published' }, NOW);
+      await service.create({ kind: 'text', prompt: 'Опубликован' }, AUTHOR_ID);
 
       const list = await service.list({ status: 'draft' });
 

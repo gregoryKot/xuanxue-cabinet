@@ -37,7 +37,6 @@ function attempt(): ExamAttemptDto {
       {
         id: 'b1',
         title: '',
-        required: true,
         questions: [
           {
             itemId: 'i1',

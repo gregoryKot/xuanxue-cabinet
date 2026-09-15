@@ -15,7 +15,6 @@ import {
   removeBlock,
   removeItemFromBlock,
   renameBlock,
-  setBlockRequired,
   setBlockShuffle,
   usedItemIds,
   type ExamBlockDraft,
@@ -75,9 +74,6 @@ export function ExamBlocksField({
           usedItemIds={used}
           onRename={(title) => onChange(renameBlock(blocks, index, title))}
           onToggleShuffle={(shuffle) => onChange(setBlockShuffle(blocks, index, shuffle))}
-          onToggleRequired={(required) =>
-            onChange(setBlockRequired(blocks, index, required))
-          }
           onRemoveBlock={() => setPendingRemove({ index, block })}
           onAddItem={(itemId) => onChange(addItemToBlock(blocks, index, itemId))}
           onPublishItem={onPublishItem}

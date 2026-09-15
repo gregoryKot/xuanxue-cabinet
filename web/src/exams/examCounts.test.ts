@@ -3,7 +3,7 @@ import type { ExamBlockDto, ExamDto } from '@xuanxue/shared';
 import { countQuestions, formatExamListMeta } from './examCounts';
 
 function block(itemIds: string[], overrides: Partial<ExamBlockDto> = {}): ExamBlockDto {
-  return { id: 'b1', title: '', itemIds, shuffle: false, required: false, ...overrides };
+  return { id: 'b1', title: '', itemIds, shuffle: false, ...overrides };
 }
 
 function exam(

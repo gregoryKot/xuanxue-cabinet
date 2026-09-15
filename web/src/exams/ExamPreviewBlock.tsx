@@ -30,10 +30,7 @@ interface ExamPreviewBlockProps {
 export function ExamPreviewBlock({ block, bankItems }: ExamPreviewBlockProps) {
   return (
     <section style={blockStyle}>
-      <h3 style={titleStyle}>
-        {block.title || 'Блок без названия'}
-        {block.required && ' · обязателен'}
-      </h3>
+      <h3 style={titleStyle}>{block.title || 'Блок без названия'}</h3>
       {block.shuffle && <p style={noteStyle}>{SHUFFLE_NOTE}</p>}
       {block.itemIds.length === 0 && <p style={noteStyle}>В блоке пока нет вопросов.</p>}
       {block.itemIds.map((itemId, index) => (

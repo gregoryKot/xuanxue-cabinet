@@ -62,29 +62,23 @@ describe('ExamBlocksField — блоки', () => {
 
     await user.click(screen.getByRole('button', { name: 'Добавить блок' }));
 
-    expect(onChange).toHaveBeenCalledWith([
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ]);
+    expect(onChange).toHaveBeenCalledWith([{ title: '', itemIds: [], shuffle: false }]);
   });
 
   it('переименование блока', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     const { onChange } = renderField(blocks);
 
     await user.type(screen.getByLabelText('Название блока 1'), 'Т');
 
-    expect(onChange).toHaveBeenCalledWith([
-      { title: 'Т', itemIds: [], shuffle: false, required: false },
-    ]);
+    expect(onChange).toHaveBeenCalledWith([{ title: 'Т', itemIds: [], shuffle: false }]);
   });
 
   it('«Убрать блок» спрашивает подтверждение, ничего не меняет до ответа', async () => {
     const user = userEvent.setup();
     const blocks: ExamBlockDraft[] = [
-      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false, required: false },
+      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false },
     ];
     const { onChange } = renderField(blocks);
 
@@ -97,7 +91,7 @@ describe('ExamBlocksField — блоки', () => {
   it('отказ в диалоге подтверждения — блок остаётся', async () => {
     const user = userEvent.setup();
     const blocks: ExamBlockDraft[] = [
-      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false, required: false },
+      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false },
     ];
     const { onChange } = renderField(blocks);
 
@@ -118,7 +112,6 @@ describe('ExamBlocksField — блоки', () => {
         title: 'Первый',
         itemIds: ['i1', 'i2'],
         shuffle: false,
-        required: false,
       },
     ];
     const { onChange } = renderField(blocks, { bankItems: [] });
@@ -136,8 +129,8 @@ describe('ExamBlocksField — блоки', () => {
   it('подтверждение удаления пустого блока (без вопросов) — текст без числа, блок удаляется', async () => {
     const user = userEvent.setup();
     const blocks: ExamBlockDraft[] = [
-      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false, required: false },
-      { id: 'b2', title: 'Второй', itemIds: ['i1'], shuffle: false, required: false },
+      { id: 'b1', title: 'Первый', itemIds: [], shuffle: false },
+      { id: 'b2', title: 'Второй', itemIds: ['i1'], shuffle: false },
     ];
     const { onChange } = renderField(blocks, { bankItems: [] });
 
@@ -153,46 +146,34 @@ describe('ExamBlocksField — блоки', () => {
     expect(onChange).toHaveBeenCalledWith([blocks[1]]);
   });
 
-  it('галочки «перемешивать»/«обязателен» меняют состояние блока', async () => {
+  it('галочка «перемешивать» меняет состояние блока', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     const { onChange } = renderField(blocks);
 
     await user.click(screen.getByLabelText('Перемешивать вопросы'));
-    expect(onChange).toHaveBeenCalledWith([
-      { title: '', itemIds: [], shuffle: true, required: false },
-    ]);
 
-    await user.click(screen.getByLabelText('Блок обязателен'));
-    expect(onChange).toHaveBeenCalledWith([
-      { title: '', itemIds: [], shuffle: false, required: true },
-    ]);
+    expect(onChange).toHaveBeenCalledWith([{ title: '', itemIds: [], shuffle: true }]);
   });
 });
 
 describe('ExamBlocksField — добавление вопроса', () => {
   it('«Добавить вопрос» открывает пикер, клик по вопросу добавляет его в блок', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     const { onChange } = renderField(blocks, { bankItems: [makeItem()] });
 
     await user.click(screen.getByRole('button', { name: 'Добавить вопрос' }));
     await user.click(screen.getByRole('button', { name: 'Добавить' }));
 
     expect(onChange).toHaveBeenCalledWith([
-      { title: '', itemIds: ['i1'], shuffle: false, required: false },
+      { title: '', itemIds: ['i1'], shuffle: false },
     ]);
   });
 
   it('уже добавленный вопрос — в пикере показан как «Добавлено» и не кликабелен', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: ['i1'], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: ['i1'], shuffle: false }];
     renderField(blocks, { bankItems: [makeItem({ id: 'i1' })] });
 
     await user.click(screen.getByRole('button', { name: 'Добавить вопрос' }));
@@ -203,9 +184,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
 
   it('фильтр по тегу в пикере сужает список кандидатов', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     renderField(blocks, {
       bankItems: [
         makeItem({ id: 'i1', prompt: 'С тегом', tags: ['ян'] }),
@@ -225,9 +204,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
 
   it('тег без совпадений среди опубликованных — другой текст, чем «вопросов вовсе нет»', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     renderField(blocks, { bankItems: [makeItem({ tags: ['теория'] })] });
 
     await user.click(screen.getByRole('button', { name: 'Добавить вопрос' }));
@@ -246,9 +223,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
   // не предлагается как кандидат для «Добавить».
   it('черновик виден в пикере отдельной группой и помечен, что в форму не попадёт', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     renderField(blocks, {
       bankItems: [makeItem({ id: 'i1', status: 'draft', prompt: 'Черновик' })],
     });
@@ -264,9 +239,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
 
   it('пустой список кандидатов, но черновик есть — сообщение называет число черновиков', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     renderField(blocks, {
       bankItems: [makeItem({ id: 'i1', status: 'draft', prompt: 'Черновик' })],
     });
@@ -285,9 +258,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
 
   it('банк совсем пуст (ни опубликованных, ни черновиков) — прежний текст', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     renderField(blocks, { bankItems: [] });
 
     await user.click(screen.getByRole('button', { name: 'Добавить вопрос' }));
@@ -297,9 +268,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
 
   it('«Опубликовать» у черновика в пикере зовёт onPublishItem с id вопроса', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     const { onPublishItem } = renderField(blocks, {
       bankItems: [makeItem({ id: 'i1', status: 'draft', prompt: 'Черновик' })],
     });
@@ -312,9 +281,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
 
   it('после публикации вопрос переезжает в кандидаты и доступен для добавления', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     const draft = makeItem({ id: 'i1', status: 'draft', prompt: 'Стойка мабу' });
     const { rerender } = render(
       <ExamBlocksField
@@ -357,9 +324,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
   // раньше не различал.
   it('банк ещё грузится — «Загружаем вопросы», не «Опубликованных вопросов пока нет»', async () => {
     const user = userEvent.setup();
-    const blocks: ExamBlockDraft[] = [
-      { title: '', itemIds: [], shuffle: false, required: false },
-    ];
+    const blocks: ExamBlockDraft[] = [{ title: '', itemIds: [], shuffle: false }];
     renderField(blocks, { bankItems: [], bankLoading: true });
 
     await user.click(screen.getByRole('button', { name: 'Добавить вопрос' }));
@@ -372,9 +337,7 @@ describe('ExamBlocksField — добавление вопроса', () => {
 });
 
 describe('ExamBlocksField — список вопросов блока', () => {
-  const blocks: ExamBlockDraft[] = [
-    { title: '', itemIds: ['i1', 'i2'], shuffle: false, required: false },
-  ];
+  const blocks: ExamBlockDraft[] = [{ title: '', itemIds: ['i1', 'i2'], shuffle: false }];
   const bankItems = [
     makeItem({ id: 'i1', prompt: 'Первый вопрос' }),
     makeItem({ id: 'i2', prompt: 'Второй вопрос' }),
@@ -398,7 +361,7 @@ describe('ExamBlocksField — список вопросов блока', () => {
     await user.click(upButtons[1] as HTMLElement);
 
     expect(onChange).toHaveBeenCalledWith([
-      { title: '', itemIds: ['i2', 'i1'], shuffle: false, required: false },
+      { title: '', itemIds: ['i2', 'i1'], shuffle: false },
     ]);
   });
 
@@ -412,7 +375,7 @@ describe('ExamBlocksField — список вопросов блока', () => {
     await user.click(downButtons[0] as HTMLElement);
 
     expect(onChange).toHaveBeenCalledWith([
-      { title: '', itemIds: ['i2', 'i1'], shuffle: false, required: false },
+      { title: '', itemIds: ['i2', 'i1'], shuffle: false },
     ]);
   });
 
@@ -424,12 +387,12 @@ describe('ExamBlocksField — список вопросов блока', () => {
     await user.click(removeButtons[0] as HTMLElement);
 
     expect(onChange).toHaveBeenCalledWith([
-      { title: '', itemIds: ['i2'], shuffle: false, required: false },
+      { title: '', itemIds: ['i2'], shuffle: false },
     ]);
   });
 
   it('вопрос не найден в банке — честный текст, не пустота', () => {
-    renderField([{ title: '', itemIds: ['missing'], shuffle: false, required: false }], {
+    renderField([{ title: '', itemIds: ['missing'], shuffle: false }], {
       bankItems: [],
     });
 
@@ -437,7 +400,7 @@ describe('ExamBlocksField — список вопросов блока', () => {
   });
 
   it('банк ещё грузится — текст загрузки вместо «недоступен»', () => {
-    renderField([{ title: '', itemIds: ['i1'], shuffle: false, required: false }], {
+    renderField([{ title: '', itemIds: ['i1'], shuffle: false }], {
       bankItems: [],
       bankLoading: true,
     });

@@ -19,20 +19,26 @@ export function createExamAttemptsTestHelpers(getApp: () => TestApp) {
   // что попытка стартует на реальной опубликованной форме.
   async function createPublishedExam(
     teacherCookie: string,
-    options: { attemptsAllowed?: number } = {},
-  ): Promise<{ examId: string; itemId: string }> {
+    options: { attemptsAllowed?: number; shuffleOptions?: boolean } = {},
+  ): Promise<{ examId: string; itemId: string; optionIds: string[] }> {
     const item = await withCsrf(request(server()).post('/api/exam-items'))
       .set('Cookie', teacherCookie)
       .send({
         kind: 'single',
         prompt: 'Сколько форм в базовом комплексе?',
         criteria: 'принимается любой ответ близкий к программе',
+        // Четыре варианта, а не два: на двух перемешивание совпадает с
+        // исходным порядком слишком часто, и тест про него был бы мигающим
+        // (CLAUDE.md «Детерминизм»).
         options: [
           { text: 'пять', correct: true },
           { text: 'три', correct: false },
+          { text: 'восемь', correct: false },
+          { text: 'двенадцать', correct: false },
         ],
       });
     const itemId = (item.body as ExamItemDto).id;
+    const optionIds = (item.body as ExamItemDto).options.map((option) => option.id);
     await withCsrf(request(server()).patch(`/api/exam-items/${itemId}`))
       .set('Cookie', teacherCookie)
       .send({ status: 'published' });
@@ -43,13 +49,14 @@ export function createExamAttemptsTestHelpers(getApp: () => TestApp) {
         title: 'Экзамен по третьей форме',
         blocks: [{ title: 'Форма', itemIds: [itemId] }],
         attemptsAllowed: options.attemptsAllowed,
+        shuffleOptions: options.shuffleOptions,
       });
     const examId = (exam.body as ExamDto).id;
     await withCsrf(request(server()).patch(`/api/exams/${examId}`))
       .set('Cookie', teacherCookie)
       .send({ status: 'published' });
 
-    return { examId, itemId };
+    return { examId, itemId, optionIds };
   }
 
   return {

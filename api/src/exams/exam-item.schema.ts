@@ -65,7 +65,11 @@ export class ExamItemRecord {
   @Prop({ type: [String], default: [] })
   tags!: string[];
 
-  @Prop({ type: String, enum: EXAM_ITEM_STATUSES, default: 'draft' })
+  // По умолчанию вопрос сразу годен к сборке формы (ADR-0033): владелец
+  // создал вопросы и не нашёл их в конструкторе — шаг «опубликовать» был
+  // лишним. `draft` остаётся осознанным выбором «спрятать» — его шлёт
+  // создание с явным статусом или кнопка статуса на экране.
+  @Prop({ type: String, enum: EXAM_ITEM_STATUSES, default: 'published' })
   status!: ExamItemStatus;
 
   @Prop({ type: Number, default: 1 })

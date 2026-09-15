@@ -1,10 +1,18 @@
 // Поля, общие для тела POST и PATCH /exams (создание и правка одной формой) —
-// blocks/attemptsAllowed не меняют ни обязательность, ни тип между create и
+// blocks/shuffleOptions/attemptsAllowed не меняют ни обязательность, ни тип между create и
 // update (в отличие от title/description/level/timeLimitMin/status), поэтому
 // декораторы не дублируются (метаданные class-validator наследуются по
 // прототипу — тот же приём, что у ExamItemFieldsDto/ClassFieldsDto).
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsInt, Max, Min, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsInt,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import {
   EXAM_LIMITS,
   type ExamBlockInput,
@@ -23,6 +31,12 @@ export class ExamFieldsDto {
   @ValidateNested({ each: true })
   @Type(() => ExamBlockDto)
   blocks?: ExamBlockInput[];
+
+  // Перемешивать варианты ответа внутри вопроса (ADR-0033) — у формы, а не
+  // у блока: вариантами экзамен распоряжается одинаково везде.
+  @OptionalNotNull()
+  @IsBoolean()
+  shuffleOptions?: boolean;
 
   // Не прислали (`undefined`) — сервис не трогает рубрику при правке или
   // подставляет DEFAULT_RUBRIC при создании (ТЗ 4.6, п.1, exam-rubric.ts).

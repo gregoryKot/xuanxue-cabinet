@@ -66,6 +66,7 @@ export interface CreateExamItemInput {
   criteria?: string;
   options?: ExamItemOptionInput[];
   tags?: string[];
+  status?: ExamItemStatus; // не прислали — сразу `published` (ADR-0033)
 }
 
 /**
@@ -113,25 +114,22 @@ export const EXAM_ITEM_NOT_FOUND_MESSAGE = 'Вопрос не найден. Об
 export const EXAM_STATUSES = ['draft', 'published', 'archived'] as const;
 export type ExamStatus = (typeof EXAM_STATUSES)[number];
 
-/** Блок формы: вопросы одной темы, показываются вместе. */
+/** Блок — устройство хранилища: для учителя экзамен один список (ADR-0033). */
 export interface ExamBlockDto {
   id: string;
   title: string; // «Теория», «Форма» — может быть пустым
-  itemIds: string[]; // порядок внутри блока — порядок массива
-  shuffle: boolean; // перемешивать вопросы внутри блока у каждого сдающего
-  required: boolean; // блок нельзя пропустить
+  itemIds: string[]; // порядок вопросов — порядок массива
+  shuffle: boolean; // перемешивать вопросы у каждого сдающего
 }
 
-/** `id` есть у существующего блока (сервис сохраняет его как есть при правке
- * — см. `mapBlocks`, `exam-blocks.ts`); без `id` — новый блок, сервис создаёт
- * `id` сам. Тот же приём, что у `ExamItemOptionInput` выше и у
- * `ScheduleRuleInput` (shared/src/classes.ts). */
+/** `id` есть у существующего блока (сервис сохраняет его как есть — `mapBlocks`,
+ * `exam-blocks.ts`); без `id` — новый блок, `id` создаёт сервис. Тот же приём, что
+ * у `ExamItemOptionInput` выше и у `ScheduleRuleInput` (shared/src/classes.ts). */
 export interface ExamBlockInput {
   id?: string;
   title?: string;
   itemIds: string[];
   shuffle?: boolean;
-  required?: boolean;
 }
 
 export interface ExamDto {
@@ -140,6 +138,7 @@ export interface ExamDto {
   description: string; // что это за экзамен — текст для ученика, может быть пустым
   level: string; // для какого уровня; пустая строка — для всех
   blocks: ExamBlockDto[];
+  shuffleOptions: boolean; // перемешивать варианты ответа у сдающего (ADR-0033)
   rubric: RubricCriterionDto[];
   timeLimitMin?: number; // нет — без ограничения
   attemptsAllowed: number; // по умолчанию 1 (PLAN §11: «по умолчанию попытка одна»)
@@ -154,6 +153,7 @@ export interface CreateExamInput {
   description?: string;
   level?: string;
   blocks?: ExamBlockInput[];
+  shuffleOptions?: boolean;
   rubric?: RubricCriterionInput[]; // не прислали — сервис подставит DEFAULT_RUBRIC
   timeLimitMin?: number;
   attemptsAllowed?: number;
@@ -170,6 +170,7 @@ export interface UpdateExamInput {
   description?: string | null;
   level?: string | null;
   blocks?: ExamBlockInput[];
+  shuffleOptions?: boolean;
   rubric?: RubricCriterionInput[]; // прислали — заменяет набор целиком, как blocks
   timeLimitMin?: number | null;
   attemptsAllowed?: number;
@@ -231,7 +232,6 @@ export interface AttemptQuestionDto {
 export interface AttemptBlockDto {
   id: string;
   title: string;
-  required: boolean;
   questions: AttemptQuestionDto[];
 }
 

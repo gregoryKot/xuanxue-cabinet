@@ -60,7 +60,6 @@ function toStudentBlock(block: AttemptBlockRecord): AttemptBlockDto {
   return {
     id: block.id,
     title: block.title,
-    required: block.required,
     questions: block.questions.map(toStudentQuestion),
   };
 }
