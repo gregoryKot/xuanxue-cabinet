@@ -2,14 +2,35 @@
 // маршрут, не полноэкранный лист — useHistorySheet не нужен (правило
 // CLAUDE.md касается `position: fixed; inset: 0`), «Назад» — обычная ссылка
 // на очередь, как «Вернуться к экзаменам» в attempt/AttemptSubmitted.tsx.
+// Две колонки на экране, где рубрике хватает места рядом с ответами (макет
+// Review.dc.html, класс `.xuanxue-review-layout` в index.css), одна — на
+// телефоне (CLAUDE.md «Мобильный экран первым» сильнее макета).
+//
+// Макет показывает «Работа 1 из 3» с переходом между попытками очереди и
+// время сдачи в шапке — здесь их нет: перехода между попытками очередь не
+// отдаёт (свой список пришлось бы грузить заново на этом экране — решение
+// агента: не превращать реэскин в новую фичу навигации), а `submittedAt`
+// в `AttemptReviewDto` не приходит вовсе (только в `ExamAttemptDto` списка
+// очереди) — значит, не выдумываем.
 import { Link, useParams } from 'react-router-dom';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import {
+  screenColumnTitleStyle,
+  screenExplanationStyle,
+  screenHintStyle,
+  screenSectionStyle,
+  screenTitleStyle,
+  textLinkStyle,
+  wideScreenSectionStyle,
+} from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
-import { AttemptReviewBlock } from './AttemptReviewBlock';
-import { AttemptReviewMedia } from './AttemptReviewMedia';
+import { AttemptReviewAnswers } from './AttemptReviewAnswers';
 import { GradingForm } from './GradingForm';
 import { useAttemptReview } from './useAttemptReview';
+
+const RUBRIC_HEADING_ID = 'grading-rubric-heading';
+const RUBRIC_HINT =
+  'Итог и комментарий уйдут ученику в Telegram сразу после отправки. Баллы по критериям он увидит в своём кабинете.';
 
 export default function AttemptReviewScreen() {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -43,32 +64,37 @@ export default function AttemptReviewScreen() {
   }
 
   return (
-    <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>
-        <Link to="/grading">Вернуться к очереди проверки</Link>
-      </p>
-      <h1 style={{ margin: 0, fontSize: 18 }}>{review.examTitle}</h1>
-      <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{review.userName}</p>
+    <section style={wideScreenSectionStyle}>
+      <Link to="/grading" style={textLinkStyle}>
+        Вернуться к очереди проверки
+      </Link>
+      <h1 style={screenTitleStyle}>{review.userName}</h1>
+      <p style={screenExplanationStyle}>{review.examTitle}</p>
 
-      <AttemptReviewMedia
-        media={review.media ?? []}
-        onMarkManual={markMediaManual}
-        marking={markingMedia}
-        markError={markMediaError}
-      />
+      <div className="xuanxue-review-layout">
+        <AttemptReviewAnswers
+          blocks={review.blocks}
+          media={review.media ?? []}
+          onMarkManual={markMediaManual}
+          markingMedia={markingMedia}
+          markMediaError={markMediaError}
+        />
 
-      {review.blocks.map((block) => (
-        <AttemptReviewBlock key={block.id} block={block} />
-      ))}
-
-      <GradingForm
-        key={review.attemptId}
-        rubric={review.rubric}
-        grading={review.grading}
-        onSubmit={submitGrading}
-        saving={saving}
-        saveError={saveError}
-      />
+        <aside aria-labelledby={RUBRIC_HEADING_ID}>
+          <h2 id={RUBRIC_HEADING_ID} style={screenColumnTitleStyle}>
+            Рубрика
+          </h2>
+          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>{RUBRIC_HINT}</p>
+          <GradingForm
+            key={review.attemptId}
+            rubric={review.rubric}
+            grading={review.grading}
+            onSubmit={submitGrading}
+            saving={saving}
+            saveError={saveError}
+          />
+        </aside>
+      </div>
     </section>
   );
 }

@@ -50,6 +50,17 @@ export const screenTitleStyle: CSSProperties = {
   color: 'var(--ink)',
 };
 
+/** Заголовок колонки в двухколоночном экране (grading/AttemptReviewScreen.tsx:
+ * «Ответы» и «Рубрика») — легче `screenTitleStyle`: тот зарезервирован под h1
+ * самого экрана, а колонки-сёстры должны читаться равным весом, ни одна не
+ * выглядит вторым главным заголовком страницы. */
+export const screenColumnTitleStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: 'var(--font-display)',
+  fontWeight: 300,
+  fontSize: 28,
+};
+
 /** Мелкая приписка под объяснением: часовой пояс, что значит кнопка. Тише
  * объяснения — читают её один раз и больше к ней не возвращаются. */
 export const screenHintStyle: CSSProperties = {

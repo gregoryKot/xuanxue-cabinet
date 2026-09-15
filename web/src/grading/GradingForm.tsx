@@ -2,7 +2,9 @@
 // каждому критерию, общий комментарий, итог. Если оценка уже стоит, форма
 // открывается заполненной ею (initialGradingFormState), а кнопка говорит,
 // что оценка переписывается, — учитель не должен решить, что жмёт «Сохранить»
-// в пустоту.
+// в пустоту. Без собственного заголовка: живёт внутри секции «Рубрика»
+// (grading/AttemptReviewScreen.tsx), второй заголовок над тем же блоком был
+// бы лишним.
 import { useState, type CSSProperties, type FormEvent } from 'react';
 import {
   GRADING_LIMITS,
@@ -66,8 +68,6 @@ export function GradingForm({
       onSubmit={(e) => void handleSubmit(e)}
       style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
     >
-      <h2 style={{ margin: 0, fontSize: 16 }}>Оценка</h2>
-
       {state.criteria.map((criterion, index) => (
         <GradingCriterionField
           key={criterion.id}
