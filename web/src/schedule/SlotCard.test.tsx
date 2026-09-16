@@ -1,3 +1,6 @@
+// Строка слота: время, название и служебная строка — каждое своим
+// элементом (макет Schedule.dc.html), поэтому проверки точечные, а не по
+// одной склеенной строке.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -24,7 +27,8 @@ describe('SlotCard', () => {
   it('активный слот с подписью группы — без пометки «выключено»', () => {
     render(<SlotCard slot={makeSlot()} onSelect={vi.fn()} />);
 
-    expect(screen.getByText(/19:00–20:00 · Тайцзицюань/)).toBeInTheDocument();
+    expect(screen.getByText('19:00–20:00')).toBeInTheDocument();
+    expect(screen.getByText('Тайцзицюань')).toBeInTheDocument();
     expect(screen.getByText(/средняя группа · Онлайн/)).toBeInTheDocument();
     expect(screen.queryByText(/выключено/)).not.toBeInTheDocument();
   });

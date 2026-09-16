@@ -77,13 +77,16 @@ describe('ScheduleScreen — загрузка', () => {
 });
 
 describe('ScheduleScreen — пустая база', () => {
-  it('объясняющий текст остаётся и появляется кнопка «Добавить занятие»', async () => {
+  it('заголовок раздела, объяснение и кнопка «Добавить занятие»', async () => {
     mockedApiFetch.mockResolvedValue([]);
 
     renderScreen();
 
     expect(await screen.findByText(/Пока в расписании нет занятий/)).toBeInTheDocument();
-    expect(screen.getByText(/Здесь расписание школы/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Расписание' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Постоянные занятия недели/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Добавить занятие' })).toBeInTheDocument();
   });
 });
@@ -96,6 +99,9 @@ describe('ScheduleScreen — список занятий (десктоп, сет
 
     expect(await screen.findByText(/19:00–20:00/)).toBeInTheDocument();
     expect(screen.getAllByText(/^(Вс|Пн|Вт|Ср|Чт|Пт|Сб)$/)).toHaveLength(7);
+    // Шесть пустых дней подписаны словами, а не оставлены пустым столбцом
+    // (макет Schedule.dc.html).
+    expect(screen.getAllByText('Занятий нет')).toHaveLength(6);
   });
 });
 

@@ -1,5 +1,5 @@
-// Карточка занятия ученика (ТЗ student-screen.md, п.2/п. «Тесты») — своя
-// плашка на каждый случай, без сети и без DI: чистый рендер по MyLessonDto.
+// Строка занятия ученика (ТЗ student-screen.md, п.2/п. «Тесты») — своя
+// проверка на каждый случай, без сети и без DI: чистый рендер по MyLessonDto.
 // Время — с фиксированным поясом (Asia/Jerusalem), не поясом машины: CI
 // гоняет vitest ещё и под TZ=Australia/Sydney (CLAUDE.md «Время»).
 import { render, screen } from '@testing-library/react';
@@ -27,40 +27,44 @@ function renderCard(overrides: Partial<MyLessonDto> = {}) {
   return render(<StudentLessonCard lesson={makeLesson(overrides)} timeZone={TZ} />);
 }
 
-describe('StudentLessonCard — день, время, название', () => {
-  it('заголовок — время в заданном поясе, название занятия; строка ниже — группа и тема', () => {
+describe('StudentLessonCard — название, день, время', () => {
+  it('заголовок строки — название занятия; ниже дата в заданном поясе, группа и тема', () => {
     renderCard();
-    expect(screen.getByText(/19:00 · Тайцзицюань/)).toBeInTheDocument();
-    expect(screen.getByText('Средняя группа · Пятое занятие цикла')).toBeInTheDocument();
+    expect(screen.getByText('Тайцзицюань')).toBeInTheDocument();
+    expect(
+      screen.getByText('Вт, 8 сентября, 19:00 · Средняя группа · Пятое занятие цикла'),
+    ).toBeInTheDocument();
   });
 
-  it('без темы — строка группы без пустого «·»', () => {
+  it('без темы — строка даты и группы без пустого «·»', () => {
     renderCard({ topic: '' });
-    expect(screen.getByText('Средняя группа')).toBeInTheDocument();
+    expect(
+      screen.getByText('Вт, 8 сентября, 19:00 · Средняя группа'),
+    ).toBeInTheDocument();
   });
 });
 
 describe('StudentLessonCard — онлайн', () => {
-  it('со ссылкой и паролем — кнопка «Открыть Zoom» и пароль рядом', () => {
+  it('со ссылкой и паролем — ссылка «Подключиться» и пароль рядом', () => {
     renderCard({
       format: 'online',
       zoomLink: 'https://zoom.us/j/123',
       zoomPassword: '4321',
     });
-    const link = screen.getByRole('link', { name: 'Открыть Zoom' });
+    const link = screen.getByRole('link', { name: 'Подключиться' });
     expect(link).toHaveAttribute('href', 'https://zoom.us/j/123');
     expect(screen.getByText('Пароль: 4321')).toBeInTheDocument();
   });
 
-  it('без пароля — кнопка без строки пароля', () => {
+  it('без пароля — ссылка без строки пароля', () => {
     renderCard({ format: 'online', zoomLink: 'https://zoom.us/j/123' });
-    expect(screen.getByRole('link', { name: 'Открыть Zoom' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Подключиться' })).toBeInTheDocument();
     expect(screen.queryByText(/Пароль/)).not.toBeInTheDocument();
   });
 
-  it('без ссылки — честная строка вместо кнопки', () => {
+  it('без ссылки — честная строка вместо ссылки', () => {
     renderCard({ format: 'online', zoomLink: undefined });
-    expect(screen.queryByRole('link', { name: 'Открыть Zoom' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Подключиться' })).not.toBeInTheDocument();
     expect(screen.getByText('Ссылку пришлём в канал.')).toBeInTheDocument();
   });
 });
@@ -79,13 +83,13 @@ describe('StudentLessonCard — офлайн', () => {
 });
 
 describe('StudentLessonCard — офлайн + онлайн', () => {
-  it('оба блока сразу — кнопка Zoom и адрес', () => {
+  it('оба блока сразу — ссылка на Zoom и адрес', () => {
     renderCard({
       format: 'both',
       zoomLink: 'https://zoom.us/j/123',
       location: 'Зал на Ротшильда, 12',
     });
-    expect(screen.getByRole('link', { name: 'Открыть Zoom' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Подключиться' })).toBeInTheDocument();
     expect(screen.getByText('Зал на Ротшильда, 12')).toBeInTheDocument();
   });
 });
@@ -98,6 +102,6 @@ describe('StudentLessonCard — отменено', () => {
       zoomLink: 'https://zoom.us/j/123',
     });
     expect(screen.getByText('Занятие отменено')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Открыть Zoom' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Подключиться' })).not.toBeInTheDocument();
   });
 });

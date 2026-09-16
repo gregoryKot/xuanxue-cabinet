@@ -3,23 +3,34 @@
 // неделя видна целиком, а не три с половиной дня с обрезанным четвёртым
 // (отзыв владельца 2026-09-09). Пол по ширине колонки не нужен: сетку
 // показывает только широкий экран, на телефоне ScheduleScreen рисует список.
+//
+// Облик — макет Schedule.dc.html: столбцы разделены волосяной линией и
+// стоят вплотную, без зазора и без рамок вокруг каждого дня. Линия сверху
+// закрывает сетку от заголовка экрана, линия слева отделяет столбец от
+// соседа — поэтому у первого дня её нет.
 import type { CSSProperties } from 'react';
 import { WEEKDAYS } from '@xuanxue/shared';
 import { DaySlots } from './DaySlots';
 import type { ScheduleGrid } from './scheduleGrid';
 
-const scrollStyle: CSSProperties = {
+const gridStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-  gap: 12,
+  borderTop: '1px solid var(--line)',
   overflowX: 'auto',
-  paddingBottom: 8,
 };
 const columnStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
+  gap: 14,
   minWidth: 0,
+  padding: '18px 16px 24px',
+  borderLeft: '1px solid var(--line)',
+};
+const firstColumnStyle: CSSProperties = {
+  ...columnStyle,
+  padding: '18px 16px 24px 0',
+  borderLeft: 'none',
 };
 
 interface ScheduleGridViewProps {
@@ -29,14 +40,14 @@ interface ScheduleGridViewProps {
 
 export function ScheduleGridView({ grid, onSelectSlot }: ScheduleGridViewProps) {
   return (
-    <div style={scrollStyle}>
-      {WEEKDAYS.map((day) => (
+    <div style={gridStyle}>
+      {WEEKDAYS.map((day, index) => (
         <DaySlots
           key={day}
           day={day}
           slots={grid[day]}
           onSelectSlot={onSelectSlot}
-          containerStyle={columnStyle}
+          containerStyle={index === 0 ? firstColumnStyle : columnStyle}
         />
       ))}
     </div>

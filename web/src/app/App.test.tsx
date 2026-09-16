@@ -144,9 +144,7 @@ describe('App', () => {
 
     renderAt('/planning');
 
-    expect(
-      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
   });
 
   it('учитель на /exam-items — маршрут «Вопросы для экзамена» открывает ExamItemsScreen', async () => {
@@ -263,9 +261,7 @@ describe('App', () => {
 
     renderAt('/');
 
-    expect(
-      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
   });
 
   // Личная настройка человека — маршрут не за RequirePeopleAccess и не за
