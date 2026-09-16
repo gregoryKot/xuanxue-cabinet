@@ -1,7 +1,7 @@
 // Тест таблицы предзагрузки данных первого экрана (routeModules.ts,
 // firstScreenPrefetch.ts) — отдельно от matchRoute (routeModules.test.ts):
 // здесь важно не какой чанк выбран, а какие пути строятся для него.
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ATTEMPTS_LIST_PATH,
   CLASSES_LIST_PATH,
@@ -22,6 +22,20 @@ import { matchRoute } from './routeMatch';
 function prefetchAt(pathname: string): string[] {
   return matchRoute(pathname)?.prefetch?.(pathname) ?? [];
 }
+
+// Пути с окном времени (`lessonsListPath`, `nextLessonsPath`) считаются от
+// «сейчас» — и в таблице, и в ожидании теста, но в разные моменты. Часы
+// заморожены, чтобы сравнение не зависело от того, успела ли между двумя
+// вызовами смениться минута или неделя (CLAUDE.md «Детерминизм»; CI поймал
+// расхождение в одну миллисекунду на `/templates` до округления окна).
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-09-16T12:00:37.421Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('RouteModule.prefetch — маршруты без параметра', () => {
   it('/planning (и /) — занятия на окно и классы', () => {

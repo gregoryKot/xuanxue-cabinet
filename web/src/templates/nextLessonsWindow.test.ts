@@ -3,9 +3,15 @@ import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { nextLessonsWindow } from './nextLessonsWindow';
 
 describe('nextLessonsWindow', () => {
-  it('начало окна — переданный момент как есть', () => {
-    const now = new Date('2026-09-07T12:00:00Z');
-    expect(nextLessonsWindow(now).from).toBe(now.toISOString());
+  it('начало окна — переданный момент, округлённый вниз до минуты', () => {
+    expect(nextLessonsWindow(new Date('2026-09-07T12:00:00Z')).from).toBe(
+      '2026-09-07T12:00:00.000Z',
+    );
+    // Секунды и миллисекунды отбрасываются: ключ предзагрузки и хука должны
+    // совпасть, хотя их считают в разные моменты (см. комментарий функции).
+    expect(nextLessonsWindow(new Date('2026-09-07T12:00:37.421Z')).from).toBe(
+      '2026-09-07T12:00:00.000Z',
+    );
   });
 
   it('конец окна — ровно PLANNING_HORIZON_WEEKS недель после начала', () => {
