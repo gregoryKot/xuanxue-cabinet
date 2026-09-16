@@ -30,6 +30,12 @@ describe('matchRouteLoader', () => {
     await expect(ROUTE_MODULES.channelNew.load()).resolves.toHaveProperty('default');
   });
 
+  it('новая рассылка — свой адрес, у журнала свой (ADR-0033)', async () => {
+    expect(matchRouteLoader('/broadcasts')).toBe(ROUTE_MODULES.broadcasts.load);
+    expect(matchRouteLoader('/broadcasts/new')).toBe(ROUTE_MODULES.broadcastNew.load);
+    await expect(ROUTE_MODULES.broadcastNew.load()).resolves.toHaveProperty('default');
+  });
+
   it('адрес с параметром — экран, у которого маршрут с :параметром', () => {
     expect(matchRouteLoader('/grading/abc')).toBe(ROUTE_MODULES.attemptReview.load);
     expect(matchRouteLoader('/attempts/652f00000000000000000001')).toBe(

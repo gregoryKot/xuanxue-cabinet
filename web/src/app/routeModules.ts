@@ -24,6 +24,9 @@ interface RouteModule {
   warm: boolean;
 }
 
+// Редактор — одна пара адресов на экран: `/x/new` и `/x/:id`, один загрузчик
+// на оба (ADR-0033). `/x/new` всегда объявлен раньше `/x/:id`: matchRouteLoader
+// берёт первое совпадение, а статический сегмент должен выигрывать у параметра.
 const loadChannelEditor = () => import('../channels/ChannelEditorScreen');
 const loadExamEditor = () => import('../exams/ExamEditorScreen');
 const loadExamItemEditor = () => import('../exam-items/ExamItemEditorScreen');
@@ -54,9 +57,6 @@ export const ROUTE_MODULES = {
     load: () => import('../channels/ChannelsScreen'),
     warm: true,
   },
-  // `/channels/new` раньше `/channels/:channelId`: matchRouteLoader берёт
-  // первое совпадение, а статический сегмент должен выигрывать у параметра.
-  // Один загрузчик на оба адреса — это один и тот же экран (ADR-0033).
   channelNew: { path: '/channels/new', load: loadChannelEditor, warm: true },
   channelEditor: {
     path: '/channels/:channelId',
@@ -66,6 +66,13 @@ export const ROUTE_MODULES = {
   broadcasts: {
     path: '/broadcasts',
     load: () => import('../broadcasts/BroadcastsScreen'),
+    warm: true,
+  },
+  // Правки у разовой рассылки нет — только «новая» (ADR-0033): созданную
+  // рассылку API не меняет, из журнала её можно лишь отменить.
+  broadcastNew: {
+    path: '/broadcasts/new',
+    load: () => import('../broadcasts/BroadcastNewScreen'),
     warm: true,
   },
   templates: {
@@ -78,9 +85,6 @@ export const ROUTE_MODULES = {
     load: () => import('../exam-items/ExamItemsScreen'),
     warm: true,
   },
-  // `/exam-items/new` раньше `/exam-items/:itemId`: matchRouteLoader берёт
-  // первое совпадение, а статический сегмент должен выигрывать у параметра.
-  // Один загрузчик на оба адреса — это один и тот же экран (ADR-0033).
   examItemNew: { path: '/exam-items/new', load: loadExamItemEditor, warm: true },
   examItemEditor: {
     path: '/exam-items/:itemId',
@@ -88,9 +92,6 @@ export const ROUTE_MODULES = {
     warm: true,
   },
   exams: { path: '/exams', load: () => import('../exams/ExamsScreen'), warm: true },
-  // `/exams/new` раньше `/exams/:examId`: matchRouteLoader берёт первое
-  // совпадение, а статический сегмент должен выигрывать у параметра. Один
-  // загрузчик на оба адреса — это один и тот же экран (ADR-0033).
   examNew: { path: '/exams/new', load: loadExamEditor, warm: true },
   examEditor: { path: '/exams/:examId', load: loadExamEditor, warm: true },
   grading: {

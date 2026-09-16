@@ -1,14 +1,16 @@
 // «Рассылки» — числа за 30 дней, потом журнал (docs/PLAN.md §6 п.5,
 // docs/adr/0025). Вход в «Каналы» и «Шаблоны постов» — карточками внизу, не
 // пунктами меню. «Ждут отправки вручную» — сверху журнала, это нужно сделать
-// прямо сейчас. Числа, фильтры, пустое состояние — отдельные компоненты
-// (CLAUDE.md «Файлы»).
+// прямо сейчас. Новая рассылка — страница `/broadcasts/new`
+// (BroadcastNewScreen.tsx, ADR-0033), отсюда только переход. Числа, фильтры,
+// пустое состояние — отдельные компоненты (CLAUDE.md «Файлы»).
 import { useMemo, useState, type CSSProperties } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { JOURNAL_RANGE_MAX_WEEKS, type BroadcastStatus } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { useChannels } from '../channels/useChannels';
@@ -17,7 +19,6 @@ import { useScrollToHash } from '../hooks/useScrollToHash';
 import { useSettings } from '../templates/useSettings';
 import { BroadcastCard } from './BroadcastCard';
 import { BroadcastFilters } from './BroadcastFilters';
-import { BroadcastSheet } from './BroadcastSheet';
 import { BroadcastsSummary } from './BroadcastsSummary';
 import { DEFAULT_JOURNAL_RANGE_WEEKS } from './broadcastWindow';
 import { initialStatusFromQuery } from './broadcastStatusFilter';
@@ -26,6 +27,7 @@ import { ManualDeliveriesSection } from './ManualDeliveriesSection';
 import { useBroadcasts } from './useBroadcasts';
 import { useManualDeliveries } from './useManualDeliveries';
 
+const TITLE = 'Рассылки';
 // VOICE.md «Начинать с сути, а не с определения темы» — не «Здесь журнал...»
 // (pr-k3-fixes.md п.19).
 const EXPLANATION =
@@ -34,14 +36,9 @@ const EXPLANATION =
 const CHANNELS_LINK_HINT =
   'Куда уходят посты. Telegram-группа подключается сама, когда в неё добавили бота.';
 const TEMPLATES_LINK_HINT = 'Тексты, которыми бот пишет в канал, и адрес сайта школы.';
-const journalListStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-};
+const BROADCASTS_PATH = '/broadcasts';
+
+const journalListStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 
 export default function BroadcastsScreen() {
   const [searchParams] = useSearchParams();
@@ -49,19 +46,15 @@ export default function BroadcastsScreen() {
   const [status, setStatus] = useState<BroadcastStatus | ''>(() =>
     initialStatusFromQuery(searchParams.get('status')),
   );
-  const [sheetOpen, setSheetOpen] = useState(false);
   const broadcastsState = useBroadcasts(rangeWeeks, status);
   const channelsState = useChannels();
   const manualState = useManualDeliveries();
+  const navigate = useNavigate();
   // Только для бейджа пояса школы (pr-k3-fixes.md п.22).
   const settingsState = useSettings();
   useScrollToHash(!manualState.loading && !manualState.error);
   const channelsById = useMemo(
     () => new Map((channelsState.channels ?? []).map((channel) => [channel.id, channel])),
-    [channelsState.channels],
-  );
-  const activeChannels = useMemo(
-    () => (channelsState.channels ?? []).filter((channel) => channel.active),
     [channelsState.channels],
   );
   const loading = broadcastsState.loading || channelsState.loading;
@@ -82,9 +75,21 @@ export default function BroadcastsScreen() {
 
   return (
     <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      <ScreenHeader
+        title={TITLE}
+        explanation={EXPLANATION}
+        action={
+          !loading && (
+            <Button
+              style={primaryActionStyle}
+              onClick={() => void navigate(`${BROADCASTS_PATH}/new`)}
+            >
+              Новая рассылка
+            </Button>
+          )
+        }
+      />
       <BroadcastsSummary />
-      {!loading && <Button onClick={() => setSheetOpen(true)}>Новая рассылка</Button>}
       <ManualDeliveriesSection
         deliveries={manualState.deliveries}
         loading={manualState.loading}
@@ -138,13 +143,6 @@ export default function BroadcastsScreen() {
         hint={TEMPLATES_LINK_HINT}
         Icon={TemplatesIcon}
       />
-      {sheetOpen && (
-        <BroadcastSheet
-          channels={activeChannels}
-          onClose={() => setSheetOpen(false)}
-          onCreate={broadcastsState.create}
-        />
-      )}
     </section>
   );
 }
