@@ -87,56 +87,37 @@ describe('useEmailLoginVerify', () => {
     );
   });
 
-  it('joinCode (ADR-0030) — после verify зовёт POST /auth/join, потом переход на «/»', async () => {
+  it('joinCode (ADR-0030/0034) — inviteCode едет прямо в теле verify, без второго запроса', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
 
     await act(() => result.current.verify('t'.repeat(64)));
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/join', {
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/verify', {
       method: 'POST',
-      body: { code: 'a'.repeat(32) },
+      body: { token: 't'.repeat(64), inviteCode: 'a'.repeat(32) },
     });
-    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
-    expect(result.current.joinError).toBeNull();
-  });
-
-  it('join упал — joinError виден, вход не блокирован, редирект не уводит сам', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/email/verify') return Promise.resolve(undefined);
-      if (path === '/auth/join')
-        return Promise.reject(
-          new ApiError('Ссылка-приглашение не действует.', 401, 'unauthorized'),
-        );
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
-
-    await act(() => result.current.verify('t'.repeat(64)));
-
-    expect(result.current.joinError).toBe('Ссылка-приглашение не действует.');
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(navigateMock).not.toHaveBeenCalled();
-
-    result.current.continueToSchedule();
     expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
   });
 
-  it('join упал не ApiError — общий текст «Нет связи…» в joinError', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/email/verify') return Promise.resolve(undefined);
-      if (path === '/auth/join') return Promise.reject(new Error('boom'));
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
-
-    await act(() => result.current.verify('t'.repeat(64)));
-
-    expect(result.current.joinError).toBe(
-      'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
+  it('joinCode, verify упал (например, нет валидной ссылки) — error виден, переход не вызван', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+        403,
+        'forbidden',
+      ),
     );
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
+
+    await act(() => result.current.verify('t'.repeat(64)));
+
+    expect(result.current.error).toBe(
+      'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+    );
+    expect(refresh).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });

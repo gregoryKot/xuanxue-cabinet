@@ -190,68 +190,21 @@ describe('PeopleScreen — список', () => {
     );
   });
 
-  it('ждущий подтверждения — вверху списка, независимо от порядка ответа API', async () => {
+  // Регресс на инцидент 2026-09-15 (ADR-0034): статуса «ждёт подтверждения»
+  // и кнопки «Подтвердить» на экране «Люди» больше нет ни при каком ответе
+  // сервера — сортировка «ждущие вверху» тоже пропала, список идёт в
+  // порядке ответа API.
+  it('нет подписи «Ждёт подтверждения» и кнопки «Подтвердить»', async () => {
     const { queueUsers } = mockPeopleApi();
-    const people = [
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
-      makePerson({ id: 'u2', name: 'Ждан', roles: [], status: 'invited' }),
-    ];
-    queueUsers(people);
-
-    renderScreen();
-    await screen.findByText('Гриша');
-
-    const names = screen.getAllByText(/^(Маша|Гриша|Ждан)$/).map((el) => el.textContent);
-    expect(names).toEqual(['Ждан', 'Маша', 'Гриша']);
-  });
-
-  it('«Подтвердить» на invited-строке — POST /users/:id/approve и список перечитан', async () => {
-    const user = userEvent.setup();
-    const { queueUsers } = mockPeopleApi();
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
     ]);
 
     renderScreen();
     await screen.findByText('Гриша');
 
-    queueUsers({});
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'active' }),
-    ]);
-
-    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/users/u1/approve',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument(),
-    );
-  });
-
-  it('сбой подтверждения — текст ошибки виден на строке (usePeople.approve)', async () => {
-    const user = userEvent.setup();
-    const { ApiError } = await import('../api/http');
-    const { queueUsers, queueError } = mockPeopleApi();
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
-    ]);
-
-    renderScreen();
-    await screen.findByText('Гриша');
-
-    queueError(new ApiError('Этому человеку доступ закрыт.', 409, 'conflict'));
-
-    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Этому человеку доступ закрыт.',
-    );
+    expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
   });
 });

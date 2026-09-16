@@ -15,10 +15,9 @@
 // рисуется всегда, даже ученику (в нижнюю навигацию не входят — вход в
 // экзамен только кнопкой на StudentExamsSection.tsx, docs/adr/0025).
 //
-// status: 'invited' (ADR-0026) перекрывает всё это — первый вход ждёт
-// подтверждения школы, разделов у него ещё нет ни одного, поэтому
-// PendingApprovalScreen встаёт впереди проверки роли и пути, а навигация не
-// рисуется вовсе (isTeacher ниже для invited всегда false).
+// Статуса «ждёт подтверждения» больше нет (ADR-0034) — вошедший всегда либо
+// уже видит свой раздел, либо гвард (RequireAuth) увёл его на /login раньше,
+// чем этот компонент вообще отрисовался.
 import type { CSSProperties } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -27,14 +26,12 @@ import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
 import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
-import { PendingApprovalScreen } from './PendingApprovalScreen';
 import { StudentScreen } from './StudentScreen';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 const NOTIFICATIONS_PATH = '/notifications';
 const ATTEMPT_PATH_PREFIX = '/attempts/';
-const PENDING_STATUS = 'invited';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -65,12 +62,7 @@ export function AppShell() {
   const { me } = useAuth();
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const isPending = me?.status === PENDING_STATUS;
-  // invited не бывает teacher/admin (школа подтверждает раньше, чем даёт
-  // роль) — но проверка явная, а не понадеявшись на это: рисовать навигацию
-  // человеку, который ещё ничего не видит, нельзя.
-  const isTeacher =
-    !isPending && (me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false);
+  const isTeacher = me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false;
   const showOutlet =
     isTeacher ||
     pathname === NOTIFICATIONS_PATH ||
@@ -91,27 +83,14 @@ export function AppShell() {
         {isTeacher && !isMobile && <AppNav isMobile={false} me={me} />}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            {isPending ? (
-              <PendingApprovalScreen />
-            ) : showOutlet ? (
-              <Outlet />
-            ) : (
-              <StudentScreen />
-            )}
+            {showOutlet ? <Outlet /> : <StudentScreen />}
           </div>
           <footer style={footerStyle}>
             <span>Вы вошли как {me?.name ?? '—'} ·</span>
-            {/* Ждущему подтверждения ссылка на уведомления никуда не ведёт:
-                AppShell рисует ему экран ожидания на любом пути, а API
-                закрыт до подтверждения (ADR-0026). */}
-            {!isPending && (
-              <>
-                <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
-                  Уведомления
-                </Link>
-                <span>·</span>
-              </>
-            )}
+            <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
+              Уведомления
+            </Link>
+            <span>·</span>
             <LogoutButton />
           </footer>
         </div>

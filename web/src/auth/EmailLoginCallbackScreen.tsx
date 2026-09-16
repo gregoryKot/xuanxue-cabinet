@@ -7,6 +7,7 @@
 // Облик — та же колонка на бумаге, что у экрана входа (EntryColumn.tsx).
 import type { CSSProperties } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { INVITE_QUERY_PARAM } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
@@ -24,18 +25,12 @@ export default function EmailLoginCallbackScreen() {
   const { status: authStatus, refresh } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  // join — код ссылки-приглашения школы (ADR-0030), сервер положил его в
-  // ссылку письма (EmailAuthService.requestLink), если он был валиден на
+  // join — код ссылки-приглашения школы (ADR-0030/0034), сервер положил его
+  // в ссылку письма (EmailAuthService.requestLink), если он был валиден на
   // момент запроса. undefined, если параметра нет — verify() тогда просто
-  // не зовёт /auth/join (см. useEmailLoginVerify.ts).
-  const joinCode = searchParams.get('join') ?? undefined;
-  const {
-    status: verifyStatus,
-    error,
-    joinError,
-    verify,
-    continueToSchedule,
-  } = useEmailLoginVerify(refresh, joinCode);
+  // не шлёт inviteCode (см. useEmailLoginVerify.ts).
+  const joinCode = searchParams.get(INVITE_QUERY_PARAM) ?? undefined;
+  const { status: verifyStatus, error, verify } = useEmailLoginVerify(refresh, joinCode);
 
   if (authStatus === 'ok') return <Navigate to={postLoginPath()} replace />;
 
@@ -57,24 +52,6 @@ export default function EmailLoginCallbackScreen() {
             выходом, а не главное действие экрана (docs/adr/0031). */}
         <Button variant="secondary" onClick={goToLogin} style={fullWidthStyle}>
           На страницу входа
-        </Button>
-      </EntryColumn>
-    );
-  }
-
-  // joinError — вход уже состоялся (verify прошёл), не упал сам вход
-  // (useEmailLoginVerify.ts, ADR-0030): отдельный экран с действием, не
-  // общая ветка `error` ниже — «Запросить новую» здесь не к месту, ссылка
-  // уже потрачена.
-  if (joinError) {
-    return (
-      <EntryColumn>
-        <h1 style={screenTitleStyle}>Вы вошли</h1>
-        <p role="alert" style={errorTextStyle}>
-          {joinError}
-        </p>
-        <Button onClick={continueToSchedule} style={fullWidthStyle}>
-          Перейти в кабинет
         </Button>
       </EntryColumn>
     );

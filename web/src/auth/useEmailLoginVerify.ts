@@ -4,7 +4,9 @@
 // пользователя. Логика вынесена из EmailLoginCallbackScreen.tsx (CLAUDE.md
 // «Логика вне компонентов»), тот же приём, что useTelegramAuthResultLogin.ts:
 // POST → refresh() сессии → сохранённый адрес или домашний экран
-// (postLoginPath, аудит L2 — раньше жёстко /schedule).
+// (postLoginPath, аудит L2 — раньше жёстко /schedule). `joinCode`
+// (ADR-0030/0034) едет прямо в теле verify — отдельного шага
+// «присоединиться после входа» больше нет.
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
@@ -15,15 +17,7 @@ type EmailLoginVerifyStatus = 'idle' | 'pending' | 'error';
 export interface UseEmailLoginVerifyResult {
   status: EmailLoginVerifyStatus;
   error: string | null;
-  /** Ошибка `POST /auth/join` после успешного verify (ADR-0030, `join` из
-   * query `/login/email?...&join=<code>`) — вход уже состоялся (сессия
-   * есть), сама ошибка не блокирует его: человек остаётся тем, кем был
-   * (`invited`/`active`), а не подвисает без обратной связи. */
-  joinError: string | null;
   verify: (token: string) => Promise<void>;
-  /** Кнопка «Перейти в кабинет» под joinError — тот же переход, что случился
-   * бы сам, если бы `POST /auth/join` не упал. */
-  continueToSchedule: () => void;
 }
 
 export function useEmailLoginVerify(
@@ -33,19 +27,16 @@ export function useEmailLoginVerify(
   const navigate = useNavigate();
   const [status, setStatus] = useState<EmailLoginVerifyStatus>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [joinError, setJoinError] = useState<string | null>(null);
-
-  const continueToSchedule = useCallback(() => {
-    void navigate(postLoginPath(), { replace: true });
-  }, [navigate]);
 
   const verify = useCallback(
     async (token: string) => {
       setStatus('pending');
       setError(null);
-      setJoinError(null);
       try {
-        await apiFetch<void>('/auth/email/verify', { method: 'POST', body: { token } });
+        await apiFetch<void>('/auth/email/verify', {
+          method: 'POST',
+          body: joinCode ? { token, inviteCode: joinCode } : { token },
+        });
         await refresh();
       } catch (err) {
         setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
@@ -53,19 +44,10 @@ export function useEmailLoginVerify(
         return;
       }
       setStatus('idle');
-      if (!joinCode) {
-        continueToSchedule();
-        return;
-      }
-      try {
-        await apiFetch<void>('/auth/join', { method: 'POST', body: { code: joinCode } });
-        continueToSchedule();
-      } catch (err) {
-        setJoinError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
-      }
+      void navigate(postLoginPath(), { replace: true });
     },
-    [refresh, joinCode, continueToSchedule],
+    [refresh, joinCode, navigate],
   );
 
-  return { status, error, joinError, verify, continueToSchedule };
+  return { status, error, verify };
 }

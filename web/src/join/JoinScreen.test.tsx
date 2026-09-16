@@ -5,6 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { TelegramLoginInput } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
@@ -18,8 +19,21 @@ vi.mock('../api/http', async () => {
 const mockedApiFetch = vi.mocked(apiFetch);
 const CODE = 'a'.repeat(32);
 
+/** Тот же способ, что у telegram-widget.js (useTelegramAuthResultLogin.test.ts) —
+ * симулирует возврат с oauth.telegram.org на /join/<code>#tgAuthResult=. */
+function toTgAuthResultHash(user: TelegramLoginInput): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(user));
+  const binaryString = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+  const encoded = btoa(binaryString)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return `#tgAuthResult=${encoded}`;
+}
+
 afterEach(() => {
   mockedApiFetch.mockReset();
+  window.location.hash = '';
 });
 
 function renderScreen() {
@@ -107,19 +121,10 @@ describe('JoinScreen — ссылка действует, гость', () => {
   });
 });
 
-describe('JoinScreen — сессия уже есть', () => {
-  it('authStatus ok — join() сам, переход на /schedule', async () => {
+describe('JoinScreen — сессия уже есть (ADR-0034: вход уже создал/подтвердил человека)', () => {
+  it('authStatus ok — сразу редирект на /schedule, без второго запроса', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'u1',
-          name: 'Ученик',
-          roles: [],
-          tz: 'Asia/Jerusalem',
-          status: 'invited',
-        });
-      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
-      if (path === '/auth/join')
         return Promise.resolve({
           id: 'u1',
           name: 'Ученик',
@@ -127,52 +132,74 @@ describe('JoinScreen — сессия уже есть', () => {
           tz: 'Asia/Jerusalem',
           status: 'active',
         });
+      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
 
     renderScreen();
 
     expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/join', expect.anything());
   });
+});
 
-  it('join() падает — текст ошибки и «Повторить», повтор ведёт на /schedule', async () => {
-    const user = userEvent.setup();
-    let joinAttempt = 0;
+// Регресс на инцидент 2026-09-15: владелец на мгновение увидел
+// «Вы вошли, осталось дождаться подтверждения…» между возвратом с Telegram
+// на /join/<code> и попаданием в кабинет — вход оставался двухшаговым даже
+// после ADR-0030. ADR-0034 убрало промежуточное состояние с концами: этот
+// текст (и любой похожий на него) не должен появиться на экране НИ РАЗУ за
+// весь флоу «код валиден → возврат с Telegram → сессия есть → /schedule».
+describe('JoinScreen — регресс на инцидент 2026-09-15 (мелькнувший экран ожидания)', () => {
+  it('возврат с Telegram на /join/<code> — ни на одном рендере нет текста про ожидание подтверждения', async () => {
+    const telegramUser: TelegramLoginInput = {
+      id: 700,
+      first_name: 'Аня',
+      auth_date: Math.floor(Date.now() / 1000),
+      hash: 'a'.repeat(64),
+    };
+    window.location.hash = toTgAuthResultHash(telegramUser);
+
+    let loggedIn = false;
     mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'u1',
-          name: 'Ученик',
-          roles: [],
-          tz: 'Asia/Jerusalem',
-          status: 'invited',
-        });
-      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
-      if (path === '/auth/join') {
-        joinAttempt += 1;
-        return joinAttempt === 1
-          ? Promise.reject(
-              new ApiError('Ссылка-приглашение не действует.', 401, 'unauthorized'),
-            )
-          : Promise.resolve({
+      if (path === '/auth/me') {
+        return loggedIn
+          ? Promise.resolve({
               id: 'u1',
-              name: 'Ученик',
+              name: 'Аня',
               roles: [],
               tz: 'Asia/Jerusalem',
               status: 'active',
-            });
+            })
+          : Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      }
+      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: false });
+      if (path.startsWith('/auth/telegram')) {
+        loggedIn = true;
+        return Promise.resolve({
+          id: 'u1',
+          name: 'Аня',
+          roles: [],
+          tz: 'Asia/Jerusalem',
+          status: 'active',
+        });
       }
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
 
     renderScreen();
 
-    expect(
-      await screen.findByText('Ссылка-приглашение не действует.'),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Расписание')).toBeInTheDocument());
 
-    await user.click(screen.getByRole('button', { name: 'Повторить' }));
-
-    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    // grep по DOM за весь флоу: ни один вызов apiFetch, ни финальный экран
+    // не должны были когда-либо породить этот текст.
+    expect(screen.queryByText(/дождаться подтверждения/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ждём подтверждения/i)).not.toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      `/auth/telegram?join=${CODE}`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/join', expect.anything());
   });
 });

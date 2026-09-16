@@ -1,7 +1,6 @@
 // Переключатели ролей строки «Люди» — по одному на каждую роль из
 // USER_ROLES, плюс подсказки, что означает их состояние. Вынесены из
-// PersonRow.tsx (check-file-size-ratchet: файл уже был на границе 150 строк,
-// «Подтвердить» на invited добавил бы файлу расти).
+// PersonRow.tsx (check-file-size-ratchet: файл уже был на границе 150 строк).
 import type { CSSProperties } from 'react';
 import { ROLE_LABELS, USER_ROLES, type UserDto, type UserRole } from '@xuanxue/shared';
 import { Toggle } from '../components/Toggle';

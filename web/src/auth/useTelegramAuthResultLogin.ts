@@ -8,7 +8,7 @@
 // храповик — компонент иначе не помещается в лимит).
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { TelegramLoginInput } from '@xuanxue/shared';
+import { INVITE_QUERY_PARAM, type TelegramLoginInput } from '@xuanxue/shared';
 import { ApiError, apiFetch } from '../api/http';
 import { postLoginPath } from './returnTo';
 import { readTelegramAuthResult } from './telegramAuthResult';
@@ -17,9 +17,18 @@ const LOGIN_FAILED_MESSAGE = 'Не удалось войти. Попробуйт
 
 // POST /auth/telegram — теперь единственный вызывающий этот хук: кнопка
 // (LoginScreen.tsx) сама лишь уводит вкладку на Telegram (ADR-0028), сервер
-// получает подтверждённый вход только отсюда, при возврате.
-function postTelegramLogin(user: TelegramLoginInput): Promise<void> {
-  return apiFetch('/auth/telegram', { method: 'POST', body: user });
+// получает подтверждённый вход только отсюда, при возврате. inviteCode
+// (ADR-0030/0034) — в query, не в теле: подпись Telegram считается по телу
+// запроса целиком (см. parse-telegram-login-body.ts на сервере), добавлять
+// туда поле, которого сам виджет не подписывал, нельзя.
+function postTelegramLogin(
+  user: TelegramLoginInput,
+  inviteCode: string | undefined,
+): Promise<void> {
+  const query = inviteCode
+    ? `?${INVITE_QUERY_PARAM}=${encodeURIComponent(inviteCode)}`
+    : '';
+  return apiFetch(`/auth/telegram${query}`, { method: 'POST', body: user });
 }
 
 export interface UseTelegramAuthResultLoginResult {
@@ -30,16 +39,19 @@ export interface UseTelegramAuthResultLoginResult {
 export interface UseTelegramAuthResultLoginOptions {
   /** По умолчанию — переход на postLoginPath() после успешного входа
    * (LoginScreen). `false` — экран сам решает, что дальше (JoinScreen.tsx:
-   * ссылка-приглашение, ADR-0030, ведёт дальше только после своего
-   * POST /auth/join). */
+   * ссылка-приглашение, ADR-0030 — вход уже создал/подтвердил человека,
+   * экран просто уходит на «Расписание» сам, без второго запроса). */
   navigateAfterLogin?: boolean;
+  /** Код ссылки-приглашения (ADR-0030/0034) — JoinScreen.tsx передаёт код
+   * из /join/:code, LoginScreen.tsx не передаёт вовсе. */
+  inviteCode?: string;
 }
 
 export function useTelegramAuthResultLogin(
   refresh: () => Promise<void>,
   options: UseTelegramAuthResultLoginOptions = {},
 ): UseTelegramAuthResultLoginResult {
-  const { navigateAfterLogin = true } = options;
+  const { navigateAfterLogin = true, inviteCode } = options;
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +74,7 @@ export function useTelegramAuthResultLogin(
     window.history.replaceState(null, '', pathname + search);
 
     setPending(true);
-    postTelegramLogin(user)
+    postTelegramLogin(user, inviteCode)
       .then(() => refresh())
       .then(() => {
         if (navigateAfterLogin) void navigate(postLoginPath(), { replace: true });
@@ -71,7 +83,7 @@ export function useTelegramAuthResultLogin(
         setError(err instanceof ApiError ? err.message : LOGIN_FAILED_MESSAGE);
       })
       .finally(() => setPending(false));
-  }, [navigate, refresh, navigateAfterLogin]);
+  }, [navigate, refresh, navigateAfterLogin, inviteCode]);
 
   return { pending, error };
 }

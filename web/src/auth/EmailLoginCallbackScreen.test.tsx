@@ -166,16 +166,15 @@ describe('EmailLoginCallbackScreen — валидный токен', () => {
   });
 });
 
-describe('EmailLoginCallbackScreen — join (ADR-0030)', () => {
+describe('EmailLoginCallbackScreen — join (ADR-0030/0034)', () => {
   const CODE = 'a'.repeat(32);
 
-  it('join в query, нет returnTo — после verify зовёт POST /auth/join, потом домашний экран', async () => {
+  it('join в query — inviteCode едет прямо в теле POST /auth/email/verify, без второго запроса', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
         return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
       if (path === '/auth/email/verify') return Promise.resolve(ME);
-      if (path === '/auth/join') return Promise.resolve(ME);
       return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
     });
     renderScreen(`?token=${VALID_TOKEN}&join=${CODE}`);
@@ -183,33 +182,37 @@ describe('EmailLoginCallbackScreen — join (ADR-0030)', () => {
     await user.click(await screen.findByRole('button', { name: 'Войти' }));
 
     expect(await screen.findByText('Занятия')).toBeInTheDocument();
-    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/join', {
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/verify', {
       method: 'POST',
-      body: { code: CODE },
+      body: { token: VALID_TOKEN, inviteCode: CODE },
     });
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/join', expect.anything());
   });
 
-  it('join упал — «Вы вошли» с текстом ошибки, «Перейти в кабинет» ведёт на домашний экран', async () => {
+  it('403 без ссылки-приглашения (новый человек без кода) — текст сервера, «Запросить новую» ведёт на /login', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
         return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
-      if (path === '/auth/email/verify') return Promise.resolve(ME);
-      if (path === '/auth/join')
+      if (path === '/auth/email/verify')
         return Promise.reject(
-          new ApiError('Ссылка-приглашение не действует.', 401, 'unauthorized'),
+          new ApiError(
+            'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+            403,
+            'forbidden',
+          ),
         );
       return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
     });
-    renderScreen(`?token=${VALID_TOKEN}&join=${CODE}`);
+    renderScreen(`?token=${VALID_TOKEN}`);
 
     await user.click(await screen.findByRole('button', { name: 'Войти' }));
 
-    expect(await screen.findByText('Вы вошли')).toBeInTheDocument();
-    expect(screen.getByText('Ссылка-приглашение не действует.')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Перейти в кабинет' }));
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

@@ -56,25 +56,6 @@ describe('usePeople — updateRoles (read-after-write)', () => {
   });
 });
 
-describe('usePeople — approve (read-after-write)', () => {
-  it('POST /users/:id/approve, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
-    const { result } = renderHook(() => usePeople());
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    mockedApiFetch.mockResolvedValueOnce({});
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await result.current.approve('u1');
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/users/u1/approve',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    // Перечитывание — второй вызов apiFetch, тот же /users?limit, что при загрузке.
-    expect(mockedApiFetch).toHaveBeenCalledTimes(3);
-  });
-});
-
 describe('usePeople — remove (read-after-write)', () => {
   it('DELETE /users/:id, затем перечитывает список', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);

@@ -1,13 +1,13 @@
-// «Ученики» — те, кто хоть раз вошёл в кабинет через Telegram, и назначение
-// ролей учитель/админ (docs/PLAN.md §6, блокер аудита Б3: до этого экрана
-// вторую роль назначали правкой Atlas руками). Маршрут /people открыт admin
-// и teacher (RequirePeopleAccess, ADR-0030 — ссылку-приглашение отдаёт и
-// учитель), но список учеников, роли и удаление данных внутри экрана видит
-// только admin (SECURITY §3) — teacher видит только карточку ссылки.
-// Заголовок экрана — здесь, в отличие от других разделов: раньше вход был
-// скрытой ссылкой на «Сводке», теперь это полноценный пункт меню.
+// «Ученики» — те, кто зарегистрировался по ссылке-приглашению школы
+// (ADR-0030/0034), и назначение ролей учитель/админ (docs/PLAN.md §6,
+// блокер аудита Б3: до этого экрана вторую роль назначали правкой Atlas
+// руками). Маршрут /people открыт admin и teacher (RequirePeopleAccess,
+// ADR-0030 — ссылку-приглашение отдаёт и учитель), но список учеников, роли
+// и удаление данных внутри экрана видит только admin (SECURITY §3) —
+// teacher видит только карточку ссылки. Заголовок экрана — здесь, в отличие
+// от других разделов: раньше вход был скрытой ссылкой на «Сводке», теперь
+// это полноценный пункт меню.
 import type { CSSProperties } from 'react';
-import type { UserDto } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { hasRole } from '../auth/hasRole';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -19,7 +19,7 @@ import { PersonRow } from './PersonRow';
 import { usePeople } from './usePeople';
 
 const EXPLANATION =
-  'Здесь те, кто хотя бы раз вошёл в кабинет через Telegram. После первого входа человек ждёт вашего подтверждения — он стоит вверху списка. Отметьте, кто ведёт занятия: учитель видит расписание, рассылки и получает уведомления бота, а администратор ещё и назначает роли.';
+  'Здесь те, кто зарегистрировался по ссылке-приглашению. Отметьте, кто ведёт занятия: учитель видит расписание, рассылки и получает уведомления бота, а администратор ещё и назначает роли.';
 const TEACHER_EXPLANATION =
   'Список учеников и назначение ролей видит только администратор — вам здесь доступна ссылка-приглашение школы.';
 const EMPTY_MESSAGE =
@@ -34,22 +34,13 @@ const listStyle: CSSProperties = {
   gap: 12,
 };
 
-// Ждущие подтверждения — вверху: это то, что требует действия админа
-// сейчас (ADR-0026). Sort стабилен (ES2019+), поэтому порядок остальных
-// строк из ответа API не меняется.
-const pendingFirst = (person: UserDto): number => (person.status === 'invited' ? 0 : 1);
-
 export default function PeopleScreen() {
   const { me } = useAuth();
   const isAdmin = hasRole(me, 'admin');
-  const { people, loading, error, reload, updateRoles, approve, remove } =
-    usePeople(isAdmin);
-  const sortedPeople = [...(people ?? [])].sort(
-    (a, b) => pendingFirst(a) - pendingFirst(b),
-  );
+  const { people, loading, error, reload, updateRoles, remove } = usePeople(isAdmin);
   // «Пока никто, кроме вас» — считаем по чужим строкам, не по длине списка
   // целиком: сам admin тоже входил через Telegram и есть в GET /users.
-  const others = sortedPeople.filter((person) => person.id !== me?.id);
+  const others = (people ?? []).filter((person) => person.id !== me?.id);
 
   return (
     <section style={screenSectionStyle}>
@@ -78,13 +69,12 @@ export default function PeopleScreen() {
 
       {isAdmin && !error && people && others.length > 0 && (
         <ul style={listStyle}>
-          {sortedPeople.map((person) => (
+          {people.map((person) => (
             <PersonRow
               key={person.id}
               person={person}
               isSelf={person.id === me?.id}
               onChangeRoles={(roles) => updateRoles(person.id, { roles })}
-              onApprove={() => approve(person.id)}
               onRemove={() => remove(person.id)}
             />
           ))}
