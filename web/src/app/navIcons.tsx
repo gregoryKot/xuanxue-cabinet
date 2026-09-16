@@ -18,15 +18,6 @@ const shared: SVGProps<SVGSVGElement> = {
   focusable: false,
 };
 
-export function ScheduleIcon() {
-  return (
-    <svg {...shared}>
-      <rect x="3" y="4" width="14" height="13" rx="2" />
-      <path d="M3 8h14M7 2v4M13 2v4" />
-    </svg>
-  );
-}
-
 export function PlanningIcon() {
   return (
     <svg {...shared}>

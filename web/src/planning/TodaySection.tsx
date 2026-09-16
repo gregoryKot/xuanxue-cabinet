@@ -14,13 +14,11 @@ import { LessonCard } from './LessonCard';
 
 const HEADING = 'Сегодня';
 const NOTHING_TODAY = 'Сегодня занятий нет.';
+// Ближайшее занятие идёт строкой сразу под этой фразой — отступ отделяет её
+// от заголовка дня, который иначе слипается с меткой «Сегодня».
+const nothingTodayStyle: CSSProperties = { margin: '4px 0 0' };
 
-const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
-const headingStyle: CSSProperties = {
-  fontWeight: 600,
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-};
+const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 };
 
 interface TodaySectionProps {
   /** `null` — занятия ещё грузятся. */
@@ -39,7 +37,7 @@ export function TodaySection({
 }: TodaySectionProps) {
   return (
     <section style={sectionStyle}>
-      <span style={headingStyle}>{HEADING}</span>
+      <span className="xuanxue-eyebrow">{HEADING}</span>
 
       {lessons === null && <SkeletonList rows={2} h={56} />}
 
@@ -55,7 +53,7 @@ export function TodaySection({
 
       {lessons?.length === 0 && (
         <>
-          <p style={{ margin: 0 }}>{NOTHING_TODAY}</p>
+          <p style={nothingTodayStyle}>{NOTHING_TODAY}</p>
           {nextLesson && (
             <LessonCard
               lesson={nextLesson}

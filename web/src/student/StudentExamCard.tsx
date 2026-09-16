@@ -66,7 +66,7 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             сообщения об одном читаются как сбой. */}
         {action ? (
           <div style={actionRowStyle}>
-            <Button type="button" pending={pending} onClick={onStart}>
+            <Button type="button" variant="secondary" pending={pending} onClick={onStart}>
               {ACTION_LABEL[action]}
             </Button>
           </div>

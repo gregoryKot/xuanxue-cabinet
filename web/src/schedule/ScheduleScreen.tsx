@@ -1,8 +1,15 @@
-// Первый экран после входа (docs/PLAN.md §6: «Первый экран после входа
-// объясняет за пять секунд...»). Одно главное действие — «Добавить занятие»
-// (CLAUDE.md «Продукт»: одна очевидная кнопка на экран) — вверху, рядом с
-// объяснением, а не под сеткой. <768px — вертикальный список по дням,
-// ≥768px — сетка семи колонок (CLAUDE.md «Мобильный экран первым»).
+// Сетка недели, `/schedule` — подэкран раздела «Занятия» (вход с
+// PlanningScreen.tsx, docs/adr/0025-navigation-by-domain.md). Одно главное
+// действие — «Добавить занятие» (CLAUDE.md «Продукт»: одна очевидная кнопка
+// на экран) — в шапке рядом с заголовком, а не под сеткой. <768px —
+// вертикальный список по дням, ≥768px — сетка семи колонок (CLAUDE.md
+// «Мобильный экран первым»).
+//
+// Облик — направление «тихо и благородно» (docs/adr/0031), макет
+// Schedule.dc.html: заголовок антиквой со строкой объяснения, сетка на
+// волосяных линиях. Переключателя «Неделя / Список» с макета здесь нет:
+// список ближайших занятий — соседний экран «Занятия», а вид сетки выбирает
+// ширина экрана, и второй способ выбирать то же самое сбивал бы с толку.
 import { useMemo, useState } from 'react';
 import { DEFAULT_LEAD_MINUTES } from '@xuanxue/shared';
 import { useChannels } from '../channels/useChannels';
@@ -10,11 +17,10 @@ import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
   primaryActionStyle,
-  screenExplanationStyle,
-  screenHintStyle,
   screenSectionStyle,
   wideScreenSectionStyle,
 } from '../components/screenLayout';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTeachers } from '../people/useTeachers';
@@ -25,7 +31,8 @@ import { buildScheduleGrid } from './scheduleGrid';
 import { scheduleTzNote } from './timezoneLabel';
 import { useClasses } from './useClasses';
 
-const EXPLANATION = `Здесь расписание школы. Впишите ссылку Zoom в занятие, и ученики получат её за ${DEFAULT_LEAD_MINUTES} минут до начала сами.`;
+const TITLE = 'Расписание';
+const EXPLANATION = `Постоянные занятия недели. Впишите ссылку Zoom в занятие, и ученики получат её за ${DEFAULT_LEAD_MINUTES} минут до начала сами.`;
 
 export default function ScheduleScreen() {
   const { classes, loading, error, reload, create, update, remove } = useClasses();
@@ -73,14 +80,18 @@ export default function ScheduleScreen() {
   return (
     // Сетка недели занимает всю ширину, список на телефоне — обычную колонку.
     <section style={isMobile ? screenSectionStyle : wideScreenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
-      {tzNote && <p style={screenHintStyle}>{tzNote}</p>}
-
-      {!loading && (
-        <Button style={primaryActionStyle} onClick={openCreate}>
-          Добавить занятие
-        </Button>
-      )}
+      <ScreenHeader
+        title={TITLE}
+        explanation={EXPLANATION}
+        hint={tzNote}
+        action={
+          !loading && (
+            <Button style={primaryActionStyle} onClick={openCreate}>
+              Добавить занятие
+            </Button>
+          )
+        }
+      />
 
       {error && (
         <LoadErrorBanner

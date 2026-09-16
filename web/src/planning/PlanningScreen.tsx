@@ -1,37 +1,38 @@
 // «Занятия» — первый экран после входа (docs/PLAN.md §6, `/` → `/planning`):
 // сверху что идёт сегодня (PlanningToday.tsx), ниже календарь на 4 недели.
-// Вход в сетку расписания — карточкой внизу (SectionLink), не пунктом меню
+// Вход в сетку расписания — текстовой ссылкой внизу, не пунктом меню
 // (docs/adr/0025-navigation-by-domain.md).
+// Облик — направление «тихо и благородно» (docs/adr/0031), макет
+// Schedule.dc.html: заголовок антиквой, строка объяснения, занятия строками.
 import { useMemo, useState } from 'react';
 import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
   primaryActionStyle,
-  screenExplanationStyle,
   screenHintStyle,
   screenSectionStyle,
 } from '../components/screenLayout';
-import { SectionLink } from '../components/SectionLink';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
 import { useTeachers } from '../people/useTeachers';
-import { ScheduleIcon } from '../app/navIcons';
 import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { groupLessonsByDay } from './groupLessonsByDay';
 import { LessonDayGroup } from './LessonDayGroup';
 import { LessonSheet } from './LessonSheet';
 import { PlanningToday } from './PlanningToday';
+import { ScheduleLink } from './ScheduleLink';
 import { useLessons } from './useLessons';
 
-const EXPLANATION = `Здесь занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд, из расписания. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
+const TITLE = 'Занятия';
+const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд, из расписания. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
 // Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
 // отличается от строчки расписания (отзыв владельца 2026-09-12).
 const ONE_OFF_HINT =
   'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
-const SCHEDULE_LINK_HINT =
-  'Дни, время, ссылки Zoom, ведущие. Из них рождаются занятия здесь.';
+const oneOffHintStyle = { ...screenHintStyle, margin: 0 };
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
@@ -82,8 +83,19 @@ export default function PlanningScreen() {
 
   return (
     <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
-      {tzNote && <p style={screenHintStyle}>{tzNote}</p>}
+      <ScreenHeader
+        title={TITLE}
+        explanation={EXPLANATION}
+        hint={tzNote}
+        action={
+          !lessonsState.loading && (
+            <Button style={primaryActionStyle} onClick={openCreate}>
+              Разовое занятие
+            </Button>
+          )
+        }
+      />
+      {!lessonsState.loading && <p style={oneOffHintStyle}>{ONE_OFF_HINT}</p>}
       {/* Сбой списка занятий — один баннер ниже, не два (TodaySection.tsx). */}
       {!lessonsError && (
         <PlanningToday
@@ -91,14 +103,6 @@ export default function PlanningScreen() {
           classTitleById={classTitleById}
           onOpenLesson={openLesson}
         />
-      )}
-      {!lessonsState.loading && (
-        <div>
-          <Button style={primaryActionStyle} onClick={openCreate}>
-            Разовое занятие
-          </Button>
-          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>{ONE_OFF_HINT}</p>
-        </div>
       )}
       {lessonsError && <LoadErrorBanner message={lessonsError} onRetry={retryLessons} />}
       {lessonsState.loading && !lessonsError && <SkeletonList rows={5} h={56} />}
@@ -125,12 +129,7 @@ export default function PlanningScreen() {
       {!lessonsState.loading && classesError && (
         <LoadErrorBanner message={classesError} onRetry={retryClasses} />
       )}
-      <SectionLink
-        to="/schedule"
-        title="Сетка расписания"
-        hint={SCHEDULE_LINK_HINT}
-        Icon={ScheduleIcon}
-      />
+      <ScheduleLink />
       {sheetOpen && (
         <LessonSheet
           lessonDto={selectedLesson}

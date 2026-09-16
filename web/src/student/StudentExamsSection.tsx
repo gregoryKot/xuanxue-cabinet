@@ -1,8 +1,11 @@
-// Раздел «Экзамены» на экране ученика (ТЗ п.1) — под ближайшими занятиями
-// (StudentScreen.tsx). «Начать»/«Продолжить» — один и тот же запрос
+// Раздел «Экзамены» на экране ученика (ТЗ п.1) — под занятиями
+// (StudentScreen.tsx). Заголовок раздела — растяжка-заглавные
+// `.xuanxue-eyebrow` (макет Student.dc.html): на экране один h1 «Ближайшее
+// занятие», и «Экзамены» стоят рубрикой под ним, а не вторым крупным
+// заголовком. «Начать»/«Продолжить» — один и тот же запрос
 // (useMyExams.startAttempt — идемпотентный POST), дальше сразу переход на
 // экран сдачи: список экзаменов не нуждается в перезагрузке ради этого.
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/http';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -14,14 +17,10 @@ import { useMyExams } from './useMyExams';
 const EXPLANATION = 'Экзамены, которые открыл учитель, — с числом попыток и их итогом.';
 const EMPTY_MESSAGE = 'Экзаменов пока нет.';
 const START_ERROR_MESSAGE = 'Не удалось начать попытку. Попробуйте ещё раз.';
-const listStyle = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: 10,
-};
+const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
+const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
+// У `<h2>` свои отступы от браузера — расстояние держит `gap` колонки.
+const headingStyle: CSSProperties = { margin: 0 };
 
 export function StudentExamsSection() {
   const { data: exams, loading, error, reload, startAttempt } = useMyExams();
@@ -44,8 +43,10 @@ export function StudentExamsSection() {
   }
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <h2 style={{ margin: 0, fontSize: 16 }}>Экзамены</h2>
+    <section style={sectionStyle}>
+      <h2 className="xuanxue-eyebrow" style={headingStyle}>
+        Экзамены
+      </h2>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
 
       {error && (
