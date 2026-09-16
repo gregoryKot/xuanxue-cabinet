@@ -34,6 +34,15 @@ function renderSubmitted(attempt: ExamAttemptDto) {
 }
 
 describe('AttemptSubmitted', () => {
+  it('шапка та же, что у формы сдачи: рубрика и название экзамена', () => {
+    renderSubmitted(makeAttempt());
+
+    expect(screen.getByText('Экзамен')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Форма первого уровня' }),
+    ).toBeInTheDocument();
+  });
+
   it('отправлено самим учеником — что будет дальше', () => {
     renderSubmitted(makeAttempt());
 
