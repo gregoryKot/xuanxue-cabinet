@@ -1,4 +1,4 @@
-// Ссылка-приглашение школы (ADR-0030, «Бот») — блок на «Людях», для admin и
+// Ссылка-приглашение школы (ADR-0030, «Бот») — секция на «Людях», для admin и
 // teacher (RequirePeopleAccess, уточнение владельца 2026-09-15) — API того
 // же требует (`@Roles('teacher', 'admin')`, users.controller.ts). Объяснение
 // до действия (CLAUDE.md «Продукт»): что это и что случится, если её
@@ -8,11 +8,16 @@
 // общий useCopyText (broadcasts/useCopyText.ts, CLAUDE.md «Одна механика —
 // один компонент»); «Создать новую» — общий ConfirmDialog, тот же приём, что
 // удаление строки на PersonRow.tsx рядом.
+//
+// Облик — ADR-0031: рубрика растяжкой-заглавными вместо рамки-карточки, оба
+// действия текстом. Киноварь на «Людях» занята «Подтвердить» у тех, кто ждёт
+// первого входа (правило акцента — один смысл на экран), а ссылку заводят
+// один раз и потом к ней не возвращаются.
 import { useState, type CSSProperties } from 'react';
-import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Skeleton } from '../components/Skeleton';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { useCopyText } from '../broadcasts/useCopyText';
 import { useInviteLink } from './useInviteLink';
 
@@ -21,35 +26,38 @@ const EXPLANATION =
 const ROTATE_CONFIRM_TITLE = 'Создать новую ссылку?';
 const ROTATE_CONFIRM_MESSAGE = 'Прежняя ссылка перестанет работать. Создать новую?';
 
-const cardStyle: CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  padding: 16,
+const sectionStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 10,
+  paddingTop: 20,
+  borderTop: '1px solid var(--line)',
 };
+const headingStyle: CSSProperties = { margin: 0, fontWeight: 400 };
+const explanationStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
 const rowStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 };
 const labelStyle: CSSProperties = { fontSize: 12, color: 'var(--ink-soft)' };
 const urlRowStyle: CSSProperties = {
   display: 'flex',
-  gap: 8,
+  gap: 14,
   flexWrap: 'wrap',
   alignItems: 'center',
 };
+// Адрес — моноширинным на подложке: так видно, где ссылка кончается, и
+// длинный код не сливается с текстом вокруг.
 const codeStyle: CSSProperties = {
-  flex: '1 1 200px',
+  flex: '1 1 220px',
   minWidth: 0,
   overflowWrap: 'break-word',
-  background: 'var(--surface)',
+  background: 'var(--panel)',
   padding: '8px 10px',
-  borderRadius: 8,
+  borderRadius: 3,
   fontSize: 13,
 };
 const alertTextStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--danger)' };
 
-/** Одна строка «код + Скопировать» — сайт и бот отличаются только подписью и
- * значением, своя `useCopyText()` на строку (независимый «Скопировано» на
+/** Одна строка «адрес + Скопировать» — сайт и бот отличаются только подписью
+ * и значением, своя `useCopyText()` на строку (независимый «Скопировано» на
  * каждой). */
 function CopyRow({ label, url }: { label: string; url: string }) {
   const { copied, error, copy } = useCopyText();
@@ -58,9 +66,9 @@ function CopyRow({ label, url }: { label: string; url: string }) {
       <span style={labelStyle}>{label}</span>
       <div style={urlRowStyle}>
         <code style={codeStyle}>{url}</code>
-        <Button variant="secondary" onClick={() => void copy(url)}>
+        <TextLinkButton onClick={() => void copy(url)}>
           {copied ? 'Скопировано' : 'Скопировать'}
-        </Button>
+        </TextLinkButton>
       </div>
       {error && (
         <p role="alert" style={alertTextStyle}>
@@ -80,36 +88,29 @@ export function InviteLinkCard() {
   }
 
   return (
-    <section style={cardStyle}>
-      <h2 style={{ fontSize: 16, margin: 0 }}>Ссылка-приглашение</h2>
-      <p style={{ margin: 0, color: 'var(--ink-soft)' }}>{EXPLANATION}</p>
+    <section style={sectionStyle}>
+      <h2 className="xuanxue-eyebrow" style={headingStyle}>
+        Ссылка-приглашение
+      </h2>
+      <p style={explanationStyle}>{EXPLANATION}</p>
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 
-      {!error && loading && link === null && <Skeleton h={44} radius={8} />}
+      {!error && loading && link === null && <Skeleton h={44} radius={3} />}
 
       {!error && link && link.url === null && (
-        <Button
-          pending={rotating}
-          onClick={() => void rotate()}
-          style={{ alignSelf: 'flex-start' }}
-        >
+        <TextLinkButton disabled={rotating} onClick={() => void rotate()}>
           Создать ссылку
-        </Button>
+        </TextLinkButton>
       )}
 
       {!error && link?.url && (
         <>
           <CopyRow label="Для сайта" url={link.url} />
           {link.telegramUrl && <CopyRow label="Для Telegram" url={link.telegramUrl} />}
-          <Button
-            variant="danger"
-            disabled={rotating}
-            onClick={() => setConfirmingRotate(true)}
-            style={{ alignSelf: 'flex-start' }}
-          >
+          <TextLinkButton disabled={rotating} onClick={() => setConfirmingRotate(true)}>
             Создать новую
-          </Button>
+          </TextLinkButton>
         </>
       )}
 

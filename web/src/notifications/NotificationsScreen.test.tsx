@@ -45,6 +45,18 @@ function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] 
   );
 }
 
+describe('NotificationsScreen — шапка', () => {
+  // ADR-0031: экран начинался прямо с абзаца, без заголовка раздела.
+  it('заголовок «Уведомления» и объяснение под ним', async () => {
+    renderScreen(STUDENT);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Уведомления' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Здесь вы решаете, что вам приходит/)).toBeInTheDocument();
+  });
+});
+
 describe('NotificationsScreen — список по роли', () => {
   it('ученик видит свои два вида уведомлений с подписью и подсказкой', async () => {
     renderScreen(STUDENT, { enabled: ['lesson_soon'] });
