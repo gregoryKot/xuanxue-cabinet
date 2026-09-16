@@ -235,6 +235,15 @@ export {
   INVITE_LINK_NOT_AVAILABLE_MESSAGE,
   INVITE_LINK_INVALID_MESSAGE,
 } from './invite-link';
+export type { TelegramLinkCodeDto } from './telegram-link';
+export {
+  TELEGRAM_LINK_CODE_RE,
+  TELEGRAM_LINK_START_PREFIX,
+  TELEGRAM_LINK_NOT_AVAILABLE_MESSAGE,
+  TELEGRAM_LINK_CODE_INVALID_MESSAGE,
+  TELEGRAM_LINK_TAKEN_MESSAGE,
+  TELEGRAM_LINK_OTHER_TELEGRAM_MESSAGE,
+} from './telegram-link';
 export { FIELD_LABELS_RU } from './field-labels';
 export type {
   NotificationKind,

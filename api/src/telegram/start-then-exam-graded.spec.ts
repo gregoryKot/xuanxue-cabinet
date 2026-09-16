@@ -22,6 +22,7 @@ import { SettingsService } from '../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import type { InviteLinkService } from '../users/invite-link.service';
 import { JoinByInviteService } from '../users/join-by-invite.service';
+import type { TelegramLinkService } from '../users/telegram-link.service';
 import { UserNamesService } from '../users/user-names.service';
 import { UserRolesService } from '../users/user-roles.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
@@ -58,6 +59,14 @@ function fakeBot(): { sendMessage: jest.Mock<Promise<boolean>, [string, string]>
 
 function fakeConfig(): ConfigService {
   return { get: () => undefined } as unknown as ConfigService;
+}
+
+// Ветка link_<code> вне сценария этого теста (сквозной путь ученика через
+// обычный /start) — фейк нужен только для конструктора.
+function inertTelegramLinkService(): TelegramLinkService {
+  return {
+    linkByCode: () => Promise.reject(new Error('linkByCode не должен был вызываться')),
+  } as unknown as TelegramLinkService;
 }
 
 describe('/start ученика → TelegramExamNotifier.notifyExamGraded (сквозной путь слоя 4.7)', () => {
@@ -113,6 +122,7 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
         usersService,
       ),
       inertInviteLinkService,
+      inertTelegramLinkService(),
       fakeConfig(),
     );
     userNamesService = new UserNamesService(userModel);

@@ -1,7 +1,21 @@
+// Непривязанному Telegram блок показывает кнопку связки (ADR-0034), а та
+// живёт внутри AuthProvider и ходит в /auth/telegram/link-code — поэтому
+// здесь мок http и провайдер вокруг рендера, хотя сам блок остаётся обычным
+// компонентом без сети.
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, ExamMediaDto } from '@xuanxue/shared';
+import type * as HttpModule from '../api/http';
+import { AuthProvider } from '../auth/AuthProvider';
+import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AttemptMediaPrompt } from './AttemptMediaPrompt';
+
+vi.mock('../api/http', async () => {
+  const actual = await vi.importActual<typeof HttpModule>('../api/http');
+  return { ...actual, apiFetch: vi.fn() };
+});
+
+resetApiFetchBetweenTests();
 
 function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
   return {
@@ -20,15 +34,18 @@ function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
 
 function renderPrompt(overrides: Partial<Parameters<typeof AttemptMediaPrompt>[0]> = {}) {
   const onAddMediaLink = vi.fn().mockResolvedValue(true);
+  mockApiByPath({ '/auth/me': new Promise(() => {}) });
   render(
-    <AttemptMediaPrompt
-      attempt={makeAttempt()}
-      telegramLinked
-      onAddMediaLink={onAddMediaLink}
-      addingMediaLink={false}
-      addMediaLinkError={null}
-      {...overrides}
-    />,
+    <AuthProvider>
+      <AttemptMediaPrompt
+        attempt={makeAttempt()}
+        telegramLinked
+        onAddMediaLink={onAddMediaLink}
+        addingMediaLink={false}
+        addMediaLinkError={null}
+        {...overrides}
+      />
+    </AuthProvider>,
   );
   return { onAddMediaLink };
 }
@@ -68,6 +85,26 @@ describe('AttemptMediaPrompt — видео ещё не получено', () =>
     ).not.toBeInTheDocument();
     expect(screen.getByText(/вы вошли по почте/)).toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
+  });
+
+  // ADR-0034: на месте кнопки бота — связка, а не тупик. Кнопка ведёт в
+  // чат с ботом по одноразовому коду, после связки кнопка бота появляется
+  // сама (MeDto.telegramLinked).
+  it('Telegram не привязан — на месте кнопки бота кнопка связки', () => {
+    renderPrompt({ telegramBotUsername: 'xuanxue_bot', telegramLinked: false });
+
+    expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Свяжите его — и запись уйдёт одним сообщением/),
+    ).toBeInTheDocument();
+  });
+
+  it('Telegram привязан — кнопки связки нет', () => {
+    renderPrompt({ telegramBotUsername: 'xuanxue_bot' });
+
+    expect(
+      screen.queryByRole('button', { name: 'Связать Telegram' }),
+    ).not.toBeInTheDocument();
   });
 
   it('Telegram привязан, но бота нет — прежняя подсказка про ссылку', () => {

@@ -23,6 +23,7 @@ import { SettingsService } from '../../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import type { InviteLinkService } from '../../users/invite-link.service';
 import { JoinByInviteService } from '../../users/join-by-invite.service';
+import type { TelegramLinkService } from '../../users/telegram-link.service';
 import { UserRolesService } from '../../users/user-roles.service';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
@@ -39,6 +40,14 @@ function fakeInviteLinkService(): InviteLinkService {
 }
 function fakeConfigWithPublicUrl(): ConfigService {
   return { get: () => 'https://xuanxue.su' } as unknown as ConfigService;
+}
+// Ветка link_<code> живёт своим тестом (telegram-link-deep-link.spec.ts) —
+// здесь фейк нужен только для конструктора, вызывать его некому: ни один
+// текущий сценарий не шлёт payload link_<код>.
+function fakeTelegramLinkService(): TelegramLinkService {
+  return {
+    linkByCode: () => Promise.reject(new Error('linkByCode не должен был вызываться')),
+  } as unknown as TelegramLinkService;
 }
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -115,6 +124,7 @@ describe('StartHandler', () => {
         new UsersService(userModel),
       ),
       fakeInviteLinkService(),
+      fakeTelegramLinkService(),
       fakeConfigWithPublicUrl(),
     );
   }, 60_000);
@@ -291,6 +301,7 @@ describe('StartHandler', () => {
         new UsersService(userModel),
       ),
       fakeInviteLinkService(),
+      fakeTelegramLinkService(),
       fakeConfigWithPublicUrl(),
     );
     const { ctx, replies } = fakeCtx(777);
