@@ -17,7 +17,7 @@ export interface UseDialogResult {
 }
 
 // Стек id открытых диалогов на уровне модуля — ConfirmDialog поверх
-// LessonSheet: у обоих свой useDialog, оба слушают document.keydown, и без
+// ChannelSheet: у обоих свой useDialog, оба слушают document.keydown, и без
 // стека один Esc/Tab обработались бы обоими сразу (ревью п.8). Реагирует
 // только верхний id стека — диалог, открытый последним.
 let nextDialogId = 0;

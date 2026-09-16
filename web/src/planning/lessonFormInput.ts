@@ -1,4 +1,4 @@
-// Чистая логика листа занятия — состояние, валидация, сборка тела запроса
+// Чистая логика формы занятия — состояние, валидация, сборка тела запроса
 // (CLAUDE.md «Тесты»: логика без React), по образцу schedule/classFormInput.ts.
 // durationMin хранится строкой — пустое поле не подменяется нулём молча
 // (ревью п.10). Длительность делит границы с занятием расписания
@@ -52,7 +52,7 @@ function isValidInt(text: string, min: number, max: number): boolean {
 
 /** `null` — форма валидна, иначе текст первой найденной ошибки. Остальное
  * (длина темы/заметки, формат ссылки) — за сервером, показывается через
- * `details` (docs/PLAN.md §6, как у ClassSheet). */
+ * `details` (docs/PLAN.md §6, как у формы занятия расписания). */
 export function validateLessonForm(
   state: LessonFormState,
   isCreate: boolean,

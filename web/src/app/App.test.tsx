@@ -149,6 +149,26 @@ describe('App', () => {
     expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
   });
 
+  it('учитель на /planning/new — маршрут страницы разового занятия (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/classes': [], '/users/teachers': [] });
+
+    renderAt('/planning/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Разовое занятие' }),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /schedule/new — маршрут страницы занятия расписания (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/channels': [], '/users/teachers': [] });
+
+    renderAt('/schedule/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Новое занятие в расписании' }),
+    ).toBeInTheDocument();
+  });
+
   it('учитель на /exam-items — маршрут «Вопросы для экзамена» открывает ExamItemsScreen', async () => {
     mockRoute(TEACHER, { '/exam-items': [] });
 
