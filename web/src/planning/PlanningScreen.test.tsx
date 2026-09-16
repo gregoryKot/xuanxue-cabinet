@@ -6,10 +6,10 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ClassDto, LessonDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { mockApiByPath } from '../test-support/apiFetchMock';
+import { makeClass, makeLesson } from '../test-support/planningFixtures';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import PlanningScreen from './PlanningScreen';
 
@@ -19,38 +19,6 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
-
-function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
-  return {
-    id: 'c1',
-    title: 'Тайцзицюань, средняя группа',
-    groupLabel: '',
-    format: 'online',
-    rules: [],
-    tz: 'Asia/Jerusalem',
-    channelIds: [],
-    leadMinutes: 30,
-    active: true,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
-function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
-  return {
-    id: 'l1',
-    classId: 'c1',
-    startsAt: '2026-09-08T16:00:00.000Z',
-    durationMin: 60,
-    topic: '',
-    status: 'scheduled',
-    recordings: [],
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
 
 const NEW_MARKER = 'Здесь страница разового занятия';
 const EDITOR_MARKER = 'Здесь страница занятия';

@@ -4,7 +4,8 @@
 // `useClassEditor` (ADR-0033). Гонка запросов и разбор ошибки — в общем
 // useAbortableFetch (используется также useLessons/useSummary — иначе jscpd
 // ловит дубль AbortController + сверки id запроса).
-import { LIST_LIMIT_MAX, type ClassDto } from '@xuanxue/shared';
+import type { ClassDto } from '@xuanxue/shared';
+import { CLASSES_LIST_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -19,7 +20,7 @@ export interface UseClassesResult {
 
 export function useClasses(): UseClassesResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ClassDto[]>(`/classes?limit=${LIST_LIMIT_MAX}`, { signal }),
+    (signal) => apiFetch<ClassDto[]>(CLASSES_LIST_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
 

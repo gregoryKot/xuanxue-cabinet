@@ -3,9 +3,9 @@
 // общая с редактором экзамена и вопроса банка (hooks/useEntityEditor.ts),
 // здесь только путь коллекции и текст ошибки на языке домена.
 import type { ChannelDto, CreateChannelInput, UpdateChannelInput } from '@xuanxue/shared';
+import { CHANNELS_PATH } from '../api/apiPaths';
 import { useEntityEditor, type UseEntityEditorResult } from '../hooks/useEntityEditor';
 
-const CHANNELS_PATH = '/channels';
 const LOAD_ERROR_MESSAGE = 'Не удалось открыть канал. Попробуйте ещё раз.';
 
 export type UseChannelEditorResult = UseEntityEditorResult<

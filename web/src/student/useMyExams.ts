@@ -4,6 +4,7 @@
 // (StudentExamsSection.tsx), а к списку человек вернётся уже с обновлённым
 // /me/exams при следующем заходе на экран.
 import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
+import { MY_EXAMS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import {
   useAbortableFetch,
@@ -18,7 +19,7 @@ export interface UseMyExamsResult extends UseAbortableFetchResult<MyExamDto[]> {
 
 export function useMyExams(): UseMyExamsResult {
   const result = useAbortableFetch(
-    (signal) => apiFetch<MyExamDto[]>('/me/exams', { signal }),
+    (signal) => apiFetch<MyExamDto[]>(MY_EXAMS_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
 

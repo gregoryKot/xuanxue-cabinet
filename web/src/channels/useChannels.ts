@@ -3,7 +3,8 @@
 // удаление живут на странице канала и ходят через hooks/useEntityEditor.ts
 // (ADR-0033) — списку осталось только чтение. Гонка запросов и разбор ошибки —
 // в общем hooks/useAbortableFetch.ts.
-import { LIST_LIMIT_MAX, type ChannelDto } from '@xuanxue/shared';
+import type { ChannelDto } from '@xuanxue/shared';
+import { channelsListPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -20,11 +21,8 @@ export interface UseChannelsResult {
  * «Расписание» выбирает только активные для рассылки занятия (ревью п.1,
  * docs/PLAN.md §6 п.1) — тот же хук, без второй реализации списка. */
 export function useChannels(activeOnly = false): UseChannelsResult {
-  const query = activeOnly
-    ? `?active=true&limit=${LIST_LIMIT_MAX}`
-    : `?limit=${LIST_LIMIT_MAX}`;
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ChannelDto[]>(`/channels${query}`, { signal }),
+    (signal) => apiFetch<ChannelDto[]>(channelsListPath(activeOnly), { signal }),
     LOAD_ERROR_MESSAGE,
   );
 

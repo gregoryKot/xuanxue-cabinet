@@ -256,7 +256,14 @@ export default tseslint.config(
     // `getTime()` — единственный честный способ не съехать на ±1 час на
     // переходе DST (dateWindow.tz.test.ts); обход через Intl.formatToParts
     // оставил бы ту же арифметику, только спрятанную от линтера.
-    files: ['web/src/planning/planningWindow.ts', 'web/src/lib/dateWindow.ts'],
+    // nextLessonsWindow.ts: `new Date(now)` — тот же клон момента, чтобы
+    // отбросить секунды (setUTCSeconds), ключ предзагрузки первого экрана
+    // должен совпасть с ключом хука (api/apiPaths.ts).
+    files: [
+      'web/src/planning/planningWindow.ts',
+      'web/src/lib/dateWindow.ts',
+      'web/src/templates/nextLessonsWindow.ts',
+    ],
     rules: { 'no-restricted-syntax': ['error', NO_ENUM] },
   },
   {

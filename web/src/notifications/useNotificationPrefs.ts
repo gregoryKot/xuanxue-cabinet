@@ -10,6 +10,7 @@ import {
   type NotificationKind,
   type NotificationPrefsDto,
 } from '@xuanxue/shared';
+import { NOTIFICATION_PREFS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -28,13 +29,16 @@ export interface UseNotificationPrefsResult {
 
 export function useNotificationPrefs(me: MeDto | null): UseNotificationPrefsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<NotificationPrefsDto>('/me/notifications', { signal }),
+    (signal) => apiFetch<NotificationPrefsDto>(NOTIFICATION_PREFS_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
 
   const setEnabled = useCallback(
     async (kind: NotificationKind, enabled: boolean) => {
-      await apiFetch('/me/notifications', { method: 'PATCH', body: { kind, enabled } });
+      await apiFetch(NOTIFICATION_PREFS_PATH, {
+        method: 'PATCH',
+        body: { kind, enabled },
+      });
       await reload();
     },
     [reload],

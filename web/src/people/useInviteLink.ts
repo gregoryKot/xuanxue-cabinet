@@ -4,6 +4,7 @@
 // InviteLinkService.rotate() на сервере).
 import { useCallback, useState } from 'react';
 import type { InviteLinkDto } from '@xuanxue/shared';
+import { INVITE_LINK_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -24,7 +25,7 @@ export interface UseInviteLinkResult {
 
 export function useInviteLink(): UseInviteLinkResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<InviteLinkDto>('/users/invite-link', { signal }),
+    (signal) => apiFetch<InviteLinkDto>(INVITE_LINK_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
   const [rotating, setRotating] = useState(false);
@@ -35,7 +36,7 @@ export function useInviteLink(): UseInviteLinkResult {
     setRotating(true);
     setRotateError(null);
     try {
-      const next = await apiFetch<InviteLinkDto>('/users/invite-link', {
+      const next = await apiFetch<InviteLinkDto>(INVITE_LINK_PATH, {
         method: 'POST',
       });
       setRotated(next);

@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './app/App';
-import { matchRouteLoader } from './app/routeModules';
+import { matchRoute } from './app/routeMatch';
 import './fonts';
 import './pwa/standalone.css';
 import './index.css';
@@ -14,7 +14,7 @@ import { unregisterServiceWorker } from './pwa/unregisterServiceWorker';
 // качать, только когда RequireAuth отрендерит <Outlet>, то есть уже получив
 // ответ /api/auth/me. Здесь он летит параллельно с ним; повторный import()
 // того же модуля в сеть не идёт, lazy() получит уже загруженный.
-void matchRouteLoader(window.location.pathname)?.();
+void matchRoute(window.location.pathname)?.load();
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Не найден #root');
