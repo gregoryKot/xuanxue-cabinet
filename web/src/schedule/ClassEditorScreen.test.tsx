@@ -1,5 +1,6 @@
 // Страница занятия расписания целиком: загрузка по адресу, поля, дни и
-// время, каналы, сохранение и удаление (ADR-0033). Мок сети — по префиксу
+// время, каналы, сохранение и удаление (ADR-0033). Удаление — через
+// подтверждение (ConfirmDialog), не с одного касания. Мок сети — по префиксу
 // пути (test-support/apiFetchMock.ts).
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -355,7 +356,7 @@ describe('ClassEditorScreen — каналы рассылки', () => {
 });
 
 describe('ClassEditorScreen — удаление', () => {
-  it('«Удалить из расписания» шлёт DELETE и возвращает к расписанию', async () => {
+  it('«Удалить из расписания» открывает подтверждение, «Отмена» — запроса нет', async () => {
     const user = userEvent.setup();
     mockClass(makeClass());
 
@@ -363,6 +364,27 @@ describe('ClassEditorScreen — удаление', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Удалить из расписания' }),
     );
+
+    expect(
+      screen.getByRole('dialog', { name: 'Удалить из расписания?' }),
+    ).toBeInTheDocument();
+    expect(callsWithMethod('DELETE')).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(callsWithMethod('DELETE')).toHaveLength(0);
+    expect(screen.queryByText(SCHEDULE_MARKER)).not.toBeInTheDocument();
+  });
+
+  it('подтверждение — DELETE /classes/c1 и возврат к расписанию', async () => {
+    const user = userEvent.setup();
+    mockClass(makeClass());
+
+    renderAt('/schedule/c1');
+    await user.click(
+      await screen.findByRole('button', { name: 'Удалить из расписания' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
 
     await waitFor(() => expect(callsWithMethod('DELETE')).toHaveLength(1));
     expect(callsWithMethod('DELETE')[0]?.[0]).toBe('/classes/c1');
@@ -391,6 +413,7 @@ describe('ClassEditorScreen — удаление', () => {
       new ApiError('Есть запланированные занятия.', 409, 'conflict'),
     );
     await user.click(screen.getByRole('button', { name: 'Удалить из расписания' }));
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
 
     expect(await screen.findByText('Есть запланированные занятия.')).toBeInTheDocument();
     expect(screen.queryByText(SCHEDULE_MARKER)).not.toBeInTheDocument();

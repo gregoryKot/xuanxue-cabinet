@@ -1,11 +1,13 @@
 // Страница занятия расписания — адрес, а не лист поверх сетки (ADR-0033,
 // образец — exam-items/ExamItemEditorForm.tsx). Сверху вниз: возврат к
 // расписанию, рубрика с названием, поля занятия, дни и время, каналы
-// рассылки, подвал с сохранением и удалением.
+// рассылки, подвал с сохранением и удалением. Удаление — с подтверждением
+// через ConfirmDialog (раньше в старом листе срабатывало с одного касания).
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormServerError } from '../components/FormServerError';
 import {
   editorActionsRowStyle,
@@ -17,6 +19,7 @@ import {
   screenTitleStyle,
   textLinkStyle,
 } from '../components/screenLayout';
+import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
 import { useTeachers } from '../people/useTeachers';
 import { ClassChannelsField } from './ClassChannelsField';
 import { ClassFormFields } from './ClassFormFields';
@@ -29,6 +32,9 @@ const BACK_TEXT = 'К расписанию';
 const EYEBROW = 'Расписание';
 const NEW_CLASS_TITLE = 'Новое занятие в расписании';
 const REMOVE_LABEL = 'Удалить из расписания';
+const REMOVE_TITLE = 'Удалить из расписания?';
+const REMOVE_MESSAGE =
+  'Пропадут дни и время, привязка каналов и будущие даты занятий. Отменить нельзя — занятие придётся завести заново.';
 
 interface ClassEditorFormProps {
   /** `null` — `/schedule/new`, занятия ещё нет. */
@@ -51,6 +57,7 @@ export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormP
     editor.update,
     editor.remove,
   );
+  const removeConfirm = useConfirmedRemove(form.remove, goToSchedule);
   const teachersState = useTeachers();
   const noRules = form.state.rules.length === 0;
 
@@ -59,68 +66,77 @@ export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormP
     if (await form.submit()) goToSchedule();
   }
 
-  async function handleRemove() {
-    if (await form.remove()) goToSchedule();
-  }
-
   return (
-    <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-      <Link to={SCHEDULE_PATH} style={textLinkStyle}>
-        {BACK_TEXT}
-      </Link>
+    <>
+      <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
+        <Link to={SCHEDULE_PATH} style={textLinkStyle}>
+          {BACK_TEXT}
+        </Link>
 
-      <div style={editorHeadingStyle}>
-        <span className="xuanxue-eyebrow">{EYEBROW}</span>
-        <h1 style={screenTitleStyle}>{classDto ? classDto.title : NEW_CLASS_TITLE}</h1>
-      </div>
-
-      <ClassFormFields
-        state={form.state}
-        setField={form.setField}
-        error={form.validationError}
-        teachers={teachersState.teachers ?? []}
-        teachersError={teachersState.error}
-        onRetryTeachers={() => void teachersState.reload()}
-      />
-
-      <div style={editorSectionStyle}>
-        <RuleFields
-          rules={form.state.rules}
-          onChange={(rules) => form.setField('rules', rules)}
-        />
-      </div>
-
-      <div style={editorSectionStyle}>
-        <ClassChannelsField
-          channels={channels}
-          selectedIds={form.state.channelIds}
-          onChange={(channelIds) => form.setField('channelIds', channelIds)}
-        />
-      </div>
-
-      <FormServerError error={form.serverError} />
-
-      <div style={editorSectionStyle}>
-        <div style={editorActionsRowStyle}>
-          <Button type="submit" pending={form.pending} disabled={noRules}>
-            Сохранить
-          </Button>
+        <div style={editorHeadingStyle}>
+          <span className="xuanxue-eyebrow">{EYEBROW}</span>
+          <h1 style={screenTitleStyle}>{classDto ? classDto.title : NEW_CLASS_TITLE}</h1>
         </div>
 
-        {classDto && (
-          <div style={editorDangerRowStyle}>
-            <Button
-              type="button"
-              variant="danger"
-              style={editorDangerButtonStyle}
-              pending={form.pending}
-              onClick={() => void handleRemove()}
-            >
-              {REMOVE_LABEL}
+        <ClassFormFields
+          state={form.state}
+          setField={form.setField}
+          error={form.validationError}
+          teachers={teachersState.teachers ?? []}
+          teachersError={teachersState.error}
+          onRetryTeachers={() => void teachersState.reload()}
+        />
+
+        <div style={editorSectionStyle}>
+          <RuleFields
+            rules={form.state.rules}
+            onChange={(rules) => form.setField('rules', rules)}
+          />
+        </div>
+
+        <div style={editorSectionStyle}>
+          <ClassChannelsField
+            channels={channels}
+            selectedIds={form.state.channelIds}
+            onChange={(channelIds) => form.setField('channelIds', channelIds)}
+          />
+        </div>
+
+        <FormServerError error={form.serverError} />
+
+        <div style={editorSectionStyle}>
+          <div style={editorActionsRowStyle}>
+            <Button type="submit" pending={form.pending} disabled={noRules}>
+              Сохранить
             </Button>
           </div>
-        )}
-      </div>
-    </form>
+
+          {classDto && (
+            <div style={editorDangerRowStyle}>
+              <Button
+                type="button"
+                variant="danger"
+                style={editorDangerButtonStyle}
+                pending={form.pending}
+                onClick={removeConfirm.requestRemove}
+              >
+                {REMOVE_LABEL}
+              </Button>
+            </div>
+          )}
+        </div>
+      </form>
+
+      {removeConfirm.confirming && (
+        <ConfirmDialog
+          title={REMOVE_TITLE}
+          message={REMOVE_MESSAGE}
+          confirmLabel="Удалить"
+          pending={form.pending}
+          onConfirm={removeConfirm.confirmRemove}
+          onCancel={removeConfirm.cancelRemove}
+        />
+      )}
+    </>
   );
 }
