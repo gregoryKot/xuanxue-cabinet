@@ -1,11 +1,8 @@
 // Маршруты редактора экзамена — `/exams/new` и `/exams/:examId` (ADR-0033).
-// Экран ждёт ответ сервера и только потом собирает форму: состояние формы
-// заводится один раз при монтировании (useEntityForm), и отдать ему пустой
-// экзамен, а потом дождаться настоящего — значит показать чужие поля.
+// Загрузка, ошибка и «содержимое только после ответа сервера» — общий
+// components/LoadedPage.tsx.
 import { useParams } from 'react-router-dom';
-import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenSectionStyle } from '../components/screenLayout';
-import { SkeletonLines } from '../components/Skeleton';
+import { LoadedPage } from '../components/LoadedPage';
 import { ExamEditorForm } from './ExamEditorForm';
 import { useExamEditor } from './useExamEditor';
 
@@ -14,21 +11,14 @@ export default function ExamEditorScreen() {
   const { examId } = useParams<{ examId: string }>();
   const editor = useExamEditor(examId);
 
-  if (editor.loading) {
-    return (
-      <section style={screenSectionStyle}>
-        <SkeletonLines widths={['40%', '90%', '70%']} />
-      </section>
-    );
-  }
-
-  if (editor.error) {
-    return (
-      <section style={screenSectionStyle}>
-        <LoadErrorBanner message={editor.error} onRetry={() => void editor.reload()} />
-      </section>
-    );
-  }
-
-  return <ExamEditorForm exam={editor.exam} editor={editor} />;
+  return (
+    <LoadedPage
+      loading={editor.loading}
+      error={editor.error}
+      onRetry={() => void editor.reload()}
+      skeletonWidths={['40%', '90%', '70%']}
+    >
+      {() => <ExamEditorForm exam={editor.entity} editor={editor} />}
+    </LoadedPage>
+  );
 }

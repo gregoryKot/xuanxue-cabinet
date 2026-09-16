@@ -1,20 +1,14 @@
-// Базовые поля вопроса — формулировка, подсказка, критерии, тип, теги.
-// Тип выбирается только при создании (UpdateExamItemInput его не принимает,
-// ТЗ 4.2 п.1) — смена типа значит завести новый вопрос; при правке показан
-// текстом с объяснением, не молчанием (по образцу ChannelFormFields.tsx —
-// тип канала там тоже фиксируется после создания).
+// Содержательные поля вопроса — формулировка, подсказка ученику, критерии
+// проверки и теги. Тип ответа стоит выше отдельным блоком переключателей
+// (ExamItemKindField.tsx): он выбирается один раз и потом не меняется, а эти
+// четыре поля правятся всегда.
 import type { CSSProperties } from 'react';
-import { EXAM_ITEM_KINDS, EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
+import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import type { ExamItemFormState } from './examItemFormInput';
-import { EXAM_ITEM_KIND_LABELS_RU } from './examItemLabels';
 
+const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16 };
 const textareaStyle: CSSProperties = { ...inputStyle, minHeight: 90, resize: 'vertical' };
-const kindNoteStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-};
 
 interface ExamItemFormFieldsProps {
   state: ExamItemFormState;
@@ -22,44 +16,14 @@ interface ExamItemFormFieldsProps {
     key: K,
     value: ExamItemFormState[K],
   ) => void;
-  /** Общая ошибка формы — как в ClassFormFields.tsx, показывается под первым
+  /** Общая ошибка формы — как в ExamAboutFields.tsx, показывается под первым
    * содержательным полем (формулировка), не под каждым отдельно. */
   error: string | null;
-  isCreate: boolean;
 }
 
-export function ExamItemFormFields({
-  state,
-  setField,
-  error,
-  isCreate,
-}: ExamItemFormFieldsProps) {
+export function ExamItemFormFields({ state, setField, error }: ExamItemFormFieldsProps) {
   return (
-    <>
-      {isCreate ? (
-        <Field
-          label="Тип вопроса"
-          hint="После сохранения его не сменить — для другого формата заведите новый вопрос"
-        >
-          <select
-            style={inputStyle}
-            value={state.kind}
-            onChange={(e) => setField('kind', e.target.value as ExamItemKind)}
-          >
-            {EXAM_ITEM_KINDS.map((kind) => (
-              <option key={kind} value={kind}>
-                {EXAM_ITEM_KIND_LABELS_RU[kind]}
-              </option>
-            ))}
-          </select>
-        </Field>
-      ) : (
-        <p style={kindNoteStyle}>
-          Тип: {EXAM_ITEM_KIND_LABELS_RU[state.kind]} — чтобы изменить, заведите новый
-          вопрос
-        </p>
-      )}
-
+    <div style={columnStyle}>
       <Field label="Формулировка" error={error ?? undefined}>
         <textarea
           style={textareaStyle}
@@ -100,6 +64,6 @@ export function ExamItemFormFields({
           onChange={(e) => setField('tagsText', e.target.value)}
         />
       </Field>
-    </>
+    </div>
   );
 }

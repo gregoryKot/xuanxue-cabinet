@@ -9,6 +9,10 @@
 // макет Form.dc.html). Стоит вне <label>, как у Field.tsx: внутри он склеился
 // бы с подписью в доступное имя поля («Перемешивать вопросыУ каждого…»), и
 // ни скринридер, ни getByLabelText больше не находят контрол по одной подписи.
+//
+// `name` переводит переключатель в радио: выбор одного из нескольких (тип
+// ответа вопроса, ExamItemKindField.tsx) — та же строка «галочка, подпись,
+// объяснение», и взаимное исключение внутри группы браузер делает сам.
 import type { CSSProperties } from 'react';
 
 const inputStyle: CSSProperties = {
@@ -32,10 +36,12 @@ interface ToggleProps {
   hint?: string;
   checked: boolean;
   disabled?: boolean;
+  /** Передано — это радио из группы с таким именем, а не самостоятельная галочка. */
+  name?: string;
   onChange: (checked: boolean) => void;
 }
 
-export function Toggle({ label, hint, checked, disabled, onChange }: ToggleProps) {
+export function Toggle({ label, hint, checked, disabled, name, onChange }: ToggleProps) {
   const wrapStyle: CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -47,7 +53,8 @@ export function Toggle({ label, hint, checked, disabled, onChange }: ToggleProps
   const row = (
     <label style={wrapStyle}>
       <input
-        type="checkbox"
+        type={name ? 'radio' : 'checkbox'}
+        name={name}
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}

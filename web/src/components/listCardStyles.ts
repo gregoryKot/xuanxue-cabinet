@@ -36,3 +36,19 @@ export const listCardMetaStyle: CSSProperties = {
   color: 'var(--ink-soft)',
   marginTop: 4,
 };
+
+// Тихая кнопка внутри строки списка — «Выше/Ниже/Убрать» у вопроса экзамена,
+// «×» у варианта ответа. 44×44, хотя макет Form.dc.html рисует 40: цель
+// нажатия в кабинете не меньше 44 (CLAUDE.md «Доступность»), а разницы в
+// четыре пикселя на бумаге не видно.
+export const rowControlStyle: CSSProperties = {
+  width: 44,
+  height: 44,
+  border: 0,
+  background: 'transparent',
+  color: 'var(--ink-soft)',
+  font: 'inherit',
+  fontSize: 16,
+  cursor: 'pointer',
+  borderRadius: 3,
+};

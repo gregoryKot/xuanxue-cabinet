@@ -159,6 +159,16 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('учитель на /exam-items/new — маршрут страницы вопроса (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/exam-items': [] });
+
+    renderAt('/exam-items/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Новый вопрос' }),
+    ).toBeInTheDocument();
+  });
+
   it('учитель на /exams — маршрут «Экзамены» открывает ExamsScreen', async () => {
     mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
 

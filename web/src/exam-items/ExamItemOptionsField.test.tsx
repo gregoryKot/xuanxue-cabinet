@@ -88,7 +88,7 @@ describe('ExamItemOptionsField — добавление и удаление', ()
     expect(screen.getByText(/Добавьте минимум/)).toBeInTheDocument();
   });
 
-  it('«Убрать» убирает вариант по индексу', async () => {
+  it('«Убрать вариант» убирает вариант по индексу', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
@@ -102,7 +102,7 @@ describe('ExamItemOptionsField — добавление и удаление', ()
       />,
     );
 
-    await user.click(screen.getAllByRole('button', { name: 'Убрать' })[0] as HTMLElement);
+    await user.click(screen.getByRole('button', { name: 'Убрать вариант 1' }));
 
     expect(onChange).toHaveBeenCalledWith([{ text: 'B', correct: false }]);
   });

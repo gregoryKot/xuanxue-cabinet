@@ -1,13 +1,15 @@
-// Варианты ответа — только для single/multiple (ТЗ 4.2, «Лист»): добавить,
-// убрать, отметить верный. По образцу schedule/RuleFields.tsx (повторяемый
-// список строк с добавлением/удалением). Отметка «верно» — нативный
+// Варианты ответа — только для single/multiple: добавить, убрать, отметить
+// верный. Вид — тот же список строками, что у вопросов экзамена (макет
+// Form.dc.html, класс `.xuanxue-question-row`): отметка, текст, тихая «×»
+// справа; на телефоне кнопка уезжает под строку. Отметка «верно» — нативный
 // radio/checkbox: для single имя группы (`name`) отдаёт браузеру взаимное
 // исключение самому, для multiple — обычные чекбоксы (CLAUDE.md
 // «Доступность» — работает с клавиатуры без единого атрибута ARIA).
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { inputStyle } from '../components/Field';
+import { rowControlStyle } from '../components/listCardStyles';
+import { textLinkButtonStyle } from '../components/screenLayout';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 
 const fieldsetStyle: CSSProperties = {
@@ -19,8 +21,13 @@ const fieldsetStyle: CSSProperties = {
   gap: 8,
 };
 const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
-const rowStyle: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center' };
-const markStyle: CSSProperties = { width: 22, height: 22, flexShrink: 0 };
+const markStyle: CSSProperties = {
+  width: 18,
+  height: 18,
+  marginTop: 12,
+  accentColor: 'var(--accent)',
+};
+const textStyle: CSSProperties = { ...inputStyle, marginTop: 2 };
 const hintTextStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
@@ -70,7 +77,7 @@ export function ExamItemOptionsField({
     <fieldset style={fieldsetStyle}>
       <legend style={legendStyle}>Варианты ответа</legend>
       {options.map((option, index) => (
-        <div key={option.id ?? `new-${index}`} style={rowStyle}>
+        <div key={option.id ?? `new-${index}`} className="xuanxue-question-row">
           <input
             type={kind === 'single' ? 'radio' : 'checkbox'}
             name={kind === 'single' ? RADIO_GROUP_NAME : undefined}
@@ -82,24 +89,31 @@ export function ExamItemOptionsField({
           <input
             type="text"
             aria-label={`Текст варианта ${index + 1}`}
-            style={{ ...inputStyle, flex: 1 }}
+            style={textStyle}
             maxLength={EXAM_ITEM_LIMITS.optionText}
             value={option.text}
             onChange={(e) => updateText(index, e.target.value)}
           />
-          <Button type="button" variant="danger" onClick={() => removeOption(index)}>
-            Убрать
-          </Button>
+          <div className="xuanxue-question-controls">
+            <button
+              type="button"
+              style={rowControlStyle}
+              aria-label={`Убрать вариант ${index + 1}`}
+              onClick={() => removeOption(index)}
+            >
+              ×
+            </button>
+          </div>
         </div>
       ))}
       {canAddMore && (
-        <Button
+        <button
           type="button"
-          variant="secondary"
+          style={{ ...textLinkButtonStyle, alignSelf: 'flex-start' }}
           onClick={() => onChange([...options, { ...NEW_OPTION }])}
         >
           Добавить вариант
-        </Button>
+        </button>
       )}
       {options.length < EXAM_ITEM_LIMITS.optionsMin && (
         <p style={hintTextStyle}>
