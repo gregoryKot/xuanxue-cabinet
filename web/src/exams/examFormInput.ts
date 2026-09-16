@@ -1,5 +1,5 @@
 // Чистая логика формы экзамена — состояние, валидация и сборка тела запроса
-// (порядок вопросов и поиск по банку — examQuestionList.ts), вынесена из
+// (порядок вопросов и поиск по банку — examQuestions.ts), вынесена из
 // useExamForm.ts, чтобы проверять без React (CLAUDE.md «Тесты»), по образцу
 // exam-items/examItemFormInput.ts. timeLimitMin/attemptsAllowed хранятся в
 // форме строкой — пустое поле иначе мгновенно становится 0/NaN, и пользователь
@@ -15,7 +15,7 @@ import {
   initialQuestionIds,
   initialShuffleQuestions,
   toBlockInputs,
-} from './examQuestionList';
+} from './examQuestions';
 
 // Минимумы не вынесены в EXAM_LIMITS (shared) — там только верхние границы;
 // то же самое минимальное значение 1 продублировано локальной константой на

@@ -241,7 +241,7 @@
   "api/test/health.e2e-spec.ts": 84,
   "web/src/attempt/AttemptQuestion.tsx": 84,
   "web/src/exam-items/ExamItemsScreen.tsx": 84,
-  "web/src/exams/examQuestionList.ts": 83,
+  "web/src/exams/examQuestions.ts": 83,
   "web/src/hooks/useHistorySheet.ts": 83,
   "web/src/schedule/useClassForm.ts": 83,
   "api/test/auth-config-telegram-bot.e2e-spec.ts": 82,
