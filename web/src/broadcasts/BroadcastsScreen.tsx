@@ -1,5 +1,5 @@
 // «Рассылки» — числа за 30 дней, потом журнал (docs/PLAN.md §6 п.5,
-// docs/adr/0025). Вход в «Каналы» и «Шаблоны постов» — карточками внизу, не
+// docs/adr/0025). Вход в «Каналы» и «Шаблоны постов» — ссылками внизу, не
 // пунктами меню. «Ждут отправки вручную» — сверху журнала, это нужно сделать
 // прямо сейчас. Новая рассылка — страница `/broadcasts/new`
 // (BroadcastNewScreen.tsx, ADR-0033), отсюда только переход. Числа, фильтры,
@@ -14,7 +14,6 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { useChannels } from '../channels/useChannels';
-import { ChannelsIcon, TemplatesIcon } from '../app/navIcons';
 import { useScrollToHash } from '../hooks/useScrollToHash';
 import { useSettings } from '../templates/useSettings';
 import { BroadcastCard } from './BroadcastCard';
@@ -131,18 +130,8 @@ export default function BroadcastsScreen() {
             ))}
           </ul>
         )}
-      <SectionLink
-        to="/channels"
-        title="Каналы"
-        hint={CHANNELS_LINK_HINT}
-        Icon={ChannelsIcon}
-      />
-      <SectionLink
-        to="/templates"
-        title="Шаблоны постов"
-        hint={TEMPLATES_LINK_HINT}
-        Icon={TemplatesIcon}
-      />
+      <SectionLink to="/channels" title="Каналы" hint={CHANNELS_LINK_HINT} />
+      <SectionLink to="/templates" title="Шаблоны постов" hint={TEMPLATES_LINK_HINT} />
     </section>
   );
 }

@@ -154,7 +154,7 @@ describe('BroadcastsScreen — журнал', () => {
     renderScreen();
     await screen.findByText(/Разовая рассылка/);
 
-    await user.selectOptions(screen.getByLabelText(/Статус/), 'sent');
+    await user.click(screen.getByRole('button', { name: 'Отправлено' }));
 
     await waitFor(() =>
       expect(mockedApiFetch).toHaveBeenCalledWith(
@@ -173,8 +173,9 @@ describe('BroadcastsScreen — журнал', () => {
 
     renderScreen(['/broadcasts?status=cancelled']);
 
-    expect(await screen.findByLabelText<HTMLSelectElement>(/Статус/)).toHaveValue(
-      'cancelled',
+    expect(await screen.findByRole('button', { name: 'Отменено' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
     );
     await waitFor(() =>
       expect(mockedApiFetch).toHaveBeenCalledWith(
@@ -189,7 +190,10 @@ describe('BroadcastsScreen — журнал', () => {
 
     renderScreen(['/broadcasts?status=bogus']);
 
-    expect(await screen.findByLabelText<HTMLSelectElement>(/Статус/)).toHaveValue('');
+    expect(await screen.findByRole('button', { name: 'Все' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('«Новая рассылка» ведёт на свою страницу, а не открывает лист', async () => {
@@ -213,7 +217,7 @@ describe('BroadcastsScreen — пустой журнал с фильтром (pr
     });
 
     renderScreen();
-    await user.selectOptions(screen.getByLabelText(/Статус/), 'sent');
+    await user.click(screen.getByRole('button', { name: 'Отправлено' }));
 
     expect(
       await screen.findByText('С этим статусом рассылок за период нет.'),
@@ -225,7 +229,10 @@ describe('BroadcastsScreen — пустой журнал с фильтром (pr
 
     await user.click(screen.getByRole('button', { name: 'Показать все статусы' }));
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLSelectElement>(/Статус/).value).toBe(''),
+      expect(screen.getByRole('button', { name: 'Все' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
     );
   });
 

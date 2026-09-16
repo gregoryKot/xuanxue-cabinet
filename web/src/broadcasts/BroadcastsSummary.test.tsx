@@ -61,7 +61,7 @@ describe('BroadcastsSummary — сбой загрузки', () => {
 });
 
 describe('BroadcastsSummary — пустая база', () => {
-  it('честное emptyMessage вместо карточек', async () => {
+  it('честное emptyMessage вместо чисел', async () => {
     mockedApiFetch.mockResolvedValueOnce({
       ...SUMMARY,
       emptyMessage: 'Пока нечего показать.',
@@ -75,7 +75,7 @@ describe('BroadcastsSummary — пустая база', () => {
 });
 
 describe('BroadcastsSummary — числа за период', () => {
-  it('карточки со значениями, отмены — ссылка в журнал с фильтром', async () => {
+  it('числа строкой, отмены — ссылка в журнал с фильтром', async () => {
     mockedApiFetch.mockResolvedValueOnce(SUMMARY);
 
     render(<BroadcastsSummary />, { wrapper: MemoryRouter });

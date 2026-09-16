@@ -69,9 +69,7 @@ export default function ExamsScreen() {
         labels={DRAFT_PUBLISHED_ARCHIVED_LABELS_RU}
         value={filters.status}
         onChange={(status) => setFilters({ status })}
-        searchLabel={SEARCH_LABEL}
-        search={search}
-        onSearchChange={setSearch}
+        search={{ label: SEARCH_LABEL, value: search, onChange: setSearch }}
       />
 
       <ListScreenBody

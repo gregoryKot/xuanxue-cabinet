@@ -8,11 +8,13 @@
 // («Раскрыть», «Отменить»), вложенные кнопки невалидны (CLAUDE.md
 // «Доступность») — отсюда общий listRowStyle, а не listCardStyle.
 //
+// Действия строки — текстовыми кнопками (components/TextLinkButton.tsx):
+// киноварь на экране одна, у «Новой рассылки», а обведённые кнопки в каждой
+// строке превращали журнал в стопку панелей (отзыв владельца 2026-09-16).
 // Отмена — через ConfirmDialog, как удаление канала: у рассылки нет пути
 // назад после отправки.
 import { useState, type CSSProperties } from 'react';
 import type { BroadcastDto, ChannelDto } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { errorFrom } from '../components/FormServerError';
 import {
@@ -21,6 +23,7 @@ import {
   listRowStyle,
 } from '../components/listCardStyles';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { formatDateTime } from '../lib/formatDate';
 import { tzBadge } from '../schedule/timezoneLabel';
 import { BROADCAST_KIND_LABELS_RU, BROADCAST_STATUS_LABELS_RU } from './broadcastLabels';
@@ -40,7 +43,7 @@ const rowStyle: CSSProperties = {
   gap: 8,
 };
 const previewStyle: CSSProperties = { ...noteStyle, whiteSpace: 'pre-wrap' };
-const actionsStyle: CSSProperties = { display: 'flex', gap: 10, flexWrap: 'wrap' };
+const actionsStyle: CSSProperties = { display: 'flex', gap: 24, flexWrap: 'wrap' };
 
 interface BroadcastCardProps {
   broadcast: BroadcastDto;
@@ -101,23 +104,17 @@ export function BroadcastCard({
       )}
 
       <div style={actionsStyle}>
-        <Button
-          type="button"
-          variant="secondary"
+        <TextLinkButton
           aria-expanded={expanded}
           aria-controls={deliveriesId}
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? 'Свернуть' : 'Раскрыть'}
-        </Button>
+        </TextLinkButton>
         {canCancel && (
-          <Button
-            type="button"
-            variant="danger"
-            onClick={() => setConfirmingCancel(true)}
-          >
+          <TextLinkButton danger onClick={() => setConfirmingCancel(true)}>
             Отменить
-          </Button>
+          </TextLinkButton>
         )}
       </div>
 

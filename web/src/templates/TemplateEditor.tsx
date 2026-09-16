@@ -5,10 +5,10 @@
 // «текст + плейсхолдеры + предпросмотр» одна, разный только `kind`.
 import type { CSSProperties } from 'react';
 import { DEFAULT_TEMPLATES, type LessonDto, type TemplateKind } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { dangerNoteStyle, editorSectionStyle } from '../components/screenLayout';
 import { tzBadge } from '../schedule/timezoneLabel';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { PlaceholderChips } from './PlaceholderChips';
 import { TEMPLATE_KIND_LABELS_RU } from './templateKindLabels';
 import { TemplatePreviewSection } from './TemplatePreviewSection';
@@ -79,13 +79,9 @@ export function TemplateEditor({
         </p>
       )}
       <PlaceholderChips onInsert={insertAtCursor} />
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => onChange(DEFAULT_TEMPLATES[kind])}
-      >
+      <TextLinkButton onClick={() => onChange(DEFAULT_TEMPLATES[kind])}>
         Сбросить к тексту по умолчанию
-      </Button>
+      </TextLinkButton>
 
       <TemplatePreviewSection
         kind={kind}
