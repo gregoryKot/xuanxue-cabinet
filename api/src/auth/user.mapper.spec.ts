@@ -23,7 +23,16 @@ describe('toMeDto', () => {
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: true,
     });
+  });
+
+  // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедшего по почте бот не узнаёт, и
+  // кабинет обязан это знать — иначе он зовёт его слать видео боту впустую.
+  it('без telegramId — telegramLinked: false', () => {
+    const emailOnly: UserLean = { ...fullUser(), telegramId: undefined };
+
+    expect(toMeDto(emailOnly).telegramLinked).toBe(false);
   });
 
   // `status` с ADR-0026 наружу идёт — по нему кабинет показывает экран
@@ -33,6 +42,13 @@ describe('toMeDto', () => {
     expect(dto.email).toBeUndefined();
     expect(dto.telegramId).toBeUndefined();
     expect(dto.googleId).toBeUndefined();
-    expect(Object.keys(dto).sort()).toEqual(['id', 'name', 'roles', 'status', 'tz']);
+    expect(Object.keys(dto).sort()).toEqual([
+      'id',
+      'name',
+      'roles',
+      'status',
+      'telegramLinked',
+      'tz',
+    ]);
   });
 });

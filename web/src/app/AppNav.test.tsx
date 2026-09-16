@@ -13,6 +13,7 @@ const TEACHER: MeDto = {
   roles: ['teacher'],
   tz: 'UTC',
   status: 'active',
+  telegramLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -20,6 +21,7 @@ const ADMIN: MeDto = {
   roles: ['admin'],
   tz: 'UTC',
   status: 'active',
+  telegramLinked: false,
 };
 
 function renderNav(isMobile: boolean, me: MeDto | null = TEACHER, path = '/planning') {

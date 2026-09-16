@@ -8,6 +8,7 @@ const me: MeDto = {
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 
 describe('hasRole', () => {

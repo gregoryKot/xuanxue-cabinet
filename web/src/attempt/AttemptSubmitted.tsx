@@ -21,6 +21,7 @@ function describeSubmitted(attempt: ExamAttemptDto): string {
 interface AttemptSubmittedProps {
   attempt: ExamAttemptDto;
   telegramBotUsername?: string;
+  telegramLinked: boolean;
   onAddMediaLink: (url: string) => Promise<boolean>;
   addingMediaLink: boolean;
   addMediaLinkError: FormError | null;
@@ -29,6 +30,7 @@ interface AttemptSubmittedProps {
 export function AttemptSubmitted({
   attempt,
   telegramBotUsername,
+  telegramLinked,
   onAddMediaLink,
   addingMediaLink,
   addMediaLinkError,
@@ -41,6 +43,7 @@ export function AttemptSubmitted({
       <AttemptMediaPrompt
         attempt={attempt}
         telegramBotUsername={telegramBotUsername}
+        telegramLinked={telegramLinked}
         onAddMediaLink={onAddMediaLink}
         addingMediaLink={addingMediaLink}
         addMediaLinkError={addMediaLinkError}

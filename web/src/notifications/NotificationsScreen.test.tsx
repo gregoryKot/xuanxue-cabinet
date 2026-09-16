@@ -21,6 +21,7 @@ const STUDENT: MeDto = {
   roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 
 function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] }) {

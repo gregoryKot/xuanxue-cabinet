@@ -10,13 +10,13 @@
 // человека, отвечать/создавать канал не нужно (обрабатывает my_chat_member).
 //
 // Второй payload формата `exam_<attemptId>` (ADR-0023, PLAN §11 слой 4.5) —
-// deep link «Отправить видео» из кабинета, открыт ЛЮБОМУ пользователю
-// Telegram: заводит ожидание видео в BotSessionService раньше проверки роли.
-// Владение попыткой не проверяется — ответ одинаков для чужого и
-// несуществующего attemptId (SECURITY §3), саму привязку проверяет
-// MediaAssetsService, когда видео придёт. ИЗВЕСТНОГО blocked/invited к
-// ожиданию не пускаем (SECURITY §9) — BotUserAccessService.resolve() перед
-// стартом ожидания, `unknown` по-прежнему проходит без роли.
+// deep link «Отправить видео» из кабинета, вынесен в exam-media-deep-link.ts
+// (файл-лимит, тот же приём, что и join-invite-deep-link.ts). Видео
+// привязывается только владельцу попытки с привязанным Telegram (ADR-0023) —
+// незнакомцу (`unknown`, нет записи в users) отказ приходит сразу, до
+// ожидания видео, а не после того, как он снял и прислал ролик (инцидент
+// 2026-09-16, RUNBOOK §8.17). ИЗВЕСТНОГО blocked/invited к ожиданию тоже не
+// пускаем (SECURITY §9).
 //
 // Третий payload `join_<code>` (ADR-0030 «Бот», уточнение 2026-09-15) — та же
 // ссылка, что и на сайте (join-invite-deep-link.ts): валидный код заводит
@@ -37,6 +37,7 @@ import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import { buildStrangerMessage } from './bot-menu';
+import { handleExamMediaDeepLink } from './exam-media-deep-link';
 import { handleInviteDeepLink } from './join-invite-deep-link';
 import { welcomeConnectedUser } from './start-welcome';
 
@@ -67,10 +68,6 @@ function inviteCodeFromPayload(payload: string | undefined): string | null {
   return INVITE_CODE_RE.test(code) ? code : null;
 }
 
-const EXAM_MEDIA_WAIT_MESSAGE =
-  'Снимите или пришлите видео прямо сюда — обычным сообщением, «кружком» ' +
-  'или файлом. Как только дойдёт, учитель сможет его посмотреть.';
-
 @Injectable()
 export class StartHandler {
   private readonly logger = new Logger(StartHandler.name);
@@ -95,7 +92,10 @@ export class StartHandler {
       const payload = startPayload(ctx);
       const examAttemptId = examAttemptIdFromPayload(payload);
       if (examAttemptId) {
-        await this.handleExamDeepLink(ctx, from.id, examAttemptId, now);
+        await handleExamMediaDeepLink(ctx, from.id, examAttemptId, now, {
+          botSessions: this.botSessions,
+          botAccess: this.botAccess,
+        });
         return;
       }
       const inviteCode = inviteCodeFromPayload(payload);
@@ -122,25 +122,6 @@ export class StartHandler {
     } catch (err) {
       this.logger.error(`telegram.start: ${errorMessage(err)}`, errorStack(err));
     }
-  }
-
-  /** `unknown` — анонимный отправитель без аккаунта, ожидание заводим как
-   * раньше (комментарий вверху файла). `denied` — известный blocked/invited,
-   * ожидание НЕ заводим и отвечаем отказом, не «пришлите видео»: тихо
-   * пускать заблокированного к отправке — не вариант (SECURITY §9). */
-  private async handleExamDeepLink(
-    ctx: Context,
-    telegramId: number,
-    examAttemptId: string,
-    now: DateTime,
-  ): Promise<void> {
-    const access = await this.botAccess.resolve(telegramId);
-    if (access.kind === 'denied') {
-      await ctx.reply(access.message).catch(() => null);
-      return;
-    }
-    await this.botSessions.startExamMediaWait(telegramId, examAttemptId, now);
-    await ctx.reply(EXAM_MEDIA_WAIT_MESSAGE).catch(() => null);
   }
 
   private async strangerMessage(): Promise<string> {

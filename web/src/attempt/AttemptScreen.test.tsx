@@ -6,9 +6,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import type { ExamAttemptDto, MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
+import { AuthProvider } from '../auth/AuthProvider';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import AttemptScreen from './AttemptScreen';
 
@@ -19,12 +20,40 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
+const STUDENT_WITH_TELEGRAM: MeDto = {
+  id: 'u1',
+  name: 'Ученик',
+  roles: [],
+  tz: 'Asia/Jerusalem',
+  status: 'active',
+  telegramLinked: true,
+};
+
+/** Экран параллельно зовёт /attempts, /auth/me и /auth/config, поэтому мок —
+ * по пути, а не очередью `mockResolvedValueOnce`: очередь отдала бы ответ
+ * тому, кто успел первым, и тест держался бы на порядке эффектов. */
+function mockPaths(attempts: unknown, me: MeDto = STUDENT_WITH_TELEGRAM) {
+  mockedApiFetch.mockImplementation((path: string) => {
+    if (path === '/auth/me') return Promise.resolve(me);
+    if (path === '/auth/config')
+      return Promise.resolve({ telegramBotUsername: 'xx_bot' });
+    if (path.startsWith('/attempts')) {
+      return attempts instanceof Error
+        ? Promise.reject(attempts)
+        : Promise.resolve(attempts);
+    }
+    return Promise.reject(new Error(`неожиданный путь: ${path}`));
+  });
+}
+
 function renderAt(attemptId: string) {
   return render(
     <MemoryRouter initialEntries={[`/attempts/${attemptId}`]}>
-      <Routes>
-        <Route path="/attempts/:id" element={<AttemptScreen />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/attempts/:id" element={<AttemptScreen />} />
+        </Routes>
+      </AuthProvider>
     </MemoryRouter>,
   );
 }
@@ -43,7 +72,7 @@ const IN_PROGRESS: ExamAttemptDto = {
 
 describe('AttemptScreen', () => {
   it('в работе — рисует форму сдачи с названием экзамена', async () => {
-    mockedApiFetch.mockResolvedValueOnce([IN_PROGRESS]);
+    mockPaths([IN_PROGRESS]);
     renderAt('a1');
 
     expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
@@ -51,7 +80,7 @@ describe('AttemptScreen', () => {
   });
 
   it('уже отправлена — экран «Отправлено», без формы', async () => {
-    mockedApiFetch.mockResolvedValueOnce([{ ...IN_PROGRESS, status: 'submitted' }]);
+    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }]);
     renderAt('a1');
 
     expect(
@@ -60,20 +89,38 @@ describe('AttemptScreen', () => {
     expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument();
   });
 
+  // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедший по почте видел кнопку
+  // «Отправить видео боту», шёл по ней и получал от бота отказ.
+  it('Telegram не привязан — на «Отправлено» кнопки бота нет, есть форма ссылки', async () => {
+    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }], {
+      ...STUDENT_WITH_TELEGRAM,
+      telegramLinked: false,
+    });
+    renderAt('a1');
+
+    expect(await screen.findByLabelText('Ссылка на видео')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('Telegram привязан — на «Отправлено» есть кнопка бота', async () => {
+    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }]);
+    renderAt('a1');
+
+    expect(
+      await screen.findByRole('link', { name: 'Отправить видео боту в Telegram' }),
+    ).toBeInTheDocument();
+  });
+
   it('сбой сети — баннер с повтором', async () => {
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Нет связи с сервером.', 0, 'network'),
-    );
+    mockPaths(new ApiError('Нет связи с сервером.', 0, 'network'));
     renderAt('a1');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Нет связи с сервером.');
   });
 
   it('после сбоя «Повторить» перечитывает попытку и открывает форму', async () => {
-    // По пути, не по очереди: экран параллельно зовёт /auth/config (имя бота
-    // для deep link «Отправить видео», useAuthConfig в AttemptScreen.tsx) —
-    // позиционная очередь mockResolvedValueOnce отдала бы второй ответ ему,
-    // а не повторному /attempts, и тест держался бы на порядке эффектов.
     let attemptsCallCount = 0;
     mockedApiFetch.mockImplementation((path: string) => {
       if (path.startsWith('/attempts')) {
@@ -95,12 +142,14 @@ describe('AttemptScreen', () => {
   // Маршрут без :id руками не собрать, но React Router может отдать undefined —
   // экран не должен падать, а должен честно сказать, что попытки нет.
   it('без идентификатора в адресе — «попытка не найдена», без падения', async () => {
-    mockedApiFetch.mockResolvedValueOnce([IN_PROGRESS]);
+    mockPaths([IN_PROGRESS]);
     render(
       <MemoryRouter initialEntries={['/attempts']}>
-        <Routes>
-          <Route path="/attempts" element={<AttemptScreen />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/attempts" element={<AttemptScreen />} />
+          </Routes>
+        </AuthProvider>
       </MemoryRouter>,
     );
 
@@ -110,7 +159,7 @@ describe('AttemptScreen', () => {
   });
 
   it('такой попытки нет в списке своих — текст «попытка не найдена»', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
+    mockPaths([]);
     renderAt('чужая-или-неизвестная');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(

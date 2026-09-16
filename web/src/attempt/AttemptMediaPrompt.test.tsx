@@ -23,6 +23,7 @@ function renderPrompt(overrides: Partial<Parameters<typeof AttemptMediaPrompt>[0
   render(
     <AttemptMediaPrompt
       attempt={makeAttempt()}
+      telegramLinked
       onAddMediaLink={onAddMediaLink}
       addingMediaLink={false}
       addMediaLinkError={null}
@@ -54,6 +55,27 @@ describe('AttemptMediaPrompt — видео ещё не получено', () =>
     expect(link).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедший по почте прошёл по кнопке,
+  // снял «кружок» и получил «не нашли эту попытку» — бот узнаёт человека
+  // только по telegramId, поэтому кнопки на этом пути быть не должно.
+  it('Telegram не привязан — кнопки бота нет даже при известном имени бота', () => {
+    renderPrompt({ telegramBotUsername: 'xuanxue_bot', telegramLinked: false });
+
+    expect(
+      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/вы вошли по почте/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
+  });
+
+  it('Telegram привязан, но бота нет — прежняя подсказка про ссылку', () => {
+    renderPrompt();
+
+    expect(
+      screen.getByText('Нет Telegram — оставьте ссылку на видео.'),
+    ).toBeInTheDocument();
   });
 });
 

@@ -34,6 +34,7 @@ describe('AuthProvider — статусы', () => {
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -67,6 +68,7 @@ describe('AuthProvider — статусы', () => {
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
     const { result } = renderAuth();

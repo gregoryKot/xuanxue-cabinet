@@ -1,9 +1,8 @@
 // e2e POST /auth/email/request и /verify — Resend подключён (RESEND_API_KEY/
 // MAIL_FROM через envOverrides). Отдельный файл от auth-email.e2e-spec.ts
 // (см. комментарий там про кеш импорта AppModule на файл). MailService
-// подменён фейком (fake-mail-service.ts) — сеть не трогаем (CLAUDE.md
-// «Тесты»); сырой токен теста берёт из перехваченной ссылки, как это сделал
-// бы человек, открывший письмо (в базе — только sha256, SECURITY §2).
+// подменён фейком (fake-mail-service.ts) — сеть не трогаем (CLAUDE.md «Тесты»);
+// сырой токен тест берёт из ссылки письма; в базе — только sha256 (SECURITY §2).
 import { getModelToken } from '@nestjs/mongoose';
 import request from 'supertest';
 import type { Model } from 'mongoose';
@@ -127,9 +126,10 @@ describe('POST /auth/email/request и /verify (e2e), Resend подключён',
     const body = res.body as MeDto;
     expect(body.status).toBe('invited');
     expect(body.roles).toEqual([]);
+    expect(body.telegramLinked).toBe(false); // инцидент 2026-09-16, RUNBOOK §8.17
     // Только поля MeDto — email/tokenHash в ответе нет (SECURITY §2, CLAUDE.md «API»).
     expect(Object.keys(body).sort()).toEqual(
-      ['id', 'name', 'roles', 'status', 'tz'].sort(),
+      ['id', 'name', 'roles', 'status', 'telegramLinked', 'tz'].sort(),
     );
     const cookie = String(res.headers['set-cookie']);
     expect(cookie).toContain('session=');

@@ -30,6 +30,7 @@ const ME: MeDto = {
   roles: [],
   tz: 'Asia/Jerusalem',
   status: 'invited',
+  telegramLinked: false,
 };
 
 function wrapper({ children }: { children: ReactNode }) {

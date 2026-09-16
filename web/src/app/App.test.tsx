@@ -27,6 +27,7 @@ const TEACHER: MeDto = {
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -34,6 +35,7 @@ const ADMIN: MeDto = {
   roles: ['admin'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -247,6 +249,7 @@ describe('App', () => {
       roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockRoute(student, { '/me/lessons': [], '/me/exams': [] });
 
@@ -283,6 +286,7 @@ describe('App', () => {
       roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
 
@@ -301,6 +305,7 @@ describe('App', () => {
       roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockRoute(student, {
       '/attempts': [
