@@ -315,20 +315,24 @@ describe('StartHandler', () => {
   });
 
   describe('deep link «Отправить видео» (exam_<attemptId>, ADR-0023)', () => {
-    it('/start exam_<attemptId>, анонимный отправитель (нет аккаунта) — заводит ожидание', async () => {
+    // Регрессия инцидента 2026-09-16 (RUNBOOK §8.17): ученик вошёл в кабинет
+    // по почте (нет telegramId в users), сдал экзамен, нажал «Отправить видео
+    // боту» — раньше бот всё равно заводил ожидание видео и узнавал правду
+    // только после присылки ролика («не нашли попытку»). Видео привязывается
+    // только владельцу попытки с привязанным Telegram (ADR-0023, это правило
+    // не меняем) — незнакомцу отказ приходит сразу, до ожидания.
+    it('/start exam_<attemptId>, анонимный отправитель (нет аккаунта) — НЕ заводит ожидание, отвечает про непривязанный Telegram', async () => {
       const attemptId = new Types.ObjectId().toString();
       const { ctx, replies } = fakeCtx(444, 'private', false, `exam_${attemptId}`);
 
       await handler.handle(ctx, NOW);
 
       expect(replies).toEqual([
-        'Снимите или пришлите видео прямо сюда — обычным сообщением, «кружком» ' +
-          'или файлом. Как только дойдёт, учитель сможет его посмотреть.',
+        'Этот Telegram не связан с вашим кабинетом, поэтому видео сюда не примем. ' +
+          'Вернитесь в кабинет и вставьте ссылку на видео на экране попытки.',
       ]);
-      const session = await botSessionModel.findOne({ chatId: 444 }).lean();
-      expect(session?.kind).toBe('examMedia');
-      expect(session?.attemptId?.toString()).toBe(attemptId);
-      // Не создаёт канал — работает и для ученика без личного канала.
+      expect(await botSessionModel.countDocuments({ chatId: 444 })).toBe(0);
+      // Не создаёт канал — обычный отказ, не подключение.
       expect(await channelModel.countDocuments({})).toBe(0);
     });
 

@@ -23,6 +23,7 @@ const INVITED: MeDto = {
   roles: [],
   tz: 'Asia/Jerusalem',
   status: 'invited',
+  telegramLinked: false,
 };
 
 function renderPending(config: Record<string, unknown>, me: MeDto = INVITED) {

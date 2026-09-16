@@ -26,6 +26,7 @@ const STUDENT: MeDto = {
   roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 
 function renderStudent(config: Record<string, unknown>, me: MeDto | Error = STUDENT) {

@@ -47,6 +47,7 @@ export type UserStatus = (typeof USER_STATUSES)[number];
  *
  * `status` входит с ADR-0026: вошедший в первый раз ждёт подтверждения
  * (`invited`), и экран должен показать ему ожидание, а не пустое расписание.
+ * `telegramLinked` — не id, а признак «бот меня узнает» (ADR-0023, §8.17).
  */
 export interface MeDto {
   id: string;
@@ -54,6 +55,7 @@ export interface MeDto {
   roles: UserRole[];
   tz: string;
   status: UserStatus;
+  telegramLinked: boolean;
 }
 
 /** Вошёл, но школа ещё не подтвердила (ADR-0026) — ответ любого маршрута

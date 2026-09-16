@@ -130,6 +130,7 @@ describe('AuthController.me', () => {
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     });
   });
 });
@@ -206,6 +207,7 @@ describe('AuthController.verifyEmailLogin', () => {
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     });
   });
 });
@@ -249,6 +251,7 @@ describe('AuthController.loginWithTelegram', () => {
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     });
   });
 
