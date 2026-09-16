@@ -69,6 +69,31 @@ export const screenHintStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 
+// Колонка страницы-редактора уже, чем у экрана-списка: строка поля во всю
+// ширину монитора нечитаема, и владелец на это указал прямо (отзыв
+// 2026-09-15). Общая для редактора экзамена и редактора вопроса — числа
+// живут в одном месте (CLAUDE.md «Без магических чисел»).
+const EDITOR_COLUMN_MAX_WIDTH_PX = 680;
+
+export const editorPageStyle: CSSProperties = {
+  ...screenSectionStyle,
+  maxWidth: EDITOR_COLUMN_MAX_WIDTH_PX,
+  gap: 24,
+};
+
+/** Раздел страницы-редактора: волосяная линия сверху вместо рамки-карточки. */
+export const editorSectionStyle: CSSProperties = {
+  paddingTop: 24,
+  borderTop: '1px solid var(--line)',
+};
+
+/** Рубрика и заголовок страницы-редактора одной колонкой. */
+export const editorHeadingStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+};
+
 /** Текстовая ссылка-переход внутри экрана («Открыть очередь», «Открыть
  * банк»). Заводится здесь, а не рядом с первым использованием: у `<a>` нет
  * своей строки в index.css, поэтому без явного цвета браузер красит ссылку

@@ -25,6 +25,7 @@ interface RouteModule {
 }
 
 const loadExamEditor = () => import('../exams/ExamEditorScreen');
+const loadExamItemEditor = () => import('../exam-items/ExamItemEditorScreen');
 
 /** Куда ведёт корень `/` — и в `<Navigate>`, и при предзагрузке. */
 export const ROOT_REDIRECT_PATH = '/planning';
@@ -65,6 +66,15 @@ export const ROUTE_MODULES = {
   examItems: {
     path: '/exam-items',
     load: () => import('../exam-items/ExamItemsScreen'),
+    warm: true,
+  },
+  // `/exam-items/new` раньше `/exam-items/:itemId`: matchRouteLoader берёт
+  // первое совпадение, а статический сегмент должен выигрывать у параметра.
+  // Один загрузчик на оба адреса — это один и тот же экран (ADR-0033).
+  examItemNew: { path: '/exam-items/new', load: loadExamItemEditor, warm: true },
+  examItemEditor: {
+    path: '/exam-items/:itemId',
+    load: loadExamItemEditor,
     warm: true,
   },
   exams: { path: '/exams', load: () => import('../exams/ExamsScreen'), warm: true },

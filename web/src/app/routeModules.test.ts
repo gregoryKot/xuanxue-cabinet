@@ -10,6 +10,11 @@ describe('matchRouteLoader', () => {
     expect(matchRouteLoader('/exams/652f00000000000000000001')).toBe(
       ROUTE_MODULES.examEditor.load,
     );
+    expect(matchRouteLoader('/exam-items')).toBe(ROUTE_MODULES.examItems.load);
+    expect(matchRouteLoader('/exam-items/new')).toBe(ROUTE_MODULES.examItemNew.load);
+    expect(matchRouteLoader('/exam-items/652f00000000000000000002')).toBe(
+      ROUTE_MODULES.examItemEditor.load,
+    );
     expect(matchRouteLoader('/people')).toBe(ROUTE_MODULES.people.load);
   });
 

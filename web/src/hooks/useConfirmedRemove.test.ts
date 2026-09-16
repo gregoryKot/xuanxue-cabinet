@@ -1,6 +1,6 @@
-// ExamSheet.test.tsx/ExamItemSheet.test.tsx/ExamBlocksField.test.tsx проверяют
-// сборку с ConfirmDialog и реальным SheetShell; здесь — сама механика
-// хука без React-дерева вокруг, по образцу hooks/useEntityForm.test.ts.
+// ExamEditorScreen.test.tsx и ExamItemEditorScreen.test.tsx проверяют сборку
+// с ConfirmDialog на живой странице; здесь — сама механика хука без
+// React-дерева вокруг, по образцу hooks/useEntityForm.test.ts.
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useConfirmedRemove } from './useConfirmedRemove';

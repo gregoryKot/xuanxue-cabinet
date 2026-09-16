@@ -4,6 +4,7 @@
 // перетаскиванием: drag-n-drop на телефоне и с клавиатуры — отдельная боль.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
+import { rowControlStyle } from '../components/listCardStyles';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
 
 const EMPTY_TEXT = 'Вопросов пока нет — найдите их в банке ниже.';
@@ -20,19 +21,6 @@ const numberStyle: CSSProperties = {
 };
 const promptStyle: CSSProperties = { fontSize: 16 };
 const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
-// 44×44, хотя макет рисует 40: цель нажатия в кабинете не меньше 44 (CLAUDE.md
-// «Доступность»), а разницы в четыре пикселя на бумаге не видно.
-const controlStyle: CSSProperties = {
-  width: 44,
-  height: 44,
-  border: 0,
-  background: 'transparent',
-  color: 'var(--ink-soft)',
-  font: 'inherit',
-  fontSize: 16,
-  cursor: 'pointer',
-  borderRadius: 3,
-};
 const emptyStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
 
 interface ExamQuestionListProps {
@@ -70,7 +58,7 @@ export function ExamQuestionList({
             <div className="xuanxue-question-controls">
               <button
                 type="button"
-                style={controlStyle}
+                style={rowControlStyle}
                 aria-label="Выше"
                 disabled={index === 0}
                 onClick={() => onMoveUp(index)}
@@ -79,7 +67,7 @@ export function ExamQuestionList({
               </button>
               <button
                 type="button"
-                style={controlStyle}
+                style={rowControlStyle}
                 aria-label="Ниже"
                 disabled={index === itemIds.length - 1}
                 onClick={() => onMoveDown(index)}
@@ -88,7 +76,7 @@ export function ExamQuestionList({
               </button>
               <button
                 type="button"
-                style={controlStyle}
+                style={rowControlStyle}
                 aria-label="Убрать из экзамена"
                 onClick={() => onRemove(itemId)}
               >
