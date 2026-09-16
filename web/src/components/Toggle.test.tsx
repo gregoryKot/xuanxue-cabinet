@@ -18,6 +18,20 @@ describe('Toggle', () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
+  it('с объяснением — оно видно, но в доступное имя поля не попадает', () => {
+    render(
+      <Toggle
+        label="Перемешивать вопросы"
+        hint="У каждого ученика свой порядок"
+        checked={false}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('У каждого ученика свой порядок')).toBeInTheDocument();
+    expect(screen.getByLabelText('Перемешивать вопросы')).not.toBeChecked();
+  });
+
   it('disabled — переключатель недоступен, клик не вызывает onChange', async () => {
     const onChange = vi.fn();
     render(<Toggle label="Включён" checked={false} disabled onChange={onChange} />);

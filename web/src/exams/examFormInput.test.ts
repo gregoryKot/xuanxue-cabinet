@@ -15,7 +15,7 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     description: 'Итоговый экзамен',
     level: 'начальный',
     blocks: [{ id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true }],
-    shuffleOptions: false,
+    shuffleOptions: true,
     rubric: [],
     timeLimitMin: 40,
     attemptsAllowed: 2,
@@ -33,7 +33,9 @@ function baseState(overrides: Partial<ExamFormState> = {}): ExamFormState {
     level: '',
     timeLimitMinText: '',
     attemptsAllowedText: '1',
-    blocks: [],
+    questionIds: [],
+    shuffleQuestions: false,
+    shuffleOptions: false,
     ...overrides,
   };
 }
@@ -44,19 +46,21 @@ describe('initialExamFormState', () => {
     expect(state.title).toBe('');
     expect(state.timeLimitMinText).toBe('');
     expect(state.attemptsAllowedText).toBe('1');
-    expect(state.blocks).toEqual([]);
+    expect(state.questionIds).toEqual([]);
+    expect(state.shuffleQuestions).toBe(false);
+    expect(state.shuffleOptions).toBe(false);
   });
 
-  it('существующий экзамен — поля переносятся, блоки — из initialBlockDrafts', () => {
+  it('существующий экзамен — поля переносятся, вопросы одним списком', () => {
     const state = initialExamFormState(makeExam());
     expect(state.title).toBe('Форма ученика');
     expect(state.description).toBe('Итоговый экзамен');
     expect(state.level).toBe('начальный');
     expect(state.timeLimitMinText).toBe('40');
     expect(state.attemptsAllowedText).toBe('2');
-    expect(state.blocks).toEqual([
-      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true },
-    ]);
+    expect(state.questionIds).toEqual(['i1']);
+    expect(state.shuffleQuestions).toBe(true);
+    expect(state.shuffleOptions).toBe(true);
   });
 
   it('без лимита времени — пустая строка, не «0»', () => {
@@ -129,6 +133,7 @@ describe('toCreateInput / toUpdateInput', () => {
   it('правка: пустые описание/уровень/лимит времени — null (явный сброс)', () => {
     const input = toUpdateInput(
       baseState({ description: '', level: '', timeLimitMinText: '' }),
+      makeExam(),
     );
     expect(input.description).toBeNull();
     expect(input.level).toBeNull();
@@ -136,19 +141,23 @@ describe('toCreateInput / toUpdateInput', () => {
   });
 
   it('правка: заполненный лимит времени — число', () => {
-    const input = toUpdateInput(baseState({ timeLimitMinText: '20' }));
+    const input = toUpdateInput(baseState({ timeLimitMinText: '20' }), makeExam());
     expect(input.timeLimitMin).toBe(20);
   });
 
-  it('блоки уходят через toBlockInputs (id сохраняется у существующего блока)', () => {
-    const state = baseState({
-      blocks: [{ id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false }],
-    });
+  it('создание: вопросы уходят одним блоком без id — сервер заведёт его сам', () => {
+    const state = baseState({ questionIds: ['i1', 'i2'], shuffleQuestions: true });
     expect(toCreateInput(state).blocks).toEqual([
-      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false },
+      { id: undefined, title: '', itemIds: ['i1', 'i2'], shuffle: true },
     ]);
-    expect(toUpdateInput(state).blocks).toEqual([
-      { id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: false },
+  });
+
+  it('правка: один блок с id первого блока экзамена, перемешивание вариантов отдельным полем', () => {
+    const state = baseState({ questionIds: ['i1'], shuffleOptions: true });
+    const input = toUpdateInput(state, makeExam());
+    expect(input.blocks).toEqual([
+      { id: 'b1', title: '', itemIds: ['i1'], shuffle: false },
     ]);
+    expect(input.shuffleOptions).toBe(true);
   });
 });

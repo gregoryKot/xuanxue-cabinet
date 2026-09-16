@@ -6,6 +6,10 @@ const routes = Object.values(ROUTE_MODULES);
 describe('matchRouteLoader', () => {
   it('простой адрес раздела — загрузчик его экрана', () => {
     expect(matchRouteLoader('/exams')).toBe(ROUTE_MODULES.exams.load);
+    expect(matchRouteLoader('/exams/new')).toBe(ROUTE_MODULES.examNew.load);
+    expect(matchRouteLoader('/exams/652f00000000000000000001')).toBe(
+      ROUTE_MODULES.examEditor.load,
+    );
     expect(matchRouteLoader('/people')).toBe(ROUTE_MODULES.people.load);
   });
 

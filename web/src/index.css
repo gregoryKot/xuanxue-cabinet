@@ -183,6 +183,48 @@ body {
   }
 }
 
+/* Строка выбранного вопроса в редакторе экзамена. На телефоне кнопки порядка
+   уезжают под формулировку: три цели по 44 пикселя рядом с текстом оставили бы
+   ему полторы сотни пикселей из 360 (CLAUDE.md «Мобильный экран первым»
+   сильнее макета Form.dc.html, где строка одна на любой ширине). Класс, не
+   инлайн-стиль: `CSSProperties` не умеет медиа-запрос. */
+.xuanxue-question-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 4px 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.xuanxue-question-controls {
+  grid-column: 2;
+  display: flex;
+  gap: 2px;
+}
+@media (min-width: 560px) {
+  .xuanxue-question-row {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+  .xuanxue-question-controls {
+    grid-column: auto;
+  }
+}
+
+/* Два поля в ряд на экране пошире (лимит времени и число попыток в редакторе
+   экзамена, макет Form.dc.html) — одно под другим на телефоне. Класс, не
+   инлайн-стиль: `CSSProperties` не умеет медиа-запрос. */
+.xuanxue-form-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 560px) {
+  .xuanxue-form-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

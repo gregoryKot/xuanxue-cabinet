@@ -81,3 +81,21 @@ export const textLinkStyle: CSSProperties = {
   borderBottom: '1px solid var(--control-border)',
   paddingBottom: 2,
 };
+
+/** Действие, которое выглядит текстовой ссылкой, но никуда не ведёт:
+ * «Добавить» вопрос в экзамен, «Посмотреть глазами ученика». Остаётся
+ * `<button>` — по ссылке без адреса не переходят ни клавиатура, ни
+ * скринридер (CLAUDE.md «Доступность»), а весом на экране такое действие
+ * равно ссылке, не кнопке. Цель нажатия — 44 по высоте, как у Button. */
+export const textLinkButtonStyle: CSSProperties = {
+  ...textLinkStyle,
+  background: 'none',
+  border: 0,
+  borderBottom: '1px solid var(--control-border)',
+  padding: 0,
+  paddingBottom: 2,
+  font: 'inherit',
+  cursor: 'pointer',
+  minHeight: 44,
+  whiteSpace: 'nowrap',
+};
