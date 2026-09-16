@@ -8,6 +8,7 @@ import type { ClassDto, LessonDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { mockApiByPath } from '../test-support/apiFetchMock';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import PlanningScreen from './PlanningScreen';
 
 vi.mock('../api/http', async () => {
@@ -65,6 +66,10 @@ function renderScreen() {
     </MemoryRouter>,
   );
 }
+
+// Экран подписывает пояс школы только зрителю из другого пояса, поэтому пояс
+// зрителя здесь задан явно, а не взят из окружения (test-support/viewerTimeZone.ts).
+stubViewerTimeZone();
 
 afterEach(() => {
   mockedApiFetch.mockReset();
@@ -207,8 +212,9 @@ describe('PlanningScreen — список занятий', () => {
     const card = await screen.findByText(/Пятое занятие цикла/);
     expect(card).toBeInTheDocument();
     expect(screen.getByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
-    // Пояс класса (Asia/Jerusalem) отличается от браузерного (UTC в тестах) —
-    // бейдж пояса на карточке (ревью п.6, schedule/timezoneLabel.ts).
+    // Пояс класса (Asia/Jerusalem) отличается от пояса зрителя (его задаёт
+    // stubViewerTimeZone) — экран подписывает пояс школы (ревью п.6,
+    // schedule/timezoneLabel.ts).
     expect(screen.getByText(/Asia\/Jerusalem/)).toBeInTheDocument();
 
     await user.click(card);
