@@ -1,22 +1,29 @@
-// Один редактор шаблона — textarea, чипы плейсхолдеров, «Сбросить», выбор
-// занятия и предпросмотр (docs/PLAN.md §6 «Шаблоны»). Два инстанса на экране
+// Один редактор шаблона — textarea, чипы плейсхолдеров и «Сбросить»; выбор
+// занятия с предпросмотром — TemplatePreviewSection.tsx рядом
+// (docs/PLAN.md §6 «Шаблоны»). Два инстанса на экране
 // (анонс/запись) — CLAUDE.md «Одна механика — один компонент»: сама механика
 // «текст + плейсхолдеры + предпросмотр» одна, разный только `kind`.
 import type { CSSProperties } from 'react';
 import { DEFAULT_TEMPLATES, type LessonDto, type TemplateKind } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
-import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { PostPreview } from '../components/PostPreview';
-import { formatDateTime } from '../lib/formatDate';
+import { dangerNoteStyle, editorSectionStyle } from '../components/screenLayout';
 import { tzBadge } from '../schedule/timezoneLabel';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { PlaceholderChips } from './PlaceholderChips';
 import { TEMPLATE_KIND_LABELS_RU } from './templateKindLabels';
-import { useAutoPreview } from './useAutoPreview';
+import { TemplatePreviewSection } from './TemplatePreviewSection';
 import { useInsertAtCursor } from './useInsertAtCursor';
 import { validateTemplateText } from './templateValidation';
 
-const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
+// Раздел шаблона отбит волосяной линией сверху, как разделы страницы-
+// редактора (components/screenLayout.ts): два шаблона подряд читаются как
+// части одной страницы, а не как две карточки.
+const sectionStyle: CSSProperties = {
+  ...editorSectionStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+};
 
 interface TemplateEditorProps {
   kind: TemplateKind;
@@ -50,17 +57,13 @@ export function TemplateEditor({
   const dirty = text !== savedText;
   const validationError = validateTemplateText(text);
   const badge = schoolTz ? tzBadge(schoolTz) : null;
-  const { lessonId, setLessonId, preview } = useAutoPreview(
-    kind,
-    lessons,
-    savedText,
-    dirty,
-  );
   const { textareaRef, insertAtCursor } = useInsertAtCursor(text, onChange);
 
   return (
     <section style={sectionStyle}>
-      <h2 style={{ margin: 0, fontSize: 16 }}>{TEMPLATE_KIND_LABELS_RU[kind]}</h2>
+      <h2 className="xuanxue-eyebrow" style={{ margin: 0 }}>
+        {TEMPLATE_KIND_LABELS_RU[kind]}
+      </h2>
 
       <Field label="Текст шаблона" error={validationError ?? undefined}>
         <textarea
@@ -71,71 +74,24 @@ export function TemplateEditor({
         />
       </Field>
       {serverError && (
-        <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--danger)' }}>
+        <p role="alert" style={dangerNoteStyle}>
           {serverError}
         </p>
       )}
       <PlaceholderChips onInsert={insertAtCursor} />
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => onChange(DEFAULT_TEMPLATES[kind])}
-      >
+      <TextLinkButton onClick={() => onChange(DEFAULT_TEMPLATES[kind])}>
         Сбросить к тексту по умолчанию
-      </Button>
+      </TextLinkButton>
 
-      {lessonsError ? (
-        <LoadErrorBanner message={lessonsError} onRetry={onRetryLessons} />
-      ) : (
-        <Field label="Предпросмотр на занятии">
-          <select
-            style={inputStyle}
-            value={lessonId}
-            onChange={(e) => setLessonId(e.target.value)}
-          >
-            <option value="">Выберите занятие</option>
-            {lessons.map((lesson) => (
-              <option key={lesson.id} value={lesson.id}>
-                {formatDateTime(lesson.startsAt)}
-                {badge && ` · ${badge}`} · {lesson.topic || 'Тема не задана'}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-
-      {dirty && (
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
-          Сначала сохраните — предпросмотр показывает сохранённый текст, не то, что
-          напечатано выше.
-        </p>
-      )}
-
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={!lessonId || dirty || !!lessonsError}
-        pending={preview.pending}
-        onClick={() => void preview.preview(kind, lessonId)}
-      >
-        Обновить предпросмотр
-      </Button>
-
-      {preview.error && (
-        <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--danger)' }}>
-          {preview.error}
-        </p>
-      )}
-      {preview.result && (
-        <>
-          <PostPreview text={preview.result.text} />
-          {preview.result.recordingIsStandIn && (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
-              Записи у занятия ещё нет — показали, как будет выглядеть пост.
-            </p>
-          )}
-        </>
-      )}
+      <TemplatePreviewSection
+        kind={kind}
+        savedText={savedText}
+        dirty={dirty}
+        lessons={lessons}
+        lessonsError={lessonsError}
+        onRetryLessons={onRetryLessons}
+        badge={badge}
+      />
     </section>
   );
 }

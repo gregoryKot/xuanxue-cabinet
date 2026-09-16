@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { planningWindow } from './planningWindow';
+
+// Окно считается по местной стене часов, а даты в тестах заданы в UTC: на
+// машине восточнее UTC+13 «2026-09-06T10:00:00Z» — уже понедельник, и тест
+// про воскресенье падал (проверено под Pacific/Kiritimati). Пояс зрителя
+// задан явно — test-support/viewerTimeZone.ts.
+stubViewerTimeZone();
 
 describe('planningWindow', () => {
   it('начало окна — воскресенье, полночь по местному времени', () => {

@@ -11,10 +11,10 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenSectionStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
 import { AttemptInProgress } from './AttemptInProgress';
 import { AttemptSubmitted } from './AttemptSubmitted';
+import { attemptPageStyle } from './attemptLayout';
 import { useAttempt } from './useAttempt';
 
 export default function AttemptScreen() {
@@ -38,7 +38,7 @@ export default function AttemptScreen() {
 
   if (loading) {
     return (
-      <section style={screenSectionStyle}>
+      <section style={attemptPageStyle}>
         <SkeletonLines widths={['50%', '90%', '70%']} />
       </section>
     );
@@ -46,7 +46,7 @@ export default function AttemptScreen() {
 
   if (error || !attempt) {
     return (
-      <section style={screenSectionStyle}>
+      <section style={attemptPageStyle}>
         <LoadErrorBanner message={error ?? ''} onRetry={() => void reload()} />
       </section>
     );

@@ -23,8 +23,22 @@ const FALLBACK_HINT = 'Нет Telegram — оставьте ссылку на в
 const TELEGRAM_NOT_LINKED_HINT =
   'Бот в Telegram узнаёт вас по аккаунту, а вы вошли по почте. Оставьте ссылку на видео.';
 
-const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
-const headingStyle: CSSProperties = { margin: 0, fontSize: 16 };
+const sectionStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  paddingTop: 20,
+  borderTop: '1px solid var(--line)',
+};
+// Заголовок блока антиквой, но заметно легче названия экзамена
+// (screenTitleStyle, 34): внутри экрана это раздел, а не второй экран.
+const headingStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: 'var(--font-display)',
+  fontWeight: 300,
+  fontSize: 22,
+  lineHeight: 1.1,
+};
 const hintStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 const receivedListStyle: CSSProperties = {
   margin: 0,
@@ -37,16 +51,18 @@ const receivedListStyle: CSSProperties = {
 // Визуально — как Button variant="primary" (components/Button.tsx), но это
 // переход по внешней ссылке (t.me), не действие в кабинете: <a>, не
 // <button> (тот же приём, что StudentLessonMeeting.tsx: zoomLinkStyle).
+// Единственная киноварь на этом экране (правило акцента, docs/adr/0031):
+// прислать видео — то, ради чего ученик сюда вернулся.
 const telegramLinkStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   minHeight: 44,
   padding: '10px 18px',
-  borderRadius: 8,
+  borderRadius: 3,
   fontWeight: 600,
-  background: 'var(--accent)',
-  color: 'var(--accent-contrast)',
+  background: 'var(--cinnabar)',
+  color: 'var(--cinnabar-contrast)',
   textDecoration: 'none',
   alignSelf: 'flex-start',
 };

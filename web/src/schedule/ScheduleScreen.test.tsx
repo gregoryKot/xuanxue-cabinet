@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ClassDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import ScheduleScreen from './ScheduleScreen';
 
 vi.mock('../api/http', async () => {
@@ -40,6 +41,11 @@ function renderScreen() {
     </MemoryRouter>,
   );
 }
+
+// Подпись «время в сетке — по часам школы» видит только зритель из другого
+// пояса, поэтому пояс зрителя задан явно, а не взят из окружения
+// (test-support/viewerTimeZone.ts).
+stubViewerTimeZone();
 
 afterEach(() => {
   mockedApiFetch.mockReset();

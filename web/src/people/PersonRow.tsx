@@ -2,8 +2,8 @@
 // CLAUDE.md «Одна механика — один компонент», образец — ChannelCard.tsx) и
 // удаление. Не карточка с клиентом: строка сама не открывается никуда,
 // переключатель роли — сразу мутация (PATCH /users/:id), удаление — через
-// общий ConfirmDialog (образец — ChannelSheet.tsx), необратимо и поэтому с
-// подтверждением.
+// общий ConfirmDialog (образец — hooks/useConfirmedRemove.ts), необратимо и
+// поэтому с подтверждением.
 import { useState, type CSSProperties } from 'react';
 import type { UserDto, UserRole } from '@xuanxue/shared';
 import { ApiError } from '../api/http';

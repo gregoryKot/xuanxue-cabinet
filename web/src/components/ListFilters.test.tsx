@@ -17,9 +17,7 @@ function renderFilters(
       labels={DRAFT_PUBLISHED_ARCHIVED_LABELS_RU}
       value={value}
       onChange={onChange}
-      searchLabel="Поиск по названию"
-      search={search}
-      onSearchChange={onSearchChange}
+      search={{ label: 'Поиск по названию', value: search, onChange: onSearchChange }}
     />,
   );
   return { onChange, onSearchChange };

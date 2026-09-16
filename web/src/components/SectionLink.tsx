@@ -1,58 +1,39 @@
-// Карточка-ссылка «куда ещё зайти из раздела» (docs/adr/0025-navigation-by-
-// domain.md): вход в подэкран (расписание, каналы, шаблоны, вопросы) живёт
-// внутри своего раздела картой, не отдельным пунктом меню. Перенесено из
-// settings/SettingsScreen.tsx (там называлась SettingsCard) — та же карточка
-// нужна на «Занятиях», «Рассылках» и «Экзаменах» (CLAUDE.md «Одна механика —
-// один компонент»).
-import type { ComponentType, CSSProperties } from 'react';
+// Переход в подэкран своего раздела — низ экрана, за волосяной линией:
+// сначала то, ради чего сюда зашли, потом всё остальное (docs/adr/0025 —
+// вход в подэкран живёт в своём разделе, не пунктом меню).
+//
+// Раньше был карточкой с рамкой, подложкой и иконкой; направление «тихо и
+// благородно» (docs/adr/0031) коробок не знает — текстовая ссылка и строка
+// объяснения под ней (отзыв владельца 2026-09-16, образец — низ «Занятий»).
+// У `<a>` нет своей строки в index.css: без textLinkStyle браузер красит
+// ссылку системным синим.
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { screenHintStyle, textLinkStyle } from './screenLayout';
 
-const cardStyle: CSSProperties = {
+const wrapStyle: CSSProperties = {
   display: 'flex',
-  // Иконка ровняется по первой строке, а не по середине карточки: подсказка
-  // бывает в две строки, и по центру иконка повисает напротив пустоты.
+  flexDirection: 'column',
   alignItems: 'flex-start',
-  gap: 12,
-  padding: 16,
-  minHeight: 44,
-  borderRadius: 12,
-  border: '1px solid var(--border)',
-  background: '#fff',
-  color: 'var(--ink)',
-  textDecoration: 'none',
+  gap: 6,
+  paddingTop: 20,
+  borderTop: '1px solid var(--line)',
 };
-const iconStyle: CSSProperties = {
-  display: 'flex',
-  marginTop: 2,
-  color: 'var(--ink-soft)',
-};
-const titleStyle: CSSProperties = { display: 'block', fontWeight: 600 };
-// span, не p: абзацу не место внутри строчного содержимого ссылки, браузер
-// такую вложенность разбирает по-своему.
-const hintStyle: CSSProperties = {
-  display: 'block',
-  margin: 0,
-  color: 'var(--ink-soft)',
-  fontSize: 14,
-};
+const hintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
 
 export interface SectionLinkProps {
   to: string;
   title: string;
   hint: string;
-  Icon: ComponentType;
 }
 
-export function SectionLink({ to, title, hint, Icon }: SectionLinkProps) {
+export function SectionLink({ to, title, hint }: SectionLinkProps) {
   return (
-    <Link to={to} style={cardStyle}>
-      <span style={iconStyle}>
-        <Icon />
-      </span>
-      <span>
-        <span style={titleStyle}>{title}</span>
-        <span style={hintStyle}>{hint}</span>
-      </span>
-    </Link>
+    <div style={wrapStyle}>
+      <Link to={to} style={textLinkStyle}>
+        {title}
+      </Link>
+      <p style={hintStyle}>{hint}</p>
+    </div>
   );
 }

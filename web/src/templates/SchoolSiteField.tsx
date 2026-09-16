@@ -10,6 +10,7 @@
 // - за сколько минут бот показывает учителю черновик поста перед отправкой
 //   (ТЗ preview-minutes.md) — учитель успевает поправить тему или отменить
 //   рассылку.
+import type { CSSProperties } from 'react';
 import {
   SETTINGS_LIMITS,
   type SettingsDto,
@@ -18,7 +19,11 @@ import {
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
-import { screenExplanationStyle } from '../components/screenLayout';
+import {
+  editorSectionStyle,
+  primaryActionStyle,
+  screenExplanationStyle,
+} from '../components/screenLayout';
 import { usePreviewMinutesField } from './usePreviewMinutesField';
 import { useSchoolSiteField } from './useSchoolSiteField';
 
@@ -30,6 +35,16 @@ const PREVIEW_EXPLANATION =
   'Бот присылает черновик поста в Telegram заранее — успеваете поправить ' +
   'тему занятия или отменить рассылку до того, как она уйдёт в канал.';
 
+// Раздел страницы — волосяная линия сверху, как у шаблонов рядом
+// (TemplateEditor.tsx). Кнопки здесь вторичные: киноварь на экране одна, у
+// «Сохранить» под шаблонами (docs/adr/0031, отзыв владельца 2026-09-16).
+const sectionStyle: CSSProperties = {
+  ...editorSectionStyle,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+};
+
 interface SchoolSiteFieldProps {
   settings: SettingsDto | null;
   update: (input: UpdateSettingsInput) => Promise<void>;
@@ -40,8 +55,10 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
   const preview = usePreviewMinutesField(settings, update);
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <h2 style={{ margin: 0, fontSize: 16 }}>Школа</h2>
+    <section style={sectionStyle}>
+      <h2 className="xuanxue-eyebrow" style={{ margin: 0 }}>
+        Школа
+      </h2>
 
       <p style={screenExplanationStyle}>{SITE_EXPLANATION}</p>
       <Field label="Адрес сайта школы">
@@ -58,6 +75,8 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
           у шаблонов ниже (TemplatesScreen.tsx), одинаковый текст дважды
           неразличим для скринридера и для getByRole в тестах. */}
       <Button
+        variant="secondary"
+        style={primaryActionStyle}
         onClick={() => void site.save()}
         pending={site.pending}
         disabled={!site.hasChanges}
@@ -80,6 +99,8 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
       </Field>
       <FormServerError error={preview.error} />
       <Button
+        variant="secondary"
+        style={primaryActionStyle}
         onClick={() => void preview.save()}
         pending={preview.pending}
         disabled={!preview.hasChanges}

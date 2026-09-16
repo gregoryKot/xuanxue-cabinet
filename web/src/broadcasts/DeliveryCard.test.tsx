@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BroadcastDto, DeliveryDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { DeliveryCard } from './DeliveryCard';
 
 vi.mock('../api/http', async () => {
@@ -12,6 +13,10 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+// «Пояс школы отличается от браузерного» ниже — проверяемое условие, а не
+// везение: пояс зрителя задан явно (test-support/viewerTimeZone.ts).
+stubViewerTimeZone();
 
 function makeDelivery(overrides: Partial<DeliveryDto> = {}): DeliveryDto {
   return {

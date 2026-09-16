@@ -1,92 +1,63 @@
 // «Каналы» — куда уходят посты (docs/PLAN.md §6 п.4). Telegram подключается
 // сам через бота, здесь добавляют ВК и ручные каналы (CLAUDE.md «Каждая
-// фича объясняет откуда это и зачем»). Скелетон — только пока список ни разу
-// не пришёл (`channels === null`): перечитывание после мутации (переключатель,
-// сохранение листа) не прячет список и не сбрасывает фокус (ревью п.10).
-import { useState, type CSSProperties } from 'react';
-import type { ChannelDto } from '@xuanxue/shared';
+// фича объясняет откуда это и зачем»). Правка и создание — отдельная
+// страница `/channels/new` и `/channels/:channelId` (ChannelEditorScreen.tsx,
+// ADR-0033): отсюда только переход. Облик — направление «тихо и благородно»
+// (docs/adr/0031), макет Main.dc.html: заголовок антиквой, строка списка
+// вместо карточки.
+//
+// Переключателей статуса над списком нет: у канала не три состояния, а два
+// («включён» видно в самой строке), и каналов у школы единицы — ряд
+// переключателей и поиск на таком списке были бы мебелью.
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import {
-  primaryActionStyle,
-  screenExplanationStyle,
-  screenSectionStyle,
-} from '../components/screenLayout';
-import { SkeletonList } from '../components/Skeleton';
+import { ListScreenBody } from '../components/ListScreenBody';
+import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { ChannelCard } from './ChannelCard';
-import { ChannelSheet } from './ChannelSheet';
 import { useChannels } from './useChannels';
 
+const TITLE = 'Каналы';
 const EXPLANATION =
   'Каналы — куда уходят ссылки и записи. Telegram-группа подключается сама: добавьте бота в группу. ВК и ручные каналы добавьте здесь.';
-
-const listStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-};
+const EMPTY_MESSAGE = 'Пока нет ни одного канала — добавьте первый.';
+const CHANNELS_PATH = '/channels';
 
 export default function ChannelsScreen() {
-  const { channels, loading, error, reload, create, update, remove } = useChannels();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetChannelId, setSheetChannelId] = useState<string | null>(null);
-
-  const selectedChannel: ChannelDto | null =
-    channels?.find((channel) => channel.id === sheetChannelId) ?? null;
-
-  function openCreate() {
-    setSheetChannelId(null);
-    setSheetOpen(true);
-  }
-
-  function openEdit(channelId: string) {
-    setSheetChannelId(channelId);
-    setSheetOpen(true);
-  }
+  const { channels, loading, error, reload } = useChannels();
+  const navigate = useNavigate();
 
   return (
     <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      <ScreenHeader
+        title={TITLE}
+        explanation={EXPLANATION}
+        action={
+          !loading && (
+            <Button
+              style={primaryActionStyle}
+              onClick={() => void navigate(`${CHANNELS_PATH}/new`)}
+            >
+              Добавить канал
+            </Button>
+          )
+        }
+      />
 
-      {channels !== null && (
-        <Button style={primaryActionStyle} onClick={openCreate}>
-          Добавить канал
-        </Button>
-      )}
-
-      {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
-
-      {loading && channels === null && !error && <SkeletonList rows={4} h={96} />}
-
-      {!error && channels && channels.length === 0 && (
-        <p style={{ margin: 0 }}>Пока нет ни одного канала — добавьте первый.</p>
-      )}
-
-      {!error && channels && channels.length > 0 && (
-        <ul style={listStyle}>
-          {channels.map((channel) => (
-            <ChannelCard
-              key={channel.id}
-              channel={channel}
-              onSelect={() => openEdit(channel.id)}
-              onToggleActive={(active) => update(channel.id, { active })}
-            />
-          ))}
-        </ul>
-      )}
-
-      {sheetOpen && (
-        <ChannelSheet
-          channelDto={selectedChannel}
-          onClose={() => setSheetOpen(false)}
-          onCreate={create}
-          onUpdate={update}
-          onRemove={remove}
-        />
-      )}
+      <ListScreenBody
+        items={channels}
+        loading={loading}
+        error={error}
+        onRetry={() => void reload()}
+        emptyMessage={EMPTY_MESSAGE}
+        renderItem={(channel) => (
+          <ChannelCard
+            key={channel.id}
+            channel={channel}
+            onSelect={() => void navigate(`${CHANNELS_PATH}/${channel.id}`)}
+          />
+        )}
+      />
     </section>
   );
 }
