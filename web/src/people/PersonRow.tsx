@@ -1,9 +1,12 @@
-// Строка списка «Люди» — имя, дата входа, переключатели ролей (PersonRoles.tsx,
-// CLAUDE.md «Одна механика — один компонент», образец — ChannelCard.tsx) и
-// удаление. Не карточка с клиентом: строка сама не открывается никуда,
-// переключатель роли — сразу мутация (PATCH /users/:id), удаление — через
-// общий ConfirmDialog (образец — hooks/useConfirmedRemove.ts), необратимо и
-// поэтому с подтверждением.
+// Строка списка «Люди» — имя, служебная строка входа и статуса,
+// переключатели ролей (PersonRoles.tsx, CLAUDE.md «Одна механика — один
+// компонент») и удаление. Не карточка с клиентом: строка сама не
+// открывается никуда, переключатель роли — сразу мутация (PATCH /users/:id),
+// удаление — через общий ConfirmDialog (образец — hooks/useConfirmedRemove.ts),
+// необратимо и поэтому с подтверждением.
+//
+// Облик — ADR-0031: имя антиквой, статус растяжкой-заглавными, действия —
+// PersonActions.tsx.
 import { useState, type CSSProperties } from 'react';
 import type { UserDto, UserRole } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
@@ -13,17 +16,19 @@ import {
   listCardStyle,
   listCardTitleStyle,
 } from '../components/listCardStyles';
-import { Button } from '../components/Button';
 import { formatDateTime } from '../lib/formatDate';
+import { PersonActions } from './PersonActions';
 import { PersonRoles } from './PersonRoles';
 
 const TOGGLE_ERROR_MESSAGE = 'Не удалось изменить роль. Попробуйте ещё раз.';
 const REMOVE_ERROR_MESSAGE = 'Не удалось удалить данные. Попробуйте ещё раз.';
 const NEVER_LOGGED_IN = 'Ещё не входил';
-// status === 'blocked': роль назначать можно и дальше, но AuthGuard отсекает
-// вход раньше — подпись рядом с датой входа объясняет, почему переключатели
-// не откроют человеку кабинет прямо сейчас.
-const ACCESS_BLOCKED_LABEL = 'Доступ закрыт';
+// Подпись статуса рядом с датой входа — растяжкой-заглавными (ADR-0031):
+// blocked — переключатели роли не откроют кабинет, вход отсекает AuthGuard.
+// У активного подписи нет: это обычное состояние. Статусов два (ADR-0034).
+const STATUS_LABELS: Partial<Record<UserDto['status'], string>> = {
+  blocked: 'Доступ закрыт',
+};
 const REMOVE_CONFIRM_TITLE = 'Удалить данные?';
 // VOICE.md: конкретика — что именно пропадёт, не «данные удалятся».
 const REMOVE_CONFIRM_MESSAGE =
@@ -34,13 +39,7 @@ const rowStyle: CSSProperties = {
   cursor: 'default',
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
-};
-const buttonsRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 12,
-  flexWrap: 'wrap',
+  gap: 10,
 };
 const alertTextStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--danger)' };
 
@@ -56,8 +55,8 @@ interface PersonRowProps {
 }
 
 export function PersonRow({ person, isSelf, onChangeRoles, onRemove }: PersonRowProps) {
-  // Один pending/error на всю строку — переключатель роли, подтверждение и
-  // удаление не идут одновременно, всем хватает общего run() ниже.
+  // Один pending/error на всю строку — переключатель роли и удаление не идут
+  // одновременно, всем хватает общего run() ниже.
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -81,6 +80,8 @@ export function PersonRow({ person, isSelf, onChangeRoles, onRemove }: PersonRow
     void run(() => onChangeRoles(nextRoles), TOGGLE_ERROR_MESSAGE);
   }
 
+  const statusLabel = STATUS_LABELS[person.status];
+
   return (
     <li style={rowStyle}>
       <div>
@@ -89,24 +90,22 @@ export function PersonRow({ person, isSelf, onChangeRoles, onRemove }: PersonRow
           {person.lastLoginAt
             ? `Вход ${formatDateTime(person.lastLoginAt)}`
             : NEVER_LOGGED_IN}
-          {person.status === 'blocked' && ` · ${ACCESS_BLOCKED_LABEL}`}
+          {statusLabel && (
+            <>
+              {' · '}
+              <span className="xuanxue-status-label">{statusLabel}</span>
+            </>
+          )}
         </div>
       </div>
 
       <PersonRoles person={person} isSelf={isSelf} pending={pending} onToggle={toggle} />
 
-      <div style={buttonsRowStyle}>
-        {!isSelf && (
-          <Button
-            type="button"
-            variant="danger"
-            disabled={pending}
-            onClick={() => setConfirmingRemove(true)}
-          >
-            Удалить данные
-          </Button>
-        )}
-      </div>
+      <PersonActions
+        isSelf={isSelf}
+        pending={pending}
+        onRemove={() => setConfirmingRemove(true)}
+      />
 
       {error && (
         <p style={alertTextStyle} role="alert">

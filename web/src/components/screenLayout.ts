@@ -141,3 +141,26 @@ export const textLinkButtonStyle: CSSProperties = {
   minHeight: 44,
   whiteSpace: 'nowrap',
 };
+
+/** Ряд действий в подвале страницы-редактора: «Сохранить» первой, рядом —
+ * второе действие (components/EditorFooter.tsx, страницы занятия и занятия
+ * расписания). */
+export const editorActionsRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 24,
+  flexWrap: 'wrap',
+};
+
+/** Опасное действие подвала («Отменить занятие», «Удалить из расписания») —
+ * под волосяной линией, поодаль от «Сохранить»: на телефоне соседние кнопки
+ * ловят промах пальца (аудит 2026-09-15, важно №2). */
+export const editorDangerRowStyle: CSSProperties = {
+  marginTop: 22,
+  paddingTop: 16,
+  borderTop: '1px solid var(--line)',
+};
+
+/** Кнопка внутри такого ряда — текстом, без отступов: силуэт `danger` и так
+ * без заливки и контура (components/Button.tsx). */
+export const editorDangerButtonStyle: CSSProperties = { padding: 0 };

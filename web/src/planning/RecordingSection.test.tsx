@@ -1,5 +1,5 @@
-// RecordingSection напрямую — вынесено из LessonSheet.test.tsx (ревью п.17:
-// файл LessonSheet.test.tsx рос за 300 строк, «запись» — самостоятельная
+// RecordingSection напрямую — вынесено из теста страницы занятия (ревью
+// п.17: тот рос за 300 строк, «запись» — самостоятельная
 // секция, не завязанная на диалог занятия).
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

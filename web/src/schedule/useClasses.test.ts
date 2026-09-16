@@ -74,55 +74,6 @@ describe('useClasses — загрузка', () => {
 
   // Гонка запросов (устаревший ответ не перезаписывает новый) — тест общей
   // логики лежит в hooks/useAbortableFetch.test.ts, здесь незачем повторять.
-});
-
-interface MutationCase {
-  name: string;
-  call: (result: ReturnType<typeof useClasses>) => Promise<void>;
-  path: string;
-  method: string;
-}
-
-const MUTATIONS: MutationCase[] = [
-  {
-    name: 'create',
-    call: (result) => result.create({ title: 'Новое', format: 'online' }),
-    path: '/classes',
-    method: 'POST',
-  },
-  {
-    name: 'update',
-    call: (result) => result.update('c1', { title: 'Правка' }),
-    path: '/classes/c1',
-    method: 'PATCH',
-  },
-  {
-    name: 'remove',
-    call: (result) => result.remove('c1'),
-    path: '/classes/c1',
-    method: 'DELETE',
-  },
-];
-
-describe('useClasses — мутации (read-after-write)', () => {
-  it.each(MUTATIONS)(
-    '$name() — $method $path, затем перечитывает список',
-    async ({ call, path, method }) => {
-      mockedApiFetch.mockResolvedValueOnce([makeClass()]);
-      const { result } = renderHook(() => useClasses());
-      await waitFor(() => expect(result.current.loading).toBe(false));
-
-      mockedApiFetch.mockResolvedValueOnce(undefined);
-      mockedApiFetch.mockResolvedValueOnce([]);
-      await act(async () => {
-        await call(result.current);
-      });
-
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        path,
-        expect.objectContaining({ method }),
-      );
-      expect(result.current.classes).toHaveLength(0);
-    },
-  );
+  // Создание, правка и удаление — у страницы занятия (useClassEditor.ts,
+  // ClassEditorScreen.test.tsx), сюда они больше не приходят (ADR-0033).
 });

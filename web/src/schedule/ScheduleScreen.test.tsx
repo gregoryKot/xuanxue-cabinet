@@ -1,8 +1,11 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts» — компонент никогда
-// не видит fetch напрямую, подменяем именно эту точку).
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+// не видит fetch напрямую, подменяем именно эту точку). Занятие открывается
+// своей страницей (ClassEditorScreen.tsx, ADR-0033) — вместо неё в маршрутах
+// стоит метка: здесь проверяется переход по адресу, сама страница — в своём
+// тесте.
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ClassDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -34,10 +37,17 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
   };
 }
 
+const NEW_MARKER = 'Здесь страница нового занятия';
+const EDITOR_MARKER = 'Здесь страница занятия расписания';
+
 function renderScreen() {
   return render(
-    <MemoryRouter>
-      <ScheduleScreen />
+    <MemoryRouter initialEntries={['/schedule']}>
+      <Routes>
+        <Route path="/schedule" element={<ScheduleScreen />} />
+        <Route path="/schedule/new" element={<p>{NEW_MARKER}</p>} />
+        <Route path="/schedule/:classId" element={<p>{EDITOR_MARKER}</p>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -132,57 +142,25 @@ describe('ScheduleScreen — список занятий (мобильный, р
   });
 });
 
-describe('ScheduleScreen — лист занятия', () => {
-  it('открыть карточку, сохранить — apiFetch вызван с PATCH на /classes/:id', async () => {
+describe('ScheduleScreen — переход на страницу занятия', () => {
+  it('карточка слота ведёт на `/schedule/:classId`', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([makeClass()]);
 
     renderScreen();
-    const card = await screen.findByText(/19:00–20:00/);
-    await user.click(card);
+    await user.click(await screen.findByText(/19:00–20:00/));
 
-    const dialogTitle = await screen.findByRole('heading', { name: 'Занятие' });
-    const sheet = dialogTitle.closest('form') as HTMLFormElement;
-
-    mockedApiFetch.mockResolvedValueOnce(makeClass());
-    mockedApiFetch.mockResolvedValueOnce([makeClass()]);
-
-    await user.click(within(sheet).getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => {
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/classes/c1',
-        expect.objectContaining({ method: 'PATCH' }),
-      );
-    });
+    expect(await screen.findByText(EDITOR_MARKER)).toBeInTheDocument();
   });
 
-  it('«Добавить занятие» открывает пустой лист — сохранение шлёт POST', async () => {
+  it('«Добавить занятие» ведёт на `/schedule/new`', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([]);
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Добавить занятие' }));
 
-    const dialogTitle = await screen.findByRole('heading', { name: 'Новое занятие' });
-    const sheet = dialogTitle.closest('form') as HTMLFormElement;
-    await user.type(within(sheet).getByLabelText('Название'), 'Цигун для глаз');
-    await user.click(within(sheet).getByRole('button', { name: 'Добавить время' }));
-    fireEvent.change(within(sheet).getByLabelText('Время начала'), {
-      target: { value: '10:00' },
-    });
-
-    mockedApiFetch.mockResolvedValueOnce(makeClass());
-    mockedApiFetch.mockResolvedValueOnce([]);
-
-    await user.click(within(sheet).getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => {
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/classes',
-        expect.objectContaining({ method: 'POST' }),
-      );
-    });
+    expect(await screen.findByText(NEW_MARKER)).toBeInTheDocument();
   });
 });
 

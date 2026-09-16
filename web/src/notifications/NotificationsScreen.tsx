@@ -5,6 +5,10 @@
 // маршрута. Переключение — сразу PATCH без оптимистичной отрисовки: строка
 // остаётся в прежнем состоянии, пока не пришёл ответ, тем же приёмом, что
 // PersonRow.tsx делает с ролями (ТЗ notifications-web.md).
+//
+// Облик — ADR-0031: заголовок антиквой через ScreenHeader. Раньше экран
+// начинался прямо с абзаца, и на телефоне было непонятно, куда попал
+// (CLAUDE.md «Каждая фича объясняет откуда это и зачем»).
 import { useState, type CSSProperties } from 'react';
 import {
   NOTIFICATION_HINTS,
@@ -14,11 +18,13 @@ import {
 import { useAuth } from '../auth/AuthProvider';
 import { ApiError } from '../api/http';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
 import { useNotificationPrefs } from './useNotificationPrefs';
 
+const TITLE = 'Уведомления';
 const EXPLANATION =
   'Здесь вы решаете, что вам приходит. У каждого вида — своя причина и свой переключатель.';
 const TELEGRAM_HINT =
@@ -40,11 +46,9 @@ const hintStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 const alertStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
-const telegramHintStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-};
+// Приписка того же веса, что подсказка под шапкой, но стоит внизу — своего
+// отрицательного отступа ей не нужно (тот же приём, что в PlanningScreen).
+const telegramHintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
 
 export default function NotificationsScreen() {
   const { me } = useAuth();
@@ -70,7 +74,7 @@ export default function NotificationsScreen() {
 
   return (
     <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      <ScreenHeader title={TITLE} explanation={EXPLANATION} />
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 

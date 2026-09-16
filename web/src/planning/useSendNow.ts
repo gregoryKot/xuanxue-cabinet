@@ -1,5 +1,5 @@
 // Состояние кнопки «Отправить ссылку сейчас» (docs/PLAN.md §6 п.3, аудит
-// В12) — вынесено из LessonSheet.tsx/SendNowButton.tsx ради лимита файла
+// В12) — вынесено из SendNowButton.tsx ради лимита файла
 // (CLAUDE.md «Храповики»). Подтверждение — тот же ConfirmDialog, что у
 // «Отменить занятие»/«Отменить рассылку» (CLAUDE.md «Одна механика — один
 // компонент»), не отдельный диалог.
@@ -15,8 +15,8 @@ export interface UseSendNowResult {
   confirming: boolean;
   pending: boolean;
   error: FormError | null;
-  /** Подпись успеха видна, пока лист занятия открыт — новый клик или
-   * повторное открытие листа её сбрасывают (setSuccess(false) при confirm). */
+  /** Подпись успеха видна, пока открыта страница занятия — новый клик или
+   * повторный заход её сбрасывают (setSuccess(false) при confirm). */
   success: boolean;
   openConfirm: () => void;
   closeConfirm: () => void;

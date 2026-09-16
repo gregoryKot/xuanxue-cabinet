@@ -62,7 +62,7 @@ describe('useDialog', () => {
   });
 
   it('два открытых диалога — Esc закрывает только верхний, не оба разом', () => {
-    // ConfirmDialog поверх LessonSheet: оба useDialog слушают document
+    // ConfirmDialog поверх ChannelSheet: оба useDialog слушают document
     // (ревью п.8) — без стека один Esc вызвал бы оба onClose.
     const onCloseOuter = vi.fn();
     const onCloseInner = vi.fn();

@@ -59,6 +59,13 @@ function mockPeopleApi() {
   };
 }
 
+/** Переключатели ролей одного человека: подпись переключателя — только роль
+ * (ADR-0031), имя стоит названием группы, поэтому в списке из нескольких
+ * человек нужную группу ищем по имени. */
+function rolesOf(name: string): HTMLElement {
+  return screen.getByRole('group', { name: `Роли — ${name}` });
+}
+
 function renderScreen() {
   return render(
     <MemoryRouter>
@@ -69,6 +76,25 @@ function renderScreen() {
 
 afterEach(() => {
   mockedApiFetch.mockReset();
+});
+
+describe('PeopleScreen — шапка', () => {
+  // ADR-0031: раздел начинается с заголовка антиквой и одной строки
+  // объяснения, длинное про роли ушло в приписку под ним.
+  it('заголовок «Ученики», объяснение и приписка про роли', async () => {
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([makePerson()]);
+
+    renderScreen();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ученики' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Здесь те, кто зарегистрировался по ссылке-приглашению/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Отметьте, кто ведёт занятия/)).toBeInTheDocument();
+  });
 });
 
 describe('PeopleScreen — загрузка', () => {
@@ -154,13 +180,15 @@ describe('PeopleScreen — список', () => {
       makePerson({ id: 'u1', name: 'Гриша', roles: ['teacher'] }),
     ]);
 
-    await user.click(screen.getByLabelText('Учитель — Гриша'));
+    await user.click(within(rolesOf('Гриша')).getByLabelText('Учитель'));
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/users/u1',
       expect.objectContaining({ method: 'PATCH', body: { roles: ['teacher'] } }),
     );
-    await waitFor(() => expect(screen.getByLabelText('Учитель — Гриша')).toBeChecked());
+    await waitFor(() =>
+      expect(within(rolesOf('Гриша')).getByLabelText('Учитель')).toBeChecked(),
+    );
   });
 
   it('сбой удаления — текст ошибки виден на строке (usePeople.remove)', async () => {
@@ -194,11 +222,12 @@ describe('PeopleScreen — список', () => {
   // и кнопки «Подтвердить» на экране «Люди» больше нет ни при каком ответе
   // сервера — сортировка «ждущие вверху» тоже пропала, список идёт в
   // порядке ответа API.
-  it('нет подписи «Ждёт подтверждения» и кнопки «Подтвердить»', async () => {
+  it('нет подписи «Ждёт подтверждения» и кнопки «Подтвердить», порядок — как в ответе API', async () => {
     const { queueUsers } = mockPeopleApi();
     queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
+      makePerson({ id: 'u2', name: 'Ждан', roles: [] }),
     ]);
 
     renderScreen();
@@ -206,5 +235,7 @@ describe('PeopleScreen — список', () => {
 
     expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
+    const names = screen.getAllByText(/^(Маша|Гриша|Ждан)$/).map((el) => el.textContent);
+    expect(names).toEqual(['Маша', 'Гриша', 'Ждан']);
   });
 });
