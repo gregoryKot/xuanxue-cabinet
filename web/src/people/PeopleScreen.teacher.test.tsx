@@ -46,6 +46,8 @@ describe('PeopleScreen — учитель', () => {
     renderScreen();
 
     expect(await screen.findByText('Ссылка-приглашение')).toBeInTheDocument();
+    // Приписка про роли — админская: учителю назначать некого.
+    expect(screen.queryByText(/Отметьте, кто ведёт занятия/)).not.toBeInTheDocument();
     expect(
       screen.getByText(/Список учеников и назначение ролей видит только администратор/),
     ).toBeInTheDocument();

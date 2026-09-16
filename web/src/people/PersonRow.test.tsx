@@ -62,19 +62,19 @@ describe('PersonRow', () => {
 
   it('status: blocked — рядом с датой видна подпись «Доступ закрыт»', () => {
     renderRow({ status: 'blocked' });
-    expect(screen.getByText(/Доступ закрыт/)).toBeInTheDocument();
+    expect(screen.getByText('Доступ закрыт')).toBeInTheDocument();
   });
 
   it('status: active — подписи «Доступ закрыт» нет', () => {
     renderRow({ status: 'active' });
-    expect(screen.queryByText(/Доступ закрыт/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Доступ закрыт')).not.toBeInTheDocument();
   });
 
   it('включить «Учитель» — зовёт onChangeRoles с добавленной ролью', async () => {
     const user = userEvent.setup();
     const { onChangeRoles } = renderRow({ roles: [] });
 
-    await user.click(screen.getByLabelText('Учитель — Гриша'));
+    await user.click(screen.getByLabelText('Учитель'));
     expect(onChangeRoles).toHaveBeenCalledWith(['teacher']);
   });
 
@@ -82,7 +82,7 @@ describe('PersonRow', () => {
     const user = userEvent.setup();
     const { onChangeRoles } = renderRow({ roles: ['teacher', 'admin'] });
 
-    await user.click(screen.getByLabelText('Администратор — Гриша'));
+    await user.click(screen.getByLabelText('Администратор'));
     expect(onChangeRoles).toHaveBeenCalledWith(['teacher']);
   });
 
@@ -90,8 +90,18 @@ describe('PersonRow', () => {
     renderRow();
     expect(USER_ROLES).toHaveLength(4);
     for (const role of USER_ROLES) {
-      expect(screen.getByLabelText(`${ROLE_LABELS[role]} — Гриша`)).toBeInTheDocument();
+      expect(screen.getByLabelText(ROLE_LABELS[role])).toBeInTheDocument();
     }
+  });
+
+  // ADR-0031: подпись переключателя — только роль, иначе «Администратор —
+  // Игорь Семёнов» повторяет имя четыре раза в одной строке. Имя осталось
+  // именем группы: скринридер называет его, входя в переключатели.
+  it('имя человека не повторяется в подписях ролей, а стоит в названии группы', () => {
+    renderRow();
+    const roles = screen.getByRole('group', { name: 'Роли — Гриша' });
+    expect(within(roles).getByLabelText('Администратор')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Администратор — Гриша')).not.toBeInTheDocument();
   });
 
   it('без ролей — подсказка «человек — ученик»', () => {
@@ -108,7 +118,7 @@ describe('PersonRow', () => {
     const user = userEvent.setup();
     const { onChangeRoles } = renderRow({ roles: [] });
 
-    await user.click(screen.getByLabelText('Помощник учителя — Гриша'));
+    await user.click(screen.getByLabelText('Помощник учителя'));
     expect(onChangeRoles).toHaveBeenCalledWith(['assistant']);
   });
 
@@ -116,13 +126,13 @@ describe('PersonRow', () => {
     const user = userEvent.setup();
     const { onChangeRoles } = renderRow({ roles: [] });
 
-    await user.click(screen.getByLabelText('Бухгалтер — Гриша'));
+    await user.click(screen.getByLabelText('Бухгалтер'));
     expect(onChangeRoles).toHaveBeenCalledWith(['accountant']);
   });
 
   it('свой профиль — переключатель admin выключен, подсказка видна', () => {
     renderRow({ roles: ['admin'] }, true);
-    expect(screen.getByLabelText('Администратор — Гриша')).toBeDisabled();
+    expect(screen.getByLabelText('Администратор')).toBeDisabled();
     expect(
       screen.getByText('Роль администратора у себя снимает другой администратор'),
     ).toBeInTheDocument();
@@ -135,7 +145,7 @@ describe('PersonRow', () => {
       .mockRejectedValue(new ApiError('Пользователь не найден.', 404, 'not_found'));
     renderRow({ roles: [] }, false, onChangeRoles);
 
-    await user.click(screen.getByLabelText('Учитель — Гриша'));
+    await user.click(screen.getByLabelText('Учитель'));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Пользователь не найден.');
   });
@@ -145,7 +155,7 @@ describe('PersonRow', () => {
     const onChangeRoles = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
     renderRow({ roles: [] }, false, onChangeRoles);
 
-    await user.click(screen.getByLabelText('Учитель — Гриша'));
+    await user.click(screen.getByLabelText('Учитель'));
 
     expect(await screen.findByRole('alert')).not.toHaveTextContent('Failed to fetch');
   });
@@ -161,12 +171,12 @@ describe('PersonRow', () => {
     );
     renderRow({ roles: [] }, false, onChangeRoles);
 
-    await user.click(screen.getByLabelText('Учитель — Гриша'));
-    expect(screen.getByLabelText('Администратор — Гриша')).toBeDisabled();
+    await user.click(screen.getByLabelText('Учитель'));
+    expect(screen.getByLabelText('Администратор')).toBeDisabled();
 
     resolveChange();
     await waitFor(() =>
-      expect(screen.getByLabelText('Администратор — Гриша')).not.toBeDisabled(),
+      expect(screen.getByLabelText('Администратор')).not.toBeDisabled(),
     );
   });
 
@@ -225,12 +235,12 @@ describe('PersonRow', () => {
 
   it('status: invited — рядом с датой видна подпись «Ждёт подтверждения»', () => {
     renderRow({ status: 'invited' });
-    expect(screen.getByText(/Ждёт подтверждения/)).toBeInTheDocument();
+    expect(screen.getByText('Ждёт подтверждения')).toBeInTheDocument();
   });
 
   it('status: active — подписи «Ждёт подтверждения» нет', () => {
     renderRow({ status: 'active' });
-    expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Ждёт подтверждения')).not.toBeInTheDocument();
   });
 
   it('«Подтвердить» есть у чужой invited-строки', () => {
