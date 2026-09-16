@@ -1,9 +1,10 @@
-// Поля листа канала — вынесены из ChannelSheet (CLAUDE.md «Файлы»). Тип
-// выбирается только при создании (UpdateChannelInput его не принимает);
+// Поля страницы канала — вынесены из ChannelEditorForm (CLAUDE.md «Файлы»).
+// Тип выбирается только при создании (UpdateChannelInput его не принимает);
 // при правке — подпись типа как текст, поля зависят от него. Ошибка ловится
 // под своим полем (ChannelFormError.field, ревью п.7), не одним общим текстом.
 import { CHANNEL_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
+import { Toggle } from '../components/Toggle';
 import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
 
@@ -50,6 +51,17 @@ export function ChannelFormFields({
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
           Тип: {CHANNEL_TYPE_LABELS_RU[state.type]}
         </p>
+      )}
+
+      {/* Новый канал включён с рождения — `CreateChannelInput` поля `active`
+          не принимает, выключать нечего до первого сохранения. */}
+      {!isCreate && (
+        <Toggle
+          label="Включён"
+          hint="Выключенный канал остаётся в списке, но рассылки в него не уходят."
+          checked={state.active}
+          onChange={(active) => setField('active', active)}
+        />
       )}
 
       <Field label="Название" error={errorFor(error, 'title')}>

@@ -180,6 +180,11 @@ describe('toCreateInput', () => {
 });
 
 describe('toUpdateInput', () => {
+  it('выключенный канал — active: false уходит вместе с названием', () => {
+    const state = { ...initialChannelFormState(makeChannel()), active: false };
+    expect(toUpdateInput(state, 'vk')).toEqual({ title: 'ВК школы', active: false });
+  });
+
   it('telegram — config всегда отправляется (не секрет)', () => {
     const state = {
       ...initialChannelFormState(null),
@@ -188,13 +193,14 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'telegram')).toEqual({
       title: 'Канал',
+      active: true,
       config: { chatId: '-100123' },
     });
   });
 
   it('vk без токена — config отсутствует', () => {
     const state = { ...initialChannelFormState(null), title: 'ВК', peerIdText: '5' };
-    expect(toUpdateInput(state, 'vk')).toEqual({ title: 'ВК' });
+    expect(toUpdateInput(state, 'vk')).toEqual({ title: 'ВК', active: true });
   });
 
   it('vk с токеном — config уходит целиком', () => {
@@ -206,12 +212,13 @@ describe('toUpdateInput', () => {
     };
     expect(toUpdateInput(state, 'vk')).toEqual({
       title: 'ВК',
+      active: true,
       config: { token: 'newsecret', peerId: 5 },
     });
   });
 
   it('manual — config отсутствует', () => {
     const state = { ...initialChannelFormState(null), title: 'FB' };
-    expect(toUpdateInput(state, 'manual')).toEqual({ title: 'FB' });
+    expect(toUpdateInput(state, 'manual')).toEqual({ title: 'FB', active: true });
   });
 });

@@ -87,7 +87,10 @@ describe('useChannelForm — submit()', () => {
       await result.current.submit();
     });
 
-    expect(onUpdate).toHaveBeenCalledWith('ch1', { title: 'ВК школы' });
+    expect(onUpdate).toHaveBeenCalledWith('ch1', {
+      title: 'ВК школы',
+      active: true,
+    });
   });
 
   it('ApiError при сохранении — serverError с деталями, false', async () => {

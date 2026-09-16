@@ -24,6 +24,7 @@ interface RouteModule {
   warm: boolean;
 }
 
+const loadChannelEditor = () => import('../channels/ChannelEditorScreen');
 const loadExamEditor = () => import('../exams/ExamEditorScreen');
 const loadExamItemEditor = () => import('../exam-items/ExamItemEditorScreen');
 
@@ -51,6 +52,15 @@ export const ROUTE_MODULES = {
   channels: {
     path: '/channels',
     load: () => import('../channels/ChannelsScreen'),
+    warm: true,
+  },
+  // `/channels/new` раньше `/channels/:channelId`: matchRouteLoader берёт
+  // первое совпадение, а статический сегмент должен выигрывать у параметра.
+  // Один загрузчик на оба адреса — это один и тот же экран (ADR-0033).
+  channelNew: { path: '/channels/new', load: loadChannelEditor, warm: true },
+  channelEditor: {
+    path: '/channels/:channelId',
+    load: loadChannelEditor,
     warm: true,
   },
   broadcasts: {
