@@ -12,6 +12,7 @@ import {
   listTeacherContacts as listTeacherContactsQuery,
   type TeacherContact,
 } from './list-teacher-contacts';
+import { attachTelegramId as attachTelegramIdWrite } from './attach-telegram-id';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
 import { upsertUserByKey } from './upsert-user-by-key';
 
@@ -132,5 +133,13 @@ export class UsersService {
    * upsert-user-by-key.ts: файл не растёт за 150 строк). */
   async markJoinedViaInvite(id: string, now: DateTime): Promise<void> {
     await markJoinedViaInviteWrite(this.model, id, now);
+  }
+
+  /** Ставит telegramId на аккаунт, у которого его ещё нет (ADR-0034,
+   * TelegramLinkService) — `null`, если гонку выиграл кто-то другой. Логика
+   * — в attach-telegram-id.ts (та же причина выноса, что у
+   * markJoinedViaInvite). */
+  async attachTelegramId(userId: string, telegramId: number): Promise<UserLean | null> {
+    return attachTelegramIdWrite(this.model, userId, telegramId);
   }
 }

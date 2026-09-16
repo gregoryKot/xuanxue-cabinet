@@ -23,6 +23,7 @@ import { EmailLoginTokenService } from './email-login-token.service';
 import { JoinController } from './join.controller';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
+import { TelegramLinkController } from './telegram-link.controller';
 
 @Module({
   // SettingsModule — GET /auth/config берёт schoolSiteUrl из
@@ -45,7 +46,7 @@ import { TelegramAuthService } from './telegram-auth.service';
       { name: EmailLoginTokenRecord.name, schema: EmailLoginTokenSchema },
     ]),
   ],
-  controllers: [AuthController, JoinController],
+  controllers: [AuthController, JoinController, TelegramLinkController],
   providers: [
     AuthService,
     TelegramAuthService,
@@ -55,6 +56,8 @@ import { TelegramAuthService } from './telegram-auth.service';
     // JoinByInviteService приходят как экспорт UsersModule (импортирован
     // выше, JoinByInviteService живёт там же — join-by-invite.service.ts,
     // комментарий в users.module.ts), второй провайдер здесь не заводим.
+    // Связка Telegram (ADR-0034): TelegramLinkCodeService для
+    // TelegramLinkController — тем же путём, экспорт UsersModule.
     { provide: APP_GUARD, useClass: AuthGuard },
     {
       provide: SESSION_SECRET,

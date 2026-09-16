@@ -28,7 +28,17 @@ export function telegramAuthUrl(botId: number, origin: string, returnTo: string)
   return `${TELEGRAM_AUTH_URL}?${params.toString()}`;
 }
 
+/** Переход текущей вкладки на внешний адрес — общий приём для входа через
+ * Telegram (ниже) и для связки Telegram с уже существующим аккаунтом
+ * (useTelegramLinkCode.ts, ADR-0034): оба уводят в Telegram и должны
+ * вернуть тем же способом, что описан в комментарии выше файла (без
+ * `window.open`). CLAUDE.md «Одна механика — один компонент» — второго
+ * способа перехода в коде не заводим. */
+export function redirectCurrentTab(url: string): void {
+  window.location.assign(url);
+}
+
 export function redirectToTelegramAuth(botId: number): void {
   const url = telegramAuthUrl(botId, window.location.origin, window.location.href);
-  window.location.assign(url);
+  redirectCurrentTab(url);
 }

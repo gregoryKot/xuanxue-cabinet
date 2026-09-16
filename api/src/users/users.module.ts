@@ -4,11 +4,17 @@ import { ChannelsModule } from '../channels/channels.module';
 import { BotIdentityModule } from '../telegram/bot-identity.module';
 import { UserRecord, UserSchema } from './user.schema';
 import { InviteLinkRecord, InviteLinkSchema } from './invite-link.schema';
+import {
+  TelegramLinkCodeRecord,
+  TelegramLinkCodeSchema,
+} from './telegram-link-code.schema';
 import { EmailLoginUserService } from './email-login-user.service';
 import { InviteLinkService } from './invite-link.service';
 import { JoinByInviteService } from './join-by-invite.service';
 import { StudentMembershipApprovalService } from './student-membership-approval.service';
 import { TeachersService } from './teachers.service';
+import { TelegramLinkCodeService } from './telegram-link-code.service';
+import { TelegramLinkService } from './telegram-link.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserNamesService } from './user-names.service';
 import { UserRolesService } from './user-roles.service';
@@ -27,6 +33,7 @@ import { UsersService } from './users.service';
     MongooseModule.forFeature([
       { name: UserRecord.name, schema: UserSchema },
       { name: InviteLinkRecord.name, schema: InviteLinkSchema },
+      { name: TelegramLinkCodeRecord.name, schema: TelegramLinkCodeSchema },
     ]),
     ChannelsModule,
     BotIdentityModule,
@@ -42,6 +49,8 @@ import { UsersService } from './users.service';
     EmailLoginUserService,
     InviteLinkService,
     JoinByInviteService,
+    TelegramLinkCodeService,
+    TelegramLinkService,
   ],
   // StudentMembershipApprovalService — наружу для AuthModule (перепроверка
   // при входе) и TelegramModule (ChatMemberJoinHandler, апдейт chat_member).
@@ -54,7 +63,10 @@ import { UsersService } from './users.service';
   // (/start join_<code>, ADR-0030 «Бот»): сам сервис живёт в users/, а не в
   // auth/, потому что AuthModule уже импортирует TelegramModule — обратный
   // импорт закольцевал бы граф (ADR-0013), а UsersModule нужен обоим и без
-  // ссылки-приглашения.
+  // ссылки-приглашения. TelegramLinkCodeService/TelegramLinkService — той же
+  // причиной наружу (ADR-0034): TelegramLinkController (auth/, выпуск кода)
+  // и TelegramModule (/start link_<code>, потребление кода) оба берут их
+  // отсюда, второй раз не заводим.
   exports: [
     UsersService,
     UserNamesService,
@@ -63,6 +75,8 @@ import { UsersService } from './users.service';
     EmailLoginUserService,
     InviteLinkService,
     JoinByInviteService,
+    TelegramLinkCodeService,
+    TelegramLinkService,
   ],
 })
 export class UsersModule {}

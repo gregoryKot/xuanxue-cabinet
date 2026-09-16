@@ -80,12 +80,36 @@ describe('NotificationsScreen — список по роли', () => {
     ).not.toBeChecked();
   });
 
+  // Подсказка про личный чат — для связавшего Telegram: несвязанному на её
+  // месте стоит кнопка связки (ADR-0034), проверка ниже.
   it('честно про Telegram — уведомления придут в личный чат с ботом', async () => {
-    renderScreen(STUDENT, { enabled: [] });
+    renderScreen({ ...STUDENT, telegramLinked: true }, { enabled: [] });
 
     expect(
       await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/),
     ).toBeInTheDocument();
+  });
+});
+
+describe('NotificationsScreen — связка Telegram (ADR-0034)', () => {
+  it('Telegram связан — кнопки связки нет, остаётся подсказка про личный чат', async () => {
+    renderScreen({ ...STUDENT, telegramLinked: true }, { enabled: [] });
+
+    await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/);
+    expect(
+      screen.queryByRole('button', { name: 'Связать Telegram' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('Telegram не связан — кнопка связки со своим объяснением', async () => {
+    renderScreen(STUDENT, { enabled: [] });
+
+    expect(
+      await screen.findByText(
+        'Telegram ещё не связан с кабинетом. Свяжите его, чтобы уведомления начали приходить.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
   });
 });
 
