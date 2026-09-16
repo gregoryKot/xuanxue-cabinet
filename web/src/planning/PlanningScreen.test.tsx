@@ -1,8 +1,10 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts»), по образцу
-// schedule/ScheduleScreen.test.tsx.
+// schedule/ScheduleScreen.test.tsx. Занятие открывается своей страницей
+// (LessonEditorScreen.tsx, ADR-0033) — вместо неё в маршрутах стоит метка:
+// здесь проверяется переход по адресу, сама страница — в своём тесте.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ClassDto, LessonDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -50,19 +52,17 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
   };
 }
 
-function mockByPath(handlers: Record<string, unknown>) {
-  // '/users/teachers' — дефолт []: экран грузит его на каждом монтировании
-  // (useTeachers, аудит В4), но почти ни один тест здесь не проверяет
-  // ведущего — без дефолта пришлось бы дописывать путь в каждый вызов.
-  // Тест, которому нужен конкретный ответ или сбой, передаёт свой — он
-  // перекрывает дефолт (spread ниже).
-  mockApiByPath({ '/users/teachers': [], ...handlers });
-}
+const NEW_MARKER = 'Здесь страница разового занятия';
+const EDITOR_MARKER = 'Здесь страница занятия';
 
 function renderScreen() {
   return render(
-    <MemoryRouter>
-      <PlanningScreen />
+    <MemoryRouter initialEntries={['/planning']}>
+      <Routes>
+        <Route path="/planning" element={<PlanningScreen />} />
+        <Route path="/planning/new" element={<p>{NEW_MARKER}</p>} />
+        <Route path="/planning/:lessonId" element={<p>{EDITOR_MARKER}</p>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -87,7 +87,7 @@ describe('PlanningScreen — сбой загрузки', () => {
   it('ApiError — текст ошибки и «Попробовать ещё раз», клик повторяет оба запроса', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
-    mockByPath({
+    mockApiByPath({
       '/lessons': new ApiError('Сервис недоступен', 503, 'unknown'),
       '/classes': [makeClass()],
     });
@@ -96,7 +96,7 @@ describe('PlanningScreen — сбой загрузки', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
 
-    mockByPath({ '/lessons': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
 
     expect(
@@ -108,7 +108,7 @@ describe('PlanningScreen — сбой загрузки', () => {
 
 describe('PlanningScreen — пустое окно', () => {
   it('честное объяснение вместо пустого списка', async () => {
-    mockByPath({ '/lessons': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
 
     renderScreen();
 
@@ -125,7 +125,7 @@ describe('PlanningScreen — пустое окно', () => {
 describe('PlanningScreen — классы не загрузились, занятия загрузились', () => {
   it('список занятий виден (класс — «—»), ошибка классов отдельной строкой, не поверх списка', async () => {
     const { ApiError } = await import('../api/http');
-    mockByPath({
+    mockApiByPath({
       '/lessons': [makeLesson({ topic: 'Пятое занятие цикла' })],
       '/classes': new ApiError(
         'Не удалось загрузить расписание. Попробуйте ещё раз.',
@@ -146,7 +146,7 @@ describe('PlanningScreen — классы не загрузились, заня�
   it('«Попробовать ещё раз» у ошибки классов повторяет только /classes', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
-    mockByPath({
+    mockApiByPath({
       '/lessons': [makeLesson()],
       '/classes': new ApiError('Не удалось загрузить расписание.', 503, 'unknown'),
     });
@@ -168,41 +168,12 @@ describe('PlanningScreen — классы не загрузились, заня�
       mockedApiFetch.mock.calls.filter(([p]) => String(p).startsWith('/lessons')).length,
     ).toBe(lessonsCallsBefore);
   });
-
-  it('«Разовое занятие» — ни одного класса: объяснение и ссылка на «Расписание», без формы', async () => {
-    const user = userEvent.setup();
-    const { ApiError } = await import('../api/http');
-    mockByPath({
-      '/lessons': [],
-      '/classes': new ApiError(
-        'Не удалось загрузить расписание. Попробуйте ещё раз.',
-        503,
-        'unknown',
-      ),
-    });
-
-    renderScreen();
-    await user.click(await screen.findByRole('button', { name: 'Разовое занятие' }));
-
-    const dialogTitle = await screen.findByRole('heading', { name: 'Разовое занятие' });
-    const form = dialogTitle.closest('form') as HTMLFormElement;
-    expect(
-      within(form).getByText(/Сначала добавьте занятие в расписании/),
-    ).toBeInTheDocument();
-    expect(within(form).getByRole('link', { name: /Расписание/ })).toHaveAttribute(
-      'href',
-      '/schedule',
-    );
-    expect(
-      within(form).queryByRole('button', { name: 'Сохранить' }),
-    ).not.toBeInTheDocument();
-  });
 });
 
 describe('PlanningScreen — список занятий', () => {
-  it('карточка занятия с названием класса, темой, открывает лист по клику', async () => {
+  it('карточка занятия с названием класса и темой ведёт на страницу занятия', async () => {
     const user = userEvent.setup();
-    mockByPath({
+    mockApiByPath({
       '/lessons': [makeLesson({ topic: 'Пятое занятие цикла' })],
       '/classes': [makeClass()],
     });
@@ -218,44 +189,21 @@ describe('PlanningScreen — список занятий', () => {
     expect(screen.getByText(/Asia\/Jerusalem/)).toBeInTheDocument();
 
     await user.click(card);
-    expect(
-      await screen.findByRole('heading', { name: 'Дата занятия' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(EDITOR_MARKER)).toBeInTheDocument();
   });
 
-  it('«Разовое занятие» открывает пустой лист, сохранение шлёт POST', async () => {
+  it('«Разовое занятие» ведёт на страницу нового занятия', async () => {
     const user = userEvent.setup();
-    mockByPath({ '/lessons': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Разовое занятие' }));
 
-    const dialogTitle = await screen.findByRole('heading', { name: 'Разовое занятие' });
-    const sheet = dialogTitle.closest('form') as HTMLFormElement;
-    await user.type(
-      within(sheet).getByLabelText('Дата и время начала'),
-      '2026-09-08T19:00',
-    );
-
-    mockedApiFetch.mockResolvedValueOnce(makeLesson());
-    mockByPath({ '/lessons': [], '/classes': [makeClass()] });
-    await user.click(within(sheet).getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() =>
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/lessons',
-        expect.objectContaining({ method: 'POST' }),
-      ),
-    );
-    // Как в ExamItemsScreen.test: закрытие листа идёт через popstate,
-    // ждём его явно, иначе покрытие onClose плавает под нагрузкой (задача #59).
-    await waitFor(() =>
-      expect(screen.queryByRole('heading', { name: 'Разовое занятие' })).toBeNull(),
-    );
+    expect(await screen.findByText(NEW_MARKER)).toBeInTheDocument();
   });
 
   it('тема не задана — карточка показывает заглушку, отменённое занятие — серым', async () => {
-    mockByPath({
+    mockApiByPath({
       '/lessons': [makeLesson({ id: 'l2', status: 'cancelled' })],
       '/classes': [makeClass()],
     });
@@ -267,7 +215,7 @@ describe('PlanningScreen — список занятий', () => {
   });
 
   it('занятие с рассылкой ссылки — бейдж статуса; без рассылки — бейджа нет', async () => {
-    mockByPath({
+    mockApiByPath({
       '/lessons': [
         makeLesson({ id: 'l3', broadcast: { status: 'sent', kind: 'lesson_link' } }),
         makeLesson({ id: 'l4' }),
@@ -281,7 +229,7 @@ describe('PlanningScreen — список занятий', () => {
   });
 
   it('есть запись — пометка «запись есть»; класс не найден — «—»', async () => {
-    mockByPath({
+    mockApiByPath({
       '/lessons': [
         makeLesson({
           classId: 'unknown-class',
@@ -300,7 +248,7 @@ describe('PlanningScreen — список занятий', () => {
 
 describe('PlanningScreen — подписи (отзыв владельца 2026-09-12)', () => {
   it('три занятия одного класса — пояс школы назван один раз, не в каждой строке', async () => {
-    mockByPath({
+    mockApiByPath({
       '/lessons': [
         makeLesson(),
         makeLesson({ id: 'l2', startsAt: '2026-09-09T16:00:00.000Z' }),
@@ -318,7 +266,7 @@ describe('PlanningScreen — подписи (отзыв владельца 2026-
   });
 
   it('рядом с кнопкой сказано, что такое разовое занятие', async () => {
-    mockByPath({ '/lessons': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
 
     renderScreen();
 

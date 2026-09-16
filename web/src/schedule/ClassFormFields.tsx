@@ -1,5 +1,5 @@
-// Базовые поля формы занятия — вынесены из ClassSheet, чтобы сам лист не
-// разрастался за 150 строк (CLAUDE.md «Файлы»: выноси подкомпоненты).
+// Базовые поля занятия расписания — вынесены из ClassEditorForm.tsx, чтобы
+// сама страница не разрасталась за 150 строк (CLAUDE.md «Файлы»).
 // leadMinutesText — текст, не число: пустое поле не подменяется нулём
 // молча (ревью п.10), проверка диапазона — validateClassForm.
 import {
@@ -19,12 +19,12 @@ interface ClassFormFieldsProps {
   state: ClassFormState;
   setField: <K extends keyof ClassFormState>(key: K, value: ClassFormState[K]) => void;
   error: string | null;
-  /** Учителя для select'а «Ведущий» — грузятся один раз на «Расписании»
-   * (ScheduleScreen), как каналы (ревью п.1, аудит В4). Сбой загрузки не
-   * прячет остальные поля формы — только строка с ошибкой над списком. */
+  /** Учителя для select'а «Ведущий» — грузит страница занятия
+   * (ClassEditorForm.tsx, аудит В4). Сбой загрузки не прячет остальные поля
+   * формы — только строка с ошибкой и повтором над списком. */
   teachers: TeacherOptionDto[];
-  teachersError?: string | null;
-  onRetryTeachers?: () => void;
+  teachersError: string | null;
+  onRetryTeachers: () => void;
 }
 
 export function ClassFormFields({
@@ -73,7 +73,7 @@ export function ClassFormFields({
       {teachersError && (
         <LoadErrorBanner
           message={teachersError}
-          onRetry={onRetryTeachers ?? (() => {})}
+          onRetry={onRetryTeachers}
           retryLabel="Обновить"
         />
       )}

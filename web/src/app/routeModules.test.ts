@@ -16,6 +16,16 @@ describe('matchRouteLoader', () => {
       ROUTE_MODULES.examItemEditor.load,
     );
     expect(matchRouteLoader('/people')).toBe(ROUTE_MODULES.people.load);
+    expect(matchRouteLoader('/planning')).toBe(ROUTE_MODULES.planning.load);
+    expect(matchRouteLoader('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
+    expect(matchRouteLoader('/planning/652f00000000000000000003')).toBe(
+      ROUTE_MODULES.lessonEditor.load,
+    );
+    expect(matchRouteLoader('/schedule')).toBe(ROUTE_MODULES.schedule.load);
+    expect(matchRouteLoader('/schedule/new')).toBe(ROUTE_MODULES.classNew.load);
+    expect(matchRouteLoader('/schedule/652f00000000000000000004')).toBe(
+      ROUTE_MODULES.classEditor.load,
+    );
   });
 
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {

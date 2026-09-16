@@ -4,7 +4,11 @@
 // (docs/adr/0025-navigation-by-domain.md).
 // Облик — направление «тихо и благородно» (docs/adr/0031), макет
 // Schedule.dc.html: заголовок антиквой, строка объяснения, занятия строками.
-import { useMemo, useState } from 'react';
+// Правка и создание занятия — своя страница `/planning/new` и
+// `/planning/:lessonId` (LessonEditorScreen.tsx, ADR-0033): отсюда только
+// переход.
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -16,12 +20,10 @@ import {
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
-import { useTeachers } from '../people/useTeachers';
 import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { groupLessonsByDay } from './groupLessonsByDay';
 import { LessonDayGroup } from './LessonDayGroup';
-import { LessonSheet } from './LessonSheet';
 import { PlanningToday } from './PlanningToday';
 import { ScheduleLink } from './ScheduleLink';
 import { useLessons } from './useLessons';
@@ -33,14 +35,12 @@ const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели 
 const ONE_OFF_HINT =
   'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
 const oneOffHintStyle = { ...screenHintStyle, margin: 0 };
+const LESSON_PATH = '/planning';
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
   const classesState = useClasses();
-  // Учителя для select'а «Ведущий» — тот же приём, что classesState (аудит В4).
-  const teachersState = useTeachers();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetLessonId, setSheetLessonId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const classesById = useMemo(
     () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls])),
@@ -60,23 +60,16 @@ export default function PlanningScreen() {
     () => planningTzNote((classesState.classes ?? []).map((cls) => cls.tz)),
     [classesState.classes],
   );
-  const selectedLesson =
-    lessonsState.lessons?.find((lesson) => lesson.id === sheetLessonId) ?? null;
-
   // Список занятий не зависит от `/classes` (пояснение — у баннера ниже).
   const lessonsError = lessonsState.error;
   const classesError = classesState.error;
 
   const retryLessons = () => void lessonsState.reload();
   const retryClasses = () => void classesState.reload();
-  const openCreate = () => {
-    setSheetLessonId(null);
-    setSheetOpen(true);
-  };
-  const openLesson = (lessonId: string) => {
-    setSheetLessonId(lessonId);
-    setSheetOpen(true);
-  };
+  // Занятие открывается своей страницей с адресом, а не листом поверх списка
+  // (ADR-0033): ссылку можно прислать, «Назад» браузера возвращает сюда.
+  const openCreate = () => void navigate(`${LESSON_PATH}/new`);
+  const openLesson = (lessonId: string) => void navigate(`${LESSON_PATH}/${lessonId}`);
 
   // Прокрутка к `#lesson-{id}` — на случай внешней ссылки (бот, уведомление).
   useScrollToHash(!lessonsState.loading && !lessonsError);
@@ -130,20 +123,6 @@ export default function PlanningScreen() {
         <LoadErrorBanner message={classesError} onRetry={retryClasses} />
       )}
       <ScheduleLink />
-      {sheetOpen && (
-        <LessonSheet
-          lessonDto={selectedLesson}
-          classes={classesState.classes ?? []}
-          teachers={teachersState.teachers ?? []}
-          teachersError={teachersState.error}
-          onRetryTeachers={() => void teachersState.reload()}
-          onClose={() => setSheetOpen(false)}
-          onCreate={lessonsState.create}
-          onUpdate={lessonsState.update}
-          onAddRecording={lessonsState.addRecording}
-          onSendNow={lessonsState.sendNow}
-        />
-      )}
     </section>
   );
 }

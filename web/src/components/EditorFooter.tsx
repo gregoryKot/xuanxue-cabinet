@@ -10,18 +10,13 @@
 // что статус значит для ученика, как называется удаление и почему его нет.
 import type { CSSProperties, ReactNode } from 'react';
 import { Button } from './Button';
+import { editorActionsRowStyle } from './screenLayout';
 import {
   DRAFT_PUBLISHED_ARCHIVED_LABELS_RU,
   draftPublishedArchivedTransitions,
   type DraftPublishedArchivedStatus,
 } from '../lib/statusTransitions';
 
-const actionsRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 24,
-  flexWrap: 'wrap',
-};
 const statusRowStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -74,7 +69,7 @@ export function EditorFooter({
 }: EditorFooterProps) {
   return (
     <div>
-      <div style={actionsRowStyle}>
+      <div style={editorActionsRowStyle}>
         <Button type="submit" pending={pending}>
           Сохранить
         </Button>

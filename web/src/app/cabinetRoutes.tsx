@@ -16,7 +16,9 @@ import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
 import { ROOT_REDIRECT_PATH, ROUTE_MODULES } from './routeModules';
 
 const ScheduleScreen = lazy(ROUTE_MODULES.schedule.load);
+const ClassEditorScreen = lazy(ROUTE_MODULES.classEditor.load);
 const PlanningScreen = lazy(ROUTE_MODULES.planning.load);
+const LessonEditorScreen = lazy(ROUTE_MODULES.lessonEditor.load);
 const ChannelsScreen = lazy(ROUTE_MODULES.channels.load);
 const ChannelEditorScreen = lazy(ROUTE_MODULES.channelEditor.load);
 const BroadcastsScreen = lazy(ROUTE_MODULES.broadcasts.load);
@@ -32,15 +34,19 @@ const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
 const NotificationsScreen = lazy(ROUTE_MODULES.notifications.load);
 
-/* Канал, рассылка, вопрос банка и экзамен правятся на страницах со своими
-   адресами, а не в листах поверх списка (ADR-0033): на них ссылаются из
-   списка, их открывают по ссылке и закрывают «Назад» браузера. Где есть и
-   создание, и правка, `/…/new` объявлен раньше `/…/:id` — статический кусок
-   пути должен выигрывать у параметра. */
+/* Занятие расписания, дата занятия, канал, рассылка, вопрос банка и экзамен
+   правятся на страницах со своими адресами, а не в листах поверх списка
+   (ADR-0033): на них ссылаются из списка, их открывают по ссылке и закрывают
+   «Назад» браузера. Где есть и создание, и правка, `/…/new` объявлен раньше
+   `/…/:id` — статический кусок пути должен выигрывать у параметра. */
 export const cabinetRoutes = (
   <>
     <Route path={ROUTE_MODULES.schedule.path} element={<ScheduleScreen />} />
+    <Route path={ROUTE_MODULES.classNew.path} element={<ClassEditorScreen />} />
+    <Route path={ROUTE_MODULES.classEditor.path} element={<ClassEditorScreen />} />
     <Route path={ROUTE_MODULES.planning.path} element={<PlanningScreen />} />
+    <Route path={ROUTE_MODULES.lessonNew.path} element={<LessonEditorScreen />} />
+    <Route path={ROUTE_MODULES.lessonEditor.path} element={<LessonEditorScreen />} />
     <Route path={ROUTE_MODULES.channels.path} element={<ChannelsScreen />} />
     <Route path={ROUTE_MODULES.channelNew.path} element={<ChannelEditorScreen />} />
     <Route path={ROUTE_MODULES.channelEditor.path} element={<ChannelEditorScreen />} />

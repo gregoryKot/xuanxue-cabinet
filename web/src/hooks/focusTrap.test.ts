@@ -142,7 +142,7 @@ describe('markBackgroundInert', () => {
     expect(byId('page').hasAttribute('inert')).toBe(true);
 
     restoreInner();
-    // Внешний диалог (ConfirmDialog поверх LessonSheet) всё ещё открыт —
+    // Внешний диалог (ConfirmDialog поверх ChannelSheet) всё ещё открыт —
     // страница должна остаться недоступной.
     expect(byId('page').hasAttribute('inert')).toBe(true);
 

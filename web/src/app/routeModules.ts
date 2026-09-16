@@ -30,6 +30,8 @@ interface RouteModule {
 const loadChannelEditor = () => import('../channels/ChannelEditorScreen');
 const loadExamEditor = () => import('../exams/ExamEditorScreen');
 const loadExamItemEditor = () => import('../exam-items/ExamItemEditorScreen');
+const loadLessonEditor = () => import('../planning/LessonEditorScreen');
+const loadClassEditor = () => import('../schedule/ClassEditorScreen');
 
 /** Куда ведёт корень `/` — и в `<Navigate>`, и при предзагрузке. */
 export const ROOT_REDIRECT_PATH = '/planning';
@@ -47,11 +49,19 @@ export const ROUTE_MODULES = {
     load: () => import('../schedule/ScheduleScreen'),
     warm: true,
   },
+  // `/schedule/new` раньше `/schedule/:classId`: matchRouteLoader берёт
+  // первое совпадение, а статический сегмент должен выигрывать у параметра.
+  // Один загрузчик на оба адреса — это один и тот же экран (ADR-0033).
+  classNew: { path: '/schedule/new', load: loadClassEditor, warm: true },
+  classEditor: { path: '/schedule/:classId', load: loadClassEditor, warm: true },
   planning: {
     path: ROOT_REDIRECT_PATH,
     load: () => import('../planning/PlanningScreen'),
     warm: true,
   },
+  // `/planning/new` раньше `/planning/:lessonId` — по той же причине.
+  lessonNew: { path: '/planning/new', load: loadLessonEditor, warm: true },
+  lessonEditor: { path: '/planning/:lessonId', load: loadLessonEditor, warm: true },
   channels: {
     path: '/channels',
     load: () => import('../channels/ChannelsScreen'),
