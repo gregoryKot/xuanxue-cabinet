@@ -1,8 +1,8 @@
 // Чистая логика с фейком UsersService, без Mongo (CLAUDE.md «Тесты»):
 // UsersService.findByTelegramId уже проверен против настоящей Mongo в
 // users.service.spec.ts, здесь — только отображение статуса на решение
-// доступа (ADR-0026, SECURITY §2/§9).
-import { ACCESS_MESSAGE, PENDING_APPROVAL_MESSAGE } from '@xuanxue/shared';
+// доступа (SECURITY §2/§9).
+import { ACCESS_MESSAGE } from '@xuanxue/shared';
 import type { UserLean, UsersService } from '../users/users.service';
 import { BotUserAccessService } from './bot-user-access.service';
 
@@ -36,15 +36,6 @@ describe('BotUserAccessService.resolve', () => {
     await expect(service.resolve(111)).resolves.toEqual({
       kind: 'denied',
       message: ACCESS_MESSAGE,
-    });
-  });
-
-  it('invited — denied с текстом ожидания подтверждения (ADR-0026)', async () => {
-    const service = new BotUserAccessService(fakeUsersService(user('invited')));
-
-    await expect(service.resolve(111)).resolves.toEqual({
-      kind: 'denied',
-      message: PENDING_APPROVAL_MESSAGE,
     });
   });
 });

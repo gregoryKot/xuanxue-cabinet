@@ -7,7 +7,6 @@ import type { Update } from 'telegraf/types';
 import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
-import type { ChatMemberJoinHandler } from './handlers/chat-member-join.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { StartHandler } from './handlers/start.handler';
@@ -15,7 +14,6 @@ import type { TopicCommandHandler } from './handlers/topic-command.handler';
 import { BotIdentityService } from './bot-identity.service';
 import {
   CALLBACK_UPDATE,
-  CHAT_MEMBER_JOIN_UPDATE,
   CHAT_MEMBER_UPDATE,
   START_UPDATE,
   TEXT_MESSAGE_UPDATE,
@@ -40,7 +38,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({}),
       createTelegraf,
       chatMember as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       start as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -59,7 +56,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       chatMember as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       start as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -73,31 +69,6 @@ describe('TelegramBotService — маршрутизация', () => {
     expect(ctx?.myChatMember).toMatchObject({ chat: { id: -100555 } });
   });
 
-  // Другой апдейт, другой хендлер (ADR-0026 п.2): chat_member — про
-  // человека в группе, не про самого бота, my_chat_member выше его не ловит.
-  it('chat_member роутится в ChatMemberJoinHandler, не в ChatMemberHandler', async () => {
-    const chatMember = fakeHandler();
-    const chatMemberJoin = fakeHandler();
-    const start = fakeHandler();
-    const { factory } = createFakeTelegrafFactory();
-    const service = new TelegramBotService(
-      fakeConfig({ BOT_TOKEN: TOKEN }),
-      factory,
-      chatMember as unknown as ChatMemberHandler,
-      chatMemberJoin as unknown as ChatMemberJoinHandler,
-      start as unknown as StartHandler,
-      ...fakeExtraHandlers(),
-    );
-    service.onApplicationBootstrap();
-
-    await service.handleUpdate(CHAT_MEMBER_JOIN_UPDATE);
-
-    expect(chatMemberJoin.handle).toHaveBeenCalledTimes(1);
-    expect(chatMember.handle).not.toHaveBeenCalled();
-    const ctx = chatMemberJoin.handle.mock.calls[0]?.[0];
-    expect(ctx?.chatMember).toMatchObject({ chat: { id: -100555 } });
-  });
-
   it('/start роутится в StartHandler', async () => {
     const chatMember = fakeHandler();
     const start = fakeHandler();
@@ -106,7 +77,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       chatMember as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       start as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -126,7 +96,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       chatMember as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       start as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -152,7 +121,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -171,7 +139,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       callbackQuery as unknown as CallbackQueryHandler,
       fakeHandler() as unknown as TopicCommandHandler,
@@ -205,7 +172,6 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeConfig({ BOT_TOKEN: TOKEN }),
         factory,
         fakeHandler() as unknown as ChatMemberHandler,
-        fakeHandler() as unknown as ChatMemberJoinHandler,
         fakeHandler() as unknown as StartHandler,
         fakeHandlerWithNow() as unknown as CallbackQueryHandler,
         topicCommand as unknown as TopicCommandHandler,
@@ -239,7 +205,6 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeConfig({ BOT_TOKEN: TOKEN }),
         factory,
         fakeHandler() as unknown as ChatMemberHandler,
-        fakeHandler() as unknown as ChatMemberJoinHandler,
         fakeHandler() as unknown as StartHandler,
         fakeHandlerWithNow() as unknown as CallbackQueryHandler,
         fakeHandler() as unknown as TopicCommandHandler,
@@ -268,7 +233,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       fakeHandlerWithNow() as unknown as CallbackQueryHandler,
       topicCommand as unknown as TopicCommandHandler,
@@ -294,7 +258,6 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       callbackQuery as unknown as CallbackQueryHandler,
       fakeHandler() as unknown as TopicCommandHandler,
@@ -322,7 +285,6 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeConfig({}),
       createTelegraf,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -339,7 +301,6 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -368,7 +329,6 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -387,7 +347,6 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       fakeHandlerWithNow() as unknown as CallbackQueryHandler,
       topicCommand as unknown as TopicCommandHandler,
@@ -411,7 +370,6 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       fakeHandlerWithNow() as unknown as CallbackQueryHandler,
       fakeHandler() as unknown as TopicCommandHandler,
@@ -443,7 +401,6 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       fakeHandlerWithNow() as unknown as CallbackQueryHandler,
       fakeHandler() as unknown as TopicCommandHandler,

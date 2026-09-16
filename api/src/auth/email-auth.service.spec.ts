@@ -1,13 +1,14 @@
 // Юнит-тест сервиса входа по email — фейки ConfigService/EmailLoginTokenService/
-// MailService/EmailLoginUserService/UsersService/AuthService, без Mongo и без
+// MailService/LoginIdentityService/UsersService/AuthService, без Mongo и без
 // сети (CLAUDE.md «Тесты»). Гонка/TTL/одноразовость токена — уже в
-// email-login-token.service.spec.ts (mongodb-memory-server), здесь — только
-// склейка сервиса.
+// email-login-token.service.spec.ts (mongodb-memory-server), ветвления
+// поиска/создания человека — в login-identity.service.spec.ts, здесь —
+// только склейка сервиса.
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
-import type { EmailLoginUserService } from '../users/email-login-user.service';
 import type { InviteLinkService } from '../users/invite-link.service';
+import type { LoginIdentityService } from '../users/login-identity.service';
 import type { UserLean, UsersService } from '../users/users.service';
 import type { MailService } from '../mail/mail.service';
 import type { AuthService } from './auth.service';
@@ -47,23 +48,16 @@ const BASE_USER: UserLean = {
   email: 'ученик@example.com',
   roles: [],
   tz: 'Asia/Jerusalem',
-  status: 'invited',
+  status: 'active',
 };
 
-interface EmailUsersOptions {
-  existing?: UserLean | null;
-  created?: UserLean;
-  onCreate?: (email: string) => void;
-}
-
-function fakeEmailUsers(options: EmailUsersOptions): EmailLoginUserService {
+function fakeLoginIdentity(
+  resolve: (email: string, inviteCode: string | undefined) => Promise<UserLean> = () =>
+    Promise.resolve(BASE_USER),
+): LoginIdentityService {
   return {
-    findByEmail: () => Promise.resolve(options.existing ?? null),
-    createFromEmail: (email: string) => {
-      options.onCreate?.(email);
-      return Promise.resolve(options.created ?? BASE_USER);
-    },
-  } as unknown as EmailLoginUserService;
+    resolveEmailUser: (email: string, inviteCode?: string) => resolve(email, inviteCode),
+  } as unknown as LoginIdentityService;
 }
 
 function fakeUsersService(onTouch?: (id: string) => void): UsersService {
@@ -91,9 +85,9 @@ interface BuildOptions {
   config?: ConfigService;
   tokens?: EmailLoginTokenService;
   mail?: MailService;
-  emailUsers?: EmailLoginUserService;
   users?: UsersService;
   inviteLink?: InviteLinkService;
+  loginIdentity?: LoginIdentityService;
 }
 
 function buildService(options: BuildOptions = {}): EmailAuthService {
@@ -101,10 +95,10 @@ function buildService(options: BuildOptions = {}): EmailAuthService {
     options.config ?? fakeConfig(AVAILABLE_CONFIG),
     options.tokens ?? fakeTokens(),
     options.mail ?? fakeMail(),
-    options.emailUsers ?? fakeEmailUsers({}),
     options.users ?? fakeUsersService(),
     fakeAuthService(),
     options.inviteLink ?? fakeInviteLink(),
+    options.loginIdentity ?? fakeLoginIdentity(),
   );
 }
 
@@ -230,41 +224,40 @@ describe('EmailAuthService.verify', () => {
     );
   });
 
-  it('email уже есть в базе — вход без создания нового пользователя', async () => {
-    let created = false;
+  it('зовёт LoginIdentityService.resolveEmailUser с email и inviteCode, touchLogin, cookie', async () => {
     let touchedId: string | undefined;
+    let received: { email: string; inviteCode: string | undefined } | undefined;
     const service = buildService({
       tokens: fakeTokens(undefined, () => Promise.resolve(BASE_USER.email as string)),
-      emailUsers: fakeEmailUsers({
-        existing: BASE_USER,
-        onCreate: () => (created = true),
+      loginIdentity: fakeLoginIdentity((email, inviteCode) => {
+        received = { email, inviteCode };
+        return Promise.resolve(BASE_USER);
       }),
       users: fakeUsersService((id) => (touchedId = id)),
     });
 
-    const result = await service.verify('x'.repeat(64), NOW);
+    const result = await service.verify('x'.repeat(64), NOW, 'c'.repeat(32));
 
-    expect(created).toBe(false);
+    expect(received).toEqual({ email: BASE_USER.email, inviteCode: 'c'.repeat(32) });
     expect(touchedId).toBe(BASE_USER.id);
     expect(result.user).toEqual(BASE_USER);
     expect(result.cookie).toBe('session=tok');
   });
 
-  it('неизвестный email — createFromEmail, статус invited', async () => {
-    let createdEmail: string | undefined;
+  it('LoginIdentityService бросил ForbiddenError (нет ссылки-приглашения) — пробрасывается, touchLogin не вызывается', async () => {
+    let touched = false;
     const service = buildService({
       tokens: fakeTokens(undefined, () => Promise.resolve('new@example.com')),
-      emailUsers: fakeEmailUsers({
-        existing: null,
-        created: { ...BASE_USER, id: 'u2', email: 'new@example.com' },
-        onCreate: (email) => (createdEmail = email),
-      }),
+      loginIdentity: fakeLoginIdentity(() =>
+        Promise.reject(new ForbiddenError('нужна ссылка-приглашение')),
+      ),
+      users: fakeUsersService(() => (touched = true)),
     });
 
-    const result = await service.verify('x'.repeat(64), NOW);
-
-    expect(createdEmail).toBe('new@example.com');
-    expect(result.user.status).toBe('invited');
+    await expect(service.verify('x'.repeat(64), NOW)).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    expect(touched).toBe(false);
   });
 
   it('заблокированный пользователь — ForbiddenError, сессия не выпускается', async () => {
@@ -272,7 +265,7 @@ describe('EmailAuthService.verify', () => {
     let touched = false;
     const service = buildService({
       tokens: fakeTokens(undefined, () => Promise.resolve(blocked.email as string)),
-      emailUsers: fakeEmailUsers({ existing: blocked }),
+      loginIdentity: fakeLoginIdentity(() => Promise.resolve(blocked)),
       users: fakeUsersService(() => (touched = true)),
     });
 

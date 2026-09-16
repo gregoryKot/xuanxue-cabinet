@@ -1,5 +1,5 @@
 // Ссылка-приглашение школы (ADR-0030): единственная точка чтения/записи
-// InviteLinkRecord — контроллер и JoinByInviteService (api/src/auth/) не
+// InviteLinkRecord — контроллер и LoginIdentityService (api/src/users/) не
 // лезут в Mongoose напрямую (CLAUDE.md). PUBLIC_URL — тот же адрес кабинета,
 // что строит письма входа (ADR-0009-доп., ADR-0029), не адрес сайта школы
 // из настроек (тот — schoolSiteUrl, другое поле).

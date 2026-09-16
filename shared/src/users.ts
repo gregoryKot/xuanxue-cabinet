@@ -47,11 +47,6 @@ export interface UpdateUserRolesInput {
 
 export const USER_NOT_FOUND_MESSAGE = 'Пользователь не найден. Обновите список.';
 
-/** Подтвердить можно того, кто ждёт (ADR-0026); заблокированного —
- * нет: снятие блокировки — отдельное решение, не кнопка в общем списке. */
-export const ALREADY_BLOCKED_MESSAGE =
-  'Этому человеку доступ закрыт. Сначала откройте его, потом подтверждайте.';
-
 /** Нельзя снять роль администратора у самого себя (UserRolesService.updateRoles) —
  * без этого админ может остаться без доступа в одно действие. */
 export const SELF_DEMOTE_MESSAGE =

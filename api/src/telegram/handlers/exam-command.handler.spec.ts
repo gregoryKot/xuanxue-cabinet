@@ -1,14 +1,10 @@
 // Фейковый ExamBotPort и фейковый BotUserAccessService, без Mongo и без сети
 // (CLAUDE.md «Тесты»): /exams, /экзамены — то же самое, что MyExamsService
-// отдаёт кабинету (через порт), незнакомцу бот не отвечает, blocked/invited —
-// отказ вместо списка (SECURITY §9, ADR-0026).
+// отдаёт кабинету (через порт), незнакомцу бот не отвечает, blocked —
+// отказ вместо списка (SECURITY §9).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import {
-  ACCESS_MESSAGE,
-  PENDING_APPROVAL_MESSAGE,
-  type MyExamDto,
-} from '@xuanxue/shared';
+import { ACCESS_MESSAGE, type MyExamDto } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
 import type { BotUserAccessService } from '../bot-user-access.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
@@ -91,20 +87,6 @@ describe('ExamCommandHandler.handle', () => {
     await handler.handle(ctx, NOW);
 
     expect(replies).toEqual([ACCESS_MESSAGE]);
-    expect(listMyExams).not.toHaveBeenCalled();
-  });
-
-  it('неподтверждённый (invited) — отказ ожиданием подтверждения, список не запрашивается', async () => {
-    const { registry, listMyExams } = stubExams([EXAM]);
-    const handler = new ExamCommandHandler(
-      fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
-      registry,
-    );
-    const { ctx, replies } = fakeCtx();
-
-    await handler.handle(ctx, NOW);
-
-    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
     expect(listMyExams).not.toHaveBeenCalled();
   });
 

@@ -3,7 +3,7 @@
 // заводился только для штата (StartHandler) — telegram-exam-notifier.spec.ts
 // этого не ловил, потому что заводил канал напрямую в Mongo, минуя /start.
 // Здесь — тем самым путём, каким ученик реально подключается: StartHandler.
-// handle() на настоящую /start (ADR-0027, ADR-0026), а следом
+// handle() на настоящую /start (ADR-0027), а следом
 // TelegramExamNotifier.notifyExamGraded() — «учитель поставил оценку»
 // (ExamGradingsService.grade() зовёт тот же метод, PLAN.md §11 слой 4.7).
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»).
@@ -21,9 +21,7 @@ import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
 import { SettingsService } from '../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import type { InviteLinkService } from '../users/invite-link.service';
-import { JoinByInviteService } from '../users/join-by-invite.service';
 import { UserNamesService } from '../users/user-names.service';
-import { UserRolesService } from '../users/user-roles.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
@@ -107,11 +105,6 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
       new BotSessionService(botSessionModel),
       new BotUserAccessService(usersService),
       usersService,
-      new JoinByInviteService(
-        inertInviteLinkService,
-        new UserRolesService(userModel, usersService),
-        usersService,
-      ),
       inertInviteLinkService,
       fakeConfig(),
     );

@@ -12,18 +12,19 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Req,
   Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
-import type { AuthConfigDto, MeDto } from '@xuanxue/shared';
+import { INVITE_QUERY_PARAM, type AuthConfigDto, type MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { SettingsService } from '../settings/settings.service';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { botIdFromToken } from './bot-id-from-token';
-import { AllowPending, CurrentUser, Public } from './auth.decorators';
+import { CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { EmailAuthService } from './email-auth.service';
@@ -72,9 +73,6 @@ export class AuthController {
     };
   }
 
-  // @AllowPending: тот, кто ждёт подтверждения (ADR-0026), должен увидеть
-  // своё имя и статус — экран ожидания строится из этого ответа.
-  @AllowPending()
   @Get('me')
   me(@CurrentUser() user: UserLean): MeDto {
     // AuthGuard уже сходил в UsersService.findById перед тем, как пропустить
@@ -91,6 +89,12 @@ export class AuthController {
     // ValidationPipe (forbidNonWhitelisted, app.setup.ts) эта форма не
     // должна попадать, см. parse-telegram-login-body.ts. Валидируем сами.
     @Body() rawBody: Record<string, unknown>,
+    // Код ссылки-приглашения (ADR-0030/0034) — в query, не в теле: подпись
+    // Telegram считается по телу запроса целиком (см. ниже), и лишнее поле
+    // там сломало бы её. Формат не проверяем здесь отдельно —
+    // LoginIdentityService зовёт InviteLinkService.isValid(), который сам
+    // отбрасывает всё, что не подходит под INVITE_CODE_RE.
+    @Query(INVITE_QUERY_PARAM) inviteCode: string | undefined,
     @Req() req: RequestLike,
     @Res({ passthrough: true }) res: ResponseLike,
   ): Promise<MeDto> {
@@ -101,6 +105,7 @@ export class AuthController {
       body,
       req.body ?? {},
       DateTime.utc(),
+      inviteCode,
     );
     res.setHeader('Set-Cookie', cookie);
     return toMeDto(user);
@@ -130,6 +135,7 @@ export class AuthController {
     const { user, cookie } = await this.emailAuthService.verify(
       body.token,
       DateTime.utc(),
+      body.inviteCode,
     );
     res.setHeader('Set-Cookie', cookie);
     return toMeDto(user);

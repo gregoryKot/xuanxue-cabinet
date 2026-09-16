@@ -26,7 +26,7 @@ export async function handleOpenMenuScreen(
   examCommandHandler: ExamCommandHandler,
 ): Promise<void> {
   if (screen === 'exams') {
-    // Доступ (штат/ученик/blocked/invited) уже встроен в listScreen — тот
+    // Доступ (штат/ученик/blocked) уже встроен в listScreen — тот
     // же рендер, что у команды /exams.
     const menu = await examCommandHandler.listScreen(chatId, now);
     if (menu) await editMenuMessage(ctx, menu);

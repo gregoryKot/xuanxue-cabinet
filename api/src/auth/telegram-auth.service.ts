@@ -2,23 +2,15 @@
 // telegram-login.ts; сессия и cookie — AuthService.issueSession, тот же
 // узел, что и у остальных путей входа (ADR-0012); UserRecord — только через
 // UsersService (CLAUDE.md: контроллер/сервис не лезут в Mongoose напрямую).
-// `invited`-человек, вошедший ДО того, как его добавили в группу учеников,
-// не застревает там навсегда (CLAUDE.md «Ноль нагрузки на ученика»): каждый
-// следующий вход перепроверяет членство тем же кодом, что и первый
-// (StudentMembershipApprovalService — общий с ChatMemberJoinHandler,
-// который ловит момент вступления апдейтом chat_member, ADR-0026).
+// Поиск/создание человека — LoginIdentityService (ADR-0030/0034): новый
+// заводится только с валидной ссылкой-приглашением, статуса «ждёт
+// подтверждения» больше нет (инцидент 2026-09-15).
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
-import {
-  ACCESS_MESSAGE,
-  type TelegramLoginInput,
-  type UserRole,
-  type UserStatus,
-} from '@xuanxue/shared';
-import { GroupMembershipService } from '../channels/group-membership.service';
+import { ACCESS_MESSAGE, type TelegramLoginInput } from '@xuanxue/shared';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
-import { StudentMembershipApprovalService } from '../users/student-membership-approval.service';
+import { LoginIdentityService } from '../users/login-identity.service';
 import { UsersService, type UserLean } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { isValidTelegramLogin } from './telegram-login';
@@ -39,18 +31,20 @@ export class TelegramAuthService {
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
-    private readonly groupMembership: GroupMembershipService,
-    private readonly membershipApproval: StudentMembershipApprovalService,
+    private readonly loginIdentity: LoginIdentityService,
   ) {}
 
   /** `input` — типизированные поля (id, имя) для создания/поиска
    * пользователя; `rawBody` — сырое тело запроса для проверки подписи
    * (whitelist DTO и подписанное Telegram тело — не одно и то же множество
-   * полей, см. telegram-login.ts). */
+   * полей, см. telegram-login.ts). `inviteCode` — из query `?join=<code>`
+   * (ADR-0030/0034), не из тела: подпись Telegram считается по `rawBody`
+   * целиком, лишнее поле там сломало бы её. */
   async login(
     input: TelegramLoginInput,
     rawBody: Record<string, unknown>,
     now: DateTime,
+    inviteCode?: string,
   ): Promise<TelegramLoginResult> {
     const botToken = this.config.get<string>('BOT_TOKEN');
     if (!botToken) throw new NotAvailableError(NOT_AVAILABLE_MESSAGE);
@@ -58,59 +52,26 @@ export class TelegramAuthService {
       throw new UnauthorizedError(SIGNATURE_MESSAGE);
     }
 
-    const existing = await this.usersService.findByTelegramId(input.id);
-    const user = existing
-      ? await this.membershipApproval.confirmIfMember(existing)
-      : await this.createUser(input);
+    const user = await this.loginIdentity.resolveTelegramUser(
+      input.id,
+      fullName(input),
+      inviteCode,
+      now,
+    );
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 
     await this.usersService.touchLogin(user.id, now);
     const { cookie } = this.authService.issueSession(user.id, now);
     return { user, cookie };
   }
-
-  /** Роли по умолчанию пустые — ученик появляется как `active` без ролей
-   * (ADR-0026); первый вход с BOOTSTRAP_ADMIN_TELEGRAM_ID получает
-   * admin+teacher (CLAUDE.md «Кабинет учителя»: дальше роли назначаются в
-   * интерфейсе, не в env). */
-  private async createUser(input: TelegramLoginInput): Promise<UserLean> {
-    const bootstrapId = this.config.get<number>('BOOTSTRAP_ADMIN_TELEGRAM_ID');
-    const isBootstrapAdmin = bootstrapId === input.id;
-    const roles: UserRole[] = isBootstrapAdmin ? ['admin', 'teacher'] : [];
-    return this.usersService.createFromTelegram({
-      telegramId: input.id,
-      name: fullName(input),
-      roles,
-      status: await this.statusForNewUser(input.id, isBootstrapAdmin),
-    });
-  }
-
-  /** Статус нового человека — `invited`: ссылки и пароли Zoom видит только
-   * тот, кого школа подтвердила (SECURITY §2, угроза №1 — зум-бомбинг).
-   * Первый админ — исключение: подтверждать его некому. Остальные входят
-   * сразу `active`, если уже состоят в группе учеников школы в Telegram —
-   * подтверждение не должно ложиться на ученика (владелец 2026-09-12,
-   * ADR-0026, CLAUDE.md «Ноль нагрузки на ученика»). Для нового человека
-   * группу проверяем прямо здесь (создавать документ ещё не с чем
-   * подтверждать); у существующего того же статуса — та же проверка, но
-   * через `StudentMembershipApprovalService.confirmIfMember` в `login()`
-   * выше, на каждый следующий вход, а не только на первый. */
-  private async statusForNewUser(
-    telegramId: number,
-    isBootstrapAdmin: boolean,
-  ): Promise<UserStatus> {
-    if (isBootstrapAdmin) return 'active';
-    const isGroupMember = await this.groupMembership.isMemberOfSchoolGroup(telegramId);
-    return isGroupMember ? 'active' : 'invited';
-  }
 }
 
 /** Экспортирован для join-invite-deep-link.ts (ADR-0030 «Бот», уточнение
- * владельца 2026-09-15): валидный код ссылки-приглашения заводит человека
- * из Telegram-идентичности тем же способом, что и первый вход через
- * виджет — вторая реализация не пишется. Параметр — подмножество
- * `TelegramLoginInput`, а не сам тип: конструктору имени не нужны подпись
- * и `auth_date`, только first_name/last_name. */
+ * владельца 2026-09-15): бот собирает то же отображаемое имя из
+ * Telegram-идентичности апдейта, что и вход через виджет — вторая
+ * реализация не пишется. Параметр — подмножество `TelegramLoginInput`, а не
+ * сам тип: конструктору имени не нужны подпись и `auth_date`, только
+ * first_name/last_name. */
 export function fullName(input: { first_name: string; last_name?: string }): string {
   return [input.first_name, input.last_name].filter(Boolean).join(' ');
 }

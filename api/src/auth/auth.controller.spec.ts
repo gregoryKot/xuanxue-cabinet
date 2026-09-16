@@ -238,6 +238,7 @@ describe('AuthController.loginWithTelegram', () => {
 
     const me = await controller.loginWithTelegram(
       TELEGRAM_RAW_BODY,
+      undefined,
       fakeRequest(TELEGRAM_RAW_BODY),
       res,
     );
@@ -252,6 +253,24 @@ describe('AuthController.loginWithTelegram', () => {
     });
   });
 
+  it('inviteCode из query передаётся в TelegramAuthService.login() четвёртым аргументом', async () => {
+    let receivedInviteCode: string | undefined;
+    const controller = await buildController((_dto, _rawBody, _now, inviteCode) => {
+      receivedInviteCode = inviteCode;
+      return Promise.resolve({ user: USER, cookie: 'session=tok' });
+    });
+    const code = 'a'.repeat(32);
+
+    await controller.loginWithTelegram(
+      TELEGRAM_RAW_BODY,
+      code,
+      fakeRequest(TELEGRAM_RAW_BODY),
+      fakeResponse(),
+    );
+
+    expect(receivedInviteCode).toBe(code);
+  });
+
   it('передаёт в сервис req.body целиком, а не только поля DTO', async () => {
     let receivedRawBody: Record<string, unknown> | undefined;
     const controller = await buildController((_dto, rawBody) => {
@@ -260,7 +279,12 @@ describe('AuthController.loginWithTelegram', () => {
     });
     const rawBody = { ...TELEGRAM_INPUT, unknown_field: 'от клиента' };
 
-    await controller.loginWithTelegram(rawBody, fakeRequest(rawBody), fakeResponse());
+    await controller.loginWithTelegram(
+      rawBody,
+      undefined,
+      fakeRequest(rawBody),
+      fakeResponse(),
+    );
 
     expect(receivedRawBody).toEqual(rawBody);
   });
@@ -275,6 +299,7 @@ describe('AuthController.loginWithTelegram', () => {
 
     await controller.loginWithTelegram(
       TELEGRAM_RAW_BODY,
+      undefined,
       requestWithoutBody,
       fakeResponse(),
     );
@@ -291,6 +316,7 @@ describe('AuthController.loginWithTelegram', () => {
     await expect(
       controller.loginWithTelegram(
         TELEGRAM_RAW_BODY,
+        undefined,
         fakeRequest(TELEGRAM_RAW_BODY),
         res,
       ),

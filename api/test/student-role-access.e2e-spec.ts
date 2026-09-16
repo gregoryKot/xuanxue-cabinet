@@ -1,12 +1,11 @@
-// e2e на подтверждение школой (ADR-0026, H1 аудита 2026-09-12): пока человек
-// `invited`, он видит только себя — ни расписания со ссылками Zoom, ни
-// экзаменов. А подтверждённый ученик без единой роли начинает попытку:
-// роль `student` больше не нужна нигде. Настоящий AppModule на
-// MongoMemoryServer.
+// e2e на «ученик — active без единой роли, роль student не нужна нигде»
+// (ADR-0026, H1 аудита 2026-09-12) — выжило из pending-approval.e2e-spec.ts
+// после ADR-0034: статуса `invited` больше нет, эта часть ADR-0026 осталась
+// в силе. Настоящий AppModule на MongoMemoryServer.
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, ExamDto, ExamItemDto, MeDto } from '@xuanxue/shared';
+import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import { ClassRecord } from '../src/classes/class.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -15,7 +14,7 @@ import { createUserWithSession } from './e2e-support/session';
 
 const ZOOM_LINK = 'https://zoom.us/j/9999999999?pwd=секрет';
 
-describe('Подтверждение школой (e2e)', () => {
+describe('Ученик — active без роли (e2e)', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {
@@ -75,50 +74,6 @@ describe('Подтверждение школой (e2e)', () => {
     return examId;
   }
 
-  function pendingSession(): Promise<{ userId: string; cookie: string }> {
-    return createUserWithSession(testApp.app, {
-      name: 'Только что вошёл',
-      roles: [],
-      status: 'invited',
-    });
-  }
-
-  // Угроза №1 SECURITY §1 (зум-бомбинг): до подтверждения ссылки не видно.
-  it('invited: расписание, экзамены и уведомления — 403, ссылки Zoom не отдаются', async () => {
-    await createUpcomingLesson();
-    const { cookie } = await pendingSession();
-
-    const lessons = await request(server()).get('/api/me/lessons').set('Cookie', cookie);
-    expect(lessons.status).toBe(403);
-    expect(JSON.stringify(lessons.body)).not.toContain('zoom.us');
-    expect((lessons.body as ApiErrorBody).message).toContain('подтверждения');
-
-    expect(
-      (await request(server()).get('/api/me/exams').set('Cookie', cookie)).status,
-    ).toBe(403);
-    expect(
-      (await request(server()).get('/api/me/notifications').set('Cookie', cookie)).status,
-    ).toBe(403);
-    expect(
-      (await request(server()).get('/api/lessons').set('Cookie', cookie)).status,
-    ).toBe(403);
-  });
-
-  it('invited: GET /auth/me отвечает — экран ожидания знает, кто вошёл', async () => {
-    const { userId, cookie } = await pendingSession();
-
-    const res = await request(server()).get('/api/auth/me').set('Cookie', cookie);
-
-    expect(res.status).toBe(200);
-    expect(res.body as MeDto).toEqual({
-      id: userId,
-      name: 'Только что вошёл',
-      roles: [],
-      tz: 'Asia/Jerusalem',
-      status: 'invited',
-    });
-  });
-
   // H1 аудита, сценарий Б: раньше старт попытки требовал роль `student`,
   // которую в кабинете нельзя назначить, — ученик получал 403 на своём
   // первом экзамене.
@@ -139,17 +94,5 @@ describe('Подтверждение школой (e2e)', () => {
     const lessons = await request(server()).get('/api/me/lessons').set('Cookie', cookie);
     expect(lessons.status).toBe(200);
     expect(JSON.stringify(lessons.body)).toContain('zoom.us');
-  });
-
-  it('invited: попытку экзамена не начинает', async () => {
-    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-    const examId = await createPublishedExam(teacherCookie);
-    const { cookie } = await pendingSession();
-
-    const res = await withCsrf(
-      request(server()).post(`/api/exams/${examId}/attempts`),
-    ).set('Cookie', cookie);
-
-    expect(res.status).toBe(403);
   });
 });

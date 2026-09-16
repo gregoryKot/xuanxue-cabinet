@@ -34,13 +34,13 @@ describe('EmailLoginUserService', () => {
     await expect(service.findByEmail('нет@example.com')).resolves.toBeNull();
   });
 
-  it('createFromEmail → findByEmail: read-after-write, invited без ролей', async () => {
+  it('createFromEmail → findByEmail: read-after-write, active без ролей', async () => {
     const created = await service.createFromEmail('dima@example.com');
     expect(created).toMatchObject({
       email: 'dima@example.com',
       name: 'dima@example.com',
       roles: [],
-      status: 'invited',
+      status: 'active',
     });
 
     const found = await service.findByEmail('dima@example.com');

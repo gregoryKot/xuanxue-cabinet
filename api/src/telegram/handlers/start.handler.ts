@@ -2,7 +2,7 @@
 // §6, §11 слой 4.7, ADR-0015, ADR-0027). Доступ — единой точкой
 // BotUserAccessService.resolve() (не UsersService.findByTelegramId напрямую,
 // SECURITY §9): `active` подключается (штат — welcomeConnectedUser даёт канал
-// школы, ученик — личный канал, ADR-0027), `denied` (blocked/invited) получает
+// школы, ученик — личный канал, ADR-0027), `denied` (blocked) получает
 // готовый отказ, `unknown` (нет записи в users) — вежливый отказ по VOICE с
 // адресом сайта школы, если он заполнен (settings.schoolSiteUrl, не PUBLIC_URL).
 // Только приватный чат: Telegram шлёт /start и в группах (например, при
@@ -14,14 +14,14 @@
 // Telegram: заводит ожидание видео в BotSessionService раньше проверки роли.
 // Владение попыткой не проверяется — ответ одинаков для чужого и
 // несуществующего attemptId (SECURITY §3), саму привязку проверяет
-// MediaAssetsService, когда видео придёт. ИЗВЕСТНОГО blocked/invited к
-// ожиданию не пускаем (SECURITY §9) — BotUserAccessService.resolve() перед
-// стартом ожидания, `unknown` по-прежнему проходит без роли.
+// MediaAssetsService, когда видео придёт. ИЗВЕСТНОГО blocked к ожиданию не
+// пускаем (SECURITY §9) — BotUserAccessService.resolve() перед стартом
+// ожидания, `unknown` по-прежнему проходит без роли.
 //
-// Третий payload `join_<code>` (ADR-0030 «Бот», уточнение 2026-09-15) — та же
-// ссылка, что и на сайте (join-invite-deep-link.ts): валидный код заводит
-// незнакомца из Telegram-идентичности апдейта и сразу ведёт в active через
-// JoinByInviteService.join(); невалидный — аккаунт не заводим.
+// Третий payload `join_<code>` (ADR-0030 «Бот», ADR-0034) — та же ссылка,
+// что и на сайте (join-invite-deep-link.ts): валидный код заводит
+// незнакомца из Telegram-идентичности апдейта сразу `active`; невалидный —
+// аккаунт не заводим.
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
@@ -32,7 +32,6 @@ import { ChannelConfigService } from '../../channels/channel-config.service';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { SettingsService } from '../../settings/settings.service';
 import { InviteLinkService } from '../../users/invite-link.service';
-import { JoinByInviteService } from '../../users/join-by-invite.service';
 import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
 import { BotUserAccessService } from '../bot-user-access.service';
@@ -81,7 +80,6 @@ export class StartHandler {
     private readonly botSessions: BotSessionService,
     private readonly botAccess: BotUserAccessService,
     private readonly usersService: UsersService,
-    private readonly joinByInviteService: JoinByInviteService,
     private readonly inviteLinkService: InviteLinkService,
     private readonly config: ConfigService,
   ) {}
@@ -102,7 +100,6 @@ export class StartHandler {
       if (inviteCode) {
         await handleInviteDeepLink(ctx, from, inviteCode, now, {
           usersService: this.usersService,
-          joinByInviteService: this.joinByInviteService,
           inviteLinkService: this.inviteLinkService,
           publicUrl: this.config.get<string>('PUBLIC_URL'),
         });
@@ -125,7 +122,7 @@ export class StartHandler {
   }
 
   /** `unknown` — анонимный отправитель без аккаунта, ожидание заводим как
-   * раньше (комментарий вверху файла). `denied` — известный blocked/invited,
+   * раньше (комментарий вверху файла). `denied` — известный blocked,
    * ожидание НЕ заводим и отвечаем отказом, не «пришлите видео»: тихо
    * пускать заблокированного к отправке — не вариант (SECURITY §9). */
   private async handleExamDeepLink(

@@ -1,17 +1,13 @@
 // Чистая логика с фейками коллабораторов, без Mongo и без сети (CLAUDE.md
 // «Тесты», образец — соседние спеки хендлеров бота): маршрутизация к
 // MediaAssetsService и пересылка учителям — не сама привязка (та проверена
-// против настоящей Mongo в media-assets.service.spec.ts). blocked/invited —
-// отказ и закрытая сессия, видео не привязывается (SECURITY §9, ADR-0026).
+// против настоящей Mongo в media-assets.service.spec.ts). blocked —
+// отказ и закрытая сессия, видео не привязывается (SECURITY §9).
 import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
-import {
-  ACCESS_MESSAGE,
-  PENDING_APPROVAL_MESSAGE,
-  type ExamAttemptDto,
-} from '@xuanxue/shared';
+import { ACCESS_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
 import type { BotSessionLean } from '../bot-session.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
@@ -432,19 +428,6 @@ describe('ExamMediaMessageHandler', () => {
     await handler.handle(ctx, 111, SESSION, NOW);
 
     expect(replies).toEqual([ACCESS_MESSAGE]);
-    expect(clear).toHaveBeenCalledWith(111);
-    expect(attachTelegramVideo).not.toHaveBeenCalled();
-  });
-
-  it('неподтверждённый (invited) — отказ ожиданием подтверждения, сессия закрывается', async () => {
-    const { handler, clear, attachTelegramVideo } = buildHandler({
-      botAccess: fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
-    });
-    const { ctx, replies } = fakeCtx({ video: true });
-
-    await handler.handle(ctx, 111, SESSION, NOW);
-
-    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
     expect(clear).toHaveBeenCalledWith(111);
     expect(attachTelegramVideo).not.toHaveBeenCalled();
   });

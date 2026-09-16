@@ -3,7 +3,6 @@
 // трогаем: фабрика Telegraf подменена, callApi — jest-заглушка.
 import type { Telegraf } from 'telegraf';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
-import type { ChatMemberJoinHandler } from './handlers/chat-member-join.handler';
 import type { StartHandler } from './handlers/start.handler';
 import {
   CHAT_MEMBER_UPDATE,
@@ -49,7 +48,6 @@ describe('TelegramBotService — прогрев botInfo (ensureBotInfo)', () => 
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       chatMember as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       start as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -84,7 +82,6 @@ describe('TelegramBotService — регистрация вебхука при с
       fakeConfig(FULL_ENV),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -96,15 +93,12 @@ describe('TelegramBotService — регистрация вебхука при с
       {
         url: `https://xuanxue.su${TELEGRAM_WEBHOOK_PATH}`,
         secretToken: 'test-secret',
-        allowedUpdates: ['message', 'my_chat_member', 'chat_member', 'callback_query'],
+        allowedUpdates: ['message', 'my_chat_member', 'callback_query'],
       },
     ]);
     // Без callback_query бот не увидел бы нажатия кнопок предпросмотра
     // (PLAN.md §6) — Telegram шлёт только подписанные типы апдейтов.
     expect(webhookCalls[0]?.allowedUpdates).toContain('callback_query');
-    // Без chat_member Telegram не пришлёт апдейт о вступлении в группу учеников,
-    // даже когда бот там администратор (ADR-0026 п.2, RUNBOOK §8.15).
-    expect(webhookCalls[0]?.allowedUpdates).toContain('chat_member');
   });
 
   it('PUBLIC_URL с завершающим слэшем (защита в глубину — валидатор его и так запрещает) — путь без двойного слэша', async () => {
@@ -113,7 +107,6 @@ describe('TelegramBotService — регистрация вебхука при с
       fakeConfig({ ...FULL_ENV, PUBLIC_URL: 'https://xuanxue.su/' }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -135,7 +128,6 @@ describe('TelegramBotService — регистрация вебхука при с
       fakeConfig(env),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -161,7 +153,6 @@ describe('TelegramBotService — регистрация вебхука при с
       fakeConfig(FULL_ENV),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -184,7 +175,6 @@ describe('TelegramBotService — регистрация вебхука при с
       fakeConfig(FULL_ENV),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -199,7 +189,6 @@ describe('TelegramBotService — регистрация вебхука при с
       fakeConfig({ BOT_TOKEN: TOKEN }),
       fake.factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );
@@ -225,7 +214,6 @@ describe('TelegramBotService — регистрация вебхука при с
       fakeConfig({ BOT_TOKEN: TOKEN }),
       factory,
       fakeHandler() as unknown as ChatMemberHandler,
-      fakeHandler() as unknown as ChatMemberJoinHandler,
       fakeHandler() as unknown as StartHandler,
       ...fakeExtraHandlers(),
     );

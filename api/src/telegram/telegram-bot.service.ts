@@ -11,7 +11,6 @@ import { ensureBotInfo, registerWebhook } from './bot-startup';
 import { sendBotMessage } from './bot-send';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
-import { ChatMemberJoinHandler } from './handlers/chat-member-join.handler';
 import { ExamCommandHandler } from './handlers/exam-command.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
@@ -35,7 +34,6 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly config: ConfigService,
     @Inject(TELEGRAF_FACTORY) private readonly telegrafFactory: TelegrafFactory,
     private readonly chatMemberHandler: ChatMemberHandler,
-    private readonly chatMemberJoinHandler: ChatMemberJoinHandler,
     private readonly startHandler: StartHandler,
     private readonly callbackQueryHandler: CallbackQueryHandler,
     private readonly topicCommandHandler: TopicCommandHandler,
@@ -62,7 +60,6 @@ export class TelegramBotService implements OnApplicationBootstrap {
     });
     registerHandlers(bot, {
       chatMemberHandler: this.chatMemberHandler,
-      chatMemberJoinHandler: this.chatMemberJoinHandler,
       startHandler: this.startHandler,
       callbackQueryHandler: this.callbackQueryHandler,
       topicCommandHandler: this.topicCommandHandler,

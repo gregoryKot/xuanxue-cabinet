@@ -40,8 +40,7 @@ export class ChannelRecord {
   // у канала школы (группа/канал, личный чат штата — тот получает всё
   // расписание, ADR-0015) поле не задаётся явно, default true — прежнее
   // поведение, миграция не нужна: `{ $ne: false }` матчит и документы без
-  // поля (ChannelsService.list, ClassesService.defaultTelegramChannelIds,
-  // ChannelConfigService.listActiveTelegramChatIds).
+  // поля (ChannelsService.list, ClassesService.defaultTelegramChannelIds).
   @Prop({ type: Boolean, default: true })
   broadcastEligible!: boolean;
 

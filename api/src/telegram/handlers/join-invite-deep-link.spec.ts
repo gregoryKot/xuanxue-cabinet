@@ -1,14 +1,12 @@
 // Юнит с фейковым ctx и фейками сервисов (CLAUDE.md «Тесты» — ветвление,
 // не HTTP/Mongo): интеграционный путь через реальный /start — в
 // start.handler.spec.ts (describe «join_<code>»), read-after-write через
-// вебхук — в telegram-webhook.e2e-spec.ts.
+// вебхук — в telegram-webhook-join.e2e-spec.ts.
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { User } from 'telegraf/types';
-import { INVITE_LINK_INVALID_MESSAGE, ACCESS_MESSAGE } from '@xuanxue/shared';
-import { ForbiddenError, UnauthorizedError } from '../../common/errors';
+import { ACCESS_MESSAGE, INVITE_LINK_INVALID_MESSAGE } from '@xuanxue/shared';
 import type { InviteLinkService } from '../../users/invite-link.service';
-import type { JoinByInviteService } from '../../users/join-by-invite.service';
 import type { UserLean, UsersService } from '../../users/users.service';
 import { handleInviteDeepLink, type JoinDeepLinkDeps } from './join-invite-deep-link';
 
@@ -18,12 +16,12 @@ const FROM: Pick<User, 'id' | 'first_name' | 'last_name'> = {
   id: 1,
   first_name: 'Игорь',
 };
-const USER: UserLean = {
+const EXISTING_ACTIVE: UserLean = {
   id: 'u1',
   name: 'Ученик',
   roles: [],
   tz: 'Asia/Jerusalem',
-  status: 'invited',
+  status: 'active',
 };
 
 function fakeCtx(): { ctx: Context; replies: string[] } {
@@ -40,20 +38,18 @@ function fakeCtx(): { ctx: Context; replies: string[] } {
 function buildDeps(options: {
   findByTelegramId?: () => Promise<UserLean | null>;
   createFromTelegram?: () => Promise<UserLean>;
-  join?: () => Promise<UserLean>;
+  markJoinedViaInvite?: () => Promise<void>;
   isValid?: () => Promise<boolean>;
   publicUrl?: string;
 }): JoinDeepLinkDeps {
   return {
     usersService: {
-      findByTelegramId: options.findByTelegramId ?? (() => Promise.resolve(USER)),
+      findByTelegramId: options.findByTelegramId ?? (() => Promise.resolve(null)),
       createFromTelegram:
         options.createFromTelegram ??
         (() => Promise.reject(new Error('createFromTelegram не должен был вызываться'))),
+      markJoinedViaInvite: options.markJoinedViaInvite ?? (() => Promise.resolve()),
     } as unknown as UsersService,
-    joinByInviteService: {
-      join: options.join ?? (() => Promise.resolve({ ...USER, status: 'active' })),
-    } as unknown as JoinByInviteService,
     inviteLinkService: {
       isValid: options.isValid ?? (() => Promise.resolve(true)),
     } as unknown as InviteLinkService,
@@ -64,12 +60,12 @@ function buildDeps(options: {
 describe('handleInviteDeepLink', () => {
   // Смысл ссылки — новый ученик из канала сразу в школе (владелец,
   // уточнение 2026-09-15): валидный код заводит незнакомца тем же способом,
-  // что и вход через виджет на сайте (TelegramAuthService.fullName), и
-  // сразу ведёт его через join() в active — без второго /start.
-  it('незнакомец + валидный код — создаётся invited из Telegram-идентичности и сразу join() до active', async () => {
-    const created: UserLean = { ...USER, id: 'new1' };
+  // что и вход через виджет на сайте (TelegramAuthService.fullName), сразу
+  // `active` — статуса «ждёт подтверждения» больше нет (ADR-0034).
+  it('незнакомец + валидный код — создаётся active из Telegram-идентичности', async () => {
+    const created: UserLean = { ...EXISTING_ACTIVE, id: 'new1' };
     const createFromTelegram = jest.fn().mockResolvedValue(created);
-    const join = jest.fn().mockResolvedValue({ ...created, status: 'active' });
+    const markJoinedViaInvite = jest.fn().mockResolvedValue(undefined);
     const { ctx, replies } = fakeCtx();
 
     await handleInviteDeepLink(
@@ -80,7 +76,7 @@ describe('handleInviteDeepLink', () => {
       buildDeps({
         findByTelegramId: () => Promise.resolve(null),
         createFromTelegram,
-        join,
+        markJoinedViaInvite,
         isValid: () => Promise.resolve(true),
         publicUrl: 'https://xuanxue.su',
       }),
@@ -90,9 +86,9 @@ describe('handleInviteDeepLink', () => {
       telegramId: 1,
       name: 'Игорь',
       roles: [],
-      status: 'invited',
+      status: 'active',
     });
-    expect(join).toHaveBeenCalledWith(created, CODE, NOW);
+    expect(markJoinedViaInvite).toHaveBeenCalledWith('new1', NOW);
     expect(replies).toEqual([
       'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su',
     ]);
@@ -118,7 +114,7 @@ describe('handleInviteDeepLink', () => {
     expect(createFromTelegram).not.toHaveBeenCalled();
   });
 
-  it('известный человек, верный код — успех, PUBLIC_URL в тексте', async () => {
+  it('известный человек, уже active — код игнорируется, тот же успех, PUBLIC_URL в тексте', async () => {
     const { ctx, replies } = fakeCtx();
 
     await handleInviteDeepLink(
@@ -126,7 +122,11 @@ describe('handleInviteDeepLink', () => {
       FROM,
       CODE,
       NOW,
-      buildDeps({ publicUrl: 'https://xuanxue.su' }),
+      buildDeps({
+        findByTelegramId: () => Promise.resolve(EXISTING_ACTIVE),
+        isValid: () => Promise.resolve(false),
+        publicUrl: 'https://xuanxue.su',
+      }),
     );
 
     expect(replies).toEqual([
@@ -137,37 +137,57 @@ describe('handleInviteDeepLink', () => {
   it('PUBLIC_URL не задан — тот же текст, без адреса в конце', async () => {
     const { ctx, replies } = fakeCtx();
 
-    await handleInviteDeepLink(ctx, FROM, CODE, NOW, buildDeps({ publicUrl: undefined }));
+    await handleInviteDeepLink(
+      ctx,
+      FROM,
+      CODE,
+      NOW,
+      buildDeps({
+        findByTelegramId: () => Promise.resolve(null),
+        createFromTelegram: () => Promise.resolve({ ...EXISTING_ACTIVE, id: 'new2' }),
+        publicUrl: undefined,
+      }),
+    );
 
     expect(replies).toEqual([
       'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: ',
     ]);
   });
 
-  it('известный человек, неверный код — INVITE_LINK_INVALID_MESSAGE', async () => {
+  it('известный человек, blocked — ACCESS_MESSAGE, код не проверяется', async () => {
     const { ctx, replies } = fakeCtx();
-    const join = () => Promise.reject(new UnauthorizedError(INVITE_LINK_INVALID_MESSAGE));
+    const isValid = jest.fn();
 
-    await handleInviteDeepLink(ctx, FROM, CODE, NOW, buildDeps({ join }));
-
-    expect(replies).toEqual([INVITE_LINK_INVALID_MESSAGE]);
-  });
-
-  it('blocked — ACCESS_MESSAGE', async () => {
-    const { ctx, replies } = fakeCtx();
-    const join = () => Promise.reject(new ForbiddenError(ACCESS_MESSAGE));
-
-    await handleInviteDeepLink(ctx, FROM, CODE, NOW, buildDeps({ join }));
+    await handleInviteDeepLink(
+      ctx,
+      FROM,
+      CODE,
+      NOW,
+      buildDeps({
+        findByTelegramId: () =>
+          Promise.resolve({ ...EXISTING_ACTIVE, status: 'blocked' }),
+        isValid,
+      }),
+    );
 
     expect(replies).toEqual([ACCESS_MESSAGE]);
+    expect(isValid).not.toHaveBeenCalled();
   });
 
-  it('неожиданная ошибка join() — пробрасывается наружу, не проглатывается тихо', async () => {
+  it('неожиданная ошибка createFromTelegram — пробрасывается наружу, не проглатывается тихо', async () => {
     const { ctx } = fakeCtx();
-    const join = () => Promise.reject(new Error('mongo down'));
 
     await expect(
-      handleInviteDeepLink(ctx, FROM, CODE, NOW, buildDeps({ join })),
+      handleInviteDeepLink(
+        ctx,
+        FROM,
+        CODE,
+        NOW,
+        buildDeps({
+          findByTelegramId: () => Promise.resolve(null),
+          createFromTelegram: () => Promise.reject(new Error('mongo down')),
+        }),
+      ),
     ).rejects.toThrow('mongo down');
   });
 });

@@ -7,7 +7,7 @@
 // активным личным каналом), а через BotUserAccessService — единственную
 // точку «кто это и в каком он статусе» (тот же приём, что у
 // ExamMediaMessageHandler, ADR-0023; правило — как у AuthGuard в вебе,
-// SECURITY §9: `blocked`/`invited` не сдают экзамены и здесь).
+// SECURITY §9: `blocked` не сдаёт экзамены и здесь).
 //
 // Обычный провайдер Nest: register-handlers.ts получает его тем же списком
 // BotHandlers, что и остальные хендлеры, а экран меню — параметром
@@ -48,7 +48,7 @@ export class ExamCommandHandler {
   /** Общий экран для команды и для кнопки меню (menu-screens.ts) — один
    * рендер на три входа, как у /schedule и /уведомления. `null` — незнакомец
    * (нет записи в users по этому telegramId), бот молчит, как и раньше.
-   * `blocked`/`invited` — экран с отказом вместо списка: тихо игнорировать
+   * `blocked` — экран с отказом вместо списка: тихо игнорировать
    * нельзя (CLAUDE.md «тихий отказ — самая дорогая ошибка»), а кнопка «В
    * меню» не даёт застрять на отказе. */
   async listScreen(chatId: number, now: DateTime): Promise<BotMenu | null> {
