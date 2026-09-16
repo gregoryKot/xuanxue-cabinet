@@ -28,13 +28,11 @@ import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
 import { PendingApprovalScreen } from './PendingApprovalScreen';
+import { isPending, isTeacher, showsRouteScreen } from './screenAccess';
 import { StudentScreen } from './StudentScreen';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
-const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 const NOTIFICATIONS_PATH = '/notifications';
-const ATTEMPT_PATH_PREFIX = '/attempts/';
-const PENDING_STATUS = 'invited';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -65,20 +63,15 @@ export function AppShell() {
   const { me } = useAuth();
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const isPending = me?.status === PENDING_STATUS;
-  // invited не бывает teacher/admin (школа подтверждает раньше, чем даёт
-  // роль) — но проверка явная, а не понадеявшись на это: рисовать навигацию
-  // человеку, который ещё ничего не видит, нельзя.
-  const isTeacher =
-    !isPending && (me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false);
-  const showOutlet =
-    isTeacher ||
-    pathname === NOTIFICATIONS_PATH ||
-    pathname.startsWith(ATTEMPT_PATH_PREFIX);
+  // Правило «кому что показать» — screenAccess.ts, общее с
+  // firstScreenPrefetch.ts (CLAUDE.md «Одна механика — один компонент»).
+  const pending = isPending(me);
+  const teacherRole = isTeacher(me);
+  const showOutlet = showsRouteScreen(me, pathname);
   // Сюда добираются уже с подтверждённой сессией (RequireAuth выше) и
   // нарисованным первым экраном — самое время дотянуть остальные разделы в
   // простое браузера, чтобы переход по меню не ждал сети.
-  usePrefetchRoutes(isTeacher);
+  usePrefetchRoutes(teacherRole);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -88,10 +81,10 @@ export function AppShell() {
       </header>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        {isTeacher && !isMobile && <AppNav isMobile={false} me={me} />}
+        {teacherRole && !isMobile && <AppNav isMobile={false} me={me} />}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            {isPending ? (
+            {pending ? (
               <PendingApprovalScreen />
             ) : showOutlet ? (
               <Outlet />
@@ -104,7 +97,7 @@ export function AppShell() {
             {/* Ждущему подтверждения ссылка на уведомления никуда не ведёт:
                 AppShell рисует ему экран ожидания на любом пути, а API
                 закрыт до подтверждения (ADR-0026). */}
-            {!isPending && (
+            {!pending && (
               <>
                 <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
                   Уведомления
@@ -117,7 +110,7 @@ export function AppShell() {
         </div>
       </div>
 
-      {isTeacher && isMobile && <AppNav isMobile me={me} />}
+      {teacherRole && isMobile && <AppNav isMobile me={me} />}
     </div>
   );
 }

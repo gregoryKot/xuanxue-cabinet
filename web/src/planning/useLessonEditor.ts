@@ -11,10 +11,10 @@ import type {
   LessonDto,
   UpdateLessonInput,
 } from '@xuanxue/shared';
+import { LESSONS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useEntityEditor, type UseEntityEditorResult } from '../hooks/useEntityEditor';
 
-const LESSONS_PATH = '/lessons';
 const LOAD_ERROR_MESSAGE = 'Не удалось открыть занятие. Попробуйте ещё раз.';
 
 export interface UseLessonEditorResult extends UseEntityEditorResult<

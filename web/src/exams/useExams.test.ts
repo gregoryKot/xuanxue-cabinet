@@ -1,9 +1,10 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamDto } from '@xuanxue/shared';
+import { type ExamListFilters } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
-import { useExams, type ExamListFilters } from './useExams';
+import { useExams } from './useExams';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');

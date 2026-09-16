@@ -5,11 +5,8 @@
 // (closeIfExpiredAttempt) для каждой попытки списка, значит статус в ответе —
 // правда на момент запроса, а не то, что было при старте.
 import { useCallback, useState } from 'react';
-import {
-  ATTEMPT_NOT_FOUND_MESSAGE,
-  LIST_LIMIT_MAX,
-  type ExamAttemptDto,
-} from '@xuanxue/shared';
+import { ATTEMPT_NOT_FOUND_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
+import { ATTEMPTS_LIST_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { errorFrom, type FormError } from '../components/FormServerError';
@@ -39,8 +36,7 @@ export interface UseAttemptResult {
 
 export function useAttempt(attemptId: string): UseAttemptResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) =>
-      apiFetch<ExamAttemptDto[]>(`/attempts?limit=${LIST_LIMIT_MAX}`, { signal }),
+    (signal) => apiFetch<ExamAttemptDto[]>(ATTEMPTS_LIST_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
   const attempt = data?.find((item) => item.id === attemptId) ?? null;

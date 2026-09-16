@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EXAM_STATUSES } from '@xuanxue/shared';
+import { type ExamListFilters } from '../api/apiPaths';
 import { Button } from '../components/Button';
 import { ListFilters } from '../components/ListFilters';
 import { ListScreenBody } from '../components/ListScreenBody';
@@ -23,7 +24,7 @@ import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
 import { matchesSearch } from '../lib/textSearch';
 import { ExamCard } from './ExamCard';
 import { ExamsSectionStats } from './ExamsSectionStats';
-import { useExams, type ExamListFilters } from './useExams';
+import { useExams } from './useExams';
 
 const TITLE = 'Экзамены';
 const EXPLANATION =

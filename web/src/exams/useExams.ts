@@ -2,19 +2,12 @@
 // удаление уехали на страницу редактора (useExamEditor.ts, ADR-0033), и после
 // них экран возвращается сюда, перечитывая список с нуля.
 import { useEffect, useRef } from 'react';
-import { LIST_LIMIT_MAX, type ExamDto, type ExamStatus } from '@xuanxue/shared';
+import type { ExamDto } from '@xuanxue/shared';
+import { examsListPath, type ExamListFilters } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить экзамены. Попробуйте ещё раз.';
-
-/** Фильтры списка форм — одно определение на хук и на экран: раньше та же
- * форма объявлялась рядом со строкой фильтров вторым именем
- * `ExamFilterValues`, и два имени одной вещи расходились бы при первой же
- * правке. */
-export interface ExamListFilters {
-  status: ExamStatus | '';
-}
 
 export interface UseExamsResult {
   exams: ExamDto[] | null;
@@ -23,15 +16,9 @@ export interface UseExamsResult {
   reload: () => Promise<void>;
 }
 
-function buildListPath(filters: ExamListFilters): string {
-  const params = [`limit=${LIST_LIMIT_MAX}`];
-  if (filters.status) params.push(`status=${filters.status}`);
-  return `/exams?${params.join('&')}`;
-}
-
 export function useExams(filters: ExamListFilters): UseExamsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ExamDto[]>(buildListPath(filters), { signal }),
+    (signal) => apiFetch<ExamDto[]>(examsListPath(filters), { signal }),
     LOAD_ERROR_MESSAGE,
   );
 

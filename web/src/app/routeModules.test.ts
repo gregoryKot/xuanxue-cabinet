@@ -1,37 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { matchRouteLoader, ROOT_REDIRECT_PATH, ROUTE_MODULES } from './routeModules';
+import { matchRoute } from './routeMatch';
+import { ROOT_REDIRECT_PATH, ROUTE_MODULES } from './routeModules';
 
 const routes = Object.values(ROUTE_MODULES);
 
-describe('matchRouteLoader', () => {
+/** Загрузчик чанка для этого адреса — `null`, если адрес не наш. */
+function loaderAt(pathname: string) {
+  return matchRoute(pathname)?.load ?? null;
+}
+
+describe('matchRoute', () => {
   it('простой адрес раздела — загрузчик его экрана', () => {
-    expect(matchRouteLoader('/exams')).toBe(ROUTE_MODULES.exams.load);
-    expect(matchRouteLoader('/exams/new')).toBe(ROUTE_MODULES.examNew.load);
-    expect(matchRouteLoader('/exams/652f00000000000000000001')).toBe(
+    expect(loaderAt('/exams')).toBe(ROUTE_MODULES.exams.load);
+    expect(loaderAt('/exams/new')).toBe(ROUTE_MODULES.examNew.load);
+    expect(loaderAt('/exams/652f00000000000000000001')).toBe(
       ROUTE_MODULES.examEditor.load,
     );
-    expect(matchRouteLoader('/exam-items')).toBe(ROUTE_MODULES.examItems.load);
-    expect(matchRouteLoader('/exam-items/new')).toBe(ROUTE_MODULES.examItemNew.load);
-    expect(matchRouteLoader('/exam-items/652f00000000000000000002')).toBe(
+    expect(loaderAt('/exam-items')).toBe(ROUTE_MODULES.examItems.load);
+    expect(loaderAt('/exam-items/new')).toBe(ROUTE_MODULES.examItemNew.load);
+    expect(loaderAt('/exam-items/652f00000000000000000002')).toBe(
       ROUTE_MODULES.examItemEditor.load,
     );
-    expect(matchRouteLoader('/people')).toBe(ROUTE_MODULES.people.load);
-    expect(matchRouteLoader('/planning')).toBe(ROUTE_MODULES.planning.load);
-    expect(matchRouteLoader('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
-    expect(matchRouteLoader('/planning/652f00000000000000000003')).toBe(
+    expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
+    expect(loaderAt('/planning')).toBe(ROUTE_MODULES.planning.load);
+    expect(loaderAt('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
+    expect(loaderAt('/planning/652f00000000000000000003')).toBe(
       ROUTE_MODULES.lessonEditor.load,
     );
-    expect(matchRouteLoader('/schedule')).toBe(ROUTE_MODULES.schedule.load);
-    expect(matchRouteLoader('/schedule/new')).toBe(ROUTE_MODULES.classNew.load);
-    expect(matchRouteLoader('/schedule/652f00000000000000000004')).toBe(
+    expect(loaderAt('/schedule')).toBe(ROUTE_MODULES.schedule.load);
+    expect(loaderAt('/schedule/new')).toBe(ROUTE_MODULES.classNew.load);
+    expect(loaderAt('/schedule/652f00000000000000000004')).toBe(
       ROUTE_MODULES.classEditor.load,
     );
   });
 
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {
-    expect(matchRouteLoader('/channels')).toBe(ROUTE_MODULES.channels.load);
-    expect(matchRouteLoader('/channels/new')).toBe(ROUTE_MODULES.channelNew.load);
-    expect(matchRouteLoader('/channels/652f00000000000000000003')).toBe(
+    expect(loaderAt('/channels')).toBe(ROUTE_MODULES.channels.load);
+    expect(loaderAt('/channels/new')).toBe(ROUTE_MODULES.channelNew.load);
+    expect(loaderAt('/channels/652f00000000000000000003')).toBe(
       ROUTE_MODULES.channelEditor.load,
     );
     expect(ROUTE_MODULES.channelNew.load).toBe(ROUTE_MODULES.channelEditor.load);
@@ -41,36 +47,36 @@ describe('matchRouteLoader', () => {
   });
 
   it('новая рассылка — свой адрес, у журнала свой (ADR-0033)', async () => {
-    expect(matchRouteLoader('/broadcasts')).toBe(ROUTE_MODULES.broadcasts.load);
-    expect(matchRouteLoader('/broadcasts/new')).toBe(ROUTE_MODULES.broadcastNew.load);
+    expect(loaderAt('/broadcasts')).toBe(ROUTE_MODULES.broadcasts.load);
+    expect(loaderAt('/broadcasts/new')).toBe(ROUTE_MODULES.broadcastNew.load);
     await expect(ROUTE_MODULES.broadcastNew.load()).resolves.toHaveProperty('default');
   });
 
   it('адрес с параметром — экран, у которого маршрут с :параметром', () => {
-    expect(matchRouteLoader('/grading/abc')).toBe(ROUTE_MODULES.attemptReview.load);
-    expect(matchRouteLoader('/attempts/652f00000000000000000001')).toBe(
+    expect(loaderAt('/grading/abc')).toBe(ROUTE_MODULES.attemptReview.load);
+    expect(loaderAt('/attempts/652f00000000000000000001')).toBe(
       ROUTE_MODULES.attempt.load,
     );
-    expect(matchRouteLoader('/join/ABC123')).toBe(ROUTE_MODULES.join.load);
+    expect(loaderAt('/join/ABC123')).toBe(ROUTE_MODULES.join.load);
   });
 
   it('раздел и его подэкран не путаются: /grading — очередь, /grading/:id — разбор', () => {
-    expect(matchRouteLoader('/grading')).toBe(ROUTE_MODULES.grading.load);
-    expect(matchRouteLoader('/grading/abc/extra')).toBeNull();
+    expect(loaderAt('/grading')).toBe(ROUTE_MODULES.grading.load);
+    expect(loaderAt('/grading/abc/extra')).toBeNull();
   });
 
   it('корень — туда же, куда ведёт редирект с корня', () => {
-    expect(matchRouteLoader('/')).toBe(ROUTE_MODULES.planning.load);
+    expect(loaderAt('/')).toBe(ROUTE_MODULES.planning.load);
     expect(ROOT_REDIRECT_PATH).toBe(ROUTE_MODULES.planning.path);
   });
 
   it('хвостовой слеш не мешает', () => {
-    expect(matchRouteLoader('/exams/')).toBe(ROUTE_MODULES.exams.load);
+    expect(loaderAt('/exams/')).toBe(ROUTE_MODULES.exams.load);
   });
 
   it('неизвестный адрес — null, грузить заранее нечего', () => {
-    expect(matchRouteLoader('/nonexistent')).toBeNull();
-    expect(matchRouteLoader('/exams/extra/deep')).toBeNull();
+    expect(loaderAt('/nonexistent')).toBeNull();
+    expect(loaderAt('/exams/extra/deep')).toBeNull();
   });
 });
 

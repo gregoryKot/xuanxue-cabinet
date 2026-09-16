@@ -4,6 +4,7 @@
 // people/useTeachers.ts. Лимит не передаём — сервис сам берёт
 // MY_LESSONS_LIMIT_DEFAULT, когда query пуст (ListMyLessonsDto).
 import type { MyLessonDto } from '@xuanxue/shared';
+import { MY_LESSONS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import {
   useAbortableFetch,
@@ -14,7 +15,7 @@ const LOAD_ERROR_MESSAGE = 'Не удалось загрузить ближай�
 
 export function useMyLessons(): UseAbortableFetchResult<MyLessonDto[]> {
   return useAbortableFetch(
-    (signal) => apiFetch<MyLessonDto[]>('/me/lessons', { signal }),
+    (signal) => apiFetch<MyLessonDto[]>(MY_LESSONS_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
 }
