@@ -4,9 +4,9 @@
 // от icon.svg, перегенерировать после его правки —
 //   node scripts/generate-pwa-icons.mjs
 //
-// icon.svg — тайцзи на тёмно-зелёном/чернильном круге, без <text> (в CI-
-// рендере sharp нет CJK-шрифтов, символ — только path/circle). Отсюда четыре
-// файла:
+// icon.svg — печать школы киноварью на бумаге (тот же знак, что
+// SchoolMark.tsx), без <text> (в CI-рендере sharp нет CJK-шрифтов, символ —
+// только rect). Отсюда четыре файла:
 //   icon-192.png, icon-512.png    — обычная иконка (manifest purpose "any"),
 //                                    фон вне круга прозрачный.
 //   icon-maskable-512.png         — Android adaptive icons: сплошной фон на
@@ -22,10 +22,11 @@ const ROOT = join(import.meta.dirname, '..');
 const SVG_PATH = join(ROOT, 'web', 'public', 'icons', 'icon.svg');
 const OUT_DIR = join(ROOT, 'web', 'public', 'icons');
 
-// Тот же тон, что theme_color манифеста (web/public/manifest.webmanifest) —
-// фон круга иконки, чтобы обрезка маской или флатенинг не оставляли шов
-// другого цвета.
-const SOLID_BG = '#1f3b2f';
+// Тот же тон, что фон icon.svg и theme_color/background_color манифеста
+// (web/public/manifest.webmanifest) — «бумага» палитры «тихо и благородно»
+// (docs/adr/0031). Совпадает с фоном самого SVG, поэтому обрезка маской или
+// флатенинг не оставляют шов другого цвета.
+const SOLID_BG = '#faf8f4';
 // Доля площади квадрата, которую занимает символ в maskable-варианте.
 const MASKABLE_SAFE_ZONE = 0.8;
 
