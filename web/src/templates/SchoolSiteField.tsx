@@ -19,7 +19,11 @@ import {
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
-import { editorSectionStyle, screenExplanationStyle } from '../components/screenLayout';
+import {
+  editorSectionStyle,
+  primaryActionStyle,
+  screenExplanationStyle,
+} from '../components/screenLayout';
 import { usePreviewMinutesField } from './usePreviewMinutesField';
 import { useSchoolSiteField } from './useSchoolSiteField';
 
@@ -72,6 +76,7 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
           неразличим для скринридера и для getByRole в тестах. */}
       <Button
         variant="secondary"
+        style={primaryActionStyle}
         onClick={() => void site.save()}
         pending={site.pending}
         disabled={!site.hasChanges}
@@ -95,6 +100,7 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
       <FormServerError error={preview.error} />
       <Button
         variant="secondary"
+        style={primaryActionStyle}
         onClick={() => void preview.save()}
         pending={preview.pending}
         disabled={!preview.hasChanges}

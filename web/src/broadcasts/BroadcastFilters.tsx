@@ -1,13 +1,23 @@
-// Фильтры журнала «Рассылки» — период и статус (pr-k3-fixes.md п.13):
-// через общий Field/inputStyle, высота ≥44px (CLAUDE.md «Доступность»),
-// как остальные контролы кабинета, а не голый `<label><select>`.
+// Строка фильтров журнала «Рассылки» — статус переключателями, период
+// селектом в конце той же строки (общий components/ListFilters.tsx, как на
+// «Экзаменах» и «Вопросах»: направление «тихо и благородно», docs/adr/0031).
+// Раньше это были два нативных select с подписями сверху — ряд коробок над
+// журналом (отзыв владельца 2026-09-16).
+//
+// Период остался селектом: три значения, из которых выбирают одно, а ещё
+// один ряд переключателей рядом со статусами на 360 px не помещается.
+// Подпись «Период» только для скринридера — на экране её заменяет сам выбор
+// («2 недели» читается как период без объяснений).
 import type { CSSProperties } from 'react';
 import { BROADCAST_STATUSES, type BroadcastStatus } from '@xuanxue/shared';
-import { Field, inputStyle } from '../components/Field';
+import { inputStyle } from '../components/Field';
+import { ListFilters } from '../components/ListFilters';
 import { BROADCAST_STATUS_LABELS_RU } from './broadcastLabels';
 import { JOURNAL_RANGE_OPTIONS, type JournalRangeWeeks } from './broadcastWindow';
 
-const filtersStyle: CSSProperties = { display: 'flex', gap: 10, flexWrap: 'wrap' };
+const PERIOD_LABEL = 'Период';
+
+const selectStyle: CSSProperties = { ...inputStyle, width: '100%' };
 
 interface BroadcastFiltersProps {
   rangeWeeks: JournalRangeWeeks;
@@ -23,10 +33,15 @@ export function BroadcastFilters({
   onStatusChange,
 }: BroadcastFiltersProps) {
   return (
-    <div style={filtersStyle}>
-      <Field label="Период">
+    <ListFilters
+      statuses={BROADCAST_STATUSES}
+      labels={BROADCAST_STATUS_LABELS_RU}
+      value={status}
+      onChange={onStatusChange}
+      trailing={
         <select
-          style={inputStyle}
+          aria-label={PERIOD_LABEL}
+          style={selectStyle}
           value={rangeWeeks}
           onChange={(e) =>
             onRangeWeeksChange(Number(e.target.value) as JournalRangeWeeks)
@@ -38,21 +53,7 @@ export function BroadcastFilters({
             </option>
           ))}
         </select>
-      </Field>
-      <Field label="Статус">
-        <select
-          style={inputStyle}
-          value={status}
-          onChange={(e) => onStatusChange(e.target.value as BroadcastStatus | '')}
-        >
-          <option value="">Все</option>
-          {BROADCAST_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {BROADCAST_STATUS_LABELS_RU[s]}
-            </option>
-          ))}
-        </select>
-      </Field>
-    </div>
+      }
+    />
   );
 }

@@ -18,7 +18,11 @@ import {
   type FormError,
 } from '../components/FormServerError';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { editorPageStyle, editorSectionStyle } from '../components/screenLayout';
+import {
+  editorPageStyle,
+  editorSectionStyle,
+  primaryActionStyle,
+} from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
 import { SchoolSiteField } from './SchoolSiteField';
@@ -124,6 +128,7 @@ export default function TemplatesScreen() {
 
           <div style={editorSectionStyle}>
             <Button
+              style={primaryActionStyle}
               onClick={() => void handleSave()}
               pending={pending}
               disabled={!hasChanges || hasInvalid}

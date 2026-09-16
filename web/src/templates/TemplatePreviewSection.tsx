@@ -7,11 +7,11 @@
 // правки не сохранены, кнопка недоступна и об этом сказано строкой, а не
 // молчанием (docs/PLAN.md §6 «Шаблоны»).
 import type { LessonDto, TemplateKind } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { PostPreview } from '../components/PostPreview';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { formatDateTime } from '../lib/formatDate';
 import { useAutoPreview } from './useAutoPreview';
 
@@ -72,15 +72,12 @@ export function TemplatePreviewSection({
 
       {dirty && <p style={noteStyle}>{DIRTY_NOTE}</p>}
 
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={!lessonId || dirty || !!lessonsError}
-        pending={preview.pending}
+      <TextLinkButton
+        disabled={!lessonId || dirty || !!lessonsError || preview.pending}
         onClick={() => void preview.preview(kind, lessonId)}
       >
         Обновить предпросмотр
-      </Button>
+      </TextLinkButton>
 
       {preview.error && (
         <p role="alert" style={dangerNoteStyle}>

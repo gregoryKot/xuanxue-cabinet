@@ -62,9 +62,7 @@ export default function ExamItemsScreen() {
         labels={EXAM_ITEM_STATUS_LABELS_RU}
         value={status}
         onChange={setStatus}
-        searchLabel={SEARCH_LABEL}
-        search={search}
-        onSearchChange={setSearch}
+        search={{ label: SEARCH_LABEL, value: search, onChange: setSearch }}
       />
 
       <ListScreenBody

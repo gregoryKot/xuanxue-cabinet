@@ -1,7 +1,10 @@
-// Список каналов чекбоксами — одна механика на кабинет (CLAUDE.md «Одна
-// механика — один компонент», pr-k3-fixes.md п.9): раньше та же разметка
-// дублировалась в schedule/ClassChannelsField.tsx (лист занятия) и
-// broadcasts/BroadcastFormFields.tsx (лист рассылки) — jscpd поймал бы
+// Список каналов галочками — одна механика на кабинет (CLAUDE.md «Одна
+// механика — один компонент», pr-k3-fixes.md п.9). Сама галочка — общий
+// components/Toggle.tsx, как «Отправить сейчас» рядом: системный чекбокс
+// рисовался маленьким серым квадратом мимо палитры (отзыв владельца
+// 2026-09-16). Раньше та же разметка дублировалась в
+// schedule/ClassChannelsField.tsx (лист занятия) и
+// broadcasts/BroadcastFormFields.tsx (форма рассылки) — jscpd поймал бы
 // дубль. `emptyMessage` — у пустого списка разный смысл в разных местах
 // («каналов нет вовсе» у занятия, «нет включённых» у рассылки), поэтому
 // текст передаёт вызывающий компонент, а не общий. `ref` — на сам `fieldset`
@@ -9,6 +12,7 @@
 // канал» (pr-k3-fixes.md п.6, broadcastFormInput.ts).
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import type { ChannelDto } from '@xuanxue/shared';
+import { Toggle } from '../components/Toggle';
 import { CHANNEL_TYPE_LABELS_RU } from './channelTypeLabels';
 
 const fieldsetStyle: CSSProperties = {
@@ -22,12 +26,6 @@ const fieldsetStyle: CSSProperties = {
 const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
 const hintStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 const errorStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--danger)' };
-const rowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  minHeight: 44,
-};
 
 interface ChannelPickerProps {
   legend: string;
@@ -57,16 +55,12 @@ export const ChannelPicker = forwardRef<HTMLFieldSetElement, ChannelPickerProps>
           <p style={hintStyle}>{emptyMessage}</p>
         ) : (
           channels.map((channel) => (
-            <label key={channel.id} style={rowStyle}>
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(channel.id)}
-                onChange={(e) => toggle(channel.id, e.target.checked)}
-              />
-              <span>
-                {CHANNEL_TYPE_LABELS_RU[channel.type]} · {channel.title}
-              </span>
-            </label>
+            <Toggle
+              key={channel.id}
+              label={`${CHANNEL_TYPE_LABELS_RU[channel.type]} · ${channel.title}`}
+              checked={selectedIds.includes(channel.id)}
+              onChange={(checked) => toggle(channel.id, checked)}
+            />
           ))
         )}
         {error && (

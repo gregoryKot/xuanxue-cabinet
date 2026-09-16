@@ -5,7 +5,7 @@
 // компонент», jscpd). Что искать — решает экран: форму ищут по названию,
 // вопрос — по формулировке и тегу (lib/textSearch.ts, фильтр локальный:
 // текстового поиска у бэкенда нет, а список и так с лимитом).
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { inputStyle } from './Field';
 
 const ALL_LABEL = 'Все';
@@ -47,12 +47,22 @@ const toggleActiveStyle: CSSProperties = {
   fontWeight: 500,
   borderBottomColor: 'var(--ink)',
 };
-const searchWrapStyle: CSSProperties = {
+const trailingStyle: CSSProperties = {
   marginLeft: 'auto',
   flex: '1 1 200px',
   maxWidth: 280,
 };
 const searchInputStyle: CSSProperties = { ...inputStyle, width: '100%' };
+
+/** Поиск по уже загруженному списку. Подпись видна плейсхолдером и
+ * скринридеру, на экране не дублируется. Не передан — строка остаётся с
+ * одними переключателями: в журнале рассылок искать по тексту незачем, там
+ * фильтруют период и статус. */
+interface ListSearch {
+  label: string;
+  value: string;
+  onChange: (search: string) => void;
+}
 
 interface ListFiltersProps<TStatus extends string> {
   statuses: readonly TStatus[];
@@ -60,10 +70,10 @@ interface ListFiltersProps<TStatus extends string> {
   /** Пустая строка — «Все». */
   value: TStatus | '';
   onChange: (status: TStatus | '') => void;
-  /** Подпись поиска: видна плейсхолдером и скринридеру, на экране не дублируется. */
-  searchLabel: string;
-  search: string;
-  onSearchChange: (search: string) => void;
+  search?: ListSearch;
+  /** Свой контрол в конце строки — период журнала рассылок. Стоит там же,
+   * где поиск: справа от переключателей, одной строкой с ними. */
+  trailing?: ReactNode;
 }
 
 export function ListFilters<TStatus extends string>({
@@ -71,9 +81,8 @@ export function ListFilters<TStatus extends string>({
   labels,
   value,
   onChange,
-  searchLabel,
   search,
-  onSearchChange,
+  trailing,
 }: ListFiltersProps<TStatus>) {
   const options: { status: TStatus | ''; label: string }[] = [
     { status: '', label: ALL_LABEL },
@@ -99,16 +108,19 @@ export function ListFilters<TStatus extends string>({
           </button>
         ))}
       </div>
-      <label style={searchWrapStyle}>
-        <span className="xuanxue-sr-only">{searchLabel}</span>
-        <input
-          type="search"
-          style={searchInputStyle}
-          placeholder={searchLabel}
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-      </label>
+      {search && (
+        <label style={trailingStyle}>
+          <span className="xuanxue-sr-only">{search.label}</span>
+          <input
+            type="search"
+            style={searchInputStyle}
+            placeholder={search.label}
+            value={search.value}
+            onChange={(e) => search.onChange(e.target.value)}
+          />
+        </label>
+      )}
+      {trailing && <div style={trailingStyle}>{trailing}</div>}
     </div>
   );
 }
