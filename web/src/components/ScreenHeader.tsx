@@ -20,10 +20,18 @@ const rowStyle: CSSProperties = {
   justifyContent: 'space-between',
   gap: 20,
 };
+// `flex: 1 1 …` обязателен: без него колонка заголовка занимает ширину по
+// содержимому, и длинное объяснение (список каналов) сталкивает действие на
+// следующую строку — кнопка оказывается под текстом, а не справа, как на
+// «Занятиях» (отзыв владельца 2026-09-16). База в пикселях — порог, ниже
+// которого перенос всё-таки нужен: на 360 px кнопке рядом уже не поместиться.
+const TITLE_COLUMN_MIN_WIDTH_PX = 260;
+
 const titleColumnStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
+  flex: `1 1 ${TITLE_COLUMN_MIN_WIDTH_PX}px`,
   minWidth: 0,
   maxWidth: 620,
 };

@@ -18,6 +18,18 @@ describe('matchRouteLoader', () => {
     expect(matchRouteLoader('/people')).toBe(ROUTE_MODULES.people.load);
   });
 
+  it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {
+    expect(matchRouteLoader('/channels')).toBe(ROUTE_MODULES.channels.load);
+    expect(matchRouteLoader('/channels/new')).toBe(ROUTE_MODULES.channelNew.load);
+    expect(matchRouteLoader('/channels/652f00000000000000000003')).toBe(
+      ROUTE_MODULES.channelEditor.load,
+    );
+    expect(ROUTE_MODULES.channelNew.load).toBe(ROUTE_MODULES.channelEditor.load);
+    // Загрузчик и правда приводит экран: опечатка в пути модуля иначе всплыла
+    // бы только в браузере, пустым экраном под Suspense.
+    await expect(ROUTE_MODULES.channelNew.load()).resolves.toHaveProperty('default');
+  });
+
   it('адрес с параметром — экран, у которого маршрут с :параметром', () => {
     expect(matchRouteLoader('/grading/abc')).toBe(ROUTE_MODULES.attemptReview.load);
     expect(matchRouteLoader('/attempts/652f00000000000000000001')).toBe(

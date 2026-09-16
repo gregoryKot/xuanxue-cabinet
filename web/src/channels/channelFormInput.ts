@@ -1,4 +1,4 @@
-// Чистая логика листа канала — состояние, валидация, сборка тела запроса
+// Чистая логика страницы канала — состояние, валидация, сборка тела запроса
 // (CLAUDE.md «Тесты»), по образцу schedule/classFormInput.ts. Тип канала
 // неизменяем после создания (UpdateChannelInput его не принимает) — при
 // правке используется `channelDto.type`, поле выбора типа скрыто.
@@ -24,6 +24,12 @@ type CreatableChannelType = Exclude<ChannelType, 'webpush'>;
 export interface ChannelFormState {
   type: CreatableChannelType;
   title: string;
+  /** Выключенный канал остаётся в списке, но рассылки в него не уходят.
+   * Поле формы, а не отдельная мутация с переключателем в списке: одно
+   * сохранение страницы канала — один PATCH (ADR-0033, «Каналы»). Создание
+   * его не знает — `CreateChannelInput` поля `active` не принимает, новый
+   * канал включён с рождения. */
+  active: boolean;
   chatId: string;
   token: string;
   peerIdText: string;
@@ -36,8 +42,9 @@ export interface ChannelFormError {
   message: string;
 }
 
-/** Каналу webpush этот экран не даёт открыть свой лист (создаётся подпиской,
- * не формой) — резерв «manual» на случай, если он всё же попал в список. */
+/** Каналу webpush этот экран не даёт открыть свою страницу (создаётся
+ * подпиской, не формой) — резерв «manual» на случай, если он всё же попал в
+ * список. */
 function toCreatableType(type: ChannelType): CreatableChannelType {
   return type === 'webpush' ? 'manual' : type;
 }
@@ -46,6 +53,7 @@ export function initialChannelFormState(channelDto: ChannelDto | null): ChannelF
   return {
     type: channelDto ? toCreatableType(channelDto.type) : 'vk',
     title: channelDto?.title ?? '',
+    active: channelDto?.active ?? true,
     chatId: channelDto?.type === 'telegram' ? channelDto.target : '',
     token: '',
     peerIdText: channelDto?.type === 'vk' ? channelDto.target : '',
@@ -121,7 +129,7 @@ export function toUpdateInput(
   state: ChannelFormState,
   existingType: ChannelType,
 ): UpdateChannelInput {
-  const input: UpdateChannelInput = { title: state.title.trim() };
+  const input: UpdateChannelInput = { title: state.title.trim(), active: state.active };
   if (existingType === 'telegram') {
     input.config = { chatId: state.chatId.trim() };
   } else if (existingType === 'vk' && state.token.trim()) {
