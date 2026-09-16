@@ -108,9 +108,10 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
     const body = res.body as MeDto;
     expect(body.status).toBe('active');
     expect(body.roles).toEqual([]);
+    expect(body.telegramLinked).toBe(false); // инцидент 2026-09-16, RUNBOOK §8.17
     // Только поля MeDto — email/tokenHash в ответе нет (SECURITY §2, CLAUDE.md «API»).
     expect(Object.keys(body).sort()).toEqual(
-      ['id', 'name', 'roles', 'status', 'tz'].sort(),
+      ['id', 'name', 'roles', 'status', 'telegramLinked', 'tz'].sort(),
     );
     const cookie = String(res.headers['set-cookie']);
     expect(cookie).toContain('session=');

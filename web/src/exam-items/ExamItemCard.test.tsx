@@ -2,16 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto } from '@xuanxue/shared';
-import type * as HttpModule from '../api/http';
-import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { ExamItemCard } from './ExamItemCard';
-
-vi.mock('../api/http', async () => {
-  const actual = await vi.importActual<typeof HttpModule>('../api/http');
-  return { ...actual, apiFetch: vi.fn() };
-});
-
-resetApiFetchBetweenTests();
 
 function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
   return {
@@ -34,7 +25,7 @@ describe('ExamItemCard', () => {
     render(<ExamItemCard item={makeItem()} onSelect={vi.fn()} />);
 
     expect(screen.getByText('Опишите принцип песчинки')).toBeInTheDocument();
-    expect(screen.getByText(/Текстовый ответ · Черновик/)).toBeInTheDocument();
+    expect(screen.getByText(/Свободный ответ · Черновик/)).toBeInTheDocument();
   });
 
   it('без тегов — раздела с тегами нет', () => {
@@ -72,28 +63,9 @@ describe('ExamItemCard', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
-  it('кнопка «Статистика» не вызывает onSelect', async () => {
-    const onSelect = vi.fn();
-    mockApiByPath({ '/exam-items': { itemId: 'e1', kind: 'text', askedCount: 0 } });
-    render(<ExamItemCard item={makeItem()} onSelect={onSelect} />);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Статистика' }));
-
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
-  it('«Статистика» открывает и закрывает статистику вопроса', async () => {
-    mockApiByPath({ '/exam-items': { itemId: 'e1', kind: 'text', askedCount: 0 } });
+  it('в строке ровно одно действие — открыть вопрос', () => {
     render(<ExamItemCard item={makeItem()} onSelect={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Статистика' }));
-    expect(
-      await screen.findByText('Этот вопрос ещё никому не задавали.'),
-    ).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Скрыть статистику' }));
-    expect(
-      screen.queryByText('Этот вопрос ещё никому не задавали.'),
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });

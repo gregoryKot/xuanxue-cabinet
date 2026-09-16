@@ -3,7 +3,7 @@ import { formatExamItemMeta } from './examItemLabels';
 
 describe('formatExamItemMeta', () => {
   it('без тегов — только тип вопроса', () => {
-    expect(formatExamItemMeta({ kind: 'video', tags: [] })).toBe('Видео-ответ');
+    expect(formatExamItemMeta({ kind: 'video', tags: [] })).toBe('Видео');
   });
 
   it('с тегами — тип и теги через разделитель', () => {

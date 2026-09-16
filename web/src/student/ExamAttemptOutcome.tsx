@@ -8,7 +8,22 @@ import type { GradingCriterionDto, GradingOutcome } from '@xuanxue/shared';
 import { listCardMetaStyle } from '../components/listCardStyles';
 import { describeOutcome, formatCriterionScore } from './examAttemptState';
 
-const outcomeStyle: CSSProperties = { margin: 0, fontWeight: 600, fontSize: 14 };
+// «Экзамен сдан» — нефрит: единственный смысл, за которым этот цвет
+// закреплён (docs/adr/0031). Остальные итоги остаются тушью: «не сдан» и
+// «нужно доработать» — не авария, разбор рядом объясняет, что делать.
+const PASSED_COLOR = 'var(--jade)';
+
+const outcomeStyle: CSSProperties = { margin: 0, color: 'var(--ink)' };
+const passedStyle: CSSProperties = { ...outcomeStyle, color: PASSED_COLOR };
+// Комментарий учителя — на подложке, как выписка на полях (макет
+// Student.dc.html): он единственный здесь написан живым человеком.
+const commentBoxStyle: CSSProperties = {
+  margin: '10px 0 0',
+  padding: '14px 16px',
+  background: 'var(--panel)',
+  borderRadius: 3,
+  lineHeight: 1.65,
+};
 const criteriaListStyle: CSSProperties = {
   margin: '4px 0 0',
   padding: 0,
@@ -17,7 +32,6 @@ const criteriaListStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 2,
 };
-const commentStyle: CSSProperties = { ...listCardMetaStyle, margin: '6px 0 0' };
 
 interface ExamAttemptOutcomeProps {
   outcome: GradingOutcome;
@@ -34,7 +48,12 @@ export function ExamAttemptOutcome({
 }: ExamAttemptOutcomeProps) {
   return (
     <div>
-      <p style={outcomeStyle}>{describeOutcome(outcome)}</p>
+      <p
+        className="xuanxue-status-label"
+        style={outcome === 'passed' ? passedStyle : outcomeStyle}
+      >
+        {describeOutcome(outcome)}
+      </p>
 
       {criteria && criteria.length > 0 && (
         <ul style={criteriaListStyle}>
@@ -47,12 +66,7 @@ export function ExamAttemptOutcome({
         </ul>
       )}
 
-      {comment && (
-        <p style={commentStyle}>
-          <strong>Комментарий учителя: </strong>
-          {comment}
-        </p>
-      )}
+      {comment && <p style={commentBoxStyle}>{comment}</p>}
     </div>
   );
 }

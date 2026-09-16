@@ -27,6 +27,7 @@ const TEACHER: MeDto = {
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -34,6 +35,7 @@ const ADMIN: MeDto = {
   roles: ['admin'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -144,9 +146,7 @@ describe('App', () => {
 
     renderAt('/planning');
 
-    expect(
-      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
   });
 
   it('учитель на /exam-items — маршрут «Вопросы для экзамена» открывает ExamItemsScreen', async () => {
@@ -156,6 +156,16 @@ describe('App', () => {
 
     expect(
       await screen.findByText(/Из этих вопросов собирается экзамен/),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /exam-items/new — маршрут страницы вопроса (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/exam-items': [] });
+
+    renderAt('/exam-items/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Новый вопрос' }),
     ).toBeInTheDocument();
   });
 
@@ -239,6 +249,7 @@ describe('App', () => {
       roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockRoute(student, { '/me/lessons': [], '/me/exams': [] });
 
@@ -253,9 +264,7 @@ describe('App', () => {
 
     renderAt('/');
 
-    expect(
-      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
   });
 
   // Личная настройка человека — маршрут не за RequirePeopleAccess и не за
@@ -277,6 +286,7 @@ describe('App', () => {
       roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
 
@@ -295,6 +305,7 @@ describe('App', () => {
       roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockRoute(student, {
       '/attempts': [

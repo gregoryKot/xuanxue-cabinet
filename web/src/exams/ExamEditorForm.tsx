@@ -4,13 +4,15 @@
 // Банк грузится один раз на всю страницу (useExamItems без фильтров сервера —
 // поиск локальный, examQuestionList.ts): один запрос обслуживает и список для
 // добавления, и подстановку формулировок в выбранных вопросах, и предпросмотр.
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamDto, ExamStatus } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormServerError } from '../components/FormServerError';
 import {
-  screenSectionStyle,
+  editorHeadingStyle,
+  editorPageStyle,
+  editorSectionStyle,
   screenTitleStyle,
   textLinkStyle,
 } from '../components/screenLayout';
@@ -24,30 +26,11 @@ import { ExamQuestionsSection } from './ExamQuestionsSection';
 import { useExamForm } from './useExamForm';
 import type { UseExamEditorResult } from './useExamEditor';
 
-const BANK_FILTERS = { status: '' as const, kind: '' as const, tag: '' };
+const BANK_STATUS = '' as const;
 const EXAMS_PATH = '/exams';
 const BACK_TEXT = 'К списку экзаменов';
 const NEW_EXAM_TITLE = 'Новый экзамен';
 const REMOVE_MESSAGE = 'Экзамен исчезнет вместе с набором вопросов. Отменить нельзя.';
-
-// Колонка уже, чем у экрана-списка: строка поля во всю ширину монитора
-// нечитаема, и владелец на это указал прямо (отзыв 2026-09-15).
-const COLUMN_MAX_WIDTH_PX = 680;
-
-const pageStyle: CSSProperties = {
-  ...screenSectionStyle,
-  maxWidth: COLUMN_MAX_WIDTH_PX,
-  gap: 24,
-};
-const headingBlockStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-};
-const sectionStyle: CSSProperties = {
-  paddingTop: 24,
-  borderTop: '1px solid var(--line)',
-};
 
 interface ExamEditorFormProps {
   exam: ExamDto | null;
@@ -60,7 +43,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   // места ждут обычную функцию без результата.
   const goToList = () => void navigate(EXAMS_PATH);
   const form = useExamForm(exam, editor.create, editor.update, editor.remove);
-  const bank = useExamItems(BANK_FILTERS);
+  const bank = useExamItems(BANK_STATUS);
   const [previewOpen, setPreviewOpen] = useState(false);
   const removeConfirm = useConfirmedRemove(form.remove, goToList);
 
@@ -75,12 +58,12 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
 
   return (
     <>
-      <form style={pageStyle} onSubmit={(e) => void handleSubmit(e)}>
+      <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
         <Link to={EXAMS_PATH} style={textLinkStyle}>
           {BACK_TEXT}
         </Link>
 
-        <div style={headingBlockStyle}>
+        <div style={editorHeadingStyle}>
           <span className="xuanxue-eyebrow">Экзамен</span>
           <h1 style={screenTitleStyle}>{exam ? exam.title : NEW_EXAM_TITLE}</h1>
         </div>
@@ -91,7 +74,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           error={form.validationError}
         />
 
-        <div style={sectionStyle}>
+        <div style={editorSectionStyle}>
           <ExamQuestionsSection
             itemIds={form.state.questionIds}
             onChange={(itemIds) => form.setField('questionIds', itemIds)}
@@ -102,14 +85,14 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           />
         </div>
 
-        <div style={sectionStyle}>
+        <div style={editorSectionStyle}>
           <span className="xuanxue-eyebrow">Как проходит экзамен</span>
           <ExamFlowFields state={form.state} setField={form.setField} />
         </div>
 
         <FormServerError error={form.serverError} />
 
-        <div style={sectionStyle}>
+        <div style={editorSectionStyle}>
           <ExamEditorFooter
             status={exam ? exam.status : null}
             pending={form.pending}

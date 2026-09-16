@@ -48,6 +48,7 @@ describe('RequirePeopleAccess', () => {
       roles: [],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -63,6 +64,7 @@ describe('RequirePeopleAccess', () => {
       roles: ['accountant'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -98,6 +100,7 @@ describe('RequirePeopleAccess', () => {
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -113,6 +116,7 @@ describe('RequirePeopleAccess', () => {
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
       status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 

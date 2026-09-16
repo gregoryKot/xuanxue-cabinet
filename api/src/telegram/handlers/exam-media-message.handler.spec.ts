@@ -16,6 +16,7 @@ import type { PersonalChats } from '../personal-chats';
 import type { MediaAssetsService } from '../../media/media-assets.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import type { BotUserAccessService } from '../bot-user-access.service';
+import { TELEGRAM_NOT_LINKED_MESSAGE } from './exam-media-deep-link';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -154,14 +155,15 @@ describe('ExamMediaMessageHandler', () => {
     expect(clear).not.toHaveBeenCalled();
   });
 
-  it('видео, попытка чужая/не найдена — «не нашли попытку», сессия закрывается', async () => {
+  it('видео, попытка чужая/не найдена — «не нашли попытку среди ваших», сессия закрывается', async () => {
     const { handler, clear } = buildHandler({ userId: 'u1', attached: null });
     const { ctx, replies } = fakeCtx({ video: true });
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
     expect(replies).toEqual([
-      'Не нашли эту попытку — возможно, её отменили. Откройте экзамен в кабинете ещё раз.',
+      'Не нашли эту попытку среди ваших. Откройте экзамен из своего кабинета ещё раз ' +
+        'или вставьте там ссылку на видео.',
     ]);
     expect(clear).toHaveBeenCalledWith(111);
   });
@@ -428,6 +430,26 @@ describe('ExamMediaMessageHandler', () => {
     await handler.handle(ctx, 111, SESSION, NOW);
 
     expect(replies).toEqual([ACCESS_MESSAGE]);
+    expect(clear).toHaveBeenCalledWith(111);
+    expect(attachTelegramVideo).not.toHaveBeenCalled();
+  });
+
+  // Регрессия инцидента 2026-09-16 (RUNBOOK §8.17): ученик вошёл по почте (нет
+  // telegramId), сдал экзамен, прислал видео в бота — BotUserAccessService
+  // даёт `unknown`, а хендлер раньше всё равно звал attachTelegramVideo с
+  // userId: undefined и получал «не нашли попытку», как для чужого attemptId,
+  // не объясняя, что дело в непривязанном Telegram. Основной путь перехватывает
+  // exam-media-deep-link.ts раньше, до ожидания видео, — этот тест защищает
+  // хендлер сообщения на случай сессии, оставшейся от старого кода.
+  it('unknown (сессия осталась от старого кода) — сессия закрывается, текст про непривязанный Telegram, привязка не вызывается', async () => {
+    const { handler, clear, attachTelegramVideo } = buildHandler({
+      botAccess: fakeBotUserAccess({ kind: 'unknown' }),
+    });
+    const { ctx, replies } = fakeCtx({ video: true });
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(replies).toEqual([TELEGRAM_NOT_LINKED_MESSAGE]);
     expect(clear).toHaveBeenCalledWith(111);
     expect(attachTelegramVideo).not.toHaveBeenCalled();
   });

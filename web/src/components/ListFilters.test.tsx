@@ -1,21 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { ExamFilters } from './ExamFilters';
-import type { ExamListFilters } from './useExams';
-
-const EMPTY: ExamListFilters = { status: '' };
+import { EXAM_STATUSES, type ExamStatus } from '@xuanxue/shared';
+import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
+import { ListFilters } from './ListFilters';
 
 function renderFilters(
-  values: ExamListFilters = EMPTY,
+  value: ExamStatus | '' = '',
   onChange = vi.fn(),
   search = '',
   onSearchChange = vi.fn(),
 ) {
   render(
-    <ExamFilters
-      values={values}
+    <ListFilters
+      statuses={EXAM_STATUSES}
+      labels={DRAFT_PUBLISHED_ARCHIVED_LABELS_RU}
+      value={value}
       onChange={onChange}
+      searchLabel="Поиск по названию"
       search={search}
       onSearchChange={onSearchChange}
     />,
@@ -23,7 +25,7 @@ function renderFilters(
   return { onChange, onSearchChange };
 }
 
-describe('ExamFilters', () => {
+describe('ListFilters', () => {
   it('«Все» нажат по умолчанию', () => {
     renderFilters();
 
@@ -39,11 +41,20 @@ describe('ExamFilters', () => {
 
     await user.click(screen.getByRole('button', { name: 'Опубликован' }));
 
-    expect(onChange).toHaveBeenCalledWith({ status: 'published' });
+    expect(onChange).toHaveBeenCalledWith('published');
+  });
+
+  it('клик по «Все» сбрасывает фильтр', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderFilters('archived');
+
+    await user.click(screen.getByRole('button', { name: 'Все' }));
+
+    expect(onChange).toHaveBeenCalledWith('');
   });
 
   it('текущий статус помечен нажатым', () => {
-    renderFilters({ status: 'archived' });
+    renderFilters('archived');
 
     expect(screen.getByRole('button', { name: 'В архиве' })).toHaveAttribute(
       'aria-pressed',
@@ -55,7 +66,7 @@ describe('ExamFilters', () => {
     );
   });
 
-  it('поиск по названию — ввод сразу вызывает onSearchChange', () => {
+  it('поиск — ввод сразу вызывает onSearchChange', () => {
     const { onSearchChange } = renderFilters();
 
     fireEvent.change(screen.getByLabelText('Поиск по названию'), {

@@ -24,6 +24,7 @@ function renderSubmitted(attempt: ExamAttemptDto) {
     <MemoryRouter>
       <AttemptSubmitted
         attempt={attempt}
+        telegramLinked
         onAddMediaLink={vi.fn().mockResolvedValue(true)}
         addingMediaLink={false}
         addMediaLinkError={null}

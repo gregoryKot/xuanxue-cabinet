@@ -3,6 +3,7 @@
 // устройством хранилища (docs/adr/0033-exam-as-question-list.md). Вынесена из
 // компонентов, чтобы проверять без React (CLAUDE.md «Тесты»).
 import type { ExamBlockInput, ExamDto, ExamItemDto } from '@xuanxue/shared';
+import { matchesSearch } from '../lib/textSearch';
 
 /** Старые многоблочные формы сливаются в один список лениво, при следующем
  * сохранении (ADR-0033): порядок здесь — блоки подряд, внутри блока свой
@@ -63,12 +64,6 @@ export function addQuestion(itemIds: string[], itemId: string): string[] {
   return [...itemIds, itemId];
 }
 
-function matchesQuery(item: ExamItemDto, needle: string): boolean {
-  if (needle === '') return true;
-  if (item.prompt.toLowerCase().includes(needle)) return true;
-  return item.tags.some((tag) => tag.toLowerCase().includes(needle));
-}
-
 /** Кандидаты поиска по банку: только опубликованные вопросы, без уже
  * добавленных, по подстроке формулировки или тега без регистра. Фильтр
  * локальный — банк загружен целиком, отдельный запрос на каждую букву не
@@ -78,10 +73,11 @@ export function filterBankCandidates(
   query: string,
   chosenIds: readonly string[],
 ): ExamItemDto[] {
-  const needle = query.trim().toLowerCase();
   const chosen = new Set(chosenIds);
   return items.filter(
     (item) =>
-      item.status === 'published' && !chosen.has(item.id) && matchesQuery(item, needle),
+      item.status === 'published' &&
+      !chosen.has(item.id) &&
+      matchesSearch([item.prompt, ...item.tags], query),
   );
 }

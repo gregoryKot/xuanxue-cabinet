@@ -54,6 +54,7 @@ const TEACHER: MeDto = {
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -61,6 +62,7 @@ const ADMIN: MeDto = {
   roles: ['admin'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 const STUDENT: MeDto = {
   id: 'u2',
@@ -68,6 +70,7 @@ const STUDENT: MeDto = {
   roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 const ASSISTANT: MeDto = {
   id: 'u3',
@@ -75,6 +78,7 @@ const ASSISTANT: MeDto = {
   roles: ['assistant'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 
 describe('AppShell — навигация по ширине экрана', () => {

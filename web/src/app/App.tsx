@@ -24,6 +24,7 @@ const BroadcastsScreen = lazy(ROUTE_MODULES.broadcasts.load);
 const TemplatesScreen = lazy(ROUTE_MODULES.templates.load);
 const PeopleScreen = lazy(ROUTE_MODULES.people.load);
 const ExamItemsScreen = lazy(ROUTE_MODULES.examItems.load);
+const ExamItemEditorScreen = lazy(ROUTE_MODULES.examItemEditor.load);
 const ExamsScreen = lazy(ROUTE_MODULES.exams.load);
 const ExamEditorScreen = lazy(ROUTE_MODULES.examEditor.load);
 const GradingQueueScreen = lazy(ROUTE_MODULES.grading.load);
@@ -70,6 +71,18 @@ export default function App() {
                 <Route
                   path={ROUTE_MODULES.examItems.path}
                   element={<ExamItemsScreen />}
+                />
+                {/* Страница вопроса банка — свой адрес, а не лист поверх
+                    списка (ADR-0033). `/exam-items/new` объявлен раньше
+                    `/exam-items/:itemId` — статический кусок пути должен
+                    выигрывать у параметра. */}
+                <Route
+                  path={ROUTE_MODULES.examItemNew.path}
+                  element={<ExamItemEditorScreen />}
+                />
+                <Route
+                  path={ROUTE_MODULES.examItemEditor.path}
+                  element={<ExamItemEditorScreen />}
                 />
                 <Route path={ROUTE_MODULES.exams.path} element={<ExamsScreen />} />
                 {/* Редактор экзамена — страница со своим адресом, а не лист

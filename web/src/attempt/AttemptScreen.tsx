@@ -8,6 +8,7 @@
 // «Отправить видео» (ADR-0023) публично и не зависит от роли, отдельного
 // маршрута под него заводить незачем.
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenSectionStyle } from '../components/screenLayout';
@@ -31,6 +32,9 @@ export default function AttemptScreen() {
     addMediaLinkError,
   } = useAttempt(id ?? '');
   const { config } = useAuthConfig();
+  // Кнопку «Отправить видео боту» показываем только тем, кого бот узнает
+  // (ADR-0023, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.
+  const { me } = useAuth();
 
   if (loading) {
     return (
@@ -53,6 +57,7 @@ export default function AttemptScreen() {
       <AttemptSubmitted
         attempt={attempt}
         telegramBotUsername={config?.telegramBotUsername}
+        telegramLinked={me?.telegramLinked ?? false}
         onAddMediaLink={addMediaLink}
         addingMediaLink={addingMediaLink}
         addMediaLinkError={addMediaLinkError}

@@ -1,12 +1,18 @@
-// Как попасть на занятие — блок карточки StudentLessonCard (ТЗ
-// student-screen.md, п.2): онлайн — заметная ссылка-кнопка «Открыть Zoom» и
-// пароль рядом, офлайн — адрес. Формат «both» показывает оба блока — у школы
-// есть занятия, где ученик выбирает зал или Zoom сам (CLASS_FORMAT_LABELS_RU:
-// «Офлайн + онлайн»). Ссылки нет — честная строка, а не пустота: ученик не
-// должен решить, что кабинет забыл её показать.
+// Как попасть на занятие — блок ближайшего занятия (StudentNextLesson.tsx) и
+// строки списка (StudentLessonCard.tsx). Онлайн — «Подключиться», офлайн —
+// адрес. Формат «both» показывает оба блока: у школы есть занятия, где
+// ученик выбирает зал или Zoom сам (CLASS_FORMAT_LABELS_RU: «Офлайн +
+// онлайн»). Ссылки нет — честная строка, а не пустота: ученик не должен
+// решить, что кабинет забыл её показать.
+//
+// `prominent` — киноварь достаётся ближайшему занятию, ради которого ученик
+// и открыл кабинет; у остальных строк та же ссылка идёт текстом (правило
+// акцента «один раз на экран», docs/adr/0031).
 import type { CSSProperties } from 'react';
 import type { ClassFormat } from '@xuanxue/shared';
+import { textLinkStyle } from '../components/screenLayout';
 
+const JOIN_TEXT = 'Подключиться';
 const ZOOM_LINK_FALLBACK = 'Ссылку пришлём в канал.';
 const LOCATION_FALLBACK = 'Адрес пришлём в канал.';
 
@@ -19,23 +25,29 @@ const wrapStyle: CSSProperties = {
 const zoomRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: 10,
+  gap: 12,
   flexWrap: 'wrap',
 };
 // Визуально — как Button variant="primary" (components/Button.tsx), но это
-// переход по внешней ссылке, не действие в кабинете: <a>, не <button>
-// (тот же приём, что components/SectionLink.tsx).
-const zoomLinkStyle: CSSProperties = {
+// переход по внешней ссылке, не действие в кабинете: <a>, не <button>.
+const prominentLinkStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  minHeight: 44,
-  padding: '10px 18px',
-  borderRadius: 8,
+  minHeight: 48,
+  padding: '12px 24px',
+  borderRadius: 3,
   fontWeight: 600,
-  background: 'var(--accent)',
-  color: 'var(--accent-contrast)',
+  background: 'var(--cinnabar)',
+  color: 'var(--cinnabar-contrast)',
   textDecoration: 'none',
+};
+// Цель нажатия ≥44 по высоте и у тихого варианта (CLAUDE.md «Доступность»).
+const quietLinkStyle: CSSProperties = {
+  ...textLinkStyle,
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: 44,
 };
 const passwordStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
 const plainTextStyle: CSSProperties = {
@@ -49,6 +61,8 @@ interface StudentLessonMeetingProps {
   location?: string;
   zoomLink?: string;
   zoomPassword?: string;
+  /** Главное действие экрана — заливка киноварью. По умолчанию ссылка тихая. */
+  prominent?: boolean;
 }
 
 export function StudentLessonMeeting({
@@ -56,6 +70,7 @@ export function StudentLessonMeeting({
   location,
   zoomLink,
   zoomPassword,
+  prominent,
 }: StudentLessonMeetingProps) {
   const showOnline = format === 'online' || format === 'both';
   const showOffline = format === 'offline' || format === 'both';
@@ -65,8 +80,13 @@ export function StudentLessonMeeting({
       {showOnline &&
         (zoomLink ? (
           <div style={zoomRowStyle}>
-            <a href={zoomLink} target="_blank" rel="noreferrer" style={zoomLinkStyle}>
-              Открыть Zoom
+            <a
+              href={zoomLink}
+              target="_blank"
+              rel="noreferrer"
+              style={prominent ? prominentLinkStyle : quietLinkStyle}
+            >
+              {JOIN_TEXT}
             </a>
             {zoomPassword && <span style={passwordStyle}>Пароль: {zoomPassword}</span>}
           </div>

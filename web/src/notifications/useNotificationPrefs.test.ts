@@ -18,6 +18,7 @@ const STUDENT: MeDto = {
   roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 const TEACHER: MeDto = {
   id: 'u2',
@@ -25,6 +26,7 @@ const TEACHER: MeDto = {
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
   status: 'active',
+  telegramLinked: false,
 };
 
 describe('useNotificationPrefs — виды по роли', () => {
