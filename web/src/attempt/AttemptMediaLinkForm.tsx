@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError, type FormError } from '../components/FormServerError';
+import { primaryActionStyle } from '../components/screenLayout';
 
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 
@@ -41,7 +42,16 @@ export function AttemptMediaLinkForm({
         />
       </Field>
       <FormServerError error={error} />
-      <Button type="submit" pending={pending} disabled={!url.trim()}>
+      {/* Контур, не заливка: киноварь на этом экране уже занята кнопкой
+          «Отправить видео боту в Telegram» — она и есть главный путь
+          (ADR-0023), а ссылка руками остаётся запасным (docs/adr/0031). */}
+      <Button
+        type="submit"
+        variant="secondary"
+        style={primaryActionStyle}
+        pending={pending}
+        disabled={!url.trim()}
+      >
         Сохранить ссылку
       </Button>
     </form>

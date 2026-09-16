@@ -1,21 +1,20 @@
 // Один или несколько вариантов ответа (ТЗ п.2) — радиогруппа для «single»,
-// чекбоксы для «multiple»; нативные input'ы работают с клавиатуры без
-// единого атрибута ARIA (CLAUDE.md «Доступность»), как в exam-items/
-// ExamItemOptionsField.tsx. Выбор варианта — дискретное действие, а не
-// печать: сохраняем сразу после него, не ждём 2-секундный дебаунс текста.
+// чекбоксы для «multiple». Переключатель — общий Toggle (CLAUDE.md «Одна
+// механика — один компонент»): нативный input под `accent-color` кабинета
+// вместо синей системной галочки, подпись обычным начертанием, строка
+// высотой 44 (CLAUDE.md «Доступность»). Выбор варианта — дискретное
+// действие, а не печать: сохраняем сразу после него, не ждём 2-секундный
+// дебаунс текста.
 import type { CSSProperties } from 'react';
 import type { AttemptOptionDto } from '@xuanxue/shared';
+import { Toggle } from '../components/Toggle';
 
-const optionRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  minHeight: 44,
-};
-const inputMarkStyle: CSSProperties = { width: 22, height: 22, flexShrink: 0 };
+const groupStyle: CSSProperties = { display: 'flex', flexDirection: 'column' };
 
 interface AttemptQuestionChoiceProps {
-  index: number;
+  /** Идентификатор формулировки вопроса — она же подпись группы вариантов
+   * (AttemptQuestion.tsx), своего заголовка у группы нет. */
+  labelledBy: string;
   itemId: string;
   kind: 'single' | 'multiple';
   options: AttemptOptionDto[];
@@ -24,7 +23,7 @@ interface AttemptQuestionChoiceProps {
 }
 
 export function AttemptQuestionChoice({
-  index,
+  labelledBy,
   itemId,
   kind,
   options,
@@ -47,20 +46,19 @@ export function AttemptQuestionChoice({
   return (
     <div
       role={kind === 'single' ? 'radiogroup' : 'group'}
-      aria-label={`Вариант ответа, вопрос ${index + 1}`}
-      style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+      aria-labelledby={labelledBy}
+      style={groupStyle}
     >
       {options.map((option) => (
-        <label key={option.id} style={optionRowStyle}>
-          <input
-            type={kind === 'single' ? 'radio' : 'checkbox'}
-            name={kind === 'single' ? `attempt-${itemId}` : undefined}
-            style={inputMarkStyle}
-            checked={selected.includes(option.id)}
-            onChange={(event) => toggle(option.id, event.target.checked)}
-          />
-          <span>{option.text}</span>
-        </label>
+        <Toggle
+          key={option.id}
+          label={option.text}
+          checked={selected.includes(option.id)}
+          // Имя группы переводит Toggle в радио: взаимное исключение внутри
+          // вопроса браузер делает сам (комментарий в самом Toggle.tsx).
+          name={kind === 'single' ? `attempt-${itemId}` : undefined}
+          onChange={(checked) => toggle(option.id, checked)}
+        />
       ))}
     </div>
   );

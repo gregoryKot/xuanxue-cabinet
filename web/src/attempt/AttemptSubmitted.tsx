@@ -6,11 +6,30 @@
 // слой 4.5) показан для любого статуса ниже, включая «Проверен»: попытка
 // одна и та же, и видео к ней может понадобиться независимо от того, когда
 // его прислали — до оценки или после.
+//
+// Облик тот же, что у формы сдачи (attemptLayout.ts): рубрика, название
+// антиквой, одна киноварь — «Отправить видео боту» в блоке ниже. «Вернуться
+// к экзаменам» — текстовая ссылка за волосяной линией: ученик здесь уже всё
+// сделал, и второй заметной кнопкой этот шаг не является.
 import { Link } from 'react-router-dom';
+import type { CSSProperties } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import type { FormError } from '../components/FormServerError';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import {
+  screenExplanationStyle,
+  screenTitleStyle,
+  textLinkStyle,
+} from '../components/screenLayout';
 import { AttemptMediaPrompt } from './AttemptMediaPrompt';
+import { ATTEMPT_EYEBROW, attemptHeaderStyle, attemptPageStyle } from './attemptLayout';
+
+const BACK_TEXT = 'Вернуться к экзаменам';
+
+const backStyle: CSSProperties = {
+  margin: 0,
+  paddingTop: 20,
+  borderTop: '1px solid var(--line)',
+};
 
 function describeSubmitted(attempt: ExamAttemptDto): string {
   if (attempt.status === 'graded') return 'Экзамен проверен.';
@@ -36,9 +55,12 @@ export function AttemptSubmitted({
   addMediaLinkError,
 }: AttemptSubmittedProps) {
   return (
-    <section style={screenSectionStyle}>
-      <h1 style={{ margin: 0, fontSize: 18 }}>{attempt.examTitle}</h1>
-      <p style={screenExplanationStyle}>{describeSubmitted(attempt)}</p>
+    <section style={attemptPageStyle}>
+      <div style={attemptHeaderStyle}>
+        <span className="xuanxue-eyebrow">{ATTEMPT_EYEBROW}</span>
+        <h1 style={screenTitleStyle}>{attempt.examTitle}</h1>
+        <p style={screenExplanationStyle}>{describeSubmitted(attempt)}</p>
+      </div>
 
       <AttemptMediaPrompt
         attempt={attempt}
@@ -49,8 +71,10 @@ export function AttemptSubmitted({
         addMediaLinkError={addMediaLinkError}
       />
 
-      <p style={{ margin: 0 }}>
-        <Link to="/">Вернуться к экзаменам</Link>
+      <p style={backStyle}>
+        <Link to="/" style={textLinkStyle}>
+          {BACK_TEXT}
+        </Link>
       </p>
     </section>
   );

@@ -84,6 +84,24 @@ function renderAttempt(
   return { onSubmit, reload };
 }
 
+describe('AttemptInProgress — шапка', () => {
+  it('рубрика «Экзамен» и название экзамена заголовком экрана', () => {
+    renderAttempt(makeAttempt());
+
+    expect(screen.getByText('Экзамен')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Форма первого уровня' }),
+    ).toBeInTheDocument();
+  });
+
+  it('вопросы идут нумерованным списком, по строке на вопрос', () => {
+    renderAttempt(makeAttempt());
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByText('Теория')).toBeInTheDocument();
+  });
+});
+
 describe('AttemptInProgress — подсказка и оставшееся время', () => {
   it('у вопроса есть подсказка — она видна ученику (она для него и написана)', () => {
     const attempt = makeAttempt();
@@ -152,12 +170,15 @@ describe('AttemptInProgress', () => {
     );
   });
 
+  // Поле свободного ответа подписано самой формулировкой вопроса
+  // (`aria-labelledby`, AttemptQuestion.tsx) — видимой подписи-дубля под
+  // вопросом больше нет, и находить поле надо по вопросу.
   it('уход с текстового вопроса (blur) сохраняет ответ', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderAttempt(makeAttempt());
 
-    const textarea = screen.getByLabelText('Ответ на вопрос 2');
+    const textarea = screen.getByLabelText('Опишите дыхание');
     await user.click(textarea);
     await user.type(textarea, 'Ровно и глубоко');
     await user.tab();
