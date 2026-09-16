@@ -9,11 +9,20 @@
 // или «Экзамен» отличимо от служебной строки метаданных под ним.
 import type { CSSProperties } from 'react';
 
+/** Строка списка, у которой внутри свои кнопки (рассылка в журнале —
+ * «Раскрыть» и «Отменить»): целиком по ней не нажимают, поэтому не
+ * `<button>`, а просто строка. Отступы и волосяная линия — те же, что у
+ * нажимаемой строки ниже: список должен читаться одним ритмом. */
+export const listRowStyle: CSSProperties = {
+  padding: '20px 4px',
+  borderBottom: '1px solid var(--line)',
+};
+
 export const listCardStyle: CSSProperties = {
+  ...listRowStyle,
   display: 'block',
   width: '100%',
   textAlign: 'left',
-  padding: '20px 4px',
   // `<button>` приносит свою рамку 2px outset со всех сторон, а `borderBottom`
   // ниже переопределяет только низ — три стороны оставались браузерными, и
   // список выглядел обведённым тёмной рамкой (снимок редактора 2026-09-15).

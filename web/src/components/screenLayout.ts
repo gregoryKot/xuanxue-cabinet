@@ -61,6 +61,20 @@ export const screenColumnTitleStyle: CSSProperties = {
   fontSize: 28,
 };
 
+/** Приписка рядом с полем, разделом или строкой списка: что значит статус,
+ * почему кнопка недоступна, что показал предпросмотр. Тише основного текста.
+ * Одна на весь кабинет — те же три свойства объявлялись в каждом втором
+ * компоненте, и оттенок «тусклого» расходился (CLAUDE.md «Без магических
+ * чисел», jscpd). */
+export const noteStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  color: 'var(--ink-soft)',
+};
+
+/** Та же приписка, но про сбой: не удалось отправить, канал не отвечает. */
+export const dangerNoteStyle: CSSProperties = { ...noteStyle, color: 'var(--danger)' };
+
 /** Мелкая приписка под объяснением: часовой пояс, что значит кнопка. Тише
  * объяснения — читают её один раз и больше к ней не возвращаются. */
 export const screenHintStyle: CSSProperties = {

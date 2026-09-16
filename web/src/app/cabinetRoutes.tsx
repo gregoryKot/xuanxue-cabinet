@@ -20,6 +20,7 @@ const PlanningScreen = lazy(ROUTE_MODULES.planning.load);
 const ChannelsScreen = lazy(ROUTE_MODULES.channels.load);
 const ChannelEditorScreen = lazy(ROUTE_MODULES.channelEditor.load);
 const BroadcastsScreen = lazy(ROUTE_MODULES.broadcasts.load);
+const BroadcastNewScreen = lazy(ROUTE_MODULES.broadcastNew.load);
 const TemplatesScreen = lazy(ROUTE_MODULES.templates.load);
 const PeopleScreen = lazy(ROUTE_MODULES.people.load);
 const ExamItemsScreen = lazy(ROUTE_MODULES.examItems.load);
@@ -31,11 +32,11 @@ const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
 const NotificationsScreen = lazy(ROUTE_MODULES.notifications.load);
 
-/* Редакторы канала, вопроса и экзамена — страницы со своими адресами, а не
-   листы поверх списка (ADR-0033): на них ссылаются из списка, их открывают по
-   ссылке и закрывают «Назад» браузера. У каждого пара адресов, и `/…/new`
-   объявлен раньше `/…/:id` — статический кусок пути должен выигрывать у
-   параметра. */
+/* Канал, рассылка, вопрос банка и экзамен правятся на страницах со своими
+   адресами, а не в листах поверх списка (ADR-0033): на них ссылаются из
+   списка, их открывают по ссылке и закрывают «Назад» браузера. Где есть и
+   создание, и правка, `/…/new` объявлен раньше `/…/:id` — статический кусок
+   пути должен выигрывать у параметра. */
 export const cabinetRoutes = (
   <>
     <Route path={ROUTE_MODULES.schedule.path} element={<ScheduleScreen />} />
@@ -44,6 +45,7 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.channelNew.path} element={<ChannelEditorScreen />} />
     <Route path={ROUTE_MODULES.channelEditor.path} element={<ChannelEditorScreen />} />
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
+    <Route path={ROUTE_MODULES.broadcastNew.path} element={<BroadcastNewScreen />} />
     <Route path={ROUTE_MODULES.templates.path} element={<TemplatesScreen />} />
     <Route path={ROUTE_MODULES.examItems.path} element={<ExamItemsScreen />} />
     <Route path={ROUTE_MODULES.examItemNew.path} element={<ExamItemEditorScreen />} />

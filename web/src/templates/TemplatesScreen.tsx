@@ -1,6 +1,11 @@
 // «Шаблоны» — тексты постов, которые рассылка собирает из плейсхолдеров
-// (docs/PLAN.md §6 «Шаблоны»). Два редактора (анонс/запись) синхронизируются
-// с сохранёнными по `updatedAt`: после успешного «Сохранить» правки в форме
+// (docs/PLAN.md §6 «Шаблоны»). Облик — направление «тихо и благородно»
+// (docs/adr/0031, макет Form.dc.html): заголовок раздела антиквой, колонка
+// страницы-редактора, разделы под волосяной линией, киноварь одна — у
+// «Сохранить» внизу (остальные кнопки экрана вторичные).
+//
+// Два редактора (анонс/запись) синхронизируются с сохранёнными по
+// `updatedAt`: после успешного «Сохранить» правки в форме
 // становятся «сохранённым» текстом, а не потерянным черновиком. Сохраняем
 // только изменённые шаблоны (pr-k3-fixes.md п.4) — нечего сохранять, когда
 // оба текста совпадают с сохранёнными, кнопка неактивна и запроса нет.
@@ -13,7 +18,8 @@ import {
   type FormError,
 } from '../components/FormServerError';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle, screenSectionStyle } from '../components/screenLayout';
+import { editorPageStyle, editorSectionStyle } from '../components/screenLayout';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
 import { SchoolSiteField } from './SchoolSiteField';
 import { useNextLessons } from './useNextLessons';
@@ -28,6 +34,7 @@ const EXPLANATION =
   'Рассылка собирает пост из двух шаблонов ниже — анонса занятия и записи. ' +
   'В фигурных скобках — подстановки, пустая исчезает вместе со своим разделителем.';
 
+const TITLE = 'Шаблоны постов';
 const SAVE_ERROR = 'Не удалось сохранить шаблоны. Попробуйте ещё раз.';
 
 function changedTemplates(
@@ -78,8 +85,8 @@ export default function TemplatesScreen() {
   }
 
   return (
-    <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
+    <section style={editorPageStyle}>
+      <ScreenHeader title={TITLE} explanation={EXPLANATION} />
 
       {settingsState.error && (
         <LoadErrorBanner
@@ -115,13 +122,15 @@ export default function TemplatesScreen() {
 
           <FormServerError error={serverErrors?.general ?? null} />
 
-          <Button
-            onClick={() => void handleSave()}
-            pending={pending}
-            disabled={!hasChanges || hasInvalid}
-          >
-            Сохранить
-          </Button>
+          <div style={editorSectionStyle}>
+            <Button
+              onClick={() => void handleSave()}
+              pending={pending}
+              disabled={!hasChanges || hasInvalid}
+            >
+              Сохранить
+            </Button>
+          </div>
         </>
       )}
     </section>

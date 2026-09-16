@@ -74,6 +74,21 @@ describe('TemplatesScreen — сбой загрузки', () => {
   });
 });
 
+describe('TemplatesScreen — шапка раздела', () => {
+  it('заголовок раздела и объяснение, зачем эти тексты', async () => {
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Шаблоны постов', level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Рассылка собирает пост из двух шаблонов/),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('TemplatesScreen — сбой загрузки занятий (pr-k3-fixes.md п.2)', () => {
   it('LoadErrorBanner под выбором занятия, «Попробовать ещё раз» перечитывает', async () => {
     const user = userEvent.setup();

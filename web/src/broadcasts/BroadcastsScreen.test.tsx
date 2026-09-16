@@ -2,7 +2,7 @@
 // channels/ChannelsScreen.test.tsx.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BroadcastDto, ChannelDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -63,10 +63,15 @@ function mockByPath(handlers: Record<string, unknown>) {
   });
 }
 
+const NEW_MARKER = 'Здесь новая рассылка';
+
 function renderScreen(initialEntries: string[] = ['/broadcasts']) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
-      <BroadcastsScreen />
+      <Routes>
+        <Route path="/broadcasts" element={<BroadcastsScreen />} />
+        <Route path="/broadcasts/new" element={<p>{NEW_MARKER}</p>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -187,44 +192,14 @@ describe('BroadcastsScreen — журнал', () => {
     expect(await screen.findByLabelText<HTMLSelectElement>(/Статус/)).toHaveValue('');
   });
 
-  it('«Новая рассылка» открывает лист, сохранение шлёт POST', async () => {
+  it('«Новая рассылка» ведёт на свою страницу, а не открывает лист', async () => {
     const user = userEvent.setup();
     mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новая рассылка' }));
 
-    const dialogTitle = await screen.findByRole('heading', { name: 'Новая рассылка' });
-    const sheet = dialogTitle.closest('form') as HTMLFormElement;
-    await user.type(within(sheet).getByLabelText('Текст'), 'Пост');
-    await user.click(within(sheet).getByLabelText('ВК · ВК школы'));
-
-    mockedApiFetch.mockResolvedValueOnce({});
-    mockByPath({ '/broadcasts': [], '/deliveries': [], '/channels': [makeChannel()] });
-    await user.click(within(sheet).getByRole('button', { name: 'Отправить' }));
-
-    await waitFor(() =>
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/broadcasts',
-        expect.objectContaining({ method: 'POST' }),
-      ),
-    );
-  });
-
-  it('выключенный канал не попадает в список для новой рассылки', async () => {
-    const user = userEvent.setup();
-    mockByPath({
-      '/broadcasts': [],
-      '/deliveries': [],
-      '/channels': [makeChannel({ active: false })],
-    });
-
-    renderScreen();
-    await user.click(await screen.findByRole('button', { name: 'Новая рассылка' }));
-
-    expect(
-      await screen.findByText(/Нет ни одного включённого канала/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(NEW_MARKER)).toBeInTheDocument();
   });
 });
 
