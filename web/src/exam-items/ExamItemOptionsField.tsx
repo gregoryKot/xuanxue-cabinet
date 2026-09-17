@@ -1,15 +1,17 @@
 // Варианты ответа — только для single/multiple: добавить, убрать, отметить
-// верный. Вид — тот же список строками, что у вопросов экзамена (макет
-// Form.dc.html, класс `.xuanxue-question-row`): отметка, текст, тихая «×»
-// справа; на телефоне кнопка уезжает под строку. Отметка «верно» — нативный
-// radio/checkbox: для single имя группы (`name`) отдаёт браузеру взаимное
-// исключение самому, для multiple — обычные чекбоксы (CLAUDE.md
-// «Доступность» — работает с клавиатуры без единого атрибута ARIA).
+// верный, дать текст и/или картинку (ADR-0035). Вид — тот же список строками,
+// что у вопросов экзамена (макет Form.dc.html, класс `.xuanxue-question-row`):
+// отметка, [текст + картинка] одной колонкой, тихая «×» справа; на телефоне
+// кнопка уезжает под строку. Отметка «верно» — нативный radio/checkbox: для
+// single имя группы (`name`) отдаёт браузеру взаимное исключение самому, для
+// multiple — обычные чекбоксы (CLAUDE.md «Доступность» — работает с
+// клавиатуры без единого атрибута ARIA).
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
 import { inputStyle } from '../components/Field';
 import { rowControlStyle } from '../components/listCardStyles';
-import { textLinkButtonStyle } from '../components/screenLayout';
+import { noteStyle, textLinkButtonStyle } from '../components/screenLayout';
+import { ExamItemOptionImage } from './ExamItemOptionImage';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 
 const fieldsetStyle: CSSProperties = {
@@ -28,6 +30,14 @@ const markStyle: CSSProperties = {
   accentColor: 'var(--accent)',
 };
 const textStyle: CSSProperties = { ...inputStyle, marginTop: 2 };
+// Текст и картинка варианта — одной колонкой (второй столбец грида
+// `.xuanxue-question-row`, index.css): картинка идёт под своим текстовым
+// полем, а не рядом отдельным столбцом.
+const textColumnStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+};
 const hintTextStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
@@ -36,6 +46,8 @@ const hintTextStyle: CSSProperties = {
 
 const RADIO_GROUP_NAME = 'exam-item-correct-option';
 const NEW_OPTION: ExamItemOptionDraft = { text: '', correct: false };
+const HELP_TEXT =
+  'Вариант — текст, картинка или и то и другое. Фото ужимается до 1280 px перед отправкой.';
 
 interface ExamItemOptionsFieldProps {
   kind: ExamItemKind;
@@ -52,6 +64,10 @@ export function ExamItemOptionsField({
 
   function updateText(index: number, text: string) {
     onChange(options.map((option, i) => (i === index ? { ...option, text } : option)));
+  }
+
+  function updateImage(index: number, imageId: string | undefined) {
+    onChange(options.map((option, i) => (i === index ? { ...option, imageId } : option)));
   }
 
   function markCorrect(index: number, checked: boolean) {
@@ -86,14 +102,21 @@ export function ExamItemOptionsField({
             checked={option.correct}
             onChange={(e) => markCorrect(index, e.target.checked)}
           />
-          <input
-            type="text"
-            aria-label={`Текст варианта ${index + 1}`}
-            style={textStyle}
-            maxLength={EXAM_ITEM_LIMITS.optionText}
-            value={option.text}
-            onChange={(e) => updateText(index, e.target.value)}
-          />
+          <div style={textColumnStyle}>
+            <input
+              type="text"
+              aria-label={`Текст варианта ${index + 1}`}
+              style={textStyle}
+              maxLength={EXAM_ITEM_LIMITS.optionText}
+              value={option.text}
+              onChange={(e) => updateText(index, e.target.value)}
+            />
+            <ExamItemOptionImage
+              index={index}
+              imageId={option.imageId}
+              onChange={(imageId) => updateImage(index, imageId)}
+            />
+          </div>
           <div className="xuanxue-question-controls">
             <button
               type="button"
@@ -121,6 +144,7 @@ export function ExamItemOptionsField({
           сохранить.
         </p>
       )}
+      <p style={noteStyle}>{HELP_TEXT}</p>
     </fieldset>
   );
 }

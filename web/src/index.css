@@ -129,6 +129,16 @@ body {
   outline-offset: 2px;
 }
 
+/* «Добавить картинку» в редакторе вопроса (exam-items/ExamItemOptionImage.tsx)
+   — это <label> над визуально скрытым <input type="file">: фокус с клавиатуры
+   получает невидимый input, поэтому рамку рисуем на самом label по
+   :focus-within, той же, что у :focus-visible выше — иначе кнопка на вид
+   выпадает из таб-порядка. */
+.xuanxue-file-label:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
 /* Скелетоны загрузки — правило CLAUDE.md «форма контента, а не спиннер». */
 @keyframes xuanxue-shimmer {
   to {

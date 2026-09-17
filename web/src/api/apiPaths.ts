@@ -42,7 +42,7 @@ export function examsListPath(filters: ExamListFilters): string {
 export const EXAM_ITEMS_PATH = '/exam-items';
 export const EXAM_ITEM_STATS_SUMMARY_PATH = `${EXAM_ITEMS_PATH}/stats-summary`;
 
-const EXAM_IMAGES_PATH = '/exam-images';
+export const EXAM_IMAGES_PATH = '/exam-images';
 
 /** Адрес картинки варианта для `<img src>` (ADR-0035) — единственное место
  * вне http.ts, где вручную собирается `/api`: это не запрос через apiFetch
