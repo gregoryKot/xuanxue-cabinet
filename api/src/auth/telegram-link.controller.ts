@@ -13,7 +13,7 @@ import { CurrentUser } from './auth.decorators';
 
 // Без @Public: код связки выпускается только вошедшей сессии — гвард сам
 // отсекает `blocked` (SECURITY §2), других статусов у человека нет
-// (ADR-0034, ADR-0035). Тот же профиль лимита, что у issue-эндпоинтов входа
+// (ADR-0034, ADR-0036). Тот же профиль лимита, что у issue-эндпоинтов входа
 // (join/check и др.).
 const TELEGRAM_LINK_CODE_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 

@@ -35,7 +35,7 @@ interface TelegramLoginSectionProps {
    * передаёт `false` и сам решает дальнейший путь (сессия уже создана,
    * экран уходит на «Расписание» сам). */
   navigateAfterLogin?: boolean;
-  /** Код ссылки-приглашения (ADR-0030/0035) — JoinScreen.tsx передаёт код
+  /** Код ссылки-приглашения (ADR-0030/0036) — JoinScreen.tsx передаёт код
    * из /join/:code, LoginScreen.tsx не передаёт вовсе. */
   inviteCode?: string;
   /** Рендерится ниже кнопки, но не во время авто-входа по фрагменту адреса

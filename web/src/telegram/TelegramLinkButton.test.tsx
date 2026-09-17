@@ -1,7 +1,7 @@
 // Клик зовёт API и уводит в Telegram, сбой показывается рядом с кнопкой,
 // возврат на вкладку после начатой связки перечитывает /auth/me
 // (read-after-write, CLAUDE.md) — проверка visibilitychange, унаследованная
-// от теста удалённого экрана ожидания (ADR-0035).
+// от теста удалённого экрана ожидания (ADR-0036).
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';

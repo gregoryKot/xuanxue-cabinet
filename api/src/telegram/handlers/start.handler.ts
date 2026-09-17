@@ -21,11 +21,13 @@
 // как он снял и прислал ролик (инцидент 2026-09-16, RUNBOOK §8.17). ИЗВЕСТНОГО
 // blocked к ожиданию тоже не пускаем (SECURITY §9).
 //
-// `join_<code>` (ADR-0030 «Бот», ADR-0035) — та же ссылка, что и на сайте
+// `join_<code>` (ADR-0030 «Бот», ADR-0036) — та же ссылка, что и на сайте
 // (join-invite-deep-link.ts): ветвление идёт через
 // LoginIdentityService.resolveTelegramUser(), валидный код заводит незнакомца
 // из Telegram-идентичности апдейта сразу `active`; невалидный — аккаунт не
-// заводим.
+// заводим. После успеха человек подключается тем же welcomeConnectedUser, что
+// и обычный /start (иначе результаты экзаменов не доходили до второго /start —
+// баг с #131, найден 2026-09-16 на аудите, #163).
 //
 // `link_<code>` (ADR-0034) — связка Telegram с аккаунтом, заведённым по почте
 // (telegram-link-deep-link.ts): тот самый «незнакомец» из инцидента выше
@@ -80,6 +82,7 @@ export class StartHandler {
         case 'invite':
           await handleInviteDeepLink(ctx, from, payload.code, now, {
             loginIdentity: this.loginIdentity,
+            channelConfig: this.channelConfig,
             publicUrl: this.config.get<string>('PUBLIC_URL'),
           });
           return;

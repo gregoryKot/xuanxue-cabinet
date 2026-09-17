@@ -1,6 +1,6 @@
 // e2e POST /auth/telegram через настоящий AppModule (SECURITY §2, ADR-0005) —
 // подпись виджета, сессия, CSRF и троттлинг. Ветки, завязанные на ссылку-
-// приглашение (ADR-0030/0035), — отдельным файлом auth-telegram-invite.e2e-spec.ts
+// приглашение (ADR-0030/0036), — отдельным файлом auth-telegram-invite.e2e-spec.ts
 // (файловый храповик не даёт одному e2e-файлу разрастись, CLAUDE.md
 // «Храповики»). BOT_TOKEN и BOOTSTRAP_ADMIN_TELEGRAM_ID — тестовые константы
 // из create-app.ts (setTestEnv). Кейс «без BOT_TOKEN» невозможен на одном

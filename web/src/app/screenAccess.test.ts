@@ -47,7 +47,7 @@ describe('showsRouteScreen', () => {
     expect(showsRouteScreen(makeMe({ roles: [] }), '/attempts/a1')).toBe(true);
   });
 
-  // Статуса «ждёт подтверждения» больше нет (ADR-0035) — функция не ветвится
+  // Статуса «ждёт подтверждения» больше нет (ADR-0036) — функция не ветвится
   // по `me.status`: blocked до неё не доходит (RequireAuth), а active с
   // ролью штата и без неё различаются только ролями.
   it('status не влияет: active-учитель — Outlet, active-ученик — StudentScreen', () => {

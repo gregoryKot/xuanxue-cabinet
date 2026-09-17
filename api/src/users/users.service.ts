@@ -44,7 +44,7 @@ export interface NewTelegramUser {
 
 /** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация.
  * status — через normalizeUserStatus.ts (expand→contract после миграции 0007,
- * ADR-0035): единственный маппер документа в UserLean покрывает этим все чтения. */
+ * ADR-0036): единственный маппер документа в UserLean покрывает этим все чтения. */
 export function toLean(doc: UserDoc): UserLean {
   return {
     id: doc._id.toString(),
@@ -84,7 +84,7 @@ export class UsersService {
     return listTeacherContactsQuery(this.model);
   }
 
-  /** Первый вход через Telegram (SECURITY §2, ADR-0030/0035): всегда
+  /** Первый вход через Telegram (SECURITY §2, ADR-0030/0036): всегда
    * `active` — без ссылки-приглашения (или для бутстрап-админа) регистрация
    * не доходит до этого метода вовсе, `LoginIdentityService` решает это
    * раньше (login-identity.service.ts).

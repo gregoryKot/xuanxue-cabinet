@@ -3,7 +3,7 @@
 // на пределе файла-храповика (CLAUDE.md «Храповики», тот же приём, что у
 // UserNamesService/TeachersService). Новый человек по email заводится
 // только из LoginIdentityService, после проверки ссылки-приглашения
-// (ADR-0030/0035) — сюда доходят уже зная, что код валиден, поэтому статус
+// (ADR-0030/0036) — сюда доходят уже зная, что код валиден, поэтому статус
 // сразу `active`/`roles: []`. BOOTSTRAP_ADMIN_TELEGRAM_ID на этот путь не
 // действует — это Telegram-специфичный бутстрап (ADR-0005).
 import { Injectable } from '@nestjs/common';

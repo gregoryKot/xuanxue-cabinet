@@ -91,7 +91,7 @@ describe('useEmailLoginVerify', () => {
     expect(result.current.errorStatus).toBeNull();
   });
 
-  it('joinCode (ADR-0030/0035) — inviteCode едет прямо в теле verify, без второго запроса', async () => {
+  it('joinCode (ADR-0030/0036) — inviteCode едет прямо в теле verify, без второго запроса', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));

@@ -14,12 +14,12 @@ describe('ROLE_LABELS', () => {
 });
 
 describe('USER_STATUSES', () => {
-  it('только active и blocked — статуса invited больше нет (ADR-0035, инцидент 2026-09-15)', () => {
+  it('только active и blocked — статуса invited больше нет (ADR-0036, инцидент 2026-09-15)', () => {
     expect(USER_STATUSES).toEqual(['active', 'blocked']);
   });
 
   it('тип UserStatus не пропускает invited — расхождение с контрактом /auth/me ловит tsc', () => {
-    // @ts-expect-error — статуса invited больше нет (ADR-0035, инцидент 2026-09-15)
+    // @ts-expect-error — статуса invited больше нет (ADR-0036, инцидент 2026-09-15)
     const status: UserStatus = 'invited';
     expect(status).toBe('invited');
   });

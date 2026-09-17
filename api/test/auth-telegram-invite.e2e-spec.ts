@@ -1,5 +1,5 @@
 // e2e POST /auth/telegram — ветки ссылки-приглашения для НОВОГО человека
-// (ADR-0030/0035, SECURITY §2): без кода, с невалидным кодом, с валидным,
+// (ADR-0030/0036, SECURITY §2): без кода, с невалидным кодом, с валидным,
 // blocked. Отделён от auth-telegram.e2e-spec.ts (файловый храповик, CLAUDE.md
 // «Храповики»): там подпись/CSRF/троттлинг, здесь — LoginIdentityService
 // целиком. Существующий человек — auth-telegram-invite-existing.e2e-spec.ts

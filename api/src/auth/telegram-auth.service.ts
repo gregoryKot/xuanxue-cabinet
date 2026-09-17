@@ -2,7 +2,7 @@
 // telegram-login.ts; сессия и cookie — AuthService.issueSession, тот же
 // узел, что и у остальных путей входа (ADR-0012); UserRecord — только через
 // UsersService (CLAUDE.md: контроллер/сервис не лезут в Mongoose напрямую).
-// Поиск/создание человека — LoginIdentityService (ADR-0030/0035): новый
+// Поиск/создание человека — LoginIdentityService (ADR-0030/0036): новый
 // заводится только с валидной ссылкой-приглашением, статуса «ждёт
 // подтверждения» больше нет (инцидент 2026-09-15).
 import { Injectable } from '@nestjs/common';
@@ -38,7 +38,7 @@ export class TelegramAuthService {
    * пользователя; `rawBody` — сырое тело запроса для проверки подписи
    * (whitelist DTO и подписанное Telegram тело — не одно и то же множество
    * полей, см. telegram-login.ts). `inviteCode` — из query `?join=<code>`
-   * (ADR-0030/0035), не из тела: подпись Telegram считается по `rawBody`
+   * (ADR-0030/0036), не из тела: подпись Telegram считается по `rawBody`
    * целиком, лишнее поле там сломало бы её. */
   async login(
     input: TelegramLoginInput,

@@ -1,5 +1,5 @@
 // Слой совместимости expand→contract для удалённого статуса `invited`
-// (ADR-0035, миграция 0007-invited-users-active). Миграция одноразовая и
+// (ADR-0036, миграция 0007-invited-users-active). Миграция одноразовая и
 // переводит накопленных `invited`-людей в `active` до того, как раннер
 // отпускает приложение слушать порт — но в окне деплоя старый инстанс (и
 // код после revert-PR) ещё может записать `status: 'invited'` уже после
@@ -10,7 +10,7 @@
 // `PersonalChats.chatFor` и `TeachersService` — потеряют, интерфейсу уедет
 // значение вне enum).
 //
-// Решение владельца (ADR-0035, вариант «б»): неизвестный статус на чтении —
+// Решение владельца (ADR-0036, вариант «б»): неизвестный статус на чтении —
 // `active`, не `blocked`. Такие люди уже входили в кабинет хотя бы раз;
 // лишних школа блокирует вручную на «Людях» после деплоя — агент не решает
 // это заранее за неё. Сами данные в базе чистит RUNBOOK-шаг после деплоя,
@@ -31,7 +31,7 @@ export function normalizeUserStatus(raw: unknown, userId: string): UserStatus {
   if (isKnownStatus(raw)) return raw;
 
   logger.warn(
-    `user.status.unknown: статус «${String(raw)}» у пользователя ${userId} прочитан как active (ADR-0035, expand→contract)`,
+    `user.status.unknown: статус «${String(raw)}» у пользователя ${userId} прочитан как active (ADR-0036, expand→contract)`,
   );
   return 'active';
 }

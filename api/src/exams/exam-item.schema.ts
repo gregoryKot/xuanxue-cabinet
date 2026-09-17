@@ -79,6 +79,14 @@ export class ExamItemRecord {
   @Prop({ type: String, default: '[]' })
   history!: string;
 
+  // Плоская копия imageId вариантов (текущих и из history) — options/history
+  // зашифрованы целиком и Mongo внутрь не видит; по этому полю уборщик сирот
+  // (следующий слой) поймёт, на какие картинки ссылается вопрос (ADR-0035).
+  // Писать его начнёт следующий слой (контракт imageId у варианта) — у
+  // старых документов поля нет, Mongo трактует отсутствие как пустой массив.
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  imageIds!: Types.ObjectId[];
+
   // Кто создал — не признак владения (данные школы, ADR-0010), просто
   // ссылка. См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
@@ -90,6 +98,8 @@ export const ExamItemSchema = SchemaFactory.createForClass(ExamItemRecord);
 ExamItemSchema.index({ status: 1, updatedAt: -1 });
 // Фильтр по тегу (раздел программы, уровень).
 ExamItemSchema.index({ tags: 1 });
+// Уборщик сирот (ADR-0035) — какие картинки ещё используются вопросами.
+ExamItemSchema.index({ imageIds: 1 });
 
 export const EXAM_ITEM_FIELD_POLICY: FieldPolicy = {
   prompt: enc,

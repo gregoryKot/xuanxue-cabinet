@@ -6,9 +6,11 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
+import { EXAM_IMAGE_LIMITS } from '@xuanxue/shared';
 import { CSP_DIRECTIVES } from './security/csp';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { formatValidationErrors } from './common/validation-messages';
+import { isExamImageUpload } from './exam-images/exam-image-body';
 
 export function configureApp(app: NestExpressApplication): void {
   // nestjs-pino вместо встроенного логгера Nest — правило CLAUDE.md «Ошибки»:
@@ -30,6 +32,16 @@ export function configureApp(app: NestExpressApplication): void {
   // иначе дефолтный парсер (лимит ~100kb) успевает отработать первым, и наш
   // лимит ниже никогда не применяется.
   app.useBodyParser('json', { limit: '1mb' });
+  // Сырое тело — единственное исключение из «файлы мимо API» (ADR-0035,
+  // SECURITY §4): только картинки вариантов ответа. Включается по
+  // предикату маршрута и заявленного типа (exam-image-body.ts), а не по
+  // image/* глобально — иначе такое тело в любом другом запросе стало бы
+  // Buffer, и ValidationPipe (whitelist/forbidNonWhitelisted) перебирал бы
+  // его как «лишние поля».
+  app.useBodyParser('raw', {
+    type: isExamImageUpload,
+    limit: EXAM_IMAGE_LIMITS.maxBytes,
+  });
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(

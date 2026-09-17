@@ -61,13 +61,14 @@
 | [0023](0023-exam-video-via-telegram-and-links.md)        | Видео экзамена — сообщением боту и ссылкой, без своего хранилища         |
 | [0024](0024-bot-first-cabinet-as-fallback.md)            | Бот — первый интерфейс, кабинет — резервный                              |
 | [0025](0025-navigation-by-domain.md)                     | Навигация по доменам — четыре раздела вместо «Сводки» и «Настроек»       |
-| [0026](0026-student-access-after-confirmation.md)        | Ученик — `active` без ролей, роль `student` не нужна (см. ADR-0035)      |
+| [0026](0026-student-access-after-confirmation.md)        | Ученик — `active` без ролей, роль `student` не нужна (см. ADR-0036)      |
 | [0027](0027-student-personal-channel-not-broadcast.md)   | Личный канал ученика — не канал школы, не получатель рассылок            |
 | [0028](0028-telegram-login-redirect-everywhere.md)       | Вход через Telegram — переходом вкладки на любом устройстве, без попапа  |
 | [0029](0029-email-login-via-resend-fetch.md)             | Вход по email-ссылке: Resend через fetch, без SDK                        |
-| [0030](0030-school-invite-link.md)                       | Ссылка-приглашение школы — вход и регистрация одним запросом (ADR-0035)  |
+| [0030](0030-school-invite-link.md)                       | Ссылка-приглашение школы — вход и регистрация одним запросом (ADR-0036)  |
 | [0031](0031-visual-direction-quiet-and-noble.md)         | Визуальное направление «тихо и благородно» — шрифты и палитра фундамента |
 | [0032](0032-no-service-worker.md)                        | Service worker убран, манифест остаётся — килсвитч по старому адресу     |
 | [0033](0033-exam-as-question-list.md)                    | Экзамен для учителя — список вопросов; вопрос банка сразу опубликован    |
 | [0034](0034-link-telegram-to-existing-account.md)        | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link       |
-| [0035](0035-no-pending-approval.md)                      | Статуса «ждёт подтверждения» больше нет — регистрация только по ссылке   |
+| [0035](0035-exam-option-images-in-mongo.md)              | Картинки вариантов ответа — в MongoDB, через свой API                    |
+| [0036](0036-no-pending-approval.md)                      | Статуса «ждёт подтверждения» больше нет — регистрация только по ссылке   |

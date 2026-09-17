@@ -7,6 +7,12 @@
 // TelegramExamNotifier.notifyExamGraded() — «учитель поставил оценку»
 // (ExamGradingsService.grade() зовёт тот же метод, PLAN.md §11 слой 4.7).
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»).
+//
+// Баг с #131 (найден 2026-09-16): тот же разрыв, но для входа по
+// ссылке-приглашению (/start join_<код>, ADR-0030) — join() заводил человека
+// в active, но welcomeConnectedUser не звался, и PersonalChats.chatFor() для
+// него тоже отдавал null до второго /start. Ниже — invite-код теперь
+// валиден (fakeInviteLinkService), а не всегда отклоняется.
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
@@ -41,12 +47,15 @@ const ATTEMPT_CONTEXT = {
   examId: '507f1f77bcf86cd799439012',
   examTitle: 'Экзамен по третьей форме',
 };
+const VALID_INVITE_CODE = 'a'.repeat(32);
 
-function fakeStartCtx(telegramId: number): Context {
+// `first_name: 'Ученик'` — используется createFromTelegram/fullName при
+// входе по ссылке-приглашению незнакомцем (payload `join_<код>`).
+function fakeStartCtx(telegramId: number, payload?: string): Context {
   return {
     chat: { type: 'private' },
-    from: { id: telegramId },
-    message: { text: '/start' },
+    from: { id: telegramId, first_name: 'Ученик' },
+    message: { text: payload ? `/start ${payload}` : '/start' },
     reply: () => Promise.resolve(),
   } as unknown as Context;
 }
@@ -107,14 +116,17 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
       classModel,
       usersService,
     );
-    const inertInviteLinkService = {
-      isValid: () => Promise.resolve(false),
+    // Валиден только VALID_INVITE_CODE — тот же фейк, что fakeInviteLinkService
+    // в start.handler.spec.ts, а не «всегда false»: новый тест ниже проходит
+    // по-настоящему через join_<код>, не только через обычный /start.
+    const fakeInviteLinkService = {
+      isValid: (code: string) => Promise.resolve(code === VALID_INVITE_CODE),
     } as unknown as InviteLinkService;
     const loginIdentity = new LoginIdentityService(
       fakeConfig(),
       usersService,
       new EmailLoginUserService(userModel),
-      inertInviteLinkService,
+      fakeInviteLinkService,
     );
     startHandler = new StartHandler(
       settingsService,
@@ -207,5 +219,31 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
 
     const classAfter = await classModel.findById(active._id).lean();
     expect(classAfter?.channelIds).toHaveLength(0);
+  });
+
+  // Баг с #131 (найден 2026-09-16 на аудите): join_<код> заводил
+  // человека в active, но welcomeConnectedUser не звался — PersonalChats.chatFor()
+  // отдавал null до второго /start, и результат экзамена не доходил. Пользователя
+  // заранее НЕ создаём — по ссылке приходит именно незнакомец.
+  it('незнакомец открыл ссылку-приглашение (/start join_<код>) → результат экзамена доходит без второго /start', async () => {
+    await startHandler.handle(fakeStartCtx(903, `join_${VALID_INVITE_CODE}`), NOW);
+    const created = await userModel.findOne({ telegramId: 903 }).lean();
+    expect(created?.status).toBe('active');
+    const bot = fakeBot();
+
+    await buildNotifier(bot).notifyExamGraded(
+      {
+        ...ATTEMPT_CONTEXT,
+        userId: created?._id.toString() ?? '',
+        outcome: 'passed',
+        comment: undefined,
+      },
+      NOW,
+    );
+
+    expect(bot.sendMessage).toHaveBeenCalledWith(
+      '903',
+      expect.stringContaining('Экзамен сдан.'),
+    );
   });
 });

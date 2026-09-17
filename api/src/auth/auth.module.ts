@@ -47,7 +47,7 @@ import { TelegramLinkController } from './telegram-link.controller';
     TelegramAuthService,
     EmailAuthService,
     EmailLoginTokenService,
-    // Ссылка-приглашение школы (ADR-0030/0035): InviteLinkService и
+    // Ссылка-приглашение школы (ADR-0030/0036): InviteLinkService и
     // LoginIdentityService приходят как экспорт UsersModule (импортирован
     // выше, второй провайдер здесь не заводим).
     // Связка Telegram (ADR-0034): TelegramLinkCodeService для

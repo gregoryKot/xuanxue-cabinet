@@ -15,6 +15,9 @@ const textareaStyle = { ...inputStyle, minHeight: 120, resize: 'vertical' } as c
 interface AttemptQuestionTextProps {
   labelledBy: string;
   value: string;
+  /** Предпросмотр глазами ученика (exams/ExamPreviewQuestion.tsx): та же
+   * строка, но ответить нельзя. */
+  disabled?: boolean;
   onChange: (text: string) => void;
   onBlur: () => void;
 }
@@ -22,6 +25,7 @@ interface AttemptQuestionTextProps {
 export function AttemptQuestionText({
   labelledBy,
   value,
+  disabled,
   onChange,
   onBlur,
 }: AttemptQuestionTextProps) {
@@ -31,6 +35,7 @@ export function AttemptQuestionText({
       style={textareaStyle}
       maxLength={ATTEMPT_LIMITS.answerText}
       value={value}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       onBlur={onBlur}
     />

@@ -31,7 +31,7 @@ Telegram-каналы). Личный чат ученика после `/start` �
 (экран «Каналы»), `ClassesService.defaultTelegramChannelIds` (подписка нового класса),
 `ChannelConfigService.listActiveTelegramChatIds` (проверка членства в группе,
 ADR-0026 — на момент этого решения; сам метод и механика, которую он
-обслуживал, удалены вместе с автоподтверждением ADR-0035). `PersonalChats.list()`/`listFor()` уже были ограничены штатом школы через
+обслуживал, удалены вместе с автоподтверждением ADR-0036). `PersonalChats.list()`/`listFor()` уже были ограничены штатом школы через
 `UsersService.listTeacherContacts()` — от этой дыры они не зависели, менять не пришлось.
 `chatFor(userId, kind)` ищет канал только по `(type, target, active)`, флаг ему не
 нужен: адресность уже даёт `userId`.

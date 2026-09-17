@@ -5,7 +5,7 @@
 // «Логика вне компонентов»), тот же приём, что useTelegramAuthResultLogin.ts:
 // POST → refresh() сессии → сохранённый адрес или домашний экран
 // (postLoginPath, аудит L2 — раньше жёстко /schedule). `joinCode`
-// (ADR-0030/0035) едет прямо в теле verify — отдельного шага
+// (ADR-0030/0036) едет прямо в теле verify — отдельного шага
 // «присоединиться после входа» больше нет.
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';

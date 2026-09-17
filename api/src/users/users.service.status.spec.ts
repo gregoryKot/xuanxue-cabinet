@@ -2,7 +2,7 @@
 // 150, растить нельзя, CLAUDE.md «Храповики»): чтение статуса вне
 // USER_STATUSES через настоящую Mongo (mongodb-memory-server, не мок
 // модели — CLAUDE.md «Тесты»), слой совместимости expand→contract
-// (ADR-0035, normalize-user-status.ts). Документ вставлен нативным
+// (ADR-0036, normalize-user-status.ts). Документ вставлен нативным
 // драйвером в обход Mongoose-валидации enum — так лежат данные, записанные
 // до деплоя этой миграции/нормализации (окно деплоя, revert-PR).
 import { ObjectId } from 'mongodb';
@@ -13,7 +13,7 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 
 const USERS = 'users';
 
-describe('UsersService — статус вне USER_STATUSES (ADR-0035, expand→contract)', () => {
+describe('UsersService — статус вне USER_STATUSES (ADR-0036, expand→contract)', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let model: Model<UserRecord>;

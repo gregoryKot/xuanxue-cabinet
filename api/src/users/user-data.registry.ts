@@ -27,6 +27,11 @@
 // exam_gradings. Само видео живёт в чатах Telegram или на стороннем
 // хостинге — его удаляет владелец чата/хостинга, не мы (ADR-0023).
 //
+// Этап 4, слой 4.2 (exam_images, ADR-0035) — байты картинки варианта
+// ответа. Данные школы, не ученика: `createdBy` — кто загрузил, не признак
+// владения (см. USER_REFERENCE_PATHS ниже) — при удалении аккаунта поле
+// обнуляется, сама картинка остаётся у вопроса банка.
+//
 // ADR-0034 — код связки Telegram (telegram_link_codes,
 // telegram-link-code.schema.ts): `userId` здесь не персональные данные
 // ученика, а признак того, чья сессия выпустила код (владелец, а не жертва
@@ -61,4 +66,5 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ExamItemRecord', path: 'authorId' },
   { model: 'ExamRecord', path: 'createdBy' },
   { model: 'ExamGradingRecord', path: 'graderId' },
+  { model: 'ExamImageRecord', path: 'createdBy' },
 ] as const;

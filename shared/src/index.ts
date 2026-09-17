@@ -147,6 +147,15 @@ export {
   EXAM_MEDIA_INVALID_URL_MESSAGE,
   EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
 } from './exam-media';
+export type { ExamImageContentType, ExamImageDto } from './exam-images';
+export {
+  EXAM_IMAGE_CONTENT_TYPES,
+  EXAM_IMAGE_LIMITS,
+  EXAM_IMAGE_EMPTY_MESSAGE,
+  EXAM_IMAGE_UNSUPPORTED_MESSAGE,
+  EXAM_IMAGE_TOO_LARGE_MESSAGE,
+  EXAM_IMAGE_NOT_FOUND_MESSAGE,
+} from './exam-images';
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamDto, ListMyExamsQuery } from './my-exams';
 export type {

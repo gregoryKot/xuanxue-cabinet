@@ -11,7 +11,7 @@
 //
 // Облик — ADR-0031: рубрика растяжкой-заглавными вместо рамки-карточки, оба
 // действия текстом, без киновари: ссылку заводят один раз и потом к ней не
-// возвращаются, а акцентной кнопки на «Людях» после ADR-0035 нет вовсе.
+// возвращаются, а акцентной кнопки на «Людях» после ADR-0036 нет вовсе.
 import { useState, type CSSProperties } from 'react';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';

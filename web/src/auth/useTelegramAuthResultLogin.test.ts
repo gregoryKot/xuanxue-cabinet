@@ -134,7 +134,7 @@ describe('useTelegramAuthResultLogin', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('inviteCode (JoinScreen, ADR-0030/0035) — в query ?join=, не в теле (подпись Telegram считается по телу целиком)', async () => {
+  it('inviteCode (JoinScreen, ADR-0030/0036) — в query ?join=, не в теле (подпись Telegram считается по телу целиком)', async () => {
     window.location.hash = toTgAuthResultHash(fakeUser);
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);

@@ -35,7 +35,7 @@ export function isStaffRole(roles: readonly UserRole[]): boolean {
   return roles.some((role) => STAFF_ROLES.includes(role));
 }
 
-// Статуса «ожидает подтверждения» больше нет (ADR-0035, отменяет ADR-0026
+// Статуса «ожидает подтверждения» больше нет (ADR-0036, отменяет ADR-0026
 // в этой части): регистрация идёт только по ссылке-приглашению школы
 // (ADR-0030), сразу `active` — ждать больше нечего. Инцидент 2026-09-15
 // (владелец мельком увидел экран ожидания между входом и присоединением) —
@@ -60,7 +60,7 @@ export interface MeDto {
   telegramLinked: boolean;
 }
 
-/** Нового человека без ссылки-приглашения (ADR-0030, ADR-0035) в кабинет не
+/** Нового человека без ссылки-приглашения (ADR-0030, ADR-0036) в кабинет не
  * пускаем — ни `POST /auth/telegram`, ни `POST /auth/email/verify` не
  * заводят аккаунт без валидного `inviteCode`. Текст — с действием
  * (docs/VOICE.md): что сделать, чтобы попасть внутрь. */
@@ -99,7 +99,7 @@ export interface RequestEmailLoginInput {
 
 /** Тело `POST /auth/email/verify` — токен из ссылки в письме, 64 hex.
  * `inviteCode` — страница `/login/email` читает его из query `?join=<code>`
- * (ADR-0030, ADR-0035) и шлёт вместе с verify: у нового человека без него
+ * (ADR-0030, ADR-0036) и шлёт вместе с verify: у нового человека без него
  * или с неверным кодом верификация не заводит аккаунт. */
 export interface VerifyEmailLoginInput {
   token: string;

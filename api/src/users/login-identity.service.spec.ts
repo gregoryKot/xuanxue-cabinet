@@ -1,5 +1,5 @@
 // Юнит-тест единой точки «найти или завести человека при входе»
-// (ADR-0030/0035) — фейки ConfigService/UsersService/EmailLoginUserService/
+// (ADR-0030/0036) — фейки ConfigService/UsersService/EmailLoginUserService/
 // InviteLinkService, без Mongo (CLAUDE.md «Тесты»).
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';

@@ -1,21 +1,21 @@
-// Один вопрос в предпросмотре «глазами ученика» (ТЗ 4.3): варианты — неактивные
-// radio/checkbox, у видео-задания — объяснение, что сюда придёт видео. Ничего
-// не отправляется — inputs всегда disabled, formы нет вовсе.
-import type { CSSProperties } from 'react';
+// Один вопрос в предпросмотре «глазами ученика» (ТЗ 4.3): формулировка и поле
+// ответа по типу — те же компоненты, что у сдачи (attempt/AttemptQuestion*.tsx),
+// но всегда неактивные: предпросмотр показывает сохранённый экзамен, а не
+// форму сдачи, отвечать здесь нельзя. Строка вопроса — общий
+// components/QuestionRow.tsx (его же комментарий-шапка про то, почему общий).
+//
+// Пропсы у компонентов сдачи обязательные — там без обработчика нельзя.
+// `IGNORE_INPUT` — пустой обработчик: поля выключены (`disabled`), реально не
+// вызывается.
 import type { ExamItemDto } from '@xuanxue/shared';
+import { AttemptQuestionChoice } from '../attempt/AttemptQuestionChoice';
+import { AttemptQuestionText } from '../attempt/AttemptQuestionText';
+import { AttemptQuestionVideo } from '../attempt/AttemptQuestionVideo';
+import { QuestionRow } from '../components/QuestionRow';
 
-const VIDEO_NOTE =
-  'Сюда придёт видео с ответом — при сдаче здесь появится запись с камеры или загруженный файл.';
-const MISSING_NOTE = 'Вопрос недоступен — его удалили или ещё не опубликовали.';
+const MISSING_NOTE = 'Вопрос недоступен — его удалили или спрятали в черновик.';
 
-const questionStyle: CSSProperties = { marginBottom: 14 };
-const promptStyle: CSSProperties = { margin: '0 0 4px', fontWeight: 600 };
-const hintStyle: CSSProperties = {
-  margin: '0 0 6px',
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-};
-const optionRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 };
+const IGNORE_INPUT = () => undefined;
 
 interface ExamPreviewQuestionProps {
   index: number;
@@ -25,40 +25,39 @@ interface ExamPreviewQuestionProps {
 export function ExamPreviewQuestion({ index, item }: ExamPreviewQuestionProps) {
   if (!item) {
     return (
-      <p style={promptStyle}>
-        {index + 1}. {MISSING_NOTE}
-      </p>
+      <QuestionRow
+        index={index}
+        promptId={`preview-prompt-${index}`}
+        prompt={MISSING_NOTE}
+      />
     );
   }
 
+  const promptId = `preview-prompt-${item.id}`;
+
   return (
-    <div style={questionStyle}>
-      <p style={promptStyle}>
-        {index + 1}. {item.prompt}
-      </p>
-      {item.hint && <p style={hintStyle}>{item.hint}</p>}
-      {item.kind === 'video' && <p style={hintStyle}>{VIDEO_NOTE}</p>}
+    <QuestionRow index={index} promptId={promptId} prompt={item.prompt} hint={item.hint}>
       {item.kind === 'text' && (
-        <textarea
+        <AttemptQuestionText
+          labelledBy={promptId}
+          value=""
           disabled
-          aria-label="Ответ ученика"
-          style={{ width: '100%', minHeight: 60 }}
+          onChange={IGNORE_INPUT}
+          onBlur={IGNORE_INPUT}
         />
       )}
       {(item.kind === 'single' || item.kind === 'multiple') && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {item.options.map((option) => (
-            <label key={option.id} style={optionRowStyle}>
-              <input
-                type={item.kind === 'single' ? 'radio' : 'checkbox'}
-                disabled
-                name={`preview-${item.id}`}
-              />
-              <span>{option.text}</span>
-            </label>
-          ))}
-        </div>
+        <AttemptQuestionChoice
+          labelledBy={promptId}
+          itemId={item.id}
+          kind={item.kind}
+          options={item.options}
+          selected={[]}
+          disabled
+          onChange={IGNORE_INPUT}
+        />
       )}
-    </div>
+      {item.kind === 'video' && <AttemptQuestionVideo />}
+    </QuestionRow>
   );
 }

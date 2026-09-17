@@ -35,7 +35,7 @@ describe('toMeDto', () => {
     expect(toMeDto(emailOnly).telegramLinked).toBe(false);
   });
 
-  // `status` наружу идёт (ADR-0026, ADR-0035: active/blocked, ждать больше
+  // `status` наружу идёт (ADR-0026, ADR-0036: active/blocked, ждать больше
   // нечего); ключи входа не идут по-прежнему.
   it('не содержит email, telegramId, googleId', () => {
     const dto = toMeDto(fullUser()) as unknown as Record<string, unknown>;

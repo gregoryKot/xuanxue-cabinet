@@ -14,7 +14,7 @@ export const REDACT_PATHS: string[] = [
   // Email — PII, даже если пришёл в теле легитимного запроса (вход по ссылке).
   'req.body.email',
   // Код ссылки-приглашения школы (ADR-0030; POST /auth/join удалён —
-  // ADR-0035): /auth/join/check шлёт код полем `code`, /auth/email/request и
+  // ADR-0036): /auth/join/check шлёт код полем `code`, /auth/email/request и
   // /auth/email/verify — полем `inviteCode`. POST /auth/telegram несёт тот же
   // код query-параметром `join` — см. req.query.join ниже. Везде один и тот
   // же уровень секретности, что email/hash.

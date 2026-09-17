@@ -1,4 +1,4 @@
-// Ссылка-приглашение школы (`/join/:code`, ADR-0030/0035) — публичный
+// Ссылка-приглашение школы (`/join/:code`, ADR-0030/0036) — публичный
 // маршрут, до входа: сначала проверяем код (useJoinByInvite.ts), потом
 // либо «ссылка не действует», либо вход (Telegram/email,
 // TelegramLoginSection.tsx — общий кусок с LoginScreen.tsx, CLAUDE.md

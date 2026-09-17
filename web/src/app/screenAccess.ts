@@ -3,7 +3,7 @@
 // решает, что предзагрузить для той же роли и того же адреса. Раньше правило
 // жило только в AppShell.tsx — вторая копия в prefetchFirstScreen.ts
 // разъехалась бы с ней на первой же правке ролей (CLAUDE.md «Одна механика —
-// один компонент»). Статуса «ждёт подтверждения» больше нет (ADR-0035):
+// один компонент»). Статуса «ждёт подтверждения» больше нет (ADR-0036):
 // вошедший всегда либо штат, либо ученик — по статусу здесь ничего не
 // ветвится, `blocked` до этого кода не доходит (RequireAuth показывает отказ).
 import type { MeDto } from '@xuanxue/shared';
@@ -13,7 +13,7 @@ const NOTIFICATIONS_PATH = '/notifications';
 const ATTEMPT_PATH_PREFIX = '/attempts/';
 
 /** teacher/assistant/admin — штат школы: ему навигация и экраны маршрутов;
- * без этих ролей человек — ученик (ADR-0026/0035), ему StudentScreen. */
+ * без этих ролей человек — ученик (ADR-0026/0036), ему StudentScreen. */
 export function isTeacher(me: MeDto | null): boolean {
   if (!me) return false;
   return me.roles.some((role) => TEACHER_ROLES.has(role));

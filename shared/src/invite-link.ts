@@ -15,7 +15,7 @@ export const INVITE_CODE_RE = /^[0-9a-f]{32}$/;
 export const INVITE_TELEGRAM_START_PREFIX = 'join_';
 
 /** Имя query-параметра, которым код ссылки-приглашения путешествует по
- * запросам, где тело подписано и расширять его нельзя (ADR-0035): письмо
+ * запросам, где тело подписано и расширять его нельзя (ADR-0036): письмо
  * входа (`&join=<code>`), страница `/login/email`, `POST /auth/telegram`
  * (`?join=<code>` — подпись Telegram считается по телу целиком,
  * parse-telegram-login-body.ts, добавлять туда лишнее поле нельзя). Один
@@ -37,7 +37,7 @@ export interface InviteLinkDto {
 }
 
 /** Тело `POST /auth/join/check` — код из адреса `/join/<code>`, страница
- * проверяет ссылку до входа (ADR-0035: самого входа-«присоединения» после
+ * проверяет ссылку до входа (ADR-0036: самого входа-«присоединения» после
  * сессии больше нет, `inviteCode` едет прямо в `/auth/telegram`/
  * `/auth/email/verify`). */
 export interface JoinByInviteInput {
