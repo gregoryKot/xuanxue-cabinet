@@ -172,7 +172,7 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
     await startHandler.handle(fakeStartCtx(900), NOW);
     const bot = fakeBot();
 
-    await buildNotifier(bot).notifyExamGraded(
+    const result = await buildNotifier(bot).notifyExamGraded(
       {
         ...ATTEMPT_CONTEXT,
         userId: student._id.toString(),
@@ -186,6 +186,7 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
       '900',
       expect.stringContaining('Экзамен сдан.'),
     );
+    expect(result).toEqual({ recipients: 1 });
   });
 
   it('ученик НЕ нажимал /start — уведомление молча не уходит, ничего не падает (прежнее поведение)', async () => {
@@ -202,7 +203,7 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
         },
         NOW,
       ),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ recipients: 0 });
 
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
@@ -231,7 +232,7 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
     expect(created?.status).toBe('active');
     const bot = fakeBot();
 
-    await buildNotifier(bot).notifyExamGraded(
+    const result = await buildNotifier(bot).notifyExamGraded(
       {
         ...ATTEMPT_CONTEXT,
         userId: created?._id.toString() ?? '',
@@ -245,5 +246,6 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
       '903',
       expect.stringContaining('Экзамен сдан.'),
     );
+    expect(result).toEqual({ recipients: 1 });
   });
 });

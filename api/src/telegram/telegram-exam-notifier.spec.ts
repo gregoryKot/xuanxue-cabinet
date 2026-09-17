@@ -275,7 +275,7 @@ describe('TelegramExamNotifier', () => {
       const studentId = await connectPerson(555, 'Ученик', []);
       const bot = fakeBot();
 
-      await buildNotifier(bot).notifyExamGraded(
+      const result = await buildNotifier(bot).notifyExamGraded(
         { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
         NOW,
       );
@@ -284,6 +284,7 @@ describe('TelegramExamNotifier', () => {
         '555',
         expect.stringContaining('Экзамен сдан.'),
       );
+      expect(result).toEqual({ recipients: 1 });
     });
 
     it('ученик выключил exam_result — не уходит', async () => {
@@ -294,10 +295,17 @@ describe('TelegramExamNotifier', () => {
       });
       const bot = fakeBot();
 
-      await buildNotifier(bot).notifyExamGraded(
-        { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
-        NOW,
-      );
+      await expect(
+        buildNotifier(bot).notifyExamGraded(
+          {
+            ...ATTEMPT_CONTEXT,
+            userId: studentId,
+            outcome: 'passed',
+            comment: undefined,
+          },
+          NOW,
+        ),
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(bot.sendMessage).not.toHaveBeenCalled();
     });
@@ -310,7 +318,7 @@ describe('TelegramExamNotifier', () => {
           { ...ATTEMPT_CONTEXT, userId: 'u1', outcome: 'passed', comment: undefined },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 0 });
       expect(bot.sendMessage).not.toHaveBeenCalled();
     });
 
@@ -334,7 +342,7 @@ describe('TelegramExamNotifier', () => {
           },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(bot.sendMessage).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(
@@ -352,11 +360,14 @@ describe('TelegramExamNotifier', () => {
         .spyOn(Logger.prototype, 'error')
         .mockImplementation(() => undefined);
 
-      await buildNotifier(bot).notifyExamGraded(
+      const result = await buildNotifier(bot).notifyExamGraded(
         { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
         NOW,
       );
 
+      // Чат нашли, слать пытались — «дошло» бот уже не гарантирует, но
+      // recipients не про это (см. комментарий в notifyAttemptSubmitted выше).
+      expect(result).toEqual({ recipients: 1 });
       expect(error).toHaveBeenCalledWith(
         expect.stringContaining('доставка не удалась'),
         expect.objectContaining({
