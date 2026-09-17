@@ -42,6 +42,8 @@ import { ChatMemberHandler } from './handlers/chat-member.handler';
 import { ExamCommandHandler } from './handlers/exam-command.handler';
 import { ExamMediaMessageHandler } from './handlers/exam-media-message.handler';
 import { ExamTextAnswerHandler } from './handlers/exam-text-answer.handler';
+import { GradeCommentHandler } from './handlers/grade-comment.handler';
+import { GradeQueueHandler } from './handlers/grade-queue.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
 import { NewExamCommandHandler } from './handlers/new-exam-command.handler';
@@ -93,6 +95,8 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     NewExamItemMessageHandler,
     NewExamCommandHandler,
     NewExamMessageHandler,
+    GradeCommentHandler,
+    GradeQueueHandler,
     ExamBotPortRegistry,
     PersonalChats,
     BotSessionService,

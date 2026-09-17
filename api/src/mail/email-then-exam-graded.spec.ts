@@ -13,6 +13,7 @@ import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
 import { PersonalChats } from '../telegram/personal-chats';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import type { TelegramBotService } from '../telegram/telegram-bot.service';
@@ -80,9 +81,12 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
       notificationPrefsService,
     );
     const userNamesService = new UserNamesService(userModel);
+    // Тест про notifyExamGraded — она ExamBotPort не зовёт (карточка нужна
+    // только notifyAttemptSubmitted, слой 4б.5), поэтому реестр остаётся
+    // несобранным: настоящего порта здесь нет и не нужен.
     const telegram = new TelegramExamNotifier(
       personalChats,
-      userNamesService,
+      new ExamBotPortRegistry(),
       inertBot(),
       fakeConfig(),
     );

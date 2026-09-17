@@ -19,6 +19,8 @@ import { BotSessionService } from '../bot-session.service';
 import { PersonalChats } from '../personal-chats';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 import { ExamTextAnswerHandler } from './exam-text-answer.handler';
+import { GradeCommentHandler } from './grade-comment.handler';
+import { GRADE_COMMENT_EXPIRED_MESSAGE } from './grade-messages';
 import { saveOrExplain } from './message-save';
 import { NewExamMessageHandler } from './new-exam-message.handler';
 import { NewExamItemMessageHandler } from './new-exam-item-message.handler';
@@ -59,6 +61,7 @@ export class MessageHandler {
     private readonly examTextHandler: ExamTextAnswerHandler,
     private readonly newExamItemHandler: NewExamItemMessageHandler,
     private readonly newExamHandler: NewExamMessageHandler,
+    private readonly gradeCommentHandler: GradeCommentHandler,
   ) {}
 
   private readonly logSaveError = (message: string, stack?: string): void =>
@@ -118,6 +121,10 @@ export class MessageHandler {
         await this.newExamHandler.handle(ctx, from.id, session, now);
         return;
       }
+      if (session?.kind === 'gradeComment') {
+        await this.gradeCommentHandler.handle(ctx, from.id, session, now);
+        return;
+      }
       if (expiredKind) {
         const text =
           expiredKind === 'recording'
@@ -126,7 +133,9 @@ export class MessageHandler {
               ? NEW_EXAM_ITEM_EXPIRED_MESSAGE
               : expiredKind === 'examBuildDraft'
                 ? NEW_EXAM_EXPIRED_MESSAGE
-                : TOPIC_EXPIRED_MESSAGE;
+                : expiredKind === 'gradeComment'
+                  ? GRADE_COMMENT_EXPIRED_MESSAGE
+                  : TOPIC_EXPIRED_MESSAGE;
         await ctx.reply(text).catch(() => null);
         return;
       }

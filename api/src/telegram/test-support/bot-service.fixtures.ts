@@ -7,6 +7,7 @@ import type { Context } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import type { CallbackQueryHandler } from '../handlers/callback-query.handler';
 import type { ExamCommandHandler } from '../handlers/exam-command.handler';
+import type { GradeQueueHandler } from '../handlers/grade-queue.handler';
 import type { MenuCommandHandler } from '../handlers/menu-command.handler';
 import type { MessageHandler } from '../handlers/message.handler';
 import type { NewExamCommandHandler } from '../handlers/new-exam-command.handler';
@@ -53,6 +54,7 @@ export function fakeExtraHandlers(): [
   ExamCommandHandler,
   NewExamItemCommandHandler,
   NewExamCommandHandler,
+  GradeQueueHandler,
   BotIdentityService,
 ] {
   return [
@@ -64,6 +66,7 @@ export function fakeExtraHandlers(): [
     fakeHandlerWithNow() as unknown as ExamCommandHandler,
     fakeHandlerWithNow() as unknown as NewExamItemCommandHandler,
     fakeHandlerWithNow() as unknown as NewExamCommandHandler,
+    fakeHandlerWithNow() as unknown as GradeQueueHandler,
     new BotIdentityService(),
   ];
 }

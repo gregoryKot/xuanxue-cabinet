@@ -33,6 +33,12 @@ import {
 import { isValidCallbackParam } from './callback-params';
 import { isExamCallbackAction, routeExamCallback } from './exam-callback-router';
 import { ExamCommandHandler } from './exam-command.handler';
+import {
+  handleGradeCancel,
+  handleGradeOutcome,
+  handleGradeSkip,
+  handleGradeView,
+} from './grade-callback.handler';
 import { MenuCommandHandler } from './menu-command.handler';
 import { handleMenuScreen } from './menu-screens';
 import { isNewExamCallbackAction, routeNewExamCallback } from './new-exam-router';
@@ -191,6 +197,36 @@ export class CallbackQueryHandler {
         this.usersService,
         this.config.get<string>('PUBLIC_URL'),
         now,
+      );
+    }
+    if (action === 'grade') {
+      return handleGradeOutcome(
+        ctx,
+        this.examBotPorts.get(),
+        this.botSessions,
+        chatId,
+        id,
+        now,
+      );
+    }
+    if (action === 'gradesk') {
+      return handleGradeSkip(
+        ctx,
+        this.examBotPorts.get(),
+        this.botSessions,
+        this.usersService,
+        chatId,
+        id,
+        now,
+      );
+    }
+    if (action === 'gradecl') return handleGradeCancel(ctx, this.botSessions, chatId, id);
+    if (action === 'gradeq') {
+      return handleGradeView(
+        ctx,
+        this.examBotPorts.get(),
+        id,
+        this.config.get<string>('PUBLIC_URL'),
       );
     }
   }

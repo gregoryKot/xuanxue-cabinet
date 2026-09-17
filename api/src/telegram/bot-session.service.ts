@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import type { ExamItemKind } from '@xuanxue/shared';
+import type { ExamItemKind, GradingOutcome } from '@xuanxue/shared';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import {
   BOT_SESSION_ENCRYPT_SCHEMA,
@@ -32,6 +32,9 @@ import {
 // вопрос экзамена, по той же причине).
 const TOPIC_WAIT_MINUTES = 10;
 const RECORDING_WAIT_HOURS = 12;
+// Комментарий проверки (ТЗ 4б.5) — короткое действие, тот же порядок, что у
+// темы: проверяющий ставит его тут же, не откладывая на потом.
+const GRADE_COMMENT_WAIT_MINUTES = 10;
 
 export interface BotSessionLean {
   kind: BotSessionKind;
@@ -66,6 +69,8 @@ export interface BotSessionLean {
   buildTimeLimitMin?: number;
   buildAttemptsAllowed?: number;
   buildSavedExamId?: Types.ObjectId;
+  /** Итог проверки (ТЗ 4б.5) — есть только у 'gradeComment'. */
+  outcome?: GradingOutcome;
 }
 
 /** `BotSessionLean` до расшифровки — `draftPrompt`/`draftCriteria`/
@@ -171,6 +176,7 @@ export class BotSessionService {
           buildTimeLimitMin: 1,
           buildAttemptsAllowed: 1,
           buildSavedExamId: 1,
+          outcome: 1,
         },
       )
       .lean<RawBotSessionLean | null>();
@@ -243,6 +249,29 @@ export class BotSessionService {
     await this.model.updateOne({ chatId }, { $set: update }, { upsert: true });
   }
 
+  /** Ждём комментарий проверки (ТЗ 4б.5) — новое ожидание вытесняет старое,
+   * тем же приёмом, что startTopicWait; `outcome` запоминаем сразу, чтобы
+   * не спрашивать его снова после текста комментария. */
+  async startGradeCommentWait(
+    chatId: number,
+    attemptId: string,
+    outcome: GradingOutcome,
+    now: DateTime,
+  ): Promise<void> {
+    await this.model.updateOne(
+      { chatId },
+      {
+        $set: {
+          kind: 'gradeComment',
+          attemptId: new Types.ObjectId(attemptId),
+          outcome,
+          expiresAt: now.plus({ minutes: GRADE_COMMENT_WAIT_MINUTES }).toJSDate(),
+        },
+      },
+      { upsert: true },
+    );
+  }
+
   async clear(chatId: number): Promise<void> {
     await this.model.deleteOne({ chatId });
   }
@@ -255,6 +284,18 @@ export class BotSessionService {
    * второго. */
   async clearIfLesson(chatId: number, lessonId: string): Promise<void> {
     await this.model.deleteOne({ chatId, lessonId: new Types.ObjectId(lessonId) });
+  }
+
+  /** Закрывает ожидание комментария, только если оно про ЭТУ попытку («Отмена»
+   * под конкретной карточкой) — тот же приём и та же причина, что у
+   * clearIfLesson: `kind` в фильтре на случай, если тем временем чат ждёт
+   * что-то другое с тем же attemptId (examMedia/examText той же попытки). */
+  async clearIfAttempt(chatId: number, attemptId: string): Promise<void> {
+    await this.model.deleteOne({
+      chatId,
+      attemptId: new Types.ObjectId(attemptId),
+      kind: 'gradeComment',
+    });
   }
 
   /** Документ есть, но `expiresAt` уже прошёл — отличить «никогда не ждали»

@@ -140,6 +140,7 @@ export async function setupFlowTest(): Promise<FlowTestContext> {
   const examBot = new ExamBotService(
     myExamsService,
     ctx.service,
+    ctx.gradingsService,
     ctx.mediaAssetsService,
     ctx.examImagesService,
     ctx.examItemsService,

@@ -30,12 +30,12 @@ import { EmailLoginUserService } from '../users/email-login-user.service';
 import type { InviteLinkService } from '../users/invite-link.service';
 import { LoginIdentityService } from '../users/login-identity.service';
 import type { TelegramLinkService } from '../users/telegram-link.service';
-import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
 import { BotSessionService } from './bot-session.service';
 import { BotUserAccessService } from './bot-user-access.service';
+import { ExamBotPortRegistry } from './exam-bot-port.registry';
 import { StartHandler } from './handlers/start.handler';
 import { PersonalChats } from './personal-chats';
 import { TelegramExamNotifier } from './telegram-exam-notifier';
@@ -89,7 +89,6 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
   let botSessionModel: Model<BotSessionRecord>;
   let notificationPrefsModel: Model<NotificationPrefsRecord>;
   let startHandler: StartHandler;
-  let userNamesService: UserNamesService;
   let personalChats: PersonalChats;
 
   beforeAll(async () => {
@@ -137,7 +136,6 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
       inertTelegramLinkService(),
       fakeConfig(),
     );
-    userNamesService = new UserNamesService(userModel);
     personalChats = new PersonalChats(
       usersService,
       channelModel,
@@ -159,9 +157,11 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
   });
 
   function buildNotifier(bot: ReturnType<typeof fakeBot>): TelegramExamNotifier {
+    // Тест про notifyExamGraded — карточка проверки (ExamBotPort, слой 4б.5)
+    // нужна только notifyAttemptSubmitted, реестр остаётся несобранным.
     return new TelegramExamNotifier(
       personalChats,
-      userNamesService,
+      new ExamBotPortRegistry(),
       bot as unknown as TelegramBotService,
       fakeConfig(),
     );

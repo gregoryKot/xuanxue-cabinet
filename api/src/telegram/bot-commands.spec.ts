@@ -17,7 +17,7 @@ describe('BOT_COMMANDS', () => {
     }
   });
 
-  it('в списке есть меню, занятия, тема, экзамены, новый вопрос, сборка и уведомления', () => {
+  it('в списке есть меню, занятия, тема, экзамены, новый вопрос, сборка, проверка и уведомления', () => {
     expect(BOT_COMMANDS.map((c) => c.command)).toEqual([
       'menu',
       'schedule',
@@ -25,6 +25,7 @@ describe('BOT_COMMANDS', () => {
       'exams',
       'newquestion',
       'newexam',
+      'review',
       'notifications',
       'help',
     ]);

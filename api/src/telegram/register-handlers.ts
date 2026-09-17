@@ -8,6 +8,7 @@ import type { ChatMemberHandler } from './handlers/chat-member.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
+import type { GradeQueueHandler } from './handlers/grade-queue.handler';
 import type { NewExamCommandHandler } from './handlers/new-exam-command.handler';
 import type { NewExamItemCommandHandler } from './handlers/new-exam-item-command.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
@@ -29,6 +30,7 @@ const NEW_EXAM_ITEM_COMMAND_PATTERN = /^\/вопрос(?:@[A-Za-z0-9_]+)?(?:\s|$
 // PATTERN выше): без границы `?:\s|$` совпало бы с приставкой «экзамен» у
 // множественного числа, но она есть, и следующая буква «ы» её не проходит.
 const NEW_EXAM_COMMAND_PATTERN = /^\/экзамен(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
+const GRADE_QUEUE_COMMAND_PATTERN = /^\/проверка(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
 
 export interface BotHandlers {
   chatMemberHandler: ChatMemberHandler;
@@ -41,6 +43,7 @@ export interface BotHandlers {
   examCommandHandler: ExamCommandHandler;
   newExamItemCommandHandler: NewExamItemCommandHandler;
   newExamCommandHandler: NewExamCommandHandler;
+  gradeQueueHandler: GradeQueueHandler;
 }
 
 /** `DateTime.utc()` — на каждый апдейт заново (CLAUDE.md «Время»): здесь, а
@@ -70,6 +73,7 @@ export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
   bot.command('newexam', (ctx) =>
     handlers.newExamCommandHandler.handle(ctx, DateTime.utc()),
   );
+  bot.command('review', (ctx) => handlers.gradeQueueHandler.handle(ctx, DateTime.utc()));
   bot.hears(TOPIC_COMMAND_PATTERN, (ctx) =>
     handlers.topicCommandHandler.handle(ctx, DateTime.utc()),
   );
@@ -84,6 +88,9 @@ export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
   );
   bot.hears(NEW_EXAM_COMMAND_PATTERN, (ctx) =>
     handlers.newExamCommandHandler.handle(ctx, DateTime.utc()),
+  );
+  bot.hears(GRADE_QUEUE_COMMAND_PATTERN, (ctx) =>
+    handlers.gradeQueueHandler.handle(ctx, DateTime.utc()),
   );
   bot.on('message', (ctx) => handlers.messageHandler.handle(ctx, DateTime.utc()));
 }

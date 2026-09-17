@@ -4,6 +4,7 @@
 // трогаем: фабрика Telegraf подменена (test-support/telegraf-factory.ts).
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
+import type { GradeQueueHandler } from './handlers/grade-queue.handler';
 import type { StartHandler } from './handlers/start.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { CallbackQueryHandler } from './handlers/callback-query.handler';
@@ -45,6 +46,7 @@ function buildService(): {
     exams as unknown as ExamCommandHandler,
     fakeHandlerWithNow() as unknown as NewExamItemCommandHandler,
     fakeHandlerWithNow() as unknown as NewExamCommandHandler,
+    fakeHandlerWithNow() as unknown as GradeQueueHandler,
     new BotIdentityService(),
   );
   service.onApplicationBootstrap();
