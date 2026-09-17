@@ -74,7 +74,7 @@ export class InviteLinkService {
   /** По хешу — сырой код в базе не хранится дольше, чем нужно на один
    * запрос (тот же приём, что у email_login_tokens). Формат сверяется
    * заранее — DTO уже валидирует его `@Matches`, здесь вторая линия обороны
-   * для внутренних вызовов (join-by-invite.service.ts). */
+   * для внутренних вызовов (`LoginIdentityService`, `login-identity.service.ts`). */
   async isValid(code: string): Promise<boolean> {
     if (!INVITE_CODE_RE.test(code)) return false;
     const found = await this.model.exists({ codeHash: hashCode(code) });

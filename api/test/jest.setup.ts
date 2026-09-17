@@ -16,9 +16,7 @@ Logger.overrideLogger(false);
 // jest.resetModules()/loadWithEnv() и не должен получить здесь чужой ключ.
 process.env.ENCRYPTION_KEY ??= randomBytes(32).toString('hex');
 
-// mongodb-memory-server по умолчанию ждёт старта mongod 10 секунд. На загруженной
-// машине (полный `npm run check`: рядом идут сборка web и vitest) холодный старт
-// в это не укладывается, и спек падает с «Instance failed to start within 10000ms»
-// — тест мигает, хотя код ни при чём (ловилось дважды 2026-09-10 и 2026-09-11).
-// Порог — не про скорость, а про то, что mongod вообще поднимется.
-process.env.MONGOMS_STARTUP_TIMEOUT ??= '60000';
+// Лимит ожидания старта mongod задаётся не здесь и не через env (у
+// mongodb-memory-server нет такой переменной — строка MONGOMS_STARTUP_TIMEOUT,
+// жившая тут до 2026-09-17, ничего не делала), а опцией instance.launchTimeout
+// в src/test-support/mongo-memory-options.ts, общей для юнит-спеков и e2e.

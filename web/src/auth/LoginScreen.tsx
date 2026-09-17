@@ -12,7 +12,7 @@ import { LabeledDivider } from '../components/LabeledDivider';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { EmailLoginForm } from './EmailLoginForm';
 import { TelegramLoginSection } from './TelegramLoginSection';
-import { useAuth } from './AuthProvider';
+import { hasSession, useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
 import { postLoginPath } from './returnTo';
 
@@ -20,7 +20,10 @@ export default function LoginScreen() {
   const { status: authStatus } = useAuth();
   const { config, status: configStatus, reload } = useAuthConfig();
 
-  if (authStatus === 'ok') return <Navigate to={postLoginPath()} replace />;
+  // hasSession, не authStatus === 'ok' (ревью PR #150): заблокированного тоже
+  // уводит с формы входа — здесь ему нечего делать, а RequireAuth дальше
+  // покажет ACCESS_MESSAGE вместо того, чтобы он тут снова жал «Войти».
+  if (hasSession(authStatus)) return <Navigate to={postLoginPath()} replace />;
 
   return (
     <EntryColumn>

@@ -10,6 +10,7 @@ import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserNamesService } from './user-names.service';
 import { UserRolesService } from './user-roles.service';
+import { UserStatusService } from './user-status.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -29,6 +30,7 @@ import { UsersService } from './users.service';
   providers: [
     UsersService,
     UserRolesService,
+    UserStatusService,
     TeachersService,
     UserDeletionService,
     UserNamesService,

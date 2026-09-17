@@ -7,6 +7,7 @@ import { InviteLinkService } from './invite-link.service';
 import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserRolesService } from './user-roles.service';
+import { UserStatusService } from './user-status.service';
 import { UsersController } from './users.controller';
 
 const USER_LEAN: UserLean = {
@@ -30,6 +31,7 @@ async function buildController(
   teachersService: Partial<TeachersService> = {},
   deletionService: Partial<UserDeletionService> = {},
   inviteLinkService: Partial<InviteLinkService> = {},
+  statusService: Partial<UserStatusService> = {},
 ): Promise<UsersController> {
   const module = await Test.createTestingModule({
     controllers: [UsersController],
@@ -38,6 +40,7 @@ async function buildController(
       { provide: TeachersService, useValue: teachersService },
       { provide: UserDeletionService, useValue: deletionService },
       { provide: InviteLinkService, useValue: inviteLinkService },
+      { provide: UserStatusService, useValue: statusService },
     ],
   }).compile();
   return module.get(UsersController);
@@ -74,6 +77,16 @@ describe('UsersController', () => {
     // req.user.id (сессия) уходит в сервис как currentUserId, не body — тело
     // запроса не содержит id вызывающего (SECURITY §2: снятие admin у себя).
     expect(updateRoles).toHaveBeenCalledWith('u1', ['teacher'], 'admin-1');
+    expect(result.id).toBe('u1');
+  });
+
+  it('updateStatus() передаёт id из пути, статус из тела и id вызывающего из сессии', async () => {
+    const updateStatus = jest.fn().mockResolvedValue(USER_LEAN);
+    const controller = await buildController({}, {}, {}, {}, { updateStatus });
+
+    const result = await controller.updateStatus('u1', { status: 'blocked' }, ADMIN);
+
+    expect(updateStatus).toHaveBeenCalledWith('u1', 'blocked', 'admin-1');
     expect(result.id).toBe('u1');
   });
 

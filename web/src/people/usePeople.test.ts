@@ -56,6 +56,23 @@ describe('usePeople — updateRoles (read-after-write)', () => {
   });
 });
 
+describe('usePeople — updateStatus (read-after-write)', () => {
+  it('PATCH /users/:id/status, затем перечитывает список', async () => {
+    mockedApiFetch.mockResolvedValueOnce([]);
+    const { result } = renderHook(() => usePeople());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockedApiFetch.mockResolvedValueOnce({});
+    mockedApiFetch.mockResolvedValueOnce([]);
+    await result.current.updateStatus('u1', 'blocked');
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/users/u1/status',
+      expect.objectContaining({ method: 'PATCH', body: { status: 'blocked' } }),
+    );
+  });
+});
+
 describe('usePeople — remove (read-after-write)', () => {
   it('DELETE /users/:id, затем перечитывает список', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);

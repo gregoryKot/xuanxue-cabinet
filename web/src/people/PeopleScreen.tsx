@@ -31,8 +31,11 @@ const ROLES_HINT =
   'Отметьте, кто ведёт занятия: учитель видит расписание и рассылки, администратор ещё и назначает роли.';
 const TEACHER_EXPLANATION =
   'Список учеников и назначение ролей видит только администратор — вам здесь доступна ссылка-приглашение школы.';
+// После ADR-0034 вход без ссылки-приглашения получает 403 — текст ведёт к
+// карточке «Ссылка-приглашение» выше на этом же экране, а не к «дайте ссылку
+// на кабинет» (кабинет по прямой ссылке больше не пускает).
 const EMPTY_MESSAGE =
-  'Пока никто, кроме вас, не входил. Дайте ссылку на кабинет — после первого входа человек появится здесь.';
+  'Пока никто, кроме вас, не входил. Отправьте ссылку-приглашение из карточки выше — кто откроет её и войдёт, появится здесь.';
 
 // Строки держатся на волосяной линии снизу (listCardStyle), поэтому зазора
 // между ними нет: со щелью список рассыпается на карточки (ADR-0031).
@@ -46,7 +49,8 @@ const countStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-s
 export default function PeopleScreen() {
   const { me } = useAuth();
   const isAdmin = hasRole(me, 'admin');
-  const { people, loading, error, reload, updateRoles, remove } = usePeople(isAdmin);
+  const { people, loading, error, reload, updateRoles, updateStatus, remove } =
+    usePeople(isAdmin);
   // «Пока никто, кроме вас» — считаем по чужим строкам, не по длине списка
   // целиком: сам admin тоже входил через Telegram и есть в GET /users.
   const others = (people ?? []).filter((person) => person.id !== me?.id);
@@ -88,6 +92,7 @@ export default function PeopleScreen() {
               person={person}
               isSelf={person.id === me?.id}
               onChangeRoles={(roles) => updateRoles(person.id, { roles })}
+              onChangeStatus={(status) => updateStatus(person.id, status)}
               onRemove={() => remove(person.id)}
             />
           ))}

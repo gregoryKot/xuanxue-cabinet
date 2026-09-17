@@ -28,6 +28,9 @@ function renderRow(
     .fn()
     .mockResolvedValue(undefined),
   onRemove: () => Promise<void> = vi.fn().mockResolvedValue(undefined),
+  onChangeStatus: (status: UserDto['status']) => Promise<void> = vi
+    .fn()
+    .mockResolvedValue(undefined),
 ) {
   render(
     <MemoryRouter initialEntries={['/hub', '/people']} initialIndex={1}>
@@ -36,12 +39,13 @@ function renderRow(
           person={makePerson(overrides)}
           isSelf={isSelf}
           onChangeRoles={onChangeRoles}
+          onChangeStatus={onChangeStatus}
           onRemove={onRemove}
         />
       </ul>
     </MemoryRouter>,
   );
-  return { onChangeRoles, onRemove };
+  return { onChangeRoles, onRemove, onChangeStatus };
 }
 
 describe('PersonRow', () => {
@@ -236,5 +240,65 @@ describe('PersonRow', () => {
     renderRow({ status: 'active' });
     expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
+  });
+
+  // Блокировка (ADR-0034, RUNBOOK §8.15): active — «Закрыть доступ»,
+  // blocked — «Открыть доступ», у своей строки нет ни того ни другого.
+  it('status: active — кнопка «Закрыть доступ» у чужой строки', () => {
+    renderRow({ status: 'active' }, false);
+    expect(screen.getByRole('button', { name: 'Закрыть доступ' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Открыть доступ' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('status: blocked — кнопка «Открыть доступ» у чужой строки', () => {
+    renderRow({ status: 'blocked' }, false);
+    expect(screen.getByRole('button', { name: 'Открыть доступ' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Закрыть доступ' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('своя строка — ни «Закрыть доступ», ни «Открыть доступ»', () => {
+    renderRow({ status: 'active', roles: ['admin'] }, true);
+    expect(
+      screen.queryByRole('button', { name: 'Закрыть доступ' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Открыть доступ' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("клик «Закрыть доступ» зовёт onChangeStatus('blocked')", async () => {
+    const user = userEvent.setup();
+    const { onChangeStatus } = renderRow({ status: 'active' });
+
+    await user.click(screen.getByRole('button', { name: 'Закрыть доступ' }));
+
+    expect(onChangeStatus).toHaveBeenCalledWith('blocked');
+  });
+
+  it("клик «Открыть доступ» зовёт onChangeStatus('active')", async () => {
+    const user = userEvent.setup();
+    const { onChangeStatus } = renderRow({ status: 'blocked' });
+
+    await user.click(screen.getByRole('button', { name: 'Открыть доступ' }));
+
+    expect(onChangeStatus).toHaveBeenCalledWith('active');
+  });
+
+  it('сбой смены доступа — alert с текстом ApiError', async () => {
+    const user = userEvent.setup();
+    const onChangeStatus = vi
+      .fn()
+      .mockRejectedValue(new ApiError('Свой доступ закрыть нельзя.', 403, 'forbidden'));
+    renderRow({ status: 'active' }, false, undefined, undefined, onChangeStatus);
+
+    await user.click(screen.getByRole('button', { name: 'Закрыть доступ' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Свой доступ закрыть нельзя.',
+    );
   });
 });

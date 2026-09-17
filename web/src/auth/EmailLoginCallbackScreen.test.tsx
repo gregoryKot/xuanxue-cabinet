@@ -190,7 +190,10 @@ describe('EmailLoginCallbackScreen — join (ADR-0030/0034)', () => {
     expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/join', expect.anything());
   });
 
-  it('403 без ссылки-приглашения (новый человек без кода) — текст сервера, «Запросить новую» ведёт на /login', async () => {
+  // Задача 4: 403 — новое письмо не поможет (нет ссылки-приглашения, чтобы
+  // подтвердить нового человека), кнопка «Запросить новую» водила бы в ту же
+  // петлю (открыл письмо → снова 403). Вместо кнопки — приписка с действием.
+  it('403 без ссылки-приглашения (новый человек без кода) — текст сервера, приписка вместо «Запросить новую»', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me')
@@ -214,6 +217,14 @@ describe('EmailLoginCallbackScreen — join (ADR-0030/0034)', () => {
         'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Ссылку-приглашение вам даст учитель школы. Откройте её и войдите ещё раз.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Запросить новую' }),
+    ).not.toBeInTheDocument();
   });
 });
 

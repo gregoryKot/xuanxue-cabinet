@@ -41,6 +41,16 @@ export function createUsersTestHelpers(getApp: () => TestApp) {
       .send(body);
   }
 
+  function patchStatus(
+    cookie: string,
+    id: string,
+    body: Record<string, unknown>,
+  ): request.Test {
+    return withCsrf(request(server()).patch(`/api/users/${id}/status`))
+      .set('Cookie', cookie)
+      .send(body);
+  }
+
   return {
     server,
     userModel,
@@ -49,5 +59,6 @@ export function createUsersTestHelpers(getApp: () => TestApp) {
     createUser,
     getUsers,
     patchUser,
+    patchStatus,
   };
 }

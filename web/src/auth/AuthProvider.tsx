@@ -17,8 +17,11 @@ import { ApiError, apiFetch, setUnauthorizedListener } from '../api/http';
 
 /** loading — идёт запрос; guest — 401, сессии нет; offline — сетевой сбой
  * (apiFetch status 0) — это не «вы вышли», отдельный экран с повтором, не
- * редирект на /login; ok — есть `me`. */
-export type AuthStatus = 'loading' | 'guest' | 'offline' | 'ok';
+ * редирект на /login; ok — есть `me`; blocked — сессия жива (cookie
+ * валиден), но AuthGuard отверг запрос 403-м (SECURITY §2, `status: 'blocked'`
+ * человека) — `me` остаётся `null`, RequireAuth покажет ACCESS_MESSAGE вместо
+ * ухода на /login (там человек только заново получил бы тот же отказ). */
+export type AuthStatus = 'loading' | 'guest' | 'offline' | 'ok' | 'blocked';
 
 interface AuthContextValue {
   me: MeDto | null;
@@ -28,6 +31,16 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const FORBIDDEN_STATUS = 403;
+
+/** Сессия есть (cookie валиден) — `ok` или `blocked`; пускать ли дальше,
+ * решает уже RequireAuth. Экраны входа (LoginScreen, JoinScreen,
+ * EmailLoginCallbackScreen) используют её вместо `status === 'ok'`, чтобы не
+ * держать заблокированного на форме входа — там ему нечего делать, и он
+ * уходит в кабинет, где RequireAuth покажет ACCESS_MESSAGE. */
+export function hasSession(status: AuthStatus): boolean {
+  return status === 'ok' || status === 'blocked';
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<MeDto | null>(null);
@@ -45,7 +58,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       if (requestId.current !== thisRequest) return;
       setMe(null);
-      setStatus(err instanceof ApiError && err.status === 0 ? 'offline' : 'guest');
+      // 403 — не «сессии нет» (guest увёл бы на /login, где человек снова
+      // жмёт «Войти» и снова получает тот же отказ): AuthGuard отвергает
+      // status: 'blocked' 403-м на каждый запрос (SECURITY §2), cookie при
+      // этом валиден. RequireAuth отличает эту ветку от guest и offline.
+      if (err instanceof ApiError && err.status === 0) {
+        setStatus('offline');
+      } else if (err instanceof ApiError && err.status === FORBIDDEN_STATUS) {
+        setStatus('blocked');
+      } else {
+        setStatus('guest');
+      }
     }
   }, []);
 

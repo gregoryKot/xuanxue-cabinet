@@ -8,7 +8,7 @@
 // Облик — ADR-0031: имя антиквой, статус растяжкой-заглавными, действия —
 // PersonActions.tsx.
 import { useState, type CSSProperties } from 'react';
-import type { UserDto, UserRole } from '@xuanxue/shared';
+import type { UserDto, UserRole, UserStatus } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
@@ -21,6 +21,7 @@ import { PersonActions } from './PersonActions';
 import { PersonRoles } from './PersonRoles';
 
 const TOGGLE_ERROR_MESSAGE = 'Не удалось изменить роль. Попробуйте ещё раз.';
+const ACCESS_ERROR_MESSAGE = 'Не удалось изменить доступ. Попробуйте ещё раз.';
 const REMOVE_ERROR_MESSAGE = 'Не удалось удалить данные. Попробуйте ещё раз.';
 const NEVER_LOGGED_IN = 'Ещё не входил';
 // Подпись статуса рядом с датой входа — растяжкой-заглавными (ADR-0031):
@@ -51,10 +52,17 @@ interface PersonRowProps {
    * интерфейса (SELF_DELETE_MESSAGE, api/src/users/user-deletion.service.ts). */
   isSelf: boolean;
   onChangeRoles: (roles: UserRole[]) => Promise<void>;
+  onChangeStatus: (status: UserStatus) => Promise<void>;
   onRemove: () => Promise<void>;
 }
 
-export function PersonRow({ person, isSelf, onChangeRoles, onRemove }: PersonRowProps) {
+export function PersonRow({
+  person,
+  isSelf,
+  onChangeRoles,
+  onChangeStatus,
+  onRemove,
+}: PersonRowProps) {
   // Один pending/error на всю строку — переключатель роли и удаление не идут
   // одновременно, всем хватает общего run() ниже.
   const [pending, setPending] = useState(false);
@@ -104,6 +112,13 @@ export function PersonRow({ person, isSelf, onChangeRoles, onRemove }: PersonRow
       <PersonActions
         isSelf={isSelf}
         pending={pending}
+        status={person.status}
+        onToggleAccess={() =>
+          void run(
+            () => onChangeStatus(person.status === 'blocked' ? 'active' : 'blocked'),
+            ACCESS_ERROR_MESSAGE,
+          )
+        }
         onRemove={() => setConfirmingRemove(true)}
       />
 

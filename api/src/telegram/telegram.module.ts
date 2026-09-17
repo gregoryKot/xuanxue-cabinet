@@ -2,8 +2,9 @@
 // предпросмотра/«Запись?»/ручных каналов, /тема, /уведомления (PLAN.md §6, §13).
 // ChannelsModule — ChannelConfigService и модель ChannelRecord (PersonalChats);
 // UsersModule — UsersService (PersonalChats, MessageHandler,
-// BotUserAccessService — /start и остальной доступ бота идут через неё,
-// join-invite-deep-link.ts — ссылка-приглашение, ADR-0030/0034);
+// BotUserAccessService — /start и остальной доступ бота идут через неё),
+// LoginIdentityService (join-invite-deep-link.ts — ссылка-приглашение,
+// тот же сервис, что и у веба, ADR-0030/0034);
 // BroadcastsModule — BroadcastsService.cancel(), TopicRebuildService, модель
 // BroadcastRecord; LessonsModule — LessonsService.update()/addRecording(),
 // модель LessonRecord; DeliveriesModule — DeliveriesService.markSent();

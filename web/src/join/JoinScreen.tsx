@@ -15,7 +15,7 @@ import { EntryColumn } from '../components/EntryColumn';
 import { LabeledDivider } from '../components/LabeledDivider';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
-import { useAuth } from '../auth/AuthProvider';
+import { hasSession, useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { EmailLoginForm } from '../auth/EmailLoginForm';
 import { TelegramLoginSection } from '../auth/TelegramLoginSection';
@@ -27,15 +27,21 @@ export default function JoinScreen() {
   const { code = '' } = useParams();
   const navigate = useNavigate();
   const { status: authStatus } = useAuth();
-  const { checkStatus, retryCheck } = useJoinByInvite(code);
-  const { config, status: configStatus, reload } = useAuthConfig();
+  // Оба хука включены только когда сервер уже сказал «сессии нет» (ревью PR #150):
+  // при authStatus ok/blocked экран тут же уходит редиректом ниже, а звать
+  // check/config незачем; при offline — тоже не дёргаем, это не «сессии нет»,
+  // а «неизвестно», разбираться должен AuthProvider.retry, не этот экран.
+  const enabled = authStatus === 'guest';
+  const { checkStatus, retryCheck } = useJoinByInvite(code, enabled);
+  const { config, status: configStatus, reload } = useAuthConfig(enabled);
 
-  // Уже есть сессия (обычный вход по ссылке, включая active-человека,
-  // который просто открыл её снова) или только что появилась (Telegram-
-  // возврат на этот же URL, TelegramLoginSection.tsx с
-  // navigateAfterLogin: false) — код своё дело уже сделал внутри
-  // POST /auth/telegram, второй запрос не нужен.
-  if (authStatus === 'ok') return <Navigate to="/schedule" replace />;
+  // hasSession, не authStatus === 'ok' (ревью PR #150): и обычный вход по ссылке
+  // (включая active-человека, который открыл её снова), и Telegram-возврат на
+  // этот же URL (TelegramLoginSection.tsx, navigateAfterLogin: false), и
+  // заблокированный — код своё дело внутри POST /auth/telegram уже сделал
+  // (или не сделал, для blocked), второй запрос не нужен, а решать «пускать
+  // ли» дальше — дело RequireAuth на /schedule, не этого экрана.
+  if (hasSession(authStatus)) return <Navigate to="/schedule" replace />;
 
   if (checkStatus === 'loading' || authStatus === 'loading') {
     return (

@@ -11,12 +11,20 @@ import { INVITE_QUERY_PARAM } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
-import { useAuth } from './AuthProvider';
+import { hasSession, useAuth } from './AuthProvider';
 import { EMAIL_LOGIN_TOKEN_RE } from './email-login-token-format';
 import { postLoginPath } from './returnTo';
 import { useEmailLoginVerify } from './useEmailLoginVerify';
 
 const INCOMPLETE_LINK_MESSAGE = 'Ссылка неполная. Запросите новую на странице входа.';
+
+// 403 (ревью PR #150) — нет валидной ссылки-приглашения (NO_INVITE_LINK_MESSAGE)
+// или blocked (ACCESS_MESSAGE): новое письмо не поможет ни в том, ни в
+// другом случае, «Запросить новую» вернула бы в ту же петлю. Приписка вместо
+// кнопки — конкретное действие (docs/VOICE.md): где взять ссылку.
+const INVITE_HINT_MESSAGE =
+  'Ссылку-приглашение вам даст учитель школы. Откройте её и войдите ещё раз.';
+const FORBIDDEN_STATUS = 403;
 
 const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
 const fullWidthStyle: CSSProperties = { width: '100%' };
@@ -30,9 +38,17 @@ export default function EmailLoginCallbackScreen() {
   // момент запроса. undefined, если параметра нет — verify() тогда просто
   // не шлёт inviteCode (см. useEmailLoginVerify.ts).
   const joinCode = searchParams.get(INVITE_QUERY_PARAM) ?? undefined;
-  const { status: verifyStatus, error, verify } = useEmailLoginVerify(refresh, joinCode);
+  const {
+    status: verifyStatus,
+    error,
+    errorStatus,
+    verify,
+  } = useEmailLoginVerify(refresh, joinCode);
 
-  if (authStatus === 'ok') return <Navigate to={postLoginPath()} replace />;
+  // hasSession, не authStatus === 'ok' (ревью PR #150): заблокированного тоже
+  // уводит с этого экрана — здесь ему нечего делать, а RequireAuth дальше
+  // покажет ACCESS_MESSAGE вместо того, чтобы он тут снова жал «Войти».
+  if (hasSession(authStatus)) return <Navigate to={postLoginPath()} replace />;
 
   const token = searchParams.get('token');
   const hasValidToken = token !== null && EMAIL_LOGIN_TOKEN_RE.test(token);
@@ -66,9 +82,13 @@ export default function EmailLoginCallbackScreen() {
           <p role="alert" style={errorTextStyle}>
             {error}
           </p>
-          <Button variant="secondary" onClick={goToLogin} style={fullWidthStyle}>
-            Запросить новую
-          </Button>
+          {errorStatus === FORBIDDEN_STATUS ? (
+            <p style={screenExplanationStyle}>{INVITE_HINT_MESSAGE}</p>
+          ) : (
+            <Button variant="secondary" onClick={goToLogin} style={fullWidthStyle}>
+              Запросить новую
+            </Button>
+          )}
         </>
       ) : (
         <Button

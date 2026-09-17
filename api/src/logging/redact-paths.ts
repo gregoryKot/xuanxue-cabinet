@@ -13,10 +13,21 @@ export const REDACT_PATHS: string[] = [
   'req.headers["x-telegram-bot-api-secret-token"]',
   // Email — PII, даже если пришёл в теле легитимного запроса (вход по ссылке).
   'req.body.email',
-  // Код ссылки-приглашения школы (ADR-0030, POST /auth/join, /auth/join/check,
-  // /auth/email/request) — capability-URL, тот же уровень, что email/hash.
+  // Код ссылки-приглашения школы (ADR-0030; POST /auth/join удалён —
+  // ADR-0034): /auth/join/check шлёт код полем `code`, /auth/email/request и
+  // /auth/email/verify — полем `inviteCode`. POST /auth/telegram несёт тот же
+  // код query-параметром `join` — см. req.query.join ниже. Везде один и тот
+  // же уровень секретности, что email/hash.
   'req.body.code',
   'req.body.inviteCode',
+  // Query-параметры: код приглашения (?join=, POST /auth/telegram, ADR-0030)
+  // и токен входа по email (?token=, если его когда-нибудь передадут GET'ом —
+  // сейчас он в теле, см. req.body.hash ниже). pino-std-serializers кладёт
+  // req.query отдельно от req.url — саму строку url редактирует
+  // redactRequestSerializer (request-serializer.ts), этот путь — только
+  // разобранные параметры.
+  'req.query.join',
+  'req.query.token',
   // Тело апдейта Telegram-вебхука (POST /api/telegram/webhook) — тот же код
   // ссылки-приглашения приходит текстом `/start join_<code>` (ADR-0030
   // «Бот»), а не полем `code`/`inviteCode`; `*.text` (ниже) редактирует

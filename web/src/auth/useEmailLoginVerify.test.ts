@@ -72,11 +72,14 @@ describe('useEmailLoginVerify', () => {
     expect(result.current.error).toBe(
       'Ссылка устарела или уже использована. Запросите новую на странице входа.',
     );
+    // errorStatus (ревью PR #150) — экран отличает 401 (кнопка «Запросить новую»
+    // нужна) от 403 (нет смысла, см. тест ниже).
+    expect(result.current.errorStatus).toBe(401);
     expect(refresh).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('сетевой сбой (не ApiError) — общий текст «Нет связи…»', async () => {
+  it('сетевой сбой (не ApiError) — общий текст «Нет связи…», errorStatus null', async () => {
     mockedApiFetch.mockRejectedValue(new Error('boom'));
     const { result } = renderHook(() => useEmailLoginVerify(vi.fn()));
 
@@ -85,6 +88,7 @@ describe('useEmailLoginVerify', () => {
     expect(result.current.error).toBe(
       'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     );
+    expect(result.current.errorStatus).toBeNull();
   });
 
   it('joinCode (ADR-0030/0034) — inviteCode едет прямо в теле verify, без второго запроса', async () => {
@@ -117,6 +121,9 @@ describe('useEmailLoginVerify', () => {
     expect(result.current.error).toBe(
       'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
     );
+    // errorStatus 403 (ревью PR #150) — экран не предложит «Запросить новую»:
+    // новое письмо не даёт ссылку-приглашение, кнопка вернула бы в ту же петлю.
+    expect(result.current.errorStatus).toBe(403);
     expect(refresh).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
   });

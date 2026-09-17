@@ -123,7 +123,10 @@ describe('PeopleScreen — сбой загрузки', () => {
 });
 
 describe('PeopleScreen — пустой список', () => {
-  it('только сам admin в базе — честный текст, а не пустой список', async () => {
+  // После ADR-0034 вход без ссылки-приглашения даёт 403 — текст ведёт к
+  // карточке «Ссылка-приглашение» выше на этом же экране, а не к «дайте
+  // ссылку на кабинет».
+  it('только сам admin в базе — честный текст со ссылкой на карточку приглашения', async () => {
     const { queueUsers } = mockPeopleApi();
     queueUsers([makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] })]);
 
@@ -132,6 +135,7 @@ describe('PeopleScreen — пустой список', () => {
     expect(
       await screen.findByText(/Пока никто, кроме вас, не входил/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/ссылку-приглашение из карточки выше/)).toBeInTheDocument();
   });
 });
 
@@ -189,6 +193,32 @@ describe('PeopleScreen — список', () => {
     await waitFor(() =>
       expect(within(rolesOf('Гриша')).getByLabelText('Учитель')).toBeChecked(),
     );
+  });
+
+  it('клик «Закрыть доступ» вызывает PATCH /users/:id/status и обновлённый статус виден на строке', async () => {
+    const user = userEvent.setup();
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'active' }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Гриша');
+
+    queueUsers({});
+    queueUsers([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'blocked' }),
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Закрыть доступ' }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/users/u1/status',
+      expect.objectContaining({ method: 'PATCH', body: { status: 'blocked' } }),
+    );
+    expect(await screen.findByText('Доступ закрыт')).toBeInTheDocument();
   });
 
   it('сбой удаления — текст ошибки виден на строке (usePeople.remove)', async () => {

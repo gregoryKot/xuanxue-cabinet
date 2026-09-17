@@ -61,7 +61,7 @@
 | [0023](0023-exam-video-via-telegram-and-links.md)        | Видео экзамена — сообщением боту и ссылкой, без своего хранилища         |
 | [0024](0024-bot-first-cabinet-as-fallback.md)            | Бот — первый интерфейс, кабинет — резервный                              |
 | [0025](0025-navigation-by-domain.md)                     | Навигация по доменам — четыре раздела вместо «Сводки» и «Настроек»       |
-| [0026](0026-student-access-after-confirmation.md)        | Ученик — подтверждённый человек без ролей, роль `student` не нужна       |
+| [0026](0026-student-access-after-confirmation.md)        | Ученик — `active` без ролей, роль `student` не нужна (см. ADR-0034)      |
 | [0027](0027-student-personal-channel-not-broadcast.md)   | Личный канал ученика — не канал школы, не получатель рассылок            |
 | [0028](0028-telegram-login-redirect-everywhere.md)       | Вход через Telegram — переходом вкладки на любом устройстве, без попапа  |
 | [0029](0029-email-login-via-resend-fetch.md)             | Вход по email-ссылке: Resend через fetch, без SDK                        |

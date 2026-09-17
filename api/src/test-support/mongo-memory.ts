@@ -5,6 +5,7 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { type Connection } from 'mongoose';
 import { MODEL_DEFINITIONS } from '../common/model.registry';
+import { MONGO_MEMORY_INSTANCE_OPTIONS } from './mongo-memory-options';
 
 export interface MemoryMongo {
   connection: Connection;
@@ -20,7 +21,9 @@ export interface MemoryMongo {
  * `connection.model(Name)` — та же схема, повторная регистрация не нужна.
  * `stop()` закрывает соединение и mongod в правильном порядке — в `afterAll`. */
 export async function openMemoryMongo(): Promise<MemoryMongo> {
-  const mongod = await MongoMemoryServer.create();
+  const mongod = await MongoMemoryServer.create({
+    instance: MONGO_MEMORY_INSTANCE_OPTIONS,
+  });
   const connection = await mongoose.createConnection(mongod.getUri()).asPromise();
   await Promise.all(
     MODEL_DEFINITIONS.map(({ name, schema }) =>

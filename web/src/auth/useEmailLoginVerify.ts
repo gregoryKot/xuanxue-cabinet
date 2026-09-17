@@ -17,6 +17,11 @@ type EmailLoginVerifyStatus = 'idle' | 'pending' | 'error';
 export interface UseEmailLoginVerifyResult {
   status: EmailLoginVerifyStatus;
   error: string | null;
+  /** Статус ApiError неудачного verify — экран (ревью PR #150) отличает 403 (нет
+   * валидной ссылки-приглашения или blocked — новое письмо не поможет,
+   * «Запросить новую» вернула бы в ту же петлю) от 401 (ссылка устарела) и
+   * сети, где кнопка нужна. `null` — успех или сбой без статуса (сеть). */
+  errorStatus: number | null;
   verify: (token: string) => Promise<void>;
 }
 
@@ -27,11 +32,13 @@ export function useEmailLoginVerify(
   const navigate = useNavigate();
   const [status, setStatus] = useState<EmailLoginVerifyStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const verify = useCallback(
     async (token: string) => {
       setStatus('pending');
       setError(null);
+      setErrorStatus(null);
       try {
         await apiFetch<void>('/auth/email/verify', {
           method: 'POST',
@@ -40,6 +47,7 @@ export function useEmailLoginVerify(
         await refresh();
       } catch (err) {
         setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
+        setErrorStatus(err instanceof ApiError ? err.status : null);
         setStatus('error');
         return;
       }
@@ -49,5 +57,5 @@ export function useEmailLoginVerify(
     [refresh, joinCode, navigate],
   );
 
-  return { status, error, verify };
+  return { status, error, errorStatus, verify };
 }

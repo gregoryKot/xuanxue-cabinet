@@ -1,7 +1,8 @@
-// e2e на POST /auth/join/check (ADR-0030, ADR-0031) — страница `/join/<code>`
+// e2e на POST /auth/join/check (ADR-0034) — страница `/join/<code>`
 // проверяет ссылку до входа. Сам вход и присоединение к школе идут через
-// POST /auth/telegram/POST /auth/email/verify с inviteCode (auth-telegram.e2e-spec.ts,
-// auth-email-resend.e2e-spec.ts) — отдельного POST /auth/join не осталось.
+// POST /auth/telegram/POST /auth/email/verify с inviteCode
+// (auth-telegram-invite.e2e-spec.ts, auth-email-verify.e2e-spec.ts) —
+// отдельного POST /auth/join не осталось.
 import request from 'supertest';
 import type { ApiErrorBody, InviteLinkDto } from '@xuanxue/shared';
 import { createTestApp, type TestApp } from './e2e-support/create-app';

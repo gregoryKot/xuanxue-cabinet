@@ -13,6 +13,7 @@ import {
   type TeacherContact,
 } from './list-teacher-contacts';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
+import { normalizeUserStatus } from './normalize-user-status';
 import { upsertUserByKey } from './upsert-user-by-key';
 
 /** Внутреннее представление пользователя — шире MeDto: гварду нужны status и
@@ -40,7 +41,9 @@ export interface NewTelegramUser {
   status: UserStatus;
 }
 
-/** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация. */
+/** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация.
+ * status — через normalizeUserStatus.ts (expand→contract после миграции 0007,
+ * ADR-0034): единственный маппер документа в UserLean покрывает этим все чтения. */
 export function toLean(doc: UserDoc): UserLean {
   return {
     id: doc._id.toString(),
@@ -50,7 +53,7 @@ export function toLean(doc: UserDoc): UserLean {
     googleId: doc.googleId,
     roles: doc.roles,
     tz: doc.tz,
-    status: doc.status,
+    status: normalizeUserStatus(doc.status, doc._id.toString()),
     lastLoginAt: doc.lastLoginAt,
     joinedViaInviteAt: doc.joinedViaInviteAt,
   };

@@ -3,6 +3,7 @@
 // после ADR-0034: статуса `invited` больше нет, эта часть ADR-0026 осталась
 // в силе. Настоящий AppModule на MongoMemoryServer.
 import { getModelToken } from '@nestjs/mongoose';
+import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import request from 'supertest';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
@@ -50,7 +51,7 @@ describe('Ученик — active без роли (e2e)', () => {
     });
     await lessonModel().create({
       classId: cls._id,
-      startsAt: new Date(Date.now() + 60 * 60 * 1000),
+      startsAt: DateTime.utc().plus({ hours: 1 }).toJSDate(),
       durationMin: 60,
     });
   }

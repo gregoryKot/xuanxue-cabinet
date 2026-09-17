@@ -4,7 +4,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
-import { apiFetch } from '../api/http';
+import { ApiError, apiFetch } from '../api/http';
 import { useJoinByInvite } from './useJoinByInvite';
 
 vi.mock('../api/http', async () => {
@@ -91,5 +91,41 @@ describe('useJoinByInvite', () => {
 
     await Promise.resolve();
     await Promise.resolve();
+  });
+
+  // Код вне формата (32 hex) сервер отверг бы 400-м — проверяем формат ДО
+  // запроса, чтобы отличить «ссылка не подошла» от «нет связи» (ревью PR #150).
+  it('код не по формату (не 32 hex) — checkStatus invalid без запроса', () => {
+    const { result } = renderHook(() => useJoinByInvite('xyz'));
+
+    expect(result.current.checkStatus).toBe('invalid');
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
+  it('сервер отверг код 400-м (validation) — checkStatus invalid, не offline', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError('Код не подходит по формату.', 400, 'invalid_input'),
+    );
+
+    const { result } = renderHook(() => useJoinByInvite(CODE));
+
+    await waitFor(() => expect(result.current.checkStatus).toBe('invalid'));
+  });
+
+  it('сетевой сбой (ApiError status 0) — checkStatus offline', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError('Нет связи', 0, 'network'));
+
+    const { result } = renderHook(() => useJoinByInvite(CODE));
+
+    await waitFor(() => expect(result.current.checkStatus).toBe('offline'));
+  });
+
+  // enabled=false (ревью PR #150) — JoinScreen выключает хук, пока authStatus не
+  // стал 'guest': вошедшего/заблокированного сразу уводит, звать check незачем.
+  it('enabled: false — запрос не уходит, checkStatus остаётся loading', () => {
+    const { result } = renderHook(() => useJoinByInvite(CODE, false));
+
+    expect(result.current.checkStatus).toBe('loading');
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 });

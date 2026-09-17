@@ -1,12 +1,16 @@
-// GET /users, PATCH /users/:id, DELETE /users/:id — экран «Ученики»
-// (docs/PLAN.md §6, блокер аудита Б3): список вошедших, назначение ролей и
-// удаление всех данных (аудит В11). Только admin — назначение ролей и
-// удаление не отдаются учителю (SECURITY §3, ADR-0010). GET /users/teachers —
-// исключение: список для select'а «Ведущий» (docs/PLAN.md §6 п.2, аудит В4)
-// виден и teacher, и admin, поэтому у маршрута свой `@Roles`, переопределяющий
-// `@Roles('admin')` класса (Reflector.getAllAndOverride — метод приоритетнее
-// класса, auth.guard.ts). Маршрут объявлен раньше `:id` —
-// `check-route-collisions.mjs`, Nest matches по порядку регистрации.
+// GET /users, PATCH /users/:id, PATCH /users/:id/status, DELETE /users/:id —
+// экран «Ученики» (docs/PLAN.md §6, блокер аудита Б3): список вошедших,
+// назначение ролей, блокировка/открытие доступа (ADR-0034, RUNBOOK §8.15) и
+// удаление всех данных (аудит В11). Только admin — назначение ролей,
+// блокировка и удаление не отдаются учителю (SECURITY §3, ADR-0010). GET
+// /users/teachers — исключение: список для select'а «Ведущий» (docs/PLAN.md
+// §6 п.2, аудит В4) виден и teacher, и admin, поэтому у маршрута свой
+// `@Roles`, переопределяющий `@Roles('admin')` класса (Reflector.getAllAndOverride —
+// метод приоритетнее класса, auth.guard.ts). Литеральные сегменты
+// (`teachers`, `invite-link`, `:id/status`) объявлены раньше `:id` —
+// `check-route-collisions.mjs`, Nest matches по порядку регистрации, хотя
+// `:id/status` и `:id` не пересекаются и без этого порядка (лишний сегмент
+// после параметра).
 import {
   Body,
   Controller,
@@ -25,8 +29,10 @@ import { InviteLinkService } from './invite-link.service';
 import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserRolesService } from './user-roles.service';
+import { UserStatusService } from './user-status.service';
 import { ListUsersDto } from './dto/list-users.dto';
 import { UpdateUserRolesDto } from './dto/update-user-roles.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { toUserDto } from './user.mapper';
 
 @Controller('users')
@@ -37,6 +43,7 @@ export class UsersController {
     private readonly teachersService: TeachersService,
     private readonly userDeletionService: UserDeletionService,
     private readonly inviteLinkService: InviteLinkService,
+    private readonly userStatusService: UserStatusService,
   ) {}
 
   @Get('teachers')
@@ -68,6 +75,20 @@ export class UsersController {
   async list(@Query() query: ListUsersDto): Promise<UserDto[]> {
     const users = await this.userRolesService.list(query);
     return users.map(toUserDto);
+  }
+
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() body: UpdateUserStatusDto,
+    @CurrentUser() currentUser: UserLean,
+  ): Promise<UserDto> {
+    const user = await this.userStatusService.updateStatus(
+      id,
+      body.status,
+      currentUser.id,
+    );
+    return toUserDto(user);
   }
 
   @Patch(':id')

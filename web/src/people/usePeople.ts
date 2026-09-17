@@ -1,8 +1,14 @@
-// Данные экрана «Люди» — список и назначение ролей (CLAUDE.md
-// «Read-after-write»): после PATCH список перечитывается заново, как у
-// useChannels. Гонка запросов и разбор ошибки — в общем hooks/useAbortableFetch.ts.
+// Данные экрана «Люди» — список, назначение ролей и блокировка/открытие
+// доступа (CLAUDE.md «Read-after-write»): после PATCH список перечитывается
+// заново, как у useChannels.  Гонка запросов и разбор ошибки — в общем
+// hooks/useAbortableFetch.ts.
 import { useCallback } from 'react';
-import { LIST_LIMIT_MAX, type UpdateUserRolesInput, type UserDto } from '@xuanxue/shared';
+import {
+  LIST_LIMIT_MAX,
+  type UpdateUserRolesInput,
+  type UserDto,
+  type UserStatus,
+} from '@xuanxue/shared';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -14,6 +20,7 @@ export interface UsePeopleResult {
   error: string | null;
   reload: () => Promise<void>;
   updateRoles: (id: string, input: UpdateUserRolesInput) => Promise<void>;
+  updateStatus: (id: string, status: UserStatus) => Promise<void>;
   remove: (id: string) => Promise<void>;
 }
 
@@ -36,6 +43,16 @@ export function usePeople(enabled = true): UsePeopleResult {
     [reload],
   );
 
+  // PATCH /users/:id/status — блокировка/открытие доступа (ADR-0034, RUNBOOK
+  // §8.15); read-after-write тем же приёмом, что updateRoles.
+  const updateStatus = useCallback(
+    async (id: string, status: UserStatus) => {
+      await apiFetch(`/users/${id}/status`, { method: 'PATCH', body: { status } });
+      await reload();
+    },
+    [reload],
+  );
+
   // DELETE /users/:id — весь набор данных пользователя разом (аудит В11,
   // UserDeletionService.deleteAllUserData); read-after-write тем же приёмом,
   // что updateRoles.
@@ -47,5 +64,5 @@ export function usePeople(enabled = true): UsePeopleResult {
     [reload],
   );
 
-  return { people: data, loading, error, reload, updateRoles, remove };
+  return { people: data, loading, error, reload, updateRoles, updateStatus, remove };
 }
