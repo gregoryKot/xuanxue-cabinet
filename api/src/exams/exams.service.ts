@@ -106,6 +106,19 @@ export class ExamsService {
     return toExamDto(decryptExam(updated));
   }
 
+  /** Учитель собирает экзамен в боте (ТЗ 4б.4, docs/PLAN.md §12, ADR-0024) —
+   * тот же переход в `published`, что и в кабинете (create() черновиком,
+   * потом update() со статусом): правила «хотя бы один вопрос»/«вопрос
+   * опубликован в банке» (assertPublishable выше) отрабатывают сами,
+   * бот не пишет вторую копию. */
+  async createAndPublishExam(
+    input: CreateExamInput,
+    createdBy: string,
+  ): Promise<ExamDto> {
+    const created = await this.create(input, createdBy);
+    return this.update(created.id, { status: 'published' });
+  }
+
   async remove(id: string): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     await removeExamIfNotAttempted(this.model, this.attemptModel, id, NOT_DRAFT_MESSAGE);

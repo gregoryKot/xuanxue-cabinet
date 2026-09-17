@@ -32,12 +32,18 @@ import {
 // копится в draft*-полях ниже, а не в отдельной коллекции — тем же приёмом,
 // что topic/recording хранят `lessonId` прямо на сессии. Открыт только штату
 // (personal-chats.ts), в отличие от examMedia/examText.
+// 'examBuildDraft' (ТЗ 4б.4, PLAN.md §12, ADR-0024) — учитель собирает
+// экзамен из уже опубликованных вопросов: отметка → название → лимит
+// времени → число попыток → подтверждение. Черновик копится в build*-полях
+// ниже, тем же приёмом, что draft*-поля у examItemDraft. Открыт только
+// штату, как examItemDraft.
 const BOT_SESSION_KINDS = [
   'topic',
   'recording',
   'examMedia',
   'examText',
   'examItemDraft',
+  'examBuildDraft',
 ] as const;
 export type BotSessionKind = (typeof BOT_SESSION_KINDS)[number];
 
@@ -54,6 +60,13 @@ const NEW_EXAM_ITEM_STEPS = [
   'confirm',
 ] as const;
 export type NewExamItemStep = (typeof NEW_EXAM_ITEM_STEPS)[number];
+
+// Шаг диалога сборки экзамена (ТЗ 4б.4) — 'pick' заводится сразу командой
+// /экзамен (в отличие от examItemDraft, где до первой записи есть безсессионный
+// screen 1): отметки копятся в bot_sessions с первого сообщения, второй
+// инстанс при деплое должен их видеть.
+const NEW_EXAM_STEPS = ['pick', 'title', 'timeLimit', 'attempts', 'confirm'] as const;
+export type NewExamStep = (typeof NEW_EXAM_STEPS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })
 export class BotSessionRecord {
@@ -128,6 +141,40 @@ export class BotSessionRecord {
   // ссылка на уже существующий exam_items, решения по шифрованию не требует.
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   draftSavedItemId?: Types.ObjectId;
+
+  // Только 'examBuildDraft' — шаг диалога сборки (комментарий у kind выше),
+  // enum, решения по шифрованию не требует.
+  @Prop({ type: String, enum: NEW_EXAM_STEPS, required: false })
+  buildStep?: NewExamStep;
+
+  // Отмеченные вопросы — порядок отметки становится порядком вопросов формы
+  // (единственный блок, ADR-0033). Ссылки на уже опубликованные exam_items,
+  // не персональные данные — решения по шифрованию не требует.
+  @Prop({ type: [SchemaTypes.ObjectId], required: false })
+  buildItemIds?: Types.ObjectId[];
+
+  // Текущая страница списка вопросов на шаге 'pick' — не текст и не секрет.
+  @Prop({ type: Number, required: false })
+  buildPage?: number;
+
+  // Название формы — свободный текст, шифруется тем же приёмом, что draftPrompt.
+  @Prop({ type: String, required: false })
+  buildTitle?: string;
+
+  // Лимит времени в минутах — отсутствие поля к шагу 'attempts' и позже
+  // значит «без лимита» (шаг решил вопрос раньше, чем поле появилось бы).
+  @Prop({ type: Number, required: false })
+  buildTimeLimitMin?: number;
+
+  @Prop({ type: Number, required: false })
+  buildAttemptsAllowed?: number;
+
+  // Идемпотентность «Опубликовать» (ТЗ 4б.4) — id уже созданной формы.
+  // Повторный клик находит его здесь и не зовёт ExamsService.createAndPublishExam
+  // второй раз (new-exam-save.ts). Ссылка на уже существующий exams, не
+  // персональные данные — решения по шифрованию не требует.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  buildSavedExamId?: Types.ObjectId;
 }
 
 export const BotSessionSchema = SchemaFactory.createForClass(BotSessionRecord);
@@ -144,6 +191,7 @@ export const BOT_SESSION_FIELD_POLICY: FieldPolicy = {
   draftPrompt: enc,
   draftCriteria: enc,
   draftOptions: encJson,
+  buildTitle: enc,
 };
 
 /** Схема шифрования черновика вопроса — одна на запись и чтение

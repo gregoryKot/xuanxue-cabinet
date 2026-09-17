@@ -338,4 +338,92 @@ describe('BotSessionService', () => {
       expect(session?.draftSavedItemId?.toString()).toBe(itemId.toString());
     });
   });
+
+  // ТЗ 4б.4 (docs/PLAN.md §12) — черновик сборки экзамена: buildTitle
+  // шифруется (SECURITY §5), get() отдаёт его уже расшифрованным.
+  describe('сборка экзамена (examBuildDraft)', () => {
+    it('startNewExamDraft → get отдаёт kind/buildStep, itemIds пуст, page 0', async () => {
+      await service.startNewExamDraft(777, NOW);
+
+      const session = await service.get(777, NOW);
+
+      expect(session?.kind).toBe('examBuildDraft');
+      expect(session?.buildStep).toBe('pick');
+      expect(session?.buildItemIds).toEqual([]);
+      expect(session?.buildPage).toBe(0);
+    });
+
+    it('setNewExamDraft шифрует title — get отдаёт исходный текст', async () => {
+      await service.startNewExamDraft(777, NOW);
+      const itemId = new Types.ObjectId().toString();
+      await service.setNewExamDraft(
+        777,
+        {
+          step: 'attempts',
+          itemIds: [itemId],
+          title: 'Экзамен по форме',
+          attemptsAllowed: 2,
+        },
+        NOW,
+      );
+
+      const raw = await model.findOne({ chatId: 777 }).lean();
+      expect(raw?.buildTitle).not.toContain('Экзамен');
+
+      const session = await service.get(777, NOW);
+      expect(session?.buildStep).toBe('attempts');
+      expect(session?.buildItemIds?.map((id) => id.toString())).toEqual([itemId]);
+      expect(session?.buildTitle).toBe('Экзамен по форме');
+      expect(session?.buildAttemptsAllowed).toBe(2);
+      // Лимит времени не передан на шаге 'attempts' — «без лимита», не «пока
+      // не знаем» (new-exam-draft-wait.ts).
+      expect(session?.buildTimeLimitMin).toBeUndefined();
+    });
+
+    it('новая сборка того же чата чистит поля прошлой заброшенной сборки', async () => {
+      await service.startNewExamDraft(777, NOW);
+      await service.setNewExamDraft(
+        777,
+        { step: 'confirm', title: 'Старое название', timeLimitMin: 30 },
+        NOW,
+      );
+
+      await service.startNewExamDraft(777, NOW);
+
+      const session = await service.get(777, NOW);
+      expect(session?.buildStep).toBe('pick');
+      expect(session?.buildTitle).toBeUndefined();
+      expect(session?.buildTimeLimitMin).toBeUndefined();
+      await expect(model.countDocuments({ chatId: 777 })).resolves.toBe(1);
+    });
+
+    it('setNewExamDraft с savedExamId — get отдаёт его ObjectId', async () => {
+      const examId = new Types.ObjectId();
+      await service.startNewExamDraft(777, NOW);
+      await service.setNewExamDraft(
+        777,
+        { step: 'confirm', savedExamId: examId.toString() },
+        NOW,
+      );
+
+      const session = await service.get(777, NOW);
+      expect(session?.buildSavedExamId?.toString()).toBe(examId.toString());
+    });
+
+    it('новый черновик вопроса (examItemDraft) того же чата чистит поля заброшенной сборки', async () => {
+      await service.startNewExamDraft(777, NOW);
+      await service.setNewExamDraft(
+        777,
+        { step: 'confirm', title: 'Забытый экзамен' },
+        NOW,
+      );
+
+      await service.startNewExamItemDraft(777, 'text', NOW);
+
+      const session = await service.get(777, NOW);
+      expect(session?.kind).toBe('examItemDraft');
+      expect(session?.buildTitle).toBeUndefined();
+      expect(session?.buildStep).toBeUndefined();
+    });
+  });
 });

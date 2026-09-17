@@ -25,7 +25,7 @@ describe('classifyBotMenuAudience', () => {
 });
 
 describe('buildBotMenu', () => {
-  it('четыре кнопки экранов и подсказка про тему занятия', () => {
+  it('пять кнопок экранов и подсказка про тему занятия', () => {
     const menu = buildBotMenu();
 
     expect(menu.text).toContain('/topic');
@@ -33,6 +33,7 @@ describe('buildBotMenu', () => {
       'Ближайшие занятия',
       'Экзамены',
       'Новый вопрос',
+      'Собрать экзамен',
       'Уведомления',
     ]);
   });
@@ -42,7 +43,13 @@ describe('buildBotMenu', () => {
 
     expect(
       menu.buttons.flat().map((b) => ('callback_data' in b ? b.callback_data : '')),
-    ).toEqual(['menu:schedule', 'menu:exams', 'menu:newitem', 'menu:notifications']);
+    ).toEqual([
+      'menu:schedule',
+      'menu:exams',
+      'menu:newitem',
+      'menu:newexam',
+      'menu:notifications',
+    ]);
   });
 });
 

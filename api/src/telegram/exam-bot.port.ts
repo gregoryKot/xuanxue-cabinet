@@ -10,8 +10,10 @@
 import type { DateTime } from 'luxon';
 import type {
   AttemptAnswerDto,
+  CreateExamInput,
   CreateExamItemInput,
   ExamAttemptDto,
+  ExamDto,
   ExamImageContentType,
   ExamItemDto,
   MyExamDto,
@@ -69,4 +71,19 @@ export interface ExamBotPort {
    * `null` — ошибок нет; непереданные поля не проверяются (черновик неполон
    * до последнего шага). */
   validateExamItemDraft(input: Partial<CreateExamItemInput>): Promise<string[] | null>;
+  /** Список вопросов для сборки экзамена (ТЗ 4б.4, ADR-0024) — только
+   * опубликованные, тот же фильтр, что у правила «блок ссылается на
+   * опубликованный вопрос» (exam-items-eligible.ts, ADR-0033): вопрос,
+   * который нельзя поставить в форму, незачем видеть на шаге отметки. */
+  listExamItemsToAssemble(): Promise<ExamItemDto[]>;
+  /** Учитель собирает экзамен в боте (ТЗ 4б.4, ADR-0024) — тот же переход в
+   * `published`, что и в кабинете (create → update status), одним вызовом:
+   * бот не даёт форме остаться черновиком после «Опубликовать».
+   * `authorId` — userId учителя, сопоставленный ботом заранее. */
+  createAndPublishExam(input: CreateExamInput, authorId: string): Promise<ExamDto>;
+  /** Правила лимитов (название, число вопросов в блоке, лимит времени, число
+   * попыток) — те же декораторы CreateExamDto, что у POST /exams; бот их не
+   * переизобретает. `null` — ошибок нет; непереданные поля не проверяются
+   * (черновик неполон до шага, где поле появляется). */
+  validateExamDraft(input: Partial<CreateExamInput>): Promise<string[] | null>;
 }

@@ -14,6 +14,7 @@ export const BOT_COMMANDS = [
   { command: 'topic', description: 'Вписать тему занятия' },
   { command: 'exams', description: 'Экзамены' },
   { command: 'newquestion', description: 'Завести вопрос для экзамена' },
+  { command: 'newexam', description: 'Собрать экзамен из вопросов' },
   { command: 'notifications', description: 'Что вам присылать' },
   { command: 'help', description: 'Что умеет бот' },
 ] as const;

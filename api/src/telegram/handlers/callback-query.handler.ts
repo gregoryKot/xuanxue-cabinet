@@ -35,10 +35,12 @@ import { isExamCallbackAction, routeExamCallback } from './exam-callback-router'
 import { ExamCommandHandler } from './exam-command.handler';
 import { MenuCommandHandler } from './menu-command.handler';
 import { handleMenuScreen } from './menu-screens';
+import { isNewExamCallbackAction, routeNewExamCallback } from './new-exam-router';
 import {
   isNewExamItemCallbackAction,
   routeNewExamItemCallback,
 } from './new-exam-item-router';
+import { NewExamCommandHandler } from './new-exam-command.handler';
 import { handleOpenMenuScreen } from './open-menu-screen';
 
 @Injectable()
@@ -57,6 +59,7 @@ export class CallbackQueryHandler {
     private readonly examCommandHandler: ExamCommandHandler,
     private readonly botAccess: BotUserAccessService,
     private readonly config: ConfigService,
+    private readonly newExamCommandHandler: NewExamCommandHandler,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -148,6 +151,7 @@ export class CallbackQueryHandler {
           users: this.usersService,
           prefs: this.notificationPrefsService,
           exams: this.examCommandHandler,
+          newExam: this.newExamCommandHandler,
         },
         id,
         chatId,
@@ -165,6 +169,19 @@ export class CallbackQueryHandler {
     }
     if (isNewExamItemCallbackAction(action)) {
       return routeNewExamItemCallback(
+        ctx,
+        action,
+        id,
+        chatId,
+        this.botSessions,
+        this.examBotPorts.get(),
+        this.usersService,
+        this.config.get<string>('PUBLIC_URL'),
+        now,
+      );
+    }
+    if (isNewExamCallbackAction(action)) {
+      return routeNewExamCallback(
         ctx,
         action,
         id,

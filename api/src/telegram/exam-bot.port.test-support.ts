@@ -6,8 +6,10 @@
 import type { DateTime } from 'luxon';
 import type {
   AttemptAnswerDto,
+  CreateExamInput,
   CreateExamItemInput,
   ExamAttemptDto,
+  ExamDto,
   ExamItemDto,
   MyExamDto,
 } from '@xuanxue/shared';
@@ -30,6 +32,9 @@ export interface FakeExamBotPort extends ExamBotPort {
     Promise<string[] | null>,
     [Partial<CreateExamItemInput>]
   >;
+  listExamItemsToAssemble: jest.Mock<Promise<ExamItemDto[]>, []>;
+  createAndPublishExam: jest.Mock<Promise<ExamDto>, [CreateExamInput, string]>;
+  validateExamDraft: jest.Mock<Promise<string[] | null>, [Partial<CreateExamInput>]>;
 }
 
 export function fakeExamBotPort(
@@ -63,6 +68,14 @@ export function fakeExamBotPort(
     // отвлекать спеки про другие сценарии).
     validateExamItemDraft: jest
       .fn<Promise<string[] | null>, [Partial<CreateExamItemInput>]>()
+      .mockResolvedValue(null),
+    // По умолчанию список пуст — спекам, которым нужны конкретные вопросы
+    // для сборки (ТЗ 4б.4), выставляют своё значение явно.
+    listExamItemsToAssemble: jest.fn<Promise<ExamItemDto[]>, []>().mockResolvedValue([]),
+    createAndPublishExam: jest.fn<Promise<ExamDto>, [CreateExamInput, string]>(),
+    // Черновик формы валиден по умолчанию — тем же приёмом, что validateExamItemDraft.
+    validateExamDraft: jest
+      .fn<Promise<string[] | null>, [Partial<CreateExamInput>]>()
       .mockResolvedValue(null),
     ...overrides,
   };

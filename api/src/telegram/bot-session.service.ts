@@ -11,8 +11,14 @@ import {
   BotSessionRecord,
   type BotSessionKind,
   type NewExamItemStep,
+  type NewExamStep,
 } from './bot-session.schema';
 import { examAnswerWaitUpdate } from './exam-answer-wait';
+import {
+  newExamDraftUpdate,
+  startNewExamDraftUpdate,
+  type NewExamDraftPatch,
+} from './new-exam-draft-wait';
 import {
   newExamItemDraftUpdate,
   startNewExamItemDraftUpdate,
@@ -48,6 +54,18 @@ export interface BotSessionLean {
   draftCriteria?: string;
   draftOptions?: NewExamItemDraftOption[];
   draftSavedItemId?: Types.ObjectId;
+  /** Черновик сборки экзамена (ТЗ 4б.4) — есть только у 'examBuildDraft',
+   * тем же приёмом, что draft*-поля выше. `buildItemIds`/`buildPage` не
+   * бывают `undefined` в активном черновике (startNewExamDraftUpdate ставит
+   * их сразу), но помечены опциональными — как и остальные kind-специфичные
+   * поля этого интерфейса. */
+  buildStep?: NewExamStep;
+  buildItemIds?: Types.ObjectId[];
+  buildPage?: number;
+  buildTitle?: string;
+  buildTimeLimitMin?: number;
+  buildAttemptsAllowed?: number;
+  buildSavedExamId?: Types.ObjectId;
 }
 
 /** `BotSessionLean` до расшифровки — `draftPrompt`/`draftCriteria`/
@@ -55,11 +73,12 @@ export interface BotSessionLean {
  * RawLeanExamItem/LeanExamItem у самого банка вопросов, exam-item.mapper.ts). */
 type RawBotSessionLean = Omit<
   BotSessionLean,
-  'draftPrompt' | 'draftCriteria' | 'draftOptions'
+  'draftPrompt' | 'draftCriteria' | 'draftOptions' | 'buildTitle'
 > & {
   draftPrompt?: string;
   draftCriteria?: string;
   draftOptions?: string;
+  buildTitle?: string;
 };
 
 @Injectable()
@@ -145,6 +164,13 @@ export class BotSessionService {
           draftCriteria: 1,
           draftOptions: 1,
           draftSavedItemId: 1,
+          buildStep: 1,
+          buildItemIds: 1,
+          buildPage: 1,
+          buildTitle: 1,
+          buildTimeLimitMin: 1,
+          buildAttemptsAllowed: 1,
+          buildSavedExamId: 1,
         },
       )
       .lean<RawBotSessionLean | null>();
@@ -156,6 +182,7 @@ export class BotSessionService {
       draftCriteria: decrypted.draftCriteria,
       draftOptions:
         (decrypted.draftOptions as unknown as NewExamItemDraftOption[] | undefined) ?? [],
+      buildTitle: decrypted.buildTitle,
     };
   }
 
@@ -186,6 +213,31 @@ export class BotSessionService {
   ): Promise<void> {
     const update = encryptRecord(
       newExamItemDraftUpdate(patch, now),
+      BOT_SESSION_ENCRYPT_SCHEMA,
+    );
+    await this.model.updateOne({ chatId }, { $set: update }, { upsert: true });
+  }
+
+  /** Начинает сборку экзамена (шаг 'pick', ТЗ 4б.4) — новое ожидание
+   * вытесняет старое, тем же приёмом, что startNewExamItemDraft. */
+  async startNewExamDraft(chatId: number, now: DateTime): Promise<void> {
+    const { $set, $unset } = startNewExamDraftUpdate(now);
+    await this.model.updateOne(
+      { chatId },
+      { $set: encryptRecord($set, BOT_SESSION_ENCRYPT_SCHEMA), $unset },
+      { upsert: true },
+    );
+  }
+
+  /** Шаг вперёд внутри уже начатой сборки (отметка/название/лимит/попытки) —
+   * тем же приёмом, что setNewExamItemDraft. */
+  async setNewExamDraft(
+    chatId: number,
+    patch: NewExamDraftPatch,
+    now: DateTime,
+  ): Promise<void> {
+    const update = encryptRecord(
+      newExamDraftUpdate(patch, now),
       BOT_SESSION_ENCRYPT_SCHEMA,
     );
     await this.model.updateOne({ chatId }, { $set: update }, { upsert: true });

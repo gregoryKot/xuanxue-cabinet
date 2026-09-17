@@ -9,6 +9,7 @@ import type { ChatMemberHandler } from './handlers/chat-member.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
 import type { MessageHandler } from './handlers/message.handler';
+import type { NewExamCommandHandler } from './handlers/new-exam-command.handler';
 import type { NewExamItemCommandHandler } from './handlers/new-exam-item-command.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { StartHandler } from './handlers/start.handler';
@@ -45,6 +46,7 @@ function buildService(): {
     message as unknown as MessageHandler,
     fakeHandlerWithNow() as unknown as ExamCommandHandler,
     newExamItem as unknown as NewExamItemCommandHandler,
+    fakeHandlerWithNow() as unknown as NewExamCommandHandler,
     new BotIdentityService(),
   );
   service.onApplicationBootstrap();

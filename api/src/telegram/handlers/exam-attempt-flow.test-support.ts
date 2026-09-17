@@ -9,12 +9,15 @@
 import type { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import type { Context } from 'telegraf';
+import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
+import { UsersService } from '../../users/users.service';
 import type { UserLean } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { ExamBotService } from '../../exams/exam-bot.service';
 import { MyExamsService } from '../../exams/my-exams.service';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { PersonalChats } from '../personal-chats';
 import {
   AUTHOR_ID,
@@ -140,6 +143,7 @@ export async function setupFlowTest(): Promise<FlowTestContext> {
     ctx.mediaAssetsService,
     ctx.examImagesService,
     ctx.examItemsService,
+    ctx.examsService,
     registry,
   );
   return { ctx, examBot, registry, botSessions, botSessionModel };
@@ -148,6 +152,25 @@ export async function setupFlowTest(): Promise<FlowTestContext> {
 export async function clearFlowTest(flow: FlowTestContext): Promise<void> {
   await clearAttemptsTest(flow.ctx);
   await flow.botSessionModel.deleteMany({});
+}
+
+export interface FlowChatRig {
+  channelModel: Model<ChannelRecord>;
+  usersService: UsersService;
+  personalChats: PersonalChats;
+}
+
+/** Модель канала, UsersService и PersonalChats поверх той же Mongo, что
+ * setupFlowTest — общий рубеж доступа штата для спеков диалогов бота
+ * («Новый вопрос», «Собрать экзамен», …), не по одной сборке на диалог
+ * (jscpd). Вызывающий код сам чистит `channelModel` в своём clear*Test —
+ * здесь только сборка, без стороннего эффекта на очистку. */
+export function buildFlowChatRig(flow: FlowTestContext): FlowChatRig {
+  const connection: Connection = flow.ctx.memory.connection;
+  const channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
+  const usersService = new UsersService(flow.ctx.userModel);
+  const personalChats = buildPersonalChats(connection, usersService, channelModel);
+  return { channelModel, usersService, personalChats };
 }
 
 export type FlowQuestionKind = 'single' | 'text' | 'video';

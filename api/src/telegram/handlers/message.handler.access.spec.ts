@@ -11,6 +11,7 @@ import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
 import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
+import type { NewExamMessageHandler } from './new-exam-message.handler';
 import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { MessageHandler } from './message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
@@ -169,6 +170,66 @@ describe('MessageHandler — доступ и сбои', () => {
     expect(replies).toEqual([]);
   });
 
+  it('kind examBuildDraft — зовёт NewExamMessageHandler (ТЗ 4б.4, только штат)', async () => {
+    await seedTeacher(ctx.userModel, ctx.channelModel, 780);
+    await ctx.botSessionModel.create({
+      chatId: 780,
+      kind: 'examBuildDraft',
+      buildStep: 'title',
+      buildItemIds: [],
+      expiresAt: NOW.plus({ hours: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx } = fakeCtx({ chatId: 780, text: 'Экзамен по форме' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(ctx.newExamHandler.handle).toHaveBeenCalledTimes(1);
+    const [, telegramId, session] = ctx.newExamHandler.handle.mock.calls[0] as [
+      unknown,
+      number,
+      { buildStep: string },
+    ];
+    expect(telegramId).toBe(780);
+    expect(session.buildStep).toBe('title');
+  });
+
+  it('штат, ожидание examBuildDraft истекло — фраза про черновик экзамена, не про тему', async () => {
+    await seedTeacher(ctx.userModel, ctx.channelModel, 781);
+    await ctx.botSessionModel.create({
+      chatId: 781,
+      kind: 'examBuildDraft',
+      buildStep: 'title',
+      buildItemIds: [],
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({
+      chatId: 781,
+      text: 'опоздавшее название',
+    });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([
+      'Время на сборку экзамена истекло. Наберите /экзамен ещё раз — черновик придётся начать заново.',
+    ]);
+  });
+
+  it('ученик (без ролей), ожидание examBuildDraft истекло — тихо игнорируется (гейт штата)', async () => {
+    await ctx.userModel.create({ name: 'Ученик', telegramId: 782, roles: [] });
+    await ctx.botSessionModel.create({
+      chatId: 782,
+      kind: 'examBuildDraft',
+      buildStep: 'title',
+      buildItemIds: [],
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({ chatId: 782, text: 'не моё дело' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([]);
+  });
+
   it('ученик (без ролей), ожидание examText истекло — фраза про истечение, не тишина (PR #175)', async () => {
     await ctx.userModel.create({ name: 'Ученик', telegramId: 333, roles: [] });
     await ctx.botSessionModel.create({
@@ -266,6 +327,7 @@ describe('MessageHandler — доступ и сбои', () => {
       { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
       { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
       { handle: jest.fn() } as unknown as NewExamItemMessageHandler,
+      { handle: jest.fn() } as unknown as NewExamMessageHandler,
     );
   }
 

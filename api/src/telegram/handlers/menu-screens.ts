@@ -15,6 +15,7 @@ import {
 } from './bot-menu';
 import type { ExamCommandHandler } from './exam-command.handler';
 import type { MenuCommandHandler } from './menu-command.handler';
+import type { NewExamCommandHandler } from './new-exam-command.handler';
 import { buildNotificationsMenu } from './notifications-menu';
 import { kindSelectScreen } from './new-exam-item-screens';
 
@@ -23,6 +24,7 @@ interface MenuScreenDeps {
   users: UsersService;
   prefs: NotificationPrefsService;
   exams: ExamCommandHandler;
+  newExam: NewExamCommandHandler;
 }
 
 export async function handleMenuScreen(
@@ -54,6 +56,9 @@ async function menuScreenView(
   // видна только в buildBotMenu, а сам 'menu' прошёл isPersonalChat в
   // CallbackQueryHandler.handle до dispatch) — второй проверки не нужно.
   if (screen === 'newitem') return kindSelectScreen();
+  // «Собрать экзамен» — шаг 'pick' диалога ТЗ 4б.4; в отличие от 'newitem'
+  // сессия заводится сразу (комментарий в new-exam-command.handler.ts).
+  if (screen === 'newexam') return deps.newExam.pickScreen(chatId, now);
   // Экран уведомлений тот же, что у команды и у тумблеров: один рендер на
   // три входа (notifications-menu.ts).
   const user = await deps.users.findByTelegramId(chatId);

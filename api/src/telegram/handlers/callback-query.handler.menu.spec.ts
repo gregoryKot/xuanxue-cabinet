@@ -69,6 +69,18 @@ describe('CallbackQueryHandler — menu (главное меню)', () => {
     expect(editCalls[0]).toContain('Выберите тип ответа');
   });
 
+  // ТЗ 4б.4 (docs/PLAN.md §12) — «Собрать экзамен» в главном меню — шаг
+  // 'pick' диалога; фейковый ExamBotPort по умолчанию отдаёт пустой список,
+  // поэтому здесь честное «нет опубликованных вопросов», не заведённая сессия.
+  it('menu:newexam — нет опубликованных вопросов, правит то же сообщение с действием', async () => {
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 111, data: 'menu:newexam' });
+
+    await ctx.handler.handle(cbCtx, NOW);
+
+    expect(editCalls[0]).toContain('Нет опубликованных вопросов');
+  });
+
   it('чужой экран в параметре — молча игнорируется, сообщение не трогается', async () => {
     await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const { ctx: cbCtx, editCalls } = fakeCtx({

@@ -6,6 +6,7 @@
 import type { DateTime } from 'luxon';
 import type { ExamItemKind } from '@xuanxue/shared';
 import type { BotSessionLean, BotSessionService } from './bot-session.service';
+import type { NewExamDraftPatch } from './new-exam-draft-wait';
 import type { NewExamItemDraftPatch } from './new-exam-item-draft-wait';
 
 export interface FakeBotSessionService extends BotSessionService {
@@ -21,6 +22,8 @@ export interface FakeBotSessionService extends BotSessionService {
     Promise<void>,
     [number, NewExamItemDraftPatch, DateTime]
   >;
+  startNewExamDraft: jest.Mock<Promise<void>, [number, DateTime]>;
+  setNewExamDraft: jest.Mock<Promise<void>, [number, NewExamDraftPatch, DateTime]>;
 }
 
 export function fakeBotSessionService(
@@ -37,6 +40,8 @@ export function fakeBotSessionService(
     hasExpired: jest.fn(),
     startNewExamItemDraft: jest.fn().mockResolvedValue(undefined),
     setNewExamItemDraft: jest.fn().mockResolvedValue(undefined),
+    startNewExamDraft: jest.fn().mockResolvedValue(undefined),
+    setNewExamDraft: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as FakeBotSessionService;
 }
