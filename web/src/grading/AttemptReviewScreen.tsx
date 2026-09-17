@@ -26,7 +26,7 @@ import {
 import { SkeletonLines } from '../components/Skeleton';
 import { AttemptReviewAnswers } from './AttemptReviewAnswers';
 import { GradingForm } from './GradingForm';
-import { useAttemptReview } from './useAttemptReview';
+import { useAttemptReview, type AttemptReviewVideoControls } from './useAttemptReview';
 
 const GRADING_HEADING_ID = 'grading-heading';
 const GRADING_HINT = 'Итог и комментарий уйдут ученику в Telegram сразу после отправки.';
@@ -42,8 +42,7 @@ export default function AttemptReviewScreen() {
     saving,
     saveError,
     markMediaManual,
-    markingMedia,
-    markMediaError,
+    markMediaStateFor,
   } = useAttemptReview(attemptId ?? '');
 
   if (loading) {
@@ -62,6 +61,15 @@ export default function AttemptReviewScreen() {
     );
   }
 
+  // Видео каждого вопроса собирается один раз здесь и идёт вниз одним
+  // объектом (AttemptReviewAnswers → AttemptReviewBlock →
+  // AttemptReviewQuestion, тот же приём, что `video` в attempt/AttemptScreen.tsx).
+  const video: AttemptReviewVideoControls = {
+    media: review.media ?? [],
+    markMediaManual,
+    markMediaStateFor,
+  };
+
   return (
     <section style={wideScreenSectionStyle}>
       <Link to="/grading" style={textLinkStyle}>
@@ -71,13 +79,7 @@ export default function AttemptReviewScreen() {
       <p style={screenExplanationStyle}>{review.examTitle}</p>
 
       <div className="xuanxue-review-layout">
-        <AttemptReviewAnswers
-          blocks={review.blocks}
-          media={review.media ?? []}
-          onMarkManual={markMediaManual}
-          markingMedia={markingMedia}
-          markMediaError={markMediaError}
-        />
+        <AttemptReviewAnswers blocks={review.blocks} video={video} />
 
         <aside aria-labelledby={GRADING_HEADING_ID}>
           <h2 id={GRADING_HEADING_ID} style={screenColumnTitleStyle}>

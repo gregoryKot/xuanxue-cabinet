@@ -1,9 +1,15 @@
-// Блок «Видео» карточки проверки (ADR-0023, ТЗ п.4.5/4.6) — что получено и
-// когда, своя строка на каждый способ: `link` открывается сама, `telegram`
-// и `manual` — текстом (describeMediaSource). Видео нет вовсе — кнопка
-// «Отметить, что видео принято» (третий путь ADR-0023): учитель мог
-// получить его другим способом и должен иметь возможность закрыть случай,
-// не дожидаясь, пока ученик разберётся с Telegram или со ссылкой. Строка
+// Блок видео карточки проверки (ADR-0023, ADR-0037, ТЗ п.4.5/4.6) — что
+// получено и когда, своя строка на каждый способ: `link` открывается сама,
+// `telegram` и `manual` — текстом (describeMediaSource). Видео теперь ответ
+// конкретного вопроса, а не попытки целиком: компонент переиспользуется и
+// внутри карточки видео-вопроса (AttemptReviewQuestion.tsx, без `heading` —
+// формулировка вопроса рядом уже говорит, что это), и в блоке «Видео без
+// вопроса» на всю попытку (AttemptReviewAnswers.tsx, `heading` задан). Видео
+// нет вовсе — кнопка «Отметить, что видео принято» (третий путь ADR-0023),
+// только когда `onMarkManual` передан (у «без вопроса» нет своего вопроса,
+// чтобы к нему отмечать, — кнопки там не бывает): учитель мог получить
+// видео другим способом и должен иметь возможность закрыть случай, не
+// дожидаясь, пока ученик разберётся с Telegram или со ссылкой. Строка
 // списка, не карточка (направление «тихо и благородно», docs/adr/0031) —
 // та же волосяная линия, что у вопроса (AttemptReviewQuestion.tsx). Ссылка —
 // textLinkStyle (screenLayout.ts): у `<a>` нет своей строки в index.css,
@@ -46,31 +52,38 @@ const sourceTextStyle: CSSProperties = {
 
 interface AttemptReviewMediaProps {
   media: ExamMediaDto[];
-  onMarkManual: () => Promise<boolean>;
-  marking: boolean;
-  markError: FormError | null;
+  /** Заголовок над блоком. Без него — как у видео-вопроса (карточка сама
+   * называет вопрос строкой формулировки): второй заголовок был бы лишним. */
+  heading?: string;
+  /** Только там, где у видео есть свой вопрос: без него нечего отмечать. */
+  onMarkManual?: () => Promise<boolean>;
+  marking?: boolean;
+  markError?: FormError | null;
 }
 
 export function AttemptReviewMedia({
   media,
+  heading,
   onMarkManual,
-  marking,
-  markError,
+  marking = false,
+  markError = null,
 }: AttemptReviewMediaProps) {
   return (
     <section>
-      <h3 style={titleStyle}>Видео</h3>
+      {heading && <h3 style={titleStyle}>{heading}</h3>}
 
       {media.length === 0 ? (
         <>
           <p style={{ margin: '0 0 8px' }}>{NO_MEDIA_TEXT}</p>
-          <Button
-            variant="secondary"
-            pending={marking}
-            onClick={() => void onMarkManual()}
-          >
-            Отметить, что видео принято
-          </Button>
+          {onMarkManual && (
+            <Button
+              variant="secondary"
+              pending={marking}
+              onClick={() => void onMarkManual()}
+            >
+              Отметить, что видео принято
+            </Button>
+          )}
           <FormServerError error={markError} />
         </>
       ) : (

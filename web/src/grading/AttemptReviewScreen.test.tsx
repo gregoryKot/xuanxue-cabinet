@@ -256,10 +256,25 @@ describe('AttemptReviewScreen — отправка оценки', () => {
   });
 });
 
-describe('AttemptReviewScreen — видео (ADR-0023)', () => {
-  it('видео нет — кнопка ручной отметки шлёт POST и перечитывает карточку', async () => {
+const VIDEO_QUESTION_BLOCKS = [
+  {
+    id: 'b2',
+    title: 'Практика',
+    questions: [
+      {
+        itemId: 'q2',
+        kind: 'video' as const,
+        prompt: 'Снимите форму «пэнбу»',
+        options: [],
+      },
+    ],
+  },
+];
+
+describe('AttemptReviewScreen — видео у своего вопроса (ADR-0023, ADR-0037)', () => {
+  it('видео-вопрос без видео — кнопка ручной отметки шлёт POST с itemId и перечитывает карточку', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/attempts': makeReview() });
+    mockApiByPath({ '/attempts': makeReview({ blocks: VIDEO_QUESTION_BLOCKS }) });
 
     renderAt('a1');
     await screen.findByText('Видео пока не получено.');
@@ -267,10 +282,12 @@ describe('AttemptReviewScreen — видео (ADR-0023)', () => {
     mockedApiFetch.mockResolvedValueOnce(undefined);
     mockedApiFetch.mockResolvedValueOnce(
       makeReview({
+        blocks: VIDEO_QUESTION_BLOCKS,
         media: [
           {
             id: 'm1',
             attemptId: 'a1',
+            itemId: 'q2',
             kind: 'manual',
             receivedAt: '2026-09-12T00:00:00Z',
           },
@@ -281,18 +298,21 @@ describe('AttemptReviewScreen — видео (ADR-0023)', () => {
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/manual', {
       method: 'POST',
-      body: {},
+      body: { itemId: 'q2' },
     });
+    expect(await screen.findByText('Есть ответ')).toBeInTheDocument();
     expect(await screen.findByText('Отмечено вручную, без подписи.')).toBeInTheDocument();
   });
 
-  it('видео получено по ссылке — карточка показывает кликабельную ссылку', async () => {
+  it('видео своего вопроса получено по ссылке — метка «Есть ответ» и кликабельная ссылка у вопроса', async () => {
     mockApiByPath({
       '/attempts': makeReview({
+        blocks: VIDEO_QUESTION_BLOCKS,
         media: [
           {
             id: 'm1',
             attemptId: 'a1',
+            itemId: 'q2',
             kind: 'link',
             url: 'https://example.com/v',
             receivedAt: '2026-09-12T00:00:00Z',
@@ -303,8 +323,35 @@ describe('AttemptReviewScreen — видео (ADR-0023)', () => {
 
     renderAt('a1');
 
+    expect(await screen.findByText('Есть ответ')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть ссылку на видео' })).toHaveAttribute(
+      'href',
+      'https://example.com/v',
+    );
+  });
+
+  it('видео без itemId (деплой на стыке версий) — отдельный блок «Видео без вопроса», не теряется', async () => {
+    mockApiByPath({
+      '/attempts': makeReview({
+        media: [
+          {
+            id: 'm1',
+            attemptId: 'a1',
+            kind: 'telegram',
+            durationSec: 12,
+            receivedAt: '2026-09-12T00:00:00Z',
+          },
+        ],
+      }),
+    });
+
+    renderAt('a1');
+
     expect(
-      await screen.findByRole('link', { name: 'Открыть ссылку на видео' }),
-    ).toHaveAttribute('href', 'https://example.com/v');
+      await screen.findByRole('heading', { name: 'Видео без вопроса' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Переслано боту в Telegram. Видео смотрите там же.'),
+    ).toBeInTheDocument();
   });
 });

@@ -116,13 +116,14 @@ describe('useAttemptReview — отправка оценки', () => {
   });
 });
 
-describe('useAttemptReview — ручная отметка видео', () => {
-  it('успех: POST на media/manual, потом перечитанная карточка с media (read-after-write)', async () => {
+describe('useAttemptReview — ручная отметка видео (у своего вопроса, ADR-0037)', () => {
+  it('успех: POST на media/manual с itemId, потом перечитанная карточка с media (read-after-write)', async () => {
     const withMedia = makeReview({
       media: [
         {
           id: 'm1',
           attemptId: 'a1',
+          itemId: 'q1',
           kind: 'manual',
           receivedAt: '2026-09-12T00:00:00Z',
         },
@@ -137,19 +138,22 @@ describe('useAttemptReview — ручная отметка видео', () => {
 
     let succeeded = false;
     await act(async () => {
-      succeeded = await result.current.markMediaManual();
+      succeeded = await result.current.markMediaManual('q1');
     });
 
     expect(succeeded).toBe(true);
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/manual', {
       method: 'POST',
-      body: {},
+      body: { itemId: 'q1' },
     });
     await waitFor(() => expect(result.current.review?.media).toEqual(withMedia.media));
-    expect(result.current.markMediaError).toBeNull();
+    expect(result.current.markMediaStateFor('q1')).toEqual({
+      pending: false,
+      error: null,
+    });
   });
 
-  it('сбой сервера — ошибка видна, false возвращается', async () => {
+  it('сбой сервера — ошибка видна только у отмеченного вопроса, false возвращается', async () => {
     mockedApiFetch
       .mockResolvedValueOnce(makeReview())
       .mockRejectedValueOnce(new ApiError('Сеть подвела', 500, 'internal_error'));
@@ -158,10 +162,14 @@ describe('useAttemptReview — ручная отметка видео', () => {
 
     let succeeded = true;
     await act(async () => {
-      succeeded = await result.current.markMediaManual();
+      succeeded = await result.current.markMediaManual('q1');
     });
 
     expect(succeeded).toBe(false);
-    expect(result.current.markMediaError?.message).toBe('Сеть подвела');
+    expect(result.current.markMediaStateFor('q1').error?.message).toBe('Сеть подвела');
+    expect(result.current.markMediaStateFor('q2')).toEqual({
+      pending: false,
+      error: null,
+    });
   });
 });

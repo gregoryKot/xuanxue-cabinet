@@ -44,6 +44,31 @@ describe('AttemptReviewMedia — видео нет', () => {
 
     expect(screen.getByText('Не удалось отметить видео.')).toBeInTheDocument();
   });
+
+  it('без onMarkManual (блок «без вопроса») — кнопки нет, ничего не падает', () => {
+    render(<AttemptReviewMedia media={[]} />);
+
+    expect(screen.getByText('Видео пока не получено.')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Отметить, что видео принято' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('AttemptReviewMedia — заголовок', () => {
+  it('heading задан — заголовок виден', () => {
+    renderMedia({ heading: 'Видео без вопроса' });
+
+    expect(
+      screen.getByRole('heading', { name: 'Видео без вопроса' }),
+    ).toBeInTheDocument();
+  });
+
+  it('heading не задан (видео-вопрос) — заголовка нет', () => {
+    renderMedia();
+
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+  });
 });
 
 describe('AttemptReviewMedia — каждый вид получения', () => {

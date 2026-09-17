@@ -7,14 +7,24 @@
 // (attemptReviewQuestionStatus.ts), как статус формы на строке списка
 // (exams/ExamCard.tsx).
 //
+// Видео-вопрос (ADR-0037: видео — ответ на конкретный вопрос, не вложение к
+// попытке целиком) — своя запись видео тут же, а не общим блоком на всю
+// попытку: два видео-вопроса в одной попытке теперь различимы. Рендер —
+// переиспользованный AttemptReviewMedia.tsx (CLAUDE.md «Одна механика — один
+// компонент»), без своего заголовка: формулировка вопроса уже сказала, что
+// это. `video.media` — вся попытка, вопрос сам фильтрует по `itemId`, тот же
+// приём, что AttemptQuestionVideo.tsx на экране сдачи.
+//
 // Картинка варианта (ADR-0035) — миниатюрой перед подписью: снимок попытки
 // несёт свой `imageId`, учитель видит ту же картинку, что видел сдающий;
 // подпись без текста — formatOptionLabel, тот же приём, что на сдаче.
 import type { CSSProperties } from 'react';
 import { formatOptionLabel, type AttemptReviewQuestionDto } from '@xuanxue/shared';
 import { OptionImage } from '../components/OptionImage';
+import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
 import { formatOptionsCheckSummary } from './optionsCheckSummary';
+import type { AttemptReviewVideoControls } from './useAttemptReview';
 
 const NO_ANSWER_TEXT = 'Ответ не дан.';
 
@@ -56,11 +66,18 @@ const optionRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', g
 interface AttemptReviewQuestionProps {
   index: number;
   question: AttemptReviewQuestionDto;
+  video: AttemptReviewVideoControls;
 }
 
-export function AttemptReviewQuestion({ index, question }: AttemptReviewQuestionProps) {
+export function AttemptReviewQuestion({
+  index,
+  question,
+  video,
+}: AttemptReviewQuestionProps) {
   const hasOptions = question.options.length > 0;
-  const status = attemptReviewQuestionStatus(question);
+  const isVideo = question.kind === 'video';
+  const questionMedia = video.media.filter((item) => item.itemId === question.itemId);
+  const status = attemptReviewQuestionStatus(question, questionMedia.length > 0);
 
   return (
     <div style={rowStyle}>
@@ -101,6 +118,13 @@ export function AttemptReviewQuestion({ index, question }: AttemptReviewQuestion
             </li>
           ))}
         </ul>
+      ) : isVideo ? (
+        <AttemptReviewMedia
+          media={questionMedia}
+          onMarkManual={() => video.markMediaManual(question.itemId)}
+          marking={video.markMediaStateFor(question.itemId).pending}
+          markError={video.markMediaStateFor(question.itemId).error}
+        />
       ) : (
         <p style={answerStyle}>
           {question.answerText?.trim() ? question.answerText : NO_ANSWER_TEXT}

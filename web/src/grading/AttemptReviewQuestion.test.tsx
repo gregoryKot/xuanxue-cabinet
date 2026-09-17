@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import type { AttemptReviewQuestionDto } from '@xuanxue/shared';
 import { AttemptReviewQuestion } from './AttemptReviewQuestion';
+import type { AttemptReviewVideoControls } from './useAttemptReview';
 
 function makeQuestion(
   overrides: Partial<AttemptReviewQuestionDto> = {},
@@ -15,11 +17,23 @@ function makeQuestion(
   };
 }
 
+function makeVideo(
+  overrides: Partial<AttemptReviewVideoControls> = {},
+): AttemptReviewVideoControls {
+  return {
+    media: [],
+    markMediaManual: () => Promise.resolve(true),
+    markMediaStateFor: () => ({ pending: false, error: null }),
+    ...overrides,
+  };
+}
+
 describe('AttemptReviewQuestion — текстовый вопрос', () => {
   it('есть подсказка ученику — видна учителю', () => {
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({ hint: 'Считайте по схеме' })}
       />,
     );
@@ -28,7 +42,9 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
   });
 
   it('без подсказки — строка не рисуется', () => {
-    render(<AttemptReviewQuestion index={0} question={makeQuestion()} />);
+    render(
+      <AttemptReviewQuestion index={0} video={makeVideo()} question={makeQuestion()} />,
+    );
 
     expect(screen.queryByText(/Подсказка ученику/)).not.toBeInTheDocument();
   });
@@ -37,6 +53,7 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({ answerText: 'Дышу животом' })}
       />,
     );
@@ -48,6 +65,7 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({ answerText: undefined })}
       />,
     );
@@ -57,7 +75,11 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
 
   it('пустая строка ответа — тоже «Ответ не дан»', () => {
     render(
-      <AttemptReviewQuestion index={0} question={makeQuestion({ answerText: '   ' })} />,
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({ answerText: '   ' })}
+      />,
     );
 
     expect(screen.getByText('Ответ не дан.')).toBeInTheDocument();
@@ -69,6 +91,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [
@@ -89,6 +112,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
@@ -103,6 +127,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [
@@ -123,6 +148,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
@@ -137,6 +163,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
@@ -154,9 +181,93 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
 });
 
 describe('AttemptReviewQuestion — вопрос без вариантов', () => {
-  it('метка «Смотрите вы» — машина текст/видео не проверяет', () => {
-    render(<AttemptReviewQuestion index={0} question={makeQuestion()} />);
+  it('метка «Смотрите вы» — машина текст не проверяет', () => {
+    render(
+      <AttemptReviewQuestion index={0} video={makeVideo()} question={makeQuestion()} />,
+    );
 
     expect(screen.getByText('Смотрите вы')).toBeInTheDocument();
+  });
+});
+
+describe('AttemptReviewQuestion — видео-вопрос (ADR-0037, свой itemId)', () => {
+  it('видео нет — метка «Ответа нет», кнопка ручной отметки шлёт itemId вопроса', async () => {
+    const user = userEvent.setup();
+    const markMediaManual = vi.fn().mockResolvedValue(true);
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo({ markMediaManual })}
+      />,
+    );
+
+    expect(screen.getByText('Ответа нет')).toBeInTheDocument();
+    expect(screen.getByText('Видео пока не получено.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Отметить, что видео принято' }));
+
+    expect(markMediaManual).toHaveBeenCalledWith('q1');
+  });
+
+  it('видео этого вопроса пришло — метка «Есть ответ», строка получения видна', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo({
+          media: [
+            {
+              id: 'm1',
+              attemptId: 'a1',
+              itemId: 'q1',
+              kind: 'link',
+              url: 'https://example.com/v',
+              receivedAt: '2026-09-12T00:00:00Z',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Есть ответ')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть ссылку на видео' })).toHaveAttribute(
+      'href',
+      'https://example.com/v',
+    );
+  });
+
+  it('видео другого вопроса той же попытки — этому вопросу не засчитывается', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video', itemId: 'q1' })}
+        video={makeVideo({
+          media: [
+            {
+              id: 'm1',
+              attemptId: 'a1',
+              itemId: 'q2',
+              kind: 'telegram',
+              receivedAt: '2026-09-12T00:00:00Z',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Ответа нет')).toBeInTheDocument();
+    expect(screen.getByText('Видео пока не получено.')).toBeInTheDocument();
+  });
+
+  it('без heading — заголовка «Видео» в карточке нет, формулировка вопроса уже сказала, что это', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo()}
+      />,
+    );
+
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 });
