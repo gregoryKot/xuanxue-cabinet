@@ -2,7 +2,10 @@
 // «Тесты»): шифрование содержательных полей, версии опубликованных вопросов
 // (ТЗ 4.2, п.3), запрет удаления не-черновика.
 import { DateTime } from 'luxon';
-import type { Connection, Model } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
+import { EXAM_IMAGE_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
+import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
+import { ExamImagesService } from '../exam-images/exam-images.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
@@ -12,14 +15,17 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const AUTHOR_ID = '507f1f77bcf86cd799439011';
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
 describe('ExamItemsService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let model: Model<ExamItemRecord>;
   let examModel: Model<ExamRecord>;
+  let imageModel: Model<ExamImageRecord>;
   let service: ExamItemsService;
   let examsService: ExamsService;
+  let examImagesService: ExamImagesService;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -30,7 +36,9 @@ describe('ExamItemsService', () => {
       ExamAttemptRecord.name,
       ExamAttemptSchema,
     );
-    service = new ExamItemsService(model, examModel);
+    imageModel = connection.model<ExamImageRecord>(ExamImageRecord.name, ExamImageSchema);
+    examImagesService = new ExamImagesService(imageModel, attemptModel);
+    service = new ExamItemsService(model, examModel, examImagesService);
     // Только чтобы завести реальный неархивированный экзамен, ссылающийся на
     // вопрос (защита от удаления/архивации, exam-item-references.ts) — без
     // отдельного мока формы, тем же приёмом, что exam-item-stats.service.spec.ts.
@@ -44,7 +52,22 @@ describe('ExamItemsService', () => {
   afterEach(async () => {
     await model.deleteMany({});
     await examModel.deleteMany({});
+    await imageModel.deleteMany({});
   });
+
+  async function uploadImage(): Promise<string> {
+    const dto = await examImagesService.upload(JPEG, AUTHOR_ID);
+    return dto.id;
+  }
+
+  /** Сырой документ мимо сервиса — единственный способ увидеть, что реально
+   * лежит в imageIds (сравнение через String(), т.к. это ObjectId). */
+  async function rawImageIds(id: string): Promise<string[]> {
+    const raw = await model.collection.findOne<{ imageIds?: unknown[] }>({
+      _id: new Types.ObjectId(id),
+    });
+    return (raw?.imageIds ?? []).map((v) => String(v));
+  }
 
   it('create → getById: read-after-write, prompt расшифрован в ответе', async () => {
     const created = await service.create(
@@ -124,6 +147,98 @@ describe('ExamItemsService', () => {
         AUTHOR_ID,
       ),
     ).rejects.toThrow('хотя бы один правильный вариант');
+  });
+
+  describe('картинки вариантов (ADR-0035)', () => {
+    it('create с imageId несуществующей картинки — InvalidInputError, вопрос не создаётся', async () => {
+      await expect(
+        service.create(
+          {
+            kind: 'single',
+            prompt: 'p',
+            options: [
+              { imageId: new Types.ObjectId().toString(), correct: true },
+              { text: 'B', correct: false },
+            ],
+          },
+          AUTHOR_ID,
+        ),
+      ).rejects.toThrow(EXAM_IMAGE_NOT_FOUND_MESSAGE);
+      await expect(model.countDocuments({})).resolves.toBe(0);
+    });
+
+    it('create с реальной картинкой — imageId в DTO варианта, imageIds сырого документа содержит её', async () => {
+      const imageId = await uploadImage();
+
+      const created = await service.create(
+        {
+          kind: 'single',
+          prompt: 'p',
+          options: [
+            { imageId, correct: true },
+            { text: 'B', correct: false },
+          ],
+        },
+        AUTHOR_ID,
+      );
+
+      expect(created.options[0]?.imageId).toBe(imageId);
+      expect(created.options[0]?.text).toBe('');
+      await expect(rawImageIds(created.id)).resolves.toEqual([imageId]);
+    });
+
+    it('update, заменивший картинку у опубликованного вопроса — version+1, imageIds содержит обе (старая — в history)', async () => {
+      const oldImageId = await uploadImage();
+      const newImageId = await uploadImage();
+      const created = await service.create(
+        {
+          kind: 'single',
+          prompt: 'p',
+          options: [
+            { imageId: oldImageId, correct: true },
+            { text: 'B', correct: false },
+          ],
+        },
+        AUTHOR_ID,
+      );
+      await service.update(created.id, { status: 'published' }, NOW);
+
+      const updated = await service.update(
+        created.id,
+        {
+          options: [
+            { imageId: newImageId, correct: true },
+            { text: 'B', correct: false },
+          ],
+        },
+        NOW,
+      );
+
+      expect(updated.version).toBe(2);
+      expect(updated.options[0]?.imageId).toBe(newImageId);
+      expect(updated.history[0]?.options[0]?.imageId).toBe(oldImageId);
+      const raw = await rawImageIds(created.id);
+      expect(raw.sort()).toEqual([oldImageId, newImageId].sort());
+    });
+
+    it('update без options — imageIds не теряется (поле выравнивается на каждой правке)', async () => {
+      const imageId = await uploadImage();
+      const created = await service.create(
+        {
+          kind: 'single',
+          prompt: 'p',
+          options: [
+            { imageId, correct: true },
+            { text: 'B', correct: false },
+          ],
+        },
+        AUTHOR_ID,
+      );
+
+      await service.update(created.id, { tags: ['теория'] }, NOW);
+
+      await expect(rawImageIds(created.id)).resolves.toEqual([imageId]);
+    });
   });
 
   describe('версии опубликованного вопроса (ТЗ 4.2, п.3)', () => {

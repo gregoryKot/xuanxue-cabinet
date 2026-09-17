@@ -50,6 +50,11 @@ function optionMark(kind: AttemptQuestionDto['kind'], selected: boolean): string
   return kind === 'multiple' ? '☑ ' : '✓ ';
 }
 
+function optionLabel(option: { text: string }, index: number): string {
+  // Telegram отклоняет кнопку с пустым текстом; картинка — следующий слой (ADR-0035).
+  return option.text || `Вариант ${index + 1}`;
+}
+
 function optionButtons(
   attemptId: string,
   index: number,
@@ -59,7 +64,7 @@ function optionButtons(
   const selectedIds = new Set(answer?.optionIds ?? []);
   return question.options.map((option, optionIndex) => [
     inlineButton(
-      `${optionMark(question.kind, selectedIds.has(option.id))}${option.text}`,
+      `${optionMark(question.kind, selectedIds.has(option.id))}${optionLabel(option, optionIndex)}`,
       'eo',
       buildOptionId(attemptId, index, optionIndex),
     ),

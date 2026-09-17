@@ -98,6 +98,9 @@ export function computeExamItemStats(
         text: option.text,
         correct: option.correct,
         chosenCount: acc.chosenById.get(option.id) ?? 0,
+        // Ключа нет вовсе, если картинки не было (ADR-0035) — строка
+        // статистики без подписи иначе не с чем сопоставить на экране.
+        ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
       }))
     : undefined;
 

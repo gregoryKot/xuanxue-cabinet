@@ -145,4 +145,40 @@ describe('ExamImagesService', () => {
       ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
+
+  describe('assertExist', () => {
+    it('пустой список — ок, запроса к базе не требует', async () => {
+      await expect(service.assertExist([])).resolves.toBeUndefined();
+    });
+
+    it('все id существуют — ок', async () => {
+      const first = await service.upload(JPEG, new Types.ObjectId().toString());
+      const second = await service.upload(JPEG, new Types.ObjectId().toString());
+
+      await expect(service.assertExist([first.id, second.id])).resolves.toBeUndefined();
+    });
+
+    it('один несуществующий id среди существующих — InvalidInputError', async () => {
+      const existing = await service.upload(JPEG, new Types.ObjectId().toString());
+      const missing = new Types.ObjectId().toString();
+
+      await expect(service.assertExist([existing.id, missing])).rejects.toBeInstanceOf(
+        InvalidInputError,
+      );
+    });
+
+    it('невалидный ObjectId — InvalidInputError, не CastError', async () => {
+      await expect(service.assertExist(['abc'])).rejects.toBeInstanceOf(
+        InvalidInputError,
+      );
+    });
+
+    it('повтор одного и того же существующего id — ок (дедуп)', async () => {
+      const existing = await service.upload(JPEG, new Types.ObjectId().toString());
+
+      await expect(
+        service.assertExist([existing.id, existing.id]),
+      ).resolves.toBeUndefined();
+    });
+  });
 });

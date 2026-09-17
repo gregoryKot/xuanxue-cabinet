@@ -42,7 +42,13 @@ export type LeanExamAttempt = Omit<RawLeanExamAttempt, 'blocks' | 'answers'> & {
 };
 
 function toStudentOption(option: AttemptOptionRecord): AttemptOptionDto {
-  return { id: option.id, text: option.text };
+  return {
+    id: option.id,
+    text: option.text,
+    // Ключа нет вовсе, если картинки не было (ADR-0035) — тот же приём, что
+    // у остальных мапперов снимка (toAttemptOption, exam-attempt-snapshot.ts).
+    ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
+  };
 }
 
 function toStudentQuestion(question: AttemptQuestionRecord): AttemptQuestionDto {

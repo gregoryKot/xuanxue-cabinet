@@ -7,6 +7,7 @@ import type { PreviewService } from '../broadcasts/preview.service';
 import type { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import type { ManualPromptService } from '../deliveries/manual-prompt.service';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
+import type { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
 import type { RecordingPromptService } from '../lessons/recording-prompt.service';
@@ -21,6 +22,7 @@ function buildService(overrides: {
   promptRecordings?: RecordingPromptService['prompt'];
   promptManual?: ManualPromptService['prompt'];
   closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
+  removeImageOrphans?: ExamImageSweepService['removeOrphans'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
 }): {
   service: SchedulerService;
@@ -44,6 +46,8 @@ function buildService(overrides: {
     overrides.promptManual ?? jest.fn().mockResolvedValue({ prompted: 0 });
   const closeExamDeadlines =
     overrides.closeExamDeadlines ?? jest.fn().mockResolvedValue({ closed: 0 });
+  const removeImageOrphans =
+    overrides.removeImageOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -60,6 +64,7 @@ function buildService(overrides: {
     { prompt: promptRecordings } as unknown as RecordingPromptService,
     { prompt: promptManual } as unknown as ManualPromptService,
     { closeDue: closeExamDeadlines } as unknown as ExamDeadlineCloseService,
+    { removeOrphans: removeImageOrphans } as unknown as ExamImageSweepService,
     notifier,
   );
   return { service, notifySchedulerFailed: notifySchedulerFailed as jest.Mock };
@@ -98,6 +103,10 @@ describe('SchedulerService.tick', () => {
       (_now: DateTime): ReturnType<ExamDeadlineCloseService['closeDue']> =>
         Promise.resolve({ closed: 1 }),
     );
+    const removeImageOrphans = jest.fn(
+      (_now: DateTime): ReturnType<ExamImageSweepService['removeOrphans']> =>
+        Promise.resolve({ removed: 1 }),
+    );
     const { service } = buildService({
       plan,
       planBroadcasts,
@@ -107,6 +116,7 @@ describe('SchedulerService.tick', () => {
       promptRecordings,
       promptManual,
       closeExamDeadlines,
+      removeImageOrphans,
     });
 
     await expect(service.tick()).resolves.toBeUndefined();
@@ -119,6 +129,7 @@ describe('SchedulerService.tick', () => {
     expect(promptRecordings).toHaveBeenCalledTimes(1);
     expect(promptManual).toHaveBeenCalledTimes(1);
     expect(closeExamDeadlines).toHaveBeenCalledTimes(1);
+    expect(removeImageOrphans).toHaveBeenCalledTimes(1);
     const [calledWith] = plan.mock.calls[0] ?? [];
     expect(calledWith).toBeInstanceOf(DateTime);
     // Все шаги делят один now — рассылка не может считать «позже», чем видел
@@ -130,6 +141,7 @@ describe('SchedulerService.tick', () => {
     expect(promptRecordings.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptManual.mock.calls[0]?.[0]).toBe(calledWith);
     expect(closeExamDeadlines.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(removeImageOrphans.mock.calls[0]?.[0]).toBe(calledWith);
   });
 
   it('ошибка шага отмен не останавливает шаг доставок', async () => {
@@ -199,6 +211,13 @@ describe('SchedulerService.tick', () => {
   it('ошибка шага «дедлайны экзаменов» не мешает итоговому логу', async () => {
     const closeExamDeadlines = jest.fn().mockRejectedValue(new Error('mongo упал'));
     const { service } = buildService({ closeExamDeadlines });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  it('ошибка шага «картинки-сироты» не мешает итоговому логу', async () => {
+    const removeImageOrphans = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const { service } = buildService({ removeImageOrphans });
 
     await expect(service.tick()).resolves.toBeUndefined();
   });

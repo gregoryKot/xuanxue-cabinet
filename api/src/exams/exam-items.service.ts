@@ -24,12 +24,13 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { removeIfDraft } from '../common/remove-if-draft';
 import { encryptRecord } from '../utils/encryption';
+import { ExamImagesService } from '../exam-images/exam-images.service';
 import {
   assertItemNotUsedForArchive,
   assertItemNotUsedForRemove,
 } from './exam-item-references';
-import { hasContentChanged } from './exam-item-content-change';
-import { assertOptionsForKind, mapOptions } from './exam-item-options';
+import { buildHistoryEntry, hasContentChanged } from './exam-item-content-change';
+import { assertOptionsForKind, collectImageIds, mapOptions } from './exam-item-options';
 import { EXAM_ITEM_ENCRYPT_SCHEMA, ExamItemRecord } from './exam-item.schema';
 import { decryptExamItem, toExamItemDto, type RawLeanExamItem } from './exam-item.mapper';
 import { ExamRecord } from './exam.schema';
@@ -46,6 +47,7 @@ export class ExamItemsService {
   constructor(
     @InjectModel(ExamItemRecord.name) private readonly model: Model<ExamItemRecord>,
     @InjectModel(ExamRecord.name) private readonly examModel: Model<ExamRecord>,
+    private readonly examImagesService: ExamImagesService,
   ) {}
 
   async list(query: ListExamItemsQuery): Promise<ExamItemDto[]> {
@@ -69,18 +71,19 @@ export class ExamItemsService {
   }
 
   async create(input: CreateExamItemInput, authorId: string): Promise<ExamItemDto> {
-    const options = assertOptionsForKind(input.kind, input.options);
+    const options = mapOptions(assertOptionsForKind(input.kind, input.options));
+    await this.examImagesService.assertExist(collectImageIds(options, []));
     const payload: Record<string, unknown> = {
       kind: input.kind,
       prompt: input.prompt,
       hint: input.hint,
       criteria: input.criteria,
-      options: mapOptions(options),
+      options,
       tags: input.tags ?? [],
       authorId,
+      imageIds: collectImageIds(options, []),
     };
-    // Не прислали — схемный default (`published`, ADR-0033); `undefined` в
-    // payload его бы не перебил, но и лишнего ключа в документе не надо.
+    // Не прислали — схемный default (`published`, ADR-0033); лишнего ключа не надо.
     if (input.status !== undefined) payload.status = input.status;
     const created = await this.model.create(
       encryptRecord(payload, EXAM_ITEM_ENCRYPT_SCHEMA),
@@ -109,26 +112,23 @@ export class ExamItemsService {
       options === undefined
         ? undefined
         : mapOptions(assertOptionsForKind(current.kind, options));
+    await this.examImagesService.assertExist(collectImageIds(nextOptions ?? [], []));
     if (nextOptions !== undefined) $set.options = nextOptions;
 
     // Версия поднимается по сути правки, а не по факту присланного поля
     // (exam-item-content-change.ts): экран шлёт все содержательные поля
     // разом, и сохранение без единой правки не должно засорять историю.
     const contentChanged = hasContentChanged(input, nextOptions, current);
+    const nextHistory =
+      contentChanged && current.status === 'published'
+        ? [buildHistoryEntry(current, toIsoUtc(now.toJSDate())), ...current.history]
+        : current.history;
     if (contentChanged && current.status === 'published') {
       $set.version = current.version + 1;
-      $set.history = [
-        {
-          version: current.version,
-          prompt: current.prompt,
-          hint: current.hint,
-          criteria: current.criteria,
-          options: current.options,
-          replacedAt: toIsoUtc(now.toJSDate()),
-        },
-        ...current.history,
-      ];
+      $set.history = nextHistory;
     }
+    // Пересчитываем всегда — поле выравнивается и у документов без него (ADR-0035).
+    $set.imageIds = collectImageIds(nextOptions ?? current.options, nextHistory);
 
     const update: UpdateCommand = { $set: encryptRecord($set, EXAM_ITEM_ENCRYPT_SCHEMA) };
     if (Object.keys($unset).length > 0) update.$unset = $unset;

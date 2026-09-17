@@ -110,4 +110,33 @@ describe('buildReviewBlocks', () => {
     expect(review?.questions[0]?.options.every((option) => !option.selected)).toBe(true);
     expect(review?.questions[0]?.answerText).toBeUndefined();
   });
+
+  // ADR-0035: imageId варианта нужен учителю на карточке проверки — та же
+  // картинка, что видел сдающий.
+  it('imageId варианта доезжает до карточки проверки, без ключа — если его не было', () => {
+    const withImage: AttemptOptionRecord[] = [
+      { id: 'o1', text: '', correct: true, imageId: 'img1' },
+      { id: 'o2', text: 'без картинки', correct: false },
+    ];
+    const blocks: AttemptBlockRecord[] = [
+      {
+        id: 'b1',
+        title: 'Форма',
+        questions: [
+          {
+            itemId: 'i1',
+            version: 1,
+            kind: 'single',
+            prompt: 'Какая стойка?',
+            options: withImage,
+          },
+        ],
+      },
+    ];
+
+    const [review] = buildReviewBlocks(blocks, [{ itemId: 'i1', optionIds: ['o1'] }]);
+
+    expect(review?.questions[0]?.options[0]?.imageId).toBe('img1');
+    expect(review?.questions[0]?.options[1]).not.toHaveProperty('imageId');
+  });
 });

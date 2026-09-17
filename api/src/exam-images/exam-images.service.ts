@@ -16,7 +16,7 @@ import {
   type ExamImageContentType,
   type ExamImageDto,
 } from '@xuanxue/shared';
-import { NotFoundError } from '../common/errors';
+import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { decryptBytes, encryptBytes } from '../utils/encryption-bytes';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
@@ -55,6 +55,24 @@ export class ExamImagesService {
       throw new Error('ExamImagesService.upload: запись не найдена сразу после создания');
     }
     return toExamImageDto(doc);
+  }
+
+  /** Вызывает вызывающий слой (ExamItemsService) перед записью варианта с
+   * `imageId` — сохранить ссылку на картинку, которой нет, значило бы
+   * молчаливо сломать показ (ADR-0035). `ids` уже нормализован вызывающим
+   * (`collectImageIds`) — здесь дедуп на всякий случай, не входной контракт.
+   * Невалидный ObjectId сюда дойти не должен (DTO `@IsMongoId()`), но
+   * `Types.ObjectId.isValid` — тот же отказ, а не CastError наружу. */
+  async assertExist(ids: readonly string[]): Promise<void> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return;
+    if (unique.some((id) => !Types.ObjectId.isValid(id))) {
+      throw new InvalidInputError(EXAM_IMAGE_NOT_FOUND_MESSAGE);
+    }
+    const found = await this.model.countDocuments({ _id: { $in: unique } });
+    if (found !== unique.length) {
+      throw new InvalidInputError(EXAM_IMAGE_NOT_FOUND_MESSAGE);
+    }
   }
 
   /** Штат — по роли (данные школы, ADR-0010). Ученик — только если картинка

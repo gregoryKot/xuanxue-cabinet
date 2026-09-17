@@ -26,7 +26,14 @@ export function shuffleOnce<T>(items: readonly T[], random: () => number): T[] {
 }
 
 function toAttemptOption(option: ExamItemOptionDto): AttemptOptionRecord {
-  return { id: option.id, text: option.text, correct: option.correct };
+  return {
+    id: option.id,
+    text: option.text,
+    correct: option.correct,
+    // Ключа нет вовсе, если картинки не было — снимок сравнивается и хранится
+    // тем же приёмом, что options вопроса (mapOptions, exam-item-options.ts).
+    ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
+  };
 }
 
 /** Порядок вариантов фиксируется здесь же, в снимке (ADR-0033): проверка
@@ -91,4 +98,21 @@ export function buildAttemptBlocks({
       }),
     };
   });
+}
+
+/** Уникальные `imageId` по всем вопросам снимка (порядок появления, Set) —
+ * плоская копия для `exam_attempts.imageIds` (createAttempt,
+ * exam-attempt-start.ts): сам снимок (`blocks`) зашифрован целиком и Mongo
+ * внутрь не видит, ExamImagesService.load решает по этому полю, можно ли
+ * ученику картинку (SECURITY §3, ADR-0035). */
+export function collectAttemptImageIds(blocks: readonly AttemptBlockRecord[]): string[] {
+  const ids = new Set<string>();
+  for (const block of blocks) {
+    for (const question of block.questions) {
+      for (const option of question.options) {
+        if (option.imageId) ids.add(option.imageId);
+      }
+    }
+  }
+  return [...ids];
 }

@@ -45,3 +45,21 @@ export function hasContentChanged(
     optionsChanged(nextOptions, current.options)
   );
 }
+
+/** Снимок ДО правки — кладётся в history при поднятии версии опубликованного
+ * вопроса (exam-items.service.ts, `update`). Вынесено отдельно от сервиса,
+ * чтобы сборка объекта не раздувала его файл (CLAUDE.md «Файлы», лимит
+ * размера — exam-items.service.ts держится ровно на границе). */
+export function buildHistoryEntry(
+  current: ContentSnapshot & { version: number; options: ExamItemOptionRecord[] },
+  replacedAt: string,
+): ExamItemVersionRecord {
+  return {
+    version: current.version,
+    prompt: current.prompt,
+    hint: current.hint,
+    criteria: current.criteria,
+    options: current.options,
+    replacedAt,
+  };
+}
