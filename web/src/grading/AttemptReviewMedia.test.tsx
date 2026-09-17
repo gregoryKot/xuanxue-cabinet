@@ -71,6 +71,20 @@ describe('AttemptReviewMedia — заголовок', () => {
   });
 });
 
+describe('AttemptReviewMedia — пояснение', () => {
+  it('description задан — текст виден под заголовком', () => {
+    renderMedia({ heading: 'Видео без вопроса', description: 'Посмотрите его сами.' });
+
+    expect(screen.getByText('Посмотрите его сами.')).toBeInTheDocument();
+  });
+
+  it('description не задан (видео-вопрос) — пояснения нет', () => {
+    renderMedia();
+
+    expect(screen.queryByText('Посмотрите его сами.')).not.toBeInTheDocument();
+  });
+});
+
 describe('AttemptReviewMedia — каждый вид получения', () => {
   it('kind: telegram — длительность и текст «смотрите там же», без ссылки', () => {
     renderMedia({ media: [makeMedia({ kind: 'telegram', durationSec: 220 })] });

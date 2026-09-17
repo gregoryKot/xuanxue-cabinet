@@ -5,20 +5,30 @@
 // здесь больше нет — иначе на карточке была бы одна запись дважды. Вынесена
 // из AttemptReviewScreen.tsx, чтобы экран не разросся выше файлового лимита
 // (CLAUDE.md «Храповики»).
+//
+// Группировка видео по вопросу — один раз здесь, чистой функцией
+// (attemptReviewMediaByQuestion.ts, CLAUDE.md «Логика вне компонентов»):
+// результат идёт вниз по дереву (AttemptReviewBlock → AttemptReviewQuestion)
+// готовой картой, а не пересчитывается фильтром на каждом вопросе.
 import type { CSSProperties } from 'react';
 import type { AttemptReviewBlockDto } from '@xuanxue/shared';
 import { screenColumnTitleStyle } from '../components/screenLayout';
 import { AttemptReviewBlock } from './AttemptReviewBlock';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { formatAttemptAnswersSummary } from './attemptReviewAnswersMeta';
+import { attemptReviewMediaByQuestion } from './attemptReviewMediaByQuestion';
 import type { AttemptReviewVideoControls } from './useAttemptReview';
 
-// Старый инстанс мог записать видео без itemId во время деплоя
-// (expand → contract, ADR-0037 «Последствия») — такая запись ни к одному
-// вопросу не относится, но пропадать из карточки не должна: честная отдельная
-// строка, не молчание о полученном видео (тот же приём, что
-// AttemptSubmittedVideos.tsx на экране ученика).
 const ORPHAN_MEDIA_HEADING = 'Видео без вопроса';
+// VOICE: коротко, на «вы», что случилось и что делать. Причин две, и обе
+// про ссылку, а не про нас: до ADR-0037 ссылка в бота вопроса не несла, и
+// такие ссылки могли уже уйти ученикам; плюс стык деплоя (ADR-0037
+// «Последствия»). Про деплой учителю знать незачем. Назначить вопрос такой
+// записи на экране нельзя — значит и не обещаем: действие здесь одно,
+// посмотреть и учесть при оценке.
+const ORPHAN_MEDIA_EXPLANATION =
+  'Запись пришла без вопроса — так бывает со ссылками, отправленными ' +
+  'раньше. Посмотрите и учтите её при оценке.';
 
 const headStyle: CSSProperties = {
   display: 'flex',
@@ -36,7 +46,8 @@ interface AttemptReviewAnswersProps {
 }
 
 export function AttemptReviewAnswers({ blocks, video }: AttemptReviewAnswersProps) {
-  const orphanMedia = video.media.filter((item) => !item.itemId);
+  const questions = blocks.flatMap((block) => block.questions);
+  const { byItemId, unassigned } = attemptReviewMediaByQuestion(video.media, questions);
 
   return (
     <div style={sectionStyle}>
@@ -45,13 +56,22 @@ export function AttemptReviewAnswers({ blocks, video }: AttemptReviewAnswersProp
         <span style={summaryStyle}>{formatAttemptAnswersSummary(blocks)}</span>
       </div>
 
-      {orphanMedia.length > 0 && (
-        <AttemptReviewMedia media={orphanMedia} heading={ORPHAN_MEDIA_HEADING} />
+      {unassigned.length > 0 && (
+        <AttemptReviewMedia
+          media={unassigned}
+          heading={ORPHAN_MEDIA_HEADING}
+          description={ORPHAN_MEDIA_EXPLANATION}
+        />
       )}
 
       <div style={listStyle}>
         {blocks.map((block) => (
-          <AttemptReviewBlock key={block.id} block={block} video={video} />
+          <AttemptReviewBlock
+            key={block.id}
+            block={block}
+            video={video}
+            mediaByItemId={byItemId}
+          />
         ))}
       </div>
     </div>

@@ -3,8 +3,12 @@
 // (`.xuanxue-eyebrow`, index.css), не отдельный уровень антиквы: в списке
 // вопросов он служебная пометка «откуда блок», а не второй заголовок экрана
 // рядом с «Ответы» (AttemptReviewAnswers.tsx).
+//
+// `mediaByItemId` — готовая группировка видео (attemptReviewMediaByQuestion.ts,
+// ADR-0037), посчитанная один раз в AttemptReviewAnswers.tsx: здесь только
+// передаётся вопросу его собственная запись, без своего фильтра.
 import type { CSSProperties } from 'react';
-import type { AttemptReviewBlockDto } from '@xuanxue/shared';
+import type { AttemptReviewBlockDto, ExamMediaDto } from '@xuanxue/shared';
 import { AttemptReviewQuestion } from './AttemptReviewQuestion';
 import type { AttemptReviewVideoControls } from './useAttemptReview';
 
@@ -13,9 +17,14 @@ const titleStyle: CSSProperties = { display: 'block', padding: '14px 4px 0' };
 interface AttemptReviewBlockProps {
   block: AttemptReviewBlockDto;
   video: AttemptReviewVideoControls;
+  mediaByItemId: ReadonlyMap<string, ExamMediaDto[]>;
 }
 
-export function AttemptReviewBlock({ block, video }: AttemptReviewBlockProps) {
+export function AttemptReviewBlock({
+  block,
+  video,
+  mediaByItemId,
+}: AttemptReviewBlockProps) {
   return (
     <section>
       {block.title && (
@@ -28,6 +37,7 @@ export function AttemptReviewBlock({ block, video }: AttemptReviewBlockProps) {
           key={question.itemId}
           index={index}
           question={question}
+          media={mediaByItemId.get(question.itemId) ?? []}
           video={video}
         />
       ))}
