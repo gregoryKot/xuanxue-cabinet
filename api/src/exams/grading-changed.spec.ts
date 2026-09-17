@@ -8,14 +8,12 @@ const BASE_DTO: ExamGradingDto = {
   examId: 'e1',
   userId: 'u1',
   graderId: 'gr1',
-  criteria: [],
   comment: 'Поправьте стойку',
   outcome: 'needs_work',
   gradedAt: '2026-09-13T09:00:00.000Z',
 };
 
 const BASE_INPUT: PutGradingInput = {
-  criteria: [{ id: 'c1', score: 1 }],
   comment: 'Поправьте стойку',
   outcome: 'needs_work',
 };
@@ -37,12 +35,6 @@ describe('didGradingChange', () => {
     expect(didGradingChange(BASE_DTO, { ...BASE_INPUT, comment: 'Другой текст' })).toBe(
       true,
     );
-  });
-
-  it('поменялись только баллы критерия — false (текст ученику не меняется)', () => {
-    expect(
-      didGradingChange(BASE_DTO, { ...BASE_INPUT, criteria: [{ id: 'c1', score: 5 }] }),
-    ).toBe(false);
   });
 
   it('undefined и пустая строка в comment — один и тот же «без комментария»', () => {

@@ -19,7 +19,7 @@ import { useGradingQueue } from './useGradingQueue';
 
 const TITLE = 'Проверка работ';
 const EXPLANATION =
-  'Работы, которые ученики уже сдали. Откройте любую, чтобы поставить баллы по рубрике.';
+  'Работы, которые ученики уже сдали. Откройте любую, чтобы поставить итог и написать комментарий.';
 const EMPTY_MESSAGE = 'Пока нечего проверять — сданных работ нет.';
 
 const listStyle: CSSProperties = {

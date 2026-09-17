@@ -41,22 +41,16 @@ describe('ExamGradingsService — уведомление exam_result', () => {
     await ctx.examsService.update(exam.id, { status: 'published' });
     const started = await ctx.service.start(exam.id, USER_A, NOW);
     await ctx.service.submit(started.id, USER_A, NOW);
-    const criterion = (await ctx.examsService.getById(exam.id)).rubric[0];
-    if (!criterion) throw new Error('ожидался критерий по умолчанию');
-    return { attemptId: started.id, examId: exam.id, criterionId: criterion.id };
+    return { attemptId: started.id, examId: exam.id };
   }
 
   it('оценка сохранена — уведомление ученику ушло с верным контекстом', async () => {
-    const { attemptId, examId, criterionId } = await submittedAttempt();
+    const { attemptId, examId } = await submittedAttempt();
 
     await ctx.gradingsService.grade(
       attemptId,
       GRADER_ID,
-      {
-        criteria: [{ id: criterionId, score: 1 }],
-        comment: 'Поправьте стойку',
-        outcome: 'needs_work',
-      },
+      { comment: 'Поправьте стойку', outcome: 'needs_work' },
       NOW,
     );
 
@@ -73,18 +67,13 @@ describe('ExamGradingsService — уведомление exam_result', () => {
   });
 
   it('переписанная оценка — уведомление уходит снова (ученик должен узнать)', async () => {
-    const { attemptId, criterionId } = await submittedAttempt();
+    const { attemptId } = await submittedAttempt();
 
+    await ctx.gradingsService.grade(attemptId, GRADER_ID, { outcome: 'needs_work' }, NOW);
     await ctx.gradingsService.grade(
       attemptId,
       GRADER_ID,
-      { criteria: [{ id: criterionId, score: 1 }], outcome: 'needs_work' },
-      NOW,
-    );
-    await ctx.gradingsService.grade(
-      attemptId,
-      GRADER_ID,
-      { criteria: [{ id: criterionId, score: 5 }], outcome: 'passed' },
+      { outcome: 'passed' },
       NOW.plus({ minutes: 5 }),
     );
 
@@ -94,12 +83,8 @@ describe('ExamGradingsService — уведомление exam_result', () => {
   });
 
   it('повторный идентичный PUT — второго уведомления нет (аудит 2026-09, находка 3)', async () => {
-    const { attemptId, criterionId } = await submittedAttempt();
-    const input = {
-      criteria: [{ id: criterionId, score: 1 }],
-      comment: 'Поправьте стойку',
-      outcome: 'needs_work' as const,
-    };
+    const { attemptId } = await submittedAttempt();
+    const input = { comment: 'Поправьте стойку', outcome: 'needs_work' as const };
 
     await ctx.gradingsService.grade(attemptId, GRADER_ID, input, NOW);
     // Учитель нажал «Сохранить» ещё раз теми же значениями (ответ не дошёл
@@ -127,16 +112,9 @@ describe('ExamGradingsService — уведомление exam_result', () => {
     );
     await ctx.examsService.update(exam.id, { status: 'published' });
     const started = await ctx.service.start(exam.id, USER_A, NOW);
-    const criterion = (await ctx.examsService.getById(exam.id)).rubric[0];
-    if (!criterion) throw new Error('ожидался критерий по умолчанию');
 
     await expect(
-      ctx.gradingsService.grade(
-        started.id,
-        GRADER_ID,
-        { criteria: [{ id: criterion.id, score: 1 }], outcome: 'passed' },
-        NOW,
-      ),
+      ctx.gradingsService.grade(started.id, GRADER_ID, { outcome: 'passed' }, NOW),
     ).rejects.toThrow();
 
     expect(ctx.examNotifier.notifyExamGraded).not.toHaveBeenCalled();

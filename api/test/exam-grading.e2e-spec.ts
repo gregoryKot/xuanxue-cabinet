@@ -14,7 +14,7 @@ import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { createUserWithSession } from './e2e-support/session';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
-describe('Проверка работ по рубрике (e2e)', () => {
+describe('Проверка работ (e2e)', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {
@@ -66,18 +66,6 @@ describe('Проверка работ по рубрике (e2e)', () => {
     return submitted.body as ExamAttemptDto;
   }
 
-  it('новый экзамен приезжает с рубрикой по умолчанию — проверять можно с первого дня', async () => {
-    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-
-    const exam = await publishedExam(teacherCookie);
-
-    expect(exam.rubric.length).toBeGreaterThan(0);
-    for (const criterion of exam.rubric) {
-      expect(criterion.title.length).toBeGreaterThan(0);
-      expect(criterion.maxScore).toBeGreaterThan(0);
-    }
-  });
-
   it('ученику карточка проверки и выставление оценки закрыты', async () => {
     const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
     const exam = await publishedExam(teacherCookie);
@@ -94,13 +82,37 @@ describe('Проверка работ по рубрике (e2e)', () => {
       request(server()).put(`/api/attempts/${attempt.id}/grading`),
     )
       .set('Cookie', studentCookie)
-      .send({ criteria: [], outcome: 'passed' });
+      .send({ outcome: 'passed' });
 
     expect(review.status).toBe(403);
     expect(grading.status).toBe(403);
   });
 
-  it('учитель видит критерии проверки вопроса, ставит баллы и итог; ученик видит результат без критериев вопроса', async () => {
+  it('тело без outcome или с недопустимым значением outcome — 400', async () => {
+    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
+    const exam = await publishedExam(teacherCookie);
+    const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
+      name: 'Ученик',
+      roles: [],
+    });
+    const attempt = await submittedAttempt(exam.id, studentCookie);
+
+    const withoutOutcome = await withCsrf(
+      request(server()).put(`/api/attempts/${attempt.id}/grading`),
+    )
+      .set('Cookie', teacherCookie)
+      .send({ comment: 'Без итога' });
+    const badOutcome = await withCsrf(
+      request(server()).put(`/api/attempts/${attempt.id}/grading`),
+    )
+      .set('Cookie', teacherCookie)
+      .send({ outcome: 'excellent' });
+
+    expect(withoutOutcome.status).toBe(400);
+    expect(badOutcome.status).toBe(400);
+  });
+
+  it('учитель видит критерии проверки вопроса, ставит итог с комментарием; ученик видит результат без критериев вопроса', async () => {
     const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
     const exam = await publishedExam(teacherCookie);
     const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
@@ -118,17 +130,11 @@ describe('Проверка работ по рубрике (e2e)', () => {
     const question = reviewBody.blocks[0]?.questions[0];
     expect(question?.criteria).toBe('Смотреть на колено и центр тяжести');
 
-    const criterion = reviewBody.rubric[0];
-    if (!criterion) throw new Error('в рубрике по умолчанию должен быть критерий');
     const graded = await withCsrf(
       request(server()).put(`/api/attempts/${attempt.id}/grading`),
     )
       .set('Cookie', teacherCookie)
-      .send({
-        criteria: [{ id: criterion.id, score: criterion.maxScore }],
-        comment: 'Хорошая работа, держите центр.',
-        outcome: 'passed',
-      });
+      .send({ comment: 'Хорошая работа, держите центр.', outcome: 'passed' });
     expect(graded.status).toBe(200);
     expect((graded.body as ExamGradingDto).outcome).toBe('passed');
 
@@ -151,19 +157,13 @@ describe('Проверка работ по рубрике (e2e)', () => {
       roles: [],
     });
     const attempt = await submittedAttempt(exam.id, studentCookie);
-    const review = await request(server())
-      .get(`/api/attempts/${attempt.id}/review`)
-      .set('Cookie', teacherCookie);
-    const criterion = (review.body as AttemptReviewDto).rubric[0];
-    if (!criterion) throw new Error('в рубрике по умолчанию должен быть критерий');
-    const criterionId = criterion.id;
 
     async function grade(outcome: string): Promise<ExamGradingDto> {
       const res = await withCsrf(
         request(server()).put(`/api/attempts/${attempt.id}/grading`),
       )
         .set('Cookie', teacherCookie)
-        .send({ criteria: [{ id: criterionId, score: 1 }], outcome });
+        .send({ outcome });
       return res.body as ExamGradingDto;
     }
 

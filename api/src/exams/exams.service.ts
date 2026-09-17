@@ -24,7 +24,6 @@ import { ExamAttemptRecord } from './exam-attempt.schema';
 import { assertNoRepeatedItems, hasAnyQuestion, mapBlocks } from './exam-blocks';
 import { assertItemsEligible } from './exam-items-eligible';
 import { removeExamIfNotAttempted } from './exam-attempt-references';
-import { defaultRubric, mapRubric } from './exam-rubric';
 import { ExamItemRecord } from './exam-item.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord, type ExamBlockRecord } from './exam.schema';
 import { decryptExam, toExamDto, type RawLeanExam } from './exam.mapper';
@@ -67,16 +66,12 @@ export class ExamsService {
   }
 
   async create(input: CreateExamInput, createdBy: string): Promise<ExamDto> {
-    const { blocks, rubric, ...rest } = input;
+    const { blocks, ...rest } = input;
     const mappedBlocks = mapBlocks(blocks);
     if (mappedBlocks !== undefined) await this.assertBlocksSavable(mappedBlocks);
 
     const payload: Record<string, unknown> = { ...rest, createdBy };
     if (mappedBlocks !== undefined) payload.blocks = mappedBlocks;
-    // Не прислали рубрику — набор по умолчанию (ТЗ 4.6, п.1), не пустой
-    // массив: проверять можно с первого дня, не дожидаясь, пока учитель
-    // напишет свою.
-    payload.rubric = mapRubric(rubric) ?? defaultRubric();
 
     const created = await this.model.create(encryptRecord(payload, EXAM_ENCRYPT_SCHEMA));
     return this.getById(created._id.toString());
@@ -88,7 +83,7 @@ export class ExamsService {
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExam(doc);
 
-    const { blocks, status, rubric, ...rest } = input;
+    const { blocks, status, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_FIELDS);
 
     const nextBlocks = mapBlocks(blocks);
@@ -96,8 +91,6 @@ export class ExamsService {
       await this.assertBlocksSavable(nextBlocks);
       $set.blocks = nextBlocks;
     }
-    const nextRubric = mapRubric(rubric);
-    if (nextRubric !== undefined) $set.rubric = nextRubric;
     if ((status ?? current.status) === 'published') {
       await this.assertPublishable(nextBlocks ?? current.blocks);
     }

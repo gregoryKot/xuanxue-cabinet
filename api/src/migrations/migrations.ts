@@ -5,6 +5,7 @@ import { attachChannelsToClasses } from './0004-attach-channels-to-classes.migra
 import { recordingTemplateWithoutDuration } from './0005-recording-template-without-duration.migration';
 import { examItemsPublishedByDefault } from './0006-exam-items-published-by-default.migration';
 import { invitedUsersActive } from './0007-invited-users-active.migration';
+import { gradingWithoutRubric } from './0008-grading-without-rubric.migration';
 
 // Реестр миграций Mongo. Порядок массива — порядок применения. `id` — ключ
 // записи о применении в коллекции `migrations`; менять id уже закоммиченной
@@ -28,4 +29,5 @@ export const MIGRATIONS: Migration[] = [
   recordingTemplateWithoutDuration,
   examItemsPublishedByDefault,
   invitedUsersActive,
+  gradingWithoutRubric,
 ];

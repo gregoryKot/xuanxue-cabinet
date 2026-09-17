@@ -149,24 +149,17 @@ describe('MyExamsService', () => {
   });
 
   // Слой 4.6: результат появляется в /me/exams, когда учитель его выставил —
-  // баллы по критериям рубрики ученику можно (его собственная работа),
-  // критерии проверки вопроса этот сервис не читает вовсе.
-  it('оценка выставлена — lastAttempt несёт outcome, comment и баллы по критериям', async () => {
+  // итог и комментарий ученику можно (его собственная работа), критерии
+  // проверки вопроса этот сервис не читает вовсе.
+  it('оценка выставлена — lastAttempt несёт outcome и comment', async () => {
     const itemId = await createPublishedItem();
     const examId = await createExam({ itemId });
     const started = await ctx.service.start(examId, USER_A, NOW);
     await ctx.service.submit(started.id, USER_A, NOW);
-    const exam = await ctx.examsService.getById(examId);
-    const criterion = exam.rubric[0];
-    if (!criterion) throw new Error('ожидался критерий по умолчанию');
     await ctx.gradingsService.grade(
       started.id,
       '507f1f77bcf86cd799439014',
-      {
-        criteria: [{ id: criterion.id, score: criterion.maxScore, comment: 'чётко' }],
-        comment: 'Общий комментарий учителя',
-        outcome: 'passed',
-      },
+      { comment: 'Общий комментарий учителя', outcome: 'passed' },
       NOW,
     );
 
@@ -177,19 +170,10 @@ describe('MyExamsService', () => {
       status: 'graded',
       outcome: 'passed',
       comment: 'Общий комментарий учителя',
-      criteria: [
-        {
-          id: criterion.id,
-          title: criterion.title,
-          maxScore: criterion.maxScore,
-          score: criterion.maxScore,
-          comment: 'чётко',
-        },
-      ],
     });
   });
 
-  it('оценка ещё не выставлена — lastAttempt без outcome/comment/criteria', async () => {
+  it('оценка ещё не выставлена — lastAttempt без outcome/comment', async () => {
     const itemId = await createPublishedItem();
     const examId = await createExam({ itemId });
     const started = await ctx.service.start(examId, USER_A, NOW);

@@ -8,7 +8,6 @@ import {
   EXAM_ENCRYPT_SCHEMA,
   type ExamBlockRecord,
   type ExamRecord,
-  type RubricCriterionRecord,
 } from './exam.schema';
 
 /** ExamRecord как его отдаёт `.lean()` до расшифровки — `blocks` ещё строка
@@ -25,24 +24,22 @@ export type RawLeanExam = Pick<ExamRecord, keyof ExamRecord> & {
 /** То же самое после `decryptRecord` и разбора JSON (см. `decryptExam` ниже)
  * — `blocks` уже настоящий массив, форма совпадает с `ExamBlockDto` из
  * shared. */
-export type LeanExam = Omit<RawLeanExam, 'blocks' | 'rubric'> & {
+export type LeanExam = Omit<RawLeanExam, 'blocks'> & {
   blocks: ExamBlockRecord[];
-  rubric: RubricCriterionRecord[];
 };
 
-/** `blocks`/`rubric` хранятся строкой (encJson, exam.schema.ts) —
- * decryptRecord (не параметризована по конкретному полю, как и у
- * `decryptExamItem`, exam-item.mapper.ts) возвращает их с тем же типом
- * `string`, хотя на деле это уже разобранный JSON; приводим явно один раз
- * здесь — единственное место расшифровки ПОЛНОГО документа формы
- * (ExamsService). exam-item-references.ts расшифровывает частичную выборку
- * `title`+`blocks` отдельно — там нет остальных полей `RawLeanExam`. */
+/** `blocks` хранится строкой (encJson, exam.schema.ts) — decryptRecord (не
+ * параметризована по конкретному полю, как и у `decryptExamItem`,
+ * exam-item.mapper.ts) возвращает его с тем же типом `string`, хотя на деле
+ * это уже разобранный JSON; приводим явно один раз здесь — единственное
+ * место расшифровки ПОЛНОГО документа формы (ExamsService).
+ * exam-item-references.ts расшифровывает частичную выборку `title`+`blocks`
+ * отдельно — там нет остальных полей `RawLeanExam`. */
 export function decryptExam(doc: RawLeanExam): LeanExam {
   const decrypted = decryptRecord(doc, EXAM_ENCRYPT_SCHEMA);
   return {
     ...decrypted,
     blocks: decrypted.blocks as unknown as ExamBlockRecord[],
-    rubric: decrypted.rubric as unknown as RubricCriterionRecord[],
   };
 }
 
@@ -74,7 +71,6 @@ export function toExamDto(doc: LeanExam): ExamDto {
     // `.lean()` схемный default не переприменяет (та же причина, что у
     // description/level выше).
     shuffleOptions: doc.shuffleOptions ?? false,
-    rubric: doc.rubric,
     timeLimitMin: doc.timeLimitMin,
     attemptsAllowed: doc.attemptsAllowed,
     status: doc.status,
