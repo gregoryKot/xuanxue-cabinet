@@ -214,18 +214,17 @@ describe('AttemptReviewQuestion — видео-вопрос (ADR-0037, свой 
       <AttemptReviewQuestion
         index={0}
         question={makeQuestion({ kind: 'video' })}
-        video={makeVideo({
-          media: [
-            {
-              id: 'm1',
-              attemptId: 'a1',
-              itemId: 'q1',
-              kind: 'link',
-              url: 'https://example.com/v',
-              receivedAt: '2026-09-12T00:00:00Z',
-            },
-          ],
-        })}
+        media={[
+          {
+            id: 'm1',
+            attemptId: 'a1',
+            itemId: 'q1',
+            kind: 'link',
+            url: 'https://example.com/v',
+            receivedAt: '2026-09-12T00:00:00Z',
+          },
+        ]}
+        video={makeVideo()}
       />,
     );
 
@@ -236,28 +235,10 @@ describe('AttemptReviewQuestion — видео-вопрос (ADR-0037, свой 
     );
   });
 
-  it('видео другого вопроса той же попытки — этому вопросу не засчитывается', () => {
-    render(
-      <AttemptReviewQuestion
-        index={0}
-        question={makeQuestion({ kind: 'video', itemId: 'q1' })}
-        video={makeVideo({
-          media: [
-            {
-              id: 'm1',
-              attemptId: 'a1',
-              itemId: 'q2',
-              kind: 'telegram',
-              receivedAt: '2026-09-12T00:00:00Z',
-            },
-          ],
-        })}
-      />,
-    );
-
-    expect(screen.getByText('Ответа нет')).toBeInTheDocument();
-    expect(screen.getByText('Видео пока не получено.')).toBeInTheDocument();
-  });
+  // Какое видео относится к какому вопросу — решает вызывающий,
+  // attemptReviewMediaByQuestion.ts (свой юнит-тест) и сквозной сценарий
+  // в AttemptReviewAnswers.test.tsx; сам вопрос лишь показывает, что ему дали
+  // в `media`, поэтому здесь нечего фильтровать и нечего проверять отдельно.
 
   it('без heading — заголовка «Видео» в карточке нет, формулировка вопроса уже сказала, что это', () => {
     render(

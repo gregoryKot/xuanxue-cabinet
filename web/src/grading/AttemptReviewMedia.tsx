@@ -29,6 +29,11 @@ const titleStyle: CSSProperties = {
   fontWeight: 500,
   fontSize: 20,
 };
+const descriptionStyle: CSSProperties = {
+  margin: '0 0 12px',
+  fontSize: 14,
+  color: 'var(--ink-soft)',
+};
 const listStyle: CSSProperties = {
   margin: 0,
   padding: 0,
@@ -55,6 +60,11 @@ interface AttemptReviewMediaProps {
   /** Заголовок над блоком. Без него — как у видео-вопроса (карточка сама
    * называет вопрос строкой формулировки): второй заголовок был бы лишним. */
   heading?: string;
+  /** Короткое пояснение под заголовком, откуда блок и что с ним делать
+   * (docs/VOICE.md) — только там, где заголовок сам по себе не объясняет
+   * (блок «без вопроса», AttemptReviewAnswers.tsx). У видео-вопроса не задан
+   * по той же причине, что и heading. */
+  description?: string;
   /** Только там, где у видео есть свой вопрос: без него нечего отмечать. */
   onMarkManual?: () => Promise<boolean>;
   marking?: boolean;
@@ -64,6 +74,7 @@ interface AttemptReviewMediaProps {
 export function AttemptReviewMedia({
   media,
   heading,
+  description,
   onMarkManual,
   marking = false,
   markError = null,
@@ -71,6 +82,7 @@ export function AttemptReviewMedia({
   return (
     <section>
       {heading && <h3 style={titleStyle}>{heading}</h3>}
+      {description && <p style={descriptionStyle}>{description}</p>}
 
       {media.length === 0 ? (
         <>
