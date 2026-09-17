@@ -16,6 +16,7 @@ import type { PersonalChats } from '../personal-chats';
 import type { MediaAssetsService } from '../../media/media-assets.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import type { BotUserAccessService } from '../bot-user-access.service';
+import { GENERIC_ERROR } from './callback-actions';
 import { TELEGRAM_NOT_LINKED_MESSAGE } from './exam-media-deep-link';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 
@@ -463,6 +464,27 @@ describe('ExamMediaMessageHandler', () => {
       'Видео получено, спасибо! Учитель уже может его посмотреть.',
     );
     expect(replies.some((r) => r.includes('Видео получено.'))).toBe(true);
+  });
+
+  // Находка аудита PR #175 (docs/PLAN.md §11): раньше неожиданный сбой на
+  // привязке уходил только в общий лог MessageHandler, ученик не получал
+  // ни слова про то, снялось ли видео. Свой try/catch отвечает и логирует.
+  it('привязка видео бросает неожиданную ошибку — фраза в чат, лог error со стеком, хендлер не падает', async () => {
+    const { handler, attachTelegramVideo } = buildHandler({ userId: 'u1' });
+    attachTelegramVideo.mockRejectedValueOnce(new Error('Mongo недоступна'));
+    const { ctx, replies } = fakeCtx({ video: true });
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    await expect(handler.handle(ctx, 111, SESSION, NOW)).resolves.toBeUndefined();
+
+    expect(replies).toEqual([GENERIC_ERROR]);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('Mongo недоступна'),
+      expect.stringContaining('Error: Mongo недоступна'),
+    );
+    error.mockRestore();
   });
 
   it('заблокированный — отказ тем же текстом, что в вебе, сессия закрывается, видео не привязывается', async () => {
