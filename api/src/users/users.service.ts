@@ -12,6 +12,10 @@ import {
   listTeacherContacts as listTeacherContactsQuery,
   type TeacherContact,
 } from './list-teacher-contacts';
+import {
+  listStaffWithEmail as listStaffWithEmailQuery,
+  type StaffEmailContact,
+} from './list-staff-with-email';
 import { attachTelegramId as attachTelegramIdWrite } from './attach-telegram-id';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
 import { normalizeUserStatus } from './normalize-user-status';
@@ -82,6 +86,12 @@ export class UsersService {
    * комментарий там же и personal-chats.ts. */
   async listTeacherContacts(): Promise<TeacherContact[]> {
     return listTeacherContactsQuery(this.model);
+  }
+
+  /** Штат с подтверждённым email (слой 4.7, ADR-0039) — почтовый резерв для
+   * `attempt_submitted`, логика выноса та же, что у listTeacherContacts. */
+  async listStaffWithEmail(): Promise<StaffEmailContact[]> {
+    return listStaffWithEmailQuery(this.model);
   }
 
   /** Первый вход через Telegram (SECURITY §2, ADR-0030/0036): всегда
