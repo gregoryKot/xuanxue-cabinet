@@ -394,8 +394,11 @@ describe('StartHandler', () => {
 
   // Ссылка-приглашение школы через бота (ADR-0030 «Бот») — тот же код, что
   // и на сайте (/join/<code>), JoinByInviteService.join() общий с вебом.
+  // Баг с #131 (найден 2026-09-16): join() заводил active, но личный
+  // чат не регистрировался в channels — read-after-write ниже теперь
+  // проверяет и channelModel, не только userModel.
   describe('deep link «Ссылка-приглашение» (join_<code>, ADR-0030)', () => {
-    it('invited + верный код — active, read-after-write в GET-эквиваленте (findByTelegramId)', async () => {
+    it('invited + верный код — active, личный канал зарегистрирован (регрессия 2026-09-16), меню', async () => {
       await userModel.create({
         name: 'Ждёт подтверждения',
         telegramId: 601,
@@ -413,13 +416,20 @@ describe('StartHandler', () => {
 
       expect(replies).toEqual([
         'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su',
+        expect.stringContaining('Экзамены можно сдать'),
       ]);
       const after = await userModel.findOne({ telegramId: 601 }).lean();
       expect(after?.status).toBe('active');
       expect(after?.joinedViaInviteAt).toBeInstanceOf(Date);
+      const channel = await channelModel
+        .findOne({ type: 'telegram', target: '601' })
+        .lean();
+      expect(channel?.active).toBe(true);
+      expect(channel?.broadcastEligible).toBe(false);
+      expect(channel?.title).toBe('Личные сообщения: Ждёт подтверждения');
     });
 
-    it('неверный код — INVITE_LINK_INVALID_MESSAGE, статус не меняется', async () => {
+    it('неверный код — INVITE_LINK_INVALID_MESSAGE, статус не меняется, канал не создан', async () => {
       await userModel.create({
         name: 'Ждёт подтверждения',
         telegramId: 602,
@@ -434,9 +444,10 @@ describe('StartHandler', () => {
       expect((await userModel.findOne({ telegramId: 602 }).lean())?.status).toBe(
         'invited',
       );
+      expect(await channelModel.countDocuments({})).toBe(0);
     });
 
-    it('заблокированный — ACCESS_MESSAGE даже с верным кодом, статус не меняется', async () => {
+    it('заблокированный — ACCESS_MESSAGE даже с верным кодом, статус не меняется, канал не создан', async () => {
       await userModel.create({
         name: 'Заблокирован',
         telegramId: 603,
@@ -456,9 +467,10 @@ describe('StartHandler', () => {
       expect((await userModel.findOne({ telegramId: 603 }).lean())?.status).toBe(
         'blocked',
       );
+      expect(await channelModel.countDocuments({})).toBe(0);
     });
 
-    it('незнакомец + верный код — создаётся invited из Telegram-идентичности и сразу active', async () => {
+    it('незнакомец + верный код — создаётся invited из Telegram-идентичности, сразу active и личный канал (регрессия 2026-09-16)', async () => {
       const { ctx, replies } = fakeCtx(
         604,
         'private',
@@ -471,24 +483,32 @@ describe('StartHandler', () => {
 
       expect(replies).toEqual([
         'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su',
+        expect.stringContaining('Экзамены можно сдать'),
       ]);
       const created = await userModel.findOne({ telegramId: 604 }).lean();
       expect(created?.status).toBe('active');
       expect(created?.name).toBe('Аня');
       expect(created?.roles).toEqual([]);
       expect(created?.joinedViaInviteAt).toBeInstanceOf(Date);
+      const channel = await channelModel
+        .findOne({ type: 'telegram', target: '604' })
+        .lean();
+      expect(channel?.active).toBe(true);
+      expect(channel?.broadcastEligible).toBe(false);
+      expect(channel?.title).toBe('Личные сообщения: Аня');
     });
 
-    it('незнакомец + неверный код — INVITE_LINK_INVALID_MESSAGE, аккаунт не создаётся', async () => {
+    it('незнакомец + неверный код — INVITE_LINK_INVALID_MESSAGE, аккаунт не создаётся, канал не создан', async () => {
       const { ctx, replies } = fakeCtx(606, 'private', false, 'join_' + '0'.repeat(32));
 
       await handler.handle(ctx, NOW);
 
       expect(replies).toEqual([INVITE_LINK_INVALID_MESSAGE]);
       expect(await userModel.countDocuments({ telegramId: 606 })).toBe(0);
+      expect(await channelModel.countDocuments({})).toBe(0);
     });
 
-    it('active повторно — 200-эквивалент без ошибки, статус не меняется', async () => {
+    it('active повторно — 200-эквивалент без ошибки, статус не меняется, канал зарегистрирован идемпотентно', async () => {
       await userModel.create({
         name: 'Уже в кабинете',
         telegramId: 605,
@@ -504,9 +524,34 @@ describe('StartHandler', () => {
 
       await handler.handle(ctx, NOW);
 
+      // Повторный /start того же человека тоже даёт два сообщения (успех +
+      // меню) — идемпотентно, тот же приём, что и обычный /start.
       expect(replies).toEqual([
         'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su',
+        expect.stringContaining('Экзамены можно сдать'),
       ]);
+      const channel = await channelModel
+        .findOne({ type: 'telegram', target: '605' })
+        .lean();
+      expect(channel?.active).toBe(true);
+    });
+
+    // Баг с #131 (найден 2026-09-16): наивный фикс мог бы звать
+    // upsertTelegramChat вместо upsertPersonalTelegramChat и подключить
+    // личный чат ученика ко всем активным классам (ADR-0027) — этого не
+    // происходит, тот же образец, что у обычного /start выше.
+    it('ученик по ссылке НЕ подключается к активным классам (ADR-0027)', async () => {
+      const active = await classModel.create({
+        title: 'Тайцзицюань',
+        format: 'online',
+        active: true,
+      });
+
+      const { ctx } = fakeCtx(607, 'private', false, `join_${VALID_INVITE_CODE}`, 'Аня');
+      await handler.handle(ctx, NOW);
+
+      const classAfter = await classModel.findById(active._id).lean();
+      expect(classAfter?.channelIds).toHaveLength(0);
     });
   });
 });

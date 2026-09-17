@@ -81,6 +81,19 @@ Telegram-идентичности апдейта (`telegramId`, `fullName(from)`
 `INVITE_LINK_INVALID_MESSAGE`; `blocked` — `ACCESS_MESSAGE`, тот же текст, что
 у остальных отказов бота.
 
+**Уточнение 2026-09-16:** баг с #131 — `join()` переводил человека в
+`active`, но не регистрировал личный чат, как обычный `/start`
+(`welcomeConnectedUser`, `start-welcome.ts`): `PersonalChats.chatFor()` отдавал
+`null`, результат экзамена и другие уведомления бота не доходили до второго
+`/start`. Стало: после `JoinByInviteService.join()` бот зовёт тот же
+`welcomeConnectedUser` — ученику личный канал `broadcastEligible: false`
+(ADR-0027) и меню ученика, штату — канал школы и общее меню, как при обычном
+`/start`. Ответ — два сообщения: текст о кабинете школы и следом меню с кнопкой
+«Экзамены». Гейты: `join-invite-deep-link.spec.ts`, `start.handler.spec.ts`
+(describe `join_<code>`), `start-then-exam-graded.spec.ts` (сквозной, без
+второго `/start`), `telegram-webhook-join-chat.e2e-spec.ts` (вебхук, канал не
+виден на «Каналах»).
+
 ## Альтернативы
 
 - Личные ссылки на каждого будущего ученика (учитель вводит email/имя заранее) —

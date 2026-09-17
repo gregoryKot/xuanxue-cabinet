@@ -51,7 +51,7 @@ export function createFakeTelegrafFactory(
   const commandCalls: { command: string; description: string }[][] = [];
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
-    bot.telegram.callApi = ((method: string, payload?: Record<string, unknown>) => {
+    const fakeCallApi = ((method: string, payload?: Record<string, unknown>) => {
       if (method === 'getMe') return Promise.resolve(FAKE_BOT_INFO);
       if (method === 'setWebhook') {
         // Фейк только для тестов — оба конца вызова свои, продуктовый код
@@ -81,6 +81,16 @@ export function createFakeTelegrafFactory(
       }
       return Promise.resolve(undefined);
     }) as unknown as Telegraf['telegram']['callApi'];
+    bot.telegram.callApi = fakeCallApi;
+    // Telegraf.handleUpdate() создаёт на каждый апдейт СВОЙ Telegram-инстанс
+    // (`new Telegram(token, this.telegram.options, webhookResponse)`), и
+    // ctx.reply() внутри хендлера идёт через него, а не через bot.telegram —
+    // без патча прототипа ответы бота в e2e уходили в настоящую сеть и не
+    // попадали в sendMessageCalls (нашлось 2026-09-16 на e2e личного чата по
+    // ссылке-приглашению). Реестр модулей Jest изолирован на каждый файл —
+    // за пределы спека патч не утекает.
+    (Object.getPrototypeOf(bot.telegram) as { callApi: typeof fakeCallApi }).callApi =
+      fakeCallApi;
     return bot;
   };
   return { factory, webhookCalls, sendMessageCalls, commandCalls };
