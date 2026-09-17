@@ -1,6 +1,6 @@
 // Тело POST /auth/email/verify — токен из ссылки (SECURITY §2): 64 hex-
 // символа, формат randomBytes(32).toString('hex') (email-login-token.service.ts).
-// inviteCode — код ссылки-приглашения школы (ADR-0030/0034), страница
+// inviteCode — код ссылки-приглашения школы (ADR-0030/0035), страница
 // `/login/email` читает его из query `?join=<code>` и шлёт вместе с verify.
 import { IsOptional, Matches } from 'class-validator';
 import { INVITE_CODE_RE, type VerifyEmailLoginInput } from '@xuanxue/shared';

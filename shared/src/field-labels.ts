@@ -98,7 +98,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // kind — общая подпись «Тип» выше (broadcasts.kind), здесь вид уведомления.
   enabled: 'Включено',
 
-  // auth/join/check — код ссылки-приглашения школы (ADR-0030, ADR-0034).
+  // auth/join/check — код ссылки-приглашения школы (ADR-0030, ADR-0035).
   code: 'Код ссылки-приглашения',
   inviteCode: 'Код ссылки-приглашения',
 };

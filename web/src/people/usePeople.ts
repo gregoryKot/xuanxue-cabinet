@@ -43,7 +43,7 @@ export function usePeople(enabled = true): UsePeopleResult {
     [reload],
   );
 
-  // PATCH /users/:id/status — блокировка/открытие доступа (ADR-0034, RUNBOOK
+  // PATCH /users/:id/status — блокировка/открытие доступа (ADR-0035, RUNBOOK
   // §8.15); read-after-write тем же приёмом, что updateRoles.
   const updateStatus = useCallback(
     async (id: string, status: UserStatus) => {

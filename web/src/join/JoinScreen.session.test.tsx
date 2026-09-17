@@ -1,7 +1,7 @@
 // Отдельный файл — JoinScreen.test.tsx (211 строк) уже на потолке
 // файла-храповика, новый тест — сюда (CLAUDE.md «Храповики»). Про то, что
 // делает JoinScreen, когда сессия уже есть (или только что появилась) —
-// перенесённый тест ADR-0034 плюс правки по ревью PR #150: blocked тоже
+// перенесённый тест ADR-0035 плюс правки по ревью PR #150: blocked тоже
 // уходит редиректом, а лишние запросы до редиректа не уходят
 // (useJoinByInvite/useAuthConfig включены только при authStatus === 'guest').
 import { render, screen } from '@testing-library/react';
@@ -47,7 +47,7 @@ const ACTIVE_ME: MeDto = {
   telegramLinked: false,
 };
 
-describe('JoinScreen — сессия уже есть (ADR-0034: вход уже создал/подтвердил человека)', () => {
+describe('JoinScreen — сессия уже есть (ADR-0035: вход уже создал/подтвердил человека)', () => {
   it('authStatus ok — сразу редирект на /schedule, без /auth/join, /auth/join/check и /auth/config (ревью PR #150)', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me') return Promise.resolve(ACTIVE_ME);

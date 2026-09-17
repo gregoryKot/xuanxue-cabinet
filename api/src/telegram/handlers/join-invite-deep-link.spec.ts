@@ -53,7 +53,7 @@ function buildDeps(
 
 describe('handleInviteDeepLink', () => {
   // Ветвление — только по результату/ошибке LoginIdentityService.resolveTelegramUser()
-  // (ADR-0034): хендлер сам не ищет и не заводит пользователя, поэтому один
+  // (ADR-0035): хендлер сам не ищет и не заводит пользователя, поэтому один
   // и тот же сервис заводит бутстрап-админа и здесь, и на сайте.
   it('resolveTelegramUser вернул active — текст успеха с PUBLIC_URL', async () => {
     const resolveTelegramUser = jest.fn().mockResolvedValue(ACTIVE_USER);

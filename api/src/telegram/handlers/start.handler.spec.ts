@@ -4,7 +4,7 @@
 // Telegraf проверяет telegram-bot.service.spec.ts). SettingsService —
 // настоящий (LessonModel/ClassModel этой же memory-Mongo), чтобы
 // schoolSiteUrl шёл по реальному сервису, не фейку с одним методом. Сборка
-// харнесса и join_<code> (ADR-0030/0034) — в start.handler.test-support.ts
+// харнесса и join_<code> (ADR-0030/0035) — в start.handler.test-support.ts
 // и start.handler.join.spec.ts (файловый храповик, CLAUDE.md «Храповики»).
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';

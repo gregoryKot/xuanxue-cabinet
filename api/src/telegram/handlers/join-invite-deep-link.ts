@@ -1,5 +1,5 @@
 // join_<code> — ссылка-приглашение школы через бота (ADR-0030 «Бот»,
-// ADR-0034), вынесено из StartHandler целиком (файл-лимит 150 строк, тот же
+// ADR-0035), вынесено из StartHandler целиком (файл-лимит 150 строк, тот же
 // приём, что start-welcome.ts). Ветвление идёт по единому
 // LoginIdentityService.resolveTelegramUser() (api/src/users/login-identity.service.ts)
 // — том же сервисе, что и у POST /auth/telegram и email-входа: до этой

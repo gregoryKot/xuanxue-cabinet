@@ -1,6 +1,6 @@
 // e2e на «ученик — active без единой роли, роль student не нужна нигде»
 // (ADR-0026, H1 аудита 2026-09-12) — выжило из pending-approval.e2e-spec.ts
-// после ADR-0034: статуса `invited` больше нет, эта часть ADR-0026 осталась
+// после ADR-0035: статуса `invited` больше нет, эта часть ADR-0026 осталась
 // в силе. Настоящий AppModule на MongoMemoryServer.
 import { getModelToken } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';

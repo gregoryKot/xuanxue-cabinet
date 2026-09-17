@@ -1,4 +1,4 @@
-// Хук проверяет только код ссылки (ADR-0030/0034) — сама регистрация
+// Хук проверяет только код ссылки (ADR-0030/0035) — сама регистрация
 // переехала в POST /auth/telegram/POST /auth/email/verify, здесь больше
 // нечего вызывать после входа, поэтому AuthProvider не нужен.
 import { renderHook, waitFor } from '@testing-library/react';

@@ -1,4 +1,4 @@
-// e2e на POST /auth/join/check (ADR-0034) — страница `/join/<code>`
+// e2e на POST /auth/join/check (ADR-0035) — страница `/join/<code>`
 // проверяет ссылку до входа. Сам вход и присоединение к школе идут через
 // POST /auth/telegram/POST /auth/email/verify с inviteCode
 // (auth-telegram-invite.e2e-spec.ts, auth-email-verify.e2e-spec.ts) —

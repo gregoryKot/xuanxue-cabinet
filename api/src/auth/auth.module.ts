@@ -46,7 +46,7 @@ import { TelegramAuthService } from './telegram-auth.service';
     TelegramAuthService,
     EmailAuthService,
     EmailLoginTokenService,
-    // Ссылка-приглашение школы (ADR-0030/0034): InviteLinkService и
+    // Ссылка-приглашение школы (ADR-0030/0035): InviteLinkService и
     // LoginIdentityService приходят как экспорт UsersModule (импортирован
     // выше, второй провайдер здесь не заводим).
     { provide: APP_GUARD, useClass: AuthGuard },

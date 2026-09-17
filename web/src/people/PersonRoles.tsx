@@ -13,7 +13,7 @@ import { ROLE_LABELS, USER_ROLES, type UserDto, type UserRole } from '@xuanxue/s
 import { Toggle } from '../components/Toggle';
 
 // Тумблера «Ученик» нет: ученик — это человек без ролей учителя
-// (ADR-0026/0034), отдельной роли для него нет в USER_ROLES — переключать
+// (ADR-0026/0035), отдельной роли для него нет в USER_ROLES — переключать
 // нечего.
 // VOICE.md: подсказка объясняет запрет, не просто «нельзя» (текст ошибки
 // сервиса — SELF_DEMOTE_MESSAGE в shared/src/users.ts, здесь короче: строка

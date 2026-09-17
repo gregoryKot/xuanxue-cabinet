@@ -18,7 +18,7 @@ const LOGIN_FAILED_MESSAGE = 'Не удалось войти. Попробуйт
 // POST /auth/telegram — теперь единственный вызывающий этот хук: кнопка
 // (LoginScreen.tsx) сама лишь уводит вкладку на Telegram (ADR-0028), сервер
 // получает подтверждённый вход только отсюда, при возврате. inviteCode
-// (ADR-0030/0034) — в query, не в теле: подпись Telegram считается по телу
+// (ADR-0030/0035) — в query, не в теле: подпись Telegram считается по телу
 // запроса целиком (см. parse-telegram-login-body.ts на сервере), добавлять
 // туда поле, которого сам виджет не подписывал, нельзя.
 function postTelegramLogin(
@@ -42,7 +42,7 @@ export interface UseTelegramAuthResultLoginOptions {
    * ссылка-приглашение, ADR-0030 — вход уже создал/подтвердил человека,
    * экран просто уходит на «Расписание» сам, без второго запроса). */
   navigateAfterLogin?: boolean;
-  /** Код ссылки-приглашения (ADR-0030/0034) — JoinScreen.tsx передаёт код
+  /** Код ссылки-приглашения (ADR-0030/0035) — JoinScreen.tsx передаёт код
    * из /join/:code, LoginScreen.tsx не передаёт вовсе. */
   inviteCode?: string;
 }

@@ -3,7 +3,7 @@
 // HTTP до Resend. Токен — EmailLoginTokenService (одноразовый, TTL 15
 // минут, sha256 в базе). AuthService.issueSession — тот же узел выпуска
 // cookie, что и у Telegram-входа (ADR-0012). Поиск/создание человека —
-// LoginIdentityService (ADR-0030/0034): новый заводится только с валидной
+// LoginIdentityService (ADR-0030/0035): новый заводится только с валидной
 // ссылкой-приглашением.
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -58,7 +58,7 @@ export class EmailAuthService {
    * страница `/join/:code`) — невалидный код молча игнорируется (та же
    * причина: не раскрывать наружу, какой код настоящий), валидный уходит в
    * ссылку письма параметром `join` (`INVITE_QUERY_PARAM`), `/login/email`
-   * потом шлёт его вместе с `verify()` (ADR-0034: отдельного шага
+   * потом шлёт его вместе с `verify()` (ADR-0035: отдельного шага
    * «присоединиться» после входа больше нет). */
   async requestLink(email: string, now: DateTime, inviteCode?: string): Promise<void> {
     const publicUrl = this.readPublicUrl();

@@ -18,7 +18,7 @@
 // 2026-09-16, RUNBOOK §8.17). ИЗВЕСТНОГО blocked к ожиданию тоже не
 // пускаем (SECURITY §9).
 //
-// Третий payload `join_<code>` (ADR-0030 «Бот», ADR-0034) — та же ссылка,
+// Третий payload `join_<code>` (ADR-0030 «Бот», ADR-0035) — та же ссылка,
 // что и на сайте (join-invite-deep-link.ts): ветвление идёт через
 // LoginIdentityService.resolveTelegramUser(), валидный код заводит
 // незнакомца из Telegram-идентичности апдейта сразу `active`; невалидный —

@@ -2,7 +2,7 @@
 // /auth/logout и /auth/telegram помечены @Public(): выход обязан чистить
 // cookie даже без валидной сессии, вход — способ её получить. CSRF-проверка
 // (x-requested-with) при этом всё равно действует, см. auth.guard.ts.
-// POST /auth/join/check (ADR-0034) — в JoinController рядом: отдельного
+// POST /auth/join/check (ADR-0035) — в JoinController рядом: отдельного
 // POST /auth/join («войти, затем присоединиться») больше нет, но и один
 // оставшийся эндпоинт не влез бы в этот файл до 150 строк (file-size-ratchet).
 import {
@@ -89,7 +89,7 @@ export class AuthController {
     // ValidationPipe (forbidNonWhitelisted, app.setup.ts) эта форма не
     // должна попадать, см. parse-telegram-login-body.ts. Валидируем сами.
     @Body() rawBody: Record<string, unknown>,
-    // Код ссылки-приглашения (ADR-0030/0034) — в query, не в теле: подпись
+    // Код ссылки-приглашения (ADR-0030/0035) — в query, не в теле: подпись
     // Telegram считается по телу запроса целиком (см. ниже), и лишнее поле
     // там сломало бы её. Формат не проверяем здесь отдельно —
     // LoginIdentityService зовёт InviteLinkService.isValid(), который сам

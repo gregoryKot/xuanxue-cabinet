@@ -1,4 +1,4 @@
-// Единая точка «найти или завести человека при входе» (ADR-0030, ADR-0034) —
+// Единая точка «найти или завести человека при входе» (ADR-0030, ADR-0035) —
 // используется и Telegram-, и email-входом (TelegramAuthService,
 // EmailAuthService), чтобы правило не переписывалось дважды: существующий
 // человек входит как обычно, код игнорируется; нового заводим ТОЛЬКО с
@@ -69,7 +69,7 @@ export class LoginIdentityService {
   }
 
   /** Код нужен только для нового человека — известного пропускаем мимо этой
-   * проверки выше (существующий вход игнорирует код, ADR-0034). */
+   * проверки выше (существующий вход игнорирует код, ADR-0035). */
   private async requireValidInvite(inviteCode: string | undefined): Promise<void> {
     const isValid = inviteCode ? await this.inviteLinkService.isValid(inviteCode) : false;
     if (!isValid) throw new ForbiddenError(NO_INVITE_LINK_MESSAGE);

@@ -33,7 +33,7 @@ export default function EmailLoginCallbackScreen() {
   const { status: authStatus, refresh } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  // join — код ссылки-приглашения школы (ADR-0030/0034), сервер положил его
+  // join — код ссылки-приглашения школы (ADR-0030/0035), сервер положил его
   // в ссылку письма (EmailAuthService.requestLink), если он был валиден на
   // момент запроса. undefined, если параметра нет — verify() тогда просто
   // не шлёт inviteCode (см. useEmailLoginVerify.ts).

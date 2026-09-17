@@ -37,11 +37,11 @@ describe('Telegram webhook (e2e) — вход по ссылке-приглаше
   const server = (): ReturnType<TestApp['app']['getHttpServer']> =>
     testApp.app.getHttpServer();
 
-  // Ссылка-приглашение через бота (ADR-0030 «Бот», ADR-0034) — тот же код,
+  // Ссылка-приглашение через бота (ADR-0030 «Бот», ADR-0035) — тот же код,
   // что и на сайте, тем же HTTP-путём, что вебхук проверяет остальные
   // апдейты (secret_token, фейковый Telegraf). Read-after-write — admin
   // GET /users. Известный человек — код игнорируется, тот же успех
-  // идемпотентно (статуса «ждёт подтверждения» больше нет, ADR-0034).
+  // идемпотентно (статуса «ждёт подтверждения» больше нет, ADR-0035).
   it('/start join_<code>, известный active-человек — тот же успех, статус не меняется, код игнорируется', async () => {
     const adminCookie = await sessionCookieFor(testApp.app, ['admin']);
     const linkReq = withCsrf(request(server()).post('/api/users/invite-link'));

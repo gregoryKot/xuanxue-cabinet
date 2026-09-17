@@ -1,5 +1,5 @@
 // Юнит, без Mongo и DI (CLAUDE.md «Тесты», «Чистая логика») — ветвления
-// нормализации статуса, включая предупреждение в лог (ADR-0034).
+// нормализации статуса, включая предупреждение в лог (ADR-0035).
 import { Logger } from '@nestjs/common';
 import { normalizeUserStatus } from './normalize-user-status';
 

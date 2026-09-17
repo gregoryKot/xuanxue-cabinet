@@ -167,7 +167,7 @@ describe('EmailLoginCallbackScreen — валидный токен', () => {
   });
 });
 
-describe('EmailLoginCallbackScreen — join (ADR-0030/0034)', () => {
+describe('EmailLoginCallbackScreen — join (ADR-0030/0035)', () => {
   const CODE = 'a'.repeat(32);
 
   it('join в query — inviteCode едет прямо в теле POST /auth/email/verify, без второго запроса', async () => {

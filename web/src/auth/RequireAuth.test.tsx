@@ -71,7 +71,7 @@ describe('RequireAuth', () => {
     expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
-  // ADR-0034: статуса «ждёт подтверждения» больше нет — RequireAuth не
+  // ADR-0035: статуса «ждёт подтверждения» больше нет — RequireAuth не
   // ветвится по me.status вовсе, пускает по факту успешного /auth/me. Пустые
   // roles — обычный ученик (ADR-0026), не повод для особого экрана.
   it('вошедший с любым me (roles: [], status: active) рендерит вложенный маршрут — статуса ожидания не существует', async () => {
