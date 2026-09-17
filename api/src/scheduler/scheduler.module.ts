@@ -28,6 +28,11 @@
 // — TelegramBotService/PersonalChats/BotSessionService для проактивной
 // отправки (предпросмотр, «Запись?», ручные каналы, уведомления об ошибках);
 // ни TelegramModule, ни его собственные импорты про SchedulerModule не знают.
+// MailModule/NotificationsModule — ради MailExamNotifier (ADR-0039, тот же
+// приём, что в exams.module.ts): у ExamDeadlineCloseService свой экземпляр
+// EXAM_NOTIFIER (ленивое закрытие по дедлайну — путь к тому же уведомлению
+// attempt_submitted, что и в кабинете), почтовый резерв должен работать и
+// здесь, не только через ExamAttemptsService.
 import { Module } from '@nestjs/common';
 import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
@@ -44,10 +49,14 @@ import { ExamImagesModule } from '../exam-images/exam-images.module';
 import { ExamAttemptModelModule } from '../exams/exam-attempt-model.module';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { ExamItemModelModule } from '../exams/exam-item-model.module';
+import { CompositeExamNotifier } from '../exams/exam-notifier.composite';
 import { EXAM_NOTIFIER } from '../exams/exam-notifier';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonsModule } from '../lessons/lessons.module';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
+import { MailModule } from '../mail/mail.module';
+import { MailExamNotifier } from '../mail/mail-exam-notifier';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { SettingsModule } from '../settings/settings.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
@@ -66,6 +75,8 @@ import { SchedulerService } from './scheduler.service';
     ExamAttemptModelModule,
     ExamItemModelModule,
     ExamImagesModule,
+    MailModule,
+    NotificationsModule,
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
     // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
     UsersModule,
@@ -86,9 +97,11 @@ import { SchedulerService } from './scheduler.service';
     // Map-дедупом notifySchedulerFailed, никем не используемый.
     { provide: TEACHER_NOTIFIER, useClass: TelegramTeacherNotifier },
     // Свой экземпляр EXAM_NOTIFIER (безопасно — см. комментарий-шапку файла
-    // exam-deadline-close.service.ts): TelegramExamNotifier читает Mongo на
-    // каждый вызов, дедуп-состояния между инстансами нет.
-    { provide: EXAM_NOTIFIER, useClass: TelegramExamNotifier },
+    // exam-deadline-close.service.ts): TelegramExamNotifier/MailExamNotifier
+    // читают Mongo на каждый вызов, дедуп-состояния между инстансами нет.
+    TelegramExamNotifier,
+    MailExamNotifier,
+    { provide: EXAM_NOTIFIER, useClass: CompositeExamNotifier },
     SchedulerService,
   ],
 })

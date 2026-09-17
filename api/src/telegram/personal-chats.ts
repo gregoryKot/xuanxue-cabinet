@@ -101,6 +101,23 @@ export class PersonalChats {
     return { chatId: target, userId: user.id, name: user.name };
   }
 
+  /** Есть ли у человека активный личный чат — без проверки вида уведомления
+   * (в отличие от chatFor). Нужен MailExamNotifier (слой 4.7, ADR-0039):
+   * письмо — запасной канал, оно уходит только тем, у кого Telegram-чата нет
+   * вовсе, а не тем, кто просто выключил конкретный вид уведомления в чате. */
+  async hasActiveChat(userId: string): Promise<boolean> {
+    const user = await this.usersService.findById(userId);
+    if (!user?.telegramId || user.status !== 'active') return false;
+
+    const channel = await this.channelModel
+      .findOne(
+        { type: 'telegram', target: String(user.telegramId), active: true },
+        { _id: 1 },
+      )
+      .lean();
+    return !!channel;
+  }
+
   /** Общий первый шаг list()/listFor() — контакт с ролью (уже отфильтрован
    * UsersService.listTeacherContacts) и активным личным каналом. */
   private async activeContacts(): Promise<ActiveContact[]> {

@@ -1,7 +1,7 @@
 {
-  "lines": 98.98,
-  "branches": 95.02,
+  "lines": 98.91,
+  "branches": 95.18,
   "floors": {
-    "src/utils": 89.78
+    "src/utils": 94.26
   }
 }
