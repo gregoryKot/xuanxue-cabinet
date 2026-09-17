@@ -10,8 +10,10 @@
 import type { DateTime } from 'luxon';
 import type {
   AttemptAnswerDto,
+  CreateExamItemInput,
   ExamAttemptDto,
   ExamImageContentType,
+  ExamItemDto,
   MyExamDto,
 } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
@@ -54,4 +56,17 @@ export interface ExamBotPort {
   /** Кэш `file_id` после удачной отправки (см. BotOptionImage) — следующий
    * показ вопроса шлёт файл строкой, не байтами. */
   rememberTelegramFileId(imageId: string, fileId: string): Promise<void>;
+  /** Учитель заводит вопрос в боте (ТЗ 4б.3, ADR-0024) — тот же
+   * ExamItemsService.create(), что и кабинет; валидация формулировки,
+   * вариантов и верного ответа — целиком в нём, бот своей не добавляет.
+   * `authorId` — userId учителя (не chatId), сопоставленный ботом заранее. */
+  createExamItem(input: CreateExamItemInput, authorId: string): Promise<ExamItemDto>;
+  /** Правила, которые у POST /exam-items живут только в class-validator DTO
+   * (длина формулировки/критериев/варианта, число вариантов) — вызов
+   * ExamItemsService.create() их не проверяет вовсе: ValidationPipe стоит
+   * только перед HTTP-контроллером, бот его не проходит. Бот прогоняет тот
+   * же CreateExamItemDto, не пишет вторую проверку (ТЗ 4б.3, «не дублируй»).
+   * `null` — ошибок нет; непереданные поля не проверяются (черновик неполон
+   * до последнего шага). */
+  validateExamItemDraft(input: Partial<CreateExamItemInput>): Promise<string[] | null>;
 }

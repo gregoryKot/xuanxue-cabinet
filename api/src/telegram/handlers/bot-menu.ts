@@ -29,6 +29,7 @@ const MENU_TEXT =
 const SCHEDULE_LABEL = 'Ближайшие занятия';
 const NOTIFICATIONS_LABEL = 'Уведомления';
 const EXAMS_LABEL = 'Экзамены';
+const NEW_EXAM_ITEM_LABEL = 'Новый вопрос';
 const BACK_LABEL = 'В меню';
 
 /** Незнакомцу (нет записи в users) меню не показываем — тот же вежливый
@@ -50,6 +51,9 @@ export function buildBotMenu(): BotMenu {
     buttons: [
       [inlineButton(SCHEDULE_LABEL, 'menu', 'schedule')],
       [inlineButton(EXAMS_LABEL, 'menu', 'exams')],
+      // Только штат (menu-screens.ts — 'newitem' не перечисляется у ученика,
+      // buildStudentMenu ниже): заводить вопрос ученику незачем (ТЗ 4б.3).
+      [inlineButton(NEW_EXAM_ITEM_LABEL, 'menu', 'newitem')],
       [inlineButton(NOTIFICATIONS_LABEL, 'menu', 'notifications')],
     ],
   };
@@ -58,8 +62,9 @@ export function buildBotMenu(): BotMenu {
 const STAFF_HELP_TEXT =
   'Бот показывает ближайшие занятия, помогает вписать тему и настроить ' +
   'уведомления. Команды: /menu — меню, /schedule — ближайшие занятия, ' +
-  '/topic — вписать тему, /exams — экзамены, /notifications — уведомления. ' +
-  'Запись занятия пришлите сюда сообщением — ссылкой или видео.';
+  '/topic — вписать тему, /exams — экзамены, /вопрос — завести вопрос для ' +
+  'экзамена, /notifications — уведомления. Запись занятия пришлите сюда ' +
+  'сообщением — ссылкой или видео.';
 const STUDENT_HELP_TEXT =
   'Экзамены можно сдать прямо здесь — команда /exams или кнопка ' +
   '«Экзамены» в меню. Бот присылает сюда напоминания, если вы их включили.';
@@ -86,7 +91,13 @@ export function buildHelpText(audience: BotMenuAudience, schoolSiteUrl?: string)
   return audience === 'staff' ? STAFF_HELP_TEXT : STUDENT_HELP_TEXT;
 }
 
-const MENU_SCREEN_ACTIONS = ['schedule', 'notifications', 'exams', 'back'] as const;
+const MENU_SCREEN_ACTIONS = [
+  'schedule',
+  'notifications',
+  'exams',
+  'newitem',
+  'back',
+] as const;
 export type MenuScreenAction = (typeof MENU_SCREEN_ACTIONS)[number];
 
 /** Параметр кнопки меню (`menu:schedule` и т.д.) — та же проверка формата,

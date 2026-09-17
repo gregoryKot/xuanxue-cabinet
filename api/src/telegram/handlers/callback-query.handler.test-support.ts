@@ -1,6 +1,7 @@
 // Общая обвязка для callback-query.handler.*.spec.ts (cancel/topic, доступ,
 // norec/sent, уведомления, меню): одним файлом спеки не влезали в лимит 300
 // строк, а обвязка у них одна (jscpd).
+import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { BroadcastsService } from '../../broadcasts/broadcasts.service';
@@ -76,7 +77,15 @@ export function buildHandler(
       examRegistry(),
     ),
     new BotUserAccessService(overrides.usersService ?? usersService),
+    fakeConfig(),
   );
+}
+
+// PUBLIC_URL не нужен большинству спеков кнопок (только «Сохранить» диалога
+// «Новый вопрос» строит ссылку из него) — тем же приёмом, что
+// telegram-exam-notifier.spec.ts.
+function fakeConfig(): ConfigService {
+  return { get: () => undefined } as unknown as ConfigService;
 }
 
 /** Реестр с фейковым портом — хендлеру экзаменов он нужен в конструкторе,

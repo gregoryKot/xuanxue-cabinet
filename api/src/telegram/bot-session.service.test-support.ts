@@ -4,7 +4,9 @@
 // `expect(x).toHaveBeenCalledWith(...)`), общий, чтобы не заводить фейк в
 // каждом спеке заново (CLAUDE.md «Одна механика — один компонент»).
 import type { DateTime } from 'luxon';
+import type { ExamItemKind } from '@xuanxue/shared';
 import type { BotSessionLean, BotSessionService } from './bot-session.service';
+import type { NewExamItemDraftPatch } from './new-exam-item-draft-wait';
 
 export interface FakeBotSessionService extends BotSessionService {
   startExamMediaWait: jest.Mock<
@@ -14,6 +16,11 @@ export interface FakeBotSessionService extends BotSessionService {
   startExamTextWait: jest.Mock<Promise<void>, [number, string, number, DateTime]>;
   clear: jest.Mock<Promise<void>, [number]>;
   get: jest.Mock<Promise<BotSessionLean | null>, [number, DateTime]>;
+  startNewExamItemDraft: jest.Mock<Promise<void>, [number, ExamItemKind, DateTime]>;
+  setNewExamItemDraft: jest.Mock<
+    Promise<void>,
+    [number, NewExamItemDraftPatch, DateTime]
+  >;
 }
 
 export function fakeBotSessionService(
@@ -28,6 +35,8 @@ export function fakeBotSessionService(
     clear: jest.fn().mockResolvedValue(undefined),
     clearIfLesson: jest.fn(),
     hasExpired: jest.fn(),
+    startNewExamItemDraft: jest.fn().mockResolvedValue(undefined),
+    setNewExamItemDraft: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as FakeBotSessionService;
 }

@@ -12,6 +12,7 @@ import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
 import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { MessageHandler } from './message.handler';
+import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
 import { NOW, seedLesson } from './message.handler.seed';
@@ -274,5 +275,6 @@ function buildHandlerWithFailingAddRecording(
     ),
     { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
     { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
+    { handle: jest.fn() } as unknown as NewExamItemMessageHandler,
   );
 }

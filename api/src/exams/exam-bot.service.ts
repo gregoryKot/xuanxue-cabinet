@@ -15,17 +15,21 @@ import type { DateTime } from 'luxon';
 import {
   LIST_LIMIT_MAX,
   type AttemptAnswerDto,
+  type CreateExamItemInput,
   type ExamAttemptDto,
+  type ExamItemDto,
   type MyExamDto,
 } from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { withAttemptMedia } from './exam-attempt-media';
+import { validateExamItemDraftInput } from './exam-item-draft-validate';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
 import type { BotOptionImage, ExamBotPort } from '../telegram/exam-bot.port';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
+import { ExamItemsService } from './exam-items.service';
 import { MyExamsService } from './my-exams.service';
 
 @Injectable()
@@ -35,6 +39,7 @@ export class ExamBotService implements ExamBotPort {
     private readonly examAttemptsService: ExamAttemptsService,
     private readonly mediaAssetsService: MediaAssetsService,
     private readonly examImagesService: ExamImagesService,
+    private readonly examItemsService: ExamItemsService,
     registry: ExamBotPortRegistry,
   ) {
     registry.set(this);
@@ -112,5 +117,15 @@ export class ExamBotService implements ExamBotPort {
 
   rememberTelegramFileId(imageId: string, fileId: string): Promise<void> {
     return this.examImagesService.rememberTelegramFileId(imageId, fileId);
+  }
+
+  /** ТЗ 4б.3 — тот же сервис, что и POST /exam-items кабинета, валидация
+   * (формулировка, варианты, верный ответ) целиком в нём. */
+  createExamItem(input: CreateExamItemInput, authorId: string): Promise<ExamItemDto> {
+    return this.examItemsService.create(input, authorId);
+  }
+
+  validateExamItemDraft(input: Partial<CreateExamItemInput>): Promise<string[] | null> {
+    return validateExamItemDraftInput(input);
   }
 }

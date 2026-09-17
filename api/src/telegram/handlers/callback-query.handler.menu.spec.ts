@@ -58,6 +58,17 @@ describe('CallbackQueryHandler — menu (главное меню)', () => {
     expect(editCalls[0]).toContain('/topic');
   });
 
+  // ТЗ 4б.3 (docs/PLAN.md §12) — «Новый вопрос» в главном меню — screen 1
+  // диалога, тот же рендер, что у команды /вопрос (kindSelectScreen).
+  it('menu:newitem — screen 1 «Новый вопрос», правит то же сообщение', async () => {
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 111, data: 'menu:newitem' });
+
+    await ctx.handler.handle(cbCtx, NOW);
+
+    expect(editCalls[0]).toContain('Выберите тип ответа');
+  });
+
   it('чужой экран в параметре — молча игнорируется, сообщение не трогается', async () => {
     await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const { ctx: cbCtx, editCalls } = fakeCtx({

@@ -40,4 +40,31 @@ describe('isValidCallbackParam', () => {
     expect(isValidCallbackParam('eq', `${OBJECT_ID}:0`)).toBe(true);
     expect(isValidCallbackParam('eo', `${OBJECT_ID}:0:2`)).toBe(true);
   });
+
+  // ТЗ 4б.3 (docs/PLAN.md §12) — «Новый вопрос»: nqk (тип), nqo (номер
+  // варианта), nqd (какой шаг завершают), nqf (что делает диалог дальше).
+  it('nqk — известный ExamItemKind, не что попало', () => {
+    expect(isValidCallbackParam('nqk', 'single')).toBe(true);
+    expect(isValidCallbackParam('nqk', 'нет-такого-типа')).toBe(false);
+  });
+
+  it('nqo — номер варианта (целое неотрицательное), не что попало', () => {
+    expect(isValidCallbackParam('nqo', '0')).toBe(true);
+    expect(isValidCallbackParam('nqo', '3')).toBe(true);
+    expect(isValidCallbackParam('nqo', '-1')).toBe(false);
+    expect(isValidCallbackParam('nqo', 'не-число')).toBe(false);
+  });
+
+  it('nqd — только «options»/«correct»', () => {
+    expect(isValidCallbackParam('nqd', 'options')).toBe(true);
+    expect(isValidCallbackParam('nqd', 'correct')).toBe(true);
+    expect(isValidCallbackParam('nqd', 'нет-такого-шага')).toBe(false);
+  });
+
+  it('nqf — только «skip»/«save»/«cancel»', () => {
+    expect(isValidCallbackParam('nqf', 'skip')).toBe(true);
+    expect(isValidCallbackParam('nqf', 'save')).toBe(true);
+    expect(isValidCallbackParam('nqf', 'cancel')).toBe(true);
+    expect(isValidCallbackParam('nqf', 'нет-такого-действия')).toBe(false);
+  });
 });
