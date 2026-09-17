@@ -27,15 +27,6 @@ import { formatOptionsCheckSummary } from './optionsCheckSummary';
 import type { AttemptReviewVideoControls } from './useAttemptReview';
 
 const NO_ANSWER_TEXT = 'Ответ не дан.';
-// Вызовы AttemptReviewQuestion без видео-вопросов (большинство тестов, и
-// любая карточка без вопроса kind: 'video') не обязаны собирать контролы
-// видео — безопасная заглушка вместо пропса, обязательного всегда ради
-// одного вида вопроса.
-const NO_VIDEO_CONTROLS: AttemptReviewVideoControls = {
-  media: [],
-  markMediaManual: () => Promise.resolve(false),
-  markMediaStateFor: () => ({ pending: false, error: null }),
-};
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -75,13 +66,13 @@ const optionRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', g
 interface AttemptReviewQuestionProps {
   index: number;
   question: AttemptReviewQuestionDto;
-  video?: AttemptReviewVideoControls;
+  video: AttemptReviewVideoControls;
 }
 
 export function AttemptReviewQuestion({
   index,
   question,
-  video = NO_VIDEO_CONTROLS,
+  video,
 }: AttemptReviewQuestionProps) {
   const hasOptions = question.options.length > 0;
   const isVideo = question.kind === 'video';

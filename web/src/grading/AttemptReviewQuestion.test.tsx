@@ -33,6 +33,7 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({ hint: 'Считайте по схеме' })}
       />,
     );
@@ -41,7 +42,9 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
   });
 
   it('без подсказки — строка не рисуется', () => {
-    render(<AttemptReviewQuestion index={0} question={makeQuestion()} />);
+    render(
+      <AttemptReviewQuestion index={0} video={makeVideo()} question={makeQuestion()} />,
+    );
 
     expect(screen.queryByText(/Подсказка ученику/)).not.toBeInTheDocument();
   });
@@ -50,6 +53,7 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({ answerText: 'Дышу животом' })}
       />,
     );
@@ -61,6 +65,7 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({ answerText: undefined })}
       />,
     );
@@ -70,7 +75,11 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
 
   it('пустая строка ответа — тоже «Ответ не дан»', () => {
     render(
-      <AttemptReviewQuestion index={0} question={makeQuestion({ answerText: '   ' })} />,
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({ answerText: '   ' })}
+      />,
     );
 
     expect(screen.getByText('Ответ не дан.')).toBeInTheDocument();
@@ -82,6 +91,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [
@@ -102,6 +112,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
@@ -116,6 +127,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [
@@ -136,6 +148,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
@@ -150,6 +163,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     render(
       <AttemptReviewQuestion
         index={0}
+        video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
@@ -168,7 +182,9 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
 
 describe('AttemptReviewQuestion — вопрос без вариантов', () => {
   it('метка «Смотрите вы» — машина текст не проверяет', () => {
-    render(<AttemptReviewQuestion index={0} question={makeQuestion()} />);
+    render(
+      <AttemptReviewQuestion index={0} video={makeVideo()} question={makeQuestion()} />,
+    );
 
     expect(screen.getByText('Смотрите вы')).toBeInTheDocument();
   });
