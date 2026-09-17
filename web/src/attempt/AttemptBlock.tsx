@@ -9,6 +9,7 @@
 // (`.xuanxue-question-row`), и рамка поверх них дала бы двойную черту.
 import type { CSSProperties } from 'react';
 import type { AttemptBlockDto } from '@xuanxue/shared';
+import type { AttemptVideoControls } from './useAttemptMedia';
 import type { UseAttemptAutosaveResult } from './useAttemptAutosave';
 import { AttemptQuestion } from './AttemptQuestion';
 
@@ -18,9 +19,10 @@ const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 interface AttemptBlockProps {
   block: AttemptBlockDto;
   autosave: UseAttemptAutosaveResult;
+  video: AttemptVideoControls;
 }
 
-export function AttemptBlock({ block, autosave }: AttemptBlockProps) {
+export function AttemptBlock({ block, autosave, video }: AttemptBlockProps) {
   return (
     <section>
       {block.title && (
@@ -35,6 +37,7 @@ export function AttemptBlock({ block, autosave }: AttemptBlockProps) {
             index={index}
             question={question}
             autosave={autosave}
+            video={video}
           />
         ))}
       </ol>

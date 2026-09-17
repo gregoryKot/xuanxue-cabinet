@@ -13,7 +13,6 @@ import { errorFrom, type FormError } from '../components/FormServerError';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить попытку. Обновите страницу.';
 const SUBMIT_ERROR_MESSAGE = 'Не удалось отправить экзамен. Попробуйте ещё раз.';
-const ADD_MEDIA_LINK_ERROR_MESSAGE = 'Не удалось сохранить ссылку. Попробуйте ещё раз.';
 
 export interface UseAttemptResult {
   attempt: ExamAttemptDto | null;
@@ -27,11 +26,6 @@ export interface UseAttemptResult {
   submit: () => Promise<void>;
   submitting: boolean;
   submitError: FormError | null;
-  /** Запасной путь привязки видео — ссылка (ADR-0023, экран «Отправлено»).
-   * `true` на успех — форма очищает поле только тогда, не по факту вызова. */
-  addMediaLink: (url: string) => Promise<boolean>;
-  addingMediaLink: boolean;
-  addMediaLinkError: FormError | null;
 }
 
 export function useAttempt(attemptId: string): UseAttemptResult {
@@ -61,33 +55,6 @@ export function useAttempt(attemptId: string): UseAttemptResult {
     }
   }, [attemptId, reload]);
 
-  const [addingMediaLink, setAddingMediaLink] = useState(false);
-  const [addMediaLinkError, setAddMediaLinkError] = useState<FormError | null>(null);
-
-  // Read-after-write: перечитываем попытку на успех, `media` в ответе — уже
-  // с новой ссылкой (CLAUDE.md «Read-after-write»), а не собрана на клиенте
-  // из того, что сами отправили.
-  const addMediaLink = useCallback(
-    async (url: string): Promise<boolean> => {
-      setAddingMediaLink(true);
-      setAddMediaLinkError(null);
-      try {
-        await apiFetch(`/attempts/${attemptId}/media/link`, {
-          method: 'POST',
-          body: { url },
-        });
-        await reload();
-        return true;
-      } catch (err) {
-        setAddMediaLinkError(errorFrom(err, ADD_MEDIA_LINK_ERROR_MESSAGE));
-        return false;
-      } finally {
-        setAddingMediaLink(false);
-      }
-    },
-    [attemptId, reload],
-  );
-
   return {
     attempt,
     notFound,
@@ -97,8 +64,5 @@ export function useAttempt(attemptId: string): UseAttemptResult {
     submit,
     submitting,
     submitError,
-    addMediaLink,
-    addingMediaLink,
-    addMediaLinkError,
   };
 }

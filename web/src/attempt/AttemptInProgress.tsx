@@ -31,6 +31,7 @@ import { getAttemptTimeStatus } from './attemptDeadline';
 import { ATTEMPT_EYEBROW, attemptHeaderStyle, attemptPageStyle } from './attemptLayout';
 import { formatSaveStatus } from './attemptSaveStatusLabel';
 import { useAttemptAutosave } from './useAttemptAutosave';
+import type { AttemptVideoControls } from './useAttemptMedia';
 import { useNow } from './useNow';
 
 const NOW_REFRESH_MS = 30_000;
@@ -45,6 +46,7 @@ interface AttemptInProgressProps {
   onSubmit: () => Promise<void>;
   submitting: boolean;
   submitError: FormError | null;
+  video: AttemptVideoControls;
 }
 
 export function AttemptInProgress({
@@ -53,6 +55,7 @@ export function AttemptInProgress({
   onSubmit,
   submitting,
   submitError,
+  video,
 }: AttemptInProgressProps) {
   // `reload` как `onExpired` — сервер отклонил сохранение по дедлайну,
   // перечитываем попытку и показываем то, что скажет она (см. комментарий
@@ -85,7 +88,7 @@ export function AttemptInProgress({
       </div>
 
       {attempt.blocks.map((block) => (
-        <AttemptBlock key={block.id} block={block} autosave={autosave} />
+        <AttemptBlock key={block.id} block={block} autosave={autosave} video={video} />
       ))}
 
       <AttemptSubmitBar

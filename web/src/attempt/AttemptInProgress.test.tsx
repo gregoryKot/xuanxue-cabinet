@@ -8,7 +8,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { ATTEMPT_EXPIRED_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch, ApiError } from '../api/http';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { AttemptInProgress } from './AttemptInProgress';
+import type { AttemptVideoControls } from './useAttemptMedia';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -16,6 +18,23 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+// Время получения видео читаем в фиксированном поясе зрителя (как
+// AttemptQuestionVideo.test.tsx) — иначе строка «Видео получено …» плывёт
+// вместе с поясом машины, на которой гоняют тесты.
+stubViewerTimeZone();
+
+function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoControls {
+  return {
+    attemptId: 'a1',
+    media: [],
+    telegramBotUsername: 'xuanxue_bot',
+    telegramLinked: true,
+    addMediaLink: vi.fn().mockResolvedValue(true),
+    linkStateFor: () => ({ pending: false, error: null }),
+    ...overrides,
+  };
+}
 
 function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
   return {
@@ -77,6 +96,7 @@ function renderAttempt(
         onSubmit={onSubmit}
         submitting={false}
         submitError={null}
+        video={makeVideo()}
         {...extra}
       />
     </MemoryRouter>,
@@ -119,6 +139,7 @@ describe('AttemptInProgress — подсказка и оставшееся вр�
           onSubmit={() => Promise.resolve()}
           submitting={false}
           submitError={null}
+          video={makeVideo()}
         />
       </MemoryRouter>,
     );
@@ -137,6 +158,7 @@ describe('AttemptInProgress — подсказка и оставшееся вр�
           onSubmit={() => Promise.resolve()}
           submitting={false}
           submitError={null}
+          video={makeVideo()}
         />
       </MemoryRouter>,
     );
@@ -146,13 +168,73 @@ describe('AttemptInProgress — подсказка и оставшееся вр�
 });
 
 describe('AttemptInProgress', () => {
-  it('видео-вопрос — честная строка, без поля загрузки', () => {
+  // ADR-0037: видео — ответ на конкретный вопрос, у него на самой форме
+  // сдачи есть и кнопка бота с deep link на вопрос, и форма ссылки; поля
+  // загрузки файла в кабинете нет и не было — байты через нас не идут.
+  it('видео-вопрос — кнопка бота и форма ссылки, без поля загрузки файла', () => {
     renderAttempt(makeAttempt());
 
+    const link = screen.getByRole('link', { name: 'Отправить видео боту в Telegram' });
+    expect(link).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q3');
+    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /файл/i })).not.toBeInTheDocument();
+    const fileInputs = document.querySelectorAll('input[type=file]');
+    expect(fileInputs).toHaveLength(0);
+  });
+
+  // Два видео-вопроса в одной форме (ADR-0037 «Последствия») должны
+  // оставаться различимы: у каждого своя кнопка бота (свой itemId в deep
+  // link) и своя строка получения, форма ссылки — только у того, что ещё
+  // не получил видео.
+  it('два видео-вопроса в одной форме — у каждого свой deep link и своя строка получения', () => {
+    const attempt = makeAttempt();
+    const block = attempt.blocks[0];
+    if (!block) throw new Error('в фикстуре должен быть блок');
+    block.questions.push({
+      itemId: 'q4',
+      version: 1,
+      kind: 'video',
+      prompt: 'Покажите второй раздел',
+      options: [],
+    });
+
+    renderAttempt(attempt, {
+      video: makeVideo({
+        media: [
+          {
+            id: 'm1',
+            attemptId: 'a1',
+            itemId: 'q3',
+            kind: 'telegram',
+            durationSec: 220,
+            receivedAt: '2026-09-12T16:30:00.000Z',
+          },
+        ],
+      }),
+    });
+
     expect(
-      screen.getByText(/Видео пришлёте боту после того, как отправите работу/),
+      screen.getByText('Видео получено Сб, 12 сентября, 19:30, 3 мин 40 с.'),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText(/видео/i)).not.toBeInTheDocument();
+
+    const links = screen.getAllByRole('link', {
+      name: 'Отправить видео боту в Telegram',
+    });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q4');
+
+    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(1);
+  });
+
+  it('отправка ссылки у видео-вопроса зовёт video.addMediaLink с itemId этого вопроса', async () => {
+    const addMediaLink = vi.fn().mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderAttempt(makeAttempt(), { video: makeVideo({ addMediaLink }) });
+
+    await user.type(screen.getByLabelText('Ссылка на видео'), 'https://example.com/v');
+    await user.click(screen.getByRole('button', { name: 'Сохранить ссылку' }));
+
+    expect(addMediaLink).toHaveBeenCalledWith('q3', 'https://example.com/v');
   });
 
   it('выбор варианта сохраняет ответ сразу — PATCH с optionIds', async () => {

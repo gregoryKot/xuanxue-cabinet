@@ -10,7 +10,7 @@
 import type { ExamItemDto } from '@xuanxue/shared';
 import { AttemptQuestionChoice } from '../attempt/AttemptQuestionChoice';
 import { AttemptQuestionText } from '../attempt/AttemptQuestionText';
-import { AttemptQuestionVideo } from '../attempt/AttemptQuestionVideo';
+import { AttemptQuestionVideoNote } from '../attempt/AttemptQuestionVideo';
 import { QuestionRow } from '../components/QuestionRow';
 
 const MISSING_NOTE = 'Вопрос недоступен — его удалили или спрятали в черновик.';
@@ -57,7 +57,7 @@ export function ExamPreviewQuestion({ index, item }: ExamPreviewQuestionProps) {
           onChange={IGNORE_INPUT}
         />
       )}
-      {item.kind === 'video' && <AttemptQuestionVideo />}
+      {item.kind === 'video' && <AttemptQuestionVideoNote />}
     </QuestionRow>
   );
 }

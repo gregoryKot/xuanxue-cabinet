@@ -1,5 +1,5 @@
 // Видео экзамена (ADR-0023) — общие форматтеры для экрана сдачи ученика
-// (attempt/AttemptMediaPrompt.tsx) и карточки проверки учителя
+// (attempt/AttemptQuestionVideo.tsx) и карточки проверки учителя
 // (grading/AttemptReviewMedia.tsx): один и тот же ExamMediaDto, два места
 // показа — CLAUDE.md «Одна механика — один компонент».
 import type { ExamMediaDto } from '@xuanxue/shared';
