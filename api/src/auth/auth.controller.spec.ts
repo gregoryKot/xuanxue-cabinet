@@ -14,6 +14,7 @@ import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EmailAuthService } from './email-auth.service';
+import { PersonalChats } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
@@ -44,6 +45,11 @@ async function buildController(
   // сети тут нет (CLAUDE.md «Тесты»).
   botUsername: string | undefined = undefined,
   emailLoginEnabled = false,
+  // botChatActive — честный проброс из PersonalChats.hasActiveChatFor(user)
+  // (ADR-0042), не хардкод в контроллере: дефолт false совпадает с
+  // telegramLinked: false у USER ниже, отдельный тест ниже подменяет фейк на
+  // true и проверяет, что значение долетает до ответа.
+  hasActiveChatFor: PersonalChats['hasActiveChatFor'] = () => Promise.resolve(false),
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
@@ -61,6 +67,7 @@ async function buildController(
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
       { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
       { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },
+      { provide: PersonalChats, useValue: { hasActiveChatFor } },
     ],
   }).compile();
   return module.get(AuthController);
@@ -124,14 +131,31 @@ describe('AuthController.getConfig', () => {
 describe('AuthController.me', () => {
   it('возвращает MeDto для пользователя, которого положил гвард', async () => {
     const controller = await buildController();
-    expect(controller.me(USER)).toEqual({
+    await expect(controller.me(USER)).resolves.toEqual({
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     });
+  });
+
+  // botChatActive — не хардкод в контроллере, а честный проброс результата
+  // PersonalChats.hasActiveChatFor(user) (ADR-0042): фейк отдаёт true,
+  // проверяем, что это же значение долетает до MeDto.
+  it('botChatActive приходит из PersonalChats.hasActiveChatFor(user)', async () => {
+    const controller = await buildController(
+      undefined,
+      {},
+      SETTINGS_WITHOUT_SITE,
+      undefined,
+      false,
+      () => Promise.resolve(true),
+    );
+
+    await expect(controller.me(USER)).resolves.toMatchObject({ botChatActive: true });
   });
 });
 
@@ -164,6 +188,7 @@ describe('AuthController.requestEmailLogin', () => {
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: SettingsService, useValue: {} },
         { provide: TelegramBotService, useValue: {} },
+        { provide: PersonalChats, useValue: {} },
       ],
     }).compile();
     const controller = module.get(AuthController);
@@ -193,6 +218,10 @@ describe('AuthController.verifyEmailLogin', () => {
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: SettingsService, useValue: {} },
         { provide: TelegramBotService, useValue: {} },
+        {
+          provide: PersonalChats,
+          useValue: { hasActiveChatFor: () => Promise.resolve(false) },
+        },
       ],
     }).compile();
     const controller = module.get(AuthController);
@@ -208,6 +237,7 @@ describe('AuthController.verifyEmailLogin', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     });
   });
 });
@@ -253,6 +283,7 @@ describe('AuthController.loginWithTelegram', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     });
   });
 

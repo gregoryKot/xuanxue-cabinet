@@ -22,6 +22,7 @@ import { DateTime } from 'luxon';
 import { INVITE_QUERY_PARAM, type AuthConfigDto, type MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { SettingsService } from '../settings/settings.service';
+import { PersonalChats } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { botIdFromToken } from './bot-id-from-token';
 import { CurrentUser, Public } from './auth.decorators';
@@ -50,6 +51,7 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly settingsService: SettingsService,
     private readonly telegramBotService: TelegramBotService,
+    private readonly personalChats: PersonalChats,
   ) {}
 
   // Без сессии: экран входа и StudentScreen спрашивают конфигурацию до
@@ -74,10 +76,10 @@ export class AuthController {
   }
 
   @Get('me')
-  me(@CurrentUser() user: UserLean): MeDto {
+  async me(@CurrentUser() user: UserLean): Promise<MeDto> {
     // AuthGuard уже сходил в UsersService.findById перед тем, как пропустить
     // запрос сюда — второй findById здесь был бы тем же чтением дважды.
-    return toMeDto(user);
+    return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 
   @Public()
@@ -108,7 +110,7 @@ export class AuthController {
       inviteCode,
     );
     res.setHeader('Set-Cookie', cookie);
-    return toMeDto(user);
+    return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 
   // Ответ всегда 204, независимо от того, найден email в базе или нет и
@@ -138,7 +140,7 @@ export class AuthController {
       body.inviteCode,
     );
     res.setHeader('Set-Cookie', cookie);
-    return toMeDto(user);
+    return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 
   @Public()

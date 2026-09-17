@@ -49,6 +49,7 @@ describe('RequirePeopleAccess', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -65,6 +66,7 @@ describe('RequirePeopleAccess', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -101,6 +103,7 @@ describe('RequirePeopleAccess', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -117,6 +120,7 @@ describe('RequirePeopleAccess', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 

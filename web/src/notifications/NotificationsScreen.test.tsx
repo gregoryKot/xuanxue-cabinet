@@ -22,6 +22,7 @@ const STUDENT: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] }) {
@@ -83,7 +84,10 @@ describe('NotificationsScreen — список по роли', () => {
   // Подсказка про личный чат — для связавшего Telegram: несвязанному на её
   // месте стоит кнопка связки (ADR-0034), проверка ниже.
   it('честно про Telegram — уведомления придут в личный чат с ботом', async () => {
-    renderScreen({ ...STUDENT, telegramLinked: true }, { enabled: [] });
+    renderScreen(
+      { ...STUDENT, telegramLinked: true, botChatActive: true },
+      { enabled: [] },
+    );
 
     expect(
       await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/),
@@ -93,7 +97,10 @@ describe('NotificationsScreen — список по роли', () => {
 
 describe('NotificationsScreen — связка Telegram (ADR-0034)', () => {
   it('Telegram связан — кнопки связки нет, остаётся подсказка про личный чат', async () => {
-    renderScreen({ ...STUDENT, telegramLinked: true }, { enabled: [] });
+    renderScreen(
+      { ...STUDENT, telegramLinked: true, botChatActive: true },
+      { enabled: [] },
+    );
 
     await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/);
     expect(

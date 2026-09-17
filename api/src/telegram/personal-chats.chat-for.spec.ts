@@ -19,6 +19,7 @@ let connection: Connection;
 let userModel: Model<UserRecord>;
 let channelModel: Model<ChannelRecord>;
 let notificationPrefsModel: Model<NotificationPrefsRecord>;
+let usersService: UsersService;
 let personalChats: PersonalChats;
 
 beforeAll(async () => {
@@ -29,8 +30,9 @@ beforeAll(async () => {
   notificationPrefsModel = connection.model<NotificationPrefsRecord>(
     NotificationPrefsRecord.name,
   );
+  usersService = new UsersService(userModel);
   personalChats = new PersonalChats(
-    new UsersService(userModel),
+    usersService,
     channelModel,
     new NotificationPrefsService(notificationPrefsModel),
   );
@@ -178,6 +180,67 @@ describe('PersonalChats.chatFor', () => {
     // list()/listFor() бухгалтера в принципе не видят (personal-chats.spec.ts) —
     // chatFor() не сверяется со штатом, это и есть разница механики.
     await expect(personalChats.listFor('payments', NOW)).resolves.toEqual([]);
+  });
+});
+
+// hasActiveChatFor() — та же проверка, что внутри chatFor()/hasActiveChat(),
+// но принимает уже прочитанного пользователя (AuthController.me, ADR-0042):
+// второй findById там был бы тем же чтением дважды. user — настоящий
+// UserLean из usersService.findById(), не самодельный объект.
+describe('PersonalChats.hasActiveChatFor', () => {
+  it('активный личный канал — true', async () => {
+    const student = await userModel.create({
+      name: 'Ольга',
+      telegramId: 1101,
+      roles: [],
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'x',
+      config: '{}',
+      target: '1101',
+      active: true,
+    });
+
+    const user = await usersService.findById(student._id.toString());
+
+    await expect(personalChats.hasActiveChatFor(user)).resolves.toBe(true);
+  });
+
+  it('telegramId есть, но /start не нажимал (канала нет) — false', async () => {
+    const student = await userModel.create({
+      name: 'Ольга',
+      telegramId: 1102,
+      roles: [],
+    });
+
+    const user = await usersService.findById(student._id.toString());
+
+    await expect(personalChats.hasActiveChatFor(user)).resolves.toBe(false);
+  });
+
+  it('заблокирован — false, тот же инвариант, что chatFor (SECURITY §9)', async () => {
+    const student = await userModel.create({
+      name: 'Ольга',
+      telegramId: 1103,
+      roles: [],
+      status: 'blocked',
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'x',
+      config: '{}',
+      target: '1103',
+      active: true,
+    });
+
+    const user = await usersService.findById(student._id.toString());
+
+    await expect(personalChats.hasActiveChatFor(user)).resolves.toBe(false);
+  });
+
+  it('user === null (например, гварда не прошёл) — false, не бросает', async () => {
+    await expect(personalChats.hasActiveChatFor(null)).resolves.toBe(false);
   });
 });
 

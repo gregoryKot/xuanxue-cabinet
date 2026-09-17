@@ -14,6 +14,7 @@ const TEACHER: MeDto = {
   tz: 'UTC',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -22,6 +23,7 @@ const ADMIN: MeDto = {
   tz: 'UTC',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 function renderNav(isMobile: boolean, me: MeDto | null = TEACHER, path = '/planning') {

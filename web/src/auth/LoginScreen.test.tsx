@@ -161,6 +161,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -196,6 +197,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });

@@ -28,6 +28,7 @@ const TEACHER: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 /** Даёт тесту доступ к `refresh()` контекста — без своего экрана незачем

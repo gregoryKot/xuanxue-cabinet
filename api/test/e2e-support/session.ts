@@ -19,7 +19,10 @@ export interface UserWithSession {
 }
 
 /** `issuedAt` — для кейсов «протухший токен» (давнее issuedAt) и «rolling
- * после 7 дней» (issuedAt чуть больше SESSION_RENEW_AFTER_DAYS назад). */
+ * после 7 дней» (issuedAt чуть больше SESSION_RENEW_AFTER_DAYS назад).
+ * `telegramId` — для сценариев botChatActive/telegramLinked (ADR-0042,
+ * auth-bot-chat-active.e2e-spec.ts): вход через виджет ставит telegramId
+ * сразу, а личный чат — отдельным каналом поверх, см. тот спек. */
 export async function createUserWithSession(
   app: NestExpressApplication,
   options: {
@@ -27,6 +30,7 @@ export async function createUserWithSession(
     roles: UserRole[];
     status?: UserStatus;
     issuedAt?: DateTime;
+    telegramId?: number;
   },
 ): Promise<UserWithSession> {
   const model = app.get<Model<UserRecord>>(getModelToken(USER_MODEL_NAME), {
@@ -36,6 +40,7 @@ export async function createUserWithSession(
     name: options.name,
     roles: options.roles,
     status: options.status ?? 'active',
+    telegramId: options.telegramId,
   });
   const userId = created._id.toString();
 

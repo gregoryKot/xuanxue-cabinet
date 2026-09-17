@@ -77,3 +77,4 @@
 | [0039](0039-exam-notifications-by-email-fallback.md)     | Почта — резервный канал уведомлений экзамена, только когда нет чата                   |
 | [0040](0040-questions-are-shared-not-a-bank.md)          | «Банк» уходит из интерфейса; вопрос заводится там, где нужен                          |
 | [0041](0041-grading-comment-presets.md)                  | Заготовки частых комментариев при проверке — общий список школы, не личный            |
+| [0042](0042-bot-chat-active-in-me-dto.md)                | `botChatActive` в `MeDto` — «боту есть куда писать», отдельно от `telegramLinked`     |

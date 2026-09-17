@@ -27,6 +27,7 @@ const ME: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 function mockMe(result: 'guest' | 'ok' = 'guest') {
