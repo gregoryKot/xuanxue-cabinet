@@ -80,8 +80,13 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     if (prefetched) return prefetched as Promise<T>;
   }
 
+  // Картинка варианта ответа (ADR-0035) уходит как есть, без JSON.stringify —
+  // сырое тело с её собственным типом (POST /exam-images), а не строка в
+  // кавычках. Остальные запросы — JSON, как раньше.
+  const isBlobBody = body instanceof Blob;
   const headers: Record<string, string> = { accept: 'application/json' };
-  if (body !== undefined) headers['content-type'] = 'application/json';
+  if (isBlobBody) headers['content-type'] = body.type;
+  else if (body !== undefined) headers['content-type'] = 'application/json';
   // CSRF-заголовок (SECURITY §2, ADR-0012) — гвард требует его для любого
   // мутирующего запроса, кроме @SkipCsrf(). Кросс-доменная форма его не
   // поставит, обычный fetch с credentials — всегда.
@@ -93,7 +98,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       method,
       headers,
       credentials: 'include',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: isBlobBody || body === undefined ? body : JSON.stringify(body),
       signal,
     });
   } catch {

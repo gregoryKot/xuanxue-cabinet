@@ -70,6 +70,19 @@ describe('apiFetch — успешные ответы', () => {
     );
   });
 
+  it('Blob-тело (картинка варианта, ADR-0035) уходит как есть, с её типом и CSRF-заголовком', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(201, { id: 'img1' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+
+    await apiFetch('/exam-images', { method: 'POST', body: blob });
+
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(options.body).toBe(blob);
+    expect((options.headers as Record<string, string>)['content-type']).toBe('image/png');
+    expect((options.headers as Record<string, string>)[CSRF_HEADER]).toBe('fetch');
+  });
+
   it('ставит CSRF-заголовок на мутирующих методах, но не на GET', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { ok: true }));
     vi.stubGlobal('fetch', fetchMock);
