@@ -19,7 +19,6 @@ import { Model } from 'mongoose';
 import {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_FOUND_MESSAGE,
-  ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
   isStaffRole,
   LIST_LIMIT_DEFAULT,
@@ -29,20 +28,23 @@ import {
 } from '@xuanxue/shared';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
-import { encryptRecord } from '../utils/encryption';
 import { UserNamesService } from '../users/user-names.service';
 import type { UserLean } from '../users/users.service';
 import { attemptsExceededMessage } from './attempts-exceeded-message';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { createAttempt } from './exam-attempt-start';
 import { ExamItemsService } from './exam-items.service';
-import { assertAnswersKnown, mergeAnswers } from './exam-attempt-answers';
-import { closeIfExpiredAttempt, findInProgressAttempt } from './exam-attempt-lifecycle';
+import {
+  assertOpenForChange,
+  closeIfExpiredAttempt,
+  findInProgressAttempt,
+} from './exam-attempt-lifecycle';
+import { saveAttemptAnswers } from './exam-attempt-save';
 import {
   attemptSubmittedCallback,
   notifyAttemptSubmitted,
 } from './notify-attempt-submitted';
-import { EXAM_ATTEMPT_ENCRYPT_SCHEMA, ExamAttemptRecord } from './exam-attempt.schema';
+import { ExamAttemptRecord } from './exam-attempt.schema';
 import {
   decryptAttempt,
   toAttemptDto,
@@ -98,29 +100,24 @@ export class ExamAttemptsService {
 
   /** ТЗ 4.4, п.4–5: только владелец, только `in_progress`, только до
    * дедлайна; ответы заменяют по `itemId`, остальные не трогаются; чужой
-   * `itemId` — 400. */
+   * `itemId` — 400. Атомарный апдейт с оптимистичной блокировкой
+   * (exam-attempt-save.ts, находка аудита PR #175, docs/PLAN.md §11) —
+   * бот и кабинет одной секундой не затирают ответ друг друга. */
   async saveAnswers(
     attemptId: string,
     userId: string,
     input: SaveAttemptAnswersInput,
     now: DateTime,
   ): Promise<ExamAttemptDto> {
-    const attempt = await this.loadOwn(attemptId, userId, now);
-    this.assertOpenForChange(attempt);
-    assertAnswersKnown(attempt.blocks, input.answers);
-
-    const answers = mergeAnswers(attempt.answers, input.answers);
-    const updated = await this.model
-      .findOneAndUpdate(
-        { _id: attemptId, userId, status: 'in_progress' },
-        { $set: encryptRecord({ answers }, EXAM_ATTEMPT_ENCRYPT_SCHEMA) },
-        { returnDocument: 'after' },
-      )
-      .lean<RawLeanExamAttempt>();
-    // Гонка: дедлайн истёк между проверкой выше и этим апдейтом — тот же
-    // отказ, что и обычное «время вышло» (ТЗ 4.4, п.7).
-    if (!updated) throw new InvalidInputError(ATTEMPT_EXPIRED_MESSAGE);
-    return toAttemptDto(decryptAttempt(updated));
+    const attempt = await saveAttemptAnswers(
+      this.model,
+      this.examNotifier,
+      attemptId,
+      userId,
+      input,
+      now,
+    );
+    return toAttemptDto(attempt);
   }
 
   /** ТЗ 4.4, п.6: владелец, `in_progress` → `submitted`, `submittedAt` = сейчас. */
@@ -130,7 +127,7 @@ export class ExamAttemptsService {
     now: DateTime,
   ): Promise<ExamAttemptDto> {
     const attempt = await this.loadOwn(attemptId, userId, now);
-    this.assertOpenForChange(attempt);
+    assertOpenForChange(attempt);
 
     const updated = await this.model
       .findOneAndUpdate(
@@ -205,12 +202,5 @@ export class ExamAttemptsService {
       now,
       attemptSubmittedCallback(this.examNotifier, now),
     );
-  }
-
-  private assertOpenForChange(attempt: LeanExamAttempt): void {
-    if (attempt.expired) throw new InvalidInputError(ATTEMPT_EXPIRED_MESSAGE);
-    if (attempt.status !== 'in_progress') {
-      throw new InvalidInputError(ATTEMPT_NOT_IN_PROGRESS_MESSAGE);
-    }
   }
 }

@@ -25,15 +25,22 @@
 // проще, чем разбирать, что поддерживает caption у copyMessage, а что нет.
 // Сама пересылка, состав адресатов и эскалация тихого отказа — в
 // exam-media-forward.ts (аудит 2026-09, находки 1 и 2, файл-лимит CLAUDE.md).
+//
+// Свой `try/catch` (находка аудита PR #175, PLAN.md §11) — без него сбой
+// вроде «Mongo недоступна» уходил только в общий catch MessageHandler, тот
+// логирует, но ученику не отвечает (тихий отказ, CLAUDE.md «Логи»); приём —
+// как у ExamTextAnswerHandler, лог со стеком + examUserFacingError.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
+import { errorMessage, errorStack } from '../../common/error-info';
 import { MediaAssetsService } from '../../media/media-assets.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import type { BotSessionLean } from '../bot-session.service';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { PersonalChats } from '../personal-chats';
+import { examUserFacingError } from './exam-attempt-error';
 import { TELEGRAM_NOT_LINKED_MESSAGE } from './exam-media-deep-link';
 import { forwardExamVideoToTeachers } from './exam-media-forward';
 import { renderExamMediaAnswer } from './exam-media-answer';
@@ -71,69 +78,72 @@ export class ExamMediaMessageHandler {
       return;
     }
 
-    const access = await this.botAccess.resolve(telegramId);
-    if (access.kind === 'denied') {
-      await this.botSessions.clear(telegramId);
-      await ctx.reply(access.message).catch(() => null);
-      return;
-    }
-    // `unknown` — сессия ожидания могла остаться от старого кода или от
-    // отправителя, пропавшего из users между deep link и присылкой видео;
-    // основной случай (незнакомец сразу) перехватывает exam-media-deep-link.ts
-    // раньше, до этого хендлера. Раньше здесь всё равно звали
-    // attachTelegramVideo с userId: undefined и получали тот же отказ, что у
-    // чужой попытки — не объясняя, что дело в непривязанном Telegram
-    // (инцидент 2026-09-16, RUNBOOK §8.17).
-    if (access.kind === 'unknown') {
-      await this.botSessions.clear(telegramId);
-      this.logger.warn(
-        `telegram.examMedia: видео не привязано — попытка ${session.attemptId.toString()}, причина sender-unknown`,
-      );
-      await ctx.reply(TELEGRAM_NOT_LINKED_MESSAGE).catch(() => null);
-      return;
-    }
-    const user = access.user;
-    const attached = await this.mediaAssets.attachTelegramVideo(
-      session.attemptId.toString(),
-      user.id,
-      source,
-      now,
-      session.itemId?.toString(),
-    );
-    await this.botSessions.clear(telegramId);
-    if (!attached) {
-      this.logger.warn(
-        `telegram.examMedia: видео не привязано — попытка ${session.attemptId.toString()} не найдена или принадлежит другому аккаунту`,
-      );
-      await ctx.reply(ATTEMPT_NOT_YOURS_MESSAGE).catch(() => null);
-      return;
-    }
-
-    await forwardExamVideoToTeachers(
-      ctx,
-      this.personalChats,
-      user.name,
-      attached.examTitle,
-      session.attemptId.toString(),
-      now,
-    );
-
-    // Вопрос-видео потока бота (ТЗ 4б.2 часть 2) — сразу следующий экран,
-    // не отдельное «получено» (сам переход это и подтверждает); deep link
-    // из кабинета (ADR-0023) — экрана вопроса нет, обычное подтверждение.
-    if (session.questionIndex != null) {
-      await renderExamMediaAnswer(
-        ctx,
-        this.examBotPorts.get(),
-        this.botSessions,
-        telegramId,
-        user,
+    try {
+      const access = await this.botAccess.resolve(telegramId);
+      if (access.kind === 'denied') {
+        await this.botSessions.clear(telegramId);
+        await ctx.reply(access.message).catch(() => null);
+        return;
+      }
+      // `unknown` — сессия осталась от старого кода/отправителя без записи в
+      // users (см. шапку файла, инцидент 2026-09-16, RUNBOOK §8.17).
+      if (access.kind === 'unknown') {
+        await this.botSessions.clear(telegramId);
+        this.logger.warn(
+          `telegram.examMedia: видео не привязано — попытка ${session.attemptId.toString()}, причина sender-unknown`,
+        );
+        await ctx.reply(TELEGRAM_NOT_LINKED_MESSAGE).catch(() => null);
+        return;
+      }
+      const user = access.user;
+      const attached = await this.mediaAssets.attachTelegramVideo(
         session.attemptId.toString(),
-        session.questionIndex,
+        user.id,
+        source,
+        now,
+        session.itemId?.toString(),
+      );
+      await this.botSessions.clear(telegramId);
+      if (!attached) {
+        this.logger.warn(
+          `telegram.examMedia: видео не привязано — попытка ${session.attemptId.toString()} не найдена или принадлежит другому аккаунту`,
+        );
+        await ctx.reply(ATTEMPT_NOT_YOURS_MESSAGE).catch(() => null);
+        return;
+      }
+
+      await forwardExamVideoToTeachers(
+        ctx,
+        this.personalChats,
+        user.name,
+        attached.examTitle,
+        session.attemptId.toString(),
         now,
       );
-      return;
+
+      // Вопрос-видео потока бота (ТЗ 4б.2 часть 2) — сразу следующий экран,
+      // не отдельное «получено» (сам переход это и подтверждает); deep link
+      // из кабинета (ADR-0023) — экрана вопроса нет, обычное подтверждение.
+      if (session.questionIndex != null) {
+        await renderExamMediaAnswer(
+          ctx,
+          this.examBotPorts.get(),
+          this.botSessions,
+          telegramId,
+          user,
+          session.attemptId.toString(),
+          session.questionIndex,
+          now,
+        );
+        return;
+      }
+      await ctx.reply(RECEIVED_MESSAGE).catch(() => null);
+    } catch (err) {
+      // Неожиданный сбой (не «попытка не ваша», та ветка выше и не исключение) —
+      // ученик, который прислал видео, иначе не узнал бы, снялось оно или нет
+      // (находка аудита PR #175, docs/PLAN.md §11: тихий отказ — CLAUDE.md «Логи»).
+      this.logger.error(`telegram.examMedia: ${errorMessage(err)}`, errorStack(err));
+      await ctx.reply(examUserFacingError(err)).catch(() => null);
     }
-    await ctx.reply(RECEIVED_MESSAGE).catch(() => null);
   }
 }

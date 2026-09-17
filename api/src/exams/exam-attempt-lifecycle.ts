@@ -23,11 +23,26 @@
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import {
+  ATTEMPT_EXPIRED_MESSAGE,
+  ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
+} from '@xuanxue/shared';
+import { InvalidInputError } from '../common/errors';
+import {
   decryptAttempt,
   type LeanExamAttempt,
   type RawLeanExamAttempt,
 } from './exam-attempt.mapper';
 import type { ExamAttemptRecord } from './exam-attempt.schema';
+
+/** ТЗ 4.4, п.4/6: изменить попытку (сохранить ответ, сдать) можно только пока
+ * она `in_progress` и не просрочена — общая проверка для saveAnswers/submit
+ * (exam-attempt-save.ts, exam-attempts.service.ts), раньше дублировалась. */
+export function assertOpenForChange(attempt: LeanExamAttempt): void {
+  if (attempt.expired) throw new InvalidInputError(ATTEMPT_EXPIRED_MESSAGE);
+  if (attempt.status !== 'in_progress') {
+    throw new InvalidInputError(ATTEMPT_NOT_IN_PROGRESS_MESSAGE);
+  }
+}
 
 export async function findInProgressAttempt(
   model: Model<ExamAttemptRecord>,

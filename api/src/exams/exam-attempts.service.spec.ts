@@ -212,7 +212,12 @@ describe('ExamAttemptsService', () => {
     );
   });
 
-  it('автосохранение: дедлайн истёк между проверкой и апдейтом (гонка) — тот же отказ «время вышло»', async () => {
+  // Находка аудита PR #175 (docs/PLAN.md §11): saveAnswers — оптимистичная
+  // блокировка (exam-attempt-save.ts), не «прочитал → слил → записал».
+  // Одиночный проигрыш CAS (кто-то другой чуть раньше поменял `answers` или
+  // статус) — не отказ пользователю: следующий проход перечитывает актуальное
+  // состояние и сохраняет ответ сам.
+  it('автосохранение: один проигрыш CAS — второй проход перечитывает и сохраняет, ответ не потерян', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam({ itemIds: [itemId] });
     const started = await ctx.service.start(examId, USER_A, NOW);
@@ -220,9 +225,118 @@ describe('ExamAttemptsService', () => {
       lean: () => Promise.resolve(null),
     } as never);
 
+    const updated = await ctx.service.saveAnswers(
+      started.id,
+      USER_A,
+      { answers: [{ itemId, text: 'ответ' }] },
+      NOW,
+    );
+
+    expect(updated.answers).toEqual([{ itemId, text: 'ответ' }]);
+  });
+
+  // Гонка, которая не расходится сама (сломанный клиент шлёт одно и то же
+  // без остановки) — потолок попыток даёт понятный отказ вместо зависшего
+  // запроса или тихой потери ответа (ATTEMPT_SAVE_CONFLICT_MESSAGE, shared/src/exams.ts).
+  it('автосохранение: CAS проигрывает не переставая — отказ после потолка попыток, не тихая потеря', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    // `mockReturnValue` (не `mockReturnValueOnce`) держит подмену на все
+    // вызовы, поэтому обязательно `mockRestore()` — иначе следующие тесты
+    // файла тоже получат null от findOneAndUpdate.
+    const spy = jest.spyOn(ctx.attemptModel, 'findOneAndUpdate').mockReturnValue({
+      lean: () => Promise.resolve(null),
+    } as never);
+
     await expect(
-      ctx.service.saveAnswers(started.id, USER_A, { answers: [] }, NOW),
-    ).rejects.toThrow('Время экзамена вышло');
+      ctx.service.saveAnswers(
+        started.id,
+        USER_A,
+        { answers: [{ itemId, text: 'x' }] },
+        NOW,
+      ),
+    ).rejects.toThrow('одновременно правили');
+    spy.mockRestore();
+  });
+
+  // Основная находка аудита: два клиента (бот и кабинет) сохраняют ответы на
+  // разные вопросы буквально в одну секунду — раньше блайнд-запись одного
+  // затирала слияние другого. Атомарный CAS-цикл держит оба.
+  it('два одновременных сохранения на разные itemId (бот и кабинет) — оба ответа на месте', async () => {
+    const itemIds = await Promise.all([createPublishedItem(), createPublishedItem()]);
+    const examId = await createPublishedExam({ itemIds });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    const [firstItemId, secondItemId] = itemIds;
+    if (!firstItemId || !secondItemId) throw new Error('ожидались два вопроса');
+
+    // Возврат каждого вызова — снимок сразу после ЕГО собственной записи, не
+    // итоговое состояние документа (кто записал вторым, тот и не увидит
+    // первого в СВОЁМ ответе) — поэтому read-after-write отдельным списком
+    // после обоих, а не по возвращаемому значению одного из вызовов.
+    await Promise.all([
+      ctx.service.saveAnswers(
+        started.id,
+        USER_A,
+        { answers: [{ itemId: firstItemId, text: 'от бота' }] },
+        NOW,
+      ),
+      ctx.service.saveAnswers(
+        started.id,
+        USER_A,
+        { answers: [{ itemId: secondItemId, text: 'от кабинета' }] },
+        NOW,
+      ),
+    ]);
+
+    const list = await ctx.service.list({ examId }, staffUser(false, USER_A), NOW);
+    expect(list[0]?.answers).toEqual(
+      expect.arrayContaining([
+        { itemId: firstItemId, text: 'от бота' },
+        { itemId: secondItemId, text: 'от кабинета' },
+      ]),
+    );
+    expect(list[0]?.answers).toHaveLength(2);
+  });
+
+  it('автосохранение: повтор того же itemId заменяет ответ, не дублирует', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+
+    await ctx.service.saveAnswers(
+      started.id,
+      USER_A,
+      { answers: [{ itemId, text: 'первый вариант' }] },
+      NOW,
+    );
+    const updated = await ctx.service.saveAnswers(
+      started.id,
+      USER_A,
+      { answers: [{ itemId, text: 'исправленный вариант' }] },
+      NOW,
+    );
+
+    expect(updated.answers).toEqual([{ itemId, text: 'исправленный вариант' }]);
+  });
+
+  it('автосохранение в уже сданную попытку — отказ, ответ не сохраняется', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.submit(started.id, USER_A, NOW);
+
+    await expect(
+      ctx.service.saveAnswers(
+        started.id,
+        USER_A,
+        { answers: [{ itemId, text: 'поздно' }] },
+        NOW,
+      ),
+    ).rejects.toThrow('уже сдана');
+
+    const list = await ctx.service.list({ examId }, staffUser(false, USER_A), NOW);
+    expect(list[0]?.answers).toEqual([]);
   });
 
   it('сдача: дедлайн истёк между проверкой и апдейтом (гонка) — тот же отказ «время вышло»', async () => {
