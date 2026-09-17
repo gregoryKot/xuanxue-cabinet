@@ -1,13 +1,14 @@
 // Тексты подвала страницы редактора экзамена поверх общего
 // components/EditorFooter.tsx. Второе действие рядом с «Сохранить» —
-// предпросмотр глазами ученика.
+// ссылка на страницу предпросмотра сохранённого экзамена (ADR-0033).
 //
 // Удаление разрешено только черновику (ExamsService.remove): на
 // опубликованный и архивный экзамен ссылаются попытки учеников — вместо
 // кнопки объяснение, почему её нет.
+import { Link } from 'react-router-dom';
 import type { ExamStatus } from '@xuanxue/shared';
 import { EditorFooter } from '../components/EditorFooter';
-import { textLinkButtonStyle } from '../components/screenLayout';
+import { textLinkStyle } from '../components/screenLayout';
 
 const REMOVE_LABEL = 'Удалить экзамен';
 const PREVIEW_LABEL = 'Посмотреть глазами ученика';
@@ -25,7 +26,8 @@ const NO_REMOVE_NOTES: Record<'published' | 'archived', string> = {
 interface ExamEditorFooterProps {
   status: ExamStatus | null;
   pending: boolean;
-  onPreview: () => void;
+  /** `null` — новый экзамен, показывать предпросмотр нечего. */
+  previewPath: string | null;
   onChangeStatus: (status: ExamStatus) => void;
   onRemove: () => void;
 }
@@ -33,7 +35,7 @@ interface ExamEditorFooterProps {
 export function ExamEditorFooter({
   status,
   pending,
-  onPreview,
+  previewPath,
   onChangeStatus,
   onRemove,
 }: ExamEditorFooterProps) {
@@ -47,9 +49,11 @@ export function ExamEditorFooter({
       onChangeStatus={onChangeStatus}
       onRemove={onRemove}
       extraAction={
-        <button type="button" style={textLinkButtonStyle} onClick={onPreview}>
-          {PREVIEW_LABEL}
-        </button>
+        previewPath ? (
+          <Link to={previewPath} style={textLinkStyle}>
+            {PREVIEW_LABEL}
+          </Link>
+        ) : undefined
       }
     />
   );

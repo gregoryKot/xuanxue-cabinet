@@ -635,35 +635,24 @@ describe('ExamEditorScreen — подвал', () => {
     expect(lastCallWithMethod('DELETE')).toHaveLength(0);
   });
 
-  it('предпросмотр открыт до ответа банка — текст загрузки, не «вопросов нет»', async () => {
-    const user = userEvent.setup();
-    mockApiByPath({
-      '/exams/x1': makeExam(),
-      '/exam-items': new Promise(() => {}),
-      '/exams': makeExam(),
-    });
-
-    renderAt('/exams/x1');
-    await user.click(
-      await screen.findByRole('button', { name: 'Посмотреть глазами ученика' }),
-    );
-
-    const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(/Загружаем вопросы/)).toBeInTheDocument();
-  });
-
-  it('«Посмотреть глазами ученика» открывает предпросмотр поверх страницы', async () => {
-    const user = userEvent.setup();
+  it('«Посмотреть глазами ученика» — ссылка на страницу предпросмотра', async () => {
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
-    await screen.findByText('Зачем придумали тайцзи?');
-    await user.click(screen.getByRole('button', { name: 'Посмотреть глазами ученика' }));
 
-    const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText(/Зачем придумали тайцзи\?/)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: 'Посмотреть глазами ученика' }),
+    ).toHaveAttribute('href', '/exams/x1/preview');
+  });
 
-    await user.click(within(dialog).getByRole('button', { name: 'Закрыть' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  it('новый экзамен — ссылки на предпросмотр нет', async () => {
+    mockApiByPath({ '/exam-items': BANK, '/exams': makeExam() });
+
+    renderAt('/exams/new');
+    await screen.findByLabelText('Название');
+
+    expect(
+      screen.queryByRole('link', { name: 'Посмотреть глазами ученика' }),
+    ).not.toBeInTheDocument();
   });
 });

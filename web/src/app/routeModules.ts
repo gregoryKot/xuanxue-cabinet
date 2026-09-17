@@ -2,7 +2,7 @@
 // него — в одном месте (CLAUDE.md «одна механика — один компонент»). Отсюда
 // берут и `lazy()` с `<Route>` в App.tsx, и предзагрузка чанков (main.tsx,
 // usePrefetchRoutes.ts), и предзагрузка данных первого экрана
-// (firstScreenPrefetch.ts, через routeMatch.ts).
+// (prefetchFirstScreen.ts, через routeMatch.ts).
 //
 // Зачем предзагрузка чанка. Измерено на проде 2026-09-15: TTFB любого ответа
 // сервера — 0.5–1.1 с, а первый экран рисовался только после пяти
@@ -17,7 +17,7 @@
 // (useAbortableFetch) стартует запрос, только когда экран уже смонтирован —
 // то есть уже после чанка. `prefetch` называет GET-пути, которые можно
 // запросить сразу после ответа `/auth/me`, параллельно с чанком —
-// firstScreenPrefetch.ts кладёт их в prefetchCache.ts, а apiFetch хука
+// prefetchFirstScreen.ts кладёт их в prefetchCache.ts, а apiFetch хука
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
 import {
@@ -46,7 +46,7 @@ import {
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 type RouteLoader = () => Promise<{ default: ComponentType }>;
 
-/** GET-пути данных этого экрана — что предзагрузить (firstScreenPrefetch.ts). */
+/** GET-пути данных этого экрана — что предзагрузить (prefetchFirstScreen.ts). */
 type RoutePrefetch = (pathname: string) => string[];
 
 export interface RouteModule {
@@ -71,6 +71,12 @@ export function segmentsOf(path: string): string[] {
  * чтобы не держать ветку «адрес пустой», которой не бывает. */
 function lastSegment(pathname: string): string {
   return segmentsOf(pathname).slice(-1).join('');
+}
+
+/** `:examId` из `/exams/:examId/preview` — сегмент перед статическим
+ * хвостом; те же оговорки, что у lastSegment. */
+function segmentBeforeLast(pathname: string): string {
+  return segmentsOf(pathname).slice(-2, -1).join('');
 }
 
 // Редактор — одна пара адресов на экран: `/x/new` и `/x/:id`, один загрузчик
@@ -222,6 +228,17 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [
       entityPath(EXAMS_PATH, lastSegment(pathname)),
+      examItemsListPath(''),
+    ],
+  },
+  // Предпросмотр «глазами ученика» — страница, а не слой поверх редактора
+  // (ADR-0033). Данные те же, что у редактора: экзамен и банк целиком.
+  examPreview: {
+    path: '/exams/:examId/preview',
+    load: () => import('../exams/ExamPreviewScreen'),
+    warm: true,
+    prefetch: (pathname) => [
+      entityPath(EXAMS_PATH, segmentBeforeLast(pathname)),
       examItemsListPath(''),
     ],
   },

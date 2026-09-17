@@ -16,6 +16,9 @@ describe('matchRoute', () => {
     expect(loaderAt('/exams/652f00000000000000000001')).toBe(
       ROUTE_MODULES.examEditor.load,
     );
+    expect(loaderAt('/exams/652f00000000000000000001/preview')).toBe(
+      ROUTE_MODULES.examPreview.load,
+    );
     expect(loaderAt('/exam-items')).toBe(ROUTE_MODULES.examItems.load);
     expect(loaderAt('/exam-items/new')).toBe(ROUTE_MODULES.examItemNew.load);
     expect(loaderAt('/exam-items/652f00000000000000000002')).toBe(
@@ -44,6 +47,16 @@ describe('matchRoute', () => {
     // Загрузчик и правда приводит экран: опечатка в пути модуля иначе всплыла
     // бы только в браузере, пустым экраном под Suspense.
     await expect(ROUTE_MODULES.channelNew.load()).resolves.toHaveProperty('default');
+  });
+
+  it('предпросмотр экзамена — свой чанк, редактор и предпросмотр не путаются', async () => {
+    expect(loaderAt('/exams/652f00000000000000000001')).toBe(
+      ROUTE_MODULES.examEditor.load,
+    );
+    expect(loaderAt('/exams/652f00000000000000000001/preview')).toBe(
+      ROUTE_MODULES.examPreview.load,
+    );
+    await expect(ROUTE_MODULES.examPreview.load()).resolves.toHaveProperty('default');
   });
 
   it('новая рассылка — свой адрес, у журнала свой (ADR-0033)', async () => {

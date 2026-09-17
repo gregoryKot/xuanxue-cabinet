@@ -29,6 +29,7 @@ const ExamItemsScreen = lazy(ROUTE_MODULES.examItems.load);
 const ExamItemEditorScreen = lazy(ROUTE_MODULES.examItemEditor.load);
 const ExamsScreen = lazy(ROUTE_MODULES.exams.load);
 const ExamEditorScreen = lazy(ROUTE_MODULES.examEditor.load);
+const ExamPreviewScreen = lazy(ROUTE_MODULES.examPreview.load);
 const GradingQueueScreen = lazy(ROUTE_MODULES.grading.load);
 const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
@@ -59,6 +60,10 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.exams.path} element={<ExamsScreen />} />
     <Route path={ROUTE_MODULES.examNew.path} element={<ExamEditorScreen />} />
     <Route path={ROUTE_MODULES.examEditor.path} element={<ExamEditorScreen />} />
+    {/* Последний полноэкранный слой кабинета, кроме ConfirmDialog, стал
+        страницей (ADR-0033) — на неё ссылаются со страницы экзамена, «Назад»
+        браузера возвращает к экзамену обычной навигацией, не закрытием листа. */}
+    <Route path={ROUTE_MODULES.examPreview.path} element={<ExamPreviewScreen />} />
     {/* Проверка работ (слой 4.6) — тот же раздел «Экзамены», вход карточкой
         на ExamsScreen.tsx, не пункт меню (ADR-0025). Роль на самом маршруте
         не нужна: AppShell.tsx уже отдаёт Outlet только TEACHER_ROLES, ученик
