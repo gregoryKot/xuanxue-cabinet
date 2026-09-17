@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import { AttemptSubmitted } from './AttemptSubmitted';
+import type { AttemptVideoControls } from './useAttemptMedia';
 
 function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
   return {
@@ -19,16 +20,25 @@ function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
   };
 }
 
+// Фикстура без видео-вопросов — AttemptSubmittedVideos.tsx возвращает null,
+// TelegramLinkButton не рендерится, и AuthProvider вокруг не нужен (его же
+// комментарий-шапка в AttemptSubmittedVideos.test.tsx).
+function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoControls {
+  return {
+    attemptId: 'a1',
+    media: [],
+    telegramBotUsername: 'xuanxue_bot',
+    telegramLinked: true,
+    addMediaLink: vi.fn().mockResolvedValue(true),
+    linkStateFor: () => ({ pending: false, error: null }),
+    ...overrides,
+  };
+}
+
 function renderSubmitted(attempt: ExamAttemptDto) {
   return render(
     <MemoryRouter>
-      <AttemptSubmitted
-        attempt={attempt}
-        telegramLinked
-        onAddMediaLink={vi.fn().mockResolvedValue(true)}
-        addingMediaLink={false}
-        addMediaLinkError={null}
-      />
+      <AttemptSubmitted attempt={attempt} video={makeVideo()} />
     </MemoryRouter>,
   );
 }

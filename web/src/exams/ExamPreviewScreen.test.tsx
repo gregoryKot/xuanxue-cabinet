@@ -304,7 +304,7 @@ describe('ExamPreviewScreen — вопросы', () => {
     ).toBeDisabled();
   });
 
-  it('video — текст «пришлёте боту»', async () => {
+  it('video — текст «Ответ на этот вопрос — видео»', async () => {
     mockExamAndBank(
       makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: false }] }),
       [makeItem({ id: 'i1', kind: 'video' })],
@@ -312,7 +312,7 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    expect(await screen.findByText(/пришлёте боту/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ответ на этот вопрос — видео/)).toBeInTheDocument();
   });
 
   it('вопрос с подсказкой — подсказка видна', async () => {

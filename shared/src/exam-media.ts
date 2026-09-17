@@ -36,9 +36,10 @@ export interface ExamMediaDto {
 
 export interface AddExamMediaLinkInput {
   url: string;
-  /** Необязателен по той же причине, что у `ExamMediaDto.itemId` (ADR-0037,
-   * «Последствия») — контракт остаётся совместимым, пока web-экран отправки
-   * не начнёт его присылать (следующий PR). */
+  /** Экран сдачи (AttemptQuestionVideo.tsx) присылает его всегда — форма
+   * ссылки живёт у конкретного видео-вопроса. Необязательность в контракте
+   * остаётся только ради деплоя: старый инстанс (expand → contract) ещё
+   * работает без него, как и у `ExamMediaDto.itemId`. */
   itemId?: string;
 }
 

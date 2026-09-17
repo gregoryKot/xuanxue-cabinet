@@ -164,4 +164,30 @@ describe('ExamAttemptsService — дедлайн', () => {
       ctx.service.submit(started.id, USER_A, deadlineAt.plus({ minutes: 1 })),
     ).rejects.toThrow('Время экзамена вышло');
   });
+  // Второй переход того же пояса — на летнее время (стрелки вперёд, ночь
+  // короче на час): 10 часов лимита «по местным часам» выглядят как 9 —
+  // сервер всё равно считает ровно 600 минут реального времени.
+  it('переход на летнее время Asia/Jerusalem — попытка длится ровно timeLimitMin минут', async () => {
+    const startedAt = DateTime.fromObject(
+      { year: 2026, month: 3, day: 26, hour: 20, minute: 0 },
+      { zone: 'Asia/Jerusalem' },
+    );
+    const afterTransition = DateTime.fromObject(
+      { year: 2026, month: 3, day: 27, hour: 6, minute: 0 },
+      { zone: 'Asia/Jerusalem' },
+    );
+    expect(startedAt.offset).not.toBe(afterTransition.offset);
+    expect(afterTransition.offset - startedAt.offset).toBe(60);
+
+    const started = await startTimedAttempt(600, startedAt);
+    const deadlineAt = DateTime.fromISO(started.deadlineAt ?? '', { zone: 'utc' });
+    const startedAtUtc = DateTime.fromISO(started.startedAt, { zone: 'utc' });
+    expect(deadlineAt.diff(startedAtUtc, 'minutes').minutes).toBe(600);
+    // По местным часам дедлайн — 07:00, а не 06:00: час «исчез» при переводе.
+    expect(deadlineAt.setZone('Asia/Jerusalem').toFormat('HH:mm')).toBe('07:00');
+
+    await expect(
+      ctx.service.submit(started.id, USER_A, deadlineAt.minus({ minutes: 1 })),
+    ).resolves.toMatchObject({ status: 'submitted', expired: false });
+  });
 });

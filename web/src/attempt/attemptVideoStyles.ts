@@ -1,0 +1,58 @@
+// Стили видео-вопроса (AttemptQuestionVideo.tsx) и списка видео-вопросов на
+// «Отправлено» (AttemptSubmittedVideos.tsx) — общий облик обоих мест
+// (CLAUDE.md «Одна механика — один компонент»). Отдельный модуль, а не
+// константы в компоненте: компонент вопроса должен остаться под 150 строк
+// (scripts/check-file-size-ratchet.mjs), а стили нужны и списку на «Отправлено».
+import type { CSSProperties } from 'react';
+
+export const attemptVideoSectionStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  paddingTop: 20,
+  borderTop: '1px solid var(--line)',
+};
+
+// Заголовок блока антиквой, но заметно легче названия экзамена
+// (screenTitleStyle, 34): внутри экрана это раздел, а не второй экран.
+export const attemptVideoHeadingStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: 'var(--font-display)',
+  fontWeight: 300,
+  fontSize: 22,
+  lineHeight: 1.1,
+};
+
+export const attemptVideoHintStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  color: 'var(--ink-soft)',
+};
+
+export const attemptVideoReceivedListStyle: CSSProperties = {
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+};
+
+// Визуально — как Button variant="primary" (components/Button.tsx), но это
+// переход по внешней ссылке (t.me), не действие в кабинете: <a>, не
+// <button> (тот же приём, что StudentLessonMeeting.tsx: zoomLinkStyle).
+// Единственная киноварь на этом экране (правило акцента, docs/adr/0031):
+// прислать видео — то, ради чего ученик сюда вернулся.
+export const attemptVideoTelegramLinkStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 44,
+  padding: '10px 18px',
+  borderRadius: 3,
+  fontWeight: 600,
+  background: 'var(--cinnabar)',
+  color: 'var(--cinnabar-contrast)',
+  textDecoration: 'none',
+  alignSelf: 'flex-start',
+};
