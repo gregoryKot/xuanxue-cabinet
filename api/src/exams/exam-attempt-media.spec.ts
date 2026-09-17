@@ -77,7 +77,6 @@ describe('withReviewMedia', () => {
       userName: 'Ученик',
       status: 'submitted',
       blocks: [],
-      rubric: [],
     };
     const service = fakeService(new Map([['a1', [MEDIA]]]));
 

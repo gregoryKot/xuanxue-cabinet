@@ -22,7 +22,6 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
     userName: 'Иван Иванов',
     status: 'submitted',
     blocks: [],
-    rubric: [{ id: 'c1', title: 'Устойчивость', maxScore: 5 }],
     ...overrides,
   };
 }
@@ -58,7 +57,7 @@ describe('useAttemptReview — отправка оценки', () => {
         examId: 'e1',
         userId: 'u1',
         graderId: 't1',
-        criteria: [{ id: 'c1', title: 'Устойчивость', maxScore: 5, score: 4 }],
+        comment: 'Хорошо сдал',
         outcome: 'passed',
         gradedAt: '2026-01-01T00:00:00Z',
       },
@@ -71,7 +70,7 @@ describe('useAttemptReview — отправка оценки', () => {
     await waitFor(() => expect(result.current.review).not.toBeNull());
 
     const input = {
-      criteria: [{ id: 'c1', score: 4 }],
+      comment: 'Хорошо сдал',
       outcome: 'passed' as const,
     };
     let succeeded = false;
@@ -94,7 +93,7 @@ describe('useAttemptReview — отправка оценки', () => {
       .mockResolvedValueOnce(makeReview())
       .mockRejectedValueOnce(
         new ApiError(
-          'Баллы по критерию «Устойчивость» — от 0 до 5.',
+          'Эту работу ещё нельзя проверить: ученик её не сдал.',
           400,
           'invalid_input',
         ),
@@ -105,14 +104,13 @@ describe('useAttemptReview — отправка оценки', () => {
     let succeeded = true;
     await act(async () => {
       succeeded = await result.current.submitGrading({
-        criteria: [{ id: 'c1', score: 9 }],
         outcome: 'passed',
       });
     });
 
     expect(succeeded).toBe(false);
     expect(result.current.saveError?.message).toBe(
-      'Баллы по критерию «Устойчивость» — от 0 до 5.',
+      'Эту работу ещё нельзя проверить: ученик её не сдал.',
     );
     expect(result.current.review?.status).toBe('submitted');
   });

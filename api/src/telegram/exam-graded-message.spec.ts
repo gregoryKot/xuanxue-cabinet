@@ -48,7 +48,7 @@ describe('examGradedMessage', () => {
     expect(text).not.toContain('undefined');
   });
 
-  it('не пересказывает баллы по критериям — в сообщении их нет вовсе', () => {
+  it('без баллов и критериев — итог качественный (PLAN §11 «Границы»)', () => {
     const text = examGradedMessage(EXAM_TITLE, 'passed', undefined, PUBLIC_URL);
 
     expect(text).not.toMatch(/балл|критери/i);

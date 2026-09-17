@@ -22,7 +22,6 @@ const EXAM_DTO: ExamDto = {
   level: '',
   blocks: [],
   shuffleOptions: false,
-  rubric: [],
   attemptsAllowed: 1,
   status: 'draft',
   createdAt: '2026-09-01T00:00:00.000Z',

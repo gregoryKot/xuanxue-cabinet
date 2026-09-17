@@ -8,12 +8,10 @@ import { decryptRecord } from '../utils/encryption';
 import {
   EXAM_GRADING_ENCRYPT_SCHEMA,
   type ExamGradingRecord,
-  type GradingCriterionRecord,
 } from './exam-grading.schema';
 
-/** ExamGradingRecord как его отдаёт `.lean()` до расшифровки — `criteria`
- * ещё строка (encJson, exam-grading.schema.ts). `Pick<T, keyof T>` вместо
- * простого пересечения — тот же приём, что у `RawLeanExamAttempt`
+/** ExamGradingRecord как его отдаёт `.lean()` до расшифровки. `Pick<T, keyof T>`
+ * вместо простого пересечения — тот же приём, что у `RawLeanExamAttempt`
  * (exam-attempt.mapper.ts): иначе тип не проходит ограничение
  * `T extends Record<string, unknown>` у `decryptRecord`. */
 export type RawLeanExamGrading = Pick<ExamGradingRecord, keyof ExamGradingRecord> & {
@@ -22,32 +20,23 @@ export type RawLeanExamGrading = Pick<ExamGradingRecord, keyof ExamGradingRecord
   updatedAt: Date;
 };
 
-/** То же самое после `decryptRecord` и разбора JSON (см. `decryptGrading`
- * ниже) — `criteria` уже настоящий массив. */
-export type LeanExamGrading = Omit<RawLeanExamGrading, 'criteria'> & {
-  criteria: GradingCriterionRecord[];
-};
-
-/** `criteria` хранится строкой (encJson) — decryptRecord (не параметризована
- * по конкретному полю, тот же приём, что у ExamsService.decrypt) возвращает
- * её с тем же типом `string`, хотя на деле это уже разобранный JSON;
- * приводим явно один раз здесь. */
-export function decryptGrading(doc: RawLeanExamGrading): LeanExamGrading {
-  const decrypted = decryptRecord(doc, EXAM_GRADING_ENCRYPT_SCHEMA);
-  return {
-    ...decrypted,
-    criteria: decrypted.criteria as unknown as GradingCriterionRecord[],
-  };
+/** После удаления баллов по критериям (рубрика удалена с концами,
+ * ADR-0038) в записи не осталось полей, хранящихся строкой
+ * целиком, — расшифровывать нужен только `comment` (enc), форма документа
+ * до и после расшифровки одна и та же. Функция остаётся тонкой обёрткой над
+ * `decryptRecord`, а не инлайнится в вызывающий код, — одна точка расшифровки
+ * оценки на всех читателей (ExamGradingsService, MyExamsService). */
+export function decryptGrading(doc: RawLeanExamGrading): RawLeanExamGrading {
+  return decryptRecord(doc, EXAM_GRADING_ENCRYPT_SCHEMA);
 }
 
-export function toGradingDto(doc: LeanExamGrading): ExamGradingDto {
+export function toGradingDto(doc: RawLeanExamGrading): ExamGradingDto {
   return {
     id: doc._id.toString(),
     attemptId: doc.attemptId.toString(),
     examId: doc.examId.toString(),
     userId: doc.userId.toString(),
     graderId: doc.graderId.toString(),
-    criteria: doc.criteria,
     comment: doc.comment,
     outcome: doc.outcome,
     gradedAt: toIsoUtc(doc.gradedAt),

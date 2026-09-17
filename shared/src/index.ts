@@ -131,13 +131,6 @@ export {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_UNKNOWN_ITEM_MESSAGE,
 } from './exams';
-export type {
-  RubricCriterionDto,
-  RubricCriterionInput,
-  GradingOutcome,
-  GradingCriterionDto,
-} from './exam-rubric';
-export { DEFAULT_RUBRIC, GRADING_OUTCOMES } from './exam-rubric';
 export {
   type ExamMediaKind,
   type ExamMediaDto,
@@ -170,16 +163,15 @@ export type {
   AttemptReviewQuestionDto,
   AttemptReviewBlockDto,
   AttemptReviewDto,
-  GradingCriterionInput,
+  GradingOutcome,
   PutGradingInput,
   ExamGradingDto,
 } from './exam-grading';
 export {
+  GRADING_OUTCOMES,
   DELETED_USER_NAME,
   GRADING_LIMITS,
   ATTEMPT_NOT_SUBMITTED_MESSAGE,
-  unknownCriterionMessage,
-  invalidScoreMessage,
 } from './exam-grading';
 export {
   NULLABLE_LESSON_FIELDS,

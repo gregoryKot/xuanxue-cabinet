@@ -1,34 +1,19 @@
-// Оценка попытки по рубрике (`exam_gradings`, слой 4.6, PLAN §11, ADR-0022) —
-// данные ученика: `userId` — кого проверили, владение (чеклист CLAUDE.md
-// «Новая коллекция с полем userId», п.1) — USER_OWNED_COLLECTIONS, удаление
+// Оценка попытки (`exam_gradings`, слой 4.6, PLAN §11, ADR-0022) — данные
+// ученика: `userId` — кого проверили, владение (чеклист CLAUDE.md «Новая
+// коллекция с полем userId», п.1) — USER_OWNED_COLLECTIONS, удаление
 // аккаунта уносит и оценку; срок хранения — вместе с попыткой (PLAN §11
-// «Данные»). `criteria` — снимок критериев рубрики на момент проверки со
-// своими баллами и комментарием: свободный текст внутри, поэтому целиком
-// строкой через `encJson`, тем же приёмом, что `blocks`/`options` у
-// exam-attempt.schema.ts/exam-item.schema.ts — encryptRecord/decryptRecord
-// шифруют только поля верхнего уровня документа, вложенный `comment` молча
-// остался бы открытым текстом. `comment` (общий комментарий учителя) —
-// отдельная строка верхнего уровня, шифруется как обычный свободный текст.
+// «Данные»). Хранит только итог (`outcome`) и общий комментарий учителя —
+// баллы по критериям рубрики удалены с концами вместе с самой рубрикой
+// (решение владельца 2026-09-17, миграция 0008-grading-without-rubric):
+// критерии по умолчанию нельзя было переписать под себя в интерфейсе
+// (CLAUDE.md «Кабинет учителя: всё настраивается в интерфейсе»). `comment` —
+// свободный текст, шифруется как обычное поле верхнего уровня (enc).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { GRADING_OUTCOMES } from '@xuanxue/shared';
 import type { GradingOutcome } from '@xuanxue/shared';
-import {
-  enc,
-  encJson,
-  plain,
-  encryptSchemaFrom,
-  type FieldPolicy,
-} from '../common/field-policy';
+import { enc, plain, encryptSchemaFrom, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
-
-export interface GradingCriterionRecord {
-  id: string;
-  title: string;
-  maxScore: number;
-  score: number;
-  comment?: string;
-}
 
 @Schema({ timestamps: true, collection: 'exam_gradings' })
 export class ExamGradingRecord {
@@ -55,10 +40,6 @@ export class ExamGradingRecord {
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: true })
   graderId!: Types.ObjectId;
 
-  // Хранится строкой целиком (encJson) — см. комментарий в начале файла.
-  @Prop({ type: String, default: '[]' })
-  criteria!: string;
-
   @Prop({ type: String, required: false })
   comment?: string;
 
@@ -78,12 +59,11 @@ ExamGradingSchema.index({ examId: 1, gradedAt: -1 });
 ExamGradingSchema.index({ userId: 1 });
 
 export const EXAM_GRADING_FIELD_POLICY: FieldPolicy = {
-  criteria: encJson,
   comment: enc,
   outcome: plain('перечисление, нужно для выборок'),
 };
 
 /** Схема шифрования оценки — одна на все места чтения и записи
  * (ExamGradingsService, MyExamsService): читающий оценку мимо неё получит
- * шифротекст вместо баллов/комментария. */
+ * шифротекст вместо комментария учителя. */
 export const EXAM_GRADING_ENCRYPT_SCHEMA = encryptSchemaFrom(EXAM_GRADING_FIELD_POLICY);

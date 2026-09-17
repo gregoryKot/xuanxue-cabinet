@@ -86,7 +86,6 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   const gradingsService = new ExamGradingsService(
     attemptModel,
     gradingModel,
-    examsService,
     userNamesService,
     examNotifier,
   );

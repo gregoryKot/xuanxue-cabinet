@@ -69,7 +69,7 @@ describe('AttemptSubmitted', () => {
     ).toBeInTheDocument();
   });
 
-  it('проверено — без баллов и комментариев (слой 4.6/4.7 ещё не построен)', () => {
+  it('проверено — на экране только статус, итог и комментарий живут в кабинете', () => {
     renderSubmitted(makeAttempt({ status: 'graded' }));
 
     expect(screen.getByText('Экзамен проверен.')).toBeInTheDocument();

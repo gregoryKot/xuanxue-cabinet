@@ -34,42 +34,43 @@
 
 Отменённое решение не удаляется: статус меняется, добавляется ссылка на новое.
 
-| №                                                        | Решение                                                                  |
-| -------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [0001](0001-stack-nestjs-mongoose-react.md)              | NestJS + Mongoose + React, монорепо с `shared/`                          |
-| [0002](0002-single-service-railway-atlas.md)             | Один сервис на Railway, база в MongoDB Atlas                             |
-| [0003](0003-time-model-luxon.md)                         | Правила расписания в поясе школы, события в UTC, только Luxon            |
-| [0004](0004-idempotent-delivery-unique-index.md)         | Идемпотентная доставка через уникальный индекс, без Redis                |
-| [0005](0005-passwordless-auth.md)                        | Вход без паролей: email-ссылка, Telegram, Google; одна форма «вы»        |
-| [0006](0006-pwa-and-web-push.md)                         | Устанавливаемое приложение (PWA) и push как канал доставки               |
-| [0007](0007-quality-gates-ratchets.md)                   | Качество кода держат храповики в CI, а не договорённости                 |
-| [0008](0008-no-threads-channel.md)                       | Канала Threads нет: Telegram, ВК, ручной режим для Facebook              |
-| [0009](0009-domain-xuanxue-su.md)                        | Домен `xuanxue.su` — единый origin сайта, API, вебхука и писем           |
-| [0010](0010-school-scoped-data-roles.md)                 | Данные школы скоупятся по роли, не по владельцу                          |
-| [0011](0011-template-syntax.md)                          | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`            |
-| [0012](0012-session-hmac-jwt-builtin-crypto.md)          | Сессия: HMAC-JWT и cookie на встроенном crypto, rolling 90/7 дней        |
-| [0013](0013-model-module-breaks-domain-cycle.md)         | Отдельный модуль модели разрывает цикл Nest-модулей Classes ↔ Lessons    |
-| [0014](0014-delivery-lease-at-least-once.md)             | Доставка — at-least-once через лизинг захвата, не exactly-once           |
-| [0015](0015-telegram-chats-self-register-as-channels.md) | Каналы Telegram регистрирует бот, не админ                               |
-| [0016](0016-shared-cjs-and-vite.md)                      | `shared` остаётся CommonJS, web подключает его через `commonjsOptions`   |
-| [0017](0017-mongo-backups.md)                            | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions             |
-| [0018](0018-istanbul-coverage-for-web.md)                | Покрытие web через istanbul, не v8 — детерминированные пороги            |
-| [0019](0019-school-schedule-seeded-by-migration.md)      | Расписание школы приносит миграция, ссылки Zoom — экран «Занятия»        |
-| [0020](0020-telegram-login-redirect-on-touch.md)         | Вход через Telegram с телефона — переходом вкладки, не попапом           |
-| [0021](0021-exam-media-on-r2.md)                         | ~~Видео экзаменов — Cloudflare R2~~ — заменено ADR-0023                  |
-| [0022](0022-exam-model-item-bank-and-snapshot.md)        | Экзамен: банк вопросов с версиями, снимок формы в попытке, рубрика       |
-| [0023](0023-exam-video-via-telegram-and-links.md)        | Видео экзамена — сообщением боту и ссылкой, без своего хранилища         |
-| [0024](0024-bot-first-cabinet-as-fallback.md)            | Бот — первый интерфейс, кабинет — резервный                              |
-| [0025](0025-navigation-by-domain.md)                     | Навигация по доменам — четыре раздела вместо «Сводки» и «Настроек»       |
-| [0026](0026-student-access-after-confirmation.md)        | Ученик — `active` без ролей, роль `student` не нужна (см. ADR-0036)      |
-| [0027](0027-student-personal-channel-not-broadcast.md)   | Личный канал ученика — не канал школы, не получатель рассылок            |
-| [0028](0028-telegram-login-redirect-everywhere.md)       | Вход через Telegram — переходом вкладки на любом устройстве, без попапа  |
-| [0029](0029-email-login-via-resend-fetch.md)             | Вход по email-ссылке: Resend через fetch, без SDK                        |
-| [0030](0030-school-invite-link.md)                       | Ссылка-приглашение школы — вход и регистрация одним запросом (ADR-0036)  |
-| [0031](0031-visual-direction-quiet-and-noble.md)         | Визуальное направление «тихо и благородно» — шрифты и палитра фундамента |
-| [0032](0032-no-service-worker.md)                        | Service worker убран, манифест остаётся — килсвитч по старому адресу     |
-| [0033](0033-exam-as-question-list.md)                    | Экзамен для учителя — список вопросов; вопрос банка сразу опубликован    |
-| [0034](0034-link-telegram-to-existing-account.md)        | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link       |
-| [0035](0035-exam-option-images-in-mongo.md)              | Картинки вариантов ответа — в MongoDB, через свой API                    |
-| [0036](0036-no-pending-approval.md)                      | Статуса «ждёт подтверждения» больше нет — регистрация только по ссылке   |
-| [0037](0037-video-answer-belongs-to-question.md)         | Видео — ответ на вопрос: `media_assets.itemId`, а не вложение к попытке  |
+| №                                                        | Решение                                                                               |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [0001](0001-stack-nestjs-mongoose-react.md)              | NestJS + Mongoose + React, монорепо с `shared/`                                       |
+| [0002](0002-single-service-railway-atlas.md)             | Один сервис на Railway, база в MongoDB Atlas                                          |
+| [0003](0003-time-model-luxon.md)                         | Правила расписания в поясе школы, события в UTC, только Luxon                         |
+| [0004](0004-idempotent-delivery-unique-index.md)         | Идемпотентная доставка через уникальный индекс, без Redis                             |
+| [0005](0005-passwordless-auth.md)                        | Вход без паролей: email-ссылка, Telegram, Google; одна форма «вы»                     |
+| [0006](0006-pwa-and-web-push.md)                         | Устанавливаемое приложение (PWA) и push как канал доставки                            |
+| [0007](0007-quality-gates-ratchets.md)                   | Качество кода держат храповики в CI, а не договорённости                              |
+| [0008](0008-no-threads-channel.md)                       | Канала Threads нет: Telegram, ВК, ручной режим для Facebook                           |
+| [0009](0009-domain-xuanxue-su.md)                        | Домен `xuanxue.su` — единый origin сайта, API, вебхука и писем                        |
+| [0010](0010-school-scoped-data-roles.md)                 | Данные школы скоупятся по роли, не по владельцу                                       |
+| [0011](0011-template-syntax.md)                          | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`                         |
+| [0012](0012-session-hmac-jwt-builtin-crypto.md)          | Сессия: HMAC-JWT и cookie на встроенном crypto, rolling 90/7 дней                     |
+| [0013](0013-model-module-breaks-domain-cycle.md)         | Отдельный модуль модели разрывает цикл Nest-модулей Classes ↔ Lessons                 |
+| [0014](0014-delivery-lease-at-least-once.md)             | Доставка — at-least-once через лизинг захвата, не exactly-once                        |
+| [0015](0015-telegram-chats-self-register-as-channels.md) | Каналы Telegram регистрирует бот, не админ                                            |
+| [0016](0016-shared-cjs-and-vite.md)                      | `shared` остаётся CommonJS, web подключает его через `commonjsOptions`                |
+| [0017](0017-mongo-backups.md)                            | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions                          |
+| [0018](0018-istanbul-coverage-for-web.md)                | Покрытие web через istanbul, не v8 — детерминированные пороги                         |
+| [0019](0019-school-schedule-seeded-by-migration.md)      | Расписание школы приносит миграция, ссылки Zoom — экран «Занятия»                     |
+| [0020](0020-telegram-login-redirect-on-touch.md)         | Вход через Telegram с телефона — переходом вкладки, не попапом                        |
+| [0021](0021-exam-media-on-r2.md)                         | ~~Видео экзаменов — Cloudflare R2~~ — заменено ADR-0023                               |
+| [0022](0022-exam-model-item-bank-and-snapshot.md)        | Экзамен: банк вопросов с версиями, снимок формы в попытке — рубрика отменена ADR-0038 |
+| [0023](0023-exam-video-via-telegram-and-links.md)        | Видео экзамена — сообщением боту и ссылкой, без своего хранилища                      |
+| [0024](0024-bot-first-cabinet-as-fallback.md)            | Бот — первый интерфейс, кабинет — резервный                                           |
+| [0025](0025-navigation-by-domain.md)                     | Навигация по доменам — четыре раздела вместо «Сводки» и «Настроек»                    |
+| [0026](0026-student-access-after-confirmation.md)        | Ученик — `active` без ролей, роль `student` не нужна (см. ADR-0036)                   |
+| [0027](0027-student-personal-channel-not-broadcast.md)   | Личный канал ученика — не канал школы, не получатель рассылок                         |
+| [0028](0028-telegram-login-redirect-everywhere.md)       | Вход через Telegram — переходом вкладки на любом устройстве, без попапа               |
+| [0029](0029-email-login-via-resend-fetch.md)             | Вход по email-ссылке: Resend через fetch, без SDK                                     |
+| [0030](0030-school-invite-link.md)                       | Ссылка-приглашение школы — вход и регистрация одним запросом (ADR-0036)               |
+| [0031](0031-visual-direction-quiet-and-noble.md)         | Визуальное направление «тихо и благородно» — шрифты и палитра фундамента              |
+| [0032](0032-no-service-worker.md)                        | Service worker убран, манифест остаётся — килсвитч по старому адресу                  |
+| [0033](0033-exam-as-question-list.md)                    | Экзамен для учителя — список вопросов; вопрос банка сразу опубликован                 |
+| [0034](0034-link-telegram-to-existing-account.md)        | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link                    |
+| [0035](0035-exam-option-images-in-mongo.md)              | Картинки вариантов ответа — в MongoDB, через свой API                                 |
+| [0036](0036-no-pending-approval.md)                      | Статуса «ждёт подтверждения» больше нет — регистрация только по ссылке                |
+| [0037](0037-video-answer-belongs-to-question.md)         | Видео — ответ на вопрос: `media_assets.itemId`, а не вложение к попытке               |
+| [0038](0038-grading-without-rubric.md)                   | Проверка экзамена без рубрики и баллов — итог и комментарий учителя                   |

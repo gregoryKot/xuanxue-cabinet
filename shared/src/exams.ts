@@ -5,7 +5,6 @@
 // слой, здесь только контракт бэкенда.
 
 import type { ExamMediaDto } from './exam-media';
-import type { RubricCriterionDto, RubricCriterionInput } from './exam-rubric';
 
 export const EXAM_ITEM_KINDS = ['text', 'single', 'multiple', 'video'] as const;
 export type ExamItemKind = (typeof EXAM_ITEM_KINDS)[number];
@@ -153,7 +152,6 @@ export interface ExamDto {
   level: string; // для какого уровня; пустая строка — для всех
   blocks: ExamBlockDto[];
   shuffleOptions: boolean; // перемешивать варианты ответа у сдающего (ADR-0033)
-  rubric: RubricCriterionDto[];
   timeLimitMin?: number; // нет — без ограничения
   attemptsAllowed: number; // по умолчанию 1 (PLAN §11: «по умолчанию попытка одна»)
   status: ExamStatus;
@@ -168,7 +166,6 @@ export interface CreateExamInput {
   level?: string;
   blocks?: ExamBlockInput[];
   shuffleOptions?: boolean;
-  rubric?: RubricCriterionInput[]; // не прислали — сервис подставит DEFAULT_RUBRIC
   timeLimitMin?: number;
   attemptsAllowed?: number;
 }
@@ -185,7 +182,6 @@ export interface UpdateExamInput {
   level?: string | null;
   blocks?: ExamBlockInput[];
   shuffleOptions?: boolean;
-  rubric?: RubricCriterionInput[]; // прислали — заменяет набор целиком, как blocks
   timeLimitMin?: number | null;
   attemptsAllowed?: number;
   status?: ExamStatus;
@@ -207,10 +203,6 @@ export const EXAM_LIMITS = {
   itemsPerBlockMax: 50,
   timeLimitMinMax: 600,
   attemptsMax: 10,
-  rubricCriterionTitle: 120,
-  rubricCriterionDescription: 500,
-  rubricMax: 10,
-  rubricMaxScoreMax: 100,
 } as const;
 
 export const EXAM_NOT_FOUND_MESSAGE = 'Экзамен не найден. Обновите список.';

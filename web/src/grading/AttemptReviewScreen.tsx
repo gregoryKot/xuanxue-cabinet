@@ -2,7 +2,7 @@
 // маршрут, не полноэкранный лист — useHistorySheet не нужен (правило
 // CLAUDE.md касается `position: fixed; inset: 0`), «Назад» — обычная ссылка
 // на очередь, как «Вернуться к экзаменам» в attempt/AttemptSubmitted.tsx.
-// Две колонки на экране, где рубрике хватает места рядом с ответами (макет
+// Две колонки на экране, где проверке хватает места рядом с ответами (макет
 // Review.dc.html, класс `.xuanxue-review-layout` в index.css), одна — на
 // телефоне (CLAUDE.md «Мобильный экран первым» сильнее макета).
 //
@@ -28,9 +28,8 @@ import { AttemptReviewAnswers } from './AttemptReviewAnswers';
 import { GradingForm } from './GradingForm';
 import { useAttemptReview, type AttemptReviewVideoControls } from './useAttemptReview';
 
-const RUBRIC_HEADING_ID = 'grading-rubric-heading';
-const RUBRIC_HINT =
-  'Итог и комментарий уйдут ученику в Telegram сразу после отправки. Баллы по критериям он увидит в своём кабинете.';
+const GRADING_HEADING_ID = 'grading-heading';
+const GRADING_HINT = 'Итог и комментарий уйдут ученику в Telegram сразу после отправки.';
 
 export default function AttemptReviewScreen() {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -82,14 +81,13 @@ export default function AttemptReviewScreen() {
       <div className="xuanxue-review-layout">
         <AttemptReviewAnswers blocks={review.blocks} video={video} />
 
-        <aside aria-labelledby={RUBRIC_HEADING_ID}>
-          <h2 id={RUBRIC_HEADING_ID} style={screenColumnTitleStyle}>
-            Рубрика
+        <aside aria-labelledby={GRADING_HEADING_ID}>
+          <h2 id={GRADING_HEADING_ID} style={screenColumnTitleStyle}>
+            Проверка
           </h2>
-          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>{RUBRIC_HINT}</p>
+          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>{GRADING_HINT}</p>
           <GradingForm
             key={review.attemptId}
-            rubric={review.rubric}
             grading={review.grading}
             onSubmit={submitGrading}
             saving={saving}

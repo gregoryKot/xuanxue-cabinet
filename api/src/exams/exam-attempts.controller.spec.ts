@@ -100,7 +100,6 @@ describe('ExamAttemptsController', () => {
       userName: 'Ученик',
       status: 'submitted',
       blocks: [],
-      rubric: [],
       media: [],
     };
     const getReview = jest.fn().mockResolvedValue(reviewDto);
@@ -117,14 +116,13 @@ describe('ExamAttemptsController', () => {
       examId: 'e1',
       userId: 'u1',
       graderId: 'teacher1',
-      criteria: [],
       outcome: 'passed',
       gradedAt: '2026-09-12T10:00:00.000Z',
     };
     const grade = jest.fn().mockResolvedValue(gradingDto);
     const controller = await buildController({}, { grade });
     const teacher: UserLean = { ...USER, id: 'teacher1', roles: ['teacher'] };
-    const body = { criteria: [], outcome: 'passed' as const };
+    const body = { outcome: 'passed' as const };
 
     await expect(controller.grade('a1', body, teacher)).resolves.toEqual(gradingDto);
     expect(grade).toHaveBeenCalledWith('a1', 'teacher1', body, expect.anything());
