@@ -290,6 +290,94 @@ describe('useAttemptAutosave — дедлайн решает сервер', () =
   });
 });
 
+describe('useAttemptAutosave — закрытие вкладки', () => {
+  afterEach(() => {
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
+  });
+
+  it('pagehide с ожидающей правкой — PATCH сразу, не дожидаясь дебаунса', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('visibilitychange в hidden с ожидающей правкой — PATCH сразу', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('visibilitychange не в hidden (вернулись на вкладку) — запроса нет', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
+  it('без ожидающей правки — pagehide и visibilitychange ничего не шлют', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
+  it('размонтирование снимает слушатели — pagehide/visibilitychange после него молчат', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result, unmount } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    unmount();
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('useAttemptAutosave — брошенная попытка', () => {
   it('открывается с уже сохранёнными ответами, и дозапись шлёт только изменённый', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
