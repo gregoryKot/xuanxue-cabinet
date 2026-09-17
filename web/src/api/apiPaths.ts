@@ -69,6 +69,12 @@ export function attemptReviewPath(attemptId: string): string {
   return `${ATTEMPTS_PATH}/${attemptId}/review`;
 }
 
+/** Заготовки частых комментариев при проверке (слой 4.6, ADR-0041) — общий
+ * список школы, читают и «Экзамены» (число раздела), и карточка проверки
+ * (GradingCommentPresets.tsx). */
+export const GRADING_PRESETS_PATH = '/grading-presets';
+export const GRADING_PRESETS_LIST_PATH = `${GRADING_PRESETS_PATH}?limit=${LIST_LIMIT_MAX}`;
+
 export const CHANNELS_PATH = '/channels';
 
 /** `activeOnly` — «Каналы» показывает все (по умолчанию); «Расписание» и

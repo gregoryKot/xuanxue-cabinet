@@ -21,6 +21,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { formatExamImagesSummary } from '../exam-items/examImagesSummaryText';
 import { useExamImageStats } from '../exam-items/useExamImageStats';
 import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
+import { useGradingPresets } from '../grading/useGradingPresets';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
 import { matchesSearch } from '../lib/textSearch';
@@ -43,6 +44,7 @@ export default function ExamsScreen() {
   const [search, setSearch] = useState('');
   const { exams, loading, error, reload } = useExams(filters);
   const gradingQueue = useGradingQueue();
+  const gradingPresets = useGradingPresets();
   const itemStatsSummary = useExamItemStatsSummary();
   const imageStats = useExamImageStats();
   const navigate = useNavigate();
@@ -95,6 +97,7 @@ export default function ExamsScreen() {
         queueCount={gradingQueue.attempts?.length ?? null}
         strugglingCount={itemStatsSummary.summary?.strugglingCount ?? null}
         imagesSummary={formatExamImagesSummary(imageStats.stats)}
+        presetsCount={gradingPresets.presets?.length ?? null}
       />
     </section>
   );

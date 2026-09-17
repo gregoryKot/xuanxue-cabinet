@@ -263,6 +263,16 @@ export {
   defaultNotifications,
   isNotificationKind,
 } from './notifications';
+export type {
+  GradingCommentPresetDto,
+  CreateGradingCommentPresetInput,
+  UpdateGradingCommentPresetInput,
+  ListGradingCommentPresetsQuery,
+} from './grading-comment-preset';
+export {
+  GRADING_COMMENT_PRESET_LIMITS,
+  GRADING_COMMENT_PRESET_NOT_FOUND_MESSAGE,
+} from './grading-comment-preset';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

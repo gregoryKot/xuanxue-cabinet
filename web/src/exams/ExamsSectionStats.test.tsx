@@ -7,6 +7,7 @@ function renderStats(
   queueCount: number | null,
   strugglingCount: number | null,
   imagesSummary: string | null = null,
+  presetsCount: number | null = null,
 ) {
   return render(
     <MemoryRouter>
@@ -14,6 +15,7 @@ function renderStats(
         queueCount={queueCount}
         strugglingCount={strugglingCount}
         imagesSummary={imagesSummary}
+        presetsCount={presetsCount}
       />
     </MemoryRouter>,
   );
@@ -92,5 +94,29 @@ describe('ExamsSectionStats — картинки вариантов ответа
     renderStats(null, 0, 'Картинок к вопросам: 12 — 3,4 МБ');
 
     expect(screen.getByText('Картинок к вопросам: 12 — 3,4 МБ')).toBeInTheDocument();
+  });
+});
+
+describe('ExamsSectionStats — заготовки комментариев (ADR-0041)', () => {
+  it('число ещё не пришло — общий текст, без цифры', () => {
+    renderStats(null, null, null, null);
+
+    expect(
+      screen.getByText('Готовые фразы для комментария при проверке.'),
+    ).toBeInTheDocument();
+  });
+
+  it('заготовок пока нет — честный текст, не «0»', () => {
+    renderStats(null, null, null, 0);
+
+    expect(
+      screen.getByText('Пока нет заготовок — добавьте первую на карточке проверки.'),
+    ).toBeInTheDocument();
+  });
+
+  it('заготовки есть — число дописано к тексту', () => {
+    renderStats(null, null, null, 3);
+
+    expect(screen.getByText('3 заготовки для комментария.')).toBeInTheDocument();
   });
 });

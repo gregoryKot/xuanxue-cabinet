@@ -82,6 +82,11 @@ import {
   ExamImageSchema,
   EXAM_IMAGE_FIELD_POLICY,
 } from '../exam-images/exam-image.schema';
+import {
+  GradingCommentPresetRecord,
+  GradingCommentPresetSchema,
+  GRADING_COMMENT_PRESET_FIELD_POLICY,
+} from '../grading-presets/grading-comment-preset.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -160,5 +165,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: ExamImageRecord.name,
     schema: ExamImageSchema,
     fieldPolicy: EXAM_IMAGE_FIELD_POLICY,
+  },
+  {
+    name: GradingCommentPresetRecord.name,
+    schema: GradingCommentPresetSchema,
+    fieldPolicy: GRADING_COMMENT_PRESET_FIELD_POLICY,
   },
 ];

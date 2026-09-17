@@ -19,6 +19,7 @@ import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { ExamImagesModule } from './exam-images/exam-images.module';
 import { ExamsModule } from './exams/exams.module';
+import { GradingPresetsModule } from './grading-presets/grading-presets.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
@@ -67,6 +68,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     DeliveriesModule,
     ExamsModule,
     ExamImagesModule,
+    GradingPresetsModule,
     NotificationsModule,
     SettingsModule,
     SummaryModule,

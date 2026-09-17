@@ -12,7 +12,9 @@
 // агента: не выдумывать число, оставить прежний честный текст про путающие
 // вопросы (CLAUDE.md «Демо-данные в рантайм-коде не живут»). Вторая строка
 // того же блока — картинки вариантов ответа (ADR-0035, отдельное число: базу
-// растит не сам вопрос, а именно картинки).
+// растит не сам вопрос, а именно картинки). Заготовки частых комментариев
+// (ADR-0041) — строкой в блоке «Ждут проверки»: они существуют ради того же
+// экрана, отдельный третий блок дублировал бы смысл.
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { textLinkStyle } from '../components/screenLayout';
@@ -21,6 +23,7 @@ import {
   formatGradingQueueCountLabel,
   formatGradingQueueHint,
 } from '../grading/gradingQueueHint';
+import { formatGradingPresetsHint } from '../grading/gradingPresetsSummaryText';
 
 interface ExamsSectionStatsProps {
   /** `null` — список ещё грузится или сбой загрузки. */
@@ -30,6 +33,10 @@ interface ExamsSectionStatsProps {
   /** Готовая строка `formatExamImagesSummary` (ADR-0035) — `null` на чистой
    * базе, во время загрузки и при сбое: карточка тогда просто её не показывает. */
   imagesSummary: string | null;
+  /** Число заготовок частых комментариев (ADR-0041) — `null` во время
+   * загрузки и при сбое, честное «пока нет» на чистой базе
+   * (formatGradingPresetsHint). */
+  presetsCount: number | null;
 }
 
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 28 };
@@ -65,6 +72,7 @@ export function ExamsSectionStats({
   queueCount,
   strugglingCount,
   imagesSummary,
+  presetsCount,
 }: ExamsSectionStatsProps) {
   return (
     <div style={sectionStyle}>
@@ -80,6 +88,7 @@ export function ExamsSectionStats({
         ) : (
           <p style={captionStyle}>{formatGradingQueueHint(queueCount)}</p>
         )}
+        <p style={captionStyle}>{formatGradingPresetsHint(presetsCount)}</p>
         <Link to="/grading" style={linkStyle}>
           Открыть очередь
         </Link>
