@@ -25,10 +25,10 @@ interface FakeNotifier {
   notifyExamGraded: jest.Mock;
 }
 
-function fakeNotifier(behavior: 'ok' | 'throws' = 'ok'): FakeNotifier {
+function fakeNotifier(behavior: 'ok' | 'throws' = 'ok', recipients = 1): FakeNotifier {
   const impl =
     behavior === 'ok'
-      ? jest.fn().mockResolvedValue(undefined)
+      ? jest.fn().mockResolvedValue({ recipients })
       : jest.fn().mockRejectedValue(new Error('канал упал'));
   return { notifyAttemptSubmitted: impl, notifyExamGraded: impl };
 }
@@ -75,7 +75,7 @@ describe('CompositeExamNotifier', () => {
 
     await expect(
       buildComposite(telegram, mail).notifyAttemptSubmitted(ATTEMPT_CONTEXT, NOW),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ recipients: 1 });
     expect(mail.notifyAttemptSubmitted).toHaveBeenCalled();
   });
 
@@ -86,10 +86,156 @@ describe('CompositeExamNotifier', () => {
 
     await buildComposite(telegram, mail).notifyAttemptSubmitted(ATTEMPT_CONTEXT, NOW);
 
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('канал упал'),
-      expect.objectContaining({ attemptId: ATTEMPT_CONTEXT.attemptId }),
+    // Тот же warn, что раньше искали по attemptId, теперь несёт ещё examId
+    // и kind — ровно те же три ключа, что у нового error ниже: один формат
+    // ключей на оба уровня лога, не два разных.
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('канал упал'), {
+      attemptId: ATTEMPT_CONTEXT.attemptId,
+      examId: ATTEMPT_CONTEXT.examId,
+      kind: 'attempt_submitted',
+    });
+    warn.mockRestore();
+  });
+
+  // Раньше сбой всех каналов был виден только как N отдельных warn — их
+  // приходилось сопоставлять руками, чтобы понять, что уведомление не дошло
+  // никому. Один error с recipients === 0 — сигнал, который ищут по тексту
+  // в логах Railway, без сопоставления (CLAUDE.md «Логи и наблюдаемость»):
+  // тихий отказ — самая дорогая ошибка в продукте про рассылки.
+  it('оба канала не нашли адресата — ровно один error-лог, без userId в ключах', async () => {
+    const telegram = fakeNotifier('ok', 0);
+    const mail = fakeNotifier('ok', 0);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await buildComposite(telegram, mail).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
+
+    expect(result).toEqual({ recipients: 0 });
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith(
+      'exam.notify (composite): уведомление не ушло никому',
+      {
+        attemptId: ATTEMPT_CONTEXT.attemptId,
+        examId: ATTEMPT_CONTEXT.examId,
+        kind: 'attempt_submitted',
+      },
+    );
+    expect(error).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ userId: expect.anything() }),
+    );
+    error.mockRestore();
+  });
+
+  it('notifyExamGraded, оба канала без адресата — error с kind exam_result', async () => {
+    const telegram = fakeNotifier('ok', 0);
+    const mail = fakeNotifier('ok', 0);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const context = {
+      ...ATTEMPT_CONTEXT,
+      outcome: 'passed' as const,
+      comment: undefined,
+    };
+
+    const result = await buildComposite(telegram, mail).notifyExamGraded(context, NOW);
+
+    expect(result).toEqual({ recipients: 0 });
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith(
+      'exam.notify (composite): уведомление не ушло никому',
+      {
+        attemptId: ATTEMPT_CONTEXT.attemptId,
+        examId: ATTEMPT_CONTEXT.examId,
+        kind: 'exam_result',
+      },
+    );
+    error.mockRestore();
+  });
+
+  it('Telegram нашёл адресата, почта — нет: error не пишется, сумма из одного канала', async () => {
+    const telegram = fakeNotifier('ok', 3);
+    const mail = fakeNotifier('ok', 0);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await buildComposite(telegram, mail).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
+
+    expect(result).toEqual({ recipients: 3 });
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it('почта нашла адресата, Telegram — нет: error не пишется, сумма из одного канала', async () => {
+    const telegram = fakeNotifier('ok', 0);
+    const mail = fakeNotifier('ok', 2);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await buildComposite(telegram, mail).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
+
+    expect(result).toEqual({ recipients: 2 });
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it('канал бросил, второй нашёл адресата — warn есть, error не пишется', async () => {
+    const telegram = fakeNotifier('throws');
+    const mail = fakeNotifier('ok', 4);
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await buildComposite(telegram, mail).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
+
+    expect(result).toEqual({ recipients: 4 });
+    expect(warn).toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    warn.mockRestore();
+    error.mockRestore();
+  });
+
+  it('оба канала бросили — error есть, никому не дошло', async () => {
+    const telegram = fakeNotifier('throws');
+    const mail = fakeNotifier('throws');
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await buildComposite(telegram, mail).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
+
+    expect(result).toEqual({ recipients: 0 });
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error).toHaveBeenCalledWith(
+      'exam.notify (composite): уведомление не ушло никому',
+      {
+        attemptId: ATTEMPT_CONTEXT.attemptId,
+        examId: ATTEMPT_CONTEXT.examId,
+        kind: 'attempt_submitted',
+      },
     );
     warn.mockRestore();
+    error.mockRestore();
   });
 });

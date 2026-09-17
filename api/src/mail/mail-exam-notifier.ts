@@ -19,6 +19,7 @@ import type {
   AttemptSubmittedContext,
   ExamGradedContext,
   ExamNotifier,
+  ExamNotifyResult,
 } from '../exams/exam-notifier';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { PersonalChats } from '../telegram/personal-chats';
@@ -48,10 +49,10 @@ export class MailExamNotifier implements ExamNotifier {
   async notifyAttemptSubmitted(
     context: AttemptSubmittedContext,
     _now: DateTime,
-  ): Promise<void> {
+  ): Promise<ExamNotifyResult> {
     try {
       const recipients = await this.staffWithoutChat(ATTEMPT_SUBMITTED_KIND);
-      if (recipients.length === 0) return;
+      if (recipients.length === 0) return { recipients: 0 };
 
       const names = await this.userNamesService.namesByIds([context.userId]);
       const studentName = names.get(context.userId) ?? 'Ученик';
@@ -72,23 +73,28 @@ export class MailExamNotifier implements ExamNotifier {
           { attemptId: context.attemptId, kind: ATTEMPT_SUBMITTED_KIND },
         );
       }
+      return { recipients: recipients.length };
     } catch (err) {
       this.logger.warn(`exam.notifyAttemptSubmitted (почта): ${errorMessage(err)}`, {
         attemptId: context.attemptId,
       });
+      return { recipients: 0 };
     }
   }
 
-  async notifyExamGraded(context: ExamGradedContext, _now: DateTime): Promise<void> {
+  async notifyExamGraded(
+    context: ExamGradedContext,
+    _now: DateTime,
+  ): Promise<ExamNotifyResult> {
     try {
       const user = await this.usersService.findById(context.userId);
-      if (!user?.email) return;
+      if (!user?.email) return { recipients: 0 };
       const canSend = await this.isEnabledWithoutChat(
         context.userId,
         user.roles,
         EXAM_RESULT_KIND,
       );
-      if (!canSend) return;
+      if (!canSend) return { recipients: 0 };
 
       const { subject, text } = examGradedMail(
         context.examTitle,
@@ -107,10 +113,12 @@ export class MailExamNotifier implements ExamNotifier {
           kind: EXAM_RESULT_KIND,
         });
       }
+      return { recipients: 1 };
     } catch (err) {
       this.logger.warn(`exam.notifyExamGraded (почта): ${errorMessage(err)}`, {
         attemptId: context.attemptId,
       });
+      return { recipients: 0 };
     }
   }
 

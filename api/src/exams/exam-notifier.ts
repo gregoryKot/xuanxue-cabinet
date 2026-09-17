@@ -7,9 +7,10 @@
 // кого есть активный чат с ботом и включён этот вид уведомления; отправка —
 // best-effort и не должна ронять HTTP-ответ (CLAUDE.md «Логи и наблюдаемость»,
 // «Ошибки»): реализация ловит свои сбои сама (Logger.warn), а вызывающий
-// сервис не ждёт результата — Telegraf вне api/src/telegram и api/src/channels
-// запрещён eslint («Каналы»), поэтому порт живёт здесь, рядом с сервисами
-// экзамена, а не в telegram/.
+// сервис не ждёт результата — число адресатов из ExamNotifyResult читает
+// только CompositeExamNotifier, сервисам экзамена оно не нужно. Telegraf вне
+// api/src/telegram и api/src/channels запрещён eslint («Каналы»), поэтому
+// порт живёт здесь, рядом с сервисами экзамена, а не в telegram/.
 import type { DateTime } from 'luxon';
 import type { GradingOutcome } from '@xuanxue/shared';
 
@@ -32,16 +33,30 @@ export interface ExamGradedContext {
   comment?: string;
 }
 
+/** Сколько адресатов канал взялся уведомить этим вызовом — «пытались
+ * отправить», не «дошло»: доставку каждый канал проверяет и логирует сам.
+ * Сумму читает только CompositeExamNotifier: ноль по всем каналам — учитель
+ * или ученик, до которого не дотянулся никто, и это одна строка `error`
+ * вместо двух логов, которые пришлось бы сопоставлять руками (CLAUDE.md
+ * «Логи и наблюдаемость»: тихий отказ — самая дорогая ошибка). Вызывающие
+ * сервисы результат не читают — отправка остаётся best-effort. */
+export interface ExamNotifyResult {
+  recipients: number;
+}
+
 export interface ExamNotifier {
   /** Ровно один раз на попытку — вызывающий код гарантирует это местом
    * вызова (ровно там, где сам совершил переход в `submitted`), не
    * ExamNotifier: см. комментарий у `closeIfExpiredAttempt`
    * (exam-attempt-lifecycle.ts) и `ExamAttemptsService.submit`. */
-  notifyAttemptSubmitted(context: AttemptSubmittedContext, now: DateTime): Promise<void>;
+  notifyAttemptSubmitted(
+    context: AttemptSubmittedContext,
+    now: DateTime,
+  ): Promise<ExamNotifyResult>;
 
   /** На каждый вызов `ExamGradingsService.grade()`, включая переписанную
    * оценку — ученик должен узнать, что учитель поправил результат. */
-  notifyExamGraded(context: ExamGradedContext, now: DateTime): Promise<void>;
+  notifyExamGraded(context: ExamGradedContext, now: DateTime): Promise<ExamNotifyResult>;
 }
 
 export const EXAM_NOTIFIER = Symbol('EXAM_NOTIFIER');
