@@ -108,6 +108,20 @@ describe('computeExamItemStats', () => {
     expect(stats.askedCount).toBe(1);
     expect(stats.correctCount).toBe(0);
   });
+
+  // ADR-0035: imageId варианта — строку статистики иначе не с чем сопоставить.
+  it('imageId варианта доезжает в разбивку, без ключа — если его не было', () => {
+    const withImage: ExamItemOptionRecord[] = [
+      { id: 'o1', text: '', correct: true, imageId: 'img1' },
+      { id: 'o2', text: 'без картинки', correct: false },
+    ];
+    const acc = accumulateAttemptStats([attempt('i1', withImage, [])]);
+
+    const stats = computeExamItemStats('i1', 'single', withImage, acc);
+
+    expect(stats.options?.[0]?.imageId).toBe('img1');
+    expect(stats.options?.[1]).not.toHaveProperty('imageId');
+  });
 });
 
 describe('computeStrugglingCount', () => {

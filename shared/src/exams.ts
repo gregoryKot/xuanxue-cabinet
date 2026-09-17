@@ -13,21 +13,29 @@ export type ExamItemKind = (typeof EXAM_ITEM_KINDS)[number];
 export const EXAM_ITEM_STATUSES = ['draft', 'published', 'archived'] as const;
 export type ExamItemStatus = (typeof EXAM_ITEM_STATUSES)[number];
 
+/** `imageId` — картинка варианта (ADR-0035, `GET /exam-images/:id`): вариант
+ * может быть текстом, картинкой или тем и другим. `text` при картинке без
+ * подписи — пустая строка, не отсутствие поля: форма и снимок попытки
+ * всегда видят строку. */
 export interface ExamItemOptionDto {
   id: string;
   text: string;
   correct: boolean;
+  imageId?: string;
 }
 
 /** `id` есть у существующего варианта (сервис сохраняет его как есть при
  * правке — см. `mapOptions`, `exam-item-options.ts`); без `id` — новый
  * вариант, сервис создаёт `id` сам. Тот же приём, что у `ScheduleRuleInput`
  * (shared/src/classes.ts) — с `id` или без него, правка сохраняет или
- * заводит идентификатор одинаково. */
+ * заводит идентификатор одинаково. `text` необязателен: у варианта-картинки
+ * подписи может не быть, но хотя бы одно из двух — текст или `imageId` —
+ * сервис требует (OPTION_TEXT_OR_IMAGE_MESSAGE ниже). */
 export interface ExamItemOptionInput {
   id?: string;
-  text: string;
+  text?: string;
   correct?: boolean;
+  imageId?: string;
 }
 
 /** Прошлая редакция опубликованного вопроса — правка содержательного поля
@@ -103,6 +111,12 @@ export const EXAM_ITEM_LIMITS = {
 } as const;
 
 export const EXAM_ITEM_NOT_FOUND_MESSAGE = 'Вопрос не найден. Обновите список.';
+
+// Правило вариантов с картинками (ADR-0035): пустой вариант — ни текста, ни
+// картинки — не сохраняется; проверяет сервис (assertOptionsForKind), форма
+// повторяет проверку до отправки.
+export const OPTION_TEXT_OR_IMAGE_MESSAGE =
+  'У варианта ответа нужен текст или картинка. Впишите текст или добавьте картинку.';
 
 // Форма экзамена, собранная из вопросов банка (`/exams`, слой 4.3,
 // docs/PLAN.md §11, ADR-0022 + дополнение 2026-09-12). Форма ссылается на
@@ -214,10 +228,13 @@ export const EXAM_NOT_FOUND_MESSAGE = 'Экзамен не найден. Обн�
 export const EXAM_ATTEMPT_STATUSES = ['in_progress', 'submitted', 'graded'] as const;
 export type ExamAttemptStatus = (typeof EXAM_ATTEMPT_STATUSES)[number];
 
-/** Вариант в снимке — как его видит ученик: без отметки «верный». */
+/** Вариант в снимке — как его видит ученик: без отметки «верный».
+ * `imageId` — картинка варианта (ADR-0035): ученику она доступна по
+ * `GET /exam-images/:id` ровно потому, что стоит в снимке его попытки. */
 export interface AttemptOptionDto {
   id: string;
   text: string;
+  imageId?: string;
 }
 
 export interface AttemptQuestionDto {

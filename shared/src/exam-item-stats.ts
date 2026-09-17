@@ -20,6 +20,9 @@ interface ExamItemOptionStatsDto {
   text: string;
   correct: boolean;
   chosenCount: number;
+  /** Картинка варианта (ADR-0035) — иначе строку статистики у варианта без
+   * подписи не с чем сопоставить. */
+  imageId?: string;
 }
 
 export interface ExamItemStatsDto {

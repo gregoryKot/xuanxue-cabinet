@@ -35,8 +35,15 @@
 // него нет DI в обратную сторону (TelegramModule на ExamsModule не
 // импортируется — цикл), поэтому провайдер кладёт себя в
 // api/src/telegram/exam-bot.port.ts сам, без записи в exports.
+//
+// Импортирует ExamImagesModule ради ExamImagesService (слой 4.2, ADR-0035):
+// ExamItemsService проверяет через него существование картинки у варианта
+// перед записью. Цикла нет — ExamImagesModule импортирует только
+// ExamAttemptModelModule (тонкая регистрация модели попытки, без контроллеров
+// и остального ExamsModule), про ExamsModule он не знает.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ExamImagesModule } from '../exam-images/exam-images.module';
 import { MediaModule } from '../media/media.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
@@ -63,6 +70,7 @@ import { MyExamsService } from './my-exams.service';
     UsersModule,
     TelegramModule,
     MediaModule,
+    ExamImagesModule,
     MongooseModule.forFeature([
       { name: ExamItemRecord.name, schema: ExamItemSchema },
       { name: ExamRecord.name, schema: ExamSchema },

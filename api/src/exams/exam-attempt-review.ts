@@ -48,6 +48,9 @@ function toReviewOption(
     text: option.text,
     correct: option.correct,
     selected: selected.has(option.id),
+    // Ключа нет вовсе, если картинки не было (ADR-0035), как у остальных
+    // мапперов снимка.
+    ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
   };
 }
 

@@ -1,5 +1,5 @@
 // Чистая логика «что считать правкой» — без Mongo и DI (CLAUDE.md «Тесты»).
-import { hasContentChanged } from './exam-item-content-change';
+import { buildHistoryEntry, hasContentChanged } from './exam-item-content-change';
 import type { ExamItemOptionRecord } from './exam-item.schema';
 
 const OPTIONS: ExamItemOptionRecord[] = [
@@ -65,5 +65,23 @@ describe('hasContentChanged', () => {
     const changed = [...OPTIONS, { id: 'o3', text: 'Согнуть колени', correct: false }];
 
     expect(hasContentChanged({}, changed, CURRENT)).toBe(true);
+  });
+});
+
+describe('buildHistoryEntry', () => {
+  it('снимает содержательные поля текущей редакции с переданным replacedAt', () => {
+    const entry = buildHistoryEntry(
+      { ...CURRENT, version: 3 },
+      '2026-09-12T10:00:00.000Z',
+    );
+
+    expect(entry).toEqual({
+      version: 3,
+      prompt: CURRENT.prompt,
+      hint: CURRENT.hint,
+      criteria: CURRENT.criteria,
+      options: OPTIONS,
+      replacedAt: '2026-09-12T10:00:00.000Z',
+    });
   });
 });
