@@ -112,6 +112,7 @@ export type {
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
 } from './exams';
+export { formatOptionLabel } from './exam-option-label';
 export {
   EXAM_ITEM_KINDS,
   EXAM_ITEM_STATUSES,

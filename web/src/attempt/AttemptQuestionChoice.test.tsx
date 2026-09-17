@@ -67,3 +67,35 @@ describe('AttemptQuestionChoice', () => {
     expect(onChange).toHaveBeenCalledWith(['o2']);
   });
 });
+
+describe('AttemptQuestionChoice — картинка варианта (ADR-0035)', () => {
+  it('вариант без текста, с картинкой — radio находится по имени «Вариант N», картинка со своим src/alt', () => {
+    const options: AttemptOptionDto[] = [
+      { id: 'o1', text: '', imageId: 'img1' },
+      { id: 'o2', text: 'Влево' },
+    ];
+    render(
+      <>
+        <span id={PROMPT_ID}>Куда уходит вес?</span>
+        <AttemptQuestionChoice
+          labelledBy={PROMPT_ID}
+          itemId="i1"
+          kind="single"
+          options={options}
+          selected={[]}
+          onChange={vi.fn()}
+        />
+      </>,
+    );
+
+    expect(screen.getByRole('radio', { name: 'Вариант 1' })).toBeInTheDocument();
+    const image = screen.getByAltText('Вариант 1');
+    expect(image).toHaveAttribute('src', '/api/exam-images/img1');
+  });
+
+  it('вариант без картинки — <img> не рендерится', () => {
+    renderChoice('single', []);
+
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+});

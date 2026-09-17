@@ -99,6 +99,40 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     expect(screen.queryByText(/Выбрано верно/)).not.toBeInTheDocument();
   });
 
+  it('вариант с картинкой (ADR-0035) — миниатюра перед подписью, с нужным src', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({
+          kind: 'single',
+          options: [
+            { id: 'o1', text: '', correct: true, selected: true, imageId: 'img1' },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Вариант 1').closest('li')).toHaveTextContent(
+      'Вариант 1 — верный',
+    );
+    const image = screen.getByAltText('Вариант 1');
+    expect(image).toHaveAttribute('src', '/api/exam-images/img1');
+  });
+
+  it('вариант без картинки — миниатюра не рендерится', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({
+          kind: 'single',
+          options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+        })}
+      />,
+    );
+
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
   it('автопроверка без ошибок — метка «Верно»', () => {
     render(
       <AttemptReviewQuestion

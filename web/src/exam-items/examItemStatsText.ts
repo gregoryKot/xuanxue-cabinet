@@ -1,7 +1,7 @@
 // Человеческий текст статистики вопроса (ТЗ 4.8) — чистые функции, юнит-тест
 // без DOM (CLAUDE.md «Тесты»). pluralRu — общий примитив склонения
 // (shared/src/plural-ru.ts), по образцу grading/gradingQueueHint.ts.
-import { pluralRu, type ExamItemStatsDto } from '@xuanxue/shared';
+import { formatOptionLabel, pluralRu, type ExamItemStatsDto } from '@xuanxue/shared';
 
 const TIMES_FORMS = { one: 'раз', few: 'раза', many: 'раз', other: 'раза' };
 
@@ -27,11 +27,13 @@ export function formatAskedSummary(stats: ExamItemStatsDto): string {
   return `${base}, верно ответили ${stats.correctCount}.`;
 }
 
-/** Строка про один вариант — сколько раз выбрали, с пометкой верного. */
-export function formatOptionLine(option: ExamItemOptionStatsDto): string {
+/** Строка про один вариант — сколько раз выбрали, с пометкой верного.
+ * `index` — для подписи варианта без текста (formatOptionLabel, ADR-0035):
+ * «Вариант N», как на экране сдачи и в карточке проверки, не пустые кавычки. */
+export function formatOptionLine(option: ExamItemOptionStatsDto, index: number): string {
   const times = `${option.chosenCount} ${pluralRu(option.chosenCount, TIMES_FORMS)}`;
   const suffix = option.correct ? ' Верный вариант.' : '';
-  return `«${option.text}» — выбрали ${times}.${suffix}`;
+  return `«${formatOptionLabel(option.text, index)}» — выбрали ${times}.${suffix}`;
 }
 
 // Прописной падеж не меняется по числу («в двух экзаменах», «в пяти

@@ -1,7 +1,7 @@
 // Альбом картинок вариантов вопроса (ADR-0035, docs/PLAN.md §12 слой 4б.2) —
 // список «какую картинку показать и с какой подписью» перед экраном кнопок:
 // ученику нужно ВИДЕТЬ вариант, а не только прочитать «Вариант N»
-// (optionLabel, exam-question-screen.ts). Отправка — в
+// (formatOptionLabel из shared, exam-question-screen.ts). Отправка — в
 // exam-question-album-send.ts (файл-лимит CLAUDE.md, «сборка/отправка»):
 // здесь только чистая функция без Mongo и без Telegram.
 import type { AttemptQuestionDto } from '@xuanxue/shared';
@@ -21,7 +21,7 @@ function truncateCaptionText(text: string): string {
 }
 
 /** «Вопрос 3 — вариант 1[: текст]» — номера вопроса и варианта те же, что
- * уже видны на экране (headerLine/optionLabel, exam-question-screen.ts), так
+ * уже видны на экране (headerLine/formatOptionLabel, exam-question-screen.ts), так
  * фото и подпись кнопки читаются как один и тот же вариант. */
 function buildCaption(questionIndex: number, optionIndex: number, text: string): string {
   const base = `Вопрос ${questionIndex + 1} — вариант ${optionIndex + 1}`;

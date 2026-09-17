@@ -1,6 +1,6 @@
 // Чистая сборка альбома (без Mongo/Telegram) + отправка с фейковыми ctx и
 // ExamBotPort (CLAUDE.md «Тесты») — сборка и порядок совпадают с тем, что
-// видно на экране вопроса (headerLine/optionLabel, exam-question-screen.ts);
+// видно на экране вопроса (headerLine/formatOptionLabel, exam-question-screen.ts);
 // отправка — кэш file_id, деградация при сбое (ADR-0035, PLAN.md §12 слой 4б.2).
 import { Logger } from '@nestjs/common';
 import type { Context } from 'telegraf';
