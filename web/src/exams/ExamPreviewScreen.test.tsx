@@ -253,6 +253,27 @@ describe('ExamPreviewScreen — вопросы', () => {
     expect(screen.getByText('24')).toBeInTheDocument();
   });
 
+  it('вариант с картинкой (ADR-0035) — <img> виден с адресом по её id', async () => {
+    mockExamAndBank(
+      makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: false }] }),
+      [
+        makeItem({
+          id: 'i1',
+          kind: 'single',
+          options: [
+            { id: 'o1', text: '', correct: true, imageId: 'img1' },
+            { id: 'o2', text: '108', correct: false },
+          ],
+        }),
+      ],
+    );
+
+    renderAt('/exams/x1/preview');
+
+    const image = await screen.findByAltText('Вариант 1');
+    expect(image).toHaveAttribute('src', '/api/exam-images/img1');
+  });
+
   it('multiple — checkbox disabled', async () => {
     mockExamAndBank(
       makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: false }] }),

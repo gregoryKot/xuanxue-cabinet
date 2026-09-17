@@ -48,20 +48,26 @@ describe('formatOptionLine', () => {
   }
 
   it('верный вариант — пометка «Верный вариант»', () => {
-    expect(formatOptionLine(makeOption({ correct: true, chosenCount: 2 }))).toBe(
+    expect(formatOptionLine(makeOption({ correct: true, chosenCount: 2 }), 0)).toBe(
       '«пять» — выбрали 2 раза. Верный вариант.',
     );
   });
 
   it('неверный вариант — без пометки', () => {
-    expect(formatOptionLine(makeOption({ correct: false, chosenCount: 1 }))).toBe(
+    expect(formatOptionLine(makeOption({ correct: false, chosenCount: 1 }), 0)).toBe(
       '«пять» — выбрали 1 раз.',
     );
   });
 
   it('ни разу не выбрали — «0 раз», не пусто', () => {
-    expect(formatOptionLine(makeOption({ chosenCount: 0 }))).toBe(
+    expect(formatOptionLine(makeOption({ chosenCount: 0 }), 0)).toBe(
       '«пять» — выбрали 0 раз.',
+    );
+  });
+
+  it('вариант без текста (картинка) — «Вариант N» по индексу (ADR-0035)', () => {
+    expect(formatOptionLine(makeOption({ text: '', chosenCount: 3 }), 1)).toBe(
+      '«Вариант 2» — выбрали 3 раза.',
     );
   });
 });

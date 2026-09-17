@@ -7,6 +7,7 @@ import { planningWindow } from '../planning/planningWindow';
 import {
   channelsListPath,
   entityPath,
+  examImageSrc,
   examItemsListPath,
   examsListPath,
   lessonsListPath,
@@ -61,6 +62,14 @@ describe('entityPath', () => {
   it('собирает путь записи из пути коллекции и id', () => {
     expect(entityPath('/classes', '652f00000000000000000001')).toBe(
       '/classes/652f00000000000000000001',
+    );
+  });
+});
+
+describe('examImageSrc', () => {
+  it('собирает адрес картинки с префиксом /api для <img src>', () => {
+    expect(examImageSrc('652f00000000000000000001')).toBe(
+      '/api/exam-images/652f00000000000000000001',
     );
   });
 });

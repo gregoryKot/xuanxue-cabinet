@@ -127,6 +127,28 @@ describe('ExamItemStats — карточка с числами', () => {
     ).toBeInTheDocument();
   });
 
+  it('вариант с картинкой (ADR-0035) — миниатюра рядом со строкой статистики', async () => {
+    mockApiByPath({
+      '/exam-items': {
+        itemId: 'i1',
+        kind: 'single',
+        askedCount: 2,
+        usedInExamsCount: 0,
+        correctCount: 2,
+        correctRate: 1,
+        options: [{ id: 'o1', text: '', correct: true, chosenCount: 2, imageId: 'img1' }],
+      },
+    });
+
+    render(<ExamItemStats itemId="i1" />);
+
+    const image = await screen.findByAltText('Вариант 1');
+    expect(image).toHaveAttribute('src', '/api/exam-images/img1');
+    expect(
+      screen.getByText('«Вариант 1» — выбрали 2 раза. Верный вариант.'),
+    ).toBeInTheDocument();
+  });
+
   it('вопрос нигде не используется — предупреждения нет', async () => {
     mockApiByPath({
       '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0, usedInExamsCount: 0 },

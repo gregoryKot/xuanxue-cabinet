@@ -6,8 +6,13 @@
 // статус — короткой меткой справа от формулировки
 // (attemptReviewQuestionStatus.ts), как статус формы на строке списка
 // (exams/ExamCard.tsx).
+//
+// Картинка варианта (ADR-0035) — миниатюрой перед подписью: снимок попытки
+// несёт свой `imageId`, учитель видит ту же картинку, что видел сдающий;
+// подпись без текста — formatOptionLabel, тот же приём, что на сдаче.
 import type { CSSProperties } from 'react';
-import type { AttemptReviewQuestionDto } from '@xuanxue/shared';
+import { formatOptionLabel, type AttemptReviewQuestionDto } from '@xuanxue/shared';
+import { OptionImage } from '../components/OptionImage';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
 import { formatOptionsCheckSummary } from './optionsCheckSummary';
 
@@ -46,6 +51,7 @@ const optionsListStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 4,
 };
+const optionRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 };
 
 interface AttemptReviewQuestionProps {
   index: number;
@@ -78,11 +84,20 @@ export function AttemptReviewQuestion({ index, question }: AttemptReviewQuestion
 
       {hasOptions ? (
         <ul style={optionsListStyle}>
-          {question.options.map((option) => (
-            <li key={option.id}>
-              {option.text}
-              {option.correct && <strong> — верный</strong>}
-              {option.selected && <em> · выбрал ученик</em>}
+          {question.options.map((option, optionIndex) => (
+            <li key={option.id} style={optionRowStyle}>
+              {option.imageId && (
+                <OptionImage
+                  imageId={option.imageId}
+                  size="thumb"
+                  alt={formatOptionLabel(option.text, optionIndex)}
+                />
+              )}
+              <span>
+                {formatOptionLabel(option.text, optionIndex)}
+                {option.correct && <strong> — верный</strong>}
+                {option.selected && <em> · выбрал ученик</em>}
+              </span>
             </li>
           ))}
         </ul>

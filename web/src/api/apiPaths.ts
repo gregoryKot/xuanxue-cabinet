@@ -42,6 +42,16 @@ export function examsListPath(filters: ExamListFilters): string {
 export const EXAM_ITEMS_PATH = '/exam-items';
 export const EXAM_ITEM_STATS_SUMMARY_PATH = `${EXAM_ITEMS_PATH}/stats-summary`;
 
+const EXAM_IMAGES_PATH = '/exam-images';
+
+/** Адрес картинки варианта для `<img src>` (ADR-0035) — единственное место
+ * вне http.ts, где вручную собирается `/api`: это не запрос через apiFetch
+ * (JSON, конверт ошибок), а адрес ресурса, который сам загружает браузер, и
+ * кэширует его навсегда (`Cache-Control: immutable` на бэкенде). */
+export function examImageSrc(imageId: string): string {
+  return `/api${EXAM_IMAGES_PATH}/${imageId}`;
+}
+
 /** Пустой статус — «Все» (тот же приём, что раньше жил в useExamItems.ts). */
 export function examItemsListPath(status: ExamItemStatus | ''): string {
   const limit = `limit=${LIST_LIMIT_MAX}`;
