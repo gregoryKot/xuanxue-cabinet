@@ -2,14 +2,14 @@
 // вопросов бота (ТЗ 4б.2 часть 2) — в отличие от deep link «Отправить видео»
 // из кабинета (ADR-0023, StartHandler), тут есть активный экран вопроса, к
 // которому нужно вернуться: тот же приём, что exam-text-answer.handler.ts —
-// новым сообщением (replyAttemptScreen), редактировать нечего.
+// новым сообщением (presentAttemptScreen, via: 'reply'), редактировать нечего.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import { flattenAttemptQuestions } from './exam-question-screen';
-import { renderAttemptScreen, replyAttemptScreen } from './exam-question-render';
+import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
 
 export async function renderExamMediaAnswer(
   ctx: Context,
@@ -36,5 +36,10 @@ export async function renderExamMediaAnswer(
     nextIndex,
     now,
   );
-  await replyAttemptScreen(ctx, view);
+  await presentAttemptScreen(
+    ctx,
+    { examBot, user, chatId: telegramId, attemptId },
+    view,
+    { via: 'reply', withAlbum: true },
+  );
 }

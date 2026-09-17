@@ -144,6 +144,37 @@ describe('ExamImagesService', () => {
         service.load(new Types.ObjectId().toString(), userLean({ roles: ['teacher'] })),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
+
+    it('без сохранённого file_id — поле telegramFileId в LoadedExamImage отсутствует', async () => {
+      const dto = await service.upload(JPEG, new Types.ObjectId().toString());
+
+      const loaded = await service.load(dto.id, userLean({ roles: ['teacher'] }));
+
+      expect(loaded.telegramFileId).toBeUndefined();
+    });
+  });
+
+  describe('rememberTelegramFileId', () => {
+    const RAW_FILE_ID = 'AgACAgIAAxkBAAIB1_raw_telegram_file_id';
+
+    it('сырой документ хранит НЕ открытый file_id, load отдаёт его расшифрованным (слой 4б.2, ADR-0035)', async () => {
+      const dto = await service.upload(JPEG, new Types.ObjectId().toString());
+
+      await service.rememberTelegramFileId(dto.id, RAW_FILE_ID);
+
+      const raw = await imageModel.findById(dto.id).lean();
+      expect(raw?.telegramFileId).toBeDefined();
+      expect(raw?.telegramFileId).not.toBe(RAW_FILE_ID);
+
+      const loaded = await service.load(dto.id, userLean({ roles: ['teacher'] }));
+      expect(loaded.telegramFileId).toBe(RAW_FILE_ID);
+    });
+
+    it('невалидный id — тихо ничего не делает (защита в глубину, не пользовательский путь)', async () => {
+      await expect(
+        service.rememberTelegramFileId('abc', RAW_FILE_ID),
+      ).resolves.toBeUndefined();
+    });
   });
 
   describe('assertExist', () => {

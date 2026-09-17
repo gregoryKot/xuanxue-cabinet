@@ -3,8 +3,8 @@
 // тот же приём, что ExamMediaMessageHandler для 'examMedia': диспетчер по
 // виду ожидания — в message.handler.ts, сама механика — здесь. Сохраняет тем
 // же ExamBotPort.saveAnswer, что и вариант ответа (exam-attempt-answer.ts).
-// Следующий экран — НОВЫМ сообщением (replyAttemptScreen), не
-// editMessageText: пришло не нажатие кнопки, у входящего текстового
+// Следующий экран — НОВЫМ сообщением (presentAttemptScreen, via: 'reply'),
+// не editMessageText: пришло не нажатие кнопки, у входящего текстового
 // сообщения нет message_id экрана бота, который редактировать.
 //
 // Личность — через BotUserAccessService.resolve(), не напрямую
@@ -23,7 +23,7 @@ import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { examUserFacingError } from './exam-attempt-error';
 import { flattenAttemptQuestions } from './exam-question-screen';
-import { renderAttemptScreen, replyAttemptScreen } from './exam-question-render';
+import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
 
 const NOT_TEXT_MESSAGE = 'Ждём ответ текстом — пришлите его обычным сообщением.';
 
@@ -101,7 +101,12 @@ export class ExamTextAnswerHandler {
         questionIndex,
         now,
       );
-      await replyAttemptScreen(ctx, view);
+      await presentAttemptScreen(
+        ctx,
+        { examBot, user, chatId: telegramId, attemptId },
+        view,
+        { via: 'reply', withAlbum: true },
+      );
       return;
     }
 
@@ -125,6 +130,11 @@ export class ExamTextAnswerHandler {
       nextIndex,
       now,
     );
-    await replyAttemptScreen(ctx, view);
+    await presentAttemptScreen(
+      ctx,
+      { examBot, user, chatId: telegramId, attemptId },
+      view,
+      { via: 'reply', withAlbum: true },
+    );
   }
 }
