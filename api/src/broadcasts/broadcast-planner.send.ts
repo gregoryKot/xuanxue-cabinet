@@ -49,7 +49,7 @@ export async function sendLessonBroadcast(
 
   // Момент фактической отправки — startsAt минус leadMinutes класса, не
   // момент создания документа: тик может создать broadcast заранее, на
-  // PREVIEW_MINUTES раньше (окно расширено в decideBroadcast), чтобы бот
+  // settings.previewMinutes раньше (окно расширено в decideBroadcast), чтобы бот
   // успел прислать предпросмотр. `scheduledAt`/`nextAttemptAt` доставок —
   // этот момент, раннер заберёт их сам, когда он настанет (findClaimable).
   const sendAt = DateTime.fromJSDate(lesson.startsAt, { zone: 'utc' }).minus({
@@ -57,7 +57,7 @@ export async function sendLessonBroadcast(
   });
   // Текст рендерим на момент реальной отправки, а не на момент создания
   // документа — иначе «через {минут} минут» в посте, отправленном на
-  // PREVIEW_MINUTES раньше своего времени, отставало бы от реальности на эти
+  // settings.previewMinutes раньше своего времени, отставало бы от реальности на эти
   // же минуты. Догоняющий тик (sendAt уже в прошлом) — рендерим на `now`,
   // как раньше: минут до начала действительно меньше leadMinutes.
   const textNow = sendAt > now ? sendAt : now;

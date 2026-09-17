@@ -30,7 +30,21 @@ export interface ExamBlockRecord {
   title: string;
   itemIds: string[];
   shuffle: boolean;
-  required: boolean;
+  /** Историческое, в контракт не отдаётся (ADR-0033: «Блок обязателен» ни на
+   * что не влияло) — старые документы его хранят, переписывать их незачем:
+   * `blocks` зашифрован целиком, а следующее сохранение формы уберёт поле
+   * само (mapBlocks его больше не пишет). */
+  required?: boolean;
+}
+
+/** Критерий рубрики как он хранится в базе (внутри `rubric`, строка JSON) —
+ * `id` генерирует сервис (keepOrGenerateId, sub-id.ts), тем же приёмом, что
+ * блок формы выше. Форма совпадает с `RubricCriterionDto` из shared. */
+export interface RubricCriterionRecord {
+  id: string;
+  title: string;
+  description: string;
+  maxScore: number;
 }
 
 const DEFAULT_ATTEMPTS_ALLOWED = 1;
@@ -49,6 +63,22 @@ export class ExamRecord {
   // Хранится строкой целиком (encJson) — см. комментарий в начале файла.
   @Prop({ type: String, default: '[]' })
   blocks!: string;
+
+  // Рубрика проверки (слой 4.6, ТЗ 4.6, п.1) — хранится строкой целиком
+  // (encJson), тем же приёмом, что `blocks`: текст критерия свободный, а
+  // encryptRecord/decryptRecord шифруют только поля верхнего уровня
+  // документа. Новый экзамен получает набор по умолчанию не здесь (схемный
+  // default молчаливо разошёлся бы с `DEFAULT_RUBRIC` в shared при правке
+  // одного без другого) — его подставляет `ExamsService.create`
+  // (exam-rubric.ts, `defaultRubric()`).
+  @Prop({ type: String, default: '[]' })
+  rubric!: string;
+
+  // Перемешивать варианты ответа внутри вопроса у каждого сдающего
+  // (ADR-0033). Перемешивание вопросов живёт у блока (`blocks[].shuffle`), а
+  // это — у формы: вариантами оно распоряжается одинаково по всему экзамену.
+  @Prop({ type: Boolean, default: false })
+  shuffleOptions!: boolean;
 
   @Prop({ type: Number, required: false })
   timeLimitMin?: number;
@@ -75,8 +105,10 @@ export const EXAM_FIELD_POLICY: FieldPolicy = {
   title: enc,
   description: enc,
   blocks: encJson,
+  rubric: encJson,
   level: plain('фильтр в списке; не персональные данные'),
   status: plain('перечисление, нужно для выборок'),
+  shuffleOptions: plain('флаг, не персональные данные'),
 };
 
 /** Схема шифрования формы — одна на все места чтения и записи (сервис,

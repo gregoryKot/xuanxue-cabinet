@@ -1,13 +1,16 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты») — условный апдейт previewSentAt
-// ДО отправки, окно PREVIEW_MINUTES, кнопки; TeacherChats/TelegramBotService —
-// фейки (сеть проверяют их собственные спеки).
+// ДО отправки, окно settings.previewMinutes, кнопки; PersonalChats/
+// TelegramBotService/SettingsService — фейки (сеть/база проверяют
+// собственные спеки, settings.service.spec.ts).
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
+import { DEFAULT_PREVIEW_MINUTES } from '@xuanxue/shared';
 import { claimOnce } from '../common/claim-once';
 import { encryptSchemaFrom } from '../common/field-policy';
 import { encryptRecord } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import type { TeacherChat } from '../telegram/teacher-chats';
+import type { SettingsService } from '../settings/settings.service';
+import type { PersonalChat } from '../telegram/personal-chats';
 import type { TelegramBotService } from '../telegram/telegram-bot.service';
 import {
   BROADCAST_FIELD_POLICY,
@@ -18,10 +21,10 @@ import { PreviewService } from './preview.service';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 const ENCRYPT_SCHEMA = encryptSchemaFrom(BROADCAST_FIELD_POLICY);
-const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
+const CHAT: PersonalChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
-function fakeTeacherChats(chats: TeacherChat[] = [CHAT]) {
-  return { list: jest.fn().mockResolvedValue(chats) };
+function fakePersonalChats(chats: PersonalChat[] = [CHAT]) {
+  return { listFor: jest.fn().mockResolvedValue(chats) };
 }
 
 function fakeBot(): {
@@ -32,6 +35,15 @@ function fakeBot(): {
       .fn<Promise<void>, [string, string, unknown[][]?]>()
       .mockResolvedValue(undefined),
   };
+}
+
+// previewMinutes — настройка школы (SettingsService.get()), не константа:
+// фейк с get(), не реальный сервис с Mongo (CLAUDE.md «Тесты» — юнит без
+// лишней зависимости там, где чистой логики достаточно).
+function fakeSettings(previewMinutes = DEFAULT_PREVIEW_MINUTES): SettingsService {
+  return {
+    get: jest.fn().mockResolvedValue({ previewMinutes }),
+  } as unknown as SettingsService;
 }
 
 describe('PreviewService.sendPending', () => {
@@ -72,14 +84,15 @@ describe('PreviewService.sendPending', () => {
     );
   }
 
-  it('в окне PREVIEW_MINUTES — шлёт каждому учителю, ставит previewSentAt', async () => {
+  it('в окне settings.previewMinutes (дефолт) — шлёт каждому учителю, ставит previewSentAt', async () => {
     const broadcast = await createBroadcast();
     const bot = fakeBot();
-    const teacherChats = fakeTeacherChats();
+    const personalChats = fakePersonalChats();
     const service = new PreviewService(
       broadcastModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);
@@ -107,8 +120,9 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     await service.sendPending(NOW);
@@ -122,8 +136,9 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);
@@ -132,18 +147,42 @@ describe('PreviewService.sendPending', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('scheduledAt дальше PREVIEW_MINUTES — ещё рано', async () => {
+  it('scheduledAt дальше settings.previewMinutes (дефолт) — ещё рано', async () => {
     await createBroadcast({ scheduledAt: NOW.plus({ minutes: 10 }).toJSDate() });
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);
 
     expect(result).toEqual({ claimed: 0 });
+  });
+
+  // ТЗ preview-minutes.md: значение из настроек реально меняет окно
+  // «пора показывать», не только дефолт — то же scheduledAt, что «ещё рано»
+  // выше с previewMinutes=5, становится «пора» с previewMinutes=10.
+  it('previewMinutes из настроек шире дефолта — раньше входит в окно', async () => {
+    const broadcast = await createBroadcast({
+      scheduledAt: NOW.plus({ minutes: 8 }).toJSDate(),
+    });
+    const bot = fakeBot();
+    const service = new PreviewService(
+      broadcastModel,
+      fakePersonalChats() as never,
+      bot as unknown as TelegramBotService,
+      fakeSettings(10),
+    );
+
+    const result = await service.sendPending(NOW);
+
+    expect(result).toEqual({ claimed: 1 });
+    expect(bot.sendMessage).toHaveBeenCalledTimes(1);
+    const updated = await broadcastModel.findById(broadcast._id).lean();
+    expect(updated?.previewSentAt).toBeInstanceOf(Date);
   });
 
   it('scheduledAt в прошлом (догоняющий тик / легаси scheduled) — предпросмотр не шлём', async () => {
@@ -151,8 +190,9 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);
@@ -161,21 +201,38 @@ describe('PreviewService.sendPending', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
   });
 
-  it('несколько due рассылок — teacherChats.list зовётся один раз на весь тик', async () => {
+  it('несколько due рассылок — personalChats.listFor зовётся один раз на весь тик', async () => {
     await createBroadcast();
     await createBroadcast();
     const bot = fakeBot();
-    const teacherChats = fakeTeacherChats();
+    const personalChats = fakePersonalChats();
     const service = new PreviewService(
       broadcastModel,
-      teacherChats as never,
+      personalChats as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);
 
     expect(result).toEqual({ claimed: 2 });
-    expect(teacherChats.list).toHaveBeenCalledTimes(1);
+    expect(personalChats.listFor).toHaveBeenCalledTimes(1);
+  });
+
+  it('спрашивает PersonalChats именно про post_draft, не другой вид', async () => {
+    await createBroadcast();
+    const bot = fakeBot();
+    const personalChats = fakePersonalChats();
+    const service = new PreviewService(
+      broadcastModel,
+      personalChats as never,
+      bot as unknown as TelegramBotService,
+      fakeSettings(),
+    );
+
+    await service.sendPending(NOW);
+
+    expect(personalChats.listFor).toHaveBeenCalledWith('post_draft', NOW);
   });
 
   it('рассылка уже не scheduled (раннер успел раньше) — предпросмотр не шлёт', async () => {
@@ -183,8 +240,9 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);
@@ -223,8 +281,9 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats() as never,
+      fakePersonalChats() as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);
@@ -240,8 +299,9 @@ describe('PreviewService.sendPending', () => {
     const bot = fakeBot();
     const service = new PreviewService(
       broadcastModel,
-      fakeTeacherChats([]) as never,
+      fakePersonalChats([]) as never,
       bot as unknown as TelegramBotService,
+      fakeSettings(),
     );
 
     const result = await service.sendPending(NOW);

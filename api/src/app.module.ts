@@ -17,7 +17,9 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
+import { ExamImagesModule } from './exam-images/exam-images.module';
 import { ExamsModule } from './exams/exams.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
 import { HealthController } from './health/health.controller';
@@ -25,6 +27,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { SeedModule } from './seed/seed.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { staticAssetsOptions } from './static/static-cache-control';
 
 @Module({
   imports: [
@@ -63,6 +66,8 @@ import { TelegramModule } from './telegram/telegram.module';
     BroadcastsModule,
     DeliveriesModule,
     ExamsModule,
+    ExamImagesModule,
+    NotificationsModule,
     SettingsModule,
     SummaryModule,
     UsersModule,
@@ -75,10 +80,11 @@ import { TelegramModule } from './telegram/telegram.module';
     AuthModule,
     TelegramModule,
     // Раздаёт web/dist с корня, /api/* остаётся за контроллерами Nest.
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'web', 'dist'),
-      exclude: ['/api/{*splat}'],
-    }),
+    // Заголовки кеша (хэшированные ассеты — на год, index.html/sw.js —
+    // no-cache) живут в static/static-cache-control.ts вместе с тестом.
+    ServeStaticModule.forRoot(
+      staticAssetsOptions(join(__dirname, '..', '..', 'web', 'dist')),
+    ),
   ],
   controllers: [HealthController],
   providers: [DomainExceptionFilter, { provide: APP_GUARD, useClass: ThrottlerGuard }],

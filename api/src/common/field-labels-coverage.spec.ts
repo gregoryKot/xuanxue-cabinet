@@ -7,6 +7,7 @@
 // список, иначе его поля тест не увидит.
 import { getMetadataStorage } from 'class-validator';
 import { FIELD_LABELS_RU } from '@xuanxue/shared';
+import { JoinByInviteDto } from '../auth/join-by-invite.dto';
 import { TelegramLoginDto } from '../auth/telegram-login.dto';
 import { CreateBroadcastDto } from '../broadcasts/dto/create-broadcast.dto';
 import { ListBroadcastsDto } from '../broadcasts/dto/list-broadcasts.dto';
@@ -33,6 +34,7 @@ import { AddRecordingDto } from '../lessons/dto/add-recording.dto';
 import { CreateLessonDto } from '../lessons/dto/create-lesson.dto';
 import { ListLessonsDto } from '../lessons/dto/list-lessons.dto';
 import { UpdateLessonDto } from '../lessons/dto/update-lesson.dto';
+import { UpdateNotificationPrefsDto } from '../notifications/dto/update-notification-prefs.dto';
 import { PreviewSettingsDto } from '../settings/dto/preview-settings.dto';
 import {
   UpdateSettingsDto,
@@ -50,6 +52,7 @@ type DtoConstructor = new (...args: never[]) => object;
 // добавлены отдельной строкой.
 const DTO_CLASSES: DtoConstructor[] = [
   TelegramLoginDto,
+  JoinByInviteDto,
   CreateBroadcastDto,
   ListBroadcastsDto,
   CreateChannelDto,
@@ -75,6 +78,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   CreateLessonDto,
   ListLessonsDto,
   UpdateLessonDto,
+  UpdateNotificationPrefsDto,
   PreviewSettingsDto,
   UpdateSettingsDto,
   UpdateTemplatesDto,

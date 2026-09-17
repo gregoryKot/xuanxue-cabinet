@@ -26,6 +26,15 @@ describe('GET /auth/config (e2e), без BOT_TOKEN', () => {
     const body = res.body as AuthConfigDto;
     expect(body.telegramBotId).toBeUndefined();
     expect(body.schoolSiteUrl).toBeUndefined();
-    expect(Object.keys(body)).toEqual([]);
+    expect(Object.keys(body)).toEqual(['emailLoginEnabled']);
+  });
+
+  // Без RESEND_API_KEY/MAIL_FROM (createTestApp по умолчанию их не ставит,
+  // см. e2e-support/create-app.ts) — форма почты не должна появляться на
+  // экране входа (ADR-0029).
+  it('без RESEND_API_KEY/MAIL_FROM — emailLoginEnabled: false', async () => {
+    const res = await request(testApp.app.getHttpServer()).get('/api/auth/config');
+
+    expect((res.body as AuthConfigDto).emailLoginEnabled).toBe(false);
   });
 });

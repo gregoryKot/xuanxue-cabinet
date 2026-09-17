@@ -29,6 +29,14 @@ export type DeliveryOutcome =
  * индекс выходит за пределы массива (или `retryable: false`) — повторов
  * больше нет, доставка `failed` и учителя нужно уведомить.
  */
+// Запас сверх retry_after — сам лимит снимается ровно в названную секунду,
+// секунда паузы страхует от гонки часов раннера и Telegram (M2).
+const RETRY_AFTER_SAFETY_MARGIN_SEC = 1;
+
+function retryAfterMessage(seconds: number): string {
+  return `Telegram просит подождать ${seconds} с.`;
+}
+
 export function nextDeliveryOutcome(
   result: SendResult,
   attemptsBefore: number,
@@ -44,11 +52,33 @@ export function nextDeliveryOutcome(
   if (delayMin === undefined) {
     return { status: 'failed', attempts, error: result.error, notifyTeacher: true };
   }
+
+  const standardAttemptAt = now.plus({ minutes: delayMin });
+  const retryAfterSec = result.retryAfterSec;
+  if (retryAfterSec === undefined) {
+    return {
+      status: 'pending',
+      attempts,
+      nextAttemptAt: standardAttemptAt.toJSDate(),
+      error: result.error,
+    };
+  }
+
+  // Telegram сам называет минимальное время ожидания (429, `parameters.retry_after`) —
+  // повтор раньше него упрётся в тот же лимит (аудит M2,
+  // docs/audits/2026-09-12-quality-audit.md).
+  const retryAfterAttemptAt = now.plus({
+    seconds: retryAfterSec + RETRY_AFTER_SAFETY_MARGIN_SEC,
+  });
+  const nextAttemptAt =
+    retryAfterAttemptAt.toMillis() > standardAttemptAt.toMillis()
+      ? retryAfterAttemptAt
+      : standardAttemptAt;
   return {
     status: 'pending',
     attempts,
-    nextAttemptAt: now.plus({ minutes: delayMin }).toJSDate(),
-    error: result.error,
+    nextAttemptAt: nextAttemptAt.toJSDate(),
+    error: retryAfterMessage(retryAfterSec),
   };
 }
 

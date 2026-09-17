@@ -1,20 +1,22 @@
-// Общие заготовки для спеков TelegramBotService (маршрутизация и старт):
-// один токен-заглушка, ожидание fire-and-forget промисов bootstrap, фейки
-// конфига и хендлеров, апдейты по образцу документации Telegram. Вынесены,
-// чтобы два спека не дублировали блок (jscpd) и укладывались в 300 строк.
+// Общие заготовки для спеков TelegramBotService: токен-заглушка, ожидание
+// fire-and-forget промисов bootstrap, фейки конфига/хендлеров, апдейты по
+// образцу Telegram — вынесены, иначе два спека дублировали бы блок (jscpd).
 import type { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { Update } from 'telegraf/types';
 import type { CallbackQueryHandler } from '../handlers/callback-query.handler';
+import type { ExamCommandHandler } from '../handlers/exam-command.handler';
+import type { MenuCommandHandler } from '../handlers/menu-command.handler';
 import type { MessageHandler } from '../handlers/message.handler';
+import type { NotificationsCommandHandler } from '../handlers/notifications-command.handler';
 import type { TopicCommandHandler } from '../handlers/topic-command.handler';
+import { BotIdentityService } from '../bot-identity.service';
 
 export const TOKEN = '123456:test-token-not-real-0000000000';
 
-// Ждём, пока разрешатся все текущие микрозадачи и очередная задача цикла
-// событий — fire-and-forget промисы bootstrap (ensureBotInfo/registerWebhook)
-// успевают дойти до своего .catch() до следующей проверки.
+// Ждём цикл событий — fire-and-forget промисы bootstrap успевают дойти до
+// своего .catch()/.then() до следующей проверки.
 export function flush(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
 }
@@ -27,9 +29,8 @@ export function fakeHandler(): { handle: jest.Mock<Promise<void>, [Context]> } {
   return { handle: jest.fn<Promise<void>, [Context]>().mockResolvedValue(undefined) };
 }
 
-/** callback_query/`/тема`/message — хендлеры с сигнатурой `handle(ctx, now)`
- * (CLAUDE.md «Время»: TelegramBotService сам зовёт DateTime.utc() на каждый
- * апдейт и передаёт хендлеру). */
+/** callback_query/`/тема`/message — `handle(ctx, now)` (CLAUDE.md «Время»:
+ * TelegramBotService зовёт DateTime.utc() на каждый апдейт). */
 export function fakeHandlerWithNow(): {
   handle: jest.Mock<Promise<void>, [Context, DateTime]>;
 } {
@@ -38,17 +39,26 @@ export function fakeHandlerWithNow(): {
   };
 }
 
-/** callback_query/`/тема`/message-хендлеры — маршрутизацию каждого из них (и
- * что им приходит свежий DateTime.utc()) проверяет telegram-bot.service.spec.ts. */
+/** callback_query/`/тема`/`/уведомления`/message/`/экзамены` — маршрутизацию
+ * проверяют telegram-bot.service.spec.ts/register-handlers.exams.spec.ts.
+ * BotIdentityService в хвосте — настоящий инстанс, не мок (ADR-0030). */
 export function fakeExtraHandlers(): [
   CallbackQueryHandler,
   TopicCommandHandler,
+  NotificationsCommandHandler,
+  MenuCommandHandler,
   MessageHandler,
+  ExamCommandHandler,
+  BotIdentityService,
 ] {
   return [
     fakeHandlerWithNow() as unknown as CallbackQueryHandler,
     fakeHandlerWithNow() as unknown as TopicCommandHandler,
+    fakeHandlerWithNow() as unknown as NotificationsCommandHandler,
+    fakeHandlerWithNow() as unknown as MenuCommandHandler,
     fakeHandlerWithNow() as unknown as MessageHandler,
+    fakeHandlerWithNow() as unknown as ExamCommandHandler,
+    new BotIdentityService(),
   ];
 }
 

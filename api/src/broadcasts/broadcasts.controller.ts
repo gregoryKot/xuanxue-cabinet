@@ -1,6 +1,6 @@
 // GET/POST /broadcasts, GET /broadcasts/:id, GET /broadcasts/:id/deliveries,
 // POST /broadcasts/:id/cancel — журнал и разовая рассылка (docs/PLAN.md §6
-// «Рассылки»), доступ только учителю/админу (данные школы, ADR-0010).
+// «Рассылки»), доступ учителю, помощнику учителя и админу (данные школы, ADR-0010).
 import {
   Body,
   Controller,
@@ -20,7 +20,7 @@ import { CreateBroadcastDto } from './dto/create-broadcast.dto';
 import { ListBroadcastsDto } from './dto/list-broadcasts.dto';
 
 @Controller('broadcasts')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class BroadcastsController {
   constructor(private readonly broadcastsService: BroadcastsService) {}
 

@@ -1,12 +1,16 @@
-// Экран теперь сам выходит из кабинета (кнопка переехала из шапки AppShell),
-// поэтому ему нужны и роутер, и AuthProvider — как в настоящем дереве.
+// Сборка экрана ученика (ТЗ student-screen.md, student-exams.md): занятия и
+// экзамены рисуют свои разделы (проверки — в student/), здесь — приветствие
+// по имени, заголовок раздела и ссылка на сайт школы поверх них. Четыре
+// запроса сразу (/auth/me, /auth/config, /me/lessons, /me/exams) —
+// mockApiByPath, а не очередь mockResolvedValueOnce (test-support/
+// apiFetchMock.ts: порядок запросов зависит от порядка хуков).
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
+import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { StudentScreen } from './StudentScreen';
 
 vi.mock('../api/http', async () => {
@@ -16,63 +20,66 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-function renderStudent(config: Record<string, unknown>) {
-  mockedApiFetch.mockImplementation((path: string) => {
-    if (path === '/auth/config') return Promise.resolve(config);
-    if (path === '/auth/me')
-      return Promise.resolve({
-        id: 'u2',
-        name: 'Ученик',
-        roles: ['student'],
-        tz: 'Asia/Jerusalem',
-      });
-    if (path === '/auth/logout') return Promise.resolve(undefined);
-    return Promise.reject(new Error(`неожиданный путь: ${path}`));
-  });
+const STUDENT: MeDto = {
+  id: 's1',
+  name: 'Мария',
+  roles: [],
+  tz: 'Asia/Jerusalem',
+  status: 'active',
+  telegramLinked: false,
+};
 
+function renderStudent(config: Record<string, unknown>, me: MeDto | Error = STUDENT) {
+  mockApiByPath({
+    '/auth/me': me,
+    '/auth/config': config,
+    '/me/lessons': [],
+    '/me/exams': [],
+  });
+  // MemoryRouter — StudentExamsSection зовёт useNavigate (переход на экран
+  // сдачи после старта попытки), которому нужен контекст роутера.
   return render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<StudentScreen />} />
-          <Route path="/login" element={<p>Экран входа</p>} />
-        </Routes>
+        <StudentScreen />
       </AuthProvider>
     </MemoryRouter>,
   );
 }
 
 describe('StudentScreen', () => {
-  it('учитель заполнил адрес сайта школы — ссылка на сайт', async () => {
+  it('здоровается по имени и называет раздел заголовком', async () => {
+    renderStudent({});
+
+    expect(await screen.findByText('Здравствуйте, Мария')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Ближайшее занятие' }),
+    ).toBeInTheDocument();
+    // Чей это час — сказано прямо: школа может жить в другом поясе
+    // (CLAUDE.md «Время»).
+    expect(screen.getByText('Время — по вашим часам.')).toBeInTheDocument();
+  });
+
+  it('имени ещё нет — здороваемся без него, без прочерка', async () => {
+    renderStudent({}, new Error('нет сессии'));
+
+    expect(await screen.findByText('Здравствуйте')).toBeInTheDocument();
+  });
+
+  it('учитель заполнил адрес сайта школы — ссылка ниже расписания', async () => {
     renderStudent({ schoolSiteUrl: 'https://xuanxue.su' });
 
-    expect(screen.getByText('Кабинет для учителя.')).toBeInTheDocument();
-    expect(
-      await screen.findByRole('link', { name: 'https://xuanxue.su' }),
-    ).toHaveAttribute('href', 'https://xuanxue.su');
-    expect(screen.queryByText('Расписание вам пришлёт учитель.')).not.toBeInTheDocument();
-  });
-
-  it('без адреса сайта школы — без ссылки, текст «Расписание вам пришлёт учитель»', () => {
-    renderStudent({});
-
-    expect(screen.getByText('Кабинет для учителя.')).toBeInTheDocument();
-    expect(screen.getByText('Расписание вам пришлёт учитель.')).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
-
-  // До «Настроек» ученик не доходит — навигации у него нет, поэтому выход
-  // обязан быть здесь.
-  it('«Выйти» — POST /auth/logout и переход на вход', async () => {
-    const user = userEvent.setup();
-    renderStudent({});
-
-    await user.click(screen.getByRole('button', { name: 'Выйти' }));
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/auth/logout',
-      expect.objectContaining({ method: 'POST' }),
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'https://xuanxue.su' })).toHaveAttribute(
+      'href',
+      'https://xuanxue.su',
     );
-    expect(await screen.findByText('Экран входа')).toBeInTheDocument();
+  });
+
+  it('без адреса сайта школы — без ссылки', async () => {
+    renderStudent({});
+
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });

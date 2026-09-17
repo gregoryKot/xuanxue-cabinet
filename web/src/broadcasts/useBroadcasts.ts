@@ -1,13 +1,9 @@
 // Журнал «Рассылки» — окно периода и фильтр статуса меняются с экрана,
-// перечитываем список при их смене (CLAUDE.md «Read-after-write» — то же для
-// create/cancel). Гонка запросов — в общем hooks/useAbortableFetch.ts.
+// перечитываем список при их смене (CLAUDE.md «Read-after-write» — то же
+// после отмены рассылки). Создание живёт на своей странице
+// (useBroadcastCreate.ts), журналу его незачем знать. Гонка запросов — в общем hooks/useAbortableFetch.ts.
 import { useCallback, useEffect, useRef } from 'react';
-import {
-  LIST_LIMIT_MAX,
-  type BroadcastDto,
-  type BroadcastStatus,
-  type CreateBroadcastInput,
-} from '@xuanxue/shared';
+import { LIST_LIMIT_MAX, type BroadcastDto, type BroadcastStatus } from '@xuanxue/shared';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { journalWindow, type JournalRangeWeeks } from './broadcastWindow';
@@ -19,7 +15,6 @@ export interface UseBroadcastsResult {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
-  create: (input: CreateBroadcastInput) => Promise<void>;
   cancel: (id: string) => Promise<void>;
 }
 
@@ -51,14 +46,6 @@ export function useBroadcasts(
     void reload();
   }, [rangeWeeks, status, reload]);
 
-  const create = useCallback(
-    async (input: CreateBroadcastInput) => {
-      await apiFetch('/broadcasts', { method: 'POST', body: input });
-      await reload();
-    },
-    [reload],
-  );
-
   const cancel = useCallback(
     async (id: string) => {
       await apiFetch(`/broadcasts/${id}/cancel`, { method: 'POST' });
@@ -67,5 +54,5 @@ export function useBroadcasts(
     [reload],
   );
 
-  return { broadcasts: data, loading, error, reload, create, cancel };
+  return { broadcasts: data, loading, error, reload, cancel };
 }

@@ -1,14 +1,26 @@
 // Бот Telegram (ADR-0015): вебхук + авторегистрация чатов как каналов, кнопки
-// предпросмотра/«Запись?»/ручных каналов, /тема (PLAN.md §6). ChannelsModule —
-// ChannelConfigService и модель ChannelRecord (TeacherChats); UsersModule —
-// UsersService (/start, TeacherChats, MessageHandler); BroadcastsModule —
-// BroadcastsService.cancel(), TopicRebuildService, модель BroadcastRecord;
-// LessonsModule — LessonsService.update()/addRecording(), модель LessonRecord;
-// DeliveriesModule — DeliveriesService.markSent(); ClassesModule — модель
-// ClassRecord (/тема, TopicCommandHandler); SettingsModule —
-// SettingsService.get() (StartHandler, адрес сайта школы для незнакомца, В6
-// аудита). Ни один из них не импортирует TelegramModule обратно — цикла нет
-// (ADR-0013).
+// предпросмотра/«Запись?»/ручных каналов, /тема, /уведомления (PLAN.md §6, §13).
+// ChannelsModule — ChannelConfigService и модель ChannelRecord (PersonalChats);
+// UsersModule — UsersService (PersonalChats, MessageHandler,
+// BotUserAccessService — /start и остальной доступ бота идут через неё),
+// LoginIdentityService (join-invite-deep-link.ts — ссылка-приглашение,
+// тот же сервис, что и у веба, ADR-0030/0036);
+// BroadcastsModule — BroadcastsService.cancel(), TopicRebuildService, модель
+// BroadcastRecord; LessonsModule — LessonsService.update()/addRecording(),
+// модель LessonRecord; DeliveriesModule — DeliveriesService.markSent();
+// ClassesModule — модель ClassRecord (/тема, TopicCommandHandler);
+// SettingsModule — SettingsService.get() (StartHandler, адрес сайта школы для
+// незнакомца, В6 аудита); NotificationsModule — NotificationPrefsService
+// (PersonalChats.listFor, кнопки «Уведомления»); MediaModule —
+// MediaAssetsService (ExamMediaMessageHandler, слой 4.5, ADR-0023): бот
+// привязывает видео экзамена и пересылает его учителю. Ни один из них не
+// импортирует TelegramModule обратно — цикла нет (ADR-0013). MediaModule в
+// частности берёт модель ExamAttemptRecord через ExamAttemptModelModule
+// (api/src/exams/), не через ExamsModule — тот сам импортирует TelegramModule
+// (EXAM_NOTIFIER, слой 4.7) и импорт в обратную сторону закольцевал бы граф.
+// BotIdentityModule — TelegramBotService пишет туда имя бота при прогреве;
+// UsersModule (InviteLinkService, ADR-0030 «Бот») читает оттуда же, не
+// импортируя TelegramModule целиком (см. bot-identity.service.ts).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
@@ -16,16 +28,27 @@ import { ChannelsModule } from '../channels/channels.module';
 import { ClassesModule } from '../classes/classes.module';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { LessonsModule } from '../lessons/lessons.module';
+import { MediaModule } from '../media/media.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
+import { BotIdentityModule } from './bot-identity.module';
 import { BotSessionRecord, BotSessionSchema } from './bot-session.schema';
 import { BotSessionService } from './bot-session.service';
+import { BotUserAccessService } from './bot-user-access.service';
+import { ExamBotPortRegistry } from './exam-bot-port.registry';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
+import { ExamCommandHandler } from './handlers/exam-command.handler';
+import { ExamMediaMessageHandler } from './handlers/exam-media-message.handler';
+import { ExamTextAnswerHandler } from './handlers/exam-text-answer.handler';
 import { MessageHandler } from './handlers/message.handler';
+import { MenuCommandHandler } from './handlers/menu-command.handler';
+import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
+import { RecordingWaitHandler } from './handlers/recording-wait.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
-import { TeacherChats } from './teacher-chats';
+import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, createTelegraf } from './telegraf-instance';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramController } from './telegram.controller';
@@ -43,6 +66,9 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     DeliveriesModule,
     ClassesModule,
     SettingsModule,
+    NotificationsModule,
+    MediaModule,
+    BotIdentityModule,
   ],
   controllers: [TelegramController],
   providers: [
@@ -52,15 +78,26 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     StartHandler,
     CallbackQueryHandler,
     TopicCommandHandler,
+    NotificationsCommandHandler,
+    MenuCommandHandler,
     MessageHandler,
-    TeacherChats,
+    RecordingWaitHandler,
+    ExamMediaMessageHandler,
+    ExamTextAnswerHandler,
+    ExamCommandHandler,
+    ExamBotPortRegistry,
+    PersonalChats,
     BotSessionService,
+    BotUserAccessService,
     { provide: TELEGRAF_FACTORY, useValue: createTelegraf },
   ],
   // TelegramBotService — SchedulerModule (проактивная отправка предпросмотра,
-  // «Запись?», ручных каналов и уведомлений); TeacherChats/BotSessionService —
+  // «Запись?», ручных каналов и уведомлений); PersonalChats/BotSessionService —
   // тот же вызывающий код (PreviewService/RecordingPromptService/
   // ManualPromptService/TelegramTeacherNotifier).
-  exports: [TelegramBotService, TeacherChats, BotSessionService],
+  // ExamBotPortRegistry — наружу: ExamsModule кладёт в него реализацию
+  // ExamBotPort (exams/exam-bot.service.ts), импортировать exams/ отсюда
+  // нельзя (цикл, см. комментарий в exam-bot-port.registry.ts).
+  exports: [TelegramBotService, PersonalChats, BotSessionService, ExamBotPortRegistry],
 })
 export class TelegramModule {}

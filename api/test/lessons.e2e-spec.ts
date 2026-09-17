@@ -5,7 +5,7 @@
 // хелперов, чтобы спек уместился в лимит, CLAUDE.md «Храповики»).
 import { Types } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, LessonDto, UserRole } from '@xuanxue/shared';
+import type { ApiErrorBody, LessonDto } from '@xuanxue/shared';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { withCsrf } from './e2e-support/http';
 import {
@@ -61,11 +61,8 @@ describe('Lessons (e2e)', () => {
     expect(noCsrf.status).toBe(403);
   });
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])('%s: GET и POST /lessons — 403', async (_label, roles) => {
-    const cookie = await sessionFor(roles);
+  it('ученик: GET и POST /lessons — 403', async () => {
+    const cookie = await sessionFor([]);
     const classId = await createClass();
 
     const getRes = await request(server())

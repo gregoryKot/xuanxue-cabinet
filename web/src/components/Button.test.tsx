@@ -51,4 +51,46 @@ describe('Button', () => {
     render(<Button disabled>Сохранить</Button>);
     expect(screen.getByRole('button')).toBeDisabled();
   });
+
+  // Роли различимы структурой, не только цветом (низкое зрение, ч/б печать) —
+  // у первичной заливка и нет контура, у вторичной контур без заливки, у
+  // опасной нет ни того, ни другого (docs/adr/0031-visual-direction-quiet-
+  // and-noble.md). Проверяем факт заливки/контура по имени токена, не оттенок.
+  it('заливка есть только у первичной кнопки', () => {
+    render(
+      <>
+        <Button variant="primary">Сохранить</Button>
+        <Button variant="secondary">Отмена</Button>
+        <Button variant="danger">Удалить</Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Сохранить' }).style.background).not.toBe(
+      'transparent',
+    );
+    expect(screen.getByRole('button', { name: 'Отмена' }).style.background).toBe(
+      'transparent',
+    );
+    expect(screen.getByRole('button', { name: 'Удалить' }).style.background).toBe(
+      'transparent',
+    );
+  });
+
+  it('видимый контур есть только у вторичной кнопки', () => {
+    render(
+      <>
+        <Button variant="primary">Сохранить</Button>
+        <Button variant="secondary">Отмена</Button>
+        <Button variant="danger">Удалить</Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Отмена' }).style.borderColor).toBe(
+      'var(--control-border)',
+    );
+    expect(screen.getByRole('button', { name: 'Сохранить' }).style.borderColor).toBe(
+      'transparent',
+    );
+    expect(screen.getByRole('button', { name: 'Удалить' }).style.borderColor).toBe(
+      'transparent',
+    );
+  });
 });

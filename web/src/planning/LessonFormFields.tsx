@@ -1,5 +1,5 @@
-// Поля листа занятия — вынесены из LessonSheet, чтобы сам лист не разрастался
-// за 150 строк (CLAUDE.md «Файлы»). `classId` — только при создании
+// Поля занятия — вынесены из LessonEditorForm.tsx, чтобы сама страница не
+// разрасталась за 150 строк (CLAUDE.md «Файлы»). `classId` — только при создании
 // (CreateLessonInput его принимает, UpdateLessonInput — нет, docs/PLAN.md §6
 // п.3); ссылка/пароль Zoom на один раз и заметка — только при правке.
 import { Link } from 'react-router-dom';
@@ -16,12 +16,12 @@ interface LessonFormFieldsProps {
   error: string | null;
   isCreate: boolean;
   classes: ClassDto[];
-  /** Учителя для select'а «Ведущий» — грузятся один раз на «Планировании»
-   * (PlanningScreen), как классы (ревью п.1, аудит В4). Сбой загрузки не
-   * прячет остальные поля формы — только строка с ошибкой над списком. */
+  /** Учителя для select'а «Ведущий» — грузит страница занятия
+   * (LessonEditorForm.tsx, аудит В4). Сбой загрузки не прячет остальные поля
+   * формы — только строка с ошибкой и повтором над списком. */
   teachers: TeacherOptionDto[];
-  teachersError?: string | null;
-  onRetryTeachers?: () => void;
+  teachersError: string | null;
+  onRetryTeachers: () => void;
 }
 
 export function LessonFormFields({
@@ -99,7 +99,7 @@ export function LessonFormFields({
           {teachersError && (
             <LoadErrorBanner
               message={teachersError}
-              onRetry={onRetryTeachers ?? (() => {})}
+              onRetry={onRetryTeachers}
               retryLabel="Обновить"
             />
           )}

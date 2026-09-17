@@ -47,9 +47,9 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 Команда идемпотентна: класс, у которого уже есть точное совпадение названия
 и подписи группы, пропускается, а не дублируется — перезапускать безопасно.
 
-Вход через Telegram (`window.Telegram.Login.auth()`, `POST /auth/telegram`) локально
-не проверить: попап на `oauth.telegram.org` работает только с доменом, привязанным к
-боту в BotFather (`/setdomain`) — у `localhost` такого домена нет. `BOT_TOKEN` — тот же,
+Вход через Telegram (переход на `oauth.telegram.org`, `POST /auth/telegram`) локально
+не проверить: переход работает только с доменом, привязанным к боту в BotFather
+(`/setdomain`) — у `localhost` такого домена нет. `BOT_TOKEN` — тот же,
 что у вебхука бота (`.env.example`); отдельная переменная для виджета не нужна,
 `GET /auth/config` сам достаёт числовой id бота из `BOT_TOKEN`. `/start` в боте
 регистрирует чат как канал рассылки (docs/PLAN.md §6, «Каналы»), но сессию кабинета не
@@ -62,13 +62,14 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 npm run check             # tsc, eslint, prettier, тесты (jest api дважды — TZ=Australia/Sydney
                            # и с покрытием; vitest web — с покрытием и под TZ=Australia/Sydney),
                            # npm audit, все храповики — то же, что CI, кроме gitleaks (бинаря
-                           # нет локально) и Docker-смока: они только в CI
+                           # нет локально), Docker-смока и проверки бэкапа-восстановления
+                           # (backup-restore, нужен mongodump): они только в CI
 ```
 
-`prettier --check` в `check` стоит после тестов, а не перед: `vitest` в
-`web/vite.config.ts` сам переписывает `thresholds` при `autoUpdate` (см. CLAUDE.md,
-храповик `check-coverage-ratchet.mjs`) — если проверять формат раньше, локальный
-прогон зелёный, а CI падает на уже изменённом файле (PR #35, #45).
+Пороги покрытия web и shared живут не в конфиге, а в `scripts/vitest-coverage-baseline.json`:
+`scripts/check-vitest-coverage-ratchet.mjs <web|shared>` сам гоняет vitest и сравнивает
+покрытие с бейслайном, ничего не переписывая в дереве — рост покрытия фиксируется
+явным `--update` (аудит 2026-09-12, H2 и M5).
 
 Заголовок PR — по Conventional Commits (`feat:`, `fix:`, `chore:` …): после squash он
 становится сообщением коммита в `main`. Merge в `main` = деплой на Railway.

@@ -27,6 +27,9 @@ export interface ExamItemOptionRecord {
   id: string;
   text: string;
   correct: boolean;
+  /** Ссылка на картинку в `exam_images` (ADR-0035) — необязательна: у
+   * варианта хотя бы одно из text/imageId, проверяет assertOptionsForKind. */
+  imageId?: string;
 }
 
 /** Прошлая редакция — снимок содержательных полей на момент правки
@@ -65,7 +68,11 @@ export class ExamItemRecord {
   @Prop({ type: [String], default: [] })
   tags!: string[];
 
-  @Prop({ type: String, enum: EXAM_ITEM_STATUSES, default: 'draft' })
+  // По умолчанию вопрос сразу годен к сборке формы (ADR-0033): владелец
+  // создал вопросы и не нашёл их в конструкторе — шаг «опубликовать» был
+  // лишним. `draft` остаётся осознанным выбором «спрятать» — его шлёт
+  // создание с явным статусом или кнопка статуса на экране.
+  @Prop({ type: String, enum: EXAM_ITEM_STATUSES, default: 'published' })
   status!: ExamItemStatus;
 
   @Prop({ type: Number, default: 1 })
@@ -74,6 +81,14 @@ export class ExamItemRecord {
   // Хранится строкой целиком (encJson) — см. комментарий в начале файла.
   @Prop({ type: String, default: '[]' })
   history!: string;
+
+  // Плоская копия imageId вариантов (текущих и из history) — options/history
+  // зашифрованы целиком и Mongo внутрь не видит; по этому полю уборщик сирот
+  // (exam-image-sweep.service.ts) поймёт, на какие картинки ссылается вопрос
+  // (ADR-0035). Пишет ExamItemsService (create/update, collectImageIds) — у
+  // старых документов поля нет, Mongo трактует отсутствие как пустой массив.
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  imageIds!: Types.ObjectId[];
 
   // Кто создал — не признак владения (данные школы, ADR-0010), просто
   // ссылка. См. USER_REFERENCE_PATHS.
@@ -86,6 +101,8 @@ export const ExamItemSchema = SchemaFactory.createForClass(ExamItemRecord);
 ExamItemSchema.index({ status: 1, updatedAt: -1 });
 // Фильтр по тегу (раздел программы, уровень).
 ExamItemSchema.index({ tags: 1 });
+// Уборщик сирот (ADR-0035) — какие картинки ещё используются вопросами.
+ExamItemSchema.index({ imageIds: 1 });
 
 export const EXAM_ITEM_FIELD_POLICY: FieldPolicy = {
   prompt: enc,

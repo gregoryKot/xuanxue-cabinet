@@ -1,58 +1,34 @@
-// Общая обвязка для callback-query.handler.spec.ts (cancel/topic),
-// callback-query.handler.access.spec.ts (доступ) и
-// callback-query.handler.norec-sent.spec.ts (norec/sent) — один файл был
-// больше спек-лимита в 300 строк (CLAUDE.md «Файлы»), обвязка общая, чтобы не
-// дублировать её (jscpd).
+// Общая обвязка для callback-query.handler.*.spec.ts (cancel/topic, доступ,
+// norec/sent, уведомления, меню): одним файлом спеки не влезали в лимит 300
+// строк, а обвязка у них одна (jscpd).
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
-import type { Context } from 'telegraf';
 import { BroadcastsService } from '../../broadcasts/broadcasts.service';
 import { BroadcastRecord, BroadcastSchema } from '../../broadcasts/broadcast.schema';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { DeliveriesService } from '../../deliveries/deliveries.service';
 import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
+import { NotificationPrefsRecord } from '../../notifications/notification-prefs.schema';
+import { NotificationPrefsService } from '../../notifications/notification-prefs.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
 import { BotSessionService } from '../bot-session.service';
+import { BotUserAccessService } from '../bot-user-access.service';
+import { ExamBotPortRegistry } from '../exam-bot-port.registry';
+import { fakeExamBotPort } from '../exam-bot.port.test-support';
+import { buildMenuHandler } from '../test-support/build-menu-handler';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
-import { TeacherChats } from '../teacher-chats';
 import { CallbackQueryHandler } from './callback-query.handler';
+import { ExamCommandHandler } from './exam-command.handler';
 
 export { seedTeacher };
 
 export const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
 
-export function fakeCtx(options: {
-  chatId?: number;
-  chatType?: 'private' | 'group';
-  data?: string;
-  noFrom?: boolean;
-}): { ctx: Context; editCalls: string[] } {
-  const editCalls: string[] = [];
-  const ctx = {
-    chat:
-      options.chatId === undefined
-        ? undefined
-        : { id: options.chatId, type: options.chatType ?? 'private' },
-    from:
-      options.chatId === undefined || options.noFrom ? undefined : { id: options.chatId },
-    callbackQuery: options.data === undefined ? undefined : { data: options.data },
-    answerCbQuery: () => Promise.resolve(true),
-    editMessageText: (text: string) => {
-      editCalls.push(text);
-      return Promise.resolve(true);
-    },
-    reply: (text: string) => {
-      editCalls.push(text);
-      return Promise.resolve(true);
-    },
-  } as unknown as Context;
-  return { ctx, editCalls };
-}
-
-export interface CallbackHandlerTestContext {
+export interface CallbackHandlerModels {
   memory: MemoryMongo;
   connection: Connection;
   broadcastModel: Model<BroadcastRecord>;
@@ -60,28 +36,55 @@ export interface CallbackHandlerTestContext {
   channelModel: Model<ChannelRecord>;
   userModel: Model<UserRecord>;
   botSessionModel: Model<BotSessionRecord>;
+  notificationPrefsModel: Model<NotificationPrefsRecord>;
+}
+
+export interface CallbackHandlerTestContext extends CallbackHandlerModels {
   handler: CallbackQueryHandler;
 }
 
 /** Свежий хендлер на тех же моделях, с необязательной подменой одного из
  * сервисов (тест сбоя `BroadcastsService.cancel`/`BotSessionService.startTopicWait`) —
- * TeacherChats при этом настоящий, доступ по-прежнему проверяется реально. */
+ * PersonalChats/NotificationPrefsService при этом настоящие, доступ и
+ * настройка по-прежнему проверяются реально. */
 export function buildHandler(
-  ctx: CallbackHandlerTestContext,
+  ctx: CallbackHandlerModels,
   overrides: {
     broadcastsService?: BroadcastsService;
     botSessions?: BotSessionService;
     deliveriesService?: DeliveriesService;
+    // Только для гонки «чат отвязан между проверкой доступа и резолвом
+    // userId»: сам доступ идёт через buildPersonalChats.
+    usersService?: UsersService;
+    examBotPorts?: ExamBotPortRegistry;
   } = {},
 ): CallbackQueryHandler {
+  const usersService = new UsersService(ctx.userModel);
   return new CallbackQueryHandler(
-    new TeacherChats(new UsersService(ctx.userModel), ctx.channelModel),
+    buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
     overrides.broadcastsService ??
       new BroadcastsService(ctx.broadcastModel, ctx.deliveryModel, ctx.channelModel),
     overrides.botSessions ?? new BotSessionService(ctx.botSessionModel),
     overrides.deliveriesService ??
       new DeliveriesService(ctx.deliveryModel, ctx.broadcastModel, ctx.channelModel),
+    overrides.usersService ?? usersService,
+    new NotificationPrefsService(ctx.notificationPrefsModel),
+    buildMenuHandler(ctx.connection, usersService, ctx.channelModel),
+    overrides.examBotPorts ?? examRegistry(),
+    new ExamCommandHandler(
+      new BotUserAccessService(overrides.usersService ?? usersService),
+      examRegistry(),
+    ),
+    new BotUserAccessService(overrides.usersService ?? usersService),
   );
+}
+
+/** Реестр с фейковым портом — хендлеру экзаменов он нужен в конструкторе,
+ * но кнопки экзамена проверяются своими спеками (exam-*.spec.ts). */
+function examRegistry(): ExamBotPortRegistry {
+  const registry = new ExamBotPortRegistry();
+  registry.set(fakeExamBotPort());
+  return registry;
 }
 
 export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestContext> {
@@ -101,15 +104,13 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     BotSessionRecord.name,
     BotSessionSchema,
   );
-  await botSessionModel.syncIndexes();
-  const teacherChats = new TeacherChats(new UsersService(userModel), channelModel);
-  const handler = new CallbackQueryHandler(
-    teacherChats,
-    new BroadcastsService(broadcastModel, deliveryModel, channelModel),
-    new BotSessionService(botSessionModel),
-    new DeliveriesService(deliveryModel, broadcastModel, channelModel),
+  const notificationPrefsModel = connection.model<NotificationPrefsRecord>(
+    NotificationPrefsRecord.name,
   );
-  return {
+  await botSessionModel.syncIndexes();
+  // Хендлер собирается тем же buildHandler, что и в тестах с подменой сервиса:
+  // две сборки одного конструктора разъезжались бы при каждом новом параметре.
+  const models: CallbackHandlerModels = {
     memory,
     connection,
     broadcastModel,
@@ -117,8 +118,9 @@ export async function setupCallbackHandlerTest(): Promise<CallbackHandlerTestCon
     channelModel,
     userModel,
     botSessionModel,
-    handler,
+    notificationPrefsModel,
   };
+  return { ...models, handler: buildHandler(models) };
 }
 
 export async function clearCallbackHandlerTest(
@@ -130,5 +132,6 @@ export async function clearCallbackHandlerTest(
     ctx.channelModel.deleteMany({}),
     ctx.userModel.deleteMany({}),
     ctx.botSessionModel.deleteMany({}),
+    ctx.notificationPrefsModel.deleteMany({}),
   ]);
 }

@@ -84,6 +84,28 @@ describe('ClassesService', () => {
     expect(created.channelIds).toEqual([telegram._id.toString()]);
   });
 
+  it('create без channelIds — личный канал ученика (broadcastEligible: false) не подставляется (ADR-0027)', async () => {
+    const telegram = await channelModel.create({
+      type: 'telegram',
+      title: 'Группа учеников',
+      config: '{}',
+      target: '@group',
+      active: true,
+    });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'Личные сообщения: Ольга',
+      config: '{}',
+      target: '555',
+      active: true,
+      broadcastEligible: false,
+    });
+
+    const created = await service.create({ title: 'Новое занятие', format: 'online' });
+
+    expect(created.channelIds).toEqual([telegram._id.toString()]);
+  });
+
   it('create с явным channelIds: [] — остаётся пустым, активные каналы не подставляются', async () => {
     await channelModel.create({
       type: 'telegram',
@@ -260,7 +282,7 @@ describe('ClassesService', () => {
     });
 
     it('create с id ученика — InvalidInputError, класс не создаётся', async () => {
-      const student = await userModel.create({ name: 'Гриша', roles: ['student'] });
+      const student = await userModel.create({ name: 'Гриша', roles: [] });
 
       await expect(
         service.create({

@@ -2,7 +2,7 @@
 // (CLAUDE.md, раздел «Слои») — по образцу shared/src/classes.ts. Словарь
 // продукта: «занятие» — класс/слот расписания (classes), «дата занятия» —
 // конкретная встреча (lessons).
-import type { BroadcastStatus, LessonStatus, Recording } from './domain';
+import type { BroadcastStatus, ClassFormat, LessonStatus, Recording } from './domain';
 
 /** Запись в ответе API — с id субдокумента (лежит в массиве lessons.recordings). */
 export interface RecordingDto extends Recording {
@@ -101,3 +101,34 @@ export const LESSON_LIMITS = {
 /** Длительность разового занятия, если у класса нет ни одного правила
  * расписания, откуда её взять по умолчанию. */
 export const LESSON_DEFAULT_DURATION_MIN = 60;
+
+// Экран ученика (`/me/lessons`, PLAN §11 слой 4.1) — ближайшие занятия всей
+// школы, не только «своих»: у ученика пока нет групп, кем на какие занятия
+// ходят — это этап 3 (см. комментарий в MyLessonsService). Поэтому здесь не
+// LessonDto: ученику не нужны служебные поля планировщика (`ruleId`,
+// `plannedAt`, статус рассылки-ссылки), а `zoomLink`/`zoomPassword` — уже
+// готовая ссылка для занятия (override поверх ссылки класса), не два разных
+// override-поля, которые ученику пришлось бы сводить самому.
+export interface MyLessonDto {
+  id: string;
+  startsAt: string; // ISO UTC с Z
+  durationMin: number;
+  classTitle: string;
+  groupLabel: string;
+  format: ClassFormat;
+  location?: string;
+  zoomLink?: string;
+  zoomPassword?: string;
+  topic: string;
+  status: LessonStatus;
+}
+
+export interface ListMyLessonsQuery {
+  limit?: number;
+}
+
+/** Лимит списка «мои занятия» — своя пара, не LIST_LIMIT_DEFAULT/MAX
+ * (shared/src/classes.ts): ученику короткий список на экран, не окно
+ * планирования учителя (ТЗ docs/PLAN.md §11). */
+export const MY_LESSONS_LIMIT_DEFAULT = 10;
+export const MY_LESSONS_LIMIT_MAX = 50;

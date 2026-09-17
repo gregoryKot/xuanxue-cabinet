@@ -1,4 +1,4 @@
-// CRUD дат занятий — доступ только учителю/админу (данные школы, ADR-0010).
+// CRUD дат занятий — доступ учителю, помощнику учителя и админу (данные школы, ADR-0010).
 // Контроллер только валидирует тело/query и зовёт сервис: шифрование
 // секретов, PATCH `null` → `$unset`, подбор длительности и title записи — в
 // LessonsService (образец — ClassesController).
@@ -25,7 +25,7 @@ import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { LessonsService } from './lessons.service';
 
 @Controller('lessons')
-@Roles('teacher', 'admin')
+@Roles('teacher', 'assistant', 'admin')
 export class LessonsController {
   constructor(
     private readonly lessonsService: LessonsService,

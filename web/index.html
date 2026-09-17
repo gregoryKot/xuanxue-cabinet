@@ -6,12 +6,26 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <!-- Тот же тон, что theme_color манифеста (web/vite.config.ts, ADR-0006). -->
-    <meta name="theme-color" content="#1f3b2f" />
+    <!-- Красит статус-бар мобильного браузера и совпадает с шапкой кабинета —
+         бумага палитры «тихо и благородно» (docs/adr/0031), тот же тон, что
+         theme_color манифеста (web/public/manifest.webmanifest). -->
+    <meta name="theme-color" content="#faf8f4" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
     <meta name="apple-mobile-web-app-title" content="Сюань-Сюэ" />
-    <!-- Ссылку на manifest.webmanifest вставляет vite-plugin-pwa сам. -->
+    <!-- Манифест статический (web/public/manifest.webmanifest, ADR-0032) —
+         нужен только для установки ярлыка на телефон, service worker нет. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Сессию браузер начинает спрашивать ещё при разборе HTML, параллельно
+         со скачиванием главного JS. Измерено на проде 2026-09-15: TTFB
+         0.5–1.1 с, а GET /api/auth/me уходил только после того, как
+         выполнился JS и смонтировался AuthProvider, — лишний round-trip в
+         начале загрузки. apiFetch() затем берёт этот ответ из preload-кеша:
+         совпадают адрес, режим (cors) и credentials (include, см.
+         web/src/api/http.ts) — это и даёт crossorigin="use-credentials".
+         Именно <link rel=preload>, а не инлайн-скрипт: CSP запрещает инлайн
+         (api/src/security/csp.ts), а connect-src 'self' preload не мешает. -->
+    <link rel="preload" href="/api/auth/me" as="fetch" crossorigin="use-credentials" />
     <title>Сюань-Сюэ</title>
   </head>
   <body>

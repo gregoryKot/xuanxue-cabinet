@@ -1,93 +1,84 @@
-// Экран «Вопросы для экзамена» — банк вопросов, из которых собираются
-// экзамены (docs/PLAN.md §11, ТЗ 4.2). Один вопрос можно поставить в
-// несколько экзаменов — сам конструктор экзамена (какие вопросы в какой
-// экзамен) не входит сюда, это следующий слой (4.3).
-import { useState, type CSSProperties } from 'react';
+// Экран «Вопросы» — банк, из которого собираются экзамены (docs/PLAN.md §4.2).
+// Один вопрос можно поставить в несколько экзаменов. Правка и создание —
+// отдельная страница `/exam-items/new` и `/exam-items/:itemId`
+// (ExamItemEditorScreen.tsx, ADR-0033): отсюда только переход. Облик —
+// направление «тихо и благородно» (docs/adr/0031), макет Main.dc.html:
+// заголовок антиквой, переключатели статуса вместо select, строка списка
+// вместо карточки.
+//
+// Тип вопроса фильтром не стоит: он виден в служебной строке каждой строки
+// списка, а поиск по формулировке и тегу закрывает нужный случай («все
+// вопросы про дыхание») лучше, чем ещё один ряд переключателей на 360 px.
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { EXAM_ITEM_STATUSES, type ExamItemStatus } from '@xuanxue/shared';
 import { Button } from '../components/Button';
-import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import {
-  primaryActionStyle,
-  screenExplanationStyle,
-  screenSectionStyle,
-} from '../components/screenLayout';
-import { SkeletonList } from '../components/Skeleton';
+import { ListFilters } from '../components/ListFilters';
+import { ListScreenBody } from '../components/ListScreenBody';
+import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { matchesSearch } from '../lib/textSearch';
 import { ExamItemCard } from './ExamItemCard';
-import { ExamItemFilters, type ExamItemFilterValues } from './ExamItemFilters';
-import { ExamItemSheet } from './ExamItemSheet';
+import { EXAM_ITEM_STATUS_LABELS_RU } from './examItemLabels';
 import { useExamItems } from './useExamItems';
 
+const TITLE = 'Вопросы';
 const EXPLANATION =
   'Из этих вопросов собирается экзамен — один вопрос можно поставить в несколько экзаменов.';
 const EMPTY_MESSAGE = 'Вопросов пока нет. Добавьте первый — из них соберётся экзамен.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами вопросов нет.';
-
-const EMPTY_FILTERS: ExamItemFilterValues = { status: '', kind: '', tag: '' };
-
-const listStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-};
+const SEARCH_LABEL = 'Поиск по вопросу и тегу';
+const ITEMS_PATH = '/exam-items';
 
 export default function ExamItemsScreen() {
-  const [filters, setFilters] = useState<ExamItemFilterValues>(EMPTY_FILTERS);
-  const { items, loading, error, reload, create, update, remove } = useExamItems(filters);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetItemId, setSheetItemId] = useState<string | null>(null);
+  const [status, setStatus] = useState<ExamItemStatus | ''>('');
+  const [search, setSearch] = useState('');
+  const { items, loading, error, reload } = useExamItems(status);
+  const navigate = useNavigate();
 
-  const selectedItem = items?.find((item) => item.id === sheetItemId) ?? null;
-  const isFiltered = filters.status !== '' || filters.kind !== '' || filters.tag !== '';
-
-  function openCreate() {
-    setSheetItemId(null);
-    setSheetOpen(true);
-  }
-
-  function openEdit(id: string) {
-    setSheetItemId(id);
-    setSheetOpen(true);
-  }
+  const visibleItems =
+    items?.filter((item) => matchesSearch([item.prompt, ...item.tags], search)) ?? null;
+  const isFiltered = status !== '' || search.trim() !== '';
 
   return (
     <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      <ScreenHeader
+        title={TITLE}
+        explanation={EXPLANATION}
+        action={
+          !loading && (
+            <Button
+              style={primaryActionStyle}
+              onClick={() => void navigate(`${ITEMS_PATH}/new`)}
+            >
+              Новый вопрос
+            </Button>
+          )
+        }
+      />
 
-      {!loading && (
-        <Button style={primaryActionStyle} onClick={openCreate}>
-          Новый вопрос
-        </Button>
-      )}
+      <ListFilters
+        statuses={EXAM_ITEM_STATUSES}
+        labels={EXAM_ITEM_STATUS_LABELS_RU}
+        value={status}
+        onChange={setStatus}
+        search={{ label: SEARCH_LABEL, value: search, onChange: setSearch }}
+      />
 
-      <ExamItemFilters values={filters} onChange={setFilters} />
-
-      {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
-
-      {loading && !error && <SkeletonList rows={5} h={72} />}
-
-      {!loading && !error && items?.length === 0 && (
-        <p style={{ margin: 0 }}>{isFiltered ? EMPTY_FILTERED_MESSAGE : EMPTY_MESSAGE}</p>
-      )}
-
-      {!loading && !error && items && items.length > 0 && (
-        <ul style={listStyle}>
-          {items.map((item) => (
-            <ExamItemCard key={item.id} item={item} onSelect={() => openEdit(item.id)} />
-          ))}
-        </ul>
-      )}
-
-      {sheetOpen && (
-        <ExamItemSheet
-          item={selectedItem}
-          onClose={() => setSheetOpen(false)}
-          onCreate={create}
-          onUpdate={update}
-          onRemove={remove}
-        />
-      )}
+      <ListScreenBody
+        items={visibleItems}
+        loading={loading}
+        error={error}
+        onRetry={() => void reload()}
+        emptyMessage={isFiltered ? EMPTY_FILTERED_MESSAGE : EMPTY_MESSAGE}
+        renderItem={(item) => (
+          <ExamItemCard
+            key={item.id}
+            item={item}
+            onSelect={() => void navigate(`${ITEMS_PATH}/${item.id}`)}
+          />
+        )}
+      />
     </section>
   );
 }

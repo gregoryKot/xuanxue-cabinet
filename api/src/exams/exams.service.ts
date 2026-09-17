@@ -6,12 +6,11 @@
 // тело и зовёт.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import {
   EXAM_NOT_FOUND_MESSAGE,
   LIST_LIMIT_DEFAULT,
   NULLABLE_EXAM_FIELDS,
-  pluralRu,
   type CreateExamInput,
   type ExamDto,
   type ListExamsQuery,
@@ -20,17 +19,15 @@ import {
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
-import { removeIfDraft } from '../common/remove-if-draft';
-import { decryptRecord, encryptRecord } from '../utils/encryption';
-import {
-  assertNoRepeatedItems,
-  hasAnyQuestion,
-  mapBlocks,
-  QUESTION_FORMS,
-} from './exam-blocks';
+import { encryptRecord } from '../utils/encryption';
+import { ExamAttemptRecord } from './exam-attempt.schema';
+import { assertNoRepeatedItems, hasAnyQuestion, mapBlocks } from './exam-blocks';
+import { assertItemsEligible } from './exam-items-eligible';
+import { removeExamIfNotAttempted } from './exam-attempt-references';
+import { defaultRubric, mapRubric } from './exam-rubric';
 import { ExamItemRecord } from './exam-item.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord, type ExamBlockRecord } from './exam.schema';
-import { toExamDto, type LeanExam, type RawLeanExam } from './exam.mapper';
+import { decryptExam, toExamDto, type RawLeanExam } from './exam.mapper';
 
 const NOT_FOUND_MESSAGE = EXAM_NOT_FOUND_MESSAGE;
 // VOICE.md: что случилось и что сделать. Тот же приём, что у NOT_DRAFT_MESSAGE
@@ -46,6 +43,8 @@ export class ExamsService {
   constructor(
     @InjectModel(ExamRecord.name) private readonly model: Model<ExamRecord>,
     @InjectModel(ExamItemRecord.name) private readonly itemModel: Model<ExamItemRecord>,
+    @InjectModel(ExamAttemptRecord.name)
+    private readonly attemptModel: Model<ExamAttemptRecord>,
   ) {}
 
   async list(query: ListExamsQuery): Promise<ExamDto[]> {
@@ -57,23 +56,27 @@ export class ExamsService {
       .sort({ updatedAt: -1 })
       .limit(query.limit ?? LIST_LIMIT_DEFAULT)
       .lean<RawLeanExam[]>();
-    return docs.map((doc) => toExamDto(this.decrypt(doc)));
+    return docs.map((doc) => toExamDto(decryptExam(doc)));
   }
 
   async getById(id: string): Promise<ExamDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<RawLeanExam>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
-    return toExamDto(this.decrypt(doc));
+    return toExamDto(decryptExam(doc));
   }
 
   async create(input: CreateExamInput, createdBy: string): Promise<ExamDto> {
-    const { blocks, ...rest } = input;
+    const { blocks, rubric, ...rest } = input;
     const mappedBlocks = mapBlocks(blocks);
     if (mappedBlocks !== undefined) await this.assertBlocksSavable(mappedBlocks);
 
     const payload: Record<string, unknown> = { ...rest, createdBy };
     if (mappedBlocks !== undefined) payload.blocks = mappedBlocks;
+    // Не прислали рубрику — набор по умолчанию (ТЗ 4.6, п.1), не пустой
+    // массив: проверять можно с первого дня, не дожидаясь, пока учитель
+    // напишет свою.
+    payload.rubric = mapRubric(rubric) ?? defaultRubric();
 
     const created = await this.model.create(encryptRecord(payload, EXAM_ENCRYPT_SCHEMA));
     return this.getById(created._id.toString());
@@ -83,9 +86,9 @@ export class ExamsService {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<RawLeanExam>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
-    const current = this.decrypt(doc);
+    const current = decryptExam(doc);
 
-    const { blocks, status, ...rest } = input;
+    const { blocks, status, rubric, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_FIELDS);
 
     const nextBlocks = mapBlocks(blocks);
@@ -93,7 +96,9 @@ export class ExamsService {
       await this.assertBlocksSavable(nextBlocks);
       $set.blocks = nextBlocks;
     }
-    if (status === 'published') {
+    const nextRubric = mapRubric(rubric);
+    if (nextRubric !== undefined) $set.rubric = nextRubric;
+    if ((status ?? current.status) === 'published') {
       await this.assertPublishable(nextBlocks ?? current.blocks);
     }
     if (status !== undefined) $set.status = status;
@@ -105,12 +110,12 @@ export class ExamsService {
       .findOneAndUpdate({ _id: id }, update, { returnDocument: 'after' })
       .lean<RawLeanExam>();
     if (!updated) throw new NotFoundError(NOT_FOUND_MESSAGE);
-    return toExamDto(this.decrypt(updated));
+    return toExamDto(decryptExam(updated));
   }
 
   async remove(id: string): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    await removeIfDraft(this.model, id, NOT_FOUND_MESSAGE, NOT_DRAFT_MESSAGE);
+    await removeExamIfNotAttempted(this.model, this.attemptModel, id, NOT_DRAFT_MESSAGE);
   }
 
   /** ТЗ 4.3, п.2–4: вопрос не повторяется по всей форме и ссылается только на
@@ -118,44 +123,14 @@ export class ExamsService {
    * черновик формы уже не должен ссылаться на чужой/удалённый/неопубликованный id. */
   private async assertBlocksSavable(blocks: ExamBlockRecord[]): Promise<void> {
     assertNoRepeatedItems(blocks);
-    await this.assertItemsEligible(blocks);
+    await assertItemsEligible(this.itemModel, blocks);
   }
 
-  /** ТЗ 4.3, п.1 и п.2: пустую форму публиковать нельзя, и вопрос могли
-   * перевести в черновик/архив уже после того, как он попал в блок —
-   * повторная проверка на переходе в `published`, не только при сохранении. */
+  /** ТЗ 4.3, п.1–2: инвариант published-формы — не пустая, и вопрос блока
+   * всё ещё опубликован в банке. Зовётся на переходе в `published` и на
+   * каждом сохранении уже опубликованной (update(), блокер аудита №3). */
   private async assertPublishable(blocks: ExamBlockRecord[]): Promise<void> {
     if (!hasAnyQuestion(blocks)) throw new InvalidInputError(EMPTY_EXAM_MESSAGE);
-    await this.assertItemsEligible(blocks);
-  }
-
-  private async assertItemsEligible(blocks: ExamBlockRecord[]): Promise<void> {
-    const ids = [...new Set(blocks.flatMap((block) => block.itemIds))];
-    if (ids.length === 0) return;
-    const validObjectIds = ids.filter((id) => Types.ObjectId.isValid(id));
-    const published = await this.itemModel
-      .find({ _id: { $in: validObjectIds }, status: 'published' })
-      .select('_id')
-      .lean<{ _id: Types.ObjectId }[]>();
-    const publishedIds = new Set(published.map((doc) => doc._id.toString()));
-    const notEligibleCount = ids.filter((id) => !publishedIds.has(id)).length;
-    if (notEligibleCount === 0) return;
-    throw new InvalidInputError(
-      `В блоках ${notEligibleCount} ${pluralRu(notEligibleCount, QUESTION_FORMS)} не ` +
-        'из опубликованного банка: вопрос удалили или ещё не опубликовали. Уберите их ' +
-        'из блока или опубликуйте вопрос в «Вопросах».',
-    );
-  }
-
-  /** `blocks` хранится строкой (encJson, exam.schema.ts) — decryptRecord (не
-   * параметризована по конкретному полю, как и у ExamItemsService.decrypt)
-   * возвращает его с тем же типом `string`, хотя на деле это уже разобранный
-   * JSON; приводим явно один раз здесь. */
-  private decrypt(doc: RawLeanExam): LeanExam {
-    const decrypted = decryptRecord(doc, EXAM_ENCRYPT_SCHEMA);
-    return {
-      ...decrypted,
-      blocks: decrypted.blocks as unknown as ExamBlockRecord[],
-    };
+    await assertItemsEligible(this.itemModel, blocks);
   }
 }

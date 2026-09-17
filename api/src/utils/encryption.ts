@@ -1,90 +1,53 @@
 // AES-256-GCM шифрование свободного текста и секретов каналов (правило
 // CLAUDE.md: ENCRYPTION_KEY / ENCRYPTION_KEY_OLD, никогда не ротировать без
 // re-encryption). Портировано из telegram-bot-2/src/utils/crypto.ts, без
-// Prisma-специфики — здесь только сами примитивы.
-//
-// Мульти-ключ для онлайн-ротации:
-//   ENCRYPTION_KEY     — текущий ключ, им шифруется ВСЁ новое.
-//   ENCRYPTION_KEY_OLD — старые ключи через запятую, пробуются только при расшифровке.
+// Prisma-специфики — здесь только сами примитивы. Ключи и правило «в
+// production без ключа не стартуем» — в encryption-keys.ts, общие с
+// шифрованием байтов (encryption-bytes.ts).
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { Logger } from '@nestjs/common';
+import {
+  AES_ALGORITHM,
+  AES_IV_BYTES,
+  AES_TAG_BYTES,
+  readKeys,
+  warnDecryptFailure,
+  writeKey,
+} from './encryption-keys';
 
-// Статический логгер модуля (не DI-сервис — файл не инстанцируется Nest'ом,
-// это набор чистых функций шифрования). no-console запрещает console.* в
-// api/src — CLAUDE.md, раздел «Обработка ошибок».
-const logger = new Logger('Encryption');
-
-function loadKeys(): { current: Buffer | null; all: Buffer[] } {
-  const parse = (hex: string): Buffer | null =>
-    hex.length === 64 ? Buffer.from(hex, 'hex') : null;
-  const cur = parse((process.env.ENCRYPTION_KEY ?? '').trim());
-  const olds = (process.env.ENCRYPTION_KEY_OLD ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map(parse)
-    .filter((k): k is Buffer => k !== null);
-  const all = [cur, ...olds].filter((k): k is Buffer => k !== null);
-  return { current: cur, all };
-}
-const { current: CURRENT_KEY, all: ALL_KEYS } = loadKeys();
-
-if (process.env.NODE_ENV === 'production' && !CURRENT_KEY) {
-  // Падение при старте лучше, чем молчаливое хранение свободного текста
-  // (дневников, ссылок с паролями) в открытом виде.
-  throw new Error(
-    'FATAL: ENCRYPTION_KEY отсутствует или неверной длины в production. ' +
-      "Сгенерировать: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
-  );
-}
-
-/** Ключ настроен (валидный ENCRYPTION_KEY). В отличие от encrypt() (тихо
- * хранит plain text вне production), SeedService сам решает отказаться. */
-export function isEncryptionConfigured(): boolean {
-  return CURRENT_KEY !== null;
-}
+// Реэкспорт для существующих потребителей (SeedService): сам флаг живёт
+// рядом с ключами.
+export { isEncryptionConfigured } from './encryption-keys';
 
 export function encrypt(text: string | null | undefined): string | null {
   if (!text) return text ?? null;
-  if (!CURRENT_KEY) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('ENCRYPTION_KEY не настроен — отказ хранить открытый текст');
-    }
-    return text;
-  }
-  const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', CURRENT_KEY, iv, { authTagLength: 16 });
+  const key = writeKey();
+  if (!key) return text;
+  const iv = randomBytes(AES_IV_BYTES);
+  const cipher = createCipheriv(AES_ALGORITHM, key, iv, { authTagLength: AES_TAG_BYTES });
   const enc = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, enc]).toString('base64');
 }
 
-let lastDecryptWarnAt = 0;
-function warnDecryptFailure(): void {
-  const now = Date.now();
-  if (now - lastDecryptWarnAt < 60_000) return;
-  lastDecryptWarnAt = now;
-  logger.warn(
-    'decrypt: blob похож на шифротекст, но не расшифровался ни одним ключом — ' +
-      'возможна порча данных или неполная ротация ENCRYPTION_KEY',
-  );
-}
-
 export function decrypt(value: string | null | undefined): string | null {
-  if (!value || ALL_KEYS.length === 0) return value ?? null;
+  const keys = readKeys();
+  if (!value || keys.length === 0) return value ?? null;
   let buf: Buffer;
   try {
     buf = Buffer.from(value, 'base64');
-    if (buf.length < 29) return value; // не наш формат
+    // Хотя бы один байт данных после iv и tag — иначе это не наш формат.
+    if (buf.length <= AES_IV_BYTES + AES_TAG_BYTES) return value;
   } catch {
     return value;
   }
-  const iv = buf.subarray(0, 12);
-  const tag = buf.subarray(12, 28);
-  const data = buf.subarray(28);
-  for (const key of ALL_KEYS) {
+  const iv = buf.subarray(0, AES_IV_BYTES);
+  const tag = buf.subarray(AES_IV_BYTES, AES_IV_BYTES + AES_TAG_BYTES);
+  const data = buf.subarray(AES_IV_BYTES + AES_TAG_BYTES);
+  for (const key of keys) {
     try {
-      const decipher = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
+      const decipher = createDecipheriv(AES_ALGORITHM, key, iv, {
+        authTagLength: AES_TAG_BYTES,
+      });
       decipher.setAuthTag(tag);
       return decipher.update(data).toString('utf8') + decipher.final('utf8');
     } catch {

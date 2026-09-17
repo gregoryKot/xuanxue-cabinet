@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_TEMPLATES, type LessonDto, type TemplateKind } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { TemplateEditor } from './TemplateEditor';
 
 vi.mock('../api/http', async () => {
@@ -15,6 +16,10 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+// «Пояс школы отличается от браузерного» ниже — проверяемое условие, а не
+// везение: пояс зрителя задан явно (test-support/viewerTimeZone.ts).
+stubViewerTimeZone();
 
 beforeEach(() => {
   // Дефолт для тестов, которым сам факт автозапроса не важен — без него

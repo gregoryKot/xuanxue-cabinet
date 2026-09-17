@@ -1,7 +1,7 @@
 // e2e на /users — экран «Люди» (docs/PLAN.md §6, блокер аудита Б3): доступ
 // только admin (данные школы, ADR-0010), список без ПДн (SECURITY §1).
-// Матрица доступа — e2e-support/README.md: без cookie 401, без ролей и
-// student 403, admin 200.
+// Матрица доступа — e2e-support/README.md: без cookie 401, без ролей
+// (ученик) 403, admin 200.
 import request from 'supertest';
 import type { ApiErrorBody, UserDto, UserRole } from '@xuanxue/shared';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -41,9 +41,12 @@ describe('Users (e2e)', () => {
   });
 
   it.each([
-    ['гость', [] as UserRole[]],
-    ['ученик', ['student'] as UserRole[]],
+    ['ученик', [] as UserRole[]],
     ['учитель', ['teacher'] as UserRole[]],
+    // Помощник учителя правами равен учителю везде, кроме UsersController
+    // (docs/SECURITY.md §2): назначение ролей и удаление данных — только admin.
+    ['помощник учителя', ['assistant'] as UserRole[]],
+    ['бухгалтер', ['accountant'] as UserRole[]],
   ])('%s: GET и PATCH /users — 403', async (_label, roles) => {
     const cookie = await sessionFor(roles);
     const other = await createUser();

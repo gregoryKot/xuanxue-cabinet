@@ -101,6 +101,18 @@ describe('ChannelsService', () => {
     expect(list).toHaveLength(1);
   });
 
+  it('list: личный канал ученика (broadcastEligible: false) не попадает на экран «Каналы» (ADR-0027)', async () => {
+    await service.create({ type: 'manual', title: 'Boosty', config: {} });
+    await channelConfig.upsertPersonalTelegramChat({
+      chatId: '555',
+      title: 'Личные сообщения: Ольга',
+    });
+
+    const list = await service.list({});
+
+    expect(list.map((c) => c.title)).toEqual(['Boosty']);
+  });
+
   it('create → getById: read-after-write, config в ответе нет', async () => {
     const created = await service.create({
       type: 'telegram',

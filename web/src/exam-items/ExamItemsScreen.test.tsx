@@ -1,7 +1,7 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts»).
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -14,6 +14,9 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+const NEW_MARKER = 'Здесь страница нового вопроса';
+const EDITOR_MARKER = 'Здесь страница вопроса';
 
 function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
   return {
@@ -33,8 +36,12 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
 
 function renderScreen() {
   return render(
-    <MemoryRouter>
-      <ExamItemsScreen />
+    <MemoryRouter initialEntries={['/exam-items']}>
+      <Routes>
+        <Route path="/exam-items" element={<ExamItemsScreen />} />
+        <Route path="/exam-items/new" element={<p>{NEW_MARKER}</p>} />
+        <Route path="/exam-items/:itemId" element={<p>{EDITOR_MARKER}</p>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -75,7 +82,7 @@ describe('ExamItemsScreen — сбой загрузки', () => {
 });
 
 describe('ExamItemsScreen — пустая база', () => {
-  it('честный текст и кнопка «Новый вопрос»', async () => {
+  it('заголовок раздела, объяснение и честный текст вместо списка', async () => {
     mockedApiFetch.mockResolvedValue([]);
 
     renderScreen();
@@ -83,77 +90,102 @@ describe('ExamItemsScreen — пустая база', () => {
     expect(
       await screen.findByText(/Вопросов пока нет\. Добавьте первый/),
     ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Вопросы' })).toBeInTheDocument();
     expect(screen.getByText(/собирается экзамен/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Новый вопрос' })).toBeInTheDocument();
   });
 });
 
 describe('ExamItemsScreen — список вопросов', () => {
-  it('рендерит карточку с формулировкой, типом, статусом', async () => {
+  it('рендерит строку с формулировкой, типом и статусом', async () => {
     mockedApiFetch.mockResolvedValue([makeItem()]);
 
     renderScreen();
 
     expect(await screen.findByText('Опишите принцип песчинки')).toBeInTheDocument();
-    expect(screen.getByText(/Текстовый ответ · Черновик/)).toBeInTheDocument();
+    expect(screen.getByText(/Свободный ответ · Черновик/)).toBeInTheDocument();
   });
 });
 
-describe('ExamItemsScreen — фильтр по статусу', () => {
-  it('смена фильтра уходит в query запроса', async () => {
+describe('ExamItemsScreen — фильтры', () => {
+  it('переключатель статуса уходит в query запроса', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([]);
 
     renderScreen();
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
 
-    await user.selectOptions(screen.getByLabelText('Статус'), 'published');
+    await user.click(screen.getByRole('button', { name: 'Опубликован' }));
 
     await waitFor(() => {
       const lastCall = mockedApiFetch.mock.calls.at(-1)?.[0] as string;
       expect(lastCall).toContain('status=published');
     });
   });
+
+  it('поиск по формулировке оставляет подходящие вопросы', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue([
+      makeItem({ id: 'e1', prompt: 'Опишите принцип песчинки' }),
+      makeItem({ id: 'e2', prompt: 'Зачем придумали тайцзи?' }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Опишите принцип песчинки');
+
+    await user.type(screen.getByLabelText('Поиск по вопросу и тегу'), 'тайцзи');
+
+    expect(screen.getByText('Зачем придумали тайцзи?')).toBeInTheDocument();
+    expect(screen.queryByText('Опишите принцип песчинки')).not.toBeInTheDocument();
+  });
+
+  it('поиск по тегу тоже находит', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue([
+      makeItem({ id: 'e1', prompt: 'Опишите принцип песчинки', tags: ['дыхание'] }),
+      makeItem({ id: 'e2', prompt: 'Зачем придумали тайцзи?', tags: ['история'] }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Опишите принцип песчинки');
+
+    await user.type(screen.getByLabelText('Поиск по вопросу и тегу'), 'дыхание');
+
+    expect(screen.getByText('Опишите принцип песчинки')).toBeInTheDocument();
+    expect(screen.queryByText('Зачем придумали тайцзи?')).not.toBeInTheDocument();
+  });
+
+  it('по запросу ничего не нашлось — текст про фильтры, не про пустой банк', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockResolvedValue([makeItem()]);
+
+    renderScreen();
+    await screen.findByText('Опишите принцип песчинки');
+
+    await user.type(screen.getByLabelText('Поиск по вопросу и тегу'), 'веник');
+
+    expect(screen.getByText('С такими фильтрами вопросов нет.')).toBeInTheDocument();
+  });
 });
 
-describe('ExamItemsScreen — лист вопроса', () => {
-  it('«Новый вопрос» открывает пустой лист — сохранение шлёт POST', async () => {
+describe('ExamItemsScreen — переходы на страницу вопроса', () => {
+  it('«Новый вопрос» ведёт на /exam-items/new', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([]);
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
 
-    const dialogTitle = await screen.findByRole('heading', { name: 'Новый вопрос' });
-    const sheet = dialogTitle.closest('form') as HTMLFormElement;
-    await user.type(
-      within(sheet).getByLabelText('Формулировка'),
-      'Сколько форм в стиле Ян?',
-    );
-
-    mockedApiFetch.mockResolvedValueOnce(makeItem());
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await user.click(within(sheet).getByRole('button', { name: 'Сохранить' }));
-
-    await waitFor(() => {
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        '/exam-items',
-        expect.objectContaining({ method: 'POST' }),
-      );
-    });
+    expect(screen.getByText(NEW_MARKER)).toBeInTheDocument();
   });
 
-  it('открыть карточку — лист правки с заполненной формулировкой', async () => {
+  it('строка списка ведёт на страницу своего вопроса', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([makeItem()]);
 
     renderScreen();
     await user.click(await screen.findByText('Опишите принцип песчинки'));
 
-    const dialogTitle = await screen.findByRole('heading', { name: 'Вопрос' });
-    const sheet = dialogTitle.closest('form') as HTMLFormElement;
-    expect(within(sheet).getByLabelText('Формулировка')).toHaveValue(
-      'Опишите принцип песчинки',
-    );
+    expect(screen.getByText(EDITOR_MARKER)).toBeInTheDocument();
   });
 });

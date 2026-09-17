@@ -31,7 +31,37 @@ import {
   EXAM_ITEM_FIELD_POLICY,
 } from '../exams/exam-item.schema';
 import { ExamRecord, ExamSchema, EXAM_FIELD_POLICY } from '../exams/exam.schema';
+import {
+  ExamAttemptRecord,
+  ExamAttemptSchema,
+  EXAM_ATTEMPT_FIELD_POLICY,
+} from '../exams/exam-attempt.schema';
+import {
+  ExamGradingRecord,
+  ExamGradingSchema,
+  EXAM_GRADING_FIELD_POLICY,
+} from '../exams/exam-grading.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
+import {
+  InviteLinkRecord,
+  InviteLinkSchema,
+  INVITE_LINK_FIELD_POLICY,
+} from '../users/invite-link.schema';
+import {
+  EmailLoginTokenRecord,
+  EmailLoginTokenSchema,
+  EMAIL_LOGIN_TOKEN_FIELD_POLICY,
+} from '../auth/email-login-token.schema';
+import {
+  TelegramLinkCodeRecord,
+  TelegramLinkCodeSchema,
+  TELEGRAM_LINK_CODE_FIELD_POLICY,
+} from '../users/telegram-link-code.schema';
+import {
+  NotificationPrefsRecord,
+  NotificationPrefsSchema,
+  NOTIFICATION_PREFS_FIELD_POLICY,
+} from '../notifications/notification-prefs.schema';
 import {
   SettingsRecord,
   SettingsSchema,
@@ -42,6 +72,16 @@ import {
   BotSessionSchema,
   BOT_SESSION_FIELD_POLICY,
 } from '../telegram/bot-session.schema';
+import {
+  MediaAssetRecord,
+  MediaAssetSchema,
+  MEDIA_ASSET_FIELD_POLICY,
+} from '../media/media-asset.schema';
+import {
+  ExamImageRecord,
+  ExamImageSchema,
+  EXAM_IMAGE_FIELD_POLICY,
+} from '../exam-images/exam-image.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -53,11 +93,7 @@ interface ModelDefinition {
 export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
   { name: ClassRecord.name, schema: ClassSchema, fieldPolicy: CLASS_FIELD_POLICY },
   { name: LessonRecord.name, schema: LessonSchema, fieldPolicy: LESSON_FIELD_POLICY },
-  {
-    name: ChannelRecord.name,
-    schema: ChannelSchema,
-    fieldPolicy: CHANNEL_FIELD_POLICY,
-  },
+  { name: ChannelRecord.name, schema: ChannelSchema, fieldPolicy: CHANNEL_FIELD_POLICY },
   {
     name: BroadcastRecord.name,
     schema: BroadcastSchema,
@@ -73,12 +109,38 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     schema: ExamItemSchema,
     fieldPolicy: EXAM_ITEM_FIELD_POLICY,
   },
+  { name: ExamRecord.name, schema: ExamSchema, fieldPolicy: EXAM_FIELD_POLICY },
   {
-    name: ExamRecord.name,
-    schema: ExamSchema,
-    fieldPolicy: EXAM_FIELD_POLICY,
+    name: ExamAttemptRecord.name,
+    schema: ExamAttemptSchema,
+    fieldPolicy: EXAM_ATTEMPT_FIELD_POLICY,
+  },
+  {
+    name: ExamGradingRecord.name,
+    schema: ExamGradingSchema,
+    fieldPolicy: EXAM_GRADING_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
+  {
+    name: InviteLinkRecord.name,
+    schema: InviteLinkSchema,
+    fieldPolicy: INVITE_LINK_FIELD_POLICY,
+  },
+  {
+    name: EmailLoginTokenRecord.name,
+    schema: EmailLoginTokenSchema,
+    fieldPolicy: EMAIL_LOGIN_TOKEN_FIELD_POLICY,
+  },
+  {
+    name: TelegramLinkCodeRecord.name,
+    schema: TelegramLinkCodeSchema,
+    fieldPolicy: TELEGRAM_LINK_CODE_FIELD_POLICY,
+  },
+  {
+    name: NotificationPrefsRecord.name,
+    schema: NotificationPrefsSchema,
+    fieldPolicy: NOTIFICATION_PREFS_FIELD_POLICY,
+  },
   {
     name: SettingsRecord.name,
     schema: SettingsSchema,
@@ -88,5 +150,15 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: BotSessionRecord.name,
     schema: BotSessionSchema,
     fieldPolicy: BOT_SESSION_FIELD_POLICY,
+  },
+  {
+    name: MediaAssetRecord.name,
+    schema: MediaAssetSchema,
+    fieldPolicy: MEDIA_ASSET_FIELD_POLICY,
+  },
+  {
+    name: ExamImageRecord.name,
+    schema: ExamImageSchema,
+    fieldPolicy: EXAM_IMAGE_FIELD_POLICY,
   },
 ];

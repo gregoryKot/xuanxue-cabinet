@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
-import { useChannels, type UseChannelsResult } from './useChannels';
+import { useChannels } from './useChannels';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -43,50 +43,4 @@ describe('useChannels — загрузка', () => {
       expect.anything(),
     );
   });
-});
-
-interface MutationCase {
-  name: string;
-  call: (result: UseChannelsResult) => Promise<void>;
-  path: string;
-  method: string;
-}
-
-const MUTATIONS: MutationCase[] = [
-  {
-    name: 'create',
-    call: (result) => result.create({ type: 'manual', title: 'Facebook', config: {} }),
-    path: '/channels',
-    method: 'POST',
-  },
-  {
-    name: 'update',
-    call: (result) => result.update('ch1', { active: false }),
-    path: '/channels/ch1',
-    method: 'PATCH',
-  },
-  {
-    name: 'remove',
-    call: (result) => result.remove('ch1'),
-    path: '/channels/ch1',
-    method: 'DELETE',
-  },
-];
-
-describe('useChannels — мутации (read-after-write)', () => {
-  it.each(MUTATIONS)(
-    '$name — $method $path, затем reload',
-    async ({ call, path, method }) => {
-      const result = await renderReady();
-
-      mockedApiFetch.mockResolvedValueOnce({});
-      mockedApiFetch.mockResolvedValueOnce([]);
-      await call(result.current);
-
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        path,
-        expect.objectContaining({ method }),
-      );
-    },
-  );
 });

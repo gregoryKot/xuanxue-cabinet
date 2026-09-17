@@ -2,6 +2,7 @@
 // «Тесты»): шифрование содержательных полей, правила блоков ТЗ 4.3 (п.1–5),
 // фильтры и лимит списка, id блока сохраняется при правке.
 import type { Connection, Model } from 'mongoose';
+import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamRecord, ExamSchema } from './exam.schema';
 import { ExamsService } from './exams.service';
@@ -14,6 +15,7 @@ describe('ExamsService', () => {
   let connection: Connection;
   let model: Model<ExamRecord>;
   let itemModel: Model<ExamItemRecord>;
+  let attemptModel: Model<ExamAttemptRecord>;
   let service: ExamsService;
 
   beforeAll(async () => {
@@ -21,7 +23,11 @@ describe('ExamsService', () => {
     connection = memory.connection;
     model = connection.model<ExamRecord>(ExamRecord.name, ExamSchema);
     itemModel = connection.model<ExamItemRecord>(ExamItemRecord.name, ExamItemSchema);
-    service = new ExamsService(model, itemModel);
+    attemptModel = connection.model<ExamAttemptRecord>(
+      ExamAttemptRecord.name,
+      ExamAttemptSchema,
+    );
+    service = new ExamsService(model, itemModel, attemptModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -31,6 +37,7 @@ describe('ExamsService', () => {
   afterEach(async () => {
     await model.deleteMany({});
     await itemModel.deleteMany({});
+    await attemptModel.deleteMany({});
   });
 
   // Минимальный вопрос банка для ссылки из блока — тест самих правил формы,
@@ -152,6 +159,34 @@ describe('ExamsService', () => {
     expect(published.status).toBe('published');
   });
 
+  // Блокер аудита 2026-09-15 №3: «хотя бы один вопрос» раньше проверялся
+  // только на переходе в published — уже опубликованную форму можно было
+  // сохранить пустой без единого перехода статуса.
+  it('сохранение уже опубликованной формы без вопросов — InvalidInputError, форма не меняется', async () => {
+    const itemId = await createItem('published');
+    const created = await service.create(
+      { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
+      CREATED_BY,
+    );
+    await service.update(created.id, { status: 'published' });
+
+    await expect(service.update(created.id, { blocks: [] })).rejects.toThrow(
+      'нет ни одного вопроса',
+    );
+    const stillThere = await service.getById(created.id);
+    expect(stillThere.status).toBe('published');
+    expect(stillThere.blocks[0]?.itemIds).toEqual([itemId]);
+  });
+
+  it('черновик без вопросов сохраняется — законно, это не публикация', async () => {
+    const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
+
+    const updated = await service.update(created.id, { title: 'Экзамен (правка)' });
+
+    expect(updated.status).toBe('draft');
+    expect(updated.blocks).toEqual([]);
+  });
+
   it('удаление черновика — проходит', async () => {
     const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
 
@@ -171,6 +206,32 @@ describe('ExamsService', () => {
     await expect(service.remove(created.id)).rejects.toThrow(
       'Удалить можно только черновик',
     );
+    await expect(model.findById(created.id)).resolves.not.toBeNull();
+  });
+
+  // Пункт 4 аудита 2026-09-15: та же дыра, что у вопроса банка, но для самой
+  // формы — переход published → draft ничем не ограничен (в отличие от
+  // published-инварианта выше), и форму, по которой уже сдавали, можно было
+  // откатить в черновик и удалить, осиротив exam_attempts.
+  it('форма с попыткой ученика — не удаляется, даже откатившись в черновик', async () => {
+    const itemId = await createItem('published');
+    const created = await service.create(
+      { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
+      CREATED_BY,
+    );
+    await service.update(created.id, { status: 'published' });
+    await attemptModel.create({
+      examId: created.id,
+      examTitle: created.title,
+      userId: CREATED_BY,
+      attemptNo: 1,
+      startedAt: new Date(),
+    });
+    // Учитель откатил форму назад в черновик — старый removeIfDraft этого
+    // не видел и дал бы удалить (блокер №4).
+    await service.update(created.id, { status: 'draft', blocks: [] });
+
+    await expect(service.remove(created.id)).rejects.toThrow('уже есть попытки учеников');
     await expect(model.findById(created.id)).resolves.not.toBeNull();
   });
 
@@ -244,5 +305,62 @@ describe('ExamsService', () => {
 
     expect(updated.level).toBe('');
     expect(updated.description).toBe('');
+  });
+
+  // Слой 4.6, ТЗ 4.6, п.1: рубрика приезжает с набором по умолчанию — можно
+  // проверять с первого дня, не дожидаясь, пока учитель напишет свою.
+  it('create без rubric — DEFAULT_RUBRIC подставлен, у каждого критерия свой id', async () => {
+    const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
+
+    expect(created.rubric.length).toBeGreaterThan(0);
+    const ids = created.rubric.map((criterion) => criterion.id);
+    expect(new Set(ids).size).toBe(created.rubric.length);
+    expect(created.rubric.every((criterion) => criterion.maxScore > 0)).toBe(true);
+  });
+
+  it('create со своей rubric — используется она, не DEFAULT_RUBRIC', async () => {
+    const created = await service.create(
+      { title: 'Экзамен', rubric: [{ title: 'Свой критерий', maxScore: 3 }] },
+      CREATED_BY,
+    );
+
+    // `id` генерируется сервисом — сверяем остальные поля, а не подставляем
+    // `expect.any` в объект (eslint запрещает `any` даже в тестах).
+    expect(created.rubric).toHaveLength(1);
+    const criterion = created.rubric[0];
+    expect(criterion?.title).toBe('Свой критерий');
+    expect(criterion?.description).toBe('');
+    expect(criterion?.maxScore).toBe(3);
+    expect(typeof criterion?.id).toBe('string');
+    expect(criterion?.id).not.toBe('');
+  });
+
+  it('PATCH rubric заменяет набор целиком, id сохраняется у переданного критерия', async () => {
+    const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
+    const keptId = created.rubric[0]?.id;
+    if (!keptId) throw new Error('ожидался критерий по умолчанию');
+
+    const updated = await service.update(created.id, {
+      rubric: [
+        { id: keptId, title: 'Переписанный критерий', maxScore: 5 },
+        { title: 'Новый критерий', maxScore: 3 },
+      ],
+    });
+
+    expect(updated.rubric).toHaveLength(2);
+    expect(updated.rubric[0]).toEqual({
+      id: keptId,
+      title: 'Переписанный критерий',
+      description: '',
+      maxScore: 5,
+    });
+  });
+
+  it('PATCH без rubric — рубрика не трогается', async () => {
+    const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
+
+    const updated = await service.update(created.id, { title: 'Другое название' });
+
+    expect(updated.rubric).toEqual(created.rubric);
   });
 });

@@ -90,7 +90,7 @@ describe('Журнал рассылок (e2e)', () => {
     );
     expect(anon.status).toBe(401);
 
-    const cookie = await sessionFor(['student']);
+    const cookie = await sessionFor([]);
     const res = await request(server())
       .get('/api/broadcasts?from=2026-01-01T00:00:00Z&to=2026-01-08T00:00:00Z')
       .set('Cookie', cookie);

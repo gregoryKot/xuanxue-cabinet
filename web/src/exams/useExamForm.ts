@@ -35,7 +35,9 @@ export function useExamForm(
     initialState: initialExamFormState,
     validate: validateExamForm,
     toCreateInput,
-    toUpdateInput,
+    // `id` первого блока живёт в самом экзамене, не в состоянии формы: иначе
+    // экран пересобирал бы блок заново при каждом сохранении (ADR-0033).
+    toUpdateInput: (state) => toUpdateInput(state, exam),
     onCreate,
     onUpdate,
     onRemove,

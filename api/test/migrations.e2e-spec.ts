@@ -31,9 +31,14 @@ describe('Миграции при старте (e2e)', () => {
     expect(res.status).toBe(200);
     const classes = res.body as ClassDto[];
     expect(classes).toHaveLength(EXPECTED_CLASSES);
-    // И со ссылками: занятие без ссылки — это рассылка без главного, а
-    // расшифровка по дороге из базы в ответ — отдельное место, где всё может
-    // разойтись (0003-school-zoom-links, ADR-0019).
-    expect(classes.every((cls) => cls.zoomLink?.includes('zoom.us'))).toBe(true);
+    // Расшифровка по дороге из базы в ответ — отдельное место, где всё может
+    // разойтись: название лежит зашифрованным, и пустая строка здесь означала
+    // бы, что маппер отдаёт сырой шифротекст или ничего.
+    expect(classes.every((cls) => cls.title.length > 0)).toBe(true);
+    // Ссылок Zoom тут нет и быть не должно: они приезжают из
+    // `api/seed/zoom-links.local.json`, которого в репозитории и в CI нет
+    // (ADR-0019, дополнение 2026-09-12). На чистой установке ссылку впишет
+    // учитель, а пропущенные видно по метке «без ссылки» в расписании.
+    expect(classes.every((cls) => !cls.zoomLink)).toBe(true);
   });
 });

@@ -10,7 +10,7 @@ import type {
   SettingsDto,
   UserRole,
 } from '@xuanxue/shared';
-import { DEFAULT_TEMPLATES } from '@xuanxue/shared';
+import { DEFAULT_PREVIEW_MINUTES, DEFAULT_TEMPLATES } from '@xuanxue/shared';
 import { ClassRecord } from '../src/classes/class.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { SettingsRecord } from '../src/settings/settings.schema';
@@ -62,7 +62,7 @@ describe('Settings (e2e)', () => {
     const anon = await request(server()).get('/api/settings');
     expect(anon.status).toBe(401);
 
-    const cookie = await sessionFor(['student']);
+    const cookie = await sessionFor([]);
     const res = await request(server()).get('/api/settings').set('Cookie', cookie);
     expect(res.status).toBe(403);
   });
@@ -76,6 +76,37 @@ describe('Settings (e2e)', () => {
     const dto = res.body as SettingsDto;
     expect(dto.templates.lesson_link).toBe(DEFAULT_TEMPLATES.lesson_link);
     expect(dto.tz).toBe('Asia/Jerusalem');
+    expect(dto.previewMinutes).toBe(DEFAULT_PREVIEW_MINUTES);
+  });
+
+  describe('PATCH previewMinutes', () => {
+    it('валидное значение — GET после видит его (read-after-write)', async () => {
+      const cookie = await sessionFor(['teacher']);
+
+      const patched = await withCsrf(request(server()).patch('/api/settings'))
+        .set('Cookie', cookie)
+        .send({ previewMinutes: 10 });
+      expect(patched.status).toBe(200);
+      expect((patched.body as SettingsDto).previewMinutes).toBe(10);
+
+      const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+      expect((got.body as SettingsDto).previewMinutes).toBe(10);
+    });
+
+    // 0/1441 — за границей SETTINGS_LIMITS; 5.5 — не целое; null — не в
+    // NULLABLE_SETTINGS_FIELDS (сбрасывать previewMinutes нечем не в тему,
+    // это не адрес сайта): все четыре 400, ничего не сохраняется.
+    it.each([0, 1441, 5.5, null])('%s — 400, ничего не сохраняется', async (value) => {
+      const cookie = await sessionFor(['teacher']);
+
+      const res = await withCsrf(request(server()).patch('/api/settings'))
+        .set('Cookie', cookie)
+        .send({ previewMinutes: value });
+
+      expect(res.status).toBe(400);
+      const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+      expect((got.body as SettingsDto).previewMinutes).toBe(DEFAULT_PREVIEW_MINUTES);
+    });
   });
 
   it('PATCH с неизвестной подстановкой — 400 с текстом в конверте', async () => {

@@ -29,6 +29,16 @@ describe('usePeople — загрузка', () => {
   });
 });
 
+describe('usePeople — enabled: false (ADR-0030, учитель на «Люди»)', () => {
+  it('не зовёт GET /users, people остаётся null, loading false', () => {
+    const { result } = renderHook(() => usePeople(false));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.people).toBeNull();
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe('usePeople — updateRoles (read-after-write)', () => {
   it('PATCH /users/:id, затем перечитывает список', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);
@@ -42,6 +52,23 @@ describe('usePeople — updateRoles (read-after-write)', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/users/u1',
       expect.objectContaining({ method: 'PATCH', body: { roles: ['teacher'] } }),
+    );
+  });
+});
+
+describe('usePeople — updateStatus (read-after-write)', () => {
+  it('PATCH /users/:id/status, затем перечитывает список', async () => {
+    mockedApiFetch.mockResolvedValueOnce([]);
+    const { result } = renderHook(() => usePeople());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockedApiFetch.mockResolvedValueOnce({});
+    mockedApiFetch.mockResolvedValueOnce([]);
+    await result.current.updateStatus('u1', 'blocked');
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/users/u1/status',
+      expect.objectContaining({ method: 'PATCH', body: { status: 'blocked' } }),
     );
   });
 });

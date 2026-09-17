@@ -33,6 +33,10 @@ export const NO_TRAILING_SLASH_RE = /[^/]$/;
 // приходит от платформы, не от человека — только «это похоже на SHA», чтобы
 // опечатка в чужой Railway-переменной с тем же именем не прошла тихо.
 export const GIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
+// Отправитель письма входа (ADR-0029): адрес сам по себе или «Имя <адрес>».
+// Не строгий RFC 5322 — тот же уровень, что у остальных регэкспов файла,
+// формат проверяет реальная отправка через Resend, а не эта строка.
+export const MAIL_FROM_RE = /^(?:[^<>]+\s)?<?[^\s<>]+@[^\s<>]+\.[^\s<>]+>?$/;
 
 export const NODE_ENV_MESSAGE =
   'NODE_ENV должен быть одним из: development, test, production';
@@ -56,3 +60,5 @@ export const LOG_LEVEL_MESSAGE =
 export const SCHEDULER_ENABLED_MESSAGE = 'SCHEDULER_ENABLED должен быть true или false';
 export const RAILWAY_GIT_COMMIT_SHA_MESSAGE =
   'RAILWAY_GIT_COMMIT_SHA должен быть SHA коммита (7-40 hex-символов)';
+export const MAIL_FROM_MESSAGE =
+  'MAIL_FROM должен быть адресом (name@domain) или видом «Имя <адрес@домен>»';

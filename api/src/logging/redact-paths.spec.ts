@@ -23,7 +23,15 @@ function logSample(): Record<string, unknown> {
           cookie: 'sid=1',
           'x-telegram-bot-api-secret-token': 'webhook-secret',
         },
-        body: { email: 'user@example.com', name: 'Мария', hash: 'a'.repeat(64) },
+        query: { join: 'e'.repeat(32), token: 'f'.repeat(64), limit: '50' },
+        body: {
+          email: 'user@example.com',
+          name: 'Мария',
+          hash: 'a'.repeat(64),
+          code: 'b'.repeat(32),
+          inviteCode: 'c'.repeat(32),
+          message: { text: '/start join_' + 'd'.repeat(32), chat: { id: 1 } },
+        },
       },
       res: {
         headers: {
@@ -71,6 +79,7 @@ describe('REDACT_PATHS', () => {
     const logged = logSample();
     const req = logged.req as Record<string, unknown>;
     const headers = req.headers as Record<string, unknown>;
+    const query = req.query as Record<string, unknown>;
     const body = req.body as Record<string, unknown>;
     const res = logged.res as Record<string, unknown>;
     const resHeaders = res.headers as Record<string, unknown>;
@@ -83,8 +92,13 @@ describe('REDACT_PATHS', () => {
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
     expect(headers['x-telegram-bot-api-secret-token']).toBe('[Redacted]');
+    expect(query.join).toBe('[Redacted]');
+    expect(query.token).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
     expect(body.hash).toBe('[Redacted]');
+    expect(body.code).toBe('[Redacted]');
+    expect(body.inviteCode).toBe('[Redacted]');
+    expect((body.message as Record<string, unknown>).text).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');
     expect(user.accessToken).toBe('[Redacted]');
@@ -105,6 +119,7 @@ describe('REDACT_PATHS', () => {
   it('не трогает соседние не-секретные поля', () => {
     const logged = logSample();
     const req = logged.req as Record<string, unknown>;
+    const query = req.query as Record<string, unknown>;
     const body = req.body as Record<string, unknown>;
     const res = logged.res as Record<string, unknown>;
     const resHeaders = res.headers as Record<string, unknown>;
@@ -114,9 +129,11 @@ describe('REDACT_PATHS', () => {
     const broadcast = logged.broadcast as Record<string, unknown>;
     const vk = logged.vk as Record<string, unknown>;
 
+    expect(query.limit).toBe('50');
     expect(resHeaders['content-type']).toBe('application/json');
     expect(vk.peer_id).toBe(2000000001);
     expect(body.name).toBe('Мария');
+    expect((body.message as Record<string, unknown>).chat).toEqual({ id: 1 });
     expect(user.name).toBe('Мария');
     expect(channel.title).toBe('Средняя группа');
     expect(lesson.topic).toBe('пятое занятие');

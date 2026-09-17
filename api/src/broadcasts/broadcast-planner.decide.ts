@@ -2,7 +2,7 @@
 // «Тесты»): вынесено из сервиса ради отдельного юнит-теста и размера файла.
 // Правила окна и условий — docs/PLAN.md §6 «Планировщик».
 import { DateTime } from 'luxon';
-import { DEFAULT_LEAD_MINUTES, PREVIEW_MINUTES, type ClassFormat } from '@xuanxue/shared';
+import { DEFAULT_LEAD_MINUTES, type ClassFormat } from '@xuanxue/shared';
 import { CANCEL_REASON } from './broadcast-cancel-reasons';
 
 export interface DecideClassInput {
@@ -31,21 +31,24 @@ export type PlanDecision =
 
 /**
  * Занятие «в окне» — `startsAt` от `now - DEFAULT_LEAD_MINUTES` (не включая)
- * до `now + leadMinutes + PREVIEW_MINUTES` класса. Нижняя граница
+ * до `now + leadMinutes + previewMinutes` класса. Нижняя граница
  * фиксирована: если тик стоял дольше получаса, досылать ссылку в прошлое уже
- * нет смысла. Верхняя граница расширена на `PREVIEW_MINUTES` — `broadcast`
- * создаётся с запасом, чтобы бот успел прислать предпросмотр (PLAN.md §6)
- * до фактической отправки: сам момент отправки хранит `scheduledAt`
- * (broadcast-planner.send.ts), не факт создания документа.
+ * нет смысла. Верхняя граница расширена на `previewMinutes` (настройка школы,
+ * `SettingsService.get()` — не константа, CLAUDE.md «Кабинет учителя: всё
+ * настраивается в интерфейсе») — `broadcast` создаётся с запасом, чтобы бот
+ * успел прислать предпросмотр (PLAN.md §6) до фактической отправки: сам
+ * момент отправки хранит `scheduledAt` (broadcast-planner.send.ts), не факт
+ * создания документа.
  */
 export function decideBroadcast(
   lesson: DecideLessonInput,
   cls: DecideClassInput | undefined,
   now: DateTime,
+  previewMinutes: number,
 ): PlanDecision {
   const leadMinutes = cls?.leadMinutes ?? DEFAULT_LEAD_MINUTES;
   const startsAt = DateTime.fromJSDate(lesson.startsAt, { zone: 'utc' });
-  const windowEnd = now.plus({ minutes: leadMinutes + PREVIEW_MINUTES });
+  const windowEnd = now.plus({ minutes: leadMinutes + previewMinutes });
   const windowStart = now.minus({ minutes: DEFAULT_LEAD_MINUTES });
 
   if (startsAt > windowEnd) return { kind: 'not_due' };

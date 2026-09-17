@@ -1,0 +1,66 @@
+// Один вопрос на экране сдачи (ТЗ п.2) — формулировка, подсказка (она для
+// ученика и написана — критерии проверки сюда не попадают, их в снимке
+// вовсе нет, AttemptQuestionDto без `criteria`), поле ответа по типу.
+//
+// Строка вопроса — общий components/QuestionRow.tsx (его же комментарий-шапка:
+// та же строка нужна предпросмотру «глазами ученика», exams/ExamPreviewQuestion.tsx).
+import type { AttemptQuestionDto } from '@xuanxue/shared';
+import { QuestionRow } from '../components/QuestionRow';
+import type { AttemptVideoControls } from './useAttemptMedia';
+import type { UseAttemptAutosaveResult } from './useAttemptAutosave';
+import { AttemptQuestionChoice } from './AttemptQuestionChoice';
+import { AttemptQuestionText } from './AttemptQuestionText';
+import { AttemptQuestionVideo } from './AttemptQuestionVideo';
+
+interface AttemptQuestionProps {
+  index: number;
+  question: AttemptQuestionDto;
+  autosave: UseAttemptAutosaveResult;
+  video: AttemptVideoControls;
+}
+
+export function AttemptQuestion({
+  index,
+  question,
+  autosave,
+  video,
+}: AttemptQuestionProps) {
+  const answer = autosave.getAnswer(question.itemId);
+  const promptId = `attempt-prompt-${question.itemId}`;
+
+  function changeOptions(optionIds: string[]) {
+    autosave.setOptions(question.itemId, optionIds);
+    autosave.flush();
+  }
+
+  return (
+    <QuestionRow
+      index={index}
+      promptId={promptId}
+      prompt={question.prompt}
+      hint={question.hint}
+    >
+      {question.kind === 'text' && (
+        <AttemptQuestionText
+          labelledBy={promptId}
+          value={answer?.text ?? ''}
+          onChange={(text) => autosave.setText(question.itemId, text)}
+          onBlur={autosave.flush}
+        />
+      )}
+      {(question.kind === 'single' || question.kind === 'multiple') && (
+        <AttemptQuestionChoice
+          labelledBy={promptId}
+          itemId={question.itemId}
+          kind={question.kind}
+          options={question.options}
+          selected={answer?.optionIds ?? []}
+          onChange={changeOptions}
+        />
+      )}
+      {question.kind === 'video' && (
+        <AttemptQuestionVideo itemId={question.itemId} video={video} />
+      )}
+    </QuestionRow>
+  );
+}

@@ -12,7 +12,10 @@ import { ChannelRecord } from '../channels/channel.schema';
 import { DeliveryRecord } from '../deliveries/delivery.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
+import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
+import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
+import { MediaAssetRecord } from '../media/media-asset.schema';
 import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -211,6 +214,65 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
         expiresAt: FIXED_DATE,
       }),
     ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+  });
+
+  it('exam_attempts: второй insert с той же тройкой (examId, userId, attemptNo) падает', async () => {
+    const ExamAttempt = connection.model<ExamAttemptRecord>(ExamAttemptRecord.name);
+    const examId = new mongoose.Types.ObjectId();
+    const userId = new mongoose.Types.ObjectId();
+    const base = {
+      examId,
+      examTitle: 'т',
+      userId,
+      attemptNo: 1,
+      blocks: '[]',
+      answers: '[]',
+      startedAt: FIXED_DATE,
+    };
+    await ExamAttempt.create(base);
+    await expect(ExamAttempt.create(base)).rejects.toMatchObject({
+      code: MONGO_DUPLICATE_KEY_CODE,
+    });
+    // Вторая попытка того же ученика по той же форме — другой attemptNo, не дубль.
+    await expect(ExamAttempt.create({ ...base, attemptNo: 2 })).resolves.toBeDefined();
+  });
+
+  it('exam_gradings: второй insert с тем же attemptId падает (одна оценка на попытку)', async () => {
+    const ExamGrading = connection.model<ExamGradingRecord>(ExamGradingRecord.name);
+    const base = {
+      attemptId: new mongoose.Types.ObjectId(),
+      examId: new mongoose.Types.ObjectId(),
+      userId: new mongoose.Types.ObjectId(),
+      graderId: new mongoose.Types.ObjectId(),
+      outcome: 'passed' as const,
+      gradedAt: FIXED_DATE,
+    };
+    await ExamGrading.create(base);
+    await expect(ExamGrading.create(base)).rejects.toMatchObject({
+      code: MONGO_DUPLICATE_KEY_CODE,
+    });
+    // Другая попытка — свой attemptId, не дубль.
+    await expect(
+      ExamGrading.create({ ...base, attemptId: new mongoose.Types.ObjectId() }),
+    ).resolves.toBeDefined();
+  });
+
+  it('media_assets: второй insert с kind "link" для той же попытки падает, "telegram" — нет', async () => {
+    const MediaAsset = connection.model<MediaAssetRecord>(MediaAssetRecord.name);
+    const attemptId = new mongoose.Types.ObjectId();
+    const userId = new mongoose.Types.ObjectId();
+    const base = { attemptId, userId, receivedAt: FIXED_DATE };
+    await MediaAsset.create({ ...base, kind: 'link', url: 'https://vk.com/video1' });
+    await expect(
+      MediaAsset.create({ ...base, kind: 'link', url: 'https://vk.com/video2' }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+    // Видео из Telegram («кружок» + обычное) не ограничено количеством.
+    await expect(
+      MediaAsset.create({ ...base, kind: 'telegram', fileId: 'f1', fileUniqueId: 'u1' }),
+    ).resolves.toBeDefined();
+    await expect(
+      MediaAsset.create({ ...base, kind: 'telegram', fileId: 'f2', fileUniqueId: 'u2' }),
+    ).resolves.toBeDefined();
   });
 
   it('encryptRecord/decryptRecord по CLASS_FIELD_POLICY: zoomLink шифруется и читается', () => {

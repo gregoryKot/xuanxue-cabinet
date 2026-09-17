@@ -18,23 +18,6 @@ const shared: SVGProps<SVGSVGElement> = {
   focusable: false,
 };
 
-export function SummaryIcon() {
-  return (
-    <svg {...shared}>
-      <path d="M4 16V9M10 16V4M16 16v-6" />
-    </svg>
-  );
-}
-
-export function ScheduleIcon() {
-  return (
-    <svg {...shared}>
-      <rect x="3" y="4" width="14" height="13" rx="2" />
-      <path d="M3 8h14M7 2v4M13 2v4" />
-    </svg>
-  );
-}
-
 export function PlanningIcon() {
   return (
     <svg {...shared}>
@@ -44,47 +27,11 @@ export function PlanningIcon() {
   );
 }
 
-export function ChannelsIcon() {
-  return (
-    <svg {...shared}>
-      <path d="M3 8v4l3 1 9 3V4L6 7z" />
-      <path d="M6 13v3a2 2 0 0 0 2 2h1" />
-    </svg>
-  );
-}
-
 export function BroadcastsIcon() {
   return (
     <svg {...shared}>
       <path d="M17 3 3 9.5l6 2 2 6z" />
       <path d="M17 3 9.5 11.5" />
-    </svg>
-  );
-}
-
-export function TemplatesIcon() {
-  return (
-    <svg {...shared}>
-      <rect x="4" y="2" width="12" height="16" rx="1.5" />
-      <path d="M7 6h6M7 9.5h6M7 13h4" />
-    </svg>
-  );
-}
-
-export function SettingsIcon() {
-  return (
-    <svg {...shared}>
-      <circle cx="10" cy="10" r="2.5" />
-      <path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1L4.7 4.7" />
-    </svg>
-  );
-}
-
-export function ExamItemsIcon() {
-  return (
-    <svg {...shared}>
-      <rect x="4" y="2" width="12" height="16" rx="1.5" />
-      <path d="M7 7l1.5 1.5L11 6M7 11.5h6M7 14.5h4" />
     </svg>
   );
 }

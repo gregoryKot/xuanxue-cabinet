@@ -1,7 +1,9 @@
 // Блок формы в теле POST/PATCH /exams — одна форма для создания и правки:
 // правка blocks всегда заменяет набор целиком (в отличие от правил
 // расписания у занятий, у блока своего входного признака «удалить блок»
-// нет, см. exam-blocks.ts/mapBlocks).
+// нет, см. exam-blocks.ts/mapBlocks). `required` из контракта убран
+// (ADR-0033): пайп с `forbidNonWhitelisted` (app.setup.ts) ответит вкладке со
+// старым бандлом 400, а не сохранит форму мимо смысла — e2e фиксирует это.
 import {
   ArrayMaxSize,
   IsArray,
@@ -32,8 +34,4 @@ export class ExamBlockDto implements ExamBlockInput {
   @OptionalNotNull()
   @IsBoolean()
   shuffle?: boolean;
-
-  @OptionalNotNull()
-  @IsBoolean()
-  required?: boolean;
 }

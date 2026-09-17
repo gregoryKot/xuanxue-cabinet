@@ -19,7 +19,7 @@ export interface VkChannelConfig {
 
 /** Facebook, Boosty — доставку завершает человек кнопкой «скопировал,
  * отправил» (PLAN §6), секретов не требует. */
-export type ManualChannelConfig = Record<string, never>;
+type ManualChannelConfig = Record<string, never>;
 
 export type ChannelConfig = TelegramChannelConfig | VkChannelConfig | ManualChannelConfig;
 

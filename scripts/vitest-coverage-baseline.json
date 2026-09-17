@@ -1,0 +1,14 @@
+{
+  "web": {
+    "lines": 100,
+    "branches": 98.67,
+    "functions": 100,
+    "statements": 99.83
+  },
+  "shared": {
+    "lines": 98.29,
+    "branches": 92.15,
+    "functions": 83.33,
+    "statements": 97.87
+  }
+}

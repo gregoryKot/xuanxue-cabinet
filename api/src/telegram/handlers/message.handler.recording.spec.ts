@@ -8,8 +8,11 @@ import type { LessonsService } from '../../lessons/lessons.service';
 import { UsersService } from '../../users/users.service';
 import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
-import { TeacherChats } from '../teacher-chats';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
+import type { ExamMediaMessageHandler } from './exam-media-message.handler';
+import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { MessageHandler } from './message.handler';
+import { RecordingWaitHandler } from './recording-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
 import { NOW, seedLesson } from './message.handler.seed';
 import { seedTeacher } from '../test-support/seed-teacher';
@@ -247,7 +250,7 @@ function buildHandlerWithFailingAddRecording(
 ): MessageHandler {
   const usersService = new UsersService(ctx.userModel);
   return new MessageHandler(
-    new TeacherChats(usersService, ctx.channelModel),
+    buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
     new BotSessionService(ctx.botSessionModel),
     { addRecording } as unknown as LessonsService,
     new TopicRebuildService(
@@ -263,7 +266,13 @@ function buildHandlerWithFailingAddRecording(
       ),
       usersService,
     ),
-    ctx.broadcastModel,
-    ctx.classModel,
+    new RecordingWaitHandler(
+      new BotSessionService(ctx.botSessionModel),
+      { addRecording } as unknown as LessonsService,
+      ctx.broadcastModel,
+      ctx.classModel,
+    ),
+    { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
+    { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
   );
 }

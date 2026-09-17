@@ -1,13 +1,17 @@
-// Варианты ответа — только для single/multiple (ТЗ 4.2, «Лист»): добавить,
-// убрать, отметить верный. По образцу schedule/RuleFields.tsx (повторяемый
-// список строк с добавлением/удалением). Отметка «верно» — нативный
-// radio/checkbox: для single имя группы (`name`) отдаёт браузеру взаимное
-// исключение самому, для multiple — обычные чекбоксы (CLAUDE.md
-// «Доступность» — работает с клавиатуры без единого атрибута ARIA).
+// Варианты ответа — только для single/multiple: добавить, убрать, отметить
+// верный, дать текст и/или картинку (ADR-0035). Вид — тот же список строками,
+// что у вопросов экзамена (макет Form.dc.html, класс `.xuanxue-question-row`):
+// отметка, [текст + картинка] одной колонкой, тихая «×» справа; на телефоне
+// кнопка уезжает под строку. Отметка «верно» — нативный radio/checkbox: для
+// single имя группы (`name`) отдаёт браузеру взаимное исключение самому, для
+// multiple — обычные чекбоксы (CLAUDE.md «Доступность» — работает с
+// клавиатуры без единого атрибута ARIA).
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { inputStyle } from '../components/Field';
+import { rowControlStyle } from '../components/listCardStyles';
+import { noteStyle, textLinkButtonStyle } from '../components/screenLayout';
+import { ExamItemOptionImage } from './ExamItemOptionImage';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 
 const fieldsetStyle: CSSProperties = {
@@ -19,8 +23,21 @@ const fieldsetStyle: CSSProperties = {
   gap: 8,
 };
 const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
-const rowStyle: CSSProperties = { display: 'flex', gap: 8, alignItems: 'center' };
-const markStyle: CSSProperties = { width: 22, height: 22, flexShrink: 0 };
+const markStyle: CSSProperties = {
+  width: 18,
+  height: 18,
+  marginTop: 12,
+  accentColor: 'var(--accent)',
+};
+const textStyle: CSSProperties = { ...inputStyle, marginTop: 2 };
+// Текст и картинка варианта — одной колонкой (второй столбец грида
+// `.xuanxue-question-row`, index.css): картинка идёт под своим текстовым
+// полем, а не рядом отдельным столбцом.
+const textColumnStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+};
 const hintTextStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
@@ -29,6 +46,8 @@ const hintTextStyle: CSSProperties = {
 
 const RADIO_GROUP_NAME = 'exam-item-correct-option';
 const NEW_OPTION: ExamItemOptionDraft = { text: '', correct: false };
+const HELP_TEXT =
+  'Вариант — текст, картинка или и то и другое. Фото ужимается до 1280 px перед отправкой.';
 
 interface ExamItemOptionsFieldProps {
   kind: ExamItemKind;
@@ -45,6 +64,10 @@ export function ExamItemOptionsField({
 
   function updateText(index: number, text: string) {
     onChange(options.map((option, i) => (i === index ? { ...option, text } : option)));
+  }
+
+  function updateImage(index: number, imageId: string | undefined) {
+    onChange(options.map((option, i) => (i === index ? { ...option, imageId } : option)));
   }
 
   function markCorrect(index: number, checked: boolean) {
@@ -70,7 +93,7 @@ export function ExamItemOptionsField({
     <fieldset style={fieldsetStyle}>
       <legend style={legendStyle}>Варианты ответа</legend>
       {options.map((option, index) => (
-        <div key={option.id ?? `new-${index}`} style={rowStyle}>
+        <div key={option.id ?? `new-${index}`} className="xuanxue-question-row">
           <input
             type={kind === 'single' ? 'radio' : 'checkbox'}
             name={kind === 'single' ? RADIO_GROUP_NAME : undefined}
@@ -79,27 +102,41 @@ export function ExamItemOptionsField({
             checked={option.correct}
             onChange={(e) => markCorrect(index, e.target.checked)}
           />
-          <input
-            type="text"
-            aria-label={`Текст варианта ${index + 1}`}
-            style={{ ...inputStyle, flex: 1 }}
-            maxLength={EXAM_ITEM_LIMITS.optionText}
-            value={option.text}
-            onChange={(e) => updateText(index, e.target.value)}
-          />
-          <Button type="button" variant="danger" onClick={() => removeOption(index)}>
-            Убрать
-          </Button>
+          <div style={textColumnStyle}>
+            <input
+              type="text"
+              aria-label={`Текст варианта ${index + 1}`}
+              style={textStyle}
+              maxLength={EXAM_ITEM_LIMITS.optionText}
+              value={option.text}
+              onChange={(e) => updateText(index, e.target.value)}
+            />
+            <ExamItemOptionImage
+              index={index}
+              imageId={option.imageId}
+              onChange={(imageId) => updateImage(index, imageId)}
+            />
+          </div>
+          <div className="xuanxue-question-controls">
+            <button
+              type="button"
+              style={rowControlStyle}
+              aria-label={`Убрать вариант ${index + 1}`}
+              onClick={() => removeOption(index)}
+            >
+              ×
+            </button>
+          </div>
         </div>
       ))}
       {canAddMore && (
-        <Button
+        <button
           type="button"
-          variant="secondary"
+          style={{ ...textLinkButtonStyle, alignSelf: 'flex-start' }}
           onClick={() => onChange([...options, { ...NEW_OPTION }])}
         >
           Добавить вариант
-        </Button>
+        </button>
       )}
       {options.length < EXAM_ITEM_LIMITS.optionsMin && (
         <p style={hintTextStyle}>
@@ -107,6 +144,7 @@ export function ExamItemOptionsField({
           сохранить.
         </p>
       )}
+      <p style={noteStyle}>{HELP_TEXT}</p>
     </fieldset>
   );
 }

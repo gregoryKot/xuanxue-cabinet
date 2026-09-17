@@ -31,7 +31,7 @@ describe('Auth (e2e)', () => {
     expect(body.code).toBe('unauthorized');
   });
 
-  it('GET /auth/me с валидной cookie — MeDto без email/telegramId/status', async () => {
+  it('GET /auth/me с валидной cookie — MeDto без ключей входа', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Мария',
       roles: ['admin'],
@@ -44,7 +44,9 @@ describe('Auth (e2e)', () => {
     expect(body).toMatchObject({ name: 'Мария', roles: ['admin'] });
     expect(body.email).toBeUndefined();
     expect(body.telegramId).toBeUndefined();
-    expect(body.status).toBeUndefined();
+    // `status` наружу идёт (ADR-0026, ADR-0036: active/blocked) — по нему
+    // кабинет решает, показать расписание или отказ в доступе.
+    expect(body.status).toBe('active');
   });
 
   it('заблокированный пользователь — 403', async () => {
@@ -61,7 +63,7 @@ describe('Auth (e2e)', () => {
   it('протухший токен (issuedAt за пределом SESSION_MAX_AGE_DAYS) — 401', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Давний',
-      roles: ['student'],
+      roles: [],
       issuedAt: DateTime.utc().minus({ days: SESSION_MAX_AGE_DAYS + 1 }),
     });
 
@@ -72,7 +74,7 @@ describe('Auth (e2e)', () => {
   it('токен старше SESSION_RENEW_AFTER_DAYS, но валидный — гвард перевыпускает cookie', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Давно не заходил',
-      roles: ['student'],
+      roles: [],
       issuedAt: DateTime.utc().minus({ days: SESSION_RENEW_AFTER_DAYS + 1 }),
     });
 
@@ -86,7 +88,7 @@ describe('Auth (e2e)', () => {
   it('битая подпись (символ токена изменён) — 401', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Подделка',
-      roles: ['student'],
+      roles: [],
     });
     const [name, token] = cookie.split('=');
     // Меняем предпоследний символ, не последний: у base64url последний символ
@@ -107,7 +109,7 @@ describe('Auth (e2e)', () => {
   it('POST /auth/logout без x-requested-with — 403', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Без заголовка',
-      roles: ['student'],
+      roles: [],
     });
 
     const res = await request(server()).post('/api/auth/logout').set('Cookie', cookie);
@@ -117,7 +119,7 @@ describe('Auth (e2e)', () => {
   it('logout с заголовком — 204 и Set-Cookie с Max-Age=0; дальше /auth/me — 401', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Выходит',
-      roles: ['student'],
+      roles: [],
     });
 
     const logoutRes = await request(server())

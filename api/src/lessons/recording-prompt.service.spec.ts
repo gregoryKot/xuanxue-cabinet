@@ -1,11 +1,11 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты») — условный апдейт
 // recordingPromptedAt ДО отправки, окно «занятие закончилось», ожидание
-// записи заводится каждому чату; TeacherChats/TelegramBotService — фейки.
+// записи заводится каждому чату; PersonalChats/TelegramBotService — фейки.
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import type { TeacherChat } from '../telegram/teacher-chats';
+import type { PersonalChat } from '../telegram/personal-chats';
 import { BotSessionRecord, BotSessionSchema } from '../telegram/bot-session.schema';
 import { BotSessionService } from '../telegram/bot-session.service';
 import type { TelegramBotService } from '../telegram/telegram-bot.service';
@@ -13,10 +13,10 @@ import { LessonRecord, LessonSchema } from './lesson.schema';
 import { RecordingPromptService } from './recording-prompt.service';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
-const CHAT: TeacherChat = { chatId: '111', userId: 'u1', name: 'Мария' };
+const CHAT: PersonalChat = { chatId: '111', userId: 'u1', name: 'Мария' };
 
-function fakeTeacherChats(chats: TeacherChat[] = [CHAT]) {
-  return { list: jest.fn().mockResolvedValue(chats) };
+function fakePersonalChats(chats: PersonalChat[] = [CHAT]) {
+  return { listFor: jest.fn().mockResolvedValue(chats) };
 }
 
 function fakeBot(): {
@@ -73,11 +73,11 @@ describe('RecordingPromptService.prompt', () => {
     });
   }
 
-  function build(teacherChats = fakeTeacherChats(), bot = fakeBot()) {
+  function build(personalChats = fakePersonalChats(), bot = fakeBot()) {
     const service = new RecordingPromptService(
       lessonModel,
       classModel,
-      teacherChats as never,
+      personalChats as never,
       new BotSessionService(botSessionModel),
       bot as unknown as TelegramBotService,
     );
@@ -106,7 +106,7 @@ describe('RecordingPromptService.prompt', () => {
     expect(updated?.recordingPromptedAt).toBeInstanceOf(Date);
     const session = await botSessionModel.findOne({ chatId: 111 }).lean();
     expect(session?.kind).toBe('recording');
-    expect(session?.lessonId.toString()).toBe(lesson._id.toString());
+    expect(session?.lessonId?.toString()).toBe(lesson._id.toString());
   });
 
   it('DST Asia/Jerusalem: конец занятия — по UTC-разнице, не по локальной стрелке', async () => {
@@ -209,7 +209,7 @@ describe('RecordingPromptService.prompt', () => {
       durationMin: 60,
       status: 'scheduled',
     });
-    const { service, bot } = build(fakeTeacherChats([]));
+    const { service, bot } = build(fakePersonalChats([]));
 
     const result = await service.prompt(NOW);
 
@@ -217,6 +217,22 @@ describe('RecordingPromptService.prompt', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
     const updated = await lessonModel.findById(lesson._id).lean();
     expect(updated?.recordingPromptedAt).toBeUndefined();
+  });
+
+  it('спрашивает PersonalChats именно про recording_request, не другой вид', async () => {
+    const cls = await createClass();
+    await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.minus({ hours: 1, minutes: 5 }).toJSDate(),
+      durationMin: 60,
+      status: 'scheduled',
+    });
+    const personalChats = fakePersonalChats();
+    const { service } = build(personalChats);
+
+    await service.prompt(NOW);
+
+    expect(personalChats.listFor).toHaveBeenCalledWith('recording_request', NOW);
   });
 
   it('занятие ровно на границе LOOKBACK_DAYS (7 дней назад) — ещё спрашивает', async () => {
@@ -260,18 +276,18 @@ describe('RecordingPromptService.prompt', () => {
       status: 'scheduled',
     });
     const bot = fakeBot();
-    const teacherChats = fakeTeacherChats();
+    const personalChats = fakePersonalChats();
     const serviceA = new RecordingPromptService(
       lessonModel,
       classModel,
-      teacherChats as never,
+      personalChats as never,
       new BotSessionService(botSessionModel),
       bot as unknown as TelegramBotService,
     );
     const serviceB = new RecordingPromptService(
       lessonModel,
       classModel,
-      teacherChats as never,
+      personalChats as never,
       new BotSessionService(botSessionModel),
       bot as unknown as TelegramBotService,
     );

@@ -3,6 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ExamItemOptionsField } from './ExamItemOptionsField';
 import type { ExamItemOptionDraft } from './examItemFormInput';
+import { useExamImageUpload } from './useExamImageUpload';
+
+// Загрузка картинки — своя логика с полным покрытием в
+// ExamItemOptionImage.test.tsx; здесь мокаем хук и проверяем только, что
+// результат доходит до onChange поля по правильному индексу варианта
+// (updateImage) — то, что не тестируется на уровне самой картинки.
+vi.mock('./useExamImageUpload');
+const mockedUseUpload = vi.mocked(useExamImageUpload);
+// Дефолт для тестов, которым загрузка картинки не важна — без него
+// деструктуризация в ExamItemOptionImage упала бы на auto-mock (undefined).
+mockedUseUpload.mockReturnValue({ upload: vi.fn(), pending: false, error: null });
 
 describe('ExamItemOptionsField — single (радио)', () => {
   it('отметка одного варианта снимает отметку другого', async () => {
@@ -88,7 +99,7 @@ describe('ExamItemOptionsField — добавление и удаление', ()
     expect(screen.getByText(/Добавьте минимум/)).toBeInTheDocument();
   });
 
-  it('«Убрать» убирает вариант по индексу', async () => {
+  it('«Убрать вариант» убирает вариант по индексу', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
@@ -102,7 +113,7 @@ describe('ExamItemOptionsField — добавление и удаление', ()
       />,
     );
 
-    await user.click(screen.getAllByRole('button', { name: 'Убрать' })[0] as HTMLElement);
+    await user.click(screen.getByRole('button', { name: 'Убрать вариант 1' }));
 
     expect(onChange).toHaveBeenCalledWith([{ text: 'B', correct: false }]);
   });
@@ -133,5 +144,27 @@ describe('ExamItemOptionsField — добавление и удаление', ()
     expect(
       screen.queryByRole('button', { name: 'Добавить вариант' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('ExamItemOptionsField — картинка варианта (ADR-0035)', () => {
+  it('выбор файла у одного варианта пишет imageId только ему, соседний не трогает', async () => {
+    const upload = vi.fn().mockResolvedValue('img9');
+    mockedUseUpload.mockReturnValue({ upload, pending: false, error: null });
+    const onChange = vi.fn();
+    const options: ExamItemOptionDraft[] = [
+      { text: 'A', correct: true },
+      { text: 'B', correct: false },
+    ];
+    render(<ExamItemOptionsField kind="single" options={options} onChange={onChange} />);
+    const file = new File(['фото'], 'photo.jpg', { type: 'image/jpeg' });
+
+    await userEvent.upload(screen.getByLabelText('Картинка варианта 2'), file);
+
+    expect(upload).toHaveBeenCalledWith(file);
+    expect(onChange).toHaveBeenCalledWith([
+      { text: 'A', correct: true },
+      { text: 'B', correct: false, imageId: 'img9' },
+    ]);
   });
 });

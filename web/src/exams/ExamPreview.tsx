@@ -1,84 +1,66 @@
-// Предпросмотр «глазами ученика» (ТЗ 4.3, обязательная часть): показывает
-// форму так, как её увидит сдающий — блоки с заголовками, вопросы по
-// порядку, варианты неактивны. Это просмотр, а не сдача: ничего не
-// сохраняется и не отправляется, formы здесь вовсе нет. Полноэкранный слой
-// поверх листа формы — как ConfirmDialog (CLAUDE.md «Фронтенд»): свой
-// useHistorySheet/useDialog, «Назад» браузера закрывает только предпросмотр.
+// Предпросмотр «глазами ученика» (ТЗ 4.3) — отдельная страница
+// `/exams/:examId/preview`, а не слой поверх редактора (ADR-0033): бывший
+// оверлей держал свой useHistorySheet/useDialog ради кнопки «Назад» браузера,
+// теперь «Назад» ведёт к экзамену обычной навигацией, как у любой страницы.
+//
+// Показывает СОХРАНЁННЫЙ экзамен — страницу открывают по ссылке, и данные она
+// читает сама (ExamPreviewScreen.tsx, useExamPreview.ts), а не несохранённое
+// состояние формы редактора.
+//
+// Облик — как у сдачи (attempt/, ADR-0031 «тихо и благородно»): учитель
+// видит ровно то, что увидит ученик, той же вёрсткой, а не отдельным макетом.
 import type { CSSProperties } from 'react';
-import type { ExamItemDto } from '@xuanxue/shared';
-import { Button } from '../components/Button';
-import { useDialog } from '../hooks/useDialog';
-import { useHistorySheet } from '../hooks/useHistorySheet';
-import type { ExamBlockDraft } from './examBlocksInput';
-import { ExamPreviewBlock } from './ExamPreviewBlock';
+import { Link } from 'react-router-dom';
+import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
+import { attemptHeaderStyle, attemptPageStyle } from '../attempt/attemptLayout';
+import { noteStyle, screenTitleStyle, textLinkStyle } from '../components/screenLayout';
+import { initialQuestionIds, initialShuffleQuestions } from './examQuestions';
+import { ExamPreviewQuestions } from './ExamPreviewQuestions';
 
-const LOADING_TEXT = 'Загружаем вопросы…';
-const EMPTY_TEXT = 'В форме пока нет блоков — сдающий увидит пустой экзамен.';
+const EXAMS_PATH = '/exams';
+const BACK_TEXT = 'К экзамену';
+const EYEBROW = 'Глазами ученика';
+const PREVIEW_NOTE =
+  'Так экзамен выглядит у ученика. Поля выключены — здесь ничего не сохраняется.';
 
-const overlayStyle: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'var(--surface)',
-  overflowY: 'auto',
-  zIndex: 70,
-  padding: 20,
+const descriptionStyle: CSSProperties = {
+  margin: 0,
+  color: 'var(--ink-soft)',
+  lineHeight: 1.5,
 };
-const headerStyle: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-  gap: 12,
-  marginBottom: 16,
-};
-const descriptionStyle: CSSProperties = { color: 'var(--ink-soft)' };
 
 interface ExamPreviewProps {
-  title: string;
-  description: string;
-  blocks: ExamBlockDraft[];
+  exam: ExamDto;
   bankItems: ExamItemDto[];
-  bankLoading: boolean;
-  onClose: () => void;
 }
 
-export function ExamPreview({
-  title,
-  description,
-  blocks,
-  bankItems,
-  bankLoading,
-  onClose,
-}: ExamPreviewProps) {
-  const goBack = useHistorySheet(onClose);
-  const { headingRef } = useDialog(goBack);
+export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
+  // Порядок и перемешивание вопросов — та же логика, что у формы редактора
+  // (initialExamFormState, examFormInput.ts): один список вопросов на весь
+  // экзамен, блок остался устройством хранилища (ADR-0033).
+  const itemIds = initialQuestionIds(exam);
+  const shuffleQuestions = initialShuffleQuestions(exam);
 
   return (
-    <div
-      style={overlayStyle}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="exam-preview-title"
-    >
-      <div style={headerStyle}>
-        <h2 ref={headingRef} tabIndex={-1} id="exam-preview-title" style={{ margin: 0 }}>
-          {title.trim() || 'Экзамен без названия'}
-        </h2>
-        <Button type="button" variant="secondary" onClick={goBack}>
-          Закрыть
-        </Button>
+    <section style={attemptPageStyle}>
+      <Link to={`${EXAMS_PATH}/${exam.id}`} style={textLinkStyle}>
+        {BACK_TEXT}
+      </Link>
+
+      <div style={attemptHeaderStyle}>
+        <span className="xuanxue-eyebrow">{EYEBROW}</span>
+        <h1 style={screenTitleStyle}>{exam.title}</h1>
+        {exam.description && <p style={descriptionStyle}>{exam.description}</p>}
       </div>
 
-      {description && <p style={descriptionStyle}>{description}</p>}
+      <p style={noteStyle}>{PREVIEW_NOTE}</p>
 
-      {bankLoading ? (
-        <p>{LOADING_TEXT}</p>
-      ) : blocks.length === 0 ? (
-        <p>{EMPTY_TEXT}</p>
-      ) : (
-        blocks.map((block, index) => (
-          <ExamPreviewBlock key={block.id ?? index} block={block} bankItems={bankItems} />
-        ))
-      )}
-    </div>
+      <ExamPreviewQuestions
+        itemIds={itemIds}
+        shuffleQuestions={shuffleQuestions}
+        shuffleOptions={exam.shuffleOptions}
+        bankItems={bankItems}
+      />
+    </section>
   );
 }

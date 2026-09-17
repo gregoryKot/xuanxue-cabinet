@@ -23,6 +23,9 @@ const VALIDATION_MESSAGE = 'Проверьте, пожалуйста, введё
 // CLAUDE.md «Ошибки»: текст исключения наружу не уходит без перевода).
 const RATE_LIMIT_MESSAGE =
   'Слишком много запросов. Подождите минуту и попробуйте ещё раз.';
+// Лимит тела (JSON 1 МБ, картинка экзамена — ADR-0035): текст один на оба случая.
+const PAYLOAD_TOO_LARGE_MESSAGE =
+  'Файл или текст больше допустимого. Уменьшите его и попробуйте ещё раз.';
 
 // Минимальные интерфейсы вместо @types/express (которого нет в зависимостях
 // api/) — фильтру нужны только `req.id` (пишет pino-http, см.
@@ -61,6 +64,19 @@ export class DomainExceptionFilter implements ExceptionFilter {
     }
     if (exception instanceof HttpException) {
       return fromHttpException(exception, requestId);
+    }
+    // body-parser даёт лимит тела как http-errors Error с полями status/type,
+    // не HttpException — mapExternalException её не оборачивает, ловим сами.
+    if (
+      exception instanceof Error &&
+      (exception as { type?: unknown }).type === 'entity.too.large'
+    ) {
+      return {
+        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+        code: 'payload_too_large',
+        message: PAYLOAD_TOO_LARGE_MESSAGE,
+        requestId,
+      };
     }
     this.logger.error(
       `Необработанная ошибка (requestId=${requestId ?? '-'}): ${errorMessage(exception)}`,
@@ -124,6 +140,8 @@ function codeForStatus(status: number): ApiErrorCode {
       return 'not_found';
     case 409: // Conflict
       return 'conflict';
+    case 413: // Payload Too Large
+      return 'payload_too_large';
     case 429: // Too Many Requests
       return 'rate_limited';
     default:

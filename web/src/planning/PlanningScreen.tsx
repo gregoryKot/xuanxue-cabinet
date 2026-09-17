@@ -1,103 +1,103 @@
-// «Планирование» — календарь на 4 недели вперёд, построенный из расписания
-// (docs/PLAN.md §6 п.3). Одно главное действие вверху — «Разовое занятие»
-// (CLAUDE.md «Продукт»), рядом с объяснением.
-import { useMemo, useState } from 'react';
+// «Занятия» — первый экран после входа (docs/PLAN.md §6, `/` → `/planning`):
+// сверху что идёт сегодня (PlanningToday.tsx), ниже календарь на 4 недели.
+// Вход в сетку расписания — текстовой ссылкой внизу, не пунктом меню
+// (docs/adr/0025-navigation-by-domain.md).
+// Облик — направление «тихо и благородно» (docs/adr/0031), макет
+// Schedule.dc.html: заголовок антиквой, строка объяснения, занятия строками.
+// Правка и создание занятия — своя страница `/planning/new` и
+// `/planning/:lessonId` (LessonEditorScreen.tsx, ADR-0033): отсюда только
+// переход.
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
   primaryActionStyle,
-  screenExplanationStyle,
   screenHintStyle,
   screenSectionStyle,
 } from '../components/screenLayout';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
-import { useTeachers } from '../people/useTeachers';
 import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { groupLessonsByDay } from './groupLessonsByDay';
 import { LessonDayGroup } from './LessonDayGroup';
-import { LessonSheet } from './LessonSheet';
+import { PlanningToday } from './PlanningToday';
+import { ScheduleLink } from './ScheduleLink';
 import { useLessons } from './useLessons';
 
-const EXPLANATION = `Здесь занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд, из расписания. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
+const TITLE = 'Занятия';
+const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд, из расписания. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
 // Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
 // отличается от строчки расписания (отзыв владельца 2026-09-12).
 const ONE_OFF_HINT =
   'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
+const oneOffHintStyle = { ...screenHintStyle, margin: 0 };
+const LESSON_PATH = '/planning';
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
   const classesState = useClasses();
-  // Учителя для select'а «Ведущий» — тот же приём, что classesState (аудит В4).
-  const teachersState = useTeachers();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetLessonId, setSheetLessonId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const classesById = useMemo(
     () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls])),
     [classesState.classes],
   );
+  const classTitleById = useMemo(
+    () => new Map([...classesById].map(([id, cls]) => [id, cls.title])),
+    [classesById],
+  );
   const groups = useMemo(
     () => groupLessonsByDay(lessonsState.lessons ?? []),
     [lessonsState.lessons],
   );
-  // Время занятий на этом экране показано по часам зрителя. Без подписи оно
-  // читается как время школы, а приписка у каждой строки была частоколом
-  // (отзыв владельца 2026-09-12).
+  // Без подписи время читается как время школы — приписка у каждой строки
+  // была частоколом (отзыв владельца 2026-09-12).
   const tzNote = useMemo(
     () => planningTzNote((classesState.classes ?? []).map((cls) => cls.tz)),
     [classesState.classes],
   );
-  const selectedLesson =
-    lessonsState.lessons?.find((lesson) => lesson.id === sheetLessonId) ?? null;
-
-  // Список занятий и его загрузка не зависят от `/classes`: ошибка или
-  // задержка классов не должна прятать уже пришедшие занятия — карточки
-  // показывают класс с фолбэком «—» (LessonDayGroup), а сбой классов идёт
-  // отдельной строкой (ревью п.5).
+  // Список занятий не зависит от `/classes` (пояснение — у баннера ниже).
   const lessonsError = lessonsState.error;
   const classesError = classesState.error;
 
-  function retryLessons() {
-    void lessonsState.reload();
-  }
+  const retryLessons = () => void lessonsState.reload();
+  const retryClasses = () => void classesState.reload();
+  // Занятие открывается своей страницей с адресом, а не листом поверх списка
+  // (ADR-0033): ссылку можно прислать, «Назад» браузера возвращает сюда.
+  const openCreate = () => void navigate(`${LESSON_PATH}/new`);
+  const openLesson = (lessonId: string) => void navigate(`${LESSON_PATH}/${lessonId}`);
 
-  function retryClasses() {
-    void classesState.reload();
-  }
-
-  function openCreate() {
-    setSheetLessonId(null);
-    setSheetOpen(true);
-  }
-
-  function openLesson(lessonId: string) {
-    setSheetLessonId(lessonId);
-    setSheetOpen(true);
-  }
-
-  // Прокрутка/подсветка к `#lesson-{id}` — только когда список занятий
-  // отрисован, иначе элемент ещё не в DOM.
+  // Прокрутка к `#lesson-{id}` — на случай внешней ссылки (бот, уведомление).
   useScrollToHash(!lessonsState.loading && !lessonsError);
 
   return (
     <section style={screenSectionStyle}>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
-      {tzNote && <p style={screenHintStyle}>{tzNote}</p>}
-
-      {!lessonsState.loading && (
-        <div>
-          <Button style={primaryActionStyle} onClick={openCreate}>
-            Разовое занятие
-          </Button>
-          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>{ONE_OFF_HINT}</p>
-        </div>
+      <ScreenHeader
+        title={TITLE}
+        explanation={EXPLANATION}
+        hint={tzNote}
+        action={
+          !lessonsState.loading && (
+            <Button style={primaryActionStyle} onClick={openCreate}>
+              Разовое занятие
+            </Button>
+          )
+        }
+      />
+      {!lessonsState.loading && <p style={oneOffHintStyle}>{ONE_OFF_HINT}</p>}
+      {/* Сбой списка занятий — один баннер ниже, не два (TodaySection.tsx). */}
+      {!lessonsError && (
+        <PlanningToday
+          lessons={lessonsState.lessons}
+          classTitleById={classTitleById}
+          onOpenLesson={openLesson}
+        />
       )}
-
       {lessonsError && <LoadErrorBanner message={lessonsError} onRetry={retryLessons} />}
-
       {lessonsState.loading && !lessonsError && <SkeletonList rows={5} h={56} />}
 
       {!lessonsState.loading && !lessonsError && groups.length === 0 && (
@@ -117,27 +117,12 @@ export default function PlanningScreen() {
             onSelectLesson={openLesson}
           />
         ))}
-
       {/* Ошибка классов — отдельной строкой, не прячет уже загруженный
           список занятий (карточки показывают класс с фолбэком «—»). */}
       {!lessonsState.loading && classesError && (
         <LoadErrorBanner message={classesError} onRetry={retryClasses} />
       )}
-
-      {sheetOpen && (
-        <LessonSheet
-          lessonDto={selectedLesson}
-          classes={classesState.classes ?? []}
-          teachers={teachersState.teachers ?? []}
-          teachersError={teachersState.error}
-          onRetryTeachers={() => void teachersState.reload()}
-          onClose={() => setSheetOpen(false)}
-          onCreate={lessonsState.create}
-          onUpdate={lessonsState.update}
-          onAddRecording={lessonsState.addRecording}
-          onSendNow={lessonsState.sendNow}
-        />
-      )}
+      <ScheduleLink />
     </section>
   );
 }

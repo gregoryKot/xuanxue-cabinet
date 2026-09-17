@@ -14,7 +14,16 @@ export type SendResult =
   | { status: 'sent'; externalId?: string }
   // Доставку завершит человек кнопкой «скопировал, отправил» — Facebook/Boosty.
   | { status: 'manual' }
-  | { status: 'failed'; error: string; retryable: boolean };
+  | {
+      status: 'failed';
+      error: string;
+      retryable: boolean;
+      /** Секунды до следующей попытки — Telegram присылает их в `parameters.retry_after`
+       * ответа 429; сейчас единственный производитель поля (аудит M2,
+       * docs/audits/2026-09-12-quality-audit.md). `nextDeliveryOutcome` не
+       * планирует повтор раньше этого срока — иначе он попадёт в тот же лимит. */
+      retryAfterSec?: number;
+    };
 
 export interface ChannelAdapter {
   readonly type: ChannelType;

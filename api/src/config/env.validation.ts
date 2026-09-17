@@ -1,7 +1,5 @@
-// Валидация env при старте (ConfigModule.forRoot({ validate: validateEnv })) —
-// падение с понятным списком проблем лучше молчаливого дефолта (CLAUDE.md
-// «Безопасность»). Регэкспы и сообщения — в ./env.rules.ts (комментарий там,
-// почему сам класс не переехал).
+// Валидация env при старте — падение со списком проблем лучше молчаливого
+// дефолта. Регэкспы/сообщения — в ./env.rules.ts (комментарий там, почему).
 import { plainToInstance, Type } from 'class-transformer';
 import {
   IsIn,
@@ -27,6 +25,8 @@ import {
   JWT_SECRET_MESSAGE,
   LOG_LEVEL_MESSAGE,
   LOG_LEVELS,
+  MAIL_FROM_MESSAGE,
+  MAIL_FROM_RE,
   MONGO_URI_RE,
   MONGODB_URI_MESSAGE,
   NODE_ENV_MESSAGE,
@@ -73,9 +73,7 @@ export class EnvSchema {
   @Matches(BOT_TOKEN_RE, { message: BOT_TOKEN_MESSAGE })
   BOT_TOKEN?: string;
 
-  // Вход через Telegram: при первом входе с этим Telegram ID
-  // пользователь получает роли admin и teacher. Переменную убирают после
-  // первого входа админа — дальше роли назначаются в интерфейсе.
+  // Первый вход с этим Telegram ID получает роли admin+teacher, дальше роли — в интерфейсе.
   @IsOptional()
   @Type(() => Number)
   @Min(1, { message: BOOTSTRAP_ADMIN_TELEGRAM_ID_MESSAGE })
@@ -89,12 +87,8 @@ export class EnvSchema {
   @Matches(NO_TRAILING_SLASH_RE, { message: PUBLIC_URL_TRAILING_SLASH_MESSAGE })
   PUBLIC_URL?: string;
 
-  // Секрет вебхука бота (SECURITY §2): сравнивается с заголовком
-  // x-telegram-bot-api-secret-token через timingSafeEqual. В production
-  // обязателен (см. ниже) — без него бот молча не работал на проде, и
-  // единственным сигналом был 503 на вебхуке, которого никто не видел, —
-  // нашли вручную при первом тестировании (2026-09-08). 503 остаётся
-  // поведением только вне production (dev/test).
+  // Секрет вебхука бота (SECURITY §2). Обязателен в production (см. ниже) —
+  // без него бот молча не работал на проде (2026-09-08); 503 — только вне prod.
   @IsOptional()
   @Matches(TELEGRAM_WEBHOOK_SECRET_RE, { message: TELEGRAM_WEBHOOK_SECRET_MESSAGE })
   TELEGRAM_WEBHOOK_SECRET?: string;
@@ -102,20 +96,25 @@ export class EnvSchema {
   @IsIn(LOG_LEVELS, { message: LOG_LEVEL_MESSAGE })
   LOG_LEVEL: LogLevel = 'info';
 
-  // Строкой, не `@Type(() => Boolean)` — он превращает любую непустую
-  // строку, включая 'false', в true. Выключают только в e2e (create-app.ts).
+  // Строкой: `@Type(() => Boolean)` превратил бы 'false' в true. Выключают только в e2e.
   @IsIn(['true', 'false'], { message: SCHEDULER_ENABLED_MESSAGE })
   SCHEDULER_ENABLED: 'true' | 'false' = 'true';
 
-  // Ставит Railway сама — SHA коммита деплоя, /api/health отдаёт короткий
-  // вариант (health-commit.ts, RUNBOOK §2 п.1). Локально не нужна.
+  // Ставит Railway сама (короткий вариант — /api/health, RUNBOOK §2 п.1). Локально не нужна.
   @IsOptional()
   @Matches(GIT_SHA_RE, { message: RAILWAY_GIT_COMMIT_SHA_MESSAGE })
   RAILWAY_GIT_COMMIT_SHA?: string;
+
+  // Email-вход (ADR-0029) — опциональны, без них выключен, production не требует.
+  @IsOptional()
+  RESEND_API_KEY?: string;
+
+  @IsOptional()
+  @Matches(MAIL_FROM_RE, { message: MAIL_FROM_MESSAGE })
+  MAIL_FROM?: string;
 }
 
-// Поля, где пустая строка (`VAR=` в .env) равносильна отсутствию переменной —
-// иначе она попадёт в валидацию как невалидное значение вместо дефолта/skip.
+// Поля, где `VAR=` (пустая строка) равносильно отсутствию переменной.
 const EMPTY_AS_ABSENT: (keyof EnvSchema)[] = [
   'NODE_ENV',
   'PORT',
@@ -130,6 +129,8 @@ const EMPTY_AS_ABSENT: (keyof EnvSchema)[] = [
   'MONGODB_URI',
   'SCHEDULER_ENABLED',
   'RAILWAY_GIT_COMMIT_SHA',
+  'RESEND_API_KEY',
+  'MAIL_FROM',
 ];
 
 export function validateEnv(raw: Record<string, unknown>): EnvSchema {
@@ -142,8 +143,7 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
   const errors = validateSync(instance, { whitelist: true });
   const messages = errors.flatMap((error) => Object.values(error.constraints ?? {}));
 
-  // Кросс-полевые правила «обязателен в production» — env.production-required.ts
-  // (почему списком, а не декоратором, — там же).
+  // «Обязателен в production» — env.production-required.ts.
   if (instance.NODE_ENV === 'production') {
     messages.push(...productionRequiredMessages(instance));
   }

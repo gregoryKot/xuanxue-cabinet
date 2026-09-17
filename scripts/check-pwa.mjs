@@ -1,7 +1,10 @@
 #!/usr/bin/env node
-// Гейт PWA-сборки (ADR-0006, CLAUDE.md «Приложение на телефоне»): после
-// `npm run build --workspace=web` проверяет манифест, иконки, service worker
-// и то, что /api никогда не попадает в precache SW. CI-джоба `web`.
+// Гейт PWA-сборки (ADR-0032, CLAUDE.md «Приложение на телефоне»): после
+// `npm run build --workspace=web` проверяет статический манифест и иконки
+// (копируются из web/public/ без изменений — vite build просто переносит
+// файл), а также что по адресу /sw.js лежит именно заглушка-килсвитч
+// (web/public/sw.js), а не случайно вернувшийся Workbox-worker с прекешем.
+// CI-джоба `web`.
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -43,12 +46,18 @@ for (const icon of icons) {
 }
 
 if (!existsSync(SW_PATH)) {
-  errors.push('web/dist/sw.js не найден — service worker не собрался');
+  // Килсвитч обязан быть по старому адресу (ADR-0032) — без него браузеры,
+  // у которых уже стоит старый Workbox-worker, годами не увидят обновления.
+  errors.push('web/dist/sw.js не найден — заглушка service worker не скопировалась');
 } else {
   const swText = readFileSync(SW_PATH, 'utf8');
-  if (swText.includes('"url":"api/') || swText.includes('"url":"/api/'))
+  if (
+    swText.includes('precache') ||
+    swText.includes('workbox') ||
+    swText.includes('"url":')
+  )
     errors.push(
-      'precache-манифест sw.js содержит /api/ — API не кешируется никогда (CLAUDE.md)',
+      'web/dist/sw.js похож на настоящий Workbox-worker с прекешем, а не на заглушку-килсвитч (ADR-0032)',
     );
 }
 
@@ -68,4 +77,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('✓ check-pwa: manifest, иконки и service worker в порядке');
+console.log('✓ check-pwa: манифест, иконки и заглушка service worker в порядке');

@@ -2,13 +2,14 @@
 // учеников», аудит В11): CLAUDE.md и user.schema.ts годами ссылались на
 // deleteAllUserData как на работающий механизм, а его не было —
 // USER_REFERENCE_PATHS до этого никем не читался. Порядок: (а) владение
-// (USER_OWNED_COLLECTIONS, сейчас пуст — чеклист «Новая коллекция с userId»
-// подхватит новую модель сам, без правки этого файла) — deleteMany; (б)
+// (USER_OWNED_COLLECTIONS — с появлением попыток экзамена он перестал быть
+// пустым; чеклист «Новая коллекция с userId» подхватывает новую модель сам,
+// без правки этого файла) — deleteMany; (б)
 // ссылки на пользователя (USER_REFERENCE_PATHS) — $unset, не удаление
 // документа: класс/занятие/канал/рассылка принадлежат школе, не пользователю
 // (ADR-0010), удалённый ведущий не должен утащить их за собой; (в) состояние
 // бота bot_sessions — ключ там chatId, у личных чатов учителя это
-// String(telegramId) (teacher-chats.ts), а не userId; (г) сам документ
+// String(telegramId) (personal-chats.ts), а не userId; (г) сам документ
 // users. Сессия кабинета — не хранимое состояние (ADR-0012: HMAC-JWT без
 // Mongo-стора, «сессии не нужно ни отзывать по одной, ни хранить») —
 // AuthGuard на каждом запросе перечитывает пользователя
@@ -29,7 +30,7 @@ import {
 import { ForbiddenError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
-import { isLastAdmin } from './last-admin';
+import { isLastAdmin, rollbackIfNoAdminLeft } from './last-admin';
 import {
   USER_MODEL_NAME,
   USER_OWNED_COLLECTIONS,
@@ -57,11 +58,28 @@ export class UserDeletionService {
     const target = await this.usersService.findById(userId);
     if (!target) throw new NotFoundError(USER_NOT_FOUND_MESSAGE);
     if (userId === currentUserId) throw new ForbiddenError(SELF_DELETE_MESSAGE);
+
     if (target.roles.includes('admin')) {
       const userModel = this.connection.model<UserRecord>(USER_MODEL_NAME);
       if (await isLastAdmin(userModel, userId)) {
         throw new ForbiddenError(LAST_ADMIN_MESSAGE);
       }
+      // Удаление необратимо — в отличие от updateRoles здесь нельзя откатить
+      // уже случившийся факт удаления данных, поэтому резервируем место в
+      // счётчике условным апдейтом ДО необратимой части: снимаем admin с
+      // удаляемого, как будто роль уже потеряна. Конкурирующая операция
+      // (второй админ, снимающий роль или удаляющий сам себя таким же
+      // образом) сделает то же самое со своей стороны; rollbackIfNoAdminLeft
+      // сразу же пересчитывает admin'ов и, если их не осталось, возвращает
+      // роль этому пользователю тем же условным апдейтом и отказывает — тело
+      // метода до удаления данных ниже не доходит (аудит M11, last-admin.ts).
+      await userModel.updateOne(
+        { _id: userId, roles: 'admin' },
+        { $pull: { roles: 'admin' } },
+      );
+      await rollbackIfNoAdminLeft(userModel, () =>
+        userModel.updateOne({ _id: userId }, { $addToSet: { roles: 'admin' } }),
+      );
     }
 
     // Счётчики по каждой части реестра — в лог идёт только userId и числа

@@ -58,11 +58,7 @@ export class TopicRebuildService {
       // отправки: пока хоть одна доставка не pending, текст мог уже уйти
       // получателю или вот-вот уйдёт с тем, что раннер прочитал раньше нашей
       // записи — переписывать его сейчас значит соврать учителю «пересобрано».
-      const captured = await this.deliveryModel.exists({
-        broadcastId: broadcast._id,
-        status: { $ne: 'pending' },
-      });
-      if (captured) return false;
+      if (await this.hasCapturedDelivery(broadcast._id)) return false;
 
       const lessonDoc = await this.lessonModel.findById(lessonId).lean<PlannerLesson>();
       if (!lessonDoc) return false;
@@ -78,8 +74,22 @@ export class TopicRebuildService {
         settings.templates,
         now,
       );
-      // Условный апдейт вместо read-then-write: даже с проверкой доставок
-      // выше broadcast.status мог смениться между ним и записью (учитель
+
+      // Аудит 2026-09-12, M7: между первой проверкой выше и этой строкой
+      // прошло несколько `await` (занятие, класс, настройки, рендер) — как
+      // раз то окно, в которое раннер успевает захватить доставку и отправить
+      // старый текст. Повторяем ту же проверку прямо перед записью, чтобы не
+      // ответить учителю «пересобрано», когда часть каналов уже получила
+      // старый пост. Полностью окно не закрывается: между этой проверкой и
+      // `updateOne` ниже остаётся одна операция с БД — раннер теоретически
+      // успевает захватить доставку ровно в этот момент. Убрать его совсем
+      // можно только версией доставок (delivery version) в условии `updateOne`
+      // текста, а не самой проверкой exists — это отдельная, более крупная
+      // правка, которую здесь сознательно не делаем.
+      if (await this.hasCapturedDelivery(broadcast._id)) return false;
+
+      // Условный апдейт вместо read-then-write: даже с обеими проверками
+      // выше broadcast.status мог смениться отдельно от доставок (учитель
       // отменил рассылку из «Рассылки» ровно в этом окне) — matchedCount
       // === 0 значит «опоздали», текст остаётся прежним.
       const { matchedCount } = await this.broadcastModel.updateOne(
@@ -96,5 +106,16 @@ export class TopicRebuildService {
       );
       return false;
     }
+  }
+
+  /** Общий фильтр обеих проверок (CLAUDE.md «Дубли») — «есть ли у рассылки
+   * доставка, которую раннер уже вывел из pending». */
+  private async hasCapturedDelivery(broadcastId: Types.ObjectId): Promise<boolean> {
+    return Boolean(
+      await this.deliveryModel.exists({
+        broadcastId,
+        status: { $ne: 'pending' },
+      }),
+    );
   }
 }

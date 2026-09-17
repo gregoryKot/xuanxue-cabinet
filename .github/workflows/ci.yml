@@ -36,8 +36,8 @@ jobs:
         run: |
           npm run typecheck --workspace=shared
           npm run typecheck --workspace=api
-      - name: shared vitest
-        run: npm run test --workspace=shared
+      - name: shared vitest с покрытием
+        run: node scripts/check-vitest-coverage-ratchet.mjs shared
       - name: coverage ratchet (runs jest --coverage)
         run: node scripts/check-coverage-ratchet.mjs
       - name: jest под TZ=Australia/Sydney (тест перехода летнего времени)
@@ -75,12 +75,12 @@ jobs:
       - name: typecheck
         run: npm run typecheck --workspace=web
       - name: vitest с покрытием
-        run: npm run test:cov --workspace=web
+        run: node scripts/check-vitest-coverage-ratchet.mjs web
       - name: vitest под TZ=Australia/Sydney (тест перехода летнего времени)
         run: TZ=Australia/Sydney npm run test --workspace=web
       - name: vite build
         run: npm run build --workspace=web
-      - name: pwa-гейт (манифест, иконки, service worker)
+      - name: pwa-гейт (манифест, иконки, заглушка service worker)
         run: node scripts/check-pwa.mjs
       - name: бюджет стартового JS (gzip)
         run: node scripts/check-bundle-size.mjs
@@ -104,9 +104,15 @@ jobs:
           cache: npm
       - name: route collisions
         run: node scripts/check-route-collisions.mjs
+      - name: тесты скриптов-храповиков (node:test)
+        run: node --test scripts/*.test.mjs
+      - name: потолок CLAUDE.md
+        run: node scripts/check-claude-md-size.mjs
       - run: npm ci
       - name: prettier — формат всего репозитория
         run: npm run format:check
+      - name: мёртвые экспорты shared/src/index.ts
+        run: node scripts/check-shared-exports.mjs
       - name: knip — мёртвый код и неиспользуемые зависимости
         run: npx knip
       - name: gitleaks — секреты в диффе/истории

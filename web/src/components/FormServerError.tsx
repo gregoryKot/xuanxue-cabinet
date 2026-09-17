@@ -1,6 +1,6 @@
 // Блок ошибки сервера под формой — сообщение и, если есть, список подробностей
 // из `details` (CLAUDE.md «Одна механика — один компонент»): раньше дублировался
-// в ClassSheet.tsx и LessonSheet.tsx, jscpd поймал дубль. `errorFrom` — тоже
+// в формах занятия и занятия расписания, jscpd поймал дубль. `errorFrom` — тоже
 // общий кусок: useClassForm.ts и useLessonForm.ts собирали его одинаково.
 import { ApiError } from '../api/http';
 

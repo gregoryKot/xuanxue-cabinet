@@ -40,11 +40,13 @@ describe('UserRolesService', () => {
         telegramId: 1001,
         name: 'Раньше',
         roles: ['teacher'],
+        status: 'active',
       });
       const newer = await users.createFromTelegram({
         telegramId: 1002,
         name: 'Позже',
         roles: ['teacher'],
+        status: 'active',
       });
       await users.touchLogin(older.id, DateTime.fromISO('2026-01-01T00:00:00Z'));
       await users.touchLogin(newer.id, DateTime.fromISO('2026-02-01T00:00:00Z'));
@@ -72,6 +74,7 @@ describe('UserRolesService', () => {
         telegramId: 2001,
         name: 'Гриша',
         roles: [],
+        status: 'active',
       });
 
       const updated = await roles.updateRoles(user.id, ['teacher'], 'другой-админ');
@@ -92,6 +95,7 @@ describe('UserRolesService', () => {
         telegramId: 2005,
         name: 'Настя',
         roles: ['teacher'],
+        status: 'active',
       });
       // Второй админ успел применить свою правку между чтением target внутри
       // updateRoles и условным findOneAndUpdate — имитируем подменой чтения:
@@ -115,6 +119,7 @@ describe('UserRolesService', () => {
         telegramId: 2002,
         name: 'Маша',
         roles: ['admin'],
+        status: 'active',
       });
       // Второй админ — иначе сработала бы проверка «последний админ» раньше
       // проверки самоснятия, и текст ошибки был бы не тот, что тестируем.
@@ -122,6 +127,7 @@ describe('UserRolesService', () => {
         telegramId: 2003,
         name: 'Второй админ',
         roles: ['admin'],
+        status: 'active',
       });
 
       await expect(roles.updateRoles(admin.id, [], admin.id)).rejects.toThrow(
@@ -140,6 +146,7 @@ describe('UserRolesService', () => {
         telegramId: 3001,
         name: 'Единственный админ',
         roles: ['admin'],
+        status: 'active',
       });
 
       await expect(
@@ -158,15 +165,68 @@ describe('UserRolesService', () => {
         telegramId: 3002,
         name: 'Админ 1',
         roles: ['admin'],
+        status: 'active',
       });
       await soloUsers.createFromTelegram({
         telegramId: 3003,
         name: 'Админ 2',
         roles: ['admin'],
+        status: 'active',
       });
 
       const updated = await soloRoles.updateRoles(first.id, ['teacher'], 'кто-то-другой');
       expect(updated.roles).toEqual(['teacher']);
+
+      await solo.stop();
+    }, 30_000);
+
+    it('гонка двух admin, снимающих роль друг у друга — второй теряет admin между записью и перепроверкой, откат и ForbiddenError (аудит M11)', async () => {
+      const solo = await openMemoryMongo();
+      const soloModel = solo.connection.model<UserRecord>(UserRecord.name, UserSchema);
+      await soloModel.syncIndexes();
+      const { roles: soloRoles, users: soloUsers } = openService(solo);
+      const first = await soloUsers.createFromTelegram({
+        telegramId: 4001,
+        name: 'Админ А',
+        roles: ['admin'],
+        status: 'active',
+      });
+      const second = await soloUsers.createFromTelegram({
+        telegramId: 4002,
+        name: 'Админ Б',
+        roles: ['admin'],
+        status: 'active',
+      });
+
+      // Первый вызов countDocuments внутри updateRoles(first) — дешёвая
+      // isLastAdmin-проверка ДО записи: должна честно увидеть second и
+      // пропустить дальше (иначе до записи и до перепроверки дело не
+      // дойдёт — не воспроизведём саму гонку). Второй вызов — уже
+      // rollbackIfNoAdminLeft ПОСЛЕ того, как admin снят у first: сюда
+      // подставляем конкурирующую операцию, которая тем же путём успела
+      // снять admin у second первой, и только затем отдаём настоящий счёт.
+      const originalCountDocuments = soloModel.countDocuments.bind(soloModel);
+      jest
+        .spyOn(soloModel, 'countDocuments')
+        .mockImplementationOnce(((filter: unknown) =>
+          originalCountDocuments(filter as never)) as never)
+        .mockImplementationOnce((async (filter: unknown) => {
+          await soloModel.updateOne(
+            { _id: second.id, roles: ['admin'] },
+            { $set: { roles: [] } },
+          );
+          return originalCountDocuments(filter as never);
+        }) as never);
+
+      await expect(soloRoles.updateRoles(first.id, [], 'кто-то-третий')).rejects.toThrow(
+        'последний администратор',
+      );
+
+      // Откат вернул admin тому, у кого его сняли последней записью,
+      // — школа не осталась без администратора ни на одну операцию.
+      const survivor = await soloUsers.findById(first.id);
+      expect(survivor?.roles).toContain('admin');
+      expect(await originalCountDocuments({ roles: 'admin' })).toBeGreaterThanOrEqual(1);
 
       await solo.stop();
     }, 30_000);

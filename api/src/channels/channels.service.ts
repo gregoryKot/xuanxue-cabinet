@@ -47,7 +47,11 @@ export class ChannelsService {
   ) {}
 
   async list(query: ListChannelsQuery): Promise<ChannelDto[]> {
-    const filter = query.active === undefined ? {} : { active: query.active };
+    // Личный канал ученика (broadcastEligible: false, ADR-0027) на этот
+    // экран не попадает: это не канал школы, у него нет своей карточки в
+    // «Каналах», и учитель не должен видеть в списке личные чаты учеников.
+    const filter: Record<string, unknown> = { broadcastEligible: { $ne: false } };
+    if (query.active !== undefined) filter.active = query.active;
     const docs = await this.model
       .find(filter)
       .select('-config')

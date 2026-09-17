@@ -7,6 +7,7 @@ import {
   type ApiErrorBody,
   type ApiErrorCode,
 } from '@xuanxue/shared';
+import { takePrefetched } from './prefetchCache';
 
 /** Ошибка похода в API — статус, код бэкенда и (если есть) детали/requestId. */
 export class ApiError extends Error {
@@ -34,7 +35,7 @@ export class ApiError extends Error {
 /** Конверт ошибки бэкенда (тип общий с api через shared); поля могут отсутствовать у прокси/CDN. */
 type ErrorEnvelope = Partial<ApiErrorBody>;
 
-type ApiMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type ApiMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 interface ApiFetchInit {
   method?: ApiMethod;
@@ -42,7 +43,10 @@ interface ApiFetchInit {
   signal?: AbortSignal;
 }
 
-const NETWORK_ERROR_MESSAGE =
+// Экспортирован: тот же текст нужен экранам, которые сами ловят сетевой сбой
+// вне apiFetch (LoginScreen, RequireAuth, экран входа по email) — общий
+// модуль вместо третьего литерала (CLAUDE.md «Без магических чисел и строк»).
+export const NETWORK_ERROR_MESSAGE =
   'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
 const UNKNOWN_ERROR_MESSAGE = 'Сервер не ответил. Попробуйте ещё раз.';
 const UNAUTHORIZED_STATUS = 401;
@@ -65,8 +69,24 @@ export function setUnauthorizedListener(listener: UnauthorizedListener | null): 
  */
 export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
   const { method = 'GET', body, signal } = init;
+
+  // Данные первого экрана могли начать грузиться раньше, чем этот компонент
+  // успел смонтироваться (prefetchFirstScreen.ts кладёт их сюда сразу после
+  // ответа /auth/me, параллельно с чанком экрана) — забираем уже летящий
+  // промис вместо второго запроса на тот же адрес (prefetchCache.ts). Только
+  // GET: мутацию с эффектом на сервере кэш предзагрузки не подменяет никогда.
+  if (method === 'GET') {
+    const prefetched = takePrefetched(path);
+    if (prefetched) return prefetched as Promise<T>;
+  }
+
+  // Картинка варианта ответа (ADR-0035) уходит как есть, без JSON.stringify —
+  // сырое тело с её собственным типом (POST /exam-images), а не строка в
+  // кавычках. Остальные запросы — JSON, как раньше.
+  const isBlobBody = body instanceof Blob;
   const headers: Record<string, string> = { accept: 'application/json' };
-  if (body !== undefined) headers['content-type'] = 'application/json';
+  if (isBlobBody) headers['content-type'] = body.type;
+  else if (body !== undefined) headers['content-type'] = 'application/json';
   // CSRF-заголовок (SECURITY §2, ADR-0012) — гвард требует его для любого
   // мутирующего запроса, кроме @SkipCsrf(). Кросс-доменная форма его не
   // поставит, обычный fetch с credentials — всегда.
@@ -78,7 +98,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       method,
       headers,
       credentials: 'include',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: isBlobBody || body === undefined ? body : JSON.stringify(body),
       signal,
     });
   } catch {

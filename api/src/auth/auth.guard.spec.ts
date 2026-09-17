@@ -14,7 +14,13 @@ import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { signSession, verifySession } from './session-token';
 
 const SECRET = 'a'.repeat(32);
-const NOW = DateTime.fromISO('2026-09-05T12:00:00Z');
+// Настоящее «сейчас», а не фиксированная дата: AuthGuard читает часы сам
+// (`DateTime.utc()` внутри canActivate), подменить их нечем, а токены здесь
+// строятся относительно текущего момента — «свежий» и «старше 7 дней».
+// С фиксированной датой тест переворачивался сам собой: 2026-09-05 перестал
+// быть свежим ровно через неделю, и 2026-09-12 уронил CI (CLAUDE.md
+// «Детерминизм»: мигающий тест чинится в тот же день).
+const NOW = DateTime.utc();
 
 function fakeContext(
   request: Partial<RequestLike>,
@@ -163,10 +169,7 @@ describe('AuthGuard — @Roles', () => {
       fakeResponse(),
       { [ROLES_KEY]: ['admin'] },
     );
-    const guard = buildGuard(
-      reflector,
-      fakeUsersService(activeUser({ roles: ['student'] })),
-    );
+    const guard = buildGuard(reflector, fakeUsersService(activeUser({ roles: [] })));
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ForbiddenError);
   });
 

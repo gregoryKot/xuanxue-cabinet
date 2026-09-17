@@ -30,6 +30,20 @@ export class ChannelRecord {
   @Prop({ type: String, default: '' })
   target!: string;
 
+  // Личный канал ОДНОГО человека, не канал школы (ADR-0027): личный чат
+  // ученика после /start попадает в `channels` тем же типом telegram, чтобы
+  // PersonalChats.chatFor() находил его для точечного уведомления (результат
+  // экзамена и т. п.), но НЕ должен стать получателем рассылок занятий и НЕ
+  // должен попасть на экран «Каналы» — иначе бот случайно разошлёт всей
+  // школе то, что предназначено одному ученику, и учитель увидит в списке
+  // каналов личные чаты чужих учеников. `false` — только у такого канала;
+  // у канала школы (группа/канал, личный чат штата — тот получает всё
+  // расписание, ADR-0015) поле не задаётся явно, default true — прежнее
+  // поведение, миграция не нужна: `{ $ne: false }` матчит и документы без
+  // поля (ChannelsService.list, ClassesService.defaultTelegramChannelIds).
+  @Prop({ type: Boolean, default: true })
+  broadcastEligible!: boolean;
+
   // См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;

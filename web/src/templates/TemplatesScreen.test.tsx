@@ -3,7 +3,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { SettingsDto } from '@xuanxue/shared';
+import { DEFAULT_PREVIEW_MINUTES, type SettingsDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import TemplatesScreen from './TemplatesScreen';
@@ -23,6 +23,7 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
   return {
     templates: { lesson_link: 'Анонс {название}', recording: 'Запись {название}' },
     tz: 'Asia/Jerusalem',
+    previewMinutes: DEFAULT_PREVIEW_MINUTES,
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
   };
@@ -69,6 +70,21 @@ describe('TemplatesScreen — сбой загрузки', () => {
 
     expect(
       await screen.findByRole('heading', { name: 'Анонс занятия' }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('TemplatesScreen — шапка раздела', () => {
+  it('заголовок раздела и объяснение, зачем эти тексты', async () => {
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Шаблоны постов', level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Рассылка собирает пост из двух шаблонов/),
     ).toBeInTheDocument();
   });
 });
@@ -339,5 +355,83 @@ describe('TemplatesScreen — адрес сайта школы', () => {
     expect(
       await screen.findByText('Адрес сайта школы: должна начинаться с https://.'),
     ).toBeInTheDocument();
+  });
+});
+
+// Поле «За сколько минут показывать черновик» (ТЗ preview-minutes.md) — та же
+// PATCH-механика и та же секция «Школа», что у адреса сайта выше, отдельная
+// кнопка «Сохранить время предпросмотра» (SchoolSiteField.tsx).
+describe('TemplatesScreen — время предпросмотра', () => {
+  it('дефолт школы без документа настроек — поле показывает 5', async () => {
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(
+      await screen.findByLabelText('За сколько минут показывать черновик'),
+    ).toHaveValue('5');
+  });
+
+  it('сохранённое значение показано в поле', async () => {
+    mockByPath({
+      '/settings': makeSettings({ previewMinutes: 15 }),
+      '/lessons': [],
+    });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(await screen.findByDisplayValue('15')).toHaveAccessibleName(
+      'За сколько минут показывать черновик',
+    );
+  });
+
+  it('«Сохранить время предпросмотра» — PATCH /settings с { previewMinutes }', async () => {
+    const user = userEvent.setup();
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    const field = await screen.findByLabelText('За сколько минут показывать черновик');
+    await user.clear(field);
+    await user.type(field, '10');
+
+    mockedApiFetch.mockResolvedValueOnce({});
+    mockByPath({
+      '/settings': makeSettings({
+        previewMinutes: 10,
+        updatedAt: '2026-01-02T00:00:00Z',
+      }),
+      '/lessons': [],
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Сохранить время предпросмотра' }),
+    );
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/settings',
+        expect.objectContaining({ method: 'PATCH', body: { previewMinutes: 10 } }),
+      ),
+    );
+  });
+
+  it('вне диапазона (1441) — кнопка неактивна, PATCH не уходит', async () => {
+    const user = userEvent.setup();
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    const field = await screen.findByLabelText('За сколько минут показывать черновик');
+    await user.clear(field);
+    await user.type(field, '1441');
+
+    expect(
+      screen.getByRole('button', { name: 'Сохранить время предпросмотра' }),
+    ).toBeDisabled();
   });
 });

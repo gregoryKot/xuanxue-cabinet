@@ -241,4 +241,44 @@ describe('ChannelConfigService', () => {
     await expect(service.deactivateTelegramChat('@unknown')).resolves.toBeUndefined();
     expect(await model.countDocuments({ type: 'telegram' })).toBe(0);
   });
+
+  describe('upsertPersonalTelegramChat (ADR-0027 — личный канал ученика)', () => {
+    it('создаёт активный канал, не подключает его ни к одному классу', async () => {
+      const active = await classModel.create({
+        title: 'Тайцзицюань',
+        format: 'online',
+        active: true,
+      });
+
+      const created = await service.upsertPersonalTelegramChat({
+        chatId: '555',
+        title: 'Личные сообщения: Ольга',
+      });
+
+      expect(created.active).toBe(true);
+      const doc = await model.findById(created.id).lean<{ broadcastEligible: boolean }>();
+      expect(doc?.broadcastEligible).toBe(false);
+      const activeAfter = await classModel.findById(active._id).lean<{
+        channelIds: Types.ObjectId[];
+      }>();
+      expect(activeAfter?.channelIds).toHaveLength(0);
+    });
+
+    it('второй вызов с тем же chatId — не создаёт второй документ, оживляет active:true', async () => {
+      const first = await service.upsertPersonalTelegramChat({
+        chatId: '555',
+        title: 'Ольга',
+      });
+      await service.deactivateTelegramChat('555');
+
+      const second = await service.upsertPersonalTelegramChat({
+        chatId: '555',
+        title: 'Ольга',
+      });
+
+      expect(second.id).toBe(first.id);
+      expect(second.active).toBe(true);
+      expect(await model.countDocuments({ type: 'telegram', target: '555' })).toBe(1);
+    });
+  });
 });

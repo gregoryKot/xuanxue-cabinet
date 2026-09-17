@@ -3,18 +3,25 @@
 import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import type { SettingsDto, TelegramLoginInput } from '@xuanxue/shared';
+import {
+  DEFAULT_PREVIEW_MINUTES,
+  type SettingsDto,
+  type TelegramLoginInput,
+} from '@xuanxue/shared';
 import { fakeResponse } from '../test-support/http-fakes';
 import { SettingsService } from '../settings/settings.service';
 import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { EmailAuthService } from './email-auth.service';
+import { TelegramBotService } from '../telegram/telegram-bot.service';
 import type { RequestLike } from '../common/http-headers';
 import { TelegramAuthService } from './telegram-auth.service';
 
 const SETTINGS_WITHOUT_SITE: SettingsDto = {
   templates: { lesson_link: 'ссылка', recording: 'запись' },
   tz: 'Asia/Jerusalem',
+  previewMinutes: DEFAULT_PREVIEW_MINUTES,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 
@@ -33,14 +40,27 @@ async function buildController(
   },
   env: Record<string, string | undefined> = {},
   settings: SettingsDto = SETTINGS_WITHOUT_SITE,
+  // Имя бота приходит из уже прогретого botInfo — в тестах подменяем фейком,
+  // сети тут нет (CLAUDE.md «Тесты»).
+  botUsername: string | undefined = undefined,
+  emailLoginEnabled = false,
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
     providers: [
       { provide: AuthService, useValue: { logoutCookie: () => 'session=; Max-Age=0' } },
       { provide: TelegramAuthService, useValue: { login: telegramLogin } },
+      {
+        provide: EmailAuthService,
+        useValue: {
+          requestLink: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
+          verify: () => Promise.reject(new Error('не ожидался вызов в этом тесте')),
+          isEnabled: () => emailLoginEnabled,
+        },
+      },
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
       { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
+      { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },
     ],
   }).compile();
   return module.get(AuthController);
@@ -51,7 +71,9 @@ describe('AuthController.getConfig', () => {
     const controller = await buildController(undefined, {}, SETTINGS_WITHOUT_SITE);
     await expect(controller.getConfig()).resolves.toEqual({
       telegramBotId: undefined,
+      telegramBotUsername: undefined,
       schoolSiteUrl: undefined,
+      emailLoginEnabled: false,
     });
   });
 
@@ -63,7 +85,38 @@ describe('AuthController.getConfig', () => {
     );
     await expect(controller.getConfig()).resolves.toEqual({
       telegramBotId: 123456,
+      telegramBotUsername: undefined,
       schoolSiteUrl: 'https://xuanxue.su',
+      emailLoginEnabled: false,
+    });
+  });
+
+  // Имя бота нужно кабинету для ссылки «Отправить видео» (ADR-0023): бот
+  // ответил при старте — имя есть; не ответил — поля нет, и кнопки не будет.
+  it('бот прогрет — имя бота в ответе', async () => {
+    const controller = await buildController(
+      undefined,
+      { BOT_TOKEN: '123456:abcDEFghi-token_padding_here' },
+      SETTINGS_WITHOUT_SITE,
+      'xuanxue_bot',
+    );
+    await expect(controller.getConfig()).resolves.toMatchObject({
+      telegramBotUsername: 'xuanxue_bot',
+    });
+  });
+
+  // EmailAuthService.isEnabled() — источник поля целиком (CLAUDE.md «Дубли»):
+  // контроллер не пересчитывает условие сам, только проксирует.
+  it('EmailAuthService.isEnabled() true — emailLoginEnabled true в ответе', async () => {
+    const controller = await buildController(
+      undefined,
+      {},
+      SETTINGS_WITHOUT_SITE,
+      undefined,
+      true,
+    );
+    await expect(controller.getConfig()).resolves.toMatchObject({
+      emailLoginEnabled: true,
     });
   });
 });
@@ -76,6 +129,8 @@ describe('AuthController.me', () => {
       name: 'Мария',
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
     });
   });
 });
@@ -88,6 +143,78 @@ describe('AuthController.logout', () => {
     expect(res.headers['Set-Cookie']).toBe('session=; Max-Age=0');
   });
 });
+
+describe('AuthController.requestEmailLogin', () => {
+  it('передаёт email, now и inviteCode из тела в EmailAuthService.requestLink()', async () => {
+    let received: { email: string; inviteCode: string | undefined } | undefined;
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: {} },
+        { provide: TelegramAuthService, useValue: {} },
+        {
+          provide: EmailAuthService,
+          useValue: {
+            requestLink: (email: string, _now: DateTime, inviteCode?: string) => {
+              received = { email, inviteCode };
+              return Promise.resolve();
+            },
+          },
+        },
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SettingsService, useValue: {} },
+        { provide: TelegramBotService, useValue: {} },
+      ],
+    }).compile();
+    const controller = module.get(AuthController);
+
+    await controller.requestEmailLogin({
+      email: 'maria@example.com',
+      inviteCode: 'a'.repeat(32),
+    });
+
+    expect(received).toEqual({ email: 'maria@example.com', inviteCode: 'a'.repeat(32) });
+  });
+});
+
+describe('AuthController.verifyEmailLogin', () => {
+  it('ставит Set-Cookie из результата EmailAuthService.verify() и возвращает MeDto', async () => {
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        { provide: AuthService, useValue: {} },
+        { provide: TelegramAuthService, useValue: {} },
+        {
+          provide: EmailAuthService,
+          useValue: {
+            verify: () => Promise.resolve({ user: USER, cookie: 'session=email-tok' }),
+          },
+        },
+        { provide: ConfigService, useValue: { get: () => undefined } },
+        { provide: SettingsService, useValue: {} },
+        { provide: TelegramBotService, useValue: {} },
+      ],
+    }).compile();
+    const controller = module.get(AuthController);
+    const res = fakeResponse();
+
+    const me = await controller.verifyEmailLogin({ token: 'a'.repeat(64) }, res);
+
+    expect(res.headers['Set-Cookie']).toBe('session=email-tok');
+    expect(me).toEqual({
+      id: 'u1',
+      name: 'Мария',
+      roles: ['admin'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+    });
+  });
+});
+
+// AuthController.checkInvite и AuthController.join переехали в
+// JoinController (join.controller.spec.ts) — контроллер вынесен отдельным
+// файлом (ревью владельца 2026-09-15, file-size-ratchet).
 
 const TELEGRAM_INPUT: TelegramLoginInput = {
   id: 42,
@@ -113,6 +240,7 @@ describe('AuthController.loginWithTelegram', () => {
 
     const me = await controller.loginWithTelegram(
       TELEGRAM_RAW_BODY,
+      undefined,
       fakeRequest(TELEGRAM_RAW_BODY),
       res,
     );
@@ -123,7 +251,27 @@ describe('AuthController.loginWithTelegram', () => {
       name: 'Мария',
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
     });
+  });
+
+  it('inviteCode из query передаётся в TelegramAuthService.login() четвёртым аргументом', async () => {
+    let receivedInviteCode: string | undefined;
+    const controller = await buildController((_dto, _rawBody, _now, inviteCode) => {
+      receivedInviteCode = inviteCode;
+      return Promise.resolve({ user: USER, cookie: 'session=tok' });
+    });
+    const code = 'a'.repeat(32);
+
+    await controller.loginWithTelegram(
+      TELEGRAM_RAW_BODY,
+      code,
+      fakeRequest(TELEGRAM_RAW_BODY),
+      fakeResponse(),
+    );
+
+    expect(receivedInviteCode).toBe(code);
   });
 
   it('передаёт в сервис req.body целиком, а не только поля DTO', async () => {
@@ -134,7 +282,12 @@ describe('AuthController.loginWithTelegram', () => {
     });
     const rawBody = { ...TELEGRAM_INPUT, unknown_field: 'от клиента' };
 
-    await controller.loginWithTelegram(rawBody, fakeRequest(rawBody), fakeResponse());
+    await controller.loginWithTelegram(
+      rawBody,
+      undefined,
+      fakeRequest(rawBody),
+      fakeResponse(),
+    );
 
     expect(receivedRawBody).toEqual(rawBody);
   });
@@ -149,6 +302,7 @@ describe('AuthController.loginWithTelegram', () => {
 
     await controller.loginWithTelegram(
       TELEGRAM_RAW_BODY,
+      undefined,
       requestWithoutBody,
       fakeResponse(),
     );
@@ -165,6 +319,7 @@ describe('AuthController.loginWithTelegram', () => {
     await expect(
       controller.loginWithTelegram(
         TELEGRAM_RAW_BODY,
+        undefined,
         fakeRequest(TELEGRAM_RAW_BODY),
         res,
       ),

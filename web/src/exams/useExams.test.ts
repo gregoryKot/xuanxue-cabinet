@@ -1,9 +1,10 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamDto } from '@xuanxue/shared';
+import { type ExamListFilters } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
-import { useExams, type ExamFilters } from './useExams';
+import { useExams } from './useExams';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -19,6 +20,8 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     description: '',
     level: '',
     blocks: [],
+    shuffleOptions: false,
+    rubric: [],
     attemptsAllowed: 1,
     status: 'draft',
     createdAt: '2026-01-01T00:00:00Z',
@@ -27,7 +30,7 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
   };
 }
 
-const NO_FILTERS: ExamFilters = { status: '', level: '' };
+const NO_FILTERS: ExamListFilters = { status: '' };
 
 afterEach(() => {
   mockedApiFetch.mockReset();
@@ -44,7 +47,7 @@ describe('useExams — загрузка', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('монтирование без фильтров — один запрос без status/level в пути', async () => {
+  it('монтирование без фильтров — один запрос без status в пути', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);
     const { result } = renderHook(() => useExams(NO_FILTERS));
 
@@ -57,9 +60,9 @@ describe('useExams — загрузка', () => {
     );
   });
 
-  it('с фильтрами — status/level в query', async () => {
+  it('с фильтром статуса — status в query', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);
-    const { result } = renderHook(() => useExams({ status: 'published', level: 'база' }));
+    const { result } = renderHook(() => useExams({ status: 'published' }));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -67,22 +70,18 @@ describe('useExams — загрузка', () => {
       expect.stringContaining('status=published'),
       expect.anything(),
     );
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      expect.stringContaining('level=%D0%B1%D0%B0%D0%B7%D0%B0'),
-      expect.anything(),
-    );
   });
 
   it('смена фильтра статуса — новый запрос', async () => {
     mockedApiFetch.mockResolvedValue([]);
     const { result, rerender } = renderHook(
-      ({ filters }: { filters: ExamFilters }) => useExams(filters),
+      ({ filters }: { filters: ExamListFilters }) => useExams(filters),
       { initialProps: { filters: NO_FILTERS } },
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     const callsBefore = mockedApiFetch.mock.calls.length;
 
-    rerender({ filters: { status: 'archived', level: '' } });
+    rerender({ filters: { status: 'archived' } });
 
     await waitFor(() =>
       expect(mockedApiFetch.mock.calls.length).toBeGreaterThan(callsBefore),
@@ -111,55 +110,4 @@ describe('useExams — загрузка', () => {
       ),
     );
   });
-});
-
-interface MutationCase {
-  name: string;
-  call: (result: ReturnType<typeof useExams>) => Promise<void>;
-  path: string;
-  method: string;
-}
-
-const MUTATIONS: MutationCase[] = [
-  {
-    name: 'create',
-    call: (result) => result.create({ title: 'Новый экзамен' }),
-    path: '/exams',
-    method: 'POST',
-  },
-  {
-    name: 'update',
-    call: (result) => result.update('x1', { title: 'Правка' }),
-    path: '/exams/x1',
-    method: 'PATCH',
-  },
-  {
-    name: 'remove',
-    call: (result) => result.remove('x1'),
-    path: '/exams/x1',
-    method: 'DELETE',
-  },
-];
-
-describe('useExams — мутации (read-after-write)', () => {
-  it.each(MUTATIONS)(
-    '$name() — $method $path, затем перечитывает список',
-    async ({ call, path, method }) => {
-      mockedApiFetch.mockResolvedValueOnce([makeExam()]);
-      const { result } = renderHook(() => useExams(NO_FILTERS));
-      await waitFor(() => expect(result.current.loading).toBe(false));
-
-      mockedApiFetch.mockResolvedValueOnce(undefined);
-      mockedApiFetch.mockResolvedValueOnce([]);
-      await act(async () => {
-        await call(result.current);
-      });
-
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        path,
-        expect.objectContaining({ method }),
-      );
-      expect(result.current.exams).toHaveLength(0);
-    },
-  );
 });

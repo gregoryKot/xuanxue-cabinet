@@ -79,11 +79,8 @@ describe('Classes (e2e)', () => {
     expect(res.status).toBe(403);
   });
 
-  it.each([
-    ['ученик', ['student'] as UserRole[]],
-    ['гость', [] as UserRole[]],
-  ])('%s: GET и POST /classes — 403', async (_label, roles) => {
-    const cookie = await sessionFor(roles);
+  it('ученик: GET и POST /classes — 403', async () => {
+    const cookie = await sessionFor([]);
 
     const getRes = await request(server()).get('/api/classes').set('Cookie', cookie);
     expect(getRes.status).toBe(403);

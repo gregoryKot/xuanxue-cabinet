@@ -1,4 +1,7 @@
-node_modules/
+# Без завершающего слэша: он ловит только каталоги, а `node_modules` бывает и
+# симлинком (общие зависимости между git-worktree). Такой симлинк попадал в
+# `git add -A` и ронял `npm ci` в CI с ENOTDIR (аудит 2026-09-12, L).
+node_modules
 dist/
 coverage/
 .jest-cache/

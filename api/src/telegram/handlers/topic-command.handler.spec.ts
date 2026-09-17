@@ -9,7 +9,8 @@ import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
-import { TeacherChats } from '../teacher-chats';
+import type { PersonalChats } from '../personal-chats';
+import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { TopicCommandHandler } from './topic-command.handler';
 
 // Фиксированное «сейчас» (CLAUDE.md «Время»: детерминизм тестов) — не
@@ -45,7 +46,7 @@ describe('TopicCommandHandler', () => {
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
     handler = new TopicCommandHandler(
-      new TeacherChats(new UsersService(userModel), channelModel),
+      buildPersonalChats(connection, new UsersService(userModel), channelModel),
       lessonModel,
       classModel,
     );
@@ -185,7 +186,7 @@ describe('TopicCommandHandler', () => {
     const failingHandler = new TopicCommandHandler(
       {
         list: jest.fn().mockRejectedValue(new Error('mongo упал')),
-      } as unknown as TeacherChats,
+      } as unknown as PersonalChats,
       lessonModel,
       classModel,
     );

@@ -13,7 +13,7 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DateTime } from 'luxon';
-import { isMutatingMethod, type UserRole } from '@xuanxue/shared';
+import { ACCESS_MESSAGE, isMutatingMethod, type UserRole } from '@xuanxue/shared';
 import { ForbiddenError, UnauthorizedError } from '../common/errors';
 import {
   asSingleHeader,
@@ -29,7 +29,6 @@ import { shouldRenew } from './session-renewal';
 
 const CSRF_MESSAGE = 'Страница устарела. Обновите её и попробуйте ещё раз.';
 const SESSION_MESSAGE = 'Войдите, чтобы продолжить.';
-const ACCESS_MESSAGE = 'Доступа нет. Обратитесь к администратору школы.';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

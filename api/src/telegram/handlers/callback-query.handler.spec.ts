@@ -9,12 +9,12 @@ import type { BotSessionService } from '../bot-session.service';
 import {
   buildHandler,
   clearCallbackHandlerTest,
-  fakeCtx,
   NOW,
   seedTeacher,
   setupCallbackHandlerTest,
   type CallbackHandlerTestContext,
 } from './callback-query.handler.test-support';
+import { fakeCtx } from './callback-query.handler.fake-ctx';
 
 describe('CallbackQueryHandler — действия кнопок', () => {
   let ctx: CallbackHandlerTestContext;
@@ -116,7 +116,7 @@ describe('CallbackQueryHandler — действия кнопок', () => {
     expect(editCalls).toEqual(['Напишите тему одним сообщением.']);
     const session = await ctx.botSessionModel.findOne({ chatId: 111 }).lean();
     expect(session?.kind).toBe('topic');
-    expect(session?.lessonId.toString()).toBe(lessonId.toString());
+    expect(session?.lessonId?.toString()).toBe(lessonId.toString());
   });
 
   it('невалидный id в data — игнорируется, не падает', async () => {

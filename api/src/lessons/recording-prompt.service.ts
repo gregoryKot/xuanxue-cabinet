@@ -11,7 +11,7 @@ import { claimOnce } from '../common/claim-once';
 import { ClassRecord } from '../classes/class.schema';
 import { inlineButton } from '../telegram/callback-data';
 import { BotSessionService } from '../telegram/bot-session.service';
-import { TeacherChats, type TeacherChat } from '../telegram/teacher-chats';
+import { PersonalChats, type PersonalChat } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { LessonRecord } from './lesson.schema';
 
@@ -42,7 +42,7 @@ export class RecordingPromptService {
   constructor(
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly botSessions: BotSessionService,
     private readonly bot: TelegramBotService,
   ) {}
@@ -53,7 +53,9 @@ export class RecordingPromptService {
     // уведомление), у «Запись?» это единственный канал сбора записи: если
     // сейчас никто не подключил бота, claim() навсегда закрыл бы вопрос —
     // спрашивать нужно на следующем тике, когда учитель нажмёт /start.
-    const chats = await this.teacherChats.list(now);
+    // recording_request — вид уведомления «Напоминание про запись» (ТЗ
+    // notifications-delivery.md §2): кто его выключил, тому не пишем.
+    const chats = await this.personalChats.listFor('recording_request', now);
     if (chats.length === 0) return { prompted: 0 };
 
     const candidates = await this.lessonModel
@@ -89,7 +91,7 @@ export class RecordingPromptService {
   private async promptTeachers(
     lesson: DueLesson,
     cls: { title: string; tz: string },
-    chats: readonly TeacherChat[],
+    chats: readonly PersonalChat[],
     now: DateTime,
   ): Promise<void> {
     const time = DateTime.fromJSDate(lesson.startsAt, { zone: 'utc' })

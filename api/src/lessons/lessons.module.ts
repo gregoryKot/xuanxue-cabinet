@@ -17,13 +17,18 @@ import { UserModelModule } from '../users/user-model.module';
 import { LessonModelModule } from './lesson-model.module';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
+import { MyLessonsController } from './my-lessons.controller';
+import { MyLessonsService } from './my-lessons.service';
 
 @Module({
   // UserModelModule — update() проверяет leaderId через assertTeacherExists
-  // (аудит В4), тот же приём, что у ClassesModule.
+  // (аудит В4), тот же приём, что у ClassesModule. ClassesModule даёт и
+  // ClassRecord для MyLessonsService (`/me/lessons`, ТЗ docs/PLAN.md §11).
   imports: [LessonModelModule, ClassesModule, BroadcastsModule, UserModelModule],
-  controllers: [LessonsController],
-  providers: [LessonsService],
-  exports: [LessonModelModule, LessonsService],
+  controllers: [LessonsController, MyLessonsController],
+  providers: [LessonsService, MyLessonsService],
+  // MyLessonsService — ещё и боту: экран «Ближайшие занятия» показывает тот
+  // же подбор, что `GET /me/lessons` (menu-command.handler.ts).
+  exports: [LessonModelModule, LessonsService, MyLessonsService],
 })
 export class LessonsModule {}

@@ -25,7 +25,7 @@ describe('ExamItemCard', () => {
     render(<ExamItemCard item={makeItem()} onSelect={vi.fn()} />);
 
     expect(screen.getByText('Опишите принцип песчинки')).toBeInTheDocument();
-    expect(screen.getByText(/Текстовый ответ · Черновик/)).toBeInTheDocument();
+    expect(screen.getByText(/Свободный ответ · Черновик/)).toBeInTheDocument();
   });
 
   it('без тегов — раздела с тегами нет', () => {
@@ -52,12 +52,20 @@ describe('ExamItemCard', () => {
     expect(screen.getByText(/версия 2/)).toBeInTheDocument();
   });
 
-  it('клик вызывает onSelect', async () => {
+  it('клик по формулировке вызывает onSelect', async () => {
     const onSelect = vi.fn();
     render(<ExamItemCard item={makeItem()} onSelect={onSelect} />);
 
-    await userEvent.click(screen.getByRole('button'));
+    await userEvent.click(
+      screen.getByRole('button', { name: /Опишите принцип песчинки/ }),
+    );
 
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('в строке ровно одно действие — открыть вопрос', () => {
+    render(<ExamItemCard item={makeItem()} onSelect={vi.fn()} />);
+
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });

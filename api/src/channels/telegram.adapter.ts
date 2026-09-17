@@ -1,7 +1,8 @@
 // ChannelAdapter для Telegram: клиент API Telegram (telegraf); сам бот,
 // сцены и вебхук — в api/src/telegram/ (ADR-0015). plain text, без
 // parse_mode (PLAN §6: подстановки не экранируются, посты идут как обычный
-// текст).
+// текст). Классификация ошибок Bot API — telegram-errors.ts (файл-лимит
+// 150 строк, CLAUDE.md «Храповики»).
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -18,16 +19,18 @@ import {
   type TelegramApiClient,
   type TelegramClientFactory,
 } from './telegram-client';
+import {
+  isRetryableTelegramCode,
+  isTelegramApiError,
+  messageForTelegramError,
+  retryAfterSecFrom,
+} from './telegram-errors';
 
 // Лимит подписи sendVideo (Bot API) — длиннее подпись не проходит, шлём
 // видео без неё и следом обычным сообщением.
 const CAPTION_LIMIT = 1024;
 const NO_TOKEN_MESSAGE = 'Бот Telegram не подключён. Напишите администратору школы.';
 const NO_CONFIG_MESSAGE = 'У канала нет chatId — подключите канал заново';
-const NOT_ADMIN_MESSAGE =
-  'Бот не админ канала. Добавьте бота администратором и повторите тест.';
-const CHAT_NOT_FOUND_MESSAGE = 'Чат не найден. Проверьте адрес канала.';
-const TEMPORARY_MESSAGE = 'Telegram временно недоступен. Повторите позже.';
 
 @Injectable()
 export class TelegramAdapter implements ChannelAdapter {
@@ -103,39 +106,22 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   // Сырой текст может содержать BOT_TOKEN (в URL Telegram) — в лог только
-  // после scrub (SECURITY §6); scrub SendResult.error — в ChannelsService.
+  // после scrub (SECURITY §6). Текст SendResult.error для Telegram строится
+  // по `description` ответа (тоже после scrub), не только по коду — один
+  // код (400, 403) отвечает за разные причины отказа (M2).
   private toFailedResult(err: unknown, config: ChannelConfig, token: string): SendResult {
     const raw = err instanceof Error ? err.message : 'Не удалось отправить сообщение';
     this.logger.warn(scrubChannelSecrets(raw, config, token));
     if (!isTelegramApiError(err))
       return { status: 'failed', error: raw, retryable: true };
+
+    const description = scrubChannelSecrets(err.description ?? raw, config, token);
+    const retryAfterSec = retryAfterSecFrom(err);
     return {
       status: 'failed',
-      error: messageForCode(err.code),
-      retryable: isRetryableCode(err.code),
+      error: messageForTelegramError(err.code, description),
+      retryable: isRetryableTelegramCode(err.code),
+      ...(retryAfterSec !== undefined ? { retryAfterSec } : {}),
     };
   }
-}
-
-function isTelegramApiError(err: unknown): err is { code: number; message: string } {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    typeof err.code === 'number'
-  );
-}
-
-// 429/5xx — временная перегрузка или сбой на стороне Telegram, повтор
-// планировщика может сработать; 400/403 — бот не админ канала, чат не
-// найден и т.п., без смены конфигурации повтор не поможет.
-function isRetryableCode(code: number): boolean {
-  return code === 429 || code >= 500;
-}
-
-function messageForCode(code: number): string {
-  if (code === 403) return NOT_ADMIN_MESSAGE;
-  if (code === 400) return CHAT_NOT_FOUND_MESSAGE;
-  if (isRetryableCode(code)) return TEMPORARY_MESSAGE;
-  return `Telegram отклонил сообщение (код ${code}). Проверьте настройки бота.`;
 }

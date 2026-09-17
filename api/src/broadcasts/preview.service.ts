@@ -1,19 +1,21 @@
 // Четвёртый шаг тика (docs/PLAN.md §6 «Telegram-бот для учителя»): за
-// PREVIEW_MINUTES до отправки бот шлёт учителю текст поста с кнопками
-// «Отменить»/«Изменить тему» — broadcast к этому моменту уже создан
-// (BroadcastPlannerService, окно расширено на те же PREVIEW_MINUTES в
-// decideBroadcast). `previewSentAt` ставится условным апдейтом ДО отправки:
+// settings.previewMinutes до отправки бот шлёт учителю текст поста с
+// кнопками «Отменить»/«Изменить тему» — broadcast к этому моменту уже создан
+// (BroadcastPlannerService, окно расширено на то же число минут в
+// decideBroadcast). Значение читаем из SettingsService.get() — настройка
+// школы, не константа (CLAUDE.md «Кабинет учителя: всё настраивается в
+// интерфейсе»). `previewSentAt` ставится условным апдейтом ДО отправки:
 // дубли при двух инстансах исключены; отправка упала — лог, повтор не нужен,
 // сама рассылка всё равно уйдёт по расписанию (delivery-runner).
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
-import { PREVIEW_MINUTES } from '@xuanxue/shared';
 import { claimOnce } from '../common/claim-once';
 import { decrypt } from '../utils/encryption';
+import { SettingsService } from '../settings/settings.service';
 import { inlineButton } from '../telegram/callback-data';
-import { TeacherChats } from '../telegram/teacher-chats';
+import { PersonalChats } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { BroadcastRecord } from './broadcast.schema';
 
@@ -37,11 +39,13 @@ export class PreviewService {
   constructor(
     @InjectModel(BroadcastRecord.name)
     private readonly broadcastModel: Model<BroadcastRecord>,
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly bot: TelegramBotService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async sendPending(now: DateTime): Promise<PreviewResult> {
+    const { previewMinutes } = await this.settingsService.get();
     const due = await this.broadcastModel
       .find(
         {
@@ -54,7 +58,7 @@ export class PreviewService {
           // события, которое вот-вот (или уже) ушло, только путает учителя.
           scheduledAt: {
             $gte: now.toJSDate(),
-            $lte: now.plus({ minutes: PREVIEW_MINUTES }).toJSDate(),
+            $lte: now.plus({ minutes: previewMinutes }).toJSDate(),
           },
         },
         { lessonId: 1, text: 1 },
@@ -63,9 +67,12 @@ export class PreviewService {
     if (due.length === 0) return { claimed: 0 };
 
     // Один список чатов на весь тик — за то время, что тик перебирает
-    // рассылки, состав подключённых учителей не меняется, а TeacherChats
+    // рассылки, состав подключённых учителей не меняется, а PersonalChats
     // сама решает, когда логировать пустой список (не чаще раза в час).
-    const chats = await this.teacherChats.list(now);
+    // post_draft — вид уведомления «Черновик поста» (ТЗ
+    // notifications-delivery.md §2): кто выключил его себе, тому предпросмотр
+    // не приходит, остальным — как раньше.
+    const chats = await this.personalChats.listFor('post_draft', now);
 
     let claimed = 0;
     for (const broadcast of due) {

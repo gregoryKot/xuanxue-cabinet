@@ -51,7 +51,28 @@ describe('toUserDto', () => {
       googleId: 'g-1',
     });
     expect(Object.keys(dto).sort()).toEqual(
-      ['id', 'name', 'roles', 'status', 'hasTelegram', 'lastLoginAt'].sort(),
+      [
+        'id',
+        'name',
+        'roles',
+        'status',
+        'hasTelegram',
+        'lastLoginAt',
+        'joinedViaInvite',
+      ].sort(),
     );
+  });
+
+  it('joinedViaInvite: true при заданном joinedViaInviteAt (ADR-0030)', () => {
+    const dto = toUserDto({
+      ...BASE,
+      joinedViaInviteAt: new Date('2026-09-15T10:00:00Z'),
+    });
+    expect(dto.joinedViaInvite).toBe(true);
+  });
+
+  it('joinedViaInvite: false без joinedViaInviteAt', () => {
+    const dto = toUserDto(BASE);
+    expect(dto.joinedViaInvite).toBe(false);
   });
 });

@@ -11,11 +11,14 @@
 // nullable-поле формы, `null` снимает настройку (NULLABLE_SETTINGS_FIELDS,
 // settings.service.ts).
 import {
+  IsInt,
   IsOptional,
   IsString,
   IsUrl,
   Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -59,4 +62,14 @@ export class UpdateSettingsDto implements UpdateSettingsInput {
   @IsUrl({ protocols: ['https'], require_protocol: true })
   @MaxLength(SETTINGS_LIMITS.schoolSiteUrlMaxLength)
   schoolSiteUrl?: string | null;
+
+  // Не в NULLABLE_SETTINGS_FIELDS — «сбросить в ничто» здесь смысла не
+  // имеет (в отличие от schoolSiteUrl): OptionalNotNull() пропускает
+  // undefined, но null проваливается в @IsInt() и получает 400, как у
+  // leadMinutes в class-fields.dto.ts.
+  @OptionalNotNull()
+  @IsInt()
+  @Min(SETTINGS_LIMITS.previewMinutesMin)
+  @Max(SETTINGS_LIMITS.previewMinutesMax)
+  previewMinutes?: number;
 }

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
-import { AuthProvider, useAuth } from './AuthProvider';
+import { AuthProvider, hasSession, useAuth } from './AuthProvider';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -33,6 +33,8 @@ describe('AuthProvider — статусы', () => {
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -59,12 +61,27 @@ describe('AuthProvider — статусы', () => {
     await waitFor(() => expect(result.current.status).toBe('offline'));
   });
 
+  // Задача 3: AuthGuard отвергает status: 'blocked' 403-м на каждый запрос
+  // (SECURITY §2) — cookie при этом валиден, это не «сессии нет».
+  it('403 — status blocked, me null', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError('Доступа нет. Обратитесь к администратору школы.', 403, 'forbidden'),
+    );
+
+    const { result } = renderAuth();
+
+    await waitFor(() => expect(result.current.status).toBe('blocked'));
+    expect(result.current.me).toBeNull();
+  });
+
   it('clear() сбрасывает сессию до guest', async () => {
     const me: MeDto = {
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
       tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
     const { result } = renderAuth();
@@ -76,5 +93,15 @@ describe('AuthProvider — статусы', () => {
 
     expect(result.current.status).toBe('guest');
     expect(result.current.me).toBeNull();
+  });
+});
+
+describe('hasSession', () => {
+  it('true для ok и blocked (сессия есть), false для остального', () => {
+    expect(hasSession('ok')).toBe(true);
+    expect(hasSession('blocked')).toBe(true);
+    expect(hasSession('guest')).toBe(false);
+    expect(hasSession('offline')).toBe(false);
+    expect(hasSession('loading')).toBe(false);
   });
 });

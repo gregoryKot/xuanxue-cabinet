@@ -67,39 +67,6 @@ describe('useBroadcasts — загрузка', () => {
 });
 
 describe('useBroadcasts — мутации (read-after-write)', () => {
-  it('create — POST /broadcasts с телом, затем последний вызов — GET /broadcasts', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
-    const { result } = renderHook(() => useBroadcasts(2, ''));
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    mockedApiFetch.mockResolvedValueOnce({});
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await act(async () => {
-      await result.current.create({
-        text: 'Текст',
-        channelIds: ['ch1'],
-        idempotencyKey: '00000000-0000-4000-8000-000000000001',
-      });
-    });
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/broadcasts',
-      expect.objectContaining({
-        method: 'POST',
-        body: {
-          text: 'Текст',
-          channelIds: ['ch1'],
-          idempotencyKey: '00000000-0000-4000-8000-000000000001',
-        },
-      }),
-    );
-    const lastCall = mockedApiFetch.mock.calls.at(-1);
-    expect(lastCall?.[0]).toMatch(/^\/broadcasts\?from=/);
-    expect((lastCall?.[1] as { method?: string } | undefined)?.method ?? 'GET').toBe(
-      'GET',
-    );
-  });
-
   it('cancel — POST /broadcasts/:id/cancel, затем последний вызов — GET /broadcasts', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);
     const { result } = renderHook(() => useBroadcasts(2, ''));

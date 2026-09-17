@@ -27,7 +27,10 @@ describe('useAuthConfig', () => {
   });
 
   it('успешный ответ без бота — status ok, telegramBotId отсутствует (не «нет связи»)', async () => {
-    const config: AuthConfigDto = { schoolSiteUrl: 'https://xuanxue.su' };
+    const config: AuthConfigDto = {
+      schoolSiteUrl: 'https://xuanxue.su',
+      emailLoginEnabled: false,
+    };
     mockedApiFetch.mockResolvedValue(config);
 
     const { result } = renderHook(() => useAuthConfig());
@@ -40,6 +43,7 @@ describe('useAuthConfig', () => {
     const config: AuthConfigDto = {
       telegramBotId: 123456,
       schoolSiteUrl: 'https://x.example',
+      emailLoginEnabled: false,
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -63,6 +67,7 @@ describe('useAuthConfig', () => {
     const config: AuthConfigDto = {
       telegramBotId: 1,
       schoolSiteUrl: 'https://x.example',
+      emailLoginEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(config);
 
@@ -88,6 +93,7 @@ describe('useAuthConfig', () => {
     const fresh: AuthConfigDto = {
       telegramBotId: 2,
       schoolSiteUrl: 'https://fresh.example',
+      emailLoginEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(fresh);
 
@@ -97,9 +103,22 @@ describe('useAuthConfig', () => {
     });
 
     act(() => {
-      resolveFirst?.({ telegramBotId: 1, schoolSiteUrl: 'https://stale.example' });
+      resolveFirst?.({
+        telegramBotId: 1,
+        schoolSiteUrl: 'https://stale.example',
+        emailLoginEnabled: false,
+      });
     });
 
     expect(result.current.config).toEqual(fresh);
+  });
+
+  // enabled=false (ревью PR #150) — JoinScreen выключает хук, пока authStatus не
+  // стал 'guest': вошедшего/заблокированного сразу уводит, конфигурация не нужна.
+  it('enabled: false — запрос не уходит, status остаётся loading', () => {
+    const { result } = renderHook(() => useAuthConfig(false));
+
+    expect(result.current.status).toBe('loading');
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 });

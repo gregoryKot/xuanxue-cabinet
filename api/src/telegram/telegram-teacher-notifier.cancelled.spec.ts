@@ -7,7 +7,7 @@ import { CANCEL_REASON } from '../broadcasts/broadcast-cancel-reasons';
 import {
   buildNotifier,
   clearNotifierTest,
-  fakeTeacherChats,
+  fakePersonalChats,
   NOW,
   setupNotifierTest,
   type NotifierTestContext,
@@ -110,7 +110,7 @@ describe('TelegramTeacherNotifier.notifyBroadcastCancelled', () => {
 
   it('ни одного учителя не подключено — лог, не бросает', async () => {
     const broadcast = await makeCancelledBroadcast();
-    const { notifier, bot } = buildNotifier(ctx, fakeTeacherChats([]));
+    const { notifier, bot } = buildNotifier(ctx, fakePersonalChats([]));
 
     await expect(
       notifier.notifyBroadcastCancelled(

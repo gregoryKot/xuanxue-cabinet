@@ -4,7 +4,7 @@
 // админу»). Интерфейс отделяет DeliveryRunnerService/SchedulerService от
 // способа доставки — реализация (TelegramTeacherNotifier, api/src/telegram/)
 // шлёт сообщение в личный чат учителя/админа, лог остаётся её собственным
-// fallback-путём, если писать некому (нет ни одного чата в TeacherChats).
+// fallback-путём, если писать некому (нет ни одного чата в PersonalChats).
 import type { DateTime } from 'luxon';
 
 export interface FailedDeliveryContext {

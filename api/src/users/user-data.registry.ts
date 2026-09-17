@@ -9,7 +9,43 @@
 // остаётся пуст. У них есть ссылки НА пользователя (кто ведёт, кто создал) —
 // они не про владение и сюда не входят, но их обязан переписать/обнулить тот
 // же merge/delete, поэтому у них свой реестр ниже.
-export const USER_OWNED_COLLECTIONS = [] as const;
+//
+// Этап 4, слой 4.4: первая коллекция с userId — попытка сдачи экзамена
+// (данные ученика, ADR-0022 + PLAN §11): удаление аккаунта уносит и её.
+//
+// notification_prefs (ТЗ notifications-api.md) — вторая: настройки уведомлений
+// живут, пока жив аккаунт, удаление уносит их тем же путём.
+//
+// Этап 4, слой 4.6: оценка попытки по рубрике (exam_gradings, ADR-0022,
+// PLAN §11) — тоже данные ученика (чьи баллы), срок хранения «вместе с
+// попыткой». `graderId` (кто проверил) — не признак владения, обычная ссылка
+// на пользователя, см. USER_REFERENCE_PATHS ниже.
+//
+// Этап 4, слой 4.5 (media_assets, ADR-0023, PLAN §11) — способ добраться до
+// видео экзамена (file_id, ссылка или ручная отметка), не сами байты. Данные
+// ученика: `userId` — чья попытка, срок хранения «вместе с попыткой», как у
+// exam_gradings. Само видео живёт в чатах Telegram или на стороннем
+// хостинге — его удаляет владелец чата/хостинга, не мы (ADR-0023).
+//
+// Этап 4, слой 4.2 (exam_images, ADR-0035) — байты картинки варианта
+// ответа. Данные школы, не ученика: `createdBy` — кто загрузил, не признак
+// владения (см. USER_REFERENCE_PATHS ниже) — при удалении аккаунта поле
+// обнуляется, сама картинка остаётся у вопроса банка.
+//
+// ADR-0034 — код связки Telegram (telegram_link_codes,
+// telegram-link-code.schema.ts): `userId` здесь не персональные данные
+// ученика, а признак того, чья сессия выпустила код (владелец, а не жертва
+// удаления). Внесён в реестр не ради переноса при merge/delete — живёт
+// минуты и почти всегда пуст к моменту удаления аккаунта, — а потому что
+// сверочный тест ниже требует явного решения для КАЖДОЙ модели с путём
+// userId, а не молчаливого пропуска.
+export const USER_OWNED_COLLECTIONS = [
+  'ExamAttemptRecord',
+  'NotificationPrefsRecord',
+  'ExamGradingRecord',
+  'MediaAssetRecord',
+  'TelegramLinkCodeRecord',
+] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
 // UserRecord.name в user.schema.ts (сверка — user-data.registry.spec.ts).
@@ -29,4 +65,6 @@ export const USER_REFERENCE_PATHS = [
   { model: 'BroadcastRecord', path: 'createdBy' },
   { model: 'ExamItemRecord', path: 'authorId' },
   { model: 'ExamRecord', path: 'createdBy' },
+  { model: 'ExamGradingRecord', path: 'graderId' },
+  { model: 'ExamImageRecord', path: 'createdBy' },
 ] as const;

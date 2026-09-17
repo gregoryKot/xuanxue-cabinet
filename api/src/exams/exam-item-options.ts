@@ -3,11 +3,12 @@
 // options (ТЗ 4.2, п.2) — про сочетание полей, поэтому в сервисе, не в DTO.
 import {
   EXAM_ITEM_LIMITS,
+  OPTION_TEXT_OR_IMAGE_MESSAGE,
   type ExamItemKind,
   type ExamItemOptionInput,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
-import type { ExamItemOptionRecord } from './exam-item.schema';
+import type { ExamItemOptionRecord, ExamItemVersionRecord } from './exam-item.schema';
 import { keepOrGenerateId } from './sub-id';
 
 const NO_OPTIONS_KINDS: readonly ExamItemKind[] = ['text', 'video'];
@@ -17,8 +18,8 @@ const HAS_OPTIONS_KINDS: readonly ExamItemKind[] = ['single', 'multiple'];
  * Проверяет варианты против типа вопроса и возвращает нормализованный
  * список (`undefined` на входе → `[]`, чтобы вызывающему не думать про
  * отсутствие поля отдельно). Текст/видео — без вариантов вовсе; выбор
- * одного/нескольких — от `optionsMin` до `optionsMax` штук с нужным числом
- * отмеченных «верно».
+ * одного/нескольких — от `optionsMin` до `optionsMax` штук, у каждого текст
+ * или картинка (ADR-0035) и нужное число отмеченных «верно».
  */
 export function assertOptionsForKind(
   kind: ExamItemKind,
@@ -42,6 +43,11 @@ export function assertOptionsForKind(
       `Укажите от ${EXAM_ITEM_LIMITS.optionsMin} до ${EXAM_ITEM_LIMITS.optionsMax} вариантов ответа.`,
     );
   }
+  // До подсчёта верных — пустой вариант (ни текста, ни картинки) отказывает
+  // сразу самим собой, а не путается с «не тот вариант отмечен» (ADR-0035).
+  if (list.some((option) => !option.text?.trim() && !option.imageId)) {
+    throw new InvalidInputError(OPTION_TEXT_OR_IMAGE_MESSAGE);
+  }
   const correctCount = list.filter((option) => option.correct === true).length;
   if (kind === 'single' && correctCount !== 1) {
     throw new InvalidInputError('Отметьте ровно один правильный вариант.');
@@ -60,7 +66,32 @@ export function assertOptionsForKind(
 export function mapOptions(options: ExamItemOptionInput[]): ExamItemOptionRecord[] {
   return options.map((option) => ({
     id: keepOrGenerateId(option.id),
-    text: option.text,
+    text: option.text?.trim() ?? '',
     correct: option.correct ?? false,
+    // Ключа нет вовсе, если картинки не было — не `imageId: undefined`:
+    // сравнение версий в exam-item-content-change.ts идёт по JSON.stringify
+    // нормализованных записей, лишний ключ добавил бы нестабильности.
+    ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
   }));
+}
+
+/** Уникальные `imageId` текущих вариантов и всех версий истории, в порядке
+ * появления (Set). Плоская копия для `exam_items.imageIds` — сами
+ * `options`/`history` зашифрованы целиком (`encJson`, exam-item.schema.ts) и
+ * Mongo внутрь них не видит: по этому полю уборщик сирот (ADR-0035) находит,
+ * какие картинки ещё используются вопросом. */
+export function collectImageIds(
+  options: readonly ExamItemOptionRecord[],
+  history: readonly ExamItemVersionRecord[],
+): string[] {
+  const ids = new Set<string>();
+  for (const option of options) {
+    if (option.imageId) ids.add(option.imageId);
+  }
+  for (const version of history) {
+    for (const option of version.options) {
+      if (option.imageId) ids.add(option.imageId);
+    }
+  }
+  return [...ids];
 }

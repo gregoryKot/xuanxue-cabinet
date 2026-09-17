@@ -11,6 +11,8 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     description: '',
     level: '',
     blocks: [],
+    shuffleOptions: false,
+    rubric: [],
     attemptsAllowed: 1,
     status: 'draft',
     createdAt: '2026-01-01T00:00:00Z',
@@ -20,26 +22,23 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
 }
 
 describe('ExamCard', () => {
-  it('показывает название, статус и содержимое формы', () => {
+  it('показывает название, метаданные и статус отдельной меткой', () => {
     render(<ExamCard exam={makeExam()} onSelect={vi.fn()} />);
 
     expect(screen.getByText('Итоговый экзамен')).toBeInTheDocument();
-    expect(screen.getByText(/Черновик · Пока без блоков/)).toBeInTheDocument();
+    expect(
+      screen.getByText('Пока без вопросов · 1 попытка · без ограничения'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Черновик')).toBeInTheDocument();
   });
 
-  it('без уровня — уровень в мете не показан', () => {
-    render(<ExamCard exam={makeExam({ level: '' })} onSelect={vi.fn()} />);
+  it('опубликованная форма — статус «Опубликован»', () => {
+    render(<ExamCard exam={makeExam({ status: 'published' })} onSelect={vi.fn()} />);
 
-    expect(screen.queryByText(/^начальный/)).not.toBeInTheDocument();
+    expect(screen.getByText('Опубликован')).toBeInTheDocument();
   });
 
-  it('с уровнем — уровень идёт первым в мете', () => {
-    render(<ExamCard exam={makeExam({ level: 'начальный' })} onSelect={vi.fn()} />);
-
-    expect(screen.getByText(/начальный · Черновик/)).toBeInTheDocument();
-  });
-
-  it('блоки с вопросами — их число показано', () => {
+  it('вопросы экзамена — их число в строке метаданных, без слова «блок»', () => {
     render(
       <ExamCard
         exam={makeExam({
@@ -49,7 +48,6 @@ describe('ExamCard', () => {
               title: '',
               itemIds: ['i1', 'i2'],
               shuffle: false,
-              required: false,
             },
           ],
         })}
@@ -57,19 +55,13 @@ describe('ExamCard', () => {
       />,
     );
 
-    expect(screen.getByText(/1 блок · 2 вопроса/)).toBeInTheDocument();
-  });
-
-  it('без лимита времени — метка лимита не показана', () => {
-    render(<ExamCard exam={makeExam({ timeLimitMin: undefined })} onSelect={vi.fn()} />);
-
-    expect(screen.queryByText(/лимит/)).not.toBeInTheDocument();
+    expect(screen.getByText(/^2 вопроса · 1 попытка/)).toBeInTheDocument();
   });
 
   it('с лимитом времени — минуты через общий форматтер', () => {
     render(<ExamCard exam={makeExam({ timeLimitMin: 45 })} onSelect={vi.fn()} />);
 
-    expect(screen.getByText(/лимит 45 минут/)).toBeInTheDocument();
+    expect(screen.getByText(/45 минут/)).toBeInTheDocument();
   });
 
   it('клик вызывает onSelect', async () => {

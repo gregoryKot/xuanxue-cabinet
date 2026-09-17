@@ -4,12 +4,12 @@
 import { Types } from 'mongoose';
 import {
   clearCallbackHandlerTest,
-  fakeCtx,
   NOW,
   seedTeacher,
   setupCallbackHandlerTest,
   type CallbackHandlerTestContext,
 } from './callback-query.handler.test-support';
+import { fakeCtx } from './callback-query.handler.fake-ctx';
 
 describe('CallbackQueryHandler — norec/sent', () => {
   let ctx: CallbackHandlerTestContext;
@@ -69,7 +69,7 @@ describe('CallbackQueryHandler — norec/sent', () => {
 
     expect(editCalls).toEqual(['Хорошо, записи не будет.']);
     const session = await ctx.botSessionModel.findOne({ chatId: 111 }).lean();
-    expect(session?.lessonId.toString()).toBe(lessonB.toString());
+    expect(session?.lessonId?.toString()).toBe(lessonB.toString());
   });
 
   it('norec: без активного ожидания — тоже отвечает (idempotent)', async () => {

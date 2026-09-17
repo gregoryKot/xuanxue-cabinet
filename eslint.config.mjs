@@ -51,6 +51,17 @@ const NO_ENUM = {
   selector: 'TSEnumDeclaration',
   message: 'enum не используем — union-тип строк или as const объект.',
 };
+// history.pushState/replaceState напрямую запрещены — React Router и наш
+// useHistorySheet (см. web/src/hooks/useHistorySheet.ts) держат историю сами;
+// прямой вызов расходится с их состоянием (двойное закрытие листа/навигация).
+// CLAUDE.md, раздел «Фронтенд».
+const NO_HISTORY_MUTATION = ['pushState', 'replaceState'].flatMap((property) =>
+  ['history', 'window.history'].map((object) => ({
+    object,
+    property,
+    message: 'через useHistorySheet/useNavigate — CLAUDE.md «Фронтенд».',
+  })),
+);
 
 export default tseslint.config(
   {
@@ -69,6 +80,13 @@ export default tseslint.config(
   {
     files: ['scripts/**/*.mjs', 'eslint.config.mjs'],
     languageOptions: { globals: { ...globals.node } },
+  },
+  {
+    // Килсвитч service worker (ADR-0032) — единственный файл репозитория,
+    // который выполняется в контексте service worker, не браузера: `self`,
+    // `caches` и `clients` из этого окружения, не из globals.browser.
+    files: ['web/public/sw.js'],
+    languageOptions: { globals: { ...globals.serviceworker } },
   },
   {
     files: TS_GLOBS,
@@ -138,7 +156,7 @@ export default tseslint.config(
           ],
         },
       ],
-      'no-restricted-syntax': ['error', NO_DATE_CTOR],
+      'no-restricted-syntax': ['error', NO_DATE_CTOR, NO_ENUM],
     },
   },
   {
@@ -200,13 +218,53 @@ export default tseslint.config(
         'error',
         { name: 'fetch', message: 'Сеть только через web/src/api/http.ts.' },
       ],
-      'no-restricted-syntax': ['error', NO_ENUM],
+      'no-restricted-syntax': ['error', NO_ENUM, NO_DATE_CTOR],
+      'no-restricted-properties': ['error', ...NO_HISTORY_MUTATION],
     },
   },
   {
     // web/src/api/** — сама реализация http-клиента, ей можно вызывать fetch.
     files: ['web/src/api/**/*.{ts,tsx}'],
     rules: { 'no-restricted-globals': 'off' },
+  },
+  {
+    // Единственный легитимный прямой вызов replaceState: чистим
+    // #tgAuthResult= из адреса после входа через Telegram (см. комментарий в
+    // самом файле) — до useHistorySheet (нет листа, который открывается) и до
+    // react-router navigate (адрес меняется без записи в историю и без
+    // перехода). CLAUDE.md, раздел «Фронтенд».
+    files: ['web/src/auth/useTelegramAuthResultLogin.ts'],
+    rules: { 'no-restricted-properties': 'off' },
+  },
+  {
+    // Форматтеры готового ISO UTC в пояс браузера (CLAUDE.md «Размер»: Luxon
+    // не тянется в стартовый бандл ради вывода даты на экране) — не бизнес-
+    // арифметика, реальные расчёты времени (окна запросов, дедлайны) считает
+    // сервер на Luxon. `new Date(iso)` здесь только строит объект под
+    // `Intl.DateTimeFormat`/`getFullYear` и т. п., дальше не сдвигается.
+    files: ['web/src/lib/formatDate.ts'],
+    rules: { 'no-restricted-syntax': ['error', NO_ENUM] },
+  },
+  {
+    // Два предметных исключения для окон запросов (CLAUDE.md «Размер»:
+    // тянуть Luxon в web ради пары строк дороже, чем исключение с тестом
+    // на переход времени). planningWindow.ts: `new Date(now)` клонирует
+    // момент, чтобы найти местную полночь ближайшего воскресенья
+    // (setHours/setDate) — перевод «местная стена» → UTC-момент делает сам
+    // движок с базой часовых поясов устройства (planningWindow.tz.test.ts).
+    // dateWindow.ts: `shiftByWeeks` считает недели ровно в UTC через
+    // `getTime()` — единственный честный способ не съехать на ±1 час на
+    // переходе DST (dateWindow.tz.test.ts); обход через Intl.formatToParts
+    // оставил бы ту же арифметику, только спрятанную от линтера.
+    // nextLessonsWindow.ts: `new Date(now)` — тот же клон момента, чтобы
+    // отбросить секунды (setUTCSeconds), ключ предзагрузки первого экрана
+    // должен совпасть с ключом хука (api/apiPaths.ts).
+    files: [
+      'web/src/planning/planningWindow.ts',
+      'web/src/lib/dateWindow.ts',
+      'web/src/templates/nextLessonsWindow.ts',
+    ],
+    rules: { 'no-restricted-syntax': ['error', NO_ENUM] },
   },
   {
     // shared без бэкендовых/фронтовых/мессенджерных зависимостей — обеими

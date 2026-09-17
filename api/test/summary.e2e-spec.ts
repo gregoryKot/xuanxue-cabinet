@@ -55,7 +55,7 @@ describe('Summary (e2e)', () => {
     const anon = await request(server()).get('/api/summary');
     expect(anon.status).toBe(401);
 
-    const cookie = await sessionFor(['student']);
+    const cookie = await sessionFor([]);
     const res = await request(server()).get('/api/summary').set('Cookie', cookie);
     expect(res.status).toBe(403);
   });
@@ -67,9 +67,7 @@ describe('Summary (e2e)', () => {
 
     expect(res.status).toBe(200);
     const dto = res.body as SummaryDto;
-    expect(dto.emptyMessage).toBe(
-      'Пока нечего показать: ни одной рассылки за 30 дней. Ближайших занятий не запланировано.',
-    );
+    expect(dto.emptyMessage).toBe('Пока нечего показать: ни одной рассылки за 30 дней.');
   });
 
   it('после одной sent-доставки — broadcastsSent = 1, без emptyMessage', async () => {

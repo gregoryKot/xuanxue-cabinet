@@ -12,7 +12,16 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import type { FieldPolicy } from '../common/field-policy';
 
-const BOT_SESSION_KINDS = ['topic', 'recording'] as const;
+// 'examMedia' (ADR-0023, PLAN §11 слой 4.5) — ждём видео для попытки; либо
+// после deep link `t.me/<бот>?start=exam_<attemptId>` из кабинета (тогда
+// `questionIndex` не задан), либо с экрана вопроса-видео внутри самого бота
+// (ТЗ 4б.2, часть 2 — `questionIndex` задан, после привязки бот сразу
+// показывает следующий вопрос). В отличие от topic/recording заводится
+// ЛЮБОМУ пользователю Telegram, не только штату школы (экзамен сдают
+// ученики) — несёт `attemptId`, не `lessonId`.
+// 'examText' (ТЗ 4б.2, часть 2) — ждём свободный текст ответа на вопрос
+// попытки; всегда с `questionIndex`, тем же приёмом, что examMedia.
+const BOT_SESSION_KINDS = ['topic', 'recording', 'examMedia', 'examText'] as const;
 export type BotSessionKind = (typeof BOT_SESSION_KINDS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })
@@ -25,8 +34,34 @@ export class BotSessionRecord {
   @Prop({ type: String, enum: BOT_SESSION_KINDS, required: true })
   kind!: BotSessionKind;
 
-  @Prop({ type: SchemaTypes.ObjectId, required: true })
-  lessonId!: Types.ObjectId;
+  // Только 'topic'/'recording'. Не $unset при переключении на 'examMedia' и
+  // обратно (см. bot-session.service.ts) — читатели ветвятся по `kind`
+  // раньше, чем смотрят на lessonId/attemptId, поэтому лишнее поле от
+  // прошлого ожидания безвредно.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  lessonId?: Types.ObjectId;
+
+  // Только 'examMedia'/'examText'.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  attemptId?: Types.ObjectId;
+
+  // Номер вопроса в снимке попытки (attempt.blocks[].questions[], НЕ itemId —
+  // exam-callback-ids.ts объясняет, почему номером), не своим id: всегда у
+  // 'examText', у 'examMedia' — только когда вопрос открыт из потока вопросов
+  // бота, а не по deep link из кабинета (см. комментарий у kind выше).
+  // `null`, не просто отсутствие поля, у 'examMedia' без вопроса — иначе
+  // старый номер вопроса пережил бы переключение с потока бота на deep link
+  // того же чата (bot-session.service.ts, startExamMediaWait).
+  @Prop({ type: Number, required: false })
+  questionIndex?: number | null;
+
+  // Вопрос-видео, которому станет ответом присланное видео (ADR-0037) — есть
+  // только у 'examMedia': из deep link `exam_<attemptId>_<itemId>` (тогда
+  // questionIndex не задан) либо из самого вопроса потока бота — берётся
+  // готовым (`question.itemId`), а не пересчитывается по questionIndex.
+  // `null`, тем же приёмом и по той же причине, что questionIndex выше.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  itemId?: Types.ObjectId | null;
 
   @Prop({ type: Date, required: true })
   expiresAt!: Date;

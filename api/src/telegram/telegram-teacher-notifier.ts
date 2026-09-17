@@ -1,6 +1,6 @@
 // Реализация TeacherNotifier поверх бота (заменяет прежнюю LogTeacherNotifier
 // — CLAUDE.md «Дубли и мёртвый код»): сбой доставки/шага тика идёт учителю в
-// личный чат (TeacherChats), лог остаётся здесь же как fallback, если писать
+// личный чат (PersonalChats), лог остаётся здесь же как fallback, если писать
 // некому (ни одного подключённого чата). Провайдер по токену TEACHER_NOTIFIER
 // — SchedulerModule (docs/PLAN.md §6, RUNBOOK §8.1).
 import { Injectable, Logger } from '@nestjs/common';
@@ -18,7 +18,7 @@ import type {
 } from '../deliveries/teacher-notifier';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { cancelledBroadcastMessage } from './broadcast-cancel-message';
-import { TeacherChats } from './teacher-chats';
+import { PersonalChats } from './personal-chats';
 import { TelegramBotService } from './telegram-bot.service';
 
 // Тот же шаг тика повторно не будит учителя чаще раза в 10 минут — иначе
@@ -36,7 +36,7 @@ export class TelegramTeacherNotifier implements TeacherNotifier {
   private readonly lastSchedulerWarnAt = new Map<string, DateTime>();
 
   constructor(
-    private readonly teacherChats: TeacherChats,
+    private readonly personalChats: PersonalChats,
     private readonly bot: TelegramBotService,
     @InjectModel(BroadcastRecord.name)
     private readonly broadcastModel: Model<BroadcastRecord>,
@@ -90,8 +90,12 @@ export class TelegramTeacherNotifier implements TeacherNotifier {
     await this.broadcast(text, now);
   }
 
+  /** Все три уведомления этого класса (сбой доставки, сбой шага планировщика,
+   * отмена рассылки) — один вид `delivery_failed`, «Пост не ушёл» (ТЗ
+   * notifications-delivery.md §2): кто его выключил, тому не пишем, лог
+   * остаётся собственным fallback-путём, если писать некому вовсе. */
   private async broadcast(text: string, now: DateTime): Promise<void> {
-    const chats = await this.teacherChats.list(now);
+    const chats = await this.personalChats.listFor('delivery_failed', now);
     if (chats.length === 0) {
       this.logger.error(text);
       return;

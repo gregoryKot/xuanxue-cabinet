@@ -1,28 +1,22 @@
-// Маршруты кабинета (React.lazy на экраны — CLAUDE.md «Фронтенд»: тяжёлые
-// экраны не тянутся в стартовый бандл). AuthProvider — единственный источник
-// сессии для всего дерева (ErrorBoundary и тост обновления PWA — здесь, а не
-// в main.tsx: main.tsx остаётся тонкой точкой входа).
+// Корень дерева: вход, охрана сессии и подстановка маршрутов кабинета.
+// Экраны кабинета живут своим списком (cabinetRoutes.tsx) — здесь остаются
+// публичные страницы и то, что оборачивает всё остальное.
+// AuthProvider — единственный источник сессии для всего дерева (ErrorBoundary
+// — здесь, а не в main.tsx: main.tsx остаётся тонкой точкой входа).
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthProvider';
-import { RequireAdmin } from '../auth/RequireAdmin';
 import { RequireAuth } from '../auth/RequireAuth';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SkeletonLines } from '../components/Skeleton';
-import { UpdateToast } from '../pwa/UpdateToast';
 import { AppShell } from './AppShell';
+import { cabinetRoutes } from './cabinetRoutes';
+import { FirstScreenPrefetch } from './FirstScreenPrefetch';
+import { ROUTE_MODULES } from './routeModules';
 
-const LoginScreen = lazy(() => import('../auth/LoginScreen'));
-const ScheduleScreen = lazy(() => import('../schedule/ScheduleScreen'));
-const SummaryScreen = lazy(() => import('../summary/SummaryScreen'));
-const PlanningScreen = lazy(() => import('../planning/PlanningScreen'));
-const ChannelsScreen = lazy(() => import('../channels/ChannelsScreen'));
-const BroadcastsScreen = lazy(() => import('../broadcasts/BroadcastsScreen'));
-const TemplatesScreen = lazy(() => import('../templates/TemplatesScreen'));
-const PeopleScreen = lazy(() => import('../people/PeopleScreen'));
-const SettingsScreen = lazy(() => import('../settings/SettingsScreen'));
-const ExamItemsScreen = lazy(() => import('../exam-items/ExamItemsScreen'));
-const ExamsScreen = lazy(() => import('../exams/ExamsScreen'));
+const LoginScreen = lazy(ROUTE_MODULES.login.load);
+const EmailLoginCallbackScreen = lazy(ROUTE_MODULES.emailLogin.load);
+const JoinScreen = lazy(ROUTE_MODULES.join.load);
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -34,34 +28,30 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        {/* Снаружи Suspense нарочно (см. комментарий-«почему» в
+            FirstScreenPrefetch.tsx): под Suspense эффекты не запускаются, пока
+            чанк экрана не пришёл — то есть ровно после него, а не параллельно. */}
+        <FirstScreenPrefetch />
         <Suspense fallback={routeFallback}>
           <Routes>
-            <Route path="/login" element={<LoginScreen />} />
+            <Route path={ROUTE_MODULES.login.path} element={<LoginScreen />} />
+            {/* Ссылка из письма входа (ADR-0029) — публичный маршрут, как
+                /login: страница сама решает по токену, что показать. */}
+            <Route
+              path={ROUTE_MODULES.emailLogin.path}
+              element={<EmailLoginCallbackScreen />}
+            />
+            {/* Ссылка-приглашение школы (ADR-0030) — публичный маршрут: до
+                входа проверяет код сама (useJoinByInvite.ts), внутрь
+                RequireAuth не идёт — гостю ещё нечего показывать из кабинета. */}
+            <Route path={ROUTE_MODULES.join.path} element={<JoinScreen />} />
             <Route element={<RequireAuth />}>
-              <Route element={<AppShell />}>
-                <Route path="/summary" element={<SummaryScreen />} />
-                <Route path="/schedule" element={<ScheduleScreen />} />
-                <Route path="/planning" element={<PlanningScreen />} />
-                <Route path="/channels" element={<ChannelsScreen />} />
-                <Route path="/broadcasts" element={<BroadcastsScreen />} />
-                <Route path="/templates" element={<TemplatesScreen />} />
-                <Route path="/exam-items" element={<ExamItemsScreen />} />
-                <Route path="/exams" element={<ExamsScreen />} />
-                <Route path="/settings" element={<SettingsScreen />} />
-                {/* Не в NAV_ITEMS (navItems.ts — 6 пунктов предел на 360px):
-                    вход только карточкой «Люди» на «Сводке», доступно только
-                    admin (RequireAdmin, docs/PLAN.md §6, блокер аудита Б3). */}
-                <Route element={<RequireAdmin />}>
-                  <Route path="/people" element={<PeopleScreen />} />
-                </Route>
-                <Route path="/" element={<Navigate to="/summary" replace />} />
-              </Route>
+              <Route element={<AppShell />}>{cabinetRoutes}</Route>
             </Route>
             {/* Неизвестный путь — на главную, а не белый экран 404. */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
-        <UpdateToast />
       </AuthProvider>
     </ErrorBoundary>
   );

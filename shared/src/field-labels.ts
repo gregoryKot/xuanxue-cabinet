@@ -63,6 +63,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   lesson_link: 'Шаблон «Ссылка на занятие»',
   recording: 'Шаблон «Запись»',
   schoolSiteUrl: 'Адрес сайта школы',
+  previewMinutes: 'За сколько минут показывать черновик поста',
 
   // users — /users (экран «Люди»).
   roles: 'Роли',
@@ -74,6 +75,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   criteria: 'Критерии проверки',
   options: 'Варианты ответа',
   correct: 'Правильный вариант',
+  imageId: 'Картинка варианта',
   tags: 'Теги',
   tag: 'Тег',
 
@@ -83,9 +85,21 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   description: 'Описание',
   level: 'Уровень',
   blocks: 'Блоки',
-  itemIds: 'Вопросы блока',
-  shuffle: 'Перемешивание',
-  required: 'Обязательность блока',
+  rubric: 'Рубрика проверки',
+  maxScore: 'Максимум баллов',
+  score: 'Балл',
+  outcome: 'Итог',
+  itemIds: 'Вопросы',
+  shuffle: 'Перемешивание вопросов',
+  shuffleOptions: 'Перемешивание вариантов ответа',
   timeLimitMin: 'Лимит времени',
   attemptsAllowed: 'Число попыток',
+
+  // me/notifications — настройка уведомлений (ТЗ notifications-api.md).
+  // kind — общая подпись «Тип» выше (broadcasts.kind), здесь вид уведомления.
+  enabled: 'Включено',
+
+  // auth/join/check — код ссылки-приглашения школы (ADR-0030, ADR-0036).
+  code: 'Код ссылки-приглашения',
+  inviteCode: 'Код ссылки-приглашения',
 };

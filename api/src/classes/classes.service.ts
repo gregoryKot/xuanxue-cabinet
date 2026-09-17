@@ -85,8 +85,11 @@ export class ClassesService {
   }
 
   private async defaultTelegramChannelIds(): Promise<string[]> {
+    // Личный канал ученика (broadcastEligible: false, ADR-0027) сюда не
+    // попадает: занятие не должно получить получателем рассылки чей-то
+    // личный чат только потому, что он тоже type: telegram.
     const docs = await this.channelModel
-      .find({ type: 'telegram', active: true })
+      .find({ type: 'telegram', active: true, broadcastEligible: { $ne: false } })
       .select('_id')
       .lean<{ _id: Types.ObjectId }[]>();
     return docs.map((doc) => doc._id.toString());

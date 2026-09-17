@@ -1,6 +1,7 @@
 // Смоук-тест маршрутов (CLAUDE.md «Тесты»: ветвление есть — гость на /login,
-// «/» уводит на /summary) — сами экраны и их логика проверены отдельными
-// тестами (LoginScreen, RequireAuth, ScheduleScreen, SummaryScreen).
+// «/» уводит на /planning, docs/adr/0025-navigation-by-domain.md) — сами
+// экраны и их логика проверены отдельными тестами (LoginScreen, RequireAuth,
+// ScheduleScreen, PlanningScreen).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -25,8 +26,17 @@ const TEACHER: MeDto = {
   name: 'Дима',
   roles: ['teacher'],
   tz: 'Asia/Jerusalem',
+  status: 'active',
+  telegramLinked: false,
 };
-const ADMIN: MeDto = { id: 'a1', name: 'Маша', roles: ['admin'], tz: 'Asia/Jerusalem' };
+const ADMIN: MeDto = {
+  id: 'a1',
+  name: 'Маша',
+  roles: ['admin'],
+  tz: 'Asia/Jerusalem',
+  status: 'active',
+  telegramLinked: false,
+};
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
  * всех тестах файла, различается только то, что отдаёт сам экран. Раньше этот
@@ -57,11 +67,31 @@ describe('App', () => {
 
     renderAt('/');
 
-    expect(await screen.findByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
+    expect(await screen.findByText('Кабинет школы')).toBeInTheDocument();
     expect(
       await screen.findByText(
         'Вход через Telegram не настроен. Напишите администратору школы.',
       ),
+    ).toBeInTheDocument();
+  });
+
+  it('гость на /login/email без токена — маршрут открывает EmailLoginCallbackScreen (ADR-0029)', async () => {
+    mockRoute(null);
+
+    renderAt('/login/email');
+
+    expect(
+      await screen.findByText('Ссылка неполная. Запросите новую на странице входа.'),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
+    mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
+
+    renderAt('/schedule');
+
+    expect(
+      await screen.findByRole('button', { name: 'Добавить занятие' }),
     ).toBeInTheDocument();
   });
 
@@ -76,26 +106,16 @@ describe('App', () => {
   });
 
   it('учитель на /broadcasts — маршрут «Рассылки» открывает BroadcastsScreen (pr-k3-fixes.md п.20)', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/auth/me')
-        return Promise.resolve({
-          id: 'u1',
-          name: 'Дима',
-          roles: ['teacher'],
-          tz: 'Asia/Jerusalem',
-        });
-      if (path.startsWith('/broadcasts')) return Promise.resolve([]);
-      if (path.startsWith('/deliveries')) return Promise.resolve([]);
-      if (path.startsWith('/channels')) return Promise.resolve([]);
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    mockRoute(TEACHER, {
+      '/broadcasts': [],
+      '/deliveries': [],
+      '/channels': [],
+      // Числа за 30 дней вверху экрана (BroadcastsSummary.tsx) — эндпоинт
+      // /summary остаётся в API и без своего экрана (docs/adr/0025).
+      '/summary': { emptyMessage: 'Пока нечего показать.' },
     });
 
-    render(
-      <MemoryRouter initialEntries={['/broadcasts']}>
-        <App />
-      </MemoryRouter>,
-    );
+    renderAt('/broadcasts');
 
     expect(
       await screen.findByRole('button', { name: 'Новая рассылка' }),
@@ -126,8 +146,26 @@ describe('App', () => {
 
     renderAt('/planning');
 
+    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
+  });
+
+  it('учитель на /planning/new — маршрут страницы разового занятия (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/classes': [], '/users/teachers': [] });
+
+    renderAt('/planning/new');
+
     expect(
-      await screen.findByText(/Здесь занятия на 4 недели вперёд/),
+      await screen.findByRole('heading', { name: 'Разовое занятие' }),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /schedule/new — маршрут страницы занятия расписания (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/channels': [], '/users/teachers': [] });
+
+    renderAt('/schedule/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Новое занятие в расписании' }),
     ).toBeInTheDocument();
   });
 
@@ -141,53 +179,205 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('учитель на /exam-items/new — маршрут страницы вопроса (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/exam-items': [] });
+
+    renderAt('/exam-items/new');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Новый вопрос' }),
+    ).toBeInTheDocument();
+  });
+
   it('учитель на /exams — маршрут «Экзамены» открывает ExamsScreen', async () => {
-    mockRoute(TEACHER, { '/exams': [] });
+    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
 
     renderAt('/exams');
 
     expect(await screen.findByText(/собирается из вопросов банка/)).toBeInTheDocument();
   });
 
-  it('учитель на /settings — маршрут «Настройки» открывает SettingsScreen', async () => {
-    mockRoute(TEACHER);
+  it('учитель на /exams/new — маршрут редактора экзамена (ADR-0033)', async () => {
+    mockRoute(TEACHER, { '/exam-items': [] });
 
-    renderAt('/settings');
+    renderAt('/exams/new');
 
-    expect(await screen.findByRole('heading', { name: 'Настройки' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Каналы/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Новый экзамен' }),
+    ).toBeInTheDocument();
   });
 
-  it('admin на /people — маршрут «Люди» открывает PeopleScreen (RequireAdmin, блокер аудита Б3)', async () => {
-    mockRoute(ADMIN, { '/users': [] });
+  it('учитель на /grading — маршрут «Проверка работ» открывает GradingQueueScreen', async () => {
+    mockRoute(TEACHER, { '/attempts': [] });
+
+    renderAt('/grading');
+
+    expect(
+      await screen.findByText('Пока нечего проверять — сданных работ нет.'),
+    ).toBeInTheDocument();
+  });
+
+  it('учитель на /grading/:attemptId — открывается карточка проверки работы', async () => {
+    mockRoute(TEACHER, {
+      '/attempts/a1/review': {
+        attemptId: 'a1',
+        examId: 'e1',
+        examTitle: 'Форма первого уровня',
+        userId: 'u1',
+        userName: 'Иван Иванов',
+        status: 'submitted',
+        blocks: [],
+        rubric: [],
+      },
+    });
+
+    renderAt('/grading/a1');
+
+    expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
+  });
+
+  it('admin на /people — маршрут «Ученики» открывает PeopleScreen (RequirePeopleAccess, блокер аудита Б3)', async () => {
+    mockRoute(ADMIN, { '/users': [], '/users/invite-link': { url: null } });
 
     renderAt('/people');
 
     expect(
-      await screen.findByText(/Здесь те, кто хотя бы раз вошёл в кабинет через Telegram/),
+      await screen.findByText(/зарегистрировался по ссылке-приглашению/),
     ).toBeInTheDocument();
   });
 
-  it('учитель без admin на /people — уводит на «Сводку», не «Люди»', async () => {
-    mockRoute(TEACHER, {
-      // «Сводка» с недавних пор грузит ещё занятия и классы: сверху у неё
-      // блок «Сегодня» (summary/TodaySection.tsx).
-      '/lessons': [],
-      '/classes': [],
-      '/summary': {
-        period: { from: '2026-08-08T00:00:00Z', to: '2026-09-07T00:00:00Z' },
-        broadcastsSent: 0,
-        broadcastsCancelled: 0,
-        deliveriesFailed: 0,
-        deliveriesPending: 0,
-        manualWaiting: 0,
-        emptyMessage: 'Пока нечего показать.',
-      },
-    });
+  // ADR-0030 (уточнение владельца 2026-09-15): ссылку-приглашение отдаёт и
+  // учитель — маршрут открыт ему, но список учеников остаётся admin
+  // (SECURITY §3), PeopleScreen сам не зовёт GET /users для teacher.
+  it('учитель на /people — видит карточку ссылки, не список учеников', async () => {
+    mockRoute(TEACHER, { '/users/invite-link': { url: null } });
 
     renderAt('/people');
 
-    expect(await screen.findByText('Пока нечего показать.')).toBeInTheDocument();
+    expect(await screen.findByText('Ссылка-приглашение')).toBeInTheDocument();
+  });
+
+  it('ученик без роли на /people — уводит на «Занятия», но там для него StudentScreen, не PeopleScreen', async () => {
+    // AppShell.tsx: у роли без teacher/assistant/admin Outlet маршрута
+    // /planning не рисуется вовсе — вместо него StudentScreen (свои
+    // эндпоинты /me/lessons и /me/exams, не /lessons и /classes
+    // PlanningScreen). Тест проверяет сам редирект RequirePeopleAccess, а
+    // не PlanningScreen — тому отдельный смоук чуть выше.
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+    };
+    mockRoute(student, { '/me/lessons': [], '/me/exams': [] });
+
+    renderAt('/people');
+
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
+  });
+
+  it('учитель на «/» — уводит на «Занятия»', async () => {
+    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
+
+    renderAt('/');
+
+    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
+  });
+
+  // Личная настройка человека — маршрут не за RequirePeopleAccess и не за
+  // isTeacher-веткой AppShell.tsx, доступен и ученику (ТЗ notifications-web.md).
+  it('учитель на /notifications — маршрут «Уведомления» открывает NotificationsScreen', async () => {
+    // telegramLinked: у несвязанного на месте этой подсказки стоит кнопка
+    // связки (ADR-0034) — здесь проверяется маршрут, не она.
+    mockRoute(
+      { ...TEACHER, telegramLinked: true },
+      { '/me/notifications': { enabled: [] } },
+    );
+
+    renderAt('/notifications');
+
+    expect(
+      await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/),
+    ).toBeInTheDocument();
+  });
+
+  it('ученик на /notifications — тоже открывает NotificationsScreen, не StudentScreen', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+    };
+    mockRoute(student, { '/me/notifications': { enabled: [] } });
+
+    renderAt('/notifications');
+
+    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
+    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
+  });
+
+  // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за
+  // ролевым гвардом, как «/notifications» чуть выше.
+  it('ученик на /attempts/:id — открывает экран сдачи, не StudentScreen', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+    };
+    mockRoute(student, {
+      '/attempts': [
+        {
+          id: 'a1',
+          examId: 'e1',
+          examTitle: 'Форма первого уровня',
+          userId: 's1',
+          status: 'in_progress',
+          blocks: [],
+          answers: [],
+          startedAt: '2026-09-01T00:00:00Z',
+          expired: false,
+        },
+      ],
+    });
+
+    renderAt('/attempts/a1');
+
+    expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
+    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
+  });
+
+  it('гость на /join/:code с действующим кодом — маршрут открывает JoinScreen (ADR-0030)', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me') return Promise.reject(new Error('нет сессии'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt(`/join/${'a'.repeat(32)}`);
+
+    expect(await screen.findByText('Вас пригласили в школу')).toBeInTheDocument();
+  });
+
+  it('гость на /join/:code с недействующим кодом — «Ссылка не подошла»', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({});
+      if (path === '/auth/me') return Promise.reject(new Error('нет сессии'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: false });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt(`/join/${'a'.repeat(32)}`);
+
+    expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
   });
 
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {
@@ -195,6 +385,6 @@ describe('App', () => {
 
     renderAt('/что-то-неизвестное');
 
-    expect(await screen.findByText('Кабинет школы Сюань-Сюэ')).toBeInTheDocument();
+    expect(await screen.findByText('Кабинет школы')).toBeInTheDocument();
   });
 });

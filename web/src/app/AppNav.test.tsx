@@ -1,23 +1,38 @@
 // Навигация в двух видах (отзыв владельца 2026-09-09): на телефоне —
-// нижняя панель, на широком экране — колонка слева. Проверяем именно
-// раскладку, а не список пунктов: он свой у navItems.ts и покрыт AppShell.
+// нижняя панель, на широком экране — колонка слева. Плюс фильтр по роли и
+// подсветка активного раздела (docs/adr/0025-navigation-by-domain.md).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import { AppNav, SIDE_NAV_WIDTH_PX } from './AppNav';
 
-// Открыт «/planning» — пункт «Занятия» активен: подсветка активной ссылки
-// разная у нижней панели и боковой колонки, и без активного пункта половина
-// стилей не проверялась бы вовсе.
-function renderNav(isMobile: boolean) {
+const TEACHER: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: ['teacher'],
+  tz: 'UTC',
+  status: 'active',
+  telegramLinked: false,
+};
+const ADMIN: MeDto = {
+  id: 'a1',
+  name: 'Маша',
+  roles: ['admin'],
+  tz: 'UTC',
+  status: 'active',
+  telegramLinked: false,
+};
+
+function renderNav(isMobile: boolean, me: MeDto | null = TEACHER, path = '/planning') {
   return render(
-    <MemoryRouter initialEntries={['/planning']}>
-      <AppNav isMobile={isMobile} />
+    <MemoryRouter initialEntries={[path]}>
+      <AppNav isMobile={isMobile} me={me} />
     </MemoryRouter>,
   );
 }
 
-describe('AppNav', () => {
+describe('AppNav — раскладка', () => {
   // Проверяем ширину и направление, а не рамку: значения через `var(--…)`
   // jsdom не вычисляет, и сравнение стилей на них всегда ложно-отрицательное.
   it('телефон — панель во всю ширину, без боковой колонки', () => {
@@ -37,8 +52,7 @@ describe('AppNav', () => {
   });
 
   // Панель уезжала вверх вместе со списком занятий (отзыв владельца
-  // 2026-09-10): на телефоне она должна оставаться на месте, иначе до другого
-  // раздела приходится прокручивать весь список обратно.
+  // 2026-09-10): на телефоне она должна оставаться на месте.
   it('телефон — панель прибита к низу экрана', () => {
     renderNav(true);
 
@@ -46,20 +60,88 @@ describe('AppNav', () => {
     expect(nav.style.position).toBe('sticky');
     expect(nav.style.bottom).toBe('0px');
   });
+});
 
-  it('широкий экран — колонка слева ничего не прибивает', () => {
-    renderNav(false);
+describe('AppNav — пункты и роль (отзыв владельца 2026-09-12, уточнение ADR-0030)', () => {
+  it('ученик без роли — три пункта, «Ученики» скрыт', () => {
+    const student: MeDto = { ...TEACHER, roles: [] };
+    renderNav(true, student);
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
-    expect(nav.style.position).toBe('');
+    const labels = screen
+      .getAllByRole('link')
+      .map((link) => link.textContent)
+      .filter((label): label is string => label !== null);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены']);
+    expect(nav).not.toHaveTextContent('Ученики');
   });
 
-  it('подписи пунктов видны в обоих видах — иконка без слова не читается', () => {
+  it('админ — четыре пункта, «Ученики» последним', () => {
+    renderNav(true, ADMIN);
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+  });
+
+  // ADR-0030 (уточнение владельца 2026-09-15): ссылку-приглашение раздаёт и
+  // учитель — «Ученики» открыт ему тоже, не только admin.
+  it('учитель — тоже видит «Ученики» (ADR-0030, ссылка-приглашение)', () => {
+    renderNav(true, TEACHER);
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+  });
+
+  it('подписи видны в обоих видах — иконка без слова не читается', () => {
     const { unmount } = renderNav(true);
     expect(screen.getByText('Занятия')).toBeInTheDocument();
     unmount();
 
     renderNav(false);
     expect(screen.getByText('Занятия')).toBeInTheDocument();
+  });
+});
+
+describe('AppNav — подсветка раздела', () => {
+  it('открыт сам раздел — его ссылка активна', () => {
+    renderNav(true, TEACHER, '/broadcasts');
+
+    expect(screen.getByRole('link', { name: /Рассылки/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: /Занятия/ })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  it('открыт подэкран раздела — подсвечен сам раздел, не подэкран', () => {
+    renderNav(true, TEACHER, '/channels');
+
+    expect(screen.getByRole('link', { name: /Рассылки/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('путь вне навигации — ни один пункт не подсвечен', () => {
+    renderNav(true, TEACHER, '/login');
+
+    for (const link of screen.getAllByRole('link')) {
+      expect(link).not.toHaveAttribute('aria-current');
+    }
+  });
+
+  // Направление «тихо и благородно» (docs/adr/0031): активный пункт помечен
+  // не заливкой, а декоративной точкой-маркером — проверяем структуру
+  // (есть/нет скрытого от скринридера маркера), не цвет.
+  it('активный пункт — с декоративным маркером, у остальных его нет', () => {
+    renderNav(true, TEACHER, '/broadcasts');
+
+    const active = screen.getByRole('link', { name: /Рассылки/ });
+    expect(active.querySelector('.xuanxue-nav-dot')).not.toBeNull();
+
+    const inactive = screen.getByRole('link', { name: /Занятия/ });
+    expect(inactive.querySelector('.xuanxue-nav-dot')).toBeNull();
   });
 });

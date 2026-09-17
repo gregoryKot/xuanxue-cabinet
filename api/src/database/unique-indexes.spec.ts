@@ -61,6 +61,12 @@ const EXPECTED_UNIQUE_INDEXES: readonly ExpectedUniqueIndex[] = [
     partialFilterExpression: { plannedAt: { $type: 'date' } },
     source: 'PLAN §4 lessons: «уникальный частичный индекс (classId, plannedAt)»',
   },
+  {
+    collection: 'notification_prefs',
+    key: { userId: 1 },
+    source:
+      'PLAN §4/§13 notification_prefs: «Уникальный индекс userId, один документ на человека»',
+  },
 ];
 
 describe('Уникальные индексы из PLAN §4 существуют в Mongo', () => {

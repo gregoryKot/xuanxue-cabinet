@@ -53,7 +53,7 @@ describe('POST/PATCH /classes — leaderId (e2e)', () => {
 
   it('POST с leaderId ученика — 400, текст «не найден среди учителей»', async () => {
     const cookie = await sessionCookieFor(testApp.app, ['teacher']);
-    const student = await userModel().create({ name: 'Гриша', roles: ['student'] });
+    const student = await userModel().create({ name: 'Гриша', roles: [] });
 
     const res = await postClass(cookie, {
       ...VALID_BODY,

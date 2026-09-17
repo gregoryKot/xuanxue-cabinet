@@ -41,6 +41,7 @@ describe('UsersService', () => {
       telegramId: 111,
       name: 'Дима',
       roles: ['teacher'],
+      status: 'active',
     });
     expect(created).toMatchObject({ name: 'Дима', telegramId: 111, roles: ['teacher'] });
 
@@ -53,6 +54,7 @@ describe('UsersService', () => {
       telegramId: 222,
       name: 'Маша',
       roles: [],
+      status: 'active',
     });
     const found = await service.findByTelegramId(222);
     expect(found).toMatchObject({ id: created.id, name: 'Маша' });
@@ -64,8 +66,18 @@ describe('UsersService', () => {
 
   it('два параллельных createFromTelegram с одним telegramId — один документ', async () => {
     const [first, second] = await Promise.all([
-      service.createFromTelegram({ telegramId: 444, name: 'Первый', roles: ['teacher'] }),
-      service.createFromTelegram({ telegramId: 444, name: 'Второй', roles: ['admin'] }),
+      service.createFromTelegram({
+        telegramId: 444,
+        name: 'Первый',
+        roles: ['teacher'],
+        status: 'active',
+      }),
+      service.createFromTelegram({
+        telegramId: 444,
+        name: 'Второй',
+        roles: ['admin'],
+        status: 'active',
+      }),
     ]);
 
     expect(first.id).toBe(second.id);
@@ -74,30 +86,53 @@ describe('UsersService', () => {
     expect(count).toBe(1);
   });
 
-  it('listTeacherContacts: только teacher/admin с telegramId, без student', async () => {
+  it('listTeacherContacts: teacher/assistant/admin с telegramId, без ученика и accountant', async () => {
     const teacher = await service.createFromTelegram({
       telegramId: 501,
       name: 'Учитель',
       roles: ['teacher'],
+      status: 'active',
     });
     await service.createFromTelegram({
       telegramId: 502,
       name: 'Ученик с Telegram',
-      roles: ['student'],
+      roles: [],
+      status: 'active',
     });
     const admin = await service.createFromTelegram({
       telegramId: 503,
       name: 'Админ',
       roles: ['admin'],
+      status: 'active',
+    });
+    // Помощник учителя правами равен учителю — бот пишет и ему.
+    const assistant = await service.createFromTelegram({
+      telegramId: 504,
+      name: 'Помощник',
+      roles: ['assistant'],
+      status: 'active',
+    });
+    await service.createFromTelegram({
+      telegramId: 505,
+      name: 'Бухгалтер с Telegram',
+      roles: ['accountant'],
+      status: 'active',
     });
 
     const contacts = await service.listTeacherContacts();
     const ids = contacts.map((c) => c.id);
-    expect(ids).toEqual(expect.arrayContaining([teacher.id, admin.id]));
+    expect(ids).toEqual(expect.arrayContaining([teacher.id, admin.id, assistant.id]));
     expect(contacts.find((c) => c.name === 'Ученик с Telegram')).toBeUndefined();
+    expect(contacts.find((c) => c.name === 'Бухгалтер с Telegram')).toBeUndefined();
     expect(contacts.find((c) => c.id === teacher.id)).toMatchObject({
       name: 'Учитель',
       telegramId: 501,
+      roles: ['teacher'],
+    });
+    expect(contacts.find((c) => c.id === assistant.id)).toMatchObject({
+      name: 'Помощник',
+      telegramId: 504,
+      roles: ['assistant'],
     });
   });
 
@@ -105,7 +140,8 @@ describe('UsersService', () => {
     const created = await service.createFromTelegram({
       telegramId: 333,
       name: 'Ученик',
-      roles: ['student'],
+      roles: [],
+      status: 'active',
     });
     const now = DateTime.fromISO('2026-09-05T10:00:00Z');
 
@@ -113,5 +149,23 @@ describe('UsersService', () => {
 
     const found = await service.findById(created.id);
     expect(found?.lastLoginAt?.toISOString()).toBe(now.toJSDate().toISOString());
+  });
+
+  // Read-after-write (CLAUDE.md «Тесты») — mark-joined-via-invite.ts: число
+  // «По ссылке пришли» на «Людях» (formatJoinedViaInviteCount.ts) строится
+  // по joinedViaInviteAt, не отдельным флагом.
+  it('markJoinedViaInvite проставляет joinedViaInviteAt из переданного now', async () => {
+    const created = await service.createFromTelegram({
+      telegramId: 444,
+      name: 'Пришёл по ссылке',
+      roles: [],
+      status: 'active',
+    });
+    const now = DateTime.fromISO('2026-09-15T12:00:00Z');
+
+    await service.markJoinedViaInvite(created.id, now);
+
+    const found = await service.findById(created.id);
+    expect(found?.joinedViaInviteAt?.toISOString()).toBe(now.toJSDate().toISOString());
   });
 });
