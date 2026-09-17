@@ -19,6 +19,9 @@ interface AttemptQuestionChoiceProps {
   kind: 'single' | 'multiple';
   options: AttemptOptionDto[];
   selected: string[];
+  /** Предпросмотр глазами ученика (exams/ExamPreviewQuestion.tsx): та же
+   * строка, но ответить нельзя. */
+  disabled?: boolean;
   onChange: (optionIds: string[]) => void;
 }
 
@@ -28,6 +31,7 @@ export function AttemptQuestionChoice({
   kind,
   options,
   selected,
+  disabled,
   onChange,
 }: AttemptQuestionChoiceProps) {
   function toggle(optionId: string, checked: boolean) {
@@ -54,6 +58,7 @@ export function AttemptQuestionChoice({
           key={option.id}
           label={option.text}
           checked={selected.includes(option.id)}
+          disabled={disabled}
           // Имя группы переводит Toggle в радио: взаимное исключение внутри
           // вопроса браузер делает сам (комментарий в самом Toggle.tsx).
           name={kind === 'single' ? `attempt-${itemId}` : undefined}

@@ -3,8 +3,9 @@
 // поиском по банку, «Как проходит экзамен», подвал с сохранением и статусом.
 // Банк грузится один раз на всю страницу (useExamItems без фильтров сервера —
 // поиск локальный, examQuestions.ts): один запрос обслуживает и список для
-// добавления, и подстановку формулировок в выбранных вопросах, и предпросмотр.
-import { useState, type FormEvent } from 'react';
+// добавления, и подстановку формулировок в выбранных вопросах. Предпросмотр
+// глазами ученика — своя страница со своим запросом банка (ExamPreviewScreen.tsx).
+import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamDto, ExamStatus } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -21,7 +22,6 @@ import { useExamItems } from '../exam-items/useExamItems';
 import { ExamAboutFields } from './ExamAboutFields';
 import { ExamEditorFooter } from './ExamEditorFooter';
 import { ExamFlowFields } from './ExamFlowFields';
-import { ExamPreview } from './ExamPreview';
 import { ExamQuestionsSection } from './ExamQuestionsSection';
 import { useExamForm } from './useExamForm';
 import type { UseExamEditorResult } from './useExamEditor';
@@ -44,7 +44,6 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   const goToList = () => void navigate(EXAMS_PATH);
   const form = useExamForm(exam, editor.create, editor.update, editor.remove);
   const bank = useExamItems(BANK_STATUS);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const removeConfirm = useConfirmedRemove(form.remove, goToList);
 
   async function handleSubmit(event: FormEvent) {
@@ -96,25 +95,12 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           <ExamEditorFooter
             status={exam ? exam.status : null}
             pending={form.pending}
-            onPreview={() => setPreviewOpen(true)}
+            previewPath={exam ? `${EXAMS_PATH}/${exam.id}/preview` : null}
             onChangeStatus={(status) => void handleChangeStatus(status)}
             onRemove={removeConfirm.requestRemove}
           />
         </div>
       </form>
-
-      {previewOpen && (
-        <ExamPreview
-          title={form.state.title}
-          description={form.state.description}
-          itemIds={form.state.questionIds}
-          shuffleQuestions={form.state.shuffleQuestions}
-          shuffleOptions={form.state.shuffleOptions}
-          bankItems={bank.items ?? []}
-          bankLoading={bank.loading}
-          onClose={() => setPreviewOpen(false)}
-        />
-      )}
 
       {removeConfirm.confirming && (
         <ConfirmDialog

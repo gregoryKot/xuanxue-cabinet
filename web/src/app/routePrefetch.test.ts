@@ -135,6 +135,13 @@ describe('RouteModule.prefetch — редактор существующей з�
     ]);
   });
 
+  it('/exams/:id/preview — те же карточка экзамена и банк, id берётся перед хвостом', () => {
+    expect(prefetchAt('/exams/652f00000000000000000006/preview')).toEqual([
+      '/exams/652f00000000000000000006',
+      examItemsListPath(''),
+    ]);
+  });
+
   it('/exam-items/:id — карточка вопроса', () => {
     expect(prefetchAt('/exam-items/652f00000000000000000007')).toEqual([
       '/exam-items/652f00000000000000000007',
@@ -182,6 +189,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/exams',
       '/exams/new',
       '/exams/652f00000000000000000005',
+      '/exams/652f00000000000000000005/preview',
       '/grading',
       '/grading/652f00000000000000000006',
       '/notifications',

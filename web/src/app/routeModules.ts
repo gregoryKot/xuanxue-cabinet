@@ -73,6 +73,12 @@ function lastSegment(pathname: string): string {
   return segmentsOf(pathname).slice(-1).join('');
 }
 
+/** `:examId` из `/exams/:examId/preview` — сегмент перед статическим
+ * хвостом; те же оговорки, что у lastSegment. */
+function segmentBeforeLast(pathname: string): string {
+  return segmentsOf(pathname).slice(-2, -1).join('');
+}
+
 // Редактор — одна пара адресов на экран: `/x/new` и `/x/:id`, один загрузчик
 // на оба (ADR-0033). `/x/new` всегда объявлен раньше `/x/:id`: matchRoute
 // берёт первое совпадение, а статический сегмент должен выигрывать у параметра.
@@ -222,6 +228,17 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [
       entityPath(EXAMS_PATH, lastSegment(pathname)),
+      examItemsListPath(''),
+    ],
+  },
+  // Предпросмотр «глазами ученика» — страница, а не слой поверх редактора
+  // (ADR-0033). Данные те же, что у редактора: экзамен и банк целиком.
+  examPreview: {
+    path: '/exams/:examId/preview',
+    load: () => import('../exams/ExamPreviewScreen'),
+    warm: true,
+    prefetch: (pathname) => [
+      entityPath(EXAMS_PATH, segmentBeforeLast(pathname)),
       examItemsListPath(''),
     ],
   },
