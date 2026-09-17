@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { ExamBlockDto, ExamDto, ExamItemDto } from '@xuanxue/shared';
 import {
   addQuestion,
-  filterBankCandidates,
+  filterQuestionCandidates,
   initialQuestionIds,
   initialShuffleQuestions,
+  mergeCreatedItems,
   moveQuestionDown,
   moveQuestionUp,
   removeQuestion,
@@ -141,31 +142,56 @@ describe('добавление и удаление', () => {
   });
 });
 
-describe('filterBankCandidates', () => {
-  const bank = [
+describe('filterQuestionCandidates', () => {
+  const items = [
     item({ id: 'i1', prompt: 'Зачем придумали тайцзи?', tags: ['история'] }),
     item({ id: 'i2', prompt: 'Что такое «пустая» нога?', tags: ['стойки'] }),
     item({ id: 'i3', prompt: 'Черновик', status: 'draft' }),
     item({ id: 'i4', prompt: 'В архиве', status: 'archived' }),
   ];
 
-  it('пустой запрос — все опубликованные вопросы банка', () => {
-    expect(filterBankCandidates(bank, '', []).map((i) => i.id)).toEqual(['i1', 'i2']);
+  it('пустой запрос — все опубликованные вопросы', () => {
+    expect(filterQuestionCandidates(items, '', []).map((i) => i.id)).toEqual([
+      'i1',
+      'i2',
+    ]);
   });
 
   it('поиск по тексту вопроса без регистра', () => {
-    expect(filterBankCandidates(bank, 'ТАЙЦЗИ', []).map((i) => i.id)).toEqual(['i1']);
+    expect(filterQuestionCandidates(items, 'ТАЙЦЗИ', []).map((i) => i.id)).toEqual([
+      'i1',
+    ]);
   });
 
   it('поиск по тегу без регистра', () => {
-    expect(filterBankCandidates(bank, ' Стойки ', []).map((i) => i.id)).toEqual(['i2']);
+    expect(filterQuestionCandidates(items, ' Стойки ', []).map((i) => i.id)).toEqual([
+      'i2',
+    ]);
   });
 
   it('уже добавленные вопросы не показываются', () => {
-    expect(filterBankCandidates(bank, '', ['i1']).map((i) => i.id)).toEqual(['i2']);
+    expect(filterQuestionCandidates(items, '', ['i1']).map((i) => i.id)).toEqual(['i2']);
   });
 
   it('ни текст, ни теги не совпали — пусто', () => {
-    expect(filterBankCandidates(bank, 'дыхание', [])).toEqual([]);
+    expect(filterQuestionCandidates(items, 'дыхание', [])).toEqual([]);
+  });
+});
+
+describe('mergeCreatedItems', () => {
+  it('вопрос, заведённый в редакторе, добавляется в конец списка', () => {
+    const known = [item({ id: 'i1' })];
+    const created = [item({ id: 'i2', prompt: 'Новый вопрос' })];
+
+    expect(mergeCreatedItems(known, created).map((i) => i.id)).toEqual(['i1', 'i2']);
+  });
+
+  it('вопрос, который список уже содержит, не повторяется', () => {
+    const known = [item({ id: 'i1', prompt: 'Старая формулировка' })];
+    const created = [item({ id: 'i1', prompt: 'Другая формулировка' })];
+
+    const merged = mergeCreatedItems(known, created);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.prompt).toBe('Старая формулировка');
   });
 });

@@ -88,7 +88,7 @@ describe('ExamsService', () => {
         { title: 'Экзамен', blocks: [{ itemIds: [draftItemId] }] },
         CREATED_BY,
       ),
-    ).rejects.toThrow('не из опубликованного банка');
+    ).rejects.toThrow('не из опубликованных');
     await expect(model.countDocuments({})).resolves.toBe(0);
   });
 
@@ -100,7 +100,7 @@ describe('ExamsService', () => {
         { title: 'Экзамен', blocks: [{ itemIds: [archivedItemId] }] },
         CREATED_BY,
       ),
-    ).rejects.toThrow('не из опубликованного банка');
+    ).rejects.toThrow('не из опубликованных');
   });
 
   it('блок ссылается на чужой/удалённый id — InvalidInputError', async () => {
@@ -111,7 +111,7 @@ describe('ExamsService', () => {
         { title: 'Экзамен', blocks: [{ itemIds: [foreignId] }] },
         CREATED_BY,
       ),
-    ).rejects.toThrow('не из опубликованного банка');
+    ).rejects.toThrow('не из опубликованных');
   });
 
   it('один и тот же вопрос повторяется в разных блоках — InvalidInputError', async () => {

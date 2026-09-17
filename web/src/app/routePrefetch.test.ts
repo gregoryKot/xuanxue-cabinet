@@ -55,7 +55,7 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/templates')).toEqual([SETTINGS_PATH, nextLessonsPath()]);
   });
 
-  it('/exam-items — банк без фильтра', () => {
+  it('/exam-items — вопросы без фильтра', () => {
     expect(prefetchAt('/exam-items')).toEqual([examItemsListPath('')]);
   });
 
@@ -89,7 +89,7 @@ describe('RouteModule.prefetch — «новая запись»: своего id 
     expect(prefetchAt('/planning/new')).toEqual([CLASSES_LIST_PATH, TEACHERS_PATH]);
   });
 
-  it('/exams/new — банк вопросов без фильтра', () => {
+  it('/exams/new — вопросы без фильтра', () => {
     expect(prefetchAt('/exams/new')).toEqual([examItemsListPath('')]);
   });
 
@@ -128,14 +128,14 @@ describe('RouteModule.prefetch — редактор существующей з�
     ]);
   });
 
-  it('/exams/:id — карточка экзамена и банк вопросов без фильтра', () => {
+  it('/exams/:id — карточка экзамена и вопросы без фильтра', () => {
     expect(prefetchAt('/exams/652f00000000000000000006')).toEqual([
       '/exams/652f00000000000000000006',
       examItemsListPath(''),
     ]);
   });
 
-  it('/exams/:id/preview — те же карточка экзамена и банк, id берётся перед хвостом', () => {
+  it('/exams/:id/preview — те же карточка экзамена и вопросы, id берётся перед хвостом', () => {
     expect(prefetchAt('/exams/652f00000000000000000006/preview')).toEqual([
       '/exams/652f00000000000000000006',
       examItemsListPath(''),

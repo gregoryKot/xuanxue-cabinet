@@ -194,7 +194,7 @@ describe('App', () => {
 
     renderAt('/exams');
 
-    expect(await screen.findByText(/собирается из вопросов банка/)).toBeInTheDocument();
+    expect(await screen.findByText(/собирается из вопросов/)).toBeInTheDocument();
   });
 
   it('учитель на /exams/new — маршрут редактора экзамена (ADR-0033)', async () => {

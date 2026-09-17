@@ -7,7 +7,7 @@ import type { ExamItemDto } from '@xuanxue/shared';
 import { rowControlStyle } from '../components/listCardStyles';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
 
-const EMPTY_TEXT = 'Вопросов пока нет — найдите их в банке ниже.';
+const EMPTY_TEXT = 'Вопросов пока нет — найдите их или заведите новый ниже.';
 const LOADING_TEXT = 'Загружаем вопросы…';
 const MISSING_TEXT = 'Вопрос недоступен — его удалили или спрятали в черновик.';
 

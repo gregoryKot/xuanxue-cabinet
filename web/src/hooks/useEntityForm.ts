@@ -1,5 +1,5 @@
 // Оркестрация формы create/update/delete/смена статуса — одна механика для
-// вопроса банка (exam-items/useExamItemForm.ts) и формы экзамена
+// вопроса (exam-items/useExamItemForm.ts) и формы экзамена
 // (exams/useExamForm.ts, ТЗ 4.3): submit/remove/changeStatus, ошибки сервера
 // и `pending` устроены одинаково у обоих, второй домен скопировал бы хук
 // целиком (CLAUDE.md «Одна механика — один компонент», jscpd). Валидация и

@@ -1,10 +1,11 @@
 // Редактор экзамена — страница с адресом, а не лист поверх списка (макет
 // Form.dc.html, ADR-0033). Сверху вниз: «О чём экзамен», «Вопросы · N» с
-// поиском по банку, «Как проходит экзамен», подвал с сохранением и статусом.
-// Банк грузится один раз на всю страницу (useExamItems без фильтров сервера —
-// поиск локальный, examQuestions.ts): один запрос обслуживает и список для
-// добавления, и подстановку формулировок в выбранных вопросах. Предпросмотр
-// глазами ученика — своя страница со своим запросом банка (ExamPreviewScreen.tsx).
+// поиском и «Новый вопрос» (ADR-0040), «Как проходит экзамен», подвал с
+// сохранением и статусом. Вопросы грузятся один раз на всю страницу
+// (useExamItems без фильтров сервера — поиск локальный, examQuestions.ts):
+// один запрос обслуживает и список для добавления, и подстановку
+// формулировок в выбранных вопросах. Предпросмотр глазами ученика — своя
+// страница со своим запросом (ExamPreviewScreen.tsx).
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamDto, ExamStatus } from '@xuanxue/shared';
@@ -26,7 +27,7 @@ import { ExamQuestionsSection } from './ExamQuestionsSection';
 import { useExamForm } from './useExamForm';
 import type { UseExamEditorResult } from './useExamEditor';
 
-const BANK_STATUS = '' as const;
+const NO_STATUS_FILTER = '' as const;
 const EXAMS_PATH = '/exams';
 const BACK_TEXT = 'К списку экзаменов';
 const NEW_EXAM_TITLE = 'Новый экзамен';
@@ -43,7 +44,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   // места ждут обычную функцию без результата.
   const goToList = () => void navigate(EXAMS_PATH);
   const form = useExamForm(exam, editor.create, editor.update, editor.remove);
-  const bank = useExamItems(BANK_STATUS);
+  const bank = useExamItems(NO_STATUS_FILTER);
   const removeConfirm = useConfirmedRemove(form.remove, goToList);
 
   async function handleSubmit(event: FormEvent) {

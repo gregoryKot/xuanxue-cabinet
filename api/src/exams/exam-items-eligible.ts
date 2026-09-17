@@ -26,7 +26,7 @@ export async function assertItemsEligible(
   if (notEligibleCount === 0) return;
   throw new InvalidInputError(
     `В блоках ${notEligibleCount} ${pluralRu(notEligibleCount, QUESTION_FORMS)} не ` +
-      'из опубликованного банка: вопрос удалили или ещё не опубликовали. Уберите их ' +
+      'из опубликованных: вопрос удалили или ещё не опубликовали. Уберите их ' +
       'из блока или опубликуйте вопрос в «Вопросах».',
   );
 }

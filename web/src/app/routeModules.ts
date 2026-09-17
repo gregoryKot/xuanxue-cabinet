@@ -218,8 +218,8 @@ export const ROUTE_MODULES = {
     path: '/exams/new',
     load: loadExamEditor,
     warm: true,
-    // Банк вопросов грузится на монтировании и у нового экзамена
-    // (ExamEditorForm.tsx — без фильтра, поиск по нему локальный).
+    // Вопросы грузятся на монтировании и у нового экзамена
+    // (ExamEditorForm.tsx — без фильтра, поиск по ним локальный).
     prefetch: () => [examItemsListPath('')],
   },
   examEditor: {
@@ -232,7 +232,7 @@ export const ROUTE_MODULES = {
     ],
   },
   // Предпросмотр «глазами ученика» — страница, а не слой поверх редактора
-  // (ADR-0033). Данные те же, что у редактора: экзамен и банк целиком.
+  // (ADR-0033). Данные те же, что у редактора: экзамен и вопросы целиком.
   examPreview: {
     path: '/exams/:examId/preview',
     load: () => import('../exams/ExamPreviewScreen'),

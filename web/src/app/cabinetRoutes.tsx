@@ -35,7 +35,7 @@ const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
 const NotificationsScreen = lazy(ROUTE_MODULES.notifications.load);
 
-/* Занятие расписания, дата занятия, канал, рассылка, вопрос банка и экзамен
+/* Занятие расписания, дата занятия, канал, рассылка, вопрос и экзамен
    правятся на страницах со своими адресами, а не в листах поверх списка
    (ADR-0033): на них ссылаются из списка, их открывают по ссылке и закрывают
    «Назад» браузера. Где есть и создание, и правка, `/…/new` объявлен раньше

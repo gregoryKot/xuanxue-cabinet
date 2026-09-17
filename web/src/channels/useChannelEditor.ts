@@ -1,6 +1,6 @@
 // Данные страницы канала — `/channels/new` и `/channels/:channelId`
 // (страница со своим адресом вместо листа поверх списка, ADR-0033). Механика
-// общая с редактором экзамена и вопроса банка (hooks/useEntityEditor.ts),
+// общая с редактором экзамена и вопроса (hooks/useEntityEditor.ts),
 // здесь только путь коллекции и текст ошибки на языке домена.
 import type { ChannelDto, CreateChannelInput, UpdateChannelInput } from '@xuanxue/shared';
 import { CHANNELS_PATH } from '../api/apiPaths';

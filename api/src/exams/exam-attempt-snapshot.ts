@@ -91,7 +91,7 @@ export function buildAttemptBlocks({
         const item = itemsById.get(itemId);
         if (!item) {
           throw new Error(
-            `buildAttemptBlocks: вопрос ${itemId} не найден среди загруженных банка`,
+            `buildAttemptBlocks: вопрос ${itemId} не найден среди загруженных вопросов`,
           );
         }
         return toAttemptQuestion(item, shuffleOptions, random);

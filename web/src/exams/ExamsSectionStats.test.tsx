@@ -52,7 +52,7 @@ describe('ExamsSectionStats — очередь проверки', () => {
   });
 });
 
-describe('ExamsSectionStats — банк вопросов', () => {
+describe('ExamsSectionStats — вопросы', () => {
   it('без спотыкающихся вопросов — только объяснение раздела', () => {
     renderStats(null, 0);
 
@@ -71,10 +71,10 @@ describe('ExamsSectionStats — банк вопросов', () => {
     ).toBeInTheDocument();
   });
 
-  it('ссылка на банк ведёт на /exam-items', () => {
+  it('ссылка на вопросы ведёт на /exam-items', () => {
     renderStats(null, 0);
 
-    expect(screen.getByRole('link', { name: 'Открыть банк' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Открыть вопросы' })).toHaveAttribute(
       'href',
       '/exam-items',
     );
@@ -88,7 +88,7 @@ describe('ExamsSectionStats — картинки вариантов ответа
     expect(screen.queryByText(/Картинок к вопросам/)).not.toBeInTheDocument();
   });
 
-  it('imagesSummary есть — строка видна под объяснением банка', () => {
+  it('imagesSummary есть — строка видна под объяснением вопросов', () => {
     renderStats(null, 0, 'Картинок к вопросам: 12 — 3,4 МБ');
 
     expect(screen.getByText('Картинок к вопросам: 12 — 3,4 МБ')).toBeInTheDocument();

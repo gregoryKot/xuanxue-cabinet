@@ -28,8 +28,8 @@ export const EXAM_ITEM_KIND_HINTS_RU: Record<ExamItemKind, string> = {
 export const EXAM_ITEM_STATUS_LABELS_RU = DRAFT_PUBLISHED_ARCHIVED_LABELS_RU;
 
 /** Служебная строка под формулировкой вопроса — тип и теги через « · »
- * (макет Form.dc.html). Один форматтер на список банка, список вопросов
- * экзамена и поиск по банку рядом с ним: три строки одного вида в соседних
+ * (макет Form.dc.html). Один форматтер на список вопросов, список вопросов
+ * экзамена и поиск рядом с ним: три строки одного вида в соседних
  * файлах разошлись бы при первой правке (CLAUDE.md «Одна механика — один
  * компонент»). */
 export function formatExamItemMeta(item: Pick<ExamItemDto, 'kind' | 'tags'>): string {
