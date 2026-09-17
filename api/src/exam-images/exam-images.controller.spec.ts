@@ -3,8 +3,9 @@
 // тело/формат проверяет e2e (exam-images.e2e-spec.ts) на настоящем гварде и
 // настоящем парсере тела.
 import { Test } from '@nestjs/testing';
-import type { ExamImageDto } from '@xuanxue/shared';
+import type { ExamImageDto, ExamImageStatsDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
+import { ExamImageStatsService } from './exam-image-stats.service';
 import { ExamImagesController } from './exam-images.controller';
 import { ExamImagesService } from './exam-images.service';
 
@@ -25,10 +26,14 @@ const IMAGE_DTO: ExamImageDto = {
 
 async function buildController(
   service: Partial<ExamImagesService> = {},
+  statsService: Partial<ExamImageStatsService> = {},
 ): Promise<ExamImagesController> {
   const module = await Test.createTestingModule({
     controllers: [ExamImagesController],
-    providers: [{ provide: ExamImagesService, useValue: service }],
+    providers: [
+      { provide: ExamImagesService, useValue: service },
+      { provide: ExamImageStatsService, useValue: statsService },
+    ],
   }).compile();
   return module.get(ExamImagesController);
 }
@@ -57,5 +62,14 @@ describe('ExamImagesController', () => {
     expect(result.getHeaders().type).toBe('image/png');
     expect(result.getHeaders().length).toBe(3);
     expect(headers['Cache-Control']).toBe('private, max-age=31536000, immutable');
+  });
+
+  it('getStatsSummary() отдаёт то, что вернул сервис статистики', async () => {
+    const stats: ExamImageStatsDto = { count: 2, totalBytes: 4000 };
+    const getSummary = jest.fn().mockResolvedValue(stats);
+    const controller = await buildController({}, { getSummary });
+
+    await expect(controller.getStatsSummary()).resolves.toEqual(stats);
+    expect(getSummary).toHaveBeenCalledWith();
   });
 });

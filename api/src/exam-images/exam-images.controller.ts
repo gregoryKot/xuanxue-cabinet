@@ -14,10 +14,11 @@ import {
   Res,
   StreamableFile,
 } from '@nestjs/common';
-import type { ExamImageDto } from '@xuanxue/shared';
+import type { ExamImageDto, ExamImageStatsDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { ResponseLike } from '../common/http-headers';
 import type { UserLean } from '../users/users.service';
+import { ExamImageStatsService } from './exam-image-stats.service';
 import { ExamImagesService } from './exam-images.service';
 
 // Год в секундах — тот же смысл, что у ONE_YEAR_SECONDS в
@@ -47,7 +48,10 @@ interface RawBodyRequest {
 
 @Controller('exam-images')
 export class ExamImagesController {
-  constructor(private readonly service: ExamImagesService) {}
+  constructor(
+    private readonly service: ExamImagesService,
+    private readonly statsService: ExamImageStatsService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -57,6 +61,15 @@ export class ExamImagesController {
     @CurrentUser() user: UserLean,
   ): Promise<ExamImageDto> {
     return this.service.upload(req.body, user.id);
+  }
+
+  // Литеральный путь ДО `:id` (тот же приём, что у ExamItemsController.
+  // getStatsSummary, exam-items.controller.ts) — иначе Nest отдаст запрос
+  // `GET /exam-images/stats-summary` хендлеру `get` с `id='stats-summary'`.
+  @Get('stats-summary')
+  @Roles('teacher', 'assistant', 'admin')
+  getStatsSummary(): Promise<ExamImageStatsDto> {
+    return this.statsService.getSummary();
   }
 
   // `passthrough: true` — заголовок ставим сами, а тело по-прежнему отдаёт
