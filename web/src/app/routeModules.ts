@@ -2,7 +2,7 @@
 // него — в одном месте (CLAUDE.md «одна механика — один компонент»). Отсюда
 // берут и `lazy()` с `<Route>` в App.tsx, и предзагрузка чанков (main.tsx,
 // usePrefetchRoutes.ts), и предзагрузка данных первого экрана
-// (firstScreenPrefetch.ts, через routeMatch.ts).
+// (prefetchFirstScreen.ts, через routeMatch.ts).
 //
 // Зачем предзагрузка чанка. Измерено на проде 2026-09-15: TTFB любого ответа
 // сервера — 0.5–1.1 с, а первый экран рисовался только после пяти
@@ -17,7 +17,7 @@
 // (useAbortableFetch) стартует запрос, только когда экран уже смонтирован —
 // то есть уже после чанка. `prefetch` называет GET-пути, которые можно
 // запросить сразу после ответа `/auth/me`, параллельно с чанком —
-// firstScreenPrefetch.ts кладёт их в prefetchCache.ts, а apiFetch хука
+// prefetchFirstScreen.ts кладёт их в prefetchCache.ts, а apiFetch хука
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
 import {
@@ -46,7 +46,7 @@ import {
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 type RouteLoader = () => Promise<{ default: ComponentType }>;
 
-/** GET-пути данных этого экрана — что предзагрузить (firstScreenPrefetch.ts). */
+/** GET-пути данных этого экрана — что предзагрузить (prefetchFirstScreen.ts). */
 type RoutePrefetch = (pathname: string) => string[];
 
 export interface RouteModule {

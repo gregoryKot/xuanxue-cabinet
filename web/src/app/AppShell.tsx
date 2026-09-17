@@ -64,7 +64,7 @@ export function AppShell() {
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
   // Правило «кому что показать» — screenAccess.ts, общее с
-  // firstScreenPrefetch.ts (CLAUDE.md «Одна механика — один компонент»).
+  // prefetchFirstScreen.ts (CLAUDE.md «Одна механика — один компонент»).
   const pending = isPending(me);
   const teacherRole = isTeacher(me);
   const showOutlet = showsRouteScreen(me, pathname);
