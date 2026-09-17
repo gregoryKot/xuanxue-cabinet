@@ -181,12 +181,14 @@ describe('DeliveriesService', () => {
       const second = await seed('telegram', 'failed');
       // createdAt различаются явно — порядок не должен зависеть от
       // случайного зазора между двумя create() в одном тике (CLAUDE.md
-      // «Детерминизм»).
-      await deliveryModel.updateOne(
+      // «Детерминизм»). Через .collection (сырой драйвер), не через
+      // Model.updateOne: timestamps-плагин Mongoose молча вырезает явный
+      // createdAt из $set (immutable-поле), и дата осталась бы от create().
+      await deliveryModel.collection.updateOne(
         { _id: first.delivery._id },
         { $set: { createdAt: NOW.minus({ minutes: 1 }).toJSDate() } },
       );
-      await deliveryModel.updateOne(
+      await deliveryModel.collection.updateOne(
         { _id: second.delivery._id },
         { $set: { createdAt: NOW.toJSDate() } },
       );
