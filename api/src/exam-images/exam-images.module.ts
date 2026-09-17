@@ -6,6 +6,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExamAttemptModelModule } from '../exams/exam-attempt-model.module';
+import { ExamImageStatsService } from './exam-image-stats.service';
 import { ExamImageRecord, ExamImageSchema } from './exam-image.schema';
 import { ExamImagesController } from './exam-images.controller';
 import { ExamImagesService } from './exam-images.service';
@@ -16,7 +17,7 @@ import { ExamImagesService } from './exam-images.service';
     MongooseModule.forFeature([{ name: ExamImageRecord.name, schema: ExamImageSchema }]),
   ],
   controllers: [ExamImagesController],
-  providers: [ExamImagesService],
+  providers: [ExamImagesService, ExamImageStatsService],
   exports: [MongooseModule, ExamImagesService],
 })
 export class ExamImagesModule {}

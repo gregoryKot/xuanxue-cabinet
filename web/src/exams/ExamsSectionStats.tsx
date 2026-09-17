@@ -10,7 +10,9 @@
 // в одном уже существующем хуке. Гонять сюда весь список вопросов только
 // ради количества — новая нагрузка на экран ради одной цифры, решение
 // агента: не выдумывать число, оставить прежний честный текст про путающие
-// вопросы (CLAUDE.md «Демо-данные в рантайм-коде не живут»).
+// вопросы (CLAUDE.md «Демо-данные в рантайм-коде не живут»). Вторая строка
+// того же блока — картинки вариантов ответа (ADR-0035, отдельное число: базу
+// растит не сам вопрос, а именно картинки).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { textLinkStyle } from '../components/screenLayout';
@@ -25,6 +27,9 @@ interface ExamsSectionStatsProps {
   queueCount: number | null;
   /** `null` — сводка вопросов ещё грузится или сбой загрузки. */
   strugglingCount: number | null;
+  /** Готовая строка `formatExamImagesSummary` (ADR-0035) — `null` на чистой
+   * базе, во время загрузки и при сбое: карточка тогда просто её не показывает. */
+  imagesSummary: string | null;
 }
 
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 28 };
@@ -59,6 +64,7 @@ const linkStyle: CSSProperties = {
 export function ExamsSectionStats({
   queueCount,
   strugglingCount,
+  imagesSummary,
 }: ExamsSectionStatsProps) {
   return (
     <div style={sectionStyle}>
@@ -84,6 +90,7 @@ export function ExamsSectionStats({
       <div style={blockStyle}>
         <span className="xuanxue-eyebrow">Банк вопросов</span>
         <p style={captionStyle}>{formatExamItemsLinkHint(strugglingCount)}</p>
+        {imagesSummary && <p style={captionStyle}>{imagesSummary}</p>}
         <Link to="/exam-items" style={linkStyle}>
           Открыть банк
         </Link>

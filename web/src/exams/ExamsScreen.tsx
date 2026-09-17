@@ -18,6 +18,8 @@ import { ListFilters } from '../components/ListFilters';
 import { ListScreenBody } from '../components/ListScreenBody';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { formatExamImagesSummary } from '../exam-items/examImagesSummaryText';
+import { useExamImageStats } from '../exam-items/useExamImageStats';
 import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
@@ -42,6 +44,7 @@ export default function ExamsScreen() {
   const { exams, loading, error, reload } = useExams(filters);
   const gradingQueue = useGradingQueue();
   const itemStatsSummary = useExamItemStatsSummary();
+  const imageStats = useExamImageStats();
   const navigate = useNavigate();
 
   const visibleExams =
@@ -91,6 +94,7 @@ export default function ExamsScreen() {
       <ExamsSectionStats
         queueCount={gradingQueue.attempts?.length ?? null}
         strugglingCount={itemStatsSummary.summary?.strugglingCount ?? null}
+        imagesSummary={formatExamImagesSummary(imageStats.stats)}
       />
     </section>
   );

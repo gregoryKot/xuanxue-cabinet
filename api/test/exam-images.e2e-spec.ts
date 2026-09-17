@@ -6,7 +6,12 @@
 import { getModelToken } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, ExamAttemptDto, ExamImageDto } from '@xuanxue/shared';
+import type {
+  ApiErrorBody,
+  ExamAttemptDto,
+  ExamImageDto,
+  ExamImageStatsDto,
+} from '@xuanxue/shared';
 import {
   EXAM_IMAGE_EMPTY_MESSAGE,
   EXAM_IMAGE_LIMITS,
@@ -218,5 +223,43 @@ describe('Картинки вариантов ответа (e2e)', () => {
       `/api/exam-images/${new Types.ObjectId().toString()}`,
     );
     expect(noCookie.status).toBe(401);
+  });
+
+  // Число раздела «Экзамены» (CLAUDE.md «Продуктовая фича = число в своём
+  // разделе», ADR-0035). Дельта, не абсолютное значение: другие тесты этого
+  // файла тоже создают картинки в той же базе, порядок прогона не гарантирован.
+  it('GET stats-summary учителем — count/totalBytes растут на два после двух загрузок', async () => {
+    const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+    const before = await request(server())
+      .get('/api/exam-images/stats-summary')
+      .set('Cookie', cookie);
+    expect(before.status).toBe(200);
+    const beforeStats = before.body as ExamImageStatsDto;
+
+    const first = jpegBytes(500);
+    const second = pngBytes(700);
+    await upload(cookie, first, 'image/jpeg');
+    await upload(cookie, second, 'image/png');
+
+    const after = await request(server())
+      .get('/api/exam-images/stats-summary')
+      .set('Cookie', cookie);
+    expect(after.status).toBe(200);
+    const afterStats = after.body as ExamImageStatsDto;
+
+    expect(afterStats.count).toBe(beforeStats.count + 2);
+    expect(afterStats.totalBytes).toBe(
+      beforeStats.totalBytes + first.length + second.length,
+    );
+  });
+
+  it('GET stats-summary учеником — 403', async () => {
+    const cookie = await helpers.sessionFor([]);
+
+    const res = await request(server())
+      .get('/api/exam-images/stats-summary')
+      .set('Cookie', cookie);
+
+    expect(res.status).toBe(403);
   });
 });

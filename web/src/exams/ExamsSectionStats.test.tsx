@@ -3,10 +3,18 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { ExamsSectionStats } from './ExamsSectionStats';
 
-function renderStats(queueCount: number | null, strugglingCount: number | null) {
+function renderStats(
+  queueCount: number | null,
+  strugglingCount: number | null,
+  imagesSummary: string | null = null,
+) {
   return render(
     <MemoryRouter>
-      <ExamsSectionStats queueCount={queueCount} strugglingCount={strugglingCount} />
+      <ExamsSectionStats
+        queueCount={queueCount}
+        strugglingCount={strugglingCount}
+        imagesSummary={imagesSummary}
+      />
     </MemoryRouter>,
   );
 }
@@ -70,5 +78,19 @@ describe('ExamsSectionStats — банк вопросов', () => {
       'href',
       '/exam-items',
     );
+  });
+});
+
+describe('ExamsSectionStats — картинки вариантов ответа (ADR-0035)', () => {
+  it('imagesSummary — null (чистая база, загрузка или сбой) — строки нет', () => {
+    renderStats(null, 0, null);
+
+    expect(screen.queryByText(/Картинок к вопросам/)).not.toBeInTheDocument();
+  });
+
+  it('imagesSummary есть — строка видна под объяснением банка', () => {
+    renderStats(null, 0, 'Картинок к вопросам: 12 — 3,4 МБ');
+
+    expect(screen.getByText('Картинок к вопросам: 12 — 3,4 МБ')).toBeInTheDocument();
   });
 });
