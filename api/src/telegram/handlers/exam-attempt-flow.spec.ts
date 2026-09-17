@@ -5,146 +5,38 @@
 // попытка не отвечает (SECURITY §3). Text/video (ТЗ 4б.2 часть 2) — то же,
 // плюс bot_sessions (BotSessionService) против той же Mongo, не мок модели.
 import { DateTime } from 'luxon';
-import type { Connection, Model } from 'mongoose';
-import type { Context } from 'telegraf';
-import type { UserLean } from '../../users/users.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
-import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
-import { BotSessionService } from '../bot-session.service';
-import { ExamBotPortRegistry } from '../exam-bot-port.registry';
-import { ExamBotService } from '../../exams/exam-bot.service';
-import { MyExamsService } from '../../exams/my-exams.service';
-import type { PersonalChats } from '../personal-chats';
-import {
-  AUTHOR_ID,
-  USER_A,
-  USER_B,
-  clearAttemptsTest,
-  setupAttemptsTest,
-  type AttemptsTestContext,
-} from '../../exams/exam-attempts.test-support';
+import { AUTHOR_ID, USER_A, USER_B } from '../../exams/exam-attempts.test-support';
 import { handleExamOption, handleExamSubmit } from './exam-attempt-answer';
+import {
+  botUser as user,
+  CHAT_ID,
+  clearFlowTest,
+  fakeFlowCtx as fakeCtx,
+  NO_TEACHER_CHATS,
+  publishedFlowExam,
+  setupFlowTest,
+  type FlowTestContext,
+} from './exam-attempt-flow.test-support';
 import { handleExamQuestion, handleExamStart } from './exam-attempt-navigation';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 import { ExamTextAnswerHandler } from './exam-text-answer.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
-const CHAT_ID = 111;
 // Сигнатура JPEG (exam-image-upload.ts определяет формат по байтам, не по
 // заголовку) — тот же фикстурный набор байтов, что exam-images.service.spec.ts.
 const JPEG_BYTES = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
-function user(id: string): UserLean {
-  return { id, name: 'Ученик', roles: [], tz: 'Asia/Jerusalem', status: 'active' };
-}
-
-// Фото для sendPhoto/sendMediaGroup (ADR-0035) — два размера, самый большой
-// последним: exam-question-album-send.ts берёт file_id именно так.
-const SENT_PHOTO_SIZES = [{ file_id: 'f-small' }, { file_id: 'f-big' }];
-
-function fakeCtx(overrides: { text?: string; video?: boolean } = {}): {
-  ctx: Context;
-  edits: string[];
-  replies: string[];
-  buttonTexts: string[][];
-  deletes: number[];
-  sendPhotoCalls: unknown[][];
-  sendMediaGroupCalls: unknown[][];
-} {
-  const edits: string[] = [];
-  const replies: string[] = [];
-  const buttonTexts: string[][] = [];
-  const deletes: number[] = [];
-  const sendPhotoCalls: unknown[][] = [];
-  const sendMediaGroupCalls: unknown[][] = [];
-  const captureButtons = (extra?: {
-    reply_markup?: { inline_keyboard?: { text: string }[][] };
-  }) =>
-    buttonTexts.push(
-      (extra?.reply_markup?.inline_keyboard ?? []).flat().map((b) => b.text),
-    );
-  const ctx = {
-    chat: { id: CHAT_ID, type: 'private' },
-    message: overrides.video
-      ? { message_id: 1, video: { file_id: 'f1', file_unique_id: 'u1' } }
-      : { message_id: 1, text: overrides.text ?? '' },
-    editMessageText: (text: string, extra?: Parameters<typeof captureButtons>[0]) => {
-      edits.push(text);
-      captureButtons(extra);
-      return Promise.resolve(true);
-    },
-    reply: (text: string, extra?: Parameters<typeof captureButtons>[0]) => {
-      replies.push(text);
-      captureButtons(extra);
-      return Promise.resolve();
-    },
-    deleteMessage: () => {
-      deletes.push(1);
-      return Promise.resolve(true);
-    },
-    telegram: {
-      sendMessage: () => Promise.resolve(),
-      copyMessage: () => Promise.resolve(),
-      sendPhoto: (chatId: number, media: unknown, extra: unknown) => {
-        sendPhotoCalls.push([chatId, media, extra]);
-        return Promise.resolve({ message_id: 900, photo: SENT_PHOTO_SIZES });
-      },
-      sendMediaGroup: (chatId: number, media: unknown[]) => {
-        sendMediaGroupCalls.push([chatId, media]);
-        return Promise.resolve(
-          media.map((_, i) => ({ message_id: 900 + i, photo: SENT_PHOTO_SIZES })),
-        );
-      },
-    },
-  } as unknown as Context;
-  return {
-    ctx,
-    edits,
-    replies,
-    buttonTexts,
-    deletes,
-    sendPhotoCalls,
-    sendMediaGroupCalls,
-  };
-}
-
-const NO_TEACHER_CHATS: PersonalChats = {
-  list: jest.fn().mockResolvedValue([]),
-  // `listFor` — пересылка видео экзамена спрашивает его, не `list()`
-  // (аудит 2026-09, находка 1, exam-media-forward.ts).
-  listFor: jest.fn().mockResolvedValue([]),
-} as unknown as PersonalChats;
-
 describe('бот — второй клиент ExamAttemptsService (интеграция, Mongo)', () => {
-  let ctx: AttemptsTestContext;
-  let examBot: ExamBotService;
-  let registry: ExamBotPortRegistry;
-  let botSessions: BotSessionService;
-  let botSessionModel: Model<BotSessionRecord>;
+  let flow: FlowTestContext;
+  let ctx: FlowTestContext['ctx'];
+  let examBot: FlowTestContext['examBot'];
+  let registry: FlowTestContext['registry'];
+  let botSessions: FlowTestContext['botSessions'];
 
   beforeAll(async () => {
-    ctx = await setupAttemptsTest();
-    const connection: Connection = ctx.memory.connection;
-    botSessionModel = connection.model<BotSessionRecord>(
-      BotSessionRecord.name,
-      BotSessionSchema,
-    );
-    await botSessionModel.syncIndexes();
-    botSessions = new BotSessionService(botSessionModel);
-    const myExamsService = new MyExamsService(
-      ctx.examModel,
-      ctx.attemptModel,
-      ctx.gradingModel,
-      ctx.examNotifier,
-    );
-    registry = new ExamBotPortRegistry();
-    examBot = new ExamBotService(
-      myExamsService,
-      ctx.service,
-      ctx.mediaAssetsService,
-      ctx.examImagesService,
-      registry,
-    );
+    flow = await setupFlowTest();
+    ({ ctx, examBot, registry, botSessions } = flow);
   }, 60_000);
 
   afterAll(async () => {
@@ -152,36 +44,14 @@ describe('бот — второй клиент ExamAttemptsService (интегр
   });
 
   afterEach(async () => {
-    await clearAttemptsTest(ctx);
-    await botSessionModel.deleteMany({});
+    await clearFlowTest(flow);
   });
 
   async function publishedExam(
     kind: 'single' | 'text' | 'video',
   ): Promise<{ examId: string; itemId: string }> {
-    const item = await ctx.examItemsService.create(
-      kind === 'single'
-        ? {
-            kind,
-            prompt: 'Сколько форм в третьем уровне?',
-            options: [
-              { text: 'Три', correct: true },
-              { text: 'Пять', correct: false },
-            ],
-          }
-        : {
-            kind,
-            prompt: kind === 'text' ? 'Опишите форму словами' : 'Покажите форму на видео',
-          },
-      AUTHOR_ID,
-    );
-    await ctx.examItemsService.update(item.id, { status: 'published' }, NOW);
-    const exam = await ctx.examsService.create(
-      { title: 'Форма третьего уровня', blocks: [{ title: '', itemIds: [item.id] }] },
-      AUTHOR_ID,
-    );
-    await ctx.examsService.update(exam.id, { status: 'published' });
-    return { examId: exam.id, itemId: item.id };
+    const { examId, itemIds } = await publishedFlowExam(ctx, [kind], NOW);
+    return { examId, itemId: itemIds[0] ?? '' };
   }
 
   it('ExamBotService.listMyExams — то же, что видит кабинет ученика', async () => {

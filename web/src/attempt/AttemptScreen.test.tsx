@@ -89,6 +89,40 @@ describe('AttemptScreen', () => {
     expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument();
   });
 
+  // PLAN.md §11 «Лимит времени считается на сервере»: экран переключается на
+  // «Отправлено» только по статусу из ответа сервера. Часы телефона, что
+  // спешат (дедлайн «уже прошёл» локально, сервер держит in_progress), — форма
+  // остаётся; часы, что отстают (локально «ещё есть время», сервер уже закрыл
+  // попытку), — «Отправлено» без ожидания местного отсчёта.
+  it('дедлайн прошёл по часам телефона, но сервер говорит in_progress — форма сдачи, не «Отправлено»', async () => {
+    mockPaths([
+      { ...IN_PROGRESS, deadlineAt: new Date(Date.now() - 60_000).toISOString() },
+    ]);
+    renderAt('a1');
+
+    expect(await screen.findByRole('button', { name: 'Отправить' })).toBeInTheDocument();
+    expect(
+      screen.queryByText('Время вышло, попытка закрыта и отправлена на проверку.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('по часам телефона время ещё есть, но сервер уже закрыл попытку — «время вышло», без формы', async () => {
+    mockPaths([
+      {
+        ...IN_PROGRESS,
+        status: 'submitted',
+        expired: true,
+        deadlineAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+      },
+    ]);
+    renderAt('a1');
+
+    expect(
+      await screen.findByText('Время вышло, попытка закрыта и отправлена на проверку.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument();
+  });
+
   // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедший по почте видел кнопку
   // «Отправить видео боту», шёл по ней и получал от бота отказ.
   it('Telegram не привязан — на «Отправлено» кнопки бота нет, есть форма ссылки', async () => {

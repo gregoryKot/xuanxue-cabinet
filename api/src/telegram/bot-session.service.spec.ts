@@ -236,4 +236,34 @@ describe('BotSessionService', () => {
     expect(session?.kind).toBe('examText');
     await expect(model.countDocuments({ chatId: 555 })).resolves.toBe(1);
   });
+  // PLAN.md §12: упавший хендлер не оставляет ожидание навсегда — TTL
+  // (EXAM_ANSWER_WAIT_HOURS, exam-answer-wait.ts) закрывает и examText, и
+  // examMedia; get() перестаёт отдавать ожидание по expiresAt сам, не
+  // дожидаясь TTL-монитора Mongo, hasExpired() помнит, какое оно было.
+  it('examText-ожидание истекает через 12 часов — get null, hasExpired отдаёт kind', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamTextWait(555, attemptId, 0, NOW);
+
+    await expect(
+      service.get(555, NOW.plus({ hours: 11, minutes: 59 })),
+    ).resolves.not.toBeNull();
+    await expect(
+      service.get(555, NOW.plus({ hours: 12, minutes: 1 })),
+    ).resolves.toBeNull();
+    await expect(
+      service.hasExpired(555, NOW.plus({ hours: 12, minutes: 1 })),
+    ).resolves.toBe('examText');
+  });
+
+  it('examMedia-ожидание истекает через 12 часов — get null, hasExpired отдаёт kind', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW, 0);
+
+    await expect(
+      service.get(555, NOW.plus({ hours: 12, minutes: 1 })),
+    ).resolves.toBeNull();
+    await expect(
+      service.hasExpired(555, NOW.plus({ hours: 12, minutes: 1 })),
+    ).resolves.toBe('examMedia');
+  });
 });
