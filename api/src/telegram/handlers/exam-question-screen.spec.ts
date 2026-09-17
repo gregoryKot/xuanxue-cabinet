@@ -80,7 +80,7 @@ describe('buildQuestionScreen', () => {
     ]);
   });
 
-  // ADR-0035: вариант-картинка без подписи — Telegram отклоняет кнопку с
+  // ADR-0037: вариант-картинка без подписи — Telegram отклоняет кнопку с
   // пустым текстом, поэтому кнопка подписана номером.
   it('single — вариант без текста (картинка без подписи) подписан номером', () => {
     const q = question({
@@ -139,7 +139,7 @@ describe('buildQuestionScreen', () => {
     expect(view.text).toContain('Снимите или пришлите видео сюда');
   });
 
-  it('video — уже привязано (attempt.media непусто) — «видео получено»', () => {
+  it('video — уже привязано (media с itemId этого вопроса) — «видео получено»', () => {
     const q = question({ kind: 'video', options: [] });
     const view = buildQuestionScreen(
       attempt([q], {
@@ -147,6 +147,7 @@ describe('buildQuestionScreen', () => {
           {
             id: 'm1',
             attemptId: ATTEMPT_ID,
+            itemId: q.itemId,
             kind: 'telegram',
             receivedAt: '2026-09-12T10:00:00.000Z',
           },
@@ -156,6 +157,28 @@ describe('buildQuestionScreen', () => {
     );
     expect(view.text).toContain('Видео получено.');
     expect(view.text).not.toContain('Снимите или пришлите видео сюда');
+  });
+
+  // ADR-0037: видео другого вопроса не подсвечивает этот — раньше «хоть
+  // какое-то видео у попытки» путало два video-вопроса одной формы.
+  it('video — есть видео другого вопроса — просит прислать, не «получено»', () => {
+    const q = question({ kind: 'video', options: [] });
+    const view = buildQuestionScreen(
+      attempt([q, question({ itemId: 'другой-вопрос', kind: 'video', options: [] })], {
+        media: [
+          {
+            id: 'm1',
+            attemptId: ATTEMPT_ID,
+            itemId: 'другой-вопрос',
+            kind: 'telegram',
+            receivedAt: '2026-09-12T10:00:00.000Z',
+          },
+        ],
+      }),
+      0,
+    );
+    expect(view.text).toContain('Снимите или пришлите видео сюда');
+    expect(view.text).not.toContain('Видео получено.');
   });
 
   it('первый вопрос — нет «Назад», есть «Дальше»', () => {

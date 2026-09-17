@@ -26,6 +26,7 @@ export function toExamMediaDto(doc: RawLeanMediaAsset): ExamMediaDto {
   return {
     id: doc._id.toString(),
     attemptId: doc.attemptId.toString(),
+    itemId: doc.itemId?.toString(),
     kind: doc.kind,
     url: doc.kind === 'link' ? doc.url : undefined,
     durationSec: doc.kind === 'telegram' ? doc.durationSec : undefined,

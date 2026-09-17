@@ -23,6 +23,9 @@ export interface BotSessionLean {
   /** Номер вопроса (bot-session.schema.ts) — есть у 'examText' всегда, у
    * 'examMedia' только внутри потока вопросов бота. */
   questionIndex?: number | null;
+  /** Вопрос-видео (ADR-0037, bot-session.schema.ts) — есть только у
+   * 'examMedia', когда он известен (deep link с вопросом или поток бота). */
+  itemId?: Types.ObjectId | null;
 }
 
 @Injectable()
@@ -51,20 +54,21 @@ export class BotSessionService {
   }
 
   /** Ждём видео экзамена — либо после deep link
-   * `t.me/<бот>?start=exam_<attemptId>` (ADR-0023, `questionIndex` не
-   * передан), либо с экрана вопроса-видео внутри потока бота (ТЗ 4б.2 часть
-   * 2, `questionIndex` передан) — открыт ЛЮБОМУ пользователю Telegram, не
-   * через `set()`: то ведёт только `lessonId`, это — только `attemptId`.
-   * Само содержимое апдейта — exam-answer-wait.ts, комментарий там же. */
+   * `t.me/<бот>?start=exam_<attemptId>[_<itemId>]` (ADR-0023/ADR-0037,
+   * `questionIndex` не передан), либо с экрана вопроса-видео внутри потока
+   * бота (ТЗ 4б.2 часть 2, оба переданы) — открыт ЛЮБОМУ пользователю
+   * Telegram, не через `set()`: то ведёт только `lessonId`, это — только
+   * `attemptId`/`itemId`. Само содержимое апдейта — exam-answer-wait.ts. */
   async startExamMediaWait(
     chatId: number,
     attemptId: string,
     now: DateTime,
     questionIndex?: number,
+    itemId?: string,
   ): Promise<void> {
     await this.model.updateOne(
       { chatId },
-      { $set: examAnswerWaitUpdate('examMedia', attemptId, questionIndex, now) },
+      { $set: examAnswerWaitUpdate('examMedia', attemptId, questionIndex, now, itemId) },
       { upsert: true },
     );
   }
@@ -93,7 +97,7 @@ export class BotSessionService {
     return this.model
       .findOne(
         { chatId, expiresAt: { $gt: now.toJSDate() } },
-        { kind: 1, lessonId: 1, attemptId: 1, questionIndex: 1 },
+        { kind: 1, lessonId: 1, attemptId: 1, questionIndex: 1, itemId: 1 },
       )
       .lean<BotSessionLean | null>();
   }

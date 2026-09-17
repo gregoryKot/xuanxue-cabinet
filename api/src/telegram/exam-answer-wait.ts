@@ -15,24 +15,27 @@ export interface ExamAnswerWaitUpdate {
   kind: BotSessionKind;
   attemptId: Types.ObjectId;
   questionIndex: number | null;
+  itemId: Types.ObjectId | null;
   expiresAt: Date;
 }
 
-/** `questionIndex` — `null`, не просто отсутствие поля, когда его нет
- * (только у 'examMedia' по deep link из кабинета, ADR-0023: тот путь не
- * привязан к вопросу) — иначе номер вопроса от прошлого захода в поток
- * вопросов бота пережил бы переключение на deep link того же чата
- * (bot-session.schema.ts, комментарий у `questionIndex`). */
+/** `questionIndex`/`itemId` — `null`, не просто отсутствие поля, когда их
+ * нет (deep link из кабинета без вопроса, ADR-0023/ADR-0037) — иначе номер
+ * или id вопроса от прошлого захода в поток вопросов бота пережили бы
+ * переключение на deep link того же чата (bot-session.schema.ts). `itemId`
+ * значим только у 'examMedia' — у 'examText' вызывающий его не передаёт. */
 export function examAnswerWaitUpdate(
   kind: 'examMedia' | 'examText',
   attemptId: string,
   questionIndex: number | undefined,
   now: DateTime,
+  itemId?: string,
 ): ExamAnswerWaitUpdate {
   return {
     kind,
     attemptId: new Types.ObjectId(attemptId),
     questionIndex: questionIndex ?? null,
+    itemId: itemId ? new Types.ObjectId(itemId) : null,
     expiresAt: now.plus({ hours: EXAM_ANSWER_WAIT_HOURS }).toJSDate(),
   };
 }

@@ -199,6 +199,49 @@ describe('ExamMediaMessageHandler', () => {
     expect(personalChats.listFor).toHaveBeenCalledWith('attempt_submitted', NOW);
   });
 
+  // ADR-0037: itemId из сессии (deep link с вопросом или поток бота) обязан
+  // доехать до привязки — иначе видео осталось бы без вопроса даже когда он
+  // известен.
+  it('сессия несёт itemId (ADR-0037) — передаётся в attachTelegramVideo', async () => {
+    const { handler, attachTelegramVideo } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Форма' },
+    });
+    const sessionWithItem: BotSessionLean = {
+      ...SESSION,
+      itemId: new Types.ObjectId('507f1f77bcf86cd799439033'),
+    };
+    const { ctx } = fakeCtx({ video: true });
+
+    await handler.handle(ctx, 111, sessionWithItem, NOW);
+
+    expect(attachTelegramVideo).toHaveBeenCalledWith(
+      ATTEMPT_ID,
+      'u1',
+      expect.anything(),
+      NOW,
+      '507f1f77bcf86cd799439033',
+    );
+  });
+
+  it('сессия без itemId (старый deep link) — attachTelegramVideo получает undefined', async () => {
+    const { handler, attachTelegramVideo } = buildHandler({
+      userId: 'u1',
+      attached: { media: { id: 'm1' }, examTitle: 'Форма' },
+    });
+    const { ctx } = fakeCtx({ video: true });
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(attachTelegramVideo).toHaveBeenCalledWith(
+      ATTEMPT_ID,
+      'u1',
+      expect.anything(),
+      NOW,
+      undefined,
+    );
+  });
+
   it('сотрудник выключил attempt_submitted — видео ему не пересылается (аудит 2026-09, находка 1)', async () => {
     // `listFor` сам решает, кто в списке (PersonalChats.listFor,
     // personal-chats.spec.ts/telegram-exam-notifier.spec.ts) — здесь
@@ -401,6 +444,7 @@ describe('ExamMediaMessageHandler', () => {
         {
           id: 'm1',
           attemptId: ATTEMPT_ID,
+          itemId: 'i1',
           kind: 'telegram',
           receivedAt: NOW.toISO() ?? '',
         },

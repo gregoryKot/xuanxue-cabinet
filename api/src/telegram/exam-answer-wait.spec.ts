@@ -29,4 +29,19 @@ describe('examAnswerWaitUpdate', () => {
     expect(update.kind).toBe('examText');
     expect(update.questionIndex).toBe(0);
   });
+
+  // ADR-0037: itemId — тем же приёмом, что questionIndex выше.
+  it('examMedia без itemId (старый deep link без вопроса) — itemId: null', () => {
+    const update = examAnswerWaitUpdate('examMedia', ATTEMPT_ID, undefined, NOW);
+
+    expect(update.itemId).toBeNull();
+  });
+
+  it('examMedia с itemId (новый deep link или поток бота) — itemId на месте', () => {
+    const itemId = new Types.ObjectId().toString();
+
+    const update = examAnswerWaitUpdate('examMedia', ATTEMPT_ID, undefined, NOW, itemId);
+
+    expect(update.itemId?.toString()).toBe(itemId);
+  });
 });

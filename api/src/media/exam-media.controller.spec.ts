@@ -47,6 +47,23 @@ describe('ExamMediaController', () => {
       'u1',
       'https://vk.com/video-1',
       expect.anything(),
+      undefined,
+    );
+  });
+
+  it('addLink() с itemId — передаёт его дальше в сервис (ADR-0037)', async () => {
+    const addLink = jest.fn().mockResolvedValue(MEDIA_DTO);
+    const controller = await buildController({ addLink });
+    const itemId = '507f1f77bcf86cd799439099';
+
+    await controller.addLink('a1', { url: 'https://vk.com/video-1', itemId }, USER);
+
+    expect(addLink).toHaveBeenCalledWith(
+      'a1',
+      'u1',
+      'https://vk.com/video-1',
+      expect.anything(),
+      itemId,
     );
   });
 
@@ -61,7 +78,7 @@ describe('ExamMediaController', () => {
     const controller = await buildController({ addManual });
 
     await expect(controller.addManual('a1', { note: 'т' })).resolves.toEqual(manualDto);
-    expect(addManual).toHaveBeenCalledWith('a1', 'т', expect.anything());
+    expect(addManual).toHaveBeenCalledWith('a1', 'т', expect.anything(), undefined);
   });
 
   it('addManual() без note — передаёт undefined, не пустую строку', async () => {
@@ -70,6 +87,16 @@ describe('ExamMediaController', () => {
 
     await controller.addManual('a1', {});
 
-    expect(addManual).toHaveBeenCalledWith('a1', undefined, expect.anything());
+    expect(addManual).toHaveBeenCalledWith('a1', undefined, expect.anything(), undefined);
+  });
+
+  it('addManual() с itemId — передаёт его дальше в сервис (ADR-0037)', async () => {
+    const addManual = jest.fn().mockResolvedValue(MEDIA_DTO);
+    const controller = await buildController({ addManual });
+    const itemId = '507f1f77bcf86cd799439099';
+
+    await controller.addManual('a1', { note: 'т', itemId });
+
+    expect(addManual).toHaveBeenCalledWith('a1', 'т', expect.anything(), itemId);
   });
 });

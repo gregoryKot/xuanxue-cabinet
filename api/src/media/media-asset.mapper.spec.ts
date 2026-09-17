@@ -63,4 +63,15 @@ describe('toExamMediaDto', () => {
     const dto = toExamMediaDto(baseDoc());
     expect(dto.receivedAt).toBe('2026-09-12T10:00:00.000Z');
   });
+
+  it('itemId — доезжает до DTO строкой (ADR-0037)', () => {
+    const itemId = new Types.ObjectId();
+    const dto = toExamMediaDto(baseDoc({ itemId }));
+    expect(dto.itemId).toBe(itemId.toString());
+  });
+
+  it('itemId не пришёл (запись без вопроса, деплой на переходе) — undefined', () => {
+    const dto = toExamMediaDto(baseDoc());
+    expect(dto.itemId).toBeUndefined();
+  });
 });

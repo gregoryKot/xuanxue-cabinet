@@ -12,6 +12,7 @@ import {
   EXAM_ATTEMPT_ENCRYPT_SCHEMA,
   ExamAttemptRecord,
   ExamAttemptSchema,
+  type AttemptBlockRecord,
 } from '../exams/exam-attempt.schema';
 import { MediaAssetRecord, MediaAssetSchema } from './media-asset.schema';
 import { MediaAssetsService } from './media-assets.service';
@@ -24,6 +25,42 @@ const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const PLAIN_EXAM_TITLE = 'Форма без шифрования';
 const FILE_ID = 'BgADBAADrwAD-video-file-id';
 const FILE_UNIQUE_ID = 'AgADrwAD-unique-id';
+
+// Снимок с одним video-вопросом и одним text — используется тестами itemId
+// (ADR-0037): video-вопрос проходит проверку isVideoItemInSnapshot, text —
+// нет, случайный id — тоже нет (его в снимке вообще нет).
+const VIDEO_ITEM_ID = new Types.ObjectId().toString();
+const OTHER_VIDEO_ITEM_ID = new Types.ObjectId().toString();
+const TEXT_ITEM_ID = new Types.ObjectId().toString();
+const BLOCKS_WITH_VIDEO: AttemptBlockRecord[] = [
+  {
+    id: 'b1',
+    title: 'Блок',
+    questions: [
+      {
+        itemId: VIDEO_ITEM_ID,
+        version: 1,
+        kind: 'video',
+        prompt: 'Снимите форму',
+        options: [],
+      },
+      {
+        itemId: OTHER_VIDEO_ITEM_ID,
+        version: 1,
+        kind: 'video',
+        prompt: 'И ещё одну',
+        options: [],
+      },
+      {
+        itemId: TEXT_ITEM_ID,
+        version: 1,
+        kind: 'text',
+        prompt: 'Опишите форму',
+        options: [],
+      },
+    ],
+  },
+];
 
 describe('MediaAssetsService', () => {
   let memory: MemoryMongo;
@@ -58,23 +95,34 @@ describe('MediaAssetsService', () => {
 
   async function seedAttempt(
     userId: string,
-    options: { examTitle?: string; plainTitle?: boolean } = {},
+    options: {
+      examTitle?: string;
+      plainTitle?: boolean;
+      blocks?: AttemptBlockRecord[];
+    } = {},
   ) {
     const examTitle = options.examTitle ?? 'Форма первого уровня';
-    const record = {
+    // `Record<string, unknown>` — тот же приём, что createAttempt
+    // (exams/exam-attempt-start.ts): blocks здесь настоящий массив до
+    // encryptRecord/JSON.stringify, схема Mongoose ждёт уже строку.
+    const record: Record<string, unknown> = {
       examId: new Types.ObjectId(),
       examTitle,
       userId: new Types.ObjectId(userId),
       attemptNo: 1,
       status: 'in_progress' as const,
-      blocks: '[]',
+      blocks: options.blocks ?? [],
       answers: '[]',
       startedAt: NOW.toJSDate(),
     };
     // `plainTitle` — документ, записанный до шифрования названия (или при
     // другом ключе): сервис обязан показать строку как есть, а не пустоту.
+    // `blocks` в этой ветке — тоже как есть, поэтому строкой (иначе Mongoose
+    // приведёт массив к String через `[].toString()`, не JSON).
     const created = await attemptModel.create(
-      options.plainTitle ? record : encryptRecord(record, EXAM_ATTEMPT_ENCRYPT_SCHEMA),
+      options.plainTitle
+        ? { ...record, blocks: JSON.stringify(options.blocks ?? []) }
+        : encryptRecord(record, EXAM_ATTEMPT_ENCRYPT_SCHEMA),
     );
     return created._id.toString();
   }
@@ -186,6 +234,53 @@ describe('MediaAssetsService', () => {
       const list = await service.listForAttempt(attemptId);
       expect(list).toHaveLength(2);
     });
+
+    // ADR-0037: itemId, если передан, обязан быть video-вопросом снимка —
+    // причина не объясняется (SECURITY §3), путь бота не разговорчив.
+    describe('itemId (ADR-0037)', () => {
+      it('video-вопрос снимка — привязывается с itemId', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+        const result = await service.attachTelegramVideo(
+          attemptId,
+          USER_A,
+          { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
+          NOW,
+          VIDEO_ITEM_ID,
+        );
+
+        expect(result?.media.itemId).toBe(VIDEO_ITEM_ID);
+      });
+
+      it('itemId не из снимка — null, ничего не сохранено', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+        const result = await service.attachTelegramVideo(
+          attemptId,
+          USER_A,
+          { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
+          NOW,
+          new Types.ObjectId().toString(),
+        );
+
+        expect(result).toBeNull();
+        await expect(mediaModel.countDocuments({})).resolves.toBe(0);
+      });
+
+      it('itemId вопроса не video (text) — null', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+        const result = await service.attachTelegramVideo(
+          attemptId,
+          USER_A,
+          { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
+          NOW,
+          TEXT_ITEM_ID,
+        );
+
+        expect(result).toBeNull();
+      });
+    });
   });
 
   describe('addLink', () => {
@@ -239,6 +334,81 @@ describe('MediaAssetsService', () => {
         service.addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW),
       ).rejects.toBe(dbError);
     });
+
+    // ADR-0037: itemId различает ссылки на РАЗНЫЕ вопросы одной попытки —
+    // уникальный индекс теперь (attemptId, itemId), не просто (attemptId).
+    describe('itemId (ADR-0037)', () => {
+      it('две ссылки на разные video-вопросы одной попытки — сохраняются обе', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1',
+          NOW,
+          VIDEO_ITEM_ID,
+        );
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-2',
+          NOW,
+          OTHER_VIDEO_ITEM_ID,
+        );
+
+        const list = await service.listForAttempt(attemptId);
+        expect(list).toHaveLength(2);
+        expect(list.map((m) => m.itemId).sort()).toEqual(
+          [VIDEO_ITEM_ID, OTHER_VIDEO_ITEM_ID].sort(),
+        );
+      });
+
+      it('вторая ссылка на ТОТ ЖЕ вопрос — ConflictError, первая остаётся', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1',
+          NOW,
+          VIDEO_ITEM_ID,
+        );
+
+        await expect(
+          service.addLink(
+            attemptId,
+            USER_A,
+            'https://vk.com/video-2',
+            NOW,
+            VIDEO_ITEM_ID,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+        const list = await service.listForAttempt(attemptId);
+        expect(list).toHaveLength(1);
+      });
+
+      it('itemId, которого нет в снимке — NotFoundError, ничего не сохранено', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+        await expect(
+          service.addLink(
+            attemptId,
+            USER_A,
+            'https://vk.com/video-1',
+            NOW,
+            new Types.ObjectId().toString(),
+          ),
+        ).rejects.toBeInstanceOf(NotFoundError);
+        await expect(mediaModel.countDocuments({})).resolves.toBe(0);
+      });
+
+      it('itemId вопроса не video (text) — NotFoundError', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+        await expect(
+          service.addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW, TEXT_ITEM_ID),
+        ).rejects.toBeInstanceOf(NotFoundError);
+      });
+    });
   });
 
   describe('addManual', () => {
@@ -268,6 +438,22 @@ describe('MediaAssetsService', () => {
       await expect(service.addManual(attemptId, 'заметка', NOW)).rejects.toThrow(
         'запись не найдена сразу после создания',
       );
+    });
+
+    it('itemId, которого нет в снимке (ADR-0037) — NotFoundError', async () => {
+      const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+      await expect(
+        service.addManual(attemptId, 'заметка', NOW, new Types.ObjectId().toString()),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('video-вопрос снимка — отметка привязывается с itemId', async () => {
+      const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+      const dto = await service.addManual(attemptId, 'заметка', NOW, VIDEO_ITEM_ID);
+
+      expect(dto.itemId).toBe(VIDEO_ITEM_ID);
     });
   });
 

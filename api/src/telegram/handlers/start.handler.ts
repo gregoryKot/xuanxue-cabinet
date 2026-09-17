@@ -74,10 +74,14 @@ export class StartHandler {
       const payload = parseStartPayload(ctx);
       switch (payload?.kind) {
         case 'examMedia':
-          await handleExamMediaDeepLink(ctx, from.id, payload.attemptId, now, {
-            botSessions: this.botSessions,
-            botAccess: this.botAccess,
-          });
+          await handleExamMediaDeepLink(
+            ctx,
+            from.id,
+            payload.attemptId,
+            now,
+            { botSessions: this.botSessions, botAccess: this.botAccess },
+            payload.itemId,
+          );
           return;
         case 'invite':
           await handleInviteDeepLink(ctx, from, payload.code, now, {

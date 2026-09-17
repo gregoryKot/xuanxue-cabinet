@@ -39,8 +39,7 @@ export {
 export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
-export type { PluralForms } from './plural-ru';
-export { pluralRu } from './plural-ru';
+export { type PluralForms, pluralRu } from './plural-ru';
 export type {
   UserRole,
   UserStatus,
@@ -148,6 +147,7 @@ export {
   EXAM_MEDIA_LIMITS,
   EXAM_MEDIA_INVALID_URL_MESSAGE,
   EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
+  EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
 } from './exam-media';
 export type {
   ExamImageContentType,

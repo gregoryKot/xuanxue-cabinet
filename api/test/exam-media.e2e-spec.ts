@@ -2,21 +2,20 @@
 // (владелец из сессии, SECURITY §3) и ручная отметка учителя (роль). Основной
 // путь — сообщение боту — не HTTP, его привязка проверена против настоящей
 // Mongo в media-assets.service.spec.ts (SECURITY §3: чужой attemptId ничего
-// не привязывает). Настоящий AppModule на MongoMemoryServer.
-import type {
-  ApiErrorBody,
-  AttemptReviewDto,
-  ExamAttemptDto,
-  ExamDto,
-  ExamItemDto,
-} from '@xuanxue/shared';
+// не привязывает). itemId (ADR-0037) — отдельным файлом,
+// exam-media-item.e2e-spec.ts (файл-лимит, тот же приём, что
+// exam-attempts-deadline.e2e-spec.ts у exam-attempts.e2e-spec.ts). Настоящий
+// AppModule на MongoMemoryServer.
+import type { ApiErrorBody, AttemptReviewDto, ExamAttemptDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
+import { createExamMediaTestHelpers } from './e2e-support/exam-media-fixtures';
 import { createUserWithSession } from './e2e-support/session';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
 describe('Видео экзамена — ссылка и ручная отметка (e2e)', () => {
   let testApp: TestApp;
+  const { server, startedAttempt } = createExamMediaTestHelpers(() => testApp);
 
   beforeAll(async () => {
     testApp = await createTestApp();
@@ -25,34 +24,6 @@ describe('Видео экзамена — ссылка и ручная отме�
   afterAll(async () => {
     await testApp.close();
   });
-
-  function server(): ReturnType<TestApp['app']['getHttpServer']> {
-    return testApp.app.getHttpServer();
-  }
-
-  async function startedAttempt(studentCookie: string): Promise<string> {
-    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-    const item = await withCsrf(request(server()).post('/api/exam-items'))
-      .set('Cookie', teacherCookie)
-      .send({ kind: 'video', prompt: 'Снимите форму «пэнбу»' });
-    const itemId = (item.body as ExamItemDto).id;
-    await withCsrf(request(server()).patch(`/api/exam-items/${itemId}`))
-      .set('Cookie', teacherCookie)
-      .send({ status: 'published' });
-
-    const exam = await withCsrf(request(server()).post('/api/exams'))
-      .set('Cookie', teacherCookie)
-      .send({ title: 'Экзамен с видео', blocks: [{ itemIds: [itemId] }] });
-    const examId = (exam.body as ExamDto).id;
-    await withCsrf(request(server()).patch(`/api/exams/${examId}`))
-      .set('Cookie', teacherCookie)
-      .send({ status: 'published' });
-
-    const started = await withCsrf(
-      request(server()).post(`/api/exams/${examId}/attempts`),
-    ).set('Cookie', studentCookie);
-    return (started.body as ExamAttemptDto).id;
-  }
 
   describe('POST /attempts/:id/media/link', () => {
     it('валидная ссылка — сохраняется и видна владельцу в GET /attempts', async () => {
