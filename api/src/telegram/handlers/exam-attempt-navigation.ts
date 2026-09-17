@@ -3,9 +3,9 @@
 // editMessageText, владение и лимит попыток проверяет сам сервис
 // (ExamAttemptsService через ExamBotPort), здесь только маршрутизация к
 // экрану. `answerCbQuery()` — в CallbackQueryHandler.handle, до этого вызова
-// (CLAUDE.md «Telegram»). Сам экран и ожидание ответа под него (text/video,
-// ТЗ 4б.2 часть 2) — общая точка exam-question-render.ts, не дублируем
-// здесь.
+// (CLAUDE.md «Telegram»). Сам экран, картинки вариантов и ожидание ответа
+// под него (text/video, ТЗ 4б.2 часть 2) — общая точка
+// exam-question-render.ts, не дублируем здесь.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { ATTEMPT_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
@@ -14,14 +14,7 @@ import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import { examUserFacingError } from './exam-attempt-error';
 import type { QuestionId } from './exam-callback-ids';
-import { renderAttemptScreen } from './exam-question-render';
-import type { BotMenu } from './bot-menu';
-
-async function renderScreen(ctx: Context, view: BotMenu): Promise<void> {
-  await ctx
-    .editMessageText(view.text, { reply_markup: { inline_keyboard: view.buttons } })
-    .catch(() => null);
-}
+import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
 
 export async function handleExamStart(
   ctx: Context,
@@ -35,7 +28,15 @@ export async function handleExamStart(
   try {
     const attempt = await examBot.startAttempt(examId, user, now);
     const view = await renderAttemptScreen(botSessions, chatId, attempt, 0, now);
-    await renderScreen(ctx, view);
+    await presentAttemptScreen(
+      ctx,
+      { examBot, user, chatId, attemptId: attempt.id },
+      view,
+      {
+        via: 'edit',
+        withAlbum: true,
+      },
+    );
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
   }
@@ -57,7 +58,12 @@ export async function handleExamQuestion(
       return;
     }
     const view = await renderAttemptScreen(botSessions, chatId, attempt, ids.index, now);
-    await renderScreen(ctx, view);
+    await presentAttemptScreen(
+      ctx,
+      { examBot, user, chatId, attemptId: ids.attemptId },
+      view,
+      { via: 'edit', withAlbum: true },
+    );
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
   }

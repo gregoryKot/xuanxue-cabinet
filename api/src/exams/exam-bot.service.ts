@@ -18,10 +18,12 @@ import {
   type ExamAttemptDto,
   type MyExamDto,
 } from '@xuanxue/shared';
+import { NotFoundError } from '../common/errors';
+import { ExamImagesService } from '../exam-images/exam-images.service';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { withAttemptMedia } from './exam-attempt-media';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
-import type { ExamBotPort } from '../telegram/exam-bot.port';
+import type { BotOptionImage, ExamBotPort } from '../telegram/exam-bot.port';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { MyExamsService } from './my-exams.service';
@@ -32,6 +34,7 @@ export class ExamBotService implements ExamBotPort {
     private readonly myExamsService: MyExamsService,
     private readonly examAttemptsService: ExamAttemptsService,
     private readonly mediaAssetsService: MediaAssetsService,
+    private readonly examImagesService: ExamImagesService,
     registry: ExamBotPortRegistry,
   ) {
     registry.set(this);
@@ -93,5 +96,21 @@ export class ExamBotService implements ExamBotPort {
   ): Promise<ExamAttemptDto> {
     const attempt = await this.examAttemptsService.submit(attemptId, user.id, now);
     return withAttemptMedia(this.mediaAssetsService, attempt);
+  }
+
+  /** ExamImagesService.load бросает NotFoundError и штату (не своя
+   * картинка не бывает — доступ по роли), и ученику (не в снимке его
+   * попытки) — здесь это `null`, комментарий у ExamBotPort.loadOptionImage. */
+  async loadOptionImage(imageId: string, user: UserLean): Promise<BotOptionImage | null> {
+    try {
+      return await this.examImagesService.load(imageId, user);
+    } catch (err) {
+      if (err instanceof NotFoundError) return null;
+      throw err;
+    }
+  }
+
+  rememberTelegramFileId(imageId: string, fileId: string): Promise<void> {
+    return this.examImagesService.rememberTelegramFileId(imageId, fileId);
   }
 }

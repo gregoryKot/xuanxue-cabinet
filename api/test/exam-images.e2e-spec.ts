@@ -75,6 +75,9 @@ describe('Картинки вариантов ответа (e2e)', () => {
     expect(res.body as Record<string, unknown>).not.toHaveProperty('bytes');
     expect(res.body as Record<string, unknown>).not.toHaveProperty('_id');
     expect(res.body as Record<string, unknown>).not.toHaveProperty('__v');
+    // Кэш file_id Telegram (слой 4б.2, ADR-0035) ведёт к файлу у бота — тот
+    // же комментарий, что у media_assets.fileId, наружу не отдаём.
+    expect(res.body as Record<string, unknown>).not.toHaveProperty('telegramFileId');
   });
 
   it('формат определяется по байтам, не по заявленному заголовку', async () => {

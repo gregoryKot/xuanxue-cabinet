@@ -10,7 +10,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { EXAM_IMAGE_CONTENT_TYPES } from '@xuanxue/shared';
 import type { ExamImageContentType } from '@xuanxue/shared';
-import type { FieldPolicy } from '../common/field-policy';
+import { enc, encryptSchemaFrom, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 
 @Schema({ timestamps: true, collection: 'exam_images' })
@@ -34,6 +34,13 @@ export class ExamImageRecord {
   // ссылка. См. USER_REFERENCE_PATHS (user-data.registry.ts).
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
+
+  // Кэш file_id Telegram (слой 4б.2, ADR-0035) — после первой отправки этой
+  // картинки в бот, чтобы не гонять байты на каждый показ вопроса
+  // (exam-question-album-send.ts). Тот же приём, что media_assets.fileId:
+  // ведёт к файлу у конкретного бота, шифруем как ссылку на видео (SECURITY §5).
+  @Prop({ type: String, required: false })
+  telegramFileId?: string;
 }
 
 export const ExamImageSchema = SchemaFactory.createForClass(ExamImageRecord);
@@ -41,9 +48,17 @@ export const ExamImageSchema = SchemaFactory.createForClass(ExamImageRecord);
 // сославшиеся ни на один вопрос/попытку (ADR-0035, «Последствия»).
 ExamImageSchema.index({ createdAt: 1 });
 
-// Пусто осознанно, не забыто: `contentType` — перечисление (enum), решения
-// не требует (encryption-coverage.spec.ts отличает enum от свободного
-// текста по options.enum, не по имени поля); `bytes` — Buffer, вне охвата
-// String/Mixed по той же причине, шифруется явно `encryptBytes` в сервисе;
-// ротация ключа его отдельно перешифровывает — RUNBOOK §6.1.
-export const EXAM_IMAGE_FIELD_POLICY: FieldPolicy = {};
+// `contentType` — перечисление (enum), решения не требует
+// (encryption-coverage.spec.ts отличает enum от свободного текста по
+// options.enum, не по имени поля); `bytes` — Buffer, вне охвата String/Mixed
+// по той же причине, шифруется явно `encryptBytes` в сервисе; ротация ключа
+// его отдельно перешифровывает — RUNBOOK §6.1. `telegramFileId` — решение у
+// самого поля выше.
+export const EXAM_IMAGE_FIELD_POLICY: FieldPolicy = {
+  telegramFileId: enc,
+};
+
+/** Схема шифрования — та же роль, что MEDIA_ASSET_ENCRYPT_SCHEMA
+ * (media-asset.schema.ts): читающий telegramFileId мимо неё получит
+ * шифротекст вместо file_id. */
+export const EXAM_IMAGE_ENCRYPT_SCHEMA = encryptSchemaFrom(EXAM_IMAGE_FIELD_POLICY);

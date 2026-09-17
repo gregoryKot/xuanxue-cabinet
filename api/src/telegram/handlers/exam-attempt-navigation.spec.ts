@@ -59,15 +59,37 @@ function attempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
 function fakeCtx(options: { failEdit?: boolean } = {}): {
   ctx: Context;
   edits: string[];
+  replies: string[];
+  deletes: number[];
+  sendPhoto: jest.Mock;
+  sendMediaGroup: jest.Mock;
 } {
   const edits: string[] = [];
+  const replies: string[] = [];
+  const deletes: number[] = [];
+  // Фото — как их реально отдаёт Telegram (ADR-0035): самый большой размер
+  // последним, exam-question-album-send.ts берёт file_id именно оттуда.
+  const sendPhoto = jest.fn().mockResolvedValue({
+    message_id: 1,
+    photo: [{ file_id: 'f-small' }, { file_id: 'f-big' }],
+  });
+  const sendMediaGroup = jest.fn().mockResolvedValue([]);
   const ctx = {
     editMessageText: (text: string) =>
       options.failEdit
         ? Promise.reject(new Error('сообщение недоступно'))
         : Promise.resolve(Boolean(edits.push(text))),
+    reply: (text: string) => {
+      replies.push(text);
+      return Promise.resolve();
+    },
+    deleteMessage: () => {
+      deletes.push(1);
+      return Promise.resolve(true);
+    },
+    telegram: { sendPhoto, sendMediaGroup },
   } as unknown as Context;
-  return { ctx, edits };
+  return { ctx, edits, replies, deletes, sendPhoto, sendMediaGroup };
 }
 
 describe('handleExamStart', () => {
@@ -130,6 +152,40 @@ describe('handleExamStart', () => {
     await expect(
       handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW),
     ).resolves.toBeUndefined();
+  });
+
+  it('первый вопрос с картинкой у варианта — старое сообщение удалено, альбом до экрана, экран reply (ADR-0035)', async () => {
+    const withImage = attempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Теория',
+          questions: [
+            {
+              itemId: 'i1',
+              version: 1,
+              kind: 'single',
+              prompt: 'Какая стойка на фото?',
+              options: [{ id: 'o1', text: 'Стойка А', imageId: 'img-1' }],
+            },
+          ],
+        },
+      ],
+    });
+    const port = fakeExamBotPort({
+      startAttempt: jest.fn().mockResolvedValue(withImage),
+      loadOptionImage: jest
+        .fn()
+        .mockResolvedValue({ bytes: Buffer.from([1, 2, 3]), contentType: 'image/jpeg' }),
+    });
+    const { ctx, edits, replies, deletes, sendPhoto } = fakeCtx();
+
+    await handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW);
+
+    expect(deletes).toHaveLength(1);
+    expect(sendPhoto).toHaveBeenCalledTimes(1);
+    expect(edits).toHaveLength(0); // экран НЕ редактирует старое сообщение
+    expect(replies).toEqual([expect.stringContaining('Какая стойка на фото?')]);
   });
 });
 

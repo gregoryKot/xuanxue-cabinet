@@ -68,9 +68,22 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
   ctx: Context;
   edits: string[];
   buttonTexts: string[][];
+  replies: string[];
+  deletes: number[];
+  sendPhoto: jest.Mock;
+  sendMediaGroup: jest.Mock;
 } {
   const edits: string[] = [];
   const buttonTexts: string[][] = [];
+  const replies: string[] = [];
+  const deletes: number[] = [];
+  // Самый большой размер последним (ADR-0035) — exam-question-album-send.ts
+  // берёт file_id именно оттуда.
+  const sendPhoto = jest.fn().mockResolvedValue({
+    message_id: 1,
+    photo: [{ file_id: 'f-small' }, { file_id: 'f-big' }],
+  });
+  const sendMediaGroup = jest.fn().mockResolvedValue([]);
   const ctx = {
     editMessageText: (
       text: string,
@@ -83,8 +96,17 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
       );
       return Promise.resolve(true);
     },
+    reply: (text: string) => {
+      replies.push(text);
+      return Promise.resolve();
+    },
+    deleteMessage: () => {
+      deletes.push(1);
+      return Promise.resolve(true);
+    },
+    telegram: { sendPhoto, sendMediaGroup },
   } as unknown as Context;
-  return { ctx, edits, buttonTexts };
+  return { ctx, edits, buttonTexts, replies, deletes, sendPhoto, sendMediaGroup };
 }
 
 describe('handleExamOption', () => {
@@ -139,6 +161,43 @@ describe('handleExamOption', () => {
     );
 
     expect(edits[0]).toContain('Вопрос 2 из 2');
+  });
+
+  it('single, следующий вопрос — с картинкой у варианта — альбом до экрана, старое сообщение удалено (ADR-0035)', async () => {
+    const q2: AttemptQuestionDto = {
+      itemId: 'i2',
+      version: 1,
+      kind: 'single',
+      prompt: 'Вопрос 2',
+      options: [{ id: 'p1', text: 'Стойка А', imageId: 'img-1' }],
+    };
+    const current = attempt([SINGLE_Q, q2]);
+    const saved = attempt([SINGLE_Q, q2], {
+      answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+    });
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(current),
+      saveAnswer: jest.fn().mockResolvedValue(saved),
+      loadOptionImage: jest
+        .fn()
+        .mockResolvedValue({ bytes: Buffer.from([1, 2, 3]), contentType: 'image/jpeg' }),
+    });
+    const { ctx, edits, replies, deletes, sendPhoto } = fakeCtx();
+
+    await handleExamOption(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
+      NOW,
+    );
+
+    expect(deletes).toHaveLength(1);
+    expect(sendPhoto).toHaveBeenCalledTimes(1);
+    expect(edits).toHaveLength(0); // не правка старого — новое сообщение
+    expect(replies).toEqual([expect.stringContaining('Вопрос 2 из 2')]);
   });
 
   it('single, следующий вопрос — text — ставит examText-ожидание под него', async () => {
@@ -209,6 +268,43 @@ describe('handleExamOption', () => {
     );
     expect(edits[0]).toContain('Вопрос 1 из 1');
     expect(buttonTexts[0]).toContain('☑ B');
+  });
+
+  it('multiple с картинкой у варианта — переключение не повторяет альбом, тот же вопрос (ADR-0035)', async () => {
+    const imagedMultiple: AttemptQuestionDto = {
+      ...MULTIPLE_Q,
+      options: [
+        { id: 'o1', text: 'A', imageId: 'img-1' },
+        { id: 'o2', text: 'B' },
+      ],
+    };
+    const current = attempt([imagedMultiple], {
+      answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+    });
+    const saved = attempt([imagedMultiple], {
+      answers: [{ itemId: 'i1', optionIds: ['o1', 'o2'] }],
+    });
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(current),
+      saveAnswer: jest.fn().mockResolvedValue(saved),
+    });
+    const { ctx, edits, deletes, sendPhoto, sendMediaGroup } = fakeCtx();
+
+    await handleExamOption(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 1 },
+      NOW,
+    );
+
+    expect(sendPhoto).not.toHaveBeenCalled();
+    expect(sendMediaGroup).not.toHaveBeenCalled();
+    expect(deletes).toHaveLength(0);
+    expect(edits).toHaveLength(1); // тот же вопрос — просто editMessageText
+    expect(port.loadOptionImage).not.toHaveBeenCalled();
   });
 
   it('multiple — повторное нажатие снимает отметку', async () => {

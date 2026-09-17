@@ -19,19 +19,24 @@ import {
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { decryptBytes, encryptBytes } from '../utils/encryption-bytes';
+import { encryptRecord } from '../utils/encryption';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import type { UserLean } from '../users/users.service';
 import {
   binaryToBuffer,
+  decryptExamImage,
   toExamImageDto,
   type RawLeanExamImage,
 } from './exam-image.mapper';
 import { parseExamImageUpload } from './exam-image-upload';
-import { ExamImageRecord } from './exam-image.schema';
+import { EXAM_IMAGE_ENCRYPT_SCHEMA, ExamImageRecord } from './exam-image.schema';
 
 export interface LoadedExamImage {
   bytes: Buffer;
   contentType: ExamImageContentType;
+  /** Кэш file_id Telegram, если картинку уже отправляли в бот (слой 4б.2,
+   * ADR-0035) — exam-question-album-send.ts. */
+  telegramFileId?: string;
 }
 
 @Injectable()
@@ -86,9 +91,24 @@ export class ExamImagesService {
     }
     const doc = await this.model.findById(id).lean<RawLeanExamImage | null>();
     if (!doc) throw new NotFoundError(EXAM_IMAGE_NOT_FOUND_MESSAGE);
+    const decrypted = decryptExamImage(doc);
     return {
       bytes: decryptBytes(binaryToBuffer(doc.bytes)),
       contentType: doc.contentType,
+      telegramFileId: decrypted.telegramFileId,
     };
+  }
+
+  /** Кэш file_id после удачной отправки в бот (слой 4б.2, ADR-0035) —
+   * фоновая оптимизация, не пользовательское действие: невалидный id молча
+   * пропускаем, не бросаем (вызывающий — exam-question-album-send.ts — уже
+   * прошёл load() с тем же id, значит он валиден; проверка — защита в
+   * глубину, не рабочий путь). */
+  async rememberTelegramFileId(id: string, fileId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) return;
+    await this.model.updateOne(
+      { _id: id },
+      { $set: encryptRecord({ telegramFileId: fileId }, EXAM_IMAGE_ENCRYPT_SCHEMA) },
+    );
   }
 }

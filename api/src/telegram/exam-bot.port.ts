@@ -8,8 +8,22 @@
 // себя в ExamBotPortRegistry при подъёме ExamsModule — см. комментарий
 // там же, почему инверсия, а не обычный импорт.
 import type { DateTime } from 'luxon';
-import type { AttemptAnswerDto, ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
+import type {
+  AttemptAnswerDto,
+  ExamAttemptDto,
+  ExamImageContentType,
+  MyExamDto,
+} from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
+
+/** Картинка варианта для показа в боте (слой 4б.2, ADR-0035) —
+ * `telegramFileId`, если эту картинку уже отправляли раньше: кэш экономит
+ * трафик на повторный показ вопроса (exam-question-album-send.ts). */
+export interface BotOptionImage {
+  bytes: Buffer;
+  contentType: ExamImageContentType;
+  telegramFileId?: string;
+}
 
 export interface ExamBotPort {
   listMyExams(user: UserLean, now: DateTime): Promise<MyExamDto[]>;
@@ -32,4 +46,12 @@ export interface ExamBotPort {
     user: UserLean,
     now: DateTime,
   ): Promise<ExamAttemptDto>;
+  /** `null` — картинки нет или она не из снимка ЭТОЙ попытки (SECURITY §3):
+   * ExamImagesService.load бросает NotFoundError, здесь это деградация —
+   * экран вопроса показываем всё равно, кнопки «Вариант N» работают
+   * (CLAUDE.md «Ноль нагрузки на ученика»), не отказ. */
+  loadOptionImage(imageId: string, user: UserLean): Promise<BotOptionImage | null>;
+  /** Кэш `file_id` после удачной отправки (см. BotOptionImage) — следующий
+   * показ вопроса шлёт файл строкой, не байтами. */
+  rememberTelegramFileId(imageId: string, fileId: string): Promise<void>;
 }

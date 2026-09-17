@@ -12,14 +12,7 @@ import { GENERIC_ERROR } from './callback-actions';
 import { examUserFacingError } from './exam-attempt-error';
 import type { OptionId } from './exam-callback-ids';
 import { buildFinishedScreen, flattenAttemptQuestions } from './exam-question-screen';
-import { renderAttemptScreen } from './exam-question-render';
-import type { BotMenu } from './bot-menu';
-
-async function render(ctx: Context, view: BotMenu): Promise<void> {
-  await ctx
-    .editMessageText(view.text, { reply_markup: { inline_keyboard: view.buttons } })
-    .catch(() => null);
-}
+import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
 
 /** `single` — выбор варианта отвечает на вопрос целиком, поэтому сразу
  * заменяет прошлый выбор; `multiple` — кнопка-переключатель, добавляет или
@@ -51,7 +44,12 @@ export async function handleExamOption(
       return;
     }
     if (attempt.status !== 'in_progress') {
-      await render(ctx, buildFinishedScreen(attempt, false));
+      await presentAttemptScreen(
+        ctx,
+        { examBot, user, chatId, attemptId: ids.attemptId },
+        { ...buildFinishedScreen(attempt, false), album: [] },
+        { via: 'edit', withAlbum: false },
+      );
       return;
     }
 
@@ -86,7 +84,15 @@ export async function handleExamOption(
         ? ids.questionIndex + 1
         : ids.questionIndex;
     const view = await renderAttemptScreen(botSessions, chatId, updated, nextIndex, now);
-    await render(ctx, view);
+    // Тот же вопрос (переключение варианта в multiple, или single на
+    // последнем) — альбом уже над экраном, слать его снова незачем
+    // (ADR-0035, комментарий у presentAttemptScreen).
+    await presentAttemptScreen(
+      ctx,
+      { examBot, user, chatId, attemptId: ids.attemptId },
+      view,
+      { via: 'edit', withAlbum: nextIndex !== ids.questionIndex },
+    );
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
   }
@@ -104,7 +110,12 @@ export async function handleExamSubmit(
   try {
     const attempt = await examBot.submitAttempt(attemptId, user, now);
     const view = await renderAttemptScreen(botSessions, chatId, attempt, 0, now, true);
-    await render(ctx, view);
+    // Финальный экран — без альбома (renderAttemptScreen отдаёт пустой,
+    // попытка уже не in_progress), withAlbum не важен.
+    await presentAttemptScreen(ctx, { examBot, user, chatId, attemptId }, view, {
+      via: 'edit',
+      withAlbum: true,
+    });
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
   }
