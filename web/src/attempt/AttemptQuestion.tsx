@@ -6,6 +6,7 @@
 // та же строка нужна предпросмотру «глазами ученика», exams/ExamPreviewQuestion.tsx).
 import type { AttemptQuestionDto } from '@xuanxue/shared';
 import { QuestionRow } from '../components/QuestionRow';
+import type { AttemptVideoControls } from './useAttemptMedia';
 import type { UseAttemptAutosaveResult } from './useAttemptAutosave';
 import { AttemptQuestionChoice } from './AttemptQuestionChoice';
 import { AttemptQuestionText } from './AttemptQuestionText';
@@ -15,9 +16,15 @@ interface AttemptQuestionProps {
   index: number;
   question: AttemptQuestionDto;
   autosave: UseAttemptAutosaveResult;
+  video: AttemptVideoControls;
 }
 
-export function AttemptQuestion({ index, question, autosave }: AttemptQuestionProps) {
+export function AttemptQuestion({
+  index,
+  question,
+  autosave,
+  video,
+}: AttemptQuestionProps) {
   const answer = autosave.getAnswer(question.itemId);
   const promptId = `attempt-prompt-${question.itemId}`;
 
@@ -51,7 +58,9 @@ export function AttemptQuestion({ index, question, autosave }: AttemptQuestionPr
           onChange={changeOptions}
         />
       )}
-      {question.kind === 'video' && <AttemptQuestionVideo />}
+      {question.kind === 'video' && (
+        <AttemptQuestionVideo itemId={question.itemId} video={video} />
+      )}
     </QuestionRow>
   );
 }

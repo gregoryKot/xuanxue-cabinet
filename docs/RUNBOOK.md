@@ -870,7 +870,7 @@ Admin находит на «Людях» аккаунт с этим именем
 Telegram получит тот же отказ «уже связан».
 
 Гейт: `start.handler.spec.ts` (незнакомцу — сразу честный ответ, ожидание не
-заводится), `exam-media-message.handler.spec.ts`, `AttemptMediaPrompt.test.tsx`,
+заводится), `exam-media-message.handler.spec.ts`, `AttemptQuestionVideo.test.tsx`,
 `api/test/telegram-link.e2e-spec.ts` (чужой код не привязывает, занятый
 `telegramId` отказывает), `telegram-link.service.spec.ts`.
 

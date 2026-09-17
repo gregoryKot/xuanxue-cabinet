@@ -5,8 +5,16 @@
 // только загрузка/ошибка/выбор состояния; форма ответа — AttemptInProgress.tsx
 // (своя причина, см. её комментарий), терминальные статусы — AttemptSubmitted.tsx.
 // useAuthConfig — тот же хук, что LoginScreen.tsx: имя бота для deep link
-// «Отправить видео» (ADR-0023) публично и не зависит от роли, отдельного
+// «Отправить видео» (ADR-0037) публично и не зависит от роли, отдельного
 // маршрута под него заводить незачем.
+//
+// `video` (AttemptVideoControls) собирается один раз здесь и идёт вниз одним
+// объектом что в форму сдачи, что на «Отправлено» (комментарий типа в
+// useAttemptMedia.ts) — оба места отвечают на один и тот же вопрос попытки,
+// и им нужны одни и те же данные: сама попытка ещё грузится в двух первых
+// ранних return, поэтому useAttemptMedia зовём выше них, а объект video
+// собираем только когда attempt уже точно есть (иначе attempt.id и attempt.media
+// звать не от чего).
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
@@ -16,25 +24,20 @@ import { AttemptInProgress } from './AttemptInProgress';
 import { AttemptSubmitted } from './AttemptSubmitted';
 import { attemptPageStyle } from './attemptLayout';
 import { useAttempt } from './useAttempt';
+import { useAttemptMedia, type AttemptVideoControls } from './useAttemptMedia';
 
 export default function AttemptScreen() {
   const { id } = useParams<{ id: string }>();
-  const {
-    attempt,
-    loading,
-    error,
-    reload,
-    submit,
-    submitting,
-    submitError,
-    addMediaLink,
-    addingMediaLink,
-    addMediaLinkError,
-  } = useAttempt(id ?? '');
+  const { attempt, loading, error, reload, submit, submitting, submitError } = useAttempt(
+    id ?? '',
+  );
   const { config } = useAuthConfig();
   // Кнопку «Отправить видео боту» показываем только тем, кого бот узнает
-  // (ADR-0023, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.
+  // (ADR-0037, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.
   const { me } = useAuth();
+  // Хук — до ранних return (правило хуков): пока attempt не загружен,
+  // addMediaLink и linkStateFor всё равно не зовутся, им нужен только id.
+  const media = useAttemptMedia(id ?? '', reload);
 
   if (loading) {
     return (
@@ -52,17 +55,17 @@ export default function AttemptScreen() {
     );
   }
 
+  const video: AttemptVideoControls = {
+    attemptId: attempt.id,
+    media: attempt.media ?? [],
+    telegramBotUsername: config?.telegramBotUsername,
+    telegramLinked: me?.telegramLinked ?? false,
+    addMediaLink: media.addMediaLink,
+    linkStateFor: media.linkStateFor,
+  };
+
   if (attempt.status !== 'in_progress') {
-    return (
-      <AttemptSubmitted
-        attempt={attempt}
-        telegramBotUsername={config?.telegramBotUsername}
-        telegramLinked={me?.telegramLinked ?? false}
-        onAddMediaLink={addMediaLink}
-        addingMediaLink={addingMediaLink}
-        addMediaLinkError={addMediaLinkError}
-      />
-    );
+    return <AttemptSubmitted attempt={attempt} video={video} />;
   }
 
   return (
@@ -72,6 +75,7 @@ export default function AttemptScreen() {
       onSubmit={submit}
       submitting={submitting}
       submitError={submitError}
+      video={video}
     />
   );
 }
