@@ -19,7 +19,7 @@ import type { Model } from 'mongoose';
 import type { NotificationKind, UserRole } from '@xuanxue/shared';
 import { ChannelRecord } from '../channels/channel.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
-import { UsersService } from '../users/users.service';
+import { UsersService, type UserLean } from '../users/users.service';
 
 export interface PersonalChat {
   chatId: string;
@@ -77,36 +77,29 @@ export class PersonalChats {
 
   /** Личный чат одного конкретного человека — если у него активный канал и
    * включён этот вид уведомления. В отличие от list()/listFor() не сверяется
-   * со штатом школы (usersService.listTeacherContacts — там только
-   * teacher/assistant/admin): подходит и ученику. `null` — не ошибка, не
-   * подключил бота или выключил вид (см. комментарий в начале файла); вызов
-   * не логирует пустой результат — это выбор одного человека, не поломка
-   * всего канала оповещений. Статус `active` — обязателен (SECURITY §9,
-   * ADR-0026, ADR-0036): заблокированному проактивные уведомления
-   * (например, результат экзамена) уходить не должны — та же граница, что у
-   * входящих сообщений бота (BotUserAccessService), только для исходящих. */
+   * со штатом школы: подходит и ученику. `null` — не ошибка (не подключил
+   * бота или выключил вид, см. начало файла); пустой результат для одного
+   * человека не логируется — не поломка канала. «Активный личный чат» —
+   * общее условие с hasActiveChatFor, включая статус `active` (SECURITY §9,
+   * ADR-0026, ADR-0036): заблокированному уведомления уходить не должны. */
   async chatFor(userId: string, kind: NotificationKind): Promise<PersonalChat | null> {
     const user = await this.usersService.findById(userId);
-    if (!user?.telegramId || user.status !== 'active') return null;
-
-    const target = String(user.telegramId);
-    const channel = await this.channelModel
-      .findOne({ type: 'telegram', target, active: true }, { _id: 1 })
-      .lean();
-    if (!channel) return null;
+    // telegramId проверяем и здесь: из чужого await тип не сужается, а ниже
+    // из него собирается chatId — иначе в нём молча оказалось бы «undefined».
+    if (!user?.telegramId || !(await this.hasActiveChatFor(user))) return null;
 
     const prefs = await this.notificationPrefsService.get(userId, user.roles);
     if (!prefs.enabled.includes(kind)) return null;
 
-    return { chatId: target, userId: user.id, name: user.name };
+    return { chatId: String(user.telegramId), userId: user.id, name: user.name };
   }
 
   /** Есть ли у человека активный личный чат — без проверки вида уведомления
-   * (в отличие от chatFor). Нужен MailExamNotifier (слой 4.7, ADR-0039):
-   * письмо — запасной канал, оно уходит только тем, у кого Telegram-чата нет
-   * вовсе, а не тем, кто просто выключил конкретный вид уведомления в чате. */
-  async hasActiveChat(userId: string): Promise<boolean> {
-    const user = await this.usersService.findById(userId);
+   * (в отличие от chatFor). Принимает уже прочитанного пользователя — вызовы
+   * оттуда, где он уже прочитан (AuthController.me, ADR-0042), не должны
+   * читать его из БД второй раз. Статус `active` обязателен (SECURITY §9,
+   * ADR-0026, ADR-0036) — тот же инвариант, что у chatFor. */
+  async hasActiveChatFor(user: UserLean | null): Promise<boolean> {
     if (!user?.telegramId || user.status !== 'active') return false;
 
     const channel = await this.channelModel
@@ -116,6 +109,13 @@ export class PersonalChats {
       )
       .lean();
     return !!channel;
+  }
+
+  /** То же по userId — для мест, где человек ещё не прочитан
+   * (MailExamNotifier, ADR-0039): письмо-резерв уходит только тем, у кого
+   * чата с ботом нет вовсе, а не тем, кто выключил один вид уведомления. */
+  async hasActiveChat(userId: string): Promise<boolean> {
+    return this.hasActiveChatFor(await this.usersService.findById(userId));
   }
 
   /** Общий первый шаг list()/listFor() — контакт с ролью (уже отфильтрован

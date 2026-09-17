@@ -7,6 +7,7 @@
 // макета у очереди нет, канвы Main.dc.html достаточно для списка строками.
 import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
   screenExplanationStyle,
@@ -14,13 +15,23 @@ import {
   screenTitleStyle,
 } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
+import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { GradingQueueCard } from './GradingQueueCard';
+import { showsTelegramHint } from './showsTelegramHint';
 import { useGradingQueue } from './useGradingQueue';
 
 const TITLE = 'Проверка работ';
 const EXPLANATION =
   'Работы, которые ученики уже сдали. Откройте любую, чтобы поставить итог и написать комментарий.';
 const EMPTY_MESSAGE = 'Пока нечего проверять — сданных работ нет.';
+// У каждого экрана своя причина связки — так и задуман проп `explanation`
+// у TelegramLinkButton (ADR-0034). На «Уведомлениях» речь про уведомления
+// вообще, здесь — про эту очередь: почему о сданных работах никто не пишет
+// (ADR-0042). Ничего не обещаем про «уведомления начнут приходить»: сам вид
+// человек мог выключить, а это мы здесь не спрашиваем.
+const TELEGRAM_LINK_EXPLANATION =
+  'Бот пишет о сданных работах в личный чат, а вашего чата с ним пока нет. ' +
+  'Свяжите Telegram и нажмите в боте «Запустить».';
 
 const listStyle: CSSProperties = {
   margin: 0,
@@ -31,6 +42,7 @@ const listStyle: CSSProperties = {
 export default function GradingQueueScreen() {
   const { attempts, loading, error, reload } = useGradingQueue();
   const navigate = useNavigate();
+  const { me } = useAuth();
 
   return (
     <section style={screenSectionStyle}>
@@ -55,6 +67,10 @@ export default function GradingQueueScreen() {
             />
           ))}
         </ul>
+      )}
+
+      {showsTelegramHint(me) && (
+        <TelegramLinkButton explanation={TELEGRAM_LINK_EXPLANATION} />
       )}
     </section>
   );

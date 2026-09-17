@@ -19,6 +19,7 @@ const STUDENT: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 const TEACHER: MeDto = {
   id: 'u2',
@@ -27,6 +28,7 @@ const TEACHER: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 describe('useNotificationPrefs — виды по роли', () => {

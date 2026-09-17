@@ -10,6 +10,7 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     tz: 'Asia/Jerusalem',
     status: 'active',
     telegramLinked: false,
+    botChatActive: false,
     ...overrides,
   };
 }

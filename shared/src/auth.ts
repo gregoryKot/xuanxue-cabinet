@@ -58,6 +58,12 @@ export interface MeDto {
   tz: string;
   status: UserStatus;
   telegramLinked: boolean;
+  /** «Боту есть куда мне писать» — активный личный чат
+   * (`PersonalChats.hasActiveChat`), а не просто известный `telegramId`
+   * (ADR-0042). Разница видна на входе через виджет Telegram: `telegramId`
+   * появляется сразу, а канал заводит только нажатое в боте «Запустить», и
+   * без него уведомления молча не доходят. */
+  botChatActive: boolean;
 }
 
 /** Нового человека без ссылки-приглашения (ADR-0030, ADR-0036) в кабинет не

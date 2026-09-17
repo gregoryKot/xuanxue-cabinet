@@ -28,6 +28,7 @@ const TEACHER: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -36,6 +37,7 @@ const ADMIN: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -269,6 +271,7 @@ describe('App', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockRoute(student, { '/me/lessons': [], '/me/exams': [] });
 
@@ -292,7 +295,7 @@ describe('App', () => {
     // telegramLinked: у несвязанного на месте этой подсказки стоит кнопка
     // связки (ADR-0034) — здесь проверяется маршрут, не она.
     mockRoute(
-      { ...TEACHER, telegramLinked: true },
+      { ...TEACHER, telegramLinked: true, botChatActive: true },
       { '/me/notifications': { enabled: [] } },
     );
 
@@ -311,6 +314,7 @@ describe('App', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
 
@@ -330,6 +334,7 @@ describe('App', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockRoute(student, {
       '/attempts': [

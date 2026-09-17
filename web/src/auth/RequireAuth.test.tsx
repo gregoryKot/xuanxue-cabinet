@@ -63,6 +63,7 @@ describe('RequireAuth', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -82,6 +83,7 @@ describe('RequireAuth', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValue(student);
 
@@ -124,6 +126,7 @@ describe('RequireAuth', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -142,6 +145,7 @@ describe('RequireAuth', () => {
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
+      botChatActive: false,
     };
     mockedApiFetch.mockResolvedValueOnce(me);
 

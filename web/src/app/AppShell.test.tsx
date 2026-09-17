@@ -55,6 +55,7 @@ const TEACHER: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -63,6 +64,7 @@ const ADMIN: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 const STUDENT: MeDto = {
   id: 'u2',
@@ -71,6 +73,7 @@ const STUDENT: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 const ASSISTANT: MeDto = {
   id: 'u3',
@@ -79,6 +82,7 @@ const ASSISTANT: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 describe('AppShell — навигация по ширине экрана', () => {

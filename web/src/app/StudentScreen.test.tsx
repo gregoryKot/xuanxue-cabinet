@@ -27,6 +27,7 @@ const STUDENT: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 function renderStudent(config: Record<string, unknown>, me: MeDto | Error = STUDENT) {

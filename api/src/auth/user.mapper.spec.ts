@@ -16,14 +16,15 @@ function fullUser(): UserLean {
 }
 
 describe('toMeDto', () => {
-  it('переносит id, name, roles, tz, status', () => {
-    expect(toMeDto(fullUser())).toEqual({
+  it('переносит id, name, roles, tz, status; botChatActive — параметром', () => {
+    expect(toMeDto(fullUser(), true)).toEqual({
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
       tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: true,
+      botChatActive: true,
     });
   });
 
@@ -32,17 +33,31 @@ describe('toMeDto', () => {
   it('без telegramId — telegramLinked: false', () => {
     const emailOnly: UserLean = { ...fullUser(), telegramId: undefined };
 
-    expect(toMeDto(emailOnly).telegramLinked).toBe(false);
+    expect(toMeDto(emailOnly, false).telegramLinked).toBe(false);
+  });
+
+  // ADR-0042: вход через виджет Telegram ставит telegramId сразу (бот узнаёт
+  // человека), а личный чат заводит только нажатое в боте «Запустить» — до
+  // этого botChatActive: false, хотя telegramLinked уже true. Подсказка на
+  // «Проверке работ», построенная на одном telegramLinked, промолчала бы
+  // ровно у этой группы (учителя, вошедшие через Telegram и ни разу не
+  // открывшие бота).
+  it('telegramLinked: true, botChatActive: false — вошёл через виджет, чат не подключил', () => {
+    const dto = toMeDto(fullUser(), false);
+
+    expect(dto.telegramLinked).toBe(true);
+    expect(dto.botChatActive).toBe(false);
   });
 
   // `status` наружу идёт (ADR-0026, ADR-0036: active/blocked, ждать больше
   // нечего); ключи входа не идут по-прежнему.
   it('не содержит email, telegramId, googleId', () => {
-    const dto = toMeDto(fullUser()) as unknown as Record<string, unknown>;
+    const dto = toMeDto(fullUser(), true) as unknown as Record<string, unknown>;
     expect(dto.email).toBeUndefined();
     expect(dto.telegramId).toBeUndefined();
     expect(dto.googleId).toBeUndefined();
     expect(Object.keys(dto).sort()).toEqual([
+      'botChatActive',
       'id',
       'name',
       'roles',

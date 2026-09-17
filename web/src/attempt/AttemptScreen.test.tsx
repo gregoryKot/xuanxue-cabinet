@@ -29,6 +29,7 @@ const STUDENT_WITH_TELEGRAM: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: true,
+  botChatActive: true,
 };
 
 /** Экран параллельно зовёт /attempts, /auth/me и /auth/config, поэтому мок —
@@ -157,6 +158,7 @@ describe('AttemptScreen', () => {
     mockPaths([{ ...IN_PROGRESS, status: 'submitted' }], {
       ...STUDENT_WITH_TELEGRAM,
       telegramLinked: false,
+      botChatActive: false,
     });
     renderAt('a1');
 

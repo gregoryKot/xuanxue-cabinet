@@ -9,6 +9,7 @@ const me: MeDto = {
   tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
+  botChatActive: false,
 };
 
 describe('hasRole', () => {
