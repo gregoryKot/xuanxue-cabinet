@@ -1,6 +1,6 @@
 // Мокаем apiFetch по префиксу пути (test-support/apiFetchMock.ts) — экран
 // грузит /exams, /attempts (очередь проверки), /exam-items/stats-summary
-// (число на «Банк вопросов») и /exam-images/stats-summary (картинки
+// (число на «Вопросы») и /exam-images/stats-summary (картинки
 // вариантов, ADR-0035). `/exam-items/stats-summary` — ключ раньше общего
 // `/exam-items` в объектах ниже: mockApiByPath матчит по первому подходящему
 // префиксу. Редактор экзамена — отдельная страница со своим адресом
@@ -111,7 +111,7 @@ describe('ExamsScreen — пустая база', () => {
     expect(
       await screen.findByText(/Экзаменов пока нет\. Соберите первый/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/собирается из вопросов банка/)).toBeInTheDocument();
+    expect(screen.getByText(/собирается из вопросов/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Новый экзамен' })).toBeInTheDocument();
   });
 });
@@ -204,7 +204,7 @@ describe('ExamsScreen — вход в проверку работ', () => {
   });
 });
 
-describe('ExamsScreen — вход в вопросы банка', () => {
+describe('ExamsScreen — вход в вопросы', () => {
   it('без спотыкающихся вопросов — только объяснение раздела, без числа', async () => {
     mockApiByPath({ ...DEFAULT_SUMMARIES, '/exams': [], '/attempts': [] });
 
@@ -243,7 +243,7 @@ describe('ExamsScreen — вход в картинки вариантов отв
     expect(screen.queryByText(/Картинок к вопросам/)).not.toBeInTheDocument();
   });
 
-  it('есть картинки — строка с числом и объёмом под объяснением банка', async () => {
+  it('есть картинки — строка с числом и объёмом под объяснением вопросов', async () => {
     mockApiByPath({
       ...NO_STRUGGLING,
       '/exam-images/stats-summary': { count: 12, totalBytes: 3_600_000 },

@@ -155,7 +155,7 @@ describe('ExamItemsScreen — фильтры', () => {
     expect(screen.queryByText('Зачем придумали тайцзи?')).not.toBeInTheDocument();
   });
 
-  it('по запросу ничего не нашлось — текст про фильтры, не про пустой банк', async () => {
+  it('по запросу ничего не нашлось — текст про фильтры, не про пустой список', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue([makeItem()]);
 

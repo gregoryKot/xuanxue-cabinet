@@ -100,16 +100,16 @@ describe('ExamPreviewScreen — загрузка', () => {
     ).toBeVisible();
   });
 
-  it('сбой загрузки банка — тот же баннер, а не «Вопрос недоступен»', async () => {
+  it('сбой загрузки вопросов — тот же баннер, а не «Вопрос недоступен»', async () => {
     const { ApiError } = await import('../api/http');
     mockApiByPath({
       '/exams/x1': makeExam(),
-      '/exam-items': new ApiError('Банк недоступен', 503, 'unknown'),
+      '/exam-items': new ApiError('Вопросы недоступны', 503, 'unknown'),
     });
 
     renderAt('/exams/x1/preview');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Банк недоступен');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Вопросы недоступны');
     expect(screen.queryByText(/Вопрос недоступен/)).not.toBeInTheDocument();
   });
 });
@@ -163,7 +163,7 @@ describe('ExamPreviewScreen — облик', () => {
 });
 
 describe('ExamPreviewScreen — вопросы', () => {
-  it('вопросы идут в порядке itemIds экзамена, а не банка', async () => {
+  it('вопросы идут в порядке itemIds экзамена, а не списка вопросов', async () => {
     mockExamAndBank(
       makeExam({
         blocks: [{ id: 'b1', title: '', itemIds: ['i2', 'i1'], shuffle: false }],
@@ -326,7 +326,7 @@ describe('ExamPreviewScreen — вопросы', () => {
     expect(await screen.findByText('Смотрите в стойку')).toBeInTheDocument();
   });
 
-  it('вопрос не из банка — «Вопрос недоступен»', async () => {
+  it('вопрос не из списка — «Вопрос недоступен»', async () => {
     mockExamAndBank(
       makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['gone'], shuffle: false }] }),
     );

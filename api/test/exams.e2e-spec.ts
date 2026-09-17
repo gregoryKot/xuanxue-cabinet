@@ -208,7 +208,7 @@ describe('Exams (e2e)', () => {
       expect(res.status).toBe(400);
       const body = res.body as ApiErrorBody;
       expect(body.code).toBe('invalid_input');
-      expect(body.message).toContain('не из опубликованного банка');
+      expect(body.message).toContain('не из опубликованных');
       await expect(examModel.countDocuments({})).resolves.toBe(0);
     });
 

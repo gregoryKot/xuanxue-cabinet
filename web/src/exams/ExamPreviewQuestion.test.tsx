@@ -60,7 +60,7 @@ describe('ExamPreviewQuestion — поля не принимают ввод', ()
     });
   });
 
-  it('вопрос удалён из банка (item нет) — подпись «недоступен» вместо поля ответа', () => {
+  it('вопрос удалён из списка (item нет) — подпись «недоступен» вместо поля ответа', () => {
     render(<ExamPreviewQuestion index={2} />);
 
     expect(screen.getByText(/Вопрос недоступен/)).toBeInTheDocument();

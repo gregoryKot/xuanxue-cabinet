@@ -1,5 +1,5 @@
 // Страница редактора экзамена целиком: загрузка, поля, список вопросов,
-// поиск по банку, настройки прохождения, подвал (ADR-0033). Мок сети — по
+// поиск по вопросам, настройки прохождения, подвал (ADR-0033). Мок сети — по
 // префиксу пути (test-support/apiFetchMock.ts); `/exams/x1` стоит раньше
 // `/exams`, mockApiByPath матчит первым подходящим префиксом.
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -67,7 +67,7 @@ function renderAt(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/exams" element={<p>{LIST_MARKER}</p>} />
-        <Route path="/exam-items" element={<p>Банк вопросов</p>} />
+        <Route path="/exam-items" element={<p>Здесь вопросы</p>} />
         <Route path="/exams/new" element={<ExamEditorScreen />} />
         <Route path="/exams/:examId" element={<ExamEditorScreen />} />
       </Routes>
@@ -181,7 +181,7 @@ describe('ExamEditorScreen — список вопросов', () => {
     renderAt('/exams/x1');
 
     expect(await screen.findByText('Вопросы · 2')).toBeInTheDocument();
-    // Ждём банк: формулировки и строку «тип · теги» подставляет он.
+    // Ждём вопросы: формулировки и строку «тип · теги» подставляет запрос.
     await screen.findByText('Один правильный вариант · история');
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0] as HTMLElement).getByText('1')).toBeInTheDocument();
@@ -229,7 +229,7 @@ describe('ExamEditorScreen — список вопросов', () => {
     ).toBeInTheDocument();
   });
 
-  it('«Убрать из экзамена» убирает вопрос и возвращает его в банк', async () => {
+  it('«Убрать из экзамена» убирает вопрос и возвращает его в список', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
@@ -241,7 +241,7 @@ describe('ExamEditorScreen — список вопросов', () => {
     );
 
     expect(screen.getByText('Вопросы · 1')).toBeInTheDocument();
-    // Убранный вопрос снова доступен в банке: было одно «Добавить», стало два.
+    // Убранный вопрос снова доступен в списке: было одно «Добавить», стало два.
     expect(screen.getAllByRole('button', { name: 'Добавить' })).toHaveLength(2);
   });
 
@@ -253,7 +253,7 @@ describe('ExamEditorScreen — список вопросов', () => {
     expect(await screen.findByText(/Вопросов пока нет/)).toBeInTheDocument();
   });
 
-  it('вопрос экзамена не найден в банке — честный текст вместо молчания', async () => {
+  it('вопрос экзамена не найден в списке — честный текст вместо молчания', async () => {
     mockExamAndBank(
       makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['gone'], shuffle: false }] }),
     );
@@ -288,14 +288,14 @@ describe('ExamEditorScreen — список вопросов', () => {
   });
 });
 
-describe('ExamEditorScreen — поиск по банку', () => {
+describe('ExamEditorScreen — поиск по вопросам', () => {
   it('поиск стоит на месте сразу, кнопки-переключателя нет', async () => {
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
 
     expect(
-      await screen.findByLabelText('Найти вопрос в банке — по тексту или тегу'),
+      await screen.findByLabelText('Найти вопрос — по тексту или тегу'),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Скрыть список вопросов/ }),
@@ -317,10 +317,7 @@ describe('ExamEditorScreen — поиск по банку', () => {
 
     renderAt('/exams/x1');
     await screen.findByText('Что такое «пустая» нога?');
-    await user.type(
-      screen.getByLabelText('Найти вопрос в банке — по тексту или тегу'),
-      'стойки',
-    );
+    await user.type(screen.getByLabelText('Найти вопрос — по тексту или тегу'), 'стойки');
 
     expect(screen.getAllByRole('button', { name: 'Добавить' })).toHaveLength(1);
     expect(screen.getByText('Что такое «пустая» нога?')).toBeInTheDocument();
@@ -332,15 +329,12 @@ describe('ExamEditorScreen — поиск по банку', () => {
 
     renderAt('/exams/x1');
     await screen.findByText('Что такое «пустая» нога?');
-    await user.type(
-      screen.getByLabelText('Найти вопрос в банке — по тексту или тегу'),
-      'веник',
-    );
+    await user.type(screen.getByLabelText('Найти вопрос — по тексту или тегу'), 'веник');
 
     expect(screen.getByText('По этому запросу ничего не нашлось.')).toBeInTheDocument();
   });
 
-  it('все вопросы банка уже в экзамене — так и сказано', async () => {
+  it('все вопросы уже в экзамене — так и сказано', async () => {
     mockExamAndBank(
       makeExam({
         blocks: [{ id: 'b1', title: '', itemIds: ['i1', 'i2', 'i3'], shuffle: false }],
@@ -349,9 +343,7 @@ describe('ExamEditorScreen — поиск по банку', () => {
 
     renderAt('/exams/x1');
 
-    expect(
-      await screen.findByText('Все вопросы банка уже в экзамене.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Все вопросы уже в экзамене.')).toBeInTheDocument();
   });
 
   it('«Добавить» ставит вопрос в конец списка', async () => {
@@ -369,31 +361,33 @@ describe('ExamEditorScreen — поиск по банку', () => {
     ).toBeInTheDocument();
   });
 
-  it('в банке нет опубликованных вопросов — честный текст и ссылка на банк', async () => {
+  it('опубликованных вопросов нет — честный текст и ссылка на вопросы', async () => {
     mockExamAndBank(makeExam({ blocks: [] }), [
       makeItem({ id: 'i9', status: 'draft', prompt: 'Спрятанный вопрос' }),
     ]);
 
     renderAt('/exams/x1');
 
-    expect(await screen.findByText(/В банке пока нет вопросов/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Открыть банк вопросов' })).toHaveAttribute(
+    expect(
+      await screen.findByText(/Опубликованных вопросов пока нет/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть вопросы' })).toHaveAttribute(
       'href',
       '/exam-items',
     );
     expect(screen.queryByText('Спрятанный вопрос')).not.toBeInTheDocument();
   });
 
-  it('банк не загрузился — баннер, повтор снова просит банк', async () => {
+  it('вопросы не загрузились — баннер, повтор снова просит вопросы', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
     mockApiByPath({
       '/exams/x1': makeExam(),
-      '/exam-items': new ApiError('Банк недоступен', 503, 'unknown'),
+      '/exam-items': new ApiError('Вопросы недоступны', 503, 'unknown'),
     });
 
     renderAt('/exams/x1');
-    expect(await screen.findByText('Банк недоступен')).toBeInTheDocument();
+    expect(await screen.findByText('Вопросы недоступны')).toBeInTheDocument();
 
     mockExamAndBank(makeExam());
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
@@ -508,10 +502,10 @@ describe('ExamEditorScreen — подвал', () => {
 
     renderAt('/exams/x1');
     await screen.findByLabelText('Название');
-    // Форма появляется раньше, чем уйдёт запрос банка (эффект после
+    // Форма появляется раньше, чем уйдёт запрос за вопросами (эффект после
     // коммита): отказ, поставленный в очередь сразу после формы, под
-    // нагрузкой доставался запросу банка, а не сохранению — и страница
-    // честно уходила к списку. Ждём кандидата из банка — значит, оба
+    // нагрузкой доставался этому запросу, а не сохранению — и страница
+    // честно уходила к списку. Ждём кандидата из вопросов — значит, оба
     // запроса монтирования уже ушли.
     await screen.findByText('Что такое «пустая» нога?');
     mockedApiFetch.mockRejectedValueOnce(
@@ -653,5 +647,92 @@ describe('ExamEditorScreen — подвал', () => {
     expect(
       screen.queryByRole('link', { name: 'Посмотреть глазами ученика' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// Read-after-write (CLAUDE.md «Тесты»): создали вопрос прямо в редакторе —
+// он должен появиться в списке экзамена без второго похода за списком
+// вопросов (ADR-0040).
+describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
+  it('заполнил и сохранил — POST /exam-items, вопрос сразу в списке экзамена', async () => {
+    const user = userEvent.setup();
+    const exam = makeExam({ blocks: [] });
+    const created = makeItem({
+      id: 'new1',
+      kind: 'text',
+      prompt: 'Как дышать в стойке?',
+      tags: [],
+    });
+    mockedApiFetch.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path === '/exams/x1') return Promise.resolve(exam);
+      if (path === '/exam-items' && init?.method === 'POST') {
+        return Promise.resolve(created);
+      }
+      if (path.startsWith('/exam-items')) return Promise.resolve(BANK);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt('/exams/x1');
+    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+    await user.type(screen.getByLabelText('Формулировка'), 'Как дышать в стойке?');
+    await user.click(screen.getByRole('button', { name: 'Сохранить вопрос' }));
+
+    await waitFor(() => expect(lastCallWithMethod('POST')).toHaveLength(1));
+    expect(await screen.findByText('Как дышать в стойке?')).toBeInTheDocument();
+    expect(screen.getByText('Вопросы · 1')).toBeInTheDocument();
+    // Форма создания закрылась сама — поиск вопросов снова на месте.
+    expect(
+      screen.getByLabelText('Найти вопрос — по тексту или тегу'),
+    ).toBeInTheDocument();
+  });
+
+  it('«Отменить» закрывает форму без запроса — поиск вопросов снова на месте', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam({ blocks: [] }));
+
+    renderAt('/exams/x1');
+    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+    await screen.findByLabelText('Формулировка');
+    await user.click(screen.getByRole('button', { name: 'Отменить' }));
+
+    expect(lastCallWithMethod('POST')).toHaveLength(0);
+    expect(
+      screen.getByLabelText('Найти вопрос — по тексту или тегу'),
+    ).toBeInTheDocument();
+  });
+
+  it('тип с вариантами — вопрос уходит с текстом и вариантами, верный отмечен', async () => {
+    const user = userEvent.setup();
+    const exam = makeExam({ blocks: [] });
+    const created = makeItem({ id: 'new2', kind: 'single', prompt: 'Сколько форм?' });
+    mockedApiFetch.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path === '/exams/x1') return Promise.resolve(exam);
+      if (path === '/exam-items' && init?.method === 'POST') {
+        return Promise.resolve(created);
+      }
+      if (path.startsWith('/exam-items')) return Promise.resolve(BANK);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt('/exams/x1');
+    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+    await user.click(await screen.findByLabelText('Один правильный вариант'));
+    await user.type(screen.getByLabelText('Формулировка'), 'Сколько форм?');
+    await user.click(screen.getByRole('button', { name: 'Добавить вариант' }));
+    await user.click(screen.getByRole('button', { name: 'Добавить вариант' }));
+    await user.type(screen.getByLabelText('Текст варианта 1'), '24');
+    await user.type(screen.getByLabelText('Текст варианта 2'), '108');
+    await user.click(screen.getByLabelText('Верный вариант 1'));
+    await user.click(screen.getByRole('button', { name: 'Сохранить вопрос' }));
+
+    await waitFor(() => expect(lastCallWithMethod('POST')).toHaveLength(1));
+    const body = lastCallWithMethod('POST')[0]?.[1] as {
+      body: { options: { text: string; correct: boolean }[] };
+    };
+    expect(body.body.options).toEqual([
+      { id: undefined, text: '24', correct: true, imageId: undefined },
+      { id: undefined, text: '108', correct: false, imageId: undefined },
+    ]);
+    expect(await screen.findByText('Сколько форм?')).toBeInTheDocument();
   });
 });

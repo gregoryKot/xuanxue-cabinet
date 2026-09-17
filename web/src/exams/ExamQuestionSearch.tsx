@@ -1,8 +1,10 @@
-// Поиск вопроса в банке — всегда на месте под списком выбранных (макет
-// Form.dc.html). Кнопки-переключателя «показать/скрыть список вопросов»
-// больше нет: она занимала весь экран и прятала главное действие раздела.
-// Уже добавленные вопросы отсюда исчезают, а не показываются неактивными —
-// список и так короче.
+// Поиск вопроса — всегда на месте под списком выбранных (макет Form.dc.html,
+// ADR-0040: слово «банк» — язык разработчика, экран называется «Вопросы»).
+// Кнопки-переключателя «показать/скрыть список вопросов» больше нет: она
+// занимала весь экран и прятала главное действие раздела. Уже добавленные
+// вопросы отсюда исчезают, а не показываются неактивными — список и так
+// короче. Не нашли нужный вопрос — рядом кнопка «Новый вопрос»
+// (ExamQuestionsSection.tsx), не обязательно уходить в «Вопросы» и обратно.
 import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { EXAM_LIMITS, type ExamItemDto } from '@xuanxue/shared';
@@ -10,17 +12,17 @@ import { inputStyle } from '../components/Field';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { textLinkButtonStyle, textLinkStyle } from '../components/screenLayout';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
-import { filterBankCandidates } from './examQuestions';
+import { filterQuestionCandidates } from './examQuestions';
 
-const SEARCH_LABEL = 'Найти вопрос в банке — по тексту или тегу';
-// Банк ещё грузится: список пуст независимо от того, есть ли вопросы, и это
-// не повод заявлять «в банке пусто» (баг с прода — учитель завёл вопросы и не
+const SEARCH_LABEL = 'Найти вопрос — по тексту или тегу';
+// Список ещё грузится: он пуст независимо от того, есть ли вопросы, и это не
+// повод заявлять «вопросов нет» (баг с прода — учитель завёл вопросы и не
 // нашёл их здесь, CLAUDE.md «Загрузка»).
 const LOADING_TEXT = 'Загружаем вопросы…';
-const EMPTY_BANK_TEXT = 'В банке пока нет вопросов';
-const BANK_LINK_TEXT = 'Открыть банк вопросов';
+const EMPTY_QUESTIONS_TEXT = 'Опубликованных вопросов пока нет';
+const QUESTIONS_LINK_TEXT = 'Открыть вопросы';
 const NO_MATCH_TEXT = 'По этому запросу ничего не нашлось.';
-const ALL_CHOSEN_TEXT = 'Все вопросы банка уже в экзамене.';
+const ALL_CHOSEN_TEXT = 'Все вопросы уже в экзамене.';
 const LIMIT_TEXT = `Больше ${EXAM_LIMITS.itemsPerBlockMax} вопросов в один экзамен не поместится.`;
 
 const wrapStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
@@ -36,7 +38,7 @@ const rowStyle: CSSProperties = {
 const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
 const noteStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
 
-interface ExamBankSearchProps {
+interface ExamQuestionSearchProps {
   bankItems: ExamItemDto[] | null;
   bankLoading: boolean;
   bankError: string | null;
@@ -45,17 +47,17 @@ interface ExamBankSearchProps {
   onAdd: (itemId: string) => void;
 }
 
-export function ExamBankSearch({
+export function ExamQuestionSearch({
   bankItems,
   bankLoading,
   bankError,
   onRetryBank,
   chosenIds,
   onAdd,
-}: ExamBankSearchProps) {
+}: ExamQuestionSearchProps) {
   const [query, setQuery] = useState('');
   const items = bankItems ?? [];
-  const candidates = filterBankCandidates(items, query, chosenIds);
+  const candidates = filterQuestionCandidates(items, query, chosenIds);
   const hasPublished = items.some((item) => item.status === 'published');
   const atLimit = chosenIds.length >= EXAM_LIMITS.itemsPerBlockMax;
 
@@ -78,9 +80,9 @@ export function ExamBankSearch({
 
       {!bankLoading && !hasPublished && (
         <p style={noteStyle}>
-          {EMPTY_BANK_TEXT}.{' '}
+          {EMPTY_QUESTIONS_TEXT}.{' '}
           <Link to="/exam-items" style={textLinkStyle}>
-            {BANK_LINK_TEXT}
+            {QUESTIONS_LINK_TEXT}
           </Link>
         </p>
       )}

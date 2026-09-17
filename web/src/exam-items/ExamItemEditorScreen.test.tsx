@@ -22,7 +22,7 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-const LIST_MARKER = 'Здесь банк вопросов';
+const LIST_MARKER = 'Здесь список вопросов';
 
 function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
   return {
@@ -276,12 +276,12 @@ describe('ExamItemEditorScreen — поля', () => {
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 
-  it('«К банку вопросов» — ссылка наверху страницы', async () => {
+  it('«К вопросам» — ссылка наверху страницы', async () => {
     const user = userEvent.setup();
     mockItemAndStats(makeItem());
 
     renderAt('/exam-items/e1');
-    await user.click(await screen.findByRole('link', { name: 'К банку вопросов' }));
+    await user.click(await screen.findByRole('link', { name: 'К вопросам' }));
 
     expect(screen.getByText(LIST_MARKER)).toBeInTheDocument();
   });
@@ -379,7 +379,7 @@ describe('ExamItemEditorScreen — удаление черновика', () => {
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 
-  it('подтверждение — DELETE и возврат к банку', async () => {
+  it('подтверждение — DELETE и возврат к списку', async () => {
     const user = userEvent.setup();
     mockItemAndStats(makeItem());
 

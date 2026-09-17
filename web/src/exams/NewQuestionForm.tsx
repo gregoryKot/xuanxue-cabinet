@@ -1,0 +1,89 @@
+// Короткая форма создания вопроса — раскрывается на месте рядом с поиском
+// (ExamQuestionsSection.tsx, ADR-0040), не модальное окно и не отдельная
+// страница. Поля — те же подкомпоненты, что у страницы вопроса
+// (exam-items/ExamItem*Field.tsx): второй ввод типа ответа, формулировки и
+// вариантов не пишем (CLAUDE.md «Одна механика — один компонент»). Статуса и
+// ссылки на статистику здесь нет — они появляются, когда вопрос уже
+// существует (ExamItemEditorForm.tsx), а этот вопрос только создаётся.
+import type { CSSProperties } from 'react';
+import { Button } from '../components/Button';
+import { FormServerError } from '../components/FormServerError';
+import { noteStyle, textLinkButtonStyle } from '../components/screenLayout';
+import { ExamItemFormFields } from '../exam-items/ExamItemFormFields';
+import { ExamItemKindField } from '../exam-items/ExamItemKindField';
+import { ExamItemOptionsField } from '../exam-items/ExamItemOptionsField';
+import { hasOptions } from '../exam-items/examItemFormInput';
+import type { ExamItemDto } from '@xuanxue/shared';
+import { useNewQuestionForm } from './useNewQuestionForm';
+
+const EXPLANATION = 'Вопрос сохранится в «Вопросах» и сразу попадёт в этот экзамен.';
+const SAVE_LABEL = 'Сохранить вопрос';
+const CANCEL_LABEL = 'Отменить';
+
+const wrapStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  padding: '14px 0',
+  borderTop: '1px solid var(--line)',
+  borderBottom: '1px solid var(--line)',
+};
+const footerStyle: CSSProperties = {
+  display: 'flex',
+  gap: 16,
+  alignItems: 'center',
+};
+
+interface NewQuestionFormProps {
+  onCreated: (item: ExamItemDto) => void;
+  onCancel: () => void;
+}
+
+export function NewQuestionForm({ onCreated, onCancel }: NewQuestionFormProps) {
+  const form = useNewQuestionForm();
+
+  async function handleSave() {
+    const created = await form.submit();
+    if (created) onCreated(created);
+  }
+
+  return (
+    <div style={wrapStyle}>
+      <p style={noteStyle}>{EXPLANATION}</p>
+
+      <ExamItemKindField
+        kind={form.state.kind}
+        onChange={(kind) => form.setField('kind', kind)}
+      />
+
+      <ExamItemFormFields
+        state={form.state}
+        setField={form.setField}
+        error={form.validationError}
+      />
+
+      {hasOptions(form.state.kind) && (
+        <ExamItemOptionsField
+          kind={form.state.kind}
+          options={form.state.options}
+          onChange={(options) => form.setField('options', options)}
+        />
+      )}
+
+      <FormServerError error={form.serverError} />
+
+      <div style={footerStyle}>
+        <Button
+          variant="secondary"
+          pending={form.pending}
+          onClick={() => void handleSave()}
+        >
+          {SAVE_LABEL}
+        </Button>
+        <button type="button" style={textLinkButtonStyle} onClick={onCancel}>
+          {CANCEL_LABEL}
+        </button>
+      </div>
+    </div>
+  );
+}

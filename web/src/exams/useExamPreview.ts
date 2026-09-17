@@ -3,18 +3,18 @@
 // со страницы экзамена: рядом нет ни списка, ни формы — оба ресурса читает
 // сама страница. Экзамен — уже существующим useExamEditor (свой
 // `GET /exams/:id`, текст ошибки открытия записи по адресу — та же механика,
-// что у редактора). Банк — отдельным запросом (useExamItems), потому что в
+// что у редактора). Вопросы — отдельным запросом (useExamItems), потому что в
 // экзамене хранятся только `itemIds`, а не сами формулировки.
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import { useExamItems } from '../exam-items/useExamItems';
 import { useExamEditor } from './useExamEditor';
 
-const BANK_STATUS = '' as const;
+const NO_STATUS_FILTER = '' as const;
 
 export interface UseExamPreviewResult {
   exam: ExamDto | null;
-  /** Пока банк не загружен — пустой список, а не `null`: странице проще
-   * показывать вопросы без лишней развилки на «банк ещё не пришёл». */
+  /** Пока вопросы не загружены — пустой список, а не `null`: странице проще
+   * показывать вопросы без лишней развилки на «вопросы ещё не пришли». */
   bankItems: ExamItemDto[];
   loading: boolean;
   error: string | null;
@@ -23,7 +23,7 @@ export interface UseExamPreviewResult {
 
 export function useExamPreview(examId: string | undefined): UseExamPreviewResult {
   const exam = useExamEditor(examId);
-  const bank = useExamItems(BANK_STATUS);
+  const bank = useExamItems(NO_STATUS_FILTER);
 
   async function reload(): Promise<void> {
     await Promise.all([exam.reload(), bank.reload()]);
