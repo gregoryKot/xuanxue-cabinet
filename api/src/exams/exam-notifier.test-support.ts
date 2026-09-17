@@ -8,20 +8,26 @@ import type {
   AttemptSubmittedContext,
   ExamGradedContext,
   ExamNotifier,
+  ExamNotifyResult,
 } from './exam-notifier';
 
 export interface FakeExamNotifier extends ExamNotifier {
-  notifyAttemptSubmitted: jest.Mock<Promise<void>, [AttemptSubmittedContext, DateTime]>;
-  notifyExamGraded: jest.Mock<Promise<void>, [ExamGradedContext, DateTime]>;
+  notifyAttemptSubmitted: jest.Mock<
+    Promise<ExamNotifyResult>,
+    [AttemptSubmittedContext, DateTime]
+  >;
+  notifyExamGraded: jest.Mock<Promise<ExamNotifyResult>, [ExamGradedContext, DateTime]>;
 }
 
 export function fakeExamNotifier(): FakeExamNotifier {
   return {
+    // Фейк ничего не шлёт — счётчик нулевой; тестам сервисов важен сам факт
+    // вызова notifier с нужным context, не число адресатов.
     notifyAttemptSubmitted: jest
-      .fn<Promise<void>, [AttemptSubmittedContext, DateTime]>()
-      .mockResolvedValue(undefined),
+      .fn<Promise<ExamNotifyResult>, [AttemptSubmittedContext, DateTime]>()
+      .mockResolvedValue({ recipients: 0 }),
     notifyExamGraded: jest
-      .fn<Promise<void>, [ExamGradedContext, DateTime]>()
-      .mockResolvedValue(undefined),
+      .fn<Promise<ExamNotifyResult>, [ExamGradedContext, DateTime]>()
+      .mockResolvedValue({ recipients: 0 }),
   };
 }

@@ -128,7 +128,7 @@ describe('MailExamNotifier', () => {
       const studentId = await createStaff('student@example.com', 'Ученик', [], false);
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyAttemptSubmitted(
+      const result = await buildNotifier(mail).notifyAttemptSubmitted(
         { ...ATTEMPT_CONTEXT, userId: studentId },
         NOW,
       );
@@ -137,16 +137,19 @@ describe('MailExamNotifier', () => {
       const [call] = mail.sendExamNotification.mock.calls[0] ?? [];
       expect(call?.to).toBe('teacher@example.com');
       expect(call?.text).toContain('Ученик');
+      expect(result).toEqual({ recipients: 1 });
     });
 
     it('у учителя есть активный чат с ботом — письмо не уходит (Telegram основной канал)', async () => {
       await createStaff('teacher@example.com', 'Мария', ['teacher'], true);
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyAttemptSubmitted(
-        { ...ATTEMPT_CONTEXT, userId: 'u1' },
-        NOW,
-      );
+      await expect(
+        buildNotifier(mail).notifyAttemptSubmitted(
+          { ...ATTEMPT_CONTEXT, userId: 'u1' },
+          NOW,
+        ),
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(mail.sendExamNotification).not.toHaveBeenCalled();
     });
@@ -164,10 +167,12 @@ describe('MailExamNotifier', () => {
       });
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyAttemptSubmitted(
-        { ...ATTEMPT_CONTEXT, userId: 'u1' },
-        NOW,
-      );
+      await expect(
+        buildNotifier(mail).notifyAttemptSubmitted(
+          { ...ATTEMPT_CONTEXT, userId: 'u1' },
+          NOW,
+        ),
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(mail.sendExamNotification).not.toHaveBeenCalled();
     });
@@ -181,7 +186,7 @@ describe('MailExamNotifier', () => {
           { ...ATTEMPT_CONTEXT, userId: 'u1' },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 0 });
       expect(mail.sendExamNotification).not.toHaveBeenCalled();
     });
 
@@ -189,12 +194,13 @@ describe('MailExamNotifier', () => {
       await createStaff('teacher@example.com', 'Мария', ['teacher'], false);
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyAttemptSubmitted(
+      const result = await buildNotifier(mail).notifyAttemptSubmitted(
         { ...ATTEMPT_CONTEXT, userId: 'u1' },
         NOW,
       );
 
       expect(mail.sendExamNotification).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ recipients: 1 });
     });
 
     it('сбой MailService (вернул false) — не бросает, эскалация error-логом', async () => {
@@ -204,12 +210,14 @@ describe('MailExamNotifier', () => {
         .spyOn(Logger.prototype, 'error')
         .mockImplementation(() => undefined);
 
+      // Адресат (учитель) был — письмо не доставилось, но recipients считает
+      // попытку, не «дошло» (тот же смысл, что у TelegramExamNotifier).
       await expect(
         buildNotifier(mail).notifyAttemptSubmitted(
           { ...ATTEMPT_CONTEXT, userId: 'u1' },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 1 });
 
       expect(error).toHaveBeenCalledWith(
         expect.stringContaining('доставка не удалась'),
@@ -232,7 +240,7 @@ describe('MailExamNotifier', () => {
           { ...ATTEMPT_CONTEXT, userId: 'u1' },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining('Mongo недоступна'),
@@ -248,7 +256,7 @@ describe('MailExamNotifier', () => {
       const studentId = await createStaff('student@example.com', 'Ученик', [], false);
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyExamGraded(
+      const result = await buildNotifier(mail).notifyExamGraded(
         { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
         NOW,
       );
@@ -256,16 +264,24 @@ describe('MailExamNotifier', () => {
       expect(mail.sendExamNotification).toHaveBeenCalledWith(
         expect.objectContaining({ to: 'student@example.com' }),
       );
+      expect(result).toEqual({ recipients: 1 });
     });
 
     it('у ученика есть активный чат с ботом — письмо не уходит', async () => {
       const studentId = await createStaff('student@example.com', 'Ученик', [], true);
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyExamGraded(
-        { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
-        NOW,
-      );
+      await expect(
+        buildNotifier(mail).notifyExamGraded(
+          {
+            ...ATTEMPT_CONTEXT,
+            userId: studentId,
+            outcome: 'passed',
+            comment: undefined,
+          },
+          NOW,
+        ),
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(mail.sendExamNotification).not.toHaveBeenCalled();
     });
@@ -278,10 +294,17 @@ describe('MailExamNotifier', () => {
       });
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyExamGraded(
-        { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
-        NOW,
-      );
+      await expect(
+        buildNotifier(mail).notifyExamGraded(
+          {
+            ...ATTEMPT_CONTEXT,
+            userId: studentId,
+            outcome: 'passed',
+            comment: undefined,
+          },
+          NOW,
+        ),
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(mail.sendExamNotification).not.toHaveBeenCalled();
     });
@@ -304,7 +327,7 @@ describe('MailExamNotifier', () => {
           },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 0 });
       expect(mail.sendExamNotification).not.toHaveBeenCalled();
     });
 
@@ -312,12 +335,13 @@ describe('MailExamNotifier', () => {
       const studentId = await createStaff('student@example.com', 'Ученик', [], false);
       const mail = fakeMailService();
 
-      await buildNotifier(mail).notifyExamGraded(
+      const result = await buildNotifier(mail).notifyExamGraded(
         { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
         NOW,
       );
 
       expect(mail.sendExamNotification).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ recipients: 1 });
     });
 
     it('сбой MailService (вернул false) — не бросает, эскалация error-логом', async () => {
@@ -327,6 +351,8 @@ describe('MailExamNotifier', () => {
         .spyOn(Logger.prototype, 'error')
         .mockImplementation(() => undefined);
 
+      // Адресат (сам ученик) был — письмо не доставилось, но recipients
+      // считает попытку, не «дошло» (тот же смысл, что у attempt_submitted).
       await expect(
         buildNotifier(mail).notifyExamGraded(
           {
@@ -337,7 +363,7 @@ describe('MailExamNotifier', () => {
           },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 1 });
 
       expect(error).toHaveBeenCalledWith(
         expect.stringContaining('доставка не удалась'),
@@ -366,7 +392,7 @@ describe('MailExamNotifier', () => {
           },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 0 });
 
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining('Mongo недоступна'),
@@ -389,7 +415,7 @@ describe('MailExamNotifier', () => {
           },
           NOW,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toEqual({ recipients: 0 });
       expect(mail.sendExamNotification).not.toHaveBeenCalled();
     });
   });

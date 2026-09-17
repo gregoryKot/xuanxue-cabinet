@@ -123,7 +123,7 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
       STUDENT_EMAIL,
     );
 
-    await composite.notifyExamGraded(
+    const result = await composite.notifyExamGraded(
       { ...ATTEMPT_CONTEXT, userId: student.id, outcome: 'passed', comment: undefined },
       NOW,
     );
@@ -133,5 +133,7 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
     const body = JSON.parse(init?.body as string) as { to: string; text: string };
     expect(body.to).toBe(STUDENT_EMAIL);
     expect(body.text).toContain('Экзамен сдан.');
+    // Telegram-плечо молчит (нет чата), адресат один — от почты.
+    expect(result).toEqual({ recipients: 1 });
   });
 });

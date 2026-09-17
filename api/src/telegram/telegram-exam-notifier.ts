@@ -37,6 +37,7 @@ import type {
   AttemptSubmittedContext,
   ExamGradedContext,
   ExamNotifier,
+  ExamNotifyResult,
 } from '../exams/exam-notifier';
 import { buildGradeOutcomeButtons } from './handlers/grade-outcome-buttons';
 import { PersonalChats } from './personal-chats';
@@ -56,7 +57,7 @@ export class TelegramExamNotifier implements ExamNotifier {
   async notifyAttemptSubmitted(
     context: AttemptSubmittedContext,
     now: DateTime,
-  ): Promise<void> {
+  ): Promise<ExamNotifyResult> {
     try {
       const chats = await this.personalChats.listFor('attempt_submitted', now);
       if (chats.length === 0) {
@@ -68,7 +69,7 @@ export class TelegramExamNotifier implements ExamNotifier {
             kind: 'attempt_submitted',
           },
         );
-        return;
+        return { recipients: 0 };
       }
 
       const review = await this.examBotPorts.get().loadAttemptReview(context.attemptId);
@@ -80,7 +81,9 @@ export class TelegramExamNotifier implements ExamNotifier {
           `exam.notifyAttemptSubmitted: попытка не найдена сразу после сдачи`,
           { attemptId: context.attemptId },
         );
-        return;
+        // Причину уже объяснил warn выше; ноль адресатов возвращаем явно —
+        // это должен увидеть CompositeExamNotifier.
+        return { recipients: 0 };
       }
 
       const text = attemptSubmittedMessage(review, this.config.get<string>('PUBLIC_URL'));
@@ -97,10 +100,14 @@ export class TelegramExamNotifier implements ExamNotifier {
           { attemptId: context.attemptId, kind: 'attempt_submitted' },
         );
       }
+      // Адресаты были (chats.length), даже если доставка не удалась — это
+      // «пытались», доставку уже разобрал error выше.
+      return { recipients: chats.length };
     } catch (err) {
       this.logger.warn(`exam.notifyAttemptSubmitted: ${errorMessage(err)}`, {
         attemptId: context.attemptId,
       });
+      return { recipients: 0 };
     }
   }
 
@@ -108,7 +115,10 @@ export class TelegramExamNotifier implements ExamNotifier {
   // сообщения) — параметр остаётся ради интерфейса ExamNotifier и вызывающих
   // сервисов, которые уже держат `now` под рукой (CLAUDE.md «Время»: не
   // заводить свой DateTime.utc() здесь только ради его отсутствия).
-  async notifyExamGraded(context: ExamGradedContext, _now: DateTime): Promise<void> {
+  async notifyExamGraded(
+    context: ExamGradedContext,
+    _now: DateTime,
+  ): Promise<ExamNotifyResult> {
     try {
       const chat = await this.personalChats.chatFor(context.userId, 'exam_result');
       if (!chat) {
@@ -119,7 +129,7 @@ export class TelegramExamNotifier implements ExamNotifier {
           `exam.notifyExamGraded: некуда отправить в Telegram — у ученика нет активного чата с ботом, или вид «результат экзамена» выключен`,
           { attemptId: context.attemptId, examId: context.examId, kind: 'exam_result' },
         );
-        return;
+        return { recipients: 0 };
       }
 
       const text = examGradedMessage(
@@ -135,10 +145,14 @@ export class TelegramExamNotifier implements ExamNotifier {
           kind: 'exam_result',
         });
       }
+      // Адресат был, даже если бот вернул false — это «пытались», доставку
+      // уже разобрал error выше.
+      return { recipients: 1 };
     } catch (err) {
       this.logger.warn(`exam.notifyExamGraded: ${errorMessage(err)}`, {
         attemptId: context.attemptId,
       });
+      return { recipients: 0 };
     }
   }
 }
