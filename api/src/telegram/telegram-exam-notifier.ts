@@ -13,18 +13,26 @@
 // никто не видел — заблокированный бот учителя или удалённый чат ученика
 // считались успешной доставкой. Если адресату уведомление в итоге не дошло —
 // `error` с ключом для поиска (attemptId, вид уведомления), без PII.
+//
+// Слой 4б.5 (PLAN §12): «работу сдали» теперь несёт карточку проверки
+// (ответы по вопросам, автопроверка вариантов) и кнопки «Зачёт»/«Доработать»/
+// «Незачёт» — карточка та же, что `GET /attempts/:id/review`
+// (ExamBotPort.loadAttemptReview, не вторая сборка), поэтому имя ученика
+// берём из неё (`review.userName`) — отдельный UserNamesService здесь больше
+// не нужен, он уже внутри ExamGradingsService.getReview.
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import { errorMessage } from '../common/error-info';
-import { UserNamesService } from '../users/user-names.service';
 import { attemptSubmittedMessage } from './attempt-submitted-message';
+import { ExamBotPortRegistry } from './exam-bot-port.registry';
 import { examGradedMessage } from './exam-graded-message';
 import type {
   AttemptSubmittedContext,
   ExamGradedContext,
   ExamNotifier,
 } from '../exams/exam-notifier';
+import { buildGradeOutcomeButtons } from './handlers/grade-outcome-buttons';
 import { PersonalChats } from './personal-chats';
 import { TelegramBotService } from './telegram-bot.service';
 
@@ -34,7 +42,7 @@ export class TelegramExamNotifier implements ExamNotifier {
 
   constructor(
     private readonly personalChats: PersonalChats,
-    private readonly userNamesService: UserNamesService,
+    private readonly examBotPorts: ExamBotPortRegistry,
     private readonly bot: TelegramBotService,
     private readonly config: ConfigService,
   ) {}
@@ -47,16 +55,22 @@ export class TelegramExamNotifier implements ExamNotifier {
       const chats = await this.personalChats.listFor('attempt_submitted', now);
       if (chats.length === 0) return;
 
-      const names = await this.userNamesService.namesByIds([context.userId]);
-      const studentName = names.get(context.userId) ?? 'Ученик';
-      const text = attemptSubmittedMessage(
-        studentName,
-        context.examTitle,
-        context.attemptId,
-        this.config.get<string>('PUBLIC_URL'),
-      );
+      const review = await this.examBotPorts.get().loadAttemptReview(context.attemptId);
+      if (!review) {
+        // Попытка исчезла между submit() и отправкой — не наш случай в
+        // обычной работе (уведомление шлётся о том же attemptId, что только
+        // закрыл сервис), но защита в глубину дешевле, чем упавший тик.
+        this.logger.warn(
+          `exam.notifyAttemptSubmitted: попытка не найдена сразу после сдачи`,
+          { attemptId: context.attemptId },
+        );
+        return;
+      }
+
+      const text = attemptSubmittedMessage(review, this.config.get<string>('PUBLIC_URL'));
+      const buttons = buildGradeOutcomeButtons(context.attemptId);
       const delivered = await Promise.all(
-        chats.map((chat) => this.bot.sendMessage(chat.chatId, text)),
+        chats.map((chat) => this.bot.sendMessage(chat.chatId, text, buttons)),
       );
       if (delivered.every((ok) => !ok)) {
         // Никто из адресатов не получил уведомление — тихий отказ дороже

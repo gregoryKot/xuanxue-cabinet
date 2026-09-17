@@ -10,13 +10,16 @@
 import type { DateTime } from 'luxon';
 import type {
   AttemptAnswerDto,
+  AttemptReviewDto,
   CreateExamInput,
   CreateExamItemInput,
   ExamAttemptDto,
   ExamDto,
+  ExamGradingDto,
   ExamImageContentType,
   ExamItemDto,
   MyExamDto,
+  PutGradingInput,
 } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 
@@ -86,4 +89,28 @@ export interface ExamBotPort {
    * переизобретает. `null` — ошибок нет; непереданные поля не проверяются
    * (черновик неполон до шага, где поле появляется). */
   validateExamDraft(input: Partial<CreateExamInput>): Promise<string[] | null>;
+
+  // Слой 4б.5 (PLAN §12) — проверка сданной работы в боте. Проверяющий уже
+  // проверен как штат (PersonalChats/BotUserAccessService на вызывающей
+  // стороне) — здесь только владение попыткой (она школы, SECURITY §3).
+
+  /** Карточка проверки — тот же путь, что `GET /attempts/:id/review`
+   * (ExamGradingsService.getReview), не вторая сборка. `null` — попытка не
+   * найдена (чужой/битый attemptId из callback data получает отказ без
+   * объяснения причин, SECURITY §3). */
+  loadAttemptReview(attemptId: string): Promise<AttemptReviewDto | null>;
+  /** Итог и комментарий — тот же ExamGradingsService.grade(), что кабинет:
+   * идемпотентно по attemptId (переписывает, а не плодит вторую оценку) и
+   * сам шлёт ученику `exam_result`. `null` — попытка не найдена (как у
+   * loadAttemptReview). */
+  gradeAttempt(
+    attemptId: string,
+    graderId: string,
+    input: PutGradingInput,
+    now: DateTime,
+  ): Promise<ExamGradingDto | null>;
+  /** Очередь сданного и непроверенного (`/проверка`) — тот же фильтр
+   * `status: 'submitted'`, что у очереди учителя в кабинете
+   * (ExamAttemptsService.list, роль школы, не владение). */
+  listSubmittedAttempts(user: UserLean, now: DateTime): Promise<ExamAttemptDto[]>;
 }

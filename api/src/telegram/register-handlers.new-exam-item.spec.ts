@@ -7,6 +7,7 @@
 import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
+import type { GradeQueueHandler } from './handlers/grade-queue.handler';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { NewExamCommandHandler } from './handlers/new-exam-command.handler';
@@ -47,6 +48,7 @@ function buildService(): {
     fakeHandlerWithNow() as unknown as ExamCommandHandler,
     newExamItem as unknown as NewExamItemCommandHandler,
     fakeHandlerWithNow() as unknown as NewExamCommandHandler,
+    fakeHandlerWithNow() as unknown as GradeQueueHandler,
     new BotIdentityService(),
   );
   service.onApplicationBootstrap();

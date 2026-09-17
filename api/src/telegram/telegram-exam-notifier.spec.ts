@@ -1,21 +1,24 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»):
-// PersonalChats/NotificationPrefsService/UsersService/UserNamesService
-// настоящие, бот — фейк (сеть здесь ни при чём, TelegramBotService.sendMessage
-// уже покрыт своим спеком). Кто получает уведомление — дело дефолтов роли
-// (shared/src/notifications.ts) и личных переключений, оба проверены здесь
-// сквозь весь путь: attempt_submitted и exam_result — слой 4.7, PLAN §11.
+// PersonalChats/NotificationPrefsService/UsersService настоящие, бот и
+// ExamBotPort (карточка проверки, слой 4б.5) — фейки (сеть здесь ни при чём,
+// TelegramBotService.sendMessage уже покрыт своим спеком, а карточка —
+// exam-attempt-review.spec.ts/exam-gradings.service.spec.ts). Кто получает
+// уведомление — дело дефолтов роли (shared/src/notifications.ts) и личных
+// переключений, оба проверены здесь сквозь весь путь: attempt_submitted и
+// exam_result — слой 4.7, PLAN §11.
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
-import type { UserRole } from '@xuanxue/shared';
+import type { AttemptReviewDto, UserRole } from '@xuanxue/shared';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
+import { ExamBotPortRegistry } from './exam-bot-port.registry';
+import { fakeExamBotPort } from './exam-bot.port.test-support';
 import { PersonalChats } from './personal-chats';
 import { TelegramExamNotifier } from './telegram-exam-notifier';
 import type { TelegramBotService } from './telegram-bot.service';
@@ -28,12 +31,35 @@ const ATTEMPT_CONTEXT = {
   examTitle: 'Экзамен по третьей форме',
 };
 
+function fakeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto {
+  return {
+    attemptId: ATTEMPT_CONTEXT.attemptId,
+    examId: ATTEMPT_CONTEXT.examId,
+    examTitle: ATTEMPT_CONTEXT.examTitle,
+    userId: 'u1',
+    userName: 'Ольга',
+    status: 'submitted',
+    blocks: [],
+    ...overrides,
+  };
+}
+
+function fakePortRegistry(review: AttemptReviewDto | null): ExamBotPortRegistry {
+  const registry = new ExamBotPortRegistry();
+  registry.set(
+    fakeExamBotPort({
+      loadAttemptReview: jest.fn().mockResolvedValue(review),
+    }),
+  );
+  return registry;
+}
+
 function fakeBot(delivered = true): {
-  sendMessage: jest.Mock<Promise<boolean>, [string, string]>;
+  sendMessage: jest.Mock<Promise<boolean>, [string, string, unknown?]>;
 } {
   return {
     sendMessage: jest
-      .fn<Promise<boolean>, [string, string]>()
+      .fn<Promise<boolean>, [string, string, unknown?]>()
       .mockResolvedValue(delivered),
   };
 }
@@ -49,7 +75,6 @@ describe('TelegramExamNotifier', () => {
   let channelModel: Model<ChannelRecord>;
   let notificationPrefsModel: Model<NotificationPrefsRecord>;
   let personalChats: PersonalChats;
-  let userNamesService: UserNamesService;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -65,7 +90,6 @@ describe('TelegramExamNotifier', () => {
       channelModel,
       new NotificationPrefsService(notificationPrefsModel),
     );
-    userNamesService = new UserNamesService(userModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -97,10 +121,11 @@ describe('TelegramExamNotifier', () => {
   function buildNotifier(
     bot: ReturnType<typeof fakeBot>,
     config: ConfigService = fakeConfig(),
+    examBotPorts: ExamBotPortRegistry = fakePortRegistry(fakeReview()),
   ): TelegramExamNotifier {
     return new TelegramExamNotifier(
       personalChats,
-      userNamesService,
+      examBotPorts,
       bot as unknown as TelegramBotService,
       config,
     );
@@ -153,19 +178,65 @@ describe('TelegramExamNotifier', () => {
       expect(bot.sendMessage).not.toHaveBeenCalled();
     });
 
-    it('текст несёт имя ученика и ссылку на карточку проверки', async () => {
+    it('текст несёт имя ученика, ссылку на карточку проверки и кнопки итога', async () => {
       await connectPerson(111, 'Мария', ['teacher']);
       const studentId = await connectPerson(444, 'Ольга', []);
       const bot = fakeBot();
 
-      await buildNotifier(bot).notifyAttemptSubmitted(
-        { ...ATTEMPT_CONTEXT, userId: studentId },
-        NOW,
-      );
+      await buildNotifier(
+        bot,
+        fakeConfig(),
+        fakePortRegistry(fakeReview({ userName: 'Ольга' })),
+      ).notifyAttemptSubmitted({ ...ATTEMPT_CONTEXT, userId: studentId }, NOW);
 
-      const [, text] = bot.sendMessage.mock.calls[0] ?? [];
+      const [, text, buttons] = bot.sendMessage.mock.calls[0] ?? [];
       expect(text).toContain('Ольга');
       expect(text).toContain(`${PUBLIC_URL}/grading/${ATTEMPT_CONTEXT.attemptId}`);
+      expect(buttons).toEqual([
+        expect.arrayContaining([
+          expect.objectContaining({ text: 'Зачёт' }),
+          expect.objectContaining({ text: 'Доработать' }),
+          expect.objectContaining({ text: 'Незачёт' }),
+        ]),
+      ]);
+    });
+
+    it('попытка не найдена в карточке — не падает, ничего не шлёт (защита в глубину)', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      const studentId = await connectPerson(444, 'Ольга', []);
+      const bot = fakeBot();
+
+      await expect(
+        buildNotifier(bot, fakeConfig(), fakePortRegistry(null)).notifyAttemptSubmitted(
+          { ...ATTEMPT_CONTEXT, userId: studentId },
+          NOW,
+        ),
+      ).resolves.toBeUndefined();
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('порт не собран (ExamsModule не поднят) — warn, не бросает', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      const studentId = await connectPerson(444, 'Ольга', []);
+      const bot = fakeBot();
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      await expect(
+        buildNotifier(
+          bot,
+          fakeConfig(),
+          new ExamBotPortRegistry(),
+        ).notifyAttemptSubmitted({ ...ATTEMPT_CONTEXT, userId: studentId }, NOW),
+      ).resolves.toBeUndefined();
+
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('exam.notifyAttemptSubmitted'),
+        expect.objectContaining({ attemptId: ATTEMPT_CONTEXT.attemptId }),
+      );
+      warn.mockRestore();
     });
 
     it('сбой доставки всем адресатам — эскалация error-логом, не тишина (аудит 2026-09, находка 2)', async () => {
@@ -234,6 +305,37 @@ describe('TelegramExamNotifier', () => {
         ),
       ).resolves.toBeUndefined();
       expect(bot.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('сбой резолва чата — warn, не бросает', async () => {
+      const studentId = await connectPerson(555, 'Ученик', []);
+      const bot = fakeBot();
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      const chatFor = jest
+        .spyOn(personalChats, 'chatFor')
+        .mockRejectedValueOnce(new Error('mongo упал'));
+
+      await expect(
+        buildNotifier(bot).notifyExamGraded(
+          {
+            ...ATTEMPT_CONTEXT,
+            userId: studentId,
+            outcome: 'passed',
+            comment: undefined,
+          },
+          NOW,
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('exam.notifyExamGraded'),
+        expect.objectContaining({ attemptId: ATTEMPT_CONTEXT.attemptId }),
+      );
+      chatFor.mockRestore();
+      warn.mockRestore();
     });
 
     it('сбой доставки — эскалация error-логом, не тишина (аудит 2026-09, находка 2)', async () => {

@@ -7,6 +7,7 @@ import { isNotificationKind } from '@xuanxue/shared';
 import type { CallbackAction } from '../callback-data';
 import { isMenuScreenAction } from './bot-menu';
 import { parseOptionId, parseQuestionId } from './exam-callback-ids';
+import { parseGradeButtonId } from './grade-callback-id';
 import { isExamItemKind } from './new-exam-item-types';
 
 const NEW_EXAM_ITEM_DONE_TARGETS = ['options', 'correct'] as const;
@@ -32,8 +33,10 @@ function isOptionIndex(id: string): boolean {
  * NotificationKind (кнопка «Уведомления»); menu — экран меню; eq/eo —
  * составной параметр «попытка:номер[:номер]» (exam-callback-ids.ts); nqk —
  * ExamItemKind; nqo — номер варианта; nqd — какой шаг завершают; nqf —
- * что делает диалог дальше. Битый/чужой параметр — тихо игнорируется
- * вызывающим кодом, не ошибка. */
+ * что делает диалог дальше; grade — составной параметр «attemptId:outcome»
+ * (grade-callback-id.ts); gradesk/gradecl/gradeq — id всегда ObjectId (сам
+ * attemptId, итог уже в bot_sessions). Битый/чужой параметр — тихо
+ * игнорируется вызывающим кодом, не ошибка. */
 export function isValidCallbackParam(action: CallbackAction, id: string): boolean {
   if (action === 'notif') return isNotificationKind(id);
   if (action === 'menu') return isMenuScreenAction(id);
@@ -53,5 +56,6 @@ export function isValidCallbackParam(action: CallbackAction, id: string): boolea
     return (NEW_EXAM_TIME_LIMIT_IDS as readonly string[]).includes(id);
   if (action === 'nen') return (NEW_EXAM_ATTEMPTS_IDS as readonly string[]).includes(id);
   if (action === 'nef') return (NEW_EXAM_FLOW_ACTIONS as readonly string[]).includes(id);
+  if (action === 'grade') return parseGradeButtonId(id) !== null;
   return Types.ObjectId.isValid(id);
 }

@@ -10,7 +10,12 @@
 // живёт минуты-часы, персональных данных не содержит.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
-import { EXAM_ITEM_KINDS, type ExamItemKind } from '@xuanxue/shared';
+import {
+  EXAM_ITEM_KINDS,
+  GRADING_OUTCOMES,
+  type ExamItemKind,
+  type GradingOutcome,
+} from '@xuanxue/shared';
 import {
   enc,
   encJson,
@@ -37,6 +42,11 @@ import {
 // времени → число попыток → подтверждение. Черновик копится в build*-полях
 // ниже, тем же приёмом, что draft*-поля у examItemDraft. Открыт только
 // штату, как examItemDraft.
+// 'gradeComment' (ТЗ 4б.5, PLAN.md §12) — проверяющий выбрал итог («Зачёт»/
+// «Доработать»/«Незачёт», grade-callback.handler.ts) и вводит комментарий
+// одним сообщением или жмёт «Без комментария»; несёт `attemptId` (как
+// examMedia/examText) и `outcome` — выбор запоминаем на сессии, а не просим
+// повторно после текста. Открыт только штату, тем же приёмом, что examItemDraft.
 const BOT_SESSION_KINDS = [
   'topic',
   'recording',
@@ -44,6 +54,7 @@ const BOT_SESSION_KINDS = [
   'examText',
   'examItemDraft',
   'examBuildDraft',
+  'gradeComment',
 ] as const;
 export type BotSessionKind = (typeof BOT_SESSION_KINDS)[number];
 
@@ -175,6 +186,12 @@ export class BotSessionRecord {
   // персональные данные — решения по шифрованию не требует.
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   buildSavedExamId?: Types.ObjectId;
+
+  // Только 'gradeComment' (ТЗ 4б.5) — итог, который выбрал проверяющий,
+  // запоминаем на сессии, чтобы не спрашивать его снова после комментария.
+  // enum, решения по шифрованию не требует.
+  @Prop({ type: String, enum: GRADING_OUTCOMES, required: false })
+  outcome?: GradingOutcome;
 }
 
 export const BotSessionSchema = SchemaFactory.createForClass(BotSessionRecord);

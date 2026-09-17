@@ -26,6 +26,12 @@
 // 'prev'|'next'); nea — «Собрать (k)» (id — 'go'); nel — лимит времени (id —
 // 'none'|'15'|'30'|'60'); nen — число попыток (id — '1'|'2'|'3'); nef —
 // управление диалогом (id — 'cancel'|'publish').
+//
+// grade/gradesk/gradecl/gradeq — проверка сданной работы (ТЗ 4б.5, PLAN §12),
+// только штат: grade — итог («Зачёт»/«Доработать»/«Незачёт», id —
+// «attemptId:outcome», grade-callback-id.ts); gradesk — «Без комментария»
+// (id — attemptId, итог берётся из bot_sessions); gradecl — «Отмена» (id —
+// attemptId); gradeq — открыть карточку из /проверка (id — attemptId).
 import type { InlineKeyboardButton } from 'telegraf/types';
 
 const CALLBACK_ACTIONS = [
@@ -49,6 +55,10 @@ const CALLBACK_ACTIONS = [
   'nel',
   'nen',
   'nef',
+  'grade',
+  'gradesk',
+  'gradecl',
+  'gradeq',
 ] as const;
 export type CallbackAction = (typeof CALLBACK_ACTIONS)[number];
 

@@ -12,6 +12,7 @@ import { sendBotMessage } from './bot-send';
 import { CallbackQueryHandler } from './handlers/callback-query.handler';
 import { ChatMemberHandler } from './handlers/chat-member.handler';
 import { ExamCommandHandler } from './handlers/exam-command.handler';
+import { GradeQueueHandler } from './handlers/grade-queue.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
 import { NewExamCommandHandler } from './handlers/new-exam-command.handler';
@@ -45,6 +46,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly examCommandHandler: ExamCommandHandler,
     private readonly newExamItemCommandHandler: NewExamItemCommandHandler,
     private readonly newExamCommandHandler: NewExamCommandHandler,
+    private readonly gradeQueueHandler: GradeQueueHandler,
     private readonly botIdentity: BotIdentityService,
   ) {}
 
@@ -73,6 +75,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
       examCommandHandler: this.examCommandHandler,
       newExamItemCommandHandler: this.newExamItemCommandHandler,
       newExamCommandHandler: this.newExamCommandHandler,
+      gradeQueueHandler: this.gradeQueueHandler,
     });
     this.bot = bot;
 

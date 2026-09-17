@@ -15,23 +15,27 @@ import type { DateTime } from 'luxon';
 import {
   LIST_LIMIT_MAX,
   type AttemptAnswerDto,
+  type AttemptReviewDto,
   type CreateExamInput,
   type CreateExamItemInput,
   type ExamAttemptDto,
   type ExamDto,
+  type ExamGradingDto,
   type ExamItemDto,
   type MyExamDto,
+  type PutGradingInput,
 } from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { MediaAssetsService } from '../media/media-assets.service';
-import { withAttemptMedia } from './exam-attempt-media';
+import { withAttemptMedia, withReviewMedia } from './exam-attempt-media';
 import { validateExamDraftInput } from './exam-draft-validate';
 import { validateExamItemDraftInput } from './exam-item-draft-validate';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
 import type { BotOptionImage, ExamBotPort } from '../telegram/exam-bot.port';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
+import { ExamGradingsService } from './exam-gradings.service';
 import { ExamItemsService } from './exam-items.service';
 import { ExamsService } from './exams.service';
 import { MyExamsService } from './my-exams.service';
@@ -41,6 +45,7 @@ export class ExamBotService implements ExamBotPort {
   constructor(
     private readonly myExamsService: MyExamsService,
     private readonly examAttemptsService: ExamAttemptsService,
+    private readonly examGradingsService: ExamGradingsService,
     private readonly mediaAssetsService: MediaAssetsService,
     private readonly examImagesService: ExamImagesService,
     private readonly examItemsService: ExamItemsService,
@@ -149,5 +154,37 @@ export class ExamBotService implements ExamBotPort {
 
   validateExamDraft(input: Partial<CreateExamInput>): Promise<string[] | null> {
     return validateExamDraftInput(input);
+  }
+
+  /** `null` — попытка не найдена (чужой/битый attemptId, SECURITY §3), тем
+   * же приёмом, что loadOptionImage выше: NotFoundError сервиса — деградация
+   * для бота, не проброс исключения (проверяющий уже штат, дальше решать
+   * вызывающему хендлеру, что сказать). */
+  async loadAttemptReview(attemptId: string): Promise<AttemptReviewDto | null> {
+    try {
+      const review = await this.examGradingsService.getReview(attemptId);
+      return await withReviewMedia(this.mediaAssetsService, review);
+    } catch (err) {
+      if (err instanceof NotFoundError) return null;
+      throw err;
+    }
+  }
+
+  async gradeAttempt(
+    attemptId: string,
+    graderId: string,
+    input: PutGradingInput,
+    now: DateTime,
+  ): Promise<ExamGradingDto | null> {
+    try {
+      return await this.examGradingsService.grade(attemptId, graderId, input, now);
+    } catch (err) {
+      if (err instanceof NotFoundError) return null;
+      throw err;
+    }
+  }
+
+  listSubmittedAttempts(user: UserLean, now: DateTime): Promise<ExamAttemptDto[]> {
+    return this.examAttemptsService.list({ status: 'submitted' }, user, now);
   }
 }

@@ -11,6 +11,7 @@ import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
 import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
+import type { GradeCommentHandler } from './grade-comment.handler';
 import type { NewExamMessageHandler } from './new-exam-message.handler';
 import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { MessageHandler } from './message.handler';
@@ -328,6 +329,7 @@ describe('MessageHandler — доступ и сбои', () => {
       { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
       { handle: jest.fn() } as unknown as NewExamItemMessageHandler,
       { handle: jest.fn() } as unknown as NewExamMessageHandler,
+      { handle: jest.fn() } as unknown as GradeCommentHandler,
     );
   }
 

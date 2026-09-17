@@ -6,12 +6,15 @@
 import type { DateTime } from 'luxon';
 import type {
   AttemptAnswerDto,
+  AttemptReviewDto,
   CreateExamInput,
   CreateExamItemInput,
   ExamAttemptDto,
   ExamDto,
+  ExamGradingDto,
   ExamItemDto,
   MyExamDto,
+  PutGradingInput,
 } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import type { BotOptionImage, ExamBotPort } from './exam-bot.port';
@@ -35,6 +38,12 @@ export interface FakeExamBotPort extends ExamBotPort {
   listExamItemsToAssemble: jest.Mock<Promise<ExamItemDto[]>, []>;
   createAndPublishExam: jest.Mock<Promise<ExamDto>, [CreateExamInput, string]>;
   validateExamDraft: jest.Mock<Promise<string[] | null>, [Partial<CreateExamInput>]>;
+  loadAttemptReview: jest.Mock<Promise<AttemptReviewDto | null>, [string]>;
+  gradeAttempt: jest.Mock<
+    Promise<ExamGradingDto | null>,
+    [string, string, PutGradingInput, DateTime]
+  >;
+  listSubmittedAttempts: jest.Mock<Promise<ExamAttemptDto[]>, [UserLean, DateTime]>;
 }
 
 export function fakeExamBotPort(
@@ -77,6 +86,18 @@ export function fakeExamBotPort(
     validateExamDraft: jest
       .fn<Promise<string[] | null>, [Partial<CreateExamInput>]>()
       .mockResolvedValue(null),
+    // По умолчанию попытка не найдена — большинство спеков грейдинга не про
+    // конкретный текст карточки (аналог loadOwnAttempt: пустое умолчание).
+    loadAttemptReview: jest
+      .fn<Promise<AttemptReviewDto | null>, [string]>()
+      .mockResolvedValue(null),
+    gradeAttempt: jest.fn<
+      Promise<ExamGradingDto | null>,
+      [string, string, PutGradingInput, DateTime]
+    >(),
+    listSubmittedAttempts: jest
+      .fn<Promise<ExamAttemptDto[]>, [UserLean, DateTime]>()
+      .mockResolvedValue([]),
     ...overrides,
   };
 }
