@@ -5,6 +5,7 @@
 // отправили.
 import { useCallback, useState } from 'react';
 import { type AttemptReviewDto, type PutGradingInput } from '@xuanxue/shared';
+import { attemptReviewPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
@@ -29,7 +30,7 @@ export interface UseAttemptReviewResult {
 
 export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<AttemptReviewDto>(`/attempts/${attemptId}/review`, { signal }),
+    (signal) => apiFetch<AttemptReviewDto>(attemptReviewPath(attemptId), { signal }),
     LOAD_ERROR_MESSAGE,
   );
   const [saving, setSaving] = useState(false);

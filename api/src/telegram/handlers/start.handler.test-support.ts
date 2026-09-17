@@ -16,6 +16,7 @@ import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memo
 import { EmailLoginUserService } from '../../users/email-login-user.service';
 import type { InviteLinkService } from '../../users/invite-link.service';
 import { LoginIdentityService } from '../../users/login-identity.service';
+import type { TelegramLinkService } from '../../users/telegram-link.service';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
@@ -32,6 +33,16 @@ function fakeInviteLinkService(): InviteLinkService {
   return {
     isValid: (code: string) => Promise.resolve(code === VALID_INVITE_CODE),
   } as unknown as InviteLinkService;
+}
+
+/** Ветка link_<code> (ADR-0034) живёт своим тестом
+ * (telegram-link-deep-link.spec.ts) — здесь фейк нужен только для
+ * конструктора, вызывать его некому: ни один сценарий этих спеков не шлёт
+ * payload link_<код>. */
+function fakeTelegramLinkService(): TelegramLinkService {
+  return {
+    linkByCode: () => Promise.reject(new Error('linkByCode не должен был вызываться')),
+  } as unknown as TelegramLinkService;
 }
 
 /** По ключам, не заглушка на одно значение: LoginIdentityService читает
@@ -82,6 +93,7 @@ export function buildStartHandler(
     new BotSessionService(botSessionModel),
     botAccess,
     loginIdentity,
+    fakeTelegramLinkService(),
     fakeConfigWithPublicUrl(),
   );
 }

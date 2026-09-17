@@ -4,6 +4,7 @@
 // LessonFormFields). Гонка запросов и разбор ошибки — общий
 // hooks/useAbortableFetch.ts, по образцу schedule/useClasses.ts.
 import { type TeacherOptionDto } from '@xuanxue/shared';
+import { TEACHERS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -18,7 +19,7 @@ export interface UseTeachersResult {
 
 export function useTeachers(): UseTeachersResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<TeacherOptionDto[]>('/users/teachers', { signal }),
+    (signal) => apiFetch<TeacherOptionDto[]>(TEACHERS_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
 

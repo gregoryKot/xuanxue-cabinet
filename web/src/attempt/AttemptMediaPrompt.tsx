@@ -5,6 +5,8 @@
 // бот привязывает видео по совпадению telegramId, и вошедшего по почте он
 // не узнаёт. Инцидент 2026-09-16 (RUNBOOK §8.17): ученик сходил по кнопке,
 // снял «кружок» и получил отказ — теперь такого пути с экрана просто нет.
+// На его месте — «Связать Telegram» (ADR-0034): непривязанному предлагаем не
+// обходной путь, а способ открыть основной.
 // Видео уже получено — вместо формы честная строка, что и когда пришло:
 // показать форму заново после того, как всё уже сделано, читается как
 // «кабинет не поверил», что противоречит Read-after-write (CLAUDE.md).
@@ -12,16 +14,18 @@ import type { CSSProperties } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import type { FormError } from '../components/FormServerError';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
+import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
 import { buildExamMediaTelegramLink } from './examMediaDeepLink';
 
 const EXPLANATION =
   'Учитель смотрит форму по видео — пришлите запись, как вы её выполнили.';
 const FALLBACK_HINT = 'Нет Telegram — оставьте ссылку на видео.';
-// Telegram к кабинету не привязан: путь через бота закрыт, и говорим об этом
-// прямо, а не оставляем человека гадать, почему кнопки нет (docs/VOICE.md).
-const TELEGRAM_NOT_LINKED_HINT =
-  'Бот в Telegram узнаёт вас по аккаунту, а вы вошли по почте. Оставьте ссылку на видео.';
+// Telegram к кабинету не привязан: объясняем, почему кнопки бота нет, и тут
+// же даём связку (ADR-0034) — человек не гадает и не остаётся с одним
+// запасным путём (docs/VOICE.md).
+const TELEGRAM_NOT_LINKED_EXPLANATION =
+  'Бот в Telegram узнаёт вас по аккаунту, а вы вошли по почте. Свяжите его — и запись уйдёт одним сообщением.';
 
 const sectionStyle: CSSProperties = {
   display: 'flex',
@@ -116,9 +120,11 @@ export function AttemptMediaPrompt({
             </a>
           )}
 
-          <p style={hintStyle}>
-            {telegramLinked ? FALLBACK_HINT : TELEGRAM_NOT_LINKED_HINT}
-          </p>
+          {telegramBotUsername && !telegramLinked && (
+            <TelegramLinkButton explanation={TELEGRAM_NOT_LINKED_EXPLANATION} />
+          )}
+
+          <p style={hintStyle}>{FALLBACK_HINT}</p>
           <AttemptMediaLinkForm
             onSubmit={onAddMediaLink}
             pending={addingMediaLink}

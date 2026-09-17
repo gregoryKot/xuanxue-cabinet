@@ -2,12 +2,12 @@
 // exams/useExams.ts. Владение и роль проверяет сервер
 // (ExamAttemptsController, @Roles('teacher', 'assistant', 'admin')) — здесь
 // только чтение готового списка.
-import { LIST_LIMIT_MAX, type ExamAttemptDto } from '@xuanxue/shared';
+import type { ExamAttemptDto } from '@xuanxue/shared';
+import { GRADING_QUEUE_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить очередь проверки. Попробуйте ещё раз.';
-const SUBMITTED_PATH = `/attempts?status=submitted&limit=${LIST_LIMIT_MAX}`;
 
 export interface UseGradingQueueResult {
   attempts: ExamAttemptDto[] | null;
@@ -18,7 +18,7 @@ export interface UseGradingQueueResult {
 
 export function useGradingQueue(): UseGradingQueueResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ExamAttemptDto[]>(SUBMITTED_PATH, { signal }),
+    (signal) => apiFetch<ExamAttemptDto[]>(GRADING_QUEUE_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
   return { attempts: data, loading, error, reload };

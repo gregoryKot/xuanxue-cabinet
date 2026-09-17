@@ -5,7 +5,8 @@
 // Фильтр меняется с экрана, а не переоткрытием — перечитываем список при его
 // смене, тот же приём, что у broadcasts/useBroadcasts.ts.
 import { useEffect, useRef } from 'react';
-import { LIST_LIMIT_MAX, type ExamItemDto, type ExamItemStatus } from '@xuanxue/shared';
+import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
+import { examItemsListPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -18,15 +19,9 @@ export interface UseExamItemsResult {
   reload: () => Promise<void>;
 }
 
-/** Пустой статус — «Все». */
-function buildListPath(status: ExamItemStatus | ''): string {
-  const limit = `limit=${LIST_LIMIT_MAX}`;
-  return status ? `/exam-items?${limit}&status=${status}` : `/exam-items?${limit}`;
-}
-
 export function useExamItems(status: ExamItemStatus | ''): UseExamItemsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ExamItemDto[]>(buildListPath(status), { signal }),
+    (signal) => apiFetch<ExamItemDto[]>(examItemsListPath(status), { signal }),
     LOAD_ERROR_MESSAGE,
   );
 

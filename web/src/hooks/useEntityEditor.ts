@@ -8,6 +8,7 @@
 // remove в соседних файлах jscpd ловит как дубль (CLAUDE.md «Одна механика —
 // один компонент»). Домен приносит только путь коллекции и текст ошибки.
 import { useCallback } from 'react';
+import { entityPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from './useAbortableFetch';
 
@@ -29,7 +30,7 @@ export function useEntityEditor<TDto, TCreateInput, TUpdateInput>(
 ): UseEntityEditorResult<TDto, TCreateInput, TUpdateInput> {
   // Путь считаем в рендере, а не внутри колбэка: у новой записи колбэк не
   // вызывается вовсе, и ветка «идентификатора нет» осталась бы непроверенной.
-  const path = id === undefined ? '' : `${collectionPath}/${id}`;
+  const path = id === undefined ? '' : entityPath(collectionPath, id);
   const { data, loading, error, reload } = useAbortableFetch(
     (signal) => apiFetch<TDto>(path, { signal }),
     loadErrorMessage,
@@ -47,14 +48,17 @@ export function useEntityEditor<TDto, TCreateInput, TUpdateInput>(
 
   const update = useCallback(
     async (entityId: string, input: TUpdateInput) => {
-      await apiFetch(`${collectionPath}/${entityId}`, { method: 'PATCH', body: input });
+      await apiFetch(entityPath(collectionPath, entityId), {
+        method: 'PATCH',
+        body: input,
+      });
     },
     [collectionPath],
   );
 
   const remove = useCallback(
     async (entityId: string) => {
-      await apiFetch(`${collectionPath}/${entityId}`, { method: 'DELETE' });
+      await apiFetch(entityPath(collectionPath, entityId), { method: 'DELETE' });
     },
     [collectionPath],
   );

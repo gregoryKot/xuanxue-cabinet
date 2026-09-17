@@ -3,6 +3,7 @@
 // свою копию текста с сохранённой по `updatedAt` (TemplatesScreen.tsx).
 import { useCallback } from 'react';
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
+import { SETTINGS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
@@ -18,13 +19,13 @@ export interface UseSettingsResult {
 
 export function useSettings(): UseSettingsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<SettingsDto>('/settings', { signal }),
+    (signal) => apiFetch<SettingsDto>(SETTINGS_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
 
   const update = useCallback(
     async (input: UpdateSettingsInput) => {
-      await apiFetch('/settings', { method: 'PATCH', body: input });
+      await apiFetch(SETTINGS_PATH, { method: 'PATCH', body: input });
       await reload();
     },
     [reload],

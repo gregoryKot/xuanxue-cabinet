@@ -26,12 +26,11 @@ import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
 import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
+import { isTeacher, showsRouteScreen } from './screenAccess';
 import { StudentScreen } from './StudentScreen';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
-const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 const NOTIFICATIONS_PATH = '/notifications';
-const ATTEMPT_PATH_PREFIX = '/attempts/';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -62,15 +61,14 @@ export function AppShell() {
   const { me } = useAuth();
   const isMobile = useIsMobile();
   const { pathname } = useLocation();
-  const isTeacher = me?.roles.some((role) => TEACHER_ROLES.has(role)) ?? false;
-  const showOutlet =
-    isTeacher ||
-    pathname === NOTIFICATIONS_PATH ||
-    pathname.startsWith(ATTEMPT_PATH_PREFIX);
+  // Правило «кому что показать» — screenAccess.ts, общее с
+  // firstScreenPrefetch.ts (CLAUDE.md «Одна механика — один компонент»).
+  const teacherRole = isTeacher(me);
+  const showOutlet = showsRouteScreen(me, pathname);
   // Сюда добираются уже с подтверждённой сессией (RequireAuth выше) и
   // нарисованным первым экраном — самое время дотянуть остальные разделы в
   // простое браузера, чтобы переход по меню не ждал сети.
-  usePrefetchRoutes(isTeacher);
+  usePrefetchRoutes(teacherRole);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -80,7 +78,7 @@ export function AppShell() {
       </header>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        {isTeacher && !isMobile && <AppNav isMobile={false} me={me} />}
+        {teacherRole && !isMobile && <AppNav isMobile={false} me={me} />}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
             {showOutlet ? <Outlet /> : <StudentScreen />}
@@ -96,7 +94,7 @@ export function AppShell() {
         </div>
       </div>
 
-      {isTeacher && isMobile && <AppNav isMobile me={me} />}
+      {teacherRole && isMobile && <AppNav isMobile me={me} />}
     </div>
   );
 }

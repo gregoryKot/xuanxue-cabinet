@@ -53,6 +53,11 @@ import {
   EMAIL_LOGIN_TOKEN_FIELD_POLICY,
 } from '../auth/email-login-token.schema';
 import {
+  TelegramLinkCodeRecord,
+  TelegramLinkCodeSchema,
+  TELEGRAM_LINK_CODE_FIELD_POLICY,
+} from '../users/telegram-link-code.schema';
+import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
   NOTIFICATION_PREFS_FIELD_POLICY,
@@ -120,6 +125,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: EmailLoginTokenRecord.name,
     schema: EmailLoginTokenSchema,
     fieldPolicy: EMAIL_LOGIN_TOKEN_FIELD_POLICY,
+  },
+  {
+    name: TelegramLinkCodeRecord.name,
+    schema: TelegramLinkCodeSchema,
+    fieldPolicy: TELEGRAM_LINK_CODE_FIELD_POLICY,
   },
   {
     name: NotificationPrefsRecord.name,

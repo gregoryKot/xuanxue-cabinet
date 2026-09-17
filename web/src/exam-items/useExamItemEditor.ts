@@ -7,9 +7,9 @@ import type {
   ExamItemDto,
   UpdateExamItemInput,
 } from '@xuanxue/shared';
+import { EXAM_ITEMS_PATH } from '../api/apiPaths';
 import { useEntityEditor, type UseEntityEditorResult } from '../hooks/useEntityEditor';
 
-const EXAM_ITEMS_PATH = '/exam-items';
 const LOAD_ERROR_MESSAGE = 'Не удалось открыть вопрос. Попробуйте ещё раз.';
 
 export type UseExamItemEditorResult = UseEntityEditorResult<

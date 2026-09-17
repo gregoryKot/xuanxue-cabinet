@@ -11,6 +11,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SkeletonLines } from '../components/Skeleton';
 import { AppShell } from './AppShell';
 import { cabinetRoutes } from './cabinetRoutes';
+import { FirstScreenPrefetch } from './FirstScreenPrefetch';
 import { ROUTE_MODULES } from './routeModules';
 
 const LoginScreen = lazy(ROUTE_MODULES.login.load);
@@ -27,6 +28,10 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        {/* Снаружи Suspense нарочно (см. комментарий-«почему» в
+            FirstScreenPrefetch.tsx): под Suspense эффекты не запускаются, пока
+            чанк экрана не пришёл — то есть ровно после него, а не параллельно. */}
+        <FirstScreenPrefetch />
         <Suspense fallback={routeFallback}>
           <Routes>
             <Route path={ROUTE_MODULES.login.path} element={<LoginScreen />} />

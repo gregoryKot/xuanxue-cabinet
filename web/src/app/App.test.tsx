@@ -290,7 +290,12 @@ describe('App', () => {
   // Личная настройка человека — маршрут не за RequirePeopleAccess и не за
   // isTeacher-веткой AppShell.tsx, доступен и ученику (ТЗ notifications-web.md).
   it('учитель на /notifications — маршрут «Уведомления» открывает NotificationsScreen', async () => {
-    mockRoute(TEACHER, { '/me/notifications': { enabled: [] } });
+    // telegramLinked: у несвязанного на месте этой подсказки стоит кнопка
+    // связки (ADR-0034) — здесь проверяется маршрут, не она.
+    mockRoute(
+      { ...TEACHER, telegramLinked: true },
+      { '/me/notifications': { enabled: [] } },
+    );
 
     renderAt('/notifications');
 

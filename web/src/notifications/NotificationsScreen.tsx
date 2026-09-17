@@ -22,6 +22,7 @@ import { screenHintStyle, screenSectionStyle } from '../components/screenLayout'
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
+import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { useNotificationPrefs } from './useNotificationPrefs';
 
 const TITLE = 'Уведомления';
@@ -29,6 +30,12 @@ const EXPLANATION =
   'Здесь вы решаете, что вам приходит. У каждого вида — своя причина и свой переключатель.';
 const TELEGRAM_HINT =
   'В Telegram уведомления приходят в личный чат с ботом. Не писали боту — присылать будет некуда.';
+// Заменяет TELEGRAM_HINT, пока Telegram не связан (ADR-0034): две строки
+// подряд об одном и том же («писать боту» и «связать») читались бы как
+// повтор (docs/VOICE.md). Связавший уже нажал «Запустить» в чате с ботом —
+// ему остаётся прежняя подсказка про личный чат.
+const TELEGRAM_LINK_EXPLANATION =
+  'Telegram ещё не связан с кабинетом. Свяжите его, чтобы уведомления начали приходить.';
 const TOGGLE_ERROR_MESSAGE = 'Не удалось изменить уведомление. Попробуйте ещё раз.';
 
 const listStyle: CSSProperties = {
@@ -102,7 +109,11 @@ export default function NotificationsScreen() {
         </p>
       )}
 
-      <p style={telegramHintStyle}>{TELEGRAM_HINT}</p>
+      {me?.telegramLinked === false ? (
+        <TelegramLinkButton explanation={TELEGRAM_LINK_EXPLANATION} />
+      ) : (
+        <p style={telegramHintStyle}>{TELEGRAM_HINT}</p>
+      )}
     </section>
   );
 }

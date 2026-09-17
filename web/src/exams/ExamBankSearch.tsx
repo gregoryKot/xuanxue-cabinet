@@ -10,7 +10,7 @@ import { inputStyle } from '../components/Field';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { textLinkButtonStyle, textLinkStyle } from '../components/screenLayout';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
-import { filterBankCandidates } from './examQuestionList';
+import { filterBankCandidates } from './examQuestions';
 
 const SEARCH_LABEL = 'Найти вопрос в банке — по тексту или тегу';
 // Банк ещё грузится: список пуст независимо от того, есть ли вопросы, и это

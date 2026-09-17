@@ -9,7 +9,7 @@ import {
   moveQuestionUp,
   removeQuestion,
   toBlockInputs,
-} from './examQuestionList';
+} from './examQuestions';
 
 function block(
   id: string,

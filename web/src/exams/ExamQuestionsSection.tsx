@@ -1,6 +1,6 @@
 // Раздел «Вопросы» страницы редактора (макет Form.dc.html): счётчик в
 // подписи-рубрике, нумерованный список выбранных и поиск по банку под ним.
-// Правки списка — чистые функции examQuestionList.ts, здесь только связка с
+// Правки списка — чистые функции examQuestions.ts, здесь только связка с
 // состоянием формы.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
@@ -11,7 +11,7 @@ import {
   moveQuestionDown,
   moveQuestionUp,
   removeQuestion,
-} from './examQuestionList';
+} from './examQuestions';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 14 };
 
