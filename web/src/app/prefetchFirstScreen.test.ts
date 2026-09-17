@@ -3,7 +3,7 @@ import type { MeDto } from '@xuanxue/shared';
 import { ATTEMPTS_LIST_PATH, CLASSES_LIST_PATH, lessonsListPath } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
-import { firstScreenPaths, prefetchFirstScreen } from './firstScreenPrefetch';
+import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');

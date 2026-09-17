@@ -11,7 +11,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { prefetchFirstScreen } from './firstScreenPrefetch';
+import { prefetchFirstScreen } from './prefetchFirstScreen';
 
 // Не экспортирован: единственный потребитель — компонент ниже, снаружи хук
 // не нужен (knip иначе ловит мёртвый экспорт).

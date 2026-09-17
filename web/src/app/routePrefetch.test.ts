@@ -1,5 +1,5 @@
 // Тест таблицы предзагрузки данных первого экрана (routeModules.ts,
-// firstScreenPrefetch.ts) — отдельно от matchRoute (routeModules.test.ts):
+// prefetchFirstScreen.ts) — отдельно от matchRoute (routeModules.test.ts):
 // здесь важно не какой чанк выбран, а какие пути строятся для него.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
