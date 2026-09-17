@@ -7,7 +7,7 @@
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import request from 'supertest';
-import { ACCESS_MESSAGE, type InviteLinkDto, type UserDto } from '@xuanxue/shared';
+import type { InviteLinkDto, UserDto } from '@xuanxue/shared';
 import {
   createFakeTelegrafFactory,
   type FakeTelegraf,
@@ -75,8 +75,12 @@ describe('Telegram webhook (e2e) — вход по ссылке-приглаше
   }
 
   // blocked получает тот же отказ, что и остальные пути бота (SECURITY §2) —
-  // верный код ссылки его не проносит мимо статуса, ни в базе, ни в ответе.
-  it('blocked-человек с верным кодом — статус не меняется, ответ бота ACCESS_MESSAGE', async () => {
+  // верный код ссылки его не проносит мимо статуса. Здесь проверяется база:
+  // текст ответа (ACCESS_MESSAGE) — в start.handler.join.spec.ts с фейковым
+  // ctx, потому что Telegraf на каждый апдейт создаёт свой экземпляр
+  // Telegram, и перехватчик sendMessage фейковой фабрики (telegraf-factory.ts)
+  // ответов через ctx.reply не видит.
+  it('blocked-человек с верным кодом — статус не меняется, аккаунт не пересоздаётся', async () => {
     const adminCookie = await sessionCookieFor(testApp.app, ['admin']);
     const code = await inviteCode(adminCookie);
     const userModel: Model<UserRecord> = testApp.app.get(getModelToken(UserRecord.name), {
@@ -94,10 +98,8 @@ describe('Telegram webhook (e2e) — вход по ссылке-приглаше
 
     const person = await userModel.findOne({ telegramId: 900557 }).lean();
     expect(person?.status).toBe('blocked');
-    const lastReply = fakeTelegraf.sendMessageCalls
-      .filter((call) => call.chatId === '900557')
-      .at(-1);
-    expect(lastReply?.text).toBe(ACCESS_MESSAGE);
+    expect(person?.joinedViaInviteAt).toBeUndefined();
+    expect(await userModel.countDocuments({ telegramId: 900557 })).toBe(1);
   });
 
   it('незнакомец + невалидный код — аккаунт не создаётся', async () => {
