@@ -193,6 +193,28 @@ describe('BotSessionService', () => {
     expect(session?.questionIndex).toBeNull();
   });
 
+  // ADR-0037: itemId — тем же приёмом, что questionIndex выше.
+  it('startExamMediaWait с itemId (deep link с вопросом) — get возвращает itemId', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    const itemId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW, undefined, itemId);
+
+    const session = await service.get(555, NOW);
+
+    expect(session?.itemId?.toString()).toBe(itemId);
+  });
+
+  it('startExamMediaWait без itemId стирает itemId прошлого захода', async () => {
+    const attemptId = new Types.ObjectId().toString();
+    const itemId = new Types.ObjectId().toString();
+    await service.startExamMediaWait(555, attemptId, NOW, 0, itemId);
+
+    await service.startExamMediaWait(555, attemptId, NOW);
+
+    const session = await service.get(555, NOW);
+    expect(session?.itemId).toBeNull();
+  });
+
   it('startExamTextWait → get возвращает kind/attemptId/questionIndex', async () => {
     const attemptId = new Types.ObjectId().toString();
     await service.startExamTextWait(555, attemptId, 1, NOW);

@@ -260,5 +260,39 @@ describe('StartHandler', () => {
       expect(await channelModel.countDocuments({ target: '446' })).toBe(1);
       expect(await harness.botSessionModel.countDocuments({})).toBe(0);
     });
+
+    // ADR-0037: вторая форма payload адресует вопрос — ожидание запоминает
+    // itemId, иначе видео пришло бы к попытке целиком, как раньше.
+    it('/start exam_<attemptId>_<itemId> — заводит ожидание с вопросом', async () => {
+      const attemptId = new Types.ObjectId().toString();
+      const itemId = new Types.ObjectId().toString();
+      await userModel.create({ name: 'Ученик В', telegramId: 449, roles: [] });
+      const { ctx, replies } = fakeCtx(
+        449,
+        'private',
+        false,
+        `exam_${attemptId}_${itemId}`,
+      );
+
+      await handler.handle(ctx, NOW);
+
+      expect(replies[0]).toContain('Снимите или пришлите видео');
+      const session = await harness.botSessionModel.findOne({ chatId: 449 }).lean();
+      expect(session?.attemptId?.toString()).toBe(attemptId);
+      expect(session?.itemId?.toString()).toBe(itemId);
+    });
+
+    // Ссылки старой формы уже могли уйти людям — они обязаны работать.
+    it('/start exam_<attemptId> без вопроса — ожидание есть, вопрос не задан', async () => {
+      const attemptId = new Types.ObjectId().toString();
+      await userModel.create({ name: 'Ученик Г', telegramId: 450, roles: [] });
+      const { ctx } = fakeCtx(450, 'private', false, `exam_${attemptId}`);
+
+      await handler.handle(ctx, NOW);
+
+      const session = await harness.botSessionModel.findOne({ chatId: 450 }).lean();
+      expect(session?.attemptId?.toString()).toBe(attemptId);
+      expect(session?.itemId).toBeFalsy();
+    });
   });
 });

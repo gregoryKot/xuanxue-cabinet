@@ -1,6 +1,10 @@
-// exam_<attemptId> — deep link «Отправить видео» из кабинета (ADR-0023,
-// PLAN §11 слой 4.5), вынесено из StartHandler целиком (файл-лимит 150
-// строк, тот же приём, что и join-invite-deep-link.ts). Инцидент 2026-09-16
+// exam_<attemptId>[_<itemId>] — deep link «Отправить видео» из кабинета
+// (ADR-0023, ADR-0037 — вторая форма адресует вопрос, PLAN §11 слой 4.5),
+// вынесено из StartHandler целиком (файл-лимит 150 строк, тот же приём, что
+// и join-invite-deep-link.ts). Разбор обеих форм — start-payload.ts, сюда
+// `itemId` приходит уже проверенным по формату (24 hex), не по смыслу — есть
+// ли такой вопрос в снимке и это video, проверяет MediaAssetsService при
+// самой привязке. Инцидент 2026-09-16
 // (RUNBOOK §8.17): ученик вошёл по почте (нет telegramId), сдал экзамен,
 // прислал видео в бота — получил «не нашли попытку». Причина: видео
 // привязывается только владельцу попытки с привязанным Telegram (ADR-0023,
@@ -36,6 +40,7 @@ export async function handleExamMediaDeepLink(
   examAttemptId: string,
   now: DateTime,
   deps: ExamMediaDeepLinkDeps,
+  itemId?: string,
 ): Promise<void> {
   const access = await deps.botAccess.resolve(telegramId);
   if (access.kind === 'denied') {
@@ -46,6 +51,12 @@ export async function handleExamMediaDeepLink(
     await ctx.reply(TELEGRAM_NOT_LINKED_MESSAGE).catch(() => null);
     return;
   }
-  await deps.botSessions.startExamMediaWait(telegramId, examAttemptId, now);
+  await deps.botSessions.startExamMediaWait(
+    telegramId,
+    examAttemptId,
+    now,
+    undefined,
+    itemId,
+  );
   await ctx.reply(EXAM_MEDIA_WAIT_MESSAGE).catch(() => null);
 }

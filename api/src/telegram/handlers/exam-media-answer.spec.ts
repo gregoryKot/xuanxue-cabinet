@@ -69,6 +69,7 @@ describe('renderExamMediaAnswer', () => {
             {
               id: 'm1',
               attemptId: ATTEMPT_ID,
+              itemId: VIDEO_Q.itemId,
               kind: 'telegram',
               receivedAt: NOW.toISO() ?? '',
             },

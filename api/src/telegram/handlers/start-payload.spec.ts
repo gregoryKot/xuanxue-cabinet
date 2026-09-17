@@ -33,6 +33,25 @@ describe('parseStartPayload', () => {
     });
   });
 
+  // ADR-0037: вторая форма адресует видео вопросу; старая без вопроса
+  // продолжает работать — такие ссылки могли уже уйти ученикам.
+  describe('exam_<attemptId>_<itemId> (ADR-0037)', () => {
+    it('оба валидных ObjectId — examMedia с itemId', () => {
+      const attemptId = new Types.ObjectId().toString();
+      const itemId = new Types.ObjectId().toString();
+      expect(parseStartPayload(fakeCtx(`/start exam_${attemptId}_${itemId}`))).toEqual({
+        kind: 'examMedia',
+        attemptId,
+        itemId,
+      });
+    });
+
+    it('itemId не ObjectId — null (не откатывается к старой форме без вопроса)', () => {
+      const attemptId = new Types.ObjectId().toString();
+      expect(parseStartPayload(fakeCtx(`/start exam_${attemptId}_not-an-id`))).toBeNull();
+    });
+  });
+
   describe('join_<code>', () => {
     const code = 'a'.repeat(32);
 

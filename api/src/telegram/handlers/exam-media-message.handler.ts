@@ -98,6 +98,7 @@ export class ExamMediaMessageHandler {
       user.id,
       source,
       now,
+      session.itemId?.toString(),
     );
     await this.botSessions.clear(telegramId);
     if (!attached) {

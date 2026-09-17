@@ -12,7 +12,7 @@
 // ответ текстом/видео (exam-text-answer.handler.ts/exam-media-message.
 // handler.ts).
 //
-// presentAttemptScreen — единая точка ПОКАЗА этого экрана (ADR-0035, ТЗ
+// presentAttemptScreen — единая точка ПОКАЗА этого экрана (ADR-0037, ТЗ
 // бота): картинки вариантов идут альбомом ДО экрана кнопок, поэтому у
 // вопроса с картинками, показанного по кнопке (editMessageText), сперва
 // нужно убрать старое сообщение-экран (иначе его кнопки повиснут выше
@@ -35,7 +35,7 @@ import {
 } from './exam-question-screen';
 
 /** Экран вопроса плюс то, что нужно ПОКАЗАТЬ перед ним — картинки вариантов,
- * если хоть у одного есть imageId (ADR-0035). Пусто у финального экрана и у
+ * если хоть у одного есть imageId (ADR-0037). Пусто у финального экрана и у
  * вопроса без картинок — тот же текст/кнопки, что раньше. */
 export type AttemptScreenView = BotMenu & { album: OptionAlbumEntry[] };
 
@@ -56,7 +56,8 @@ export async function renderAttemptScreen(
   if (question?.kind === 'text') {
     await botSessions.startExamTextWait(chatId, attempt.id, index, now);
   } else if (question?.kind === 'video') {
-    await botSessions.startExamMediaWait(chatId, attempt.id, now, index);
+    // itemId — из самого вопроса (ADR-0037), не пересчитывается по index.
+    await botSessions.startExamMediaWait(chatId, attempt.id, now, index, question.itemId);
   } else {
     await botSessions.clear(chatId);
   }

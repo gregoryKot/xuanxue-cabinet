@@ -1,15 +1,14 @@
 // Видео экзамена — создание и чтение media_assets (ADR-0023, PLAN §11 слой
-// 4.5). Три пути привязки: бот по file_id (attachTelegramVideo, проверяет
-// владение попыткой — SECURITY §3), ссылка от ученика (addLink, тоже по
-// владению) и ручная отметка учителя (addManual — роль проверяет контроллер,
-// владельца попытки сервис берёт сам: media_assets.userId обязан совпадать с
-// exam_attempts.userId, иначе удаление аккаунта ученика потеряло бы запись).
+// 4.5, ADR-0037 — видео отвечает вопросу, не попытке целиком). Три пути
+// привязки: бот по file_id (attachTelegramVideo, проверяет владение попыткой
+// — SECURITY §3), ссылка от ученика (addLink, тоже по владению) и ручная
+// отметка учителя (addManual — роль проверяет контроллер, владельца попытки
+// сервис берёт сам: media_assets.userId обязан совпадать с exam_attempts.userId,
+// иначе удаление аккаунта ученика потеряло бы запись).
 //
-// Читает ExamAttemptRecord напрямую (через ExamAttemptModelModule, не через
-// ExamsModule целиком — ADR-0013, циклов не заводим: ExamsModule сам
-// импортирует MediaModule ради ExamAttemptDto.media/AttemptReviewDto.media).
-// `decrypt(examTitle)` — точечно, не через decryptAttempt(exam-attempt.mapper.ts):
-// тому нужны blocks/answers, которых здесь не выбирали.
+// `itemId`, если передан, обязан быть video-вопросом снимка (isVideoItemInSnapshot,
+// media-item-lookup.ts) — владелец и снимок приходят одним запросом
+// (loadAttemptOwnerInfo, media-attempt-owner.ts, вынесено ради файл-лимита).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -17,24 +16,21 @@ import { Model, Types } from 'mongoose';
 import {
   ATTEMPT_NOT_FOUND_MESSAGE,
   EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
+  EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
   type ExamMediaDto,
-  type ExamMediaKind,
 } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
-import { decrypt, encryptRecord } from '../utils/encryption';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
+import { insertMediaAsset } from './media-asset-insert';
+import { loadAttemptOwnerInfo } from './media-attempt-owner';
+import { isVideoItemInSnapshot } from './media-item-lookup';
 import {
   decryptMediaAsset,
   toExamMediaDto,
   type RawLeanMediaAsset,
 } from './media-asset.mapper';
-import { MEDIA_ASSET_ENCRYPT_SCHEMA, MediaAssetRecord } from './media-asset.schema';
-
-interface AttemptOwnerInfo {
-  userId: string;
-  examTitle: string;
-}
+import { MediaAssetRecord } from './media-asset.schema';
 
 export interface TelegramVideoSource {
   fileId: string;
@@ -46,19 +42,6 @@ export interface TelegramVideoSource {
 export interface AttachedTelegramMedia {
   media: ExamMediaDto;
   examTitle: string;
-}
-
-interface InsertPayload {
-  attemptId: string;
-  userId: string;
-  kind: ExamMediaKind;
-  fileId?: string;
-  fileUniqueId?: string;
-  url?: string;
-  durationSec?: number;
-  sizeBytes?: number;
-  note?: string;
-  receivedAt: DateTime;
 }
 
 @Injectable()
@@ -92,24 +75,25 @@ export class MediaAssetsService {
     return byAttempt;
   }
 
-  /** Привязка видео из бота — только если попытка принадлежит тому самому
-   * пользователю Telegram, что прислал видео (SECURITY §3, ADR-0023). Чужой,
-   * несуществующий `attemptId`, как и отправитель без привязанного аккаунта
-   * (нет `userId`) — `null`, без уточнения причины: не подтверждаем
-   * существование чужой попытки. */
+  /** Привязка видео из бота — только владельцу попытки (SECURITY §3,
+   * ADR-0023). Чужой attemptId, отправитель без аккаунта или itemId не
+   * video-вопроса снимка (ADR-0037) — везде `null`, без уточнения причины. */
   async attachTelegramVideo(
     attemptId: string,
     userId: string | undefined,
     source: TelegramVideoSource,
     now: DateTime,
+    itemId?: string,
   ): Promise<AttachedTelegramMedia | null> {
     if (!userId) return null;
-    const owner = await this.ownerInfo(attemptId);
+    const owner = await loadAttemptOwnerInfo(this.attemptModel, attemptId);
     if (!owner || owner.userId !== userId) return null;
+    if (itemId !== undefined && !isVideoItemInSnapshot(owner.blocks, itemId)) return null;
 
-    const media = await this.insert({
+    const media = await insertMediaAsset(this.model, {
       attemptId,
       userId,
+      itemId,
       kind: 'telegram',
       fileId: source.fileId,
       fileUniqueId: source.fileUniqueId,
@@ -120,22 +104,34 @@ export class MediaAssetsService {
     return { media, examTitle: owner.examTitle };
   }
 
-  /** Запасной путь — ссылка (ADR-0023). Владелец — из сессии, не из пути
-   * (SECURITY §3): чужой `attemptId` получает тот же отказ, что
-   * несуществующий, не 403 — не подтверждаем существование. */
+  /** Запасной путь — ссылка (ADR-0023), владелец из сессии (SECURITY §3):
+   * чужой attemptId — тот же отказ, что несуществующий. itemId не
+   * video-вопроса снимка (ADR-0037) — здесь есть кому объяснить причину,
+   * в отличие от бота. */
   async addLink(
     attemptId: string,
     userId: string,
     url: string,
     now: DateTime,
+    itemId?: string,
   ): Promise<ExamMediaDto> {
-    const owner = await this.ownerInfo(attemptId);
+    const owner = await loadAttemptOwnerInfo(this.attemptModel, attemptId);
     if (!owner || owner.userId !== userId) {
       throw new NotFoundError(ATTEMPT_NOT_FOUND_MESSAGE);
     }
+    if (itemId !== undefined && !isVideoItemInSnapshot(owner.blocks, itemId)) {
+      throw new NotFoundError(EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE);
+    }
 
     try {
-      return await this.insert({ attemptId, userId, kind: 'link', url, receivedAt: now });
+      return await insertMediaAsset(this.model, {
+        attemptId,
+        userId,
+        itemId,
+        kind: 'link',
+        url,
+        receivedAt: now,
+      });
     } catch (err) {
       if (isDuplicateKeyError(err))
         throw new ConflictError(EXAM_MEDIA_ALREADY_LINKED_MESSAGE);
@@ -145,58 +141,26 @@ export class MediaAssetsService {
 
   /** Третий путь — учитель отмечает «принято» вручную (ADR-0023). Роль
    * проверяет контроллер (`@Roles`); владельца попытки сервис берёт сам —
-   * см. комментарий в начале файла. */
+   * см. комментарий в начале файла. `itemId` — та же проверка, что у addLink. */
   async addManual(
     attemptId: string,
     note: string | undefined,
     now: DateTime,
+    itemId?: string,
   ): Promise<ExamMediaDto> {
-    const owner = await this.ownerInfo(attemptId);
+    const owner = await loadAttemptOwnerInfo(this.attemptModel, attemptId);
     if (!owner) throw new NotFoundError(ATTEMPT_NOT_FOUND_MESSAGE);
+    if (itemId !== undefined && !isVideoItemInSnapshot(owner.blocks, itemId)) {
+      throw new NotFoundError(EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE);
+    }
 
-    return this.insert({
+    return insertMediaAsset(this.model, {
       attemptId,
       userId: owner.userId,
+      itemId,
       kind: 'manual',
       note,
       receivedAt: now,
     });
-  }
-
-  private async ownerInfo(attemptId: string): Promise<AttemptOwnerInfo | null> {
-    if (!Types.ObjectId.isValid(attemptId)) return null;
-    const doc = await this.attemptModel
-      .findById(attemptId, { userId: 1, examTitle: 1 })
-      .lean<{ userId: Types.ObjectId; examTitle: string } | null>();
-    if (!doc) return null;
-    return {
-      userId: doc.userId.toString(),
-      examTitle: decrypt(doc.examTitle) ?? doc.examTitle,
-    };
-  }
-
-  private async insert(data: InsertPayload): Promise<ExamMediaDto> {
-    const payload = encryptRecord(
-      {
-        attemptId: new Types.ObjectId(data.attemptId),
-        userId: new Types.ObjectId(data.userId),
-        kind: data.kind,
-        fileId: data.fileId,
-        fileUniqueId: data.fileUniqueId,
-        url: data.url,
-        durationSec: data.durationSec,
-        sizeBytes: data.sizeBytes,
-        note: data.note,
-        receivedAt: data.receivedAt.toJSDate(),
-      },
-      MEDIA_ASSET_ENCRYPT_SCHEMA,
-    );
-    const created = await this.model.create(payload);
-    const doc = await this.model.findById(created._id).lean<RawLeanMediaAsset>();
-    if (!doc)
-      throw new Error(
-        'MediaAssetsService.insert: запись не найдена сразу после создания',
-      );
-    return toExamMediaDto(decryptMediaAsset(doc));
   }
 }

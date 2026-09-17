@@ -7,7 +7,10 @@ import type { DateTime } from 'luxon';
 import type { BotSessionLean, BotSessionService } from './bot-session.service';
 
 export interface FakeBotSessionService extends BotSessionService {
-  startExamMediaWait: jest.Mock<Promise<void>, [number, string, DateTime, number?]>;
+  startExamMediaWait: jest.Mock<
+    Promise<void>,
+    [number, string, DateTime, number?, string?]
+  >;
   startExamTextWait: jest.Mock<Promise<void>, [number, string, number, DateTime]>;
   clear: jest.Mock<Promise<void>, [number]>;
   get: jest.Mock<Promise<BotSessionLean | null>, [number, DateTime]>;

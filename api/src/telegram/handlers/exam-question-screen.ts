@@ -114,7 +114,9 @@ export function buildQuestionScreen(attempt: ExamAttemptDto, index: number): Bot
   const answer = findAnswer(attempt.answers, question.itemId);
   const headerLine = `Вопрос ${index + 1} из ${questions.length}`;
   const promptLines = [question.prompt, question.hint].filter(Boolean).join('\n');
-  const hasVideo = (attempt.media ?? []).length > 0;
+  // itemId — из самого вопроса (ADR-0037), не «есть хоть какое-то видео у
+  // попытки»: два video-вопроса в одной форме теперь различимы.
+  const hasVideo = (attempt.media ?? []).some((m) => m.itemId === question.itemId);
   const note = questionNote(question, answer, hasVideo);
   const text = [headerLine, promptLines, note].filter(Boolean).join('\n\n');
 

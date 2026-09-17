@@ -72,3 +72,4 @@
 | [0034](0034-link-telegram-to-existing-account.md)        | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link       |
 | [0035](0035-exam-option-images-in-mongo.md)              | Картинки вариантов ответа — в MongoDB, через свой API                    |
 | [0036](0036-no-pending-approval.md)                      | Статуса «ждёт подтверждения» больше нет — регистрация только по ссылке   |
+| [0037](0037-video-answer-belongs-to-question.md)         | Видео — ответ на вопрос: `media_assets.itemId`, а не вложение к попытке  |

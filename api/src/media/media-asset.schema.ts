@@ -7,11 +7,11 @@
 // Уникальность: у попытки может быть много видео из Telegram («кружок» и
 // обычное видео, повторная попытка снять получше) и много ручных отметок
 // (учитель поправил подпись повторной отметкой) — без ограничения.
-// Единственное ограничение — ссылка (`kind: 'link'`): одна на попытку,
-// частичный уникальный индекс ниже защищает от гонки двух параллельных
-// POST /media/link; повторная отправка получает понятный отказ
-// (EXAM_MEDIA_ALREADY_LINKED_MESSAGE), а не тихий дубль, из которого потом
-// непонятно, какую ссылку открывать.
+// Единственное ограничение — ссылка (`kind: 'link'`): одна на ВОПРОС
+// (ADR-0037, было — одна на попытку), частичный уникальный индекс ниже
+// защищает от гонки двух параллельных POST /media/link; повторная отправка
+// получает понятный отказ (EXAM_MEDIA_ALREADY_LINKED_MESSAGE), а не тихий
+// дубль, из которого потом непонятно, какую ссылку открывать.
 //
 // Срок хранения (PLAN §11 «Данные»): вместе с попыткой — запись уходит той
 // же выборкой USER_OWNED_COLLECTIONS, что exam_attempts/exam_gradings.
@@ -27,6 +27,17 @@ export class MediaAssetRecord {
   // ссылка, как examId у exam_gradings: без `ref`.
   @Prop({ type: SchemaTypes.ObjectId, required: true })
   attemptId!: Types.ObjectId;
+
+  // Вопрос попытки, ответом на который стало это видео (ADR-0037) — ссылка на
+  // `exam_attempts.blocks[].questions[].itemId` того же снимка, не на живой
+  // exam_items (снимок мог уйти вперёд правки вопроса), поэтому тоже без
+  // `ref`. Необязателен в схеме: не ради прошлого (на дату ADR-0037 в
+  // коллекции нет ни одной записи), а ради деплоя — старый инстанс мог
+  // записать видео без вопроса, пока разворачивался новый (expand → contract,
+  // ADR-0037 «Последствия»). Такая запись показывается как видео к попытке
+  // без вопроса.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  itemId?: Types.ObjectId;
 
   // Владение (чеклист CLAUDE.md, п.1) — ученик, чья попытка. Документ
   // целиком удаляется через USER_OWNED_COLLECTIONS, не $unset.
@@ -74,15 +85,22 @@ export const MediaAssetSchema = SchemaFactory.createForClass(MediaAssetRecord);
 MediaAssetSchema.index({ attemptId: 1, receivedAt: -1 });
 // Удаление/перенос аккаунта (USER_OWNED_COLLECTIONS) — по владельцу.
 MediaAssetSchema.index({ userId: 1 });
-// Одна ссылка на попытку (см. комментарий в начале файла) — частичный
-// индекс: ограничивает только kind: 'link', telegram/manual не задеты.
+// Одна ссылка на ВОПРОС (ADR-0037, см. комментарий в начале файла) —
+// частичный индекс: ограничивает только kind: 'link', telegram/manual не
+// задеты. Запись без itemId (старый инстанс на деплое, деп-линк без вопроса)
+// считается той же «пустой» связкой у Mongo — вторая такая же на ту же
+// попытку по-прежнему конфликтует, как и раньше при индексе (attemptId).
 MediaAssetSchema.index(
-  { attemptId: 1 },
+  { attemptId: 1, itemId: 1 },
   { unique: true, partialFilterExpression: { kind: 'link' } },
 );
 
 export const MEDIA_ASSET_FIELD_POLICY: FieldPolicy = {
   kind: plain('перечисление, нужно для выборок'),
+  // Идентификатор вопроса, не текст — шифрования не требует (SECURITY §5),
+  // как attemptId/userId выше (те вне гейта encryption-coverage.spec.ts, не
+  // String-тип, но то же решение — явное здесь для читателя схемы).
+  itemId: plain('идентификатор, не шифруется (SECURITY §5), как attemptId/userId'),
   fileId: enc,
   fileUniqueId: enc,
   url: enc,

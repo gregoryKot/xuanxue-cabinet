@@ -23,7 +23,13 @@ export class ExamMediaController {
     @Body() body: AddExamMediaLinkDto,
     @CurrentUser() user: UserLean,
   ): Promise<ExamMediaDto> {
-    return this.mediaAssetsService.addLink(id, user.id, body.url, DateTime.utc());
+    return this.mediaAssetsService.addLink(
+      id,
+      user.id,
+      body.url,
+      DateTime.utc(),
+      body.itemId,
+    );
   }
 
   @Post(':id/media/manual')
@@ -33,6 +39,6 @@ export class ExamMediaController {
     @Param('id') id: string,
     @Body() body: AddExamMediaManualDto,
   ): Promise<ExamMediaDto> {
-    return this.mediaAssetsService.addManual(id, body.note, DateTime.utc());
+    return this.mediaAssetsService.addManual(id, body.note, DateTime.utc(), body.itemId);
   }
 }

@@ -1,10 +1,12 @@
 // Разбор payload'а `/start` — вынесено из StartHandler целиком (файл-лимит
 // 150 строк, тот же приём, что у start-welcome.ts и join-invite-deep-link.ts).
-// Три вида ссылки: `exam_<attemptId>` (ADR-0023, «Отправить видео»),
+// Три вида ссылки: `exam_<attemptId>[_<itemId>]` (ADR-0023, «Отправить
+// видео»; вторая форма — ADR-0037, адресует конкретный вопрос, старая без
+// вопроса продолжает работать — такие ссылки могли уже уйти ученикам),
 // `join_<code>` (ADR-0030 «Бот», ссылка-приглашение школы) и
 // `link_<code>` (ADR-0034, «Связать Telegram» — привязка к аккаунту,
-// заведённому по почте). Порядок и проверки — прежние: ObjectId для попытки,
-// формат кода — общим regex с соответствующим DTO.
+// заведённому по почте). Порядок и проверки — прежние: ObjectId для попытки
+// и вопроса, формат кода — общим regex с соответствующим DTO.
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
 import {
@@ -14,10 +16,10 @@ import {
   TELEGRAM_LINK_START_PREFIX,
 } from '@xuanxue/shared';
 
-const EXAM_MEDIA_PAYLOAD_PATTERN = /^exam_([0-9a-fA-F]{24})$/;
+const EXAM_MEDIA_PAYLOAD_PATTERN = /^exam_([0-9a-fA-F]{24})(?:_([0-9a-fA-F]{24}))?$/;
 
 export type StartPayload =
-  | { kind: 'examMedia'; attemptId: string }
+  | { kind: 'examMedia'; attemptId: string; itemId?: string }
   | { kind: 'invite'; code: string }
   | { kind: 'telegramLink'; code: string };
 
@@ -32,10 +34,16 @@ function startPayload(ctx: Context): string | undefined {
   return payload;
 }
 
-/** `null` — не deep link на видео экзамена (обычный /start, чужая команда). */
-function examAttemptIdFromPayload(payload: string | undefined): string | null {
-  const attemptId = payload?.match(EXAM_MEDIA_PAYLOAD_PATTERN)?.[1];
-  return attemptId && Types.ObjectId.isValid(attemptId) ? attemptId : null;
+/** `null` — не deep link на видео экзамена (обычный /start, чужая команда).
+ * `itemId` есть только у новой формы (ADR-0037) — старая остаётся без него. */
+function examMediaFromPayload(
+  payload: string | undefined,
+): { attemptId: string; itemId?: string } | null {
+  const match = payload?.match(EXAM_MEDIA_PAYLOAD_PATTERN);
+  const attemptId = match?.[1];
+  if (!attemptId || !Types.ObjectId.isValid(attemptId)) return null;
+  const itemId = match[2];
+  return itemId ? { attemptId, itemId } : { attemptId };
 }
 
 /** `null` — не ссылка-приглашение (обычный /start, чужая команда, битый
@@ -59,8 +67,8 @@ function telegramLinkCodeFromPayload(payload: string | undefined): string | null
 export function parseStartPayload(ctx: Context): StartPayload | null {
   const payload = startPayload(ctx);
 
-  const attemptId = examAttemptIdFromPayload(payload);
-  if (attemptId) return { kind: 'examMedia', attemptId };
+  const examMedia = examMediaFromPayload(payload);
+  if (examMedia) return { kind: 'examMedia', ...examMedia };
 
   const inviteCode = inviteCodeFromPayload(payload);
   if (inviteCode) return { kind: 'invite', code: inviteCode };

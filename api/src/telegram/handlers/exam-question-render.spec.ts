@@ -1,6 +1,6 @@
 // Чистая логика с фейковым BotSessionService, без Mongo (CLAUDE.md «Тесты»):
 // какой экран возвращает renderAttemptScreen (включая альбом картинок
-// вариантов, ADR-0035) и какое ожидание при этом ставит/закрывает — сама
+// вариантов, ADR-0037) и какое ожидание при этом ставит/закрывает — сама
 // запись в Mongo проверена в bot-session.service.spec.ts. presentAttemptScreen
 // — фейковый ctx и ExamBotPort, без Telegram: сама отправка альбома со всеми
 // её деталями (file_id, повтор, сбой) — exam-question-album.spec.ts.
@@ -75,7 +75,7 @@ describe('renderAttemptScreen', () => {
     expect(view.album).toEqual([]); // у text/video вариантов не бывает
   });
 
-  it('вопрос single с картинкой у варианта — альбом собран (ADR-0035)', async () => {
+  it('вопрос single с картинкой у варианта — альбом собран (ADR-0037)', async () => {
     const botSessions = fakeBotSessionService();
     const view = await renderAttemptScreen(
       botSessions,
@@ -97,21 +97,23 @@ describe('renderAttemptScreen', () => {
     ]);
   });
 
-  it('вопрос video — ставит examMedia-ожидание с номером вопроса', async () => {
+  it('вопрос video — ставит examMedia-ожидание с номером вопроса и itemId', async () => {
     const botSessions = fakeBotSessionService();
     await renderAttemptScreen(
       botSessions,
       CHAT_ID,
-      attempt([question({ kind: 'video' })]),
+      attempt([question({ kind: 'video', itemId: 'video-1' })]),
       0,
       NOW,
     );
 
+    // itemId — из самого вопроса (ADR-0037), не угадывается по индексу.
     expect(botSessions.startExamMediaWait).toHaveBeenCalledWith(
       CHAT_ID,
       ATTEMPT_ID,
       NOW,
       0,
+      'video-1',
     );
     expect(botSessions.startExamTextWait).not.toHaveBeenCalled();
   });

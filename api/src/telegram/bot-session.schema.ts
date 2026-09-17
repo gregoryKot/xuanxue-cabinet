@@ -55,6 +55,14 @@ export class BotSessionRecord {
   @Prop({ type: Number, required: false })
   questionIndex?: number | null;
 
+  // Вопрос-видео, которому станет ответом присланное видео (ADR-0037) — есть
+  // только у 'examMedia': из deep link `exam_<attemptId>_<itemId>` (тогда
+  // questionIndex не задан) либо из самого вопроса потока бота — берётся
+  // готовым (`question.itemId`), а не пересчитывается по questionIndex.
+  // `null`, тем же приёмом и по той же причине, что questionIndex выше.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  itemId?: Types.ObjectId | null;
+
   @Prop({ type: Date, required: true })
   expiresAt!: Date;
 }
