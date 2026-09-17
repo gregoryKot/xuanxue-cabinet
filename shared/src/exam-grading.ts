@@ -1,14 +1,15 @@
-// Проверка попытки по рубрике (слой 4.6, PLAN §11, ADR-0022) — карточка
-// проверки учителя и оценка. Отдельный файл от exams.ts (CLAUDE.md
-// «Храповики»: файл-лимит размера) — своя, достаточно большая подсистема
-// поверх типов формы/попытки, а не продолжение самого экзамена.
+// Карточка проверки попытки и оценка (слой 4.6, PLAN §11, ADR-0022) — учитель
+// смотрит ответы ученика и ставит итог с комментарием. Отдельный файл от
+// exams.ts (CLAUDE.md «Храповики»: файл-лимит размера) — своя, достаточно
+// большая подсистема поверх типов формы/попытки, а не продолжение самого
+// экзамена.
 import type { ExamMediaDto } from './exam-media';
 import type { ExamAttemptStatus, ExamItemKind } from './exams';
-import type {
-  GradingCriterionDto,
-  GradingOutcome,
-  RubricCriterionDto,
-} from './exam-rubric';
+
+// Итог проверки — качественный: зачёт, незачёт или «доработать», без баллов
+// (PLAN §11 «Границы»).
+export const GRADING_OUTCOMES = ['passed', 'failed', 'needs_work'] as const;
+export type GradingOutcome = (typeof GRADING_OUTCOMES)[number];
 
 // Карточка проверки учителя (`GET /attempts/:id/review`) — ответы ученика
 // рядом с критериями проверки вопроса, и правильность выбранных вариантов
@@ -71,10 +72,6 @@ export interface AttemptReviewDto {
   userName: string;
   status: ExamAttemptStatus;
   blocks: AttemptReviewBlockDto[];
-  /** Текущая рубрика экзамена — по ней ставится новая оценка. Уже
-   * выставленная оценка (`grading` ниже) хранит свой снимок и не меняется
-   * следом за правкой этой рубрики (ТЗ 4.6, п.1). */
-  rubric: RubricCriterionDto[];
   /** Есть, только если оценка уже выставлена. */
   grading?: ExamGradingDto;
   /** Видео экзамена (слой 4.5, ADR-0023) — учитель видит в карточке проверки.
@@ -83,26 +80,11 @@ export interface AttemptReviewDto {
   media?: ExamMediaDto[];
 }
 
-// Оценка попытки по рубрике (`exam_gradings`, `PUT /attempts/:id/grading`) —
-// данные ученика: `userId` — чьи это баллы, не того, кто проверял
-// (`graderId`). `criteria` — снимок критериев рубрики на момент проверки со
-// своими баллами: правка рубрики экзамена после этого не меняет уже
-// выставленную оценку, тот же принцип, что снимок формы в попытке (см.
-// комментарий у `ExamAttemptDto`, exams.ts). `GradingOutcome`/
-// `GradingCriterionDto` — в exams.ts (нужны и `MyExamAttemptSummaryDto` там же).
-
-/** Вход `PUT /attempts/:id/grading` — баллы и комментарий по критерию
- * рубрики; `title`/`maxScore` сервис берёт из текущей рубрики экзамена по
- * этому `id` (ТЗ 4.6, п.2), не из запроса — иначе учитель мог бы задним
- * числом переписать шкалу прямо в оценке. */
-export interface GradingCriterionInput {
-  id: string;
-  score: number;
-  comment?: string;
-}
-
+// Оценка попытки (`exam_gradings`, `PUT /attempts/:id/grading`) — данные
+// ученика: `userId` — чей это итог, не того, кто проверял (`graderId`). Итог
+// и комментарий уходят ученику в Telegram и переводят попытку в `graded`
+// (PLAN §11).
 export interface PutGradingInput {
-  criteria: GradingCriterionInput[];
   comment?: string;
   outcome: GradingOutcome;
 }
@@ -113,13 +95,12 @@ export interface ExamGradingDto {
   examId: string;
   userId: string;
   graderId: string;
-  criteria: GradingCriterionDto[];
   comment?: string;
   outcome: GradingOutcome;
   gradedAt: string; // ISO UTC с Z
 }
 
-export const GRADING_LIMITS = { comment: 2000, criterionComment: 1000 } as const;
+export const GRADING_LIMITS = { comment: 2000 } as const;
 
 // `userName` в `ExamAttemptDto` и `AttemptReviewDto` — человека могли уже
 // удалить (аудит В11, `UserDeletionService.deleteAllUserData`); честная
@@ -130,13 +111,3 @@ export const DELETED_USER_NAME = 'Аккаунт удалён';
 // повторный PUT переписывает оценку) работу, не черновик в работе.
 export const ATTEMPT_NOT_SUBMITTED_MESSAGE =
   'Эту работу ещё нельзя проверить: ученик её не сдал. Дождитесь сдачи.';
-
-/** Критерий из тела запроса, которого нет в текущей рубрике экзамена —
- * рубрику успели переписать, пока учитель заполнял баллы. */
-export function unknownCriterionMessage(criterionId: string): string {
-  return `Критерий рубрики «${criterionId}» не найден — рубрику могли изменить. Обновите страницу.`;
-}
-
-export function invalidScoreMessage(criterionTitle: string, maxScore: number): string {
-  return `Баллы по критерию «${criterionTitle}» — от 0 до ${maxScore}.`;
-}

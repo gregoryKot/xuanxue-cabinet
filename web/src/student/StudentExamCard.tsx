@@ -1,7 +1,7 @@
 // Карточка одного экзамена на экране ученика (ТЗ п.1, результат — ТЗ слоя
 // 4.7): название, описание, сколько попыток осталось, состояние последней
 // попытки простыми словами, одна кнопка по смыслу — а если работу уже
-// проверили, ещё и итог с баллами по критериям. Стиль карточки — как у
+// проверили, ещё и итог с комментарием учителя. Стиль карточки — как у
 // StudentLessonCard.tsx (общий readOnlyCardStyle: список ученика не про клик
 // по карточке). Итог вынесен в ExamAttemptOutcome — своя логика, что
 // показывать, не должна раздувать саму карточку (CLAUDE.md «Храповики»,
@@ -53,11 +53,7 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             разделе»). */}
         {showOutcome && attempt?.outcome && (
           <div style={actionRowStyle}>
-            <ExamAttemptOutcome
-              outcome={attempt.outcome}
-              criteria={attempt.criteria}
-              comment={attempt.comment}
-            />
+            <ExamAttemptOutcome outcome={attempt.outcome} comment={attempt.comment} />
           </div>
         )}
 

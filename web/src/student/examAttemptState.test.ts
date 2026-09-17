@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { GradingCriterionDto, MyExamDto } from '@xuanxue/shared';
+import type { MyExamDto } from '@xuanxue/shared';
 import {
   describeNoAction,
   describeOutcome,
   formatAttemptsLeft,
-  formatCriterionScore,
   getAttemptsLeft,
   getExamAction,
 } from './examAttemptState';
@@ -120,28 +119,6 @@ describe('describeOutcome', () => {
 
   it('нужно доработать', () => {
     expect(describeOutcome('needs_work')).toBe('Нужно доработать');
-  });
-});
-
-describe('formatCriterionScore', () => {
-  it('название и баллы из максимума', () => {
-    const criterion: GradingCriterionDto = {
-      id: 'c1',
-      title: 'Устойчивость и центр',
-      maxScore: 5,
-      score: 4,
-    };
-    expect(formatCriterionScore(criterion)).toBe('Устойчивость и центр: 4 из 5');
-  });
-
-  it('нулевой балл — тоже честно показан, не спрятан', () => {
-    const criterion: GradingCriterionDto = {
-      id: 'c1',
-      title: 'Плавность и дыхание',
-      maxScore: 5,
-      score: 0,
-    };
-    expect(formatCriterionScore(criterion)).toBe('Плавность и дыхание: 0 из 5');
   });
 });
 

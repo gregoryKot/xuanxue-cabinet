@@ -1,11 +1,11 @@
-// Проверка попытки по рубрике (`GET /attempts/:id/review`, `PUT
+// Проверка попытки (`GET /attempts/:id/review`, `PUT
 // /attempts/:id/grading`, слой 4.6, PLAN §11, ADR-0022). Маршруты закрыты
 // ролью teacher/assistant/admin на уровне контроллера (ExamAttemptsController)
 // — владения здесь нет, проверяющий по сути своей роли видит чужую работу;
 // сама оценка (`exam_gradings`) при этом данные ученика (чеклист CLAUDE.md,
 // USER_OWNED_COLLECTIONS) — по `userId` идёт удаление аккаунта. Инкапсулирует
-// шифрование (criteria/comment) и идемпотентность PUT — контроллер только
-// валидирует тело и зовёт.
+// шифрование (comment) и идемпотентность PUT — контроллер только валидирует
+// тело и зовёт.
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -27,7 +27,6 @@ import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { didGradingChange } from './grading-changed';
 import { notifyExamGraded } from './notify-exam-graded';
 import { buildReviewBlocks } from './exam-attempt-review';
-import { buildGradingCriteria } from './exam-grading-criteria';
 import {
   decryptAttempt,
   type LeanExamAttempt,
@@ -40,7 +39,6 @@ import {
   type RawLeanExamGrading,
 } from './exam-grading.mapper';
 import { EXAM_GRADING_ENCRYPT_SCHEMA, ExamGradingRecord } from './exam-grading.schema';
-import { ExamsService } from './exams.service';
 
 @Injectable()
 export class ExamGradingsService {
@@ -49,17 +47,15 @@ export class ExamGradingsService {
     private readonly attemptModel: Model<ExamAttemptRecord>,
     @InjectModel(ExamGradingRecord.name)
     private readonly gradingModel: Model<ExamGradingRecord>,
-    private readonly examsService: ExamsService,
     private readonly userNamesService: UserNamesService,
     @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
   ) {}
 
   /** ТЗ 4.6, п.3: ответы рядом с критериями вопроса и правильностью
-   * вариантов (снимок попытки, не банк — вопрос могли переписать), текущая
-   * рубрика экзамена и уже выставленная оценка, если есть. */
+   * вариантов (снимок попытки, не банк — вопрос могли переписать) и уже
+   * выставленная оценка, если есть. */
   async getReview(attemptId: string): Promise<AttemptReviewDto> {
     const attempt = await this.loadAttempt(attemptId);
-    const exam = await this.examsService.getById(attempt.examId.toString());
     const grading = await this.findGradingDto(attemptId);
     const userId = attempt.userId.toString();
     // Не пустая строка, если аккаунт уже удалён (аудит В11): DELETED_USER_NAME.
@@ -72,7 +68,6 @@ export class ExamGradingsService {
       userName: names.get(userId) ?? DELETED_USER_NAME,
       status: attempt.status,
       blocks: buildReviewBlocks(attempt.blocks, attempt.answers),
-      rubric: exam.rubric,
       grading,
     };
   }
@@ -97,8 +92,6 @@ export class ExamGradingsService {
     // Снимок «до записи» — только для сравнения в didGradingChange() ниже
     // (аудит 2026-09, находка 3), сам ответ строится из dto «после записи».
     const previousDto = await this.findGradingDto(attemptId);
-    const exam = await this.examsService.getById(attempt.examId.toString());
-    const criteria = buildGradingCriteria(exam.rubric, input.criteria);
 
     const payload = encryptRecord(
       {
@@ -106,7 +99,6 @@ export class ExamGradingsService {
         examId: attempt.examId,
         userId: attempt.userId,
         graderId,
-        criteria,
         comment: input.comment,
         outcome: input.outcome,
         gradedAt: now.toJSDate(),

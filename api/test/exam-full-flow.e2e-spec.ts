@@ -87,21 +87,10 @@ describe('Экзамен целиком через кабинет (e2e, крит
       .send({ url: VIDEO_URL, itemId });
   }
 
-  function putGrading(
-    cookie: string,
-    attemptId: string,
-    review: AttemptReviewDto,
-  ): request.Test {
+  function putGrading(cookie: string, attemptId: string): request.Test {
     return withCsrf(request(server()).put(`/api/attempts/${attemptId}/grading`))
       .set('Cookie', cookie)
-      .send({
-        criteria: review.rubric.map((criterion) => ({
-          id: criterion.id,
-          score: criterion.maxScore,
-        })),
-        comment: TEACHER_COMMENT,
-        outcome: 'passed',
-      });
+      .send({ comment: TEACHER_COMMENT, outcome: 'passed' });
   }
 
   it('от «учитель собрал форму» до «ученик получил зачёт» — ни одного шага мимо кабинета', async () => {
@@ -118,7 +107,6 @@ describe('Экзамен целиком через кабинет (e2e, крит
       [built.textItemId, built.singleItemId],
       [built.videoItemId],
     ]);
-    expect(exam.rubric.length).toBeGreaterThan(0);
 
     // Шаг 3. Ученик входит по ссылке-приглашению и видит экзамен у себя.
     const student = await studentJoinsByInvite('Пётр', 700_101);
@@ -246,15 +234,15 @@ describe('Экзамен целиком через кабинет (e2e, крит
       ['link', built.videoItemId, VIDEO_URL],
     ]);
 
-    const graded = await putGrading(teacherCookie, attempt.id, review);
+    const graded = await putGrading(teacherCookie, attempt.id);
     expect(graded.status).toBe(200);
     expect((graded.body as ExamGradingDto).outcome).toBe('passed');
     expect((graded.body as ExamGradingDto).gradedAt).toBe(gradedAt.toISO());
     // Повторное «Сохранить» с теми же значениями — второго уведомления нет.
-    const gradedAgain = await putGrading(teacherCookie, attempt.id, review);
+    const gradedAgain = await putGrading(teacherCookie, attempt.id);
     expect(gradedAgain.status).toBe(200);
 
-    // Шаг 7. Ученик видит итог и баллы; exam_result ушёл ровно один раз.
+    // Шаг 7. Ученик видит итог и комментарий; exam_result ушёл ровно один раз.
     const afterGrading = await myExam(student.cookie, built.examId);
     expect(afterGrading?.attemptsUsed).toBe(1);
     expect(afterGrading?.lastAttempt).toMatchObject({
@@ -263,9 +251,6 @@ describe('Экзамен целиком через кабинет (e2e, крит
       outcome: 'passed',
       comment: TEACHER_COMMENT,
     });
-    expect(afterGrading?.lastAttempt?.criteria?.map((c) => c.score)).toEqual(
-      review.rubric.map((criterion) => criterion.maxScore),
-    );
     expect(JSON.stringify(afterGrading)).not.toContain(FLOW_TEXT_CRITERIA);
     expect(JSON.stringify(afterGrading)).not.toContain('correct');
     expect(notifier.notifyExamGraded).toHaveBeenCalledTimes(1);

@@ -3,8 +3,8 @@
 // из сессии, чужие попытки и чужие оценки сюда не попадают ни при каком
 // запросе).
 //
-// Итог и баллы по критериям рубрики (слой 4.6, `exam_gradings`) — можно:
-// это разбор собственной работы ученика (PLAN §11 «Границы»). Критерии
+// Итог и комментарий учителя (слой 4.6, `exam_gradings`) — можно: это
+// разбор собственной работы ученика (PLAN §11 «Границы»). Критерии
 // проверки вопроса (`ExamItemDto.criteria`) сюда не попадают в принципе —
 // этот сервис их не читает вовсе.
 import { Inject, Injectable } from '@nestjs/common';
@@ -25,11 +25,7 @@ import {
   type RawLeanExamAttempt,
 } from './exam-attempt.mapper';
 import { ExamAttemptRecord } from './exam-attempt.schema';
-import {
-  decryptGrading,
-  type LeanExamGrading,
-  type RawLeanExamGrading,
-} from './exam-grading.mapper';
+import { decryptGrading, type RawLeanExamGrading } from './exam-grading.mapper';
 import { ExamGradingRecord } from './exam-grading.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord } from './exam.schema';
 import { decryptRecord } from '../utils/encryption';
@@ -129,7 +125,6 @@ export class MyExamsService {
           status: closed.status,
           outcome: grading?.outcome,
           comment: grading?.comment,
-          criteria: grading?.criteria,
         },
       });
     }
@@ -140,7 +135,7 @@ export class MyExamsService {
    * у попыток выше) — оценка, если она уже выставлена (слой 4.6). */
   private async loadGradings(
     attemptIds: string[],
-  ): Promise<Map<string, LeanExamGrading>> {
+  ): Promise<Map<string, RawLeanExamGrading>> {
     if (attemptIds.length === 0) return new Map();
     const docs = await this.gradingModel
       .find({ attemptId: { $in: attemptIds } })
