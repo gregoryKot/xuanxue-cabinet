@@ -17,12 +17,13 @@ describe('BOT_COMMANDS', () => {
     }
   });
 
-  it('в списке есть меню, занятия, тема, экзамены и уведомления', () => {
+  it('в списке есть меню, занятия, тема, экзамены, новый вопрос и уведомления', () => {
     expect(BOT_COMMANDS.map((c) => c.command)).toEqual([
       'menu',
       'schedule',
       'topic',
       'exams',
+      'newquestion',
       'notifications',
       'help',
     ]);

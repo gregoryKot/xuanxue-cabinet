@@ -20,6 +20,7 @@ import { PersonalChats } from '../personal-chats';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 import { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { saveOrExplain } from './message-save';
+import { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { extractRecordingSource } from './recording-source';
 
@@ -35,6 +36,10 @@ const RECORDING_EXPIRED_MESSAGE =
 // пришедший позже TTL (docs/PLAN.md §12, PR #175).
 const EXAM_WAIT_EXPIRED_MESSAGE =
   'Ожидание ответа истекло. Откройте экзамен снова: команда /экзамены в боте или кнопка в кабинете.';
+// Черновик вопроса (ТЗ 4б.3) — штатное ожидание, как у темы/записи: истёкшее
+// проверяется тут же, после гейта personalChats ниже.
+const NEW_EXAM_ITEM_EXPIRED_MESSAGE =
+  'Время на вопрос истекло. Наберите /вопрос ещё раз — черновик придётся начать заново.';
 
 @Injectable()
 export class MessageHandler {
@@ -48,6 +53,7 @@ export class MessageHandler {
     private readonly recordingWaitHandler: RecordingWaitHandler,
     private readonly examMediaHandler: ExamMediaMessageHandler,
     private readonly examTextHandler: ExamTextAnswerHandler,
+    private readonly newExamItemHandler: NewExamItemMessageHandler,
   ) {}
 
   private readonly logSaveError = (message: string, stack?: string): void =>
@@ -99,9 +105,17 @@ export class MessageHandler {
         );
         return;
       }
+      if (session?.kind === 'examItemDraft') {
+        await this.newExamItemHandler.handle(ctx, from.id, session, now);
+        return;
+      }
       if (expiredKind) {
         const text =
-          expiredKind === 'recording' ? RECORDING_EXPIRED_MESSAGE : TOPIC_EXPIRED_MESSAGE;
+          expiredKind === 'recording'
+            ? RECORDING_EXPIRED_MESSAGE
+            : expiredKind === 'examItemDraft'
+              ? NEW_EXAM_ITEM_EXPIRED_MESSAGE
+              : TOPIC_EXPIRED_MESSAGE;
         await ctx.reply(text).catch(() => null);
         return;
       }

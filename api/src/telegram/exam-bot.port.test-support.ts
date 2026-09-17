@@ -4,7 +4,13 @@
 // свойства объявлены типом `jest.Mock`, не методом интерфейса, иначе
 // `@typescript-eslint/unbound-method` ругается на `expect(port.x).toHaveBeenCalledWith(...)`.
 import type { DateTime } from 'luxon';
-import type { AttemptAnswerDto, ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
+import type {
+  AttemptAnswerDto,
+  CreateExamItemInput,
+  ExamAttemptDto,
+  ExamItemDto,
+  MyExamDto,
+} from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import type { BotOptionImage, ExamBotPort } from './exam-bot.port';
 
@@ -19,6 +25,11 @@ export interface FakeExamBotPort extends ExamBotPort {
   submitAttempt: jest.Mock<Promise<ExamAttemptDto>, [string, UserLean, DateTime]>;
   loadOptionImage: jest.Mock<Promise<BotOptionImage | null>, [string, UserLean]>;
   rememberTelegramFileId: jest.Mock<Promise<void>, [string, string]>;
+  createExamItem: jest.Mock<Promise<ExamItemDto>, [CreateExamItemInput, string]>;
+  validateExamItemDraft: jest.Mock<
+    Promise<string[] | null>,
+    [Partial<CreateExamItemInput>]
+  >;
 }
 
 export function fakeExamBotPort(
@@ -46,6 +57,13 @@ export function fakeExamBotPort(
     rememberTelegramFileId: jest
       .fn<Promise<void>, [string, string]>()
       .mockResolvedValue(undefined),
+    createExamItem: jest.fn<Promise<ExamItemDto>, [CreateExamItemInput, string]>(),
+    // По умолчанию черновик валиден — большинство спеков хендлеров бота не
+    // про DTO-лимиты (аналог loadOptionImage: пустой умолчание, чтобы не
+    // отвлекать спеки про другие сценарии).
+    validateExamItemDraft: jest
+      .fn<Promise<string[] | null>, [Partial<CreateExamItemInput>]>()
+      .mockResolvedValue(null),
     ...overrides,
   };
 }

@@ -13,6 +13,7 @@ export const BOT_COMMANDS = [
   { command: 'schedule', description: 'Ближайшие занятия' },
   { command: 'topic', description: 'Вписать тему занятия' },
   { command: 'exams', description: 'Экзамены' },
+  { command: 'newquestion', description: 'Завести вопрос для экзамена' },
   { command: 'notifications', description: 'Что вам присылать' },
   { command: 'help', description: 'Что умеет бот' },
 ] as const;

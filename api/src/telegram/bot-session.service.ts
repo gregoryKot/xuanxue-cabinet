@@ -4,8 +4,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import { BotSessionRecord, type BotSessionKind } from './bot-session.schema';
+import type { ExamItemKind } from '@xuanxue/shared';
+import { decryptRecord, encryptRecord } from '../utils/encryption';
+import {
+  BOT_SESSION_ENCRYPT_SCHEMA,
+  BotSessionRecord,
+  type BotSessionKind,
+  type NewExamItemStep,
+} from './bot-session.schema';
 import { examAnswerWaitUpdate } from './exam-answer-wait';
+import {
+  newExamItemDraftUpdate,
+  startNewExamItemDraftUpdate,
+  type NewExamItemDraftOption,
+  type NewExamItemDraftPatch,
+} from './new-exam-item-draft-wait';
 
 // Предпросмотр «Изменить тему» и команда /тема ждут ответ недолго — 10 минут
 // (PLAN.md §6); «Запись?» ждёт куда дольше — снять запись можно не сразу
@@ -26,7 +39,28 @@ export interface BotSessionLean {
   /** Вопрос-видео (ADR-0037, bot-session.schema.ts) — есть только у
    * 'examMedia', когда он известен (deep link с вопросом или поток бота). */
   itemId?: Types.ObjectId | null;
+  /** Черновик вопроса (ТЗ 4б.3) — есть только у 'examItemDraft', уже
+   * расшифрован (get()). `options: []`, не `undefined`, когда вариантов пока
+   * нет — тем же приёмом, что assertOptionsForKind у самого банка вопросов. */
+  draftStep?: NewExamItemStep;
+  draftKind?: ExamItemKind;
+  draftPrompt?: string;
+  draftCriteria?: string;
+  draftOptions?: NewExamItemDraftOption[];
+  draftSavedItemId?: Types.ObjectId;
 }
+
+/** `BotSessionLean` до расшифровки — `draftPrompt`/`draftCriteria`/
+ * `draftOptions` ещё шифротекст/JSON-строка (тот же приём, что
+ * RawLeanExamItem/LeanExamItem у самого банка вопросов, exam-item.mapper.ts). */
+type RawBotSessionLean = Omit<
+  BotSessionLean,
+  'draftPrompt' | 'draftCriteria' | 'draftOptions'
+> & {
+  draftPrompt?: string;
+  draftCriteria?: string;
+  draftOptions?: string;
+};
 
 @Injectable()
 export class BotSessionService {
@@ -92,14 +126,69 @@ export class BotSessionService {
 
   /** Активное (не истёкшее) ожидание чата — TTL-индекс подчищает документ с
    * задержкой до минуты (SERVER-точность монитора Mongo), поэтому фильтр по
-   * `expiresAt` здесь же, не только надежда на TTL. */
+   * `expiresAt` здесь же, не только надежда на TTL. draft*-поля расшифровываются
+   * здесь же (decryptRecord) — читающий черновик мимо этого метода получил бы
+   * шифротекст, тем же приёмом, что decryptExamItem у банка вопросов. */
   async get(chatId: number, now: DateTime): Promise<BotSessionLean | null> {
-    return this.model
+    const doc = await this.model
       .findOne(
         { chatId, expiresAt: { $gt: now.toJSDate() } },
-        { kind: 1, lessonId: 1, attemptId: 1, questionIndex: 1, itemId: 1 },
+        {
+          kind: 1,
+          lessonId: 1,
+          attemptId: 1,
+          questionIndex: 1,
+          itemId: 1,
+          draftStep: 1,
+          draftKind: 1,
+          draftPrompt: 1,
+          draftCriteria: 1,
+          draftOptions: 1,
+          draftSavedItemId: 1,
+        },
       )
-      .lean<BotSessionLean | null>();
+      .lean<RawBotSessionLean | null>();
+    if (!doc) return null;
+    const decrypted = decryptRecord(doc, BOT_SESSION_ENCRYPT_SCHEMA);
+    return {
+      ...doc,
+      draftPrompt: decrypted.draftPrompt,
+      draftCriteria: decrypted.draftCriteria,
+      draftOptions:
+        (decrypted.draftOptions as unknown as NewExamItemDraftOption[] | undefined) ?? [],
+    };
+  }
+
+  /** Начинает черновик вопроса (screen 1, ТЗ 4б.3) — новое ожидание
+   * вытесняет старое, тем же приёмом, что startTopicWait. */
+  async startNewExamItemDraft(
+    chatId: number,
+    kind: ExamItemKind,
+    now: DateTime,
+  ): Promise<void> {
+    const { $set, $unset } = startNewExamItemDraftUpdate(kind, now);
+    await this.model.updateOne(
+      { chatId },
+      { $set: encryptRecord($set, BOT_SESSION_ENCRYPT_SCHEMA), $unset },
+      { upsert: true },
+    );
+  }
+
+  /** Шаг вперёд внутри уже начатого черновика (формулировка/варианты/
+   * критерии/сохранение) — черновик копится в bot_sessions, а не в отдельной
+   * коллекции (ADR-0024, комментарий у kind в bot-session.schema.ts).
+   * Свободный текст/варианты шифруются перед записью тем же приёмом, что у
+   * самого банка вопросов (ExamItemsService.create). */
+  async setNewExamItemDraft(
+    chatId: number,
+    patch: NewExamItemDraftPatch,
+    now: DateTime,
+  ): Promise<void> {
+    const update = encryptRecord(
+      newExamItemDraftUpdate(patch, now),
+      BOT_SESSION_ENCRYPT_SCHEMA,
+    );
+    await this.model.updateOne({ chatId }, { $set: update }, { upsert: true });
   }
 
   async clear(chatId: number): Promise<void> {

@@ -11,6 +11,14 @@
 // «attemptId:номер[:номер]» (вопрос/вариант в попытке, ТЗ 4б.2, ADR-0024) —
 // разбор в exam-callback-ids.ts, тем же приёмом, что notif/menu: параметр
 // внутри уже распознанного действия, не второй парсер этого файла.
+//
+// nqk/nqo/nqd/nqf — диалог «Новый вопрос» (ТЗ 4б.3, PLAN.md §12), только
+// штат (как topic/notif, не как exam/eq/eo/es): nqk — тип вопроса (id —
+// ExamItemKind); nqo — переключить вариант верным (id — номер варианта);
+// nqd — «Готово» промежуточного шага (id — 'options'|'correct'); nqf —
+// управление диалогом (id — 'skip'|'save'|'cancel'). Разбор — тем же приёмом,
+// что isNotificationKind/isMenuScreenAction — в new-exam-item-types.ts и
+// самих хендлерах, не здесь.
 import type { InlineKeyboardButton } from 'telegraf/types';
 
 const CALLBACK_ACTIONS = [
@@ -24,6 +32,10 @@ const CALLBACK_ACTIONS = [
   'eq',
   'eo',
   'es',
+  'nqk',
+  'nqo',
+  'nqd',
+  'nqf',
 ] as const;
 export type CallbackAction = (typeof CALLBACK_ACTIONS)[number];
 

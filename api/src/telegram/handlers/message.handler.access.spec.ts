@@ -11,6 +11,7 @@ import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
 import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
+import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { MessageHandler } from './message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
@@ -106,6 +107,66 @@ describe('MessageHandler — доступ и сбои', () => {
     expect(telegramId).toBe(555);
     expect(session.attemptId.toString()).toBe(attemptId.toString());
     expect(session.questionIndex).toBe(1);
+  });
+
+  it('kind examItemDraft — зовёт NewExamItemMessageHandler (ТЗ 4б.3, только штат)', async () => {
+    await seedTeacher(ctx.userModel, ctx.channelModel, 777);
+    await ctx.botSessionModel.create({
+      chatId: 777,
+      kind: 'examItemDraft',
+      draftStep: 'prompt',
+      draftKind: 'text',
+      expiresAt: NOW.plus({ hours: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx } = fakeCtx({ chatId: 777, text: 'Опишите форму' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(ctx.newExamItemHandler.handle).toHaveBeenCalledTimes(1);
+    const [, telegramId, session] = ctx.newExamItemHandler.handle.mock.calls[0] as [
+      unknown,
+      number,
+      { draftKind: string },
+    ];
+    expect(telegramId).toBe(777);
+    expect(session.draftKind).toBe('text');
+  });
+
+  it('штат, ожидание examItemDraft истекло — фраза про черновик вопроса, не про тему', async () => {
+    await seedTeacher(ctx.userModel, ctx.channelModel, 778);
+    await ctx.botSessionModel.create({
+      chatId: 778,
+      kind: 'examItemDraft',
+      draftStep: 'prompt',
+      draftKind: 'text',
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({
+      chatId: 778,
+      text: 'опоздавшая формулировка',
+    });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([
+      'Время на вопрос истекло. Наберите /вопрос ещё раз — черновик придётся начать заново.',
+    ]);
+  });
+
+  it('ученик (без ролей), ожидание examItemDraft истекло — тихо игнорируется (гейт штата)', async () => {
+    await ctx.userModel.create({ name: 'Ученик', telegramId: 779, roles: [] });
+    await ctx.botSessionModel.create({
+      chatId: 779,
+      kind: 'examItemDraft',
+      draftStep: 'prompt',
+      draftKind: 'text',
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({ chatId: 779, text: 'не моё дело' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([]);
   });
 
   it('ученик (без ролей), ожидание examText истекло — фраза про истечение, не тишина (PR #175)', async () => {
@@ -204,6 +265,7 @@ describe('MessageHandler — доступ и сбои', () => {
       ),
       { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
       { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
+      { handle: jest.fn() } as unknown as NewExamItemMessageHandler,
     );
   }
 

@@ -10,7 +10,13 @@
 // живёт минуты-часы, персональных данных не содержит.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
-import type { FieldPolicy } from '../common/field-policy';
+import { EXAM_ITEM_KINDS, type ExamItemKind } from '@xuanxue/shared';
+import {
+  enc,
+  encJson,
+  encryptSchemaFrom,
+  type FieldPolicy,
+} from '../common/field-policy';
 
 // 'examMedia' (ADR-0023, PLAN §11 слой 4.5) — ждём видео для попытки; либо
 // после deep link `t.me/<бот>?start=exam_<attemptId>` из кабинета (тогда
@@ -21,8 +27,33 @@ import type { FieldPolicy } from '../common/field-policy';
 // ученики) — несёт `attemptId`, не `lessonId`.
 // 'examText' (ТЗ 4б.2, часть 2) — ждём свободный текст ответа на вопрос
 // попытки; всегда с `questionIndex`, тем же приёмом, что examMedia.
-const BOT_SESSION_KINDS = ['topic', 'recording', 'examMedia', 'examText'] as const;
+// 'examItemDraft' (ТЗ 4б.3, PLAN.md §12, ADR-0024) — учитель заводит вопрос в
+// боте: четыре шага (тип → формулировка → варианты → критерии), черновик
+// копится в draft*-полях ниже, а не в отдельной коллекции — тем же приёмом,
+// что topic/recording хранят `lessonId` прямо на сессии. Открыт только штату
+// (personal-chats.ts), в отличие от examMedia/examText.
+const BOT_SESSION_KINDS = [
+  'topic',
+  'recording',
+  'examMedia',
+  'examText',
+  'examItemDraft',
+] as const;
 export type BotSessionKind = (typeof BOT_SESSION_KINDS)[number];
+
+// Шаг диалога заведения вопроса (ТЗ 4б.3) — 'kind' на схеме нет: тип выбирают
+// кнопкой ДО первой записи в bot_sessions (new-exam-item-screens.ts), сессия
+// заводится только с шага 'prompt'. 'options'/'correct' пропускаются у
+// text/video (у них вариантов не бывает, exam-item-options.ts) — сразу
+// 'prompt' → 'criteria'.
+const NEW_EXAM_ITEM_STEPS = [
+  'prompt',
+  'options',
+  'correct',
+  'criteria',
+  'confirm',
+] as const;
+export type NewExamItemStep = (typeof NEW_EXAM_ITEM_STEPS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })
 export class BotSessionRecord {
@@ -65,6 +96,38 @@ export class BotSessionRecord {
 
   @Prop({ type: Date, required: true })
   expiresAt!: Date;
+
+  // Только 'examItemDraft' — шаг диалога (bot-session.schema.ts комментарий
+  // у kind выше), enum, решения по шифрованию не требует.
+  @Prop({ type: String, enum: NEW_EXAM_ITEM_STEPS, required: false })
+  draftStep?: NewExamItemStep;
+
+  // Тип вопроса, выбранный на первом (безсессионном) шаге — тот же enum, что
+  // у банка вопросов (exam-item.schema.ts), решения не требует.
+  @Prop({ type: String, enum: EXAM_ITEM_KINDS, required: false })
+  draftKind?: ExamItemKind;
+
+  // Свободный текст формулировки — шифруется (SECURITY §5), как prompt у
+  // самого вопроса.
+  @Prop({ type: String, required: false })
+  draftPrompt?: string;
+
+  // Критерии проверки (шаг необязательный) — шифруются тем же приёмом.
+  @Prop({ type: String, required: false })
+  draftCriteria?: string;
+
+  // Варианты ответа, накопленные на шаге 'options' — JSON-строка целиком
+  // (encJson), как options у самого вопроса (exam-item.schema.ts):
+  // вложенное enc/encJson не сработает молча (encryption-coverage.spec.ts).
+  @Prop({ type: String, required: false })
+  draftOptions?: string;
+
+  // Идемпотентность «Сохранить» (ТЗ 4б.3) — id уже созданного вопроса.
+  // Повторный клик находит его здесь и не зовёт ExamItemsService.create()
+  // второй раз (new-exam-item-save.ts). Не пользовательский ObjectId данных —
+  // ссылка на уже существующий exam_items, решения по шифрованию не требует.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  draftSavedItemId?: Types.ObjectId;
 }
 
 export const BotSessionSchema = SchemaFactory.createForClass(BotSessionRecord);
@@ -78,4 +141,12 @@ export const BOT_SESSION_FIELD_POLICY: FieldPolicy = {
   // kind — перечисление (enum), решения не требует (encryption-coverage.spec).
   // chatId — Number, тоже вне охвата String/Mixed; причина здесь для чеклиста
   // CLAUDE.md «Новая коллекция»: id чата Telegram — не секрет и не текст.
+  draftPrompt: enc,
+  draftCriteria: enc,
+  draftOptions: encJson,
 };
+
+/** Схема шифрования черновика вопроса — одна на запись и чтение
+ * (bot-session.service.ts), тем же приёмом, что EXAM_ITEM_ENCRYPT_SCHEMA у
+ * самого банка вопросов (exam-item.schema.ts). */
+export const BOT_SESSION_ENCRYPT_SCHEMA = encryptSchemaFrom(BOT_SESSION_FIELD_POLICY);

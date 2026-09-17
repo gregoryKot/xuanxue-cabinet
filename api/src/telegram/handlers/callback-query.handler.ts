@@ -7,6 +7,7 @@
 // без PII (только chatId). `now` — параметром от TelegramBotService
 // (CLAUDE.md «Время»): хендлер сам DateTime.utc() не зовёт.
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { isNotificationKind } from '@xuanxue/shared';
@@ -34,6 +35,10 @@ import { isExamCallbackAction, routeExamCallback } from './exam-callback-router'
 import { ExamCommandHandler } from './exam-command.handler';
 import { MenuCommandHandler } from './menu-command.handler';
 import { handleMenuScreen } from './menu-screens';
+import {
+  isNewExamItemCallbackAction,
+  routeNewExamItemCallback,
+} from './new-exam-item-router';
 import { handleOpenMenuScreen } from './open-menu-screen';
 
 @Injectable()
@@ -51,6 +56,7 @@ export class CallbackQueryHandler {
     private readonly examBotPorts: ExamBotPortRegistry,
     private readonly examCommandHandler: ExamCommandHandler,
     private readonly botAccess: BotUserAccessService,
+    private readonly config: ConfigService,
   ) {}
 
   async handle(ctx: Context, now: DateTime): Promise<void> {
@@ -155,6 +161,19 @@ export class CallbackQueryHandler {
         this.notificationPrefsService,
         chatId,
         id,
+      );
+    }
+    if (isNewExamItemCallbackAction(action)) {
+      return routeNewExamItemCallback(
+        ctx,
+        action,
+        id,
+        chatId,
+        this.botSessions,
+        this.examBotPorts.get(),
+        this.usersService,
+        this.config.get<string>('PUBLIC_URL'),
+        now,
       );
     }
   }
