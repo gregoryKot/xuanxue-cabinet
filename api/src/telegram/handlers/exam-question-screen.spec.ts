@@ -80,6 +80,20 @@ describe('buildQuestionScreen', () => {
     ]);
   });
 
+  // ADR-0035: вариант-картинка без подписи — Telegram отклоняет кнопку с
+  // пустым текстом, поэтому кнопка подписана номером.
+  it('single — вариант без текста (картинка без подписи) подписан номером', () => {
+    const q = question({
+      options: [
+        { id: 'o1', text: '', imageId: 'img1' },
+        { id: 'o2', text: 'Пять' },
+      ],
+    });
+    const view = buildQuestionScreen(attempt([q]), 0);
+    expect(view.buttons[0]?.[0]?.text).toBe('Вариант 1');
+    expect(view.buttons[1]?.[0]?.text).toBe('Пять');
+  });
+
   it('single — выбранный вариант отмечен галочкой', () => {
     const view = buildQuestionScreen(
       attempt([question()], { answers: [{ itemId: 'i1', optionIds: ['o2'] }] }),

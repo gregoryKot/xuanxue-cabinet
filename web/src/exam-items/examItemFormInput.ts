@@ -6,6 +6,7 @@
 // клавиши (тот же приём, что durationMinText/leadMinutesText в classFormInput.ts).
 import {
   EXAM_ITEM_LIMITS,
+  OPTION_TEXT_OR_IMAGE_MESSAGE,
   type CreateExamItemInput,
   type ExamItemDto,
   type ExamItemKind,
@@ -13,10 +14,14 @@ import {
   type UpdateExamItemInput,
 } from '@xuanxue/shared';
 
+/** `imageId` — картинка варианта (ADR-0035): форма несёт его сквозь правку
+ * как есть, иначе «открыл, поправил текст, сохранил» молча снимало бы
+ * картинку с варианта — options в PATCH заменяют набор целиком. */
 export interface ExamItemOptionDraft {
   id?: string;
   text: string;
   correct: boolean;
+  imageId?: string;
 }
 
 export interface ExamItemFormState {
@@ -52,6 +57,7 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
         id: option.id,
         text: option.text,
         correct: option.correct,
+        imageId: option.imageId,
       })) ?? [],
     tagsText: item?.tags.join(', ') ?? '',
   };
@@ -82,8 +88,9 @@ export function validateExamItemForm(state: ExamItemFormState): string | null {
   ) {
     return `Укажите от ${EXAM_ITEM_LIMITS.optionsMin} до ${EXAM_ITEM_LIMITS.optionsMax} вариантов ответа.`;
   }
-  if (state.options.some((option) => !option.text.trim())) {
-    return 'Заполните текст каждого варианта ответа.';
+  // Текст или картинка — то же правило, что у сервиса (OPTION_TEXT_OR_IMAGE_MESSAGE).
+  if (state.options.some((option) => !option.text.trim() && !option.imageId)) {
+    return OPTION_TEXT_OR_IMAGE_MESSAGE;
   }
   const correctCount = state.options.filter((option) => option.correct).length;
   if (state.kind === 'single' && correctCount !== 1) {
@@ -104,6 +111,7 @@ function toOptionsInput(state: ExamItemFormState): ExamItemOptionInput[] | undef
     id: option.id,
     text: option.text.trim(),
     correct: option.correct,
+    imageId: option.imageId,
   }));
 }
 

@@ -28,6 +28,7 @@ export interface AttemptOptionRecord {
   id: string;
   text: string;
   correct: boolean;
+  imageId?: string;
 }
 
 /** Вопрос в снимке — редакция вопроса банка на момент старта (`version`
@@ -98,9 +99,9 @@ export class ExamAttemptRecord {
 
   // Плоская копия imageId вариантов снимка — blocks зашифрован целиком и
   // Mongo внутрь не видит; ExamImagesService.load решает по этому полю,
-  // можно ли ученику картинку (SECURITY §3, ADR-0035). Писать его начнёт
-  // следующий слой (снимок при старте попытки) — у старых попыток поля нет,
-  // Mongo трактует отсутствие как пустой массив.
+  // можно ли ученику картинку (SECURITY §3, ADR-0035). Пишет createAttempt
+  // при старте попытки (exam-attempt-start.ts, collectAttemptImageIds) — у
+  // старых попыток поля нет, Mongo трактует отсутствие как пустой массив.
   @Prop({ type: [SchemaTypes.ObjectId], default: [] })
   imageIds!: Types.ObjectId[];
 

@@ -27,6 +27,9 @@ export interface ExamItemOptionRecord {
   id: string;
   text: string;
   correct: boolean;
+  /** Ссылка на картинку в `exam_images` (ADR-0035) — необязательна: у
+   * варианта хотя бы одно из text/imageId, проверяет assertOptionsForKind. */
+  imageId?: string;
 }
 
 /** Прошлая редакция — снимок содержательных полей на момент правки
@@ -81,8 +84,8 @@ export class ExamItemRecord {
 
   // Плоская копия imageId вариантов (текущих и из history) — options/history
   // зашифрованы целиком и Mongo внутрь не видит; по этому полю уборщик сирот
-  // (следующий слой) поймёт, на какие картинки ссылается вопрос (ADR-0035).
-  // Писать его начнёт следующий слой (контракт imageId у варианта) — у
+  // (exam-image-sweep.service.ts) поймёт, на какие картинки ссылается вопрос
+  // (ADR-0035). Пишет ExamItemsService (create/update, collectImageIds) — у
   // старых документов поля нет, Mongo трактует отсутствие как пустой массив.
   @Prop({ type: [SchemaTypes.ObjectId], default: [] })
   imageIds!: Types.ObjectId[];

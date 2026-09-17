@@ -6,6 +6,8 @@ import type { Connection, Model } from 'mongoose';
 import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
+import { ExamImagesService } from '../exam-images/exam-images.service';
 import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { ExamAttemptsService } from './exam-attempts.service';
@@ -31,8 +33,13 @@ export interface AttemptsTestContext {
   gradingModel: Model<ExamGradingRecord>;
   userModel: Model<UserRecord>;
   mediaModel: Model<MediaAssetRecord>;
+  // Слой 4.2 (ADR-0035) — ExamItemsService проверяет через него существование
+  // картинки варианта; спекам, которым нужна картинка в снимке попытки, тоже
+  // не поднимать модель второй раз.
+  imageModel: Model<ExamImageRecord>;
   examsService: ExamsService;
   examItemsService: ExamItemsService;
+  examImagesService: ExamImagesService;
   userNamesService: UserNamesService;
   examNotifier: FakeExamNotifier;
   service: ExamAttemptsService;
@@ -60,8 +67,13 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     MediaAssetRecord.name,
     MediaAssetSchema,
   );
+  const imageModel = connection.model<ExamImageRecord>(
+    ExamImageRecord.name,
+    ExamImageSchema,
+  );
   const examsService = new ExamsService(examModel, itemModel, attemptModel);
-  const examItemsService = new ExamItemsService(itemModel, examModel);
+  const examImagesService = new ExamImagesService(imageModel, attemptModel);
+  const examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
   const userNamesService = new UserNamesService(userModel);
   const examNotifier = fakeExamNotifier();
   const service = new ExamAttemptsService(
@@ -87,8 +99,10 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     gradingModel,
     userModel,
     mediaModel,
+    imageModel,
     examsService,
     examItemsService,
+    examImagesService,
     userNamesService,
     examNotifier,
     service,
@@ -103,6 +117,7 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.itemModel.deleteMany({});
   await ctx.gradingModel.deleteMany({});
   await ctx.userModel.deleteMany({});
+  await ctx.imageModel.deleteMany({});
   await ctx.mediaModel.deleteMany({});
   // Иначе вызовы ExamNotifier из одного теста утекают в счётчик следующего —
   // общий ctx на файл (afterEach), не свой инстанс на тест.

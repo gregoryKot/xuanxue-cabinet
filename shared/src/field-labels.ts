@@ -75,6 +75,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   criteria: 'Критерии проверки',
   options: 'Варианты ответа',
   correct: 'Правильный вариант',
+  imageId: 'Картинка варианта',
   tags: 'Теги',
   tag: 'Тег',
 

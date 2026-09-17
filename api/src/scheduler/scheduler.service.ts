@@ -14,6 +14,7 @@ import { PreviewService } from '../broadcasts/preview.service';
 import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import { ManualPromptService } from '../deliveries/manual-prompt.service';
 import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-notifier';
+import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
@@ -35,6 +36,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly recordingPromptService: RecordingPromptService,
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
+    private readonly examImageSweepService: ExamImageSweepService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
   ) {}
 
@@ -84,12 +86,18 @@ export class SchedulerService implements OnApplicationShutdown {
       now,
       (n) => this.examDeadlineCloseService.closeDue(n),
     )) ?? { closed: 0 };
+    // ADR-0035, «Последствия»: картинка варианта живёт, пока на неё ссылается
+    // вопрос банка или снимок попытки — сирота старше суток убирается сама.
+    const { removed: imagesRemoved } = (await this.step('картинки-сироты', now, (n) =>
+      this.examImageSweepService.removeOrphans(n),
+    )) ?? { removed: 0 };
 
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
         `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ` +
-        `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed}`,
+        `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
+        `imagesRemoved=${imagesRemoved}`,
     );
   }
 

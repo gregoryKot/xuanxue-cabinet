@@ -8,6 +8,8 @@ import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
+import { ExamImagesService } from '../exam-images/exam-images.service';
 import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
@@ -46,7 +48,12 @@ describe('ExamItemStatsService', () => {
     );
     examModel = memory.connection.model<ExamRecord>(ExamRecord.name, ExamSchema);
     const userModel = memory.connection.model<UserRecord>(UserRecord.name, UserSchema);
-    examItemsService = new ExamItemsService(itemModel, examModel);
+    const imageModel = memory.connection.model<ExamImageRecord>(
+      ExamImageRecord.name,
+      ExamImageSchema,
+    );
+    const examImagesService = new ExamImagesService(imageModel, attemptModel);
+    examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
     examsService = new ExamsService(examModel, itemModel, attemptModel);
     attemptsService = new ExamAttemptsService(
       attemptModel,

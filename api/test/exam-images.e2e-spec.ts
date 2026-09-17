@@ -18,16 +18,7 @@ import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 import { createUserWithSession } from './e2e-support/session';
 import { createExamAttemptsTestHelpers } from './e2e-support/exam-attempts-fixtures';
-
-function jpegBytes(size = 64): Buffer {
-  const head = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-  return Buffer.concat([head, Buffer.alloc(Math.max(size - head.length, 0))]);
-}
-
-function pngBytes(size = 64): Buffer {
-  const head = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  return Buffer.concat([head, Buffer.alloc(Math.max(size - head.length, 0))]);
-}
+import { jpegBytes, pngBytes } from './e2e-support/exam-images-fixtures';
 
 describe('Картинки вариантов ответа (e2e)', () => {
   let testApp: TestApp;

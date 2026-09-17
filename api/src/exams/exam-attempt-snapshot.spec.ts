@@ -1,7 +1,12 @@
 // Чистая логика — юнит-тест без Mongo и без DI (CLAUDE.md «Тесты»).
 import type { ExamBlockDto, ExamItemDto } from '@xuanxue/shared';
 import { checkOptionAnswer } from './exam-attempt-review';
-import { buildAttemptBlocks, shuffleOnce } from './exam-attempt-snapshot';
+import {
+  buildAttemptBlocks,
+  collectAttemptImageIds,
+  shuffleOnce,
+} from './exam-attempt-snapshot';
+import type { AttemptBlockRecord } from './exam-attempt.schema';
 
 function fixedSequence(values: number[]): () => number {
   let i = 0;
@@ -177,5 +182,89 @@ describe('buildAttemptBlocks', () => {
     const blocks = [block({ itemIds: ['missing'] })];
 
     expect(() => build(blocks, new Map(), () => 0)).toThrow('не найден');
+  });
+
+  // ADR-0035: imageId варианта — часть снимка, как text/correct.
+  it('imageId варианта доезжает до снимка без перемешивания', () => {
+    const itemsById = new Map([
+      [
+        'i1',
+        item({
+          id: 'i1',
+          kind: 'single',
+          options: [
+            { id: 'o1', text: '', correct: true, imageId: 'img1' },
+            { id: 'o2', text: 'без картинки', correct: false },
+          ],
+        }),
+      ],
+    ]);
+    const blocks = [block({ itemIds: ['i1'] })];
+
+    const snapshot = build(blocks, itemsById, () => 0);
+
+    const options = snapshot[0]?.questions[0]?.options ?? [];
+    expect(options[0]?.imageId).toBe('img1');
+    expect(options[1]).not.toHaveProperty('imageId');
+  });
+
+  it('imageId варианта доезжает до снимка и при перемешивании вариантов', () => {
+    const itemsById = new Map([
+      [
+        'i1',
+        item({
+          id: 'i1',
+          kind: 'single',
+          options: [
+            { id: 'o1', text: 'без картинки', correct: true },
+            { id: 'o2', text: '', correct: false, imageId: 'img2' },
+          ],
+        }),
+      ],
+    ]);
+    const blocks = [block({ itemIds: ['i1'] })];
+
+    const snapshot = build(blocks, itemsById, fixedSequence([0.9, 0.1]), true);
+
+    const withImage = snapshot[0]?.questions[0]?.options.find((o) => o.id === 'o2');
+    expect(withImage?.imageId).toBe('img2');
+  });
+});
+
+describe('collectAttemptImageIds', () => {
+  function blockWithOptionImages(imageIds: (string | undefined)[]): AttemptBlockRecord {
+    return {
+      id: 'b1',
+      title: 'Блок',
+      questions: [
+        {
+          itemId: 'i1',
+          version: 1,
+          kind: 'single',
+          prompt: 'p',
+          options: imageIds.map((imageId, index) => ({
+            id: `o${index}`,
+            text: imageId ? '' : `вариант ${index}`,
+            correct: index === 0,
+            ...(imageId !== undefined ? { imageId } : {}),
+          })),
+        },
+      ],
+    };
+  }
+
+  it('без картинок — пустой список', () => {
+    expect(
+      collectAttemptImageIds([blockWithOptionImages([undefined, undefined])]),
+    ).toEqual([]);
+  });
+
+  it('одна и та же картинка в нескольких вопросах — без повторов', () => {
+    const blocks = [
+      blockWithOptionImages(['img1', undefined]),
+      blockWithOptionImages(['img1', 'img2']),
+    ];
+
+    expect(collectAttemptImageIds(blocks)).toEqual(['img1', 'img2']);
   });
 });

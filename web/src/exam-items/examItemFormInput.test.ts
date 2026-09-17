@@ -131,6 +131,37 @@ describe('validateExamItemForm — single/multiple', () => {
     );
   });
 
+  it('вариант с картинкой без текста — валиден (ADR-0035: текст или картинка)', () => {
+    expect(
+      validateExamItemForm(
+        baseState({
+          kind: 'single',
+          options: [
+            { text: '', correct: true, imageId: '507f1f77bcf86cd799439011' },
+            { text: 'B', correct: false },
+          ],
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it('существующий вариант с картинкой — imageId доезжает в форму и обратно в PATCH', () => {
+    const item = makeItem({
+      options: [
+        { id: 'o1', text: '', correct: true, imageId: '507f1f77bcf86cd799439011' },
+        { id: 'o2', text: '108', correct: false },
+      ],
+    });
+    const state = initialExamItemFormState(item);
+    expect(state.options[0]?.imageId).toBe('507f1f77bcf86cd799439011');
+    expect(toUpdateInput(state).options?.[0]).toEqual({
+      id: 'o1',
+      text: '',
+      correct: true,
+      imageId: '507f1f77bcf86cd799439011',
+    });
+  });
+
   it('пустой текст одного из вариантов — ошибка', () => {
     expect(
       validateExamItemForm(
@@ -142,7 +173,7 @@ describe('validateExamItemForm — single/multiple', () => {
           ],
         }),
       ),
-    ).toMatch(/Заполните текст/);
+    ).toMatch(/текст или картинка/);
   });
 
   it('single без отмеченного верного — ошибка «ровно один»', () => {
