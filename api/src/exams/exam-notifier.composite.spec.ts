@@ -124,10 +124,9 @@ describe('CompositeExamNotifier', () => {
         kind: 'attempt_submitted',
       },
     );
-    expect(error).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ userId: expect.anything() }),
-    );
+    // Ключи — без PII: по логу ищут по attemptId, `userId` в него не уходит
+    // (CLAUDE.md «Логи и наблюдаемость»).
+    expect(JSON.stringify(error.mock.calls)).not.toContain(ATTEMPT_CONTEXT.userId);
     error.mockRestore();
   });
 
