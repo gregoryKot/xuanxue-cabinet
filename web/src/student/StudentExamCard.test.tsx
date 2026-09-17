@@ -92,7 +92,7 @@ describe('StudentExamCard', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Нет связи с сервером.');
   });
 
-  it('работа проверена — вместо кнопки итог, баллы и комментарий учителя', () => {
+  it('работа проверена — вместо кнопки итог и комментарий учителя', () => {
     const exam = makeExam({
       attemptsAllowed: 1,
       attemptsUsed: 1,
@@ -101,7 +101,6 @@ describe('StudentExamCard', () => {
         status: 'graded',
         outcome: 'needs_work',
         comment: 'Проверьте стойку в начале формы.',
-        criteria: [{ id: 'c1', title: 'Устойчивость и центр', maxScore: 5, score: 3 }],
       },
     });
     render(
@@ -110,7 +109,6 @@ describe('StudentExamCard', () => {
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByText('Нужно доработать')).toBeInTheDocument();
-    expect(screen.getByText('Устойчивость и центр: 3 из 5')).toBeInTheDocument();
     expect(screen.getByText(/Проверьте стойку в начале формы\./)).toBeInTheDocument();
     expect(screen.queryByText('Экзамен проверен')).not.toBeInTheDocument();
   });
@@ -128,7 +126,6 @@ describe('StudentExamCard', () => {
         status: 'graded',
         outcome: 'needs_work',
         comment: 'Проверьте стойку в начале формы.',
-        criteria: [{ id: 'c1', title: 'Устойчивость и центр', maxScore: 5, score: 3 }],
       },
     });
     render(

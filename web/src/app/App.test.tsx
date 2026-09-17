@@ -227,7 +227,6 @@ describe('App', () => {
         userName: 'Иван Иванов',
         status: 'submitted',
         blocks: [],
-        rubric: [],
       },
     });
 

@@ -27,7 +27,6 @@ function exam(blocks: ExamBlockDto[]): ExamDto {
     level: '',
     blocks,
     shuffleOptions: false,
-    rubric: [],
     attemptsAllowed: 1,
     status: 'draft',
     createdAt: '2026-01-01T00:00:00Z',

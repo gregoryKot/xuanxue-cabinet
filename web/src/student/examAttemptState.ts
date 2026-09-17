@@ -3,12 +3,7 @@
 // статуса попытки (EXAM_ATTEMPT_STATUSES) дают ровно три формулировки —
 // «вы отвечаете» показывать не нужно отдельно: карточка вместо неё рисует
 // кнопку «Продолжить».
-import {
-  pluralRu,
-  type GradingCriterionDto,
-  type GradingOutcome,
-  type MyExamDto,
-} from '@xuanxue/shared';
+import { pluralRu, type GradingOutcome, type MyExamDto } from '@xuanxue/shared';
 
 const ATTEMPT_FORMS = {
   one: 'попытка',
@@ -23,8 +18,8 @@ const ATTEMPT_FORMS = {
  * («Сдал»), здесь — фраза для читателя-ученика о предмете («Экзамен сдан»),
  * третье лицо, без «вы»: согласование по роду и числу тут не нужно
  * (docs/VOICE.md «Форма „вы“»). needs_work прямо называет действие —
- * доработать, — а что именно, ученик увидит в баллах по критериям и
- * комментарии учителя рядом (карточка их уже показывает).
+ * доработать, — а что именно, ученик увидит в комментарии учителя рядом
+ * (карточка его уже показывает).
  */
 const OUTCOME_TEXT: Record<GradingOutcome, string> = {
   passed: 'Экзамен сдан',
@@ -34,13 +29,6 @@ const OUTCOME_TEXT: Record<GradingOutcome, string> = {
 
 export function describeOutcome(outcome: GradingOutcome): string {
   return OUTCOME_TEXT[outcome];
-}
-
-/** «Устойчивость и центр: 4 из 5» — баллы по критерию своей же попытки, не
- * критерий вопроса (ТЗ п.1, границы в shared/src/my-exams.ts). Без слова
- * «баллов»: цифра и «из» уже читаются однозначно, лишнее слово — шум. */
-export function formatCriterionScore(criterion: GradingCriterionDto): string {
-  return `${criterion.title}: ${criterion.score} из ${criterion.maxScore}`;
 }
 
 export type ExamCardAction = 'continue' | 'start' | 'retry' | null;
@@ -81,8 +69,8 @@ export function getExamAction(exam: MyExamDto): ExamCardAction {
  * словами (ТЗ п.1) или, если попытки не было вовсе, почему кнопки нет.
  *
  * Ветка «graded» — запасной вариант: StudentExamCard.tsx для проверенной
- * попытки с оценкой рисует не эту строку, а `describeOutcome` с баллами и
- * комментарием (ТЗ п.2, слой 4.7) — тот заголовок уже говорит, что экзамен
+ * попытки с оценкой рисует не эту строку, а `describeOutcome` с комментарием
+ * учителя (ТЗ п.2, слой 4.7) — тот заголовок уже говорит, что экзамен
  * проверен, и повторять это здесь было бы лишним. Текст ниже остаётся на
  * случай, если попытка помечена проверенной, а оценки в ответе почему-то ещё
  * нет (защита от рассинхрона данных, не ожидаемый путь). */

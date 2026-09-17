@@ -1,22 +1,19 @@
-// Форма оценки попытки по рубрике (ТЗ 4.6, п.2) — баллы и комментарий по
-// каждому критерию, общий комментарий, итог. Если оценка уже стоит, форма
-// открывается заполненной ею (initialGradingFormState), а кнопка говорит,
-// что оценка переписывается, — учитель не должен решить, что жмёт «Сохранить»
-// в пустоту. Без собственного заголовка: живёт внутри секции «Рубрика»
-// (grading/AttemptReviewScreen.tsx), второй заголовок над тем же блоком был
-// бы лишним.
+// Форма оценки попытки (ТЗ 4.6, п.2 после удаления рубрики) — комментарий и
+// итог. Если оценка уже стоит, форма открывается заполненной ею
+// (initialGradingFormState), а кнопка говорит, что оценка переписывается, —
+// учитель не должен решить, что жмёт «Сохранить» в пустоту. Без собственного
+// заголовка: живёт внутри секции «Проверка» (grading/AttemptReviewScreen.tsx),
+// второй заголовок над тем же блоком был бы лишним.
 import { useState, type CSSProperties, type FormEvent } from 'react';
 import {
   GRADING_LIMITS,
   GRADING_OUTCOMES,
   type ExamGradingDto,
   type PutGradingInput,
-  type RubricCriterionDto,
 } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError, type FormError } from '../components/FormServerError';
-import { GradingCriterionField } from './GradingCriterionField';
 import {
   GRADING_OUTCOME_LABELS_RU,
   initialGradingFormState,
@@ -29,31 +26,17 @@ const textareaStyle: CSSProperties = { ...inputStyle, minHeight: 80, resize: 've
 const errorStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
 
 interface GradingFormProps {
-  rubric: RubricCriterionDto[];
   grading: ExamGradingDto | undefined;
   onSubmit: (input: PutGradingInput) => Promise<boolean>;
   saving: boolean;
   saveError: FormError | null;
 }
 
-export function GradingForm({
-  rubric,
-  grading,
-  onSubmit,
-  saving,
-  saveError,
-}: GradingFormProps) {
+export function GradingForm({ grading, onSubmit, saving, saveError }: GradingFormProps) {
   const [state, setState] = useState<GradingFormState>(() =>
-    initialGradingFormState(rubric, grading),
+    initialGradingFormState(grading),
   );
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  function updateCriterion(index: number, next: GradingFormState['criteria'][number]) {
-    setState((prev) => ({
-      ...prev,
-      criteria: prev.criteria.map((criterion, i) => (i === index ? next : criterion)),
-    }));
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -68,15 +51,7 @@ export function GradingForm({
       onSubmit={(e) => void handleSubmit(e)}
       style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
     >
-      {state.criteria.map((criterion, index) => (
-        <GradingCriterionField
-          key={criterion.id}
-          criterion={criterion}
-          onChange={(next) => updateCriterion(index, next)}
-        />
-      ))}
-
-      <Field label="Общий комментарий">
+      <Field label="Комментарий">
         <textarea
           style={textareaStyle}
           maxLength={GRADING_LIMITS.comment}

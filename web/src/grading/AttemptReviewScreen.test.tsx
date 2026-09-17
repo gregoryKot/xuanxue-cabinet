@@ -45,7 +45,6 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
         ],
       },
     ],
-    rubric: [{ id: 'c1', title: 'Устойчивость', maxScore: 5 }],
     ...overrides,
   };
 }
@@ -185,7 +184,7 @@ describe('AttemptReviewScreen — карточка', () => {
     expect(screen.getByText(/Выбрано верно 0 из 1, ещё 1 лишний/)).toBeInTheDocument();
   });
 
-  it('оценка уже стоит — сумма ответов сервера открывает форму заполненной', async () => {
+  it('оценка уже стоит — ответ сервера открывает форму заполненной', async () => {
     mockApiByPath({
       '/attempts': makeReview({
         grading: {
@@ -194,7 +193,7 @@ describe('AttemptReviewScreen — карточка', () => {
           examId: 'e1',
           userId: 'u1',
           graderId: 't1',
-          criteria: [{ id: 'c1', title: 'Устойчивость', maxScore: 5, score: 3 }],
+          comment: 'Проверьте дыхание',
           outcome: 'needs_work',
           gradedAt: '2026-01-01T00:00:00Z',
         },
@@ -203,7 +202,8 @@ describe('AttemptReviewScreen — карточка', () => {
 
     renderAt('a1');
 
-    expect(await screen.findByLabelText('Устойчивость — баллы (0–5)')).toHaveValue('3');
+    expect(await screen.findByLabelText('Комментарий')).toHaveValue('Проверьте дыхание');
+    expect(screen.getByLabelText('Итог')).toHaveValue('needs_work');
     expect(screen.getByRole('button', { name: 'Переписать оценку' })).toBeInTheDocument();
   });
 });
@@ -216,7 +216,7 @@ describe('AttemptReviewScreen — отправка оценки', () => {
     renderAt('a1');
     await screen.findByText('Форма первого уровня');
 
-    await user.type(screen.getByLabelText('Устойчивость — баллы (0–5)'), '4');
+    await user.type(screen.getByLabelText('Комментарий'), 'Хорошо сдал');
     await user.selectOptions(screen.getByLabelText('Итог'), 'passed');
 
     mockedApiFetch.mockResolvedValueOnce(undefined);
@@ -226,8 +226,7 @@ describe('AttemptReviewScreen — отправка оценки', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/grading', {
       method: 'PUT',
       body: {
-        criteria: [{ id: 'c1', score: 4, comment: undefined }],
-        comment: undefined,
+        comment: 'Хорошо сдал',
         outcome: 'passed',
       },
     });
@@ -240,7 +239,6 @@ describe('AttemptReviewScreen — отправка оценки', () => {
     renderAt('a1');
     await screen.findByText('Форма первого уровня');
 
-    await user.type(screen.getByLabelText('Устойчивость — баллы (0–5)'), '4');
     await user.selectOptions(screen.getByLabelText('Итог'), 'passed');
 
     mockedApiFetch.mockRejectedValueOnce(
