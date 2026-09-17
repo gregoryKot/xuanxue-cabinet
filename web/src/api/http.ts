@@ -71,7 +71,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   const { method = 'GET', body, signal } = init;
 
   // Данные первого экрана могли начать грузиться раньше, чем этот компонент
-  // успел смонтироваться (firstScreenPrefetch.ts кладёт их сюда сразу после
+  // успел смонтироваться (prefetchFirstScreen.ts кладёт их сюда сразу после
   // ответа /auth/me, параллельно с чанком экрана) — забираем уже летящий
   // промис вместо второго запроса на тот же адрес (prefetchCache.ts). Только
   // GET: мутацию с эффектом на сервере кэш предзагрузки не подменяет никогда.

@@ -58,7 +58,7 @@ describe('showsRouteScreen', () => {
 
   // Сама функция не знает про invited — статус проверяют раньше её вызова
   // AppShell.tsx (PendingApprovalScreen рисуется раньше проверки Outlet) и
-  // firstScreenPrefetch.ts (ранний выход на invited, см. комментарий в
+  // prefetchFirstScreen.ts (ранний выход на invited, см. комментарий в
   // screenAccess.ts). До сюда invited в реальном приложении не долетает.
   it('invited на «/notifications» — путь совпадает сам по себе, статус не проверяется здесь', () => {
     const invited = makeMe({ roles: ['teacher'], status: 'invited' });
