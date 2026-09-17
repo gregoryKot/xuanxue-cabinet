@@ -8,6 +8,7 @@ import type { ChatMemberHandler } from './handlers/chat-member.handler';
 import type { ExamCommandHandler } from './handlers/exam-command.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
+import type { NewExamCommandHandler } from './handlers/new-exam-command.handler';
 import type { NewExamItemCommandHandler } from './handlers/new-exam-item-command.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { StartHandler } from './handlers/start.handler';
@@ -24,6 +25,10 @@ const TOPIC_COMMAND_PATTERN = /^\/тема(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
 const NOTIFICATIONS_COMMAND_PATTERN = /^\/уведомления(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
 const EXAMS_COMMAND_PATTERN = /^\/экзамены(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
 const NEW_EXAM_ITEM_COMMAND_PATTERN = /^\/вопрос(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
+// «/экзамен» (ТЗ 4б.4) — не путать с «/экзамены» (ТЗ 4б.2, EXAMS_COMMAND_
+// PATTERN выше): без границы `?:\s|$` совпало бы с приставкой «экзамен» у
+// множественного числа, но она есть, и следующая буква «ы» её не проходит.
+const NEW_EXAM_COMMAND_PATTERN = /^\/экзамен(?:@[A-Za-z0-9_]+)?(?:\s|$)/i;
 
 export interface BotHandlers {
   chatMemberHandler: ChatMemberHandler;
@@ -35,6 +40,7 @@ export interface BotHandlers {
   messageHandler: MessageHandler;
   examCommandHandler: ExamCommandHandler;
   newExamItemCommandHandler: NewExamItemCommandHandler;
+  newExamCommandHandler: NewExamCommandHandler;
 }
 
 /** `DateTime.utc()` — на каждый апдейт заново (CLAUDE.md «Время»): здесь, а
@@ -61,6 +67,9 @@ export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
   bot.command('newquestion', (ctx) =>
     handlers.newExamItemCommandHandler.handle(ctx, DateTime.utc()),
   );
+  bot.command('newexam', (ctx) =>
+    handlers.newExamCommandHandler.handle(ctx, DateTime.utc()),
+  );
   bot.hears(TOPIC_COMMAND_PATTERN, (ctx) =>
     handlers.topicCommandHandler.handle(ctx, DateTime.utc()),
   );
@@ -72,6 +81,9 @@ export function registerHandlers(bot: Telegraf, handlers: BotHandlers): void {
   );
   bot.hears(NEW_EXAM_ITEM_COMMAND_PATTERN, (ctx) =>
     handlers.newExamItemCommandHandler.handle(ctx, DateTime.utc()),
+  );
+  bot.hears(NEW_EXAM_COMMAND_PATTERN, (ctx) =>
+    handlers.newExamCommandHandler.handle(ctx, DateTime.utc()),
   );
   bot.on('message', (ctx) => handlers.messageHandler.handle(ctx, DateTime.utc()));
 }

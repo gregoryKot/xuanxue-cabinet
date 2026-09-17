@@ -3,12 +3,12 @@
 // та же настоящая Mongo и настоящий ExamBotService/ExamItemsService, плюс
 // PersonalChats (доступ штата) и сами хендлеры диалога. Вынесено тем же
 // приёмом, что exam-attempt-flow.test-support.ts (jscpd, CLAUDE.md «Файлы»).
-import type { Connection, Model } from 'mongoose';
-import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
-import { UsersService } from '../../users/users.service';
-import { buildPersonalChats } from '../test-support/build-personal-chats';
+import type { Model } from 'mongoose';
+import type { ChannelRecord } from '../../channels/channel.schema';
+import type { UsersService } from '../../users/users.service';
 import { seedTeacher } from '../test-support/seed-teacher';
 import {
+  buildFlowChatRig,
   CHAT_ID,
   clearFlowTest,
   fakeFlowCtx,
@@ -31,10 +31,7 @@ export interface NewExamItemFlowContext {
 
 export async function setupNewExamItemFlowTest(): Promise<NewExamItemFlowContext> {
   const flow = await setupFlowTest();
-  const connection: Connection = flow.ctx.memory.connection;
-  const channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-  const usersService = new UsersService(flow.ctx.userModel);
-  const personalChats = buildPersonalChats(connection, usersService, channelModel);
+  const { channelModel, usersService, personalChats } = buildFlowChatRig(flow);
   return {
     flow,
     channelModel,

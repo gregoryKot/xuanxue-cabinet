@@ -30,6 +30,7 @@ const SCHEDULE_LABEL = 'Ближайшие занятия';
 const NOTIFICATIONS_LABEL = 'Уведомления';
 const EXAMS_LABEL = 'Экзамены';
 const NEW_EXAM_ITEM_LABEL = 'Новый вопрос';
+const NEW_EXAM_LABEL = 'Собрать экзамен';
 const BACK_LABEL = 'В меню';
 
 /** Незнакомцу (нет записи в users) меню не показываем — тот же вежливый
@@ -54,6 +55,8 @@ export function buildBotMenu(): BotMenu {
       // Только штат (menu-screens.ts — 'newitem' не перечисляется у ученика,
       // buildStudentMenu ниже): заводить вопрос ученику незачем (ТЗ 4б.3).
       [inlineButton(NEW_EXAM_ITEM_LABEL, 'menu', 'newitem')],
+      // Сборка экзамена (ТЗ 4б.4) — тоже только штат, тем же приёмом.
+      [inlineButton(NEW_EXAM_LABEL, 'menu', 'newexam')],
       [inlineButton(NOTIFICATIONS_LABEL, 'menu', 'notifications')],
     ],
   };
@@ -63,8 +66,8 @@ const STAFF_HELP_TEXT =
   'Бот показывает ближайшие занятия, помогает вписать тему и настроить ' +
   'уведомления. Команды: /menu — меню, /schedule — ближайшие занятия, ' +
   '/topic — вписать тему, /exams — экзамены, /вопрос — завести вопрос для ' +
-  'экзамена, /notifications — уведомления. Запись занятия пришлите сюда ' +
-  'сообщением — ссылкой или видео.';
+  'экзамена, /экзамен — собрать экзамен из вопросов, /notifications — ' +
+  'уведомления. Запись занятия пришлите сюда сообщением — ссылкой или видео.';
 const STUDENT_HELP_TEXT =
   'Экзамены можно сдать прямо здесь — команда /exams или кнопка ' +
   '«Экзамены» в меню. Бот присылает сюда напоминания, если вы их включили.';
@@ -96,6 +99,7 @@ const MENU_SCREEN_ACTIONS = [
   'notifications',
   'exams',
   'newitem',
+  'newexam',
   'back',
 ] as const;
 export type MenuScreenAction = (typeof MENU_SCREEN_ACTIONS)[number];

@@ -55,6 +55,15 @@ export function startNewExamItemDraftUpdate(
       attemptId: '',
       questionIndex: '',
       itemId: '',
+      // Заброшенный черновик сборки экзамена (ТЗ 4б.4) того же чата — тот же
+      // приём, что draft*-поля выше, симметрично new-exam-draft-wait.ts.
+      buildStep: '',
+      buildItemIds: '',
+      buildPage: '',
+      buildTitle: '',
+      buildTimeLimitMin: '',
+      buildAttemptsAllowed: '',
+      buildSavedExamId: '',
     },
   };
 }

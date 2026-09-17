@@ -15,8 +15,10 @@ import type { DateTime } from 'luxon';
 import {
   LIST_LIMIT_MAX,
   type AttemptAnswerDto,
+  type CreateExamInput,
   type CreateExamItemInput,
   type ExamAttemptDto,
+  type ExamDto,
   type ExamItemDto,
   type MyExamDto,
 } from '@xuanxue/shared';
@@ -24,12 +26,14 @@ import { NotFoundError } from '../common/errors';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { withAttemptMedia } from './exam-attempt-media';
+import { validateExamDraftInput } from './exam-draft-validate';
 import { validateExamItemDraftInput } from './exam-item-draft-validate';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
 import type { BotOptionImage, ExamBotPort } from '../telegram/exam-bot.port';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamItemsService } from './exam-items.service';
+import { ExamsService } from './exams.service';
 import { MyExamsService } from './my-exams.service';
 
 @Injectable()
@@ -40,6 +44,7 @@ export class ExamBotService implements ExamBotPort {
     private readonly mediaAssetsService: MediaAssetsService,
     private readonly examImagesService: ExamImagesService,
     private readonly examItemsService: ExamItemsService,
+    private readonly examsService: ExamsService,
     registry: ExamBotPortRegistry,
   ) {
     registry.set(this);
@@ -127,5 +132,22 @@ export class ExamBotService implements ExamBotPort {
 
   validateExamItemDraft(input: Partial<CreateExamItemInput>): Promise<string[] | null> {
     return validateExamItemDraftInput(input);
+  }
+
+  /** ТЗ 4б.4 — только опубликованные (тот же фильтр, что assertItemsEligible
+   * проверяет при публикации): вопрос, который нельзя поставить в форму,
+   * незачем видеть на шаге отметки. */
+  listExamItemsToAssemble(): Promise<ExamItemDto[]> {
+    return this.examItemsService.list({ status: 'published', limit: LIST_LIMIT_MAX });
+  }
+
+  /** ТЗ 4б.4 — тот же переход в `published`, что и у кабинета, одним
+   * вызовом (ExamsService.createAndPublishExam). */
+  createAndPublishExam(input: CreateExamInput, authorId: string): Promise<ExamDto> {
+    return this.examsService.createAndPublishExam(input, authorId);
+  }
+
+  validateExamDraft(input: Partial<CreateExamInput>): Promise<string[] | null> {
+    return validateExamDraftInput(input);
   }
 }

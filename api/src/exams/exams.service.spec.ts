@@ -159,6 +159,34 @@ describe('ExamsService', () => {
     expect(published.status).toBe('published');
   });
 
+  // Учитель собирает экзамен в боте (ТЗ 4б.4, docs/PLAN.md §12) — тот же
+  // переход в published одним вызовом, что и create()+update() в кабинете.
+  it('createAndPublishExam — создаёт и публикует одним вызовом', async () => {
+    const itemId = await createItem('published');
+
+    const exam = await service.createAndPublishExam(
+      { title: 'Экзамен из бота', blocks: [{ itemIds: [itemId] }] },
+      CREATED_BY,
+    );
+
+    expect(exam.status).toBe('published');
+    const found = await service.getById(exam.id);
+    expect(found.status).toBe('published');
+    expect(found.blocks[0]?.itemIds).toEqual([itemId]);
+  });
+
+  // В боте кнопка «Собрать (k)» недоступна без отмеченного вопроса (ТЗ 4б.4) —
+  // этот путь недостижим из диалога, но правило живёт в сервисе, а не в
+  // хендлере (ADR-0024): пустой список всё равно получает отказ публикации.
+  it('createAndPublishExam без вопросов — InvalidInputError, публикация не проходит', async () => {
+    await expect(
+      service.createAndPublishExam({ title: 'Пустой экзамен' }, CREATED_BY),
+    ).rejects.toThrow('нет ни одного вопроса');
+    const exams = await service.list({});
+    expect(exams).toHaveLength(1);
+    expect(exams[0]?.status).toBe('draft');
+  });
+
   // Блокер аудита 2026-09-15 №3: «хотя бы один вопрос» раньше проверялся
   // только на переходе в published — уже опубликованную форму можно было
   // сохранить пустой без единого перехода статуса.

@@ -67,4 +67,41 @@ describe('isValidCallbackParam', () => {
     expect(isValidCallbackParam('nqf', 'cancel')).toBe(true);
     expect(isValidCallbackParam('nqf', 'нет-такого-действия')).toBe(false);
   });
+
+  // ТЗ 4б.4 (docs/PLAN.md §12) — «Собрать экзамен»: net (отметка вопроса,
+  // ObjectId — default-ветка ниже), nep (страница), nea (перейти дальше),
+  // nel (лимит времени), nen (число попыток), nef (что делает диалог дальше).
+  it('net — ObjectId вопроса, как cancel/topic/sent', () => {
+    expect(isValidCallbackParam('net', OBJECT_ID)).toBe(true);
+    expect(isValidCallbackParam('net', 'не-objectid')).toBe(false);
+  });
+
+  it('nep — только «prev»/«next»', () => {
+    expect(isValidCallbackParam('nep', 'prev')).toBe(true);
+    expect(isValidCallbackParam('nep', 'next')).toBe(true);
+    expect(isValidCallbackParam('nep', 'нет-такой-страницы')).toBe(false);
+  });
+
+  it('nea — только «go»', () => {
+    expect(isValidCallbackParam('nea', 'go')).toBe(true);
+    expect(isValidCallbackParam('nea', 'нет-такого-действия')).toBe(false);
+  });
+
+  it('nel — только «none»/«15»/«30»/«60»', () => {
+    expect(isValidCallbackParam('nel', 'none')).toBe(true);
+    expect(isValidCallbackParam('nel', '30')).toBe(true);
+    expect(isValidCallbackParam('nel', '45')).toBe(false);
+  });
+
+  it('nen — только «1»/«2»/«3»', () => {
+    expect(isValidCallbackParam('nen', '1')).toBe(true);
+    expect(isValidCallbackParam('nen', '3')).toBe(true);
+    expect(isValidCallbackParam('nen', '4')).toBe(false);
+  });
+
+  it('nef — только «cancel»/«publish»', () => {
+    expect(isValidCallbackParam('nef', 'cancel')).toBe(true);
+    expect(isValidCallbackParam('nef', 'publish')).toBe(true);
+    expect(isValidCallbackParam('nef', 'нет-такого-действия')).toBe(false);
+  });
 });

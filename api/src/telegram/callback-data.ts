@@ -19,6 +19,13 @@
 // управление диалогом (id — 'skip'|'save'|'cancel'). Разбор — тем же приёмом,
 // что isNotificationKind/isMenuScreenAction — в new-exam-item-types.ts и
 // самих хендлерах, не здесь.
+//
+// net/nep/nea/nel/nen/nef — диалог «Собрать экзамен» (ТЗ 4б.4, PLAN.md §12),
+// только штат: net — отметить/снять вопрос (id — ObjectId вопроса, разбор
+// падает в default-ветку isValidCallbackParam); nep — страница списка (id —
+// 'prev'|'next'); nea — «Собрать (k)» (id — 'go'); nel — лимит времени (id —
+// 'none'|'15'|'30'|'60'); nen — число попыток (id — '1'|'2'|'3'); nef —
+// управление диалогом (id — 'cancel'|'publish').
 import type { InlineKeyboardButton } from 'telegraf/types';
 
 const CALLBACK_ACTIONS = [
@@ -36,6 +43,12 @@ const CALLBACK_ACTIONS = [
   'nqo',
   'nqd',
   'nqf',
+  'net',
+  'nep',
+  'nea',
+  'nel',
+  'nen',
+  'nef',
 ] as const;
 export type CallbackAction = (typeof CALLBACK_ACTIONS)[number];
 

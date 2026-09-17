@@ -24,6 +24,7 @@ import { buildPersonalChats } from '../test-support/build-personal-chats';
 import { seedTeacher } from '../test-support/seed-teacher';
 import { CallbackQueryHandler } from './callback-query.handler';
 import { ExamCommandHandler } from './exam-command.handler';
+import { NewExamCommandHandler } from './new-exam-command.handler';
 
 export { seedTeacher };
 
@@ -61,23 +62,33 @@ export function buildHandler(
   } = {},
 ): CallbackQueryHandler {
   const usersService = new UsersService(ctx.userModel);
+  const personalChats = buildPersonalChats(
+    ctx.connection,
+    usersService,
+    ctx.channelModel,
+  );
+  const botSessions = overrides.botSessions ?? new BotSessionService(ctx.botSessionModel);
+  const examBotPorts = overrides.examBotPorts ?? examRegistry();
   return new CallbackQueryHandler(
-    buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
+    personalChats,
     overrides.broadcastsService ??
       new BroadcastsService(ctx.broadcastModel, ctx.deliveryModel, ctx.channelModel),
-    overrides.botSessions ?? new BotSessionService(ctx.botSessionModel),
+    botSessions,
     overrides.deliveriesService ??
       new DeliveriesService(ctx.deliveryModel, ctx.broadcastModel, ctx.channelModel),
     overrides.usersService ?? usersService,
     new NotificationPrefsService(ctx.notificationPrefsModel),
     buildMenuHandler(ctx.connection, usersService, ctx.channelModel),
-    overrides.examBotPorts ?? examRegistry(),
+    examBotPorts,
     new ExamCommandHandler(
       new BotUserAccessService(overrides.usersService ?? usersService),
       examRegistry(),
     ),
     new BotUserAccessService(overrides.usersService ?? usersService),
     fakeConfig(),
+    // «Собрать экзамен» (ТЗ 4б.4) — кнопки проверяются своими спеками
+    // (new-exam-*.spec.ts), здесь достаточно рабочего экземпляра.
+    new NewExamCommandHandler(personalChats, examBotPorts, botSessions),
   );
 }
 

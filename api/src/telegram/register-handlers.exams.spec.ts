@@ -8,6 +8,7 @@ import type { StartHandler } from './handlers/start.handler';
 import type { MessageHandler } from './handlers/message.handler';
 import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
+import type { NewExamCommandHandler } from './handlers/new-exam-command.handler';
 import type { NewExamItemCommandHandler } from './handlers/new-exam-item-command.handler';
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { TopicCommandHandler } from './handlers/topic-command.handler';
@@ -43,6 +44,7 @@ function buildService(): {
     message as unknown as MessageHandler,
     exams as unknown as ExamCommandHandler,
     fakeHandlerWithNow() as unknown as NewExamItemCommandHandler,
+    fakeHandlerWithNow() as unknown as NewExamCommandHandler,
     new BotIdentityService(),
   );
   service.onApplicationBootstrap();

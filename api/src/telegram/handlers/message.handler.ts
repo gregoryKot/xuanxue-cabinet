@@ -20,6 +20,7 @@ import { PersonalChats } from '../personal-chats';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 import { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { saveOrExplain } from './message-save';
+import { NewExamMessageHandler } from './new-exam-message.handler';
 import { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { extractRecordingSource } from './recording-source';
@@ -40,6 +41,9 @@ const EXAM_WAIT_EXPIRED_MESSAGE =
 // проверяется тут же, после гейта personalChats ниже.
 const NEW_EXAM_ITEM_EXPIRED_MESSAGE =
   'Время на вопрос истекло. Наберите /вопрос ещё раз — черновик придётся начать заново.';
+// Сборка экзамена (ТЗ 4б.4) — тем же приёмом, что черновик вопроса выше.
+const NEW_EXAM_EXPIRED_MESSAGE =
+  'Время на сборку экзамена истекло. Наберите /экзамен ещё раз — черновик придётся начать заново.';
 
 @Injectable()
 export class MessageHandler {
@@ -54,6 +58,7 @@ export class MessageHandler {
     private readonly examMediaHandler: ExamMediaMessageHandler,
     private readonly examTextHandler: ExamTextAnswerHandler,
     private readonly newExamItemHandler: NewExamItemMessageHandler,
+    private readonly newExamHandler: NewExamMessageHandler,
   ) {}
 
   private readonly logSaveError = (message: string, stack?: string): void =>
@@ -109,13 +114,19 @@ export class MessageHandler {
         await this.newExamItemHandler.handle(ctx, from.id, session, now);
         return;
       }
+      if (session?.kind === 'examBuildDraft') {
+        await this.newExamHandler.handle(ctx, from.id, session, now);
+        return;
+      }
       if (expiredKind) {
         const text =
           expiredKind === 'recording'
             ? RECORDING_EXPIRED_MESSAGE
             : expiredKind === 'examItemDraft'
               ? NEW_EXAM_ITEM_EXPIRED_MESSAGE
-              : TOPIC_EXPIRED_MESSAGE;
+              : expiredKind === 'examBuildDraft'
+                ? NEW_EXAM_EXPIRED_MESSAGE
+                : TOPIC_EXPIRED_MESSAGE;
         await ctx.reply(text).catch(() => null);
         return;
       }

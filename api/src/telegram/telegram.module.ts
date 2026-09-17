@@ -44,6 +44,8 @@ import { ExamMediaMessageHandler } from './handlers/exam-media-message.handler';
 import { ExamTextAnswerHandler } from './handlers/exam-text-answer.handler';
 import { MessageHandler } from './handlers/message.handler';
 import { MenuCommandHandler } from './handlers/menu-command.handler';
+import { NewExamCommandHandler } from './handlers/new-exam-command.handler';
+import { NewExamMessageHandler } from './handlers/new-exam-message.handler';
 import { NewExamItemCommandHandler } from './handlers/new-exam-item-command.handler';
 import { NewExamItemMessageHandler } from './handlers/new-exam-item-message.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
@@ -89,6 +91,8 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     ExamCommandHandler,
     NewExamItemCommandHandler,
     NewExamItemMessageHandler,
+    NewExamCommandHandler,
+    NewExamMessageHandler,
     ExamBotPortRegistry,
     PersonalChats,
     BotSessionService,

@@ -23,6 +23,7 @@ import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
 import type { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { MessageHandler } from './message.handler';
+import type { NewExamMessageHandler } from './new-exam-message.handler';
 import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 
@@ -44,6 +45,7 @@ export interface MessageHandlerTestContext {
   examMediaHandler: { handle: jest.Mock };
   examTextHandler: { handle: jest.Mock };
   newExamItemHandler: { handle: jest.Mock };
+  newExamHandler: { handle: jest.Mock };
 }
 
 export async function setupMessageHandlerTest(): Promise<MessageHandlerTestContext> {
@@ -111,6 +113,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
   const examMediaHandler = { handle: jest.fn() };
   const examTextHandler = { handle: jest.fn() };
   const newExamItemHandler = { handle: jest.fn() };
+  const newExamHandler = { handle: jest.fn() };
   const handler = new MessageHandler(
     buildPersonalChats(connection, usersService, channelModel),
     new BotSessionService(botSessionModel),
@@ -120,6 +123,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     examMediaHandler as unknown as ExamMediaMessageHandler,
     examTextHandler as unknown as ExamTextAnswerHandler,
     newExamItemHandler as unknown as NewExamItemMessageHandler,
+    newExamHandler as unknown as NewExamMessageHandler,
   );
   return {
     memory,
@@ -136,6 +140,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     examMediaHandler,
     examTextHandler,
     newExamItemHandler,
+    newExamHandler,
   };
 }
 
