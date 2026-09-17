@@ -91,13 +91,10 @@ export class StartHandler {
           });
           return;
         case 'telegramLink':
-          await handleTelegramLinkDeepLink(
-            ctx,
-            payload.code,
-            from.id,
-            now,
-            this.telegramLinkService,
-          );
+          await handleTelegramLinkDeepLink(ctx, payload.code, from.id, now, {
+            linkService: this.telegramLinkService,
+            channelConfig: this.channelConfig,
+          });
           return;
         case undefined:
           break; // обычный /start без payload — общий поток ниже

@@ -189,7 +189,9 @@ describe('/start ученика → TelegramExamNotifier.notifyExamGraded (ск�
     expect(result).toEqual({ recipients: 1 });
   });
 
-  it('ученик НЕ нажимал /start — уведомление молча не уходит, ничего не падает (прежнее поведение)', async () => {
+  // «Молча» здесь больше нет: с 2026-09-17 канал пишет свой warn с причиной
+  // (#187), а нулевой счётчик адресатов видит композит.
+  it('ученик НЕ нажимал /start — уведомление не уходит, ничего не падает (прежнее поведение)', async () => {
     const student = await userModel.create({ name: 'Пётр', telegramId: 901, roles: [] });
     const bot = fakeBot();
 

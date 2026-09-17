@@ -13,6 +13,12 @@
 // никто не видел — заблокированный бот учителя или удалённый чат ученика
 // считались успешной доставкой. Если адресату уведомление в итоге не дошло —
 // `error` с ключом для поиска (attemptId, вид уведомления), без PII.
+// Третий случай — адресатов нет вовсе (ни у кого нет активного чата с ботом
+// или вид выключен у всех): до 2026-09-17 он проходил молча — сквозной e2e
+// (exam-full-flow.e2e-spec.ts) подменяет нотификатор фейком и этого не
+// видел. Теперь `warn` с причиной: почта (MailExamNotifier, ADR-0039) может
+// подхватить, но она сама об этом отчитывается — здесь честно говорим за
+// свой канал, чтобы по логу было видно, куда уведомление не ушло и почему.
 //
 // Слой 4б.5 (PLAN §12): «работу сдали» теперь несёт карточку проверки
 // (ответы по вопросам, автопроверка вариантов) и кнопки «Зачёт»/«Доработать»/
@@ -54,7 +60,17 @@ export class TelegramExamNotifier implements ExamNotifier {
   ): Promise<ExamNotifyResult> {
     try {
       const chats = await this.personalChats.listFor('attempt_submitted', now);
-      if (chats.length === 0) return { recipients: 0 };
+      if (chats.length === 0) {
+        this.logger.warn(
+          `exam.notifyAttemptSubmitted: некому отправить в Telegram — ни у одного учителя или помощника нет активного чата с ботом, или вид «работу сдали» выключен у всех`,
+          {
+            attemptId: context.attemptId,
+            examId: context.examId,
+            kind: 'attempt_submitted',
+          },
+        );
+        return { recipients: 0 };
+      }
 
       const review = await this.examBotPorts.get().loadAttemptReview(context.attemptId);
       if (!review) {
@@ -105,7 +121,16 @@ export class TelegramExamNotifier implements ExamNotifier {
   ): Promise<ExamNotifyResult> {
     try {
       const chat = await this.personalChats.chatFor(context.userId, 'exam_result');
-      if (!chat) return { recipients: 0 };
+      if (!chat) {
+        // Тот же тихий отказ, что у «работу сдали»: ученик без чата с ботом
+        // (или выключил вид) — результат в Telegram не уйдёт, пусть это будет
+        // видно в логе. `userId` не пишем: attemptId достаточно, чтобы найти.
+        this.logger.warn(
+          `exam.notifyExamGraded: некуда отправить в Telegram — у ученика нет активного чата с ботом, или вид «результат экзамена» выключен`,
+          { attemptId: context.attemptId, examId: context.examId, kind: 'exam_result' },
+        );
+        return { recipients: 0 };
+      }
 
       const text = examGradedMessage(
         context.examTitle,

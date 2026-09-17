@@ -168,8 +168,11 @@ describe('TelegramExamNotifier', () => {
       expect(result).toEqual({ recipients: 1 });
     });
 
-    it('ни у кого нет личного чата — не падает, ничего не шлёт', async () => {
+    it('ни у кого нет личного чата — не падает, ничего не шлёт, но warn с причиной (2026-09-17: тихий отказ)', async () => {
       const bot = fakeBot();
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
 
       await expect(
         buildNotifier(bot).notifyAttemptSubmitted(
@@ -177,7 +180,41 @@ describe('TelegramExamNotifier', () => {
           NOW,
         ),
       ).resolves.toEqual({ recipients: 0 });
+
       expect(bot.sendMessage).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('некому отправить'),
+        expect.objectContaining({
+          attemptId: ATTEMPT_CONTEXT.attemptId,
+          examId: ATTEMPT_CONTEXT.examId,
+          kind: 'attempt_submitted',
+        }),
+      );
+      warn.mockRestore();
+    });
+
+    it('вид «работу сдали» выключен у всех — тот же warn, а не тишина', async () => {
+      const teacherId = await connectPerson(111, 'Мария', ['teacher']);
+      await notificationPrefsModel.create({
+        userId: teacherId,
+        overrides: [{ kind: 'attempt_submitted', enabled: false }],
+      });
+      const bot = fakeBot();
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      await buildNotifier(bot).notifyAttemptSubmitted(
+        { ...ATTEMPT_CONTEXT, userId: 'u1' },
+        NOW,
+      );
+
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('некому отправить'),
+        expect.objectContaining({ attemptId: ATTEMPT_CONTEXT.attemptId }),
+      );
+      warn.mockRestore();
     });
 
     it('текст несёт имя ученика, ссылку на карточку проверки и кнопки итога', async () => {
@@ -310,8 +347,11 @@ describe('TelegramExamNotifier', () => {
       expect(bot.sendMessage).not.toHaveBeenCalled();
     });
 
-    it('у ученика нет личного чата — не падает, ничего не шлёт', async () => {
+    it('у ученика нет личного чата — не падает, ничего не шлёт, но warn с причиной (2026-09-17: тихий отказ)', async () => {
       const bot = fakeBot();
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
 
       await expect(
         buildNotifier(bot).notifyExamGraded(
@@ -319,7 +359,19 @@ describe('TelegramExamNotifier', () => {
           NOW,
         ),
       ).resolves.toEqual({ recipients: 0 });
+
       expect(bot.sendMessage).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('некуда отправить'),
+        expect.objectContaining({
+          attemptId: ATTEMPT_CONTEXT.attemptId,
+          examId: ATTEMPT_CONTEXT.examId,
+          kind: 'exam_result',
+        }),
+      );
+      // Без PII и без userId — по логу ищут по attemptId (CLAUDE.md «Логи»).
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('u1');
+      warn.mockRestore();
     });
 
     it('сбой резолва чата — warn, не бросает', async () => {
