@@ -271,7 +271,9 @@ Telegram работает и без них.
    не написана: до первой ротации её нужно сделать по `MODEL_DEFINITIONS`
    (`api/src/common/model.registry.ts`), обойдя список и взяв
    `encryptSchemaFrom(fieldPolicy)` для каждой модели — другого реестра шифруемых
-   полей в проекте нет.
+   полей в проекте нет. Плюс одно поле мимо реестра: `exam_images.bytes` —
+   двоичное, перешифровывается парой `decryptBytes` → `encryptBytes`
+   (`api/src/utils/encryption-bytes.ts`, ADR-0035), не `encryptRecord`.
 4. Убрать `ENCRYPTION_KEY_OLD`. Перезапуск.
 
 Никогда не менять `ENCRYPTION_KEY` без шага 2–3: данные превратятся в мусор.

@@ -70,3 +70,4 @@
 | [0032](0032-no-service-worker.md)                        | Service worker убран, манифест остаётся — килсвитч по старому адресу     |
 | [0033](0033-exam-as-question-list.md)                    | Экзамен для учителя — список вопросов; вопрос банка сразу опубликован    |
 | [0034](0034-link-telegram-to-existing-account.md)        | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link       |
+| [0035](0035-exam-option-images-in-mongo.md)              | Картинки вариантов ответа — в MongoDB, через свой API                    |

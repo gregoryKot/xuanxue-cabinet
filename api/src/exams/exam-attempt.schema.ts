@@ -96,6 +96,14 @@ export class ExamAttemptRecord {
   @Prop({ type: String, default: '[]' })
   answers!: string;
 
+  // Плоская копия imageId вариантов снимка — blocks зашифрован целиком и
+  // Mongo внутрь не видит; ExamImagesService.load решает по этому полю,
+  // можно ли ученику картинку (SECURITY §3, ADR-0035). Писать его начнёт
+  // следующий слой (снимок при старте попытки) — у старых попыток поля нет,
+  // Mongo трактует отсутствие как пустой массив.
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  imageIds!: Types.ObjectId[];
+
   @Prop({ type: Date, required: true })
   startedAt!: Date;
 
@@ -121,6 +129,8 @@ ExamAttemptSchema.index({ examId: 1, userId: 1, attemptNo: 1 }, { unique: true }
 ExamAttemptSchema.index({ userId: 1, status: 1 });
 // Очередь проверки учителя (слой 4.6): что сдано и когда, недавнее сверху.
 ExamAttemptSchema.index({ status: 1, submittedAt: -1 });
+// Доступ ученика к картинке варианта — по снимку его попытки (ADR-0035).
+ExamAttemptSchema.index({ userId: 1, imageIds: 1 });
 
 export const EXAM_ATTEMPT_FIELD_POLICY: FieldPolicy = {
   examTitle: enc,

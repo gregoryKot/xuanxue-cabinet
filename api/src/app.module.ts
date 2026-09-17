@@ -17,6 +17,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
+import { ExamImagesModule } from './exam-images/exam-images.module';
 import { ExamsModule } from './exams/exams.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
@@ -65,6 +66,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     BroadcastsModule,
     DeliveriesModule,
     ExamsModule,
+    ExamImagesModule,
     NotificationsModule,
     SettingsModule,
     SummaryModule,
