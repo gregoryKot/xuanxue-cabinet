@@ -77,6 +77,11 @@ import {
   MediaAssetSchema,
   MEDIA_ASSET_FIELD_POLICY,
 } from '../media/media-asset.schema';
+import {
+  ExamImageRecord,
+  ExamImageSchema,
+  EXAM_IMAGE_FIELD_POLICY,
+} from '../exam-images/exam-image.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -150,5 +155,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: MediaAssetRecord.name,
     schema: MediaAssetSchema,
     fieldPolicy: MEDIA_ASSET_FIELD_POLICY,
+  },
+  {
+    name: ExamImageRecord.name,
+    schema: ExamImageSchema,
+    fieldPolicy: EXAM_IMAGE_FIELD_POLICY,
   },
 ];

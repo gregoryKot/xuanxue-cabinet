@@ -1,0 +1,76 @@
+// Создание и чтение картинок вариантов ответа (ADR-0035, PLAN §11 слой 4.2).
+// Данные школы (ADR-0010): штат видит любую картинку по роли, ученик —
+// только ту, что стоит в снимке его собственной попытки
+// (`exam_attempts.imageIds`, SECURITY §3) — плоское индексируемое поле,
+// потому что сам снимок (`blocks`) зашифрован целиком и Mongo внутрь не
+// видит. Модель попытки берётся через ExamAttemptModelModule, не через
+// ExamsModule целиком — цикл (тот же приём, что MediaAssetsService,
+// media-assets.service.ts): ExamsModule в следующем слое сам импортирует
+// этот модуль ради проверки существования картинки у варианта.
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import {
+  EXAM_IMAGE_NOT_FOUND_MESSAGE,
+  isStaffRole,
+  type ExamImageContentType,
+  type ExamImageDto,
+} from '@xuanxue/shared';
+import { NotFoundError } from '../common/errors';
+import { assertObjectId } from '../common/object-id';
+import { decryptBytes, encryptBytes } from '../utils/encryption-bytes';
+import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
+import type { UserLean } from '../users/users.service';
+import {
+  binaryToBuffer,
+  toExamImageDto,
+  type RawLeanExamImage,
+} from './exam-image.mapper';
+import { parseExamImageUpload } from './exam-image-upload';
+import { ExamImageRecord } from './exam-image.schema';
+
+export interface LoadedExamImage {
+  bytes: Buffer;
+  contentType: ExamImageContentType;
+}
+
+@Injectable()
+export class ExamImagesService {
+  constructor(
+    @InjectModel(ExamImageRecord.name) private readonly model: Model<ExamImageRecord>,
+    @InjectModel(ExamAttemptRecord.name)
+    private readonly attemptModel: Model<ExamAttemptRecord>,
+  ) {}
+
+  async upload(body: unknown, createdBy: string): Promise<ExamImageDto> {
+    const { bytes, contentType } = parseExamImageUpload(body);
+    const created = await this.model.create({
+      bytes: encryptBytes(bytes),
+      contentType,
+      sizeBytes: bytes.length,
+      createdBy: new Types.ObjectId(createdBy),
+    });
+    const doc = await this.model.findById(created._id).lean<RawLeanExamImage>();
+    if (!doc) {
+      throw new Error('ExamImagesService.upload: запись не найдена сразу после создания');
+    }
+    return toExamImageDto(doc);
+  }
+
+  /** Штат — по роли (данные школы, ADR-0010). Ученик — только если картинка
+   * стоит в снимке ЕГО попытки: тот же 404, что у несуществующего id — не
+   * подтверждаем даже факт существования чужой картинки (SECURITY §3). */
+  async load(id: string, user: UserLean): Promise<LoadedExamImage> {
+    assertObjectId(id, EXAM_IMAGE_NOT_FOUND_MESSAGE);
+    if (!isStaffRole(user.roles)) {
+      const owns = await this.attemptModel.exists({ userId: user.id, imageIds: id });
+      if (!owns) throw new NotFoundError(EXAM_IMAGE_NOT_FOUND_MESSAGE);
+    }
+    const doc = await this.model.findById(id).lean<RawLeanExamImage | null>();
+    if (!doc) throw new NotFoundError(EXAM_IMAGE_NOT_FOUND_MESSAGE);
+    return {
+      bytes: decryptBytes(binaryToBuffer(doc.bytes)),
+      contentType: doc.contentType,
+    };
+  }
+}

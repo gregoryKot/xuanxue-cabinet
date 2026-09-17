@@ -153,6 +153,28 @@ describe('DomainExceptionFilter', () => {
     });
   });
 
+  it('тело больше лимита (body-parser 413) → конверт по-русски, без обращения к логгеру', () => {
+    const { logger, errorCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host, getStatusCode, getJsonBody } = buildHost('req-6');
+
+    const bodyParserError = Object.assign(new Error('request entity too large'), {
+      status: 413,
+      expose: true,
+      type: 'entity.too.large',
+    });
+    filter.catch(bodyParserError, host);
+
+    expect(getStatusCode()).toBe(413);
+    expect(getJsonBody()).toEqual({
+      statusCode: 413,
+      code: 'payload_too_large',
+      message: 'Файл или текст больше допустимого. Уменьшите его и попробуйте ещё раз.',
+      requestId: 'req-6',
+    });
+    expect(errorCalls).toHaveLength(0);
+  });
+
   it('непредвиденная ошибка → 500, нейтральный текст, стек уходит в логгер, а не в ответ', () => {
     const { logger, errorCalls } = buildLogger();
     const filter = new DomainExceptionFilter(logger);
