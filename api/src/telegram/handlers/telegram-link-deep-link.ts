@@ -17,6 +17,16 @@
 // это и есть защита от подсунутого чужого кода: если код попал к человеку не
 // по адресу, он видит чужое имя и может сообщить администратору школы,
 // вместо того чтобы молча получить доступ к чужим данным.
+//
+// Баг с #131 (тот же класс ошибки, что и у join_<code>, починен там в #163,
+// см. комментарий в start.handler.ts и join-invite-deep-link.ts): успешная
+// связка ставила telegramId на аккаунт, но запись в channels не появлялась —
+// PersonalChats.chatFor/hasActiveChat (personal-chats.ts) без неё человека не
+// находят, и результат экзамена или уведомление о сдаче не доходят никуда.
+// После ответа зовём тот же welcomeConnectedUser, что и join_<code> и обычный
+// /start для active (ADR-0027) — только когда результат `active`: заблокированному
+// канал не заводим (SECURITY §9) — для штата welcomeConnectedUser регистрирует
+// канал школы, получатель рассылок, отдавать его blocked нельзя.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import {
@@ -24,7 +34,9 @@ import {
   TELEGRAM_LINK_OTHER_TELEGRAM_MESSAGE,
   TELEGRAM_LINK_TAKEN_MESSAGE,
 } from '@xuanxue/shared';
+import type { ChannelConfigService } from '../../channels/channel-config.service';
 import type { TelegramLinkService } from '../../users/telegram-link.service';
+import { welcomeConnectedUser } from './start-welcome';
 
 function linkedMessage(name: string): string {
   return (
@@ -34,14 +46,19 @@ function linkedMessage(name: string): string {
   );
 }
 
+export interface TelegramLinkDeepLinkDeps {
+  linkService: TelegramLinkService;
+  channelConfig: ChannelConfigService;
+}
+
 export async function handleTelegramLinkDeepLink(
   ctx: Context,
   code: string,
   telegramId: number,
   now: DateTime,
-  linkService: TelegramLinkService,
+  deps: TelegramLinkDeepLinkDeps,
 ): Promise<void> {
-  const result = await linkService.linkByCode(code, telegramId, now);
+  const result = await deps.linkService.linkByCode(code, telegramId, now);
 
   switch (result.kind) {
     case 'invalid':
@@ -55,6 +72,9 @@ export async function handleTelegramLinkDeepLink(
       return;
     case 'linked':
       await ctx.reply(linkedMessage(result.user.name)).catch(() => null);
+      if (result.user.status === 'active') {
+        await welcomeConnectedUser(ctx, telegramId, result.user, deps.channelConfig);
+      }
       return;
   }
 }
