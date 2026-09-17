@@ -6,14 +6,16 @@
 import type { CSSProperties } from 'react';
 import type { AttemptReviewBlockDto } from '@xuanxue/shared';
 import { AttemptReviewQuestion } from './AttemptReviewQuestion';
+import type { AttemptReviewVideoControls } from './useAttemptReview';
 
 const titleStyle: CSSProperties = { display: 'block', padding: '14px 4px 0' };
 
 interface AttemptReviewBlockProps {
   block: AttemptReviewBlockDto;
+  video: AttemptReviewVideoControls;
 }
 
-export function AttemptReviewBlock({ block }: AttemptReviewBlockProps) {
+export function AttemptReviewBlock({ block, video }: AttemptReviewBlockProps) {
   return (
     <section>
       {block.title && (
@@ -22,7 +24,12 @@ export function AttemptReviewBlock({ block }: AttemptReviewBlockProps) {
         </span>
       )}
       {block.questions.map((question, index) => (
-        <AttemptReviewQuestion key={question.itemId} index={index} question={question} />
+        <AttemptReviewQuestion
+          key={question.itemId}
+          index={index}
+          question={question}
+          video={video}
+        />
       ))}
     </section>
   );

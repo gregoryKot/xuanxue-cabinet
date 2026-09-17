@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import type { AttemptReviewQuestionDto } from '@xuanxue/shared';
 import { AttemptReviewQuestion } from './AttemptReviewQuestion';
+import type { AttemptReviewVideoControls } from './useAttemptReview';
 
 function makeQuestion(
   overrides: Partial<AttemptReviewQuestionDto> = {},
@@ -11,6 +13,17 @@ function makeQuestion(
     kind: 'text',
     prompt: 'Опишите дыхание',
     options: [],
+    ...overrides,
+  };
+}
+
+function makeVideo(
+  overrides: Partial<AttemptReviewVideoControls> = {},
+): AttemptReviewVideoControls {
+  return {
+    media: [],
+    markMediaManual: () => Promise.resolve(true),
+    markMediaStateFor: () => ({ pending: false, error: null }),
     ...overrides,
   };
 }
@@ -154,9 +167,91 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
 });
 
 describe('AttemptReviewQuestion — вопрос без вариантов', () => {
-  it('метка «Смотрите вы» — машина текст/видео не проверяет', () => {
+  it('метка «Смотрите вы» — машина текст не проверяет', () => {
     render(<AttemptReviewQuestion index={0} question={makeQuestion()} />);
 
     expect(screen.getByText('Смотрите вы')).toBeInTheDocument();
+  });
+});
+
+describe('AttemptReviewQuestion — видео-вопрос (ADR-0037, свой itemId)', () => {
+  it('видео нет — метка «Ответа нет», кнопка ручной отметки шлёт itemId вопроса', async () => {
+    const user = userEvent.setup();
+    const markMediaManual = vi.fn().mockResolvedValue(true);
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo({ markMediaManual })}
+      />,
+    );
+
+    expect(screen.getByText('Ответа нет')).toBeInTheDocument();
+    expect(screen.getByText('Видео пока не получено.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Отметить, что видео принято' }));
+
+    expect(markMediaManual).toHaveBeenCalledWith('q1');
+  });
+
+  it('видео этого вопроса пришло — метка «Есть ответ», строка получения видна', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo({
+          media: [
+            {
+              id: 'm1',
+              attemptId: 'a1',
+              itemId: 'q1',
+              kind: 'link',
+              url: 'https://example.com/v',
+              receivedAt: '2026-09-12T00:00:00Z',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Есть ответ')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть ссылку на видео' })).toHaveAttribute(
+      'href',
+      'https://example.com/v',
+    );
+  });
+
+  it('видео другого вопроса той же попытки — этому вопросу не засчитывается', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video', itemId: 'q1' })}
+        video={makeVideo({
+          media: [
+            {
+              id: 'm1',
+              attemptId: 'a1',
+              itemId: 'q2',
+              kind: 'telegram',
+              receivedAt: '2026-09-12T00:00:00Z',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Ответа нет')).toBeInTheDocument();
+    expect(screen.getByText('Видео пока не получено.')).toBeInTheDocument();
+  });
+
+  it('без heading — заголовка «Видео» в карточке нет, формулировка вопроса уже сказала, что это', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({ kind: 'video' })}
+        video={makeVideo()}
+      />,
+    );
+
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 });
