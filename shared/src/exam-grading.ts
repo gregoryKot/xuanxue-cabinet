@@ -25,6 +25,9 @@ export interface AttemptReviewOptionDto {
   text: string;
   correct: boolean;
   selected: boolean;
+  /** Картинка варианта (ADR-0035) — учитель видит её в карточке проверки
+   * той же редакции, что видел сдающий: берётся из снимка попытки. */
+  imageId?: string;
 }
 
 /** Автопроверка вариантов (ТЗ 4.6, п.3: честна только там, где сдающий
