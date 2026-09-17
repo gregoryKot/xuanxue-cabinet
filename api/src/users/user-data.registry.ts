@@ -32,6 +32,11 @@
 // владения (см. USER_REFERENCE_PATHS ниже) — при удалении аккаунта поле
 // обнуляется, сама картинка остаётся у вопроса банка.
 //
+// Этап 4, слой 4.6 (grading_comment_presets, ADR-0041) — заготовки частых
+// комментариев при проверке. Данные школы, не ученика: `createdBy` — кто
+// завёл заготовку, не признак владения (см. USER_REFERENCE_PATHS ниже) —
+// при удалении аккаунта поле обнуляется, сама заготовка остаётся общей.
+//
 // ADR-0034 — код связки Telegram (telegram_link_codes,
 // telegram-link-code.schema.ts): `userId` здесь не персональные данные
 // ученика, а признак того, чья сессия выпустила код (владелец, а не жертва
@@ -67,4 +72,5 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ExamRecord', path: 'createdBy' },
   { model: 'ExamGradingRecord', path: 'graderId' },
   { model: 'ExamImageRecord', path: 'createdBy' },
+  { model: 'GradingCommentPresetRecord', path: 'createdBy' },
 ] as const;

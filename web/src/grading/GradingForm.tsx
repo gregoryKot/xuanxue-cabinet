@@ -14,7 +14,9 @@ import {
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError, type FormError } from '../components/FormServerError';
+import { GradingCommentPresets } from './GradingCommentPresets';
 import {
+  appendPresetText,
   GRADING_OUTCOME_LABELS_RU,
   initialGradingFormState,
   toGradingInput,
@@ -51,6 +53,13 @@ export function GradingForm({ grading, onSubmit, saving, saveError }: GradingFor
       onSubmit={(e) => void handleSubmit(e)}
       style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
     >
+      <GradingCommentPresets
+        comment={state.comment}
+        onInsert={(text) =>
+          setState((prev) => ({ ...prev, comment: appendPresetText(prev.comment, text) }))
+        }
+      />
+
       <Field label="Комментарий">
         <textarea
           style={textareaStyle}

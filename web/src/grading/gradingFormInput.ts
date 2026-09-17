@@ -43,3 +43,13 @@ export function toGradingInput(state: GradingFormState): PutGradingInput {
     outcome: state.outcome as GradingOutcome,
   };
 }
+
+/** Вставка заготовки (слой 4.6, ADR-0041) — дописывает текст в конец
+ * комментария через перенос строки, не затирая написанное: пустая
+ * заготовка после `trim()` не оставляет висящий перенос. Пустое поле
+ * получает только текст заготовки, без переноса сверху. */
+export function appendPresetText(comment: string, presetText: string): string {
+  const preset = presetText.trim();
+  if (comment.trim() === '') return preset;
+  return /\s$/.test(comment) ? `${comment}${preset}` : `${comment}\n${preset}`;
+}

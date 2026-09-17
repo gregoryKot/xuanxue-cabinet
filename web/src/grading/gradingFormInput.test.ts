@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ExamGradingDto } from '@xuanxue/shared';
 import {
+  appendPresetText,
   initialGradingFormState,
   toGradingInput,
   validateGradingForm,
@@ -70,5 +71,33 @@ describe('toGradingInput', () => {
   it('outcome передаётся как есть', () => {
     const input = toGradingInput(baseState({ outcome: 'needs_work' }));
     expect(input.outcome).toBe('needs_work');
+  });
+});
+
+describe('appendPresetText — заготовка не затирает написанное (ADR-0041)', () => {
+  it('пустое поле — получает только текст заготовки', () => {
+    expect(appendPresetText('', 'Держите центр')).toBe('Держите центр');
+  });
+
+  it('поле из одних пробелов — то же, что пустое', () => {
+    expect(appendPresetText('   ', 'Держите центр')).toBe('Держите центр');
+  });
+
+  it('непустой комментарий без переноса на конце — дописывается через перенос строки', () => {
+    expect(appendPresetText('Хорошая работа', 'Держите центр')).toBe(
+      'Хорошая работа\nДержите центр',
+    );
+  });
+
+  it('комментарий уже кончается переносом — второй перенос не добавляется', () => {
+    expect(appendPresetText('Хорошая работа\n', 'Держите центр')).toBe(
+      'Хорошая работа\nДержите центр',
+    );
+  });
+
+  it('текст заготовки обрезается по краям', () => {
+    expect(appendPresetText('Хорошая работа', '  Держите центр  ')).toBe(
+      'Хорошая работа\nДержите центр',
+    );
   });
 });
