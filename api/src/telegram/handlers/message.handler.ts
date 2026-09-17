@@ -2,10 +2,10 @@
 // активное ожидание чата решает, что это — тема, запись, видео экзамена
 // (ADR-0023, слой 4.5) или свободный текст ответа на вопрос экзамена (ТЗ
 // 4б.2 часть 2). Видео и текст экзамена ждём от ЛЮБОГО пользователя Telegram
-// (экзамен сдают ученики) — проверяем оба этих ожидания ДО гейта
-// `personalChats` ниже, который остаётся штатным для темы/записи
-// (SECURITY.md §4: только личный чат учителя/админа с активным каналом — как
-// у CallbackQueryHandler).
+// (экзамен сдают ученики) — проверяем и активное, и истёкшее ожидание
+// экзамена ДО гейта `personalChats` ниже, который остаётся штатным для
+// темы/записи (SECURITY.md §4: только личный чат учителя/админа с активным
+// каналом — как у CallbackQueryHandler).
 // `now` — параметром (CLAUDE.md «Время»), хендлер сам DateTime.utc() не зовёт.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
@@ -30,6 +30,11 @@ const TOPIC_EXPIRED_MESSAGE =
   'Ожидание истекло. Нажмите «Изменить тему» под сообщением ещё раз.';
 const RECORDING_EXPIRED_MESSAGE =
   'Ожидание записи истекло. Добавьте запись в кабинете, в «Планировании» у этого занятия.';
+// Раньше это ожидание проверялось только после гейта штата (`chats.some`
+// ниже) и для ученика никогда не срабатывало — бот молча пропускал ответ,
+// пришедший позже TTL (docs/PLAN.md §12, PR #175).
+const EXAM_WAIT_EXPIRED_MESSAGE =
+  'Ожидание ответа истекло. Откройте экзамен снова: команда /экзамены в боте или кнопка в кабинете.';
 
 @Injectable()
 export class MessageHandler {
@@ -64,6 +69,19 @@ export class MessageHandler {
         return;
       }
 
+      // Истёкшее ожидание экзамена — проверяем ДО гейта personalChats ниже
+      // (тот пускает только штат): для ученика эта проверка раньше не
+      // выполнялась вовсе, бот молча пропускал ответ (docs/PLAN.md §12, PR
+      // #175). Активная сессия обработана выше и сюда не доходит — запрос
+      // нужен только когда её нет.
+      const expiredKind = session
+        ? null
+        : await this.botSessions.hasExpired(from.id, now);
+      if (expiredKind === 'examText' || expiredKind === 'examMedia') {
+        await ctx.reply(EXAM_WAIT_EXPIRED_MESSAGE).catch(() => null);
+        return;
+      }
+
       const chats = await this.personalChats.list(now);
       if (!chats.some((c) => c.chatId === String(from.id))) return;
 
@@ -81,9 +99,6 @@ export class MessageHandler {
         );
         return;
       }
-      // Ожидание было, но истекло — сказать об этом с выполнимым действием,
-      // а не молчать так же, как для сообщения без всякого ожидания.
-      const expiredKind = await this.botSessions.hasExpired(from.id, now);
       if (expiredKind) {
         const text =
           expiredKind === 'recording' ? RECORDING_EXPIRED_MESSAGE : TOPIC_EXPIRED_MESSAGE;

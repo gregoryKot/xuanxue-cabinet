@@ -117,12 +117,24 @@ export function useAttemptAutosave(
   // Возврат сети (телефон в метро) — сразу пробуем сохранить то, что
   // накопилось, не дожидаясь очередного таймера ретрая.
   useEffect(() => {
-    function handleOnline() {
-      if (dirty.current.size > 0) void runSave();
-    }
+    const handleOnline = () => dirty.current.size > 0 && void runSave();
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [runSave]);
+
+  // Закрытие вкладки раньше дебаунса/blur теряло правку (PR #175, PLAN §11):
+  // pagehide — вкладка закрылась, hidden — уход в фон на телефоне, где
+  // pagehide не успевает; оба ведут в flush(), тот же путь, что у blur.
+  useEffect(() => {
+    const handleHide = () => flush();
+    const handleVisibility = () => document.visibilityState === 'hidden' && flush();
+    window.addEventListener('pagehide', handleHide);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('pagehide', handleHide);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [flush]);
 
   useEffect(
     () => () => {

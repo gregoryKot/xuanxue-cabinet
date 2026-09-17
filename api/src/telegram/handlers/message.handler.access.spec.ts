@@ -108,6 +108,58 @@ describe('MessageHandler — доступ и сбои', () => {
     expect(session.questionIndex).toBe(1);
   });
 
+  it('ученик (без ролей), ожидание examText истекло — фраза про истечение, не тишина (PR #175)', async () => {
+    await ctx.userModel.create({ name: 'Ученик', telegramId: 333, roles: [] });
+    await ctx.botSessionModel.create({
+      chatId: 333,
+      kind: 'examText',
+      attemptId: new Types.ObjectId(),
+      questionIndex: 0,
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({ chatId: 333, text: 'опоздавший ответ' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([
+      'Ожидание ответа истекло. Откройте экзамен снова: команда /экзамены в боте или кнопка в кабинете.',
+    ]);
+  });
+
+  it('ученик, ожидание examMedia истекло — та же фраза, гейт personalChats его не блокирует', async () => {
+    await ctx.botSessionModel.create({
+      chatId: 444,
+      kind: 'examMedia',
+      attemptId: new Types.ObjectId(),
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({ chatId: 444, videoFileId: 'v1' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([
+      'Ожидание ответа истекло. Откройте экзамен снова: команда /экзамены в боте или кнопка в кабинете.',
+    ]);
+  });
+
+  it('штат: ожидание темы истекло — прежняя фраза, не про экзамен', async () => {
+    await seedTeacher(ctx.userModel, ctx.channelModel, 111);
+    const lesson = await seedLesson(ctx.classModel, ctx.lessonModel);
+    await ctx.botSessionModel.create({
+      chatId: 111,
+      kind: 'topic',
+      lessonId: lesson._id,
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({ chatId: 111, text: 'новая тема' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([
+      'Ожидание истекло. Нажмите «Изменить тему» под сообщением ещё раз.',
+    ]);
+  });
+
   it('сообщение из группы — игнорируется', async () => {
     await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const { ctx: msgCtx, replies } = fakeCtx({
