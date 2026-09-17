@@ -72,11 +72,14 @@ describe('useEmailLoginVerify', () => {
     expect(result.current.error).toBe(
       'Ссылка устарела или уже использована. Запросите новую на странице входа.',
     );
+    // errorStatus (ревью PR #150) — экран отличает 401 (кнопка «Запросить новую»
+    // нужна) от 403 (нет смысла, см. тест ниже).
+    expect(result.current.errorStatus).toBe(401);
     expect(refresh).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('сетевой сбой (не ApiError) — общий текст «Нет связи…»', async () => {
+  it('сетевой сбой (не ApiError) — общий текст «Нет связи…», errorStatus null', async () => {
     mockedApiFetch.mockRejectedValue(new Error('boom'));
     const { result } = renderHook(() => useEmailLoginVerify(vi.fn()));
 
@@ -85,58 +88,43 @@ describe('useEmailLoginVerify', () => {
     expect(result.current.error).toBe(
       'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     );
+    expect(result.current.errorStatus).toBeNull();
   });
 
-  it('joinCode (ADR-0030) — после verify зовёт POST /auth/join, потом переход на «/»', async () => {
+  it('joinCode (ADR-0030/0036) — inviteCode едет прямо в теле verify, без второго запроса', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
 
     await act(() => result.current.verify('t'.repeat(64)));
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/join', {
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/verify', {
       method: 'POST',
-      body: { code: 'a'.repeat(32) },
+      body: { token: 't'.repeat(64), inviteCode: 'a'.repeat(32) },
     });
-    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
-    expect(result.current.joinError).toBeNull();
-  });
-
-  it('join упал — joinError виден, вход не блокирован, редирект не уводит сам', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/email/verify') return Promise.resolve(undefined);
-      if (path === '/auth/join')
-        return Promise.reject(
-          new ApiError('Ссылка-приглашение не действует.', 401, 'unauthorized'),
-        );
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
-
-    await act(() => result.current.verify('t'.repeat(64)));
-
-    expect(result.current.joinError).toBe('Ссылка-приглашение не действует.');
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(navigateMock).not.toHaveBeenCalled();
-
-    result.current.continueToSchedule();
     expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
   });
 
-  it('join упал не ApiError — общий текст «Нет связи…» в joinError', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/email/verify') return Promise.resolve(undefined);
-      if (path === '/auth/join') return Promise.reject(new Error('boom'));
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
-
-    await act(() => result.current.verify('t'.repeat(64)));
-
-    expect(result.current.joinError).toBe(
-      'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
+  it('joinCode, verify упал (например, нет валидной ссылки) — error виден, переход не вызван', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+        403,
+        'forbidden',
+      ),
     );
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEmailLoginVerify(refresh, 'a'.repeat(32)));
+
+    await act(() => result.current.verify('t'.repeat(64)));
+
+    expect(result.current.error).toBe(
+      'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+    );
+    // errorStatus 403 (ревью PR #150) — экран не предложит «Запросить новую»:
+    // новое письмо не даёт ссылку-приглашение, кнопка вернула бы в ту же петлю.
+    expect(result.current.errorStatus).toBe(403);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });

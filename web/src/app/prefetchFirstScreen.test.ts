@@ -29,10 +29,6 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
 }
 
 describe('firstScreenPaths', () => {
-  it('invited — ничего не греем, API закрыт до подтверждения (ADR-0026)', () => {
-    expect(firstScreenPaths('/planning', makeMe({ status: 'invited' }))).toEqual([]);
-  });
-
   it('учитель на /planning — занятия на окно и классы', () => {
     expect(firstScreenPaths('/planning', makeMe())).toEqual([
       lessonsListPath(),
@@ -77,11 +73,5 @@ describe('prefetchFirstScreen', () => {
     expect(mockedApiFetch).toHaveBeenCalledTimes(2);
     expect(mockedApiFetch).toHaveBeenCalledWith(lessonsListPath());
     expect(mockedApiFetch).toHaveBeenCalledWith(CLASSES_LIST_PATH);
-  });
-
-  it('invited — apiFetch не вызывается вовсе', () => {
-    prefetchFirstScreen('/planning', makeMe({ status: 'invited' }));
-
-    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 });

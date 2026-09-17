@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import type { Options as PinoHttpOptions } from 'pino-http';
 import { REDACT_PATHS } from './redact-paths';
+import { REDACTED_VALUE, redactRequestSerializer } from './request-serializer';
 
 const HEALTH_PATH = '/api/health';
 const REQUEST_ID_HEADER = 'x-request-id';
@@ -38,7 +39,15 @@ export function buildPinoHttpOptions(nodeEnv: string, logLevel: string): PinoHtt
   return {
     level: logLevel,
     genReqId,
-    redact: { paths: REDACT_PATHS, censor: '[Redacted]' },
+    redact: { paths: REDACT_PATHS, censor: REDACTED_VALUE },
+    // Вырезает join/token из req.url (см. request-serializer.ts) — REDACT_PATHS
+    // редактирует req.query.*, тело и заголовки, но не строку url целиком.
+    serializers: { req: redactRequestSerializer },
+    // pino-http по умолчанию оборачивает serializers.req ещё одним проходом
+    // стандартного сериализатора (wrapSerializers: true) — redactRequestSerializer
+    // уже вызывает его сам, второй проход получил бы на входе не IncomingMessage,
+    // а уже сериализованный объект и потерял бы remoteAddress/remotePort.
+    wrapSerializers: false,
     autoLogging: { ignore: isHealthCheck },
     transport:
       nodeEnv === 'development'

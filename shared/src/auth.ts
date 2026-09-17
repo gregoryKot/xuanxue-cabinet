@@ -1,10 +1,9 @@
 // Роли, статусы и константы входа/сессии — общий контракт api и web
 // (CLAUDE.md, раздел «Слои»): гварды и DTO в api и CSRF/мутирующие методы в
 // web/src/api/http.ts используют одни и те же значения, расхождение ловит tsc.
-// Ролей учителя четыре. Ученик — не роль: это подтверждённый человек
-// (`status: 'active'`) без единой роли отсюда (ADR-0026), поэтому в списке
-// его нет и назначать нечего — экран «Люди» строит переключатели прямо по
-// USER_ROLES.
+// Ролей учителя четыре. Ученик — не роль: это человек со `status: 'active'`
+// без единой роли отсюда (ADR-0026), поэтому в списке его нет и назначать
+// нечего — экран «Люди» строит переключатели прямо по USER_ROLES.
 export const USER_ROLES = ['admin', 'teacher', 'assistant', 'accountant'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
@@ -36,18 +35,21 @@ export function isStaffRole(roles: readonly UserRole[]): boolean {
   return roles.some((role) => STAFF_ROLES.includes(role));
 }
 
-export const USER_STATUSES = ['invited', 'active', 'blocked'] as const;
+// Статуса «ожидает подтверждения» больше нет (ADR-0036, отменяет ADR-0026
+// в этой части): регистрация идёт только по ссылке-приглашению школы
+// (ADR-0030), сразу `active` — ждать больше нечего. Инцидент 2026-09-15
+// (владелец мельком увидел экран ожидания между входом и присоединением) —
+// причина убрать промежуточное состояние с концами, а не чинить гонку.
+export const USER_STATUSES = ['active', 'blocked'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
 /**
  * Профиль текущей сессии для интерфейса. Ученик — это `active` без ролей
  * учителя (ADR-0026), отдельной роли для него нет и в кабинете.
  * Email, telegramId и googleId сюда намеренно не входят — это ключи входа,
- * не профиль для интерфейса.
- *
- * `status` входит с ADR-0026: вошедший в первый раз ждёт подтверждения
- * (`invited`), и экран должен показать ему ожидание, а не пустое расписание.
- * `telegramLinked` — не id, а признак «бот меня узнает» (ADR-0023, §8.17).
+ * не профиль для интерфейса. `telegramLinked` — не id, а признак «бот меня
+ * узнает» (ADR-0023, §8.17): им экран попытки решает, показывать ли кнопку
+ * бота.
  */
 export interface MeDto {
   id: string;
@@ -58,11 +60,12 @@ export interface MeDto {
   telegramLinked: boolean;
 }
 
-/** Вошёл, но школа ещё не подтвердила (ADR-0026) — ответ любого маршрута
- * с данными, пока статус `invited`. Текст говорит, что происходит и чего
- * ждать (docs/VOICE.md), а не «доступа нет». */
-export const PENDING_APPROVAL_MESSAGE =
-  'Вы вошли, осталось дождаться подтверждения. Учитель откроет доступ, обычно в тот же день.';
+/** Нового человека без ссылки-приглашения (ADR-0030, ADR-0036) в кабинет не
+ * пускаем — ни `POST /auth/telegram`, ни `POST /auth/email/verify` не
+ * заводят аккаунт без валидного `inviteCode`. Текст — с действием
+ * (docs/VOICE.md): что сделать, чтобы попасть внутрь. */
+export const NO_INVITE_LINK_MESSAGE =
+  'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.';
 
 /** `status: 'blocked'` и несовпадение роли — один отказ и в вебе (`AuthGuard`),
  * и в боте (`BotUserAccessService`, ADR-0024): единственный источник текста
@@ -94,9 +97,13 @@ export interface RequestEmailLoginInput {
   inviteCode?: string;
 }
 
-/** Тело `POST /auth/email/verify` — токен из ссылки в письме, 64 hex. */
+/** Тело `POST /auth/email/verify` — токен из ссылки в письме, 64 hex.
+ * `inviteCode` — страница `/login/email` читает его из query `?join=<code>`
+ * (ADR-0030, ADR-0036) и шлёт вместе с verify: у нового человека без него
+ * или с неверным кодом верификация не заводит аккаунт. */
 export interface VerifyEmailLoginInput {
   token: string;
+  inviteCode?: string;
 }
 
 /** Email-вход выключен конфигурацией — нет RESEND_API_KEY/MAIL_FROM/PUBLIC_URL
@@ -130,21 +137,4 @@ export interface AuthConfigDto {
   telegramBotUsername?: string;
   schoolSiteUrl?: string;
   emailLoginEnabled: boolean;
-}
-
-/** Заголовок CSRF-защиты (SECURITY §2, ADR-0012): обязателен для любого
- * мутирующего запроса, кроме `@SkipCsrf()` (вебхук Telegram) — кросс-доменная
- * форма его не поставит, `fetch` из web ставит всегда (см. http.ts). */
-export const CSRF_HEADER = 'x-requested-with';
-
-/** Методы, которые CSRF-гвард в api (`auth/csrf.ts`) и http-клиент в web
- * (`api/http.ts`) считают мутирующими — общий список, чтобы фронт и бэк не
- * разъехались по тому, что требует заголовка. Не экспортируется (аудит M8):
- * обе стороны зовут только `isMutatingMethod`. */
-const MUTATING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'] as const;
-
-const MUTATING_METHODS_SET = new Set<string>(MUTATING_METHODS);
-
-export function isMutatingMethod(method: string): boolean {
-  return MUTATING_METHODS_SET.has(method.toUpperCase());
 }

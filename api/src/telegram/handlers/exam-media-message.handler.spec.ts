@@ -1,17 +1,13 @@
 // Чистая логика с фейками коллабораторов, без Mongo и без сети (CLAUDE.md
 // «Тесты», образец — соседние спеки хендлеров бота): маршрутизация к
 // MediaAssetsService и пересылка учителям — не сама привязка (та проверена
-// против настоящей Mongo в media-assets.service.spec.ts). blocked/invited —
-// отказ и закрытая сессия, видео не привязывается (SECURITY §9, ADR-0026).
+// против настоящей Mongo в media-assets.service.spec.ts). blocked —
+// отказ и закрытая сессия, видео не привязывается (SECURITY §9).
 import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
-import {
-  ACCESS_MESSAGE,
-  PENDING_APPROVAL_MESSAGE,
-  type ExamAttemptDto,
-} from '@xuanxue/shared';
+import { ACCESS_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
 import type { BotSessionLean } from '../bot-session.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
@@ -20,6 +16,7 @@ import type { PersonalChats } from '../personal-chats';
 import type { MediaAssetsService } from '../../media/media-assets.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import type { BotUserAccessService } from '../bot-user-access.service';
+import { TELEGRAM_NOT_LINKED_MESSAGE } from './exam-media-deep-link';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -437,19 +434,6 @@ describe('ExamMediaMessageHandler', () => {
     expect(attachTelegramVideo).not.toHaveBeenCalled();
   });
 
-  it('неподтверждённый (invited) — отказ ожиданием подтверждения, сессия закрывается', async () => {
-    const { handler, clear, attachTelegramVideo } = buildHandler({
-      botAccess: fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
-    });
-    const { ctx, replies } = fakeCtx({ video: true });
-
-    await handler.handle(ctx, 111, SESSION, NOW);
-
-    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
-    expect(clear).toHaveBeenCalledWith(111);
-    expect(attachTelegramVideo).not.toHaveBeenCalled();
-  });
-
   // Регрессия инцидента 2026-09-16 (RUNBOOK §8.17): ученик вошёл по почте (нет
   // telegramId), сдал экзамен, прислал видео в бота — BotUserAccessService
   // даёт `unknown`, а хендлер раньше всё равно звал attachTelegramVideo с
@@ -465,10 +449,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
-    expect(replies).toEqual([
-      'Этот Telegram не связан с вашим кабинетом, поэтому видео сюда не примем. ' +
-        'Вернитесь в кабинет и вставьте ссылку на видео на экране попытки.',
-    ]);
+    expect(replies).toEqual([TELEGRAM_NOT_LINKED_MESSAGE]);
     expect(clear).toHaveBeenCalledWith(111);
     expect(attachTelegramVideo).not.toHaveBeenCalled();
   });

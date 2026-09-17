@@ -112,4 +112,13 @@ describe('useAuthConfig', () => {
 
     expect(result.current.config).toEqual(fresh);
   });
+
+  // enabled=false (ревью PR #150) — JoinScreen выключает хук, пока authStatus не
+  // стал 'guest': вошедшего/заблокированного сразу уводит, конфигурация не нужна.
+  it('enabled: false — запрос не уходит, status остаётся loading', () => {
+    const { result } = renderHook(() => useAuthConfig(false));
+
+    expect(result.current.status).toBe('loading');
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
 });

@@ -14,6 +14,15 @@ export const INVITE_CODE_RE = /^[0-9a-f]{32}$/;
  * источник формата), разбирается в start.handler.ts. */
 export const INVITE_TELEGRAM_START_PREFIX = 'join_';
 
+/** Имя query-параметра, которым код ссылки-приглашения путешествует по
+ * запросам, где тело подписано и расширять его нельзя (ADR-0036): письмо
+ * входа (`&join=<code>`), страница `/login/email`, `POST /auth/telegram`
+ * (`?join=<code>` — подпись Telegram считается по телу целиком,
+ * parse-telegram-login-body.ts, добавлять туда лишнее поле нельзя). Один
+ * источник имени вместо литерала `'join'` по файлам (CLAUDE.md «Без
+ * магических чисел и строк»). */
+export const INVITE_QUERY_PARAM = 'join';
+
 /**
  * Ответ `GET /users/invite-link` и `POST /users/invite-link` (admin и
  * teacher). `url: null` — ссылку ещё ни разу не создавали, экран «Люди»
@@ -27,9 +36,10 @@ export interface InviteLinkDto {
   telegramUrl: string | null;
 }
 
-/** Тело `POST /auth/join` и `POST /auth/join/check` — код из адреса
- * `/join/<code>`. Один тип на оба маршрута: форма запроса одна и та же
- * (CLAUDE.md «Дубли»), различается только то, что делает сервер дальше. */
+/** Тело `POST /auth/join/check` — код из адреса `/join/<code>`, страница
+ * проверяет ссылку до входа (ADR-0036: самого входа-«присоединения» после
+ * сессии больше нет, `inviteCode` едет прямо в `/auth/telegram`/
+ * `/auth/email/verify`). */
 export interface JoinByInviteInput {
   code: string;
 }

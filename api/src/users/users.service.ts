@@ -14,6 +14,7 @@ import {
 } from './list-teacher-contacts';
 import { attachTelegramId as attachTelegramIdWrite } from './attach-telegram-id';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
+import { normalizeUserStatus } from './normalize-user-status';
 import { upsertUserByKey } from './upsert-user-by-key';
 
 /** Внутреннее представление пользователя — шире MeDto: гварду нужны status и
@@ -41,7 +42,9 @@ export interface NewTelegramUser {
   status: UserStatus;
 }
 
-/** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация. */
+/** Экспортирован для user-roles.service.ts — тот же маппер, не вторая реализация.
+ * status — через normalizeUserStatus.ts (expand→contract после миграции 0007,
+ * ADR-0036): единственный маппер документа в UserLean покрывает этим все чтения. */
 export function toLean(doc: UserDoc): UserLean {
   return {
     id: doc._id.toString(),
@@ -51,7 +54,7 @@ export function toLean(doc: UserDoc): UserLean {
     googleId: doc.googleId,
     roles: doc.roles,
     tz: doc.tz,
-    status: doc.status,
+    status: normalizeUserStatus(doc.status, doc._id.toString()),
     lastLoginAt: doc.lastLoginAt,
     joinedViaInviteAt: doc.joinedViaInviteAt,
   };
@@ -81,10 +84,10 @@ export class UsersService {
     return listTeacherContactsQuery(this.model);
   }
 
-  /** Первый вход через Telegram (SECURITY §2, ADR-0026): роли по умолчанию
-   * пустые, статус задаёт вызывающий — обычный человек приходит как
-   * `invited` и ждёт подтверждения, и только известные школе (первый админ,
-   * участник группы учеников) сразу `active`.
+  /** Первый вход через Telegram (SECURITY §2, ADR-0030/0036): всегда
+   * `active` — без ссылки-приглашения (или для бутстрап-админа) регистрация
+   * не доходит до этого метода вовсе, `LoginIdentityService` решает это
+   * раньше (login-identity.service.ts).
    *
    * Атомарный upsert по уникальному индексу telegramId, а не findOne+create:
    * два параллельных первых входа (двойной клик, два тика вебхука) иначе

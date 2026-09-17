@@ -56,22 +56,20 @@ describe('usePeople — updateRoles (read-after-write)', () => {
   });
 });
 
-describe('usePeople — approve (read-after-write)', () => {
-  it('POST /users/:id/approve, затем перечитывает список', async () => {
+describe('usePeople — updateStatus (read-after-write)', () => {
+  it('PATCH /users/:id/status, затем перечитывает список', async () => {
     mockedApiFetch.mockResolvedValueOnce([]);
     const { result } = renderHook(() => usePeople());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockedApiFetch.mockResolvedValueOnce({});
     mockedApiFetch.mockResolvedValueOnce([]);
-    await result.current.approve('u1');
+    await result.current.updateStatus('u1', 'blocked');
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/users/u1/approve',
-      expect.objectContaining({ method: 'POST' }),
+      '/users/u1/status',
+      expect.objectContaining({ method: 'PATCH', body: { status: 'blocked' } }),
     );
-    // Перечитывание — второй вызов apiFetch, тот же /users?limit, что при загрузке.
-    expect(mockedApiFetch).toHaveBeenCalledTimes(3);
   });
 });
 

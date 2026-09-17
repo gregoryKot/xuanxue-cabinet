@@ -1,15 +1,14 @@
 // Строка списка «Люди» — имя, служебная строка входа и статуса,
 // переключатели ролей (PersonRoles.tsx, CLAUDE.md «Одна механика — один
-// компонент»), подтверждение и удаление. Не карточка с клиентом: строка сама
-// не открывается никуда, переключатель роли — сразу мутация (PATCH
-// /users/:id), подтверждение — POST /users/:id/approve (ADR-0026), удаление —
-// через общий ConfirmDialog (образец — hooks/useConfirmedRemove.ts), необратимо и
-// поэтому с подтверждением.
+// компонент») и удаление. Не карточка с клиентом: строка сама не
+// открывается никуда, переключатель роли — сразу мутация (PATCH /users/:id),
+// удаление — через общий ConfirmDialog (образец — hooks/useConfirmedRemove.ts),
+// необратимо и поэтому с подтверждением.
 //
 // Облик — ADR-0031: имя антиквой, статус растяжкой-заглавными, действия —
 // PersonActions.tsx.
 import { useState, type CSSProperties } from 'react';
-import type { UserDto, UserRole } from '@xuanxue/shared';
+import type { UserDto, UserRole, UserStatus } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
@@ -22,16 +21,14 @@ import { PersonActions } from './PersonActions';
 import { PersonRoles } from './PersonRoles';
 
 const TOGGLE_ERROR_MESSAGE = 'Не удалось изменить роль. Попробуйте ещё раз.';
+const ACCESS_ERROR_MESSAGE = 'Не удалось изменить доступ. Попробуйте ещё раз.';
 const REMOVE_ERROR_MESSAGE = 'Не удалось удалить данные. Попробуйте ещё раз.';
-const APPROVE_ERROR_MESSAGE = 'Не удалось подтвердить. Попробуйте ещё раз.';
 const NEVER_LOGGED_IN = 'Ещё не входил';
 // Подпись статуса рядом с датой входа — растяжкой-заглавными (ADR-0031):
-// blocked — переключатели роли не откроют кабинет, вход отсекает AuthGuard;
-// invited — школа ещё не подтвердила первый вход (ADR-0026), поэтому у
-// строки есть «Подтвердить». У активного подписи нет: это обычное состояние.
+// blocked — переключатели роли не откроют кабинет, вход отсекает AuthGuard.
+// У активного подписи нет: это обычное состояние. Статусов два (ADR-0036).
 const STATUS_LABELS: Partial<Record<UserDto['status'], string>> = {
   blocked: 'Доступ закрыт',
-  invited: 'Ждёт подтверждения',
 };
 const REMOVE_CONFIRM_TITLE = 'Удалить данные?';
 // VOICE.md: конкретика — что именно пропадёт, не «данные удалятся».
@@ -51,12 +48,11 @@ interface PersonRowProps {
   person: UserDto;
   /** Строка — сам виден пользователь себе в списке (SECURITY §2): его
    * переключатель admin выключен, снять роль у себя нельзя из интерфейса,
-   * кнопок «Подтвердить» и «Удалить данные» тоже нет — свой аккаунт не
-   * подтверждают и не удаляют из интерфейса (SELF_DELETE_MESSAGE,
-   * api/src/users/user-deletion.service.ts). */
+   * кнопки «Удалить данные» тоже нет — свой аккаунт не удаляют из
+   * интерфейса (SELF_DELETE_MESSAGE, api/src/users/user-deletion.service.ts). */
   isSelf: boolean;
   onChangeRoles: (roles: UserRole[]) => Promise<void>;
-  onApprove: () => Promise<void>;
+  onChangeStatus: (status: UserStatus) => Promise<void>;
   onRemove: () => Promise<void>;
 }
 
@@ -64,11 +60,11 @@ export function PersonRow({
   person,
   isSelf,
   onChangeRoles,
-  onApprove,
+  onChangeStatus,
   onRemove,
 }: PersonRowProps) {
-  // Один pending/error на всю строку — переключатель роли, подтверждение и
-  // удаление не идут одновременно, всем хватает общего run() ниже.
+  // Один pending/error на всю строку — переключатель роли и удаление не идут
+  // одновременно, всем хватает общего run() ниже.
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -115,9 +111,14 @@ export function PersonRow({
 
       <PersonActions
         isSelf={isSelf}
-        isInvited={person.status === 'invited'}
         pending={pending}
-        onApprove={() => void run(onApprove, APPROVE_ERROR_MESSAGE)}
+        status={person.status}
+        onToggleAccess={() =>
+          void run(
+            () => onChangeStatus(person.status === 'blocked' ? 'active' : 'blocked'),
+            ACCESS_ERROR_MESSAGE,
+          )
+        }
         onRemove={() => setConfirmingRemove(true)}
       />
 

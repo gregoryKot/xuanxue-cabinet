@@ -1,16 +1,11 @@
-// Расшифрованный `config`, идемпотентный upsert Telegram-чата и список
-// активных chatId — вынесено из ChannelsService (CLAUDE.md «Храповики»):
-// нужны не экрану CRUD, а другим потребителям — доставкам и боту (ADR-0015,
-// чат сам становится каналом) и входу через Telegram (ADR-0026, автоподтверждение).
+// Расшифрованный `config` и идемпотентный upsert Telegram-чата — вынесено из
+// ChannelsService (CLAUDE.md «Храповики»): нужны не экрану CRUD, а другим
+// потребителям — доставкам и боту (ADR-0015, чат сам становится каналом).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { ChannelConfig, ChannelDto, ChannelType } from '@xuanxue/shared';
-import {
-  CHANNEL_LIMITS,
-  CHANNEL_NOT_FOUND_MESSAGE,
-  LIST_LIMIT_MAX,
-} from '@xuanxue/shared';
+import { CHANNEL_LIMITS, CHANNEL_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
 import { ClassRecord } from '../classes/class.schema';
 import { NotFoundError } from '../common/errors';
 import { encryptSchemaFrom } from '../common/field-policy';
@@ -101,21 +96,6 @@ export class ChannelConfigService {
       broadcastEligible: false,
     });
     return toChannelDto(doc);
-  }
-
-  /** chatId активных Telegram-каналов ШКОЛЫ — для GroupMembershipService
-   * (автоподтверждение по группе, ADR-0026). Личные каналы учеников
-   * (`broadcastEligible: false`, ADR-0027) сюда не попадают: это не группы,
-   * проверять членство в них незачем и небезопасно тратить вызовы Bot API.
-   * Лимит — LIST_LIMIT_MAX, «дай всё» запрещён (CLAUDE.md «API»); `target`
-   * для telegram — это chatId. */
-  async listActiveTelegramChatIds(): Promise<string[]> {
-    const docs = await this.model
-      .find({ type: 'telegram', active: true, broadcastEligible: { $ne: false } })
-      .select('target')
-      .limit(LIST_LIMIT_MAX)
-      .lean<{ target: string }[]>();
-    return docs.map((doc) => doc.target).filter(Boolean);
   }
 
   /** left/kicked (ADR-0015): документ не удаляем — журнал доставок на него

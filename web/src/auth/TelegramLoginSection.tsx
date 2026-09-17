@@ -32,8 +32,12 @@ interface TelegramLoginSectionProps {
   configStatus: 'loading' | 'ok' | 'offline';
   onReload: () => Promise<void>;
   /** По умолчанию — переход на /schedule после входа (LoginScreen); JoinScreen
-   * передаёт `false` и сам решает дальнейший путь (POST /auth/join). */
+   * передаёт `false` и сам решает дальнейший путь (сессия уже создана,
+   * экран уходит на «Расписание» сам). */
   navigateAfterLogin?: boolean;
+  /** Код ссылки-приглашения (ADR-0030/0036) — JoinScreen.tsx передаёт код
+   * из /join/:code, LoginScreen.tsx не передаёт вовсе. */
+  inviteCode?: string;
   /** Рендерится ниже кнопки, но не во время авто-входа по фрагменту адреса
    * (форма почты под кнопкой не должна мигать раньше скелетона). */
   children?: ReactNode;
@@ -44,11 +48,13 @@ export function TelegramLoginSection({
   configStatus,
   onReload,
   navigateAfterLogin = true,
+  inviteCode,
   children,
 }: TelegramLoginSectionProps) {
   const { refresh } = useAuth();
   const { pending: autoPending, error: autoError } = useTelegramAuthResultLogin(refresh, {
     navigateAfterLogin,
+    inviteCode,
   });
   const [pending, setPending] = useState(false);
   // Локальная переменная — TS сужает `number | undefined` до `number` по ней

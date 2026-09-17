@@ -2,7 +2,9 @@
 // Провайдер писем спрятан за MailService — этот сервис не знает деталей
 // HTTP до Resend. Токен — EmailLoginTokenService (одноразовый, TTL 15
 // минут, sha256 в базе). AuthService.issueSession — тот же узел выпуска
-// cookie, что и у Telegram-входа (ADR-0012).
+// cookie, что и у Telegram-входа (ADR-0012). Поиск/создание человека —
+// LoginIdentityService (ADR-0030/0036): новый заводится только с валидной
+// ссылкой-приглашением.
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
@@ -10,10 +12,11 @@ import {
   ACCESS_MESSAGE,
   EMAIL_LOGIN_EXPIRED_MESSAGE,
   EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE,
+  INVITE_QUERY_PARAM,
 } from '@xuanxue/shared';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
-import { EmailLoginUserService } from '../users/email-login-user.service';
 import { InviteLinkService } from '../users/invite-link.service';
+import { LoginIdentityService } from '../users/login-identity.service';
 import { UsersService, type UserLean } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { AuthService } from './auth.service';
@@ -30,10 +33,10 @@ export class EmailAuthService {
     private readonly config: ConfigService,
     private readonly tokens: EmailLoginTokenService,
     private readonly mail: MailService,
-    private readonly emailUsers: EmailLoginUserService,
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
     private readonly inviteLinkService: InviteLinkService,
+    private readonly loginIdentity: LoginIdentityService,
   ) {}
 
   /** Email-вход подключён конфигурацией — общая проверка для
@@ -54,8 +57,9 @@ export class EmailAuthService {
    * аккаунта нигде из этого не раскрывается. `inviteCode` (ADR-0030,
    * страница `/join/:code`) — невалидный код молча игнорируется (та же
    * причина: не раскрывать наружу, какой код настоящий), валидный уходит в
-   * ссылку письма параметром `join`, `/login/email` потом зовёт `/auth/join`
-   * сам после verify(). */
+   * ссылку письма параметром `join` (`INVITE_QUERY_PARAM`), `/login/email`
+   * потом шлёт его вместе с `verify()` (ADR-0036: отдельного шага
+   * «присоединиться» после входа больше нет). */
   async requestLink(email: string, now: DateTime, inviteCode?: string): Promise<void> {
     const publicUrl = this.readPublicUrl();
     if (!publicUrl) throw new NotAvailableError(EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE);
@@ -68,18 +72,21 @@ export class EmailAuthService {
 
     const join =
       inviteCode && (await this.inviteLinkService.isValid(inviteCode))
-        ? `&join=${inviteCode}`
+        ? `&${INVITE_QUERY_PARAM}=${inviteCode}`
         : '';
     const link = `${publicUrl}/login/email?token=${token}${join}`;
     await this.mail.sendLoginLink({ to: normalized, link });
   }
 
-  async verify(token: string, now: DateTime): Promise<EmailLoginResult> {
+  async verify(
+    token: string,
+    now: DateTime,
+    inviteCode?: string,
+  ): Promise<EmailLoginResult> {
     const email = await this.tokens.consume(token, now);
     if (!email) throw new UnauthorizedError(EMAIL_LOGIN_EXPIRED_MESSAGE);
 
-    const existing = await this.emailUsers.findByEmail(email);
-    const user = existing ?? (await this.emailUsers.createFromEmail(email));
+    const user = await this.loginIdentity.resolveEmailUser(email, inviteCode, now);
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 
     await this.usersService.touchLogin(user.id, now);

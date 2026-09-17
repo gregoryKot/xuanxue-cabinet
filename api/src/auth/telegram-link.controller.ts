@@ -11,10 +11,10 @@ import type { UserLean } from '../users/users.service';
 import { TelegramLinkCodeService } from '../users/telegram-link-code.service';
 import { CurrentUser } from './auth.decorators';
 
-// Без @AllowPending и без @Public: код связки выпускается только активной
-// подтверждённой сессии (вошедший invited ещё не видит расписание и экран
-// попытки — привязывать Telegram ему пока не к чему, ADR-0034). Тот же
-// профиль лимита, что у issue-эндпоинтов входа (join/check и др.).
+// Без @Public: код связки выпускается только вошедшей сессии — гвард сам
+// отсекает `blocked` (SECURITY §2), других статусов у человека нет
+// (ADR-0034, ADR-0036). Тот же профиль лимита, что у issue-эндпоинтов входа
+// (join/check и др.).
 const TELEGRAM_LINK_CODE_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
 @Controller('auth')

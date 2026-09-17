@@ -13,15 +13,7 @@ import {
 // экспортирует префикс наружу — заводить экспорт ради одного потребителя
 // сейчас не стоит, префикс задокументирован здесь же.
 export const TELEGRAM_WEBHOOK_PATH = '/api/telegram/webhook';
-// chat_member — без него в списке Telegram не пришлёт апдейт о вступлении
-// человека в группу, даже когда бот там администратор (ещё одно условие,
-// на стороне Telegram, — см. chat-member-join.handler.ts и RUNBOOK §8.15).
-const ALLOWED_UPDATES = [
-  'message',
-  'my_chat_member',
-  'chat_member',
-  'callback_query',
-] as const;
+const ALLOWED_UPDATES = ['message', 'my_chat_member', 'callback_query'] as const;
 
 /** telegraf зовёт `telegram.getMe()` лениво, но кэширует даже ОТКЛОНЁННЫЙ
  * промис в приватном `botInfoCall` (telegraf.js, handleUpdate) — после

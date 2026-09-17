@@ -1,85 +1,65 @@
-// Логика экрана `/join/:code` (ADR-0030) — вынесена из JoinScreen.tsx
-// (CLAUDE.md «Логика вне компонентов»). Два шага: сначала проверить код без
-// входа (`POST /auth/join/check`, `@Public()`) — страница не должна гнать
-// человека логиниться зря на мёртвую ссылку; затем, как только появляется
-// сессия (уже была или только что вошёл через Telegram/email), одноразово
-// зовёт `POST /auth/join` сама, без отдельной кнопки — что вошедший видит
-// эту ссылку, уже значит «присоединиться».
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { CheckInviteResultDto } from '@xuanxue/shared';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
-import { useAuth } from '../auth/AuthProvider';
+// Логика экрана `/join/:code` (ADR-0030/0036) — вынесена из JoinScreen.tsx
+// (CLAUDE.md «Логика вне компонентов»). Проверяет код без входа
+// (`POST /auth/join/check`, `@Public()`) — страница не должна гнать
+// человека логиниться зря на мёртвую ссылку. Сама регистрация идёт внутри
+// POST /auth/telegram / POST /auth/email/verify (код передаётся туда,
+// TelegramLoginSection.tsx/EmailLoginForm.tsx) — отдельного шага
+// «присоединиться после входа» больше нет, JoinScreen сам уходит на
+// «Расписание», как только authStatus становится 'ok'.
+import { useEffect, useState } from 'react';
+import { INVITE_CODE_RE, type CheckInviteResultDto } from '@xuanxue/shared';
+import { ApiError, apiFetch } from '../api/http';
 
 type CheckStatus = 'loading' | 'valid' | 'invalid' | 'offline';
 
+// DTO /auth/join/check отвергает код вне формата 400-м — тот же путь catch,
+// что и сетевой сбой, если их не различать (баг: /join/<мусор> показывал
+// «Нет связи с сервером» вместо «Ссылка не подошла»).
+const INVALID_INPUT_STATUS = 400;
+
 export interface UseJoinByInviteResult {
   checkStatus: CheckStatus;
-  /** true между стартом POST /auth/join и его ответом — отдельно от
-   * `checkStatus`, потому что join() запускается уже после проверки. */
-  joining: boolean;
-  error: string | null;
-  /** Повтор после сбоя — та же функция, что и авто-вызов при входе. */
-  join: () => void;
   /** Повторить POST /auth/join/check после сетевого сбоя (checkStatus === 'offline'). */
   retryCheck: () => void;
 }
 
-export function useJoinByInvite(code: string): UseJoinByInviteResult {
-  const { status: authStatus, refresh } = useAuth();
-  const navigate = useNavigate();
+/** `enabled` — по умолчанию `true`; JoinScreen передаёт `false`, пока не
+ * известно, что сессии нет (authStatus === 'guest') — вошедшего сразу уводит
+ * на «Расписание», и звать check незачем. Пока выключен, checkStatus
+ * остаётся в начальном 'loading', запроса нет. */
+export function useJoinByInvite(code: string, enabled = true): UseJoinByInviteResult {
   const [checkStatus, setCheckStatus] = useState<CheckStatus>('loading');
-  const [joining, setJoining] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const startedRef = useRef(false);
   const [checkAttempt, setCheckAttempt] = useState(0);
 
   useEffect(() => {
+    if (!enabled) return;
+    // Код не по формату (32 hex, INVITE_CODE_RE) — сразу «не подошла» без
+    // похода в сеть: сервер всё равно ответит 400 на такой код, а ветка catch
+    // ниже видит только «запрос упал», не «упал из-за чего».
+    if (!INVITE_CODE_RE.test(code)) {
+      setCheckStatus('invalid');
+      return;
+    }
     let cancelled = false;
     setCheckStatus('loading');
     apiFetch<CheckInviteResultDto>('/auth/join/check', { method: 'POST', body: { code } })
       .then((res) => {
         if (!cancelled) setCheckStatus(res.valid ? 'valid' : 'invalid');
       })
-      .catch(() => {
-        if (!cancelled) setCheckStatus('offline');
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // 400 (DTO отвергла форму кода) — «ссылка не подошла», не «нет связи»;
+        // сеть/5xx/429 — offline с кнопкой «Повторить» (CLAUDE.md «Ошибки»).
+        setCheckStatus(
+          err instanceof ApiError && err.status === INVALID_INPUT_STATUS
+            ? 'invalid'
+            : 'offline',
+        );
       });
     return () => {
       cancelled = true;
     };
-  }, [code, checkAttempt]);
+  }, [code, checkAttempt, enabled]);
 
-  const join = useCallback(() => {
-    // Гвард на выполнение, не на UI: повторный вызов (эффект ниже + ручная
-    // кнопка «Повторить» после сбоя) не должен слать второй параллельный
-    // POST — сбрасывается в catch, чтобы «Повторить» реально повторял.
-    if (startedRef.current) return;
-    startedRef.current = true;
-    setJoining(true);
-    setError(null);
-    apiFetch<void>('/auth/join', { method: 'POST', body: { code } })
-      .then(() => refresh())
-      .then(() => navigate('/schedule', { replace: true }))
-      .catch((err: unknown) => {
-        setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
-        startedRef.current = false;
-      })
-      .finally(() => setJoining(false));
-  }, [code, refresh, navigate]);
-
-  // Сессия уже есть (обычный вход по ссылке, включая active-человека,
-  // который просто открыл её снова) или только что появилась (Telegram-
-  // возврат на этот же URL, TelegramLoginSection.tsx с navigateAfterLogin:
-  // false) — присоединяем сразу, без отдельного клика.
-  useEffect(() => {
-    if (checkStatus === 'valid' && authStatus === 'ok') join();
-  }, [checkStatus, authStatus, join]);
-
-  return {
-    checkStatus,
-    joining,
-    error,
-    join,
-    retryCheck: () => setCheckAttempt((n) => n + 1),
-  };
+  return { checkStatus, retryCheck: () => setCheckAttempt((n) => n + 1) };
 }

@@ -8,9 +8,9 @@
 // сообщения нет message_id экрана бота, который редактировать.
 //
 // Личность — через BotUserAccessService.resolve(), не напрямую
-// UsersService: blocked/invited получают отказ и сессия закрывается — иначе
+// UsersService: blocked получает отказ и сессия закрывается — иначе
 // заблокированный продолжал бы отвечать на вопросы открытой попытки
-// (SECURITY §9, ADR-0026).
+// (SECURITY §9).
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';

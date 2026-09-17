@@ -1,6 +1,5 @@
-// Тело POST /auth/join и POST /auth/join/check — код ссылки-приглашения
-// школы (ADR-0030). Один DTO на оба маршрута: форма запроса одна и та же
-// (CLAUDE.md «Дубли»). Формат — INVITE_CODE_RE: randomBytes(16).toString('hex').
+// Тело POST /auth/join/check — код ссылки-приглашения школы (ADR-0030).
+// Формат — INVITE_CODE_RE: randomBytes(16).toString('hex').
 import { Matches } from 'class-validator';
 import { INVITE_CODE_RE, type JoinByInviteInput } from '@xuanxue/shared';
 

@@ -3,8 +3,8 @@
 // активным личным каналом, а экзамен сдают ученики (тот же приём, что
 // MessageHandler для сессии examMedia — ADR-0023). Личность и доступ — через
 // BotUserAccessService.resolve(): единственная точка, что незнакомец тихо
-// игнорируется (как и прочие чужие callback), а blocked/invited получают
-// явный отказ вместо доступа к попытке (SECURITY §9, ADR-0026).
+// игнорируется (как и прочие чужие callback), а blocked получает
+// явный отказ вместо доступа к попытке (SECURITY §9).
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { CallbackAction } from '../callback-data';

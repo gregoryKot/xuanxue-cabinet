@@ -14,7 +14,11 @@ export interface UseAuthConfigResult {
   reload: () => Promise<void>;
 }
 
-export function useAuthConfig(): UseAuthConfigResult {
+/** `enabled` — по умолчанию `true`; JoinScreen передаёт `false`, пока не
+ * известно, что сессии нет (authStatus === 'guest') — вошедшего сразу уводит
+ * на «Расписание», конфигурация экрана входа ему не нужна (ревью PR #150). Пока
+ * выключен, status остаётся в начальном 'loading', запроса нет. */
+export function useAuthConfig(enabled = true): UseAuthConfigResult {
   const [config, setConfig] = useState<AuthConfigDto | null>(null);
   const [status, setStatus] = useState<AuthConfigStatus>('loading');
   const requestId = useRef(0);
@@ -38,8 +42,9 @@ export function useAuthConfig(): UseAuthConfigResult {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     void reload();
-  }, [reload]);
+  }, [reload, enabled]);
 
   return { config, status, reload };
 }

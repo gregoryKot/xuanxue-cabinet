@@ -1,12 +1,12 @@
 // Чистая логика с фейками коллабораторов, без Mongo и без сети (CLAUDE.md
 // «Тесты», образец — exam-media-message.handler.spec.ts): сохранение через
 // ExamBotPort.saveAnswer и переход к следующему вопросу — не сама работа с
-// Mongo (та проверена в exam-attempt-flow.spec.ts). blocked/invited — отказ
+// Mongo (та проверена в exam-attempt-flow.spec.ts). blocked — отказ
 // и закрытая сессия, ответ не сохраняется (SECURITY §9, ADR-0026).
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
-import { ACCESS_MESSAGE, PENDING_APPROVAL_MESSAGE } from '@xuanxue/shared';
+import { ACCESS_MESSAGE } from '@xuanxue/shared';
 import type { AttemptQuestionDto, ExamAttemptDto } from '@xuanxue/shared';
 import type { BotSessionLean } from '../bot-session.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
@@ -206,20 +206,6 @@ describe('ExamTextAnswerHandler', () => {
     await handler.handle(ctx, 111, SESSION, NOW);
 
     expect(replies).toEqual([ACCESS_MESSAGE]);
-    expect(botSessions.clear).toHaveBeenCalledWith(111);
-    expect(port.saveAnswer).not.toHaveBeenCalled();
-  });
-
-  it('неподтверждённый (invited) — отказ ожиданием подтверждения, сессия закрывается', async () => {
-    const { handler, botSessions, port } = buildHandler({
-      botAccess: fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
-      loadOwnAttempt: attempt(),
-    });
-    const { ctx, replies } = fakeCtx('мой ответ');
-
-    await handler.handle(ctx, 111, SESSION, NOW);
-
-    expect(replies).toEqual([PENDING_APPROVAL_MESSAGE]);
     expect(botSessions.clear).toHaveBeenCalledWith(111);
     expect(port.saveAnswer).not.toHaveBeenCalled();
   });

@@ -10,7 +10,7 @@
 // UsersService (SECURITY §9, ADR-0026): `active` — обычный пользователь,
 // привязка проверяется в MediaAssetsService (SECURITY §3) — чужой или
 // несуществующий attemptId ничего не привязывает (ATTEMPT_NOT_YOURS_MESSAGE).
-// `denied` (blocked/invited) — отказ и закрытая сессия. `unknown` (нет
+// `denied` (blocked) — отказ и закрытая сессия. `unknown` (нет
 // записи в users — свой Telegram ещё не привязан к кабинету) раньше уходил в
 // attachTelegramVideo с userId: undefined и молча проваливался тем же
 // ATTEMPT_NOT_YOURS — человек уже снял и прислал видео, а бот отвечал так,

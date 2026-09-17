@@ -1,14 +1,9 @@
 // Фейковый ExamBotPort и фейковый BotUserAccessService, без Mongo и без сети
 // (CLAUDE.md «Тесты»): маршрутизация exam/eq/eo/es к нужному хендлеру,
-// незнакомец — тихо игнорируется, blocked/invited — отказ (SECURITY §9,
-// ADR-0026).
+// незнакомец — тихо игнорируется, blocked — отказ (SECURITY §9).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import {
-  ACCESS_MESSAGE,
-  PENDING_APPROVAL_MESSAGE,
-  type ExamAttemptDto,
-} from '@xuanxue/shared';
+import { ACCESS_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
@@ -220,28 +215,5 @@ describe('routeExamCallback', () => {
 
     expect(port.startAttempt).not.toHaveBeenCalled();
     expect(edits).toEqual([ACCESS_MESSAGE]);
-  });
-
-  it('неподтверждённый (invited) — отказ ожиданием подтверждения, порт не зовётся', async () => {
-    const port = fakeExamBotPort({
-      saveAnswer: jest.fn().mockResolvedValue(attempt()),
-      loadOwnAttempt: jest.fn().mockResolvedValue(attempt()),
-    });
-    const { ctx, edits } = fakeCtx();
-
-    await routeExamCallback(
-      ctx,
-      'eo',
-      buildOptionId(ATTEMPT_ID, 0, 0),
-      111,
-      fakeBotUserAccess({ kind: 'denied', message: PENDING_APPROVAL_MESSAGE }),
-      port,
-      fakeBotSessionService(),
-      NOW,
-    );
-
-    expect(port.loadOwnAttempt).not.toHaveBeenCalled();
-    expect(port.saveAnswer).not.toHaveBeenCalled();
-    expect(edits).toEqual([PENDING_APPROVAL_MESSAGE]);
   });
 });

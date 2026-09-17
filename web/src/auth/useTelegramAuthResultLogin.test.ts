@@ -134,6 +134,26 @@ describe('useTelegramAuthResultLogin', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
+  it('inviteCode (JoinScreen, ADR-0030/0036) — в query ?join=, не в теле (подпись Telegram считается по телу целиком)', async () => {
+    window.location.hash = toTgAuthResultHash(fakeUser);
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const inviteCode = 'a'.repeat(32);
+
+    renderHook(() =>
+      useTelegramAuthResultLogin(refresh, {
+        navigateAfterLogin: false,
+        inviteCode,
+      }),
+    );
+
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      `/auth/telegram?join=${inviteCode}`,
+      expect.objectContaining({ method: 'POST', body: fakeUser }),
+    );
+  });
+
   it('StrictMode вызывает эффект дважды — POST уходит один раз (startedRef)', async () => {
     window.location.hash = toTgAuthResultHash(fakeUser);
     mockedApiFetch.mockResolvedValue(undefined);

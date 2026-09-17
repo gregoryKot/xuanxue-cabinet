@@ -6,15 +6,13 @@ import { MY_EXAMS_PATH, MY_LESSONS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { putPrefetched } from '../api/prefetchCache';
 import { matchRoute } from './routeMatch';
-import { isPending, showsRouteScreen } from './screenAccess';
+import { showsRouteScreen } from './screenAccess';
 
 /**
  * GET-пути, которые стоит запросить сразу после ответа `/auth/me`,
  * параллельно с чанком экрана (routeModules.ts, `prefetch` по адресу).
  */
 export function firstScreenPaths(pathname: string, me: MeDto): string[] {
-  if (isPending(me)) return [];
-
   // showsRouteScreen — то же правило, что решает AppShell.tsx: тем же людям
   // на тех же адресах отдаётся Outlet маршрута, значит и первый экран — это
   // экран маршрута, а не StudentScreen.

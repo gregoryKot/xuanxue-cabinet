@@ -15,10 +15,9 @@
 // рисуется всегда, даже ученику (в нижнюю навигацию не входят — вход в
 // экзамен только кнопкой на StudentExamsSection.tsx, docs/adr/0025).
 //
-// status: 'invited' (ADR-0026) перекрывает всё это — первый вход ждёт
-// подтверждения школы, разделов у него ещё нет ни одного, поэтому
-// PendingApprovalScreen встаёт впереди проверки роли и пути, а навигация не
-// рисуется вовсе (isTeacher ниже для invited всегда false).
+// Статуса «ждёт подтверждения» больше нет (ADR-0036) — вошедший всегда либо
+// уже видит свой раздел, либо гвард (RequireAuth) увёл его на /login раньше,
+// чем этот компонент вообще отрисовался.
 import type { CSSProperties } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
@@ -27,8 +26,7 @@ import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
 import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
-import { PendingApprovalScreen } from './PendingApprovalScreen';
-import { isPending, isTeacher, showsRouteScreen } from './screenAccess';
+import { isTeacher, showsRouteScreen } from './screenAccess';
 import { StudentScreen } from './StudentScreen';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
@@ -65,7 +63,6 @@ export function AppShell() {
   const { pathname } = useLocation();
   // Правило «кому что показать» — screenAccess.ts, общее с
   // prefetchFirstScreen.ts (CLAUDE.md «Одна механика — один компонент»).
-  const pending = isPending(me);
   const teacherRole = isTeacher(me);
   const showOutlet = showsRouteScreen(me, pathname);
   // Сюда добираются уже с подтверждённой сессией (RequireAuth выше) и
@@ -84,27 +81,14 @@ export function AppShell() {
         {teacherRole && !isMobile && <AppNav isMobile={false} me={me} />}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, minHeight: 0 }}>
-            {pending ? (
-              <PendingApprovalScreen />
-            ) : showOutlet ? (
-              <Outlet />
-            ) : (
-              <StudentScreen />
-            )}
+            {showOutlet ? <Outlet /> : <StudentScreen />}
           </div>
           <footer style={footerStyle}>
             <span>Вы вошли как {me?.name ?? '—'} ·</span>
-            {/* Ждущему подтверждения ссылка на уведомления никуда не ведёт:
-                AppShell рисует ему экран ожидания на любом пути, а API
-                закрыт до подтверждения (ADR-0026). */}
-            {!pending && (
-              <>
-                <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
-                  Уведомления
-                </Link>
-                <span>·</span>
-              </>
-            )}
+            <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
+              Уведомления
+            </Link>
+            <span>·</span>
             <LogoutButton />
           </footer>
         </div>

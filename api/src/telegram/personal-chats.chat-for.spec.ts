@@ -96,26 +96,6 @@ describe('PersonalChats.chatFor', () => {
     ).resolves.toBeNull();
   });
 
-  it('не подтверждён школой (invited) — null (ADR-0026)', async () => {
-    const student = await userModel.create({
-      name: 'Ольга',
-      telegramId: 667,
-      roles: [],
-      status: 'invited',
-    });
-    await channelModel.create({
-      type: 'telegram',
-      title: 'x',
-      config: '{}',
-      target: '667',
-      active: true,
-    });
-
-    await expect(
-      personalChats.chatFor(student._id.toString(), 'exam_result'),
-    ).resolves.toBeNull();
-  });
-
   it('есть аккаунт, но не подключал бота (telegramId не задан) — null', async () => {
     const student = await userModel.create({ name: 'Ольга', roles: [] });
 

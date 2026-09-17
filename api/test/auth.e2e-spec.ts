@@ -44,8 +44,8 @@ describe('Auth (e2e)', () => {
     expect(body).toMatchObject({ name: 'Мария', roles: ['admin'] });
     expect(body.email).toBeUndefined();
     expect(body.telegramId).toBeUndefined();
-    // `status` наружу идёт с ADR-0026: по нему кабинет решает, показать
-    // расписание или экран ожидания подтверждения.
+    // `status` наружу идёт (ADR-0026, ADR-0036: active/blocked) — по нему
+    // кабинет решает, показать расписание или отказ в доступе.
     expect(body.status).toBe('active');
   });
 

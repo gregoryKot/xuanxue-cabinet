@@ -37,10 +37,12 @@ describe('Telegram webhook (e2e) — вход по ссылке-приглаше
   const server = (): ReturnType<TestApp['app']['getHttpServer']> =>
     testApp.app.getHttpServer();
 
-  // Ссылка-приглашение через бота (ADR-0030 «Бот») — тот же код, что и на
-  // сайте, тем же HTTP-путём, что вебхук проверяет остальные апдейты
-  // (secret_token, фейковый Telegraf). Read-after-write — admin GET /users.
-  it('/start join_<code> с верным кодом — invited становится active', async () => {
+  // Ссылка-приглашение через бота (ADR-0030 «Бот», ADR-0036) — тот же код,
+  // что и на сайте, тем же HTTP-путём, что вебхук проверяет остальные
+  // апдейты (secret_token, фейковый Telegraf). Read-after-write — admin
+  // GET /users. Известный человек — код игнорируется, тот же успех
+  // идемпотентно (статуса «ждёт подтверждения» больше нет, ADR-0036).
+  it('/start join_<code>, известный active-человек — тот же успех, статус не меняется, код игнорируется', async () => {
     const adminCookie = await sessionCookieFor(testApp.app, ['admin']);
     const linkReq = withCsrf(request(server()).post('/api/users/invite-link'));
     const linkRes = await linkReq.set('Cookie', adminCookie);
@@ -50,10 +52,10 @@ describe('Telegram webhook (e2e) — вход по ссылке-приглаше
       strict: false,
     });
     const created = await userModel.create({
-      name: 'Пришёл по ссылке из бота',
+      name: 'Уже в кабинете',
       telegramId: 900555,
       roles: [],
-      status: 'invited',
+      status: 'active',
     });
 
     const res = await request(server())
@@ -75,7 +77,7 @@ describe('Telegram webhook (e2e) — вход по ссылке-приглаше
     const list = await request(server()).get('/api/users').set('Cookie', adminCookie);
     const person = (list.body as UserDto[]).find((u) => u.id === created._id.toString());
     expect(person?.status).toBe('active');
-    expect(person?.joinedViaInvite).toBe(true);
+    expect(person?.joinedViaInvite).toBe(false);
   });
 
   // Владелец, уточнение 2026-09-15: смысл ссылки — новый ученик из канала

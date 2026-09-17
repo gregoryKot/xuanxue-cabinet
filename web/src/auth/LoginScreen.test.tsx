@@ -235,6 +235,42 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
     expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
   });
 
+  // ADR-0030/0036: без ссылки-приглашения новый человек в кабинет не
+  // попадает — 403 с текстом сервера, который уже называет действие
+  // (открыть ссылку), а не просто «доступа нет».
+  it('фрагмент в адресе, POST падает 403 (нет ссылки-приглашения) — текст сервера с действием', async () => {
+    window.location.hash = toTgAuthResultHash({
+      id: 700,
+      first_name: 'Незнакомец',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    });
+
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/telegram')
+        return Promise.reject(
+          new ApiError(
+            'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+            403,
+            'forbidden',
+          ),
+        );
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
+  });
+
   it('фрагмент в адресе, POST падает не ApiError — общий текст ошибки', async () => {
     window.location.hash = toTgAuthResultHash({
       id: 42,

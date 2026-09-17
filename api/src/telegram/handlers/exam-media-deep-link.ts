@@ -10,7 +10,7 @@
 // Теперь `unknown` получает отказ сразу здесь, до ожидания: дешевле и
 // честнее, чем NOT_A_VIDEO/ATTEMPT_NOT_YOURS после того, как человек уже
 // снял и отправил видео (инцидент 2026-09-16, RUNBOOK §8.17). `denied`
-// (blocked/invited) — как раньше, готовый отказ, ожидание не заводим
+// (blocked) — как раньше, готовый отказ, ожидание не заводим
 // (SECURITY §9). `active` — заводит ожидание, как раньше.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';

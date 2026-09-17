@@ -91,7 +91,7 @@ describe('PeopleScreen — шапка', () => {
       await screen.findByRole('heading', { level: 1, name: 'Ученики' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Здесь те, кто хотя бы раз вошёл в кабинет через Telegram/),
+      screen.getByText(/Здесь те, кто зарегистрировался по ссылке-приглашению/),
     ).toBeInTheDocument();
     expect(screen.getByText(/Отметьте, кто ведёт занятия/)).toBeInTheDocument();
   });
@@ -123,7 +123,10 @@ describe('PeopleScreen — сбой загрузки', () => {
 });
 
 describe('PeopleScreen — пустой список', () => {
-  it('только сам admin в базе — честный текст, а не пустой список', async () => {
+  // После ADR-0036 вход без ссылки-приглашения даёт 403 — текст ведёт к
+  // карточке «Ссылка-приглашение» выше на этом же экране, а не к «дайте
+  // ссылку на кабинет».
+  it('только сам admin в базе — честный текст со ссылкой на карточку приглашения', async () => {
     const { queueUsers } = mockPeopleApi();
     queueUsers([makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] })]);
 
@@ -132,6 +135,7 @@ describe('PeopleScreen — пустой список', () => {
     expect(
       await screen.findByText(/Пока никто, кроме вас, не входил/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/ссылку-приглашение из карточки выше/)).toBeInTheDocument();
   });
 });
 
@@ -191,6 +195,32 @@ describe('PeopleScreen — список', () => {
     );
   });
 
+  it('клик «Закрыть доступ» вызывает PATCH /users/:id/status и обновлённый статус виден на строке', async () => {
+    const user = userEvent.setup();
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'active' }),
+    ]);
+
+    renderScreen();
+    await screen.findByText('Гриша');
+
+    queueUsers({});
+    queueUsers([
+      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
+      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'blocked' }),
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Закрыть доступ' }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/users/u1/status',
+      expect.objectContaining({ method: 'PATCH', body: { status: 'blocked' } }),
+    );
+    expect(await screen.findByText('Доступ закрыт')).toBeInTheDocument();
+  });
+
   it('сбой удаления — текст ошибки виден на строке (usePeople.remove)', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
@@ -218,68 +248,24 @@ describe('PeopleScreen — список', () => {
     );
   });
 
-  it('ждущий подтверждения — вверху списка, независимо от порядка ответа API', async () => {
+  // Регресс на инцидент 2026-09-15 (ADR-0036): статуса «ждёт подтверждения»
+  // и кнопки «Подтвердить» на экране «Люди» больше нет ни при каком ответе
+  // сервера — сортировка «ждущие вверху» тоже пропала, список идёт в
+  // порядке ответа API.
+  it('нет подписи «Ждёт подтверждения» и кнопки «Подтвердить», порядок — как в ответе API', async () => {
     const { queueUsers } = mockPeopleApi();
-    const people = [
+    queueUsers([
       makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
       makePerson({ id: 'u1', name: 'Гриша', roles: [] }),
-      makePerson({ id: 'u2', name: 'Ждан', roles: [], status: 'invited' }),
-    ];
-    queueUsers(people);
+      makePerson({ id: 'u2', name: 'Ждан', roles: [] }),
+    ]);
 
     renderScreen();
     await screen.findByText('Гриша');
 
+    expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
     const names = screen.getAllByText(/^(Маша|Гриша|Ждан)$/).map((el) => el.textContent);
-    expect(names).toEqual(['Ждан', 'Маша', 'Гриша']);
-  });
-
-  it('«Подтвердить» на invited-строке — POST /users/:id/approve и список перечитан', async () => {
-    const user = userEvent.setup();
-    const { queueUsers } = mockPeopleApi();
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
-    ]);
-
-    renderScreen();
-    await screen.findByText('Гриша');
-
-    queueUsers({});
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'active' }),
-    ]);
-
-    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
-
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/users/u1/approve',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByText('Ждёт подтверждения')).not.toBeInTheDocument(),
-    );
-  });
-
-  it('сбой подтверждения — текст ошибки виден на строке (usePeople.approve)', async () => {
-    const user = userEvent.setup();
-    const { ApiError } = await import('../api/http');
-    const { queueUsers, queueError } = mockPeopleApi();
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'invited' }),
-    ]);
-
-    renderScreen();
-    await screen.findByText('Гриша');
-
-    queueError(new ApiError('Этому человеку доступ закрыт.', 409, 'conflict'));
-
-    await user.click(screen.getByRole('button', { name: 'Подтвердить' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Этому человеку доступ закрыт.',
-    );
+    expect(names).toEqual(['Маша', 'Гриша', 'Ждан']);
   });
 });

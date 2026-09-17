@@ -2,7 +2,7 @@
 // §6, §11 слой 4.7, ADR-0015, ADR-0027). Доступ — единой точкой
 // BotUserAccessService.resolve() (не UsersService.findByTelegramId напрямую,
 // SECURITY §9): `active` подключается (штат — welcomeConnectedUser даёт канал
-// школы, ученик — личный канал, ADR-0027), `denied` (blocked/invited) получает
+// школы, ученик — личный канал, ADR-0027), `denied` (blocked) получает
 // готовый отказ, `unknown` (нет записи в users) — вежливый отказ по VOICE с
 // адресом сайта школы, если он заполнен (settings.schoolSiteUrl, не PUBLIC_URL).
 // Только приватный чат: Telegram шлёт /start и в группах (например, при
@@ -19,15 +19,15 @@
 // попытки с привязанным Telegram (ADR-0023) — незнакомцу (`unknown`, нет
 // записи в users) отказ приходит сразу, до ожидания видео, а не после того,
 // как он снял и прислал ролик (инцидент 2026-09-16, RUNBOOK §8.17). ИЗВЕСТНОГО
-// blocked/invited к ожиданию тоже не пускаем (SECURITY §9).
+// blocked к ожиданию тоже не пускаем (SECURITY §9).
 //
-// `join_<code>` (ADR-0030 «Бот», уточнение 2026-09-15) — та же ссылка, что и
-// на сайте (join-invite-deep-link.ts): валидный код заводит незнакомца из
-// Telegram-идентичности апдейта и сразу ведёт в active через
-// JoinByInviteService.join(); невалидный — аккаунт не заводим. После join()
-// человек подключается тем же welcomeConnectedUser, что и обычный /start
-// (иначе результаты экзаменов не доходили до второго /start — баг с #131,
-// найден 2026-09-16 на аудите).
+// `join_<code>` (ADR-0030 «Бот», ADR-0036) — та же ссылка, что и на сайте
+// (join-invite-deep-link.ts): ветвление идёт через
+// LoginIdentityService.resolveTelegramUser(), валидный код заводит незнакомца
+// из Telegram-идентичности апдейта сразу `active`; невалидный — аккаунт не
+// заводим. После успеха человек подключается тем же welcomeConnectedUser, что
+// и обычный /start (иначе результаты экзаменов не доходили до второго /start —
+// баг с #131, найден 2026-09-16 на аудите, #163).
 //
 // `link_<code>` (ADR-0034) — связка Telegram с аккаунтом, заведённым по почте
 // (telegram-link-deep-link.ts): тот самый «незнакомец» из инцидента выше
@@ -40,10 +40,8 @@ import type { Context } from 'telegraf';
 import { ChannelConfigService } from '../../channels/channel-config.service';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { SettingsService } from '../../settings/settings.service';
-import { InviteLinkService } from '../../users/invite-link.service';
-import { JoinByInviteService } from '../../users/join-by-invite.service';
+import { LoginIdentityService } from '../../users/login-identity.service';
 import { TelegramLinkService } from '../../users/telegram-link.service';
-import { UsersService } from '../../users/users.service';
 import { BotSessionService } from '../bot-session.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import { buildStrangerMessage } from './bot-menu';
@@ -62,9 +60,7 @@ export class StartHandler {
     private readonly channelConfig: ChannelConfigService,
     private readonly botSessions: BotSessionService,
     private readonly botAccess: BotUserAccessService,
-    private readonly usersService: UsersService,
-    private readonly joinByInviteService: JoinByInviteService,
-    private readonly inviteLinkService: InviteLinkService,
+    private readonly loginIdentity: LoginIdentityService,
     private readonly telegramLinkService: TelegramLinkService,
     private readonly config: ConfigService,
   ) {}
@@ -85,9 +81,7 @@ export class StartHandler {
           return;
         case 'invite':
           await handleInviteDeepLink(ctx, from, payload.code, now, {
-            usersService: this.usersService,
-            joinByInviteService: this.joinByInviteService,
-            inviteLinkService: this.inviteLinkService,
+            loginIdentity: this.loginIdentity,
             channelConfig: this.channelConfig,
             publicUrl: this.config.get<string>('PUBLIC_URL'),
           });

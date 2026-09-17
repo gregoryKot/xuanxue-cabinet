@@ -35,8 +35,8 @@ describe('toMeDto', () => {
     expect(toMeDto(emailOnly).telegramLinked).toBe(false);
   });
 
-  // `status` с ADR-0026 наружу идёт — по нему кабинет показывает экран
-  // ожидания; ключи входа не идут по-прежнему.
+  // `status` наружу идёт (ADR-0026, ADR-0036: active/blocked, ждать больше
+  // нечего); ключи входа не идут по-прежнему.
   it('не содержит email, telegramId, googleId', () => {
     const dto = toMeDto(fullUser()) as unknown as Record<string, unknown>;
     expect(dto.email).toBeUndefined();

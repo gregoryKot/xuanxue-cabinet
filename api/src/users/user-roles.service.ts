@@ -1,6 +1,5 @@
-// Список, назначение ролей и подтверждение человека для экрана «Ученики»
-// (docs/PLAN.md §6, блокер аудита Б3: до этого экрана вторую роль назначали
-// правкой Atlas руками; подтверждение — ADR-0026).
+// Список и назначение ролей для экрана «Ученики» (docs/PLAN.md §6, блокер
+// аудита Б3: до этого экрана вторую роль назначали правкой Atlas руками).
 // Отдельно от users.service.ts — тот уже был на пределе файла-храповика
 // (CLAUDE.md «Храповики»: 150 строк), это не тот же CRUD, что там (создание
 // из Telegram, поиск сессии), а отдельная механика с двумя ограничениями.
@@ -9,7 +8,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
   LIST_LIMIT_DEFAULT,
-  ALREADY_BLOCKED_MESSAGE,
   LAST_ADMIN_MESSAGE,
   SELF_DEMOTE_MESSAGE,
   USER_NOT_FOUND_MESSAGE,
@@ -38,34 +36,6 @@ export class UserRolesService {
       .limit(query.limit ?? LIST_LIMIT_DEFAULT)
       .lean<UserDoc[]>();
     return docs.map(toLean);
-  }
-
-  /**
-   * Подтверждение человека школой (ADR-0026): `invited` → `active`, после
-   * чего он видит расписание, экзамены и уведомления. Идемпотентно —
-   * второе нажатие (двойной клик, два админа сразу) возвращает того же
-   * человека, а не ошибку. Заблокированного подтверждение не воскрешает:
-   * `blocked` снимается осознанно, отдельным решением, а не кнопкой
-   * «Подтвердить» в общем списке.
-   */
-  async approve(id: string): Promise<UserLean> {
-    assertObjectId(id, USER_NOT_FOUND_MESSAGE);
-    const target = await this.usersService.findById(id);
-    if (!target) throw new NotFoundError(USER_NOT_FOUND_MESSAGE);
-    if (target.status === 'blocked') throw new ForbiddenError(ALREADY_BLOCKED_MESSAGE);
-    if (target.status === 'active') return target;
-
-    const doc = await this.model
-      .findOneAndUpdate(
-        { _id: id, status: 'invited' },
-        { $set: { status: 'active' } },
-        { returnDocument: 'after' },
-      )
-      .lean<UserDoc>();
-    // Документа нет — статус успел поменяться между чтением и записью;
-    // перечитываем, чтобы вернуть правду, а не 404 на живого человека.
-    if (!doc) return (await this.usersService.findById(id)) ?? target;
-    return toLean(doc);
   }
 
   /**

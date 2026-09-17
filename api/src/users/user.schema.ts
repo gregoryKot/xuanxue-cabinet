@@ -52,11 +52,12 @@ export class UserRecord {
   @Prop({ type: Date, required: false })
   lastLoginAt?: Date;
 
-  // Стал active по ссылке-приглашению школы, а не ручным подтверждением или
-  // членством в группе (ADR-0030) — третий путь из invited в active. Date,
-  // не Boolean: момент нужен для журнала, а факт «есть значение» уже даёт
-  // булево joinedViaInvite в UserDto (user.mapper.ts). Не ПДн — не в
-  // USER_FIELD_POLICY, та же причина, что у lastLoginAt выше.
+  // Первый вход прошёл по ссылке-приглашению школы (ADR-0030, ADR-0036) —
+  // без ссылки регистрация невозможна вовсе, но не у всех active она есть:
+  // бутстрап-админ и человек, которого завели до этой миграции (0007), поле
+  // не пишут. Date, не Boolean: момент нужен для журнала, а факт «есть
+  // значение» уже даёт булево joinedViaInvite в UserDto (user.mapper.ts).
+  // Не ПДн — не в USER_FIELD_POLICY, та же причина, что у lastLoginAt выше.
   @Prop({ type: Date, required: false })
   joinedViaInviteAt?: Date;
 }

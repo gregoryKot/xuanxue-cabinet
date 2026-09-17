@@ -242,7 +242,7 @@ describe('App', () => {
     renderAt('/people');
 
     expect(
-      await screen.findByText(/Здесь те, кто хотя бы раз вошёл в кабинет через Telegram/),
+      await screen.findByText(/зарегистрировался по ссылке-приглашению/),
     ).toBeInTheDocument();
   });
 

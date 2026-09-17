@@ -15,7 +15,7 @@ const existing = {
   email: 'race@example.com',
   roles: [],
   tz: 'Asia/Jerusalem',
-  status: 'invited',
+  status: 'active',
 };
 
 function fakeModel(
@@ -38,7 +38,7 @@ describe('EmailLoginUserService.createFromEmail при E11000', () => {
     const user = await service.createFromEmail('race@example.com');
 
     expect(user.id).toBe(existing._id.toString());
-    expect(user.status).toBe('invited');
+    expect(user.status).toBe('active');
   });
 
   it('E11000, но конкурента при перечитывании уже нет — явная ошибка сервера', async () => {

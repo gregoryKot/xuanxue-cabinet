@@ -71,6 +71,42 @@ describe('RequireAuth', () => {
     expect(await screen.findByText('Расписание')).toBeInTheDocument();
   });
 
+  // ADR-0036: статуса «ждёт подтверждения» больше нет — RequireAuth не
+  // ветвится по me.status вовсе, пускает по факту успешного /auth/me. Пустые
+  // roles — обычный ученик (ADR-0026), не повод для особого экрана.
+  it('вошедший с любым me (roles: [], status: active) рендерит вложенный маршрут — статуса ожидания не существует', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+    };
+    mockedApiFetch.mockResolvedValue(student);
+
+    renderGuarded();
+
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+  });
+
+  // Задача 3: заблокированный (сессия жива, AuthGuard отверг 403-м) видит
+  // отказ прямо здесь, не редирект на /login — там он получил бы тот же
+  // отказ по новой (петля, тот же баг, что у email-входа, ревью PR #150).
+  it('заблокированный (403) — виден alert с ACCESS_MESSAGE и кнопка «Выйти», редиректа на /login нет', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError('Доступа нет. Обратитесь к администратору школы.', 403, 'forbidden'),
+    );
+
+    renderGuarded();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Доступа нет. Обратитесь к администратору школы.',
+    );
+    expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+    expect(screen.queryByText('Экран входа')).not.toBeInTheDocument();
+  });
+
   it('гость на /exams?tab=x — путь запоминается для возврата после входа (аудит L2)', async () => {
     mockedApiFetch.mockRejectedValue(new Error('нет сессии'));
 

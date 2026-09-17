@@ -159,7 +159,7 @@ describe('UsersService', () => {
       telegramId: 444,
       name: 'Пришёл по ссылке',
       roles: [],
-      status: 'invited',
+      status: 'active',
     });
     const now = DateTime.fromISO('2026-09-15T12:00:00Z');
 

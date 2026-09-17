@@ -1,5 +1,5 @@
 // Ссылка-приглашение школы (ADR-0030): единственная точка чтения/записи
-// InviteLinkRecord — контроллер и JoinByInviteService (api/src/auth/) не
+// InviteLinkRecord — контроллер и LoginIdentityService (api/src/users/) не
 // лезут в Mongoose напрямую (CLAUDE.md). PUBLIC_URL — тот же адрес кабинета,
 // что строит письма входа (ADR-0009-доп., ADR-0029), не адрес сайта школы
 // из настроек (тот — schoolSiteUrl, другое поле).
@@ -74,7 +74,7 @@ export class InviteLinkService {
   /** По хешу — сырой код в базе не хранится дольше, чем нужно на один
    * запрос (тот же приём, что у email_login_tokens). Формат сверяется
    * заранее — DTO уже валидирует его `@Matches`, здесь вторая линия обороны
-   * для внутренних вызовов (join-by-invite.service.ts). */
+   * для внутренних вызовов (`LoginIdentityService`, `login-identity.service.ts`). */
   async isValid(code: string): Promise<boolean> {
     if (!INVITE_CODE_RE.test(code)) return false;
     const found = await this.model.exists({ codeHash: hashCode(code) });

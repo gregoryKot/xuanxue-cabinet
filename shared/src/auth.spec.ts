@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMutatingMethod, ROLE_LABELS, USER_ROLES } from './auth';
+import { ROLE_LABELS, USER_ROLES, USER_STATUSES, type UserStatus } from './auth';
 
 describe('ROLE_LABELS', () => {
   it('у каждой роли из USER_ROLES есть подпись, и лишних подписей нет', () => {
@@ -13,15 +13,14 @@ describe('ROLE_LABELS', () => {
   });
 });
 
-describe('isMutatingMethod', () => {
-  it.each(['POST', 'PATCH', 'PUT', 'DELETE', 'post', 'delete'])(
-    '%s — мутирующий',
-    (method) => {
-      expect(isMutatingMethod(method)).toBe(true);
-    },
-  );
+describe('USER_STATUSES', () => {
+  it('только active и blocked — статуса invited больше нет (ADR-0036, инцидент 2026-09-15)', () => {
+    expect(USER_STATUSES).toEqual(['active', 'blocked']);
+  });
 
-  it.each(['GET', 'HEAD', 'OPTIONS', 'get'])('%s — не мутирующий', (method) => {
-    expect(isMutatingMethod(method)).toBe(false);
+  it('тип UserStatus не пропускает invited — расхождение с контрактом /auth/me ловит tsc', () => {
+    // @ts-expect-error — статуса invited больше нет (ADR-0036, инцидент 2026-09-15)
+    const status: UserStatus = 'invited';
+    expect(status).toBe('invited');
   });
 });

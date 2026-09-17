@@ -23,6 +23,7 @@ function logSample(): Record<string, unknown> {
           cookie: 'sid=1',
           'x-telegram-bot-api-secret-token': 'webhook-secret',
         },
+        query: { join: 'e'.repeat(32), token: 'f'.repeat(64), limit: '50' },
         body: {
           email: 'user@example.com',
           name: 'Мария',
@@ -78,6 +79,7 @@ describe('REDACT_PATHS', () => {
     const logged = logSample();
     const req = logged.req as Record<string, unknown>;
     const headers = req.headers as Record<string, unknown>;
+    const query = req.query as Record<string, unknown>;
     const body = req.body as Record<string, unknown>;
     const res = logged.res as Record<string, unknown>;
     const resHeaders = res.headers as Record<string, unknown>;
@@ -90,6 +92,8 @@ describe('REDACT_PATHS', () => {
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
     expect(headers['x-telegram-bot-api-secret-token']).toBe('[Redacted]');
+    expect(query.join).toBe('[Redacted]');
+    expect(query.token).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
     expect(body.hash).toBe('[Redacted]');
     expect(body.code).toBe('[Redacted]');
@@ -115,6 +119,7 @@ describe('REDACT_PATHS', () => {
   it('не трогает соседние не-секретные поля', () => {
     const logged = logSample();
     const req = logged.req as Record<string, unknown>;
+    const query = req.query as Record<string, unknown>;
     const body = req.body as Record<string, unknown>;
     const res = logged.res as Record<string, unknown>;
     const resHeaders = res.headers as Record<string, unknown>;
@@ -124,6 +129,7 @@ describe('REDACT_PATHS', () => {
     const broadcast = logged.broadcast as Record<string, unknown>;
     const vk = logged.vk as Record<string, unknown>;
 
+    expect(query.limit).toBe('50');
     expect(resHeaders['content-type']).toBe('application/json');
     expect(vk.peer_id).toBe(2000000001);
     expect(body.name).toBe('Мария');

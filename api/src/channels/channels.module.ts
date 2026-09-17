@@ -13,7 +13,6 @@ import { ChannelConfigService } from './channel-config.service';
 import { ChannelRecord, ChannelSchema } from './channel.schema';
 import { ChannelsController } from './channels.controller';
 import { ChannelsService } from './channels.service';
-import { GroupMembershipService } from './group-membership.service';
 import { ManualAdapter } from './manual.adapter';
 import { TELEGRAM_CLIENT_FACTORY, createTelegramClient } from './telegram-client';
 import { TelegramAdapter } from './telegram.adapter';
@@ -29,7 +28,6 @@ import { VkAdapter } from './vk.adapter';
     ChannelsService,
     ChannelConfigService,
     ChannelAdapterRegistry,
-    GroupMembershipService,
     TelegramAdapter,
     VkAdapter,
     ManualAdapter,
@@ -45,15 +43,12 @@ import { VkAdapter } from './vk.adapter';
   ],
   // ChannelAdapterRegistry — тоже наружу: DeliveryRunnerService
   // (api/src/deliveries/, планировщик доставки, docs/PLAN.md §6) шлёт через
-  // тот же реестр адаптеров, не заводит свой. GroupMembershipService — для
-  // AuthModule (автоподтверждение по группе, ADR-0026): AuthModule импортирует
-  // ChannelsModule, обратной зависимости нет — цикла нет.
+  // тот же реестр адаптеров, не заводит свой.
   exports: [
     MongooseModule,
     ChannelsService,
     ChannelConfigService,
     ChannelAdapterRegistry,
-    GroupMembershipService,
   ],
 })
 export class ChannelsModule {}

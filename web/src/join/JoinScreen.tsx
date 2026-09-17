@@ -1,11 +1,13 @@
-// Ссылка-приглашение школы (`/join/:code`, ADR-0030) — публичный маршрут,
-// до входа: сначала проверяем код (useJoinByInvite.ts), потом либо
-// «ссылка не действует», либо вход (Telegram/email, TelegramLoginSection.tsx
-// — общий кусок с LoginScreen.tsx, CLAUDE.md «Дубли»), либо, если сессия уже
-// есть, сразу присоединение без лишнего клика. Облик — та же колонка на
-// бумаге, что у экрана входа (components/EntryColumn.tsx, docs/adr/0031).
+// Ссылка-приглашение школы (`/join/:code`, ADR-0030/0036) — публичный
+// маршрут, до входа: сначала проверяем код (useJoinByInvite.ts), потом
+// либо «ссылка не действует», либо вход (Telegram/email,
+// TelegramLoginSection.tsx — общий кусок с LoginScreen.tsx, CLAUDE.md
+// «Дубли»), с кодом, переданным прямо во вход, не отдельным шагом. Уже
+// вошедшего (или только что вошедшего через эту ссылку) уводит на
+// «Расписание» сам. Облик — та же колонка на бумаге, что у экрана входа
+// (components/EntryColumn.tsx, docs/adr/0031).
 import type { CSSProperties } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { INVITE_LINK_INVALID_MESSAGE } from '@xuanxue/shared';
 import { NETWORK_ERROR_MESSAGE } from '../api/http';
 import { Button } from '../components/Button';
@@ -13,21 +15,33 @@ import { EntryColumn } from '../components/EntryColumn';
 import { LabeledDivider } from '../components/LabeledDivider';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
-import { useAuth } from '../auth/AuthProvider';
+import { hasSession, useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { EmailLoginForm } from '../auth/EmailLoginForm';
 import { TelegramLoginSection } from '../auth/TelegramLoginSection';
 import { useJoinByInvite } from './useJoinByInvite';
 
-const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
 const fullWidthStyle: CSSProperties = { width: '100%' };
 
 export default function JoinScreen() {
   const { code = '' } = useParams();
   const navigate = useNavigate();
   const { status: authStatus } = useAuth();
-  const { checkStatus, joining, error, join, retryCheck } = useJoinByInvite(code);
-  const { config, status: configStatus, reload } = useAuthConfig();
+  // Оба хука включены только когда сервер уже сказал «сессии нет» (ревью PR #150):
+  // при authStatus ok/blocked экран тут же уходит редиректом ниже, а звать
+  // check/config незачем; при offline — тоже не дёргаем, это не «сессии нет»,
+  // а «неизвестно», разбираться должен AuthProvider.retry, не этот экран.
+  const enabled = authStatus === 'guest';
+  const { checkStatus, retryCheck } = useJoinByInvite(code, enabled);
+  const { config, status: configStatus, reload } = useAuthConfig(enabled);
+
+  // hasSession, не authStatus === 'ok' (ревью PR #150): и обычный вход по ссылке
+  // (включая active-человека, который открыл её снова), и Telegram-возврат на
+  // этот же URL (TelegramLoginSection.tsx, navigateAfterLogin: false), и
+  // заблокированный — код своё дело внутри POST /auth/telegram уже сделал
+  // (или не сделал, для blocked), второй запрос не нужен, а решать «пускать
+  // ли» дальше — дело RequireAuth на /schedule, не этого экрана.
+  if (hasSession(authStatus)) return <Navigate to="/schedule" replace />;
 
   if (checkStatus === 'loading' || authStatus === 'loading') {
     return (
@@ -71,41 +85,18 @@ export default function JoinScreen() {
     );
   }
 
-  // checkStatus === 'valid' ниже. Сессия уже есть, или join() уже идёт
-  // (useJoinByInvite запускает его сам при authStatus 'ok') — показываем
-  // тот же скелетон, что и «Подтвердите вход», отдельная колонка входа не
-  // нужна: присоединение к школе — не действие пользователя, а следствие
-  // того, что он уже вошёл.
-  if (authStatus === 'ok' || joining) {
-    return (
-      <EntryColumn>
-        <SkeletonLines widths={['70%', '40%']} />
-        {error && (
-          <>
-            <p role="alert" style={errorTextStyle}>
-              {error}
-            </p>
-            <Button variant="secondary" onClick={join} style={fullWidthStyle}>
-              Повторить
-            </Button>
-          </>
-        )}
-      </EntryColumn>
-    );
-  }
-
   return (
     <EntryColumn>
       <h1 style={screenTitleStyle}>Вас пригласили в школу</h1>
       <p style={screenExplanationStyle}>
-        Войдите через Telegram или почту — и сразу попадёте в кабинет, без ожидания
-        подтверждения.
+        Войдите через Telegram или почту — и сразу попадёте в кабинет.
       </p>
       <TelegramLoginSection
         config={config}
         configStatus={configStatus}
         onReload={reload}
         navigateAfterLogin={false}
+        inviteCode={code}
       >
         {configStatus === 'ok' && config?.emailLoginEnabled && (
           <>

@@ -25,10 +25,6 @@ describe('isTeacher', () => {
     expect(isTeacher(makeMe({ roles: [] }))).toBe(false);
   });
 
-  it('invited — всегда false, даже если роль уже назначена', () => {
-    expect(isTeacher(makeMe({ roles: ['teacher'], status: 'invited' }))).toBe(false);
-  });
-
   it('null — false', () => {
     expect(isTeacher(null)).toBe(false);
   });
@@ -51,18 +47,14 @@ describe('showsRouteScreen', () => {
     expect(showsRouteScreen(makeMe({ roles: [] }), '/attempts/a1')).toBe(true);
   });
 
-  it('invited — на обычном адресе Outlet не рисуется (та же причина, что у isTeacher)', () => {
-    const invited = makeMe({ roles: ['teacher'], status: 'invited' });
-    expect(showsRouteScreen(invited, '/planning')).toBe(false);
-  });
-
-  // Сама функция не знает про invited — статус проверяют раньше её вызова
-  // AppShell.tsx (PendingApprovalScreen рисуется раньше проверки Outlet) и
-  // prefetchFirstScreen.ts (ранний выход на invited, см. комментарий в
-  // screenAccess.ts). До сюда invited в реальном приложении не долетает.
-  it('invited на «/notifications» — путь совпадает сам по себе, статус не проверяется здесь', () => {
-    const invited = makeMe({ roles: ['teacher'], status: 'invited' });
-    expect(showsRouteScreen(invited, '/notifications')).toBe(true);
+  // Статуса «ждёт подтверждения» больше нет (ADR-0036) — функция не ветвится
+  // по `me.status`: blocked до неё не доходит (RequireAuth), а active с
+  // ролью штата и без неё различаются только ролями.
+  it('status не влияет: active-учитель — Outlet, active-ученик — StudentScreen', () => {
+    expect(showsRouteScreen(makeMe({ status: 'active' }), '/planning')).toBe(true);
+    expect(showsRouteScreen(makeMe({ roles: [], status: 'active' }), '/planning')).toBe(
+      false,
+    );
   });
 
   it('null на обычном адресе — false; на «/notifications»/«/attempts/:id» путь решает сам за себя', () => {
