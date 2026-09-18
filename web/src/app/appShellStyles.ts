@@ -1,7 +1,7 @@
-// Раскладка оболочки кабинета — высота, ширина листа, колонка содержимого и
-// подвал ученика (AppShell.tsx). Вынесено из самого AppShell.tsx: комментарии
-// про прокрутку внутри оболочки вывели тот файл за 150 строк храповика
-// (CLAUDE.md «Храповики»).
+// Раскладка оболочки кабинета — высота, ширина листа, колонка содержимого
+// (AppShell.tsx). Вынесено из самого AppShell.tsx: комментарии про прокрутку
+// внутри оболочки вывели тот файл за 150 строк храповика (CLAUDE.md
+// «Храповики»).
 import type { CSSProperties } from 'react';
 
 // Ширина рамки макета (ADR-0043, screens/2a-broadcasts.html): на ней нав и
@@ -53,13 +53,4 @@ export const contentColumnStyle: CSSProperties = {
   // вернулась бы ровно та картина, из-за которой панель и уезжала.
   overflowY: 'auto',
   overscrollBehavior: 'contain',
-};
-
-export const footerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 16px',
-  fontSize: 13,
-  color: 'var(--ink-soft)',
 };

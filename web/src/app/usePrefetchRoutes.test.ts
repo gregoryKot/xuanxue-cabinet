@@ -1,19 +1,24 @@
 import { cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
-// Настоящие ROUTE_MODULES тянут в тест все пятнадцать экранов кабинета —
-// проверяем механику очереди на фейках, а «какие экраны греются» проверяет
-// routeModules.test.ts на настоящей таблице.
+// Настоящие ROUTE_MODULES тянут в тест все экраны кабинета — проверяем
+// механику очереди и разделение по роли на фейках, а «какие экраны
+// действительно греются» проверяет routeModules.test.ts на настоящей таблице.
 const loadWarm = vi.fn(() => Promise.resolve({ default: () => null }));
 const loadWarmSecond = vi.fn(() => Promise.resolve({ default: () => null }));
 const loadLogin = vi.fn(() => Promise.resolve({ default: () => null }));
+const loadTasks = vi.fn(() => Promise.resolve({ default: () => null }));
+const loadStudentLessons = vi.fn(() => Promise.resolve({ default: () => null }));
 
 vi.mock('./routeModules', () => ({
   ROUTE_MODULES: {
     login: { path: '/login', load: () => loadLogin(), warm: false },
     exams: { path: '/exams', load: () => loadWarm(), warm: true },
     people: { path: '/people', load: () => loadWarmSecond(), warm: true },
+    tasks: { path: '/tasks', load: () => loadTasks(), warm: true },
+    studentLessons: { path: '/lessons', load: () => loadStudentLessons(), warm: true },
   },
 }));
 
@@ -36,6 +41,23 @@ async function runIdleQueue(): Promise<void> {
   }
 }
 
+function makeMe(overrides: Partial<MeDto> = {}): MeDto {
+  return {
+    id: 'u1',
+    name: 'Дима',
+    roles: ['teacher'],
+    tz: 'UTC',
+    status: 'active',
+    telegramLinked: false,
+    botChatActive: false,
+    needsProfile: false,
+    ...overrides,
+  };
+}
+
+const TEACHER = makeMe();
+const STUDENT = makeMe({ id: 's1', roles: [] });
+
 beforeEach(() => {
   idleTasks = [];
   vi.clearAllMocks();
@@ -51,21 +73,35 @@ afterEach(() => {
 });
 
 describe('usePrefetchRoutes', () => {
-  it('грузит каждый экран кабинета ровно раз и не трогает экраны входа', async () => {
+  it('штату греет разделы штата ровно по разу — не вход, не экраны ученика', async () => {
     stubIdleCallback();
 
-    renderHook(() => usePrefetchRoutes(true));
+    renderHook(() => usePrefetchRoutes(TEACHER));
     await runIdleQueue();
 
     expect(loadWarm).toHaveBeenCalledTimes(1);
     expect(loadWarmSecond).toHaveBeenCalledTimes(1);
     expect(loadLogin).not.toHaveBeenCalled();
+    expect(loadTasks).not.toHaveBeenCalled();
+    expect(loadStudentLessons).not.toHaveBeenCalled();
+  });
+
+  it('ученику греет «Задания» и «Занятия» — не разделы штата (решение владельца)', async () => {
+    stubIdleCallback();
+
+    renderHook(() => usePrefetchRoutes(STUDENT));
+    await runIdleQueue();
+
+    expect(loadTasks).toHaveBeenCalledTimes(1);
+    expect(loadStudentLessons).toHaveBeenCalledTimes(1);
+    expect(loadWarm).not.toHaveBeenCalled();
+    expect(loadWarmSecond).not.toHaveBeenCalled();
   });
 
   it('по одному чанку за раз, чтобы не мешать первому экрану', () => {
     stubIdleCallback();
 
-    renderHook(() => usePrefetchRoutes(true));
+    renderHook(() => usePrefetchRoutes(TEACHER));
     idleTasks.shift()?.();
 
     expect(loadWarm).toHaveBeenCalledTimes(1);
@@ -76,17 +112,17 @@ describe('usePrefetchRoutes', () => {
     stubIdleCallback();
     loadWarm.mockRejectedValueOnce(new Error('офлайн'));
 
-    renderHook(() => usePrefetchRoutes(true));
+    renderHook(() => usePrefetchRoutes(TEACHER));
     await runIdleQueue();
 
     expect(loadWarm).toHaveBeenCalledTimes(1);
     expect(loadWarmSecond).toHaveBeenCalledTimes(1);
   });
 
-  it('выключенным (сессии ещё нет, роль не та) не грузит ничего', async () => {
+  it('сессия ещё не известна (null) — не грузит ничего', async () => {
     stubIdleCallback();
 
-    renderHook(() => usePrefetchRoutes(false));
+    renderHook(() => usePrefetchRoutes(null));
     await runIdleQueue();
 
     expect(loadWarm).not.toHaveBeenCalled();
@@ -96,7 +132,7 @@ describe('usePrefetchRoutes', () => {
   it('размонтирование останавливает очередь', async () => {
     stubIdleCallback();
 
-    const { unmount } = renderHook(() => usePrefetchRoutes(true));
+    const { unmount } = renderHook(() => usePrefetchRoutes(TEACHER));
     unmount();
     await runIdleQueue();
 
@@ -107,7 +143,7 @@ describe('usePrefetchRoutes', () => {
   it('ушли с экрана посреди загрузки — следующий чанк не планируется', async () => {
     stubIdleCallback();
 
-    const { unmount } = renderHook(() => usePrefetchRoutes(true));
+    const { unmount } = renderHook(() => usePrefetchRoutes(TEACHER));
     idleTasks.shift()?.(); // первый чанк уже летит
     unmount();
     await runIdleQueue();
@@ -120,7 +156,7 @@ describe('usePrefetchRoutes', () => {
     vi.stubGlobal('requestIdleCallback', undefined);
     vi.useFakeTimers();
 
-    renderHook(() => usePrefetchRoutes(true));
+    renderHook(() => usePrefetchRoutes(TEACHER));
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(loadWarm).toHaveBeenCalledTimes(1);

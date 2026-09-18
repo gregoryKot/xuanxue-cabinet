@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
-import { ATTEMPTS_LIST_PATH, CLASSES_LIST_PATH, lessonsListPath } from '../api/apiPaths';
+import {
+  ATTEMPTS_LIST_PATH,
+  CLASSES_LIST_PATH,
+  MY_EXAMS_PATH,
+  MY_LESSONS_PATH,
+  lessonsListPath,
+} from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';
@@ -46,10 +52,20 @@ describe('firstScreenPaths', () => {
     expect(firstScreenPaths('/что-то-неизвестное', makeMe())).toEqual([]);
   });
 
-  it('ученик на /planning — свои занятия и экзамены, не расписание учителя', () => {
-    expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual([
-      '/me/lessons',
-      '/me/exams',
+  // Маршрут штата ученику не открыт (screenAccess.ts, canSeeRoute) — редирект
+  // уводит на rootPathFor(me), греем данные экрана-назначения («Задания»),
+  // а не расписание учителя.
+  it('ученик на /planning (маршрут штата) — данные экрана-назначения «Задания»', () => {
+    expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual([MY_EXAMS_PATH]);
+  });
+
+  it('ученик на своём «/tasks» — список экзаменов', () => {
+    expect(firstScreenPaths('/tasks', makeMe({ roles: [] }))).toEqual([MY_EXAMS_PATH]);
+  });
+
+  it('ученик на своём «/lessons» — список занятий', () => {
+    expect(firstScreenPaths('/lessons', makeMe({ roles: [] }))).toEqual([
+      MY_LESSONS_PATH,
     ]);
   });
 
