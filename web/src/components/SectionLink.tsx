@@ -14,6 +14,14 @@
 // плашкой на том же экране, и три одинаковых на вид блока подряд стало бы не
 // отличить друг от друга. Кликабельна вся карточка, не только заголовок —
 // цель нажатия крупнее 44×44 уже за счёт паддинга (CLAUDE.md «Доступность»).
+//
+// Необязательный `headline` — крупная строка живого числа раздела внутри
+// самой карточки, между заголовком и припиской. Появился из-за отзыва
+// владельца со снимком «Экзаменов»: там число «работ ждут проверки» стояло
+// отдельной плашкой над карточками-переходами — крупнее заголовков экрана и
+// нигде не кликабельное, хотя карточка «Проверка» сразу под ним вела ровно
+// туда. Число раздела обязано быть кликабельным — значит, ему место внутри
+// своей карточки-перехода, а не рядом с ней (exams/ExamsSectionStats.tsx).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -28,6 +36,13 @@ const cardStyle: CSSProperties = {
   textDecoration: 'none',
 };
 const titleStyle: CSSProperties = { fontSize: 15, fontWeight: 500, color: 'var(--ink)' };
+const headlineStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 22,
+  fontWeight: 500,
+  color: 'var(--ink)',
+  fontVariantNumeric: 'tabular-nums',
+};
 const hintStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
@@ -38,13 +53,17 @@ const hintStyle: CSSProperties = {
 export interface SectionLinkProps {
   to: string;
   title: string;
+  /** Крупная строка живого числа раздела — рисуется только когда непустая.
+   * `null`/`undefined`, пока число не пришло или у карточки его вовсе нет. */
+  headline?: string | null;
   hint: string;
 }
 
-export function SectionLink({ to, title, hint }: SectionLinkProps) {
+export function SectionLink({ to, title, headline, hint }: SectionLinkProps) {
   return (
     <Link to={to} style={cardStyle}>
       <span style={titleStyle}>{title}</span>
+      {headline && <p style={headlineStyle}>{headline}</p>}
       <p style={hintStyle}>{hint}</p>
     </Link>
   );

@@ -167,7 +167,7 @@ describe('ExamsScreen — поиск по названию', () => {
 });
 
 describe('ExamsScreen — вход в проверку работ', () => {
-  it('пустая очередь — честный текст в тёплой плашке', async () => {
+  it('пустая очередь — честный текст в карточке «Проверка»', async () => {
     mockApiByPath({ ...DEFAULT_SUMMARIES, '/exams': [], '/attempts': [] });
 
     renderScreen();
@@ -175,7 +175,7 @@ describe('ExamsScreen — вход в проверку работ', () => {
     expect(await screen.findByText('Пока нечего проверять.')).toBeInTheDocument();
   });
 
-  it('есть сданные работы — число внутри фразы плашки', async () => {
+  it('есть сданные работы — число крупной строкой в карточке «Проверка»', async () => {
     mockApiByPath({
       ...DEFAULT_SUMMARIES,
       '/exams': [],
