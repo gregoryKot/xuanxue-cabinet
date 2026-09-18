@@ -12,6 +12,17 @@
 // агента: не превращать реэскин в новую фичу навигации), а `submittedAt`
 // в `AttemptReviewDto` не приходит вовсе (только в `ExamAttemptDto` списка
 // очереди) — значит, не выдумываем.
+//
+// Экран остался в облике ADR-0031 (плоский текст, волосяные линии прямо на
+// бумаге), когда остальной кабинет переехал на «Тёплую школу» (ADR-0043) —
+// снимок владельца с телефона («тут всё сливается»): ниже две карточки
+// (ответы и проверка) вместо плоского текста. `blockCardStyle` — локальный
+// литерал, не общий экспорт: в кабинете уже семь мест объявляют поверхность
+// карточки своим литералом (InviteLinkCard, SummaryNumbers, TodayLessonCard,
+// ExamsScreen, BroadcastsScreen, PeopleScreen, listCardStyles) — свести их
+// все под общий `blockCardStyle` значит править их все, а это рефакторинг
+// отдельным PR (CLAUDE.md 1б: рефакторинг и фича — разные PR).
+import type { CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
@@ -30,6 +41,30 @@ import { useAttemptReview, type AttemptReviewVideoControls } from './useAttemptR
 
 const GRADING_HEADING_ID = 'grading-heading';
 const GRADING_HINT = 'Итог и комментарий уйдут ученику в Telegram сразу после отправки.';
+// Рубрика над именем: само по себе имя не называет экран — читатель шёл из
+// очереди проверки и должен понять, что открыл одну работу (тот же приём,
+// что у `.xuanxue-eyebrow` в student/StudentExamsSection.tsx).
+const EYEBROW_LABEL = 'Работа ученика';
+
+const headingColumnStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+};
+// `overflowWrap: 'anywhere'`, а не `break-word`: длинное имя-почта — одно
+// слово без пробелов и дефисов, `break-word` его не разорвёт (тот же приём —
+// `bottomPillStyle`, app/bottomNavStyles.ts).
+const titleStyle: CSSProperties = { ...screenTitleStyle, overflowWrap: 'anywhere' };
+
+// Единственная карточка-поверхность этого экрана (см. комментарий вверху
+// файла про семь других литералов карточки в кабинете) — применяется дважды,
+// к колонке ответов и к колонке проверки.
+const blockCardStyle: CSSProperties = {
+  padding: '20px 22px',
+  background: 'var(--card)',
+  borderRadius: 'var(--radius-block)',
+  boxShadow: 'var(--shadow-card)',
+};
 
 export default function AttemptReviewScreen() {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -72,16 +107,22 @@ export default function AttemptReviewScreen() {
 
   return (
     <section style={wideScreenSectionStyle}>
-      <Link to="/grading" style={textLinkStyle}>
+      <Link to="/grading" style={{ ...textLinkStyle, alignSelf: 'flex-start' }}>
         Вернуться к очереди проверки
       </Link>
-      <h1 style={screenTitleStyle}>{review.userName}</h1>
-      <p style={screenExplanationStyle}>{review.examTitle}</p>
+
+      <div style={headingColumnStyle}>
+        <span className="xuanxue-eyebrow">{EYEBROW_LABEL}</span>
+        <h1 style={titleStyle}>{review.userName}</h1>
+        <p style={screenExplanationStyle}>{review.examTitle}</p>
+      </div>
 
       <div className="xuanxue-review-layout">
-        <AttemptReviewAnswers blocks={review.blocks} video={video} />
+        <div style={blockCardStyle}>
+          <AttemptReviewAnswers blocks={review.blocks} video={video} />
+        </div>
 
-        <aside aria-labelledby={GRADING_HEADING_ID}>
+        <aside aria-labelledby={GRADING_HEADING_ID} style={blockCardStyle}>
           <h2 id={GRADING_HEADING_ID} style={screenColumnTitleStyle}>
             Проверка
           </h2>
