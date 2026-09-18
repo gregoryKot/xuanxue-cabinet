@@ -58,8 +58,13 @@
   разбор всех трёх — в `start-payload.ts`, не в теле хендлера.
 - Отвязки нет и смены привязанного Telegram нет: и то, и другое — разговор с
   админом, а не кнопка у каждого. Появится спрос — отдельное решение.
+- Заблокированному (`status: 'blocked'`) — тот же общий отказ (`ACCESS_MESSAGE`),
+  без имени аккаунта: `telegramId` не пишется, а код всё равно сгорает
+  (найдено на аудите PR #190, где закрыли только канал доставки).
 - Гейты: `telegram-link.service.spec.ts` (все исходы, включая занятый
-  `telegramId` и идемпотентный повтор), `telegram-link-deep-link.spec.ts`,
-  `api/test/telegram-link.e2e-spec.ts` (чужой код не привязывает,
+  `telegramId`, идемпотентный повтор и заблокированного — до записи, при уже
+  стоящем telegramId и в гонке с блокировкой между чтением и записью),
+  `telegram-link-deep-link.spec.ts` (тот же общий отказ ACCESS_MESSAGE для
+  `blocked`), `api/test/telegram-link.e2e-spec.ts` (чужой код не привязывает,
   read-after-write через `GET /auth/me`), `user-data.registry.spec.ts` (модель
   в реестре), `check-file-size-ratchet.mjs`.

@@ -11,6 +11,7 @@ import { UsersService, type UserLean } from './users.service';
 
 export type TelegramLinkResult =
   | { kind: 'invalid' }
+  | { kind: 'blocked' }
   | { kind: 'taken' }
   | { kind: 'other-telegram' }
   | { kind: 'linked'; user: UserLean };
@@ -31,6 +32,11 @@ export class TelegramLinkService {
    * Занятый telegramId — отказ (`taken`), не молчаливое слияние аккаунтов:
    * слияние отдало бы чужой аккаунт вместе с ролями тому, кто подсунул код
    * (ADR-0034, SECURITY §2). Объединяет записи вручную админ на «Людях».
+   *
+   * Заблокированный аккаунт — отказ (`blocked`) без записи telegramId, тем
+   * же общим ACCESS_MESSAGE, что и у остальных входов бота (SECURITY §2):
+   * иначе связка стала бы ключом входа, который включится сам при возврате
+   * доступа. Код при этом уже сгорел — см. выше.
    */
   async linkByCode(
     code: string,
@@ -42,6 +48,15 @@ export class TelegramLinkService {
 
     const target = await this.usersService.findById(userId);
     if (!target) return { kind: 'invalid' };
+
+    // Закрытый доступ отказывает и здесь, тем же общим текстом, что в вебе и в
+    // остальных входах бота (SECURITY §2, ACCESS_MESSAGE). Проверка стоит до
+    // записи: telegramId на заблокированном аккаунте — это ключ входа, который
+    // включится сам, когда админ вернёт доступ одной кнопкой («Открыть
+    // доступ» обратим, SECURITY §2), а код связки мог уйти постороннему
+    // ссылкой — ровно тот сценарий, ради которого ADR-0034 отказался от
+    // слияния аккаунтов. Найдено на PR #190, где закрыли только канал.
+    if (target.status === 'blocked') return { kind: 'blocked' };
 
     // Идемпотентно: повтор /start той же связки (например, второй код,
     // выпущенный по ошибке для уже связанного аккаунта тем же Telegram) не
@@ -57,6 +72,13 @@ export class TelegramLinkService {
     // вернёт null, если конкурент успел первым (attach-telegram-id.ts).
     const linked = await this.usersService.attachTelegramId(userId, telegramId);
     if (!linked) return { kind: 'taken' };
+
+    // Между чтением выше и этой записью админ мог закрыть доступ — документ
+    // возвращается уже заблокированным (`returnDocument: 'after'`,
+    // attach-telegram-id.ts). Отказываем тем же исходом: иначе на человека,
+    // которому доступ уже закрыли, заведётся канал доставки. Снять оставшийся
+    // telegramId — RUNBOOK §8.17.
+    if (linked.status === 'blocked') return { kind: 'blocked' };
 
     return { kind: 'linked', user: linked };
   }

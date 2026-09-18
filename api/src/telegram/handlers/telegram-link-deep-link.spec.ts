@@ -8,11 +8,14 @@
 // Баг с #131 (тот же класс ошибки, что и у join_<code>, починен там в #163):
 // успешная связка подключала telegramId, но канал в channels не заводился —
 // ниже проверяется, что welcomeConnectedUser (и через него
-// upsertTelegramChat/upsertPersonalTelegramChat) зовётся ровно тогда, когда
-// должен: только для `active`, роль решает, какой из двух методов.
+// upsertTelegramChat/upsertPersonalTelegramChat) зовётся на каждый `linked`,
+// роль решает только какой из двух методов. Заблокированному канал не
+// заводится не проверкой здесь, а тем, что до `linked` он не доходит вовсе —
+// статус решает TelegramLinkService (см. исход `blocked` ниже).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import {
+  ACCESS_MESSAGE,
   TELEGRAM_LINK_CODE_INVALID_MESSAGE,
   TELEGRAM_LINK_OTHER_TELEGRAM_MESSAGE,
   TELEGRAM_LINK_TAKEN_MESSAGE,
@@ -174,24 +177,15 @@ describe('handleTelegramLinkDeepLink', () => {
     expect(upsertPersonalTelegramChat).not.toHaveBeenCalled();
   });
 
-  it('linked + blocked — канал НЕ подключается (SECURITY §9, штат blocked не должен стать получателем рассылок школы)', async () => {
+  it('blocked — ACCESS_MESSAGE без имени аккаунта, канал не подключается (SECURITY §2: за что заблокирован — не объясняем, а код могли подсунуть постороннему)', async () => {
     const { ctx, replies } = fakeCtx();
     const { deps, upsertTelegramChat, upsertPersonalTelegramChat } = fakeDeps({
-      kind: 'linked',
-      user: {
-        id: 'u3',
-        name: 'Заблокирован',
-        roles: ['teacher'],
-        tz: 'Asia/Jerusalem',
-        status: 'blocked',
-      },
+      kind: 'blocked',
     });
 
     await handleTelegramLinkDeepLink(ctx, CODE, TELEGRAM_ID, NOW, deps);
 
-    // Текст ответа не меняется этим PR (валидный код у blocked — отдельный
-    // вопрос, см. комментарий в начале telegram-link-deep-link.ts).
-    expect(replies[0]).toContain('«Заблокирован»');
+    expect(replies).toEqual([ACCESS_MESSAGE]);
     expect(upsertTelegramChat).not.toHaveBeenCalled();
     expect(upsertPersonalTelegramChat).not.toHaveBeenCalled();
   });
