@@ -5,14 +5,11 @@
 // (components/SectionLink.tsx), не отдельным пунктом меню. Новый экран
 // заводится внутри своего раздела, а не пятым пунктом сюда
 // (docs/adr/0025-navigation-by-domain.md).
-import type { ComponentType } from 'react';
 import type { UserRole } from '@xuanxue/shared';
-import { BroadcastsIcon, ExamsIcon, PeopleIcon, PlanningIcon } from './navIcons';
 
 export interface NavItem {
   to: string;
   label: string;
-  Icon: ComponentType;
   /** Пункт виден только с одной из перечисленных ролей; без поля — виден
    * всем. `/people` — admin и teacher (RequirePeopleAccess, ADR-0030). */
   roles?: UserRole[];
@@ -22,23 +19,20 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/planning', label: 'Занятия', Icon: PlanningIcon, childPaths: ['/schedule'] },
+  { to: '/planning', label: 'Занятия', childPaths: ['/schedule'] },
   {
     to: '/broadcasts',
     label: 'Рассылки',
-    Icon: BroadcastsIcon,
     childPaths: ['/channels', '/templates'],
   },
   {
     to: '/exams',
     label: 'Экзамены',
-    Icon: ExamsIcon,
     childPaths: ['/exam-items', '/grading'],
   },
   {
     to: '/people',
     label: 'Ученики',
-    Icon: PeopleIcon,
     roles: ['admin', 'teacher'],
     childPaths: [],
   },

@@ -14,6 +14,19 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
+/** По умолчанию matchMedia в setupTests отвечает «широкий экран» — тесты
+ * без явной подмены проверяют монитор; здесь подменяем на «телефон». */
+function stubMobileViewport() {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
+  );
+}
+
 function renderShell(me: MeDto, initialPath = '/schedule') {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === '/auth/me') return Promise.resolve(me);
@@ -90,14 +103,7 @@ describe('AppShell — навигация по ширине экрана', () =>
   // экран», поэтому нижняя панель без подмены не рисуется вовсе (отзыв
   // владельца 2026-09-09 — на мониторе она выглядела обрезком телефона).
   it('на телефоне навигация снизу, шириной колонки не задана', async () => {
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn().mockReturnValue({
-        matches: true,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-      }),
-    );
+    stubMobileViewport();
     renderShell(TEACHER);
 
     const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
@@ -115,7 +121,7 @@ describe('AppShell — навигация по ширине экрана', () =>
 });
 
 describe('AppShell — учитель', () => {
-  it('шапка, нижняя навигация «Занятия» и вложенный маршрут', async () => {
+  it('боковая колонка со знаком школы, пункт «Занятия» и вложенный маршрут', async () => {
     renderShell(TEACHER);
 
     expect(await screen.findByText('Содержимое расписания')).toBeInTheDocument();
@@ -123,16 +129,33 @@ describe('AppShell — учитель', () => {
     expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
   });
 
-  // Направление «тихо и благородно» (docs/adr/0031-visual-direction-quiet-and-
-  // noble.md): в шапке знак-печать рядом с названием. Печать декоративная —
-  // aria-hidden, название рядом уже называет раздел словами.
-  it('шапка — знак-печать и название школы (docs/adr/0031)', async () => {
+  // Направление «Тёплая школа» (ADR-0043) убрало шапку во всю ширину — знак
+  // переехал в боковую колонку. Печать декоративная — aria-hidden, название
+  // рядом уже называет место словами. Гейт от регресса «шапка + колонка»:
+  // ровно один экземпляр на странице, не два.
+  it('знак школы и название — один раз, в боковой колонке на мониторе', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
-    const header = screen.getByRole('banner');
-    expect(within(header).getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
-    expect(header.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    const column = screen.getByRole('navigation', { name: 'Разделы кабинета' })
+      .parentElement as HTMLElement;
+    expect(within(column).getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
+    expect(column.querySelector('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  // На телефоне колонки нет — мокап (screens/1c-planning.html) рисует знак
+  // первой строкой над содержимым, не в панели вкладок.
+  it('на телефоне знак школы — над содержимым, не в панели вкладок, и тоже один раз', async () => {
+    stubMobileViewport();
+    renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    expect(within(nav).queryByText('Школа Сюань-Сюэ')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
+
+    vi.unstubAllGlobals();
   });
 
   // Четыре домена — потолок навигации (navItems.ts, отзыв владельца
@@ -145,9 +168,12 @@ describe('AppShell — учитель', () => {
     await screen.findByText('Содержимое расписания');
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    // «Уведомления» — тоже ссылка в этой колонке (блок человека снизу), но
+    // не пункт домена: отфильтрован, чтобы тест проверял ровно NAV_ITEMS.
     const labels = within(nav)
       .getAllByRole('link')
-      .map((link) => link.textContent);
+      .map((link) => link.textContent)
+      .filter((label) => label !== 'Уведомления');
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
   });
 
@@ -158,30 +184,48 @@ describe('AppShell — учитель', () => {
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     const labels = within(nav)
       .getAllByRole('link')
-      .map((link) => link.textContent);
+      .map((link) => link.textContent)
+      .filter((label) => label !== 'Уведомления');
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
   });
 
-  // Подвал заменил кнопку «Выйти» из бывших «Настроек» (отзыв владельца
-  // 2026-09-12: висела на каждом экране, хотя нужна раз в жизни).
-  it('подвал под содержимым — имя вошедшего и «Выйти»', async () => {
+  // Ровно то, чего боялся владелец при переносе подвала в колонку (ADR-0043):
+  // имя вошедшего и «Выйти» должны остаться доступны — просто уже не под
+  // содержимым, а в самом низу боковой колонки. `contentinfo` — implicit-role
+  // подвала: его отсутствие подтверждает, что на мониторе он не рисуется.
+  it('на мониторе блок человека — в самом низу боковой колонки, не под содержимым', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
-    expect(screen.getByText(/Вы вошли как Дима/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
-  });
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    const column = nav.parentElement as HTMLElement;
 
-  // Личная настройка, не раздел домена — ссылка живёт в общем подвале, не в
-  // NAV_ITEMS (docs/adr/0025-navigation-by-domain.md).
-  it('подвал — ссылка «Уведомления»', async () => {
-    renderShell(TEACHER);
-    await screen.findByText('Содержимое расписания');
-
-    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
+    expect(within(column).getByText(/Вы вошли как Дима/)).toBeInTheDocument();
+    expect(within(column).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+    expect(within(column).getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
       'href',
       '/notifications',
     );
+    // Подвала под содержимым на мониторе больше нет — ровно это и убирало
+    // осиротевшую строку в 650px под контентом (ADR-0043 «Контекст»).
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    // И блок человека не попал внутрь ориентира «Разделы кабинета».
+    expect(within(nav).queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
+  });
+
+  // «На телефоне подвал остаётся под содержимым» — осознанное отступление от
+  // мокапа (комментарий в AppShell.tsx): без «Выйти» с телефона не обойтись.
+  it('на телефоне подвал с «Выйти» и «Уведомления» остаётся под содержимым', async () => {
+    stubMobileViewport();
+    renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    const footer = screen.getByRole('contentinfo');
+    expect(within(footer).getByText(/Вы вошли как Дима/)).toBeInTheDocument();
+    expect(within(footer).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+    expect(within(footer).getByRole('link', { name: 'Уведомления' })).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
   });
 });
 
@@ -201,6 +245,16 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
     expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
+  });
+
+  // У ученика боковой колонки не бывает никогда (нет роли штата) — знак
+  // школы рисует сама оболочка (тот же путь, что и на телефоне у учителя),
+  // иначе он пропал бы у ученика на мониторе вовсе.
+  it('знак школы виден и без боковой колонки, ровно один раз', async () => {
+    renderShell(STUDENT);
+    await screen.findByText('Ближайших занятий пока нет.');
+
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
   });
 
   // «Выйти» ученику нужна: навигации у него нет, кнопка — в общем подвале
