@@ -8,7 +8,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { errorMessage, errorStack } from '../../common/error-info';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { GENERIC_ERROR } from './callback-actions';

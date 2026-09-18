@@ -36,7 +36,7 @@ import type { Context } from 'telegraf';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { MediaAssetsService } from '../../media/media-assets.service';
 import { BotUserAccessService } from '../bot-user-access.service';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { PersonalChats } from '../personal-chats';

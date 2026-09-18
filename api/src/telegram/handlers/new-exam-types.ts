@@ -4,7 +4,7 @@
 // объясняет себя сама, отдельной подписи из кабинета слово в слово не нужно.
 import type { InlineKeyboardButton } from 'telegraf/types';
 import type { NewExamStep } from '../bot-session.schema';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { inlineButton } from '../callback-data';
 import type { NewExamDraft } from '../new-exam-draft-wait';
 
