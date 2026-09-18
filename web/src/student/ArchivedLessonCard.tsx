@@ -1,0 +1,117 @@
+// Строка прошедшего занятия в архиве ученика (docs/PLAN.md §14 слой 3.3).
+// Тот же приём вёрстки, что у StudentLessonCard.tsx: список — одна общая
+// карточка (oneCardListStyle, StudentLessonsScreen.tsx), строка несёт только
+// паддинг и волосяную линию снизу (проп `isLast`); дата/название/тема и
+// пометка отмены — общий LessonSummaryHeader.tsx (CLAUDE.md «Одна механика —
+// один компонент», jscpd поймал дубль на первой версии этого файла).
+//
+// Записей у занятия может быть несколько (учитель отдал файл и добавил
+// ссылку отдельно) — каждая своей строкой. Запись со своим `title` (учитель
+// назвал её, например, «Занятие целиком») показывает название рядом с
+// действием, а не вместо него: кнопка всегда говорит, что будет, если
+// нажать («Открыть запись», глагол в начале, docs/VOICE.md), а название —
+// это какая именно это запись, если их несколько (решение агента).
+import type { CSSProperties } from 'react';
+import type { ArchivedRecordingDto, MyArchivedLessonDto } from '@xuanxue/shared';
+import { textLinkStyle } from '../components/screenLayout';
+import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
+
+const NO_RECORDING_TEXT = 'Записи нет';
+const OPEN_RECORDING_TEXT = 'Открыть запись';
+const TELEGRAM_ONLY_TEXT = 'Запись ушла в канал школы — ищите её там под датой занятия.';
+
+const recordingsStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  marginTop: 8,
+};
+const recordingRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  flexWrap: 'wrap',
+};
+const recordingTitleStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
+// Цель нажатия ≥44 по высоте (CLAUDE.md «Доступность») — тот же приём, что у
+// quietLinkStyle в StudentLessonMeeting.tsx.
+const recordingLinkStyle: CSSProperties = {
+  ...textLinkStyle,
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: 44,
+};
+const plainTextStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  color: 'var(--ink-soft)',
+};
+
+function ArchivedRecordingRow({ recording }: { recording: ArchivedRecordingDto }) {
+  if (recording.url) {
+    return (
+      <p style={recordingRowStyle}>
+        {recording.title && <span style={recordingTitleStyle}>{recording.title}</span>}
+        <a
+          href={recording.url}
+          target="_blank"
+          rel="noreferrer"
+          style={recordingLinkStyle}
+        >
+          {OPEN_RECORDING_TEXT}
+        </a>
+      </p>
+    );
+  }
+  // Мёртвой кнопки быть не должно (ТЗ §14): запись без ссылки — либо файл в
+  // Telegram (inTelegramOnly), либо мапер вообще не отдал бы её сюда
+  // (my-archived-lesson.mapper.ts отбрасывает записи без url и без
+  // telegramFileId) — третьего случая у DTO не бывает.
+  return <p style={plainTextStyle}>{TELEGRAM_ONLY_TEXT}</p>;
+}
+
+interface ArchivedLessonCardProps {
+  lesson: MyArchivedLessonDto;
+  /** Пояс для форматирования времени — только тестам нужен фиксированный
+   * (CI гоняет vitest ещё и под TZ=Australia/Sydney), экрану — браузерный по
+   * умолчанию (lib/formatDate.ts). */
+  timeZone?: string;
+  /** Последняя строка общей карточки списка — без нижней волосяной линии. */
+  isLast?: boolean;
+}
+
+export function ArchivedLessonCard({
+  lesson,
+  timeZone,
+  isLast = false,
+}: ArchivedLessonCardProps) {
+  return (
+    <li
+      style={{
+        ...lessonRowStyle,
+        borderBottom: isLast ? 'none' : '1px solid var(--panel)',
+      }}
+    >
+      <LessonSummaryHeader
+        startsAt={lesson.startsAt}
+        classTitle={lesson.classTitle}
+        groupLabel={lesson.groupLabel}
+        topic={lesson.topic}
+        cancelled={lesson.status === 'cancelled'}
+        timeZone={timeZone}
+      />
+      <div style={recordingsStyle}>
+        {lesson.recordings.length === 0 ? (
+          <p style={plainTextStyle}>{NO_RECORDING_TEXT}</p>
+        ) : (
+          lesson.recordings.map((recording, index) => (
+            // У ArchivedRecordingDto нет своего id (shared/src/my-lessons-
+            // archive.ts) — список записей одного занятия статичен на время
+            // жизни карточки, индекс как ключ безопасен.
+            <ArchivedRecordingRow key={index} recording={recording} />
+          ))
+        )}
+      </div>
+    </li>
+  );
+}

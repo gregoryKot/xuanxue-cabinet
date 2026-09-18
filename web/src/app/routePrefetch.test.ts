@@ -9,6 +9,7 @@ import {
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   MY_EXAMS_PATH,
+  MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
@@ -90,6 +91,10 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/lessons — список своих занятий', () => {
     expect(prefetchAt('/lessons')).toEqual([MY_LESSONS_PATH]);
+  });
+
+  it('/archive — список прошедших занятий с записями', () => {
+    expect(prefetchAt('/archive')).toEqual([MY_LESSONS_ARCHIVE_PATH]);
   });
 
   it('/people — ссылка-приглашение; список учеников (GET /users) не греем — он только для admin', () => {
@@ -226,6 +231,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/profile',
       '/tasks',
       '/lessons',
+      '/archive',
       '/attempts/652f00000000000000000007',
       '/people',
     ];

@@ -119,6 +119,9 @@ export const TEACHERS_PATH = `${USERS_PATH}/teachers`;
 export const INVITE_LINK_PATH = `${USERS_PATH}/invite-link`;
 
 export const MY_LESSONS_PATH = '/me/lessons';
+/** Архив прошедших занятий ученика (docs/PLAN.md §14 слой 3.3) — тот же
+ * ресурс назад по времени, отдельный путь с суффиксом `archive`. */
+export const MY_LESSONS_ARCHIVE_PATH = `${MY_LESSONS_PATH}/archive`;
 export const MY_EXAMS_PATH = '/me/exams';
 
 /** Путь одной записи коллекции — `hooks/useEntityEditor.ts` читает,

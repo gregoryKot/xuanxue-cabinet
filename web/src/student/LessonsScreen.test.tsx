@@ -75,11 +75,11 @@ describe('LessonsScreen', () => {
     );
   });
 
-  it('без адреса сайта школы — без ссылки', async () => {
+  it('без адреса сайта школы — без ссылки на сайт (карточка архива остаётся)', async () => {
     renderScreen({});
 
     expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /https:\/\// })).not.toBeInTheDocument();
   });
 
   it('блока экзаменов на экране нет — «Задания» переехали на свой маршрут', async () => {
@@ -88,5 +88,17 @@ describe('LessonsScreen', () => {
     await screen.findByText('Ближайших занятий пока нет.');
     expect(screen.queryByText('Экзамены')).not.toBeInTheDocument();
     expect(screen.queryByText('Экзаменов пока нет.')).not.toBeInTheDocument();
+  });
+
+  // Слой 3.3 (docs/PLAN.md §14) — карточка входа в архив под списком
+  // ближайших занятий, не пункт меню (ADR-0025).
+  it('карточка «Записи занятий» ведёт на /archive', async () => {
+    renderScreen({});
+
+    await screen.findByText('Ближайших занятий пока нет.');
+    expect(screen.getByRole('link', { name: /Записи занятий/ })).toHaveAttribute(
+      'href',
+      '/archive',
+    );
   });
 });
