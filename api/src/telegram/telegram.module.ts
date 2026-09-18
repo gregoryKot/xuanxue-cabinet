@@ -5,7 +5,7 @@
 // BotUserAccessService — /start и остальной доступ бота идут через неё),
 // LoginIdentityService (join-invite-deep-link.ts — ссылка-приглашение,
 // тот же сервис, что и у веба, ADR-0030/0036);
-// BroadcastsModule — BroadcastsService.cancel(), TopicRebuildService, модель
+// BroadcastsModule — BroadcastsService.cancel(), LessonLinkRebuildService, модель
 // BroadcastRecord; LessonsModule — LessonsService.update()/addRecording(),
 // модель LessonRecord; DeliveriesModule — DeliveriesService.markSent();
 // ClassesModule — модель ClassRecord (/тема, TopicCommandHandler);

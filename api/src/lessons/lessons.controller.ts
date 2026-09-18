@@ -50,7 +50,7 @@ export class LessonsController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() body: UpdateLessonDto): Promise<LessonDto> {
-    return this.lessonsService.update(id, body);
+    return this.lessonsService.update(id, body, DateTime.utc());
   }
 
   @Delete(':id')

@@ -72,13 +72,15 @@ describe('LessonsController', () => {
     expect(create).toHaveBeenCalledWith(body);
   });
 
-  it('update() передаёт id и тело в сервис', async () => {
+  it('update() передаёт id, тело и now в сервис', async () => {
     const update = jest.fn().mockResolvedValue(LESSON_DTO);
     const controller = await buildController({ update });
     const body = { note: null };
 
     await expect(controller.update('l1', body)).resolves.toEqual(LESSON_DTO);
-    expect(update).toHaveBeenCalledWith('l1', body);
+    // `now` — DateTime.utc() контроллера, тот же приём, что у addRecording()/
+    // sendNow() ниже.
+    expect(update).toHaveBeenCalledWith('l1', body, expect.any(DateTime));
   });
 
   it('remove() передаёт id в сервис', async () => {

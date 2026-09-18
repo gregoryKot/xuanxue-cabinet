@@ -20,9 +20,9 @@ import { BroadcastModelModule } from './broadcast-model.module';
 import { BroadcastModels } from './broadcast-models.provider';
 import { BroadcastsController } from './broadcasts.controller';
 import { BroadcastsService } from './broadcasts.service';
+import { LessonLinkRebuildService } from './lesson-link-rebuild.service';
 import { RecordingBroadcastService } from './recording-broadcast.service';
 import { SendNowService } from './send-now.service';
-import { TopicRebuildService } from './topic-rebuild.service';
 
 @Module({
   imports: [
@@ -39,20 +39,23 @@ import { TopicRebuildService } from './topic-rebuild.service';
     BroadcastModels,
     BroadcastsService,
     RecordingBroadcastService,
-    TopicRebuildService,
+    LessonLinkRebuildService,
     SendNowService,
   ],
   // RecordingBroadcastService — наружу для LessonsModule; BroadcastModelModule
-  // — для SchedulerModule/DeliveriesModule, как и раньше; BroadcastsService/
-  // TopicRebuildService — для TelegramModule (кнопка «Отменить», тема из бота);
-  // SendNowService — для LessonsModule (POST /lessons/:id/send-now, аудит В12);
-  // сам собран из тех же моделей/сервисов, что уже импортированы сюда для
-  // RecordingBroadcastService, отдельный модуль под него не понадобился.
+  // — для SchedulerModule/DeliveriesModule, как и раньше; BroadcastsService —
+  // для TelegramModule (кнопка «Отменить»); LessonLinkRebuildService — для
+  // TelegramModule (тема из бота) и LessonsModule (LessonsService.update,
+  // LessonPlannerService.planClass — перенос занятия приводит ещё не ушедшую
+  // рассылку в соответствие, ADR-0054); SendNowService — для LessonsModule
+  // (POST /lessons/:id/send-now, аудит В12); сам собран из тех же моделей/
+  // сервисов, что уже импортированы сюда для RecordingBroadcastService,
+  // отдельный модуль под него не понадобился.
   exports: [
     BroadcastModelModule,
     BroadcastsService,
     RecordingBroadcastService,
-    TopicRebuildService,
+    LessonLinkRebuildService,
     SendNowService,
   ],
 })

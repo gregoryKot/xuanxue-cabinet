@@ -1,11 +1,29 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): generate/reconcile планировщика на реальных индексах и запросах.
 import { DateTime } from 'luxon';
-import type { Connection, Model, Types } from 'mongoose';
+import type { Connection, Model } from 'mongoose';
+import { Types } from 'mongoose';
+import { BroadcastModels } from '../broadcasts/broadcast-models.provider';
+import {
+  BROADCAST_FIELD_POLICY,
+  BroadcastRecord,
+  BroadcastSchema,
+} from '../broadcasts/broadcast.schema';
+import { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
+import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema, type LeanScheduleRule } from '../classes/class.schema';
+import { encryptSchemaFrom } from '../common/field-policy';
+import { DeliveryRecord, DeliverySchema } from '../deliveries/delivery.schema';
+import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
+import { SettingsService } from '../settings/settings.service';
+import { decrypt, encryptRecord } from '../utils/encryption';
+import { UserRecord, UserSchema } from '../users/user.schema';
+import { UsersService } from '../users/users.service';
 import { LessonRecord, LessonSchema } from './lesson.schema';
 import { LessonPlannerService } from './lesson-planner.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+
+const BROADCAST_ENCRYPT_SCHEMA = encryptSchemaFrom(BROADCAST_FIELD_POLICY);
 
 const NOW = DateTime.fromISO('2026-03-20T00:00:00Z', { zone: 'utc' });
 const TUESDAY_19 = { weekday: 2 as const, time: '19:00', durationMin: 90 };
@@ -47,6 +65,8 @@ describe('LessonPlannerService', () => {
   let connection: Connection;
   let classModel: Model<ClassRecord>;
   let lessonModel: Model<LessonRecord>;
+  let broadcastModel: Model<BroadcastRecord>;
+  let deliveryModel: Model<DeliveryRecord>;
   let service: LessonPlannerService;
 
   beforeAll(async () => {
@@ -54,7 +74,34 @@ describe('LessonPlannerService', () => {
     connection = memory.connection;
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    service = new LessonPlannerService(classModel, lessonModel);
+    broadcastModel = connection.model<BroadcastRecord>(
+      BroadcastRecord.name,
+      BroadcastSchema,
+    );
+    deliveryModel = connection.model<DeliveryRecord>(DeliveryRecord.name, DeliverySchema);
+    const channelModel = connection.model<ChannelRecord>(
+      ChannelRecord.name,
+      ChannelSchema,
+    );
+    const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
+    const settingsModel = connection.model<SettingsRecord>(
+      SettingsRecord.name,
+      SettingsSchema,
+    );
+    const usersService = new UsersService(userModel);
+    const broadcastModels = new BroadcastModels(
+      lessonModel,
+      classModel,
+      channelModel,
+      broadcastModel,
+      deliveryModel,
+    );
+    const lessonLinkRebuild = new LessonLinkRebuildService(
+      broadcastModels,
+      new SettingsService(settingsModel, lessonModel, classModel, usersService),
+      usersService,
+    );
+    service = new LessonPlannerService(classModel, lessonModel, lessonLinkRebuild);
   }, 60_000);
 
   afterAll(async () => {
@@ -64,6 +111,8 @@ describe('LessonPlannerService', () => {
   afterEach(async () => {
     await classModel.deleteMany({});
     await lessonModel.deleteMany({});
+    await broadcastModel.deleteMany({});
+    await deliveryModel.deleteMany({});
   });
 
   it('генерирует на 4 недели вперёд по двум правилам класса', async () => {
@@ -120,6 +169,49 @@ describe('LessonPlannerService', () => {
     expect(moved?.startsAt.toISOString()).toBe('2026-03-24T16:00:00.000Z'); // 18:00 локально, до перехода (+02:00)
     expect(moved?.topic).toBe('Пятое занятие');
     expect(result.removed).toBe(0);
+  });
+
+  it('смена времени правила при уже созданной lesson_link-рассылке пересобирает текст и переносит момент отправки (окно предпросмотра, ADR-0054)', async () => {
+    const cls = await createClass(classModel);
+    await service.plan(NOW);
+    const [withBroadcast] = await lessonModel.find({}).sort({ plannedAt: 1 }).lean();
+    // Старый sendAt = 19:00 локально (TUESDAY_19) − leadMinutes(30) = 16:30 UTC
+    // (тот же расчёт, что sendLessonBroadcast/broadcast-send-timing.ts).
+    const broadcast = await broadcastModel.create(
+      encryptRecord(
+        {
+          kind: 'lesson_link',
+          lessonId: withBroadcast?._id,
+          channelIds: [],
+          scheduledAt: new Date('2026-03-24T16:30:00Z'),
+          text: 'старый текст',
+          status: 'scheduled',
+        },
+        BROADCAST_ENCRYPT_SCHEMA,
+      ),
+    );
+    const delivery = await deliveryModel.create({
+      broadcastId: broadcast._id,
+      channelId: new Types.ObjectId(),
+      status: 'pending',
+      nextAttemptAt: new Date('2026-03-24T16:30:00Z'),
+    });
+
+    // Правило переехало на 18:00 — то же занятие двигается на месте (тест
+    // выше), а не удаляется/создаётся заново; окно между leadMinutes и
+    // leadMinutes+previewMinutes, где рассылка уже существует, а правило
+    // ещё можно поменять, — то самое, что описано в docs/PLAN.md §6.
+    await setRuleTime(classModel, cls, 0, '18:00');
+    await service.plan(NOW);
+
+    // Новый startsAt — 16:00 UTC (см. тест выше), новый sendAt = 15:30 UTC.
+    const updatedBroadcast = await broadcastModel.findById(broadcast._id).lean();
+    expect(decrypt(updatedBroadcast?.text)).not.toBe('старый текст');
+    expect(updatedBroadcast?.scheduledAt.toISOString()).toBe('2026-03-24T15:30:00.000Z');
+    const updatedDelivery = await deliveryModel.findById(delivery._id).lean();
+    expect(updatedDelivery?.nextAttemptAt?.toISOString()).toBe(
+      '2026-03-24T15:30:00.000Z',
+    );
   });
 
   it('повторный plan после переноса ничего больше не двигает — updatedAt переехавшего занятия не меняется', async () => {
