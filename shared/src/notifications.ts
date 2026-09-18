@@ -15,6 +15,7 @@ export const NOTIFICATION_KINDS = [
   'delivery_failed', // пост не ушёл в канал
   'attempt_submitted', // ученик сдал работу — ждёт проверки (слой 4.7)
   'payments', // оплаты и долги (этап 3)
+  'app_error', // сбой в кабинете — админу
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -35,6 +36,7 @@ export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {
   delivery_failed: 'Пост не ушёл',
   attempt_submitted: 'Работа на проверку',
   payments: 'Оплаты и долги',
+  app_error: 'Сбой в кабинете',
 };
 
 /** Одна фраза «когда придёт» — её увидят и в боте, и в кабинете рядом с
@@ -49,6 +51,9 @@ export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
   delivery_failed: 'Придёт, если пост не дошёл до канала.',
   attempt_submitted: 'Придёт, когда ученик сдаст экзамен, — работа ждёт вашей проверки.',
   payments: 'Придёт, когда изменится оплата или долг ученика.',
+  app_error:
+    'Придёт вам, если в кабинете случится ошибка сервера — с кодом, ' +
+    'по которому вы найдёте её в логах Railway.',
 };
 
 /** Дефолт по роли (отзыв владельца 2026-09-12): помощник учителя получает
@@ -62,13 +67,19 @@ export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
  * `attempt_submitted` (слой 4.7, PLAN §11) — только у учителя и помощника:
  * они проверяют работы, очередь проверки — их дело. Админ получает тот же
  * набор, что учитель, без этого вида: он не проверяет работы, и очередь
- * чужих экзаменов ему не нужна (отзыв владельца 2026-09-12) — единственное
+ * чужих экзаменов ему не нужна (отзыв владельца 2026-09-12) — первое
  * расхождение набора админа с учителем, поэтому дальше не выражено общей
- * переменной, а прямо видно построчно. */
+ * переменной, а прямо видно построчно.
+ *
+ * `app_error` (отзыв владельца 2026-09-18 «а куда приходят ошибки?») —
+ * наоборот, только у админа: неизвестную ошибку сервера чинит разработчик,
+ * но узнаёт о ней владелец школы, он же единственный admin, — учителю,
+ * помощнику и бухгалтеру чинить нечего, будильник в кармане им не нужен.
+ * Второе и последнее расхождение набора админа с учителем. */
 export const DEFAULT_NOTIFICATIONS_BY_ROLE: Record<UserRole, NotificationKind[]> = {
   teacher: ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
   assistant: ['post_draft', 'recording_request', 'delivery_failed', 'attempt_submitted'],
-  admin: ['post_draft', 'recording_request', 'delivery_failed'],
+  admin: ['post_draft', 'recording_request', 'delivery_failed', 'app_error'],
   accountant: ['payments'],
 };
 

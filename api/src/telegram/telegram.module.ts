@@ -21,11 +21,15 @@
 // BotIdentityModule — TelegramBotService пишет туда имя бота при прогреве;
 // UsersModule (InviteLinkService, ADR-0030 «Бот») читает оттуда же, не
 // импортируя TelegramModule целиком (см. bot-identity.service.ts).
+// APP_ERROR_ALERTS (common/app-error-alerts.ts) — DomainExceptionFilter шлёт
+// через него алёрт админу о неизвестной ошибке сервера (ТЗ владельца «а куда
+// приходят ошибки?»); реализация здесь же, TelegramAppErrorAlerts.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { ChannelsModule } from '../channels/channels.module';
 import { ClassesModule } from '../classes/classes.module';
+import { APP_ERROR_ALERTS } from '../common/app-error-alerts';
 import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { LessonsModule } from '../lessons/lessons.module';
 import { MediaModule } from '../media/media.module';
@@ -56,6 +60,7 @@ import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
 import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, createTelegraf } from './telegraf-instance';
+import { TelegramAppErrorAlerts } from './telegram-app-error-alerts';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookGuard } from './telegram-webhook.guard';
@@ -102,6 +107,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     BotSessionService,
     BotUserAccessService,
     { provide: TELEGRAF_FACTORY, useValue: createTelegraf },
+    { provide: APP_ERROR_ALERTS, useClass: TelegramAppErrorAlerts },
   ],
   // TelegramBotService — SchedulerModule (проактивная отправка предпросмотра,
   // «Запись?», ручных каналов и уведомлений); PersonalChats/BotSessionService —
@@ -110,6 +116,16 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
   // ExamBotPortRegistry — наружу: ExamsModule кладёт в него реализацию
   // ExamBotPort (exams/exam-bot.service.ts), импортировать exams/ отсюда
   // нельзя (цикл, см. комментарий в exam-bot-port.registry.ts).
-  exports: [TelegramBotService, PersonalChats, BotSessionService, ExamBotPortRegistry],
+  // APP_ERROR_ALERTS — наружу: AppModule провайдит DomainExceptionFilter и
+  // импортирует TelegramModule, фильтру нужен этот токен через @Optional()
+  // (common/app-error-alerts.ts, тот же приём, что TEACHER_NOTIFIER в
+  // scheduler.module.ts).
+  exports: [
+    TelegramBotService,
+    PersonalChats,
+    BotSessionService,
+    ExamBotPortRegistry,
+    APP_ERROR_ALERTS,
+  ],
 })
 export class TelegramModule {}
