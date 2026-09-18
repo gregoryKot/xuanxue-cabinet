@@ -42,10 +42,10 @@ describe('toMaterialDto', () => {
 });
 
 describe('toMyMaterialDto', () => {
-  it('нет createdBy, access и служебных дат; url есть, locked не выставлен', () => {
+  it('нет createdBy, access и служебных дат; открытый материал — url есть, locked не выставлен', () => {
     const doc = material();
 
-    const dto = toMyMaterialDto(doc, new Map());
+    const dto = toMyMaterialDto(doc, new Map(), false);
 
     expect(dto).toEqual({
       id: doc._id.toString(),
@@ -61,13 +61,30 @@ describe('toMyMaterialDto', () => {
     expect(dto).not.toHaveProperty('locked');
   });
 
+  // ADR-0048: закрытый материал — без url, с locked:true. Ссылка не должна
+  // уйти в ответ ни в каком виде (SECURITY §3).
+  it('закрытый материал — locked:true, url в ответе нет вовсе', () => {
+    const doc = material();
+
+    const dto = toMyMaterialDto(doc, new Map(), true);
+
+    expect(dto).toEqual({
+      id: doc._id.toString(),
+      title: doc.title,
+      kind: doc.kind,
+      classTitles: [],
+      locked: true,
+    });
+    expect(dto).not.toHaveProperty('url');
+  });
+
   // Привязка к занятиям едет и ученику, но названием, а не id: `GET /classes`
   // ему закрыт ролью, подписать id было бы нечем (ADR-0047).
   it('занятия приходят названиями', () => {
     const classId = new Types.ObjectId();
     const titles = new Map([[classId.toString(), 'Тайцзицюань, средняя группа']]);
 
-    const dto = toMyMaterialDto(material({ classIds: [classId] }), titles);
+    const dto = toMyMaterialDto(material({ classIds: [classId] }), titles, false);
 
     expect(dto.classTitles).toEqual(['Тайцзицюань, средняя группа']);
   });
@@ -78,6 +95,7 @@ describe('toMyMaterialDto', () => {
     const dto = toMyMaterialDto(
       material({ classIds: [new Types.ObjectId()] }),
       new Map(),
+      false,
     );
 
     expect(dto.classTitles).toEqual([]);

@@ -11,6 +11,7 @@
 // nullable-поле формы, `null` снимает настройку (NULLABLE_SETTINGS_FIELDS,
 // settings.service.ts).
 import {
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -72,4 +73,11 @@ export class UpdateSettingsDto implements UpdateSettingsInput {
   @Min(SETTINGS_LIMITS.previewMinutesMin)
   @Max(SETTINGS_LIMITS.previewMinutesMax)
   previewMinutes?: number;
+
+  // Рубильник школы «после оплаты» (ADR-0048) — не в NULLABLE_SETTINGS_FIELDS
+  // (settings.service.ts): сбросить в «нет значения» нельзя, только
+  // переключить, поэтому OptionalNotNull(), не @IsOptional().
+  @OptionalNotNull()
+  @IsBoolean()
+  materialsPaidAccess?: boolean;
 }

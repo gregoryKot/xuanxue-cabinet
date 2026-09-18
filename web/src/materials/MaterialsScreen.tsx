@@ -22,6 +22,7 @@ import { primaryActionStyle, screenSectionStyle } from '../components/screenLayo
 import { ScreenHeader } from '../components/ScreenHeader';
 import { useClasses } from '../schedule/useClasses';
 import { MaterialCard } from './MaterialCard';
+import { MaterialsPaidAccessSection } from './MaterialsPaidAccessSection';
 import { useMaterials } from './useMaterials';
 
 const TITLE = 'Библиотека';
@@ -56,6 +57,18 @@ export default function MaterialsScreen() {
               Новый материал
             </Button>
           )
+        }
+      />
+
+      {/* Число из уже загруженного списка (без нового запроса) — только на
+          весь список без фильтра по виду: отфильтрованный список не
+          отражал бы всю библиотеку, и число обмануло бы учителя насчёт
+          того, что именно закроет рубильник. */}
+      <MaterialsPaidAccessSection
+        paidCount={
+          kind === '' && materials
+            ? materials.filter((m) => m.access === 'paid').length
+            : null
         }
       />
 

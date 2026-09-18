@@ -34,10 +34,11 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
   };
 }
 
-/** Библиотека глазами ученика (ADR-0048, слой 3.1 shared/src/materials.ts) —
- * ни `createdBy`, ни `access`, ни служебных дат. `url` есть всегда и
- * `locked` не выставляется: рубильник платного доступа появляется слоем 3.4,
- * до этого `paid` ведёт себя как `all` (ADR-0048).
+/** Библиотека глазами ученика (ADR-0048, слой 3.4 docs/PLAN.md §14) — ни
+ * `createdBy`, ни `access`, ни служебных дат. `isLocked` считает
+ * MaterialsService (material-access.ts, isMaterialLocked) — закрытый
+ * материал приходит без `url` и с `locked: true`, ссылка не должна уйти в
+ * ответ API ни одному ученику (SECURITY §3).
  *
  * Занятия приезжают названиями, а не id: `GET /classes` закрыт ролью, и
  * подписать id ученику нечем (shared/src/materials.ts). Название занятия,
@@ -46,14 +47,18 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
 export function toMyMaterialDto(
   doc: RawLeanMaterial,
   classTitleById: Map<string, string>,
+  isLocked: boolean,
 ): MyMaterialDto {
-  return {
+  const base = {
     id: doc._id.toString(),
     title: doc.title,
     kind: doc.kind,
     classTitles: doc.classIds
       .map((id) => classTitleById.get(id.toString()))
       .filter((title): title is string => title !== undefined),
-    url: doc.url,
   };
+  // `locked`/`url` — ключи, не значения undefined: `toHaveProperty` и
+  // JSON.stringify не должны видеть ни намёка на то, что url когда-то был
+  // (SECURITY §3, ADR-0048).
+  return isLocked ? { ...base, locked: true } : { ...base, url: doc.url };
 }
