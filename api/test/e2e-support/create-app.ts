@@ -5,8 +5,7 @@
 import { randomBytes } from 'crypto';
 import { Test, type TestingModuleBuilder } from '@nestjs/testing';
 import { ExpressAdapter, type NestExpressApplication } from '@nestjs/platform-express';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MONGO_MEMORY_INSTANCE_OPTIONS } from '../../src/test-support/mongo-memory-options';
+import { startMemoryMongo } from '../../src/test-support/start-memory-mongo';
 
 export interface TestApp {
   app: NestExpressApplication;
@@ -69,11 +68,10 @@ export async function createTestApp(
   overrides?: (builder: TestingModuleBuilder) => void,
   envOverrides?: Record<string, string | undefined>,
 ): Promise<TestApp> {
-  // launchTimeout — см. комментарий у MONGO_MEMORY_INSTANCE_OPTIONS: без него
-  // e2e на загруженной машине падает ещё до первого теста.
-  const mongod = await MongoMemoryServer.create({
-    instance: MONGO_MEMORY_INSTANCE_OPTIONS,
-  });
+  // startMemoryMongo() — launchTimeout для загруженной машины и повтор при
+  // гонке за порт между воркерами jest, см. комментарий-шапку в
+  // src/test-support/start-memory-mongo.ts.
+  const mongod = await startMemoryMongo();
   try {
     setTestEnv(mongod.getUri());
     for (const [key, value] of Object.entries(envOverrides ?? {})) {

@@ -2,11 +2,10 @@
 // (CLAUDE.md «Тесты»: запросы к базе — против реальной Mongo, не мока).
 // Три спека поднимали mongod + connection одинаковым кодом — вынесено сюда,
 // чтобы повторяющийся блок не плодил дубли (CLAUDE.md «Храповики», jscpd).
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { type Connection } from 'mongoose';
 import { MODEL_DEFINITIONS } from '../common/model.registry';
 import { MONGO_RUNTIME_ADAPTERS } from '../database/mongo-runtime-adapters';
-import { MONGO_MEMORY_INSTANCE_OPTIONS } from './mongo-memory-options';
+import { startMemoryMongo } from './start-memory-mongo';
 
 export interface MemoryMongo {
   connection: Connection;
@@ -22,9 +21,7 @@ export interface MemoryMongo {
  * `connection.model(Name)` — та же схема, повторная регистрация не нужна.
  * `stop()` закрывает соединение и mongod в правильном порядке — в `afterAll`. */
 export async function openMemoryMongo(): Promise<MemoryMongo> {
-  const mongod = await MongoMemoryServer.create({
-    instance: MONGO_MEMORY_INSTANCE_OPTIONS,
-  });
+  const mongod = await startMemoryMongo();
   const connection = await mongoose
     // mongo-runtime-adapters.ts: обход бага хендшейка mongodb@7.6+ под Jest.
     .createConnection(mongod.getUri(), { runtimeAdapters: MONGO_RUNTIME_ADAPTERS })
