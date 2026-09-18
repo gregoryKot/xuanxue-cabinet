@@ -2,7 +2,7 @@
 // остаётся в файле теста — vitest поднимает его до импортов и на уровень
 // модуля вынести нельзя, — а всё, что после него, живёт здесь: типизированная
 // ссылка на мок и сброс между тестами. Именно этот хвост jscpd поймал как
-// дубль в AppShell.test.tsx и StudentScreen.test.tsx (CLAUDE.md «Дубли»).
+// дубль в AppShell.test.tsx и LessonsScreen.test.tsx (CLAUDE.md «Дубли»).
 import { afterEach, vi } from 'vitest';
 import { apiFetch } from '../api/http';
 

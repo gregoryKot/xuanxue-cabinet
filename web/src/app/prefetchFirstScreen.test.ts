@@ -56,9 +56,7 @@ describe('firstScreenPaths', () => {
   // уводит на rootPathFor(me), греем данные экрана-назначения («Задания»),
   // а не расписание учителя.
   it('ученик на /planning (маршрут штата) — данные экрана-назначения «Задания»', () => {
-    expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual([
-      MY_EXAMS_PATH,
-    ]);
+    expect(firstScreenPaths('/planning', makeMe({ roles: [] }))).toEqual([MY_EXAMS_PATH]);
   });
 
   it('ученик на своём «/tasks» — список экзаменов', () => {

@@ -50,7 +50,9 @@ describe('TasksScreen — заголовок раздела', () => {
       await screen.findByRole('heading', { level: 1, name: 'Задания' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Экзамены, которые открыл учитель. Каждый — с числом попыток и итогом проверки.'),
+      screen.getByText(
+        'Экзамены, которые открыл учитель. Каждый — с числом попыток и итогом проверки.',
+      ),
     ).toBeInTheDocument();
   });
 });

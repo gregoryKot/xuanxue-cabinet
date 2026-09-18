@@ -4,8 +4,9 @@
 // экран открыт обоим, но назначение ролей и удаление данных внутри самого
 // PeopleScreen.tsx всё равно видит только admin (SECURITY §3, не этот
 // гвард). Сессия уже проверена RequireAuth выше в дереве маршрутов
-// (App.tsx) — здесь только роль. Не путать с AppShell.isTeacher — тот
-// решает «кабинет или StudentScreen», этот — «можно ли конкретно на /people».
+// (App.tsx) — здесь только роль. Не путать с AppShell.canSeeRoute — тот
+// решает «пускать на этот маршрут или увести редиректом», этот — «можно ли
+// конкретно на /people».
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { hasRole } from './hasRole';

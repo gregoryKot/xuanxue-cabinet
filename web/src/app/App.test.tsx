@@ -325,7 +325,9 @@ describe('App', () => {
 
     renderAt('/tasks');
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Задания' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Задания' }),
+    ).toBeInTheDocument();
     expect(await screen.findByText('Заданий пока нет.')).toBeInTheDocument();
   });
 
@@ -347,11 +349,11 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Ближайшее занятие' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
   });
 
-  // Личный экран человека — маршрут не за RequirePeopleAccess и не за
-  // isTeacher-веткой AppShell.tsx, доступен и ученику (ADR-0045).
+  // Личный экран человека — маршрут не за RequirePeopleAccess и открыт любой
+  // роли в canSeeRoute (screenAccess.ts), доступен и ученику (ADR-0045).
   it('учитель на /profile — маршрут «Профиль» открывает ProfileScreen', async () => {
     // telegramLinked: у несвязанного на месте этой подсказки стоит кнопка
     // связки (ADR-0034) — здесь проверяется маршрут, не она.
