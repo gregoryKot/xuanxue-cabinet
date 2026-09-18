@@ -66,7 +66,7 @@
 | [0028](0028-telegram-login-redirect-everywhere.md)       | Вход через Telegram — переходом вкладки на любом устройстве, без попапа               |
 | [0029](0029-email-login-via-resend-fetch.md)             | Вход по email-ссылке: Resend через fetch, без SDK                                     |
 | [0030](0030-school-invite-link.md)                       | Ссылка-приглашение школы — вход и регистрация одним запросом (ADR-0036)               |
-| [0031](0031-visual-direction-quiet-and-noble.md)         | Визуальное направление «тихо и благородно» — шрифты и палитра фундамента              |
+| [0031](0031-visual-direction-quiet-and-noble.md)         | ~~Визуальное направление «тихо и благородно»~~ — заменено ADR-0043                    |
 | [0032](0032-no-service-worker.md)                        | Service worker убран, манифест остаётся — килсвитч по старому адресу                  |
 | [0033](0033-exam-as-question-list.md)                    | Экзамен для учителя — список вопросов; вопрос банка сразу опубликован                 |
 | [0034](0034-link-telegram-to-existing-account.md)        | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link                    |
@@ -78,3 +78,4 @@
 | [0040](0040-questions-are-shared-not-a-bank.md)          | «Банк» уходит из интерфейса; вопрос заводится там, где нужен                          |
 | [0041](0041-grading-comment-presets.md)                  | Заготовки частых комментариев при проверке — общий список школы, не личный            |
 | [0042](0042-bot-chat-active-in-me-dto.md)                | `botChatActive` в `MeDto` — «боту есть куда писать», отдельно от `telegramLinked`     |
+| [0043](0043-visual-direction-warm-school.md)             | Визуальное направление «Тёплая школа» — Golos Text, карточки, знак и человек в колонке |
