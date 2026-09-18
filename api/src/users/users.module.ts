@@ -10,6 +10,7 @@ import {
 import { EmailLoginUserService } from './email-login-user.service';
 import { InviteLinkService } from './invite-link.service';
 import { LoginIdentityService } from './login-identity.service';
+import { OwnNameService } from './own-name.service';
 import { TeachersService } from './teachers.service';
 import { TelegramLinkCodeService } from './telegram-link-code.service';
 import { TelegramLinkService } from './telegram-link.service';
@@ -41,6 +42,7 @@ import { UsersService } from './users.service';
     TeachersService,
     UserDeletionService,
     UserNamesService,
+    OwnNameService,
     EmailLoginUserService,
     InviteLinkService,
     LoginIdentityService,
@@ -58,10 +60,14 @@ import { UsersService } from './users.service';
   // TelegramLinkService — той же причиной наружу (ADR-0034):
   // TelegramLinkController (auth/, выпуск кода) и TelegramModule
   // (/start link_<code>, потребление кода) оба берут их отсюда, второй раз не
-  // заводим.
+  // заводим. OwnNameService — наружу той же причиной: OwnProfileController
+  // (auth/, PATCH /me/profile) собирает MeDto через toMeDto, которому нужен
+  // PersonalChats из TelegramModule, поэтому и этот контроллер живёт в
+  // auth/, а не здесь (ADR-0013, см. own-profile.controller.ts).
   exports: [
     UsersService,
     UserNamesService,
+    OwnNameService,
     InviteLinkService,
     LoginIdentityService,
     TelegramLinkCodeService,

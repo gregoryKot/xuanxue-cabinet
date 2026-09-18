@@ -60,6 +60,8 @@ export {
   EMAIL_LOGIN_EXPIRED_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
 } from './auth';
+export type { UpdateProfileInput } from './profile';
+export { PROFILE_LIMITS, PROFILE_NAME_REQUIRED_MESSAGE } from './profile';
 export { CSRF_HEADER, isMutatingMethod } from './csrf';
 export type {
   ClassDto,

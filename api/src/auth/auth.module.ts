@@ -20,6 +20,7 @@ import { EmailAuthService } from './email-auth.service';
 import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
 import { EmailLoginTokenService } from './email-login-token.service';
 import { JoinController } from './join.controller';
+import { OwnProfileController } from './own-profile.controller';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
 import { TelegramLinkController } from './telegram-link.controller';
@@ -41,7 +42,12 @@ import { TelegramLinkController } from './telegram-link.controller';
       { name: EmailLoginTokenRecord.name, schema: EmailLoginTokenSchema },
     ]),
   ],
-  controllers: [AuthController, JoinController, TelegramLinkController],
+  controllers: [
+    AuthController,
+    JoinController,
+    TelegramLinkController,
+    OwnProfileController,
+  ],
   providers: [
     AuthService,
     TelegramAuthService,
@@ -52,6 +58,9 @@ import { TelegramLinkController } from './telegram-link.controller';
     // выше, второй провайдер здесь не заводим).
     // Связка Telegram (ADR-0034): TelegramLinkCodeService для
     // TelegramLinkController — тем же путём, экспорт UsersModule.
+    // Своё имя (PATCH /me/profile, OwnProfileController): OwnNameService —
+    // тем же путём, экспорт UsersModule (см. комментарий там же и в шапке
+    // own-profile.controller.ts про то, почему контроллер живёт здесь).
     { provide: APP_GUARD, useClass: AuthGuard },
     {
       provide: SESSION_SECRET,
