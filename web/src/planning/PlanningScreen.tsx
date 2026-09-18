@@ -1,9 +1,10 @@
 // «Занятия» — первый экран после входа (docs/PLAN.md §6, `/` → `/planning`):
 // сверху что идёт сегодня (PlanningToday.tsx), ниже календарь на 4 недели.
-// Вход в сетку расписания — тихая кнопка в шапке рядом с «Разовым занятием»
-// (PlanningActions.tsx), не пункт меню (docs/adr/0025-navigation-by-domain.md,
-// дополнение 2026-09-18): раньше был карточкой внизу списка, и на телефоне
-// до неё было не долистать (отзыв владельца).
+// Вход в сетку расписания и в библиотеку (`/materials`, слой 3.2) — тихие
+// кнопки в шапке рядом с «Разовым занятием» (PlanningActions.tsx), не пункт
+// меню (docs/adr/0025-navigation-by-domain.md, дополнение 2026-09-18): вход в
+// расписание раньше был карточкой внизу списка, и на телефоне до неё было не
+// долистать (отзыв владельца) — библиотека входит сразу тем же приёмом.
 // Облик — направление «тихо и благородно» (docs/adr/0031), макет
 // Schedule.dc.html: заголовок антиквой, строка объяснения, занятия строками.
 // Правка и создание занятия — своя страница `/planning/new` и
@@ -41,6 +42,7 @@ const ONE_OFF_HINT =
 const oneOffHintStyle = { ...screenHintStyle, margin: 0 };
 const LESSON_PATH = '/planning';
 const SCHEDULE_PATH = '/schedule';
+const MATERIALS_PATH = '/materials';
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
@@ -75,6 +77,7 @@ export default function PlanningScreen() {
   // (ADR-0033): ссылку можно прислать, «Назад» браузера возвращает сюда.
   const openCreate = () => void navigate(`${LESSON_PATH}/new`);
   const openSchedule = () => void navigate(SCHEDULE_PATH);
+  const openLibrary = () => void navigate(MATERIALS_PATH);
   const openLesson = (lessonId: string) => void navigate(`${LESSON_PATH}/${lessonId}`);
 
   // Прокрутка к `#lesson-{id}` — на случай внешней ссылки (бот, уведомление).
@@ -89,7 +92,11 @@ export default function PlanningScreen() {
         titleMaxWidth={TITLE_MAX_WIDTH_PX}
         action={
           !lessonsState.loading && (
-            <PlanningActions onOpenSchedule={openSchedule} onCreateOneOff={openCreate} />
+            <PlanningActions
+              onOpenSchedule={openSchedule}
+              onOpenLibrary={openLibrary}
+              onCreateOneOff={openCreate}
+            />
           )
         }
       />

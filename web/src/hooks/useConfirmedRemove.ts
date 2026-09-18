@@ -22,8 +22,13 @@ export interface UseConfirmedRemoveResult {
   confirmRemove: () => Promise<void>;
 }
 
+/** `remove` не задан — удалять нечего (новая запись на странице-редакторе,
+ * components/SimpleEditorForm.tsx): кнопки «Удалить» там нет, и `confirmRemove`
+ * никто не зовёт. Пустой `undefined` вместо заглушки `() => false` у
+ * вызывающего: заглушку никогда не вызовут, и она осталась бы вечно
+ * непокрытой строкой (правило покрытия, CLAUDE.md «Тесты»). */
 export function useConfirmedRemove(
-  remove: () => Promise<boolean>,
+  remove: (() => Promise<boolean>) | undefined,
   goBack: () => void,
 ): UseConfirmedRemoveResult {
   const [confirming, setConfirming] = useState(false);
@@ -44,7 +49,7 @@ export function useConfirmedRemove(
   }, [removed, confirming]);
 
   async function confirmRemove(): Promise<void> {
-    if (await remove()) setRemoved(true);
+    if (remove && (await remove())) setRemoved(true);
     // Сбой remove() ничего не меняет здесь: serverError уже выставлен внутри
     // remove() (useEntityForm), ConfirmDialog всё равно закроется сам — текст
     // ошибки останется виден на самом листе.

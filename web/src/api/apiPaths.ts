@@ -5,7 +5,12 @@
 // отдал бы готовый промис хуку, потому что ключ там — сам путь (apiFetch
 // сравнивает строки, не структуру запроса). Путь, нужный только своему хуку
 // (мутация, адрес, которого нет на первом экране) — остаётся в хуке.
-import { LIST_LIMIT_MAX, type ExamItemStatus, type ExamStatus } from '@xuanxue/shared';
+import {
+  LIST_LIMIT_MAX,
+  type ExamItemStatus,
+  type ExamStatus,
+  type MaterialKind,
+} from '@xuanxue/shared';
 import { planningWindow } from '../planning/planningWindow';
 import { nextLessonsWindow } from '../templates/nextLessonsWindow';
 
@@ -85,6 +90,14 @@ export function channelsListPath(activeOnly: boolean): string {
   return activeOnly
     ? `${CHANNELS_PATH}?active=true&${limit}`
     : `${CHANNELS_PATH}?${limit}`;
+}
+
+export const MATERIALS_PATH = '/materials';
+
+/** Пустой вид — «Все» (тот же приём, что у examItemsListPath). */
+export function materialsListPath(kind: MaterialKind | ''): string {
+  const limit = `limit=${LIST_LIMIT_MAX}`;
+  return kind ? `${MATERIALS_PATH}?${limit}&kind=${kind}` : `${MATERIALS_PATH}?${limit}`;
 }
 
 export const SETTINGS_PATH = '/settings';

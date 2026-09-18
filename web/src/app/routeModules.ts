@@ -31,6 +31,7 @@ import {
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   LESSONS_PATH,
+  MATERIALS_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_PATH,
   NOTIFICATION_PREFS_PATH,
@@ -42,6 +43,7 @@ import {
   examItemsListPath,
   examsListPath,
   lessonsListPath,
+  materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
 
@@ -87,6 +89,7 @@ function segmentBeforeLast(pathname: string): string {
 const loadChannelEditor = () => import('../channels/ChannelEditorScreen');
 const loadExamEditor = () => import('../exams/ExamEditorScreen');
 const loadExamItemEditor = () => import('../exam-items/ExamItemEditorScreen');
+const loadMaterialEditor = () => import('../materials/MaterialEditorScreen');
 const loadLessonEditor = () => import('../planning/LessonEditorScreen');
 const loadClassEditor = () => import('../schedule/ClassEditorScreen');
 
@@ -174,6 +177,35 @@ export const ROUTE_MODULES = {
     load: loadChannelEditor,
     warm: true,
     prefetch: (pathname) => [entityPath(CHANNELS_PATH, lastSegment(pathname))],
+  },
+  // «Библиотека» (слой 3.2, docs/PLAN.md §14) — подэкран «Занятий», вход
+  // кнопкой в шапке PlanningActions.tsx, не пункт меню (ADR-0025). Занятия
+  // расписания нужны и списку (рубрикация строки, MaterialCard.tsx), и форме
+  // (привязка галочками, MaterialClassesField.tsx) — греем их вместе с самим
+  // ресурсом.
+  materials: {
+    path: '/materials',
+    load: () => import('../materials/MaterialsScreen'),
+    warm: true,
+    prefetch: () => [materialsListPath(''), CLASSES_LIST_PATH],
+  },
+  // `/materials/new` раньше `/materials/:materialId` — тот же порядок, что у
+  // соседних редакторов (ADR-0033): статический сегмент должен выигрывать у
+  // параметра.
+  materialNew: {
+    path: '/materials/new',
+    load: loadMaterialEditor,
+    warm: true,
+    prefetch: () => [CLASSES_LIST_PATH],
+  },
+  materialEditor: {
+    path: '/materials/:materialId',
+    load: loadMaterialEditor,
+    warm: true,
+    prefetch: (pathname) => [
+      entityPath(MATERIALS_PATH, lastSegment(pathname)),
+      CLASSES_LIST_PATH,
+    ],
   },
   broadcasts: {
     path: '/broadcasts',

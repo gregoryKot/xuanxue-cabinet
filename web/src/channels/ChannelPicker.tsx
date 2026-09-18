@@ -1,31 +1,13 @@
 // Список каналов галочками — одна механика на кабинет (CLAUDE.md «Одна
-// механика — один компонент», pr-k3-fixes.md п.9). Сама галочка — общий
-// components/Toggle.tsx, как «Отправить сейчас» рядом: системный чекбокс
-// рисовался маленьким серым квадратом мимо палитры (отзыв владельца
-// 2026-09-16). Раньше та же разметка дублировалась в
-// schedule/ClassChannelsField.tsx (лист занятия) и
-// broadcasts/BroadcastFormFields.tsx (форма рассылки) — jscpd поймал бы
-// дубль. `emptyMessage` — у пустого списка разный смысл в разных местах
-// («каналов нет вовсе» у занятия, «нет включённых» у рассылки), поэтому
-// текст передаёт вызывающий компонент, а не общий. `ref` — на сам `fieldset`
-// (`tabIndex={-1}`): форма рассылки фокусирует его при ошибке «выберите
-// канал» (pr-k3-fixes.md п.6, broadcastFormInput.ts).
-import { forwardRef, type CSSProperties, type ReactNode } from 'react';
+// механика — один компонент», pr-k3-fixes.md п.9). Сама механика чекбоксов —
+// общий components/CheckboxListField.tsx (материалы, слой 3.2, привязывают
+// занятия ровно тем же приёмом, MaterialClassesField.tsx): здесь только свой
+// вид подписи «тип · название» и своя карточка пропсов, знакомая остальному
+// кабинету (ClassChannelsField.tsx, broadcasts/BroadcastFormFields.tsx).
+import { forwardRef, type ReactNode } from 'react';
 import type { ChannelDto } from '@xuanxue/shared';
-import { Toggle } from '../components/Toggle';
+import { CheckboxListField } from '../components/CheckboxListField';
 import { CHANNEL_TYPE_LABELS_RU } from './channelTypeLabels';
-
-const fieldsetStyle: CSSProperties = {
-  border: 'none',
-  padding: 0,
-  margin: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-};
-const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
-const hintStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
-const errorStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--danger)' };
 
 interface ChannelPickerProps {
   legend: string;
@@ -42,33 +24,22 @@ export const ChannelPicker = forwardRef<HTMLFieldSetElement, ChannelPickerProps>
     { legend, channels, selectedIds, onChange, hint, emptyMessage, error },
     ref,
   ) {
-    function toggle(id: string, checked: boolean) {
-      onChange(checked ? [...selectedIds, id] : selectedIds.filter((x) => x !== id));
-    }
+    const options = channels.map((channel) => ({
+      id: channel.id,
+      label: `${CHANNEL_TYPE_LABELS_RU[channel.type]} · ${channel.title}`,
+    }));
 
     return (
-      <fieldset ref={ref} tabIndex={-1} style={fieldsetStyle}>
-        <legend style={legendStyle}>{legend}</legend>
-        {hint}
-
-        {channels.length === 0 ? (
-          <p style={hintStyle}>{emptyMessage}</p>
-        ) : (
-          channels.map((channel) => (
-            <Toggle
-              key={channel.id}
-              label={`${CHANNEL_TYPE_LABELS_RU[channel.type]} · ${channel.title}`}
-              checked={selectedIds.includes(channel.id)}
-              onChange={(checked) => toggle(channel.id, checked)}
-            />
-          ))
-        )}
-        {error && (
-          <p role="alert" style={errorStyle}>
-            {error}
-          </p>
-        )}
-      </fieldset>
+      <CheckboxListField
+        ref={ref}
+        legend={legend}
+        options={options}
+        selectedIds={selectedIds}
+        onChange={onChange}
+        hint={hint}
+        emptyMessage={emptyMessage}
+        error={error}
+      />
     );
   },
 );

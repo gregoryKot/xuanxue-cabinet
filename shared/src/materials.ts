@@ -9,10 +9,15 @@
 export const MATERIAL_KINDS = ['book', 'article', 'video', 'document'] as const;
 export type MaterialKind = (typeof MATERIAL_KINDS)[number];
 
-// Подписи видов для интерфейса и бота («Книга», «Статья», «Видео»,
-// «Документ») — в этом PR (слой 3.1, только API) их некому импортировать:
-// добавит слой 3.2 вместе с экраном `/materials`, а не сейчас про запас,
-// иначе check-shared-exports.mjs роняет CI на неиспользуемом имени барабана.
+/** Подписи видов для интерфейса и бота — один источник (CLAUDE.md «Без
+ * магических чисел и строк»): второго места с названиями видов в коде быть
+ * не должно (слой 3.2, docs/PLAN.md §14). */
+export const MATERIAL_KIND_LABELS: Record<MaterialKind, string> = {
+  book: 'Книга',
+  article: 'Статья',
+  video: 'Видео',
+  document: 'Документ',
+};
 
 /** Отметка «после оплаты» у материала (ADR-0048) — школьный рубильник
  * `settings.materialsPaidAccess` решает, действует ли она сейчас. */

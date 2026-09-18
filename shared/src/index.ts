@@ -292,6 +292,7 @@ export type {
 } from './materials';
 export {
   MATERIAL_KINDS,
+  MATERIAL_KIND_LABELS,
   MATERIAL_ACCESS_LEVELS,
   MATERIAL_LIMITS,
   MATERIAL_MAX_CLASS_IDS,

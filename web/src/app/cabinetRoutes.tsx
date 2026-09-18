@@ -23,6 +23,8 @@ const PlanningScreen = lazy(ROUTE_MODULES.planning.load);
 const LessonEditorScreen = lazy(ROUTE_MODULES.lessonEditor.load);
 const ChannelsScreen = lazy(ROUTE_MODULES.channels.load);
 const ChannelEditorScreen = lazy(ROUTE_MODULES.channelEditor.load);
+const MaterialsScreen = lazy(ROUTE_MODULES.materials.load);
+const MaterialEditorScreen = lazy(ROUTE_MODULES.materialEditor.load);
 const BroadcastsScreen = lazy(ROUTE_MODULES.broadcasts.load);
 const BroadcastNewScreen = lazy(ROUTE_MODULES.broadcastNew.load);
 const TemplatesScreen = lazy(ROUTE_MODULES.templates.load);
@@ -64,6 +66,14 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.channels.path} element={<ChannelsScreen />} />
     <Route path={ROUTE_MODULES.channelNew.path} element={<ChannelEditorScreen />} />
     <Route path={ROUTE_MODULES.channelEditor.path} element={<ChannelEditorScreen />} />
+    {/* «Библиотека» (слой 3.2) — подэкран «Занятий», вход кнопкой в шапке
+        PlanningActions.tsx, не пункт меню (ADR-0025). Роль на маршруте не
+        нужна: AppShell.tsx уже отдаёт Outlet только штату школы, ученик сюда
+        не попадёт (как /exam-items), а API дополнительно закрыт ролью на
+        контроллере (MaterialsController). */}
+    <Route path={ROUTE_MODULES.materials.path} element={<MaterialsScreen />} />
+    <Route path={ROUTE_MODULES.materialNew.path} element={<MaterialEditorScreen />} />
+    <Route path={ROUTE_MODULES.materialEditor.path} element={<MaterialEditorScreen />} />
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
     <Route path={ROUTE_MODULES.broadcastNew.path} element={<BroadcastNewScreen />} />
     <Route path={ROUTE_MODULES.templates.path} element={<TemplatesScreen />} />

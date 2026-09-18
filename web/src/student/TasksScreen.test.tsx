@@ -152,4 +152,21 @@ describe('TasksScreen — старт попытки', () => {
     expect(screen.queryByText('Экран сдачи')).not.toBeInTheDocument();
     await waitFor(() => expect(button).toBeEnabled());
   });
+
+  // Сбой самого списка, а не старта: экран показывает баннер с «Обновить», и
+  // кнопка обязана повторить запрос, а не просто стоять.
+  it('сбой списка — «Обновить» повторяет запрос', async () => {
+    mockedApiFetch.mockRejectedValueOnce(
+      new ApiError('Сервис недоступен', 503, 'unknown'),
+    );
+    renderScreen();
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    mockedApiFetch.mockResolvedValueOnce([makeExam()]);
+    screen.getByRole('button', { name: 'Обновить' }).click();
+
+    expect(await screen.findByRole('button', { name: 'Начать' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });
