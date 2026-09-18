@@ -23,6 +23,7 @@ const STUDENT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 
 function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] }) {

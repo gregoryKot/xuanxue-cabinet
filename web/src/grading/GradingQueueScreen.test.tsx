@@ -26,6 +26,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: true,
   botChatActive: true,
+  needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -35,6 +36,7 @@ const ADMIN: MeDto = {
   status: 'active',
   telegramLinked: true,
   botChatActive: false,
+  needsProfile: false,
 };
 
 function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {

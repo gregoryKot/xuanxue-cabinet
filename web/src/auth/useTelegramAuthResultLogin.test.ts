@@ -105,10 +105,29 @@ describe('useTelegramAuthResultLogin', () => {
 
     await waitFor(() => expect(result.current.error).toBe('Подпись виджета не сошлась.'));
     expect(result.current.pending).toBe(false);
+    // errorStatus (ADR-0044) — TelegramLoginSection.tsx отличает 403 (спокойный
+    // цвет) от остальных ошибок входа (кривая подпись — остаётся красной).
+    expect(result.current.errorStatus).toBe(401);
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('POST падает не ApiError — общий текст ошибки', async () => {
+  it('POST падает 403 (нет ссылки-приглашения или blocked) — errorStatus 403', async () => {
+    window.location.hash = toTgAuthResultHash(fakeUser);
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(
+        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+        403,
+        'forbidden',
+      ),
+    );
+    const refresh = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useTelegramAuthResultLogin(refresh));
+
+    await waitFor(() => expect(result.current.errorStatus).toBe(403));
+  });
+
+  it('POST падает не ApiError — общий текст ошибки, errorStatus null', async () => {
     window.location.hash = toTgAuthResultHash(fakeUser);
     mockedApiFetch.mockRejectedValue(new Error('boom'));
     const refresh = vi.fn().mockResolvedValue(undefined);
@@ -118,6 +137,7 @@ describe('useTelegramAuthResultLogin', () => {
     await waitFor(() =>
       expect(result.current.error).toBe('Не удалось войти. Попробуйте ещё раз.'),
     );
+    expect(result.current.errorStatus).toBeNull();
   });
 
   it('navigateAfterLogin: false (JoinScreen, ADR-0030) — refresh() есть, navigate не вызван', async () => {

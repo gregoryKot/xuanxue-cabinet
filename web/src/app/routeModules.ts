@@ -99,6 +99,13 @@ export const ROUTE_MODULES = {
     warm: false,
   },
   join: { path: '/join/:code', load: () => import('../join/JoinScreen'), warm: false },
+  // Экран первого входа (ADR-0044) — как login/emailLogin/join, вошедшему,
+  // который уже назвался, чанк не нужен, греть в фоне нечего.
+  welcome: {
+    path: '/welcome',
+    load: () => import('../welcome/WelcomeScreen'),
+    warm: false,
+  },
   schedule: {
     path: '/schedule',
     load: () => import('../schedule/ScheduleScreen'),

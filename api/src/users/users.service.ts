@@ -34,6 +34,7 @@ export interface UserLean {
   status: UserStatus;
   lastLoginAt?: Date;
   joinedViaInviteAt?: Date;
+  profileNamedAt?: Date;
 }
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
@@ -61,6 +62,7 @@ export function toLean(doc: UserDoc): UserLean {
     status: normalizeUserStatus(doc.status, doc._id.toString()),
     lastLoginAt: doc.lastLoginAt,
     joinedViaInviteAt: doc.joinedViaInviteAt,
+    profileNamedAt: doc.profileNamedAt,
   };
 }
 

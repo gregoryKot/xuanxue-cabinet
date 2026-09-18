@@ -29,6 +29,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 
 /** Даёт тесту доступ к `refresh()` контекста — без своего экрана незачем

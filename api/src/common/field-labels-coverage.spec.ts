@@ -41,6 +41,7 @@ import {
   UpdateTemplatesDto,
 } from '../settings/dto/update-settings.dto';
 import { ListUsersDto } from '../users/dto/list-users.dto';
+import { UpdateMyProfileDto } from '../users/dto/update-my-profile.dto';
 import { UpdateUserRolesDto } from '../users/dto/update-user-roles.dto';
 
 type DtoConstructor = new (...args: never[]) => object;
@@ -83,6 +84,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   UpdateSettingsDto,
   UpdateTemplatesDto,
   ListUsersDto,
+  UpdateMyProfileDto,
   UpdateUserRolesDto,
 ];
 

@@ -17,6 +17,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -26,6 +27,7 @@ const ADMIN: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 
 function renderNav(

@@ -25,6 +25,7 @@ describe('matchRoute', () => {
       ROUTE_MODULES.examItemEditor.load,
     );
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
+    expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
     expect(loaderAt('/planning')).toBe(ROUTE_MODULES.planning.load);
     expect(loaderAt('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
     expect(loaderAt('/planning/652f00000000000000000003')).toBe(
@@ -96,7 +97,12 @@ describe('matchRoute', () => {
 describe('ROUTE_MODULES', () => {
   it('экраны входа не греются в фоне — вошедшему они не нужны', () => {
     const notWarmed = routes.filter((route) => !route.warm).map((route) => route.path);
-    expect(notWarmed.sort()).toEqual(['/join/:code', '/login', '/login/email']);
+    expect(notWarmed.sort()).toEqual([
+      '/join/:code',
+      '/login',
+      '/login/email',
+      '/welcome',
+    ]);
   });
 
   it('у каждого экрана свой путь — иначе первый перекрывает второй', () => {

@@ -28,6 +28,10 @@ function renderGuarded(initialEntry = '/schedule') {
         <Routes>
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route element={<RequireAuth />}>
+            {/* Внутри RequireAuth, как в App.tsx (ADR-0044) — иначе тест не
+                поймал бы петлю «RequireAuth уводит на /welcome, а сам /welcome
+                снова проходит через RequireAuth и уводит на /welcome». */}
+            <Route path="/welcome" element={<p>Экран знакомства</p>} />
             <Route path="/schedule" element={<p>Расписание</p>} />
             <Route path="/exams" element={<p>Экзамены</p>} />
           </Route>
@@ -35,6 +39,20 @@ function renderGuarded(initialEntry = '/schedule') {
       </AuthProvider>
     </MemoryRouter>,
   );
+}
+
+/** Общее для теста первого входа (ADR-0044) — различается только `needsProfile`. */
+function meWithNeedsProfile(needsProfile: boolean): MeDto {
+  return {
+    id: 'u1',
+    name: 'Новый ученик',
+    roles: [],
+    tz: 'Asia/Jerusalem',
+    status: 'active',
+    telegramLinked: false,
+    botChatActive: false,
+    needsProfile,
+  };
 }
 
 describe('RequireAuth', () => {
@@ -64,6 +82,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -84,6 +103,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(student);
 
@@ -127,6 +147,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -146,6 +167,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValueOnce(me);
 
@@ -154,5 +176,35 @@ describe('RequireAuth', () => {
     await user.click(await screen.findByRole('button', { name: 'Повторить' }));
 
     expect(await screen.findByText('Расписание')).toBeInTheDocument();
+  });
+});
+
+// ADR-0044 «Мягкий первый вход»: не назвавшегося (needsProfile) уводим на
+// /welcome прежде, чем показать любой другой вложенный маршрут.
+describe('RequireAuth — первый вход (ADR-0044)', () => {
+  it('needsProfile: true — уводит на /welcome, адрес запоминается для возврата', async () => {
+    mockedApiFetch.mockResolvedValue(meWithNeedsProfile(true));
+
+    renderGuarded('/exams');
+
+    expect(await screen.findByText('Экран знакомства')).toBeInTheDocument();
+    expect(consumeReturnTo()).toBe('/exams');
+  });
+
+  it('needsProfile: false — пускает к вложенному маршруту, редиректа на /welcome нет', async () => {
+    mockedApiFetch.mockResolvedValue(meWithNeedsProfile(false));
+
+    renderGuarded();
+
+    expect(await screen.findByText('Расписание')).toBeInTheDocument();
+    expect(screen.queryByText('Экран знакомства')).not.toBeInTheDocument();
+  });
+
+  it('уже на /welcome с needsProfile: true — рендерится сам /welcome, без петли редиректа', async () => {
+    mockedApiFetch.mockResolvedValue(meWithNeedsProfile(true));
+
+    renderGuarded('/welcome');
+
+    expect(await screen.findByText('Экран знакомства')).toBeInTheDocument();
   });
 });

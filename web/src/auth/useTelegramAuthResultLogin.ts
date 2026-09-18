@@ -34,6 +34,13 @@ function postTelegramLogin(
 export interface UseTelegramAuthResultLoginResult {
   pending: boolean;
   error: string | null;
+  /** Статус ApiError неудачного входа — экран (TelegramLoginSection.tsx)
+   * отличает 403 (у незнакомца нет ссылки-приглашения, NO_INVITE_LINK_MESSAGE,
+   * или человек заблокирован, ACCESS_MESSAGE — спокойное объяснение, не
+   * красный цвет: тут никто ничего не сломал) от остальных ошибок (сеть,
+   * кривая подпись — остаются красными). `null` — успех или сбой без
+   * статуса (сеть). */
+  errorStatus: number | null;
 }
 
 export interface UseTelegramAuthResultLoginOptions {
@@ -55,6 +62,7 @@ export function useTelegramAuthResultLogin(
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   // React 19 StrictMode в dev вызывает эффект дважды подряд — без флага
   // фрагмент отправился бы на сервер вторым POST-запросом с уже
   // использованным (но ещё формально валидным до TTL) payload'ом.
@@ -81,9 +89,10 @@ export function useTelegramAuthResultLogin(
       })
       .catch((err: unknown) => {
         setError(err instanceof ApiError ? err.message : LOGIN_FAILED_MESSAGE);
+        setErrorStatus(err instanceof ApiError ? err.status : null);
       })
       .finally(() => setPending(false));
   }, [navigate, refresh, navigateAfterLogin, inviteCode]);
 
-  return { pending, error };
+  return { pending, error, errorStatus };
 }

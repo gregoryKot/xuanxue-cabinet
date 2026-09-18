@@ -17,6 +17,7 @@ import { ROUTE_MODULES } from './routeModules';
 const LoginScreen = lazy(ROUTE_MODULES.login.load);
 const EmailLoginCallbackScreen = lazy(ROUTE_MODULES.emailLogin.load);
 const JoinScreen = lazy(ROUTE_MODULES.join.load);
+const WelcomeScreen = lazy(ROUTE_MODULES.welcome.load);
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -46,6 +47,11 @@ export default function App() {
                 RequireAuth не идёт — гостю ещё нечего показывать из кабинета. */}
             <Route path={ROUTE_MODULES.join.path} element={<JoinScreen />} />
             <Route element={<RequireAuth />}>
+              {/* Внутри RequireAuth (без сессии спрашивать имя не у кого), но
+                  снаружи AppShell (ADR-0044): оболочка кабинета вокруг этого
+                  экрана показала бы меню и разделы раньше, чем человек
+                  назвался. RequireAuth сам уводит сюда, пока me.needsProfile. */}
+              <Route path={ROUTE_MODULES.welcome.path} element={<WelcomeScreen />} />
               <Route element={<AppShell />}>{cabinetRoutes}</Route>
             </Route>
             {/* Неизвестный путь — на главную, а не белый экран 404. */}

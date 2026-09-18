@@ -7,7 +7,12 @@
 // auth-email-verify-access.e2e-spec.ts (тот же setup через
 // createEmailVerifyHelpers). MailService подменён фейком (fake-mail-service.ts).
 import request from 'supertest';
-import { NO_INVITE_LINK_MESSAGE, type ApiErrorBody, type MeDto } from '@xuanxue/shared';
+import {
+  NEW_PERSON_NAME,
+  NO_INVITE_LINK_MESSAGE,
+  type ApiErrorBody,
+  type MeDto,
+} from '@xuanxue/shared';
 import { MailService } from '../src/mail/mail.service';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import {
@@ -74,8 +79,21 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
     expect(body.botChatActive).toBe(false);
     // Только поля MeDto — email/tokenHash в ответе нет (SECURITY §2, CLAUDE.md «API»).
     expect(Object.keys(body).sort()).toEqual(
-      ['botChatActive', 'id', 'name', 'roles', 'status', 'telegramLinked', 'tz'].sort(),
+      [
+        'botChatActive',
+        'id',
+        'name',
+        'needsProfile',
+        'roles',
+        'status',
+        'telegramLinked',
+        'tz',
+      ].sort(),
     );
+    // Новый по почте зовётся заглушкой, не своим адресом (SECURITY §1,
+    // ADR-0044) — и ещё не называл себя сам.
+    expect(body.name).toBe(NEW_PERSON_NAME);
+    expect(body.needsProfile).toBe(true);
     const cookie = String(res.headers['set-cookie']);
     expect(cookie).toContain('session=');
 
