@@ -1,4 +1,4 @@
-import type { Db } from 'mongodb';
+import type { mongo } from 'mongoose';
 import { seedSchoolClasses } from './0001-school-classes.migration';
 import { fillSchoolZoomLinks } from './0003-school-zoom-links.migration';
 import { attachChannelsToClasses } from './0004-attach-channels-to-classes.migration';
@@ -6,6 +6,12 @@ import { recordingTemplateWithoutDuration } from './0005-recording-template-with
 import { examItemsPublishedByDefault } from './0006-exam-items-published-by-default.migration';
 import { invitedUsersActive } from './0007-invited-users-active.migration';
 import { gradingWithoutRubric } from './0008-grading-without-rubric.migration';
+
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
+// с тем, что отдаёт `connection.db` — без второй копии пакета `mongodb`
+// в дереве зависимостей.
+type Db = mongo.Db;
 
 // Реестр миграций Mongo. Порядок массива — порядок применения. `id` — ключ
 // записи о применении в коллекции `migrations`; менять id уже закоммиченной

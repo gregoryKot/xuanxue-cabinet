@@ -7,10 +7,15 @@ import { randomUUID } from 'crypto';
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
-import type { Db } from 'mongodb';
-import type { Connection } from 'mongoose';
+import type { Connection, mongo } from 'mongoose';
 import { MIGRATIONS, type Migration } from './migrations';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
+
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
+// с тем, что отдаёт `connection.db` — без второй копии пакета `mongodb`
+// в дереве зависимостей.
+type Db = mongo.Db;
 
 const COLLECTION = 'migrations';
 const LOCK_ID = '__lock';

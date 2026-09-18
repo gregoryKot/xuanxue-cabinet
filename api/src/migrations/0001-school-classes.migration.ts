@@ -14,8 +14,15 @@
 // схемы, а не тянуть за собой её сегодняшнюю версию. Поэтому все поля,
 // которые схема проставила бы по умолчанию (tz, channelIds, leadMinutes,
 // active, timestamps, `_id` у правила), выписаны здесь явно.
-import { ObjectId, type Db } from 'mongodb';
+import { mongo } from 'mongoose';
 import { DEFAULT_LEAD_MINUTES, SCHOOL_TZ, type Weekday } from '@xuanxue/shared';
+
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому и `Db`, и `ObjectId`
+// совпадают с тем, что использует сам mongoose — без второй копии пакета
+// `mongodb` в дереве зависимостей.
+const { ObjectId } = mongo;
+type Db = mongo.Db;
 
 const COLLECTION = 'classes';
 

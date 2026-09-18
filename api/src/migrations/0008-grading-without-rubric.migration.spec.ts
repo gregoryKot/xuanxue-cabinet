@@ -4,11 +4,14 @@
 // Mongoose .create(): схема больше не знает про rubric/criteria (contract
 // после этого PR), а миграция должна снять поля у данных, которые реально
 // лежат в проде до деплоя.
-import type { Connection } from 'mongoose';
-import { ObjectId } from 'mongodb';
+import { mongo, type Connection } from 'mongoose';
 import { gradingWithoutRubric } from './0008-grading-without-rubric.migration';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому `ObjectId` — тот же
+// класс, что и внутри mongoose, без второй копии пакета `mongodb`.
+const { ObjectId } = mongo;
 const EXAMS = 'exams';
 const EXAM_GRADINGS = 'exam_gradings';
 
