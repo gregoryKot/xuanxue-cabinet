@@ -49,4 +49,24 @@ describe('StatNumber', () => {
       '1px solid var(--control-border)',
     );
   });
+
+  // Моноширинные цифры по умолчанию (docs/adr/0043) — без них колонка чисел
+  // «Рассылок» и время в журнале дёргаются при каждом обновлении значения.
+  it('число набрано моноширинными цифрами по умолчанию', () => {
+    render(<StatNumber value={48} label="ушло за 30 дней" />);
+
+    expect(screen.getByText('48').style.fontVariantNumeric).toBe('tabular-nums');
+  });
+
+  it('valueStyle переопределяет вид числа — красный цвет «Не отправилось»', () => {
+    render(
+      <StatNumber
+        value={1}
+        label="Не отправилось"
+        valueStyle={{ color: 'var(--danger)' }}
+      />,
+    );
+
+    expect(screen.getByText('1').style.color).toBe('var(--danger)');
+  });
 });

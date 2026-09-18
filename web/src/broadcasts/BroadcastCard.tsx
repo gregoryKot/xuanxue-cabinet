@@ -1,49 +1,50 @@
-// Строка рассылки в журнале — время антиквой, под ним вид и статус, первые
-// строки текста; раскрывается в список доставок (CLAUDE.md «Одна механика —
-// один компонент»). Облик — направление «тихо и благородно» (docs/adr/0031):
-// волосяная линия вместо рамки-карточки, статус растяжкой-заглавными
-// (`.xuanxue-status-label`), а не «пилюлей».
-//
-// Не `<button>` целиком, как строка канала или вопроса: внутри свои кнопки
-// («Раскрыть», «Отменить»), вложенные кнопки невалидны (CLAUDE.md
-// «Доступность») — отсюда общий listRowStyle, а не listCardStyle.
-//
-// Действия строки — текстовыми кнопками (components/TextLinkButton.tsx):
-// киноварь на экране одна, у «Новой рассылки», а обведённые кнопки в каждой
-// строке превращали журнал в стопку панелей (отзыв владельца 2026-09-16).
-// Отмена — через ConfirmDialog, как удаление канала: у рассылки нет пути
-// назад после отправки.
+// Строка рассылки в журнале — время и статус в одну линию, ниже текст поста;
+// раскрывается в список доставок (CLAUDE.md «Одна механика — один
+// компонент»). Журнал теперь одна карточка (обёртка в BroadcastsScreen.tsx,
+// `--radius-block`, `overflow: hidden`), строки разделяет волосяная линия
+// `--panel`, не своя карточка на строку (listCardStyles сюда не подходит,
+// docs/adr/0043). Действия строки — BroadcastCardActions.tsx: вынесены,
+// чтобы строка не пересекла порог 150 строк (CLAUDE.md «Храповики»).
 import { useState, type CSSProperties } from 'react';
 import type { BroadcastDto, ChannelDto } from '@xuanxue/shared';
-import { ConfirmDialog } from '../components/ConfirmDialog';
-import { errorFrom } from '../components/FormServerError';
-import {
-  listCardMetaStyle,
-  listCardTitleStyle,
-  listRowStyle,
-} from '../components/listCardStyles';
-import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
-import { TextLinkButton } from '../components/TextLinkButton';
 import { formatDateTime } from '../lib/formatDate';
 import { tzBadge } from '../schedule/timezoneLabel';
-import { BROADCAST_KIND_LABELS_RU, BROADCAST_STATUS_LABELS_RU } from './broadcastLabels';
+import {
+  BROADCAST_KIND_LABELS_RU,
+  BROADCAST_STATUS_COLOR,
+  BROADCAST_STATUS_LABELS_RU,
+} from './broadcastLabels';
+import { BroadcastCardActions } from './BroadcastCardActions';
 import { BroadcastDeliveriesList } from './BroadcastDeliveriesList';
 import { firstLines } from './firstLines';
 
-const CANCEL_ERROR = 'Не удалось отменить рассылку. Попробуйте ещё раз.';
-const CANCEL_MESSAGE =
-  'Рассылка не уйдёт ни в один канал. Вернуть её потом не получится.';
-
 const PREVIEW_LINES = 2;
 
-const rowStyle: CSSProperties = {
-  ...listRowStyle,
+const rowBaseStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
+  gap: 6,
+  padding: '16px 20px',
 };
-const previewStyle: CSSProperties = { ...noteStyle, whiteSpace: 'pre-wrap' };
-const actionsStyle: CSSProperties = { display: 'flex', gap: 24, flexWrap: 'wrap' };
+const topLineStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'baseline',
+  justifyContent: 'space-between',
+  gap: 16,
+};
+const timeStyle: CSSProperties = {
+  fontSize: 16,
+  fontWeight: 500,
+  fontVariantNumeric: 'tabular-nums',
+  color: 'var(--ink)',
+};
+const previewStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  lineHeight: 1.55,
+  color: 'var(--ink-soft)',
+  whiteSpace: 'pre-wrap',
+};
 
 interface BroadcastCardProps {
   broadcast: BroadcastDto;
@@ -57,6 +58,9 @@ interface BroadcastCardProps {
    * отличается от браузерного; `undefined`, если настройки не загрузились —
    * бейдж просто не показывается (pr-k3-fixes.md п.22). */
   schoolTz?: string;
+  /** Последняя строка журнала — без нижней волосяной линии, иначе у карточки-
+   * обёртки под линией остаётся голая полоска фона (docs/adr/0043). */
+  isLast?: boolean;
 }
 
 export function BroadcastCard({
@@ -65,58 +69,37 @@ export function BroadcastCard({
   onCancel,
   onDeliverySent,
   schoolTz,
+  isLast = false,
 }: BroadcastCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [confirmingCancel, setConfirmingCancel] = useState(false);
-  const [cancelPending, setCancelPending] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
   const canCancel = broadcast.status === 'scheduled';
   const deliveriesId = `broadcast-deliveries-${broadcast.id}`;
   const badge = schoolTz ? tzBadge(schoolTz) : null;
 
-  async function handleConfirmCancel() {
-    setCancelPending(true);
-    setCancelError(null);
-    try {
-      await onCancel(broadcast.id);
-    } catch (err) {
-      setCancelError(errorFrom(err, CANCEL_ERROR).message);
-    } finally {
-      setCancelPending(false);
-    }
-  }
-
   return (
-    <li style={rowStyle}>
-      <div style={listCardTitleStyle}>{formatDateTime(broadcast.scheduledAt)}</div>
-      <div style={listCardMetaStyle}>
-        {badge && `${badge} · `}
-        {BROADCAST_KIND_LABELS_RU[broadcast.kind]} ·{' '}
-        <span className="xuanxue-status-label">
+    <li
+      style={{
+        ...rowBaseStyle,
+        borderBottom: isLast ? 'none' : '1px solid var(--panel)',
+      }}
+    >
+      <div style={topLineStyle}>
+        <span style={timeStyle}>{formatDateTime(broadcast.scheduledAt)}</span>
+        <span style={{ fontSize: 13, color: BROADCAST_STATUS_COLOR[broadcast.status] }}>
+          {badge && `${badge} · `}
+          {BROADCAST_KIND_LABELS_RU[broadcast.kind]} ·{' '}
           {BROADCAST_STATUS_LABELS_RU[broadcast.status]}
         </span>
       </div>
       <p style={previewStyle}>{firstLines(broadcast.text, PREVIEW_LINES)}</p>
-      {cancelError && (
-        <p role="alert" style={dangerNoteStyle}>
-          {cancelError}
-        </p>
-      )}
 
-      <div style={actionsStyle}>
-        <TextLinkButton
-          aria-expanded={expanded}
-          aria-controls={deliveriesId}
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? 'Свернуть' : 'Раскрыть'}
-        </TextLinkButton>
-        {canCancel && (
-          <TextLinkButton danger onClick={() => setConfirmingCancel(true)}>
-            Отменить
-          </TextLinkButton>
-        )}
-      </div>
+      <BroadcastCardActions
+        expanded={expanded}
+        onToggleExpanded={() => setExpanded((v) => !v)}
+        deliveriesId={deliveriesId}
+        canCancel={canCancel}
+        onCancel={() => onCancel(broadcast.id)}
+      />
 
       {/* Обёртка рендерится всегда — `aria-controls` должен указывать на
           существующий в DOM элемент, даже когда список ещё свёрнут. */}
@@ -131,17 +114,6 @@ export function BroadcastCard({
           />
         )}
       </div>
-
-      {confirmingCancel && (
-        <ConfirmDialog
-          title="Отменить рассылку?"
-          message={CANCEL_MESSAGE}
-          confirmLabel="Отменить рассылку"
-          pending={cancelPending}
-          onConfirm={handleConfirmCancel}
-          onCancel={() => setConfirmingCancel(false)}
-        />
-      )}
     </li>
   );
 }

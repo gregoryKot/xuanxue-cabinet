@@ -50,7 +50,7 @@ describe('ManualDeliveriesSection', () => {
       />,
     );
 
-    expect(screen.queryByText('Ждут отправки вручную')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ждут отправки вручную/)).not.toBeInTheDocument();
   });
 
   it('пустой список — секции нет вовсе', () => {
@@ -65,10 +65,10 @@ describe('ManualDeliveriesSection', () => {
       />,
     );
 
-    expect(screen.queryByText('Ждут отправки вручную')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ждут отправки вручную/)).not.toBeInTheDocument();
   });
 
-  it('есть доставки — заголовок и карточка с якорем #manual', async () => {
+  it('есть доставки — заголовок со счётчиком, пояснение и карточка с якорем #manual', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValueOnce({});
     const onSent = vi.fn().mockResolvedValue(undefined);
@@ -84,7 +84,8 @@ describe('ManualDeliveriesSection', () => {
       />,
     );
 
-    expect(screen.getByText('Ждут отправки вручную')).toBeInTheDocument();
+    expect(screen.getByText('Ждут отправки вручную · 1')).toBeInTheDocument();
+    expect(screen.getByText(/Бот не пишет в такие каналы сам/)).toBeInTheDocument();
     expect(container.querySelector('#manual')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Отметить отправленным' }));
@@ -94,6 +95,30 @@ describe('ManualDeliveriesSection', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(onSent).toHaveBeenCalledTimes(1);
+  });
+
+  it('«Открыть» прокручивает к списку доставок под плашкой', async () => {
+    const user = userEvent.setup();
+    const channelsById = new Map([['ch1', makeChannel()]]);
+    const { container } = render(
+      <ManualDeliveriesSection
+        deliveries={[DELIVERY]}
+        loading={false}
+        error={null}
+        onRetry={vi.fn()}
+        channelsById={channelsById}
+        onSent={vi.fn()}
+      />,
+    );
+    // jsdom не реализует scrollIntoView — подставляем мок на сам элемент,
+    // как в hooks/useScrollToHash.test.tsx.
+    const list = container.querySelector('ul') as HTMLUListElement;
+    const scrollIntoView = vi.fn();
+    list.scrollIntoView = scrollIntoView;
+
+    await user.click(screen.getByRole('button', { name: 'Открыть' }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('доставка с каналом, которого нет в channelsById — тире вместо названия', () => {

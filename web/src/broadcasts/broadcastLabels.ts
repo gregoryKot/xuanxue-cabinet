@@ -9,6 +9,16 @@ export const BROADCAST_STATUS_LABELS_RU: Record<BroadcastStatus, string> = {
   cancelled: 'Отменено',
 };
 
+// Цвет меты строки журнала (BroadcastCard.tsx, docs/adr/0043) — тот же приём,
+// что у --jade в index.css («только смысл сдал/верно»), перенесённый на
+// «доставлено успешно»; --danger читается как «нужно вмешаться».
+export const BROADCAST_STATUS_COLOR: Record<BroadcastStatus, string> = {
+  scheduled: 'var(--ink-soft)',
+  sent: 'var(--jade)',
+  failed: 'var(--danger)',
+  cancelled: 'var(--ink-soft)',
+};
+
 export const BROADCAST_KIND_LABELS_RU: Record<BroadcastKind, string> = {
   lesson_link: 'Ссылка на занятие',
   recording: 'Запись',

@@ -1,41 +1,45 @@
-// Числа за период — верх «Рассылок» (CLAUDE.md «Продуктовая фича = число в
-// своём разделе», docs/adr/0025). Одна тихая строка: число и подпись рисует
-// общий components/StatNumber.tsx (ADR-0043 — гротеск, не антиква: общих
-// кеглей для «Экзаменов» и «Рассылок» раньше не было, и они разошлись).
-// Раньше это были пять карточек с рамкой на белом (SummaryCard.tsx) — стопка
-// визиток поверх журнала (отзыв владельца 2026-09-16). Направление «Тёплая
-// школа» карточки в кабинет вернуло — но спискам, не этой строке: строка
-// чисел остаётся тихой, без рамок и подложек (docs/adr/0043).
-//
-// «Отменено автоматикой» ведёт в журнал ниже с готовым фильтром — ссылкой
-// становится вся колонка числа, не одна подпись: подпись 13 px — цель
-// нажатия меньше 44 (CLAUDE.md «Доступность»).
+// Числа сводки вверху «Рассылок» (CLAUDE.md «Продуктовая фича = число в своём
+// разделе», docs/adr/0043). Раньше это была тихая строка без рамок (ADR-0031)
+// с пятью числами; макет «Тёплой школы» вернул карточки, но не для всех пяти —
+// «Ждут отправки вручную» теперь считает сама плашка
+// (ManualDeliveriesSection.tsx: там же список, число рядом с ним честнее).
+// Макет рисует три карточки, здесь их четыре: почему «Отменено автоматикой»
+// осталось — у самого числа в `numbersOf` ниже. Число рисует общий
+// components/StatNumber.tsx (CLAUDE.md «Одна механика — один компонент»).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { SummaryDto } from '@xuanxue/shared';
 import { StatNumber } from '../components/StatNumber';
 
-const rowStyle: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  // На 360 px числа переносятся по два-три в ряд — колонка узкая, но не
-  // рвётся на одно число в строке.
-  columnGap: 32,
-  rowGap: 16,
+// auto-fit/minmax, не жёсткий repeat(3, 1fr): на 360px три карточки по
+// 140px не влезают, и они сами перестраиваются в две колонки без
+// медиазапроса (CSSProperties его не умеет, макет только настольный).
+const gridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+  gap: 12,
 };
-const itemStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 2,
-  minHeight: 44,
-  color: 'var(--ink)',
+const cardStyle: CSSProperties = {
+  padding: '16px 18px',
+  borderRadius: 'var(--radius-block)',
+  background: 'var(--card)',
+  boxShadow: 'var(--shadow-card)',
+};
+const valueSizeStyle: CSSProperties = { fontSize: 26 };
+
+/** Карточка-ссылка: та же карточка, но кликается целиком, поэтому гасим
+ * системный синий и подчёркивание — цвет текста задают само число и подпись. */
+const linkCardStyle: CSSProperties = {
+  ...cardStyle,
+  display: 'block',
+  color: 'inherit',
   textDecoration: 'none',
 };
-const labelStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
-// Подпись-ссылка: линия под текстом вместо подчёркивания, как у остальных
-// текстовых ссылок кабинета (components/screenLayout.ts, textLinkStyle).
+
+// Подпись числа-ссылки — линия под текстом вместо подчёркивания, как у
+// остальных текстовых ссылок кабинета (components/screenLayout.ts): без неё
+// карточка ничем не показывает, что по ней переходят.
 const linkLabelStyle: CSSProperties = {
-  ...labelStyle,
   alignSelf: 'flex-start',
   borderBottom: '1px solid var(--control-border)',
   paddingBottom: 2,
@@ -44,15 +48,29 @@ const linkLabelStyle: CSSProperties = {
 interface SummaryNumber {
   value: number;
   label: string;
+  valueStyle?: CSSProperties;
+  /** Число ведёт в журнал с готовым фильтром — «Отменено автоматикой». */
   href?: string;
 }
 
 function numbersOf(summary: SummaryDto): SummaryNumber[] {
   return [
-    { value: summary.broadcastsSent, label: 'Рассылок отправлено' },
-    { value: summary.deliveriesFailed, label: 'Ошибок доставки' },
+    { value: summary.broadcastsSent, label: 'Ушло за 30 дней' },
     { value: summary.deliveriesPending, label: 'Ждут отправки' },
-    { value: summary.manualWaiting, label: 'Ждут отправки вручную' },
+    {
+      value: summary.deliveriesFailed,
+      label: 'Не отправилось',
+      // 8.34:1 на белой карточке — сбой всегда виден, даже мельком.
+      valueStyle: { color: 'var(--danger)' },
+    },
+    // Четвёртая карточка, которой в макете нет: он рисует ровно три. Число
+    // оставлено осознанно — отменённая автоматикой рассылка это несостоявшаяся
+    // отправка, то есть ровно тот тихий отказ, который CLAUDE.md называет самой
+    // дорогой ошибкой в продукте про рассылки. Убрать его отсюда значит убрать
+    // и единственный короткий путь к этим записям: журнал по такому фильтру
+    // больше ниоткуда не открывается. Сетка auto-fit принимает четвёртую
+    // карточку без правки раскладки. Если владелец решит, что число лишнее, —
+    // удаляется одной строкой вместе со ссылкой.
     {
       value: summary.broadcastsCancelled,
       label: 'Отменено автоматикой',
@@ -63,22 +81,25 @@ function numbersOf(summary: SummaryDto): SummaryNumber[] {
 
 export function SummaryNumbers({ summary }: { summary: SummaryDto }) {
   return (
-    <div style={rowStyle}>
+    <div style={gridStyle}>
       {numbersOf(summary).map((number) => {
-        const content = (
+        const stat = (
           <StatNumber
             value={number.value}
             label={number.label}
+            valueStyle={{ ...valueSizeStyle, ...number.valueStyle }}
             labelStyle={number.href ? linkLabelStyle : undefined}
           />
         );
+        // Ссылкой становится вся карточка, а не одна подпись: подпись 13px —
+        // цель нажатия меньше 44 (CLAUDE.md «Доступность»).
         return number.href ? (
-          <Link key={number.label} to={number.href} style={itemStyle}>
-            {content}
+          <Link key={number.label} to={number.href} style={linkCardStyle}>
+            {stat}
           </Link>
         ) : (
-          <div key={number.label} style={itemStyle}>
-            {content}
+          <div key={number.label} style={cardStyle}>
+            {stat}
           </div>
         );
       })}

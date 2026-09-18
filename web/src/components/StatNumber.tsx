@@ -21,12 +21,18 @@ const wrapperStyle: CSSProperties = { display: 'flex', flexDirection: 'column', 
 // «Правило акцента», правило сохранено в ADR-0043). Причина жила в
 // exams/ExamsSectionStats.tsx, пока число рисовал он сам, — переехала сюда
 // вместе с механикой.
-const valueStyle: CSSProperties = {
+//
+// `fontVariantNumeric: 'tabular-nums'` — цифры моноширинные: в макете
+// «Рассылок» карточки чисел стоят в ряд и время в журнале набрано тем же
+// приёмом. Без него «48» и «11» разной ширины, и колонка/строка дёргается
+// при каждом обновлении числа (docs/adr/0043).
+const defaultValueStyle: CSSProperties = {
   fontFamily: 'var(--font-text)',
   fontWeight: 500,
   fontSize: 27,
   lineHeight: 1.1,
   color: 'var(--ink)',
+  fontVariantNumeric: 'tabular-nums',
 };
 
 const defaultLabelStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
@@ -37,16 +43,26 @@ interface StatNumberProps {
   /** Разметка обёртки целиком — по умолчанию колонка; экран передаёт свою,
    * когда число и подпись должны стоять в строку (exams/ExamsSectionStats.tsx). */
   style?: CSSProperties;
-  /** Точечная правка подписи поверх вида по умолчанию — например,
-   * подчёркивание у ссылки «Отменено автоматикой»
-   * (broadcasts/SummaryNumbers.tsx: там подпись ещё и ссылка). */
+  /** Точечная правка вида самого числа — кегль 26px и красный цвет
+   * «Не отправилось» у карточек «Рассылок» (broadcasts/SummaryNumbers.tsx):
+   * повод завести проп, а не четвёртую копию компонента (CLAUDE.md «Одна
+   * механика — один компонент»). */
+  valueStyle?: CSSProperties;
+  /** Точечная правка подписи поверх вида по умолчанию — симметрично
+   * valueStyle, для чисел-ссылок (подпись тогда ещё и подчёркнута). */
   labelStyle?: CSSProperties;
 }
 
-export function StatNumber({ value, label, style, labelStyle }: StatNumberProps) {
+export function StatNumber({
+  value,
+  label,
+  style,
+  valueStyle,
+  labelStyle,
+}: StatNumberProps) {
   return (
     <span style={{ ...wrapperStyle, ...style }}>
-      <span style={valueStyle}>{value}</span>
+      <span style={{ ...defaultValueStyle, ...valueStyle }}>{value}</span>
       <span style={{ ...defaultLabelStyle, ...labelStyle }}>{label}</span>
     </span>
   );
