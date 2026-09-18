@@ -339,3 +339,39 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     expect(shellRow.style.flex).toBe('1 1 0%');
   });
 });
+
+// Отзыв владельца 2026-09-18: «нижнее меню скачет». Причина была в том, что
+// панель жила внутри прокрутки документа (`position: sticky`), а iOS двигает
+// документ целиком на оттяжке и инерции. Гейт на новый приём: сама оболочка
+// ровно в экран и не прокручивается, прокручивается колонка содержимого.
+describe('AppShell — прокрутка внутри оболочки, а не страницы', () => {
+  it('оболочка ровно в высоту экрана и сама не прокручивается', async () => {
+    stubMobileViewport();
+    const { container } = renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
+
+    const shell = container.firstElementChild as HTMLElement;
+    expect(shell.style.height).toBe('100dvh');
+    expect(shell.style.overflow).toBe('hidden');
+  });
+
+  it('прокручивается колонка содержимого, и оттяжка не уходит на страницу', async () => {
+    stubMobileViewport();
+    renderShell(TEACHER);
+    const main = (await screen.findByText('Содержимое расписания')).closest('main');
+    const contentColumn = main?.parentElement as HTMLElement;
+
+    expect(contentColumn.style.overflowY).toBe('auto');
+    expect(contentColumn.style.overscrollBehavior).toBe('contain');
+  });
+
+  // Колонка разделов на мониторе больше не может рассчитывать на прокрутку
+  // страницы: на низком окне блок человека «Уведомления · Выйти» оказался бы
+  // недостижим (sideNavStyles.ts, sideStyle).
+  it('боковая колонка на мониторе прокручивается сама', async () => {
+    renderShell(TEACHER);
+    const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
+
+    expect((nav.parentElement as HTMLElement).style.overflowY).toBe('auto');
+  });
+});

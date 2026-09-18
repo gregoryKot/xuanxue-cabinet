@@ -12,10 +12,8 @@ import { Link, useLocation } from 'react-router-dom';
 import type { MeDto } from '@xuanxue/shared';
 import { hasRole } from '../auth/hasRole';
 import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
+import { bottomLinkStyle, bottomPillStyle, bottomStyle } from './bottomNavStyles';
 import {
-  bottomLinkStyle,
-  bottomPillStyle,
-  bottomStyle,
   personActionsRowStyle,
   personBlockStyle,
   sideBrandRowStyle,
@@ -24,7 +22,7 @@ import {
   sideLinkStyle,
   sideSectionsStyle,
   sideStyle,
-} from './navLinkStyles';
+} from './sideNavStyles';
 import { activeSectionPath, NAV_ITEMS } from './navItems';
 
 export { SIDE_NAV_WIDTH_PX };
@@ -53,7 +51,7 @@ export function AppNav({ isMobile, me, notificationsLink, logoutButton }: AppNav
 
   // Нижняя панель — своя разметка: цель нажатия (`<Link>`, 44px, без вида) и
   // видимая плашка вокруг подписи (`<span>`, размер макета) — разные элементы,
-  // не один стиль на двоих (navLinkStyles.ts: bottomLinkStyle/bottomPillStyle).
+  // не один стиль на двоих (bottomNavStyles.ts: bottomLinkStyle/bottomPillStyle).
   if (isMobile) {
     return (
       <nav style={bottomStyle} aria-label={SECTIONS_LABEL}>

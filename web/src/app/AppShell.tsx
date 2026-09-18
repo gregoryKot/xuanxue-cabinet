@@ -21,8 +21,8 @@
 // У ученика на мониторе подвал ещё прижимался к низу окна — содержимое
 // держала обёртка с `flex: 1` (болезнь, которую #198 вылечил учителю,
 // ADR-0043 «Контекст»). Обёртка стала `<main>` без `flex`: растёт по
-// содержимому, подвал — сразу за ним. `shellRowStyle.flex: 1` ниже не трогаем
-// — им на телефоне держится нижняя панель вкладок.
+// содержимому, подвал — сразу за ним. `shellRowStyle.flex: 1`
+// (appShellStyles.ts) не трогаем — им на телефоне держится нижняя панель.
 // Роль без teacher/assistant/admin (ученик, бухгалтер) — StudentScreen вместо
 // содержимого маршрута: у бухгалтера прав пока нет нигде (деньги — этап 3,
 // docs/PLAN.md). Исключения — «/notifications» (личная настройка человека,
@@ -34,50 +34,24 @@
 // Статуса «ждёт подтверждения» больше нет (ADR-0036) — вошедший всегда либо
 // уже видит свой раздел, либо гвард (RequireAuth) увёл его на /login раньше,
 // чем этот компонент вообще отрисовался.
-import type { CSSProperties } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
 import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
+import {
+  contentColumnStyle,
+  footerStyle,
+  shellRowStyle,
+  shellStyle,
+} from './appShellStyles';
 import { AppShellBrandRow } from './AppShellBrandRow';
 import { isTeacher, showsRouteScreen } from './screenAccess';
 import { StudentScreen } from './StudentScreen';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
 const NOTIFICATIONS_PATH = '/notifications';
-
-// Ширина рамки макета (ADR-0043, screens/2a-broadcasts.html): на ней нав и
-// контент совпадают с мокапом один в один, а шире — лист центрируется полями,
-// а не висит у левого края (на мониторе владельца ~2000px колонка 880px
-// стояла прижатой влево, справа пустовало ~1100px бумаги).
-const SHELL_MAX_WIDTH_PX = 1120;
-
-const shellRowStyle: CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  minHeight: 0,
-  width: '100%',
-  maxWidth: SHELL_MAX_WIDTH_PX,
-  marginInline: 'auto',
-};
-
-const contentColumnStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const footerStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 16px',
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-};
 
 export function AppShell() {
   const { me } = useAuth();
@@ -102,11 +76,7 @@ export function AppShell() {
   const showFooter = !hasSideNav && !isMobile;
 
   return (
-    // `100dvh`, не `100vh`: на телефоне адресная строка то есть, то нет, и
-    // `100vh` не следит за её появлением — нижняя панель вкладок (`sticky`,
-    // AppNav.tsx) на каждое такое появление подпрыгивала бы вместе с ней (тот
-    // же урок, что и в .xuanxue-entry-page, index.css).
-    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+    <div style={shellStyle}>
       <div style={shellRowStyle}>
         {hasSideNav && (
           <AppNav

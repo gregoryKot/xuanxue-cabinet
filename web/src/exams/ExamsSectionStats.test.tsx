@@ -21,40 +21,58 @@ function renderStats(
   );
 }
 
-describe('ExamsSectionStats — плашка «ждут проверки»', () => {
-  it('число ещё не пришло — общий текст, без цифры', () => {
+describe('ExamsSectionStats — рубрика раздела', () => {
+  it('«Ещё в разделе» подписывает блок карточек-переходов (нарекание владельца: карточки шли без заголовка)', () => {
+    renderStats(null, null);
+
+    expect(screen.getByRole('heading', { name: 'Ещё в разделе' })).toBeInTheDocument();
+  });
+});
+
+describe('ExamsSectionStats — карточка «Проверка»: число очереди внутри неё', () => {
+  it('число ещё не пришло — крупной строки нет, карточка всё равно ведёт на /grading', () => {
     renderStats(null, null);
 
     expect(
-      screen.getByText('Сданные работы, которые ждут вашей оценки.'),
-    ).toBeInTheDocument();
+      screen.queryByText('Сданные работы, которые ждут вашей оценки.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Проверка').closest('a')).toHaveAttribute('href', '/grading');
   });
 
-  it('очередь пуста — честный текст, не «0»', () => {
+  it('очередь пуста — честный текст «Пока нечего проверять.», не «0»', () => {
     renderStats(0, null);
 
-    expect(screen.getByText('Пока нечего проверять.')).toBeInTheDocument();
+    expect(screen.getByText('Пока нечего проверять.').closest('a')).toHaveAttribute(
+      'href',
+      '/grading',
+    );
   });
 
-  it('есть работы — число внутри одной фразы, без отдельной подписи рядом', () => {
+  it('есть работы — число лежит внутри ссылки на /grading (нарекание владельца: число было некликабельно)', () => {
     renderStats(3, null);
 
-    expect(screen.getByText('3 работы ждут проверки.')).toBeInTheDocument();
-    expect(screen.queryByText('работы учеников')).not.toBeInTheDocument();
+    expect(screen.getByText('3 работы ждут проверки.').closest('a')).toHaveAttribute(
+      'href',
+      '/grading',
+    );
   });
+});
 
+describe('ExamsSectionStats — карточка «Проверка»: приписка про заготовки', () => {
   it('заготовок комментариев ещё нет — приписка честная, не «0»', () => {
     renderStats(null, null, null, 0);
 
-    expect(
-      screen.getByText('Пока нет заготовок — добавьте первую на карточке проверки.'),
-    ).toBeInTheDocument();
+    const link = screen.getByText('Проверка').closest('a');
+    expect(link).toHaveTextContent(
+      'Пока нет заготовок — добавьте первую на карточке проверки.',
+    );
   });
 
-  it('заготовки есть — число в приписке под фразой очереди', () => {
+  it('заготовки есть — приписка строится formatGradingPresetsHint, а не текстом про очередь', () => {
     renderStats(null, null, null, 4);
 
-    expect(screen.getByText('4 заготовки для комментария.')).toBeInTheDocument();
+    const link = screen.getByText('Проверка').closest('a');
+    expect(link).toHaveTextContent('4 заготовки для комментария.');
   });
 });
 
@@ -101,24 +119,5 @@ describe('ExamsSectionStats — карточка «Вопросы»', () => {
           'Картинок к вопросам: 12 — 3,4 МБ',
       ),
     ).toBeInTheDocument();
-  });
-});
-
-describe('ExamsSectionStats — карточка «Проверка»', () => {
-  it('ведёт на /grading', () => {
-    renderStats(null, null);
-
-    expect(screen.getByText('Проверка').closest('a')).toHaveAttribute('href', '/grading');
-  });
-
-  it('приписка общая, не дублирует фразу тёплой плашки очереди', () => {
-    renderStats(null, null);
-
-    const plaque = screen.getByText('Сданные работы, которые ждут вашей оценки.');
-    const link = screen.getByText('Проверка').closest('a');
-    expect(link).not.toContainElement(plaque);
-    expect(link).toHaveTextContent(
-      'Работы, которые ученики уже сдали. Откройте любую, чтобы поставить итог и написать комментарий.',
-    );
   });
 });
