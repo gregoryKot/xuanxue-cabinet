@@ -70,7 +70,11 @@ export interface MyMaterialDto {
   id: string;
   title: string;
   kind: MaterialKind;
-  classIds: string[];
+  /** Названия занятий, к которым материал привязан, а не их id: `GET /classes`
+   * закрыт ролью (ClassesController), и подписать id ученику было бы нечем —
+   * рубрикация из ADR-0047 иначе не доезжает до того, ради кого затевалась.
+   * Пустой массив — материал всей школы. */
+  classTitles: string[];
   url?: string;
   locked?: true;
 }

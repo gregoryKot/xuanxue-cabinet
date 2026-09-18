@@ -60,10 +60,11 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/channels')).toBe(false);
   });
 
-  it('ученик на своих «/tasks»/«/lessons»/«/archive» — true', () => {
+  it('ученик на своих «/tasks»/«/lessons»/«/archive»/«/library» — true', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/tasks')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/lessons')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/archive')).toBe(true);
+    expect(canSeeRoute(makeMe({ roles: [] }), '/library')).toBe(true);
   });
 
   it('ученик на «/profile» — true, личный экран доступен всем (ADR-0045)', () => {

@@ -101,4 +101,16 @@ describe('LessonsScreen', () => {
       '/archive',
     );
   });
+
+  // Слой 3.2 (docs/PLAN.md §14) — вторая карточка входа, библиотека
+  // материалов школы, не пункт меню (ADR-0025).
+  it('карточка «Библиотека» ведёт на /library', async () => {
+    renderScreen({});
+
+    await screen.findByText('Ближайших занятий пока нет.');
+    expect(screen.getByRole('link', { name: /Библиотека/ })).toHaveAttribute(
+      'href',
+      '/library',
+    );
+  });
 });

@@ -4,6 +4,9 @@
 // createdBy/access. ENCRYPTION_KEY — из test/jest.setup.ts (общий для всех
 // спеков, читается один раз при импорте utils/encryption.ts).
 import { Types, type Connection, type Model } from 'mongoose';
+import { SCHOOL_TZ } from '@xuanxue/shared';
+import { CLASS_ENCRYPT_SCHEMA, ClassRecord, ClassSchema } from '../classes/class.schema';
+import { encryptRecord } from '../utils/encryption';
 import { MaterialRecord, MaterialSchema } from './material.schema';
 import { MaterialsService } from './materials.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -14,13 +17,15 @@ describe('MaterialsService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let model: Model<MaterialRecord>;
+  let classModel: Model<ClassRecord>;
   let service: MaterialsService;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
     connection = memory.connection;
     model = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
-    service = new MaterialsService(model);
+    classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
+    service = new MaterialsService(model, classModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -29,6 +34,7 @@ describe('MaterialsService', () => {
 
   afterEach(async () => {
     await model.deleteMany({});
+    await classModel.deleteMany({});
   });
 
   it('create → list: материал сразу виден (read-after-write)', async () => {
@@ -184,6 +190,39 @@ describe('MaterialsService', () => {
     expect(list[0]).not.toHaveProperty('createdBy');
     expect(list[0]).not.toHaveProperty('access');
     expect(list[0]?.url).toBe('https://example.com/student');
+    expect(list[0]?.classTitles).toEqual([]);
+  });
+
+  // Ученику занятия приезжают названиями: `GET /classes` ему закрыт ролью,
+  // подписать id было бы нечем (ADR-0047).
+  it('listForStudent: привязанное занятие приходит названием, а не id', async () => {
+    const cls = await classModel.create(
+      encryptRecord(
+        {
+          title: 'Тайцзицюань, средняя группа',
+          groupLabel: 'Средняя',
+          format: 'online',
+          tz: SCHOOL_TZ,
+          rules: [],
+          channelIds: [],
+          active: true,
+        },
+        CLASS_ENCRYPT_SCHEMA,
+      ),
+    );
+    await service.create(
+      {
+        title: 'Разбор формы',
+        url: 'https://example.com/form',
+        kind: 'video',
+        classIds: [cls._id.toString()],
+      },
+      AUTHOR_ID,
+    );
+
+    const list = await service.listForStudent({});
+
+    expect(list[0]?.classTitles).toEqual(['Тайцзицюань, средняя группа']);
   });
 
   // Отметка «после оплаты» сохраняется с первого дня, хотя рубильник школы

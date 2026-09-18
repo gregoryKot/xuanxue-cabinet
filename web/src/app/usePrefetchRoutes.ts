@@ -17,9 +17,10 @@ import { isTeacher } from './screenAccess';
 const IDLE_FALLBACK_DELAY_MS = 300;
 
 // Ключи ROUTE_MODULES, отданные ученику — всё остальное с `warm: true` греет
-// штат (см. шапку файла). «archive» — подэкран «Занятий» (слой 3.3), но свой
-// чанк и свой prefetch, греть его нужно отдельно от studentLessons.
-const STUDENT_ROUTE_KEYS = new Set(['tasks', 'studentLessons', 'archive']);
+// штат (см. шапку файла). «archive» и «library» — подэкраны «Занятий»
+// (слои 3.2/3.3), но у каждого свой чанк и свой prefetch, греть их нужно
+// отдельно от studentLessons.
+const STUDENT_ROUTE_KEYS = new Set(['tasks', 'studentLessons', 'archive', 'library']);
 
 type Cancel = () => void;
 

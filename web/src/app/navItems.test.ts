@@ -73,6 +73,11 @@ describe('activeSectionPath — список ученика', () => {
     expect(activeSectionPath('/archive', STUDENT_NAV_ITEMS)).toBe('/lessons');
   });
 
+  // Слой 3.2 (docs/PLAN.md §14) — «/library» тоже подэкран «Занятий».
+  it('/library — подэкран «Занятий»', () => {
+    expect(activeSectionPath('/library', STUDENT_NAV_ITEMS)).toBe('/lessons');
+  });
+
   it('маршрут штата — вне списка ученика, null', () => {
     expect(activeSectionPath('/planning', STUDENT_NAV_ITEMS)).toBeNull();
   });
