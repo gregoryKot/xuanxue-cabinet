@@ -11,13 +11,13 @@ import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { useChannels } from '../channels/useChannels';
 import { useScrollToHash } from '../hooks/useScrollToHash';
 import { useSettings } from '../templates/useSettings';
 import { BroadcastCard } from './BroadcastCard';
 import { BroadcastFilters } from './BroadcastFilters';
+import { BroadcastsSectionLinks } from './BroadcastsSectionLinks';
 import { BroadcastsSummary } from './BroadcastsSummary';
 import { DEFAULT_JOURNAL_RANGE_WEEKS } from './broadcastWindow';
 import { initialStatusFromQuery } from './broadcastStatusFilter';
@@ -32,9 +32,6 @@ const TITLE = 'Рассылки';
 const EXPLANATION =
   'Журнал показывает, что ушло, что ждёт и что не отправилось. Разовую рассылку с ' +
   'текстом на все выбранные каналы можно отправить прямо отсюда.';
-const CHANNELS_LINK_HINT =
-  'Куда уходят посты. Telegram-группа подключается сама, когда в неё добавили бота.';
-const TEMPLATES_LINK_HINT = 'Тексты, которыми бот пишет в канал, и адрес сайта школы.';
 const BROADCASTS_PATH = '/broadcasts';
 
 // Журнал — одна карточка (docs/adr/0043), не стопка карточек-строк: строки
@@ -142,8 +139,7 @@ export default function BroadcastsScreen() {
             ))}
           </ul>
         )}
-      <SectionLink to="/channels" title="Каналы" hint={CHANNELS_LINK_HINT} />
-      <SectionLink to="/templates" title="Шаблоны постов" hint={TEMPLATES_LINK_HINT} />
+      <BroadcastsSectionLinks />
     </section>
   );
 }

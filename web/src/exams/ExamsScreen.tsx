@@ -2,14 +2,14 @@
 // (docs/PLAN.md §11, ТЗ 4.3). Правка и создание — отдельная страница
 // `/exams/new` и `/exams/:examId` (ExamEditorScreen.tsx, ADR-0033): отсюда
 // только переход. Числа раздела — ExamsSectionStats.tsx, не пункт меню
-// (docs/adr/0025-navigation-by-domain.md). Облик — направление «тихо и
-// благородно» (docs/adr/0031), макет Main.dc.html: заголовок антиквой,
-// переключатели статуса вместо select, строка списка вместо карточки.
+// (docs/adr/0025-navigation-by-domain.md). Облик — направление «Тёплая
+// школа» (docs/adr/0043), макет 2b-exams.html: заголовок антиквой,
+// переключатели статуса и поиск, список одной карточкой.
 //
 // Уровень остаётся полем формы (ExamAboutFields.tsx) и параметром API
 // (`/exams?level=`), но не фильтром строки: нужный случай («все формы одного
 // уровня») закрывают поиск по названию и переключатели статуса.
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EXAM_STATUSES } from '@xuanxue/shared';
 import { type ExamListFilters } from '../api/apiPaths';
@@ -38,6 +38,20 @@ const SEARCH_LABEL = 'Поиск по названию';
 const EXAMS_PATH = '/exams';
 
 const EMPTY_FILTERS: ExamListFilters = { status: '' };
+
+// Список экзаменов — одна карточка (docs/adr/0043), не стопка карточек-строк:
+// волосяную линию между строками красит сама ExamCard.tsx (проп `isLast`),
+// `overflow: hidden` подрезает первую/последнюю строку под общий радиус. Тот
+// же приём, что у журнала рассылок (broadcasts/BroadcastsScreen.tsx, #199).
+const examListStyle: CSSProperties = {
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+  borderRadius: 'var(--radius-block)',
+  background: 'var(--card)',
+  boxShadow: 'var(--shadow-card)',
+  overflow: 'hidden',
+};
 
 export default function ExamsScreen() {
   const [filters, setFilters] = useState<ExamListFilters>(EMPTY_FILTERS);
@@ -84,11 +98,13 @@ export default function ExamsScreen() {
         error={error}
         onRetry={() => void reload()}
         emptyMessage={isFiltered ? EMPTY_FILTERED_MESSAGE : EMPTY_MESSAGE}
-        renderItem={(exam) => (
+        listStyle={examListStyle}
+        renderItem={(exam, index, all) => (
           <ExamCard
             key={exam.id}
             exam={exam}
             onSelect={() => void navigate(`${EXAMS_PATH}/${exam.id}`)}
+            isLast={index === all.length - 1}
           />
         )}
       />

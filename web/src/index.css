@@ -274,6 +274,25 @@ body {
   }
 }
 
+/* Сетка блоков в две колонки: плашка очереди и карточки-переходы «Экзаменов»
+   (макет 2b-exams.html), «Каналы» и «Шаблоны постов» на «Рассылках» (2a) —
+   в обоих макетах это один и тот же приём, поэтому и класс один (CLAUDE.md
+   «Одна механика — один компонент»), а имя нейтральное: блоки, не только
+   числа. Одна колонка на телефоне (CLAUDE.md «Мобильный экран первым»,
+   проверено на 360px), 1fr 1fr от той же ширины, что и .xuanxue-form-columns
+   выше — тот же порог уже показал себя рабочим для двух блоков рядом на этой
+   колонке. Класс, не инлайн-стиль: `CSSProperties` не умеет медиа-запрос. */
+.xuanxue-block-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+@media (min-width: 560px) {
+  .xuanxue-block-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

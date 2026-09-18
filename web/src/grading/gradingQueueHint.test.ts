@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatGradingQueueCountLabel, formatGradingQueueHint } from './gradingQueueHint';
+import { formatGradingQueueHint } from './gradingQueueHint';
 
 describe('formatGradingQueueHint', () => {
   it('null (число ещё не пришло) — общий текст без числа', () => {
@@ -30,19 +30,5 @@ describe('formatGradingQueueHint', () => {
 
   it('21 — снова единственное число («работа»)', () => {
     expect(formatGradingQueueHint(21)).toBe('21 работа ждёт проверки.');
-  });
-});
-
-describe('formatGradingQueueCountLabel', () => {
-  it('одна работа — единственное число', () => {
-    expect(formatGradingQueueCountLabel(1)).toBe('работа учеников');
-  });
-
-  it('несколько работ — множественное число', () => {
-    expect(formatGradingQueueCountLabel(3)).toBe('работы учеников');
-  });
-
-  it('пять и больше — «работ»', () => {
-    expect(formatGradingQueueCountLabel(5)).toBe('работ учеников');
   });
 });

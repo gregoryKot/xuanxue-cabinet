@@ -167,16 +167,15 @@ describe('ExamsScreen — поиск по названию', () => {
 });
 
 describe('ExamsScreen — вход в проверку работ', () => {
-  it('пустая очередь — честный текст под меткой «Ждут проверки»', async () => {
+  it('пустая очередь — честный текст в тёплой плашке', async () => {
     mockApiByPath({ ...DEFAULT_SUMMARIES, '/exams': [], '/attempts': [] });
 
     renderScreen();
 
-    expect(await screen.findByText('Ждут проверки')).toBeInTheDocument();
     expect(await screen.findByText('Пока нечего проверять.')).toBeInTheDocument();
   });
 
-  it('есть сданные работы — цифра и подпись', async () => {
+  it('есть сданные работы — число внутри фразы плашки', async () => {
     mockApiByPath({
       ...DEFAULT_SUMMARIES,
       '/exams': [],
@@ -199,8 +198,7 @@ describe('ExamsScreen — вход в проверку работ', () => {
 
     renderScreen();
 
-    expect(await screen.findByText('1')).toBeInTheDocument();
-    expect(screen.getByText('работа учеников')).toBeInTheDocument();
+    expect(await screen.findByText('1 работа ждёт проверки.')).toBeInTheDocument();
   });
 });
 
@@ -239,7 +237,7 @@ describe('ExamsScreen — вход в картинки вариантов отв
 
     renderScreen();
 
-    await screen.findByText('Ждут проверки');
+    await screen.findByText('Пока нечего проверять.');
     expect(screen.queryByText(/Картинок к вопросам/)).not.toBeInTheDocument();
   });
 
@@ -254,7 +252,7 @@ describe('ExamsScreen — вход в картинки вариантов отв
     renderScreen();
 
     expect(
-      await screen.findByText('Картинок к вопросам: 12 — 3,4 МБ'),
+      await screen.findByText(/Картинок к вопросам: 12 — 3,4 МБ/),
     ).toBeInTheDocument();
   });
 });

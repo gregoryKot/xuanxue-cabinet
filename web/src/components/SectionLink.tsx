@@ -1,25 +1,39 @@
-// Переход в подэкран своего раздела — низ экрана, за волосяной линией:
-// сначала то, ради чего сюда зашли, потом всё остальное (docs/adr/0025 —
-// вход в подэкран живёт в своём разделе, не пунктом меню).
+// Переход в подэкран своего раздела — карточка с тонким контуром: заголовок
+// и приписка под ним. Общий компонент для «Экзаменов»
+// (exams/ExamsSectionStats.tsx), «Занятий» (planning/ScheduleLink.tsx) и
+// «Рассылок» (broadcasts/BroadcastsScreen.tsx) — CLAUDE.md «Одна механика —
+// один компонент»: три экрана открывают подэкран одним и тем же жестом,
+// вторая реализация той же карточки разошлась бы в вёрстке и попалась бы
+// jscpd.
 //
-// Раньше был карточкой с рамкой, подложкой и иконкой; направление «тихо и
-// благородно» (docs/adr/0031) коробок не знает — текстовая ссылка и строка
-// объяснения под ней (отзыв владельца 2026-09-16, образец — низ «Занятий»).
-// У `<a>` нет своей строки в index.css: без textLinkStyle браузер красит
-// ссылку системным синим.
+// Раньше был текстовой ссылкой с волосяной линией сверху (направление «тихо
+// и благородно», ADR-0031, отзыв владельца 2026-09-16). Направление «Тёплая
+// школа» (docs/adr/0043) рисует такой переход снова карточкой — на макетах
+// 2a/2b это прямоугольник с тонким контуром `--line-soft`, без тени и
+// заливки: тень уже занята карточкой строки списка, заливка — тёплой
+// плашкой на том же экране, и три одинаковых на вид блока подряд стало бы не
+// отличить друг от друга. Кликабельна вся карточка, не только заголовок —
+// цель нажатия крупнее 44×44 уже за счёт паддинга (CLAUDE.md «Доступность»).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { screenHintStyle, textLinkStyle } from './screenLayout';
 
-const wrapStyle: CSSProperties = {
+const cardStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'flex-start',
-  gap: 6,
-  paddingTop: 20,
-  borderTop: '1px solid var(--line)',
+  gap: 2,
+  padding: '16px 18px',
+  borderRadius: 'var(--radius-block)',
+  border: '1px solid var(--line-soft)',
+  color: 'inherit',
+  textDecoration: 'none',
 };
-const hintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
+const titleStyle: CSSProperties = { fontSize: 15, fontWeight: 500, color: 'var(--ink)' };
+const hintStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 13,
+  lineHeight: 1.5,
+  color: 'var(--ink-soft)',
+};
 
 export interface SectionLinkProps {
   to: string;
@@ -29,11 +43,9 @@ export interface SectionLinkProps {
 
 export function SectionLink({ to, title, hint }: SectionLinkProps) {
   return (
-    <div style={wrapStyle}>
-      <Link to={to} style={textLinkStyle}>
-        {title}
-      </Link>
+    <Link to={to} style={cardStyle}>
+      <span style={titleStyle}>{title}</span>
       <p style={hintStyle}>{hint}</p>
-    </div>
+    </Link>
   );
 }
