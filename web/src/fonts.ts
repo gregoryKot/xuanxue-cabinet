@@ -1,9 +1,15 @@
-// Шрифты направления «тихо и благородно» (docs/adr/0031-visual-direction-quiet-and-noble.md):
-// Cormorant Garamond — заголовки, Spectral — текст и цифры. Оба под лицензией
-// OFL, подключены пакетами `@fontsource/*` (self-hosted), НЕ с fonts.googleapis.com:
-// внешний домен потребовал бы правки CSP (api/src/security/csp.ts), тянул бы
-// приватность человека на чужой сервер и ломал бы офлайн в установленном
-// PWA (CLAUDE.md «Приложение на телефоне»).
+// Шрифты направления «Тёплая школа» (docs/adr/0043-visual-direction-warm-school.md,
+// заменил ADR-0031): Golos Text — текст, цифры и контролы, Cormorant Garamond —
+// только заголовки. Гротеск на цифрах и кнопках — это и есть смысл выбранного
+// облика: антиква в тексте читалась как письмо, а не как приложение, и светлая
+// единица кеглем 52 превращалась в голый штрих, неотличимый от римской «I»
+// (снимок владельца с экрана «Экзамены»).
+//
+// Оба под лицензией OFL, подключены пакетами `@fontsource/*` (self-hosted), НЕ с
+// fonts.googleapis.com: внешний домен потребовал бы правки CSP
+// (api/src/security/csp.ts), отправлял бы IP человека на чужой сервер при каждой
+// загрузке и не работал бы офлайн в установленном PWA (CLAUDE.md «Приложение на
+// телефоне»).
 //
 // Импортируем только подмножества latin и cyrillic — кириллица нужна для
 // русского интерфейса, латиница для цифр/английских аббревиатур; остальные
@@ -21,11 +27,12 @@ import '@fontsource/cormorant-garamond/cyrillic-400.css';
 import '@fontsource/cormorant-garamond/latin-500.css';
 import '@fontsource/cormorant-garamond/cyrillic-500.css';
 
-import '@fontsource/spectral/latin-300.css';
-import '@fontsource/spectral/cyrillic-300.css';
-import '@fontsource/spectral/latin-400.css';
-import '@fontsource/spectral/cyrillic-400.css';
-import '@fontsource/spectral/latin-500.css';
-import '@fontsource/spectral/cyrillic-500.css';
-import '@fontsource/spectral/latin-600.css';
-import '@fontsource/spectral/cyrillic-600.css';
+// Начертания 400/500/600 — ровно те, что стоят в макете (500 — подписи, кнопки
+// и цифры, 600 — редкие акцентные строки). Начертания 300 у Golos Text нет, и
+// оно не нужно: тихий текст делает --ink-soft, а не тонкое начертание.
+import '@fontsource/golos-text/latin-400.css';
+import '@fontsource/golos-text/cyrillic-400.css';
+import '@fontsource/golos-text/latin-500.css';
+import '@fontsource/golos-text/cyrillic-500.css';
+import '@fontsource/golos-text/latin-600.css';
+import '@fontsource/golos-text/cyrillic-600.css';

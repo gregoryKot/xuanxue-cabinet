@@ -93,4 +93,24 @@ describe('Button', () => {
       'transparent',
     );
   });
+
+  // Явная проверка правила доступности целиком, не по частям: три варианта —
+  // три разных сочетания «заливка + контур», ни одно не повторяет другое.
+  // Тест ломается, если правка нечаянно уравняет два силуэта визуально.
+  it('три варианта кнопки не совпадают силуэтом друг с другом', () => {
+    render(
+      <>
+        <Button variant="primary">Сохранить</Button>
+        <Button variant="secondary">Отмена</Button>
+        <Button variant="danger">Удалить</Button>
+      </>,
+    );
+    const silhouetteOf = (name: string) => {
+      const { background, borderColor } = screen.getByRole('button', { name }).style;
+      return `${background}|${borderColor}`;
+    };
+    const silhouettes = ['Сохранить', 'Отмена', 'Удалить'].map(silhouetteOf);
+
+    expect(new Set(silhouettes).size).toBe(silhouettes.length);
+  });
 });

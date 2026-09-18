@@ -1,8 +1,11 @@
 // Два числа раздела «Экзамены» — сколько работ ждёт проверки и что
 // происходит с вопросами (CLAUDE.md «Продуктовая фича = число в своём
 // разделе», ADR-0025). Раньше — карточки-ссылки components/SectionLink.tsx
-// с иконкой; макет (Main.dc.html) заменил их на крупную цифру с подписью,
-// здесь — свой, локальный для этого экрана компонент.
+// с иконкой; макет (Main.dc.html) заменил их на крупную цифру с подписью.
+// Само число и подпись рисует общий components/StatNumber.tsx (ADR-0043:
+// цифры гротеском, а не антиквой — общих для «Экзаменов» и «Рассылок»
+// кеглей раньше не было, и они разошлись); разметка блока вокруг — заголовок,
+// приписки, ссылка — своя для этого экрана.
 //
 // «Вопросы» — без числа вопросов/опубликованных, которое просит макет:
 // `/exam-items/stats-summary` отдаёт только `strugglingCount` (сколько
@@ -17,6 +20,7 @@
 // экрана, отдельный третий блок дублировал бы смысл.
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { StatNumber } from '../components/StatNumber';
 import { textLinkStyle } from '../components/screenLayout';
 import { formatExamItemsLinkHint } from '../exam-items/examItemsLinkHint';
 import {
@@ -42,24 +46,12 @@ interface ExamsSectionStatsProps {
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 28 };
 const blockStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 const dividerStyle: CSSProperties = { height: 1, background: 'var(--line)' };
+// StatNumber по умолчанию ставит число над подписью колонкой — здесь число и
+// подпись нужны в строку по базовой линии (components/StatNumber.tsx).
 const numberRowStyle: CSSProperties = {
-  display: 'flex',
+  flexDirection: 'row',
   alignItems: 'baseline',
   gap: 10,
-};
-// Цифра — тушь, не киноварь: акцент экрана уже занят кнопкой «Новый экзамен»
-// (CLAUDE.md «Правило акцента» — один раз на экран, ADR-0031).
-const numberStyle: CSSProperties = {
-  fontFamily: 'var(--font-display)',
-  fontWeight: 300,
-  fontSize: 52,
-  lineHeight: 0.9,
-  color: 'var(--ink)',
-};
-const numberLabelStyle: CSSProperties = {
-  fontSize: 14,
-  color: 'var(--ink-soft)',
-  lineHeight: 1.4,
 };
 const captionStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 const linkStyle: CSSProperties = {
@@ -79,12 +71,11 @@ export function ExamsSectionStats({
       <div style={blockStyle}>
         <span className="xuanxue-eyebrow">Ждут проверки</span>
         {queueCount ? (
-          <span style={numberRowStyle}>
-            <span style={numberStyle}>{queueCount}</span>
-            <span style={numberLabelStyle}>
-              {formatGradingQueueCountLabel(queueCount)}
-            </span>
-          </span>
+          <StatNumber
+            value={queueCount}
+            label={formatGradingQueueCountLabel(queueCount)}
+            style={numberRowStyle}
+          />
         ) : (
           <p style={captionStyle}>{formatGradingQueueHint(queueCount)}</p>
         )}
