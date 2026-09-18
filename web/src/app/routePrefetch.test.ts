@@ -8,6 +8,7 @@ import {
   EXAM_ITEM_STATS_SUMMARY_PATH,
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
+  LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
@@ -43,9 +44,14 @@ afterEach(() => {
 });
 
 describe('RouteModule.prefetch — маршруты без параметра', () => {
-  it('/planning (и /) — занятия на окно и классы', () => {
-    expect(prefetchAt('/planning')).toEqual([lessonsListPath(), CLASSES_LIST_PATH]);
-    expect(prefetchAt('/')).toEqual([lessonsListPath(), CLASSES_LIST_PATH]);
+  it('/planning (и /) — занятия на окно, классы и число раздела (слой 3.5)', () => {
+    const expected = [
+      lessonsListPath(),
+      CLASSES_LIST_PATH,
+      LESSON_RECORDING_SUMMARY_PATH,
+    ];
+    expect(prefetchAt('/planning')).toEqual(expected);
+    expect(prefetchAt('/')).toEqual(expected);
   });
 
   it('/schedule — классы и активные каналы (оба грузит ScheduleScreen.tsx)', () => {

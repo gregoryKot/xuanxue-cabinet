@@ -15,13 +15,14 @@ import {
   Query,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { BroadcastDto, LessonDto } from '@xuanxue/shared';
+import type { BroadcastDto, LessonDto, LessonRecordingSummaryDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
 import { SendNowService } from '../broadcasts/send-now.service';
 import { AddRecordingDto } from './dto/add-recording.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { ListLessonsDto } from './dto/list-lessons.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsService } from './lessons.service';
 
 @Controller('lessons')
@@ -30,11 +31,20 @@ export class LessonsController {
   constructor(
     private readonly lessonsService: LessonsService,
     private readonly sendNowService: SendNowService,
+    private readonly recordingSummaryService: LessonRecordingSummaryService,
   ) {}
 
   @Get()
   list(@Query() query: ListLessonsDto): Promise<LessonDto[]> {
     return this.lessonsService.list(query);
+  }
+
+  // Число раздела «Занятия» (ТЗ docs/PLAN.md §14, слой 3.5). Литеральный путь
+  // ДО `:id` — как `GET /exam-items/stats-summary`
+  // (exam-items.controller.ts): иначе Nest примет `recording-summary` за id.
+  @Get('recording-summary')
+  getRecordingSummary(): Promise<LessonRecordingSummaryDto> {
+    return this.recordingSummaryService.get(DateTime.utc());
   }
 
   @Get(':id')

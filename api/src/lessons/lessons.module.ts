@@ -16,6 +16,7 @@ import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { ClassesModule } from '../classes/classes.module';
 import { UserModelModule } from '../users/user-model.module';
 import { LessonModelModule } from './lesson-model.module';
+import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
@@ -29,7 +30,12 @@ import { MyLessonsService } from './my-lessons.service';
   // ТЗ docs/PLAN.md §11 и §14).
   imports: [LessonModelModule, ClassesModule, BroadcastsModule, UserModelModule],
   controllers: [LessonsController, MyLessonsController],
-  providers: [LessonsService, MyLessonsService, MyLessonsArchiveService],
+  providers: [
+    LessonsService,
+    MyLessonsService,
+    MyLessonsArchiveService,
+    LessonRecordingSummaryService,
+  ],
   // MyLessonsService — ещё и боту: экран «Ближайшие занятия» показывает тот
   // же подбор, что `GET /me/lessons` (menu-command.handler.ts).
   exports: [LessonModelModule, LessonsService, MyLessonsService],

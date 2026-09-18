@@ -6,7 +6,11 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CLASSES_LIST_PATH, lessonsListPath } from '../api/apiPaths';
+import {
+  CLASSES_LIST_PATH,
+  LESSON_RECORDING_SUMMARY_PATH,
+  lessonsListPath,
+} from '../api/apiPaths';
 import { putPrefetched } from '../api/prefetchCache';
 import { makeClass, makeLesson } from '../test-support/planningFixtures';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
@@ -34,6 +38,10 @@ describe('PlanningScreen — данные из prefetchCache', () => {
     const cls = makeClass();
     putPrefetched(lessonsListPath(), Promise.resolve([lesson]));
     putPrefetched(CLASSES_LIST_PATH, Promise.resolve([cls]));
+    putPrefetched(
+      LESSON_RECORDING_SUMMARY_PATH,
+      Promise.resolve({ periodDays: 30, lessonsPast: 0, lessonsWithRecording: 0 }),
+    );
 
     renderScreen();
 

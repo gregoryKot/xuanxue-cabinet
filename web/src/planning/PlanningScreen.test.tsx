@@ -267,3 +267,41 @@ describe('PlanningScreen — подписи (отзыв владельца 2026-
     expect(await screen.findByText(/семинар, перенос, замена/)).toBeInTheDocument();
   });
 });
+
+describe('PlanningScreen — число раздела (ТЗ §14, слой 3.5)', () => {
+  // Ключ '/lessons/recording-summary' идёт первым: mockApiByPath матчит по
+  // первому совпавшему префиксу, а он же — префикс '/lessons' (список).
+  it('строка появляется с числами из /lessons/recording-summary', async () => {
+    mockApiByPath({
+      '/lessons/recording-summary': {
+        periodDays: 30,
+        lessonsPast: 4,
+        lessonsWithRecording: 2,
+      },
+      '/lessons': [],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText('За 30 дней прошло 4 занятия, у 2 есть запись.'),
+    ).toBeInTheDocument();
+  });
+
+  it('сбой загрузки числа — строки нет, остальной экран работает', async () => {
+    const { ApiError } = await import('../api/http');
+    mockApiByPath({
+      '/lessons/recording-summary': new ApiError('Сбой', 503, 'unknown'),
+      '/lessons': [],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(/В ближайшие \d+ недели занятий нет/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/прошло \d+ занят/)).not.toBeInTheDocument();
+  });
+});

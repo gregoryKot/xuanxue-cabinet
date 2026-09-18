@@ -12,7 +12,7 @@
 // переход.
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
+import { formatRecordingSummary, PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -25,6 +25,7 @@ import { LessonDayGroup } from './LessonDayGroup';
 import { PlanningActions } from './PlanningActions';
 import { PlanningToday } from './PlanningToday';
 import { useLessons } from './useLessons';
+import { useLessonRecordingSummary } from './useLessonRecordingSummary';
 
 const TITLE = 'Занятия';
 const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд. Дни, время и ссылки Zoom — в «Расписании». Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
@@ -40,6 +41,9 @@ const TITLE_MAX_WIDTH_PX = 540;
 const ONE_OFF_HINT =
   'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
 const oneOffHintStyle = { ...screenHintStyle, margin: 0 };
+// Число раздела (ТЗ §14, слой 3.5) — тихая строка, не StatNumber: крупный
+// кегль спорил бы вниманием с блоком «сегодня» (решение агента).
+const recordingLineStyle = { ...screenHintStyle, margin: 0 };
 const LESSON_PATH = '/planning';
 const SCHEDULE_PATH = '/schedule';
 const MATERIALS_PATH = '/materials';
@@ -47,7 +51,13 @@ const MATERIALS_PATH = '/materials';
 export default function PlanningScreen() {
   const lessonsState = useLessons();
   const classesState = useClasses();
+  const recordingSummary = useLessonRecordingSummary();
   const navigate = useNavigate();
+
+  // Сбой числа не должен ломать экран баннером — хук молчит про ошибку.
+  const recordingLine = recordingSummary
+    ? formatRecordingSummary(recordingSummary)
+    : null;
 
   const classesById = useMemo(
     () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls])),
@@ -101,6 +111,7 @@ export default function PlanningScreen() {
         }
       />
       {!lessonsState.loading && <p style={oneOffHintStyle}>{ONE_OFF_HINT}</p>}
+      {recordingLine && <p style={recordingLineStyle}>{recordingLine}</p>}
       {/* Сбой списка занятий — один баннер ниже, не два (TodaySection.tsx). */}
       {!lessonsError && (
         <PlanningToday

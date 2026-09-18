@@ -234,6 +234,11 @@ export {
 } from './settings';
 export type { SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
+export type { LessonRecordingSummaryDto } from './lesson-recording-summary';
+export {
+  RECORDING_SUMMARY_PERIOD_DAYS,
+  formatRecordingSummary,
+} from './lesson-recording-summary';
 export {
   type UserDto,
   type ListUsersQuery,
