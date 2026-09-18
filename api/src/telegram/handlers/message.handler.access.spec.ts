@@ -6,7 +6,8 @@ import { SettingsService } from '../../settings/settings.service';
 import { NotFoundError } from '../../common/errors';
 import { LessonsService } from '../../lessons/lessons.service';
 import { UsersService } from '../../users/users.service';
-import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
+import { BroadcastModels } from '../../broadcasts/broadcast-models.provider';
+import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
@@ -306,11 +307,14 @@ describe('MessageHandler — доступ и сбои', () => {
       buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
       new BotSessionService(ctx.botSessionModel),
       { update } as unknown as LessonsService,
-      new TopicRebuildService(
-        ctx.broadcastModel,
-        ctx.lessonModel,
-        ctx.classModel,
-        ctx.deliveryModel,
+      new LessonLinkRebuildService(
+        new BroadcastModels(
+          ctx.lessonModel,
+          ctx.classModel,
+          ctx.channelModel,
+          ctx.broadcastModel,
+          ctx.deliveryModel,
+        ),
         new SettingsService(
           ctx.settingsModel,
           ctx.lessonModel,

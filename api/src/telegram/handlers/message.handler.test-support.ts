@@ -7,7 +7,7 @@ import { ClassRecord, ClassSchema } from '../../classes/class.schema';
 import { BroadcastModels } from '../../broadcasts/broadcast-models.provider';
 import { RecordingBroadcastService } from '../../broadcasts/recording-broadcast.service';
 import { BroadcastRecord, BroadcastSchema } from '../../broadcasts/broadcast.schema';
-import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
+import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.service';
 import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
 import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
@@ -87,20 +87,18 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     new SettingsService(settingsModel, lessonModel, classModel, usersService),
     usersService,
   );
+  const lessonLinkRebuild = new LessonLinkRebuildService(
+    broadcastModels,
+    new SettingsService(settingsModel, lessonModel, classModel, usersService),
+    usersService,
+  );
   const lessonsService = new LessonsService(
     lessonModel,
     classModel,
     recordingBroadcast,
+    lessonLinkRebuild,
     broadcastModel,
     userModel,
-  );
-  const topicRebuild = new TopicRebuildService(
-    broadcastModel,
-    lessonModel,
-    classModel,
-    deliveryModel,
-    new SettingsService(settingsModel, lessonModel, classModel, usersService),
-    usersService,
   );
   const recordingWaitHandler = new RecordingWaitHandler(
     new BotSessionService(botSessionModel),
@@ -121,7 +119,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     buildPersonalChats(connection, usersService, channelModel),
     new BotSessionService(botSessionModel),
     lessonsService,
-    topicRebuild,
+    lessonLinkRebuild,
     recordingWaitHandler,
     examMediaHandler as unknown as ExamMediaMessageHandler,
     examTextHandler as unknown as ExamTextAnswerHandler,

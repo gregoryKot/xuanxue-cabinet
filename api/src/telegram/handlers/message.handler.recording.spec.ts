@@ -6,7 +6,8 @@ import { Types } from 'mongoose';
 import { SettingsService } from '../../settings/settings.service';
 import type { LessonsService } from '../../lessons/lessons.service';
 import { UsersService } from '../../users/users.service';
-import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
+import { BroadcastModels } from '../../broadcasts/broadcast-models.provider';
+import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.service';
 import { BotSessionService } from '../bot-session.service';
 import { buildPersonalChats } from '../test-support/build-personal-chats';
 import type { ExamMediaMessageHandler } from './exam-media-message.handler';
@@ -256,11 +257,14 @@ function buildHandlerWithFailingAddRecording(
     buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
     new BotSessionService(ctx.botSessionModel),
     { addRecording } as unknown as LessonsService,
-    new TopicRebuildService(
-      ctx.broadcastModel,
-      ctx.lessonModel,
-      ctx.classModel,
-      ctx.deliveryModel,
+    new LessonLinkRebuildService(
+      new BroadcastModels(
+        ctx.lessonModel,
+        ctx.classModel,
+        ctx.channelModel,
+        ctx.broadcastModel,
+        ctx.deliveryModel,
+      ),
       new SettingsService(
         ctx.settingsModel,
         ctx.lessonModel,

@@ -3,8 +3,9 @@
 // модель: цикл при этом не возникает, потому что ClassesModule сам берёт
 // LessonRecord из LessonModelModule, а не из LessonsModule (см. комментарий
 // там же). BroadcastsModule — ради RecordingBroadcastService (addRecording()
-// зовёт её после $push записи, docs/PLAN.md §6 «Записи»): цикла тоже нет —
-// BroadcastsModule берёт LessonRecord из LessonModelModule, не из
+// зовёт её после $push записи, docs/PLAN.md §6 «Записи») и
+// LessonLinkRebuildService (update() при переносе startsAt, ADR-0054): цикла
+// тоже нет — BroadcastsModule берёт LessonRecord из LessonModelModule, не из
 // LessonsModule (тот же приём, ADR-0013). LessonModelModule — SchedulerModule
 // получает ClassRecord/BroadcastRecord/… из своих собственных прямых
 // импортов, менять их не пришлось. LessonsService — дополнительно для
