@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, apiFetch } from '../api/http';
+import { clearAllDrafts } from '../lib/formDraft';
 import { useAuth } from './AuthProvider';
 
 const LOGOUT_FAILED_MESSAGE = 'Не удалось выйти. Попробуйте ещё раз.';
@@ -25,6 +26,10 @@ export function useLogout(): UseLogoutResult {
     setError(null);
     try {
       await apiFetch('/auth/logout', { method: 'POST' });
+      // Черновики форм редактора (ADR-0052) — только явный выход: на 401
+      // (setUnauthorizedListener в AuthProvider) их не трогаем, человек
+      // войдёт заново и должен увидеть набранное.
+      clearAllDrafts();
       // Чистим сессию в состоянии до перехода: иначе гвард успеет увидеть
       // «вошедшего» и вернуть обратно.
       clear();

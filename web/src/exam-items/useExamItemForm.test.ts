@@ -1,12 +1,20 @@
 // Валидация и сборка тела запроса — в examItemFormInput.test.ts (чистая
 // логика, без хука). Здесь — только оркестрация: submit/remove/changeStatus
 // вызывают правильный колбэк и правильно репортят ошибку, по образцу
-// schedule/useClassForm.test.ts.
+// schedule/useClassForm.test.ts. Черновик (ADR-0052) пишется в реальный
+// localStorage под ключом exam-item:<id>/exam-item:new — очищаем между
+// тестами, иначе черновик одного теста восстановился бы в соседнем (id
+// вопроса в makeItem() один и тот же).
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
+import { readDraft } from '../lib/formDraft';
 import { useExamItemForm } from './useExamItemForm';
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
   return {
@@ -237,6 +245,29 @@ describe('useExamItemForm — правка, удаление, смена ста�
 
     expect(result.current.serverError?.message).toBe(
       'Не удалось изменить статус. Попробуйте ещё раз.',
+    );
+  });
+});
+
+describe('useExamItemForm — ключ черновика (ADR-0052)', () => {
+  it('новый вопрос — ключ exam-item:new', () => {
+    const { result } = renderHook(() => useExamItemForm(null, vi.fn(), vi.fn(), vi.fn()));
+
+    act(() => result.current.setField('prompt', 'Черновик'));
+
+    expect(readDraft('exam-item:new', Date.now())).toEqual(
+      expect.objectContaining({ prompt: 'Черновик' }),
+    );
+  });
+
+  it('существующий вопрос — ключ exam-item:<id>', () => {
+    const item = makeItem({ id: 'e42' });
+    const { result } = renderHook(() => useExamItemForm(item, vi.fn(), vi.fn(), vi.fn()));
+
+    act(() => result.current.setField('prompt', 'Правка'));
+
+    expect(readDraft('exam-item:e42', Date.now())).toEqual(
+      expect.objectContaining({ prompt: 'Правка' }),
     );
   });
 });

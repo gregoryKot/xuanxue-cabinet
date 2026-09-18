@@ -2,10 +2,13 @@
 // статусом и удалением, статистика (ADR-0033). Мок сети — по префиксу пути
 // (test-support/apiFetchMock.ts); `/exam-items/e1/stats` стоит раньше
 // `/exam-items/e1`, mockApiByPath матчит первым подходящим префиксом.
+// Черновик (ADR-0052) пишется в реальный localStorage — очищаем между
+// тестами, иначе черновик одного теста восстановился бы в соседнем (id
+// вопроса в makeItem() один и тот же).
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto, ExamItemStatsDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
@@ -21,6 +24,13 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+
+afterEach(() => {
+  localStorage.clear();
+  // jsdom не реализует scrollIntoView — тесты черновика сами кладут мок на
+  // Element.prototype, снимаем его, чтобы не утекал в соседний тест.
+  Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+});
 
 const LIST_MARKER = 'Здесь список вопросов';
 
@@ -419,5 +429,71 @@ describe('ExamItemEditorScreen — «Как отвечают»', () => {
     expect(
       await screen.findByText('Этот вопрос ещё никому не задавали.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('ExamItemEditorScreen — черновик (ADR-0052)', () => {
+  const DRAFT_NOTE_TEXT = 'Здесь то, что вы набрали в прошлый раз и не успели сохранить.';
+
+  it('ушли со страницы с набранным и вернулись — черновик на месте', async () => {
+    const user = userEvent.setup();
+    mockItemAndStats(makeItem());
+
+    const first = renderAt('/exam-items/e1');
+    await user.clear(await screen.findByLabelText('Формулировка'));
+    await user.type(
+      screen.getByLabelText('Формулировка'),
+      'Набранное, но не сохранённое',
+    );
+    // «Ушли со страницы» — размонтирование, а не переход по ссылке: сама
+    // навигация здесь не под тестом, черновик обязан пережить именно уход
+    // компонента формы из дерева (ровно это стирало состояние до ADR-0052).
+    first.unmount();
+
+    renderAt('/exam-items/e1');
+
+    expect(await screen.findByLabelText('Формулировка')).toHaveValue(
+      'Набранное, но не сохранённое',
+    );
+    expect(screen.getByText(DRAFT_NOTE_TEXT)).toBeInTheDocument();
+  });
+
+  it('«Убрать черновик» возвращает сохранённое и стирает запись', async () => {
+    const user = userEvent.setup();
+    mockItemAndStats(makeItem());
+
+    const first = renderAt('/exam-items/e1');
+    await user.clear(await screen.findByLabelText('Формулировка'));
+    await user.type(screen.getByLabelText('Формулировка'), 'Черновик');
+    first.unmount();
+    const second = renderAt('/exam-items/e1');
+    await user.click(await screen.findByRole('button', { name: 'Убрать черновик' }));
+
+    expect(screen.getByLabelText('Формулировка')).toHaveValue('Сколько форм в стиле Ян?');
+    expect(screen.queryByText(DRAFT_NOTE_TEXT)).not.toBeInTheDocument();
+
+    // Запись правда стёрта, не только скрыта на экране — третий заход не
+    // должен снова увидеть убранный черновик.
+    second.unmount();
+    renderAt('/exam-items/e1');
+    expect(await screen.findByLabelText('Формулировка')).toHaveValue(
+      'Сколько форм в стиле Ян?',
+    );
+    expect(screen.queryByText(DRAFT_NOTE_TEXT)).not.toBeInTheDocument();
+  });
+
+  it('неудачное сохранение прокручивает к первому сообщению об ошибке', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    mockItemAndStats(makeItem({ prompt: '' }));
+
+    renderAt('/exam-items/e1');
+    await screen.findByLabelText('Формулировка');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    // Прокрутка отложена на микротакт (scrollToFirstAlertSoon) — ждём её,
+    // а не проверяем сразу же после клика.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
   });
 });

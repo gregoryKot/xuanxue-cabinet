@@ -20,6 +20,9 @@ import {
 const SAVE_ERROR_MESSAGE = 'Не удалось сохранить. Попробуйте ещё раз.';
 const REMOVE_ERROR_MESSAGE = 'Не удалось удалить. Попробуйте ещё раз.';
 const STATUS_ERROR_MESSAGE = 'Не удалось изменить статус. Попробуйте ещё раз.';
+// Домен черновика (lib/formDraft.ts, ADR-0052): xuanxue.draft.exam-item:new
+// для новой записи, xuanxue.draft.exam-item:<id> для существующей.
+const DRAFT_DOMAIN = 'exam-item';
 
 export type UseExamItemFormResult = UseEntityFormResult<
   ExamItemFormState,
@@ -45,5 +48,6 @@ export function useExamItemForm(
     saveErrorMessage: SAVE_ERROR_MESSAGE,
     removeErrorMessage: REMOVE_ERROR_MESSAGE,
     statusErrorMessage: STATUS_ERROR_MESSAGE,
+    draftKey: `${DRAFT_DOMAIN}:${item?.id ?? 'new'}`,
   });
 }

@@ -6,10 +6,10 @@
 // один запрос обслуживает и список для добавления, и подстановку
 // формулировок в выбранных вопросах. Предпросмотр глазами ученика — своя
 // страница со своим запросом (ExamPreviewScreen.tsx).
-import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { ExamDto, ExamStatus } from '@xuanxue/shared';
+import type { ExamDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
 import {
   editorHeadingStyle,
@@ -18,7 +18,7 @@ import {
   screenTitleStyle,
   textLinkStyle,
 } from '../components/screenLayout';
-import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
+import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useExamItems } from '../exam-items/useExamItems';
 import { ExamAboutFields } from './ExamAboutFields';
 import { ExamEditorFooter } from './ExamEditorFooter';
@@ -45,20 +45,12 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   const goToList = () => void navigate(EXAMS_PATH);
   const form = useExamForm(exam, editor.create, editor.update, editor.remove);
   const bank = useExamItems(NO_STATUS_FILTER);
-  const removeConfirm = useConfirmedRemove(form.remove, goToList);
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (await form.submit()) goToList();
-  }
-
-  async function handleChangeStatus(status: ExamStatus) {
-    if (await form.changeStatus(status)) goToList();
-  }
+  const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
+    useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
 
   return (
     <>
-      <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
+      <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
         <Link to={EXAMS_PATH} style={textLinkStyle}>
           {BACK_TEXT}
         </Link>
@@ -67,6 +59,8 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           <span className="xuanxue-eyebrow">Экзамен</span>
           <h1 style={screenTitleStyle}>{exam ? exam.title : NEW_EXAM_TITLE}</h1>
         </div>
+
+        <FormDraftNote restored={form.draftRestored} onDiscard={form.discardDraft} />
 
         <ExamAboutFields
           state={form.state}

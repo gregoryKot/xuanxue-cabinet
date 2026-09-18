@@ -4,9 +4,11 @@
 // и `pending` устроены одинаково у обоих, второй домен скопировал бы хук
 // целиком (CLAUDE.md «Одна механика — один компонент», jscpd). Валидация и
 // сборка тела запроса остаются в чистой логике домена (examItemFormInput.ts/
-// examFormInput.ts) — здесь только связка с сетевыми колбэками.
+// examFormInput.ts) — здесь только связка с сетевыми колбэками. Черновик
+// (ADR-0052) — в useFormDraft.ts, иначе файл не уложится в 150 строк.
 import { useState } from 'react';
 import { errorFrom, type FormError } from '../components/FormServerError';
+import { useFormDraft } from './useFormDraft';
 
 export interface UseEntityFormConfig<
   TEntity,
@@ -27,6 +29,7 @@ export interface UseEntityFormConfig<
   saveErrorMessage: string;
   removeErrorMessage: string;
   statusErrorMessage: string;
+  draftKey: string | null; // null — форма без черновика, осознанно (ADR-0052)
 }
 
 export interface UseEntityFormResult<TFormState, TStatus extends string> {
@@ -38,6 +41,8 @@ export interface UseEntityFormResult<TFormState, TStatus extends string> {
   submit: () => Promise<boolean>;
   remove: () => Promise<boolean>;
   changeStatus: (status: TStatus) => Promise<boolean>;
+  draftRestored: boolean;
+  discardDraft: () => void;
 }
 
 export function useEntityForm<
@@ -50,7 +55,8 @@ export function useEntityForm<
   config: UseEntityFormConfig<TEntity, TFormState, TCreateInput, TUpdateInput, TStatus>,
 ): UseEntityFormResult<TFormState, TStatus> {
   const { entity } = config;
-  const [state, setState] = useState<TFormState>(() => config.initialState(entity));
+  const draft = useFormDraft(config.draftKey, () => config.initialState(entity));
+  const { state, setState } = draft;
   const [validationError, setValidationError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<FormError | null>(null);
   const [pending, setPending] = useState(false);
@@ -70,6 +76,7 @@ export function useEntityForm<
       if (entity)
         await config.onUpdate(config.getId(entity), config.toUpdateInput(state));
       else await config.onCreate(config.toCreateInput(state));
+      draft.forgetDraft();
       return true;
     } catch (err) {
       setServerError(errorFrom(err, config.saveErrorMessage));
@@ -85,6 +92,7 @@ export function useEntityForm<
     setPending(true);
     try {
       await config.onRemove(config.getId(entity));
+      draft.forgetDraft();
       return true;
     } catch (err) {
       setServerError(errorFrom(err, config.removeErrorMessage));
@@ -117,6 +125,7 @@ export function useEntityForm<
         ...config.toUpdateInput(state),
         status,
       });
+      draft.forgetDraft();
       return true;
     } catch (err) {
       setServerError(errorFrom(err, config.statusErrorMessage));
@@ -135,5 +144,7 @@ export function useEntityForm<
     submit,
     remove,
     changeStatus,
+    draftRestored: draft.restored,
+    discardDraft: draft.discardDraft,
   };
 }
