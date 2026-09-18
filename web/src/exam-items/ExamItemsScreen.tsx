@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { EXAM_ITEM_STATUSES, type ExamItemStatus } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ListFilters } from '../components/ListFilters';
+import { oneCardListStyle } from '../components/listCardStyles';
 import { ListScreenBody } from '../components/ListScreenBody';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -71,11 +72,13 @@ export default function ExamItemsScreen() {
         error={error}
         onRetry={() => void reload()}
         emptyMessage={isFiltered ? EMPTY_FILTERED_MESSAGE : EMPTY_MESSAGE}
-        renderItem={(item) => (
+        listStyle={oneCardListStyle}
+        renderItem={(item, index, all) => (
           <ExamItemCard
             key={item.id}
             item={item}
             onSelect={() => void navigate(`${ITEMS_PATH}/${item.id}`)}
+            isLast={index === all.length - 1}
           />
         )}
       />
