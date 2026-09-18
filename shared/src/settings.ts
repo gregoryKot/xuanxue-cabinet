@@ -16,6 +16,11 @@ export interface SettingsDto {
    * константа (CLAUDE.md «Кабинет учителя: всё настраивается в интерфейсе»);
    * старая база без поля отдаёт `DEFAULT_PREVIEW_MINUTES` (domain.ts). */
   previewMinutes: number;
+  /** Рубильник школы «после оплаты» (ADR-0048, docs/PLAN.md §14 слой 3.4):
+   * включён — материал с `access: 'paid'` закрыт ученику (без `url`,
+   * `locked: true`), выключен — `paid` ведёт себя как `all`. По умолчанию
+   * `false`; старая база без поля отдаёт `DEFAULT_MATERIALS_PAID_ACCESS`. */
+  materialsPaidAccess: boolean;
   updatedAt: string; // ISO UTC с Z
 }
 
@@ -33,6 +38,9 @@ export interface UpdateSettingsInput {
    * входит в NULLABLE_SETTINGS_FIELDS: сбросить в «нет значения» нельзя,
    * только заменить другим числом. */
   previewMinutes?: number;
+  /** Рубильник школы «после оплаты» (ADR-0048) — не в NULLABLE_SETTINGS_FIELDS:
+   * сбросить в «нет значения» нельзя, только переключить true/false. */
+  materialsPaidAccess?: boolean;
 }
 
 /** Единственное nullable-поле UpdateSettingsInput — источник правды для DTO
@@ -63,3 +71,9 @@ export const SETTINGS_LIMITS = {
   previewMinutesMin: 1,
   previewMinutesMax: 1440,
 } as const;
+
+/** Дефолт `settings.materialsPaidAccess` для документа школы без поля
+ * (старая база, до ADR-0048) — тот же приём, что DEFAULT_PREVIEW_MINUTES
+ * (domain.ts): значение живёт в БД и на экране «Библиотека», константа нужна
+ * только для чтения легаси-документа. */
+export const DEFAULT_MATERIALS_PAID_ACCESS = false;

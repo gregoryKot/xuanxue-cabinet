@@ -1,6 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_PREVIEW_MINUTES, type SettingsDto } from '@xuanxue/shared';
+import {
+  DEFAULT_MATERIALS_PAID_ACCESS,
+  DEFAULT_PREVIEW_MINUTES,
+  type SettingsDto,
+} from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { useSchoolSiteField } from './useSchoolSiteField';
 
@@ -9,6 +13,7 @@ const SETTINGS_WITH_SITE: SettingsDto = {
   tz: 'Asia/Jerusalem',
   schoolSiteUrl: 'https://xuanxue.su',
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
+  materialsPaidAccess: DEFAULT_MATERIALS_PAID_ACCESS,
   // Другой updatedAt, чем у SETTINGS_WITHOUT_SITE — синхронизация в хуке
   // идёт по нему (как texts в TemplatesScreen.tsx), одинаковый updatedAt у
   // обоих фикстур не запустил бы эффект заново.
@@ -19,6 +24,7 @@ const SETTINGS_WITHOUT_SITE: SettingsDto = {
   templates: { lesson_link: '', recording: '' },
   tz: 'Asia/Jerusalem',
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
+  materialsPaidAccess: DEFAULT_MATERIALS_PAID_ACCESS,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 
