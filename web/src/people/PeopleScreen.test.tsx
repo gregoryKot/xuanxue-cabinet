@@ -59,13 +59,6 @@ function mockPeopleApi() {
   };
 }
 
-/** Переключатели ролей одного человека: подпись переключателя — только роль
- * (ADR-0031), имя стоит названием группы, поэтому в списке из нескольких
- * человек нужную группу ищем по имени. */
-function rolesOf(name: string): HTMLElement {
-  return screen.getByRole('group', { name: `Роли — ${name}` });
-}
-
 function renderScreen() {
   return render(
     <MemoryRouter>
@@ -167,7 +160,7 @@ describe('PeopleScreen — список', () => {
     expect(screen.getByText('По ссылке пришли: 1')).toBeInTheDocument();
   });
 
-  it('переключатель роли вызывает PATCH и обновлённая роль видна в списке', async () => {
+  it('действие роли вызывает PATCH и обновлённая роль видна в списке', async () => {
     const user = userEvent.setup();
     const { queueUsers } = mockPeopleApi();
     queueUsers([
@@ -184,15 +177,26 @@ describe('PeopleScreen — список', () => {
       makePerson({ id: 'u1', name: 'Гриша', roles: ['teacher'] }),
     ]);
 
-    await user.click(within(rolesOf('Гриша')).getByLabelText('Учитель'));
+    // Пилюли ролей есть у КАЖДОЙ строки (PersonRoleBadge.tsx), поэтому
+    // «Учитель» ищется внутри строки Гриши, а не по всему экрану.
+    const grishaRow = screen.getByText('Гриша').closest('li');
+    expect(grishaRow).not.toBeNull();
+    await user.click(
+      within(grishaRow as HTMLElement).getByRole('button', { name: 'Учитель' }),
+    );
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/users/u1',
       expect.objectContaining({ method: 'PATCH', body: { roles: ['teacher'] } }),
     );
-    await waitFor(() =>
-      expect(within(rolesOf('Гриша')).getByLabelText('Учитель')).toBeChecked(),
-    );
+    // Роль приехала с сервера — пилюля Гриши стала нажатой.
+    await waitFor(() => {
+      const row = screen.getByText('Гриша').closest('li') as HTMLElement;
+      expect(within(row).getByRole('button', { name: 'Учитель' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
   });
 
   it('клик «Закрыть доступ» вызывает PATCH /users/:id/status и обновлённый статус виден на строке', async () => {
