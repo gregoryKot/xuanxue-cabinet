@@ -49,12 +49,17 @@
 // минуты и почти всегда пуст к моменту удаления аккаунта, — а потому что
 // сверочный тест ниже требует явного решения для КАЖДОЙ модели с путём
 // userId, а не молчаливого пропуска.
+//
+// Этап 2, слой 2.1 (payments, PLAN.md §15, ADR-0049) — абонемент по
+// месяцам: данные ученика (деньги конкретного человека, ADR-0010 наоборот),
+// живёт, пока жив аккаунт — финансовый след школы, не свободный текст.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
   'ExamGradingRecord',
   'MediaAssetRecord',
   'TelegramLinkCodeRecord',
+  'PaymentRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
@@ -79,4 +84,5 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ExamImageRecord', path: 'createdBy' },
   { model: 'GradingCommentPresetRecord', path: 'createdBy' },
   { model: 'MaterialRecord', path: 'createdBy' },
+  { model: 'PaymentRecord', path: 'confirmedBy' },
 ] as const;

@@ -106,4 +106,9 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // auth/join/check — код ссылки-приглашения школы (ADR-0030, ADR-0036).
   code: 'Код ссылки-приглашения',
   inviteCode: 'Код ссылки-приглашения',
+
+  // payments — /payments, /me/payments (docs/PLAN.md §15, ADR-0049).
+  // status/limit — общие подписи выше (deliveries.status, broadcasts.limit).
+  month: 'Месяц',
+  amountMinor: 'Сумма',
 };
