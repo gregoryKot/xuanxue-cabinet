@@ -64,12 +64,28 @@ describe('createFakeTelegrafFactory', () => {
     ).rejects.toThrow('сеть недоступна');
   });
 
+  it('editMessageText — попадает в editMessageCalls вместе с кнопками', async () => {
+    const fake = createFakeTelegrafFactory();
+    const bot = fake.factory('123456:token');
+
+    await bot.telegram.callApi('editMessageText', {
+      chat_id: '1',
+      text: 'Шаг 2',
+      reply_markup: { inline_keyboard: [] },
+    });
+
+    expect(fake.editMessageCalls).toEqual([
+      { chatId: '1', text: 'Шаг 2', replyMarkup: { inline_keyboard: [] } },
+    ]);
+    expect(fake.sendMessageCalls).toEqual([]);
+  });
+
   it('неизвестный метод — резолвится в undefined, не падает', async () => {
     const { factory } = createFakeTelegrafFactory();
     const bot = factory('123456:token');
 
     await expect(
-      bot.telegram.callApi('editMessageText', { chat_id: '1', text: 'x' }),
+      bot.telegram.callApi('getChat', { chat_id: '1' }),
     ).resolves.toBeUndefined();
   });
 });
