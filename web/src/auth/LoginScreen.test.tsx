@@ -137,9 +137,7 @@ describe('LoginScreen — конфигурация', () => {
     mockRoutes(() => Promise.resolve({}));
     renderScreen();
     expect(
-      await screen.findByText(
-        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
-      ),
+      await screen.findByText('Первый вход — только по ссылке от учителя.'),
     ).toBeInTheDocument();
   });
 
@@ -150,7 +148,7 @@ describe('LoginScreen — конфигурация', () => {
     await screen.findByRole('button', { name: 'Войти через Telegram' });
 
     const text = container.textContent ?? '';
-    const invitePosition = text.indexOf('Первый раз здесь?');
+    const invitePosition = text.indexOf('Первый вход —');
     const buttonPosition = text.indexOf('Войти через Telegram');
 
     expect(invitePosition).toBeGreaterThanOrEqual(0);
@@ -240,9 +238,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
     renderScreen();
 
     expect(
-      await screen.findByText(
-        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
-      ),
+      await screen.findByText('Первый вход — только по ссылке от учителя.'),
     ).toBeInTheDocument();
 
     resolveTelegramLogin({
@@ -321,7 +317,12 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
   // ADR-0030/0036: без ссылки-приглашения новый человек в кабинет не
   // попадает — 403 с текстом сервера, который уже называет действие
   // (открыть ссылку), а не просто «доступа нет».
-  it('фрагмент в адресе, POST падает 403 (нет ссылки-приглашения) — текст сервера с действием, спокойным цветом', async () => {
+  //
+  // Регрессия на отзыв владельца 2026-09-18: «если человек без ссылки заходит
+  // через телегу, просто возвращает на страницу логина». Объяснение стояло
+  // строкой под живой кнопкой «Войти» и терялось — теперь оно занимает место
+  // самой формы, поэтому тест проверяет не цвет строки, а исчезнувший вход.
+  function mockRefusedTelegramLogin(): void {
     window.location.hash = toTgAuthResultHash({
       id: 700,
       first_name: 'Незнакомец',
@@ -330,7 +331,8 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
     });
 
     mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: true });
       if (path === '/auth/me')
         return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
       if (path === '/auth/telegram')
@@ -343,17 +345,40 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
         );
       return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
     });
+  }
+
+  it('фрагмент в адресе, POST падает 403 (нет ссылки-приглашения) — объяснение вместо формы входа', async () => {
+    mockRefusedTelegramLogin();
 
     renderScreen();
 
     const alert = await screen.findByText(
       'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
     );
-    // Отзыв владельца (ADR-0044) — 403 не поломка, а недостающая ссылка:
-    // спокойный цвет объяснения, не красный (role="alert" остаётся).
-    expect(alert.style.color).toBe('var(--ink-soft)');
     expect(alert.closest('[role="alert"]')).not.toBeNull();
+    expect(screen.getByText('Войти не получилось')).toBeInTheDocument();
+    // Ни кнопки Telegram, ни почты: оба пути упрутся в тот же 403
+    // (LoginIdentityService — одно правило на оба).
+    expect(
+      screen.queryByRole('button', { name: 'Войти через Telegram' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
     expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
+  });
+
+  it('«Войти другим способом» на отказе 403 возвращает форму входа — вошёл не тем аккаунтом', async () => {
+    mockRefusedTelegramLogin();
+
+    renderScreen();
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Войти другим способом' }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Войти через Telegram' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Войти не получилось')).not.toBeInTheDocument();
   });
 
   it('фрагмент в адресе, POST падает не ApiError — общий текст ошибки', async () => {
@@ -393,9 +418,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     // Приписка не была частью блока почты и раньше пряталась вместе с ним
     // (ADR-0044) — теперь она не зависит от emailLoginEnabled вовсе.
     expect(
-      screen.getByText(
-        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
-      ),
+      screen.getByText('Первый вход — только по ссылке от учителя.'),
     ).toBeInTheDocument();
   });
 

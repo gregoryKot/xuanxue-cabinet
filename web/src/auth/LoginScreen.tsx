@@ -9,7 +9,7 @@
 import { Navigate } from 'react-router-dom';
 import { EntryColumn } from '../components/EntryColumn';
 import { LabeledDivider } from '../components/LabeledDivider';
-import { screenExplanationStyle } from '../components/screenLayout';
+import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
 import { EmailLoginForm } from './EmailLoginForm';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
@@ -18,13 +18,15 @@ import { postLoginPath } from './returnTo';
 
 // Единственное место, где кабинет вообще упоминает ссылку-приглашение
 // (ADR-0030) до входа: и Telegram, и почта всё равно упрутся в неё дальше
-// (403 без нового человека в школе). Отзыв владельца (ADR-0044): раньше
-// строка пряталась мелкой припиской под формой почты — незнакомец уходил в
-// Telegram и получал красным 403, ничего не зная про ссылку заранее.
-// CLAUDE.md требует объяснять «откуда это и зачем» ДО первого действия, а не
-// после отказа, поэтому приписка стоит над кнопкой входа и видна всегда.
-const INVITE_REQUIRED_MESSAGE =
-  'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.';
+// (403 без нового человека в школе).
+//
+// Отзыв владельца 2026-09-18: `xuanxue.su` — адрес самого кабинета, и всякий,
+// кто открыл его без сессии, упирается в форму входа. Незнакомцу форма
+// странна, и объяснять ему правила школы целым абзацем незачем — он сюда не
+// собирался. Поэтому не вопрос «Первый раз здесь?» в вес объяснения экрана, а
+// подпись в одну строку и тише его (noteStyle): свои читают её один раз,
+// незнакомец видит, что дверь не для него, и никто не уходит в Telegram зря.
+const INVITE_REQUIRED_MESSAGE = 'Первый вход — только по ссылке от учителя.';
 
 export default function LoginScreen() {
   const { status: authStatus } = useAuth();
@@ -44,7 +46,7 @@ export default function LoginScreen() {
       <p style={screenExplanationStyle}>
         Расписание, ссылки на занятия, записи и экзамены. Для учеников и учителей.
       </p>
-      <p style={screenExplanationStyle}>{INVITE_REQUIRED_MESSAGE}</p>
+      <p style={noteStyle}>{INVITE_REQUIRED_MESSAGE}</p>
 
       <TelegramLoginSection config={config} configStatus={configStatus} onReload={reload}>
         {/* Нет Telegram — email-путь (ADR-0029), выключен по умолчанию, пока
