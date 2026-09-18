@@ -37,7 +37,18 @@ const CHANNELS_LINK_HINT =
 const TEMPLATES_LINK_HINT = 'Тексты, которыми бот пишет в канал, и адрес сайта школы.';
 const BROADCASTS_PATH = '/broadcasts';
 
-const journalListStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
+// Журнал — одна карточка (docs/adr/0043), не стопка карточек-строк: строки
+// внутри красит своей волосяной линией сама BroadcastCard.tsx, а `overflow:
+// hidden` подрезает первую/последнюю строку под общий радиус.
+const journalListStyle: CSSProperties = {
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+  borderRadius: 'var(--radius-block)',
+  background: 'var(--card)',
+  boxShadow: 'var(--shadow-card)',
+  overflow: 'hidden',
+};
 
 export default function BroadcastsScreen() {
   const [searchParams] = useSearchParams();
@@ -118,7 +129,7 @@ export default function BroadcastsScreen() {
         broadcastsState.broadcasts &&
         broadcastsState.broadcasts.length > 0 && (
           <ul style={journalListStyle}>
-            {broadcastsState.broadcasts.map((broadcast) => (
+            {broadcastsState.broadcasts.map((broadcast, index, all) => (
               <BroadcastCard
                 key={broadcast.id}
                 broadcast={broadcast}
@@ -126,6 +137,7 @@ export default function BroadcastsScreen() {
                 onCancel={broadcastsState.cancel}
                 onDeliverySent={handleDeliverySent}
                 schoolTz={settingsState.settings?.tz}
+                isLast={index === all.length - 1}
               />
             ))}
           </ul>

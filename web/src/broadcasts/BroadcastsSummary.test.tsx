@@ -70,20 +70,40 @@ describe('BroadcastsSummary — пустая база', () => {
     render(<BroadcastsSummary />, { wrapper: MemoryRouter });
 
     expect(await screen.findByText('Пока нечего показать.')).toBeInTheDocument();
-    expect(screen.queryByText('Рассылок отправлено')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ушло за 30 дней')).not.toBeInTheDocument();
   });
 });
 
 describe('BroadcastsSummary — числа за период', () => {
-  it('числа строкой, отмены — ссылка в журнал с фильтром', async () => {
+  it('карточки: ушло, ждут, не отправилось — последнее красным', async () => {
     mockedApiFetch.mockResolvedValueOnce(SUMMARY);
 
     render(<BroadcastsSummary />, { wrapper: MemoryRouter });
 
     expect(await screen.findByText('12')).toBeInTheDocument();
-    expect(screen.getByText('За 30 дней')).toBeInTheDocument();
-    expect(screen.getByText('Ждут отправки вручную').closest('a')).toBeNull();
-    expect(screen.getByText('Отменено автоматикой').closest('a')).toHaveAttribute(
+    expect(screen.getByText('Ушло за 30 дней')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('Ждут отправки')).toBeInTheDocument();
+    expect(screen.getByText('1').style.color).toBe('var(--danger)');
+    expect(screen.getByText('Не отправилось')).toBeInTheDocument();
+    // «Ждут отправки вручную» из сводки ушло — его теперь считает сама плашка
+    // ManualDeliveriesSection.tsx, рядом со списком (docs/adr/0043).
+    expect(screen.queryByText(/Ждут отправки вручную/)).not.toBeInTheDocument();
+  });
+
+  // Макет рисует три карточки, но отменённая автоматикой рассылка — это
+  // несостоявшаяся отправка, тот самый тихий отказ, который CLAUDE.md зовёт
+  // самой дорогой ошибкой в продукте про рассылки. Журнал по такому фильтру
+  // больше ниоткуда не открывается, поэтому число и ссылка остаются. Тест
+  // держит их на месте: пропадут — упадёт здесь, а не у учителя на экране.
+  it('«Отменено автоматикой» — четвёртой карточкой и ведёт в журнал с фильтром', async () => {
+    mockedApiFetch.mockResolvedValueOnce(SUMMARY);
+
+    render(<BroadcastsSummary />, { wrapper: MemoryRouter });
+
+    await screen.findByText('12');
+    expect(screen.getByText('Отменено автоматикой')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Отменено автоматикой/ })).toHaveAttribute(
       'href',
       '/broadcasts?status=cancelled',
     );
