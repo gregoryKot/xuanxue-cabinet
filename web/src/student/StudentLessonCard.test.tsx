@@ -28,19 +28,22 @@ function renderCard(overrides: Partial<MyLessonDto> = {}) {
 }
 
 describe('StudentLessonCard — название, день, время', () => {
-  it('заголовок строки — название занятия; ниже дата в заданном поясе, группа и тема', () => {
+  it('заголовок строки — название занятия; дата в заданном поясе, группа и тема', () => {
     renderCard();
     expect(screen.getByText('Тайцзицюань')).toBeInTheDocument();
-    expect(
-      screen.getByText('Вт, 8 сентября, 19:00 · Средняя группа · Пятое занятие цикла'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Вт, 8 сентября, 19:00')).toBeInTheDocument();
+    expect(screen.getByText('Средняя группа · Пятое занятие цикла')).toBeInTheDocument();
   });
 
-  it('без темы — строка даты и группы без пустого «·»', () => {
+  it('без темы — строка группы без пустого «·»', () => {
     renderCard({ topic: '' });
-    expect(
-      screen.getByText('Вт, 8 сентября, 19:00 · Средняя группа'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Средняя группа')).toBeInTheDocument();
+  });
+
+  it('ни группы, ни темы — строки метаданных нет вовсе', () => {
+    renderCard({ groupLabel: '', topic: '' });
+    expect(screen.getByText('Тайцзицюань')).toBeInTheDocument();
+    expect(screen.queryByText('·')).not.toBeInTheDocument();
   });
 });
 

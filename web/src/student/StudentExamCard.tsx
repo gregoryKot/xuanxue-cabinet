@@ -1,25 +1,46 @@
 // Карточка одного экзамена на экране ученика (ТЗ п.1, результат — ТЗ слоя
 // 4.7): название, описание, сколько попыток осталось, состояние последней
 // попытки простыми словами, одна кнопка по смыслу — а если работу уже
-// проверили, ещё и итог с комментарием учителя. Стиль карточки — как у
-// StudentLessonCard.tsx (общий readOnlyCardStyle: список ученика не про клик
-// по карточке). Итог вынесен в ExamAttemptOutcome — своя логика, что
-// показывать, не должна раздувать саму карточку (CLAUDE.md «Храповики»,
-// лимит 150 строк).
+// проверили, ещё и итог с комментарием учителя. Облик — тёплая плашка
+// `--panel-warm` (макет 1c-planning.html, docs/adr/0043), тот же приём, что у
+// «Ждут отправки вручную» (broadcasts/ManualDeliveriesSection.tsx) и сводки
+// экзаменов (exams/ExamsSectionStats.tsx). Кнопка остаётся вторичной
+// (`variant="secondary"`), хотя макет рисует её залитой: заливка терракотой
+// уже занята «Подключиться» у ближайшего занятия выше на этом же экране
+// (StudentLessonMeeting.tsx) — правило «один акцент на экран» (ADR-0043) не
+// делает исключения для второй кнопки того же цвета. Итог вынесен в
+// ExamAttemptOutcome — своя логика, что показывать, не должна раздувать саму
+// карточку (CLAUDE.md «Храповики», лимит 150 строк).
 import type { CSSProperties } from 'react';
 import type { MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
-import {
-  listCardMetaStyle,
-  listCardStyle,
-  listCardTitleStyle,
-} from '../components/listCardStyles';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeNoAction, formatAttemptsLeft, getExamAction } from './examAttemptState';
 
-const readOnlyCardStyle: CSSProperties = { ...listCardStyle, cursor: 'default' };
-const descriptionStyle: CSSProperties = { margin: '6px 0 0', fontSize: 13 };
-const actionRowStyle: CSSProperties = { marginTop: 10 };
+const RUBRIC = 'Экзамен';
+
+const cardStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  padding: '18px 20px',
+  borderRadius: 'var(--radius-block)',
+  background: 'var(--panel-warm)',
+};
+// #55584e, не --ink-soft: тот же прецедент, что у тёплой плашки «Ждут
+// отправки вручную» и сводки «Экзаменов» — на --panel-warm --ink-soft держит
+// только ~4.06:1, ниже AA 4.5 для этого кегля; #55584e даёт 5.74:1
+// (broadcasts/ManualDeliveriesSection.tsx, exams/ExamsSectionStats.tsx).
+const rubricStyle: CSSProperties = {
+  fontSize: 12,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: '#55584e',
+};
+const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 22 };
+const metaStyle: CSSProperties = { fontSize: 14, color: '#55584e' };
+const descriptionStyle: CSSProperties = { margin: 0, fontSize: 14, color: '#55584e' };
+const actionRowStyle: CSSProperties = { marginTop: 4 };
 
 const ACTION_LABEL = {
   continue: 'Продолжить',
@@ -41,9 +62,10 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
 
   return (
     <li>
-      <div style={readOnlyCardStyle}>
-        <div style={listCardTitleStyle}>{exam.title}</div>
-        <div style={listCardMetaStyle}>{formatAttemptsLeft(exam)}</div>
+      <div style={cardStyle}>
+        <span style={rubricStyle}>{RUBRIC}</span>
+        <span style={titleStyle}>{exam.title}</span>
+        <span style={metaStyle}>{formatAttemptsLeft(exam)}</span>
         {exam.description && <p style={descriptionStyle}>{exam.description}</p>}
 
         {/* Итог — рядом с кнопкой, а не вместо неё: после «нужно доработать»
@@ -69,7 +91,7 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
         ) : (
           !showOutcome && (
             <div style={actionRowStyle}>
-              <p style={listCardMetaStyle}>{describeNoAction(exam)}</p>
+              <p style={metaStyle}>{describeNoAction(exam)}</p>
             </div>
           )
         )}

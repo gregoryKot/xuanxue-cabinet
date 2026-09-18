@@ -31,11 +31,12 @@ function renderNext(overrides: Partial<MyLessonDto> = {}) {
 }
 
 describe('StudentNextLesson', () => {
-  it('время в поясе ученика, день словами, название и главное действие', () => {
+  it('время в поясе ученика, рубрика дня и статуса, название и главное действие', () => {
     renderNext();
 
     expect(screen.getByText('19:00')).toBeInTheDocument();
-    expect(screen.getByText('сегодня')).toBeInTheDocument();
+    // NOW — 08:00, занятие — 19:00 того же дня в Иерусалиме: 11 часов вперёд.
+    expect(screen.getByText('Сегодня, через 11 часов')).toBeInTheDocument();
     expect(screen.getByText('Вечернее занятие')).toBeInTheDocument();
     expect(screen.getByText('Средняя группа · Пятое занятие цикла')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Подключиться' })).toHaveAttribute(
@@ -51,10 +52,10 @@ describe('StudentNextLesson', () => {
     expect(screen.queryByText('·')).not.toBeInTheDocument();
   });
 
-  it('занятие завтра — так и подписано', () => {
+  it('занятие завтра — так и подписано, без счёта в часах', () => {
     renderNext({ startsAt: '2026-09-09T16:00:00.000Z' });
 
-    expect(screen.getByText('завтра')).toBeInTheDocument();
+    expect(screen.getByText('Завтра')).toBeInTheDocument();
   });
 
   it('отменённое — сказано прямо, ссылки на встречу нет', () => {
