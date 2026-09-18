@@ -1,12 +1,20 @@
 // Валидация и сборка тела запроса — в examFormInput.test.ts, орекстрация
 // (submit/remove/changeStatus) — в hooks/useEntityForm.test.ts. Здесь —
 // только конкретная связка для домена формы экзамена, по образцу
-// exam-items/useExamItemForm.test.ts.
+// exam-items/useExamItemForm.test.ts. Черновик (ADR-0046) пишется в реальный
+// localStorage под ключом exam:<id>/exam:new — очищаем между тестами, иначе
+// черновик одного теста восстановился бы в соседнем (id экзамена в
+// makeExam() один и тот же).
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
+import { readDraft } from '../lib/formDraft';
 import { useExamForm } from './useExamForm';
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
   return {
@@ -134,5 +142,28 @@ describe('useExamForm — правка, удаление, смена стату�
     });
 
     expect(result.current.serverError?.message).toBe('В форме нет ни одного вопроса.');
+  });
+});
+
+describe('useExamForm — ключ черновика (ADR-0046)', () => {
+  it('новый экзамен — ключ exam:new', () => {
+    const { result } = renderHook(() => useExamForm(null, vi.fn(), vi.fn(), vi.fn()));
+
+    act(() => result.current.setField('title', 'Черновик'));
+
+    expect(readDraft('exam:new', Date.now())).toEqual(
+      expect.objectContaining({ title: 'Черновик' }),
+    );
+  });
+
+  it('существующий экзамен — ключ exam:<id>', () => {
+    const exam = makeExam({ id: 'x42' });
+    const { result } = renderHook(() => useExamForm(exam, vi.fn(), vi.fn(), vi.fn()));
+
+    act(() => result.current.setField('title', 'Правка'));
+
+    expect(readDraft('exam:x42', Date.now())).toEqual(
+      expect.objectContaining({ title: 'Правка' }),
+    );
   });
 });

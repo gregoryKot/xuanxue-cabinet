@@ -1,9 +1,12 @@
 // useExamItemForm.test.ts и exams/useExamForm.test.ts проверяют конкретные
 // домены (и не дублируют этот файл — jscpd не смотрит на *.test.ts); здесь —
-// сама оркестрация на фейковой сущности, без домена.
+// сама оркестрация на фейковой сущности, без домена. Черновик (ADR-0046)
+// пишется в реальный localStorage под фиксированным ключом — очищаем между
+// тестами, иначе черновик одного теста восстановился бы в соседнем.
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/http';
+import { readDraft } from '../lib/formDraft';
 import { useEntityForm } from './useEntityForm';
 
 interface FakeEntity {
@@ -15,6 +18,10 @@ interface FakeEntity {
 interface FakeFormState {
   name: string;
 }
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 function baseConfig(
   entity: FakeEntity | null,
@@ -43,6 +50,7 @@ function baseConfig(
     saveErrorMessage: 'Не удалось сохранить.',
     removeErrorMessage: 'Не удалось удалить.',
     statusErrorMessage: 'Не удалось изменить статус.',
+    draftKey: `fake:${entity?.id ?? 'new'}`,
     ...overrides,
   };
 }
@@ -198,5 +206,89 @@ describe('useEntityForm — правка/удаление/статус', () => {
 
     expect(ok).toBe(false);
     expect(result.current.serverError?.message).toBe('Не удалось изменить статус.');
+  });
+});
+
+describe('useEntityForm — черновик (ADR-0046)', () => {
+  // Совпадает с draftKey из baseConfig() — тесты берут ключ явной строкой,
+  // не через config.draftKey (string | null): readDraft() ждёт string.
+  const NEW_DRAFT_KEY = 'fake:new';
+  const EXISTING_DRAFT_KEY = 'fake:e1';
+
+  it('правка пишет черновик, восстанавливается при повторном монтаже', () => {
+    const config = baseConfig(null);
+    const first = renderHook(() => useEntityForm(config));
+    act(() => first.result.current.setField('name', 'Черновик'));
+    first.unmount();
+
+    const second = renderHook(() => useEntityForm(config));
+
+    expect(second.result.current.state).toEqual({ name: 'Черновик' });
+    expect(second.result.current.draftRestored).toBe(true);
+  });
+
+  it('discardDraft возвращает форму к исходному и стирает запись', () => {
+    const config = baseConfig(null);
+    const { result } = renderHook(() => useEntityForm(config));
+    act(() => result.current.setField('name', 'Черновик'));
+
+    act(() => result.current.discardDraft());
+
+    expect(result.current.state).toEqual({ name: '' });
+    expect(readDraft(NEW_DRAFT_KEY, Date.now())).toBeNull();
+  });
+
+  it('успешный submit() чистит черновик', async () => {
+    const config = baseConfig(null);
+    const { result } = renderHook(() => useEntityForm(config));
+    act(() => result.current.setField('name', 'Тест'));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(readDraft(NEW_DRAFT_KEY, Date.now())).toBeNull();
+  });
+
+  it('упавший submit() оставляет черновик — человек не теряет набранное', async () => {
+    const config = baseConfig(null, {
+      onCreate: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    const { result } = renderHook(() => useEntityForm(config));
+    act(() => result.current.setField('name', 'Тест'));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(readDraft(NEW_DRAFT_KEY, Date.now())).toEqual({ name: 'Тест' });
+  });
+
+  it('успешные remove() и changeStatus() тоже чистят черновик', async () => {
+    const entity: FakeEntity = { id: 'e1', name: 'Существующее', status: 'draft' };
+    const config = baseConfig(entity);
+    const { result } = renderHook(() => useEntityForm(config));
+    act(() => result.current.setField('name', 'Правка'));
+
+    await act(async () => {
+      await result.current.changeStatus('published');
+    });
+    expect(readDraft(EXISTING_DRAFT_KEY, Date.now())).toBeNull();
+
+    act(() => result.current.setField('name', 'Ещё правка'));
+    await act(async () => {
+      await result.current.remove();
+    });
+    expect(readDraft(EXISTING_DRAFT_KEY, Date.now())).toBeNull();
+  });
+
+  it('draftKey === null — форма работает без черновика', () => {
+    const config = baseConfig(null, { draftKey: null });
+    const { result } = renderHook(() => useEntityForm(config));
+
+    act(() => result.current.setField('name', 'Без черновика'));
+
+    expect(result.current.draftRestored).toBe(false);
+    expect(localStorage.length).toBe(0);
   });
 });

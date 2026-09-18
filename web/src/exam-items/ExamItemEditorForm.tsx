@@ -6,11 +6,11 @@
 // Удаление разрешено только черновику (ExamItemsService.remove): на
 // опубликованный или архивный вопрос могут ссылаться сданные работы — вместо
 // кнопки объяснение, почему её нет.
-import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EditorFooter } from '../components/EditorFooter';
+import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
 import {
   editorHeadingStyle,
@@ -19,7 +19,7 @@ import {
   screenTitleStyle,
   textLinkStyle,
 } from '../components/screenLayout';
-import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
+import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { ExamItemFormFields } from './ExamItemFormFields';
 import { ExamItemKindField } from './ExamItemKindField';
 import { ExamItemOptionsField } from './ExamItemOptionsField';
@@ -62,20 +62,12 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
   // места ждут обычную функцию без результата.
   const goToList = () => void navigate(ITEMS_PATH);
   const form = useExamItemForm(item, editor.create, editor.update, editor.remove);
-  const removeConfirm = useConfirmedRemove(form.remove, goToList);
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (await form.submit()) goToList();
-  }
-
-  async function handleChangeStatus(status: ExamItemStatus) {
-    if (await form.changeStatus(status)) goToList();
-  }
+  const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
+    useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
 
   return (
     <>
-      <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
+      <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
         <Link to={ITEMS_PATH} style={textLinkStyle}>
           {BACK_TEXT}
         </Link>
@@ -89,6 +81,8 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
             </p>
           )}
         </div>
+
+        <FormDraftNote restored={form.draftRestored} onDiscard={form.discardDraft} />
 
         <ExamItemKindField
           kind={form.state.kind}

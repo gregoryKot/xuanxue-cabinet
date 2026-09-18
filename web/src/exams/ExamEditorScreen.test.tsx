@@ -1,11 +1,14 @@
 // Страница редактора экзамена целиком: загрузка, поля, список вопросов,
 // поиск по вопросам, настройки прохождения, подвал (ADR-0033). Мок сети — по
 // префиксу пути (test-support/apiFetchMock.ts); `/exams/x1` стоит раньше
-// `/exams`, mockApiByPath матчит первым подходящим префиксом.
+// `/exams`, mockApiByPath матчит первым подходящим префиксом. Черновик
+// (ADR-0046) пишется в реальный localStorage — очищаем между тестами, иначе
+// черновик одного теста восстановился бы в соседнем (id экзамена в
+// makeExam() один и тот же).
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
@@ -21,6 +24,13 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+
+afterEach(() => {
+  localStorage.clear();
+  // jsdom не реализует scrollIntoView — тест черновика сам кладёт мок на
+  // Element.prototype, снимаем его, чтобы не утекал в соседний тест.
+  Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+});
 
 const LIST_MARKER = 'Здесь список экзаменов';
 
@@ -734,5 +744,44 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
       { id: undefined, text: '108', correct: false, imageId: undefined },
     ]);
     expect(await screen.findByText('Сколько форм?')).toBeInTheDocument();
+  });
+});
+
+describe('ExamEditorScreen — черновик (ADR-0046)', () => {
+  it('ушли со страницы и вернулись — черновик на месте, видна строка о нём', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    // «Ушли со страницы» — размонтирование: сама навигация здесь не под
+    // тестом, черновик обязан пережить именно уход формы из дерева (ровно
+    // это стирало состояние до ADR-0046).
+    const first = renderAt('/exams/x1');
+    await user.clear(await screen.findByLabelText('Название'));
+    await user.type(screen.getByLabelText('Название'), 'Набранное, но не сохранённое');
+    first.unmount();
+
+    renderAt('/exams/x1');
+
+    expect(await screen.findByLabelText('Название')).toHaveValue(
+      'Набранное, но не сохранённое',
+    );
+    expect(
+      screen.getByText('Здесь то, что вы набрали в прошлый раз и не успели сохранить.'),
+    ).toBeInTheDocument();
+  });
+
+  it('неудачное сохранение прокручивает к первому сообщению об ошибке', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    mockExamAndBank(makeExam({ title: '' }));
+
+    renderAt('/exams/x1');
+    await screen.findByLabelText('Название');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    // Прокрутка отложена на микротакт (scrollToFirstAlertSoon) — ждём её,
+    // а не проверяем сразу же после клика.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
   });
 });
