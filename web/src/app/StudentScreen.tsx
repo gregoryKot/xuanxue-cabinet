@@ -4,11 +4,13 @@
 // заполнил на экране «Шаблоны» (settings.schoolSiteUrl, В6 аудита: раньше
 // здесь была ссылка на сам кабинет — тупик для ученика и незнакомца).
 //
-// Облик — макет Student.dc.html (направление docs/adr/0031): приветствие
-// по имени растяжкой-заглавными, заголовок «Ближайшее занятие» антиквой,
-// дальше разделы строками. Колонка экрана живёт здесь, а не в каждом
-// разделе: занятия и экзамены обязаны стоять в одном поле, иначе на 360px
-// видно, что их верстали порознь.
+// Облик — макет 1c-planning.html (docs/adr/0043): приветствие по имени тихой
+// строкой, заголовок «Ближайшее занятие» антиквой крупнее обычного
+// (screenTitleStyle идёт с весом 300 и нужен другим разделам кабинета —
+// здесь свой вес и межстрочный интервал, как у экрана входа,
+// .xuanxue-login-title). Колонка экрана живёт здесь, а не в каждом разделе:
+// занятия и экзамены обязаны стоять в одном поле, иначе на 360px видно, что
+// их верстали порознь.
 //
 // «Выйти» — в подвале AppShell.tsx, общем для учителя и ученика: своя кнопка
 // здесь дублировала бы её на этом же экране (её механику проверяют
@@ -38,6 +40,17 @@ const headerStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 8,
 };
+// Тихая строка приветствия — не .xuanxue-eyebrow (растяжка-заглавные): в
+// макете это обычный текст поменьше, не служебная рубрика над блоком.
+const greetingStyle: CSSProperties = { fontSize: 14, color: 'var(--ink-soft)' };
+// Крупнее обычного screenTitleStyle (вес 300, интервал 1) — тот стиль общий
+// для заголовков разделов кабинета, а этот экран, как и вход
+// (.xuanxue-login-title), первое, что видит человек после входа.
+const titleStyle: CSSProperties = {
+  ...screenTitleStyle,
+  fontWeight: 400,
+  lineHeight: 1.05,
+};
 // screenHintStyle подтягивает приписку отрицательным отступом — здесь
 // расстояние держит `gap` колонки.
 const timeHintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
@@ -60,8 +73,8 @@ export function StudentScreen() {
   return (
     <section style={screenSectionStyle}>
       <div style={headerStyle}>
-        <span className="xuanxue-eyebrow">{greeting(me?.name)}</span>
-        <h1 style={screenTitleStyle}>{TITLE}</h1>
+        <span style={greetingStyle}>{greeting(me?.name)}</span>
+        <h1 style={titleStyle}>{TITLE}</h1>
         <p style={timeHintStyle}>{TIME_HINT}</p>
       </div>
       <StudentLessonsScreen />

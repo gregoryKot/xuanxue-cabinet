@@ -10,6 +10,7 @@
 // MyLessonsService), поэтому ближайшее — первое, без пересортировки здесь.
 import type { CSSProperties } from 'react';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { oneCardListStyle } from '../components/listCardStyles';
 import { SkeletonList } from '../components/Skeleton';
 import { StudentLessonCard } from './StudentLessonCard';
 import { StudentNextLesson } from './StudentNextLesson';
@@ -23,8 +24,7 @@ const sectionStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 16,
 };
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
-const laterStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 };
+const laterStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 // У `<h2>` свои отступы от браузера, а метка-рубрика стоит вплотную к
 // списку — расстояние держит `gap` колонки.
 const eyebrowHeadingStyle: CSSProperties = { margin: 0 };
@@ -55,9 +55,13 @@ export function StudentLessonsScreen() {
           <h2 className="xuanxue-eyebrow" style={eyebrowHeadingStyle}>
             {LATER_HEADING}
           </h2>
-          <ul style={listStyle}>
-            {laterLessons.map((lesson) => (
-              <StudentLessonCard key={lesson.id} lesson={lesson} />
+          <ul style={oneCardListStyle}>
+            {laterLessons.map((lesson, index) => (
+              <StudentLessonCard
+                key={lesson.id}
+                lesson={lesson}
+                isLast={index === laterLessons.length - 1}
+              />
             ))}
           </ul>
         </div>

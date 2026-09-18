@@ -20,7 +20,7 @@ const commentBoxStyle: CSSProperties = {
   margin: '10px 0 0',
   padding: '14px 16px',
   background: 'var(--panel)',
-  borderRadius: 3,
+  borderRadius: 'var(--radius-card)',
   lineHeight: 1.65,
 };
 

@@ -5,9 +5,11 @@
 // онлайн»). Ссылки нет — честная строка, а не пустота: ученик не должен
 // решить, что кабинет забыл её показать.
 //
-// `prominent` — киноварь достаётся ближайшему занятию, ради которого ученик
+// `prominent` — терракота достаётся ближайшему занятию, ради которого ученик
 // и открыл кабинет; у остальных строк та же ссылка идёт текстом (правило
-// акцента «один раз на экран», docs/adr/0031).
+// акцента «один раз на экран», docs/adr/0031, подтверждено ADR-0043). Это же
+// делает эту ссылку единственным акцентом на экране ученика — карточка
+// «Экзамен» (StudentExamCard.tsx) поэтому держит кнопку вторичной, не залитой.
 import type { CSSProperties } from 'react';
 import type { ClassFormat } from '@xuanxue/shared';
 import { textLinkStyle } from '../components/screenLayout';
@@ -28,18 +30,19 @@ const zoomRowStyle: CSSProperties = {
   gap: 12,
   flexWrap: 'wrap',
 };
-// Визуально — как Button variant="primary" (components/Button.tsx), но это
-// переход по внешней ссылке, не действие в кабинете: <a>, не <button>.
+// Визуально — как Button variant="primary" size="large" (components/
+// Button.tsx: те же радиус, паддинг и вес), но это переход по внешней ссылке,
+// не действие в кабинете — <a>, не <button>.
 const prominentLinkStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   minHeight: 48,
-  padding: '12px 24px',
-  borderRadius: 3,
-  fontWeight: 600,
-  background: 'var(--cinnabar)',
-  color: 'var(--cinnabar-contrast)',
+  padding: '13px 20px',
+  borderRadius: 'var(--radius-control)',
+  fontWeight: 500,
+  background: 'var(--terracotta)',
+  color: 'var(--terracotta-contrast)',
   textDecoration: 'none',
 };
 // Цель нажатия ≥44 по высоте и у тихого варианта (CLAUDE.md «Доступность»).
