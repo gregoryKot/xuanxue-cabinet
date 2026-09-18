@@ -20,6 +20,7 @@ const STUDENT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 const TEACHER: MeDto = {
   id: 'u2',
@@ -29,6 +30,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 
 describe('useNotificationPrefs — виды по роли', () => {

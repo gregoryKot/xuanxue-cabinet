@@ -28,6 +28,7 @@ const STUDENT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 
 function renderStudent(config: Record<string, unknown>, me: MeDto | Error = STUDENT) {

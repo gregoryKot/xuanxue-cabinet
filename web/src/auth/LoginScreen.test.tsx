@@ -128,17 +128,33 @@ describe('LoginScreen — конфигурация', () => {
     ).toBeInTheDocument();
   });
 
-  // Макет 2d — приписка внизу колонки видна всегда, даже без Telegram и без
-  // почты: новый человек без ссылки-приглашения (ADR-0030) иначе не понимает,
-  // почему ни один способ входа ему не поможет.
-  it('приписка про ссылку-приглашение видна независимо от способов входа', async () => {
+  // Отзыв владельца (ADR-0044) — приписка стоит НАД кнопкой входа и видна
+  // всегда, даже без Telegram и без почты: новый человек без
+  // ссылки-приглашения (ADR-0030) должен узнать об этом ДО того, как уйдёт в
+  // Telegram и получит красным 403 (CLAUDE.md «откуда это и зачем» до
+  // первого действия), а не только когда ни один способ входа не настроен.
+  it('приписка про ссылку-приглашение видна независимо от способов входа, ещё до кнопки Telegram', async () => {
     mockRoutes(() => Promise.resolve({}));
     renderScreen();
     expect(
       await screen.findByText(
-        'Кабинет открывается по ссылке-приглашению школы. Нет ссылки — напишите учителю.',
+        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('приписка стоит в разметке раньше кнопки Telegram — «до первого действия», не после', async () => {
+    mockRoutes(() => Promise.resolve({ telegramBotId: 123456 }));
+    const { container } = renderScreen();
+
+    await screen.findByRole('button', { name: 'Войти через Telegram' });
+
+    const text = container.textContent ?? '';
+    const invitePosition = text.indexOf('Первый раз здесь?');
+    const buttonPosition = text.indexOf('Войти через Telegram');
+
+    expect(invitePosition).toBeGreaterThanOrEqual(0);
+    expect(invitePosition).toBeLessThan(buttonPosition);
   });
 });
 
@@ -178,6 +194,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -197,6 +214,50 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
     expect(window.location.hash).toBe('');
   });
 
+  // Отзыв владельца (ADR-0044) — приписка про ссылку-приглашение раньше
+  // жила внутри children TelegramLoginSection и пряталась вместе с формой
+  // почты на время авто-входа по фрагменту; теперь стоит above блока входа
+  // и не должна исчезать, пока идёт автоматическая проверка фрагмента.
+  it('приписка про ссылку-приглашение видна и во время авто-входа по фрагменту (не прячется вместе с формой почты)', async () => {
+    window.location.hash = toTgAuthResultHash({
+      id: 42,
+      first_name: 'Дима',
+      auth_date: 1_700_000_000,
+      hash: 'a'.repeat(64),
+    });
+    let resolveTelegramLogin: (me: MeDto) => void = () => {};
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/telegram')
+        return new Promise<MeDto>((resolve) => {
+          resolveTelegramLogin = resolve;
+        });
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(
+        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
+      ),
+    ).toBeInTheDocument();
+
+    resolveTelegramLogin({
+      id: 'u1',
+      name: 'Дима',
+      roles: ['teacher'],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      needsProfile: false,
+    });
+    await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
+  });
+
   it('фрагмент в адресе, сохранён returnTo /exams (аудит L2) — редирект туда, не на домашний', async () => {
     saveReturnTo('/exams');
     window.location.hash = toTgAuthResultHash({
@@ -214,6 +275,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -249,14 +311,17 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
 
     renderScreen();
 
-    expect(await screen.findByText('Подпись виджета не сошлась.')).toBeInTheDocument();
+    // Обычная ошибка входа (кривая подпись, не 403) — красным, как раньше
+    // (ADR-0044 меняет только 403/блокировку, TelegramLoginSection.tsx).
+    const alert = await screen.findByText('Подпись виджета не сошлась.');
+    expect(alert.style.color).toBe('var(--danger)');
     expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
   });
 
   // ADR-0030/0036: без ссылки-приглашения новый человек в кабинет не
   // попадает — 403 с текстом сервера, который уже называет действие
   // (открыть ссылку), а не просто «доступа нет».
-  it('фрагмент в адресе, POST падает 403 (нет ссылки-приглашения) — текст сервера с действием', async () => {
+  it('фрагмент в адресе, POST падает 403 (нет ссылки-приглашения) — текст сервера с действием, спокойным цветом', async () => {
     window.location.hash = toTgAuthResultHash({
       id: 700,
       first_name: 'Незнакомец',
@@ -281,11 +346,13 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
 
     renderScreen();
 
-    expect(
-      await screen.findByText(
-        'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
-      ),
-    ).toBeInTheDocument();
+    const alert = await screen.findByText(
+      'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
+    );
+    // Отзыв владельца (ADR-0044) — 403 не поломка, а недостающая ссылка:
+    // спокойный цвет объяснения, не красный (role="alert" остаётся).
+    expect(alert.style.color).toBe('var(--ink-soft)');
+    expect(alert.closest('[role="alert"]')).not.toBeNull();
     expect(screen.queryByText('Расписание')).not.toBeInTheDocument();
   });
 
@@ -315,7 +382,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
 });
 
 describe('LoginScreen — блок email (emailLoginEnabled)', () => {
-  it('emailLoginEnabled: false — блока «Войдите по почте» нет', async () => {
+  it('emailLoginEnabled: false — блока «Войдите по почте» нет, приписка про ссылку-приглашение всё равно видна', async () => {
     mockRoutes(() =>
       Promise.resolve({ telegramBotId: 123456, emailLoginEnabled: false }),
     );
@@ -323,6 +390,13 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
 
     await screen.findByRole('button', { name: 'Войти через Telegram' });
     expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
+    // Приписка не была частью блока почты и раньше пряталась вместе с ним
+    // (ADR-0044) — теперь она не зависит от emailLoginEnabled вовсе.
+    expect(
+      screen.getByText(
+        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('emailLoginEnabled: true — форма есть, отправка → «Письмо ушло»', async () => {

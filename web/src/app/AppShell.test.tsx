@@ -78,6 +78,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -87,6 +88,7 @@ const ADMIN: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 const STUDENT: MeDto = {
   id: 'u2',
@@ -96,6 +98,7 @@ const STUDENT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 const ASSISTANT: MeDto = {
   id: 'u3',
@@ -105,6 +108,7 @@ const ASSISTANT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 
 describe('AppShell — навигация по ширине экрана', () => {

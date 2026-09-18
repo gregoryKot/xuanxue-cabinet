@@ -50,6 +50,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -67,6 +68,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -104,6 +106,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -121,6 +124,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 

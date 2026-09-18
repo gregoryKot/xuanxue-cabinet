@@ -12,6 +12,9 @@
 // lastLoginAt — Date, та же причина не попасть в USER_FIELD_POLICY; нужен для
 // отзыва неактивных аккаунтов (срок пересмотреть на этапе 2 — сейчас поле
 // только пишется, автоматического отзыва ещё нет).
+// profileNamedAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY
+// (не свободный текст): момент, когда человек сам назвал себя на экране
+// `/welcome` (ADR-0044, PATCH /me/profile, UserProfileService.setName).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
   SCHOOL_TZ,
@@ -60,6 +63,15 @@ export class UserRecord {
   // Не ПДн — не в USER_FIELD_POLICY, та же причина, что у lastLoginAt выше.
   @Prop({ type: Date, required: false })
   joinedViaInviteAt?: Date;
+
+  // Человек назвал себя сам — экран `/welcome`, PATCH /me/profile (ADR-0044,
+  // UserProfileService.setName). Date, не Boolean: та же причина, что у
+  // lastLoginAt/joinedViaInviteAt выше — момент нужен для миграции 0009
+  // (кому уже не задавать вопрос повторно), а факт «есть значение» даёт
+  // булево MeDto.needsProfile (auth/user.mapper.ts). Пусто у всех, кто вошёл
+  // до этого PR, — миграция 0009 проставляет его тем, чьё имя уже настоящее.
+  @Prop({ type: Date, required: false })
+  profileNamedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserRecord);

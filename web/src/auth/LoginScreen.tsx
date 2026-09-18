@@ -9,7 +9,7 @@
 import { Navigate } from 'react-router-dom';
 import { EntryColumn } from '../components/EntryColumn';
 import { LabeledDivider } from '../components/LabeledDivider';
-import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
+import { screenExplanationStyle } from '../components/screenLayout';
 import { EmailLoginForm } from './EmailLoginForm';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
@@ -18,9 +18,13 @@ import { postLoginPath } from './returnTo';
 
 // Единственное место, где кабинет вообще упоминает ссылку-приглашение
 // (ADR-0030) до входа: и Telegram, и почта всё равно упрутся в неё дальше
-// (403 без нового человека в школе), а до попытки входа это неочевидно.
-const NO_INVITE_FOOTER_MESSAGE =
-  'Кабинет открывается по ссылке-приглашению школы. Нет ссылки — напишите учителю.';
+// (403 без нового человека в школе). Отзыв владельца (ADR-0044): раньше
+// строка пряталась мелкой припиской под формой почты — незнакомец уходил в
+// Telegram и получал красным 403, ничего не зная про ссылку заранее.
+// CLAUDE.md требует объяснять «откуда это и зачем» ДО первого действия, а не
+// после отказа, поэтому приписка стоит над кнопкой входа и видна всегда.
+const INVITE_REQUIRED_MESSAGE =
+  'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.';
 
 export default function LoginScreen() {
   const { status: authStatus } = useAuth();
@@ -40,25 +44,18 @@ export default function LoginScreen() {
       <p style={screenExplanationStyle}>
         Расписание, ссылки на занятия, записи и экзамены. Для учеников и учителей.
       </p>
+      <p style={screenExplanationStyle}>{INVITE_REQUIRED_MESSAGE}</p>
 
       <TelegramLoginSection config={config} configStatus={configStatus} onReload={reload}>
-        {/* Фрагмент, не два соседних условия: приписка о ссылке-приглашении
-            нужна независимо от emailLoginEnabled, но должна прятаться вместе
-            с формой почты на время авто-входа по фрагменту адреса
-            (TelegramLoginSection.tsx — «форма почты не должна мигать раньше
-            скелетона», то же верно и для этой приписки). */}
-        <>
-          {/* Нет Telegram — email-путь (ADR-0029), выключен по умолчанию, пока
-              школа не подключит Resend (SECURITY §2): без этого условия форма
-              звала бы 503 на каждый ввод. */}
-          {configStatus === 'ok' && config?.emailLoginEnabled && (
-            <>
-              <LabeledDivider label="или по почте" />
-              <EmailLoginForm />
-            </>
-          )}
-          <p style={noteStyle}>{NO_INVITE_FOOTER_MESSAGE}</p>
-        </>
+        {/* Нет Telegram — email-путь (ADR-0029), выключен по умолчанию, пока
+            школа не подключит Resend (SECURITY §2): без этого условия форма
+            звала бы 503 на каждый ввод. */}
+        {configStatus === 'ok' && config?.emailLoginEnabled && (
+          <>
+            <LabeledDivider label="или по почте" />
+            <EmailLoginForm />
+          </>
+        )}
       </TelegramLoginSection>
     </EntryColumn>
   );

@@ -9,7 +9,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { SCHOOL_TZ } from '@xuanxue/shared';
+import { NEW_PERSON_NAME, SCHOOL_TZ } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
 import { toLean, type UserDoc, type UserLean } from './users.service';
 import { upsertUserByKey } from './upsert-user-by-key';
@@ -25,15 +25,17 @@ export class EmailLoginUserService {
 
   /** Атомарный upsert по уникальному индексу email (upsert-user-by-key.ts) —
    * тот же приём, что у Telegram-входа, против гонки двух первых переходов
-   * по одной и той же ссылке (двойной клик, два открытых таба). Имя — сам
-   * email: у входа по ссылке больше взять неоткуда, «Люди» переименует,
-   * когда экран это позволит (следующий PR). */
+   * по одной и той же ссылке (двойной клик, два открытых таба). Имя —
+   * заглушка NEW_PERSON_NAME, не сам email: адрес почты — ключ входа
+   * (SECURITY §1), и до этого PR он утекал и в список «Ученики», и в
+   * приветствие. Настоящее имя человек вводит сам экраном `/welcome`
+   * (ADR-0044, PATCH /me/profile, UserProfileService.setName). */
   async createFromEmail(email: string): Promise<UserLean> {
     const doc =
       (await upsertUserByKey<UserDoc>(
         this.model,
         { email },
-        { email, name: email, roles: [], tz: SCHOOL_TZ, status: 'active' },
+        { email, name: NEW_PERSON_NAME, roles: [], tz: SCHOOL_TZ, status: 'active' },
       )) ?? (await this.model.findOne({ email }).lean<UserDoc | null>());
     if (!doc) {
       // upsert либо вернул документ, либо упал на дубликате — и тогда

@@ -139,6 +139,7 @@ describe('AuthController.me', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: true,
     });
   });
 
@@ -238,6 +239,7 @@ describe('AuthController.verifyEmailLogin', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: true,
     });
   });
 });
@@ -284,6 +286,7 @@ describe('AuthController.loginWithTelegram', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: true,
     });
   });
 

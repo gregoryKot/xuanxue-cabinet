@@ -18,6 +18,10 @@ const NOT_CONFIGURED_MESSAGE =
 // Ошибка живёт там же, где остальные ошибки форм кабинета (Field,
 // FormServerError): под действием, которое её вызвало, цветом --danger.
 const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
+// 403 — не поломка, а недостающая ссылка-приглашение (незнакомец) или
+// блокировка (ACCESS_MESSAGE): человек ничего не сломал, ему просто нужна
+// ссылка, поэтому текст спокойный (screenExplanationStyle), не красный.
+const FORBIDDEN_STATUS = 403;
 
 // Сообщение и «Повторить» — одним блоком: у абзацев на этом экране margin
 // снят, вертикальный ритм держит flex-gap колонки.
@@ -52,10 +56,11 @@ export function TelegramLoginSection({
   children,
 }: TelegramLoginSectionProps) {
   const { refresh } = useAuth();
-  const { pending: autoPending, error: autoError } = useTelegramAuthResultLogin(refresh, {
-    navigateAfterLogin,
-    inviteCode,
-  });
+  const {
+    pending: autoPending,
+    error: autoError,
+    errorStatus: autoErrorStatus,
+  } = useTelegramAuthResultLogin(refresh, { navigateAfterLogin, inviteCode });
   const [pending, setPending] = useState(false);
   // Локальная переменная — TS сужает `number | undefined` до `number` по ней
   // и в замыкании кнопки ниже (LoginScreen.tsx, тот же приём).
@@ -112,7 +117,12 @@ export function TelegramLoginSection({
       )}
 
       {autoError && (
-        <p role="alert" style={errorTextStyle}>
+        <p
+          role="alert"
+          style={
+            autoErrorStatus === FORBIDDEN_STATUS ? screenExplanationStyle : errorTextStyle
+          }
+        >
           {autoError}
         </p>
       )}

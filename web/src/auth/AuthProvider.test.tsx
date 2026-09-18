@@ -36,6 +36,7 @@ describe('AuthProvider — статусы', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -84,6 +85,7 @@ describe('AuthProvider — статусы', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
     const { result } = renderAuth();

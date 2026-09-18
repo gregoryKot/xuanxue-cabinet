@@ -30,6 +30,7 @@ const STUDENT_WITH_TELEGRAM: MeDto = {
   status: 'active',
   telegramLinked: true,
   botChatActive: true,
+  needsProfile: false,
 };
 
 /** Экран параллельно зовёт /attempts, /auth/me и /auth/config, поэтому мок —

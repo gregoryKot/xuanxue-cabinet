@@ -16,6 +16,12 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   auth_date: 'Время входа',
   hash: 'Подпись входа',
 
+  // users/dto/update-my-profile.dto.ts — экран первого входа (ADR-0044).
+  // camelCase, в отличие от snake_case виджета Telegram выше: это поля
+  // нашей формы, а не чужого контракта.
+  firstName: 'Имя',
+  lastName: 'Фамилия',
+
   // classes — /classes.
   title: 'Название',
   groupLabel: 'Название группы',

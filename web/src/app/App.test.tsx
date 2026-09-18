@@ -29,6 +29,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -38,6 +39,7 @@ const ADMIN: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  needsProfile: false,
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -272,6 +274,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockRoute(student, { '/me/lessons': [], '/me/exams': [] });
 
@@ -315,6 +318,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
 
@@ -335,6 +339,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      needsProfile: false,
     };
     mockRoute(student, {
       '/attempts': [
@@ -382,6 +387,19 @@ describe('App', () => {
     renderAt(`/join/${'a'.repeat(32)}`);
 
     expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
+  });
+
+  // ADR-0044 «Мягкий первый вход»: маршрут живёт за RequireAuth, но вне
+  // AppShell (App.tsx) — здесь смоук на реальный WelcomeScreen внутри всего
+  // дерева App, детали формы и редиректа — RequireAuth.test.tsx и
+  // welcome/WelcomeScreen.test.tsx.
+  it('не назвавшийся (needsProfile) на /welcome — форма имени, без оболочки кабинета', async () => {
+    mockRoute({ ...TEACHER, name: 'Новый ученик', needsProfile: true });
+
+    renderAt('/welcome');
+
+    expect(await screen.findByText('Как вас зовут?')).toBeInTheDocument();
+    expect(screen.queryByText('Занятия')).not.toBeInTheDocument();
   });
 
   it('неизвестный путь для гостя — тоже уводит на экран входа (через «/»)', async () => {

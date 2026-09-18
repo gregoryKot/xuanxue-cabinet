@@ -4,6 +4,7 @@
 // индексе email (не симуляция — та уже есть в users.service.race.spec.ts
 // для Telegram, здесь общий upsertUserByKey проверяется вторым путём).
 import type { Connection, Model } from 'mongoose';
+import { NEW_PERSON_NAME } from '@xuanxue/shared';
 import { EmailLoginUserService } from './email-login-user.service';
 import { UserRecord, UserSchema } from './user.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -34,11 +35,13 @@ describe('EmailLoginUserService', () => {
     await expect(service.findByEmail('нет@example.com')).resolves.toBeNull();
   });
 
-  it('createFromEmail → findByEmail: read-after-write, active без ролей', async () => {
+  it('createFromEmail → findByEmail: read-after-write, active без ролей, имя — заглушка', async () => {
     const created = await service.createFromEmail('dima@example.com');
     expect(created).toMatchObject({
       email: 'dima@example.com',
-      name: 'dima@example.com',
+      // Заглушка, не сам email (SECURITY §1, ADR-0044) — иначе адрес почты
+      // утекает в список «Ученики» и в приветствие.
+      name: NEW_PERSON_NAME,
       roles: [],
       status: 'active',
     });

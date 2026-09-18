@@ -10,11 +10,13 @@ import {
 import { EmailLoginUserService } from './email-login-user.service';
 import { InviteLinkService } from './invite-link.service';
 import { LoginIdentityService } from './login-identity.service';
+import { MyProfileController } from './my-profile.controller';
 import { TeachersService } from './teachers.service';
 import { TelegramLinkCodeService } from './telegram-link-code.service';
 import { TelegramLinkService } from './telegram-link.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserNamesService } from './user-names.service';
+import { UserProfileService } from './user-profile.service';
 import { UserRolesService } from './user-roles.service';
 import { UserStatusService } from './user-status.service';
 import { UsersController } from './users.controller';
@@ -33,7 +35,7 @@ import { UsersService } from './users.service';
     ]),
     BotIdentityModule,
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, MyProfileController],
   providers: [
     UsersService,
     UserRolesService,
@@ -41,6 +43,7 @@ import { UsersService } from './users.service';
     TeachersService,
     UserDeletionService,
     UserNamesService,
+    UserProfileService,
     EmailLoginUserService,
     InviteLinkService,
     LoginIdentityService,

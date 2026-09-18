@@ -8,7 +8,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
-import { ACCESS_MESSAGE, type TelegramLoginInput } from '@xuanxue/shared';
+import { ACCESS_MESSAGE, joinPersonName, type TelegramLoginInput } from '@xuanxue/shared';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import { LoginIdentityService } from '../users/login-identity.service';
 import { UsersService, type UserLean } from '../users/users.service';
@@ -71,7 +71,10 @@ export class TelegramAuthService {
  * Telegram-идентичности апдейта, что и вход через виджет — вторая
  * реализация не пишется. Параметр — подмножество `TelegramLoginInput`, а не
  * сам тип: конструктору имени не нужны подпись и `auth_date`, только
- * first_name/last_name. */
+ * first_name/last_name. Склейка — joinPersonName (shared/src/person-name.ts,
+ * ADR-0044): своей реализации здесь больше нет (CLAUDE.md «Одна механика —
+ * один компонент») — иначе экран `/welcome` и вход через Telegram разошлись
+ * бы в том, где кончается имя и начинается фамилия. */
 export function fullName(input: { first_name: string; last_name?: string }): string {
-  return [input.first_name, input.last_name].filter(Boolean).join(' ');
+  return joinPersonName(input.first_name, input.last_name);
 }

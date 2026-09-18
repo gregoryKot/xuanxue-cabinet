@@ -8,6 +8,7 @@
 // не он, а ответ /auth/me целиком (403 vs 200, AuthProvider.tsx).
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ACCESS_MESSAGE } from '@xuanxue/shared';
+import { ROUTE_MODULES } from '../app/routeModules';
 import { Button } from '../components/Button';
 import { SkeletonLines } from '../components/Skeleton';
 import { useAuth } from './AuthProvider';
@@ -15,9 +16,10 @@ import { LogoutButton } from './LogoutButton';
 import { saveReturnTo } from './returnTo';
 
 const OFFLINE_MESSAGE = 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
+const WELCOME_PATH = ROUTE_MODULES.welcome.path;
 
 export function RequireAuth() {
-  const { status, refresh } = useAuth();
+  const { status, me, refresh } = useAuth();
   const location = useLocation();
 
   if (status === 'loading') {
@@ -57,6 +59,15 @@ export function RequireAuth() {
     // небезопасный путь и /login, так что дублировать проверку здесь не нужно.
     saveReturnTo(location.pathname + location.search);
     return <Navigate to="/login" replace />;
+  }
+
+  // Не назвался (ADR-0044) — уводим на /welcome, запомнив адрес: человек,
+  // пришедший по глубокой ссылке, после знакомства попадёт туда же, куда
+  // шёл, а не на главную. Проверка на путь — иначе сам /welcome зациклился
+  // бы редиректом сам на себя.
+  if (me?.needsProfile && location.pathname !== WELCOME_PATH) {
+    saveReturnTo(location.pathname + location.search);
+    return <Navigate to={WELCOME_PATH} replace />;
   }
 
   return <Outlet />;

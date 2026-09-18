@@ -25,6 +25,7 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
+    needsProfile: false,
     ...overrides,
   };
 }

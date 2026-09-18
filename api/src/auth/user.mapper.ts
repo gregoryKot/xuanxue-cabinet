@@ -10,6 +10,10 @@
 // telegramLinked уже true, а чата ещё нет, пока не нажато /start в боте
 // (ADR-0042). Параметром, не вызовом сервиса — маппер остаётся чистой
 // синхронной функцией, откуда взять значение решает вызывающая сторона.
+// `needsProfile` — человек ещё не назвал себя сам (ADR-0044): пусто
+// `profileNamedAt` значит либо заглушку NEW_PERSON_NAME после входа по
+// почте, либо имя из Telegram, которое человек не подтверждал — в обоих
+// случаях кабинет один раз спрашивает имя экраном `/welcome`.
 import type { MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 
@@ -22,5 +26,6 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     status: user.status,
     telegramLinked: user.telegramId != null,
     botChatActive,
+    needsProfile: user.profileNamedAt == null,
   };
 }

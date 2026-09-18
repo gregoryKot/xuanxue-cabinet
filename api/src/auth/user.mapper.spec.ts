@@ -25,7 +25,20 @@ describe('toMeDto', () => {
       status: 'active',
       telegramLinked: true,
       botChatActive: true,
+      needsProfile: true,
     });
+  });
+
+  // ADR-0044: пустой profileNamedAt — человек ещё не прошёл `/welcome`,
+  // кабинет обязан спросить имя. Заполненный — больше не спрашивает.
+  it('needsProfile: true без profileNamedAt, false — с ним', () => {
+    expect(toMeDto(fullUser(), true).needsProfile).toBe(true);
+
+    const named: UserLean = {
+      ...fullUser(),
+      profileNamedAt: new Date('2026-09-10T00:00:00Z'),
+    };
+    expect(toMeDto(named, true).needsProfile).toBe(false);
   });
 
   // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедшего по почте бот не узнаёт, и
@@ -60,6 +73,7 @@ describe('toMeDto', () => {
       'botChatActive',
       'id',
       'name',
+      'needsProfile',
       'roles',
       'status',
       'telegramLinked',
