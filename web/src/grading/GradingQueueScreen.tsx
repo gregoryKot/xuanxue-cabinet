@@ -5,7 +5,6 @@
 // направление «тихо и благородно» (docs/adr/0031): заголовок антиквой и
 // строка-объяснение под ним, тот же приём, что на «Экзаменах»; отдельного
 // макета у очереди нет, канвы Main.dc.html достаточно для списка строками.
-import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -16,6 +15,7 @@ import {
 } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
+import { oneCardListStyle } from '../components/listCardStyles';
 import { GradingQueueCard } from './GradingQueueCard';
 import { GRADING_QUEUE_EXPLANATION } from './gradingQueueHint';
 import { showsTelegramHint } from './showsTelegramHint';
@@ -31,12 +31,6 @@ const EMPTY_MESSAGE = 'Пока нечего проверять — сданны
 const TELEGRAM_LINK_EXPLANATION =
   'Бот пишет о сданных работах в личный чат, а вашего чата с ним пока нет. ' +
   'Свяжите Telegram и нажмите в боте «Запустить».';
-
-const listStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-};
 
 export default function GradingQueueScreen() {
   const { attempts, loading, error, reload } = useGradingQueue();
@@ -57,12 +51,13 @@ export default function GradingQueueScreen() {
       )}
 
       {!loading && !error && attempts && attempts.length > 0 && (
-        <ul style={listStyle}>
-          {attempts.map((attempt) => (
+        <ul style={oneCardListStyle}>
+          {attempts.map((attempt, index) => (
             <GradingQueueCard
               key={attempt.id}
               attempt={attempt}
               onSelect={() => void navigate(`/grading/${attempt.id}`)}
+              isLast={index === attempts.length - 1}
             />
           ))}
         </ul>

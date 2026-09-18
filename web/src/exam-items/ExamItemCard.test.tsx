@@ -68,4 +68,40 @@ describe('ExamItemCard', () => {
 
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });
+
+  // Список вопросов — одна карточка (docs/adr/0043): волосяную линию между
+  // строками красит сама строка, а не контейнер, поэтому у последней строки
+  // её быть не должно — иначе под линией останется голая полоска фона.
+  it('последняя строка — без нижней волосяной линии, у остальных линия есть', () => {
+    render(
+      <ul>
+        <ExamItemCard
+          item={makeItem({ id: 'e1', prompt: 'Первый вопрос' })}
+          onSelect={vi.fn()}
+        />
+        <ExamItemCard
+          item={makeItem({ id: 'e2', prompt: 'Второй вопрос' })}
+          onSelect={vi.fn()}
+          isLast
+        />
+      </ul>,
+    );
+
+    const firstRow = screen.getByText('Первый вопрос').closest('li');
+    const lastRow = screen.getByText('Второй вопрос').closest('li');
+
+    expect(firstRow?.style.borderBottom).toBe('1px solid var(--panel)');
+    // jsdom не раскладывает `border-bottom` с var() в цвете на длинные
+    // свойства, а геттер шорт-формы для borderBottom: 'none' отдаёт «medium»
+    // (баг cssstyle) — сравниваем длинную форму, её jsdom выставляет верно.
+    expect(lastRow?.style.borderBottomStyle).toBe('none');
+  });
+
+  // Общую карточку рисует список (ExamItemsScreen.tsx), не строка — своя
+  // заливка на кнопке выглядела бы рамкой поверх общей карточки.
+  it('строка не несёт свой фон — карточку рисует список, а не кнопка', () => {
+    render(<ExamItemCard item={makeItem()} onSelect={vi.fn()} />);
+
+    expect(screen.getByRole('button').style.background).toBe('transparent');
+  });
 });

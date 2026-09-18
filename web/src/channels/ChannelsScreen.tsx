@@ -12,6 +12,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { ListScreenBody } from '../components/ListScreenBody';
+import { oneCardListStyle } from '../components/listCardStyles';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { ChannelCard } from './ChannelCard';
@@ -50,11 +51,13 @@ export default function ChannelsScreen() {
         error={error}
         onRetry={() => void reload()}
         emptyMessage={EMPTY_MESSAGE}
-        renderItem={(channel) => (
+        listStyle={oneCardListStyle}
+        renderItem={(channel, index, all) => (
           <ChannelCard
             key={channel.id}
             channel={channel}
             onSelect={() => void navigate(`${CHANNELS_PATH}/${channel.id}`)}
+            isLast={index === all.length - 1}
           />
         )}
       />
