@@ -8,6 +8,7 @@ import { DateTime, IANAZone } from 'luxon';
 import { Model } from 'mongoose';
 import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../common/error-info';
+import { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import { ClassRecord } from '../classes/class.schema';
 import type { LeanClass } from '../classes/class.mapper';
 import { LessonRecord } from './lesson.schema';
@@ -35,6 +36,7 @@ export class LessonPlannerService {
   constructor(
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
+    private readonly lessonLinkRebuild: LessonLinkRebuildService,
   ) {}
 
   async plan(now: DateTime): Promise<PlanResult> {
@@ -100,7 +102,17 @@ export class LessonPlannerService {
           `Класс ${cls._id.toString()}: перенос занятия ${move.id.toString()} ` +
             'столкнулся с уже занятым местом, перенос отложен до следующего тика',
         );
+        continue;
       }
+      // Узкое, но настоящее окно (ADR-0054): планировщик не трогает занятия
+      // ближе leadMinutes до начала, а lesson_link-рассылка создаётся заранее,
+      // за leadMinutes + settings.previewMinutes (docs/PLAN.md §6) — между
+      // этими границами есть previewMinutes минут (дефолт 5), где рассылка на
+      // занятие уже существует, а правило расписания ещё можно поменять.
+      // rebuild сам решает, есть ли что приводить в соответствие, и логирует
+      // свой сбой внутри — он не должен останавливать согласование остальных
+      // занятий класса.
+      await this.lessonLinkRebuild.rebuild(move.id, now);
     }
     const created = await insertMissing(this.lessonModel, cls._id, plan.toInsert);
     return { created, removed };

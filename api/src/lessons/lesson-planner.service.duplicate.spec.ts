@@ -7,9 +7,17 @@ import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { MONGO_DUPLICATE_KEY_CODE } from '../common/mongo-error-codes';
+import type { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import type { ClassRecord } from '../classes/class.schema';
 import type { LessonRecord } from './lesson.schema';
 import { LessonPlannerService } from './lesson-planner.service';
+
+// Гонка на insertMany падает раньше moveLesson (toMove здесь всегда пуст) —
+// LessonLinkRebuildService.rebuild не зовётся вовсе, фейк нужен только чтобы
+// собрать конструктор.
+const NOOP_LESSON_LINK_REBUILD = {
+  rebuild: () => Promise.resolve(false),
+} as unknown as LessonLinkRebuildService;
 
 const NOW = DateTime.fromISO('2026-03-20T00:00:00Z', { zone: 'utc' });
 
@@ -48,7 +56,11 @@ describe('LessonPlannerService.plan — гонка insertMany на дублик�
         Object.assign(new Error('E11000'), { code: MONGO_DUPLICATE_KEY_CODE }),
       ),
     );
-    const service = new LessonPlannerService(classModel, lessonModel);
+    const service = new LessonPlannerService(
+      classModel,
+      lessonModel,
+      NOOP_LESSON_LINK_REBUILD,
+    );
 
     const result = await service.plan(NOW);
 
@@ -61,7 +73,11 @@ describe('LessonPlannerService.plan — гонка insertMany на дублик�
         Object.assign(new Error('validation failed'), { code: NON_DUPLICATE_ERROR_CODE }),
       ),
     );
-    const service = new LessonPlannerService(classModel, lessonModel);
+    const service = new LessonPlannerService(
+      classModel,
+      lessonModel,
+      NOOP_LESSON_LINK_REBUILD,
+    );
 
     // Не-дубль уходит наверх из insertMissing; per-класс try/catch в plan()
     // ловит её и логирует — вызывающий код не падает.

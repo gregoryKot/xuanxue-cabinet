@@ -12,7 +12,7 @@ import type { DateTime } from 'luxon';
 import type { Types } from 'mongoose';
 import type { Context } from 'telegraf';
 import { LESSON_LIMITS } from '@xuanxue/shared';
-import { TopicRebuildService } from '../../broadcasts/topic-rebuild.service';
+import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.service';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { LessonsService } from '../../lessons/lessons.service';
 import { BotSessionService } from '../bot-session.service';
@@ -55,7 +55,7 @@ export class MessageHandler {
     private readonly personalChats: PersonalChats,
     private readonly botSessions: BotSessionService,
     private readonly lessonsService: LessonsService,
-    private readonly topicRebuild: TopicRebuildService,
+    private readonly lessonLinkRebuild: LessonLinkRebuildService,
     private readonly recordingWaitHandler: RecordingWaitHandler,
     private readonly examMediaHandler: ExamMediaMessageHandler,
     private readonly examTextHandler: ExamTextAnswerHandler,
@@ -165,7 +165,7 @@ export class MessageHandler {
       this.botSessions,
       chatId,
       async () => {
-        await this.lessonsService.update(lessonId.toString(), { topic });
+        await this.lessonsService.update(lessonId.toString(), { topic }, now);
       },
       {
         notFound:
@@ -177,7 +177,7 @@ export class MessageHandler {
     if (!saved) return;
 
     await this.botSessions.clear(chatId);
-    const rebuilt = await this.topicRebuild.rebuild(lessonId, now);
+    const rebuilt = await this.lessonLinkRebuild.rebuild(lessonId, now);
     const suffix = rebuilt ? '' : '. Пост уже ушёл в каналы со старой темой.';
     await ctx.reply(`Тема сохранена: ${topic}${suffix}`).catch(() => null);
   }

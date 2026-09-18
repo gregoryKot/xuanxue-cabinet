@@ -9,7 +9,6 @@ import { Model, Types } from 'mongoose';
 import {
   CLASS_NOT_FOUND_MESSAGE,
   LIST_LIMIT_MAX,
-  NULLABLE_LESSON_FIELDS,
   type AddRecordingInput,
   type CreateLessonInput,
   type LessonDto,
@@ -17,9 +16,9 @@ import {
   type UpdateLessonInput,
 } from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
-import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
+import { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord } from '../classes/class.schema';
 import { assertLeaderIdIfProvided } from '../users/assert-teacher';
@@ -43,6 +42,7 @@ import {
   buildRecordingDuplicateConditions,
   buildRecordingPush,
 } from './lessons.recording';
+import { buildUpdateCommand } from './lessons.update';
 
 @Injectable()
 export class LessonsService {
@@ -50,6 +50,7 @@ export class LessonsService {
     @InjectModel(LessonRecord.name) private readonly model: Model<LessonRecord>,
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
     private readonly recordingBroadcast: RecordingBroadcastService,
+    private readonly lessonLinkRebuild: LessonLinkRebuildService,
     @InjectModel(BroadcastRecord.name) private readonly broadcast: Model<BroadcastRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
   ) {}
@@ -103,23 +104,19 @@ export class LessonsService {
     return this.getById(created._id.toString());
   }
 
-  async update(id: string, input: UpdateLessonInput): Promise<LessonDto> {
+  async update(id: string, input: UpdateLessonInput, now: DateTime): Promise<LessonDto> {
     assertLessonId(id);
     if (input.durationMin !== undefined) await assertDurationEditable(this.model, id);
     await assertLeaderIdIfProvided(this.userModel, input.leaderId);
-    const { startsAt, ...rest } = input;
-    const { $set, $unset } = splitUpdate(rest, NULLABLE_LESSON_FIELDS);
-    // Перенос startsAt меняет только фактическое время начала — plannedAt
-    // (identity слота для планировщика, см. lesson.schema.ts) не трогаем.
-    if (startsAt !== undefined) {
-      $set.startsAt = parseUtcIso(startsAt, 'startsAt').toJSDate();
-    }
-    const update: UpdateCommand = { $set: encryptRecord($set, LESSON_ENCRYPT_SCHEMA) };
-    if (Object.keys($unset).length > 0) update.$unset = $unset;
     const doc = await this.model
-      .findOneAndUpdate({ _id: id }, update, { returnDocument: 'after' })
+      .findOneAndUpdate({ _id: id }, buildUpdateCommand(input), {
+        returnDocument: 'after',
+      })
       .lean<LeanLesson>();
     if (!doc) throw new NotFoundError(LESSON_NOT_FOUND);
+    // Перенос приводит ещё не ушедшую рассылку в соответствие (ADR-0054);
+    // сбой не откатывает состоявшийся PATCH — rebuild логирует его сам.
+    if (input.startsAt !== undefined) await this.lessonLinkRebuild.rebuild(doc._id, now);
     return toLessonDto(decryptRecord(doc, LESSON_ENCRYPT_SCHEMA));
   }
 
