@@ -86,21 +86,26 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.attemptReview.path} element={<AttemptReviewScreen />} />
     {/* Личный экран человека, не раздел домена — вход из подвала кабинета на
         мониторе и значка профиля на телефоне (ADR-0045, AppShellBrandRow.tsx),
-        не из NAV_ITEMS (docs/adr/0025). Доступен и ученику: AppShell.tsx
-        рисует здесь Outlet независимо от роли. */}
+        не из навигации разделов (docs/adr/0025). Доступен любой роли:
+        canSeeRoute (screenAccess.ts) не ограничивает его по роли. */}
     <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
+    {/* «Задания» и «Занятия» — два маршрута ученика (решение владельца:
+        экзамены — отдельный экран и первый после входа, docs/PLAN.md §11).
+        Открыты любой роли, как «/profile» выше. */}
+    <Route path={ROUTE_MODULES.tasks.path} element={<TasksScreen />} />
+    <Route path={ROUTE_MODULES.studentLessons.path} element={<LessonsScreen />} />
     {/* Экран сдачи — доступен любой роли (ТЗ student-exams.md: учитель тоже
         проходит форму изнутри), вход — кнопка «Начать»/«Продолжить» на
-        StudentExamsSection.tsx. Как «/profile», AppShell.tsx отдаёт под
-        него Outlet и ученику, минуя StudentScreen. */}
+        TasksScreen.tsx. Как «/profile» выше, canSeeRoute открывает его
+        независимо от роли. */}
     <Route path={ROUTE_MODULES.attempt.path} element={<AttemptScreen />} />
-    {/* «Ученики» — четвёртый пункт NAV_ITEMS (navItems.ts). Маршрут открыт
-        admin и teacher (RequirePeopleAccess, docs/PLAN.md §6, ADR-0030 —
-        ссылку-приглашение отдаёт и учитель); роспись ролей и удаление данных
-        внутри экрана остаются только у admin (SECURITY §3). */}
+    {/* «Ученики» — четвёртый пункт STAFF_NAV_ITEMS (navItems.ts). Маршрут
+        открыт admin и teacher (RequirePeopleAccess, docs/PLAN.md §6,
+        ADR-0030 — ссылку-приглашение отдаёт и учитель); роспись ролей и
+        удаление данных внутри экрана остаются только у admin (SECURITY §3). */}
     <Route element={<RequirePeopleAccess />}>
       <Route path={ROUTE_MODULES.people.path} element={<PeopleScreen />} />
     </Route>
-    <Route path="/" element={<Navigate to={ROOT_REDIRECT_PATH} replace />} />
+    <Route path="/" element={<RootRedirect />} />
   </>
 );

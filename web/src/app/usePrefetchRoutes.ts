@@ -1,15 +1,24 @@
 // Фоновый прогрев чанков кабинета: когда сессия уже подтверждена и первый
 // экран нарисован, остальные разделы можно скачать заранее — переход между
 // ними перестаёт ждать сети (на проде TTFB 0.5–1.1 с, измерение 2026-09-15).
+// У ученика греются его два экрана («Задания», «Занятия»), у штата —
+// разделы штата: греть чужой роли экраны — трафик мимо того, что человек
+// вообще может открыть (решение владельца, docs/PLAN.md §11).
 //
 // По одному чанку за раз и только в простое браузера (`requestIdleCallback`,
 // в Safari его нет — фолбэк на `setTimeout`): прогрев не должен отнимать
 // канал у данных первого экрана, которые грузятся прямо сейчас.
 import { useEffect } from 'react';
-import { ROUTE_MODULES } from './routeModules';
+import type { MeDto } from '@xuanxue/shared';
+import { ROUTE_MODULES, type RouteModule } from './routeModules';
+import { isTeacher } from './screenAccess';
 
 /** Safari без requestIdleCallback: пауза, за которую первый экран успевает ожить. */
 const IDLE_FALLBACK_DELAY_MS = 300;
+
+// Ключи ROUTE_MODULES, отданные ученику — всё остальное с `warm: true` греет
+// штат (см. шапку файла).
+const STUDENT_ROUTE_KEYS = new Set(['tasks', 'studentLessons']);
 
 type Cancel = () => void;
 
@@ -22,12 +31,21 @@ function scheduleWhenIdle(task: () => void): Cancel {
   return () => window.clearTimeout(id);
 }
 
-/** Прогревает экраны кабинета, пока `enabled` — сессия подтверждена и роль известна. */
-export function usePrefetchRoutes(enabled: boolean): void {
-  useEffect(() => {
-    if (!enabled) return;
+/** Экраны, которые стоит прогреть для этой роли — свои, не чужие (см. шапку
+ * файла). Сессия ещё не известна (`me === null`) — греть нечего. */
+function routesToWarm(me: MeDto | null): RouteModule[] {
+  if (!me) return [];
+  const staff = isTeacher(me);
+  return Object.entries(ROUTE_MODULES)
+    .filter(([key, route]) => route.warm && STUDENT_ROUTE_KEYS.has(key) !== staff)
+    .map(([, route]) => route);
+}
 
-    const queue = Object.values(ROUTE_MODULES).filter((route) => route.warm);
+/** Прогревает экраны кабинета этой роли, пока сессия известна. */
+export function usePrefetchRoutes(me: MeDto | null): void {
+  useEffect(() => {
+    const queue = routesToWarm(me);
+    if (queue.length === 0) return;
     let cancelled = false;
 
     const loadNext = (): void => {
@@ -50,5 +68,5 @@ export function usePrefetchRoutes(enabled: boolean): void {
       cancelled = true;
       cancelScheduled();
     };
-  }, [enabled]);
+  }, [me]);
 }

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
@@ -41,11 +41,6 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve({});
     if (path === '/auth/logout') return Promise.resolve(undefined);
-    // StudentScreen (ученик без роли) грузит свои ближайшие занятия и
-    // экзамены — student/useMyLessons.ts, student/useMyExams.ts; здесь
-    // список не важен, важно, что маршрут не виснет на незамоканном пути.
-    if (path === '/me/lessons') return Promise.resolve([]);
-    if (path === '/me/exams') return Promise.resolve([]);
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 
@@ -56,12 +51,19 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route element={<AppShell />}>
             <Route path="/schedule" element={<p>Содержимое расписания</p>} />
+            {/* Экраны ученика (решение владельца: экзамены — отдельный
+                маршрут и первый после входа) — заглушки вместо настоящих
+                TasksScreen/LessonsScreen: здесь важна раскладка оболочки, не
+                сами экраны (те проверяют TasksScreen.test.tsx,
+                LessonsScreen.test.tsx). */}
+            <Route path="/tasks" element={<p>Экран заданий</p>} />
+            <Route path="/lessons" element={<p>Экран занятий</p>} />
             {/* Личный экран человека — маршрут внутри AppShell, но не за
                 ролевым гвардом (ADR-0045): проверяем, что AppShell отдаёт
-                под него Outlet и ученику. */}
+                под него Outlet любой роли. */}
             <Route path="/profile" element={<p>Экран профиля</p>} />
             {/* Экран сдачи — та же исключительная логика (ТЗ
-                student-exams.md): ученик должен попасть на сам маршрут. */}
+                student-exams.md): любая роль должна попасть на сам маршрут. */}
             <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
           </Route>
         </Routes>
@@ -178,7 +180,7 @@ describe('AppShell — учитель', () => {
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     // «Профиль» — тоже ссылка в этой колонке (блок человека снизу), но не
-    // пункт домена: отфильтрован, чтобы тест проверял ровно NAV_ITEMS.
+    // пункт домена: отфильтрован, чтобы тест проверял ровно STAFF_NAV_ITEMS.
     const labels = within(nav)
       .getAllByRole('link')
       .map((link) => link.textContent)
@@ -224,8 +226,8 @@ describe('AppShell — учитель', () => {
 
   // Отзыв владельца 2026-09-12/18: подвал «Вы вошли как …» на каждом экране
   // телефона — лишнее (кнопка нужна редко). На телефоне его больше нет вовсе
-  // — вместо имени значок профиля прямо в верхней строке (AppShellBrandRow.tsx,
-  // отзыв 2026-09-18), «Выйти» — на самом экране «Профиль» (ProfileScreen.test.tsx).
+  // — вместо имени значок профиля прямо в верхней строке (AppShellBrandRow.tsx),
+  // «Выйти» — на самом экране «Профиль» (ProfileScreen.test.tsx).
   it('на телефоне подвала под содержимым больше нет — значок профиля ведёт на «Профиль» в верхней строке', async () => {
     stubMobileViewport();
     renderShell(TEACHER);
@@ -249,93 +251,125 @@ describe('AppShell — помощник учителя', () => {
   });
 });
 
+// Решение владельца: экзамены — отдельный экран и первый после входа. У
+// ученика больше нет отдельной подмены содержимого (StudentScreen) — вместо
+// неё та же раскладка, что у штата, и редирект с чужих маршрутов.
 describe('AppShell — ученик (без роли teacher/assistant/admin)', () => {
-  it('вместо маршрута — StudentScreen, без нижней навигации', async () => {
+  it('на маршруте штата — редирект на «Задания», не подмена содержимого', async () => {
     renderShell(STUDENT);
 
-    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(await screen.findByText('Экран заданий')).toBeInTheDocument();
     expect(screen.queryByText('Содержимое расписания')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Занятия' })).not.toBeInTheDocument();
   });
 
-  // У ученика боковой колонки не бывает никогда (нет роли штата) — знак
-  // школы рисует сама оболочка (тот же путь, что и на телефоне у учителя),
-  // иначе он пропал бы у ученика на мониторе вовсе.
-  it('знак школы виден и без боковой колонки, ровно один раз', async () => {
+  it('своя навигация — «Задания» и «Занятия», без пунктов штата', async () => {
     renderShell(STUDENT);
-    await screen.findByText('Ближайших занятий пока нет.');
+    await screen.findByText('Экран заданий');
+
+    expect(screen.getByRole('link', { name: 'Задания' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Рассылки' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
+  });
+
+  // У ученика теперь та же раскладка, что у штата: боковая колонка на
+  // мониторе несёт знак школы и блок человека сама (см. шапку AppShell.tsx).
+  it('на мониторе — боковая колонка со знаком школы и блоком человека, как у штата', async () => {
+    renderShell(STUDENT);
+    await screen.findByText('Экран заданий');
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    const column = nav.parentElement as HTMLElement;
+    expect(within(column).getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
+    expect(within(column).getByText(/Вы вошли как Ученик/)).toBeInTheDocument();
+    expect(within(column).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+  });
+
+  it('на телефоне — нижняя панель вкладок и знак школы над содержимым, как у штата', async () => {
+    stubMobileViewport();
+    renderShell(STUDENT);
+    await screen.findByText('Экран заданий');
+
+    expect(screen.getByRole('link', { name: 'Задания' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Занятия' })).toBeInTheDocument();
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+  });
+
+  // Маршрут не спрятан за ролевым гвардом: ученик на «/profile» видит сам
+  // экран, не редирект.
+  it('на «/profile» — сам маршрут, не редирект', async () => {
+    renderShell(STUDENT, '/profile');
+
+    expect(await screen.findByText('Экран профиля')).toBeInTheDocument();
+    expect(screen.queryByText('Экран заданий')).not.toBeInTheDocument();
+  });
+
+  // То же самое для экрана сдачи (ТЗ student-exams.md) — вход в него не
+  // ролевая настройка, а кнопка на TasksScreen.tsx, но сам маршрут должен
+  // открываться, а не подменяться редиректом.
+  it('на «/attempts/:id» — сам маршрут, не редирект', async () => {
+    renderShell(STUDENT, '/attempts/a1');
+
+    expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
+    expect(screen.queryByText('Экран заданий')).not.toBeInTheDocument();
+  });
+});
+
+// Гейт от регресса ровно того правила, которое проверяет шапка AppShell.tsx:
+// «знак школы и блок человека рисует либо боковая колонка, либо оболочка» —
+// во всех четырёх сочетаниях роли и ширины, не задваиваясь и не пропадая.
+describe('AppShell — знак школы и блок человека: все сочетания роли и ширины', () => {
+  it('учитель, монитор — колонка несёт знак и блок человека', async () => {
+    renderShell(TEACHER);
+    await screen.findByText('Содержимое расписания');
 
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
-  });
-
-  // «Выйти» ученику нужна: навигации у него нет, кнопка — в общем подвале
-  // (StudentScreen.tsx отдал сюда свою).
-  it('«Выйти» доступна и ученику', async () => {
-    renderShell(STUDENT);
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Выйти' })).toBeEnabled(),
-    );
-  });
-
-  // Подвал общий (ADR-0045): ссылка на «Профиль» видна и ученику, хотя
-  // нижней навигации у него нет вовсе.
-  it('подвал — ссылка «Профиль» видна и ученику', async () => {
-    renderShell(STUDENT);
-    await screen.findByText('Ближайших занятий пока нет.');
-
+    expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
       'href',
       '/profile',
     );
   });
 
-  // Маршрут не спрятан за ролевым гвардом: ученик на «/profile» видит не
-  // StudentScreen, а сам экран.
-  it('на «/profile» — сам маршрут, не StudentScreen', async () => {
-    renderShell(STUDENT, '/profile');
-
-    expect(await screen.findByText('Экран профиля')).toBeInTheDocument();
-    expect(screen.queryByText('Ближайших занятий пока нет.')).not.toBeInTheDocument();
-  });
-
-  // То же самое для экрана сдачи (ТЗ student-exams.md) — вход в него не
-  // ролевая настройка, а кнопка на экране ученика, но сам маршрут должен
-  // открываться, а не подменяться StudentScreen.
-  it('на «/attempts/:id» — сам маршрут, не StudentScreen', async () => {
-    renderShell(STUDENT, '/attempts/a1');
-
-    expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
-    expect(screen.queryByText('Ближайших занятий пока нет.')).not.toBeInTheDocument();
-  });
-
-  // Болезнь, которую #198 вылечил учителю на мониторе (ADR-0043 «Контекст»),
-  // у ученика оставалась: боковой колонки у него не бывает никогда, поэтому
-  // он всегда идёт через тот же подвал под содержимым, что и учитель на
-  // телефоне. jsdom не считает раскладку, поэтому проверяем причину бага
-  // напрямую: обёртка содержимого (`<main>`) без растяжения `flex` — и то,
-  // что подвал в разметке идёт сразу за ней, без промежуточного распорщика.
-  it('на мониторе у ученика подвал не растянут к низу окна — обёртка содержимого не тянется', async () => {
-    renderShell(STUDENT);
-    const main = await screen.findByRole('main');
-    const footer = screen.getByRole('contentinfo');
-
-    expect(main.style.flex).toBe('');
-    expect(main.nextElementSibling).toBe(footer);
-  });
-
-  // Осторожно: `shellRowStyle.flex: 1` держит нижнюю панель вкладок прижатой
-  // к низу телефонного экрана — фикс подвала его не трогает (AppShell.tsx).
-  it('на телефоне панель вкладок остаётся прижатой к низу — flex:1 строки-обёртки на месте', async () => {
+  it('учитель, телефон — строка над содержимым, «Выйти» — не в оболочке', async () => {
     stubMobileViewport();
     renderShell(TEACHER);
-    const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
+    await screen.findByText('Содержимое расписания');
 
-    // Панель вкладок (AppNav isMobile) — сосед строки-обёртки (shellRowStyle),
-    // не её потомок: та же строка, что растягивается на всю высоту экрана и
-    // прижимает панель к низу.
-    const shellRow = nav.previousElementSibling as HTMLElement;
-    // jsdom разворачивает сокращение: `flex: 1` эквивалентно `flex: 1 1 0%`.
-    expect(shellRow.style.flex).toBe('1 1 0%');
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
+      'href',
+      '/profile',
+    );
+    expect(screen.queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
+  });
+
+  it('ученик, монитор — колонка несёт знак и блок человека, ровно как у штата', async () => {
+    renderShell(STUDENT);
+    await screen.findByText('Экран заданий');
+
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
+      'href',
+      '/profile',
+    );
+  });
+
+  it('ученик, телефон — строка над содержимым, ровно как у штата', async () => {
+    stubMobileViewport();
+    renderShell(STUDENT);
+    await screen.findByText('Экран заданий');
+
+    expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
+      'href',
+      '/profile',
+    );
+    expect(screen.queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
   });
 });
 
@@ -372,5 +406,18 @@ describe('AppShell — прокрутка внутри оболочки, а не
     const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
 
     expect((nav.parentElement as HTMLElement).style.overflowY).toBe('auto');
+  });
+
+  // Панель вкладок (AppNav isMobile) — сосед строки-обёртки (shellRowStyle),
+  // не её потомок: та же строка, что растягивается на всю высоту экрана и
+  // прижимает панель к низу. Проверяем и на ученике — раскладка теперь общая.
+  it('на телефоне панель вкладок остаётся прижатой к низу — flex:1 строки-обёртки на месте', async () => {
+    stubMobileViewport();
+    renderShell(STUDENT);
+    const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
+
+    const shellRow = nav.previousElementSibling as HTMLElement;
+    // jsdom разворачивает сокращение: `flex: 1` эквивалентно `flex: 1 1 0%`.
+    expect(shellRow.style.flex).toBe('1 1 0%');
   });
 });

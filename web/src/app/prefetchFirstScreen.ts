@@ -2,23 +2,22 @@
 // (FirstScreenPrefetch.tsx), чтобы проверить его без React (CLAUDE.md, ревью
 // «это можно протестировать без DOM?»).
 import type { MeDto } from '@xuanxue/shared';
-import { MY_EXAMS_PATH, MY_LESSONS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { putPrefetched } from '../api/prefetchCache';
 import { matchRoute } from './routeMatch';
-import { showsRouteScreen } from './screenAccess';
+import { canSeeRoute, rootPathFor } from './screenAccess';
 
 /**
  * GET-пути, которые стоит запросить сразу после ответа `/auth/me`,
  * параллельно с чанком экрана (routeModules.ts, `prefetch` по адресу).
  */
 export function firstScreenPaths(pathname: string, me: MeDto): string[] {
-  // showsRouteScreen — то же правило, что решает AppShell.tsx: тем же людям
-  // на тех же адресах отдаётся Outlet маршрута, значит и первый экран — это
-  // экран маршрута, а не StudentScreen.
-  const paths = showsRouteScreen(me, pathname)
-    ? (matchRoute(pathname)?.prefetch?.(pathname) ?? [])
-    : [MY_LESSONS_PATH, MY_EXAMS_PATH];
+  // canSeeRoute — то же правило, что решает AppShell.tsx: если человек не
+  // может остаться на этом адресе, он попадёт туда же, куда его отправит
+  // редирект (rootPathFor), — греем данные экрана-назначения, а не
+  // запрошенного.
+  const target = canSeeRoute(me, pathname) ? pathname : rootPathFor(me);
+  const paths = matchRoute(target)?.prefetch?.(target) ?? [];
 
   return [...new Set(paths)];
 }

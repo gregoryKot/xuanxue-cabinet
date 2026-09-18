@@ -260,12 +260,10 @@ describe('App', () => {
     expect(await screen.findByText('Ссылка-приглашение')).toBeInTheDocument();
   });
 
-  it('ученик без роли на /people — уводит на «Занятия», но там для него StudentScreen, не PeopleScreen', async () => {
-    // AppShell.tsx: у роли без teacher/assistant/admin Outlet маршрута
-    // /planning не рисуется вовсе — вместо него StudentScreen (свои
-    // эндпоинты /me/lessons и /me/exams, не /lessons и /classes
-    // PlanningScreen). Тест проверяет сам редирект RequirePeopleAccess, а
-    // не PlanningScreen — тому отдельный смоук чуть выше.
+  it('ученик без роли на /people — уводит редиректом на «Задания» (маршрут штата ему не открыт)', async () => {
+    // AppShell.tsx: canSeeRoute не пускает ученика на маршруты штата вовсе —
+    // редирект на rootPathFor(me) срабатывает раньше, чем запрос доходит до
+    // вложенного RequirePeopleAccess.
     const student: MeDto = {
       id: 's1',
       name: 'Ваня',
@@ -276,11 +274,11 @@ describe('App', () => {
       botChatActive: false,
       needsProfile: false,
     };
-    mockRoute(student, { '/me/lessons': [], '/me/exams': [] });
+    mockRoute(student, { '/me/exams': [] });
 
     renderAt('/people');
 
-    expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
+    expect(await screen.findByText('Заданий пока нет.')).toBeInTheDocument();
     expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
   });
 
@@ -290,6 +288,66 @@ describe('App', () => {
     renderAt('/');
 
     expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
+  });
+
+  // Решение владельца: экзамены — отдельный экран и первый после входа
+  // (docs/PLAN.md §11) — ученик с «/» попадает не туда же, куда учитель.
+  it('ученик на «/» — уводит на «Задания»', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      needsProfile: false,
+    };
+    mockRoute(student, { '/me/exams': [] });
+
+    renderAt('/');
+
+    expect(await screen.findByText('Заданий пока нет.')).toBeInTheDocument();
+  });
+
+  it('ученик на /tasks — маршрут «Задания» открывает TasksScreen', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      needsProfile: false,
+    };
+    mockRoute(student, { '/me/exams': [] });
+
+    renderAt('/tasks');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Задания' })).toBeInTheDocument();
+    expect(await screen.findByText('Заданий пока нет.')).toBeInTheDocument();
+  });
+
+  it('ученик на /lessons — маршрут «Занятия» открывает LessonsScreen', async () => {
+    const student: MeDto = {
+      id: 's1',
+      name: 'Ваня',
+      roles: [],
+      tz: 'Asia/Jerusalem',
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      needsProfile: false,
+    };
+    mockRoute(student, { '/me/lessons': [] });
+
+    renderAt('/lessons');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ближайшее занятие' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Ближайших занятий пока нет.')).toBeInTheDocument();
   });
 
   // Личный экран человека — маршрут не за RequirePeopleAccess и не за
@@ -309,7 +367,7 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
-  it('ученик на /profile — тоже открывает ProfileScreen, не StudentScreen', async () => {
+  it('ученик на /profile — маршрут ему открыт, как и штату', async () => {
     const student: MeDto = {
       id: 's1',
       name: 'Ваня',
@@ -325,12 +383,11 @@ describe('App', () => {
     renderAt('/profile');
 
     expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
-    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
   });
 
   // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за
   // ролевым гвардом, как «/profile» чуть выше.
-  it('ученик на /attempts/:id — открывает экран сдачи, не StudentScreen', async () => {
+  it('ученик на /attempts/:id — открывает экран сдачи, маршрут ему открыт', async () => {
     const student: MeDto = {
       id: 's1',
       name: 'Ваня',
@@ -360,7 +417,6 @@ describe('App', () => {
     renderAt('/attempts/a1');
 
     expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
-    expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
   });
 
   it('гость на /join/:code с действующим кодом — маршрут открывает JoinScreen (ADR-0030)', async () => {
