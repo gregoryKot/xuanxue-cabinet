@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Field, inputStyle } from './Field';
+import { Field, getInputStyle, inputStyle } from './Field';
 
 describe('Field', () => {
   it('связывает подпись с полем через label — поле находится по тексту подписи', () => {
@@ -39,5 +39,15 @@ describe('Field', () => {
   // нажатия ≥44px (CLAUDE.md «Доступность») должна остаться на месте.
   it('inputStyle держит высоту цели нажатия ≥44px', () => {
     expect(inputStyle.minHeight).toBe(44);
+  });
+
+  // Экран входа (docs/adr/0043, макет 2d) — единственное место с полем
+  // крупнее обычных 44px; проп размера, не второй экспортируемый объект.
+  it('getInputStyle("large") даёт 48px для экрана входа, не трогая рамку и радиус', () => {
+    const large = getInputStyle('large');
+    expect(large.minHeight).toBe(48);
+    expect(large.padding).toBe('12px 14px');
+    expect(large.border).toBe(inputStyle.border);
+    expect(large.borderRadius).toBe(inputStyle.borderRadius);
   });
 });

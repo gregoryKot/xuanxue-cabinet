@@ -95,14 +95,19 @@ export function TelegramLoginSection({
 
       {!autoPending && configStatus === 'ok' && telegramBotId && (
         <>
+          {/* size="large" + fontSize 16 — единственное действие экрана входа
+              (docs/adr/0043, макет 2d), крупнее обычной кнопки в 44px. */}
           <Button
+            size="large"
             pending={pending}
             onClick={() => handleLoginClick(telegramBotId)}
-            style={{ width: '100%' }}
+            style={{ width: '100%', fontSize: 16 }}
           >
             Войти через Telegram
           </Button>
-          <p style={screenHintStyle}>Тем же аккаунтом, которым вы читаете канал школы</p>
+          <p style={screenHintStyle}>
+            Откроется Telegram в этой же вкладке и вернёт вас обратно.
+          </p>
         </>
       )}
 

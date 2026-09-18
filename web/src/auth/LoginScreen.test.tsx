@@ -123,6 +123,22 @@ describe('LoginScreen — конфигурация', () => {
     expect(
       await screen.findByRole('button', { name: 'Войти через Telegram' }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText('Откроется Telegram в этой же вкладке и вернёт вас обратно.'),
+    ).toBeInTheDocument();
+  });
+
+  // Макет 2d — приписка внизу колонки видна всегда, даже без Telegram и без
+  // почты: новый человек без ссылки-приглашения (ADR-0030) иначе не понимает,
+  // почему ни один способ входа ему не поможет.
+  it('приписка про ссылку-приглашение видна независимо от способов входа', async () => {
+    mockRoutes(() => Promise.resolve({}));
+    renderScreen();
+    expect(
+      await screen.findByText(
+        'Кабинет открывается по ссылке-приглашению школы. Нет ссылки — напишите учителю.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
@@ -322,7 +338,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     renderScreen();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
 
     expect(await screen.findByText(/Письмо ушло на a@example\.com/)).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
@@ -344,7 +360,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     renderScreen();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
 
     expect(await screen.findByText(/Нет связи с сервером/)).toBeInTheDocument();
   });

@@ -214,6 +214,27 @@ body {
   }
 }
 
+/* Заголовок «Кабинет школы» на экране входа (auth/LoginScreen.tsx, макет 2d,
+   docs/adr/0043) — крупнее обычного screenTitleStyle (34px без медиа-
+   запроса): это первый экран, который видит любой человек, не раздел внутри
+   кабинета. JoinScreen.tsx и EmailLoginCallbackScreen.tsx этот класс не
+   берут — у них screenTitleStyle, как был. Класс, не инлайн-стиль:
+   `CSSProperties` не умеет медиа-запрос, а кегль на телефоне и на мониторе
+   разный (34px / 40px). */
+.xuanxue-login-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.05;
+  color: var(--ink);
+}
+@media (min-width: 600px) {
+  .xuanxue-login-title {
+    font-size: 40px;
+  }
+}
+
 /* Разбор попытки (grading/AttemptReviewScreen.tsx) — одна колонка на
    телефоне (CLAUDE.md «Мобильный экран первым» сильнее макета Review.dc.html),
    две — на экране, где колонке рубрики хватает места рядом с ответами. Класс,
