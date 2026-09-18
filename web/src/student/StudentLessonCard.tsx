@@ -11,30 +11,14 @@
 // тестами информация, отказ от неё не входит в задачу вёрстки (см. отчёт PR).
 // Отменённое занятие не показывает, как на него попасть — притворяться
 // обычным занятием нечестно (ТЗ, п.2: «отменённое видно как отменённое»).
-import type { CSSProperties } from 'react';
+//
+// Дата/название/тема и пометка отмены — общий LessonSummaryHeader.tsx
+// (docs/PLAN.md §14 слой 3.3 завёл вторую строку занятия, ArchivedLessonCard.tsx,
+// с тем же каркасом — CLAUDE.md «Одна механика — один компонент», jscpd
+// поймал бы дубль).
 import type { MyLessonDto } from '@xuanxue/shared';
-import { formatDateTime } from '../lib/formatDate';
+import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
 import { StudentLessonMeeting } from './StudentLessonMeeting';
-
-const rowStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  padding: '14px 16px',
-};
-const dateTimeStyle: CSSProperties = {
-  fontSize: 13,
-  fontVariantNumeric: 'tabular-nums',
-  color: 'var(--ink-soft)',
-};
-const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 20 };
-const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
-// Информационный текст — --ink-soft, не --ink-faint (CLAUDE.md
-// «Доступность»); отмена красится --danger: её нельзя пропустить.
-const cancelledBadgeStyle: CSSProperties = {
-  margin: '4px 0 0',
-  color: 'var(--danger)',
-};
 
 interface StudentLessonCardProps {
   lesson: MyLessonDto;
@@ -56,19 +40,21 @@ export function StudentLessonCard({
   const cancelled = lesson.status === 'cancelled';
 
   return (
-    <li style={{ ...rowStyle, borderBottom: isLast ? 'none' : '1px solid var(--panel)' }}>
-      <span style={dateTimeStyle}>{formatDateTime(lesson.startsAt, timeZone)}</span>
-      <span style={titleStyle}>{lesson.classTitle}</span>
-      {(lesson.groupLabel || lesson.topic) && (
-        <span style={metaStyle}>
-          {[lesson.groupLabel, lesson.topic].filter(Boolean).join(' · ')}
-        </span>
-      )}
-      {cancelled ? (
-        <p className="xuanxue-status-label" style={cancelledBadgeStyle}>
-          Занятие отменено
-        </p>
-      ) : (
+    <li
+      style={{
+        ...lessonRowStyle,
+        borderBottom: isLast ? 'none' : '1px solid var(--panel)',
+      }}
+    >
+      <LessonSummaryHeader
+        startsAt={lesson.startsAt}
+        classTitle={lesson.classTitle}
+        groupLabel={lesson.groupLabel}
+        topic={lesson.topic}
+        cancelled={cancelled}
+        timeZone={timeZone}
+      />
+      {!cancelled && (
         <StudentLessonMeeting
           format={lesson.format}
           location={lesson.location}

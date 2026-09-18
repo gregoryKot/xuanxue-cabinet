@@ -62,9 +62,15 @@ describe('activeSectionPath — список штата', () => {
 });
 
 describe('activeSectionPath — список ученика', () => {
-  it('«Задания» и «Занятия» подсвечивают себя, у обоих нет подэкранов', () => {
+  it('«Задания» и «Занятия» подсвечивают себя', () => {
     expect(activeSectionPath('/tasks', STUDENT_NAV_ITEMS)).toBe('/tasks');
     expect(activeSectionPath('/lessons', STUDENT_NAV_ITEMS)).toBe('/lessons');
+  });
+
+  // Слой 3.3 (docs/PLAN.md §14) — «/archive» подэкран «Занятий»
+  // (ADR-0025): вкладка «Занятия» остаётся подсвеченной.
+  it('/archive — подэкран «Занятий»', () => {
+    expect(activeSectionPath('/archive', STUDENT_NAV_ITEMS)).toBe('/lessons');
   });
 
   it('маршрут штата — вне списка ученика, null', () => {

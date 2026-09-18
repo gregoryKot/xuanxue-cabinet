@@ -94,6 +94,11 @@ export type {
   ListMyLessonsQuery,
 } from './lessons';
 export type {
+  ArchivedRecordingDto,
+  MyArchivedLessonDto,
+  ListMyArchivedLessonsQuery,
+} from './my-lessons-archive';
+export type {
   ExamItemKind,
   ExamItemStatus,
   ExamItemOptionDto,
@@ -188,6 +193,7 @@ export {
   MY_LESSONS_LIMIT_DEFAULT,
   MY_LESSONS_LIMIT_MAX,
 } from './lessons';
+export { MY_ARCHIVE_LIMIT_DEFAULT, MY_ARCHIVE_LIMIT_MAX } from './my-lessons-archive';
 export type {
   ChannelConfig,
   ChannelDto,

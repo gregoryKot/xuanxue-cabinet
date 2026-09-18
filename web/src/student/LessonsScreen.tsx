@@ -26,6 +26,7 @@ import {
   screenTitleStyle,
   textLinkStyle,
 } from '../components/screenLayout';
+import { SectionLink } from '../components/SectionLink';
 import { StudentLessonsScreen } from './StudentLessonsScreen';
 
 const TITLE = 'Ближайшее занятие';
@@ -34,6 +35,11 @@ const TITLE = 'Ближайшее занятие';
 // Пояс школы не назван: `/me/lessons` его не отдаёт, а выдумывать нельзя.
 const TIME_HINT = 'Время — по вашим часам.';
 const SCHOOL_SITE_TEXT = 'Ещё расписание и запись — на сайте школы:';
+const ARCHIVE_LINK_TITLE = 'Записи занятий';
+// Не пересказывает заголовок карточки, а добавляет то, чего в нём нет: не у
+// каждого прошедшего занятия есть запись (ТЗ docs/PLAN.md §14) — это стоит
+// сказать до перехода, а не после.
+const ARCHIVE_LINK_HINT = 'Прошедшие занятия — с записями, если они есть.';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -78,6 +84,7 @@ export default function LessonsScreen() {
         <p style={timeHintStyle}>{TIME_HINT}</p>
       </div>
       <StudentLessonsScreen />
+      <SectionLink to="/archive" title={ARCHIVE_LINK_TITLE} hint={ARCHIVE_LINK_HINT} />
       {config?.schoolSiteUrl && (
         <p style={schoolSiteStyle}>
           {SCHOOL_SITE_TEXT}{' '}
