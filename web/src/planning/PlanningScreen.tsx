@@ -1,7 +1,9 @@
 // «Занятия» — первый экран после входа (docs/PLAN.md §6, `/` → `/planning`):
 // сверху что идёт сегодня (PlanningToday.tsx), ниже календарь на 4 недели.
-// Вход в сетку расписания — текстовой ссылкой внизу, не пунктом меню
-// (docs/adr/0025-navigation-by-domain.md).
+// Вход в сетку расписания — тихая кнопка в шапке рядом с «Разовым занятием»
+// (PlanningActions.tsx), не пункт меню (docs/adr/0025-navigation-by-domain.md,
+// дополнение 2026-09-18): раньше был карточкой внизу списка, и на телефоне
+// до неё было не долистать (отзыв владельца).
 // Облик — направление «тихо и благородно» (docs/adr/0031), макет
 // Schedule.dc.html: заголовок антиквой, строка объяснения, занятия строками.
 // Правка и создание занятия — своя страница `/planning/new` и
@@ -10,13 +12,8 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import {
-  primaryActionStyle,
-  screenHintStyle,
-  screenSectionStyle,
-} from '../components/screenLayout';
+import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
@@ -24,16 +21,18 @@ import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
 import { groupLessonsByDay } from './groupLessonsByDay';
 import { LessonDayGroup } from './LessonDayGroup';
+import { PlanningActions } from './PlanningActions';
 import { PlanningToday } from './PlanningToday';
-import { ScheduleLink } from './ScheduleLink';
 import { useLessons } from './useLessons';
 
 const TITLE = 'Занятия';
-const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд, из расписания. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
+const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд. Дни, время и ссылки Zoom — в «Расписании». Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
 // Блок текста шапки уже макета (1c-planning.html, docs/adr/0043) — рядом
-// всегда крупная кнопка «Разовое занятие», и на 880px общей ширины экрана
-// столбец текста 620 (значение ScreenHeader по умолчанию) сталкивал бы её на
-// вторую строку раньше, чем нужно.
+// теперь пара действий, «Расписание» и «Разовое занятие»
+// (PlanningActions.tsx, отзыв владельца 2026-09-18): на 880px общей ширины
+// экрана столбец текста 620 (значение ScreenHeader по умолчанию) сталкивал бы
+// их на вторую строку раньше, чем нужно — у 540 для пары действий ещё
+// остаётся запас.
 const TITLE_MAX_WIDTH_PX = 540;
 // Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
 // отличается от строчки расписания (отзыв владельца 2026-09-12).
@@ -41,6 +40,7 @@ const ONE_OFF_HINT =
   'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
 const oneOffHintStyle = { ...screenHintStyle, margin: 0 };
 const LESSON_PATH = '/planning';
+const SCHEDULE_PATH = '/schedule';
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
@@ -74,6 +74,7 @@ export default function PlanningScreen() {
   // Занятие открывается своей страницей с адресом, а не листом поверх списка
   // (ADR-0033): ссылку можно прислать, «Назад» браузера возвращает сюда.
   const openCreate = () => void navigate(`${LESSON_PATH}/new`);
+  const openSchedule = () => void navigate(SCHEDULE_PATH);
   const openLesson = (lessonId: string) => void navigate(`${LESSON_PATH}/${lessonId}`);
 
   // Прокрутка к `#lesson-{id}` — на случай внешней ссылки (бот, уведомление).
@@ -88,9 +89,7 @@ export default function PlanningScreen() {
         titleMaxWidth={TITLE_MAX_WIDTH_PX}
         action={
           !lessonsState.loading && (
-            <Button style={primaryActionStyle} onClick={openCreate}>
-              Разовое занятие
-            </Button>
+            <PlanningActions onOpenSchedule={openSchedule} onCreateOneOff={openCreate} />
           )
         }
       />
@@ -128,7 +127,6 @@ export default function PlanningScreen() {
       {!lessonsState.loading && classesError && (
         <LoadErrorBanner message={classesError} onRetry={retryClasses} />
       )}
-      <ScheduleLink />
     </section>
   );
 }

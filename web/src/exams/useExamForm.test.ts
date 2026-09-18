@@ -1,7 +1,7 @@
 // Валидация и сборка тела запроса — в examFormInput.test.ts, орекстрация
 // (submit/remove/changeStatus) — в hooks/useEntityForm.test.ts. Здесь —
 // только конкретная связка для домена формы экзамена, по образцу
-// exam-items/useExamItemForm.test.ts. Черновик (ADR-0046) пишется в реальный
+// exam-items/useExamItemForm.test.ts. Черновик (ADR-0052) пишется в реальный
 // localStorage под ключом exam:<id>/exam:new — очищаем между тестами, иначе
 // черновик одного теста восстановился бы в соседнем (id экзамена в
 // makeExam() один и тот же).
@@ -145,7 +145,7 @@ describe('useExamForm — правка, удаление, смена стату�
   });
 });
 
-describe('useExamForm — ключ черновика (ADR-0046)', () => {
+describe('useExamForm — ключ черновика (ADR-0052)', () => {
   it('новый экзамен — ключ exam:new', () => {
     const { result } = renderHook(() => useExamForm(null, vi.fn(), vi.fn(), vi.fn()));
 

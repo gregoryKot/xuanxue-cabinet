@@ -37,7 +37,7 @@ import { useNow } from './useNow';
 const NOW_REFRESH_MS = 30_000;
 
 // Приписку держит `gap` шапки — отрицательный отступ screenHintStyle
-// подтянул бы её вплотную к заголовку (тот же приём, что StudentScreen.tsx).
+// подтянул бы её вплотную к заголовку (тот же приём, что LessonsScreen.tsx).
 const deadlineStyle = { ...screenHintStyle, margin: 0 };
 
 interface AttemptInProgressProps {

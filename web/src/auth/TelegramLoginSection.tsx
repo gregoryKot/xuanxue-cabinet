@@ -9,6 +9,7 @@ import { Button } from '../components/Button';
 import { SkeletonLines } from '../components/Skeleton';
 import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
 import { useAuth } from './AuthProvider';
+import { LoginRefusedNotice } from './LoginRefusedNotice';
 import { redirectToTelegramAuth } from './telegramAuthRedirect';
 import { useTelegramAuthResultLogin } from './useTelegramAuthResultLogin';
 
@@ -17,10 +18,12 @@ const NOT_CONFIGURED_MESSAGE =
 
 // Ошибка живёт там же, где остальные ошибки форм кабинета (Field,
 // FormServerError): под действием, которое её вызвало, цветом --danger.
+// Так остаются сетевой сбой и кривая подпись — то, что чинится повтором.
 const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
 // 403 — не поломка, а недостающая ссылка-приглашение (незнакомец) или
-// блокировка (ACCESS_MESSAGE): человек ничего не сломал, ему просто нужна
-// ссылка, поэтому текст спокойный (screenExplanationStyle), не красный.
+// блокировка (ACCESS_MESSAGE): повтор тем же способом упрётся в тот же
+// отказ, поэтому вместо строки под кнопкой весь блок входа заменяется
+// объяснением (LoginRefusedNotice.tsx) — отзыв владельца 2026-09-18.
 const FORBIDDEN_STATUS = 403;
 
 // Сообщение и «Повторить» — одним блоком: у абзацев на этом экране margin
@@ -62,6 +65,10 @@ export function TelegramLoginSection({
     errorStatus: autoErrorStatus,
   } = useTelegramAuthResultLogin(refresh, { navigateAfterLogin, inviteCode });
   const [pending, setPending] = useState(false);
+  // Человек нажал «Войти другим способом» на объяснении отказа: ошибка
+  // сервера никуда не делась, но форму ему показываем снова — он мог войти
+  // не тем аккаунтом Telegram (LoginRefusedNotice.tsx).
+  const [refusalDismissed, setRefusalDismissed] = useState(false);
   // Локальная переменная — TS сужает `number | undefined` до `number` по ней
   // и в замыкании кнопки ниже (LoginScreen.tsx, тот же приём).
   const telegramBotId = config?.telegramBotId;
@@ -69,6 +76,15 @@ export function TelegramLoginSection({
   function handleLoginClick(botId: number) {
     setPending(true);
     redirectToTelegramAuth(botId);
+  }
+
+  // Отказ доступа занимает место всей формы: и кнопка Telegram, и почта под
+  // ней привели бы к тому же 403 (LoginIdentityService — одно правило на оба
+  // пути входа), а рядом с ними объяснение читается как очередная подпись.
+  if (autoErrorStatus === FORBIDDEN_STATUS && autoError && !refusalDismissed) {
+    return (
+      <LoginRefusedNotice message={autoError} onRetry={() => setRefusalDismissed(true)} />
+    );
   }
 
   return (
@@ -117,12 +133,7 @@ export function TelegramLoginSection({
       )}
 
       {autoError && (
-        <p
-          role="alert"
-          style={
-            autoErrorStatus === FORBIDDEN_STATUS ? screenExplanationStyle : errorTextStyle
-          }
-        >
+        <p role="alert" style={errorTextStyle}>
           {autoError}
         </p>
       )}

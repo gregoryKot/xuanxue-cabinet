@@ -2,7 +2,7 @@
 // поиск по вопросам, настройки прохождения, подвал (ADR-0033). Мок сети — по
 // префиксу пути (test-support/apiFetchMock.ts); `/exams/x1` стоит раньше
 // `/exams`, mockApiByPath матчит первым подходящим префиксом. Черновик
-// (ADR-0046) пишется в реальный localStorage — очищаем между тестами, иначе
+// (ADR-0052) пишется в реальный localStorage — очищаем между тестами, иначе
 // черновик одного теста восстановился бы в соседнем (id экзамена в
 // makeExam() один и тот же).
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -747,14 +747,14 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
   });
 });
 
-describe('ExamEditorScreen — черновик (ADR-0046)', () => {
+describe('ExamEditorScreen — черновик (ADR-0052)', () => {
   it('ушли со страницы и вернулись — черновик на месте, видна строка о нём', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
     // «Ушли со страницы» — размонтирование: сама навигация здесь не под
     // тестом, черновик обязан пережить именно уход формы из дерева (ровно
-    // это стирало состояние до ADR-0046).
+    // это стирало состояние до ADR-0052).
     const first = renderAt('/exams/x1');
     await user.clear(await screen.findByLabelText('Название'));
     await user.type(screen.getByLabelText('Название'), 'Набранное, но не сохранённое');

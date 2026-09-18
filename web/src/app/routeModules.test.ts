@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { matchRoute } from './routeMatch';
-import { ROOT_REDIRECT_PATH, ROUTE_MODULES } from './routeModules';
+import { ROUTE_MODULES } from './routeModules';
 
 const routes = Object.values(ROUTE_MODULES);
 
@@ -26,6 +26,8 @@ describe('matchRoute', () => {
     );
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
     expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
+    expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
+    expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
     expect(loaderAt('/planning')).toBe(ROUTE_MODULES.planning.load);
     expect(loaderAt('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
     expect(loaderAt('/planning/652f00000000000000000003')).toBe(
@@ -79,9 +81,11 @@ describe('matchRoute', () => {
     expect(loaderAt('/grading/abc/extra')).toBeNull();
   });
 
-  it('корень — туда же, куда ведёт редирект с корня', () => {
+  // Роль ушла в rootPathFor (screenAccess.ts, screenAccess.test.ts) — этот
+  // резолвер по-прежнему без роли, «/» (сегментов нет) сопоставляется с
+  // «Занятиями» как единственный опорный путь для чанка/prefetch.
+  it('корень (сегментов нет) — чанк «Занятий»', () => {
     expect(loaderAt('/')).toBe(ROUTE_MODULES.planning.load);
-    expect(ROOT_REDIRECT_PATH).toBe(ROUTE_MODULES.planning.path);
   });
 
   it('хвостовой слеш не мешает', () => {

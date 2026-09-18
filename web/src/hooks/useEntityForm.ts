@@ -5,7 +5,7 @@
 // целиком (CLAUDE.md «Одна механика — один компонент», jscpd). Валидация и
 // сборка тела запроса остаются в чистой логике домена (examItemFormInput.ts/
 // examFormInput.ts) — здесь только связка с сетевыми колбэками. Черновик
-// (ADR-0046) — в useFormDraft.ts, иначе файл не уложится в 150 строк.
+// (ADR-0052) — в useFormDraft.ts, иначе файл не уложится в 150 строк.
 import { useState } from 'react';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import { useFormDraft } from './useFormDraft';
@@ -29,7 +29,7 @@ export interface UseEntityFormConfig<
   saveErrorMessage: string;
   removeErrorMessage: string;
   statusErrorMessage: string;
-  draftKey: string | null; // null — форма без черновика, осознанно (ADR-0046)
+  draftKey: string | null; // null — форма без черновика, осознанно (ADR-0052)
 }
 
 export interface UseEntityFormResult<TFormState, TStatus extends string> {

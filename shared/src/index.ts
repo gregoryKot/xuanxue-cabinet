@@ -280,6 +280,26 @@ export {
   GRADING_COMMENT_PRESET_LIMITS,
   GRADING_COMMENT_PRESET_NOT_FOUND_MESSAGE,
 } from './grading-comment-preset';
+export type {
+  MaterialKind,
+  MaterialAccess,
+  MaterialDto,
+  CreateMaterialInput,
+  UpdateMaterialInput,
+  ListMaterialsQuery,
+  MyMaterialDto,
+  ListMyMaterialsQuery,
+} from './materials';
+export {
+  MATERIAL_KINDS,
+  MATERIAL_ACCESS_LEVELS,
+  MATERIAL_LIMITS,
+  MATERIAL_MAX_CLASS_IDS,
+  MATERIAL_NOT_FOUND_MESSAGE,
+  MATERIALS_LIMIT_DEFAULT,
+  MY_MATERIALS_LIMIT_DEFAULT,
+  MY_MATERIALS_LIMIT_MAX,
+} from './materials';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';

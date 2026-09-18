@@ -127,7 +127,9 @@ describe('JoinScreen — ссылка действует, гость', () => {
 // на /join/<code> и попаданием в кабинет — вход оставался двухшаговым даже
 // после ADR-0030. ADR-0036 убрало промежуточное состояние с концами: этот
 // текст (и любой похожий на него) не должен появиться на экране НИ РАЗУ за
-// весь флоу «код валиден → возврат с Telegram → сессия есть → /schedule».
+// весь флоу «код валиден → возврат с Telegram → сессия есть → /schedule»
+// (JoinScreen.tsx уводит туда любую роль; ученика оттуда уводит дальше
+// AppShell.tsx — canSeeRoute/rootPathFor, screenAccess.ts — на «Задания»).
 //
 // Старый тест проверял только финальный DOM (после findByText('Расписание'))
 // — на старом двухшаговом коде экран ожидания успевал отрисоваться и
@@ -179,8 +181,9 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
         loggedIn = true;
         return Promise.resolve(STUDENT);
       }
-      // Ученик без ролей на /schedule видит StudentScreen (AppShell.tsx) —
-      // его собственные эндпоинты, пустые списки.
+      // Ученик без ролей на /schedule (маршрут штата) уходит редиректом на
+      // «Задания» (AppShell.tsx, canSeeRoute/rootPathFor) — его собственные
+      // эндпоинты, пустые списки.
       if (path.startsWith('/me/')) return Promise.resolve([]);
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
@@ -207,7 +210,7 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
     );
 
     await waitFor(
-      () => expect(screen.getByText('Ближайших занятий пока нет.')).toBeInTheDocument(),
+      () => expect(screen.getByText('Заданий пока нет.')).toBeInTheDocument(),
       { timeout: 5000 },
     );
     observer.disconnect();

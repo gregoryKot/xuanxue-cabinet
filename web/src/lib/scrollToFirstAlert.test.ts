@@ -1,7 +1,7 @@
 // Прокрутка к первой ошибке формы — контейнер может быть null (форма ещё не
 // смонтирована), в контейнере может не быть ошибки, а jsdom не реализует
 // scrollIntoView — ни один из этих случаев не должен падать (CLAUDE.md
-// «Доступность», ADR-0046).
+// «Доступность», ADR-0052).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { scrollToFirstAlert, scrollToFirstAlertSoon } from './scrollToFirstAlert';
 

@@ -1,9 +1,9 @@
-// Сборка экрана ученика (ТЗ student-screen.md, student-exams.md): занятия и
-// экзамены рисуют свои разделы (проверки — в student/), здесь — приветствие
-// по имени, заголовок раздела и ссылка на сайт школы поверх них. Четыре
-// запроса сразу (/auth/me, /auth/config, /me/lessons, /me/exams) —
-// mockApiByPath, а не очередь mockResolvedValueOnce (test-support/
-// apiFetchMock.ts: порядок запросов зависит от порядка хуков).
+// Экран «Занятия» ученика — второй экран (решение владельца, первый —
+// «Задания»/TasksScreen.tsx): приветствие по имени, заголовок раздела и
+// ссылка на сайт школы поверх списка занятий (проверки состояний —
+// StudentLessonsScreen.test.tsx). Три запроса (/auth/me, /auth/config,
+// /me/lessons) — mockApiByPath; /me/exams сюда не входит — экзамены больше
+// не заходят на этот экран (StudentExamsSection переехал в TasksScreen.tsx).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -11,7 +11,7 @@ import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
-import { StudentScreen } from './StudentScreen';
+import LessonsScreen from './LessonsScreen';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -31,27 +31,24 @@ const STUDENT: MeDto = {
   needsProfile: false,
 };
 
-function renderStudent(config: Record<string, unknown>, me: MeDto | Error = STUDENT) {
+function renderScreen(config: Record<string, unknown>, me: MeDto | Error = STUDENT) {
   mockApiByPath({
     '/auth/me': me,
     '/auth/config': config,
     '/me/lessons': [],
-    '/me/exams': [],
   });
-  // MemoryRouter — StudentExamsSection зовёт useNavigate (переход на экран
-  // сдачи после старта попытки), которому нужен контекст роутера.
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <StudentScreen />
+        <LessonsScreen />
       </AuthProvider>
     </MemoryRouter>,
   );
 }
 
-describe('StudentScreen', () => {
+describe('LessonsScreen', () => {
   it('здоровается по имени и называет раздел заголовком', async () => {
-    renderStudent({});
+    renderScreen({});
 
     expect(await screen.findByText('Здравствуйте, Мария')).toBeInTheDocument();
     expect(
@@ -63,13 +60,13 @@ describe('StudentScreen', () => {
   });
 
   it('имени ещё нет — здороваемся без него, без прочерка', async () => {
-    renderStudent({}, new Error('нет сессии'));
+    renderScreen({}, new Error('нет сессии'));
 
     expect(await screen.findByText('Здравствуйте')).toBeInTheDocument();
   });
 
   it('учитель заполнил адрес сайта школы — ссылка ниже расписания', async () => {
-    renderStudent({ schoolSiteUrl: 'https://xuanxue.su' });
+    renderScreen({ schoolSiteUrl: 'https://xuanxue.su' });
 
     expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'https://xuanxue.su' })).toHaveAttribute(
@@ -79,9 +76,17 @@ describe('StudentScreen', () => {
   });
 
   it('без адреса сайта школы — без ссылки', async () => {
-    renderStudent({});
+    renderScreen({});
 
     expect(await screen.findByText('Ближайших занятий пока нет.')).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('блока экзаменов на экране нет — «Задания» переехали на свой маршрут', async () => {
+    renderScreen({});
+
+    await screen.findByText('Ближайших занятий пока нет.');
+    expect(screen.queryByText('Экзамены')).not.toBeInTheDocument();
+    expect(screen.queryByText('Экзаменов пока нет.')).not.toBeInTheDocument();
   });
 });

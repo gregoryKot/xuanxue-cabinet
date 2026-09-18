@@ -26,7 +26,7 @@ export function useLogout(): UseLogoutResult {
     setError(null);
     try {
       await apiFetch('/auth/logout', { method: 'POST' });
-      // Черновики форм редактора (ADR-0046) — только явный выход: на 401
+      // Черновики форм редактора (ADR-0052) — только явный выход: на 401
       // (setUnauthorizedListener в AuthProvider) их не трогаем, человек
       // войдёт заново и должен увидеть набранное.
       clearAllDrafts();

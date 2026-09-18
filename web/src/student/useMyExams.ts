@@ -1,7 +1,7 @@
 // Данные раздела «Экзамены» на экране ученика — GET /me/exams (read-only, по
 // образцу useMyLessons.ts) плюс старт попытки (POST /exams/:id/attempts).
 // Старт не перечитывает список сам: экран сразу уводит на /attempts/:id
-// (StudentExamsSection.tsx), а к списку человек вернётся уже с обновлённым
+// (TasksScreen.tsx), а к списку человек вернётся уже с обновлённым
 // /me/exams при следующем заходе на экран.
 import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
 import { MY_EXAMS_PATH } from '../api/apiPaths';

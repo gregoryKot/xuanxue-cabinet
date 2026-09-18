@@ -20,7 +20,7 @@ import {
 const SAVE_ERROR_MESSAGE = 'Не удалось сохранить. Попробуйте ещё раз.';
 const REMOVE_ERROR_MESSAGE = 'Не удалось удалить. Попробуйте ещё раз.';
 const STATUS_ERROR_MESSAGE = 'Не удалось изменить статус. Попробуйте ещё раз.';
-// Домен черновика (lib/formDraft.ts, ADR-0046): xuanxue.draft.exam:new для
+// Домен черновика (lib/formDraft.ts, ADR-0052): xuanxue.draft.exam:new для
 // нового экзамена, xuanxue.draft.exam:<id> для существующего.
 const DRAFT_DOMAIN = 'exam';
 

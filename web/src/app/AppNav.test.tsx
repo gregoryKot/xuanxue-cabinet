@@ -81,17 +81,17 @@ describe('AppNav — раскладка', () => {
 });
 
 describe('AppNav — пункты и роль (отзыв владельца 2026-09-12, уточнение ADR-0030)', () => {
-  it('ученик без роли — три пункта, «Ученики» скрыт', () => {
+  // Решение владельца: у ученика два своих экрана — не подмножество меню
+  // штата, отфильтрованное по роли, а отдельный список (navItems.ts).
+  it('ученик без роли — два своих экрана, не пункты штата', () => {
     const student: MeDto = { ...TEACHER, roles: [] };
     renderNav(true, student);
 
-    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     const labels = screen
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label): label is string => label !== null);
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены']);
-    expect(nav).not.toHaveTextContent('Ученики');
+    expect(labels).toEqual(['Задания', 'Занятия']);
   });
 
   it('админ — четыре пункта, «Ученики» последним', () => {

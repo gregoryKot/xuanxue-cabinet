@@ -355,3 +355,45 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
     ).toBeInTheDocument();
   });
 });
+
+// Снимок владельца с телефона: экран сливался с бумагой, ссылка возврата
+// тянула подчёркивание во всю ширину, длинное имя вылезало за край
+// (docs/adr/0043, ТЗ переоблика). jsdom не вычисляет `var(--…)` — сравниваем
+// ровно строку инлайн-стиля, не вычисленный цвет.
+describe('AttemptReviewScreen — облик (снимок владельца, ADR-0043)', () => {
+  it('рубрика над именем есть, длинное имя-почта переносится, а не обрезается', async () => {
+    mockApiByPath({
+      '/attempts': makeReview({ userName: 'doctor.martynova@gmail.com' }),
+    });
+
+    renderAt('a1');
+    await screen.findByText('Форма первого уровня');
+
+    expect(screen.getByText('Работа ученика')).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading).toHaveTextContent('doctor.martynova@gmail.com');
+    expect(heading.style.overflowWrap).toBe('anywhere');
+  });
+
+  it('ссылка возврата к очереди — по содержимому, не растянута на всю ширину', async () => {
+    mockApiByPath({ '/attempts': makeReview() });
+
+    renderAt('a1');
+    await screen.findByText('Форма первого уровня');
+
+    const backLink = screen.getByRole('link', { name: 'Вернуться к очереди проверки' });
+    expect(backLink.style.alignSelf).toBe('flex-start');
+  });
+
+  it('карточка ответов и карточка проверки — с фоном var(--card)', async () => {
+    mockApiByPath({ '/attempts': makeReview() });
+
+    const { container } = renderAt('a1');
+    await screen.findByText('Форма первого уровня');
+
+    const cards = Array.from(
+      container.querySelectorAll<HTMLElement>('div, aside'),
+    ).filter((el) => el.style.background === 'var(--card)');
+    expect(cards).toHaveLength(2);
+  });
+});

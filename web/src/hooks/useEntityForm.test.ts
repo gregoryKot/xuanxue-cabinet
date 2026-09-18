@@ -1,6 +1,6 @@
 // useExamItemForm.test.ts и exams/useExamForm.test.ts проверяют конкретные
 // домены (и не дублируют этот файл — jscpd не смотрит на *.test.ts); здесь —
-// сама оркестрация на фейковой сущности, без домена. Черновик (ADR-0046)
+// сама оркестрация на фейковой сущности, без домена. Черновик (ADR-0052)
 // пишется в реальный localStorage под фиксированным ключом — очищаем между
 // тестами, иначе черновик одного теста восстановился бы в соседнем.
 import { act, renderHook } from '@testing-library/react';
@@ -209,7 +209,7 @@ describe('useEntityForm — правка/удаление/статус', () => {
   });
 });
 
-describe('useEntityForm — черновик (ADR-0046)', () => {
+describe('useEntityForm — черновик (ADR-0052)', () => {
   // Совпадает с draftKey из baseConfig() — тесты берут ключ явной строкой,
   // не через config.draftKey (string | null): readDraft() ждёт string.
   const NEW_DRAFT_KEY = 'fake:new';

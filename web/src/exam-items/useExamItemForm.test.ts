@@ -1,7 +1,7 @@
 // Валидация и сборка тела запроса — в examItemFormInput.test.ts (чистая
 // логика, без хука). Здесь — только оркестрация: submit/remove/changeStatus
 // вызывают правильный колбэк и правильно репортят ошибку, по образцу
-// schedule/useClassForm.test.ts. Черновик (ADR-0046) пишется в реальный
+// schedule/useClassForm.test.ts. Черновик (ADR-0052) пишется в реальный
 // localStorage под ключом exam-item:<id>/exam-item:new — очищаем между
 // тестами, иначе черновик одного теста восстановился бы в соседнем (id
 // вопроса в makeItem() один и тот же).
@@ -249,7 +249,7 @@ describe('useExamItemForm — правка, удаление, смена ста�
   });
 });
 
-describe('useExamItemForm — ключ черновика (ADR-0046)', () => {
+describe('useExamItemForm — ключ черновика (ADR-0052)', () => {
   it('новый вопрос — ключ exam-item:new', () => {
     const { result } = renderHook(() => useExamItemForm(null, vi.fn(), vi.fn(), vi.fn()));
 

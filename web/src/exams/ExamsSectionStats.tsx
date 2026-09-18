@@ -12,7 +12,7 @@
 // неизвестно к чему. Правка: плашка исчезла, её число переехало кликабельной
 // крупной строкой внутрь карточки «Проверка» (проп `headline` у SectionLink,
 // grading/gradingQueueHint.ts), а блок получил заголовок-рубрику
-// `.xuanxue-eyebrow` — тот же приём, что у student/StudentExamsSection.tsx и
+// `.xuanxue-eyebrow` — тот же приём, что у student/TasksScreen.tsx и
 // people/InviteLinkCard.tsx: читателю сказано, что дальше не продолжение
 // списка экзаменов, а остальная часть раздела.
 //

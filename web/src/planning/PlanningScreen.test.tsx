@@ -22,6 +22,7 @@ const mockedApiFetch = vi.mocked(apiFetch);
 
 const NEW_MARKER = 'Здесь страница разового занятия';
 const EDITOR_MARKER = 'Здесь страница занятия';
+const SCHEDULE_MARKER = 'Здесь сетка расписания';
 
 function renderScreen() {
   return render(
@@ -30,6 +31,7 @@ function renderScreen() {
         <Route path="/planning" element={<PlanningScreen />} />
         <Route path="/planning/new" element={<p>{NEW_MARKER}</p>} />
         <Route path="/planning/:lessonId" element={<p>{EDITOR_MARKER}</p>} />
+        <Route path="/schedule" element={<p>{SCHEDULE_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -82,10 +84,12 @@ describe('PlanningScreen — пустое окно', () => {
 
     // «Сегодня занятий нет.» тоже на экране (PlanningToday.tsx) — regex
     // нарочно шире и ловит именно объяснение под списком на 4 недели.
-    expect(
-      await screen.findByText(/В ближайшие \d+ недели занятий нет/),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Расписании/)).toBeInTheDocument();
+    // Проверяем текст именно этого абзаца (не через общий getByText):
+    // объяснение шапки тоже упоминает «Расписании» (EXPLANATION), и запрос
+    // без привязки к элементу упал бы на два совпадения.
+    const emptyMessage = await screen.findByText(/В ближайшие \d+ недели занятий нет/);
+    expect(emptyMessage).toBeInTheDocument();
+    expect(emptyMessage).toHaveTextContent(/Расписании/);
     expect(screen.getByRole('button', { name: 'Разовое занятие' })).toBeInTheDocument();
   });
 });
@@ -168,6 +172,16 @@ describe('PlanningScreen — список занятий', () => {
     await user.click(await screen.findByRole('button', { name: 'Разовое занятие' }));
 
     expect(await screen.findByText(NEW_MARKER)).toBeInTheDocument();
+  });
+
+  it('«Расписание» в шапке ведёт в сетку расписания', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
+
+    renderScreen();
+    await user.click(await screen.findByRole('button', { name: 'Расписание' }));
+
+    expect(await screen.findByText(SCHEDULE_MARKER)).toBeInTheDocument();
   });
 
   it('тема не задана — карточка показывает заглушку, отменённое занятие — серым', async () => {

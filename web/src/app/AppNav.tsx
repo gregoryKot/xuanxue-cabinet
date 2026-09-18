@@ -23,7 +23,7 @@ import {
   sideSectionsStyle,
   sideStyle,
 } from './sideNavStyles';
-import { activeSectionPath, NAV_ITEMS } from './navItems';
+import { activeSectionPath, navItemsFor } from './navItems';
 
 export { SIDE_NAV_WIDTH_PX };
 
@@ -44,10 +44,10 @@ interface AppNavProps {
 
 export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps) {
   const { pathname } = useLocation();
-  const active = activeSectionPath(pathname);
-  const items = NAV_ITEMS.filter(
+  const items = navItemsFor(me).filter(
     (item) => !item.roles || item.roles.some((role) => hasRole(me, role)),
   );
+  const active = activeSectionPath(pathname, items);
 
   // Нижняя панель — своя разметка: цель нажатия (`<Link>`, 44px, без вида) и
   // видимая плашка вокруг подписи (`<span>`, размер макета) — разные элементы,

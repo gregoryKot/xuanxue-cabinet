@@ -5,7 +5,14 @@
 // (components/SectionLink.tsx), не отдельным пунктом меню. Новый экран
 // заводится внутри своего раздела, а не пятым пунктом сюда
 // (docs/adr/0025-navigation-by-domain.md).
-import type { UserRole } from '@xuanxue/shared';
+//
+// Два списка, не один с фильтром по роли: у ученика роль — это ОТСУТСТВИЕ
+// teacher/assistant/admin (screenAccess.ts), а `NavItem.roles` умеет только
+// показать пункт при роли, не исключить всех, у кого её нет. Решение
+// владельца: у ученика два своих экрана — «Задания» первым, «Занятия»
+// вторым, — не подмножество меню штата.
+import type { MeDto, UserRole } from '@xuanxue/shared';
+import { isTeacher } from './screenAccess';
 
 export interface NavItem {
   to: string;
@@ -18,7 +25,7 @@ export interface NavItem {
   childPaths: string[];
 }
 
-export const NAV_ITEMS: NavItem[] = [
+export const STAFF_NAV_ITEMS: NavItem[] = [
   { to: '/planning', label: 'Занятия', childPaths: ['/schedule'] },
   {
     to: '/broadcasts',
@@ -38,11 +45,23 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+/** Решение владельца: экзамены — отдельный экран и первый после входа,
+ * занятия — второй (docs/PLAN.md §11). */
+export const STUDENT_NAV_ITEMS: NavItem[] = [
+  { to: '/tasks', label: 'Задания', childPaths: [] },
+  { to: '/lessons', label: 'Занятия', childPaths: [] },
+];
+
+/** Пункты навигации для роли этого человека (AppNav.tsx). */
+export function navItemsFor(me: MeDto | null): NavItem[] {
+  return isTeacher(me) ? STAFF_NAV_ITEMS : STUDENT_NAV_ITEMS;
+}
+
 /** Какой пункт меню подсветить для текущего пути — сам раздел или один из
  * его подэкранов (`childPaths`). `null` — путь ни в одном разделе (например,
  * `/login`). */
-export function activeSectionPath(pathname: string): string | null {
-  const item = NAV_ITEMS.find(
+export function activeSectionPath(pathname: string, items: NavItem[]): string | null {
+  const item = items.find(
     (candidate) => candidate.to === pathname || candidate.childPaths.includes(pathname),
   );
   return item?.to ?? null;
