@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
@@ -13,6 +13,15 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+
+// В `afterEach`, не только в конце тестов, что зовут stubMobileViewport():
+// упавшая проверка раньше обрывала тест до `vi.unstubAllGlobals()` в его
+// хвосте, и подмена «телефона» утекала во все следующие тесты файла
+// (реальный случай при правке этого файла — CLAUDE.md «Детерминизм»,
+// «порядок тестов»).
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /** По умолчанию matchMedia в setupTests отвечает «широкий экран» — тесты
  * без явной подмены проверяют монитор; здесь подменяем на «телефон». */
@@ -108,8 +117,6 @@ describe('AppShell — навигация по ширине экрана', () =>
 
     const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
     expect(nav.style.width).toBe('');
-
-    vi.unstubAllGlobals();
   });
 
   it('на широком экране навигация — колонка слева', async () => {
@@ -154,8 +161,6 @@ describe('AppShell — учитель', () => {
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     expect(within(nav).queryByText('Школа Сюань-Сюэ')).not.toBeInTheDocument();
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
-
-    vi.unstubAllGlobals();
   });
 
   // Четыре домена — потолок навигации (navItems.ts, отзыв владельца
@@ -213,19 +218,22 @@ describe('AppShell — учитель', () => {
     expect(within(nav).queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
   });
 
-  // «На телефоне подвал остаётся под содержимым» — осознанное отступление от
-  // мокапа (комментарий в AppShell.tsx): без «Выйти» с телефона не обойтись.
-  it('на телефоне подвал с «Выйти» и «Уведомления» остаётся под содержимым', async () => {
+  // Отзыв владельца 2026-09-12/18: подвал «Вы вошли как …» на каждом экране
+  // телефона — лишнее (кнопка нужна редко). На телефоне его больше нет вовсе
+  // — имя ведёт на «Уведомления» прямо в верхней строке (AppShellBrandRow.tsx),
+  // «Выйти» — на самом экране «Уведомления» (NotificationsScreen.test.tsx).
+  it('на телефоне подвала под содержимым больше нет — имя ведёт на «Уведомления» в верхней строке', async () => {
     stubMobileViewport();
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
-    const footer = screen.getByRole('contentinfo');
-    expect(within(footer).getByText(/Вы вошли как Дима/)).toBeInTheDocument();
-    expect(within(footer).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
-    expect(within(footer).getByRole('link', { name: 'Уведомления' })).toBeInTheDocument();
-
-    vi.unstubAllGlobals();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
+      'href',
+      '/notifications',
+    );
+    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveTextContent('Дима');
   });
 });
 
@@ -295,5 +303,35 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
 
     expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
     expect(screen.queryByText('Ближайших занятий пока нет.')).not.toBeInTheDocument();
+  });
+
+  // Болезнь, которую #198 вылечил учителю на мониторе (ADR-0043 «Контекст»),
+  // у ученика оставалась: боковой колонки у него не бывает никогда, поэтому
+  // он всегда идёт через тот же подвал под содержимым, что и учитель на
+  // телефоне. jsdom не считает раскладку, поэтому проверяем причину бага
+  // напрямую: обёртка содержимого (`<main>`) без растяжения `flex` — и то,
+  // что подвал в разметке идёт сразу за ней, без промежуточного распорщика.
+  it('на мониторе у ученика подвал не растянут к низу окна — обёртка содержимого не тянется', async () => {
+    renderShell(STUDENT);
+    const main = await screen.findByRole('main');
+    const footer = screen.getByRole('contentinfo');
+
+    expect(main.style.flex).toBe('');
+    expect(main.nextElementSibling).toBe(footer);
+  });
+
+  // Осторожно: `shellRowStyle.flex: 1` держит нижнюю панель вкладок прижатой
+  // к низу телефонного экрана — фикс подвала его не трогает (AppShell.tsx).
+  it('на телефоне панель вкладок остаётся прижатой к низу — flex:1 строки-обёртки на месте', async () => {
+    stubMobileViewport();
+    renderShell(TEACHER);
+    const nav = await screen.findByRole('navigation', { name: 'Разделы кабинета' });
+
+    // Панель вкладок (AppNav isMobile) — сосед строки-обёртки (shellRowStyle),
+    // не её потомок: та же строка, что растягивается на всю высоту экрана и
+    // прижимает панель к низу.
+    const shellRow = nav.previousElementSibling as HTMLElement;
+    // jsdom разворачивает сокращение: `flex: 1` эквивалентно `flex: 1 1 0%`.
+    expect(shellRow.style.flex).toBe('1 1 0%');
   });
 });

@@ -163,6 +163,25 @@ describe('AppNav — подсветка раздела', () => {
   });
 });
 
+// Отзыв владельца: `minHeight: 44` (цель нажатия) стояла прямо на видимой
+// плашке и раздула её заметно крупнее макета (~34px). Цель нажатия остаётся
+// на `<Link>` (невидимая), плашку макета несёт внутренний `<span>` —
+// pillBaseStyle (people/PersonRoleBadge.tsx) сделан тем же приёмом.
+describe('AppNav — цель нажатия и плашка нижней панели разведены', () => {
+  it('плашка — внутренний <span> без своей минимальной высоты, у <Link> нет фона', () => {
+    renderNav(true, TEACHER, '/planning');
+
+    const active = screen.getByRole('link', { name: 'Занятия' });
+    expect(active.style.minHeight).toBe('44px');
+    expect(active.style.background).toBe('');
+
+    const pill = active.querySelector('span') as HTMLElement;
+    expect(pill).not.toBeNull();
+    expect(pill.style.minHeight).toBe('');
+    expect(pill.textContent).toBe('Занятия');
+  });
+});
+
 describe('AppNav — знак школы (ADR-0043)', () => {
   it('в боковой колонке — знак и название видны', () => {
     renderNav(false);

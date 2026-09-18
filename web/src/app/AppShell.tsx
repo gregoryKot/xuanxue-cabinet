@@ -11,11 +11,18 @@
 // знак и «Выйти» не дублировались и не пропадали ни в одном сочетании роли и
 // ширины экрана.
 //
-// На телефоне это отступление от мокапа (screens/1c-planning.html подвал не
-// рисует вовсе): без «Выйти» с телефона не обойтись, а кабинет мобильный в
-// первую очередь (CLAUDE.md). Один подвал на обе роли — ученик отдал сюда
-// свою кнопку (её механику по-прежнему проверяют AppShell.test.tsx и
-// LogoutButton.test.tsx).
+// Подвал под содержимым («Вы вошли как … · Уведомления · Выйти») остаётся
+// только у ученика на мониторе (боковой колонки у него не бывает) — не на
+// телефоне: владелец счёл его на каждом экране лишним (кнопка нужна редко,
+// отзыв 2026-09-12). На телефоне эту роль берёт на себя верхняя строка
+// (AppShellBrandRow.tsx: имя — ссылка на «Уведомления») и сам экран
+// «Уведомления» («Выйти» переехала туда).
+//
+// У ученика на мониторе подвал ещё прижимался к низу окна — содержимое
+// держала обёртка с `flex: 1` (болезнь, которую #198 вылечил учителю,
+// ADR-0043 «Контекст»). Обёртка стала `<main>` без `flex`: растёт по
+// содержимому, подвал — сразу за ним. `shellRowStyle.flex: 1` ниже не трогаем
+// — им на телефоне держится нижняя панель вкладок.
 // Роль без teacher/assistant/admin (ученик, бухгалтер) — StudentScreen вместо
 // содержимого маршрута: у бухгалтера прав пока нет нигде (деньги — этап 3,
 // docs/PLAN.md). Исключения — «/notifications» (личная настройка человека,
@@ -31,10 +38,10 @@ import type { CSSProperties } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
-import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
 import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AppNav } from './AppNav';
+import { AppShellBrandRow } from './AppShellBrandRow';
 import { isTeacher, showsRouteScreen } from './screenAccess';
 import { StudentScreen } from './StudentScreen';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
@@ -63,20 +70,6 @@ const contentColumnStyle: CSSProperties = {
   flexDirection: 'column',
 };
 
-const brandRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 10,
-  padding: '12px 16px',
-};
-
-const brandTitleStyle: CSSProperties = {
-  fontFamily: 'var(--font-display)',
-  fontWeight: 500,
-  fontSize: 21,
-  color: 'var(--ink)',
-};
-
 const footerStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -103,8 +96,17 @@ export function AppShell() {
   // от неё зависит, кто рисует знак школы и блок человека (см. шапку файла).
   const hasSideNav = teacherRole && !isMobile;
 
+  // Подвал под содержимым — только у ученика на мониторе (см. шапку файла);
+  // на телефоне «Уведомления»/«Выйти» держат AppShellBrandRow.tsx и сам экран
+  // «Уведомления».
+  const showFooter = !hasSideNav && !isMobile;
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    // `100dvh`, не `100vh`: на телефоне адресная строка то есть, то нет, и
+    // `100vh` не следит за её появлением — нижняя панель вкладок (`sticky`,
+    // AppNav.tsx) на каждое такое появление подпрыгивала бы вместе с ней (тот
+    // же урок, что и в .xuanxue-entry-page, index.css).
+    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <div style={shellRowStyle}>
         {hasSideNav && (
           <AppNav
@@ -119,16 +121,9 @@ export function AppShell() {
           />
         )}
         <div style={contentColumnStyle}>
-          {!hasSideNav && (
-            <span style={brandRowStyle}>
-              <SchoolMark />
-              <span style={brandTitleStyle}>{SCHOOL_NAME}</span>
-            </span>
-          )}
-          <div style={{ flex: 1, minHeight: 0 }}>
-            {showOutlet ? <Outlet /> : <StudentScreen />}
-          </div>
-          {!hasSideNav && (
+          {!hasSideNav && <AppShellBrandRow isMobile={isMobile} name={me?.name} />}
+          <main>{showOutlet ? <Outlet /> : <StudentScreen />}</main>
+          {showFooter && (
             <footer style={footerStyle}>
               <span>Вы вошли как {me?.name ?? '—'} ·</span>
               <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
