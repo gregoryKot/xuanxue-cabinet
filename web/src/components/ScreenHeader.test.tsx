@@ -39,4 +39,17 @@ describe('ScreenHeader', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
+
+  it('titleMaxWidth — своя ширина блока заголовка («Занятия», docs/adr/0043)', () => {
+    render(
+      <ScreenHeader
+        title="Занятия"
+        explanation="Занятия на 4 недели."
+        titleMaxWidth={540}
+      />,
+    );
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Занятия' });
+    expect((heading.parentElement as HTMLElement).style.maxWidth).toBe('540px');
+  });
 });

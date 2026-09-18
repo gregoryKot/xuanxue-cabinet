@@ -2,7 +2,7 @@
 // а не берётся у машины: CI гоняет vitest ещё и под TZ=Australia/Sydney
 // (CLAUDE.md «Время»).
 import { describe, expect, it } from 'vitest';
-import { relativeDayLabel } from './relativeDay';
+import { capitalize, isToday, relativeDayLabel } from './relativeDay';
 
 const TZ = 'Asia/Jerusalem';
 
@@ -48,5 +48,37 @@ describe('relativeDayLabel — переход летнего времени Asia
     expect(
       relativeDayLabel('2026-10-24T16:00:00.000Z', '2026-10-24T05:00:00.000Z', TZ),
     ).toBe('сегодня');
+  });
+});
+
+describe('isToday', () => {
+  it('тот же календарный день в поясе читателя — true', () => {
+    expect(isToday('2026-09-20T16:00:00.000Z', '2026-09-20T05:00:00.000Z', TZ)).toBe(
+      true,
+    );
+  });
+
+  it('другой день — false', () => {
+    expect(isToday('2026-09-21T05:00:00.000Z', '2026-09-20T05:00:00.000Z', TZ)).toBe(
+      false,
+    );
+  });
+
+  it('вечер в поясе читателя уже завтра, хотя по UTC ещё сегодня — false', () => {
+    // Тот же момент, что и в тесте relativeDayLabel выше: 21:30 UTC — уже
+    // 00:30 следующего дня в Иерусалиме.
+    expect(isToday('2026-09-20T21:30:00.000Z', '2026-09-20T05:00:00.000Z', TZ)).toBe(
+      false,
+    );
+  });
+});
+
+describe('capitalize', () => {
+  it('делает первую букву прописной', () => {
+    expect(capitalize('сегодня')).toBe('Сегодня');
+  });
+
+  it('уже прописная — строка не меняется', () => {
+    expect(capitalize('Чт, 24 сентября')).toBe('Чт, 24 сентября');
   });
 });

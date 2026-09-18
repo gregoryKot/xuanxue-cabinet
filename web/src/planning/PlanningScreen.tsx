@@ -30,6 +30,11 @@ import { useLessons } from './useLessons';
 
 const TITLE = 'Занятия';
 const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд, из расписания. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
+// Блок текста шапки уже макета (1c-planning.html, docs/adr/0043) — рядом
+// всегда крупная кнопка «Разовое занятие», и на 880px общей ширины экрана
+// столбец текста 620 (значение ScreenHeader по умолчанию) сталкивал бы её на
+// вторую строку раньше, чем нужно.
+const TITLE_MAX_WIDTH_PX = 540;
 // Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
 // отличается от строчки расписания (отзыв владельца 2026-09-12).
 const ONE_OFF_HINT =
@@ -80,6 +85,7 @@ export default function PlanningScreen() {
         title={TITLE}
         explanation={EXPLANATION}
         hint={tzNote}
+        titleMaxWidth={TITLE_MAX_WIDTH_PX}
         action={
           !lessonsState.loading && (
             <Button style={primaryActionStyle} onClick={openCreate}>

@@ -105,7 +105,7 @@ describe('PlanningScreen — классы не загрузились, заня�
     renderScreen();
 
     expect(await screen.findByText(/Пятое занятие цикла/)).toBeInTheDocument();
-    expect(screen.getByText(/· —/)).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Не удалось загрузить расписание. Попробуйте ещё раз.',
     );
@@ -210,7 +210,7 @@ describe('PlanningScreen — список занятий', () => {
     renderScreen();
 
     expect(await screen.findByText(/запись есть/)).toBeInTheDocument();
-    expect(screen.getByText(/· —$/)).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 });
 

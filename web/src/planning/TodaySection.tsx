@@ -2,15 +2,15 @@
 // ближайшее занятие (отзыв владельца 2026-09-12, docs/adr/0025). Сбой
 // загрузки списка сюда не приходит — тот же `lessonsState.error` уже показан
 // одним баннером ниже, в PlanningScreen.tsx (два баннера на один сбой были бы
-// лишним). Карточка занятия — та же, что и в списке на 4 недели ниже
-// (CLAUDE.md «Одна механика — один компонент»), но без `id` (`anchor={false}`):
-// тот же день уже отрисован там своей карточкой с якорем, два элемента с
-// одним `id` ломают его (LessonCard.tsx). Клик здесь и там ведёт на одну и
-// ту же страницу занятия — переходить по ссылке между ними больше незачем.
+// лишним). Карточки — крупные, сеткой `.xuanxue-today-grid` (макет
+// 1c-planning.html, docs/adr/0043) — своя карточка TodayLessonCard.tsx, не
+// строка списка на 4 недели ниже (LessonCard.tsx): тот же день там уже
+// отрисован в общей карточке дня, и вид у «Сегодня» крупнее нарочно. Клик
+// здесь и там ведёт на одну и ту же страницу занятия.
 import type { CSSProperties } from 'react';
 import type { LessonDto } from '@xuanxue/shared';
 import { SkeletonList } from '../components/Skeleton';
-import { LessonCard } from './LessonCard';
+import { TodayLessonCard } from './TodayLessonCard';
 
 const HEADING = 'Сегодня';
 const NOTHING_TODAY = 'Сегодня занятий нет.';
@@ -39,28 +39,32 @@ export function TodaySection({
     <section style={sectionStyle}>
       <span className="xuanxue-eyebrow">{HEADING}</span>
 
-      {lessons === null && <SkeletonList rows={2} h={56} />}
+      {lessons === null && <SkeletonList rows={2} h={112} />}
 
-      {lessons?.map((lesson) => (
-        <LessonCard
-          key={lesson.id}
-          lesson={lesson}
-          className={classTitleById.get(lesson.classId) ?? '—'}
-          onSelect={() => onOpenLesson(lesson.id)}
-          anchor={false}
-        />
-      ))}
+      {lessons && lessons.length > 0 && (
+        <div className="xuanxue-today-grid">
+          {lessons.map((lesson) => (
+            <TodayLessonCard
+              key={lesson.id}
+              lesson={lesson}
+              className={classTitleById.get(lesson.classId) ?? '—'}
+              onSelect={() => onOpenLesson(lesson.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {lessons?.length === 0 && (
         <>
           <p style={nothingTodayStyle}>{NOTHING_TODAY}</p>
           {nextLesson && (
-            <LessonCard
-              lesson={nextLesson}
-              className={classTitleById.get(nextLesson.classId) ?? '—'}
-              onSelect={() => onOpenLesson(nextLesson.id)}
-              anchor={false}
-            />
+            <div className="xuanxue-today-grid">
+              <TodayLessonCard
+                lesson={nextLesson}
+                className={classTitleById.get(nextLesson.classId) ?? '—'}
+                onSelect={() => onOpenLesson(nextLesson.id)}
+              />
+            </div>
           )}
         </>
       )}
