@@ -1,7 +1,9 @@
 // Навигация в двух видах (отзыв владельца 2026-09-09): на телефоне —
-// нижняя панель, на широком экране — колонка слева. Плюс фильтр по роли и
-// подсветка активного раздела (docs/adr/0025-navigation-by-domain.md).
-import { render, screen } from '@testing-library/react';
+// нижняя панель, на широком экране — колонка слева. Плюс фильтр по роли,
+// подсветка активного раздела (docs/adr/0025-navigation-by-domain.md) и
+// блок человека внизу колонки (ADR-0043).
+import type { ReactNode } from 'react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
@@ -26,10 +28,15 @@ const ADMIN: MeDto = {
   botChatActive: false,
 };
 
-function renderNav(isMobile: boolean, me: MeDto | null = TEACHER, path = '/planning') {
+function renderNav(
+  isMobile: boolean,
+  me: MeDto | null = TEACHER,
+  path = '/planning',
+  personProps: { notificationsLink?: ReactNode; logoutButton?: ReactNode } = {},
+) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <AppNav isMobile={isMobile} me={me} />
+      <AppNav isMobile={isMobile} me={me} {...personProps} />
     </MemoryRouter>,
   );
 }
@@ -48,9 +55,13 @@ describe('AppNav — раскладка', () => {
   it('широкий экран — колонка слева фиксированной ширины', () => {
     renderNav(false);
 
-    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
-    expect(nav.style.width).toBe(`${SIDE_NAV_WIDTH_PX}px`);
-    expect(nav.style.flexDirection).toBe('column');
+    // Ширину несёт сама колонка, а `<nav>` внутри неё — только пункты
+    // (знак школы и блок человека лежат рядом, вне ориентира).
+    const column = screen.getByRole('navigation', {
+      name: 'Разделы кабинета',
+    }).parentElement;
+    expect(column?.style.width).toBe(`${SIDE_NAV_WIDTH_PX}px`);
+    expect(column?.style.flexDirection).toBe('column');
   });
 
   // Панель уезжала вверх вместе со списком занятий (отзыв владельца
@@ -94,7 +105,9 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
   });
 
-  it('подписи видны в обоих видах — иконка без слова не читается', () => {
+  // Иконок в пунктах нет вовсе (ADR-0043) — подпись остаётся единственным
+  // содержимым ссылки что на телефоне, что в колонке.
+  it('подпись видна в обоих видах — единственное содержимое пункта', () => {
     const { unmount } = renderNav(true);
     expect(screen.getByText('Занятия')).toBeInTheDocument();
     unmount();
@@ -134,16 +147,68 @@ describe('AppNav — подсветка раздела', () => {
     }
   });
 
-  // Направление «тихо и благородно» (docs/adr/0031): активный пункт помечен
-  // не заливкой, а декоративной точкой-маркером — проверяем структуру
-  // (есть/нет скрытого от скринридера маркера), не цвет.
-  it('активный пункт — с декоративным маркером, у остальных его нет', () => {
+  // Направление «Тёплая школа» (ADR-0043) сняло киноварную точку «вы
+  // здесь» — активность теперь только заливка и тень (jsdom их не считает,
+  // см. «раскладка» выше), а на разметке проверяем, что старой точки не
+  // осталось нигде: механика заменена, не задублирована.
+  it('старой точки-маркера в разметке больше нет — ни у активного, ни у остальных', () => {
     renderNav(true, TEACHER, '/broadcasts');
 
     const active = screen.getByRole('link', { name: /Рассылки/ });
-    expect(active.querySelector('.xuanxue-nav-dot')).not.toBeNull();
+    expect(active).toHaveAttribute('aria-current', 'page');
+    expect(active.querySelector('.xuanxue-nav-dot')).toBeNull();
 
     const inactive = screen.getByRole('link', { name: /Занятия/ });
     expect(inactive.querySelector('.xuanxue-nav-dot')).toBeNull();
+  });
+});
+
+describe('AppNav — знак школы (ADR-0043)', () => {
+  it('в боковой колонке — знак и название видны', () => {
+    renderNav(false);
+    expect(screen.getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
+  });
+
+  // Мокап (screens/1c-planning.html) не рисует знак в панели вкладок —
+  // на телефоне его показывает AppShell.tsx, первой строкой над содержимым.
+  it('в панели вкладок телефона — знака нет, это забота AppShell.tsx', () => {
+    renderNav(true);
+    expect(screen.queryByText('Школа Сюань-Сюэ')).not.toBeInTheDocument();
+  });
+});
+
+describe('AppNav — блок человека (боковая колонка, ADR-0043)', () => {
+  // Ровно то, чего боялся владелец при переносе подвала в колонку: имя,
+  // «Уведомления» и «Выйти» должны остаться доступны, просто в другом месте.
+  it('на широком экране — переданные «Уведомления» и «Выйти» видны внизу колонки', () => {
+    renderNav(false, TEACHER, '/planning', {
+      notificationsLink: <a href="/notifications">Уведомления</a>,
+      logoutButton: <button type="button">Выйти</button>,
+    });
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    const column = nav.parentElement as HTMLElement;
+
+    expect(within(column).getByText(/Вы вошли как Дима/)).toBeInTheDocument();
+    expect(within(column).getByRole('link', { name: 'Уведомления' })).toBeInTheDocument();
+    expect(within(column).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+
+    // Блок человека стоит РЯДОМ с ориентиром, не внутри него: имя «Разделы
+    // кабинета» обязано покрывать только разделы, иначе скринридер, идущий по
+    // ориентирам, найдёт под ним ещё и «Выйти» (CLAUDE.md «Доступность»).
+    expect(within(nav).queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
+    expect(within(nav).queryByText(/Вы вошли как/)).not.toBeInTheDocument();
+  });
+
+  // Мокап телефона такой блок не рисует вовсе — эту роль на телефоне играет
+  // подвал AppShell.tsx, а не эта колонка (её на телефоне и не видно).
+  it('на телефоне блок человека не рисуется, даже если узлы переданы', () => {
+    renderNav(true, TEACHER, '/planning', {
+      notificationsLink: <a href="/notifications">Уведомления</a>,
+      logoutButton: <button type="button">Выйти</button>,
+    });
+
+    expect(screen.queryByText(/Вы вошли как/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Уведомления' })).not.toBeInTheDocument();
   });
 });
