@@ -3,9 +3,12 @@
 // Список экзаменов теперь одна карточка (обёртка — ExamsScreen.tsx), поэтому
 // строка не несёт свой фон, радиус и тень: только паддинг и волосяная линия
 // снизу; у последней строки линии нет — тот же приём, что у журнала рассылок
-// (broadcasts/BroadcastCard.tsx). components/listCardStyles.ts сюда больше
-// не подходит — тот стиль остаётся у экранов, ещё не переехавших на «Тёплую
-// школу» (ExamItemCard.tsx и другие).
+// (broadcasts/BroadcastCard.tsx) и всех остальных списков кабинета:
+// exam-items/ExamItemCard.tsx, channels/ChannelCard.tsx,
+// grading/GradingQueueCard.tsx. components/listCardStyles.ts (listCardStyle)
+// сюда больше не подходит — своя карточка на строку осталась только у
+// schedule/SlotCard.tsx, где строка стоит в сетке недели, а не в общем списке,
+// и собственный `gap` колонки дня швов не даёт.
 import type { CSSProperties } from 'react';
 import type { ExamDto } from '@xuanxue/shared';
 import {
