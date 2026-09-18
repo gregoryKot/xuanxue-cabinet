@@ -29,6 +29,7 @@ describe('matchRoute', () => {
     expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
     expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
+    expect(loaderAt('/library')).toBe(ROUTE_MODULES.library.load);
     expect(loaderAt('/planning')).toBe(ROUTE_MODULES.planning.load);
     expect(loaderAt('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
     expect(loaderAt('/planning/652f00000000000000000003')).toBe(
@@ -77,6 +78,11 @@ describe('matchRoute', () => {
   it('«/archive» — свой чанк, загрузчик и правда приводит экран', async () => {
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
     await expect(ROUTE_MODULES.archive.load()).resolves.toHaveProperty('default');
+  });
+
+  it('«/library» — свой чанк, загрузчик и правда приводит экран', async () => {
+    expect(loaderAt('/library')).toBe(ROUTE_MODULES.library.load);
+    await expect(ROUTE_MODULES.library.load()).resolves.toHaveProperty('default');
   });
 
   it('новая рассылка — свой адрес, у журнала свой (ADR-0033)', async () => {

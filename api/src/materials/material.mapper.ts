@@ -37,13 +37,23 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
 /** Библиотека глазами ученика (ADR-0048, слой 3.1 shared/src/materials.ts) —
  * ни `createdBy`, ни `access`, ни служебных дат. `url` есть всегда и
  * `locked` не выставляется: рубильник платного доступа появляется слоем 3.4,
- * до этого `paid` ведёт себя как `all` (ADR-0048). */
-export function toMyMaterialDto(doc: RawLeanMaterial): MyMaterialDto {
+ * до этого `paid` ведёт себя как `all` (ADR-0048).
+ *
+ * Занятия приезжают названиями, а не id: `GET /classes` закрыт ролью, и
+ * подписать id ученику нечем (shared/src/materials.ts). Название занятия,
+ * которого уже нет, просто выпадает из списка — материал остаётся на месте.
+ */
+export function toMyMaterialDto(
+  doc: RawLeanMaterial,
+  classTitleById: Map<string, string>,
+): MyMaterialDto {
   return {
     id: doc._id.toString(),
     title: doc.title,
     kind: doc.kind,
-    classIds: doc.classIds.map((id) => id.toString()),
+    classTitles: doc.classIds
+      .map((id) => classTitleById.get(id.toString()))
+      .filter((title): title is string => title !== undefined),
     url: doc.url,
   };
 }

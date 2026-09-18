@@ -5,7 +5,7 @@
 // ученика групп нет, фильтровать вход в библиотеку нечем (ADR-0047).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, type Types } from 'mongoose';
 import {
   MATERIAL_NOT_FOUND_MESSAGE,
   MATERIALS_LIMIT_DEFAULT,
@@ -17,9 +17,10 @@ import {
   type MyMaterialDto,
   type UpdateMaterialInput,
 } from '@xuanxue/shared';
+import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from '../classes/class.schema';
 import { NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
-import { encryptRecord } from '../utils/encryption';
+import { decryptRecord, encryptRecord } from '../utils/encryption';
 import {
   decryptMaterial,
   toMaterialDto,
@@ -31,10 +32,17 @@ import { buildMaterialsFilter } from './materials.queries';
 
 const NOT_FOUND_MESSAGE = MATERIAL_NOT_FOUND_MESSAGE;
 
+/** Из класса библиотеке нужно одно название — `Pick` вместо всего документа,
+ * тот же приём, что у RawLeanMyLessonClass (lessons/lesson-classes.lookup.ts):
+ * иначе тип не проходит ограничение `T extends Record<string, unknown>` у
+ * decryptRecord. */
+type RawLeanMaterialClass = Pick<ClassRecord, 'title'> & { _id: Types.ObjectId };
+
 @Injectable()
 export class MaterialsService {
   constructor(
     @InjectModel(MaterialRecord.name) private readonly model: Model<MaterialRecord>,
+    @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
   ) {}
 
   /** Порядок — свежие материалы первыми (MaterialSchema.index({createdAt: -1})). */
@@ -90,7 +98,27 @@ export class MaterialsService {
       .sort({ createdAt: -1 })
       .limit(query.limit ?? MY_MATERIALS_LIMIT_DEFAULT)
       .lean<RawLeanMaterial[]>();
-    return docs.map((doc) => toMyMaterialDto(decryptMaterial(doc)));
+    const classTitleById = await this.findClassTitles(docs);
+    return docs.map((doc) => toMyMaterialDto(decryptMaterial(doc), classTitleById));
+  }
+
+  /** Названия занятий одним запросом на весь список — ученику они нужны
+   * подписью к материалу (ADR-0047), а `GET /classes` ему закрыт ролью.
+   * Тот же приём `$in` + Map, что у findLessonClassesByIds
+   * (lessons/lesson-classes.lookup.ts); своя функция, а не та: там из класса
+   * достают ссылку Zoom и место, здесь — одно название. */
+  private async findClassTitles(docs: RawLeanMaterial[]): Promise<Map<string, string>> {
+    const ids = [...new Set(docs.flatMap((doc) => doc.classIds.map(String)))];
+    if (ids.length === 0) return new Map();
+    const classes = await this.classModel
+      .find({ _id: { $in: ids } })
+      .lean<RawLeanMaterialClass[]>();
+    return new Map(
+      classes.map((cls) => [
+        cls._id.toString(),
+        decryptRecord(cls, CLASS_ENCRYPT_SCHEMA).title,
+      ]),
+    );
   }
 
   private async getById(id: string): Promise<MaterialDto> {

@@ -45,13 +45,13 @@ describe('toMyMaterialDto', () => {
   it('нет createdBy, access и служебных дат; url есть, locked не выставлен', () => {
     const doc = material();
 
-    const dto = toMyMaterialDto(doc);
+    const dto = toMyMaterialDto(doc, new Map());
 
     expect(dto).toEqual({
       id: doc._id.toString(),
       title: doc.title,
       kind: doc.kind,
-      classIds: [],
+      classTitles: [],
       url: doc.url,
     });
     expect(dto).not.toHaveProperty('createdBy');
@@ -61,13 +61,25 @@ describe('toMyMaterialDto', () => {
     expect(dto).not.toHaveProperty('locked');
   });
 
-  // Привязка к занятиям едет и ученику: по ней экран библиотеки разложит
-  // материалы по занятиям (ADR-0047), а ObjectId наружу не отдаётся.
-  it('classIds приходят строками', () => {
+  // Привязка к занятиям едет и ученику, но названием, а не id: `GET /classes`
+  // ему закрыт ролью, подписать id было бы нечем (ADR-0047).
+  it('занятия приходят названиями', () => {
     const classId = new Types.ObjectId();
+    const titles = new Map([[classId.toString(), 'Тайцзицюань, средняя группа']]);
 
-    const dto = toMyMaterialDto(material({ classIds: [classId] }));
+    const dto = toMyMaterialDto(material({ classIds: [classId] }), titles);
 
-    expect(dto.classIds).toEqual([classId.toString()]);
+    expect(dto.classTitles).toEqual(['Тайцзицюань, средняя группа']);
+  });
+
+  // Занятие удалили, а материал остался — строка просто короче, без «—» и
+  // без пустой подписи.
+  it('занятие, которого уже нет, выпадает из списка названий', () => {
+    const dto = toMyMaterialDto(
+      material({ classIds: [new Types.ObjectId()] }),
+      new Map(),
+    );
+
+    expect(dto.classTitles).toEqual([]);
   });
 });

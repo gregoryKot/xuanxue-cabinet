@@ -49,10 +49,11 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
  * занятия — второй (docs/PLAN.md §11). */
 export const STUDENT_NAV_ITEMS: NavItem[] = [
   { to: '/tasks', label: 'Задания', childPaths: [] },
-  // «/archive» («Записи занятий», слой 3.3) — подэкран «Занятий», вход
-  // карточкой SectionLink на LessonsScreen.tsx (ADR-0025): вкладка «Занятия»
-  // остаётся подсвеченной, когда ученик уже открыл архив.
-  { to: '/lessons', label: 'Занятия', childPaths: ['/archive'] },
+  // «/archive» («Записи занятий», слой 3.3) и «/library» («Библиотека»,
+  // слой 3.2) — подэкраны «Занятий», вход карточкой SectionLink на
+  // LessonsScreen.tsx (ADR-0025): вкладка «Занятия» остаётся подсвеченной,
+  // когда ученик уже открыл один из них.
+  { to: '/lessons', label: 'Занятия', childPaths: ['/archive', '/library'] },
 ];
 
 /** Пункты навигации для роли этого человека (AppNav.tsx). */

@@ -41,6 +41,7 @@ const ProfileScreen = lazy(ROUTE_MODULES.profile.load);
 const TasksScreen = lazy(ROUTE_MODULES.tasks.load);
 const LessonsScreen = lazy(ROUTE_MODULES.studentLessons.load);
 const ArchiveScreen = lazy(ROUTE_MODULES.archive.load);
+const LibraryScreen = lazy(ROUTE_MODULES.library.load);
 
 /** «/» — первый экран уже известной роли (решение владельца: у ученика это
  * «Задания», у штата — «Занятия»/планирование). Роль решает rootPathFor
@@ -111,6 +112,12 @@ export const cabinetRoutes = (
         (screenAccess.ts) открывает его любой роли — учитель тоже может
         посмотреть архив занятий школы. */}
     <Route path={ROUTE_MODULES.archive.path} element={<ArchiveScreen />} />
+    {/* «Библиотека» ученика (слой 3.2) — подэкран «Занятий», вход карточкой
+        на LessonsScreen.tsx (ADR-0025), тот же приём, что у /archive выше.
+        Роль на маршруте не нужна: canSeeRoute (screenAccess.ts) открывает
+        его любой роли — учитель тоже может посмотреть библиотеку своими
+        глазами. */}
+    <Route path={ROUTE_MODULES.library.path} element={<LibraryScreen />} />
     {/* Экран сдачи — доступен любой роли (ТЗ student-exams.md: учитель тоже
         проходит форму изнутри), вход — кнопка «Начать»/«Продолжить» на
         TasksScreen.tsx. Как «/profile» выше, canSeeRoute открывает его

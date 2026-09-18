@@ -32,6 +32,15 @@ interface ListScreenBodyProps<TItem> {
    * сама, а не своя карточка на строку (exams/ExamsScreen.tsx, тот же приём,
    * что у журнала рассылок, docs/adr/0043). */
   listStyle?: CSSProperties;
+  /** Подпись кнопки повтора — по умолчанию VOICE-умолчание LoadErrorBanner;
+   * «Обновить» переопределяет её там, где пользователей уже приучили к этой
+   * подписи (ArchiveScreen.tsx/LibraryScreen.tsx, docs/PLAN.md §14). */
+  retryLabel?: string;
+  /** Число и высота строк скелетона — по умолчанию SKELETON_ROWS/
+   * SKELETON_ROW_HEIGHT_PX; переопределяются, когда строка списка заметно
+   * выше обычной (ArchiveScreen.tsx — дата, тема и несколько записей). */
+  skeletonRows?: number;
+  skeletonHeight?: number;
 }
 
 export function ListScreenBody<TItem>({
@@ -42,9 +51,14 @@ export function ListScreenBody<TItem>({
   emptyMessage,
   renderItem,
   listStyle,
+  retryLabel,
+  skeletonRows = SKELETON_ROWS,
+  skeletonHeight = SKELETON_ROW_HEIGHT_PX,
 }: ListScreenBodyProps<TItem>) {
-  if (error) return <LoadErrorBanner message={error} onRetry={onRetry} />;
-  if (loading) return <SkeletonList rows={SKELETON_ROWS} h={SKELETON_ROW_HEIGHT_PX} />;
+  if (error) {
+    return <LoadErrorBanner message={error} onRetry={onRetry} retryLabel={retryLabel} />;
+  }
+  if (loading) return <SkeletonList rows={skeletonRows} h={skeletonHeight} />;
   if (!items || items.length === 0) return <p style={{ margin: 0 }}>{emptyMessage}</p>;
 
   return <ul style={listStyle ?? plainListStyle}>{items.map(renderItem)}</ul>;

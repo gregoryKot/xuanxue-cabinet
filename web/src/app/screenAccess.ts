@@ -22,6 +22,9 @@ const STUDENT_LESSONS_PATH = '/lessons';
 // LessonsScreen.tsx, не отдельный пункт меню (ADR-0025), но свой маршрут
 // нужно явно открыть ученику, как и сам «/lessons».
 const STUDENT_ARCHIVE_PATH = '/archive';
+// Подэкран «Занятий» (слой 3.2, docs/PLAN.md §14) — та же оговорка, что у
+// STUDENT_ARCHIVE_PATH: вход карточкой, но маршрут открывается явно.
+const STUDENT_LIBRARY_PATH = '/library';
 const PROFILE_PATH = '/profile';
 const ATTEMPT_PATH_PREFIX = '/attempts/';
 
@@ -39,9 +42,9 @@ export function rootPathFor(me: MeDto | null): string {
   return isTeacher(me) ? STAFF_ROOT_PATH : STUDENT_TASKS_PATH;
 }
 
-/** «/tasks»/«/lessons»/«/archive» (экраны ученика), «/profile» (личный
- * экран, ADR-0045) и «/attempts/:id» (экран сдачи) — открыты любой роли;
- * остальные маршруты кабинета — только teacher/assistant/admin, иначе
+/** «/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
+ * (личный экран, ADR-0045) и «/attempts/:id» (экран сдачи) — открыты любой
+ * роли; остальные маршруты кабинета — только teacher/assistant/admin, иначе
  * AppShell уводит редиректом на rootPathFor(me) (ADR-0025, ТЗ
  * student-exams.md). */
 export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
@@ -50,6 +53,7 @@ export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
     pathname === STUDENT_TASKS_PATH ||
     pathname === STUDENT_LESSONS_PATH ||
     pathname === STUDENT_ARCHIVE_PATH ||
+    pathname === STUDENT_LIBRARY_PATH ||
     pathname === PROFILE_PATH ||
     pathname.startsWith(ATTEMPT_PATH_PREFIX)
   );

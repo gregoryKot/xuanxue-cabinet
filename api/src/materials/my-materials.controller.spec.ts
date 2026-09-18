@@ -11,7 +11,7 @@ const MY_MATERIAL_DTO: MyMaterialDto = {
   id: 'm1',
   title: 'Ван Пэйшэн, «Ба-гуа-чжан»',
   kind: 'book',
-  classIds: [],
+  classTitles: [],
   url: 'https://example.com/book',
 };
 

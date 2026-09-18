@@ -123,6 +123,10 @@ export const MY_LESSONS_PATH = '/me/lessons';
  * ресурс назад по времени, отдельный путь с суффиксом `archive`. */
 export const MY_LESSONS_ARCHIVE_PATH = `${MY_LESSONS_PATH}/archive`;
 export const MY_EXAMS_PATH = '/me/exams';
+/** Библиотека материалов глазами ученика (docs/PLAN.md §14 слой 3.2) —
+ * без своего лимита: сервер сам берёт MY_MATERIALS_LIMIT_DEFAULT, тот же
+ * приём, что у MY_LESSONS_ARCHIVE_PATH. */
+export const MY_MATERIALS_PATH = '/me/materials';
 
 /** Путь одной записи коллекции — `hooks/useEntityEditor.ts` читает,
  * сохраняет и удаляет по нему; редакторы приносят свой `collectionPath`. */

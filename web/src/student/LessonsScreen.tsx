@@ -40,6 +40,11 @@ const ARCHIVE_LINK_TITLE = 'Записи занятий';
 // каждого прошедшего занятия есть запись (ТЗ docs/PLAN.md §14) — это стоит
 // сказать до перехода, а не после.
 const ARCHIVE_LINK_HINT = 'Прошедшие занятия — с записями, если они есть.';
+const LIBRARY_LINK_TITLE = 'Библиотека';
+// Другая форма, чем у ARCHIVE_LINK_HINT (VOICE.md: соседние тексты одного
+// списка не строятся по одному скелету) — не «X — с Y», а простое
+// подлежащее-сказуемое.
+const LIBRARY_LINK_HINT = 'Учитель делится тем, что стоит почитать или посмотреть.';
 
 const headerStyle: CSSProperties = {
   display: 'flex',
@@ -85,6 +90,7 @@ export default function LessonsScreen() {
       </div>
       <StudentLessonsScreen />
       <SectionLink to="/archive" title={ARCHIVE_LINK_TITLE} hint={ARCHIVE_LINK_HINT} />
+      <SectionLink to="/library" title={LIBRARY_LINK_TITLE} hint={LIBRARY_LINK_HINT} />
       {config?.schoolSiteUrl && (
         <p style={schoolSiteStyle}>
           {SCHOOL_SITE_TEXT}{' '}

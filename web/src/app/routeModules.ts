@@ -35,6 +35,7 @@ import {
   MY_EXAMS_PATH,
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
+  MY_MATERIALS_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
@@ -322,6 +323,15 @@ export const ROUTE_MODULES = {
     load: () => import('../student/ArchiveScreen'),
     warm: true,
     prefetch: () => [MY_LESSONS_ARCHIVE_PATH],
+  },
+  // «Библиотека» ученика (слой 3.2, docs/PLAN.md §14) — подэкран «Занятий»,
+  // вход карточкой SectionLink на LessonsScreen.tsx, не пункт меню
+  // (ADR-0025), тот же приём, что у «Записей занятий» (archive) выше.
+  library: {
+    path: '/library',
+    load: () => import('../student/LibraryScreen'),
+    warm: true,
+    prefetch: () => [MY_MATERIALS_PATH],
   },
   attempt: {
     path: '/attempts/:id',
