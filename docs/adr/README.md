@@ -78,4 +78,4 @@
 | [0040](0040-questions-are-shared-not-a-bank.md)          | «Банк» уходит из интерфейса; вопрос заводится там, где нужен                          |
 | [0041](0041-grading-comment-presets.md)                  | Заготовки частых комментариев при проверке — общий список школы, не личный            |
 | [0042](0042-bot-chat-active-in-me-dto.md)                | `botChatActive` в `MeDto` — «боту есть куда писать», отдельно от `telegramLinked`     |
-| [0043](0043-visual-direction-warm-school.md)             | Визуальное направление «Тёплая школа» — Golos Text, карточки, знак и человек в колонке |
+| [0043](0043-visual-direction-warm-school.md)             | Направление «Тёплая школа» — Golos Text, карточки, терракота, знак в колонке          |
