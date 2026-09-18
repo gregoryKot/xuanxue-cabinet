@@ -16,7 +16,9 @@
 // Ответ на успех называет аккаунт по имени (не «готово» без подробностей) —
 // это и есть защита от подсунутого чужого кода: если код попал к человеку не
 // по адресу, он видит чужое имя и может сообщить администратору школы,
-// вместо того чтобы молча получить доступ к чужим данным.
+// вместо того чтобы молча получить доступ к чужим данным. Имя называется
+// только на успехе: отказы отвечают общим текстом, чтобы код к чужому
+// аккаунту ничего о нём не рассказывал (SECURITY §2).
 //
 // Баг с #131 (тот же класс ошибки, что и у join_<code>, починен там в #163,
 // см. комментарий в start.handler.ts и join-invite-deep-link.ts): успешная
@@ -24,12 +26,15 @@
 // PersonalChats.chatFor/hasActiveChat (personal-chats.ts) без неё человека не
 // находят, и результат экзамена или уведомление о сдаче не доходят никуда.
 // После ответа зовём тот же welcomeConnectedUser, что и join_<code> и обычный
-// /start для active (ADR-0027) — только когда результат `active`: заблокированному
-// канал не заводим (SECURITY §9) — для штата welcomeConnectedUser регистрирует
-// канал школы, получатель рассылок, отдавать его blocked нельзя.
+// /start для active (ADR-0027) — на каждый `linked`, без проверки статуса:
+// заблокированный до этой ветки не доходит, `linkByCode` отдаёт ему отдельный
+// исход `blocked` и ничего не пишет (SECURITY §2, §9). `linked` бывает только
+// у активного, и повторная проверка здесь означала бы одно решение в двух
+// местах.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import {
+  ACCESS_MESSAGE,
   TELEGRAM_LINK_CODE_INVALID_MESSAGE,
   TELEGRAM_LINK_OTHER_TELEGRAM_MESSAGE,
   TELEGRAM_LINK_TAKEN_MESSAGE,
@@ -64,6 +69,9 @@ export async function handleTelegramLinkDeepLink(
     case 'invalid':
       await ctx.reply(TELEGRAM_LINK_CODE_INVALID_MESSAGE).catch(() => null);
       return;
+    case 'blocked':
+      await ctx.reply(ACCESS_MESSAGE).catch(() => null);
+      return;
     case 'taken':
       await ctx.reply(TELEGRAM_LINK_TAKEN_MESSAGE).catch(() => null);
       return;
@@ -72,9 +80,7 @@ export async function handleTelegramLinkDeepLink(
       return;
     case 'linked':
       await ctx.reply(linkedMessage(result.user.name)).catch(() => null);
-      if (result.user.status === 'active') {
-        await welcomeConnectedUser(ctx, telegramId, result.user, deps.channelConfig);
-      }
+      await welcomeConnectedUser(ctx, telegramId, result.user, deps.channelConfig);
       return;
   }
 }

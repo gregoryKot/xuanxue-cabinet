@@ -6,6 +6,7 @@
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import type { BotIdentityService } from '../telegram/bot-identity.service';
+import { attachTelegramId } from './attach-telegram-id';
 import {
   TelegramLinkCodeRecord,
   TelegramLinkCodeSchema,
@@ -44,6 +45,7 @@ describe('TelegramLinkService.linkByCode', () => {
   }, 60_000);
 
   afterEach(async () => {
+    jest.restoreAllMocks();
     await userModel.deleteMany({});
     await codeModel.deleteMany({});
   });
@@ -172,5 +174,66 @@ describe('TelegramLinkService.linkByCode', () => {
     await expect(service.linkByCode(code, 999, NOW)).resolves.toEqual({ kind: 'taken' });
 
     ownerCheck.mockRestore();
+  });
+
+  it('аккаунт из кода заблокирован — blocked, telegramId не записан', async () => {
+    const student = await createStudent();
+    await userModel.updateOne({ _id: student.id }, { $set: { status: 'blocked' } });
+    const code = await issueCode(student.id);
+
+    await expect(service.linkByCode(code, 999, NOW)).resolves.toEqual({
+      kind: 'blocked',
+    });
+    // Read-after-write: отказ не должен оставить после себя полузаписанный
+    // telegramId (CLAUDE.md «Тесты» — «сохранил → нашёл» и для отказа тоже).
+    const found = await users.findById(student.id);
+    expect(found).not.toBeNull();
+    expect(found?.telegramId).toBeUndefined();
+  });
+
+  it('код сгорает и при отказе — повторное применение того же кода даёт invalid', async () => {
+    const student = await createStudent();
+    await userModel.updateOne({ _id: student.id }, { $set: { status: 'blocked' } });
+    const code = await issueCode(student.id);
+    await service.linkByCode(code, 999, NOW);
+
+    await expect(service.linkByCode(code, 999, NOW)).resolves.toEqual({
+      kind: 'invalid',
+    });
+  });
+
+  it('заблокированный, у которого Telegram уже привязан, — blocked, не linked', async () => {
+    const student = await createStudent();
+    await userModel.updateOne(
+      { _id: student.id },
+      { $set: { status: 'blocked', telegramId: 1010 } },
+    );
+    const code = await issueCode(student.id);
+
+    // Идемпотентная ветка (target.telegramId === telegramId) не должна
+    // обгонять проверку статуса — иначе заблокированный с уже стоящим
+    // telegramId получал бы `linked` вместо отказа.
+    await expect(service.linkByCode(code, 1010, NOW)).resolves.toEqual({
+      kind: 'blocked',
+    });
+  });
+
+  it('доступ закрыли между чтением и записью — blocked', async () => {
+    const student = await createStudent();
+    const code = await issueCode(student.id);
+    // Саму гонку «админ заблокировал ровно между чтением (findById в сервисе)
+    // и записью (attachTelegramId)» настоящими параллельными запросами не
+    // поставить детерминированно — подменяем только момент записи, вставляя
+    // блокировку перед ней. Запись и последующее чтение остаются настоящими:
+    // мок вызывает attachTelegramId из attach-telegram-id.ts, а не имитирует
+    // её результат.
+    jest.spyOn(users, 'attachTelegramId').mockImplementation(async (id, tgId) => {
+      await userModel.updateOne({ _id: id }, { $set: { status: 'blocked' } });
+      return attachTelegramId(userModel, id, tgId);
+    });
+
+    await expect(service.linkByCode(code, 2020, NOW)).resolves.toEqual({
+      kind: 'blocked',
+    });
   });
 });
