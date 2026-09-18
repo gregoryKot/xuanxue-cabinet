@@ -60,6 +60,13 @@ export {
   EMAIL_LOGIN_EXPIRED_MESSAGE,
   EMAIL_LOGIN_SEND_FAILED_MESSAGE,
 } from './auth';
+export type { PersonNameParts, UpdateMyProfileInput } from './person-name';
+export {
+  NEW_PERSON_NAME,
+  PERSON_NAME_PART_MAX,
+  joinPersonName,
+  splitPersonName,
+} from './person-name';
 export { CSRF_HEADER, isMutatingMethod } from './csrf';
 export type {
   ClassDto,
