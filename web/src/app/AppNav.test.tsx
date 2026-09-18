@@ -64,14 +64,17 @@ describe('AppNav — раскладка', () => {
     expect(column?.style.flexDirection).toBe('column');
   });
 
-  // Панель уезжала вверх вместе со списком занятий (отзыв владельца
-  // 2026-09-10): на телефоне она должна оставаться на месте.
-  it('телефон — панель прибита к низу экрана', () => {
+  // Панель сперва уезжала вверх вместе со списком (отзыв владельца
+  // 2026-09-10), а вылеченная через `sticky` — прыгала на оттяжке iOS: там
+  // инерция двигает весь документ разом (отзыв 2026-09-18). Теперь она вне
+  // прокрутки вовсе — низ колонки оболочки, высота которой равна экрану
+  // (AppShell.tsx). Гейт от возврата к `sticky`/`fixed`.
+  it('телефон — панель вне прокрутки, без sticky и fixed', () => {
     renderNav(true);
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
-    expect(nav.style.position).toBe('sticky');
-    expect(nav.style.bottom).toBe('0px');
+    expect(nav.style.position).toBe('');
+    expect(nav.style.flexShrink).toBe('0');
   });
 });
 
