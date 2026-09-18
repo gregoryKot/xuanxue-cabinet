@@ -9,6 +9,12 @@
 // Облик — ADR-0031: заголовок антиквой через ScreenHeader. Раньше экран
 // начинался прямо с абзаца, и на телефоне было непонятно, куда попал
 // (CLAUDE.md «Каждая фича объясняет откуда это и зачем»).
+//
+// «Выйти» — в самом низу (AppShellBrandRow.tsx, AppShell.tsx): на телефоне
+// это единственная личная настройка человека, и «Выйти» теперь живёт здесь,
+// а не в подвале под каждым экраном (отзыв владельца 2026-09-12/18) — на
+// мониторе кнопка остаётся ещё и в подвале ученика/колонке штата, это не
+// единственный путь.
 import { useState, type CSSProperties } from 'react';
 import {
   NOTIFICATION_HINTS,
@@ -17,6 +23,7 @@ import {
 } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { ApiError } from '../api/http';
+import { LogoutButton } from '../auth/LogoutButton';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -56,6 +63,12 @@ const alertStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
 // Приписка того же веса, что подсказка под шапкой, но стоит внизу — своего
 // отрицательного отступа ей не нужно (тот же приём, что в PlanningScreen).
 const telegramHintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
+// «Выйти» — отдельно от переключателей волосяной линией, тот же приём, что
+// у ссылки на сайт школы (app/StudentScreen.tsx: schoolSiteStyle).
+const logoutRowStyle: CSSProperties = {
+  paddingTop: 20,
+  borderTop: '1px solid var(--line)',
+};
 
 export default function NotificationsScreen() {
   const { me } = useAuth();
@@ -114,6 +127,10 @@ export default function NotificationsScreen() {
       ) : (
         <p style={telegramHintStyle}>{TELEGRAM_HINT}</p>
       )}
+
+      <div style={logoutRowStyle}>
+        <LogoutButton />
+      </div>
     </section>
   );
 }

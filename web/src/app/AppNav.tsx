@@ -14,6 +14,7 @@ import { hasRole } from '../auth/hasRole';
 import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
 import {
   bottomLinkStyle,
+  bottomPillStyle,
   bottomStyle,
   personActionsRowStyle,
   personBlockStyle,
@@ -49,7 +50,29 @@ export function AppNav({ isMobile, me, notificationsLink, logoutButton }: AppNav
   const items = NAV_ITEMS.filter(
     (item) => !item.roles || item.roles.some((role) => hasRole(me, role)),
   );
-  const linkStyle = isMobile ? bottomLinkStyle : sideLinkStyle;
+
+  // Нижняя панель — своя разметка: цель нажатия (`<Link>`, 44px, без вида) и
+  // видимая плашка вокруг подписи (`<span>`, размер макета) — разные элементы,
+  // не один стиль на двоих (navLinkStyles.ts: bottomLinkStyle/bottomPillStyle).
+  if (isMobile) {
+    return (
+      <nav style={bottomStyle} aria-label={SECTIONS_LABEL}>
+        {items.map(({ to, label }) => {
+          const isActive = active === to;
+          return (
+            <Link
+              key={to}
+              to={to}
+              aria-current={isActive ? 'page' : undefined}
+              style={bottomLinkStyle}
+            >
+              <span style={bottomPillStyle(isActive)}>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
 
   const links = items.map(({ to, label }) => {
     const isActive = active === to;
@@ -58,20 +81,12 @@ export function AppNav({ isMobile, me, notificationsLink, logoutButton }: AppNav
         key={to}
         to={to}
         aria-current={isActive ? 'page' : undefined}
-        style={linkStyle(isActive)}
+        style={sideLinkStyle(isActive)}
       >
         {label}
       </Link>
     );
   });
-
-  if (isMobile) {
-    return (
-      <nav style={bottomStyle} aria-label={SECTIONS_LABEL}>
-        {links}
-      </nav>
-    );
-  }
 
   // Ориентир «Разделы кабинета» обязан содержать только разделы: знак школы и
   // блок человека лежат в колонке рядом с `<nav>`, а не внутри него. В макете

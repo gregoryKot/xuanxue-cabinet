@@ -174,6 +174,19 @@ describe('NotificationsScreen — переключение (read-after-write)', 
   });
 });
 
+// «Выйти» переехала сюда с телефона (AppShell.tsx, отзыв владельца
+// 2026-09-12/18): экран — личная настройка человека, доступная любой роли.
+// Саму механику выхода проверяет LogoutButton.test.tsx — здесь только
+// присутствие и место (в конце экрана, под настройками).
+describe('NotificationsScreen — «Выйти»', () => {
+  it('кнопка «Выйти» есть в конце экрана', async () => {
+    renderScreen(STUDENT);
+
+    await screen.findByRole('heading', { level: 1, name: 'Уведомления' });
+    expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
+  });
+});
+
 describe('NotificationsScreen — ошибка загрузки', () => {
   it('баннер с кнопкой повтора вместо списка, повтор перечитывает список', async () => {
     mockedApiFetch.mockImplementation((path: string) => {

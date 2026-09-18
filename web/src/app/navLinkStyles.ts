@@ -117,7 +117,14 @@ export const bottomStyle: CSSProperties = {
 // рядом с использованием (CLAUDE.md «Без магических чисел»).
 const MOBILE_ACTIVE_BACKGROUND = '#f4efe6';
 
-export const bottomLinkStyle = (isActive: boolean): CSSProperties => ({
+// Цель нажатия 44px и видимая плашка макета (~34px, 8×2 + кегль 12) — разные
+// числа, и раньше `minHeight: 44` стояла прямо на плашке: она распухла и
+// стала заметно крупнее макета (отзыв владельца). Приём — тот же, что у
+// pillBaseStyle (people/PersonRoleBadge.tsx) и buttonStyle
+// (components/TextLinkButton.tsx): невидимая цель нажатия на `<Link>`
+// (bottomLinkStyle), видимая плашка — на внутреннем `<span>` (bottomPillStyle)
+// вокруг подписи, без своей минимальной высоты.
+export const bottomLinkStyle: CSSProperties = {
   // `minWidth: 0` — как и во flex, grid-колонка по умолчанию не сжимается
   // уже содержимого: длинная неразрывная подпись раздвинула бы колонку и
   // потянула за собой горизонтальный скролл (тот же урок, что раньше был у
@@ -126,14 +133,15 @@ export const bottomLinkStyle = (isActive: boolean): CSSProperties => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  textAlign: 'center',
-  padding: '8px 0',
-  // Макет даёт тут ~34px (8×2 + кегль 12) — ниже цели нажатия 44px
-  // (CLAUDE.md «Доступность»). Отклонение зафиксировано в ADR-0043
-  // «Отклонения от макета».
   minHeight: 44,
-  borderRadius: 'var(--radius-control)',
   textDecoration: 'none',
+};
+
+export const bottomPillStyle = (isActive: boolean): CSSProperties => ({
+  width: '100%',
+  padding: '8px 0',
+  borderRadius: 'var(--radius-control)',
+  textAlign: 'center',
   fontSize: 12,
   overflowWrap: 'anywhere',
   color: isActive ? 'var(--ink)' : 'var(--ink-soft)',
