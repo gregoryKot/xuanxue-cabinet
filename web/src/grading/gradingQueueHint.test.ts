@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { formatGradingQueueHint } from './gradingQueueHint';
 
 describe('formatGradingQueueHint', () => {
-  it('null (число ещё не пришло) — общий текст без числа', () => {
-    expect(formatGradingQueueHint(null)).toBe(
-      'Сданные работы, которые ждут вашей оценки.',
-    );
+  it('null (число ещё не пришло) — крупной строки в карточке нет', () => {
+    expect(formatGradingQueueHint(null)).toBeNull();
   });
 
   it('пустая база — честный текст, не «0 работ»', () => {

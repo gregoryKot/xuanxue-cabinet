@@ -1,12 +1,25 @@
-// Четыре блока раздела «Экзамены» из макета — тёплая плашка «сколько попыток
-// ждут проверки» и карточки-переходы в подэкраны (макет 2b-exams.html,
-// docs/adr/0043-visual-direction-warm-school.md). Раньше очередь проверки
-// была отдельной крупной цифрой (components/StatNumber.tsx) с подписью
-// рядом — макет отказался от неё целиком: одинокая цифра рядом с мелкой
-// подписью читалась как мусор (жалоба владельца со снимком этого экрана).
-// Карточки-переходы — components/SectionLink.tsx, приведённый к виду из
-// макета: тот же компонент стоит на «Занятиях» и «Рассылках» (CLAUDE.md
-// «Одна механика — один компонент»).
+// Рубрика «Ещё в разделе» и карточки-переходы в подэкраны «Экзаменов»
+// (components/SectionLink.tsx — тот же компонент стоит на «Занятиях» и
+// «Рассылках», CLAUDE.md «Одна механика — один компонент»).
+//
+// Раньше здесь была ещё и отдельная тёплая плашка `--panel-warm` с числом
+// очереди проверки над карточками. Владелец прислал снимок этого экрана с
+// телефона и три нарекания: тень карточки списка, заливка плашки и контур
+// карточек-переходов подряд читались как мозаика из заплаток; число «работ
+// ждут проверки» — самая крупная надпись экрана — никуда не вело по клику,
+// хотя карточка «Проверка» сразу под ним вела ровно туда; а после списка
+// экзаменов карточки «Вопросы»/«Проверка» без заголовка читались припиской
+// неизвестно к чему. Правка: плашка исчезла, её число переехало кликабельной
+// крупной строкой внутрь карточки «Проверка» (проп `headline` у SectionLink,
+// grading/gradingQueueHint.ts), а блок получил заголовок-рубрику
+// `.xuanxue-eyebrow` — тот же приём, что у student/StudentExamsSection.tsx и
+// people/InviteLinkCard.tsx: читателю сказано, что дальше не продолжение
+// списка экзаменов, а остальная часть раздела.
+//
+// Порядок карточек — «Проверка» первой, «Вопросы» второй: в макете первым
+// стоял «Вопросы», но там над обеими висела плашка с числом очереди; с её
+// исчезновением наверх естественно встаёт карточка с живым числом и делом,
+// которое ждёт (решение агента, отклонение от макета).
 //
 // «Предпросмотр» из макета сюда не попал: у него нет маршрута без
 // конкретного экзамена — `/exams/:examId/preview` (app/routeModules.ts)
@@ -27,10 +40,7 @@
 import type { CSSProperties } from 'react';
 import { SectionLink } from '../components/SectionLink';
 import { formatExamItemsLinkHint } from '../exam-items/examItemsLinkHint';
-import {
-  GRADING_QUEUE_EXPLANATION,
-  formatGradingQueueHint,
-} from '../grading/gradingQueueHint';
+import { formatGradingQueueHint } from '../grading/gradingQueueHint';
 import { formatGradingPresetsHint } from '../grading/gradingPresetsSummaryText';
 
 interface ExamsSectionStatsProps {
@@ -48,26 +58,8 @@ interface ExamsSectionStatsProps {
   presetsCount: number | null;
 }
 
-const plaqueStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  padding: '16px 18px',
-  borderRadius: 'var(--radius-block)',
-  background: 'var(--panel-warm)',
-};
-const plaqueHeadlineStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 22,
-  fontWeight: 500,
-  color: 'var(--ink)',
-  fontVariantNumeric: 'tabular-nums',
-};
-// #55584e, не --ink-soft: тот же прецедент, что у тёплой плашки «Ждут
-// отправки вручную» на «Рассылках» (broadcasts/ManualDeliveriesSection.tsx,
-// docs/adr/0043) — на --panel-warm --ink-soft держит только ~4.06:1, ниже AA
-// 4.5 для этого кегля; #55584e даёт 5.74:1.
-const plaqueCaptionStyle: CSSProperties = { margin: 0, fontSize: 13, color: '#55584e' };
+const blockStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
+const headingStyle: CSSProperties = { margin: 0 };
 
 export function ExamsSectionStats({
   queueCount,
@@ -80,13 +72,19 @@ export function ExamsSectionStats({
     : formatExamItemsLinkHint(strugglingCount);
 
   return (
-    <div className="xuanxue-block-grid">
-      <div style={plaqueStyle}>
-        <p style={plaqueHeadlineStyle}>{formatGradingQueueHint(queueCount)}</p>
-        <p style={plaqueCaptionStyle}>{formatGradingPresetsHint(presetsCount)}</p>
+    <section style={blockStyle}>
+      <h2 className="xuanxue-eyebrow" style={headingStyle}>
+        Ещё в разделе
+      </h2>
+      <div className="xuanxue-block-grid">
+        <SectionLink
+          to="/grading"
+          title="Проверка"
+          headline={formatGradingQueueHint(queueCount)}
+          hint={formatGradingPresetsHint(presetsCount)}
+        />
+        <SectionLink to="/exam-items" title="Вопросы" hint={questionsHint} />
       </div>
-      <SectionLink to="/exam-items" title="Вопросы" hint={questionsHint} />
-      <SectionLink to="/grading" title="Проверка" hint={GRADING_QUEUE_EXPLANATION} />
-    </div>
+    </section>
   );
 }
