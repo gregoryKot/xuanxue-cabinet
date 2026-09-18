@@ -22,7 +22,7 @@ describe('EmailLoginForm', () => {
   it('пустое поле — кнопка недоступна', () => {
     render(<EmailLoginForm />);
     expect(
-      screen.getByRole('button', { name: 'Получить ссылку для входа' }),
+      screen.getByRole('button', { name: 'Прислать ссылку для входа' }),
     ).toBeDisabled();
   });
 
@@ -32,7 +32,7 @@ describe('EmailLoginForm', () => {
     render(<EmailLoginForm inviteCode={'a'.repeat(32)} />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
 
     await screen.findByText(/Письмо ушло/);
     expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
@@ -47,7 +47,7 @@ describe('EmailLoginForm', () => {
     render(<EmailLoginForm />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
 
     expect(await screen.findByText(/Письмо ушло на a@example\.com/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Почта')).not.toBeInTheDocument();
@@ -59,7 +59,7 @@ describe('EmailLoginForm', () => {
     render(<EmailLoginForm />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
     await screen.findByText(/Письмо ушло/);
 
     await user.click(screen.getByRole('button', { name: 'Отправить ещё раз' }));
@@ -80,7 +80,7 @@ describe('EmailLoginForm', () => {
     render(<EmailLoginForm />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
 
     expect(await screen.findByText('Email-вход пока не подключён.')).toBeInTheDocument();
     expect(screen.getByLabelText('Почта')).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe('EmailLoginForm', () => {
     mockedApiFetch.mockResolvedValueOnce(undefined);
     render(<EmailLoginForm />);
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Получить ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
     await screen.findByText(/Письмо ушло/);
 
     mockedApiFetch.mockRejectedValueOnce(new Error('boom'));

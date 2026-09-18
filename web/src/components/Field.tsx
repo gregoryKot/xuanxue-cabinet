@@ -1,23 +1,44 @@
 // Единая обёртка поля формы (CLAUDE.md «Одна механика — один компонент»):
 // <label> связывает подпись с полем неявно — без useId/htmlFor, надёжнее
-// (не ломается при копипасте формы) и меньше кода. inputStyle — общий стиль
-// инпутов/селектов для всех форм кабинета, высота ≥44px (CLAUDE.md «Доступность»).
+// (не ломается при копипасте формы) и меньше кода. getInputStyle — общий
+// стиль инпутов/селектов для всех форм кабинета, высота ≥44px (CLAUDE.md
+// «Доступность»).
 import type { CSSProperties, ReactNode } from 'react';
 
-export const inputStyle: CSSProperties = {
-  minHeight: 44,
-  padding: '10px 12px',
-  borderRadius: 'var(--radius-control)',
-  // Приглушённая рамка контролов (не --line — та для разделителей/рамок
-  // карточек, тут нужнее чуть заметнее): поле стоит на белом, страница —
-  // на тёплой бумаге почти того же тона, боковую рамку не заменить фоном.
-  border: '1px solid var(--control-border)',
-  font: 'inherit',
-  background: 'var(--card)',
-  color: 'inherit',
-  width: '100%',
-  boxSizing: 'border-box',
+type FieldControlSize = 'default' | 'large';
+
+// Высота и паддинг — единственное, что меняется по размеру; рамка, радиус и
+// фон общие. Экран входа (docs/adr/0043, макет 2d) — единственное место, где
+// нужен «large»: поле почты там — не одно из многих в форме, а половина
+// единственного альтернативного способа входа.
+const controlSizes: Record<
+  FieldControlSize,
+  Pick<CSSProperties, 'minHeight' | 'padding'>
+> = {
+  default: { minHeight: 44, padding: '10px 12px' },
+  large: { minHeight: 48, padding: '12px 14px' },
 };
+
+/** Стиль инпута/селекта нужного размера — проп вместо копии объекта style
+ * (CLAUDE.md «Дубли»): рамка и радиус остаются одним источником для всех
+ * форм кабинета, вне зависимости от размера контрола. */
+export function getInputStyle(size: FieldControlSize = 'default'): CSSProperties {
+  return {
+    ...controlSizes[size],
+    borderRadius: 'var(--radius-control)',
+    // Приглушённая рамка контролов (не --line — та для разделителей/рамок
+    // карточек, тут нужнее чуть заметнее): поле стоит на белом, страница —
+    // на тёплой бумаге почти того же тона, боковую рамку не заменить фоном.
+    border: '1px solid var(--control-border)',
+    font: 'inherit',
+    background: 'var(--card)',
+    color: 'inherit',
+    width: '100%',
+    boxSizing: 'border-box',
+  };
+}
+
+export const inputStyle: CSSProperties = getInputStyle();
 
 const fieldStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
 const labelTextStyle: CSSProperties = { fontSize: 14, fontWeight: 600 };

@@ -113,4 +113,20 @@ describe('Button', () => {
 
     expect(new Set(silhouettes).size).toBe(silhouettes.length);
   });
+
+  // Экран входа (docs/adr/0043, макет 2d) — единственное место с кнопкой
+  // крупнее обычных 44px; проп размера не должен задевать силуэт варианта.
+  it('size="large" даёт высоту и паддинг экрана входа, не трогая обычный размер', () => {
+    render(
+      <>
+        <Button>Обычная</Button>
+        <Button size="large">Крупная</Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Обычная' }).style.minHeight).toBe('44px');
+    expect(screen.getByRole('button', { name: 'Крупная' }).style.minHeight).toBe('48px');
+    expect(screen.getByRole('button', { name: 'Крупная' }).style.padding).toBe(
+      '13px 20px',
+    );
+  });
 });

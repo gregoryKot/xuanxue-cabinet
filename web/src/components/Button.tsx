@@ -11,6 +11,7 @@
 import type { ButtonHTMLAttributes, CSSProperties } from 'react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
+type ButtonSize = 'default' | 'large';
 
 const base: CSSProperties = {
   minHeight: 44,
@@ -44,13 +45,24 @@ const variants: Record<ButtonVariant, CSSProperties> = {
   },
 };
 
+// Экран входа (docs/adr/0043, макет 2d) — единственное место кабинета, где
+// кнопка крупнее обычных 44px: это единственное действие экрана, не одна из
+// многих на форме. Проп размера, а не вторая кнопка (CLAUDE.md «Одна
+// механика — один компонент»): силуэт (variant) и размер независимы.
+const sizes: Record<ButtonSize, CSSProperties> = {
+  default: {},
+  large: { minHeight: 48, padding: '13px 20px' },
+};
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  size?: ButtonSize;
   pending?: boolean;
 }
 
 export function Button({
   variant = 'primary',
+  size = 'default',
   pending,
   disabled,
   style,
@@ -59,7 +71,13 @@ export function Button({
   return (
     <button
       type="button"
-      style={{ ...base, ...variants[variant], opacity: pending ? 0.7 : 1, ...style }}
+      style={{
+        ...base,
+        ...variants[variant],
+        ...sizes[size],
+        opacity: pending ? 0.7 : 1,
+        ...style,
+      }}
       disabled={disabled || pending}
       aria-busy={pending || undefined}
       {...rest}
