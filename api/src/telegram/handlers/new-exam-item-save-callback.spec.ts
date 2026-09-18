@@ -4,7 +4,7 @@
 // найден и неожиданный сбой ExamBotPort.createExamItem.
 import { DateTime } from 'luxon';
 import type { ExamItemDto } from '@xuanxue/shared';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import type { UsersService } from '../../users/users.service';

@@ -18,7 +18,7 @@ import { ATTEMPT_LIMITS, ATTEMPT_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
 import { errorMessage, errorStack } from '../../common/error-info';
 import type { UserLean } from '../../users/users.service';
 import { BotUserAccessService } from '../bot-user-access.service';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { examUserFacingError } from './exam-attempt-error';

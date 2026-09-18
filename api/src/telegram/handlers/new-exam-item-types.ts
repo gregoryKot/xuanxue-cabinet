@@ -5,7 +5,7 @@
 // нуждается в подписи из кабинета слово в слово).
 import { EXAM_ITEM_KINDS, type ExamItemKind } from '@xuanxue/shared';
 import type { InlineKeyboardButton } from 'telegraf/types';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { inlineButton } from '../callback-data';
 import type {
   NewExamItemDraft,

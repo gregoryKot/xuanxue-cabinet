@@ -4,7 +4,7 @@
 // проверен интеграционным new-exam-item-flow.spec.ts, здесь — отдельные
 // ветки (не текст, ошибка DTO на каждом шаге, чужой шаг).
 import { DateTime } from 'luxon';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
