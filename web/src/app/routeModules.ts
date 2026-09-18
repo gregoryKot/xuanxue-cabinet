@@ -31,6 +31,7 @@ import {
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   LESSONS_PATH,
+  LESSON_RECORDING_SUMMARY_PATH,
   MATERIALS_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_ARCHIVE_PATH,
@@ -144,7 +145,10 @@ export const ROUTE_MODULES = {
     path: '/planning',
     load: () => import('../planning/PlanningScreen'),
     warm: true,
-    prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH],
+    // Число раздела (ТЗ docs/PLAN.md §14, слой 3.5) — тем же приёмом, что
+    // EXAM_ITEM_STATS_SUMMARY_PATH у `/exams` ниже: маленький, но отдельный
+    // запрос экрана, который можно погреть параллельно с чанком.
+    prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH, LESSON_RECORDING_SUMMARY_PATH],
   },
   // `/planning/new` раньше `/planning/:lessonId` — по той же причине.
   // Учителя — как у classNew: LessonEditorForm.tsx спрашивает их после

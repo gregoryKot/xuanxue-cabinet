@@ -24,6 +24,9 @@ export const CLASSES_PATH = '/classes';
 export const CLASSES_LIST_PATH = `${CLASSES_PATH}?limit=${LIST_LIMIT_MAX}`;
 
 export const LESSONS_PATH = '/lessons';
+/** Число раздела «Занятия» (docs/PLAN.md §14, слой 3.5) — по образцу
+ * EXAM_ITEM_STATS_SUMMARY_PATH. */
+export const LESSON_RECORDING_SUMMARY_PATH = `${LESSONS_PATH}/recording-summary`;
 
 /** Окно «Планирования» — от начала текущей недели (planningWindow.ts).
  * Предзагрузка и хук экрана (useLessons.ts) вызывают её с разницей в секунды

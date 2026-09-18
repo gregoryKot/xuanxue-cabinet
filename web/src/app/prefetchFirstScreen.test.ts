@@ -3,6 +3,7 @@ import type { MeDto } from '@xuanxue/shared';
 import {
   ATTEMPTS_LIST_PATH,
   CLASSES_LIST_PATH,
+  LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_PATH,
   lessonsListPath,
@@ -37,10 +38,11 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
 }
 
 describe('firstScreenPaths', () => {
-  it('учитель на /planning — занятия на окно и классы', () => {
+  it('учитель на /planning — занятия на окно, классы и число раздела (слой 3.5)', () => {
     expect(firstScreenPaths('/planning', makeMe())).toEqual([
       lessonsListPath(),
       CLASSES_LIST_PATH,
+      LESSON_RECORDING_SUMMARY_PATH,
     ]);
   });
 
@@ -88,8 +90,9 @@ describe('prefetchFirstScreen', () => {
 
     prefetchFirstScreen('/planning', makeMe());
 
-    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(mockedApiFetch).toHaveBeenCalledTimes(3);
     expect(mockedApiFetch).toHaveBeenCalledWith(lessonsListPath());
     expect(mockedApiFetch).toHaveBeenCalledWith(CLASSES_LIST_PATH);
+    expect(mockedApiFetch).toHaveBeenCalledWith(LESSON_RECORDING_SUMMARY_PATH);
   });
 });

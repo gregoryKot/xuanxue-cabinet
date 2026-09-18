@@ -3,8 +3,9 @@
 // здесь только «контроллер зовёт сервис и возвращает его ответ».
 import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
-import type { BroadcastDto, LessonDto } from '@xuanxue/shared';
+import type { BroadcastDto, LessonDto, LessonRecordingSummaryDto } from '@xuanxue/shared';
 import { SendNowService } from '../broadcasts/send-now.service';
+import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
 
@@ -34,12 +35,14 @@ const LESSON_DTO: LessonDto = {
 async function buildController(
   service: Partial<LessonsService> = {},
   sendNowService: Partial<SendNowService> = {},
+  recordingSummaryService: Partial<LessonRecordingSummaryService> = {},
 ): Promise<LessonsController> {
   const module = await Test.createTestingModule({
     controllers: [LessonsController],
     providers: [
       { provide: LessonsService, useValue: service },
       { provide: SendNowService, useValue: sendNowService },
+      { provide: LessonRecordingSummaryService, useValue: recordingSummaryService },
     ],
   }).compile();
   return module.get(LessonsController);
@@ -109,5 +112,18 @@ describe('LessonsController', () => {
     await expect(controller.sendNow('l1')).resolves.toEqual(BROADCAST_DTO);
     // `now` — тот же приём, что у addRecording() выше.
     expect(sendNow).toHaveBeenCalledWith('l1', expect.any(DateTime));
+  });
+
+  it('getRecordingSummary() зовёт LessonRecordingSummaryService с now', async () => {
+    const summary: LessonRecordingSummaryDto = {
+      periodDays: 30,
+      lessonsPast: 4,
+      lessonsWithRecording: 2,
+    };
+    const get = jest.fn().mockResolvedValue(summary);
+    const controller = await buildController({}, {}, { get });
+
+    await expect(controller.getRecordingSummary()).resolves.toEqual(summary);
+    expect(get).toHaveBeenCalledWith(expect.any(DateTime));
   });
 });
