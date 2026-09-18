@@ -88,3 +88,4 @@
 | [0050](0050-payment-screenshot-via-bot.md)                 | Скриншот оплаты — фото боту, загрузка запасным путём, срок хранения                   |
 | [0051](0051-payment-reminder-is-personal-not-broadcast.md) | Напоминание об оплате — личное сообщение, не рассылка школы                           |
 | [0052](0052-unsaved-form-draft-in-browser.md)              | Несохранённый черновик редактора — в браузере, не блокировка навигации                |
+| [0053](0053-server-errors-alert-admin-in-telegram.md)      | Ошибка сервера (500) будит админа в Telegram, вид уведомления `app_error`             |
