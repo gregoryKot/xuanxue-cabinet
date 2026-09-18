@@ -34,7 +34,7 @@ function renderNav(
   isMobile: boolean,
   me: MeDto | null = TEACHER,
   path = '/planning',
-  personProps: { notificationsLink?: ReactNode; logoutButton?: ReactNode } = {},
+  personProps: { profileLink?: ReactNode; logoutButton?: ReactNode } = {},
 ) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -203,10 +203,10 @@ describe('AppNav — знак школы (ADR-0043)', () => {
 
 describe('AppNav — блок человека (боковая колонка, ADR-0043)', () => {
   // Ровно то, чего боялся владелец при переносе подвала в колонку: имя,
-  // «Уведомления» и «Выйти» должны остаться доступны, просто в другом месте.
-  it('на широком экране — переданные «Уведомления» и «Выйти» видны внизу колонки', () => {
+  // «Профиль» и «Выйти» должны остаться доступны, просто в другом месте.
+  it('на широком экране — переданные «Профиль» и «Выйти» видны внизу колонки', () => {
     renderNav(false, TEACHER, '/planning', {
-      notificationsLink: <a href="/notifications">Уведомления</a>,
+      profileLink: <a href="/profile">Профиль</a>,
       logoutButton: <button type="button">Выйти</button>,
     });
 
@@ -214,7 +214,7 @@ describe('AppNav — блок человека (боковая колонка, A
     const column = nav.parentElement as HTMLElement;
 
     expect(within(column).getByText(/Вы вошли как Дима/)).toBeInTheDocument();
-    expect(within(column).getByRole('link', { name: 'Уведомления' })).toBeInTheDocument();
+    expect(within(column).getByRole('link', { name: 'Профиль' })).toBeInTheDocument();
     expect(within(column).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
 
     // Блок человека стоит РЯДОМ с ориентиром, не внутри него: имя «Разделы
@@ -228,11 +228,11 @@ describe('AppNav — блок человека (боковая колонка, A
   // подвал AppShell.tsx, а не эта колонка (её на телефоне и не видно).
   it('на телефоне блок человека не рисуется, даже если узлы переданы', () => {
     renderNav(true, TEACHER, '/planning', {
-      notificationsLink: <a href="/notifications">Уведомления</a>,
+      profileLink: <a href="/profile">Профиль</a>,
       logoutButton: <button type="button">Выйти</button>,
     });
 
     expect(screen.queryByText(/Вы вошли как/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Уведомления' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Профиль' })).not.toBeInTheDocument();
   });
 });

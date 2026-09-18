@@ -3,23 +3,27 @@
 // компонентом, чтобы AppShell.tsx не перерос 150 строк (CLAUDE.md
 // «Храповики»).
 //
-// На телефоне имя человека — ссылка на «Уведомления» (личная настройка,
-// notifications-web.md): владелец счёл подвал «Вы вошли как …» на каждом
-// экране лишним (он и был заведён ради этого — отзыв 2026-09-12, шапка
-// AppShell.tsx), а знак с названием на телефоне и так стоят первой строкой.
-// «Выйти» с телефона переехала на сам экран «Уведомления»
-// (NotificationsScreen.tsx) — она нужна редко, не на каждом экране. На
-// мониторе у ученика (боковой колонки не бывает) подвал под содержимым
-// остаётся как был — там и живут «Уведомления»/«Выйти» (AppShell.tsx).
+// Имя человека здесь было ссылкой на личный экран (ADR-0044) — владелец
+// спросил «Зачем вообще имя вверху?» (отзыв 2026-09-18): слово ломало
+// название школы на две строки, а сам по себе экран в подписи-имени не
+// нуждается. Точка входа на телефоне осталась, но вместо имени — значок
+// профиля (ProfileIcon.tsx): «Профиль» (ADR-0045, заменил «Уведомления»)
+// собрал имя, переключатели уведомлений, связку Telegram и «Выйти» под
+// одной ссылкой, а называет её `aria-label`, не текст в строке. На мониторе
+// у ученика (боковой колонки не бывает) эту роль по-прежнему играет подвал
+// под содержимым (AppShell.tsx).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { ProfileIcon } from '../components/ProfileIcon';
 import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
-import { textLinkStyle } from '../components/screenLayout';
 
-const NOTIFICATIONS_PATH = '/notifications';
-// Подпись честная про отсутствие имени — как везде в кабинете (PeopleScreen,
-// PersonRow.tsx), не пустая строка.
-const NO_NAME_LABEL = '—';
+const PROFILE_PATH = '/profile';
+const PROFILE_LABEL = 'Профиль';
+
+// Цель нажатия 44×44 (CLAUDE.md «Доступность») держит сама ссылка — значок
+// внутри заметно меньше (20×20, ProfileIcon.tsx), лишнее поле вокруг него не
+// видно, это область нажатия, не рамка.
+const PROFILE_LINK_SIZE_PX = 44;
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -33,21 +37,30 @@ const titleStyle: CSSProperties = {
   fontSize: 21,
   color: 'var(--ink)',
 };
-const personLinkStyle: CSSProperties = { ...textLinkStyle, marginLeft: 'auto' };
+// Не textLinkStyle (screenLayout.ts): подчёркивание — приём текстовой
+// ссылки, а тут значок без подписи рядом.
+const profileLinkStyle: CSSProperties = {
+  marginLeft: 'auto',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: PROFILE_LINK_SIZE_PX,
+  minHeight: PROFILE_LINK_SIZE_PX,
+  color: 'var(--ink-soft)',
+};
 
 interface AppShellBrandRowProps {
   isMobile: boolean;
-  name?: string;
 }
 
-export function AppShellBrandRow({ isMobile, name }: AppShellBrandRowProps) {
+export function AppShellBrandRow({ isMobile }: AppShellBrandRowProps) {
   return (
     <span style={rowStyle}>
       <SchoolMark />
       <span style={titleStyle}>{SCHOOL_NAME}</span>
       {isMobile && (
-        <Link to={NOTIFICATIONS_PATH} style={personLinkStyle} aria-label="Уведомления">
-          {name ?? NO_NAME_LABEL}
+        <Link to={PROFILE_PATH} aria-label={PROFILE_LABEL} style={profileLinkStyle}>
+          <ProfileIcon />
         </Link>
       )}
     </span>

@@ -59,8 +59,8 @@ describe('firstScreenPaths', () => {
     ]);
   });
 
-  it('ученик на /notifications — общий для всех ролей маршрут (ТЗ notifications-web.md)', () => {
-    expect(firstScreenPaths('/notifications', makeMe({ roles: [] }))).toEqual([
+  it('ученик на /profile — общий для всех ролей маршрут (ADR-0045)', () => {
+    expect(firstScreenPaths('/profile', makeMe({ roles: [] }))).toEqual([
       '/me/notifications',
     ]);
   });

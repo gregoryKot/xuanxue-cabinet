@@ -33,7 +33,7 @@ const ExamPreviewScreen = lazy(ROUTE_MODULES.examPreview.load);
 const GradingQueueScreen = lazy(ROUTE_MODULES.grading.load);
 const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
-const NotificationsScreen = lazy(ROUTE_MODULES.notifications.load);
+const ProfileScreen = lazy(ROUTE_MODULES.profile.load);
 
 /* Занятие расписания, дата занятия, канал, рассылка, вопрос и экзамен
    правятся на страницах со своими адресами, а не в листах поверх списка
@@ -71,14 +71,14 @@ export const cabinetRoutes = (
         на контроллере (ExamAttemptsController). */}
     <Route path={ROUTE_MODULES.grading.path} element={<GradingQueueScreen />} />
     <Route path={ROUTE_MODULES.attemptReview.path} element={<AttemptReviewScreen />} />
-    {/* Личная настройка человека, не раздел домена — вход из подвала
-        AppShell.tsx, не из NAV_ITEMS (ТЗ notifications-web.md, docs/adr/0025).
-        Доступна и ученику: AppShell.tsx рисует здесь Outlet независимо от
-        роли. */}
-    <Route path={ROUTE_MODULES.notifications.path} element={<NotificationsScreen />} />
+    {/* Личный экран человека, не раздел домена — вход из подвала кабинета на
+        мониторе и значка профиля на телефоне (ADR-0045, AppShellBrandRow.tsx),
+        не из NAV_ITEMS (docs/adr/0025). Доступен и ученику: AppShell.tsx
+        рисует здесь Outlet независимо от роли. */}
+    <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
     {/* Экран сдачи — доступен любой роли (ТЗ student-exams.md: учитель тоже
         проходит форму изнутри), вход — кнопка «Начать»/«Продолжить» на
-        StudentExamsSection.tsx. Как «/notifications», AppShell.tsx отдаёт под
+        StudentExamsSection.tsx. Как «/profile», AppShell.tsx отдаёт под
         него Outlet и ученику, минуя StudentScreen. */}
     <Route path={ROUTE_MODULES.attempt.path} element={<AttemptScreen />} />
     {/* «Ученики» — четвёртый пункт NAV_ITEMS (navItems.ts). Маршрут открыт

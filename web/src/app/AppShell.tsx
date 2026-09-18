@@ -5,18 +5,19 @@
 //
 // Направление «Тёплая школа» (ADR-0043) убрало шапку во всю ширину и подвал
 // под содержимым: на широком экране у штата школы (`hasSideNav`) их рисует
-// боковая колонка сама — знак школы сверху, имя человека, «Уведомления» и
+// боковая колонка сама — знак школы сверху, имя человека, «Профиль» и
 // «Выйти» снизу (AppNav.tsx). Без такой колонки — на телефоне и у ученика на
 // мониторе — оболочка рисует то же самое сама, тем же `hasSideNav`, чтобы
 // знак и «Выйти» не дублировались и не пропадали ни в одном сочетании роли и
 // ширины экрана.
 //
-// Подвал под содержимым («Вы вошли как … · Уведомления · Выйти») остаётся
+// Подвал под содержимым («Вы вошли как … · Профиль · Выйти») остаётся
 // только у ученика на мониторе (боковой колонки у него не бывает) — не на
 // телефоне: владелец счёл его на каждом экране лишним (кнопка нужна редко,
 // отзыв 2026-09-12). На телефоне эту роль берёт на себя верхняя строка
-// (AppShellBrandRow.tsx: имя — ссылка на «Уведомления») и сам экран
-// «Уведомления» («Выйти» переехала туда).
+// (AppShellBrandRow.tsx: вместо имени — значок профиля, отзыв 2026-09-18
+// «Зачем вообще имя вверху?») и сам экран «Профиль» (ADR-0045, заменил
+// «Уведомления» — «Выйти» и имя тоже там).
 //
 // У ученика на мониторе подвал ещё прижимался к низу окна — содержимое
 // держала обёртка с `flex: 1` (болезнь, которую #198 вылечил учителю,
@@ -25,11 +26,11 @@
 // (appShellStyles.ts) не трогаем — им на телефоне держится нижняя панель.
 // Роль без teacher/assistant/admin (ученик, бухгалтер) — StudentScreen вместо
 // содержимого маршрута: у бухгалтера прав пока нет нигде (деньги — этап 3,
-// docs/PLAN.md). Исключения — «/notifications» (личная настройка человека,
-// ТЗ notifications-web.md) и «/attempts/:id» (экран сдачи, ТЗ
-// student-exams.md): оба доступны любой роли, поэтому под них Outlet
-// рисуется всегда, даже ученику (в нижнюю навигацию не входят — вход в
-// экзамен только кнопкой на StudentExamsSection.tsx, docs/adr/0025).
+// docs/PLAN.md). Исключения — «/profile» (личный экран человека, ADR-0045) и
+// «/attempts/:id» (экран сдачи, ТЗ student-exams.md): оба доступны любой
+// роли, поэтому под них Outlet рисуется всегда, даже ученику (в нижнюю
+// навигацию не входят — вход в экзамен только кнопкой на
+// StudentExamsSection.tsx, docs/adr/0025).
 //
 // Статуса «ждёт подтверждения» больше нет (ADR-0036) — вошедший всегда либо
 // уже видит свой раздел, либо гвард (RequireAuth) увёл его на /login раньше,
@@ -51,7 +52,7 @@ import { isTeacher, showsRouteScreen } from './screenAccess';
 import { StudentScreen } from './StudentScreen';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
-const NOTIFICATIONS_PATH = '/notifications';
+const PROFILE_PATH = '/profile';
 
 export function AppShell() {
   const { me } = useAuth();
@@ -71,8 +72,8 @@ export function AppShell() {
   const hasSideNav = teacherRole && !isMobile;
 
   // Подвал под содержимым — только у ученика на мониторе (см. шапку файла);
-  // на телефоне «Уведомления»/«Выйти» держат AppShellBrandRow.tsx и сам экран
-  // «Уведомления».
+  // на телефоне значок профиля и «Выйти» держат AppShellBrandRow.tsx и сам
+  // экран «Профиль».
   const showFooter = !hasSideNav && !isMobile;
 
   return (
@@ -82,22 +83,22 @@ export function AppShell() {
           <AppNav
             isMobile={false}
             me={me}
-            notificationsLink={
-              <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
-                Уведомления
+            profileLink={
+              <Link to={PROFILE_PATH} style={textLinkStyle}>
+                Профиль
               </Link>
             }
             logoutButton={<LogoutButton />}
           />
         )}
         <div style={contentColumnStyle}>
-          {!hasSideNav && <AppShellBrandRow isMobile={isMobile} name={me?.name} />}
+          {!hasSideNav && <AppShellBrandRow isMobile={isMobile} />}
           <main>{showOutlet ? <Outlet /> : <StudentScreen />}</main>
           {showFooter && (
             <footer style={footerStyle}>
               <span>Вы вошли как {me?.name ?? '—'} ·</span>
-              <Link to={NOTIFICATIONS_PATH} style={textLinkStyle}>
-                Уведомления
+              <Link to={PROFILE_PATH} style={textLinkStyle}>
+                Профиль
               </Link>
               <span>·</span>
               <LogoutButton />

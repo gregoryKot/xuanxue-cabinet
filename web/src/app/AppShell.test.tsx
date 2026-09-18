@@ -56,10 +56,10 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route element={<AppShell />}>
             <Route path="/schedule" element={<p>Содержимое расписания</p>} />
-            {/* Личная настройка человека — маршрут внутри AppShell, но не
-                за ролевым гвардом (ТЗ notifications-web.md): проверяем, что
-                AppShell отдаёт под него Outlet и ученику. */}
-            <Route path="/notifications" element={<p>Экран уведомлений</p>} />
+            {/* Личный экран человека — маршрут внутри AppShell, но не за
+                ролевым гвардом (ADR-0045): проверяем, что AppShell отдаёт
+                под него Outlet и ученику. */}
+            <Route path="/profile" element={<p>Экран профиля</p>} />
             {/* Экран сдачи — та же исключительная логика (ТЗ
                 student-exams.md): ученик должен попасть на сам маршрут. */}
             <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
@@ -177,12 +177,12 @@ describe('AppShell — учитель', () => {
     await screen.findByText('Содержимое расписания');
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
-    // «Уведомления» — тоже ссылка в этой колонке (блок человека снизу), но
-    // не пункт домена: отфильтрован, чтобы тест проверял ровно NAV_ITEMS.
+    // «Профиль» — тоже ссылка в этой колонке (блок человека снизу), но не
+    // пункт домена: отфильтрован, чтобы тест проверял ровно NAV_ITEMS.
     const labels = within(nav)
       .getAllByRole('link')
       .map((link) => link.textContent)
-      .filter((label) => label !== 'Уведомления');
+      .filter((label) => label !== 'Профиль');
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
   });
 
@@ -194,7 +194,7 @@ describe('AppShell — учитель', () => {
     const labels = within(nav)
       .getAllByRole('link')
       .map((link) => link.textContent)
-      .filter((label) => label !== 'Уведомления');
+      .filter((label) => label !== 'Профиль');
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
   });
 
@@ -211,9 +211,9 @@ describe('AppShell — учитель', () => {
 
     expect(within(column).getByText(/Вы вошли как Дима/)).toBeInTheDocument();
     expect(within(column).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
-    expect(within(column).getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
+    expect(within(column).getByRole('link', { name: 'Профиль' })).toHaveAttribute(
       'href',
-      '/notifications',
+      '/profile',
     );
     // Подвала под содержимым на мониторе больше нет — ровно это и убирало
     // осиротевшую строку в 650px под контентом (ADR-0043 «Контекст»).
@@ -224,20 +224,19 @@ describe('AppShell — учитель', () => {
 
   // Отзыв владельца 2026-09-12/18: подвал «Вы вошли как …» на каждом экране
   // телефона — лишнее (кнопка нужна редко). На телефоне его больше нет вовсе
-  // — имя ведёт на «Уведомления» прямо в верхней строке (AppShellBrandRow.tsx),
-  // «Выйти» — на самом экране «Уведомления» (NotificationsScreen.test.tsx).
-  it('на телефоне подвала под содержимым больше нет — имя ведёт на «Уведомления» в верхней строке', async () => {
+  // — вместо имени значок профиля прямо в верхней строке (AppShellBrandRow.tsx,
+  // отзыв 2026-09-18), «Выйти» — на самом экране «Профиль» (ProfileScreen.test.tsx).
+  it('на телефоне подвала под содержимым больше нет — значок профиля ведёт на «Профиль» в верхней строке', async () => {
     stubMobileViewport();
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
       'href',
-      '/notifications',
+      '/profile',
     );
-    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveTextContent('Дима');
   });
 });
 
@@ -278,24 +277,24 @@ describe('AppShell — ученик (без роли teacher/assistant/admin)', 
     );
   });
 
-  // Подвал общий (ТЗ notifications-web.md): ссылка на «Уведомления» видна и
-  // ученику, хотя нижней навигации у него нет вовсе.
-  it('подвал — ссылка «Уведомления» видна и ученику', async () => {
+  // Подвал общий (ADR-0045): ссылка на «Профиль» видна и ученику, хотя
+  // нижней навигации у него нет вовсе.
+  it('подвал — ссылка «Профиль» видна и ученику', async () => {
     renderShell(STUDENT);
     await screen.findByText('Ближайших занятий пока нет.');
 
-    expect(screen.getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
       'href',
-      '/notifications',
+      '/profile',
     );
   });
 
-  // Маршрут не спрятан за ролевым гвардом: ученик на «/notifications»
-  // видит не StudentScreen, а сам экран.
-  it('на «/notifications» — сам маршрут, не StudentScreen', async () => {
-    renderShell(STUDENT, '/notifications');
+  // Маршрут не спрятан за ролевым гвардом: ученик на «/profile» видит не
+  // StudentScreen, а сам экран.
+  it('на «/profile» — сам маршрут, не StudentScreen', async () => {
+    renderShell(STUDENT, '/profile');
 
-    expect(await screen.findByText('Экран уведомлений')).toBeInTheDocument();
+    expect(await screen.findByText('Экран профиля')).toBeInTheDocument();
     expect(screen.queryByText('Ближайших занятий пока нет.')).not.toBeInTheDocument();
   });
 
@@ -366,7 +365,7 @@ describe('AppShell — прокрутка внутри оболочки, а не
   });
 
   // Колонка разделов на мониторе больше не может рассчитывать на прокрутку
-  // страницы: на низком окне блок человека «Уведомления · Выйти» оказался бы
+  // страницы: на низком окне блок человека «Профиль · Выйти» оказался бы
   // недостижим (sideNavStyles.ts, sideStyle).
   it('боковая колонка на мониторе прокручивается сама', async () => {
     renderShell(TEACHER);

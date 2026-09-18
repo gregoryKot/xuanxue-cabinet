@@ -71,8 +71,8 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/grading')).toEqual([GRADING_QUEUE_PATH]);
   });
 
-  it('/notifications — настройки уведомлений', () => {
-    expect(prefetchAt('/notifications')).toEqual([NOTIFICATION_PREFS_PATH]);
+  it('/profile — настройки уведомлений', () => {
+    expect(prefetchAt('/profile')).toEqual([NOTIFICATION_PREFS_PATH]);
   });
 
   it('/people — ссылка-приглашение; список учеников (GET /users) не греем — он только для admin', () => {
@@ -192,7 +192,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/exams/652f00000000000000000005/preview',
       '/grading',
       '/grading/652f00000000000000000006',
-      '/notifications',
+      '/profile',
       '/attempts/652f00000000000000000007',
       '/people',
     ];
