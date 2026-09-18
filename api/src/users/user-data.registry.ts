@@ -37,6 +37,11 @@
 // завёл заготовку, не признак владения (см. USER_REFERENCE_PATHS ниже) —
 // при удалении аккаунта поле обнуляется, сама заготовка остаётся общей.
 //
+// Этап 3, слой 3.1 (materials, ADR-0047, PLAN §14) — библиотека материалов
+// школы. Данные школы, не ученика: `createdBy` — кто завёл материал, не
+// признак владения (см. USER_REFERENCE_PATHS ниже) — при удалении аккаунта
+// поле обнуляется, сам материал остаётся в библиотеке школы.
+//
 // ADR-0034 — код связки Telegram (telegram_link_codes,
 // telegram-link-code.schema.ts): `userId` здесь не персональные данные
 // ученика, а признак того, чья сессия выпустила код (владелец, а не жертва
@@ -73,4 +78,5 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ExamGradingRecord', path: 'graderId' },
   { model: 'ExamImageRecord', path: 'createdBy' },
   { model: 'GradingCommentPresetRecord', path: 'createdBy' },
+  { model: 'MaterialRecord', path: 'createdBy' },
 ] as const;
