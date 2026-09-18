@@ -8,6 +8,8 @@ import {
   EXAM_ITEM_STATS_SUMMARY_PATH,
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
+  MY_EXAMS_PATH,
+  MY_LESSONS_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
@@ -73,6 +75,16 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/profile — настройки уведомлений', () => {
     expect(prefetchAt('/profile')).toEqual([NOTIFICATION_PREFS_PATH]);
+  });
+
+  // Решение владельца: экзамены — отдельный экран и первый после входа
+  // (docs/PLAN.md §11).
+  it('/tasks — список своих экзаменов', () => {
+    expect(prefetchAt('/tasks')).toEqual([MY_EXAMS_PATH]);
+  });
+
+  it('/lessons — список своих занятий', () => {
+    expect(prefetchAt('/lessons')).toEqual([MY_LESSONS_PATH]);
   });
 
   it('/people — ссылка-приглашение; список учеников (GET /users) не греем — он только для admin', () => {
@@ -193,6 +205,8 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/grading',
       '/grading/652f00000000000000000006',
       '/profile',
+      '/tasks',
+      '/lessons',
       '/attempts/652f00000000000000000007',
       '/people',
     ];

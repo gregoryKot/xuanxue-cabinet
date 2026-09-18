@@ -12,8 +12,10 @@
 // бы разбор.
 import { lazy } from 'react';
 import { Navigate, Route } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
-import { ROOT_REDIRECT_PATH, ROUTE_MODULES } from './routeModules';
+import { ROUTE_MODULES } from './routeModules';
+import { rootPathFor } from './screenAccess';
 
 const ScheduleScreen = lazy(ROUTE_MODULES.schedule.load);
 const ClassEditorScreen = lazy(ROUTE_MODULES.classEditor.load);
@@ -34,6 +36,17 @@ const GradingQueueScreen = lazy(ROUTE_MODULES.grading.load);
 const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
 const ProfileScreen = lazy(ROUTE_MODULES.profile.load);
+const TasksScreen = lazy(ROUTE_MODULES.tasks.load);
+const LessonsScreen = lazy(ROUTE_MODULES.studentLessons.load);
+
+/** «/» — первый экран уже известной роли (решение владельца: у ученика это
+ * «Задания», у штата — «Занятия»/планирование). Роль решает rootPathFor
+ * (screenAccess.ts) — общая функция с AppShell.tsx, чтобы адрес корня не
+ * разъехался с адресом редиректа при отказе в чужом маршруте. */
+function RootRedirect() {
+  const { me } = useAuth();
+  return <Navigate to={rootPathFor(me)} replace />;
+}
 
 /* Занятие расписания, дата занятия, канал, рассылка, вопрос и экзамен
    правятся на страницах со своими адресами, а не в листах поверх списка

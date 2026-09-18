@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
-import { isTeacher, showsRouteScreen } from './screenAccess';
+import { canSeeRoute, isTeacher, rootPathFor } from './screenAccess';
 
 function makeMe(overrides: Partial<MeDto> = {}): MeDto {
   return {
@@ -32,35 +32,58 @@ describe('isTeacher', () => {
   });
 });
 
-describe('showsRouteScreen', () => {
-  it('учитель — Outlet на любом адресе кабинета', () => {
-    expect(showsRouteScreen(makeMe(), '/planning')).toBe(true);
+describe('rootPathFor', () => {
+  it('штат — «Занятия» (планирование)', () => {
+    expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/planning');
+    expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/planning');
+    expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/planning');
   });
 
-  it('ученик на обычном маршруте — false (AppShell рисует StudentScreen)', () => {
-    expect(showsRouteScreen(makeMe({ roles: [] }), '/planning')).toBe(false);
+  it('ученик — «Задания» (решение владельца: экзамены — первый экран)', () => {
+    expect(rootPathFor(makeMe({ roles: [] }))).toBe('/tasks');
   });
 
-  it('ученик на «/profile» — true, личный экран доступен всем', () => {
-    expect(showsRouteScreen(makeMe({ roles: [] }), '/profile')).toBe(true);
+  it('сессия ещё не известна (null) — тот же безопасный минимум, что у ученика', () => {
+    expect(rootPathFor(null)).toBe('/tasks');
+  });
+});
+
+describe('canSeeRoute', () => {
+  it('штат — маршрут открыт на любом адресе кабинета', () => {
+    expect(canSeeRoute(makeMe(), '/planning')).toBe(true);
+    expect(canSeeRoute(makeMe(), '/exams')).toBe(true);
+  });
+
+  it('ученик на маршруте штата — false, его уводит редиректом AppShell', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/planning')).toBe(false);
+    expect(canSeeRoute(makeMe({ roles: [] }), '/exams')).toBe(false);
+    expect(canSeeRoute(makeMe({ roles: [] }), '/channels')).toBe(false);
+  });
+
+  it('ученик на своих «/tasks»/«/lessons» — true', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/tasks')).toBe(true);
+    expect(canSeeRoute(makeMe({ roles: [] }), '/lessons')).toBe(true);
+  });
+
+  it('ученик на «/profile» — true, личный экран доступен всем (ADR-0045)', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/profile')).toBe(true);
   });
 
   it('ученик на «/attempts/:id» — true, экран сдачи доступен всем', () => {
-    expect(showsRouteScreen(makeMe({ roles: [] }), '/attempts/a1')).toBe(true);
+    expect(canSeeRoute(makeMe({ roles: [] }), '/attempts/a1')).toBe(true);
   });
 
   // Статуса «ждёт подтверждения» больше нет (ADR-0036) — функция не ветвится
   // по `me.status`: blocked до неё не доходит (RequireAuth), а active с
   // ролью штата и без неё различаются только ролями.
-  it('status не влияет: active-учитель — Outlet, active-ученик — StudentScreen', () => {
-    expect(showsRouteScreen(makeMe({ status: 'active' }), '/planning')).toBe(true);
-    expect(showsRouteScreen(makeMe({ roles: [], status: 'active' }), '/planning')).toBe(
-      false,
-    );
+  it('status не влияет: active-учитель — true, active-ученик на маршруте штата — false', () => {
+    expect(canSeeRoute(makeMe({ status: 'active' }), '/planning')).toBe(true);
+    expect(canSeeRoute(makeMe({ roles: [], status: 'active' }), '/planning')).toBe(false);
   });
 
-  it('null на обычном адресе — false; на «/profile»/«/attempts/:id» путь решает сам за себя', () => {
-    expect(showsRouteScreen(null, '/planning')).toBe(false);
-    expect(showsRouteScreen(null, '/profile')).toBe(true);
+  it('null на маршруте штата — false; на открытых всем путях путь решает сам за себя', () => {
+    expect(canSeeRoute(null, '/planning')).toBe(false);
+    expect(canSeeRoute(null, '/profile')).toBe(true);
+    expect(canSeeRoute(null, '/tasks')).toBe(true);
   });
 });

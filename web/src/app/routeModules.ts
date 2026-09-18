@@ -31,6 +31,8 @@ import {
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   LESSONS_PATH,
+  MY_EXAMS_PATH,
+  MY_LESSONS_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
@@ -88,9 +90,6 @@ const loadExamItemEditor = () => import('../exam-items/ExamItemEditorScreen');
 const loadLessonEditor = () => import('../planning/LessonEditorScreen');
 const loadClassEditor = () => import('../schedule/ClassEditorScreen');
 
-/** Куда ведёт корень `/` — и в `<Navigate>`, и при предзагрузке. */
-export const ROOT_REDIRECT_PATH = '/planning';
-
 export const ROUTE_MODULES = {
   login: { path: '/login', load: () => import('../auth/LoginScreen'), warm: false },
   emailLogin: {
@@ -137,7 +136,7 @@ export const ROUTE_MODULES = {
     ],
   },
   planning: {
-    path: ROOT_REDIRECT_PATH,
+    path: '/planning',
     load: () => import('../planning/PlanningScreen'),
     warm: true,
     prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH],
@@ -266,6 +265,21 @@ export const ROUTE_MODULES = {
     load: () => import('../profile/ProfileScreen'),
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH],
+  },
+  // «Задания» и «Занятия» ученика (решение владельца: экзамены — отдельный
+  // экран и первый после входа, docs/PLAN.md §11) — как «/profile» выше,
+  // открыты любой роли (screenAccess.ts, canSeeRoute).
+  tasks: {
+    path: '/tasks',
+    load: () => import('../student/TasksScreen'),
+    warm: true,
+    prefetch: () => [MY_EXAMS_PATH],
+  },
+  studentLessons: {
+    path: '/lessons',
+    load: () => import('../student/LessonsScreen'),
+    warm: true,
+    prefetch: () => [MY_LESSONS_PATH],
   },
   attempt: {
     path: '/attempts/:id',
