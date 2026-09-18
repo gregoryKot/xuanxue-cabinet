@@ -38,6 +38,17 @@ describe('matchRoute', () => {
     expect(loaderAt('/schedule/652f00000000000000000004')).toBe(
       ROUTE_MODULES.classEditor.load,
     );
+    expect(loaderAt('/materials')).toBe(ROUTE_MODULES.materials.load);
+    expect(loaderAt('/materials/new')).toBe(ROUTE_MODULES.materialNew.load);
+    expect(loaderAt('/materials/652f00000000000000000008')).toBe(
+      ROUTE_MODULES.materialEditor.load,
+    );
+  });
+
+  it('страница материала — один чанк на «новый» и на правку (ADR-0033)', async () => {
+    expect(ROUTE_MODULES.materialNew.load).toBe(ROUTE_MODULES.materialEditor.load);
+    await expect(ROUTE_MODULES.materialNew.load()).resolves.toHaveProperty('default');
+    await expect(ROUTE_MODULES.materials.load()).resolves.toHaveProperty('default');
   });
 
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {

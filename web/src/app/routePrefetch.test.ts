@@ -17,6 +17,7 @@ import {
   examItemsListPath,
   examsListPath,
   lessonsListPath,
+  materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
 import { matchRoute } from './routeMatch';
@@ -51,6 +52,10 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/channels — список всех каналов', () => {
     expect(prefetchAt('/channels')).toEqual([channelsListPath(false)]);
+  });
+
+  it('/materials — список без фильтра и классы (рубрикация строки)', () => {
+    expect(prefetchAt('/materials')).toEqual([materialsListPath(''), CLASSES_LIST_PATH]);
   });
 
   it('/templates — настройки и ближайшие занятия для предпросмотра', () => {
@@ -109,6 +114,10 @@ describe('RouteModule.prefetch — «новая запись»: своего id 
     expect(prefetchAt('/channels/new')).toEqual([]);
     expect(prefetchAt('/exam-items/new')).toEqual([]);
   });
+
+  it('/materials/new — форма ждёт занятия расписания для привязки галочками', () => {
+    expect(prefetchAt('/materials/new')).toEqual([CLASSES_LIST_PATH]);
+  });
 });
 
 describe('RouteModule.prefetch — редактор существующей записи: карточка по id из адреса', () => {
@@ -137,6 +146,13 @@ describe('RouteModule.prefetch — редактор существующей з�
   it('/channels/:id — карточка канала', () => {
     expect(prefetchAt('/channels/652f00000000000000000005')).toEqual([
       '/channels/652f00000000000000000005',
+    ]);
+  });
+
+  it('/materials/:id — карточка материала и занятия расписания', () => {
+    expect(prefetchAt('/materials/652f00000000000000000008')).toEqual([
+      '/materials/652f00000000000000000008',
+      CLASSES_LIST_PATH,
     ]);
   });
 
@@ -195,6 +211,9 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/planning/652f00000000000000000002',
       '/channels',
       '/channels/652f00000000000000000003',
+      '/materials',
+      '/materials/new',
+      '/materials/652f00000000000000000008',
       '/templates',
       '/exam-items',
       '/exam-items/652f00000000000000000004',

@@ -1,12 +1,15 @@
-// Действия шапки «Занятий»: переход в сетку расписания и «Разовое занятие»
-// в один ряд. Раньше вход в расписание был карточкой внизу экрана
-// (docs/adr/0025-navigation-by-domain.md), в шапку его подняли по отзыву
-// владельца 2026-09-18 — карточку внизу списка на телефоне было не найти, до
-// неё приходилось пролистать все занятия на четыре недели. В шапке кнопка не
-// сдвигает вниз блок «сегодня» (PlanningToday.tsx), ради которого этот экран
-// и открывают чаще всего. Силуэт «Расписания» — вторичный: киноварь на
-// экране одна, и она уже занята «Разовым занятием» (components/Button.tsx,
-// правило акцента).
+// Действия шапки «Занятий»: переход в сетку расписания, в библиотеку и
+// «Разовое занятие» в один ряд. Раньше вход в расписание был карточкой внизу
+// экрана (docs/adr/0025-navigation-by-domain.md), в шапку его подняли по
+// отзыву владельца 2026-09-18 — карточку внизу списка на телефоне было не
+// найти, до неё приходилось пролистать все занятия на четыре недели.
+// «Библиотека» (слой 3.2, docs/PLAN.md §14) входит тем же приёмом — кнопкой
+// в шапке, а не второй карточкой внизу: правило то же, двух входов в один
+// подэкран быть не должно (CLAUDE.md «Одна механика — один компонент»). В
+// шапке кнопки не сдвигают вниз блок «сегодня» (PlanningToday.tsx), ради
+// которого этот экран и открывают чаще всего. Силуэт «Расписания» и
+// «Библиотеки» — вторичный: киноварь на экране одна, и она уже занята
+// «Разовым занятием» (components/Button.tsx, правило акцента).
 import type { CSSProperties } from 'react';
 import { Button } from '../components/Button';
 
@@ -25,17 +28,22 @@ const actionsRowStyle: CSSProperties = {
 
 export interface PlanningActionsProps {
   onOpenSchedule: () => void;
+  onOpenLibrary: () => void;
   onCreateOneOff: () => void;
 }
 
 export function PlanningActions({
   onOpenSchedule,
+  onOpenLibrary,
   onCreateOneOff,
 }: PlanningActionsProps) {
   return (
     <div style={actionsRowStyle}>
       <Button variant="secondary" onClick={onOpenSchedule}>
         Расписание
+      </Button>
+      <Button variant="secondary" onClick={onOpenLibrary}>
+        Библиотека
       </Button>
       <Button onClick={onCreateOneOff}>Разовое занятие</Button>
     </div>

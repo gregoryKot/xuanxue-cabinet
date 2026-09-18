@@ -44,6 +44,10 @@ function baseConfig(
     validate: (state: FakeFormState) => (state.name.trim() ? null : 'Название пустое.'),
     toCreateInput: (state: FakeFormState) => ({ name: state.name }),
     toUpdateInput: (state: FakeFormState) => ({ name: state.name }),
+    toStatusInput: (state: FakeFormState, status: 'draft' | 'published') => ({
+      name: state.name,
+      status,
+    }),
     onCreate: vi.fn().mockResolvedValue(undefined),
     onUpdate: vi.fn().mockResolvedValue(undefined),
     onRemove: vi.fn().mockResolvedValue(undefined),

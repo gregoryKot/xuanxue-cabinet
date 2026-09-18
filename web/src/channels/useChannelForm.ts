@@ -1,9 +1,11 @@
-// Оркестрация листа канала — состояние, сохранение и удаление, по образцу
-// schedule/useClassForm.ts. Логика поля/валидации/сборки тела запроса — в
-// channelFormInput.ts (тестируется без React).
-import { useState } from 'react';
+// Оркестрация листа канала — состояние, сохранение и удаление, общая
+// механика — hooks/useEntityForm.ts (тот же хук, что у формы экзамена и
+// вопроса, только без статуса — `never` вторым параметром результата;
+// материал сохраняет и удаляет тем же приёмом, materials/useMaterialForm.ts).
+// Логика поля/валидации/сборки тела запроса — в channelFormInput.ts
+// (тестируется без React).
 import type { ChannelDto, CreateChannelInput, UpdateChannelInput } from '@xuanxue/shared';
-import { errorFrom, type FormError } from '../components/FormServerError';
+import { useEntityForm, type UseEntityFormResult } from '../hooks/useEntityForm';
 import {
   initialChannelFormState,
   toCreateInput,
@@ -13,18 +15,14 @@ import {
   type ChannelFormState,
 } from './channelFormInput';
 
-export interface UseChannelFormResult {
-  state: ChannelFormState;
-  setField: <K extends keyof ChannelFormState>(
-    key: K,
-    value: ChannelFormState[K],
-  ) => void;
-  validationError: ChannelFormError | null;
-  serverError: FormError | null;
-  pending: boolean;
-  submit: () => Promise<boolean>;
-  remove: () => Promise<boolean>;
-}
+const SAVE_ERROR_MESSAGE = 'Не удалось сохранить. Попробуйте ещё раз.';
+const REMOVE_ERROR_MESSAGE = 'Не удалось удалить. Попробуйте ещё раз.';
+
+export type UseChannelFormResult = UseEntityFormResult<
+  ChannelFormState,
+  never,
+  ChannelFormError
+>;
 
 export function useChannelForm(
   channelDto: ChannelDto | null,
@@ -32,54 +30,27 @@ export function useChannelForm(
   onUpdate: (id: string, input: UpdateChannelInput) => Promise<void>,
   onRemove: (id: string) => Promise<void>,
 ): UseChannelFormResult {
-  const [state, setState] = useState<ChannelFormState>(() =>
-    initialChannelFormState(channelDto),
-  );
-  const [validationError, setValidationError] = useState<ChannelFormError | null>(null);
-  const [serverError, setServerError] = useState<FormError | null>(null);
-  const [pending, setPending] = useState(false);
-
-  function setField<K extends keyof ChannelFormState>(
-    key: K,
-    value: ChannelFormState[K],
-  ) {
-    setState((prev) => ({ ...prev, [key]: value }));
-  }
-
-  async function submit(): Promise<boolean> {
-    const invalid = validateChannelForm(state, !channelDto, channelDto ?? undefined);
-    setValidationError(invalid);
-    if (invalid) return false;
-
-    setServerError(null);
-    setPending(true);
-    try {
-      if (channelDto)
-        await onUpdate(channelDto.id, toUpdateInput(state, channelDto.type));
-      else await onCreate(toCreateInput(state));
-      return true;
-    } catch (err) {
-      setServerError(errorFrom(err, 'Не удалось сохранить. Попробуйте ещё раз.'));
-      return false;
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function remove(): Promise<boolean> {
-    if (!channelDto) return false;
-    setServerError(null);
-    setPending(true);
-    try {
-      await onRemove(channelDto.id);
-      return true;
-    } catch (err) {
-      setServerError(errorFrom(err, 'Не удалось удалить. Попробуйте ещё раз.'));
-      return false;
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return { state, setField, validationError, serverError, pending, submit, remove };
+  return useEntityForm({
+    entity: channelDto,
+    getId: (channel) => channel.id,
+    initialState: initialChannelFormState,
+    validate: (state) => validateChannelForm(state, !channelDto, channelDto ?? undefined),
+    toCreateInput,
+    // `?? 'manual'` — эта сборка вызывается только когда `channelDto` не
+    // `null` (useEntityForm зовёт toUpdateInput лишь при `entity`),
+    // заглушка нужна только чтобы пройти tsc, второй веткой она не бывает.
+    toUpdateInput: (state) => toUpdateInput(state, channelDto?.type ?? 'manual'),
+    onCreate,
+    onUpdate,
+    onRemove,
+    saveErrorMessage: SAVE_ERROR_MESSAGE,
+    removeErrorMessage: REMOVE_ERROR_MESSAGE,
+    // Черновика у формы канала нет намеренно (ADR-0052: `null` — осознанный
+    // отказ). В этой форме набирают токен бота и ключ сообщества ВК — самое
+    // дорогое, что есть у школы (SECURITY §1). Черновик кладёт набранное в
+    // `localStorage` открытым текстом на неделю, а «токены в localStorage
+    // запрещены» (CLAUDE.md «Безопасность») — ради удобства формы из трёх
+    // полей это правило не нарушается.
+    draftKey: null,
+  });
 }

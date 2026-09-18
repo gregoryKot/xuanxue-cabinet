@@ -30,6 +30,19 @@ describe('useConfirmedRemove', () => {
     expect(goBack).not.toHaveBeenCalled();
   });
 
+  // Страница создания (SimpleEditorForm без `remove`): удалять ещё нечего,
+  // кнопки нет — но хук в дереве стоит всегда (правила хуков).
+  it('remove не задан — confirmRemove ничего не делает и лист не закрывается', async () => {
+    const goBack = vi.fn();
+    const { result } = renderHook(() => useConfirmedRemove(undefined, goBack));
+
+    await act(async () => {
+      await result.current.confirmRemove();
+    });
+
+    expect(goBack).not.toHaveBeenCalled();
+  });
+
   it('confirmRemove успешный — remove() вызван, лист закрывается одним goBack() после закрытия диалога', async () => {
     const remove = vi.fn().mockResolvedValue(true);
     const goBack = vi.fn();

@@ -42,6 +42,7 @@ export function useExamItemForm(
     validate: validateExamItemForm,
     toCreateInput,
     toUpdateInput,
+    toStatusInput: (state, status) => ({ ...toUpdateInput(state), status }),
     onCreate,
     onUpdate,
     onRemove,
