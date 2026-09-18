@@ -40,3 +40,20 @@ export function relativeDayLabel(iso: string, nowIso: string, timeZone?: string)
   if (distance === 1) return TOMORROW;
   return formatDayHeading(iso, timeZone);
 }
+
+/** Тот же календарный день, что и «сейчас», в поясе читателя — гейт для
+ * почасового статуса «прошло»/«через N часов» (lib/lessonCountdown.ts):
+ * карточки «Сегодня» (планирование учителя) и ближайшее занятие ученика
+ * считают в часах только сегодняшний день — для другого дня «через 30
+ * часов» не то, что хочет прочитать человек. */
+export function isToday(iso: string, nowIso: string, timeZone?: string): boolean {
+  return dateKey(iso, timeZone) === dateKey(nowIso, timeZone);
+}
+
+/** Первая буква прописная — «сегодня»/«завтра» этого файла нужны с большой в
+ * начале строки-рубрики («Сегодня, через 4 часа», docs/adr/0043); дата
+ * словами (formatDayHeading) уже приходит с большой, повторный вызов её не
+ * портит. */
+export function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}

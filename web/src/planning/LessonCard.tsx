@@ -1,119 +1,86 @@
-// Строка одной даты занятия в «Занятиях» — время и класс антиквой, тема и
-// пометки служебной строкой, состояние рассылки ссылки — меткой справа
-// (макет Schedule.dc.html, направление docs/adr/0031). Каркас строки общий
-// с schedule/SlotCard.tsx (components/listCardStyles.ts).
+// Строка занятия внутри общей карточки дня (LessonDayGroup.tsx, макет
+// 1c-planning.html, docs/adr/0043) — колонка времени, название антиквой и
+// тема под ним, статус рассылки справа. Список дня теперь одна карточка
+// (обёртка — LessonDayGroup.tsx, `--radius-block`, `overflow: hidden`),
+// поэтому строка не несёт свой фон и тень — только паддинг и волосяная линия
+// снизу (проп `isLast`), тот же приём, что у ExamCard.tsx/BroadcastCard.tsx.
 //
-// `id="lesson-{id}"` — якорь для внешней ссылки на конкретное занятие (бот,
-// уведомление). Блок «Сегодня» на этом же экране (PlanningToday.tsx) рисует
-// те же занятия ещё раз — там якорь выключают (`anchor={false}`), иначе два
-// элемента с одним `id` ломают его и невалидны в HTML.
+// `id="lesson-{id}"` на `<li>` — якорь для внешней ссылки на конкретное
+// занятие (бот, уведомление, useScrollToHash.ts). Карточки «Сегодня»
+// (TodayLessonCard.tsx) показывают часть этих же занятий ещё раз без якоря —
+// два элемента с одним `id` в HTML невалидны, поэтому там его нет вовсе.
 import type { CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
-import type { BroadcastStatus, LessonDto } from '@xuanxue/shared';
-import {
-  listCardMetaStyle,
-  listCardStyle,
-  listCardTitleStyle,
-} from '../components/listCardStyles';
-import { textLinkStyle } from '../components/screenLayout';
+import type { LessonDto } from '@xuanxue/shared';
 import { formatTime } from '../lib/formatDate';
+import { CancelledBroadcastLink, LessonBroadcastBadge } from './LessonBroadcastBadge';
 
-// Свои тексты, не BROADCAST_STATUS_LABELS_RU (broadcasts/broadcastLabels.ts):
-// там подпись общей карточки рассылки в журнале, здесь — что случилось со
-// ссылкой конкретно этого занятия (docs/PLAN.md §6 п.3, VOICE.md — короткие
-// тексты интерфейса без точки).
-const BROADCAST_BADGE_TEXT: Record<BroadcastStatus, string> = {
-  scheduled: 'Ссылка ждёт отправки',
-  sent: 'Ссылка ушла',
-  failed: 'Ошибка отправки',
-  cancelled: 'Отменена',
-};
+const TIME_COLUMN_WIDTH_PX = 56;
 
-// Киноварью метка не красится ни в одном состоянии: акцент экрана занят
-// кнопкой «Разовое занятие», а «Ссылка ушла» повторяется в каждой строке
-// списка — четыре недели красного (правило акцента, docs/adr/0031). Цветом
-// выделен только сбой: он требует действия учителя.
-const failedBadgeStyle: CSSProperties = { color: 'var(--danger)' };
-
-const rowStyle: CSSProperties = {
+const rowButtonStyle: CSSProperties = {
   display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'space-between',
-  gap: 16,
+  alignItems: 'center',
+  gap: 18,
+  width: '100%',
+  minHeight: 44,
+  padding: '16px 20px',
+  border: 'none',
+  background: 'transparent',
+  font: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
+};
+const timeStyle: CSSProperties = {
+  flexShrink: 0,
+  width: TIME_COLUMN_WIDTH_PX,
+  fontSize: 16,
+  fontWeight: 500,
+  fontVariantNumeric: 'tabular-nums',
 };
 const contentStyle: CSSProperties = { minWidth: 0, flex: 1 };
-// Информационный текст — --ink-soft, не --ink-faint (CLAUDE.md
-// «Доступность»: у --ink-faint контраст с бумагой ниже AA).
-const badgeStyle: CSSProperties = {
-  flexShrink: 0,
-  color: 'var(--ink-soft)',
-  paddingTop: 6,
-};
-const cancelledLinkStyle: CSSProperties = {
-  ...textLinkStyle,
-  display: 'inline-block',
-  marginTop: 2,
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-};
+const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 22 };
+const metaStyle: CSSProperties = { marginTop: 2, fontSize: 14, color: 'var(--ink-soft)' };
+const statusStyle: CSSProperties = { flexShrink: 0, fontSize: 13 };
 
 interface LessonCardProps {
   lesson: LessonDto;
   className: string;
   onSelect: () => void;
-  /** `false` — без DOM `id` (см. комментарий выше). По умолчанию `true`. */
-  anchor?: boolean;
+  /** Последняя строка карточки дня — без нижней волосяной линии
+   * (LessonDayGroup.tsx, docs/adr/0043). */
+  isLast?: boolean;
 }
 
 export function LessonCard({
   lesson,
   className,
   onSelect,
-  anchor = true,
+  isLast = false,
 }: LessonCardProps) {
   const cancelled = lesson.status === 'cancelled';
   const broadcast = lesson.broadcast;
+
   return (
-    <div>
+    <li
+      id={`lesson-${lesson.id}`}
+      style={{ borderBottom: isLast ? 'none' : '1px solid var(--panel)' }}
+    >
       <button
         type="button"
-        id={anchor ? `lesson-${lesson.id}` : undefined}
-        style={{ ...listCardStyle, color: cancelled ? 'var(--ink-soft)' : 'inherit' }}
+        style={{ ...rowButtonStyle, color: cancelled ? 'var(--ink-soft)' : 'inherit' }}
         onClick={onSelect}
       >
-        <div style={rowStyle}>
-          <div style={contentStyle}>
-            <div style={listCardTitleStyle}>
-              {formatTime(lesson.startsAt)} · {className}
-            </div>
-            <div style={listCardMetaStyle}>
-              {lesson.topic || 'Тема не задана'}
-              {cancelled && ' · Отменено'}
-              {lesson.recordings.length > 0 && ' · запись есть'}
-            </div>
-          </div>
-          {broadcast && (
-            <span
-              className="xuanxue-status-label"
-              style={
-                broadcast.status === 'failed'
-                  ? { ...badgeStyle, ...failedBadgeStyle }
-                  : badgeStyle
-              }
-            >
-              {BROADCAST_BADGE_TEXT[broadcast.status]}
-            </span>
-          )}
-        </div>
+        <span style={timeStyle}>{formatTime(lesson.startsAt)}</span>
+        <span style={contentStyle}>
+          <span style={titleStyle}>{className}</span>
+          <span style={metaStyle}>
+            {lesson.topic || 'Тема не задана'}
+            {cancelled && ' · Отменено'}
+            {lesson.recordings.length > 0 && ' · запись есть'}
+          </span>
+        </span>
+        <LessonBroadcastBadge broadcast={broadcast} style={statusStyle} />
       </button>
-      {/* Ссылка отдельным элементом, не внутри <button>: вложенная
-          интерактивная разметка невалидна и не кликабельна в браузере
-          (кнопка перехватывает клик первой). */}
-      {broadcast?.status === 'cancelled' && (
-        <Link to="/broadcasts" style={cancelledLinkStyle}>
-          почему — в «Рассылках»
-        </Link>
-      )}
-    </div>
+      {broadcast?.status === 'cancelled' && <CancelledBroadcastLink />}
+    </li>
   );
 }

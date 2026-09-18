@@ -314,6 +314,22 @@ body {
   }
 }
 
+/* Две карточки «Сегодня» на «Занятиях» (макет 1c-planning.html): та же
+   механика, что у .xuanxue-block-grid выше (одна колонка на телефоне, 1fr 1fr
+   от той же ширины 560px), но макет здесь рисует gap 14px, не 12 — отдельный
+   класс вместо подгонки готового под чужое число (CLAUDE.md «Без магических
+   чисел», без опасности выдать один разъехавшийся класс за другой). */
+.xuanxue-today-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+@media (min-width: 560px) {
+  .xuanxue-today-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

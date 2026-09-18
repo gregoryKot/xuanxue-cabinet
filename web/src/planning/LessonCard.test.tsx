@@ -31,6 +31,21 @@ function renderCard(lesson: LessonDto) {
 }
 
 describe('LessonCard', () => {
+  it('время, класс и тема на своих местах', () => {
+    renderCard(makeLesson());
+    expect(screen.getByText('Тайцзицюань')).toBeInTheDocument();
+    expect(screen.getByText(/Пятое занятие/)).toBeInTheDocument();
+  });
+
+  it('класс не найден — «—» вместо пустого места', () => {
+    render(
+      <MemoryRouter>
+        <LessonCard lesson={makeLesson()} className="—" onSelect={vi.fn()} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
   it('без рассылки — бейджа нет вовсе', () => {
     renderCard(makeLesson());
     expect(screen.queryByText(/Ссылка/)).not.toBeInTheDocument();

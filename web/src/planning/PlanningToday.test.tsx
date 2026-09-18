@@ -70,7 +70,7 @@ describe('PlanningToday — занятие сегодня', () => {
   it('класс занятия не найден в classTitleById — «—» вместо пустого места', () => {
     renderToday([makeLesson({ classId: 'неизвестный' })]);
 
-    expect(screen.getByText(/· —/)).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 });
 
@@ -99,7 +99,7 @@ describe('PlanningToday — сегодня пусто', () => {
       makeLesson({ id: 'l9', startsAt: NEXT_MONTH_ISO, classId: 'неизвестный' }),
     ]);
 
-    expect(screen.getByText(/· —/)).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
   });
 
   it('ни сегодня, ни ближайшего — только честный текст', () => {

@@ -27,13 +27,20 @@ const rowStyle: CSSProperties = {
 // которого перенос всё-таки нужен: на 360 px кнопке рядом уже не поместиться.
 const TITLE_COLUMN_MIN_WIDTH_PX = 260;
 
+// Ширина колонки заголовка по умолчанию — общая для «Экзаменов», «Рассылок»,
+// «Расписания». «Занятия» (макет 1c-planning.html, docs/adr/0043) рисуют
+// более узкий блок текста (540) — проп, а не правка общего числа: у остальных
+// уже переехавших экранов длина объяснений подобрана под 620 (отзыв
+// владельца 2026-09-16, шапка файла), трогать её ради одного нового экрана
+// незачем.
+const DEFAULT_TITLE_MAX_WIDTH_PX = 620;
+
 const titleColumnStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
   flex: `1 1 ${TITLE_COLUMN_MIN_WIDTH_PX}px`,
   minWidth: 0,
-  maxWidth: 620,
 };
 
 interface ScreenHeaderProps {
@@ -43,12 +50,20 @@ interface ScreenHeaderProps {
   hint?: string | null;
   /** Пока список грузится, действия нет: нажимать не на что. */
   action?: ReactNode;
+  /** Предел ширины блока заголовка+объяснения — по умолчанию 620px. */
+  titleMaxWidth?: number;
 }
 
-export function ScreenHeader({ title, explanation, hint, action }: ScreenHeaderProps) {
+export function ScreenHeader({
+  title,
+  explanation,
+  hint,
+  action,
+  titleMaxWidth = DEFAULT_TITLE_MAX_WIDTH_PX,
+}: ScreenHeaderProps) {
   return (
     <div style={rowStyle}>
-      <div style={titleColumnStyle}>
+      <div style={{ ...titleColumnStyle, maxWidth: titleMaxWidth }}>
         <h1 style={screenTitleStyle}>{title}</h1>
         <p style={screenExplanationStyle}>{explanation}</p>
         {hint && <p style={screenHintStyle}>{hint}</p>}
