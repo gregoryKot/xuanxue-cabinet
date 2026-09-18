@@ -67,13 +67,13 @@ describe('InviteLinkCard — ссылка есть', () => {
     });
   }
 
-  it('ссылка текстом и кнопки «Скопировать»/«Создать новую»', async () => {
+  it('ссылка текстом и кнопки «Скопировать»/«Обновить»', async () => {
     mockWithUrl();
     renderCard();
 
     expect(await screen.findByText(URL)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Скопировать' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Создать новую' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Обновить' })).toBeInTheDocument();
   });
 
   // ADR-0030 «Бот»: telegramUrl — null, если бот ещё не прогрелся, вторая
@@ -99,7 +99,9 @@ describe('InviteLinkCard — ссылка есть', () => {
     renderCard();
     await screen.findByText(URL);
 
-    expect(screen.getByText('Для сайта')).toBeInTheDocument();
+    // «Для сайта» не подписываем — это и есть главный адрес карточки, без
+    // соседа подписывать нечего (макет 2c-people.html). «Для Telegram»
+    // остаётся: без подписи было бы неясно, что это тот же код другим путём.
     expect(screen.getByText('Для Telegram')).toBeInTheDocument();
     expect(screen.getByText(TELEGRAM_URL)).toBeInTheDocument();
 
@@ -144,20 +146,20 @@ describe('InviteLinkCard — ссылка есть', () => {
     document.execCommand = originalExecCommand;
   });
 
-  it('«Создать новую» → подтверждение → read-after-write: новый url на месте старого', async () => {
+  it('«Обновить» → подтверждение → read-after-write: новый url на месте старого', async () => {
     const user = userEvent.setup();
     const NEW_URL = 'https://xuanxue.su/join/' + 'c'.repeat(32);
     mockWithUrl(NEW_URL);
     renderCard();
     await screen.findByText(URL);
 
-    await user.click(screen.getByRole('button', { name: 'Создать новую' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Создать новую ссылку?' });
+    await user.click(screen.getByRole('button', { name: 'Обновить' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Обновить ссылку?' });
     expect(
-      within(dialog).getByText('Прежняя ссылка перестанет работать. Создать новую?'),
+      within(dialog).getByText('Прежняя ссылка перестанет работать. Обновить?'),
     ).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Создать новую' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Обновить' }));
 
     await waitFor(() => expect(screen.getByText(NEW_URL)).toBeInTheDocument());
     expect(screen.queryByText(URL)).not.toBeInTheDocument();

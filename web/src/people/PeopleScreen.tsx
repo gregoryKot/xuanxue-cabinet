@@ -5,10 +5,12 @@
 // ADR-0030 — ссылку-приглашение отдаёт и учитель), но список учеников, роли
 // и удаление данных внутри экрана видит только admin (SECURITY §3) —
 // teacher видит только ссылку-приглашение.
-// Облик — направление «тихо и благородно» (docs/adr/0031), как «Занятия» и
-// «Вопросы»: заголовок антиквой через ScreenHeader, люди — строками на
-// волосяных линиях, без киновари — подтверждать на «Людях» больше некого
-// (ADR-0036), единственный акцент экрана — ссылка-приглашение.
+// Облик — направление «Тёплая школа» (docs/adr/0043), макет
+// 2c-people.html: заголовок антиквой через ScreenHeader, карточка
+// ссылки-приглашения (InviteLinkCard.tsx) и список одной карточкой, как у
+// «Рассылок»/«Экзаменов» (#199, #200). Главной кнопки в шапке нет — действия
+// экрана живут в карточке приглашения, подтверждать на «Людях» больше
+// некого (ADR-0036).
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { hasRole } from '../auth/hasRole';
@@ -37,12 +39,18 @@ const TEACHER_EXPLANATION =
 const EMPTY_MESSAGE =
   'Пока никто, кроме вас, не входил. Отправьте ссылку-приглашение из карточки выше — кто откроет её и войдёт, появится здесь.';
 
-// Строки держатся на волосяной линии снизу (listCardStyle), поэтому зазора
-// между ними нет: со щелью список рассыпается на карточки (ADR-0031).
+// Список — одна карточка (docs/adr/0043), не стопка карточек-строк:
+// волосяную линию между строками красит сама PersonRow.tsx (проп `isLast`),
+// `overflow: hidden` подрезает первую/последнюю строку под общий радиус. Тот
+// же приём, что у журнала рассылок и списка экзаменов (#199, #200).
 const listStyle: CSSProperties = {
   margin: 0,
   padding: 0,
   listStyle: 'none',
+  borderRadius: 'var(--radius-block)',
+  background: 'var(--card)',
+  boxShadow: 'var(--shadow-card)',
+  overflow: 'hidden',
 };
 const countStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 
@@ -86,7 +94,7 @@ export default function PeopleScreen() {
 
       {isAdmin && !error && people && others.length > 0 && (
         <ul style={listStyle}>
-          {people.map((person) => (
+          {people.map((person, index, all) => (
             <PersonRow
               key={person.id}
               person={person}
@@ -94,6 +102,7 @@ export default function PeopleScreen() {
               onChangeRoles={(roles) => updateRoles(person.id, { roles })}
               onChangeStatus={(status) => updateStatus(person.id, status)}
               onRemove={() => remove(person.id)}
+              isLast={index === all.length - 1}
             />
           ))}
         </ul>

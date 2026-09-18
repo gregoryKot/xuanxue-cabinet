@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { ROLE_LABELS, USER_ROLES, type UserDto } from '@xuanxue/shared';
+import type { UserDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { PersonRow } from './PersonRow';
 
@@ -48,16 +48,26 @@ function renderRow(
   return { onChangeRoles, onRemove, onChangeStatus };
 }
 
-describe('PersonRow', () => {
+describe('PersonRow — имя и контакт', () => {
   it('имя и дата входа', () => {
     renderRow();
     expect(screen.getByText('Гриша')).toBeInTheDocument();
-    expect(screen.getByText(/^Вход/)).toBeInTheDocument();
+    expect(screen.getByText(/Вход/)).toBeInTheDocument();
   });
 
   it('без lastLoginAt — «Ещё не входил»', () => {
-    renderRow({ lastLoginAt: undefined });
+    renderRow({ lastLoginAt: undefined, hasTelegram: false });
     expect(screen.getByText('Ещё не входил')).toBeInTheDocument();
+  });
+
+  it('свой профиль — приписка «— это вы» рядом с именем', () => {
+    renderRow({}, true);
+    expect(screen.getByText('— это вы', { exact: false })).toBeInTheDocument();
+  });
+
+  it('чужой профиль — приписки «— это вы» нет', () => {
+    renderRow({}, false);
+    expect(screen.queryByText('— это вы', { exact: false })).not.toBeInTheDocument();
   });
 
   it('status: blocked — рядом с датой видна подпись «Доступ закрыт»', () => {
@@ -70,69 +80,77 @@ describe('PersonRow', () => {
     expect(screen.queryByText('Доступ закрыт')).not.toBeInTheDocument();
   });
 
-  it('включить «Учитель» — зовёт onChangeRoles с добавленной ролью', async () => {
-    const user = userEvent.setup();
-    const { onChangeRoles } = renderRow({ roles: [] });
-
-    await user.click(screen.getByLabelText('Учитель'));
-    expect(onChangeRoles).toHaveBeenCalledWith(['teacher']);
+  // Статуса «ждёт подтверждения» больше нет (ADR-0036) — регрессия на
+  // инцидент 2026-09-15: подпись и кнопка «Подтвердить» не должны
+  // появляться ни при каком статусе.
+  it('нет подписи «Ждёт подтверждения» и кнопки «Подтвердить» ни при каком статусе', () => {
+    renderRow({ status: 'active' });
+    expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
   });
+});
 
-  it('выключить «Администратор» — роль убрана из списка, остальные сохранены', async () => {
-    const user = userEvent.setup();
-    const { onChangeRoles } = renderRow({ roles: ['teacher', 'admin'] });
-
-    await user.click(screen.getByLabelText('Администратор'));
-    expect(onChangeRoles).toHaveBeenCalledWith(['teacher']);
-  });
-
-  it('переключатель на каждую роль из USER_ROLES, подпись — из ROLE_LABELS', () => {
-    renderRow();
-    expect(USER_ROLES).toHaveLength(4);
-    for (const role of USER_ROLES) {
-      expect(screen.getByLabelText(ROLE_LABELS[role])).toBeInTheDocument();
+// Пилюли — статус (не кнопки), одно действие — только про роль teacher
+// (PersonRoleBadge.tsx, docs/adr/0043): макет 2c-people.html не показывает
+// способа выдать/снять admin, assistant, accountant с этой строки.
+describe('PersonRow — пилюли ролей', () => {
+  it('пилюля на каждую роль из USER_ROLES, подпись — из ROLE_LABELS', () => {
+    renderRow({ roles: ['admin', 'teacher', 'assistant', 'accountant'] });
+    for (const label of ['Учитель', 'Администратор', 'Помощник учителя', 'Бухгалтер']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
   });
 
-  // ADR-0031: подпись переключателя — только роль, иначе «Администратор —
-  // Игорь Семёнов» повторяет имя четыре раза в одной строке. Имя осталось
-  // именем группы: скринридер называет его, входя в переключатели.
-  it('имя человека не повторяется в подписях ролей, а стоит в названии группы', () => {
-    renderRow();
-    const roles = screen.getByRole('group', { name: 'Роли — Гриша' });
-    expect(within(roles).getByLabelText('Администратор')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Администратор — Гриша')).not.toBeInTheDocument();
-  });
-
-  it('без ролей — подсказка «человек — ученик»', () => {
+  // Пилюли показываются ВСЕГДА, даже когда роли нет: иначе выдать её было бы
+  // нечем, и admin/assistant/accountant снова назначались бы правкой базы
+  // руками (CLAUDE.md «Кабинет учителя»: «чтобы это поменять, Диме нужен
+  // разработчик?»). Макет 2c рисует только имеющиеся роли — это и есть место,
+  // где вёрстка уступает возможностям экрана.
+  it('без ролей — пилюли всё равно на месте и все ненажаты', () => {
     renderRow({ roles: [] });
-    expect(screen.getByText(/человек — ученик/)).toBeInTheDocument();
+    for (const label of ['Учитель', 'Администратор', 'Помощник учителя', 'Бухгалтер']) {
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+    }
   });
 
-  it('с ролью (например, учитель) — подсказки «человек — ученик» нет', () => {
+  it('состояние роли читается с разметки, не только цветом', () => {
     renderRow({ roles: ['teacher'] });
-    expect(screen.queryByText(/человек — ученик/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Учитель' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Администратор' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
-  it('включить «Помощник учителя» — зовёт onChangeRoles с добавленной ролью', async () => {
+  it('нажатие пустой пилюли добавляет роль к уже имеющимся', async () => {
     const user = userEvent.setup();
-    const { onChangeRoles } = renderRow({ roles: [] });
+    const { onChangeRoles } = renderRow({ roles: ['teacher'] });
 
-    await user.click(screen.getByLabelText('Помощник учителя'));
-    expect(onChangeRoles).toHaveBeenCalledWith(['assistant']);
+    await user.click(screen.getByRole('button', { name: 'Бухгалтер' }));
+    expect(onChangeRoles).toHaveBeenCalledWith(['teacher', 'accountant']);
   });
 
-  it('включить «Бухгалтер» — зовёт onChangeRoles с добавленной ролью', async () => {
+  it('нажатие занятой пилюли снимает только её — остальные роли сохранены', async () => {
     const user = userEvent.setup();
-    const { onChangeRoles } = renderRow({ roles: [] });
+    const { onChangeRoles } = renderRow({ roles: ['teacher', 'admin'] });
 
-    await user.click(screen.getByLabelText('Бухгалтер'));
-    expect(onChangeRoles).toHaveBeenCalledWith(['accountant']);
+    await user.click(screen.getByRole('button', { name: 'Учитель' }));
+    expect(onChangeRoles).toHaveBeenCalledWith(['admin']);
   });
 
-  it('свой профиль — переключатель admin выключен, подсказка видна', () => {
-    renderRow({ roles: ['admin'] }, true);
-    expect(screen.getByLabelText('Администратор')).toBeDisabled();
+  // SECURITY §2: снять admin у себя из интерфейса нельзя, иначе школа может
+  // остаться без администратора вовсе. Остальные роли у своей строки
+  // переключаются свободно.
+  it('своя строка — admin заблокирован, прочие роли переключаются', () => {
+    renderRow({ roles: ['admin', 'teacher'] }, true);
+    expect(screen.getByRole('button', { name: 'Администратор' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Учитель' })).not.toBeDisabled();
     expect(
       screen.getByText('Роль администратора у себя снимает другой администратор'),
     ).toBeInTheDocument();
@@ -145,7 +163,7 @@ describe('PersonRow', () => {
       .mockRejectedValue(new ApiError('Пользователь не найден.', 404, 'not_found'));
     renderRow({ roles: [] }, false, onChangeRoles);
 
-    await user.click(screen.getByLabelText('Учитель'));
+    await user.click(screen.getByRole('button', { name: 'Учитель' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Пользователь не найден.');
   });
@@ -155,12 +173,12 @@ describe('PersonRow', () => {
     const onChangeRoles = vi.fn().mockRejectedValue(new Error('Failed to fetch'));
     renderRow({ roles: [] }, false, onChangeRoles);
 
-    await user.click(screen.getByLabelText('Учитель'));
+    await user.click(screen.getByRole('button', { name: 'Учитель' }));
 
     expect(await screen.findByRole('alert')).not.toHaveTextContent('Failed to fetch');
   });
 
-  it('во время PATCH оба переключателя недоступны (pending)', async () => {
+  it('во время PATCH пилюли и доступ недоступны (общий pending строки)', async () => {
     const user = userEvent.setup();
     let resolveChange: () => void = () => {};
     const onChangeRoles = vi.fn(
@@ -169,17 +187,20 @@ describe('PersonRow', () => {
           resolveChange = resolve;
         }),
     );
-    renderRow({ roles: [] }, false, onChangeRoles);
+    renderRow({ roles: [], status: 'active' }, false, onChangeRoles);
 
-    await user.click(screen.getByLabelText('Учитель'));
-    expect(screen.getByLabelText('Администратор')).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Учитель' }));
+    expect(screen.getByRole('button', { name: 'Учитель' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Закрыть доступ' })).toBeDisabled();
 
     resolveChange();
     await waitFor(() =>
-      expect(screen.getByLabelText('Администратор')).not.toBeDisabled(),
+      expect(screen.getByRole('button', { name: 'Учитель' })).not.toBeDisabled(),
     );
   });
+});
 
+describe('PersonRow — удаление данных', () => {
   it('«Удалить данные» есть у чужой строки', () => {
     renderRow({ roles: [] }, false);
     expect(screen.getByRole('button', { name: 'Удалить данные' })).toBeInTheDocument();
@@ -232,16 +253,9 @@ describe('PersonRow', () => {
       'Свой аккаунт удалить нельзя.',
     );
   });
+});
 
-  // Статуса «ждёт подтверждения» больше нет (ADR-0036) — регрессия на
-  // инцидент 2026-09-15: подпись и кнопка «Подтвердить» не должны
-  // появляться ни при каком статусе.
-  it('нет подписи «Ждёт подтверждения» и кнопки «Подтвердить» ни при каком статусе', () => {
-    renderRow({ status: 'active' });
-    expect(screen.queryByText(/Ждёт подтверждения/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
-  });
-
+describe('PersonRow — доступ', () => {
   // Блокировка (ADR-0036, RUNBOOK §8.15): active — «Закрыть доступ»,
   // blocked — «Открыть доступ», у своей строки нет ни того ни другого.
   it('status: active — кнопка «Закрыть доступ» у чужой строки', () => {
