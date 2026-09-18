@@ -137,9 +137,7 @@ describe('LoginScreen — конфигурация', () => {
     mockRoutes(() => Promise.resolve({}));
     renderScreen();
     expect(
-      await screen.findByText(
-        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
-      ),
+      await screen.findByText('Первый вход — только по ссылке от учителя.'),
     ).toBeInTheDocument();
   });
 
@@ -150,7 +148,7 @@ describe('LoginScreen — конфигурация', () => {
     await screen.findByRole('button', { name: 'Войти через Telegram' });
 
     const text = container.textContent ?? '';
-    const invitePosition = text.indexOf('Первый раз здесь?');
+    const invitePosition = text.indexOf('Первый вход —');
     const buttonPosition = text.indexOf('Войти через Telegram');
 
     expect(invitePosition).toBeGreaterThanOrEqual(0);
@@ -240,9 +238,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
     renderScreen();
 
     expect(
-      await screen.findByText(
-        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
-      ),
+      await screen.findByText('Первый вход — только по ссылке от учителя.'),
     ).toBeInTheDocument();
 
     resolveTelegramLogin({
@@ -393,9 +389,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     // Приписка не была частью блока почты и раньше пряталась вместе с ним
     // (ADR-0044) — теперь она не зависит от emailLoginEnabled вовсе.
     expect(
-      screen.getByText(
-        'Первый раз здесь? Кабинет открывается по ссылке-приглашению от учителя — без неё войти не получится.',
-      ),
+      screen.getByText('Первый вход — только по ссылке от учителя.'),
     ).toBeInTheDocument();
   });
 
