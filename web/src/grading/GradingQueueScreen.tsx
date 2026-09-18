@@ -17,12 +17,11 @@ import {
 import { SkeletonList } from '../components/Skeleton';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { GradingQueueCard } from './GradingQueueCard';
+import { GRADING_QUEUE_EXPLANATION } from './gradingQueueHint';
 import { showsTelegramHint } from './showsTelegramHint';
 import { useGradingQueue } from './useGradingQueue';
 
 const TITLE = 'Проверка работ';
-const EXPLANATION =
-  'Работы, которые ученики уже сдали. Откройте любую, чтобы поставить итог и написать комментарий.';
 const EMPTY_MESSAGE = 'Пока нечего проверять — сданных работ нет.';
 // У каждого экрана своя причина связки — так и задуман проп `explanation`
 // у TelegramLinkButton (ADR-0034). На «Уведомлениях» речь про уведомления
@@ -47,7 +46,7 @@ export default function GradingQueueScreen() {
   return (
     <section style={screenSectionStyle}>
       <h1 style={screenTitleStyle}>{TITLE}</h1>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      <p style={screenExplanationStyle}>{GRADING_QUEUE_EXPLANATION}</p>
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 

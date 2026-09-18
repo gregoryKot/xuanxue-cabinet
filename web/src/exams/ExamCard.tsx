@@ -1,45 +1,68 @@
-// Строка экзамена в списке — название, служебная строка метаданных, статус
-// справа (ТЗ 4.3 «Список», направление «тихо и благородно», docs/adr/0031).
-// Стиль строки — components/listCardStyles.ts, тот же, что у строки вопроса
-// (ExamItemCard.tsx). Уровень в строке не показан — он редактируется на
-// странице экзамена, а в списке места на него у макета не нашлось
-// (Main.dc.html).
+// Строка экзамена в общей карточке списка — название антиквой, мета под
+// ним, статус справа (ТЗ 4.3 «Список», макет 2b-exams.html, docs/adr/0043).
+// Список экзаменов теперь одна карточка (обёртка — ExamsScreen.tsx), поэтому
+// строка не несёт свой фон, радиус и тень: только паддинг и волосяная линия
+// снизу; у последней строки линии нет — тот же приём, что у журнала рассылок
+// (broadcasts/BroadcastCard.tsx). components/listCardStyles.ts сюда больше
+// не подходит — тот стиль остаётся у экранов, ещё не переехавших на «Тёплую
+// школу» (ExamItemCard.tsx и другие).
 import type { CSSProperties } from 'react';
 import type { ExamDto } from '@xuanxue/shared';
 import {
-  listCardMetaStyle,
-  listCardStyle,
-  listCardTitleStyle,
-} from '../components/listCardStyles';
-import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
+  DRAFT_PUBLISHED_ARCHIVED_LABELS_RU,
+  DRAFT_PUBLISHED_ARCHIVED_STATUS_COLOR,
+} from '../lib/statusTransitions';
 import { formatExamListMeta } from './examCounts';
 
-const rowStyle: CSSProperties = {
+// `<button>` приносит свою рамку и фон — без явного сброса строка выглядела
+// бы обведённой поверх общей карточки списка (тот же баг, что и до ADR-0031,
+// снимок редактора 2026-09-15, components/listCardStyles.ts).
+const rowButtonStyle: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  minHeight: 44,
+  padding: '16px 20px',
+  border: 'none',
+  background: 'transparent',
+  font: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
+};
+const rowContentStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'flex-start',
   justifyContent: 'space-between',
   gap: 16,
 };
-const contentStyle: CSSProperties = { minWidth: 0, flex: 1 };
-// Информационный текст — --ink-soft, не --ink-faint (CLAUDE.md «Доступность»:
-// у --ink-faint контраст с бумагой ниже AA, он только для плейсхолдеров).
-const statusStyle: CSSProperties = { flexShrink: 0, color: 'var(--ink-soft)' };
+const infoStyle: CSSProperties = { minWidth: 0, flex: 1 };
+const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 23 };
+const metaStyle: CSSProperties = { marginTop: 4, fontSize: 14, color: 'var(--ink-soft)' };
+const statusStyle: CSSProperties = { flexShrink: 0, fontSize: 13 };
 
 interface ExamCardProps {
   exam: ExamDto;
   onSelect: () => void;
+  /** Последняя строка общей карточки списка — без нижней волосяной линии
+   * (ExamsScreen.tsx, docs/adr/0043): иначе под линией остаётся голая
+   * полоска фона (тот же приём, что у BroadcastCard.tsx). */
+  isLast?: boolean;
 }
 
-export function ExamCard({ exam, onSelect }: ExamCardProps) {
+export function ExamCard({ exam, onSelect, isLast = false }: ExamCardProps) {
   return (
-    <li>
-      <button type="button" style={listCardStyle} onClick={onSelect}>
-        <div style={rowStyle}>
-          <div style={contentStyle}>
-            <div style={listCardTitleStyle}>{exam.title}</div>
-            <div style={listCardMetaStyle}>{formatExamListMeta(exam)}</div>
+    <li style={{ borderBottom: isLast ? 'none' : '1px solid var(--panel)' }}>
+      <button type="button" style={rowButtonStyle} onClick={onSelect}>
+        <div style={rowContentStyle}>
+          <div style={infoStyle}>
+            <div style={titleStyle}>{exam.title}</div>
+            <div style={metaStyle}>{formatExamListMeta(exam)}</div>
           </div>
-          <span className="xuanxue-status-label" style={statusStyle}>
+          <span
+            style={{
+              ...statusStyle,
+              color: DRAFT_PUBLISHED_ARCHIVED_STATUS_COLOR[exam.status],
+            }}
+          >
             {DRAFT_PUBLISHED_ARCHIVED_LABELS_RU[exam.status]}
           </span>
         </div>

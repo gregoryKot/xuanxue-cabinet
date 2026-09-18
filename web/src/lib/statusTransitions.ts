@@ -41,3 +41,16 @@ export const DRAFT_PUBLISHED_ARCHIVED_LABELS_RU: Record<
   published: 'Опубликован',
   archived: 'В архиве',
 };
+
+/** Цвет статуса в строке списка (exams/ExamCard.tsx, макет 2b-exams.html,
+ * docs/adr/0043): «Опубликован» — нефрит (единственный статус, который
+ * значит «готово к делу»), остальные читаются тем же тихим тоном, что и
+ * мета-строка под названием. */
+export const DRAFT_PUBLISHED_ARCHIVED_STATUS_COLOR: Record<
+  DraftPublishedArchivedStatus,
+  string
+> = {
+  draft: 'var(--ink-soft)',
+  published: 'var(--jade)',
+  archived: 'var(--ink-soft)',
+};

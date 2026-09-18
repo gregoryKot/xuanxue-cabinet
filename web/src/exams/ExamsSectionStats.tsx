@@ -1,11 +1,19 @@
-// Два числа раздела «Экзамены» — сколько работ ждёт проверки и что
-// происходит с вопросами (CLAUDE.md «Продуктовая фича = число в своём
-// разделе», ADR-0025). Раньше — карточки-ссылки components/SectionLink.tsx
-// с иконкой; макет (Main.dc.html) заменил их на крупную цифру с подписью.
-// Само число и подпись рисует общий components/StatNumber.tsx (ADR-0043:
-// цифры гротеском, а не антиквой — общих для «Экзаменов» и «Рассылок»
-// кеглей раньше не было, и они разошлись); разметка блока вокруг — заголовок,
-// приписки, ссылка — своя для этого экрана.
+// Четыре блока раздела «Экзамены» из макета — тёплая плашка «сколько попыток
+// ждут проверки» и карточки-переходы в подэкраны (макет 2b-exams.html,
+// docs/adr/0043-visual-direction-warm-school.md). Раньше очередь проверки
+// была отдельной крупной цифрой (components/StatNumber.tsx) с подписью
+// рядом — макет отказался от неё целиком: одинокая цифра рядом с мелкой
+// подписью читалась как мусор (жалоба владельца со снимком этого экрана).
+// Карточки-переходы — components/SectionLink.tsx, приведённый к виду из
+// макета: тот же компонент стоит на «Занятиях» и «Рассылках» (CLAUDE.md
+// «Одна механика — один компонент»).
+//
+// «Предпросмотр» из макета сюда не попал: у него нет маршрута без
+// конкретного экзамена — `/exams/:examId/preview` (app/routeModules.ts)
+// всегда открывается по ссылке со страницы самого экзамена. Раздел работает
+// со сводкой по всем экзаменам сразу, а выбор «какой из них открыть на
+// предпросмотр» — решение уровня логики нового экрана, не вёрстки этого PR
+// (решение агента, см. отчёт).
 //
 // «Вопросы» — без числа вопросов/опубликованных, которое просит макет:
 // `/exam-items/stats-summary` отдаёт только `strugglingCount` (сколько
@@ -13,18 +21,14 @@
 // ни в одном уже существующем хуке. Гонять сюда весь список вопросов только
 // ради количества — новая нагрузка на экран ради одной цифры, решение
 // агента: не выдумывать число, оставить прежний честный текст про путающие
-// вопросы (CLAUDE.md «Демо-данные в рантайм-коде не живут»). Вторая строка
-// того же блока — картинки вариантов ответа (ADR-0035, отдельное число: базу
-// растит не сам вопрос, а именно картинки). Заготовки частых комментариев
-// (ADR-0041) — строкой в блоке «Ждут проверки»: они существуют ради того же
-// экрана, отдельный третий блок дублировал бы смысл.
+// вопросы (CLAUDE.md «Демо-данные в рантайм-коде не живут»). Картинки
+// вариантов ответа (ADR-0035) дописаны в ту же приписку второй фразой —
+// то же место на экране, что и раньше, до перестройки макета.
 import type { CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
-import { StatNumber } from '../components/StatNumber';
-import { textLinkStyle } from '../components/screenLayout';
+import { SectionLink } from '../components/SectionLink';
 import { formatExamItemsLinkHint } from '../exam-items/examItemsLinkHint';
 import {
-  formatGradingQueueCountLabel,
+  GRADING_QUEUE_EXPLANATION,
   formatGradingQueueHint,
 } from '../grading/gradingQueueHint';
 import { formatGradingPresetsHint } from '../grading/gradingPresetsSummaryText';
@@ -35,7 +39,8 @@ interface ExamsSectionStatsProps {
   /** `null` — сводка вопросов ещё грузится или сбой загрузки. */
   strugglingCount: number | null;
   /** Готовая строка `formatExamImagesSummary` (ADR-0035) — `null` на чистой
-   * базе, во время загрузки и при сбое: карточка тогда просто её не показывает. */
+   * базе, во время загрузки и при сбое: приписка тогда просто её не
+   * показывает. */
   imagesSummary: string | null;
   /** Число заготовок частых комментариев (ADR-0041) — `null` во время
    * загрузки и при сбое, честное «пока нет» на чистой базе
@@ -43,22 +48,26 @@ interface ExamsSectionStatsProps {
   presetsCount: number | null;
 }
 
-const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 28 };
-const blockStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
-const dividerStyle: CSSProperties = { height: 1, background: 'var(--line)' };
-// StatNumber по умолчанию ставит число над подписью колонкой — здесь число и
-// подпись нужны в строку по базовой линии (components/StatNumber.tsx).
-const numberRowStyle: CSSProperties = {
-  flexDirection: 'row',
-  alignItems: 'baseline',
-  gap: 10,
+const plaqueStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  padding: '16px 18px',
+  borderRadius: 'var(--radius-block)',
+  background: 'var(--panel-warm)',
 };
-const captionStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
-const linkStyle: CSSProperties = {
-  ...textLinkStyle,
-  alignSelf: 'flex-start',
-  fontSize: 15,
+const plaqueHeadlineStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 22,
+  fontWeight: 500,
+  color: 'var(--ink)',
+  fontVariantNumeric: 'tabular-nums',
 };
+// #55584e, не --ink-soft: тот же прецедент, что у тёплой плашки «Ждут
+// отправки вручную» на «Рассылках» (broadcasts/ManualDeliveriesSection.tsx,
+// docs/adr/0043) — на --panel-warm --ink-soft держит только ~4.06:1, ниже AA
+// 4.5 для этого кегля; #55584e даёт 5.74:1.
+const plaqueCaptionStyle: CSSProperties = { margin: 0, fontSize: 13, color: '#55584e' };
 
 export function ExamsSectionStats({
   queueCount,
@@ -66,35 +75,18 @@ export function ExamsSectionStats({
   imagesSummary,
   presetsCount,
 }: ExamsSectionStatsProps) {
+  const questionsHint = imagesSummary
+    ? `${formatExamItemsLinkHint(strugglingCount)} ${imagesSummary}`
+    : formatExamItemsLinkHint(strugglingCount);
+
   return (
-    <div style={sectionStyle}>
-      <div style={blockStyle}>
-        <span className="xuanxue-eyebrow">Ждут проверки</span>
-        {queueCount ? (
-          <StatNumber
-            value={queueCount}
-            label={formatGradingQueueCountLabel(queueCount)}
-            style={numberRowStyle}
-          />
-        ) : (
-          <p style={captionStyle}>{formatGradingQueueHint(queueCount)}</p>
-        )}
-        <p style={captionStyle}>{formatGradingPresetsHint(presetsCount)}</p>
-        <Link to="/grading" style={linkStyle}>
-          Открыть очередь
-        </Link>
+    <div className="xuanxue-block-grid">
+      <div style={plaqueStyle}>
+        <p style={plaqueHeadlineStyle}>{formatGradingQueueHint(queueCount)}</p>
+        <p style={plaqueCaptionStyle}>{formatGradingPresetsHint(presetsCount)}</p>
       </div>
-
-      <div style={dividerStyle} />
-
-      <div style={blockStyle}>
-        <span className="xuanxue-eyebrow">Вопросы</span>
-        <p style={captionStyle}>{formatExamItemsLinkHint(strugglingCount)}</p>
-        {imagesSummary && <p style={captionStyle}>{imagesSummary}</p>}
-        <Link to="/exam-items" style={linkStyle}>
-          Открыть вопросы
-        </Link>
-      </div>
+      <SectionLink to="/exam-items" title="Вопросы" hint={questionsHint} />
+      <SectionLink to="/grading" title="Проверка" hint={GRADING_QUEUE_EXPLANATION} />
     </div>
   );
 }

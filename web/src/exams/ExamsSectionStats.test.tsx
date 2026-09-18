@@ -21,7 +21,7 @@ function renderStats(
   );
 }
 
-describe('ExamsSectionStats — очередь проверки', () => {
+describe('ExamsSectionStats — плашка «ждут проверки»', () => {
   it('число ещё не пришло — общий текст, без цифры', () => {
     renderStats(null, null);
 
@@ -34,27 +34,40 @@ describe('ExamsSectionStats — очередь проверки', () => {
     renderStats(0, null);
 
     expect(screen.getByText('Пока нечего проверять.')).toBeInTheDocument();
-    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
-  it('есть работы — крупная цифра и подпись рядом', () => {
+  it('есть работы — число внутри одной фразы, без отдельной подписи рядом', () => {
     renderStats(3, null);
 
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('работы учеников')).toBeInTheDocument();
+    expect(screen.getByText('3 работы ждут проверки.')).toBeInTheDocument();
+    expect(screen.queryByText('работы учеников')).not.toBeInTheDocument();
   });
 
-  it('ссылка на очередь ведёт на /grading', () => {
-    renderStats(1, null);
+  it('заготовок комментариев ещё нет — приписка честная, не «0»', () => {
+    renderStats(null, null, null, 0);
 
-    expect(screen.getByRole('link', { name: 'Открыть очередь' })).toHaveAttribute(
-      'href',
-      '/grading',
-    );
+    expect(
+      screen.getByText('Пока нет заготовок — добавьте первую на карточке проверки.'),
+    ).toBeInTheDocument();
+  });
+
+  it('заготовки есть — число в приписке под фразой очереди', () => {
+    renderStats(null, null, null, 4);
+
+    expect(screen.getByText('4 заготовки для комментария.')).toBeInTheDocument();
   });
 });
 
-describe('ExamsSectionStats — вопросы', () => {
+describe('ExamsSectionStats — карточка «Вопросы»', () => {
+  it('ведёт на /exam-items', () => {
+    renderStats(null, 0);
+
+    expect(screen.getByText('Вопросы').closest('a')).toHaveAttribute(
+      'href',
+      '/exam-items',
+    );
+  });
+
   it('без спотыкающихся вопросов — только объяснение раздела', () => {
     renderStats(null, 0);
 
@@ -73,50 +86,39 @@ describe('ExamsSectionStats — вопросы', () => {
     ).toBeInTheDocument();
   });
 
-  it('ссылка на вопросы ведёт на /exam-items', () => {
-    renderStats(null, 0);
-
-    expect(screen.getByRole('link', { name: 'Открыть вопросы' })).toHaveAttribute(
-      'href',
-      '/exam-items',
-    );
-  });
-});
-
-describe('ExamsSectionStats — картинки вариантов ответа (ADR-0035)', () => {
   it('imagesSummary — null (чистая база, загрузка или сбой) — строки нет', () => {
     renderStats(null, 0, null);
 
     expect(screen.queryByText(/Картинок к вопросам/)).not.toBeInTheDocument();
   });
 
-  it('imagesSummary есть — строка видна под объяснением вопросов', () => {
+  it('imagesSummary есть — дописан второй фразой в ту же приписку', () => {
     renderStats(null, 0, 'Картинок к вопросам: 12 — 3,4 МБ');
 
-    expect(screen.getByText('Картинок к вопросам: 12 — 3,4 МБ')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Из них собирается экзамен — один вопрос можно поставить в несколько экзаменов. ' +
+          'Картинок к вопросам: 12 — 3,4 МБ',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
-describe('ExamsSectionStats — заготовки комментариев (ADR-0041)', () => {
-  it('число ещё не пришло — общий текст, без цифры', () => {
-    renderStats(null, null, null, null);
+describe('ExamsSectionStats — карточка «Проверка»', () => {
+  it('ведёт на /grading', () => {
+    renderStats(null, null);
 
-    expect(
-      screen.getByText('Готовые фразы для комментария при проверке.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Проверка').closest('a')).toHaveAttribute('href', '/grading');
   });
 
-  it('заготовок пока нет — честный текст, не «0»', () => {
-    renderStats(null, null, null, 0);
+  it('приписка общая, не дублирует фразу тёплой плашки очереди', () => {
+    renderStats(null, null);
 
-    expect(
-      screen.getByText('Пока нет заготовок — добавьте первую на карточке проверки.'),
-    ).toBeInTheDocument();
-  });
-
-  it('заготовки есть — число дописано к тексту', () => {
-    renderStats(null, null, null, 3);
-
-    expect(screen.getByText('3 заготовки для комментария.')).toBeInTheDocument();
+    const plaque = screen.getByText('Сданные работы, которые ждут вашей оценки.');
+    const link = screen.getByText('Проверка').closest('a');
+    expect(link).not.toContainElement(plaque);
+    expect(link).toHaveTextContent(
+      'Работы, которые ученики уже сдали. Откройте любую, чтобы поставить итог и написать комментарий.',
+    );
   });
 });

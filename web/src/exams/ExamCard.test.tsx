@@ -31,10 +31,16 @@ describe('ExamCard', () => {
     expect(screen.getByText('Черновик')).toBeInTheDocument();
   });
 
-  it('опубликованная форма — статус «Опубликован»', () => {
+  it('опубликованная форма — статус «Опубликован» цвета нефрит', () => {
     render(<ExamCard exam={makeExam({ status: 'published' })} onSelect={vi.fn()} />);
 
-    expect(screen.getByText('Опубликован')).toBeInTheDocument();
+    expect(screen.getByText('Опубликован')).toHaveStyle({ color: 'var(--jade)' });
+  });
+
+  it('черновик — статус тем же тихим тоном, что и мета-строка', () => {
+    render(<ExamCard exam={makeExam({ status: 'draft' })} onSelect={vi.fn()} />);
+
+    expect(screen.getByText('Черновик')).toHaveStyle({ color: 'var(--ink-soft)' });
   });
 
   it('вопросы экзамена — их число в строке метаданных, без слова «блок»', () => {
