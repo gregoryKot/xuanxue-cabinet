@@ -12,7 +12,13 @@
 // `shared/src/default-templates.ts`: иначе следующая правка дефолта
 // незаметно переопределит смысл сравнения и миграция начнёт менять то, чего
 // не собиралась.
-import type { Db } from 'mongodb';
+import type { mongo } from 'mongoose';
+
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
+// с тем, что отдаёт `connection.db` — без второй копии пакета `mongodb`
+// в дереве зависимостей.
+type Db = mongo.Db;
 
 const SETTINGS = 'settings';
 

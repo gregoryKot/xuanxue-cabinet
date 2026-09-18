@@ -1,11 +1,16 @@
 // Реальный Mongo в памяти вместо мока: раннер держит логику блокировок и
 // денормализованного состояния (какие миграции применены), read-after-write
 // связка «применил → записалось → второй прогон не повторяет» важнее мока.
-import type { Db } from 'mongodb';
-import type { Connection } from 'mongoose';
+import type { Connection, mongo } from 'mongoose';
 import { MigrationRunner } from './migration.runner';
 import type { Migration } from './migrations';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
+// с тем, что отдаёт `connection.db` — без второй копии пакета `mongodb`
+// в дереве зависимостей.
+type Db = mongo.Db;
 
 // Точечный доступ к приватным `acquireLock`/`releaseLock` — единственный
 // способ детерминированно (без сети и без гонки в реальном времени)

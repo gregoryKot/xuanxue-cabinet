@@ -153,4 +153,24 @@ describe('TelegramLinkService.linkByCode', () => {
 
     expect([resultA.kind, resultB.kind].sort()).toEqual(['linked', 'taken']);
   });
+
+  // Тест выше проверяет инвариант гонки («один связался, второй получил
+  // отказ»), но каким из двух путей проигравший получит отказ, решает
+  // тайминг: успел ли конкурент записаться до проверки владельца или после
+  // неё. Из-за этого ветка «поймал уникальный индекс» исполнялась через раз
+  // и перестала исполняться совсем при подъёме драйвера mongodb до 7.6.
+  // Здесь то же самое без тайминга: владелец уже в базе, а проверка
+  // владельца отвечает пустотой — ровно так гонка и выглядит изнутри, — и
+  // запись упирается в настоящий частичный уникальный индекс.
+  it('конкурент записался после проверки владельца — отказ ловит уникальный индекс', async () => {
+    const owner = await createStudent();
+    await users.attachTelegramId(owner.id, 999);
+    const student = await createStudent();
+    const code = await issueCode(student.id);
+    const ownerCheck = jest.spyOn(users, 'findByTelegramId').mockResolvedValueOnce(null);
+
+    await expect(service.linkByCode(code, 999, NOW)).resolves.toEqual({ kind: 'taken' });
+
+    ownerCheck.mockRestore();
+  });
 });

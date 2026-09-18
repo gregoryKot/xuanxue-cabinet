@@ -5,12 +5,15 @@
 // (ADR-0036, normalize-user-status.ts). Документ вставлен нативным
 // драйвером в обход Mongoose-валидации enum — так лежат данные, записанные
 // до деплоя этой миграции/нормализации (окно деплоя, revert-PR).
-import { ObjectId } from 'mongodb';
-import type { Connection, Model } from 'mongoose';
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому `ObjectId` — тот же
+// класс, что и внутри mongoose, без второй копии пакета `mongodb`.
+import { mongo, type Connection, type Model } from 'mongoose';
 import { UserRecord, UserSchema } from './user.schema';
 import { UsersService } from './users.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
+const { ObjectId } = mongo;
 const USERS = 'users';
 
 describe('UsersService — статус вне USER_STATUSES (ADR-0036, expand→contract)', () => {

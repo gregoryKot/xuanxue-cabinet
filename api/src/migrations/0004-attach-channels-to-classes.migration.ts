@@ -13,7 +13,13 @@
 // (ADR-0015: повторное добавление бота не отменяет отключённые им классы), а
 // пустой список — не состояние, которое кто-то выбирал: «Сводка» считает такие
 // занятия отдельным числом именно как поломку.
-import type { Db } from 'mongodb';
+import type { mongo } from 'mongoose';
+
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
+// с тем, что отдаёт `connection.db` — без второй копии пакета `mongodb`
+// в дереве зависимостей.
+type Db = mongo.Db;
 
 const CLASSES = 'classes';
 const CHANNELS = 'channels';

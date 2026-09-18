@@ -6,11 +6,14 @@
 // status (contract после этого PR), а миграция должна отработать на
 // данных, которые реально лежат в проде до деплоя — Mongoose со своей
 // валидацией здесь мимо.
-import type { Connection } from 'mongoose';
-import { ObjectId } from 'mongodb';
+import { mongo, type Connection } from 'mongoose';
 import { invitedUsersActive } from './0007-invited-users-active.migration';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому `ObjectId` — тот же
+// класс, что и внутри mongoose, без второй копии пакета `mongodb`.
+const { ObjectId } = mongo;
 const USERS = 'users';
 
 describe('Миграция 0007-invited-users-active', () => {

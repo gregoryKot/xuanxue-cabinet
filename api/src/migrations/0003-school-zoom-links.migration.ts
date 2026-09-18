@@ -18,8 +18,14 @@
 // важнее того, что записано в файле.
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import type { Db } from 'mongodb';
+import type { mongo } from 'mongoose';
 import { encrypt } from '../utils/encryption';
+
+// `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
+// (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
+// с тем, что отдаёт `connection.db` — без второй копии пакета `mongodb`
+// в дереве зависимостей.
+type Db = mongo.Db;
 
 const COLLECTION = 'classes';
 export const SEED_PATH = join(__dirname, '..', '..', 'seed', 'zoom-links.local.json');

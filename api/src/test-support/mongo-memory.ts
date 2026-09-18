@@ -5,6 +5,7 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { type Connection } from 'mongoose';
 import { MODEL_DEFINITIONS } from '../common/model.registry';
+import { MONGO_RUNTIME_ADAPTERS } from '../database/mongo-runtime-adapters';
 import { MONGO_MEMORY_INSTANCE_OPTIONS } from './mongo-memory-options';
 
 export interface MemoryMongo {
@@ -24,7 +25,10 @@ export async function openMemoryMongo(): Promise<MemoryMongo> {
   const mongod = await MongoMemoryServer.create({
     instance: MONGO_MEMORY_INSTANCE_OPTIONS,
   });
-  const connection = await mongoose.createConnection(mongod.getUri()).asPromise();
+  const connection = await mongoose
+    // mongo-runtime-adapters.ts: обход бага хендшейка mongodb@7.6+ под Jest.
+    .createConnection(mongod.getUri(), { runtimeAdapters: MONGO_RUNTIME_ADAPTERS })
+    .asPromise();
   await Promise.all(
     MODEL_DEFINITIONS.map(({ name, schema }) =>
       connection.model(name, schema).syncIndexes(),

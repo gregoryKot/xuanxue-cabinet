@@ -10,6 +10,7 @@ import { validateEnv, type NodeEnv } from './config/env.validation';
 import { LoggingModule } from './logging/logging.module';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { DatabaseModule } from './database/database.module';
+import { MONGO_RUNTIME_ADAPTERS } from './database/mongo-runtime-adapters';
 import { MigrationsModule } from './migrations/migrations.module';
 import { ClassesModule } from './classes/classes.module';
 import { LessonsModule } from './lessons/lessons.module';
@@ -42,6 +43,8 @@ import { staticAssetsOptions } from './static/static-cache-control';
         // (CLAUDE.md «Данные») — автостроение на живом трафике конкурирует
         // с этим и маскирует ошибку индекса до первого рестарта.
         autoIndex: config.get<NodeEnv>('NODE_ENV') !== 'production',
+        // mongo-runtime-adapters.ts: обход бага хендшейка mongodb@7.6+ под Jest.
+        runtimeAdapters: MONGO_RUNTIME_ADAPTERS,
       }),
     }),
     // Тик планировщика (SchedulerModule) можно выключить в e2e/юнит-тестах —
