@@ -41,8 +41,8 @@ describe('showsRouteScreen', () => {
     expect(showsRouteScreen(makeMe({ roles: [] }), '/planning')).toBe(false);
   });
 
-  it('ученик на «/notifications» — true, личная настройка доступна всем', () => {
-    expect(showsRouteScreen(makeMe({ roles: [] }), '/notifications')).toBe(true);
+  it('ученик на «/profile» — true, личный экран доступен всем', () => {
+    expect(showsRouteScreen(makeMe({ roles: [] }), '/profile')).toBe(true);
   });
 
   it('ученик на «/attempts/:id» — true, экран сдачи доступен всем', () => {
@@ -59,8 +59,8 @@ describe('showsRouteScreen', () => {
     );
   });
 
-  it('null на обычном адресе — false; на «/notifications»/«/attempts/:id» путь решает сам за себя', () => {
+  it('null на обычном адресе — false; на «/profile»/«/attempts/:id» путь решает сам за себя', () => {
     expect(showsRouteScreen(null, '/planning')).toBe(false);
-    expect(showsRouteScreen(null, '/notifications')).toBe(true);
+    expect(showsRouteScreen(null, '/profile')).toBe(true);
   });
 });

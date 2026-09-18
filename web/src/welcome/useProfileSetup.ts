@@ -1,14 +1,15 @@
-// Имя на первом входе (ADR-0044, `PATCH /me/profile`) — логика вынесена из
-// WelcomeScreen.tsx (CLAUDE.md «Логика вне компонентов»), тот же приём, что
-// useEmailLoginVerify.ts: запрос → refresh() сессии → сохранённый адрес или
-// домашний экран (postLoginPath). Поля формы тоже здесь, не в компоненте:
-// обрезка пробелов при отправке и то, что при ошибке они не стираются, —
-// часть той же логики, не рендера.
+// Форма имени на первом входе (ADR-0044, `PATCH /me/profile`) и на экране
+// «Профиль» (ADR-0045) — один хук на оба места (CLAUDE.md «Одна механика —
+// один компонент»), вынесен из WelcomeScreen.tsx (CLAUDE.md «Логика вне
+// компонентов»). Куда идти после сохранения решает экран, не хук: `/welcome`
+// уходит на postLoginPath(), «Профиль» остаётся на месте и показывает тихую
+// строку «Имя сохранено» — поэтому `onSaved()` обязателен третьим параметром
+// и зовётся уже после refresh() сессии. Поля формы тоже здесь, не в
+// компоненте: обрезка пробелов при отправке и то, что при ошибке они не
+// стираются, — часть той же логики, не рендера.
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { splitPersonName, type UpdateMyProfileInput } from '@xuanxue/shared';
 import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
-import { postLoginPath } from '../auth/returnTo';
 
 type ProfileSetupStatus = 'idle' | 'pending' | 'error';
 
@@ -28,13 +29,14 @@ export interface UseProfileSetupResult {
  * почте — заглушка `NEW_PERSON_NAME`, `splitPersonName` превращает её в
  * пустые поля. `refresh` берётся из useAuth() самим экраном, не отсюда (тот
  * же приём, что у useEmailLoginVerify.ts) — так хук проверяется без
- * <AuthProvider> в дереве.
+ * <AuthProvider> в дереве. `onSaved` — тоже забота экрана: `/welcome` уходит
+ * дальше, «Профиль» просто показывает результат.
  */
 export function useProfileSetup(
   initialName: string,
   refresh: () => Promise<void>,
+  onSaved: () => void,
 ): UseProfileSetupResult {
-  const navigate = useNavigate();
   const initial = splitPersonName(initialName);
   const [firstName, setFirstName] = useState(initial.firstName);
   const [lastName, setLastName] = useState(initial.lastName);
@@ -60,8 +62,8 @@ export function useProfileSetup(
       return;
     }
     setStatus('idle');
-    void navigate(postLoginPath(), { replace: true });
-  }, [firstName, lastName, refresh, navigate]);
+    onSaved();
+  }, [firstName, lastName, refresh, onSaved]);
 
   return { firstName, lastName, setFirstName, setLastName, status, error, submit };
 }

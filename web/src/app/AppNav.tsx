@@ -1,10 +1,10 @@
 // Навигация кабинета в двух видах: на телефоне — нижняя панель вкладок, на
 // широком экране — колонка слева (отзыв владельца 2026-09-09: «дизайна так и
 // нет для десктопа»). Колонка слева несёт ещё знак школы сверху и блок
-// человека снизу (ADR-0043): «Уведомления» и «Выйти» приходят готовыми
-// узлами через пропсы — сама навигация про авторизацию не знает (CLAUDE.md
-// «Логика вне компонентов»). На телефоне блок человека рисует AppShell.tsx
-// под содержимым, эта колонка там — только четыре пункта.
+// человека снизу (ADR-0043): «Профиль» (ADR-0045) и «Выйти» приходят
+// готовыми узлами через пропсы — сама навигация про авторизацию не знает
+// (CLAUDE.md «Логика вне компонентов»). На телефоне блок человека рисует
+// AppShell.tsx под содержимым, эта колонка там — только четыре пункта.
 // Вынесено из AppShell.tsx: там иначе два набора стилей и ветка на файл в
 // 150 строк (CLAUDE.md «Храповики», «Логика вне компонентов»).
 import type { ReactNode } from 'react';
@@ -38,11 +38,11 @@ interface AppNavProps {
   /** Блок человека рисуется только в боковой колонке (`!isMobile`) — на
    * телефоне его держит подвал AppShell.tsx, поэтому мобильный вызов может
    * их не передавать вовсе. */
-  notificationsLink?: ReactNode;
+  profileLink?: ReactNode;
   logoutButton?: ReactNode;
 }
 
-export function AppNav({ isMobile, me, notificationsLink, logoutButton }: AppNavProps) {
+export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps) {
   const { pathname } = useLocation();
   const active = activeSectionPath(pathname);
   const items = NAV_ITEMS.filter(
@@ -104,7 +104,7 @@ export function AppNav({ isMobile, me, notificationsLink, logoutButton }: AppNav
       <div style={personBlockStyle}>
         <span>Вы вошли как {me?.name ?? '—'}</span>
         <span style={personActionsRowStyle}>
-          {notificationsLink}
+          {profileLink}
           <span>·</span>
           {logoutButton}
         </span>

@@ -292,9 +292,9 @@ describe('App', () => {
     expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
   });
 
-  // Личная настройка человека — маршрут не за RequirePeopleAccess и не за
-  // isTeacher-веткой AppShell.tsx, доступен и ученику (ТЗ notifications-web.md).
-  it('учитель на /notifications — маршрут «Уведомления» открывает NotificationsScreen', async () => {
+  // Личный экран человека — маршрут не за RequirePeopleAccess и не за
+  // isTeacher-веткой AppShell.tsx, доступен и ученику (ADR-0045).
+  it('учитель на /profile — маршрут «Профиль» открывает ProfileScreen', async () => {
     // telegramLinked: у несвязанного на месте этой подсказки стоит кнопка
     // связки (ADR-0034) — здесь проверяется маршрут, не она.
     mockRoute(
@@ -302,14 +302,14 @@ describe('App', () => {
       { '/me/notifications': { enabled: [] } },
     );
 
-    renderAt('/notifications');
+    renderAt('/profile');
 
     expect(
       await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/),
     ).toBeInTheDocument();
   });
 
-  it('ученик на /notifications — тоже открывает NotificationsScreen, не StudentScreen', async () => {
+  it('ученик на /profile — тоже открывает ProfileScreen, не StudentScreen', async () => {
     const student: MeDto = {
       id: 's1',
       name: 'Ваня',
@@ -322,14 +322,14 @@ describe('App', () => {
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
 
-    renderAt('/notifications');
+    renderAt('/profile');
 
     expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
     expect(screen.queryByText('Кабинет для учителя.')).not.toBeInTheDocument();
   });
 
   // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за
-  // ролевым гвардом, как «/notifications» чуть выше.
+  // ролевым гвардом, как «/profile» чуть выше.
   it('ученик на /attempts/:id — открывает экран сдачи, не StudentScreen', async () => {
     const student: MeDto = {
       id: 's1',

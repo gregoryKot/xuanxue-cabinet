@@ -1,3 +1,8 @@
+// Экран «Профиль» (ADR-0045) — сборка шапки, имени, уведомлений, Telegram и
+// «Выйти». Проверки уведомлений/Telegram/«Выйти» перенесены дословно из теста
+// удалённого экрана «Уведомления» (CLAUDE.md «Отказались от механики —
+// удаляем с концами»); форма имени в изоляции — ProfileNameSection.test.tsx,
+// здесь только то, что она открывается уже с разобранным me.name.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -6,7 +11,7 @@ import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
-import NotificationsScreen from './NotificationsScreen';
+import ProfileScreen from './ProfileScreen';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -17,7 +22,7 @@ resetApiFetchBetweenTests();
 
 const STUDENT: MeDto = {
   id: 'u1',
-  name: 'Ученик',
+  name: 'Мария Ли',
   roles: [],
   tz: 'Asia/Jerusalem',
   status: 'active',
@@ -41,25 +46,33 @@ function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] 
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <NotificationsScreen />
+        <ProfileScreen />
       </AuthProvider>
     </MemoryRouter>,
   );
 }
 
-describe('NotificationsScreen — шапка', () => {
-  // ADR-0031: экран начинался прямо с абзаца, без заголовка раздела.
-  it('заголовок «Уведомления» и объяснение под ним', async () => {
+describe('ProfileScreen — шапка', () => {
+  it('заголовок «Профиль» и объяснение под ним', async () => {
     renderScreen(STUDENT);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Уведомления' }),
+      await screen.findByRole('heading', { level: 1, name: 'Профиль' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Здесь вы решаете, что вам приходит/)).toBeInTheDocument();
+    expect(screen.getByText(/Ваше имя видят учитель и помощники/)).toBeInTheDocument();
   });
 });
 
-describe('NotificationsScreen — список по роли', () => {
+describe('ProfileScreen — имя', () => {
+  it('поля заполнены разобранным me.name', async () => {
+    renderScreen(STUDENT);
+
+    expect(await screen.findByLabelText('Имя')).toHaveValue('Мария');
+    expect(screen.getByLabelText('Фамилия')).toHaveValue('Ли');
+  });
+});
+
+describe('ProfileScreen — список уведомлений по роли', () => {
   it('ученик видит свои два вида уведомлений с подписью и подсказкой', async () => {
     renderScreen(STUDENT, { enabled: ['lesson_soon'] });
 
@@ -96,7 +109,7 @@ describe('NotificationsScreen — список по роли', () => {
   });
 });
 
-describe('NotificationsScreen — связка Telegram (ADR-0034)', () => {
+describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
   it('Telegram связан — кнопки связки нет, остаётся подсказка про личный чат', async () => {
     renderScreen(
       { ...STUDENT, telegramLinked: true, botChatActive: true },
@@ -121,7 +134,7 @@ describe('NotificationsScreen — связка Telegram (ADR-0034)', () => {
   });
 });
 
-describe('NotificationsScreen — переключение (read-after-write)', () => {
+describe('ProfileScreen — переключение уведомлений (read-after-write)', () => {
   it('клик шлёт PATCH с нужным телом и перерисовывает состояние', async () => {
     renderScreen(STUDENT, { enabled: [] });
     const toggle = await screen.findByRole('checkbox', { name: 'Занятие скоро' });
@@ -175,20 +188,18 @@ describe('NotificationsScreen — переключение (read-after-write)', 
   });
 });
 
-// «Выйти» переехала сюда с телефона (AppShell.tsx, отзыв владельца
-// 2026-09-12/18): экран — личная настройка человека, доступная любой роли.
-// Саму механику выхода проверяет LogoutButton.test.tsx — здесь только
-// присутствие и место (в конце экрана, под настройками).
-describe('NotificationsScreen — «Выйти»', () => {
+// «Выйти» держится на этом экране, доступна любой роли (было на прежнем
+// экране «Уведомления», отзыв владельца 2026-09-12/18).
+describe('ProfileScreen — «Выйти»', () => {
   it('кнопка «Выйти» есть в конце экрана', async () => {
     renderScreen(STUDENT);
 
-    await screen.findByRole('heading', { level: 1, name: 'Уведомления' });
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
   });
 });
 
-describe('NotificationsScreen — ошибка загрузки', () => {
+describe('ProfileScreen — ошибка загрузки уведомлений', () => {
   it('баннер с кнопкой повтора вместо списка, повтор перечитывает список', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me') return Promise.resolve(STUDENT);
@@ -200,7 +211,7 @@ describe('NotificationsScreen — ошибка загрузки', () => {
     render(
       <MemoryRouter>
         <AuthProvider>
-          <NotificationsScreen />
+          <ProfileScreen />
         </AuthProvider>
       </MemoryRouter>,
     );

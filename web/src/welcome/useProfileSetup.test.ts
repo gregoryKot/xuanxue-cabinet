@@ -1,13 +1,13 @@
-// Хук в изоляции, без экрана (тот же приём, что useEmailLoginVerify.test.ts):
-// useNavigate замокан отдельно от react-router-dom, refresh() передаётся как
-// обычный колбэк — хуку не нужен <AuthProvider> в дереве.
+// Хук в изоляции (CLAUDE.md «Тесты»): apiFetch замокан, `refresh()` и
+// `onSaved()` — обычные колбэки, хуку не нужен ни <AuthProvider>, ни
+// <MemoryRouter> в дереве. Куда ведёт `onSaved()` на самом деле (переход
+// `/welcome` или тихая строка «Профиля») проверяют экраны — WelcomeScreen.test.tsx
+// и profile/ProfileNameSection.test.tsx.
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type * as RouterModule from 'react-router-dom';
 import { NEW_PERSON_NAME } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
-import { saveReturnTo } from '../auth/returnTo';
 import { useProfileSetup } from './useProfileSetup';
 
 vi.mock('../api/http', async () => {
@@ -15,30 +15,26 @@ vi.mock('../api/http', async () => {
   return { ...actual, apiFetch: vi.fn() };
 });
 
-const navigateMock = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof RouterModule>('react-router-dom');
-  return { ...actual, useNavigate: () => navigateMock };
-});
-
 const mockedApiFetch = vi.mocked(apiFetch);
 
 afterEach(() => {
   mockedApiFetch.mockReset();
-  navigateMock.mockReset();
-  sessionStorage.clear();
 });
 
 describe('useProfileSetup — начальные поля из me.name', () => {
   it('«Дмитрий Котов» — разбирается на имя и фамилию (пришедший через Telegram)', () => {
-    const { result } = renderHook(() => useProfileSetup('Дмитрий Котов', vi.fn()));
+    const { result } = renderHook(() =>
+      useProfileSetup('Дмитрий Котов', vi.fn(), vi.fn()),
+    );
 
     expect(result.current.firstName).toBe('Дмитрий');
     expect(result.current.lastName).toBe('Котов');
   });
 
   it('заглушка нового человека (вход по почте) — оба поля пустые', () => {
-    const { result } = renderHook(() => useProfileSetup(NEW_PERSON_NAME, vi.fn()));
+    const { result } = renderHook(() =>
+      useProfileSetup(NEW_PERSON_NAME, vi.fn(), vi.fn()),
+    );
 
     expect(result.current.firstName).toBe('');
     expect(result.current.lastName).toBe('');
@@ -46,10 +42,13 @@ describe('useProfileSetup — начальные поля из me.name', () => {
 });
 
 describe('useProfileSetup — отправка', () => {
-  it('успех, нет сохранённого returnTo — PATCH /me/profile, refresh(), переход на «/»', async () => {
+  it('успех — PATCH /me/profile, refresh(), затем onSaved()', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useProfileSetup('Дмитрий Котов', refresh));
+    const onSaved = vi.fn();
+    const { result } = renderHook(() =>
+      useProfileSetup('Дмитрий Котов', refresh, onSaved),
+    );
 
     await act(() => result.current.submit());
 
@@ -58,14 +57,14 @@ describe('useProfileSetup — отправка', () => {
       body: { firstName: 'Дмитрий', lastName: 'Котов' },
     });
     expect(refresh).toHaveBeenCalledTimes(1);
-    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    expect(onSaved).toHaveBeenCalledTimes(1);
     expect(result.current.error).toBeNull();
   });
 
   it('без фамилии — тело запроса без поля lastName', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useProfileSetup('', vi.fn().mockResolvedValue(undefined)),
+      useProfileSetup('', vi.fn().mockResolvedValue(undefined), vi.fn()),
     );
     act(() => result.current.setFirstName('Гриша'));
 
@@ -80,7 +79,7 @@ describe('useProfileSetup — отправка', () => {
   it('обрезает пробелы по краям обеих частей перед отправкой', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useProfileSetup('', vi.fn().mockResolvedValue(undefined)),
+      useProfileSetup('', vi.fn().mockResolvedValue(undefined), vi.fn()),
     );
     act(() => result.current.setFirstName('  Мария  '));
     act(() => result.current.setLastName('  Ли  '));
@@ -93,34 +92,26 @@ describe('useProfileSetup — отправка', () => {
     });
   });
 
-  it('успех, сохранён returnTo /planning?week=2 (глубокая ссылка) — переход туда', async () => {
-    saveReturnTo('/planning?week=2');
-    mockedApiFetch.mockResolvedValue(undefined);
-    const { result } = renderHook(() =>
-      useProfileSetup('Дмитрий', vi.fn().mockResolvedValue(undefined)),
-    );
-
-    await act(() => result.current.submit());
-
-    expect(navigateMock).toHaveBeenCalledWith('/planning?week=2', { replace: true });
-  });
-
-  it('пустое имя (в том числе из одних пробелов) — запрос не уходит', async () => {
-    const { result } = renderHook(() => useProfileSetup('', vi.fn()));
+  it('пустое имя (в том числе из одних пробелов) — запрос не уходит, onSaved() не зовётся', async () => {
+    const onSaved = vi.fn();
+    const { result } = renderHook(() => useProfileSetup('', vi.fn(), onSaved));
     act(() => result.current.setFirstName('   '));
 
     await act(() => result.current.submit());
 
     expect(mockedApiFetch).not.toHaveBeenCalled();
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
   });
 
-  it('ApiError — status error, текст с сервера, поля не стираются, refresh() и переход не вызваны', async () => {
+  it('ApiError — status error, текст с сервера, поля не стираются, refresh() и onSaved() не вызваны', async () => {
     mockedApiFetch.mockRejectedValue(
       new ApiError('Сервер не ответил. Попробуйте ещё раз.', 500, 'unknown'),
     );
     const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useProfileSetup('Дмитрий Котов', refresh));
+    const onSaved = vi.fn();
+    const { result } = renderHook(() =>
+      useProfileSetup('Дмитрий Котов', refresh, onSaved),
+    );
 
     await act(() => result.current.submit());
 
@@ -129,12 +120,12 @@ describe('useProfileSetup — отправка', () => {
     expect(result.current.firstName).toBe('Дмитрий');
     expect(result.current.lastName).toBe('Котов');
     expect(refresh).not.toHaveBeenCalled();
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
   });
 
   it('сетевой сбой (не ApiError) — общий текст «Нет связи…»', async () => {
     mockedApiFetch.mockRejectedValue(new Error('boom'));
-    const { result } = renderHook(() => useProfileSetup('Дмитрий', vi.fn()));
+    const { result } = renderHook(() => useProfileSetup('Дмитрий', vi.fn(), vi.fn()));
 
     await act(() => result.current.submit());
 
@@ -147,7 +138,8 @@ describe('useProfileSetup — отправка', () => {
     mockedApiFetch.mockRejectedValueOnce(new ApiError('Сбой', 500, 'unknown'));
     mockedApiFetch.mockResolvedValueOnce(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useProfileSetup('Дмитрий', refresh));
+    const onSaved = vi.fn();
+    const { result } = renderHook(() => useProfileSetup('Дмитрий', refresh, onSaved));
     await act(() => result.current.submit());
     await waitFor(() => expect(result.current.status).toBe('error'));
 
@@ -155,6 +147,6 @@ describe('useProfileSetup — отправка', () => {
 
     expect(mockedApiFetch).toHaveBeenCalledTimes(2);
     expect(refresh).toHaveBeenCalledTimes(1);
-    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    expect(onSaved).toHaveBeenCalledTimes(1);
   });
 });

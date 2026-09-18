@@ -261,9 +261,9 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [attemptReviewPath(lastSegment(pathname))],
   },
-  notifications: {
-    path: '/notifications',
-    load: () => import('../notifications/NotificationsScreen'),
+  profile: {
+    path: '/profile',
+    load: () => import('../profile/ProfileScreen'),
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH],
   },

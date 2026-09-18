@@ -8,14 +8,13 @@
 // сам кабинет — комментарий-«почему» в App.tsx объясняет, почему маршрут стоит
 // вне AppShell. Логика — useProfileSetup.ts (CLAUDE.md «Логика вне компонентов»).
 import type { CSSProperties, FormEvent } from 'react';
-import { Navigate } from 'react-router-dom';
-import { PERSON_NAME_PART_MAX } from '@xuanxue/shared';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { postLoginPath } from '../auth/returnTo';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
-import { Field, getInputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
+import { PersonNameFields } from '../components/PersonNameFields';
 import { SkeletonLines } from '../components/Skeleton';
 import {
   screenExplanationStyle,
@@ -29,7 +28,7 @@ const formStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap
 const fullWidthStyle: CSSProperties = { width: '100%' };
 // Приписка не сразу под объяснением экрана (та под заголовком выше), а под
 // кнопкой — отрицательный отступ screenHintStyle тут не нужен, расстояние
-// держит gap формы (тот же приём, что telegramHintStyle в NotificationsScreen.tsx).
+// держит gap формы (тот же приём, что telegramHintStyle в profile/ProfileScreen.tsx).
 const continueHintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
 
 export default function WelcomeScreen() {
@@ -56,7 +55,9 @@ export default function WelcomeScreen() {
   // самом первом рендере (useState), а WelcomeScreen выше уже успел
   // отрендериться раньше, пока `me` был `null`. Тем же заодно соблюдён
   // react-hooks/rules-of-hooks: свои хуки ProfileSetupForm вызывает
-  // безусловно, без хука до раннего return в этом компоненте.
+  // безусловно, без хука до раннего return в этом компоненте. Экран
+  // «Профиль» (ADR-0045) решает ту же ловушку тем же приёмом —
+  // profile/ProfileNameSection.tsx.
   return <ProfileSetupForm initialName={me.name} refresh={refresh} />;
 }
 
@@ -66,7 +67,14 @@ interface ProfileSetupFormProps {
 }
 
 function ProfileSetupForm({ initialName, refresh }: ProfileSetupFormProps) {
-  const setup = useProfileSetup(initialName, refresh);
+  // useNavigate — здесь, не в useProfileSetup.ts: куда идти после сохранения
+  // решает экран (хук теперь общий с «Профилем», который никуда не уходит).
+  const navigate = useNavigate();
+  const setup = useProfileSetup(
+    initialName,
+    refresh,
+    () => void navigate(postLoginPath(), { replace: true }),
+  );
 
   function handleSubmit(event: FormEvent): void {
     event.preventDefault();
@@ -80,25 +88,12 @@ function ProfileSetupForm({ initialName, refresh }: ProfileSetupFormProps) {
         Имя увидит учитель в списке учеников. Больше кабинет ничего не спросит.
       </p>
       <form onSubmit={handleSubmit} style={formStyle}>
-        <Field label="Имя">
-          <input
-            style={getInputStyle('large')}
-            autoComplete="given-name"
-            maxLength={PERSON_NAME_PART_MAX}
-            required
-            value={setup.firstName}
-            onChange={(e) => setup.setFirstName(e.target.value)}
-          />
-        </Field>
-        <Field label="Фамилия" hint="Необязательно">
-          <input
-            style={getInputStyle('large')}
-            autoComplete="family-name"
-            maxLength={PERSON_NAME_PART_MAX}
-            value={setup.lastName}
-            onChange={(e) => setup.setLastName(e.target.value)}
-          />
-        </Field>
+        <PersonNameFields
+          firstName={setup.firstName}
+          lastName={setup.lastName}
+          onFirstNameChange={setup.setFirstName}
+          onLastNameChange={setup.setLastName}
+        />
         <FormServerError error={setup.error ? { message: setup.error } : null} />
         <Button
           type="submit"

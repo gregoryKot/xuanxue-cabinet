@@ -9,7 +9,7 @@
 import type { MeDto } from '@xuanxue/shared';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
-const NOTIFICATIONS_PATH = '/notifications';
+const PROFILE_PATH = '/profile';
 const ATTEMPT_PATH_PREFIX = '/attempts/';
 
 /** teacher/assistant/admin — штат школы: ему навигация и экраны маршрутов;
@@ -19,16 +19,14 @@ export function isTeacher(me: MeDto | null): boolean {
   return me.roles.some((role) => TEACHER_ROLES.has(role));
 }
 
-/** «/notifications» (личная настройка человека) и «/attempts/:id» (экран
+/** «/profile» (личный экран человека, ADR-0045) и «/attempts/:id» (экран
  * сдачи) — Outlet рисуется любой роли; остальные маршруты кабинета — только
  * teacher/assistant/admin, иначе AppShell рисует StudentScreen (ADR-0025,
- * ТЗ notifications-web.md/student-exams.md). */
+ * ТЗ student-exams.md). */
 export function showsRouteScreen(me: MeDto | null, pathname: string): boolean {
-  // «/notifications»/«/attempts/:id» совпадают вне зависимости от `me` — так
-  // было и в исходном выражении AppShell.tsx: оба экрана открыты любой роли.
+  // «/profile»/«/attempts/:id» совпадают вне зависимости от `me` — так было
+  // и в исходном выражении AppShell.tsx: оба экрана открыты любой роли.
   return (
-    isTeacher(me) ||
-    pathname === NOTIFICATIONS_PATH ||
-    pathname.startsWith(ATTEMPT_PATH_PREFIX)
+    isTeacher(me) || pathname === PROFILE_PATH || pathname.startsWith(ATTEMPT_PATH_PREFIX)
   );
 }

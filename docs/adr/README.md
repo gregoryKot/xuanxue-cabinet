@@ -80,3 +80,4 @@
 | [0042](0042-bot-chat-active-in-me-dto.md)                | `botChatActive` в `MeDto` — «боту есть куда писать», отдельно от `telegramLinked`     |
 | [0043](0043-visual-direction-warm-school.md)             | Направление «Тёплая школа» — Golos Text, карточки, терракота, знак в колонке          |
 | [0044](0044-soft-first-entry.md)                         | Первый вход спрашивает имя и фамилию; письмо входит само, без подтверждения           |
+| [0045](0045-profile-screen-replaces-notifications.md)    | «Профиль» заменил «Уведомления»; на телефоне вместо имени — значок                    |

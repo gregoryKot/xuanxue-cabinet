@@ -1,7 +1,7 @@
 // Экран сдачи экзамена, /attempts/:id (ТЗ п.2, docs/PLAN.md §11 слой 4.4) —
 // доступен любой роли (учитель тоже проходит форму изнутри, ADR-0022 +
 // exam-attempts.controller.ts): маршрут заведён в App.tsx без @Roles-гварда,
-// AppShell.tsx отдаёт под него Outlet, как под «/notifications». Сам экран —
+// AppShell.tsx отдаёт под него Outlet, как под «/profile» (ADR-0045). Сам экран —
 // только загрузка/ошибка/выбор состояния; форма ответа — AttemptInProgress.tsx
 // (своя причина, см. её комментарий), терминальные статусы — AttemptSubmitted.tsx.
 // useAuthConfig — тот же хук, что LoginScreen.tsx: имя бота для deep link
