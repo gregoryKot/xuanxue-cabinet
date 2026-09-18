@@ -5,7 +5,8 @@
 // каждом спеке заново (CLAUDE.md «Одна механика — один компонент»).
 import type { DateTime } from 'luxon';
 import type { ExamItemKind } from '@xuanxue/shared';
-import type { BotSessionLean, BotSessionService } from './bot-session.service';
+import type { BotSessionLean } from './bot-session.lean';
+import type { BotSessionService } from './bot-session.service';
 import type { NewExamDraftPatch } from './new-exam-draft-wait';
 import type { NewExamItemDraftPatch } from './new-exam-item-draft-wait';
 

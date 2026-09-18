@@ -3,7 +3,7 @@
 // здесь защитные ветки — устаревшая кнопка/чужой шаг молча игнорируется.
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { fakeFlowCtx } from './exam-attempt-flow.test-support';

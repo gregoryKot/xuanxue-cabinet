@@ -1,6 +1,6 @@
 // Чистая логика диалога «Новый вопрос» (ТЗ 4б.3) — без Mongo и без Telegram.
 import { Types } from 'mongoose';
-import type { BotSessionLean } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
 import {
   correctCount,
   hasOptionsStep,

@@ -6,7 +6,8 @@
 // вопрос; доступ — только штат; сбой посреди диалога не закрывает черновик
 // раньше TTL.
 import { DateTime } from 'luxon';
-import type { BotSessionLean, BotSessionService } from '../bot-session.service';
+import type { BotSessionLean } from '../bot-session.lean';
+import type { BotSessionService } from '../bot-session.service';
 import { GENERIC_ERROR } from './callback-actions';
 import { fakeFlowCtx } from './exam-attempt-flow.test-support';
 import {

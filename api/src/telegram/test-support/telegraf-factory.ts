@@ -36,6 +36,10 @@ export interface FakeTelegraf {
   factory: TelegrafFactory;
   webhookCalls: WebhookCall[];
   sendMessageCalls: SendMessageCall[];
+  /** Переходы между экранами диалогов бота идут правкой того же сообщения
+   * (CLAUDE.md «Telegram»), а не новым — без этого списка e2e видит только
+   * ответы на текст и слеп к половине шагов. */
+  editMessageCalls: SendMessageCall[];
   /** Команды, которые бот зарегистрировал в меню Telegram (bot-commands.ts). */
   commandCalls: { command: string; description: string }[][];
 }
@@ -48,6 +52,7 @@ export function createFakeTelegrafFactory(
 ): FakeTelegraf {
   const webhookCalls: WebhookCall[] = [];
   const sendMessageCalls: SendMessageCall[] = [];
+  const editMessageCalls: SendMessageCall[] = [];
   const commandCalls: { command: string; description: string }[][] = [];
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
@@ -79,6 +84,14 @@ export function createFakeTelegrafFactory(
         });
         return Promise.resolve(true);
       }
+      if (method === 'editMessageText') {
+        editMessageCalls.push({
+          chatId: String((payload?.chat_id as string | number | undefined) ?? ''),
+          text: (payload?.text as string | undefined) ?? '',
+          replyMarkup: payload?.reply_markup,
+        });
+        return Promise.resolve(true);
+      }
       return Promise.resolve(undefined);
     }) as unknown as Telegraf['telegram']['callApi'];
     bot.telegram.callApi = fakeCallApi;
@@ -93,5 +106,5 @@ export function createFakeTelegrafFactory(
       fakeCallApi;
     return bot;
   };
-  return { factory, webhookCalls, sendMessageCalls, commandCalls };
+  return { factory, webhookCalls, sendMessageCalls, editMessageCalls, commandCalls };
 }

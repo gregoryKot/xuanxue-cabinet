@@ -1,17 +1,24 @@
 // CRUD ожидания бота в чате (bot-session.schema.ts) — единственная точка
 // чтения/записи `bot_sessions`, тем же приёмом, что UsersService для users.
+// Тип прочитанного ожидания (BotSessionLean) и его расшифровка — в
+// bot-session.lean.ts (вынесено, чтобы этот файл не рос — CLAUDE.md,
+// храповик check-file-size-ratchet.mjs).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
 import type { ExamItemKind, GradingOutcome } from '@xuanxue/shared';
-import { decryptRecord, encryptRecord } from '../utils/encryption';
+import { encryptRecord } from '../utils/encryption';
+import {
+  BOT_SESSION_LEAN_PROJECTION,
+  toBotSessionLean,
+  type BotSessionLean,
+  type RawBotSessionLean,
+} from './bot-session.lean';
 import {
   BOT_SESSION_ENCRYPT_SCHEMA,
   BotSessionRecord,
   type BotSessionKind,
-  type NewExamItemStep,
-  type NewExamStep,
 } from './bot-session.schema';
 import { examAnswerWaitUpdate } from './exam-answer-wait';
 import {
@@ -22,7 +29,6 @@ import {
 import {
   newExamItemDraftUpdate,
   startNewExamItemDraftUpdate,
-  type NewExamItemDraftOption,
   type NewExamItemDraftPatch,
 } from './new-exam-item-draft-wait';
 
@@ -35,56 +41,6 @@ const RECORDING_WAIT_HOURS = 12;
 // Комментарий проверки (ТЗ 4б.5) — короткое действие, тот же порядок, что у
 // темы: проверяющий ставит его тут же, не откладывая на потом.
 const GRADE_COMMENT_WAIT_MINUTES = 10;
-
-export interface BotSessionLean {
-  kind: BotSessionKind;
-  /** Есть только у kind 'topic'/'recording'. */
-  lessonId?: Types.ObjectId;
-  /** Есть только у kind 'examMedia'/'examText'. */
-  attemptId?: Types.ObjectId;
-  /** Номер вопроса (bot-session.schema.ts) — есть у 'examText' всегда, у
-   * 'examMedia' только внутри потока вопросов бота. */
-  questionIndex?: number | null;
-  /** Вопрос-видео (ADR-0037, bot-session.schema.ts) — есть только у
-   * 'examMedia', когда он известен (deep link с вопросом или поток бота). */
-  itemId?: Types.ObjectId | null;
-  /** Черновик вопроса (ТЗ 4б.3) — есть только у 'examItemDraft', уже
-   * расшифрован (get()). `options: []`, не `undefined`, когда вариантов пока
-   * нет — тем же приёмом, что assertOptionsForKind у самого банка вопросов. */
-  draftStep?: NewExamItemStep;
-  draftKind?: ExamItemKind;
-  draftPrompt?: string;
-  draftCriteria?: string;
-  draftOptions?: NewExamItemDraftOption[];
-  draftSavedItemId?: Types.ObjectId;
-  /** Черновик сборки экзамена (ТЗ 4б.4) — есть только у 'examBuildDraft',
-   * тем же приёмом, что draft*-поля выше. `buildItemIds`/`buildPage` не
-   * бывают `undefined` в активном черновике (startNewExamDraftUpdate ставит
-   * их сразу), но помечены опциональными — как и остальные kind-специфичные
-   * поля этого интерфейса. */
-  buildStep?: NewExamStep;
-  buildItemIds?: Types.ObjectId[];
-  buildPage?: number;
-  buildTitle?: string;
-  buildTimeLimitMin?: number;
-  buildAttemptsAllowed?: number;
-  buildSavedExamId?: Types.ObjectId;
-  /** Итог проверки (ТЗ 4б.5) — есть только у 'gradeComment'. */
-  outcome?: GradingOutcome;
-}
-
-/** `BotSessionLean` до расшифровки — `draftPrompt`/`draftCriteria`/
- * `draftOptions` ещё шифротекст/JSON-строка (тот же приём, что
- * RawLeanExamItem/LeanExamItem у самого банка вопросов, exam-item.mapper.ts). */
-type RawBotSessionLean = Omit<
-  BotSessionLean,
-  'draftPrompt' | 'draftCriteria' | 'draftOptions' | 'buildTitle'
-> & {
-  draftPrompt?: string;
-  draftCriteria?: string;
-  draftOptions?: string;
-  buildTitle?: string;
-};
 
 @Injectable()
 export class BotSessionService {
@@ -150,46 +106,19 @@ export class BotSessionService {
 
   /** Активное (не истёкшее) ожидание чата — TTL-индекс подчищает документ с
    * задержкой до минуты (SERVER-точность монитора Mongo), поэтому фильтр по
-   * `expiresAt` здесь же, не только надежда на TTL. draft*-поля расшифровываются
-   * здесь же (decryptRecord) — читающий черновик мимо этого метода получил бы
-   * шифротекст, тем же приёмом, что decryptExamItem у банка вопросов. */
+   * `expiresAt` здесь же, не только надежда на TTL. Проекция и расшифровка
+   * draft*-полей — bot-session.lean.ts (toBotSessionLean), читающий черновик
+   * мимо этого метода получил бы шифротекст, тем же приёмом, что
+   * decryptExamItem у банка вопросов. */
   async get(chatId: number, now: DateTime): Promise<BotSessionLean | null> {
     const doc = await this.model
       .findOne(
         { chatId, expiresAt: { $gt: now.toJSDate() } },
-        {
-          kind: 1,
-          lessonId: 1,
-          attemptId: 1,
-          questionIndex: 1,
-          itemId: 1,
-          draftStep: 1,
-          draftKind: 1,
-          draftPrompt: 1,
-          draftCriteria: 1,
-          draftOptions: 1,
-          draftSavedItemId: 1,
-          buildStep: 1,
-          buildItemIds: 1,
-          buildPage: 1,
-          buildTitle: 1,
-          buildTimeLimitMin: 1,
-          buildAttemptsAllowed: 1,
-          buildSavedExamId: 1,
-          outcome: 1,
-        },
+        BOT_SESSION_LEAN_PROJECTION,
       )
       .lean<RawBotSessionLean | null>();
     if (!doc) return null;
-    const decrypted = decryptRecord(doc, BOT_SESSION_ENCRYPT_SCHEMA);
-    return {
-      ...doc,
-      draftPrompt: decrypted.draftPrompt,
-      draftCriteria: decrypted.draftCriteria,
-      draftOptions:
-        (decrypted.draftOptions as unknown as NewExamItemDraftOption[] | undefined) ?? [],
-      buildTitle: decrypted.buildTitle,
-    };
+    return toBotSessionLean(doc);
   }
 
   /** Начинает черновик вопроса (screen 1, ТЗ 4б.3) — новое ожидание
