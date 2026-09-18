@@ -41,12 +41,20 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
     );
   });
 
-  it('админ получает набор учителя без «работа на проверку» — админ не проверяет работы', () => {
-    expect(DEFAULT_NOTIFICATIONS_BY_ROLE.admin).toEqual(
-      DEFAULT_NOTIFICATIONS_BY_ROLE.teacher.filter(
+  it('админ получает набор учителя без «работа на проверку», но со «сбоем в кабинете» — админ не проверяет работы, но чинит сбои', () => {
+    expect(DEFAULT_NOTIFICATIONS_BY_ROLE.admin).toEqual([
+      ...DEFAULT_NOTIFICATIONS_BY_ROLE.teacher.filter(
         (kind) => kind !== 'attempt_submitted',
       ),
-    );
+      'app_error',
+    ]);
+  });
+
+  it('только у админа есть «сбой в кабинете» — остальным чинить нечего', () => {
+    expect(DEFAULT_NOTIFICATIONS_BY_ROLE.teacher).not.toContain('app_error');
+    expect(DEFAULT_NOTIFICATIONS_BY_ROLE.assistant).not.toContain('app_error');
+    expect(DEFAULT_NOTIFICATIONS_BY_ROLE.accountant).not.toContain('app_error');
+    expect(STUDENT_NOTIFICATIONS).not.toContain('app_error');
   });
 
   it('у каждой роли набор непустой — бот всегда может показать хотя бы один переключатель', () => {
@@ -90,12 +98,18 @@ describe('defaultNotifications', () => {
       'recording_request',
       'delivery_failed',
       'attempt_submitted',
+      'app_error',
     ]);
   });
 
   it('вторая роль добавляет вид, которого нет у первой (админ + учитель — вместе с «работа на проверку»)', () => {
     expect(defaultNotifications(['admin', 'teacher'])).toContain('attempt_submitted');
     expect(defaultNotifications(['admin'])).not.toContain('attempt_submitted');
+  });
+
+  it('вторая роль добавляет вид, которого нет у второй (учитель + админ — вместе со «сбоем в кабинете»)', () => {
+    expect(defaultNotifications(['teacher', 'admin'])).toContain('app_error');
+    expect(defaultNotifications(['teacher'])).not.toContain('app_error');
   });
 });
 
