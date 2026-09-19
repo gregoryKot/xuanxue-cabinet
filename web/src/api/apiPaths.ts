@@ -97,10 +97,14 @@ export function channelsListPath(activeOnly: boolean): string {
 
 export const MATERIALS_PATH = '/materials';
 
-/** Пустой вид — «Все» (тот же приём, что у examItemsListPath). */
-export function materialsListPath(kind: MaterialKind | ''): string {
-  const limit = `limit=${LIST_LIMIT_MAX}`;
-  return kind ? `${MATERIALS_PATH}?${limit}&kind=${kind}` : `${MATERIALS_PATH}?${limit}`;
+/** Пустой вид или тег — «Все» (тот же приём, что у examItemsListPath). Без
+ * аргумента тега — тот же путь, что даёт список для подсказки тегов
+ * (useMaterialTagOptions.ts): рубрикация школы не зависит от фильтра экрана. */
+export function materialsListPath(kind: MaterialKind | '', tag: string = ''): string {
+  const params = [`limit=${LIST_LIMIT_MAX}`];
+  if (kind) params.push(`kind=${kind}`);
+  if (tag) params.push(`tag=${encodeURIComponent(tag)}`);
+  return `${MATERIALS_PATH}?${params.join('&')}`;
 }
 
 export const SETTINGS_PATH = '/settings';

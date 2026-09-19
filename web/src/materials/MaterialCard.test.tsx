@@ -82,6 +82,27 @@ describe('MaterialCard', () => {
     expect(screen.getByText('Книга')).toBeInTheDocument();
   });
 
+  it('теги стоят после вида и занятий', () => {
+    renderCard(
+      { classIds: ['c1'], tags: ['старшая', 'база'] },
+      new Map([['c1', 'Тайцзицюань, средняя группа']]),
+    );
+
+    expect(
+      screen.getByText('Книга · Тайцзицюань, средняя группа · старшая · база'),
+    ).toBeInTheDocument();
+  });
+
+  it('теги и отметка «после оплаты» — тег перед отметкой', () => {
+    renderCard({ tags: ['старшая'], access: 'paid' });
+    expect(screen.getByText('Книга · старшая · После оплаты')).toBeInTheDocument();
+  });
+
+  it('материал без тегов — подпись как раньше, без лишнего разделителя', () => {
+    renderCard({ tags: [] });
+    expect(screen.getByText('Книга')).toBeInTheDocument();
+  });
+
   it('access: paid — пометка «После оплаты»', () => {
     renderCard({ access: 'paid' });
     expect(screen.getByText('Книга · После оплаты')).toBeInTheDocument();

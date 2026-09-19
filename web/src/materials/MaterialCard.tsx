@@ -44,9 +44,13 @@ export function MaterialCard({
   const classTitles = material.classIds
     .map((id) => classTitleById.get(id))
     .filter((title): title is string => Boolean(title));
+  // Порядок — вид, занятия, теги, «После оплаты» (ADR-0058: теги после вида
+  // и занятий, отметка оплаты — как последний служебный флаг, тот же
+  // порядок, что у версии вопроса в ExamItemCard.tsx).
   const metaParts = [
     MATERIAL_KIND_LABELS[material.kind],
     ...classTitles,
+    ...material.tags,
     ...(material.access === 'paid' ? [PAID_LABEL] : []),
   ];
 

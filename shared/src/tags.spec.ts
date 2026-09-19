@@ -1,6 +1,6 @@
 // Чистая логика — без Mongo и без DI (CLAUDE.md «Тесты»).
 import { describe, expect, it } from 'vitest';
-import { normalizeTags, TAG_LIMITS } from './tags';
+import { normalizeTags, parseTagsText, TAG_LIMITS } from './tags';
 
 describe('normalizeTags', () => {
   it('обрезает пробелы по краям', () => {
@@ -47,5 +47,35 @@ describe('normalizeTags', () => {
 
   it('пустой список остаётся пустым', () => {
     expect(normalizeTags([])).toEqual([]);
+  });
+});
+
+describe('parseTagsText', () => {
+  it('делит по запятой, обрезает пробелы, выбрасывает пустые куски', () => {
+    expect(parseTagsText(' ян , база ,, ')).toEqual(['ян', 'база']);
+  });
+
+  it('пустая строка — пустой массив', () => {
+    expect(parseTagsText('')).toEqual([]);
+  });
+
+  it('дедуплицирует без учёта регистра, как и normalizeTags', () => {
+    expect(parseTagsText('Старшая, старшая')).toEqual(['Старшая']);
+  });
+
+  it('схлопывает внутренние пробелы в теге', () => {
+    expect(parseTagsText('старшая   группа, тест')).toEqual(['старшая группа', 'тест']);
+  });
+
+  it('больше лимита по умолчанию — лишнее отбрасывается', () => {
+    const many = Array.from(
+      { length: TAG_LIMITS.perRecord + 2 },
+      (_, i) => `тег${i}`,
+    ).join(', ');
+    expect(parseTagsText(many)).toHaveLength(TAG_LIMITS.perRecord);
+  });
+
+  it('явный max ограничивает список', () => {
+    expect(parseTagsText('раз, два, три', 2)).toEqual(['раз', 'два']);
   });
 });

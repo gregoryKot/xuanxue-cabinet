@@ -3,7 +3,6 @@ import type { ExamItemDto } from '@xuanxue/shared';
 import {
   hasOptions,
   initialExamItemFormState,
-  parseTagsInput,
   toCreateInput,
   toUpdateInput,
   validateExamItemForm,
@@ -80,21 +79,6 @@ describe('initialExamItemFormState', () => {
     expect(state.hint).toBe('');
     expect(state.criteria).toBe('');
     expect(state.tagsText).toBe('');
-  });
-});
-
-describe('parseTagsInput', () => {
-  it('делит по запятой, обрезает пробелы, выбрасывает пустые куски', () => {
-    expect(parseTagsInput(' ян , база ,, ')).toEqual(['ян', 'база']);
-  });
-
-  it('пустая строка — пустой массив', () => {
-    expect(parseTagsInput('')).toEqual([]);
-  });
-
-  it('больше лимита — лишнее отбрасывается', () => {
-    const many = Array.from({ length: 12 }, (_, i) => `тег${i}`).join(', ');
-    expect(parseTagsInput(many)).toHaveLength(10);
   });
 });
 
@@ -304,6 +288,16 @@ describe('toCreateInput / toUpdateInput', () => {
     expect(toUpdateInput(baseState({ tagsText: 'ян, база' })).tags).toEqual([
       'ян',
       'база',
+    ]);
+  });
+
+  // Разбор перешёл на общий parseTagsText (shared/src/tags.ts, ADR-0058) —
+  // дедуп без учёта регистра и схлопывание внутренних пробелов вопросы
+  // получили заодно с формой материала, своей копии разбора раньше не было.
+  it('дедуп без учёта регистра и схлопывание пробелов — улучшение от общего разбора', () => {
+    expect(toCreateInput(baseState({ tagsText: 'Ян, ян, база   форм' })).tags).toEqual([
+      'Ян',
+      'база форм',
     ]);
   });
 });

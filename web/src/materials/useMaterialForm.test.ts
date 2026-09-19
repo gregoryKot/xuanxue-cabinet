@@ -63,6 +63,7 @@ describe('useMaterialForm — submit()', () => {
       kind: 'book',
       classIds: [],
       access: 'all',
+      tags: [],
     });
   });
 
@@ -82,6 +83,7 @@ describe('useMaterialForm — submit()', () => {
       kind: 'book',
       classIds: [],
       access: 'all',
+      tags: [],
     });
   });
 

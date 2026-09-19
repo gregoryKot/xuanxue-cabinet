@@ -59,7 +59,13 @@ export function StudentMaterialCard({
     <li style={{ ...rowStyle, borderBottom: isLast ? 'none' : '1px solid var(--panel)' }}>
       <div style={listCardTitleStyle}>{material.title}</div>
       <div style={listCardMetaStyle}>
-        {[MATERIAL_KIND_LABELS[material.kind], ...material.classTitles].join(' · ')}
+        {/* Порядок — вид, занятия, теги (ADR-0058: рубрикация нужна прежде
+            всего тому, кто ищет своё), тот же приём, что у MaterialCard.tsx. */}
+        {[
+          MATERIAL_KIND_LABELS[material.kind],
+          ...material.classTitles,
+          ...material.tags,
+        ].join(' · ')}
       </div>
       <div style={actionRowStyle}>
         {material.locked ? (

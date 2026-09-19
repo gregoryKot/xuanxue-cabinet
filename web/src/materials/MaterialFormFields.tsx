@@ -10,21 +10,28 @@ import {
   MATERIAL_KINDS,
   MATERIAL_KIND_LABELS,
   MATERIAL_LIMITS,
+  TAG_LIMITS,
   type ClassDto,
 } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { Toggle } from '../components/Toggle';
 import { MaterialClassesField } from './MaterialClassesField';
 import type { MaterialFormError, MaterialFormState } from './materialFormInput';
+import { useMaterialTagOptions } from './useMaterialTagOptions';
 
 const KIND_LEGEND = 'Вид материала';
 const KIND_RADIO_GROUP_NAME = 'material-kind';
+const TAG_OPTIONS_ID = 'material-tag-options';
 const PAID_LABEL = 'Открывать только после оплаты';
 // ADR-0048, VOICE.md: отметка сама по себе ничего не закрывает — решает
 // рубильник школы на экране «Библиотека» (MaterialsPaidAccessSection.tsx), и
 // текст здесь не должен спорить с тем, что написано там.
 const PAID_HINT =
   'Отметка сработает, когда на «Библиотеке» включат доступ по оплате. Пока он выключен, материал видят все.';
+const TAG_LEGEND = 'Теги';
+// ADR-0058: теги — рубрикация, не служебная пометка, и их видит ученик —
+// значит, ни имени, ни телефона в тексте тега быть не должно.
+const TAG_HINT = `Через запятую: «для старшей», «24 формы» — до ${TAG_LIMITS.perRecord}. Их видит ученик: без имени и телефона.`;
 
 const fieldsetStyle: CSSProperties = {
   border: 'none',
@@ -59,6 +66,8 @@ export function MaterialFormFields({
   error,
   classes,
 }: MaterialFormFieldsProps) {
+  const tagOptions = useMaterialTagOptions();
+
   return (
     <>
       <Field label="Название" error={errorFor(error, 'title')}>
@@ -109,6 +118,22 @@ export function MaterialFormFields({
         checked={state.paid}
         onChange={(paid) => setField('paid', paid)}
       />
+
+      <Field label={TAG_LEGEND} hint={TAG_HINT} error={errorFor(error, 'tags')}>
+        <input
+          style={inputStyle}
+          list={TAG_OPTIONS_ID}
+          value={state.tagsText}
+          onChange={(e) => setField('tagsText', e.target.value)}
+        />
+        {/* Сбой useMaterialTagOptions.ts просто оставляет список пустым —
+            без подсказок, но поле работает как обычный текстовый ввод. */}
+        <datalist id={TAG_OPTIONS_ID}>
+          {tagOptions.map((tag) => (
+            <option key={tag} value={tag} />
+          ))}
+        </datalist>
+      </Field>
     </>
   );
 }

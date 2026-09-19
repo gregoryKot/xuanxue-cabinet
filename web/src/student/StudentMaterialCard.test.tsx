@@ -40,6 +40,25 @@ describe('StudentMaterialCard — название и вид', () => {
     );
     expect(screen.getByText('Книга · Тайцзицюань, средняя группа')).toBeInTheDocument();
   });
+
+  it('теги стоят после вида и занятий', () => {
+    render(
+      <StudentMaterialCard
+        material={makeMaterial({
+          classTitles: ['Тайцзицюань, средняя группа'],
+          tags: ['старшая', 'база'],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText('Книга · Тайцзицюань, средняя группа · старшая · база'),
+    ).toBeInTheDocument();
+  });
+
+  it('материал без тегов — подпись как раньше', () => {
+    render(<StudentMaterialCard material={makeMaterial({ tags: [] })} />);
+    expect(screen.getByText('Книга')).toBeInTheDocument();
+  });
 });
 
 describe('StudentMaterialCard — открытая ссылка', () => {
