@@ -96,7 +96,7 @@ describe('PersonRow — имя и контакт', () => {
 describe('PersonRow — пилюли ролей', () => {
   it('пилюля на каждую роль из USER_ROLES, подпись — из ROLE_LABELS', () => {
     renderRow({ roles: ['admin', 'teacher', 'assistant', 'accountant'] });
-    for (const label of ['Учитель', 'Администратор', 'Помощник учителя', 'Бухгалтер']) {
+    for (const label of ['Учитель', 'Разработчик', 'Помощник учителя', 'Бухгалтер']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
   });
@@ -108,7 +108,7 @@ describe('PersonRow — пилюли ролей', () => {
   // где вёрстка уступает возможностям экрана.
   it('без ролей — пилюли всё равно на месте и все ненажаты', () => {
     renderRow({ roles: [] });
-    for (const label of ['Учитель', 'Администратор', 'Помощник учителя', 'Бухгалтер']) {
+    for (const label of ['Учитель', 'Разработчик', 'Помощник учителя', 'Бухгалтер']) {
       expect(screen.getByRole('button', { name: label })).toHaveAttribute(
         'aria-pressed',
         'false',
@@ -122,7 +122,7 @@ describe('PersonRow — пилюли ролей', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('button', { name: 'Администратор' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Разработчик' })).toHaveAttribute(
       'aria-pressed',
       'false',
     );
@@ -149,7 +149,7 @@ describe('PersonRow — пилюли ролей', () => {
   // переключаются свободно.
   it('своя строка — admin заблокирован, прочие роли переключаются', () => {
     renderRow({ roles: ['admin', 'teacher'] }, true);
-    expect(screen.getByRole('button', { name: 'Администратор' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Разработчик' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Учитель' })).not.toBeDisabled();
     expect(
       screen.getByText('Роль администратора у себя снимает другой администратор'),
