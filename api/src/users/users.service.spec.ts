@@ -86,7 +86,7 @@ describe('UsersService', () => {
     expect(count).toBe(1);
   });
 
-  it('listTeacherContacts: teacher/assistant/admin с telegramId, без ученика и accountant', async () => {
+  it('listContactsWithRoles: находит только переданные роли с telegramId, без ученика и accountant', async () => {
     const teacher = await service.createFromTelegram({
       telegramId: 501,
       name: 'Учитель',
@@ -119,7 +119,11 @@ describe('UsersService', () => {
       status: 'active',
     });
 
-    const contacts = await service.listTeacherContacts();
+    const contacts = await service.listContactsWithRoles([
+      'teacher',
+      'assistant',
+      'admin',
+    ]);
     const ids = contacts.map((c) => c.id);
     expect(ids).toEqual(expect.arrayContaining([teacher.id, admin.id, assistant.id]));
     expect(contacts.find((c) => c.name === 'Ученик с Telegram')).toBeUndefined();
@@ -134,6 +138,15 @@ describe('UsersService', () => {
       telegramId: 504,
       roles: ['assistant'],
     });
+  });
+
+  it('listContactsWithRoles: пустой список ролей — пустой массив без похода в базу', async () => {
+    const findSpy = jest.spyOn(model, 'find');
+
+    await expect(service.listContactsWithRoles([])).resolves.toEqual([]);
+
+    expect(findSpy).not.toHaveBeenCalled();
+    findSpy.mockRestore();
   });
 
   it('listStaffWithEmail: штат с email, без ученика, accountant и штата без email (слой 4.7, ADR-0039)', async () => {

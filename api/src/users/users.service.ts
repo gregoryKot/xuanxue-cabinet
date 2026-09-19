@@ -9,9 +9,9 @@ import { Model, Types } from 'mongoose';
 import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
 import {
-  listTeacherContacts as listTeacherContactsQuery,
-  type TeacherContact,
-} from './list-teacher-contacts';
+  listContactsWithRoles as listContactsWithRolesQuery,
+  type RoledContact,
+} from './list-contacts-with-roles';
 import {
   listStaffWithEmail as listStaffWithEmailQuery,
   type StaffEmailContact,
@@ -83,15 +83,15 @@ export class UsersService {
     return doc ? toLean(doc) : null;
   }
 
-  /** Логика — в list-teacher-contacts.ts (та же причина выноса, что у
-   * upsert-user-by-key.ts: файл не растёт за 150 строк). Кому и зачем — см.
-   * комментарий там же и personal-chats.ts. */
-  async listTeacherContacts(): Promise<TeacherContact[]> {
-    return listTeacherContactsQuery(this.model);
+  /** Логика — в list-contacts-with-roles.ts (та же причина выноса, что у
+   * upsert-user-by-key.ts). Роли — параметром: list() зовёт со штатом,
+   * listFor(kind) — с ролями вида (см. комментарий там же и в personal-chats.ts). */
+  async listContactsWithRoles(roles: readonly UserRole[]): Promise<RoledContact[]> {
+    return listContactsWithRolesQuery(this.model, roles);
   }
 
   /** Штат с подтверждённым email (слой 4.7, ADR-0039) — почтовый резерв для
-   * `attempt_submitted`, логика выноса та же, что у listTeacherContacts. */
+   * `attempt_submitted`, логика выноса та же, что у listContactsWithRoles. */
   async listStaffWithEmail(): Promise<StaffEmailContact[]> {
     return listStaffWithEmailQuery(this.model);
   }

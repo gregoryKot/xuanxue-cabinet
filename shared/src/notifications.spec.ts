@@ -7,6 +7,7 @@ import {
   NOTIFICATION_HINTS,
   NOTIFICATION_KINDS,
   NOTIFICATION_LABELS,
+  rolesWithNotification,
   STUDENT_NOTIFICATIONS,
 } from './notifications';
 
@@ -110,6 +111,30 @@ describe('defaultNotifications', () => {
   it('вторая роль добавляет вид, которого нет у второй (учитель + админ — вместе со «сбоем в кабинете»)', () => {
     expect(defaultNotifications(['teacher', 'admin'])).toContain('app_error');
     expect(defaultNotifications(['teacher'])).not.toContain('app_error');
+  });
+});
+
+describe('rolesWithNotification', () => {
+  it('payments — только бухгалтер (регрессия: раньше PersonalChats.listFor не искал его вовсе)', () => {
+    expect(rolesWithNotification('payments')).toEqual(['accountant']);
+  });
+
+  it('post_draft — админ, учитель, помощник в каноническом порядке USER_ROLES', () => {
+    expect(rolesWithNotification('post_draft')).toEqual([
+      'admin',
+      'teacher',
+      'assistant',
+    ]);
+  });
+
+  it('attempt_submitted — без админа: он этот вид не получает (см. комментарий в DEFAULT_NOTIFICATIONS_BY_ROLE)', () => {
+    expect(rolesWithNotification('attempt_submitted')).toEqual(['teacher', 'assistant']);
+  });
+
+  it('вид, которого нет ни у одной роли (ученические lesson_soon/teacher_message/exam_result), — пустой массив', () => {
+    expect(rolesWithNotification('lesson_soon')).toEqual([]);
+    expect(rolesWithNotification('teacher_message')).toEqual([]);
+    expect(rolesWithNotification('exam_result')).toEqual([]);
   });
 });
 

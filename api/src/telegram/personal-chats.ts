@@ -1,25 +1,25 @@
 // Личный чат с ботом (ADR-0015, docs/PLAN.md §6, §11 слой 4.7) — активный
-// channels type telegram, target = String(telegramId), то есть человек нажал
-// /start. `list()`/`listFor(kind)` — учителя/помощники/админы (весь штат
-// школы, CLAUDE.md «Одна механика — один компонент»): предпросмотр, «Запись?»,
-// ручные каналы, уведомления об ошибках, очередь проверки экзаменов.
-// `list()` — все подключённые (identity-проверки хендлеров: чей это
-// callback/сообщение), `listFor(kind)` — те же люди, у кого вдобавок включён
-// этот вид уведомления: дефолт роли с личными переключениями поверх, одна
-// выборка `notification_prefs` на весь список — не по человеку в цикле
-// (NotificationPrefsService.getManyEnabled). `chatFor(userId, kind)` —
-// та же механика точечно для ОДНОГО конкретного человека любой роли, включая
-// ученика (результат экзамена, слой 4.7): весь штат школы поднимать не нужно
-// ради одного адресата, а исход и логирование пустоты («ни у кого нет бота»)
-// здесь неуместны — молчание для одного человека норма, не авария.
+// channels type telegram, target = String(telegramId), т.е. человек нажал
+// /start. Два пула: `list()` — фиксированный STAFF_ROLES, кому бот вообще
+// может писать (identity-проверки хендлеров SECURITY §3, меню штата;
+// бухгалтеру оно не положено). `listFor(kind)` — кому АДРЕСОВАН вид: пул от
+// `rolesWithNotification` (shared/src/notifications.ts), иначе `payments`
+// (дефолт роли — только бухгалтер) не дошёл бы ни до кого; дальше как раньше
+// — дефолт роли с переключениями, одна выборка `notification_prefs` на весь
+// список (getManyEnabled). `chatFor(userId, kind)` — то же точечно для
+// ОДНОГО человека любой роли, включая ученика: пустой результат — не авария.
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
+import { rolesWithNotification } from '@xuanxue/shared';
 import type { NotificationKind, UserRole } from '@xuanxue/shared';
 import { ChannelRecord } from '../channels/channel.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { UsersService, type UserLean } from '../users/users.service';
+
+// Фиксированный пул list() — штат школы (заголовок файла).
+const STAFF_ROLES: readonly UserRole[] = ['teacher', 'assistant', 'admin'];
 
 export interface PersonalChat {
   chatId: string;
@@ -50,7 +50,7 @@ export class PersonalChats {
   ) {}
 
   async list(now: DateTime): Promise<PersonalChat[]> {
-    const contacts = await this.activeContacts();
+    const contacts = await this.activeContacts(STAFF_ROLES);
     // roles — только для listFor(); наружу list() отдаёт исходную форму
     // PersonalChat, не расширенную (иначе поле «протекает» в чужой контракт —
     // все вызывающие места собирают его через `.toEqual`/`.map` по трём полям).
@@ -59,7 +59,7 @@ export class PersonalChats {
   }
 
   async listFor(kind: NotificationKind, now: DateTime): Promise<PersonalChat[]> {
-    const contacts = await this.activeContacts();
+    const contacts = await this.activeContacts(rolesWithNotification(kind));
     if (contacts.length === 0) return this.debugIfEmptyForKind([], now, kind);
 
     const enabledByUser = await this.notificationPrefsService.getManyEnabled(
@@ -118,10 +118,10 @@ export class PersonalChats {
     return this.hasActiveChatFor(await this.usersService.findById(userId));
   }
 
-  /** Общий первый шаг list()/listFor() — контакт с ролью (уже отфильтрован
-   * UsersService.listTeacherContacts) и активным личным каналом. */
-  private async activeContacts(): Promise<ActiveContact[]> {
-    const contacts = await this.usersService.listTeacherContacts();
+  /** Общий первый шаг list()/listFor() — контакт с переданной ролью
+   * (UsersService.listContactsWithRoles) и активным каналом. */
+  private async activeContacts(roles: readonly UserRole[]): Promise<ActiveContact[]> {
+    const contacts = await this.usersService.listContactsWithRoles(roles);
     if (contacts.length === 0) return [];
 
     const targets = contacts.map((c) => String(c.telegramId));
