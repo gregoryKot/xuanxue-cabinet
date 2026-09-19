@@ -6,7 +6,8 @@
 import type { CSSProperties } from 'react';
 import { DEFAULT_TEMPLATES, type LessonDto, type TemplateKind } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
-import { dangerNoteStyle, editorSectionStyle } from '../components/screenLayout';
+import { dangerNoteStyle } from '../components/screenLayout';
+import { editorSectionStyle } from '../components/editorLayout';
 import { tzBadge } from '../schedule/timezoneLabel';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { PlaceholderChips } from './PlaceholderChips';

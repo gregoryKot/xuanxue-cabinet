@@ -12,13 +12,13 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EditorFooter } from '../components/EditorFooter';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
+import { screenTitleStyle } from '../components/screenLayout';
 import {
+  backLinkStyle,
   editorHeadingStyle,
   editorPageStyle,
   editorSectionStyle,
-  screenTitleStyle,
-  textLinkStyle,
-} from '../components/screenLayout';
+} from '../components/editorLayout';
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { ExamItemFormFields } from './ExamItemFormFields';
 import { ExamItemKindField } from './ExamItemKindField';
@@ -68,7 +68,7 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
   return (
     <>
       <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={ITEMS_PATH} style={textLinkStyle}>
+        <Link to={ITEMS_PATH} style={backLinkStyle}>
           {BACK_TEXT}
         </Link>
 

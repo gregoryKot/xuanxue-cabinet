@@ -19,11 +19,21 @@ import { BroadcastDeliveriesList } from './BroadcastDeliveriesList';
 import { firstLines } from './firstLines';
 
 const PREVIEW_LINES = 2;
+// Отступ раскрытого списка доставок от кнопок. В свёрнутом виде обёртка
+// пустая и отступа не получает — иначе внизу строки висел бы лишний зазор.
+const DELIVERIES_GAP_PX = 12;
 
+// Ритм строки задают отступы самих блоков, а не один общий `gap`. Раньше
+// стоял `gap: 6` на всё сразу, и четыре разнородных блока — мета, превью
+// поста, кнопки и обёртка доставок — шли с одинаковым зазором: журнал
+// читался сплошной кашей («в рассылках расстояния нет», отзыв владельца
+// 2026-09-19). Плюс обёртка доставок рендерится ВСЕГДА (ниже объяснено,
+// почему), и в свёрнутом виде пустой узел съедал ещё один зазор внизу
+// строки. С `gap: 0` пустая обёртка не стоит ничего, а каждый блок сам
+// говорит, насколько он отодвинут от предыдущего.
 const rowBaseStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 6,
   padding: '16px 20px',
 };
 const topLineStyle: CSSProperties = {
@@ -39,7 +49,8 @@ const timeStyle: CSSProperties = {
   color: 'var(--ink)',
 };
 const previewStyle: CSSProperties = {
-  margin: 0,
+  // Превью — продолжение строки меты, держим близко.
+  margin: '6px 0 0',
   fontSize: 14,
   lineHeight: 1.55,
   color: 'var(--ink-soft)',
@@ -103,7 +114,7 @@ export function BroadcastCard({
 
       {/* Обёртка рендерится всегда — `aria-controls` должен указывать на
           существующий в DOM элемент, даже когда список ещё свёрнут. */}
-      <div id={deliveriesId}>
+      <div id={deliveriesId} style={{ marginTop: expanded ? DELIVERIES_GAP_PX : 0 }}>
         {expanded && (
           <BroadcastDeliveriesList
             broadcastId={broadcast.id}

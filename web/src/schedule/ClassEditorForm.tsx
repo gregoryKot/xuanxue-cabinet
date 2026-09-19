@@ -9,16 +9,16 @@ import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormServerError } from '../components/FormServerError';
+import { screenTitleStyle } from '../components/screenLayout';
 import {
+  backLinkStyle,
   editorActionsRowStyle,
   editorDangerButtonStyle,
   editorDangerRowStyle,
   editorHeadingStyle,
   editorPageStyle,
   editorSectionStyle,
-  screenTitleStyle,
-  textLinkStyle,
-} from '../components/screenLayout';
+} from '../components/editorLayout';
 import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
 import { useTeachers } from '../people/useTeachers';
 import { ClassChannelsField } from './ClassChannelsField';
@@ -69,7 +69,7 @@ export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormP
   return (
     <>
       <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={SCHEDULE_PATH} style={textLinkStyle}>
+        <Link to={SCHEDULE_PATH} style={backLinkStyle}>
           {BACK_TEXT}
         </Link>
 

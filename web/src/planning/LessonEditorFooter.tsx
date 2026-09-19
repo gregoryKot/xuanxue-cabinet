@@ -8,7 +8,7 @@ import {
   editorActionsRowStyle,
   editorDangerButtonStyle,
   editorDangerRowStyle,
-} from '../components/screenLayout';
+} from '../components/editorLayout';
 
 interface LessonEditorFooterProps {
   /** `false` — разовое занятие ещё не создано: отменять нечего. */

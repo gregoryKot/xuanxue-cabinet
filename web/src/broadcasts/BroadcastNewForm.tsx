@@ -10,14 +10,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { ChannelDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { FormServerError } from '../components/FormServerError';
+import { noteStyle, screenTitleStyle } from '../components/screenLayout';
 import {
+  backLinkStyle,
   editorHeadingStyle,
   editorPageStyle,
   editorSectionStyle,
-  noteStyle,
-  screenTitleStyle,
-  textLinkStyle,
-} from '../components/screenLayout';
+} from '../components/editorLayout';
 import { BroadcastFormFields } from './BroadcastFormFields';
 import { useBroadcastCreate } from './useBroadcastCreate';
 import { useBroadcastForm } from './useBroadcastForm';
@@ -46,7 +45,7 @@ export function BroadcastNewForm({ channels }: BroadcastNewFormProps) {
 
   return (
     <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-      <Link to={BROADCASTS_PATH} style={textLinkStyle}>
+      <Link to={BROADCASTS_PATH} style={backLinkStyle}>
         {BACK_TEXT}
       </Link>
 

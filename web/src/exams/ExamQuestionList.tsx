@@ -12,11 +12,16 @@ const LOADING_TEXT = 'Загружаем вопросы…';
 const MISSING_TEXT = 'Вопрос недоступен — его удалили или спрятали в черновик.';
 
 const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
+// Номер вопроса — текстовым шрифтом, не антиквой: у Cormorant цифры
+// старостильные, и единица в них — голый штрих, неотличимый от римской «I»
+// (ровно та причина, по которой ADR-0043 завёл components/StatNumber.tsx).
+// `tabular-nums` держит номера в столбик ровной колонкой.
 const numberStyle: CSSProperties = {
-  fontFamily: 'var(--font-display)',
-  fontSize: 24,
+  fontSize: 22,
+  fontWeight: 500,
   lineHeight: 1,
   color: 'var(--ink-faint)',
+  fontVariantNumeric: 'tabular-nums',
   paddingTop: 2,
 };
 const promptStyle: CSSProperties = { fontSize: 16 };

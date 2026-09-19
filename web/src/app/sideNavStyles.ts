@@ -37,18 +37,41 @@ export const sideSectionsStyle: CSSProperties = {
   gap: 6,
 };
 
-/** Знак школы и название — первая строка боковой колонки (AppNav.tsx). */
+/** Знак школы и название — первая строка боковой колонки (AppNav.tsx).
+ *
+ * Справа отступа нет: за названием в этой строке ничего не стоит, а десять
+ * пикселей там стоили переноса — см. расчёт у sideBrandTitleStyle ниже. */
 export const sideBrandRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 10,
-  padding: '6px 10px 22px',
+  padding: '6px 0 22px 10px',
 };
 
+/** «Школа Сюань-Сюэ» переносилось на две строки (снимок владельца
+ * 2026-09-19). Ширина колонки 236 расходуется так: 32 на паддинг колонки
+ * (16+16), 10 на левый паддинг этой строки, 26 на знак школы и 10 на зазор —
+ * под текст оставалось 148. Замер в Chromium на самом Cormorant Garamond 500:
+ * строка просит 163px при кегле 20 и 147px при 18. Отсюда две правки: убран
+ * правый паддинг строки (стало 158 доступных) и кегль 20 → 18.
+ *
+ * `nowrap` закрепляет результат, а `ellipsis` страхует от единственного
+ * случая, когда расчёт не сходится: `font-display: swap` рисует строку
+ * подстановочной антиквой, пока грузится своя, и та бывает шире. Тогда
+ * название подрежется многоточием внутри колонки, а не вылезет за неё (тот
+ * же приём, что у адреса ссылки-приглашения, people/InviteLinkCard.tsx).
+ *
+ * `lineHeight` явный: от body наследовался 1.6, и перенесённая вторая строка
+ * отъезжала заметно ниже, чем нужно заголовку. */
 export const sideBrandTitleStyle: CSSProperties = {
   fontFamily: 'var(--font-display)',
-  fontSize: 20,
+  fontSize: 18,
+  lineHeight: 1.2,
   color: 'var(--ink)',
+  minWidth: 0,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
 };
 
 export const sideLinkStyle = (isActive: boolean): CSSProperties => ({

@@ -10,13 +10,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { AddRecordingInput, ClassDto, LessonDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormServerError } from '../components/FormServerError';
+import { screenTitleStyle } from '../components/screenLayout';
 import {
+  backLinkStyle,
   editorHeadingStyle,
   editorPageStyle,
   editorSectionStyle,
-  screenTitleStyle,
-  textLinkStyle,
-} from '../components/screenLayout';
+} from '../components/editorLayout';
 import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
 import { formatDateTime } from '../lib/formatDate';
 import { useTeachers } from '../people/useTeachers';
@@ -74,7 +74,7 @@ export function LessonEditorForm({ lesson, classes, editor }: LessonEditorFormPr
   return (
     <>
       <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={PLANNING_PATH} style={textLinkStyle}>
+        <Link to={PLANNING_PATH} style={backLinkStyle}>
           {BACK_TEXT}
         </Link>
 

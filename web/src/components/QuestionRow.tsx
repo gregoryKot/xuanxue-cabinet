@@ -13,11 +13,16 @@
 // «Одна механика — один компонент»).
 import type { CSSProperties, ReactNode } from 'react';
 
+// Номер вопроса — текстовым шрифтом, не антиквой: у Cormorant цифры
+// старостильные, и единица в них — голый штрих, неотличимый от римской «I»
+// (ровно та причина, по которой ADR-0043 завёл components/StatNumber.tsx).
+// `tabular-nums` держит номера в столбик ровной колонкой.
 const numberStyle: CSSProperties = {
-  fontFamily: 'var(--font-display)',
-  fontSize: 24,
+  fontSize: 22,
+  fontWeight: 500,
   lineHeight: 1,
   color: 'var(--ink-faint)',
+  fontVariantNumeric: 'tabular-nums',
   paddingTop: 2,
 };
 const bodyStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };

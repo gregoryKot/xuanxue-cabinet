@@ -18,7 +18,16 @@ const CANCEL_ERROR = 'Не удалось отменить рассылку. П�
 const CANCEL_MESSAGE =
   'Рассылка не уйдёт ни в один канал. Вернуть её потом не получится.';
 
-const actionsStyle: CSSProperties = { display: 'flex', gap: 20, flexWrap: 'wrap' };
+// Кнопки отодвинуты от превью заметнее, чем превью от меты: это другой
+// смысловой уровень строки, а не её продолжение (BroadcastCard.tsx —
+// отступы задают сами блоки, общего `gap` у строки нет).
+const actionsStyle: CSSProperties = {
+  display: 'flex',
+  gap: 20,
+  flexWrap: 'wrap',
+  marginTop: 14,
+};
+const errorStyle: CSSProperties = { ...dangerNoteStyle, marginTop: 12 };
 
 interface BroadcastCardActionsProps {
   expanded: boolean;
@@ -55,7 +64,7 @@ export function BroadcastCardActions({
   return (
     <>
       {error && (
-        <p role="alert" style={dangerNoteStyle}>
+        <p role="alert" style={errorStyle}>
           {error}
         </p>
       )}
