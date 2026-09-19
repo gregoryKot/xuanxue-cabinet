@@ -14,6 +14,7 @@ const MATERIAL_DTO: MaterialDto = {
   url: 'https://example.com/book',
   kind: 'book',
   classIds: [],
+  lessonIds: [],
   access: 'all',
   tags: [],
   createdBy: 't1',

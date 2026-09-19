@@ -10,10 +10,13 @@
 // получает ClassRecord/BroadcastRecord/… из своих собственных прямых
 // импортов, менять их не пришлось. LessonsService — дополнительно для
 // TelegramModule (update() у /тема и «Изменить тему», addRecording() у
-// «Запись?»).
+// «Запись?»). MaterialModelModule — remove() отвязывает удалённую дату от
+// materials.lessonIds (ADR-0056), только модель, тот же приём: полный импорт
+// MaterialsModule замкнул бы цикл через её собственный импорт ClassesModule.
 import { Module } from '@nestjs/common';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { ClassesModule } from '../classes/classes.module';
+import { MaterialModelModule } from '../materials/material-model.module';
 import { UserModelModule } from '../users/user-model.module';
 import { LessonModelModule } from './lesson-model.module';
 import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
@@ -28,7 +31,13 @@ import { MyLessonsService } from './my-lessons.service';
   // (аудит В4), тот же приём, что у ClassesModule. ClassesModule даёт и
   // ClassRecord для MyLessonsService/MyLessonsArchiveService (`/me/lessons`,
   // ТЗ docs/PLAN.md §11 и §14).
-  imports: [LessonModelModule, ClassesModule, BroadcastsModule, UserModelModule],
+  imports: [
+    LessonModelModule,
+    ClassesModule,
+    BroadcastsModule,
+    UserModelModule,
+    MaterialModelModule,
+  ],
   controllers: [LessonsController, MyLessonsController],
   providers: [
     LessonsService,
