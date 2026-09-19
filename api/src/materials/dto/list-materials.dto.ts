@@ -1,9 +1,10 @@
 // Query GET /materials (слой 3.1). `classId` — не `@IsMongoId()`: кривой id
 // не ошибка формы, а фильтр без результатов (MaterialsService.list), тот же
 // принцип, что у поиска по несуществующему тегу — пустой список, а не 400/500.
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   MATERIAL_KINDS,
+  TAG_LIMITS,
   type ListMaterialsQuery,
   type MaterialKind,
 } from '@xuanxue/shared';
@@ -17,6 +18,13 @@ export class ListMaterialsDto implements ListMaterialsQuery {
   @IsOptional()
   @IsIn(MATERIAL_KINDS)
   kind?: MaterialKind;
+
+  // Точное совпадение тега (ADR-0058) — пустая строка ведёт себя как
+  // «фильтр не задан», см. buildMaterialsFilter.
+  @IsOptional()
+  @IsString()
+  @MaxLength(TAG_LIMITS.length)
+  tag?: string;
 
   @ListLimit()
   limit?: number;

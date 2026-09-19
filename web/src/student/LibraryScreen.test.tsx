@@ -23,6 +23,7 @@ function makeMaterial(overrides: Partial<MyMaterialDto> = {}): MyMaterialDto {
     title: 'Ван Пэйшэн, «Ба-гуа-чжан»',
     kind: 'book',
     classTitles: [],
+    tags: [],
     url: 'https://example.com/book',
     ...overrides,
   };

@@ -16,6 +16,7 @@ import {
   MATERIAL_KINDS,
   MATERIAL_LIMITS,
   MATERIAL_MAX_CLASS_IDS,
+  TAG_LIMITS,
   type CreateMaterialInput,
   type MaterialAccess,
   type MaterialKind,
@@ -45,4 +46,13 @@ export class CreateMaterialDto implements CreateMaterialInput {
   @IsOptional()
   @IsIn(MATERIAL_ACCESS_LEVELS)
   access?: MaterialAccess;
+
+  // Рубрикация свободным текстом (ADR-0058) — нормализация (обрезка,
+  // дедуп без учёта регистра) при записи, MaterialsService.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(TAG_LIMITS.perRecord)
+  @IsString({ each: true })
+  @MaxLength(TAG_LIMITS.length, { each: true })
+  tags?: string[];
 }

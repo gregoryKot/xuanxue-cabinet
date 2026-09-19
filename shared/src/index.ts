@@ -40,6 +40,7 @@ export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
 export { type PluralForms, pluralRu } from './plural-ru';
+export { TAG_LIMITS, normalizeTags } from './tags';
 export type {
   UserRole,
   UserStatus,

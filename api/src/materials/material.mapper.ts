@@ -9,8 +9,13 @@ import { MATERIAL_ENCRYPT_SCHEMA, type MaterialRecord } from './material.schema'
 
 /** MaterialRecord как его отдаёт `.lean()` до расшифровки —
  * `Pick<T, keyof T>` вместо простого пересечения, тот же приём, что у
- * RawLeanGradingCommentPreset (grading-comment-preset.mapper.ts). */
-export type RawLeanMaterial = Pick<MaterialRecord, keyof MaterialRecord> & {
+ * RawLeanGradingCommentPreset (grading-comment-preset.mapper.ts). `tags` —
+ * честно необязателен: у материалов, созданных до ADR-0058, поля в
+ * документе нет, а `.lean()` default схемы при чтении не подставляет —
+ * маппер ниже сам отдаёт `[]`, миграция не нужна (expand, CLAUDE.md
+ * «Данные»). */
+export type RawLeanMaterial = Omit<Pick<MaterialRecord, keyof MaterialRecord>, 'tags'> & {
+  tags?: string[];
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +33,7 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
     kind: doc.kind,
     classIds: doc.classIds.map((id) => id.toString()),
     access: doc.access,
+    tags: doc.tags ?? [],
     createdBy: doc.createdBy.toString(),
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
@@ -56,6 +62,7 @@ export function toMyMaterialDto(
     classTitles: doc.classIds
       .map((id) => classTitleById.get(id.toString()))
       .filter((title): title is string => title !== undefined),
+    tags: doc.tags ?? [],
   };
   // `locked`/`url` — ключи, не значения undefined: `toHaveProperty` и
   // JSON.stringify не должны видеть ни намёка на то, что url когда-то был

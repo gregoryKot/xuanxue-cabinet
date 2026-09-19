@@ -266,6 +266,147 @@ describe('MaterialsService', () => {
     expect(created.classIds).toEqual([classId]);
   });
 
+  // ADR-0058: нормализация при записи — тег становится фильтром, опечатка
+  // не должна плодить второе значение.
+  describe('теги (ADR-0058)', () => {
+    it('create: нормализует теги (обрезка, дедуп без учёта регистра)', async () => {
+      const created = await service.create(
+        {
+          title: 'Разбор формы',
+          url: 'https://example.com/form',
+          kind: 'video',
+          tags: ['  Старшая ', 'старшая', 'разминка  группа'],
+        },
+        AUTHOR_ID,
+      );
+
+      expect(created.tags).toEqual(['Старшая', 'разминка группа']);
+    });
+
+    it('create без tags — пустой массив, не undefined', async () => {
+      const created = await service.create(
+        { title: 'Без тегов', url: 'https://example.com/x', kind: 'article' },
+        AUTHOR_ID,
+      );
+
+      expect(created.tags).toEqual([]);
+    });
+
+    it('update: нормализует присланные теги', async () => {
+      const created = await service.create(
+        { title: 'Материал', url: 'https://example.com/y', kind: 'book', tags: ['раз'] },
+        AUTHOR_ID,
+      );
+
+      const updated = await service.update(created.id, {
+        tags: ['Два', 'два', '  Три  '],
+      });
+
+      expect(updated.tags).toEqual(['Два', 'Три']);
+    });
+
+    it('update без tags — прежние теги не трогает', async () => {
+      const created = await service.create(
+        {
+          title: 'Материал',
+          url: 'https://example.com/z',
+          kind: 'book',
+          tags: ['старшая'],
+        },
+        AUTHOR_ID,
+      );
+
+      const updated = await service.update(created.id, { title: 'Новое название' });
+
+      expect(updated.tags).toEqual(['старшая']);
+    });
+
+    it('create → list: read-after-write — фильтр по тегу находит материал', async () => {
+      const created = await service.create(
+        {
+          title: 'Разбор толкающих рук',
+          url: 'https://example.com/tui-shou',
+          kind: 'video',
+          tags: ['старшая', 'толкающие руки'],
+        },
+        AUTHOR_ID,
+      );
+      await service.create(
+        { title: 'Другой материал', url: 'https://example.com/o', kind: 'article' },
+        AUTHOR_ID,
+      );
+
+      const list = await service.list({ tag: 'старшая' });
+
+      expect(list).toHaveLength(1);
+      expect(list[0]?.id).toBe(created.id);
+    });
+
+    it('list: фильтр по несуществующему тегу — пустой список, не ошибка', async () => {
+      await service.create(
+        {
+          title: 'Материал',
+          url: 'https://example.com/a',
+          kind: 'article',
+          tags: ['раз'],
+        },
+        AUTHOR_ID,
+      );
+
+      const list = await service.list({ tag: 'нет-такого' });
+
+      expect(list).toEqual([]);
+    });
+
+    it('list: пустая строка в query.tag — как отсутствие фильтра', async () => {
+      await service.create(
+        {
+          title: 'Материал',
+          url: 'https://example.com/b',
+          kind: 'article',
+          tags: ['раз'],
+        },
+        AUTHOR_ID,
+      );
+
+      const list = await service.list({ tag: '' });
+
+      expect(list).toHaveLength(1);
+    });
+
+    it('документ без поля tags (до этого PR) — listForStudent отдаёт []', async () => {
+      const created = await service.create(
+        { title: 'Старый материал', url: 'https://example.com/old', kind: 'book' },
+        AUTHOR_ID,
+      );
+      // Имитируем документ, заведённый до ADR-0058: поля в базе нет вовсе.
+      await model.collection.updateOne(
+        { _id: new Types.ObjectId(created.id) },
+        { $unset: { tags: '' } },
+      );
+
+      const list = await service.listForStudent({}, false);
+
+      expect(list[0]?.tags).toEqual([]);
+    });
+
+    it('listForStudent: отдаёт теги ученику', async () => {
+      await service.create(
+        {
+          title: 'Разминка',
+          url: 'https://example.com/warmup',
+          kind: 'video',
+          tags: ['разминка'],
+        },
+        AUTHOR_ID,
+      );
+
+      const list = await service.listForStudent({}, false);
+
+      expect(list[0]?.tags).toEqual(['разминка']);
+    });
+  });
+
   it('listForStudent: явный лимит обрезает список', async () => {
     for (const title of ['Первый', 'Второй', 'Третий']) {
       await service.create(
