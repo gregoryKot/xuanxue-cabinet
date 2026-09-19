@@ -23,6 +23,7 @@ import { ExamsModule } from './exams/exams.module';
 import { GradingPresetsModule } from './grading-presets/grading-presets.module';
 import { MaterialsModule } from './materials/materials.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PaymentsModule } from './payments/payments.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
 import { HealthController } from './health/health.controller';
@@ -75,6 +76,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     GradingPresetsModule,
     MaterialsModule,
     NotificationsModule,
+    PaymentsModule,
     SettingsModule,
     SummaryModule,
     UsersModule,

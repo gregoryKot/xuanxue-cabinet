@@ -92,6 +92,11 @@ import {
   MaterialSchema,
   MATERIAL_FIELD_POLICY,
 } from '../materials/material.schema';
+import {
+  PaymentRecord,
+  PaymentSchema,
+  PAYMENT_FIELD_POLICY,
+} from '../payments/payment.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -180,5 +185,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: MaterialRecord.name,
     schema: MaterialSchema,
     fieldPolicy: MATERIAL_FIELD_POLICY,
+  },
+  {
+    name: PaymentRecord.name,
+    schema: PaymentSchema,
+    fieldPolicy: PAYMENT_FIELD_POLICY,
   },
 ];

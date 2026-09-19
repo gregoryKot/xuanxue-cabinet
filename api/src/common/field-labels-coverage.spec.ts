@@ -35,6 +35,8 @@ import { CreateLessonDto } from '../lessons/dto/create-lesson.dto';
 import { ListLessonsDto } from '../lessons/dto/list-lessons.dto';
 import { UpdateLessonDto } from '../lessons/dto/update-lesson.dto';
 import { UpdateNotificationPrefsDto } from '../notifications/dto/update-notification-prefs.dto';
+import { ConfirmPaymentDto } from '../payments/dto/confirm-payment.dto';
+import { ListPaymentsDto } from '../payments/dto/list-payments.dto';
 import { PreviewSettingsDto } from '../settings/dto/preview-settings.dto';
 import {
   UpdateSettingsDto,
@@ -80,6 +82,8 @@ const DTO_CLASSES: DtoConstructor[] = [
   ListLessonsDto,
   UpdateLessonDto,
   UpdateNotificationPrefsDto,
+  ConfirmPaymentDto,
+  ListPaymentsDto,
   PreviewSettingsDto,
   UpdateSettingsDto,
   UpdateTemplatesDto,

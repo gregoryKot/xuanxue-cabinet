@@ -1,6 +1,6 @@
 {
   "web/src/app/routeModules.ts": 357,
-  "shared/src/index.ts": 332,
+  "shared/src/index.ts": 350,
   "shared/src/exams.ts": 315,
   "api/test/exam-items.e2e-spec.ts": 297,
   "api/test/exams.e2e-spec.ts": 295,
@@ -23,7 +23,7 @@
   "api/src/exams/exam-attempts.service.ts": 206,
   "api/test/telegram-new-question.e2e-spec.ts": 196,
   "api/src/exams/exam-bot.service.ts": 190,
-  "api/src/common/model.registry.ts": 184,
+  "api/src/common/model.registry.ts": 194,
   "api/src/telegram/handlers/message.handler.ts": 184,
   "api/src/telegram/handlers/start.handler.test-support.ts": 182,
   "api/src/broadcasts/broadcast.inserts.ts": 181,

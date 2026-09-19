@@ -316,6 +316,24 @@ export {
   MY_MATERIALS_LIMIT_DEFAULT,
   MY_MATERIALS_LIMIT_MAX,
 } from './materials';
+export type {
+  PaymentStatus,
+  PaymentDto,
+  MyPaymentDto,
+  PaymentsPageDto,
+  ListPaymentsQuery,
+  ConfirmPaymentInput,
+} from './payments';
+export {
+  PAYMENT_STATUSES,
+  MONTH_KEY_RE,
+  isMonthKey,
+  PAYMENT_LIMITS,
+  PAYMENT_MONTH_INVALID_MESSAGE,
+  PAYMENT_STUDENT_NOT_FOUND_MESSAGE,
+  PAYMENT_STAFF_NOT_ELIGIBLE_MESSAGE,
+  PAYMENT_NOTHING_TO_REVOKE_MESSAGE,
+} from './payments';
 
 /** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
 export const SCHOOL_TZ = 'Asia/Jerusalem';
