@@ -11,6 +11,7 @@ import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { ClassesService } from '../classes/classes.service';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
+import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { SeedService, SeedValidationFailedError } from './seed.service';
@@ -47,6 +48,7 @@ describe('SeedService', () => {
   let lessonModel: Model<LessonRecord>;
   let channelModel: Model<ChannelRecord>;
   let userModel: Model<UserRecord>;
+  let materialModel: Model<MaterialRecord>;
   let classesService: ClassesService;
   let seedService: SeedService;
   let dir: string;
@@ -58,7 +60,14 @@ describe('SeedService', () => {
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    classesService = new ClassesService(classModel, lessonModel, channelModel, userModel);
+    materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
+    classesService = new ClassesService(
+      classModel,
+      lessonModel,
+      channelModel,
+      userModel,
+      materialModel,
+    );
     seedService = new SeedService(classModel, classesService);
     dir = await mkdtemp(join(tmpdir(), 'xuanxue-seed-'));
   }, 60_000);
@@ -210,6 +219,7 @@ describe('SeedService', () => {
       lessonModel,
       channelModel,
       userModel,
+      materialModel,
     );
     const freshSeedService = new FreshSeedService(classModel, freshClassesService);
 

@@ -117,6 +117,121 @@ describe('MaterialsService', () => {
     expect(list).toEqual([]);
   });
 
+  // ADR-0056: привязка к дате занятия рядом с привязкой к курсу.
+  it('create → list: lessonIds сохраняются и приходят обратно (read-after-write)', async () => {
+    const lessonId = new Types.ObjectId().toString();
+
+    const created = await service.create(
+      {
+        title: 'Ссылка со вторника',
+        url: 'https://example.com/link',
+        kind: 'article',
+        lessonIds: [lessonId],
+      },
+      AUTHOR_ID,
+    );
+
+    expect(created.lessonIds).toEqual([lessonId]);
+    const list = await service.list({});
+    expect(list[0]?.lessonIds).toEqual([lessonId]);
+  });
+
+  it('list: фильтр по lessonId — материал другой даты не попадает', async () => {
+    const lessonA = new Types.ObjectId().toString();
+    const lessonB = new Types.ObjectId().toString();
+    const created = await service.create(
+      {
+        title: 'Материал даты А',
+        url: 'https://example.com/a',
+        kind: 'document',
+        lessonIds: [lessonA],
+      },
+      AUTHOR_ID,
+    );
+    await service.create(
+      {
+        title: 'Материал даты Б',
+        url: 'https://example.com/b',
+        kind: 'document',
+        lessonIds: [lessonB],
+      },
+      AUTHOR_ID,
+    );
+
+    const list = await service.list({ lessonId: lessonA });
+
+    expect(list).toHaveLength(1);
+    expect(list[0]?.id).toBe(created.id);
+  });
+
+  it('list: фильтр по lessonId и classId одновременно — материал должен подойти под оба', async () => {
+    const classId = new Types.ObjectId().toString();
+    const lessonId = new Types.ObjectId().toString();
+    const both = await service.create(
+      {
+        title: 'И курс, и дата',
+        url: 'https://example.com/both',
+        kind: 'document',
+        classIds: [classId],
+        lessonIds: [lessonId],
+      },
+      AUTHOR_ID,
+    );
+    await service.create(
+      {
+        title: 'Только курс',
+        url: 'https://example.com/class-only',
+        kind: 'document',
+        classIds: [classId],
+      },
+      AUTHOR_ID,
+    );
+    await service.create(
+      {
+        title: 'Только дата',
+        url: 'https://example.com/lesson-only',
+        kind: 'document',
+        lessonIds: [lessonId],
+      },
+      AUTHOR_ID,
+    );
+
+    const list = await service.list({ classId, lessonId });
+
+    expect(list).toHaveLength(1);
+    expect(list[0]?.id).toBe(both.id);
+  });
+
+  it('list: кривой lessonId — пустой список, не ошибка', async () => {
+    await service.create(
+      { title: 'Материал школы', url: 'https://example.com/x', kind: 'video' },
+      AUTHOR_ID,
+    );
+
+    const list = await service.list({ lessonId: 'не-id' });
+
+    expect(list).toEqual([]);
+  });
+
+  it('update: меняет lessonIds и не трогает classIds', async () => {
+    const classId = new Types.ObjectId().toString();
+    const lessonId = new Types.ObjectId().toString();
+    const created = await service.create(
+      {
+        title: 'Материал',
+        url: 'https://example.com/upd',
+        kind: 'document',
+        classIds: [classId],
+      },
+      AUTHOR_ID,
+    );
+
+    const updated = await service.update(created.id, { lessonIds: [lessonId] });
+
+    expect(updated.lessonIds).toEqual([lessonId]);
+    expect(updated.classIds).toEqual([classId]);
+  });
+
   it('list: фильтр по kind', async () => {
     await service.create(
       { title: 'Видео разбора формы', url: 'https://example.com/v', kind: 'video' },
