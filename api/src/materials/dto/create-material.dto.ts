@@ -17,6 +17,7 @@ import {
   MATERIAL_LIMITS,
   MATERIAL_MAX_CLASS_IDS,
   TAG_LIMITS,
+  MATERIAL_MAX_LESSON_IDS,
   type CreateMaterialInput,
   type MaterialAccess,
   type MaterialKind,
@@ -42,6 +43,13 @@ export class CreateMaterialDto implements CreateMaterialInput {
   @ArrayMaxSize(MATERIAL_MAX_CLASS_IDS)
   @IsMongoId({ each: true })
   classIds?: string[];
+
+  // ADR-0056: привязка к дате занятия рядом с привязкой к курсу.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MATERIAL_MAX_LESSON_IDS)
+  @IsMongoId({ each: true })
+  lessonIds?: string[];
 
   @IsOptional()
   @IsIn(MATERIAL_ACCESS_LEVELS)

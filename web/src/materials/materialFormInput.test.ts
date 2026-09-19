@@ -17,6 +17,7 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
     url: 'https://example.com/book',
     kind: 'book',
     classIds: ['c1'],
+    lessonIds: [],
     access: 'all',
     tags: [],
     createdBy: 'u1',

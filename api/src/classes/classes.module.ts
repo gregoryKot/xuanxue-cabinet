@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ChannelModelModule } from '../channels/channel-model.module';
 import { LessonModelModule } from '../lessons/lesson-model.module';
+import { MaterialModelModule } from '../materials/material-model.module';
 import { UserModelModule } from '../users/user-model.module';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesController } from './classes.controller';
@@ -22,6 +23,10 @@ import { ClassesService } from './classes.service';
     // create()/update() проверяют leaderId через assertTeacherExists (аудит
     // В4) — только модель UserRecord, тот же приём.
     UserModelModule,
+    // remove() отвязывает удалённый класс от materials.classIds (ADR-0056,
+    // ADR-0047 «Последствия») — только модель, тот же приём: полный импорт
+    // MaterialsModule замкнул бы цикл через её собственный импорт ClassesModule.
+    MaterialModelModule,
   ],
   controllers: [ClassesController],
   providers: [ClassesService],

@@ -50,6 +50,9 @@ export interface MaterialDto {
   url: string;
   kind: MaterialKind;
   classIds: string[];
+  /** Даты занятий, к которым привязан материал (ADR-0056) — рядом с
+   * `classIds`, тот же смысл рубрикации и фильтра, не доступа. */
+  lessonIds: string[];
   access: MaterialAccess;
   /** Рубрикация свободным текстом (ADR-0058) — фильтр списка, не доступ:
    * кто видит материал, решает `access`. Нормализуется при записи
@@ -65,6 +68,7 @@ export interface CreateMaterialInput {
   url: string;
   kind: MaterialKind;
   classIds?: string[];
+  lessonIds?: string[];
   access?: MaterialAccess;
   tags?: string[];
 }
@@ -74,12 +78,16 @@ export interface UpdateMaterialInput {
   url?: string;
   kind?: MaterialKind;
   classIds?: string[];
+  lessonIds?: string[];
   access?: MaterialAccess;
   tags?: string[];
 }
 
 export interface ListMaterialsQuery {
   classId?: string;
+  /** Дата занятия (ADR-0056) — сочетается с `classId` через «И», не «ИЛИ»
+   * (materials.queries.ts, buildMaterialsFilter). */
+  lessonId?: string;
   kind?: MaterialKind;
   /** Точное совпадение тега — рубрикация, серверный фильтр (ADR-0058). */
   tag?: string;
@@ -119,6 +127,11 @@ export const MATERIAL_LIMITS = { title: 200, url: 500 } as const;
 /** Максимум занятий, к которым можно привязать один материал — не про
  * доступ (ADR-0047), просто разумный потолок формы. */
 export const MATERIAL_MAX_CLASS_IDS = 20;
+
+/** Максимум дат занятий у одного материала (ADR-0056) — тот же потолок
+ * формы, что и у `MATERIAL_MAX_CLASS_IDS`, своя константа: привязки разные
+ * и растут независимо. */
+export const MATERIAL_MAX_LESSON_IDS = 20;
 
 // VOICE.md: конкретика вместо «произошла ошибка» — что случилось и что делать.
 export const MATERIAL_NOT_FOUND_MESSAGE =

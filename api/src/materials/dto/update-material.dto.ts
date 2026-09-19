@@ -18,6 +18,7 @@ import {
   MATERIAL_LIMITS,
   MATERIAL_MAX_CLASS_IDS,
   TAG_LIMITS,
+  MATERIAL_MAX_LESSON_IDS,
   type MaterialAccess,
   type MaterialKind,
   type UpdateMaterialInput,
@@ -46,6 +47,13 @@ export class UpdateMaterialDto implements UpdateMaterialInput {
   @ArrayMaxSize(MATERIAL_MAX_CLASS_IDS)
   @IsMongoId({ each: true })
   classIds?: string[];
+
+  // ADR-0056: привязка к дате занятия рядом с привязкой к курсу.
+  @OptionalNotNull()
+  @IsArray()
+  @ArrayMaxSize(MATERIAL_MAX_LESSON_IDS)
+  @IsMongoId({ each: true })
+  lessonIds?: string[];
 
   @OptionalNotNull()
   @IsIn(MATERIAL_ACCESS_LEVELS)

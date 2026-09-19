@@ -21,6 +21,8 @@ import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord } from '../classes/class.schema';
+import { MaterialRecord } from '../materials/material.schema';
+import { detachMaterialReference } from '../materials/materials.queries';
 import { assertLeaderIdIfProvided } from '../users/assert-teacher';
 import { UserRecord } from '../users/user.schema';
 import { findLinkBroadcastStatusByLessonId } from './lesson-broadcast-status';
@@ -54,6 +56,8 @@ export class LessonsService {
     private readonly lessonLinkRebuild: LessonLinkRebuildService,
     @InjectModel(BroadcastRecord.name) private readonly broadcast: Model<BroadcastRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
+    @InjectModel(MaterialRecord.name)
+    private readonly materialModel: Model<MaterialRecord>,
   ) {}
 
   async list(query: ListLessonsQuery): Promise<LessonDto[]> {
@@ -118,8 +122,12 @@ export class LessonsService {
     return toLessonDto(decryptRecord(doc, LESSON_ENCRYPT_SCHEMA));
   }
 
-  remove(id: string): Promise<void> {
-    return deleteOneOffLesson(this.model, id);
+  // Отвязка от materials.lessonIds после удаления, не до: если удаление
+  // упадёт (дата из расписания, ConflictError), привязка должна остаться
+  // как была (ADR-0056 «Последствия»).
+  async remove(id: string): Promise<void> {
+    await deleteOneOffLesson(this.model, id);
+    await detachMaterialReference(this.materialModel, 'lessonIds', id);
   }
 
   async addRecording(

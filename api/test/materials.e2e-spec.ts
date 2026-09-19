@@ -2,6 +2,7 @@
 // доступ по роли, не по владельцу (e2e-support/README.md, «данные школы»).
 // Настоящий AppModule на MongoMemoryServer — те же гвард/пайпы/фильтры, что
 // видит браузер.
+import { Types } from 'mongoose';
 import type { ApiErrorBody, MaterialDto, MyMaterialDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -124,6 +125,42 @@ describe('Материалы (e2e)', () => {
 
       expect(list.status).toBe(200);
       expect((list.body as MaterialDto[]).some((m) => m.id === dto.id)).toBe(true);
+    });
+  });
+
+  // ADR-0056: привязка к дате занятия рядом с привязкой к курсу.
+  describe('привязка к дате занятия (lessonIds)', () => {
+    it('POST с lessonIds — сохраняется и приходит обратно', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const lessonId = new Types.ObjectId().toString();
+
+      const created = await postMaterial(cookie, {
+        ...VALID_BODY,
+        lessonIds: [lessonId],
+      });
+
+      expect(created.status).toBe(201);
+      expect((created.body as MaterialDto).lessonIds).toEqual([lessonId]);
+    });
+
+    it('GET /materials?lessonId= — фильтрует по дате занятия', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const lessonId = new Types.ObjectId().toString();
+      const created = await postMaterial(cookie, {
+        ...VALID_BODY,
+        lessonIds: [lessonId],
+      });
+      await postMaterial(cookie, VALID_BODY);
+      const dto = created.body as MaterialDto;
+
+      const list = await request(server())
+        .get('/api/materials')
+        .query({ lessonId })
+        .set('Cookie', cookie);
+
+      expect(list.status).toBe(200);
+      const ids = (list.body as MaterialDto[]).map((m) => m.id);
+      expect(ids).toEqual([dto.id]);
     });
   });
 
