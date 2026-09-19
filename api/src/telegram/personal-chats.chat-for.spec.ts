@@ -177,9 +177,13 @@ describe('PersonalChats.chatFor', () => {
     const chat = await personalChats.chatFor(accountant._id.toString(), 'payments');
 
     expect(chat?.chatId).toBe('555');
-    // list()/listFor() бухгалтера в принципе не видят (personal-chats.spec.ts) —
-    // chatFor() не сверяется со штатом, это и есть разница механики.
-    await expect(personalChats.listFor('payments', NOW)).resolves.toEqual([]);
+    // list() — фиксированный пул штата (teacher/assistant/admin) для
+    // identity-проверок и меню учителя, бухгалтера в нём в принципе нет
+    // (personal-chats.spec.ts) — chatFor() не сверяется со штатом, это и есть
+    // разница механики. listFor('payments') того же бухгалтера, наоборот,
+    // находит (personal-chats.spec.ts, «бухгалтер... — находится») — пул
+    // listFor() строится от вида уведомления, а не от штата.
+    await expect(personalChats.list(NOW)).resolves.toEqual([]);
   });
 });
 

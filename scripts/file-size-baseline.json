@@ -1,6 +1,6 @@
 {
   "web/src/app/routeModules.ts": 357,
-  "shared/src/index.ts": 351,
+  "shared/src/index.ts": 352,
   "shared/src/exams.ts": 319,
   "api/test/exam-items.e2e-spec.ts": 297,
   "api/test/exams.e2e-spec.ts": 295,

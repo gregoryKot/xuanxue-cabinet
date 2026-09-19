@@ -4,6 +4,7 @@
 import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
+import type { UserRole } from '@xuanxue/shared';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
@@ -22,8 +23,15 @@ let notificationPrefsModel: Model<NotificationPrefsRecord>;
 let notificationPrefsService: NotificationPrefsService;
 let personalChats: PersonalChats;
 
-async function seedConnectedTeacher(telegramId: number, name: string): Promise<string> {
-  const teacher = await userModel.create({ name, telegramId, roles: ['teacher'] });
+// Общий сидер для listFor(): пользователь с любым набором ролей и активным
+// личным каналом. seedConnectedTeacher — частный случай (['teacher']), не
+// вторая реализация того же самого (CLAUDE.md «Одна механика»).
+async function seedConnectedUser(
+  telegramId: number,
+  name: string,
+  roles: UserRole[],
+): Promise<string> {
+  const user = await userModel.create({ name, telegramId, roles });
   await channelModel.create({
     type: 'telegram',
     title: `Личные сообщения: ${name}`,
@@ -31,7 +39,11 @@ async function seedConnectedTeacher(telegramId: number, name: string): Promise<s
     target: String(telegramId),
     active: true,
   });
-  return teacher._id.toString();
+  return user._id.toString();
+}
+
+async function seedConnectedTeacher(telegramId: number, name: string): Promise<string> {
+  return seedConnectedUser(telegramId, name, ['teacher']);
 }
 
 beforeAll(async () => {
@@ -143,7 +155,12 @@ describe('PersonalChats.list', () => {
     ]);
   });
 
-  it('бухгалтер с личным каналом — не в списке: прав нет, деньги — этап 3', async () => {
+  // Граница с listFor(): list() — фиксированный пул штата для identity-
+  // проверок и меню учителя (предпросмотр, «Изменить тему»), бухгалтеру это
+  // меню не положено, даже если ему адресован вид уведомления payments
+  // (см. describe('PersonalChats.listFor') ниже) — без этого теста следующий
+  // рефакторинг тихо стирает границу.
+  it('бухгалтер с личным каналом — не в списке: это пул штата, не адресатов вида уведомления', async () => {
     await userModel.create({ name: 'Бухгалтер', telegramId: 666, roles: ['accountant'] });
     await channelModel.create({
       type: 'telegram',
@@ -260,5 +277,45 @@ describe('PersonalChats.listFor', () => {
 
     debug.mockRestore();
     warn.mockRestore();
+  });
+
+  // Регрессия на тихий отказ: до починки activeContacts() всегда брал
+  // кандидатов из listTeacherContacts (teacher/assistant/admin), поэтому
+  // listFor('payments') был пуст всегда, даже когда бухгалтер подключил бота
+  // и включил вид — «оплаты и долги» не доходили ни при каких настройках.
+  it('бухгалтер с личным каналом и включённым payments — находится (раньше listFor всегда возвращал пусто)', async () => {
+    const accountantId = await seedConnectedUser(777, 'Маша', ['accountant']);
+
+    const chats = await personalChats.listFor('payments', NOW);
+
+    expect(chats).toEqual([{ chatId: '777', userId: accountantId, name: 'Маша' }]);
+  });
+
+  it('учитель не попадает в listFor(payments) — этого вида у него нет по ролям, даже если подключён', async () => {
+    await seedConnectedTeacher(111, 'Мария');
+
+    const chats = await personalChats.listFor('payments', NOW);
+
+    expect(chats).toEqual([]);
+  });
+
+  it('post_draft по-прежнему находит учителя и админа, но не бухгалтера', async () => {
+    await seedConnectedTeacher(111, 'Мария');
+    await seedConnectedUser(222, 'Дима', ['admin']);
+    await seedConnectedUser(333, 'Маша', ['accountant']);
+
+    const chats = await personalChats.listFor('post_draft', NOW);
+
+    expect(chats.map((c) => c.name).sort()).toEqual(['Дима', 'Мария']);
+  });
+
+  it('человек с двумя ролями (учитель + бухгалтер) — в обоих пулах по своим видам', async () => {
+    await seedConnectedUser(444, 'Оля', ['teacher', 'accountant']);
+
+    const forPostDraft = await personalChats.listFor('post_draft', NOW);
+    const forPayments = await personalChats.listFor('payments', NOW);
+
+    expect(forPostDraft.map((c) => c.name)).toEqual(['Оля']);
+    expect(forPayments.map((c) => c.name)).toEqual(['Оля']);
   });
 });

@@ -4,7 +4,7 @@
 // отправка (планировщик, тексты, кнопка «Исправить») следующим слоем, здесь
 // её нет. Общий контракт api/web/бота: DTO в api объявляется как `implements`
 // типов ниже, расхождение ловит tsc (CLAUDE.md «Слои»).
-import type { UserRole } from './auth';
+import { USER_ROLES, type UserRole } from './auth';
 
 export const NOTIFICATION_KINDS = [
   'lesson_soon', // занятие скоро — ученику
@@ -104,6 +104,21 @@ export function defaultNotifications(roles: UserRole[]): NotificationKind[] {
     for (const kind of DEFAULT_NOTIFICATIONS_BY_ROLE[role]) enabled.add(kind);
   }
   return NOTIFICATION_KINDS.filter((kind) => enabled.has(kind));
+}
+
+/** Роли, которым этот вид уведомления положен по умолчанию — кандидаты в
+ * получатели (PersonalChats.listFor, api/src/telegram/personal-chats.ts).
+ * Почему кандидаты — именно дефолт роли, а не «все подряд, дальше отфильтрует
+ * NotificationPrefsService»: переключатель вида человек может выключить, но
+ * не может ВКЛЮЧИТЬ вид, которого у него нет по ролям — экран «Профиль»
+ * (`NotificationPrefsSection`) и команда `/notifications` в боте показывают
+ * только виды, доступные по ролям (PLAN.md §13). Значит дефолт роли — точная
+ * верхняя граница множества получателей, а не приближение: расширять поиск
+ * шире него незачем, там просто некому быть найденным. Порядок результата —
+ * канонический по `USER_ROLES` (тот же приём, что у `defaultNotifications` с
+ * `NOTIFICATION_KINDS`), не порядок обхода объекта. */
+export function rolesWithNotification(kind: NotificationKind): UserRole[] {
+  return USER_ROLES.filter((role) => DEFAULT_NOTIFICATIONS_BY_ROLE[role].includes(kind));
 }
 
 /** То, что реально придёт человеку сейчас — дефолт роли с наложенными

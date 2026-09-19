@@ -285,6 +285,7 @@ export {
   NOTIFICATION_HINTS,
   defaultNotifications,
   isNotificationKind,
+  rolesWithNotification,
 } from './notifications';
 export type {
   GradingCommentPresetDto,

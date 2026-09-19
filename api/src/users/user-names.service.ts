@@ -16,7 +16,7 @@ export class UserNamesService {
    * просто пропущен, не 500 (тот же приём, что у `assertObjectId`, но здесь
    * молчаливый фильтр: недостающее имя в карточке — не ошибка вызывающего).
    * Пустой вход — пустая Map без обращения к базе. Лимит — как у
-   * `UsersService.listTeacherContacts`: «дай всё» без ограничения запрещено,
+   * `UsersService.listContactsWithRoles`: «дай всё» без ограничения запрещено,
    * даже для внутреннего использования. */
   async namesByIds(ids: string[]): Promise<Map<string, string>> {
     const validIds = ids.filter((id) => Types.ObjectId.isValid(id));
