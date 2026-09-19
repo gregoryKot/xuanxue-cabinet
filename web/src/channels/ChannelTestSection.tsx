@@ -7,7 +7,7 @@
 import type { CSSProperties } from 'react';
 import type { ChannelDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
-import { editorSectionStyle } from '../components/screenLayout';
+import { editorSectionStyle } from '../components/editorLayout';
 import { formatChannelTestResult } from './formatChannelTestResult';
 import { useChannelTest } from './useChannelTest';
 

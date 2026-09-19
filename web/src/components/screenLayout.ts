@@ -86,31 +86,6 @@ export const screenHintStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 
-// Колонка страницы-редактора уже, чем у экрана-списка: строка поля во всю
-// ширину монитора нечитаема, и владелец на это указал прямо (отзыв
-// 2026-09-15). Общая для редактора экзамена и редактора вопроса — числа
-// живут в одном месте (CLAUDE.md «Без магических чисел»).
-const EDITOR_COLUMN_MAX_WIDTH_PX = 680;
-
-export const editorPageStyle: CSSProperties = {
-  ...screenSectionStyle,
-  maxWidth: EDITOR_COLUMN_MAX_WIDTH_PX,
-  gap: 24,
-};
-
-/** Раздел страницы-редактора: волосяная линия сверху вместо рамки-карточки. */
-export const editorSectionStyle: CSSProperties = {
-  paddingTop: 24,
-  borderTop: '1px solid var(--line)',
-};
-
-/** Рубрика и заголовок страницы-редактора одной колонкой. */
-export const editorHeadingStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-};
-
 /** Текстовая ссылка-переход внутри экрана («Открыть очередь», «Открыть
  * вопросы»). Заводится здесь, а не рядом с первым использованием: у `<a>` нет
  * своей строки в index.css, поэтому без явного цвета браузер красит ссылку
@@ -141,26 +116,3 @@ export const textLinkButtonStyle: CSSProperties = {
   minHeight: 44,
   whiteSpace: 'nowrap',
 };
-
-/** Ряд действий в подвале страницы-редактора: «Сохранить» первой, рядом —
- * второе действие (components/EditorFooter.tsx, страницы занятия и занятия
- * расписания). */
-export const editorActionsRowStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 24,
-  flexWrap: 'wrap',
-};
-
-/** Опасное действие подвала («Отменить занятие», «Удалить из расписания») —
- * под волосяной линией, поодаль от «Сохранить»: на телефоне соседние кнопки
- * ловят промах пальца (аудит 2026-09-15, важно №2). */
-export const editorDangerRowStyle: CSSProperties = {
-  marginTop: 22,
-  paddingTop: 16,
-  borderTop: '1px solid var(--line)',
-};
-
-/** Кнопка внутри такого ряда — текстом, без отступов: силуэт `danger` и так
- * без заливки и контура (components/Button.tsx). */
-export const editorDangerButtonStyle: CSSProperties = { padding: 0 };

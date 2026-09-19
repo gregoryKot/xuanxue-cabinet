@@ -46,7 +46,15 @@ const headStyle: CSSProperties = {
   justifyContent: 'space-between',
   gap: 20,
 };
-const promptStyle: CSSProperties = { fontSize: 15, fontWeight: 500, lineHeight: 1.45 };
+// `minWidth: 0` — иначе формулировка не сжимается уже содержимого и толкает
+// статус за край карточки; `anywhere` — чтобы колонка стала уже длинного слова.
+const promptStyle: CSSProperties = {
+  fontSize: 15,
+  fontWeight: 500,
+  lineHeight: 1.45,
+  minWidth: 0,
+  overflowWrap: 'anywhere',
+};
 // Тон статуса — --jade только на «Верно» (CLAUDE.md «Правило акцента»: смысл
 // «сдал/верно»), «N из M» и «Смотрите вы» — тушь приглушённого тона: киноварь
 // на этом экране уже занята кнопкой отправки оценки, второго красного пятна
@@ -57,7 +65,13 @@ const statusToneStyle: Record<'jade' | 'neutral', CSSProperties> = {
 };
 const statusStyle: CSSProperties = { flexShrink: 0 };
 const metaStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
-const answerStyle: CSSProperties = { margin: 0, fontSize: 16, lineHeight: 1.7 };
+// Свободный ответ — что угодно, включая ссылку одним словом.
+const answerStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 16,
+  lineHeight: 1.7,
+  overflowWrap: 'anywhere',
+};
 const optionsListStyle: CSSProperties = {
   margin: 0,
   padding: 0,

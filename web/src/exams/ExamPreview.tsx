@@ -13,7 +13,8 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import { attemptHeaderStyle, attemptPageStyle } from '../attempt/attemptLayout';
-import { noteStyle, screenTitleStyle, textLinkStyle } from '../components/screenLayout';
+import { noteStyle, screenTitleStyle } from '../components/screenLayout';
+import { backLinkStyle } from '../components/editorLayout';
 import { initialQuestionIds, initialShuffleQuestions } from './examQuestions';
 import { ExamPreviewQuestions } from './ExamPreviewQuestions';
 
@@ -43,7 +44,7 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
 
   return (
     <section style={attemptPageStyle}>
-      <Link to={`${EXAMS_PATH}/${exam.id}`} style={textLinkStyle}>
+      <Link to={`${EXAMS_PATH}/${exam.id}`} style={backLinkStyle}>
         {BACK_TEXT}
       </Link>
 

@@ -11,13 +11,13 @@ import type { ExamDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
+import { screenTitleStyle } from '../components/screenLayout';
 import {
+  backLinkStyle,
   editorHeadingStyle,
   editorPageStyle,
   editorSectionStyle,
-  screenTitleStyle,
-  textLinkStyle,
-} from '../components/screenLayout';
+} from '../components/editorLayout';
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useExamItems } from '../exam-items/useExamItems';
 import { ExamAboutFields } from './ExamAboutFields';
@@ -51,7 +51,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   return (
     <>
       <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={EXAMS_PATH} style={textLinkStyle}>
+        <Link to={EXAMS_PATH} style={backLinkStyle}>
           {BACK_TEXT}
         </Link>
 

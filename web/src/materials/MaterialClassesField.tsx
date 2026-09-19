@@ -7,6 +7,7 @@
 import { Link } from 'react-router-dom';
 import type { ClassDto } from '@xuanxue/shared';
 import { CheckboxListField } from '../components/CheckboxListField';
+import { textLinkStyle } from '../components/screenLayout';
 
 const LEGEND = 'Занятия';
 const HINT = 'Не отметите ни одного — материал увидят ученики любого занятия школы.';
@@ -31,8 +32,11 @@ export function MaterialClassesField({
       hint={<p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>{HINT}</p>}
       emptyMessage={
         <>
-          Занятий пока нет. Добавьте их в <Link to="/schedule">«Расписании»</Link> — потом
-          привяжите материал здесь.
+          Занятий пока нет. Добавьте их в{' '}
+          <Link to="/schedule" style={textLinkStyle}>
+            «Расписании»
+          </Link>{' '}
+          — потом привяжите материал здесь.
         </>
       }
     />

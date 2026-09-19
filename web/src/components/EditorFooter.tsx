@@ -10,7 +10,7 @@
 // что статус значит для ученика, как называется удаление и почему его нет.
 import type { CSSProperties, ReactNode } from 'react';
 import { Button } from './Button';
-import { editorActionsRowStyle } from './screenLayout';
+import { editorActionsRowStyle } from './editorLayout';
 import {
   DRAFT_PUBLISHED_ARCHIVED_LABELS_RU,
   draftPublishedArchivedTransitions,

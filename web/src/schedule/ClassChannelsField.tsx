@@ -12,6 +12,7 @@
 import { Link } from 'react-router-dom';
 import type { ChannelDto } from '@xuanxue/shared';
 import { ChannelPicker } from '../channels/ChannelPicker';
+import { textLinkStyle } from '../components/screenLayout';
 
 const EXPLANATION =
   'Сюда уйдут ссылка на занятие и запись. Telegram-группы с ботом подключаются к новым занятиям сами; здесь можно снять или добавить каналы.';
@@ -38,8 +39,11 @@ export function ClassChannelsField({
       }
       emptyMessage={
         <>
-          Каналов пока нет. Добавьте их на экране <Link to="/channels">«Каналы»</Link> —
-          потом выберите здесь.
+          Каналов пока нет. Добавьте их на экране{' '}
+          <Link to="/channels" style={textLinkStyle}>
+            «Каналы»
+          </Link>{' '}
+          — потом выберите здесь.
         </>
       }
     />

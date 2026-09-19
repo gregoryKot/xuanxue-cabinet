@@ -35,6 +35,13 @@ const rowStyle: CSSProperties = {
   padding: '10px 0',
   borderBottom: '1px solid var(--line)',
 };
+// Колонка формулировки в flex-строке: без `minWidth: 0` потомок не сжимается
+// уже своего содержимого, и длинный вопрос раздвигал бы строку, а с ней и
+// всю страницу редактора в горизонтальный скролл (CLAUDE.md «Мобильный
+// экран первым»). `anywhere` — чтобы колонка могла стать уже самого длинного
+// слова: глобальный `break-word` (index.css) рвёт строку, но min-content
+// колонки не трогает.
+const promptColumnStyle: CSSProperties = { minWidth: 0, overflowWrap: 'anywhere' };
 const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
 const noteStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
 
@@ -97,7 +104,7 @@ export function ExamQuestionSearch({
         <ul style={listStyle}>
           {candidates.map((item) => (
             <li key={item.id} style={rowStyle}>
-              <div>
+              <div style={promptColumnStyle}>
                 <div>{item.prompt}</div>
                 <div style={metaStyle}>{formatExamItemMeta(item)}</div>
               </div>

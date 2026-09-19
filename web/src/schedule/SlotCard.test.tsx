@@ -75,3 +75,35 @@ describe('SlotCard', () => {
     expect(screen.queryByText('без ссылки')).not.toBeInTheDocument();
   });
 });
+
+// Отзыв владельца 2026-09-19 со снимка «Расписания»: длинные названия
+// налезали на край карточки, время шло старостильными цифрами антиквы. Обе
+// причины были в стилях этого файла — гейты от возврата.
+describe('SlotCard — облик после отзыва 2026-09-19', () => {
+  it('боковой отступ карточки общий (18px), а не урезанные 4px', () => {
+    render(<SlotCard slot={makeSlot()} onSelect={vi.fn()} />);
+
+    expect(screen.getByRole('button').style.padding).toBe('14px 18px');
+  });
+
+  it('время — текстовым шрифтом, не антиквой', () => {
+    render(<SlotCard slot={makeSlot({ timeLabel: '08:00–09:00' })} onSelect={vi.fn()} />);
+
+    const time = screen.getByText('08:00–09:00');
+    expect(time.style.fontFamily).toBe('');
+    expect(time.style.fontVariantNumeric).toBe('tabular-nums');
+  });
+
+  it('длинное название рвётся, а не вылезает за колонку дня', () => {
+    render(
+      <SlotCard
+        slot={makeSlot({ title: 'Ицзиньцзин и Бадуаньцзинь' })}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Ицзиньцзин и Бадуаньцзинь').style.overflowWrap).toBe(
+      'anywhere',
+    );
+  });
+});

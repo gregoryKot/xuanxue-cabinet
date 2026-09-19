@@ -31,9 +31,9 @@ import {
   screenHintStyle,
   screenSectionStyle,
   screenTitleStyle,
-  textLinkStyle,
   wideScreenSectionStyle,
 } from '../components/screenLayout';
+import { backLinkStyle } from '../components/editorLayout';
 import { SkeletonLines } from '../components/Skeleton';
 import { AttemptReviewAnswers } from './AttemptReviewAnswers';
 import { GradingForm } from './GradingForm';
@@ -107,7 +107,7 @@ export default function AttemptReviewScreen() {
 
   return (
     <section style={wideScreenSectionStyle}>
-      <Link to="/grading" style={{ ...textLinkStyle, alignSelf: 'flex-start' }}>
+      <Link to="/grading" style={backLinkStyle}>
         Вернуться к очереди проверки
       </Link>
 

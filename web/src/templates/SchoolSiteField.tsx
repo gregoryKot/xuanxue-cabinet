@@ -19,11 +19,8 @@ import {
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
-import {
-  editorSectionStyle,
-  primaryActionStyle,
-  screenExplanationStyle,
-} from '../components/screenLayout';
+import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
+import { editorSectionStyle } from '../components/editorLayout';
 import { usePreviewMinutesField } from './usePreviewMinutesField';
 import { useSchoolSiteField } from './useSchoolSiteField';
 

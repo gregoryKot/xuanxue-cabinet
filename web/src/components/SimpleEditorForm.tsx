@@ -12,13 +12,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button, type ButtonVariant } from './Button';
 import { ConfirmDialog } from './ConfirmDialog';
 import { FormServerError, type FormError } from './FormServerError';
+import { screenTitleStyle } from './screenLayout';
 import {
+  backLinkStyle,
   editorHeadingStyle,
   editorPageStyle,
   editorSectionStyle,
-  screenTitleStyle,
-  textLinkStyle,
-} from './screenLayout';
+} from './editorLayout';
 import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
 
 const SAVE_LABEL = 'Сохранить';
@@ -85,7 +85,7 @@ export function SimpleEditorForm({
   return (
     <>
       <form style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={backPath} style={textLinkStyle}>
+        <Link to={backPath} style={backLinkStyle}>
           {backText}
         </Link>
 

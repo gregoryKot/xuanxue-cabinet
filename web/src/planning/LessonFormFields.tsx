@@ -9,6 +9,7 @@ import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { inheritedZoomHint } from './inheritedZoom';
 import type { LessonFormState } from './lessonFormInput';
+import { textLinkStyle } from '../components/screenLayout';
 
 interface LessonFormFieldsProps {
   state: LessonFormState;
@@ -41,7 +42,9 @@ export function LessonFormFields({
     return (
       <p style={{ margin: 0 }}>
         Сначала добавьте занятие в расписании.{' '}
-        <Link to="/schedule">Перейти в «Расписание»</Link>
+        <Link to="/schedule" style={textLinkStyle}>
+          Перейти в «Расписание»
+        </Link>
       </p>
     );
   }
