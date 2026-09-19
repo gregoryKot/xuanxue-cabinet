@@ -13,6 +13,7 @@ import {
   MATERIAL_NOT_FOUND_MESSAGE,
   MATERIALS_LIMIT_DEFAULT,
   MY_MATERIALS_LIMIT_DEFAULT,
+  normalizeTags,
   type CreateMaterialInput,
   type ListMaterialsQuery,
   type ListMyMaterialsQuery,
@@ -66,6 +67,9 @@ export class MaterialsService {
         kind: input.kind,
         classIds: input.classIds ?? [],
         access: input.access ?? 'all',
+        // Нормализация здесь, не в DTO: список — фильтр (ADR-0058), опечатка
+        // и дубль в базе разъехались бы с фильтром `tag` при чтении.
+        tags: normalizeTags(input.tags ?? []),
         createdBy,
       },
       MATERIAL_ENCRYPT_SCHEMA,
@@ -76,10 +80,15 @@ export class MaterialsService {
 
   async update(id: string, input: UpdateMaterialInput): Promise<MaterialDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
+    // `tags` нормализуется, только если его прислали — иначе PATCH без
+    // тегов случайно записал бы пустой нормализованный массив вместо
+    // «поле не трогать» (splitUpdate/OptionalNotNull — тот же принцип).
+    const patch =
+      input.tags === undefined ? input : { ...input, tags: normalizeTags(input.tags) };
     const doc = await this.model
       .findOneAndUpdate(
         { _id: id },
-        { $set: encryptRecord({ ...input }, MATERIAL_ENCRYPT_SCHEMA) },
+        { $set: encryptRecord({ ...patch }, MATERIAL_ENCRYPT_SCHEMA) },
         { returnDocument: 'after' },
       )
       .lean<RawLeanMaterial>();

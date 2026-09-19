@@ -16,5 +16,11 @@ export function buildMaterialsFilter(
     filter.classIds = query.classId;
   }
   if (query.kind !== undefined) filter.kind = query.kind;
+  // `tag` — просто @IsString() (list-materials.dto.ts), пустая строка
+  // проходит валидацию; истинностная проверка (не `!== undefined`) не даёт
+  // ей превратиться в фильтр «тег — пустая строка», который отдал бы
+  // пустой список вместо «фильтр не задан» (тот же исход, что нужен и для
+  // некорректного classId выше).
+  if (query.tag) filter.tags = query.tag;
   return filter;
 }

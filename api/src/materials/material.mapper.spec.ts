@@ -13,6 +13,7 @@ function material(overrides: Partial<RawLeanMaterial> = {}): RawLeanMaterial {
     kind: 'book',
     classIds: [],
     access: 'all',
+    tags: ['старшая'],
     createdBy: new Types.ObjectId(),
     createdAt: new Date('2026-09-10T08:00:00.000Z'),
     updatedAt: new Date('2026-09-12T09:30:00.000Z'),
@@ -34,10 +35,21 @@ describe('toMaterialDto', () => {
       kind: doc.kind,
       classIds: [classId.toString()],
       access: doc.access,
+      tags: doc.tags,
       createdBy: doc.createdBy.toString(),
       createdAt: '2026-09-10T08:00:00.000Z',
       updatedAt: '2026-09-12T09:30:00.000Z',
     });
+  });
+
+  // Материалы, созданные до ADR-0058, не имеют поля в документе — `.lean()`
+  // не подставляет default схемы при чтении, маппер сам отдаёт `[]`.
+  it('документа без поля tags (материал до этого PR) — tags: []', () => {
+    const { tags: _tags, ...doc } = material();
+
+    const dto = toMaterialDto(doc);
+
+    expect(dto.tags).toEqual([]);
   });
 });
 
@@ -52,6 +64,7 @@ describe('toMyMaterialDto', () => {
       title: doc.title,
       kind: doc.kind,
       classTitles: [],
+      tags: doc.tags,
       url: doc.url,
     });
     expect(dto).not.toHaveProperty('createdBy');
@@ -59,6 +72,26 @@ describe('toMyMaterialDto', () => {
     expect(dto).not.toHaveProperty('createdAt');
     expect(dto).not.toHaveProperty('updatedAt');
     expect(dto).not.toHaveProperty('locked');
+  });
+
+  // Теги видит и ученик (ADR-0058) — рубрикация нужна прежде всего тому, кто
+  // ищет своё.
+  it('теги едут ученику как есть', () => {
+    const dto = toMyMaterialDto(
+      material({ tags: ['разминка', '24 формы'] }),
+      new Map(),
+      false,
+    );
+
+    expect(dto.tags).toEqual(['разминка', '24 формы']);
+  });
+
+  it('документ без поля tags — [] и в библиотеке ученика', () => {
+    const { tags: _tags, ...doc } = material();
+
+    const dto = toMyMaterialDto(doc, new Map(), false);
+
+    expect(dto.tags).toEqual([]);
   });
 
   // ADR-0048: закрытый материал — без url, с locked:true. Ссылка не должна
@@ -73,6 +106,7 @@ describe('toMyMaterialDto', () => {
       title: doc.title,
       kind: doc.kind,
       classTitles: [],
+      tags: doc.tags,
       locked: true,
     });
     expect(dto).not.toHaveProperty('url');

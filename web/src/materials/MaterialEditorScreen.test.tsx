@@ -33,6 +33,7 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
     kind: 'book',
     classIds: [],
     access: 'all',
+    tags: [],
     createdBy: 'u1',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',

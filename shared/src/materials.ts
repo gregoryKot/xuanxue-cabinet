@@ -32,6 +32,10 @@ export interface MaterialDto {
   kind: MaterialKind;
   classIds: string[];
   access: MaterialAccess;
+  /** Рубрикация свободным текстом (ADR-0058) — фильтр списка, не доступ:
+   * кто видит материал, решает `access`. Нормализуется при записи
+   * (`normalizeTags`, shared/src/tags.ts). */
+  tags: string[];
   createdBy: string;
   createdAt: string; // ISO UTC с Z
   updatedAt: string; // ISO UTC с Z
@@ -43,6 +47,7 @@ export interface CreateMaterialInput {
   kind: MaterialKind;
   classIds?: string[];
   access?: MaterialAccess;
+  tags?: string[];
 }
 
 export interface UpdateMaterialInput {
@@ -51,11 +56,14 @@ export interface UpdateMaterialInput {
   kind?: MaterialKind;
   classIds?: string[];
   access?: MaterialAccess;
+  tags?: string[];
 }
 
 export interface ListMaterialsQuery {
   classId?: string;
   kind?: MaterialKind;
+  /** Точное совпадение тега — рубрикация, серверный фильтр (ADR-0058). */
+  tag?: string;
   limit?: number;
 }
 
@@ -75,6 +83,10 @@ export interface MyMaterialDto {
    * рубрикация из ADR-0047 иначе не доезжает до того, ради кого затевалась.
    * Пустой массив — материал всей школы. */
   classTitles: string[];
+  /** Теги видит и ученик (ADR-0058) — рубрикация нужна прежде всего тому,
+   * кто ищет своё; прятать её от ученика значило бы оставить рубрикацию
+   * одному учителю. */
+  tags: string[];
   url?: string;
   locked?: true;
 }

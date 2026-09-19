@@ -5,6 +5,7 @@
 // слой, здесь только контракт бэкенда.
 
 import type { ExamMediaDto } from './exam-media';
+import { TAG_LIMITS } from './tags';
 
 export const EXAM_ITEM_KINDS = ['text', 'single', 'multiple', 'video'] as const;
 export type ExamItemKind = (typeof EXAM_ITEM_KINDS)[number];
@@ -105,8 +106,11 @@ export const EXAM_ITEM_LIMITS = {
   optionText: 300,
   optionsMax: 10,
   optionsMin: 2,
-  tagsMax: 10,
-  tag: 40,
+  // Теги вопроса — та же рубрикация, что у материалов (ADR-0058): число
+  // живёт в TAG_LIMITS (shared/src/tags.ts), здесь только ссылка, чтобы
+  // лимит не разъехался по двум местам.
+  tagsMax: TAG_LIMITS.perRecord,
+  tag: TAG_LIMITS.length,
 } as const;
 
 export const EXAM_ITEM_NOT_FOUND_MESSAGE = 'Вопрос не найден. Обновите список.';
