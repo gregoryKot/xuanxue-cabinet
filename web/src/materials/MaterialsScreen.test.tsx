@@ -5,7 +5,7 @@
 // planning/PlanningScreen.test.tsx. Сам рубильник (загрузка, PATCH, ошибка
 // сохранения) — MaterialsPaidAccessSection.test.tsx, здесь только чтобы
 // /settings не падал «неожиданным путём» и не плодил второй `alert`.
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -17,7 +17,11 @@ import {
 } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
-import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import {
+  mockApiByPath,
+  mockedApiFetch,
+  resetApiFetchBetweenTests,
+} from '../test-support/apiFetchMock';
 import { makeClass } from '../test-support/planningFixtures';
 import MaterialsScreen from './MaterialsScreen';
 
@@ -185,6 +189,60 @@ describe('MaterialsScreen — список материалов', () => {
     mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Видео' }));
+
+    expect(
+      await screen.findByText('С таким фильтром материалов нет.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
+  it('тегов у школы нет — строки пилюль нет вовсе', async () => {
+    mockApiByPath({
+      '/settings': SETTINGS,
+      '/materials': [makeMaterial({ tags: [] })],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+    await screen.findByText('Ван Пэйшэн — форма 24');
+
+    expect(screen.queryByRole('group', { name: 'Теги' })).not.toBeInTheDocument();
+  });
+
+  it('пилюля тега собрана из полного списка школы, клик уходит в запрос с tag=', async () => {
+    mockApiByPath({
+      '/settings': SETTINGS,
+      '/materials': [makeMaterial({ tags: ['старшая'] })],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+    await screen.findByText('Ван Пэйшэн — форма 24');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'старшая' }));
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        expect.stringContaining('tag=%D1%81%D1%82%D0%B0%D1%80%D1%88%D0%B0%D1%8F'),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('пустой ответ по тегу — тот же честный текст, что у фильтра по виду', async () => {
+    mockApiByPath({
+      '/settings': SETTINGS,
+      '/materials': [makeMaterial({ tags: ['старшая'] })],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+    await screen.findByText('Ван Пэйшэн — форма 24');
+
+    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'старшая' }));
 
     expect(
       await screen.findByText('С таким фильтром материалов нет.'),

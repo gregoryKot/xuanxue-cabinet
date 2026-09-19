@@ -4,9 +4,13 @@
 // строкой через запятую (tagsText), не массивом — иначе набранная запятая
 // или пробел в конце мгновенно теряются при разборе на каждое нажатие
 // клавиши (тот же приём, что durationMinText/leadMinutesText в classFormInput.ts).
+// Разбор строки — общий `parseTagsText` (shared/src/tags.ts, ADR-0058): своей
+// копии для вопросов больше нет, форма материала (materialFormInput.ts)
+// пользуется тем же самым.
 import {
   EXAM_ITEM_LIMITS,
   OPTION_TEXT_OR_IMAGE_MESSAGE,
+  parseTagsText,
   type CreateExamItemInput,
   type ExamItemDto,
   type ExamItemKind,
@@ -63,17 +67,6 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
   };
 }
 
-/** Строка через запятую → массив тегов: обрезка пробелов, пустые куски
- * выбрасываются, лишнее сверх лимита отбрасывается молча — подсказка под
- * полем (ExamItemFormFields) называет лимит заранее. */
-export function parseTagsInput(text: string): string[] {
-  return text
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-    .slice(0, EXAM_ITEM_LIMITS.tagsMax);
-}
-
 /** `null` — форма валидна, иначе текст первой найденной ошибки. Проверки
  * вариантов ответа зеркалят assertOptionsForKind на бэкенде
  * (exam-item-options.ts) — форма не даёт отправить то, что сервис всё равно
@@ -122,7 +115,7 @@ export function toCreateInput(state: ExamItemFormState): CreateExamItemInput {
     hint: state.hint.trim() || undefined,
     criteria: state.criteria.trim() || undefined,
     options: toOptionsInput(state),
-    tags: parseTagsInput(state.tagsText),
+    tags: parseTagsText(state.tagsText, EXAM_ITEM_LIMITS.tagsMax),
   };
 }
 
@@ -135,6 +128,6 @@ export function toUpdateInput(state: ExamItemFormState): UpdateExamItemInput {
     hint: state.hint.trim() || null,
     criteria: state.criteria.trim() || null,
     options: toOptionsInput(state),
-    tags: parseTagsInput(state.tagsText),
+    tags: parseTagsText(state.tagsText, EXAM_ITEM_LIMITS.tagsMax),
   };
 }

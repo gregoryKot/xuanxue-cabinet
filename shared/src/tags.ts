@@ -30,3 +30,16 @@ export function normalizeTags(
   }
   return result;
 }
+
+/**
+ * Строка через запятую → массив тегов, готовых к записи: делит по запятой и
+ * прогоняет через `normalizeTags` (та же нормализация, что и при прямой
+ * передаче массива — второй копии разбора в проекте нет, ADR-0058). Общая
+ * для формы материала и формы вопроса экзамена.
+ */
+export function parseTagsText(
+  text: string,
+  max: number = TAG_LIMITS.perRecord,
+): string[] {
+  return normalizeTags(text.split(','), max);
+}

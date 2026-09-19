@@ -101,16 +101,18 @@ describe('MaterialEditorScreen — загрузка', () => {
     ).toBeVisible();
   });
 
-  it('/materials/new — заголовок «Новый материал», запроса за материалом нет', async () => {
-    mockApiByPath({ '/classes': [makeClass()] });
+  it('/materials/new — заголовок «Новый материал», запроса за конкретным материалом нет', async () => {
+    mockApiByPath({ '/materials': [], '/classes': [makeClass()] });
 
     renderAt('/materials/new');
 
     expect(
       await screen.findByRole('heading', { name: 'Новый материал' }),
     ).toBeInTheDocument();
+    // Подсказка тегов (useMaterialTagOptions.ts) всё равно уходит в сеть — не
+    // должно быть только запроса за конкретным (несуществующим) материалом.
     expect(
-      mockedApiFetch.mock.calls.some(([path]) => String(path).startsWith('/materials')),
+      mockedApiFetch.mock.calls.some(([path]) => /^\/materials\/[^?]/.test(String(path))),
     ).toBe(false);
   });
 
@@ -143,8 +145,24 @@ describe('MaterialEditorScreen — создание', () => {
       kind: 'book',
       classIds: [],
       access: 'all',
+      tags: [],
     });
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
+  });
+
+  it('теги — строка через запятую превращается в массив в теле запроса', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
+
+    renderAt('/materials/new');
+    await user.type(await screen.findByLabelText('Название'), 'Разбор формы');
+    await user.type(screen.getByLabelText('Ссылка'), 'https://example.com/video');
+    await user.type(screen.getByLabelText('Теги'), 'ян, база');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
+    const body = callsWithMethod('POST')[0]?.[1] as { body: { tags: unknown } };
+    expect(body.body.tags).toEqual(['ян', 'база']);
   });
 
   it('пустое название — ошибка формы, запроса нет', async () => {
@@ -156,6 +174,44 @@ describe('MaterialEditorScreen — создание', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('название');
     expect(callsWithMethod('POST')).toHaveLength(0);
+  });
+
+  it('тег длиннее лимита — ошибка формы, запроса нет', async () => {
+    const user = userEvent.setup();
+    const { TAG_LIMITS } = await import('@xuanxue/shared');
+    mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
+
+    renderAt('/materials/new');
+    await user.type(await screen.findByLabelText('Название'), 'Разбор формы');
+    await user.type(screen.getByLabelText('Ссылка'), 'https://example.com/video');
+    await user.type(screen.getByLabelText('Теги'), 'а'.repeat(TAG_LIMITS.length + 1));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('длиннее');
+    expect(callsWithMethod('POST')).toHaveLength(0);
+  });
+
+  it('сбой подсказки тегов не мешает заполнить форму и сохранить материал', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockImplementation((path: unknown, init?: unknown) => {
+      const p = String(path);
+      if (p.startsWith('/classes')) return Promise.resolve([makeClass()]);
+      if ((init as { method?: string } | undefined)?.method === 'POST') {
+        return Promise.resolve(makeMaterial());
+      }
+      if (p.startsWith('/materials')) {
+        return Promise.reject(new Error('нет сети'));
+      }
+      return Promise.reject(new Error(`неожиданный путь: ${p}`));
+    });
+
+    renderAt('/materials/new');
+    await user.type(await screen.findByLabelText('Название'), 'Название');
+    await user.type(screen.getByLabelText('Ссылка'), 'https://example.com');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('вид и занятие выбраны, галочка оплаты — access: paid и classIds в теле', async () => {
@@ -178,6 +234,7 @@ describe('MaterialEditorScreen — создание', () => {
       kind: 'video',
       classIds: ['c1'],
       access: 'paid',
+      tags: [],
     });
   });
 
@@ -206,6 +263,14 @@ describe('MaterialEditorScreen — правка', () => {
     expect(screen.getByLabelText('Открывать только после оплаты')).toBeChecked();
   });
 
+  it('теги материала — поле «Теги» предзаполнено строкой через запятую', async () => {
+    mockMaterial(makeMaterial({ tags: ['ян', 'база'] }));
+
+    renderAt('/materials/m1');
+
+    expect(await screen.findByLabelText('Теги')).toHaveValue('ян, база');
+  });
+
   it('сохранение без изменений — PATCH с тем же телом', async () => {
     const user = userEvent.setup();
     mockMaterial(makeMaterial());
@@ -222,6 +287,7 @@ describe('MaterialEditorScreen — правка', () => {
       kind: 'book',
       classIds: [],
       access: 'all',
+      tags: [],
     });
   });
 

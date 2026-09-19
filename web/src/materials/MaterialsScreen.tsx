@@ -6,9 +6,10 @@
 // антиквой, строка списка вместо карточки, список — одна общая карточка
 // (oneCardListStyle, docs/adr/0043).
 //
-// Фильтр — только по виду (ListFilters.tsx, общий с «Вопросами» и
-// «Рассылками»): поиска нет — материалов у школы пока единицы (docs/PLAN.md
-// §14, «Что нужно от владельца»), искать в списке из нескольких строк незачем.
+// Фильтры — по виду и по тегу (ListFilters.tsx/MaterialTagFilter.tsx,
+// ADR-0058), тег фильтрует на сервере (`GET /api/materials?tag=`): поиска нет
+// — материалов у школы пока единицы (docs/PLAN.md §14, «Что нужно от
+// владельца»), искать в списке из нескольких строк незачем.
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MATERIAL_KINDS, MATERIAL_KIND_LABELS, type MaterialKind } from '@xuanxue/shared';
@@ -23,7 +24,9 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { useClasses } from '../schedule/useClasses';
 import { MaterialCard } from './MaterialCard';
 import { MaterialsPaidAccessSection } from './MaterialsPaidAccessSection';
+import { MaterialTagFilter } from './MaterialTagFilter';
 import { useMaterials } from './useMaterials';
+import { useMaterialTagOptions } from './useMaterialTagOptions';
 
 const TITLE = 'Библиотека';
 const EXPLANATION =
@@ -34,9 +37,12 @@ const EMPTY_FILTERED_MESSAGE = 'С таким фильтром материал�
 
 export default function MaterialsScreen() {
   const [kind, setKind] = useState<MaterialKind | ''>('');
-  const { materials, loading, error, reload } = useMaterials(kind);
+  const [tag, setTag] = useState('');
+  const { materials, loading, error, reload } = useMaterials(kind, tag);
+  const tagOptions = useMaterialTagOptions();
   const classesState = useClasses();
   const navigate = useNavigate();
+  const isFiltered = kind !== '' || tag !== '';
 
   const classTitleById = useMemo(
     () => new Map((classesState.classes ?? []).map((cls) => [cls.id, cls.title])),
@@ -61,12 +67,12 @@ export default function MaterialsScreen() {
       />
 
       {/* Число из уже загруженного списка (без нового запроса) — только на
-          весь список без фильтра по виду: отфильтрованный список не
-          отражал бы всю библиотеку, и число обмануло бы учителя насчёт
-          того, что именно закроет рубильник. */}
+          весь список без единого фильтра: отфильтрованный список не отражал
+          бы всю библиотеку, и число обмануло бы учителя насчёт того, что
+          именно закроет рубильник. */}
       <MaterialsPaidAccessSection
         paidCount={
-          kind === '' && materials
+          !isFiltered && materials
             ? materials.filter((m) => m.access === 'paid').length
             : null
         }
@@ -79,12 +85,17 @@ export default function MaterialsScreen() {
         onChange={setKind}
       />
 
+      {/* Набор пилюль — из полного списка школы (useMaterialTagOptions.ts),
+          не из уже отфильтрованного ответа: иначе выбор одной пилюли сразу
+          убирал бы соседние из-под пальца. */}
+      <MaterialTagFilter tags={tagOptions} value={tag} onChange={setTag} />
+
       <ListScreenBody
         items={materials}
         loading={loading}
         error={error}
         onRetry={() => void reload()}
-        emptyMessage={kind ? EMPTY_FILTERED_MESSAGE : EMPTY_MESSAGE}
+        emptyMessage={isFiltered ? EMPTY_FILTERED_MESSAGE : EMPTY_MESSAGE}
         listStyle={oneCardListStyle}
         renderItem={(material, index, all) => (
           <MaterialCard

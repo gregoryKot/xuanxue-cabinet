@@ -1,7 +1,7 @@
 // Чистая логика страницы материала — состояние, валидация, сборка тела
 // запроса (CLAUDE.md «Тесты»), по образцу channels/channelFormInput.test.ts.
 import { describe, expect, it } from 'vitest';
-import { MATERIAL_LIMITS, type MaterialDto } from '@xuanxue/shared';
+import { MATERIAL_LIMITS, TAG_LIMITS, type MaterialDto } from '@xuanxue/shared';
 import {
   initialMaterialFormState,
   toCreateInput,
@@ -33,6 +33,7 @@ function makeState(overrides: Partial<MaterialFormState> = {}): MaterialFormStat
     kind: 'book',
     classIds: [],
     paid: false,
+    tagsText: '',
     ...overrides,
   };
 }
@@ -45,6 +46,7 @@ describe('initialMaterialFormState', () => {
     expect(state.kind).toBe('book');
     expect(state.classIds).toEqual([]);
     expect(state.paid).toBe(false);
+    expect(state.tagsText).toBe('');
   });
 
   it('правка — поля предзаполнены из материала, access: paid включает галочку', () => {
@@ -54,6 +56,16 @@ describe('initialMaterialFormState', () => {
     expect(state.kind).toBe('video');
     expect(state.classIds).toEqual(['c1', 'c2']);
     expect(state.paid).toBe(true);
+  });
+
+  it('правка — теги материала собраны в строку через запятую', () => {
+    const state = initialMaterialFormState(makeMaterial({ tags: ['ян', 'база'] }));
+    expect(state.tagsText).toBe('ян, база');
+  });
+
+  it('материал без тегов — пустая строка, не undefined', () => {
+    const state = initialMaterialFormState(makeMaterial({ tags: [] }));
+    expect(state.tagsText).toBe('');
   });
 });
 
@@ -89,6 +101,19 @@ describe('validateMaterialForm', () => {
   it('валидная форма — null', () => {
     expect(validateMaterialForm(makeState())).toBeNull();
   });
+
+  it('тег длиннее лимита — ошибка поля tags с текстом тега', () => {
+    const longTag = 'а'.repeat(TAG_LIMITS.length + 1);
+    const error = validateMaterialForm(makeState({ tagsText: `ян, ${longTag}` }));
+    expect(error).toEqual({
+      field: 'tags',
+      message: `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
+    });
+  });
+
+  it('теги в пределах лимита — валидна', () => {
+    expect(validateMaterialForm(makeState({ tagsText: 'ян, база' }))).toBeNull();
+  });
 });
 
 describe('toCreateInput / toUpdateInput', () => {
@@ -102,7 +127,19 @@ describe('toCreateInput / toUpdateInput', () => {
       kind: 'book',
       classIds: [],
       access: 'all',
+      tags: [],
     });
+  });
+
+  it('теги — строка через запятую превращается в массив на выходе', () => {
+    expect(toCreateInput(makeState({ tagsText: 'ян, база' })).tags).toEqual([
+      'ян',
+      'база',
+    ]);
+    expect(toUpdateInput(makeState({ tagsText: 'ян, база' })).tags).toEqual([
+      'ян',
+      'база',
+    ]);
   });
 
   it('paid — access: paid', () => {

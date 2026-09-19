@@ -78,6 +78,8 @@ interface ListSearch {
   onChange: (search: string) => void;
 }
 
+const DEFAULT_GROUP_LABEL = 'Статус';
+
 interface ListFiltersProps<TStatus extends string> {
   statuses: readonly TStatus[];
   labels: Record<TStatus, string>;
@@ -88,6 +90,10 @@ interface ListFiltersProps<TStatus extends string> {
   /** Свой контрол в конце строки — период журнала рассылок. Стоит там же,
    * где поиск: справа от переключателей, одной строкой с ними. */
   trailing?: ReactNode;
+  /** aria-label группы пилюль — по умолчанию «Статус» (экзамены, вопросы,
+   * рассылки), но пилюли тегов материалов (ADR-0058) — не статус, и жёсткая
+   * подпись читалась бы скринридеру неверно. */
+  groupLabel?: string;
 }
 
 export function ListFilters<TStatus extends string>({
@@ -97,6 +103,7 @@ export function ListFilters<TStatus extends string>({
   onChange,
   search,
   trailing,
+  groupLabel = DEFAULT_GROUP_LABEL,
 }: ListFiltersProps<TStatus>) {
   const options: { status: TStatus | ''; label: string }[] = [
     { status: '', label: ALL_LABEL },
@@ -105,7 +112,7 @@ export function ListFilters<TStatus extends string>({
 
   return (
     <div style={rowStyle}>
-      <div style={toggleGroupStyle} role="group" aria-label="Статус">
+      <div style={toggleGroupStyle} role="group" aria-label={groupLabel}>
         {options.map((option) => (
           <button
             key={option.status || 'all'}

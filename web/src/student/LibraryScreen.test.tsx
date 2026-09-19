@@ -99,3 +99,36 @@ describe('LibraryScreen — список материалов', () => {
     expect(screen.getAllByRole('link', { name: 'Открыть' })).toHaveLength(2);
   });
 });
+
+describe('LibraryScreen — пилюли тегов (ADR-0058)', () => {
+  it('тегов у материалов нет — строки пилюль нет вовсе', async () => {
+    mockApiByPath({ '/me/materials': [makeMaterial({ tags: [] })] });
+    render(<LibraryScreen />);
+
+    await screen.findByText('Ван Пэйшэн, «Ба-гуа-чжан»');
+    expect(screen.queryByRole('group', { name: 'Теги' })).not.toBeInTheDocument();
+  });
+
+  it('клик по тегу сужает список, повторный клик по «Все» возвращает всё', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/me/materials': [
+        makeMaterial({ id: 'm1', title: 'Ван Пэйшэн, «Ба-гуа-чжан»', tags: ['старшая'] }),
+        makeMaterial({ id: 'm2', title: 'Разбор формы 24', tags: ['база'] }),
+      ],
+    });
+
+    render(<LibraryScreen />);
+    await screen.findByText('Ван Пэйшэн, «Ба-гуа-чжан»');
+
+    await user.click(screen.getByRole('button', { name: 'старшая' }));
+
+    expect(screen.getByText('Ван Пэйшэн, «Ба-гуа-чжан»')).toBeInTheDocument();
+    expect(screen.queryByText('Разбор формы 24')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Все' }));
+
+    expect(screen.getByText('Ван Пэйшэн, «Ба-гуа-чжан»')).toBeInTheDocument();
+    expect(screen.getByText('Разбор формы 24')).toBeInTheDocument();
+  });
+});

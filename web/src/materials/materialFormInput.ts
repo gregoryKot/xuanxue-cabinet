@@ -2,10 +2,15 @@
 // запроса (CLAUDE.md «Тесты»), по образцу channels/channelFormInput.ts.
 // `paid` — булев переключатель формы, `access` собирается из него только при
 // отправке: `MaterialAccess` — контракт сервера, форме удобнее галочка
-// (ADR-0048, MaterialFormFields.tsx).
+// (ADR-0048, MaterialFormFields.tsx). Теги хранятся строкой через запятую
+// (tagsText), не массивом — та же причина, что у exam-items/examItemFormInput.ts:
+// набранная запятая или пробел в конце иначе мгновенно теряются при разборе
+// на каждое нажатие клавиши. Разбор — общий `parseTagsText` (ADR-0058).
 import {
   MATERIAL_KINDS,
   MATERIAL_LIMITS,
+  parseTagsText,
+  TAG_LIMITS,
   type CreateMaterialInput,
   type MaterialDto,
   type MaterialKind,
@@ -21,12 +26,13 @@ export interface MaterialFormState {
   classIds: string[];
   /** `access === 'paid'` — форме удобнее галочка, чем строковый союз. */
   paid: boolean;
+  tagsText: string;
 }
 
 /** `null` — форма валидна; иначе поле с ошибкой (MaterialFormFields рисует
  * её под этим полем, тот же приём, что у ChannelFormFields) и текст. */
 export interface MaterialFormError {
-  field: 'title' | 'url';
+  field: 'title' | 'url' | 'tags';
   message: string;
 }
 
@@ -39,6 +45,7 @@ export function initialMaterialFormState(
     kind: materialDto?.kind ?? MATERIAL_KINDS[0],
     classIds: materialDto?.classIds ?? [],
     paid: materialDto?.access === 'paid',
+    tagsText: materialDto?.tags.join(', ') ?? '',
   };
 }
 
@@ -60,6 +67,20 @@ export function validateMaterialForm(state: MaterialFormState): MaterialFormErro
   if (url.length > MATERIAL_LIMITS.url) {
     return { field: 'url', message: `Ссылка длиннее ${MATERIAL_LIMITS.url} символов.` };
   }
+
+  // Сервер такой тег отклонит (`@MaxLength`, ADR-0058) — форма ловит его
+  // раньше, чтобы не давать круг «сохранить → 400». Число тегов сверх
+  // лимита parseTagsText отбрасывает молча, как и у вопросов экзамена —
+  // подсказка под полем называет лимит заранее.
+  const longTag = parseTagsText(state.tagsText).find(
+    (tag) => tag.length > TAG_LIMITS.length,
+  );
+  if (longTag) {
+    return {
+      field: 'tags',
+      message: `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
+    };
+  }
   return null;
 }
 
@@ -73,6 +94,7 @@ export function toCreateInput(state: MaterialFormState): CreateMaterialInput {
     kind: state.kind,
     classIds: [...state.classIds],
     access: state.paid ? 'paid' : 'all',
+    tags: parseTagsText(state.tagsText),
   };
 }
 
