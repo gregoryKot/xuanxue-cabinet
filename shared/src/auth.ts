@@ -16,7 +16,7 @@ export type UserRole = (typeof USER_ROLES)[number];
  * (§15, ADR-0049).
  */
 export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Администратор',
+  admin: 'Разработчик', // ключ роли остаётся `admin`: он в базе и в `@Roles()`
   teacher: 'Учитель',
   assistant: 'Помощник учителя',
   accountant: 'Бухгалтер',
