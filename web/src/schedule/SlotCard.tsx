@@ -8,11 +8,7 @@
 // шириной 160px такая строка ломалась пополам в произвольном месте.
 // Каркас строки общий с planning/LessonCard.tsx (components/listCardStyles.ts).
 import type { CSSProperties } from 'react';
-import {
-  listCardMetaStyle,
-  listCardStyle,
-  listCardTitleStyle,
-} from '../components/listCardStyles';
+import { listCardMetaStyle, listCardStyle } from '../components/listCardStyles';
 import { formatChannelCount } from './channelCountLabel';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 import type { ScheduleSlot } from './scheduleGrid';
@@ -23,11 +19,36 @@ import type { ScheduleSlot } from './scheduleGrid';
 const NO_LINK_TEXT = 'без ссылки';
 const DISABLED_TEXT = 'выключено';
 
-const slotStyle: CSSProperties = { ...listCardStyle, padding: '14px 4px' };
-const timeStyle: CSSProperties = { ...listCardTitleStyle, lineHeight: 1.1 };
-const titleStyle: CSSProperties = { marginTop: 4, lineHeight: 1.35 };
+// 14px по вертикали — плотнее общей карточки: в колонке дня их до четырёх
+// подряд. По горизонтали отступ общий (18px), а НЕ 4px, как было: четыре
+// пикселя приклеивали название к краю, и в узкой колонке текст выглядел
+// вылезающим за карточку (снимок владельца 2026-09-19).
+const slotStyle: CSSProperties = { ...listCardStyle, padding: '14px 18px' };
+// Время — Golos Text, не антиква: `listCardTitleStyle` набирает заголовок
+// Cormorant, а у него старостильные цифры (нуль мельче остальных, девятка с
+// выносом) — «08:00–09:00» в сетке читалось как случайный набор высот
+// (ADR-0043: числа набираем текстовым шрифтом). Кегль и вес заголовка при
+// этом сохраняем: время здесь — главное в карточке.
+const timeStyle: CSSProperties = {
+  fontSize: 23,
+  fontWeight: 500,
+  lineHeight: 1.1,
+  fontVariantNumeric: 'tabular-nums',
+};
+// Название занятия — свободный текст до 120 знаков (CLASS_LIMITS.title), и
+// одно длинное слово («Ицзиньцзин», «Тайцзицюань») шире колонки дня в 160px.
+// `anywhere`, а не `break-word`: колонка сетки должна уметь сжаться ниже
+// самого длинного слова, а на min-content влияет только `anywhere`.
+const titleStyle: CSSProperties = {
+  marginTop: 4,
+  lineHeight: 1.35,
+  overflowWrap: 'anywhere',
+};
+// Подпись группы — тоже свободное поле (до 60 знаков), рвём так же, как
+// название выше.
+const metaStyle: CSSProperties = { ...listCardMetaStyle, overflowWrap: 'anywhere' };
 const statusRowStyle: CSSProperties = {
-  ...listCardMetaStyle,
+  ...metaStyle,
   display: 'flex',
   flexWrap: 'wrap',
   gap: 10,
@@ -47,7 +68,7 @@ export function SlotCard({ slot, onSelect }: SlotCardProps) {
     <button type="button" style={slotStyle} onClick={onSelect}>
       <div style={timeStyle}>{slot.timeLabel}</div>
       <div style={titleStyle}>{slot.title}</div>
-      <div style={listCardMetaStyle}>
+      <div style={metaStyle}>
         {slot.groupLabel ? `${slot.groupLabel} · ` : ''}
         {CLASS_FORMAT_LABELS_RU[slot.format]}
         {' · '}
