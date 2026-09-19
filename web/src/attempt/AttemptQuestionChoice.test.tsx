@@ -93,6 +93,33 @@ describe('AttemptQuestionChoice — картинка варианта (ADR-0035)
     expect(image).toHaveAttribute('src', '/api/exam-images/img1');
   });
 
+  // Отзыв владельца 2026-09-19: «при выборе картинок зачем писать вариант 1
+  // вариант два?» — подпись стояла прямо над самой картинкой. Боту и
+  // скринридеру она нужна (см. shared/src/exam-option-label.ts), глазам нет.
+  it('подпись «Вариант N» у варианта-картинки не видна, но остаётся именем контрола', () => {
+    const options: AttemptOptionDto[] = [
+      { id: 'o1', text: '', imageId: 'img1' },
+      { id: 'o2', text: 'Влево' },
+    ];
+    render(
+      <>
+        <span id={PROMPT_ID}>Куда уходит вес?</span>
+        <AttemptQuestionChoice
+          labelledBy={PROMPT_ID}
+          itemId="i1"
+          kind="single"
+          options={options}
+          selected={[]}
+          onChange={vi.fn()}
+        />
+      </>,
+    );
+
+    expect(screen.getByText('Вариант 1')).toHaveClass('xuanxue-sr-only');
+    // У варианта со своим текстом подпись видно как обычно.
+    expect(screen.getByText('Влево')).not.toHaveClass('xuanxue-sr-only');
+  });
+
   it('вариант без картинки — <img> не рендерится', () => {
     renderChoice('single', []);
 

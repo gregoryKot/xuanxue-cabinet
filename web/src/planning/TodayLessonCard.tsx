@@ -21,7 +21,9 @@ import { CancelledBroadcastLink, LessonBroadcastBadge } from './LessonBroadcastB
 const cardStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 4,
+  // 6, а не 4: под названием антиквой кеглем 25 четыре пикселя почти не
+  // читаются, и строка темы липла к заголовку (отзыв владельца 2026-09-19).
+  gap: 6,
   width: '100%',
   minHeight: 44,
   padding: '18px 20px',
@@ -39,7 +41,8 @@ const titleStyle: CSSProperties = {
   color: 'var(--ink)',
 };
 const descriptionStyle: CSSProperties = { fontSize: 14, color: 'var(--ink-soft)' };
-const statusStyle: CSSProperties = { fontSize: 13, paddingTop: 6 };
+// Своего отступа сверху не нужно: зазор колонки (cardStyle.gap) уже общий.
+const statusStyle: CSSProperties = { fontSize: 13 };
 
 interface TodayLessonCardProps {
   lesson: LessonDto;

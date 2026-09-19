@@ -57,6 +57,13 @@ interface ToggleProps {
    * скринридер зачитывал бы подпись дважды подряд у одного контрола; сама
    * картинка остаётся видимой и кликабельной как часть цели нажатия. */
   media?: ReactNode;
+  /** Спрятать подпись визуально, оставив её доступным именем контрола. Нужно
+   * варианту-картинке без своего текста: `formatOptionLabel` даёт ему
+   * «Вариант N» (ADR-0035) — боту эта строка нужна (Telegram отклоняет кнопку
+   * с пустым текстом), скринридеру тоже, а на экране она стоит прямо над
+   * самой картинкой и не добавляет ничего (отзыв владельца 2026-09-19:
+   * «зачем писать вариант 1 вариант два?»). */
+  labelHidden?: boolean;
   onChange: (checked: boolean) => void;
 }
 
@@ -67,6 +74,7 @@ export function Toggle({
   disabled,
   name,
   media,
+  labelHidden,
   onChange,
 }: ToggleProps) {
   const wrapStyle: CSSProperties = {
@@ -87,7 +95,7 @@ export function Toggle({
           onChange={(event) => onChange(event.target.checked)}
           style={inputStyle}
         />
-        <span>{label}</span>
+        <span className={labelHidden ? 'xuanxue-sr-only' : undefined}>{label}</span>
       </span>
       {media && <span aria-hidden="true">{media}</span>}
     </label>

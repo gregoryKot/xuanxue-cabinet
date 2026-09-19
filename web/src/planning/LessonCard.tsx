@@ -38,7 +38,10 @@ const timeStyle: CSSProperties = {
 };
 const contentStyle: CSSProperties = { minWidth: 0, flex: 1 };
 const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 22 };
-const metaStyle: CSSProperties = { marginTop: 2, fontSize: 14, color: 'var(--ink-soft)' };
+// 6, а не 2: под названием антиквой кеглем 22 два пикселя читаются как ноль —
+// строка темы («Тема не задана») липла к заголовку (отзыв владельца
+// 2026-09-19). Тот же зазор, что у карточки «Сегодня» (TodayLessonCard.tsx).
+const metaStyle: CSSProperties = { marginTop: 6, fontSize: 14, color: 'var(--ink-soft)' };
 const statusStyle: CSSProperties = { flexShrink: 0, fontSize: 13 };
 
 interface LessonCardProps {

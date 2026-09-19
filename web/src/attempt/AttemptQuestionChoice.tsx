@@ -7,7 +7,10 @@
 // дебаунс текста.
 //
 // Подпись — formatOptionLabel (ADR-0035): у варианта-картинки без своего
-// текста показывает «Вариант N», ту же строку, что бот. Картинка — `media`
+// текста это «Вариант N», та же строка, что у бота. На экране её не видно
+// (`labelHidden`) — она стояла бы прямо над самой картинкой и не говорила
+// ничего (отзыв владельца 2026-09-19); доступным именем и `alt` остаётся.
+// Картинка — `media`
 // у Toggle, `size="full"`: экран сдачи один вопрос на весь экран, места
 // больше, чем у миниатюры в редакторе/статистике.
 import type { CSSProperties } from 'react';
@@ -61,10 +64,14 @@ export function AttemptQuestionChoice({
     >
       {options.map((option, index) => {
         const label = formatOptionLabel(option.text, index);
+        // Своего текста нет, а картинка есть — «Вариант N» видно не будет:
+        // подпись остаётся доступным именем и `alt` картинки (Toggle.tsx).
+        const labelHidden = !option.text && option.imageId != null;
         return (
           <Toggle
             key={option.id}
             label={label}
+            labelHidden={labelHidden}
             checked={selected.includes(option.id)}
             disabled={disabled}
             // Имя группы переводит Toggle в радио: взаимное исключение внутри
