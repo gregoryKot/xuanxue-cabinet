@@ -7,8 +7,9 @@
 // читает сама (ExamPreviewScreen.tsx, useExamPreview.ts), а не несохранённое
 // состояние формы редактора.
 //
-// Облик — как у сдачи (attempt/, ADR-0031 «тихо и благородно»): учитель
-// видит ровно то, что увидит ученик, той же вёрсткой, а не отдельным макетом.
+// Облик — как у сдачи (attempt/, направление «Тёплая школа», docs/adr/0043,
+// заменил ADR-0031): учитель видит ровно то, что увидит ученик, той же
+// вёрсткой, а не отдельным макетом.
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';

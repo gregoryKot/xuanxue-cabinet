@@ -336,3 +336,33 @@ describe('ExamPreviewScreen — вопросы', () => {
     expect(await screen.findByText(/Вопрос недоступен/)).toBeInTheDocument();
   });
 });
+
+// Переезд на «Тёплую школу» (ADR-0043): список вопросов лёг в карточку, как
+// вопросы экрана сдачи (attempt/AttemptInProgress.test.tsx — тот же приём
+// проверки). jsdom не вычисляет `var(--…)` — сравниваем ровно строку
+// инлайн-стиля, не вычисленный цвет.
+describe('ExamPreviewScreen — облик (ADR-0043)', () => {
+  it('список вопросов лежит в карточке с фоном var(--card)', async () => {
+    mockExamAndBank(makeExam());
+
+    const { container } = renderAt('/exams/x1/preview');
+    await screen.findAllByRole('listitem');
+
+    const cards = Array.from(container.querySelectorAll<HTMLElement>('div')).filter(
+      (el) => el.style.background === 'var(--card)',
+    );
+    expect(cards).toHaveLength(1);
+  });
+
+  it('у экзамена без вопросов карточки нет — виден только EMPTY_NOTE', async () => {
+    mockExamAndBank(makeExam({ blocks: [] }));
+
+    const { container } = renderAt('/exams/x1/preview');
+    await screen.findByText(/пока нет вопросов/);
+
+    const cards = Array.from(container.querySelectorAll<HTMLElement>('div')).filter(
+      (el) => el.style.background === 'var(--card)',
+    );
+    expect(cards).toHaveLength(0);
+  });
+});
