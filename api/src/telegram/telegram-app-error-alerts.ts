@@ -1,15 +1,20 @@
-// Реализация AppErrorAlerts поверх бота: неизвестная ошибка сервера (500)
-// уходит в личные чаты — PersonalChats.listFor('app_error', now), лог
-// остаётся fallback-путём, если писать некому (тот же приём, что
-// TelegramTeacherNotifier.broadcast). Провайдер по токену APP_ERROR_ALERTS —
-// TelegramModule.
+// Реализация AppErrorAlerts поверх бота: сбой уходит в личные чаты —
+// PersonalChats.listFor('app_error', now), лог остаётся fallback-путём, если
+// писать некому (тот же приём, что TelegramTeacherNotifier.broadcast).
+// Провайдер по токену APP_ERROR_ALERTS — TelegramModule.
 //
 // Дедуп и общий потолок — обязательны: без них цикл ошибок (упавшая Mongo,
-// зависший внешний сервис) превратил бы телефон админа в будильник.
+// зависший внешний сервис) превратил бы телефон админа в будильник. Сбой
+// сервера (ADR-0053) и сбой в браузере (ADR-0071) делят и то и другое: телефон
+// у админа один, и два независимых счётчика дали бы вдвое больший будильник.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
-import type { AppErrorAlertContext, AppErrorAlerts } from '../common/app-error-alerts';
-import { appErrorAlertMessage } from './app-error-alert-message';
+import type {
+  AppErrorAlertContext,
+  AppErrorAlerts,
+  ClientErrorAlertContext,
+} from '../common/app-error-alerts';
+import { appErrorAlertMessage, clientErrorAlertMessage } from './app-error-alert-message';
 import { PersonalChats } from './personal-chats';
 import { TelegramBotService } from './telegram-bot.service';
 
@@ -41,12 +46,32 @@ export class TelegramAppErrorAlerts implements AppErrorAlerts {
   ) {}
 
   async notifyServerError(context: AppErrorAlertContext, now: DateTime): Promise<void> {
-    const signature = `${context.method} ${context.path}`;
+    await this.send(
+      `${context.method} ${context.path}`,
+      appErrorAlertMessage(context),
+      now,
+    );
+  }
+
+  /** Сигнатура начинается с вида сбоя, а не с метода HTTP: браузерный сбой на
+   * `/exams` и серверная 500 на том же адресе — разные события и не должны
+   * гасить друг друга дедупом. */
+  async notifyClientError(
+    context: ClientErrorAlertContext,
+    now: DateTime,
+  ): Promise<void> {
+    await this.send(
+      `${context.kind} ${context.path}`,
+      clientErrorAlertMessage(context),
+      now,
+    );
+  }
+
+  private async send(signature: string, text: string, now: DateTime): Promise<void> {
     if (this.isTooSoon(signature, now)) return;
     if (!this.tryConsumeHourlyBudget(now)) return;
     this.lastSentAtBySignature.set(signature, now);
 
-    const text = appErrorAlertMessage(context);
     const chats = await this.personalChats.listFor('app_error', now);
     if (chats.length === 0) {
       this.logger.error(text);

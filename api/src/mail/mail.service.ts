@@ -29,29 +29,28 @@ export class MailService {
   constructor(private readonly config: ConfigService) {}
 
   async sendLoginLink({ to, link }: SendLoginLinkInput): Promise<void> {
-    const delivered = await this.postToResend(to, SUBJECT, loginLinkText(link));
-    if (!delivered) throw new NotAvailableError(EMAIL_LOGIN_SEND_FAILED_MESSAGE);
+    await this.postToResend(to, SUBJECT, loginLinkText(link));
   }
 
   /** Привязка почты к уже вошедшему человеку (ADR-0059) — рядом с
    * sendLoginLink, тот же postToResend и то же поведение при неудаче
    * (бросает, а не молчит: письмо подтверждения не best-effort). */
   async sendEmailConfirmLink({ to, link }: SendLoginLinkInput): Promise<void> {
-    const delivered = await this.postToResend(to, CONFIRM_SUBJECT, confirmLinkText(link));
-    if (!delivered) throw new NotAvailableError(EMAIL_LOGIN_SEND_FAILED_MESSAGE);
+    await this.postToResend(to, CONFIRM_SUBJECT, confirmLinkText(link));
   }
 
-  /** Общий POST в Resend — используют sendLoginLink и sendEmailConfirmLink,
-   * у каждого свои subject/text, поведение на неудаче (бросить) одно и то
-   * же: второй раз собирать этот же запрос в каждом методе незачем. */
-  private async postToResend(
-    to: string,
-    subject: string,
-    text: string,
-  ): Promise<boolean> {
+  /** Общий POST в Resend: у sendLoginLink и sendEmailConfirmLink свои
+   * subject/text, а неудача у обоих одна — бросить. Раньше метод отдавал
+   * boolean ради третьего, best-effort вызывающего (почтовое плечо
+   * уведомлений об экзамене, ADR-0039); плечо снято вместе с ним (ADR-0061),
+   * и развилка «бросить или промолчать» осталась без второй ветки. Бросок
+   * здесь, а не у вызывающего: так его нельзя забыть. */
+  private async postToResend(to: string, subject: string, text: string): Promise<void> {
     const apiKey = this.config.get<string>('RESEND_API_KEY');
     const from = this.config.get<string>('MAIL_FROM');
-    if (!apiKey || !from) return false;
+    if (!apiKey || !from) {
+      throw this.failedToSend(subject, 'нет RESEND_API_KEY или MAIL_FROM');
+    }
 
     let res: Response;
     try {
@@ -65,16 +64,19 @@ export class MailService {
         signal: AbortSignal.timeout(RESEND_TIMEOUT_MS),
       });
     } catch (err) {
-      this.logger.error(`Не удалось отправить письмо «${subject}»: ${errorMessage(err)}`);
-      return false;
+      throw this.failedToSend(subject, errorMessage(err));
     }
 
-    if (!res.ok) {
-      // Тело ответа Resend в лог не идёт: может содержать адрес получателя.
-      this.logger.error(`Resend ответил ${res.status} на отправку письма «${subject}»`);
-      return false;
-    }
-    return true;
+    // Тело ответа Resend в лог не идёт: может содержать адрес получателя.
+    if (!res.ok) throw this.failedToSend(subject, `Resend ответил ${res.status}`);
+  }
+
+  /** Причина — нам в лог, человеку — один и тот же текст: ошибку, которую
+   * увидел пользователь, должно быть видно и на сервере (CLAUDE.md «Логи»),
+   * а доменные ошибки фильтр не логирует. */
+  private failedToSend(subject: string, reason: string): NotAvailableError {
+    this.logger.error(`Не удалось отправить письмо «${subject}»: ${reason}`);
+    return new NotAvailableError(EMAIL_LOGIN_SEND_FAILED_MESSAGE);
   }
 }
 

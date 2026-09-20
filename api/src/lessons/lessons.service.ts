@@ -67,7 +67,7 @@ export class LessonsService {
     if (query.classId !== undefined && !Types.ObjectId.isValid(query.classId)) {
       throw new NotFoundError(CLASS_NOT_FOUND_MESSAGE);
     }
-    const filter = buildLessonsFilter(query, from, to);
+    const filter = await buildLessonsFilter(query, from, to, this.classModel);
     const docs = await this.model
       .find(filter)
       .sort({ startsAt: 1 })

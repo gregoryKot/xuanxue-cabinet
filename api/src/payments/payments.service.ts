@@ -15,6 +15,7 @@ import {
   type MyPaymentDto,
   type PaymentDto,
   type PaymentsPageDto,
+  type PaymentStatus,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
 import { SettingsService } from '../settings/settings.service';
@@ -26,14 +27,18 @@ import {
   toPaymentDto,
   type RawLeanPayment,
 } from './payment.mapper';
-import { PaymentRecord } from './payment.schema';
+import { PaymentRecord, type TelegramScreenshotSource } from './payment.schema';
 import {
   assertActiveStudent,
   findPaymentsForMonth,
   listActiveStudents,
 } from './payments.queries';
 import { buildPaymentRows, unpaidDto } from './payments.rows';
-import { confirmPayment, revokePayment } from './payments.write';
+import {
+  attachTelegramScreenshot,
+  confirmPayment,
+  revokePayment,
+} from './payments.write';
 
 @Injectable()
 export class PaymentsService {
@@ -79,6 +84,24 @@ export class PaymentsService {
     const student = await assertActiveStudent(this.userModel, userId);
     const doc = await revokePayment(this.model, userId, month);
     return doc ? toPaymentDto(doc, student.name) : unpaidDto(student, month);
+  }
+
+  /** Скриншот из бота (ADR-0050, слой 2.2) — `userId` берётся из
+   * разрешённой ботом идентичности (BotUserAccessService.resolve), НИКОГДА
+   * из payload ссылки (SECURITY §3); `month` из ссылки — параметр, не
+   * идентичность. Штату абонемент не заводим — та же assertActiveStudent,
+   * что у confirm/revoke (ADR-0026). Возвращает итоговый статус: `paid` —
+   * скриншот сохранили, но статус не тронули (ADR-0049), иначе — `awaiting`. */
+  async attachScreenshot(
+    userId: string,
+    month: string,
+    source: TelegramScreenshotSource,
+    now: DateTime,
+  ): Promise<PaymentStatus> {
+    assertMonthKey(month);
+    await assertActiveStudent(this.userModel, userId);
+    const doc = await attachTelegramScreenshot(this.model, userId, month, source, now);
+    return doc.status;
   }
 
   /** Свои месяцы, свежие сверху — владение по `userId` из сессии

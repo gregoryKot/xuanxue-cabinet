@@ -73,6 +73,10 @@ export function SlotCard({ slot, onSelect }: SlotCardProps) {
         {CLASS_FORMAT_LABELS_RU[slot.format]}
         {' · '}
         {formatChannelCount(slot.channelCount)}
+        {/* Постоянные теги курса — подписью рядом с форматом и каналами, не
+            пилюлями: в сетке дня они ничего не фильтруют (ADR-0072). Пустой
+            список ничего не добавляет к строке. */}
+        {slot.tags.length > 0 && ` · ${slot.tags.join(', ')}`}
       </div>
       {(!slot.active || slot.linkMissing) && (
         <div style={statusRowStyle}>

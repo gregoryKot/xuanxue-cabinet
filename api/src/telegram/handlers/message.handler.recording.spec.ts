@@ -16,7 +16,9 @@ import { MessageHandler } from './message.handler';
 import type { GradeCommentHandler } from './grade-comment.handler';
 import type { NewExamMessageHandler } from './new-exam-message.handler';
 import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
+import type { PaymentScreenshotMessageHandler } from './payment-screenshot-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
+import { TopicWaitHandler } from './topic-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
 import { NOW, seedLesson } from './message.handler.seed';
 import { seedTeacher } from '../test-support/seed-teacher';
@@ -256,22 +258,25 @@ function buildHandlerWithFailingAddRecording(
   return new MessageHandler(
     buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
     new BotSessionService(ctx.botSessionModel),
-    { addRecording } as unknown as LessonsService,
-    new LessonLinkRebuildService(
-      new BroadcastModels(
-        ctx.lessonModel,
-        ctx.classModel,
-        ctx.channelModel,
-        ctx.broadcastModel,
-        ctx.deliveryModel,
-      ),
-      new SettingsService(
-        ctx.settingsModel,
-        ctx.lessonModel,
-        ctx.classModel,
+    new TopicWaitHandler(
+      new BotSessionService(ctx.botSessionModel),
+      { addRecording } as unknown as LessonsService,
+      new LessonLinkRebuildService(
+        new BroadcastModels(
+          ctx.lessonModel,
+          ctx.classModel,
+          ctx.channelModel,
+          ctx.broadcastModel,
+          ctx.deliveryModel,
+        ),
+        new SettingsService(
+          ctx.settingsModel,
+          ctx.lessonModel,
+          ctx.classModel,
+          usersService,
+        ),
         usersService,
       ),
-      usersService,
     ),
     new RecordingWaitHandler(
       new BotSessionService(ctx.botSessionModel),
@@ -281,6 +286,7 @@ function buildHandlerWithFailingAddRecording(
     ),
     { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
     { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
+    { handle: jest.fn() } as unknown as PaymentScreenshotMessageHandler,
     { handle: jest.fn() } as unknown as NewExamItemMessageHandler,
     { handle: jest.fn() } as unknown as NewExamMessageHandler,
     { handle: jest.fn() } as unknown as GradeCommentHandler,
