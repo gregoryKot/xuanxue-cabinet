@@ -4,13 +4,25 @@
 // цифру на значке до следующего похода в сеть, а сама лента запрашивалась бы
 // дважды. Приём — как у auth/AuthProvider.tsx (единственный источник сессии
 // на приложение).
+//
+// `me` приходит пропом от AppShell.tsx (он уже читает сессию и так же
+// передаёт её в AppNav), а не вторым useAuth() внутри — хук данных остаётся
+// чистым и тестируется без AuthProvider (тот же приём, что
+// useNotificationPrefs(me), NotificationPrefsSection.tsx).
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import type { MeDto } from '@xuanxue/shared';
 import { useNotificationsData, type NotificationsData } from './useNotificationsData';
 
 const NotificationsContext = createContext<NotificationsData | null>(null);
 
-export function NotificationsProvider({ children }: { children: ReactNode }) {
-  const data = useNotificationsData();
+export function NotificationsProvider({
+  me,
+  children,
+}: {
+  me: MeDto | null;
+  children: ReactNode;
+}) {
+  const data = useNotificationsData(me);
   const {
     items,
     unreadCount,

@@ -23,7 +23,7 @@ function renderBell(unreadCount: number) {
   });
   return render(
     <MemoryRouter>
-      <NotificationsProvider>
+      <NotificationsProvider me={null}>
         <NotificationBell />
       </NotificationsProvider>
     </MemoryRouter>,

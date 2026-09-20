@@ -6,6 +6,7 @@ import {
   LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_PATH,
+  NOTIFICATIONS_FEED_PATH,
   lessonsListPath,
 } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
@@ -82,6 +83,36 @@ describe('firstScreenPaths', () => {
     expect(firstScreenPaths('/profile', makeMe({ roles: [] }))).toEqual([
       '/me/notifications',
     ]);
+  });
+
+  // Новые задания считаются только у ученика (ADR-0070): у штата школы
+  // попыток нет, поэтому этот прогрев не ходит в /me/exams — промис остался
+  // бы в prefetchCache, забрать его было бы некому.
+  it('штат школы на /notifications — греется только лента, без /me/exams', () => {
+    expect(firstScreenPaths('/notifications', makeMe({ roles: ['teacher'] }))).toEqual([
+      NOTIFICATIONS_FEED_PATH,
+    ]);
+    expect(firstScreenPaths('/notifications', makeMe({ roles: ['assistant'] }))).toEqual([
+      NOTIFICATIONS_FEED_PATH,
+    ]);
+    expect(firstScreenPaths('/notifications', makeMe({ roles: ['admin'] }))).toEqual([
+      NOTIFICATIONS_FEED_PATH,
+    ]);
+  });
+
+  it('ученик на /notifications — греется лента и формы, как раньше', () => {
+    expect(firstScreenPaths('/notifications', makeMe({ roles: [] }))).toEqual([
+      NOTIFICATIONS_FEED_PATH,
+      MY_EXAMS_PATH,
+    ]);
+  });
+
+  // Сужение из теста выше — только для /notifications. На /tasks маршрут
+  // открыт любой роли (screenAccess.ts, canSeeRoute), а TasksScreen зовёт
+  // useMyExams() без оглядки на роль — прогрев обязан догонять экран для
+  // всех, иначе учащийся-ассистент ждёт формы лишний TTFB.
+  it('штат школы на /tasks — формы всё равно греются', () => {
+    expect(firstScreenPaths('/tasks', makeMe())).toEqual([MY_EXAMS_PATH]);
   });
 });
 
