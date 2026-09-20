@@ -43,6 +43,7 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     media: [],
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
+    offersTelegramLink: false,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
     ...overrides,

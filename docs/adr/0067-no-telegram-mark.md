@@ -96,14 +96,25 @@ ADR-0031): главное действие на экране остаётся о
 `lastLoginAt` и `profileNamedAt` (Date, не свободный текст —
 `encryption-coverage.spec.ts` требует решения только для String/Mixed).
 Обязательно: новое место, где кабинет предлагает Telegram, спрашивает
-`showsTelegramOffer(me)` или `acceptsTelegramOffer(me)`, а не собственное
-условие по `me`.
+`showsTelegramOffer(me)`, `showsTelegramLinkOffer(me)` или
+`acceptsTelegramOffer(me)`, а не собственное условие по `me`.
+
+Дополнено 2026-09-20: обещание «на всех экранах сразу» держалось не везде.
+Видео-вопрос попытки (`attempt/AttemptQuestionVideo.tsx`, ADR-0023) решал по
+своему `!telegramLinked` и звал в Telegram даже отметившегося. Пара «отметка
+плюс `telegramLinked`» стояла в двух местах копиями — теперь она одна,
+`showsTelegramLinkOffer` в `telegram/acceptsTelegramOffer.ts`, и её
+спрашивают оба: «Второй способ входа» и видео-вопрос. Экран попытки считает
+признак из сессии и передаёт вниз полем `AttemptVideoControls.offersTelegramLink`
+— сам блок видео-вопроса о сессии не знает.
 
 Гейты: `user-no-telegram.service.spec.ts` (установка, снятие и
 read-after-write через `UsersService.findById`), `user.mapper.spec.ts`
 (полный перечень полей `MeDto` и пара «дата → булево»),
 `api/test/me-no-telegram.e2e-spec.ts` (владение: `userId` из тела срезает
 `ValidationPipe({ whitelist: true })`, отметка садится на владельца сессии);
-веб — `acceptsTelegramOffer.test.ts`, `useNoTelegram.test.ts`,
+веб — `acceptsTelegramOffer.test.ts` (оба предиката), `useNoTelegram.test.ts`,
 `NoTelegramSwitch.test.tsx`, обновлённые `showsTelegramOffer.test.ts`,
-`showsTelegramHint.test.ts` и `SecondLoginKey.test.tsx`.
+`showsTelegramHint.test.ts` и `SecondLoginKey.test.tsx`, а за видео-вопрос —
+`AttemptQuestionVideo.test.tsx` (отметка гасит кнопку, форма ссылки остаётся)
+и `AttemptScreen.test.tsx` (признак доезжает от сессии до блока).
