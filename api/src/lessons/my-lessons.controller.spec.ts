@@ -21,6 +21,7 @@ const LESSONS: MyLessonDto[] = [
     format: 'online',
     topic: 'Форма 24',
     status: 'scheduled',
+    tags: [],
   },
 ];
 
@@ -33,6 +34,7 @@ const ARCHIVED_LESSONS: MyArchivedLessonDto[] = [
     topic: 'Форма 8',
     status: 'scheduled',
     recordings: [],
+    tags: [],
   },
 ];
 

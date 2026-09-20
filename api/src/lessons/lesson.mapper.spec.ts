@@ -28,6 +28,7 @@ function fullLesson(): LeanLesson {
       { _id: RECORDING_ID, title: 'Запись занятия', url: 'https://drive.example/rec' },
     ],
     note: 'Перенесли из-за праздника',
+    tags: ['дракон', 'начинающие'],
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT,
   };
@@ -56,6 +57,7 @@ describe('toLessonDto', () => {
       ],
       note: 'Перенесли из-за праздника',
       broadcast: undefined,
+      tags: ['дракон', 'начинающие'],
       createdAt: '2026-09-01T10:00:00.000Z',
       updatedAt: '2026-09-02T11:00:00.000Z',
     });
@@ -92,8 +94,19 @@ describe('toLessonDto', () => {
       topic: 'Пятое занятие цикла «Шаги назад»',
       status: 'scheduled',
       recordings: [],
+      tags: ['дракон', 'начинающие'],
       createdAt: '2026-09-01T10:00:00.000Z',
       updatedAt: '2026-09-02T11:00:00.000Z',
     });
+  });
+
+  // Даты занятий, заведённые до ADR-0059, не имеют поля в документе —
+  // `.lean()` не подставляет default схемы при чтении, маппер сам отдаёт [].
+  it('документ без поля tags (дата до этого PR) — tags: []', () => {
+    const { tags: _tags, ...doc } = fullLesson();
+
+    const dto = toLessonDto(doc);
+
+    expect(dto.tags).toEqual([]);
   });
 });

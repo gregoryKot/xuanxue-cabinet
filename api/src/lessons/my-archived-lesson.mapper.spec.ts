@@ -92,4 +92,16 @@ describe('toMyArchivedLessonDto', () => {
       { title: 'В канале', inTelegramOnly: true },
     ]);
   });
+
+  // ADR-0059: тег видит и ученик и в архиве — та же рубрика, что в «ближайших».
+  it('теги приезжают как есть', () => {
+    const dto = toMyArchivedLessonDto(lesson({ tags: ['дракон', 'начинающие'] }), CLASS);
+    expect(dto.tags).toEqual(['дракон', 'начинающие']);
+  });
+
+  // Дата занятия до ADR-0059 не хранит поле в документе — маппер сам отдаёт [].
+  it('документ без поля tags — []', () => {
+    const dto = toMyArchivedLessonDto(lesson(), CLASS);
+    expect(dto.tags).toEqual([]);
+  });
 });
