@@ -18,6 +18,9 @@ import { upsertUserByKey } from './upsert-user-by-key';
 export class EmailLoginUserService {
   constructor(@InjectModel(UserRecord.name) private readonly model: Model<UserRecord>) {}
 
+  /** Ищет только по подтверждённому `email`, `pendingEmail` для входа не
+   * существует (ADR-0059): опечатка в адресе, набранном в форме привязки,
+   * иначе отдала бы ключ от кабинета тому, кто владеет этим (чужим) ящиком. */
   async findByEmail(email: string): Promise<UserLean | null> {
     const doc = await this.model.findOne({ email }).lean<UserDoc | null>();
     return doc ? toLean(doc) : null;

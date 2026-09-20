@@ -191,6 +191,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
@@ -247,6 +248,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     });
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
@@ -268,6 +270,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {

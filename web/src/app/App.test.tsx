@@ -28,6 +28,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 const ADMIN: MeDto = {
@@ -37,6 +38,7 @@ const ADMIN: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 
@@ -269,6 +271,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/exams': [] });
@@ -297,6 +300,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/exams': [] });
@@ -314,6 +318,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/exams': [] });
@@ -334,6 +339,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/lessons': [] });
@@ -371,6 +377,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
@@ -390,6 +397,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, {

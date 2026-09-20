@@ -5,7 +5,9 @@
 // «Доступность»).
 import type { CSSProperties, ReactNode } from 'react';
 
-type FieldControlSize = 'default' | 'large';
+// Экспортирован: EmailField.tsx (CLAUDE.md «Одна механика — один компонент»)
+// принимает тот же размер пропом и не имеет права держать свою копию union.
+export type FieldControlSize = 'default' | 'large';
 
 // Высота и паддинг — единственное, что меняется по размеру; рамка, радиус и
 // фон общие. Экран входа (docs/adr/0043, макет 2d) — единственное место, где

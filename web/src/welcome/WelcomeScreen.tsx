@@ -7,16 +7,22 @@
 // (components/EntryColumn.tsx, docs/adr/0031): это ещё «сени» кабинета, не
 // сам кабинет — комментарий-«почему» в App.tsx объясняет, почему маршрут стоит
 // вне AppShell. Логика — useProfileSetup.ts (CLAUDE.md «Логика вне компонентов»).
+// Под формой — SecondLoginKey (ADR-0059, необязательный второй способ входа):
+// стоит за тонкой линией после «Продолжить», чтобы не спорить с ней за
+// единственное главное действие экрана (CLAUDE.md «Одно очевидное действие»).
 import type { CSSProperties, FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import type { MeDto } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { postLoginPath } from '../auth/returnTo';
+import { SecondLoginKey } from '../auth/SecondLoginKey';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
 import { FormServerError } from '../components/FormServerError';
 import { PersonNameFields } from '../components/PersonNameFields';
 import { SkeletonLines } from '../components/Skeleton';
 import {
+  noteStyle,
   screenExplanationStyle,
   screenHintStyle,
   screenTitleStyle,
@@ -24,12 +30,21 @@ import {
 import { useProfileSetup } from './useProfileSetup';
 
 const CONTINUE_HINT = 'Дальше — расписание занятий, ссылки на Zoom и записи.';
+const SECOND_KEY_HINT = 'Необязательно. Вернуться к этому можно в «Профиле».';
 const formStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 const fullWidthStyle: CSSProperties = { width: '100%' };
 // Приписка не сразу под объяснением экрана (та под заголовком выше), а под
 // кнопкой — отрицательный отступ screenHintStyle тут не нужен, расстояние
 // держит gap формы (тот же приём, что telegramHintStyle в profile/ProfileScreen.tsx).
 const continueHintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
+// Тонкая линия перед SecondLoginKey — не LabeledDivider: тот подписывает
+// «или» между двумя равными путями входа (LoginScreen.tsx), а здесь второй
+// способ входа не альтернатива «Продолжить», а отдельный, необязательный шаг.
+const dividerStyle: CSSProperties = {
+  border: 0,
+  borderTop: '1px solid var(--line)',
+  margin: 0,
+};
 
 export default function WelcomeScreen() {
   const { me, refresh } = useAuth();
@@ -58,20 +73,20 @@ export default function WelcomeScreen() {
   // безусловно, без хука до раннего return в этом компоненте. Экран
   // «Профиль» (ADR-0045) решает ту же ловушку тем же приёмом —
   // profile/ProfileNameSection.tsx.
-  return <ProfileSetupForm initialName={me.name} refresh={refresh} />;
+  return <ProfileSetupForm me={me} refresh={refresh} />;
 }
 
 interface ProfileSetupFormProps {
-  initialName: string;
+  me: MeDto;
   refresh: () => Promise<void>;
 }
 
-function ProfileSetupForm({ initialName, refresh }: ProfileSetupFormProps) {
+function ProfileSetupForm({ me, refresh }: ProfileSetupFormProps) {
   // useNavigate — здесь, не в useProfileSetup.ts: куда идти после сохранения
   // решает экран (хук теперь общий с «Профилем», который никуда не уходит).
   const navigate = useNavigate();
   const setup = useProfileSetup(
-    initialName,
+    me.name,
     refresh,
     () => void navigate(postLoginPath(), { replace: true }),
   );
@@ -79,6 +94,15 @@ function ProfileSetupForm({ initialName, refresh }: ProfileSetupFormProps) {
   function handleSubmit(event: FormEvent): void {
     event.preventDefault();
     void setup.submit();
+  }
+
+  // SecondLoginKey.tsx дожидается этого до ухода вкладки в Telegram
+  // (ADR-0059): человек мог набрать имя и тут же нажать «Связать Telegram» —
+  // черновик не должен пропасть. Заодно, если имя сохранилось, needsProfile
+  // снимается ещё до перехода — вернувшись из Telegram, человек попадёт уже
+  // в кабинет, а не на этот же экран (telegram/TelegramLinkButton.tsx).
+  async function saveNameBeforeLink(): Promise<void> {
+    await setup.save();
   }
 
   return (
@@ -106,6 +130,9 @@ function ProfileSetupForm({ initialName, refresh }: ProfileSetupFormProps) {
         </Button>
         <p style={continueHintStyle}>{CONTINUE_HINT}</p>
       </form>
+      <hr style={dividerStyle} />
+      <SecondLoginKey me={me} onBeforeLink={saveNameBeforeLink} />
+      <p style={noteStyle}>{SECOND_KEY_HINT}</p>
     </EntryColumn>
   );
 }
