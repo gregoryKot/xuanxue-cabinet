@@ -7,7 +7,7 @@ import { type ClassRecord, type LeanScheduleRule } from './class.schema';
 
 /** ClassRecord с полями, которые Mongoose добавляет сам и не описывает в
  * `@Prop` (`_id`, `timestamps: true`), плюс правила в форме `.lean()`.
- * `tags` — честно необязателен: у занятий, заведённых до ADR-0070, поля в
+ * `tags` — честно необязателен: у занятий, заведённых до ADR-0072, поля в
  * документе нет, а `.lean()` default схемы при чтении не подставляет —
  * toClassDto ниже сам отдаёт `[]` (тот же приём, что у LeanLesson,
  * lesson.mapper.ts). */

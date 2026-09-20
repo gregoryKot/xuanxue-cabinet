@@ -161,7 +161,7 @@ describe('buildScheduleGrid', () => {
     expect(grid[1][0]?.channelCount).toBe(1);
   });
 
-  it('теги курса переносятся в слот как есть (ADR-0070)', () => {
+  it('теги курса переносятся в слот как есть (ADR-0072)', () => {
     const cls = makeClass({
       tags: ['начинающие', 'медитация'],
       rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],

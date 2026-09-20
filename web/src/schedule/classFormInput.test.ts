@@ -114,7 +114,7 @@ describe('initialClassFormState', () => {
     expect(state.channelIds).toEqual([]);
   });
 
-  it('существующее занятие с тегами — собраны в строку через запятую (ADR-0070)', () => {
+  it('существующее занятие с тегами — собраны в строку через запятую (ADR-0072)', () => {
     const state = initialClassFormState(makeClass({ tags: ['начинающие', 'медитация'] }));
     expect(state.tagsText).toBe('начинающие, медитация');
   });
@@ -168,7 +168,7 @@ describe('validateClassForm', () => {
     expect(validateClassForm(baseState())).toBeNull();
   });
 
-  it('тег длиннее лимита — ошибка с текстом тега и лимитом (ADR-0070)', () => {
+  it('тег длиннее лимита — ошибка с текстом тега и лимитом (ADR-0072)', () => {
     const longTag = 'а'.repeat(TAG_LIMITS.length + 1);
     expect(validateClassForm(baseState({ tagsText: `база, ${longTag}` }))).toBe(
       `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
@@ -224,7 +224,7 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
     expect(toUpdateInput(state).leaderId).toBeNull();
   });
 
-  it('теги — строка через запятую превращается в массив на выходе, создание и правка (ADR-0070)', () => {
+  it('теги — строка через запятую превращается в массив на выходе, создание и правка (ADR-0072)', () => {
     const state = baseState({ tagsText: 'начинающие, медитация' });
     expect(toCreateInput(state).tags).toEqual(['начинающие', 'медитация']);
     expect(toUpdateInput(state).tags).toEqual(['начинающие', 'медитация']);

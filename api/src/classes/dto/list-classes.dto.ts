@@ -12,7 +12,7 @@ export class ListClassesDto implements ListClassesQuery {
   @IsBoolean()
   active?: boolean;
 
-  // Точное совпадение тега курса (ADR-0070) — тот же приём, что у
+  // Точное совпадение тега курса (ADR-0072) — тот же приём, что у
   // ListLessonsDto.tag: пустая строка ведёт себя как «фильтр не задан».
   @IsOptional()
   @IsString()

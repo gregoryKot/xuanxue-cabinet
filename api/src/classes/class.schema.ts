@@ -80,7 +80,7 @@ export class ClassRecord {
   @Prop({ type: Boolean, default: true })
   active!: boolean;
 
-  // Постоянный признак курса (ADR-0070, уточняет ADR-0059) — «начинающие»,
+  // Постоянный признак курса (ADR-0072, уточняет ADR-0059) — «начинающие»,
   // «медитация»: набирается один раз в расписании, не на каждой дате.
   // Отдельное поле от LessonRecord.tags (тег вечера) — форма даты своё не
   // показывает и не переписывает, иначе одно слово разъехалось бы на два
@@ -93,7 +93,7 @@ export class ClassRecord {
 
 export const ClassSchema = SchemaFactory.createForClass(ClassRecord);
 ClassSchema.index({ active: 1 });
-// Фильтр по тегу курса (GET /api/classes?tag=…, ADR-0070) — тот же приём,
+// Фильтр по тегу курса (GET /api/classes?tag=…, ADR-0072) — тот же приём,
 // что у LessonSchema.index({ tags: 1 }).
 ClassSchema.index({ tags: 1 });
 

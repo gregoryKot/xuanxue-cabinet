@@ -29,10 +29,10 @@ export interface ClassDto {
   channelIds: string[];
   leadMinutes: number;
   active: boolean;
-  /** Постоянная рубрика курса — «начинающие», «медитация» (ADR-0070).
+  /** Постоянная рубрика курса — «начинающие», «медитация» (ADR-0072).
    * Тег этого вечера живёт у даты (`LessonDto.tags`, ADR-0059) и не
    * подмешивается сюда: одно написание — одно место. У занятий, заведённых
-   * до ADR-0070, поля в документе нет — маппер отдаёт `[]`. */
+   * до ADR-0072, поля в документе нет — маппер отдаёт `[]`. */
   tags: string[];
   createdAt: string;
   updatedAt: string; // ISO UTC с Z
@@ -77,7 +77,7 @@ export interface UpdateClassInput {
   leadMinutes?: number;
   active?: boolean;
   /** Пустой массив — «снять все теги»; `null` здесь не нужен, и в
-   * NULLABLE_CLASS_FIELDS поле не входит (ADR-0070). */
+   * NULLABLE_CLASS_FIELDS поле не входит (ADR-0072). */
   tags?: string[];
 }
 
@@ -94,7 +94,7 @@ export const NULLABLE_CLASS_FIELDS = [
 
 export interface ListClassesQuery {
   active?: boolean;
-  /** Точное совпадение тега курса (ADR-0070) — тот же приём, что у
+  /** Точное совпадение тега курса (ADR-0072) — тот же приём, что у
    * ListLessonsQuery.tag и ListMaterialsQuery.tag: пустая строка читается
    * как «фильтр не задан». */
   tag?: string;

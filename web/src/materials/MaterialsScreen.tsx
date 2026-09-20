@@ -1,10 +1,10 @@
-// «Библиотека» — материалы, которыми учитель делится с учениками
-// (docs/PLAN.md §14, ADR-0047, ADR-0048). Правка и создание — отдельная
-// страница `/materials/new` и `/materials/:materialId`
-// (MaterialEditorScreen.tsx, ADR-0033): отсюда только переход. Облик — тот
-// же приём, что у ChannelsScreen.tsx/ExamItemsScreen.tsx: заголовок
-// антиквой, строка списка вместо карточки, список — одна общая карточка
-// (oneCardListStyle, docs/adr/0043).
+// «Материалы» — то, чем учитель делится с учениками (docs/PLAN.md §14,
+// ADR-0047, ADR-0048, ADR-0055). Правка и создание — отдельная страница
+// `/materials/new` и `/materials/:materialId` (MaterialEditorScreen.tsx,
+// ADR-0033): отсюда только переход. Облик — тот же приём, что у
+// ChannelsScreen.tsx/ExamItemsScreen.tsx: заголовок антиквой, строка списка
+// вместо карточки, список — одна общая карточка (oneCardListStyle,
+// docs/adr/0043).
 //
 // Фильтры — по виду и по тегу (ListFilters.tsx/MaterialTagFilter.tsx,
 // ADR-0058), тег фильтрует на сервере (`GET /api/materials?tag=`): поиска нет
@@ -28,7 +28,7 @@ import { MaterialTagFilter } from './MaterialTagFilter';
 import { useMaterials } from './useMaterials';
 import { useMaterialTagOptions } from './useMaterialTagOptions';
 
-const TITLE = 'Библиотека';
+const TITLE = 'Материалы';
 const EXPLANATION =
   'Книги, статьи и видео, которыми вы делитесь с учениками. Ученик видит их у себя на экране.';
 const EMPTY_MESSAGE =
@@ -68,7 +68,7 @@ export default function MaterialsScreen() {
 
       {/* Число из уже загруженного списка (без нового запроса) — только на
           весь список без единого фильтра: отфильтрованный список не отражал
-          бы всю библиотеку, и число обмануло бы учителя насчёт того, что
+          бы все материалы, и число обмануло бы учителя насчёт того, что
           именно закроет рубильник. Строгое сравнение с 'paid' само исключает
           'staff' (ADR-0058) — рубильник оплаты его не касается. */}
       <MaterialsPaidAccessSection

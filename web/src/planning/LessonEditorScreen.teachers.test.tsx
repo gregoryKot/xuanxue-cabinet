@@ -68,6 +68,7 @@ describe('LessonEditorScreen — сбой загрузки учителей (а�
     const { ApiError } = await import('../api/http');
     mockApiByPath({
       '/lessons/l1': LESSON,
+      '/materials': [],
       '/classes': [CLASS],
       '/users/teachers': new ApiError(TEACHERS_ERROR, 503, 'unknown'),
     });
@@ -80,6 +81,7 @@ describe('LessonEditorScreen — сбой загрузки учителей (а�
 
     mockApiByPath({
       '/lessons/l1': LESSON,
+      '/materials': [],
       '/classes': [CLASS],
       '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
     });
@@ -93,6 +95,7 @@ describe('LessonEditorScreen — сбой загрузки учителей (а�
     const { ApiError } = await import('../api/http');
     mockApiByPath({
       '/lessons/l1': LESSON,
+      '/materials': [],
       '/classes': new ApiError('Не удалось загрузить расписание.', 503, 'unknown'),
       '/users/teachers': [],
     });

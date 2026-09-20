@@ -172,7 +172,7 @@ describe('ClassEditorScreen — сохранение', () => {
     expect(await screen.findByText(SCHEDULE_MARKER)).toBeInTheDocument();
   });
 
-  it('ввод в поле «Теги» уходит в тело запроса как массив (ADR-0070)', async () => {
+  it('ввод в поле «Теги» уходит в тело запроса как массив (ADR-0072)', async () => {
     const user = userEvent.setup();
     mockClass(makeClass());
 

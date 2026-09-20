@@ -1,5 +1,6 @@
 // fetch подменяется на globalThis — сеть не трогаем (CLAUDE.md «Тесты»), тот
 // же приём, что у vk.adapter.spec.ts/telegram.adapter.spec.ts.
+import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { NotAvailableError } from '../common/errors';
 import { MailService } from './mail.service';
@@ -30,6 +31,20 @@ describe('MailService.sendLoginLink', () => {
       service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login' }),
     ).rejects.toBeInstanceOf(NotAvailableError);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  // Причина отказа была видна только в ветке fetch: без ключа человек получал
+  // 503, а в логах не было ничего (CLAUDE.md «Логи»).
+  it('нет ключа — причина в logger.error: 503 у человека видно и на сервере', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const service = new MailService(fakeConfig({}));
+
+    await expect(
+      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login' }),
+    ).rejects.toBeInstanceOf(NotAvailableError);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('RESEND_API_KEY'));
   });
 
   it('успех — POST на api.resend.com с Bearer/from/to/subject, с таймаутом', async () => {
@@ -119,7 +134,7 @@ describe('MailService.sendEmailConfirmLink', () => {
     expect(body.text).toContain('не входит в кабинет');
   });
 
-  it('Resend ответил не-ok — NotAvailableError (бросает, не отдаёт false)', async () => {
+  it('Resend ответил не-ok — NotAvailableError (бросает, а не молчит)', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(false, 422));
     const service = new MailService(fakeConfig(CONFIGURED));
 

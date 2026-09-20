@@ -10,7 +10,7 @@ import { MaterialFormFields } from './MaterialFormFields';
 import { useMaterialForm } from './useMaterialForm';
 import type { UseMaterialEditorResult } from './useMaterialEditor';
 
-const BACK_TEXT = 'К библиотеке';
+const BACK_TEXT = 'К материалам';
 const NEW_MATERIAL_TITLE = 'Новый материал';
 const REMOVE_LABEL = 'Удалить материал';
 const REMOVE_MESSAGE = 'Материал исчезнет из библиотеки ученика. Отменить нельзя.';

@@ -1,4 +1,4 @@
-// buildLessonsFilter теперь ходит в базу (id курсов с тегом, ADR-0070) —
+// buildLessonsFilter теперь ходит в базу (id курсов с тегом, ADR-0072) —
 // против настоящей Mongo через mongodb-memory-server, не мока модели
 // (CLAUDE.md «Тесты»: мок пропускает ошибки в самом запросе).
 import { DateTime } from 'luxon';
@@ -59,7 +59,7 @@ describe('buildLessonsFilter', () => {
     expect(filter).not.toHaveProperty('$or');
   });
 
-  it('дата без своих тегов находится по тегу своего курса (ADR-0070)', async () => {
+  it('дата без своих тегов находится по тегу своего курса (ADR-0072)', async () => {
     const cls = await classModel.create({
       title: 'Курс',
       format: 'online',
@@ -82,7 +82,7 @@ describe('buildLessonsFilter', () => {
     expect(found.map((l) => l._id.toString())).toEqual([lesson._id.toString()]);
   });
 
-  // Два поля не смешиваются (ADR-0070 «Решение»): свой тег даты находится
+  // Два поля не смешиваются (ADR-0072 «Решение»): свой тег даты находится
   // сам по себе, даже когда у курса другой тег или тега нет вовсе.
   it('дата со своим тегом находится по нему же, даже если тег курса другой', async () => {
     const cls = await classModel.create({

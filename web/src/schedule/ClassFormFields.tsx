@@ -16,7 +16,7 @@ import { Toggle } from '../components/Toggle';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 
-// ADR-0070: тег здесь — постоянный признак курса («начинающие»,
+// ADR-0072: тег здесь — постоянный признак курса («начинающие»,
 // «медитация»), не пометка конкретного вечера (та живёт у формы даты,
 // planning/lessonFormInput.ts) — два поля рядом не заведёшь, подсказка
 // объясняет это словом «курса».

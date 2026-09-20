@@ -1,4 +1,4 @@
-// e2e на теги занятий расписания (ADR-0070) — рубрикация свободным текстом,
+// e2e на теги занятий расписания (ADR-0072) — рубрикация свободным текстом,
 // постоянный признак курса: отдельный файл от classes.e2e-spec.ts, тот же
 // приём, что у lessons-tags.e2e-spec.ts/materials-tags.e2e-spec.ts.
 // Настоящий AppModule на MongoMemoryServer.
@@ -15,7 +15,7 @@ import {
 
 const VALID_BODY = { title: 'Тайцзицюань', format: 'online' as const };
 
-describe('Теги занятий расписания (e2e, ADR-0070)', () => {
+describe('Теги занятий расписания (e2e, ADR-0072)', () => {
   let testApp: TestApp;
   const { server, sessionFor, classModel, lessonModel, postLesson } =
     createLessonTestHelpers(() => testApp);
@@ -125,7 +125,7 @@ describe('Теги занятий расписания (e2e, ADR-0070)', () => {
     expect(ids).toEqual([(tagged.body as ClassDto).id]);
   });
 
-  // Главный сценарий ADR-0070: тег ставится один раз в расписании, дата без
+  // Главный сценарий ADR-0072: тег ставится один раз в расписании, дата без
   // своего тега находится в /lessons по тегу курса — без копии тега в её документ.
   it('GET /api/lessons?tag= находит даты занятия расписания по его тегу курса, не копируя тег в дату', async () => {
     const cookie = await sessionFor(['teacher']);
@@ -143,7 +143,7 @@ describe('Теги занятий расписания (e2e, ADR-0070)', () => {
       (l) => l.id === (lesson.body as LessonDto).id,
     );
     expect(found).toBeDefined();
-    // Тег остаётся только у курса — сама дата его не получает (ADR-0070 «Решение»).
+    // Тег остаётся только у курса — сама дата его не получает (ADR-0072 «Решение»).
     expect(found?.tags).toEqual([]);
   });
 

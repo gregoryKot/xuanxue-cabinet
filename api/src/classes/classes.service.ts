@@ -50,7 +50,7 @@ export class ClassesService {
     const filter: Record<string, unknown> =
       query.active === undefined ? {} : { active: query.active };
     // Истинностная проверка, не `!== undefined` (тот же приём, что у
-    // buildLessonsFilter/buildMaterialsFilter, ADR-0070): пустая строка в
+    // buildLessonsFilter/buildMaterialsFilter, ADR-0072): пустая строка в
     // query — «фильтр не задан», а не «тег — пустая строка».
     if (query.tag) filter.tags = query.tag;
     const docs = await this.model
@@ -88,7 +88,7 @@ export class ClassesService {
     if (payload.channelIds === undefined) {
       payload.channelIds = await this.defaultTelegramChannelIds();
     }
-    // Нормализация здесь, не в DTO: тег — фильтр (ADR-0070), опечатка и дубль
+    // Нормализация здесь, не в DTO: тег — фильтр (ADR-0072), опечатка и дубль
     // в базе разъехались бы с фильтром `tag` при чтении (тот же приём, что у
     // LessonsService.create/lessons.create.ts).
     payload.tags = normalizeTags(input.tags ?? []);
