@@ -11,6 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 import { UserRecord } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { decryptPayment, type RawLeanPayment } from './payment.mapper';
 import { monthKeyOf } from './payment-month';
 import { PaymentRecord } from './payment.schema';
 import { PaymentsService } from './payments.service';
@@ -237,6 +238,84 @@ describe('PaymentsService', () => {
       hasScreenshot: true,
       reminderSentAt: NOW.minus({ days: 3 }).toUTC().toISO(),
     });
+  });
+
+  it('attachScreenshot: новый скриншот заводит документ awaiting', async () => {
+    const userId = await createStudent();
+
+    const status = await service.attachScreenshot(
+      userId,
+      '2026-09',
+      { fileId: 'f1', fileUniqueId: 'u1' },
+      NOW,
+    );
+
+    expect(status).toBe('awaiting');
+    const mine = await service.listMine(userId);
+    expect(mine.find((p) => p.month === '2026-09')).toMatchObject({
+      status: 'awaiting',
+      hasScreenshot: true,
+    });
+  });
+
+  it('attachScreenshot: повторный скриншот не плодит второй документ и заменяет file_id', async () => {
+    const userId = await createStudent();
+    await service.attachScreenshot(
+      userId,
+      '2026-09',
+      { fileId: 'f1', fileUniqueId: 'u1' },
+      NOW,
+    );
+
+    await service.attachScreenshot(
+      userId,
+      '2026-09',
+      { fileId: 'f2', fileUniqueId: 'u2' },
+      NOW.plus({ minutes: 5 }),
+    );
+
+    expect(await paymentModel.countDocuments({ userId, month: '2026-09' })).toBe(1);
+    const raw = await paymentModel
+      .findOne({ userId, month: '2026-09' })
+      .lean<RawLeanPayment | null>();
+    if (!raw) throw new Error('документ не найден');
+    const doc = decryptPayment(raw);
+    expect(doc.screenshotFileId).toBe('f2');
+    expect(doc.screenshotFileUniqueId).toBe('u2');
+  });
+
+  it('attachScreenshot на уже paid месяц — статус остаётся paid, скриншот всё равно сохраняется', async () => {
+    const userId = await createStudent();
+    const accountantId = await createAccountant();
+    await service.confirm(userId, '2026-09', {}, accountantId, NOW);
+
+    const status = await service.attachScreenshot(
+      userId,
+      '2026-09',
+      { fileId: 'f1', fileUniqueId: 'u1' },
+      NOW,
+    );
+
+    expect(status).toBe('paid');
+    const mine = await service.listMine(userId);
+    expect(mine.find((p) => p.month === '2026-09')).toMatchObject({
+      status: 'paid',
+      hasScreenshot: true,
+    });
+  });
+
+  it('attachScreenshot штату школы — отказ, оплата не заводится (ADR-0026)', async () => {
+    const staffId = await createAccountant();
+
+    await expect(
+      service.attachScreenshot(
+        staffId,
+        '2026-09',
+        { fileId: 'f1', fileUniqueId: 'u1' },
+        NOW,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(await paymentModel.countDocuments({})).toBe(0);
   });
 
   it('listMonth: документ без confirmedAt/reminderSentAt (ждёт подтверждения) — оба undefined, не «Invalid DateTime»', async () => {

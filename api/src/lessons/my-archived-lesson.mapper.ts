@@ -7,6 +7,7 @@ import type {
   ArchivedRecordingDto,
   LessonStatus,
   MyArchivedLessonDto,
+  MyMaterialDto,
   Recording,
 } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
@@ -30,6 +31,11 @@ export interface MyArchivedLessonInput {
 export function toMyArchivedLessonDto(
   lesson: MyArchivedLessonInput,
   cls: MyArchivedLessonClassInput,
+  // Материалы этой даты (`materials.lessonIds`, ADR-0056) — уже собранные
+  // LessonMaterialsService, с рубильником оплаты и вырезанным `staff`
+  // (тем же приёмом, что MaterialsService.listForStudent). Едет в DTO как
+  // есть, второго решения по доступу здесь не принимается.
+  materials: MyMaterialDto[],
 ): MyArchivedLessonDto {
   return {
     id: lesson._id.toString(),
@@ -43,6 +49,7 @@ export function toMyArchivedLessonDto(
       .filter((recording): recording is ArchivedRecordingDto => recording !== null),
     // Тег видит и ученик (ADR-0059) — архив не исключение из этого правила.
     tags: lesson.tags ?? [],
+    materials,
   };
 }
 

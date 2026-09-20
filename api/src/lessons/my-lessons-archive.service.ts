@@ -19,6 +19,7 @@ import {
   type MyArchivedLessonDto,
 } from '@xuanxue/shared';
 import { ClassRecord } from '../classes/class.schema';
+import { LessonMaterialsService } from '../materials/lesson-materials.service';
 import { LessonRecord } from './lesson.schema';
 import type { LeanLesson } from './lesson.mapper';
 import { findLessonClassesByIds, joinLessonsWithClasses } from './lesson-classes.lookup';
@@ -29,11 +30,16 @@ export class MyLessonsArchiveService {
   constructor(
     @InjectModel(LessonRecord.name) private readonly model: Model<LessonRecord>,
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
+    private readonly lessonMaterialsService: LessonMaterialsService,
   ) {}
 
+  /** `isStaff` — уже вычисленный `isStaffRole(user.roles)` из контроллера,
+   * тот же приём, что у MaterialsService.listForStudent (ADR-0048): рубильник
+   * платного доступа к материалам действует и здесь. */
   async list(
     query: ListMyArchivedLessonsQuery,
     now: DateTime,
+    isStaff: boolean,
   ): Promise<MyArchivedLessonDto[]> {
     const docs = await this.model
       .find({ startsAt: { $lt: now.toJSDate() } })
@@ -41,11 +47,25 @@ export class MyLessonsArchiveService {
       .limit(query.limit ?? MY_ARCHIVE_LIMIT_DEFAULT)
       .lean<LeanLesson[]>();
 
-    const classById = await findLessonClassesByIds(
-      this.classModel,
-      docs.map((doc) => doc.classId),
-    );
+    // Класс-лукап и материалы независимы друг от друга — один Promise.all,
+    // не последовательные await (тот же приём, что MaterialsService.listForStudent).
+    const [classById, materialsByLessonId] = await Promise.all([
+      findLessonClassesByIds(
+        this.classModel,
+        docs.map((doc) => doc.classId),
+      ),
+      this.lessonMaterialsService.findByLessonIds(
+        docs.map((doc) => doc._id.toString()),
+        isStaff,
+      ),
+    ]);
 
-    return joinLessonsWithClasses(docs, classById, toMyArchivedLessonDto);
+    return joinLessonsWithClasses(docs, classById, (lesson, cls) =>
+      toMyArchivedLessonDto(
+        lesson,
+        cls,
+        materialsByLessonId.get(lesson._id.toString()) ?? [],
+      ),
+    );
   }
 }

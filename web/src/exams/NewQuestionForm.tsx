@@ -6,9 +6,9 @@
 // ссылки на статистику здесь нет — они появляются, когда вопрос уже
 // существует (ExamItemEditorForm.tsx), а этот вопрос только создаётся.
 import type { CSSProperties } from 'react';
-import { Button } from '../components/Button';
 import { FormServerError } from '../components/FormServerError';
-import { noteStyle, textLinkButtonStyle } from '../components/screenLayout';
+import { InlineFormFooter } from '../components/InlineFormFooter';
+import { noteStyle } from '../components/screenLayout';
 import { ExamItemFormFields } from '../exam-items/ExamItemFormFields';
 import { ExamItemKindField } from '../exam-items/ExamItemKindField';
 import { ExamItemOptionsField } from '../exam-items/ExamItemOptionsField';
@@ -18,7 +18,6 @@ import { useNewQuestionForm } from './useNewQuestionForm';
 
 const EXPLANATION = 'Вопрос сохранится в «Вопросах» и сразу попадёт в этот экзамен.';
 const SAVE_LABEL = 'Сохранить вопрос';
-const CANCEL_LABEL = 'Отменить';
 
 const wrapStyle: CSSProperties = {
   display: 'flex',
@@ -27,11 +26,6 @@ const wrapStyle: CSSProperties = {
   padding: '14px 0',
   borderTop: '1px solid var(--line)',
   borderBottom: '1px solid var(--line)',
-};
-const footerStyle: CSSProperties = {
-  display: 'flex',
-  gap: 16,
-  alignItems: 'center',
 };
 
 interface NewQuestionFormProps {
@@ -72,18 +66,12 @@ export function NewQuestionForm({ onCreated, onCancel }: NewQuestionFormProps) {
 
       <FormServerError error={form.serverError} />
 
-      <div style={footerStyle}>
-        <Button
-          variant="secondary"
-          pending={form.pending}
-          onClick={() => void handleSave()}
-        >
-          {SAVE_LABEL}
-        </Button>
-        <button type="button" style={textLinkButtonStyle} onClick={onCancel}>
-          {CANCEL_LABEL}
-        </button>
-      </div>
+      <InlineFormFooter
+        saveLabel={SAVE_LABEL}
+        pending={form.pending}
+        onSave={() => void handleSave()}
+        onCancel={onCancel}
+      />
     </div>
   );
 }

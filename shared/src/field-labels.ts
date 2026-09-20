@@ -111,4 +111,15 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // status/limit — общие подписи выше (deliveries.status, broadcasts.limit).
   month: 'Месяц',
   amountMinor: 'Сумма',
+
+  // users/dto/set-no-telegram.dto.ts — отметка «у меня нет Telegram»
+  // (ADR-0067). Подпись называет саму отметку: в форму поле не выводится, но
+  // текст ошибки человек всё равно читает, и голое `noTelegram` ему ни о чём
+  // не говорит.
+  noTelegram: 'Отметка «у меня нет Telegram»',
+
+  // client-errors — POST /client-errors (ADR-0071, отчёт браузера о сбое).
+  // kind — общая подпись «Тип» выше (broadcasts.kind), здесь вид сбоя.
+  message: 'Сообщение об ошибке',
+  path: 'Адрес экрана',
 };

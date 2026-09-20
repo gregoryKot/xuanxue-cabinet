@@ -83,12 +83,21 @@ export const bottomLinkStyle: CSSProperties = {
   textDecoration: 'none',
 };
 
+// Кегль подписи — 11, а не 12: с пятым пунктом «Материалы» (ADR-0055) на
+// 360px дорожка равна 64px, и при кегле 12 самая длинная подпись просит 67 —
+// не влезала и ломалась пополам, «Материал» и «ы» отдельной строкой, отчего
+// панель вырастала с 44px до 63 (замер в Chromium на живом Golos Text, не в
+// jsdom: там текст не меряется вовсе, и посимвольная прикидка эту поломку
+// пропустила). При кегле 11 та же подпись просит 61.4 — запас 2.6px. Родная
+// вкладочная панель iOS набирает подписи 10pt, так что 11 здесь не мелко.
+const BOTTOM_NAV_LABEL_FONT_SIZE_PX = 11;
+
 export const bottomPillStyle = (isActive: boolean): CSSProperties => ({
   width: '100%',
   padding: '8px 0',
   borderRadius: 'var(--radius-control)',
   textAlign: 'center',
-  fontSize: 12,
+  fontSize: BOTTOM_NAV_LABEL_FONT_SIZE_PX,
   overflowWrap: 'anywhere',
   color: isActive ? 'var(--ink)' : 'var(--ink-soft)',
   fontWeight: isActive ? 500 : 400,

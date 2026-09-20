@@ -26,7 +26,7 @@ const STUDENT_ARCHIVE_PATH = '/archive';
 // STUDENT_ARCHIVE_PATH: вход карточкой, но маршрут открывается явно.
 const STUDENT_LIBRARY_PATH = '/library';
 const PROFILE_PATH = '/profile';
-// Лента событий и новых заданий (ADR-0065) — личное место человека, как
+// Лента событий и новых заданий (ADR-0063) — личное место человека, как
 // «/profile» выше: адрес свободен с тех пор, как ADR-0045 увёл настройки
 // уведомлений в «Профиль».
 const NOTIFICATIONS_PATH = '/notifications';
@@ -47,7 +47,7 @@ export function rootPathFor(me: MeDto | null): string {
 }
 
 /** «/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
- * (личный экран, ADR-0045), «/notifications» (лента событий, ADR-0065) и
+ * (личный экран, ADR-0045), «/notifications» (лента событий, ADR-0063) и
  * «/attempts/:id» (экран сдачи) — открыты любой роли; остальные маршруты
  * кабинета — только teacher/assistant/admin, иначе AppShell уводит
  * редиректом на rootPathFor(me) (ADR-0025, ТЗ student-exams.md). */

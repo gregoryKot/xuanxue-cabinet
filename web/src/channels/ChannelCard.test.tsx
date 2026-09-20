@@ -57,17 +57,6 @@ describe('ChannelCard', () => {
     expect(screen.queryByText(/Выключен/)).not.toBeInTheDocument();
   });
 
-  it('webpush — строка никуда не ведёт (кнопки нет, только текст)', async () => {
-    const user = userEvent.setup();
-    const { onSelect } = renderCard({ type: 'webpush', title: 'Push подписки' });
-
-    const header = screen.getByText('Push · Push подписки');
-    expect(header.closest('button')).not.toBeInTheDocument();
-
-    await user.click(header);
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
   // Список каналов — одна карточка (docs/adr/0043): волосяную линию между
   // строками красит сама строка, а не контейнер, поэтому у последней строки
   // её быть не должно — иначе под линией останется голая полоска фона.

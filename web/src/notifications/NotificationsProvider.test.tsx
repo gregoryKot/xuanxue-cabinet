@@ -1,4 +1,4 @@
-// Контекст центра уведомлений (ADR-0065). Сами данные проверяет
+// Контекст центра уведомлений (ADR-0063). Сами данные проверяет
 // useNotificationsData.test.ts, а экран и значок — свои тесты; здесь только
 // то, за что отвечает сама обёртка: один и тот же счётчик двум читателям и
 // понятный отказ, когда провайдера над ними нет.
@@ -37,7 +37,7 @@ describe('NotificationsProvider — один счётчик на всех', () =
     }
 
     render(
-      <NotificationsProvider>
+      <NotificationsProvider me={null}>
         <Count label="значок" />
         <Count label="экран" />
       </NotificationsProvider>,

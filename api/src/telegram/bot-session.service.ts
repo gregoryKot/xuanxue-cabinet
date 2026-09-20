@@ -31,6 +31,7 @@ import {
   startNewExamItemDraftUpdate,
   type NewExamItemDraftPatch,
 } from './new-exam-item-draft-wait';
+import { paymentWaitUpdate } from './payment-wait';
 
 // Предпросмотр «Изменить тему» и команда /тема ждут ответ недолго — 10 минут
 // (PLAN.md §6); «Запись?» ждёт куда дольше — снять запись можно не сразу
@@ -67,12 +68,10 @@ export class BotSessionService {
     );
   }
 
-  /** Ждём видео экзамена — либо после deep link
-   * `t.me/<бот>?start=exam_<attemptId>[_<itemId>]` (ADR-0023/ADR-0037,
-   * `questionIndex` не передан), либо с экрана вопроса-видео внутри потока
-   * бота (ТЗ 4б.2 часть 2, оба переданы) — открыт ЛЮБОМУ пользователю
-   * Telegram, не через `set()`: то ведёт только `lessonId`, это — только
-   * `attemptId`/`itemId`. Само содержимое апдейта — exam-answer-wait.ts. */
+  /** Ждём видео экзамена — deep link `exam_<attemptId>[_<itemId>]`
+   * (ADR-0023/ADR-0037, `questionIndex` не передан) либо экран вопроса-видео
+   * потока бота (оба переданы) — открыт ЛЮБОМУ Telegram, не через `set()`
+   * (тот ведёт lessonId, этот — attemptId/itemId); апдейт — exam-answer-wait.ts. */
   async startExamMediaWait(
     chatId: number,
     attemptId: string,
@@ -104,12 +103,20 @@ export class BotSessionService {
     );
   }
 
-  /** Активное (не истёкшее) ожидание чата — TTL-индекс подчищает документ с
-   * задержкой до минуты (SERVER-точность монитора Mongo), поэтому фильтр по
-   * `expiresAt` здесь же, не только надежда на TTL. Проекция и расшифровка
-   * draft*-полей — bot-session.lean.ts (toBotSessionLean), читающий черновик
-   * мимо этого метода получил бы шифротекст, тем же приёмом, что
-   * decryptExamItem у банка вопросов. */
+  /** Ждём скриншот оплаты (ADR-0050, слой 2.2) — после deep link
+   * `t.me/<бот>?start=pay_<YYYY-MM>`, открыт любому Telegram; апдейт — payment-wait.ts. */
+  async startPaymentWait(chatId: number, month: string, now: DateTime): Promise<void> {
+    await this.model.updateOne(
+      { chatId },
+      { $set: paymentWaitUpdate(month, now) },
+      { upsert: true },
+    );
+  }
+
+  /** Активное (не истёкшее) ожидание — фильтр по `expiresAt` не только
+   * надежда на TTL (задержка до минуты, SERVER-точность Mongo). Проекция и
+   * расшифровка draft*-полей — bot-session.lean.ts (toBotSessionLean):
+   * читающий мимо этого метода получил бы шифротекст. */
   async get(chatId: number, now: DateTime): Promise<BotSessionLean | null> {
     const doc = await this.model
       .findOne(
@@ -205,20 +212,16 @@ export class BotSessionService {
     await this.model.deleteOne({ chatId });
   }
 
-  /** Закрывает ожидание, только если оно про ЭТО занятие («Записи не будет»
-   * под конкретным «Запись?» — CLAUDE.md «Ноль нагрузки» наоборот: чужую,
-   * более новую просьбу той же кнопкой не гасим). Учитель успел получить
-   * второй вопрос «Запись?» по другому занятию раньше, чем ответил на
-   * первый, — «Записи не будет» под первым не должно погасить ожидание
-   * второго. */
+  /** Закрывает ожидание только про ЭТО занятие («Записи не будет» под
+   * конкретным «Запись?») — чужую, более новую просьбу той же кнопкой не
+   * гасим (два «Запись?» подряд по разным занятиям, ответ на первое). */
   async clearIfLesson(chatId: number, lessonId: string): Promise<void> {
     await this.model.deleteOne({ chatId, lessonId: new Types.ObjectId(lessonId) });
   }
 
-  /** Закрывает ожидание комментария, только если оно про ЭТУ попытку («Отмена»
-   * под конкретной карточкой) — тот же приём и та же причина, что у
-   * clearIfLesson: `kind` в фильтре на случай, если тем временем чат ждёт
-   * что-то другое с тем же attemptId (examMedia/examText той же попытки). */
+  /** Закрывает ожидание комментария только про ЭТУ попытку («Отмена» под
+   * карточкой) — тот же приём, что clearIfLesson: `kind` в фильтре на случай
+   * другого ожидания с тем же attemptId (examMedia/examText). */
   async clearIfAttempt(chatId: number, attemptId: string): Promise<void> {
     await this.model.deleteOne({
       chatId,
@@ -228,11 +231,8 @@ export class BotSessionService {
   }
 
   /** Документ есть, но `expiresAt` уже прошёл — отличить «никогда не ждали»
-   * (тихо игнорируем чужое сообщение) от «ждали, но учитель не успел»: во
-   * втором случае бот отвечает, что ожидание истекло, а не молчит, причём
-   * текст разный для темы и записи (message.handler.ts) — поэтому возвращаем
-   * `kind`, а не просто факт. TTL может не успеть подчистить документ
-   * (задержка до минуты, как в get()) — фильтр по `expiresAt` тот же приём. */
+   * от «ждали, но не успели» (текст отличается по kind, message.handler.ts).
+   * TTL может не успеть подчистить (задержка до минуты, как в get()). */
   async hasExpired(chatId: number, now: DateTime): Promise<BotSessionKind | null> {
     const doc = await this.model
       .findOne({ chatId, expiresAt: { $lte: now.toJSDate() } }, { kind: 1 })
