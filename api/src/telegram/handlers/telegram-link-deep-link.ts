@@ -23,8 +23,8 @@
 // Баг с #131 (тот же класс ошибки, что и у join_<code>, починен там в #163,
 // см. комментарий в start.handler.ts и join-invite-deep-link.ts): успешная
 // связка ставила telegramId на аккаунт, но запись в channels не появлялась —
-// PersonalChats.chatFor/hasActiveChat (personal-chats.ts) без неё человека не
-// находят, и результат экзамена или уведомление о сдаче не доходят никуда.
+// PersonalChats.chatFor/hasActiveChatFor (personal-chats.ts) без неё человека
+// не находят, и результат экзамена или уведомление о сдаче не доходят никуда.
 // После ответа зовём тот же welcomeConnectedUser, что и join_<code> и обычный
 // /start для active (ADR-0027) — на каждый `linked`, без проверки статуса:
 // заблокированный до этой ветки не доходит, `linkByCode` отдаёт ему отдельный

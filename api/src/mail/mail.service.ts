@@ -1,6 +1,6 @@
 // Отправка писем через Resend HTTP API напрямую, без SDK (ADR-0029) —
-// потребители: вход по одноразовой ссылке (ADR-0005) и почтовый резерв
-// уведомлений экзамена (слой 4.7, PLAN §11, ADR-0039). Доступность
+// потребители: вход по одноразовой ссылке (ADR-0005) и подтверждение адреса
+// почты у уже вошедшего человека (ADR-0059). Доступность
 // (RESEND_API_KEY/MAIL_FROM/PUBLIC_URL) проверяет вызывающий код
 // (EmailAuthService) до вызова sendLoginLink; проверка здесь — вторая линия
 // обороны, не первая (SECURITY §8: fetch без ключа не уходит).
@@ -22,12 +22,6 @@ interface SendLoginLinkInput {
   link: string;
 }
 
-interface SendExamNotificationInput {
-  to: string;
-  subject: string;
-  text: string;
-}
-
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -47,20 +41,9 @@ export class MailService {
     if (!delivered) throw new NotAvailableError(EMAIL_LOGIN_SEND_FAILED_MESSAGE);
   }
 
-  /** Best-effort вариант sendLoginLink — не бросает, отдаёт `false` (та же
-   * форма, что у `TelegramBotService.sendMessage`, ADR-0039): вызывающий
-   * MailExamNotifier сам best-effort и не должен ронять HTTP-ответ
-   * ExamAttemptsService/ExamGradingsService из-за письма. */
-  async sendExamNotification({
-    to,
-    subject,
-    text,
-  }: SendExamNotificationInput): Promise<boolean> {
-    return this.postToResend(to, subject, text);
-  }
-
-  /** Общий POST в Resend — единственное отличие sendLoginLink/
-   * sendExamNotification в том, бросать ли на неудаче или отдать `false`. */
+  /** Общий POST в Resend — используют sendLoginLink и sendEmailConfirmLink,
+   * у каждого свои subject/text, поведение на неудаче (бросить) одно и то
+   * же: второй раз собирать этот же запрос в каждом методе незачем. */
   private async postToResend(
     to: string,
     subject: string,

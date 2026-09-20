@@ -80,76 +80,6 @@ describe('MailService.sendLoginLink', () => {
   });
 });
 
-// sendExamNotification — почтовый резерв уведомлений экзамена (слой 4.7,
-// ADR-0039): в отличие от sendLoginLink не бросает, отдаёт boolean —
-// MailExamNotifier best-effort и не должен ронять HTTP-ответ сервиса
-// экзамена из-за письма.
-describe('MailService.sendExamNotification', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('нет RESEND_API_KEY/MAIL_FROM — false, сеть не трогаем', async () => {
-    const fetchSpy = jest.spyOn(globalThis, 'fetch');
-    const service = new MailService(fakeConfig({}));
-
-    await expect(
-      service.sendExamNotification({
-        to: 'a@example.com',
-        subject: 'Тема',
-        text: 'Текст',
-      }),
-    ).resolves.toBe(false);
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it('успех — true, POST с переданным subject/text', async () => {
-    const fetchSpy = jest
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(jsonResponse(true));
-    const service = new MailService(fakeConfig(CONFIGURED));
-
-    await expect(
-      service.sendExamNotification({
-        to: 'teacher@example.com',
-        subject: 'Сдана работа',
-        text: 'Работа ждёт вашей проверки.',
-      }),
-    ).resolves.toBe(true);
-
-    const [, init] = fetchSpy.mock.calls[0] ?? [];
-    const body = JSON.parse(init?.body as string) as { subject: string; text: string };
-    expect(body.subject).toBe('Сдана работа');
-    expect(body.text).toBe('Работа ждёт вашей проверки.');
-  });
-
-  it('Resend ответил не-ok — false, не бросает', async () => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(false, 422));
-    const service = new MailService(fakeConfig(CONFIGURED));
-
-    await expect(
-      service.sendExamNotification({
-        to: 'a@example.com',
-        subject: 'Тема',
-        text: 'Текст',
-      }),
-    ).resolves.toBe(false);
-  });
-
-  it('сетевая ошибка (fetch бросил) — false, не бросает', async () => {
-    jest.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
-    const service = new MailService(fakeConfig(CONFIGURED));
-
-    await expect(
-      service.sendExamNotification({
-        to: 'a@example.com',
-        subject: 'Тема',
-        text: 'Текст',
-      }),
-    ).resolves.toBe(false);
-  });
-});
-
 // Привязка почты к уже вошедшему человеку (ADR-0059) — как sendLoginLink, не
 // best-effort: неудача бросает, а не молчит.
 describe('MailService.sendEmailConfirmLink', () => {
@@ -189,7 +119,7 @@ describe('MailService.sendEmailConfirmLink', () => {
     expect(body.text).toContain('не входит в кабинет');
   });
 
-  it('Resend ответил не-ok — NotAvailableError (не best-effort, в отличие от sendExamNotification)', async () => {
+  it('Resend ответил не-ok — NotAvailableError (бросает, не отдаёт false)', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(false, 422));
     const service = new MailService(fakeConfig(CONFIGURED));
 

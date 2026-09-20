@@ -149,34 +149,6 @@ describe('UsersService', () => {
     findSpy.mockRestore();
   });
 
-  it('listStaffWithEmail: штат с email, без ученика, accountant и штата без email (слой 4.7, ADR-0039)', async () => {
-    const teacher = await model.create({
-      name: 'Учитель',
-      email: 'teacher@example.com',
-      roles: ['teacher'],
-    });
-    await model.create({
-      name: 'Учитель без почты',
-      telegramId: 601,
-      roles: ['teacher'],
-    });
-    await model.create({
-      name: 'Ученик с почтой',
-      email: 'student@example.com',
-      roles: [],
-    });
-    await model.create({
-      name: 'Бухгалтер с почтой',
-      email: 'accountant@example.com',
-      roles: ['accountant'],
-    });
-
-    const staff = await service.listStaffWithEmail();
-    const ids = staff.map((s) => s.id);
-    expect(ids).toEqual([teacher._id.toString()]);
-    expect(staff[0]).toMatchObject({ email: 'teacher@example.com', roles: ['teacher'] });
-  });
-
   it('touchLogin проставляет lastLoginAt из переданного now, не Date.now()', async () => {
     const created = await service.createFromTelegram({
       telegramId: 333,

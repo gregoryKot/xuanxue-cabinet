@@ -14,10 +14,6 @@ import {
   listContactsWithRoles as listContactsWithRolesQuery,
   type RoledContact,
 } from './list-contacts-with-roles';
-import {
-  listStaffWithEmail as listStaffWithEmailQuery,
-  type StaffEmailContact,
-} from './list-staff-with-email';
 import { attachTelegramId as attachTelegramIdWrite } from './attach-telegram-id';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
 import { normalizeUserStatus } from './normalize-user-status';
@@ -92,16 +88,10 @@ export class UsersService {
     return listContactsWithRolesQuery(this.model, roles);
   }
 
-  /** Штат с подтверждённым email (слой 4.7, ADR-0039) — почтовый резерв для
-   * `attempt_submitted`, логика выноса та же, что у listContactsWithRoles. */
-  async listStaffWithEmail(): Promise<StaffEmailContact[]> {
-    return listStaffWithEmailQuery(this.model);
-  }
-
   /** Активные люди с такими ролями — кандидаты записи кабинета
-   * (InAppExamNotifier, ADR-0059), без требования канала связи (в отличие
-   * от listContactsWithRoles/listStaffWithEmail). Логика — в
-   * list-active-with-roles.ts (та же причина выноса, что у listStaffWithEmail). */
+   * (InAppExamNotifier, ADR-0061), без требования канала связи (в отличие
+   * от listContactsWithRoles). Логика — в list-active-with-roles.ts (та же
+   * причина выноса, что у upsert-user-by-key.ts). */
   async listActiveWithRoles(roles: readonly UserRole[]): Promise<ActiveRoledUser[]> {
     return listActiveWithRolesQuery(this.model, roles);
   }
