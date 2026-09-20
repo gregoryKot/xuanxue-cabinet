@@ -64,7 +64,7 @@ interface StudentLessonMeetingProps {
   location?: string;
   zoomLink?: string;
   zoomPassword?: string;
-  /** Главное действие экрана — заливка киноварью. По умолчанию ссылка тихая. */
+  /** Главное действие экрана — заливка терракотой. По умолчанию ссылка тихая. */
   prominent?: boolean;
 }
 
