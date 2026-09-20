@@ -44,7 +44,7 @@ export interface LessonDto {
   updatedAt: string; // ISO UTC с Z
 }
 
-/** Окно `from..to` — оба поля сразу или ни одного (ADR-0076): без тега
+/** Окно `from..to` — оба поля сразу или ни одного (ADR-0078): без тега
  * обязательно, с тегом можно опустить целиком — выдача смотрит на всю
  * историю; одно поле без другого — всегда ошибка (правило одно, см.
  * `resolveLessonsWindow` в `api/src/lessons/lesson-dates.ts`). */

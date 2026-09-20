@@ -13,8 +13,8 @@
 // retention: живёт до потребления (consume) или TTL-индекса — считаные
 // минуты, короче сессии и вне модели угроз №2 (SECURITY §1).
 //
-// userId — чья сессия привязывает адрес, признак владения (чеклист CLAUDE.md
-// «Новая коллекция с полем userId») — модель внесена в USER_OWNED_COLLECTIONS
+// userId — чья сессия привязывает адрес, признак владения (чеклист
+// CLAUDE.md «Новая коллекция») — модель внесена в USER_OWNED_COLLECTIONS
 // рядом с TelegramLinkCodeRecord, тем же доводом: сверочный тест падает,
 // если модель с путём userId забыта там.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';

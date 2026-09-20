@@ -1,4 +1,4 @@
-// GET /tags — сводка тегов школы (ADR-0075, ADR-0076), доступ штату школы,
+// GET /tags — сводка тегов школы (ADR-0075, ADR-0078), доступ штату школы,
 // как у остальных списков школы (MaterialsController). Контроллер только
 // валидирует query и зовёт сервис.
 import { Controller, Get, Query } from '@nestjs/common';

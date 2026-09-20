@@ -41,7 +41,7 @@ describe('buildLessonsFilter', () => {
     });
   });
 
-  // ADR-0076: окно опущено только вместе с тегом (resolveLessonsWindow это
+  // ADR-0078: окно опущено только вместе с тегом (resolveLessonsWindow это
   // гарантирует раньше) — здесь просто форма фильтра без startsAt.
   it('окно не задано (undefined/undefined) — startsAt в фильтре отсутствует', async () => {
     const filter = await buildLessonsFilter(

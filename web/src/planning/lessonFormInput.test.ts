@@ -74,7 +74,7 @@ describe('initialLessonFormState', () => {
     );
   });
 
-  it('правка — теги даты собраны в строку через запятую (ADR-0059)', () => {
+  it('правка — теги даты собраны в строку через запятую (ADR-0075)', () => {
     const state = initialLessonFormState(
       makeLesson({ tags: ['дракон', 'начинающие'] }),
       [],
@@ -120,7 +120,7 @@ describe('validateLessonForm', () => {
     expect(validateLessonForm({ ...base, classId: 'c1' }, true)).toBeNull();
   });
 
-  it('тег длиннее лимита — та же ошибка, что у формы занятия расписания (ADR-0059/ADR-0072)', () => {
+  it('тег длиннее лимита — та же ошибка, что у формы занятия расписания (ADR-0075/ADR-0072)', () => {
     const longTag = 'а'.repeat(TAG_LIMITS.length + 1);
     expect(validateLessonForm({ ...base, tagsText: `база, ${longTag}` }, false)).toBe(
       `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
@@ -176,12 +176,12 @@ describe('toCreateInput / toUpdateInput', () => {
     expect(toUpdateInput(state).tags).toEqual(['Дракон', 'толчок руками']);
   });
 
-  it('toUpdateInput — пустая строка тегов даёт [] (сброс тегов, ADR-0059)', () => {
+  it('toUpdateInput — пустая строка тегов даёт [] (сброс тегов, ADR-0075)', () => {
     const state = initialLessonFormState(makeLesson({ tags: ['дракон'] }), []);
     expect(toUpdateInput({ ...state, tagsText: '' }).tags).toEqual([]);
   });
 
-  it('toCreateInput — тегов не отправляет: поле формы недоступно при создании (ADR-0059)', () => {
+  it('toCreateInput — тегов не отправляет: поле формы недоступно при создании (ADR-0075)', () => {
     const state = {
       ...initialLessonFormState(null, [makeClass()]),
       startsAtLocal: '2026-09-08T19:00',

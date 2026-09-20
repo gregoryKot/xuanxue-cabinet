@@ -2,7 +2,7 @@
 // (список дат занятий без периода и без тега — «дай всё», запрещено
 // CLAUDE.md «API») — оба поля здесь просто @IsOptional(), сама
 // обязательность (окно целиком или тег) и предел горизонта планировщика —
-// одно место, `resolveLessonsWindow` (lesson-dates.ts, ADR-0076):
+// одно место, `resolveLessonsWindow` (lesson-dates.ts, ADR-0078):
 // class-validator видит только формат ISO у каждого поля порознь, не
 // зависимость между ними.
 import { IsISO8601, IsMongoId, IsOptional, IsString, MaxLength } from 'class-validator';

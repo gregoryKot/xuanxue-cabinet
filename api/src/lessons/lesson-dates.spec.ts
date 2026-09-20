@@ -53,7 +53,7 @@ describe('assertListWindow', () => {
   });
 });
 
-// ADR-0076: окно обязательно, если нет тега; одно поле окна без другого —
+// ADR-0078: окно обязательно, если нет тега; одно поле окна без другого —
 // ошибка независимо от тега. Одно место для правила — здесь, юнит-тест без
 // Mongo (сервисный сценарий против настоящей базы — lessons.service.spec.ts).
 describe('resolveLessonsWindow', () => {
@@ -75,7 +75,7 @@ describe('resolveLessonsWindow', () => {
     );
   });
 
-  it('нет окна, есть тег — undefined (окно законно опущено, ADR-0076)', () => {
+  it('нет окна, есть тег — undefined (окно законно опущено, ADR-0078)', () => {
     expect(resolveLessonsWindow(undefined, undefined, 'дракон')).toBeUndefined();
   });
 

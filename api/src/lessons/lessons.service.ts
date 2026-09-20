@@ -59,7 +59,7 @@ export class LessonsService {
   ) {}
 
   // Окно и его обязательность — findLessonsList/resolveLessonsWindow
-  // (ADR-0076): без тега окно обязательно и сортировка по возрастанию, с
+  // (ADR-0078): без тега окно обязательно и сортировка по возрастанию, с
   // тегом без окна — от новых к старым по всей истории (lessons.queries.ts).
   async list(query: ListLessonsQuery): Promise<LessonDto[]> {
     const docs = await findLessonsList(this.model, this.classModel, query);
