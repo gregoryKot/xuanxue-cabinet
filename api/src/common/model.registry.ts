@@ -68,6 +68,11 @@ import {
   NOTIFICATION_PREFS_FIELD_POLICY,
 } from '../notifications/notification-prefs.schema';
 import {
+  NotificationRecord,
+  NotificationSchema,
+  NOTIFICATION_FIELD_POLICY,
+} from '../notifications/notification.schema';
+import {
   SettingsRecord,
   SettingsSchema,
   SETTINGS_FIELD_POLICY,
@@ -165,6 +170,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: NotificationPrefsRecord.name,
     schema: NotificationPrefsSchema,
     fieldPolicy: NOTIFICATION_PREFS_FIELD_POLICY,
+  },
+  {
+    name: NotificationRecord.name,
+    schema: NotificationSchema,
+    fieldPolicy: NOTIFICATION_FIELD_POLICY,
   },
   {
     name: SettingsRecord.name,
