@@ -1,23 +1,27 @@
-// Композитный ExamNotifier (слой 4.7, PLAN §11, ADR-0039) — единственный
-// провайдер под токеном EXAM_NOTIFIER: зовёт Telegram и почту параллельно,
-// каждый канал ловит свои сбои сам (TelegramExamNotifier/MailExamNotifier,
-// комментарии в их файлах) и никогда не бросает наружу. `Promise.allSettled`
-// здесь — вторая линия обороны, не первая: если один из каналов всё же
-// бросит (ошибка в самом канале, не в его try/catch), другой всё равно
-// получит уведомление, и сервис экзамена (ExamAttemptsService/
-// ExamGradingsService) не увидит исключение ни при каком раскладе
-// (CLAUDE.md «Ошибки»: доставка уведомления не роняет HTTP-ответ).
+// Композитный ExamNotifier (слой 4.7, PLAN §11, ADR-0039, ADR-0061) —
+// единственный провайдер под токеном EXAM_NOTIFIER: зовёт кабинет, Telegram
+// и почту параллельно, каждый канал ловит свои сбои сам (InAppExamNotifier/
+// TelegramExamNotifier/MailExamNotifier, комментарии в их файлах) и никогда
+// не бросает наружу. `Promise.allSettled` здесь — вторая линия обороны, не
+// первая: если один из каналов всё же бросит (ошибка в самом канале, не в
+// его try/catch), остальные всё равно получат уведомление, и сервис
+// экзамена (ExamAttemptsService/ExamGradingsService) не увидит исключение ни
+// при каком раскладе (CLAUDE.md «Ошибки»: доставка уведомления не роняет
+// HTTP-ответ).
 //
 // Каждый канал возвращает ExamNotifyResult — число адресатов, которым
 // пытался отправить (exams/exam-notifier.ts, комментарий у ExamNotifyResult).
-// runBoth складывает эти числа по обоим каналам и при нуле пишет один
+// runAll складывает эти числа по всем каналам и при нуле пишет один
 // `error`: учитель и ученик остались без уведомления, и это виднее одной
-// строкой, чем сопоставлением warn от разных каналов.
+// строкой, чем сопоставлением warn от разных каналов. Кабинет — система
+// записи без квоты (ADR-0061), поэтому на практике сумма почти всегда
+// ненулевая: ноль означает, что записать не удалось даже туда.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { NotificationKind } from '@xuanxue/shared';
 import { errorMessage } from '../common/error-info';
 import { MailExamNotifier } from '../mail/mail-exam-notifier';
+import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import type {
   AttemptSubmittedContext,
@@ -41,6 +45,7 @@ export class CompositeExamNotifier implements ExamNotifier {
   private readonly logger = new Logger(CompositeExamNotifier.name);
 
   constructor(
+    private readonly inApp: InAppExamNotifier,
     private readonly telegram: TelegramExamNotifier,
     private readonly mail: MailExamNotifier,
   ) {}
@@ -49,9 +54,12 @@ export class CompositeExamNotifier implements ExamNotifier {
     context: AttemptSubmittedContext,
     now: DateTime,
   ): Promise<ExamNotifyResult> {
-    return this.runBoth(
-      () => this.telegram.notifyAttemptSubmitted(context, now),
-      () => this.mail.notifyAttemptSubmitted(context, now),
+    return this.runAll(
+      [
+        () => this.inApp.notifyAttemptSubmitted(context, now),
+        () => this.telegram.notifyAttemptSubmitted(context, now),
+        () => this.mail.notifyAttemptSubmitted(context, now),
+      ],
       {
         attemptId: context.attemptId,
         examId: context.examId,
@@ -64,9 +72,12 @@ export class CompositeExamNotifier implements ExamNotifier {
     context: ExamGradedContext,
     now: DateTime,
   ): Promise<ExamNotifyResult> {
-    return this.runBoth(
-      () => this.telegram.notifyExamGraded(context, now),
-      () => this.mail.notifyExamGraded(context, now),
+    return this.runAll(
+      [
+        () => this.inApp.notifyExamGraded(context, now),
+        () => this.telegram.notifyExamGraded(context, now),
+        () => this.mail.notifyExamGraded(context, now),
+      ],
       {
         attemptId: context.attemptId,
         examId: context.examId,
@@ -75,12 +86,11 @@ export class CompositeExamNotifier implements ExamNotifier {
     );
   }
 
-  private async runBoth(
-    telegramCall: () => Promise<ExamNotifyResult>,
-    mailCall: () => Promise<ExamNotifyResult>,
+  private async runAll(
+    calls: readonly (() => Promise<ExamNotifyResult>)[],
     keys: NotifyLogKeys,
   ): Promise<ExamNotifyResult> {
-    const results = await Promise.allSettled([telegramCall(), mailCall()]);
+    const results = await Promise.allSettled(calls.map((call) => call()));
     let recipients = 0;
     for (const result of results) {
       if (result.status === 'rejected') {
@@ -90,10 +100,11 @@ export class CompositeExamNotifier implements ExamNotifier {
       recipients += result.value.recipients;
     }
     if (recipients === 0) {
-      // Ни один канал никого не уведомил — учитель без чата с ботом и без
-      // почты, ученик без того и другого. Причину по каждому каналу уже
-      // объяснил его собственный warn; здесь — единственная строка на сам
-      // факт «никому», чтобы не собирать его из двух логов руками.
+      // Ни один канал никого не уведомил — учитель без чата с ботом, без
+      // почты и без строки в кабинете, ученик без того, другого и третьего.
+      // Причину по каждому каналу уже объяснил его собственный warn; здесь —
+      // единственная строка на сам факт «никому», чтобы не собирать её из
+      // трёх логов руками.
       this.logger.error('exam.notify (composite): уведомление не ушло никому', keys);
     }
     return { recipients };

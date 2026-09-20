@@ -7,6 +7,10 @@ import { Model, Types } from 'mongoose';
 import type { UserRole, UserStatus } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
 import {
+  listActiveWithRoles as listActiveWithRolesQuery,
+  type ActiveRoledUser,
+} from './list-active-with-roles';
+import {
   listContactsWithRoles as listContactsWithRolesQuery,
   type RoledContact,
 } from './list-contacts-with-roles';
@@ -92,6 +96,14 @@ export class UsersService {
    * `attempt_submitted`, логика выноса та же, что у listContactsWithRoles. */
   async listStaffWithEmail(): Promise<StaffEmailContact[]> {
     return listStaffWithEmailQuery(this.model);
+  }
+
+  /** Активные люди с такими ролями — кандидаты записи кабинета
+   * (InAppExamNotifier, ADR-0059), без требования канала связи (в отличие
+   * от listContactsWithRoles/listStaffWithEmail). Логика — в
+   * list-active-with-roles.ts (та же причина выноса, что у listStaffWithEmail). */
+  async listActiveWithRoles(roles: readonly UserRole[]): Promise<ActiveRoledUser[]> {
+    return listActiveWithRolesQuery(this.model, roles);
   }
 
   /** Первый вход через Telegram (SECURITY §2, ADR-0030/0036): всегда
