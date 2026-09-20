@@ -70,7 +70,10 @@ export class ExamItemsService {
     return toExamItemDto(decryptExamItem(doc));
   }
 
-  async create(input: CreateExamItemInput, authorId: string): Promise<ExamItemDto> {
+  // authorId необязателен — CLI-импорт сида (seed-exam.service.ts) заводит
+  // вопросы без вошедшего в систему человека; схема поля не требует
+  // (ExamItemRecord.authorId, required: false).
+  async create(input: CreateExamItemInput, authorId?: string): Promise<ExamItemDto> {
     const options = mapOptions(assertOptionsForKind(input.kind, input.options));
     await this.examImagesService.assertExist(collectImageIds(options, []));
     const payload: Record<string, unknown> = {
@@ -80,7 +83,7 @@ export class ExamItemsService {
       criteria: input.criteria,
       options,
       tags: input.tags ?? [],
-      authorId,
+      ...(authorId !== undefined ? { authorId } : {}),
       imageIds: collectImageIds(options, []),
     };
     // Не прислали — схемный default (`published`, ADR-0033); лишнего ключа не надо.

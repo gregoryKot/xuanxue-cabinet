@@ -106,14 +106,21 @@ interface ExtractedOptions {
  * подставляет вместо него плейсхолдер `imageId`, а сам путь возвращает
  * отдельным параллельным массивом по индексу варианта. Не массив на входе —
  * не трогает вовсе, DTO-валидация (`@IsArray()`) сама даст понятную ошибку. */
-function extractOptionImages(rawOptions: unknown, questionPath: string): ExtractedOptions {
+function extractOptionImages(
+  rawOptions: unknown,
+  questionPath: string,
+): ExtractedOptions {
   if (!Array.isArray(rawOptions)) {
     return { sanitizedOptions: rawOptions, optionImagePaths: [], pathErrors: [] };
   }
+  // Array.isArray сужает rawOptions до any[] (сигнатура TS-либы), не
+  // unknown[] — явный каст обрывает эту утечку any до .map() (тот же приём,
+  // что parseSeedFile, seed-file.ts).
+  const options = rawOptions as unknown[];
 
   const pathErrors: SeedValidationError[] = [];
   const optionImagePaths: (string | undefined)[] = [];
-  const sanitizedOptions = rawOptions.map((rawOption, optionIndex) => {
+  const sanitizedOptions = options.map((rawOption, optionIndex) => {
     if (typeof rawOption !== 'object' || rawOption === null || Array.isArray(rawOption)) {
       optionImagePaths.push(undefined);
       return rawOption;
@@ -125,7 +132,10 @@ function extractOptionImages(rawOptions: unknown, questionPath: string): Extract
       return rest;
     }
     if (typeof image !== 'string' || image.trim() === '') {
-      pathErrors.push({ path: optionPath, message: 'Путь к картинке должен быть непустой строкой.' });
+      pathErrors.push({
+        path: optionPath,
+        message: 'Путь к картинке должен быть непустой строкой.',
+      });
       optionImagePaths.push(undefined);
       return rest;
     }

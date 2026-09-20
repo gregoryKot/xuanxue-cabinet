@@ -67,6 +67,14 @@ describe('ExamsService', () => {
     expect(found.blocks).toEqual([]);
   });
 
+  it('создаётся без автора (CLI-импорт сида) — createdBy не пишется в документ', async () => {
+    const created = await service.create({ title: 'Экзамен без автора' });
+
+    expect(created.createdBy).toBeUndefined();
+    const raw = await model.findById(created.id).lean();
+    expect(raw?.createdBy).toBeUndefined();
+  });
+
   it('блок ссылается на опубликованный вопрос — создаётся, id блока и вариантов — строки', async () => {
     const itemId = await createItem('published');
 

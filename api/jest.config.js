@@ -48,6 +48,10 @@ module.exports = {
     // логика вынесена в seed.service.ts/seed-file.ts и покрыта юнит-тестами;
     // ручная проверка CLI — PLAN.md §9, RUNBOOK §2.2.
     '!src/seed/seed-classes.ts',
+    // Третья точка входа (CLI импорта экзамена) — та же проводка без
+    // ветвлений, логика в seed-exam.service.ts/seed-exam-file.ts и покрыта
+    // юнит-тестами; ручная проверка CLI — RUNBOOK §2.3.
+    '!src/seed/seed-exam.ts',
     '!src/app.setup.ts',
     '!src/**/*.module.ts',
   ],

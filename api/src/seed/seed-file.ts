@@ -137,7 +137,10 @@ export function validateSeedClasses(seed: SeedFile): SeedValidationResult {
 // сообщений валидации решается отдельной задачей, не в этом PR.
 // export: тем же разбором путей пользуется seed-exam-file.ts (свои префиксы
 // "exam"/"questions[i]") — не копия (CLAUDE.md «одна механика», jscpd).
-export function flatten(errors: ValidationError[], prefix: string): SeedValidationError[] {
+export function flatten(
+  errors: ValidationError[],
+  prefix: string,
+): SeedValidationError[] {
   const result: SeedValidationError[] = [];
   for (const error of errors) {
     const isIndex = /^\d+$/.test(error.property);

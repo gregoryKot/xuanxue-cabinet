@@ -65,12 +65,18 @@ export class ExamsService {
     return toExamDto(decryptExam(doc));
   }
 
-  async create(input: CreateExamInput, createdBy: string): Promise<ExamDto> {
+  // createdBy необязателен — CLI-импорт сида (seed-exam.service.ts) создаёт
+  // форму без вошедшего в систему человека; схема поля не требует
+  // (ExamRecord.createdBy, required: false).
+  async create(input: CreateExamInput, createdBy?: string): Promise<ExamDto> {
     const { blocks, ...rest } = input;
     const mappedBlocks = mapBlocks(blocks);
     if (mappedBlocks !== undefined) await this.assertBlocksSavable(mappedBlocks);
 
-    const payload: Record<string, unknown> = { ...rest, createdBy };
+    const payload: Record<string, unknown> = {
+      ...rest,
+      ...(createdBy !== undefined ? { createdBy } : {}),
+    };
     if (mappedBlocks !== undefined) payload.blocks = mappedBlocks;
 
     const created = await this.model.create(encryptRecord(payload, EXAM_ENCRYPT_SCHEMA));
