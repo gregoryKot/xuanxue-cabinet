@@ -23,7 +23,7 @@ export interface MyArchivedLessonInput {
   status: LessonStatus;
   recordings: Recording[];
   /** Честно необязателен — та же причина, что у MyLessonInput.tags
-   * (my-lesson.mapper.ts): дата занятия до ADR-0059 не хранит поле. */
+   * (my-lesson.mapper.ts): дата занятия до ADR-0071 не хранит поле. */
   tags?: string[];
 }
 
@@ -41,7 +41,7 @@ export function toMyArchivedLessonDto(
     recordings: lesson.recordings
       .map(toArchivedRecordingDto)
       .filter((recording): recording is ArchivedRecordingDto => recording !== null),
-    // Тег видит и ученик (ADR-0059) — архив не исключение из этого правила.
+    // Тег видит и ученик (ADR-0071) — архив не исключение из этого правила.
     tags: lesson.tags ?? [],
   };
 }

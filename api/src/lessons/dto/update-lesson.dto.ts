@@ -70,7 +70,7 @@ export class UpdateLessonDto implements UpdateLessonInput {
   @MaxLength(LESSON_LIMITS.note)
   note?: string | null;
 
-  // Рубрикация свободным текстом (ADR-0059) — нормализация, только если
+  // Рубрикация свободным текстом (ADR-0071) — нормализация, только если
   // поле прислали (LessonsService/lessons.update.ts): `null` сюда не входит,
   // тегов нет в NULLABLE_LESSON_FIELDS — сбрасывать их пустым массивом, не `null`.
   @IsOptional()

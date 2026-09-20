@@ -17,7 +17,7 @@ export class ListLessonsDto implements ListLessonsQuery {
   @IsMongoId()
   classId?: string;
 
-  // Точное совпадение тега (ADR-0059) — пустая строка ведёт себя как
+  // Точное совпадение тега (ADR-0071) — пустая строка ведёт себя как
   // «фильтр не задан», тот же приём, что у ListMaterialsDto.tag.
   @IsOptional()
   @IsString()

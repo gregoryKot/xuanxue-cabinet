@@ -33,7 +33,7 @@ export function buildLessonsFilter(
     startsAt: { $gte: from.toJSDate(), $lt: to.toJSDate() },
   };
   if (query.classId !== undefined) filter.classId = query.classId;
-  // Истинностная проверка, не `!== undefined` (ADR-0059, как у
+  // Истинностная проверка, не `!== undefined` (ADR-0071, как у
   // buildMaterialsFilter): пустая строка в query — «фильтр не задан», а не
   // «тег — пустая строка», иначе список молча оказался бы пустым.
   if (query.tag) filter.tags = query.tag;
