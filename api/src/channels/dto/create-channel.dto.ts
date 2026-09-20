@@ -14,14 +14,9 @@ import {
 } from '@xuanxue/shared';
 import { TrimString } from '../../common/validation';
 
-type CreatableChannelType = Exclude<ChannelType, 'webpush'>;
-const CREATABLE_CHANNEL_TYPES = CHANNEL_TYPES.filter(
-  (type): type is CreatableChannelType => type !== 'webpush',
-);
-
 export class CreateChannelDto implements CreateChannelInput {
-  @IsIn(CREATABLE_CHANNEL_TYPES)
-  type!: CreatableChannelType;
+  @IsIn(CHANNEL_TYPES)
+  type!: ChannelType;
 
   @TrimString()
   @IsString()
