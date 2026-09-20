@@ -20,6 +20,13 @@ export interface UseProfileSetupResult {
   setLastName: (value: string) => void;
   status: ProfileSetupStatus;
   error: string | null;
+  /** Сохранить текущее имя, не уходя со страницы — нужен `SecondLoginKey`
+   * (ADR-0059, `onBeforeLink` у `telegram/TelegramLinkButton.tsx`): на
+   * `/welcome` человек мог начать вводить имя и тут же нажать «Связать
+   * Telegram», уходя вкладкой в Telegram, — черновик не должен пропасть.
+   * Пустое имя — нечего сохранять; `true` здесь значит «отказа нет», а не
+   * «сохранено» — переход в Telegram не обязан ждать имени. */
+  save: () => Promise<boolean>;
   submit: () => Promise<void>;
 }
 
@@ -43,10 +50,12 @@ export function useProfileSetup(
   const [status, setStatus] = useState<ProfileSetupStatus>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  const submit = useCallback(async () => {
+  const save = useCallback(async (): Promise<boolean> => {
     const trimmedFirstName = firstName.trim();
-    // Подстраховка: кнопка и так недоступна при пустом имени (WelcomeScreen.tsx).
-    if (trimmedFirstName === '') return;
+    // Пустое имя — нечего сохранять, но и блокировать переход в Telegram
+    // незачем (кнопка «Продолжить» и так недоступна при пустом имени —
+    // подстраховка нужна отдельно, ниже, только для submit()).
+    if (trimmedFirstName === '') return true;
     setStatus('pending');
     setError(null);
     const trimmedLastName = lastName.trim();
@@ -59,11 +68,20 @@ export function useProfileSetup(
     } catch (err) {
       setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
       setStatus('error');
-      return;
+      return false;
     }
     setStatus('idle');
-    onSaved();
-  }, [firstName, lastName, refresh, onSaved]);
+    return true;
+  }, [firstName, lastName, refresh]);
 
-  return { firstName, lastName, setFirstName, setLastName, status, error, submit };
+  const submit = useCallback(async () => {
+    // Подстраховка: кнопка и так недоступна при пустом имени
+    // (WelcomeScreen.tsx) — save() тоже не сохраняет пустое имя, но здесь,
+    // в отличие от save(), пустое имя не должно звать onSaved(): /welcome не
+    // имеет права уйти на следующий экран, ничего не сохранив.
+    if (firstName.trim() === '') return;
+    if (await save()) onSaved();
+  }, [firstName, save, onSaved]);
+
+  return { firstName, lastName, setFirstName, setLastName, status, error, save, submit };
 }

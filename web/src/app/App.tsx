@@ -18,6 +18,7 @@ const LoginScreen = lazy(ROUTE_MODULES.login.load);
 const EmailLoginCallbackScreen = lazy(ROUTE_MODULES.emailLogin.load);
 const JoinScreen = lazy(ROUTE_MODULES.join.load);
 const WelcomeScreen = lazy(ROUTE_MODULES.welcome.load);
+const EmailConfirmScreen = lazy(ROUTE_MODULES.emailConfirm.load);
 
 const routeFallback = (
   <main style={{ padding: 24 }}>
@@ -46,6 +47,13 @@ export default function App() {
                 входа проверяет код сама (useJoinByInvite.ts), внутрь
                 RequireAuth не идёт — гостю ещё нечего показывать из кабинета. */}
             <Route path={ROUTE_MODULES.join.path} element={<JoinScreen />} />
+            {/* Подтверждение почты (ADR-0059) — публичный маршрут, вне
+                RequireAuth: экран не требует сессии и не выдаёт её, письмо
+                открывают не обязательно там, где вошли в кабинет. */}
+            <Route
+              path={ROUTE_MODULES.emailConfirm.path}
+              element={<EmailConfirmScreen />}
+            />
             <Route element={<RequireAuth />}>
               {/* Внутри RequireAuth (без сессии спрашивать имя не у кого), но
                   снаружи AppShell (ADR-0044): оболочка кабинета вокруг этого

@@ -29,6 +29,7 @@ const ME: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 

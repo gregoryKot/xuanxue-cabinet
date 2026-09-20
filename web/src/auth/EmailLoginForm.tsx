@@ -5,7 +5,7 @@
 // ключа Resend сервер ответит 503.
 import { useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
-import { Field, getInputStyle } from '../components/Field';
+import { EmailField } from '../components/EmailField';
 import { FormServerError } from '../components/FormServerError';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { useEmailLoginRequest } from './useEmailLoginRequest';
@@ -55,21 +55,10 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} style={formStyle}>
-      {/* getInputStyle('large') — экран входа крупнее обычных форм кабинета
+      {/* size="large" — экран входа крупнее обычных форм кабинета
           (docs/adr/0043, макет 2d): поле почты здесь единственная
           альтернатива Telegram, не одно из многих полей формы. */}
-      <Field label="Почта">
-        <input
-          style={getInputStyle('large')}
-          type="email"
-          autoComplete="email"
-          inputMode="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="имя@почта.ру"
-        />
-      </Field>
+      <EmailField value={email} onChange={setEmail} size="large" />
       <FormServerError error={error ? { message: error } : null} />
       <Button
         type="submit"
