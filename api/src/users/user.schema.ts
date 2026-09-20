@@ -15,6 +15,9 @@
 // profileNamedAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY
 // (не свободный текст): момент, когда человек сам назвал себя на экране
 // `/welcome` (ADR-0044, PATCH /me/profile, UserProfileService.setName).
+// noTelegramAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY
+// (не свободный текст): момент, когда человек сказал, что Telegram у него
+// нет (ADR-0067, PUT /me/no-telegram, UserNoTelegramService.setNoTelegram).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
   USER_ROLES,
@@ -83,6 +86,19 @@ export class UserRecord {
   // до этого PR, — миграция 0009 проставляет его тем, чьё имя уже настоящее.
   @Prop({ type: Date, required: false })
   profileNamedAt?: Date;
+
+  // Человек сказал, что Telegram у него нет (ADR-0067, PUT /me/no-telegram,
+  // UserNoTelegramService.setNoTelegram). Date, не Boolean — та же причина,
+  // что у lastLoginAt/joinedViaInviteAt/profileNamedAt выше: момент нужен
+  // для журнала, а факт «есть значение» даёт булево MeDto.noTelegram
+  // (auth/user.mapper.ts). Отметка гасит предложение связки в кабинете и
+  // НИЧЕГО не решает о доставке: без личного чата с ботом
+  // PersonalChats.chatFor() и так отдаёт null, слать некуда — строить на
+  // этом поле логику планировщика или канала нельзя (ADR-0067). Снимается
+  // тем же маршрутом ($unset, не запись null) — человек мог завести
+  // Telegram позже, и дорога назад обязана быть.
+  @Prop({ type: Date, required: false })
+  noTelegramAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserRecord);

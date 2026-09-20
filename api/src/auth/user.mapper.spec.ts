@@ -25,6 +25,7 @@ describe('toMeDto', () => {
       botChatActive: true,
       hasEmail: true,
       pendingEmail: undefined,
+      noTelegram: false,
       needsProfile: true,
     });
   });
@@ -39,6 +40,19 @@ describe('toMeDto', () => {
       profileNamedAt: new Date('2026-09-10T00:00:00Z'),
     };
     expect(toMeDto(named, true).needsProfile).toBe(false);
+  });
+
+  // ADR-0067: отметка «не предлагать связку», а не «не слать» — доставку
+  // решает отдельно наличие личного чата с ботом (PersonalChats.chatFor()),
+  // а не это поле; та же пара «дата → булево», что у needsProfile выше.
+  it('noTelegram: false без noTelegramAt, true — с ним', () => {
+    expect(toMeDto(fullUser(), true).noTelegram).toBe(false);
+
+    const saidNoTelegram: UserLean = {
+      ...fullUser(),
+      noTelegramAt: new Date('2026-09-19T00:00:00Z'),
+    };
+    expect(toMeDto(saidNoTelegram, true).noTelegram).toBe(true);
   });
 
   // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедшего по почте бот не узнаёт, и
@@ -77,6 +91,7 @@ describe('toMeDto', () => {
       'id',
       'name',
       'needsProfile',
+      'noTelegram',
       'pendingEmail',
       'roles',
       'status',
