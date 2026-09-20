@@ -6,7 +6,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { validateEnv, type NodeEnv } from './config/env.validation';
+import { validateEnv } from './config/env.validate';
+import type { NodeEnv } from './config/env.validation';
 import { LoggingModule } from './logging/logging.module';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { DatabaseModule } from './database/database.module';
@@ -27,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
+import { TagsModule } from './tags/tags.module';
 import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -81,6 +83,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     PaymentsModule,
     SettingsModule,
     SummaryModule,
+    TagsModule,
     UsersModule,
     // Без контроллера и планировщика — сервис для одноразового CLI-импорта
     // (seed-classes.ts, PLAN.md §9), в HTTP-приложении бездействует.
