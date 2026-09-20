@@ -89,7 +89,7 @@ export class UsersService {
   }
 
   /** Активные люди с такими ролями — кандидаты записи кабинета
-   * (InAppExamNotifier, ADR-0059), без требования канала связи (в отличие
+   * (InAppExamNotifier, ADR-0061), без требования канала связи (в отличие
    * от listContactsWithRoles). Логика — в list-active-with-roles.ts (та же
    * причина выноса, что у upsert-user-by-key.ts). */
   async listActiveWithRoles(roles: readonly UserRole[]): Promise<ActiveRoledUser[]> {
