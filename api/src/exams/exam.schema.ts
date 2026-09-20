@@ -37,7 +37,10 @@ export interface ExamBlockRecord {
   required?: boolean;
 }
 
-const DEFAULT_ATTEMPTS_ALLOWED = 1;
+// Экспортирован — тем же значением пользуется миграция 0013-exam-form-1:
+// пишет документ сырым драйвером, без схемных default, и не должна заводить
+// вторую копию той же цифры (CLAUDE.md «Без магических чисел и строк»).
+export const DEFAULT_ATTEMPTS_ALLOWED = 1;
 
 @Schema({ timestamps: true, collection: 'exams' })
 export class ExamRecord {
