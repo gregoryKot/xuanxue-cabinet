@@ -7,6 +7,8 @@
 // (broadcast+доставки, cancelled) проверена в recording-broadcast.service.spec.ts.
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
+import { LIST_LIMIT_DEFAULT } from '@xuanxue/shared';
+import { InvalidInputError } from '../common/errors';
 import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema';
 import type { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import type { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
@@ -563,6 +565,90 @@ describe('LessonsService', () => {
       const list = await service.list({ from: FROM, to: TO });
 
       expect(list.find((l) => l.id === created.id)?.tags).toEqual([]);
+    });
+  });
+
+  // ADR-0078: тег снимает требование окна планировщика (окно нужно только
+  // «Планированию»); список тогда идёт от новых к старым с лимитом по
+  // умолчанию, а не с максимумом горизонта. Без тега окно обязательно, как и
+  // раньше — «дай всё» по-прежнему запрещено (CLAUDE.md «API»).
+  describe('окно и тег (ADR-0078)', () => {
+    it('ни окна, ни тега — InvalidInputError, как и раньше', async () => {
+      await expect(service.list({})).rejects.toThrow(InvalidInputError);
+    });
+
+    it('classId без окна и без тега тоже не заменяет окно', async () => {
+      const classId = await createClass();
+
+      await expect(service.list({ classId })).rejects.toThrow(InvalidInputError);
+    });
+
+    it('from без to, тега нет — InvalidInputError', async () => {
+      await expect(service.list({ from: FROM })).rejects.toThrow(InvalidInputError);
+    });
+
+    it('тег без окна — список приходит, окно не требуется', async () => {
+      const classId = await createClass();
+      await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['дракон'],
+      });
+
+      await expect(service.list({ tag: 'дракон' })).resolves.toHaveLength(1);
+    });
+
+    it('тег без окна — сортировка от новых к старым', async () => {
+      const classId = await createClass();
+      const older = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['дракон'],
+      });
+      const newer = await service.create({
+        classId,
+        startsAt: '2026-09-10T16:00:00Z',
+        tags: ['дракон'],
+      });
+
+      const list = await service.list({ tag: 'дракон' });
+
+      expect(list.map((l) => l.id)).toEqual([newer.id, older.id]);
+    });
+
+    it('тег без окна — лимит по умолчанию LIST_LIMIT_DEFAULT, не LIST_LIMIT_MAX', async () => {
+      const classId = await createClass();
+      const docs = Array.from({ length: LIST_LIMIT_DEFAULT + 5 }, (_, i) => ({
+        classId,
+        startsAt: DateTime.fromISO('2026-01-01T00:00:00Z', { zone: 'utc' })
+          .plus({ days: i })
+          .toJSDate(),
+        durationMin: 60,
+        tags: ['дракон'],
+      }));
+      await lessonModel.create(docs);
+
+      const list = await service.list({ tag: 'дракон' });
+
+      expect(list).toHaveLength(LIST_LIMIT_DEFAULT);
+    });
+
+    it('тег вместе с окном — поведение прежнее: по возрастанию, окно ограничивает выборку', async () => {
+      const classId = await createClass();
+      const inWindow = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['дракон'],
+      });
+      await service.create({
+        classId,
+        startsAt: '2026-09-20T16:00:00Z', // за пределами FROM..TO
+        tags: ['дракон'],
+      });
+
+      const list = await service.list({ from: FROM, to: TO, tag: 'дракон' });
+
+      expect(list.map((l) => l.id)).toEqual([inWindow.id]);
     });
   });
 });
