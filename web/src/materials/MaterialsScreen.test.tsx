@@ -60,12 +60,15 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   };
 }
 
+const TAGS_MARKER = 'Здесь экран тега';
+
 function renderScreen() {
   return render(
     <MemoryRouter initialEntries={['/materials']}>
       <Routes>
         <Route path="/materials" element={<MaterialsScreen />} />
         <Route path="/materials/new" element={<p>{NEW_MARKER}</p>} />
+        <Route path="/materials/tags" element={<p>{TAGS_MARKER}</p>} />
         <Route path="/materials/:materialId" element={<p>{EDITOR_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
@@ -175,6 +178,18 @@ describe('MaterialsScreen — список материалов', () => {
     await user.click(await screen.findByRole('button', { name: 'Новый материал' }));
 
     expect(await screen.findByText(NEW_MARKER)).toBeInTheDocument();
+  });
+
+  // ADR-0075: вход в подэкран «Теги» — карточка-переход, как «Библиотека» у
+  // LessonsScreen.tsx.
+  it('карточка «Теги» ведёт на экран тега', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+
+    renderScreen();
+    await user.click(await screen.findByText('Теги'));
+
+    expect(await screen.findByText(TAGS_MARKER)).toBeInTheDocument();
   });
 
   it('фильтр по виду — список видов и пустой ответ с фильтром', async () => {

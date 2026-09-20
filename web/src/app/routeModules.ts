@@ -50,6 +50,7 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 export type RouteLoader = () => Promise<{ default: ComponentType }>;
@@ -204,14 +205,22 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [materialsListPath(''), CLASSES_LIST_PATH],
   },
-  // `/materials/new` раньше `/materials/:materialId` — тот же порядок, что у
-  // соседних редакторов (ADR-0033): статический сегмент должен выигрывать у
-  // параметра.
+  // `/materials/new` раньше `/materials/:materialId` — та же причина, что у
+  // classNew/lessonNew выше (ADR-0033).
   materialNew: {
     path: '/materials/new',
     load: loadMaterialEditor,
     warm: true,
     prefetch: () => [CLASSES_LIST_PATH],
+  },
+  // Подэкран «Материалов»: общая выдача по тегу (ADR-0075/0078). Тоже
+  // раньше materialEditor — та же причина, что у materialNew выше.
+  materialsTags: {
+    path: '/materials/tags',
+    load: () => import('../materials/MaterialsTagsScreen'),
+    warm: true,
+    // Тег в prefetch(pathname) недоступен — греем то, что не зависит от выбора.
+    prefetch: () => [TAGS_LIST_PATH, CLASSES_LIST_PATH],
   },
   materialEditor: {
     path: '/materials/:materialId',

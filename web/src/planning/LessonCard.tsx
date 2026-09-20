@@ -9,11 +9,17 @@
 // занятие (бот, уведомление, useScrollToHash.ts). Карточки «Сегодня»
 // (TodayLessonCard.tsx) показывают часть этих же занятий ещё раз без якоря —
 // два элемента с одним `id` в HTML невалидны, поэтому там его нет вовсе.
+//
+// Теги даты (ADR-0075) — строкой пилюль под кнопкой, не внутри неё: каждая
+// ведёт на экран тега (TagPillLinks.tsx), а <a> внутри <button> невалиден и
+// недоступен (CLAUDE.md «Доступность»).
 import type { CSSProperties } from 'react';
 import type { LessonDto } from '@xuanxue/shared';
+import { TagPillLinks } from '../components/TagPillLinks';
 import { formatTime } from '../lib/formatDate';
 import { CancelledBroadcastLink, LessonBroadcastBadge } from './LessonBroadcastBadge';
 
+const TAGS_GROUP_LABEL = 'Теги занятия';
 const TIME_COLUMN_WIDTH_PX = 56;
 
 const rowButtonStyle: CSSProperties = {
@@ -83,6 +89,7 @@ export function LessonCard({
         </span>
         <LessonBroadcastBadge broadcast={broadcast} style={statusStyle} />
       </button>
+      <TagPillLinks tags={lesson.tags} groupLabel={TAGS_GROUP_LABEL} />
       {broadcast?.status === 'cancelled' && <CancelledBroadcastLink />}
     </li>
   );

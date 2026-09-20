@@ -24,6 +24,7 @@ const LessonEditorScreen = lazyRoute(ROUTE_MODULES.lessonEditor.load);
 const ChannelsScreen = lazyRoute(ROUTE_MODULES.channels.load);
 const ChannelEditorScreen = lazyRoute(ROUTE_MODULES.channelEditor.load);
 const MaterialsScreen = lazyRoute(ROUTE_MODULES.materials.load);
+const MaterialsTagsScreen = lazyRoute(ROUTE_MODULES.materialsTags.load);
 const MaterialEditorScreen = lazyRoute(ROUTE_MODULES.materialEditor.load);
 const BroadcastsScreen = lazyRoute(ROUTE_MODULES.broadcasts.load);
 const BroadcastNewScreen = lazyRoute(ROUTE_MODULES.broadcastNew.load);
@@ -76,6 +77,12 @@ export const cabinetRoutes = (
         контроллере (MaterialsController). */}
     <Route path={ROUTE_MODULES.materials.path} element={<MaterialsScreen />} />
     <Route path={ROUTE_MODULES.materialNew.path} element={<MaterialEditorScreen />} />
+    {/* Подэкран «Материалов» — общая выдача по тегу (ADR-0075/0078), вход
+        карточкой на MaterialsScreen.tsx и пилюлей тега на карточке
+        материала/занятия (ADR-0025: не пункт меню). Раньше
+        /materials/:materialId — та же причина, что у /materials/new выше:
+        статический сегмент должен выигрывать у параметра. */}
+    <Route path={ROUTE_MODULES.materialsTags.path} element={<MaterialsTagsScreen />} />
     <Route path={ROUTE_MODULES.materialEditor.path} element={<MaterialEditorScreen />} />
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
     <Route path={ROUTE_MODULES.broadcastNew.path} element={<BroadcastNewScreen />} />
