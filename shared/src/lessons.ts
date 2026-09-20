@@ -36,11 +36,9 @@ export interface LessonDto {
   /** Отсутствует, пока планировщик ещё не создал рассылку ссылки на это
    * занятие (окно до отправки шире, чем горизонт `/broadcasts`). */
   broadcast?: LessonBroadcastDto;
-  /** Рубрикация свободным текстом (ADR-0059, уточняет ADR-0058) — тег живёт
-   * у даты, не у занятия расписания: он описывает, что было в конкретный
-   * вечер («дракон», «начинающие»), а не постоянный признак курса — для
-   * этого уже есть название и `groupLabel`. Лимиты и нормализация —
-   * `TAG_LIMITS`/`normalizeTags` (shared/src/tags.ts), общие с материалами. */
+  /** Рубрика вечера («дракон», «начинающие»), а не постоянный признак курса —
+   * для него есть название и `groupLabel` (ADR-0059, уточняет ADR-0058).
+   * Лимиты и нормализация — общие с материалами (shared/src/tags.ts). */
   tags: string[];
   createdAt: string;
   updatedAt: string; // ISO UTC с Z
@@ -50,8 +48,7 @@ export interface ListLessonsQuery {
   from: string;
   to: string;
   classId?: string;
-  /** Точное совпадение тега (ADR-0059) — рубрикация, серверный фильтр, тот
-   * же приём, что у ListMaterialsQuery.tag (shared/src/materials.ts). */
+  /** Точное совпадение тега — как у `ListMaterialsQuery.tag` (ADR-0059). */
   tag?: string;
   limit?: number;
 }
@@ -81,9 +78,7 @@ export interface UpdateLessonInput {
   zoomLinkOverride?: string | null;
   zoomPasswordOverride?: string | null;
   note?: string | null;
-  /** Поле не прислали — теги не трогаем (не затираем пустым массивом);
-   * `null` не входит в NULLABLE_LESSON_FIELDS — сбросить теги можно только
-   * пустым массивом, явный сброс им не нужен. */
+  /** Не прислали — теги не трогаем; сброс — пустым массивом, не `null`. */
   tags?: string[];
 }
 
@@ -135,10 +130,8 @@ export interface MyLessonDto {
   zoomPassword?: string;
   topic: string;
   status: LessonStatus;
-  /** Тег видит и ученик (ADR-0059) — рубрика школы, не секрет, тот же довод,
-   * что у MyMaterialDto.tags (ADR-0058). Фильтра по тегу здесь нет: общий
-   * экран тега (ADR-0059) пока только для штата, «/me/lessons» отдаёт теги
-   * как данные, а не как повод завести здесь ещё один список для фильтра. */
+  /** Тег видит и ученик — рубрика школы, не секрет, тот же довод, что у
+   * `MyMaterialDto.tags`; фильтра по тегу тут нет (ADR-0059). */
   tags: string[];
 }
 

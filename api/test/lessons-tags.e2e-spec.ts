@@ -10,12 +10,24 @@ import type {
 } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
-import { createLessonTestHelpers, FROM, STARTS_AT, TO } from './e2e-support/lessons-fixtures';
+import {
+  createLessonTestHelpers,
+  FROM,
+  STARTS_AT,
+  TO,
+} from './e2e-support/lessons-fixtures';
 
 describe('Теги дат занятий (e2e, ADR-0059)', () => {
   let testApp: TestApp;
-  const { server, sessionFor, classModel, lessonModel, createClass, postLesson, patchLesson } =
-    createLessonTestHelpers(() => testApp);
+  const {
+    server,
+    sessionFor,
+    classModel,
+    lessonModel,
+    createClass,
+    postLesson,
+    patchLesson,
+  } = createLessonTestHelpers(() => testApp);
 
   beforeAll(async () => {
     testApp = await createTestApp();
@@ -137,7 +149,9 @@ describe('Теги дат занятий (e2e, ADR-0059)', () => {
     });
 
     const studentCookie = await sessionFor([]);
-    const res = await request(server()).get('/api/me/lessons').set('Cookie', studentCookie);
+    const res = await request(server())
+      .get('/api/me/lessons')
+      .set('Cookie', studentCookie);
 
     expect(res.status).toBe(200);
     const list = res.body as MyLessonDto[];
