@@ -1,9 +1,9 @@
 // Общий облик обоих состояний экрана сдачи (форма и «Отправлено») — колонка
-// и шапка с рубрикой над заголовком антиквой (направление «тихо и благородно»,
-// docs/adr/0031). Отдельный модуль, а не константа в AttemptScreen.tsx:
-// AttemptInProgress.tsx и AttemptSubmitted.tsx импортируются самим
-// AttemptScreen.tsx, и обратный импорт замкнул бы цикл (eslint
-// import-x/no-cycle).
+// и шапка с рубрикой над заголовком антиквой (направление «Тёплая школа»,
+// docs/adr/0043, заменил ADR-0031). Отдельный модуль, а не константа в
+// AttemptScreen.tsx: AttemptInProgress.tsx и AttemptSubmitted.tsx
+// импортируются самим AttemptScreen.tsx, и обратный импорт замкнул бы цикл
+// (eslint import-x/no-cycle).
 import type { CSSProperties } from 'react';
 import { screenSectionStyle } from '../components/screenLayout';
 

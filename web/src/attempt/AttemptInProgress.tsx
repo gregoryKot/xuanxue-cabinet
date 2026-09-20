@@ -5,11 +5,13 @@
 // загрузки/ошибки его ещё нет. Так автосохранение не стартует со снимком-
 // пустышкой, полученным до ответа сервера.
 //
-// Облик — направление «тихо и благородно» (docs/adr/0031): рубрика «Экзамен»,
-// название антиквой, оставшееся время тихой припиской, вопросы строками на
-// волосяных линиях, одна киноварь в подвале (AttemptSubmitBar.tsx). Экран
-// открывают с телефона, поэтому колонка и цели нажатия считаются от 360
-// пикселей (CLAUDE.md «Мобильный экран первым»).
+// Облик — направление «Тёплая школа» (docs/adr/0043-visual-direction-warm-
+// school.md, заменил ADR-0031; владелец согласовал перевод экрана
+// 2026-09-20): рубрика «Экзамен», название антиквой над карточкой вопросов
+// (`blockCardStyle` ниже — локальный литерал, тот же приём, что в
+// grading/AttemptReviewScreen.tsx), одна заливка терракотой в подвале
+// (AttemptSubmitBar.tsx). Экран открывают с телефона, поэтому колонка и цели
+// нажатия считаются от 360 пикселей (CLAUDE.md «Мобильный экран первым»).
 //
 // «Экзамен закончен» решает только сервер (ТЗ 4.4, п.7, блокер аудита
 // 2026-09-15 «Дедлайн решает сервер»): этот компонент вообще не показывает
@@ -21,7 +23,7 @@
 // когда сервер отвечает «ещё не время»), а часы, что отстают, оставляли
 // автосохранение писать в уже закрытую попытку без единого слова об этом —
 // вторую половину чинит `onExpired` в useAttemptAutosave.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import type { FormError } from '../components/FormServerError';
 import { screenHintStyle, screenTitleStyle } from '../components/screenLayout';
@@ -39,6 +41,18 @@ const NOW_REFRESH_MS = 30_000;
 // Приписку держит `gap` шапки — отрицательный отступ screenHintStyle
 // подтянул бы её вплотную к заголовку (тот же приём, что LessonsScreen.tsx).
 const deadlineStyle = { ...screenHintStyle, margin: 0 };
+
+// Единственная карточка-поверхность этого экрана — локальный литерал, не
+// общий экспорт (та же причина, что в grading/AttemptReviewScreen.tsx: в
+// кабинете уже несколько мест объявляют поверхность карточки своим
+// литералом, сводить их под общий экспорт — рефакторинг отдельным PR,
+// CLAUDE.md 1б).
+const blockCardStyle: CSSProperties = {
+  padding: '20px 22px',
+  background: 'var(--card)',
+  borderRadius: 'var(--radius-block)',
+  boxShadow: 'var(--shadow-card)',
+};
 
 interface AttemptInProgressProps {
   attempt: ExamAttemptDto;
@@ -87,9 +101,11 @@ export function AttemptInProgress({
         {timeStatus.label && <p style={deadlineStyle}>{timeStatus.label}</p>}
       </div>
 
-      {attempt.blocks.map((block) => (
-        <AttemptBlock key={block.id} block={block} autosave={autosave} video={video} />
-      ))}
+      <div style={blockCardStyle}>
+        {attempt.blocks.map((block) => (
+          <AttemptBlock key={block.id} block={block} autosave={autosave} video={video} />
+        ))}
+      </div>
 
       <AttemptSubmitBar
         saveLabel={formatSaveStatus(autosave.status)}
