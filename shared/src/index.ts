@@ -177,6 +177,7 @@ export {
   EXAM_IMAGE_TOO_LARGE_MESSAGE,
   EXAM_IMAGE_NOT_FOUND_MESSAGE,
 } from './exam-images';
+export { FILE_STORAGE_OFF_MESSAGE, FILE_STORAGE_FAILED_MESSAGE } from './file-store';
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamDto, ListMyExamsQuery } from './my-exams';
 export type {
