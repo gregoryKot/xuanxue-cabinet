@@ -354,4 +354,84 @@ describe('ClassesService', () => {
       expect(updated.leaderId).toBeUndefined();
     });
   });
+
+  // Постоянный признак курса, не вечера (ADR-0072) — нормализация,
+  // read-after-write и фильтр списка, тот же приём, что у материалов и дат.
+  describe('tags — постоянный признак курса (ADR-0072)', () => {
+    it('create нормализует теги: обрезка пробелов и дедуп без учёта регистра', async () => {
+      const created = await service.create({
+        title: 'Тайцзицюань',
+        format: 'online',
+        tags: ['  Начинающие ', 'начинающие', 'дракон'],
+      });
+
+      expect(created.tags).toEqual(['Начинающие', 'дракон']);
+    });
+
+    it('create без tags — пустой массив, не undefined', async () => {
+      const created = await service.create({ title: 'Без тегов', format: 'online' });
+
+      expect(created.tags).toEqual([]);
+    });
+
+    it('update с tags нормализует и заменяет прежний набор', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        tags: ['старый'],
+      });
+
+      const updated = await service.update(created.id, {
+        tags: ['Новый', 'новый', '  Третий  '],
+      });
+
+      expect(updated.tags).toEqual(['Новый', 'Третий']);
+    });
+
+    it('update без tags — прежние теги остаются на месте', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        tags: ['начинающие'],
+      });
+
+      const updated = await service.update(created.id, { groupLabel: 'группа А' });
+
+      expect(updated.tags).toEqual(['начинающие']);
+    });
+
+    it('update с tags: [] — снимает все теги', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        tags: ['начинающие'],
+      });
+
+      const updated = await service.update(created.id, { tags: [] });
+
+      expect(updated.tags).toEqual([]);
+    });
+
+    it('list: фильтр по тегу находит только занятия с этим тегом', async () => {
+      const tagged = await service.create({
+        title: 'С тегом',
+        format: 'online',
+        tags: ['начинающие'],
+      });
+      await service.create({ title: 'Без тега', format: 'online' });
+
+      const list = await service.list({ tag: 'начинающие' });
+
+      expect(list.map((c) => c.id)).toEqual([tagged.id]);
+    });
+
+    it('list: пустая строка в query.tag не фильтрует', async () => {
+      await service.create({ title: 'Первое', format: 'online', tags: ['x'] });
+      await service.create({ title: 'Второе', format: 'online' });
+
+      const list = await service.list({ tag: '' });
+
+      expect(list).toHaveLength(2);
+    });
+  });
 });
