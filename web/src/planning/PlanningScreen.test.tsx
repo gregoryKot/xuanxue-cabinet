@@ -23,7 +23,6 @@ const mockedApiFetch = vi.mocked(apiFetch);
 const NEW_MARKER = 'Здесь страница разового занятия';
 const EDITOR_MARKER = 'Здесь страница занятия';
 const SCHEDULE_MARKER = 'Здесь сетка расписания';
-const LIBRARY_MARKER = 'Здесь библиотека';
 
 function renderScreen() {
   return render(
@@ -33,7 +32,6 @@ function renderScreen() {
         <Route path="/planning/new" element={<p>{NEW_MARKER}</p>} />
         <Route path="/planning/:lessonId" element={<p>{EDITOR_MARKER}</p>} />
         <Route path="/schedule" element={<p>{SCHEDULE_MARKER}</p>} />
-        <Route path="/materials" element={<p>{LIBRARY_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -184,16 +182,6 @@ describe('PlanningScreen — список занятий', () => {
     await user.click(await screen.findByRole('button', { name: 'Расписание' }));
 
     expect(await screen.findByText(SCHEDULE_MARKER)).toBeInTheDocument();
-  });
-
-  it('«Библиотека» в шапке ведёт в библиотеку', async () => {
-    const user = userEvent.setup();
-    mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
-
-    renderScreen();
-    await user.click(await screen.findByRole('button', { name: 'Библиотека' }));
-
-    expect(await screen.findByText(LIBRARY_MARKER)).toBeInTheDocument();
   });
 
   it('тема не задана — карточка показывает заглушку, отменённое занятие — серым', async () => {

@@ -8,6 +8,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import { AppNav, SIDE_NAV_WIDTH_PX } from './AppNav';
+import { STAFF_NAV_ITEMS, STUDENT_NAV_ITEMS } from './navItems';
 
 const TEACHER: MeDto = {
   id: 'u1',
@@ -100,11 +101,11 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     expect(labels).toEqual(['Задания', 'Занятия']);
   });
 
-  it('админ — четыре пункта, «Ученики» последним', () => {
+  it('админ — пять пунктов, «Материалы» последним', () => {
     renderNav(true, ADMIN);
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
   // ADR-0030 (уточнение владельца 2026-09-15): ссылку-приглашение раздаёт и
@@ -113,7 +114,7 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     renderNav(true, TEACHER);
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
   // Иконок в пунктах нет вовсе (ADR-0043) — подпись остаётся единственным
@@ -276,5 +277,60 @@ describe('AppNav — название школы в колонке не пере
     expect(title.style.whiteSpace).toBe('nowrap');
     expect(title.style.textOverflow).toBe('ellipsis');
     expect(title.style.fontSize).toBe('18px');
+  });
+});
+
+// ADR-0055 «Последствия»: «Ширина проверяется тестом AppNav.test.tsx и
+// вручную на 360 px — это условие мержа, а не пожелание». Два теста ниже —
+// то самое условие: столько дорожек, сколько пунктов, и подписи умещаются.
+describe('AppNav — гейт ширины нижней панели (ADR-0055)', () => {
+  // Дорожек сетки должно быть ровно столько, сколько отрисованных пунктов
+  // (bottomStyle(items.length), bottomNavStyles.ts) — иначе лишний пункт
+  // уезжает на вторую строку сетки, и высота панели (4 + 44 + 4 = 52 плюс
+  // безопасная зона, расчёт в bottomNavStyles.ts) рвётся.
+  it('дорожек ровно по числу пунктов — пять у штата, две у ученика, четыре у ассистента', () => {
+    const teacher = renderNav(true, TEACHER);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(5, 1fr)');
+    teacher.unmount();
+
+    const admin = renderNav(true, ADMIN);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(5, 1fr)');
+    admin.unmount();
+
+    const student: MeDto = { ...TEACHER, roles: [] };
+    const studentRender = renderNav(true, student);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(2, 1fr)');
+    studentRender.unmount();
+
+    // Ассистенту «Ученики» не виден (у пункта roles: admin/teacher) — из
+    // пяти пунктов штата у него остаётся четыре.
+    const assistant: MeDto = { ...TEACHER, roles: ['assistant'] };
+    renderNav(true, assistant);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(4, 1fr)');
+  });
+
+  // jsdom не меряет текст — бюджет считаем в знаках, не в пикселях. На 360px
+  // у панели паддинг 12 с каждой стороны и 4 промежутка по 4px (gap: 4,
+  // bottomNavStyles.ts): 360 − 12×2 − 4×4 = 320px на пять дорожек, по 64px
+  // на дорожку. При кегле 12 (bottomPillStyle) русская подпись примерно в
+  // MAX_NAV_LABEL_CHARS знаков перестаёт помещаться в одну строку внутри
+  // плашки — это и есть потолок.
+  const MAX_NAV_LABEL_CHARS = 10;
+  it('подписи штата и ученика укладываются в бюджет длины на 360px', () => {
+    for (const { label } of [...STAFF_NAV_ITEMS, ...STUDENT_NAV_ITEMS]) {
+      expect(label.length).toBeLessThanOrEqual(MAX_NAV_LABEL_CHARS);
+    }
   });
 });

@@ -23,7 +23,7 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-const LIST_MARKER = 'Здесь библиотека';
+const LIST_MARKER = 'Здесь материалы';
 
 function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   return {
@@ -117,19 +117,19 @@ describe('MaterialEditorScreen — загрузка', () => {
     ).toBe(false);
   });
 
-  it('«К библиотеке» — ссылка наверху страницы', async () => {
+  it('«К материалам» — ссылка наверху страницы', async () => {
     const user = userEvent.setup();
     mockMaterial(makeMaterial());
 
     renderAt('/materials/m1');
-    await user.click(await screen.findByRole('link', { name: 'К библиотеке' }));
+    await user.click(await screen.findByRole('link', { name: 'К материалам' }));
 
     expect(screen.getByText(LIST_MARKER)).toBeInTheDocument();
   });
 });
 
 describe('MaterialEditorScreen — создание', () => {
-  it('заполненная форма — POST с собранным телом, возврат к библиотеке', async () => {
+  it('заполненная форма — POST с собранным телом, возврат к материалам', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
 
@@ -363,7 +363,7 @@ describe('MaterialEditorScreen — удаление', () => {
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 
-  it('подтверждение — DELETE и возврат к библиотеке', async () => {
+  it('подтверждение — DELETE и возврат к материалам', async () => {
     const user = userEvent.setup();
     mockMaterial(makeMaterial());
 
