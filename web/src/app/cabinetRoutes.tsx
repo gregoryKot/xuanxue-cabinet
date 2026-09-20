@@ -102,7 +102,7 @@ export const cabinetRoutes = (
         не из навигации разделов (docs/adr/0025). Доступен любой роли:
         canSeeRoute (screenAccess.ts) не ограничивает его по роли. */}
     <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
-    {/* Лента событий и новых заданий (ADR-0065) — личное место человека, как
+    {/* Лента событий и новых заданий (ADR-0063) — личное место человека, как
         «/profile» выше, вход значком в оболочке, не из навигации разделов
         (ADR-0025). Доступен любой роли: canSeeRoute (screenAccess.ts) не
         ограничивает его по роли. */}
