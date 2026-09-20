@@ -13,6 +13,7 @@ import { FILE_STORAGE_FAILED_MESSAGE, FILE_STORAGE_OFF_MESSAGE } from '@xuanxue/
 import { errorMessage } from '../common/error-info';
 import { NotAvailableError } from '../common/errors';
 import { objectUrl, readR2Config, type R2Config } from './r2.config';
+import { encodeRfc3986 } from './sigv4-canonical';
 import { presignGetUrl, signRequestHeaders } from './sigv4';
 
 // Загрузка идёт с нашего инстанса и ограничена потолком размера файла,
@@ -26,6 +27,22 @@ export interface PutObjectInput {
   bytes: Buffer;
   contentType: string;
   now: DateTime;
+}
+
+/** Чем хранилище отдаст файл браузеру. Без этого браузер сохранил бы объект
+ * под его ключом — `3f1a4c9e-…` без расширения. */
+export interface SignedDownload {
+  name: string;
+  contentType: string;
+}
+
+/** `filename*` по RFC 5987, а не `filename=` — имя методички кириллицей в
+ * заголовке иначе не живёт. Кодирование то же, что у пути объекта. */
+function downloadParams({ name, contentType }: SignedDownload): Record<string, string> {
+  return {
+    'response-content-type': contentType,
+    'response-content-disposition': `attachment; filename*=UTF-8''${encodeRfc3986(name)}`,
+  };
 }
 
 @Injectable()
@@ -74,10 +91,16 @@ export class FileStoreService {
   /** Ссылка живёт минуты: право проверено до её выдачи, и переслать её
    * вместо приглашения в школу не выйдет (ADR-0057). Байты идут мимо нашего
    * инстанса — ради этого R2 и брали. */
-  signedGetUrl(key: string, expiresInSeconds: number, now: DateTime): string {
+  signedGetUrl(
+    key: string,
+    expiresInSeconds: number,
+    now: DateTime,
+    download?: SignedDownload,
+  ): string {
     const config = this.requireConfig();
     return presignGetUrl({
       url: objectUrl(config, key),
+      params: download ? downloadParams(download) : {},
       expiresInSeconds,
       now,
       credentials: config.credentials,

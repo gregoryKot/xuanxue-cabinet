@@ -6,11 +6,12 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
-import { EXAM_IMAGE_LIMITS } from '@xuanxue/shared';
+import { EXAM_IMAGE_LIMITS, MATERIAL_FILE_LIMITS } from '@xuanxue/shared';
 import { CSP_DIRECTIVES } from './security/csp';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { formatValidationErrors } from './common/validation-messages';
 import { isRawImageUpload } from './exam-images/exam-image-body';
+import { isMaterialFileUpload } from './materials/material-file-body';
 
 export function configureApp(app: NestExpressApplication): void {
   // nestjs-pino вместо встроенного логгера Nest — правило CLAUDE.md «Ошибки»:
@@ -42,6 +43,13 @@ export function configureApp(app: NestExpressApplication): void {
   app.useBodyParser('raw', {
     type: isRawImageUpload,
     limit: EXAM_IMAGE_LIMITS.maxBytes,
+  });
+  // Второй и последний раз (ADR-0057): файл материала — свой маршрут, свой
+  // список типов и свой потолок, втрое больше картинки варианта. Один
+  // парсер с общим лимитом пустил бы тридцатимегабайтную картинку в Mongo.
+  app.useBodyParser('raw', {
+    type: isMaterialFileUpload,
+    limit: MATERIAL_FILE_LIMITS.maxBytes,
   });
 
   app.setGlobalPrefix('api');

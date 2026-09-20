@@ -54,6 +54,53 @@ describe('toMaterialDto', () => {
 
     expect(dto.tags).toEqual([]);
   });
+
+  // ADR-0057: файл едет пятью полями верхнего уровня в документе — наружу
+  // должно уйти только описание, а не ключ объекта в R2.
+  it('материал с файлом — file с name/contentType/sizeBytes/uploadedAt (ISO Z)', () => {
+    const doc = material({
+      fileKey: 'materials/abc/9f1e-uuid',
+      fileName: 'Методичка.pdf',
+      fileContentType: 'application/pdf',
+      fileSizeBytes: 12345,
+      fileUploadedAt: new Date('2026-09-15T07:00:00.000Z'),
+    });
+
+    const dto = toMaterialDto(doc);
+
+    expect(dto.file).toEqual({
+      name: 'Методичка.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 12345,
+      uploadedAt: '2026-09-15T07:00:00.000Z',
+    });
+  });
+
+  // SECURITY §3, ADR-0057: ключ объекта в R2 — служебный адрес для скачивания,
+  // право на которое проверяем мы; в ответе API его не должно быть ни под
+  // каким именем.
+  it('материал с файлом — fileKey не попадает в ответ ни под каким именем', () => {
+    const doc = material({
+      fileKey: 'materials/abc/9f1e-uuid-secret',
+      fileName: 'Методичка.pdf',
+      fileContentType: 'application/pdf',
+      fileSizeBytes: 12345,
+      fileUploadedAt: new Date('2026-09-15T07:00:00.000Z'),
+    });
+
+    const dto = toMaterialDto(doc);
+
+    expect(dto).not.toHaveProperty('fileKey');
+    expect(JSON.stringify(dto)).not.toContain(doc.fileKey);
+  });
+
+  it('материал без файла — ключа file в объекте нет вовсе', () => {
+    const doc = material();
+
+    const dto = toMaterialDto(doc);
+
+    expect(dto).not.toHaveProperty('file');
+  });
 });
 
 describe('toMyMaterialDto', () => {
@@ -136,5 +183,57 @@ describe('toMyMaterialDto', () => {
     );
 
     expect(dto.classTitles).toEqual([]);
+  });
+
+  // ADR-0057, ADR-0048: закрытому материалу не достаётся ни url, ни file —
+  // иначе рубильник оплаты обходился бы прямым адресом файла.
+  it('isLocked: true — ни url, ни file в ответе нет', () => {
+    const doc = material({
+      fileKey: 'materials/abc/9f1e-uuid',
+      fileName: 'Методичка.pdf',
+      fileContentType: 'application/pdf',
+      fileSizeBytes: 12345,
+      fileUploadedAt: new Date('2026-09-15T07:00:00.000Z'),
+    });
+
+    const dto = toMyMaterialDto(doc, new Map(), true);
+
+    expect(dto).not.toHaveProperty('url');
+    expect(dto).not.toHaveProperty('file');
+  });
+
+  it('isLocked: false — и url, и file есть', () => {
+    const doc = material({
+      fileKey: 'materials/abc/9f1e-uuid',
+      fileName: 'Методичка.pdf',
+      fileContentType: 'application/pdf',
+      fileSizeBytes: 12345,
+      fileUploadedAt: new Date('2026-09-15T07:00:00.000Z'),
+    });
+
+    const dto = toMyMaterialDto(doc, new Map(), false);
+
+    expect(dto.url).toBe(doc.url);
+    expect(dto.file).toEqual({
+      name: 'Методичка.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 12345,
+      uploadedAt: '2026-09-15T07:00:00.000Z',
+    });
+  });
+});
+
+// Поле появилось вместе с файлом (ADR-0057); у документа, записанного до
+// него, `.lean()` default схемы не подставляет — маппер отдаёт честный 0, а
+// не undefined в JSON.
+describe('toMaterialDto: файл без размера', () => {
+  it('sizeBytes отсутствует в документе — в DTO приезжает 0', () => {
+    const doc = material({
+      fileKey: 'materials/m1/3f1a',
+      fileName: 'Методичка.pdf',
+      fileContentType: 'application/pdf',
+      fileUploadedAt: new Date('2026-09-20T10:00:00.000Z'),
+    });
+    expect(toMaterialDto(doc).file?.sizeBytes).toBe(0);
   });
 });

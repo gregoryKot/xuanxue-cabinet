@@ -12,6 +12,7 @@ import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.serv
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
 import type { RecordingPromptService } from '../lessons/recording-prompt.service';
 import type { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
+import type { StorageOrphansService } from '../storage/storage-orphans.service';
 import { SchedulerService } from './scheduler.service';
 
 function buildService(overrides: {
@@ -25,6 +26,7 @@ function buildService(overrides: {
   closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
   removeImageOrphans?: ExamImageSweepService['removeOrphans'];
   removeExpiredScreenshots?: PaymentScreenshotSweepService['removeExpired'];
+  sweepStorageOrphans?: StorageOrphansService['sweep'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
 }): {
   service: SchedulerService;
@@ -53,6 +55,8 @@ function buildService(overrides: {
   const removeExpiredScreenshots =
     overrides.removeExpiredScreenshots ??
     jest.fn().mockResolvedValue({ removed: 0, orphans: 0 });
+  const sweepStorageOrphans =
+    overrides.sweepStorageOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -73,6 +77,7 @@ function buildService(overrides: {
     {
       removeExpired: removeExpiredScreenshots,
     } as unknown as PaymentScreenshotSweepService,
+    { sweep: sweepStorageOrphans } as unknown as StorageOrphansService,
     notifier,
   );
   return { service, notifySchedulerFailed: notifySchedulerFailed as jest.Mock };
