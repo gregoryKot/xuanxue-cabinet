@@ -41,6 +41,11 @@ interface ApiFetchInit {
   method?: ApiMethod;
   body?: unknown;
   signal?: AbortSignal;
+  /** Пережить выгрузку страницы: такой запрос браузер не обрывает вместе с
+   * вкладкой. По спецификации тело ограничено 64 КиБ на все живые
+   * keepalive-запросы разом, поэтому ставится точечно — отчёт о сбое
+   * (ADR-0071), а не все подряд. */
+  keepalive?: boolean;
 }
 
 // Экспортирован: тот же текст нужен экранам, которые сами ловят сетевой сбой
@@ -68,7 +73,7 @@ export function setUnauthorizedListener(listener: UnauthorizedListener | null): 
  * на не-2xx ответ (парсит конверт бэкенда) и на 204 возвращает `undefined`.
  */
 export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
-  const { method = 'GET', body, signal } = init;
+  const { method = 'GET', body, signal, keepalive } = init;
 
   // Данные первого экрана могли начать грузиться раньше, чем этот компонент
   // успел смонтироваться (prefetchFirstScreen.ts кладёт их сюда сразу после
@@ -100,6 +105,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       credentials: 'include',
       body: isBlobBody || body === undefined ? body : JSON.stringify(body),
       signal,
+      keepalive,
     });
   } catch {
     throw new ApiError(NETWORK_ERROR_MESSAGE, 0, 'network');

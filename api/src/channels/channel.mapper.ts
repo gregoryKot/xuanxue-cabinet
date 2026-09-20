@@ -35,11 +35,6 @@ export function targetOf(type: ChannelType, config: ChannelConfig): string {
       return isVkChannelConfig(config) ? String(config.peerId) : '';
     case 'manual':
       return '';
-    case 'webpush':
-      // Push пока без своего эндпоинта канала (PLAN §3) — этот адрес не
-      // строка chatId/peerId, а capability-URL подписки; появится вместе с
-      // адаптером webpush.
-      return '';
   }
 }
 

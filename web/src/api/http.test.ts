@@ -95,6 +95,23 @@ describe('apiFetch — успешные ответы', () => {
     expect((patchOptions.headers as Record<string, string>)[CSRF_HEADER]).toBe('fetch');
     expect((getOptions.headers as Record<string, string>)[CSRF_HEADER]).toBeUndefined();
   });
+
+  it('keepalive уходит в fetch только там, где его попросили', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(204, null));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiFetch('/client-errors', {
+      method: 'POST',
+      body: { kind: 'render' },
+      keepalive: true,
+    });
+    await apiFetch('/schedule');
+
+    const [, reportOptions] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [, scheduleOptions] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(reportOptions.keepalive).toBe(true);
+    expect(scheduleOptions.keepalive).toBeUndefined();
+  });
 });
 
 describe('apiFetch — кэш предзагрузки первого экрана (prefetchCache.ts)', () => {

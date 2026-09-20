@@ -6,7 +6,7 @@
 export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
 
-export const CHANNEL_TYPES = ['telegram', 'vk', 'manual', 'webpush'] as const;
+export const CHANNEL_TYPES = ['telegram', 'vk', 'manual'] as const;
 export type ChannelType = (typeof CHANNEL_TYPES)[number];
 
 export const CLASS_FORMATS = ['online', 'offline', 'both'] as const;
