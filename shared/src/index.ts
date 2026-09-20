@@ -1,8 +1,6 @@
 // Общие типы и константы для api и web (CLAUDE.md, раздел «Структура и слои»:
 // общий код — сразу в shared, а не копипастой между пакетами).
 
-import type { Weekday } from './domain';
-
 export type { ApiErrorBody, ApiErrorCode } from './api-error';
 export type {
   Weekday,
@@ -17,6 +15,7 @@ export type {
 } from './domain';
 export {
   WEEKDAYS,
+  WEEKDAY_LABELS_RU,
   CHANNEL_TYPES,
   CLASS_FORMATS,
   LESSON_STATUSES,
@@ -25,6 +24,7 @@ export {
   DELIVERY_STATUSES,
   DELIVERY_RETRY_DELAYS_MIN,
   DELIVERY_STALE_LOCK_MIN,
+  SCHOOL_TZ,
   RULE_TIME_RE,
   DEFAULT_LEAD_MINUTES,
   PLANNING_HORIZON_WEEKS,
@@ -351,17 +351,3 @@ export {
   PAYMENT_STAFF_NOT_ELIGIBLE_MESSAGE,
   PAYMENT_NOTHING_TO_REVOKE_MESSAGE,
 } from './payments';
-
-/** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
-export const SCHOOL_TZ = 'Asia/Jerusalem';
-
-/** Короткие подписи дней недели, неделя начинается с воскресенья. */
-export const WEEKDAY_LABELS_RU: Record<Weekday, string> = {
-  0: 'Вс',
-  1: 'Пн',
-  2: 'Вт',
-  3: 'Ср',
-  4: 'Чт',
-  5: 'Пт',
-  6: 'Сб',
-};

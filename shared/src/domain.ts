@@ -1,10 +1,22 @@
-// Домен школы (ADR-0010): перечисления и составные типы для занятий, каналов,
-// рассылок и доставок. Один файл на предметную область; index.ts — реэкспорт
-// и общие константы.
+// Домен школы (ADR-0010): перечисления, составные типы и константы для
+// занятий, каналов, рассылок и доставок. Один файл на предметную область;
+// index.ts — только реэкспорт, без собственных объявлений (CLAUDE.md, «Дубли
+// и мёртвый код»).
 
 /** День недели по Luxon/JS: 0 = воскресенье … 6 = суббота. */
 export const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
+
+/** Короткие подписи дней недели, неделя начинается с воскресенья. */
+export const WEEKDAY_LABELS_RU: Record<Weekday, string> = {
+  0: 'Вс',
+  1: 'Пн',
+  2: 'Вт',
+  3: 'Ср',
+  4: 'Чт',
+  5: 'Пт',
+  6: 'Сб',
+};
 
 export const CHANNEL_TYPES = ['telegram', 'vk', 'manual', 'webpush'] as const;
 export type ChannelType = (typeof CHANNEL_TYPES)[number];
@@ -52,6 +64,9 @@ export interface ScheduleRule {
   time: string;
   durationMin: number;
 }
+
+/** Часовой пояс школы — правило расписания хранится в нём (docs/PLAN.md §3). */
+export const SCHOOL_TZ = 'Asia/Jerusalem';
 
 /** Формат `ScheduleRule.time`: HH от 00 до 23, mm от 00 до 59 — 99:99 не
  * проходит. Общий источник для схемы Mongoose (`class.schema.ts`) и DTO

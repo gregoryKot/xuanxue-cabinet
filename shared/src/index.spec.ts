@@ -1,12 +1,25 @@
+// Барабан — публичная поверхность `@xuanxue/shared`, её импортируют 877 файлов
+// `api` и `web`, а своего теста у неё не было. Что барабан состоит только из
+// `export … from`, статически проверяет scripts/check-shared-exports.mjs
+// (ADR-0071); здесь — что импорт действительно отдаёт имена, а не дыры.
+//
+// Побочное следствие, важное для порога покрытия: этот импорт — единственное
+// место, где выполняются модули `shared` без логики (`exams.ts`, `materials.ts`
+// и соседние — одни константы и типы). Без него они считаются непокрытыми, и
+// порог vitest-храповика для shared падает с 99% до 68%.
 import { describe, expect, it } from 'vitest';
-import { WEEKDAY_LABELS_RU } from './index';
 
-describe('WEEKDAY_LABELS_RU', () => {
-  it('содержит все семь дней недели', () => {
-    expect(Object.keys(WEEKDAY_LABELS_RU)).toHaveLength(7);
+import * as shared from './index';
+
+describe('барабан shared', () => {
+  it('отдаёт публичную поверхность пакета', () => {
+    expect(Object.keys(shared).length).toBeGreaterThan(0);
   });
 
-  it('день 0 — воскресенье, неделя начинается с него', () => {
-    expect(WEEKDAY_LABELS_RU[0]).toBe('Вс');
+  it('не отдаёт undefined ни под одним именем', () => {
+    const holes = Object.entries(shared)
+      .filter(([, value]) => value === undefined)
+      .map(([name]) => name);
+    expect(holes).toEqual([]);
   });
 });

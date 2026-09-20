@@ -1,14 +1,11 @@
 #!/usr/bin/env node
-// Храповик размера файлов (CLAUDE.md: «~150 строк для нового кода, потолок
-// 300»). Унаследовано из telegram-bot-2 (там правило без гейта пропустило
-// 76+ файлов сверх потолка) — здесь гейт с первого дня.
+// Храповик размера файлов (CLAUDE.md: «~150 строк для нового кода, потолок 300»).
+// Унаследовано из telegram-bot-2: там правило без гейта пропустило 76+ файлов.
 //
-//   1. Файл до SOFT_LIMIT=150 строк растёт свободно — правка в три строки не
-//      должна требовать --update (первый же CI-прогон показал такой шум).
-//   2. Файл выше SOFT_LIMIT может только УМЕНЬШАТЬСЯ: пересечь 150 или вырасти,
-//      уже будучи больше, — осознанное решение через --update, видное в PR.
-//   3. Новый файл (не в бейслайне) не имеет права родиться больше
-//      NEW_FILE_LIMIT=300 строк.
+//   1. Файл до SOFT_LIMIT=150 строк растёт свободно: иначе --update зовут на
+//      каждую правку в три строки (первый же CI-прогон показал такой шум).
+//   2. Выше SOFT_LIMIT файл только УМЕНЬШАЕТСЯ: рост — через --update, видно в PR.
+//   3. Новый файл (не в бейслайне) не рождается больше NEW_FILE_LIMIT=300 строк.
 //
 // Снизил размер — зафиксируй: node scripts/check-file-size-ratchet.mjs --update
 import { spawnSync } from 'child_process';
@@ -33,21 +30,19 @@ const EXCLUDE = [
   // Конфиги (eslint, vite, jest) растут вместе с числом правил и порогов —
   // это не логика приложения, ограничивать их размер бессмысленно.
   /(^|\/)[\w.-]*\.config\.(ts|js|mjs|cjs)$/,
+  // Баррель shared/src/index.ts — одни `export … from`, растёт от каждого модуля
+  // shared: размер не про сложность, а --update требовался почти в каждом PR.
+  // Что логики в нём нет, держит check-shared-exports.mjs (ADR-0071).
+  /^shared\/src\/index\.ts$/,
 ];
 
 function listFiles() {
   // --others --exclude-standard: ещё не закоммиченные файлы тоже считаются —
   // иначе новый файл невидим для храповика до первого коммита и не попадает
   // в бейслайн при --update.
-  const res = spawnSync(
-    'git',
-    ['ls-files', '--cached', '--others', '--exclude-standard'],
-    {
-      cwd: ROOT,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-    },
-  );
+  const args = ['ls-files', '--cached', '--others', '--exclude-standard'];
+  const opts = { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 };
+  const res = spawnSync('git', args, opts);
   if (res.status !== 0) {
     console.error('❌ git ls-files не отработал:\n' + (res.stderr || ''));
     process.exit(1);
@@ -78,7 +73,11 @@ for (const f of files) {
 }
 
 if (UPDATE) {
-  const sorted = Object.fromEntries(Object.entries(sizes).sort((a, b) => b[1] - a[1]));
+  // По пути, а не по размеру: у записи стабильное место, поэтому --update из
+  // разных PR правит разные строки и сливается — при сортировке по размеру
+  // запись переезжала от любого изменения размера и конфликтовала (ADR-0071).
+  const sorted = {};
+  for (const f of Object.keys(sizes).sort()) sorted[f] = sizes[f];
   writeFileSync(BASELINE_PATH, JSON.stringify(sorted, null, 2) + '\n');
   const over = Object.values(sizes).filter((n) => n > NEW_FILE_LIMIT).length;
   console.log(
