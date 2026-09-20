@@ -23,7 +23,7 @@ function renderLink(unreadCount: number) {
   });
   return render(
     <MemoryRouter>
-      <NotificationsProvider>
+      <NotificationsProvider me={null}>
         <NotificationsNavLink />
       </NotificationsProvider>
     </MemoryRouter>,
