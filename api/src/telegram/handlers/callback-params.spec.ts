@@ -28,7 +28,7 @@ describe('isValidCallbackParam', () => {
   });
 
   it('notif — вид уведомления, не ObjectId', () => {
-    expect(isValidCallbackParam('notif', 'lesson_soon')).toBe(true);
+    expect(isValidCallbackParam('notif', 'post_draft')).toBe(true);
     expect(isValidCallbackParam('notif', OBJECT_ID)).toBe(false);
   });
 

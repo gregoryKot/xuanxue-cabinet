@@ -16,7 +16,7 @@ const USER: UserLean = {
   status: 'active',
 };
 
-const PREFS_DTO: NotificationPrefsDto = { enabled: ['lesson_soon', 'exam_result'] };
+const PREFS_DTO: NotificationPrefsDto = { enabled: ['exam_result', 'post_draft'] };
 
 async function buildController(
   service: Partial<NotificationPrefsService> = {},

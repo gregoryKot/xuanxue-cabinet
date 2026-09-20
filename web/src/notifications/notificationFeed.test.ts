@@ -8,7 +8,7 @@ import { groupByDay, isUnread, notificationTimeText } from './notificationFeed';
 stubViewerTimeZone();
 
 function item(id: string, createdAt: string, readAt?: string): NotificationDto {
-  return { id, kind: 'lesson_soon', text: `Текст ${id}`, createdAt, readAt };
+  return { id, kind: 'post_draft', text: `Текст ${id}`, createdAt, readAt };
 }
 
 const NOW = '2026-09-20T05:00:00.000Z'; // 08:00 в Москве (Europe/Moscow, зритель)

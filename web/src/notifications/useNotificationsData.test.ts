@@ -44,13 +44,13 @@ const STARTED_EXAM: MyExamDto = {
 
 const UNREAD: NotificationDto = {
   id: 'n1',
-  kind: 'lesson_soon',
+  kind: 'post_draft',
   text: 'Текст 1',
   createdAt: '2026-09-20T04:00:00.000Z',
 };
 const READ: NotificationDto = {
   id: 'n2',
-  kind: 'lesson_soon',
+  kind: 'post_draft',
   text: 'Текст 2',
   createdAt: '2026-09-20T03:00:00.000Z',
   readAt: '2026-09-20T03:05:00.000Z',

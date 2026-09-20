@@ -34,14 +34,14 @@ describe('NotificationPrefsService.set — гонка и сбои', () => {
       }),
     );
 
-    await expect(service.set('u1', 'lesson_soon', true)).resolves.toBeUndefined();
+    await expect(service.set('u1', 'post_draft', true)).resolves.toBeUndefined();
     expect(call).toBe(3);
   });
 
   it('гонка не заканчивается за SET_RETRY_LIMIT попыток — явная ошибка, не тихое зависание', async () => {
     const service = new NotificationPrefsService(fakeModel({}));
 
-    await expect(service.set('u1', 'lesson_soon', true)).rejects.toThrow(
+    await expect(service.set('u1', 'post_draft', true)).rejects.toThrow(
       'Не получилось сохранить настройку',
     );
   });
@@ -51,7 +51,7 @@ describe('NotificationPrefsService.set — гонка и сбои', () => {
       fakeModel({ create: () => Promise.reject(new Error('база недоступна')) }),
     );
 
-    await expect(service.set('u1', 'lesson_soon', true)).rejects.toThrow(
+    await expect(service.set('u1', 'post_draft', true)).rejects.toThrow(
       'база недоступна',
     );
   });
@@ -71,6 +71,6 @@ describe('NotificationPrefsService.set — гонка и сбои', () => {
       }),
     );
 
-    await expect(service.set('u1', 'lesson_soon', true)).resolves.toBeUndefined();
+    await expect(service.set('u1', 'post_draft', true)).resolves.toBeUndefined();
   });
 });

@@ -11,9 +11,9 @@
 // сказать одно и то же дважды в одной строке.
 import { NOTIFICATION_LABELS, type NotificationKind } from '@xuanxue/shared';
 
-/** Виды, у которых своя формулировка события. Остальные (придут с будущими
- * слоями — `lesson_soon`, `teacher_message`) честно падают на общее название
- * вида из `NOTIFICATION_LABELS`: лучше сухо, чем пусто. */
+/** Виды, у которых своя формулировка события. Остальные (в ленту сейчас не
+ * пишутся — `post_draft`, `delivery_failed` и прочие штатные) честно падают
+ * на общее название вида из `NOTIFICATION_LABELS`: лучше сухо, чем пусто. */
 const EVENT_TEXT: Partial<Record<NotificationKind, string>> = {
   exam_result: 'Работу проверили',
   attempt_submitted: 'Работу прислали на проверку',

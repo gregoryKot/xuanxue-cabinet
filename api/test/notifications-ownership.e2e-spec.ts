@@ -94,7 +94,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect(get.status).toBe(401);
 
     const patch = await withCsrf(request(server()).patch('/api/me/notifications')).send({
-      kind: 'lesson_soon',
+      kind: 'post_draft',
       enabled: false,
     });
     expect(patch.status).toBe(401);
