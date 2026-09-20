@@ -4,7 +4,7 @@
 // человека снизу (ADR-0043): «Профиль» (ADR-0045) и «Выйти» приходят
 // готовыми узлами через пропсы — сама навигация про авторизацию не знает
 // (CLAUDE.md «Логика вне компонентов»). На телефоне блок человека рисует
-// AppShell.tsx под содержимым, эта колонка там — только четыре пункта.
+// AppShell.tsx под содержимым, эта колонка там — только пункты меню.
 // Вынесено из AppShell.tsx: там иначе два набора стилей и ветка на файл в
 // 150 строк (CLAUDE.md «Храповики», «Логика вне компонентов»).
 import type { ReactNode } from 'react';
@@ -65,7 +65,7 @@ export function AppNav({
   // не один стиль на двоих (bottomNavStyles.ts: bottomLinkStyle/bottomPillStyle).
   if (isMobile) {
     return (
-      <nav style={bottomStyle} aria-label={SECTIONS_LABEL}>
+      <nav style={bottomStyle(items.length)} aria-label={SECTIONS_LABEL}>
         {items.map(({ to, label }) => {
           const isActive = active === to;
           return (
