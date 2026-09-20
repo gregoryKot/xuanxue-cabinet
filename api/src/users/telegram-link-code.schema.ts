@@ -11,9 +11,9 @@
 // сессии и вне модели угроз №2 (персональные данные учеников, SECURITY §1).
 //
 // userId — владелец кода, чья сессия его выпустила: это признак владения
-// (чеклист CLAUDE.md «Новая коллекция с полем userId»), поэтому модель
-// внесена в USER_OWNED_COLLECTIONS (user-data.registry.ts) — сверочный spec
-// падает, если модель с путём userId забыта там.
+// (чеклист CLAUDE.md «Новая коллекция»), поэтому модель внесена в
+// USER_OWNED_COLLECTIONS (user-data.registry.ts) — сверочный spec падает,
+// если модель с путём userId забыта там.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { plain, type FieldPolicy } from '../common/field-policy';
