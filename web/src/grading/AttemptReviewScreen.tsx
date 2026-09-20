@@ -16,14 +16,11 @@
 // Экран остался в облике ADR-0031 (плоский текст, волосяные линии прямо на
 // бумаге), когда остальной кабинет переехал на «Тёплую школу» (ADR-0043) —
 // снимок владельца с телефона («тут всё сливается»): ниже две карточки
-// (ответы и проверка) вместо плоского текста. `blockCardStyle` — локальный
-// литерал, не общий экспорт: в кабинете уже семь мест объявляют поверхность
-// карточки своим литералом (InviteLinkCard, SummaryNumbers, TodayLessonCard,
-// ExamsScreen, BroadcastsScreen, PeopleScreen, listCardStyles) — свести их
-// все под общий `blockCardStyle` значит править их все, а это рефакторинг
-// отдельным PR (CLAUDE.md 1б: рефакторинг и фича — разные PR).
+// (ответы и проверка) вместо плоского текста. Поверхность карточки берётся
+// из общего `blockCardStyle` (components/listCardStyles.ts).
 import type { CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { blockCardStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
   screenColumnTitleStyle,
@@ -55,16 +52,6 @@ const headingColumnStyle: CSSProperties = {
 // слово без пробелов и дефисов, `break-word` его не разорвёт (тот же приём —
 // `bottomPillStyle`, app/bottomNavStyles.ts).
 const titleStyle: CSSProperties = { ...screenTitleStyle, overflowWrap: 'anywhere' };
-
-// Единственная карточка-поверхность этого экрана (см. комментарий вверху
-// файла про семь других литералов карточки в кабинете) — применяется дважды,
-// к колонке ответов и к колонке проверки.
-const blockCardStyle: CSSProperties = {
-  padding: '20px 22px',
-  background: 'var(--card)',
-  borderRadius: 'var(--radius-block)',
-  boxShadow: 'var(--shadow-card)',
-};
 
 export default function AttemptReviewScreen() {
   const { attemptId } = useParams<{ attemptId: string }>();

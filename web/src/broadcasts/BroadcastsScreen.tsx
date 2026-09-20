@@ -4,10 +4,11 @@
 // прямо сейчас. Новая рассылка — страница `/broadcasts/new`
 // (BroadcastNewScreen.tsx, ADR-0033), отсюда только переход. Числа, фильтры,
 // пустое состояние — отдельные компоненты (CLAUDE.md «Файлы»).
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { JOURNAL_RANGE_MAX_WEEKS, type BroadcastStatus } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { oneCardListStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -33,19 +34,6 @@ const EXPLANATION =
   'Журнал показывает, что ушло, что ждёт и что не отправилось. Разовую рассылку с ' +
   'текстом на все выбранные каналы можно отправить прямо отсюда.';
 const BROADCASTS_PATH = '/broadcasts';
-
-// Журнал — одна карточка (docs/adr/0043), не стопка карточек-строк: строки
-// внутри красит своей волосяной линией сама BroadcastCard.tsx, а `overflow:
-// hidden` подрезает первую/последнюю строку под общий радиус.
-const journalListStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  borderRadius: 'var(--radius-block)',
-  background: 'var(--card)',
-  boxShadow: 'var(--shadow-card)',
-  overflow: 'hidden',
-};
 
 export default function BroadcastsScreen() {
   const [searchParams] = useSearchParams();
@@ -125,7 +113,7 @@ export default function BroadcastsScreen() {
         !error &&
         broadcastsState.broadcasts &&
         broadcastsState.broadcasts.length > 0 && (
-          <ul style={journalListStyle}>
+          <ul style={oneCardListStyle}>
             {broadcastsState.broadcasts.map((broadcast, index, all) => (
               <BroadcastCard
                 key={broadcast.id}

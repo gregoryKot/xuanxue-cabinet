@@ -7,6 +7,7 @@
 // components/QuestionRow.tsx), а не рамкой.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
+import { blockCardStyle } from '../components/listCardStyles';
 import { noteStyle } from '../components/screenLayout';
 import { ExamPreviewQuestion } from './ExamPreviewQuestion';
 
@@ -20,19 +21,6 @@ const EMPTY_NOTE = 'В экзамене пока нет вопросов — с�
 // noteStyle отступов нет, и две заметки подряд слипались бы в один абзац.
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
-
-// Единственная карточка-поверхность этого экрана — локальный литерал,
-// скопированный дословно из attempt/AttemptInProgress.tsx (её же комментарий
-// объясняет причину): поверхность объявлена локально в дюжине экранов
-// кабинета, сводить их под общий экспорт — рефакторинг отдельным PR (CLAUDE.md
-// 1б, серия ADR-0043). Учитель смотрит «глазами ученика» и обязан увидеть тот
-// же пиксель, что и он, — не «примерно похожий».
-const blockCardStyle: CSSProperties = {
-  padding: '20px 22px',
-  background: 'var(--card)',
-  borderRadius: 'var(--radius-block)',
-  boxShadow: 'var(--shadow-card)',
-};
 
 interface ExamPreviewQuestionsProps {
   itemIds: string[];

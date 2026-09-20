@@ -14,6 +14,7 @@
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { hasRole } from '../auth/hasRole';
+import { oneCardListStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -39,19 +40,6 @@ const TEACHER_EXPLANATION =
 const EMPTY_MESSAGE =
   'Пока никто, кроме вас, не входил. Отправьте ссылку-приглашение из карточки выше — кто откроет её и войдёт, появится здесь.';
 
-// Список — одна карточка (docs/adr/0043), не стопка карточек-строк:
-// волосяную линию между строками красит сама PersonRow.tsx (проп `isLast`),
-// `overflow: hidden` подрезает первую/последнюю строку под общий радиус. Тот
-// же приём, что у журнала рассылок и списка экзаменов (#199, #200).
-const listStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  borderRadius: 'var(--radius-block)',
-  background: 'var(--card)',
-  boxShadow: 'var(--shadow-card)',
-  overflow: 'hidden',
-};
 const countStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 
 export default function PeopleScreen() {
@@ -93,7 +81,7 @@ export default function PeopleScreen() {
       )}
 
       {isAdmin && !error && people && others.length > 0 && (
-        <ul style={listStyle}>
+        <ul style={oneCardListStyle}>
           {people.map((person, index, all) => (
             <PersonRow
               key={person.id}

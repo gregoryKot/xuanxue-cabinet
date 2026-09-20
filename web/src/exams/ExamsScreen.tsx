@@ -9,12 +9,13 @@
 // Уровень остаётся полем формы (ExamAboutFields.tsx) и параметром API
 // (`/exams?level=`), но не фильтром строки: нужный случай («все формы одного
 // уровня») закрывают поиск по названию и переключатели статуса.
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EXAM_STATUSES } from '@xuanxue/shared';
 import { type ExamListFilters } from '../api/apiPaths';
 import { Button } from '../components/Button';
 import { ListFilters } from '../components/ListFilters';
+import { oneCardListStyle } from '../components/listCardStyles';
 import { ListScreenBody } from '../components/ListScreenBody';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -38,20 +39,6 @@ const SEARCH_LABEL = 'Поиск по названию';
 const EXAMS_PATH = '/exams';
 
 const EMPTY_FILTERS: ExamListFilters = { status: '' };
-
-// Список экзаменов — одна карточка (docs/adr/0043), не стопка карточек-строк:
-// волосяную линию между строками красит сама ExamCard.tsx (проп `isLast`),
-// `overflow: hidden` подрезает первую/последнюю строку под общий радиус. Тот
-// же приём, что у журнала рассылок (broadcasts/BroadcastsScreen.tsx, #199).
-const examListStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  borderRadius: 'var(--radius-block)',
-  background: 'var(--card)',
-  boxShadow: 'var(--shadow-card)',
-  overflow: 'hidden',
-};
 
 export default function ExamsScreen() {
   const [filters, setFilters] = useState<ExamListFilters>(EMPTY_FILTERS);
@@ -98,7 +85,7 @@ export default function ExamsScreen() {
         error={error}
         onRetry={() => void reload()}
         emptyMessage={isFiltered ? EMPTY_FILTERED_MESSAGE : EMPTY_MESSAGE}
-        listStyle={examListStyle}
+        listStyle={oneCardListStyle}
         renderItem={(exam, index, all) => (
           <ExamCard
             key={exam.id}
