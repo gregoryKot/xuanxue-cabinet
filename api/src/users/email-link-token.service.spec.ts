@@ -6,12 +6,17 @@ import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { EmailLinkTokenRecord, EmailLinkTokenSchema } from './email-link-token.schema';
 import {
+  EMAIL_CONFIRM_RESEND_COOLDOWN_MIN,
   EMAIL_CONFIRM_TOKEN_TTL_MIN,
   EmailLinkTokenService,
 } from './email-link-token.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 const NOW = DateTime.fromISO('2026-09-18T10:00:00.000Z', { zone: 'utc' });
+// Моменты считаем от самой константы, а не магическими числами (CLAUDE.md
+// «Без магических чисел»): сменят кулдаун — тесты останутся верными.
+const WITHIN_COOLDOWN = NOW.plus({ minutes: EMAIL_CONFIRM_RESEND_COOLDOWN_MIN - 1 });
+const AFTER_COOLDOWN = NOW.plus({ minutes: EMAIL_CONFIRM_RESEND_COOLDOWN_MIN + 1 });
 const USER_ID = '68c9a000a000a000a000a001';
 const OTHER_USER_ID = '68c9a000a000a000a000a002';
 const EMAIL = 'ученик@example.com';
@@ -108,7 +113,7 @@ describe('EmailLinkTokenService', () => {
   it('повтор на тот же адрес раньше кулдауна — null, письмо не уходит', async () => {
     await issued(USER_ID, EMAIL, NOW);
 
-    const again = await service.issue(USER_ID, EMAIL, NOW.plus({ minutes: 1 }));
+    const again = await service.issue(USER_ID, EMAIL, WITHIN_COOLDOWN);
 
     expect(again).toBeNull();
   });
@@ -116,11 +121,11 @@ describe('EmailLinkTokenService', () => {
   it('после кулдауна тот же адрес снова выпускает токен', async () => {
     const first = await issued(USER_ID, EMAIL, NOW);
 
-    const second = await issued(USER_ID, EMAIL, NOW.plus({ minutes: 3 }));
+    const second = await issued(USER_ID, EMAIL, AFTER_COOLDOWN);
 
     expect(second).not.toBe(first);
     // Прежний сгорел: активная ссылка подтверждения всегда одна.
-    await expect(service.consume(first, NOW.plus({ minutes: 3 }))).resolves.toBeNull();
+    await expect(service.consume(first, AFTER_COOLDOWN)).resolves.toBeNull();
   });
 
   // Смена адреса — другое намерение, а не повтор: ждать там нечего, иначе
@@ -128,11 +133,7 @@ describe('EmailLinkTokenService', () => {
   it('другой адрес внутри кулдауна — письмо уходит сразу', async () => {
     await issued(USER_ID, EMAIL, NOW);
 
-    const other = await service.issue(
-      USER_ID,
-      'другой@example.com',
-      NOW.plus({ minutes: 1 }),
-    );
+    const other = await service.issue(USER_ID, 'другой@example.com', WITHIN_COOLDOWN);
 
     expect(other).not.toBeNull();
   });
@@ -140,7 +141,7 @@ describe('EmailLinkTokenService', () => {
   it('кулдаун у каждого свой — чужая отправка не запирает', async () => {
     await issued(USER_ID, EMAIL, NOW);
 
-    const other = await service.issue(OTHER_USER_ID, EMAIL, NOW.plus({ minutes: 1 }));
+    const other = await service.issue(OTHER_USER_ID, EMAIL, WITHIN_COOLDOWN);
 
     expect(other).not.toBeNull();
   });
