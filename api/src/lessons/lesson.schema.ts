@@ -71,7 +71,7 @@ export class LessonRecord {
   @Prop({ type: Date, required: false })
   recordingPromptedAt?: Date;
 
-  // Рубрикация свободным текстом (ADR-0059, уточняет ADR-0058) — у даты
+  // Рубрикация свободным текстом (ADR-0070, уточняет ADR-0058) — у даты
   // занятия, не у занятия расписания: тег описывает конкретный вечер, а не
   // постоянный признак курса. У дат, заведённых до этого поля, документ его
   // не содержит — `.lean()` не подставляет default при чтении (lesson.mapper.ts,
@@ -95,7 +95,7 @@ LessonSchema.index(
   { classId: 1, plannedAt: 1 },
   { unique: true, partialFilterExpression: { plannedAt: { $type: 'date' } } },
 );
-// Фильтр по тегу (GET /api/lessons?tag=…, ADR-0059) — тот же приём, что у
+// Фильтр по тегу (GET /api/lessons?tag=…, ADR-0070) — тот же приём, что у
 // MaterialSchema.index({ tags: 1 }).
 LessonSchema.index({ tags: 1 });
 

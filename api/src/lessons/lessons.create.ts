@@ -25,7 +25,7 @@ export function buildCreatePayload(
     durationMin:
       input.durationMin ?? classRules[0]?.durationMin ?? LESSON_DEFAULT_DURATION_MIN,
     topic: input.topic ?? '',
-    // Нормализация здесь, не в DTO: тег — фильтр (ADR-0059), опечатка и дубль
+    // Нормализация здесь, не в DTO: тег — фильтр (ADR-0070), опечатка и дубль
     // в базе разъехались бы с фильтром `tag` при чтении (тот же приём, что у
     // MaterialsService.create).
     tags: normalizeTags(input.tags ?? []),
