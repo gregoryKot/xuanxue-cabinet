@@ -150,3 +150,49 @@ describe('useProfileSetup — отправка', () => {
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('useProfileSetup — save() (ADR-0059, onBeforeLink у TelegramLinkButton)', () => {
+  it('пустое имя — ничего не сохраняет, возвращает true, onSaved() не зовёт', async () => {
+    const onSaved = vi.fn();
+    const { result } = renderHook(() => useProfileSetup('', vi.fn(), onSaved));
+
+    const saved = await act(() => result.current.save());
+
+    expect(saved).toBe(true);
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it('успех — PATCH /me/profile, refresh(), возвращает true; onSaved() не зовёт (решает вызывающий)', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const onSaved = vi.fn();
+    const { result } = renderHook(() =>
+      useProfileSetup('Дмитрий Котов', refresh, onSaved),
+    );
+
+    const saved = await act(() => result.current.save());
+
+    expect(saved).toBe(true);
+    expect(mockedApiFetch).toHaveBeenCalledWith('/me/profile', {
+      method: 'PATCH',
+      body: { firstName: 'Дмитрий', lastName: 'Котов' },
+    });
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it('ApiError — возвращает false, текст ошибки виден, refresh() не вызван', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError('Сервер не ответил. Попробуйте ещё раз.', 500, 'unknown'),
+    );
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useProfileSetup('Дмитрий', refresh, vi.fn()));
+
+    const saved = await act(() => result.current.save());
+
+    expect(saved).toBe(false);
+    expect(result.current.error).toBe('Сервер не ответил. Попробуйте ещё раз.');
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});

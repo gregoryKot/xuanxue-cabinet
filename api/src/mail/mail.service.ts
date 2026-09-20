@@ -13,7 +13,10 @@ import { NotAvailableError } from '../common/errors';
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const RESEND_TIMEOUT_MS = 10_000;
 const SUBJECT = 'Вход в кабинет «Сюань-Сюэ»';
+const CONFIRM_SUBJECT = 'Подтвердите почту в кабинете «Сюань-Сюэ»';
 
+// Тоже форма sendEmailConfirmLink (ADR-0059) — одна и та же пара {to, link},
+// два разных письма, второй интерфейс не заводим (CLAUDE.md «Дубли»).
 interface SendLoginLinkInput {
   to: string;
   link: string;
@@ -33,6 +36,14 @@ export class MailService {
 
   async sendLoginLink({ to, link }: SendLoginLinkInput): Promise<void> {
     const delivered = await this.postToResend(to, SUBJECT, loginLinkText(link));
+    if (!delivered) throw new NotAvailableError(EMAIL_LOGIN_SEND_FAILED_MESSAGE);
+  }
+
+  /** Привязка почты к уже вошедшему человеку (ADR-0059) — рядом с
+   * sendLoginLink, тот же postToResend и то же поведение при неудаче
+   * (бросает, а не молчит: письмо подтверждения не best-effort). */
+  async sendEmailConfirmLink({ to, link }: SendLoginLinkInput): Promise<void> {
+    const delivered = await this.postToResend(to, CONFIRM_SUBJECT, confirmLinkText(link));
     if (!delivered) throw new NotAvailableError(EMAIL_LOGIN_SEND_FAILED_MESSAGE);
   }
 
@@ -91,5 +102,16 @@ function loginLinkText(link: string): string {
     `Ссылка для входа в кабинет (действует 15 минут): ${link}`,
     '',
     'Не запрашивали вход? Просто не открывайте её — письмо ни на что не влияет.',
+  ].join('\n');
+}
+
+function confirmLinkText(link: string): string {
+  return [
+    'Здравствуйте!',
+    '',
+    'Вы указали эту почту вторым способом входа в кабинет школы «Сюань-Сюэ».',
+    `Ссылка подтверждает адрес, а не входит в кабинет, и действует час: ${link}`,
+    '',
+    'Не вы указывали этот адрес? Не открывайте ссылку — без неё ничего не изменится.',
   ].join('\n');
 }

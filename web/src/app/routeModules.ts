@@ -104,6 +104,14 @@ export const ROUTE_MODULES = {
     warm: false,
   },
   join: { path: '/join/:code', load: () => import('../join/JoinScreen'), warm: false },
+  // Подтверждение почты вторым ключом входа (ADR-0059) — публичный маршрут,
+  // как login/emailLogin/join: не требует сессии и не выдаёт её (комментарий
+  // в EmailConfirmScreen.tsx), вошедшему чанк не нужен, греть в фоне нечего.
+  emailConfirm: {
+    path: '/email/confirm',
+    load: () => import('../auth/EmailConfirmScreen'),
+    warm: false,
+  },
   // Экран первого входа (ADR-0044) — как login/emailLogin/join, вошедшему,
   // который уже назвался, чанк не нужен, греть в фоне нечего.
   welcome: {
