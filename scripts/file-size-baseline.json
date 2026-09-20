@@ -21,7 +21,7 @@
   "api/src/seed/seed-exam-file.ts": 224,
   "api/src/telegram/handlers/exam-attempt-flow.test-support.ts": 219,
   "api/test/email-link.e2e-spec.ts": 217,
-  "api/src/common/model.registry.ts": 214,
+  "api/src/common/model.registry.ts": 224,
   "api/test/broadcasts-journal.e2e-spec.ts": 213,
   "api/src/exams/exam-attempts.service.ts": 206,
   "api/test/payments-ownership.e2e-spec.ts": 199,

@@ -172,6 +172,25 @@ describe('AttemptScreen', () => {
     ).not.toBeInTheDocument();
   });
 
+  // ADR-0067 обещает, что отметка «у меня нет Telegram» гасит предложение на
+  // всех экранах сразу. Видео-вопрос оставался последним местом, где кабинет
+  // звал отметившегося в Telegram: условие показа было своё
+  // (`!telegramLinked`), мимо общего предиката.
+  it('отметка «у меня нет Telegram» — связку не предлагаем, форма ссылки остаётся', async () => {
+    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }], {
+      ...STUDENT_WITH_TELEGRAM,
+      telegramLinked: false,
+      botChatActive: false,
+      noTelegram: true,
+    });
+    renderAt('a1');
+
+    expect(await screen.findByLabelText('Ссылка на видео')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Связать Telegram' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('Telegram привязан — на «Отправлено» есть кнопка бота с deep link на вопрос', async () => {
     mockPaths([{ ...IN_PROGRESS, status: 'submitted' }]);
     renderAt('a1');

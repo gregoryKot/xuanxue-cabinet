@@ -10,7 +10,7 @@ import { EXAM_IMAGE_LIMITS } from '@xuanxue/shared';
 import { CSP_DIRECTIVES } from './security/csp';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { formatValidationErrors } from './common/validation-messages';
-import { isExamImageUpload } from './exam-images/exam-image-body';
+import { isRawImageUpload } from './exam-images/exam-image-body';
 
 export function configureApp(app: NestExpressApplication): void {
   // nestjs-pino вместо встроенного логгера Nest — правило CLAUDE.md «Ошибки»:
@@ -32,14 +32,15 @@ export function configureApp(app: NestExpressApplication): void {
   // иначе дефолтный парсер (лимит ~100kb) успевает отработать первым, и наш
   // лимит ниже никогда не применяется.
   app.useBodyParser('json', { limit: '1mb' });
-  // Сырое тело — единственное исключение из «файлы мимо API» (ADR-0035,
-  // SECURITY §4): только картинки вариантов ответа. Включается по
-  // предикату маршрута и заявленного типа (exam-image-body.ts), а не по
+  // Сырое тело — исключение из «файлы мимо API» (SECURITY §4) ровно на два
+  // маршрута: картинки вариантов ответа (ADR-0035) и снимок перевода
+  // (ADR-0050). Оба — картинки до 1 МБ. Включается по предикату маршрута и
+  // заявленного типа (exam-image-body.ts, там же список маршрутов), а не по
   // image/* глобально — иначе такое тело в любом другом запросе стало бы
   // Buffer, и ValidationPipe (whitelist/forbidNonWhitelisted) перебирал бы
   // его как «лишние поля».
   app.useBodyParser('raw', {
-    type: isExamImageUpload,
+    type: isRawImageUpload,
     limit: EXAM_IMAGE_LIMITS.maxBytes,
   });
 

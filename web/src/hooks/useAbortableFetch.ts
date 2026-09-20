@@ -5,7 +5,7 @@
 // отдельности — jscpd-храповик поймал дубль (CLAUDE.md «Дубли и мёртвый код»).
 //
 // `refresh()` — тихое перечитывание для фонового опроса (usePollWhileVisible,
-// ADR-0074): человек его не заказывал, поэтому скелетон и баннер ошибки не
+// ADR-0075): человек его не заказывал, поэтому скелетон и баннер ошибки не
 // должны мигнуть, а сбой должен молча пройти мимо — список на экране остаётся
 // прежним. `reload()` и `refresh()` — один и тот же запрос с разным
 // поведением на границах, поэтому обе стоят на одной функции `run({ quiet })`
@@ -60,6 +60,13 @@ export function useAbortableFetch<T>(
 
   const run = useCallback(
     async ({ quiet }: { quiet: boolean }) => {
+      // Выключенный хук (`enabled: false`) фоном не опрашивается: тик разбудил
+      // бы запрос, который вызывающий выключил нарочно — например
+      // `useMyExams({ enabled: !isTeacher(me) })` у счётчика уведомлений
+      // (ADR-0074) сходил бы за экзаменами штата раз в минуту. Явный
+      // `reload()` по-прежнему работает и на выключенном хуке: его зовёт
+      // человек, а не таймер.
+      if (quiet && !enabled) return;
       if (quiet && inFlight.current) return;
 
       abortController.current?.abort();
@@ -92,7 +99,7 @@ export function useAbortableFetch<T>(
         }
       }
     },
-    [fallbackErrorMessage],
+    [fallbackErrorMessage, enabled],
   );
 
   const reload = useCallback(() => run({ quiet: false }), [run]);

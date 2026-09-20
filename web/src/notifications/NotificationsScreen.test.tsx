@@ -93,7 +93,7 @@ function renderScreen(overrides: Record<string, unknown> = {}) {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <NotificationsProvider>
+        <NotificationsProvider me={ME_LINKED}>
           <NotificationsScreen />
         </NotificationsProvider>
       </AuthProvider>

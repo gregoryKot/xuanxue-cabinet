@@ -75,6 +75,24 @@ describe('useAbortableFetch — enabled: false (ADR-0030)', () => {
 
     expect(result.current.data).toBe('готово');
   });
+
+  // Пара к тесту выше: явный reload() человека выключенный хук будит, а
+  // фоновый тик — нет (ADR-0075). Иначе `useMyExams({ enabled: !isTeacher })`
+  // у счётчика уведомлений сходил бы за экзаменами штата раз в минуту —
+  // ровно то хождение, которое убрал ADR-0074.
+  it('refresh() на выключенном хуке молчит — фоновый тик его не будит', async () => {
+    const load = vi.fn().mockResolvedValue('готово');
+    const { result } = renderHook(() =>
+      useAbortableFetch(load, FALLBACK, { enabled: false }),
+    );
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(result.current.data).toBeNull();
+  });
 });
 
 describe('useAbortableFetch — гонка запросов (ревью п.13)', () => {
@@ -126,7 +144,7 @@ describe('useAbortableFetch — гонка запросов (ревью п.13)',
   });
 });
 
-describe('useAbortableFetch — refresh() тихое перечитывание (ADR-0074)', () => {
+describe('useAbortableFetch — refresh() тихое перечитывание (ADR-0075)', () => {
   it('не поднимает loading, пока идёт тихий запрос', async () => {
     let resolveRefresh: ((value: string) => void) | undefined;
     const load = vi

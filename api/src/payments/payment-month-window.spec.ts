@@ -1,7 +1,7 @@
 // Чистая функция, без Mongo (CLAUDE.md «Тесты»): границы окна и переход
 // года — тот же приём, что shiftMonth.spec (shared).
 import { DateTime } from 'luxon';
-import { isPaymentMonthInWindow } from './payment-screenshot-month-window';
+import { isPaymentMonthInWindow } from './payment-month-window';
 
 const TZ = 'Asia/Jerusalem';
 const NOW = DateTime.fromISO('2026-09-15T10:00:00', { zone: TZ });
