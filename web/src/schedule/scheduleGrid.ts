@@ -33,7 +33,7 @@ export interface ScheduleSlot {
   channelCount: number;
   /** Постоянные теги курса (ClassDto.tags, ADR-0072) — SlotCard печатает их
    * подписью, без пилюль: в сетке дня они ничего не фильтруют. Теги даты
-   * (lessons.tags, ADR-0059) сюда не подмешиваются — другое поле, другой
+   * (lessons.tags, ADR-0075) сюда не подмешиваются — другое поле, другой
    * экран. */
   tags: string[];
 }

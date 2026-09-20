@@ -103,7 +103,7 @@ function feedCallCount(): number {
  * с пустым ответом сервера, а настоящая гарантия — что запрос вообще не
  * ушёл. */
 /** Ноль здесь же стережёт, что тик опроса не будит выключенный запрос
- * (ADR-0075): тихий refresh() на выключенном хуке молчит. */
+ * (ADR-0076): тихий refresh() на выключенном хуке молчит. */
 function examsCallCount(): number {
   return mockedApiFetch.mock.calls.filter(([path]) => path === MY_EXAMS_PATH).length;
 }
@@ -258,7 +258,7 @@ describe('useNotificationsData — штат школы', () => {
   });
 });
 
-describe('useNotificationsData — опрос (ADR-0075)', () => {
+describe('useNotificationsData — опрос (ADR-0076)', () => {
   // Фейковые таймеры — иначе тест ждал бы настоящую минуту (CLAUDE.md
   // «Детерминизм»). advanceTimersByTimeAsync, не Async-less вариант: между
   // тиками таймера нужно дать промисам apiFetch долиться до состояния.

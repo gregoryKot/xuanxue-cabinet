@@ -31,7 +31,7 @@ export interface MyArchivedLessonDto {
   topic: string;
   status: LessonStatus;
   recordings: ArchivedRecordingDto[];
-  /** Тег видит и ученик (ADR-0059) — та же рубрика, что и в «ближайших
+  /** Тег видит и ученик (ADR-0075) — та же рубрика, что и в «ближайших
    * занятиях» (MyLessonDto.tags), архив не исключение. */
   tags: string[];
   /** Материалы, привязанные к этой дате занятия (`materials.lessonIds`,
