@@ -32,6 +32,7 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
     url: doc.url,
     kind: doc.kind,
     classIds: doc.classIds.map((id) => id.toString()),
+    lessonIds: doc.lessonIds.map((id) => id.toString()),
     access: doc.access,
     tags: doc.tags ?? [],
     createdBy: doc.createdBy.toString(),

@@ -11,6 +11,7 @@ import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema
 import type { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import type { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
+import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { LessonRecord, LessonSchema } from './lesson.schema';
 import { LessonsService } from './lessons.service';
@@ -65,6 +66,7 @@ describe('LessonsService', () => {
   let classModel: Model<ClassRecord>;
   let broadcastModel: Model<BroadcastRecord>;
   let userModel: Model<UserRecord>;
+  let materialModel: Model<MaterialRecord>;
   let recordingBroadcast: RecordingBroadcastService & {
     calls: number;
     urls: (string | undefined)[];
@@ -84,6 +86,7 @@ describe('LessonsService', () => {
       BroadcastSchema,
     );
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
+    materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
     recordingBroadcast = fakeRecordingBroadcast();
     lessonLinkRebuild = fakeLessonLinkRebuild();
     service = new LessonsService(
@@ -93,6 +96,7 @@ describe('LessonsService', () => {
       lessonLinkRebuild,
       broadcastModel,
       userModel,
+      materialModel,
     );
   }, 60_000);
 
@@ -108,6 +112,7 @@ describe('LessonsService', () => {
     await classModel.deleteMany({});
     await broadcastModel.deleteMany({});
     await userModel.deleteMany({});
+    await materialModel.deleteMany({});
   });
 
   async function createClass(overrides: Partial<ClassRecord> = {}): Promise<string> {
@@ -417,6 +422,29 @@ describe('LessonsService', () => {
     await service.remove(created.id);
 
     await expect(service.getById(created.id)).rejects.toThrow('не найдена');
+  });
+
+  // ADR-0056 «Последствия»: удаление даты не должно оставлять привязку,
+  // указывающую в никуда — материал остаётся, id пропадает из lessonIds.
+  it('remove: отвязывает удалённую дату от materials.lessonIds, материал остаётся', async () => {
+    const classId = await createClass();
+    const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+    const authorId = new Types.ObjectId();
+    const material = await materialModel.create({
+      title: 'Ссылка со вторника',
+      url: 'https://example.com/link',
+      kind: 'article',
+      classIds: [],
+      lessonIds: [created.id],
+      access: 'all',
+      createdBy: authorId,
+    });
+
+    await service.remove(created.id);
+
+    const afterRemove = await materialModel.findById(material._id).lean();
+    expect(afterRemove).not.toBeNull();
+    expect(afterRemove?.lessonIds).toEqual([]);
   });
 
   it('remove: несуществующий id — NotFoundError', async () => {

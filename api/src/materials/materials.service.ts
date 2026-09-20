@@ -68,6 +68,7 @@ export class MaterialsService {
         url: input.url,
         kind: input.kind,
         classIds: input.classIds ?? [],
+        lessonIds: input.lessonIds ?? [],
         access: input.access ?? 'all',
         // Нормализация здесь, не в DTO: список — фильтр (ADR-0058), опечатка
         // и дубль в базе разъехались бы с фильтром `tag` при чтении.

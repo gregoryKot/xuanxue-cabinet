@@ -12,6 +12,7 @@ import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
 import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
 import { LessonsService } from '../../lessons/lessons.service';
+import { MaterialRecord, MaterialSchema } from '../../materials/material.schema';
 import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
 import { SettingsService } from '../../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
@@ -39,6 +40,7 @@ export interface MessageHandlerTestContext {
   channelModel: Model<ChannelRecord>;
   botSessionModel: Model<BotSessionRecord>;
   settingsModel: Model<SettingsRecord>;
+  materialModel: Model<MaterialRecord>;
   handler: MessageHandler;
   // Тип object-фейка, не класса (тот же приём, что fakeHandler() у
   // TelegramBotService) — иначе `expect(examMediaHandler.handle)` в спеке
@@ -74,6 +76,10 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     BotSessionSchema,
   );
   await botSessionModel.syncIndexes();
+  const materialModel = connection.model<MaterialRecord>(
+    MaterialRecord.name,
+    MaterialSchema,
+  );
   const usersService = new UsersService(userModel);
   const broadcastModels = new BroadcastModels(
     lessonModel,
@@ -99,6 +105,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     lessonLinkRebuild,
     broadcastModel,
     userModel,
+    materialModel,
   );
   const recordingWaitHandler = new RecordingWaitHandler(
     new BotSessionService(botSessionModel),
@@ -138,6 +145,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     channelModel,
     botSessionModel,
     settingsModel,
+    materialModel,
     handler,
     examMediaHandler,
     examTextHandler,
@@ -158,5 +166,6 @@ export async function clearMessageHandlerTest(
     ctx.deliveryModel.deleteMany({}),
     ctx.channelModel.deleteMany({}),
     ctx.botSessionModel.deleteMany({}),
+    ctx.materialModel.deleteMany({}),
   ]);
 }

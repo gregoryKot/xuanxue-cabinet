@@ -43,6 +43,11 @@ export class MaterialRecord {
   // при чтении (material.mapper.ts, RawLeanMaterial).
   @Prop({ type: [String], default: [] })
   tags!: string[];
+  // Привязка к дате занятия (ADR-0056) — ссылка, которую учитель дал один
+  // раз с конкретного вторника, а не книга по программе. Рядом с classIds,
+  // тот же смысл и тот же приём: рубрикация и фильтр, без `ref`.
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  lessonIds!: Types.ObjectId[];
 
   // См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: true })
@@ -57,6 +62,9 @@ MaterialSchema.index({ createdAt: -1 });
 MaterialSchema.index({ classIds: 1 });
 // Фильтр по тегу (GET /api/materials?tag=…), как у exam_items (ADR-0058).
 MaterialSchema.index({ tags: 1 });
+// Фильтр по дате занятия (GET /api/materials?lessonId=…, ADR-0056) — тот же
+// приём, что у classIds.
+MaterialSchema.index({ lessonIds: 1 });
 
 export const MATERIAL_FIELD_POLICY: FieldPolicy = {
   title: enc,

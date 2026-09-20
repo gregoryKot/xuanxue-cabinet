@@ -22,6 +22,8 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { LessonRecord } from '../lessons/lesson.schema';
+import { MaterialRecord } from '../materials/material.schema';
+import { detachMaterialReference } from '../materials/materials.queries';
 import { assertLeaderIdIfProvided } from '../users/assert-teacher';
 import { UserRecord } from '../users/user.schema';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from './class.schema';
@@ -39,6 +41,8 @@ export class ClassesService {
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
     @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
+    @InjectModel(MaterialRecord.name)
+    private readonly materialModel: Model<MaterialRecord>,
   ) {}
 
   async list(query: ListClassesQuery): Promise<ClassDto[]> {
@@ -112,11 +116,16 @@ export class ClassesService {
     return toClassDto(decryptRecord(doc, CLASS_ENCRYPT_SCHEMA));
   }
 
+  // Отвязка от materials.classIds — дыра, которая была до ADR-0056: класс
+  // без дат занятий удалялся, а материалы школы продолжали ссылаться на
+  // пропавший id (ADR-0047 «Последствия»). Тот же приём, что у
+  // LessonsService.remove: после удаления, не до.
   async remove(id: string): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const hasLessons = await this.lessonModel.exists({ classId: id });
     if (hasLessons) throw new ConflictError(HAS_LESSONS_MESSAGE);
     const { deletedCount } = await this.model.deleteOne({ _id: id });
     if (deletedCount === 0) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    await detachMaterialReference(this.materialModel, 'classIds', id);
   }
 }
