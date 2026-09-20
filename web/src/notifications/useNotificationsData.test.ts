@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InboxPageDto, MyExamDto, NotificationDto } from '@xuanxue/shared';
 import {
   MY_EXAMS_PATH,
@@ -14,7 +14,10 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
-import { useNotificationsData } from './useNotificationsData';
+import {
+  NOTIFICATIONS_POLL_INTERVAL_MS,
+  useNotificationsData,
+} from './useNotificationsData';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -67,6 +70,12 @@ function page(items: NotificationDto[], unreadCount = items.length): InboxPageDt
 function feedCallCount(): number {
   return mockedApiFetch.mock.calls.filter(([path]) => path === NOTIFICATIONS_FEED_PATH)
     .length;
+}
+
+/** То же самое для /me/exams — второй источник счётчика, опрос обновляет
+ * оба одним тиком (ADR-0070). */
+function examsCallCount(): number {
+  return mockedApiFetch.mock.calls.filter(([path]) => path === MY_EXAMS_PATH).length;
 }
 
 describe('useNotificationsData — счётчик', () => {
@@ -170,5 +179,73 @@ describe('useNotificationsData — ошибки', () => {
     expect(result.current.items).toEqual([UNREAD]);
     expect(result.current.error).toBeNull();
     expect(result.current.newTasks).toEqual([]);
+  });
+});
+
+describe('useNotificationsData — опрос (ADR-0070)', () => {
+  // Фейковые таймеры — иначе тест ждал бы настоящую минуту (CLAUDE.md
+  // «Детерминизм»). advanceTimersByTimeAsync, не Async-less вариант: между
+  // тиками таймера нужно дать промисам apiFetch долиться до состояния.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    // Видимость трогает только тест «вкладка скрыта» ниже, но сбрасываем
+    // безусловно — иначе скрытое состояние протекло бы в соседний тест.
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+  });
+
+  it('через минуту перечитывает /me/inbox и /me/exams — count меняется на новое число', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [], [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1) });
+    const { result } = renderHook(() => useNotificationsData());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.count).toBe(1);
+    const feedBefore = feedCallCount();
+    const examsBefore = examsCallCount();
+
+    // Между тиками у ленты и у экзаменов появилось по новой строке — тот же
+    // тик опроса обязан подхватить оба источника.
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [NEW_EXAM],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 4),
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(NOTIFICATIONS_POLL_INTERVAL_MS);
+    });
+
+    expect(feedCallCount()).toBe(feedBefore + 1);
+    expect(examsCallCount()).toBe(examsBefore + 1);
+    expect(result.current.count).toBe(5); // 4 непрочитанных + 1 новое задание
+  });
+
+  it('пока вкладка скрыта — новых запросов нет', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [], [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1) });
+    const { result } = renderHook(() => useNotificationsData());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const feedBefore = feedCallCount();
+    const examsBefore = examsCallCount();
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(NOTIFICATIONS_POLL_INTERVAL_MS * 3);
+    });
+
+    expect(feedCallCount()).toBe(feedBefore);
+    expect(examsCallCount()).toBe(examsBefore);
+    expect(result.current.loading).toBe(false);
   });
 });
