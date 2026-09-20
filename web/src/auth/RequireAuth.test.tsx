@@ -50,6 +50,7 @@ function meWithNeedsProfile(needsProfile: boolean): MeDto {
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
+    noTelegram: false,
     hasEmail: true,
     needsProfile,
   };
@@ -81,6 +82,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -102,6 +104,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -146,6 +149,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -166,6 +170,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };

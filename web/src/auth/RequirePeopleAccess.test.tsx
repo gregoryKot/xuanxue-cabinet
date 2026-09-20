@@ -49,6 +49,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -67,6 +68,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -105,6 +107,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -123,6 +126,7 @@ describe('RequirePeopleAccess', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
