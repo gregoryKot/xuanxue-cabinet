@@ -89,6 +89,14 @@ describe('ExamItemsService', () => {
     expect(found.history).toEqual([]);
   });
 
+  it('создаётся без автора (CLI-импорт сида) — authorId не пишется в документ', async () => {
+    const created = await service.create({ kind: 'text', prompt: 'Вопрос без автора' });
+
+    expect(created.authorId).toBeUndefined();
+    const raw = await model.findById(created.id).lean();
+    expect(raw?.authorId).toBeUndefined();
+  });
+
   it('status: draft при создании — вопрос остаётся спрятанным (ADR-0033)', async () => {
     const created = await service.create(
       { kind: 'text', prompt: 'Пока прячу', status: 'draft' },

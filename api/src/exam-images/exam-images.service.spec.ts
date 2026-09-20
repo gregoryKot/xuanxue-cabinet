@@ -90,6 +90,13 @@ describe('ExamImagesService', () => {
       ).rejects.toBeInstanceOf(InvalidInputError);
       await expect(imageModel.countDocuments({})).resolves.toBe(0);
     });
+
+    it('создаётся без автора (CLI-импорт сида) — createdBy не пишется в документ', async () => {
+      const dto = await service.upload(JPEG);
+
+      const raw = await imageModel.findById(dto.id).lean();
+      expect(raw?.createdBy).toBeUndefined();
+    });
   });
 
   describe('load', () => {

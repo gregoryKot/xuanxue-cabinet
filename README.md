@@ -47,6 +47,13 @@ npm run seed:classes --workspace=api -- api/seed/classes.local.json
 Команда идемпотентна: класс, у которого уже есть точное совпадение названия
 и подписи группы, пропускается, а не дублируется — перезапускать безопасно.
 
+Вопросы первого экзамена с фотографиями — тем же способом, только файл лежит
+в репозитории открыто (секретов в нём нет), см. ADR-0064 и RUNBOOK §2.3:
+
+```bash
+npm run seed:exam --workspace=api -- api/seed/exam-form-1.json
+```
+
 Вход через Telegram (переход на `oauth.telegram.org`, `POST /auth/telegram`) локально
 не проверить: переход работает только с доменом, привязанным к боту в BotFather
 (`/setdomain`) — у `localhost` такого домена нет. `BOT_TOKEN` — тот же,

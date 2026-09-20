@@ -11,7 +11,8 @@
     "test": "jest",
     "test:cov": "jest --coverage",
     "test:e2e": "jest -c test/jest-e2e.config.js --runInBand",
-    "seed:classes": "npm run build && node dist/seed/seed-classes.js"
+    "seed:classes": "npm run build && node dist/seed/seed-classes.js",
+    "seed:exam": "npm run build && node dist/seed/seed-exam.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.3",
