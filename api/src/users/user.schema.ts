@@ -17,7 +17,6 @@
 // `/welcome` (ADR-0044, PATCH /me/profile, UserProfileService.setName).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
-  SCHOOL_TZ,
   USER_ROLES,
   USER_STATUSES,
   type UserRole,
@@ -33,6 +32,21 @@ export class UserRecord {
   @Prop({ type: String, required: false, lowercase: true })
   email?: string;
 
+  // Адрес назван, но ещё не подтверждён переходом по ссылке из письма
+  // (ADR-0059, EmailLinkService) — отдельное поле от email: email — ключ
+  // входа, и поиск при входе (LoginIdentityService.resolveEmailUser,
+  // EmailLoginUserService.findByEmail) обязан находить только подтверждённые
+  // адреса — опечатка в адресе иначе отдала бы ключ от кабинета постороннему,
+  // то же, от чего закрылись ссылкой-приглашением (ADR-0030/0036, SECURITY
+  // §2). Уникального индекса здесь нет и не должно быть: занят адрес или
+  // нет, решает подтверждение, а не заявка — двое могут набрать один и тот
+  // же адрес, войдёт тот, кто откроет письмо; уникальность дала бы
+  // постороннему способ заблокировать чужой адрес, выставив его себе в
+  // pendingEmail. retention: живёт до подтверждения, замены или удаления
+  // аккаунта.
+  @Prop({ type: String, required: false, lowercase: true })
+  pendingEmail?: string;
+
   @Prop({ type: Number, required: false })
   telegramId?: number;
 
@@ -45,9 +59,6 @@ export class UserRecord {
   // текст.
   @Prop({ type: [{ type: String, enum: USER_ROLES }], default: [] })
   roles!: UserRole[];
-
-  @Prop({ type: String, default: SCHOOL_TZ })
-  tz!: string;
 
   @Prop({ type: String, enum: USER_STATUSES, default: 'active' })
   status!: UserStatus;
@@ -92,6 +103,9 @@ UserSchema.index(
 export const USER_FIELD_POLICY: FieldPolicy = {
   name: plain('показывается учителю и админу, подстановка «{ведущий}»'),
   email: plain('ключ поиска при входе, не свободный текст'),
+  pendingEmail: plain(
+    'сравнивается точно при подтверждении (ADR-0059) — шифрование со случайным IV ' +
+      'сделало бы такое сравнение невозможным, тот же класс данных, что email рядом',
+  ),
   googleId: plain('ключ входа от Google, непрозрачный id, не секрет'),
-  tz: plain('IANA-зона пользователя, нужна для расписания и выборок'),
 };

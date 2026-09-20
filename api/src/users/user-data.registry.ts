@@ -53,6 +53,13 @@
 // Этап 2, слой 2.1 (payments, PLAN.md §15, ADR-0049) — абонемент по
 // месяцам: данные ученика (деньги конкретного человека, ADR-0010 наоборот),
 // живёт, пока жив аккаунт — финансовый след школы, не свободный текст.
+//
+// ADR-0059 — токен подтверждения привязки почты (email_link_tokens,
+// email-link-token.schema.ts): userId здесь тоже признак того, чья сессия
+// привязывает адрес (владелец, не жертва удаления), тем же доводом, что у
+// telegram_link_codes выше — живёт минуты и почти всегда пуст к моменту
+// удаления аккаунта, внесён ради явного решения в сверочном тесте, а не
+// ради переноса при merge/delete.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
@@ -60,6 +67,7 @@ export const USER_OWNED_COLLECTIONS = [
   'MediaAssetRecord',
   'TelegramLinkCodeRecord',
   'PaymentRecord',
+  'EmailLinkTokenRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с

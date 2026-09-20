@@ -12,7 +12,6 @@ const GRADER = {
   id: 'g1',
   name: 'Дима',
   roles: ['teacher' as const],
-  tz: 'Asia/Jerusalem',
   status: 'active' as const,
 };
 

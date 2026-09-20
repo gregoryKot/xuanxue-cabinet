@@ -76,40 +76,40 @@ const TEACHER: MeDto = {
   id: 'u1',
   name: 'Дима',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
   name: 'Маша',
   roles: ['admin'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 const STUDENT: MeDto = {
   id: 'u2',
   name: 'Ученик',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 const ASSISTANT: MeDto = {
   id: 'u3',
   name: 'Помощник',
   roles: ['assistant'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 

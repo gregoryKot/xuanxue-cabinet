@@ -20,14 +20,17 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
+// hasEmail: true — почта уже подтверждена (тот же ключ, которым вошли),
+// Telegram не связан: ровно один ключ есть, SecondLoginKey (ADR-0059)
+// предлагает второй, как это бывает в жизни (не оба ключа отсутствуют разом).
 const STUDENT: MeDto = {
   id: 'u1',
   name: 'Мария Ли',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 
@@ -110,24 +113,26 @@ describe('ProfileScreen — список уведомлений по роли', 
 });
 
 describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
-  it('Telegram связан — кнопки связки нет, остаётся подсказка про личный чат', async () => {
+  it('Telegram связан, почта тоже — оба ключа на месте, блока нет вовсе, остаётся подсказка про личный чат', async () => {
     renderScreen(
       { ...STUDENT, telegramLinked: true, botChatActive: true },
       { enabled: [] },
     );
 
     await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/);
+    expect(screen.queryByText('Второй способ входа')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Связать Telegram' }),
     ).not.toBeInTheDocument();
   });
 
-  it('Telegram не связан — кнопка связки со своим объяснением', async () => {
+  it('Telegram не связан — блок «Второй способ входа» с кнопкой связки (ADR-0059)', async () => {
     renderScreen(STUDENT, { enabled: [] });
 
+    expect(await screen.findByText('Второй способ входа')).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        'Telegram ещё не связан с кабинетом. Свяжите его, чтобы уведомления начали приходить.',
+      screen.getByText(
+        'Сейчас в кабинет пускает только почта. Свяжите Telegram — если потеряете доступ к ящику, войдёте через него.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();

@@ -43,34 +43,9 @@ export function isStaffRole(roles: readonly UserRole[]): boolean {
 export const USER_STATUSES = ['active', 'blocked'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
 
-/**
- * Профиль текущей сессии для интерфейса. Ученик — это `active` без ролей
- * учителя (ADR-0026), отдельной роли для него нет и в кабинете.
- * Email, telegramId и googleId сюда намеренно не входят — это ключи входа,
- * не профиль для интерфейса. `telegramLinked` — не id, а признак «бот меня
- * узнает» (ADR-0023, §8.17): им экран попытки решает, показывать ли кнопку
- * бота.
- */
-export interface MeDto {
-  id: string;
-  name: string;
-  roles: UserRole[];
-  tz: string;
-  status: UserStatus;
-  telegramLinked: boolean;
-  /** «Боту есть куда мне писать» — активный личный чат
-   * (`PersonalChats.hasActiveChat`), а не просто известный `telegramId`
-   * (ADR-0042). Разница видна на входе через виджет Telegram: `telegramId`
-   * появляется сразу, а канал заводит только нажатое в боте «Запустить», и
-   * без него уведомления молча не доходят. */
-  botChatActive: boolean;
-  /** Человек ещё не называл себя сам (`users.profileNamedAt` пуст, ADR-0044)
-   * — кабинет спрашивает имя и фамилию один раз, экраном `/welcome`, и
-   * пускает дальше. Не статус доступа: этот человек уже `active` и уже в
-   * школе, просто зовётся пока тем, что дал Telegram, или заглушкой
-   * `NEW_PERSON_NAME` после входа по почте. */
-  needsProfile: boolean;
-}
+// Профиль текущей сессии (`MeDto`) живёт в соседнем me.ts (ADR-0059): этот
+// файл стоит на пределе файла-храповика, а второй ключ входа дописывает
+// туда поля (CLAUDE.md «Храповики»).
 
 /** Нового человека без ссылки-приглашения (ADR-0030, ADR-0036) в кабинет не
  * пускаем — ни `POST /auth/telegram`, ни `POST /auth/email/verify` не

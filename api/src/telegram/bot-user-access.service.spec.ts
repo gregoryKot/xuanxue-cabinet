@@ -13,7 +13,7 @@ function fakeUsersService(user: UserLean | null): UsersService {
 }
 
 function user(status: UserLean['status']): UserLean {
-  return { id: 'u1', name: 'Ольга', roles: [], tz: 'Asia/Jerusalem', status };
+  return { id: 'u1', name: 'Ольга', roles: [], status };
 }
 
 describe('BotUserAccessService.resolve', () => {

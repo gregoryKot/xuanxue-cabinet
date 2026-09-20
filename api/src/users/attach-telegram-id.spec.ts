@@ -13,7 +13,6 @@ function fakeDoc(telegramId: number): unknown {
     _id: { toString: () => 'u1' },
     name: 'Мария',
     roles: [],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     telegramId,
   };

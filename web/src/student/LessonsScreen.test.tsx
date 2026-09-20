@@ -24,10 +24,10 @@ const STUDENT: MeDto = {
   id: 's1',
   name: 'Мария',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 

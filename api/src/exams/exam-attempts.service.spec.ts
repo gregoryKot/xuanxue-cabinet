@@ -503,7 +503,6 @@ describe('ExamAttemptsService', () => {
         id: '507f1f77bcf86cd799439015',
         name: 'Помощник',
         roles: ['assistant'],
-        tz: 'Asia/Jerusalem',
         status: 'active',
       },
       NOW,
@@ -552,7 +551,6 @@ describe('ExamAttemptsService', () => {
         id: USER_A,
         name: 'Ученик',
         roles: [],
-        tz: 'Asia/Jerusalem',
         status: 'active',
       },
       NOW,
@@ -569,7 +567,6 @@ function staffUser(isStaff: boolean, id: string): UserLean {
     id,
     name: 'Тест',
     roles: isStaff ? ['teacher'] : [],
-    tz: 'Asia/Jerusalem',
     status: 'active',
   };
 }

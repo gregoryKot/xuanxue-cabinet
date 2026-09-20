@@ -32,10 +32,10 @@ afterEach(() => {
 const LINK_CODE_PATH = '/auth/telegram/link-code';
 const LINK_URL = 'https://t.me/xuanxue_bot?start=link_' + 'a'.repeat(32);
 
-function renderButton(explanation?: string) {
+function renderButton(explanation?: string, onBeforeLink?: () => Promise<void>) {
   return render(
     <AuthProvider>
-      <TelegramLinkButton explanation={explanation} />
+      <TelegramLinkButton explanation={explanation} onBeforeLink={onBeforeLink} />
     </AuthProvider>,
   );
 }
@@ -94,6 +94,41 @@ describe('TelegramLinkButton — клик', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     );
+  });
+});
+
+describe('TelegramLinkButton — onBeforeLink (ADR-0059)', () => {
+  it('дожидается onBeforeLink до link() — в Telegram уходит только после того, как он выполнился', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      origin: 'https://xuanxue.su',
+      href: 'https://xuanxue.su/welcome',
+      assign,
+    });
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/auth/me': new Error('нет сессии'),
+      [LINK_CODE_PATH]: { telegramUrl: LINK_URL },
+    });
+    let resolveBeforeLink: () => void = () => {};
+    const onBeforeLink = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveBeforeLink = resolve;
+        }),
+    );
+    renderButton(undefined, onBeforeLink);
+
+    await user.click(await screen.findByRole('button', { name: 'Связать Telegram' }));
+
+    // onBeforeLink уже вызван, но пока не выполнился — link() ждёт его и в
+    // сеть за кодом связки ещё не ходил.
+    expect(onBeforeLink).toHaveBeenCalledTimes(1);
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(LINK_CODE_PATH, expect.anything());
+
+    resolveBeforeLink();
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith(LINK_URL));
   });
 });
 

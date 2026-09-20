@@ -16,20 +16,20 @@ const STUDENT: MeDto = {
   id: 'u1',
   name: 'Ученик',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 const TEACHER: MeDto = {
   id: 'u2',
   name: 'Учитель',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 

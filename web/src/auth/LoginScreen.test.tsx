@@ -188,10 +188,10 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
@@ -245,10 +245,10 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     });
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
@@ -267,10 +267,10 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
@@ -472,7 +472,6 @@ describe('LoginScreen — уже вошедшего уводит на сохра
           id: 'u1',
           name: 'Дима',
           roles: ['teacher'],
-          tz: 'Asia/Jerusalem',
         });
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });

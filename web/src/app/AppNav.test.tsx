@@ -13,20 +13,20 @@ const TEACHER: MeDto = {
   id: 'u1',
   name: 'Дима',
   roles: ['teacher'],
-  tz: 'UTC',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
   name: 'Маша',
   roles: ['admin'],
-  tz: 'UTC',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 

@@ -46,10 +46,10 @@ describe('RequirePeopleAccess', () => {
       id: 'u1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -64,10 +64,10 @@ describe('RequirePeopleAccess', () => {
       id: 'u3',
       name: 'Оля',
       roles: ['accountant'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -102,10 +102,10 @@ describe('RequirePeopleAccess', () => {
       id: 'u2',
       name: 'Маша',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -120,10 +120,10 @@ describe('RequirePeopleAccess', () => {
       id: 'u4',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);

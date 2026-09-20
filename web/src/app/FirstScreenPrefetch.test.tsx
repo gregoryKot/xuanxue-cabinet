@@ -25,10 +25,10 @@ const TEACHER: MeDto = {
   id: 'u1',
   name: 'Дима',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 

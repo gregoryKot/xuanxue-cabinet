@@ -26,10 +26,10 @@ const STUDENT_WITH_TELEGRAM: MeDto = {
   id: 'u1',
   name: 'Ученик',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: true,
   botChatActive: true,
+  hasEmail: true,
   needsProfile: false,
 };
 

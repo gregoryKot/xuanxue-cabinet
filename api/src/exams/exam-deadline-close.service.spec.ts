@@ -21,7 +21,6 @@ const STAFF_USER: UserLean = {
   id: 'staff',
   name: 'Учитель',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 
