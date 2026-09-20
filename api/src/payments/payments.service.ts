@@ -7,9 +7,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { DateTime } from 'luxon';
 import {
-  isMonthKey,
   PAYMENT_LIMITS,
-  PAYMENT_MONTH_INVALID_MESSAGE,
   type ConfirmPaymentInput,
   type ListPaymentsQuery,
   type MyPaymentDto,
@@ -17,10 +15,9 @@ import {
   type PaymentsPageDto,
   type PaymentStatus,
 } from '@xuanxue/shared';
-import { InvalidInputError } from '../common/errors';
 import { SettingsService } from '../settings/settings.service';
 import { UserRecord } from '../users/user.schema';
-import { monthKeyOf } from './payment-month';
+import { assertMonthKey, monthKeyOf } from './payment-month';
 import {
   decryptPayment,
   toMyPaymentDto,
@@ -114,11 +111,4 @@ export class PaymentsService {
       .lean<RawLeanPayment[]>();
     return docs.map((doc) => toMyPaymentDto(decryptPayment(doc)));
   }
-}
-
-/** `userId`/`month` в пути `/payments/:userId/:month/...` не проходят через
- * DTO (class-validator валидирует тело и query, не сегменты пути) — тот же
- * формат проверяем здесь, до похода в базу. */
-function assertMonthKey(month: string): void {
-  if (!isMonthKey(month)) throw new InvalidInputError(PAYMENT_MONTH_INVALID_MESSAGE);
 }
