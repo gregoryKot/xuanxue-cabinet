@@ -6,8 +6,8 @@
 // обязан помнить про них сам.
 //
 // Не про пользователя школы (userId нет — не в USER_OWNED_COLLECTIONS,
-// CLAUDE.md «Новая коллекция с полем userId»): ключ — chatId Telegram,
-// живёт минуты-часы, персональных данных не содержит.
+// CLAUDE.md «Новая коллекция»): ключ — chatId Telegram, живёт минуты-часы,
+// персональных данных не содержит.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import {
