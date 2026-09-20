@@ -46,7 +46,6 @@ describe('UsersService — статус вне USER_STATUSES (ADR-0036, expand�
       name: 'Пришёл до миграции',
       roles: [],
       status: 'invited',
-      tz: 'Asia/Jerusalem',
       telegramId: 4242,
     });
 

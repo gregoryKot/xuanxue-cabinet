@@ -92,7 +92,6 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
         'roles',
         'status',
         'telegramLinked',
-        'tz',
       ].sort(),
     );
     expect(body.hasEmail).toBe(true);

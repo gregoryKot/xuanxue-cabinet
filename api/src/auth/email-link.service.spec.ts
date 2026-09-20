@@ -40,7 +40,6 @@ const BASE_USER: UserLean = {
   id: 'u1',
   name: 'Мария',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

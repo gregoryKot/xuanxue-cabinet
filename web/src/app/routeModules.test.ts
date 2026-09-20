@@ -26,6 +26,7 @@ describe('matchRoute', () => {
     );
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
     expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
+    expect(loaderAt('/notifications')).toBe(ROUTE_MODULES.notifications.load);
     expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
     expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
@@ -55,6 +56,14 @@ describe('matchRoute', () => {
   it('подтверждение почты — свой чанк, в фоне не греется (ADR-0059)', async () => {
     expect(ROUTE_MODULES.emailConfirm.warm).toBe(false);
     await expect(ROUTE_MODULES.emailConfirm.load()).resolves.toHaveProperty('default');
+  });
+
+  // Центр уведомлений (ADR-0063) — свой чанк, греется в фоне, как «Профиль».
+  // Загрузчик зовём по-настоящему: опечатка в пути модуля иначе всплыла бы
+  // только в браузере, пустым экраном под Suspense.
+  it('экран «Уведомления» — свой чанк, греется в фоне (ADR-0063)', async () => {
+    expect(ROUTE_MODULES.notifications.warm).toBe(true);
+    await expect(ROUTE_MODULES.notifications.load()).resolves.toHaveProperty('default');
   });
 
   it('страница материала — один чанк на «новый» и на правку (ADR-0033)', async () => {

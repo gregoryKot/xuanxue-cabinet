@@ -13,7 +13,6 @@ const existing = {
   name: 'Первый',
   telegramId: 7,
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

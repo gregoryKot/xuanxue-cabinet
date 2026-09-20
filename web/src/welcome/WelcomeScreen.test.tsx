@@ -33,7 +33,6 @@ function meNeedingProfile(name: string): MeDto {
     id: 'u1',
     name,
     roles: [],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     telegramLinked: cameFromTelegram,
     botChatActive: false,

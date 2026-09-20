@@ -19,7 +19,7 @@ vi.mock('../api/http', async () => {
 
 vi.mock('../auth/AuthProvider', () => ({
   useAuth: () => ({
-    me: { id: 'admin-1', name: 'Маша', roles: ['admin'], tz: 'Asia/Jerusalem' },
+    me: { id: 'admin-1', name: 'Маша', roles: ['admin'] },
     status: 'ok',
     refresh: vi.fn(),
     clear: vi.fn(),

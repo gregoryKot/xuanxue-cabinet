@@ -55,7 +55,6 @@ const BASE_USER: UserLean = {
   name: 'Дима Учитель',
   telegramId: 42,
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

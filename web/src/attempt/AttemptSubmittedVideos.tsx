@@ -8,8 +8,8 @@
 // индекс, что видел ученик на форме (её же комментарий-шапка). Строка
 // вопроса — общий QuestionRow.tsx (CLAUDE.md «Одна механика — один
 // компонент»): номер и текст вопроса не должны собираться дважды по-разному.
-import type { CSSProperties } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
+import { blockCardStyle } from '../components/listCardStyles';
 import { QuestionRow } from '../components/QuestionRow';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { AttemptQuestionVideo } from './AttemptQuestionVideo';
@@ -23,17 +23,6 @@ import { collectVideoQuestions } from './attemptVideoQuestions';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
 const listStyle = { margin: 0, padding: 0, listStyle: 'none' } as const;
-
-// Карточка списка видео-вопросов — направление «Тёплая школа» (ADR-0043);
-// локальный литерал, тот же приём и та же причина, что в
-// attempt/AttemptInProgress.tsx и grading/AttemptReviewScreen.tsx (не общий
-// экспорт — см. комментарий там).
-const blockCardStyle: CSSProperties = {
-  padding: '20px 22px',
-  background: 'var(--card)',
-  borderRadius: 'var(--radius-block)',
-  boxShadow: 'var(--shadow-card)',
-};
 
 // Старый инстанс мог записать видео без itemId во время деплоя
 // (expand → contract, ADR-0037 «Последствия») — такая запись ни к одному

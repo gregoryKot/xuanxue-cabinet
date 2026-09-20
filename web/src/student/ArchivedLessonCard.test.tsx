@@ -17,6 +17,7 @@ function makeLesson(overrides: Partial<MyArchivedLessonDto> = {}): MyArchivedLes
     groupLabel: 'Средняя группа',
     topic: 'Форма 24',
     status: 'scheduled',
+    tags: [],
     recordings: [],
     ...overrides,
   };

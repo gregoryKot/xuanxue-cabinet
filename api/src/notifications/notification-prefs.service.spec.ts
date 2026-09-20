@@ -41,15 +41,15 @@ describe('NotificationPrefsService', () => {
 
   it('гость (без ролей) — дефолт как у ученика', async () => {
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message', 'exam_result'],
+      enabled: ['exam_result'],
     });
   });
 
   it('выключил вид уведомления → прочитал: его нет (read-after-write)', async () => {
-    await service.set('u1', 'teacher_message', false);
+    await service.set('u1', 'exam_result', false);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['lesson_soon', 'exam_result'],
+      enabled: [],
     });
   });
 
@@ -57,39 +57,39 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'payments', true);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message', 'exam_result', 'payments'],
+      enabled: ['exam_result', 'payments'],
     });
   });
 
   it('второй клик той же кнопки (то же значение) — не ломается, документ один', async () => {
-    await service.set('u1', 'lesson_soon', false);
-    await service.set('u1', 'lesson_soon', false);
+    await service.set('u1', 'exam_result', false);
+    await service.set('u1', 'exam_result', false);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['teacher_message', 'exam_result'],
+      enabled: [],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
   });
 
   it('переключил туда-обратно — возвращается дефолт, документ остаётся один', async () => {
-    await service.set('u1', 'lesson_soon', false);
-    await service.set('u1', 'lesson_soon', true);
+    await service.set('u1', 'exam_result', false);
+    await service.set('u1', 'exam_result', true);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message', 'exam_result'],
+      enabled: ['exam_result'],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
   });
 
   it('настройки двух людей не пересекаются', async () => {
-    await service.set('u1', 'teacher_message', false);
+    await service.set('u1', 'exam_result', false);
     await service.set('u2', 'payments', true);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['lesson_soon', 'exam_result'],
+      enabled: [],
     });
     expect(await service.get('u2', [])).toEqual({
-      enabled: ['lesson_soon', 'teacher_message', 'exam_result', 'payments'],
+      enabled: ['exam_result', 'payments'],
     });
   });
 

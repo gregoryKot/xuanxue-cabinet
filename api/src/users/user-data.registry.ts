@@ -60,6 +60,12 @@
 // telegram_link_codes выше — живёт минуты и почти всегда пуст к моменту
 // удаления аккаунта, внесён ради явного решения в сверочном тесте, а не
 // ради переноса при merge/delete.
+//
+// Слой in-app уведомлений (notifications, ADR-0061) — лента кабинета
+// (InAppExamNotifier, третье плечо ExamNotifier рядом с Telegram и почтой):
+// данные человека, `userId` — кому адресована запись. Срок хранения и так
+// короткий — TTL-индекс 90 дней (notification.schema.ts), удаление аккаунта
+// не ждёт его: уносит записи сразу, тем же путём, что и остальные.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
@@ -68,6 +74,7 @@ export const USER_OWNED_COLLECTIONS = [
   'TelegramLinkCodeRecord',
   'PaymentRecord',
   'EmailLinkTokenRecord',
+  'NotificationRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с

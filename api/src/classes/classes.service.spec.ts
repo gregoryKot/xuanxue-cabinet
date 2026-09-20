@@ -1,11 +1,12 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): шифрование секретов и read-after-write, PATCH null → $unset,
 // запрет удаления класса с занятиями (clarification 7 ТЗ PR D).
-import type { Connection, Model } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesService } from './classes.service';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
+import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
@@ -16,6 +17,7 @@ describe('ClassesService', () => {
   let lessonModel: Model<LessonRecord>;
   let channelModel: Model<ChannelRecord>;
   let userModel: Model<UserRecord>;
+  let materialModel: Model<MaterialRecord>;
   let service: ClassesService;
 
   beforeAll(async () => {
@@ -25,7 +27,14 @@ describe('ClassesService', () => {
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    service = new ClassesService(model, lessonModel, channelModel, userModel);
+    materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
+    service = new ClassesService(
+      model,
+      lessonModel,
+      channelModel,
+      userModel,
+      materialModel,
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -37,6 +46,7 @@ describe('ClassesService', () => {
     await lessonModel.deleteMany({});
     await channelModel.deleteMany({});
     await userModel.deleteMany({});
+    await materialModel.deleteMany({});
   });
 
   it('create → getById: read-after-write, zoomLink расшифрован в ответе', async () => {
@@ -225,6 +235,27 @@ describe('ClassesService', () => {
     await expect(service.getById(created.id)).resolves.toMatchObject({
       title: 'С занятием',
     });
+  });
+
+  // Дыра, которая была до ADR-0056: класс без дат занятий удалялся, а
+  // материалы школы продолжали ссылаться на пропавший id.
+  it('remove: отвязывает удалённый класс от materials.classIds, материал остаётся', async () => {
+    const created = await service.create({ title: 'Без занятий', format: 'online' });
+    const material = await materialModel.create({
+      title: 'Книга курса',
+      url: 'https://example.com/book',
+      kind: 'book',
+      classIds: [created.id],
+      lessonIds: [],
+      access: 'all',
+      createdBy: new Types.ObjectId(),
+    });
+
+    await service.remove(created.id);
+
+    const afterRemove = await materialModel.findById(material._id).lean();
+    expect(afterRemove).not.toBeNull();
+    expect(afterRemove?.classIds).toEqual([]);
   });
 
   it('PATCH с тем же id правила — id сохраняется, поля обновляются', async () => {

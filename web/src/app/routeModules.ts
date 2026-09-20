@@ -37,6 +37,7 @@ import {
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
   MY_MATERIALS_PATH,
+  NOTIFICATIONS_FEED_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
@@ -311,6 +312,15 @@ export const ROUTE_MODULES = {
     load: () => import('../profile/ProfileScreen'),
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH],
+  },
+  // Личное место человека, не раздел домена — как «/profile» выше, вход не из
+  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0063). Открыт
+  // любой роли (screenAccess.ts, canSeeRoute).
+  notifications: {
+    path: '/notifications',
+    load: () => import('../notifications/NotificationsScreen'),
+    warm: true,
+    prefetch: () => [NOTIFICATIONS_FEED_PATH, MY_EXAMS_PATH],
   },
   // «Задания» и «Занятия» ученика (решение владельца: экзамены — отдельный
   // экран и первый после входа, docs/PLAN.md §11) — как «/profile» выше,

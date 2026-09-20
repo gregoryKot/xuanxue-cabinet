@@ -36,6 +36,10 @@ export interface LessonDto {
   /** Отсутствует, пока планировщик ещё не создал рассылку ссылки на это
    * занятие (окно до отправки шире, чем горизонт `/broadcasts`). */
   broadcast?: LessonBroadcastDto;
+  /** Рубрика вечера («дракон», «начинающие»), а не постоянный признак курса —
+   * для него есть название и `groupLabel` (ADR-0059, уточняет ADR-0058).
+   * Лимиты и нормализация — общие с материалами (shared/src/tags.ts). */
+  tags: string[];
   createdAt: string;
   updatedAt: string; // ISO UTC с Z
 }
@@ -44,6 +48,8 @@ export interface ListLessonsQuery {
   from: string;
   to: string;
   classId?: string;
+  /** Точное совпадение тега — как у `ListMaterialsQuery.tag` (ADR-0059). */
+  tag?: string;
   limit?: number;
 }
 
@@ -54,6 +60,7 @@ export interface CreateLessonInput {
   startsAt: string;
   durationMin?: number;
   topic?: string;
+  tags?: string[];
 }
 
 /**
@@ -71,6 +78,8 @@ export interface UpdateLessonInput {
   zoomLinkOverride?: string | null;
   zoomPasswordOverride?: string | null;
   note?: string | null;
+  /** Не прислали — теги не трогаем; сброс — пустым массивом, не `null`. */
+  tags?: string[];
 }
 
 /** Единственные поля UpdateLessonInput, где `null` — не ошибка формы, а явный
@@ -121,6 +130,9 @@ export interface MyLessonDto {
   zoomPassword?: string;
   topic: string;
   status: LessonStatus;
+  /** Тег видит и ученик — рубрика школы, не секрет, тот же довод, что у
+   * `MyMaterialDto.tags`; фильтра по тегу тут нет (ADR-0059). */
+  tags: string[];
 }
 
 export interface ListMyLessonsQuery {

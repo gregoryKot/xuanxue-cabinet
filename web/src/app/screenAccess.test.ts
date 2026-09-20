@@ -7,7 +7,6 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     id: 'u1',
     name: 'Дима',
     roles: ['teacher'],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
@@ -70,6 +69,10 @@ describe('canSeeRoute', () => {
 
   it('ученик на «/profile» — true, личный экран доступен всем (ADR-0045)', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/profile')).toBe(true);
+  });
+
+  it('ученик на «/notifications» — true, лента событий доступна всем (ADR-0063)', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/notifications')).toBe(true);
   });
 
   it('ученик на «/attempts/:id» — true, экран сдачи доступен всем', () => {

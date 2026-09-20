@@ -39,6 +39,7 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
     durationMin: 60,
     topic: 'Форма 24',
     status: 'scheduled',
+    tags: [],
     recordings: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',

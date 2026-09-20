@@ -55,12 +55,9 @@ export const listCardMetaStyle: CSSProperties = {
 /** Обёртка «список одной карточкой» (docs/adr/0043): общий радиус, фон и
  * тень, `overflow: hidden` подрезает первую/последнюю строку под общий
  * радиус — строки внутри красят свой `border-bottom` сами (проп `isLast`).
- * Приём завели рассылки/экзамены/люди (BroadcastsScreen.tsx, ExamsScreen.tsx,
- * PeopleScreen.tsx, #199/#200/#201) каждый своим локальным литералом; здесь —
- * четвёртое и пятое место (дни «Занятий», «Дальше» ученика), и это как раз
- * повод вынести общий экспорт, не плодить шестую копию (CLAUDE.md «Одна
- * механика — один компонент»). Старые три места не трогаем — они не в
- * границах этой правки. */
+ * Приём завели рассылки/экзамены/люди (#199/#200/#201) каждый своим
+ * локальным литералом, потом появился общий экспорт, а теперь и эти три
+ * экрана берут его — локальных копий не осталось. */
 export const oneCardListStyle: CSSProperties = {
   margin: 0,
   padding: 0,
@@ -69,6 +66,21 @@ export const oneCardListStyle: CSSProperties = {
   background: 'var(--card)',
   boxShadow: 'var(--shadow-card)',
   overflow: 'hidden',
+};
+
+/** Поверхность крупного блока направления «Тёплая школа» (docs/adr/0043) —
+ * карточка колонки, а не строка списка; отличается от `listRowStyle`
+ * отступами и радиусом (`--radius-block` против `--radius-card`), потому что
+ * несёт содержимое целиком, а не одну строку. Раньше объявлялся своим
+ * литералом в четырёх экранах (grading/AttemptReviewScreen.tsx,
+ * attempt/AttemptInProgress.tsx, attempt/AttemptSubmittedVideos.tsx,
+ * exams/ExamPreviewQuestions.tsx) — сведён по CLAUDE.md «Одна механика —
+ * один компонент», серия переезда на ADR-0043 закончена (#244, #245). */
+export const blockCardStyle: CSSProperties = {
+  padding: '20px 22px',
+  background: 'var(--card)',
+  borderRadius: 'var(--radius-block)',
+  boxShadow: 'var(--shadow-card)',
 };
 
 // Тихая кнопка внутри строки списка — «Выше/Ниже/Убрать» у вопроса экзамена,

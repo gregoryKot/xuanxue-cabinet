@@ -47,7 +47,6 @@ const BASE_USER: UserLean = {
   name: 'ученик@example.com',
   email: 'ученик@example.com',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

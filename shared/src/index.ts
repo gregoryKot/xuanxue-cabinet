@@ -295,6 +295,8 @@ export {
   isNotificationKind,
   rolesWithNotification,
 } from './notifications';
+export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';
+export { INBOX_ITEM_NOT_FOUND_MESSAGE } from './inbox';
 export type {
   GradingCommentPresetDto,
   CreateGradingCommentPresetInput,
@@ -322,6 +324,7 @@ export {
   MATERIAL_ACCESS_LABELS,
   MATERIAL_LIMITS,
   MATERIAL_MAX_CLASS_IDS,
+  MATERIAL_MAX_LESSON_IDS,
   MATERIAL_NOT_FOUND_MESSAGE,
   MATERIALS_LIMIT_DEFAULT,
   MY_MATERIALS_LIMIT_DEFAULT,

@@ -14,7 +14,6 @@ const existing = {
   name: 'race@example.com',
   email: 'race@example.com',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

@@ -8,7 +8,6 @@ const BASE: UserLean = {
   id: 'u1',
   name: 'Гриша',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

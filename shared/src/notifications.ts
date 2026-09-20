@@ -8,7 +8,6 @@ import { USER_ROLES, type UserRole } from './auth';
 
 export const NOTIFICATION_KINDS = [
   'lesson_soon', // занятие скоро — ученику
-  'teacher_message', // сообщение от учителя — ученику
   'exam_result', // работу проверили — ученику (слой 4.7)
   'post_draft', // черновик поста перед занятием, с кнопкой «Исправить»
   'recording_request', // в минуту окончания занятия — «пришлите видео»
@@ -29,7 +28,6 @@ export function isNotificationKind(value: string): value is NotificationKind {
  * где перечислены названия (как `ROLE_LABELS` у ролей). */
 export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {
   lesson_soon: 'Занятие скоро',
-  teacher_message: 'Сообщение от учителя',
   exam_result: 'Результат экзамена',
   post_draft: 'Черновик поста',
   recording_request: 'Напоминание про запись',
@@ -44,7 +42,6 @@ export const NOTIFICATION_LABELS: Record<NotificationKind, string> = {
  * подлежащее). */
 export const NOTIFICATION_HINTS: Record<NotificationKind, string> = {
   lesson_soon: 'Придёт перед началом занятия — за сколько, настраивает школа.',
-  teacher_message: 'Придёт, когда учитель напишет вам лично.',
   exam_result: 'Придёт, когда учитель проверит вашу работу и выставит результат.',
   post_draft: 'Придёт перед занятием — успеете поправить текст кнопкой «Исправить».',
   recording_request: 'Придёт в минуту, когда занятие закончится, — пришлите видео.',
@@ -85,12 +82,13 @@ export const DEFAULT_NOTIFICATIONS_BY_ROLE: Record<UserRole, NotificationKind[]>
 
 /** Дефолт ученика — человека без единой роли учителя (ADR-0026). Именованная
  * константа, не запись в `DEFAULT_NOTIFICATIONS_BY_ROLE`: тот `Record`
- * ограничен `UserRole`, а ученик — не роль. */
-export const STUDENT_NOTIFICATIONS: NotificationKind[] = [
-  'lesson_soon',
-  'teacher_message',
-  'exam_result',
-];
+ * ограничен `UserRole`, а ученик — не роль.
+ *
+ * Один вид, не три (отзыв владельца 2026-09-19, ADR-0062): ученик «пришёл
+ * подвигаться два раза в неделю» (CLAUDE.md «Ноль нагрузки на ученика») — из
+ * коробки ему приходит только то, что требует его действия, результат
+ * проверки его работы; остальное он включает сам, в боте или в «Профиле». */
+export const STUDENT_NOTIFICATIONS: NotificationKind[] = ['exam_result'];
 
 /** Дефолт для конкретного человека — объединение наборов всех его ролей
  * (роли равноправны, вторая роль только добавляет виды). Человек без единой

@@ -13,6 +13,7 @@ import {
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
   MY_MATERIALS_PATH,
+  NOTIFICATIONS_FEED_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
@@ -88,6 +89,13 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/profile — настройки уведомлений', () => {
     expect(prefetchAt('/profile')).toEqual([NOTIFICATION_PREFS_PATH]);
+  });
+
+  it('/notifications — лента событий и список своих экзаменов (новые задания)', () => {
+    expect(prefetchAt('/notifications')).toEqual([
+      NOTIFICATIONS_FEED_PATH,
+      MY_EXAMS_PATH,
+    ]);
   });
 
   // Решение владельца: экзамены — отдельный экран и первый после входа
@@ -240,6 +248,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/grading',
       '/grading/652f00000000000000000006',
       '/profile',
+      '/notifications',
       '/tasks',
       '/lessons',
       '/archive',

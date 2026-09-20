@@ -7,6 +7,8 @@ import { examItemsPublishedByDefault } from './0006-exam-items-published-by-defa
 import { invitedUsersActive } from './0007-invited-users-active.migration';
 import { gradingWithoutRubric } from './0008-grading-without-rubric.migration';
 import { profileNamedAt } from './0009-profile-named-at.migration';
+import { dropUserTz } from './0010-drop-user-tz.migration';
+import { notificationPrefsTeacherMessageRemoved } from './0011-notification-prefs-teacher-message-removed.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -38,4 +40,6 @@ export const MIGRATIONS: Migration[] = [
   invitedUsersActive,
   gradingWithoutRubric,
   profileNamedAt,
+  dropUserTz,
+  notificationPrefsTeacherMessageRemoved,
 ];

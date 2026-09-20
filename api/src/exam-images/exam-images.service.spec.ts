@@ -20,7 +20,6 @@ function userLean(overrides: Partial<UserLean> = {}): UserLean {
     id: new Types.ObjectId().toString(),
     name: 'Т',
     roles: [],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     ...overrides,
   };

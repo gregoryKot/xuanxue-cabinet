@@ -4,8 +4,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
+import type { UserRole, UserStatus } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
+import {
+  listActiveWithRoles as listActiveWithRolesQuery,
+  type ActiveRoledUser,
+} from './list-active-with-roles';
 import {
   listContactsWithRoles as listContactsWithRolesQuery,
   type RoledContact,
@@ -29,7 +33,6 @@ export interface UserLean {
   telegramId?: number;
   googleId?: string;
   roles: UserRole[];
-  tz: string;
   status: UserStatus;
   lastLoginAt?: Date;
   joinedViaInviteAt?: Date;
@@ -58,7 +61,6 @@ export function toLean(doc: UserDoc): UserLean {
     telegramId: doc.telegramId,
     googleId: doc.googleId,
     roles: doc.roles,
-    tz: doc.tz,
     status: normalizeUserStatus(doc.status, doc._id.toString()),
     lastLoginAt: doc.lastLoginAt,
     joinedViaInviteAt: doc.joinedViaInviteAt,
@@ -96,6 +98,14 @@ export class UsersService {
     return listStaffWithEmailQuery(this.model);
   }
 
+  /** Активные люди с такими ролями — кандидаты записи кабинета
+   * (InAppExamNotifier, ADR-0059), без требования канала связи (в отличие
+   * от listContactsWithRoles/listStaffWithEmail). Логика — в
+   * list-active-with-roles.ts (та же причина выноса, что у listStaffWithEmail). */
+  async listActiveWithRoles(roles: readonly UserRole[]): Promise<ActiveRoledUser[]> {
+    return listActiveWithRolesQuery(this.model, roles);
+  }
+
   /** Первый вход через Telegram (SECURITY §2, ADR-0030/0036): всегда
    * `active` — без ссылки-приглашения (или для бутстрап-админа) регистрация
    * не доходит до этого метода вовсе, `LoginIdentityService` решает это
@@ -131,7 +141,6 @@ export class UsersService {
         telegramId: input.telegramId,
         name: input.name,
         roles: input.roles,
-        tz: SCHOOL_TZ,
         status: input.status,
       },
     );

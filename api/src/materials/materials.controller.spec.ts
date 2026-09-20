@@ -14,6 +14,7 @@ const MATERIAL_DTO: MaterialDto = {
   url: 'https://example.com/book',
   kind: 'book',
   classIds: [],
+  lessonIds: [],
   access: 'all',
   tags: [],
   createdBy: 't1',
@@ -25,7 +26,6 @@ const TEACHER: UserLean = {
   id: 't1',
   name: 'Учитель',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

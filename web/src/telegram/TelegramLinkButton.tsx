@@ -14,7 +14,7 @@
 // перерисовывать кнопку.
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../auth/AuthProvider';
-import { Button } from '../components/Button';
+import { Button, type ButtonVariant } from '../components/Button';
 import { useTelegramLinkCode } from './useTelegramLinkCode';
 
 const BUTTON_LABEL = 'Связать Telegram';
@@ -32,11 +32,18 @@ interface TelegramLinkButtonProps {
    * attempt/AttemptQuestionVideo.tsx проп не передают — там уходить некуда,
    * их поведение не меняется. */
   onBeforeLink?: () => Promise<void>;
+  /** По умолчанию — первичная заливка (экран сдачи, «Профиль»). На
+   * «Уведомлениях» терракота уже занята точками непрочитанного, поэтому
+   * предложение связать бота там идёт вторичным силуэтом — правило «один
+   * акцент на экран» (ADR-0043), тот же приём, что у кнопки в
+   * student/StudentExamCard.tsx. */
+  variant?: ButtonVariant;
 }
 
 export function TelegramLinkButton({
   explanation,
   onBeforeLink,
+  variant,
 }: TelegramLinkButtonProps) {
   const { refresh } = useAuth();
   const { pending, error, link } = useTelegramLinkCode();
@@ -69,6 +76,7 @@ export function TelegramLinkButton({
         </p>
       )}
       <Button
+        variant={variant}
         pending={pending}
         onClick={() => void handleClick()}
         style={{ alignSelf: 'flex-start' }}

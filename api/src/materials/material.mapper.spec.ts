@@ -12,6 +12,7 @@ function material(overrides: Partial<RawLeanMaterial> = {}): RawLeanMaterial {
     url: 'https://example.com/book',
     kind: 'book',
     classIds: [],
+    lessonIds: [],
     access: 'all',
     tags: ['старшая'],
     createdBy: new Types.ObjectId(),
@@ -24,7 +25,8 @@ function material(overrides: Partial<RawLeanMaterial> = {}): RawLeanMaterial {
 describe('toMaterialDto', () => {
   it('переносит все поля, даты — ISO UTC с Z', () => {
     const classId = new Types.ObjectId();
-    const doc = material({ classIds: [classId] });
+    const lessonId = new Types.ObjectId();
+    const doc = material({ classIds: [classId], lessonIds: [lessonId] });
 
     const dto = toMaterialDto(doc);
 
@@ -34,6 +36,7 @@ describe('toMaterialDto', () => {
       url: doc.url,
       kind: doc.kind,
       classIds: [classId.toString()],
+      lessonIds: [lessonId.toString()],
       access: doc.access,
       tags: doc.tags,
       createdBy: doc.createdBy.toString(),

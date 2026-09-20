@@ -13,6 +13,7 @@ function lesson(overrides: Partial<MyLessonDto> = {}): MyLessonDto {
     format: 'online',
     topic: '',
     status: 'scheduled',
+    tags: [],
     ...overrides,
   };
 }

@@ -70,6 +70,14 @@ export class LessonRecord {
   // спрашивать повторно на каждом тике планировщика.
   @Prop({ type: Date, required: false })
   recordingPromptedAt?: Date;
+
+  // Рубрикация свободным текстом (ADR-0059, уточняет ADR-0058) — у даты
+  // занятия, не у занятия расписания: тег описывает конкретный вечер, а не
+  // постоянный признак курса. У дат, заведённых до этого поля, документ его
+  // не содержит — `.lean()` не подставляет default при чтении (lesson.mapper.ts,
+  // тот же приём, что у MaterialRecord.tags).
+  @Prop({ type: [String], default: [] })
+  tags!: string[];
 }
 
 export const LessonSchema = SchemaFactory.createForClass(LessonRecord);
@@ -87,6 +95,9 @@ LessonSchema.index(
   { classId: 1, plannedAt: 1 },
   { unique: true, partialFilterExpression: { plannedAt: { $type: 'date' } } },
 );
+// Фильтр по тегу (GET /api/lessons?tag=…, ADR-0059) — тот же приём, что у
+// MaterialSchema.index({ tags: 1 }).
+LessonSchema.index({ tags: 1 });
 
 export const LESSON_FIELD_POLICY: FieldPolicy = {
   topic: plain('публикуется в посте'),
@@ -96,6 +107,7 @@ export const LESSON_FIELD_POLICY: FieldPolicy = {
   'recordings.title': plain('публикуется в посте'),
   'recordings.url': plain('ссылка на запись, принятый риск SECURITY §11'),
   'recordings.telegramFileId': plain('работает только у бота, снаружи бесполезен'),
+  tags: plain('рубрика занятия, фильтр и экран тега; не персональные данные'),
 };
 
 /** Схема шифрования занятия — та же причина, что у CLASS_ENCRYPT_SCHEMA:

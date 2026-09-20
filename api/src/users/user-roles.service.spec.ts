@@ -105,7 +105,6 @@ describe('UserRolesService', () => {
         id: user.id,
         name: user.name,
         roles: ['admin'],
-        tz: 'Asia/Jerusalem',
         status: 'active',
       });
 
