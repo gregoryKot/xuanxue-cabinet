@@ -1,5 +1,5 @@
 // Query GET /tags — только лимит: без окна и без фильтра по тегу (сводка
-// считается по всей истории школы разом, ADR-0074).
+// считается по всей истории школы разом, ADR-0076).
 import type { ListTagsQuery } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 

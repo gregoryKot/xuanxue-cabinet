@@ -1,4 +1,4 @@
-// Модуль сводки тегов (GET /api/tags, ADR-0059, ADR-0074) — только модели
+// Модуль сводки тегов (GET /api/tags, ADR-0075, ADR-0076) — только модели
 // трёх чужих доменов, свою схему не заводит (ничего не денормализуется).
 import { Module } from '@nestjs/common';
 import { ClassesModule } from '../classes/classes.module';
