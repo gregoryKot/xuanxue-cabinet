@@ -10,7 +10,9 @@
 // не заводится.
 import { Controller, Get, Query } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { MyArchivedLessonDto, MyLessonDto } from '@xuanxue/shared';
+import { isStaffRole, type MyArchivedLessonDto, type MyLessonDto } from '@xuanxue/shared';
+import { CurrentUser } from '../auth/auth.decorators';
+import type { UserLean } from '../users/users.service';
 import { ListMyArchivedLessonsDto } from './dto/list-my-archived-lessons.dto';
 import { ListMyLessonsDto } from './dto/list-my-lessons.dto';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
@@ -29,7 +31,16 @@ export class MyLessonsController {
   }
 
   @Get('archive')
-  listArchive(@Query() query: ListMyArchivedLessonsDto): Promise<MyArchivedLessonDto[]> {
-    return this.myLessonsArchiveService.list(query, DateTime.utc());
+  listArchive(
+    @Query() query: ListMyArchivedLessonsDto,
+    @CurrentUser() user: UserLean,
+  ): Promise<MyArchivedLessonDto[]> {
+    // Штат видит материалы архива как обычно, без рубильника — тот же приём,
+    // что MyMaterialsController (ADR-0048).
+    return this.myLessonsArchiveService.list(
+      query,
+      DateTime.utc(),
+      isStaffRole(user.roles),
+    );
   }
 }

@@ -23,7 +23,7 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
   const paths = route?.prefetch?.(target) ?? [];
   // Прогрев повторяет то, что экран реально запросит. На «Уведомлениях» штат
   // школы за формами не пойдёт: новые задания считаются только у ученика
-  // (ADR-0071), и промис, который никто не заберёт, протух бы в
+  // (ADR-0073), и промис, который никто не заберёт, протух бы в
   // prefetchCache. На «Заданиях» формы запрашивает любая роль (TasksScreen
   // зовёт useMyExams без опций) — там прогрев остаётся для всех.
   const skipsExams = route === ROUTE_MODULES.notifications && isTeacher(me);

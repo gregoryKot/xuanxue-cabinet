@@ -1,6 +1,8 @@
 // Границы ошибок рендера (CLAUDE.md, «Обработка ошибок»): логируем через
-// console.error — единственное разрешённое место, — и показываем пользователю
-// понятный экран вместо белого экрана. Портировано из
+// console.error и параллельно шлём отчёт на сервер (ADR-0071,
+// errors/reportClientError.ts) — раньше упавший рендер не оставлял следа
+// нигде, кроме консоли того, у кого сломался экран. Показываем
+// пользователю понятный экран вместо белого экрана. Портировано из
 // telegram-bot-2/webapp/src/components/ErrorBoundary.tsx, тексты — под
 // docs/VOICE.md и единую форму «вы».
 //
@@ -11,6 +13,7 @@
 // снимает пойманную ошибку.
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { reportClientError } from '../errors/reportClientError';
 
 interface Props {
   children: ReactNode;
@@ -31,6 +34,9 @@ class ErrorBoundaryBase extends Component<Props, State> {
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Ошибка рендера:', error, info.componentStack);
+    // Без этого упавший рендер не доходил до сервера вовсе (ADR-0071) —
+    // ни строки в логах Railway, ни сообщения в Telegram.
+    void reportClientError('render', error);
   }
 
   // resetKey — location.pathname обёртки ниже: переход на другой маршрут
