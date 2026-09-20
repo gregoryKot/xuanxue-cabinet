@@ -15,10 +15,16 @@ import type { CSSProperties } from 'react';
 import type { ArchivedRecordingDto, MyArchivedLessonDto } from '@xuanxue/shared';
 import { textLinkStyle } from '../components/screenLayout';
 import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
+import { StudentMaterialCard } from './StudentMaterialCard';
 
 const NO_RECORDING_TEXT = 'Записи нет';
 const OPEN_RECORDING_TEXT = 'Открыть запись';
 const TELEGRAM_ONLY_TEXT = 'Запись ушла в канал школы — ищите её там под датой занятия.';
+// ADR-0056 «Ученик видит привязку там, где ищет»: материалы, привязанные к
+// дате занятия, — рубрикой под записями, тем же StudentMaterialCard, что и в
+// библиотеке (CLAUDE.md «Одна механика — один компонент»). Пустой список —
+// рубрики нет вовсе, не пустой заголовок.
+const MATERIALS_HEADING = 'Материалы';
 
 const recordingsStyle: CSSProperties = {
   display: 'flex',
@@ -45,6 +51,17 @@ const plainTextStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
   color: 'var(--ink-soft)',
+};
+const materialsHeadingStyle: CSSProperties = {
+  margin: '8px 0 0',
+  fontSize: 13,
+  fontWeight: 600,
+  color: 'var(--ink-soft)',
+};
+const materialsListStyle: CSSProperties = {
+  margin: '4px 0 0',
+  padding: 0,
+  listStyle: 'none',
 };
 
 function ArchivedRecordingRow({ recording }: { recording: ArchivedRecordingDto }) {
@@ -112,6 +129,21 @@ export function ArchivedLessonCard({
           ))
         )}
       </div>
+      {lesson.materials.length > 0 && (
+        <>
+          <p style={materialsHeadingStyle}>{MATERIALS_HEADING}</p>
+          <ul style={materialsListStyle} aria-label={MATERIALS_HEADING}>
+            {lesson.materials.map((material, index) => (
+              <StudentMaterialCard
+                key={material.id}
+                material={material}
+                compact
+                isLast={index === lesson.materials.length - 1}
+              />
+            ))}
+          </ul>
+        </>
+      )}
     </li>
   );
 }

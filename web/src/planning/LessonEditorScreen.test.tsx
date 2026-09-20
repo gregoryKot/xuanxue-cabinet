@@ -77,6 +77,8 @@ function mockLesson(lesson: LessonDto, classes: ClassDto[] = [makeClass()]) {
     '/lessons/l1': lesson,
     '/classes': classes,
     '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
+    // Секция «Материалы» страницы занятия (ADR-0056) грузит свой список.
+    '/materials': [],
   });
 }
 
@@ -378,6 +380,7 @@ describe('LessonEditorScreen — ссылка сейчас и записи', () 
       '/lessons/l1': makeLesson(),
       '/classes': [makeClass()],
       '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
+      '/materials': [],
     });
 
     renderAt('/planning/l1');
@@ -407,6 +410,7 @@ describe('LessonEditorScreen — ссылка сейчас и записи', () 
       '/lessons/l1': makeLesson(),
       '/classes': [makeClass()],
       '/users/teachers': [{ id: 't1', name: 'Дмитрий' }],
+      '/materials': [],
     });
 
     renderAt('/planning/l1');

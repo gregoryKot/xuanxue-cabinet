@@ -1,8 +1,9 @@
 // Строка материала в библиотеке ученика (docs/PLAN.md §14 слои 3.2/3.4,
 // ADR-0068) — своя проверка на каждый случай, без сети и без DI. По образцу
-// ArchivedLessonCard.test.tsx. `renderCard` подставляет обязательные
-// selectedTag/onSelectTag (второго, необязательного режима отрисовки у
-// карточки нет — CLAUDE.md про мёртвый код), чтобы их не повторял каждый тест.
+// ArchivedLessonCard.test.tsx. `renderCard` подставляет selectedTag/onSelectTag
+// по умолчанию, чтобы их не повторял каждый тест про библиотеку; отдельный
+// блок ниже проверяет режим без них — карточка занятия архива
+// (ArchivedLessonCard.tsx) их вовсе не передаёт (StudentMaterialCardTagProps).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -109,6 +110,29 @@ describe('StudentMaterialCard — тег как действие (ADR-0068)', ()
     expect(
       screen.queryByRole('group', { name: 'Теги материала' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('StudentMaterialCard — без onSelectTag (карточка занятия архива)', () => {
+  it('без onSelectTag пилюль-тегов нет, а название, вид и ссылка на месте', () => {
+    render(
+      <StudentMaterialCard
+        material={makeMaterial({
+          title: 'Форма 24, разбор',
+          tags: ['старшая'],
+          url: 'https://example.com/article',
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Форма 24, разбор')).toBeInTheDocument();
+    expect(screen.getByText('Книга')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Теги материала' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'старшая' })).not.toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Открыть' });
+    expect(link).toHaveAttribute('href', 'https://example.com/article');
   });
 });
 
