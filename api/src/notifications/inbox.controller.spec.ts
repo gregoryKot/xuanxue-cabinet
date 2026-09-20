@@ -22,6 +22,7 @@ const PAGE_DTO: InboxPageDto = { items: [], unreadCount: 0 };
 const NOTIFICATION_DTO: NotificationDto = {
   id: 'n1',
   kind: 'exam_result',
+  text: 'Работу проверили — Форма 24',
   attemptId: 'a1',
   outcome: 'passed',
   createdAt: '2026-09-17T09:00:00.000Z',

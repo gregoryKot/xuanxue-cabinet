@@ -1,15 +1,20 @@
 // Лента уведомлений кабинета (`GET/POST /me/inbox`) — третье плечо
 // ExamNotifier рядом с Telegram и почтой (InAppExamNotifier,
-// api/src/notifications/in-app-exam-notifier.ts, ADR-0061). Заголовок
-// строки собирается на клиенте из `kind` и ссылок (`examId`/`attemptId`) —
-// здесь нет свободного текста: комментарий учителя остаётся в
-// `exam_gradings`, где уже зашифрован (exam-grading.ts).
+// api/src/notifications/in-app-exam-notifier.ts, ADR-0061). Строку `text`
+// собирает сервер на чтении (api/src/notifications/notification-text.ts) —
+// клиент показывает её как есть и своих заготовок не держит. В самой записи
+// готового предложения нет: там структура, а из неё собирается показ (причина —
+// шапка notification.schema.ts). Комментарий учителя сюда не попадает вовсе,
+// он остаётся в `exam_gradings`, зашифрованный там (exam-grading.ts).
 import type { GradingOutcome } from './exam-grading';
 import type { NotificationKind } from './notifications';
 
 export interface NotificationDto {
   id: string;
   kind: NotificationKind;
+  /** Готовая строка для показа, собранная сервером на чтении. Итога проверки
+   * в ней нет — он едет отдельным `outcome` ниже и рисуется своей подписью. */
+  text: string;
   /** Нет у видов уведомления вне экзамена — сейчас лента несёт только
    * attempt_submitted/exam_result, оба всегда со ссылками на форму. */
   examId?: string;

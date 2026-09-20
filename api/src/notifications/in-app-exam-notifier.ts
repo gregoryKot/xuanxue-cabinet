@@ -30,8 +30,9 @@ import type {
   ExamNotifyResult,
 } from '../exams/exam-notifier';
 import { UsersService } from '../users/users.service';
+import { encryptRecord } from '../utils/encryption';
 import { NotificationPrefsService } from './notification-prefs.service';
-import { NotificationRecord } from './notification.schema';
+import { NOTIFICATION_ENCRYPT_SCHEMA, NotificationRecord } from './notification.schema';
 
 const ATTEMPT_SUBMITTED_KIND: NotificationKind = 'attempt_submitted';
 const EXAM_RESULT_KIND: NotificationKind = 'exam_result';
@@ -40,6 +41,7 @@ interface WriteInput {
   userId: string;
   kind: NotificationKind;
   examId: string;
+  examTitle: string;
   attemptId: string;
   outcome?: GradingOutcome;
 }
@@ -77,6 +79,7 @@ export class InAppExamNotifier implements ExamNotifier {
             userId: r.id,
             kind: ATTEMPT_SUBMITTED_KIND,
             examId: context.examId,
+            examTitle: context.examTitle,
             attemptId: context.attemptId,
           }),
         ),
@@ -108,6 +111,7 @@ export class InAppExamNotifier implements ExamNotifier {
         userId: context.userId,
         kind: EXAM_RESULT_KIND,
         examId: context.examId,
+        examTitle: context.examTitle,
         attemptId: context.attemptId,
         outcome: context.outcome,
       });
@@ -146,11 +150,20 @@ export class InAppExamNotifier implements ExamNotifier {
       kind: input.kind,
       attemptId: input.attemptId,
     };
-    const payload = {
-      examId: input.examId,
-      readAt: null,
-      ...(input.outcome !== undefined ? { outcome: input.outcome } : {}),
-    };
+    // Название формы шифруется той же схемой, какой маппер его расшифровывает
+    // (NOTIFICATION_ENCRYPT_SCHEMA) — записать мимо неё значило бы отдать
+    // клиенту шифротекст вместо названия. Переоценка перезаписывает снимок
+    // свежим названием: строка одна, и показывать в ней форму под старым
+    // именем, когда учитель её переименовал, незачем.
+    const payload = encryptRecord(
+      {
+        examId: input.examId,
+        examTitle: input.examTitle,
+        readAt: null,
+        ...(input.outcome !== undefined ? { outcome: input.outcome } : {}),
+      },
+      NOTIFICATION_ENCRYPT_SCHEMA,
+    );
     try {
       await this.model.findOneAndUpdate(filter, { $set: payload }, { upsert: true });
     } catch (err) {

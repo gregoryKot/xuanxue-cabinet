@@ -5,21 +5,30 @@
 // карман». Владение (чеклист CLAUDE.md, п.1) — `userId`, кому адресована
 // запись.
 //
-// Свободного текста в схеме нет намеренно: заголовок строки собирает клиент
-// из `kind` и ссылок (`examId`/`attemptId`), комментарий учителя остаётся в
-// `exam_gradings`, уже зашифрованный там (exam-grading.schema.ts). Отсюда
-// три следствия: encryption-coverage.spec.ts проходит без единого `enc`
-// (только id, перечисления и даты — список «не шифровать» из чеклиста
-// CLAUDE.md), формулировки на клиенте можно переписывать без миграции
-// старых записей, и персональные данные (комментарий учителя) не копируются
-// во вторую коллекцию.
+// Хранится структура, а показывается собранная на чтении строка
+// (notification-text.ts, маппер): в записи нет готового предложения. Отсюда
+// два следствия — формулировки переписываются без миграции старых записей, и
+// схлопнуть у учителя двадцать сданных работ в «3 работы ждут проверки» можно
+// будет читающим кодом, по `examId`, а не мигрируя данные. По готовому
+// предложению не сгруппируешь.
+//
+// Исключение — `examTitle`: название формы хранится снимком, а не тянется на
+// чтении. Оно уже приходит в контексте события (`examTitle` в обоих контекстах
+// exams/exam-notifier.ts), второй запрос за тем, что было в руках, — работа
+// впустую; к тому же удалённая или переименованная форма оставляет строку
+// читаемой и честной о том, что человеку отправляли. Название пишет учитель
+// руками, поэтому оно `enc` (CLAUDE.md «Безопасность»).
+//
+// Комментарий учителя сюда НЕ копируется — он остаётся в `exam_gradings`,
+// зашифрованный там (exam-grading.schema.ts): второй копии персональных
+// данных в проекте не заводим.
 //
 // retention: TTL-индекс на createdAt, 90 дней (см. ниже) — лента не архив,
 // то, что старше, не нужно ни ученику, ни учителю; коллекция чистит себя сама.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { GRADING_OUTCOMES, NOTIFICATION_KINDS } from '@xuanxue/shared';
 import type { GradingOutcome, NotificationKind } from '@xuanxue/shared';
-import { plain, type FieldPolicy } from '../common/field-policy';
+import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
 
 const NOTIFICATION_RETENTION_DAYS = 90;
 
@@ -45,6 +54,12 @@ export class NotificationRecord {
   // именно поэтому.
   @Prop({ type: String, required: false })
   attemptId?: string;
+
+  // Снимок названия формы на момент события (причина — шапка файла).
+  // Необязательно: будущие виды уведомления вне экзамена придут без него, и
+  // текст строки тогда соберётся без названия (notification-text.ts).
+  @Prop({ type: String, required: false })
+  examTitle?: string;
 
   @Prop({ type: String, enum: GRADING_OUTCOMES, required: false })
   outcome?: GradingOutcome;
@@ -87,4 +102,11 @@ export const NOTIFICATION_FIELD_POLICY: FieldPolicy = {
   userId: plain('id пользователя — признак владения, не свободный текст'),
   examId: plain('id формы — ссылка для клиента, не свободный текст'),
   attemptId: plain('id попытки — ссылка для клиента, не свободный текст'),
+  examTitle: enc,
 };
+
+/** Схема шифрования записи ленты — одна на запись и на чтение
+ * (InAppExamNotifier, notification.mapper.ts): читающий мимо неё получит
+ * шифротекст вместо названия формы. Тот же приём, что
+ * EXAM_GRADING_ENCRYPT_SCHEMA. */
+export const NOTIFICATION_ENCRYPT_SCHEMA = encryptSchemaFrom(NOTIFICATION_FIELD_POLICY);

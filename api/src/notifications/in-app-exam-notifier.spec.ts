@@ -12,6 +12,7 @@ import type { UserRole } from '@xuanxue/shared';
 import { NotificationPrefsRecord } from './notification-prefs.schema';
 import { NotificationPrefsService } from './notification-prefs.service';
 import { NotificationRecord, NotificationSchema } from './notification.schema';
+import { toNotificationDto, type RawLeanNotification } from './notification.mapper';
 import { InAppExamNotifier } from './in-app-exam-notifier';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../users/user.schema';
@@ -310,6 +311,46 @@ describe('InAppExamNotifier', () => {
       expect(stored?.outcome).toBe('failed');
       expect(stored?.readAt).toBeNull();
       upsertSpy.mockRestore();
+    });
+  });
+
+  // Название формы — единственное `enc`-поле записи, и путь у него длинный:
+  // шифрует нотификатор (encryptRecord), расшифровывает маппер
+  // (decryptRecord), а видно его только внутри собранной строки `text`.
+  // Рассогласование схем шифрования не уронило бы ни один тест выше — они
+  // название не читают вовсе, — поэтому проверяем весь путь целиком.
+  describe('название формы переживает шифрование', () => {
+    it('запись → чтение маппером: название внутри text', async () => {
+      const studentId = await createUser('Ученик', []);
+
+      await notifier.notifyExamGraded(
+        { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
+        NOW,
+      );
+
+      const stored = await notificationModel
+        .findOne({ userId: studentId })
+        .lean<RawLeanNotification | null>();
+      if (!stored) throw new Error('запись не легла — проверять нечего');
+      expect(toNotificationDto(stored).text).toBe(
+        `Работу проверили — ${ATTEMPT_CONTEXT.examTitle}`,
+      );
+    });
+
+    // Без этой проверки симметричная ошибка (не шифруем и не расшифровываем)
+    // прошла бы мимо теста выше: строка собралась бы верно, а в базе лежало
+    // бы открытое название, которое писал учитель.
+    it('в базе лежит шифротекст, не открытое название', async () => {
+      const studentId = await createUser('Ученик', []);
+
+      await notifier.notifyExamGraded(
+        { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
+        NOW,
+      );
+
+      const stored = await notificationModel.findOne({ userId: studentId }).lean();
+      expect(stored?.examTitle).toBeDefined();
+      expect(stored?.examTitle).not.toBe(ATTEMPT_CONTEXT.examTitle);
     });
   });
 });
