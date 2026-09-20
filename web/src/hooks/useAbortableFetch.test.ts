@@ -126,7 +126,7 @@ describe('useAbortableFetch — гонка запросов (ревью п.13)',
   });
 });
 
-describe('useAbortableFetch — refresh() тихое перечитывание (ADR-0070)', () => {
+describe('useAbortableFetch — refresh() тихое перечитывание (ADR-0074)', () => {
   it('не поднимает loading, пока идёт тихий запрос', async () => {
     let resolveRefresh: ((value: string) => void) | undefined;
     const load = vi

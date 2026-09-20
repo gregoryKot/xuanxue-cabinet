@@ -73,7 +73,7 @@ function feedCallCount(): number {
 }
 
 /** То же самое для /me/exams — второй источник счётчика, опрос обновляет
- * оба одним тиком (ADR-0070). */
+ * оба одним тиком (ADR-0074). */
 function examsCallCount(): number {
   return mockedApiFetch.mock.calls.filter(([path]) => path === MY_EXAMS_PATH).length;
 }
@@ -182,7 +182,7 @@ describe('useNotificationsData — ошибки', () => {
   });
 });
 
-describe('useNotificationsData — опрос (ADR-0070)', () => {
+describe('useNotificationsData — опрос (ADR-0074)', () => {
   // Фейковые таймеры — иначе тест ждал бы настоящую минуту (CLAUDE.md
   // «Детерминизм»). advanceTimersByTimeAsync, не Async-less вариант: между
   // тиками таймера нужно дать промисам apiFetch долиться до состояния.
