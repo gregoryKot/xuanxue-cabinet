@@ -4,7 +4,11 @@
 // ссылка на мок и сброс между тестами. Именно этот хвост jscpd поймал как
 // дубль в AppShell.test.tsx и LessonsScreen.test.tsx (CLAUDE.md «Дубли»).
 import { afterEach, vi } from 'vitest';
+import { isMutatingMethod } from '@xuanxue/shared';
 import { apiFetch } from '../api/http';
+
+const NO_ANSWERS_MESSAGE =
+  'failNextWrite: сначала заглушка ответов (mockApiByPath или mockImplementation)';
 
 export const mockedApiFetch = vi.mocked(apiFetch);
 
@@ -28,5 +32,34 @@ export function mockApiByPath(handlers: Record<string, unknown>): void {
       }
     }
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
+  });
+}
+
+/** Ошибка в ответ на следующий меняющий запрос (POST/PATCH/DELETE) — один раз,
+ * поверх уже заданных ответов.
+ *
+ * `mockRejectedValueOnce` для этого не годится: очередь `once` срабатывает на
+ * любом следующем запросе, а экран догружает своё и после того, как тест
+ * дождался нужного элемента, — подсказка тегов формы материала
+ * (useMaterialTagOptions.ts) уходит в сеть, когда поля уже на экране, и уйдёт
+ * она до или после `findBy*` по воле планировщика React. Ошибку доставалось то
+ * ей (тогда сохранение проходило успешно и экран уезжал на список), то
+ * сохранению: 6 раз на 300 монтирований — столько мигал тест «ошибка сервера с
+ * details» (расследование 2026-09-20). Здесь ошибка привязана к самому
+ * запросу, а не к его номеру в очереди.
+ *
+ * Зовётся после `mockApiByPath`: новая таблица ответов ставится поверх и
+ * снимает уже назначенную ошибку. */
+export function failNextWrite(error: Error): void {
+  const answer = mockedApiFetch.getMockImplementation();
+  if (!answer) throw new Error(NO_ANSWERS_MESSAGE);
+
+  mockedApiFetch.mockImplementation((path, init) => {
+    const method = init?.method;
+    if (method === undefined || !isMutatingMethod(method)) return answer(path, init);
+    // Один раз: дальше отвечает прежняя заглушка — повтор сохранения после
+    // ошибки должен проходить, как на живом экране.
+    mockedApiFetch.mockImplementation(answer);
+    return Promise.reject(error);
   });
 }

@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MaterialDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
+  failNextWrite,
   mockApiByPath,
   mockedApiFetch,
   resetApiFetchBetweenTests,
@@ -62,7 +63,11 @@ function mockMaterial(material: MaterialDto) {
   });
 }
 
-/** Материал и занятия уже пришли — единственные запросы монтирования позади. */
+/** Материал и занятия пришли, поля на экране. Запросы монтирования при этом
+ * позади не все: подсказку тегов (useMaterialTagOptions.ts) поля заказывают
+ * сами, и её запрос уходит в тот же миг — до или после этого ожидания, как
+ * решит планировщик React. Поэтому ответ сервера на сохранение вешается на
+ * сам запрос (failNextWrite), а не на «следующий по очереди». */
 async function waitForMounted() {
   await screen.findByLabelText('Название');
 }
@@ -334,7 +339,11 @@ describe('MaterialEditorScreen — правка', () => {
 
     renderAt('/materials/m1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
+    // Ошибка привязана к самому PATCH, а не к «следующему запросу» вообще
+    // (failNextWrite): поля формы догружают подсказку тегов уже после того, как
+    // появились на экране, и mockRejectedValueOnce доставался то ей, то
+    // сохранению — отсюда мигание (расследование 2026-09-20).
+    failNextWrite(
       new ApiError('Проверьте поля.', 400, 'invalid_input', ['url: недоступен']),
     );
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
