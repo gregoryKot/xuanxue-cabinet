@@ -18,7 +18,7 @@ describe('buildLessonsFilter', () => {
     expect(filter.classId).toBe('c1');
   });
 
-  it('тег ищется точным совпадением (ADR-0071)', () => {
+  it('тег ищется точным совпадением (ADR-0073)', () => {
     const filter = buildLessonsFilter({ ...WINDOW, tag: 'дракон' }, FROM, TO);
     expect(filter.tags).toBe('дракон');
   });
