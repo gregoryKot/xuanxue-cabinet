@@ -61,7 +61,7 @@ interface AttemptSubmittedProps {
 
 export function AttemptSubmitted({ attempt, video }: AttemptSubmittedProps) {
   const { me } = useAuth();
-  // Одно предложение связать Telegram на экран (ADR-0063). У попытки с
+  // Одно предложение связать Telegram на экран (ADR-0066). У попытки с
   // видео-вопросами кнопку уже рисует AttemptQuestionVideo — по своей
   // причине (без связки бот не поймёт, чьё видео пришло, ADR-0023) и у
   // каждого вопроса; вторая кнопка рядом, с другим объяснением, читалась бы

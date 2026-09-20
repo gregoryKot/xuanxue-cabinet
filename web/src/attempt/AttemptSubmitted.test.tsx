@@ -136,7 +136,7 @@ describe('AttemptSubmitted', () => {
   });
 });
 
-describe('AttemptSubmitted — предложение связать Telegram (ADR-0063)', () => {
+describe('AttemptSubmitted — предложение связать Telegram (ADR-0066)', () => {
   it('попытка без видео-вопросов, чата с ботом нет — кнопка и своя причина', async () => {
     await renderSubmitted(makeAttempt());
 
