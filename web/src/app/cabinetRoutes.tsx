@@ -38,6 +38,7 @@ const GradingQueueScreen = lazy(ROUTE_MODULES.grading.load);
 const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
 const ProfileScreen = lazy(ROUTE_MODULES.profile.load);
+const NotificationsScreen = lazy(ROUTE_MODULES.notifications.load);
 const TasksScreen = lazy(ROUTE_MODULES.tasks.load);
 const LessonsScreen = lazy(ROUTE_MODULES.studentLessons.load);
 const ArchiveScreen = lazy(ROUTE_MODULES.archive.load);
@@ -101,6 +102,11 @@ export const cabinetRoutes = (
         не из навигации разделов (docs/adr/0025). Доступен любой роли:
         canSeeRoute (screenAccess.ts) не ограничивает его по роли. */}
     <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
+    {/* Лента событий и новых заданий (ADR-0063) — личное место человека, как
+        «/profile» выше, вход значком в оболочке, не из навигации разделов
+        (ADR-0025). Доступен любой роли: canSeeRoute (screenAccess.ts) не
+        ограничивает его по роли. */}
+    <Route path={ROUTE_MODULES.notifications.path} element={<NotificationsScreen />} />
     {/* «Задания» и «Занятия» — два маршрута ученика (решение владельца:
         экзамены — отдельный экран и первый после входа, docs/PLAN.md §11).
         Открыты любой роли, как «/profile» выше. */}

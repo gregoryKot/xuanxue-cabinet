@@ -180,3 +180,20 @@ describe('TelegramLinkButton — возврат из Telegram (read-after-write)
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith('/auth/me'));
   });
 });
+
+// Проп добавлен для «Уведомлений» (ADR-0063): терракота там уже занята
+// точками непрочитанного, кнопка связки идёт вторичным силуэтом.
+describe('TelegramLinkButton — variant', () => {
+  it('variant="secondary" доходит до кнопки', async () => {
+    mockApiByPath({ '/auth/me': new Error('нет сессии') });
+    render(
+      <AuthProvider>
+        <TelegramLinkButton variant="secondary" />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Связать Telegram' })).toHaveStyle({
+      background: 'transparent',
+    });
+  });
+});

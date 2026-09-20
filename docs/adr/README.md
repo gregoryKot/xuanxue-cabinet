@@ -98,3 +98,4 @@
 | [0060](0060-viewer-timezone-comes-from-the-device.md)      | Пояс человека — с его устройства, поле `users.tz` удалено                             |
 | [0061](0061-in-app-inbox-becomes-primary-channel.md)       | Кабинет — основной канал уведомлений экзамена, не резерв; почта на очереди на снос    |
 | [0062](0062-student-notifications-exam-only.md)            | Дефолт уведомлений ученика — только экзамен; вид «Сообщение от учителя» удалён        |
+| [0063](0063-notification-center-in-cabinet.md)             | Центр уведомлений в кабинете: значок со счётчиком и лента `/notifications`            |

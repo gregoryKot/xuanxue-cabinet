@@ -26,6 +26,10 @@ const STUDENT_ARCHIVE_PATH = '/archive';
 // STUDENT_ARCHIVE_PATH: вход карточкой, но маршрут открывается явно.
 const STUDENT_LIBRARY_PATH = '/library';
 const PROFILE_PATH = '/profile';
+// Лента событий и новых заданий (ADR-0063) — личное место человека, как
+// «/profile» выше: адрес свободен с тех пор, как ADR-0045 увёл настройки
+// уведомлений в «Профиль».
+const NOTIFICATIONS_PATH = '/notifications';
 const ATTEMPT_PATH_PREFIX = '/attempts/';
 
 /** teacher/assistant/admin — штат школы: ему навигация и маршруты штата;
@@ -43,10 +47,10 @@ export function rootPathFor(me: MeDto | null): string {
 }
 
 /** «/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
- * (личный экран, ADR-0045) и «/attempts/:id» (экран сдачи) — открыты любой
- * роли; остальные маршруты кабинета — только teacher/assistant/admin, иначе
- * AppShell уводит редиректом на rootPathFor(me) (ADR-0025, ТЗ
- * student-exams.md). */
+ * (личный экран, ADR-0045), «/notifications» (лента событий, ADR-0063) и
+ * «/attempts/:id» (экран сдачи) — открыты любой роли; остальные маршруты
+ * кабинета — только teacher/assistant/admin, иначе AppShell уводит
+ * редиректом на rootPathFor(me) (ADR-0025, ТЗ student-exams.md). */
 export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
   return (
     isTeacher(me) ||
@@ -55,6 +59,7 @@ export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
     pathname === STUDENT_ARCHIVE_PATH ||
     pathname === STUDENT_LIBRARY_PATH ||
     pathname === PROFILE_PATH ||
+    pathname === NOTIFICATIONS_PATH ||
     pathname.startsWith(ATTEMPT_PATH_PREFIX)
   );
 }

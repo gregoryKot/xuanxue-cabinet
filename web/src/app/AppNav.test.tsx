@@ -34,7 +34,11 @@ function renderNav(
   isMobile: boolean,
   me: MeDto | null = TEACHER,
   path = '/planning',
-  personProps: { profileLink?: ReactNode; logoutButton?: ReactNode } = {},
+  personProps: {
+    profileLink?: ReactNode;
+    notificationsLink?: ReactNode;
+    logoutButton?: ReactNode;
+  } = {},
 ) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -222,6 +226,28 @@ describe('AppNav — блок человека (боковая колонка, A
     // ориентирам, найдёт под ним ещё и «Выйти» (CLAUDE.md «Доступность»).
     expect(within(nav).queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument();
     expect(within(nav).queryByText(/Вы вошли как/)).not.toBeInTheDocument();
+  });
+
+  // ADR-0063: колокольчик встаёт своей строкой между именем и «Профиль ·
+  // Выйти» — расчёт ширины, почему не третьим пунктом в ряду, живёт в
+  // AppNav.tsx рядом с местом рендера.
+  it('notificationsLink — своя строка в блоке человека, перед «Профиль · Выйти»', () => {
+    renderNav(false, TEACHER, '/planning', {
+      notificationsLink: <a href="/notifications">Уведомления</a>,
+      profileLink: <a href="/profile">Профиль</a>,
+      logoutButton: <button type="button">Выйти</button>,
+    });
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    const column = nav.parentElement as HTMLElement;
+    const personBlock = within(column).getByText(/Вы вошли как/)
+      .parentElement as HTMLElement;
+
+    const rows = Array.from(personBlock.children).map((el) => el.textContent);
+    const notifRow = rows.indexOf('Уведомления');
+    const actionsRow = rows.findIndex((text) => text?.includes('Профиль'));
+    expect(notifRow).toBeGreaterThanOrEqual(0);
+    expect(notifRow).toBeLessThan(actionsRow);
   });
 
   // Мокап телефона такой блок не рисует вовсе — эту роль на телефоне играет
