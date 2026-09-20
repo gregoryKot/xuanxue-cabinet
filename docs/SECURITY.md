@@ -285,8 +285,7 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
 - Шифруются: `channels.config` (токены, JSON целиком), `classes.zoomLink` и
   `zoomPassword`, `lessons.zoomLinkOverride` и `zoomPasswordOverride`,
   `lessons.note` (свободный текст учителя), `broadcasts.text` (внутри всегда
-  ссылка Zoom с паролем — п.3 выше), `deliveries.error`, `push_subscriptions.endpoint`
-  и ключи, `payments.screenshotFileId`/`screenshotFileUniqueId` (ведут к снимку
+  ссылка Zoom с паролем — п.3 выше), `deliveries.error`, `payments.screenshotFileId`/`screenshotFileUniqueId` (ведут к снимку
   перевода в Telegram, ADR-0050), `payments.note` (свободный текст бухгалтера),
   `media_assets.fileId`/`fileUniqueId`/`url`
   (ведут к видео экзамена, ADR-0023), `media_assets.note` (свободный текст),
@@ -385,7 +384,6 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
 | Утёк токен канала (ВК)                                        | отозвать токен у провайдера, удалить документ канала, подключить заново через интерфейс. Проверить журнал доставок на чужие посты.                                                                                                                       |
 | Утёк `JWT_SECRET`                                             | ротация → все сессии мертвы, пользователи входят заново.                                                                                                                                                                                                 |
 | Утёк `ENCRYPTION_KEY`                                         | ротация по RUNBOOK. Если утёк вместе с дампом — данные раскрыты: критический инцидент, уведомить учителей и учеников.                                                                                                                                    |
-| Утёк `VAPID_PRIVATE_KEY` (этап 2, канала `webpush` пока нет)  | ротация → все push-подписки мертвы, пользователи переподписываются с экрана настроек.                                                                                                                                                                    |
 | Утёк `BACKUP_PASSPHRASE`                                      | новый пароль в GitHub Secrets — действует со следующего бэкапа; старые артефакты расшифровываются прежним паролем, пока не истекут 90 дней (RUNBOOK §7.1). Если утекли и пароль, и сами файлы дампа — данные раскрыты: как утечка `ENCRYPTION_KEY` выше. |
 | Утёк `BACKUP_MONGODB_URI`                                     | отозвать пользователя в Atlas → Database Access, завести нового read-only, обновить секрет в GitHub Actions. Он read-only — записи в базу утечка не даёт.                                                                                                |
 | Захват аккаунта учителя                                       | поставить `status: blocked` (гвард отвергает следующий же запрос); при подозрении на утечку `JWT_SECRET` — ротация по RUNBOOK §6.                                                                                                                        |

@@ -27,7 +27,7 @@ function renderRow(isMobile: boolean) {
   });
   return render(
     <MemoryRouter>
-      <NotificationsProvider>
+      <NotificationsProvider me={null}>
         <AppShellBrandRow isMobile={isMobile} />
       </NotificationsProvider>
     </MemoryRouter>,

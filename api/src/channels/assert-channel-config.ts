@@ -15,7 +15,6 @@ const CHATID_LENGTH_MESSAGE = `chatId длиннее ${CHANNEL_LIMITS.chatId} с
 const VK_MESSAGE = 'Укажите токен сообщества и id беседы ВК.';
 const VK_TOKEN_LENGTH_MESSAGE = `Токен ВК длиннее ${CHANNEL_LIMITS.token} символов.`;
 const MANUAL_MESSAGE = 'У ручного канала нет полей config.';
-const WEBPUSH_MESSAGE = 'Канал webpush подключается через подписку, не этим экраном.';
 const TELEGRAM_KEYS = ['chatId'];
 const VK_KEYS = ['token', 'peerId'];
 
@@ -30,8 +29,6 @@ export function assertConfigForType(type: ChannelType, config: ChannelConfig): v
     case 'manual':
       if (Object.keys(config).length > 0) throw new InvalidInputError(MANUAL_MESSAGE);
       return;
-    case 'webpush':
-      throw new InvalidInputError(WEBPUSH_MESSAGE);
   }
 }
 
