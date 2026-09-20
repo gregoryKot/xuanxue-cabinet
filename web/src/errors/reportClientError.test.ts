@@ -8,6 +8,10 @@ import { CLIENT_ERROR_LIMITS } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import type { reportClientError as reportClientErrorType } from './reportClientError';
 
+/** Потолок тела keepalive-запроса из спецификации fetch — общий на все живые
+ * keepalive-запросы сразу. */
+const KEEPALIVE_BODY_LIMIT_BYTES = 64 * 1024;
+
 vi.mock('../api/http', async (importOriginal) => ({
   ...(await importOriginal<typeof HttpModule>()),
   apiFetch: vi.fn(),
@@ -162,6 +166,32 @@ describe('reportClientError', () => {
     const [, init] = apiFetchMock.mock.calls[0] as [string, { signal?: AbortSignal }];
     expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(init.signal?.aborted).toBe(false);
+  });
+
+  // Самый частый случай — «экран сломался, человек закрыл вкладку»: без
+  // keepalive браузер обрывает отчёт вместе с документом (ADR-0071).
+  it('отчёт уходит с keepalive — закрытая вкладка его не обрывает', async () => {
+    apiFetchMock.mockResolvedValue(undefined);
+
+    await reportClientError('render', new Error('упал экран'));
+
+    const [, init] = apiFetchMock.mock.calls[0] as [string, { keepalive?: boolean }];
+    expect(init.keepalive).toBe(true);
+  });
+
+  // Потолок спецификации на keepalive: 64 КиБ на все живые keepalive-запросы
+  // разом. Тест держит комментарий-«почему» в reportClientError.ts честным —
+  // выросшие CLIENT_ERROR_LIMITS уронят его, а не доставку отчётов.
+  it('тело отчёта предельной длины остаётся далеко под потолком keepalive', async () => {
+    apiFetchMock.mockResolvedValue(undefined);
+    // Кириллица и кавычка — худший случай для JSON: два байта на знак,
+    // экранирование сверху.
+    const longMessage = '«ж»'.repeat(CLIENT_ERROR_LIMITS.message);
+
+    await reportClientError('render', new Error(longMessage));
+
+    const bodyBytes = new TextEncoder().encode(JSON.stringify(lastRequestBody())).length;
+    expect(bodyBytes).toBeLessThan(KEEPALIVE_BODY_LIMIT_BYTES / 8);
   });
 
   it('отказ apiFetch не бросает наружу и не порождает второй отчёт того же сбоя', async () => {
