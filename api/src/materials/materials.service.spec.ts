@@ -418,6 +418,80 @@ describe('MaterialsService', () => {
     await expect(service.listForStudent({ limit: 2 }, false)).resolves.toHaveLength(2);
   });
 
+  // ADR-0058: `staff`-материал ученику не приходит вовсе — фильтр запроса, не
+  // отбрасывание после выборки.
+  describe('listForStudent: access=staff (ADR-0058)', () => {
+    it('ученик не видит staff-материал, штат видит', async () => {
+      await service.create(
+        {
+          title: 'Методичка для преподавателей',
+          url: 'https://example.com/staff',
+          kind: 'document',
+          access: 'staff',
+        },
+        AUTHOR_ID,
+      );
+      await service.create(
+        { title: 'Вводное видео', url: 'https://example.com/free', kind: 'video' },
+        AUTHOR_ID,
+      );
+
+      const studentList = await service.listForStudent({}, false);
+      const staffList = await service.listForStudent({}, true);
+
+      expect(studentList.map((m) => m.title)).toEqual(['Вводное видео']);
+      expect(staffList.map((m) => m.title).sort()).toEqual(
+        ['Вводное видео', 'Методичка для преподавателей'].sort(),
+      );
+    });
+
+    // Фильтр — в самом запросе к Mongo, не после лимита: иначе staff-материалы
+    // съедали бы места в странице ученика (ADR-0058).
+    it('staff-материалы не съедают лимит списка ученика', async () => {
+      for (let i = 0; i < 3; i += 1) {
+        await service.create(
+          {
+            title: `Служебный ${i}`,
+            url: `https://example.com/s${i}`,
+            kind: 'document',
+            access: 'staff',
+          },
+          AUTHOR_ID,
+        );
+      }
+      for (let i = 0; i < 2; i += 1) {
+        await service.create(
+          { title: `Открытый ${i}`, url: `https://example.com/o${i}`, kind: 'article' },
+          AUTHOR_ID,
+        );
+      }
+
+      const list = await service.listForStudent({ limit: 2 }, false);
+
+      expect(list).toHaveLength(2);
+      expect(list.every((m) => m.title.startsWith('Открытый'))).toBe(true);
+    });
+
+    it('paid-материал ученику приходит как обычно, а не под флагом staff', async () => {
+      await service.create(
+        {
+          title: 'Платный разбор',
+          url: 'https://example.com/paid2',
+          kind: 'video',
+          access: 'paid',
+        },
+        AUTHOR_ID,
+      );
+
+      const beforeToggle = await service.listForStudent({}, false);
+      expect(beforeToggle[0]?.url).toBe('https://example.com/paid2');
+
+      await settingsService.update({ materialsPaidAccess: true });
+      const afterToggle = await service.listForStudent({}, false);
+      expect(afterToggle[0]?.locked).toBe(true);
+    });
+  });
+
   // Слой 3.4 (ADR-0048) — оба положения рубильника плюс штат, гейт из самого ADR.
   describe('listForStudent: рубильник materialsPaidAccess', () => {
     it('рубильник выключен (по умолчанию) — ученик получает url paid-материала', async () => {

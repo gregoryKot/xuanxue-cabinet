@@ -6,6 +6,8 @@
 // 3.4 (ADR-0048) добавил сюда рубильник школы: `isMaterialLocked` решает,
 // закрыт ли конкретный материал, settings читаются тем же SettingsService,
 // что и остальные потребители (auth.controller.ts, broadcast-planner).
+// `access: 'staff'` (ADR-0058) не закрывается постфактум, а вырезается
+// фильтром запроса — иначе служебные материалы съедали бы лимит списка.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -104,14 +106,20 @@ export class MaterialsService {
 
   /** `isStaff` — уже вычисленный `isStaffRole(user.roles)` из контроллера
    * (MyMaterialsController): сервис не должен решать по объекту пользователя
-   * целиком, только по признаку роли (ADR-0048). */
+   * целиком, только по признаку роли (ADR-0048).
+   *
+   * `staff`-материал ученику не приходит вовсе — фильтр запроса Mongo
+   * (`access: { $ne: 'staff' }`), а не отбрасывание после выборки: иначе
+   * служебные материалы съедали бы лимит списка (ADR-0058). Штат видит всё,
+   * фильтра для него нет. */
   async listForStudent(
     query: ListMyMaterialsQuery,
     isStaff: boolean,
   ): Promise<MyMaterialDto[]> {
+    const filter: Record<string, unknown> = isStaff ? {} : { access: { $ne: 'staff' } };
     const [docs, settings] = await Promise.all([
       this.model
-        .find()
+        .find(filter)
         .sort({ createdAt: -1 })
         .limit(query.limit ?? MY_MATERIALS_LIMIT_DEFAULT)
         .lean<RawLeanMaterial[]>(),

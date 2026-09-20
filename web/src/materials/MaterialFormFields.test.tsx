@@ -40,7 +40,7 @@ function makeState(overrides: Partial<MaterialFormState> = {}): MaterialFormStat
     url: '',
     kind: 'book',
     classIds: [],
-    paid: false,
+    access: 'all',
     tagsText: '',
     ...overrides,
   };

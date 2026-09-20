@@ -19,10 +19,29 @@ export const MATERIAL_KIND_LABELS: Record<MaterialKind, string> = {
   document: 'Документ',
 };
 
-/** Отметка «после оплаты» у материала (ADR-0048) — школьный рубильник
- * `settings.materialsPaidAccess` решает, действует ли она сейчас. */
-export const MATERIAL_ACCESS_LEVELS = ['all', 'paid'] as const;
+/**
+ * Кто видит материал (ADR-0048, ADR-0058) — одно поле, один запрос, одна
+ * функция (`isMaterialLocked`), не второй механизм рядом с ролями (ADR-0010):
+ *
+ * - `all` — видят все ученики.
+ * - `paid` — видят все, пока школьный рубильник `settings.materialsPaidAccess`
+ *   выключен (по умолчанию); включённый рубильник закрывает такой материал
+ *   ученику (карточка остаётся, ссылки нет). Решает рубильник, не роль.
+ * - `staff` — видит только штат школы (`isStaffRole`); рубильник оплаты к
+ *   этому значению отношения не имеет, оно не приходит ученику вовсе — ни
+ *   материалом, ни строкой в лимите списка (ADR-0058).
+ */
+export const MATERIAL_ACCESS_LEVELS = ['all', 'paid', 'staff'] as const;
 export type MaterialAccess = (typeof MATERIAL_ACCESS_LEVELS)[number];
+
+/** Подписи уровней доступа для интерфейса — один источник (по образцу
+ * MATERIAL_KIND_LABELS): те же слова в переключателе формы
+ * (MaterialAccessField.tsx) и в пилюле строки списка (MaterialCard.tsx). */
+export const MATERIAL_ACCESS_LABELS: Record<MaterialAccess, string> = {
+  all: 'Все ученики',
+  paid: 'После оплаты',
+  staff: 'Только преподаватели',
+};
 
 /** Материал глазами штата школы — видит всё, включая служебные поля. */
 export interface MaterialDto {
