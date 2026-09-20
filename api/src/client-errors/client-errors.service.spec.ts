@@ -139,4 +139,21 @@ describe('ClientErrorsService.report', () => {
     expect(String(error.mock.calls[1]?.[0])).toContain('не удалось уведомить');
     error.mockRestore();
   });
+
+  // Тот же отказ, но кода обращения нет: в строке лога должен стоять прочерк,
+  // а не слово «undefined» — по такому «коду» в логах Railway не ищут.
+  it('порт отверг промис без кода обращения — в логе прочерк, не «undefined»', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { alerts } = fakeAlerts(new Error('telegram недоступен'));
+    const service = new ClientErrorsService(alerts);
+
+    service.report(input(), undefined);
+    await Promise.resolve();
+
+    expect(String(error.mock.calls[1]?.[0])).toContain('requestId=-');
+    expect(String(error.mock.calls[1]?.[0])).not.toContain('undefined');
+    error.mockRestore();
+  });
 });
