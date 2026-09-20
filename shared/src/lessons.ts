@@ -37,7 +37,7 @@ export interface LessonDto {
    * занятие (окно до отправки шире, чем горизонт `/broadcasts`). */
   broadcast?: LessonBroadcastDto;
   /** Рубрика вечера («дракон», «начинающие»), а не постоянный признак курса —
-   * для него есть название и `groupLabel` (ADR-0073, уточняет ADR-0058).
+   * для него есть название и `groupLabel` (ADR-0075, уточняет ADR-0058).
    * Лимиты и нормализация — общие с материалами (shared/src/tags.ts). */
   tags: string[];
   createdAt: string;
@@ -48,7 +48,7 @@ export interface ListLessonsQuery {
   from: string;
   to: string;
   classId?: string;
-  /** Точное совпадение тега — как у `ListMaterialsQuery.tag` (ADR-0073). */
+  /** Точное совпадение тега — как у `ListMaterialsQuery.tag` (ADR-0075). */
   tag?: string;
   limit?: number;
 }
@@ -131,7 +131,7 @@ export interface MyLessonDto {
   topic: string;
   status: LessonStatus;
   /** Тег видит и ученик — рубрика школы, не секрет, тот же довод, что у
-   * `MyMaterialDto.tags`; фильтра по тегу тут нет (ADR-0073). */
+   * `MyMaterialDto.tags`; фильтра по тегу тут нет (ADR-0075). */
   tags: string[];
 }
 

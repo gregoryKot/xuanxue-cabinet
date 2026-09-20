@@ -457,9 +457,9 @@ describe('LessonsService', () => {
     await expect(service.remove('not-an-id')).rejects.toThrow('не найдена');
   });
 
-  // ADR-0073 — тег живёт у даты занятия, те же правила, что у материалов
+  // ADR-0075 — тег живёт у даты занятия, те же правила, что у материалов
   // (materials.service.spec.ts): нормализация при записи, фильтр по тегу.
-  describe('теги (ADR-0073)', () => {
+  describe('теги (ADR-0075)', () => {
     it('create: нормализует теги — обрезка, схлопывание пробелов, дедуп без учёта регистра', async () => {
       const classId = await createClass();
 
@@ -554,7 +554,7 @@ describe('LessonsService', () => {
     it('дата занятия без поля tags (до этого PR) читается как []', async () => {
       const classId = await createClass();
       const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
-      // Имитируем дату, заведённую до ADR-0073: поля в базе нет вовсе.
+      // Имитируем дату, заведённую до ADR-0075: поля в базе нет вовсе.
       await lessonModel.collection.updateOne(
         { _id: new Types.ObjectId(created.id) },
         { $unset: { tags: '' } },
