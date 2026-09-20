@@ -111,4 +111,9 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // status/limit — общие подписи выше (deliveries.status, broadcasts.limit).
   month: 'Месяц',
   amountMinor: 'Сумма',
+
+  // client-errors — POST /client-errors (ADR-0071, отчёт браузера о сбое).
+  // kind — общая подпись «Тип» выше (broadcasts.kind), здесь вид сбоя.
+  message: 'Сообщение об ошибке',
+  path: 'Адрес экрана',
 };

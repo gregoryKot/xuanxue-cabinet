@@ -7,6 +7,12 @@ import type { ReactNode } from 'react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ErrorBoundary } from './ErrorBoundary';
+import { reportClientError } from '../errors/reportClientError';
+
+// Отчёт о сбое (ADR-0071) — отдельный модуль со своей отправкой на сервер,
+// здесь проверяем только то, что ErrorBoundary его зовёт.
+vi.mock('../errors/reportClientError', () => ({ reportClientError: vi.fn() }));
+const mockedReportClientError = vi.mocked(reportClientError);
 
 function Boom(): never {
   throw new Error('boom');
@@ -14,6 +20,7 @@ function Boom(): never {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  mockedReportClientError.mockClear();
 });
 
 function renderBoundary(children: ReactNode, initialEntry = '/a') {
@@ -46,6 +53,14 @@ describe('ErrorBoundary', () => {
     renderBoundary(<Boom />);
 
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('при падении дочернего рендера отправляет отчёт kind: render (ADR-0071)', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderBoundary(<Boom />);
+
+    expect(mockedReportClientError).toHaveBeenCalledWith('render', expect.any(Error));
   });
 
   // `window.location.reload` в jsdom нельзя заспайить через vi.spyOn

@@ -52,7 +52,7 @@ import {
 } from '../api/apiPaths';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
-type RouteLoader = () => Promise<{ default: ComponentType }>;
+export type RouteLoader = () => Promise<{ default: ComponentType }>;
 
 /** GET-пути данных этого экрана — что предзагрузить (prefetchFirstScreen.ts). */
 type RoutePrefetch = (pathname: string) => string[];
@@ -314,7 +314,7 @@ export const ROUTE_MODULES = {
     prefetch: () => [NOTIFICATION_PREFS_PATH],
   },
   // Личное место человека, не раздел домена — как «/profile» выше, вход не из
-  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0065). Открыт
+  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0063). Открыт
   // любой роли (screenAccess.ts, canSeeRoute).
   notifications: {
     path: '/notifications',
