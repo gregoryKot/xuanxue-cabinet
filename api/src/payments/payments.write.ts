@@ -1,7 +1,7 @@
 // Запись подтверждения/снятия оплаты — вынесено из payments.service.ts
 // (файл-лимит CLAUDE.md «Храповики»), тем же приёмом, что media-asset-insert.ts:
 // бизнес-правила владения остаются в сервисе, здесь только сама запись.
-import type { Model } from 'mongoose';
+import type { Model, UpdateQuery } from 'mongoose';
 import { Types } from 'mongoose';
 import type { DateTime } from 'luxon';
 import {
@@ -19,31 +19,32 @@ import {
 } from './payment.schema';
 
 /**
- * Upsert `(userId, month)` общий для confirmPayment/attachTelegramScreenshot
- * (jscpd: одна и та же гонка, один и тот же приём лечения) — E11000 на
- * апсерте значит, что конкурент (второй клик, ретрай сети, двойная отправка
- * фото) успел вставить документ первым; повтор апдейта без `upsert` находит
- * уже вставленный.
+ * Upsert `(userId, month)` общий для всех, кто пишет в оплату:
+ * confirmPayment, attachTelegramScreenshot (оба ниже) и приём снимка из
+ * кабинета (payment-screenshot.write.ts) — jscpd: одна и та же гонка, один и
+ * тот же приём лечения. E11000 на апсерте значит, что конкурент (второй
+ * клик, ретрай сети, двойная отправка фото) успел вставить документ первым;
+ * повтор апдейта без `upsert` находит уже вставленный. `update` целиком, а
+ * не один `$set`: кабинету нужен ещё и `$unset` полей прежнего снимка.
  */
-async function upsertPaymentByFilter(
+export async function upsertPaymentByFilter(
   model: Model<PaymentRecord>,
   filter: Record<string, unknown>,
-  payload: Record<string, unknown>,
+  update: UpdateQuery<PaymentRecord>,
 ): Promise<RawLeanPayment> {
   try {
     const doc = await model
-      .findOneAndUpdate(
-        filter,
-        { $set: payload },
-        { upsert: true, returnDocument: 'after' },
-      )
+      .findOneAndUpdate(filter, update, { upsert: true, returnDocument: 'after' })
       .lean<RawLeanPayment>();
     return decryptPayment(doc);
   } catch (err) {
     if (!isDuplicateKeyError(err)) throw err;
     const doc = await model
-      .findOneAndUpdate(filter, { $set: payload }, { returnDocument: 'after' })
+      .findOneAndUpdate(filter, update, { returnDocument: 'after' })
       .lean<RawLeanPayment | null>();
+    // Крайний случай: конкурент успел вставить документ и удалить его до
+    // повтора (двойной клик почти одновременно со снятием подтверждения) —
+    // не проглатываем, иначе ответ соврёт об успешной записи.
     if (!doc) throw err;
     return decryptPayment(doc);
   }
@@ -79,7 +80,7 @@ export async function confirmPayment(
   );
 
   const filter = { userId: new Types.ObjectId(userId), month };
-  return upsertPaymentByFilter(model, filter, payload);
+  return upsertPaymentByFilter(model, filter, { $set: payload });
 }
 
 /** Скриншот из бота (ADR-0050, слой 2.2) — upsert как у confirmPayment; `paid`
@@ -104,7 +105,7 @@ export async function attachTelegramScreenshot(
   );
 
   const filter = { userId: new Types.ObjectId(userId), month };
-  return upsertPaymentByFilter(model, filter, payload);
+  return upsertPaymentByFilter(model, filter, { $set: payload });
 }
 
 /**
