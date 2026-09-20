@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   InboxPageDto,
   MeDto,
@@ -20,7 +20,10 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
-import { useNotificationsData } from './useNotificationsData';
+import {
+  NOTIFICATIONS_POLL_INTERVAL_MS,
+  useNotificationsData,
+} from './useNotificationsData';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -99,6 +102,8 @@ function feedCallCount(): number {
  * (ADR-0074): фильтр дал бы тот же пустой newTasks и на включённом запросе
  * с пустым ответом сервера, а настоящая гарантия — что запрос вообще не
  * ушёл. */
+/** Ноль здесь же стережёт, что тик опроса не будит выключенный запрос
+ * (ADR-0076): тихий refresh() на выключенном хуке молчит. */
 function examsCallCount(): number {
   return mockedApiFetch.mock.calls.filter(([path]) => path === MY_EXAMS_PATH).length;
 }
@@ -250,5 +255,96 @@ describe('useNotificationsData — штат школы', () => {
 
     expect(result.current.count).toBe(1);
     expect(examsCallCount()).toBe(0);
+  });
+});
+
+describe('useNotificationsData — опрос (ADR-0076)', () => {
+  // Фейковые таймеры — иначе тест ждал бы настоящую минуту (CLAUDE.md
+  // «Детерминизм»). advanceTimersByTimeAsync, не Async-less вариант: между
+  // тиками таймера нужно дать промисам apiFetch долиться до состояния.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    // Видимость трогает только тест «вкладка скрыта» ниже, но сбрасываем
+    // безусловно — иначе скрытое состояние протекло бы в соседний тест.
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+  });
+
+  it('через минуту перечитывает /me/inbox и /me/exams — count меняется на новое число', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [], [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1) });
+    const { result } = renderHook(() => useNotificationsData(STUDENT_ME));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.count).toBe(1);
+    const feedBefore = feedCallCount();
+    const examsBefore = examsCallCount();
+
+    // Между тиками у ленты и у экзаменов появилось по новой строке — тот же
+    // тик опроса обязан подхватить оба источника.
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [NEW_EXAM],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 4),
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(NOTIFICATIONS_POLL_INTERVAL_MS);
+    });
+
+    expect(feedCallCount()).toBe(feedBefore + 1);
+    expect(examsCallCount()).toBe(examsBefore + 1);
+    expect(result.current.count).toBe(5); // 4 непрочитанных + 1 новое задание
+  });
+
+  // Пара к «штату школы» выше: выключенный запрос экзаменов обязан остаться
+  // выключенным и через минуту — иначе опрос вернул бы ровно то хождение за
+  // экзаменами штата, которое убрал ADR-0074.
+  it('у штата школы тик обновляет ленту, но за экзаменами не ходит', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [NEW_EXAM],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
+    });
+    const { result } = renderHook(() => useNotificationsData(staffMe('teacher')));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const feedBefore = feedCallCount();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(NOTIFICATIONS_POLL_INTERVAL_MS);
+    });
+
+    expect(feedCallCount()).toBe(feedBefore + 1);
+    expect(examsCallCount()).toBe(0);
+    expect(result.current.newTasks).toEqual([]);
+  });
+
+  it('пока вкладка скрыта — новых запросов нет', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [], [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1) });
+    const { result } = renderHook(() => useNotificationsData(STUDENT_ME));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const feedBefore = feedCallCount();
+    const examsBefore = examsCallCount();
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(NOTIFICATIONS_POLL_INTERVAL_MS * 3);
+    });
+
+    expect(feedCallCount()).toBe(feedBefore);
+    expect(examsCallCount()).toBe(examsBefore);
+    expect(result.current.loading).toBe(false);
   });
 });
