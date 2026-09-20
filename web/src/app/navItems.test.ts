@@ -57,6 +57,11 @@ describe('activeSectionPath — список штата', () => {
     expect(activeSectionPath('/grading', STAFF_NAV_ITEMS)).toBe('/exams');
   });
 
+  // ADR-0055 — пятый пункт штата, подсвечивает сам себя, как и остальные.
+  it('/materials подсвечивает сам себя', () => {
+    expect(activeSectionPath('/materials', STAFF_NAV_ITEMS)).toBe('/materials');
+  });
+
   it('путь вне навигации — null', () => {
     expect(activeSectionPath('/login', STAFF_NAV_ITEMS)).toBeNull();
   });

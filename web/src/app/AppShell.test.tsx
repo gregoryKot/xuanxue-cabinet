@@ -41,7 +41,7 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve({});
     if (path === '/auth/logout') return Promise.resolve(undefined);
-    // NotificationsProvider (ADR-0065) висит на корне оболочки и ходит в оба
+    // NotificationsProvider (ADR-0063) висит на корне оболочки и ходит в оба
     // адреса при каждом рендере — без заглушек тесты этого файла заливали бы
     // консоль отказами «неожиданный путь».
     if (path.startsWith('/me/inbox'))
@@ -179,8 +179,9 @@ describe('AppShell — учитель', () => {
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
   });
 
-  // Четыре домена — потолок навигации (navItems.ts, отзыв владельца
-  // 2026-09-12: «меню всё ещё сложное»); «Ученики» видят admin и teacher
+  // Пять доменов — потолок навигации (navItems.ts, отзыв владельца
+  // 2026-09-12: «меню всё ещё сложное»; пятым «Материалы» добавил ADR-0055,
+  // шестого домена сюда не заводят); «Ученики» видят admin и teacher
   // (ADR-0030, уточнение 2026-09-15 — ссылку-приглашение отдаёт и учитель).
   // Фильтр по роли и подсветку раздела детально проверяет AppNav.test.tsx —
   // здесь только то, что AppShell передаёт в AppNav настоящего `me`.
@@ -195,7 +196,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
   it('нижняя навигация — у админа тоже «Ученики»', async () => {
@@ -207,7 +208,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
   // Ровно то, чего боялся владелец при переносе подвала в колонку (ADR-0043):
@@ -252,9 +253,9 @@ describe('AppShell — учитель', () => {
   });
 });
 
-// ADR-0065: значок уведомлений — часть оболочки на обеих ширинах экрана,
+// ADR-0063: значок уведомлений — часть оболочки на обеих ширинах экрана,
 // читает общий счётчик через NotificationsProvider (добавлен в этом же PR).
-describe('AppShell — ссылка на уведомления (ADR-0065)', () => {
+describe('AppShell — ссылка на уведомления (ADR-0063)', () => {
   it('на широком экране — в блоке человека боковой колонки', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');

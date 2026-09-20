@@ -8,6 +8,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import { AppNav, SIDE_NAV_WIDTH_PX } from './AppNav';
+import { STAFF_NAV_ITEMS, STUDENT_NAV_ITEMS } from './navItems';
 
 const TEACHER: MeDto = {
   id: 'u1',
@@ -100,11 +101,11 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     expect(labels).toEqual(['Задания', 'Занятия']);
   });
 
-  it('админ — четыре пункта, «Ученики» последним', () => {
+  it('админ — пять пунктов, «Материалы» последним', () => {
     renderNav(true, ADMIN);
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
   // ADR-0030 (уточнение владельца 2026-09-15): ссылку-приглашение раздаёт и
@@ -113,7 +114,7 @@ describe('AppNav — пункты и роль (отзыв владельца 202
     renderNav(true, TEACHER);
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики']);
+    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
   // Иконок в пунктах нет вовсе (ADR-0043) — подпись остаётся единственным
@@ -230,7 +231,7 @@ describe('AppNav — блок человека (боковая колонка, A
     expect(within(nav).queryByText(/Вы вошли как/)).not.toBeInTheDocument();
   });
 
-  // ADR-0065: колокольчик встаёт своей строкой между именем и «Профиль ·
+  // ADR-0063: колокольчик встаёт своей строкой между именем и «Профиль ·
   // Выйти» — расчёт ширины, почему не третьим пунктом в ряду, живёт в
   // AppNav.tsx рядом с местом рендера.
   it('notificationsLink — своя строка в блоке человека, перед «Профиль · Выйти»', () => {
@@ -276,5 +277,75 @@ describe('AppNav — название школы в колонке не пере
     expect(title.style.whiteSpace).toBe('nowrap');
     expect(title.style.textOverflow).toBe('ellipsis');
     expect(title.style.fontSize).toBe('18px');
+  });
+});
+
+// ADR-0055 «Последствия»: «Ширина проверяется тестом AppNav.test.tsx и
+// вручную на 360 px — это условие мержа, а не пожелание». Два теста ниже —
+// то самое условие: столько дорожек, сколько пунктов, и подписи умещаются.
+describe('AppNav — гейт ширины нижней панели (ADR-0055)', () => {
+  // Дорожек сетки должно быть ровно столько, сколько отрисованных пунктов
+  // (bottomStyle(items.length), bottomNavStyles.ts) — иначе лишний пункт
+  // уезжает на вторую строку сетки, и высота панели (4 + 44 + 4 = 52 плюс
+  // безопасная зона, расчёт в bottomNavStyles.ts) рвётся.
+  it('дорожек ровно по числу пунктов — пять у штата, две у ученика, четыре у ассистента', () => {
+    const teacher = renderNav(true, TEACHER);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(5, 1fr)');
+    teacher.unmount();
+
+    const admin = renderNav(true, ADMIN);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(5, 1fr)');
+    admin.unmount();
+
+    const student: MeDto = { ...TEACHER, roles: [] };
+    const studentRender = renderNav(true, student);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(2, 1fr)');
+    studentRender.unmount();
+
+    // Ассистенту «Ученики» не виден (у пункта roles: admin/teacher) — из
+    // пяти пунктов штата у него остаётся четыре.
+    const assistant: MeDto = { ...TEACHER, roles: ['assistant'] };
+    renderNav(true, assistant);
+    expect(
+      screen.getByRole('navigation', { name: 'Разделы кабинета' }).style
+        .gridTemplateColumns,
+    ).toBe('repeat(4, 1fr)');
+  });
+
+  // Замер в Chromium на живом Golos Text (360px, дорожка 64px): «Материалы»
+  // просят 67px при кегле 12 и 61.4px при кегле 11. То есть двенадцатый ломал
+  // подпись пополам — «Материал» и «ы» второй строкой, — и панель росла с 44px
+  // до 63. Гейт от возврата кегля: jsdom текст не меряет и такую поломку не
+  // увидит, поэтому сторожим то единственное число, от которого она зависит.
+  const MEASURED_LABEL_FONT_SIZE_PX = '11px';
+  it('кегль подписи — тот, на котором мерялась ширина (иначе подпись переносится)', () => {
+    renderNav(true, TEACHER);
+
+    const pill = screen
+      .getByRole('link', { name: 'Материалы' })
+      .querySelector('span') as HTMLElement;
+    expect(pill.style.fontSize).toBe(MEASURED_LABEL_FONT_SIZE_PX);
+  });
+
+  // Грубый предохранитель на случай новой длинной подписи. Считает знаки, а
+  // не пиксели, и потому сам по себе ничего не доказывает: прошлая версия
+  // этого теста стояла на 10 знаках, пропустила девятизначные «Материалы» и
+  // уехала в прод с поломанной панелью — знаки у Golos Text шире, чем
+  // казалось (≈6.8px при кегле 11, а не 6.3). Настоящая проверка — глазами на
+  // 360px, как и требует ADR-0055; здесь только ранний сигнал.
+  const MAX_NAV_LABEL_CHARS = 9;
+  it('подписи не длиннее замеренного бюджета в знаках', () => {
+    for (const { label } of [...STAFF_NAV_ITEMS, ...STUDENT_NAV_ITEMS]) {
+      expect(label.length).toBeLessThanOrEqual(MAX_NAV_LABEL_CHARS);
+    }
   });
 });

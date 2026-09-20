@@ -13,7 +13,9 @@
 // незнакомца, В6 аудита); NotificationsModule — NotificationPrefsService
 // (PersonalChats.listFor, кнопки «Уведомления»); MediaModule —
 // MediaAssetsService (ExamMediaMessageHandler, слой 4.5, ADR-0023): бот
-// привязывает видео экзамена и пересылает его учителю. Ни один из них не
+// привязывает видео экзамена и пересылает его учителю. PaymentsModule —
+// PaymentsService (PaymentScreenshotMessageHandler, слой 2.2, ADR-0050): бот
+// тем же приёмом привязывает скриншот оплаты. Ни один из них не
 // импортирует TelegramModule обратно — цикла нет (ADR-0013). MediaModule в
 // частности берёт модель ExamAttemptRecord через ExamAttemptModelModule
 // (api/src/exams/), не через ExamsModule — тот сам импортирует TelegramModule
@@ -34,6 +36,7 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { LessonsModule } from '../lessons/lessons.module';
 import { MediaModule } from '../media/media.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { SettingsModule } from '../settings/settings.module';
 import { UsersModule } from '../users/users.module';
 import { BotIdentityModule } from './bot-identity.module';
@@ -55,9 +58,11 @@ import { NewExamMessageHandler } from './handlers/new-exam-message.handler';
 import { NewExamItemCommandHandler } from './handlers/new-exam-item-command.handler';
 import { NewExamItemMessageHandler } from './handlers/new-exam-item-message.handler';
 import { NotificationsCommandHandler } from './handlers/notifications-command.handler';
+import { PaymentScreenshotMessageHandler } from './handlers/payment-screenshot-message.handler';
 import { RecordingWaitHandler } from './handlers/recording-wait.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
+import { TopicWaitHandler } from './handlers/topic-wait.handler';
 import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, createTelegraf } from './telegraf-instance';
 import { TelegramAppErrorAlerts } from './telegram-app-error-alerts';
@@ -79,6 +84,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     SettingsModule,
     NotificationsModule,
     MediaModule,
+    PaymentsModule,
     BotIdentityModule,
   ],
   controllers: [TelegramController],
@@ -92,9 +98,11 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     NotificationsCommandHandler,
     MenuCommandHandler,
     MessageHandler,
+    TopicWaitHandler,
     RecordingWaitHandler,
     ExamMediaMessageHandler,
     ExamTextAnswerHandler,
+    PaymentScreenshotMessageHandler,
     ExamCommandHandler,
     NewExamItemCommandHandler,
     NewExamItemMessageHandler,

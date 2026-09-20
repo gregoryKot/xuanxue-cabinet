@@ -16,6 +16,7 @@ export interface FakeBotSessionService extends BotSessionService {
     [number, string, DateTime, number?, string?]
   >;
   startExamTextWait: jest.Mock<Promise<void>, [number, string, number, DateTime]>;
+  startPaymentWait: jest.Mock<Promise<void>, [number, string, DateTime]>;
   clear: jest.Mock<Promise<void>, [number]>;
   get: jest.Mock<Promise<BotSessionLean | null>, [number, DateTime]>;
   startNewExamItemDraft: jest.Mock<Promise<void>, [number, ExamItemKind, DateTime]>;
@@ -35,6 +36,7 @@ export function fakeBotSessionService(
     startRecordingWait: jest.fn(),
     startExamMediaWait: jest.fn().mockResolvedValue(undefined),
     startExamTextWait: jest.fn().mockResolvedValue(undefined),
+    startPaymentWait: jest.fn().mockResolvedValue(undefined),
     get: jest.fn().mockResolvedValue(null),
     clear: jest.fn().mockResolvedValue(undefined),
     clearIfLesson: jest.fn(),

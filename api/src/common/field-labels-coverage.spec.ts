@@ -19,6 +19,7 @@ import { CreateClassDto } from '../classes/dto/create-class.dto';
 import { ListClassesDto } from '../classes/dto/list-classes.dto';
 import { ScheduleRuleDto } from '../classes/dto/schedule-rule.dto';
 import { UpdateClassDto } from '../classes/dto/update-class.dto';
+import { ReportClientErrorDto } from '../client-errors/report-client-error.dto';
 import { ListDeliveriesDto } from '../deliveries/dto/list-deliveries.dto';
 import { CreateExamItemDto } from '../exams/dto/create-exam-item.dto';
 import { ExamItemFieldsDto } from '../exams/dto/exam-item-fields.dto';
@@ -66,6 +67,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   ListClassesDto,
   ScheduleRuleDto,
   UpdateClassDto,
+  ReportClientErrorDto,
   ListDeliveriesDto,
   CreateExamItemDto,
   ExamItemFieldsDto,

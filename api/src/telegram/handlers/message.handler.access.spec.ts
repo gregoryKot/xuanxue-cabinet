@@ -16,7 +16,9 @@ import type { GradeCommentHandler } from './grade-comment.handler';
 import type { NewExamMessageHandler } from './new-exam-message.handler';
 import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
 import { MessageHandler } from './message.handler';
+import type { PaymentScreenshotMessageHandler } from './payment-screenshot-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
+import { TopicWaitHandler } from './topic-wait.handler';
 import { fakeCtx } from './message.handler.fake-ctx';
 import { NOW, seedLesson } from './message.handler.seed';
 import { seedTeacher } from '../test-support/seed-teacher';
@@ -110,6 +112,43 @@ describe('MessageHandler — доступ и сбои', () => {
     expect(telegramId).toBe(555);
     expect(session.attemptId.toString()).toBe(attemptId.toString());
     expect(session.questionIndex).toBe(1);
+  });
+
+  it('kind payment — зовёт PaymentScreenshotMessageHandler, даже для не-штата школы (ADR-0050)', async () => {
+    await ctx.botSessionModel.create({
+      chatId: 556,
+      kind: 'payment',
+      month: '2026-09',
+      expiresAt: NOW.plus({ hours: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx } = fakeCtx({ chatId: 556, text: 'фото' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(ctx.paymentScreenshotHandler.handle).toHaveBeenCalledTimes(1);
+    const [, telegramId, session] = ctx.paymentScreenshotHandler.handle.mock.calls[0] as [
+      unknown,
+      number,
+      { month: string },
+    ];
+    expect(telegramId).toBe(556);
+    expect(session.month).toBe('2026-09');
+  });
+
+  it('ученик, ожидание payment истекло — своя фраза про скриншот, не про экзамен', async () => {
+    await ctx.botSessionModel.create({
+      chatId: 557,
+      kind: 'payment',
+      month: '2026-09',
+      expiresAt: NOW.minus({ minutes: 1 }).toJSDate(),
+    });
+    const { ctx: msgCtx, replies } = fakeCtx({ chatId: 557, text: 'опоздавшее фото' });
+
+    await ctx.handler.handle(msgCtx, NOW);
+
+    expect(replies).toEqual([
+      'Ссылка на отправку скриншота устарела. Откройте «Отправить скриншот» в кабинете ещё раз.',
+    ]);
   });
 
   it('kind examItemDraft — зовёт NewExamItemMessageHandler (ТЗ 4б.3, только штат)', async () => {
@@ -306,22 +345,25 @@ describe('MessageHandler — доступ и сбои', () => {
     return new MessageHandler(
       buildPersonalChats(ctx.connection, usersService, ctx.channelModel),
       new BotSessionService(ctx.botSessionModel),
-      { update } as unknown as LessonsService,
-      new LessonLinkRebuildService(
-        new BroadcastModels(
-          ctx.lessonModel,
-          ctx.classModel,
-          ctx.channelModel,
-          ctx.broadcastModel,
-          ctx.deliveryModel,
-        ),
-        new SettingsService(
-          ctx.settingsModel,
-          ctx.lessonModel,
-          ctx.classModel,
+      new TopicWaitHandler(
+        new BotSessionService(ctx.botSessionModel),
+        { update } as unknown as LessonsService,
+        new LessonLinkRebuildService(
+          new BroadcastModels(
+            ctx.lessonModel,
+            ctx.classModel,
+            ctx.channelModel,
+            ctx.broadcastModel,
+            ctx.deliveryModel,
+          ),
+          new SettingsService(
+            ctx.settingsModel,
+            ctx.lessonModel,
+            ctx.classModel,
+            usersService,
+          ),
           usersService,
         ),
-        usersService,
       ),
       new RecordingWaitHandler(
         new BotSessionService(ctx.botSessionModel),
@@ -331,6 +373,7 @@ describe('MessageHandler — доступ и сбои', () => {
       ),
       { handle: jest.fn() } as unknown as ExamMediaMessageHandler,
       { handle: jest.fn() } as unknown as ExamTextAnswerHandler,
+      { handle: jest.fn() } as unknown as PaymentScreenshotMessageHandler,
       { handle: jest.fn() } as unknown as NewExamItemMessageHandler,
       { handle: jest.fn() } as unknown as NewExamMessageHandler,
       { handle: jest.fn() } as unknown as GradeCommentHandler,

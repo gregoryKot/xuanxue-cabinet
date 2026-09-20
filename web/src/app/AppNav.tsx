@@ -4,7 +4,7 @@
 // человека снизу (ADR-0043): «Профиль» (ADR-0045) и «Выйти» приходят
 // готовыми узлами через пропсы — сама навигация про авторизацию не знает
 // (CLAUDE.md «Логика вне компонентов»). На телефоне блок человека рисует
-// AppShell.tsx под содержимым, эта колонка там — только четыре пункта.
+// AppShell.tsx под содержимым, эта колонка там — только пункты меню.
 // Вынесено из AppShell.tsx: там иначе два набора стилей и ветка на файл в
 // 150 строк (CLAUDE.md «Храповики», «Логика вне компонентов»).
 import type { ReactNode } from 'react';
@@ -39,7 +39,7 @@ interface AppNavProps {
    * телефоне его держит подвал AppShell.tsx, поэтому мобильный вызов может
    * их не передавать вовсе. */
   profileLink?: ReactNode;
-  /** Ссылка на «Уведомления» (ADR-0065), своей строкой над «Профиль ·
+  /** Ссылка на «Уведомления» (ADR-0063), своей строкой над «Профиль ·
    * Выйти» — расчёт ширины у JSX ниже. Навигация про уведомления не знает,
    * узел приходит готовым, как profileLink/logoutButton (CLAUDE.md «Логика
    * вне компонентов»). */
@@ -65,7 +65,7 @@ export function AppNav({
   // не один стиль на двоих (bottomNavStyles.ts: bottomLinkStyle/bottomPillStyle).
   if (isMobile) {
     return (
-      <nav style={bottomStyle} aria-label={SECTIONS_LABEL}>
+      <nav style={bottomStyle(items.length)} aria-label={SECTIONS_LABEL}>
         {items.map(({ to, label }) => {
           const isActive = active === to;
           return (

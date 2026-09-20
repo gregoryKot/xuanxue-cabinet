@@ -1,7 +1,7 @@
 // Страница занятия — адрес, а не лист поверх списка (ADR-0033, образец —
 // exam-items/ExamItemEditorForm.tsx). Сверху вниз: возврат к «Занятиям»,
 // рубрика с датой, поля занятия, подвал с сохранением и отменой занятия,
-// ниже — «Отправить ссылку сейчас» и записи.
+// ниже — «Отправить ссылку сейчас», записи и материалы (ADR-0056).
 //
 // Отмена занятия идёт через подтверждение (ConfirmDialog + useConfirmedRemove):
 // она снимает занятие с рассылки, случайное касание не должно её вызывать.
@@ -22,6 +22,7 @@ import { formatDateTime } from '../lib/formatDate';
 import { useTeachers } from '../people/useTeachers';
 import { LessonEditorFooter } from './LessonEditorFooter';
 import { LessonFormFields } from './LessonFormFields';
+import { LessonMaterialsSection } from './LessonMaterialsSection';
 import { RecordingSection } from './RecordingSection';
 import { SendNowButton } from './SendNowButton';
 import { useLessonForm } from './useLessonForm';
@@ -44,8 +45,8 @@ interface LessonEditorFormProps {
 
 export function LessonEditorForm({ lesson, classes, editor }: LessonEditorFormProps) {
   const navigate = useNavigate();
-  // `void` у navigate — он возвращает промис (react-router 7), а вызывающие
-  // места ждут обычную функцию без результата.
+  // `void` — navigate возвращает промис (react-router 7), а зовущим его
+  // местам нужна обычная функция без результата.
   const goToList = () => void navigate(PLANNING_PATH);
   const form = useLessonForm(lesson, classes, editor.create, editor.update);
   const teachersState = useTeachers();
@@ -125,6 +126,10 @@ export function LessonEditorForm({ lesson, classes, editor }: LessonEditorFormPr
               recordings={recordings}
               onAdd={handleAddRecording}
             />
+            {/* Материалы — сразу под записью (ADR-0056): «что было во вторник»
+                собрано в одном месте. Свою волосяную линию сверху секция несёт
+                сама (editorSectionStyle внутри неё). */}
+            <LessonMaterialsSection lessonId={lesson.id} />
           </div>
         )}
       </form>

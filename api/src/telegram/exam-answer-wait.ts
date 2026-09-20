@@ -9,7 +9,10 @@ import type { BotSessionKind } from './bot-session.schema';
 
 // Снять видео или найти время на текст ответа можно не сразу — те же 12
 // часов, что у «Запись?» (bot-session.service.ts, RECORDING_WAIT_HOURS).
-const EXAM_ANSWER_WAIT_HOURS = 12;
+// Экспортирована — то же окно у ожидания скриншота оплаты (payment-wait.ts,
+// ADR-0050): «принесите файл, когда сможете» — одна и та же интуиция про то,
+// сколько ждать человека с фото в руках, не новое число ради нового смысла.
+export const EXAM_ANSWER_WAIT_HOURS = 12;
 
 export interface ExamAnswerWaitUpdate {
   kind: BotSessionKind;

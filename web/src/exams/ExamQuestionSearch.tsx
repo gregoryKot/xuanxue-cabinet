@@ -8,8 +8,8 @@
 import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { EXAM_LIMITS, type ExamItemDto } from '@xuanxue/shared';
-import { inputStyle } from '../components/Field';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { SearchField } from '../components/SearchField';
 import { textLinkButtonStyle, textLinkStyle } from '../components/screenLayout';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
 import { filterQuestionCandidates } from './examQuestions';
@@ -72,16 +72,7 @@ export function ExamQuestionSearch({
 
   return (
     <div style={wrapStyle}>
-      <label>
-        <span className="xuanxue-sr-only">{SEARCH_LABEL}</span>
-        <input
-          type="search"
-          style={inputStyle}
-          placeholder={SEARCH_LABEL}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </label>
+      <SearchField label={SEARCH_LABEL} value={query} onChange={setQuery} />
 
       {bankLoading && <p style={noteStyle}>{LOADING_TEXT}</p>}
 

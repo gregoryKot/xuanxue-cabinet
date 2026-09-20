@@ -52,7 +52,7 @@ import {
 } from '../api/apiPaths';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
-type RouteLoader = () => Promise<{ default: ComponentType }>;
+export type RouteLoader = () => Promise<{ default: ComponentType }>;
 
 /** GET-пути данных этого экрана — что предзагрузить (prefetchFirstScreen.ts). */
 type RoutePrefetch = (pathname: string) => string[];
@@ -193,11 +193,11 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [entityPath(CHANNELS_PATH, lastSegment(pathname))],
   },
-  // «Библиотека» (слой 3.2, docs/PLAN.md §14) — подэкран «Занятий», вход
-  // кнопкой в шапке PlanningActions.tsx, не пункт меню (ADR-0025). Занятия
-  // расписания нужны и списку (рубрикация строки, MaterialCard.tsx), и форме
-  // (привязка галочками, MaterialClassesField.tsx) — греем их вместе с самим
-  // ресурсом.
+  // «Материалы» — раздел меню штата, пятый пункт навигации (ADR-0055), не
+  // подэкран «Занятий» и не кнопка в шапке (так было раньше). Занятия
+  // расписания нужны и списку (рубрикация строки, MaterialCard.tsx), и
+  // форме (привязка галочками, MaterialClassesField.tsx) — греем их вместе
+  // с самим ресурсом.
   materials: {
     path: '/materials',
     load: () => import('../materials/MaterialsScreen'),
@@ -314,7 +314,7 @@ export const ROUTE_MODULES = {
     prefetch: () => [NOTIFICATION_PREFS_PATH],
   },
   // Личное место человека, не раздел домена — как «/profile» выше, вход не из
-  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0065). Открыт
+  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0063). Открыт
   // любой роли (screenAccess.ts, canSeeRoute).
   notifications: {
     path: '/notifications',
@@ -339,7 +339,7 @@ export const ROUTE_MODULES = {
   },
   // «Записи занятий» (слой 3.3, docs/PLAN.md §14) — подэкран «Занятий», вход
   // карточкой SectionLink на LessonsScreen.tsx, не пункт меню (ADR-0025), тот
-  // же приём, что у «Библиотеки» штата (materials выше).
+  // же приём, что у «Библиотеки» ученика (library ниже).
   archive: {
     path: '/archive',
     load: () => import('../student/ArchiveScreen'),
