@@ -5,10 +5,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
-import { Model, Types } from 'mongoose';
+import { Model, type Types } from 'mongoose';
 import {
   CLASS_NOT_FOUND_MESSAGE,
-  LIST_LIMIT_MAX,
   type AddRecordingInput,
   type CreateLessonInput,
   type LessonDto,
@@ -28,16 +27,15 @@ import { UserRecord } from '../users/user.schema';
 import { findLinkBroadcastStatusByLessonId } from './lesson-broadcast-status';
 import { LESSON_ENCRYPT_SCHEMA, LessonRecord } from './lesson.schema';
 import { toLessonDto, type LeanLesson } from './lesson.mapper';
-import { assertListWindow, parseUtcIso } from './lesson-dates';
 import { buildCreatePayload } from './lessons.create';
 import {
   LESSON_NOT_FOUND,
   assertDurationEditable,
   assertLessonId,
-  buildLessonsFilter,
   deleteOneOffLesson,
   findClassTitle,
   findLessonDto,
+  findLessonsList,
 } from './lessons.queries';
 import {
   assertHasRecordingSource,
@@ -60,21 +58,11 @@ export class LessonsService {
     private readonly materialModel: Model<MaterialRecord>,
   ) {}
 
+  // Окно и его обязательность — findLessonsList/resolveLessonsWindow
+  // (ADR-0078): без тега окно обязательно и сортировка по возрастанию, с
+  // тегом без окна — от новых к старым по всей истории (lessons.queries.ts).
   async list(query: ListLessonsQuery): Promise<LessonDto[]> {
-    const from = parseUtcIso(query.from, 'from');
-    const to = parseUtcIso(query.to, 'to');
-    assertListWindow(from, to);
-    if (query.classId !== undefined && !Types.ObjectId.isValid(query.classId)) {
-      throw new NotFoundError(CLASS_NOT_FOUND_MESSAGE);
-    }
-    const filter = await buildLessonsFilter(query, from, to, this.classModel);
-    const docs = await this.model
-      .find(filter)
-      .sort({ startsAt: 1 })
-      // По умолчанию максимум, не LIST_LIMIT_DEFAULT: экран «Планирование»
-      // показывает весь горизонт целиком (30 слотов × 4 недели < 200).
-      .limit(query.limit ?? LIST_LIMIT_MAX)
-      .lean<LeanLesson[]>();
+    const docs = await findLessonsList(this.model, this.classModel, query);
     // Статус ссылки на карточке (docs/PLAN.md §6 п.3, см. lesson-broadcast-status.ts).
     const statusByLessonId = await findLinkBroadcastStatusByLessonId(
       this.broadcast,

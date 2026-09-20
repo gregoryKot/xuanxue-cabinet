@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { InvalidInputError } from '../common/errors';
-import { assertListWindow, parseUtcIso } from './lesson-dates';
+import { assertListWindow, parseUtcIso, resolveLessonsWindow } from './lesson-dates';
 
 describe('parseUtcIso', () => {
   it('валидный ISO 8601 с Z — DateTime в UTC', () => {
@@ -50,5 +50,53 @@ describe('assertListWindow', () => {
 
   it('окно ровно в горизонт (4 недели) — не бросает', () => {
     expect(() => assertListWindow(FROM, FROM.plus({ weeks: 4 }))).not.toThrow();
+  });
+});
+
+// ADR-0078: окно обязательно, если нет тега; одно поле окна без другого —
+// ошибка независимо от тега. Одно место для правила — здесь, юнит-тест без
+// Mongo (сервисный сценарий против настоящей базы — lessons.service.spec.ts).
+describe('resolveLessonsWindow', () => {
+  const FROM = '2026-09-01T00:00:00Z';
+  const TO = '2026-09-08T00:00:00Z';
+
+  it('окно есть, тега нет — как раньше, возвращает разобранные границы', () => {
+    const window = resolveLessonsWindow(FROM, TO, undefined);
+    expect(window?.from.toISO()).toBe('2026-09-01T00:00:00.000Z');
+    expect(window?.to.toISO()).toBe('2026-09-08T00:00:00.000Z');
+  });
+
+  it('ни окна, ни тега — InvalidInputError (по-прежнему «дай всё» запрещено)', () => {
+    expect(() => resolveLessonsWindow(undefined, undefined, undefined)).toThrow(
+      InvalidInputError,
+    );
+    expect(() => resolveLessonsWindow(undefined, undefined, '')).toThrow(
+      InvalidInputError,
+    );
+  });
+
+  it('нет окна, есть тег — undefined (окно законно опущено, ADR-0078)', () => {
+    expect(resolveLessonsWindow(undefined, undefined, 'дракон')).toBeUndefined();
+  });
+
+  it('from без to — ошибка и с тегом, и без', () => {
+    expect(() => resolveLessonsWindow(FROM, undefined, undefined)).toThrow(
+      InvalidInputError,
+    );
+    expect(() => resolveLessonsWindow(FROM, undefined, 'дракон')).toThrow(
+      InvalidInputError,
+    );
+  });
+
+  it('to без from — тоже ошибка', () => {
+    expect(() => resolveLessonsWindow(undefined, TO, 'дракон')).toThrow(
+      InvalidInputError,
+    );
+  });
+
+  it('окно шире горизонта планировщика — та же ошибка, что у assertListWindow', () => {
+    expect(() => resolveLessonsWindow(FROM, '2026-10-15T00:00:00Z', undefined)).toThrow(
+      '4 недел',
+    );
   });
 });
