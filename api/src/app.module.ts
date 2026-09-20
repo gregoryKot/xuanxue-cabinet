@@ -17,6 +17,7 @@ import { ClassesModule } from './classes/classes.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
+import { ClientErrorsModule } from './client-errors/client-errors.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { ExamImagesModule } from './exam-images/exam-images.module';
@@ -74,6 +75,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     DeliveriesModule,
     ExamsModule,
     ExamImagesModule,
+    ClientErrorsModule,
     GradingPresetsModule,
     MaterialsModule,
     NotificationsModule,

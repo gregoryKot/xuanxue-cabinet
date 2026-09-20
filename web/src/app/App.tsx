@@ -3,7 +3,7 @@
 // публичные страницы и то, что оборачивает всё остальное.
 // AuthProvider — единственный источник сессии для всего дерева (ErrorBoundary
 // — здесь, а не в main.tsx: main.tsx остаётся тонкой точкой входа).
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthProvider';
 import { RequireAuth } from '../auth/RequireAuth';
@@ -12,13 +12,14 @@ import { SkeletonLines } from '../components/Skeleton';
 import { AppShell } from './AppShell';
 import { cabinetRoutes } from './cabinetRoutes';
 import { FirstScreenPrefetch } from './FirstScreenPrefetch';
+import { lazyRoute } from './lazyRoute';
 import { ROUTE_MODULES } from './routeModules';
 
-const LoginScreen = lazy(ROUTE_MODULES.login.load);
-const EmailLoginCallbackScreen = lazy(ROUTE_MODULES.emailLogin.load);
-const JoinScreen = lazy(ROUTE_MODULES.join.load);
-const WelcomeScreen = lazy(ROUTE_MODULES.welcome.load);
-const EmailConfirmScreen = lazy(ROUTE_MODULES.emailConfirm.load);
+const LoginScreen = lazyRoute(ROUTE_MODULES.login.load);
+const EmailLoginCallbackScreen = lazyRoute(ROUTE_MODULES.emailLogin.load);
+const JoinScreen = lazyRoute(ROUTE_MODULES.join.load);
+const WelcomeScreen = lazyRoute(ROUTE_MODULES.welcome.load);
+const EmailConfirmScreen = lazyRoute(ROUTE_MODULES.emailConfirm.load);
 
 const routeFallback = (
   <main style={{ padding: 24 }}>

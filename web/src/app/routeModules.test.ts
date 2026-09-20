@@ -58,10 +58,10 @@ describe('matchRoute', () => {
     await expect(ROUTE_MODULES.emailConfirm.load()).resolves.toHaveProperty('default');
   });
 
-  // Центр уведомлений (ADR-0065) — свой чанк, греется в фоне, как «Профиль».
+  // Центр уведомлений (ADR-0063) — свой чанк, греется в фоне, как «Профиль».
   // Загрузчик зовём по-настоящему: опечатка в пути модуля иначе всплыла бы
   // только в браузере, пустым экраном под Suspense.
-  it('экран «Уведомления» — свой чанк, греется в фоне (ADR-0065)', async () => {
+  it('экран «Уведомления» — свой чанк, греется в фоне (ADR-0063)', async () => {
     expect(ROUTE_MODULES.notifications.warm).toBe(true);
     await expect(ROUTE_MODULES.notifications.load()).resolves.toHaveProperty('default');
   });

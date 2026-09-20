@@ -77,6 +77,13 @@ export {
   splitPersonName,
 } from './person-name';
 export { CSRF_HEADER, isMutatingMethod } from './csrf';
+export type { ClientErrorKind, ReportClientErrorInput } from './client-errors';
+export {
+  CLIENT_ERROR_KINDS,
+  CLIENT_ERROR_LIMITS,
+  CLIENT_ERROR_PATH_RE,
+  clampClientErrorText,
+} from './client-errors';
 export type {
   ClassDto,
   CreateClassInput,

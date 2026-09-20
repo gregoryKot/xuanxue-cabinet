@@ -16,7 +16,9 @@
 // Тег (ADR-0058) больше не хвост подписи, а действие (ADR-0068): пилюля под
 // подписью ставит тот же фильтр библиотеки, что и пилюли над списком.
 // Выбранный тег живёт на экране («tag» в LibraryScreen.tsx) — карточка сама
-// его не хранит, второго источника правды нет.
+// его не хранит, второго источника правды нет. У архива (ArchivedLessonCard.tsx,
+// ADR-0056) фильтра библиотеки нет — selectedTag/onSelectTag там не передаются
+// вовсе (см. StudentMaterialCardTagProps), а не приходят с пустым обработчиком.
 //
 // Закрытый материал (ADR-0048): сегодня сервер всегда отдаёт `url` и
 // никогда `locked` — рубильник платного доступа приезжает следующим PR.
@@ -36,6 +38,10 @@ const LOCKED_EXPLANATION =
 const TAGS_GROUP_LABEL = 'Теги материала';
 
 const rowStyle: CSSProperties = { padding: '16px 20px' };
+// Компактный вариант (проп `compact`) — материал внутри карточки занятия
+// архива уже стоит на паддинге строки занятия (lessonRowStyle), свой боковой
+// паддинг там даёт двойной отступ и чужеродную рамку.
+const compactRowStyle: CSSProperties = { padding: '10px 0' };
 const actionRowStyle: CSSProperties = { marginTop: 8 };
 const lockedTextStyle: CSSProperties = {
   margin: 0,
@@ -59,27 +65,42 @@ const tagsRowStyle: CSSProperties = {
   marginTop: 4,
 };
 
-interface StudentMaterialCardProps {
+interface StudentMaterialCardBaseProps {
   material: MyMaterialDto;
-  /** Выбранный тег фильтра библиотеки (ADR-0068) — тот же `tag`, что у
-   * пилюль над списком (LibraryScreen.tsx). Пустая строка — «Все». */
-  selectedTag: string;
-  /** Ставит тег фильтром библиотеки; повторное нажатие по уже выбранному
-   * тегу снимает его (пустая строка) — приём из ListFilters.tsx. */
-  onSelectTag: (tag: string) => void;
   /** Последняя строка общей карточки списка — без нижней волосяной линии
    * (LibraryScreen.tsx, docs/adr/0043). */
   isLast?: boolean;
+  /** Материал внутри карточки занятия архива (ArchivedLessonCard.tsx,
+   * ADR-0056) — не своя строка списка библиотеки: боковые паддинги там
+   * лишние, отступ уже даёт сама строка занятия. */
+  compact?: boolean;
 }
+
+/** Тег — действие фильтра библиотеки (ADR-0068), а не подпись сама по себе:
+ * без `onSelectTag` ставить его было бы некуда. Поэтому оба пропса — пара, не
+ * два независимых необязательных поля (LibraryScreen.tsx передаёт оба,
+ * ArchivedLessonCard.tsx — ни одного). */
+type StudentMaterialCardTagProps =
+  | { selectedTag: string; onSelectTag: (tag: string) => void }
+  | { selectedTag?: undefined; onSelectTag?: undefined };
+
+type StudentMaterialCardProps = StudentMaterialCardBaseProps &
+  StudentMaterialCardTagProps;
 
 export function StudentMaterialCard({
   material,
   selectedTag,
   onSelectTag,
   isLast = false,
+  compact = false,
 }: StudentMaterialCardProps) {
   return (
-    <li style={{ ...rowStyle, borderBottom: isLast ? 'none' : '1px solid var(--panel)' }}>
+    <li
+      style={{
+        ...(compact ? compactRowStyle : rowStyle),
+        borderBottom: isLast ? 'none' : '1px solid var(--panel)',
+      }}
+    >
       <div style={listCardTitleStyle}>{material.title}</div>
       <div style={listCardMetaStyle}>
         {/* Порядок — вид, занятия (тот же приём, что у MaterialCard.tsx);
@@ -87,7 +108,10 @@ export function StudentMaterialCard({
             текст (ADR-0068). */}
         {[MATERIAL_KIND_LABELS[material.kind], ...material.classTitles].join(' · ')}
       </div>
-      {material.tags.length > 0 && (
+      {/* Без onSelectTag (карточка занятия архива) фильтра библиотеки нет —
+          неактивная пилюля была бы мёртвой кнопкой (CLAUDE.md), строку не
+          рисуем вовсе. */}
+      {material.tags.length > 0 && onSelectTag && (
         <div style={tagsRowStyle} role="group" aria-label={TAGS_GROUP_LABEL}>
           {material.tags.map((tag) => (
             <button
