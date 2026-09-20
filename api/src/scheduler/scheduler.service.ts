@@ -103,7 +103,7 @@ export class SchedulerService implements OnApplicationShutdown {
       (n) => this.paymentScreenshotSweepService.removeExpired(n),
     )) ?? { removed: 0, orphans: 0 };
 
-    // ADR-0076: объект в R2, на который не сослался материал (упала запись,
+    // ADR-0079: объект в R2, на который не сослался материал (упала запись,
     // не удалилось при замене), уходит суткой позже — журнал storage_orphans.
     const { removed: filesRemoved } = (await this.step('файлы-сироты', now, (n) =>
       this.storageOrphansService.sweep(n),

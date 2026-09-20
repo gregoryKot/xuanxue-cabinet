@@ -194,7 +194,7 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
     });
   });
 
-  describe('уборка (ADR-0057, ADR-0076)', () => {
+  describe('уборка (ADR-0057, ADR-0079)', () => {
     it('замена файла уносит прежний объект', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const material = await api.materialWithFile(cookie, OPEN_MATERIAL);
@@ -245,7 +245,7 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
 
       expect(res.status).toBe(204);
       // Объект остался в хранилище — его заберёт шаг планировщика по записи
-      // в storage_orphans (ADR-0076), а учитель отказа не увидел.
+      // в storage_orphans (ADR-0079), а учитель отказа не увидел.
       expect(store.objects.size).toBe(1);
     });
   });

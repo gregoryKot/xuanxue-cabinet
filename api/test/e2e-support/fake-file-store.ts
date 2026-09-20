@@ -21,7 +21,7 @@ export class FakeFileStore {
   readonly objects = new Map<string, StoredObject>();
   enabled = true;
   /** Сколько раз хранилище отказало подряд — нужно тесту «удалить не вышло,
-   * ключ остался журналу» (ADR-0076). */
+   * ключ остался журналу» (ADR-0079). */
   failRemove = false;
 
   get isEnabled(): boolean {

@@ -10,6 +10,7 @@ import { profileNamedAt } from './0009-profile-named-at.migration';
 import { dropUserTz } from './0010-drop-user-tz.migration';
 import { notificationPrefsTeacherMessageRemoved } from './0011-notification-prefs-teacher-message-removed.migration';
 import { notificationPrefsLessonSoonRemoved } from './0012-notification-prefs-lesson-soon-removed.migration';
+import { seedExamForm1 } from './0013-exam-form-1.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -44,4 +45,5 @@ export const MIGRATIONS: Migration[] = [
   dropUserTz,
   notificationPrefsTeacherMessageRemoved,
   notificationPrefsLessonSoonRemoved,
+  seedExamForm1,
 ];

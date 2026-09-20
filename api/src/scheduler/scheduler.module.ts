@@ -61,7 +61,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { SettingsModule } from '../settings/settings.module';
-// StorageModule — ради StorageOrphansService: шаг «файлы-сироты» (ADR-0076).
+// StorageModule — ради StorageOrphansService: шаг «файлы-сироты» (ADR-0079).
 // Хранилище о планировщике не знает, цикла нет.
 import { StorageModule } from '../storage/storage.module';
 import { TelegramModule } from '../telegram/telegram.module';
