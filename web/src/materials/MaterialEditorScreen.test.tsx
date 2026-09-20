@@ -62,7 +62,11 @@ function mockMaterial(material: MaterialDto) {
   });
 }
 
-/** Материал и занятия уже пришли — единственные запросы монтирования позади. */
+/** Материал и занятия пришли, поля на экране. Запросы монтирования при этом
+ * позади не все: подсказку тегов (useMaterialTagOptions.ts) поля заказывают
+ * сами, и её запрос уходит в тот же миг — до или после этого ожидания, как
+ * решит планировщик React. Поэтому ответы на действие после этой точки
+ * ставятся по пути (mockApiByPath), а не очередью `…Once`. */
 async function waitForMounted() {
   await screen.findByLabelText('Название');
 }
@@ -334,9 +338,19 @@ describe('MaterialEditorScreen — правка', () => {
 
     renderAt('/materials/m1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Проверьте поля.', 400, 'invalid_input', ['url: недоступен']),
-    );
+    // Ответ на клик — по пути (правило у mockApiByPath в test-support):
+    // очередь `…Once` здесь забирала подсказка тегов, сохранение проходило
+    // успешно, экран уезжал на список — тест мигал 6 раз на 300 монтирований
+    // (расследование 2026-09-20). Путь сохранения тот же, что у чтения
+    // материала: страница после сохранения его не перечитывает, так что
+    // ошибку получает именно PATCH.
+    mockApiByPath({
+      '/materials/m1': new ApiError('Проверьте поля.', 400, 'invalid_input', [
+        'url: недоступен',
+      ]),
+      '/materials': makeMaterial(),
+      '/classes': [makeClass()],
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     const alert = await screen.findByRole('alert');
