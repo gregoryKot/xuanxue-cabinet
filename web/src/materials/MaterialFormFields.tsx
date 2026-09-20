@@ -4,15 +4,13 @@
 // привязка к занятиям расписания, доступ и теги — то, что спрашивают, когда
 // материал заводят как материал библиотеки, а не как ссылку с одного занятия.
 import { TAG_LIMITS, type ClassDto } from '@xuanxue/shared';
-import { Field, inputStyle } from '../components/Field';
+import { TagsField } from '../components/TagsField';
 import { MaterialAccessField } from './MaterialAccessField';
 import { MaterialBasicFields, errorFor } from './MaterialBasicFields';
 import { MaterialClassesField } from './MaterialClassesField';
 import type { MaterialFormError, MaterialFormState } from './materialFormInput';
 import { useMaterialTagOptions } from './useMaterialTagOptions';
 
-const TAG_OPTIONS_ID = 'material-tag-options';
-const TAG_LEGEND = 'Теги';
 // ADR-0058: теги — рубрикация, не служебная пометка, и их видит ученик —
 // значит, ни имени, ни телефона в тексте тега быть не должно.
 const TAG_HINT = `Через запятую: «для старшей», «24 формы» — до ${TAG_LIMITS.perRecord}. Их видит ученик: без имени и телефона.`;
@@ -33,6 +31,8 @@ export function MaterialFormFields({
   error,
   classes,
 }: MaterialFormFieldsProps) {
+  // Сбой useMaterialTagOptions.ts просто оставляет список пустым — без
+  // подсказок, но поле работает как обычный текстовый ввод.
   const tagOptions = useMaterialTagOptions();
 
   return (
@@ -50,21 +50,13 @@ export function MaterialFormFields({
         onChange={(access) => setField('access', access)}
       />
 
-      <Field label={TAG_LEGEND} hint={TAG_HINT} error={errorFor(error, 'tags')}>
-        <input
-          style={inputStyle}
-          list={TAG_OPTIONS_ID}
-          value={state.tagsText}
-          onChange={(e) => setField('tagsText', e.target.value)}
-        />
-        {/* Сбой useMaterialTagOptions.ts просто оставляет список пустым —
-            без подсказок, но поле работает как обычный текстовый ввод. */}
-        <datalist id={TAG_OPTIONS_ID}>
-          {tagOptions.map((tag) => (
-            <option key={tag} value={tag} />
-          ))}
-        </datalist>
-      </Field>
+      <TagsField
+        value={state.tagsText}
+        onChange={(value) => setField('tagsText', value)}
+        hint={TAG_HINT}
+        options={tagOptions}
+        error={errorFor(error, 'tags')}
+      />
     </>
   );
 }

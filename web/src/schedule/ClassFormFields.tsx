@@ -5,6 +5,7 @@
 import {
   CLASS_FORMATS,
   CLASS_LIMITS,
+  TAG_LIMITS,
   type ClassFormat,
   type TeacherOptionDto,
 } from '@xuanxue/shared';
@@ -14,6 +15,12 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Toggle } from '../components/Toggle';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
+
+// ADR-0072: тег здесь — постоянный признак курса («начинающие»,
+// «медитация»), не пометка конкретного вечера (та живёт у формы даты,
+// planning/lessonFormInput.ts) — два поля рядом не заведёшь, подсказка
+// объясняет это словом «курса».
+const TAG_HINT = `Постоянный признак курса: «начинающие», «медитация» — через запятую, до ${TAG_LIMITS.perRecord}`;
 
 interface ClassFormFieldsProps {
   state: ClassFormState;
@@ -53,6 +60,14 @@ export function ClassFormFields({
           style={inputStyle}
           value={state.groupLabel}
           onChange={(e) => setField('groupLabel', e.target.value)}
+        />
+      </Field>
+
+      <Field label="Теги" hint={TAG_HINT}>
+        <input
+          style={inputStyle}
+          value={state.tagsText}
+          onChange={(e) => setField('tagsText', e.target.value)}
         />
       </Field>
 
