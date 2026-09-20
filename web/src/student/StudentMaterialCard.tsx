@@ -28,13 +28,8 @@ import type { CSSProperties } from 'react';
 import { MATERIAL_KIND_LABELS, type MyMaterialDto } from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
 import { pillActiveStyle, pillStyle } from '../components/pillStyles';
-import { textLinkStyle } from '../components/screenLayout';
+import { StudentMaterialCardActions } from './StudentMaterialCardActions';
 
-const OPEN_LABEL = 'Открыть';
-// VOICE.md: конкретика и действие — что случилось и что сделать дальше;
-// текст ADR-0048 уже прошёл эту проверку.
-const LOCKED_EXPLANATION =
-  'Этот материал школа открывает после оплаты месяца. Напишите в чат школы — там подскажут, как оплатить.';
 const TAGS_GROUP_LABEL = 'Теги материала';
 
 const rowStyle: CSSProperties = { padding: '16px 20px' };
@@ -42,20 +37,6 @@ const rowStyle: CSSProperties = { padding: '16px 20px' };
 // архива уже стоит на паддинге строки занятия (lessonRowStyle), свой боковой
 // паддинг там даёт двойной отступ и чужеродную рамку.
 const compactRowStyle: CSSProperties = { padding: '10px 0' };
-const actionRowStyle: CSSProperties = { marginTop: 8 };
-const lockedTextStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-};
-// Цель нажатия ≥44 по высоте (CLAUDE.md «Доступность») — тот же приём, что у
-// recordingLinkStyle в ArchivedLessonCard.tsx.
-const openLinkStyle: CSSProperties = {
-  ...textLinkStyle,
-  display: 'inline-flex',
-  alignItems: 'center',
-  minHeight: 44,
-};
 // Перенос пилюль на экране 360px (CLAUDE.md «Мобильный экран первым») — у
 // материала бывает несколько тегов, в одну строку они не поместятся.
 const tagsRowStyle: CSSProperties = {
@@ -128,17 +109,7 @@ export function StudentMaterialCard({
           ))}
         </div>
       )}
-      <div style={actionRowStyle}>
-        {material.locked ? (
-          <p style={lockedTextStyle}>{LOCKED_EXPLANATION}</p>
-        ) : (
-          material.url && (
-            <a href={material.url} target="_blank" rel="noreferrer" style={openLinkStyle}>
-              {OPEN_LABEL}
-            </a>
-          )
-        )}
-      </div>
+      <StudentMaterialCardActions material={material} />
     </li>
   );
 }
