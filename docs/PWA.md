@@ -8,6 +8,15 @@
 - Манифест — статический файл `web/public/manifest.webmanifest`, `index.html`
   ссылается на него `<link rel="manifest">`. Иконки — `web/public/icons/`
   (192/512 и maskable). Гейт: `scripts/check-pwa.mjs` после сборки.
+- **Цвет оболочки — из палитры кабинета.** Фон иконки, `theme_color` и
+  `background_color` манифеста и `<meta name="theme-color">` в `web/index.html`
+  равны токену `--paper`, знак на иконке — `--terracotta`
+  ([ADR-0043](adr/0043-visual-direction-warm-school.md), значения — в
+  `web/src/index.css`). Иконку на домашнем экране, заставку и полоску браузера
+  человек видит раньше любого экрана: знак там обязан совпадать со знаком в
+  кабинете. Сменилась палитра — правятся все четыре места и перегенерируется
+  растр: `node scripts/generate-pwa-icons.mjs` (четыре png лежат в гите). Гейт:
+  `scripts/check-pwa.mjs` сверяет цвета с токенами и краснеет на расхождении.
 - Safe-area iOS — только в `@media (display-mode: standalone)`
   (`web/src/pwa/standalone.css`): в браузере вкладка сама рисует чёлку, в
   установленном приложении контент обязан не залезать под неё сам.
