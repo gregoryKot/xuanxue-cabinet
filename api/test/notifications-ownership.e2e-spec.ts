@@ -36,29 +36,19 @@ describe('Настройки уведомлений — владение (e2e)',
 
     const patchA = await withCsrf(request(server()).patch('/api/me/notifications'))
       .set('Cookie', cookieA)
-      .send({ kind: 'teacher_message', enabled: false });
+      .send({ kind: 'exam_result', enabled: false });
     expect(patchA.status).toBe(200);
-    expect((patchA.body as NotificationPrefsDto).enabled).toEqual([
-      'lesson_soon',
-      'exam_result',
-    ]);
+    expect((patchA.body as NotificationPrefsDto).enabled).toEqual([]);
 
     const getA = await request(server())
       .get('/api/me/notifications')
       .set('Cookie', cookieA);
-    expect((getA.body as NotificationPrefsDto).enabled).toEqual([
-      'lesson_soon',
-      'exam_result',
-    ]);
+    expect((getA.body as NotificationPrefsDto).enabled).toEqual([]);
 
     const getB = await request(server())
       .get('/api/me/notifications')
       .set('Cookie', cookieB);
-    expect((getB.body as NotificationPrefsDto).enabled).toEqual([
-      'lesson_soon',
-      'teacher_message',
-      'exam_result',
-    ]);
+    expect((getB.body as NotificationPrefsDto).enabled).toEqual(['exam_result']);
   });
 
   it('чужой userId в теле — 400, не подмена (whitelist: true его не пропускает)', async () => {
@@ -73,7 +63,7 @@ describe('Настройки уведомлений — владение (e2e)',
 
     const res = await withCsrf(request(server()).patch('/api/me/notifications'))
       .set('Cookie', cookieA)
-      .send({ kind: 'teacher_message', enabled: false, userId: userIdB });
+      .send({ kind: 'exam_result', enabled: false, userId: userIdB });
 
     expect(res.status).toBe(400);
     expect((res.body as ApiErrorBody).code).toBe('invalid_input');
@@ -82,11 +72,7 @@ describe('Настройки уведомлений — владение (e2e)',
     const getB = await request(server())
       .get('/api/me/notifications')
       .set('Cookie', cookieB);
-    expect((getB.body as NotificationPrefsDto).enabled).toEqual([
-      'lesson_soon',
-      'teacher_message',
-      'exam_result',
-    ]);
+    expect((getB.body as NotificationPrefsDto).enabled).toEqual(['exam_result']);
   });
 
   it('гость без единой роли — доступ есть, дефолт как у ученика', async () => {
@@ -100,11 +86,7 @@ describe('Настройки уведомлений — владение (e2e)',
       .set('Cookie', cookie);
 
     expect(res.status).toBe(200);
-    expect((res.body as NotificationPrefsDto).enabled).toEqual([
-      'lesson_soon',
-      'teacher_message',
-      'exam_result',
-    ]);
+    expect((res.body as NotificationPrefsDto).enabled).toEqual(['exam_result']);
   });
 
   it('без сессии — 401 на обоих маршрутах', async () => {

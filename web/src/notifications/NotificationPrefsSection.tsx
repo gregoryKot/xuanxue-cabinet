@@ -75,7 +75,15 @@ export function NotificationPrefsSection() {
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 
-      {loading && !error && <SkeletonList rows={Math.max(kinds.length, 2)} h={56} />}
+      {/* Скелетон по форме будущего содержимого (CLAUDE.md «Загрузка»):
+          сколько видов человеку положено по ролям, столько и строк —
+          `kinds` считается из `me.roles` сразу, ответа сервера не ждёт.
+          Пол в единицу, а не в двойку (ADR-0062): у ученика вид ровно один,
+          и прежняя двойка рисовала две заглушки, а потом одну настоящую
+          строку — макет прыгал на каждой загрузке «Профиля». Единица нужна
+          на случай, когда `me` ещё не пришёл и список пуст: пустой скелетон
+          — это пустота, а её правило как раз запрещает. */}
+      {loading && !error && <SkeletonList rows={Math.max(kinds.length, 1)} h={56} />}
 
       {!loading && !error && (
         <ul style={listStyle}>

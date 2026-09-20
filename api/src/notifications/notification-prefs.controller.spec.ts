@@ -16,7 +16,7 @@ const USER: UserLean = {
   status: 'active',
 };
 
-const PREFS_DTO: NotificationPrefsDto = { enabled: ['lesson_soon', 'teacher_message'] };
+const PREFS_DTO: NotificationPrefsDto = { enabled: ['lesson_soon', 'exam_result'] };
 
 async function buildController(
   service: Partial<NotificationPrefsService> = {},
@@ -41,7 +41,7 @@ describe('NotificationPrefsController', () => {
     const set = jest.fn().mockResolvedValue(undefined);
     const get = jest.fn().mockResolvedValue(PREFS_DTO);
     const controller = await buildController({ set, get });
-    const body: UpdateNotificationPrefsDto = { kind: 'teacher_message', enabled: false };
+    const body: UpdateNotificationPrefsDto = { kind: 'exam_result', enabled: false };
 
     await expect(controller.update(body, USER)).resolves.toEqual(PREFS_DTO);
     expect(set).toHaveBeenCalledWith(USER.id, body.kind, body.enabled);

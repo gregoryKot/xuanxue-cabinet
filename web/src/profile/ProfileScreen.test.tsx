@@ -76,25 +76,36 @@ describe('ProfileScreen — имя', () => {
 });
 
 describe('ProfileScreen — список уведомлений по роли', () => {
-  it('ученик видит свои два вида уведомлений с подписью и подсказкой', async () => {
-    renderScreen(STUDENT, { enabled: ['lesson_soon'] });
+  it('ученик видит один вид уведомлений — результат экзамена (ADR-0062)', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
 
-    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
-    expect(screen.getByText('Сообщение от учителя')).toBeInTheDocument();
+    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
     expect(
-      screen.getByText('Придёт перед началом занятия — за сколько, настраивает школа.'),
+      screen.getByText(
+        'Придёт, когда учитель проверит вашу работу и выставит результат.',
+      ),
     ).toBeInTheDocument();
     // «Черновик поста» — вид для учителя, ученику его показывать незачем.
     expect(screen.queryByText('Черновик поста')).not.toBeInTheDocument();
+    // «Занятие скоро» определён в контракте, но выключен по умолчанию до
+    // отдельного решения владельца его вернуть (ADR-0062) — сейчас ученику
+    // не показывается вовсе.
+    expect(screen.queryByText('Занятие скоро')).not.toBeInTheDocument();
   });
 
-  it('включённый вид — переключатель отмечен, выключенный — нет', async () => {
-    renderScreen(STUDENT, { enabled: ['lesson_soon'] });
-    await screen.findByText('Занятие скоро');
+  it('включённый вид — переключатель отмечен', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
+    await screen.findByText('Результат экзамена');
 
-    expect(screen.getByRole('checkbox', { name: 'Занятие скоро' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Результат экзамена' })).toBeChecked();
+  });
+
+  it('выключенный вид — переключатель не отмечен', async () => {
+    renderScreen(STUDENT, { enabled: [] });
+    await screen.findByText('Результат экзамена');
+
     expect(
-      screen.getByRole('checkbox', { name: 'Сообщение от учителя' }),
+      screen.getByRole('checkbox', { name: 'Результат экзамена' }),
     ).not.toBeChecked();
   });
 
@@ -142,11 +153,11 @@ describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
 describe('ProfileScreen — переключение уведомлений (read-after-write)', () => {
   it('клик шлёт PATCH с нужным телом и перерисовывает состояние', async () => {
     renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Занятие скоро' });
+    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
     expect(toggle).not.toBeChecked();
 
     mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce({ enabled: ['lesson_soon'] });
+    mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
     toggle.click();
 
     await waitFor(() => expect(toggle).toBeChecked());
@@ -154,14 +165,14 @@ describe('ProfileScreen — переключение уведомлений (rea
       '/me/notifications',
       expect.objectContaining({
         method: 'PATCH',
-        body: { kind: 'lesson_soon', enabled: true },
+        body: { kind: 'exam_result', enabled: true },
       }),
     );
   });
 
   it('ошибка сети — сообщение под списком, переключатель остаётся в прежнем положении', async () => {
     renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Занятие скоро' });
+    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
 
     mockedApiFetch.mockRejectedValueOnce(
       new ApiError(
@@ -182,7 +193,7 @@ describe('ProfileScreen — переключение уведомлений (rea
 
   it('неопознанная ошибка (не ApiError) — общий текст, не текст исключения', async () => {
     renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Занятие скоро' });
+    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
 
     mockedApiFetch.mockRejectedValueOnce(new Error('boom'));
     toggle.click();
@@ -230,6 +241,6 @@ describe('ProfileScreen — ошибка загрузки уведомлений
     retryButton.click();
 
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
+    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
   });
 });

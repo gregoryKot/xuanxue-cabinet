@@ -384,7 +384,7 @@ describe('App', () => {
 
     renderAt('/profile');
 
-    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
+    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
   });
 
   // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за

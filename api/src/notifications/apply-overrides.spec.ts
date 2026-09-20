@@ -3,17 +3,17 @@ import { applyOverrides } from './apply-overrides';
 
 describe('applyOverrides', () => {
   it('без overrides — возвращает дефолт как есть', () => {
-    expect(applyOverrides(['lesson_soon', 'teacher_message'], [])).toEqual([
+    expect(applyOverrides(['lesson_soon', 'exam_result'], [])).toEqual([
       'lesson_soon',
-      'teacher_message',
+      'exam_result',
     ]);
   });
 
   it('enabled:false убирает вид из дефолта', () => {
     expect(
       applyOverrides(
-        ['lesson_soon', 'teacher_message'],
-        [{ kind: 'teacher_message', enabled: false }],
+        ['lesson_soon', 'exam_result'],
+        [{ kind: 'exam_result', enabled: false }],
       ),
     ).toEqual(['lesson_soon']);
   });
