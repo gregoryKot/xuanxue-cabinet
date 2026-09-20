@@ -135,7 +135,9 @@ export function validateSeedClasses(seed: SeedFile): SeedValidationResult {
 // CLI (seed-classes.ts печатает его пользователю при exit-коде 1). Тексты
 // самого class-validator — по-английски, оставлены как есть: перевод
 // сообщений валидации решается отдельной задачей, не в этом PR.
-function flatten(errors: ValidationError[], prefix: string): SeedValidationError[] {
+// export: тем же разбором путей пользуется seed-exam-file.ts (свои префиксы
+// "exam"/"questions[i]") — не копия (CLAUDE.md «одна механика», jscpd).
+export function flatten(errors: ValidationError[], prefix: string): SeedValidationError[] {
   const result: SeedValidationError[] = [];
   for (const error of errors) {
     const isIndex = /^\d+$/.test(error.property);
