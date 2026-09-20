@@ -12,6 +12,7 @@ import type { DateTime } from 'luxon';
 import {
   ACCESS_MESSAGE,
   EMAIL_CONFIRM_EXPIRED_MESSAGE,
+  EMAIL_CONFIRM_RESEND_TOO_SOON_MESSAGE,
   EMAIL_LINK_OTHER_EMAIL_MESSAGE,
   EMAIL_LINK_TAKEN_MESSAGE,
   EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE,
@@ -59,6 +60,14 @@ export class EmailLinkService {
 
     await this.userEmailService.setPendingEmail(user.id, normalized);
     const token = await this.tokens.issue(user.id, normalized, now);
+    // `null` — на этот же адрес письмо ушло пару минут назад
+    // (EMAIL_CONFIRM_RESEND_COOLDOWN_MIN): квота Resend — 100 писем в сутки,
+    // и повторные нажатия «Прислать ссылку ещё раз» выжгли бы её на всю
+    // школу. Отказ честный: прежняя ссылка жива ещё час, и текст об этом
+    // говорит. `pendingEmail` выше уже записан — адрес тот же самый, повтор
+    // ничего не портит.
+    if (!token) throw new ConflictError(EMAIL_CONFIRM_RESEND_TOO_SOON_MESSAGE);
+
     const link = `${publicUrl}/email/confirm?token=${token}`;
     await this.mail.sendEmailConfirmLink({ to: normalized, link });
   }

@@ -8,6 +8,7 @@ import { DateTime } from 'luxon';
 import {
   ACCESS_MESSAGE,
   EMAIL_CONFIRM_EXPIRED_MESSAGE,
+  EMAIL_CONFIRM_RESEND_TOO_SOON_MESSAGE,
   EMAIL_LINK_OTHER_EMAIL_MESSAGE,
   EMAIL_LINK_TAKEN_MESSAGE,
   EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE,
@@ -60,7 +61,7 @@ function fakeConfig(values: Record<string, string | undefined>): ConfigService {
 }
 
 function fakeTokens(
-  issue: (userId: string, email: string) => Promise<string> = () =>
+  issue: (userId: string, email: string) => Promise<string | null> = () =>
     Promise.resolve('t'.repeat(64)),
   consume: (token: string) => Promise<EmailLinkTokenOwner | null> = () =>
     Promise.reject(new Error('consume() не должен был вызываться в этом тесте')),
@@ -212,6 +213,26 @@ describe('EmailLinkService.link', () => {
     expect(calls).toEqual(['setPendingEmail', 'issue', 'sendEmailConfirmLink']);
     expect(sentTo).toBe('student@example.com');
     expect(sentLink).toBe(`https://xuanxue.su/email/confirm?token=${'a'.repeat(64)}`);
+  });
+
+  // Кулдаун повторной отправки: issue() отдаёт `null`, письмо не уходит, а
+  // человек получает честный отказ — квоту Resend (100 писем в сутки)
+  // повторные нажатия иначе выжигают на всю школу (ADR-0059).
+  it('повтор раньше кулдауна — ConflictError и письма нет', async () => {
+    let sent = 0;
+    const service = buildService({
+      tokens: fakeTokens(() => Promise.resolve(null)),
+      mail: fakeMail(() => {
+        sent += 1;
+        return Promise.resolve();
+      }),
+    });
+
+    const err = await captureError(service.link(BASE_USER, 'maria@example.com', NOW));
+
+    expect(err).toBeInstanceOf(ConflictError);
+    expect((err as Error).message).toBe(EMAIL_CONFIRM_RESEND_TOO_SOON_MESSAGE);
+    expect(sent).toBe(0);
   });
 });
 

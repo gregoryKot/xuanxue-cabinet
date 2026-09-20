@@ -38,8 +38,18 @@ describe('EmailLinkTokenService', () => {
     await memory.stop();
   });
 
+  /** issue() отдаёт `null` только внутри кулдауна повторной отправки
+   * (EMAIL_CONFIRM_RESEND_COOLDOWN_MIN). Тесты ниже кулдаун не задевают, и
+   * токен там обязан быть — проверяем это одним местом, а не `!` в каждой
+   * строке (CLAUDE.md «Код»: non-null assertion — с объяснением или никак). */
+  async function issued(userId: string, email: string, now: DateTime): Promise<string> {
+    const token = await service.issue(userId, email, now);
+    if (token === null) throw new Error('issue вернул null вне кулдауна');
+    return token;
+  }
+
   it('issue → consume: read-after-write, возвращает userId и email владельца', async () => {
-    const token = await service.issue(USER_ID, EMAIL, NOW);
+    const token = await issued(USER_ID, EMAIL, NOW);
 
     const owner = await service.consume(token, NOW.plus({ minutes: 1 }));
 
@@ -47,7 +57,7 @@ describe('EmailLinkTokenService', () => {
   });
 
   it('consume: тот же токен второй раз — null, одноразовость', async () => {
-    const token = await service.issue(USER_ID, EMAIL, NOW);
+    const token = await issued(USER_ID, EMAIL, NOW);
 
     const first = await service.consume(token, NOW);
     const second = await service.consume(token, NOW);
@@ -61,7 +71,7 @@ describe('EmailLinkTokenService', () => {
   });
 
   it('consume: протухший (старше TTL) — null', async () => {
-    const token = await service.issue(USER_ID, EMAIL, NOW);
+    const token = await issued(USER_ID, EMAIL, NOW);
 
     const owner = await service.consume(
       token,
@@ -72,7 +82,7 @@ describe('EmailLinkTokenService', () => {
   });
 
   it('consume: ровно на границе TTL — ещё действует ($gt строгий, но граница не задета)', async () => {
-    const token = await service.issue(USER_ID, EMAIL, NOW);
+    const token = await issued(USER_ID, EMAIL, NOW);
 
     const owner = await service.consume(
       token,
@@ -83,7 +93,7 @@ describe('EmailLinkTokenService', () => {
   });
 
   it('issue: повторный вызов удаляет прежний токен того же пользователя', async () => {
-    const firstToken = await service.issue(USER_ID, EMAIL, NOW);
+    const firstToken = await issued(USER_ID, EMAIL, NOW);
 
     await service.issue(USER_ID, 'другой@example.com', NOW.plus({ minutes: 1 }));
 
@@ -92,9 +102,52 @@ describe('EmailLinkTokenService', () => {
     ).resolves.toBeNull();
   });
 
+  // Кулдаун повторной отправки (EMAIL_CONFIRM_RESEND_COOLDOWN_MIN): квота
+  // Resend — 100 писем в сутки, и «Прислать ссылку ещё раз» без потолка
+  // выжигает её на всю школу (ADR-0059, замечание соседней сессии 2026-09-20).
+  it('повтор на тот же адрес раньше кулдауна — null, письмо не уходит', async () => {
+    await issued(USER_ID, EMAIL, NOW);
+
+    const again = await service.issue(USER_ID, EMAIL, NOW.plus({ minutes: 1 }));
+
+    expect(again).toBeNull();
+  });
+
+  it('после кулдауна тот же адрес снова выпускает токен', async () => {
+    const first = await issued(USER_ID, EMAIL, NOW);
+
+    const second = await issued(USER_ID, EMAIL, NOW.plus({ minutes: 3 }));
+
+    expect(second).not.toBe(first);
+    // Прежний сгорел: активная ссылка подтверждения всегда одна.
+    await expect(service.consume(first, NOW.plus({ minutes: 3 }))).resolves.toBeNull();
+  });
+
+  // Смена адреса — другое намерение, а не повтор: ждать там нечего, иначе
+  // опечатавшийся человек заперт на две минуты со своей же опечаткой.
+  it('другой адрес внутри кулдауна — письмо уходит сразу', async () => {
+    await issued(USER_ID, EMAIL, NOW);
+
+    const other = await service.issue(
+      USER_ID,
+      'другой@example.com',
+      NOW.plus({ minutes: 1 }),
+    );
+
+    expect(other).not.toBeNull();
+  });
+
+  it('кулдаун у каждого свой — чужая отправка не запирает', async () => {
+    await issued(USER_ID, EMAIL, NOW);
+
+    const other = await service.issue(OTHER_USER_ID, EMAIL, NOW.plus({ minutes: 1 }));
+
+    expect(other).not.toBeNull();
+  });
+
   it('разные пользователи не мешают друг другу — оба потребляются своим владельцем', async () => {
-    const tokenA = await service.issue(USER_ID, EMAIL, NOW);
-    const tokenB = await service.issue(OTHER_USER_ID, 'другой@example.com', NOW);
+    const tokenA = await issued(USER_ID, EMAIL, NOW);
+    const tokenB = await issued(OTHER_USER_ID, 'другой@example.com', NOW);
 
     expect(await service.consume(tokenA, NOW)).toEqual({ userId: USER_ID, email: EMAIL });
     expect(await service.consume(tokenB, NOW)).toEqual({
