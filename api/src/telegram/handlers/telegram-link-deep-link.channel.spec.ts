@@ -8,7 +8,7 @@
 //
 // Регрессия «баг с #131» (тот же класс ошибки для ветки join_<code>, починен
 // там в #163): успешная связка по link_<code> ставила telegramId на аккаунт,
-// но записи в channels не появлялось — PersonalChats.chatFor/hasActiveChat
+// но записи в channels не появлялось — PersonalChats.chatFor/hasActiveChatFor
 // (personal-chats.ts) без неё человека не находят, и уведомление боту не
 // уходит ни при каких условиях.
 import { DateTime } from 'luxon';

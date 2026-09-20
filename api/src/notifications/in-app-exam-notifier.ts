@@ -1,17 +1,16 @@
-// InAppExamNotifier — третье плечо ExamNotifier рядом с TelegramExamNotifier
-// и MailExamNotifier (слой in-app уведомлений, ADR-0061): пишет запись в
-// `notifications`, которую отдаёт лента кабинета (`GET /me/inbox`,
-// InboxService) — колокольчик, не чат и не письмо. В отличие от Telegram и
-// почты кабинет не требует ни активного чата с ботом, ни email — записать
-// можно любому, поэтому получатели `attempt_submitted` берутся не из
-// `PersonalChats.listFor` (фильтрует по чату) и не из `listStaffWithEmail`
-// (требует почту), а через `UsersService.listActiveWithRoles(roles)` — тот
-// же пул ролей, что у Telegram/почты (`rolesWithNotification`), но без
-// требования канала связи. Переключатель вида уважается так же, как в
-// остальных каналах (NotificationPrefsService) — выключил человек
-// `exam_result`, записи не будет. Отправка — best-effort и не бросает
-// наружу: сбой резолва (Mongo, гонка индекса) ловится try/catch и уходит в
-// Logger.warn, тем же приёмом, что у соседних плеч.
+// InAppExamNotifier — второе плечо ExamNotifier рядом с TelegramExamNotifier
+// (слой in-app уведомлений, ADR-0061): пишет запись в `notifications`,
+// которую отдаёт лента кабинета (`GET /me/inbox`, InboxService) —
+// колокольчик, не чат. В отличие от Telegram кабинет не требует активного
+// чата с ботом — записать можно любому, поэтому получатели
+// `attempt_submitted` берутся не из `PersonalChats.listFor` (фильтрует по
+// чату), а через `UsersService.listActiveWithRoles(roles)` — тот же пул
+// ролей, что у Telegram (`rolesWithNotification`), но без требования канала
+// связи. Переключатель вида уважается так же, как в остальных каналах
+// (NotificationPrefsService) — выключил человек `exam_result`, записи не
+// будет. Отправка — best-effort и не бросает наружу: сбой резолва (Mongo,
+// гонка индекса) ловится try/catch и уходит в Logger.warn, тем же приёмом,
+// что у соседнего плеча.
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';

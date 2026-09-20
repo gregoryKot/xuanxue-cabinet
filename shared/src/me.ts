@@ -35,7 +35,7 @@ export interface MeDto {
   /** Telegram — ключ входа этого аккаунта (`users.telegramId` есть). */
   telegramLinked: boolean;
   /** «Боту есть куда мне писать» — активный личный чат
-   * (`PersonalChats.hasActiveChat`), а не просто известный `telegramId`
+   * (`PersonalChats.hasActiveChatFor`), а не просто известный `telegramId`
    * (ADR-0042). Разница видна на входе через виджет Telegram: `telegramId`
    * появляется сразу, а канал заводит только нажатое в боте «Запустить», и
    * без него уведомления молча не доходят. */

@@ -2,10 +2,9 @@
 // связки Telegram (ADR-0034, users/telegram-link.service.ts): там код из
 // кабинета уходит в Telegram и бот ставит telegramId, здесь ссылка из письма
 // уходит на почту и подтверждение ставит email. Живёт в auth/, а не в
-// users/: сервису нужен MailService, а UsersModule → MailModule закольцевало
-// бы граф модулей (MailExamNotifier уже ходит в UsersService в обратную
-// сторону, users/mail-exam-notifier не заводим). AuthModule уже импортирует
-// и UsersModule, и MailModule — цикла нет.
+// users/: сервису нужен MailService, а AuthModule уже импортирует и
+// UsersModule, и MailModule — цикла нет и заводить новую связь между
+// модулями ради одного сервиса не нужно.
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';

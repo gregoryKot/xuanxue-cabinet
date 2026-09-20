@@ -1,13 +1,12 @@
 // Активные люди с любой из переданных ролей — кандидаты в получатели записи
 // кабинета (InAppExamNotifier, api/src/notifications/in-app-exam-notifier.ts).
 // В отличие от list-contacts-with-roles.ts (PersonalChats — требует
-// telegramId) и list-staff-with-email.ts (MailExamNotifier — требует email),
-// кабинету не нужен канал связи: записать можно любому активному человеку
-// с нужной ролью. status: 'active' — та же оговорка, что у
-// TeachersService.listTeachers и LoginIdentityService (SECURITY §9,
+// telegramId), кабинету не нужен канал связи: записать можно любому
+// активному человеку с нужной ролью. status: 'active' — та же оговорка, что
+// у TeachersService.listTeachers и LoginIdentityService (SECURITY §9,
 // ADR-0026/0036): заблокированный человек не должен получать новые
 // уведомления ни в одном канале. Вынесено отдельным файлом тем же приёмом,
-// что list-staff-with-email.ts: UsersService не растёт за лимит файла
+// что list-contacts-with-roles.ts: UsersService не растёт за лимит файла
 // (CLAUDE.md «Храповики»).
 import type { Model, Types } from 'mongoose';
 import { LIST_LIMIT_MAX, type UserRole } from '@xuanxue/shared';

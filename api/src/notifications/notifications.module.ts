@@ -5,8 +5,7 @@
 // MongooseModule — ExamsModule, который уже импортирует этот модуль ради
 // NotificationPrefsService, собирает им же InAppExamNotifier
 // (in-app-exam-notifier.ts, провайдер ExamsModule, не этого модуля — тот же
-// приём, что у MailExamNotifier/TelegramExamNotifier, комментарий в
-// exams.module.ts).
+// приём, что у TelegramExamNotifier, комментарий в exams.module.ts).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { InboxController } from './inbox.controller';
