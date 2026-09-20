@@ -1,9 +1,10 @@
 // Строка материала в списке — вид, привязанные занятия, отметка доступа
 // («после оплаты» или «только преподаватели», docs/PLAN.md §14, ADR-0047,
-// ADR-0048, ADR-0058). Тот же приём, что у ChannelCard.tsx: общую карточку
-// красит список (oneCardListStyle), строка несёт только паддинг и волосяную
-// линию снизу — у последней строки линии нет. <button>, не <div onClick>
-// (CLAUDE.md «Доступность»).
+// ADR-0048, ADR-0058) и теги отдельной строкой пилюль под подписью — каждая
+// ведёт на экран тега (ADR-0075). Тот же приём, что у ChannelCard.tsx: общую
+// карточку красит список (oneCardListStyle), строка несёт только паддинг и
+// волосяную линию снизу — у последней строки линии нет. <button>, не
+// <div onClick> (CLAUDE.md «Доступность»).
 import type { CSSProperties } from 'react';
 import {
   MATERIAL_ACCESS_LABELS,
@@ -11,6 +12,9 @@ import {
   type MaterialDto,
 } from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
+import { TagPillLinks } from '../components/TagPillLinks';
+
+const TAGS_GROUP_LABEL = 'Теги материала';
 
 // `<button>` приносит свою рамку и фон — без явного сброса строка выглядела
 // бы обведённой поверх общей карточки списка (тот же приём, что у
@@ -47,14 +51,14 @@ export function MaterialCard({
   const classTitles = material.classIds
     .map((id) => classTitleById.get(id))
     .filter((title): title is string => Boolean(title));
-  // Порядок — вид, занятия, теги, отметка доступа (ADR-0058: теги после вида
-  // и занятий, отметка — как последний служебный флаг, тот же порядок, что у
-  // версии вопроса в ExamItemCard.tsx). `all` не отмечается вовсе — только
-  // отступление от базового «видят все ученики» стоит подписывать.
+  // Порядок — вид, занятия, отметка доступа (ADR-0058, ADR-0047): `all` не
+  // отмечается вовсе — только отступление от базового «видят все ученики»
+  // стоит подписывать. Теги (ADR-0058) переехали из этой строки в свою
+  // строку пилюль ниже (ADR-0075: пилюля ведёт на экран тега) — <a> внутри
+  // <button> невалиден и недоступен, join одной строкой для ссылок не годится.
   const metaParts = [
     MATERIAL_KIND_LABELS[material.kind],
     ...classTitles,
-    ...material.tags,
     ...(material.access === 'all' ? [] : [MATERIAL_ACCESS_LABELS[material.access]]),
   ];
 
@@ -64,6 +68,7 @@ export function MaterialCard({
         <div style={listCardTitleStyle}>{material.title}</div>
         <div style={listCardMetaStyle}>{metaParts.join(' · ')}</div>
       </button>
+      <TagPillLinks tags={material.tags} groupLabel={TAGS_GROUP_LABEL} />
     </li>
   );
 }

@@ -68,6 +68,24 @@ describe('LessonCard', () => {
     expect(screen.getByText('Ошибка отправки')).toBeInTheDocument();
   });
 
+  // ADR-0075: тег даты — пилюля-ссылка на экран тега, отдельной строкой под
+  // кнопкой (TagPillLinks.tsx), не часть строки темы.
+  it('без тегов — строки пилюль нет вовсе', () => {
+    renderCard(makeLesson({ tags: [] }));
+    expect(screen.queryByRole('group', { name: 'Теги занятия' })).not.toBeInTheDocument();
+  });
+
+  it('теги — пилюли-ссылки на экран тега с этим тегом', () => {
+    renderCard(makeLesson({ tags: ['дракон', 'начинающие'] }));
+
+    expect(screen.getByRole('group', { name: 'Теги занятия' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'дракон' })).toHaveAttribute(
+      'href',
+      `/materials/tags?tag=${encodeURIComponent('дракон')}`,
+    );
+    expect(screen.getByRole('link', { name: 'начинающие' })).toBeInTheDocument();
+  });
+
   it('cancelled — «Отменена» и ссылка на «Рассылки», клик по ссылке не всплывает до кнопки', () => {
     const onSelect = vi.fn();
     render(

@@ -44,6 +44,7 @@ describe('matchRoute', () => {
     );
     expect(loaderAt('/materials')).toBe(ROUTE_MODULES.materials.load);
     expect(loaderAt('/materials/new')).toBe(ROUTE_MODULES.materialNew.load);
+    expect(loaderAt('/materials/tags')).toBe(ROUTE_MODULES.materialsTags.load);
     expect(loaderAt('/materials/652f00000000000000000008')).toBe(
       ROUTE_MODULES.materialEditor.load,
     );
@@ -70,6 +71,14 @@ describe('matchRoute', () => {
     expect(ROUTE_MODULES.materialNew.load).toBe(ROUTE_MODULES.materialEditor.load);
     await expect(ROUTE_MODULES.materialNew.load()).resolves.toHaveProperty('default');
     await expect(ROUTE_MODULES.materials.load()).resolves.toHaveProperty('default');
+  });
+
+  // Экран тега (ADR-0075) — свой чанк, отдельный от редактора материала:
+  // «/materials/tags» не должен провалиться в materialEditor (:materialId
+  // совпал бы со строкой «tags»), если бы запись стояла после него.
+  it('«/materials/tags» — свой чанк, не редактор материала', async () => {
+    expect(ROUTE_MODULES.materialsTags.load).not.toBe(ROUTE_MODULES.materialEditor.load);
+    await expect(ROUTE_MODULES.materialsTags.load()).resolves.toHaveProperty('default');
   });
 
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {
