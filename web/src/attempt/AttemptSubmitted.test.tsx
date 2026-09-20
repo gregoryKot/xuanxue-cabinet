@@ -66,6 +66,7 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     media: [],
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
+    offersTelegramLink: false,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
     ...overrides,
@@ -155,7 +156,7 @@ describe('AttemptSubmitted — предложение связать Telegram (A
 
   it('есть видео-вопрос — кнопка одна, вопросная: две подряд с разными причинами читались бы как две связки', async () => {
     await renderSubmitted(makeAttempt({ blocks: VIDEO_BLOCKS }), {
-      video: { telegramLinked: false },
+      video: { telegramLinked: false, offersTelegramLink: true },
     });
 
     expect(screen.getAllByRole('button', { name: LINK_BUTTON_NAME })).toHaveLength(1);
