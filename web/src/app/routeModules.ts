@@ -52,7 +52,7 @@ import {
 } from '../api/apiPaths';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
-type RouteLoader = () => Promise<{ default: ComponentType }>;
+export type RouteLoader = () => Promise<{ default: ComponentType }>;
 
 /** GET-пути данных этого экрана — что предзагрузить (prefetchFirstScreen.ts). */
 type RoutePrefetch = (pathname: string) => string[];
