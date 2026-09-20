@@ -846,7 +846,6 @@
   "api/src/media/media-attempt-owner.ts": 30,
   "api/src/telegram/broadcast-cancel-message.ts": 30,
   "api/src/users/teachers.service.ts": 30,
-  "scripts/check-claude-md-size.mjs": 30,
   "shared/src/format-duration.ts": 30,
   "shared/src/plural-ru.ts": 30,
   "web/src/channels/useChannels.ts": 30,
