@@ -5,6 +5,7 @@
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
+import { TagsField } from '../components/TagsField';
 import type { ExamItemFormState } from './examItemFormInput';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16 };
@@ -54,16 +55,11 @@ export function ExamItemFormFields({ state, setField, error }: ExamItemFormField
         />
       </Field>
 
-      <Field
-        label="Теги"
+      <TagsField
+        value={state.tagsText}
+        onChange={(value) => setField('tagsText', value)}
         hint={`Через запятую — раздел программы, уровень. До ${EXAM_ITEM_LIMITS.tagsMax}`}
-      >
-        <input
-          style={inputStyle}
-          value={state.tagsText}
-          onChange={(e) => setField('tagsText', e.target.value)}
-        />
-      </Field>
+      />
     </div>
   );
 }

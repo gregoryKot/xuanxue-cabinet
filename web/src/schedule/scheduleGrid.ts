@@ -31,6 +31,11 @@ export interface ScheduleSlot {
    * п.1). Выключенный канал в channelIds не считается: рассылку он не
    * получит. */
   channelCount: number;
+  /** Постоянные теги курса (ClassDto.tags, ADR-0072) — SlotCard печатает их
+   * подписью, без пилюль: в сетке дня они ничего не фильтруют. Теги даты
+   * (lessons.tags, ADR-0073) сюда не подмешиваются — другое поле, другой
+   * экран. */
+  tags: string[];
 }
 
 export type ScheduleGrid = Record<Weekday, ScheduleSlot[]>;
@@ -96,6 +101,7 @@ export function buildScheduleGrid(
         active: cls.active,
         linkMissing: cls.format !== 'offline' && !cls.zoomLink,
         channelCount: countActiveChannels(cls.channelIds, activeChannelIds),
+        tags: cls.tags,
       });
     }
   }
