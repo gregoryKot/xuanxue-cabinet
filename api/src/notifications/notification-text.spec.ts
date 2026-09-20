@@ -20,14 +20,13 @@ describe('notificationText', () => {
     );
   });
 
-  // Виды из будущих слоёв (lesson_soon, teacher_message) своей формулировки
-  // ещё не имеют — лучше сухое название вида, чем пустая строка.
+  // Виды, которые в ленту пока не пишутся (post_draft и прочие штатные),
+  // своей формулировки не имеют — лучше сухое название вида, чем пустая
+  // строка.
   it('незнакомый вид падает на общее название из NOTIFICATION_LABELS', () => {
-    expect(notificationText({ kind: 'lesson_soon' })).toBe(
-      NOTIFICATION_LABELS.lesson_soon,
-    );
-    expect(notificationText({ kind: 'lesson_soon', examTitle: 'Форма 24' })).toBe(
-      `${NOTIFICATION_LABELS.lesson_soon} — Форма 24`,
+    expect(notificationText({ kind: 'post_draft' })).toBe(NOTIFICATION_LABELS.post_draft);
+    expect(notificationText({ kind: 'post_draft', examTitle: 'Форма 24' })).toBe(
+      `${NOTIFICATION_LABELS.post_draft} — Форма 24`,
     );
   });
 });

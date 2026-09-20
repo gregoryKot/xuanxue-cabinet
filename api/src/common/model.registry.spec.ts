@@ -278,7 +278,7 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
 
   it('notifications: без attemptId индекс частичный — копится сколько угодно раз', async () => {
     const Notification = connection.model<NotificationRecord>(NotificationRecord.name);
-    const base = { userId: 'u1', kind: 'lesson_soon' as const };
+    const base = { userId: 'u1', kind: 'post_draft' as const };
     await expect(Notification.create(base)).resolves.toBeDefined();
     await expect(Notification.create(base)).resolves.toBeDefined();
   });

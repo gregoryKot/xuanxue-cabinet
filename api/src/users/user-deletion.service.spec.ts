@@ -239,8 +239,8 @@ describe('UserDeletionService', () => {
       status: 'active',
     });
     await notificationPrefsModel.create([
-      { userId: student.id, overrides: [{ kind: 'lesson_soon', enabled: false }] },
-      { userId: other.id, overrides: [{ kind: 'lesson_soon', enabled: false }] },
+      { userId: student.id, overrides: [{ kind: 'post_draft', enabled: false }] },
+      { userId: other.id, overrides: [{ kind: 'post_draft', enabled: false }] },
     ]);
 
     await deletion.deleteAllUserData(student.id, 'кто-то-другой');

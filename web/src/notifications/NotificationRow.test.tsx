@@ -14,7 +14,7 @@ const NOW = '2026-09-20T10:00:00.000Z'; // 13:00 в Москве (зритель
 function makeItem(overrides: Partial<NotificationDto> = {}): NotificationDto {
   return {
     id: 'n1',
-    kind: 'lesson_soon',
+    kind: 'post_draft',
     text: 'Учитель написал вам',
     createdAt: '2026-09-20T09:00:00.000Z', // 12:00 в Москве, тот же день, что NOW
     ...overrides,

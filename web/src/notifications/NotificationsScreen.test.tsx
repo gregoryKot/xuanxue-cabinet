@@ -63,7 +63,7 @@ const ME_NOT_LINKED: MeDto = {
 function makeNotification(overrides: Partial<NotificationDto> = {}): NotificationDto {
   return {
     id: 'n1',
-    kind: 'lesson_soon',
+    kind: 'post_draft',
     text: 'Текст события',
     createdAt: '2026-09-20T09:00:00.000Z', // сегодня по Москве (зритель теста)
     ...overrides,
