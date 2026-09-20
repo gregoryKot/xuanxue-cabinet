@@ -18,6 +18,10 @@ import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 
 const TITLE = 'Уведомления, которые вам доступны:';
+// Бот и «Профиль» в кабинете переключают одно и то же (отзыв владельца
+// 2026-09-19, ADR-0065) — короткая строка тут же, чтобы не держать в двух
+// местах разные экраны и не путать, где менять.
+const CABINET_HINT = 'То же самое есть в кабинете, в «Профиле».';
 
 export interface NotificationsMenu {
   text: string;
@@ -40,7 +44,7 @@ export function buildNotificationsMenu(
   const buttons = available.map((kind) => [
     inlineButton(toggleButtonLabel(kind, enabledSet.has(kind)), 'notif', kind),
   ]);
-  return { text: `${TITLE}\n\n${lines.join('\n\n')}`, buttons };
+  return { text: `${TITLE}\n\n${lines.join('\n\n')}\n\n${CABINET_HINT}`, buttons };
 }
 
 function toggleButtonLabel(kind: NotificationKind, isEnabled: boolean): string {

@@ -70,4 +70,25 @@ describe('buildNotificationsMenu', () => {
 
     expect(menu.buttons).toHaveLength(1);
   });
+
+  it('строка про кабинет — на месте и у штата, и у ученика (ADR-0065)', () => {
+    const staffMenu = buildNotificationsMenu(['teacher'], ['post_draft']);
+    const studentMenu = buildNotificationsMenu([], ['exam_result']);
+
+    expect(staffMenu.text).toContain('То же самое есть в кабинете, в «Профиле».');
+    expect(studentMenu.text).toContain('То же самое есть в кабинете, в «Профиле».');
+  });
+
+  it('ученик с одним видом — меню не разваливается на пустых строках вокруг подсказки', () => {
+    const menu = buildNotificationsMenu([], ['exam_result']);
+
+    // Один вид + подсказка про кабинет — ровно два блока текста после
+    // заголовка, разделённые пустой строкой, без утроенных переносов.
+    expect(menu.text).toBe(
+      'Уведомления, которые вам доступны:\n\n' +
+        'Результат экзамена — включено\n' +
+        'Придёт, когда учитель проверит вашу работу и выставит результат.\n\n' +
+        'То же самое есть в кабинете, в «Профиле».',
+    );
+  });
 });

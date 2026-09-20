@@ -181,7 +181,7 @@ describe('TelegramLinkButton — возврат из Telegram (read-after-write)
   });
 });
 
-// Проп добавлен для «Уведомлений» (ADR-0063): терракота там уже занята
+// Проп добавлен для «Уведомлений» (ADR-0065): терракота там уже занята
 // точками непрочитанного, кнопка связки идёт вторичным силуэтом.
 describe('TelegramLinkButton — variant', () => {
   it('variant="secondary" доходит до кнопки', async () => {

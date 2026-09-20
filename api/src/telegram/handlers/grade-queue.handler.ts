@@ -2,8 +2,8 @@
 // сданного и непроверенного (ТЗ 4б.5, PLAN §12) — тот же фильтр
 // status=submitted, что очередь учителя в кабинете
 // (ExamAttemptsService.list через ExamBotPort.listSubmittedAttempts, не
-// вторая сборка). Доступ — тот же личный чат штата, что у /тема и
-// /уведомления (resolvePrivatePersonalChatId, private-teacher-chat.ts).
+// вторая сборка). Доступ — тот же личный чат штата, что у /тема
+// (resolvePrivatePersonalChatId, private-teacher-chat.ts).
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';

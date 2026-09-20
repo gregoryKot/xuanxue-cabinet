@@ -41,7 +41,7 @@ function renderShell(me: MeDto, initialPath = '/schedule') {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve({});
     if (path === '/auth/logout') return Promise.resolve(undefined);
-    // NotificationsProvider (ADR-0063) висит на корне оболочки и ходит в оба
+    // NotificationsProvider (ADR-0065) висит на корне оболочки и ходит в оба
     // адреса при каждом рендере — без заглушек тесты этого файла заливали бы
     // консоль отказами «неожиданный путь».
     if (path.startsWith('/me/inbox'))
@@ -248,9 +248,9 @@ describe('AppShell — учитель', () => {
   });
 });
 
-// ADR-0063: значок уведомлений — часть оболочки на обеих ширинах экрана,
+// ADR-0065: значок уведомлений — часть оболочки на обеих ширинах экрана,
 // читает общий счётчик через NotificationsProvider (добавлен в этом же PR).
-describe('AppShell — ссылка на уведомления (ADR-0063)', () => {
+describe('AppShell — ссылка на уведомления (ADR-0065)', () => {
   it('на широком экране — в блоке человека боковой колонки', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');

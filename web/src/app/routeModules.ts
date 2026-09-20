@@ -314,7 +314,7 @@ export const ROUTE_MODULES = {
     prefetch: () => [NOTIFICATION_PREFS_PATH],
   },
   // Личное место человека, не раздел домена — как «/profile» выше, вход не из
-  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0063). Открыт
+  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0065). Открыт
   // любой роли (screenAccess.ts, canSeeRoute).
   notifications: {
     path: '/notifications',

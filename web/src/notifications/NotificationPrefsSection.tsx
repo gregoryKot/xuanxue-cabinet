@@ -15,7 +15,7 @@ import {
 import { ApiError } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle } from '../components/screenLayout';
+import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
 import { useNotificationPrefs } from './useNotificationPrefs';
@@ -23,6 +23,10 @@ import { useNotificationPrefs } from './useNotificationPrefs';
 const HEADING = 'Уведомления';
 const EXPLANATION =
   'Здесь вы решаете, что вам приходит. У каждого вида — своя причина и свой переключатель.';
+// Бот и «Профиль» переключают одно и то же (отзыв владельца 2026-09-19,
+// ADR-0065) — короткая строка тут же, чтобы человек не держал в голове два
+// разных места ради одной настройки.
+const BOT_HINT = 'То же самое можно переключить в боте — командой /notifications.';
 const TOGGLE_ERROR_MESSAGE = 'Не удалось изменить уведомление. Попробуйте ещё раз.';
 
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
@@ -72,6 +76,7 @@ export function NotificationPrefsSection() {
         {HEADING}
       </h2>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
+      <p style={screenHintStyle}>{BOT_HINT}</p>
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 
