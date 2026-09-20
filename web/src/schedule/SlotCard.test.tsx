@@ -19,6 +19,7 @@ function makeSlot(overrides: Partial<ScheduleSlot> = {}): ScheduleSlot {
     active: true,
     linkMissing: false,
     channelCount: 0,
+    tags: [],
     ...overrides,
   };
 }
@@ -52,6 +53,25 @@ describe('SlotCard', () => {
     render(<SlotCard slot={makeSlot({ channelCount: 2 })} onSelect={vi.fn()} />);
 
     expect(screen.getByText(/2 канала/)).toBeInTheDocument();
+  });
+
+  it('теги курса — видны подписью рядом с форматом и каналами (ADR-0072)', () => {
+    render(
+      <SlotCard
+        slot={makeSlot({ tags: ['начинающие', 'медитация'] })}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/начинающие, медитация/)).toBeInTheDocument();
+  });
+
+  it('без тегов — в служебной строке добавки нет', () => {
+    render(<SlotCard slot={makeSlot({ tags: [] })} onSelect={vi.fn()} />);
+
+    expect(
+      screen.getByText(/^средняя группа · Онлайн · без каналов$/),
+    ).toBeInTheDocument();
   });
 
   it('клик вызывает onSelect', async () => {
@@ -105,5 +125,14 @@ describe('SlotCard — облик после отзыва 2026-09-19', () => {
     expect(screen.getByText('Ицзиньцзин и Бадуаньцзинь').style.overflowWrap).toBe(
       'anywhere',
     );
+  });
+
+  // ADR-0072: тег курса — свободный текст без верхнего предела на длину слова,
+  // колонка дня узкая (160px) — строка с тегами рвётся тем же приёмом, что и
+  // название выше, а не вылезает за карточку.
+  it('длинный тег рвётся внутри служебной строки, а не вылезает за карточку', () => {
+    render(<SlotCard slot={makeSlot({ tags: ['начинающие'] })} onSelect={vi.fn()} />);
+
+    expect(screen.getByText(/начинающие/).style.overflowWrap).toBe('anywhere');
   });
 });
