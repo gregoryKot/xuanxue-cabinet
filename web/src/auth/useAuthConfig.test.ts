@@ -30,6 +30,7 @@ describe('useAuthConfig', () => {
     const config: AuthConfigDto = {
       schoolSiteUrl: 'https://xuanxue.su',
       emailLoginEnabled: false,
+      fileStorageEnabled: false,
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -44,6 +45,7 @@ describe('useAuthConfig', () => {
       telegramBotId: 123456,
       schoolSiteUrl: 'https://x.example',
       emailLoginEnabled: false,
+      fileStorageEnabled: false,
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -68,6 +70,7 @@ describe('useAuthConfig', () => {
       telegramBotId: 1,
       schoolSiteUrl: 'https://x.example',
       emailLoginEnabled: false,
+      fileStorageEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(config);
 
@@ -94,6 +97,7 @@ describe('useAuthConfig', () => {
       telegramBotId: 2,
       schoolSiteUrl: 'https://fresh.example',
       emailLoginEnabled: false,
+      fileStorageEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(fresh);
 
@@ -107,6 +111,7 @@ describe('useAuthConfig', () => {
         telegramBotId: 1,
         schoolSiteUrl: 'https://stale.example',
         emailLoginEnabled: false,
+        fileStorageEnabled: false,
       });
     });
 

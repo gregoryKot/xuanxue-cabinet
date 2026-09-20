@@ -108,6 +108,24 @@ export function materialsListPath(kind: MaterialKind | '', tag: string = ''): st
   return `${MATERIALS_PATH}?${params.join('&')}`;
 }
 
+/** Файл материала в R2 (ADR-0057, слой 3.10) — один адрес у скачивания,
+ * замены и удаления (`GET`/`POST`/`DELETE /materials/:id/file`). Путь
+ * относительный, для `apiFetch` (та сама добавляет `/api`) — годится для
+ * замены/удаления. Прямая ссылка на скачивание (`<a href>`,
+ * MaterialFileField.tsx) собирает `/api` вручную поверх него: сервер
+ * отвечает 302 на подписанный адрес в другом домене, и это не запрос через
+ * apiFetch, а адрес, который переходом открывает сам браузер — тот же приём,
+ * что у examImageSrc выше. */
+export function materialFilePath(materialId: string): string {
+  return `${MATERIALS_PATH}/${materialId}/file`;
+}
+
+/** Адрес загрузки/замены файла — имя в query, сервер берёт его оттуда, не
+ * из тела: тело POST — сырые байты файла, без обёртки JSON (ADR-0057). */
+export function materialFileUploadPath(materialId: string, name: string): string {
+  return `${materialFilePath(materialId)}?name=${encodeURIComponent(name)}`;
+}
+
 export const SETTINGS_PATH = '/settings';
 
 const NEXT_LESSONS_LIMIT = 5;
