@@ -30,10 +30,6 @@ export interface AttemptVideoControls {
   /** Привязан ли Telegram к аккаунту (`MeDto.telegramLinked`) — без него бот
    * видео не примет, кнопка вела бы в тупик (RUNBOOK §8.17). */
   telegramLinked: boolean;
-  /** Отметка «у меня нет Telegram» (`MeDto.noTelegram`, ADR-0067) гасит
-   * предложение связки и здесь — собирается в AttemptScreen.tsx через
-   * `telegram/acceptsTelegramOffer.ts`, а не читается из `me` на месте. */
-  acceptsTelegramOffer: boolean;
   addMediaLink: (itemId: string, url: string) => Promise<boolean>;
   linkStateFor: (itemId: string) => AttemptMediaLinkState;
 }

@@ -20,7 +20,6 @@ import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { SkeletonLines } from '../components/Skeleton';
-import { acceptsTelegramOffer } from '../telegram/acceptsTelegramOffer';
 import { AttemptInProgress } from './AttemptInProgress';
 import { AttemptSubmitted } from './AttemptSubmitted';
 import { attemptPageStyle } from './attemptLayout';
@@ -61,7 +60,6 @@ export default function AttemptScreen() {
     media: attempt.media ?? [],
     telegramBotUsername: config?.telegramBotUsername,
     telegramLinked: me?.telegramLinked ?? false,
-    acceptsTelegramOffer: acceptsTelegramOffer(me),
     addMediaLink: media.addMediaLink,
     linkStateFor: media.linkStateFor,
   };

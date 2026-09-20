@@ -27,7 +27,6 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     media: [],
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
-    acceptsTelegramOffer: true,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
     ...overrides,
@@ -92,32 +91,6 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     expect(
       screen.queryByRole('button', { name: 'Связать Telegram' }),
     ).not.toBeInTheDocument();
-  });
-
-  // ADR-0067: отметка «у меня нет Telegram» гасит и это предложение связки,
-  // хотя условие здесь своё (`acceptsTelegramOffer`, не showsTelegramOffer,
-  // ADR-0066 «Последствия») — запасной путь (форма ссылки) остаётся на месте.
-  it('отметка «у меня нет Telegram» гасит кнопку связки', () => {
-    renderVideo(makeVideo({ telegramLinked: false, acceptsTelegramOffer: false }));
-
-    expect(
-      screen.queryByRole('button', { name: 'Связать Telegram' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/Свяжите его — и запись уйдёт одним сообщением/),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
-  });
-
-  // Кнопку бота решает `telegramLinked`, не отметка предложения связки:
-  // ADR-0067 прямо запрещает делать из неё рубильник отправки, она гасит
-  // только предложение (ADR-0066 «Последствия»), а не приём уже привязанных.
-  it('отметка не трогает кнопку бота у связанного', () => {
-    renderVideo(makeVideo({ acceptsTelegramOffer: false }));
-
-    expect(
-      screen.getByRole('link', { name: 'Отправить видео боту в Telegram' }),
-    ).toBeInTheDocument();
   });
 
   it('бота нет — прежняя подсказка про ссылку', () => {

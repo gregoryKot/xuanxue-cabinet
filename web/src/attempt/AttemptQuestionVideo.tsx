@@ -79,16 +79,7 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
         </a>
       )}
 
-      {/* Признак здесь `telegramLinked`, а не `botChatActive` из
-          showsTelegramOffer (ADR-0042), и это не расхождение, которое надо
-          «чинить»: бот привязывает видео по совпадению telegramId
-          (ADR-0023), так что связанному без чата с ботом эта кнопка не нужна
-          — его видео бот и так примет. Отметку «у меня нет Telegram»
-          (ADR-0067) условие всё равно читает, и через общий
-          acceptsTelegramOffer, а не вторым условием на месте (ADR-0066
-          «Последствия»). Запасной путь при этом остаётся: форма ссылки ниже
-          никуда не девается. */}
-      {telegramBotUsername && !video.telegramLinked && video.acceptsTelegramOffer && (
+      {telegramBotUsername && !video.telegramLinked && (
         <TelegramLinkButton explanation={TELEGRAM_NOT_LINKED_EXPLANATION} />
       )}
 
