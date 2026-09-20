@@ -6,6 +6,7 @@ import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
+import { MyExamsProvider } from '../student/MyExamsProvider';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { NotificationsProvider, useNotifications } from './NotificationsProvider';
 
@@ -37,10 +38,12 @@ describe('NotificationsProvider — один счётчик на всех', () =
     }
 
     render(
-      <NotificationsProvider>
-        <Count label="значок" />
-        <Count label="экран" />
-      </NotificationsProvider>,
+      <MyExamsProvider>
+        <NotificationsProvider>
+          <Count label="значок" />
+          <Count label="экран" />
+        </NotificationsProvider>
+      </MyExamsProvider>,
     );
 
     // Ради этого провайдер и существует: без общего контекста «Прочитать все»

@@ -8,6 +8,10 @@
 // изменений) и та же логика старта попытки (useMyExams.startAttempt —
 // идемпотентный POST, дальше сразу переход на экран сдачи).
 //
+// useMyExams — из MyExamsProvider.tsx (ADR-0063): список общий на всё
+// приложение, этот экран и центр уведомлений (счётчик у колокольчика) читают
+// один запрос GET /me/exams через контекст, а не заводят каждый свой.
+//
 // Новое здесь — рубрики: задания, к которым ученик ещё не приступал
 // (getExamAction === 'start'), идут первыми под своей рубрикой, остальные —
 // ниже под «Остальные». Разделение — splitNewTasks.ts, чистая функция с
@@ -20,9 +24,9 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
+import { useMyExams } from './MyExamsProvider';
 import { splitNewTasks } from './splitNewTasks';
 import { StudentExamCard } from './StudentExamCard';
-import { useMyExams } from './useMyExams';
 
 const TITLE = 'Задания';
 const EXPLANATION =

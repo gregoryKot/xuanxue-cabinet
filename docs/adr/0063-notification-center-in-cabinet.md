@@ -72,10 +72,11 @@ ADR-0045). Единственный путь уведомления — личн
 
 Данные ленты раздаёт один контекст `NotificationsProvider` на всю оболочку: значок и
 экран читают одно состояние, поэтому «Прочитать все» гасит цифру сразу, без похода в
-сеть. Цена — провайдер спрашивает `/me/exams` на любом экране, и у ученика на
-`/tasks` этот путь запрашивается дважды (второй раз — самим экраном). Обе выборки
-маленькие и идут параллельно, ни одна не удлиняет цепочку первого экрана; если это
-начнёт мешать, чинится общим кэшем выборки, а не вторым критерием «новое».
+сеть. Цена, названная здесь при принятии решения (`/me/exams` запрашивался дважды —
+своим контекстом и самим экраном «Задания»), снята тем же приёмом: `MyExamsProvider`
+(`web/src/student/MyExamsProvider.tsx`) — общий кэш этой выборки, контекст снаружи
+`NotificationsProvider` в `AppShell.tsx`. Экран и значок читают один и тот же запрос,
+а не заводят каждый свой.
 
 `markRead` перечитывает ленту (read-after-write, тот же приём, что у
 `useNotificationPrefs.setEnabled`), поэтому скелетон показывается только на первой
@@ -91,8 +92,11 @@ ADR-0045). Единственный путь уведомления — личн
 
 Гейты: `NotificationsScreen.test.tsx`, `NotificationRow.test.tsx`,
 `NewTaskCard.test.tsx`, `NotificationBell.test.tsx`, `NotificationsNavLink.test.tsx`,
-`useNotificationsData.test.ts`, `notificationFeed.test.ts` (границы суток в поясе
-читателя под `stubViewerTimeZone`), `notificationBadge.test.ts`,
+`useNotificationsData.test.ts`, `MyExamsProvider.test.tsx` и `TasksScreen.test.tsx`
+(регрессия на двойной запрос `/me/exams`: дедупликация у самого провайдера и экран
+вместе с центром уведомлений, как в оболочке — см. «Последствия»),
+`notificationFeed.test.ts` (границы суток в
+поясе читателя под `stubViewerTimeZone`), `notificationBadge.test.ts`,
 `showsTelegramOffer.test.ts`, `screenAccess.test.ts`
 (ученика не уводит редиректом), `routeModules.test.ts`, `routePrefetch.test.ts`,
 `check-route-collisions.mjs`, `check-shared-exports.mjs`.

@@ -6,9 +6,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
+import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
-import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import { NotificationsProvider } from '../notifications/NotificationsProvider';
+import {
+  mockApiByPath,
+  mockedApiFetch,
+  resetApiFetchBetweenTests,
+} from '../test-support/apiFetchMock';
+import { MyExamsProvider } from './MyExamsProvider';
 import TasksScreen from './TasksScreen';
 
 vi.mock('../api/http', async () => {
@@ -33,10 +40,12 @@ function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
 function renderScreen() {
   return render(
     <MemoryRouter initialEntries={['/']}>
-      <Routes>
-        <Route path="/" element={<TasksScreen />} />
-        <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
-      </Routes>
+      <MyExamsProvider>
+        <Routes>
+          <Route path="/" element={<TasksScreen />} />
+          <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
+        </Routes>
+      </MyExamsProvider>
     </MemoryRouter>,
   );
 }
@@ -168,5 +177,38 @@ describe('TasksScreen — старт попытки', () => {
 
     expect(await screen.findByRole('button', { name: 'Начать' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+// Состав как в проде: центр уведомлений (ADR-0063) висит у корня оболочки
+// (AppShell.tsx) и читает те же экзамены — счётчик новых заданий у
+// колокольчика. Пока список грузил каждый сам, экран «Задания» уходил в сеть
+// за одним и тем же дважды и держал вторую, расходящуюся копию состояния.
+// Дедупликацию самого провайдера проверяет MyExamsProvider.test.tsx; здесь —
+// что этим общим источником пользуется именно экран.
+describe('TasksScreen — список грузится один раз на экран и колокольчик', () => {
+  it('запрос GET /me/exams уходит один, а не по одному на каждого читателя', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [makeExam()],
+      [NOTIFICATIONS_FEED_PATH]: { items: [], unreadCount: 0 },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <MyExamsProvider>
+          <NotificationsProvider>
+            <Routes>
+              <Route path="/" element={<TasksScreen />} />
+            </Routes>
+          </NotificationsProvider>
+        </MyExamsProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Начать' })).toBeInTheDocument();
+    const examsCalls = mockedApiFetch.mock.calls.filter(
+      ([path]) => path === MY_EXAMS_PATH,
+    );
+    expect(examsCalls).toHaveLength(1);
   });
 });

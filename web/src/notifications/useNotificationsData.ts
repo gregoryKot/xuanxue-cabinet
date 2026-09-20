@@ -15,7 +15,7 @@ import {
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { getExamAction } from '../student/examAttemptState';
-import { useMyExams } from '../student/useMyExams';
+import { useMyExams } from '../student/MyExamsProvider';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить уведомления. Попробуйте ещё раз.';
 
@@ -50,11 +50,12 @@ export function useNotificationsData(): NotificationsData {
   );
 
   // Тот же критерий, что рубрика «Новые задания» на экране «Задания»
-  // (examAttemptState.getExamAction, splitNewTasks.ts) — свой запрос за
-  // экзаменами и свой критерий «новое» не заводим, иначе две копии
-  // разъехались бы на следующей правке экрана. У карточки задания нет флага
-  // «прочитано» — сбой этого запроса не должен ронять ленту, она здесь
-  // главное, задания — гость: значит, и loading/error ниже читаем только у неё.
+  // (examAttemptState.getExamAction, splitNewTasks.ts). Экзамены приходят из
+  // общего контекста (MyExamsProvider, ADR-0063) — своего запроса за ними
+  // здесь нет, TasksScreen.tsx и этот хук делят один GET /me/exams. У
+  // карточки задания нет флага «прочитано» — сбой этого запроса не должен
+  // ронять ленту, она здесь главное, задания — гость: значит, и loading/error
+  // ниже читаем только у неё.
   const { data: exams } = useMyExams();
   const newTasks = useMemo(
     () => (exams ?? []).filter((exam) => getExamAction(exam) === 'start'),

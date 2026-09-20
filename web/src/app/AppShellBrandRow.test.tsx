@@ -11,6 +11,7 @@ import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
+import { MyExamsProvider } from '../student/MyExamsProvider';
 import { AppShellBrandRow } from './AppShellBrandRow';
 
 vi.mock('../api/http', async () => {
@@ -27,9 +28,11 @@ function renderRow(isMobile: boolean) {
   });
   return render(
     <MemoryRouter>
-      <NotificationsProvider>
-        <AppShellBrandRow isMobile={isMobile} />
-      </NotificationsProvider>
+      <MyExamsProvider>
+        <NotificationsProvider>
+          <AppShellBrandRow isMobile={isMobile} />
+        </NotificationsProvider>
+      </MyExamsProvider>
     </MemoryRouter>,
   );
 }

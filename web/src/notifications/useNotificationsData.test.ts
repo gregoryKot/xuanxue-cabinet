@@ -9,6 +9,7 @@ import {
 } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
+import { MyExamsProvider } from '../student/MyExamsProvider';
 import {
   mockApiByPath,
   mockedApiFetch,
@@ -69,13 +70,20 @@ function feedCallCount(): number {
     .length;
 }
 
+// useNotificationsData читает экзамены из MyExamsProvider (ADR-0063) — хук
+// вне этого контекста бросает ошибку, поэтому каждый renderHook здесь идёт
+// с обёрткой, как и MyExamsProvider.test.tsx/NotificationsProvider.test.tsx.
+function renderNotificationsData() {
+  return renderHook(() => useNotificationsData(), { wrapper: MyExamsProvider });
+}
+
 describe('useNotificationsData — счётчик', () => {
   it('складывает непрочитанные строки и новые задания', async () => {
     mockApiByPath({
       [MY_EXAMS_PATH]: [NEW_EXAM, STARTED_EXAM],
       [NOTIFICATIONS_FEED_PATH]: page([UNREAD, READ], 1),
     });
-    const { result } = renderHook(() => useNotificationsData());
+    const { result } = renderNotificationsData();
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     // count = 1 непрочитанная строка (число с сервера) + 1 новое задание.
@@ -90,7 +98,7 @@ describe('useNotificationsData — счётчик', () => {
       [MY_EXAMS_PATH]: [],
       [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 60),
     });
-    const { result } = renderHook(() => useNotificationsData());
+    const { result } = renderNotificationsData();
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await waitFor(() => expect(result.current.unreadCount).toBe(60));
@@ -99,7 +107,7 @@ describe('useNotificationsData — счётчик', () => {
 
   it('прочитанные строки в счётчик не идут', async () => {
     mockApiByPath({ [MY_EXAMS_PATH]: [], [NOTIFICATIONS_FEED_PATH]: page([READ], 0) });
-    const { result } = renderHook(() => useNotificationsData());
+    const { result } = renderNotificationsData();
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await waitFor(() => expect(result.current.count).toBe(0));
@@ -113,7 +121,7 @@ describe('useNotificationsData — markRead/markAllRead (read-after-write)', () 
       '/me/inbox/': undefined,
       [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
     });
-    const { result } = renderHook(() => useNotificationsData());
+    const { result } = renderNotificationsData();
     await waitFor(() => expect(result.current.loading).toBe(false));
     const callsBefore = feedCallCount();
 
@@ -132,7 +140,7 @@ describe('useNotificationsData — markRead/markAllRead (read-after-write)', () 
       '/me/inbox/': undefined,
       [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
     });
-    const { result } = renderHook(() => useNotificationsData());
+    const { result } = renderNotificationsData();
     await waitFor(() => expect(result.current.loading).toBe(false));
     const callsBefore = feedCallCount();
 
@@ -152,7 +160,7 @@ describe('useNotificationsData — ошибки', () => {
       [MY_EXAMS_PATH]: [],
       [NOTIFICATIONS_FEED_PATH]: new ApiError('Сервис недоступен', 503, 'unknown'),
     });
-    const { result } = renderHook(() => useNotificationsData());
+    const { result } = renderNotificationsData();
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.error).toBe('Сервис недоступен');
@@ -164,7 +172,7 @@ describe('useNotificationsData — ошибки', () => {
       [MY_EXAMS_PATH]: new ApiError('Сервис недоступен', 503, 'unknown'),
       [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
     });
-    const { result } = renderHook(() => useNotificationsData());
+    const { result } = renderNotificationsData();
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.items).toEqual([UNREAD]);

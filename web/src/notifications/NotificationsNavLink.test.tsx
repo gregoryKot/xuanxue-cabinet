@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
+import { MyExamsProvider } from '../student/MyExamsProvider';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { NotificationsNavLink } from './NotificationsNavLink';
 import { NotificationsProvider } from './NotificationsProvider';
@@ -23,9 +24,11 @@ function renderLink(unreadCount: number) {
   });
   return render(
     <MemoryRouter>
-      <NotificationsProvider>
-        <NotificationsNavLink />
-      </NotificationsProvider>
+      <MyExamsProvider>
+        <NotificationsProvider>
+          <NotificationsNavLink />
+        </NotificationsProvider>
+      </MyExamsProvider>
     </MemoryRouter>,
   );
 }
