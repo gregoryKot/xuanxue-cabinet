@@ -2,7 +2,11 @@
 // (CLAUDE.md «Тесты»); сам findOneAndUpdate и пересборка рассылки при
 // переносе (ADR-0054) — в LessonsService.update (файл-лимит 150 строк,
 // CLAUDE.md «Храповики», образец — lessons.create.ts).
-import { NULLABLE_LESSON_FIELDS, normalizeTags, type UpdateLessonInput } from '@xuanxue/shared';
+import {
+  NULLABLE_LESSON_FIELDS,
+  normalizeTags,
+  type UpdateLessonInput,
+} from '@xuanxue/shared';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { encryptRecord } from '../utils/encryption';
 import { parseUtcIso } from './lesson-dates';

@@ -20,6 +20,7 @@ function makeLesson(overrides: Partial<MyLessonDto> = {}): MyLessonDto {
     zoomLink: 'https://zoom.us/j/123',
     topic: 'Пятое занятие цикла',
     status: 'scheduled',
+    tags: [],
     ...overrides,
   };
 }

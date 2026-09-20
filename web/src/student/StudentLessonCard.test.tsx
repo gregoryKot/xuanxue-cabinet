@@ -19,6 +19,7 @@ function makeLesson(overrides: Partial<MyLessonDto> = {}): MyLessonDto {
     format: 'online',
     topic: 'Пятое занятие цикла',
     status: 'scheduled',
+    tags: [],
     ...overrides,
   };
 }
