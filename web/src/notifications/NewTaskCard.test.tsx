@@ -1,5 +1,5 @@
 // Карточка нового задания в центре уведомлений — название, рубрика и переход
-// на «Задания» (ADR-0063).
+// на «Задания» (ADR-0065).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';

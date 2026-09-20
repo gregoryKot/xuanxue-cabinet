@@ -122,7 +122,7 @@ export function nextLessonsPath(): string {
 
 export const NOTIFICATION_PREFS_PATH = '/me/notifications';
 
-/** Лента центра уведомлений (ADR-0063) — своё имя ресурса: `/me/notifications`
+/** Лента центра уведомлений (ADR-0065) — своё имя ресурса: `/me/notifications`
  * выше занят настройкой «что присылать», и лента под ним читалась бы её частью. */
 export const NOTIFICATIONS_FEED_PATH = `/me/inbox?limit=${LIST_LIMIT_DEFAULT}`;
 export const NOTIFICATIONS_READ_ALL_PATH = '/me/inbox/read-all';

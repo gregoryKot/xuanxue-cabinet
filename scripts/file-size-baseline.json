@@ -14,7 +14,7 @@
   "api/test/lessons.e2e-spec.ts": 262,
   "api/src/telegram/bot-session.service.ts": 261,
   "api/src/broadcasts/send-now.queries.ts": 247,
-  "api/src/telegram/handlers/callback-query.handler.ts": 238,
+  "api/src/telegram/handlers/callback-query.handler.ts": 242,
   "api/test/broadcasts.e2e-spec.ts": 234,
   "api/test/deliveries.e2e-spec.ts": 233,
   "api/test/exam-attempts.e2e-spec.ts": 227,

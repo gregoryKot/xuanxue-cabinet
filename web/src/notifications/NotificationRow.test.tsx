@@ -1,5 +1,5 @@
 // Строка ленты уведомлений — кнопка у непрочитанной, обычная строка у
-// прочитанной, итог экзамена нефритом только при «сдал» (ADR-0063).
+// прочитанной, итог экзамена нефритом только при «сдал» (ADR-0065).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';

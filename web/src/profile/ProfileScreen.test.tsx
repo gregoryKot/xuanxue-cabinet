@@ -93,6 +93,18 @@ describe('ProfileScreen — список уведомлений по роли', 
     expect(screen.queryByText('Занятие скоро')).not.toBeInTheDocument();
   });
 
+  // Бот и «Профиль» переключают одно и то же (ADR-0065) — строка про бота
+  // рядом с самими переключателями, не только в справке.
+  it('подсказка про бота — то же самое переключается командой /notifications', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
+
+    expect(
+      await screen.findByText(
+        'То же самое можно переключить в боте — командой /notifications.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('включённый вид — переключатель отмечен', async () => {
     renderScreen(STUDENT, { enabled: ['exam_result'] });
     await screen.findByText('Результат экзамена');

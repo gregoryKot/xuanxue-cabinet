@@ -1,135 +1,117 @@
-// Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»):
-// /уведомления — доступ (личный чат учителя/помощника/админа) и содержимое
-// экрана по текущим настройкам.
+// Фейковый BotUserAccessService и фейковый NotificationPrefsService, без
+// Mongo (CLAUDE.md «Тесты», тот же приём, что exam-command.handler.spec.ts):
+// BotUserAccessService.resolve уже проверен против настоящей Mongo в
+// bot-user-access.service.spec.ts, NotificationPrefsService.get — в
+// notification-prefs.service.spec.ts. Здесь — только маршрутизация
+// unknown/denied/active (ADR-0065: доступна и ученику, не только штату) и
+// то, что каждый получает своё меню.
 import { DateTime } from 'luxon';
-import type { Connection, Model } from 'mongoose';
 import type { Context } from 'telegraf';
-import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
-import { NotificationPrefsRecord } from '../../notifications/notification-prefs.schema';
-import { NotificationPrefsService } from '../../notifications/notification-prefs.service';
-import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
-import { UserRecord, UserSchema } from '../../users/user.schema';
-import { UsersService } from '../../users/users.service';
-import { buildPersonalChats } from '../test-support/build-personal-chats';
-import { seedTeacher } from '../test-support/seed-teacher';
+import { ACCESS_MESSAGE, type NotificationKind } from '@xuanxue/shared';
+import type { UserLean } from '../../users/users.service';
+import type { NotificationPrefsService } from '../../notifications/notification-prefs.service';
+import type { BotUserAccessService } from '../bot-user-access.service';
+import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { NotificationsCommandHandler } from './notifications-command.handler';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
+const TEACHER: UserLean = {
+  id: 'u1',
+  name: 'Мария',
+  roles: ['teacher'],
+  status: 'active',
+};
+const STUDENT: UserLean = { id: 'u2', name: 'Ваня', roles: [], status: 'active' };
+
+function fakePrefs(enabled: NotificationKind[]): {
+  service: NotificationPrefsService;
+  get: jest.Mock;
+} {
+  const get = jest.fn().mockResolvedValue({ enabled });
+  return { service: { get } as unknown as NotificationPrefsService, get };
+}
 
 function fakeCtx(
   chatId: number | undefined,
   chatType: 'private' | 'group' = 'private',
-): { ctx: Context; replies: { text: string; buttons?: unknown }[] } {
-  const replies: { text: string; buttons?: unknown }[] = [];
+): { ctx: Context; replies: string[] } {
+  const replies: string[] = [];
   const ctx = {
     chat: chatId === undefined ? undefined : { id: chatId, type: chatType },
     reply: (text: string, extra?: { reply_markup?: { inline_keyboard: unknown } }) => {
-      replies.push({ text, buttons: extra?.reply_markup?.inline_keyboard });
-      return Promise.resolve(true);
+      // extra игнорируется в assertions ниже — кнопки уже проверены в
+      // notifications-menu.spec.ts, здесь важен только текст и сам факт ответа.
+      void extra;
+      return Promise.resolve(Boolean(replies.push(text)));
     },
   } as unknown as Context;
   return { ctx, replies };
 }
 
 describe('NotificationsCommandHandler', () => {
-  let memory: MemoryMongo;
-  let connection: Connection;
-  let userModel: Model<UserRecord>;
-  let channelModel: Model<ChannelRecord>;
-  let notificationPrefsModel: Model<NotificationPrefsRecord>;
-  let handler: NotificationsCommandHandler;
-
-  beforeAll(async () => {
-    memory = await openMemoryMongo();
-    connection = memory.connection;
-    userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    notificationPrefsModel = connection.model<NotificationPrefsRecord>(
-      NotificationPrefsRecord.name,
+  it('учитель — меню из своих видов', async () => {
+    const prefs = fakePrefs(['post_draft', 'recording_request', 'delivery_failed']);
+    const handler = new NotificationsCommandHandler(
+      fakeBotUserAccess(activeAccess(TEACHER)),
+      prefs.service,
     );
-    const usersService = new UsersService(userModel);
-    handler = new NotificationsCommandHandler(
-      buildPersonalChats(connection, usersService, channelModel),
-      usersService,
-      new NotificationPrefsService(notificationPrefsModel),
-    );
-  }, 60_000);
-
-  afterAll(async () => {
-    await memory.stop();
-  });
-
-  afterEach(async () => {
-    await Promise.all([
-      userModel.deleteMany({}),
-      channelModel.deleteMany({}),
-      notificationPrefsModel.deleteMany({}),
-    ]);
-  });
-
-  it('учитель — список из четырёх видов, все включены по умолчанию', async () => {
-    await seedTeacher(userModel, channelModel, 111);
     const { ctx, replies } = fakeCtx(111);
 
     await handler.handle(ctx, NOW);
 
     expect(replies).toHaveLength(1);
-    expect(replies[0]?.text).toContain('Черновик поста — включено');
-    expect(replies[0]?.text).toContain('Напоминание про запись — включено');
-    expect(replies[0]?.text).toContain('Пост не ушёл — включено');
-    expect(replies[0]?.text).toContain('Работа на проверку — включено');
-    expect(replies[0]?.buttons).toEqual([
-      [{ text: 'Выключить: Черновик поста', callback_data: 'notif:post_draft' }],
-      [
-        {
-          text: 'Выключить: Напоминание про запись',
-          callback_data: 'notif:recording_request',
-        },
-      ],
-      [{ text: 'Выключить: Пост не ушёл', callback_data: 'notif:delivery_failed' }],
-      [
-        {
-          text: 'Выключить: Работа на проверку',
-          callback_data: 'notif:attempt_submitted',
-        },
-      ],
-    ]);
+    expect(replies[0]).toContain('Черновик поста — включено');
   });
 
-  it('учёл ранее выключенный вид', async () => {
-    const teacher = await userModel.create({
-      name: 'Мария',
-      telegramId: 111,
-      roles: ['teacher'],
-    });
-    await channelModel.create({
-      type: 'telegram',
-      title: 'x',
-      config: '{}',
-      target: '111',
-      active: true,
-    });
-    await notificationPrefsModel.create({
-      userId: teacher._id.toString(),
-      overrides: [{ kind: 'delivery_failed', enabled: false }],
-    });
-    const { ctx, replies } = fakeCtx(111);
+  it('ученик (без ролей, ADR-0065) — получает меню со своим единственным видом', async () => {
+    const prefs = fakePrefs(['exam_result']);
+    const handler = new NotificationsCommandHandler(
+      fakeBotUserAccess(activeAccess(STUDENT)),
+      prefs.service,
+    );
+    const { ctx, replies } = fakeCtx(222);
 
     await handler.handle(ctx, NOW);
 
-    expect(replies[0]?.text).toContain('Пост не ушёл — выключено');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toContain('Результат экзамена — включено');
+    expect(replies[0]).not.toContain('Черновик поста');
   });
 
-  it('чужой чат (не в PersonalChats) — тихо игнорируется', async () => {
-    const { ctx, replies } = fakeCtx(999);
+  it('заблокированный — ACCESS_MESSAGE, настройки не читаются', async () => {
+    const prefs = fakePrefs([]);
+    const handler = new NotificationsCommandHandler(
+      fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
+      prefs.service,
+    );
+    const { ctx, replies } = fakeCtx(333);
+
+    await handler.handle(ctx, NOW);
+
+    expect(replies).toEqual([ACCESS_MESSAGE]);
+    expect(prefs.get).not.toHaveBeenCalled();
+  });
+
+  it('незнакомец — бот молчит', async () => {
+    const prefs = fakePrefs([]);
+    const handler = new NotificationsCommandHandler(
+      fakeBotUserAccess({ kind: 'unknown' }),
+      prefs.service,
+    );
+    const { ctx, replies } = fakeCtx(444);
 
     await handler.handle(ctx, NOW);
 
     expect(replies).toEqual([]);
+    expect(prefs.get).not.toHaveBeenCalled();
   });
 
   it('сообщение из группы — игнорируется', async () => {
-    await seedTeacher(userModel, channelModel, 111);
+    const prefs = fakePrefs([]);
+    const handler = new NotificationsCommandHandler(
+      fakeBotUserAccess(activeAccess(TEACHER)),
+      prefs.service,
+    );
     const { ctx, replies } = fakeCtx(111, 'group');
 
     await handler.handle(ctx, NOW);
@@ -138,26 +120,26 @@ describe('NotificationsCommandHandler', () => {
   });
 
   it('нет ctx.chat — тихо выходит, не падает', async () => {
+    const prefs = fakePrefs([]);
+    const handler = new NotificationsCommandHandler(
+      fakeBotUserAccess(activeAccess(TEACHER)),
+      prefs.service,
+    );
     const { ctx, replies } = fakeCtx(undefined);
 
     await expect(handler.handle(ctx, NOW)).resolves.toBeUndefined();
     expect(replies).toEqual([]);
   });
 
-  it('пользователь отвязан между проверкой доступа и резолвом (гонка) — тихо игнорируется', async () => {
-    await seedTeacher(userModel, channelModel, 111);
-    const missingUserService = {
-      findByTelegramId: jest.fn().mockResolvedValue(null),
-    } as unknown as UsersService;
-    const racyHandler = new NotificationsCommandHandler(
-      buildPersonalChats(connection, new UsersService(userModel), channelModel),
-      missingUserService,
-      new NotificationPrefsService(notificationPrefsModel),
-    );
-    const { ctx, replies } = fakeCtx(111);
+  it('сбой при резолве доступа — бот молчит, апдейт не падает', async () => {
+    const prefs = fakePrefs([]);
+    const failingAccess = {
+      resolve: jest.fn().mockRejectedValue(new Error('Mongo недоступна')),
+    } as unknown as BotUserAccessService;
+    const handler = new NotificationsCommandHandler(failingAccess, prefs.service);
+    const { ctx, replies } = fakeCtx(555);
 
-    await expect(racyHandler.handle(ctx, NOW)).resolves.toBeUndefined();
-
+    await expect(handler.handle(ctx, NOW)).resolves.toBeUndefined();
     expect(replies).toEqual([]);
   });
 });
