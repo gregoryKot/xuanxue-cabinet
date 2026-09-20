@@ -72,7 +72,7 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/profile')).toBe(true);
   });
 
-  it('ученик на «/notifications» — true, лента событий доступна всем (ADR-0065)', () => {
+  it('ученик на «/notifications» — true, лента событий доступна всем (ADR-0063)', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/notifications')).toBe(true);
   });
 
