@@ -5,8 +5,13 @@
 // Заголовок — растяжка-рубрика (`.xuanxue-eyebrow`, index.css), как в разборе
 // попытки у учителя (grading/AttemptReviewBlock.tsx): служебная пометка
 // «откуда блок», а не второй заголовок рядом с названием экзамена. Своей
-// рамки у блока нет — вопросы разделены волосяными линиями строк
-// (`.xuanxue-question-row`), и рамка поверх них дала бы двойную черту.
+// рамки у блока по-прежнему нет — карточка (ADR-0043) оборачивает список
+// блоков снаружи, в AttemptInProgress.tsx, а волосяные линии строк
+// (`.xuanxue-question-row`) остаются внутренним ритмом карточки. Довод
+// «рамка поверх линий даст двойную черту» практикой опровергнут:
+// grading/AttemptReviewQuestion.tsx кладёт те же линии внутрь белой
+// карточки, и двойной черты нет — тень карточки читается отдельно от
+// внутренней линейки.
 import type { CSSProperties } from 'react';
 import type { AttemptBlockDto } from '@xuanxue/shared';
 import type { AttemptVideoControls } from './useAttemptMedia';

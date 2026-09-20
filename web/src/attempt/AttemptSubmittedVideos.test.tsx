@@ -132,3 +132,39 @@ describe('AttemptSubmittedVideos', () => {
     expect(screen.getByText(/Видео получено/)).toBeInTheDocument();
   });
 });
+
+// Переезд на «Тёплую школу» (ADR-0043, владелец согласовал 2026-09-20):
+// список видео-вопросов лёг в карточку, как разбор попытки у учителя
+// (grading/AttemptReviewScreen.test.tsx). jsdom не вычисляет `var(--…)` —
+// сравниваем ровно строку инлайн-стиля, не вычисленный цвет.
+describe('AttemptSubmittedVideos — облик (ADR-0043)', () => {
+  it('список видео-вопросов обёрнут в карточку с фоном var(--card)', () => {
+    const { container } = renderVideos(makeAttempt(TWO_VIDEO_QUESTIONS), makeVideo());
+
+    const cards = Array.from(container.querySelectorAll<HTMLElement>('div')).filter(
+      (el) => el.style.background === 'var(--card)',
+    );
+    expect(cards).toHaveLength(1);
+  });
+
+  // Без видео-вопросов карточке нечего обрамлять (только орфанная запись
+  // ниже неё) — пустая карточка над ней читалась бы как сломанный макет.
+  it('видео-вопросов нет, есть только запись без itemId — карточки нет', () => {
+    const orphan: ExamMediaDto = {
+      id: 'm2',
+      attemptId: 'a1',
+      kind: 'link',
+      url: 'https://example.com/v',
+      receivedAt: '2026-09-12T16:30:00.000Z',
+    };
+    const { container } = renderVideos(
+      makeAttempt([makeBlock()]),
+      makeVideo({ media: [orphan] }),
+    );
+
+    const cards = Array.from(container.querySelectorAll<HTMLElement>('div')).filter(
+      (el) => el.style.background === 'var(--card)',
+    );
+    expect(cards).toHaveLength(0);
+  });
+});

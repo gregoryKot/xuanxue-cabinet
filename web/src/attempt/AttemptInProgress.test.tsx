@@ -88,7 +88,7 @@ function renderAttempt(
 ) {
   const onSubmit = vi.fn().mockResolvedValue(undefined);
   const reload = vi.fn().mockResolvedValue(undefined);
-  render(
+  const view = render(
     <MemoryRouter>
       <AttemptInProgress
         attempt={attempt}
@@ -101,7 +101,7 @@ function renderAttempt(
       />
     </MemoryRouter>,
   );
-  return { onSubmit, reload };
+  return { ...view, onSubmit, reload };
 }
 
 describe('AttemptInProgress — шапка', () => {
@@ -114,7 +114,7 @@ describe('AttemptInProgress — шапка', () => {
     ).toBeInTheDocument();
   });
 
-  it('вопросы идут нумерованным списком, по строке на вопрос', () => {
+  it('вопросы блока — по одной строке на вопрос внутри карточки', () => {
     renderAttempt(makeAttempt());
 
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
@@ -334,5 +334,20 @@ describe('AttemptInProgress', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Отправить' }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Переезд на «Тёплую школу» (ADR-0043, владелец согласовал 2026-09-20): вопросы
+// экрана сдачи легли в карточку, как разбор попытки у учителя
+// (grading/AttemptReviewScreen.test.tsx). jsdom не вычисляет `var(--…)` —
+// сравниваем ровно строку инлайн-стиля, не вычисленный цвет.
+describe('AttemptInProgress — облик (ADR-0043)', () => {
+  it('вопросы обёрнуты в карточку с фоном var(--card)', () => {
+    const { container } = renderAttempt(makeAttempt());
+
+    const cards = Array.from(container.querySelectorAll<HTMLElement>('div')).filter(
+      (el) => el.style.background === 'var(--card)',
+    );
+    expect(cards).toHaveLength(1);
   });
 });
