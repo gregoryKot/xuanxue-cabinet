@@ -39,9 +39,44 @@ export interface ExamSeedReport {
   uploadedImages: number;
 }
 
+/** Картинка одного варианта после чтения файла и разбора байтов; `path` —
+ * тот же относительный путь, что в файле сида (по нему importQuestions
+ * дедуплицирует загрузку в exam-images). */
+interface LoadedOptionImage {
+  path: string;
+  parsed: ParsedExamImage;
+}
+
+/** Вопрос вместе с картинками его вариантов, уже прочитанными с диска —
+ * `optionImages[i]` отвечает `question.item.options[i]` (и, что то же самое,
+ * `question.optionImagePaths[i]`): массив собирает сам loadImages в один
+ * проход по questions, поэтому индексы совпадают по построению, а не по
+ * повторному поиску. Раньше importQuestions заново искал картинку по пути в
+ * `Map`, и `.get()` мог по типу вернуть `undefined`, хотя loadImages
+ * перебирает ровно те же пути, — недостижимая на практике ветка, которую
+ * нечем было покрыть тестом. Здесь такого поиска нет вовсе: у
+ * importQuestions остаётся один честный случай `undefined` — «у этого
+ * варианта картинки не было в файле». */
+interface LoadedExamQuestion {
+  question: ExamSeedQuestion;
+  optionImages: readonly (LoadedOptionImage | undefined)[];
+}
+
 const MISSING_KEY_MESSAGE =
   'Не задан ENCRYPTION_KEY — формулировки вопросов легли бы в базу открытым ' +
   'текстом. Укажите тот же ключ, что в Railway, и повторите импорт.';
+
+/** `code === 'ENOENT'` без `err instanceof Error` (в отличие от аналога в
+ * seed-report.ts): `err` здесь — настоящая ошибка `fs.readFile()`, и под
+ * jest-environment-node (свой vm-контекст на файл спека) `instanceof Error`
+ * для неё внутри теста ложно `false`, хотя `code` при этом читается
+ * нормально (в проде такого контекста нет, там сработал бы и instanceof, но
+ * раз есть проверка надёжнее — полагаться на instanceof незачем). Каст, не
+ * рантайм-проверка формы: `err` из `catch` после падения fs — всегда объект
+ * такой формы. */
+function isEnoentError(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException).code === 'ENOENT';
+}
 
 /** Сначала вопросы в порядке файла, затем те id из блоков существующей формы,
  * которых в файле нет — с сохранением их взаимного порядка. Ничего не
@@ -80,14 +115,14 @@ export class SeedExamService {
     // ДО любой записи — байты и формат всех картинок файла разом: битая или
     // отсутствующая картинка не должна всплыть на середине импорта, когда
     // часть вопросов уже создана.
-    const imagesByPath = await this.loadImages(dirname(filePath), questions);
+    const loadedQuestions = await this.loadImages(dirname(filePath), questions);
 
     // ДО любой записи — без ключа шифрования формулировки вопросов легли бы
     // в базу открытым текстом (тот же приём, что SeedService.importClasses).
     if (!isEncryptionConfigured()) throw new InvalidInputError(MISSING_KEY_MESSAGE);
 
     const { itemIds, createdQuestions, skippedQuestions, uploadedImages } =
-      await this.importQuestions(questions, imagesByPath);
+      await this.importQuestions(loadedQuestions);
     const examCreated = await this.upsertExam(exam, itemIds);
 
     return {
@@ -101,27 +136,26 @@ export class SeedExamService {
 
   /** Читает и проверяет байты каждой картинки, на которую ссылается файл —
    * один раз на уникальный путь (CLAUDE.md «одна механика — один
-   * компонент»: тот же `parseExamImageUpload`, что и у загрузки через API).
-   * ENOENT — понятная ошибка с путём, не голый стек fs. */
+   * компонент»: тот же `parseExamImageUpload`, что и у загрузки через API),
+   * кэш по пути внутри — только сам приём чтения-с-кэшем скрыт здесь, наружу
+   * отдаётся результат, уже разложенный по вопросам и вариантам (см.
+   * комментарий у LoadedExamQuestion). ENOENT — понятная ошибка с путём, не
+   * голый стек fs. */
   private async loadImages(
     fileDir: string,
     questions: readonly ExamSeedQuestion[],
-  ): Promise<Map<string, ParsedExamImage>> {
-    const paths = new Set<string>();
-    for (const question of questions) {
-      for (const path of question.optionImagePaths) {
-        if (path !== undefined) paths.add(path);
-      }
-    }
+  ): Promise<LoadedExamQuestion[]> {
+    const cache = new Map<string, ParsedExamImage>();
 
-    const byPath = new Map<string, ParsedExamImage>();
-    for (const relativePath of paths) {
+    const readOnce = async (relativePath: string): Promise<ParsedExamImage> => {
+      const cached = cache.get(relativePath);
+      if (cached !== undefined) return cached;
       const absolutePath = join(fileDir, relativePath);
       let bytes: Buffer;
       try {
         bytes = await readFile(absolutePath);
       } catch (err) {
-        if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+        if (isEnoentError(err)) {
           throw new InvalidInputError(
             `Файла картинки нет: ${absolutePath} (указан как "${relativePath}" в файле ` +
               'сида). Проверьте путь и повторите импорт.',
@@ -129,19 +163,31 @@ export class SeedExamService {
         }
         throw err;
       }
-      byPath.set(relativePath, parseExamImageUpload(bytes));
+      const parsed = parseExamImageUpload(bytes);
+      cache.set(relativePath, parsed);
+      return parsed;
+    };
+
+    const loaded: LoadedExamQuestion[] = [];
+    for (const question of questions) {
+      const optionImages: (LoadedOptionImage | undefined)[] = [];
+      for (const path of question.optionImagePaths) {
+        if (path === undefined) {
+          optionImages.push(undefined);
+          continue;
+        }
+        optionImages.push({ path, parsed: await readOnce(path) });
+      }
+      loaded.push({ question, optionImages });
     }
-    return byPath;
+    return loaded;
   }
 
   /** Найден по `prompt` — id идёт в состав формы, ничего не пишем (отчёт:
    * «пропущен»). Не найден — грузим картинки его вариантов (один раз на путь
    * за весь запуск, дальше — тот же imageId) и создаём вопрос через
    * ExamItemsService — тем же сервисом, что и кабинет, не сырой моделью. */
-  private async importQuestions(
-    questions: readonly ExamSeedQuestion[],
-    imagesByPath: ReadonlyMap<string, ParsedExamImage>,
-  ): Promise<{
+  private async importQuestions(loadedQuestions: readonly LoadedExamQuestion[]): Promise<{
     itemIds: string[];
     createdQuestions: string[];
     skippedQuestions: string[];
@@ -158,7 +204,7 @@ export class SeedExamService {
     const uploadedImageIdByPath = new Map<string, string>();
     let uploadedImages = 0;
 
-    for (const question of questions) {
+    for (const { question, optionImages } of loadedQuestions) {
       const existingId = existingIdByPrompt.get(question.item.prompt);
       if (existingId !== undefined) {
         skippedQuestions.push(question.item.prompt);
@@ -167,23 +213,14 @@ export class SeedExamService {
       }
 
       for (const [index, option] of (question.item.options ?? []).entries()) {
-        const relativePath = question.optionImagePaths[index];
-        if (relativePath === undefined) continue;
+        const image = optionImages[index];
+        if (image === undefined) continue;
 
-        let imageId = uploadedImageIdByPath.get(relativePath);
+        let imageId = uploadedImageIdByPath.get(image.path);
         if (imageId === undefined) {
-          const parsed = imagesByPath.get(relativePath);
-          if (!parsed) {
-            // loadImages читает по тому же списку путей questions — не
-            // найти здесь значило бы рассинхрон между двумя проходами по
-            // одному массиву, а не пользовательскую ошибку.
-            throw new Error(
-              `SeedExamService: картинка "${relativePath}" не была загружена заранее`,
-            );
-          }
-          const uploaded = await this.examImagesService.upload(parsed.bytes);
+          const uploaded = await this.examImagesService.upload(image.parsed.bytes);
           imageId = uploaded.id;
-          uploadedImageIdByPath.set(relativePath, imageId);
+          uploadedImageIdByPath.set(image.path, imageId);
           uploadedImages += 1;
         }
         option.imageId = imageId;

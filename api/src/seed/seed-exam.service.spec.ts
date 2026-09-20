@@ -5,10 +5,11 @@
 // файл с добавленным вопросом дописывает его в конец состава; без
 // ENCRYPTION_KEY — отказ до записи; prompt в сырой Mongo — шифротекст.
 import { randomUUID } from 'crypto';
-import { cp, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import type { Connection, Model } from 'mongoose';
+import { InvalidInputError } from '../common/errors';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from '../exams/exam-attempt.schema';
@@ -195,6 +196,31 @@ describe('SeedExamService', () => {
     expect(orderAfter.slice(0, sample.questions.length)).toEqual(orderBefore);
   });
 
+  it('лишний вопрос формы, которого нет в файле, при повторном импорте остаётся в конце и не дублируется', async () => {
+    await seedExamService.importExam(SAMPLE_PATH);
+    const examBefore = await soleExam();
+    const orderBefore = examBefore.blocks[0]?.itemIds ?? [];
+
+    // Учитель мог добавить в блок вопрос прямо в кабинете — mergeItemIds не
+    // должен ни потерять его, ни продублировать при следующем импорте того
+    // же файла.
+    const extra = await examItemsService.create({
+      kind: 'text',
+      prompt: 'Вопрос, добавленный в форму без файла сида',
+    });
+    await examsService.update(examBefore.id, {
+      blocks: [{ itemIds: [...orderBefore, extra.id] }],
+    });
+
+    const second = await seedExamService.importExam(SAMPLE_PATH);
+
+    expect(second.examCreated).toBe(false);
+    const examAfter = await examsService.getById(examBefore.id);
+    const orderAfter = examAfter.blocks[0]?.itemIds ?? [];
+    // Порядок файла — впереди без изменений, лишний id — один раз в конце.
+    expect(orderAfter).toEqual([...orderBefore, extra.id]);
+  });
+
   it('в сырой Mongo prompt вопроса — шифротекст, не открытый текст', async () => {
     await seedExamService.importExam(SAMPLE_PATH);
 
@@ -204,6 +230,65 @@ describe('SeedExamService', () => {
     for (const doc of rawDocs) {
       expect(plainPrompts.has(doc.prompt)).toBe(false);
     }
+  });
+
+  it('в файле сида указан путь к несуществующей картинке — отказ до записи, путь назван', async () => {
+    const filePath = join(dir, `${randomUUID()}.json`);
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        exam: { title: 'Экзамен с несуществующей картинкой' },
+        questions: [
+          {
+            kind: 'single',
+            prompt: 'Вопрос с картинкой мимо диска',
+            options: [
+              { text: 'А', image: 'net-takogo-fayla.png', correct: true },
+              { text: 'Б' },
+            ],
+          },
+        ],
+      }),
+      'utf8',
+    );
+
+    // Один и тот же промис для обеих проверок — importExam зовётся один раз,
+    // а не дважды ради двух expect().
+    const failure = seedExamService.importExam(filePath);
+    await expect(failure).rejects.toThrow(InvalidInputError);
+    await expect(failure).rejects.toThrow('net-takogo-fayla.png');
+
+    // ДО любой записи — как и остальные отказы importExam (см. тест без
+    // ENCRYPTION_KEY ниже): ни вопроса, ни картинки, ни формы.
+    expect(await itemModel.countDocuments({})).toBe(0);
+    expect(await imageModel.countDocuments({})).toBe(0);
+    expect(await examModel.countDocuments({})).toBe(0);
+  });
+
+  it('ошибка чтения картинки не ENOENT (путь — каталог, EISDIR) — прокидывается как есть', async () => {
+    const imageDirName = `${randomUUID()}-dir`;
+    await mkdir(join(dir, imageDirName));
+    const filePath = join(dir, `${randomUUID()}.json`);
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        exam: { title: 'Экзамен с картинкой-каталогом' },
+        questions: [
+          {
+            kind: 'single',
+            prompt: 'Вопрос, у которого путь к картинке — каталог',
+            options: [{ text: 'А', image: imageDirName, correct: true }, { text: 'Б' }],
+          },
+        ],
+      }),
+      'utf8',
+    );
+
+    // EISDIR — не ENOENT: loadImages не подменяет его понятным текстом про
+    // отсутствующий файл, читатель отчёта увидел бы неверную причину отказа.
+    await expect(seedExamService.importExam(filePath)).rejects.toMatchObject({
+      code: 'EISDIR',
+    });
   });
 
   it('без ENCRYPTION_KEY — отказ до записи (в exam_items и exam_images пусто)', async () => {

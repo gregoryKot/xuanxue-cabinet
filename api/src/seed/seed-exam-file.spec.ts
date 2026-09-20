@@ -184,4 +184,57 @@ describe('validateExamSeed', () => {
     const error = errors.find((e) => e.path === 'questions[0]');
     expect(error?.message).toContain('объект');
   });
+
+  it('вариант ответа не объект (строка вместо { text, … }) — ошибка валидации, не TypeError', () => {
+    const seed = parseExamSeedFile(
+      JSON.stringify({
+        exam: { title: 'Экзамен' },
+        questions: [
+          { kind: 'single', prompt: 'Вопрос', options: ['строка', { text: 'Б' }] },
+        ],
+      }),
+    );
+
+    expect(() => validateExamSeed(seed)).not.toThrow();
+    const { errors } = validateExamSeed(seed);
+    expect(errors.some((e) => e.path.startsWith('questions[0].options'))).toBe(true);
+  });
+
+  it('image — число, не строка — ошибка с путём questions[0].options[0].image', () => {
+    const seed = parseExamSeedFile(
+      JSON.stringify({
+        exam: { title: 'Экзамен' },
+        questions: [
+          {
+            kind: 'single',
+            prompt: 'Вопрос',
+            options: [{ text: 'А', image: 42, correct: true }, { text: 'Б' }],
+          },
+        ],
+      }),
+    );
+
+    const { errors } = validateExamSeed(seed);
+
+    expect(errors.some((e) => e.path === 'questions[0].options[0].image')).toBe(true);
+  });
+
+  it('image — пустая строка или только пробелы — ошибка с путём questions[0].options[0].image', () => {
+    const seed = parseExamSeedFile(
+      JSON.stringify({
+        exam: { title: 'Экзамен' },
+        questions: [
+          {
+            kind: 'single',
+            prompt: 'Вопрос',
+            options: [{ text: 'А', image: '   ', correct: true }, { text: 'Б' }],
+          },
+        ],
+      }),
+    );
+
+    const { errors } = validateExamSeed(seed);
+
+    expect(errors.some((e) => e.path === 'questions[0].options[0].image')).toBe(true);
+  });
 });

@@ -76,4 +76,10 @@ describe('formatSeedFailure', () => {
       formatSeedFailure(new Error('что-то сломалось'), '/x.json', EXAMPLE_PATH),
     ).toEqual(['что-то сломалось']);
   });
+
+  it('не-Error значение (например, строка) — приводится через String(err)', () => {
+    expect(formatSeedFailure('что-то совсем не так', '/x.json', EXAMPLE_PATH)).toEqual([
+      'что-то совсем не так',
+    ]);
+  });
 });
