@@ -27,6 +27,7 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     media: [],
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
+    offersTelegramLink: false,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
     ...overrides,
@@ -66,7 +67,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
   // снял «кружок» и получил «не нашли эту попытку» — бот узнаёт человека
   // только по telegramId, поэтому кнопки на этом пути быть не должно.
   it('Telegram не привязан — кнопки бота нет даже при известном имени бота', () => {
-    renderVideo(makeVideo({ telegramLinked: false }));
+    renderVideo(makeVideo({ telegramLinked: false, offersTelegramLink: true }));
 
     expect(
       screen.queryByRole('link', { name: /Отправить видео боту/ }),
@@ -77,12 +78,27 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
 
   // ADR-0034: на месте кнопки бота — связка, а не тупик.
   it('Telegram не привязан — на месте кнопки бота кнопка связки', () => {
-    renderVideo(makeVideo({ telegramLinked: false }));
+    renderVideo(makeVideo({ telegramLinked: false, offersTelegramLink: true }));
 
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
     expect(
       screen.getByText(/Свяжите его — и запись уйдёт одним сообщением/),
     ).toBeInTheDocument();
+  });
+
+  // ADR-0067: отметка «у меня нет Telegram» гасит предложение на всех
+  // экранах, и видео-вопрос был последним местом, где оно оставалось. Форма
+  // ссылки при этом никуда не девается — это и есть его путь ответить.
+  it('отметка «у меня нет Telegram» — кнопки связки нет, форма ссылки на месте', () => {
+    renderVideo(makeVideo({ telegramLinked: false, offersTelegramLink: false }));
+
+    expect(
+      screen.queryByRole('button', { name: 'Связать Telegram' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Свяжите его — и запись уйдёт одним сообщением/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
   });
 
   it('Telegram привязан — кнопки связки нет', () => {

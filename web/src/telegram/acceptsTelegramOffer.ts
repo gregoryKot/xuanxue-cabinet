@@ -18,3 +18,15 @@ export function acceptsTelegramOffer(me: MeDto | null): boolean {
   if (!me) return false;
   return !me.noTelegram;
 }
+
+/** Второй из двух вопросов про Telegram целиком: предлагать ли связать сам
+ * аккаунт — «Второй способ входа» (auth/SecondLoginKey.tsx, ADR-0059) и
+ * видео-вопрос попытки (attempt/AttemptQuestionVideo.tsx, ADR-0023). Оба
+ * смотрят на `telegramLinked`, а не на `botChatActive`, и оба обязаны гаснуть
+ * отметкой — пара условий здесь одна на двоих: своя копия у видео-вопроса и
+ * оставила его единственным местом, где кабинет звал в Telegram отметившегося
+ * (ADR-0067 обещает «на всех экранах сразу»). */
+export function showsTelegramLinkOffer(me: MeDto | null): boolean {
+  if (!me) return false;
+  return acceptsTelegramOffer(me) && !me.telegramLinked;
+}
