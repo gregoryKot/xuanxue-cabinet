@@ -48,6 +48,15 @@ describe('matchRoute', () => {
     );
   });
 
+  // Публичный маршрут подтверждения почты (ADR-0059) — вошедшему он не нужен,
+  // поэтому `warm: false`. Проверяем и сам загрузчик: опечатка в пути модуля
+  // иначе всплыла бы только в браузере, пустым экраном под Suspense (тот же
+  // довод, что у канала ниже).
+  it('подтверждение почты — свой чанк, в фоне не греется (ADR-0059)', async () => {
+    expect(ROUTE_MODULES.emailConfirm.warm).toBe(false);
+    await expect(ROUTE_MODULES.emailConfirm.load()).resolves.toHaveProperty('default');
+  });
+
   it('страница материала — один чанк на «новый» и на правку (ADR-0033)', async () => {
     expect(ROUTE_MODULES.materialNew.load).toBe(ROUTE_MODULES.materialEditor.load);
     await expect(ROUTE_MODULES.materialNew.load()).resolves.toHaveProperty('default');
