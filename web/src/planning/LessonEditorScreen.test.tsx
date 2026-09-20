@@ -142,7 +142,7 @@ describe('LessonEditorScreen — загрузка', () => {
     expect(screen.getByLabelText('Заметка')).toHaveValue('Взять плейлист');
   });
 
-  it('поле «Теги» при правке предзаполнено тегами занятия (ADR-0059)', async () => {
+  it('поле «Теги» при правке предзаполнено тегами занятия (ADR-0075)', async () => {
     mockLesson(makeLesson({ tags: ['дракон', 'начинающие'] }));
 
     renderAt('/planning/l1');
@@ -163,7 +163,7 @@ describe('LessonEditorScreen — загрузка', () => {
     ).toHaveLength(0);
   });
 
-  it('/planning/new — поля «Теги» нет: тег ставят после занятия (ADR-0059)', async () => {
+  it('/planning/new — поля «Теги» нет: тег ставят после занятия (ADR-0075)', async () => {
     mockApiByPath({ '/classes': [makeClass()], '/users/teachers': [] });
 
     renderAt('/planning/new');
@@ -263,7 +263,7 @@ describe('LessonEditorScreen — сохранение', () => {
     });
   });
 
-  it('ввод тегов уходит в PATCH массивом (ADR-0059)', async () => {
+  it('ввод тегов уходит в PATCH массивом (ADR-0075)', async () => {
     const user = userEvent.setup();
     mockLesson(makeLesson());
 

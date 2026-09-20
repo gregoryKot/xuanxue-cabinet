@@ -17,7 +17,7 @@ import { LessonZoomFields } from './LessonZoomFields';
 import type { LessonFormState } from './lessonFormInput';
 import { textLinkStyle } from '../components/screenLayout';
 
-// ADR-0059: тег — что было в этот вечер, его видит ученик; постоянный тег
+// ADR-0075: тег — что было в этот вечер, его видит ученик; постоянный тег
 // курса форма даты не показывает и не переписывает (ADR-0072).
 const TAG_HINT = `Что разбирали в этот вечер: «дракон», «толчок руками» — через запятую, до ${TAG_LIMITS.perRecord}. Их видит ученик. Постоянный признак курса ставится в расписании.`;
 
