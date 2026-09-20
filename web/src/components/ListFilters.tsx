@@ -14,6 +14,7 @@
 // компонент»).
 import type { CSSProperties, ReactNode } from 'react';
 import { inputStyle } from './Field';
+import { pillActiveStyle, pillStyle } from './pillStyles';
 
 const ALL_LABEL = 'Все';
 
@@ -26,41 +27,6 @@ const rowStyle: CSSProperties = {
   borderBottom: '1px solid var(--line)',
 };
 const toggleGroupStyle: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 8 };
-// Цель нажатия — 44×44, хотя пилюля в макете рисуется на глаз ~30px по
-// высоте: паддинг и радиус остаются макетными, лишнюю высоту/ширину даёт сама
-// цель нажатия вокруг видимой пилюли (тот же приём, что и в ADR-0043 для
-// rowControlStyle — отклонение зафиксировано там же, CLAUDE.md «Доступность»).
-// Рамка — раздельными полями (border-width/style/color), не шорткатом
-// `border`: активное состояние меняет только цвет рамки, и React
-// предупреждает при смене шортката на отдельное поле между рендерами (тот же
-// приём, что раньше был у border-bottom-* здесь же).
-const toggleBaseStyle: CSSProperties = {
-  minHeight: 44,
-  minWidth: 44,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '7px 14px',
-  borderRadius: 'var(--radius-pill)',
-  borderWidth: 1,
-  borderStyle: 'solid',
-  borderColor: 'var(--control-border)',
-  background: 'transparent',
-  fontFamily: 'inherit',
-  fontSize: 13,
-  fontWeight: 400,
-  color: 'var(--ink-soft)',
-  cursor: 'pointer',
-};
-// Активный переключатель — заливка --ink целиком (не только цвет текста):
-// правило «один акцент на экран» про терракоту, к чёрной заливке пилюли
-// статуса не относится (это не акцент, а обычное состояние «выбрано», как
-// активный пункт бокового меню). --ink-contrast — «бумага на туши», 13.68:1.
-const toggleActiveStyle: CSSProperties = {
-  borderColor: 'var(--ink)',
-  background: 'var(--ink)',
-  color: 'var(--ink-contrast)',
-};
 const trailingStyle: CSSProperties = {
   marginLeft: 'auto',
   flex: '1 1 200px',
@@ -118,9 +84,7 @@ export function ListFilters<TStatus extends string>({
             key={option.status || 'all'}
             type="button"
             style={
-              value === option.status
-                ? { ...toggleBaseStyle, ...toggleActiveStyle }
-                : toggleBaseStyle
+              value === option.status ? { ...pillStyle, ...pillActiveStyle } : pillStyle
             }
             aria-pressed={value === option.status}
             onClick={() => onChange(option.status)}
