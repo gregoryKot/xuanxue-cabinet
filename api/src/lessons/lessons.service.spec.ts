@@ -6,7 +6,7 @@
 // — фейк считает вызовы и запоминает переданный url, сама рассылка
 // (broadcast+доставки, cancelled) проверена в recording-broadcast.service.spec.ts.
 import { DateTime } from 'luxon';
-import type { Connection, Model, Types } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
 import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema';
 import type { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import type { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
@@ -427,5 +427,114 @@ describe('LessonsService', () => {
 
   it('remove: мусорный id — NotFoundError', async () => {
     await expect(service.remove('not-an-id')).rejects.toThrow('не найдена');
+  });
+
+  // ADR-0059 — тег живёт у даты занятия, те же правила, что у материалов
+  // (materials.service.spec.ts): нормализация при записи, фильтр по тегу.
+  describe('теги (ADR-0059)', () => {
+    it('create: нормализует теги — обрезка, схлопывание пробелов, дедуп без учёта регистра', async () => {
+      const classId = await createClass();
+
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['  Дракон ', 'дракон', 'начинающие  группа'],
+      });
+
+      expect(created.tags).toEqual(['Дракон', 'начинающие группа']);
+    });
+
+    it('create без tags — пустой массив, не undefined', async () => {
+      const classId = await createClass();
+
+      const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+
+      expect(created.tags).toEqual([]);
+    });
+
+    it('update: нормализует присланные теги', async () => {
+      const classId = await createClass();
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['раз'],
+      });
+
+      const updated = await service.update(
+        created.id,
+        { tags: ['Два', 'два', '  Три  '] },
+        NOW,
+      );
+
+      expect(updated.tags).toEqual(['Два', 'Три']);
+    });
+
+    it('update без tags — прежние теги не трогает', async () => {
+      const classId = await createClass();
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['дракон'],
+      });
+
+      const updated = await service.update(created.id, { topic: 'Новая тема' }, NOW);
+
+      expect(updated.tags).toEqual(['дракон']);
+    });
+
+    it('create → list: read-after-write — фильтр по тегу находит дату', async () => {
+      const classId = await createClass();
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['дракон', 'начинающие'],
+      });
+      await service.create({ classId, startsAt: '2026-09-04T16:00:00Z' });
+
+      const list = await service.list({ from: FROM, to: TO, tag: 'дракон' });
+
+      expect(list).toHaveLength(1);
+      expect(list[0]?.id).toBe(created.id);
+    });
+
+    it('list: фильтр по несуществующему тегу — пустой список, не ошибка', async () => {
+      const classId = await createClass();
+      await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['дракон'],
+      });
+
+      const list = await service.list({ from: FROM, to: TO, tag: 'нет-такого' });
+
+      expect(list).toEqual([]);
+    });
+
+    it('list: пустая строка в query.tag — как отсутствие фильтра', async () => {
+      const classId = await createClass();
+      await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['дракон'],
+      });
+
+      const list = await service.list({ from: FROM, to: TO, tag: '' });
+
+      expect(list).toHaveLength(1);
+    });
+
+    it('дата занятия без поля tags (до этого PR) читается как []', async () => {
+      const classId = await createClass();
+      const created = await service.create({ classId, startsAt: '2026-09-03T16:00:00Z' });
+      // Имитируем дату, заведённую до ADR-0059: поля в базе нет вовсе.
+      await lessonModel.collection.updateOne(
+        { _id: new Types.ObjectId(created.id) },
+        { $unset: { tags: '' } },
+      );
+
+      const list = await service.list({ from: FROM, to: TO });
+
+      expect(list.find((l) => l.id === created.id)?.tags).toEqual([]);
+    });
   });
 });

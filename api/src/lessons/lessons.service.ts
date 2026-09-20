@@ -66,6 +66,10 @@ export class LessonsService {
       startsAt: { $gte: from.toJSDate(), $lt: to.toJSDate() },
     };
     if (query.classId !== undefined) filter.classId = query.classId;
+    // Истинностная проверка, не `!== undefined` (ADR-0059, как у
+    // buildMaterialsFilter, materials.queries.ts): пустая строка в query —
+    // «фильтр не задан», не «тег — пустая строка».
+    if (query.tag) filter.tags = query.tag;
     const docs = await this.model
       .find(filter)
       .sort({ startsAt: 1 })
