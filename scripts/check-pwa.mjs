@@ -4,15 +4,26 @@
 // (копируются из web/public/ без изменений — vite build просто переносит
 // файл), а также что по адресу /sw.js лежит именно заглушка-килсвитч
 // (web/public/sw.js), а не случайно вернувшийся Workbox-worker с прекешем.
-// CI-джоба `web`.
+// Здесь же сверка цвета оболочки с палитрой кабинета (scripts/
+// pwa-shell-colors.mjs): иконку, заставку и полоску браузера человек видит
+// раньше любого экрана. CI-джоба `web`.
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { findShellColorProblems } from './pwa-shell-colors.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const DIST = join(ROOT, 'web', 'dist');
 const MANIFEST_PATH = join(DIST, 'manifest.webmanifest');
 const SW_PATH = join(DIST, 'sw.js');
 const INDEX_PATH = join(DIST, 'index.html');
+
+// Цвет сверяется в исходниках, а не в web/dist: правка, которую забыли
+// собрать, обязана краснеть — иначе гейт зелёный ровно там, где разъезд и
+// заводится.
+const CSS_PATH = join(ROOT, 'web', 'src', 'index.css');
+const HTML_SRC_PATH = join(ROOT, 'web', 'index.html');
+const MANIFEST_SRC_PATH = join(ROOT, 'web', 'public', 'manifest.webmanifest');
+const ICON_SVG_PATH = join(ROOT, 'web', 'public', 'icons', 'icon.svg');
 
 let manifest;
 try {
@@ -71,10 +82,24 @@ if (!existsSync(INDEX_PATH)) {
     errors.push('index.html не содержит meta theme-color');
 }
 
+const shellProblems = findShellColorProblems({
+  css: readFileSync(CSS_PATH, 'utf8'),
+  indexHtml: readFileSync(HTML_SRC_PATH, 'utf8'),
+  manifest: JSON.parse(readFileSync(MANIFEST_SRC_PATH, 'utf8')),
+  iconSvg: readFileSync(ICON_SVG_PATH, 'utf8'),
+});
+errors.push(...shellProblems);
+
 if (errors.length) {
   console.error('❌ check-pwa: найдены проблемы PWA-сборки:');
   for (const e of errors) console.error(`   ${e}`);
+  if (shellProblems.length)
+    console.error(
+      'Знак школы на входе, в кабинете и на иконке обязан совпадать, иначе человек\n' +
+        'не узнаёт то же место. Цвета оболочки идут от токенов web/src/index.css —\n' +
+        'поправь и перегенерируй растр: node scripts/generate-pwa-icons.mjs',
+    );
   process.exit(1);
 }
 
-console.log('✓ check-pwa: манифест, иконки и заглушка service worker в порядке');
+console.log('✓ check-pwa: манифест, иконки, цвет оболочки и заглушка sw в порядке');
