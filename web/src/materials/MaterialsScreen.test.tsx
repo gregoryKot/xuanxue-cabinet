@@ -196,6 +196,25 @@ describe('MaterialsScreen — список материалов', () => {
   });
 });
 
+describe('MaterialsScreen — счётчик «после оплаты» (ADR-0058)', () => {
+  it('staff-материал не попадает в число «после оплаты»', async () => {
+    mockApiByPath({
+      '/settings': SETTINGS,
+      '/materials': [
+        makeMaterial({ id: 'm1', access: 'paid' }),
+        makeMaterial({ id: 'm2', title: 'Методичка', access: 'staff' }),
+      ],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(/Сейчас так помечено 1 материал\./),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
   it('тегов у школы нет — строки пилюль нет вовсе', async () => {
     mockApiByPath({

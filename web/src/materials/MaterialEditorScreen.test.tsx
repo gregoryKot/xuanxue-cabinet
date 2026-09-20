@@ -214,7 +214,7 @@ describe('MaterialEditorScreen — создание', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('вид и занятие выбраны, галочка оплаты — access: paid и classIds в теле', async () => {
+  it('вид и занятие выбраны, переключатель «После оплаты» — access: paid и classIds в теле', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
 
@@ -223,7 +223,7 @@ describe('MaterialEditorScreen — создание', () => {
     await user.type(screen.getByLabelText('Ссылка'), 'https://example.com/video');
     await user.click(screen.getByLabelText('Видео'));
     await user.click(screen.getByLabelText('Тайцзицюань, средняя группа'));
-    await user.click(screen.getByLabelText('Открывать только после оплаты'));
+    await user.click(screen.getByLabelText('После оплаты'));
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
@@ -234,6 +234,29 @@ describe('MaterialEditorScreen — создание', () => {
       kind: 'video',
       classIds: ['c1'],
       access: 'paid',
+      tags: [],
+    });
+  });
+
+  // ADR-0058: третье значение access — видит только штат школы.
+  it('переключатель «Только преподаватели» — access: staff в теле запроса', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
+
+    renderAt('/materials/new');
+    await user.type(await screen.findByLabelText('Название'), 'Методичка');
+    await user.type(screen.getByLabelText('Ссылка'), 'https://example.com/staff-doc');
+    await user.click(screen.getByLabelText('Только преподаватели'));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
+    const body = callsWithMethod('POST')[0]?.[1] as { body: unknown };
+    expect(body.body).toEqual({
+      title: 'Методичка',
+      url: 'https://example.com/staff-doc',
+      kind: 'book',
+      classIds: [],
+      access: 'staff',
       tags: [],
     });
   });
@@ -260,7 +283,19 @@ describe('MaterialEditorScreen — правка', () => {
     expect(screen.getByLabelText('Ссылка')).toHaveValue('https://example.com/book');
     expect(screen.getByLabelText('Книга')).toBeChecked();
     expect(screen.getByLabelText('Тайцзицюань, средняя группа')).toBeChecked();
-    expect(screen.getByLabelText('Открывать только после оплаты')).toBeChecked();
+    expect(screen.getByLabelText('После оплаты')).toBeChecked();
+  });
+
+  // ADR-0058: открытый на правку staff-материал показывает выбранным нужный
+  // переключатель, а не «После оплаты» и не «Все ученики».
+  it('staff-материал — выбран переключатель «Только преподаватели»', async () => {
+    mockMaterial(makeMaterial({ access: 'staff' }));
+
+    renderAt('/materials/m1');
+
+    expect(await screen.findByLabelText('Только преподаватели')).toBeChecked();
+    expect(screen.getByLabelText('Все ученики')).not.toBeChecked();
+    expect(screen.getByLabelText('После оплаты')).not.toBeChecked();
   });
 
   it('теги материала — поле «Теги» предзаполнено строкой через запятую', async () => {

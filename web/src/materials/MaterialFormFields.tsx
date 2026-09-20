@@ -15,6 +15,7 @@ import {
 } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { Toggle } from '../components/Toggle';
+import { MaterialAccessField } from './MaterialAccessField';
 import { MaterialClassesField } from './MaterialClassesField';
 import type { MaterialFormError, MaterialFormState } from './materialFormInput';
 import { useMaterialTagOptions } from './useMaterialTagOptions';
@@ -22,12 +23,6 @@ import { useMaterialTagOptions } from './useMaterialTagOptions';
 const KIND_LEGEND = 'Вид материала';
 const KIND_RADIO_GROUP_NAME = 'material-kind';
 const TAG_OPTIONS_ID = 'material-tag-options';
-const PAID_LABEL = 'Открывать только после оплаты';
-// ADR-0048, VOICE.md: отметка сама по себе ничего не закрывает — решает
-// рубильник школы на экране «Библиотека» (MaterialsPaidAccessSection.tsx), и
-// текст здесь не должен спорить с тем, что написано там.
-const PAID_HINT =
-  'Отметка сработает, когда на «Библиотеке» включат доступ по оплате. Пока он выключен, материал видят все.';
 const TAG_LEGEND = 'Теги';
 // ADR-0058: теги — рубрикация, не служебная пометка, и их видит ученик —
 // значит, ни имени, ни телефона в тексте тега быть не должно.
@@ -112,11 +107,9 @@ export function MaterialFormFields({
         onChange={(classIds) => setField('classIds', classIds)}
       />
 
-      <Toggle
-        label={PAID_LABEL}
-        hint={PAID_HINT}
-        checked={state.paid}
-        onChange={(paid) => setField('paid', paid)}
+      <MaterialAccessField
+        value={state.access}
+        onChange={(access) => setField('access', access)}
       />
 
       <Field label={TAG_LEGEND} hint={TAG_HINT} error={errorFor(error, 'tags')}>

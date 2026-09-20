@@ -1,13 +1,16 @@
-// Строка материала в списке — вид, привязанные занятия, отметка «после
-// оплаты» (docs/PLAN.md §14, ADR-0047, ADR-0048). Тот же приём, что у
-// ChannelCard.tsx: общую карточку красит список (oneCardListStyle), строка
-// несёт только паддинг и волосяную линию снизу — у последней строки линии
-// нет. <button>, не <div onClick> (CLAUDE.md «Доступность»).
+// Строка материала в списке — вид, привязанные занятия, отметка доступа
+// («после оплаты» или «только преподаватели», docs/PLAN.md §14, ADR-0047,
+// ADR-0048, ADR-0058). Тот же приём, что у ChannelCard.tsx: общую карточку
+// красит список (oneCardListStyle), строка несёт только паддинг и волосяную
+// линию снизу — у последней строки линии нет. <button>, не <div onClick>
+// (CLAUDE.md «Доступность»).
 import type { CSSProperties } from 'react';
-import { MATERIAL_KIND_LABELS, type MaterialDto } from '@xuanxue/shared';
+import {
+  MATERIAL_ACCESS_LABELS,
+  MATERIAL_KIND_LABELS,
+  type MaterialDto,
+} from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
-
-const PAID_LABEL = 'После оплаты';
 
 // `<button>` приносит свою рамку и фон — без явного сброса строка выглядела
 // бы обведённой поверх общей карточки списка (тот же приём, что у
@@ -44,14 +47,15 @@ export function MaterialCard({
   const classTitles = material.classIds
     .map((id) => classTitleById.get(id))
     .filter((title): title is string => Boolean(title));
-  // Порядок — вид, занятия, теги, «После оплаты» (ADR-0058: теги после вида
-  // и занятий, отметка оплаты — как последний служебный флаг, тот же
-  // порядок, что у версии вопроса в ExamItemCard.tsx).
+  // Порядок — вид, занятия, теги, отметка доступа (ADR-0058: теги после вида
+  // и занятий, отметка — как последний служебный флаг, тот же порядок, что у
+  // версии вопроса в ExamItemCard.tsx). `all` не отмечается вовсе — только
+  // отступление от базового «видят все ученики» стоит подписывать.
   const metaParts = [
     MATERIAL_KIND_LABELS[material.kind],
     ...classTitles,
     ...material.tags,
-    ...(material.access === 'paid' ? [PAID_LABEL] : []),
+    ...(material.access === 'all' ? [] : [MATERIAL_ACCESS_LABELS[material.access]]),
   ];
 
   return (
