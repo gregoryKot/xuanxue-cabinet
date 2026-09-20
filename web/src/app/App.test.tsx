@@ -28,6 +28,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
@@ -38,6 +39,7 @@ const ADMIN: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
@@ -271,6 +273,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -300,6 +303,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -318,6 +322,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -339,6 +344,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -377,6 +383,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -397,6 +404,7 @@ describe('App', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };

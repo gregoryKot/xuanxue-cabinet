@@ -37,6 +37,7 @@ function meNeedingProfile(name: string): MeDto {
     telegramLinked: cameFromTelegram,
     botChatActive: false,
     hasEmail: !cameFromTelegram,
+    noTelegram: false,
     needsProfile: true,
   };
 }

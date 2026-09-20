@@ -6,8 +6,17 @@
 // одного приложения, а не уведомления: на «Профиле» связка Telegram раньше
 // была подана как способ их получать, отзыв владельца 2026-09-18 просит эту
 // причину заменить на настоящую.
+//
+// Блок не переведён на showsTelegramOffer целиком: там другой вопрос —
+// «Telegram — ключ входа» (признак `telegramLinked`), а showsTelegramOffer
+// отвечает на «есть ли чат с ботом» (признак `botChatActive`, ADR-0042).
+// Общая у них часть — ровно чтение отметки «у меня нет Telegram»: она
+// вынесена в telegram/acceptsTelegramOffer.ts (ADR-0067), и здесь читается
+// через неё же, а не вторым условием на месте.
 import type { MeDto } from '@xuanxue/shared';
 import { screenExplanationStyle } from '../components/screenLayout';
+import { acceptsTelegramOffer } from '../telegram/acceptsTelegramOffer';
+import { NoTelegramSwitch } from '../telegram/NoTelegramSwitch';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
@@ -38,7 +47,7 @@ interface SecondLoginKeyProps {
 
 export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
   const { refresh } = useAuth();
-  const needsTelegram = !me.telegramLinked;
+  const needsTelegram = acceptsTelegramOffer(me) && !me.telegramLinked;
   const needsEmail = !me.hasEmail;
   // enabled: needsEmail — у кого почта уже есть, лишний GET /auth/config не
   // нужен (тот же приём, что у LoginScreen.tsx через JoinScreen, ревью PR #150).
@@ -46,19 +55,29 @@ export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
   const showEmail =
     needsEmail && configStatus === 'ok' && config?.emailLoginEnabled === true;
 
-  // Нечего предложить: оба ключа на месте, либо почта не подключена школой
-  // (нет ключа Resend) и Telegram и так связан — предлагать нечего и незачем
-  // рисовать заголовок ради пустоты.
-  if (!needsTelegram && !showEmail) return null;
+  // Нечего предложить и нечего объяснять: оба ключа на месте (или отметка
+  // погасила Telegram) и почта не нужна — предлагать нечего и незачем
+  // рисовать заголовок ради пустоты. `me.noTelegram` — отдельное условие: сама
+  // отметка остаётся дорогой назад, даже когда предлагать больше нечего.
+  if (!needsTelegram && !showEmail && !me.noTelegram) return null;
 
   return (
     <section style={sectionStyle}>
       <h2 className="xuanxue-eyebrow" style={headingStyle}>
         {TITLE}
       </h2>
-      <p style={screenExplanationStyle}>
-        {needsTelegram ? MISSING_TELEGRAM_EXPLANATION : MISSING_EMAIL_EXPLANATION}
-      </p>
+      {/* Ровно один из двух абзацев ниже может быть истинным одновременно
+          (аккаунт всегда приходит с одним ключом, см. комментарий у
+          констант) — раньше это был один тернарник, теперь два условных
+          абзаца: у отметки «нет Telegram» есть третье состояние, когда не
+          подходит ни один (needsTelegram и showEmail оба ложны), и тогда не
+          рисуется ни один из них. */}
+      {needsTelegram && (
+        <p style={screenExplanationStyle}>{MISSING_TELEGRAM_EXPLANATION}</p>
+      )}
+      {!needsTelegram && showEmail && (
+        <p style={screenExplanationStyle}>{MISSING_EMAIL_EXPLANATION}</p>
+      )}
       {needsTelegram && <TelegramLinkButton onBeforeLink={onBeforeLink} />}
       {showEmail &&
         (me.pendingEmail ? (
@@ -66,6 +85,12 @@ export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
         ) : (
           <EmailLinkForm refresh={refresh} />
         ))}
+      {/* Условие — просто «Telegram не ключ этого аккаунта». Кому Telegram и
+          так открывает вход, отметка не нужна и не показывается; всем
+          остальным ссылка стоит рядом с предложением, а когда отметка уже
+          стоит — на её месте остаётся дорога назад, чтобы отказ не был
+          необратимым. */}
+      {!me.telegramLinked && <NoTelegramSwitch noTelegram={me.noTelegram} />}
     </section>
   );
 }

@@ -146,6 +146,14 @@ Telegram; тот же блок повторяется на «Профиле», �
 письма входом не работает и висит неподтверждённой — кабинет напоминает на
 «Профиле» кнопкой «Прислать ссылку ещё раз» (ADR-0059).
 
+Рядом с предложением связать Telegram стоит тихая ссылка «У меня нет
+Telegram» (ADR-0067). Нажали — кабинет перестаёт звать в Telegram везде
+сразу: и в блоке второго ключа, и на «Уведомлениях», и на экране после
+сдачи работы, и на «Проверке работ». Отметка гасит предложение, а не
+отправку: без личного чата с ботом слать и так некуда. Дорога назад лежит
+там же — «Telegram у меня появился» возвращает предложение, отказ
+необратимым не бывает.
+
 **Роли** (`shared/src/auth.ts`, `USER_ROLES`) и что каждая видит:
 
 - **Админ** — видит и меняет всё: занятия, расписание, каналы, рассылки, шаблоны,
@@ -182,7 +190,7 @@ Telegram; тот же блок повторяется на «Профиле», �
 
 | Коллекция                              | Поля                                                                                                                                                                                          | Комментарий                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`                                | name, email, telegramId, googleId, roles[], status, lastLoginAt, joinedViaInviteAt?, createdAt                                                                                                | status: active / blocked. Уникальные частичные индексы: telegramId, email, googleId — один ключ входа = одна учётная запись (SECURITY §2). Живёт, пока жив аккаунт; удаление — `DELETE /users/:id`, кнопка «Удалить данные» на «Люди», не по расписанию                                                                                                                                                                                                                                                         |
+| `users`                                | name, email, pendingEmail?, telegramId, googleId, roles[], status, lastLoginAt, joinedViaInviteAt?, profileNamedAt?, noTelegramAt?, createdAt                                                 | status: active / blocked. Уникальные частичные индексы: telegramId, email, googleId — один ключ входа = одна учётная запись (SECURITY §2). Живёт, пока жив аккаунт; удаление — `DELETE /users/:id`, кнопка «Удалить данные» на «Люди», не по расписанию                                                                                                                                                                                                                                                         |
 | `classes`                              | title, groupLabel, format, location, zoomLink, zoomPassword, leaderId, rules[{weekday, time, durationMin}], tz, channelIds[], leadMinutes, active                                             | Около 30 слотов, данные школы, не пользователя (ADR-0010). format: online / offline / both. Офлайн без ссылки ничего не рассылает                                                                                                                                                                                                                                                                                                                                                                               |
 | `lessons`                              | classId, plannedAt?, startsAt, durationMin, topic, status, leaderId?, zoomLinkOverride, zoomPasswordOverride, recordings[{title, url \| telegramFileId}], note, ruleId?, recordingPromptedAt? | Конкретное занятие. `plannedAt` — identity для идемпотентной генерации из расписания: уникальный частичный индекс (classId, plannedAt). Планировщик создаёт на 4 недели вперёд, учитель вписывает темы, отменяет, переносит, добавляет разовые                                                                                                                                                                                                                                                                  |
 | `channels`                             | type, title, config (зашифровано), target, createdBy, active                                                                                                                                  | type: telegram / vk / manual / webpush. Данные школы (ADR-0010). `target` — chatId/peerId без секрета, уникальный частичный индекс (type, target)                                                                                                                                                                                                                                                                                                                                                               |
@@ -1468,7 +1476,7 @@ Telegram — вставляет ссылку (VK Видео, Rutube, Яндек�
 `ExamItemsService.create()`, что и кабинет (`ExamBotService.createExamItem`,
 `new-exam-item-save-callback.ts`) — статус по умолчанию `published` (ADR-0033),
 своего черновика-в-БД для вопроса бот не заводит, публиковать отдельно не
-нужно. Черновик диалога — `bot_sessions` (`kind: 'examItemDraft'`, draft*-поля,
+нужно. Черновик диалога — `bot_sessions` (`kind: 'examItemDraft'`, draft\*-поля,
 шифрование SECURITY §5). Правила, которых нет в сервисе (лимиты DTO
 `CreateExamItemDto`), бот проверяет тем же class-validator
 (`ExamBotPort.validateExamItemDraft`), не переизобретает.
@@ -1480,7 +1488,7 @@ Telegram — вставляет ссылку (VK Видео, Rutube, Яндек�
 дальше название текстом, лимит времени (кнопки без лимита/15/30/60 или число
 минут сообщением — `NewExamMessageHandler`), число попыток (кнопки 1/2/3),
 карточка-подтверждение и «Опубликовать» (`new-exam-callback.ts`). Черновик —
-`bot_sessions` (`kind: 'examBuildDraft'`, build*-поля, шифрование SECURITY
+`bot_sessions` (`kind: 'examBuildDraft'`, build\*-поля, шифрование SECURITY
 §5). «Опубликовать» зовёт тот же переход в `published`, что и кабинет
 (`ExamsService.createAndPublishExam` — `create()` + `update({status:
 'published'})` одним вызовом, `ExamBotService.createAndPublishExam`,
@@ -1565,7 +1573,7 @@ class-validator (`ExamBotPort.validateExamDraft`), не переизобрета
   (`CreateExamItemDto`) бот проверяет тем же class-validator, не своей
   копией лимита. — `new-exam-item-flow.spec.ts` (весь диалог: single/
   multiple/text, идемпотентность, отказ, сбой, защита в глубину на Save),
-  `bot-session.service.spec.ts` (шифрование draft*-полей, TTL, чистка
+  `bot-session.service.spec.ts` (шифрование draft\*-полей, TTL, чистка
   заброшенного черновика), `exam-item-draft-validate.spec.ts` (те же
   сообщения, что у POST /exam-items).
 - Учитель собирает экзамен в боте (4б.4) — полный диалог (отметка → название →

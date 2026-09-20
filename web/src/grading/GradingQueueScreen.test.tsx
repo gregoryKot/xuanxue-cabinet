@@ -26,6 +26,7 @@ const TEACHER: MeDto = {
   telegramLinked: true,
   botChatActive: true,
   hasEmail: true,
+  noTelegram: false,
   needsProfile: false,
 };
 const ADMIN: MeDto = {
@@ -36,6 +37,7 @@ const ADMIN: MeDto = {
   telegramLinked: true,
   botChatActive: false,
   hasEmail: true,
+  noTelegram: false,
   needsProfile: false,
 };
 

@@ -51,6 +51,7 @@ const ME_LINKED: MeDto = {
   telegramLinked: true,
   botChatActive: true,
   hasEmail: false,
+  noTelegram: false,
   needsProfile: false,
 };
 const ME_NOT_LINKED: MeDto = {

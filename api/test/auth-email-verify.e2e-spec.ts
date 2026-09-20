@@ -89,6 +89,7 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
         'id',
         'name',
         'needsProfile',
+        'noTelegram',
         'roles',
         'status',
         'telegramLinked',

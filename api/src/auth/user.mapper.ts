@@ -18,7 +18,12 @@
 // назвал себя сам (ADR-0044): пусто `profileNamedAt` значит либо заглушку
 // NEW_PERSON_NAME после входа по почте, либо имя из Telegram, которое
 // человек не подтверждал — в обоих случаях кабинет один раз спрашивает имя
-// экраном `/welcome`.
+// экраном `/welcome`. `noTelegram` — тоже пара «дата → булево», как
+// `needsProfile` выше: `user.noTelegramAt != null` (ADR-0067). Значение
+// здесь — «не предлагать связку Telegram», а не «не слать»: доставку решает
+// отдельно наличие личного чата с ботом (`PersonalChats.chatFor()` без чата
+// и так отдаёт `null`, слать некуда) — строить на этом поле логику
+// отправки нельзя, оно отвечает только на вопрос интерфейса.
 import type { MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 
@@ -32,6 +37,7 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     botChatActive,
     hasEmail: user.email != null,
     pendingEmail: user.pendingEmail,
+    noTelegram: user.noTelegramAt != null,
     needsProfile: user.profileNamedAt == null,
   };
 }

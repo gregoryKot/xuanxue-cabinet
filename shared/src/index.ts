@@ -49,7 +49,7 @@ export type {
   VerifyEmailLoginInput,
   AuthConfigDto,
 } from './auth';
-export type { MeDto } from './me';
+export type { MeDto, SetNoTelegramInput } from './me';
 export type { LinkEmailInput, ConfirmEmailInput } from './email-link';
 export {
   EMAIL_CONFIRM_TOKEN_RE,

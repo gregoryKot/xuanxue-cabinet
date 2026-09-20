@@ -11,6 +11,7 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     telegramLinked: false,
     botChatActive: false,
     hasEmail: false,
+    noTelegram: false,
     needsProfile: false,
     ...overrides,
   };
@@ -23,6 +24,14 @@ describe('showsTelegramOffer (ADR-0042)', () => {
 
   it('чат с ботом есть — предлагать нечего', () => {
     expect(showsTelegramOffer(makeMe({ botChatActive: true }))).toBe(false);
+  });
+
+  // ADR-0067: отметка гасит предложение даже там, где botChatActive само по
+  // себе его бы ещё разрешало.
+  it('отметка «у меня нет Telegram» стоит, чата с ботом тоже нет — предложения нет', () => {
+    expect(showsTelegramOffer(makeMe({ noTelegram: true, botChatActive: false }))).toBe(
+      false,
+    );
   });
 
   // Тот самый случай из ADR-0042, ради которого предикат смотрит на
