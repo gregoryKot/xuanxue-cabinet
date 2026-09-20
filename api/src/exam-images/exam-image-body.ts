@@ -9,43 +9,29 @@
 // Маршрутов стало два (ADR-0050), и список их — здесь, в одном месте
 // (SECURITY §4): привязка к одному литеральному пути второго маршрута не
 // пережила бы — снимок перевода адресуется месяцем.
+//
+// Разбор пути и заявленного типа — common/raw-body-route.ts: та же механика
+// понадобилась файлам материалов (ADR-0057), и второй копии разбора не
+// осталось (CLAUDE.md «Дубли и мёртвый код»).
 import { EXAM_IMAGE_CONTENT_TYPES } from '@xuanxue/shared';
 import type { ExamImageContentType } from '@xuanxue/shared';
+import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-body-route';
 
 export const EXAM_IMAGES_ROUTE_PATH = '/api/exam-images';
 
-/** Оба маршрута сырого тела (SECURITY §4). `:month` здесь — любой сегмент
- * без слеша: формат месяца проверяет сам контроллер тем же `MONTH_KEY_RE`,
- * что и остальные пути оплат (PaymentsService, `assertMonthKey`), а парсеру
- * достаточно узнать маршрут — чужой месяц всё равно упрётся во владение по
- * сессии, а кривой получит 400 из общего конверта. */
+/** Оба маршрута сырого тела картинок (SECURITY §4). `:month` здесь — любой
+ * сегмент без слеша: формат месяца проверяет сам контроллер тем же
+ * `MONTH_KEY_RE`, что и остальные пути оплат (PaymentsService,
+ * `assertMonthKey`), а парсеру достаточно узнать маршрут — чужой месяц всё
+ * равно упрётся во владение по сессии, а кривой получит 400 из общего
+ * конверта. Файл материала (ADR-0057) в этом списке не значится: у него свой
+ * потолок втрое больше и свой предикат, material-file-body.ts. */
 const RAW_IMAGE_UPLOAD_ROUTES: readonly RegExp[] = [
   // Картинка варианта ответа — только штат школы (ADR-0035).
   new RegExp(`^${EXAM_IMAGES_ROUTE_PATH}$`),
   // Снимок перевода — тот, чей Telegram с кабинетом не связан (ADR-0050).
   /^\/api\/me\/payments\/[^/]+\/screenshot$/,
 ];
-
-/** Минимальный интерфейс вместо `IncomingMessage` из `'http'` напрямую — тот
- * же приём, что `RequestLike` в common/http-headers.ts. `IncomingMessage`
- * структурно совместим с ним (url?/method?/headers['content-type'] — те же
- * типы), поэтому `isRawImageUpload` подходит под `type?: (req:
- * IncomingMessage) => any` из NestExpressBodyParserOptions без приведения. */
-export interface IncomingRequestLike {
-  url?: string;
-  method?: string;
-  headers: { 'content-type'?: string | string[] | undefined };
-}
-
-function routePath(url: string | undefined): string {
-  const path = (url ?? '').split('?')[0] ?? '';
-  return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
-}
-
-function mediaType(header: string | string[] | undefined): string {
-  if (typeof header !== 'string') return '';
-  return (header.split(';')[0] ?? '').trim().toLowerCase();
-}
 
 /** Валидатор media type — тот же приём, что isNotificationKind
  * (shared/src/notifications.ts): один guard, не includes на каждого

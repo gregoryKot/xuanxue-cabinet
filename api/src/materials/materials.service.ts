@@ -10,6 +10,7 @@
 // фильтром запроса — иначе служебные материалы съедали бы лимит списка.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
   MATERIAL_NOT_FOUND_MESSAGE,
@@ -27,6 +28,7 @@ import { ClassRecord } from '../classes/class.schema';
 import { NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { SettingsService } from '../settings/settings.service';
+import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { encryptRecord } from '../utils/encryption';
 import { isMaterialLocked } from './material-access';
 import { findMaterialClassTitles } from './material-classes.lookup';
@@ -47,6 +49,7 @@ export class MaterialsService {
     @InjectModel(MaterialRecord.name) private readonly model: Model<MaterialRecord>,
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
     private readonly settingsService: SettingsService,
+    private readonly orphans: StorageOrphansService,
   ) {}
 
   /** Порядок — свежие материалы первыми (MaterialSchema.index({createdAt: -1})). */
@@ -99,10 +102,14 @@ export class MaterialsService {
     return toMaterialDto(decryptMaterial(doc));
   }
 
-  async remove(id: string): Promise<void> {
+  /** Файл материала уходит тем же действием (ADR-0057). Не удалось удалить
+   * объект сейчас — он остался в журнале и уйдёт шагом планировщика
+   * (ADR-0076); материал при этом удаляется в любом случае. */
+  async remove(id: string, now: DateTime): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const { deletedCount } = await this.model.deleteOne({ _id: id });
-    if (deletedCount === 0) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    const doc = await this.model.findOneAndDelete({ _id: id }).lean<RawLeanMaterial>();
+    if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    if (doc.fileKey) await this.orphans.removeNow(doc.fileKey, now);
   }
 
   /** `isStaff` — уже вычисленный `isStaffRole(user.roles)` из контроллера

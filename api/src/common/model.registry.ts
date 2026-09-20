@@ -4,6 +4,11 @@
 // обходить этот список и брать `encryptSchemaFrom(fieldPolicy)` для каждой
 // модели — другого реестра шифруемых полей в проекте нет.
 import type { Schema } from 'mongoose';
+import {
+  StorageOrphanRecord,
+  StorageOrphanSchema,
+  STORAGE_ORPHAN_FIELD_POLICY,
+} from '../storage/storage-orphan.schema';
 import { ClassRecord, ClassSchema, CLASS_FIELD_POLICY } from '../classes/class.schema';
 import {
   LessonRecord,
@@ -220,5 +225,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: PaymentScreenshotRecord.name,
     schema: PaymentScreenshotSchema,
     fieldPolicy: PAYMENT_SCREENSHOT_FIELD_POLICY,
+  },
+  {
+    name: StorageOrphanRecord.name,
+    schema: StorageOrphanSchema,
+    fieldPolicy: STORAGE_ORPHAN_FIELD_POLICY,
   },
 ];
