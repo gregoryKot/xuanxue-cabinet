@@ -33,7 +33,6 @@ const USER: UserLean = {
   name: 'Мария',
   email: 'maria@example.com',
   roles: ['admin'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 
@@ -137,7 +136,6 @@ describe('AuthController.me', () => {
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
@@ -237,7 +235,6 @@ describe('AuthController.verifyEmailLogin', () => {
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
@@ -284,7 +281,6 @@ describe('AuthController.loginWithTelegram', () => {
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,

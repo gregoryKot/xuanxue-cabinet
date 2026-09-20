@@ -33,7 +33,7 @@ export const CHAT_ID = 111;
 const SENT_PHOTO_SIZES = [{ file_id: 'f-small' }, { file_id: 'f-big' }];
 
 export function botUser(id: string): UserLean {
-  return { id, name: 'Ученик', roles: [], tz: 'Asia/Jerusalem', status: 'active' };
+  return { id, name: 'Ученик', roles: [], status: 'active' };
 }
 
 export interface FlowFakeCtx {

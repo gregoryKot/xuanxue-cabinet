@@ -24,7 +24,6 @@ const STUDENT: MeDto = {
   id: 'u1',
   name: 'Мария Ли',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,

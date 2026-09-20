@@ -145,7 +145,6 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
     id: 'u1',
     name: 'Аня',
     roles: [],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     telegramLinked: true,
     botChatActive: true,

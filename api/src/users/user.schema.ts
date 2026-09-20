@@ -17,7 +17,6 @@
 // `/welcome` (ADR-0044, PATCH /me/profile, UserProfileService.setName).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
-  SCHOOL_TZ,
   USER_ROLES,
   USER_STATUSES,
   type UserRole,
@@ -45,9 +44,6 @@ export class UserRecord {
   // текст.
   @Prop({ type: [{ type: String, enum: USER_ROLES }], default: [] })
   roles!: UserRole[];
-
-  @Prop({ type: String, default: SCHOOL_TZ })
-  tz!: string;
 
   @Prop({ type: String, enum: USER_STATUSES, default: 'active' })
   status!: UserStatus;
@@ -93,5 +89,4 @@ export const USER_FIELD_POLICY: FieldPolicy = {
   name: plain('показывается учителю и админу, подстановка «{ведущий}»'),
   email: plain('ключ поиска при входе, не свободный текст'),
   googleId: plain('ключ входа от Google, непрозрачный id, не секрет'),
-  tz: plain('IANA-зона пользователя, нужна для расписания и выборок'),
 };

@@ -11,7 +11,6 @@ const USER: UserLean = {
   id: 'u1',
   name: 'Мария',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

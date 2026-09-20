@@ -122,7 +122,6 @@ describe('handleTelegramLinkDeepLink', () => {
         id: 'u1',
         name: 'Ольга',
         roles: [],
-        tz: 'Asia/Jerusalem',
         status: 'active',
       },
     });
@@ -141,7 +140,6 @@ describe('handleTelegramLinkDeepLink', () => {
         id: 'u1',
         name: 'Ольга',
         roles: [],
-        tz: 'Asia/Jerusalem',
         status: 'active',
       },
     });
@@ -163,7 +161,6 @@ describe('handleTelegramLinkDeepLink', () => {
         id: 'u2',
         name: 'Дима',
         roles: ['teacher'],
-        tz: 'Asia/Jerusalem',
         status: 'active',
       },
     });

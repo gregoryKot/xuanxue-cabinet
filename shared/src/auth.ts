@@ -49,13 +49,13 @@ export type UserStatus = (typeof USER_STATUSES)[number];
  * Email, telegramId и googleId сюда намеренно не входят — это ключи входа,
  * не профиль для интерфейса. `telegramLinked` — не id, а признак «бот меня
  * узнает» (ADR-0023, §8.17): им экран попытки решает, показывать ли кнопку
- * бота.
+ * бота. Часового пояса тут нет намеренно (ADR-0059): время человеку
+ * показывается по часам его устройства, и хранить пояс в профиле незачем.
  */
 export interface MeDto {
   id: string;
   name: string;
   roles: UserRole[];
-  tz: string;
   status: UserStatus;
   telegramLinked: boolean;
   /** «Боту есть куда мне писать» — активный личный чат

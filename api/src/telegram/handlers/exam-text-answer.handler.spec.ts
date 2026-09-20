@@ -85,7 +85,6 @@ function buildHandler(overrides: {
             id: overrides.userId,
             name: 'Ученик',
             roles: [],
-            tz: 'UTC',
             status: 'active',
           })
         : { kind: 'unknown' },
@@ -134,7 +133,7 @@ describe('ExamTextAnswerHandler', () => {
 
     expect(port.saveAnswer).toHaveBeenCalledWith(
       ATTEMPT_ID,
-      { id: 'u1', name: 'Ученик', roles: [], tz: 'UTC', status: 'active' },
+      { id: 'u1', name: 'Ученик', roles: [], status: 'active' },
       { itemId: 'i1', text: 'мой ответ' },
       NOW,
     );
@@ -181,7 +180,7 @@ describe('ExamTextAnswerHandler', () => {
   it('сервис отказал — общий текст ошибки, не падает', async () => {
     const botSessions = fakeBotSessionService();
     const botAccess = fakeBotUserAccess(
-      activeAccess({ id: 'u1', name: 'Ученик', roles: [], tz: 'UTC', status: 'active' }),
+      activeAccess({ id: 'u1', name: 'Ученик', roles: [], status: 'active' }),
     );
     const registry = new ExamBotPortRegistry();
     registry.set(

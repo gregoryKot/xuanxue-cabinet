@@ -41,7 +41,6 @@ function fakeLinkService(): TelegramLinkService {
           id: 'u1',
           name: 'Ольга',
           roles: [],
-          tz: 'Asia/Jerusalem',
           status: 'active' as const,
         },
       }),

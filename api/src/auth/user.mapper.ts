@@ -22,7 +22,6 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     id: user.id,
     name: user.name,
     roles: user.roles,
-    tz: user.tz,
     status: user.status,
     telegramLinked: user.telegramId != null,
     botChatActive,

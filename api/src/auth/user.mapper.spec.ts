@@ -9,19 +9,17 @@ function fullUser(): UserLean {
     telegramId: 12345,
     googleId: 'g-1',
     roles: ['admin'],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     lastLoginAt: new Date('2026-09-05T00:00:00Z'),
   };
 }
 
 describe('toMeDto', () => {
-  it('переносит id, name, roles, tz, status; botChatActive — параметром', () => {
+  it('переносит id, name, roles, status; botChatActive — параметром', () => {
     expect(toMeDto(fullUser(), true)).toEqual({
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: true,
       botChatActive: true,
@@ -77,7 +75,6 @@ describe('toMeDto', () => {
       'roles',
       'status',
       'telegramLinked',
-      'tz',
     ]);
   });
 });

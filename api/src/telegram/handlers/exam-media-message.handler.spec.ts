@@ -100,7 +100,6 @@ function buildHandler(overrides: {
             id: overrides.userId,
             name: 'Ученик Иванов',
             roles: [],
-            tz: 'UTC',
             status: 'active',
           })
         : { kind: 'unknown' },

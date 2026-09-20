@@ -6,7 +6,6 @@ const me: MeDto = {
   id: 'u1',
   name: 'Маша',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
