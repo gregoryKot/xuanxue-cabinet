@@ -1899,6 +1899,18 @@ ADR-0025). `GET /api/lessons/recording-summary` (штату школы) за 30 
 с записью: «что было во вторник» — запись и ссылки в одном месте. Материалы курса и общие
 остаются в библиотеке.
 
+**Сделано 2026-09-20.** `MyArchivedLessonDto.materials` — тот же `MyMaterialDto`, что и в
+библиотеке ученика: второго типа того же самого нет, значит и рубильник оплаты (ADR-0048)
+здесь работает тот же, а не написанный заново. Материалы всего списка архива подбираются
+одним запросом (`LessonMaterialsService.findByLessonIds`, `$in` по `lessonIds` + Map по
+датам — тот же приём, что у `findLessonClassesByIds`), а не по запросу на занятие;
+`access: 'staff'` вырезается фильтром запроса, `paid` при включённом рубильнике приезжает
+без `url` и с `locked: true`. Главный риск слоя — забыть правило доступа и получить обход
+рубильника через архив — закрыт e2e с grep по сырому JSON ответа
+(`api/test/my-lessons-archive-materials.e2e-spec.ts`). На экране строка материала — тот же
+`StudentMaterialCard`, что в библиотеке (второй карточки и второго объяснения про закрытый
+материал нет); занятие без материалов рубрику не рисует.
+
 **3.10. Файлы** (ADR-0057). Загрузка — `POST /api/materials/:id/file` сырым телом, штату
 школы, с лимитом размера и списком типов; раздача — `GET /api/materials/:id/file`, ответ
 `302` на подписанную ссылку R2 со сроком в минуты, байты мимо нашего инстанса. Право на
@@ -1990,6 +2002,15 @@ ADR-0025). `GET /api/lessons/recording-summary` (штату школы) за 30 
   `api/test/my-lessons-archive.e2e-spec.ts`.
 - Запись без `url` не даёт ссылку «Открыть запись» и не притворяется ею. —
   `ArchivedLessonCard.test.tsx`.
+- Материал своей даты приехал в архив, материал соседней — нет; материал, привязанный к
+  двум датам, виден у обеих; рубильник оплаты действует и в архиве (закрытый — без `url`,
+  `locked: true`), `staff`-материал ученику не приходит вовсе. —
+  `api/src/materials/lesson-materials.service.spec.ts`,
+  `api/src/lessons/my-lessons-archive.service.spec.ts`,
+  `api/src/lessons/my-archived-lesson.mapper.spec.ts`,
+  `api/test/my-lessons-archive-materials.e2e-spec.ts` (grep по сырому JSON архива).
+- Материалы занятия видны в карточке архива, закрытый — с объяснением вместо ссылки,
+  занятие без материалов рубрику не рисует. — `web/src/student/ArchivedLessonCard.test.tsx`.
 - Форматтер числа на пустой базе отдаёт текст, а не «0/NaN». —
   `shared/src/lesson-recording-summary.spec.ts`, `materialsPaidCountHint.test.ts`.
 - Окно числа: занятие в окне и вне, с записью и без, отменённое не считается; переход
