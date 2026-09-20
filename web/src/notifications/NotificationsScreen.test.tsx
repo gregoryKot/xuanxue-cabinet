@@ -137,6 +137,22 @@ describe('NotificationsScreen — рубрики ленты', () => {
   });
 });
 
+describe('NotificationsScreen — ссылка на предмет (ADR-0070)', () => {
+  it('строка exam_result в ленте нарисована ссылкой на «/tasks»', async () => {
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: {
+        items: [makeNotification({ kind: 'exam_result' })],
+        unreadCount: 1,
+      },
+    });
+
+    expect(await screen.findByRole('link', { name: /Текст события/ })).toHaveAttribute(
+      'href',
+      '/tasks',
+    );
+  });
+});
+
 describe('NotificationsScreen — отметка прочитанной', () => {
   it('клик по непрочитанной строке шлёт POST по её адресу и перечитывает ленту', async () => {
     const user = userEvent.setup();

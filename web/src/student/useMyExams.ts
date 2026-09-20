@@ -6,7 +6,7 @@
 //
 // Центр уведомлений (notifications/useNotificationsData.ts) зовёт этот же
 // хук за любую роль, а экзамены — механика ученика: у штата школы запрос
-// выключается через `enabled` (ADR-0070). TasksScreen.tsx зовёт хук без
+// выключается через `enabled` (ADR-0071). TasksScreen.tsx зовёт хук без
 // аргументов — поведение прежнее.
 import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
 import { MY_EXAMS_PATH } from '../api/apiPaths';
