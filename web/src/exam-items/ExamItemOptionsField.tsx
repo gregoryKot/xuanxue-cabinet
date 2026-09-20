@@ -1,17 +1,14 @@
 // Варианты ответа — только для single/multiple: добавить, убрать, отметить
-// верный, дать текст и/или картинку (ADR-0035). Вид — тот же список строками,
-// что у вопросов экзамена (макет Form.dc.html, класс `.xuanxue-question-row`):
-// отметка, [текст + картинка] одной колонкой, тихая «×» справа; на телефоне
-// кнопка уезжает под строку. Отметка «верно» — нативный radio/checkbox: для
-// single имя группы (`name`) отдаёт браузеру взаимное исключение самому, для
-// multiple — обычные чекбоксы (CLAUDE.md «Доступность» — работает с
+// верный, дать текст и/или картинку (ADR-0035). Сама строка со всей вёрсткой
+// живёт в ExamItemOptionRow.tsx (вынесена по файловому храповику), здесь —
+// список и правила его изменения. Отметка «верно» — нативный radio/checkbox:
+// для single имя группы (`name`) отдаёт браузеру взаимное исключение самому,
+// для multiple — обычные чекбоксы (CLAUDE.md «Доступность» — работает с
 // клавиатуры без единого атрибута ARIA).
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
-import { inputStyle } from '../components/Field';
-import { rowControlStyle } from '../components/listCardStyles';
 import { noteStyle, textLinkButtonStyle } from '../components/screenLayout';
-import { ExamItemOptionImage } from './ExamItemOptionImage';
+import { ExamItemOptionRow } from './ExamItemOptionRow';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 
 const fieldsetStyle: CSSProperties = {
@@ -23,21 +20,6 @@ const fieldsetStyle: CSSProperties = {
   gap: 8,
 };
 const legendStyle: CSSProperties = { fontSize: 14, fontWeight: 600, padding: 0 };
-const markStyle: CSSProperties = {
-  width: 18,
-  height: 18,
-  marginTop: 12,
-  accentColor: 'var(--accent)',
-};
-const textStyle: CSSProperties = { ...inputStyle, marginTop: 2 };
-// Текст и картинка варианта — одной колонкой (второй столбец грида
-// `.xuanxue-question-row`, index.css): картинка идёт под своим текстовым
-// полем, а не рядом отдельным столбцом.
-const textColumnStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-};
 const hintTextStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
@@ -93,41 +75,16 @@ export function ExamItemOptionsField({
     <fieldset style={fieldsetStyle}>
       <legend style={legendStyle}>Варианты ответа</legend>
       {options.map((option, index) => (
-        <div key={option.id ?? `new-${index}`} className="xuanxue-question-row">
-          <input
-            type={kind === 'single' ? 'radio' : 'checkbox'}
-            name={kind === 'single' ? RADIO_GROUP_NAME : undefined}
-            aria-label={`Верный вариант ${index + 1}`}
-            style={markStyle}
-            checked={option.correct}
-            onChange={(e) => markCorrect(index, e.target.checked)}
-          />
-          <div style={textColumnStyle}>
-            <input
-              type="text"
-              aria-label={`Текст варианта ${index + 1}`}
-              style={textStyle}
-              maxLength={EXAM_ITEM_LIMITS.optionText}
-              value={option.text}
-              onChange={(e) => updateText(index, e.target.value)}
-            />
-            <ExamItemOptionImage
-              index={index}
-              imageId={option.imageId}
-              onChange={(imageId) => updateImage(index, imageId)}
-            />
-          </div>
-          <div className="xuanxue-question-controls">
-            <button
-              type="button"
-              style={rowControlStyle}
-              aria-label={`Убрать вариант ${index + 1}`}
-              onClick={() => removeOption(index)}
-            >
-              ×
-            </button>
-          </div>
-        </div>
+        <ExamItemOptionRow
+          key={option.id ?? `new-${index}`}
+          option={option}
+          index={index}
+          radioGroupName={kind === 'single' ? RADIO_GROUP_NAME : undefined}
+          onTextChange={(text) => updateText(index, text)}
+          onImageChange={(imageId) => updateImage(index, imageId)}
+          onCorrectChange={(checked) => markCorrect(index, checked)}
+          onRemove={() => removeOption(index)}
+        />
       ))}
       {canAddMore && (
         <button

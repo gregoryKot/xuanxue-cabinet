@@ -168,3 +168,46 @@ describe('ExamItemOptionsField — картинка варианта (ADR-0035)'
     ]);
   });
 });
+
+// Отметка «верный вариант» рисуется системным чекбоксом 18×18 — крупнее он не
+// бывает, — а цель нажатия обязана быть 44×44 (CLAUDE.md «Доступность»).
+// Цель несёт <label> вокруг отметки, а первая колонка строки расширена под
+// неё модификатором .xuanxue-option-row (index.css): у строки вопроса в той
+// же колонке номер, ей 28px достаточно.
+describe('ExamItemOptionsField — цель нажатия отметки «верный вариант»', () => {
+  it('отметка обёрнута в цель 44×44, нажатие по полю вокруг переключает её', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={[{ text: 'Вправо', correct: false }]}
+        onChange={onChange}
+      />,
+    );
+
+    const mark = screen.getByRole('radio', { name: 'Верный вариант 1' });
+    const target = mark.closest('label') as HTMLElement;
+    expect(target).not.toBeNull();
+    expect(target.style.width).toBe('44px');
+    expect(target.style.height).toBe('44px');
+
+    await user.click(target);
+    expect(onChange).toHaveBeenCalledWith([{ text: 'Вправо', correct: true }]);
+  });
+
+  it('строка варианта несёт модификатор широкой первой колонки', () => {
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={[{ text: 'Вправо', correct: false }]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    const row = screen
+      .getByRole('radio', { name: 'Верный вариант 1' })
+      .closest('.xuanxue-question-row');
+    expect(row).toHaveClass('xuanxue-option-row');
+  });
+});
