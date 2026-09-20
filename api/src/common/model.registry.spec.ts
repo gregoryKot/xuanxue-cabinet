@@ -64,7 +64,7 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     });
   });
 
-  // ADR-0076: журнал сирот переживает повторную запись того же ключа — на
+  // ADR-0078: журнал сирот переживает повторную запись того же ключа — на
   // неё опирается `StorageOrphansService.track` (upsert вместо insert).
   it('storage_orphans: второй insert с тем же key падает', async () => {
     const Orphan = connection.model<StorageOrphanRecord>(StorageOrphanRecord.name);

@@ -42,7 +42,7 @@ export class MaterialFilesService {
     private readonly orphans: StorageOrphansService,
   ) {}
 
-  /** Порядок шагов — ADR-0076: запись в журнал раньше объекта, снятие записи
+  /** Порядок шагов — ADR-0078: запись в журнал раньше объекта, снятие записи
    * после того, как на объект сослался материал. Прежний файл уходит тем же
    * действием. */
   async upload(
@@ -79,7 +79,7 @@ export class MaterialFilesService {
       )
       .lean<RawLeanMaterial | null>();
     // Материал успели удалить, пока шла загрузка: объект остаётся в журнале
-    // и уходит следующим действием, а не висит в бакете (ADR-0076).
+    // и уходит следующим действием, а не висит в бакете (ADR-0078).
     if (!previous) {
       await this.orphans.removeNow(key, now);
       throw new NotFoundError(MATERIAL_NOT_FOUND_MESSAGE);

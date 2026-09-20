@@ -23,7 +23,7 @@ import { MyMaterialsController } from './my-materials.controller';
   // `materialsPaidAccess` (ADR-0048). Цикла нет: ни ClassesModule, ни
   // SettingsModule о материалах не знают.
   // StorageModule — ради FileStoreService и журнала сирот (ADR-0057,
-  // ADR-0076): файл материала лежит в R2, а не у нас. Цикла нет: хранилище
+  // ADR-0078): файл материала лежит в R2, а не у нас. Цикла нет: хранилище
   // о материалах не знает.
   imports: [MaterialModelModule, ClassesModule, SettingsModule, StorageModule],
   controllers: [MaterialsController, MyMaterialsController, MaterialFilesController],

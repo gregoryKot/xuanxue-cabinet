@@ -104,7 +104,7 @@ export class MaterialsService {
 
   /** Файл материала уходит тем же действием (ADR-0057). Не удалось удалить
    * объект сейчас — он остался в журнале и уйдёт шагом планировщика
-   * (ADR-0076); материал при этом удаляется в любом случае. */
+   * (ADR-0078); материал при этом удаляется в любом случае. */
   async remove(id: string, now: DateTime): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findOneAndDelete({ _id: id }).lean<RawLeanMaterial>();
