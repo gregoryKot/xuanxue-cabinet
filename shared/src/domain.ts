@@ -18,7 +18,7 @@ export const WEEKDAY_LABELS_RU: Record<Weekday, string> = {
   6: 'Сб',
 };
 
-export const CHANNEL_TYPES = ['telegram', 'vk', 'manual', 'webpush'] as const;
+export const CHANNEL_TYPES = ['telegram', 'vk', 'manual'] as const;
 export type ChannelType = (typeof CHANNEL_TYPES)[number];
 
 export const CLASS_FORMATS = ['online', 'offline', 'both'] as const;
