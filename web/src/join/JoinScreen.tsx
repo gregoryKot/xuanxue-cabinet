@@ -71,8 +71,8 @@ export default function JoinScreen() {
         <p role="alert" style={screenExplanationStyle}>
           {INVITE_LINK_INVALID_MESSAGE}
         </p>
-        {/* Контур, не киноварь: человек шёл в школу по приглашению, а не
-            на страницу входа — это запасной выход, а не главное действие
+        {/* Контур, не заливка терракотой: человек шёл в школу по приглашению,
+            а не на страницу входа — это запасной выход, а не главное действие
             экрана (docs/adr/0031). */}
         <Button
           variant="secondary"
