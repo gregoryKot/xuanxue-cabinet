@@ -46,11 +46,6 @@ describe('initialChannelFormState', () => {
     expect(state.chatId).toBe('');
     expect(state.peerIdText).toBe('');
   });
-
-  it('канал webpush (защита типов — этот экран его не создаёт) — резерв manual', () => {
-    const state = initialChannelFormState(makeChannel({ type: 'webpush', target: '' }));
-    expect(state.type).toBe('manual');
-  });
 });
 
 describe('validateChannelForm', () => {

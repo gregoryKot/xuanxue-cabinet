@@ -33,7 +33,9 @@
 // NotificationsProvider (ADR-0063) — здесь, у корня оболочки: значок в
 // AppNav/AppShellBrandRow и сам экран «/notifications» (Outlet ниже) обязаны
 // читать один и тот же счётчик, иначе «Прочитать все» на экране не погасит
-// цифру на значке до следующего похода в сеть.
+// цифру на значке до следующего похода в сеть. Ему нужна роль (`me`) —
+// экзамены в счётчике считаются только у ученика, у штата школы попыток нет
+// (ADR-0074).
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
@@ -71,7 +73,7 @@ export function AppShell() {
   const hasSideNav = !isMobile;
 
   return (
-    <NotificationsProvider>
+    <NotificationsProvider me={me}>
       <div style={shellStyle}>
         <div style={shellRowStyle}>
           {hasSideNav && (

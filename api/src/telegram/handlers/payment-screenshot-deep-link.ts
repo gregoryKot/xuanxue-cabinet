@@ -5,7 +5,8 @@
 // `unknown` (Telegram не связан с кабинетом, ADR-0029/0034) — отказ СРАЗУ, до
 // того как человек потратил время на скриншот (RUNBOOK §8.17, тот же приём,
 // что у видео экзамена). `active` — окно допустимых месяцев
-// (payment-screenshot-month-window.ts): подделанная ссылка на месяц вне окна
+// (payments/payment-month-window.ts — общее с приёмом снимка в кабинете):
+// подделанная ссылка на месяц вне окна
 // не заводит ожидание, честный отказ с названием месяца — иначе документ за
 // `2099-12` повис бы в списке у бухгалтера навсегда. В окне — заводим
 // ожидание и называем месяц по-русски (formatMonthRu): человек должен видеть,
@@ -16,7 +17,7 @@ import { formatMonthRu } from '@xuanxue/shared';
 import type { SettingsService } from '../../settings/settings.service';
 import type { BotSessionService } from '../bot-session.service';
 import type { BotUserAccessService } from '../bot-user-access.service';
-import { isPaymentMonthInWindow } from './payment-screenshot-month-window';
+import { isPaymentMonthInWindow } from '../../payments/payment-month-window';
 
 export const PAYMENT_TELEGRAM_NOT_LINKED_MESSAGE =
   'Этот Telegram не связан с вашим кабинетом, поэтому скриншот сюда не примем. ' +

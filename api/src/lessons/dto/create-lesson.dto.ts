@@ -40,7 +40,7 @@ export class CreateLessonDto implements CreateLessonInput {
   @MaxLength(LESSON_LIMITS.topic)
   topic?: string;
 
-  // Рубрикация свободным текстом (ADR-0059) — нормализация (обрезка, дедуп
+  // Рубрикация свободным текстом (ADR-0075) — нормализация (обрезка, дедуп
   // без учёта регистра) при записи, LessonsService/lessons.create.ts.
   @IsOptional()
   @IsArray()

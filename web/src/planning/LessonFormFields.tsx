@@ -1,15 +1,25 @@
-// Поля занятия — вынесены из LessonEditorForm.tsx, чтобы сама страница не
-// разрасталась за 150 строк (CLAUDE.md «Файлы»). `classId` — только при создании
-// (CreateLessonInput его принимает, UpdateLessonInput — нет, docs/PLAN.md §6
-// п.3); ссылка/пароль Zoom на один раз и заметка — только при правке.
+// Поля занятия — вынесены из LessonEditorForm.tsx (CLAUDE.md «Файлы»).
+// `classId` — только при создании (docs/PLAN.md §6 п.3); теги, заметка и
+// ссылка/пароль Zoom на один раз (LessonZoomFields.tsx) — только при правке.
 import { Link } from 'react-router-dom';
-import { CLASS_LIMITS, type ClassDto, type TeacherOptionDto } from '@xuanxue/shared';
+import {
+  CLASS_LIMITS,
+  TAG_LIMITS,
+  type ClassDto,
+  type TeacherOptionDto,
+} from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { TagsField } from '../components/TagsField';
 import { inheritedZoomHint } from './inheritedZoom';
+import { LessonZoomFields } from './LessonZoomFields';
 import type { LessonFormState } from './lessonFormInput';
 import { textLinkStyle } from '../components/screenLayout';
+
+// ADR-0059: тег — что было в этот вечер, его видит ученик; постоянный тег
+// курса форма даты не показывает и не переписывает (ADR-0072).
+const TAG_HINT = `Что разбирали в этот вечер: «дракон», «толчок руками» — через запятую, до ${TAG_LIMITS.perRecord}. Их видит ученик. Постоянный признак курса ставится в расписании.`;
 
 interface LessonFormFieldsProps {
   state: LessonFormState;
@@ -17,9 +27,8 @@ interface LessonFormFieldsProps {
   error: string | null;
   isCreate: boolean;
   classes: ClassDto[];
-  /** Учителя для select'а «Ведущий» — грузит страница занятия
-   * (LessonEditorForm.tsx, аудит В4). Сбой загрузки не прячет остальные поля
-   * формы — только строка с ошибкой и повтором над списком. */
+  /** Учителя для select'а «Ведущий» (LessonEditorForm.tsx, аудит В4) — сбой
+   * загрузки не прячет форму, только строка с ошибкой и повтором над списком. */
   teachers: TeacherOptionDto[];
   teachersError: string | null;
   onRetryTeachers: () => void;
@@ -74,6 +83,13 @@ export function LessonFormFields({
           onChange={(e) => setField('topic', e.target.value)}
         />
       </Field>
+      {!isCreate && (
+        <TagsField
+          value={state.tagsText}
+          onChange={(value) => setField('tagsText', value)}
+          hint={TAG_HINT}
+        />
+      )}
 
       <Field label="Дата и время начала" error={error ?? undefined}>
         <input
@@ -112,24 +128,13 @@ export function LessonFormFields({
             teachers={teachers}
             hint="Если не указан — ведущий занятия из расписания"
           />
-          <Field
-            label="Ссылка Zoom на это занятие"
+          <LessonZoomFields
+            zoomLink={state.zoomLinkOverride}
+            zoomPassword={state.zoomPasswordOverride}
+            onChangeZoomLink={(value) => setField('zoomLinkOverride', value)}
+            onChangeZoomPassword={(value) => setField('zoomPasswordOverride', value)}
             hint={inheritedZoomHint(classes.find((cls) => cls.id === state.classId))}
-          >
-            <input
-              style={inputStyle}
-              value={state.zoomLinkOverride}
-              onChange={(e) => setField('zoomLinkOverride', e.target.value)}
-              placeholder="https://…"
-            />
-          </Field>
-          <Field label="Пароль Zoom на это занятие">
-            <input
-              style={inputStyle}
-              value={state.zoomPasswordOverride}
-              onChange={(e) => setField('zoomPasswordOverride', e.target.value)}
-            />
-          </Field>
+          />
           <Field label="Заметка" hint="Видна только вам">
             <textarea
               style={{ ...inputStyle, minHeight: 72 }}
