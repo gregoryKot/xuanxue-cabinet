@@ -31,6 +31,7 @@ const STUDENT: MeDto = {
   telegramLinked: false,
   botChatActive: false,
   hasEmail: true,
+  noTelegram: false,
   needsProfile: false,
 };
 

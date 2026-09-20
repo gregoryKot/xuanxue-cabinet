@@ -19,6 +19,7 @@ const STUDENT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
@@ -29,6 +30,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };

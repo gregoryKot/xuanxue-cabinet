@@ -85,6 +85,7 @@ const TEACHER: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
@@ -95,6 +96,7 @@ const ADMIN: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
@@ -105,6 +107,7 @@ const STUDENT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
@@ -115,6 +118,7 @@ const ASSISTANT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
@@ -175,8 +179,9 @@ describe('AppShell — учитель', () => {
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
   });
 
-  // Четыре домена — потолок навигации (navItems.ts, отзыв владельца
-  // 2026-09-12: «меню всё ещё сложное»); «Ученики» видят admin и teacher
+  // Пять доменов — потолок навигации (navItems.ts, отзыв владельца
+  // 2026-09-12: «меню всё ещё сложное»; пятым «Материалы» добавил ADR-0055,
+  // шестого домена сюда не заводят); «Ученики» видят admin и teacher
   // (ADR-0030, уточнение 2026-09-15 — ссылку-приглашение отдаёт и учитель).
   // Фильтр по роли и подсветку раздела детально проверяет AppNav.test.tsx —
   // здесь только то, что AppShell передаёт в AppNav настоящего `me`.

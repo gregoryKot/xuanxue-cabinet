@@ -29,6 +29,7 @@ const BASE: MeDto = {
   telegramLinked: true,
   botChatActive: true,
   hasEmail: true,
+  noTelegram: false,
   needsProfile: false,
 };
 
@@ -74,6 +75,42 @@ describe('SecondLoginKey — оба ключа на месте', () => {
     const { container } = renderKey(BASE);
 
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+// ADR-0067: отметка «у меня нет Telegram» — ссылка рядом с предложением
+// связать Telegram, и дорога назад, когда отметка уже стоит.
+describe('SecondLoginKey — отметка «у меня нет Telegram» (ADR-0067)', () => {
+  it('Telegram не связан, отметки нет — рядом с кнопкой связки есть ссылка «У меня нет Telegram»', async () => {
+    renderKey({ ...BASE, telegramLinked: false });
+
+    await screen.findByRole('button', { name: 'Связать Telegram' });
+    expect(
+      screen.getByRole('button', { name: 'У меня нет Telegram' }),
+    ).toBeInTheDocument();
+  });
+
+  it('отметка стоит — кнопки связки нет, есть объяснение отметки и ссылка назад', async () => {
+    renderKey({ ...BASE, noTelegram: true, telegramLinked: false, hasEmail: true });
+
+    expect(
+      await screen.findByText(/Вы сказали, что Telegram у вас нет/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Связать Telegram' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Telegram у меня появился' }),
+    ).toBeInTheDocument();
+  });
+
+  it('оба ключа на месте — по-прежнему пусто, ссылки тоже нет', () => {
+    const { container } = renderKey(BASE);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(
+      screen.queryByRole('button', { name: 'У меня нет Telegram' }),
+    ).not.toBeInTheDocument();
   });
 });
 

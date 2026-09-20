@@ -23,9 +23,9 @@ import { useConfirmedRemove } from '../hooks/useConfirmedRemove';
 
 const SAVE_LABEL = 'Сохранить';
 const CONFIRM_REMOVE_LABEL = 'Удалить';
-// Удаление стоит под волосяной линией и отбито от «Сохранить» — киноварь на
-// экране одна, у главного действия; опасное — только текстом в --danger
-// (Button, variant="danger", отзыв владельца 2026-09-16).
+// Удаление стоит под волосяной линией и отбито от «Сохранить» — заливка
+// терракотой на экране одна, у главного действия; опасное — только текстом в
+// --danger (Button, variant="danger", отзыв владельца 2026-09-16).
 const removeRowStyle = {
   marginTop: 22,
   paddingTop: 16,

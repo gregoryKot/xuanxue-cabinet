@@ -33,6 +33,7 @@ export interface UserLean {
   lastLoginAt?: Date;
   joinedViaInviteAt?: Date;
   profileNamedAt?: Date;
+  noTelegramAt?: Date;
 }
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
@@ -61,6 +62,7 @@ export function toLean(doc: UserDoc): UserLean {
     lastLoginAt: doc.lastLoginAt,
     joinedViaInviteAt: doc.joinedViaInviteAt,
     profileNamedAt: doc.profileNamedAt,
+    noTelegramAt: doc.noTelegramAt,
   };
 }
 

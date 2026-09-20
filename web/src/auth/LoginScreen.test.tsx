@@ -191,6 +191,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };
@@ -248,6 +249,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     });
@@ -270,6 +272,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
       hasEmail: true,
       needsProfile: false,
     };

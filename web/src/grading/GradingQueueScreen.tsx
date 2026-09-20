@@ -2,9 +2,9 @@
 // попыток, ждущих оценки. Вход — число раздела на «Экзаменах»
 // (exams/ExamsSectionStats.tsx), не пункт меню (docs/adr/0025-navigation-by-domain.md). Список и переход в
 // карточку проверки по клику — по образцу exams/ExamsScreen.tsx. Облик —
-// направление «тихо и благородно» (docs/adr/0031): заголовок антиквой и
+// направление «Тёплая школа» (docs/adr/0043): заголовок антиквой и
 // строка-объяснение под ним, тот же приём, что на «Экзаменах»; отдельного
-// макета у очереди нет, канвы Main.dc.html достаточно для списка строками.
+// макета у очереди нет, весь список идёт одной карточкой (GradingQueueCard.tsx).
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';

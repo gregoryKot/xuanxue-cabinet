@@ -4,11 +4,12 @@
 // (PlanningActions.tsx), не пункт меню (docs/adr/0025-navigation-by-domain.md,
 // дополнение 2026-09-18): расписание раньше было карточкой внизу списка, и на
 // телефоне до неё было не долистать (отзыв владельца). Материалы — свой
-// раздел меню (ADR-0055), из этой шапки в них больше не ходят. Облик —
-// направление «тихо и благородно» (docs/adr/0031), макет Schedule.dc.html:
-// заголовок антиквой, строка объяснения, занятия строками. Правка и создание
-// занятия — своя страница `/planning/new` и `/planning/:lessonId`
-// (LessonEditorScreen.tsx, ADR-0033): отсюда только переход.
+// раздел меню (ADR-0055), из этой шапки в них больше не ходят.
+// Облик — направление «Тёплая школа» (docs/adr/0043, макет 1c-planning.html):
+// заголовок антиквой, строка объяснения, день — карточка со строками занятий.
+// Правка и создание занятия — своя страница `/planning/new` и
+// `/planning/:lessonId` (LessonEditorScreen.tsx, ADR-0033): отсюда только
+// переход.
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatRecordingSummary, PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';

@@ -11,6 +11,7 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     telegramLinked: true,
     botChatActive: false,
     hasEmail: true,
+    noTelegram: false,
     needsProfile: false,
     ...overrides,
   };
@@ -43,6 +44,14 @@ describe('showsTelegramHint (ADR-0042)', () => {
 
   it('ученик — без ролей штата, без чата — false', () => {
     expect(showsTelegramHint(makeMe({ roles: [], botChatActive: false }))).toBe(false);
+  });
+
+  it('учитель отметил, что Telegram у него нет — подсказки нет', () => {
+    expect(
+      showsTelegramHint(
+        makeMe({ roles: ['teacher'], noTelegram: true, botChatActive: false }),
+      ),
+    ).toBe(false);
   });
 
   it('сессия ещё не загружена (null) — false, без падения', () => {

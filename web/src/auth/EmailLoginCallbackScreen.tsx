@@ -75,8 +75,8 @@ export default function EmailLoginCallbackScreen() {
         <p role="alert" style={screenExplanationStyle}>
           {INCOMPLETE_LINK_MESSAGE}
         </p>
-        {/* Контур, не киноварь: человек сюда не шёл, это тупик с одним
-            выходом, а не главное действие экрана (docs/adr/0031). */}
+        {/* Контур, не заливка терракотой: человек сюда не шёл, это тупик
+            с одним выходом, а не главное действие экрана (docs/adr/0031). */}
         <Button variant="secondary" onClick={goToLogin} style={fullWidthStyle}>
           На страницу входа
         </Button>

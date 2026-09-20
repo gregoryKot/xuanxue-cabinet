@@ -29,6 +29,7 @@ const STUDENT_WITH_TELEGRAM: MeDto = {
   status: 'active',
   telegramLinked: true,
   botChatActive: true,
+  noTelegram: false,
   hasEmail: true,
   needsProfile: false,
 };
