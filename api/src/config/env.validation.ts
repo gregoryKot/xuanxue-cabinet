@@ -1,6 +1,7 @@
-// Валидация env при старте — падение со списком проблем лучше молчаливого
-// дефолта. Регэкспы/сообщения — в ./env.rules.ts (комментарий там, почему).
-import { plainToInstance, Type } from 'class-transformer';
+// Схема окружения: одно поле — одна переменная, формат проверяется
+// декораторами class-validator. Регэкспы и сообщения — в ./env.rules.ts,
+// сам прогон валидации — в ./env.validate.ts (комментарии там, почему).
+import { Type } from 'class-transformer';
 import {
   IsIn,
   IsNotEmpty,
@@ -10,9 +11,7 @@ import {
   Max,
   Min,
   MinLength,
-  validateSync,
 } from 'class-validator';
-import { productionRequiredMessages } from './env.production-required';
 import {
   BOOTSTRAP_ADMIN_TELEGRAM_ID_MESSAGE,
   BOT_TOKEN_MESSAGE,
@@ -35,6 +34,13 @@ import {
   PORT_MESSAGE,
   PUBLIC_URL_MESSAGE,
   PUBLIC_URL_TRAILING_SLASH_MESSAGE,
+  R2_ACCESS_KEY_ID_MESSAGE,
+  R2_ACCESS_KEY_ID_RE,
+  R2_ACCOUNT_ID_MESSAGE,
+  R2_ACCOUNT_ID_RE,
+  R2_BUCKET_MESSAGE,
+  R2_BUCKET_RE,
+  R2_SECRET_ACCESS_KEY_MESSAGE,
   RAILWAY_GIT_COMMIT_SHA_MESSAGE,
   SCHEDULER_ENABLED_MESSAGE,
   TELEGRAM_WEBHOOK_SECRET_MESSAGE,
@@ -112,48 +118,24 @@ export class EnvSchema {
   @IsOptional()
   @Matches(MAIL_FROM_RE, { message: MAIL_FROM_MESSAGE })
   MAIL_FROM?: string;
-}
 
-// Поля, где `VAR=` (пустая строка) равносильно отсутствию переменной.
-const EMPTY_AS_ABSENT: (keyof EnvSchema)[] = [
-  'NODE_ENV',
-  'PORT',
-  'LOG_LEVEL',
-  'ENCRYPTION_KEY',
-  'ENCRYPTION_KEY_OLD',
-  'JWT_SECRET',
-  'BOT_TOKEN',
-  'BOOTSTRAP_ADMIN_TELEGRAM_ID',
-  'PUBLIC_URL',
-  'TELEGRAM_WEBHOOK_SECRET',
-  'MONGODB_URI',
-  'SCHEDULER_ENABLED',
-  'RAILWAY_GIT_COMMIT_SHA',
-  'RESEND_API_KEY',
-  'MAIL_FROM',
-];
+  // Файлы материалов в Cloudflare R2 (ADR-0057) — все четыре или ни одной
+  // (env.r2-group.ts). Без них загрузка выключена, кабинет поднимается как
+  // прежде: локальная разработка, CI и Docker-смок не зависят от внешнего
+  // хранилища.
+  @IsOptional()
+  @Matches(R2_ACCOUNT_ID_RE, { message: R2_ACCOUNT_ID_MESSAGE })
+  R2_ACCOUNT_ID?: string;
 
-export function validateEnv(raw: Record<string, unknown>): EnvSchema {
-  const input: Record<string, unknown> = { ...raw };
-  for (const key of EMPTY_AS_ABSENT) {
-    if (input[key] === '') delete input[key];
-  }
+  @IsOptional()
+  @Matches(R2_ACCESS_KEY_ID_RE, { message: R2_ACCESS_KEY_ID_MESSAGE })
+  R2_ACCESS_KEY_ID?: string;
 
-  const instance = plainToInstance(EnvSchema, input, { enableImplicitConversion: true });
-  const errors = validateSync(instance, { whitelist: true });
-  const messages = errors.flatMap((error) => Object.values(error.constraints ?? {}));
+  @IsOptional()
+  @MinLength(32, { message: R2_SECRET_ACCESS_KEY_MESSAGE })
+  R2_SECRET_ACCESS_KEY?: string;
 
-  // «Обязателен в production» — env.production-required.ts.
-  if (instance.NODE_ENV === 'production') {
-    messages.push(...productionRequiredMessages(instance));
-  }
-
-  if (messages.length > 0) {
-    throw new Error(
-      'Некорректная конфигурация окружения:\n' +
-        messages.map((message) => `  - ${message}`).join('\n'),
-    );
-  }
-
-  return instance;
+  @IsOptional()
+  @Matches(R2_BUCKET_RE, { message: R2_BUCKET_MESSAGE })
+  R2_BUCKET?: string;
 }
