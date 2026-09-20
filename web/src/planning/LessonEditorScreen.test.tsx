@@ -142,6 +142,14 @@ describe('LessonEditorScreen — загрузка', () => {
     expect(screen.getByLabelText('Заметка')).toHaveValue('Взять плейлист');
   });
 
+  it('поле «Теги» при правке предзаполнено тегами занятия (ADR-0059)', async () => {
+    mockLesson(makeLesson({ tags: ['дракон', 'начинающие'] }));
+
+    renderAt('/planning/l1');
+
+    expect(await screen.findByLabelText('Теги')).toHaveValue('дракон, начинающие');
+  });
+
   it('/planning/new — заголовок «Разовое занятие», за занятием сервер не спрашивают', async () => {
     mockApiByPath({ '/classes': [makeClass()], '/users/teachers': [] });
 
@@ -153,6 +161,15 @@ describe('LessonEditorScreen — загрузка', () => {
     expect(
       mockedApiFetch.mock.calls.filter(([p]) => String(p).startsWith('/lessons')),
     ).toHaveLength(0);
+  });
+
+  it('/planning/new — поля «Теги» нет: тег ставят после занятия (ADR-0059)', async () => {
+    mockApiByPath({ '/classes': [makeClass()], '/users/teachers': [] });
+
+    renderAt('/planning/new');
+    await screen.findByLabelText('Тема');
+
+    expect(screen.queryByLabelText('Теги')).not.toBeInTheDocument();
   });
 
   it('/planning/new без занятий в расписании — объяснение и ссылка, без «Сохранить»', async () => {
@@ -244,6 +261,35 @@ describe('LessonEditorScreen — сохранение', () => {
       note: 'Взять новый плейлист',
       leaderId: 't1',
     });
+  });
+
+  it('ввод тегов уходит в PATCH массивом (ADR-0059)', async () => {
+    const user = userEvent.setup();
+    mockLesson(makeLesson());
+
+    renderAt('/planning/l1');
+    await user.type(await screen.findByLabelText('Теги'), 'дракон, начинающие');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const options = callsWithMethod('PATCH')[0]?.[1] as { body: { tags: string[] } };
+    expect(options.body.tags).toEqual(['дракон', 'начинающие']);
+  });
+
+  it('тег длиннее лимита — сообщение об ошибке, запроса на сервер нет', async () => {
+    const user = userEvent.setup();
+    const { TAG_LIMITS } = await import('@xuanxue/shared');
+    mockLesson(makeLesson());
+
+    renderAt('/planning/l1');
+    await user.type(
+      await screen.findByLabelText('Теги'),
+      'а'.repeat(TAG_LIMITS.length + 1),
+    );
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByText(/длиннее/)).toBeInTheDocument();
+    expect(callsWithMethod('PATCH')).toHaveLength(0);
   });
 
   it('пустая дата у нового занятия — ошибка формы, запроса нет', async () => {

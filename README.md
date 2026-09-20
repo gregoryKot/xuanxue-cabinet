@@ -75,7 +75,7 @@ npm run check             # tsc, eslint, prettier, тесты (jest api дваж
 
 Шаги живут списком в `scripts/check.mjs`, новый заводится там же. Раннер запускает
 каждый сам и краснеет, даже когда шаг убит сигналом, а не кодом выхода: так упавший
-от нехватки памяти e2e перестал выглядеть успешным прогоном (ADR-0076).
+от нехватки памяти e2e перестал выглядеть успешным прогоном (ADR-0077).
 
 Пороги покрытия web и shared живут не в конфиге, а в `scripts/vitest-coverage-baseline.json`:
 `scripts/check-vitest-coverage-ratchet.mjs <web|shared>` сам гоняет vitest и сравнивает
