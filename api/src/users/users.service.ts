@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
+import type { UserRole, UserStatus } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
 import {
   listContactsWithRoles as listContactsWithRolesQuery,
@@ -29,7 +29,6 @@ export interface UserLean {
   telegramId?: number;
   googleId?: string;
   roles: UserRole[];
-  tz: string;
   status: UserStatus;
   lastLoginAt?: Date;
   joinedViaInviteAt?: Date;
@@ -58,7 +57,6 @@ export function toLean(doc: UserDoc): UserLean {
     telegramId: doc.telegramId,
     googleId: doc.googleId,
     roles: doc.roles,
-    tz: doc.tz,
     status: normalizeUserStatus(doc.status, doc._id.toString()),
     lastLoginAt: doc.lastLoginAt,
     joinedViaInviteAt: doc.joinedViaInviteAt,
@@ -131,7 +129,6 @@ export class UsersService {
         telegramId: input.telegramId,
         name: input.name,
         roles: input.roles,
-        tz: SCHOOL_TZ,
         status: input.status,
       },
     );

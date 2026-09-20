@@ -9,7 +9,6 @@ const USER: UserLean = {
   name: 'Мария',
   email: 'maria@example.com',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

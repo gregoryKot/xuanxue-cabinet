@@ -13,7 +13,6 @@ const ACCOUNTANT: UserLean = {
   id: 'u1',
   name: 'Бухгалтер',
   roles: ['accountant'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

@@ -188,7 +188,6 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
@@ -246,7 +245,6 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
@@ -269,7 +267,6 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
@@ -475,7 +472,6 @@ describe('LoginScreen — уже вошедшего уводит на сохра
           id: 'u1',
           name: 'Дима',
           roles: ['teacher'],
-          tz: 'Asia/Jerusalem',
         });
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });

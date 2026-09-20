@@ -16,7 +16,6 @@ const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 const IMAGE = { bytes: Buffer.from([1, 2, 3]), contentType: 'image/jpeg' as const };

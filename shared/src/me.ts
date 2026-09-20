@@ -23,12 +23,14 @@ import type { UserRole, UserStatus } from './auth';
  * «откройте ссылку из письма» осталось бы без самого письма. Чужие адреса
  * по-прежнему закрыты: `UserDto` на экране «Люди» показывает других людей и
  * email не отдаёт.
+ *
+ * Часового пояса тут нет намеренно (ADR-0060): время человеку показывается
+ * по часам его устройства, и хранить пояс в профиле незачем.
  */
 export interface MeDto {
   id: string;
   name: string;
   roles: UserRole[];
-  tz: string;
   status: UserStatus;
   /** Telegram — ключ входа этого аккаунта (`users.telegramId` есть). */
   telegramLinked: boolean;
