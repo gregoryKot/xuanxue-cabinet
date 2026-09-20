@@ -9,7 +9,7 @@
 // подписи уже негде, кроме вывода ключа. Остальные векторы сняты с botocore
 // (эталонная реализация AWS) для адресов формы R2.
 import { DateTime } from 'luxon';
-import { sha256Hex } from './sigv4-canonical';
+import { encodeRfc3986, sha256Hex } from './sigv4-canonical';
 import { presignGetUrl, signRequestHeaders } from './sigv4';
 
 // Тот же момент времени, что в примере AWS, — «Fri, 24 May 2013 00:00:00 GMT».
@@ -33,6 +33,19 @@ const R2_CREDENTIALS = {
 const R2_OBJECT_URL =
   'https://abc123.r2.cloudflarestorage.com/school-files/' +
   'materials/64b8f0a1c2d3e4f5a6b7c8d9/3f1a4c9e-5b2d-4f7a-8c1e-9d0b2a3f4c5d';
+
+describe('encodeRfc3986', () => {
+  // `encodeURIComponent` оставляет эти шесть как есть, а канонический запрос
+  // SigV4 требует и их — без этого подпись расходится на именах с кавычкой
+  // или скобкой.
+  it("кодирует !'()* и звёздочку, которые encodeURIComponent пропускает", () => {
+    expect(encodeRfc3986("!'()*")).toBe('%21%27%28%29%2A');
+  });
+
+  it('обычные символы не трогает', () => {
+    expect(encodeRfc3986('file-name_1.pdf~')).toBe('file-name_1.pdf~');
+  });
+});
 
 describe('presignGetUrl', () => {
   it('собирает канонический запрос так же, как пример AWS (хеш из документа)', () => {
@@ -171,6 +184,35 @@ describe('signRequestHeaders', () => {
     });
   });
 
+  // Канонический запрос сортирует заголовки сам — иначе подпись зависела бы
+  // от порядка полей в объекте, который никто не обещает.
+  it('порядок заголовков на входе не меняет подпись', () => {
+    const sign = (headers: Record<string, string>): string =>
+      signRequestHeaders({
+        method: 'PUT',
+        url: R2_OBJECT_URL,
+        headers,
+        body,
+        now: NOW,
+        credentials: R2_CREDENTIALS,
+      }).authorization;
+    expect(sign({ 'content-type': 'application/pdf', 'x-custom': 'a' })).toBe(
+      sign({ 'x-custom': 'a', 'content-type': 'application/pdf' }),
+    );
+  });
+
+  it('имя заголовка в верхнем регистре приводится к нижнему', () => {
+    const upper = signRequestHeaders({
+      method: 'PUT',
+      url: R2_OBJECT_URL,
+      headers: { 'Content-Type': 'application/pdf' },
+      body,
+      now: NOW,
+      credentials: R2_CREDENTIALS,
+    });
+    expect(upper.authorization).toContain('SignedHeaders=content-type;host;');
+  });
+
   it('подмена байта в теле меняет подпись — хеш тела входит в неё', () => {
     const sign = (payload: Buffer): string =>
       signRequestHeaders({
@@ -180,7 +222,7 @@ describe('signRequestHeaders', () => {
         body: payload,
         now: NOW,
         credentials: R2_CREDENTIALS,
-      }).authorization as string;
+      }).authorization;
     expect(sign(body)).not.toBe(sign(Buffer.from('%PDF-1.4 hellp')));
   });
 });

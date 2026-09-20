@@ -118,6 +118,28 @@ describe('FileStoreService с ключами R2', () => {
     ).rejects.toBeInstanceOf(NotAvailableError);
   });
 
+  // Без этого браузер сохранил бы файл под ключом объекта — `3f1a…` без
+  // расширения (ADR-0057). Имя кириллицей живёт в заголовке только как
+  // `filename*` по RFC 5987.
+  it('signedGetUrl кладёт имя и тип файла в подписанные параметры ответа', () => {
+    const url = new URL(
+      service().signedGetUrl(KEY, 600, NOW, {
+        name: 'Методичка.pdf',
+        contentType: 'application/pdf',
+      }),
+    );
+
+    expect(url.searchParams.get('response-content-type')).toBe('application/pdf');
+    expect(url.searchParams.get('response-content-disposition')).toBe(
+      "attachment; filename*=UTF-8''%D0%9C%D0%B5%D1%82%D0%BE%D0%B4%D0%B8%D1%87%D0%BA%D0%B0.pdf",
+    );
+    // Параметры входят в подпись — подменить имя в готовой ссылке нельзя.
+    expect(url.searchParams.get('X-Amz-SignedHeaders')).toBe('host');
+    expect(url.searchParams.get('X-Amz-Signature')).not.toBe(
+      new URL(service().signedGetUrl(KEY, 600, NOW)).searchParams.get('X-Amz-Signature'),
+    );
+  });
+
   it('signedGetUrl отдаёт адрес объекта со сроком жизни и подписью', () => {
     const url = new URL(service().signedGetUrl(KEY, 600, NOW));
 

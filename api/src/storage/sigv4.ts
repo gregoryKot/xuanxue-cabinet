@@ -27,6 +27,10 @@ const SIGNATURE_PARAM = 'X-Amz-Signature';
 export interface PresignInput {
   /** Полный адрес объекта без query. */
   url: string;
+  /** Параметры, которые хранилище применит к ответу (`response-content-type`,
+   * `response-content-disposition`). Они входят в подпись — подменить имя
+   * скачиваемого файла в готовой ссылке нельзя. */
+  params?: Record<string, string>;
   expiresInSeconds: number;
   /** Явный `now` (Luxon), не `DateTime.utc()` внутри — детерминизм теста
    * (CLAUDE.md «Тесты»). */
@@ -38,6 +42,7 @@ export interface PresignInput {
  * выдачи, поэтому ссылка и живёт недолго (ADR-0057). */
 export function presignGetUrl({
   url,
+  params = {},
   expiresInSeconds,
   now,
   credentials,
@@ -46,6 +51,7 @@ export function presignGetUrl({
   const { amzDate, scopeDate } = sigV4Dates(now);
   const scope = credentialScope(credentials, scopeDate);
   const query = canonicalQuery({
+    ...params,
     'X-Amz-Algorithm': SIGV4_ALGORITHM,
     'X-Amz-Credential': `${credentials.accessKeyId}/${scope}`,
     'X-Amz-Date': amzDate,
@@ -63,6 +69,11 @@ export function presignGetUrl({
   });
   return `${target.origin}${target.pathname}?${query}&${SIGNATURE_PARAM}=${signature}`;
 }
+
+/** Заголовки, которые надо поставить на запрос. `authorization` объявлен
+ * явно: под `noUncheckedIndexedAccess` чтение ключа из `Record<string, string>`
+ * даёт `string | undefined`, а этот заголовок есть всегда. */
+export type SignedRequestHeaders = Record<string, string> & { authorization: string };
 
 export interface SignedRequestInput {
   method: 'PUT' | 'DELETE';
@@ -85,7 +96,7 @@ export function signRequestHeaders({
   body,
   now,
   credentials,
-}: SignedRequestInput): Record<string, string> {
+}: SignedRequestInput): SignedRequestHeaders {
   const target = new URL(url);
   const { amzDate } = sigV4Dates(now);
   const payloadHash = sha256Hex(body);

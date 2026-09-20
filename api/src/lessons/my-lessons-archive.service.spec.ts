@@ -12,6 +12,7 @@ import { Types } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
 import { LessonMaterialsService } from '../materials/lesson-materials.service';
 import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
+import { fakeStorageOrphans } from '../test-support/fake-storage-orphans';
 import { MaterialsService } from '../materials/materials.service';
 import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
 import { SettingsService } from '../settings/settings.service';
@@ -50,7 +51,12 @@ describe('MyLessonsArchiveService', () => {
       classModel,
       new UsersService(userModel),
     );
-    materialsService = new MaterialsService(materialModel, classModel, settingsService);
+    materialsService = new MaterialsService(
+      materialModel,
+      classModel,
+      settingsService,
+      fakeStorageOrphans().service,
+    );
     const lessonMaterialsService = new LessonMaterialsService(
       materialModel,
       classModel,

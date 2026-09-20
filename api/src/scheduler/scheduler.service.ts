@@ -17,6 +17,7 @@ import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-no
 import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
+import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 
@@ -39,6 +40,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly examImageSweepService: ExamImageSweepService,
     private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
+    private readonly storageOrphansService: StorageOrphansService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
   ) {}
 
@@ -101,13 +103,19 @@ export class SchedulerService implements OnApplicationShutdown {
       (n) => this.paymentScreenshotSweepService.removeExpired(n),
     )) ?? { removed: 0, orphans: 0 };
 
+    // ADR-0079: объект в R2, на который не сослался материал (упала запись,
+    // не удалилось при замене), уходит суткой позже — журнал storage_orphans.
+    const { removed: filesRemoved } = (await this.step('файлы-сироты', now, (n) =>
+      this.storageOrphansService.sweep(n),
+    )) ?? { removed: 0 };
+
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
         `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
         `imagesRemoved=${imagesRemoved} paymentScreenshotsRemoved=${screenshotsRemoved} ` +
-        `paymentScreenshotOrphans=${screenshotOrphans}`,
+        `paymentScreenshotOrphans=${screenshotOrphans} filesRemoved=${filesRemoved}`,
     );
   }
 

@@ -114,18 +114,18 @@ export function signCanonicalRequest({
 }: SignInput): SignResult {
   const { amzDate, scopeDate } = sigV4Dates(now);
   const scope = credentialScope(credentials, scopeDate);
-  const names = Object.keys(headers)
-    .map((name) => name.toLowerCase())
-    .sort();
-  const byName = new Map(
-    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value.trim()]),
-  );
-  const signedHeaders = names.join(';');
+  // Имена в нижнем регистре, сортировка по имени, значения без крайних
+  // пробелов — одним проходом: имя и значение не должны разъехаться по
+  // разным спискам.
+  const signed = Object.entries(headers)
+    .map(([name, value]) => ({ name: name.toLowerCase(), value: value.trim() }))
+    .sort((left, right) => (left.name > right.name ? 1 : -1));
+  const signedHeaders = signed.map((header) => header.name).join(';');
   const canonicalRequest = [
     method,
     url.pathname,
     query,
-    names.map((name) => `${name}:${byName.get(name) ?? ''}\n`).join(''),
+    signed.map((header) => `${header.name}:${header.value}\n`).join(''),
     signedHeaders,
     payloadHash,
   ].join('\n');

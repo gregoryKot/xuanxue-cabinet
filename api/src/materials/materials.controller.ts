@@ -14,6 +14,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import type { MaterialDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { UserLean } from '../users/users.service';
@@ -51,6 +52,6 @@ export class MaterialsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
-    return this.materialsService.remove(id);
+    return this.materialsService.remove(id, DateTime.utc());
   }
 }
