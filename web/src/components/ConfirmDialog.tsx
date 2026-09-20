@@ -6,6 +6,10 @@
 // Подтверждение всегда закрывает диалог после ответа сервера, успех это был
 // или сбой (`goBack()` — тот же путь, что у «Отмена») — иначе сообщение об
 // ошибке остаётся невидимым под оверлеем подтверждения.
+//
+// Облик — «Тёплая школа» (docs/adr/0043-visual-direction-warm-school.md):
+// белая карточка с мягкой тенью поверх затемнения, без границы; почему
+// именно --card и --radius-block — у cardStyle ниже.
 import type { CSSProperties } from 'react';
 import { Button, type ButtonVariant } from './Button';
 import { useDialog } from '../hooks/useDialog';
@@ -21,9 +25,15 @@ const overlayStyle: CSSProperties = {
   padding: 16,
   zIndex: 60,
 };
+// Карточка диалога. Поверх затемнения (overlayStyle) её отделяет от экрана
+// не граница, а сама поверхность — белая карточка с мягкой тенью. Прежний
+// --surface-2 вёл на --paper, тон самой страницы: под затемнением такой
+// диалог читался бы дырой в нём, а не листом поверх. Радиус блока, не строки
+// списка: диалог несёт заголовок, текст и ряд кнопок целиком.
 const cardStyle: CSSProperties = {
-  background: 'var(--surface-2)',
-  borderRadius: 16,
+  background: 'var(--card)',
+  borderRadius: 'var(--radius-block)',
+  boxShadow: 'var(--shadow-card)',
   padding: 20,
   maxWidth: 360,
   width: '100%',

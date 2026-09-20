@@ -5,6 +5,10 @@
 // `channelType === 'manual'`, не наличие `text` — список доставок его не
 // присылает никогда (pr-k3-fixes.md п.3): текст догружается useDeliveryText
 // при первом раскрытии текста или клике «Скопировать».
+//
+// Облик — «Тёплая школа» (docs/adr/0043): доставка читается карточкой —
+// белая поверхность, мягкая тень, без границы. Радиус строки списка
+// (--radius-card), а не блока: карточка несёт одну доставку, не раздел.
 import { useState, type CSSProperties } from 'react';
 import type {
   BroadcastDto,
@@ -26,9 +30,9 @@ const cardStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 6,
   padding: '10px 12px',
-  borderRadius: 12,
-  border: '1px solid var(--border)',
-  background: '#fff',
+  background: 'var(--card)',
+  borderRadius: 'var(--radius-card)',
+  boxShadow: 'var(--shadow-card)',
 };
 const titleStyle: CSSProperties = { fontWeight: 600, fontSize: 14 };
 const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
