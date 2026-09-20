@@ -6,7 +6,7 @@
 // — фейк считает вызовы и запоминает переданный url, сама рассылка
 // (broadcast+доставки, cancelled) проверена в recording-broadcast.service.spec.ts.
 import { DateTime } from 'luxon';
-import type { Connection, Model, Types } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
 import { BroadcastRecord, BroadcastSchema } from '../broadcasts/broadcast.schema';
 import type { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import type { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
@@ -427,5 +427,121 @@ describe('LessonsService', () => {
 
   it('remove: мусорный id — NotFoundError', async () => {
     await expect(service.remove('not-an-id')).rejects.toThrow('не найдена');
+  });
+
+  // ADR-0059: нормализация при записи — тег становится фильтром списка,
+  // опечатка не должна плодить второе значение (тот же приём, что у
+  // MaterialsService, ADR-0058).
+  describe('теги (ADR-0059)', () => {
+    it('create: нормализует теги (обрезка, дедуп без учёта регистра)', async () => {
+      const classId = await createClass();
+
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['  Старшая ', 'старшая', 'разминка  группа'],
+      });
+
+      expect(created.tags).toEqual(['Старшая', 'разминка группа']);
+    });
+
+    it('create без tags — пустой массив, не undefined', async () => {
+      const classId = await createClass();
+
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+      });
+
+      expect(created.tags).toEqual([]);
+    });
+
+    it('update: нормализует присланные теги', async () => {
+      const classId = await createClass();
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['раз'],
+      });
+
+      const updated = await service.update(
+        created.id,
+        { tags: ['Два', 'два', '  Три  '] },
+        NOW,
+      );
+
+      expect(updated.tags).toEqual(['Два', 'Три']);
+    });
+
+    it('update без tags — прежние теги не трогает', async () => {
+      const classId = await createClass();
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['старшая'],
+      });
+
+      const updated = await service.update(created.id, { topic: 'Новая тема' }, NOW);
+
+      expect(updated.tags).toEqual(['старшая']);
+    });
+
+    it('create → list: read-after-write — фильтр по тегу находит дату занятия', async () => {
+      const classId = await createClass();
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['старшая', 'толкающие руки'],
+      });
+      await service.create({ classId, startsAt: '2026-09-04T16:00:00Z' });
+
+      const list = await service.list({ from: FROM, to: TO, tag: 'старшая' });
+
+      expect(list).toHaveLength(1);
+      expect(list[0]?.id).toBe(created.id);
+    });
+
+    it('list: фильтр по несуществующему тегу — пустой список, не ошибка', async () => {
+      const classId = await createClass();
+      await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['раз'],
+      });
+
+      const list = await service.list({ from: FROM, to: TO, tag: 'нет-такого' });
+
+      expect(list).toEqual([]);
+    });
+
+    it('list: пустая строка в query.tag — как отсутствие фильтра', async () => {
+      const classId = await createClass();
+      await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+        tags: ['раз'],
+      });
+
+      const list = await service.list({ from: FROM, to: TO, tag: '' });
+
+      expect(list).toHaveLength(1);
+    });
+
+    it('документ без поля tags (до этого PR) — getById отдаёт []', async () => {
+      const classId = await createClass();
+      const created = await service.create({
+        classId,
+        startsAt: '2026-09-03T16:00:00Z',
+      });
+      // Имитируем дату занятия, заведённую до ADR-0059: поля в базе нет вовсе.
+      await lessonModel.collection.updateOne(
+        { _id: new Types.ObjectId(created.id) },
+        { $unset: { tags: '' } },
+      );
+
+      const refetched = await service.getById(created.id);
+
+      expect(refetched.tags).toEqual([]);
+    });
   });
 });

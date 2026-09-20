@@ -1,8 +1,9 @@
 // Запросы к базе для LessonsService без DI — тот же приём, что у
 // lesson-planner.queries.ts: сервис остаётся коротким оркестратором, а
 // одиночные чтения/удаления живут рядом со своими текстами ошибок.
+import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
-import type { LessonDto } from '@xuanxue/shared';
+import type { LessonDto, ListLessonsQuery } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { decryptRecord } from '../utils/encryption';
@@ -72,4 +73,26 @@ export async function findClassTitle(
     .findById(classId, { title: 1 })
     .lean<{ title: string } | null>();
   return cls?.title ?? '';
+}
+
+/**
+ * Фильтр списка `GET /api/lessons` — окно `from..to` уже проверено вызывающим
+ * кодом (assertListWindow), classId — тоже (валидный ObjectId или запрос не
+ * доходит до сюда). `tag` (ADR-0059) — точное совпадение; пустая строка ведёт
+ * себя как «фильтр не задан» — та же причина, что у buildMaterialsFilter
+ * (materials.queries.ts): `tag` — просто `@IsString()` без запрета пустой
+ * строки в list-lessons.dto.ts, и истинностная проверка (не `!== undefined`)
+ * не даёт пустой строке превратиться в фильтр «тег — пустая строка».
+ */
+export function buildLessonsFilter(
+  query: ListLessonsQuery,
+  from: DateTime,
+  to: DateTime,
+): Record<string, unknown> {
+  const filter: Record<string, unknown> = {
+    startsAt: { $gte: from.toJSDate(), $lt: to.toJSDate() },
+  };
+  if (query.classId !== undefined) filter.classId = query.classId;
+  if (query.tag) filter.tags = query.tag;
+  return filter;
 }

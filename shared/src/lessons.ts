@@ -33,6 +33,9 @@ export interface LessonDto {
   zoomPasswordOverride?: string;
   recordings: RecordingDto[];
   note?: string;
+  /** Рубрикация свободным текстом (ADR-0059) — фильтр списка, не признак
+   * расписания. Нормализуется при записи (`normalizeTags`, shared/src/tags.ts). */
+  tags: string[];
   /** Отсутствует, пока планировщик ещё не создал рассылку ссылки на это
    * занятие (окно до отправки шире, чем горизонт `/broadcasts`). */
   broadcast?: LessonBroadcastDto;
@@ -44,6 +47,8 @@ export interface ListLessonsQuery {
   from: string;
   to: string;
   classId?: string;
+  /** Точное совпадение тега — рубрикация, серверный фильтр (ADR-0059). */
+  tag?: string;
   limit?: number;
 }
 
@@ -54,6 +59,7 @@ export interface CreateLessonInput {
   startsAt: string;
   durationMin?: number;
   topic?: string;
+  tags?: string[];
 }
 
 /**
@@ -71,6 +77,7 @@ export interface UpdateLessonInput {
   zoomLinkOverride?: string | null;
   zoomPasswordOverride?: string | null;
   note?: string | null;
+  tags?: string[];
 }
 
 /** Единственные поля UpdateLessonInput, где `null` — не ошибка формы, а явный

@@ -2,8 +2,8 @@
 // периода — «дай всё», запрещено CLAUDE.md «API») и не шире горизонта
 // планировщика — проверка окна в lesson-dates.ts (assertListWindow), не
 // здесь: class-validator видит только формат ISO, не сам горизонт.
-import { IsISO8601, IsMongoId, IsOptional } from 'class-validator';
-import type { ListLessonsQuery } from '@xuanxue/shared';
+import { IsISO8601, IsMongoId, IsOptional, IsString, MaxLength } from 'class-validator';
+import { TAG_LIMITS, type ListLessonsQuery } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
 export class ListLessonsDto implements ListLessonsQuery {
@@ -16,6 +16,13 @@ export class ListLessonsDto implements ListLessonsQuery {
   @IsOptional()
   @IsMongoId()
   classId?: string;
+
+  // Точное совпадение тега (ADR-0059) — пустая строка ведёт себя как
+  // «фильтр не задан», см. buildLessonsFilter (lessons.queries.ts).
+  @IsOptional()
+  @IsString()
+  @MaxLength(TAG_LIMITS.length)
+  tag?: string;
 
   @ListLimit()
   limit?: number;

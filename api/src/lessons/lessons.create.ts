@@ -1,7 +1,7 @@
 // Подготовка тела создаваемой даты занятия — чистая логика, юнит-тест без
 // Mongo (CLAUDE.md «Тесты»); класс и его правила сервис уже прочитал из базы.
 import type { CreateLessonInput } from '@xuanxue/shared';
-import { LESSON_DEFAULT_DURATION_MIN } from '@xuanxue/shared';
+import { LESSON_DEFAULT_DURATION_MIN, normalizeTags } from '@xuanxue/shared';
 import { parseUtcIso } from './lesson-dates';
 
 export interface LessonCreatePayload {
@@ -9,6 +9,7 @@ export interface LessonCreatePayload {
   startsAt: Date;
   durationMin: number;
   topic: string;
+  tags: string[];
 }
 
 /** durationMin — из тела запроса, иначе первое правило класса, иначе общий
@@ -24,5 +25,9 @@ export function buildCreatePayload(
     durationMin:
       input.durationMin ?? classRules[0]?.durationMin ?? LESSON_DEFAULT_DURATION_MIN,
     topic: input.topic ?? '',
+    // Нормализация здесь, не в DTO: список — фильтр (ADR-0059), опечатка и
+    // дубль в базе разъехались бы с фильтром `tag` при чтении (тот же приём,
+    // что у MaterialsService.create, ADR-0058).
+    tags: normalizeTags(input.tags ?? []),
   };
 }

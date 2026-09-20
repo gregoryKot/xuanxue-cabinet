@@ -32,6 +32,7 @@ import {
   LESSON_NOT_FOUND,
   assertDurationEditable,
   assertLessonId,
+  buildLessonsFilter,
   deleteOneOffLesson,
   findClassTitle,
   findLessonDto,
@@ -62,10 +63,7 @@ export class LessonsService {
     if (query.classId !== undefined && !Types.ObjectId.isValid(query.classId)) {
       throw new NotFoundError(CLASS_NOT_FOUND_MESSAGE);
     }
-    const filter: Record<string, unknown> = {
-      startsAt: { $gte: from.toJSDate(), $lt: to.toJSDate() },
-    };
-    if (query.classId !== undefined) filter.classId = query.classId;
+    const filter = buildLessonsFilter(query, from, to);
     const docs = await this.model
       .find(filter)
       .sort({ startsAt: 1 })

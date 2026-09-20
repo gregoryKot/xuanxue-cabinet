@@ -18,6 +18,7 @@ function makeLesson(id: string, startsAt: Date): LessonDto {
     topic: '',
     status: 'scheduled',
     recordings: [],
+    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
   };

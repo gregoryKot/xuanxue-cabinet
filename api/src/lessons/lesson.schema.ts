@@ -66,6 +66,12 @@ export class LessonRecord {
   @Prop({ type: String, required: false })
   note?: string;
 
+  // Рубрикация свободным текстом (ADR-0059, продолжение ADR-0058 для
+  // материалов) — фильтр списка, не свойство расписания: тег на `topic`
+  // повторяется намеренно, чтобы по нему собиралась выдача занятий.
+  @Prop({ type: [String], default: [] })
+  tags!: string[];
+
   // Бот один раз спрашивает «Запись?» после занятия — отметка, чтобы не
   // спрашивать повторно на каждом тике планировщика.
   @Prop({ type: Date, required: false })
@@ -87,12 +93,15 @@ LessonSchema.index(
   { classId: 1, plannedAt: 1 },
   { unique: true, partialFilterExpression: { plannedAt: { $type: 'date' } } },
 );
+// Фильтр по тегу (GET /api/lessons?tag=…), как у materials/exam_items (ADR-0059).
+LessonSchema.index({ tags: 1 });
 
 export const LESSON_FIELD_POLICY: FieldPolicy = {
   topic: plain('публикуется в посте'),
   zoomLinkOverride: enc,
   zoomPasswordOverride: enc,
   note: enc,
+  tags: plain('рубрика школы, не персональные данные'),
   'recordings.title': plain('публикуется в посте'),
   'recordings.url': plain('ссылка на запись, принятый риск SECURITY §11'),
   'recordings.telegramFileId': plain('работает только у бота, снаружи бесполезен'),

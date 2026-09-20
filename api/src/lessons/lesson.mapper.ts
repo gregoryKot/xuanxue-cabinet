@@ -13,13 +13,18 @@ import type { LessonRecord } from './lesson.schema';
 
 /** LessonRecord с полями, которые Mongoose добавляет сам (`_id`,
  * `timestamps: true`), плюс записи в форме `.lean()` — субдокумент не теряет
- * `_id` даже без явного `{ _id: true }` в схеме. */
-export type LeanLesson = Omit<LessonRecord, 'recordings'> & {
+ * `_id` даже без явного `{ _id: true }` в схеме. `tags` — честно
+ * необязателен: у дат занятий, созданных до ADR-0059, поля в документе нет,
+ * а `.lean()` default схемы при чтении не подставляет — toLessonDto ниже сам
+ * отдаёт `[]`, миграция не нужна (expand, тот же приём, что у
+ * RawLeanMaterial, material.mapper.ts). */
+export type LeanLesson = Omit<LessonRecord, 'recordings' | 'tags'> & {
   _id: Types.ObjectId;
   classId: Types.ObjectId;
   leaderId?: Types.ObjectId;
   ruleId?: Types.ObjectId;
   recordings: (Recording & { _id: Types.ObjectId })[];
+  tags?: string[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -49,6 +54,7 @@ export function toLessonDto(
     zoomPasswordOverride: doc.zoomPasswordOverride,
     recordings: doc.recordings.map(toRecordingDto),
     note: doc.note,
+    tags: doc.tags ?? [],
     broadcast: linkBroadcastStatus
       ? { status: linkBroadcastStatus, kind: 'lesson_link' }
       : undefined,
