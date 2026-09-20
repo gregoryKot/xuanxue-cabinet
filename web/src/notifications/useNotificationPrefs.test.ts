@@ -34,17 +34,13 @@ const TEACHER: MeDto = {
 };
 
 describe('useNotificationPrefs — виды по роли', () => {
-  it('ученику доступны его два вида, независимо от того, что включено', async () => {
-    mockedApiFetch.mockResolvedValueOnce({ enabled: ['lesson_soon'] });
+  it('ученику доступен один вид — результат экзамена (ADR-0062)', async () => {
+    mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
     const { result } = renderHook(() => useNotificationPrefs(STUDENT));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual([
-      'lesson_soon',
-      'teacher_message',
-      'exam_result',
-    ]);
-    expect(result.current.enabled).toEqual(['lesson_soon']);
+    expect(result.current.kinds).toEqual(['exam_result']);
+    expect(result.current.enabled).toEqual(['exam_result']);
   });
 
   it('учителю доступны его виды, не ученические', async () => {
@@ -65,33 +61,27 @@ describe('useNotificationPrefs — виды по роли', () => {
     const { result } = renderHook(() => useNotificationPrefs(null));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual([
-      'lesson_soon',
-      'teacher_message',
-      'exam_result',
-    ]);
+    expect(result.current.kinds).toEqual(['exam_result']);
   });
 });
 
 describe('useNotificationPrefs — setEnabled (read-after-write)', () => {
   it('PATCH /me/notifications с нужным телом, затем перечитывает состояние', async () => {
-    mockedApiFetch.mockResolvedValueOnce({ enabled: ['lesson_soon'] });
+    mockedApiFetch.mockResolvedValueOnce({ enabled: [] });
     const { result } = renderHook(() => useNotificationPrefs(STUDENT));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce({ enabled: ['lesson_soon', 'teacher_message'] });
-    await result.current.setEnabled('teacher_message', true);
+    mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
+    await result.current.setEnabled('exam_result', true);
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/me/notifications',
       expect.objectContaining({
         method: 'PATCH',
-        body: { kind: 'teacher_message', enabled: true },
+        body: { kind: 'exam_result', enabled: true },
       }),
     );
-    await waitFor(() =>
-      expect(result.current.enabled).toEqual(['lesson_soon', 'teacher_message']),
-    );
+    await waitFor(() => expect(result.current.enabled).toEqual(['exam_result']));
   });
 });

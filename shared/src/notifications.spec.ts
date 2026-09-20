@@ -66,8 +66,9 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
 });
 
 describe('defaultNotifications', () => {
-  it('ученик (без ролей) — занятие скоро, сообщение от учителя, результат экзамена', () => {
+  it('ученик (без ролей) — только результат экзамена (ADR-0062)', () => {
     expect(defaultNotifications([])).toEqual(STUDENT_NOTIFICATIONS);
+    expect(STUDENT_NOTIFICATIONS).toEqual(['exam_result']);
   });
 
   it('учитель — черновик, запрос записи, сбой отправки, работа на проверку', () => {
@@ -131,9 +132,8 @@ describe('rolesWithNotification', () => {
     expect(rolesWithNotification('attempt_submitted')).toEqual(['teacher', 'assistant']);
   });
 
-  it('вид, которого нет ни у одной роли (ученические lesson_soon/teacher_message/exam_result), — пустой массив', () => {
+  it('вид, которого нет ни у одной роли (ученические lesson_soon/exam_result), — пустой массив', () => {
     expect(rolesWithNotification('lesson_soon')).toEqual([]);
-    expect(rolesWithNotification('teacher_message')).toEqual([]);
     expect(rolesWithNotification('exam_result')).toEqual([]);
   });
 });
