@@ -2,7 +2,11 @@
 // telegram/start-then-exam-graded.spec.ts, только путь ученика другой: вход
 // по email-ссылке (EmailLoginUserService.createFromEmail, ADR-0029), бота он
 // не подключал вовсе. CompositeExamNotifier.notifyExamGraded должен дойти
-// письмом — Telegram-плечо молчит (нет чата), почтовое отправляет.
+// письмом — Telegram-плечо молчит (нет чата), почтовое отправляет. Кабинет
+// (InAppExamNotifier, слой in-app уведомлений, ADR-0061) не требует ни чата,
+// ни email — пишет запись всегда, поэтому в сумме результата участвует и он;
+// детали его поведения — in-app-exam-notifier.spec.ts, здесь только то, что
+// он не мешает почтовому резерву и его тоже видно в общей сумме.
 // Против настоящей Mongo (mongodb-memory-server) и настоящего fetch-мока
 // (тот же приём, что mail.service.spec.ts) — сеть не трогаем, но проверяем
 // реальный путь через MailService, не фейк.
@@ -10,6 +14,11 @@ import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
+import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
+import {
+  NotificationRecord,
+  NotificationSchema,
+} from '../notifications/notification.schema';
 import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -60,6 +69,7 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
   let userModel: Model<UserRecord>;
   let channelModel: Model<ChannelRecord>;
   let notificationPrefsModel: Model<NotificationPrefsRecord>;
+  let notificationModel: Model<NotificationRecord>;
   let composite: CompositeExamNotifier;
   let fetchSpy: jest.SpyInstance<ReturnType<typeof fetch>, Parameters<typeof fetch>>;
 
@@ -70,6 +80,10 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     notificationPrefsModel = connection.model<NotificationPrefsRecord>(
       NotificationPrefsRecord.name,
+    );
+    notificationModel = connection.model<NotificationRecord>(
+      NotificationRecord.name,
+      NotificationSchema,
     );
     await userModel.syncIndexes();
 
@@ -98,7 +112,15 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
       new MailService(fakeConfig()),
       fakeConfig(),
     );
-    composite = new CompositeExamNotifier(telegram, mail);
+    // Кабинет — реальный, не фейк: этот тест сверяет итоговую сумму
+    // CompositeExamNotifier, а кабинет теперь третье плечо (ADR-0061),
+    // подмена фейком спрятала бы регрессию суммы так же, как у Telegram/почты.
+    const inApp = new InAppExamNotifier(
+      usersService,
+      notificationPrefsService,
+      notificationModel,
+    );
+    composite = new CompositeExamNotifier(inApp, telegram, mail);
   }, 60_000);
 
   afterAll(async () => {
@@ -109,6 +131,7 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
     await userModel.deleteMany({});
     await channelModel.deleteMany({});
     await notificationPrefsModel.deleteMany({});
+    await notificationModel.deleteMany({});
     fetchSpy.mockRestore();
   });
 
@@ -133,7 +156,14 @@ describe('вход по email → CompositeExamNotifier.notifyExamGraded (скв
     const body = JSON.parse(init?.body as string) as { to: string; text: string };
     expect(body.to).toBe(STUDENT_EMAIL);
     expect(body.text).toContain('Экзамен сдан.');
-    // Telegram-плечо молчит (нет чата), адресат один — от почты.
-    expect(result).toEqual({ recipients: 1 });
+    // Telegram-плечо молчит (нет чата), почта нашла адресата, кабинет пишет
+    // всегда (не требует ни чата, ни email, ADR-0061) — двое из трёх.
+    expect(result).toEqual({ recipients: 2 });
+
+    // Read-after-write кабинета — тот же результат, что заявляет composite:
+    // строка действительно легла в notifications, не только число выросло.
+    const stored = await notificationModel.findOne({ userId: student.id }).lean();
+    expect(stored?.kind).toBe('exam_result');
+    expect(stored?.outcome).toBe('passed');
   });
 });
