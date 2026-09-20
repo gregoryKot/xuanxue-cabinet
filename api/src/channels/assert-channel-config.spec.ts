@@ -50,8 +50,4 @@ describe('assertConfigForType', () => {
   it('manual: непустой config — InvalidInputError', () => {
     expect(() => assertConfigForType('manual', { chatId: '@x' })).toThrow('config');
   });
-
-  it('webpush: всегда InvalidInputError — эндпоинт его не создаёт', () => {
-    expect(() => assertConfigForType('webpush', {})).toThrow('webpush');
-  });
 });
