@@ -257,3 +257,20 @@ describe('DeliveryCard — канал не найден в channelsById', () => 
     expect(screen.queryByRole('button', { name: 'Скопировать' })).not.toBeInTheDocument();
   });
 });
+
+// Переезд на «Тёплую школу» (ADR-0043): доставка легла карточкой — белая
+// поверхность, мягкая тень, без границы. jsdom не вычисляет `var(--…)` —
+// сравниваем ровно строку инлайн-стиля, не вычисленный цвет; у cssstyle
+// сокращённое `style.borderBottom` для снятой границы отдаёт 'medium',
+// поэтому спрашиваем borderBottomStyle.
+describe('DeliveryCard — облик (ADR-0043)', () => {
+  it('доставка — карточка var(--card) с радиусом строки списка, без границы', () => {
+    renderCard({ status: 'sent' }, { channelType: 'vk' });
+
+    const card = screen.getByRole('listitem');
+    expect(card.style.background).toBe('var(--card)');
+    expect(card.style.borderRadius).toBe('var(--radius-card)');
+    expect(card.style.boxShadow).toBe('var(--shadow-card)');
+    expect(card.style.borderBottomStyle).toBe('');
+  });
+});
