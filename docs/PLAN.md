@@ -2072,6 +2072,28 @@ type="file">`, `prepareExamImage` ужимает до 1280 px, `POST
 скриншот заменяет старый в том же документе, а подтверждённый месяц остаётся
 подтверждённым.
 
+**Реализовано (только путь бота — кабинет и уборщик по срокам хранения
+следующими PR)** — четвёртая форма deep link `pay_<YYYY-MM>` в
+`start-payload.ts` (`PAYMENT_TELEGRAM_START_PREFIX`, `shared/src/payments.ts`);
+ожидание `kind: 'payment'` в `bot-session.schema.ts`/`bot-session-kind.ts`
+(поле `month`, TTL — `payment-wait.ts`, переиспользует `EXAM_ANSWER_WAIT_HOURS`);
+ветка `/start` — `payment-screenshot-deep-link.ts`; приём фото —
+`payment-screenshot-message.handler.ts` (диспетчер в `message.handler.ts`, до
+гейта `personalChats`), источник — `payment-screenshot-source.ts`; привязка —
+`PaymentsService.attachScreenshot()` → `attachTelegramScreenshot()`
+(`payments.write.ts`); пересылка бухгалтеру — `payment-screenshot-forward.ts`
+(`personalChats.listFor('payments', …)`, механика «фото первым, подпись
+вторым» общая с видео экзамена — `forward-photo-with-caption.ts`). Кнопка в
+кабинете — слой 2.4.
+
+**Окно допустимых месяцев** (правило родилось при реализации, не было в
+исходном ТЗ) — deep link принимает только месяц от 11 месяцев назад до 1
+вперёд относительно текущего в поясе школы, иначе подделанная ссылка вида
+`pay_2099-12` завела бы документ, который повиснет в списке у бухгалтера
+навсегда. Проверка — чистая функция `isPaymentMonthInWindow()`
+(`payment-screenshot-month-window.ts`), за пределами окна — отказ с названием
+месяца, ожидание не заводится.
+
 **2.3. Подтверждение одной кнопкой.** Экран «Оплаты» — пятый пункт навигации,
 роли `accountant` и `admin` (ADR-0025, `navItems.ts`). Выбор месяца сверху,
 по умолчанию текущий в поясе школы. Сначала — те, кто ждёт подтверждения, со

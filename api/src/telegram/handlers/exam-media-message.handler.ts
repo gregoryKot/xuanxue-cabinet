@@ -30,6 +30,9 @@
 // вроде «Mongo недоступна» уходил только в общий catch MessageHandler, тот
 // логирует, но ученику не отвечает (тихий отказ, CLAUDE.md «Логи»); приём —
 // как у ExamTextAnswerHandler, лог со стеком + examUserFacingError.
+//
+// Проверка личности (denied/unknown) — resolveActiveBotUser.ts, общая с
+// PaymentScreenshotMessageHandler.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
@@ -45,6 +48,7 @@ import { TELEGRAM_NOT_LINKED_MESSAGE } from './exam-media-deep-link';
 import { forwardExamVideoToTeachers } from './exam-media-forward';
 import { renderExamMediaAnswer } from './exam-media-answer';
 import { extractExamVideoSource } from './exam-video-source';
+import { resolveActiveBotUser } from './resolve-active-bot-user';
 
 const NOT_A_VIDEO_MESSAGE =
   'Ждём видео для экзамена: видеосообщение, «кружок» или файл с видео. Пришлите его сюда.';
@@ -79,23 +83,20 @@ export class ExamMediaMessageHandler {
     }
 
     try {
-      const access = await this.botAccess.resolve(telegramId);
-      if (access.kind === 'denied') {
-        await this.botSessions.clear(telegramId);
-        await ctx.reply(access.message).catch(() => null);
-        return;
-      }
       // `unknown` — сессия осталась от старого кода/отправителя без записи в
       // users (см. шапку файла, инцидент 2026-09-16, RUNBOOK §8.17).
-      if (access.kind === 'unknown') {
-        await this.botSessions.clear(telegramId);
-        this.logger.warn(
-          `telegram.examMedia: видео не привязано — попытка ${session.attemptId.toString()}, причина sender-unknown`,
-        );
-        await ctx.reply(TELEGRAM_NOT_LINKED_MESSAGE).catch(() => null);
-        return;
-      }
-      const user = access.user;
+      const user = await resolveActiveBotUser(
+        ctx,
+        telegramId,
+        this.botAccess,
+        this.botSessions,
+        TELEGRAM_NOT_LINKED_MESSAGE,
+        () =>
+          this.logger.warn(
+            `telegram.examMedia: видео не привязано — попытка ${session.attemptId?.toString()}, причина sender-unknown`,
+          ),
+      );
+      if (!user) return;
       const attached = await this.mediaAssets.attachTelegramVideo(
         session.attemptId.toString(),
         user.id,

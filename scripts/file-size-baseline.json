@@ -1,6 +1,6 @@
 {
   "web/src/app/routeModules.ts": 375,
-  "shared/src/index.ts": 364,
+  "shared/src/index.ts": 367,
   "shared/src/exams.ts": 323,
   "api/test/exam-items.e2e-spec.ts": 297,
   "api/test/exams.e2e-spec.ts": 295,
@@ -42,7 +42,7 @@
   "api/src/telegram/personal-chats.ts": 174,
   "scripts/check-coverage-ratchet.mjs": 174,
   "api/src/notifications/in-app-exam-notifier.ts": 173,
-  "api/src/telegram/handlers/message.handler.test-support.ts": 171,
+  "api/src/telegram/handlers/message.handler.test-support.ts": 180,
   "api/src/telegram/handlers/exam-question-album-send.ts": 169,
   "api/src/broadcasts/recording-broadcast.service.ts": 166,
   "api/src/media/media-assets.service.ts": 166,
