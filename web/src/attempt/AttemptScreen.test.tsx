@@ -114,7 +114,9 @@ describe('AttemptScreen', () => {
     renderAt('a1');
 
     expect(
-      await screen.findByText('Отправлено. Учитель проверит и пришлёт результат.'),
+      await screen.findByText(
+        'Отправлено. Учитель проверит — результат будет на карточке экзамена в кабинете.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument();
   });
