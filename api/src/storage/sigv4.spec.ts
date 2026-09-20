@@ -23,7 +23,7 @@ const AWS_EXAMPLE_CREDENTIALS = {
 };
 
 // Значения такого же вида, как настоящие (R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY),
-// но выдуманные: настоящие живут только в Railway (RUNBOOK §6.5).
+// но выдуманные: настоящие живут только в Railway (RUNBOOK §6.4).
 const R2_CREDENTIALS = {
   accessKeyId: 'R2ACCESSKEYEXAMPLE',
   secretAccessKey: 'r2secretkeyexample0000000000000000000000',
