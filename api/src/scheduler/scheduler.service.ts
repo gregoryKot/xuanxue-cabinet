@@ -18,6 +18,7 @@ import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
+import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 
 @Injectable()
 export class SchedulerService implements OnApplicationShutdown {
@@ -37,6 +38,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly examImageSweepService: ExamImageSweepService,
+    private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
   ) {}
 
@@ -91,13 +93,21 @@ export class SchedulerService implements OnApplicationShutdown {
     const { removed: imagesRemoved } = (await this.step('картинки-сироты', now, (n) =>
       this.examImageSweepService.removeOrphans(n),
     )) ?? { removed: 0 };
+    // ADR-0050: снимок перевода живёт 30 дней после подтверждения и 90 дней
+    // без него — сама оплата остаётся, уходит только картинка.
+    const { removed: screenshotsRemoved, orphans: screenshotOrphans } = (await this.step(
+      'скриншоты оплат',
+      now,
+      (n) => this.paymentScreenshotSweepService.removeExpired(n),
+    )) ?? { removed: 0, orphans: 0 };
 
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
         `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
-        `imagesRemoved=${imagesRemoved}`,
+        `imagesRemoved=${imagesRemoved} paymentScreenshotsRemoved=${screenshotsRemoved} ` +
+        `paymentScreenshotOrphans=${screenshotOrphans}`,
     );
   }
 

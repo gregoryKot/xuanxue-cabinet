@@ -219,8 +219,10 @@ describe('AttemptReviewScreen — отправка оценки', () => {
     await user.type(screen.getByLabelText('Комментарий'), 'Хорошо сдал');
     await user.selectOptions(screen.getByLabelText('Итог'), 'passed');
 
-    mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce(makeReview({ status: 'graded' }));
+    mockApiByPath({
+      '/attempts/a1/grading': undefined,
+      '/attempts/a1/review': makeReview({ status: 'graded' }),
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить оценку' }));
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/grading', {
@@ -241,13 +243,14 @@ describe('AttemptReviewScreen — отправка оценки', () => {
 
     await user.selectOptions(screen.getByLabelText('Итог'), 'passed');
 
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError(
+    mockApiByPath({
+      '/attempts/a1/grading': new ApiError(
         'Эту работу ещё нельзя проверить: ученик её не сдал.',
         400,
         'invalid_input',
       ),
-    );
+      '/attempts/a1/review': makeReview(),
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить оценку' }));
 
     expect(
@@ -279,9 +282,12 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
     renderAt('a1');
     await screen.findByText('Видео пока не получено.');
 
-    mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce(
-      makeReview({
+    // Ответы на клик — по пути (см. mockApiByPath в test-support): очередь
+    // `…Once` здесь забирала форма оценки своими заготовками, и reload
+    // получал карточку без видео — тест мигал (CI на main, a155bc1).
+    mockApiByPath({
+      '/attempts/a1/media/manual': undefined,
+      '/attempts/a1/review': makeReview({
         blocks: VIDEO_QUESTION_BLOCKS,
         media: [
           {
@@ -293,7 +299,7 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
           },
         ],
       }),
-    );
+    });
     await user.click(screen.getByRole('button', { name: 'Отметить, что видео принято' }));
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/manual', {

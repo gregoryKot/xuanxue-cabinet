@@ -58,6 +58,8 @@ import { LessonsModule } from '../lessons/lessons.module';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
+import { PaymentsModule } from '../payments/payments.module';
 import { SettingsModule } from '../settings/settings.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
@@ -77,6 +79,10 @@ import { SchedulerService } from './scheduler.service';
     ExamItemModelModule,
     ExamImagesModule,
     NotificationsModule,
+    // Модели оплат и снимков (`payments`, `payment_screenshots`) для шага
+    // «скриншоты оплат» (ADR-0050) — PaymentsModule экспортирует обе;
+    // провайдер самого шага ниже, как у ExamImageSweepService.
+    PaymentsModule,
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
     // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
     UsersModule,
@@ -92,6 +98,7 @@ import { SchedulerService } from './scheduler.service';
     ManualPromptService,
     ExamDeadlineCloseService,
     ExamImageSweepService,
+    PaymentScreenshotSweepService,
     // Только по токену — второй провайдер класса без токена (было раньше)
     // создавал второй экземпляр TelegramTeacherNotifier с собственным
     // Map-дедупом notifySchedulerFailed, никем не используемый.

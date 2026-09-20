@@ -107,6 +107,11 @@ import {
   PaymentSchema,
   PAYMENT_FIELD_POLICY,
 } from '../payments/payment.schema';
+import {
+  PaymentScreenshotRecord,
+  PaymentScreenshotSchema,
+  PAYMENT_SCREENSHOT_FIELD_POLICY,
+} from '../payments/payment-screenshot.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -210,5 +215,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: PaymentRecord.name,
     schema: PaymentSchema,
     fieldPolicy: PAYMENT_FIELD_POLICY,
+  },
+  {
+    name: PaymentScreenshotRecord.name,
+    schema: PaymentScreenshotSchema,
+    fieldPolicy: PAYMENT_SCREENSHOT_FIELD_POLICY,
   },
 ];
