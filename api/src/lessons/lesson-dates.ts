@@ -45,3 +45,38 @@ export function assertListWindow(from: DateTime, to: DateTime): void {
     'дальше расписание ещё не построено. Сузьте окно.',
   );
 }
+
+// Одно место для правила ADR-0074 «окно обязательно, если нет тега» —
+// вызывается только из findLessonsList (lessons.queries.ts), в DTO
+// (ListLessonsDto) требования порознь не дублируются.
+const WINDOW_OR_TAG_MESSAGE =
+  'Укажите оба поля периода — «Начало периода» и «Конец периода». Без тега ' +
+  'это обязательно; с тегом оба поля можно опустить.';
+
+/**
+ * Окно `from..to` списка `/lessons`: обязательно само по себе, необязательно
+ * только вместе с тегом (ADR-0074) — выдача по тегу не привязана к горизонту
+ * планировщика и смотрит на всю историю школы. Одно поле окна без другого —
+ * ошибка и с тегом, и без: половина периода не описывает никакую выборку.
+ * Тег проверяется истинностно (`if (tag)`), та же проверка, что у
+ * `buildLessonsFilter` — иначе `tag=''` тихо снял бы требование окна.
+ * Возвращает `undefined`, если окно законно опущено (список тогда читает
+ * всю историю тега, не окно).
+ */
+export function resolveLessonsWindow(
+  from: string | undefined,
+  to: string | undefined,
+  tag: string | undefined,
+): { from: DateTime; to: DateTime } | undefined {
+  if (from === undefined && to === undefined) {
+    if (tag) return undefined;
+    throw new InvalidInputError(WINDOW_OR_TAG_MESSAGE);
+  }
+  if (from === undefined || to === undefined) {
+    throw new InvalidInputError(WINDOW_OR_TAG_MESSAGE);
+  }
+  const parsedFrom = parseUtcIso(from, 'from');
+  const parsedTo = parseUtcIso(to, 'to');
+  assertListWindow(parsedFrom, parsedTo);
+  return { from: parsedFrom, to: parsedTo };
+}

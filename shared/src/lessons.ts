@@ -44,9 +44,13 @@ export interface LessonDto {
   updatedAt: string; // ISO UTC с Z
 }
 
+/** Окно `from..to` — оба поля сразу или ни одного (ADR-0074): без тега
+ * обязательно, с тегом можно опустить целиком — выдача смотрит на всю
+ * историю; одно поле без другого — всегда ошибка (правило одно, см.
+ * `resolveLessonsWindow` в `api/src/lessons/lesson-dates.ts`). */
 export interface ListLessonsQuery {
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
   classId?: string;
   /** Точное совпадение тега — как у `ListMaterialsQuery.tag` (ADR-0059). */
   tag?: string;

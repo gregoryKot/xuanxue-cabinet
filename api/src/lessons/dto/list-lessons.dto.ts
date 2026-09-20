@@ -1,17 +1,22 @@
-// Query GET /lessons. Окно `from..to` обязательно (список дат занятий без
-// периода — «дай всё», запрещено CLAUDE.md «API») и не шире горизонта
-// планировщика — проверка окна в lesson-dates.ts (assertListWindow), не
-// здесь: class-validator видит только формат ISO, не сам горизонт.
+// Query GET /lessons. Окно `from..to` обязательно, если не задан тег
+// (список дат занятий без периода и без тега — «дай всё», запрещено
+// CLAUDE.md «API») — оба поля здесь просто @IsOptional(), сама
+// обязательность (окно целиком или тег) и предел горизонта планировщика —
+// одно место, `resolveLessonsWindow` (lesson-dates.ts, ADR-0074):
+// class-validator видит только формат ISO у каждого поля порознь, не
+// зависимость между ними.
 import { IsISO8601, IsMongoId, IsOptional, IsString, MaxLength } from 'class-validator';
 import { TAG_LIMITS, type ListLessonsQuery } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
 export class ListLessonsDto implements ListLessonsQuery {
+  @IsOptional()
   @IsISO8601({ strict: true })
-  from!: string;
+  from?: string;
 
+  @IsOptional()
   @IsISO8601({ strict: true })
-  to!: string;
+  to?: string;
 
   @IsOptional()
   @IsMongoId()

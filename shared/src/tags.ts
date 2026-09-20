@@ -43,3 +43,19 @@ export function parseTagsText(
 ): string[] {
   return normalizeTags(text.split(','), max);
 }
+
+/**
+ * Один тег в сводке школы (`GET /api/tags`, ADR-0059) — сколько дат занятий
+ * и материалов отмечено им по всей истории школы, без окна планирования
+ * (ADR-0074). Дата занятия считается и по своему тегу, и по тегу своего
+ * курса (ADR-0072) — один раз, не дважды (см. `api/src/tags/tags.queries.ts`).
+ */
+export interface TagSummaryDto {
+  tag: string;
+  lessonCount: number;
+  materialCount: number;
+}
+
+export interface ListTagsQuery {
+  limit?: number;
+}
