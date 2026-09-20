@@ -9,6 +9,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { EXAM_LIMITS } from '@xuanxue/shared';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import {
@@ -406,7 +407,12 @@ describe('ExamEditorScreen — поиск по вопросам', () => {
   });
 
   it('вопросов уже предельно много — вместо кандидатов объяснение', async () => {
-    const many = Array.from({ length: 50 }, (_, i) => `i${i + 100}`);
+    // Ровно предел, а не литерал 50: предел вырос до 100 под первый настоящий
+    // экзамен школы (ADR-0059), и тест обязан проверять границу, а не число.
+    const many = Array.from(
+      { length: EXAM_LIMITS.itemsPerBlockMax },
+      (_, i) => `i${i + 100}`,
+    );
     mockExamAndBank(
       makeExam({ blocks: [{ id: 'b1', title: '', itemIds: many, shuffle: false }] }),
     );
