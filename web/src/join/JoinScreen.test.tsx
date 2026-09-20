@@ -149,6 +149,7 @@ describe('JoinScreen — регресс на инцидент 2026-09-15 (мел
     status: 'active',
     telegramLinked: true,
     botChatActive: true,
+    hasEmail: true,
     needsProfile: false,
   };
   const FORBIDDEN_TEXT_PATTERNS = [

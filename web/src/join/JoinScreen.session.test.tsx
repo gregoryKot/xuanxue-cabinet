@@ -46,6 +46,7 @@ const ACTIVE_ME: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
   needsProfile: false,
 };
 

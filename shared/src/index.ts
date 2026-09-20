@@ -44,12 +44,20 @@ export { TAG_LIMITS, normalizeTags, parseTagsText } from './tags';
 export type {
   UserRole,
   UserStatus,
-  MeDto,
   TelegramLoginInput,
   RequestEmailLoginInput,
   VerifyEmailLoginInput,
   AuthConfigDto,
 } from './auth';
+export type { MeDto } from './me';
+export type { LinkEmailInput, ConfirmEmailInput } from './email-link';
+export {
+  EMAIL_CONFIRM_TOKEN_RE,
+  EMAIL_LINK_TAKEN_MESSAGE,
+  EMAIL_LINK_OTHER_EMAIL_MESSAGE,
+  EMAIL_CONFIRM_RESEND_TOO_SOON_MESSAGE,
+  EMAIL_CONFIRM_EXPIRED_MESSAGE,
+} from './email-link';
 export {
   USER_ROLES,
   ROLE_LABELS,

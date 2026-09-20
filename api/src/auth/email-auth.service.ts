@@ -20,6 +20,7 @@ import { LoginIdentityService } from '../users/login-identity.service';
 import { UsersService, type UserLean } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
 import { AuthService } from './auth.service';
+import { emailLoginPublicUrl } from './email-login-config';
 import { EmailLoginTokenService } from './email-login-token.service';
 
 export interface EmailLoginResult {
@@ -42,13 +43,11 @@ export class EmailAuthService {
   /** Email-вход подключён конфигурацией — общая проверка для
    * `requestLink()` и `GET /auth/config` (`AuthController.getConfig`,
    * CLAUDE.md «Дубли»): экран входа показывает форму почты только когда
-   * сервер реально готов её обработать. */
+   * сервер реально готов её обработать. Список из трёх переменных живёт в
+   * одном месте — `emailLoginPublicUrl` (email-login-config.ts), которым
+   * пользуется и `EmailLinkService` (ADR-0059). */
   isEnabled(): boolean {
-    return Boolean(
-      this.config.get<string>('RESEND_API_KEY') &&
-      this.config.get<string>('MAIL_FROM') &&
-      this.config.get<string>('PUBLIC_URL'),
-    );
+    return emailLoginPublicUrl(this.config) !== null;
   }
 
   /** Ответ клиенту один и тот же независимо от исхода (контроллер): здесь —
@@ -94,11 +93,10 @@ export class EmailAuthService {
     return { user, cookie };
   }
 
-  /** `publicUrl` отдельно от `isEnabled()`: письмо собирает ссылку из него,
-   * а проверка «все три переменные разом» уже сделана выше — здесь читаем
-   * само значение только когда фича включена. */
+  /** Тонкая обёртка вокруг `emailLoginPublicUrl` — оставлена методом, а не
+   * инлайнена в `requestLink()`, чтобы не завязывать вызывающий код на
+   * прямой импорт помощника. */
   private readPublicUrl(): string | null {
-    if (!this.isEnabled()) return null;
-    return this.config.get<string>('PUBLIC_URL') ?? null;
+    return emailLoginPublicUrl(this.config);
   }
 }

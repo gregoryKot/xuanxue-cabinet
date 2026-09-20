@@ -1,7 +1,5 @@
-// Единственная точка чтения/записи UserRecord. Вход (виджет, сессия) — в
-// api/src/auth/; здесь только CRUD с типизированным возвратом (контроллер/
-// гвард не лезут в Mongoose напрямую, CLAUDE.md). Список и назначение ролей
-// «Люди» — в user-roles.service.ts, чтобы этот файл не вырос за 150 строк.
+// Единственная точка чтения/записи UserRecord — CRUD с типизированным
+// возвратом; вход — в api/src/auth/, список и роли — в user-roles.service.ts.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -27,6 +25,7 @@ export interface UserLean {
   id: string;
   name: string;
   email?: string;
+  pendingEmail?: string;
   telegramId?: number;
   googleId?: string;
   roles: UserRole[];
@@ -55,6 +54,7 @@ export function toLean(doc: UserDoc): UserLean {
     id: doc._id.toString(),
     name: doc.name,
     email: doc.email,
+    pendingEmail: doc.pendingEmail,
     telegramId: doc.telegramId,
     googleId: doc.googleId,
     roles: doc.roles,

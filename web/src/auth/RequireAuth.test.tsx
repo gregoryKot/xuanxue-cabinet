@@ -51,6 +51,7 @@ function meWithNeedsProfile(needsProfile: boolean): MeDto {
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
+    hasEmail: true,
     needsProfile,
   };
 }
@@ -82,6 +83,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -103,6 +105,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(student);
@@ -147,6 +150,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -167,6 +171,7 @@ describe('RequireAuth', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValueOnce(me);
