@@ -14,6 +14,7 @@ import type {
 import {
   CLASS_NOT_FOUND_MESSAGE,
   LIST_LIMIT_DEFAULT,
+  normalizeTags,
   NULLABLE_CLASS_FIELDS,
 } from '@xuanxue/shared';
 import { ChannelRecord } from '../channels/channel.schema';
@@ -46,7 +47,12 @@ export class ClassesService {
   ) {}
 
   async list(query: ListClassesQuery): Promise<ClassDto[]> {
-    const filter = query.active === undefined ? {} : { active: query.active };
+    const filter: Record<string, unknown> =
+      query.active === undefined ? {} : { active: query.active };
+    // Истинностная проверка, не `!== undefined` (тот же приём, что у
+    // buildLessonsFilter/buildMaterialsFilter, ADR-0070): пустая строка в
+    // query — «фильтр не задан», а не «тег — пустая строка».
+    if (query.tag) filter.tags = query.tag;
     const docs = await this.model
       .find(filter)
       // Без collation Mongo сортирует по кодам символов — «Яблоко» ушло бы
@@ -82,6 +88,10 @@ export class ClassesService {
     if (payload.channelIds === undefined) {
       payload.channelIds = await this.defaultTelegramChannelIds();
     }
+    // Нормализация здесь, не в DTO: тег — фильтр (ADR-0070), опечатка и дубль
+    // в базе разъехались бы с фильтром `tag` при чтении (тот же приём, что у
+    // LessonsService.create/lessons.create.ts).
+    payload.tags = normalizeTags(input.tags ?? []);
     // CreateClassDto (implements CreateClassInput) уже проверен ValidationPipe —
     // форма payload совпадает с ClassRecord, spread просто не виден TS.
     const created = await this.model.create(encryptRecord(payload, CLASS_ENCRYPT_SCHEMA));
@@ -102,7 +112,12 @@ export class ClassesService {
   async update(id: string, input: UpdateClassInput): Promise<ClassDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     await assertLeaderIdIfProvided(this.userModel, input.leaderId);
-    const { rules, ...rest } = input;
+    // `tags` нормализуется, только если его прислали — иначе PATCH без
+    // тегов случайно записал бы пустой нормализованный массив вместо
+    // «поле не трогать» (тот же приём, что у MaterialsService.update).
+    const normalized =
+      input.tags === undefined ? input : { ...input, tags: normalizeTags(input.tags) };
+    const { rules, ...rest } = normalized;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_CLASS_FIELDS);
     if (rules !== undefined) $set.rules = mapRules(rules);
 

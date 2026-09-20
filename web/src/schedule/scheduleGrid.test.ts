@@ -13,6 +13,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     channelIds: [],
     leadMinutes: 30,
     active: true,
+    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -158,5 +159,27 @@ describe('buildScheduleGrid', () => {
     const grid = buildScheduleGrid([cls], new Set(['ch1']));
 
     expect(grid[1][0]?.channelCount).toBe(1);
+  });
+
+  it('теги курса переносятся в слот как есть (ADR-0070)', () => {
+    const cls = makeClass({
+      tags: ['начинающие', 'медитация'],
+      rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
+    });
+
+    const grid = buildScheduleGrid([cls]);
+
+    expect(grid[1][0]?.tags).toEqual(['начинающие', 'медитация']);
+  });
+
+  it('занятие без тегов — у слота пустой массив, не undefined', () => {
+    const cls = makeClass({
+      tags: [],
+      rules: [{ id: 'r1', weekday: 1, time: '10:00', durationMin: 30 }],
+    });
+
+    const grid = buildScheduleGrid([cls]);
+
+    expect(grid[1][0]?.tags).toEqual([]);
   });
 });

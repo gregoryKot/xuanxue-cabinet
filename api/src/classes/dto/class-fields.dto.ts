@@ -8,7 +8,11 @@
 // Ни одно из полей ниже не входит в NULLABLE_CLASS_FIELDS (shared) — `null`
 // для них ошибка формы, а не «сбросить», поэтому `@IsOptional()` заменён на
 // `OptionalNotNull()`: пропускает `undefined`, `null` доходит до остальных
-// декораторов и получает 400 (CLAUDE.md, раздел «API»).
+// декораторов и получает 400 (CLAUDE.md, раздел «API»). Исключение — `tags`
+// ниже: тот же `@IsOptional()`, что у CreateLessonDto/UpdateLessonDto.tags
+// (ADR-0059) — поле тоже не в NULLABLE_CLASS_FIELDS, но сервис трогает его,
+// только если оно вообще прислано (ClassesService, тот же приём, что у
+// MaterialsService.update), а не по признаку «не null».
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -17,6 +21,7 @@ import {
   IsBoolean,
   IsInt,
   IsMongoId,
+  IsOptional,
   IsString,
   IsTimeZone,
   Max,
@@ -24,7 +29,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { CLASS_LIMITS, type ScheduleRuleInput } from '@xuanxue/shared';
+import { CLASS_LIMITS, TAG_LIMITS, type ScheduleRuleInput } from '@xuanxue/shared';
 import { OptionalNotNull } from '../../common/validation';
 import { ruleUniqueKey } from '../classes.update';
 import { ScheduleRuleDto } from './schedule-rule.dto';
@@ -64,4 +69,13 @@ export class ClassFieldsDto {
   @OptionalNotNull()
   @IsBoolean()
   active?: boolean;
+
+  // Постоянный признак курса, не вечера (ADR-0070) — нормализация (обрезка,
+  // дедуп без учёта регистра), только если поле прислали, — ClassesService.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(TAG_LIMITS.perRecord)
+  @IsString({ each: true })
+  @MaxLength(TAG_LIMITS.length, { each: true })
+  tags?: string[];
 }

@@ -23,12 +23,18 @@ export function assertLessonId(id: string): void {
 /** Фильтр списка `GET /lessons`: окно дат обязательно (его разбирает и
  * проверяет сервис), остальное — необязательные сужения. `classId` приходит
  * уже проверенным: кривой id у занятий — ошибка запроса, а не пустой список,
- * в отличие от материалов. */
-export function buildLessonsFilter(
+ * в отличие от материалов.
+ *
+ * Тег занятия расписания — постоянный признак курса (ADR-0070), а не поле
+ * документа даты: дата находится по тегу своего курса вторым запросом, не
+ * копией в `lessons.tags` (копия разъехалась бы с правкой тега курса, см.
+ * ADR-0070 «Альтернативы»). Async — из-за этого запроса. */
+export async function buildLessonsFilter(
   query: ListLessonsQuery,
   from: DateTime,
   to: DateTime,
-): Record<string, unknown> {
+  classModel: Model<ClassRecord>,
+): Promise<Record<string, unknown>> {
   const filter: Record<string, unknown> = {
     startsAt: { $gte: from.toJSDate(), $lt: to.toJSDate() },
   };
@@ -36,7 +42,18 @@ export function buildLessonsFilter(
   // Истинностная проверка, не `!== undefined` (ADR-0059, как у
   // buildMaterialsFilter): пустая строка в query — «фильтр не задан», а не
   // «тег — пустая строка», иначе список молча оказался бы пустым.
-  if (query.tag) filter.tags = query.tag;
+  if (query.tag) {
+    const classIds = await classModel
+      .find({ tags: query.tag })
+      .select('_id')
+      .lean<{ _id: Types.ObjectId }[]>();
+    // Своя пометка ИЛИ курс с этим тегом (ADR-0070) — пустой classIds
+    // допустим, тогда $in ничего не добавляет и находятся только свои теги.
+    filter.$or = [
+      { tags: query.tag },
+      { classId: { $in: classIds.map((cls) => cls._id.toString()) } },
+    ];
+  }
   return filter;
 }
 

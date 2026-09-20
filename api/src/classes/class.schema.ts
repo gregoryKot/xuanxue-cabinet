@@ -79,10 +79,23 @@ export class ClassRecord {
 
   @Prop({ type: Boolean, default: true })
   active!: boolean;
+
+  // Постоянный признак курса (ADR-0070, уточняет ADR-0059) — «начинающие»,
+  // «медитация»: набирается один раз в расписании, не на каждой дате.
+  // Отдельное поле от LessonRecord.tags (тег вечера) — форма даты своё не
+  // показывает и не переписывает, иначе одно слово разъехалось бы на два
+  // написания (ADR-0058). У занятий, заведённых до этого поля, документ его
+  // не содержит — `.lean()` не подставляет default при чтении (class.mapper.ts,
+  // тот же приём, что у LessonRecord.tags).
+  @Prop({ type: [String], default: [] })
+  tags!: string[];
 }
 
 export const ClassSchema = SchemaFactory.createForClass(ClassRecord);
 ClassSchema.index({ active: 1 });
+// Фильтр по тегу курса (GET /api/classes?tag=…, ADR-0070) — тот же приём,
+// что у LessonSchema.index({ tags: 1 }).
+ClassSchema.index({ tags: 1 });
 
 export const CLASS_FIELD_POLICY: FieldPolicy = {
   title: plain('публикуется в посте'),
@@ -92,6 +105,7 @@ export const CLASS_FIELD_POLICY: FieldPolicy = {
   zoomPassword: enc,
   'rules.time': plain('время слота, нужно для выборок'),
   tz: plain('IANA-зона для выборок'),
+  tags: plain('рубрика курса, фильтр по тегу; не персональные данные'),
 };
 
 /** Схема шифрования класса — одна на все места чтения и записи (сервис,

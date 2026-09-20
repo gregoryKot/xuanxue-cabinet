@@ -50,6 +50,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     channelIds: [],
     leadMinutes: 30,
     active: true,
+    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -169,6 +170,19 @@ describe('ClassEditorScreen — сохранение', () => {
       active: false,
     });
     expect(await screen.findByText(SCHEDULE_MARKER)).toBeInTheDocument();
+  });
+
+  it('ввод в поле «Теги» уходит в тело запроса как массив (ADR-0070)', async () => {
+    const user = userEvent.setup();
+    mockClass(makeClass());
+
+    renderAt('/schedule/c1');
+    await user.type(await screen.findByLabelText('Теги'), 'начинающие, медитация');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const options = callsWithMethod('PATCH')[0]?.[1] as { body: { tags: string[] } };
+    expect(options.body.tags).toEqual(['начинающие', 'медитация']);
   });
 
   it('новое занятие — POST с названием и добавленным днём', async () => {

@@ -6,12 +6,17 @@
 // CreateClassInput не допускает null у zoomLink/zoomPassword — при создании
 // пустое поле не отправляем вовсе (undefined); при правке существующего
 // занятия пустое поле — явный сброс (null, NULLABLE_CLASS_FIELDS в
-// shared/src/classes.ts), не «оставить как было» (ревью п.8).
+// shared/src/classes.ts), не «оставить как было» (ревью п.8). Теги курса —
+// постоянный признак (ADR-0070), строкой через запятую (tagsText), тот же
+// приём и тот же parseTagsText, что у materials/materialFormInput.ts —
+// второй разбор строки не заводим.
 import {
   CLASS_LIMITS,
   DEFAULT_LEAD_MINUTES,
+  parseTagsText,
   RULE_TIME_RE,
   SCHOOL_TZ,
+  TAG_LIMITS,
   type ChannelDto,
   type ClassDto,
   type ClassFormat,
@@ -46,6 +51,9 @@ export interface ClassFormState {
    * (LeaderField, аудит В4). Сервер проверяет, что это существующий
    * teacher/admin (assertTeacherExists) — форма отправляет id как есть. */
   leaderId: string;
+  /** Постоянные теги курса — «начинающие», «медитация» (ADR-0070), не теги
+   * конкретной даты (те живут у lessons, форма занятия их не видит). */
+  tagsText: string;
 }
 
 /** Каналы, которые сервер подставит новому занятию по умолчанию
@@ -71,6 +79,7 @@ export function initialClassFormState(
     tz: classDto?.tz ?? SCHOOL_TZ,
     channelIds: classDto?.channelIds ?? defaultChannelIds(channels),
     leaderId: classDto?.leaderId ?? '',
+    tagsText: classDto?.tags.join(', ') ?? '',
     rules:
       classDto?.rules.map((rule) => ({
         id: rule.id,
@@ -105,6 +114,14 @@ export function validateClassForm(state: ClassFormState): string | null {
   if (!isValidInt(state.leadMinutesText, 0, CLASS_LIMITS.leadMinutesMax)) {
     return `За сколько минут слать — целое число от 0 до ${CLASS_LIMITS.leadMinutesMax}.`;
   }
+  // Сервер такой тег отклонит (`@MaxLength`, ADR-0070) — форма ловит раньше,
+  // тот же приём, что у materialFormInput.ts.
+  const longTag = parseTagsText(state.tagsText).find(
+    (tag) => tag.length > TAG_LIMITS.length,
+  );
+  if (longTag) {
+    return `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`;
+  }
   return null;
 }
 
@@ -129,6 +146,7 @@ export function toCreateInput(state: ClassFormState): CreateClassInput {
     active: state.active,
     tz: state.tz,
     channelIds: state.channelIds,
+    tags: parseTagsText(state.tagsText),
     rules: toRules(state.rules),
   };
 }
@@ -148,6 +166,7 @@ export function toUpdateInput(state: ClassFormState): UpdateClassInput {
     active: state.active,
     tz: state.tz,
     channelIds: state.channelIds,
+    tags: parseTagsText(state.tagsText),
     rules: toRules(state.rules),
   };
 }
