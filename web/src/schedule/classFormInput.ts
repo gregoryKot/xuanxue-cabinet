@@ -16,7 +16,6 @@ import {
   parseTagsText,
   RULE_TIME_RE,
   SCHOOL_TZ,
-  TAG_LIMITS,
   type ChannelDto,
   type ClassDto,
   type ClassFormat,
@@ -25,6 +24,7 @@ import {
   type UpdateClassInput,
   type Weekday,
 } from '@xuanxue/shared';
+import { longTagError } from '../lib/longTagError';
 
 export interface RuleDraft {
   id?: string;
@@ -114,15 +114,9 @@ export function validateClassForm(state: ClassFormState): string | null {
   if (!isValidInt(state.leadMinutesText, 0, CLASS_LIMITS.leadMinutesMax)) {
     return `За сколько минут слать — целое число от 0 до ${CLASS_LIMITS.leadMinutesMax}.`;
   }
-  // Сервер такой тег отклонит (`@MaxLength`, ADR-0072) — форма ловит раньше,
-  // тот же приём, что у materialFormInput.ts.
-  const longTag = parseTagsText(state.tagsText).find(
-    (tag) => tag.length > TAG_LIMITS.length,
-  );
-  if (longTag) {
-    return `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`;
-  }
-  return null;
+  // Почему длину тега проверяем на клиенте — шапка lib/longTagError.ts, тот
+  // же приём, что у materialFormInput.ts.
+  return longTagError(state.tagsText);
 }
 
 function toRules(rules: RuleDraft[]): ScheduleRuleInput[] {

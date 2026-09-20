@@ -11,13 +11,13 @@ import {
   MATERIAL_KINDS,
   MATERIAL_LIMITS,
   parseTagsText,
-  TAG_LIMITS,
   type CreateMaterialInput,
   type MaterialAccess,
   type MaterialDto,
   type MaterialKind,
   type UpdateMaterialInput,
 } from '@xuanxue/shared';
+import { longTagError } from '../lib/longTagError';
 
 const URL_RE = /^https?:\/\//i;
 
@@ -69,18 +69,12 @@ export function validateMaterialForm(state: MaterialFormState): MaterialFormErro
     return { field: 'url', message: `Ссылка длиннее ${MATERIAL_LIMITS.url} символов.` };
   }
 
-  // Сервер такой тег отклонит (`@MaxLength`, ADR-0058) — форма ловит его
-  // раньше, чтобы не давать круг «сохранить → 400». Число тегов сверх
-  // лимита parseTagsText отбрасывает молча, как и у вопросов экзамена —
-  // подсказка под полем называет лимит заранее.
-  const longTag = parseTagsText(state.tagsText).find(
-    (tag) => tag.length > TAG_LIMITS.length,
-  );
-  if (longTag) {
-    return {
-      field: 'tags',
-      message: `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
-    };
+  // Число тегов сверх лимита parseTagsText отбрасывает молча, как и у
+  // вопросов экзамена — подсказка под полем называет лимит заранее. Почему
+  // длину тега проверяем на клиенте — шапка lib/longTagError.ts.
+  const tagError = longTagError(state.tagsText);
+  if (tagError) {
+    return { field: 'tags', message: tagError };
   }
   return null;
 }

@@ -12,6 +12,7 @@ import {
 import { Field, inputStyle } from '../components/Field';
 import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
@@ -63,13 +64,11 @@ export function ClassFormFields({
         />
       </Field>
 
-      <Field label="Теги" hint={TAG_HINT}>
-        <input
-          style={inputStyle}
-          value={state.tagsText}
-          onChange={(e) => setField('tagsText', e.target.value)}
-        />
-      </Field>
+      <TagsField
+        value={state.tagsText}
+        onChange={(value) => setField('tagsText', value)}
+        hint={TAG_HINT}
+      />
 
       <Field label="Формат">
         <select
