@@ -22,21 +22,16 @@ import { APP_ERROR_ALERTS, type AppErrorAlerts } from './app-error-alerts';
 import { errorMessage, errorStack } from './error-info';
 import { DomainError } from './errors';
 import { fromHttpException } from './http-exception.mapper';
+import { pathWithoutQuery, requestIdOf, type RequestLike } from './request-info';
 
 const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз через минуту.';
 // Лимит тела (JSON 1 МБ, картинка экзамена — ADR-0035): текст один на оба случая.
 const PAYLOAD_TOO_LARGE_MESSAGE =
   'Файл или текст больше допустимого. Уменьшите его и попробуйте ещё раз.';
 
-// Минимальные интерфейсы вместо @types/express (которого нет в зависимостях
-// api/) — фильтру нужны `req.id` (пишет pino-http, см. logging.module.ts),
-// `req.method`/`req.url` (метод и путь для алёрта админу, см. notifyAppError)
-// и express-подобный `res.status().json()`.
-interface RequestLike {
-  id?: unknown;
-  method?: unknown;
-  url?: unknown;
-}
+// Минимальный интерфейс вместо @types/express (которого нет в зависимостях
+// api/): фильтру нужен express-подобный `res.status().json()`. Что берётся из
+// запроса — common/request-info.ts (тот же модуль читает ClientErrorsController).
 interface ResponseLike {
   status(code: number): { json(body: ApiErrorBody): unknown };
 }
@@ -59,7 +54,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<ResponseLike>();
     const request = ctx.getRequest<RequestLike>();
-    const requestId = typeof request.id === 'string' ? request.id : undefined;
+    const requestId = requestIdOf(request);
 
     const body = this.toBody(exception, requestId);
     // 'internal_error' — код ровно той ветки toBody() ниже, что не смогла
@@ -129,12 +124,4 @@ export class DomainExceptionFilter implements ExceptionFilter {
         );
       });
   }
-}
-
-// Путь без query-строки: там бывают токены входа (?join=, ?token=, SECURITY
-// §6) — редакция лога вырезает их поштучно (request-serializer.ts), а этот
-// путь идёт не в лог, а в текст алёрта админу, проще убрать query целиком.
-function pathWithoutQuery(url: string): string {
-  const queryIndex = url.indexOf('?');
-  return queryIndex === -1 ? url : url.slice(0, queryIndex);
 }
