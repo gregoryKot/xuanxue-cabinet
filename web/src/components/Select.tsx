@@ -7,13 +7,13 @@
 // 2 недель как-то некрасиво прижата»). Системная стрелка к тому же рисуется
 // не в палитре кабинета (docs/adr/0043) и на тёплой бумаге смотрится чужой.
 import type { CSSProperties, SelectHTMLAttributes } from 'react';
+import { ChevronIcon } from './ChevronIcon';
 import { getInputStyle } from './Field';
 
-// Место под свой значок: 12px сам значок + 12px тот же правый отступ, что у
-// текста слева (getInputStyle: padding '10px 12px'), плюс зазор между ними.
-const ARROW_SIZE_PX = 12;
+// Место под свой значок: 12px сам значок (ChevronIcon.tsx) + 12px тот же
+// правый отступ, что у текста слева (getInputStyle: padding '10px 12px'),
+// плюс зазор между ними.
 const ARROW_RIGHT_PX = 12;
-const ARROW_STROKE_WIDTH = 1.4;
 const SELECT_PADDING_RIGHT_PX = 34;
 
 const selectStyle: CSSProperties = {
@@ -68,24 +68,10 @@ export function Select({ style, children, ...selectProps }: SelectProps) {
       <select {...selectProps} style={selectStyle}>
         {children}
       </select>
-      {/* Инлайновый svg, не фон-картинка: `background-image` с data:-URI
-          потребовал бы записи источника в api/src/security/csp.ts на каждую
-          правку значка (CSP кабинета перечисляет источники явно) —
-          инлайновому svg добавлять туда нечего. */}
-      <svg
-        width={ARROW_SIZE_PX}
-        height={ARROW_SIZE_PX}
-        viewBox="0 0 12 12"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={ARROW_STROKE_WIDTH}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-        style={arrowStyle}
-      >
-        <path d="M2 4.5 L6 8.5 L10 4.5" />
-      </svg>
+      {/* Тот же шеврон, что у раскрывающейся текстовой кнопки — общий
+          компонент, а не второй такой же svg по месту (CLAUDE.md «Одна
+          механика — один компонент»). */}
+      <ChevronIcon style={arrowStyle} />
     </span>
   );
 }

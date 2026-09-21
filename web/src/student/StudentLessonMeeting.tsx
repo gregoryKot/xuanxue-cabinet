@@ -12,7 +12,7 @@
 // «Экзамен» (StudentExamCard.tsx) поэтому держит кнопку вторичной, не залитой.
 import type { CSSProperties } from 'react';
 import type { ClassFormat } from '@xuanxue/shared';
-import { textLinkStyle } from '../components/screenLayout';
+import { textLinkHitAreaStyle, textLinkLineStyle } from '../components/screenLayout';
 
 const JOIN_TEXT = 'Подключиться';
 const ZOOM_LINK_FALLBACK = 'Ссылку пришлём в канал.';
@@ -45,13 +45,12 @@ const prominentLinkStyle: CSSProperties = {
   color: 'var(--terracotta-contrast)',
   textDecoration: 'none',
 };
-// Цель нажатия ≥44 по высоте и у тихого варианта (CLAUDE.md «Доступность»).
-const quietLinkStyle: CSSProperties = {
-  ...textLinkStyle,
-  display: 'inline-flex',
-  alignItems: 'center',
-  minHeight: 44,
-};
+// Цель нажатия 44 несёт оболочка textLinkHitAreaStyle, линию под буквами —
+// внутренний span с textLinkLineStyle в JSX ниже: border-bottom на самой
+// коробке высотой 44 рисуется по её дну, в отрыве от букв — «Подключиться»
+// у занятия висело такой линией на отлёте (снимок владельца 2026-09-21,
+// разбор приёма в screenLayout.ts).
+const quietLinkStyle: CSSProperties = textLinkHitAreaStyle;
 const passwordStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
 const plainTextStyle: CSSProperties = {
   margin: 0,
@@ -89,7 +88,7 @@ export function StudentLessonMeeting({
               rel="noreferrer"
               style={prominent ? prominentLinkStyle : quietLinkStyle}
             >
-              {JOIN_TEXT}
+              {prominent ? JOIN_TEXT : <span style={textLinkLineStyle}>{JOIN_TEXT}</span>}
             </a>
             {zoomPassword && <span style={passwordStyle}>Пароль: {zoomPassword}</span>}
           </div>

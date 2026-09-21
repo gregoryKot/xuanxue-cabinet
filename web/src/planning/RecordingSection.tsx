@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react';
 import type { AddRecordingInput, RecordingDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
+import { textLinkStyle } from '../components/screenLayout';
 import { useRecordingForm } from './useRecordingForm';
 
 const listStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
@@ -32,7 +33,12 @@ export function RecordingSection({ lessonId, recordings, onAdd }: RecordingSecti
           {recordings.map((recording) => (
             <li key={recording.id}>
               {recording.url ? (
-                <a href={recording.url} target="_blank" rel="noreferrer">
+                <a
+                  href={recording.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={textLinkStyle}
+                >
                   {recordingLabel(recording)}
                 </a>
               ) : (

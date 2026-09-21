@@ -7,18 +7,17 @@
 // соврал бы клавиатуре и скринридеру. Высота ≥44 — цель нажатия пальцем
 // (CLAUDE.md «Доступность»).
 import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react';
-import { textLinkStyle } from './screenLayout';
+import { ChevronIcon } from './ChevronIcon';
+import { textLinkHitAreaStyle, textLinkLineStyle } from './screenLayout';
 
+// Линия — на внутреннем `<span>` (JSX ниже), не на самой кнопке: `border-
+// bottom` на коробке 44px рисовался по её дну, в десятке пикселей от букв, и
+// кнопка читалась обычным абзацем — отзыв владельца 2026-09-21 про «Как
+// выложить видео, чтобы учитель его открыл» и «У меня нет Telegram»
+// («непонятно, что кнопка»). Разбор приёма — в screenLayout.ts.
 const buttonStyle: CSSProperties = {
-  ...textLinkStyle,
+  ...textLinkHitAreaStyle,
   alignSelf: 'flex-start',
-  minHeight: 44,
-  padding: '10px 0',
-  background: 'none',
-  border: 0,
-  borderBottom: '1px solid var(--control-border)',
-  font: 'inherit',
-  cursor: 'pointer',
 };
 
 // Опасное действие («Отменить» рассылку) — тот же силуэт, но текстом в
@@ -33,6 +32,14 @@ const dangerStyle: CSSProperties = { ...buttonStyle, color: 'var(--danger)' };
 // --terracotta-text, не --terracotta: тот же приём, что и везде в этом
 // направлении — акцент текстом мельче кегля 14px иначе не держит AA 4.5.
 const accentStyle: CSSProperties = { ...buttonStyle, color: 'var(--terracotta-text)' };
+
+// Знак раскрытия — только у кнопки, которая раскрывает блок на месте
+// (`aria-expanded` передан). Линия под буквами говорит «это нажимается»,
+// шеврон добавляет «откроется здесь, а не уведёт на другой экран»: отзыв
+// владельца 2026-09-21 про «Как выложить видео, чтобы учитель его открыл» —
+// «непонятна подсказка, непонятно, что кнопка». Знак стоит ЗА линией, не под
+// ней: линия помечает слова, а не значок.
+const chevronStyle: CSSProperties = { marginLeft: 6, verticalAlign: 'middle' };
 
 interface TextLinkButtonProps extends Pick<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -57,9 +64,16 @@ export function TextLinkButton({
   ...aria
 }: TextLinkButtonProps) {
   const style = danger ? dangerStyle : accent ? accentStyle : buttonStyle;
+  const expanded = aria['aria-expanded'];
   return (
     <button type="button" style={style} onClick={onClick} disabled={disabled} {...aria}>
-      {children}
+      <span style={textLinkLineStyle}>{children}</span>
+      {expanded !== undefined && (
+        <ChevronIcon
+          collapsed={expanded === false || expanded === 'false'}
+          style={chevronStyle}
+        />
+      )}
     </button>
   );
 }
