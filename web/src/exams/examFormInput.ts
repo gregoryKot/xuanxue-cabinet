@@ -1,10 +1,9 @@
 // Чистая логика формы экзамена — состояние, валидация и сборка тела запроса
-// (порядок вопросов и поиск — examQuestions.ts), вынесена из
-// useExamForm.ts, чтобы проверять без React (CLAUDE.md «Тесты»), по образцу
-// exam-items/examItemFormInput.ts. timeLimitMin/attemptsAllowed хранятся в
-// форме строкой — пустое поле иначе мгновенно становится 0/NaN, и пользователь
-// не может стереть цифру, чтобы напечатать новую (тот же приём, что
-// durationMinText в schedule/classFormInput.ts).
+// (порядок вопросов и поиск — examQuestions.ts), вынесена из useExamForm.ts,
+// чтобы проверять без React (CLAUDE.md «Тесты»). timeLimitMin/attemptsAllowed
+// хранятся в форме строкой — пустое поле иначе мгновенно становится 0/NaN,
+// и пользователь не может стереть цифру, чтобы напечатать новую (тот же
+// приём, что durationMinText в schedule/classFormInput.ts).
 import {
   EXAM_LIMITS,
   type CreateExamInput,
@@ -15,13 +14,14 @@ import { validateQuestionsPerAttemptText } from './questionsPerAttempt';
 import {
   initialQuestionIds,
   initialQuestionsPerAttempt,
+  initialRequiredIds,
   initialShuffleQuestions,
+  pruneRequiredIds,
   toBlockInputs,
 } from './examQuestions';
 
 // Минимумы не вынесены в EXAM_LIMITS (shared) — там только верхние границы;
-// то же самое минимальное значение 1 продублировано локальной константой на
-// сервере (MIN_TIME_LIMIT_MIN/MIN_ATTEMPTS_ALLOWED, api/src/exams/dto/*.ts).
+// то же значение 1 продублировано константой на сервере (api/src/exams/dto/*.ts).
 const MIN_TIME_LIMIT_MIN = 1;
 const MIN_ATTEMPTS_ALLOWED = 1;
 const DEFAULT_ATTEMPTS_ALLOWED = 1;
@@ -35,6 +35,8 @@ export interface ExamFormState {
   attemptsAllowedText: string;
   /** Один список вопросов на весь экзамен (ADR-0033). */
   questionIds: string[];
+  /** Отметки ★ «обязательный» (ADR-0082, дополнение) — подмножество `questionIds`. */
+  requiredIds: string[];
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   /** Сколько вопросов из списка достаётся сдающему — строкой по той же
@@ -51,6 +53,7 @@ export function initialExamFormState(exam: ExamDto | null): ExamFormState {
     timeLimitMinText: exam?.timeLimitMin ? String(exam.timeLimitMin) : '',
     attemptsAllowedText: String(exam?.attemptsAllowed ?? DEFAULT_ATTEMPTS_ALLOWED),
     questionIds: initialQuestionIds(exam),
+    requiredIds: initialRequiredIds(exam),
     shuffleQuestions: initialShuffleQuestions(exam),
     shuffleOptions: exam?.shuffleOptions ?? false,
     questionsPerAttemptText:
@@ -89,6 +92,7 @@ export function validateExamForm(state: ExamFormState): string | null {
       MIN_QUESTIONS_PER_ATTEMPT,
       EXAM_LIMITS.itemsPerBlockMax,
       state.questionIds.length,
+      pruneRequiredIds(state.requiredIds, state.questionIds).length,
     );
     if (error) return error;
   }
@@ -106,6 +110,7 @@ export function toCreateInput(state: ExamFormState): CreateExamInput {
       questionsPerAttempt: state.questionsPerAttemptText.trim()
         ? Number(state.questionsPerAttemptText)
         : undefined,
+      requiredItemIds: state.requiredIds,
       exam: null,
     }),
     shuffleOptions: state.shuffleOptions,
@@ -135,6 +140,7 @@ export function toUpdateInput(
       questionsPerAttempt: state.questionsPerAttemptText.trim()
         ? Number(state.questionsPerAttemptText)
         : undefined,
+      requiredItemIds: state.requiredIds,
       exam,
     }),
     shuffleOptions: state.shuffleOptions,

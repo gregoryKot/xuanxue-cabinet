@@ -34,6 +34,7 @@ function baseState(overrides: Partial<ExamFormState> = {}): ExamFormState {
     timeLimitMinText: '',
     attemptsAllowedText: '1',
     questionIds: [],
+    requiredIds: [],
     shuffleQuestions: false,
     shuffleOptions: false,
     questionsPerAttemptText: '',
@@ -89,6 +90,27 @@ describe('initialExamFormState', () => {
   it('у блока нет questionsPerAttempt — пустая строка, не «undefined»', () => {
     const state = initialExamFormState(makeExam());
     expect(state.questionsPerAttemptText).toBe('');
+  });
+
+  it('у блока заданы requiredItemIds — переносятся в форму', () => {
+    const state = initialExamFormState(
+      makeExam({
+        blocks: [
+          {
+            id: 'b1',
+            title: '',
+            itemIds: ['i1', 'i2'],
+            shuffle: false,
+            requiredItemIds: ['i1'],
+          },
+        ],
+      }),
+    );
+    expect(state.requiredIds).toEqual(['i1']);
+  });
+
+  it('у блока нет requiredItemIds — пустой список', () => {
+    expect(initialExamFormState(makeExam()).requiredIds).toEqual([]);
   });
 });
 
@@ -158,6 +180,44 @@ describe('validateExamForm', () => {
     expect(error).toBe(
       'В списке 2 вопроса, а ученику вы хотите показать 5. Уменьшите число или добавьте вопросы.',
     );
+  });
+
+  it('обязательных больше «Вопросов ученику» — ошибка с обоими числами', () => {
+    const error = validateExamForm(
+      baseState({
+        questionIds: ['i1', 'i2', 'i3'],
+        requiredIds: ['i1', 'i2'],
+        questionsPerAttemptText: '1',
+      }),
+    );
+    expect(error).toBe(
+      'Обязательных вопросов 2, а ученику вы показываете 1. Уменьшите число ' +
+        'обязательных или увеличьте «Вопросов ученику».',
+    );
+  });
+
+  it('обязательных не больше «Вопросов ученику» — валидно', () => {
+    expect(
+      validateExamForm(
+        baseState({
+          questionIds: ['i1', 'i2'],
+          requiredIds: ['i1'],
+          questionsPerAttemptText: '1',
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it('обязательный вопрос убран из списка — не считается (проверка по очищенному списку)', () => {
+    expect(
+      validateExamForm(
+        baseState({
+          questionIds: ['i1'],
+          requiredIds: ['i1', 'gone'],
+          questionsPerAttemptText: '1',
+        }),
+      ),
+    ).toBeNull();
   });
 });
 
@@ -253,6 +313,36 @@ describe('toCreateInput / toUpdateInput', () => {
     const state = baseState({ questionIds: ['i1'], questionsPerAttemptText: '' });
     const input = toUpdateInput(state, makeExam());
     expect(input.blocks?.[0]).not.toHaveProperty('questionsPerAttempt');
+  });
+
+  it('создание: отмеченные обязательные уходят в блок', () => {
+    const state = baseState({
+      questionIds: ['i1', 'i2'],
+      requiredIds: ['i1'],
+      questionsPerAttemptText: '1',
+    });
+    expect(toCreateInput(state).blocks?.[0]).toMatchObject({ requiredItemIds: ['i1'] });
+  });
+
+  it('создание: обязательный вопрос убран из списка — ключа requiredItemIds нет', () => {
+    const state = baseState({ questionIds: ['i1'], requiredIds: ['gone'] });
+    expect(toCreateInput(state).blocks?.[0]).not.toHaveProperty('requiredItemIds');
+  });
+
+  it('правка: отмеченные обязательные уходят в блок', () => {
+    const state = baseState({
+      questionIds: ['i1'],
+      requiredIds: ['i1'],
+      questionsPerAttemptText: '1',
+    });
+    const input = toUpdateInput(state, makeExam());
+    expect(input.blocks?.[0]).toMatchObject({ requiredItemIds: ['i1'] });
+  });
+
+  it('правка: нет отмеченных обязательных — ключа requiredItemIds нет', () => {
+    const state = baseState({ questionIds: ['i1'] });
+    const input = toUpdateInput(state, makeExam());
+    expect(input.blocks?.[0]).not.toHaveProperty('requiredItemIds');
   });
 });
 

@@ -11,9 +11,25 @@
 // маршрут и переход на главную достаёт функциональная обёртка ниже и
 // передаёт классу пропсами: resetKey меняется при переходе, componentDidUpdate
 // снимает пойманную ошибку.
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, type CSSProperties, type ErrorInfo, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { reportClientError } from '../errors/reportClientError';
+import { Button } from './Button';
+import { editorActionsRowStyle } from './editorLayout';
+import { screenExplanationStyle, screenTitleStyle } from './screenLayout';
+
+// Экран ошибки — той же колонкой, шрифтом и кнопками, что остальной кабинет
+// (ADR-0043): прежний вариант с system-ui и голыми <button> у левого края
+// выглядел чужим (снимок владельца 2026-09-21). По центру и с воздухом
+// сверху: на мониторе колонка иначе прижималась к углу.
+const pageStyle: CSSProperties = {
+  maxWidth: 480,
+  margin: '0 auto',
+  padding: '48px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+};
 
 interface Props {
   children: ReactNode;
@@ -56,24 +72,18 @@ class ErrorBoundaryBase extends Component<Props, State> {
     if (!error) return this.props.children;
 
     return (
-      <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif', maxWidth: 480 }}>
-        <h1>Что-то сломалось</h1>
-        <p>Обновите страницу. Если не помогает — напишите администратору школы.</p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={this.handleReload}
-            style={{ minHeight: 44, minWidth: 44, padding: '10px 20px' }}
-          >
+      <main style={pageStyle}>
+        <h1 style={screenTitleStyle}>Что-то сломалось</h1>
+        <p style={screenExplanationStyle}>
+          Обновите страницу. Если не помогает — напишите администратору школы.
+        </p>
+        <div style={editorActionsRowStyle}>
+          <Button type="button" onClick={this.handleReload}>
             Обновить
-          </button>
-          <button
-            type="button"
-            onClick={this.props.onHome}
-            style={{ minHeight: 44, minWidth: 44, padding: '10px 20px' }}
-          >
+          </Button>
+          <Button type="button" variant="secondary" onClick={this.props.onHome}>
             На главную
-          </button>
+          </Button>
         </div>
         {import.meta.env.DEV && (
           <details style={{ marginTop: 16 }}>

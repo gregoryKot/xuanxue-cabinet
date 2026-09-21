@@ -96,6 +96,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   itemIds: 'Вопросы',
   shuffle: 'Перемешивание вопросов',
   questionsPerAttempt: 'Вопросов ученику в попытке',
+  requiredItemIds: 'Обязательные вопросы',
   shuffleOptions: 'Перемешивание вариантов ответа',
   timeLimitMin: 'Лимит времени',
   attemptsAllowed: 'Число попыток',

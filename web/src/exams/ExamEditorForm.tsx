@@ -1,9 +1,12 @@
 // Редактор экзамена — страница с адресом, а не лист поверх списка (макет
 // Form.dc.html, ADR-0033). Сверху вниз: название со строкой статуса
 // («Опубликовать» / «В архив» — под заголовком, не в подвале: у экзамена
-// на 50 вопросов подвал далеко), «О чём экзамен», «Вопросы · N» с поиском и
-// «Новый вопрос» (ADR-0040), «Как проходит экзамен», подвал с сохранением.
-// Вопросы грузятся один раз на всю страницу
+// на 50 вопросов подвал далеко), «О чём экзамен», «Как проходит экзамен»,
+// «Вопросы · N» с поиском и «Новый вопрос» (ADR-0040), подвал с сохранением.
+// Настройки — перед списком вопросов, а не после: список длинный (у
+// владельца — 50 вопросов), и настройки под ним читались бы «подвалом»,
+// который не долистывают (отзыв владельца 2026-09-21). Вопросы грузятся
+// один раз на всю страницу
 // (useExamItems без фильтров сервера — поиск локальный, examQuestions.ts):
 // один запрос обслуживает и список для добавления, и подстановку
 // формулировок в выбранных вопросах. Предпросмотр глазами ученика — своя
@@ -29,6 +32,7 @@ import { hasUnsavedChanges } from './examFormInput';
 import { EXAM_STATUS_EXPLANATIONS, ExamEditorFooter } from './ExamEditorFooter';
 import { ExamFlowFields } from './ExamFlowFields';
 import { ExamQuestionsSection } from './ExamQuestionsSection';
+import { pruneRequiredIds, toggleRequired } from './examQuestions';
 import { useExamForm } from './useExamForm';
 import type { UseExamEditorResult } from './useExamEditor';
 
@@ -37,6 +41,13 @@ const EXAMS_PATH = '/exams';
 const BACK_TEXT = 'К списку экзаменов';
 const NEW_EXAM_TITLE = 'Новый экзамен';
 const REMOVE_MESSAGE = 'Экзамен исчезнет вместе с набором вопросов. Отменить нельзя.';
+
+/** `undefined` и для пустого поля, и для ещё не дописанного числа — заметка
+ * под «Вопросы · N» (ExamQuestionsSection.tsx) не должна мигать «NaN». */
+function parseCount(text: string): number | undefined {
+  const value = Number(text.trim());
+  return text.trim() !== '' && Number.isInteger(value) ? value : undefined;
+}
 
 interface ExamEditorFormProps {
   exam: ExamDto | null;
@@ -65,6 +76,13 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
       return;
     }
     void navigate(`${EXAMS_PATH}/${examId}/preview`);
+  }
+
+  // Вопрос убрали из списка — отметка «обязательный» уходит вместе с ним
+  // (ADR-0082, дополнение); на добавлении и перестановке — просто нет эффекта.
+  function handleQuestionIdsChange(itemIds: string[]) {
+    form.setField('questionIds', itemIds);
+    form.setField('requiredIds', pruneRequiredIds(form.state.requiredIds, itemIds));
   }
 
   return (
@@ -97,19 +115,25 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
         />
 
         <div style={editorSectionStyle}>
+          <span className="xuanxue-eyebrow">Как проходит экзамен</span>
+          <ExamFlowFields state={form.state} setField={form.setField} />
+        </div>
+
+        <div style={editorSectionStyle}>
           <ExamQuestionsSection
             itemIds={form.state.questionIds}
-            onChange={(itemIds) => form.setField('questionIds', itemIds)}
+            onChange={handleQuestionIdsChange}
+            requiredIds={form.state.requiredIds}
+            requiredEnabled={form.state.questionsPerAttemptText.trim() !== ''}
+            questionsPerAttempt={parseCount(form.state.questionsPerAttemptText)}
+            onToggleRequired={(itemId) =>
+              form.setField('requiredIds', toggleRequired(form.state.requiredIds, itemId))
+            }
             bankItems={bank.items}
             bankLoading={bank.loading}
             bankError={bank.error}
             onRetryBank={() => void bank.reload()}
           />
-        </div>
-
-        <div style={editorSectionStyle}>
-          <span className="xuanxue-eyebrow">Как проходит экзамен</span>
-          <ExamFlowFields state={form.state} setField={form.setField} />
         </div>
 
         <FormServerError error={form.serverError} />

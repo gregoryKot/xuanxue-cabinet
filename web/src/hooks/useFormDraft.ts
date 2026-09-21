@@ -32,12 +32,31 @@ interface DraftBootstrap<T> {
   restored: boolean;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Черновик накладывается на свежее initial(), а не подменяет его целиком:
+ * форма живёт в браузере до 7 суток, а состояние формы за это время может
+ * получить новые поля с очередным деплоем. Инцидент 2026-09-21: редактор
+ * экзамена после #312 и #318 обзавёлся `questionsPerAttemptText` и
+ * `requiredIds`, а черновик первого экзамена в localStorage был записан
+ * прежним бандлом без них — `.trim()` на undefined ронял рендер в
+ * ErrorBoundary («Что-то сломалось»), пока второй экзамен без черновика
+ * открывался как ни в чём не бывало. Поле, которого в черновике нет,
+ * берётся из initial(); лишнее поле старой формы остаётся — оно никому не
+ * мешает и уйдёт при следующем сохранении. */
+function mergeDraft<T>(pristine: T, draft: T): T {
+  if (!isPlainObject(pristine) || !isPlainObject(draft)) return draft;
+  return { ...pristine, ...draft };
+}
+
 function bootstrap<T>(key: string | null, initial: () => T): DraftBootstrap<T> {
   const pristine = initial();
   const draft = key === null ? null : readDraft<T>(key, Date.now());
   return draft === null
     ? { pristine, startState: pristine, restored: false }
-    : { pristine, startState: draft, restored: true };
+    : { pristine, startState: mergeDraft(pristine, draft), restored: true };
 }
 
 export function useFormDraft<T>(

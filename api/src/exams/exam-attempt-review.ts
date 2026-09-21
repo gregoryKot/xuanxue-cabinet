@@ -61,6 +61,10 @@ function buildReviewQuestion(
   const selectedIds = answer?.optionIds ?? [];
   const selected = new Set(selectedIds);
   const hasOptions = question.options.length > 0;
+  // Отвечено — выбрал вариант или написал непустой текст. Отдельно от
+  // optionsCheck ниже: «не отвечено» и «отвечено неверно» неразличимы для
+  // проверяющего, если оба дают «0 из 3» (отзыв владельца 2026-09-21).
+  const answered = selectedIds.length > 0 || Boolean(answer?.text?.trim());
   return {
     itemId: question.itemId,
     kind: question.kind,
@@ -69,9 +73,14 @@ function buildReviewQuestion(
     criteria: question.criteria,
     answerText: answer?.text,
     options: question.options.map((option) => toReviewOption(option, selected)),
-    optionsCheck: hasOptions
-      ? checkOptionAnswer(question.options, selectedIds)
-      : undefined,
+    // Считать «сколько верных выбрано» нечему, если выбора не было вовсе —
+    // без этого условия неотвеченный вопрос с вариантами показывал «0 из N»,
+    // неотличимо от честно неверного ответа.
+    optionsCheck:
+      hasOptions && answered
+        ? checkOptionAnswer(question.options, selectedIds)
+        : undefined,
+    answered,
   };
 }
 

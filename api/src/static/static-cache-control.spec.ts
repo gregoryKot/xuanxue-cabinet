@@ -16,7 +16,9 @@ describe('staticCacheControl', () => {
     expect(staticCacheControl('/index.html')).toBe(REVALIDATE_CACHE_CONTROL);
     expect(staticCacheControl('/sw.js')).toBe(REVALIDATE_CACHE_CONTROL);
     expect(staticCacheControl('/manifest.webmanifest')).toBe(REVALIDATE_CACHE_CONTROL);
-    expect(staticCacheControl('/icons/icon-192.png')).toBe(REVALIDATE_CACHE_CONTROL);
+    expect(staticCacheControl('/icons/school-mark-192.png')).toBe(
+      REVALIDATE_CACHE_CONTROL,
+    );
   });
 
   it('путь без ведущего слеша и в обратных слешах разбирается так же', () => {

@@ -108,4 +108,28 @@ describe('toExamDto', () => {
 
     expect(toExamDto(doc).blocks[0]).not.toHaveProperty('questionsPerAttempt');
   });
+
+  // ADR-0082, дополнение.
+  it('requiredItemIds в записи блока — присутствует в ответе', () => {
+    const doc = fullExam();
+    doc.blocks = [
+      {
+        id: 'b1',
+        title: 'Форма',
+        itemIds: ['i1', 'i2'],
+        shuffle: false,
+        questionsPerAttempt: 1,
+        requiredItemIds: ['i1'],
+      },
+    ];
+
+    expect(toExamDto(doc).blocks[0]?.requiredItemIds).toEqual(['i1']);
+  });
+
+  it('requiredItemIds нет в записи блока — ключа в ответе нет', () => {
+    const doc = fullExam();
+    doc.blocks = [{ id: 'b1', title: 'Форма', itemIds: ['i1'], shuffle: false }];
+
+    expect(toExamDto(doc).blocks[0]).not.toHaveProperty('requiredItemIds');
+  });
 });

@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import { AppNav, SIDE_NAV_WIDTH_PX } from './AppNav';
 import { STAFF_NAV_ITEMS, STUDENT_NAV_ITEMS } from './navItems';
+import { rootPathFor } from './screenAccess';
 
 const TEACHER: MeDto = {
   id: 'u1',
@@ -205,6 +206,28 @@ describe('AppNav — знак школы (ADR-0043)', () => {
   it('в панели вкладок телефона — знака нет, это забота AppShell.tsx', () => {
     renderNav(true);
     expect(screen.queryByText('Школа Сюань-Сюэ')).not.toBeInTheDocument();
+  });
+
+  // Знак — ссылка на главную (SchoolBrandLink.tsx), а «главная» у штата и у
+  // ученика разная: адрес считает общее правило rootPathFor (screenAccess.ts),
+  // то же самое, которым AppShell.tsx уводит с чужого маршрута.
+  it('у штата знак ведёт на корень штата', () => {
+    renderNav(false, TEACHER);
+
+    expect(screen.getByRole('link', { name: 'Школа Сюань-Сюэ' })).toHaveAttribute(
+      'href',
+      rootPathFor(TEACHER),
+    );
+  });
+
+  it('у ученика знак ведёт на корень ученика', () => {
+    const student: MeDto = { ...TEACHER, roles: [] };
+    renderNav(false, student);
+
+    expect(screen.getByRole('link', { name: 'Школа Сюань-Сюэ' })).toHaveAttribute(
+      'href',
+      rootPathFor(student),
+    );
   });
 });
 

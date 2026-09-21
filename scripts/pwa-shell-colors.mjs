@@ -1,8 +1,10 @@
 // Сверка цвета оболочки установленного приложения с палитрой кабинета
 // (направление «Тёплая школа», docs/adr/0043). Оболочка — иконка на домашнем
 // экране, заставка при запуске и полоска браузера сверху: её человек видит
-// раньше любого экрана, и знак школы там обязан совпадать со знаком внутри,
-// иначе он не узнаёт то же место.
+// раньше любого экрана. Здесь — только бумага (theme-color, цвета манифеста);
+// что знак на иконках — тот же файл, что и в кабинете, стережёт отдельная
+// проверка scripts/pwa-icon-sources.mjs (docs/adr/0085: знак стал
+// фотографией без фиксированной палитры, цвет сверять в нём больше нечего).
 //
 // Источник правды — токены web/src/index.css, а не зашитый здесь цвет: иначе
 // гейт заморозит сегодняшнюю палитру и на следующей смене покраснеет на самой
@@ -25,20 +27,13 @@ const themeColorOf = (html) =>
     )?.[1],
   );
 
-const colorsOf = (svg) =>
-  [...svg.matchAll(new RegExp(`(?:fill|stroke)="(${COLOR})"`, 'g'))].map((m) =>
-    m[1].toLowerCase(),
-  );
-
 /**
  * Возвращает список расхождений оболочки с палитрой — по строке на место.
- * Пустой список значит, что бумага и знак совпадают с токенами.
+ * Пустой список значит, что бумага совпадает с токеном --paper.
  */
-export function findShellColorProblems({ css, indexHtml, manifest, iconSvg }) {
+export function findShellColorProblems({ css, indexHtml, manifest }) {
   const paper = tokenOf(css, 'paper');
-  const terracotta = tokenOf(css, 'terracotta');
-  if (!paper || !terracotta)
-    return ['в web/src/index.css не нашлись токены --paper и --terracotta'];
+  if (!paper) return ['в web/src/index.css не нашёлся токен --paper'];
 
   const problems = [];
   const same = (actual, expected, where) => {
@@ -50,17 +45,5 @@ export function findShellColorProblems({ css, indexHtml, manifest, iconSvg }) {
   same(themeColorOf(indexHtml), paper, 'meta theme-color в web/index.html');
   same(lower(manifest.theme_color), paper, 'theme_color манифеста');
   same(lower(manifest.background_color), paper, 'background_color манифеста');
-
-  // Первый цвет svg — заливка фонового прямоугольника, остальные принадлежат
-  // знаку: заливка терракотой и светлая обводка бумагой.
-  const [background, ...mark] = colorsOf(iconSvg);
-  same(background, paper, 'фон web/public/icons/icon.svg');
-  if (!mark.includes(terracotta))
-    problems.push(
-      `знак на icon.svg: ${mark.join(', ') || 'цвет не найден'}, ` +
-        `а палитра даёт ${terracotta}`,
-    );
-  const alien = mark.filter((color) => color !== paper && color !== terracotta);
-  if (alien.length) problems.push(`посторонние цвета в icon.svg: ${alien.join(', ')}`);
   return problems;
 }

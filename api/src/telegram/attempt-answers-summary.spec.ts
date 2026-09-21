@@ -6,6 +6,9 @@ import type {
 } from '@xuanxue/shared';
 import { attemptAnswersSummary } from './attempt-answers-summary';
 
+// Без переопределения — вопрос без ответа (CLAUDE.md: фикстура — не «true
+// везде, лишь бы собралось»); тесты на отвеченный вопрос сами добавляют
+// answered: true рядом с optionsCheck/answerText.
 function question(
   overrides: Partial<AttemptReviewQuestionDto>,
 ): AttemptReviewQuestionDto {
@@ -14,6 +17,7 @@ function question(
     kind: 'text',
     prompt: 'Вопрос',
     options: [],
+    answered: false,
     ...overrides,
   };
 }
@@ -34,6 +38,7 @@ describe('attemptAnswersSummary', () => {
         question({
           kind: 'single',
           options: SOME_OPTION,
+          answered: true,
           optionsCheck: {
             correctSelectedCount: 2,
             correctTotalCount: 3,
@@ -53,6 +58,7 @@ describe('attemptAnswersSummary', () => {
         question({
           kind: 'multiple',
           options: SOME_OPTION,
+          answered: true,
           optionsCheck: {
             correctSelectedCount: 1,
             correctTotalCount: 2,
@@ -68,7 +74,7 @@ describe('attemptAnswersSummary', () => {
 
   it('текст короче лимита — идёт как есть, без обрезки', () => {
     const text = attemptAnswersSummary(
-      blocks([question({ answerText: 'Короткий ответ' })]),
+      blocks([question({ answerText: 'Короткий ответ', answered: true })]),
       [],
     );
 
@@ -79,7 +85,7 @@ describe('attemptAnswersSummary', () => {
   it('текст длиннее лимита — честная обрезка со ссылкой на кабинет', () => {
     const longText = 'а'.repeat(250);
     const text = attemptAnswersSummary(
-      blocks([question({ answerText: longText })]),
+      blocks([question({ answerText: longText, answered: true })]),
       [],
       'https://xuanxue.su/grading/507f1f77bcf86cd799439011',
     );
@@ -98,7 +104,10 @@ describe('attemptAnswersSummary', () => {
 
   it('текст длиннее лимита, без PUBLIC_URL — обрезка без ссылки, не «undefined»', () => {
     const longText = 'а'.repeat(250);
-    const text = attemptAnswersSummary(blocks([question({ answerText: longText })]), []);
+    const text = attemptAnswersSummary(
+      blocks([question({ answerText: longText, answered: true })]),
+      [],
+    );
 
     expect(text).toContain('… Полностью — в кабинете.');
     expect(text).not.toContain('undefined');

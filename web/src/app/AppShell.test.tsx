@@ -6,6 +6,7 @@ import type * as HttpModule from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
 import { AppShell } from './AppShell';
+import { rootPathFor } from './screenAccess';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -153,18 +154,22 @@ describe('AppShell — учитель', () => {
   });
 
   // Направление «Тёплая школа» (ADR-0043) убрало шапку во всю ширину — знак
-  // переехал в боковую колонку. Печать декоративная — aria-hidden, название
-  // рядом уже называет место словами. Гейт от регресса «шапка + колонка»:
-  // ровно один экземпляр на странице, не два.
-  it('знак школы и название — один раз, в боковой колонке на мониторе', async () => {
+  // переехал в боковую колонку, а сам стал ссылкой на корень роли
+  // (docs/adr/0085, SchoolBrandLink.tsx). Печать по-прежнему декоративная —
+  // alt="" у картинки, название рядом уже называет место словами. Гейт от
+  // регресса «шапка + колонка»: ровно один экземпляр на странице, не два.
+  it('знак школы и название — один раз, ссылкой на корень штата в боковой колонке', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
     const column = screen.getByRole('navigation', { name: 'Разделы кабинета' })
       .parentElement as HTMLElement;
-    expect(within(column).getByText('Школа Сюань-Сюэ')).toBeInTheDocument();
+    const brandLink = within(column).getByRole('link', { name: 'Школа Сюань-Сюэ' });
+    expect(brandLink).toHaveAttribute('href', rootPathFor(TEACHER));
     expect(screen.getAllByText('Школа Сюань-Сюэ')).toHaveLength(1);
-    expect(column.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    // Печать декоративная: alt="" у картинки, скринридеру нечего добавить к
+    // видимому названию рядом (SchoolMark.tsx).
+    expect(brandLink.querySelector('img[alt=""]')).not.toBeNull();
   });
 
   // На телефоне колонки нет — мокап (screens/1c-planning.html) рисует знак

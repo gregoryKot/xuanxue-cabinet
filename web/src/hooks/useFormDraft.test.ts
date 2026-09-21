@@ -69,6 +69,28 @@ describe('useFormDraft — beforeunload', () => {
   });
 });
 
+describe('useFormDraft — черновик старой формы', () => {
+  // Инцидент 2026-09-21: после деплоя с новыми полями формы черновик,
+  // записанный прежним бандлом, подставлялся целиком — и поле, которого в
+  // нём нет, оказывалось undefined, рендер падал в ErrorBoundary.
+  it('поле, которого в черновике нет, берётся из initial()', () => {
+    interface WiderState {
+      prompt: string;
+      requiredIds: string[];
+    }
+    const older = renderHook(() => useFormDraft(KEY, initial));
+    act(() => older.result.current.setState({ prompt: 'Черновик' }));
+    older.unmount();
+
+    const newer = renderHook(() =>
+      useFormDraft<WiderState>(KEY, () => ({ prompt: '', requiredIds: [] })),
+    );
+
+    expect(newer.result.current.state).toEqual({ prompt: 'Черновик', requiredIds: [] });
+    expect(newer.result.current.restored).toBe(true);
+  });
+});
+
 describe('useFormDraft — второй монтаж', () => {
   it('видит черновик первого монтажа и восстанавливает его', () => {
     const first = renderHook(() => useFormDraft(KEY, initial));

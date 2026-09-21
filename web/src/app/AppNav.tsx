@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import type { MeDto } from '@xuanxue/shared';
 import { hasRole } from '../auth/hasRole';
-import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
+import { SchoolBrandLink } from '../components/SchoolBrandLink';
 import { bottomLinkStyle, bottomPillStyle, bottomStyle } from './bottomNavStyles';
 import {
   personActionsRowStyle,
@@ -24,6 +24,7 @@ import {
   sideStyle,
 } from './sideNavStyles';
 import { activeSectionPath, navItemsFor } from './navItems';
+import { rootPathFor } from './screenAccess';
 
 export { SIDE_NAV_WIDTH_PX };
 
@@ -105,9 +106,11 @@ export function AppNav({
   // по-прежнему работает: он прямой ребёнок этой же flex-колонки.
   return (
     <div style={sideStyle}>
+      {/* Знак и название — ссылка на корень роли (SchoolBrandLink.tsx):
+          логотип ведёт домой, а домой у штата и у ученика по-разному
+          (rootPathFor, screenAccess.ts). */}
       <span style={sideBrandRowStyle}>
-        <SchoolMark />
-        <span style={sideBrandTitleStyle}>{SCHOOL_NAME}</span>
+        <SchoolBrandLink to={rootPathFor(me)} titleStyle={sideBrandTitleStyle} />
       </span>
       <nav style={sideSectionsStyle} aria-label={SECTIONS_LABEL}>
         {links}
