@@ -21,6 +21,9 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
     userId: 'u1',
     userName: 'Иван Иванов',
     status: 'submitted',
+    // Доставка в Telegram здесь не проверяется — фиксируем true как
+    // нейтральное значение, чтобы не путать с содержимым теста.
+    notifiesUserInTelegram: true,
     blocks: [],
     ...overrides,
   };
