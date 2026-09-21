@@ -7,11 +7,17 @@
  * же приём, что `RequestLike` в common/http-headers.ts. `IncomingMessage`
  * структурно совместим с ним (url?/method?/headers['content-type'] — те же
  * типы), поэтому предикаты подходят под `type?: (req: IncomingMessage) => any`
- * из NestExpressBodyParserOptions без приведения. */
+ * из NestExpressBodyParserOptions без приведения.
+ *
+ * `cookie` добавлен ради меры 1 (raw-body-session.ts, SECURITY §4): предикат
+ * сам проверяет подписанную сессию, до всякого гварда. */
 export interface IncomingRequestLike {
   url?: string;
   method?: string;
-  headers: { 'content-type'?: string | string[] | undefined };
+  headers: {
+    'content-type'?: string | string[] | undefined;
+    cookie?: string | string[] | undefined;
+  };
 }
 
 /** Путь без query и без завершающего слэша. */

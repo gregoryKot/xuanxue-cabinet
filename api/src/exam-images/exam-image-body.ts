@@ -13,8 +13,14 @@
 // Разбор пути и заявленного типа — common/raw-body-route.ts: та же механика
 // понадобилась файлам материалов (ADR-0057), и второй копии разбора не
 // осталось (CLAUDE.md «Дубли и мёртвый код»).
+//
+// Последняя проверка — подписанная сессия (SECURITY §4, ADR-0081, мера 1),
+// та же, что и у material-file-body.ts: дешёвая HMAC-проверка ставится
+// последней, после метода/пути/типа.
+import { DateTime } from 'luxon';
 import { EXAM_IMAGE_CONTENT_TYPES } from '@xuanxue/shared';
 import type { ExamImageContentType } from '@xuanxue/shared';
+import { hasSignedSession } from '../common/raw-body-session';
 import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-body-route';
 
 export const EXAM_IMAGES_ROUTE_PATH = '/api/exam-images';
@@ -40,9 +46,17 @@ function isExamImageContentType(value: string): value is ExamImageContentType {
   return (EXAM_IMAGE_CONTENT_TYPES as readonly string[]).includes(value);
 }
 
-export function isRawImageUpload(req: IncomingRequestLike): boolean {
-  if ((req.method ?? '').toUpperCase() !== 'POST') return false;
-  const path = routePath(req.url);
-  if (!RAW_IMAGE_UPLOAD_ROUTES.some((route) => route.test(path))) return false;
-  return isExamImageContentType(mediaType(req.headers['content-type']));
+/** Фабрика вместо голой функции — та же причина, что у
+ * `makeIsMaterialFileUpload` (material-file-body.ts): секрет сессии из DI
+ * замыкается один раз в app.setup.ts, предикат зовётся на каждый запрос. */
+export function makeIsRawImageUpload(
+  secret: string,
+): (req: IncomingRequestLike) => boolean {
+  return (req: IncomingRequestLike): boolean => {
+    if ((req.method ?? '').toUpperCase() !== 'POST') return false;
+    const path = routePath(req.url);
+    if (!RAW_IMAGE_UPLOAD_ROUTES.some((route) => route.test(path))) return false;
+    if (!isExamImageContentType(mediaType(req.headers['content-type']))) return false;
+    return hasSignedSession(req, secret, DateTime.utc());
+  };
 }
