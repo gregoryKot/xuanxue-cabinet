@@ -4,6 +4,7 @@
 // без компонента и без usePushSubscription.ts (CLAUDE.md, ревью «тестируется
 // без DOM?»).
 import { waitServiceWorkerReady } from '../pwa/serviceWorkerReady';
+import { PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE } from './pushNotificationsCopy';
 import { iosNeedsHomeScreenInstall, isPushBrowserSupported } from './webPushEnvironment';
 
 export type PushSectionState =
@@ -21,6 +22,37 @@ export type PushSectionState =
   | { kind: 'subscribed' }
   // Разрешено, но подписки нет (новое устройство, счищенные данные сайта).
   | { kind: 'not-subscribed' };
+
+/**
+ * Регистрация service worker с таймаутом вместо голого `ready`, который не
+ * резолвится никогда, если регистрация не прошла — registerServiceWorker.ts
+ * глотает ошибку молча (сеть моргнула на `/sw.js`, приватный режим,
+ * блокировка), аудит 2026-09-21 HIGH. Общее место для этого файла и
+ * usePushSubscription.ts (enable/disable), один текст и один довод, не три
+ * копии комментария: простой повтор клика не поможет, регистрация
+ * пробуется заново только при перезагрузке страницы (main.tsx).
+ */
+async function requirePushRegistration(): Promise<ServiceWorkerRegistration> {
+  const registration = await waitServiceWorkerReady();
+  if (!registration) throw new Error(PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE);
+  return registration;
+}
+
+/** Тот же шаг, для usePushSubscription.ts enable()/disable(): не бросает,
+ * зовёт `setActionError` и возвращает `null` — кнопка сама выходит из
+ * pending, а не попадает в общий catch метода с его общим текстом. */
+export async function waitRegistrationOrReportError(
+  setActionError: (message: string) => void,
+): Promise<ServiceWorkerRegistration | null> {
+  try {
+    return await requirePushRegistration();
+  } catch (err) {
+    setActionError(
+      err instanceof Error ? err.message : PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE,
+    );
+    return null;
+  }
+}
 
 /**
  * `publicKey` — ответ `GET /push/public-key` (`null` — push выключен на
@@ -42,15 +74,10 @@ export async function resolvePushSectionState(
   if (permission === 'denied') return { kind: 'denied' };
   if (permission === 'default') return { kind: 'default' };
 
-  // Таймаут вместо голого `navigator.serviceWorker.ready` (аудит 2026-09-21,
-  // HIGH): если регистрация не прошла (registerServiceWorker.ts проглотил
-  // ошибку), `ready` не резолвится никогда — без таймера usePushSubscription.ts
-  // повис бы в loading вечным скелетоном. `null` бросаем дальше как ошибку:
-  // usePushSubscription.load() уже ловит и показывает её в loadError с
-  // кнопкой «Повторить» (LoadErrorBanner) — отдельное состояние раздела
-  // тут не нужно, оно уже есть.
-  const registration = await waitServiceWorkerReady();
-  if (!registration) throw new Error('service worker не готов вовремя');
+  // Исключение requirePushRegistration() ловит usePushSubscription.load()
+  // как loadError, с кнопкой «Повторить» — отдельное состояние раздела не
+  // нужно, оно уже есть.
+  const registration = await requirePushRegistration();
   const subscription = await registration.pushManager.getSubscription();
   return { kind: subscription ? 'subscribed' : 'not-subscribed' };
 }
