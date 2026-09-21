@@ -42,6 +42,12 @@ export function getInputStyle(size: FieldControlSize = 'default'): CSSProperties
 
 export const inputStyle: CSSProperties = getInputStyle();
 
+// Поле под число («Лимит времени», «Попыток у ученика», «Вопросов ученику»):
+// во всю ширину колонки оно читается как поле для текста и пугает пустотой
+// (снимок владельца 2026-09-21, редактор экзамена). Ширина под 4–5 цифр —
+// одна на все числовые поля кабинета, чтобы они не расходились по экранам.
+export const numericInputStyle: CSSProperties = { ...inputStyle, width: 112 };
+
 const fieldStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
 const labelTextStyle: CSSProperties = { fontSize: 14, fontWeight: 600 };
 const hintStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };

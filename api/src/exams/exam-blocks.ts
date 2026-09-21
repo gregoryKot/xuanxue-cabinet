@@ -39,7 +39,26 @@ export function mapBlocks(
     ...(block.questionsPerAttempt !== undefined
       ? { questionsPerAttempt: block.questionsPerAttempt }
       : {}),
+    ...mapRequiredItemIds(block),
   }));
+}
+
+/** ADR-0082, дополнение: учитель мог отметить вопрос обязательным, потом
+ * убрать его из списка — отметка не должна пережить вопрос молча (иначе
+ * следующая проверка длины считала бы её как будто он всё ещё в блоке).
+ * Оставляем только id, которые реально есть в `itemIds`, в его порядке, без
+ * повторов; если после фильтра ничего не осталось — ключа в записи нет
+ * вовсе, тем же приёмом, что `questionsPerAttempt` выше. */
+function mapRequiredItemIds(
+  block: ExamBlockInput,
+): Pick<ExamBlockRecord, 'requiredItemIds'> | Record<string, never> {
+  const requiredIds = block.requiredItemIds;
+  if (requiredIds === undefined) return {};
+  // Идём по itemIds, а не по requiredIds: так порядок берётся из списка
+  // блока, а повтор в самом requiredIds (или в itemIds) схлопывается сам.
+  const requiredIdSet = new Set(requiredIds);
+  const kept = block.itemIds.filter((itemId) => requiredIdSet.has(itemId));
+  return kept.length > 0 ? { requiredItemIds: kept } : {};
 }
 
 /** Всё, что видно по самим блокам, одной проверкой перед сохранением
@@ -48,6 +67,7 @@ export function mapBlocks(
 export function assertBlocksConsistent(blocks: readonly ExamBlockRecord[]): void {
   assertNoRepeatedItems(blocks);
   assertQuestionsPerAttemptFits(blocks);
+  assertRequiredFitsPick(blocks);
 }
 
 /** Вопрос не может стоять в форме дважды — ни в одном блоке, ни в разных
@@ -88,6 +108,24 @@ function assertQuestionsPerAttemptFits(blocks: readonly ExamBlockRecord[]): void
     throw new InvalidInputError(
       `В списке ${total} ${pluralRu(total, QUESTION_FORMS)}, а ученику вы хотите ` +
         `показать ${limit}. Уменьшите число или добавьте вопросы.`,
+    );
+  }
+}
+
+/** ADR-0082, дополнение: обязательные входят в выборку всегда, значит их не
+ * может быть больше самой выборки — иначе часть обязательных отвалится
+ * молча. Проверка идёт только при заданном `questionsPerAttempt`: без него
+ * выборки нет вовсе, `requiredItemIds` ни на что не влияет (mapBlocks и без
+ * этой проверки уже отбросил id вне `itemIds`, длина сравнивается с тем, что
+ * реально сохранится). */
+function assertRequiredFitsPick(blocks: readonly ExamBlockRecord[]): void {
+  for (const block of blocks) {
+    const limit = block.questionsPerAttempt;
+    const requiredCount = block.requiredItemIds?.length ?? 0;
+    if (limit === undefined || requiredCount <= limit) continue;
+    throw new InvalidInputError(
+      `Обязательных вопросов ${requiredCount}, а ученику вы показываете ${limit}. ` +
+        'Уменьшите число обязательных или увеличьте «Вопросов ученику».',
     );
   }
 }

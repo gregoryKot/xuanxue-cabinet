@@ -30,6 +30,9 @@ interface ExamPreviewQuestionsProps {
   /** Сколько вопросов достаётся сдающему из списка (ADR-0082); `undefined` —
    * достаются все, отдельной заметки не нужно. */
   questionsPerAttempt: number | undefined;
+  /** Обязательные из них (ADR-0082, дополнение) — уже очищены от вопросов,
+   * которых в списке больше нет (ExamPreview.tsx, pruneRequiredIds). */
+  requiredIds: string[];
   bankItems: ExamItemDto[];
 }
 
@@ -38,13 +41,18 @@ export function ExamPreviewQuestions({
   shuffleQuestions,
   shuffleOptions,
   questionsPerAttempt,
+  requiredIds,
   bankItems,
 }: ExamPreviewQuestionsProps) {
   return (
     <section style={sectionStyle}>
       {questionsPerAttempt !== undefined && (
         <p style={noteStyle}>
-          {questionsPerAttemptNote(questionsPerAttempt, itemIds.length)}
+          {questionsPerAttemptNote(
+            questionsPerAttempt,
+            itemIds.length,
+            requiredIds.length,
+          )}
         </p>
       )}
       {shuffleQuestions && <p style={noteStyle}>{SHUFFLE_QUESTIONS_NOTE}</p>}
@@ -58,6 +66,7 @@ export function ExamPreviewQuestions({
                 key={itemId}
                 index={index}
                 item={bankItems.find((candidate) => candidate.id === itemId)}
+                required={requiredIds.includes(itemId)}
               />
             ))}
           </ol>

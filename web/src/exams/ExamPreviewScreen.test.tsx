@@ -1,7 +1,7 @@
 // Страница предпросмотра экзамена «глазами ученика» —
 // `/exams/:examId/preview` (ADR-0033, ТЗ 4.3). Мок сети — по префиксу пути
 // (test-support/apiFetchMock.ts), как у ExamEditorScreen.test.tsx.
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -243,6 +243,37 @@ describe('ExamPreviewScreen — вопросы', () => {
         'Ученику достанутся 1 из 2 вопроса, случайно — здесь показан весь список.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('обязательный вопрос (ADR-0082, дополнение) — заметка называет число, строка помечена', async () => {
+    mockExamAndBank(
+      makeExam({
+        blocks: [
+          {
+            id: 'b1',
+            title: '',
+            itemIds: ['i1', 'i2'],
+            shuffle: false,
+            questionsPerAttempt: 1,
+            requiredItemIds: ['i1'],
+          },
+        ],
+      }),
+    );
+
+    renderAt('/exams/x1/preview');
+
+    expect(
+      await screen.findByText(
+        'Ученику достанутся 1 из 2 вопроса, случайно; 1 обязательный попадёт ' +
+          'каждому — здесь показан весь список.',
+      ),
+    ).toBeInTheDocument();
+    const rows = screen.getAllByRole('listitem');
+    expect(within(rows[0] as HTMLElement).getByText('Обязательный')).toBeInTheDocument();
+    expect(
+      within(rows[1] as HTMLElement).queryByText('Обязательный'),
+    ).not.toBeInTheDocument();
   });
 
   it('без вопросов — «пока нет вопросов»', async () => {

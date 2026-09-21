@@ -19,7 +19,9 @@ import { backLinkStyle } from '../components/editorLayout';
 import {
   initialQuestionIds,
   initialQuestionsPerAttempt,
+  initialRequiredIds,
   initialShuffleQuestions,
+  pruneRequiredIds,
 } from './examQuestions';
 import { ExamPreviewQuestions } from './ExamPreviewQuestions';
 
@@ -47,6 +49,10 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
   const itemIds = initialQuestionIds(exam);
   const shuffleQuestions = initialShuffleQuestions(exam);
   const questionsPerAttempt = initialQuestionsPerAttempt(exam);
+  // Пруним на случай рассинхрона данных (вопрос убрали, отметка не
+  // сохранилась) — предпросмотр не должен посчитать обязательным вопрос,
+  // которого в списке уже нет (ADR-0082, дополнение).
+  const requiredIds = pruneRequiredIds(initialRequiredIds(exam), itemIds);
 
   return (
     <section style={attemptPageStyle}>
@@ -67,6 +73,7 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
         shuffleQuestions={shuffleQuestions}
         shuffleOptions={exam.shuffleOptions}
         questionsPerAttempt={questionsPerAttempt}
+        requiredIds={requiredIds}
         bankItems={bankItems}
       />
     </section>
