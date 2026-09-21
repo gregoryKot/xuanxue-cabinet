@@ -13,16 +13,23 @@
 // Работу уже проверили — ни формы, ни бота, только честная строка: бэкенд
 // такую ссылку не примет (ADR-0086), а контрол, который всегда получает
 // отказ, хуже, чем его отсутствие.
+import { useState } from 'react';
 import { EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE, type ExamMediaDto } from '@xuanxue/shared';
-import { formatExamMediaReceivedAt } from '../lib/examMedia';
+import { cardListStyle } from '../components/listCardStyles';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
-import {
-  attemptVideoHintStyle,
-  attemptVideoReceivedListStyle,
-} from './attemptVideoStyles';
+import { AttemptVideoAnswerRow } from './AttemptVideoAnswerRow';
+import { attemptVideoHintStyle } from './attemptVideoStyles';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
-const REPLACE_LINK_HINT = 'Прислали не ту ссылку? Вставьте новую — она заменит прежнюю.';
+// Форма замены убрана под тихое действие, а не стоит раскрытой: ответ уже
+// дан, и открытое поле с терракотовой кнопкой читалось на экране громче
+// самого ответа — будто ничего ещё не сделано (снимок владельца 2026-09-21).
+// Заливка акцентом на экране одна (правило акцента, docs/adr/0031), и она
+// принадлежит главному действию, а замена ошибочной ссылки — действие
+// второго плана.
+const REPLACE_TOGGLE = 'Прислать другую ссылку';
+const REPLACE_LINK_HINT = 'Новая ссылка заменит прежнюю.';
 
 interface AttemptVideoAnsweredProps {
   itemId: string;
@@ -38,25 +45,36 @@ export function AttemptVideoAnswered({
   received,
 }: AttemptVideoAnsweredProps) {
   const { pending, error } = video.linkStateFor(itemId);
+  const [replacing, setReplacing] = useState(false);
 
   return (
     <>
       {received.length > 0 && (
-        <ul style={attemptVideoReceivedListStyle}>
+        <ul style={cardListStyle}>
           {received.map((item) => (
-            <li key={item.id}>{formatExamMediaReceivedAt(item)}.</li>
+            <AttemptVideoAnswerRow key={item.id} media={item} />
           ))}
         </ul>
       )}
 
       {video.acceptsAnswers ? (
         <>
-          <p style={attemptVideoHintStyle}>{REPLACE_LINK_HINT}</p>
-          <AttemptMediaLinkForm
-            onSubmit={(url) => video.addMediaLink(itemId, url)}
-            pending={pending}
-            error={error}
-          />
+          <TextLinkButton
+            onClick={() => setReplacing((open) => !open)}
+            aria-expanded={replacing}
+          >
+            {REPLACE_TOGGLE}
+          </TextLinkButton>
+          {replacing && (
+            <>
+              <p style={attemptVideoHintStyle}>{REPLACE_LINK_HINT}</p>
+              <AttemptMediaLinkForm
+                onSubmit={(url) => video.addMediaLink(itemId, url)}
+                pending={pending}
+                error={error}
+              />
+            </>
+          )}
         </>
       ) : (
         <p style={attemptVideoHintStyle}>{EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE}</p>

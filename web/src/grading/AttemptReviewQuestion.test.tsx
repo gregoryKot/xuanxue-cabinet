@@ -270,7 +270,7 @@ describe('AttemptReviewQuestion — видео-вопрос (ADR-0037, свой 
     );
 
     expect(screen.getByText('Есть ответ')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Открыть ссылку на видео' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'https://example.com/v' })).toHaveAttribute(
       'href',
       'https://example.com/v',
     );

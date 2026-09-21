@@ -64,11 +64,13 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
   };
 }
 
-/** Библиотека глазами ученика (ADR-0048, слой 3.4 docs/PLAN.md §14) — ни
- * `createdBy`, ни `access`, ни служебных дат. `isLocked` считает
- * MaterialsService (material-access.ts, isMaterialLocked) — закрытый
- * материал приходит без `url` и с `locked: true`, ссылка не должна уйти в
- * ответ API ни одному ученику (SECURITY §3).
+/** Библиотека глазами ученика (docs/PLAN.md §14) — ни `createdBy`, ни
+ * `access`, ни служебных дат. Вызывающая сторона (MaterialsService,
+ * LessonMaterialsService) уже отсекла материалы, скрытые от ученика
+ * (`isMaterialHiddenFromStudent`, ADR-0058) — этот маппер зовут только для
+ * материала, который ученику действительно едет, поэтому `url` и файл (если
+ * он загружен) в ответе всегда (ADR-0096, отменяет ADR-0048: признака
+ * `locked` в контракте больше нет).
  *
  * Занятия приезжают названиями, а не id: `GET /classes` закрыт ролью, и
  * подписать id ученику нечем (shared/src/materials.ts). Название занятия,
@@ -77,9 +79,8 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
 export function toMyMaterialDto(
   doc: RawLeanMaterial,
   classTitleById: Map<string, string>,
-  isLocked: boolean,
 ): MyMaterialDto {
-  const base = {
+  return {
     id: doc._id.toString(),
     title: doc.title,
     kind: doc.kind,
@@ -87,13 +88,7 @@ export function toMyMaterialDto(
       .map((id) => classTitleById.get(id.toString()))
       .filter((title): title is string => title !== undefined),
     tags: doc.tags ?? [],
+    url: doc.url,
+    ...fileEntry(doc),
   };
-  // `locked`/`url` — ключи, не значения undefined: `toHaveProperty` и
-  // JSON.stringify не должны видеть ни намёка на то, что url когда-то был
-  // (SECURITY §3, ADR-0048).
-  // Закрытому материалу не достаётся ни `url`, ни `file`: иначе рубильник
-  // оплаты обходится прямым адресом файла (ADR-0057, ADR-0048).
-  return isLocked
-    ? { ...base, locked: true }
-    : { ...base, url: doc.url, ...fileEntry(doc) };
 }

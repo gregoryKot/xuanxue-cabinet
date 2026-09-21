@@ -4,7 +4,6 @@ import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import {
-  DEFAULT_MATERIALS_PAID_ACCESS,
   DEFAULT_PREVIEW_MINUTES,
   type SettingsDto,
   type TelegramLoginInput,
@@ -25,7 +24,6 @@ const SETTINGS_WITHOUT_SITE: SettingsDto = {
   templates: { lesson_link: 'ссылка', recording: 'запись' },
   tz: 'Asia/Jerusalem',
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
-  materialsPaidAccess: DEFAULT_MATERIALS_PAID_ACCESS,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 

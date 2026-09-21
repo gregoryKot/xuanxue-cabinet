@@ -157,7 +157,7 @@ describe('AttemptReviewAnswers — видео под своим вопросом
     const questionRows = screen.getAllByText(/Снимите/).map((el) => el.closest('div'));
     expect(questionRows[0]).toHaveTextContent('Есть ответ');
     expect(questionRows[1]).toHaveTextContent('Ответа нет');
-    expect(screen.getByRole('link', { name: 'Открыть ссылку на видео' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'https://example.com/v1' })).toHaveAttribute(
       'href',
       'https://example.com/v1',
     );

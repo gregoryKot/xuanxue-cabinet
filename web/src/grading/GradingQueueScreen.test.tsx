@@ -58,15 +58,19 @@ function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
   };
 }
 
-/** Экран параллельно зовёт /attempts и (через AuthProvider) /auth/me,
- * /auth/config — мок по пути, не очередь `mockResolvedValueOnce` (см.
- * test-support/apiFetchMock.ts). `me` по умолчанию — учитель с активным
- * чатом, подсказке ADR-0042 тут гореть незачем. */
-function renderScreen(attempts: unknown, me: MeDto = TEACHER) {
+/** Экран параллельно зовёт два раздела (`/attempts?status=submitted`,
+ * `/attempts?status=graded`, useGradingQueue.ts/useGradedAttempts.ts) и
+ * (через AuthProvider) /auth/me, /auth/config — мок по пути, не очередь
+ * `mockResolvedValueOnce` (см. test-support/apiFetchMock.ts). `me` по
+ * умолчанию — учитель с активным чатом, подсказке ADR-0042 тут гореть
+ * незачем; `graded` по умолчанию — пустой список, тестам очереди состояние
+ * второго раздела не важно. */
+function renderScreen(queue: unknown, graded: unknown = [], me: MeDto = TEACHER) {
   mockApiByPath({
     '/auth/me': me,
     '/auth/config': {},
-    '/attempts': attempts,
+    '/attempts?status=submitted': queue,
+    '/attempts?status=graded': graded,
   });
 
   return render(
@@ -90,7 +94,7 @@ describe('GradingQueueScreen — загрузка', () => {
 });
 
 describe('GradingQueueScreen — сбой загрузки', () => {
-  it('ApiError — текст ошибки и кнопка повтора, клик повторяет запрос', async () => {
+  it('ApiError в очереди — текст ошибки и кнопка повтора, клик повторяет запрос', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
 
@@ -99,42 +103,97 @@ describe('GradingQueueScreen — сбой загрузки', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
     const retry = screen.getByRole('button', { name: 'Попробовать ещё раз' });
 
-    mockApiByPath({ '/attempts': [makeAttempt()] });
+    mockApiByPath({ '/attempts?status=submitted': [makeAttempt()] });
     await user.click(retry);
 
     expect(await screen.findByText('Иван Иванов')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('ApiError в проверенных — текст ошибки и кнопка повтора, клик повторяет запрос', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('../api/http');
+
+    renderScreen([], new ApiError('Сервис недоступен', 503, 'unknown'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
+    const retry = screen.getByRole('button', { name: 'Попробовать ещё раз' });
+
+    mockApiByPath({
+      '/attempts?status=graded': [
+        makeAttempt({ id: 'g1', status: 'graded', outcome: 'passed', userName: 'Пётр' }),
+      ],
+    });
+    await user.click(retry);
+
+    expect(await screen.findByText('Пётр')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });
 
 describe('GradingQueueScreen — пустая база', () => {
-  it('честный текст, не «0 работ»', async () => {
-    renderScreen([]);
+  it('оба раздела — честный текст, не «0 работ»', async () => {
+    renderScreen([], []);
 
     expect(
       await screen.findByText('Пока нечего проверять — сданных работ нет.'),
     ).toBeInTheDocument();
+    expect(screen.getByText('Проверенных работ пока нет.')).toBeInTheDocument();
   });
 });
 
-describe('GradingQueueScreen — список', () => {
-  it('карточка показывает ученика, экзамен и когда сдана', async () => {
+describe('GradingQueueScreen — два раздела', () => {
+  it('заголовки в порядке «Ждут проверки», затем «Проверенные»', async () => {
+    renderScreen([makeAttempt()], [makeAttempt({ id: 'g1', status: 'graded' })]);
+
+    const headings = await screen.findAllByRole('heading', { level: 2 });
+    expect(headings.map((h) => h.textContent)).toEqual(['Ждут проверки', 'Проверенные']);
+  });
+
+  it('карточка ждущей проверки показывает ученика, экзамен и когда сдана', async () => {
     renderScreen([makeAttempt()]);
 
     expect(await screen.findByText('Иван Иванов')).toBeInTheDocument();
     expect(screen.getByText(/Форма первого уровня/)).toBeInTheDocument();
   });
 
-  it('сдано по времени — на карточке видна пометка', async () => {
+  it('сдано по времени — на карточке очереди видна пометка', async () => {
     renderScreen([makeAttempt({ expired: true })]);
 
     expect(await screen.findByText(/сдано по времени/)).toBeInTheDocument();
   });
 
-  it('клик по карточке открывает проверку конкретной попытки', async () => {
+  it('клик по карточке очереди открывает проверку конкретной попытки', async () => {
     const user = userEvent.setup();
     renderScreen([makeAttempt()]);
     await user.click(await screen.findByText('Иван Иванов'));
+
+    expect(await screen.findByText('Карточка проверки открыта')).toBeInTheDocument();
+  });
+
+  it('раздел «Проверенные» показывает итог работы', async () => {
+    renderScreen(
+      [],
+      [
+        makeAttempt({
+          id: 'g1',
+          status: 'graded',
+          outcome: 'passed',
+          gradedAt: '2026-09-02T10:00:00Z',
+        }),
+      ],
+    );
+
+    expect(await screen.findByText('Сдал')).toBeInTheDocument();
+  });
+
+  it('клик по карточке проверенной работы тоже открывает её карточку', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [],
+      [makeAttempt({ id: 'g1', status: 'graded', outcome: 'passed', userName: 'Пётр' })],
+    );
+    await user.click(await screen.findByText('Пётр'));
 
     expect(await screen.findByText('Карточка проверки открыта')).toBeInTheDocument();
   });
@@ -142,7 +201,7 @@ describe('GradingQueueScreen — список', () => {
 
 describe('GradingQueueScreen — подсказка про Telegram (ADR-0042)', () => {
   it('учитель без активного чата с ботом — подсказка и кнопка «Связать Telegram»', async () => {
-    renderScreen([], { ...TEACHER, botChatActive: false });
+    renderScreen([], [], { ...TEACHER, botChatActive: false });
 
     await screen.findByText('Пока нечего проверять — сданных работ нет.');
     expect(
@@ -152,7 +211,7 @@ describe('GradingQueueScreen — подсказка про Telegram (ADR-0042)',
   });
 
   it('учитель с активным чатом — подсказки и кнопки нет', async () => {
-    renderScreen([], TEACHER);
+    renderScreen([], [], TEACHER);
 
     await screen.findByText('Пока нечего проверять — сданных работ нет.');
     expect(
@@ -164,7 +223,7 @@ describe('GradingQueueScreen — подсказка про Telegram (ADR-0042)',
   });
 
   it('админ без чата — подсказки и кнопки нет: он не проверяет работы', async () => {
-    renderScreen([], ADMIN);
+    renderScreen([], [], ADMIN);
 
     await screen.findByText('Пока нечего проверять — сданных работ нет.');
     expect(

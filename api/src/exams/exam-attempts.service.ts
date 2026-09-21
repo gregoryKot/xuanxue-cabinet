@@ -51,12 +51,16 @@ import {
   type LeanExamAttempt,
   type RawLeanExamAttempt,
 } from './exam-attempt.mapper';
+import { listGradingsForAttempts } from './exam-grading-list';
+import { ExamGradingRecord } from './exam-grading.schema';
 import { ExamsService } from './exams.service';
 
 @Injectable()
 export class ExamAttemptsService {
   constructor(
     @InjectModel(ExamAttemptRecord.name) private readonly model: Model<ExamAttemptRecord>,
+    @InjectModel(ExamGradingRecord.name)
+    private readonly gradingModel: Model<ExamGradingRecord>,
     private readonly examsService: ExamsService,
     private readonly examItemsService: ExamItemsService,
     private readonly userNamesService: UserNamesService,
@@ -170,15 +174,26 @@ export class ExamAttemptsService {
         closeIfExpiredAttempt(this.model, decryptAttempt(doc), now, onClose),
       ),
     );
-    // Имя ученика — только сотруднику школы и одним запросом на весь
-    // список, не по документу (ExamAttemptDto.userName, shared/src/exams.ts).
+    // Имя ученика и оценка — только сотруднику школы и одним запросом на
+    // весь список, не по документу (ExamAttemptDto.userName/outcome/gradedAt,
+    // shared/src/exams.ts).
     const names = isStaff
       ? await this.userNamesService.namesByIds(
           attempts.map((attempt) => attempt.userId.toString()),
         )
       : undefined;
+    const gradings = isStaff
+      ? await listGradingsForAttempts(
+          this.gradingModel,
+          attempts.map((attempt) => attempt._id.toString()),
+        )
+      : undefined;
     return attempts.map((attempt) =>
-      toAttemptDto(attempt, names?.get(attempt.userId.toString())),
+      toAttemptDto(
+        attempt,
+        names?.get(attempt.userId.toString()),
+        gradings?.get(attempt._id.toString()),
+      ),
     );
   }
 

@@ -98,16 +98,15 @@ describe('Этап 3: ученик находит запись прошлого 
     expect(material?.url).toBe(MATERIAL_URL);
     expect(material?.classTitles).toEqual(['Тайцзицюань, средняя группа']);
 
-    // 5. Школа включает доступ по оплате и помечает материал — ссылка
-    // пропадает у ученика, занятие с записью остаётся открытым (ADR-0048:
-    // архив под рубильник не идёт).
+    // 5. Учитель помечает материал «только преподаватели» — ссылка пропадает
+    // у ученика, занятие с записью остаётся открытым (ADR-0058, ADR-0096:
+    // видимость решает роль, не оплата, которой в кабинете нет).
     const materialId = (createdMaterial.body as { id: string }).id;
-    await withCsrf(request(server()).patch(`/api/materials/${materialId}`))
+    const switched = await withCsrf(
+      request(server()).patch(`/api/materials/${materialId}`),
+    )
       .set('Cookie', teacher)
-      .send({ access: 'paid' });
-    const switched = await withCsrf(request(server()).patch('/api/settings'))
-      .set('Cookie', teacher)
-      .send({ materialsPaidAccess: true });
+      .send({ access: 'staff' });
     expect(switched.status).toBe(200);
 
     const closedLibrary = await request(server())
@@ -116,7 +115,7 @@ describe('Этап 3: ученик находит запись прошлого 
     const closed = (closedLibrary.body as MyMaterialDto[]).find(
       (item) => item.title === 'Ван Пэйшэн об усилии',
     );
-    expect(closed?.locked).toBe(true);
+    expect(closed).toBeUndefined();
     expect(JSON.stringify(closedLibrary.body)).not.toContain(MATERIAL_URL);
 
     const archiveAfter = await request(server())

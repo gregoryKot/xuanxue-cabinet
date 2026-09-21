@@ -119,8 +119,12 @@ describe('AttemptSubmittedVideos', () => {
     };
     renderVideos(makeAttempt(TWO_VIDEO_QUESTIONS), makeVideo({ media: [received] }));
 
-    expect(screen.getByText(/Видео получено/)).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(2);
+    expect(screen.getByText('Вы прислали ссылку')).toBeInTheDocument();
+    // Форма открыта у вопроса без ответа; у ответившего — под тихим действием.
+    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(1);
+    expect(
+      screen.getByRole('button', { name: 'Прислать другую ссылку' }),
+    ).toBeInTheDocument();
   });
 
   it('запись без itemId — строка «видео без вопроса»', () => {

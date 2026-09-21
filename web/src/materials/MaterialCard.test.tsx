@@ -1,7 +1,7 @@
-// Строка материала в списке: вид, привязанные занятия, отметка «после
-// оплаты» и переход по нажатию (docs/PLAN.md §14, ADR-0047, ADR-0048), по
-// образцу channels/ChannelCard.test.tsx. <MemoryRouter> обязателен — строка
-// тегов рисует <Link> на экран тега (TagPillLinks.tsx, ADR-0075).
+// Строка материала в списке: вид, привязанные занятия, отметка «только
+// преподаватели» и переход по нажатию (docs/PLAN.md §14, ADR-0047, ADR-0058),
+// по образцу channels/ChannelCard.test.tsx. <MemoryRouter> обязателен —
+// строка тегов рисует <Link> на экран тега (TagPillLinks.tsx, ADR-0075).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -104,9 +104,9 @@ describe('MaterialCard', () => {
     expect(screen.getByRole('link', { name: 'база' })).toBeInTheDocument();
   });
 
-  it('отметка «после оплаты» — сразу после вида, тег в подпись не подмешивается', () => {
-    renderCard({ tags: ['старшая'], access: 'paid' });
-    expect(screen.getByText('Книга · После оплаты')).toBeInTheDocument();
+  it('отметка «только преподаватели» — сразу после вида, тег в подпись не подмешивается', () => {
+    renderCard({ tags: ['старшая'], access: 'staff' });
+    expect(screen.getByText('Книга · Только преподаватели')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'старшая' })).toBeInTheDocument();
   });
 
@@ -116,17 +116,12 @@ describe('MaterialCard', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('access: paid — пометка «После оплаты»', () => {
-    renderCard({ access: 'paid' });
-    expect(screen.getByText('Книга · После оплаты')).toBeInTheDocument();
-  });
-
-  it('access: all — пометки «После оплаты» нет', () => {
+  it('access: all — пометки «Только преподаватели» нет', () => {
     renderCard({ access: 'all' });
-    expect(screen.queryByText(/После оплаты/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Только преподаватели/)).not.toBeInTheDocument();
   });
 
-  // ADR-0058: третье значение access — своя короткая пометка, не тег.
+  // ADR-0058: второе значение access — своя короткая пометка, не тег.
   it('access: staff — пометка «Только преподаватели»', () => {
     renderCard({ access: 'staff' });
     expect(screen.getByText('Книга · Только преподаватели')).toBeInTheDocument();

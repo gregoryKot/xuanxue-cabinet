@@ -152,6 +152,40 @@ describe('Проверка работ (e2e)', () => {
     expect(JSON.stringify(mine.body)).not.toContain('Смотреть на колено');
   });
 
+  it('в списке попыток учитель видит outcome/gradedAt проверенной работы, ученик их не видит вовсе', async () => {
+    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
+    const exam = await publishedExam(teacherCookie);
+    const { cookie: studentCookie } = await createUserWithSession(testApp.app, {
+      name: 'Ученик',
+      roles: [],
+    });
+    const attempt = await submittedAttempt(exam.id, studentCookie);
+
+    await withCsrf(request(server()).put(`/api/attempts/${attempt.id}/grading`))
+      .set('Cookie', teacherCookie)
+      .send({ outcome: 'passed' });
+
+    const teacherList = await request(server())
+      .get('/api/attempts')
+      .query({ examId: exam.id })
+      .set('Cookie', teacherCookie);
+    const listed = (teacherList.body as ExamAttemptDto[]).find(
+      (item) => item.id === attempt.id,
+    );
+    expect(listed?.outcome).toBe('passed');
+    expect(typeof listed?.gradedAt).toBe('string');
+
+    // Своя попытка ученика — поля физически отсутствуют в ответе (SECURITY
+    // §3), не приходят пустыми: свой итог он видит на «Заданиях», `GET /me/exams`.
+    const studentList = await request(server())
+      .get('/api/attempts')
+      .query({ examId: exam.id })
+      .set('Cookie', studentCookie);
+    const own = (studentList.body as Record<string, unknown>[])[0];
+    expect(own).not.toHaveProperty('outcome');
+    expect(own).not.toHaveProperty('gradedAt');
+  });
+
   it('повторная оценка переписывает прежнюю, второй записи не появляется', async () => {
     const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
     const exam = await publishedExam(teacherCookie);

@@ -40,6 +40,16 @@ const itemStyle: CSSProperties = {
   padding: '14px 4px',
   borderBottom: '1px solid var(--line)',
 };
+// Ссылка показывается адресом, а не словами «Открыть ссылку на видео»: по
+// безымянной строке не видно, куда она ведёт — YouTube там, Яндекс.Диск или
+// чужая страница (снимок владельца 2026-09-21). Адрес целиком, с переносом
+// по любому символу: у видео бывают длинные пути, а карточка проверки
+// открывается и с телефона (CLAUDE.md «Мобильный экран первым»).
+const videoLinkStyle: CSSProperties = {
+  ...textLinkStyle,
+  alignSelf: 'flex-start',
+  overflowWrap: 'anywhere',
+};
 const sourceTextStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
@@ -86,9 +96,9 @@ export function AttemptReviewMediaItem({
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ ...textLinkStyle, alignSelf: 'flex-start' }}
+          style={videoLinkStyle}
         >
-          Открыть ссылку на видео
+          {item.url}
         </a>
       )}
       {item.kind === 'telegram' && (

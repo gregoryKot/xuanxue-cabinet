@@ -262,11 +262,7 @@ export type {
   PreviewTemplateInput,
   PreviewTemplateResult,
 } from './settings';
-export {
-  SETTINGS_LIMITS,
-  NULLABLE_SETTINGS_FIELDS,
-  DEFAULT_MATERIALS_PAID_ACCESS,
-} from './settings';
+export { SETTINGS_LIMITS, NULLABLE_SETTINGS_FIELDS } from './settings';
 export type { SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
 export type { LessonRecordingSummaryDto } from './lesson-recording-summary';

@@ -120,16 +120,6 @@ describe('ArchivedLessonCard — материалы занятия (ADR-0056)', 
     expect(link).toHaveAttribute('rel', 'noreferrer');
   });
 
-  it('закрытый материал (locked: true, без url) — объяснение, мёртвой ссылки нет', () => {
-    renderCard({ materials: [makeMaterial({ url: undefined, locked: true })] });
-    expect(
-      screen.getByText(
-        'Этот материал школа открывает после оплаты месяца. Напишите в чат школы — там подскажут, как оплатить.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
-
   it('несколько материалов — каждый своей строкой', () => {
     renderCard({
       materials: [
