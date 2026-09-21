@@ -132,4 +132,34 @@ describe('EmailLoginTokenService', () => {
     expect(await service.consume(tokenA as string, NOW)).toBe('a@example.com');
     expect(await service.consume(tokenB as string, NOW)).toBe('b@example.com');
   });
+
+  // revoke — EmailAuthService.requestLink зовёт его, когда issue() выдал
+  // токен, но отправка письма упала (аудит 2026-09-21, HIGH): без снятия
+  // токена повторный запрос в окне cooldown получил бы от issue() null.
+  it('revoke: снимает токен адреса — issue() после revoke снова выдаёт токен', async () => {
+    const token = await service.issue('revoke@example.com', NOW);
+    expect(token).not.toBeNull();
+
+    await service.revoke('revoke@example.com');
+
+    const consumed = await service.consume(token as string, NOW);
+    expect(consumed).toBeNull();
+
+    const reissued = await service.issue('revoke@example.com', NOW.plus({ seconds: 1 }));
+    expect(reissued).not.toBeNull();
+  });
+
+  it('revoke: не трогает токены другого адреса', async () => {
+    const untouched = await service.issue('keep@example.com', NOW);
+    await service.issue('revoke-only@example.com', NOW);
+
+    await service.revoke('revoke-only@example.com');
+
+    const email = await service.consume(untouched as string, NOW);
+    expect(email).toBe('keep@example.com');
+  });
+
+  it('revoke: неизвестный адрес — не падает', async () => {
+    await expect(service.revoke('nobody@example.com')).resolves.toBeUndefined();
+  });
 });

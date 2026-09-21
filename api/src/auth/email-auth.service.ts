@@ -5,7 +5,7 @@
 // cookie, что и у Telegram-входа (ADR-0012). Поиск/создание человека —
 // LoginIdentityService (ADR-0030/0036): новый заводится только с валидной
 // ссылкой-приглашением.
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import {
@@ -14,6 +14,7 @@ import {
   EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE,
   INVITE_QUERY_PARAM,
 } from '@xuanxue/shared';
+import { errorMessage } from '../common/error-info';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import { InviteLinkService } from '../users/invite-link.service';
 import { LoginIdentityService } from '../users/login-identity.service';
@@ -30,6 +31,8 @@ export interface EmailLoginResult {
 
 @Injectable()
 export class EmailAuthService {
+  private readonly logger = new Logger(EmailAuthService.name);
+
   constructor(
     private readonly config: ConfigService,
     private readonly tokens: EmailLoginTokenService,
@@ -74,7 +77,22 @@ export class EmailAuthService {
         ? `&${INVITE_QUERY_PARAM}=${inviteCode}`
         : '';
     const link = `${publicUrl}/login/email?token=${token}${join}`;
-    await this.mail.sendLoginLink({ to: normalized, link });
+    try {
+      await this.mail.sendLoginLink({ to: normalized, link });
+    } catch (err) {
+      // Токен уже в базе (this.tokens.issue() выше), а письмо не ушло
+      // (Resend недоступен/таймаут) — не снять токен нельзя: иначе повторный
+      // запрос в окне cooldown получит от issue() null и тихо ответит 204,
+      // как будто письмо было отправлено (аудит 2026-09-21, HIGH). revoke —
+      // best-effort: его собственную ошибку логируем отдельно, чтобы не
+      // заслонить исходную причину сбоя отправки при rethrow ниже.
+      await this.tokens.revoke(normalized).catch((revokeErr: unknown) => {
+        this.logger.error(
+          `Не удалось снять токен email-входа после сбоя отправки письма: ${errorMessage(revokeErr)}`,
+        );
+      });
+      throw err;
+    }
   }
 
   async verify(
