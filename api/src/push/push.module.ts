@@ -1,10 +1,13 @@
-// Модуль подписок на push (ADR-0092, «Порядок работ» PR №3): хранение,
-// выдача публичного ключа. Отправка (плечо-нотификатор, VAPID-подпись) —
-// PR №4, соберётся вокруг PushSubscriptionsService так же, как
-// InAppExamNotifier вокруг NotificationsModule.
+// Модуль push (ADR-0092): хранение подписок, выдача публичного ключа
+// («Порядок работ» PR №3) и отправка — PushSenderService, VAPID-подпись на
+// встроенном crypto (PR №4). PushExamNotifier (плечо-нотификатор) не здесь:
+// он собирается в ExamsModule, тем же приёмом, что InAppExamNotifier/
+// TelegramExamNotifier — провайдер модуля, которому нужен ExamNotifier, а не
+// этого; PushModule лишь экспортирует PushSenderService ему навстречу.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PushKeyController } from './push-key.controller';
+import { PushSenderService } from './push-sender.service';
 import {
   PushSubscriptionRecord,
   PushSubscriptionSchema,
@@ -19,7 +22,7 @@ import { PushSubscriptionsService } from './push-subscriptions.service';
     ]),
   ],
   controllers: [PushSubscriptionsController, PushKeyController],
-  providers: [PushSubscriptionsService],
-  exports: [MongooseModule, PushSubscriptionsService],
+  providers: [PushSubscriptionsService, PushSenderService],
+  exports: [MongooseModule, PushSubscriptionsService, PushSenderService],
 })
 export class PushModule {}

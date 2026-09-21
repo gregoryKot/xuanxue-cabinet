@@ -1,6 +1,7 @@
-// Хранение подписок браузера на push (ADR-0092, «Порядок работ» PR №3).
-// Отправка (VAPID-подпись, доставка, удаление мёртвых подписок по 404/410) —
-// PR №4, здесь только запись и отписка.
+// Хранение подписок браузера на push (ADR-0092): запись, отписка и список
+// endpoint для отправки (PushSenderService, push-sender.service.ts). Сама
+// подпись VAPID и HTTP-запрос на push-сервис здесь не живут — это дело
+// PushSenderService/vapid-jwt.ts, этот сервис только владеет коллекцией.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
@@ -89,8 +90,23 @@ export class PushSubscriptionsService {
    * тоже успех, ничего не удаляет — не подтверждаем даже факт существования
    * чужой подписки (SECURITY §3), и повторный клик не получает ошибку.
    * Фильтр всегда несёт `userId` — своя подписка, не любая с этим endpoint.
+   * Той же отпиской PushSenderService чистит мёртвую подписку по 404/410.
    */
   async unsubscribe(userId: string, endpoint: string): Promise<void> {
     await this.model.deleteOne({ endpoint, userId });
+  }
+
+  /**
+   * Только endpoint — для PushSenderService (ADR-0092, «Порядок работ»
+   * PR №4). p256dh/auth не читаются вовсе: тело push пустое, ключи
+   * шифрования содержимого (RFC 8291) для отправки не нужны — расшифровывать
+   * нечего (комментарий у полей в push-subscription.schema.ts). По всем
+   * подпискам человека разом — телефон и ноутбук получают пуш одним вызовом.
+   */
+  async listEndpointsFor(userId: string): Promise<string[]> {
+    const docs = await this.model
+      .find({ userId }, { endpoint: 1 })
+      .lean<{ endpoint: string }[]>();
+    return docs.map((doc) => doc.endpoint);
   }
 }
