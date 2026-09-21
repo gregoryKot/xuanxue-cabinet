@@ -30,8 +30,8 @@ describe('useSettings — загрузка', () => {
   });
 });
 
-describe('useSettings — update() (read-after-write)', () => {
-  it('PATCH /settings, затем reload', async () => {
+describe('useSettings — update() (read-after-write из ответа PATCH)', () => {
+  it('делает ровно один запрос — PATCH, второго GET нет', async () => {
     mockedApiFetch.mockResolvedValueOnce({
       templates: { lesson_link: '', recording: '' },
       tz: 'Asia/Jerusalem',
@@ -40,7 +40,8 @@ describe('useSettings — update() (read-after-write)', () => {
     const { result } = renderHook(() => useSettings());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    mockedApiFetch.mockResolvedValueOnce({});
+    // Единственный ответ в очереди на это действие: если бы код всё ещё звал
+    // reload() следом, второй вызов apiFetch остался бы без мока и упал.
     mockedApiFetch.mockResolvedValueOnce({
       templates: { lesson_link: 'Новый текст', recording: '' },
       tz: 'Asia/Jerusalem',
@@ -50,7 +51,8 @@ describe('useSettings — update() (read-after-write)', () => {
       await result.current.update({ templates: { lesson_link: 'Новый текст' } });
     });
 
-    expect(mockedApiFetch).toHaveBeenCalledWith(
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2); // начальный GET + этот PATCH
+    expect(mockedApiFetch).toHaveBeenLastCalledWith(
       '/settings',
       expect.objectContaining({ method: 'PATCH' }),
     );

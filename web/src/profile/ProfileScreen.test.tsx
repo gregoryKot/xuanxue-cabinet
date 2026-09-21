@@ -165,7 +165,10 @@ describe('ProfileScreen — переключение уведомлений (rea
     const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
     expect(toggle).not.toBeChecked();
 
-    mockedApiFetch.mockResolvedValueOnce(undefined);
+    // Один ответ на одно действие: PATCH /me/notifications возвращает полный
+    // NotificationPrefsDto, и экран берёт состояние прямо из него (ADR-0087).
+    // Прежняя заглушка `undefined` на сам PATCH оставила бы переключатель без
+    // значения.
     mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
     toggle.click();
 
