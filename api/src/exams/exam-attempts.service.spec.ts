@@ -402,16 +402,91 @@ describe('ExamAttemptsService', () => {
     expect(list[0]?.answers).toEqual([]);
   });
 
+  // Находка аудита 2026-09-21 (HIGH): `null` от findOneAndUpdate раньше читался
+  // безусловно как «дедлайн истёк» — здесь дедлайн ДЕЙСТВИТЕЛЬНО истекает между
+  // loadOwn() и findOneAndUpdate, поэтому мок не просто возвращает null, а сам
+  // делает ту же запись, что и closeIfExpiredAttempt (планировщик/параллельный
+  // запрос), — тогда resolveSubmitConflict перечитывает и правда видит
+  // `expired: true`, а не подсовывает отказ вслепую.
   it('сдача: дедлайн истёк между проверкой и апдейтом (гонка) — тот же отказ «время вышло»', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam({ itemIds: [itemId] });
     const started = await ctx.service.start(examId, USER_A, NOW);
-    jest.spyOn(ctx.attemptModel, 'findOneAndUpdate').mockReturnValueOnce({
-      lean: () => Promise.resolve(null),
-    } as never);
+    const originalFindOneAndUpdate = ctx.attemptModel.findOneAndUpdate.bind(
+      ctx.attemptModel,
+    );
+    jest.spyOn(ctx.attemptModel, 'findOneAndUpdate').mockImplementationOnce(() => {
+      const pending = (async () => {
+        await originalFindOneAndUpdate(
+          { _id: started.id, status: 'in_progress' },
+          { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+        );
+        return null;
+      })();
+      return { lean: () => pending } as never;
+    });
 
     await expect(ctx.service.submit(started.id, USER_A, NOW)).rejects.toThrow(
       'Время экзамена вышло',
+    );
+  });
+
+  // Основная находка аудита: `null` бывает и когда попытку успела сдать
+  // ДРУГАЯ вкладка/устройство того же ученика долей секунды раньше — это не
+  // потеря ответа, а идемпотентный повтор. Настоящий Promise.all против
+  // mongodb-memory-server здесь не годится: порядок двух реальных запросов к
+  // серверу не детерминирован (иногда первый submit() успевает целиком до
+  // второго loadOwn()), а мигающий тест запрещён (CLAUDE.md «Тесты»). Мок
+  // фиксирует момент гонки: наш собственный loadOwn() читает `in_progress`
+  // по-настоящему, а «выигрыш другой вкладки» — реальная запись внутри мока
+  // findOneAndUpdate, СРАЗУ после которой наш вызов получает null — то же
+  // состояние базы, что и при истинной гонке, без недетерминизма во времени.
+  it('гонка submit(): вторую вкладку/устройство того же ученика — DTO submitted идемпотентно, без второго уведомления', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    const originalFindOneAndUpdate = ctx.attemptModel.findOneAndUpdate.bind(
+      ctx.attemptModel,
+    );
+    jest.spyOn(ctx.attemptModel, 'findOneAndUpdate').mockImplementationOnce(() => {
+      const pending = (async () => {
+        // Та же запись, что сделал бы findOneAndUpdate победившей вкладки.
+        await originalFindOneAndUpdate(
+          { _id: started.id, userId: USER_A, status: 'in_progress' },
+          { $set: { status: 'submitted', submittedAt: NOW.toJSDate() } },
+        );
+        return null;
+      })();
+      return { lean: () => pending } as never;
+    });
+
+    const result = await ctx.service.submit(started.id, USER_A, NOW);
+
+    expect(result.status).toBe('submitted');
+    expect(result.id).toBe(started.id);
+    // Уведомление этой (проигравшей) записи не шлёт — оно уже ушло от
+    // выигравшей (в реальной гонке — от второго submit(), не смоделированного
+    // здесь напрямую; ровно один вызов на попытку и есть требование аудита).
+    expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(0);
+  });
+
+  // Защита в глубину: если после null от findOneAndUpdate попытка не
+  // находится вовсе (документ исчез), это NotFoundError, а не безусловное
+  // «время вышло» — тот же текст, что и у чужой/несуществующей попытки.
+  it('сдача: findOneAndUpdate вернул null, а попытка исчезла — NotFound, не «время вышло»', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    jest.spyOn(ctx.attemptModel, 'findOneAndUpdate').mockImplementationOnce(() => {
+      const pending = (async () => {
+        await ctx.attemptModel.deleteOne({ _id: started.id });
+        return null;
+      })();
+      return { lean: () => pending } as never;
+    });
+
+    await expect(ctx.service.submit(started.id, USER_A, NOW)).rejects.toThrow(
+      'Попытка не найдена',
     );
   });
 
