@@ -9,6 +9,7 @@ import type { ExamAttemptDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import { writeAttemptAnswerDraft } from './attemptLocalDraft';
 import { useAttempt } from './useAttempt';
 
 vi.mock('../api/http', async () => {
@@ -65,5 +66,22 @@ describe('useAttempt — отправка', () => {
 
     expect(result.current.submitError?.message).toBe('Нет связи с сервером.');
     expect(result.current.attempt?.status).toBe('in_progress');
+  });
+
+  it('успех: локальный черновик ответов (attemptLocalDraft.ts) убирается целиком', async () => {
+    // Аудит 2026-09-21 «потеря ответа ученика»: отправленную попытку больше
+    // не редактируют, черновик, оставшийся с сеанса с потерянной сетью, не
+    // должен пережить submit().
+    writeAttemptAnswerDraft('a1', { itemId: 'q1', text: 'недосохранённое' });
+    const submitted: ExamAttemptDto = { ...ATTEMPT, status: 'submitted' };
+    mockedApiFetch.mockResolvedValueOnce([ATTEMPT]).mockResolvedValueOnce(submitted);
+    const { result } = renderHook(() => useAttempt('a1'));
+    await waitFor(() => expect(result.current.attempt).not.toBeNull());
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(localStorage.getItem('xuanxue.draft.attempt:a1')).toBeNull();
   });
 });
