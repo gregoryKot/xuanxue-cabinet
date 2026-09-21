@@ -1,20 +1,13 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): фильтры, шифрование title/url, read-after-write на
 // create/update, 404 у чужого/несуществующего id, библиотека ученика без
-// createdBy/access, рубильник ADR-0048 (слой 3.4). ENCRYPTION_KEY — из
-// test/jest.setup.ts (общий для всех спеков, читается один раз при импорте
-// utils/encryption.ts). SettingsService — настоящий, на том же соединении:
-// рубильник читается из БД, не из фейка, тем же приёмом, что
-// settings.service.spec.ts.
+// createdBy/access, видимость access:'staff' (ADR-0058). ENCRYPTION_KEY —
+// из test/jest.setup.ts (общий для всех спеков, читается один раз при
+// импорте utils/encryption.ts).
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
 import { SCHOOL_TZ } from '@xuanxue/shared';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord, ClassSchema } from '../classes/class.schema';
-import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
-import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
-import { SettingsService } from '../settings/settings.service';
-import { UserRecord, UserSchema } from '../users/user.schema';
-import { UsersService } from '../users/users.service';
 import { encryptRecord } from '../utils/encryption';
 import { MaterialRecord, MaterialSchema } from './material.schema';
 import { MaterialsService } from './materials.service';
@@ -29,8 +22,6 @@ describe('MaterialsService', () => {
   let connection: Connection;
   let model: Model<MaterialRecord>;
   let classModel: Model<ClassRecord>;
-  let settingsModel: Model<SettingsRecord>;
-  let settingsService: SettingsService;
   let service: MaterialsService;
   let removeNow: jest.Mock;
 
@@ -39,18 +30,9 @@ describe('MaterialsService', () => {
     connection = memory.connection;
     model = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
-    settingsModel = connection.model<SettingsRecord>(SettingsRecord.name, SettingsSchema);
-    const lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    settingsService = new SettingsService(
-      settingsModel,
-      lessonModel,
-      classModel,
-      new UsersService(userModel),
-    );
     const orphans = fakeStorageOrphans();
     removeNow = orphans.removeNow;
-    service = new MaterialsService(model, classModel, settingsService, orphans.service);
+    service = new MaterialsService(model, classModel, orphans.service);
   }, 60_000);
 
   afterAll(async () => {
@@ -63,7 +45,6 @@ describe('MaterialsService', () => {
     jest.clearAllMocks();
     await model.deleteMany({});
     await classModel.deleteMany({});
-    await settingsModel.deleteMany({});
   });
 
   it('create → list: материал сразу виден (read-after-write)', async () => {
@@ -395,9 +376,6 @@ describe('MaterialsService', () => {
     expect(list[0]?.classTitles).toEqual(['Тайцзицюань, средняя группа']);
   });
 
-  // Отметка «после оплаты» сохраняется с первого дня, хотя рубильник школы
-  // появится слоем 3.4 (ADR-0048): иначе Диме пришлось бы проставлять её
-  // заново по всей библиотеке в день включения.
   it('create: access и classIds сохраняются, когда их прислали', async () => {
     const classId = new Types.ObjectId().toString();
 
@@ -407,12 +385,12 @@ describe('MaterialsService', () => {
         url: 'https://example.com/video',
         kind: 'video',
         classIds: [classId],
-        access: 'paid',
+        access: 'staff',
       },
       AUTHOR_ID,
     );
 
-    expect(created.access).toBe('paid');
+    expect(created.access).toBe('staff');
     expect(created.classIds).toEqual([classId]);
   });
 
@@ -622,92 +600,24 @@ describe('MaterialsService', () => {
       expect(list.every((m) => m.title.startsWith('Открытый'))).toBe(true);
     });
 
-    it('paid-материал ученику приходит как обычно, а не под флагом staff', async () => {
+    // Страховка ADR-0096 «Решение»: даже если бы фильтр запроса потерялся,
+    // ученик не получает url служебного материала ни в одном поле ответа —
+    // тот же приём проверки, что у e2e (грепаем сырой JSON, не только DTO).
+    it('ученик не получает url служебного материала ни в каком поле ответа', async () => {
       await service.create(
         {
-          title: 'Платный разбор',
-          url: 'https://example.com/paid2',
+          title: 'Методичка для ведущих',
+          url: 'https://example.com/staff-only',
           kind: 'video',
-          access: 'paid',
-        },
-        AUTHOR_ID,
-      );
-
-      const beforeToggle = await service.listForStudent({}, false);
-      expect(beforeToggle[0]?.url).toBe('https://example.com/paid2');
-
-      await settingsService.update({ materialsPaidAccess: true });
-      const afterToggle = await service.listForStudent({}, false);
-      expect(afterToggle[0]?.locked).toBe(true);
-    });
-  });
-
-  // Слой 3.4 (ADR-0048) — оба положения рубильника плюс штат, гейт из самого ADR.
-  describe('listForStudent: рубильник materialsPaidAccess', () => {
-    it('рубильник выключен (по умолчанию) — ученик получает url paid-материала', async () => {
-      await service.create(
-        {
-          title: 'Разбор толкающих рук',
-          url: 'https://example.com/paid',
-          kind: 'video',
-          access: 'paid',
+          access: 'staff',
         },
         AUTHOR_ID,
       );
 
       const list = await service.listForStudent({}, false);
 
-      expect(list[0]?.url).toBe('https://example.com/paid');
-      expect(list[0]).not.toHaveProperty('locked');
-    });
-
-    it('рубильник включён — у paid-материала нет url, locked:true; all-материал как был', async () => {
-      await service.create(
-        {
-          title: 'Разбор толкающих рук',
-          url: 'https://example.com/paid',
-          kind: 'video',
-          access: 'paid',
-        },
-        AUTHOR_ID,
-      );
-      await service.create(
-        {
-          title: 'Вводное видео',
-          url: 'https://example.com/free',
-          kind: 'video',
-          access: 'all',
-        },
-        AUTHOR_ID,
-      );
-      await settingsService.update({ materialsPaidAccess: true });
-
-      const list = await service.listForStudent({}, false);
-
-      const paid = list.find((m) => m.title === 'Разбор толкающих рук');
-      const free = list.find((m) => m.title === 'Вводное видео');
-      expect(paid?.locked).toBe(true);
-      expect(paid).not.toHaveProperty('url');
-      expect(free?.url).toBe('https://example.com/free');
-      expect(free).not.toHaveProperty('locked');
-    });
-
-    it('рубильник включён — штат получает url paid-материала, не locked', async () => {
-      await service.create(
-        {
-          title: 'Разбор толкающих рук',
-          url: 'https://example.com/paid',
-          kind: 'video',
-          access: 'paid',
-        },
-        AUTHOR_ID,
-      );
-      await settingsService.update({ materialsPaidAccess: true });
-
-      const list = await service.listForStudent({}, true);
-
-      expect(list[0]?.url).toBe('https://example.com/paid');
-      expect(list[0]).not.toHaveProperty('locked');
+      expect(JSON.stringify(list)).not.toContain('https://example.com/staff-only');
+      expect(list).toEqual([]);
     });
   });
 });

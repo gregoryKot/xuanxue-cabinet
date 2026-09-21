@@ -35,8 +35,8 @@ export class MyLessonsController {
     @Query() query: ListMyArchivedLessonsDto,
     @CurrentUser() user: UserLean,
   ): Promise<MyArchivedLessonDto[]> {
-    // Штат видит материалы архива как обычно, без рубильника — тот же приём,
-    // что MyMaterialsController (ADR-0048).
+    // Штат видит и служебные материалы архива как обычные — тот же приём,
+    // что MyMaterialsController (ADR-0058).
     return this.myLessonsArchiveService.list(
       query,
       DateTime.utc(),

@@ -34,8 +34,8 @@ export class MyLessonsArchiveService {
   ) {}
 
   /** `isStaff` — уже вычисленный `isStaffRole(user.roles)` из контроллера,
-   * тот же приём, что у MaterialsService.listForStudent (ADR-0048): рубильник
-   * платного доступа к материалам действует и здесь. */
+   * тот же приём, что у MaterialsService.listForStudent (ADR-0058):
+   * служебные материалы (`access: 'staff'`) скрыты от ученика и здесь. */
   async list(
     query: ListMyArchivedLessonsQuery,
     now: DateTime,

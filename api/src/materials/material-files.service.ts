@@ -3,9 +3,10 @@
 // загрузке — учитель кладёт файл несколько раз в неделю; скачивание идёт
 // мимо нас, ответом `302` на подписанную ссылку.
 //
-// Право на файл — то же, что на ссылку: `isMaterialLocked` (ADR-0048).
-// Иначе рубильник оплаты обходится прямым адресом файла, и всё решение
-// ADR-0048 становится украшением.
+// Право на файл — то же, что на ссылку: `isMaterialHiddenFromStudent`
+// (ADR-0058, ADR-0096 — отменяет ADR-0048, доступа по оплате больше нет).
+// Иначе служебный материал обходится прямым адресом файла, и всё решение
+// ADR-0058 становится украшением.
 import { randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -18,11 +19,10 @@ import {
 } from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
-import { SettingsService } from '../settings/settings.service';
 import { FileStoreService } from '../storage/file-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { encryptRecord } from '../utils/encryption';
-import { isMaterialLocked } from './material-access';
+import { isMaterialHiddenFromStudent } from './material-access';
 import { parseMaterialFileUpload } from './material-file-upload';
 import { safeFileName } from './material-file-name';
 import { decryptMaterial, toMaterialDto, type RawLeanMaterial } from './material.mapper';
@@ -37,7 +37,6 @@ const SIGNED_URL_TTL_SECONDS = 600;
 export class MaterialFilesService {
   constructor(
     @InjectModel(MaterialRecord.name) private readonly model: Model<MaterialRecord>,
-    private readonly settingsService: SettingsService,
     private readonly fileStore: FileStoreService,
     private readonly orphans: StorageOrphansService,
   ) {}
@@ -107,23 +106,17 @@ export class MaterialFilesService {
   }
 
   /** Подписанная ссылка на скачивание — после той же проверки права, что и
-   * список (ADR-0048). Нет файла и закрытый материал отвечают одним и тем же
-   * 404: ученику не подтверждаем даже факт существования файла (SECURITY §3). */
+   * список (`isMaterialHiddenFromStudent`, ADR-0058). Нет файла и скрытый от
+   * ученика материал отвечают одним и тем же 404: ученику не подтверждаем
+   * даже факт существования файла (SECURITY §3). */
   async signedUrl(id: string, isStaff: boolean, now: DateTime): Promise<string> {
     assertObjectId(id, MATERIAL_FILE_NOT_FOUND_MESSAGE);
-    const [doc, settings] = await Promise.all([
-      this.model.findById(id).lean<RawLeanMaterial | null>(),
-      this.settingsService.get(),
-    ]);
+    const doc = await this.model.findById(id).lean<RawLeanMaterial | null>();
     if (!doc) throw new NotFoundError(MATERIAL_FILE_NOT_FOUND_MESSAGE);
     const material = decryptMaterial(doc);
-    const locked = isMaterialLocked({
-      access: material.access,
-      paidAccessEnabled: settings.materialsPaidAccess,
-      isStaff,
-    });
+    const hidden = isMaterialHiddenFromStudent({ access: material.access, isStaff });
     const { fileKey, fileName, fileContentType } = material;
-    if (locked || !fileKey || !fileName || !fileContentType) {
+    if (hidden || !fileKey || !fileName || !fileContentType) {
       throw new NotFoundError(MATERIAL_FILE_NOT_FOUND_MESSAGE);
     }
     return this.fileStore.signedGetUrl(fileKey, SIGNED_URL_TTL_SECONDS, now, {

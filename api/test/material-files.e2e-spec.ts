@@ -1,8 +1,8 @@
 // e2e файлов материалов (ADR-0057, слой 3.10 docs/PLAN.md §14). Главный
-// тест здесь — «ученик без оплаты не получает 302 на файл закрытого
-// материала»: право на файл обязано совпадать с правом на ссылку
-// (isMaterialLocked, ADR-0048), иначе рубильник оплаты обходится прямым
-// адресом файла.
+// тест здесь — «ученик не получает 302 на файл служебного материала»: право
+// на файл обязано совпадать с правом на ссылку
+// (isMaterialHiddenFromStudent, ADR-0058), иначе служебный материал
+// обходится прямым адресом файла (ADR-0096, отменяет ADR-0048).
 //
 // Настоящий AppModule на MongoMemoryServer; в R2 не ходим — FileStoreService
 // подменён на FakeFileStore (e2e-support/fake-file-store.ts).
@@ -25,7 +25,7 @@ import {
   DOCX_FILE_NAME,
   FILE_NAME,
   OPEN_MATERIAL,
-  PAID_MATERIAL,
+  STAFF_MATERIAL,
   PDF_BYTES,
   type MaterialFileRequests,
 } from './e2e-support/material-files-fixtures';
@@ -57,13 +57,10 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
     return testApp.app.getHttpServer();
   }
 
-  describe('право на файл — то же, что на ссылку (ADR-0048)', () => {
-    it('ученик без оплаты не получает 302 на файл закрытого материала', async () => {
+  describe('право на файл — то же, что на ссылку (ADR-0058)', () => {
+    it('ученик не получает 302 на файл служебного материала', async () => {
       const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-      const material = await api.materialWithFile(teacherCookie, PAID_MATERIAL);
-      expect(
-        await api.patchSettings(teacherCookie, { materialsPaidAccess: true }),
-      ).toMatchObject({ status: 200 });
+      const material = await api.materialWithFile(teacherCookie, STAFF_MATERIAL);
       const studentCookie = await sessionCookieFor(testApp.app, []);
 
       const res = await request(server())
@@ -77,10 +74,9 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
       expect(JSON.stringify(res.body)).not.toContain('fake-r2');
     });
 
-    it('штат открывает тот же закрытый файл — рубильник про учеников', async () => {
+    it('штат открывает тот же служебный файл — правило про учеников', async () => {
       const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-      const material = await api.materialWithFile(teacherCookie, PAID_MATERIAL);
-      await api.patchSettings(teacherCookie, { materialsPaidAccess: true });
+      const material = await api.materialWithFile(teacherCookie, STAFF_MATERIAL);
 
       const res = await request(server())
         .get(`/api/materials/${material.id}/file`)
@@ -105,22 +101,20 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
       expect(res.headers['cache-control']).toBe('no-store');
     });
 
-    it('библиотека ученика: у закрытого материала нет ни url, ни file', async () => {
+    it('библиотека ученика: служебного материала нет ни списком, ни его url/file', async () => {
       const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-      await api.materialWithFile(teacherCookie, PAID_MATERIAL);
-      await api.patchSettings(teacherCookie, { materialsPaidAccess: true });
+      await api.materialWithFile(teacherCookie, STAFF_MATERIAL);
       const studentCookie = await sessionCookieFor(testApp.app, []);
 
       const res = await request(server())
         .get('/api/me/materials')
         .set('Cookie', studentCookie);
 
+      expect(JSON.stringify(res.body)).not.toContain(STAFF_MATERIAL.url);
       const material = (res.body as MyMaterialDto[]).find(
-        (m) => m.title === PAID_MATERIAL.title,
+        (m) => m.title === STAFF_MATERIAL.title,
       );
-      expect(material).toMatchObject({ locked: true });
-      expect(material).not.toHaveProperty('url');
-      expect(material).not.toHaveProperty('file');
+      expect(material).toBeUndefined();
     });
 
     it('без сессии — 401, файл не отдаётся', async () => {

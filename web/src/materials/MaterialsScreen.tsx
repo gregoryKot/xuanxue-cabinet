@@ -1,7 +1,9 @@
 // «Материалы» — то, чем учитель делится с учениками (docs/PLAN.md §14,
-// ADR-0047, ADR-0048, ADR-0055). Правка и создание — отдельная страница
-// `/materials/new` и `/materials/:materialId` (MaterialEditorScreen.tsx,
-// ADR-0033): отсюда только переход. Облик — тот же приём, что у
+// ADR-0047, ADR-0055). Материалы школы открыты всем ученикам школы, кроме
+// отмеченных «Только преподаватели» (ADR-0058, ADR-0096) — доступа по оплате
+// не существует. Правка и создание — отдельная страница `/materials/new` и
+// `/materials/:materialId` (MaterialEditorScreen.tsx, ADR-0033): отсюда
+// только переход. Облик — тот же приём, что у
 // ChannelsScreen.tsx/ExamItemsScreen.tsx: заголовок антиквой, строка списка
 // вместо карточки, список — одна общая карточка (oneCardListStyle,
 // docs/adr/0043).
@@ -25,7 +27,6 @@ import { SectionLink } from '../components/SectionLink';
 import { tagsScreenPath } from '../lib/tagsScreenPath';
 import { useClasses } from '../schedule/useClasses';
 import { MaterialCard } from './MaterialCard';
-import { MaterialsPaidAccessSection } from './MaterialsPaidAccessSection';
 import { MaterialTagFilter } from './MaterialTagFilter';
 import { useMaterials } from './useMaterials';
 import { useMaterialTagOptions } from './useMaterialTagOptions';
@@ -70,19 +71,6 @@ export default function MaterialsScreen() {
               Новый материал
             </Button>
           )
-        }
-      />
-
-      {/* Число из уже загруженного списка (без нового запроса) — только на
-          весь список без единого фильтра: отфильтрованный список не отражал
-          бы все материалы, и число обмануло бы учителя насчёт того, что
-          именно закроет рубильник. Строгое сравнение с 'paid' само исключает
-          'staff' (ADR-0058) — рубильник оплаты его не касается. */}
-      <MaterialsPaidAccessSection
-        paidCount={
-          !isFiltered && materials
-            ? materials.filter((m) => m.access === 'paid').length
-            : null
         }
       />
 

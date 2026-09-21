@@ -1,11 +1,9 @@
-// e2e на `access: 'staff'` (ADR-0058) — видимость, не тег: третье значение
-// решает та же функция и тот же запрос, что и рубильник оплаты (ADR-0048),
-// отдельный файл, не разбухший materials-access.e2e-spec.ts (CLAUDE.md
-// «Храповики», check-file-size-ratchet.mjs). Настоящий AppModule на
-// MongoMemoryServer. Ученик не получает staff-материал ни в каком виде (grep
-// по сырому JSON тела ответа, не только по типизированному DTO — тот же
-// приём, что у materials-access.e2e-spec.ts), штат видит его как обычный —
-// и в общем списке штата, и в своей библиотеке.
+// e2e на `access: 'staff'` (ADR-0058) — видимость, не тег: второе (и
+// последнее после ADR-0096, отменяет ADR-0048) значение `access`. Настоящий
+// AppModule на MongoMemoryServer. Ученик не получает staff-материал ни в
+// каком виде (grep по сырому JSON тела ответа, не только по типизированному
+// DTO), штат видит его как обычный — и в общем списке штата, и в своей
+// библиотеке.
 import type { MaterialDto, MyMaterialDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -45,13 +43,7 @@ describe('Материал «только преподаватели» (e2e, ADR
       .send(body);
   }
 
-  function patchSettings(cookie: string, body: Record<string, unknown>): request.Test {
-    return withCsrf(request(server()).patch('/api/settings'))
-      .set('Cookie', cookie)
-      .send(body);
-  }
-
-  // ADR-0058: третье значение access проходит и создание, и правку — DTO
+  // ADR-0058: значение access проходит и создание, и правку — DTO
   // валидирует по общему списку MATERIAL_ACCESS_LEVELS, второго списка нет.
   it('POST/PATCH принимают access: staff, недопустимое значение — 400', async () => {
     const cookie = await sessionCookieFor(testApp.app, ['teacher']);
@@ -84,30 +76,26 @@ describe('Материал «только преподаватели» (e2e, ADR
     expect(found?.access).toBe('staff');
   });
 
-  it.each([false, true])(
-    'рубильник оплаты=%s — ученик не получает ни материала, ни его url',
-    async (materialsPaidAccess) => {
-      const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
-      await postMaterial(teacherCookie, STAFF_MATERIAL);
-      await patchSettings(teacherCookie, { materialsPaidAccess });
-      const studentCookie = await sessionCookieFor(testApp.app, []);
+  it('ученик не получает ни staff-материала, ни его url ни в каком поле', async () => {
+    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
+    await postMaterial(teacherCookie, STAFF_MATERIAL);
+    const studentCookie = await sessionCookieFor(testApp.app, []);
 
-      const res = await request(server())
-        .get('/api/me/materials')
-        .set('Cookie', studentCookie);
+    const res = await request(server())
+      .get('/api/me/materials')
+      .set('Cookie', studentCookie);
 
-      expect(res.status).toBe(200);
-      const raw = JSON.stringify(res.body);
-      expect(raw).not.toContain(STAFF_MATERIAL.url);
-      expect(raw).not.toContain(STAFF_MATERIAL.title);
-      const material = (res.body as MyMaterialDto[]).find(
-        (m) => m.title === STAFF_MATERIAL.title,
-      );
-      expect(material).toBeUndefined();
-    },
-  );
+    expect(res.status).toBe(200);
+    const raw = JSON.stringify(res.body);
+    expect(raw).not.toContain(STAFF_MATERIAL.url);
+    expect(raw).not.toContain(STAFF_MATERIAL.title);
+    const material = (res.body as MyMaterialDto[]).find(
+      (m) => m.title === STAFF_MATERIAL.title,
+    );
+    expect(material).toBeUndefined();
+  });
 
-  it('штат получает staff-материал с url, не locked', async () => {
+  it('штат получает staff-материал с url', async () => {
     const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
     await postMaterial(teacherCookie, STAFF_MATERIAL);
 
@@ -120,7 +108,6 @@ describe('Материал «только преподаватели» (e2e, ADR
       (m) => m.title === STAFF_MATERIAL.title,
     );
     expect(material?.url).toBe(STAFF_MATERIAL.url);
-    expect(material).not.toHaveProperty('locked');
   });
 
   it('staff-материалы не съедают лимит списка ученика', async () => {

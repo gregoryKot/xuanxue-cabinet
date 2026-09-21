@@ -1,5 +1,5 @@
 // Строка материала в библиотеке ученика (docs/PLAN.md §14, слой 3.2 у
-// ученика; ADR-0047, ADR-0048, ADR-0068). Список красит общая карточка
+// ученика; ADR-0047, ADR-0068). Список красит общая карточка
 // (oneCardListStyle, LibraryScreen.tsx), строка несёт только паддинг и
 // волосяную линию снизу (проп `isLast`) — тот же приём, что у
 // ArchivedLessonCard.tsx; заголовок и подпись вида — общие
@@ -20,10 +20,9 @@
 // ADR-0056) фильтра библиотеки нет — selectedTag/onSelectTag там не передаются
 // вовсе (см. StudentMaterialCardTagProps), а не приходят с пустым обработчиком.
 //
-// Закрытый материал (ADR-0048): сегодня сервер всегда отдаёт `url` и
-// никогда `locked` — рубильник платного доступа приезжает следующим PR.
-// Контракт (`MyMaterialDto.locked?: true`) уже учтён, чтобы экран не
-// переделывать второй раз.
+// Закрытых от ученика материалов не бывает (ADR-0096, отменяет ADR-0048):
+// сервер отдаёт ему только то, что он вправе видеть, — второй, закрытый
+// уровень («только преподаватели») ученику не приходит вовсе.
 import type { CSSProperties } from 'react';
 import { MATERIAL_KIND_LABELS, type MyMaterialDto } from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
