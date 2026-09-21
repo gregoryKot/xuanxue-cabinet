@@ -59,6 +59,57 @@ describe('ExamGradingsService', () => {
     expect(review.blocks[0]?.questions[0]?.criteria).toBe('смотреть на осанку');
   });
 
+  // Регрессия отзыва владельца 2026-09-21: владелец открыл попытку в
+  // кабинете, ответил на первый вопрос и забыл про неё — в карточке проверки
+  // все вопросы выглядели отвеченными. Идёт через настоящее сохранение
+  // ответов (saveAnswers) и настоящую сборку карточки (getReview), не через
+  // buildReviewQuestion() напрямую — баг жил на стыке сервисов, чистые
+  // юнит-тесты exam-attempt-review.spec.ts его не поймали.
+  it('ответил на первый вопрос из нескольких — остальные видны как без ответа, не как отвеченные (отзыв владельца 2026-09-21)', async () => {
+    const optionItem = await ctx.examItemsService.create(
+      {
+        kind: 'single',
+        prompt: 'Сколько базовых форм в программе?',
+        options: [
+          { text: 'Три', correct: true },
+          { text: 'Пять', correct: false },
+        ],
+      },
+      AUTHOR_ID,
+    );
+    await ctx.examItemsService.update(optionItem.id, { status: 'published' }, NOW);
+    const textItemId = await createPublishedItem({ prompt: 'Опишите дыхание' });
+    const exam = await ctx.examsService.create(
+      {
+        title: 'Экзамен по третьей форме',
+        blocks: [{ itemIds: [optionItem.id, textItemId] }],
+      },
+      AUTHOR_ID,
+    );
+    await ctx.examsService.update(exam.id, { status: 'published' });
+    const started = await ctx.service.start(exam.id, USER_A, NOW);
+    const correctOptionId = optionItem.options[0]?.id;
+    if (!correctOptionId) throw new Error('фикстура: у первого варианта должен быть id');
+
+    await ctx.service.saveAnswers(
+      started.id,
+      USER_A,
+      { answers: [{ itemId: optionItem.id, optionIds: [correctOptionId] }] },
+      NOW,
+    );
+    await ctx.service.submit(started.id, USER_A, NOW);
+
+    const review = await ctx.gradingsService.getReview(started.id);
+    const [first, second] = review.blocks[0]?.questions ?? [];
+
+    expect(first?.itemId).toBe(optionItem.id);
+    expect(first?.answered).toBe(true);
+    expect(first?.optionsCheck).toBeDefined();
+    expect(second?.itemId).toBe(textItemId);
+    expect(second?.answered).toBe(false);
+    expect(second?.optionsCheck).toBeUndefined();
+  });
+
   it('проверить попытку в работе (не сдана) — отказ, оценка не создаётся', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam(itemId);

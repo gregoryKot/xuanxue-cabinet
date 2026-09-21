@@ -16,22 +16,20 @@
 // (attemptReviewMediaByQuestion.ts, чистая функция с тестом, CLAUDE.md
 // «Логика вне компонентов»), а не сам вопрос фильтром по попытке целиком.
 //
-// Картинка варианта (ADR-0035) — миниатюрой перед подписью: снимок попытки
-// несёт свой `imageId`, учитель видит ту же картинку, что видел сдающий;
-// подпись без текста — formatOptionLabel, тот же приём, что на сдаче.
+// Сам список вариантов — AttemptReviewQuestionOptions.tsx (там же картинка
+// варианта, ADR-0035): этот файл стоял на пределе размера, и подкомпонент —
+// то, что велит делать CLAUDE.md «Храповики», а не сдвиг бейслайна вверх.
 import type { CSSProperties } from 'react';
 import {
-  formatOptionLabel,
+  ATTEMPT_NO_ANSWER_TEXT,
   type AttemptReviewQuestionDto,
   type ExamMediaDto,
 } from '@xuanxue/shared';
-import { OptionImage } from '../components/OptionImage';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
+import { AttemptReviewQuestionOptions } from './AttemptReviewQuestionOptions';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
 import { formatOptionsCheckSummary } from './optionsCheckSummary';
 import type { AttemptReviewVideoControls } from './useAttemptReview';
-
-const NO_ANSWER_TEXT = 'Ответ не дан.';
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -72,15 +70,6 @@ const answerStyle: CSSProperties = {
   lineHeight: 1.7,
   overflowWrap: 'anywhere',
 };
-const optionsListStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-};
-const optionRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 };
 
 interface AttemptReviewQuestionProps {
   index: number;
@@ -100,6 +89,7 @@ export function AttemptReviewQuestion({
   const hasOptions = question.options.length > 0;
   const isVideo = question.kind === 'video';
   const status = attemptReviewQuestionStatus(question, media.length > 0);
+  const showNoAnswerMeta = hasOptions && !question.answered;
 
   return (
     <div style={rowStyle}>
@@ -122,24 +112,7 @@ export function AttemptReviewQuestion({
       )}
 
       {hasOptions ? (
-        <ul style={optionsListStyle}>
-          {question.options.map((option, optionIndex) => (
-            <li key={option.id} style={optionRowStyle}>
-              {option.imageId && (
-                <OptionImage
-                  imageId={option.imageId}
-                  size="thumb"
-                  alt={formatOptionLabel(option.text, optionIndex)}
-                />
-              )}
-              <span>
-                {formatOptionLabel(option.text, optionIndex)}
-                {option.correct && <strong> — верный</strong>}
-                {option.selected && <em> · выбрал ученик</em>}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <AttemptReviewQuestionOptions options={question.options} />
       ) : isVideo ? (
         <AttemptReviewMedia
           media={media}
@@ -149,13 +122,14 @@ export function AttemptReviewQuestion({
         />
       ) : (
         <p style={answerStyle}>
-          {question.answerText?.trim() ? question.answerText : NO_ANSWER_TEXT}
+          {question.answerText?.trim() ? question.answerText : ATTEMPT_NO_ANSWER_TEXT}
         </p>
       )}
 
       {question.optionsCheck && (
         <p style={metaStyle}>{formatOptionsCheckSummary(question.optionsCheck)}</p>
       )}
+      {showNoAnswerMeta && <p style={metaStyle}>{ATTEMPT_NO_ANSWER_TEXT}</p>}
     </div>
   );
 }

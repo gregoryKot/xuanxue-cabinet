@@ -54,6 +54,7 @@ describe('attemptSubmittedMessage', () => {
               kind: 'single',
               prompt: 'Какая форма верная?',
               options: [{ id: 'o1', text: 'A', correct: true, selected: true }],
+              answered: true,
               optionsCheck: {
                 correctSelectedCount: 1,
                 correctTotalCount: 1,

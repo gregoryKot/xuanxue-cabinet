@@ -8,7 +8,15 @@ const BLOCKS: AttemptReviewBlockDto[] = [
   {
     id: 'b1',
     title: 'Теория',
-    questions: [{ itemId: 'q1', kind: 'text', prompt: 'Опишите дыхание', options: [] }],
+    questions: [
+      {
+        itemId: 'q1',
+        kind: 'text',
+        prompt: 'Опишите дыхание',
+        options: [],
+        answered: false,
+      },
+    ],
   },
 ];
 
@@ -28,7 +36,11 @@ describe('AttemptReviewAnswers', () => {
     render(<AttemptReviewAnswers blocks={BLOCKS} video={makeVideo()} />);
 
     expect(screen.getByRole('heading', { name: 'Ответы' })).toBeInTheDocument();
-    expect(screen.getByText('1 вопрос · все проверяете вы')).toBeInTheDocument();
+    // Вопрос фикстуры без ответа — счётчик честно говорит об этом
+    // (отзыв владельца 2026-09-21).
+    expect(
+      screen.getByText('1 вопрос · 1 без ответа · все проверяете вы'),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Опишите дыхание/)).toBeInTheDocument();
     // Блок без видео-вопросов и без «бесхозного» видео — блока «Видео» нет
     // вовсе (он переехал внутрь карточки видео-вопроса, ADR-0037).
@@ -95,8 +107,20 @@ const VIDEO_BLOCKS: AttemptReviewBlockDto[] = [
     id: 'b2',
     title: 'Практика',
     questions: [
-      { itemId: 'v1', kind: 'video', prompt: 'Снимите стойку', options: [] },
-      { itemId: 'v2', kind: 'video', prompt: 'Снимите шаг', options: [] },
+      {
+        itemId: 'v1',
+        kind: 'video',
+        prompt: 'Снимите стойку',
+        options: [],
+        answered: false,
+      },
+      {
+        itemId: 'v2',
+        kind: 'video',
+        prompt: 'Снимите шаг',
+        options: [],
+        answered: false,
+      },
     ],
   },
 ];
