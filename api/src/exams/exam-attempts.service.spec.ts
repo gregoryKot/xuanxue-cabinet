@@ -205,7 +205,7 @@ describe('ExamAttemptsService', () => {
     await ctx.service.submit(first.id, USER_A, NOW);
 
     await expect(ctx.service.start(examId, USER_A, NOW)).rejects.toThrow(
-      'Попросите учителя открыть ещё одну попытку',
+      'Вы использовали 1 попытку из разрешённых на этот экзамен',
     );
   });
 
