@@ -1,38 +1,38 @@
 // Видео-вопрос (ADR-0037: видео — ответ на конкретный вопрос, не вложение к
 // попытке целиком). Раньше блок «Видео» стоял один на всю попытку на экране
 // «Отправлено»; теперь и на форме сдачи, и на «Отправлено»
-// (AttemptSubmittedVideos.tsx) у каждого видео-вопроса свои кнопка бота,
-// форма ссылки и статус получения, поэтому два видео-вопроса в одной форме
+// (AttemptSubmittedVideos.tsx) у каждого видео-вопроса свои форма ссылки,
+// кнопка бота и статус получения, поэтому два видео-вопроса в одной форме
 // различимы, а ученик отвечает там же, где показан вопрос.
+//
+// Порядок блоков — ADR-0084 (уточняет ADR-0023): ссылка на видео стала
+// основным путём ответа, бот остаётся вторым. Объяснение → подсказка про
+// ссылку → раскрывающаяся инструкция «Как выложить видео» (AttemptVideoHowTo)
+// → форма ссылки → кнопка бота тем, у кого Telegram привязан → «Связать
+// Telegram» тем, кому есть что связывать. Заливка терракотой (правило
+// акцента, docs/adr/0031) переехала с кнопки бота на «Сохранить ссылку»
+// (AttemptMediaLinkForm.tsx) — одна на экран, просто у другого действия.
+//
 // Кнопка бота — только тем, у кого Telegram привязан (`telegramLinked`):
 // бот привязывает видео по совпадению telegramId, и вошедшего по почте он
 // не узнаёт. Инцидент 2026-09-16 (RUNBOOK §8.17): ученик сходил по кнопке,
 // снял «кружок» и получил отказ — теперь такого пути с экрана просто нет.
 // На его месте — «Связать Telegram» (ADR-0034): непривязанному предлагаем не
-// обходной путь, а способ открыть основной. Условие — общий
+// обходной путь, а способ открыть бота короче ссылки. Условие — общий
 // `showsTelegramLinkOffer` (`video.offersTelegramLink`), а не своё
 // `!telegramLinked`: отметившему «у меня нет Telegram» (ADR-0067) звать
-// некуда, и до этой правки видео-вопрос оставался единственным местом, где
-// кабинет звал его всё равно. Запасной путь у него остаётся — форма ссылки
-// ниже, ради неё предложение и уступает.
-// Видео уже получено — форма ссылки не прячется (ADR-0084): ошибочно
-// прикреплённую ссылку убрать может только сама замена, отдельного
-// «удалить» нет. Список полученного идёт первым, форма ссылки — под ним, с
-// подписью, что новая ссылка заменит прежнюю. Кнопка бота и предложение
-// связать Telegram при этом не показываются — видео из Telegram заменить
-// нельзя (их может быть несколько на один вопрос, ADR-0023), и звать туда
-// второй раз незачем.
-// Работу уже проверили (`acceptsAnswers: false`, ADR-0084) — ни формы, ни
-// кнопки бота: бэкенд такую ссылку не примет, а контрол, который всегда
-// отвечает отказом, хуже, чем его отсутствие — ровно та болезнь, от которой
-// лечит этот ADR.
-import { EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE } from '@xuanxue/shared';
-import { formatExamMediaReceivedAt } from '../lib/examMedia';
+// некуда, а форма ссылки — его путь ответить в любом случае.
+//
+// Ответ уже есть или работу уже проверили — оба состояния живут в
+// AttemptVideoAnswered.tsx (ADR-0086): форма ссылки там не прячется, потому
+// что заменить ошибочную ссылку больше нечем, а у проверенной работы нет ни
+// формы, ни бота — бэкенд ответа уже не примет.
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
+import { AttemptVideoAnswered } from './AttemptVideoAnswered';
+import { AttemptVideoHowTo } from './AttemptVideoHowTo';
 import {
   attemptVideoHintStyle,
-  attemptVideoReceivedListStyle,
   attemptVideoTelegramLinkStyle,
 } from './attemptVideoStyles';
 import { buildExamMediaTelegramLink } from './examMediaDeepLink';
@@ -43,17 +43,18 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 // есть ли бот и привязан ли Telegram, а сама фраза от этого не меняется.
 const VIDEO_ANSWER_EXPLANATION =
   'Ответ на этот вопрос — видео: снимите, как вы выполняете задание, и пришлите запись.';
-const FALLBACK_HINT =
-  'Нет Telegram — оставьте ссылку на видео: VK Видео, Rutube или Яндекс.Диск.';
-// Видео уже получено (ADR-0084) — форма остаётся единственным способом
-// исправить ошибку: подпись объясняет, что новая ссылка заменит прежнюю, а
-// не добавится к ней.
-const REPLACE_LINK_HINT = 'Прислали не ту ссылку? Вставьте новую — она заменит прежнюю.';
+// Ссылка — основной путь (ADR-0084): подсказка стоит перед формой у всех, а
+// не только у тех, кому не досталось бота.
+const LINK_HINT =
+  'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и вставьте сюда ссылку.';
+// Показывается только рядом с кнопкой бота (telegramLinked): «или» здесь
+// относится к уже сказанной выше ссылке, а не наоборот.
+const BOT_HINT = 'Или пришлите видео боту — одним сообщением прямо из Telegram.';
 // Telegram к кабинету не привязан: объясняем, почему кнопки бота нет, и тут
-// же даём связку (ADR-0034) — человек не гадает и не остаётся с одним
-// запасным путём (docs/VOICE.md).
+// же даём связку (ADR-0034) — у человека остаётся способ короче ссылки, а не
+// вопрос без ответа (docs/VOICE.md).
 const TELEGRAM_NOT_LINKED_EXPLANATION =
-  'Бот в Telegram узнаёт вас по аккаунту, а вы вошли по почте. Свяжите его — и запись уйдёт одним сообщением.';
+  'Бот в Telegram узнаёт вас по аккаунту, а вы вошли по почте. Свяжите его — и видео можно будет прислать одним сообщением, без ссылки.';
 
 /** Объяснение видео-вопроса без кнопок и формы — для предпросмотра учителя
  * (exams/ExamPreviewQuestion.tsx): там отвечать нельзя, но зачем нужно
@@ -69,26 +70,27 @@ interface AttemptQuestionVideoProps {
 
 export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProps) {
   const received = video.media.filter((item) => item.itemId === itemId);
-  const hasReceived = received.length > 0;
   const { telegramBotUsername } = video;
   const { pending, error } = video.linkStateFor(itemId);
 
+  if (received.length > 0 || !video.acceptsAnswers) {
+    return <AttemptVideoAnswered itemId={itemId} video={video} received={received} />;
+  }
+
   return (
     <>
-      {hasReceived ? (
-        <ul style={attemptVideoReceivedListStyle}>
-          {received.map((item) => (
-            <li key={item.id}>{formatExamMediaReceivedAt(item)}.</li>
-          ))}
-        </ul>
-      ) : (
-        <AttemptQuestionVideoNote />
-      )}
+      <AttemptQuestionVideoNote />
+      <p style={attemptVideoHintStyle}>{LINK_HINT}</p>
+      <AttemptVideoHowTo />
+      <AttemptMediaLinkForm
+        onSubmit={(url) => video.addMediaLink(itemId, url)}
+        pending={pending}
+        error={error}
+      />
 
-      {video.acceptsAnswers &&
-        !hasReceived &&
-        telegramBotUsername &&
-        video.telegramLinked && (
+      {telegramBotUsername && video.telegramLinked && (
+        <>
+          <p style={attemptVideoHintStyle}>{BOT_HINT}</p>
           <a
             href={buildExamMediaTelegramLink(
               telegramBotUsername,
@@ -101,28 +103,11 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
           >
             Отправить видео боту в Telegram
           </a>
-        )}
-
-      {video.acceptsAnswers &&
-        !hasReceived &&
-        telegramBotUsername &&
-        video.offersTelegramLink && (
-          <TelegramLinkButton explanation={TELEGRAM_NOT_LINKED_EXPLANATION} />
-        )}
-
-      {video.acceptsAnswers ? (
-        <>
-          <p style={attemptVideoHintStyle}>
-            {hasReceived ? REPLACE_LINK_HINT : FALLBACK_HINT}
-          </p>
-          <AttemptMediaLinkForm
-            onSubmit={(url) => video.addMediaLink(itemId, url)}
-            pending={pending}
-            error={error}
-          />
         </>
-      ) : (
-        <p style={attemptVideoHintStyle}>{EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE}</p>
+      )}
+
+      {telegramBotUsername && video.offersTelegramLink && (
+        <TelegramLinkButton explanation={TELEGRAM_NOT_LINKED_EXPLANATION} />
       )}
     </>
   );

@@ -8,17 +8,17 @@
 // смотреть (оно уже переслано учителю в тот же чат при получении,
 // exam-media-forward.ts — здесь напоминание, не вторая пересылка). Чистая
 // логика, без Mongo и без сети (CLAUDE.md «Тесты»).
-import type {
-  AttemptReviewBlockDto,
-  AttemptReviewQuestionDto,
-  ExamMediaDto,
+import {
+  ATTEMPT_NO_ANSWER_TEXT,
+  type AttemptReviewBlockDto,
+  type AttemptReviewQuestionDto,
+  type ExamMediaDto,
 } from '@xuanxue/shared';
 
 const ANSWER_PREVIEW_LENGTH = 200;
-const NO_ANSWER_TEXT = 'Ответа нет.';
 
 function summarizeChoice(question: AttemptReviewQuestionDto): string {
-  if (!question.optionsCheck) return NO_ANSWER_TEXT;
+  if (!question.optionsCheck) return ATTEMPT_NO_ANSWER_TEXT;
   const { correctSelectedCount, correctTotalCount, incorrectSelectedCount } =
     question.optionsCheck;
   const extra =
@@ -28,7 +28,7 @@ function summarizeChoice(question: AttemptReviewQuestionDto): string {
 
 function summarizeText(question: AttemptReviewQuestionDto, gradingLink?: string): string {
   const text = question.answerText?.trim();
-  if (!text) return NO_ANSWER_TEXT;
+  if (!text) return ATTEMPT_NO_ANSWER_TEXT;
   if (text.length <= ANSWER_PREVIEW_LENGTH) return text;
   const suffix = gradingLink
     ? `… Полностью — в кабинете: ${gradingLink}`

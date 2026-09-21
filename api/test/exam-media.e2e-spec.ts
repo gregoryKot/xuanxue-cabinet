@@ -2,7 +2,7 @@
 // (владелец из сессии, SECURITY §3) и ручная отметка учителя (роль). Основной
 // путь — сообщение боту — не HTTP, его привязка проверена против настоящей
 // Mongo в media-assets.service.spec.ts (SECURITY §3: чужой attemptId ничего
-// не привязывает). itemId (ADR-0037) и замена ссылки (ADR-0084) — отдельными
+// не привязывает). itemId (ADR-0037) и замена ссылки (ADR-0086) — отдельными
 // файлами, exam-media-item.e2e-spec.ts и exam-media-replace.e2e-spec.ts
 // (файл-лимит, тот же приём, что exam-attempts-deadline.e2e-spec.ts у
 // exam-attempts.e2e-spec.ts). Настоящий AppModule на MongoMemoryServer.
@@ -90,7 +90,7 @@ describe('Видео экзамена — ссылка и ручная отме�
       expect((res.body as ApiErrorBody).code).toBe('not_found');
     });
 
-    // Замена повторной ссылкой на тот же вопрос (ADR-0084) — отдельным
+    // Замена повторной ссылкой на тот же вопрос (ADR-0086) — отдельным
     // файлом, exam-media-replace.e2e-spec.ts (файл-лимит).
   });
 

@@ -11,12 +11,32 @@ const TEXT_QUESTION = {
   kind: 'text' as const,
   prompt: 'Опишите дыхание',
   options: [],
+  answered: true,
 };
 const OPTIONS_QUESTION = {
   itemId: 'q2',
   kind: 'single' as const,
   prompt: 'Сколько стоек в форме?',
   options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+  answered: true,
+};
+const UNANSWERED_TEXT_QUESTION = {
+  ...TEXT_QUESTION,
+  itemId: 'q3',
+  answered: false,
+};
+const UNANSWERED_OPTIONS_QUESTION = {
+  ...OPTIONS_QUESTION,
+  itemId: 'q4',
+  options: [{ id: 'o1', text: 'Три', correct: true, selected: false }],
+  answered: false,
+};
+const UNANSWERED_VIDEO_QUESTION = {
+  itemId: 'q5',
+  kind: 'video' as const,
+  prompt: 'Снимите стойку',
+  options: [],
+  answered: false,
 };
 
 describe('formatAttemptAnswersSummary — пустая попытка', () => {
@@ -59,5 +79,39 @@ describe('formatAttemptAnswersSummary — смешанные вопросы', ()
   it('все вопросы только ручные', () => {
     const blocks = [block({ questions: [TEXT_QUESTION, TEXT_QUESTION, TEXT_QUESTION] })];
     expect(formatAttemptAnswersSummary(blocks)).toBe('3 вопроса · все проверяете вы');
+  });
+});
+
+// Отзыв владельца 2026-09-21: учитель должен видеть по факту, сколько не
+// отвечено, не вычислять это из карточек вопросов ниже.
+describe('formatAttemptAnswersSummary — без ответа', () => {
+  it('есть неотвеченные — сегмент вторым по счёту, перед «кто проверяет»', () => {
+    const blocks = [
+      block({
+        questions: [
+          OPTIONS_QUESTION,
+          UNANSWERED_OPTIONS_QUESTION,
+          UNANSWERED_TEXT_QUESTION,
+        ],
+      }),
+    ];
+
+    expect(formatAttemptAnswersSummary(blocks)).toBe(
+      '3 вопроса · 2 без ответа · 2 проверила машина, 1 — вы',
+    );
+  });
+
+  it('все вопросы отвечены — сегмента «без ответа» нет вовсе, строка как раньше', () => {
+    const blocks = [block({ questions: [TEXT_QUESTION, OPTIONS_QUESTION] })];
+
+    expect(formatAttemptAnswersSummary(blocks)).toBe(
+      '2 вопроса · 1 проверила машина, 1 — вы',
+    );
+  });
+
+  it('неотвеченный вопрос — только видео — сегмента нет: answered видео ничего не значит (ADR-0037)', () => {
+    const blocks = [block({ questions: [TEXT_QUESTION, UNANSWERED_VIDEO_QUESTION] })];
+
+    expect(formatAttemptAnswersSummary(blocks)).toBe('2 вопроса · все проверяете вы');
   });
 });

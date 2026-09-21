@@ -1,7 +1,7 @@
 // Шифрование и запись одного media_assets — вынесено из MediaAssetsService
 // (файл-лимит CLAUDE.md «Храповики»), тем же приёмом, что createAttempt
 // (exams/exam-attempt-start.ts): бизнес-правила привязки (владение, itemId —
-// ADR-0037, замена ссылки после graded — ADR-0084) остаются в сервисе, здесь
+// ADR-0037, замена ссылки после graded — ADR-0086) остаются в сервисе, здесь
 // только сама запись документа: insertMediaAsset — телеграм и ручная
 // отметка (много записей без ограничения), upsertLinkMediaAsset — ссылка
 // (одна на вопрос, повторная запись заменяет прежнюю).
@@ -71,7 +71,7 @@ export interface UpsertLinkMediaAssetInput {
   receivedAt: DateTime;
 }
 
-/** Ссылка на вопрос — upsert, не insert (ADR-0084): повторный вызов с тем же
+/** Ссылка на вопрос — upsert, не insert (ADR-0086): повторный вызов с тем же
  * (attemptId, itemId) заменяет прежнюю запись вместо второй, которая упёрлась
  * бы в уникальный индекс (media-asset.schema.ts). `itemId: null` в фильтре —
  * намеренно и явно, а не `undefined`: так матчатся и записи «со стыка

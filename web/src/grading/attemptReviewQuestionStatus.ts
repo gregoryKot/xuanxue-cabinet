@@ -5,7 +5,10 @@
 // (ADR-0037), поэтому у него отдельная пара меток: медиа этого вопроса нет —
 // «Ответа нет» (учитель ждёт, ничего проверять пока не может), пришло —
 // «Есть ответ» (не «Верно»: видео ещё не проверено, jade — только для
-// автопроверенного полного совпадения вариантов, см. ниже). С вариантами и
+// автопроверенного полного совпадения вариантов, см. ниже). Вопрос без
+// ответа (вариант или текст) — «Не отвечено» раньше любой другой ветки:
+// «не отвечено» и «отвечено неверно» — разные вещи для проверяющего (отзыв
+// владельца 2026-09-21, «0 из 3» стояло и там, и там). С вариантами и
 // полным совпадением — «Верно» (нефрит, CLAUDE.md «Правило акцента»: смысл
 // «сдал/верно» — только --jade). Частичное совпадение — числом без цвета:
 // заливка терракотой уже занята кнопкой отправки оценки, второе красное пятно
@@ -27,14 +30,20 @@ const MANUAL_REVIEW_LABEL = 'Смотрите вы';
 const FULLY_CORRECT_LABEL = 'Верно';
 const VIDEO_NO_ANSWER_LABEL = 'Ответа нет';
 const VIDEO_HAS_ANSWER_LABEL = 'Есть ответ';
+const NOT_ANSWERED_LABEL = 'Не отвечено';
 
-/** `null` — вопрос с вариантами, но без автопроверки (снимок попытки без
- * `optionsCheck`) — рисовать нечего, ничего не выдумываем. `hasMedia` —
+/** `null` — отвеченный вопрос с вариантами, но без автопроверки: защита в
+ * глубину, API такого не присылает (`optionsCheck` считается ровно тогда,
+ * когда есть и варианты, и ответ — exam-attempt-review.ts). Рисовать нечего,
+ * ничего не выдумываем. `hasMedia` —
  * пришло ли видео этого вопроса (AttemptReviewQuestion сам фильтрует
  * `ExamMediaDto[]` попытки по `itemId`, ADR-0037); у вопросов без видео
  * значения не имеет. */
 export function attemptReviewQuestionStatus(
-  question: Pick<AttemptReviewQuestionDto, 'kind' | 'options' | 'optionsCheck'>,
+  question: Pick<
+    AttemptReviewQuestionDto,
+    'kind' | 'options' | 'optionsCheck' | 'answered'
+  >,
   hasMedia = false,
 ): AttemptReviewQuestionStatus | null {
   if (question.kind === 'video') {
@@ -42,6 +51,7 @@ export function attemptReviewQuestionStatus(
       ? { label: VIDEO_HAS_ANSWER_LABEL, tone: 'neutral' }
       : { label: VIDEO_NO_ANSWER_LABEL, tone: 'neutral' };
   }
+  if (!question.answered) return { label: NOT_ANSWERED_LABEL, tone: 'neutral' };
   if (question.options.length === 0) {
     return { label: MANUAL_REVIEW_LABEL, tone: 'neutral' };
   }

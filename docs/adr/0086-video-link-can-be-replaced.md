@@ -1,7 +1,8 @@
-# 0084. Повторная ссылка на видео-ответ заменяет прежнюю
+# 0086. Повторная ссылка на видео-ответ заменяет прежнюю
 
-Дата: 2026-09-21. Статус: принято. Уточняет [ADR-0023](0023-exam-video-via-telegram-and-links.md)
-и [ADR-0037](0037-video-answer-belongs-to-question.md).
+Дата: 2026-09-21. Статус: принято. Уточняет [ADR-0023](0023-exam-video-via-telegram-and-links.md),
+[ADR-0037](0037-video-answer-belongs-to-question.md) и
+[ADR-0084](0084-video-link-is-the-main-path.md).
 
 ## Контекст
 

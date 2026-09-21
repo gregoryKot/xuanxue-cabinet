@@ -83,7 +83,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
 
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
     expect(
-      screen.getByText(/Свяжите его — и запись уйдёт одним сообщением/),
+      screen.getByText(/Свяжите его — и видео можно будет прислать одним сообщением/),
     ).toBeInTheDocument();
   });
 
@@ -97,7 +97,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
       screen.queryByRole('button', { name: 'Связать Telegram' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/Свяжите его — и запись уйдёт одним сообщением/),
+      screen.queryByText(/Свяжите его — и видео можно будет прислать одним сообщением/),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
   });
@@ -110,12 +110,14 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     ).not.toBeInTheDocument();
   });
 
-  it('бота нет — прежняя подсказка про ссылку', () => {
-    renderVideo(makeVideo({ telegramBotUsername: undefined }));
+  // ADR-0084: ссылка — основной путь для всех, подсказка про неё не зависит
+  // от того, привязан Telegram или нет имени бота вовсе.
+  it('подсказка про ссылку видна независимо от бота', () => {
+    renderVideo(makeVideo());
 
     expect(
       screen.getByText(
-        'Нет Telegram — оставьте ссылку на видео: VK Видео, Rutube или Яндекс.Диск.',
+        'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и вставьте сюда ссылку.',
       ),
     ).toBeInTheDocument();
   });
@@ -130,6 +132,19 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
 
     expect(addMediaLink).toHaveBeenCalledWith('q3', 'https://example.com/v');
   });
+
+  // ADR-0084: ссылка — основной путь ответа, бот остаётся вторым; кнопка
+  // бота при этом никуда не девается — она просто ниже формы, не выше.
+  it('форма ссылки идёт раньше кнопки бота, кнопка бота остаётся на месте', () => {
+    renderVideo(makeVideo());
+
+    const form = screen.getByLabelText('Ссылка на видео');
+    const botLink = screen.getByRole('link', { name: 'Отправить видео боту в Telegram' });
+
+    expect(
+      form.compareDocumentPosition(botLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });
 
 describe('AttemptQuestionVideo — видео уже получено', () => {
@@ -142,7 +157,7 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     receivedAt: '2026-09-12T16:30:00.000Z',
   };
 
-  // ADR-0084: форма ссылки не прячется — единственный способ исправить
+  // ADR-0086: форма ссылки не прячется — единственный способ исправить
   // ошибочно прикреплённую ссылку — прислать новую, она заменит прежнюю.
   it('список получённого сверху, форма ссылки с подписью о замене — под ним', () => {
     renderVideo(makeVideo({ media: [RECEIVED] }));
@@ -201,7 +216,7 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
   });
 });
 
-// ADR-0084: после проверки работы бэкенд ссылку уже не примет. Форма, которая
+// ADR-0086: после проверки работы бэкенд ссылку уже не примет. Форма, которая
 // всегда получает отказ, — та же болезнь, от которой лечит этот ADR, поэтому
 // на проверенной работе её нет вовсе, как и кнопки бота.
 describe('AttemptQuestionVideo — работу уже проверили', () => {

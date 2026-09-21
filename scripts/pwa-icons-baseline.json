@@ -1,0 +1,14 @@
+{
+  "source": "web/brand/school-mark.webp",
+  "sourceSha256": "14ebad9820f224fd96b08b073e58e1731a62b4e90719e770f51f264919f00c42",
+  "background": "#f4f1ea",
+  "outputs": [
+    "icons/school-mark-512.png",
+    "icons/school-mark-192.png",
+    "icons/school-mark-maskable-512.png",
+    "icons/school-mark-apple-180.png",
+    "icons/school-mark-64.png",
+    "icons/favicon-32.png",
+    "icons/favicon-16.png"
+  ]
+}

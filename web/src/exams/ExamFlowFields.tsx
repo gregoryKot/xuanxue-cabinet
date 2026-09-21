@@ -3,7 +3,7 @@
 // блока, перемешивание вариантов — у самого экзамена (ADR-0033); учителю про
 // это знать незачем, поэтому на экране они стоят рядом.
 import type { CSSProperties } from 'react';
-import { Field, inputStyle } from '../components/Field';
+import { Field, numericInputStyle } from '../components/Field';
 import { Toggle } from '../components/Toggle';
 import { questionsPerAttemptHint } from './questionsPerAttempt';
 import type { ExamFormState } from './examFormInput';
@@ -41,7 +41,7 @@ export function ExamFlowFields({ state, setField }: ExamFlowFieldsProps) {
       <div className="xuanxue-form-columns">
         <Field label="Лимит времени, минут" hint={TIME_LIMIT_HINT}>
           <input
-            style={inputStyle}
+            style={numericInputStyle}
             inputMode="numeric"
             value={state.timeLimitMinText}
             onChange={(e) => setField('timeLimitMinText', e.target.value)}
@@ -50,7 +50,7 @@ export function ExamFlowFields({ state, setField }: ExamFlowFieldsProps) {
 
         <Field label="Попыток у ученика">
           <input
-            style={inputStyle}
+            style={numericInputStyle}
             inputMode="numeric"
             value={state.attemptsAllowedText}
             onChange={(e) => setField('attemptsAllowedText', e.target.value)}
@@ -67,7 +67,7 @@ export function ExamFlowFields({ state, setField }: ExamFlowFieldsProps) {
         hint={questionsPerAttemptHint(state.questionIds.length)}
       >
         <input
-          style={inputStyle}
+          style={numericInputStyle}
           inputMode="numeric"
           value={state.questionsPerAttemptText}
           onChange={(e) => setField('questionsPerAttemptText', e.target.value)}

@@ -225,7 +225,7 @@ describe('AttemptInProgress', () => {
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q4');
 
-    // ADR-0084: форма ссылки остаётся у обоих вопросов — и у q3 с уже
+    // ADR-0086: форма ссылки остаётся у обоих вопросов — и у q3 с уже
     // полученным видео (замена ошибочной ссылки), и у q4 без видео.
     expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(2);
   });

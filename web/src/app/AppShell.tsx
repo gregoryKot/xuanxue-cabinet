@@ -101,7 +101,7 @@ export function AppShell() {
             <div style={contentColumnStyle}>
               {/* Мобильный колокольчик рисует сама AppShellBrandRow.tsx — она
                   уже импортирует ProfileIcon напрямую тем же приёмом. */}
-              {!hasSideNav && <AppShellBrandRow isMobile={isMobile} />}
+              {!hasSideNav && <AppShellBrandRow isMobile={isMobile} me={me} />}
               <main>
                 {canSee ? <Outlet /> : <Navigate to={rootPathFor(me)} replace />}
               </main>

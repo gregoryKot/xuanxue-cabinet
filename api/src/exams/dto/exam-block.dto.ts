@@ -51,4 +51,13 @@ export class ExamBlockDto implements ExamBlockInput {
   @Min(MIN_QUESTIONS_PER_ATTEMPT)
   @Max(EXAM_LIMITS.itemsPerBlockMax)
   questionsPerAttempt?: number;
+
+  // Точное «подмножество itemIds» и «не больше questionsPerAttempt» проверяет
+  // сервис (mapBlocks отбрасывает лишнее, assertRequiredFitsPick считает
+  // длину) — в DTO это не выразить декоратором.
+  @OptionalNotNull()
+  @IsArray()
+  @ArrayMaxSize(EXAM_LIMITS.itemsPerBlockMax)
+  @IsMongoId({ each: true })
+  requiredItemIds?: string[];
 }

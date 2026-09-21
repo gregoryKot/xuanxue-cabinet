@@ -1,4 +1,4 @@
-// e2e замены ссылки на видео-ответ (ADR-0084) — вынесено из
+// e2e замены ссылки на видео-ответ (ADR-0086) — вынесено из
 // exam-media.e2e-spec.ts (файл-лимит, тот же приём, что
 // exam-attempts-deadline.e2e-spec.ts у exam-attempts.e2e-spec.ts). Повторная
 // ссылка на тот же вопрос заменяет прежнюю, пока работу не проверили; после
@@ -15,7 +15,7 @@ import { createExamMediaTestHelpers } from './e2e-support/exam-media-fixtures';
 import { createUserWithSession } from './e2e-support/session';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
-describe('Видео экзамена — замена ссылки (ADR-0084, e2e)', () => {
+describe('Видео экзамена — замена ссылки (ADR-0086, e2e)', () => {
   let testApp: TestApp;
   const { server, startedAttempt } = createExamMediaTestHelpers(() => testApp);
 
@@ -27,7 +27,7 @@ describe('Видео экзамена — замена ссылки (ADR-0084, e
     await testApp.close();
   });
 
-  // ADR-0084: повторная ссылка на тот же вопрос заменяет прежнюю, а не
+  // ADR-0086: повторная ссылка на тот же вопрос заменяет прежнюю, а не
   // получает отказ — ученику нужно прислать правильную, а не «убрать».
   it('вторая ссылка на ту же попытку — заменяет первую, read-after-write', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {

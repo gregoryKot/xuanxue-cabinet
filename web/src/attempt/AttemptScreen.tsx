@@ -62,7 +62,7 @@ export default function AttemptScreen() {
     telegramBotUsername: config?.telegramBotUsername,
     telegramLinked: me?.telegramLinked ?? false,
     offersTelegramLink: showsTelegramLinkOffer(me),
-    // ADR-0084: проверенную работу бэкенд ссылкой уже не примет — не зовём.
+    // ADR-0086: проверенную работу бэкенд ссылкой уже не примет — не зовём.
     acceptsAnswers: attempt.status !== 'graded',
     addMediaLink: media.addMediaLink,
     linkStateFor: media.linkStateFor,

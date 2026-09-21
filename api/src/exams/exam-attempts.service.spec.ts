@@ -46,6 +46,7 @@ describe('ExamAttemptsService', () => {
     shuffle?: boolean;
     attemptsAllowed?: number;
     questionsPerAttempt?: number;
+    requiredItemIds?: string[];
   }) {
     const created = await ctx.examsService.create(
       {
@@ -56,6 +57,7 @@ describe('ExamAttemptsService', () => {
             itemIds: options.itemIds,
             shuffle: options.shuffle,
             questionsPerAttempt: options.questionsPerAttempt,
+            requiredItemIds: options.requiredItemIds,
           },
         ],
         attemptsAllowed: options.attemptsAllowed,
@@ -149,6 +151,37 @@ describe('ExamAttemptsService', () => {
 
     const list = await ctx.service.list({ examId }, staffUser(false, USER_A), NOW);
     expect(list[0]?.blocks[0]?.questions.map((q) => q.itemId)).toEqual(pickedIds);
+  });
+
+  // ADR-0082, дополнение: обязательный вопрос попадает в выборку у любого
+  // сдающего, не только иногда — три разных пользователя, три попытки.
+  it('requiredItemIds: обязательный вопрос есть в попытке у каждого из нескольких сдающих', async () => {
+    const itemIds = await Promise.all([
+      createPublishedItem({ prompt: 'вопрос А' }),
+      createPublishedItem({ prompt: 'вопрос Б' }),
+      createPublishedItem({ prompt: 'вопрос В' }),
+      createPublishedItem({ prompt: 'вопрос Г' }),
+    ]);
+    const requiredItemId = itemIds[0];
+    if (!requiredItemId) throw new Error('нет вопроса для обязательной отметки');
+    const examId = await createPublishedExam({
+      itemIds,
+      questionsPerAttempt: 2,
+      requiredItemIds: [requiredItemId],
+    });
+    const users = [
+      USER_A,
+      new Types.ObjectId().toString(),
+      new Types.ObjectId().toString(),
+    ];
+
+    for (const userId of users) {
+      const started = await ctx.service.start(examId, userId, NOW);
+      const pickedIds = started.blocks[0]?.questions.map((q) => q.itemId) ?? [];
+
+      expect(pickedIds).toHaveLength(2);
+      expect(pickedIds).toContain(requiredItemId);
+    }
   });
 
   it('повторный старт при незаконченной попытке отдаёт ту же (идемпотентность)', async () => {

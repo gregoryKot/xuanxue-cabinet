@@ -29,10 +29,19 @@ const promptStyle: CSSProperties = { fontSize: 16 };
 const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
 const emptyStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
 
+const REQUIRED_SUFFIX = ' · обязательный';
+const REQUIRED_LABEL = 'Обязательный';
+
 interface ExamQuestionListProps {
   itemIds: string[];
   bankItems: ExamItemDto[];
   bankLoading: boolean;
+  requiredIds: string[];
+  /** ★ видна и меняет отметку, только пока заполнено «Вопросов ученику»
+   * (ADR-0082, дополнение): без него отметка ни на что не влияет, показывать
+   * её нечестно. Сами отметки при этом в состоянии формы остаются. */
+  requiredEnabled: boolean;
+  onToggleRequired: (itemId: string) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   onRemove: (itemId: string) => void;
@@ -42,6 +51,9 @@ export function ExamQuestionList({
   itemIds,
   bankItems,
   bankLoading,
+  requiredIds,
+  requiredEnabled,
+  onToggleRequired,
   onMoveUp,
   onMoveDown,
   onRemove,
@@ -52,6 +64,7 @@ export function ExamQuestionList({
     <ol style={listStyle}>
       {itemIds.map((itemId, index) => {
         const item = bankItems.find((candidate) => candidate.id === itemId);
+        const isRequired = requiredEnabled && requiredIds.includes(itemId);
         return (
           <li key={itemId} className="xuanxue-question-row">
             <span style={numberStyle}>{index + 1}</span>
@@ -59,9 +72,28 @@ export function ExamQuestionList({
               <div style={promptStyle}>
                 {item ? item.prompt : bankLoading ? LOADING_TEXT : MISSING_TEXT}
               </div>
-              {item && <div style={metaStyle}>{formatExamItemMeta(item)}</div>}
+              {item && (
+                <div style={metaStyle}>
+                  {formatExamItemMeta(item)}
+                  {isRequired && REQUIRED_SUFFIX}
+                </div>
+              )}
             </div>
             <div className="xuanxue-question-controls">
+              {requiredEnabled && (
+                <button
+                  type="button"
+                  style={{
+                    ...rowControlStyle,
+                    color: isRequired ? 'var(--terracotta-text)' : 'var(--ink-soft)',
+                  }}
+                  aria-label={REQUIRED_LABEL}
+                  aria-pressed={isRequired}
+                  onClick={() => onToggleRequired(itemId)}
+                >
+                  {isRequired ? '★' : '☆'}
+                </button>
+              )}
               <button
                 type="button"
                 style={rowControlStyle}

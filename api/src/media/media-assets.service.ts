@@ -11,7 +11,7 @@
 // (loadAttemptOwnerInfo, media-attempt-owner.ts, вынесено ради файл-лимита).
 //
 // addLink — исключение: повторная ссылка на тот же вопрос заменяет прежнюю
-// (upsertLinkMediaAsset, ADR-0084), пока попытку не проверили (graded).
+// (upsertLinkMediaAsset, ADR-0086), пока попытку не проверили (graded).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -109,7 +109,7 @@ export class MediaAssetsService {
   /** Запасной путь — ссылка (ADR-0023), владелец из сессии (SECURITY §3):
    * чужой attemptId — тот же отказ, что несуществующий. itemId не
    * video-вопроса снимка (ADR-0037) — здесь есть кому объяснить причину, в
-   * отличие от бота. Повторный вызов заменяет прежнюю ссылку (ADR-0084). */
+   * отличие от бота. Повторный вызов заменяет прежнюю ссылку (ADR-0086). */
   async addLink(
     attemptId: string,
     userId: string,
@@ -124,7 +124,7 @@ export class MediaAssetsService {
     if (itemId !== undefined && !isVideoItemInSnapshot(owner.blocks, itemId)) {
       throw new NotFoundError(EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE);
     }
-    // ADR-0084: работу уже проверили — учитель поставил итог, глядя на
+    // ADR-0086: работу уже проверили — учитель поставил итог, глядя на
     // конкретное видео, молча подменять его новой ссылкой нельзя.
     if (owner.status === 'graded') {
       throw new ConflictError(EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE);

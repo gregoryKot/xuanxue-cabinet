@@ -48,6 +48,36 @@ describe('mapBlocks', () => {
     const [mapped] = mapBlocks([{ itemIds: ['a'] }]) ?? [];
     expect(mapped).not.toHaveProperty('questionsPerAttempt');
   });
+
+  // ADR-0082, дополнение: обязательные вопросы.
+  it('requiredItemIds не указан — ключа в записи нет', () => {
+    const [mapped] = mapBlocks([{ itemIds: ['a'] }]) ?? [];
+    expect(mapped).not.toHaveProperty('requiredItemIds');
+  });
+
+  it('requiredItemIds подмножество itemIds — сохраняется в порядке itemIds', () => {
+    const [mapped] =
+      mapBlocks([{ itemIds: ['a', 'b', 'c'], requiredItemIds: ['c', 'a'] }]) ?? [];
+    expect(mapped?.requiredItemIds).toEqual(['a', 'c']);
+  });
+
+  it('requiredItemIds содержит id вне itemIds — лишний отбрасывается молча', () => {
+    const [mapped] =
+      mapBlocks([{ itemIds: ['a', 'b'], requiredItemIds: ['a', 'removed'] }]) ?? [];
+    expect(mapped?.requiredItemIds).toEqual(['a']);
+  });
+
+  it('requiredItemIds с повтором — де-дублируется', () => {
+    const [mapped] =
+      mapBlocks([{ itemIds: ['a', 'b'], requiredItemIds: ['a', 'a'] }]) ?? [];
+    expect(mapped?.requiredItemIds).toEqual(['a']);
+  });
+
+  it('после отбрасывания лишних ничего не осталось — ключа в записи нет', () => {
+    const [mapped] =
+      mapBlocks([{ itemIds: ['a', 'b'], requiredItemIds: ['removed'] }]) ?? [];
+    expect(mapped).not.toHaveProperty('requiredItemIds');
+  });
 });
 
 describe('assertBlocksConsistent — повтор вопроса', () => {
@@ -143,5 +173,55 @@ describe('assertBlocksConsistent — вопросов ученику не бол
         },
       ]),
     ).toThrow('В списке 1 вопрос, а ученику вы хотите показать 2');
+  });
+});
+
+// ADR-0082, дополнение: обязательных вопросов не может быть больше выборки.
+describe('assertBlocksConsistent — обязательных не больше «Вопросов ученику»', () => {
+  it('requiredItemIds без questionsPerAttempt — проходит (выборки нет)', () => {
+    expect(() =>
+      assertBlocksConsistent([
+        {
+          id: '1',
+          title: '',
+          itemIds: ['a', 'b'],
+          shuffle: false,
+          requiredItemIds: ['a', 'b'],
+        },
+      ]),
+    ).not.toThrow();
+  });
+
+  it('requiredItemIds.length равно questionsPerAttempt — проходит', () => {
+    expect(() =>
+      assertBlocksConsistent([
+        {
+          id: '1',
+          title: '',
+          itemIds: ['a', 'b'],
+          shuffle: false,
+          questionsPerAttempt: 2,
+          requiredItemIds: ['a', 'b'],
+        },
+      ]),
+    ).not.toThrow();
+  });
+
+  it('requiredItemIds.length больше questionsPerAttempt — InvalidInputError с понятным текстом', () => {
+    expect(() =>
+      assertBlocksConsistent([
+        {
+          id: '1',
+          title: '',
+          itemIds: ['a', 'b'],
+          shuffle: false,
+          questionsPerAttempt: 1,
+          requiredItemIds: ['a', 'b'],
+        },
+      ]),
+    ).toThrow(
+      'Обязательных вопросов 2, а ученику вы показываете 1. ' +
+        'Уменьшите число обязательных или увеличьте «Вопросов ученику».',
+    );
   });
 });

@@ -41,6 +41,7 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
             criteria: 'Дыхание ровное, без задержек',
             answerText: 'Дышу животом, ровно',
             options: [],
+            answered: true,
           },
         ],
       },
@@ -163,6 +164,7 @@ describe('AttemptReviewScreen — карточка', () => {
                   { id: 'o1', text: 'Три', correct: true, selected: false },
                   { id: 'o2', text: 'Пять', correct: false, selected: true },
                 ],
+                answered: true,
                 optionsCheck: {
                   correctSelectedCount: 0,
                   correctTotalCount: 1,
@@ -269,6 +271,7 @@ const VIDEO_QUESTION_BLOCKS = [
         kind: 'video' as const,
         prompt: 'Снимите форму «пэнбу»',
         options: [],
+        answered: false,
       },
     ],
   },

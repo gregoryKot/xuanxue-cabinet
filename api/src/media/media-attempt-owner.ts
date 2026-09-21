@@ -12,7 +12,7 @@ export interface AttemptOwnerInfo {
   userId: string;
   examTitle: string;
   blocks: AttemptBlockRecord[];
-  // Проверено ли уже (ADR-0084): замена ссылки на видео-ответ запрещена
+  // Проверено ли уже (ADR-0086): замена ссылки на видео-ответ запрещена
   // после graded — учитель посмотрел и оценил, подменять ответ молча нельзя.
   // Поле схемы плоское (plain, не шифруется), расшифровка не нужна.
   status: ExamAttemptStatus;
