@@ -601,7 +601,7 @@
   "api/test/auth-config-email.e2e-spec.ts": 32,
   "api/test/auth-config-telegram-bot.e2e-spec.ts": 89,
   "api/test/auth-config.e2e-spec.ts": 48,
-  "api/test/auth-email-code.e2e-spec.ts": 165,
+  "api/test/auth-email-code.e2e-spec.ts": 177,
   "api/test/auth-email-resend.e2e-spec.ts": 103,
   "api/test/auth-email-verify-access.e2e-spec.ts": 123,
   "api/test/auth-email-verify.e2e-spec.ts": 147,
