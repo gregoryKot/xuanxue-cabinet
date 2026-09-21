@@ -83,6 +83,11 @@ describe('ExamAttemptsService — уведомление attempt_submitted', () 
     expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(1);
   });
 
+  // Аудит 2026-09-21 (HIGH): раньше проигравший `null` от findOneAndUpdate
+  // читал безусловно как «дедлайн истёк» и отклонялся — ученик с двух вкладок
+  // видел ложную панику о потере ответа на успешно сданной попытке.
+  // resolveSubmitConflict (exam-attempt-submit-outcome.ts) отличает эту гонку
+  // от настоящего дедлайна: обе вкладки получают тот же DTO `submitted`.
   it('гонка двух конкурентных submit() на одной попытке — уведомление ровно один раз', async () => {
     const examId = await createPublishedExam();
     const started = await ctx.service.start(examId, USER_A, NOW);
@@ -92,8 +97,9 @@ describe('ExamAttemptsService — уведомление attempt_submitted', () 
       ctx.service.submit(started.id, USER_A, NOW),
     ]);
 
-    // Один выигрывает гонку, второй видит уже не-in_progress и отклоняется.
-    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    // Один выигрывает гонку findOneAndUpdate, второй перечитывает её результат
+    // идемпотентно — оба разрешаются, второе уведомление не шлётся.
+    expect(results.every((r) => r.status === 'fulfilled')).toBe(true);
     expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(1);
   });
 
