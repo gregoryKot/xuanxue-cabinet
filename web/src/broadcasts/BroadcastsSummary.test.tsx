@@ -108,4 +108,25 @@ describe('BroadcastsSummary — числа за период', () => {
       '/broadcasts?status=cancelled',
     );
   });
+
+  // Владелец по снимку: «подчёркивания, нужны?». Линия снизу в кабинете
+  // помечает текстовую ссылку в потоке содержимого, а здесь кликается вся
+  // карточка — в ряду одинаковых на вид плиток линия под одной подписью
+  // читалась опечаткой (docs/adr/0098). Вместо неё знак «›», и он
+  // декоративный: доступное имя ссылки даёт подпись.
+  it('подпись карточки-ссылки без линии снизу, а знак «›» не попадает в имя ссылки', async () => {
+    mockedApiFetch.mockResolvedValueOnce(SUMMARY);
+
+    render(<BroadcastsSummary />, { wrapper: MemoryRouter });
+
+    const label = await screen.findByText('Отменено автоматикой');
+    expect(label.style.borderBottom).toBe('');
+    // Точное имя, не подстрока: так видно, что «›» в него не попал. Число в
+    // имени есть — ссылкой сделана вся карточка, а не одна подпись.
+    expect(
+      screen.getByRole('link', {
+        name: `${SUMMARY.broadcastsCancelled}Отменено автоматикой`,
+      }),
+    ).toBeInTheDocument();
+  });
 });
