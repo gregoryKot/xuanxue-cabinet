@@ -41,6 +41,9 @@ DTO в `api` объявляется как `class CreateClassDto implements Crea
 PR проходит: `tsc` (три пакета), `jest` + e2e (дважды: TZ=Australia/Sydney и с покрытием),
 `vitest` с покрытием и под TZ=Australia/Sydney, `eslint`, `prettier --check`, `knip`, `npm audit`, `gitleaks`,
 сборка web, сборка Docker-образа с проверкой `/api/health`, все храповики из `scripts/`.
+Бинарь mongod для `jest` в джобе `api` кешируется (`actions/cache`, версия зафиксирована
+`MONGOMS_VERSION` в `ci.yml`) — иначе каждый прогон качает его заново с fastdl.mongodb.org,
+и чужой 503 красит PR, ни при чём не будучи (наблюдение 2026-09-21).
 Локально то же самое одной командой: `npm run check` — кроме `gitleaks` (бинаря нет
 локально), Docker-смока и проверки бэкапа-восстановления (`backup-restore`, нужен
 `mongodump`), они остаются только в CI. Ручной прогон «по памяти» — не
