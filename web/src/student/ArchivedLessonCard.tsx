@@ -53,7 +53,7 @@ const plainTextStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',
 };
-// Форма списка общая (docs/adr/0086), а воздух под заголовком «Материалы» —
+// Форма списка общая (docs/adr/0088), а воздух под заголовком «Материалы» —
 // местный: его задаёт карточка занятия, а не форма списка.
 const materialsListStyle: CSSProperties = { ...dividedListStyle, marginTop: 4 };
 const materialsHeadingStyle: CSSProperties = {

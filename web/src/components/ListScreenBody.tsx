@@ -26,7 +26,7 @@ interface ListScreenBodyProps<TItem> {
    * (exams/ExamsScreen.tsx, docs/adr/0043). */
   renderItem: (item: TItem, index: number, items: TItem[]) => ReactNode;
   /** Стиль обёртки `<ul>` — одна из трёх готовых форм
-   * `components/listCardStyles.ts` (docs/adr/0086): промежуток между строками
+   * `components/listCardStyles.ts` (docs/adr/0088): промежуток между строками
    * заявляет список, а не строка, поэтому у пропа нет умолчания — экран
    * выбирает форму сам, под свою строку (`oneCardListStyle` — общая карточка
    * с волосяной линией, как у exams/ExamsScreen.tsx; `cardListStyle` — колонка
