@@ -27,6 +27,20 @@ describe('VideoEmbed', () => {
     expect(frame).toHaveAttribute('title', 'Занятие 12 сентября');
   });
 
+  // Регресс на инцидент 2026-09-21 (RUNBOOK §8.18): кабинет отдаётся с
+  // `Referrer-Policy: no-referrer`, и без этого атрибута YouTube показывал во
+  // фрейме «Video player configuration error, Error 153» вместо записи.
+  it('фрейм даёт хостингу узнать домен кабинета — иначе плеер не стартует', async () => {
+    render(<VideoEmbed url={YOUTUBE_URL} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Смотреть здесь' }));
+
+    expect(document.querySelector('iframe')).toHaveAttribute(
+      'referrerpolicy',
+      'strict-origin-when-cross-origin',
+    );
+  });
+
   it('невстраиваемая ссылка (Яндекс.Диск) — компонент не рендерит ничего', () => {
     const { container } = render(
       <VideoEmbed url="https://disk.yandex.ru/i/aBcDeFgHiJkLmN" />,
