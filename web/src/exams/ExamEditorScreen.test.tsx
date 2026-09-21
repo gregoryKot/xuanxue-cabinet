@@ -34,6 +34,7 @@ afterEach(() => {
 });
 
 const LIST_MARKER = 'Здесь список экзаменов';
+const PREVIEW_MARKER = 'Здесь предпросмотр экзамена';
 
 function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
   return {
@@ -81,6 +82,7 @@ function renderAt(path: string) {
         <Route path="/exam-items" element={<p>Здесь вопросы</p>} />
         <Route path="/exams/new" element={<ExamEditorScreen />} />
         <Route path="/exams/:examId" element={<ExamEditorScreen />} />
+        <Route path="/exams/:examId/preview" element={<p>{PREVIEW_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -690,25 +692,70 @@ describe('ExamEditorScreen — подвал', () => {
     expect(lastCallWithMethod('DELETE')).toHaveLength(0);
   });
 
-  it('«Посмотреть глазами ученика» — ссылка на страницу предпросмотра', async () => {
+  it('«Посмотреть глазами ученика» без правок — открывает предпросмотр, без сохранения', async () => {
+    const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
+    await user.click(
+      await screen.findByRole('button', { name: 'Посмотреть глазами ученика' }),
+    );
 
-    expect(
-      await screen.findByRole('link', { name: 'Посмотреть глазами ученика' }),
-    ).toHaveAttribute('href', '/exams/x1/preview');
+    expect(await screen.findByText(PREVIEW_MARKER)).toBeInTheDocument();
+    expect(lastCallWithMethod('PATCH')).toHaveLength(0);
   });
 
-  it('новый экзамен — ссылки на предпросмотр нет', async () => {
+  it('новый экзамен — кнопки предпросмотра нет', async () => {
     mockApiByPath({ '/exam-items': BANK, '/exams': makeExam() });
 
     renderAt('/exams/new');
     await screen.findByLabelText('Название');
 
     expect(
-      screen.queryByRole('link', { name: 'Посмотреть глазами ученика' }),
+      screen.queryByRole('button', { name: /глазами ученика/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('добавили вопрос и не сохранили — предпросмотр сначала сохраняет форму', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await screen.findByText('Что такое «пустая» нога?');
+    await user.click(screen.getByRole('button', { name: 'Добавить' }));
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Сохранить и посмотреть глазами ученика',
+      }),
+    );
+
+    await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
+    const body = lastCallWithMethod('PATCH')[0]?.[1] as {
+      body: { blocks: { itemIds: string[] }[] };
+    };
+    expect(body.body.blocks[0]?.itemIds).toEqual(['i1', 'i2', 'i3']);
+    expect(await screen.findByText(PREVIEW_MARKER)).toBeInTheDocument();
+  });
+
+  it('очистили название — предпросмотр не сохраняет и не открывается, видна ошибка', async () => {
+    const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await user.clear(await screen.findByLabelText('Название'));
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Сохранить и посмотреть глазами ученика',
+      }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Впишите название экзамена.',
+    );
+    expect(lastCallWithMethod('PATCH')).toHaveLength(0);
+    expect(screen.queryByText(PREVIEW_MARKER)).not.toBeInTheDocument();
   });
 });
 
@@ -761,6 +808,16 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     expect(
       screen.getByLabelText('Найти вопрос — по тексту или тегу'),
     ).toBeInTheDocument();
+  });
+
+  it('честно объясняет: вопрос закрепится в экзамене только после «Сохранить»', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam({ blocks: [] }));
+
+    renderAt('/exams/x1');
+    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+
+    expect(screen.getByText(/В экзамене он закрепится/)).toBeInTheDocument();
   });
 
   it('тип с вариантами — вопрос уходит с текстом и вариантами, верный отмечен', async () => {
