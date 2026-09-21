@@ -21,12 +21,12 @@ const VERSION_STORED = 20;
  * у учителя. */
 const FLAG_UTF8_NAMES = 0x0800;
 
-export interface ZipEntry {
+interface ZipEntry {
   name: string;
   content: string;
 }
 
-export function buildZip(entries: readonly ZipEntry[]): Buffer {
+function buildZip(entries: readonly ZipEntry[]): Buffer {
   const parts: Buffer[] = [];
   const directory: Buffer[] = [];
   let offset = 0;
