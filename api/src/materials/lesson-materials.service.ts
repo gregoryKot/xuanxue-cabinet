@@ -10,7 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { MyMaterialDto } from '@xuanxue/shared';
 import { ClassRecord } from '../classes/class.schema';
-import { isMaterialHiddenFromStudent } from './material-access';
+import { visibleForStudent } from './material-access';
 import { findMaterialClassTitles } from './material-classes.lookup';
 import {
   decryptMaterial,
@@ -66,13 +66,10 @@ export class LessonMaterialsService {
     const requestedIds = new Set(lessonIds);
 
     const byLessonId = new Map<string, MyMaterialDto[]>();
-    for (const doc of docs) {
-      const decrypted = decryptMaterial(doc);
-      // Страховка на случай потерянного фильтра (ADR-0096 «Решение»): та же
-      // проверка ещё раз, после расшифровки — действует и в архиве, ровно
-      // как в библиотеке, иначе служебный материал утекал бы через «Архив
-      // занятий», а не через «Материалы».
-      if (isMaterialHiddenFromStudent({ access: decrypted.access, isStaff })) continue;
+    // Страховка на случай потерянного фильтра — та же функция, что у
+    // библиотеки (ADR-0096 «Решение»): иначе служебный материал утекал бы
+    // через «Архив занятий», а не через «Материалы».
+    for (const decrypted of visibleForStudent(docs.map(decryptMaterial), isStaff)) {
       const dto = toMyMaterialDto(decrypted, classTitleById);
       for (const lessonId of decrypted.lessonIds) {
         const key = lessonId.toString();

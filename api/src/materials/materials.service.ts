@@ -29,7 +29,7 @@ import { NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { encryptRecord } from '../utils/encryption';
-import { isMaterialHiddenFromStudent } from './material-access';
+import { visibleForStudent } from './material-access';
 import { findMaterialClassTitles } from './material-classes.lookup';
 import {
   decryptMaterial,
@@ -136,10 +136,9 @@ export class MaterialsService {
       this.classModel,
       docs.map((doc) => doc.classIds),
     );
-    return docs
-      .map((doc) => decryptMaterial(doc))
-      .filter((doc) => !isMaterialHiddenFromStudent({ access: doc.access, isStaff }))
-      .map((doc) => toMyMaterialDto(doc, classTitleById));
+    return visibleForStudent(docs.map(decryptMaterial), isStaff).map((doc) =>
+      toMyMaterialDto(doc, classTitleById),
+    );
   }
 
   private async getById(id: string): Promise<MaterialDto> {

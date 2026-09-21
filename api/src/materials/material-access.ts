@@ -33,3 +33,24 @@ export function isMaterialHiddenFromStudent({
   if (isStaff) return false;
   return access === 'staff';
 }
+
+/**
+ * Те из материалов, что ученику действительно едут. `staff` уже вырезан
+ * запросом Mongo (MaterialsService.listForStudent,
+ * LessonMaterialsService.findByLessonIds) — здесь тот же отбор ещё раз,
+ * страховка на случай потерянного фильтра (ADR-0096 «Решение»).
+ *
+ * Одна функция на библиотеку и на архив, а не два одинаковых `filter` в
+ * двух сервисах (CLAUDE.md «Одна механика — один компонент»). И ветка
+ * «материал скрыт» здесь проверяется тестом: в самих сервисах она
+ * недостижима — запрос Mongo отсекает `staff` раньше, — а недостижимая
+ * ветка страховки просаживает покрытие и никем не сторожится.
+ */
+export function visibleForStudent<T extends { access: MaterialAccess }>(
+  docs: T[],
+  isStaff: boolean,
+): T[] {
+  return docs.filter(
+    (doc) => !isMaterialHiddenFromStudent({ access: doc.access, isStaff }),
+  );
+}
