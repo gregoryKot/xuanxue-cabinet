@@ -52,6 +52,11 @@ function toBlockDto(block: ExamBlockRecord): ExamBlockDto {
     title: block.title,
     itemIds: block.itemIds,
     shuffle: block.shuffle,
+    // Тот же приём, что timeLimitMin/createdBy формы ниже: нет значения —
+    // ключа в ответе нет вовсе (ADR-0080).
+    ...(block.questionsPerAttempt !== undefined
+      ? { questionsPerAttempt: block.questionsPerAttempt }
+      : {}),
   };
 }
 

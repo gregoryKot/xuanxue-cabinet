@@ -221,6 +221,30 @@ describe('ExamPreviewScreen — вопросы', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('задан questionsPerAttempt — заметка о случайной выборке (ADR-0080)', async () => {
+    mockExamAndBank(
+      makeExam({
+        blocks: [
+          {
+            id: 'b1',
+            title: '',
+            itemIds: ['i1', 'i2'],
+            shuffle: false,
+            questionsPerAttempt: 1,
+          },
+        ],
+      }),
+    );
+
+    renderAt('/exams/x1/preview');
+
+    expect(
+      await screen.findByText(
+        'Ученику достанутся 1 из 2 вопроса, случайно — здесь показан весь список.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('без вопросов — «пока нет вопросов»', async () => {
     mockExamAndBank(makeExam({ blocks: [] }));
 

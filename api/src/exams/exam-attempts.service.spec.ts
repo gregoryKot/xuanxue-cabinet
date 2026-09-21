@@ -45,11 +45,19 @@ describe('ExamAttemptsService', () => {
     itemIds: string[];
     shuffle?: boolean;
     attemptsAllowed?: number;
+    questionsPerAttempt?: number;
   }) {
     const created = await ctx.examsService.create(
       {
         title: 'Экзамен по третьей форме',
-        blocks: [{ title: 'Форма', itemIds: options.itemIds, shuffle: options.shuffle }],
+        blocks: [
+          {
+            title: 'Форма',
+            itemIds: options.itemIds,
+            shuffle: options.shuffle,
+            questionsPerAttempt: options.questionsPerAttempt,
+          },
+        ],
         attemptsAllowed: options.attemptsAllowed,
       },
       AUTHOR_ID,
@@ -120,6 +128,27 @@ describe('ExamAttemptsService', () => {
     const orderAfterRefresh = readAgain[0]?.blocks[0]?.questions.map((q) => q.itemId);
 
     expect(orderAfterRefresh).toEqual(orderAfterStart);
+  });
+
+  // ADR-0080: itemIds блока — пул, questionsPerAttempt — сколько из него
+  // попадает в конкретную попытку.
+  it('questionsPerAttempt меньше длины блока: старт → ровно N вопросов из пула, read-after-write', async () => {
+    const itemIds = await Promise.all([
+      createPublishedItem({ prompt: 'вопрос А' }),
+      createPublishedItem({ prompt: 'вопрос Б' }),
+      createPublishedItem({ prompt: 'вопрос В' }),
+    ]);
+    const examId = await createPublishedExam({ itemIds, questionsPerAttempt: 2 });
+
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    const pickedIds = started.blocks[0]?.questions.map((q) => q.itemId) ?? [];
+
+    expect(pickedIds).toHaveLength(2);
+    expect(new Set(pickedIds).size).toBe(2);
+    for (const id of pickedIds) expect(itemIds).toContain(id);
+
+    const list = await ctx.service.list({ examId }, staffUser(false, USER_A), NOW);
+    expect(list[0]?.blocks[0]?.questions.map((q) => q.itemId)).toEqual(pickedIds);
   });
 
   it('повторный старт при незаконченной попытке отдаёт ту же (идемпотентность)', async () => {

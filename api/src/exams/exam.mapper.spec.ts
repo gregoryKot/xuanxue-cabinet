@@ -85,4 +85,27 @@ describe('toExamDto', () => {
 
     expect(toExamDto(doc).blocks).toEqual([]);
   });
+
+  // ADR-0080.
+  it('questionsPerAttempt в записи блока — присутствует в ответе', () => {
+    const doc = fullExam();
+    doc.blocks = [
+      {
+        id: 'b1',
+        title: 'Форма',
+        itemIds: ['i1', 'i2'],
+        shuffle: true,
+        questionsPerAttempt: 1,
+      },
+    ];
+
+    expect(toExamDto(doc).blocks[0]?.questionsPerAttempt).toBe(1);
+  });
+
+  it('questionsPerAttempt нет в записи блока — ключа в ответе нет', () => {
+    const doc = fullExam();
+    doc.blocks = [{ id: 'b1', title: 'Форма', itemIds: ['i1'], shuffle: false }];
+
+    expect(toExamDto(doc).blocks[0]).not.toHaveProperty('questionsPerAttempt');
+  });
 });

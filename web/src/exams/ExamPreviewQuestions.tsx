@@ -9,6 +9,7 @@ import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { blockCardStyle } from '../components/listCardStyles';
 import { noteStyle } from '../components/screenLayout';
+import { questionsPerAttemptNote } from './questionsPerAttempt';
 import { ExamPreviewQuestion } from './ExamPreviewQuestion';
 
 const SHUFFLE_QUESTIONS_NOTE =
@@ -26,6 +27,9 @@ interface ExamPreviewQuestionsProps {
   itemIds: string[];
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
+  /** Сколько вопросов достаётся сдающему из списка (ADR-0080); `undefined` —
+   * достаются все, отдельной заметки не нужно. */
+  questionsPerAttempt: number | undefined;
   bankItems: ExamItemDto[];
 }
 
@@ -33,10 +37,16 @@ export function ExamPreviewQuestions({
   itemIds,
   shuffleQuestions,
   shuffleOptions,
+  questionsPerAttempt,
   bankItems,
 }: ExamPreviewQuestionsProps) {
   return (
     <section style={sectionStyle}>
+      {questionsPerAttempt !== undefined && (
+        <p style={noteStyle}>
+          {questionsPerAttemptNote(questionsPerAttempt, itemIds.length)}
+        </p>
+      )}
       {shuffleQuestions && <p style={noteStyle}>{SHUFFLE_QUESTIONS_NOTE}</p>}
       {shuffleOptions && <p style={noteStyle}>{SHUFFLE_OPTIONS_NOTE}</p>}
       {itemIds.length === 0 && <p style={noteStyle}>{EMPTY_NOTE}</p>}

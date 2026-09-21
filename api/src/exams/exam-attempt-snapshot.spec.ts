@@ -4,6 +4,7 @@ import { checkOptionAnswer } from './exam-attempt-review';
 import {
   buildAttemptBlocks,
   collectAttemptImageIds,
+  pickQuestionIds,
   shuffleOnce,
 } from './exam-attempt-snapshot';
 import type { AttemptBlockRecord } from './exam-attempt.schema';
@@ -90,6 +91,62 @@ function singleChoiceItem(): ReadonlyMap<string, ExamItemDto> {
     ],
   ]);
 }
+
+// ADR-0080: блок с questionsPerAttempt — пул itemIds, при старте попытки
+// выбираются только N.
+describe('pickQuestionIds', () => {
+  it('выбирает ровно N различных id из блока', () => {
+    const result = pickQuestionIds(
+      block({ itemIds: ['a', 'b', 'c'], questionsPerAttempt: 2 }),
+      fixedSequence([0.9, 0.1, 0.5]),
+    );
+
+    expect(result).toHaveLength(2);
+    expect(new Set(result).size).toBe(2);
+    for (const id of result) expect(['a', 'b', 'c']).toContain(id);
+  });
+
+  it('без shuffle выбранные идут в порядке списка, не в порядке выборки', () => {
+    // Ключи 0.9/0.1/0.5 у a/b/c выбрали бы порядок b, c — но shuffle выключен,
+    // поэтому итог — порядок itemIds: b раньше c и там, и там, менять нечего,
+    // берём набор, где порядок выборки (c, a) обратный порядку списка (a, c).
+    const result = pickQuestionIds(
+      block({ itemIds: ['a', 'b', 'c'], shuffle: false, questionsPerAttempt: 2 }),
+      fixedSequence([0.1, 0.9, 0.5]), // выборка (по ключам): a(0.1), c(0.5) — a раньше c
+    );
+
+    expect(result).toEqual(['a', 'c']);
+  });
+
+  it('с shuffle порядок выбранных следует случайным ключам, не списку', () => {
+    const result = pickQuestionIds(
+      block({ itemIds: ['a', 'b', 'c'], shuffle: true, questionsPerAttempt: 2 }),
+      fixedSequence([0.5, 0.9, 0.1]), // ключи: a=0.5, b=0.9, c=0.1 → порядок c, a, b
+    );
+
+    expect(result).toEqual(['c', 'a']);
+  });
+
+  it('N больше длины списка — все вопросы (без shuffle — как есть)', () => {
+    const result = pickQuestionIds(
+      block({ itemIds: ['a', 'b'], shuffle: false, questionsPerAttempt: 5 }),
+      () => 0,
+    );
+
+    expect(result).toEqual(['a', 'b']);
+  });
+
+  it('поле не указано — все вопросы, поведение как раньше', () => {
+    const withoutShuffle = pickQuestionIds(block({ itemIds: ['a', 'b'] }), () => 0);
+    expect(withoutShuffle).toEqual(['a', 'b']);
+
+    const withShuffle = pickQuestionIds(
+      block({ itemIds: ['a', 'b'], shuffle: true }),
+      fixedSequence([0.9, 0.1]),
+    );
+    expect(withShuffle).toEqual(['b', 'a']);
+  });
+});
 
 describe('buildAttemptBlocks', () => {
   it('без shuffle — порядок вопросов в блоке как в itemIds', () => {

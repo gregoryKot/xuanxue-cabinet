@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ExamBlockDto, ExamDto } from '@xuanxue/shared';
-import { countQuestions, formatExamListMeta } from './examCounts';
+import {
+  countQuestions,
+  countQuestionsPerAttempt,
+  formatExamListMeta,
+} from './examCounts';
 
 function block(itemIds: string[], overrides: Partial<ExamBlockDto> = {}): ExamBlockDto {
   return { id: 'b1', title: '', itemIds, shuffle: false, ...overrides };
@@ -59,5 +63,38 @@ describe('formatExamListMeta', () => {
     expect(formatExamListMeta(exam({ blocks: [block([])] }))).toBe(
       'Пока без вопросов · 1 попытка · без ограничения',
     );
+  });
+
+  it('задано questionsPerAttempt — «M из N вопросов» (ADR-0080)', () => {
+    expect(
+      formatExamListMeta(
+        exam({ blocks: [block(['a', 'b', 'c'], { questionsPerAttempt: 2 })] }),
+      ),
+    ).toBe('2 из 3 вопроса · 1 попытка · без ограничения');
+  });
+
+  it('questionsPerAttempt не задан — просто число вопросов, без «из»', () => {
+    expect(formatExamListMeta(exam({ blocks: [block(['a', 'b'])] }))).toBe(
+      '2 вопроса · 1 попытка · без ограничения',
+    );
+  });
+});
+
+describe('countQuestionsPerAttempt', () => {
+  it('без блоков — undefined', () => {
+    expect(countQuestionsPerAttempt([])).toBeUndefined();
+  });
+
+  it('ни у одного блока поля нет — undefined', () => {
+    expect(countQuestionsPerAttempt([block(['a']), block(['b'])])).toBeUndefined();
+  });
+
+  it('берёт значение первого блока, у которого поле задано', () => {
+    expect(
+      countQuestionsPerAttempt([
+        block(['a']),
+        block(['b', 'c'], { questionsPerAttempt: 1 }),
+      ]),
+    ).toBe(1);
   });
 });

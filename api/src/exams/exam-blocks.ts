@@ -33,13 +33,27 @@ export function mapBlocks(
     title: block.title ?? '',
     itemIds: block.itemIds,
     shuffle: block.shuffle ?? false,
+    // Тот же приём, что imageId варианта (exam-attempt-snapshot.ts,
+    // toAttemptOption): нет значения — ключа в JSON нет вовсе, а не
+    // `questionsPerAttempt: undefined`.
+    ...(block.questionsPerAttempt !== undefined
+      ? { questionsPerAttempt: block.questionsPerAttempt }
+      : {}),
   }));
+}
+
+/** Всё, что видно по самим блокам, одной проверкой перед сохранением
+ * (ExamsService.assertBlocksSavable): повтор вопроса и «вопросов ученику»
+ * больше списка. Первая нарушенная — первая ошибка. */
+export function assertBlocksConsistent(blocks: readonly ExamBlockRecord[]): void {
+  assertNoRepeatedItems(blocks);
+  assertQuestionsPerAttemptFits(blocks);
 }
 
 /** Вопрос не может стоять в форме дважды — ни в одном блоке, ни в разных
  * (ТЗ 4.3, п.4: сдающий увидит его два раза и решит, что это ошибка).
  * Проверка по всем блокам сразу, не по одному. */
-export function assertNoRepeatedItems(blocks: readonly ExamBlockRecord[]): void {
+function assertNoRepeatedItems(blocks: readonly ExamBlockRecord[]): void {
   const seen = new Set<string>();
   const repeated = new Set<string>();
   for (const block of blocks) {
@@ -60,4 +74,20 @@ export function assertNoRepeatedItems(blocks: readonly ExamBlockRecord[]): void 
  * один блок хотя бы с одним вопросом. */
 export function hasAnyQuestion(blocks: readonly ExamBlockRecord[]): boolean {
   return blocks.some((block) => block.itemIds.length > 0);
+}
+
+/** ADR-0080: `questionsPerAttempt` — сколько вопросов из `itemIds` увидит
+ * сдающий, не может быть больше самого списка (иначе выбирать нечего).
+ * Снимок попытки (exam-attempt-snapshot.ts) на всякий случай берёт не
+ * больше, чем есть, но отказ на сохранении — понятнее «тихого» урезания. */
+function assertQuestionsPerAttemptFits(blocks: readonly ExamBlockRecord[]): void {
+  for (const block of blocks) {
+    const limit = block.questionsPerAttempt;
+    if (limit === undefined || limit <= block.itemIds.length) continue;
+    const total = block.itemIds.length;
+    throw new InvalidInputError(
+      `В списке ${total} ${pluralRu(total, QUESTION_FORMS)}, а ученику вы хотите ` +
+        `показать ${limit}. Уменьшите число или добавьте вопросы.`,
+    );
+  }
 }
