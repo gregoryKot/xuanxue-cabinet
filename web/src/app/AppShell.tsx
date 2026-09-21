@@ -46,13 +46,13 @@
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
-import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { NotificationsNavLink } from '../notifications/NotificationsNavLink';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import { AppNav } from './AppNav';
 import { contentColumnStyle, shellRowStyle, shellStyle } from './appShellStyles';
+import { personLinkStyle } from './sideNavStyles';
 import { AppShellBrandRow } from './AppShellBrandRow';
 import { canSeeRoute, rootPathFor } from './screenAccess';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
@@ -91,7 +91,7 @@ export function AppShell() {
                 me={me}
                 notificationsLink={<NotificationsNavLink />}
                 profileLink={
-                  <Link to={PROFILE_PATH} style={textLinkStyle}>
+                  <Link to={PROFILE_PATH} style={personLinkStyle}>
                     Профиль
                   </Link>
                 }

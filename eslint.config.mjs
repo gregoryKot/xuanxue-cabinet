@@ -32,6 +32,18 @@ const SPEC_GLOBS = [
 // Мессенджеры только через адаптеры (CLAUDE.md, раздел «Каналы») — сюда
 // разрешён прямой импорт telegraf, остальному api/src — только через адаптер.
 const MESSENGER_ADAPTER_GLOBS = ['api/src/telegram/**/*.ts', 'api/src/channels/**/*.ts'];
+// Оболочка кабинета: боковая колонка, строка сверху и их стили. Отличается
+// от остального web одним запретом — см. WEB_RESTRICTED_IMPORTS ниже.
+const SHELL_GLOBS = ['web/src/app/**/*.{ts,tsx}'];
+
+// Только Luxon — CLAUDE.md, раздел «Время». Список общий: блок web ниже
+// перечисляет его заново, потому что eslint перезаписывает правило целиком,
+// а не дополняет. До этого он там не повторялся — и запрет на фронтенде
+// молча не действовал вовсе, хотя CLAUDE.md обещает обратное.
+const DATE_LIBRARY_PATHS = ['moment', 'dayjs', 'date-fns'].map((name) => ({
+  name,
+  message: 'Только Luxon — CLAUDE.md, раздел «Время».',
+}));
 
 const LAYERS = 'CLAUDE.md, раздел «Слои»';
 const layerPath = (name, who) => ({
@@ -39,6 +51,41 @@ const layerPath = (name, who) => ({
   message: `${who} не зависит от ${name} — ${LAYERS}.`,
 });
 const layerPattern = (group, message) => ({ group, message: `${message} — ${LAYERS}.` });
+
+// Запреты импорта для всего web. Вынесены в константу, потому что блок
+// оболочки ниже добавляет к ним свой: eslint не сливает правило из разных
+// блоков, последний подходящий перезаписывает его целиком — без этой
+// константы запреты слоёв в web/src/app/** молча перестали бы действовать.
+const WEB_RESTRICTED_IMPORTS = {
+  paths: [
+    ...DATE_LIBRARY_PATHS,
+    layerPath('mongoose', 'web'),
+    layerPath('telegraf', 'web'),
+  ],
+  patterns: [
+    layerPattern(
+      ['@nestjs/*', '**/api/src/*', '**/api/src/**'],
+      'web не импортирует api/src и @nestjs/* — общий код живёт в shared/',
+    ),
+  ],
+};
+
+// Линия снизу помечает текстовую ссылку в потоке содержимого; оболочка
+// кабинета её не носит (docs/adr/0098). Правило держит гейт, а не память:
+// «Профиль» в боковой колонке уже один раз приехал с textLinkStyle.
+const SHELL_RESTRICTED_IMPORTS = {
+  ...WEB_RESTRICTED_IMPORTS,
+  patterns: [
+    ...WEB_RESTRICTED_IMPORTS.patterns,
+    {
+      group: ['**/screenLayout', '**/components/screenLayout'],
+      importNames: ['textLinkStyle', 'textLinkButtonStyle'],
+      message:
+        'Оболочка не носит линию снизу — это признак текстовой ссылки в содержимом (docs/adr/0098). Ссылка оболочки берёт personLinkStyle/sideLinkStyle из app/sideNavStyles.ts.',
+    },
+  ],
+};
+
 // new Date(строка/число) в бизнес-логике запрещён — DateTime.fromISO /
 // fromMillis / fromJSDate (Luxon). CLAUDE.md, раздел «Время».
 const NO_DATE_CTOR = {
@@ -119,15 +166,7 @@ export default tseslint.config(
       'import-x/no-self-import': 'error',
       'import-x/no-duplicates': 'error',
       // Только Luxon — CLAUDE.md, раздел «Время».
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: ['moment', 'dayjs', 'date-fns'].map((name) => ({
-            name,
-            message: 'Только Luxon — CLAUDE.md, раздел «Время».',
-          })),
-        },
-      ],
+      'no-restricted-imports': ['error', { paths: DATE_LIBRARY_PATHS }],
     },
   },
   {
@@ -200,18 +239,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.browser } },
     rules: {
       'no-console': ['error', { allow: ['warn', 'error'] }],
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [layerPath('mongoose', 'web'), layerPath('telegraf', 'web')],
-          patterns: [
-            layerPattern(
-              ['@nestjs/*', '**/api/src/*', '**/api/src/**'],
-              'web не импортирует api/src и @nestjs/* — общий код живёт в shared/',
-            ),
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', WEB_RESTRICTED_IMPORTS],
       // Сеть только через web/src/api/http.ts — единая обработка ошибок,
       // credentials и формата ответа. CLAUDE.md, раздел «Слои».
       'no-restricted-globals': [
@@ -221,6 +249,13 @@ export default tseslint.config(
       'no-restricted-syntax': ['error', NO_ENUM, NO_DATE_CTOR],
       'no-restricted-properties': ['error', ...NO_HISTORY_MUTATION],
     },
+  },
+  {
+    // Оболочка кабинета вдобавок к запретам web не тянет стили текстовой
+    // ссылки (docs/adr/0098). Правило перечисляет и запреты слоёв: eslint
+    // перезаписывает правило целиком, а не дополняет.
+    files: SHELL_GLOBS,
+    rules: { 'no-restricted-imports': ['error', SHELL_RESTRICTED_IMPORTS] },
   },
   {
     // web/src/api/** — сама реализация http-клиента, ей можно вызывать fetch.
