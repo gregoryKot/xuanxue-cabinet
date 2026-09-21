@@ -45,8 +45,7 @@ import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { PersonalChats } from '../personal-chats';
 import { examUserFacingError } from './exam-attempt-error';
 import { TELEGRAM_NOT_LINKED_MESSAGE } from './exam-media-deep-link';
-import { forwardExamVideoToTeachers } from './exam-media-forward';
-import { renderExamMediaAnswer } from './exam-media-answer';
+import { respondToAttachedMedia } from './exam-media-respond';
 import { extractExamVideoSource } from './exam-video-source';
 import { resolveActiveBotUser } from './resolve-active-bot-user';
 
@@ -55,7 +54,6 @@ const NOT_A_VIDEO_MESSAGE =
 const ATTEMPT_NOT_YOURS_MESSAGE =
   'Не нашли эту попытку среди ваших. Откройте экзамен из своего кабинета ещё раз ' +
   'или вставьте там ссылку на видео.';
-const RECEIVED_MESSAGE = 'Видео получено, спасибо! Учитель уже может его посмотреть.';
 
 @Injectable()
 export class ExamMediaMessageHandler {
@@ -113,32 +111,20 @@ export class ExamMediaMessageHandler {
         return;
       }
 
-      await forwardExamVideoToTeachers(
+      await respondToAttachedMedia(
         ctx,
-        this.personalChats,
-        user.name,
-        attached.examTitle,
+        {
+          personalChats: this.personalChats,
+          botSessions: this.botSessions,
+          examBotPorts: this.examBotPorts,
+        },
+        attached,
+        user,
+        telegramId,
         session.attemptId.toString(),
+        session.questionIndex,
         now,
       );
-
-      // Вопрос-видео потока бота (ТЗ 4б.2 часть 2) — сразу следующий экран,
-      // не отдельное «получено» (сам переход это и подтверждает); deep link
-      // из кабинета (ADR-0023) — экрана вопроса нет, обычное подтверждение.
-      if (session.questionIndex != null) {
-        await renderExamMediaAnswer(
-          ctx,
-          this.examBotPorts.get(),
-          this.botSessions,
-          telegramId,
-          user,
-          session.attemptId.toString(),
-          session.questionIndex,
-          now,
-        );
-        return;
-      }
-      await ctx.reply(RECEIVED_MESSAGE).catch(() => null);
     } catch (err) {
       // Неожиданный сбой (не «попытка не ваша», та ветка выше и не исключение) —
       // ученик, который прислал видео, иначе не узнал бы, снялось оно или нет

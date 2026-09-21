@@ -98,4 +98,14 @@ describe('ExamMediaController', () => {
 
     expect(addManual).toHaveBeenCalledWith('a1', 'т', expect.anything(), itemId);
   });
+
+  // ADR-0095: кнопка «Прислать мне в бота» — чат берётся из сессии
+  // (SECURITY §3), поэтому userId в вызов сервиса, не тело запроса.
+  it('sendToMe() передаёт id попытки, id записи и id пользователя из сессии', async () => {
+    const sendToChat = jest.fn().mockResolvedValue(undefined);
+    const controller = await buildController({ sendToChat });
+
+    await expect(controller.sendToMe('a1', 'm1', USER)).resolves.toBeUndefined();
+    expect(sendToChat).toHaveBeenCalledWith('a1', 'm1', 'u1');
+  });
 });

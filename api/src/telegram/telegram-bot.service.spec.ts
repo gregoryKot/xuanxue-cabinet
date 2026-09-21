@@ -459,3 +459,51 @@ describe('TelegramBotService.sendMessage — проактивная отправ
     expect(menu[method as keyof typeof menu]).toHaveBeenCalledTimes(1);
   });
 });
+
+// ADR-0095: кнопка «Прислать мне в бота» на карточке проверки шлёт видео
+// через этот метод — сборка запроса по типу проверена в bot-send-video.spec.ts,
+// здесь только оболочка sendExamVideo (тот же приём, что у sendMessage выше).
+describe('TelegramBotService.sendExamVideo — проактивная отправка', () => {
+  it('без бота (BOT_TOKEN не задан) — молча ничего не делает', async () => {
+    const service = new TelegramBotService(
+      fakeConfig({}),
+      createTelegraf,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await expect(service.sendExamVideo('111', 'file-1', 'video')).resolves.toBe(false);
+  });
+
+  it('с ботом — уходит через callApi("sendVideo")', async () => {
+    const { factory, sendVideoCalls } = createFakeTelegrafFactory();
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await expect(service.sendExamVideo('111', 'file-1', 'video')).resolves.toBe(true);
+
+    expect(sendVideoCalls).toEqual([{ chatId: '111', video: 'file-1' }]);
+  });
+
+  it('сбой сети — не бросает, только warn в лог', async () => {
+    const { factory } = createFakeTelegrafFactory({ failSendVideo: true });
+    const service = new TelegramBotService(
+      fakeConfig({ BOT_TOKEN: TOKEN }),
+      factory,
+      fakeHandler() as unknown as ChatMemberHandler,
+      fakeHandler() as unknown as StartHandler,
+      ...fakeExtraHandlers(),
+    );
+    service.onApplicationBootstrap();
+
+    await expect(service.sendExamVideo('111', 'file-1', 'video')).resolves.toBe(false);
+  });
+});

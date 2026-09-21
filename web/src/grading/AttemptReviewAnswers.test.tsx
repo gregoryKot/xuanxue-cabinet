@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { AttemptReviewBlockDto } from '@xuanxue/shared';
 import { AttemptReviewAnswers } from './AttemptReviewAnswers';
-import type { AttemptReviewVideoControls } from './useAttemptReview';
+import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
 const BLOCKS: AttemptReviewBlockDto[] = [
   {
@@ -27,6 +27,10 @@ function makeVideo(
     media: [],
     markMediaManual: () => Promise.resolve(true),
     markMediaStateFor: () => ({ pending: false, error: null }),
+    sendMediaToMe: () => Promise.resolve(true),
+    sendMediaStateFor: () => ({ pending: false, error: null, sent: false }),
+    botChatActive: true,
+    offersTelegramLink: false,
     ...overrides,
   };
 }

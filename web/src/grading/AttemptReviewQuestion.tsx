@@ -35,7 +35,7 @@ import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { AttemptReviewQuestionOptions } from './AttemptReviewQuestionOptions';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
 import { formatOptionsCheckSummary } from './optionsCheckSummary';
-import type { AttemptReviewVideoControls } from './useAttemptReview';
+import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -132,6 +132,10 @@ export function AttemptReviewQuestion({
           onMarkManual={() => video.markMediaManual(question.itemId)}
           marking={video.markMediaStateFor(question.itemId).pending}
           markError={video.markMediaStateFor(question.itemId).error}
+          onSendToMe={video.sendMediaToMe}
+          sendStateFor={video.sendMediaStateFor}
+          botChatActive={video.botChatActive}
+          offersTelegramLink={video.offersTelegramLink}
         />
       ) : (
         <p style={answerStyle}>

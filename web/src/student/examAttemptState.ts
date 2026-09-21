@@ -62,5 +62,5 @@ export function formatAttemptsLeft(exam: MyExamDto): string {
 export function describeNoAction(exam: MyExamDto): string {
   if (exam.lastAttempt?.status === 'graded') return 'Экзамен проверен';
   if (exam.lastAttempt?.status === 'submitted') return 'Отправлено, ждём проверки';
-  return 'Учитель пока не открыл ни одной попытки';
+  return 'Попыток по этому экзамену пока нет';
 }

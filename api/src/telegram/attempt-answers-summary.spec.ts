@@ -136,7 +136,7 @@ describe('attemptAnswersSummary', () => {
     expect(text).toContain('Видео не получено.');
   });
 
-  it('видео получено через бота — напоминание, что оно уже переслано в чат', () => {
+  it('видео получено через бота — факт получения, без обещания «уже переслано»', () => {
     const media: ExamMediaDto[] = [
       {
         id: 'm1',
@@ -148,7 +148,8 @@ describe('attemptAnswersSummary', () => {
     ];
     const text = attemptAnswersSummary(blocks([question({ kind: 'video' })]), media);
 
-    expect(text).toContain('переслано вам в этом чате');
+    expect(text).toContain('Видео получено.');
+    expect(text).not.toContain('переслано');
   });
 
   it('видео по ссылке — сама ссылка в тексте', () => {

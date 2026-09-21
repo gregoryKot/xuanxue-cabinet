@@ -186,7 +186,7 @@ describe('ExamMediaMessageHandler', () => {
     await handler.handle(ctx, 111, SESSION, NOW);
 
     expect(replies).toEqual([
-      'Видео получено, спасибо! Учитель уже может его посмотреть.',
+      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
     ]);
     expect(clear).toHaveBeenCalledWith(111);
     expect(sentMessages).toEqual([
@@ -272,7 +272,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await expect(handler.handle(ctx, 111, SESSION, NOW)).resolves.toBeUndefined();
     expect(replies).toEqual([
-      'Видео получено, спасибо! Учитель уже может его посмотреть.',
+      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
     ]);
   });
 
@@ -406,7 +406,7 @@ describe('ExamMediaMessageHandler', () => {
     await handler.handle(ctxWithoutChat, 111, SESSION, NOW);
 
     expect(replies).toContain(
-      'Видео получено, спасибо! Учитель уже может его посмотреть.',
+      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
     );
     expect(copiedTo).toEqual([]);
   });
@@ -460,7 +460,7 @@ describe('ExamMediaMessageHandler', () => {
     await handler.handle(ctx, 111, IN_FLOW_SESSION, NOW);
 
     expect(replies).not.toContain(
-      'Видео получено, спасибо! Учитель уже может его посмотреть.',
+      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
     );
     expect(replies.some((r) => r.includes('Видео получено.'))).toBe(true);
   });

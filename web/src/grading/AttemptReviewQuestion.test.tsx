@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { AttemptReviewQuestionDto } from '@xuanxue/shared';
 import { AttemptReviewQuestion } from './AttemptReviewQuestion';
-import type { AttemptReviewVideoControls } from './useAttemptReview';
+import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
 // По умолчанию — вопрос без ответа: у базовой формы (options: []) ни
 // answerText, ни selected нет, так что честный default — answered: false, а
@@ -29,6 +29,10 @@ function makeVideo(
     media: [],
     markMediaManual: () => Promise.resolve(true),
     markMediaStateFor: () => ({ pending: false, error: null }),
+    sendMediaToMe: () => Promise.resolve(true),
+    sendMediaStateFor: () => ({ pending: false, error: null, sent: false }),
+    botChatActive: true,
+    offersTelegramLink: false,
     ...overrides,
   };
 }

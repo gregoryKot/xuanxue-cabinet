@@ -20,6 +20,7 @@
 // из общего `blockCardStyle` (components/listCardStyles.ts).
 import type { CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 import { blockCardStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import {
@@ -32,9 +33,11 @@ import {
 } from '../components/screenLayout';
 import { backLinkStyle } from '../components/editorLayout';
 import { SkeletonLines } from '../components/Skeleton';
+import { showsTelegramOffer } from '../telegram/showsTelegramOffer';
 import { AttemptReviewAnswers } from './AttemptReviewAnswers';
 import { GradingForm } from './GradingForm';
-import { useAttemptReview, type AttemptReviewVideoControls } from './useAttemptReview';
+import { useAttemptReview } from './useAttemptReview';
+import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
 const GRADING_HEADING_ID = 'grading-heading';
 const GRADING_HINT = 'Итог и комментарий уйдут ученику в Telegram сразу после отправки.';
@@ -65,7 +68,13 @@ export default function AttemptReviewScreen() {
     saveError,
     markMediaManual,
     markMediaStateFor,
+    sendMediaToMe,
+    sendMediaStateFor,
   } = useAttemptReview(attemptId ?? '');
+  // Кнопка «Прислать мне в Telegram» видна только тому, у кого активный чат
+  // с ботом — сессия уже загружена, экран под RequireAuth (тот же приём, что
+  // attempt/AttemptScreen.tsx читает me.telegramLinked).
+  const { me } = useAuth();
 
   if (loading) {
     return (
@@ -90,6 +99,10 @@ export default function AttemptReviewScreen() {
     media: review.media ?? [],
     markMediaManual,
     markMediaStateFor,
+    sendMediaToMe,
+    sendMediaStateFor,
+    botChatActive: me?.botChatActive ?? false,
+    offersTelegramLink: showsTelegramOffer(me),
   };
 
   return (
