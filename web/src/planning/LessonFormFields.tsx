@@ -11,6 +11,7 @@ import {
 import { Field, inputStyle } from '../components/Field';
 import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
 import { inheritedZoomHint } from './inheritedZoom';
 import { LessonZoomFields } from './LessonZoomFields';
@@ -62,8 +63,7 @@ export function LessonFormFields({
     <>
       {isCreate && (
         <Field label="Занятие расписания">
-          <select
-            style={inputStyle}
+          <Select
             value={state.classId}
             onChange={(e) => setField('classId', e.target.value)}
           >
@@ -72,7 +72,7 @@ export function LessonFormFields({
                 {cls.title}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       )}
 

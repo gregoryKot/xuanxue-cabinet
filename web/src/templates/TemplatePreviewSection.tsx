@@ -7,10 +7,11 @@
 // правки не сохранены, кнопка недоступна и об этом сказано строкой, а не
 // молчанием (docs/PLAN.md §6 «Шаблоны»).
 import type { LessonDto, TemplateKind } from '@xuanxue/shared';
-import { Field, inputStyle } from '../components/Field';
+import { Field } from '../components/Field';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { PostPreview } from '../components/PostPreview';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
+import { Select } from '../components/Select';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { formatDateTime } from '../lib/formatDate';
 import { useAutoPreview } from './useAutoPreview';
@@ -54,11 +55,7 @@ export function TemplatePreviewSection({
         <LoadErrorBanner message={lessonsError} onRetry={onRetryLessons} />
       ) : (
         <Field label="Предпросмотр на занятии">
-          <select
-            style={inputStyle}
-            value={lessonId}
-            onChange={(e) => setLessonId(e.target.value)}
-          >
+          <Select value={lessonId} onChange={(e) => setLessonId(e.target.value)}>
             <option value="">Выберите занятие</option>
             {lessons.map((lesson) => (
               <option key={lesson.id} value={lesson.id}>
@@ -66,7 +63,7 @@ export function TemplatePreviewSection({
                 {badge && ` · ${badge}`} · {lesson.topic || 'Тема не задана'}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       )}
 

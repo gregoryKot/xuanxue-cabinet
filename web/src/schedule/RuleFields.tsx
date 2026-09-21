@@ -9,6 +9,7 @@ import type { CSSProperties } from 'react';
 import { CLASS_LIMITS, WEEKDAYS, WEEKDAY_LABELS_RU, type Weekday } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { inputStyle } from '../components/Field';
+import { Select } from '../components/Select';
 import type { RuleDraft } from './classFormInput';
 
 const fieldsetStyle: CSSProperties = {
@@ -27,6 +28,9 @@ const rowStyle: CSSProperties = {
   flexWrap: 'wrap',
 };
 const narrowInputStyle: CSSProperties = { ...inputStyle, width: 90 };
+// Тот же узкий столбец 90px и для обёртки select'а дня недели — саму
+// геометрию задаёт обёртка (Select.tsx), не select внутри неё.
+const narrowSelectWrapStyle: CSSProperties = { width: 90 };
 
 const NEW_RULE: RuleDraft = { weekday: 0, time: '19:00', durationMinText: '60' };
 
@@ -49,9 +53,9 @@ export function RuleFields({ rules, onChange }: RuleFieldsProps) {
       <legend style={legendStyle}>Дни и время</legend>
       {rules.map((rule, index) => (
         <div key={rule.id ?? `new-${index}`} style={rowStyle}>
-          <select
+          <Select
             aria-label="День недели"
-            style={narrowInputStyle}
+            style={narrowSelectWrapStyle}
             value={rule.weekday}
             onChange={(e) =>
               updateRule(index, { weekday: Number(e.target.value) as Weekday })
@@ -62,7 +66,7 @@ export function RuleFields({ rules, onChange }: RuleFieldsProps) {
                 {WEEKDAY_LABELS_RU[day]}
               </option>
             ))}
-          </select>
+          </Select>
           <input
             type="time"
             aria-label="Время начала"

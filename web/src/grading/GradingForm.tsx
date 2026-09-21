@@ -14,6 +14,7 @@ import {
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError, type FormError } from '../components/FormServerError';
+import { Select } from '../components/Select';
 import { GradingCommentPresets } from './GradingCommentPresets';
 import {
   appendPresetText,
@@ -70,8 +71,7 @@ export function GradingForm({ grading, onSubmit, saving, saveError }: GradingFor
       </Field>
 
       <Field label="Итог">
-        <select
-          style={inputStyle}
+        <Select
           value={state.outcome}
           onChange={(e) =>
             setState((prev) => ({
@@ -86,7 +86,7 @@ export function GradingForm({ grading, onSubmit, saving, saveError }: GradingFor
               {GRADING_OUTCOME_LABELS_RU[outcome]}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
 
       {validationError && (
