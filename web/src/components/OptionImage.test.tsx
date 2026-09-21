@@ -16,15 +16,9 @@ describe('OptionImage', () => {
     expect(img).toHaveAttribute('src', '/api/exam-images/652f00000000000000000001');
   });
 
-  it('thumb — ниже full по maxHeight', () => {
-    const { rerender } = render(
-      <OptionImage imageId="i1" alt="Вариант 1" size="thumb" />,
-    );
-    const thumbHeight = screen.getByRole('img').style.maxHeight;
+  it('tile — картинка вписывается в высоту плитки (maxHeight: 100%), не в свой пиксельный потолок', () => {
+    render(<OptionImage imageId="i1" alt="Вариант 1" size="tile" />);
 
-    rerender(<OptionImage imageId="i1" alt="Вариант 1" size="full" />);
-    const fullHeight = screen.getByRole('img').style.maxHeight;
-
-    expect(parseInt(thumbHeight, 10)).toBeLessThan(parseInt(fullHeight, 10));
+    expect(screen.getByRole('img')).toHaveStyle({ maxHeight: '100%' });
   });
 });
