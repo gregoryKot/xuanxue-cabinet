@@ -2,10 +2,10 @@
 // (владелец из сессии, SECURITY §3) и ручная отметка учителя (роль). Основной
 // путь — сообщение боту — не HTTP, его привязка проверена против настоящей
 // Mongo в media-assets.service.spec.ts (SECURITY §3: чужой attemptId ничего
-// не привязывает). itemId (ADR-0037) — отдельным файлом,
-// exam-media-item.e2e-spec.ts (файл-лимит, тот же приём, что
-// exam-attempts-deadline.e2e-spec.ts у exam-attempts.e2e-spec.ts). Настоящий
-// AppModule на MongoMemoryServer.
+// не привязывает). itemId (ADR-0037) и замена ссылки (ADR-0086) — отдельными
+// файлами, exam-media-item.e2e-spec.ts и exam-media-replace.e2e-spec.ts
+// (файл-лимит, тот же приём, что exam-attempts-deadline.e2e-spec.ts у
+// exam-attempts.e2e-spec.ts). Настоящий AppModule на MongoMemoryServer.
 import type { ApiErrorBody, AttemptReviewDto, ExamAttemptDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -90,28 +90,8 @@ describe('Видео экзамена — ссылка и ручная отме�
       expect((res.body as ApiErrorBody).code).toBe('not_found');
     });
 
-    it('вторая ссылка на ту же попытку — 409, первая остаётся', async () => {
-      const { cookie } = await createUserWithSession(testApp.app, {
-        name: 'Ученик',
-        roles: [],
-      });
-      const attemptId = await startedAttempt(cookie);
-      await withCsrf(request(server()).post(`/api/attempts/${attemptId}/media/link`))
-        .set('Cookie', cookie)
-        .send({ url: 'https://vk.com/video-1' });
-
-      const second = await withCsrf(
-        request(server()).post(`/api/attempts/${attemptId}/media/link`),
-      )
-        .set('Cookie', cookie)
-        .send({ url: 'https://vk.com/video-2' });
-
-      expect(second.status).toBe(409);
-      const list = await request(server()).get('/api/attempts').set('Cookie', cookie);
-      const attempt = (list.body as ExamAttemptDto[]).find((a) => a.id === attemptId);
-      expect(attempt?.media).toHaveLength(1);
-      expect(attempt?.media?.[0]?.url).toBe('https://vk.com/video-1');
-    });
+    // Замена повторной ссылкой на тот же вопрос (ADR-0086) — отдельным
+    // файлом, exam-media-replace.e2e-spec.ts (файл-лимит).
   });
 
   describe('POST /attempts/:id/media/manual', () => {

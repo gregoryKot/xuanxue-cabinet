@@ -23,16 +23,16 @@
 // `!telegramLinked`: отметившему «у меня нет Telegram» (ADR-0067) звать
 // некуда, а форма ссылки — его путь ответить в любом случае.
 //
-// Видео уже получено — вместо формы честная строка, что и когда пришло:
-// показать форму заново после того, как всё уже сделано, читается как
-// «кабинет не поверил», что противоречит Read-after-write (CLAUDE.md).
-import { formatExamMediaReceivedAt } from '../lib/examMedia';
+// Ответ уже есть или работу уже проверили — оба состояния живут в
+// AttemptVideoAnswered.tsx (ADR-0086): форма ссылки там не прячется, потому
+// что заменить ошибочную ссылку больше нечем, а у проверенной работы нет ни
+// формы, ни бота — бэкенд ответа уже не примет.
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
+import { AttemptVideoAnswered } from './AttemptVideoAnswered';
 import { AttemptVideoHowTo } from './AttemptVideoHowTo';
 import {
   attemptVideoHintStyle,
-  attemptVideoReceivedListStyle,
   attemptVideoTelegramLinkStyle,
 } from './attemptVideoStyles';
 import { buildExamMediaTelegramLink } from './examMediaDeepLink';
@@ -73,14 +73,8 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
   const { telegramBotUsername } = video;
   const { pending, error } = video.linkStateFor(itemId);
 
-  if (received.length > 0) {
-    return (
-      <ul style={attemptVideoReceivedListStyle}>
-        {received.map((item) => (
-          <li key={item.id}>{formatExamMediaReceivedAt(item)}.</li>
-        ))}
-      </ul>
-    );
+  if (received.length > 0 || !video.acceptsAnswers) {
+    return <AttemptVideoAnswered itemId={itemId} video={video} received={received} />;
   }
 
   return (
