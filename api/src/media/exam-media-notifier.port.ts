@@ -22,7 +22,7 @@ import type { DateTime } from 'luxon';
  * itemId и нашёл его в снимке попытки (findQuestionInSnapshot,
  * media-item-lookup.ts). `order` — номер по сквозному порядку, как «Вопрос N
  * из M» на экране бота (flattenAttemptQuestions, exam-question-screen.ts). */
-export interface LinkAttachedQuestion {
+interface LinkAttachedQuestion {
   order: number;
   prompt: string;
 }
