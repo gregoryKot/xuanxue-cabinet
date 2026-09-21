@@ -2,17 +2,19 @@
 // (своего GET /attempts/:id у API нет, useAttempt.ts берёт список и находит
 // по id). Форма ответа и «Отправлено» — свои тесты в AttemptInProgress.test.tsx
 // и AttemptSubmitted.test.tsx, здесь только маршрутизация между ними.
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, ExamMediaDto, MeDto } from '@xuanxue/shared';
+import { ATTEMPTS_LIST_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import AttemptScreen from './AttemptScreen';
+import { ATTEMPT_VIDEO_POLL_INTERVAL_MS } from './useAttemptVideoPoll';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -61,6 +63,13 @@ function renderAt(attemptId: string) {
       </AuthProvider>
     </MemoryRouter>,
   );
+}
+
+/** Сколько раз апи звали ровно по адресу списка попыток — не по `/submit`
+ * или `/media/link`, у них свои пути. Считает случившиеся загрузки попытки:
+ * монтирование, reload() и фоновый refresh() опроса (useAttemptVideoPoll.ts). */
+function attemptsListCallCount(): number {
+  return mockedApiFetch.mock.calls.filter(([path]) => path === ATTEMPTS_LIST_PATH).length;
 }
 
 // Блок с одним видео-вопросом — ADR-0037: у экрана есть кнопка бота и на
@@ -363,5 +372,78 @@ describe('AttemptScreen — попап «Время вышло»', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Закрыть' }));
 
     expect(screen.queryByRole('dialog', { name: 'Время вышло' })).not.toBeInTheDocument();
+  });
+});
+
+// Баг из жалобы: ученик отправляет видео боту в Telegram, бот принимает и
+// сохраняет его, но открытая вкладка кабинета не знала об этом — экран
+// оставался с формой «пришлите запись» до ручной перезагрузки. Нарушение
+// Read-after-write (CLAUDE.md); чинит useAttemptVideoPoll.ts (ADR-0076).
+// Фейковые таймеры — детерминизм (CLAUDE.md): тик тестируется по
+// ATTEMPT_VIDEO_POLL_INTERVAL_MS, не по настоящим 15 секундам.
+describe('AttemptScreen — опрос видео из Telegram', () => {
+  const RECEIVED_MEDIA: ExamMediaDto = {
+    id: 'm1',
+    attemptId: 'a1',
+    itemId: 'q3',
+    kind: 'telegram',
+    receivedAt: '2026-09-12T16:30:00.000Z',
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('видео-вопрос без ответа — через ATTEMPT_VIDEO_POLL_INTERVAL_MS сервер уже отвечает с media, отметка появляется без перезагрузки', async () => {
+    // Ответ меняется между вызовами тем же приёмом, что в тесте на
+    // сохранение ссылки выше: первый GET отдаёт попытку без видео, тик
+    // опроса — уже с ним, как будто бот принял сообщение между ними.
+    let currentAttempt: unknown = IN_PROGRESS;
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(STUDENT_WITH_TELEGRAM);
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotUsername: 'xx_bot' });
+      if (path.startsWith('/attempts')) return Promise.resolve([currentAttempt]);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt('a1');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeInTheDocument();
+    expect(screen.queryByText(/Видео получено/)).not.toBeInTheDocument();
+
+    currentAttempt = { ...IN_PROGRESS, media: [RECEIVED_MEDIA] };
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ATTEMPT_VIDEO_POLL_INTERVAL_MS);
+    });
+
+    // Форма сдачи остаётся (статус попытки не менялся) — отметка появляется
+    // прямо в ней, ученику не нужно ничего нажимать или перезагружать.
+    expect(screen.getByText(/Видео получено/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['видео уже получено', { ...IN_PROGRESS, media: [RECEIVED_MEDIA] }],
+    ['у попытки нет видео-вопросов', { ...IN_PROGRESS, blocks: [] }],
+  ])('%s — тик не делает лишних запросов к /attempts', async (_label, attempt) => {
+    mockPaths([attempt]);
+    renderAt('a1');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const callsBefore = attemptsListCallCount();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ATTEMPT_VIDEO_POLL_INTERVAL_MS * 3);
+    });
+
+    expect(attemptsListCallCount()).toBe(callsBefore);
   });
 });

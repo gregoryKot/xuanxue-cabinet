@@ -23,13 +23,18 @@ export interface UseAttemptResult {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /** Тихое перечитывание без скелетона и баннера ошибки (useAbortableFetch.ts,
+   * ADR-0076) — фоновый опрос, пока ждём видео-ответ из Telegram
+   * (useAttemptVideoPoll.ts): бот принимает видео мимо вкладки, и без этого
+   * поля экран узнал бы о нём только после ручной перезагрузки страницы. */
+  refresh: () => Promise<void>;
   submit: () => Promise<void>;
   submitting: boolean;
   submitError: FormError | null;
 }
 
 export function useAttempt(attemptId: string): UseAttemptResult {
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, refresh } = useAbortableFetch(
     (signal) => apiFetch<ExamAttemptDto[]>(ATTEMPTS_LIST_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
@@ -61,6 +66,7 @@ export function useAttempt(attemptId: string): UseAttemptResult {
     loading,
     error: error ?? (notFound ? ATTEMPT_NOT_FOUND_MESSAGE : null),
     reload,
+    refresh,
     submit,
     submitting,
     submitError,

@@ -5,14 +5,13 @@
 // перетаскиванием: drag-n-drop на телефоне и с клавиатуры — отдельная боль.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
-import { rowControlStyle } from '../components/listCardStyles';
+import { dividedListStyle, rowControlStyle } from '../components/listCardStyles';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
 
 const EMPTY_TEXT = 'Вопросов пока нет — найдите их или заведите новый ниже.';
 const LOADING_TEXT = 'Загружаем вопросы…';
 const MISSING_TEXT = 'Вопрос недоступен — его удалили или спрятали в черновик.';
 
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 // Номер вопроса — текстовым шрифтом, не антиквой: у Cormorant цифры
 // старостильные, и единица в них — голый штрих, неотличимый от римской «I»
 // (ровно та причина, по которой ADR-0043 завёл components/StatNumber.tsx).
@@ -61,7 +60,7 @@ export function ExamQuestionList({
   if (itemIds.length === 0) return <p style={emptyStyle}>{EMPTY_TEXT}</p>;
 
   return (
-    <ol style={listStyle}>
+    <ol style={dividedListStyle}>
       {itemIds.map((itemId, index) => {
         const item = bankItems.find((candidate) => candidate.id === itemId);
         const isRequired = requiredEnabled && requiredIds.includes(itemId);

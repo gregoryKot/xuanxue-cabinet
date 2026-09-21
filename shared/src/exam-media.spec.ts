@@ -2,11 +2,12 @@
 // ошибок в форме, которую ждёт api (details ValidationPipe, VOICE-проверка).
 import { describe, expect, it } from 'vitest';
 import {
-  EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
+  EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE,
   EXAM_MEDIA_INVALID_URL_MESSAGE,
   EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
   EXAM_MEDIA_KINDS,
   EXAM_MEDIA_LIMITS,
+  EXAM_MEDIA_LINK_RACE_MESSAGE,
 } from './exam-media';
 
 describe('EXAM_MEDIA_KINDS', () => {
@@ -26,8 +27,9 @@ describe('тексты ошибок', () => {
   it('непустые и не заканчиваются канцеляритом', () => {
     for (const message of [
       EXAM_MEDIA_INVALID_URL_MESSAGE,
-      EXAM_MEDIA_ALREADY_LINKED_MESSAGE,
+      EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE,
       EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
+      EXAM_MEDIA_LINK_RACE_MESSAGE,
     ]) {
       expect(message.length).toBeGreaterThan(0);
       expect(message).not.toContain('является');

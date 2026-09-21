@@ -260,17 +260,26 @@ describe('AppShell — учитель', () => {
 
 // ADR-0063: значок уведомлений — часть оболочки на обеих ширинах экрана,
 // читает общий счётчик через NotificationsProvider (добавлен в этом же PR).
+// Правка 2026-09-21: на мониторе значок переехал наверх колонки — владелец
+// не нашёл прежнюю текстовую ссылку внизу, в блоке человека.
 describe('AppShell — ссылка на уведомления (ADR-0063)', () => {
-  it('на широком экране — в блоке человека боковой колонки', async () => {
+  it('на широком экране — наверху боковой колонки, не в блоке человека', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     const column = nav.parentElement as HTMLElement;
-    expect(within(column).getByRole('link', { name: 'Уведомления' })).toHaveAttribute(
-      'href',
-      '/notifications',
-    );
+    const notifLink = within(column).getByRole('link', { name: 'Уведомления' });
+    expect(notifLink).toHaveAttribute('href', '/notifications');
+
+    // Точную позицию относительно <nav> проверяет AppNav.test.tsx — здесь
+    // только то, что AppShell не потерял узел среди «Профиль · Выйти»
+    // (прежнее место, откуда владелец его не нашёл).
+    const personBlock = within(column).getByText(/Вы вошли как/)
+      .parentElement as HTMLElement;
+    expect(
+      within(personBlock).queryByRole('link', { name: 'Уведомления' }),
+    ).not.toBeInTheDocument();
   });
 
   it('на телефоне — та же ссылка в верхней строке, рядом со значком профиля', async () => {

@@ -11,6 +11,7 @@ import { useState, type CSSProperties } from 'react';
 import { Button } from '../components/Button';
 import { editorSectionStyle } from '../components/editorLayout';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { dividedListStyle } from '../components/listCardStyles';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
 import { LessonMaterialPicker } from './LessonMaterialPicker';
 import { LessonMaterialRow } from './LessonMaterialRow';
@@ -40,7 +41,6 @@ const sectionStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 10,
 };
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 const actionsStyle: CSSProperties = { display: 'flex', gap: 16, flexWrap: 'wrap' };
 
 interface LessonMaterialsSectionProps {
@@ -73,7 +73,7 @@ export function LessonMaterialsSection({ lessonId }: LessonMaterialsSectionProps
       )}
 
       {materials.length > 0 && (
-        <ul style={listStyle}>
+        <ul style={dividedListStyle}>
           {materials.map((material) => (
             <LessonMaterialRow
               key={material.id}

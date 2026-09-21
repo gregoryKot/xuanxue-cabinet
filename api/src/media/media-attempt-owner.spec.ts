@@ -48,12 +48,13 @@ describe('loadAttemptOwnerInfo', () => {
   async function createAttempt(fields: {
     examTitle: string;
     blocks: string;
+    status?: 'in_progress' | 'submitted' | 'graded';
   }): Promise<string> {
     const doc = await attemptModel.create({
       userId: new Types.ObjectId(),
       examId: new Types.ObjectId(),
       examTitle: fields.examTitle,
-      status: 'in_progress',
+      status: fields.status ?? 'in_progress',
       attemptNo: 1,
       startedAt: new Date('2026-09-18T10:00:00.000Z'),
       blocks: fields.blocks,
@@ -82,6 +83,21 @@ describe('loadAttemptOwnerInfo', () => {
 
     expect(info?.examTitle).toBe('Экзамен на пояс');
     expect(info?.blocks).toEqual(BLOCKS);
+  });
+
+  // ADR-0086: addLink запрещает замену ссылки после graded — статус обязан
+  // дойти до сервиса тем же запросом, что владелец и снимок, не вторым
+  // походом в базу.
+  it('статус попытки читается плоским полем, без расшифровки', async () => {
+    const id = await createAttempt({
+      examTitle: 'Экзамен',
+      blocks: JSON.stringify(BLOCKS),
+      status: 'graded',
+    });
+
+    const info = await loadAttemptOwnerInfo(attemptModel, id);
+
+    expect(info?.status).toBe('graded');
   });
 
   it('блоки не разобрались — пустой список, а не падение', async () => {

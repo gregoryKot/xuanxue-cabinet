@@ -44,6 +44,7 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
     offersTelegramLink: false,
+    acceptsAnswers: true,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
     ...overrides,
@@ -104,7 +105,10 @@ describe('AttemptSubmittedVideos', () => {
     ]);
   });
 
-  it('видео получено у одного вопроса — у другого остаётся форма', () => {
+  // ADR-0086: форма ссылки остаётся и у вопроса с уже полученным видео
+  // (замена ошибочной ссылки), и у вопроса без видео — форм всегда столько,
+  // сколько видео-вопросов в попытке.
+  it('видео получено у одного вопроса — форма остаётся у обоих', () => {
     const received: ExamMediaDto = {
       id: 'm1',
       attemptId: 'a1',
@@ -116,7 +120,7 @@ describe('AttemptSubmittedVideos', () => {
     renderVideos(makeAttempt(TWO_VIDEO_QUESTIONS), makeVideo({ media: [received] }));
 
     expect(screen.getByText(/Видео получено/)).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(2);
   });
 
   it('запись без itemId — строка «видео без вопроса»', () => {
