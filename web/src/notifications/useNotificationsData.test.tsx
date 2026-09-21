@@ -16,7 +16,7 @@ import {
   notificationReadPath,
 } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
-import { ApiError } from '../api/http';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import {
   mockApiByPath,
@@ -263,6 +263,23 @@ describe('useNotificationsData — actionError (аудит 2026-09-21, MED)', ()
 
     expect(result.current.actionError).toBe('Сервис недоступен');
     expect(result.current.unreadCount).toBe(1);
+  });
+
+  // Ветка «не ApiError» (сеть оборвалась до ответа, не дошла до конверта
+  // ошибки бэкенда) — покрывает fallback NETWORK_ERROR_MESSAGE в
+  // useNotificationsActions.ts, а не только текст сервера из ApiError.
+  it('markRead упал не-ApiError ошибкой — общий текст NETWORK_ERROR_MESSAGE', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
+    });
+    const { result } = renderNotificationsData(STUDENT_ME);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockApiByPath({ [notificationReadPath(UNREAD.id)]: new Error('boom') });
+    await act(() => result.current.markRead(UNREAD.id));
+
+    expect(result.current.actionError).toBe(NETWORK_ERROR_MESSAGE);
   });
 
   it('reload() гасит actionError — баннер не висит после удачного повтора', async () => {

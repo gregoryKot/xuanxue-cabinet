@@ -67,6 +67,11 @@ export default function NotificationsScreen() {
 
   const groups = items !== null ? groupByDay(items, nowIso) : null;
   const isEmpty = items !== null && items.length === 0 && newTasks.length === 0;
+  // Один баннер на error (сбой загрузки) и actionError (сбой markRead/
+  // markAllRead, аудит 2026-09-21) — оба текста непустые, `?? ''` был бы
+  // недостижимой веткой (баннер ниже рендерится только когда bannerMessage
+  // истинен).
+  const bannerMessage = error ?? actionError;
   // Условие — общий предикат telegram/showsTelegramOffer.ts, а не своя
   // проверка здесь: то же предложение стоит ещё на трёх экранах, и условие у
   // всех четырёх обязано меняться разом (ADR-0042 — почему `botChatActive`, а
@@ -92,12 +97,9 @@ export default function NotificationsScreen() {
         }
       />
 
-      {/* actionError — сбой markRead/markAllRead, отдельно от error (сбоя
-          загрузки), но баннер один на оба смысла (аудит 2026-09-21,
-          CLAUDE.md «Одна механика — один компонент»). */}
-      {(error ?? actionError) && (
+      {bannerMessage && (
         <LoadErrorBanner
-          message={error ?? actionError ?? ''}
+          message={bannerMessage}
           onRetry={() => void reload()}
           retryLabel="Обновить"
         />

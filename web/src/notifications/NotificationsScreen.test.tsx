@@ -309,6 +309,20 @@ describe('NotificationsScreen — пустой экран', () => {
   });
 });
 
+// Лента непустая, но чата с ботом всё равно нет — предложение не привязано к
+// пустому экрану, оно ниже ленты, за волосяной линией (telegramRowStyle).
+describe('NotificationsScreen — предложение связать Telegram под непустой лентой', () => {
+  it('строки есть, чата с ботом нет — предложение видно под лентой', async () => {
+    renderScreen({
+      '/auth/me': ME_NOT_LINKED,
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    await screen.findByText('Текст события');
+    expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
+  });
+});
+
 describe('NotificationsScreen — ошибка загрузки', () => {
   it('баннер с «Обновить» вместо ленты', async () => {
     renderScreen({

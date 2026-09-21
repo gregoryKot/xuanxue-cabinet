@@ -117,4 +117,37 @@ describe('usePreview', () => {
     });
     expect(result.current.result).toEqual({ text: 'Занятие 2' });
   });
+
+  // Пара к тесту выше: устаревший запрос падает с ошибкой (не резолвится),
+  // а не только опаздывает с успехом — сверка id в catch (не только в success)
+  // не даёт его ошибке затереть уже показанный результат второго вызова.
+  it('гонка — устаревший запрос упал с ошибкой, результат и pending второго не тронуты', async () => {
+    const { result } = renderHook(() => usePreview());
+
+    let rejectFirst: (err: unknown) => void = () => {};
+    mockedApiFetch.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectFirst = reject;
+      }),
+    );
+    mockedApiFetch.mockResolvedValueOnce({ text: 'Занятие 2' });
+
+    let firstPreview!: Promise<void>;
+    act(() => {
+      firstPreview = result.current.preview('lesson_link', 'l1');
+    });
+    await act(async () => {
+      await result.current.preview('lesson_link', 'l2');
+    });
+    expect(result.current.result).toEqual({ text: 'Занятие 2' });
+    expect(result.current.pending).toBe(false);
+
+    await act(async () => {
+      rejectFirst(new Error('boom'));
+      await firstPreview;
+    });
+    expect(result.current.result).toEqual({ text: 'Занятие 2' });
+    expect(result.current.error).toBeNull();
+    expect(result.current.pending).toBe(false);
+  });
 });
