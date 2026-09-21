@@ -20,7 +20,13 @@ afterEach(() => {
 
 describe('PendingEmailNotice', () => {
   it('показывает адрес и объяснение, что делать', () => {
-    render(<PendingEmailNotice email="a@example.com" refresh={vi.fn()} />);
+    render(
+      <PendingEmailNotice
+        email="a@example.com"
+        refresh={vi.fn()}
+        onChangeAddress={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText(/Мы отправили ссылку на a@example\.com/)).toBeInTheDocument();
   });
@@ -29,7 +35,13 @@ describe('PendingEmailNotice', () => {
     const user = userEvent.setup();
     mockedApiFetch.mockResolvedValue(undefined);
     const refresh = vi.fn().mockResolvedValue(undefined);
-    render(<PendingEmailNotice email="a@example.com" refresh={refresh} />);
+    render(
+      <PendingEmailNotice
+        email="a@example.com"
+        refresh={refresh}
+        onChangeAddress={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: 'Прислать ссылку ещё раз' }));
 
@@ -43,7 +55,13 @@ describe('PendingEmailNotice', () => {
   it('сбой повтора — текст ошибки под адресом', async () => {
     const user = userEvent.setup();
     mockedApiFetch.mockRejectedValue(new Error('boom'));
-    render(<PendingEmailNotice email="a@example.com" refresh={vi.fn()} />);
+    render(
+      <PendingEmailNotice
+        email="a@example.com"
+        refresh={vi.fn()}
+        onChangeAddress={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: 'Прислать ссылку ещё раз' }));
 
@@ -52,5 +70,21 @@ describe('PendingEmailNotice', () => {
         'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('«Указать другой адрес» зовёт onChangeAddress', async () => {
+    const user = userEvent.setup();
+    const onChangeAddress = vi.fn();
+    render(
+      <PendingEmailNotice
+        email="a@example.com"
+        refresh={vi.fn()}
+        onChangeAddress={onChangeAddress}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Указать другой адрес' }));
+
+    expect(onChangeAddress).toHaveBeenCalledTimes(1);
   });
 });

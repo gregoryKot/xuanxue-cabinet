@@ -33,6 +33,33 @@ describe('EmailLinkForm — кнопка «Привязать почту»', () 
 
     expect(screen.getByRole('button', { name: 'Привязать почту' })).toBeEnabled();
   });
+
+  it('initialEmail подставляется в поле — кнопка сразу доступна', () => {
+    render(<EmailLinkForm refresh={vi.fn()} initialEmail="a@example.com" />);
+
+    expect(screen.getByLabelText('Почта')).toHaveValue('a@example.com');
+    expect(screen.getByRole('button', { name: 'Привязать почту' })).toBeEnabled();
+  });
+});
+
+describe('EmailLinkForm — «Оставить прежний адрес»', () => {
+  it('без onCancel ссылки нет', () => {
+    render(<EmailLinkForm refresh={vi.fn()} />);
+
+    expect(
+      screen.queryByRole('button', { name: 'Оставить прежний адрес' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('с onCancel ссылка есть и зовёт его', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<EmailLinkForm refresh={vi.fn()} onCancel={onCancel} />);
+
+    await user.click(screen.getByRole('button', { name: 'Оставить прежний адрес' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('EmailLinkForm — отправка', () => {
