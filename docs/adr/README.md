@@ -129,3 +129,4 @@
 | [0091](0091-exam-retry-only-after-time-closes-attempt.md)      | «Пройти ещё раз» — только если попытку закрыло время, не сам ученик                         |
 | [0092](0092-web-push-returns.md)                               | Push возвращается: свой service worker, пинг без содержимого                                |
 | [0093](0093-question-shows-video-by-link-in-its-prompt.md)     | Видео в условии вопроса — ссылкой в самой формулировке, без своего поля                     |
+| [0094](0094-list-is-patched-from-the-write-response.md)        | Список правится из ответа записи; перечитывание остаётся только осознанно                   |

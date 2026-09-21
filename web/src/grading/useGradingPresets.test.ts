@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { GradingCommentPresetDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -57,15 +57,17 @@ describe('useGradingPresets — загрузка', () => {
   });
 });
 
-describe('useGradingPresets — create (read-after-write)', () => {
-  it('POST /grading-presets, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
+describe('useGradingPresets — create (read-after-write, ADR-0087)', () => {
+  it('ровно один запрос — POST возвращает заготовку, список правится ответом записи', async () => {
+    mockedApiFetch.mockResolvedValueOnce([makePreset({ id: 'p1' })]);
     const { result } = renderHook(() => useGradingPresets());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    mockedApiFetch.mockResolvedValueOnce(makePreset());
-    mockedApiFetch.mockResolvedValueOnce([makePreset()]);
-    await result.current.create('Держите центр тяжести');
+    const created = makePreset({ id: 'p2', text: 'Держите центр тяжести' });
+    mockedApiFetch.mockResolvedValueOnce(created);
+    await act(async () => {
+      await result.current.create('Держите центр тяжести');
+    });
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/grading-presets',
@@ -74,26 +76,35 @@ describe('useGradingPresets — create (read-after-write)', () => {
         body: { text: 'Держите центр тяжести' },
       }),
     );
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/grading-presets?limit=200',
-      expect.anything(),
-    );
+    // Загрузка + запись, ни одного похода в сеть сверх этого (нет reload()).
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    // Новая заготовка — в конце: /grading-presets сортирует createdAt по
+    // возрастанию (см. web/src/lib/listPatch.ts).
+    expect(result.current.presets).toEqual([makePreset({ id: 'p1' }), created]);
   });
 });
 
-describe('useGradingPresets — remove (read-after-write)', () => {
-  it('DELETE /grading-presets/:id, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValueOnce([makePreset()]);
+describe('useGradingPresets — remove (read-after-write, ADR-0087)', () => {
+  it('ровно один запрос — DELETE, удалённая заготовка выкинута из списка без второго GET', async () => {
+    mockedApiFetch.mockResolvedValueOnce([
+      makePreset({ id: 'p1' }),
+      makePreset({ id: 'p2' }),
+    ]);
     const { result } = renderHook(() => useGradingPresets());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
+    // DELETE отвечает 204 без тела (apiFetch возвращает undefined) — тем же
+    // приёмом, что и в проде, а не выдуманным телом ответа.
     mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await result.current.remove('p1');
+    await act(async () => {
+      await result.current.remove('p1');
+    });
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/grading-presets/p1',
       expect.objectContaining({ method: 'DELETE' }),
     );
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(result.current.presets).toEqual([makePreset({ id: 'p2' })]);
   });
 });
