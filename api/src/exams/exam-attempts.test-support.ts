@@ -4,6 +4,7 @@
 // CLAUDE.md «Файлы»/«Храповики», jscpd).
 import type { Connection, Model } from 'mongoose';
 import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
+import { ExamVideoDeliveryRegistry } from '../media/exam-video-delivery.registry';
 import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -11,6 +12,7 @@ import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.sche
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
+import { UsersService } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { fakeExamNotifier, type FakeExamNotifier } from './exam-notifier.test-support';
@@ -96,7 +98,9 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   const mediaAssetsService = new MediaAssetsService(
     mediaModel,
     attemptModel,
+    new UsersService(userModel),
     new ExamMediaNotifierRegistry(),
+    new ExamVideoDeliveryRegistry(),
   );
   return {
     memory,

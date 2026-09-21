@@ -41,4 +41,18 @@ export class ExamMediaController {
   ): Promise<ExamMediaDto> {
     return this.mediaAssetsService.addManual(id, body.note, DateTime.utc(), body.itemId);
   }
+
+  // ADR-0095: пересылка учителю в момент получения могла не дойти — эта
+  // кнопка достаёт то же видео заново. Чат — из сессии вызывающего
+  // (SECURITY §3), не из тела запроса, поэтому тела у маршрута нет.
+  @Post(':id/media/:mediaId/send-to-me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles(...STAFF_ONLY_ROLES)
+  sendToMe(
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+    @CurrentUser() user: UserLean,
+  ): Promise<void> {
+    return this.mediaAssetsService.sendToChat(id, mediaId, user.id);
+  }
 }

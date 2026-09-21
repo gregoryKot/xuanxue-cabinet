@@ -17,6 +17,14 @@
 //    не дошло НИКОМУ из адресатов — это и есть тихий отказ, который CLAUDE.md
 //    требует не терять: `error` с ключом для поиска (attemptId), без PII
 //    (имя ученика в лог не идёт, см. api/src/logging/redact-paths.ts).
+//
+// 3 (аудит ADR-0095). Пустой список адресатов раньше молчал — `return` без
+//    следа, только `debug` раз в час внутри PersonalChats. Если бота ещё
+//    никто из штата не подключил или все выключили этот вид, видео не видел
+//    никто, и в логе не было ключа, по которому это найти. Теперь и здесь
+//    `error` с attemptId: карточка проверки (ADR-0095) даёт учителю запросить
+//    то же видео позже, но узнать, что оно вообще не дошло, без этой строки
+//    было неоткуда.
 import { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
@@ -38,7 +46,19 @@ export async function forwardExamVideoToTeachers(
   if (!chat || !message) return;
 
   const chats = await personalChats.listFor('attempt_submitted', now);
-  if (chats.length === 0) return; // пустой список — свой warn раз в час внутри PersonalChats
+  if (chats.length === 0) {
+    // PersonalChats уже сказала «некому» debug-строкой раз в час — этого
+    // достаточно для «канал вообще пуст», но не для конкретного видео: без
+    // отдельного error по нему не найти, что именно осталось непросмотренным
+    // (находка 3 выше).
+    logger.error(
+      'telegram.examMedia.forward: некому переслать — нет адресатов attempt_submitted',
+      {
+        attemptId,
+      },
+    );
+    return;
+  }
 
   const caption = `Видео от ${studentName} — экзамен «${examTitle}».`;
   const delivered = await Promise.all(
