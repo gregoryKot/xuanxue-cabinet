@@ -24,10 +24,17 @@ const chipStyle: CSSProperties = {
   fontSize: 12,
   cursor: 'pointer',
 };
+// `display: 'flex'` здесь не задаём: у `<summary>` он по умолчанию
+// `list-item`, и это то, что рисует системный треугольник раскрытия —
+// поставь `flex`, и Chromium с WebKit его убирают, а подпись превращается в
+// тихую строку 13px без единого признака, что её можно нажать. Выбор
+// проще, чем рисовать свой треугольник и поворачивать его по `[open]` под
+// `prefers-reduced-motion`: раскладку и высоту цели нажатия (CLAUDE.md
+// «Доступность») даёт вертикальный паддинг — тот же приём, что у
+// textLinkHitAreaStyle в screenLayout.ts.
 const summaryStyle: CSSProperties = {
   minHeight: 44,
-  display: 'flex',
-  alignItems: 'center',
+  padding: '10px 0',
   fontSize: 13,
   color: 'var(--ink-soft)',
   cursor: 'pointer',

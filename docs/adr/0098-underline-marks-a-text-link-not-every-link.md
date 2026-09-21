@@ -55,9 +55,10 @@
 
 ## Последствия
 
-- `textLinkStyle` и `textLinkButtonStyle` не приходят в оболочку. Гейт: eslint
-  `no-restricted-imports` на `web/src/app/**` — импорт этих имён туда запрещён
-  с текстом-объяснением.
+- Стили с линией не приходят в оболочку. Гейт: eslint `no-restricted-imports`
+  на `web/src/app/**` — импорт этих имён туда запрещён с текстом-объяснением.
+  Сами имена уточнил [ADR-0099](0099-touch-target-and-visible-line-are-two-elements.md):
+  вместо `textLinkButtonStyle` линию носит `textLinkLineStyle`.
 - Ссылка оболочки берёт готовый стиль из `app/sideNavStyles.ts`, свой литерал
   не заводит.
 - Карточка-ссылка показывает переход знаком «›» после подписи; знак

@@ -40,21 +40,10 @@ interface AppNavProps {
    * телефоне его держит подвал AppShell.tsx, поэтому мобильный вызов может
    * их не передавать вовсе. */
   profileLink?: ReactNode;
-  /** Ссылка на «Уведомления» (ADR-0063) — верх колонки, перед списком
-   * разделов (JSX ниже). Навигация про уведомления не знает, узел приходит
-   * готовым, как profileLink/logoutButton (CLAUDE.md «Логика вне
-   * компонентов»). */
-  notificationsLink?: ReactNode;
   logoutButton?: ReactNode;
 }
 
-export function AppNav({
-  isMobile,
-  me,
-  profileLink,
-  notificationsLink,
-  logoutButton,
-}: AppNavProps) {
+export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps) {
   const { pathname } = useLocation();
   const items = navItemsFor(me).filter(
     (item) => !item.roles || item.roles.some((role) => hasRole(me, role)),
@@ -117,12 +106,10 @@ export function AppNav({
       <span style={sideBrandRowStyle}>
         <SchoolBrandLink to={rootPathFor(me)} />
       </span>
-      {/* Наверху колонки, не внизу у «Профиль · Выйти»: владелец не нашёл
-          тусклую текстовую ссылку в блоке человека (отзыв 2026-09-21) —
-          колокольчик (NotificationsNavLink.tsx) теперь первым пунктом видимой
-          строки. Снаружи `<nav>` по той же причине, что знак школы и блок
-          человека ниже, — см. комментарий у самого `<nav>`. */}
-      {notificationsLink}
+      {/* Колокольчика здесь нет: в колонке он стоял отдельным пунктом перед
+          разделами и спорил с ними весом, хотя домена школы у уведомлений
+          нет (ADR-0025). Его место — правый верхний угол содержимого
+          (AppShell.tsx, contentTopBarStyle), как на телефоне. */}
       <nav style={sideSectionsStyle} aria-label={SECTIONS_LABEL}>
         {links}
       </nav>

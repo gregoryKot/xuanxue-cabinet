@@ -102,7 +102,7 @@ export function AttemptReviewMediaItem({
           {item.url}
         </a>
       )}
-      {/* Плеер под ссылкой (ADR-0099) — смотреть, не уходя с карточки
+      {/* Плеер под ссылкой (ADR-0100) — смотреть, не уходя с карточки
           проверки; ссылка остаётся, см. комментарий там же. */}
       {item.kind === 'link' && item.url && (
         <VideoEmbed url={item.url} title="Запись ученика" />

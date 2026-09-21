@@ -15,11 +15,8 @@ import { MATERIALS_PATH } from '../api/apiPaths';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { dividedListStyle } from '../components/listCardStyles';
 import { SearchField } from '../components/SearchField';
-import {
-  noteStyle,
-  textLinkButtonStyle,
-  textLinkStyle,
-} from '../components/screenLayout';
+import { noteStyle, textLinkStyle } from '../components/screenLayout';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { useMaterials } from '../materials/useMaterials';
 import { filterLibraryCandidates } from './lessonMaterials';
 import { LessonMaterialRow } from './LessonMaterialRow';
@@ -93,9 +90,7 @@ export function LessonMaterialPicker({
         </ul>
       )}
 
-      <button type="button" style={textLinkButtonStyle} onClick={onClose}>
-        {CLOSE_LABEL}
-      </button>
+      <TextLinkButton onClick={onClose}>{CLOSE_LABEL}</TextLinkButton>
     </div>
   );
 }
