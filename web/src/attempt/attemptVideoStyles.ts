@@ -38,12 +38,13 @@ export const attemptVideoReceivedListStyle: CSSProperties = {
   gap: 4,
 };
 
-// Визуально — как Button variant="primary" (components/Button.tsx), но это
+// Визуально — как Button variant="secondary" (components/Button.tsx), но это
 // переход по внешней ссылке (t.me), не действие в кабинете: <a>, не
 // <button> (тот же приём, что StudentLessonMeeting.tsx: zoomLinkStyle).
-// Единственная заливка терракотой на этом экране (правило акцента,
-// docs/adr/0031, осталось в силе после ADR-0043): прислать видео — то, ради
-// чего ученик сюда вернулся.
+// Раньше кнопка держала единственную заливку терракотой экрана (правило
+// акцента, docs/adr/0031); ADR-0084 сделал основным путём ссылку — заливка
+// переехала на «Сохранить ссылку» (AttemptMediaLinkForm.tsx), а бот остался
+// вторым путём с силуэтом контура, не заливки.
 export const attemptVideoTelegramLinkStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -52,8 +53,9 @@ export const attemptVideoTelegramLinkStyle: CSSProperties = {
   padding: '10px 18px',
   borderRadius: 'var(--radius-control)',
   fontWeight: 600,
-  background: 'var(--terracotta)',
-  color: 'var(--terracotta-contrast)',
+  background: 'transparent',
+  color: 'var(--ink)',
+  border: '1px solid var(--control-border)',
   textDecoration: 'none',
   alignSelf: 'flex-start',
 };

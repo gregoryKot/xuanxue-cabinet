@@ -1,5 +1,6 @@
-// Форма «вставить ссылку на видео» — запасной путь ADR-0023 для тех, у кого
-// нет Telegram. Сеть и read-after-write — в useAttempt.ts (addMediaLink),
+// Форма «вставить ссылку на видео» — основной путь ответа на видео-вопрос
+// (ADR-0084, уточняет ADR-0023): доступен всем, не только тем, у кого
+// привязан Telegram. Сеть и read-after-write — в useAttempt.ts (addMediaLink),
 // этот компонент только поле и кнопка, тот же приём, что GradingForm.tsx:
 // pending/error приходят пропсами от экрана, а не своим хуком с fetch.
 import { useState, type FormEvent } from 'react';
@@ -42,13 +43,11 @@ export function AttemptMediaLinkForm({
         />
       </Field>
       <FormServerError error={error} />
-      {/* Контур, не заливка: терракота на этом экране уже занята кнопкой
-          «Отправить видео боту в Telegram» — она и есть главный путь
-          (ADR-0023), а ссылка руками остаётся запасным (правило акцента,
-          docs/adr/0031, осталось в силе после ADR-0043). */}
+      {/* Заливка, вариант по умолчанию: ссылка — основной путь ответа на
+          видео-вопрос (ADR-0084), и единственная заливка терракотой экрана
+          (правило акцента, docs/adr/0031) стоит здесь, а не у кнопки бота. */}
       <Button
         type="submit"
-        variant="secondary"
         style={primaryActionStyle}
         pending={pending}
         disabled={!url.trim()}
