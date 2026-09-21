@@ -287,8 +287,8 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 ## Приложение на телефоне
 
 Манифест, установка на телефон, килсвитч старого service worker —
-[docs/PWA.md](docs/PWA.md); решение — ADR-0032 (заменяет ADR-0006, push
-отменён). Гейт: `scripts/check-pwa.mjs`.
+[docs/PWA.md](docs/PWA.md); решение — ADR-0092 (заменяет ADR-0032, push
+возвращается). Гейт: `scripts/check-pwa.mjs`.
 
 ## Продукт
 
