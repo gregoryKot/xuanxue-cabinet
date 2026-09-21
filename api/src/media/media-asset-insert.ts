@@ -21,7 +21,11 @@ import {
   toExamMediaDto,
   type RawLeanMediaAsset,
 } from './media-asset.mapper';
-import { MEDIA_ASSET_ENCRYPT_SCHEMA, type MediaAssetRecord } from './media-asset.schema';
+import {
+  MEDIA_ASSET_ENCRYPT_SCHEMA,
+  type ExamVideoTelegramType,
+  type MediaAssetRecord,
+} from './media-asset.schema';
 
 export interface MediaAssetInsert {
   attemptId: string;
@@ -30,11 +34,28 @@ export interface MediaAssetInsert {
   kind: ExamMediaKind;
   fileId?: string;
   fileUniqueId?: string;
+  telegramType?: ExamVideoTelegramType;
   url?: string;
   durationSec?: number;
   sizeBytes?: number;
   note?: string;
   receivedAt: DateTime;
+}
+
+// Форма входа attachTelegramVideo и его результата — рядом с MediaAssetInsert,
+// а не в MediaAssetsService (файл-лимит CLAUDE.md «Храповики»): структурно
+// ближе к тому, что здесь пишется в Mongo, чем к бизнес-правилам сервиса.
+export interface TelegramVideoSource {
+  fileId: string;
+  fileUniqueId: string;
+  telegramType?: ExamVideoTelegramType;
+  durationSec?: number;
+  sizeBytes?: number;
+}
+
+export interface AttachedTelegramMedia {
+  media: ExamMediaDto;
+  examTitle: string;
 }
 
 export async function insertMediaAsset(
@@ -49,6 +70,7 @@ export async function insertMediaAsset(
       kind: data.kind,
       fileId: data.fileId,
       fileUniqueId: data.fileUniqueId,
+      telegramType: data.telegramType,
       url: data.url,
       durationSec: data.durationSec,
       sizeBytes: data.sizeBytes,

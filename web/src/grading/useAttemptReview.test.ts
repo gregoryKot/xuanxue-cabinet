@@ -116,60 +116,7 @@ describe('useAttemptReview — отправка оценки', () => {
   });
 });
 
-describe('useAttemptReview — ручная отметка видео (у своего вопроса, ADR-0037)', () => {
-  it('успех: POST на media/manual с itemId, потом перечитанная карточка с media (read-after-write)', async () => {
-    const withMedia = makeReview({
-      media: [
-        {
-          id: 'm1',
-          attemptId: 'a1',
-          itemId: 'q1',
-          kind: 'manual',
-          receivedAt: '2026-09-12T00:00:00Z',
-        },
-      ],
-    });
-    mockedApiFetch
-      .mockResolvedValueOnce(makeReview())
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(withMedia);
-    const { result } = renderHook(() => useAttemptReview('a1'));
-    await waitFor(() => expect(result.current.review).not.toBeNull());
-
-    let succeeded = false;
-    await act(async () => {
-      succeeded = await result.current.markMediaManual('q1');
-    });
-
-    expect(succeeded).toBe(true);
-    expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/manual', {
-      method: 'POST',
-      body: { itemId: 'q1' },
-    });
-    await waitFor(() => expect(result.current.review?.media).toEqual(withMedia.media));
-    expect(result.current.markMediaStateFor('q1')).toEqual({
-      pending: false,
-      error: null,
-    });
-  });
-
-  it('сбой сервера — ошибка видна только у отмеченного вопроса, false возвращается', async () => {
-    mockedApiFetch
-      .mockResolvedValueOnce(makeReview())
-      .mockRejectedValueOnce(new ApiError('Сеть подвела', 500, 'internal_error'));
-    const { result } = renderHook(() => useAttemptReview('a1'));
-    await waitFor(() => expect(result.current.review).not.toBeNull());
-
-    let succeeded = true;
-    await act(async () => {
-      succeeded = await result.current.markMediaManual('q1');
-    });
-
-    expect(succeeded).toBe(false);
-    expect(result.current.markMediaStateFor('q1').error?.message).toBe('Сеть подвела');
-    expect(result.current.markMediaStateFor('q2')).toEqual({
-      pending: false,
-      error: null,
-    });
-  });
-});
+// Ручная отметка видео и «Прислать мне в Telegram» — useAttemptReviewMedia.test.ts
+// (вынесено оттуда же, где и сам хук, CLAUDE.md «Храповики»): здесь достаточно
+// того, что useAttemptReview примешивает результат этого хука в свой (видно по
+// сборке video в AttemptReviewScreen.tsx — она не изменилась).

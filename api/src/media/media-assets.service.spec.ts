@@ -14,6 +14,10 @@ import {
   ExamAttemptSchema,
   type AttemptBlockRecord,
 } from '../exams/exam-attempt.schema';
+import { UserRecord, UserSchema } from '../users/user.schema';
+import { UsersService } from '../users/users.service';
+import type { ExamVideoDeliveryPort } from './exam-video-delivery.port';
+import { ExamVideoDeliveryRegistry } from './exam-video-delivery.registry';
 import { MediaAssetRecord, MediaAssetSchema } from './media-asset.schema';
 import { MediaAssetsService } from './media-assets.service';
 
@@ -67,6 +71,7 @@ describe('MediaAssetsService', () => {
   let connection: Connection;
   let attemptModel: Model<ExamAttemptRecord>;
   let mediaModel: Model<MediaAssetRecord>;
+  let deliveryRegistry: ExamVideoDeliveryRegistry;
   let service: MediaAssetsService;
 
   beforeAll(async () => {
@@ -81,7 +86,14 @@ describe('MediaAssetsService', () => {
       MediaAssetSchema,
     );
     await mediaModel.syncIndexes();
-    service = new MediaAssetsService(mediaModel, attemptModel);
+    const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
+    deliveryRegistry = new ExamVideoDeliveryRegistry();
+    service = new MediaAssetsService(
+      mediaModel,
+      attemptModel,
+      new UsersService(userModel),
+      deliveryRegistry,
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -542,6 +554,152 @@ describe('MediaAssetsService', () => {
 
     it('id не в форме ObjectId — тоже пустой список, не ошибка', async () => {
       await expect(service.listForAttempt('не-id')).resolves.toEqual([]);
+    });
+  });
+
+  // ADR-0088: кнопка «Прислать мне в бота» на карточке проверки.
+  describe('sendToChat', () => {
+    function fakeDeliveryPort(
+      chatId: string | null,
+      sendResult = true,
+    ): {
+      port: ExamVideoDeliveryPort;
+      calls: Parameters<ExamVideoDeliveryPort['sendVideo']>[0][];
+    } {
+      const calls: Parameters<ExamVideoDeliveryPort['sendVideo']>[0][] = [];
+      return {
+        port: {
+          resolveChatId: () => Promise.resolve(chatId),
+          sendVideo: (input) => {
+            calls.push(input);
+            return Promise.resolve(sendResult);
+          },
+        },
+        calls,
+      };
+    }
+
+    /** `attachTelegramVideo` типизирован как `| null` (защита в глубину на
+     * несуществующую попытку), но в этих тестах попытка всегда своя — падение
+     * здесь было бы ошибкой сетапа теста, не проверяемым сценарием, поэтому
+     * `throw`, а не `!` (CLAUDE.md «Код»: non-null assertion — только с
+     * причиной, здесь причины нет, а явная проверка яснее). */
+    async function seedTelegramMedia(
+      attemptId: string,
+      userId: string,
+      telegramType?: 'video' | 'video_note' | 'document',
+    ): Promise<string> {
+      const attached = await service.attachTelegramVideo(
+        attemptId,
+        userId,
+        { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID, telegramType },
+        NOW,
+      );
+      if (!attached) throw new Error('setup: attachTelegramVideo вернул null');
+      return attached.media.id;
+    }
+
+    it('запись другой попытки — NotFoundError, порт не звался', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const otherAttemptId = await seedAttempt(USER_B);
+      const mediaId = await seedTelegramMedia(otherAttemptId, USER_B);
+      const { port, calls } = fakeDeliveryPort('777');
+      deliveryRegistry.set(port);
+
+      await expect(service.sendToChat(attemptId, mediaId, USER_A)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it('kind: link — NotFoundError, порт не звался', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const link = await service.addLink(attemptId, USER_A, 'https://vk.com/video', NOW);
+      const { port, calls } = fakeDeliveryPort('777');
+      deliveryRegistry.set(port);
+
+      await expect(service.sendToChat(attemptId, link.id, USER_A)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it('kind: manual — NotFoundError, порт не звался', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const manual = await service.addManual(attemptId, 'заметка', NOW);
+      const { port, calls } = fakeDeliveryPort('777');
+      deliveryRegistry.set(port);
+
+      await expect(
+        service.sendToChat(attemptId, manual.id, USER_A),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(calls).toEqual([]);
+    });
+
+    it('несуществующая запись — NotFoundError', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const { port } = fakeDeliveryPort('777');
+      deliveryRegistry.set(port);
+
+      await expect(
+        service.sendToChat(attemptId, new Types.ObjectId().toString(), USER_A),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    // Защита в глубину: media_assets не ссылается на exam_attempts внешним
+    // ключом, поэтому попытка теоретически может исчезнуть после того, как
+    // видео к ней уже привязано (например, независимое удаление данных).
+    it('попытка исчезла после привязки видео — NotFoundError, порт не звался', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const mediaId = await seedTelegramMedia(attemptId, USER_A);
+      await attemptModel.deleteOne({ _id: new Types.ObjectId(attemptId) });
+      const { port, calls } = fakeDeliveryPort('777');
+      deliveryRegistry.set(port);
+
+      await expect(service.sendToChat(attemptId, mediaId, USER_A)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it('нет активного чата у вызывающего — ConflictError, Telegram не звался', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const mediaId = await seedTelegramMedia(attemptId, USER_A);
+      const { port, calls } = fakeDeliveryPort(null);
+      deliveryRegistry.set(port);
+
+      await expect(service.sendToChat(attemptId, mediaId, USER_A)).rejects.toBeInstanceOf(
+        ConflictError,
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it('Telegram отказал принять видео — ConflictError', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const mediaId = await seedTelegramMedia(attemptId, USER_A);
+      const { port } = fakeDeliveryPort('555', false);
+      deliveryRegistry.set(port);
+
+      await expect(service.sendToChat(attemptId, mediaId, USER_A)).rejects.toBeInstanceOf(
+        ConflictError,
+      );
+    });
+
+    it('успешный путь — порт получает расшифрованный fileId и сохранённый тип вложения', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const mediaId = await seedTelegramMedia(attemptId, USER_A, 'video_note');
+      const { port, calls } = fakeDeliveryPort('555');
+      deliveryRegistry.set(port);
+
+      await service.sendToChat(attemptId, mediaId, USER_A);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toMatchObject({
+        chatId: '555',
+        fileId: FILE_ID,
+        telegramType: 'video_note',
+      });
+      expect(calls[0]?.caption).toContain('Форма первого уровня');
     });
   });
 });

@@ -32,6 +32,11 @@ interface SendMessageCall {
   replyMarkup?: unknown;
 }
 
+interface SendVideoCall {
+  chatId: string;
+  video: string;
+}
+
 export interface FakeTelegraf {
   factory: TelegrafFactory;
   webhookCalls: WebhookCall[];
@@ -42,18 +47,24 @@ export interface FakeTelegraf {
   editMessageCalls: SendMessageCall[];
   /** Команды, которые бот зарегистрировал в меню Telegram (bot-commands.ts). */
   commandCalls: { command: string; description: string }[][];
+  /** Видео экзамена по file_id (ADR-0088, bot-send-video.ts) — только
+   * `sendVideo`: `sendVideoNote`/`sendDocument` покрыты своим юнитом
+   * (bot-send-video.spec.ts), здесь нужен только факт «дошло/не дошло». */
+  sendVideoCalls: SendVideoCall[];
 }
 
 /** `failSendMessage` — проактивная отправка (PreviewService и т. п.) должна
  * пережить сбой сети, не уронить тик планировщика: спеки проверяют это без
- * настоящего обрыва соединения. */
+ * настоящего обрыва соединения. `failSendVideo` — тот же довод для
+ * TelegramBotService.sendExamVideo (ADR-0088). */
 export function createFakeTelegrafFactory(
-  options: { failSendMessage?: boolean } = {},
+  options: { failSendMessage?: boolean; failSendVideo?: boolean } = {},
 ): FakeTelegraf {
   const webhookCalls: WebhookCall[] = [];
   const sendMessageCalls: SendMessageCall[] = [];
   const editMessageCalls: SendMessageCall[] = [];
   const commandCalls: { command: string; description: string }[][] = [];
+  const sendVideoCalls: SendVideoCall[] = [];
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
     const fakeCallApi = ((method: string, payload?: Record<string, unknown>) => {
@@ -92,6 +103,14 @@ export function createFakeTelegrafFactory(
         });
         return Promise.resolve(true);
       }
+      if (method === 'sendVideo') {
+        if (options.failSendVideo) return Promise.reject(new Error('сеть недоступна'));
+        sendVideoCalls.push({
+          chatId: String((payload?.chat_id as string | number | undefined) ?? ''),
+          video: (payload?.video as string | undefined) ?? '',
+        });
+        return Promise.resolve(true);
+      }
       return Promise.resolve(undefined);
     }) as unknown as Telegraf['telegram']['callApi'];
     bot.telegram.callApi = fakeCallApi;
@@ -106,5 +125,12 @@ export function createFakeTelegrafFactory(
       fakeCallApi;
     return bot;
   };
-  return { factory, webhookCalls, sendMessageCalls, editMessageCalls, commandCalls };
+  return {
+    factory,
+    webhookCalls,
+    sendMessageCalls,
+    editMessageCalls,
+    commandCalls,
+    sendVideoCalls,
+  };
 }

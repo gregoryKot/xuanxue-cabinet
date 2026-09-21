@@ -10,6 +10,11 @@ import type { Message } from 'telegraf/types';
 export interface ExamVideoSource {
   fileId: string;
   fileUniqueId: string;
+  /** Каким видом вложения пришло видео (ADR-0088) — у каждого свой метод Bot
+   * API на повторную отправку (sendVideo/sendVideoNote/sendDocument,
+   * telegram/bot-send-video.ts), поэтому тип сохраняется вместе с file_id, а
+   * не теряется здесь. */
+  telegramType: 'video' | 'video_note' | 'document';
   durationSec?: number;
   sizeBytes?: number;
 }
@@ -24,6 +29,7 @@ export function extractExamVideoSource(
     return {
       fileId: file_id,
       fileUniqueId: file_unique_id,
+      telegramType: 'video',
       durationSec: duration,
       sizeBytes: file_size,
     };
@@ -33,6 +39,7 @@ export function extractExamVideoSource(
     return {
       fileId: file_id,
       fileUniqueId: file_unique_id,
+      telegramType: 'video_note',
       durationSec: duration,
       sizeBytes: file_size,
     };
@@ -43,6 +50,7 @@ export function extractExamVideoSource(
       ? {
           fileId: doc.file_id,
           fileUniqueId: doc.file_unique_id,
+          telegramType: 'document',
           sizeBytes: doc.file_size,
         }
       : null;

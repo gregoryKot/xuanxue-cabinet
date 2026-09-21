@@ -13,7 +13,10 @@
 // незнакомца, В6 аудита); NotificationsModule — NotificationPrefsService
 // (PersonalChats.listFor, кнопки «Уведомления»); MediaModule —
 // MediaAssetsService (ExamMediaMessageHandler, слой 4.5, ADR-0023): бот
-// привязывает видео экзамена и пересылает его учителю. PaymentsModule —
+// привязывает видео экзамена и пересылает его учителю; сюда же кладёт себя
+// TelegramExamVideoDelivery (ADR-0088) — карточка проверки может запросить
+// то же видео ещё раз, не только в момент пересылки
+// (exam-video-delivery.port.ts объясняет инверсию). PaymentsModule —
 // PaymentsService (PaymentScreenshotMessageHandler, слой 2.2, ADR-0050): бот
 // тем же приёмом привязывает скриншот оплаты. Ни один из них не
 // импортирует TelegramModule обратно — цикла нет (ADR-0013). MediaModule в
@@ -67,6 +70,7 @@ import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, createTelegraf } from './telegraf-instance';
 import { TelegramAppErrorAlerts } from './telegram-app-error-alerts';
 import { TelegramBotService } from './telegram-bot.service';
+import { TelegramExamVideoDelivery } from './telegram-exam-video-delivery';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookGuard } from './telegram-webhook.guard';
 
@@ -111,6 +115,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     GradeCommentHandler,
     GradeQueueHandler,
     ExamBotPortRegistry,
+    TelegramExamVideoDelivery,
     PersonalChats,
     BotSessionService,
     BotUserAccessService,

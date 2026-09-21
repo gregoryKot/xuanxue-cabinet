@@ -10,7 +10,7 @@
 import type { CSSProperties } from 'react';
 import type { AttemptReviewBlockDto, ExamMediaDto } from '@xuanxue/shared';
 import { AttemptReviewQuestion } from './AttemptReviewQuestion';
-import type { AttemptReviewVideoControls } from './useAttemptReview';
+import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
 const titleStyle: CSSProperties = { display: 'block', padding: '14px 4px 0' };
 

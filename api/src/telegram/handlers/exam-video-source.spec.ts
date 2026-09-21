@@ -3,7 +3,7 @@ import type { Message } from 'telegraf/types';
 import { extractExamVideoSource } from './exam-video-source';
 
 describe('extractExamVideoSource', () => {
-  it('видео — fileId/fileUniqueId/durationSec/sizeBytes', () => {
+  it('видео — fileId/fileUniqueId/durationSec/sizeBytes, telegramType: video', () => {
     const message = {
       video: { file_id: 'v1', file_unique_id: 'vu1', duration: 62, file_size: 5_000_000 },
     } as unknown as Message;
@@ -11,12 +11,13 @@ describe('extractExamVideoSource', () => {
     expect(extractExamVideoSource(message)).toEqual({
       fileId: 'v1',
       fileUniqueId: 'vu1',
+      telegramType: 'video',
       durationSec: 62,
       sizeBytes: 5_000_000,
     });
   });
 
-  it('«кружок» (video_note) — тот же набор полей', () => {
+  it('«кружок» (video_note) — тот же набор полей, telegramType: video_note', () => {
     const message = {
       video_note: {
         file_id: 'n1',
@@ -29,12 +30,13 @@ describe('extractExamVideoSource', () => {
     expect(extractExamVideoSource(message)).toEqual({
       fileId: 'n1',
       fileUniqueId: 'nu1',
+      telegramType: 'video_note',
       durationSec: 15,
       sizeBytes: 800_000,
     });
   });
 
-  it('документ с video/* — fileId/fileUniqueId/sizeBytes, без durationSec', () => {
+  it('документ с video/* — fileId/fileUniqueId/sizeBytes, без durationSec, telegramType: document', () => {
     const message = {
       document: {
         file_id: 'd1',
@@ -47,6 +49,7 @@ describe('extractExamVideoSource', () => {
     expect(extractExamVideoSource(message)).toEqual({
       fileId: 'd1',
       fileUniqueId: 'du1',
+      telegramType: 'document',
       durationSec: undefined,
       sizeBytes: 9_000_000,
     });

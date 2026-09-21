@@ -13,9 +13,12 @@ function makeMedia(overrides: Partial<ExamMediaDto> = {}): ExamMediaDto {
 }
 
 describe('describeMediaSource', () => {
-  it('telegram — куда идти смотреть', () => {
+  // Не «видео смотрите там же»: пересылка при получении уходила не всем
+  // (AttemptReviewMediaItem.test.tsx) — куда идти дальше, говорит уже
+  // карточка, не эта строка.
+  it('telegram — факт способа, без обещания, что видео уже в чате', () => {
     expect(describeMediaSource(makeMedia({ kind: 'telegram' }))).toBe(
-      'Переслано боту в Telegram. Видео смотрите там же.',
+      'Прислано сообщением боту в Telegram.',
     );
   });
 
