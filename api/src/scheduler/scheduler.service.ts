@@ -20,6 +20,7 @@ import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
+import { SchedulerHeartbeat } from './scheduler-heartbeat';
 
 @Injectable()
 export class SchedulerService implements OnApplicationShutdown {
@@ -42,19 +43,25 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
     private readonly storageOrphansService: StorageOrphansService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
+    private readonly heartbeat: SchedulerHeartbeat,
   ) {}
 
   // waitForCompletion: если предыдущий тик ещё не завершился, cron пропускает
   // текущий запуск целиком — наш код в этот момент не вызывается вовсе,
   // поэтому свой warn о пропуске здесь не нужен и не может быть точным.
+  // heartbeat — аудит 2026-09-21 (MED): без него зависший тик молчал бы
+  // вечно, а /api/health отвечал бы ok (RUNBOOK §8 п.4). Начало — до
+  // runTick(), конец — в finally, чтобы отметиться и при падении шага.
   @Cron(CronExpression.EVERY_MINUTE, { waitForCompletion: true })
   async tick(): Promise<void> {
+    this.heartbeat.noteTickStarted(DateTime.utc());
     const run = this.runTick();
     this.inFlight = run;
     try {
       await run;
     } finally {
       this.inFlight = null;
+      this.heartbeat.noteTickFinished(DateTime.utc());
     }
   }
 

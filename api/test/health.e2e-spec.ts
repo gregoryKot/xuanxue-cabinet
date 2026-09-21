@@ -32,6 +32,21 @@ describe('Health (e2e)', () => {
     expect((requestId as string).length).toBeGreaterThan(0);
   });
 
+  // create-app.ts ставит SCHEDULER_ENABLED='false' (реальный тик на живом
+  // времени лишний в e2e) — health.controller.ts обязан честно сообщить, что
+  // планировщик выключен, а не «протух» отсутствием heartbeat (аудит
+  // 2026-09-21, MED, RUNBOOK §8 п.4).
+  it('GET /api/health — поле scheduler с enabled: false, пока SCHEDULER_ENABLED=false', async () => {
+    const res = await request(server()).get('/api/health');
+
+    const body = res.body as HealthStatus;
+    expect(body.scheduler).toEqual({
+      enabled: false,
+      lastTickFinishedAt: null,
+      stale: false,
+    });
+  });
+
   // create-app.ts не задаёт RAILWAY_GIT_COMMIT_SHA (её ставит только Railway
   // и docker-смок CI, RUNBOOK §2 п.1) — в e2e поле должно реально отсутствовать
   // в теле JSON-ответа, не просто быть undefined в объекте до сериализации
