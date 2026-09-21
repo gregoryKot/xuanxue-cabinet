@@ -23,12 +23,37 @@ jobs:
   api:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Версия бинаря mongod для mongodb-memory-server — зафиксирована явно, а
+      # не оставлена на дефолт библиотеки: иначе апдейт mongodb-memory-server
+      # тихо меняет версию бинаря, ключ кеша ниже её не видит, и кеш продолжает
+      # отдавать старую версию мимо факта, что скачивалась бы уже новая.
+      MONGOMS_VERSION: '8.2.6'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      # Наблюдение 2026-09-21: fastdl.mongodb.org ответил 503 на скачивании
+      # бинаря mongod (122 МБ) — джоба падала ДО тестов на чужом CDN. Библиотека
+      # сама выбирает каталог загрузки по INIT_CWD/cwd процесса, который плывёт
+      # между `npm ci` (корень), `npm test --workspace=api` (корень) и `npx jest`
+      # из scripts/check-coverage-ratchet.mjs (cwd=api/) — см. заголовок
+      # api/test/jest.global-setup.ts. `MONGOMS_DOWNLOAD_DIR` перебивает этот
+      # подбор одним и тем же путём во всех трёх местах, поэтому кешировать
+      # можно ровно его — без выбора «угадать, куда легла библиотека».
+      - name: каталог загрузки бинаря mongod — один и тот же для npm ci и всех jest
+        run: echo "MONGOMS_DOWNLOAD_DIR=$HOME/.cache/mongodb-binaries" >> "$GITHUB_ENV"
+      # До `npm ci`: она полностью пересоздаёт node_modules, так что кеш внутри
+      # node_modules/.cache не пережил бы её — каталог из MONGOMS_DOWNLOAD_DIR
+      # снаружи node_modules, поэтому порядок наоборот не обязателен, но кеш
+      # ставим первым, чтобы бинарь уже был на месте к моменту постинсталла.
+      - name: кеш бинаря mongod
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
+          key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
       - run: npm ci
       - name: сборка shared (api и web резолвят @xuanxue/shared из shared/dist)
         run: npm run build --workspace=shared
