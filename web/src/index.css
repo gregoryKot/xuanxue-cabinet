@@ -179,6 +179,22 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Текст кнопки — цветом окружения, не системным `ButtonText`. Строки списков
+   кабинета (exams/ExamCard.tsx, exam-items/ExamItemCard.tsx,
+   channels/ChannelCard.tsx, materials/MaterialCard.tsx, grading/
+   GradingQueueCard.tsx, components/listCardStyles.ts) — это `<button>` во всю
+   ширину со сброшенными фоном и рамкой, а цвет они не сбрасывали: на
+   мониторе `ButtonText` чёрный, и разницы не видно, а WebKit на iPhone красит
+   его системным синим — заголовки экзаменов антиквой стояли синими, как
+   ссылки (снимок владельца 2026-09-21, экран «Экзамены»). Одно правило
+   здесь, а не `color: inherit` в каждой строке: следующая строка списка
+   забыла бы его точно так же. Кнопкам со своим цветом (components/Button.tsx,
+   pillStyles.ts, TextLinkButton.tsx) инлайн-стиль важнее, их это не трогает.
+   Тот же приём, что у overflow-wrap на body выше. */
+button {
+  color: inherit;
+}
+
 /* Видимый фокус с клавиатуры на любом контроле (CLAUDE.md «Доступность»). */
 :focus-visible {
   outline: 3px solid var(--focus);
@@ -326,6 +342,26 @@ body {
   .xuanxue-form-columns {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 24px;
+  }
+}
+
+/* Поиск (или период журнала) в строке фильтров списка (components/
+   ListFilters.tsx): на мониторе стоит справа от пилюль статуса, одной
+   строкой с ними и не шире 280px. На телефоне четыре пилюли и так занимают
+   две строки, а поле в 280px под ними прижималось к правому краю и висело
+   отдельной заплаткой с пустотой слева (снимок владельца 2026-09-21, экран
+   «Экзамены») — там оно занимает всю ширину. Порог 560px — тот же, что у
+   .xuanxue-form-columns и .xuanxue-block-grid ниже. Класс, не инлайн-стиль:
+   `CSSProperties` не умеет медиа-запрос. */
+.xuanxue-list-filters-trailing {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+@media (min-width: 560px) {
+  .xuanxue-list-filters-trailing {
+    margin-left: auto;
+    flex: 1 1 200px;
+    max-width: 280px;
   }
 }
 
