@@ -59,6 +59,22 @@ describe('EmailCodeForm — кнопка «Войти»', () => {
     await user.type(screen.getByLabelText('Код из письма'), '6');
     expect(button).toBeEnabled();
   });
+
+  // Код из письма человек переносит выделением пальцем, и в буфер попадает
+  // пробел или перевод строки; автоподстановка iOS добавляет своё. Раньше
+  // такой ввод упирался в maxLength и запертую кнопку без объяснений.
+  it('пробелы и буквы из вставленного кода отбрасываются', async () => {
+    const user = userEvent.setup();
+    mockRoutes(() => undefined);
+    renderForm();
+
+    const field = await screen.findByLabelText('Код из письма');
+    await user.click(field);
+    await user.paste(' 123 456 ');
+
+    expect(field).toHaveValue('123456');
+    expect(screen.getByRole('button', { name: 'Войти' })).toBeEnabled();
+  });
 });
 
 describe('EmailCodeForm — поле адреса', () => {

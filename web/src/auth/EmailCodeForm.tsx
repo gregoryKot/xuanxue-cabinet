@@ -23,6 +23,19 @@ const CODE_PLACEHOLDER = Array.from(
   (_, i) => (i + 1) % 10,
 ).join('');
 
+/** Из письма код приезжает вместе с лишним: пробел в хвосте после выделения
+ * пальцем, автоподстановка iOS. Цифры оставляем, всё остальное молча
+ * отбрасываем — иначе такой ввод упирался бы в запертую кнопку, ничего не
+ * объясняя.
+ *
+ * Длину держит эта же чистка, а не `maxLength` у поля: браузер обрезает
+ * вставленную строку по `maxLength` ДО того, как её увидит `onChange`, и от
+ * « 123 456 » оставалось « 123 4» — то есть ровно вставка из письма и
+ * ломалась (тест «пробелы и буквы из вставленного кода отбрасываются»). */
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, '').slice(0, EMAIL_LOGIN_CODE_LENGTH);
+}
+
 interface EmailCodeFormProps {
   email: string;
   /** Передан — поле адреса видно и редактируется: приложение перезапустилось
@@ -59,10 +72,9 @@ export function EmailCodeForm({ email, onEmailChange, inviteCode }: EmailCodeFor
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
-          maxLength={EMAIL_LOGIN_CODE_LENGTH}
           placeholder={CODE_PLACEHOLDER}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => setCode(digitsOnly(e.target.value))}
         />
       </Field>
       <FormServerError error={error ? { message: error } : null} />
