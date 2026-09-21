@@ -339,3 +339,43 @@ describe('NotificationsScreen — ошибка загрузки', () => {
     expect(await screen.findByText('Текст события')).toBeInTheDocument();
   });
 });
+
+// Аудит 2026-09-21 (MED): markRead/markAllRead звались `void ...(...)` без
+// `.catch` — отказ на плохой связи был необработанным promise rejection, и
+// клик/«Прочитать все» молча ничего не делали. Баннер — тот же LoadErrorBanner,
+// что у ошибки загрузки выше (CLAUDE.md «Одна механика — один компонент»).
+describe('NotificationsScreen — сбой отметки прочитанной', () => {
+  it('клик по непрочитанной строке не прошёл — баннер, строка осталась непрочитанной', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    const button = await screen.findByRole('button', { name: /Текст события/ });
+    mockApiByPath({
+      [notificationReadPath('n1')]: new ApiError('Сервис недоступен', 503, 'unknown'),
+    });
+    await user.click(button);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Сервис недоступен');
+    // Счётчик не сброшен молча: «Прочитать все» всё ещё на месте.
+    expect(screen.getByRole('button', { name: 'Прочитать все' })).toBeInTheDocument();
+  });
+
+  it('«Прочитать все» не прошло — тот же баннер', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    const markAllButton = await screen.findByRole('button', { name: 'Прочитать все' });
+    mockApiByPath({
+      [NOTIFICATIONS_READ_ALL_PATH]: new ApiError('Сервис недоступен', 503, 'unknown'),
+    });
+    await user.click(markAllButton);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Сервис недоступен');
+  });
+});

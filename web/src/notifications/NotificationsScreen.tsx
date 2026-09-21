@@ -48,8 +48,17 @@ const telegramRowStyle: CSSProperties = {
 };
 
 export default function NotificationsScreen() {
-  const { items, unreadCount, newTasks, loading, error, reload, markRead, markAllRead } =
-    useNotifications();
+  const {
+    items,
+    unreadCount,
+    newTasks,
+    loading,
+    error,
+    actionError,
+    reload,
+    markRead,
+    markAllRead,
+  } = useNotifications();
   const { me } = useAuth();
 
   // Без useMemo нарочно: зависимостей у момента «сейчас» нет и не будет,
@@ -83,9 +92,12 @@ export default function NotificationsScreen() {
         }
       />
 
-      {error && (
+      {/* actionError — сбой markRead/markAllRead, отдельно от error (сбоя
+          загрузки), но баннер один на оба смысла (аудит 2026-09-21,
+          CLAUDE.md «Одна механика — один компонент»). */}
+      {(error ?? actionError) && (
         <LoadErrorBanner
-          message={error}
+          message={error ?? actionError ?? ''}
           onRetry={() => void reload()}
           retryLabel="Обновить"
         />

@@ -10,8 +10,10 @@
 // неделями не перезагружают — без фонового перечитывания счётчик застыл бы на
 // значении первой отрисовки оболочки.
 //
-// markRead/markAllRead берут ответ записи через applyData (ADR-0087) — оба
-// эндпоинта отдают InboxPageDto целиком, досчитывать unreadCount не нужно.
+// markRead/markAllRead — в useNotificationsActions.ts (try/catch и
+// actionError, аудит 2026-09-21, MED): здесь их только собирают из
+// applyData/reloadFeed ленты, вынесено, чтобы этот файл не перерос 150 строк
+// (check-file-size-ratchet.mjs).
 import { useCallback, useMemo } from 'react';
 import {
   getMyExamAction,
@@ -20,16 +22,16 @@ import {
   type MyExamDto,
   type NotificationDto,
 } from '@xuanxue/shared';
-import {
-  NOTIFICATIONS_FEED_PATH,
-  NOTIFICATIONS_READ_ALL_PATH,
-  notificationReadPath,
-} from '../api/apiPaths';
+import { NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { isTeacher } from '../app/screenAccess';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { usePollWhileVisible } from '../hooks/usePollWhileVisible';
 import { useMyExams } from '../student/MyExamsProvider';
+import {
+  useNotificationsActions,
+  type NotificationsActions,
+} from './useNotificationsActions';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить уведомления. Попробуйте ещё раз.';
 
@@ -40,7 +42,7 @@ const LOAD_ERROR_MESSAGE = 'Не удалось загрузить уведом�
  * задание). */
 export const NOTIFICATIONS_POLL_INTERVAL_MS = 60_000;
 
-export interface NotificationsData {
+export interface NotificationsData extends NotificationsActions {
   /** `null` — лента ещё не загружена. */
   items: NotificationDto[] | null;
   /** Непрочитанные строки во всей ленте, не только на этой странице — число
@@ -55,9 +57,6 @@ export interface NotificationsData {
   count: number;
   loading: boolean;
   error: string | null;
-  reload: () => Promise<void>;
-  markRead: (id: string) => Promise<void>;
-  markAllRead: () => Promise<void>;
 }
 
 export function useNotificationsData(me: MeDto | null): NotificationsData {
@@ -65,12 +64,16 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
     data: page,
     loading,
     error,
-    reload,
+    reload: reloadFeed,
     refresh: refreshFeed,
     applyData,
   } = useAbortableFetch(
     (signal) => apiFetch<InboxPageDto>(NOTIFICATIONS_FEED_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
+  );
+  const { actionError, reload, markRead, markAllRead } = useNotificationsActions(
+    applyData,
+    reloadFeed,
   );
 
   // Экзамены приходят из общего контекста (MyExamsProvider, ADR-0063) —
@@ -117,22 +120,6 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
   }, [refreshFeed, refreshExams]);
   usePollWhileVisible(refreshCounters, NOTIFICATIONS_POLL_INTERVAL_MS);
 
-  // Оба действия берут ответ записи через applyData, не reload() (шапка файла).
-  const markRead = useCallback(
-    async (id: string) => {
-      applyData(
-        await apiFetch<InboxPageDto>(notificationReadPath(id), { method: 'POST' }),
-      );
-    },
-    [applyData],
-  );
-
-  const markAllRead = useCallback(async () => {
-    applyData(
-      await apiFetch<InboxPageDto>(NOTIFICATIONS_READ_ALL_PATH, { method: 'POST' }),
-    );
-  }, [applyData]);
-
   const unreadCount = page?.unreadCount ?? 0;
 
   return {
@@ -142,6 +129,7 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
     count: unreadCount + newTasks.length,
     loading,
     error,
+    actionError,
     reload,
     markRead,
     markAllRead,

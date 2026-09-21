@@ -30,6 +30,7 @@ export function NotificationsProvider({
     count,
     loading,
     error,
+    actionError,
     reload,
     markRead,
     markAllRead,
@@ -45,11 +46,23 @@ export function NotificationsProvider({
       count,
       loading,
       error,
+      actionError,
       reload,
       markRead,
       markAllRead,
     }),
-    [items, unreadCount, newTasks, count, loading, error, reload, markRead, markAllRead],
+    [
+      items,
+      unreadCount,
+      newTasks,
+      count,
+      loading,
+      error,
+      actionError,
+      reload,
+      markRead,
+      markAllRead,
+    ],
   );
 
   return (
