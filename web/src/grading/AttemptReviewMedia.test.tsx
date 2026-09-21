@@ -128,7 +128,7 @@ describe('AttemptReviewMedia — каждый вид получения', () => 
       media: [makeMedia({ kind: 'link', url: 'https://example.com/v' })],
     });
 
-    const link = screen.getByRole('link', { name: 'Открыть ссылку на видео' });
+    const link = screen.getByRole('link', { name: 'https://example.com/v' });
     expect(link).toHaveAttribute('href', 'https://example.com/v');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');

@@ -255,8 +255,9 @@ describe('AttemptInProgress', () => {
       }),
     });
 
+    expect(screen.getByText('Вы прислали видео боту в Telegram')).toBeInTheDocument();
     expect(
-      screen.getByText('Видео получено Сб, 12 сентября, 19:30, 3 мин 40 с.'),
+      screen.getByText('Получено Сб, 12 сентября, 19:30, 3 мин 40 с'),
     ).toBeInTheDocument();
 
     const links = screen.getAllByRole('link', {
@@ -265,9 +266,14 @@ describe('AttemptInProgress', () => {
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q4');
 
-    // ADR-0086: форма ссылки остаётся у обоих вопросов — и у q3 с уже
-    // полученным видео (замена ошибочной ссылки), и у q4 без видео.
-    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(2);
+    // У вопроса без ответа форма открыта, у ответившего — убрана под тихое
+    // «Прислать другую ссылку»: ответ уже дан, и открытое поле читалось бы
+    // громче самого ответа (снимок владельца 2026-09-21). Заменить по-прежнему
+    // можно — одним нажатием (ADR-0086).
+    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(1);
+    expect(
+      screen.getByRole('button', { name: 'Прислать другую ссылку' }),
+    ).toBeInTheDocument();
   });
 
   it('отправка ссылки у видео-вопроса зовёт video.addMediaLink с itemId этого вопроса', async () => {

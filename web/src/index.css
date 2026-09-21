@@ -355,6 +355,14 @@ input[type='radio'] {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
+/* Линия делит строки, а после последней делить нечего: внутри карточки она
+   висела под содержимым отдельной чертой в пустоте (снимок владельца
+   2026-09-21, экран «Отправлено»). Там, где под списком идёт своё «дно»
+   (подвал формы сдачи, AttemptSubmitBar.tsx), оно рисует свою линию сверху
+   само — две подряд и были бы двойной чертой. */
+.xuanxue-question-row:last-child {
+  border-bottom: 0;
+}
 .xuanxue-question-controls {
   grid-column: 2;
   display: flex;
