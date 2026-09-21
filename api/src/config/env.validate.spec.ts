@@ -310,3 +310,71 @@ describe('validateEnv: Cloudflare R2 (ADR-0057)', () => {
     ).toThrow(new RegExp(key));
   });
 });
+
+// Push-уведомления браузера (ADR-0092). Главное — первый тест: без ключей
+// кабинет поднимается как прежде, риск остаётся за флагом (CLAUDE.md).
+describe('validateEnv: VAPID (ADR-0092)', () => {
+  const VAPID_SET = {
+    VAPID_PUBLIC_KEY: 'A'.repeat(87),
+    VAPID_PRIVATE_KEY: 'B'.repeat(43),
+    VAPID_SUBJECT: 'mailto:school@example.com',
+  };
+
+  it('без единой переменной VAPID конфигурация валидна — push просто выключен', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' });
+    expect(env.VAPID_PUBLIC_KEY).toBeUndefined();
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined();
+    expect(env.VAPID_SUBJECT).toBeUndefined();
+  });
+
+  it('production без переменных VAPID тоже поднимается — push не обязателен нигде', () => {
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
+
+  it('три пустые строки в .env считаются отсутствием, а не половиной набора', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      VAPID_PUBLIC_KEY: '',
+      VAPID_PRIVATE_KEY: '',
+      VAPID_SUBJECT: '',
+    });
+    expect(env.VAPID_PUBLIC_KEY).toBeUndefined();
+  });
+
+  it('полный набор проходит', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x', ...VAPID_SET });
+    expect(env.VAPID_SUBJECT).toBe('mailto:school@example.com');
+  });
+
+  it('VAPID_SUBJECT в виде https:// тоже проходит', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      ...VAPID_SET,
+      VAPID_SUBJECT: 'https://xuanxue.su/contact',
+    });
+    expect(env.VAPID_SUBJECT).toBe('https://xuanxue.su/contact');
+  });
+
+  it.each(Object.keys(VAPID_SET))('без %s набор неполон — старт падает', (missing) => {
+    const partial: Record<string, unknown> = {
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      ...VAPID_SET,
+    };
+    delete partial[missing];
+    expect(() => validateEnv(partial)).toThrow(new RegExp(missing));
+  });
+
+  it.each([
+    ['VAPID_PUBLIC_KEY', 'A'.repeat(86)],
+    ['VAPID_PRIVATE_KEY', 'коротко'],
+    ['VAPID_SUBJECT', 'не-похоже-на-адрес'],
+  ])('%s кривого вида роняет старт', (key, value) => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        ...VAPID_SET,
+        [key]: value,
+      }),
+    ).toThrow(new RegExp(key));
+  });
+});

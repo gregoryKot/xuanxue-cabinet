@@ -17,6 +17,7 @@ import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { NotificationRecord } from '../notifications/notification.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { MediaAssetRecord } from '../media/media-asset.schema';
+import { PushSubscriptionRecord } from '../push/push-subscription.schema';
 import { StorageOrphanRecord } from '../storage/storage-orphan.schema';
 import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
@@ -313,6 +314,36 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     ).resolves.toBeDefined();
     await expect(
       MediaAsset.create({ ...base, kind: 'telegram', fileId: 'f2', fileUniqueId: 'u2' }),
+    ).resolves.toBeDefined();
+  });
+
+  it('push_subscriptions: второй insert с тем же endpoint падает — одна подписка на устройство', async () => {
+    const PushSubscription = connection.model<PushSubscriptionRecord>(
+      PushSubscriptionRecord.name,
+    );
+    const endpoint = 'https://fcm.googleapis.com/fcm/send/abc123';
+    await PushSubscription.create({
+      userId: 'u1',
+      endpoint,
+      p256dh: 'p256dh-1',
+      auth: 'auth-1',
+    });
+    await expect(
+      PushSubscription.create({
+        userId: 'u2',
+        endpoint,
+        p256dh: 'p256dh-2',
+        auth: 'auth-2',
+      }),
+    ).rejects.toMatchObject({ code: MONGO_DUPLICATE_KEY_CODE });
+    // Другой endpoint того же человека — второе устройство, не дубль.
+    await expect(
+      PushSubscription.create({
+        userId: 'u1',
+        endpoint: `${endpoint}-2`,
+        p256dh: 'p256dh-3',
+        auth: 'auth-3',
+      }),
     ).resolves.toBeDefined();
   });
 

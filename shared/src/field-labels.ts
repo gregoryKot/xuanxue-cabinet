@@ -124,4 +124,11 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // kind — общая подпись «Тип» выше (broadcasts.kind), здесь вид сбоя.
   message: 'Сообщение об ошибке',
   path: 'Адрес экрана',
+
+  // push — /me/push-subscriptions (ADR-0092). Эти поля собирает браузер сам
+  // (`pushManager.subscribe()`), человек их не печатает — подпись нужна на
+  // случай сбоя клиента, не для формы.
+  endpoint: 'Адрес подписки браузера',
+  p256dh: 'Ключ шифрования подписки',
+  auth: 'Секрет подписки',
 };
