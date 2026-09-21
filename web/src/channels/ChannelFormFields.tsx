@@ -4,6 +4,7 @@
 // под своим полем (ChannelFormError.field, ревью п.7), не одним общим текстом.
 import { CHANNEL_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
+import { Select } from '../components/Select';
 import { Toggle } from '../components/Toggle';
 import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
@@ -35,8 +36,7 @@ export function ChannelFormFields({
     <>
       {isCreate ? (
         <Field label="Тип канала">
-          <select
-            style={inputStyle}
+          <Select
             value={state.type}
             onChange={(e) => setField('type', e.target.value as ChannelFormState['type'])}
           >
@@ -45,7 +45,7 @@ export function ChannelFormFields({
                 {CHANNEL_TYPE_LABELS_RU[type]}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       ) : (
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>

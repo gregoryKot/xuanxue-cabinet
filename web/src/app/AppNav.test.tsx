@@ -308,8 +308,9 @@ describe('AppNav — ссылка на уведомления наверху к�
 });
 
 // Отзыв владельца 2026-09-19: «Школа Сюань-Сюэ» переносилось на две строки в
-// колонке 236px. Замер в Chromium: строка просит 163px при кегле 20 и 147px
-// при 18, доступно 158 после снятия правого отступа. Гейт от возврата кегля.
+// колонке 236px. Начертание и замер (139px строка, 158px доступно) теперь
+// одно на все точки входа — components/SchoolMark.tsx, SchoolWordmark. Гейт
+// от возврата кегля.
 describe('AppNav — название школы в колонке не переносится', () => {
   it('заголовок в одну строку, с подрезкой на случай подстановочного шрифта', () => {
     renderNav(false);
@@ -317,7 +318,7 @@ describe('AppNav — название школы в колонке не пере
     const title = screen.getByText('Школа Сюань-Сюэ');
     expect(title.style.whiteSpace).toBe('nowrap');
     expect(title.style.textOverflow).toBe('ellipsis');
-    expect(title.style.fontSize).toBe('18px');
+    expect(title.style.fontSize).toBe('15px');
   });
 });
 

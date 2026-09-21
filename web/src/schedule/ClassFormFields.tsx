@@ -12,6 +12,7 @@ import {
 import { Field, inputStyle } from '../components/Field';
 import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
 import type { ClassFormState } from './classFormInput';
@@ -71,8 +72,7 @@ export function ClassFormFields({
       />
 
       <Field label="Формат">
-        <select
-          style={inputStyle}
+        <Select
           value={state.format}
           onChange={(e) => setField('format', e.target.value as ClassFormat)}
         >
@@ -81,7 +81,7 @@ export function ClassFormFields({
               {CLASS_FORMAT_LABELS_RU[format]}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
 
       {teachersError && (

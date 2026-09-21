@@ -18,7 +18,6 @@ import {
   personActionsRowStyle,
   personBlockStyle,
   sideBrandRowStyle,
-  sideBrandTitleStyle,
   SIDE_NAV_WIDTH_PX,
   sideLinkStyle,
   sideSectionsStyle,
@@ -116,7 +115,7 @@ export function AppNav({
           логотип ведёт домой, а домой у штата и у ученика по-разному
           (rootPathFor, screenAccess.ts). */}
       <span style={sideBrandRowStyle}>
-        <SchoolBrandLink to={rootPathFor(me)} titleStyle={sideBrandTitleStyle} />
+        <SchoolBrandLink to={rootPathFor(me)} />
       </span>
       {/* Наверху колонки, не внизу у «Профиль · Выйти»: владелец не нашёл
           тусклую текстовую ссылку в блоке человека (отзыв 2026-09-21) —

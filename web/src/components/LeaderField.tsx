@@ -2,7 +2,8 @@
 // «Одна механика — один компонент»): список из GET /users/teachers, пустой
 // вариант — «— не указан —» (leaderId необязателен, снимается им же).
 import type { TeacherOptionDto } from '@xuanxue/shared';
-import { Field, inputStyle } from './Field';
+import { Field } from './Field';
+import { Select } from './Select';
 
 interface LeaderFieldProps {
   value: string;
@@ -14,14 +15,14 @@ interface LeaderFieldProps {
 export function LeaderField({ value, onChange, teachers, hint }: LeaderFieldProps) {
   return (
     <Field label="Ведущий" hint={hint}>
-      <select style={inputStyle} value={value} onChange={(e) => onChange(e.target.value)}>
+      <Select value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">— не указан —</option>
         {teachers.map((teacher) => (
           <option key={teacher.id} value={teacher.id}>
             {teacher.name}
           </option>
         ))}
-      </select>
+      </Select>
     </Field>
   );
 }
