@@ -2,6 +2,7 @@
 // ДО отправки, окно settings.previewMinutes, кнопки; PersonalChats/
 // TelegramBotService/SettingsService — фейки (сеть/база проверяют
 // собственные спеки, settings.service.spec.ts).
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
 import { DEFAULT_PREVIEW_MINUTES } from '@xuanxue/shared';
@@ -310,5 +311,42 @@ describe('PreviewService.sendPending', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
     const updated = await broadcastModel.findById(broadcast._id).lean();
     expect(updated?.previewSentAt).toBeInstanceOf(Date);
+  });
+
+  // Аудит 2026-09-21 (HIGH): claim стоял без try/catch — упади отправка на
+  // одной рассылке, весь цикл sendPending() рвался, и claim этой рассылки
+  // оставался стоять навсегда. claimAndRun это чинит: падение изолировано
+  // на одном элементе.
+  it('отправка упала на одной рассылке — вторая всё равно обработана, previewSentAt на упавшей снят', async () => {
+    const errorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const a = await createBroadcast();
+    const b = await createBroadcast();
+    const bot = fakeBot();
+    bot.sendMessage.mockRejectedValueOnce(new Error('сеть моргнула'));
+    const service = new PreviewService(
+      broadcastModel,
+      fakePersonalChats() as never,
+      bot as unknown as TelegramBotService,
+      fakeSettings(),
+    );
+
+    const result = await service.sendPending(NOW);
+
+    expect(result).toEqual({ claimed: 1 }); // упавшая рассылка не в счёте
+    expect(bot.sendMessage).toHaveBeenCalledTimes(2); // цикл не прервался
+    expect(errorSpy).toHaveBeenCalled();
+
+    const [aAfter, bAfter] = await Promise.all([
+      broadcastModel.findById(a._id).lean(),
+      broadcastModel.findById(b._id).lean(),
+    ]);
+    const marked = [aAfter, bAfter].filter((doc) => doc?.previewSentAt);
+    const unmarked = [aAfter, bAfter].filter((doc) => !doc?.previewSentAt);
+    expect(marked).toHaveLength(1); // успешная — отметка стоит
+    expect(unmarked).toHaveLength(1); // упавшая — claim снят следующему тику
+
+    errorSpy.mockRestore();
   });
 });

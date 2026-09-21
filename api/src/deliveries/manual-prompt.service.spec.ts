@@ -1,6 +1,7 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты») — условный апдейт
 // manualPromptedAt ДО отправки, текст+название канала; PersonalChats/бот —
 // фейки.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { encryptSchemaFrom } from '../common/field-policy';
@@ -236,5 +237,41 @@ describe('ManualPromptService.prompt', () => {
     expect(bot.sendMessage).not.toHaveBeenCalled();
     const updated = await deliveryModel.findById(delivery._id).lean();
     expect(updated?.manualPromptedAt).toBeInstanceOf(Date);
+  });
+
+  // Аудит 2026-09-21 (HIGH): claim стоял без try/catch — упади findById
+  // канала (сетевой блип к Mongo) на одной доставке, весь цикл prompt()
+  // рвался, и claim этой доставки оставался стоять навсегда. claimAndRun
+  // это чинит: падение изолировано на одном элементе.
+  it('findById канала бросил на одной доставке — вторая всё равно обработана, manualPromptedAt на упавшей снят', async () => {
+    const errorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { delivery: a } = await seedManualDelivery();
+    const { delivery: b } = await seedManualDelivery();
+    const findByIdSpy = jest
+      .spyOn(channelModel, 'findById')
+      .mockImplementationOnce(() => {
+        throw new Error('сетевой блип к Mongo');
+      });
+    const { service, bot } = build();
+
+    const result = await service.prompt(NOW);
+
+    expect(result).toEqual({ prompted: 1 }); // упавшая доставка не в счёте
+    expect(bot.sendMessage).toHaveBeenCalledTimes(1); // цикл не прервался
+    expect(errorSpy).toHaveBeenCalled();
+
+    const [aAfter, bAfter] = await Promise.all([
+      deliveryModel.findById(a._id).lean(),
+      deliveryModel.findById(b._id).lean(),
+    ]);
+    const marked = [aAfter, bAfter].filter((doc) => doc?.manualPromptedAt);
+    const unmarked = [aAfter, bAfter].filter((doc) => !doc?.manualPromptedAt);
+    expect(marked).toHaveLength(1); // успешная — отметка стоит
+    expect(unmarked).toHaveLength(1); // упавшая — claim снят следующему тику
+
+    errorSpy.mockRestore();
+    findByIdSpy.mockRestore();
   });
 });

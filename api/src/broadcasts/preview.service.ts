@@ -5,13 +5,17 @@
 // decideBroadcast). Значение читаем из SettingsService.get() — настройка
 // школы, не константа (CLAUDE.md «Кабинет учителя: всё настраивается в
 // интерфейсе»). `previewSentAt` ставится условным апдейтом ДО отправки:
-// дубли при двух инстансах исключены; отправка упала — лог, повтор не нужен,
-// сама рассылка всё равно уйдёт по расписанию (delivery-runner).
+// дубли при двух инстансах исключены; ожидаемая неудача (текст не
+// расшифровался) — лог, повтор не нужен, сама рассылка всё равно уйдёт по
+// расписанию (delivery-runner). Неожиданное исключение — другое дело:
+// claimAndRun (аудит 2026-09-21, HIGH) снимает claim, следующий тик
+// попробует предпросмотр снова.
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
-import { claimOnce } from '../common/claim-once';
+import { claimAndRun } from '../common/claim-once';
+import { errorMessage, errorStack } from '../common/error-info';
 import { decrypt } from '../utils/encryption';
 import { SettingsService } from '../settings/settings.service';
 import { inlineButton } from '../telegram/callback-data';
@@ -76,10 +80,26 @@ export class PreviewService {
 
     let claimed = 0;
     for (const broadcast of due) {
-      if (await claimOnce(this.broadcastModel, broadcast._id, 'previewSentAt', now)) {
-        await this.sendToTeachers(broadcast, chats);
-        claimed += 1;
-      }
+      // claimAndRun (аудит 2026-09-21, HIGH): раньше claim стоял без
+      // try/catch — упади sendToTeachers, отметка осталась бы стоять
+      // навсегда, а с ней и предпросмотр для этой рассылки. Теперь падение
+      // снимает claim, следующий тик подхватит рассылку заново.
+      const done = await claimAndRun(
+        this.broadcastModel,
+        broadcast._id,
+        'previewSentAt',
+        now,
+        async () => {
+          await this.sendToTeachers(broadcast, chats);
+          return true;
+        },
+        (error) =>
+          this.logger.error(
+            `предпросмотр ${broadcast._id.toString()} упал после claim: ${errorMessage(error)}`,
+            errorStack(error),
+          ),
+      );
+      if (done) claimed += 1;
     }
     return { claimed };
   }

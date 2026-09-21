@@ -113,6 +113,12 @@ export class TelegramAdapter implements ChannelAdapter {
     const raw = err instanceof Error ? err.message : 'Не удалось отправить сообщение';
     this.logger.warn(scrubChannelSecrets(raw, config, token));
     if (!isTelegramApiError(err))
+      // Сюда попадает и обрыв по TELEGRAM_CALL_TIMEOUT_MS (AbortSignal.timeout,
+      // telegram-client.ts) — гарантии, что Telegram не успел доставить
+      // сообщение до обрыва соединения, нет. `retryable: true` всё равно
+      // осознанный выбор (аудит 2026-09-21): та же политика at-least-once,
+      // что и у просроченного `sending` (ADR-0014) — пропущенная ссылка на
+      // занятие хуже редкого дубля поста, менять не нужно.
       return { status: 'failed', error: raw, retryable: true };
 
     const description = scrubChannelSecrets(err.description ?? raw, config, token);

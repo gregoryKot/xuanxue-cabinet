@@ -10,11 +10,12 @@
 // ручная отмена учителем (BroadcastsService.cancel) переводит статус
 // существующей рассылки с непустыми channelIds, эта рассылка сюда не попадает
 // (учитель и так знает, что сам её отменил).
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
-import { claimOnce } from '../common/claim-once';
+import { claimAndRun } from '../common/claim-once';
+import { errorMessage, errorStack } from '../common/error-info';
 import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-notifier';
 import { decrypt } from '../utils/encryption';
 import { BroadcastRecord } from './broadcast.schema';
@@ -35,6 +36,8 @@ export interface BroadcastCancelNotifyResult {
 
 @Injectable()
 export class BroadcastCancelNotifyService {
+  private readonly logger = new Logger(BroadcastCancelNotifyService.name);
+
   constructor(
     @InjectModel(BroadcastRecord.name)
     private readonly broadcastModel: Model<BroadcastRecord>,
@@ -56,20 +59,37 @@ export class BroadcastCancelNotifyService {
 
     let claimed = 0;
     for (const broadcast of due) {
-      if (await claimOnce(this.broadcastModel, broadcast._id, 'teacherNotifiedAt', now)) {
-        await this.notifier.notifyBroadcastCancelled(
-          {
-            broadcastId: broadcast._id.toString(),
-            lessonId: broadcast.lessonId?.toString(),
-            // Пустой text (не расшифровался) — reason пустой строкой:
-            // classifyCancelReason её не узнает, notifyBroadcastCancelled
-            // просто не пришлёт DM (тот же принцип, что у PreviewService).
-            reason: decrypt(broadcast.text) ?? '',
-          },
-          now,
-        );
-        claimed += 1;
-      }
+      // claimAndRun (аудит 2026-09-21, HIGH): раньше claim стоял без
+      // try/catch — упади notifier.notifyBroadcastCancelled, отметка
+      // осталась бы стоять навсегда, а учитель так и не узнал бы, почему
+      // рассылка не ушла. Теперь падение снимает claim, следующий тик
+      // попробует уведомить заново.
+      const done = await claimAndRun(
+        this.broadcastModel,
+        broadcast._id,
+        'teacherNotifiedAt',
+        now,
+        async () => {
+          await this.notifier.notifyBroadcastCancelled(
+            {
+              broadcastId: broadcast._id.toString(),
+              lessonId: broadcast.lessonId?.toString(),
+              // Пустой text (не расшифровался) — reason пустой строкой:
+              // classifyCancelReason её не узнает, notifyBroadcastCancelled
+              // просто не пришлёт DM (тот же принцип, что у PreviewService).
+              reason: decrypt(broadcast.text) ?? '',
+            },
+            now,
+          );
+          return true;
+        },
+        (error) =>
+          this.logger.error(
+            `отмена рассылки ${broadcast._id.toString()}: уведомление учителя упало после claim — ${errorMessage(error)}`,
+            errorStack(error),
+          ),
+      );
+      if (done) claimed += 1;
     }
     return { claimed };
   }
