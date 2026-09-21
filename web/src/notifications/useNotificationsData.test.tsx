@@ -162,43 +162,62 @@ describe('useNotificationsData — счётчик', () => {
   });
 });
 
-describe('useNotificationsData — markRead/markAllRead (read-after-write)', () => {
-  it('markRead шлёт POST по адресу строки и перечитывает ленту', async () => {
+// ADR-0087: оба эндпоинта отдают InboxPageDto целиком (тем же
+// InboxService.list(), что и GET /me/inbox) — applyData кладёт ответ записи
+// на экран напрямую. Второго GET быть не должно: он и был той лишней
+// секундой на каждое нажатие, которую чинит ADR-0087.
+describe('useNotificationsData — markRead/markAllRead (ответ записи на экране)', () => {
+  it('markRead — ровно один POST, второго GET нет, лента из его ответа', async () => {
     mockApiByPath({
       [MY_EXAMS_PATH]: [],
-      '/me/inbox/': undefined,
       [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
     });
     const { result } = renderNotificationsData(STUDENT_ME);
     await waitFor(() => expect(result.current.loading).toBe(false));
-    const callsBefore = feedCallCount();
+    const callsBefore = mockedApiFetch.mock.calls.length;
+
+    const afterRead = page([{ ...UNREAD, readAt: '2026-09-20T04:05:00.000Z' }], 0);
+    // Ответ действия мокается отдельным вызовом mockApiByPath (см. комментарий
+    // в test-support/apiFetchMock.ts) — путь действия и путь начальной
+    // загрузки разные, порядок вызовов apiFetch ни на что не влияет. Если бы
+    // код всё ещё звал reload(), второй запрос по адресу ленты остался бы
+    // без мока и упал на «неожиданный путь».
+    mockApiByPath({ [notificationReadPath(UNREAD.id)]: afterRead });
 
     await result.current.markRead(UNREAD.id);
 
-    expect(mockedApiFetch).toHaveBeenCalledWith(
+    expect(mockedApiFetch).toHaveBeenCalledTimes(callsBefore + 1);
+    expect(mockedApiFetch).toHaveBeenLastCalledWith(
       notificationReadPath(UNREAD.id),
       expect.objectContaining({ method: 'POST' }),
     );
-    expect(feedCallCount()).toBe(callsBefore + 1);
+    expect(feedCallCount()).toBe(1); // только начальная загрузка
+    await waitFor(() => expect(result.current.unreadCount).toBe(0));
+    expect(result.current.items).toEqual(afterRead.items);
   });
 
-  it('markAllRead шлёт POST на read-all и перечитывает ленту', async () => {
+  it('markAllRead — ровно один POST на read-all, второго GET нет, лента из его ответа', async () => {
     mockApiByPath({
       [MY_EXAMS_PATH]: [],
-      '/me/inbox/': undefined,
       [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
     });
     const { result } = renderNotificationsData(STUDENT_ME);
     await waitFor(() => expect(result.current.loading).toBe(false));
-    const callsBefore = feedCallCount();
+    const callsBefore = mockedApiFetch.mock.calls.length;
+
+    const afterAllRead = page([{ ...UNREAD, readAt: '2026-09-20T04:05:00.000Z' }], 0);
+    mockApiByPath({ [NOTIFICATIONS_READ_ALL_PATH]: afterAllRead });
 
     await result.current.markAllRead();
 
-    expect(mockedApiFetch).toHaveBeenCalledWith(
+    expect(mockedApiFetch).toHaveBeenCalledTimes(callsBefore + 1);
+    expect(mockedApiFetch).toHaveBeenLastCalledWith(
       NOTIFICATIONS_READ_ALL_PATH,
       expect.objectContaining({ method: 'POST' }),
     );
-    expect(feedCallCount()).toBe(callsBefore + 1);
+    expect(feedCallCount()).toBe(1);
+    await waitFor(() => expect(result.current.unreadCount).toBe(0));
+    expect(result.current.items).toEqual(afterAllRead.items);
   });
 });
 

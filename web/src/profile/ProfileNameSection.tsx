@@ -8,7 +8,7 @@
 // первом рендере (useState). Родитель (ProfileScreen.tsx) держит проверку
 // `me === null` у себя и рождает этот компонент только с настоящим именем.
 import { useState, type CSSProperties, type FormEvent } from 'react';
-import { splitPersonName } from '@xuanxue/shared';
+import { splitPersonName, type MeDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { FormServerError } from '../components/FormServerError';
 import { PersonNameFields } from '../components/PersonNameFields';
@@ -23,12 +23,12 @@ const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', 
 
 interface ProfileNameSectionProps {
   initialName: string;
-  refresh: () => Promise<void>;
+  applyMe: (next: MeDto) => void;
 }
 
-export function ProfileNameSection({ initialName, refresh }: ProfileNameSectionProps) {
+export function ProfileNameSection({ initialName, applyMe }: ProfileNameSectionProps) {
   const [saved, setSaved] = useState(false);
-  const setup = useProfileSetup(initialName, refresh, () => setSaved(true));
+  const setup = useProfileSetup(initialName, applyMe, () => setSaved(true));
 
   // Сравнение с исходным именем, не с «последним сохранённым»: после ошибки
   // кнопка обязана остаться доступной для повтора без нового изменения поля.

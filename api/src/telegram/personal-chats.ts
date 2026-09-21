@@ -15,6 +15,7 @@ import type { Model } from 'mongoose';
 import { rolesWithNotification } from '@xuanxue/shared';
 import type { NotificationKind, UserRole } from '@xuanxue/shared';
 import { ChannelRecord } from '../channels/channel.schema';
+import { hasActiveTelegramChat } from '../channels/has-active-telegram-chat';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import { UsersService, type UserLean } from '../users/users.service';
 
@@ -96,19 +97,14 @@ export class PersonalChats {
 
   /** Есть ли у человека активный личный чат — без проверки вида уведомления
    * (в отличие от chatFor). Принимает уже прочитанного пользователя — вызовы
-   * оттуда, где он уже прочитан (AuthController.me, ADR-0042), не должны
-   * читать его из БД второй раз. Статус `active` обязателен (SECURITY §9,
-   * ADR-0026, ADR-0036) — тот же инвариант, что у chatFor. */
-  async hasActiveChatFor(user: UserLean | null): Promise<boolean> {
-    if (!user?.telegramId || user.status !== 'active') return false;
-
-    const channel = await this.channelModel
-      .findOne(
-        { type: 'telegram', target: String(user.telegramId), active: true },
-        { _id: 1 },
-      )
-      .lean();
-    return !!channel;
+   * оттуда, где он уже прочитан (AuthController.me, ADR-0042; MeDto-сборка
+   * PATCH /me/profile и PUT /me/no-telegram, ADR-0087), не должны читать его
+   * из БД второй раз. Сама проверка — в has-active-telegram-chat.ts
+   * (channels/): там же и причина, почему не здесь целиком — её отдельно
+   * зовёт UsersModule, которому нельзя импортировать TelegramModule целиком
+   * (граф Nest закольцуется). */
+  hasActiveChatFor(user: UserLean | null): Promise<boolean> {
+    return hasActiveTelegramChat(this.channelModel, user);
   }
 
   /** Общий первый шаг list()/listFor() — контакт с переданной ролью

@@ -9,6 +9,7 @@ import { ATTEMPT_NOT_FOUND_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared'
 import { ATTEMPTS_LIST_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
+import { replacedById } from '../lib/listPatch';
 import { errorFrom, type FormError } from '../components/FormServerError';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить попытку. Обновите страницу.';
@@ -34,7 +35,7 @@ export interface UseAttemptResult {
 }
 
 export function useAttempt(attemptId: string): UseAttemptResult {
-  const { data, loading, error, reload, refresh } = useAbortableFetch(
+  const { data, loading, error, reload, refresh, applyData } = useAbortableFetch(
     (signal) => apiFetch<ExamAttemptDto[]>(ATTEMPTS_LIST_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
@@ -47,18 +48,32 @@ export function useAttempt(attemptId: string): UseAttemptResult {
   // Никогда не бросает — ConfirmDialog закрывает себя после `onConfirm`
   // независимо от исхода (components/ConfirmDialog.tsx), сбой должен остаться
   // виден на самом экране сдачи, а не пропасть вместе с диалогом.
+  //
+  // Правка списка из ответа записи, не отдельный reload() (ADR-0094):
+  // `POST /attempts/:id/submit` уже возвращает свежий ExamAttemptDto
+  // (exam-attempts.controller.ts), второй `GET` того же списка не нужен.
+  // Приём годится именно для ATTEMPTS_LIST_PATH — проверено чтением
+  // ExamAttemptsService.list (exam-attempts.service.ts), полный разбор
+  // условия — web/src/lib/listPatch.ts: путь не передаёт `status` в query, а
+  // фильтр по статусу сервис применяет, только если он пришёл (`if
+  // (query.status !== undefined) filter.status = ...`) — сдача экзамена
+  // элемент из выборки не выкидывает; сортировка — `startedAt: -1`, а
+  // submit() меняет `status`/`submittedAt`, не `startedAt` — место строки в
+  // уже показанном списке не сдвигается.
   const submit = useCallback(async () => {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await apiFetch(`/attempts/${attemptId}/submit`, { method: 'POST' });
-      await reload();
+      const next = await apiFetch<ExamAttemptDto>(`/attempts/${attemptId}/submit`, {
+        method: 'POST',
+      });
+      applyData((prev) => replacedById(prev, next));
     } catch (err) {
       setSubmitError(errorFrom(err, SUBMIT_ERROR_MESSAGE));
     } finally {
       setSubmitting(false);
     }
-  }, [attemptId, reload]);
+  }, [attemptId, applyData]);
 
   return {
     attempt,

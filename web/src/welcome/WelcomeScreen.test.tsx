@@ -98,14 +98,19 @@ describe('WelcomeScreen — кнопка «Продолжить»', () => {
 });
 
 describe('WelcomeScreen — отправка', () => {
-  it('шлёт PATCH /me/profile с обрезанными значениями, затем refresh() и переход на сохранённый адрес', async () => {
+  it('шлёт PATCH /me/profile с обрезанными значениями и переходит на сохранённый адрес без второго GET /auth/me (ADR-0087)', async () => {
     const user = userEvent.setup();
     saveReturnTo('/exams');
     const me = meNeedingProfile(NEW_PERSON_NAME);
     mockedApiFetch.mockImplementation((path: string, init?: { method?: string }) => {
       if (path === '/auth/me') return Promise.resolve(me);
       if (path === '/me/profile' && init?.method === 'PATCH') {
-        return Promise.resolve(undefined);
+        // `needsProfile: false` — ровно то, что отдаёт настоящий сервер после
+        // сохранения имени (ADR-0044). Именно эта правдивая заглушка держит
+        // регрессию: применённый профиль тут же роняет `needsProfile`, и
+        // ранний <Navigate> в WelcomeScreen читает адрес возврата вторым —
+        // пока адрес читался дважды, человек уезжал на «/» вместо /exams.
+        return Promise.resolve({ ...me, name: 'Мария Ли', needsProfile: false });
       }
       return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
     });
@@ -129,10 +134,10 @@ describe('WelcomeScreen — отправка', () => {
       method: 'PATCH',
       body: { firstName: 'Мария', lastName: 'Ли' },
     });
-    // refresh() зовёт /auth/me второй раз (первый — при монтировании) —
-    // подтверждает, что сессия обновилась перед переходом, не только тело PATCH.
+    // applyMe() (ADR-0087) кладёт профиль из ответа PATCH — второго GET
+    // /auth/me не происходит, только тот, что случился при монтировании.
     const meCalls = mockedApiFetch.mock.calls.filter(([path]) => path === '/auth/me');
-    expect(meCalls.length).toBeGreaterThanOrEqual(2);
+    expect(meCalls.length).toBe(1);
   });
 
   it('ошибка сервера — сообщение показывается, поля сохраняются, повтор работает', async () => {
@@ -148,7 +153,7 @@ describe('WelcomeScreen — отправка', () => {
           ? Promise.reject(
               new ApiError('Сервер не ответил. Попробуйте ещё раз.', 500, 'unknown'),
             )
-          : Promise.resolve(undefined);
+          : Promise.resolve(me);
       }
       return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
     });
@@ -213,7 +218,7 @@ describe('WelcomeScreen — второй способ входа (ADR-0059)', ()
         return Promise.resolve({ telegramUrl: linkUrl });
       }
       if (path === '/me/profile' && init?.method === 'PATCH') {
-        return Promise.resolve(undefined);
+        return Promise.resolve({ ...me, name: 'Мария' });
       }
       return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
     });

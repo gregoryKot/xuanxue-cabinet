@@ -9,6 +9,9 @@
 // Опрос (ADR-0076): кабинет ставится на телефон как приложение, вкладку
 // неделями не перезагружают — без фонового перечитывания счётчик застыл бы на
 // значении первой отрисовки оболочки.
+//
+// markRead/markAllRead берут ответ записи через applyData (ADR-0087) — оба
+// эндпоинта отдают InboxPageDto целиком, досчитывать unreadCount не нужно.
 import { useCallback, useMemo } from 'react';
 import {
   getMyExamAction,
@@ -64,6 +67,7 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
     error,
     reload,
     refresh: refreshFeed,
+    applyData,
   } = useAbortableFetch(
     (signal) => apiFetch<InboxPageDto>(NOTIFICATIONS_FEED_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
@@ -113,18 +117,21 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
   }, [refreshFeed, refreshExams]);
   usePollWhileVisible(refreshCounters, NOTIFICATIONS_POLL_INTERVAL_MS);
 
+  // Оба действия берут ответ записи через applyData, не reload() (шапка файла).
   const markRead = useCallback(
     async (id: string) => {
-      await apiFetch(notificationReadPath(id), { method: 'POST' });
-      await reload();
+      applyData(
+        await apiFetch<InboxPageDto>(notificationReadPath(id), { method: 'POST' }),
+      );
     },
-    [reload],
+    [applyData],
   );
 
   const markAllRead = useCallback(async () => {
-    await apiFetch(NOTIFICATIONS_READ_ALL_PATH, { method: 'POST' });
-    await reload();
-  }, [reload]);
+    applyData(
+      await apiFetch<InboxPageDto>(NOTIFICATIONS_READ_ALL_PATH, { method: 'POST' }),
+    );
+  }, [applyData]);
 
   const unreadCount = page?.unreadCount ?? 0;
 

@@ -10,7 +10,7 @@
 // Под формой — SecondLoginKey (ADR-0059, необязательный второй способ входа):
 // стоит за тонкой линией после «Продолжить», чтобы не спорить с ней за
 // единственное главное действие экрана (CLAUDE.md «Одно очевидное действие»).
-import type { CSSProperties, FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import type { MeDto } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
@@ -47,7 +47,16 @@ const dividerStyle: CSSProperties = {
 };
 
 export default function WelcomeScreen() {
-  const { me, refresh } = useAuth();
+  const { me, applyMe } = useAuth();
+  // Адрес возврата читается РОВНО ОДИН РАЗ за жизнь экрана: postLoginPath()
+  // одноразовый (consumeReturnTo() стирает сохранённое при первом чтении,
+  // auth/returnTo.ts), а читателей два — ранний <Navigate> ниже и переход
+  // после сохранения. Пока профиль приезжал отдельным GET, второе чтение не
+  // успевало; с ADR-0087 applyMe кладёт его синхронно, ре-рендер с
+  // `needsProfile: false` идёт сразу, и второе чтение гарантированно отдаёт
+  // «/» вместо того, куда человек шёл. Цена — перезагрузка `/welcome` до
+  // сохранения адрес теряет; это дешевле, чем уводить не туда каждого.
+  const [destination] = useState(postLoginPath);
 
   // `me` приходит асинхронно (соседние экраны переживают тот же `me === null`
   // через `?.`, например AppShell.tsx) — скелетон, а не пустая форма.
@@ -62,7 +71,7 @@ export default function WelcomeScreen() {
   // Уже назвался — здесь ему нечего делать (тот же приём, что hasSession в
   // LoginScreen.tsx: экран не держит того, кому на нём нечего делать).
   if (!me.needsProfile) {
-    return <Navigate to={postLoginPath()} replace />;
+    return <Navigate to={destination} replace />;
   }
 
   // Отдельный компонент, а не форма прямо здесь: он рождается один раз, уже
@@ -73,22 +82,24 @@ export default function WelcomeScreen() {
   // безусловно, без хука до раннего return в этом компоненте. Экран
   // «Профиль» (ADR-0045) решает ту же ловушку тем же приёмом —
   // profile/ProfileNameSection.tsx.
-  return <ProfileSetupForm me={me} refresh={refresh} />;
+  return <ProfileSetupForm me={me} applyMe={applyMe} destination={destination} />;
 }
 
 interface ProfileSetupFormProps {
   me: MeDto;
-  refresh: () => Promise<void>;
+  applyMe: (next: MeDto) => void;
+  /** Уже прочитанный адрес возврата — см. WelcomeScreen выше. */
+  destination: string;
 }
 
-function ProfileSetupForm({ me, refresh }: ProfileSetupFormProps) {
+function ProfileSetupForm({ me, applyMe, destination }: ProfileSetupFormProps) {
   // useNavigate — здесь, не в useProfileSetup.ts: куда идти после сохранения
   // решает экран (хук теперь общий с «Профилем», который никуда не уходит).
   const navigate = useNavigate();
   const setup = useProfileSetup(
     me.name,
-    refresh,
-    () => void navigate(postLoginPath(), { replace: true }),
+    applyMe,
+    () => void navigate(destination, { replace: true }),
   );
 
   function handleSubmit(event: FormEvent): void {

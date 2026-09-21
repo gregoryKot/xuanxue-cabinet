@@ -49,10 +49,11 @@ describe('UserEmailService', () => {
   });
 
   describe('setPendingEmail', () => {
-    it('записывает pendingEmail, read-after-write', async () => {
+    it('записывает pendingEmail, отдаёт свежего UserLean (read-after-write)', async () => {
       const userId = await createUser();
 
-      await service.setPendingEmail(userId, 'new@example.com');
+      const updated = await service.setPendingEmail(userId, 'new@example.com');
+      expect(updated.pendingEmail).toBe('new@example.com');
 
       const doc = await model.findById(userId).lean<UserRecord | null>();
       expect(doc?.pendingEmail).toBe('new@example.com');
@@ -61,6 +62,12 @@ describe('UserEmailService', () => {
     it('невалидный ObjectId — NotFoundError (404), не CastError/500', async () => {
       await expect(
         service.setPendingEmail('не-id', 'a@example.com'),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('несуществующий валидный id — NotFoundError', async () => {
+      await expect(
+        service.setPendingEmail('507f1f77bcf86cd799439011', 'a@example.com'),
       ).rejects.toMatchObject({ status: 404 });
     });
   });

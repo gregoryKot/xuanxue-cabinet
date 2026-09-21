@@ -27,6 +27,11 @@ interface AuthContextValue {
   me: MeDto | null;
   status: AuthStatus;
   refresh: () => Promise<void>;
+  /** Принять профиль, который уже на руках: запись своего профиля (`PATCH
+   * /me/profile`, `PUT /me/no-telegram`, `POST /auth/email/link`) возвращает
+   * свежий `MeDto`, и второй `GET /auth/me` за тем же самым не нужен —
+   * ADR-0087, тот же приём, что `applyData` у hooks/useAbortableFetch.ts. */
+  applyMe: (next: MeDto) => void;
   clear: () => void;
 }
 
@@ -72,6 +77,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Счётчик двигаем и здесь: человек мог нажать «Сохранить» в момент, когда
+  // висит refresh() (он же идёт на монтировании) — без "+1" тот ответил бы
+  // позже и вернул профиль ДО записи. Та же гонка и то же лечение, что у
+  // clear() ниже и у applyData в hooks/useAbortableFetch.ts.
+  const applyMe = useCallback((next: MeDto) => {
+    requestId.current += 1;
+    setMe(next);
+    // Запись своего профиля прошла — значит сессия жива и не заблокирована
+    // (AuthGuard отверг бы её 403-м, SECURITY §2), так что 'ok' здесь не
+    // догадка.
+    setStatus('ok');
+  }, []);
+
   const clear = useCallback(() => {
     requestId.current += 1; // отменяет ответ уже летящего refresh(), если он есть
     setMe(null);
@@ -91,8 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clear]);
 
   const value = useMemo(
-    () => ({ me, status, refresh, clear }),
-    [me, status, refresh, clear],
+    () => ({ me, status, refresh, applyMe, clear }),
+    [me, status, refresh, applyMe, clear],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
