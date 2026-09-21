@@ -3,11 +3,12 @@
 // (recordingPromptedAt), класс активен → условный апдейт recordingPromptedAt
 // (ДО отправки — второй тик/инстанс не спросит дважды) → каждому учителю
 // текст + кнопка «Записи не будет», ожидание — bot_sessions kind 'recording'.
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
-import { claimOnce } from '../common/claim-once';
+import { claimAndRun } from '../common/claim-once';
+import { errorMessage, errorStack } from '../common/error-info';
 import { ClassRecord } from '../classes/class.schema';
 import { inlineButton } from '../telegram/callback-data';
 import { BotSessionService } from '../telegram/bot-session.service';
@@ -39,6 +40,8 @@ export interface RecordingPromptResult {
 
 @Injectable()
 export class RecordingPromptService {
+  private readonly logger = new Logger(RecordingPromptService.name);
+
   constructor(
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
@@ -80,10 +83,27 @@ export class RecordingPromptService {
         .findOne({ _id: lesson.classId, active: true }, { title: 1, tz: 1 })
         .lean<{ title: string; tz: string } | null>();
       if (!cls) continue; // класс выключен/удалён — спрашивать не о чем
-      if (await claimOnce(this.lessonModel, lesson._id, 'recordingPromptedAt', now)) {
-        await this.promptTeachers(lesson, cls, chats, now);
-        prompted += 1;
-      }
+      // claimAndRun (аудит 2026-09-21, HIGH): раньше claim стоял без
+      // try/catch — упади promptTeachers (например, botSessions.
+      // startRecordingWait не записался в Mongo), отметка осталась бы
+      // стоять навсегда, и вопрос учителю про запись не задался бы больше
+      // никогда. Теперь падение снимает claim, следующий тик спросит снова.
+      const done = await claimAndRun(
+        this.lessonModel,
+        lesson._id,
+        'recordingPromptedAt',
+        now,
+        async () => {
+          await this.promptTeachers(lesson, cls, chats, now);
+          return true;
+        },
+        (error) =>
+          this.logger.error(
+            `«Запись?» для занятия ${lesson._id.toString()} упало после claim: ${errorMessage(error)}`,
+            errorStack(error),
+          ),
+      );
+      if (done) prompted += 1;
     }
     return { prompted };
   }

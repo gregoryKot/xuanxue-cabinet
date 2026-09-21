@@ -83,18 +83,51 @@ describe('ExamAttemptsService — уведомление attempt_submitted', () 
     expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(1);
   });
 
-  it('гонка двух конкурентных submit() на одной попытке — уведомление ровно один раз', async () => {
+  // Аудит 2026-09-21 (HIGH): раньше проигравший `null` от findOneAndUpdate
+  // читал безусловно как «дедлайн истёк» и отклонялся — ученик с двух вкладок
+  // видел ложную панику о потере ответа на успешно сданной попытке.
+  // resolveSubmitConflict (exam-attempt-submit-outcome.ts) отличает эту гонку
+  // от настоящего дедлайна: проигравшая вкладка идемпотентно получает тот же
+  // DTO `submitted`, что и выигравшая, — «ровно одно уведомление на попытку»
+  // (шапка exam-attempt-lifecycle.ts) держится тем, что проигравшая сторона
+  // не шлёт своё уже вообще: оно ушло от выигравшей (тест выше — «обычная
+  // сдача»).
+  //
+  // Настоящий Promise.all здесь ненадёжен: под нагрузкой хоста (соседние
+  // параллельные тестовые прогоны) порядок планировщика иногда даёт первому
+  // submit() полностью завершиться (включая запись) до того, как второй
+  // прочитает попытку — тогда второй просто видит уже не-`in_progress` и
+  // отклоняется, как при обычной повторной сдаче, а не как при гонке
+  // findOneAndUpdate (проверено дважды: тест то падал на «оба не resolved»,
+  // то на «не все resolved» в зависимости от нагрузки). Мок ниже вместо этого
+  // САМ выполняет ту запись, что сделала бы выигравшая вкладка, и только
+  // потом отдаёт `null` — то же состояние базы, что при настоящей гонке, без
+  // зависимости от нагрузки хоста (CLAUDE.md «Тесты»: мигающих не бывает).
+  it('гонка: проигравшая сторона submit() отдаёт тот же DTO submitted и не шлёт второе уведомление', async () => {
     const examId = await createPublishedExam();
     const started = await ctx.service.start(examId, USER_A, NOW);
+    const originalFindOneAndUpdate = ctx.attemptModel.findOneAndUpdate.bind(
+      ctx.attemptModel,
+    );
+    jest.spyOn(ctx.attemptModel, 'findOneAndUpdate').mockImplementationOnce(() => {
+      const pending = (async () => {
+        await originalFindOneAndUpdate(
+          { _id: started.id, userId: USER_A, status: 'in_progress' },
+          { $set: { status: 'submitted', submittedAt: NOW.toJSDate() } },
+        );
+        return null;
+      })();
+      return { lean: () => pending } as never;
+    });
 
-    const results = await Promise.allSettled([
-      ctx.service.submit(started.id, USER_A, NOW),
-      ctx.service.submit(started.id, USER_A, NOW),
-    ]);
+    await expect(ctx.service.submit(started.id, USER_A, NOW)).resolves.toMatchObject({
+      status: 'submitted',
+    });
 
-    // Один выигрывает гонку, второй видит уже не-in_progress и отклоняется.
-    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
-    expect(ctx.examNotifier.notifyAttemptSubmitted).toHaveBeenCalledTimes(1);
+    // Именно эта (проигравшая) сторона не добавляет уведомление — общий счёт
+    // «ровно одно на попытку» держит выигравшая сторона, не смоделированная
+    // здесь напрямую (её случай — тест «обычная сдача» выше).
+    expect(ctx.examNotifier.notifyAttemptSubmitted).not.toHaveBeenCalled();
   });
 
   it('авто-закрытие по дедлайну (лениво, через saveAnswers) — уведомление ушло ровно один раз', async () => {
