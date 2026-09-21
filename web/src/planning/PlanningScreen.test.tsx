@@ -5,7 +5,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { mockApiByPath } from '../test-support/apiFetchMock';
@@ -41,9 +41,31 @@ function renderScreen() {
 // зрителя здесь задан явно, а не взят из окружения (test-support/viewerTimeZone.ts).
 stubViewerTimeZone();
 
+// Список отбрасывает дни раньше сегодняшнего (upcomingDayGroups.ts), поэтому
+// часы фиксированы: с настоящими фикстуры от 8 сентября давно стали бы
+// прошлым и карточки пропали бы с экрана (CLAUDE.md «Детерминизм»).
+// Понедельник, 09:00 по Москве — занятия фикстур идут во вторник и дальше.
+const NOW = new Date('2026-09-07T06:00:00.000Z');
+
+// `toFake: ['Date']` — setTimeout остаётся настоящим, иначе userEvent ждёт
+// сам себя (тот же приём в notifications/NotificationsScreen.test.tsx).
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(NOW);
+});
+
 afterEach(() => {
   mockedApiFetch.mockReset();
+  vi.useRealTimers();
 });
+
+/** Карточки дней — `<li>` внутри `<ul>` (LessonDayGroup.tsx); крупная
+ * карточка «Сегодня» стоит `div`-сеткой и в роль `list` не попадает. Тот же
+ * текст виден на экране дважды, и запрос без этой границы падал бы на двух
+ * совпадениях. */
+async function findDayList() {
+  return within(await screen.findByRole('list'));
+}
 
 describe('PlanningScreen — загрузка', () => {
   it('показывает скелетон, пока данные не пришли', () => {
@@ -69,9 +91,7 @@ describe('PlanningScreen — сбой загрузки', () => {
     mockApiByPath({ '/lessons': [], '/classes': [makeClass()] });
     await user.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
 
-    expect(
-      await screen.findByText(/В ближайшие \d+ недели занятий нет/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Пока ничего не запланировано/)).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
@@ -83,11 +103,11 @@ describe('PlanningScreen — пустое окно', () => {
     renderScreen();
 
     // «Сегодня занятий нет.» тоже на экране (PlanningToday.tsx) — regex
-    // нарочно шире и ловит именно объяснение под списком на 4 недели.
+    // ловит именно объяснение под списком дней.
     // Проверяем текст именно этого абзаца (не через общий getByText):
     // объяснение шапки тоже упоминает «Расписании» (EXPLANATION), и запрос
     // без привязки к элементу упал бы на два совпадения.
-    const emptyMessage = await screen.findByText(/В ближайшие \d+ недели занятий нет/);
+    const emptyMessage = await screen.findByText(/Пока ничего не запланировано/);
     expect(emptyMessage).toBeInTheDocument();
     expect(emptyMessage).toHaveTextContent(/Расписании/);
     expect(screen.getByRole('button', { name: 'Разовое занятие' })).toBeInTheDocument();
@@ -108,8 +128,9 @@ describe('PlanningScreen — классы не загрузились, заня�
 
     renderScreen();
 
-    expect(await screen.findByText(/Пятое занятие цикла/)).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    const dayList = await findDayList();
+    expect(dayList.getByText(/Пятое занятие цикла/)).toBeInTheDocument();
+    expect(dayList.getByText('—')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Не удалось загрузить расписание. Попробуйте ещё раз.',
     );
@@ -152,9 +173,9 @@ describe('PlanningScreen — список занятий', () => {
 
     renderScreen();
 
-    const card = await screen.findByText(/Пятое занятие цикла/);
-    expect(card).toBeInTheDocument();
-    expect(screen.getByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
+    const dayList = await findDayList();
+    const card = dayList.getByText(/Пятое занятие цикла/);
+    expect(dayList.getByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
     // Пояс класса (Asia/Jerusalem) отличается от пояса зрителя (его задаёт
     // stubViewerTimeZone) — экран подписывает пояс школы (ревью п.6,
     // schedule/timezoneLabel.ts).
@@ -192,8 +213,9 @@ describe('PlanningScreen — список занятий', () => {
 
     renderScreen();
 
-    expect(await screen.findByText(/Тема не задана/)).toBeInTheDocument();
-    expect(screen.getByText(/Отменено/)).toBeInTheDocument();
+    const dayList = await findDayList();
+    expect(dayList.getByText(/Тема не задана/)).toBeInTheDocument();
+    expect(dayList.getByText(/Отменено/)).toBeInTheDocument();
   });
 
   it('занятие с рассылкой ссылки — бейдж статуса; без рассылки — бейджа нет', async () => {
@@ -207,7 +229,8 @@ describe('PlanningScreen — список занятий', () => {
 
     renderScreen();
 
-    expect(await screen.findByText('Ссылка ушла')).toBeInTheDocument();
+    const dayList = await findDayList();
+    expect(dayList.getByText('Ссылка ушла')).toBeInTheDocument();
   });
 
   it('есть запись — пометка «запись есть»; класс не найден — «—»', async () => {
@@ -223,8 +246,49 @@ describe('PlanningScreen — список занятий', () => {
 
     renderScreen();
 
-    expect(await screen.findByText(/запись есть/)).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    const dayList = await findDayList();
+    expect(dayList.getByText(/запись есть/)).toBeInTheDocument();
+    expect(dayList.getByText('—')).toBeInTheDocument();
+  });
+});
+
+describe('PlanningScreen — список начинается с сегодня (отзыв владельца 2026-09-21)', () => {
+  it('вчерашний день в список не попадает, сегодняшний остаётся', async () => {
+    mockApiByPath({
+      '/lessons': [
+        // Воскресенье — начало окна запроса (planningWindow.ts) и вчерашний
+        // день: до правки список открывался именно с него.
+        makeLesson({
+          id: 'вчера',
+          topic: 'Вчерашнее занятие',
+          startsAt: '2026-09-06T16:00:00.000Z',
+        }),
+        makeLesson({
+          id: 'сегодня',
+          topic: 'Сегодняшнее занятие',
+          startsAt: '2026-09-07T16:00:00.000Z',
+        }),
+      ],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    const dayList = await findDayList();
+    expect(dayList.getByText(/Сегодняшнее занятие/)).toBeInTheDocument();
+    expect(screen.queryByText(/Вчерашнее занятие/)).not.toBeInTheDocument();
+  });
+
+  it('все занятия окна уже прошли — объяснение вместо пустоты', async () => {
+    mockApiByPath({
+      '/lessons': [makeLesson({ startsAt: '2026-09-06T16:00:00.000Z' })],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText(/Пока ничего не запланировано/)).toBeInTheDocument();
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 });
 
@@ -287,9 +351,7 @@ describe('PlanningScreen — число раздела (ТЗ §14, слой 3.5)
 
     renderScreen();
 
-    expect(
-      await screen.findByText(/В ближайшие \d+ недели занятий нет/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Пока ничего не запланировано/)).toBeInTheDocument();
     expect(screen.queryByText(/прошло \d+ занят/)).not.toBeInTheDocument();
   });
 });
