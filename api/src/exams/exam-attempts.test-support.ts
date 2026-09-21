@@ -47,7 +47,7 @@ export interface AttemptsTestContext {
   // картинки варианта; спекам, которым нужна картинка в снимке попытки, тоже
   // не поднимать модель второй раз.
   imageModel: Model<ExamImageRecord>;
-  // ADR-0099: PersonalChats внутри gradingsService читает их, чтобы решить
+  // ADR-0102: PersonalChats внутри gradingsService читает их, чтобы решить
   // notifiesUserInTelegram — спекам, которым нужен настоящий Telegram-канал
   // ученика или выключенный вид уведомления, тоже не поднимать модели второй раз.
   channelModel: Model<ChannelRecord>;

@@ -42,12 +42,24 @@ const timeStyle: CSSProperties = {
   fontWeight: 500,
   fontVariantNumeric: 'tabular-nums',
 };
-const contentStyle: CSSProperties = { minWidth: 0, flex: 1 };
+// flex-колонка, а не просто блок: `contentStyle` — flex-элемент кнопки
+// (`rowButtonStyle`), но сам flex-контейнером не становится, поэтому оба его
+// ребёнка (`titleStyle` и `metaStyle`) остаются строчными `<span>` — а
+// вертикальный отступ на строчном элементе браузер игнорирует. Из-за этого
+// зазор не появлялся вовсе (не «мало», а «нет») — снимок владельца 2026-09-21,
+// «Медитация чжи-гуаньТема не задана». Третья попытка развести название и
+// тему (после двух правок отступа, которые ничего не меняли в разметке), —
+// поэтому за неё отвечает тест. Тот же приём, что у карточки «Сегодня»
+// (TodayLessonCard.tsx: `cardStyle` — колонка с `gap`).
+const contentStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  minWidth: 0,
+  flex: 1,
+};
 const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 22 };
-// 6, а не 2: под названием антиквой кеглем 22 два пикселя читаются как ноль —
-// строка темы («Тема не задана») липла к заголовку (отзыв владельца
-// 2026-09-19). Тот же зазор, что у карточки «Сегодня» (TodayLessonCard.tsx).
-const metaStyle: CSSProperties = { marginTop: 6, fontSize: 14, color: 'var(--ink-soft)' };
+const metaStyle: CSSProperties = { fontSize: 14, color: 'var(--ink-soft)' };
 const statusStyle: CSSProperties = { flexShrink: 0, fontSize: 13 };
 
 interface LessonCardProps {

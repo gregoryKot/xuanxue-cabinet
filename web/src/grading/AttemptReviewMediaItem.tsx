@@ -29,6 +29,7 @@ import type { ExamMediaDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { FormServerError, type FormError } from '../components/FormServerError';
 import { textLinkStyle } from '../components/screenLayout';
+import { VideoEmbed } from '../components/VideoEmbed';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { describeMediaSource } from './examMediaSourceText';
@@ -100,6 +101,11 @@ export function AttemptReviewMediaItem({
         >
           {item.url}
         </a>
+      )}
+      {/* Плеер под ссылкой (ADR-0100) — смотреть, не уходя с карточки
+          проверки; ссылка остаётся, см. комментарий там же. */}
+      {item.kind === 'link' && item.url && (
+        <VideoEmbed url={item.url} title="Запись ученика" />
       )}
       {item.kind === 'telegram' && (
         <>

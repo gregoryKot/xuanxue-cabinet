@@ -14,10 +14,18 @@ import type { CSSProperties } from 'react';
 // человека переносил «Профиль · Выйти» на две строки.
 export const SIDE_NAV_WIDTH_PX = 236;
 
+/** Верхний отступ колонки. Экспортируется, потому что по нему встаёт и
+ * верхняя строка содержимого справа (app/appShellStyles.ts,
+ * contentTopBarStyle): знак школы и колокольчик — оба высотой 44 — оказываются
+ * на одной линии, а экран начинается под ними, а не выше знака (отзыв
+ * владельца 2026-09-21: «может отступ сделать сверху, у правой части до
+ * уровня дна логотипа»). */
+export const SIDE_NAV_PADDING_TOP_PX = 22;
+
 export const sideStyle: CSSProperties = {
   width: SIDE_NAV_WIDTH_PX,
   flexShrink: 0,
-  padding: '22px 16px',
+  padding: `${SIDE_NAV_PADDING_TOP_PX}px 16px`,
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
@@ -98,9 +106,8 @@ export const personBlockStyle: CSSProperties = {
  * кабинете помечает текстовую ссылку в потоке содержимого, а оболочка
  * состоит из одних ссылок, и отличать их друг от друга ей нечем
  * (docs/adr/0098). От неинтерактивной строки рядом («Вы вошли как …»,
- * приглушённой `personBlockStyle`) ссылка отличается тушью — тем же
- * приёмом, что «Уведомления» наверху колонки
- * (notifications/NotificationsNavLink.tsx). Кегль наследуется от блока (13),
+ * приглушённой `personBlockStyle`) ссылка отличается тушью. Кегль
+ * наследуется от блока (13),
  * свой не нужен. `minHeight` свой: строка выравнивает детей по центру
  * (`personActionsRowStyle`, `align-items: center`), а не растягивает, поэтому
  * 44px соседней кнопки «Выйти» на ссылку не переходят — без этого цель

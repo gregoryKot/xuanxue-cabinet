@@ -9,7 +9,7 @@
 // бы её.
 import type { CSSProperties } from 'react';
 import { Button } from './Button';
-import { textLinkButtonStyle } from './screenLayout';
+import { TextLinkButton } from './TextLinkButton';
 
 const CANCEL_LABEL = 'Отменить';
 
@@ -33,9 +33,7 @@ export function InlineFormFooter({
       <Button type="button" variant="secondary" pending={pending} onClick={onSave}>
         {saveLabel}
       </Button>
-      <button type="button" style={textLinkButtonStyle} onClick={onCancel}>
-        {CANCEL_LABEL}
-      </button>
+      <TextLinkButton onClick={onCancel}>{CANCEL_LABEL}</TextLinkButton>
     </div>
   );
 }

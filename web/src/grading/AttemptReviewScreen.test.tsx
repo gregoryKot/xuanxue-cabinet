@@ -54,7 +54,7 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
     userId: 'u1',
     userName: 'Иван Иванов',
     status: 'submitted',
-    // По умолчанию — прежнее поведение экрана до ADR-0099 (строка про
+    // По умолчанию — прежнее поведение экрана до ADR-0102 (строка про
     // Telegram видна); тесты этого файла, которым важен противоположный
     // случай, переопределяют явно.
     notifiesUserInTelegram: true,
@@ -242,7 +242,7 @@ describe('AttemptReviewScreen — карточка', () => {
   });
 });
 
-describe('AttemptReviewScreen — куда уйдёт итог (отзыв владельца 2026-09-21, ADR-0099)', () => {
+describe('AttemptReviewScreen — куда уйдёт итог (отзыв владельца 2026-09-21, ADR-0102)', () => {
   it('у ученика активный Telegram — видна строка про Telegram', async () => {
     renderAt('a1', {
       '/attempts': makeReview({ notifiesUserInTelegram: true }),
