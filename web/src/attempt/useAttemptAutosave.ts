@@ -44,7 +44,9 @@ export function useAttemptAutosave(
   onExpired?: () => void,
 ): UseAttemptAutosaveResult {
   // Серверный снимок — база, черновик localStorage — поверх (attemptLocalDraft.ts).
-  const bootstrap = useRef(bootstrapAttemptAnswers(attemptId, initialAnswers)).current;
+  // Ленивая инициализация: useRef(init) вычислял бы аргумент на каждом
+  // рендере — чтение localStorage на каждый символ в textarea.
+  const [bootstrap] = useState(() => bootstrapAttemptAnswers(attemptId, initialAnswers));
   const answers = useRef(bootstrap.answers);
   const dirty = useRef(new Set<string>(bootstrap.recoveredIds));
   const debounceTimer = useRef<number | null>(null);
