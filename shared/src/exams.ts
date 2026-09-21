@@ -4,6 +4,7 @@
 // как `implements` этих типов, расхождение ловит tsc. Веб-экран — следующий
 // слой, здесь только контракт бэкенда.
 
+import type { GradingOutcome } from './exam-grading';
 import type { ExamMediaDto } from './exam-media';
 import { TAG_LIMITS } from './tags';
 
@@ -289,6 +290,12 @@ export interface ExamAttemptDto {
   expired: boolean;
   /** Видео экзамена (ADR-0023) — опционально ради текущих web-фикстур. */
   media?: ExamMediaDto[];
+  /** Итог и когда проверено (слой 4.6) — только сотруднику школы и только у
+   * уже проверенной попытки, тем же приёмом и по той же причине, что
+   * `userName` выше: свой итог ученик видит на «Заданиях» (`GET /me/exams`),
+   * второй раз отдавать его здесь незачем. */
+  outcome?: GradingOutcome;
+  gradedAt?: string; // ISO UTC с Z
 }
 
 export interface SaveAttemptAnswersInput {

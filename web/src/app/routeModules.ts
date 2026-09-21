@@ -28,6 +28,7 @@ import {
   EXAMS_PATH,
   EXAM_ITEMS_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
+  GRADED_ATTEMPTS_PATH,
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   LESSONS_PATH,
@@ -308,7 +309,8 @@ export const ROUTE_MODULES = {
     path: '/grading',
     load: () => import('../grading/GradingQueueScreen'),
     warm: true,
-    prefetch: () => [GRADING_QUEUE_PATH],
+    // Экран — два раздела (ждут проверки/проверенные), греем оба пути.
+    prefetch: () => [GRADING_QUEUE_PATH, GRADED_ATTEMPTS_PATH],
   },
   attemptReview: {
     path: '/grading/:attemptId',

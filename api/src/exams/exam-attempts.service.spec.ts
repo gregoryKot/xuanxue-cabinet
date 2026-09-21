@@ -8,6 +8,7 @@ import { Types } from 'mongoose';
 import type { UserLean } from '../users/users.service';
 import {
   AUTHOR_ID,
+  GRADER_ID,
   USER_A,
   USER_B,
   clearAttemptsTest,
@@ -596,6 +597,52 @@ describe('ExamAttemptsService', () => {
 
     const asStudent = await ctx.service.list({}, staffUser(false, USER_A), NOW);
     expect(asStudent[0]?.userName).toBeUndefined();
+  });
+
+  // Раздел «Проверенные» (docs/PLAN.md §4.6): сотрудник видит итог и когда
+  // проверено, у ждущей проверки попытки этих полей нет вовсе — тот же
+  // приём, что userName выше (shared/src/exams.ts).
+  it('сотрудник видит outcome/gradedAt у проверенной попытки, у ждущей — нет', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    const graded = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.submit(graded.id, USER_A, NOW);
+    await ctx.gradingsService.grade(graded.id, GRADER_ID, { outcome: 'passed' }, NOW);
+    const waiting = await ctx.service.start(examId, USER_B, NOW);
+    await ctx.service.submit(waiting.id, USER_B, NOW);
+
+    const asTeacher = await ctx.service.list({ examId }, staffUser(true, GRADER_ID), NOW);
+    const gradedInList = asTeacher.find((attempt) => attempt.id === graded.id);
+    const waitingInList = asTeacher.find((attempt) => attempt.id === waiting.id);
+
+    expect(gradedInList?.outcome).toBe('passed');
+    expect(gradedInList?.gradedAt).toBe(NOW.toISO());
+    expect(waitingInList?.outcome).toBeUndefined();
+    expect(waitingInList?.gradedAt).toBeUndefined();
+
+    // Ученик не видит ни своей оценки здесь, ни чужой (shared/exams.ts,
+    // `outcome`/`gradedAt` — только сотруднику): свой итог он читает на
+    // «Заданиях», `GET /me/exams`.
+    const asStudent = await ctx.service.list({ examId }, staffUser(false, USER_A), NOW);
+    expect(asStudent[0]?.outcome).toBeUndefined();
+    expect(asStudent[0]?.gradedAt).toBeUndefined();
+  });
+
+  it('оценки в списке попыток — одним запросом на весь список, не по документу (N+1)', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    for (const userId of [USER_A, USER_B]) {
+      const attempt = await ctx.service.start(examId, userId, NOW);
+      await ctx.service.submit(attempt.id, userId, NOW);
+      await ctx.gradingsService.grade(attempt.id, GRADER_ID, { outcome: 'passed' }, NOW);
+    }
+    const findSpy = jest.spyOn(ctx.gradingModel, 'find');
+
+    const list = await ctx.service.list({ examId }, staffUser(true, GRADER_ID), NOW);
+
+    expect(list).toHaveLength(2);
+    expect(findSpy).toHaveBeenCalledTimes(1);
+    findSpy.mockRestore();
   });
 
   // Ученик — это подтверждённый человек без ролей (ADR-0026), роли

@@ -15,6 +15,7 @@ import { UserRecord, UserSchema } from '../users/user.schema';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { fakeExamNotifier } from './exam-notifier.test-support';
+import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
 import { ExamItemStatsService } from './exam-item-stats.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
@@ -52,11 +53,16 @@ describe('ExamItemStatsService', () => {
       ExamImageRecord.name,
       ExamImageSchema,
     );
+    const gradingModel = memory.connection.model<ExamGradingRecord>(
+      ExamGradingRecord.name,
+      ExamGradingSchema,
+    );
     const examImagesService = new ExamImagesService(imageModel, attemptModel);
     examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
     examsService = new ExamsService(examModel, itemModel, attemptModel);
     attemptsService = new ExamAttemptsService(
       attemptModel,
+      gradingModel,
       examsService,
       examItemsService,
       new UserNamesService(userModel),

@@ -68,6 +68,46 @@ describe('GradingQueueCard', () => {
     expect(screen.getByText(/сдано по времени/)).toBeInTheDocument();
   });
 
+  it('без outcome (работа ещё не проверена) — строки итога и «проверено» нет', () => {
+    render(<GradingQueueCard attempt={makeAttempt()} onSelect={vi.fn()} />);
+
+    expect(screen.queryByText('Сдал')).not.toBeInTheDocument();
+    expect(screen.queryByText(/проверено/)).not.toBeInTheDocument();
+  });
+
+  it('итог «Сдал» — нефрит', () => {
+    render(
+      <GradingQueueCard
+        attempt={makeAttempt({ outcome: 'passed', gradedAt: '2026-09-02T10:00:00Z' })}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Сдал')).toHaveStyle({ color: 'var(--jade)' });
+  });
+
+  it('итог «Нужно доработать» — обычный цвет текста, не нефрит', () => {
+    render(
+      <GradingQueueCard
+        attempt={makeAttempt({ outcome: 'needs_work', gradedAt: '2026-09-02T10:00:00Z' })}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Нужно доработать')).toHaveStyle({ color: 'var(--ink)' });
+  });
+
+  it('gradedAt — в мете рядом со «сдано» видно «проверено»', () => {
+    render(
+      <GradingQueueCard
+        attempt={makeAttempt({ outcome: 'passed', gradedAt: '2026-09-02T10:00:00Z' })}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/проверено/)).toBeInTheDocument();
+  });
+
   it('клик вызывает onSelect', async () => {
     const onSelect = vi.fn();
     render(<GradingQueueCard attempt={makeAttempt()} onSelect={onSelect} />);

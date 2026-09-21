@@ -6,6 +6,7 @@ import {
   ATTEMPTS_LIST_PATH,
   CLASSES_LIST_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
+  GRADED_ATTEMPTS_PATH,
   GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
@@ -92,8 +93,8 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     ]);
   });
 
-  it('/grading — очередь проверки', () => {
-    expect(prefetchAt('/grading')).toEqual([GRADING_QUEUE_PATH]);
+  it('/grading — оба раздела: очередь и проверенные', () => {
+    expect(prefetchAt('/grading')).toEqual([GRADING_QUEUE_PATH, GRADED_ATTEMPTS_PATH]);
   });
 
   it('/profile — настройки уведомлений', () => {

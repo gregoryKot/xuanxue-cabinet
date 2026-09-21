@@ -81,6 +81,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   const examNotifier = fakeExamNotifier();
   const service = new ExamAttemptsService(
     attemptModel,
+    gradingModel,
     examsService,
     examItemsService,
     userNamesService,
