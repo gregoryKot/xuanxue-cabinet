@@ -1,8 +1,15 @@
+// Черновик (ADR-0052, дополнение 2026-09-21) пишется в реальный localStorage
+// под фиксированным ключом broadcast:new — очищаем между тестами.
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CreateBroadcastInput } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
+import { readDraft } from '../lib/formDraft';
 import { useBroadcastForm } from './useBroadcastForm';
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 const UUID_RE = /^[0-9a-f-]{36}$/;
 
@@ -149,5 +156,48 @@ describe('useBroadcastForm — submit()', () => {
     expect(result.current.serverError?.message).toBe(
       'Не удалось отправить. Попробуйте ещё раз.',
     );
+  });
+});
+
+// Сама механика черновика (восстановление, dirty, beforeunload) проверена в
+// hooks/useFormDraft.test.ts — здесь только то, что лист «Новая рассылка»
+// реально её подключает и снимает при успехе (аудит 2026-09-21, HIGH —
+// раньше useBroadcastForm не был защищён вовсе, случайный «Назад» стирал
+// набранный текст поста).
+describe('useBroadcastForm — черновик (ADR-0052, дополнение 2026-09-21)', () => {
+  it('ввёл текст → размонтировал → смонтировал заново → значение на месте', () => {
+    const first = renderHook(() => useBroadcastForm(vi.fn()));
+    act(() => first.result.current.setField('text', 'Черновик поста'));
+    first.unmount();
+
+    const second = renderHook(() => useBroadcastForm(vi.fn()));
+
+    expect(second.result.current.state.text).toBe('Черновик поста');
+    expect(second.result.current.draftRestored).toBe(true);
+  });
+
+  it('успешная отправка — черновик снят', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useBroadcastForm(onCreate));
+    act(() => {
+      result.current.setField('text', 'Текст рассылки');
+      result.current.setField('channelIds', ['c1']);
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(readDraft('broadcast:new', Date.now())).toBeNull();
+  });
+
+  it('непустой черновик — beforeunload отменяет событие', () => {
+    const { result } = renderHook(() => useBroadcastForm(vi.fn()));
+    act(() => result.current.setField('text', 'Текст'));
+
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 });
