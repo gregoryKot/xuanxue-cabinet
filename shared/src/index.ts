@@ -40,6 +40,7 @@ export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
 export { type PluralForms, pluralRu } from './plural-ru';
+export type { TagSummaryDto, ListTagsQuery } from './tags';
 export { TAG_LIMITS, normalizeTags, parseTagsText } from './tags';
 export type {
   UserRole,
@@ -184,6 +185,16 @@ export {
   EXAM_IMAGE_TOO_LARGE_MESSAGE,
   EXAM_IMAGE_NOT_FOUND_MESSAGE,
 } from './exam-images';
+export { FILE_STORAGE_OFF_MESSAGE, FILE_STORAGE_FAILED_MESSAGE } from './file-store';
+export type { MaterialFileContentType, MaterialFileDto } from './material-files';
+export {
+  MATERIAL_FILE_CONTENT_TYPES,
+  MATERIAL_FILE_LIMITS,
+  MATERIAL_FILE_EMPTY_MESSAGE,
+  MATERIAL_FILE_UNSUPPORTED_MESSAGE,
+  MATERIAL_FILE_TOO_LARGE_MESSAGE,
+  MATERIAL_FILE_NOT_FOUND_MESSAGE,
+} from './material-files';
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamDto, ListMyExamsQuery } from './my-exams';
 export type {

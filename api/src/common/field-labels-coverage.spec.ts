@@ -44,6 +44,7 @@ import {
   UpdateTemplatesDto,
 } from '../settings/dto/update-settings.dto';
 import { ListUsersDto } from '../users/dto/list-users.dto';
+import { SetNoTelegramDto } from '../users/dto/set-no-telegram.dto';
 import { UpdateMyProfileDto } from '../users/dto/update-my-profile.dto';
 import { UpdateUserRolesDto } from '../users/dto/update-user-roles.dto';
 
@@ -90,6 +91,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   UpdateSettingsDto,
   UpdateTemplatesDto,
   ListUsersDto,
+  SetNoTelegramDto,
   UpdateMyProfileDto,
   UpdateUserRolesDto,
 ];

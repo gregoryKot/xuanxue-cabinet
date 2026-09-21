@@ -15,6 +15,7 @@ import { encryptRecord } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { LessonMaterialsService } from './lesson-materials.service';
 import { MaterialRecord, MaterialSchema } from './material.schema';
+import { fakeStorageOrphans } from '../test-support/fake-storage-orphans';
 import { MaterialsService } from './materials.service';
 
 const AUTHOR_ID = new Types.ObjectId().toString();
@@ -43,7 +44,12 @@ describe('LessonMaterialsService', () => {
       classModel,
       new UsersService(userModel),
     );
-    materialsService = new MaterialsService(model, classModel, settingsService);
+    materialsService = new MaterialsService(
+      model,
+      classModel,
+      settingsService,
+      fakeStorageOrphans().service,
+    );
     service = new LessonMaterialsService(model, classModel, settingsService);
   }, 60_000);
 

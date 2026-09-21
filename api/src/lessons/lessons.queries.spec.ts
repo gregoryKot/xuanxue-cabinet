@@ -41,6 +41,18 @@ describe('buildLessonsFilter', () => {
     });
   });
 
+  // ADR-0078: окно опущено только вместе с тегом (resolveLessonsWindow это
+  // гарантирует раньше) — здесь просто форма фильтра без startsAt.
+  it('окно не задано (undefined/undefined) — startsAt в фильтре отсутствует', async () => {
+    const filter = await buildLessonsFilter(
+      { tag: 'дракон' },
+      undefined,
+      undefined,
+      classModel,
+    );
+    expect(filter).not.toHaveProperty('startsAt');
+  });
+
   it('classId сужает выборку', async () => {
     const filter = await buildLessonsFilter(
       { ...WINDOW, classId: 'c1' },

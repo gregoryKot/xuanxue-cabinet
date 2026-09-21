@@ -37,7 +37,7 @@ describe('NotificationsProvider — один счётчик на всех', () =
     }
 
     render(
-      <NotificationsProvider>
+      <NotificationsProvider me={null}>
         <Count label="значок" />
         <Count label="экран" />
       </NotificationsProvider>,

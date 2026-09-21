@@ -1,4 +1,6 @@
-import { validateEnv } from './env.validation';
+// Прогон валидации окружения (env.validate.ts) вместе со схемой
+// (env.validation.ts) — одна спека на пару файлов: смысл у них общий.
+import { validateEnv } from './env.validate';
 
 const VALID_PROD: Record<string, unknown> = {
   NODE_ENV: 'production',
@@ -243,5 +245,68 @@ describe('validateEnv', () => {
       RAILWAY_GIT_COMMIT_SHA: '',
     });
     expect(env.RAILWAY_GIT_COMMIT_SHA).toBeUndefined();
+  });
+});
+
+// Файлы материалов в R2 (ADR-0057). Главное здесь — первый тест: без ключей
+// кабинет поднимается как прежде. Иначе локальная разработка, CI и
+// Docker-смок встали бы из-за внешнего сервиса, которому там нечего делать.
+describe('validateEnv: Cloudflare R2 (ADR-0057)', () => {
+  const R2_SET = {
+    R2_ACCOUNT_ID: 'a'.repeat(32),
+    R2_ACCESS_KEY_ID: 'b'.repeat(32),
+    R2_SECRET_ACCESS_KEY: 'c'.repeat(64),
+    R2_BUCKET: 'xuanxue-materials',
+  };
+
+  it('без единой переменной R2 конфигурация валидна — хранилище просто выключено', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' });
+    expect(env.R2_ACCOUNT_ID).toBeUndefined();
+    expect(env.R2_BUCKET).toBeUndefined();
+  });
+
+  it('production без переменных R2 тоже поднимается', () => {
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
+
+  it('четыре пустые строки в .env считаются отсутствием, а не половиной набора', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      R2_ACCOUNT_ID: '',
+      R2_ACCESS_KEY_ID: '',
+      R2_SECRET_ACCESS_KEY: '',
+      R2_BUCKET: '',
+    });
+    expect(env.R2_ACCESS_KEY_ID).toBeUndefined();
+  });
+
+  it('полный набор проходит', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x', ...R2_SET });
+    expect(env.R2_BUCKET).toBe('xuanxue-materials');
+  });
+
+  it.each(Object.keys(R2_SET))('без %s набор неполон — старт падает', (missing) => {
+    const partial: Record<string, unknown> = {
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      ...R2_SET,
+    };
+    delete partial[missing];
+    expect(() => validateEnv(partial)).toThrow(new RegExp(missing));
+  });
+
+  it.each([
+    ['R2_ACCOUNT_ID', 'evil.example.com/'],
+    ['R2_ACCESS_KEY_ID', 'ключ'],
+    ['R2_SECRET_ACCESS_KEY', 'коротко'],
+    // Слэш в имени бакета увёл бы запрос по другому пути внутри аккаунта.
+    ['R2_BUCKET', 'bucket/../other'],
+  ])('%s кривого вида роняет старт', (key, value) => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        ...R2_SET,
+        [key]: value,
+      }),
+    ).toThrow(new RegExp(key));
   });
 });

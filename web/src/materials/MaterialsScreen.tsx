@@ -21,6 +21,8 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { SectionLink } from '../components/SectionLink';
+import { tagsScreenPath } from '../lib/tagsScreenPath';
 import { useClasses } from '../schedule/useClasses';
 import { MaterialCard } from './MaterialCard';
 import { MaterialsPaidAccessSection } from './MaterialsPaidAccessSection';
@@ -34,6 +36,11 @@ const EXPLANATION =
 const EMPTY_MESSAGE =
   'Пока ни одного материала. Добавьте первый — ученики увидят его сразу.';
 const EMPTY_FILTERED_MESSAGE = 'С таким фильтром материалов нет.';
+// Вход в подэкран «Теги» (ADR-0075) — карточка-переход, тот же приём, что у
+// «Библиотеки» на LessonsScreen.tsx (components/SectionLink.tsx). Заголовок
+// совпадает с h1 экрана назначения (тот же приём, что «Библиотека» там же).
+const TAGS_LINK_TITLE = 'Теги';
+const TAGS_LINK_HINT = 'Один тег — все его даты занятий и материалы.';
 
 export default function MaterialsScreen() {
   const [kind, setKind] = useState<MaterialKind | ''>('');
@@ -108,6 +115,8 @@ export default function MaterialsScreen() {
           />
         )}
       />
+
+      <SectionLink to={tagsScreenPath()} title={TAGS_LINK_TITLE} hint={TAGS_LINK_HINT} />
 
       {/* Названия занятий — рубрикация строки (ADR-0047), не обязательное
           условие списка: сбой /classes не должен прятать уже загруженные

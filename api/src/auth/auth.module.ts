@@ -11,6 +11,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Logger } from 'nestjs-pino';
 import { MailModule } from '../mail/mail.module';
 import { SettingsModule } from '../settings/settings.module';
+import { StorageModule } from '../storage/storage.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
@@ -37,6 +38,10 @@ import { TelegramLinkController } from './telegram-link.controller';
   imports: [
     UsersModule,
     SettingsModule,
+    // StorageModule — GET /auth/config сообщает экрану, подключено ли
+    // хранилище файлов (ADR-0057), тем же признаком, что решает судьбу
+    // загрузки. Хранилище про вход не знает — цикла нет.
+    StorageModule,
     TelegramModule,
     MailModule,
     MongooseModule.forFeature([

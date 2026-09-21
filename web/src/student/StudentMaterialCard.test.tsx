@@ -158,4 +158,49 @@ describe('StudentMaterialCard — закрытый материал (ADR-0048)',
     ).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
+
+  // Слой 3.10, ADR-0057: у закрытого материала DTO не несёт `file` вовсе
+  // (тем же правилом, что и `url`) — но проверяем и на случай, если он всё
+  // же придёт: locked важнее.
+  it('locked: true и file (гипотетически) — ссылки «Скачать файл» всё равно нет', () => {
+    renderCard(
+      makeMaterial({
+        url: undefined,
+        locked: true,
+        file: {
+          name: 'форма.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 1024,
+          uploadedAt: '2026-01-01T00:00:00Z',
+        },
+      }),
+    );
+    expect(screen.queryByRole('link', { name: 'Скачать файл' })).not.toBeInTheDocument();
+  });
+});
+
+describe('StudentMaterialCard — файл материала (ADR-0057, слой 3.10)', () => {
+  it('material.file есть — ссылка «Скачать файл» рядом с «Открыть», правильный href', () => {
+    renderCard(
+      makeMaterial({
+        url: 'https://example.com/book',
+        file: {
+          name: 'форма.pdf',
+          contentType: 'application/pdf',
+          sizeBytes: 1024,
+          uploadedAt: '2026-01-01T00:00:00Z',
+        },
+      }),
+    );
+
+    expect(screen.getByRole('link', { name: 'Открыть' })).toBeInTheDocument();
+    const fileLink = screen.getByRole('link', { name: 'Скачать файл' });
+    expect(fileLink).toHaveAttribute('href', '/api/materials/m1/file');
+  });
+
+  it('material.file нет — ссылки «Скачать файл» нет', () => {
+    renderCard(makeMaterial({ url: 'https://example.com/book' }));
+
+    expect(screen.queryByRole('link', { name: 'Скачать файл' })).not.toBeInTheDocument();
+  });
 });

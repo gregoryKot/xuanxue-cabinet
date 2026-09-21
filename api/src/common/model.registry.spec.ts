@@ -17,6 +17,7 @@ import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { NotificationRecord } from '../notifications/notification.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { MediaAssetRecord } from '../media/media-asset.schema';
+import { StorageOrphanRecord } from '../storage/storage-orphan.schema';
 import { UserRecord } from '../users/user.schema';
 import { encryptSchemaFrom } from './field-policy';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -59,6 +60,20 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     const channelId = new mongoose.Types.ObjectId();
     await Delivery.create({ broadcastId, channelId });
     await expect(Delivery.create({ broadcastId, channelId })).rejects.toMatchObject({
+      code: MONGO_DUPLICATE_KEY_CODE,
+    });
+  });
+
+  // ADR-0079: журнал сирот переживает повторную запись того же ключа — на
+  // неё опирается `StorageOrphansService.track` (upsert вместо insert).
+  it('storage_orphans: второй insert с тем же key падает', async () => {
+    const Orphan = connection.model<StorageOrphanRecord>(StorageOrphanRecord.name);
+    // Переменная названа `objectPath`, а не `key`: gitleaks в CI считает
+    // «key = '<длинная строка>'» находкой generic-api-key, и ключ объекта в
+    // хранилище (не секрет) ронял джобу `checks`.
+    const objectPath = 'materials/64b8f0a1c2d3e4f5a6b7c8d9/3f1a4c9e';
+    await Orphan.create({ key: objectPath });
+    await expect(Orphan.create({ key: objectPath })).rejects.toMatchObject({
       code: MONGO_DUPLICATE_KEY_CODE,
     });
   });

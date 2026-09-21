@@ -6,6 +6,7 @@
 // utils/encryption.ts). SettingsService — настоящий, на том же соединении:
 // рубильник читается из БД, не из фейка, тем же приёмом, что
 // settings.service.spec.ts.
+import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
 import { SCHOOL_TZ } from '@xuanxue/shared';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord, ClassSchema } from '../classes/class.schema';
@@ -18,8 +19,10 @@ import { encryptRecord } from '../utils/encryption';
 import { MaterialRecord, MaterialSchema } from './material.schema';
 import { MaterialsService } from './materials.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { fakeStorageOrphans } from '../test-support/fake-storage-orphans';
 
 const AUTHOR_ID = new Types.ObjectId().toString();
+const NOW = DateTime.fromISO('2026-09-20T10:00:00Z', { zone: 'utc' });
 
 describe('MaterialsService', () => {
   let memory: MemoryMongo;
@@ -29,6 +32,7 @@ describe('MaterialsService', () => {
   let settingsModel: Model<SettingsRecord>;
   let settingsService: SettingsService;
   let service: MaterialsService;
+  let removeNow: jest.Mock;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -44,7 +48,9 @@ describe('MaterialsService', () => {
       classModel,
       new UsersService(userModel),
     );
-    service = new MaterialsService(model, classModel, settingsService);
+    const orphans = fakeStorageOrphans();
+    removeNow = orphans.removeNow;
+    service = new MaterialsService(model, classModel, settingsService, orphans.service);
   }, 60_000);
 
   afterAll(async () => {
@@ -52,6 +58,9 @@ describe('MaterialsService', () => {
   });
 
   afterEach(async () => {
+    // Фейк журнала сирот живёт на весь describe — счётчики вызовов чистим,
+    // иначе соседний тест видит чужой removeNow.
+    jest.clearAllMocks();
     await model.deleteMany({});
     await classModel.deleteMany({});
     await settingsModel.deleteMany({});
@@ -291,10 +300,36 @@ describe('MaterialsService', () => {
       AUTHOR_ID,
     );
 
-    await service.remove(created.id);
+    await service.remove(created.id, NOW);
 
     expect(await service.list({})).toHaveLength(0);
-    await expect(service.remove(created.id)).rejects.toMatchObject({ status: 404 });
+    await expect(service.remove(created.id, NOW)).rejects.toMatchObject({ status: 404 });
+  });
+
+  // ADR-0057: файл уходит тем же действием, что и материал. Проверяем
+  // read-after-write — что удалился именно записанный ключ, а не «какой-то».
+  it('remove: у материала с файлом ключ объекта уходит в уборку', async () => {
+    const created = await service.create(
+      { title: 'Методичка', url: 'https://example.com/m', kind: 'document' },
+      AUTHOR_ID,
+    );
+    const key = `materials/${created.id}/3f1a4c9e`;
+    await model.updateOne({ _id: created.id }, { $set: { fileKey: key } });
+
+    await service.remove(created.id, NOW);
+
+    expect(removeNow).toHaveBeenCalledWith(key, NOW);
+  });
+
+  it('remove: у материала без файла уборку не зовём вовсе', async () => {
+    const created = await service.create(
+      { title: 'Просто ссылка', url: 'https://example.com/l', kind: 'article' },
+      AUTHOR_ID,
+    );
+
+    await service.remove(created.id, NOW);
+
+    expect(removeNow).not.toHaveBeenCalled();
   });
 
   it('title и url зашифрованы в сырой Mongo — расшифровка идёт только через сервис', async () => {
