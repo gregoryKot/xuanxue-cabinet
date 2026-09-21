@@ -19,15 +19,13 @@ import { DateTime } from 'luxon';
 import { Logger } from 'nestjs-pino';
 import type { ApiErrorBody } from '@xuanxue/shared';
 import { APP_ERROR_ALERTS, type AppErrorAlerts } from './app-error-alerts';
+import { fromBodyParserError, isBodyParserError } from './body-parser-error.mapper';
 import { errorMessage, errorStack } from './error-info';
 import { DomainError } from './errors';
 import { fromHttpException } from './http-exception.mapper';
 import { pathWithoutQuery, requestIdOf, type RequestLike } from './request-info';
 
 const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз через минуту.';
-// Лимит тела (JSON 1 МБ, картинка экзамена — ADR-0035): текст один на оба случая.
-const PAYLOAD_TOO_LARGE_MESSAGE =
-  'Файл или текст больше допустимого. Уменьшите его и попробуйте ещё раз.';
 
 // Минимальный интерфейс вместо @types/express (которого нет в зависимостях
 // api/): фильтру нужен express-подобный `res.status().json()`. Что берётся из
@@ -78,18 +76,19 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       return fromHttpException(exception, requestId);
     }
-    // body-parser даёт лимит тела как http-errors Error с полями status/type,
-    // не HttpException — mapExternalException её не оборачивает, ловим сами.
-    if (
-      exception instanceof Error &&
-      (exception as { type?: unknown }).type === 'entity.too.large'
-    ) {
-      return {
-        statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
-        code: 'payload_too_large',
-        message: PAYLOAD_TOO_LARGE_MESSAGE,
-        requestId,
-      };
+    // body-parser даёт свои ошибки (лимит тела, битый JSON, неподдерживаемый
+    // charset) как http-errors Error с полями status/type, не HttpException —
+    // mapExternalException её не оборачивает, ловим сами (body-parser-error.mapper.ts).
+    if (exception instanceof Error && isBodyParserError(exception)) {
+      // entity.too.large — заранее ожидаемый отказ (лимит известен и назван
+      // пользователю), остальные типы — неожиданный битый ввод: не сбой
+      // сервера (алёрта нет), но и не тихо — warn виден в логах Railway.
+      if (exception.type !== 'entity.too.large') {
+        this.logger.warn(
+          `Тело запроса не распознано (requestId=${requestId ?? '-'}, type=${exception.type}): ${errorMessage(exception)}`,
+        );
+      }
+      return fromBodyParserError(exception, requestId);
     }
     this.logger.error(
       `Необработанная ошибка (requestId=${requestId ?? '-'}): ${errorMessage(exception)}`,
