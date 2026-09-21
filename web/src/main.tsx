@@ -7,7 +7,7 @@ import { installGlobalErrorReporting } from './errors/globalErrorReporting';
 import './fonts';
 import './pwa/standalone.css';
 import './index.css';
-import { unregisterServiceWorker } from './pwa/unregisterServiceWorker';
+import { registerServiceWorker } from './pwa/registerServiceWorker';
 
 // До первой же строчки остального кода (ADR-0071) — даже сбой прогрева
 // чанка чуть ниже должен долететь до сервера.
@@ -24,9 +24,9 @@ void matchRoute(window.location.pathname)?.load();
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Не найден #root');
 
-// Ремень к kill-switch web/public/sw.js (ADR-0032): снимает регистрацию
-// и кеш ещё до того, как браузер сам решит перепроверить sw.js.
-void unregisterServiceWorker();
+// Push-worker web/public/sw.js (ADR-0092) — регистрируем молча, без запроса
+// разрешения на уведомления (оно просится по кнопке, отдельный PR).
+void registerServiceWorker();
 
 createRoot(rootEl).render(
   <StrictMode>
