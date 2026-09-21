@@ -42,19 +42,9 @@ const rowStyle: CSSProperties = {
 };
 // На 360px строка несёт знак школы, название и теперь два значка по 44px
 // (колокольчик и профиль) — длинное название школы обязано подрезаться
-// многоточием внутри строки, а не вылезать за неё (тот же приём и тот же
-// довод, что у sideBrandTitleStyle в sideNavStyles.ts, и PR #237 «ничего не
-// вылезает за свой контейнер»).
-const titleStyle: CSSProperties = {
-  fontFamily: 'var(--font-display)',
-  fontWeight: 500,
-  fontSize: 21,
-  color: 'var(--ink)',
-  minWidth: 0,
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-};
+// многоточием внутри строки, а не вылезать за неё. Начертание и подрезка —
+// уже часть SchoolWordmark (components/SchoolMark.tsx), тот же приём и тот
+// же довод, что у PR #237 «ничего не вылезает за свой контейнер».
 // Общий отступ от названия школы несёт обёртка — обеим целям нажатия своего
 // зазора не нужно: они уже по 44px, видимые значки 20px и так расходятся.
 const actionsStyle: CSSProperties = {
@@ -84,7 +74,7 @@ interface AppShellBrandRowProps {
 export function AppShellBrandRow({ isMobile, me }: AppShellBrandRowProps) {
   return (
     <span style={rowStyle}>
-      <SchoolBrandLink to={rootPathFor(me)} titleStyle={titleStyle} />
+      <SchoolBrandLink to={rootPathFor(me)} />
       {isMobile && (
         <span style={actionsStyle}>
           <NotificationBell />

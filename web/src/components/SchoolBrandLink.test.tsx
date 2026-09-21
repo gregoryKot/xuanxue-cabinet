@@ -10,7 +10,7 @@ import { SchoolBrandLink } from './SchoolBrandLink';
 function renderLink(to: string) {
   return render(
     <MemoryRouter>
-      <SchoolBrandLink to={to} titleStyle={{}} />
+      <SchoolBrandLink to={to} />
     </MemoryRouter>,
   );
 }
