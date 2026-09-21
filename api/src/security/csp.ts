@@ -11,8 +11,7 @@
 // web/src/auth/telegramAuthRedirect.ts). Такой переход — навигация, а не
 // подгрузка ресурса или встраивание в iframe, поэтому CSP (scriptSrc,
 // connectSrc) его не ограничивает: ни `form-action`, ни `navigate-to` в этом
-// списке не заданы. `frameSrc` больше не объявляется вовсе — попапа/фрейма
-// на чужой домен у нас не осталось, директива падает на `default-src 'self'`.
+// списке не заданы.
 export const CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
   scriptSrc: ["'self'"],
@@ -23,6 +22,14 @@ export const CSP_DIRECTIVES = {
   connectSrc: ["'self'"],
   imgSrc: ["'self'", 'data:', 'https:'],
   styleSrc: ["'self'"],
+  // Встроенный плеер записи (ADR-0099) — единственная причина, по которой
+  // frameSrc вообще объявлен: без него директива падала на
+  // `default-src 'self'` и фрейм на чужой домен не открывался вовсе.
+  // Ровно два хостинга, ровно те, чей адрес встраивания выводится из ссылки
+  // (shared/src/video-embed.ts): nocookie-домен YouTube и Rutube. 'self'
+  // сюда не входит — своих фреймов у кабинета нет, а неиспользуемая
+  // поверхность CSP — тот же риск, что лишняя env-переменная (SECURITY §6).
+  frameSrc: ['https://www.youtube-nocookie.com', 'https://rutube.ru'],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],
   frameAncestors: ["'none'"],

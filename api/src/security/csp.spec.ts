@@ -6,10 +6,15 @@ import { CSP_DIRECTIVES } from './csp';
 
 describe('CSP_DIRECTIVES', () => {
   // Виджет Telegram и его попап убраны (ADR-0028): вход — переход вкладки
-  // на oauth.telegram.org, CSP такую навигацию не ограничивает. Ни
-  // telegram.org, ни oauth.telegram.org внешним источником больше не нужны.
-  it('frameSrc не объявлен — фреймов на чужой домен не осталось', () => {
-    expect(CSP_DIRECTIVES).not.toHaveProperty('frameSrc');
+  // на oauth.telegram.org, CSP такую навигацию не ограничивает, и сам по
+  // себе вход фрейма не требует. Единственный фрейм кабинета — плеер записи
+  // (ADR-0099), поэтому список закрыт двумя хостингами: расширять его молча
+  // нельзя, как было с accounts.google.com.
+  it('frameSrc — только плеер записи, ровно два хостинга', () => {
+    expect(CSP_DIRECTIVES.frameSrc).toEqual([
+      'https://www.youtube-nocookie.com',
+      'https://rutube.ru',
+    ]);
   });
 
   it('scriptSrc и connectSrc не пускают произвольные домены — только self', () => {
