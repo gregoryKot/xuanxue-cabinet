@@ -7,7 +7,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { LIST_LIMIT_MAX, type MaterialDto } from '@xuanxue/shared';
+import {
+  LIST_LIMIT_MAX,
+  type AuthConfigDto,
+  type MaterialDto,
+  type MaterialFileDto,
+} from '@xuanxue/shared';
 import { materialsListPath } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import {
@@ -30,6 +35,22 @@ const LESSON_ID = 'l1';
 // вычисление проверяемого кода.
 const ATTACHED_PATH = `/materials?lessonId=${LESSON_ID}&limit=${LIST_LIMIT_MAX}`;
 const LIBRARY_PATH = materialsListPath('', '');
+// Признак хранилища файлов секция читает сама (useAuthConfig, ADR-0080) —
+// путь добавлен в мок, иначе запрос уходит в «неожиданный путь».
+const AUTH_CONFIG_PATH = '/auth/config';
+
+function makeAuthConfig(fileStorageEnabled: boolean): AuthConfigDto {
+  return { emailLoginEnabled: true, fileStorageEnabled };
+}
+
+function makeFile(): MaterialFileDto {
+  return {
+    name: 'форма-24.pdf',
+    contentType: 'application/pdf',
+    sizeBytes: 1024,
+    uploadedAt: '2026-01-01T00:00:00Z',
+  };
+}
 
 function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   return {
@@ -55,6 +76,9 @@ interface RenderOptions {
   mutations?: Record<string, unknown>;
   /** Ответ на `POST /materials` (общий префикс, он же последний). */
   created?: unknown;
+  /** Хранилище файлов подключено — по умолчанию да: выключенное проверяет
+   * свой тест, остальным оно ничего не меняет (у материалов нет файла). */
+  fileStorage?: boolean;
 }
 
 function renderSection({
@@ -62,8 +86,10 @@ function renderSection({
   library = [],
   mutations,
   created = makeMaterial({ id: 'created' }),
+  fileStorage = true,
 }: RenderOptions = {}) {
   mockApiByPath({
+    [AUTH_CONFIG_PATH]: makeAuthConfig(fileStorage),
     [ATTACHED_PATH]: attached,
     [LIBRARY_PATH]: library,
     ...mutations,
@@ -345,5 +371,46 @@ describe('LessonMaterialsSection — «Из библиотеки»', () => {
 
     expect(screen.queryByPlaceholderText(/Найти материал/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Из библиотеки' })).toBeInTheDocument();
+  });
+});
+
+describe('LessonMaterialsSection — файл материала', () => {
+  const FILE_LINK_NAME = 'Скачать файл';
+
+  it('у материала есть файл — ссылка ведёт на /api/materials/:id/file', async () => {
+    renderSection({ attached: [makeMaterial({ file: makeFile() })] });
+
+    expect(await screen.findByRole('link', { name: FILE_LINK_NAME })).toHaveAttribute(
+      'href',
+      '/api/materials/m1/file',
+    );
+  });
+
+  it('файла нет — ссылки на скачивание нет вовсе', async () => {
+    renderSection({ attached: [makeMaterial()] });
+
+    await screen.findByRole('link', { name: 'Ван Пэйшэн — форма 24' });
+    expect(screen.queryByRole('link', { name: FILE_LINK_NAME })).not.toBeInTheDocument();
+  });
+
+  it('хранилище не подключено — ссылки нет, хотя файл у материала записан', async () => {
+    renderSection({ attached: [makeMaterial({ file: makeFile() })], fileStorage: false });
+
+    await screen.findByRole('link', { name: 'Ван Пэйшэн — форма 24' });
+    expect(screen.queryByRole('link', { name: FILE_LINK_NAME })).not.toBeInTheDocument();
+  });
+
+  it('кандидат «Из библиотеки» с файлом — та же ссылка, списки не разъезжаются', async () => {
+    const user = userEvent.setup();
+    renderSection({
+      library: [makeMaterial({ id: 'm2', title: 'Разминка суставов', file: makeFile() })],
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Из библиотеки' }));
+
+    expect(await screen.findByRole('link', { name: FILE_LINK_NAME })).toHaveAttribute(
+      'href',
+      '/api/materials/m2/file',
+    );
   });
 });

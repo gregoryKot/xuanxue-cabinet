@@ -6,6 +6,7 @@
 import type { CSSProperties } from 'react';
 import { MATERIAL_KIND_LABELS, type MaterialDto } from '@xuanxue/shared';
 import { textLinkButtonStyle } from '../components/screenLayout';
+import { MaterialFileDownloadLink } from '../materials/MaterialFileDownloadLink';
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -20,15 +21,25 @@ const rowStyle: CSSProperties = {
 // горизонтальный скролл (CLAUDE.md «Мобильный экран первым»).
 const titleColumnStyle: CSSProperties = { minWidth: 0, overflowWrap: 'anywhere' };
 const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
+// Ссылка на файл — своей строкой под подписью, а не рядом с кнопкой действия:
+// на 360 px правая колонка уже занята «Добавить»/«Убрать» (CLAUDE.md
+// «Мобильный экран первым»).
+const fileLineStyle: CSSProperties = { marginTop: 2 };
 
 interface LessonMaterialRowProps {
   material: MaterialDto;
+  /** Хранилище файлов подключено (`fileStorageEnabled`, ADR-0057): нет ключей
+   * — ссылки на скачивание нет вовсе, а не кнопка, которая ответит 503. Тот
+   * же приём, что у поля файла на странице материала. Секция читает признак
+   * один раз и раздаёт обоим спискам. */
+  fileStorageEnabled: boolean;
   actionLabel: string;
   onAction: () => void;
 }
 
 export function LessonMaterialRow({
   material,
+  fileStorageEnabled,
   actionLabel,
   onAction,
 }: LessonMaterialRowProps) {
@@ -43,6 +54,14 @@ export function LessonMaterialRow({
           {material.title}
         </a>
         <div style={metaStyle}>{meta}</div>
+        {/* Здесь только «Скачать файл» (ADR-0080): учителю на этом экране
+            нужно увидеть, что файл есть, и забрать его; загрузка и замена
+            живут на странице материала, в разделе «Материалы». */}
+        {fileStorageEnabled && material.file && (
+          <div style={fileLineStyle}>
+            <MaterialFileDownloadLink materialId={material.id} />
+          </div>
+        )}
       </div>
       <button type="button" style={textLinkButtonStyle} onClick={onAction}>
         {actionLabel}

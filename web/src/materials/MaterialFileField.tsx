@@ -13,9 +13,9 @@ import {
 } from '@xuanxue/shared';
 import { FilePickerButton } from '../components/FilePickerButton';
 import { TextLinkButton } from '../components/TextLinkButton';
-import { materialFilePath } from '../api/apiPaths';
-import { dangerNoteStyle, noteStyle, textLinkStyle } from '../components/screenLayout';
+import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
 import { formatFileSize } from '../lib/formatFileSize';
+import { MaterialFileDownloadLink } from './MaterialFileDownloadLink';
 import { useMaterialFileUpload } from './useMaterialFileUpload';
 
 const ACCEPT = MATERIAL_FILE_CONTENT_TYPES.join(',');
@@ -23,7 +23,6 @@ const FIELD_LABEL = 'Файл материала';
 const ADD_LABEL = 'Добавить файл';
 const REPLACE_LABEL = 'Заменить файл';
 const REMOVE_LABEL = 'Убрать файл';
-const DOWNLOAD_LABEL = 'Скачать';
 const MAX_MB = MATERIAL_FILE_LIMITS.maxBytes / (1024 * 1024);
 // Подсказка стоит там, где файла ещё нет: формат и потолок нужно знать ДО
 // выбора файла на телефоне — если он не подойдёт, человек узнает это раньше,
@@ -87,14 +86,7 @@ export function MaterialFileField({
           <p style={fileNameStyle}>{file.name}</p>
           <p style={noteStyle}>{formatFileSize(file.sizeBytes)}</p>
           <div style={actionsRowStyle}>
-            {/* Обычная ссылка, не apiFetch: сервер отвечает 302 на подписанный
-                адрес в другом домене, а `connectSrc: 'self'` в CSP
-                (api/src/security/csp.ts) оборвал бы такой редирект у fetch —
-                навигация по <a href> под CSP не ограничена. Не «чинить» на
-                apiFetch. */}
-            <a href={`/api${materialFilePath(materialId)}`} style={textLinkStyle}>
-              {DOWNLOAD_LABEL}
-            </a>
+            <MaterialFileDownloadLink materialId={materialId} />
             {picker}
             <TextLinkButton danger disabled={pending} onClick={() => void handleRemove()}>
               {REMOVE_LABEL}
