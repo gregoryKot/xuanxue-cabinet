@@ -22,6 +22,7 @@ import {
   type AttemptQuestionRecord,
   type ExamAttemptRecord,
 } from './exam-attempt.schema';
+import type { AttemptGradingSummary } from './exam-grading-list';
 
 /** ExamAttemptRecord как его отдаёт `.lean()` до расшифровки — `blocks`/
  * `answers` ещё строка (encJson, exam-attempt.schema.ts). `Pick<T, keyof T>`
@@ -84,11 +85,18 @@ export function decryptAttempt(doc: RawLeanExamAttempt): LeanExamAttempt {
   };
 }
 
-/** `userName` параметром, не запросом внутри маппера (CLAUDE.md «API»:
- * маппер — единственная точка сборки DTO, но в базу сам не ходит) — сотруднику
- * его подставляет `ExamAttemptsService.list` одним запросом на весь список,
- * ученику (или другим вызывающим) не передаётся вовсе. */
-export function toAttemptDto(doc: LeanExamAttempt, userName?: string): ExamAttemptDto {
+/** `userName`/`grading` параметрами, не запросом внутри маппера (CLAUDE.md
+ * «API»: маппер — единственная точка сборки DTO, но в базу сам не ходит) —
+ * сотруднику их подставляет `ExamAttemptsService.list` одним запросом на
+ * весь список (userNamesService.namesByIds/listGradingsForAttempts), ученику
+ * (или другим вызывающим) не передаются вовсе — оба поля тогда физически
+ * отсутствуют в ответе (JSON.stringify отбрасывает ключ со значением
+ * undefined), не приходят пустыми. */
+export function toAttemptDto(
+  doc: LeanExamAttempt,
+  userName?: string,
+  grading?: AttemptGradingSummary,
+): ExamAttemptDto {
   return {
     id: doc._id.toString(),
     examId: doc.examId.toString(),
@@ -102,5 +110,7 @@ export function toAttemptDto(doc: LeanExamAttempt, userName?: string): ExamAttem
     deadlineAt: doc.deadlineAt ? toIsoUtc(doc.deadlineAt) : undefined,
     submittedAt: doc.submittedAt ? toIsoUtc(doc.submittedAt) : undefined,
     expired: doc.expired,
+    outcome: grading?.outcome,
+    gradedAt: grading?.gradedAt,
   };
 }

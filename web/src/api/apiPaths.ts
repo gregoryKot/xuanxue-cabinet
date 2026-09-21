@@ -78,6 +78,9 @@ export function examItemsListPath(status: ExamItemStatus | ''): string {
 const ATTEMPTS_PATH = '/attempts';
 export const ATTEMPTS_LIST_PATH = `${ATTEMPTS_PATH}?limit=${LIST_LIMIT_MAX}`;
 export const GRADING_QUEUE_PATH = `${ATTEMPTS_PATH}?status=submitted&limit=${LIST_LIMIT_MAX}`;
+/** Второй список «Проверки работ» (docs/PLAN.md §4.6) — уже проверенные,
+ * рядом с очередью ждущих (GRADING_QUEUE_PATH выше). */
+export const GRADED_ATTEMPTS_PATH = `${ATTEMPTS_PATH}?status=graded&limit=${LIST_LIMIT_MAX}`;
 
 export function attemptReviewPath(attemptId: string): string {
   return `${ATTEMPTS_PATH}/${attemptId}/review`;
