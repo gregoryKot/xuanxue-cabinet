@@ -4,13 +4,10 @@
 // хуки и подкомпоненты»).
 import type { CSSProperties } from 'react';
 import type { MyMaterialDto } from '@xuanxue/shared';
-import { materialFilePath } from '../api/apiPaths';
 import { textLinkStyle } from '../components/screenLayout';
+import { MaterialFileDownloadLink } from '../materials/MaterialFileDownloadLink';
 
 const OPEN_LABEL = 'Открыть';
-// У материала бывает и ссылка, и свой файл — второе действие рядом с
-// «Открыть», не вместо него.
-const DOWNLOAD_FILE_LABEL = 'Скачать файл';
 // VOICE.md: конкретика и действие — что случилось и что сделать дальше;
 // текст ADR-0048 уже прошёл эту проверку.
 const LOCKED_EXPLANATION =
@@ -58,15 +55,9 @@ export function StudentMaterialCardActions({
           {OPEN_LABEL}
         </a>
       )}
-      {material.file && (
-        // Обычная ссылка, не apiFetch: сервер отвечает 302 на подписанный
-        // адрес в другом домене, а `connectSrc: 'self'` в CSP
-        // (api/src/security/csp.ts) оборвал бы такой редирект у fetch —
-        // навигация по <a href> под CSP не ограничена, не «чинить» на apiFetch.
-        <a href={`/api${materialFilePath(material.id)}`} style={openLinkStyle}>
-          {DOWNLOAD_FILE_LABEL}
-        </a>
-      )}
+      {/* У материала бывает и ссылка, и свой файл — второе действие рядом с
+          «Открыть», не вместо него. */}
+      {material.file && <MaterialFileDownloadLink materialId={material.id} />}
     </div>
   );
 }

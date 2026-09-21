@@ -64,7 +64,7 @@ describe('MaterialFileField — файла нет', () => {
     expect(screen.getByText('Добавить файл')).toBeInTheDocument();
     expect(screen.getByText(/PDF/)).toHaveTextContent('30 МБ');
     expect(screen.getByText(/PDF/)).toHaveTextContent('.docx');
-    expect(screen.queryByRole('link', { name: 'Скачать' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Скачать файл' })).not.toBeInTheDocument();
   });
 
   it('accept у поля выбора включает формат Word (.docx)', () => {
@@ -120,7 +120,7 @@ describe('MaterialFileField — файла нет', () => {
 });
 
 describe('MaterialFileField — файл есть', () => {
-  it('имя, размер, ссылка «Скачать» с адресом через /api, «Заменить файл», «Убрать файл»', () => {
+  it('имя, размер, ссылка «Скачать файл» с адресом через /api, «Заменить файл», «Убрать файл»', () => {
     stubUpload();
     render(
       <MaterialFileField
@@ -132,7 +132,7 @@ describe('MaterialFileField — файл есть', () => {
 
     expect(screen.getByText('Ван Пэйшэн — форма 24.pdf')).toBeInTheDocument();
     expect(screen.getByText('2,5 МБ')).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: 'Скачать' });
+    const link = screen.getByRole('link', { name: 'Скачать файл' });
     expect(link).toHaveAttribute('href', `/api/materials/${MATERIAL_ID}/file`);
     expect(screen.getByText('Заменить файл')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Убрать файл' })).toBeInTheDocument();

@@ -8,6 +8,7 @@
 // Хранилище одно (ADR-0056): библиотека — витрина той же коллекции, поэтому
 // «прикрепил к занятию — появилось в материалах» происходит само.
 import { useState, type CSSProperties } from 'react';
+import { useAuthConfig } from '../auth/useAuthConfig';
 import { Button } from '../components/Button';
 import { editorSectionStyle } from '../components/editorLayout';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -51,6 +52,10 @@ export function LessonMaterialsSection({ lessonId }: LessonMaterialsSectionProps
   const state = useLessonMaterials(lessonId);
   const [mode, setMode] = useState<PickerMode>('closed');
   const materials = state.materials ?? [];
+  // Признак хранилища файлов (ADR-0057) читается здесь один раз и раздаётся
+  // обоим спискам: у строки свой запрос стоил бы по вызову на материал.
+  const authConfig = useAuthConfig();
+  const fileStorageEnabled = authConfig.config?.fileStorageEnabled === true;
 
   function handleCreated() {
     setMode('closed');
@@ -78,6 +83,7 @@ export function LessonMaterialsSection({ lessonId }: LessonMaterialsSectionProps
             <LessonMaterialRow
               key={material.id}
               material={material}
+              fileStorageEnabled={fileStorageEnabled}
               actionLabel={REMOVE_LABEL}
               onAction={() => void state.detach(material)}
             />
@@ -102,6 +108,7 @@ export function LessonMaterialsSection({ lessonId }: LessonMaterialsSectionProps
       {mode === 'library' && (
         <LessonMaterialPicker
           attached={materials}
+          fileStorageEnabled={fileStorageEnabled}
           onAttach={(material) => void state.attach(material)}
           onClose={() => setMode('closed')}
         />

@@ -41,12 +41,16 @@ const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 interface LessonMaterialPickerProps {
   /** Уже привязанные к этой дате — их в кандидатах быть не должно. */
   attached: MaterialDto[];
+  /** Признак хранилища файлов от секции (LessonMaterialsSection.tsx) — строка
+   * здесь та же, что в списке привязанных, и выглядеть должна так же. */
+  fileStorageEnabled: boolean;
   onAttach: (material: MaterialDto) => void;
   onClose: () => void;
 }
 
 export function LessonMaterialPicker({
   attached,
+  fileStorageEnabled,
   onAttach,
   onClose,
 }: LessonMaterialPickerProps) {
@@ -86,6 +90,7 @@ export function LessonMaterialPicker({
             <LessonMaterialRow
               key={material.id}
               material={material}
+              fileStorageEnabled={fileStorageEnabled}
               actionLabel={ADD_LABEL}
               onAction={() => onAttach(material)}
             />
