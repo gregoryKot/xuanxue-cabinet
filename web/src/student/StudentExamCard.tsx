@@ -12,10 +12,10 @@
 // ExamAttemptOutcome — своя логика, что показывать, не должна раздувать саму
 // карточку (CLAUDE.md «Храповики», лимит 150 строк).
 import type { CSSProperties } from 'react';
-import type { MyExamDto } from '@xuanxue/shared';
+import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
-import { describeNoAction, formatAttemptsLeft, getExamAction } from './examAttemptState';
+import { describeNoAction, formatAttemptsLeft } from './examAttemptState';
 
 const RUBRIC = 'Экзамен';
 
@@ -48,6 +48,13 @@ const ACTION_LABEL = {
   retry: 'Пройти ещё раз',
 } as const;
 
+// Кнопка «Пройти ещё раз» бывает по двум разным причинам (getMyExamAction,
+// shared): учитель посмотрел работу и попросил доработать — там уже есть
+// итог с комментарием (ExamAttemptOutcome ниже), объяснять нечего; либо
+// время истекло раньше, чем ученик успел сдать сам — без строки рядом кнопка
+// выглядела бы случайной (CLAUDE.md: «каждая фича объясняет, откуда это»).
+const EXPIRED_RETRY_NOTE = 'Прошлую попытку закрыло время';
+
 interface StudentExamCardProps {
   exam: MyExamDto;
   pending: boolean;
@@ -56,9 +63,13 @@ interface StudentExamCardProps {
 }
 
 export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCardProps) {
-  const action = getExamAction(exam);
+  const action = getMyExamAction(exam);
   const attempt = exam.lastAttempt;
   const showOutcome = attempt?.status === 'graded' && attempt.outcome !== undefined;
+  // Не «весь retry» — только та его причина, которую сам экран ещё не
+  // объяснил итогом учителя (см. комментарий у EXPIRED_RETRY_NOTE).
+  const showExpiredNote =
+    action === 'retry' && attempt?.status === 'submitted' && attempt.expired;
 
   return (
     <li>
@@ -84,6 +95,7 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             сообщения об одном читаются как сбой. */}
         {action ? (
           <div style={actionRowStyle}>
+            {showExpiredNote && <p style={metaStyle}>{EXPIRED_RETRY_NOTE}</p>}
             <Button type="button" variant="secondary" pending={pending} onClick={onStart}>
               {ACTION_LABEL[action]}
             </Button>

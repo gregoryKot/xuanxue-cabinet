@@ -144,6 +144,101 @@ describe('useAbortableFetch — гонка запросов (ревью п.13)',
   });
 });
 
+describe('useAbortableFetch — applyData() (отзыв владельца 2026-09-21)', () => {
+  it('форма-обновитель — получает текущее значение и кладёт результат (usePeople.ts, useGradingPresets.ts)', async () => {
+    const load = vi.fn().mockResolvedValueOnce('было');
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.data).toBe('было'));
+
+    act(() => {
+      result.current.applyData((prev: string | null) => `${prev}+патч`);
+    });
+
+    expect(result.current.data).toBe('было+патч');
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('кладёт данные без нового запроса — error и loading сброшены', async () => {
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('Сервис недоступен', 503, 'unknown'));
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.error).toBe('Сервис недоступен'));
+
+    act(() => {
+      result.current.applyData('ответ записи');
+    });
+
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toBe('ответ записи');
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('снимает loading, даже вызванный посреди ещё не ответившего reload()', () => {
+    // load() специально висит вечно — с управляемым промисом достаточно
+    // самого факта, что до его разрешения дело не доходит (CLAUDE.md
+    // «Детерминизм»): reload() тут никогда не долетает до ответа.
+    const load = vi.fn().mockImplementation(() => new Promise<string>(() => {}));
+    const { result } = renderHook(() =>
+      useAbortableFetch(load, FALLBACK, { enabled: false }),
+    );
+
+    act(() => {
+      void result.current.reload();
+    });
+    expect(result.current.loading).toBe(true);
+
+    act(() => {
+      result.current.applyData('ответ записи');
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.data).toBe('ответ записи');
+  });
+
+  it('главный тест: ответ уже летящего load() после applyData() не перезаписывает применённые данные', async () => {
+    let resolveReload: ((value: string) => void) | undefined;
+    const load = vi
+      .fn()
+      .mockResolvedValueOnce('первое')
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveReload = resolve;
+          }),
+      );
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let reloadPromise: Promise<void> | undefined;
+    act(() => {
+      reloadPromise = result.current.reload();
+    });
+    expect(result.current.loading).toBe(true);
+
+    // PATCH уже ответил — applyData() кладёт его результат, пока висящий
+    // GET (reload() выше) ещё не разрешился.
+    act(() => {
+      result.current.applyData('ответ записи');
+    });
+    expect(result.current.data).toBe('ответ записи');
+    expect(result.current.loading).toBe(false);
+
+    // Висящий GET наконец отвечает — устаревшим к этому моменту значением.
+    await act(async () => {
+      resolveReload?.('устаревший ответ висящего GET');
+      await reloadPromise;
+    });
+
+    expect(result.current.data).toBe('ответ записи');
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+});
+
 describe('useAbortableFetch — refresh() тихое перечитывание (ADR-0076)', () => {
   it('не поднимает loading, пока идёт тихий запрос', async () => {
     let resolveRefresh: ((value: string) => void) | undefined;

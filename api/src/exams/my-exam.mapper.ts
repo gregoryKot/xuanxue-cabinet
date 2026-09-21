@@ -20,6 +20,10 @@ export interface MyExamInput {
 export interface MyExamLastAttemptInput {
   id: string;
   status: ExamAttemptStatus;
+  // Закрыло ли последнюю попытку время, а не сам ученик — по этому полю
+  // кабинет и бот решают, предложить ли «Пройти ещё раз» (getMyExamAction,
+  // shared, ADR-0091). Значение приносит вызывающий сервис уже нормализованным.
+  expired: boolean;
   outcome?: GradingOutcome;
   comment?: string;
 }

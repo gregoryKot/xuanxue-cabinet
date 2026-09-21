@@ -5,40 +5,68 @@ import { getAttemptTimeStatus } from './attemptDeadline';
 
 const NOW = new Date('2026-09-12T10:00:00Z').getTime();
 
+function statusIn(ms: number) {
+  return getAttemptTimeStatus(new Date(NOW + ms).toISOString(), NOW);
+}
+
 describe('getAttemptTimeStatus', () => {
   it('без дедлайна — форма без лимита времени', () => {
     expect(getAttemptTimeStatus(undefined, NOW)).toEqual({
       hasDeadline: false,
       expired: false,
       label: null,
+      warning: false,
+      announcement: null,
     });
   });
 
-  it('осталось 15 минут', () => {
-    const deadline = new Date(NOW + 15 * 60_000).toISOString();
-    expect(getAttemptTimeStatus(deadline, NOW)).toEqual({
-      hasDeadline: true,
-      expired: false,
-      label: 'Осталось 15 минут',
-    });
+  it('два часа ровно — без «0 мин»', () => {
+    expect(statusIn(2 * 60 * 60_000).label).toBe('Осталось 2 ч');
   });
 
-  it('склонение — 1 минута', () => {
-    const deadline = new Date(NOW + 1 * 60_000).toISOString();
-    expect(getAttemptTimeStatus(deadline, NOW).label).toBe('Осталось 1 минута');
+  it('2 ч 15 мин', () => {
+    expect(statusIn(2 * 60 * 60_000 + 15 * 60_000).label).toBe('Осталось 2 ч 15 мин');
   });
 
-  it('меньше минуты — не «0 минут»', () => {
-    const deadline = new Date(NOW + 30_000).toISOString();
-    expect(getAttemptTimeStatus(deadline, NOW).label).toBe('Осталось меньше минуты');
+  it('меньше часа — М:СС, минуты без ведущего нуля', () => {
+    expect(statusIn(12 * 60_000 + 34_000).label).toBe('Осталось 12:34');
   });
 
-  it('дедлайн в прошлом — expired, без label', () => {
-    const deadline = new Date(NOW - 1000).toISOString();
-    expect(getAttemptTimeStatus(deadline, NOW)).toEqual({
+  it('меньше минуты — секунды всегда двумя знаками', () => {
+    expect(statusIn(7000).label).toBe('Осталось 0:07');
+  });
+
+  it('порог предупреждения — ровно 5:00 ещё не тревожный тон', () => {
+    const status = statusIn(5 * 60_000);
+    expect(status.label).toBe('Осталось 5:00');
+    expect(status.warning).toBe(false);
+  });
+
+  it('порог предупреждения — 4:59 уже тревожный тон', () => {
+    const status = statusIn(4 * 60_000 + 59_000);
+    expect(status.label).toBe('Осталось 4:59');
+    expect(status.warning).toBe(true);
+  });
+
+  it('announcement — молчит, пока осталось больше 5 минут', () => {
+    expect(statusIn(6 * 60_000).announcement).toBeNull();
+  });
+
+  it('announcement — «меньше 5 минут» под порогом предупреждения', () => {
+    expect(statusIn(4 * 60_000 + 59_000).announcement).toBe('Осталось меньше 5 минут');
+  });
+
+  it('announcement — «меньше минуты» на последней минуте', () => {
+    expect(statusIn(59_000).announcement).toBe('Осталось меньше минуты');
+  });
+
+  it('дедлайн в прошлом — expired, без label, без предупреждения', () => {
+    expect(getAttemptTimeStatus(new Date(NOW - 1000).toISOString(), NOW)).toEqual({
       hasDeadline: true,
       expired: true,
       label: null,
+      warning: false,
+      announcement: null,
     });
   });
 

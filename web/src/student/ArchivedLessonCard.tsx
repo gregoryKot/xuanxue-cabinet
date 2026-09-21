@@ -13,6 +13,7 @@
 // это какая именно это запись, если их несколько (решение агента).
 import type { CSSProperties } from 'react';
 import type { ArchivedRecordingDto, MyArchivedLessonDto } from '@xuanxue/shared';
+import { dividedListStyle } from '../components/listCardStyles';
 import { textLinkStyle } from '../components/screenLayout';
 import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
 import { StudentMaterialCard } from './StudentMaterialCard';
@@ -52,18 +53,15 @@ const plainTextStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',
 };
+// Форма списка общая (docs/adr/0088), а воздух под заголовком «Материалы» —
+// местный: его задаёт карточка занятия, а не форма списка.
+const materialsListStyle: CSSProperties = { ...dividedListStyle, marginTop: 4 };
 const materialsHeadingStyle: CSSProperties = {
   margin: '8px 0 0',
   fontSize: 13,
   fontWeight: 600,
   color: 'var(--ink-soft)',
 };
-const materialsListStyle: CSSProperties = {
-  margin: '4px 0 0',
-  padding: 0,
-  listStyle: 'none',
-};
-
 function ArchivedRecordingRow({ recording }: { recording: ArchivedRecordingDto }) {
   if (recording.url) {
     return (

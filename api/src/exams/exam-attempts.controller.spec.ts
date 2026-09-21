@@ -3,9 +3,15 @@
 // (exam-attempts.e2e-spec.ts, exam-attempts-ownership.e2e-spec.ts) на
 // настоящем гварде — здесь только «контроллер зовёт сервис и возвращает его ответ».
 import { Test } from '@nestjs/testing';
-import type { AttemptReviewDto, ExamAttemptDto, ExamGradingDto } from '@xuanxue/shared';
+import type {
+  AttemptReviewDto,
+  ExamAttemptCountDto,
+  ExamAttemptDto,
+  ExamGradingDto,
+} from '@xuanxue/shared';
 import { MediaAssetsService } from '../media/media-assets.service';
 import type { UserLean } from '../users/users.service';
+import { ExamAttemptCountService } from './exam-attempt-count.service';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamGradingsService } from './exam-gradings.service';
@@ -44,6 +50,7 @@ async function buildController(
   service: Partial<ExamAttemptsService> = {},
   gradingsService: Partial<ExamGradingsService> = {},
   mediaAssetsService: Partial<MediaAssetsService> = fakeMediaAssetsService(),
+  countService: Partial<ExamAttemptCountService> = {},
 ): Promise<ExamAttemptsController> {
   const module = await Test.createTestingModule({
     controllers: [ExamAttemptsController],
@@ -51,6 +58,7 @@ async function buildController(
       { provide: ExamAttemptsService, useValue: service },
       { provide: ExamGradingsService, useValue: gradingsService },
       { provide: MediaAssetsService, useValue: mediaAssetsService },
+      { provide: ExamAttemptCountService, useValue: countService },
     ],
   }).compile();
   return module.get(ExamAttemptsController);
@@ -63,6 +71,17 @@ describe('ExamAttemptsController', () => {
 
     await expect(controller.start('e1', USER)).resolves.toEqual(ATTEMPT_DTO);
     expect(start).toHaveBeenCalledWith('e1', USER.id, expect.anything());
+  });
+
+  it('countByExam() передаёт examId в сервис счётчика попыток', async () => {
+    const countDto: ExamAttemptCountDto = { total: 2 };
+    const countByExam = jest.fn().mockResolvedValue(countDto);
+    const controller = await buildController({}, {}, fakeMediaAssetsService(), {
+      countByExam,
+    });
+
+    await expect(controller.countByExam('e1')).resolves.toEqual(countDto);
+    expect(countByExam).toHaveBeenCalledWith('e1');
   });
 
   it('saveAnswers() передаёт id попытки, тело и id пользователя в сервис', async () => {

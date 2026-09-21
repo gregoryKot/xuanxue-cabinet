@@ -10,6 +10,7 @@ import type { AttemptBlockRecord, ExamAttemptRecord } from '../exams/exam-attemp
 
 export interface AttemptOwnerInfo {
   userId: string;
+  examId: string;
   examTitle: string;
   blocks: AttemptBlockRecord[];
   // Проверено ли уже (ADR-0086): замена ссылки на видео-ответ запрещена
@@ -24,9 +25,10 @@ export async function loadAttemptOwnerInfo(
 ): Promise<AttemptOwnerInfo | null> {
   if (!Types.ObjectId.isValid(attemptId)) return null;
   const doc = await attemptModel
-    .findById(attemptId, { userId: 1, examTitle: 1, blocks: 1, status: 1 })
+    .findById(attemptId, { userId: 1, examId: 1, examTitle: 1, blocks: 1, status: 1 })
     .lean<{
       userId: Types.ObjectId;
+      examId: Types.ObjectId;
       examTitle: string;
       blocks: string;
       status: ExamAttemptStatus;
@@ -34,6 +36,7 @@ export async function loadAttemptOwnerInfo(
   if (!doc) return null;
   return {
     userId: doc.userId.toString(),
+    examId: doc.examId.toString(),
     examTitle: decrypt(doc.examTitle) ?? doc.examTitle,
     blocks: decryptJson<AttemptBlockRecord[]>(doc.blocks) ?? [],
     status: doc.status,

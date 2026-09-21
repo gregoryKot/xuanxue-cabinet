@@ -137,6 +137,7 @@ export type {
   AttemptBlockDto,
   AttemptAnswerDto,
   ExamAttemptDto,
+  ExamAttemptCountDto,
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
 } from './exams';
@@ -201,7 +202,8 @@ export {
   MATERIAL_FILE_NOT_FOUND_MESSAGE,
 } from './material-files';
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
-export type { MyExamDto, ListMyExamsQuery } from './my-exams';
+export type { MyExamDto, ListMyExamsQuery, MyExamAction } from './my-exams';
+export { myExamAttemptsLeft, getMyExamAction } from './my-exams';
 export type {
   AttemptOptionCheckDto,
   AttemptReviewOptionDto,

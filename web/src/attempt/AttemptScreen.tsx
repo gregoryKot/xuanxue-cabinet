@@ -15,10 +15,16 @@
 // ранних return, поэтому useAttemptMedia зовём выше них, а объект video
 // собираем только когда attempt уже точно есть (иначе attempt.id и attempt.media
 // звать не от чего).
+//
+// Попап «Время вышло» (отзыв владельца 2026-09-21, useExpiryNotice.ts) —
+// только когда дедлайн настиг попытку прямо на этом сеансе экрана; рисуется
+// поверх AttemptSubmitted тем же переключением по attempt.status с сервера
+// (комментарий выше), хук — до ранних return вместе с остальными.
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { NoticeDialog } from '../components/NoticeDialog';
 import { SkeletonLines } from '../components/Skeleton';
 import { showsTelegramLinkOffer } from '../telegram/acceptsTelegramOffer';
 import { AttemptInProgress } from './AttemptInProgress';
@@ -27,6 +33,11 @@ import { attemptPageStyle } from './attemptLayout';
 import { useAttempt } from './useAttempt';
 import { useAttemptMedia, type AttemptVideoControls } from './useAttemptMedia';
 import { useAttemptVideoPoll } from './useAttemptVideoPoll';
+import { useExpiryNotice } from './useExpiryNotice';
+
+const EXPIRY_NOTICE_TITLE = 'Время вышло';
+const EXPIRY_NOTICE_MESSAGE =
+  'Попытка закрыта и ушла учителю на проверку. Ответы, которые вы успели дать, сохранены.';
 
 export default function AttemptScreen() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +54,7 @@ export default function AttemptScreen() {
   // useAttemptVideoPoll.ts) — тоже до ранних return: пока attempt === null,
   // хук сам не ходит в сеть, решение живёт внутри него.
   useAttemptVideoPoll(attempt, refresh);
+  const expiryNotice = useExpiryNotice(attempt);
 
   if (loading) {
     return (
@@ -73,7 +85,18 @@ export default function AttemptScreen() {
   };
 
   if (attempt.status !== 'in_progress') {
-    return <AttemptSubmitted attempt={attempt} video={video} />;
+    return (
+      <>
+        <AttemptSubmitted attempt={attempt} video={video} />
+        {expiryNotice.showing && (
+          <NoticeDialog
+            title={EXPIRY_NOTICE_TITLE}
+            message={EXPIRY_NOTICE_MESSAGE}
+            onClose={expiryNotice.dismiss}
+          />
+        )}
+      </>
+    );
   }
 
   return (

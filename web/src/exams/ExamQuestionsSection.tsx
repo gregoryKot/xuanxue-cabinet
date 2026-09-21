@@ -10,6 +10,7 @@ import { useState, type CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { noteStyle } from '../components/screenLayout';
+import { ExamAttemptsNote } from './ExamAttemptsNote';
 import { ExamQuestionList } from './ExamQuestionList';
 import { ExamQuestionSearch } from './ExamQuestionSearch';
 import { NewQuestionForm } from './NewQuestionForm';
@@ -39,6 +40,9 @@ interface ExamQuestionsSectionProps {
   bankLoading: boolean;
   bankError: string | null;
   onRetryBank: () => void;
+  /** `undefined` у нового экзамена (`/exams/new`) — попыток ещё нет и
+   * заметки о них тоже (ExamAttemptsNote.tsx). */
+  examId?: string;
 }
 
 export function ExamQuestionsSection({
@@ -52,6 +56,7 @@ export function ExamQuestionsSection({
   bankLoading,
   bankError,
   onRetryBank,
+  examId,
 }: ExamQuestionsSectionProps) {
   const [creating, setCreating] = useState(false);
   const [createdItems, setCreatedItems] = useState<ExamItemDto[]>([]);
@@ -66,6 +71,7 @@ export function ExamQuestionsSection({
   return (
     <div style={columnStyle}>
       <span className="xuanxue-eyebrow">Вопросы · {itemIds.length}</span>
+      {examId && <ExamAttemptsNote examId={examId} />}
       {questionsPerAttempt !== undefined && (
         <p style={noteStyle}>{questionsListNote(questionsPerAttempt, itemIds.length)}</p>
       )}

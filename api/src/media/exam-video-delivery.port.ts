@@ -1,4 +1,4 @@
-// Порт доставки видео экзамена в Telegram (ADR-0088, уточняет ADR-0023) —
+// Порт доставки видео экзамена в Telegram (ADR-0095, уточняет ADR-0023) —
 // MediaModule не может импортировать TelegramModule напрямую: тот сам
 // импортирует MediaModule (MediaAssetsService), и обратный импорт закольцевал
 // бы граф (eslint import-x/no-cycle, CLAUDE.md «Слои»). Интерфейс живёт
@@ -13,7 +13,7 @@ import type { ExamVideoTelegramType } from './media-asset.schema';
 export interface SendExamVideoInput {
   chatId: string;
   fileId: string;
-  /** Запись со стыка деплоя без сохранённого типа (ADR-0088, тот же приём,
+  /** Запись со стыка деплоя без сохранённого типа (ADR-0095, тот же приём,
    * что itemId у ADR-0037) — реализация перебирает методы Bot API сама. */
   telegramType?: ExamVideoTelegramType;
   /** Кто, какой экзамен — уходит отдельным сообщением: у video_note подписи

@@ -21,7 +21,7 @@ import { EXAM_MEDIA_KINDS } from '@xuanxue/shared';
 import type { ExamMediaKind } from '@xuanxue/shared';
 import { enc, plain, encryptSchemaFrom, type FieldPolicy } from '../common/field-policy';
 
-// Тип вложения, которым видео пришло в Telegram (ADR-0023, ADR-0088) — свой
+// Тип вложения, которым видео пришло в Telegram (ADR-0023, ADR-0095) — свой
 // метод Bot API на каждый вид (sendVideo/sendVideoNote/sendDocument,
 // telegram/bot-send-video.ts), поэтому тип сохраняется вместе с file_id, а не
 // теряется на границе telegram → media. Не в shared/: поле служебное,
@@ -65,7 +65,7 @@ export class MediaAssetRecord {
   @Prop({ type: String, required: false })
   fileUniqueId?: string;
 
-  // Тип вложения (ADR-0088) — только `kind: 'telegram'`. Необязателен: записи
+  // Тип вложения (ADR-0095) — только `kind: 'telegram'`. Необязателен: записи
   // с прода до этой правки его не несут (expand → contract, тот же приём, что
   // itemId выше) — повторная отправка для них перебирает методы по очереди
   // (telegram-exam-video-delivery.ts).

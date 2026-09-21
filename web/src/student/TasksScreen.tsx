@@ -13,14 +13,16 @@
 // один запрос GET /me/exams через контекст, а не заводят каждый свой.
 //
 // Новое здесь — рубрики: задания, к которым ученик ещё не приступал
-// (getExamAction === 'start'), идут первыми под своей рубрикой, остальные —
-// ниже под «Остальные». Разделение — splitNewTasks.ts, чистая функция с
-// тестом (CLAUDE.md «Логика вне компонентов»).
+// (getMyExamAction === 'start', shared/src/my-exams.ts), идут первыми под
+// своей рубрикой, остальные — ниже под «Остальные». Разделение —
+// splitNewTasks.ts, чистая функция с тестом (CLAUDE.md «Логика вне
+// компонентов»).
 import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { MyExamDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { cardListStyle } from '../components/listCardStyles';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
@@ -40,7 +42,6 @@ const NEW_RUBRIC_MANY = 'Новые задания';
 const REST_RUBRIC = 'Остальные';
 const START_ERROR_MESSAGE = 'Не удалось начать попытку. Попробуйте ещё раз.';
 
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 const groupStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 // У `<h2>` свои отступы от браузера — расстояние держит `gap` колонки.
 const headingStyle: CSSProperties = { margin: 0 };
@@ -105,7 +106,7 @@ export default function TasksScreen() {
           <h2 className="xuanxue-eyebrow" style={headingStyle}>
             {newTasks.length === 1 ? NEW_RUBRIC_ONE : NEW_RUBRIC_MANY}
           </h2>
-          <ul style={listStyle}>{newTasks.map(renderCard)}</ul>
+          <ul style={cardListStyle}>{newTasks.map(renderCard)}</ul>
         </div>
       )}
 
@@ -116,7 +117,7 @@ export default function TasksScreen() {
               {REST_RUBRIC}
             </h2>
           )}
-          <ul style={listStyle}>{restTasks.map(renderCard)}</ul>
+          <ul style={cardListStyle}>{restTasks.map(renderCard)}</ul>
         </div>
       )}
     </section>

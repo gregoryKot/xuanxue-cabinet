@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import type { MaterialDto } from '@xuanxue/shared';
 import { MATERIALS_PATH } from '../api/apiPaths';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { dividedListStyle } from '../components/listCardStyles';
 import { SearchField } from '../components/SearchField';
 import {
   noteStyle,
@@ -36,7 +37,6 @@ const ADD_LABEL = 'Добавить';
 const CLOSE_LABEL = 'Закрыть';
 
 const wrapStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 
 interface LessonMaterialPickerProps {
   /** Уже привязанные к этой дате — их в кандидатах быть не должно. */
@@ -81,7 +81,7 @@ export function LessonMaterialPicker({
       )}
 
       {candidates.length > 0 && (
-        <ul style={listStyle}>
+        <ul style={dividedListStyle}>
           {candidates.map((material) => (
             <LessonMaterialRow
               key={material.id}

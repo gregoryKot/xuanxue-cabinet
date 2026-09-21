@@ -45,9 +45,15 @@ export interface FakeTelegraf {
    * (CLAUDE.md «Telegram»), а не новым — без этого списка e2e видит только
    * ответы на текст и слеп к половине шагов. */
   editMessageCalls: SendMessageCall[];
-  /** Команды, которые бот зарегистрировал в меню Telegram (bot-commands.ts). */
-  commandCalls: { command: string; description: string }[][];
-  /** Видео экзамена по file_id (ADR-0088, bot-send-video.ts) — только
+  /** Команды, которые бот зарегистрировал в меню Telegram (bot-commands.ts):
+   * список плюс scope, на который он выставлен (без scope — не тот тест). */
+  commandCalls: {
+    commands: { command: string; description: string }[];
+    scope: unknown;
+  }[];
+  /** Scope, с которого список команд сняли (deleteMyCommands, bot-commands.ts). */
+  commandDeletes: unknown[];
+  /** Видео экзамена по file_id (ADR-0095, bot-send-video.ts) — только
    * `sendVideo`: `sendVideoNote`/`sendDocument` покрыты своим юнитом
    * (bot-send-video.spec.ts), здесь нужен только факт «дошло/не дошло». */
   sendVideoCalls: SendVideoCall[];
@@ -56,14 +62,18 @@ export interface FakeTelegraf {
 /** `failSendMessage` — проактивная отправка (PreviewService и т. п.) должна
  * пережить сбой сети, не уронить тик планировщика: спеки проверяют это без
  * настоящего обрыва соединения. `failSendVideo` — тот же довод для
- * TelegramBotService.sendExamVideo (ADR-0088). */
+ * TelegramBotService.sendExamVideo (ADR-0095). */
 export function createFakeTelegrafFactory(
   options: { failSendMessage?: boolean; failSendVideo?: boolean } = {},
 ): FakeTelegraf {
   const webhookCalls: WebhookCall[] = [];
   const sendMessageCalls: SendMessageCall[] = [];
   const editMessageCalls: SendMessageCall[] = [];
-  const commandCalls: { command: string; description: string }[][] = [];
+  const commandCalls: {
+    commands: { command: string; description: string }[];
+    scope: unknown;
+  }[] = [];
+  const commandDeletes: unknown[] = [];
   const sendVideoCalls: SendVideoCall[] = [];
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
@@ -80,10 +90,16 @@ export function createFakeTelegrafFactory(
         return Promise.resolve(true);
       }
       if (method === 'setMyCommands') {
-        commandCalls.push(
-          (payload?.commands as { command: string; description: string }[] | undefined) ??
-            [],
-        );
+        commandCalls.push({
+          commands:
+            (payload?.commands as
+              { command: string; description: string }[] | undefined) ?? [],
+          scope: payload?.scope,
+        });
+        return Promise.resolve(true);
+      }
+      if (method === 'deleteMyCommands') {
+        commandDeletes.push(payload?.scope);
         return Promise.resolve(true);
       }
       if (method === 'sendMessage') {
@@ -131,6 +147,7 @@ export function createFakeTelegrafFactory(
     sendMessageCalls,
     editMessageCalls,
     commandCalls,
+    commandDeletes,
     sendVideoCalls,
   };
 }

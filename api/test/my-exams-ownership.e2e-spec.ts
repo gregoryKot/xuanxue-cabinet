@@ -73,6 +73,7 @@ describe('/me/exams — владение (e2e)', () => {
     expect(examA?.lastAttempt).toEqual({
       id: (started.body as ExamAttemptDto).id,
       status: 'in_progress',
+      expired: false,
     });
 
     const listB = await request(server()).get('/api/me/exams').set('Cookie', cookieB);

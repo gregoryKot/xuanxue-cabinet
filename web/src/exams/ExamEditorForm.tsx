@@ -119,6 +119,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
             bankLoading={bank.loading}
             bankError={bank.error}
             onRetryBank={() => void bank.reload()}
+            examId={exam?.id}
           />
         </div>
 

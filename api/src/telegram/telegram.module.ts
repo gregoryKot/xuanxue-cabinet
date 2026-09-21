@@ -14,7 +14,7 @@
 // (PersonalChats.listFor, кнопки «Уведомления»); MediaModule —
 // MediaAssetsService (ExamMediaMessageHandler, слой 4.5, ADR-0023): бот
 // привязывает видео экзамена и пересылает его учителю; сюда же кладёт себя
-// TelegramExamVideoDelivery (ADR-0088) — карточка проверки может запросить
+// TelegramExamVideoDelivery (ADR-0095) — карточка проверки может запросить
 // то же видео ещё раз, не только в момент пересылки
 // (exam-video-delivery.port.ts объясняет инверсию). PaymentsModule —
 // PaymentsService (PaymentScreenshotMessageHandler, слой 2.2, ADR-0050): бот

@@ -14,6 +14,7 @@ import { NotificationPrefsService } from './notification-prefs.service';
 import { NotificationRecord, NotificationSchema } from './notification.schema';
 import { toNotificationDto, type RawLeanNotification } from './notification.mapper';
 import { InAppExamNotifier } from './in-app-exam-notifier';
+import { InAppVideoLinkNotifier } from './in-app-video-link-notifier';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
@@ -34,6 +35,7 @@ describe('InAppExamNotifier', () => {
   let usersService: UsersService;
   let notificationPrefsService: NotificationPrefsService;
   let notifier: InAppExamNotifier;
+  let videoLinkNotifier: InAppVideoLinkNotifier;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -52,6 +54,15 @@ describe('InAppExamNotifier', () => {
       usersService,
       notificationPrefsService,
       notificationModel,
+    );
+    // Соседний класс с теми же зависимостями (ADR-0084) — тестируется здесь
+    // же, а не в своём файле: фикстура (Mongo в памяти, пользователи,
+    // настройки видов) уже стоит тут, а её копия рядом была бы дублем на
+    // полсотни строк (CLAUDE.md «Дубли»).
+    videoLinkNotifier = new InAppVideoLinkNotifier(
+      notificationModel,
+      usersService,
+      notificationPrefsService,
     );
   }, 60_000);
 
@@ -311,6 +322,71 @@ describe('InAppExamNotifier', () => {
       expect(stored?.outcome).toBe('failed');
       expect(stored?.readAt).toBeNull();
       upsertSpy.mockRestore();
+    });
+  });
+
+  // ADR-0084: собственного вида не заводим, переиспользуем attempt_submitted
+  // (комментарий у notifyVideoLinkAdded, in-app-exam-notifier.ts) —
+  // получатели те же, что у notifyAttemptSubmitted.
+  describe('notifyVideoLinkAdded', () => {
+    const VIDEO_LINK_CONTEXT = {
+      ...ATTEMPT_CONTEXT,
+      userId: 'u1',
+      questionPrompt: 'Повторите форму Ци-ши',
+      url: 'https://vk.com/video-1',
+    };
+
+    it('учитель активен, вид включён (дефолт роли) — запись легла под attempt_submitted', async () => {
+      const teacherId = await createUser('Мария', ['teacher']);
+
+      await videoLinkNotifier.notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW);
+
+      const stored = await notificationModel.findOne({ userId: teacherId }).lean();
+      expect(stored).toMatchObject({
+        userId: teacherId,
+        kind: 'attempt_submitted',
+        examId: ATTEMPT_CONTEXT.examId,
+        attemptId: ATTEMPT_CONTEXT.attemptId,
+        readAt: null,
+      });
+    });
+
+    it('учитель выключил attempt_submitted — запись не пишется', async () => {
+      const teacherId = await createUser('Мария', ['teacher']);
+      await notificationPrefsModel.create({
+        userId: teacherId,
+        overrides: [{ kind: 'attempt_submitted', enabled: false }],
+      });
+
+      await videoLinkNotifier.notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW);
+
+      expect(await notificationModel.countDocuments({})).toBe(0);
+    });
+
+    it('штата нет вовсе — ничего не пишет, не падает', async () => {
+      await expect(
+        videoLinkNotifier.notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW),
+      ).resolves.toBeUndefined();
+    });
+
+    it('сбой резолва (Mongo упала) — не бросает, warn-лог, не error', async () => {
+      const boom = jest
+        .spyOn(usersService, 'listActiveWithRoles')
+        .mockRejectedValue(new Error('Mongo недоступна'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      await expect(
+        videoLinkNotifier.notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW),
+      ).resolves.toBeUndefined();
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Mongo недоступна'),
+        expect.objectContaining({ attemptId: ATTEMPT_CONTEXT.attemptId }),
+      );
+      boom.mockRestore();
+      warn.mockRestore();
     });
   });
 

@@ -48,6 +48,11 @@ export function examsListPath(filters: ExamListFilters): string {
   return `${EXAMS_PATH}?${params.join('&')}`;
 }
 
+/** Число прошлых попыток экзамена — заметка учителю (ExamAttemptsNote.tsx, ADR-0022). */
+export function examAttemptCountPath(examId: string): string {
+  return `${EXAMS_PATH}/${examId}/attempt-count`;
+}
+
 export const EXAM_ITEMS_PATH = '/exam-items';
 export const EXAM_ITEM_STATS_SUMMARY_PATH = `${EXAM_ITEMS_PATH}/stats-summary`;
 

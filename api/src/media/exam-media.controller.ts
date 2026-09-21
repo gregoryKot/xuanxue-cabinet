@@ -42,7 +42,7 @@ export class ExamMediaController {
     return this.mediaAssetsService.addManual(id, body.note, DateTime.utc(), body.itemId);
   }
 
-  // ADR-0088: пересылка учителю в момент получения могла не дойти — эта
+  // ADR-0095: пересылка учителю в момент получения могла не дойти — эта
   // кнопка достаёт то же видео заново. Чат — из сессии вызывающего
   // (SECURITY §3), не из тела запроса, поэтому тела у маршрута нет.
   @Post(':id/media/:mediaId/send-to-me')

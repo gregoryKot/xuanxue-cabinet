@@ -1,5 +1,5 @@
 // Отправка видео экзамена по file_id, без перезаливки байтов (ADR-0023,
-// ADR-0088) — свой метод Bot API на каждый вид вложения (exam-video-source.ts,
+// ADR-0095) — свой метод Bot API на каждый вид вложения (exam-video-source.ts,
 // media-asset.schema.ts: video/video_note/document). `callApi` типизирован по
 // строковому литералу метода (как в telegram.adapter.ts, sendVideo/sendMessage
 // там же), поэтому это `if`, а не таблица методов по переменной-строке. Тот же

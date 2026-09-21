@@ -34,6 +34,13 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
   };
 }
 
+// Отдаёт одно и то же тело и на GET, и на PATCH того же адреса — так же, как
+// настоящий контроллер (ADR-0087: PATCH /settings возвращает полный
+// SettingsDto, и экран кладёт этот ответ прямо на себя). Раньше перед
+// mockByPath стояла заглушка `mockResolvedValueOnce({})` на сам PATCH: ответ
+// записи всё равно выбрасывался, и пустое тело ничему не мешало. Теперь оно
+// уронило бы экран на `settings.templates`, поэтому заглушки нет — PATCH
+// обслуживает тот же полный DTO, что и GET.
 function mockByPath(handlers: Record<string, unknown>) {
   mockedApiFetch.mockImplementation((path: string) => {
     for (const [prefix, value] of Object.entries(handlers)) {
@@ -156,7 +163,6 @@ describe('TemplatesScreen — оба редактора', () => {
 
     expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled();
 
-    mockedApiFetch.mockResolvedValueOnce({});
     mockByPath({
       '/settings': makeSettings({ updatedAt: '2026-01-02T00:00:00Z' }),
       '/lessons': [],
@@ -282,7 +288,6 @@ describe('TemplatesScreen — адрес сайта школы', () => {
 
     await user.type(screen.getByLabelText('Адрес сайта школы'), 'https://xuanxue.su');
 
-    mockedApiFetch.mockResolvedValueOnce({});
     mockByPath({
       '/settings': makeSettings({
         schoolSiteUrl: 'https://xuanxue.su',
@@ -321,7 +326,6 @@ describe('TemplatesScreen — адрес сайта школы', () => {
     const field = await screen.findByDisplayValue('https://xuanxue.su');
     await user.clear(field);
 
-    mockedApiFetch.mockResolvedValueOnce({});
     mockByPath({
       '/settings': makeSettings({ updatedAt: '2026-01-02T00:00:00Z' }),
       '/lessons': [],
@@ -403,7 +407,6 @@ describe('TemplatesScreen — время предпросмотра', () => {
     await user.clear(field);
     await user.type(field, '10');
 
-    mockedApiFetch.mockResolvedValueOnce({});
     mockByPath({
       '/settings': makeSettings({
         previewMinutes: 10,

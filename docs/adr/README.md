@@ -122,4 +122,12 @@
 | [0084](0084-video-link-is-the-main-path.md)                    | Ссылка на видео — основной путь ответа, бот остаётся вторым                                 |
 | [0085](0085-school-mark-is-a-raster-seal.md)                   | Знак школы — растровая печать; иконки и вкладка собираются из одного источника              |
 | [0086](0086-video-link-can-be-replaced.md)                     | Повторная ссылка на видео-ответ заменяет прежнюю, пока работу не проверили                  |
-| [0088](0088-exam-video-redelivery-on-demand.md)                | Видео экзамена можно запросить боту повторно; реестр доставки — у MediaModule               |
+| [0087](0087-fresh-state-comes-from-the-write-response.md)      | Свежее состояние берётся из ответа на запись, отдельного GET следом нет                     |
+| [0088](0088-list-declares-the-gap-between-rows.md)             | Промежуток между строками списка объявляет контейнер; гейт check-card-list-gap              |
+| [0089](0089-press-feedback-is-a-global-active-rule.md)         | Отклик на нажатие — глобальное правило `:active`, спиннер только на кнопке действия         |
+| [0090](0090-bot-commands-by-audience.md)                       | Список команд бота — по аудитории, через scope Telegram                                     |
+| [0091](0091-exam-retry-only-after-time-closes-attempt.md)      | «Пройти ещё раз» — только если попытку закрыло время, не сам ученик                         |
+| [0092](0092-web-push-returns.md)                               | Push возвращается: свой service worker, пинг без содержимого                                |
+| [0093](0093-question-shows-video-by-link-in-its-prompt.md)     | Видео в условии вопроса — ссылкой в самой формулировке, без своего поля                     |
+| [0094](0094-list-is-patched-from-the-write-response.md)        | Список правится из ответа записи; перечитывание остаётся только осознанно                   |
+| [0095](0095-exam-video-redelivery-on-demand.md)                | Видео экзамена можно запросить боту повторно; реестр доставки — у MediaModule               |

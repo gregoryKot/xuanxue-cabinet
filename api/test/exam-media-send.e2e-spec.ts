@@ -1,4 +1,4 @@
-// e2e повторной отправки видео экзамена учителю (ADR-0088, уточняет
+// e2e повторной отправки видео экзамена учителю (ADR-0095, уточняет
 // ADR-0023): кнопка «Прислать мне в бота» на карточке проверки. Настоящий
 // AppModule на MongoMemoryServer, TELEGRAF_FACTORY подменена
 // (createFakeTelegrafFactory) — сеть не трогаем, тот же приём, что
@@ -24,7 +24,7 @@ import { createExamMediaTestHelpers } from './e2e-support/exam-media-fixtures';
 import { createUserWithSession } from './e2e-support/session';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
-describe('Повторная отправка видео экзамена учителю (e2e, ADR-0088)', () => {
+describe('Повторная отправка видео экзамена учителю (e2e, ADR-0095)', () => {
   let testApp: TestApp;
   let fake: FakeTelegraf;
   const { server, startedAttempt } = createExamMediaTestHelpers(() => testApp);

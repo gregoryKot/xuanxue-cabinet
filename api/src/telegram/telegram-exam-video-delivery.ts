@@ -1,5 +1,5 @@
 // Реализация ExamVideoDeliveryPort (api/src/media/exam-video-delivery.port.ts)
-// поверх TelegramBotService — ADR-0088, уточняет ADR-0023: учитель может
+// поверх TelegramBotService — ADR-0095, уточняет ADR-0023: учитель может
 // запросить видео экзамена себе в бота ещё раз, не только в момент пересылки.
 // Кладёт себя в ExamVideoDeliveryRegistry в onModuleInit — TelegramModule уже
 // импортирует MediaModule (ради MediaAssetsService), реестр ему доступен;

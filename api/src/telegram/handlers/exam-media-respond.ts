@@ -12,7 +12,7 @@ import type { PersonalChats } from '../personal-chats';
 import { renderExamMediaAnswer } from './exam-media-answer';
 import { forwardExamVideoToTeachers } from './exam-media-forward';
 
-// ADR-0088: пересылка учителю при получении — best-effort, могла не дойти
+// ADR-0095: пересылка учителю при получении — best-effort, могла не дойти
 // (бота ещё не подключили, вид уведомления выключен) — «уже может
 // посмотреть» обещало то, чего могло не случиться. Кнопка на карточке
 // проверки достаёт то же видео заново в любой момент, поэтому это по-прежнему

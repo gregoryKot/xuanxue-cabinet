@@ -102,7 +102,7 @@ describe('TasksScreen — рубрики новых заданий', () => {
       makeExam({
         id: 'e1',
         attemptsAllowed: 2,
-        lastAttempt: { id: 'a1', status: 'submitted' },
+        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
       }),
     ]);
     renderScreen();
@@ -119,7 +119,7 @@ describe('TasksScreen — рубрики новых заданий', () => {
         id: 'e1',
         title: 'Уже отвечал',
         attemptsAllowed: 2,
-        lastAttempt: { id: 'a1', status: 'submitted' },
+        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
       }),
       makeExam({ id: 'e2', title: 'Ещё не начинал' }),
     ]);
@@ -129,6 +129,29 @@ describe('TasksScreen — рубрики новых заданий', () => {
     expect(screen.getByText('Остальные')).toBeInTheDocument();
     const headings = screen.getAllByRole('heading', { level: 2 });
     expect(headings.map((h) => h.textContent)).toEqual(['Новое задание', 'Остальные']);
+  });
+});
+
+// Регрессия: владелец трижды присылал снимок, где карточки списка стоят
+// вплотную и читаются одной плашкой; третий раз — ровно этот экран, две
+// карточки экзамена (docs/adr/0088). Причина была в контейнере `<ul>` без
+// `gap` — строка тёплой плашки своего отступа не несёт. Теперь список берёт
+// `cardListStyle` (web/src/components/listCardStyles.ts), тест проверяет
+// именно это: у `<ul>` со строками есть ненулевой зазор.
+describe('TasksScreen — карточки заданий не стоят вплотную', () => {
+  it('у списка есть промежуток между двумя карточками экзамена', async () => {
+    mockedApiFetch.mockResolvedValueOnce([
+      makeExam({ id: 'e1' }),
+      makeExam({ id: 'e2', title: 'Форма второго уровня' }),
+    ]);
+    renderScreen();
+
+    const items = await screen.findAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    const list = items[0]?.closest('ul');
+    expect(list).not.toBeNull();
+    expect(list?.style.gap).not.toBe('');
+    expect(list?.style.gap).not.toBe('0px');
   });
 });
 
