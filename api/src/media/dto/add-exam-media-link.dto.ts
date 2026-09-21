@@ -1,8 +1,9 @@
 // Тело POST /attempts/:id/media/link (ADR-0023, запасной путь — у кого нет
 // Telegram). Схема http/https, длина по лимиту; сообщение — по VOICE, что
 // случилось и что сделать дальше, не «неверный формат».
-// `itemId` (ADR-0037) — необязателен, пока web-экран отправки его не
-// присылает (следующий PR); сервис проверяет, что это video-вопрос снимка.
+// `itemId` (ADR-0037) — экран сдачи присылает его всегда; необязательным поле
+// остаётся только ради деплоя (expand → contract: старый инстанс ещё пишет
+// без него). Сервис проверяет, что это video-вопрос снимка.
 import { IsMongoId, IsOptional, IsUrl, MaxLength } from 'class-validator';
 import {
   EXAM_MEDIA_INVALID_URL_MESSAGE,
