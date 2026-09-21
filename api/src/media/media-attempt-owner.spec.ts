@@ -85,6 +85,27 @@ describe('loadAttemptOwnerInfo', () => {
     expect(info?.blocks).toEqual(BLOCKS);
   });
 
+  // examId — ключ для уведомления о присланной ссылке
+  // (exam-media-notifier.port.ts): без него лог по попытке нельзя найти
+  // по форме, не только по attemptId.
+  it('examId читается из попытки строкой', async () => {
+    const examId = new Types.ObjectId();
+    const doc = await attemptModel.create({
+      userId: new Types.ObjectId(),
+      examId,
+      examTitle: 'Экзамен',
+      status: 'in_progress',
+      attemptNo: 1,
+      startedAt: new Date('2026-09-18T10:00:00.000Z'),
+      blocks: JSON.stringify(BLOCKS),
+      answers: '[]',
+    });
+
+    const info = await loadAttemptOwnerInfo(attemptModel, doc._id.toString());
+
+    expect(info?.examId).toBe(examId.toString());
+  });
+
   // ADR-0086: addLink запрещает замену ссылки после graded — статус обязан
   // дойти до сервиса тем же запросом, что владелец и снимок, не вторым
   // походом в базу.
