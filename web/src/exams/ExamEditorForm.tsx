@@ -118,9 +118,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           <ExamEditorFooter
             status={exam ? exam.status : null}
             pending={form.pending}
-            preview={
-              exam ? { unsaved, onOpen: () => void openPreview(exam.id) } : null
-            }
+            preview={exam ? { unsaved, onOpen: () => void openPreview(exam.id) } : null}
             onRemove={removeConfirm.requestRemove}
           />
         </div>
