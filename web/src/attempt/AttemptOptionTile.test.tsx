@@ -93,6 +93,33 @@ describe('AttemptOptionTile', () => {
     expect(screen.getByRole('checkbox', { name: 'Вправо' })).toBeDisabled();
   });
 
+  // Ветка «выбрано» — не только состояние контрола: у плитки от неё зависит
+  // всё, чем выбор виден глазами (кольцо вокруг карточки, заливка отметки,
+  // галочка внутри). Без этого случая она не проверялась ничем, и храповик
+  // покрытия поймал провал ветвлений (CI PR #365).
+  it('выбранная плитка — галочка внутри отметки', () => {
+    const { container } = render(
+      <AttemptOptionTile label="Вправо" labelHidden={false} checked onChange={vi.fn()} />,
+    );
+
+    expect(screen.getByRole('checkbox', { name: 'Вправо' })).toBeChecked();
+    expect(container.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('невыбранная плитка — отметка пустая, галочки нет', () => {
+    const { container } = render(
+      <AttemptOptionTile
+        label="Вправо"
+        labelHidden={false}
+        checked={false}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('checkbox', { name: 'Вправо' })).not.toBeChecked();
+    expect(container.querySelector('svg')).not.toBeInTheDocument();
+  });
+
   it('без imageId — картинка не рендерится', () => {
     render(
       <AttemptOptionTile
