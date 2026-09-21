@@ -27,6 +27,13 @@ const base: CSSProperties = {
   font: 'inherit',
   fontWeight: 500,
   cursor: 'pointer',
+  // Флекс-ряд ставит спиннер (pending ниже) рядом с подписью и центрирует
+  // оба по вертикали; на кнопке без спиннера с одной подписью вид не
+  // меняется, поэтому это в base, а не только на pending-ветке.
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
 };
 
 const variants: Record<ButtonVariant, CSSProperties> = {
@@ -54,6 +61,18 @@ const sizes: Record<ButtonSize, CSSProperties> = {
   large: { minHeight: 48, padding: '13px 20px' },
 };
 
+// currentColor — одно кольцо работает на всех трёх силуэтах (заливка, контур,
+// текст) без отдельного цвета под каждый вариант.
+const spinnerStyle: CSSProperties = {
+  width: 14,
+  height: 14,
+  flexShrink: 0,
+  borderRadius: '50%',
+  border: '2px solid currentColor',
+  borderTopColor: 'transparent',
+  animation: 'xuanxue-spin 700ms linear infinite',
+};
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -66,6 +85,7 @@ export function Button({
   pending,
   disabled,
   style,
+  children,
   ...rest
 }: ButtonProps) {
   return (
@@ -81,6 +101,11 @@ export function Button({
       disabled={disabled || pending}
       aria-busy={pending || undefined}
       {...rest}
-    />
+    >
+      {/* aria-hidden: занятость уже объявлена aria-busy выше, спиннеру
+          второй раз объявлять её скринридеру незачем. */}
+      {pending && <span aria-hidden="true" style={spinnerStyle} />}
+      {children}
+    </button>
   );
 }

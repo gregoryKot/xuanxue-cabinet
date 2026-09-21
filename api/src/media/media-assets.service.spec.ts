@@ -16,6 +16,8 @@ import {
 } from '../exams/exam-attempt.schema';
 import { MediaAssetRecord, MediaAssetSchema } from './media-asset.schema';
 import { MediaAssetsService } from './media-assets.service';
+import type { VideoLinkAddedContext } from './exam-media-notifier.port';
+import { ExamMediaNotifierRegistry } from './exam-media-notifier.registry';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 
@@ -68,6 +70,8 @@ describe('MediaAssetsService', () => {
   let attemptModel: Model<ExamAttemptRecord>;
   let mediaModel: Model<MediaAssetRecord>;
   let service: MediaAssetsService;
+  let notifierRegistry: ExamMediaNotifierRegistry;
+  let notifyVideoLinkAdded: jest.Mock<Promise<void>, [VideoLinkAddedContext, DateTime]>;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -81,8 +85,19 @@ describe('MediaAssetsService', () => {
       MediaAssetSchema,
     );
     await mediaModel.syncIndexes();
-    service = new MediaAssetsService(mediaModel, attemptModel);
+    notifierRegistry = new ExamMediaNotifierRegistry();
+    service = new MediaAssetsService(mediaModel, attemptModel, notifierRegistry);
   }, 60_000);
+
+  // Фейковый ExamMediaNotifier — тестируется здесь только сам факт и
+  // контекст вызова (ADR-0084); поведение каждого плеча — дело
+  // telegram-exam-notifier.spec.ts/in-app-exam-notifier.spec.ts.
+  beforeEach(() => {
+    notifyVideoLinkAdded = jest
+      .fn<Promise<void>, [VideoLinkAddedContext, DateTime]>()
+      .mockResolvedValue(undefined);
+    notifierRegistry.set({ notifyVideoLinkAdded });
+  });
 
   afterAll(async () => {
     await memory.stop();
@@ -453,6 +468,108 @@ describe('MediaAssetsService', () => {
         ).rejects.toBeInstanceOf(NotFoundError);
       });
     });
+
+    // ADR-0084: ссылка добавлена успешно — учитель узнаёт об этом, не
+    // открывая карточку проверки сам.
+    describe('уведомление (ADR-0084)', () => {
+      it('успешная ссылка — зовёт нотификатор с верным контекстом, включая формулировку вопроса', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1',
+          NOW,
+          OTHER_VIDEO_ITEM_ID,
+        );
+
+        expect(notifyVideoLinkAdded).toHaveBeenCalledWith(
+          {
+            attemptId,
+            // expect.any(...) типизирован как `any` в @types/jest — приводим к
+            // string, тот же повод, что channels/telegram.adapter.spec.ts.
+            examId: expect.any(String) as string,
+            examTitle: 'Форма первого уровня',
+            userId: USER_A,
+            // Формулировка, а не номер: номеров у вопроса три разных
+            // (карточка проверки, сводка бота, форма сдачи) —
+            // комментарий в media-item-lookup.ts.
+            questionPrompt: 'И ещё одну',
+            url: 'https://vk.com/video-1',
+          },
+          NOW,
+        );
+      });
+
+      it('itemId не передан — questionPrompt: null, нотификатор всё равно позван', async () => {
+        const attemptId = await seedAttempt(USER_A);
+
+        await service.addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW);
+
+        expect(notifyVideoLinkAdded).toHaveBeenCalledWith(
+          expect.objectContaining({ questionPrompt: null }),
+          NOW,
+        );
+      });
+
+      it('замена ссылки на тот же вопрос — тоже зовёт нотификатор', async () => {
+        const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1',
+          NOW,
+          VIDEO_ITEM_ID,
+        );
+        notifyVideoLinkAdded.mockClear();
+
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1-fixed',
+          NOW.plus({ minutes: 1 }),
+          VIDEO_ITEM_ID,
+        );
+
+        expect(notifyVideoLinkAdded).toHaveBeenCalledWith(
+          expect.objectContaining({ url: 'https://vk.com/video-1-fixed' }),
+          NOW.plus({ minutes: 1 }),
+        );
+      });
+
+      it('нотификатор бросил — addLink всё равно вернул DTO (best-effort)', async () => {
+        notifyVideoLinkAdded.mockRejectedValue(new Error('бот недоступен'));
+        const attemptId = await seedAttempt(USER_A);
+
+        const dto = await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1',
+          NOW,
+        );
+
+        expect(dto.url).toBe('https://vk.com/video-1');
+      });
+
+      it('нотификатор не собран (ExamsModule не поднят) — addLink не падает', async () => {
+        const emptyRegistry = new ExamMediaNotifierRegistry();
+        const bareService = new MediaAssetsService(
+          mediaModel,
+          attemptModel,
+          emptyRegistry,
+        );
+        const attemptId = await seedAttempt(USER_A);
+
+        const dto = await bareService.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1',
+          NOW,
+        );
+
+        expect(dto.url).toBe('https://vk.com/video-1');
+      });
+    });
   });
 
   describe('addManual', () => {
@@ -498,6 +615,16 @@ describe('MediaAssetsService', () => {
       const dto = await service.addManual(attemptId, 'заметка', NOW, VIDEO_ITEM_ID);
 
       expect(dto.itemId).toBe(VIDEO_ITEM_ID);
+    });
+
+    // Отметку ставит сам учитель — слать ему уведомление о его же действии
+    // незачем (комментарий у addManual, media-assets.service.ts).
+    it('не зовёт нотификатор (ADR-0084) — отметку ставит сам учитель', async () => {
+      const attemptId = await seedAttempt(USER_A);
+
+      await service.addManual(attemptId, 'заметка', NOW);
+
+      expect(notifyVideoLinkAdded).not.toHaveBeenCalled();
     });
   });
 

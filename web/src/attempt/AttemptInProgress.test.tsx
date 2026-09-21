@@ -167,12 +167,32 @@ describe('AttemptInProgress — подсказка и оставшееся вр�
 
     expect(screen.getByText(/осталось/i)).toBeInTheDocument();
   });
+
+  // Форма без лимита времени не монтирует AttemptDeadlineTimer вовсе: иначе
+  // его `useNow` будил бы React раз в секунду там, где считать нечего, — а
+  // экзамен идут сдавать с телефона (CLAUDE.md «Мобильный экран первым»).
+  it('форма без лимита времени — отсчёта на экране нет', () => {
+    render(
+      <MemoryRouter>
+        <AttemptInProgress
+          attempt={makeAttempt({ deadlineAt: undefined })}
+          reload={() => Promise.resolve()}
+          onSubmit={() => Promise.resolve()}
+          submitting={false}
+          submitError={null}
+          video={makeVideo()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText(/осталось/i)).not.toBeInTheDocument();
+  });
 });
 
-// ADR-0091: учитель вставляет ссылку на видео прямо в текст вопроса вместо
+// ADR-0093: учитель вставляет ссылку на видео прямо в текст вопроса вместо
 // отдельного поля — кабинет находит её сам и показывает кликабельной, тем же
 // PromptText.tsx, что и в предпросмотре (exams/ExamPreviewQuestion.test.tsx).
-describe('AttemptInProgress — ссылка в формулировке (ADR-0091)', () => {
+describe('AttemptInProgress — ссылка в формулировке (ADR-0093)', () => {
   it('ссылка на видео в тексте вопроса кликабельна на экране сдачи', () => {
     const attempt = makeAttempt();
     const block = attempt.blocks[0];
