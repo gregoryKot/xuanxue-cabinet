@@ -51,6 +51,14 @@ export function VideoEmbed({ url, title }: { url: string; title?: string }) {
       src={embedUrl}
       title={title ?? FRAME_TITLE}
       style={frameStyle}
+      // Без Referer плеер не стартует: страницы кабинета отдаются с
+      // `Referrer-Policy: no-referrer` (умолчание helmet, app.setup.ts), и
+      // YouTube, не узнав, кто его встроил, рисует вместо записи «Video player
+      // configuration error, Error 153» — так оно и вышло у учителя 2026-09-21
+      // на первой же записи. Атрибут перебивает политику документа ровно для
+      // этого фрейма и отдаёт только origin, без пути: хостингу достаточно
+      // домена, а всем остальным ссылкам кабинета no-referrer остаётся.
+      referrerPolicy="strict-origin-when-cross-origin"
       allowFullScreen
     />
   );
