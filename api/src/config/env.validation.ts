@@ -45,6 +45,12 @@ import {
   SCHEDULER_ENABLED_MESSAGE,
   TELEGRAM_WEBHOOK_SECRET_MESSAGE,
   TELEGRAM_WEBHOOK_SECRET_RE,
+  VAPID_PRIVATE_KEY_MESSAGE,
+  VAPID_PRIVATE_KEY_RE,
+  VAPID_PUBLIC_KEY_MESSAGE,
+  VAPID_PUBLIC_KEY_RE,
+  VAPID_SUBJECT_MESSAGE,
+  VAPID_SUBJECT_RE,
 } from './env.rules';
 
 export type NodeEnv = (typeof NODE_ENVS)[number];
@@ -138,4 +144,21 @@ export class EnvSchema {
   @IsOptional()
   @Matches(R2_BUCKET_RE, { message: R2_BUCKET_MESSAGE })
   R2_BUCKET?: string;
+
+  // Push-уведомления браузера (ADR-0092) — три переменные все вместе или ни
+  // одной (env.vapid-group.ts), как у R2 выше. Без них push выключен, кабинет
+  // поднимается как прежде: риск сначала на владельце (CLAUDE.md
+  // «Рискованная фича — за флагом»), отсутствие ключей и есть выключатель.
+  // Сгенерировать пару — node scripts/generate-vapid-keys.mjs.
+  @IsOptional()
+  @Matches(VAPID_PUBLIC_KEY_RE, { message: VAPID_PUBLIC_KEY_MESSAGE })
+  VAPID_PUBLIC_KEY?: string;
+
+  @IsOptional()
+  @Matches(VAPID_PRIVATE_KEY_RE, { message: VAPID_PRIVATE_KEY_MESSAGE })
+  VAPID_PRIVATE_KEY?: string;
+
+  @IsOptional()
+  @Matches(VAPID_SUBJECT_RE, { message: VAPID_SUBJECT_MESSAGE })
+  VAPID_SUBJECT?: string;
 }

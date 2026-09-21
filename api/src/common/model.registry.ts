@@ -117,6 +117,11 @@ import {
   PaymentScreenshotSchema,
   PAYMENT_SCREENSHOT_FIELD_POLICY,
 } from '../payments/payment-screenshot.schema';
+import {
+  PushSubscriptionRecord,
+  PushSubscriptionSchema,
+  PUSH_SUBSCRIPTION_FIELD_POLICY,
+} from '../push/push-subscription.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -230,5 +235,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: StorageOrphanRecord.name,
     schema: StorageOrphanSchema,
     fieldPolicy: STORAGE_ORPHAN_FIELD_POLICY,
+  },
+  {
+    name: PushSubscriptionRecord.name,
+    schema: PushSubscriptionSchema,
+    fieldPolicy: PUSH_SUBSCRIPTION_FIELD_POLICY,
   },
 ];

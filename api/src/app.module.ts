@@ -26,6 +26,7 @@ import { GradingPresetsModule } from './grading-presets/grading-presets.module';
 import { MaterialsModule } from './materials/materials.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
+import { PushModule } from './push/push.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
 import { TagsModule } from './tags/tags.module';
@@ -81,6 +82,7 @@ import { staticAssetsOptions } from './static/static-cache-control';
     MaterialsModule,
     NotificationsModule,
     PaymentsModule,
+    PushModule,
     SettingsModule,
     SummaryModule,
     TagsModule,
