@@ -29,6 +29,7 @@ import type { ExamMediaDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { FormServerError, type FormError } from '../components/FormServerError';
 import { textLinkStyle } from '../components/screenLayout';
+import { VideoEmbed } from '../components/VideoEmbed';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { describeMediaSource } from './examMediaSourceText';
@@ -39,6 +40,16 @@ const itemStyle: CSSProperties = {
   gap: 4,
   padding: '14px 4px',
   borderBottom: '1px solid var(--line)',
+};
+// Ссылка показывается адресом, а не словами «Открыть ссылку на видео»: по
+// безымянной строке не видно, куда она ведёт — YouTube там, Яндекс.Диск или
+// чужая страница (снимок владельца 2026-09-21). Адрес целиком, с переносом
+// по любому символу: у видео бывают длинные пути, а карточка проверки
+// открывается и с телефона (CLAUDE.md «Мобильный экран первым»).
+const videoLinkStyle: CSSProperties = {
+  ...textLinkStyle,
+  alignSelf: 'flex-start',
+  overflowWrap: 'anywhere',
 };
 const sourceTextStyle: CSSProperties = {
   margin: 0,
@@ -86,10 +97,15 @@ export function AttemptReviewMediaItem({
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ ...textLinkStyle, alignSelf: 'flex-start' }}
+          style={videoLinkStyle}
         >
-          Открыть ссылку на видео
+          {item.url}
         </a>
+      )}
+      {/* Плеер под ссылкой (ADR-0100) — смотреть, не уходя с карточки
+          проверки; ссылка остаётся, см. комментарий там же. */}
+      {item.kind === 'link' && item.url && (
+        <VideoEmbed url={item.url} title="Запись ученика" />
       )}
       {item.kind === 'telegram' && (
         <>

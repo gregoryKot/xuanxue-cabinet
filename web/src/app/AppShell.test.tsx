@@ -267,26 +267,28 @@ describe('AppShell — учитель', () => {
 
 // ADR-0063: значок уведомлений — часть оболочки на обеих ширинах экрана,
 // читает общий счётчик через NotificationsProvider (добавлен в этом же PR).
-// Правка 2026-09-21: на мониторе значок переехал наверх колонки — владелец
-// не нашёл прежнюю текстовую ссылку внизу, в блоке человека.
+// Правка 2026-09-21: на мониторе значок ушёл из колонки в правый верхний угол
+// содержимого — пунктом меню он спорил с разделами, у которых домен есть
+// (ADR-0025), а угол у колокольчика тот же, что и на телефоне.
 describe('AppShell — ссылка на уведомления (ADR-0063)', () => {
-  it('на широком экране — наверху боковой колонки, не в блоке человека', async () => {
+  it('на широком экране — над содержимым, а не в боковой колонке', async () => {
     renderShell(TEACHER);
     await screen.findByText('Содержимое расписания');
 
     const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
     const column = nav.parentElement as HTMLElement;
-    const notifLink = within(column).getByRole('link', { name: 'Уведомления' });
+    const notifLink = screen.getByRole('link', { name: 'Уведомления' });
     expect(notifLink).toHaveAttribute('href', '/notifications');
 
-    // Точную позицию относительно <nav> проверяет AppNav.test.tsx — здесь
-    // только то, что AppShell не потерял узел среди «Профиль · Выйти»
-    // (прежнее место, откуда владелец его не нашёл).
-    const personBlock = within(column).getByText(/Вы вошли как/)
-      .parentElement as HTMLElement;
+    // Ни в колонке (прежнее место), ни ниже содержимого: значок стоит в
+    // разметке раньше <main>, то есть в верхней строке над экраном.
     expect(
-      within(personBlock).queryByRole('link', { name: 'Уведомления' }),
+      within(column).queryByRole('link', { name: 'Уведомления' }),
     ).not.toBeInTheDocument();
+    expect(
+      notifLink.compareDocumentPosition(screen.getByRole('main')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('на телефоне — та же ссылка в верхней строке, рядом со значком профиля', async () => {

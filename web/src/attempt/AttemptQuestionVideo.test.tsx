@@ -178,17 +178,59 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     receivedAt: '2026-09-12T16:30:00.000Z',
   };
 
-  // ADR-0086: форма ссылки не прячется — единственный способ исправить
-  // ошибочно прикреплённую ссылку — прислать новую, она заменит прежнюю.
-  it('список получённого сверху, форма ссылки с подписью о замене — под ним', () => {
+  // Снимок владельца 2026-09-21: по строке «Видео получено 21 сентября,
+  // 19:46» нельзя было понять, ТА ли ссылка ушла — самой ссылки на экране не
+  // было. Теперь первым делом виден сам ответ.
+  it('сама ссылка видна и открывается в новой вкладке, время — тихой подписью', () => {
     renderVideo(makeVideo({ media: [RECEIVED] }));
 
-    expect(screen.getByText(/Видео получено.*19:30/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
-    expect(
-      screen.getByText('Прислали не ту ссылку? Вставьте новую — она заменит прежнюю.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Вы прислали ссылку')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'https://example.com/v' });
+    expect(link).toHaveAttribute('href', 'https://example.com/v');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(screen.getByText(/Получено.*19:30/)).toBeInTheDocument();
     expect(screen.queryByText(/Ответ на этот вопрос — видео/)).not.toBeInTheDocument();
+  });
+
+  // ADR-0100: запись видно не уходя со страницы, но фрейм появляется только
+  // по нажатию — до него наружу не уходит ни одного запроса.
+  it('ссылка на YouTube — кнопка плеера, фрейма до нажатия нет', () => {
+    renderVideo(
+      makeVideo({
+        media: [{ ...RECEIVED, url: 'https://youtu.be/dQw4w9WgXcQ' }],
+      }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Смотреть здесь' })).toBeInTheDocument();
+    expect(document.querySelector('iframe')).toBeNull();
+  });
+
+  it('ссылка на невстраиваемый хостинг — плеера нет вовсе, только сама ссылка', () => {
+    renderVideo(
+      makeVideo({ media: [{ ...RECEIVED, url: 'https://disk.yandex.ru/i/abc' }] }),
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Смотреть здесь' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'https://disk.yandex.ru/i/abc' }),
+    ).toBeInTheDocument();
+  });
+
+  // ADR-0086 в силе: заменить ошибочную ссылку по-прежнему можно, но форма
+  // ждёт под тихим действием, а не спорит с ответом за внимание.
+  it('форма замены — под «Прислать другую ссылку», не раскрыта сразу', async () => {
+    const user = userEvent.setup();
+    renderVideo(makeVideo({ media: [RECEIVED] }));
+
+    expect(screen.queryByLabelText('Ссылка на видео')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Прислать другую ссылку' }));
+
+    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
+    expect(screen.getByText('Новая ссылка заменит прежнюю.')).toBeInTheDocument();
   });
 
   // Видео из Telegram заменить нельзя (их может быть несколько на один
@@ -209,6 +251,7 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     const user = userEvent.setup();
     renderVideo(makeVideo({ media: [RECEIVED], addMediaLink }));
 
+    await user.click(screen.getByRole('button', { name: 'Прислать другую ссылку' }));
     await user.type(
       screen.getByLabelText('Ссылка на видео'),
       'https://example.com/fixed',
@@ -222,7 +265,7 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     renderVideo(makeVideo({ media: [{ ...RECEIVED, itemId: 'q4' }] }), 'q3');
 
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
-    expect(screen.queryByText(/Видео получено/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Вы прислали/)).not.toBeInTheDocument();
   });
 
   // ADR-0037 «Последствия»: старый инстанс мог записать видео без itemId во
@@ -233,7 +276,7 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     renderVideo(makeVideo({ media: [withoutItemId] }), 'q3');
 
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
-    expect(screen.queryByText(/Видео получено/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Вы прислали/)).not.toBeInTheDocument();
   });
 });
 
@@ -275,7 +318,11 @@ describe('AttemptQuestionVideo — работу уже проверили', () =
       }),
     );
 
-    expect(screen.getByText(/Видео получено.*19:30/)).toBeInTheDocument();
+    expect(screen.getByText('Вы прислали ссылку')).toBeInTheDocument();
+    expect(screen.getByText(/Получено.*19:30/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Ссылка на видео')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Прислать другую ссылку' }),
+    ).not.toBeInTheDocument();
   });
 });

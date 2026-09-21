@@ -7,7 +7,8 @@
 // клавиатуры без единого атрибута ARIA).
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
-import { noteStyle, textLinkButtonStyle } from '../components/screenLayout';
+import { noteStyle } from '../components/screenLayout';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { ExamItemOptionRow } from './ExamItemOptionRow';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 
@@ -87,13 +88,9 @@ export function ExamItemOptionsField({
         />
       ))}
       {canAddMore && (
-        <button
-          type="button"
-          style={{ ...textLinkButtonStyle, alignSelf: 'flex-start' }}
-          onClick={() => onChange([...options, { ...NEW_OPTION }])}
-        >
+        <TextLinkButton onClick={() => onChange([...options, { ...NEW_OPTION }])}>
           Добавить вариант
-        </button>
+        </TextLinkButton>
       )}
       {options.length < EXAM_ITEM_LIMITS.optionsMin && (
         <p style={hintTextStyle}>

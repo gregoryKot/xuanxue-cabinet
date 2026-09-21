@@ -86,33 +86,58 @@ export const screenHintStyle: CSSProperties = {
   color: 'var(--ink-soft)',
 };
 
-/** Текстовая ссылка-переход внутри экрана («Открыть очередь», «Открыть
- * вопросы»). Заводится здесь, а не рядом с первым использованием: у `<a>` нет
- * своей строки в index.css, поэтому без явного цвета браузер красит ссылку
- * системным синим с подчёркиванием — мимо палитры (docs/adr/0031). Линия
- * снизу вместо подчёркивания: подчёркивание вплотную режет выносные элементы
- * кириллицы (у, р, ц), а отступ до линии их пропускает. */
-export const textLinkStyle: CSSProperties = {
-  color: 'var(--ink)',
-  textDecoration: 'none',
+/** Линия под буквами — по ней в кабинете узнают текстовую ссылку
+ * (docs/adr/0098). Отдельным стилем, а не только внутри textLinkStyle: у
+ * ссылки-действия с целью нажатия 44px линию несёт ВНУТРЕННИЙ `<span>`, а не
+ * сам элемент. На коробке высотой 44 `border-bottom` рисуется по её дну — на
+ * десяток пикселей ниже букв, и подчёркивание перестаёт читаться как
+ * подчёркивание: «Подключиться» у занятия висело с линией на отлёте (снимок
+ * владельца 2026-09-21), а «Как выложить видео» и «У меня нет Telegram» от
+ * такой линии вообще не отличались от соседнего абзаца («непонятно, что
+ * кнопка»). Приём «цель нажатия — одно, видимая форма — другое» в кабинете
+ * уже есть: нижняя панель (app/bottomNavStyles.ts) и пилюли
+ * (components/pillStyles.ts). */
+export const textLinkLineStyle: CSSProperties = {
   borderBottom: '1px solid var(--control-border)',
   paddingBottom: 2,
 };
 
-/** Действие, которое выглядит текстовой ссылкой, но никуда не ведёт:
- * «Добавить» вопрос в экзамен. Остаётся `<button>` — по ссылке без адреса не
- * переходят ни клавиатура, ни скринридер (CLAUDE.md «Доступность»), а весом
- * на экране такое действие равно ссылке, не кнопке. Цель нажатия — 44 по
- * высоте, как у Button. */
-export const textLinkButtonStyle: CSSProperties = {
-  ...textLinkStyle,
+/** Текстовая ссылка-переход внутри экрана («Открыть очередь», «Открыть
+ * вопросы») — строчный `<a>` прямо в тексте, своей цели нажатия не набирает:
+ * её задаёт строка текста вокруг. Заводится здесь, а не рядом с первым
+ * использованием: у `<a>` нет своей строки в index.css, поэтому без явного
+ * цвета браузер красит ссылку системным синим с подчёркиванием — мимо
+ * палитры (docs/adr/0031). Линия снизу вместо подчёркивания: подчёркивание
+ * вплотную режет выносные элементы кириллицы (у, р, ц), а отступ до линии их
+ * пропускает. */
+export const textLinkStyle: CSSProperties = {
+  color: 'var(--ink)',
+  textDecoration: 'none',
+  ...textLinkLineStyle,
+};
+
+// Цель нажатия пальцем (CLAUDE.md «Доступность») и отступ, который набирает
+// её из строки текста: 24 (строка 15px/1.6) + 10 + 10 = 44.
+const TOUCH_TARGET_PX = 44;
+const TOUCH_TARGET_PADDING_PX = 10;
+
+/** Оболочка текстовой ссылки-действия, которой нужна цель нажатия 44: сама
+ * без линии — её несёт внутренний `<span>` с textLinkLineStyle (см. выше).
+ * `inline-block` с вертикальным отступом, а не `inline-flex` с центровкой:
+ * flex-контейнер делает блочным единственного ребёнка, и у подписи в две
+ * строки линия осталась бы только под второй. Годится и `<button>`
+ * (components/TextLinkButton.tsx), и `<label>`
+ * (components/FilePickerButton.tsx), и `<a>` на внешний адрес
+ * (student/StudentLessonMeeting.tsx). */
+export const textLinkHitAreaStyle: CSSProperties = {
+  display: 'inline-block',
+  minHeight: TOUCH_TARGET_PX,
+  padding: `${TOUCH_TARGET_PADDING_PX}px 0`,
+  color: 'var(--ink)',
+  textDecoration: 'none',
+  textAlign: 'left',
   background: 'none',
   border: 0,
-  borderBottom: '1px solid var(--control-border)',
-  padding: 0,
-  paddingBottom: 2,
   font: 'inherit',
   cursor: 'pointer',
-  minHeight: 44,
-  whiteSpace: 'nowrap',
 };

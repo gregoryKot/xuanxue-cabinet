@@ -249,7 +249,7 @@ describe('AttemptScreen', () => {
       method: 'POST',
       body: { url, itemId: 'q3' },
     });
-    expect(await screen.findByText(/Видео получено/)).toBeInTheDocument();
+    expect(await screen.findByText('Вы прислали ссылку')).toBeInTheDocument();
   });
 
   it('сбой сети — баннер с повтором', async () => {
@@ -416,7 +416,7 @@ describe('AttemptScreen — опрос видео из Telegram', () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(screen.getByRole('button', { name: 'Отправить' })).toBeInTheDocument();
-    expect(screen.queryByText(/Видео получено/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Вы прислали/)).not.toBeInTheDocument();
 
     currentAttempt = { ...IN_PROGRESS, media: [RECEIVED_MEDIA] };
     await act(async () => {
@@ -425,7 +425,7 @@ describe('AttemptScreen — опрос видео из Telegram', () => {
 
     // Форма сдачи остаётся (статус попытки не менялся) — отметка появляется
     // прямо в ней, ученику не нужно ничего нажимать или перезагружать.
-    expect(screen.getByText(/Видео получено/)).toBeInTheDocument();
+    expect(screen.getByText(/Вы прислали/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Отправить' })).toBeInTheDocument();
   });
 

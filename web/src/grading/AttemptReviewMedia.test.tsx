@@ -128,13 +128,47 @@ describe('AttemptReviewMedia — каждый вид получения', () => 
       media: [makeMedia({ kind: 'link', url: 'https://example.com/v' })],
     });
 
-    const link = screen.getByRole('link', { name: 'Открыть ссылку на видео' });
+    const link = screen.getByRole('link', { name: 'https://example.com/v' });
     expect(link).toHaveAttribute('href', 'https://example.com/v');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(
       screen.queryByRole('button', { name: 'Прислать мне в Telegram' }),
     ).not.toBeInTheDocument();
+  });
+
+  // ADR-0100: учитель смотрит запись на карточке проверки, не уходя во
+  // вкладку; фрейм подставляется по нажатию, ссылка остаётся рядом.
+  it('kind: link на YouTube — кнопка плеера рядом со ссылкой, фрейма до нажатия нет', async () => {
+    const user = userEvent.setup();
+    renderMedia({
+      media: [makeMedia({ kind: 'link', url: 'https://youtu.be/dQw4w9WgXcQ' })],
+    });
+
+    expect(
+      screen.getByRole('link', { name: 'https://youtu.be/dQw4w9WgXcQ' }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('iframe')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Смотреть здесь' }));
+
+    expect(document.querySelector('iframe')).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    );
+  });
+
+  it('kind: link на невстраиваемый хостинг — плеера нет, ссылка остаётся', () => {
+    renderMedia({
+      media: [makeMedia({ kind: 'link', url: 'https://disk.yandex.ru/i/abc' })],
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Смотреть здесь' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'https://disk.yandex.ru/i/abc' }),
+    ).toBeInTheDocument();
   });
 
   it('kind: manual — подпись учителя видна, кнопки «Прислать мне» нет', () => {

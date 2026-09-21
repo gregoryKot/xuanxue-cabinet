@@ -56,7 +56,7 @@ describe('PlanningScreen — данные из prefetchCache', () => {
       return Promise.resolve({
         ok: true,
         status: 200,
-        // http.ts читает заголовок версии сборки на каждом ответе (ADR-0099).
+        // http.ts читает заголовок версии сборки на каждом ответе (ADR-0101).
         headers: { get: () => null },
         json: () => Promise.resolve(body),
       });

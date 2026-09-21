@@ -8,7 +8,7 @@ import { ApiError, apiFetch, setUnauthorizedListener } from './http';
 import { putPrefetched } from './prefetchCache';
 
 // По умолчанию заголовка версии нет (`null`) — как у настоящего ответа без
-// него; тесты версии (ADR-0099) передают свой набор заголовков явно.
+// него; тесты версии (ADR-0101) передают свой набор заголовков явно.
 function fakeHeaders(headers: Record<string, string> = {}): Pick<Headers, 'get'> {
   return { get: (name: string) => headers[name] ?? null };
 }
@@ -261,7 +261,7 @@ describe('apiFetch — 401 оповещает подписчика (AuthProvider
   });
 });
 
-describe('apiFetch — версия сборки в заголовке ответа (ADR-0099)', () => {
+describe('apiFetch — версия сборки в заголовке ответа (ADR-0101)', () => {
   // Один тест, не два: appVersion.ts — модульное состояние без сброса между
   // it() в этом файле (см. header-комментарий appVersion.test.ts), поэтому
   // последовательность собрана так, чтобы каждое ожидание было значимым, а не

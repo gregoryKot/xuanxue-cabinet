@@ -113,7 +113,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     throw new ApiError(NETWORK_ERROR_MESSAGE, 0, 'network');
   }
 
-  // До проверок статуса: версия сборки (ADR-0099) едет и в ответе об ошибке,
+  // До проверок статуса: версия сборки (ADR-0101) едет и в ответе об ошибке,
   // а деплой не должен остаться незамеченным только потому, что запрос упал.
   noteAppVersion(response.headers.get(APP_VERSION_HEADER));
 

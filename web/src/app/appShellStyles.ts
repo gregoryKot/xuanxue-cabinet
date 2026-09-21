@@ -3,6 +3,7 @@
 // внутри оболочки вывели тот файл за 150 строк храповика (CLAUDE.md
 // «Храповики»).
 import type { CSSProperties } from 'react';
+import { SIDE_NAV_PADDING_TOP_PX } from './sideNavStyles';
 
 // Ширина рамки макета (ADR-0043, screens/2a-broadcasts.html): на ней нав и
 // контент совпадают с мокапом один в один, а шире — лист центрируется полями,
@@ -53,4 +54,24 @@ export const contentColumnStyle: CSSProperties = {
   // вернулась бы ровно та картина, из-за которой панель и уезжала.
   overflowY: 'auto',
   overscrollBehavior: 'contain',
+};
+
+// Поле по бокам — то же, что у экрана (components/screenLayout.ts): значок
+// стоит ровно над правым краем содержимого, а не отдельной лесенкой.
+const CONTENT_SIDE_PADDING_PX = 16;
+
+// Верхняя строка содержимого на широком экране: несёт один колокольчик у
+// правого края (ADR-0063). Горизонт общий с боковой колонкой — тот же верхний
+// отступ (SIDE_NAV_PADDING_TOP_PX), а высота у знака школы и у колокольчика
+// одна (44, цель нажатия), поэтому они встают на одну линию, и экран
+// начинается под ними. До этого содержимое висело выше знака школы и
+// упиралось в верхний край окна (отзыв владельца 2026-09-21: «может отступ
+// сделать сверху, у правой части до уровня дна логотипа»). На телефоне этой
+// строки нет — там ту же роль играет AppShellBrandRow.tsx со знаком и двумя
+// значками.
+export const contentTopBarStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  alignItems: 'center',
+  padding: `${SIDE_NAV_PADDING_TOP_PX}px ${CONTENT_SIDE_PADDING_PX}px 0`,
 };

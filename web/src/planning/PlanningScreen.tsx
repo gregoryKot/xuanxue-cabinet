@@ -40,10 +40,16 @@ const TITLE_MAX_WIDTH_PX = 540;
 // отличается от строчки расписания (отзыв владельца 2026-09-12).
 const ONE_OFF_HINT =
   'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
-const oneOffHintStyle = { ...screenHintStyle, margin: 0 };
-// Число раздела (ТЗ §14, слой 3.5) — тихая строка, не StatNumber: крупный
-// кегль спорил бы вниманием с блоком «сегодня» (решение агента).
-const recordingLineStyle = { ...screenHintStyle, margin: 0 };
+// Тихие строки шапки — приписка к кнопке и число раздела (ТЗ §14, слой 3.5;
+// строкой, не StatNumber: крупный кегль спорил бы с блоком «сегодня»). Мера
+// как у текста шапки, иначе строка тянется на все 880 и спорит с колонкой
+// 540. Отступ отрицательный: на общем зазоре секции (16) заголовок и две
+// тихие строки читались тремя равными серыми абзацами (отзыв 2026-09-21).
+const headerNoteStyle = {
+  ...screenHintStyle,
+  margin: '-8px 0 0',
+  maxWidth: TITLE_MAX_WIDTH_PX,
+};
 const LESSON_PATH = '/planning';
 const SCHEDULE_PATH = '/schedule';
 
@@ -104,8 +110,8 @@ export default function PlanningScreen() {
           )
         }
       />
-      {!lessonsState.loading && <p style={oneOffHintStyle}>{ONE_OFF_HINT}</p>}
-      {recordingLine && <p style={recordingLineStyle}>{recordingLine}</p>}
+      {!lessonsState.loading && <p style={headerNoteStyle}>{ONE_OFF_HINT}</p>}
+      {recordingLine && <p style={headerNoteStyle}>{recordingLine}</p>}
       {/* Сбой списка занятий — один баннер ниже, не два (TodaySection.tsx). */}
       {!lessonsError && (
         <PlanningToday

@@ -2,7 +2,11 @@
 // от системного TZ раннера (тот же приём, что formatDate.test.ts).
 import { describe, expect, it } from 'vitest';
 import type { ExamMediaDto } from '@xuanxue/shared';
-import { formatExamMediaDuration, formatExamMediaReceivedAt } from './examMedia';
+import {
+  formatExamMediaDuration,
+  formatExamMediaReceivedAt,
+  formatExamMediaWhen,
+} from './examMedia';
 
 function makeMedia(overrides: Partial<ExamMediaDto> = {}): ExamMediaDto {
   return {
@@ -36,6 +40,22 @@ describe('formatExamMediaDuration', () => {
     expect(formatExamMediaDuration(0)).toBe('');
     expect(formatExamMediaDuration(-5)).toBe('');
     expect(formatExamMediaDuration(NaN)).toBe('');
+  });
+});
+
+// Блок ответа ученика (attempt/AttemptVideoAnswerRow.tsx) называет строкой
+// выше, ЧТО пришло, и берёт отсюда только «когда» — без слова «получено»,
+// иначе подпись повторяла бы соседнюю строку.
+describe('formatExamMediaWhen', () => {
+  it('с длительностью — дата, время и длительность, без слова «получено»', () => {
+    expect(formatExamMediaWhen(makeMedia({ durationSec: 220 }), 'Europe/Moscow')).toBe(
+      'Сб, 12 сентября, 19:30, 3 мин 40 с',
+    );
+  });
+
+  it('без длительности — только дата и время', () => {
+    const media = makeMedia({ kind: 'link', url: 'https://example.com/v' });
+    expect(formatExamMediaWhen(media, 'Europe/Moscow')).toBe('Сб, 12 сентября, 19:30');
   });
 });
 
