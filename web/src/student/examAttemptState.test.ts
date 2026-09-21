@@ -1,5 +1,5 @@
 // Какую кнопку показать — тестирует shared/src/my-exams.spec.ts
-// (getMyExamAction, ADR-0091, переезд из этого файла); здесь остались только
+// (getMyExamAction, ADR-0093, переезд из этого файла); здесь остались только
 // тексты кабинета, которые от кнопки не зависят.
 import { describe, expect, it } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';

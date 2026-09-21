@@ -51,6 +51,27 @@ describe('Настройки уведомлений — владение (e2e)',
     expect((getB.body as NotificationPrefsDto).enabled).toEqual(['exam_result']);
   });
 
+  // Экран уведомлений кладёт тело ответа PATCH прямо на себя, без GET следом
+  // (ADR-0087): неполный ответ — не «на один переключатель меньше», а
+  // сломанный экран у ученика. Тела сверяются целиком, не только enabled.
+  it('PATCH — тело ответа равно телу GET сразу после (ADR-0087)', async () => {
+    const { cookie } = await createUserWithSession(testApp.app, {
+      name: 'Ученик',
+      roles: [],
+    });
+
+    const patched = await withCsrf(request(server()).patch('/api/me/notifications'))
+      .set('Cookie', cookie)
+      .send({ kind: 'exam_result', enabled: false });
+    expect(patched.status).toBe(200);
+
+    const got = await request(server())
+      .get('/api/me/notifications')
+      .set('Cookie', cookie);
+    expect(got.status).toBe(200);
+    expect(patched.body).toEqual(got.body);
+  });
+
   it('чужой userId в теле — 400, не подмена (whitelist: true его не пропускает)', async () => {
     const { userId: userIdB, cookie: cookieB } = await createUserWithSession(
       testApp.app,

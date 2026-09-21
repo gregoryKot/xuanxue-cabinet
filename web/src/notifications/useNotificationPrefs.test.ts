@@ -67,23 +67,28 @@ describe('useNotificationPrefs — виды по роли', () => {
   });
 });
 
-describe('useNotificationPrefs — setEnabled (read-after-write)', () => {
-  it('PATCH /me/notifications с нужным телом, затем перечитывает состояние', async () => {
+describe('useNotificationPrefs — setEnabled (read-after-write из ответа PATCH)', () => {
+  it('делает ровно один запрос — PATCH, второго GET нет', async () => {
     mockedApiFetch.mockResolvedValueOnce({ enabled: [] });
     const { result } = renderHook(() => useNotificationPrefs(STUDENT));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    mockedApiFetch.mockResolvedValueOnce(undefined);
+    // Единственный ответ в очереди на это действие: если бы код всё ещё звал
+    // reload() следом, второй вызов apiFetch остался бы без мока и упал.
     mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
     await result.current.setEnabled('exam_result', true);
 
-    expect(mockedApiFetch).toHaveBeenCalledWith(
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2); // начальный GET + этот PATCH
+    expect(mockedApiFetch).toHaveBeenLastCalledWith(
       '/me/notifications',
       expect.objectContaining({
         method: 'PATCH',
         body: { kind: 'exam_result', enabled: true },
       }),
     );
+    // applyData() вызван синхронно внутри setEnabled — ждём не сеть (её уже
+    // не будет), а перерисовку хука вне act() (тот же приём, что был тут
+    // до правки).
     await waitFor(() => expect(result.current.enabled).toEqual(['exam_result']));
   });
 });

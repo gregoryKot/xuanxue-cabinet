@@ -92,7 +92,10 @@ describe('MaterialsPaidAccessSection — сохранение', () => {
     render(<MaterialsPaidAccessSection paidCount={0} />);
     const toggle = await screen.findByLabelText(TOGGLE_LABEL);
 
-    mockedApiFetch.mockResolvedValueOnce({});
+    // Один ответ на одно действие: PATCH /settings возвращает полный
+    // SettingsDto, и рубильник берёт значение прямо из него (ADR-0087).
+    // Прежняя заглушка `{}` на сам PATCH теперь уронила бы значение в
+    // undefined — переключатель стал бы неуправляемым.
     mockedApiFetch.mockResolvedValueOnce(settings({ materialsPaidAccess: true }));
     await user.click(toggle);
 

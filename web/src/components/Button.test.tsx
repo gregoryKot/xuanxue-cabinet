@@ -114,6 +114,31 @@ describe('Button', () => {
     expect(new Set(silhouettes).size).toBe(silhouettes.length);
   });
 
+  // Отзыв владельца 2026-09-21: занятая кнопка не давала понять, что нажата
+  // (components/Button.tsx, `pending`) — теперь на ней кольцо-спиннер.
+  it('pending — внутри кнопки крутится кольцо-спиннер, подпись видна', () => {
+    const { container } = render(<Button pending>Сохранить</Button>);
+    const spinner = container.querySelector<HTMLElement>('[aria-hidden="true"]');
+    expect(spinner).not.toBeNull();
+    expect(spinner?.style.animation).toContain('xuanxue-spin');
+    expect(screen.getByRole('button')).toHaveTextContent('Сохранить');
+  });
+
+  it('без pending спиннера нет', () => {
+    const { container } = render(<Button>Сохранить</Button>);
+    expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
+  });
+
+  // Занятость уже объявлена скринридеру через aria-busy на самой кнопке —
+  // спиннер не должен дублировать это своим содержимым.
+  it('спиннер скрыт от скринридера — занятость уже объявлена aria-busy', () => {
+    const { container } = render(<Button pending>Сохранить</Button>);
+    expect(container.querySelector('[aria-hidden="true"]')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+  });
+
   // Экран входа (docs/adr/0043, макет 2d) — единственное место с кнопкой
   // крупнее обычных 44px; проп размера не должен задевать силуэт варианта.
   it('size="large" даёт высоту и паддинг экрана входа, не трогая обычный размер', () => {
