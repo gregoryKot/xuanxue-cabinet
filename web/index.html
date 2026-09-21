@@ -21,7 +21,8 @@
     <link rel="apple-touch-icon" href="/icons/school-mark-apple-180.png" />
     <meta name="apple-mobile-web-app-title" content="Сюань-Сюэ" />
     <!-- Манифест статический (web/public/manifest.webmanifest, ADR-0032) —
-         нужен только для установки ярлыка на телефон, service worker нет. -->
+         нужен для установки ярлыка на телефон; push-worker registerServiceWorker.ts
+         регистрируется отдельно, к манифесту не привязан (ADR-0092). -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- Сессию браузер начинает спрашивать ещё при разборе HTML, параллельно
          со скачиванием главного JS. Измерено на проде 2026-09-15: TTFB
