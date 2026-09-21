@@ -51,6 +51,12 @@ export type {
   AuthConfigDto,
 } from './auth';
 export type { MeDto, SetNoTelegramInput } from './me';
+export type { VerifyEmailCodeInput } from './email-login-code';
+export {
+  EMAIL_LOGIN_CODE_LENGTH,
+  EMAIL_LOGIN_CODE_RE,
+  EMAIL_LOGIN_CODE_INVALID_MESSAGE,
+} from './email-login-code';
 export type { LinkEmailInput, ConfirmEmailInput } from './email-link';
 export {
   EMAIL_CONFIRM_TOKEN_RE,
