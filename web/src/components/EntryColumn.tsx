@@ -10,7 +10,7 @@
 // живёт классом `.xuanxue-entry-page` в index.css — `CSSProperties` не умеет
 // медиа-запрос.
 import type { CSSProperties, ReactNode } from 'react';
-import { SchoolMark, SCHOOL_NAME } from './SchoolMark';
+import { SchoolWordmark } from './SchoolWordmark';
 
 // 400 — ширина, на которой строка объяснения ложится в две-три строки, а
 // поле почты не выглядит полем во всю стену монитора.
@@ -24,8 +24,6 @@ const columnStyle: CSSProperties = {
   gap: 18,
 };
 
-const markRowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 10 };
-
 export function EntryColumn({ children }: { children: ReactNode }) {
   return (
     <main className="xuanxue-entry-page">
@@ -35,11 +33,9 @@ export function EntryColumn({ children }: { children: ReactNode }) {
             «/» лежит за RequireAuth и без сессии гвард уводит с него обратно
             на «/login» (cabinetRoutes.tsx, RequireAuth.tsx), а сами экраны
             этой колонки и есть «/login»/приглашение — ссылка вела бы сама в
-            себя. */}
-        <span style={markRowStyle}>
-          <SchoolMark />
-          <span className="xuanxue-eyebrow">{SCHOOL_NAME}</span>
-        </span>
+            себя. Поэтому здесь SchoolWordmark без обёртки-ссылки, как в
+            SchoolBrandLink.tsx. */}
+        <SchoolWordmark />
         {children}
       </div>
     </main>
