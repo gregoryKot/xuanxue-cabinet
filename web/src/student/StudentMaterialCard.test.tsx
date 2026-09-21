@@ -1,4 +1,4 @@
-// Строка материала в библиотеке ученика (docs/PLAN.md §14 слои 3.2/3.4,
+// Строка материала в библиотеке ученика (docs/PLAN.md §14 слой 3.2,
 // ADR-0068) — своя проверка на каждый случай, без сети и без DI. По образцу
 // ArchivedLessonCard.test.tsx. `renderCard` подставляет selectedTag/onSelectTag
 // по умолчанию, чтобы их не повторял каждый тест про библиотеку; отдельный
@@ -143,39 +143,6 @@ describe('StudentMaterialCard — открытая ссылка', () => {
     expect(link).toHaveAttribute('href', 'https://example.com/article');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noreferrer');
-  });
-});
-
-describe('StudentMaterialCard — закрытый материал (ADR-0048)', () => {
-  it('locked: true — вместо ссылки объяснение, мёртвой ссылки нет', () => {
-    // Сервер сегодня locked не отдаёт (слой 3.1) — DTO собран руками, чтобы
-    // проверить контракт заранее, до появления рубильника (слой 3.4).
-    renderCard(makeMaterial({ url: undefined, locked: true }));
-    expect(
-      screen.getByText(
-        'Этот материал школа открывает после оплаты месяца. Напишите в чат школы — там подскажут, как оплатить.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
-
-  // Слой 3.10, ADR-0057: у закрытого материала DTO не несёт `file` вовсе
-  // (тем же правилом, что и `url`) — но проверяем и на случай, если он всё
-  // же придёт: locked важнее.
-  it('locked: true и file (гипотетически) — ссылки «Скачать файл» всё равно нет', () => {
-    renderCard(
-      makeMaterial({
-        url: undefined,
-        locked: true,
-        file: {
-          name: 'форма.pdf',
-          contentType: 'application/pdf',
-          sizeBytes: 1024,
-          uploadedAt: '2026-01-01T00:00:00Z',
-        },
-      }),
-    );
-    expect(screen.queryByRole('link', { name: 'Скачать файл' })).not.toBeInTheDocument();
   });
 });
 

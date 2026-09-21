@@ -3,11 +3,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  DEFAULT_MATERIALS_PAID_ACCESS,
-  DEFAULT_PREVIEW_MINUTES,
-  type SettingsDto,
-} from '@xuanxue/shared';
+import { DEFAULT_PREVIEW_MINUTES, type SettingsDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import TemplatesScreen from './TemplatesScreen';
@@ -28,7 +24,6 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
     templates: { lesson_link: 'Анонс {название}', recording: 'Запись {название}' },
     tz: 'Asia/Jerusalem',
     previewMinutes: DEFAULT_PREVIEW_MINUTES,
-    materialsPaidAccess: DEFAULT_MATERIALS_PAID_ACCESS,
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
   };

@@ -14,8 +14,10 @@ import {
  * `Pick<T, keyof T>`, что у RawLeanExamImage (exam-image.mapper.ts). Секреты
  * здесь ЕСТЬ (в отличие от LeanChannel/channel.mapper.ts): их читает
  * decryptPushSubscription ниже — для read-after-write теста сервиса
- * (CLAUDE.md «Тесты») и для PR №4, который шлёт сам push. HTTP-ответ этим
- * типом не пользуется — только toPushSubscriptionDto, который их не берёт. */
+ * (CLAUDE.md «Тесты»). HTTP-ответ этим типом не пользуется — только
+ * toPushSubscriptionDto, который их не берёт; PushSenderService (PR №4) —
+ * тоже: тело push пустое, шифрование содержимого не нужно (комментарий у
+ * p256dh/auth в push-subscription.schema.ts — почему поля не мёртвые). */
 export type RawLeanPushSubscription = Pick<
   PushSubscriptionRecord,
   keyof PushSubscriptionRecord
@@ -26,7 +28,9 @@ export type RawLeanPushSubscription = Pick<
 };
 
 /** `p256dh`/`auth` расшифрованы — только для внутреннего чтения (см. комментарий
- * у RawLeanPushSubscription выше), никогда не для HTTP-ответа. */
+ * у RawLeanPushSubscription выше), никогда не для HTTP-ответа. Сейчас читает
+ * только тест (read-after-write) — производственный код их не расшифровывает
+ * нигде, и это ожидаемо, не забытый вызов. */
 export function decryptPushSubscription(
   doc: RawLeanPushSubscription,
 ): RawLeanPushSubscription {

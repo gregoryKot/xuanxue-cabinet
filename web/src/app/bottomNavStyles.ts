@@ -63,18 +63,19 @@ export function bottomStyle(itemCount: number): CSSProperties {
 // рядом с использованием (CLAUDE.md «Без магических чисел»).
 const MOBILE_ACTIVE_BACKGROUND = '#f4efe6';
 
-// Цель нажатия 44px и видимая плашка макета (~34px, 8×2 + кегль 12) — разные
-// числа, и раньше `minHeight: 44` стояла прямо на плашке: она распухла и
-// стала заметно крупнее макета (отзыв владельца). Приём — тот же, что у
-// pillBaseStyle (people/PersonRoleBadge.tsx) и buttonStyle
-// (components/TextLinkButton.tsx): невидимая цель нажатия на `<Link>`
-// (bottomLinkStyle), видимая плашка — на внутреннем `<span>` (bottomPillStyle)
-// вокруг подписи, без своей минимальной высоты.
+// Цель нажатия 44px и видимая плашка макета (~34px) — разные числа, и раньше
+// `minHeight: 44` стояла прямо на плашке: она распухла и стала заметно
+// крупнее макета (отзыв владельца). Приём — тот же, что у pillBaseStyle
+// (people/PersonRoleBadge.tsx) и buttonStyle (components/TextLinkButton.tsx):
+// невидимая цель нажатия на `<Link>` (bottomLinkStyle), видимая плашка — на
+// внутреннем `<span>` (bottomPillStyle) вокруг значка, без своей минимальной
+// высоты.
 export const bottomLinkStyle: CSSProperties = {
   // `minWidth: 0` — как и во flex, grid-колонка по умолчанию не сжимается
   // уже содержимого: длинная неразрывная подпись раздвинула бы колонку и
   // потянула за собой горизонтальный скролл (тот же урок, что раньше был у
-  // flex-раскладки, pr-k3-fixes.md п.10).
+  // flex-раскладки, pr-k3-fixes.md п.10). Значок 22px этого не требует, но
+  // колонка по-прежнему делит ширину панели поровну (bottomStyle).
   minWidth: 0,
   display: 'flex',
   alignItems: 'center',
@@ -83,23 +84,17 @@ export const bottomLinkStyle: CSSProperties = {
   textDecoration: 'none',
 };
 
-// Кегль подписи — 11, а не 12: с пятым пунктом «Материалы» (ADR-0055) на
-// 360px дорожка равна 64px, и при кегле 12 самая длинная подпись просит 67 —
-// не влезала и ломалась пополам, «Материал» и «ы» отдельной строкой, отчего
-// панель вырастала с 44px до 63 (замер в Chromium на живом Golos Text, не в
-// jsdom: там текст не меряется вовсе, и посимвольная прикидка эту поломку
-// пропустила). При кегле 11 та же подпись просит 61.4 — запас 2.6px. Родная
-// вкладочная панель iOS набирает подписи 10pt, так что 11 здесь не мелко.
-const BOTTOM_NAV_LABEL_FONT_SIZE_PX = 11;
-
+// Подписи в панели больше нет (ADR-0097) — имя раздела ушло в `aria-label`
+// ссылки, плашка центрирует значок 22px (NavIcon.tsx). 6 + 22 + 6 = 34 —
+// та же видимая высота плашки, что была у подписи с отступом 8×2 при кегле 12.
 export const bottomPillStyle = (isActive: boolean): CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   width: '100%',
-  padding: '8px 0',
+  padding: '6px 0',
   borderRadius: 'var(--radius-control)',
-  textAlign: 'center',
-  fontSize: BOTTOM_NAV_LABEL_FONT_SIZE_PX,
-  overflowWrap: 'anywhere',
+  // Красит штрих значка через `currentColor` (NavIcon.tsx), не текст.
   color: isActive ? 'var(--ink)' : 'var(--ink-soft)',
-  fontWeight: isActive ? 500 : 400,
   background: isActive ? MOBILE_ACTIVE_BACKGROUND : 'transparent',
 });

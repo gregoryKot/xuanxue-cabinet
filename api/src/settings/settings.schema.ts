@@ -43,12 +43,6 @@ export class SettingsRecord {
   // который `.lean()` не применяет к уже существующим документам.
   @Prop({ type: Number })
   previewMinutes?: number;
-
-  // Тот же приём, что previewMinutes выше: не required, без default —
-  // старая база до ADR-0048 не имеет поля вовсе, settings.mapper.ts
-  // подставляет DEFAULT_MATERIALS_PAID_ACCESS явно при чтении.
-  @Prop({ type: Boolean })
-  materialsPaidAccess?: boolean;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(SettingsRecord);
@@ -59,8 +53,5 @@ export const SETTINGS_FIELD_POLICY: FieldPolicy = {
   tz: plain('часовой пояс школы, нужен для выборок'),
   schoolSiteUrl: plain(
     'публичный адрес сайта школы — отдаётся всем через GET /auth/config',
-  ),
-  materialsPaidAccess: plain(
-    'булев рубильник доступа к материалам по оплате (ADR-0048) — не свободный текст, шифровать нечего',
   ),
 };

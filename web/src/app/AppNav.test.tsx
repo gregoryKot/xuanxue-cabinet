@@ -91,21 +91,24 @@ describe('AppNav — раскладка', () => {
 describe('AppNav — пункты и роль (отзыв владельца 2026-09-12, уточнение ADR-0030)', () => {
   // Решение владельца: у ученика два своих экрана — не подмножество меню
   // штата, отфильтрованное по роли, а отдельный список (navItems.ts).
+  // На телефоне видимого текста в панели нет (ADR-0097) — состав читаем
+  // через `aria-label` ссылок, доступное имя пункта.
   it('ученик без роли — два своих экрана, не пункты штата', () => {
     const student: MeDto = { ...TEACHER, roles: [] };
     renderNav(true, student);
 
     const labels = screen
       .getAllByRole('link')
-      .map((link) => link.textContent)
-      .filter((label): label is string => label !== null);
+      .map((link) => link.getAttribute('aria-label'));
     expect(labels).toEqual(['Задания', 'Занятия']);
   });
 
   it('админ — пять пунктов, «Материалы» последним', () => {
     renderNav(true, ADMIN);
 
-    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    const labels = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('aria-label'));
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
@@ -114,15 +117,23 @@ describe('AppNav — пункты и роль (отзыв владельца 202
   it('учитель — тоже видит «Ученики» (ADR-0030, ссылка-приглашение)', () => {
     renderNav(true, TEACHER);
 
-    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    const labels = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('aria-label'));
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
-  // Иконок в пунктах нет вовсе (ADR-0043) — подпись остаётся единственным
-  // содержимым ссылки что на телефоне, что в колонке.
-  it('подпись видна в обоих видах — единственное содержимое пункта', () => {
+  // ADR-0097: на телефоне видимой подписи в панели больше нет — имя раздела
+  // живёт в `aria-label` ссылки, внутри плашки лежит decorative-only значок
+  // (`aria-hidden`). В боковой колонке подпись остаётся текстом — её эта
+  // правка не трогает.
+  it('телефон — имя раздела в aria-label, значок decorative-only; колонка — подпись текстом', () => {
     const { unmount } = renderNav(true);
-    expect(screen.getByText('Занятия')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Занятия' });
+    expect(link.textContent).toBe('');
+    const svg = link.querySelector('svg');
+    expect(svg).not.toBeNull();
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
     unmount();
 
     renderNav(false);
@@ -191,7 +202,9 @@ describe('AppNav — цель нажатия и плашка нижней пан
     const pill = active.querySelector('span') as HTMLElement;
     expect(pill).not.toBeNull();
     expect(pill.style.minHeight).toBe('');
-    expect(pill.textContent).toBe('Занятия');
+    const svg = pill.querySelector('svg');
+    expect(svg).not.toBeNull();
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
   });
 });
 
@@ -310,8 +323,10 @@ describe('AppNav — название школы в колонке не пере
 });
 
 // ADR-0055 «Последствия»: «Ширина проверяется тестом AppNav.test.tsx и
-// вручную на 360 px — это условие мержа, а не пожелание». Два теста ниже —
-// то самое условие: столько дорожек, сколько пунктов, и подписи умещаются.
+// вручную на 360 px — это условие мержа, а не пожелание». Подписи в панели
+// больше нет (ADR-0097), поэтому ушли гейты кегля и потолка длины подписи в
+// знаках — мерить стало нечего; число дорожек сетки от состава подписи не
+// зависит и остаётся.
 describe('AppNav — гейт ширины нижней панели (ADR-0055)', () => {
   // Дорожек сетки должно быть ровно столько, сколько отрисованных пунктов
   // (bottomStyle(items.length), bottomNavStyles.ts) — иначе лишний пункт
@@ -349,32 +364,29 @@ describe('AppNav — гейт ширины нижней панели (ADR-0055)'
         .gridTemplateColumns,
     ).toBe('repeat(4, 1fr)');
   });
+});
 
-  // Замер в Chromium на живом Golos Text (360px, дорожка 64px): «Материалы»
-  // просят 67px при кегле 12 и 61.4px при кегле 11. То есть двенадцатый ломал
-  // подпись пополам — «Материал» и «ы» второй строкой, — и панель росла с 44px
-  // до 63. Гейт от возврата кегля: jsdom текст не меряет и такую поломку не
-  // увидит, поэтому сторожим то единственное число, от которого она зависит.
-  const MEASURED_LABEL_FONT_SIZE_PX = '11px';
-  it('кегль подписи — тот, на котором мерялась ширина (иначе подпись переносится)', () => {
-    renderNav(true, TEACHER);
+// ADR-0097, «Последствия»: «AppNav.test.tsx — у каждой вкладки телефона
+// aria-label с именем раздела, значок aria-hidden, цель нажатия 44 px».
+describe('AppNav — вкладки телефона называют себя и держат цель нажатия (ADR-0097)', () => {
+  it('у каждой вкладки aria-label равен имени раздела штата, цель нажатия — 44px', () => {
+    renderNav(true, ADMIN);
 
-    const pill = screen
-      .getByRole('link', { name: 'Материалы' })
-      .querySelector('span') as HTMLElement;
-    expect(pill.style.fontSize).toBe(MEASURED_LABEL_FONT_SIZE_PX);
+    for (const { label } of STAFF_NAV_ITEMS) {
+      const link = screen.getByRole('link', { name: label });
+      expect(link).toHaveAttribute('aria-label', label);
+      expect(link.style.minHeight).toBe('44px');
+    }
   });
 
-  // Грубый предохранитель на случай новой длинной подписи. Считает знаки, а
-  // не пиксели, и потому сам по себе ничего не доказывает: прошлая версия
-  // этого теста стояла на 10 знаках, пропустила девятизначные «Материалы» и
-  // уехала в прод с поломанной панелью — знаки у Golos Text шире, чем
-  // казалось (≈6.8px при кегле 11, а не 6.3). Настоящая проверка — глазами на
-  // 360px, как и требует ADR-0055; здесь только ранний сигнал.
-  const MAX_NAV_LABEL_CHARS = 9;
-  it('подписи не длиннее замеренного бюджета в знаках', () => {
-    for (const { label } of [...STAFF_NAV_ITEMS, ...STUDENT_NAV_ITEMS]) {
-      expect(label.length).toBeLessThanOrEqual(MAX_NAV_LABEL_CHARS);
+  it('у ученика — то же самое на его двух вкладках', () => {
+    const student: MeDto = { ...TEACHER, roles: [] };
+    renderNav(true, student);
+
+    for (const { label } of STUDENT_NAV_ITEMS) {
+      const link = screen.getByRole('link', { name: label });
+      expect(link).toHaveAttribute('aria-label', label);
+      expect(link.style.minHeight).toBe('44px');
     }
   });
 });

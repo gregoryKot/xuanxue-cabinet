@@ -28,18 +28,17 @@ export const OPEN_MATERIAL = {
   kind: 'document',
   access: 'all',
 };
-export const PAID_MATERIAL = {
-  title: 'Толкающие руки, разбор',
-  url: 'https://example.com/paid',
+export const STAFF_MATERIAL = {
+  title: 'Толкающие руки, разбор для преподавателей',
+  url: 'https://example.com/staff-only',
   kind: 'document',
-  access: 'paid',
+  access: 'staff',
 };
 
 type Server = ReturnType<NestExpressApplication['getHttpServer']>;
 
 export interface MaterialFileRequests {
   postMaterial: (cookie: string, body: Record<string, unknown>) => request.Test;
-  patchSettings: (cookie: string, body: Record<string, unknown>) => request.Test;
   uploadFile: (
     cookie: string,
     id: string,
@@ -80,8 +79,6 @@ export function createMaterialFileRequests(
   return {
     postMaterial,
     uploadFile,
-    patchSettings: (cookie, body) =>
-      withCsrf(agent(server()).patch('/api/settings')).set('Cookie', cookie).send(body),
     deleteFile: (cookie, id) =>
       withCsrf(agent(server()).delete(`/api/materials/${id}/file`)).set('Cookie', cookie),
     deleteMaterial: (cookie, id) =>

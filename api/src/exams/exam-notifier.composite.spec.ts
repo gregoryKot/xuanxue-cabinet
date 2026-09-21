@@ -1,10 +1,12 @@
 // Юнит без Mongo (CLAUDE.md «Тесты»): CompositeExamNotifier — просто
-// делегирование двум каналам, сам факт и содержимое отправки — дело
-// in-app-exam-notifier.spec.ts/telegram-exam-notifier.spec.ts.
+// делегирование трём плечам, сам факт и содержимое отправки — дело
+// in-app-exam-notifier.spec.ts/telegram-exam-notifier.spec.ts/
+// push-exam-notifier.spec.ts.
 import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { CompositeExamNotifier } from './exam-notifier.composite';
 import type { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
+import type { PushExamNotifier } from '../push/push-exam-notifier';
 import type { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 
 const NOW = DateTime.fromISO('2026-09-17T09:00:00Z', { zone: 'utc' });
@@ -33,40 +35,91 @@ function fakeNotifier(behavior: 'ok' | 'throws' = 'ok', recipients = 1): FakeNot
   return { notifyAttemptSubmitted: impl, notifyExamGraded: impl };
 }
 
+// push по умолчанию — 0 адресатов и без падения: тем же приёмом, что и на
+// проде, пока никто не подписался (риск за флагом, ADR-0092), push не должен
+// менять сумму и поведение тестов, которые его не касаются напрямую.
 function buildComposite(
   inApp: FakeNotifier,
   telegram: FakeNotifier,
+  push: FakeNotifier = fakeNotifier('ok', 0),
 ): CompositeExamNotifier {
   return new CompositeExamNotifier(
     inApp as unknown as InAppExamNotifier,
     telegram as unknown as TelegramExamNotifier,
+    push as unknown as PushExamNotifier,
   );
 }
 
 describe('CompositeExamNotifier', () => {
-  it('notifyAttemptSubmitted — зовёт оба канала', async () => {
+  it('notifyAttemptSubmitted — зовёт все три плеча', async () => {
     const inApp = fakeNotifier();
     const telegram = fakeNotifier();
+    const push = fakeNotifier();
 
-    await buildComposite(inApp, telegram).notifyAttemptSubmitted(ATTEMPT_CONTEXT, NOW);
+    await buildComposite(inApp, telegram, push).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
 
     expect(inApp.notifyAttemptSubmitted).toHaveBeenCalledWith(ATTEMPT_CONTEXT, NOW);
     expect(telegram.notifyAttemptSubmitted).toHaveBeenCalledWith(ATTEMPT_CONTEXT, NOW);
+    expect(push.notifyAttemptSubmitted).toHaveBeenCalledWith(ATTEMPT_CONTEXT, NOW);
   });
 
-  it('notifyExamGraded — зовёт оба канала', async () => {
+  it('notifyExamGraded — зовёт все три плеча', async () => {
     const inApp = fakeNotifier();
     const telegram = fakeNotifier();
+    const push = fakeNotifier();
     const context = {
       ...ATTEMPT_CONTEXT,
       outcome: 'passed' as const,
       comment: undefined,
     };
 
-    await buildComposite(inApp, telegram).notifyExamGraded(context, NOW);
+    await buildComposite(inApp, telegram, push).notifyExamGraded(context, NOW);
 
     expect(inApp.notifyExamGraded).toHaveBeenCalledWith(context, NOW);
     expect(telegram.notifyExamGraded).toHaveBeenCalledWith(context, NOW);
+    expect(push.notifyExamGraded).toHaveBeenCalledWith(context, NOW);
+  });
+
+  it('кабинет и Telegram без адресата, push нашёл — error не пишется, сумма из push', async () => {
+    const inApp = fakeNotifier('ok', 0);
+    const telegram = fakeNotifier('ok', 0);
+    const push = fakeNotifier('ok', 2);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await buildComposite(inApp, telegram, push).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
+
+    expect(result).toEqual({ recipients: 2 });
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it('push бросил, два других плеча ok — error не пишется, warn есть', async () => {
+    const inApp = fakeNotifier('ok', 1);
+    const telegram = fakeNotifier('ok', 1);
+    const push = fakeNotifier('throws');
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await buildComposite(inApp, telegram, push).notifyAttemptSubmitted(
+      ATTEMPT_CONTEXT,
+      NOW,
+    );
+
+    expect(result).toEqual({ recipients: 2 });
+    expect(warn).toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    warn.mockRestore();
+    error.mockRestore();
   });
 
   it('один канал бросил (не должен, но вдруг) — другой всё равно вызван, наружу не летит', async () => {
@@ -102,7 +155,7 @@ describe('CompositeExamNotifier', () => {
   // никому. Один error с recipients === 0 — сигнал, который ищут по тексту
   // в логах Railway, без сопоставления (CLAUDE.md «Логи и наблюдаемость»):
   // тихий отказ — самая дорогая ошибка в продукте про рассылки.
-  it('оба канала не нашли адресата — ровно один error-лог, без userId в ключах', async () => {
+  it('все три плеча не нашли адресата — ровно один error-лог, без userId в ключах', async () => {
     const inApp = fakeNotifier('ok', 0);
     const telegram = fakeNotifier('ok', 0);
     const error = jest
@@ -130,7 +183,7 @@ describe('CompositeExamNotifier', () => {
     error.mockRestore();
   });
 
-  it('notifyExamGraded, оба канала без адресата — error с kind exam_result', async () => {
+  it('notifyExamGraded, все три плеча без адресата — error с kind exam_result', async () => {
     const inApp = fakeNotifier('ok', 0);
     const telegram = fakeNotifier('ok', 0);
     const error = jest

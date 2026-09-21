@@ -34,7 +34,9 @@
 // же уведомлению attempt_submitted, что и в кабинете), и строка в ленте
 // кабинета не должна зависеть от того, каким путём попытка закрылась (явным
 // submit или ленивым дедлайном) — второе плечо нужно и здесь, не только
-// через ExamAttemptsService.
+// через ExamAttemptsService. PushModule — тем же доводом, третье плечо
+// (PushExamNotifier, ADR-0092): человек, чья попытка закрылась по дедлайну,
+// должен получить push так же, как и при явном submit.
 import { Module } from '@nestjs/common';
 import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
@@ -60,6 +62,8 @@ import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { PaymentsModule } from '../payments/payments.module';
+import { PushExamNotifier } from '../push/push-exam-notifier';
+import { PushModule } from '../push/push.module';
 import { SettingsModule } from '../settings/settings.module';
 // StorageModule — ради StorageOrphansService: шаг «файлы-сироты» (ADR-0079).
 // Хранилище о планировщике не знает, цикла нет.
@@ -82,6 +86,7 @@ import { SchedulerService } from './scheduler.service';
     ExamItemModelModule,
     ExamImagesModule,
     NotificationsModule,
+    PushModule,
     // Модели оплат и снимков (`payments`, `payment_screenshots`) для шага
     // «скриншоты оплат» (ADR-0050) — PaymentsModule экспортирует обе;
     // провайдер самого шага ниже, как у ExamImageSweepService.
@@ -108,10 +113,12 @@ import { SchedulerService } from './scheduler.service';
     // Map-дедупом notifySchedulerFailed, никем не используемый.
     { provide: TEACHER_NOTIFIER, useClass: TelegramTeacherNotifier },
     // Свой экземпляр EXAM_NOTIFIER (безопасно — см. комментарий-шапку файла
-    // exam-deadline-close.service.ts): InAppExamNotifier/TelegramExamNotifier
-    // читают Mongo на каждый вызов, дедуп-состояния между инстансами нет.
+    // exam-deadline-close.service.ts): InAppExamNotifier/TelegramExamNotifier/
+    // PushExamNotifier читают Mongo на каждый вызов, дедуп-состояния между
+    // инстансами нет.
     InAppExamNotifier,
     TelegramExamNotifier,
+    PushExamNotifier,
     { provide: EXAM_NOTIFIER, useClass: CompositeExamNotifier },
     SchedulerService,
   ],

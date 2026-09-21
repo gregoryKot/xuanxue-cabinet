@@ -1,5 +1,5 @@
 // Экран «Библиотека» ученика — состояния загрузки списка (ТЗ docs/PLAN.md
-// §14 слой 3.2, ADR-0047, ADR-0048). Мокаем apiFetch (CLAUDE.md «Сеть только
+// §14 слой 3.2, ADR-0047). Мокаем apiFetch (CLAUDE.md «Сеть только
 // через http.ts»), по образцу ArchiveScreen.test.tsx.
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

@@ -26,15 +26,6 @@ const OPEN_MATERIAL: MyMaterialDto = {
   url: 'https://example.com/video',
 };
 
-const LOCKED_MATERIAL: MyMaterialDto = {
-  id: 'material-2',
-  title: 'Платный разбор',
-  kind: 'video',
-  classTitles: [],
-  tags: [],
-  locked: true,
-};
-
 function lesson(overrides: Partial<MyArchivedLessonInput> = {}): MyArchivedLessonInput {
   return {
     _id: new Types.ObjectId(),
@@ -141,12 +132,6 @@ describe('toMyArchivedLessonDto', () => {
     it('материалы даты едут в DTO как есть', () => {
       const dto = toMyArchivedLessonDto(lesson(), CLASS, [OPEN_MATERIAL]);
       expect(dto.materials).toEqual([OPEN_MATERIAL]);
-    });
-
-    it('закрытый материал (locked: true) едет без ссылки', () => {
-      const dto = toMyArchivedLessonDto(lesson(), CLASS, [LOCKED_MATERIAL]);
-      expect(dto.materials).toEqual([LOCKED_MATERIAL]);
-      expect(dto.materials[0]).not.toHaveProperty('url');
     });
 
     it('у даты нет материалов — []', () => {

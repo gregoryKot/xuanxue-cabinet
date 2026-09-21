@@ -1,9 +1,9 @@
 // `/me/materials` зовёт тот же MaterialsService, но другой метод —
 // listForStudent, а не list: перепутанный вызов отдал бы ученику createdBy и
-// access (ADR-0048). Фейк сервиса, без HTTP и Mongo, как у
-// MaterialsController. Роль/доступ по факту (штат видит closed материалы)
-// проверяет e2e (materials-access.e2e-spec.ts) на настоящем гварде — здесь
-// только «контроллер вычисляет isStaff и зовёт сервис».
+// access. Фейк сервиса, без HTTP и Mongo, как у MaterialsController.
+// Роль/доступ по факту (штат видит и служебные материалы) проверяет e2e
+// (materials-staff-access.e2e-spec.ts) на настоящем гварде — здесь только
+// «контроллер вычисляет isStaff и зовёт сервис».
 import { Test } from '@nestjs/testing';
 import type { MyMaterialDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';

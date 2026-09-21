@@ -14,10 +14,6 @@ import { LessonMaterialsService } from '../materials/lesson-materials.service';
 import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { fakeStorageOrphans } from '../test-support/fake-storage-orphans';
 import { MaterialsService } from '../materials/materials.service';
-import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
-import { SettingsService } from '../settings/settings.service';
-import { UserRecord, UserSchema } from '../users/user.schema';
-import { UsersService } from '../users/users.service';
 import { LessonRecord, LessonSchema } from './lesson.schema';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -40,28 +36,12 @@ describe('MyLessonsArchiveService', () => {
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
-    const settingsModel = connection.model<SettingsRecord>(
-      SettingsRecord.name,
-      SettingsSchema,
-    );
-    const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    const settingsService = new SettingsService(
-      settingsModel,
-      lessonModel,
-      classModel,
-      new UsersService(userModel),
-    );
     materialsService = new MaterialsService(
       materialModel,
       classModel,
-      settingsService,
       fakeStorageOrphans().service,
     );
-    const lessonMaterialsService = new LessonMaterialsService(
-      materialModel,
-      classModel,
-      settingsService,
-    );
+    const lessonMaterialsService = new LessonMaterialsService(materialModel, classModel);
     service = new MyLessonsArchiveService(
       lessonModel,
       classModel,

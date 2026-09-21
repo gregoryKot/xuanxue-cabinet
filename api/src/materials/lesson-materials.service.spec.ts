@@ -1,16 +1,11 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
-// «Тесты»): join «материалы → даты архива» одним запросом, рубильник
-// платного доступа (ADR-0048) и вырезание access:'staff' (ADR-0058) — тот же
-// приём проверки, что у materials.service.spec.ts (listForStudent), потому
-// что это ровно то же правило доступа, применённое ещё и здесь.
+// «Тесты»): join «материалы → даты архива» одним запросом, вырезание
+// access:'staff' (ADR-0058) — тот же приём проверки, что у
+// materials.service.spec.ts (listForStudent), потому что это ровно то же
+// правило доступа, применённое ещё и здесь.
 import { Types, type Connection, type Model } from 'mongoose';
 import { SCHOOL_TZ } from '@xuanxue/shared';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord, ClassSchema } from '../classes/class.schema';
-import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
-import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
-import { SettingsService } from '../settings/settings.service';
-import { UserRecord, UserSchema } from '../users/user.schema';
-import { UsersService } from '../users/users.service';
 import { encryptRecord } from '../utils/encryption';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { LessonMaterialsService } from './lesson-materials.service';
@@ -25,8 +20,6 @@ describe('LessonMaterialsService', () => {
   let connection: Connection;
   let model: Model<MaterialRecord>;
   let classModel: Model<ClassRecord>;
-  let settingsModel: Model<SettingsRecord>;
-  let settingsService: SettingsService;
   let materialsService: MaterialsService;
   let service: LessonMaterialsService;
 
@@ -35,22 +28,12 @@ describe('LessonMaterialsService', () => {
     connection = memory.connection;
     model = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
-    settingsModel = connection.model<SettingsRecord>(SettingsRecord.name, SettingsSchema);
-    const lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    settingsService = new SettingsService(
-      settingsModel,
-      lessonModel,
-      classModel,
-      new UsersService(userModel),
-    );
     materialsService = new MaterialsService(
       model,
       classModel,
-      settingsService,
       fakeStorageOrphans().service,
     );
-    service = new LessonMaterialsService(model, classModel, settingsService);
+    service = new LessonMaterialsService(model, classModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -60,7 +43,6 @@ describe('LessonMaterialsService', () => {
   afterEach(async () => {
     await model.deleteMany({});
     await classModel.deleteMany({});
-    await settingsModel.deleteMany({});
   });
 
   it('пустой список дат — пустая Map, в базу не ходим', async () => {
@@ -107,32 +89,11 @@ describe('LessonMaterialsService', () => {
     expect(result.get(lessonB)?.[0]?.title).toBe('Материал двух дат');
   });
 
-  // ADR-0048: рубильник школы действует и в архиве — иначе его можно
-  // обойти открыв не «Материалы», а «Архив занятий».
-  it('рубильник включён + access: paid — locked: true, url в DTO нет', async () => {
-    const lessonId = new Types.ObjectId().toString();
-    await materialsService.create(
-      {
-        title: 'Платный разбор',
-        url: 'https://example.com/paid',
-        kind: 'video',
-        access: 'paid',
-        lessonIds: [lessonId],
-      },
-      AUTHOR_ID,
-    );
-    await settingsService.update({ materialsPaidAccess: true });
-
-    const result = await service.findByLessonIds([lessonId], false);
-
-    const material = result.get(lessonId)?.[0];
-    expect(material?.locked).toBe(true);
-    expect(material).not.toHaveProperty('url');
-  });
-
   // ADR-0058: staff-материал ученику не приходит вовсе — фильтр запроса, не
-  // отбрасывание после выборки.
-  it('access: staff — ученику не приходит вовсе, штату приходит', async () => {
+  // отбрасывание после выборки. То же правило, что и в библиотеке — иначе
+  // его можно обойти открыв не «Материалы», а «Архив занятий» (ADR-0096
+  // «Решение»).
+  it('access: staff — ученику не приходит вовсе ни в каком поле, штату приходит с url', async () => {
     const lessonId = new Types.ObjectId().toString();
     await materialsService.create(
       {
@@ -149,7 +110,11 @@ describe('LessonMaterialsService', () => {
     const staffResult = await service.findByLessonIds([lessonId], true);
 
     expect(studentResult.has(lessonId)).toBe(false);
+    expect(JSON.stringify([...studentResult.values()])).not.toContain(
+      'https://example.com/staff',
+    );
     expect(staffResult.get(lessonId)?.[0]?.title).toBe('Методичка для преподавателей');
+    expect(staffResult.get(lessonId)?.[0]?.url).toBe('https://example.com/staff');
   });
 
   // Ученику занятия приезжают названиями: `GET /classes` ему закрыт ролью
