@@ -20,7 +20,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
-    "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-name-collisions.mjs && node scripts/check-shared-exports.mjs && node --test scripts/*.test.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
+    "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-name-collisions.mjs && node scripts/check-adr-numbers.mjs && node scripts/check-shared-exports.mjs && node --test scripts/*.test.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
     "check": "node scripts/check.mjs"
   },
   "devDependencies": {
@@ -34,12 +34,12 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.12.0",
-    "jscpd": "^5.1.2",
-    "knip": "^6.34.0",
+    "jscpd": "^5.2.1",
+    "knip": "^6.36.0",
     "mongodb": "~7.6",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.7",
     "sharp": "^0.35.4",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.69.0"
+    "typescript-eslint": "^8.70.0"
   }
 }

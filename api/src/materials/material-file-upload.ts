@@ -6,6 +6,7 @@
 //
 // Чистая функция без Mongo и без DI (CLAUDE.md «Логика вне контроллеров»).
 import {
+  MATERIAL_FILE_DOCX_CONTENT_TYPE,
   MATERIAL_FILE_EMPTY_MESSAGE,
   MATERIAL_FILE_LIMITS,
   MATERIAL_FILE_TOO_LARGE_MESSAGE,
@@ -13,6 +14,7 @@ import {
   type MaterialFileContentType,
 } from '@xuanxue/shared';
 import {
+  isDocxContainer,
   isPdfSignature,
   parseRawUpload,
   sniffImageSignature,
@@ -23,10 +25,12 @@ export interface ParsedMaterialFile {
   contentType: MaterialFileContentType;
 }
 
-/** PDF или картинка — четыре типа из MATERIAL_FILE_CONTENT_TYPES, и все
- * распознаются по первым байтам. */
+/** Пять типов из MATERIAL_FILE_CONTENT_TYPES. PDF и картинки распознаются по
+ * первым байтам; `.docx` — глубже, по центральному каталогу ZIP-контейнера
+ * (ADR-0080, isDocxContainer): первые байты у него те же, что у любого ZIP. */
 function sniffMaterialFileType(bytes: Buffer): MaterialFileContentType | null {
   if (isPdfSignature(bytes)) return 'application/pdf';
+  if (isDocxContainer(bytes)) return MATERIAL_FILE_DOCX_CONTENT_TYPE;
   return sniffImageSignature(bytes);
 }
 

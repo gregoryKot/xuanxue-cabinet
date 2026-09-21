@@ -12,6 +12,9 @@ export default defineConfig({
       exclude: [
         'src/**/*.spec.ts',
         // Барабан-реэкспорт без логики (CLAUDE.md, «Дубли и мёртвый код»).
+        // Что логики там и правда нет, держит scripts/check-shared-exports.mjs
+        // (ADR-0081) — до него это было допущение, и две константы в барабане
+        // жили вне покрытия молча.
         'src/index.ts',
       ],
       // Порог — scripts/check-vitest-coverage-ratchet.mjs (аудит 2026-09-12,

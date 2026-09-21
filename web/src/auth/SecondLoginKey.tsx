@@ -15,6 +15,7 @@
 // (showsTelegramLinkOffer, ADR-0067) и читается через неё же, а не вторым
 // условием на месте. Тот же предикат спрашивает видео-вопрос попытки —
 // вопрос у них буквально один (attempt/AttemptQuestionVideo.tsx).
+import { useCallback, useState } from 'react';
 import type { MeDto } from '@xuanxue/shared';
 import { screenExplanationStyle } from '../components/screenLayout';
 import { showsTelegramLinkOffer } from '../telegram/acceptsTelegramOffer';
@@ -49,6 +50,15 @@ interface SecondLoginKeyProps {
 
 export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
   const { refresh } = useAuth();
+  // Пока true — вместо напоминания «Мы отправили ссылку на …» показана
+  // форма с этим же адресом в поле (PendingEmailNotice — «Указать другой
+  // адрес»). Сбрасывается не эффектом, а самим refreshAfterLink после
+  // успешной отправки: read-after-write, новый me.pendingEmail уже пришёл.
+  const [editingEmail, setEditingEmail] = useState(false);
+  const refreshAfterLink = useCallback(async () => {
+    await refresh();
+    setEditingEmail(false);
+  }, [refresh]);
   const needsTelegram = showsTelegramLinkOffer(me);
   const needsEmail = !me.hasEmail;
   // enabled: needsEmail — у кого почта уже есть, лишний GET /auth/config не
@@ -82,10 +92,18 @@ export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
       )}
       {needsTelegram && <TelegramLinkButton onBeforeLink={onBeforeLink} />}
       {showEmail &&
-        (me.pendingEmail ? (
-          <PendingEmailNotice email={me.pendingEmail} refresh={refresh} />
+        (me.pendingEmail && !editingEmail ? (
+          <PendingEmailNotice
+            email={me.pendingEmail}
+            refresh={refresh}
+            onChangeAddress={() => setEditingEmail(true)}
+          />
         ) : (
-          <EmailLinkForm refresh={refresh} />
+          <EmailLinkForm
+            refresh={refreshAfterLink}
+            initialEmail={me.pendingEmail}
+            onCancel={me.pendingEmail ? () => setEditingEmail(false) : undefined}
+          />
         ))}
       {/* Условие — просто «Telegram не ключ этого аккаунта». Кому Telegram и
           так открывает вход, отметка не нужна и не показывается; всем

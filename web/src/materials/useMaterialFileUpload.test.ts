@@ -3,6 +3,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  MATERIAL_FILE_DOCX_CONTENT_TYPE,
   MATERIAL_FILE_EMPTY_MESSAGE,
   MATERIAL_FILE_LIMITS,
   MATERIAL_FILE_TOO_LARGE_MESSAGE,
@@ -45,6 +46,12 @@ function makeFile(bytes: number, name = 'book.pdf', type = 'application/pdf'): F
 }
 
 describe('useMaterialFileUpload — проверки до сети', () => {
+  // .docx — тоже ZIP-контейнер (первые байты те же), но у него свой MIME
+  // (application/vnd.openxmlformats-officedocument.wordprocessingml.document),
+  // отличный от application/zip — браузер их не путает. Содержимое
+  // контейнера (что внутри правда Word, а не переименованный .zip) проверяет
+  // сервер (api/src/common/raw-upload.ts, ADR-0080), фронт смотрит только на
+  // Content-Type.
   it('неподдерживаемый тип — ошибка, apiFetch не вызван', async () => {
     const { result } = renderHook(() => useMaterialFileUpload(MATERIAL_ID));
 
@@ -104,6 +111,22 @@ describe('useMaterialFileUpload — загрузка', () => {
     });
     expect(result.current.error).toBeNull();
     expect(result.current.pending).toBe(false);
+  });
+
+  it('.docx — поддерживаемый тип, проходит проверку и уходит на сервер', async () => {
+    const material = makeMaterial();
+    mockedApiFetch.mockResolvedValueOnce(material);
+    const file = makeFile(10, 'форма 24.docx', MATERIAL_FILE_DOCX_CONTENT_TYPE);
+
+    const { result } = renderHook(() => useMaterialFileUpload(MATERIAL_ID));
+    let dto: MaterialDto | null = null;
+    await act(async () => {
+      dto = await result.current.upload(file);
+    });
+
+    expect(dto).toEqual(material);
+    expect(result.current.error).toBeNull();
+    expect(mockedApiFetch).toHaveBeenCalled();
   });
 
   it('длинное имя обрезается до лимита, расширение сохраняется', async () => {
