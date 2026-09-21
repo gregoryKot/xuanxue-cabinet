@@ -77,7 +77,7 @@ export function myExamAttemptsLeft(exam: MyExamDto): number {
  * `attemptsUsed < attemptsAllowed` на сервере (`ExamAttemptsService.start`)
  * не тронуто и не должно: лимит попыток остаётся настоящей защитой, эта
  * функция только решает, что ПРЕДЛОЖИТЬ нажать, не что РАЗРЕШЕНО серверу
- * (ADR-0093). */
+ * (ADR-0091). */
 export function getMyExamAction(exam: MyExamDto): MyExamAction {
   if (exam.lastAttempt?.status === 'in_progress') return 'continue';
   if (myExamAttemptsLeft(exam) <= 0) return null;

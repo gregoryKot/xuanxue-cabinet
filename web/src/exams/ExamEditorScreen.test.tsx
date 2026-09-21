@@ -88,8 +88,20 @@ function renderAt(path: string) {
   );
 }
 
-function mockExamAndBank(exam: ExamDto, bank: ExamItemDto[] = BANK) {
-  mockApiByPath({ '/exams/x1': exam, '/exam-items': bank, '/exams': exam });
+function mockExamAndBank(
+  exam: ExamDto,
+  bank: ExamItemDto[] = BANK,
+  attemptCount: { total: number } = { total: 0 },
+) {
+  // '/exams/x1/attempt-count' — первым: mockApiByPath матчит первым
+  // подходящим префиксом, а он сам начинается с '/exams/x1' — ниже строкой
+  // этот путь достался бы ответу за экзаменом целиком.
+  mockApiByPath({
+    '/exams/x1/attempt-count': attemptCount,
+    '/exams/x1': exam,
+    '/exam-items': bank,
+    '/exams': exam,
+  });
 }
 
 function lastCallWithMethod(method: string) {
@@ -298,6 +310,27 @@ describe('ExamEditorScreen — список вопросов', () => {
     expect(body.body.blocks).toEqual([
       { id: 'b1', title: '', itemIds: ['i1', 'i2'], shuffle: true },
     ]);
+  });
+});
+
+// Заметка о прошлых попытках (ADR-0022): попытка хранит снимок формы на
+// старте, правка вопросов в уже начатую или сданную работу не попадёт.
+describe('ExamEditorScreen — заметка о прошлых попытках (ADR-0022)', () => {
+  it('есть попытки — заметка под «Вопросы · N» с их числом', async () => {
+    mockExamAndBank(makeExam(), BANK, { total: 3 });
+
+    renderAt('/exams/x1');
+
+    expect(await screen.findByText(/Экзамен уже проходили/)).toBeInTheDocument();
+  });
+
+  it('попыток ещё не было — заметки нет', async () => {
+    mockExamAndBank(makeExam(), BANK, { total: 0 });
+
+    renderAt('/exams/x1');
+    await screen.findByText('Зачем придумали тайцзи?');
+
+    expect(screen.queryByText(/Экзамен уже проходили/)).not.toBeInTheDocument();
   });
 });
 

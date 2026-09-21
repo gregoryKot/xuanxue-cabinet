@@ -137,6 +137,7 @@ export type {
   AttemptBlockDto,
   AttemptAnswerDto,
   ExamAttemptDto,
+  ExamAttemptCountDto,
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
 } from './exams';

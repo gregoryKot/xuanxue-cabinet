@@ -12,6 +12,7 @@ import { isStaffRole } from '@xuanxue/shared';
 import type { Context } from 'telegraf';
 import type { ChannelConfigService } from '../../channels/channel-config.service';
 import type { UserLean } from '../../users/users.service';
+import { resetChatBotCommands, setStaffBotCommands } from '../bot-commands';
 import { buildBotMenu, buildStudentMenu } from './bot-menu';
 
 // leadMinutes задаётся на класс (docs/PLAN.md §6) — у личного чата учителя
@@ -34,8 +35,13 @@ export async function welcomeConnectedUser(
   const chatId = String(telegramId);
   const title = personalChatTitle(user.name);
 
+  // Список команд у Telegram клиентский (bot-commands.ts) — выставляем его
+  // на чат в момент, когда узнали, кто это; при старте сервиса то же самое
+  // для уже подключённых делает syncBotCommands. Обе функции best-effort:
+  // не обновившееся меню — не повод отвечать отказом на /start.
   if (isStaffRole(user.roles)) {
     await channelConfig.upsertTelegramChat({ chatId, title });
+    await setStaffBotCommands(ctx.telegram, chatId);
     const menu = buildBotMenu();
     // Раньше /start заканчивался этой строкой, и всё, что бот ещё умеет,
     // оставалось невидимым (отзыв владельца 2026-09-12) — следом идёт меню.
@@ -47,6 +53,7 @@ export async function welcomeConnectedUser(
   }
 
   await channelConfig.upsertPersonalTelegramChat({ chatId, title });
+  await resetChatBotCommands(ctx.telegram, chatId);
   const menu = buildStudentMenu();
   await ctx
     .reply(menu.text, { reply_markup: { inline_keyboard: menu.buttons } })

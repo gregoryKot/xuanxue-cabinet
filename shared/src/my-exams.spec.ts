@@ -1,5 +1,5 @@
 // Правило «что предложить ученику дальше» — одно на кабинет и на бота
-// (getMyExamAction, ADR-0093, решение владельца 2026-09-21). Чистая логика
+// (getMyExamAction, ADR-0091, решение владельца 2026-09-21). Чистая логика
 // без DOM и без сети, тест на каждую из шести веток по порядку из функции.
 import { describe, expect, it } from 'vitest';
 import { getMyExamAction, myExamAttemptsLeft, type MyExamDto } from './my-exams';

@@ -1,20 +1,24 @@
-// Фейковый BotUserAccessService и фейковый NotificationPrefsService, без
-// Mongo (CLAUDE.md «Тесты», тот же приём, что exam-command.handler.spec.ts):
-// BotUserAccessService.resolve уже проверен против настоящей Mongo в
-// bot-user-access.service.spec.ts, NotificationPrefsService.get — в
-// notification-prefs.service.spec.ts. Здесь — только маршрутизация
-// unknown/denied/active (ADR-0065: доступна и ученику, не только штату) и
-// то, что каждый получает своё меню.
+// Фейковый BotUserAccessService, фейковый NotificationPrefsService и
+// фейковый SettingsService, без Mongo (CLAUDE.md «Тесты», тот же приём, что
+// exam-command.handler.spec.ts): BotUserAccessService.resolve уже проверен
+// против настоящей Mongo в bot-user-access.service.spec.ts,
+// NotificationPrefsService.get — в notification-prefs.service.spec.ts.
+// Здесь — только маршрутизация unknown/denied/active (ADR-0065: доступна и
+// ученику, не только штату; ADR-0090: unknown отвечает вежливым отказом, не
+// молчанием) и то, что каждый получает своё меню.
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { ACCESS_MESSAGE, type NotificationKind } from '@xuanxue/shared';
+import type { SettingsService } from '../../settings/settings.service';
 import type { UserLean } from '../../users/users.service';
 import type { NotificationPrefsService } from '../../notifications/notification-prefs.service';
 import type { BotUserAccessService } from '../bot-user-access.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
+import { buildStrangerMessage } from './bot-menu';
 import { NotificationsCommandHandler } from './notifications-command.handler';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
+const SCHOOL_SITE_URL = 'https://xuanxue.su';
 const TEACHER: UserLean = {
   id: 'u1',
   name: 'Мария',
@@ -29,6 +33,12 @@ function fakePrefs(enabled: NotificationKind[]): {
 } {
   const get = jest.fn().mockResolvedValue({ enabled });
   return { service: { get } as unknown as NotificationPrefsService, get };
+}
+
+function fakeSettings(): SettingsService {
+  return {
+    get: () => Promise.resolve({ schoolSiteUrl: SCHOOL_SITE_URL }),
+  } as unknown as SettingsService;
 }
 
 function fakeCtx(
@@ -54,6 +64,7 @@ describe('NotificationsCommandHandler', () => {
     const handler = new NotificationsCommandHandler(
       fakeBotUserAccess(activeAccess(TEACHER)),
       prefs.service,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx(111);
 
@@ -68,6 +79,7 @@ describe('NotificationsCommandHandler', () => {
     const handler = new NotificationsCommandHandler(
       fakeBotUserAccess(activeAccess(STUDENT)),
       prefs.service,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx(222);
 
@@ -83,6 +95,7 @@ describe('NotificationsCommandHandler', () => {
     const handler = new NotificationsCommandHandler(
       fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
       prefs.service,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx(333);
 
@@ -92,17 +105,21 @@ describe('NotificationsCommandHandler', () => {
     expect(prefs.get).not.toHaveBeenCalled();
   });
 
-  it('незнакомец — бот молчит', async () => {
+  // ADR-0090 + отзыв владельца 2026-09-21: /notifications — в общем списке
+  // команд Telegram, его видит и незнакомец; молчание на нём читалось как
+  // «бот сломан», поэтому теперь тот же вежливый отказ, что и у /start.
+  it('незнакомец — вежливый отказ, как у /start, а не молчание', async () => {
     const prefs = fakePrefs([]);
     const handler = new NotificationsCommandHandler(
       fakeBotUserAccess({ kind: 'unknown' }),
       prefs.service,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx(444);
 
     await handler.handle(ctx, NOW);
 
-    expect(replies).toEqual([]);
+    expect(replies).toEqual([buildStrangerMessage(SCHOOL_SITE_URL)]);
     expect(prefs.get).not.toHaveBeenCalled();
   });
 
@@ -111,6 +128,7 @@ describe('NotificationsCommandHandler', () => {
     const handler = new NotificationsCommandHandler(
       fakeBotUserAccess(activeAccess(TEACHER)),
       prefs.service,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx(111, 'group');
 
@@ -124,6 +142,7 @@ describe('NotificationsCommandHandler', () => {
     const handler = new NotificationsCommandHandler(
       fakeBotUserAccess(activeAccess(TEACHER)),
       prefs.service,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx(undefined);
 
@@ -136,7 +155,11 @@ describe('NotificationsCommandHandler', () => {
     const failingAccess = {
       resolve: jest.fn().mockRejectedValue(new Error('Mongo недоступна')),
     } as unknown as BotUserAccessService;
-    const handler = new NotificationsCommandHandler(failingAccess, prefs.service);
+    const handler = new NotificationsCommandHandler(
+      failingAccess,
+      prefs.service,
+      fakeSettings(),
+    );
     const { ctx, replies } = fakeCtx(555);
 
     await expect(handler.handle(ctx, NOW)).resolves.toBeUndefined();

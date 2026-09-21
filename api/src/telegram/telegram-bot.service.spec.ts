@@ -29,9 +29,16 @@ import {
 } from './test-support/bot-service.fixtures';
 import { botCommandUpdate } from './test-support/bot-command-update';
 import type { MenuCommandHandler } from './handlers/menu-command.handler';
+import type { PersonalChats } from './personal-chats';
 import { createFakeTelegrafFactory } from './test-support/telegraf-factory';
 import { createTelegraf } from './telegraf-instance';
 import { TelegramBotService } from './telegram-bot.service';
+
+// Личные чаты штата (PersonalChats.list) — пустой список, тут не нужен:
+// собственное поведение syncBotCommands проверяет bot-commands.spec.ts.
+function fakePersonalChats(): PersonalChats {
+  return { list: () => Promise.resolve([]) } as unknown as PersonalChats;
+}
 
 describe('TelegramBotService — маршрутизация', () => {
   it('BOT_TOKEN не задан — бот не создаётся, handleUpdate не падает и никуда не роутит', async () => {
@@ -153,6 +160,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandlerWithNow() as unknown as NewExamCommandHandler,
       fakeHandlerWithNow() as unknown as GradeQueueHandler,
       new BotIdentityService(),
+      fakePersonalChats(),
     );
     service.onApplicationBootstrap();
 
@@ -189,6 +197,7 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeHandlerWithNow() as unknown as NewExamCommandHandler,
         fakeHandlerWithNow() as unknown as GradeQueueHandler,
         new BotIdentityService(),
+        fakePersonalChats(),
       );
       service.onApplicationBootstrap();
 
@@ -225,6 +234,7 @@ describe('TelegramBotService — маршрутизация', () => {
         fakeHandlerWithNow() as unknown as NewExamCommandHandler,
         fakeHandlerWithNow() as unknown as GradeQueueHandler,
         new BotIdentityService(),
+        fakePersonalChats(),
       );
       service.onApplicationBootstrap();
 
@@ -256,6 +266,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandlerWithNow() as unknown as NewExamCommandHandler,
       fakeHandlerWithNow() as unknown as GradeQueueHandler,
       new BotIdentityService(),
+      fakePersonalChats(),
     );
     service.onApplicationBootstrap();
 
@@ -284,6 +295,7 @@ describe('TelegramBotService — маршрутизация', () => {
       fakeHandlerWithNow() as unknown as NewExamCommandHandler,
       fakeHandlerWithNow() as unknown as GradeQueueHandler,
       new BotIdentityService(),
+      fakePersonalChats(),
     );
     service.onApplicationBootstrap();
 
@@ -376,6 +388,7 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeHandlerWithNow() as unknown as NewExamCommandHandler,
       fakeHandlerWithNow() as unknown as GradeQueueHandler,
       new BotIdentityService(),
+      fakePersonalChats(),
     );
     service.onApplicationBootstrap();
 
@@ -402,6 +415,7 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeHandlerWithNow() as unknown as NewExamCommandHandler,
       fakeHandlerWithNow() as unknown as GradeQueueHandler,
       new BotIdentityService(),
+      fakePersonalChats(),
     );
     service.onApplicationBootstrap();
 
@@ -436,6 +450,7 @@ describe('TelegramBotService.sendMessage — проактивная отправ
       fakeHandlerWithNow() as unknown as NewExamCommandHandler,
       fakeHandlerWithNow() as unknown as GradeQueueHandler,
       new BotIdentityService(),
+      fakePersonalChats(),
     );
     service.onApplicationBootstrap();
 

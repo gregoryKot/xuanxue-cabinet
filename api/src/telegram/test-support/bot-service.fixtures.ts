@@ -15,11 +15,11 @@ import type { NewExamItemCommandHandler } from '../handlers/new-exam-item-comman
 import type { NotificationsCommandHandler } from '../handlers/notifications-command.handler';
 import type { TopicCommandHandler } from '../handlers/topic-command.handler';
 import { BotIdentityService } from '../bot-identity.service';
+import type { PersonalChats } from '../personal-chats';
 
 export const TOKEN = '123456:test-token-not-real-0000000000';
 
-// Ждём цикл событий — fire-and-forget промисы bootstrap успевают дойти до
-// своего .catch()/.then() до следующей проверки.
+// Ждём цикл событий — fire-and-forget промисы bootstrap успевают дойти до своего .catch()/.then().
 export function flush(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
 }
@@ -32,8 +32,7 @@ export function fakeHandler(): { handle: jest.Mock<Promise<void>, [Context]> } {
   return { handle: jest.fn<Promise<void>, [Context]>().mockResolvedValue(undefined) };
 }
 
-/** callback_query/`/тема`/message — `handle(ctx, now)` (CLAUDE.md «Время»:
- * TelegramBotService зовёт DateTime.utc() на каждый апдейт). */
+/** callback_query/`/тема`/message — `handle(ctx, now)` (DateTime.utc() на каждый апдейт). */
 export function fakeHandlerWithNow(): {
   handle: jest.Mock<Promise<void>, [Context, DateTime]>;
 } {
@@ -44,7 +43,7 @@ export function fakeHandlerWithNow(): {
 
 /** callback_query/`/тема`/`/уведомления`/message/`/экзамены` — маршрутизацию
  * проверяют telegram-bot.service.spec.ts/register-handlers.exams.spec.ts.
- * BotIdentityService в хвосте — настоящий инстанс, не мок (ADR-0030). */
+ * BotIdentityService/PersonalChats в хвосте — реальный/пустой фейк, не мок. */
 export function fakeExtraHandlers(): [
   CallbackQueryHandler,
   TopicCommandHandler,
@@ -56,6 +55,7 @@ export function fakeExtraHandlers(): [
   NewExamCommandHandler,
   GradeQueueHandler,
   BotIdentityService,
+  PersonalChats,
 ] {
   return [
     fakeHandlerWithNow() as unknown as CallbackQueryHandler,
@@ -68,6 +68,7 @@ export function fakeExtraHandlers(): [
     fakeHandlerWithNow() as unknown as NewExamCommandHandler,
     fakeHandlerWithNow() as unknown as GradeQueueHandler,
     new BotIdentityService(),
+    { list: () => Promise.resolve([]) } as unknown as PersonalChats,
   ];
 }
 
