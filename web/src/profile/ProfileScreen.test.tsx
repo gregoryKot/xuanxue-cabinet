@@ -44,6 +44,10 @@ function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] 
         ? Promise.reject(notificationsResponse)
         : Promise.resolve(notificationsResponse);
     }
+    // publicKey: null — push выключен на сервере (риск за флагом, ADR-0092):
+    // PushNotificationsSection.tsx не рисует ничего, экран остаётся тем же,
+    // что и до неё. Сами состояния раздела — PushNotificationsSection.test.tsx.
+    if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 
@@ -234,6 +238,7 @@ describe('ProfileScreen — ошибка загрузки уведомлений
       if (path === '/auth/config') return Promise.resolve({});
       if (path === '/me/notifications')
         return Promise.reject(new Error('сеть недоступна'));
+      if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
     render(

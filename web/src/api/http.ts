@@ -2,11 +2,13 @@
 // компонент»): eslint запрещает глобальный fetch вне web/src/api/**, чтобы
 // формат ошибок и credentials не разъезжались по компонентам.
 import {
+  APP_VERSION_HEADER,
   CSRF_HEADER,
   isMutatingMethod,
   type ApiErrorBody,
   type ApiErrorCode,
 } from '@xuanxue/shared';
+import { noteAppVersion } from './appVersion';
 import { takePrefetched } from './prefetchCache';
 
 /** Ошибка похода в API — статус, код бэкенда и (если есть) детали/requestId. */
@@ -110,6 +112,10 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   } catch {
     throw new ApiError(NETWORK_ERROR_MESSAGE, 0, 'network');
   }
+
+  // До проверок статуса: версия сборки (ADR-0101) едет и в ответе об ошибке,
+  // а деплой не должен остаться незамеченным только потому, что запрос упал.
+  noteAppVersion(response.headers.get(APP_VERSION_HEADER));
 
   if (response.status === 204) return undefined as T;
 

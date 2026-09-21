@@ -62,6 +62,7 @@ import {
 } from './appShellStyles';
 import { personLinkStyle } from './sideNavStyles';
 import { AppShellBrandRow } from './AppShellBrandRow';
+import { NewVersionBanner } from './NewVersionBanner';
 import { canSeeRoute, rootPathFor } from './screenAccess';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
@@ -118,6 +119,7 @@ export function AppShell() {
               ) : (
                 <AppShellBrandRow isMobile={isMobile} me={me} />
               )}
+              <NewVersionBanner />
               <main>
                 {canSee ? <Outlet /> : <Navigate to={rootPathFor(me)} replace />}
               </main>

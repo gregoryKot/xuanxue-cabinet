@@ -6,10 +6,12 @@
 // (`/welcome`, ADR-0044), но человек остаётся на месте
 // (ProfileNameSection.tsx). Переключатели — NotificationPrefsSection.tsx,
 // перенесены из удалённого экрана «Уведомления» дословно (CLAUDE.md
-// «Отказались от механики — удаляем с концами»). Связка Telegram живёт в
-// SecondLoginKey.tsx (ADR-0059, общий с welcome/WelcomeScreen.tsx) — раньше
-// она была подана как способ получать уведомления, теперь это про то, чтобы
-// вход не зависел от одного приложения.
+// «Отказались от механики — удаляем с концами»). Сразу под ними —
+// PushNotificationsSection.tsx (ADR-0092, ПР №5): кнопка «Включить
+// уведомления», добавка к тем же видам, не отдельный список. Связка Telegram
+// живёт в SecondLoginKey.tsx (ADR-0059, общий с welcome/WelcomeScreen.tsx) —
+// раньше она была подана как способ получать уведомления, теперь это про то,
+// чтобы вход не зависел от одного приложения.
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
@@ -18,6 +20,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
+import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
 import { ProfileNameSection } from './ProfileNameSection';
 
 const TITLE = 'Профиль';
@@ -52,6 +55,7 @@ export default function ProfileScreen() {
       )}
 
       <NotificationPrefsSection />
+      <PushNotificationsSection />
 
       {/* Второй способ входа (ADR-0059) — SecondLoginKey сам решает, что
           предложить (или не рисует ничего, если оба ключа уже на месте).

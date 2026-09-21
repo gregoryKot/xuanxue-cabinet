@@ -6,6 +6,7 @@ import type { AddRecordingInput, RecordingDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { textLinkStyle } from '../components/screenLayout';
+import { VideoEmbed } from '../components/VideoEmbed';
 import { useRecordingForm } from './useRecordingForm';
 
 const listStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
@@ -33,14 +34,19 @@ export function RecordingSection({ lessonId, recordings, onAdd }: RecordingSecti
           {recordings.map((recording) => (
             <li key={recording.id}>
               {recording.url ? (
-                <a
-                  href={recording.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={textLinkStyle}
-                >
-                  {recordingLabel(recording)}
-                </a>
+                <>
+                  <a
+                    href={recording.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={textLinkStyle}
+                  >
+                    {recordingLabel(recording)}
+                  </a>
+                  {/* Плеер рядом со ссылкой (ADR-0100), комментарий — в
+                      student/ArchivedLessonCard.tsx. */}
+                  <VideoEmbed url={recording.url} title={recordingLabel(recording)} />
+                </>
               ) : (
                 recordingLabel(recording)
               )}

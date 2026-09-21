@@ -11,6 +11,11 @@ function jsonResponse(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    // http.ts читает заголовок версии сборки на каждом ответе (ADR-0101) —
+    // без headers.get apiFetch упал бы здесь ещё до проверки статуса. Тип
+    // сужен до Pick<Headers, 'get'>: целый Headers подделывать незачем, а
+    // `as Headers` на самом литерале tsc не пропускает (TS2352).
+    headers: { get: () => null } as Pick<Headers, 'get'>,
     json: () => Promise.resolve(body),
   } as Response;
 }
