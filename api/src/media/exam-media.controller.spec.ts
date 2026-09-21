@@ -98,4 +98,14 @@ describe('ExamMediaController', () => {
 
     expect(addManual).toHaveBeenCalledWith('a1', 'т', expect.anything(), itemId);
   });
+
+  // ADR-0086: без @Roles на хендлере — контроллер передаёт пользователя
+  // сервису как есть, роль/владение решает MediaAssetsService.remove.
+  it('remove() передаёт id попытки, id записи и пользователя из сессии в сервис', async () => {
+    const remove = jest.fn().mockResolvedValue(undefined);
+    const controller = await buildController({ remove });
+
+    await expect(controller.remove('a1', 'm1', USER)).resolves.toBeUndefined();
+    expect(remove).toHaveBeenCalledWith('a1', 'm1', USER);
+  });
 });

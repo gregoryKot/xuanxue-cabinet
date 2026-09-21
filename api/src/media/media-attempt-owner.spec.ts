@@ -48,12 +48,13 @@ describe('loadAttemptOwnerInfo', () => {
   async function createAttempt(fields: {
     examTitle: string;
     blocks: string;
+    status?: 'in_progress' | 'submitted' | 'graded';
   }): Promise<string> {
     const doc = await attemptModel.create({
       userId: new Types.ObjectId(),
       examId: new Types.ObjectId(),
       examTitle: fields.examTitle,
-      status: 'in_progress',
+      status: fields.status ?? 'in_progress',
       attemptNo: 1,
       startedAt: new Date('2026-09-18T10:00:00.000Z'),
       blocks: fields.blocks,
@@ -72,16 +73,20 @@ describe('loadAttemptOwnerInfo', () => {
     await expect(loadAttemptOwnerInfo(attemptModel, missing)).resolves.toBeNull();
   });
 
-  it('название и блоки читаются из попытки', async () => {
+  it('название, блоки и статус читаются из попытки', async () => {
     const id = await createAttempt({
       examTitle: 'Экзамен на пояс',
       blocks: JSON.stringify(BLOCKS),
+      status: 'graded',
     });
 
     const info = await loadAttemptOwnerInfo(attemptModel, id);
 
     expect(info?.examTitle).toBe('Экзамен на пояс');
     expect(info?.blocks).toEqual(BLOCKS);
+    // ADR-0086: MediaAssetsService.addLink/remove решают по этому полю,
+    // менять ли ссылку у оценённой попытки.
+    expect(info?.status).toBe('graded');
   });
 
   it('блоки не разобрались — пустой список, а не падение', async () => {

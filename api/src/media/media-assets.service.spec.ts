@@ -6,7 +6,7 @@ import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import { ConflictError, NotFoundError } from '../common/errors';
+import { ConflictError, InvalidInputError, NotFoundError } from '../common/errors';
 import { encryptRecord } from '../utils/encryption';
 import {
   EXAM_ATTEMPT_ENCRYPT_SCHEMA,
@@ -310,6 +310,19 @@ describe('MediaAssetsService', () => {
           NOW,
         ),
       ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    // ADR-0086: после graded ответ на вопрос не меняется — правило
+    // распространяется и на добавление, не только на снятие
+    // (media-assets.remove.spec.ts).
+    it('попытка graded — InvalidInputError, ничего не сохранено', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      await attemptModel.updateOne({ _id: attemptId }, { $set: { status: 'graded' } });
+
+      await expect(
+        service.addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW),
+      ).rejects.toBeInstanceOf(InvalidInputError);
+      await expect(mediaModel.countDocuments({})).resolves.toBe(0);
     });
 
     it('вторая ссылка на ту же попытку — ConflictError, первая остаётся', async () => {
