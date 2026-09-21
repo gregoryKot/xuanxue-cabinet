@@ -13,7 +13,7 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { tagsScreenPath } from '../lib/tagsScreenPath';
-import { pillStyle } from './pillStyles';
+import { PILL_CLASS, pillStyle } from './pillStyles';
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -36,7 +36,12 @@ export function TagPillLinks({ tags, groupLabel }: TagPillLinksProps) {
   return (
     <div style={rowStyle} role="group" aria-label={groupLabel}>
       {tags.map((tag) => (
-        <Link key={tag} to={tagsScreenPath(tag)} style={pillLinkStyle}>
+        <Link
+          key={tag}
+          to={tagsScreenPath(tag)}
+          className={PILL_CLASS}
+          style={pillLinkStyle}
+        >
           {tag}
         </Link>
       ))}

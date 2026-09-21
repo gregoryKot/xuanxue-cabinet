@@ -27,7 +27,7 @@
 import type { CSSProperties } from 'react';
 import { MATERIAL_KIND_LABELS, type MyMaterialDto } from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
-import { pillActiveStyle, pillStyle } from '../components/pillStyles';
+import { PILL_CLASS, pillActiveStyle, pillStyle } from '../components/pillStyles';
 import { StudentMaterialCardActions } from './StudentMaterialCardActions';
 
 const TAGS_GROUP_LABEL = 'Теги материала';
@@ -98,6 +98,7 @@ export function StudentMaterialCard({
             <button
               key={tag}
               type="button"
+              className={PILL_CLASS}
               style={
                 tag === selectedTag ? { ...pillStyle, ...pillActiveStyle } : pillStyle
               }
