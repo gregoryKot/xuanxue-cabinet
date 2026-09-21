@@ -331,7 +331,7 @@ describe('ExamsService', () => {
     );
   });
 
-  // ADR-0080: questionsPerAttempt не может быть больше длины itemIds.
+  // ADR-0082: questionsPerAttempt не может быть больше длины itemIds.
   it('questionsPerAttempt больше длины списка — InvalidInputError, форма не создаётся', async () => {
     const itemId = await createItem('published');
 

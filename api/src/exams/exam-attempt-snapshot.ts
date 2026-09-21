@@ -25,7 +25,7 @@ export function shuffleOnce<T>(items: readonly T[], random: () => number): T[] {
     .map(({ item }) => item);
 }
 
-/** ADR-0080: `itemIds` блока — пул, `questionsPerAttempt` — сколько из него
+/** ADR-0082: `itemIds` блока — пул, `questionsPerAttempt` — сколько из него
  * достаётся сдающему в этой попытке. Нет поля или оно не меньше длины
  * списка — берём все (тем же порядком, что раньше: shuffle решает, мешать
  * ли). Иначе — сначала случайная выборка N через shuffleOnce (общий ключ

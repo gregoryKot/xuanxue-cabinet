@@ -65,7 +65,7 @@ describe('formatExamListMeta', () => {
     );
   });
 
-  it('задано questionsPerAttempt — «M из N вопросов» (ADR-0080)', () => {
+  it('задано questionsPerAttempt — «M из N вопросов» (ADR-0082)', () => {
     expect(
       formatExamListMeta(
         exam({ blocks: [block(['a', 'b', 'c'], { questionsPerAttempt: 2 })] }),

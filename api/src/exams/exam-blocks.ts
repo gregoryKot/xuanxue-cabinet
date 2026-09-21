@@ -76,7 +76,7 @@ export function hasAnyQuestion(blocks: readonly ExamBlockRecord[]): boolean {
   return blocks.some((block) => block.itemIds.length > 0);
 }
 
-/** ADR-0080: `questionsPerAttempt` — сколько вопросов из `itemIds` увидит
+/** ADR-0082: `questionsPerAttempt` — сколько вопросов из `itemIds` увидит
  * сдающий, не может быть больше самого списка (иначе выбирать нечего).
  * Снимок попытки (exam-attempt-snapshot.ts) на всякий случай берёт не
  * больше, чем есть, но отказ на сохранении — понятнее «тихого» урезания. */

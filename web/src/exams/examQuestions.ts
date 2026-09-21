@@ -19,7 +19,7 @@ export function initialShuffleQuestions(exam: ExamDto | null): boolean {
 }
 
 /** Сколько вопросов из списка достаётся сдающему — тоже поле единственного
- * блока (ADR-0080). Нет поля у формы или у блока — сдающий получает все
+ * блока (ADR-0082). Нет поля у формы или у блока — сдающий получает все
  * вопросы, как раньше. */
 export function initialQuestionsPerAttempt(exam: ExamDto | null): number | undefined {
   return exam?.blocks[0]?.questionsPerAttempt;
@@ -28,7 +28,7 @@ export function initialQuestionsPerAttempt(exam: ExamDto | null): number | undef
 interface ToBlockInputsParams {
   itemIds: string[];
   shuffle: boolean;
-  /** `undefined` — поле не отправляется вовсе, а не «сброшено» (ADR-0080:
+  /** `undefined` — поле не отправляется вовсе, а не «сброшено» (ADR-0082:
    * нет ключа — сдающий получает все вопросы). */
   questionsPerAttempt: number | undefined;
   exam: ExamDto | null;

@@ -86,7 +86,7 @@ describe('toExamDto', () => {
     expect(toExamDto(doc).blocks).toEqual([]);
   });
 
-  // ADR-0080.
+  // ADR-0082.
   it('questionsPerAttempt в записи блока — присутствует в ответе', () => {
     const doc = fullExam();
     doc.blocks = [

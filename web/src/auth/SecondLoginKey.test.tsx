@@ -3,6 +3,7 @@
 // useAuth().refresh — сам `me`, который решает, что показать, приходит
 // пропом, не из сессии (тот же приём мока сети, что TelegramLinkButton.test.tsx).
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -143,5 +144,62 @@ describe('SecondLoginKey — pendingEmail', () => {
     expect(
       screen.getByRole('button', { name: 'Прислать ссылку ещё раз' }),
     ).toBeInTheDocument();
+  });
+
+  it('«Указать другой адрес» — форма с опечатанным адресом в поле, напоминания нет', async () => {
+    const user = userEvent.setup();
+    renderKey({ ...BASE, hasEmail: false, pendingEmail: 'a@example.com' });
+
+    await user.click(await screen.findByRole('button', { name: 'Указать другой адрес' }));
+
+    expect(screen.getByLabelText('Почта')).toHaveValue('a@example.com');
+    expect(screen.getByRole('button', { name: 'Привязать почту' })).toBeEnabled();
+    expect(screen.queryByText(/Мы отправили ссылку на/)).not.toBeInTheDocument();
+  });
+
+  it('поправили адрес и отправили — POST на новый адрес, потом снова напоминание', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/auth/email/link': undefined,
+      '/auth/me': { ...BASE, hasEmail: false, pendingEmail: 'a@example.com' },
+      '/auth/config': { emailLoginEnabled: true },
+    });
+    render(
+      <AuthProvider>
+        <SecondLoginKey
+          me={{ ...BASE, hasEmail: false, pendingEmail: 'a@example.com' }}
+        />
+      </AuthProvider>,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'Указать другой адрес' }));
+    const field = screen.getByLabelText('Почта');
+    await user.clear(field);
+    await user.type(field, 'b@example.com');
+    await user.click(screen.getByRole('button', { name: 'Привязать почту' }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/link', {
+      method: 'POST',
+      body: { email: 'b@example.com' },
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Прислать ссылку ещё раз' }),
+    ).toBeInTheDocument();
+  });
+
+  it('«Оставить прежний адрес» — назад к напоминанию без запроса', async () => {
+    const user = userEvent.setup();
+    renderKey({ ...BASE, hasEmail: false, pendingEmail: 'a@example.com' });
+
+    await user.click(await screen.findByRole('button', { name: 'Указать другой адрес' }));
+    await user.click(screen.getByRole('button', { name: 'Оставить прежний адрес' }));
+
+    expect(
+      await screen.findByText(/Мы отправили ссылку на a@example\.com/),
+    ).toBeInTheDocument();
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(
+      '/auth/email/link',
+      expect.anything(),
+    );
   });
 });

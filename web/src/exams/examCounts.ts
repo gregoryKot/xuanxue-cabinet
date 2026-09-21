@@ -36,14 +36,14 @@ export function countQuestions(blocks: ExamDto['blocks']): number {
 /** Экзамен для учителя — один список (ADR-0033), поле у блока одно и то же
  * значение при слиянии старой многоблочной формы не подразумевается — берём
  * первый блок, у которого оно задано; `undefined`, если ни у одного блока
- * поля нет (ADR-0080: сдающий получает все вопросы). */
+ * поля нет (ADR-0082: сдающий получает все вопросы). */
 export function countQuestionsPerAttempt(blocks: ExamDto['blocks']): number | undefined {
   return blocks.find((block) => block.questionsPerAttempt !== undefined)
     ?.questionsPerAttempt;
 }
 
 /** Строка метаданных строки списка: число вопросов (если они уже есть) — с
- * учётом случайной выборки (ADR-0080), число попыток, лимит времени — куски,
+ * учётом случайной выборки (ADR-0082), число попыток, лимит времени — куски,
  * разделённые « · ». */
 export function formatExamListMeta(
   exam: Pick<ExamDto, 'blocks' | 'attemptsAllowed' | 'timeLimitMin'>,

@@ -1,5 +1,5 @@
 // Чистая логика — без Mongo (CLAUDE.md «Тесты»): id блоков, повтор вопроса
-// по всей форме, «есть хотя бы один вопрос», лимит questionsPerAttempt (ADR-0080).
+// по всей форме, «есть хотя бы один вопрос», лимит questionsPerAttempt (ADR-0082).
 import { assertBlocksConsistent, hasAnyQuestion, mapBlocks } from './exam-blocks';
 
 describe('mapBlocks', () => {
@@ -37,13 +37,13 @@ describe('mapBlocks', () => {
     expect(mapped).toMatchObject({ title: 'Теория', shuffle: true });
   });
 
-  // ADR-0080: как imageId варианта — значение есть, ключ в записи есть.
+  // ADR-0082: как imageId варианта — значение есть, ключ в записи есть.
   it('questionsPerAttempt указан — сохраняется как есть', () => {
     const [mapped] = mapBlocks([{ itemIds: ['a', 'b'], questionsPerAttempt: 1 }]) ?? [];
     expect(mapped).toMatchObject({ questionsPerAttempt: 1 });
   });
 
-  // ADR-0080: не указан — ключа в записи нет вовсе, не `undefined`.
+  // ADR-0082: не указан — ключа в записи нет вовсе, не `undefined`.
   it('questionsPerAttempt не указан — ключа в записи нет', () => {
     const [mapped] = mapBlocks([{ itemIds: ['a'] }]) ?? [];
     expect(mapped).not.toHaveProperty('questionsPerAttempt');

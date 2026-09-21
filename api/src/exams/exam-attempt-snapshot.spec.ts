@@ -92,7 +92,7 @@ function singleChoiceItem(): ReadonlyMap<string, ExamItemDto> {
   ]);
 }
 
-// ADR-0080: блок с questionsPerAttempt — пул itemIds, при старте попытки
+// ADR-0082: блок с questionsPerAttempt — пул itemIds, при старте попытки
 // выбираются только N.
 describe('pickQuestionIds', () => {
   it('выбирает ровно N различных id из блока', () => {

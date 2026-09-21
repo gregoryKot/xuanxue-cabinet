@@ -31,7 +31,7 @@ export interface ExamBlockRecord {
   itemIds: string[];
   shuffle: boolean;
   /** Сколько вопросов из `itemIds` достаётся сдающему в одной попытке —
-   * случайная выборка при старте (ADR-0080). Нет поля — все вопросы списка.
+   * случайная выборка при старте (ADR-0082). Нет поля — все вопросы списка.
    * Живёт внутри зашифрованного `blocks` (encJson выше) — отдельной записи в
    * EXAM_FIELD_POLICY не требует. */
   questionsPerAttempt?: number;

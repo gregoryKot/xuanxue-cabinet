@@ -221,7 +221,7 @@ describe('ExamPreviewScreen — вопросы', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('задан questionsPerAttempt — заметка о случайной выборке (ADR-0080)', async () => {
+  it('задан questionsPerAttempt — заметка о случайной выборке (ADR-0082)', async () => {
     mockExamAndBank(
       makeExam({
         blocks: [

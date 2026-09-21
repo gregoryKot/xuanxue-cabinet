@@ -480,7 +480,7 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     expect(screen.getByText('Пусто — без ограничения.')).toBeInTheDocument();
   });
 
-  it('«Вопросов ученику» (ADR-0080) — поле с подсказкой по числу вопросов списка', async () => {
+  it('«Вопросов ученику» (ADR-0082) — поле с подсказкой по числу вопросов списка', async () => {
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');

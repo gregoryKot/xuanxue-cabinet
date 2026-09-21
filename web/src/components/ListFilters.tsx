@@ -27,11 +27,10 @@ const rowStyle: CSSProperties = {
   borderBottom: '1px solid var(--line)',
 };
 const toggleGroupStyle: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 8 };
-const trailingStyle: CSSProperties = {
-  marginLeft: 'auto',
-  flex: '1 1 200px',
-  maxWidth: 280,
-};
+// Место поиска/периода в строке — класс в index.css, не инлайн-стиль: на
+// телефоне поле занимает всю ширину под пилюлями, на мониторе стоит справа
+// от них, а `CSSProperties` не умеет медиа-запрос.
+const TRAILING_CLASS = 'xuanxue-list-filters-trailing';
 const searchInputStyle: CSSProperties = { ...inputStyle, width: '100%' };
 
 /** Поиск по уже загруженному списку. Подпись видна плейсхолдером и
@@ -54,7 +53,9 @@ interface ListFiltersProps<TStatus extends string> {
   onChange: (status: TStatus | '') => void;
   search?: ListSearch;
   /** Свой контрол в конце строки — период журнала рассылок. Стоит там же,
-   * где поиск: справа от переключателей, одной строкой с ними. */
+   * где поиск: на мониторе справа от переключателей, одной строкой с ними,
+   * на телефоне — во всю ширину под ними (`.xuanxue-list-filters-trailing`,
+   * index.css). */
   trailing?: ReactNode;
   /** aria-label группы пилюль — по умолчанию «Статус» (экзамены, вопросы,
    * рассылки), но пилюли тегов материалов (ADR-0058) — не статус, и жёсткая
@@ -94,7 +95,7 @@ export function ListFilters<TStatus extends string>({
         ))}
       </div>
       {search && (
-        <label style={trailingStyle}>
+        <label className={TRAILING_CLASS}>
           <span className="xuanxue-sr-only">{search.label}</span>
           <input
             type="search"
@@ -105,7 +106,7 @@ export function ListFilters<TStatus extends string>({
           />
         </label>
       )}
-      {trailing && <div style={trailingStyle}>{trailing}</div>}
+      {trailing && <div className={TRAILING_CLASS}>{trailing}</div>}
     </div>
   );
 }

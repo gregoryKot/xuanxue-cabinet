@@ -130,7 +130,7 @@ describe('ExamAttemptsService', () => {
     expect(orderAfterRefresh).toEqual(orderAfterStart);
   });
 
-  // ADR-0080: itemIds блока — пул, questionsPerAttempt — сколько из него
+  // ADR-0082: itemIds блока — пул, questionsPerAttempt — сколько из него
   // попадает в конкретную попытку.
   it('questionsPerAttempt меньше длины блока: старт → ровно N вопросов из пула, read-after-write', async () => {
     const itemIds = await Promise.all([

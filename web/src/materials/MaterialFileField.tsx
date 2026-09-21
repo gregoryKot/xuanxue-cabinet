@@ -28,7 +28,7 @@ const MAX_MB = MATERIAL_FILE_LIMITS.maxBytes / (1024 * 1024);
 // Подсказка стоит там, где файла ещё нет: формат и потолок нужно знать ДО
 // выбора файла на телефоне — если он не подойдёт, человек узнает это раньше,
 // чем закончит загрузку.
-const FORMATS_HINT = `PDF или картинка — JPG, PNG, WebP, до ${MAX_MB} МБ.`;
+const FORMATS_HINT = `PDF, документ Word (.docx) или картинка — JPG, PNG, WebP, до ${MAX_MB} МБ.`;
 
 const sectionStyle: CSSProperties = {
   display: 'flex',

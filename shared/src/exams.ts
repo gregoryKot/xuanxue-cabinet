@@ -138,7 +138,7 @@ export interface ExamBlockDto {
   itemIds: string[]; // порядок вопросов — порядок массива
   shuffle: boolean; // перемешивать вопросы у каждого сдающего
   /** Сколько вопросов из списка достаётся сдающему в одной попытке — случайная
-   * выборка при старте (ADR-0080). Нет поля — все вопросы списка. Не больше
+   * выборка при старте (ADR-0082). Нет поля — все вопросы списка. Не больше
    * `itemIds.length`: сервис отказывает при сохранении. */
   questionsPerAttempt?: number;
 }
@@ -151,7 +151,7 @@ export interface ExamBlockInput {
   title?: string;
   itemIds: string[];
   shuffle?: boolean;
-  /** Нет поля — все вопросы списка (ADR-0080). */
+  /** Нет поля — все вопросы списка (ADR-0082). */
   questionsPerAttempt?: number;
 }
 

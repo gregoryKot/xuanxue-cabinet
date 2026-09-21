@@ -7,7 +7,14 @@
 // Заголовку `Content-Type` не верим никогда (SECURITY §4): SVG со скриптом
 // внутри с заголовком `image/svg+xml` так и остался бы исполняемым SVG, а
 // произвольный файл под видом PDF уехал бы в бакет и раздавался как PDF.
+//
+// `.docx` — тоже не про первые байты (ADR-0082): это ZIP, а у ZIP имена
+// записей лежат в центральном каталоге БЕЗ СЖАТИЯ — их можно прочитать
+// напрямую, не распаковывая файлы. Значит проверка содержимого контейнера —
+// это разбор настоящей структуры архива, а не «поверить заголовку» под
+// другим именем.
 import { InvalidInputError } from './errors';
+import { readZipEntryNames } from './zip-entries';
 
 const PDF_SIGNATURE = '%PDF-';
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
@@ -44,6 +51,20 @@ export function sniffImageSignature(bytes: Buffer): ImageSignatureType | null {
 
 export function isPdfSignature(bytes: Buffer): boolean {
   return bytes.subarray(0, PDF_SIGNATURE.length).toString('ascii') === PDF_SIGNATURE;
+}
+
+const DOCX_CONTENT_TYPES_ENTRY = '[Content_Types].xml';
+const DOCX_DOCUMENT_ENTRY = 'word/document.xml';
+
+/** `.docx` — ZIP-контейнер с двумя обязательными записями. Одного
+ * `[Content_Types].xml` мало: он общий для всего OOXML, и `.xlsx`/`.pptx`
+ * прошли бы под тем же именем (ADR-0082) — решает только присутствие
+ * `word/document.xml`. Разбор каталога — в zip-entries.ts, никогда не
+ * бросает: битый, обрезанный или злонамеренный буфер (например, EOCD на
+ * месте, а смещение каталога уводит за пределы буфера) — просто `false`. */
+export function isDocxContainer(bytes: Buffer): boolean {
+  const names = readZipEntryNames(bytes);
+  return names.includes(DOCX_CONTENT_TYPES_ENTRY) && names.includes(DOCX_DOCUMENT_ENTRY);
 }
 
 export interface RawUploadRules<T extends string> {

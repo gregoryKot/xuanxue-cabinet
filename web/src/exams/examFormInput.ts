@@ -38,7 +38,7 @@ export interface ExamFormState {
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   /** Сколько вопросов из списка достаётся сдающему — строкой по той же
-   * причине, что timeLimitMinText выше; пусто — все вопросы (ADR-0080). */
+   * причине, что timeLimitMinText выше; пусто — все вопросы (ADR-0082). */
   questionsPerAttemptText: string;
 }
 

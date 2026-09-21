@@ -4,6 +4,7 @@
 import type request from 'supertest';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { MaterialDto } from '@xuanxue/shared';
+import { DOCX_BYTES } from '../../src/common/zip-fixture.test-support';
 import { withCsrf } from './http';
 
 /** Настоящая сигнатура PDF: формат сервер определяет по байтам, не по
@@ -13,6 +14,13 @@ export const PDF_BYTES = Buffer.concat([
   Buffer.alloc(64),
 ]);
 export const FILE_NAME = 'Методичка по ба-гуа.pdf';
+
+/** `.docx` — единственный формат, у которого сигнатуры первых байтов мало
+ * (это ZIP, как и любой OOXML): узнают его по записям центрального
+ * каталога, поэтому байты приходят из настоящего сборщика ZIP, а не из
+ * заглушки (ADR-0082). */
+export { DOCX_BYTES };
+export const DOCX_FILE_NAME = 'Методичка по ба-гуа.docx';
 
 export const OPEN_MATERIAL = {
   title: 'Разбор формы',

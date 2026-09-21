@@ -3,12 +3,14 @@
 // common/raw-upload.spec.ts — здесь только своя часть файла материала: PDF
 // в списке распознаваемых типов, тексты сообщений, границы MATERIAL_FILE_LIMITS.
 import {
+  MATERIAL_FILE_DOCX_CONTENT_TYPE,
   MATERIAL_FILE_EMPTY_MESSAGE,
   MATERIAL_FILE_LIMITS,
   MATERIAL_FILE_TOO_LARGE_MESSAGE,
   MATERIAL_FILE_UNSUPPORTED_MESSAGE,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
+import { DOCX_BYTES, PLAIN_ZIP_BYTES } from '../common/zip-fixture.test-support';
 import { parseMaterialFileUpload } from './material-file-upload';
 
 const PDF_SIGNATURE = Buffer.from('%PDF-1.7\nметодичка', 'utf8');
@@ -37,6 +39,19 @@ describe('parseMaterialFileUpload', () => {
       bytes: JPEG_SIGNATURE,
       contentType: 'image/jpeg',
     });
+  });
+
+  it('настоящий .docx — bytes и OOXML-тип Word (ADR-0082)', () => {
+    expect(parseMaterialFileUpload(DOCX_BYTES)).toEqual({
+      bytes: DOCX_BYTES,
+      contentType: MATERIAL_FILE_DOCX_CONTENT_TYPE,
+    });
+  });
+
+  it('обычный ZIP без word/document.xml — MATERIAL_FILE_UNSUPPORTED_MESSAGE', () => {
+    expect(() => parseMaterialFileUpload(PLAIN_ZIP_BYTES)).toThrow(
+      MATERIAL_FILE_UNSUPPORTED_MESSAGE,
+    );
   });
 
   it.each([

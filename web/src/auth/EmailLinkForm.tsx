@@ -8,16 +8,23 @@ import { useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { EmailField } from '../components/EmailField';
 import { FormServerError } from '../components/FormServerError';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { useEmailLink } from './useEmailLink';
 
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 
 interface EmailLinkFormProps {
   refresh: () => Promise<void>;
+  /** Опечатанный адрес при смене (SecondLoginKey.tsx, PendingEmailNotice —
+   * «Указать другой адрес»): поправить, а не набирать заново. */
+  initialEmail?: string;
+  /** Есть только при смене уже названного адреса — рендерит «Оставить
+   * прежний адрес» под кнопкой отправки. */
+  onCancel?: () => void;
 }
 
-export function EmailLinkForm({ refresh }: EmailLinkFormProps) {
-  const [email, setEmail] = useState('');
+export function EmailLinkForm({ refresh, initialEmail, onCancel }: EmailLinkFormProps) {
+  const [email, setEmail] = useState(initialEmail ?? '');
   const { status, error, link } = useEmailLink(refresh);
 
   async function handleSubmit(event: FormEvent): Promise<void> {
@@ -38,6 +45,9 @@ export function EmailLinkForm({ refresh }: EmailLinkFormProps) {
       >
         Привязать почту
       </Button>
+      {onCancel && (
+        <TextLinkButton onClick={onCancel}>Оставить прежний адрес</TextLinkButton>
+      )}
     </form>
   );
 }

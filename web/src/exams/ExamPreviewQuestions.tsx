@@ -27,7 +27,7 @@ interface ExamPreviewQuestionsProps {
   itemIds: string[];
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
-  /** Сколько вопросов достаётся сдающему из списка (ADR-0080); `undefined` —
+  /** Сколько вопросов достаётся сдающему из списка (ADR-0082); `undefined` —
    * достаются все, отдельной заметки не нужно. */
   questionsPerAttempt: number | undefined;
   bankItems: ExamItemDto[];

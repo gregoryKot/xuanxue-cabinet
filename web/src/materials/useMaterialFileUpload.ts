@@ -22,8 +22,8 @@ import { apiFetch } from '../api/http';
 // один из них не бросает сейчас.
 const UPLOAD_ERROR_MESSAGE = 'Не удалось загрузить файл. Попробуйте ещё раз.';
 // Самое длинное расширение среди принимаемых форматов (application/pdf →
-// «.pdf», image/jpeg → «.jpeg») плюс запас — точка дальше в имени файла уже
-// не расширение, а часть названия, обрезать по ней не нужно.
+// «.pdf», image/jpeg → «.jpeg», Word → «.docx») плюс запас — точка дальше в
+// имени файла уже не расширение, а часть названия, обрезать по ней не нужно.
 const MAX_EXTENSION_LENGTH = 6;
 
 function isSupportedContentType(type: string): type is MaterialFileContentType {
