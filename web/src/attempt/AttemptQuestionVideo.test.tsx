@@ -193,6 +193,32 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     expect(screen.queryByText(/Ответ на этот вопрос — видео/)).not.toBeInTheDocument();
   });
 
+  // ADR-0100: запись видно не уходя со страницы, но фрейм появляется только
+  // по нажатию — до него наружу не уходит ни одного запроса.
+  it('ссылка на YouTube — кнопка плеера, фрейма до нажатия нет', () => {
+    renderVideo(
+      makeVideo({
+        media: [{ ...RECEIVED, url: 'https://youtu.be/dQw4w9WgXcQ' }],
+      }),
+    );
+
+    expect(screen.getByRole('button', { name: 'Смотреть здесь' })).toBeInTheDocument();
+    expect(document.querySelector('iframe')).toBeNull();
+  });
+
+  it('ссылка на невстраиваемый хостинг — плеера нет вовсе, только сама ссылка', () => {
+    renderVideo(
+      makeVideo({ media: [{ ...RECEIVED, url: 'https://disk.yandex.ru/i/abc' }] }),
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Смотреть здесь' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'https://disk.yandex.ru/i/abc' }),
+    ).toBeInTheDocument();
+  });
+
   // ADR-0086 в силе: заменить ошибочную ссылку по-прежнему можно, но форма
   // ждёт под тихим действием, а не спорит с ответом за внимание.
   it('форма замены — под «Прислать другую ссылку», не раскрыта сразу', async () => {
