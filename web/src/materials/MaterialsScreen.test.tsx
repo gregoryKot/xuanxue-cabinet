@@ -1,20 +1,12 @@
 // Мокаем apiFetch (CLAUDE.md «Сеть только через http.ts»), по образцу
-// exam-items/ExamItemsScreen.test.tsx. Экран грузит материалы, занятия
-// расписания (рубрикация строки) и настройки школы (рубильник ADR-0048) —
-// все три пути мокаются mockApiByPath, тем же приёмом, что и
-// planning/PlanningScreen.test.tsx. Сам рубильник (загрузка, PATCH, ошибка
-// сохранения) — MaterialsPaidAccessSection.test.tsx, здесь только чтобы
-// /settings не падал «неожиданным путём» и не плодил второй `alert`.
+// exam-items/ExamItemsScreen.test.tsx. Экран грузит материалы и занятия
+// расписания (рубрикация строки) — оба пути мокаются mockApiByPath, тем же
+// приёмом, что и planning/PlanningScreen.test.tsx.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  DEFAULT_MATERIALS_PAID_ACCESS,
-  DEFAULT_PREVIEW_MINUTES,
-  type MaterialDto,
-  type SettingsDto,
-} from '@xuanxue/shared';
+import type { MaterialDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import {
@@ -34,14 +26,6 @@ resetApiFetchBetweenTests();
 
 const NEW_MARKER = 'Здесь страница нового материала';
 const EDITOR_MARKER = 'Здесь страница материала';
-
-const SETTINGS: SettingsDto = {
-  templates: { lesson_link: '', recording: '' },
-  tz: 'Asia/Jerusalem',
-  previewMinutes: DEFAULT_PREVIEW_MINUTES,
-  materialsPaidAccess: DEFAULT_MATERIALS_PAID_ACCESS,
-  updatedAt: '2026-01-01T00:00:00Z',
-};
 
 function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   return {
@@ -88,7 +72,6 @@ describe('MaterialsScreen — сбой загрузки', () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': new ApiError('Сервис недоступен', 503, 'unknown'),
       '/classes': [makeClass()],
     });
@@ -98,7 +81,6 @@ describe('MaterialsScreen — сбой загрузки', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервис недоступен');
 
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial()],
       '/classes': [makeClass()],
     });
@@ -114,7 +96,6 @@ describe('MaterialsScreen — сбой загрузки', () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial({ classIds: ['c1'] })],
       '/classes': new ApiError('Сервис недоступен', 503, 'unknown'),
     });
@@ -125,7 +106,6 @@ describe('MaterialsScreen — сбой загрузки', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument();
 
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial({ classIds: ['c1'] })],
       '/classes': [makeClass()],
     });
@@ -140,7 +120,7 @@ describe('MaterialsScreen — сбой загрузки', () => {
 
 describe('MaterialsScreen — пустой список', () => {
   it('честное объяснение вместо пустого места', async () => {
-    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/materials': [], '/classes': [makeClass()] });
 
     renderScreen();
 
@@ -156,7 +136,6 @@ describe('MaterialsScreen — список материалов', () => {
   it('материал с привязанным занятием — карточка ведёт на страницу материала', async () => {
     const user = userEvent.setup();
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial({ classIds: ['c1'] })],
       '/classes': [makeClass()],
     });
@@ -172,7 +151,7 @@ describe('MaterialsScreen — список материалов', () => {
 
   it('«Новый материал» ведёт на страницу создания', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/materials': [], '/classes': [makeClass()] });
 
     renderScreen();
     await user.click(await screen.findByRole('button', { name: 'Новый материал' }));
@@ -184,7 +163,7 @@ describe('MaterialsScreen — список материалов', () => {
   // LessonsScreen.tsx.
   it('карточка «Теги» ведёт на экран тега', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/materials': [], '/classes': [makeClass()] });
 
     renderScreen();
     await user.click(await screen.findByText('Теги'));
@@ -194,7 +173,6 @@ describe('MaterialsScreen — список материалов', () => {
 
   it('фильтр по виду — список видов и пустой ответ с фильтром', async () => {
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial({ kind: 'book' })],
       '/classes': [makeClass()],
     });
@@ -202,7 +180,7 @@ describe('MaterialsScreen — список материалов', () => {
     renderScreen();
     await screen.findByText('Ван Пэйшэн — форма 24');
 
-    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/materials': [], '/classes': [makeClass()] });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Видео' }));
 
@@ -212,29 +190,9 @@ describe('MaterialsScreen — список материалов', () => {
   });
 });
 
-describe('MaterialsScreen — счётчик «после оплаты» (ADR-0058)', () => {
-  it('staff-материал не попадает в число «после оплаты»', async () => {
-    mockApiByPath({
-      '/settings': SETTINGS,
-      '/materials': [
-        makeMaterial({ id: 'm1', access: 'paid' }),
-        makeMaterial({ id: 'm2', title: 'Методичка', access: 'staff' }),
-      ],
-      '/classes': [makeClass()],
-    });
-
-    renderScreen();
-
-    expect(
-      await screen.findByText(/Сейчас так помечено 1 материал\./),
-    ).toBeInTheDocument();
-  });
-});
-
 describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
   it('тегов у школы нет — строки пилюль нет вовсе', async () => {
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial({ tags: [] })],
       '/classes': [makeClass()],
     });
@@ -247,7 +205,6 @@ describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
 
   it('пилюля тега собрана из полного списка школы, клик уходит в запрос с tag=', async () => {
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial({ tags: ['старшая'] })],
       '/classes': [makeClass()],
     });
@@ -267,7 +224,6 @@ describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
 
   it('пустой ответ по тегу — тот же честный текст, что у фильтра по виду', async () => {
     mockApiByPath({
-      '/settings': SETTINGS,
       '/materials': [makeMaterial({ tags: ['старшая'] })],
       '/classes': [makeClass()],
     });
@@ -275,7 +231,7 @@ describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
     renderScreen();
     await screen.findByText('Ван Пэйшэн — форма 24');
 
-    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+    mockApiByPath({ '/materials': [], '/classes': [makeClass()] });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'старшая' }));
 

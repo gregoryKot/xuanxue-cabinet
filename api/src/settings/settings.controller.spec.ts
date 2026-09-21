@@ -2,11 +2,7 @@
 // без HTTP, без Mongo. Роли/CSRF/404 проверяет e2e (settings.e2e-spec.ts).
 import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
-import {
-  DEFAULT_MATERIALS_PAID_ACCESS,
-  DEFAULT_PREVIEW_MINUTES,
-  type SettingsDto,
-} from '@xuanxue/shared';
+import { DEFAULT_PREVIEW_MINUTES, type SettingsDto } from '@xuanxue/shared';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 
@@ -14,7 +10,6 @@ const SETTINGS_DTO: SettingsDto = {
   templates: { lesson_link: 'ссылка', recording: 'запись' },
   tz: 'Asia/Jerusalem',
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
-  materialsPaidAccess: DEFAULT_MATERIALS_PAID_ACCESS,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 
@@ -50,15 +45,6 @@ describe('SettingsController', () => {
     const update = jest.fn().mockResolvedValue(SETTINGS_DTO);
     const controller = await buildController({ update });
     const body = { schoolSiteUrl: null };
-
-    await expect(controller.update(body)).resolves.toEqual(SETTINGS_DTO);
-    expect(update).toHaveBeenCalledWith(body);
-  });
-
-  it('update() передаёт materialsPaidAccess в сервис', async () => {
-    const update = jest.fn().mockResolvedValue(SETTINGS_DTO);
-    const controller = await buildController({ update });
-    const body = { materialsPaidAccess: true };
 
     await expect(controller.update(body)).resolves.toEqual(SETTINGS_DTO);
     expect(update).toHaveBeenCalledWith(body);

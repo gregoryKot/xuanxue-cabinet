@@ -12,6 +12,7 @@ import { Link, useLocation } from 'react-router-dom';
 import type { MeDto } from '@xuanxue/shared';
 import { hasRole } from '../auth/hasRole';
 import { SchoolBrandLink } from '../components/SchoolBrandLink';
+import { NavIcon } from './NavIcon';
 import { bottomLinkStyle, bottomPillStyle, bottomStyle } from './bottomNavStyles';
 import {
   personActionsRowStyle,
@@ -61,21 +62,26 @@ export function AppNav({
   const active = activeSectionPath(pathname, items);
 
   // Нижняя панель — своя разметка: цель нажатия (`<Link>`, 44px, без вида) и
-  // видимая плашка вокруг подписи (`<span>`, размер макета) — разные элементы,
+  // видимая плашка вокруг значка (`<span>`, размер макета) — разные элементы,
   // не один стиль на двоих (bottomNavStyles.ts: bottomLinkStyle/bottomPillStyle).
+  // Подписи в панели нет (ADR-0097): имя раздела читает `aria-label` ссылки,
+  // значок внутри плашки — decorative-only (`aria-hidden`, NavIcon.tsx).
   if (isMobile) {
     return (
       <nav style={bottomStyle(items.length)} aria-label={SECTIONS_LABEL}>
-        {items.map(({ to, label }) => {
+        {items.map(({ to, label, icon }) => {
           const isActive = active === to;
           return (
             <Link
               key={to}
               to={to}
+              aria-label={label}
               aria-current={isActive ? 'page' : undefined}
               style={bottomLinkStyle}
             >
-              <span style={bottomPillStyle(isActive)}>{label}</span>
+              <span style={bottomPillStyle(isActive)}>
+                <NavIcon name={icon} />
+              </span>
             </Link>
           );
         })}

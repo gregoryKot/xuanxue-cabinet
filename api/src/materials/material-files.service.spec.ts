@@ -9,17 +9,12 @@
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
-import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
-import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
-import { SettingsService } from '../settings/settings.service';
 import {
   StorageOrphanRecord,
   StorageOrphanSchema,
 } from '../storage/storage-orphan.schema';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import type { FileStoreService } from '../storage/file-store.service';
-import { UserRecord, UserSchema } from '../users/user.schema';
-import { UsersService } from '../users/users.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { MaterialFilesService } from './material-files.service';
 import { MaterialRecord, MaterialSchema } from './material.schema';
@@ -70,11 +65,9 @@ describe('MaterialFilesService', () => {
   let connection: Connection;
   let model: Model<MaterialRecord>;
   let orphanModel: Model<StorageOrphanRecord>;
-  let settingsModel: Model<SettingsRecord>;
   let service: MaterialFilesService;
   let materialsService: MaterialsService;
   let store: ReturnType<typeof fakeFileStore>;
-  let settingsService: SettingsService;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -84,20 +77,11 @@ describe('MaterialFilesService', () => {
       StorageOrphanRecord.name,
       StorageOrphanSchema,
     );
-    settingsModel = connection.model<SettingsRecord>(SettingsRecord.name, SettingsSchema);
     const classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
-    const lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
-    const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    settingsService = new SettingsService(
-      settingsModel,
-      lessonModel,
-      classModel,
-      new UsersService(userModel),
-    );
     store = fakeFileStore();
     const orphans = new StorageOrphansService(orphanModel, store.fileStore);
-    service = new MaterialFilesService(model, settingsService, store.fileStore, orphans);
-    materialsService = new MaterialsService(model, classModel, settingsService, orphans);
+    service = new MaterialFilesService(model, store.fileStore, orphans);
+    materialsService = new MaterialsService(model, classModel, orphans);
   }, 60_000);
 
   afterAll(async () => {
@@ -108,14 +92,10 @@ describe('MaterialFilesService', () => {
     store.objects.clear();
     store.setFailRemove(false);
     store.setOnPut(null);
-    await Promise.all([
-      model.deleteMany({}),
-      orphanModel.deleteMany({}),
-      settingsModel.deleteMany({}),
-    ]);
+    await Promise.all([model.deleteMany({}), orphanModel.deleteMany({})]);
   });
 
-  async function newMaterial(access: 'all' | 'paid' = 'all'): Promise<string> {
+  async function newMaterial(access: 'all' | 'staff' = 'all'): Promise<string> {
     const dto = await materialsService.create(
       { title: 'Методичка', url: 'https://example.com/m', kind: 'document', access },
       AUTHOR_ID,
@@ -260,11 +240,10 @@ describe('MaterialFilesService', () => {
       );
     });
 
-    // Главный инвариант слоя: право на файл — то же, что на ссылку (ADR-0048).
-    it('рубильник включён: ученику 404, штату ссылка', async () => {
-      const id = await newMaterial('paid');
+    // Главный инвариант слоя: право на файл — то же, что на ссылку (ADR-0058).
+    it('служебный материал (access: staff): ученику 404, штату ссылка', async () => {
+      const id = await newMaterial('staff');
       await service.upload(id, PDF, 'Методичка.pdf', NOW);
-      await settingsService.update({ materialsPaidAccess: true });
 
       await expect(service.signedUrl(id, false, NOW)).rejects.toMatchObject({
         status: 404,

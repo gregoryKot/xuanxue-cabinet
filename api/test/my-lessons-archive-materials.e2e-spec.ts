@@ -1,10 +1,11 @@
 // e2e на слой 3.9 (docs/PLAN.md §14, ADR-0056 «Ученик видит привязку там,
 // где ищет») — материал, привязанный к дате занятия (`materials.lessonIds`),
 // приезжает вместе с занятием в архиве ученика (`GET /me/lessons/archive`).
-// Главный гейт — рубильник платного доступа (ADR-0048) действует и здесь, не
-// только в библиотеке `/me/materials` (materials-access.e2e-spec.ts): тот же
-// приём проверки — грепаем сырой JSON тела ответа, ссылка не должна
-// проступить ни в каком поле. Настоящий AppModule на MongoMemoryServer.
+// Главный гейт — правило видимости служебных материалов (ADR-0058) действует
+// и здесь, не только в библиотеке `/me/materials`
+// (materials-staff-access.e2e-spec.ts): тот же приём проверки — грепаем
+// сырой JSON тела ответа, ссылка не должна проступить ни в каком поле.
+// Настоящий AppModule на MongoMemoryServer.
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import request from 'supertest';
@@ -15,7 +16,7 @@ import { MaterialRecord } from '../src/materials/material.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
-describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR-0048)', () => {
+describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR-0058)', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {
@@ -60,12 +61,6 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
       .send(body);
   }
 
-  function patchSettings(cookie: string, body: Record<string, unknown>): request.Test {
-    return withCsrf(request(server()).patch('/api/settings'))
-      .set('Cookie', cookie)
-      .send(body);
-  }
-
   async function createPastLesson(teacherCookie: string): Promise<string> {
     const cls = await classModel().create({
       title: 'Тайцзицюань',
@@ -104,21 +99,19 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
     expect(lesson?.materials[0]?.url).toBe('https://example.com/tuesday-link');
   });
 
-  // Главный гейт задачи: рубильник ADR-0048 нельзя обойти открыв архив
-  // вместо библиотеки материалов.
-  it('рубильник включён — в сыром JSON архива у ученика ссылки закрытого материала нет, locked:true; штат ссылку получает', async () => {
+  // Главный гейт задачи: правило видимости служебных материалов (ADR-0058)
+  // нельзя обойти открыв архив вместо библиотеки материалов.
+  it('служебный материал даты — в сыром JSON архива у ученика его нет вовсе; штат видит с url', async () => {
     const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
     const lessonId = await createPastLesson(teacherCookie);
     const materialRes = await postMaterial(teacherCookie, {
-      title: 'Платный разбор со вторника',
-      url: 'https://example.com/paid-tuesday',
+      title: 'Разбор со вторника для преподавателей',
+      url: 'https://example.com/staff-tuesday',
       kind: 'video',
-      access: 'paid',
+      access: 'staff',
       lessonIds: [lessonId],
     });
     expect(materialRes.status).toBe(201);
-    const settingsRes = await patchSettings(teacherCookie, { materialsPaidAccess: true });
-    expect(settingsRes.status).toBe(200);
     const studentCookie = await sessionCookieFor(testApp.app, []);
 
     const studentRes = await request(server())
@@ -126,12 +119,11 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
       .set('Cookie', studentCookie);
     expect(studentRes.status).toBe(200);
     const studentRaw = JSON.stringify(studentRes.body);
-    expect(studentRaw).not.toContain('https://example.com/paid-tuesday');
+    expect(studentRaw).not.toContain('https://example.com/staff-tuesday');
     const studentLesson = (studentRes.body as MyArchivedLessonDto[]).find(
       (l) => l.id === lessonId,
     );
-    expect(studentLesson?.materials[0]?.locked).toBe(true);
-    expect(studentLesson?.materials[0]).not.toHaveProperty('url');
+    expect(studentLesson?.materials).toEqual([]);
 
     const staffRes = await request(server())
       .get('/api/me/lessons/archive')
@@ -140,7 +132,6 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
     const staffLesson = (staffRes.body as MyArchivedLessonDto[]).find(
       (l) => l.id === lessonId,
     );
-    expect(staffLesson?.materials[0]?.url).toBe('https://example.com/paid-tuesday');
-    expect(staffLesson?.materials[0]).not.toHaveProperty('locked');
+    expect(staffLesson?.materials[0]?.url).toBe('https://example.com/staff-tuesday');
   });
 });

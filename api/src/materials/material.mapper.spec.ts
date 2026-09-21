@@ -1,7 +1,9 @@
 // Юнит-тест toMaterialDto/toMyMaterialDto — без Mongo и DI (CLAUDE.md
 // «Тесты», уровень «чистая логика»). Ключевая проверка — что библиотека
 // ученика (toMyMaterialDto) не отдаёт ни createdBy, ни access, ни служебных
-// дат (ADR-0048, shared/src/materials.ts).
+// дат (shared/src/materials.ts). Вызывающая сторона уже отсеяла материалы,
+// скрытые от ученика (ADR-0058) — маппер сам решения о видимости не
+// принимает, ученику всегда едут `url` и файл, если он загружен (ADR-0096).
 import { Types } from 'mongoose';
 import { toMaterialDto, toMyMaterialDto, type RawLeanMaterial } from './material.mapper';
 
@@ -104,10 +106,10 @@ describe('toMaterialDto', () => {
 });
 
 describe('toMyMaterialDto', () => {
-  it('нет createdBy, access и служебных дат; открытый материал — url есть, locked не выставлен', () => {
+  it('нет createdBy, access и служебных дат; url едет всегда', () => {
     const doc = material();
 
-    const dto = toMyMaterialDto(doc, new Map(), false);
+    const dto = toMyMaterialDto(doc, new Map());
 
     expect(dto).toEqual({
       id: doc._id.toString(),
@@ -127,11 +129,7 @@ describe('toMyMaterialDto', () => {
   // Теги видит и ученик (ADR-0058) — рубрикация нужна прежде всего тому, кто
   // ищет своё.
   it('теги едут ученику как есть', () => {
-    const dto = toMyMaterialDto(
-      material({ tags: ['разминка', '24 формы'] }),
-      new Map(),
-      false,
-    );
+    const dto = toMyMaterialDto(material({ tags: ['разминка', '24 формы'] }), new Map());
 
     expect(dto.tags).toEqual(['разминка', '24 формы']);
   });
@@ -139,27 +137,9 @@ describe('toMyMaterialDto', () => {
   it('документ без поля tags — [] и в библиотеке ученика', () => {
     const { tags: _tags, ...doc } = material();
 
-    const dto = toMyMaterialDto(doc, new Map(), false);
+    const dto = toMyMaterialDto(doc, new Map());
 
     expect(dto.tags).toEqual([]);
-  });
-
-  // ADR-0048: закрытый материал — без url, с locked:true. Ссылка не должна
-  // уйти в ответ ни в каком виде (SECURITY §3).
-  it('закрытый материал — locked:true, url в ответе нет вовсе', () => {
-    const doc = material();
-
-    const dto = toMyMaterialDto(doc, new Map(), true);
-
-    expect(dto).toEqual({
-      id: doc._id.toString(),
-      title: doc.title,
-      kind: doc.kind,
-      classTitles: [],
-      tags: doc.tags,
-      locked: true,
-    });
-    expect(dto).not.toHaveProperty('url');
   });
 
   // Привязка к занятиям едет и ученику, но названием, а не id: `GET /classes`
@@ -168,7 +148,7 @@ describe('toMyMaterialDto', () => {
     const classId = new Types.ObjectId();
     const titles = new Map([[classId.toString(), 'Тайцзицюань, средняя группа']]);
 
-    const dto = toMyMaterialDto(material({ classIds: [classId] }), titles, false);
+    const dto = toMyMaterialDto(material({ classIds: [classId] }), titles);
 
     expect(dto.classTitles).toEqual(['Тайцзицюань, средняя группа']);
   });
@@ -179,15 +159,12 @@ describe('toMyMaterialDto', () => {
     const dto = toMyMaterialDto(
       material({ classIds: [new Types.ObjectId()] }),
       new Map(),
-      false,
     );
 
     expect(dto.classTitles).toEqual([]);
   });
 
-  // ADR-0057, ADR-0048: закрытому материалу не достаётся ни url, ни file —
-  // иначе рубильник оплаты обходился бы прямым адресом файла.
-  it('isLocked: true — ни url, ни file в ответе нет', () => {
+  it('материал с файлом — file приходит ученику как обычно', () => {
     const doc = material({
       fileKey: 'materials/abc/9f1e-uuid',
       fileName: 'Методичка.pdf',
@@ -196,22 +173,7 @@ describe('toMyMaterialDto', () => {
       fileUploadedAt: new Date('2026-09-15T07:00:00.000Z'),
     });
 
-    const dto = toMyMaterialDto(doc, new Map(), true);
-
-    expect(dto).not.toHaveProperty('url');
-    expect(dto).not.toHaveProperty('file');
-  });
-
-  it('isLocked: false — и url, и file есть', () => {
-    const doc = material({
-      fileKey: 'materials/abc/9f1e-uuid',
-      fileName: 'Методичка.pdf',
-      fileContentType: 'application/pdf',
-      fileSizeBytes: 12345,
-      fileUploadedAt: new Date('2026-09-15T07:00:00.000Z'),
-    });
-
-    const dto = toMyMaterialDto(doc, new Map(), false);
+    const dto = toMyMaterialDto(doc, new Map());
 
     expect(dto.url).toBe(doc.url);
     expect(dto.file).toEqual({
@@ -220,6 +182,12 @@ describe('toMyMaterialDto', () => {
       sizeBytes: 12345,
       uploadedAt: '2026-09-15T07:00:00.000Z',
     });
+  });
+
+  it('материал без файла — ключа file в ответе ученику нет', () => {
+    const dto = toMyMaterialDto(material(), new Map());
+
+    expect(dto).not.toHaveProperty('file');
   });
 });
 

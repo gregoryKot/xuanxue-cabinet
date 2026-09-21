@@ -52,11 +52,11 @@ describe('initialMaterialFormState', () => {
 
   it('правка — поля предзаполнены из материала, включая access', () => {
     const state = initialMaterialFormState(
-      makeMaterial({ kind: 'video', classIds: ['c1', 'c2'], access: 'paid' }),
+      makeMaterial({ kind: 'video', classIds: ['c1', 'c2'], access: 'staff' }),
     );
     expect(state.kind).toBe('video');
     expect(state.classIds).toEqual(['c1', 'c2']);
-    expect(state.access).toBe('paid');
+    expect(state.access).toBe('staff');
   });
 
   it('правка — access: staff предзаполняется как есть', () => {
@@ -149,7 +149,6 @@ describe('toCreateInput / toUpdateInput', () => {
   });
 
   it('access переносится в тело как есть', () => {
-    expect(toCreateInput(makeState({ access: 'paid' })).access).toBe('paid');
     expect(toCreateInput(makeState({ access: 'staff' })).access).toBe('staff');
   });
 
@@ -165,7 +164,7 @@ describe('toCreateInput / toUpdateInput', () => {
   });
 
   it('toUpdateInput собирает то же тело, что и toCreateInput', () => {
-    const state = makeState({ classIds: ['c1'], access: 'paid' });
+    const state = makeState({ classIds: ['c1'], access: 'staff' });
     expect(toUpdateInput(state)).toEqual(toCreateInput(state));
   });
 });

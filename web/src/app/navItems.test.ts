@@ -73,6 +73,27 @@ describe('activeSectionPath — список штата', () => {
   });
 });
 
+// ADR-0097: значок нижней панели телефона — обязательное поле пункта, а не
+// опциональное украшение, и в пределах одного списка значки не повторяются
+// (иначе на телефоне два раздела выглядели бы одинаково).
+describe('NavItem.icon (ADR-0097)', () => {
+  it('у каждого пункта обоих списков есть значок', () => {
+    for (const item of [...STAFF_NAV_ITEMS, ...STUDENT_NAV_ITEMS]) {
+      expect(item.icon).toBeTruthy();
+    }
+  });
+
+  it('внутри списка штата значки не повторяются', () => {
+    const icons = STAFF_NAV_ITEMS.map((item) => item.icon);
+    expect(new Set(icons).size).toBe(icons.length);
+  });
+
+  it('внутри списка ученика значки не повторяются', () => {
+    const icons = STUDENT_NAV_ITEMS.map((item) => item.icon);
+    expect(new Set(icons).size).toBe(icons.length);
+  });
+});
+
 describe('activeSectionPath — список ученика', () => {
   it('«Задания» и «Занятия» подсвечивают себя', () => {
     expect(activeSectionPath('/tasks', STUDENT_NAV_ITEMS)).toBe('/tasks');
