@@ -400,9 +400,12 @@ recordingKey)` (`broadcast.schema.ts`, `recordingKey` — url или `file_id`
      к вопросу тогда.
 
    Экран —
-   `web/src/planning/` (`PlanningScreen.tsx`, `useLessons.ts`): список по дням
-   на окно `PLANNING_HORIZON_WEEKS` от начала текущей недели, страница занятия
-   со своим адресом — `/planning/:lessonId` (`LessonEditorScreen.tsx`, ADR-0033):
+   `web/src/planning/` (`PlanningScreen.tsx`, `useLessons.ts`): запрос — на окно
+   `PLANNING_HORIZON_WEEKS` от начала текущей недели (у́же сервер не принимает,
+   `assertListWindow`), а список идёт по дням с сегодняшнего: прошедшие дни
+   недели отбрасывает `upcomingDayGroups.ts`, сегодняшний остаётся целиком.
+   Страница занятия со своим адресом — `/planning/:lessonId`
+   (`LessonEditorScreen.tsx`, ADR-0033):
    тема, дата/время, длительность, ведущий, теги, ссылка/пароль Zoom на один
    раз, заметка, отмена с подтверждением и возврат в расписание, секция
    «Запись» с формой добавления; «Разовое занятие» — та же страница по

@@ -3,9 +3,9 @@
 // него сработает prefetchCache.ts (takePrefetched внутри http.ts). Мокнут
 // только global fetch, и он не должен вызываться вовсе, если экран
 // действительно взял данные из кэша, а не переспросил их у сети.
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CLASSES_LIST_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
@@ -18,8 +18,20 @@ import PlanningScreen from './PlanningScreen';
 
 stubViewerTimeZone();
 
+// Часы фиксированы по той же причине, что в PlanningScreen.test.tsx: список
+// отбрасывает дни раньше сегодняшнего (upcomingDayGroups.ts), и с настоящими
+// часами занятие фикстуры давно бы из него выпало. Момент тот же, и ключ
+// предзагрузки (lessonsListPath → planningWindow) совпадает с ключом хука.
+const NOW = new Date('2026-09-07T06:00:00.000Z');
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(NOW);
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 function renderScreen() {
@@ -45,8 +57,11 @@ describe('PlanningScreen — данные из prefetchCache', () => {
 
     renderScreen();
 
-    expect(await screen.findByText(/Пятое занятие цикла/)).toBeInTheDocument();
-    expect(screen.getByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
+    // Внутри списка дней: то же занятие показано ещё и крупной карточкой
+    // «Сегодня» (TodaySection.tsx), и запрос по всему экрану нашёл бы два.
+    const dayList = within(await screen.findByRole('list'));
+    expect(dayList.getByText(/Пятое занятие цикла/)).toBeInTheDocument();
+    expect(dayList.getByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -65,7 +80,8 @@ describe('PlanningScreen — данные из prefetchCache', () => {
 
     renderScreen();
 
-    expect(await screen.findByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
+    const dayList = within(await screen.findByRole('list'));
+    expect(dayList.getByText(/Тайцзицюань, средняя группа/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalled();
   });
 });
