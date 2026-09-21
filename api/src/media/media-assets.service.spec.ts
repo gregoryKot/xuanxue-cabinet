@@ -312,9 +312,41 @@ describe('MediaAssetsService', () => {
       ).rejects.toBeInstanceOf(NotFoundError);
     });
 
-    it('вторая ссылка на ту же попытку — ConflictError, первая остаётся', async () => {
+    // ADR-0084: повторная ссылка на тот же вопрос заменяет прежнюю запись, а
+    // не создаёт вторую и не падает на уникальном индексе.
+    it('вторая ссылка на ту же попытку — заменяет первую, документ один', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const first = await service.addLink(
+        attemptId,
+        USER_A,
+        'https://vk.com/video-1',
+        NOW,
+      );
+
+      const second = await service.addLink(
+        attemptId,
+        USER_A,
+        'https://vk.com/video-2',
+        NOW.plus({ minutes: 1 }),
+      );
+
+      expect(second.id).toBe(first.id);
+      expect(second.url).toBe('https://vk.com/video-2');
+      const list = await service.listForAttempt(attemptId);
+      expect(list).toHaveLength(1);
+      expect(list[0]?.url).toBe('https://vk.com/video-2');
+      await expect(
+        mediaModel.countDocuments({ attemptId: new Types.ObjectId(attemptId) }),
+      ).resolves.toBe(1);
+    });
+
+    it('попытка graded — ConflictError, прежняя ссылка не менялась', async () => {
       const attemptId = await seedAttempt(USER_A);
       await service.addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW);
+      await attemptModel.updateOne(
+        { _id: new Types.ObjectId(attemptId) },
+        { $set: { status: 'graded' } },
+      );
 
       await expect(
         service.addLink(attemptId, USER_A, 'https://vk.com/video-2', NOW),
@@ -328,7 +360,9 @@ describe('MediaAssetsService', () => {
     it('сбой записи не по дублю (не E11000) — уходит наверх как есть, не ConflictError', async () => {
       const attemptId = await seedAttempt(USER_A);
       const dbError = new Error('connection lost');
-      jest.spyOn(mediaModel, 'create').mockRejectedValueOnce(dbError);
+      jest.spyOn(mediaModel, 'findOneAndUpdate').mockReturnValueOnce({
+        lean: () => Promise.reject(dbError),
+      } as never);
 
       await expect(
         service.addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW),
@@ -363,7 +397,7 @@ describe('MediaAssetsService', () => {
         );
       });
 
-      it('вторая ссылка на ТОТ ЖЕ вопрос — ConflictError, первая остаётся', async () => {
+      it('вторая ссылка на ТОТ ЖЕ вопрос — заменяет первую, другой вопрос не задет', async () => {
         const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
         await service.addLink(
           attemptId,
@@ -372,18 +406,28 @@ describe('MediaAssetsService', () => {
           NOW,
           VIDEO_ITEM_ID,
         );
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-2',
+          NOW,
+          OTHER_VIDEO_ITEM_ID,
+        );
 
-        await expect(
-          service.addLink(
-            attemptId,
-            USER_A,
-            'https://vk.com/video-2',
-            NOW,
-            VIDEO_ITEM_ID,
-          ),
-        ).rejects.toBeInstanceOf(ConflictError);
+        await service.addLink(
+          attemptId,
+          USER_A,
+          'https://vk.com/video-1-fixed',
+          NOW.plus({ minutes: 1 }),
+          VIDEO_ITEM_ID,
+        );
+
         const list = await service.listForAttempt(attemptId);
-        expect(list).toHaveLength(1);
+        expect(list).toHaveLength(2);
+        const replaced = list.find((m) => m.itemId === VIDEO_ITEM_ID);
+        const untouched = list.find((m) => m.itemId === OTHER_VIDEO_ITEM_ID);
+        expect(replaced?.url).toBe('https://vk.com/video-1-fixed');
+        expect(untouched?.url).toBe('https://vk.com/video-2');
       });
 
       it('itemId, которого нет в снимке — NotFoundError, ничего не сохранено', async () => {

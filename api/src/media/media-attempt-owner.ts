@@ -4,6 +4,7 @@
 // ADR-0037, media-item-lookup.ts), не два отдельных похода в базу.
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
+import type { ExamAttemptStatus } from '@xuanxue/shared';
 import { decrypt, decryptJson } from '../utils/encryption';
 import type { AttemptBlockRecord, ExamAttemptRecord } from '../exams/exam-attempt.schema';
 
@@ -11,6 +12,10 @@ export interface AttemptOwnerInfo {
   userId: string;
   examTitle: string;
   blocks: AttemptBlockRecord[];
+  // Проверено ли уже (ADR-0084): замена ссылки на видео-ответ запрещена
+  // после graded — учитель посмотрел и оценил, подменять ответ молча нельзя.
+  // Поле схемы плоское (plain, не шифруется), расшифровка не нужна.
+  status: ExamAttemptStatus;
 }
 
 export async function loadAttemptOwnerInfo(
@@ -19,12 +24,18 @@ export async function loadAttemptOwnerInfo(
 ): Promise<AttemptOwnerInfo | null> {
   if (!Types.ObjectId.isValid(attemptId)) return null;
   const doc = await attemptModel
-    .findById(attemptId, { userId: 1, examTitle: 1, blocks: 1 })
-    .lean<{ userId: Types.ObjectId; examTitle: string; blocks: string } | null>();
+    .findById(attemptId, { userId: 1, examTitle: 1, blocks: 1, status: 1 })
+    .lean<{
+      userId: Types.ObjectId;
+      examTitle: string;
+      blocks: string;
+      status: ExamAttemptStatus;
+    } | null>();
   if (!doc) return null;
   return {
     userId: doc.userId.toString(),
     examTitle: decrypt(doc.examTitle) ?? doc.examTitle,
     blocks: decryptJson<AttemptBlockRecord[]>(doc.blocks) ?? [],
+    status: doc.status,
   };
 }

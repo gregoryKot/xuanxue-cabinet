@@ -31,6 +31,7 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
     offersTelegramLink: false,
+    acceptsAnswers: true,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
     ...overrides,
@@ -224,7 +225,9 @@ describe('AttemptInProgress', () => {
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q4');
 
-    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(1);
+    // ADR-0084: форма ссылки остаётся у обоих вопросов — и у q3 с уже
+    // полученным видео (замена ошибочной ссылки), и у q4 без видео.
+    expect(screen.getAllByLabelText('Ссылка на видео')).toHaveLength(2);
   });
 
   it('отправка ссылки у видео-вопроса зовёт video.addMediaLink с itemId этого вопроса', async () => {

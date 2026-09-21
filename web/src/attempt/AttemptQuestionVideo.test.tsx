@@ -5,7 +5,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { ExamMediaDto } from '@xuanxue/shared';
+import { EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE, type ExamMediaDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
@@ -28,6 +28,7 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
     offersTelegramLink: false,
+    acceptsAnswers: true,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
     ...overrides,
@@ -141,12 +142,44 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     receivedAt: '2026-09-12T16:30:00.000Z',
   };
 
-  it('вместо формы — честная строка со временем, что и когда пришло', () => {
+  // ADR-0084: форма ссылки не прячется — единственный способ исправить
+  // ошибочно прикреплённую ссылку — прислать новую, она заменит прежнюю.
+  it('список получённого сверху, форма ссылки с подписью о замене — под ним', () => {
     renderVideo(makeVideo({ media: [RECEIVED] }));
 
     expect(screen.getByText(/Видео получено.*19:30/)).toBeInTheDocument();
-    expect(screen.queryByLabelText('Ссылка на видео')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
+    expect(
+      screen.getByText('Прислали не ту ссылку? Вставьте новую — она заменит прежнюю.'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Ответ на этот вопрос — видео/)).not.toBeInTheDocument();
+  });
+
+  // Видео из Telegram заменить нельзя (их может быть несколько на один
+  // вопрос, ADR-0023) — звать туда второй раз незачем.
+  it('кнопки бота и связки Telegram нет, даже если Telegram привязан', () => {
+    renderVideo(makeVideo({ media: [RECEIVED], telegramLinked: true }));
+
+    expect(
+      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Связать Telegram' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('отправка новой ссылки зовёт addMediaLink с тем же itemId', async () => {
+    const addMediaLink = vi.fn().mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderVideo(makeVideo({ media: [RECEIVED], addMediaLink }));
+
+    await user.type(
+      screen.getByLabelText('Ссылка на видео'),
+      'https://example.com/fixed',
+    );
+    await user.click(screen.getByRole('button', { name: 'Сохранить ссылку' }));
+
+    expect(addMediaLink).toHaveBeenCalledWith('q3', 'https://example.com/fixed');
   });
 
   it('запись относится к другому вопросу — у этого форма остаётся', () => {
@@ -165,5 +198,48 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
 
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
     expect(screen.queryByText(/Видео получено/)).not.toBeInTheDocument();
+  });
+});
+
+// ADR-0084: после проверки работы бэкенд ссылку уже не примет. Форма, которая
+// всегда получает отказ, — та же болезнь, от которой лечит этот ADR, поэтому
+// на проверенной работе её нет вовсе, как и кнопки бота.
+describe('AttemptQuestionVideo — работу уже проверили', () => {
+  const graded = () => makeVideo({ acceptsAnswers: false });
+
+  it('формы ссылки нет, вместо неё — честная строка, что ответ уже не примут', () => {
+    renderVideo(graded());
+
+    expect(screen.queryByLabelText('Ссылка на видео')).not.toBeInTheDocument();
+    expect(screen.getByText(EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE)).toBeInTheDocument();
+  });
+
+  it('кнопки бота нет — звать отвечать туда, где ответ уже не нужен, нельзя', () => {
+    renderVideo(graded());
+
+    expect(
+      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('полученное видео показывается по-прежнему — ответ не прячем', () => {
+    renderVideo(
+      makeVideo({
+        acceptsAnswers: false,
+        media: [
+          {
+            id: 'm9',
+            attemptId: 'a1',
+            itemId: 'q3',
+            kind: 'link',
+            url: 'https://example.com/v',
+            receivedAt: '2026-09-12T16:30:00.000Z',
+          },
+        ],
+      }),
+    );
+
+    expect(screen.getByText(/Видео получено.*19:30/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Ссылка на видео')).not.toBeInTheDocument();
   });
 });

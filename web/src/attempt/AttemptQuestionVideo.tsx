@@ -15,9 +15,18 @@
 // некуда, и до этой правки видео-вопрос оставался единственным местом, где
 // кабинет звал его всё равно. Запасной путь у него остаётся — форма ссылки
 // ниже, ради неё предложение и уступает.
-// Видео уже получено — вместо формы честная строка, что и когда пришло:
-// показать форму заново после того, как всё уже сделано, читается как
-// «кабинет не поверил», что противоречит Read-after-write (CLAUDE.md).
+// Видео уже получено — форма ссылки не прячется (ADR-0084): ошибочно
+// прикреплённую ссылку убрать может только сама замена, отдельного
+// «удалить» нет. Список полученного идёт первым, форма ссылки — под ним, с
+// подписью, что новая ссылка заменит прежнюю. Кнопка бота и предложение
+// связать Telegram при этом не показываются — видео из Telegram заменить
+// нельзя (их может быть несколько на один вопрос, ADR-0023), и звать туда
+// второй раз незачем.
+// Работу уже проверили (`acceptsAnswers: false`, ADR-0084) — ни формы, ни
+// кнопки бота: бэкенд такую ссылку не примет, а контрол, который всегда
+// отвечает отказом, хуже, чем его отсутствие — ровно та болезнь, от которой
+// лечит этот ADR.
+import { EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE } from '@xuanxue/shared';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
@@ -36,6 +45,10 @@ const VIDEO_ANSWER_EXPLANATION =
   'Ответ на этот вопрос — видео: снимите, как вы выполняете задание, и пришлите запись.';
 const FALLBACK_HINT =
   'Нет Telegram — оставьте ссылку на видео: VK Видео, Rutube или Яндекс.Диск.';
+// Видео уже получено (ADR-0084) — форма остаётся единственным способом
+// исправить ошибку: подпись объясняет, что новая ссылка заменит прежнюю, а
+// не добавится к ней.
+const REPLACE_LINK_HINT = 'Прислали не ту ссылку? Вставьте новую — она заменит прежнюю.';
 // Telegram к кабинету не привязан: объясняем, почему кнопки бота нет, и тут
 // же даём связку (ADR-0034) — человек не гадает и не остаётся с одним
 // запасным путём (docs/VOICE.md).
@@ -56,44 +69,61 @@ interface AttemptQuestionVideoProps {
 
 export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProps) {
   const received = video.media.filter((item) => item.itemId === itemId);
+  const hasReceived = received.length > 0;
   const { telegramBotUsername } = video;
   const { pending, error } = video.linkStateFor(itemId);
 
-  if (received.length > 0) {
-    return (
-      <ul style={attemptVideoReceivedListStyle}>
-        {received.map((item) => (
-          <li key={item.id}>{formatExamMediaReceivedAt(item)}.</li>
-        ))}
-      </ul>
-    );
-  }
-
   return (
     <>
-      <AttemptQuestionVideoNote />
-
-      {telegramBotUsername && video.telegramLinked && (
-        <a
-          href={buildExamMediaTelegramLink(telegramBotUsername, video.attemptId, itemId)}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={attemptVideoTelegramLinkStyle}
-        >
-          Отправить видео боту в Telegram
-        </a>
+      {hasReceived ? (
+        <ul style={attemptVideoReceivedListStyle}>
+          {received.map((item) => (
+            <li key={item.id}>{formatExamMediaReceivedAt(item)}.</li>
+          ))}
+        </ul>
+      ) : (
+        <AttemptQuestionVideoNote />
       )}
 
-      {telegramBotUsername && video.offersTelegramLink && (
-        <TelegramLinkButton explanation={TELEGRAM_NOT_LINKED_EXPLANATION} />
-      )}
+      {video.acceptsAnswers &&
+        !hasReceived &&
+        telegramBotUsername &&
+        video.telegramLinked && (
+          <a
+            href={buildExamMediaTelegramLink(
+              telegramBotUsername,
+              video.attemptId,
+              itemId,
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={attemptVideoTelegramLinkStyle}
+          >
+            Отправить видео боту в Telegram
+          </a>
+        )}
 
-      <p style={attemptVideoHintStyle}>{FALLBACK_HINT}</p>
-      <AttemptMediaLinkForm
-        onSubmit={(url) => video.addMediaLink(itemId, url)}
-        pending={pending}
-        error={error}
-      />
+      {video.acceptsAnswers &&
+        !hasReceived &&
+        telegramBotUsername &&
+        video.offersTelegramLink && (
+          <TelegramLinkButton explanation={TELEGRAM_NOT_LINKED_EXPLANATION} />
+        )}
+
+      {video.acceptsAnswers ? (
+        <>
+          <p style={attemptVideoHintStyle}>
+            {hasReceived ? REPLACE_LINK_HINT : FALLBACK_HINT}
+          </p>
+          <AttemptMediaLinkForm
+            onSubmit={(url) => video.addMediaLink(itemId, url)}
+            pending={pending}
+            error={error}
+          />
+        </>
+      ) : (
+        <p style={attemptVideoHintStyle}>{EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE}</p>
+      )}
     </>
   );
 }
