@@ -54,6 +54,10 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
     userId: 'u1',
     userName: 'Иван Иванов',
     status: 'submitted',
+    // По умолчанию — прежнее поведение экрана до ADR-0099 (строка про
+    // Telegram видна); тесты этого файла, которым важен противоположный
+    // случай, переопределяют явно.
+    notifiesUserInTelegram: true,
     blocks: [
       {
         id: 'b1',
@@ -235,6 +239,37 @@ describe('AttemptReviewScreen — карточка', () => {
     expect(await screen.findByLabelText('Комментарий')).toHaveValue('Проверьте дыхание');
     expect(screen.getByLabelText('Итог')).toHaveValue('needs_work');
     expect(screen.getByRole('button', { name: 'Переписать оценку' })).toBeInTheDocument();
+  });
+});
+
+describe('AttemptReviewScreen — куда уйдёт итог (отзыв владельца 2026-09-21, ADR-0099)', () => {
+  it('у ученика активный Telegram — видна строка про Telegram', async () => {
+    renderAt('a1', {
+      '/attempts': makeReview({ notifiesUserInTelegram: true }),
+    });
+
+    expect(
+      await screen.findByText(
+        'Итог и комментарий уйдут ученику в Telegram сразу после отправки.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('у ученика нет Telegram — видна строка про «Задания», строки про Telegram нет', async () => {
+    renderAt('a1', {
+      '/attempts': makeReview({ notifiesUserInTelegram: false }),
+    });
+
+    expect(
+      await screen.findByText(
+        'Итог и комментарий в Telegram не уйдут — ученик увидит их в кабинете, на «Заданиях».',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Итог и комментарий уйдут ученику в Telegram сразу после отправки.',
+      ),
+    ).not.toBeInTheDocument();
   });
 });
 
