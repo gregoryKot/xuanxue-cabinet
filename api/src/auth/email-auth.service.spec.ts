@@ -5,6 +5,7 @@
 // поиска/создания человека — в login-identity.service.spec.ts, здесь —
 // только склейка сервиса.
 import type { ConfigService } from '@nestjs/config';
+import { EMAIL_LOGIN_CODE_INVALID_MESSAGE } from '@xuanxue/shared';
 import { DateTime } from 'luxon';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import type { InviteLinkService } from '../users/invite-link.service';
@@ -28,14 +29,16 @@ function fakeConfig(values: Record<string, string | undefined>): ConfigService {
 }
 
 function fakeTokens(
-  issue: (email: string) => Promise<string | null> = () =>
-    Promise.resolve('t'.repeat(64)),
+  issue: (email: string) => Promise<{ token: string; code: string } | null> = () =>
+    Promise.resolve({ token: 't'.repeat(64), code: '135790' }),
   consume: (token: string) => Promise<string | null> = () =>
     Promise.reject(new Error('consume() не должен был вызываться в этом тесте')),
+  consumeCode: (email: string, code: string) => Promise<string | null> = () =>
+    Promise.reject(new Error('consumeCode() не должен был вызываться в этом тесте')),
   revoke: (email: string) => Promise<void> = () =>
     Promise.reject(new Error('revoke() не должен был вызываться в этом тесте')),
 ): EmailLoginTokenService {
-  return { issue, consume, revoke } as unknown as EmailLoginTokenService;
+  return { issue, consume, consumeCode, revoke } as unknown as EmailLoginTokenService;
 }
 
 /** Стейтфул-фейк токенов для сценария «отправка упала → токен снят →
@@ -58,7 +61,10 @@ function fakeTokensWithCooldownState(): {
       if (hasActiveToken.has(email)) return Promise.resolve(null);
       hasActiveToken.add(email);
       counter += 1;
-      return Promise.resolve(String(counter).padStart(64, '0'));
+      return Promise.resolve({
+        token: String(counter).padStart(64, '0'),
+        code: '135790',
+      });
     },
     revoke: (email: string) => {
       revokedFor.push(email);
@@ -67,12 +73,15 @@ function fakeTokensWithCooldownState(): {
     },
     consume: () =>
       Promise.reject(new Error('consume() не должен был вызываться в этом тесте')),
+    consumeCode: () =>
+      Promise.reject(new Error('consumeCode() не должен был вызываться в этом тесте')),
   } as unknown as EmailLoginTokenService;
   return { tokens, issuedFor, revokedFor };
 }
 
 function fakeMail(
-  send: (input: { to: string; link: string }) => Promise<void> = () => Promise.resolve(),
+  send: (input: { to: string; link: string; code: string }) => Promise<void> = () =>
+    Promise.resolve(),
 ): MailService {
   return { sendLoginLink: send } as unknown as MailService;
 }
@@ -163,7 +172,7 @@ describe('EmailAuthService.requestLink', () => {
         config,
         tokens: fakeTokens(() => {
           issued = true;
-          return Promise.resolve('t'.repeat(64));
+          return Promise.resolve({ token: 't'.repeat(64), code: '135790' });
         }),
       });
 
@@ -174,18 +183,20 @@ describe('EmailAuthService.requestLink', () => {
     },
   );
 
-  it('доступно — нормализует email в lowercase, шлёт ссылку с токеном', async () => {
+  it('доступно — нормализует email в lowercase, шлёт ссылку и код письма (ADR-0104)', async () => {
     let issuedFor: string | undefined;
     let sentTo: string | undefined;
     let sentLink: string | undefined;
+    let sentCode: string | undefined;
     const service = buildService({
       tokens: fakeTokens((email) => {
         issuedFor = email;
-        return Promise.resolve('a'.repeat(64));
+        return Promise.resolve({ token: 'a'.repeat(64), code: '482913' });
       }),
       mail: fakeMail((input) => {
         sentTo = input.to;
         sentLink = input.link;
+        sentCode = input.code;
         return Promise.resolve();
       }),
     });
@@ -195,13 +206,16 @@ describe('EmailAuthService.requestLink', () => {
     expect(issuedFor).toBe('ученик@example.com');
     expect(sentTo).toBe('ученик@example.com');
     expect(sentLink).toBe(`https://xuanxue.su/login/email?token=${'a'.repeat(64)}`);
+    expect(sentCode).toBe('482913');
   });
 
   it('валидный inviteCode — ссылка содержит join=<code> (ADR-0030)', async () => {
     let sentLink: string | undefined;
     const code = 'b'.repeat(32);
     const service = buildService({
-      tokens: fakeTokens(() => Promise.resolve('a'.repeat(64))),
+      tokens: fakeTokens(() =>
+        Promise.resolve({ token: 'a'.repeat(64), code: '135790' }),
+      ),
       mail: fakeMail((input) => {
         sentLink = input.link;
         return Promise.resolve();
@@ -219,7 +233,9 @@ describe('EmailAuthService.requestLink', () => {
   it('невалидный inviteCode — молча игнорируется, ссылка без join=', async () => {
     let sentLink: string | undefined;
     const service = buildService({
-      tokens: fakeTokens(() => Promise.resolve('a'.repeat(64))),
+      tokens: fakeTokens(() =>
+        Promise.resolve({ token: 'a'.repeat(64), code: '135790' }),
+      ),
       mail: fakeMail((input) => {
         sentLink = input.link;
         return Promise.resolve();
@@ -280,10 +296,8 @@ describe('EmailAuthService.requestLink', () => {
   });
 
   it('mail.sendLoginLink бросил и revoke() тоже упал — пробрасывается исходная ошибка отправки, не ошибка revoke', async () => {
-    const tokens = fakeTokens(
-      () => Promise.resolve('a'.repeat(64)),
-      undefined,
-      () => Promise.reject(new Error('Mongo недоступна')),
+    const tokens = fakeTokens(undefined, undefined, undefined, () =>
+      Promise.reject(new Error('Mongo недоступна')),
     );
     const service = buildService({
       tokens,
@@ -355,6 +369,55 @@ describe('EmailAuthService.verify', () => {
     await expect(service.verify('x'.repeat(64), NOW)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+    expect(touched).toBe(false);
+  });
+});
+
+describe('EmailAuthService.verifyCode', () => {
+  it('неверный/протухший/исчерпанный код — UnauthorizedError с EMAIL_LOGIN_CODE_INVALID_MESSAGE', async () => {
+    const service = buildService({
+      tokens: fakeTokens(undefined, undefined, () => Promise.resolve(null)),
+    });
+
+    const call = service.verifyCode('a@example.com', '000000', NOW);
+    await expect(call).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(call).rejects.toMatchObject({
+      message: EMAIL_LOGIN_CODE_INVALID_MESSAGE,
+    });
+  });
+
+  it('нормализует email в lowercase перед consumeCode, дальше — тот же хвост, что у verify', async () => {
+    let received: { email: string; code: string } | undefined;
+    let touchedId: string | undefined;
+    const service = buildService({
+      tokens: fakeTokens(undefined, undefined, (email, code) => {
+        received = { email, code };
+        return Promise.resolve(BASE_USER.email as string);
+      }),
+      users: fakeUsersService((id) => (touchedId = id)),
+    });
+
+    const result = await service.verifyCode('Ученик@Example.com', '482913', NOW);
+
+    expect(received).toEqual({ email: 'ученик@example.com', code: '482913' });
+    expect(touchedId).toBe(BASE_USER.id);
+    expect(result.cookie).toBe('session=tok');
+  });
+
+  it('заблокированный пользователь — ForbiddenError, сессия не выпускается', async () => {
+    const blocked: UserLean = { ...BASE_USER, status: 'blocked' };
+    let touched = false;
+    const service = buildService({
+      tokens: fakeTokens(undefined, undefined, () =>
+        Promise.resolve(blocked.email as string),
+      ),
+      loginIdentity: fakeLoginIdentity(() => Promise.resolve(blocked)),
+      users: fakeUsersService(() => (touched = true)),
+    });
+
+    await expect(
+      service.verifyCode('a@example.com', '482913', NOW),
+    ).rejects.toBeInstanceOf(ForbiddenError);
     expect(touched).toBe(false);
   });
 });

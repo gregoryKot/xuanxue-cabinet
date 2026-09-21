@@ -1,9 +1,9 @@
 // Отправка писем через Resend HTTP API напрямую, без SDK (ADR-0029) —
-// потребители: вход по одноразовой ссылке (ADR-0005) и подтверждение адреса
-// почты у уже вошедшего человека (ADR-0059). Доступность
-// (RESEND_API_KEY/MAIL_FROM/PUBLIC_URL) проверяет вызывающий код
-// (EmailAuthService) до вызова sendLoginLink; проверка здесь — вторая линия
-// обороны, не первая (SECURITY §8: fetch без ключа не уходит).
+// потребители: вход по одноразовой заявке — ссылка и код (ADR-0005,
+// ADR-0104) — и подтверждение адреса почты у уже вошедшего человека
+// (ADR-0059). Доступность (RESEND_API_KEY/MAIL_FROM/PUBLIC_URL) проверяет
+// вызывающий код (EmailAuthService) до вызова sendLoginLink; проверка здесь
+// — вторая линия обороны, не первая (SECURITY §8: fetch без ключа не уходит).
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EMAIL_LOGIN_SEND_FAILED_MESSAGE } from '@xuanxue/shared';
@@ -15,9 +15,18 @@ const RESEND_TIMEOUT_MS = 10_000;
 const SUBJECT = 'Вход в кабинет «Сюань-Сюэ»';
 const CONFIRM_SUBJECT = 'Подтвердите почту в кабинете «Сюань-Сюэ»';
 
-// Тоже форма sendEmailConfirmLink (ADR-0059) — одна и та же пара {to, link},
-// два разных письма, второй интерфейс не заводим (CLAUDE.md «Дубли»).
+// Письмо входа с ADR-0104 несёт второй ключ той же заявки — код, у письма
+// подтверждения адреса (ADR-0059) кода нет и не будет: оно не выпускает
+// сессию, вводить код там некуда. Общий интерфейс на оба письма (было до
+// ADR-0104) скрыл бы это регрессией — второй пропущенный на прод code стал
+// бы `undefined` в шаблоне письма, а не ошибкой tsc.
 interface SendLoginLinkInput {
+  to: string;
+  link: string;
+  code: string;
+}
+
+interface SendEmailConfirmLinkInput {
   to: string;
   link: string;
 }
@@ -28,14 +37,14 @@ export class MailService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async sendLoginLink({ to, link }: SendLoginLinkInput): Promise<void> {
-    await this.postToResend(to, SUBJECT, loginLinkText(link));
+  async sendLoginLink({ to, link, code }: SendLoginLinkInput): Promise<void> {
+    await this.postToResend(to, SUBJECT, loginLinkText(link, code));
   }
 
   /** Привязка почты к уже вошедшему человеку (ADR-0059) — рядом с
    * sendLoginLink, тот же postToResend и то же поведение при неудаче
    * (бросает, а не молчит: письмо подтверждения не best-effort). */
-  async sendEmailConfirmLink({ to, link }: SendLoginLinkInput): Promise<void> {
+  async sendEmailConfirmLink({ to, link }: SendEmailConfirmLinkInput): Promise<void> {
     await this.postToResend(to, CONFIRM_SUBJECT, confirmLinkText(link));
   }
 
@@ -80,13 +89,20 @@ export class MailService {
   }
 }
 
-function loginLinkText(link: string): string {
+function loginLinkText(link: string, code: string): string {
   return [
     'Здравствуйте!',
     '',
     `Ссылка для входа в кабинет (действует 15 минут): ${link}`,
     '',
-    'Не запрашивали вход? Просто не открывайте её — письмо ни на что не влияет.',
+    `Код для входа: ${code}`,
+    '',
+    'Ссылка открывается в браузере. Если кабинет стоит у вас на домашнем ' +
+      'экране телефона, вернитесь в него и введите код — так вы войдёте ' +
+      'именно в приложение.',
+    '',
+    'Не запрашивали вход? Просто не открывайте ссылку и не вводите код — ' +
+      'письмо ни на что не влияет.',
   ].join('\n');
 }
 
