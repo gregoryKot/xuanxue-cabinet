@@ -102,13 +102,50 @@ describe('buildReviewBlocks', () => {
       correctTotalCount: 2,
       incorrectSelectedCount: 1,
     });
+    expect(review?.questions[0]?.answered).toBe(true);
   });
 
-  it('ответа на вопрос нет вовсе — ни один вариант не отмечен selected', () => {
+  // Отзыв владельца 2026-09-21: «0 из 3» печаталось и у неотвеченного
+  // вопроса, и у честно неверного ответа — учитель не различал их.
+  it('ответа на вопрос нет вовсе — ни один вариант не отмечен selected, answered: false, optionsCheck отсутствует', () => {
     const [review] = buildReviewBlocks(blocksWithOptions(), []);
 
     expect(review?.questions[0]?.options.every((option) => !option.selected)).toBe(true);
     expect(review?.questions[0]?.answerText).toBeUndefined();
+    expect(review?.questions[0]?.answered).toBe(false);
+    expect(review?.questions[0]?.optionsCheck).toBeUndefined();
+  });
+
+  it('optionIds пуст (ученик снял все галочки у multiple) — answered: false, optionsCheck отсутствует', () => {
+    const [review] = buildReviewBlocks(blocksWithOptions(), [
+      { itemId: 'i1', optionIds: [] },
+    ]);
+
+    expect(review?.questions[0]?.answered).toBe(false);
+    expect(review?.questions[0]?.optionsCheck).toBeUndefined();
+  });
+
+  it('текстовый ответ из одних пробелов — answered: false, как будто ответа не было', () => {
+    const blocks: AttemptBlockRecord[] = [
+      {
+        id: 'b1',
+        title: 'Теория',
+        required: true,
+        questions: [
+          {
+            itemId: 'i1',
+            version: 1,
+            kind: 'text',
+            prompt: 'Опишите форму словами',
+            options: [],
+          },
+        ],
+      },
+    ];
+
+    const [review] = buildReviewBlocks(blocks, [{ itemId: 'i1', text: '   ' }]);
+
+    expect(review?.questions[0]?.answered).toBe(false);
   });
 
   // ADR-0035: imageId варианта нужен учителю на карточке проверки — та же

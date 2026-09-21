@@ -5,6 +5,10 @@ import type { AttemptReviewQuestionDto } from '@xuanxue/shared';
 import { AttemptReviewQuestion } from './AttemptReviewQuestion';
 import type { AttemptReviewVideoControls } from './useAttemptReview';
 
+// По умолчанию — вопрос без ответа: у базовой формы (options: []) ни
+// answerText, ни selected нет, так что честный default — answered: false, а
+// не «true везде, лишь бы собралось» (CLAUDE.md). Тесты, которым нужен
+// отвеченный вопрос, выставляют answered: true рядом с answerText/selected.
 function makeQuestion(
   overrides: Partial<AttemptReviewQuestionDto> = {},
 ): AttemptReviewQuestionDto {
@@ -13,6 +17,7 @@ function makeQuestion(
     kind: 'text',
     prompt: 'Опишите дыхание',
     options: [],
+    answered: false,
     ...overrides,
   };
 }
@@ -54,7 +59,7 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
       <AttemptReviewQuestion
         index={0}
         video={makeVideo()}
-        question={makeQuestion({ answerText: 'Дышу животом' })}
+        question={makeQuestion({ answerText: 'Дышу животом', answered: true })}
       />,
     );
 
@@ -70,10 +75,10 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
       />,
     );
 
-    expect(screen.getByText('Ответ не дан.')).toBeInTheDocument();
+    expect(screen.getByText('Ответа нет.')).toBeInTheDocument();
   });
 
-  it('пустая строка ответа — тоже «Ответ не дан»', () => {
+  it('пустая строка ответа — тоже «Ответа нет»', () => {
     render(
       <AttemptReviewQuestion
         index={0}
@@ -82,7 +87,7 @@ describe('AttemptReviewQuestion — текстовый вопрос', () => {
       />,
     );
 
-    expect(screen.getByText('Ответ не дан.')).toBeInTheDocument();
+    expect(screen.getByText('Ответа нет.')).toBeInTheDocument();
   });
 });
 
@@ -94,6 +99,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
         video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
+          answered: true,
           options: [
             { id: 'o1', text: 'Три', correct: true, selected: false },
             { id: 'o2', text: 'Пять', correct: false, selected: true },
@@ -115,6 +121,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
         video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
+          answered: true,
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
         })}
       />,
@@ -130,6 +137,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
         video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
+          answered: true,
           options: [
             { id: 'o1', text: '', correct: true, selected: true, imageId: 'img1' },
           ],
@@ -151,6 +159,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
         video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
+          answered: true,
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
         })}
       />,
@@ -166,6 +175,7 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
         video={makeVideo()}
         question={makeQuestion({
           kind: 'single',
+          answered: true,
           options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
           optionsCheck: {
             correctSelectedCount: 1,
@@ -178,12 +188,39 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
 
     expect(screen.getByText('Верно')).toBeInTheDocument();
   });
+
+  // Регрессия отзыва владельца 2026-09-21: у неотвеченного вопроса печаталось
+  // «Выбрано верно 0 из 3» — неотличимо от честно неверного ответа.
+  it('без ответа — «Ответа нет.» и метка «Не отвечено», без «Выбрано верно»', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({
+          kind: 'single',
+          answered: false,
+          options: [
+            { id: 'o1', text: 'Три', correct: true, selected: false },
+            { id: 'o2', text: 'Пять', correct: false, selected: false },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Ответа нет.')).toBeInTheDocument();
+    expect(screen.getByText('Не отвечено')).toBeInTheDocument();
+    expect(screen.queryByText(/Выбрано верно/)).not.toBeInTheDocument();
+  });
 });
 
 describe('AttemptReviewQuestion — вопрос без вариантов', () => {
   it('метка «Смотрите вы» — машина текст не проверяет', () => {
     render(
-      <AttemptReviewQuestion index={0} video={makeVideo()} question={makeQuestion()} />,
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({ answerText: 'Дышу через живот', answered: true })}
+      />,
     );
 
     expect(screen.getByText('Смотрите вы')).toBeInTheDocument();
