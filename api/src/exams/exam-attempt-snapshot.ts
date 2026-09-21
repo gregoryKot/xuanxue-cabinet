@@ -25,6 +25,28 @@ export function shuffleOnce<T>(items: readonly T[], random: () => number): T[] {
     .map(({ item }) => item);
 }
 
+/** ADR-0082: `itemIds` блока — пул, `questionsPerAttempt` — сколько из него
+ * достаётся сдающему в этой попытке. Нет поля или оно не меньше длины
+ * списка — берём все (тем же порядком, что раньше: shuffle решает, мешать
+ * ли). Иначе — сначала случайная выборка N через shuffleOnce (общий ключ
+ * random для всех вопросов блока: один вызов старта попытки), а без
+ * `shuffle` выбранные возвращаются в порядке `itemIds`, а не в порядке
+ * выборки — сортировкой по исходному индексу, иначе «список без
+ * перемешивания» на деле бы шёл вперемешку. Число больше списка сервис не
+ * сохранит (exam-blocks.ts), но снимок и на нём не падает — берёт все. */
+export function pickQuestionIds(block: ExamBlockDto, random: () => number): string[] {
+  const { itemIds, questionsPerAttempt } = block;
+  if (questionsPerAttempt === undefined || questionsPerAttempt >= itemIds.length) {
+    return block.shuffle ? shuffleOnce(itemIds, random) : itemIds;
+  }
+  const picked = shuffleOnce(itemIds, random).slice(0, questionsPerAttempt);
+  if (block.shuffle) return picked;
+  const originalIndex = new Map(itemIds.map((id, index) => [id, index]));
+  return [...picked].sort(
+    (a, b) => (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0),
+  );
+}
+
 function toAttemptOption(option: ExamItemOptionDto): AttemptOptionRecord {
   return {
     id: option.id,
@@ -83,7 +105,7 @@ export function buildAttemptBlocks({
   random,
 }: BuildAttemptBlocksInput): AttemptBlockRecord[] {
   return blocks.map((block) => {
-    const orderedIds = block.shuffle ? shuffleOnce(block.itemIds, random) : block.itemIds;
+    const orderedIds = pickQuestionIds(block, random);
     return {
       id: block.id,
       title: block.title,

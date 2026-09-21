@@ -8,62 +8,46 @@
 // draft/published/archived и оба разрешают удаление только черновику
 // (CLAUDE.md «Одна механика — один компонент»). Домен приносит только тексты:
 // что статус значит для ученика, как называется удаление и почему его нет.
+// Строка статуса — EditorStatusRow.tsx: у вопроса она здесь, в подвале
+// (`statusRow` с текстами и обработчиком), у экзамена — под названием
+// страницы (`statusRow="elsewhere"`), а удаление и объяснение «почему удалить
+// нельзя» остаются в подвале у обоих.
 import type { CSSProperties, ReactNode } from 'react';
 import { Button } from './Button';
 import { editorActionsRowStyle } from './editorLayout';
-import {
-  DRAFT_PUBLISHED_ARCHIVED_LABELS_RU,
-  draftPublishedArchivedTransitions,
-  type DraftPublishedArchivedStatus,
-} from '../lib/statusTransitions';
+import { EditorStatusRow } from './EditorStatusRow';
+import type { DraftPublishedArchivedStatus } from '../lib/statusTransitions';
 
-const statusRowStyle: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 16,
-  flexWrap: 'wrap',
-  marginTop: 22,
-  paddingTop: 16,
-  borderTop: '1px solid var(--line)',
-  color: 'var(--ink-soft)',
-};
-const statusActionsStyle: CSSProperties = { display: 'flex', gap: 10, flexWrap: 'wrap' };
 const noteStyle: CSSProperties = { margin: '14px 0 0', color: 'var(--ink-soft)' };
-
-/** Черновику — только «Опубликовать» (макет Form.dc.html): архив ему незачем,
- * у него есть удаление ниже. Опубликованному и архивному — все переходы из
- * общей таблицы: удалять их нельзя, архив — единственный выход. */
-function statusActions(status: DraftPublishedArchivedStatus) {
-  const actions = draftPublishedArchivedTransitions(status);
-  return status === 'draft'
-    ? actions.filter((action) => action.nextStatus === 'published')
-    : actions;
-}
 
 interface EditorFooterProps {
   /** `null` — записи ещё нет на сервере. */
   status: DraftPublishedArchivedStatus | null;
-  /** Что статус значит для ученика — одной строкой рядом с подписью. */
-  explanations: Record<DraftPublishedArchivedStatus, string>;
+  /** Строка статуса с переходами в подвале — или `'elsewhere'`, если страница
+   * рисует её сама (экзамен — под названием). */
+  statusRow: EditorFooterStatusRow | 'elsewhere';
   /** Подпись кнопки удаления: «Удалить экзамен», «Удалить вопрос». */
   removeLabel: string;
   /** Почему кнопки удаления нет у неудаляемых статусов. */
   noRemoveNotes: Record<'published' | 'archived', string>;
   pending: boolean;
-  onChangeStatus: (status: DraftPublishedArchivedStatus) => void;
   onRemove: () => void;
   /** Второе действие рядом с «Сохранить» — текстом, не кнопкой. */
   extraAction?: ReactNode;
 }
 
+interface EditorFooterStatusRow {
+  /** Что статус значит для ученика — одной строкой рядом с подписью. */
+  explanations: Record<DraftPublishedArchivedStatus, string>;
+  onChangeStatus: (status: DraftPublishedArchivedStatus) => void;
+}
+
 export function EditorFooter({
   status,
-  explanations,
+  statusRow,
   removeLabel,
   noRemoveNotes,
   pending,
-  onChangeStatus,
   onRemove,
   extraAction,
 }: EditorFooterProps) {
@@ -78,27 +62,15 @@ export function EditorFooter({
 
       {status && (
         <>
-          <div style={statusRowStyle}>
-            <span>
-              <span className="xuanxue-status-label" style={{ color: 'var(--ink)' }}>
-                {DRAFT_PUBLISHED_ARCHIVED_LABELS_RU[status]}
-              </span>{' '}
-              · {explanations[status]}
-            </span>
-            <span style={statusActionsStyle}>
-              {statusActions(status).map((action) => (
-                <Button
-                  key={action.nextStatus}
-                  type="button"
-                  variant="secondary"
-                  pending={pending}
-                  onClick={() => onChangeStatus(action.nextStatus)}
-                >
-                  {action.label}
-                </Button>
-              ))}
-            </span>
-          </div>
+          {statusRow !== 'elsewhere' && (
+            <EditorStatusRow
+              status={status}
+              explanations={statusRow.explanations}
+              placement="footer"
+              pending={pending}
+              onChangeStatus={statusRow.onChangeStatus}
+            />
+          )}
 
           {status === 'draft' ? (
             <Button

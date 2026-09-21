@@ -4,6 +4,7 @@ import {
   addQuestion,
   filterQuestionCandidates,
   initialQuestionIds,
+  initialQuestionsPerAttempt,
   initialShuffleQuestions,
   mergeCreatedItems,
   moveQuestionDown,
@@ -81,13 +82,36 @@ describe('initialShuffleQuestions', () => {
   });
 });
 
+describe('initialQuestionsPerAttempt', () => {
+  it('нового экзамена ещё нет — undefined', () => {
+    expect(initialQuestionsPerAttempt(null)).toBeUndefined();
+  });
+
+  it('поле берётся у первого блока', () => {
+    expect(
+      initialQuestionsPerAttempt(
+        exam([block('b1', ['a', 'b', 'c'], { questionsPerAttempt: 2 })]),
+      ),
+    ).toBe(2);
+  });
+
+  it('у блока поля нет — undefined (сдающему достаются все вопросы)', () => {
+    expect(initialQuestionsPerAttempt(exam([block('b1', ['a'])]))).toBeUndefined();
+  });
+
+  it('форма без блоков — undefined', () => {
+    expect(initialQuestionsPerAttempt(exam([]))).toBeUndefined();
+  });
+});
+
 describe('toBlockInputs', () => {
   it('сохранение — один блок без заголовка с id первого блока старой формы', () => {
-    const blocks = toBlockInputs(
-      ['a', 'b', 'c'],
-      true,
-      exam([block('b1', ['a', 'b']), block('b2', ['c'])]),
-    );
+    const blocks = toBlockInputs({
+      itemIds: ['a', 'b', 'c'],
+      shuffle: true,
+      questionsPerAttempt: undefined,
+      exam: exam([block('b1', ['a', 'b']), block('b2', ['c'])]),
+    });
 
     expect(blocks).toEqual([
       { id: 'b1', title: '', itemIds: ['a', 'b', 'c'], shuffle: true },
@@ -95,15 +119,55 @@ describe('toBlockInputs', () => {
   });
 
   it('новый экзамен — блок без id, сервер заведёт его сам', () => {
-    expect(toBlockInputs(['a'], false, null)).toEqual([
-      { id: undefined, title: '', itemIds: ['a'], shuffle: false },
-    ]);
+    expect(
+      toBlockInputs({
+        itemIds: ['a'],
+        shuffle: false,
+        questionsPerAttempt: undefined,
+        exam: null,
+      }),
+    ).toEqual([{ id: undefined, title: '', itemIds: ['a'], shuffle: false }]);
   });
 
   it('экзамен без блоков — тоже блок без id', () => {
-    expect(toBlockInputs(['a'], false, exam([]))).toEqual([
-      { id: undefined, title: '', itemIds: ['a'], shuffle: false },
+    expect(
+      toBlockInputs({
+        itemIds: ['a'],
+        shuffle: false,
+        questionsPerAttempt: undefined,
+        exam: exam([]),
+      }),
+    ).toEqual([{ id: undefined, title: '', itemIds: ['a'], shuffle: false }]);
+  });
+
+  it('questionsPerAttempt задан — попадает в блок', () => {
+    const blocks = toBlockInputs({
+      itemIds: ['a', 'b'],
+      shuffle: false,
+      questionsPerAttempt: 1,
+      exam: null,
+    });
+
+    expect(blocks).toEqual([
+      {
+        id: undefined,
+        title: '',
+        itemIds: ['a', 'b'],
+        shuffle: false,
+        questionsPerAttempt: 1,
+      },
     ]);
+  });
+
+  it('questionsPerAttempt не задан — ключа в блоке нет вовсе', () => {
+    const blocks = toBlockInputs({
+      itemIds: ['a'],
+      shuffle: false,
+      questionsPerAttempt: undefined,
+      exam: null,
+    });
+
+    expect(blocks[0]).not.toHaveProperty('questionsPerAttempt');
   });
 });
 

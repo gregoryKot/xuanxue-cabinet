@@ -479,6 +479,34 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     expect(screen.getByLabelText('Попыток у ученика')).toHaveValue('2');
     expect(screen.getByText('Пусто — без ограничения.')).toBeInTheDocument();
   });
+
+  it('«Вопросов ученику» (ADR-0082) — поле с подсказкой по числу вопросов списка', async () => {
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+
+    expect(await screen.findByLabelText('Вопросов ученику')).toHaveValue('');
+    expect(
+      screen.getByText(
+        'Пусто — все 2. Иначе каждому достанутся столько случайных вопросов из списка.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('заполненное «Вопросов ученику» уходит в тело сохранения', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await user.type(await screen.findByLabelText('Вопросов ученику'), '1');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
+    const body = lastCallWithMethod('PATCH')[0]?.[1] as {
+      body: { blocks: { questionsPerAttempt?: number }[] };
+    };
+    expect(body.body.blocks[0]?.questionsPerAttempt).toBe(1);
+  });
 });
 
 describe('ExamEditorScreen — подвал', () => {
@@ -560,6 +588,24 @@ describe('ExamEditorScreen — подвал', () => {
     const body = lastCallWithMethod('PATCH')[0]?.[1] as { body: { status: string } };
     expect(body.body.status).toBe('published');
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
+  });
+
+  // Владелец искал «Опубликовать» наверху: у экзамена на 50 вопросов подвал
+  // далеко. Строка статуса стоит под названием, выше списка вопросов.
+  it('«Опубликовать» стоит выше списка вопросов, не в подвале', async () => {
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    const publish = await screen.findByRole('button', { name: 'Опубликовать' });
+    const questions = screen.getByText(/Вопросы ·/);
+    const save = screen.getByRole('button', { name: 'Сохранить' });
+
+    expect(
+      publish.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      publish.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('«Опубликовать» без названия — та же проверка, что у сохранения', async () => {

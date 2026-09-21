@@ -50,7 +50,7 @@ describe('useMaterialFileUpload — проверки до сети', () => {
   // (application/vnd.openxmlformats-officedocument.wordprocessingml.document),
   // отличный от application/zip — браузер их не путает. Содержимое
   // контейнера (что внутри правда Word, а не переименованный .zip) проверяет
-  // сервер (api/src/common/raw-upload.ts, ADR-0080), фронт смотрит только на
+  // сервер (api/src/common/raw-upload.ts, ADR-0082), фронт смотрит только на
   // Content-Type.
   it('неподдерживаемый тип — ошибка, apiFetch не вызван', async () => {
     const { result } = renderHook(() => useMaterialFileUpload(MATERIAL_ID));

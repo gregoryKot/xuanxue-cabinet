@@ -174,7 +174,7 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
     // `.docx` — единственный формат из MATERIAL_FILE_CONTENT_TYPES, у
     // которого сигнатуры первых байтов мало (это ZIP, как и любой OOXML):
     // проверка живёт в содержимом контейнера — центральном каталоге ZIP
-    // (ADR-0080).
+    // (ADR-0082).
     it('.docx загружается — формат узнан по записям ZIP-каталога', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
       const created = await api.postMaterial(cookie, OPEN_MATERIAL);

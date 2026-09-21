@@ -1,6 +1,9 @@
 // Тексты подвала страницы редактора экзамена поверх общего
 // components/EditorFooter.tsx. Второе действие рядом с «Сохранить» —
 // ссылка на страницу предпросмотра сохранённого экзамена (ADR-0033).
+// Строки статуса («Опубликовать», «В архив») в подвале нет — она стоит под
+// названием экзамена (ExamEditorForm.tsx, components/EditorStatusRow.tsx):
+// владелец искал «Опубликовать» наверху, а не в конце длинного списка вопросов.
 //
 // Удаление разрешено только черновику (ExamsService.remove): на
 // опубликованный и архивный экзамен ссылаются попытки учеников — вместо
@@ -12,7 +15,7 @@ import { textLinkStyle } from '../components/screenLayout';
 
 const REMOVE_LABEL = 'Удалить экзамен';
 const PREVIEW_LABEL = 'Посмотреть глазами ученика';
-const STATUS_EXPLANATIONS: Record<ExamStatus, string> = {
+export const EXAM_STATUS_EXPLANATIONS: Record<ExamStatus, string> = {
   draft: 'ученики его не видят',
   published: 'ученики видят его в списке',
   archived: 'ученики его не видят, сданные работы остаются',
@@ -28,7 +31,6 @@ interface ExamEditorFooterProps {
   pending: boolean;
   /** `null` — новый экзамен, показывать предпросмотр нечего. */
   previewPath: string | null;
-  onChangeStatus: (status: ExamStatus) => void;
   onRemove: () => void;
 }
 
@@ -36,17 +38,15 @@ export function ExamEditorFooter({
   status,
   pending,
   previewPath,
-  onChangeStatus,
   onRemove,
 }: ExamEditorFooterProps) {
   return (
     <EditorFooter
       status={status}
-      explanations={STATUS_EXPLANATIONS}
+      statusRow="elsewhere"
       removeLabel={REMOVE_LABEL}
       noRemoveNotes={NO_REMOVE_NOTES}
       pending={pending}
-      onChangeStatus={onChangeStatus}
       onRemove={onRemove}
       extraAction={
         previewPath ? (

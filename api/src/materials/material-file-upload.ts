@@ -27,7 +27,7 @@ export interface ParsedMaterialFile {
 
 /** Пять типов из MATERIAL_FILE_CONTENT_TYPES. PDF и картинки распознаются по
  * первым байтам; `.docx` — глубже, по центральному каталогу ZIP-контейнера
- * (ADR-0080, isDocxContainer): первые байты у него те же, что у любого ZIP. */
+ * (ADR-0082, isDocxContainer): первые байты у него те же, что у любого ZIP. */
 function sniffMaterialFileType(bytes: Buffer): MaterialFileContentType | null {
   if (isPdfSignature(bytes)) return 'application/pdf';
   if (isDocxContainer(bytes)) return MATERIAL_FILE_DOCX_CONTENT_TYPE;

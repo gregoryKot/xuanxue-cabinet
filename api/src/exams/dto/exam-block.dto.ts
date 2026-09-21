@@ -8,13 +8,20 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsInt,
   IsMongoId,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { EXAM_LIMITS, type ExamBlockInput } from '@xuanxue/shared';
 import { OptionalNotNull } from '../../common/validation';
+
+// Меньше одного вопроса сдающему не показать — местная константа, второго
+// места использования нет (CLAUDE.md «Без магических чисел и строк»).
+const MIN_QUESTIONS_PER_ATTEMPT = 1;
 
 export class ExamBlockDto implements ExamBlockInput {
   @IsOptional()
@@ -34,4 +41,14 @@ export class ExamBlockDto implements ExamBlockInput {
   @OptionalNotNull()
   @IsBoolean()
   shuffle?: boolean;
+
+  // Верхняя граница — та же, что у itemIds (ArrayMaxSize выше): больше
+  // вопросов в попытке, чем может быть в блоке, всё равно бессмысленно;
+  // точное «не больше длины списка» проверяет сервис (assertQuestionsPerAttemptFits,
+  // exam-blocks.ts) — в DTO оно не выразить без похода в базу.
+  @OptionalNotNull()
+  @IsInt()
+  @Min(MIN_QUESTIONS_PER_ATTEMPT)
+  @Max(EXAM_LIMITS.itemsPerBlockMax)
+  questionsPerAttempt?: number;
 }

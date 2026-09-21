@@ -108,11 +108,13 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
         <div style={editorSectionStyle}>
           <EditorFooter
             status={item ? item.status : null}
-            explanations={STATUS_EXPLANATIONS}
+            statusRow={{
+              explanations: STATUS_EXPLANATIONS,
+              onChangeStatus: (status) => void handleChangeStatus(status),
+            }}
             removeLabel={REMOVE_LABEL}
             noRemoveNotes={NO_REMOVE_NOTES}
             pending={form.pending}
-            onChangeStatus={(status) => void handleChangeStatus(status)}
             onRemove={removeConfirm.requestRemove}
           />
         </div>

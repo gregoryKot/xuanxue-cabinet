@@ -11,7 +11,9 @@
 // schedule/channelCountLabel.ts.
 import { formatDurationRu, pluralRu, type ExamDto } from '@xuanxue/shared';
 
-const QUESTION_FORMS = {
+// Экспортирован: examFormInput.ts (валидация «Вопросов ученику») использует
+// то же склонение, дублировать формы — jscpd-храповик (CLAUDE.md «Дубли»).
+export const QUESTION_FORMS = {
   one: 'вопрос',
   few: 'вопроса',
   many: 'вопросов',
@@ -31,16 +33,29 @@ export function countQuestions(blocks: ExamDto['blocks']): number {
   return blocks.reduce((sum, block) => sum + block.itemIds.length, 0);
 }
 
-/** Строка метаданных строки списка: число вопросов (если они уже есть),
- * число попыток, лимит времени — куски, разделённые « · ». */
+/** Экзамен для учителя — один список (ADR-0033), поле у блока одно и то же
+ * значение при слиянии старой многоблочной формы не подразумевается — берём
+ * первый блок, у которого оно задано; `undefined`, если ни у одного блока
+ * поля нет (ADR-0082: сдающий получает все вопросы). */
+export function countQuestionsPerAttempt(blocks: ExamDto['blocks']): number | undefined {
+  return blocks.find((block) => block.questionsPerAttempt !== undefined)
+    ?.questionsPerAttempt;
+}
+
+/** Строка метаданных строки списка: число вопросов (если они уже есть) — с
+ * учётом случайной выборки (ADR-0082), число попыток, лимит времени — куски,
+ * разделённые « · ». */
 export function formatExamListMeta(
   exam: Pick<ExamDto, 'blocks' | 'attemptsAllowed' | 'timeLimitMin'>,
 ): string {
   const questions = countQuestions(exam.blocks);
+  const perAttempt = countQuestionsPerAttempt(exam.blocks);
+  const questionsLabel =
+    perAttempt !== undefined ? `${perAttempt} из ${questions}` : `${questions}`;
   const segments: string[] = [
     questions === 0
       ? NO_QUESTIONS_TEXT
-      : `${questions} ${pluralRu(questions, QUESTION_FORMS)}`,
+      : `${questionsLabel} ${pluralRu(questions, QUESTION_FORMS)}`,
   ];
   segments.push(
     `${exam.attemptsAllowed} ${pluralRu(exam.attemptsAllowed, ATTEMPT_FORMS)}`,

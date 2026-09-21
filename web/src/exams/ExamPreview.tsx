@@ -16,7 +16,11 @@ import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import { attemptHeaderStyle, attemptPageStyle } from '../attempt/attemptLayout';
 import { noteStyle, screenTitleStyle } from '../components/screenLayout';
 import { backLinkStyle } from '../components/editorLayout';
-import { initialQuestionIds, initialShuffleQuestions } from './examQuestions';
+import {
+  initialQuestionIds,
+  initialQuestionsPerAttempt,
+  initialShuffleQuestions,
+} from './examQuestions';
 import { ExamPreviewQuestions } from './ExamPreviewQuestions';
 
 const EXAMS_PATH = '/exams';
@@ -42,6 +46,7 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
   // экзамен, блок остался устройством хранилища (ADR-0033).
   const itemIds = initialQuestionIds(exam);
   const shuffleQuestions = initialShuffleQuestions(exam);
+  const questionsPerAttempt = initialQuestionsPerAttempt(exam);
 
   return (
     <section style={attemptPageStyle}>
@@ -61,6 +66,7 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
         itemIds={itemIds}
         shuffleQuestions={shuffleQuestions}
         shuffleOptions={exam.shuffleOptions}
+        questionsPerAttempt={questionsPerAttempt}
         bankItems={bankItems}
       />
     </section>
