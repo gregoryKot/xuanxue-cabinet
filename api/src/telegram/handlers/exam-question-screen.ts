@@ -28,13 +28,9 @@ import { buildOptionId, buildQuestionId } from './exam-callback-ids';
 const TEXT_QUESTION_PROMPT = 'Напишите ответ сообщением — обычным текстом, прямо сюда.';
 const VIDEO_QUESTION_PROMPT =
   'Снимите или пришлите видео сюда — видеосообщение, «кружок» или файл с видео.';
-// Второе видео не заменяет первое: attachTelegramVideo всегда вставляет
-// новую запись (media-asset.schema.ts — уникального индекса у kind
-// 'telegram' нет сознательно, «кружок» и файл с видео — два файла одного
-// ответа). Учитель видит оба, недавнее сверху (listForAttempts сортирует по
-// receivedAt: -1) — так и пишем, чтобы текст не обещал замену.
-const VIDEO_RECEIVED_NOTE =
-  'Видео получено. Пришлёте ещё одно — учитель увидит оба, новое сверху.';
+// Замены нет: второе видео ложится рядом с первым (media-asset.schema.ts —
+// у kind 'telegram' уникального индекса нет сознательно), учитель видит оба.
+const VIDEO_RECEIVED_NOTE = 'Видео получено. Пришлёте ещё — учитель увидит оба.';
 
 const BACK_LABEL = 'Назад';
 const NEXT_LABEL = 'Дальше';
