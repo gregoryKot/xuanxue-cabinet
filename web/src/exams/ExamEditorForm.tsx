@@ -24,16 +24,15 @@ import {
   editorPageStyle,
   editorSectionStyle,
 } from '../components/editorLayout';
-import { scrollToFirstAlertSoon } from '../lib/scrollToFirstAlert';
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useExamItems } from '../exam-items/useExamItems';
 import { ExamAboutFields } from './ExamAboutFields';
-import { hasUnsavedChanges } from './examFormInput';
 import { EXAM_STATUS_EXPLANATIONS, ExamEditorFooter } from './ExamEditorFooter';
 import { ExamFlowFields } from './ExamFlowFields';
 import { ExamQuestionsSection } from './ExamQuestionsSection';
 import { pruneRequiredIds, toggleRequired } from './examQuestions';
 import { useExamForm } from './useExamForm';
+import { useSaveAndPreview } from './useSaveAndPreview';
 import type { UseExamEditorResult } from './useExamEditor';
 
 const NO_STATUS_FILTER = '' as const;
@@ -63,20 +62,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   const bank = useExamItems(NO_STATUS_FILTER);
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
-  const unsaved = hasUnsavedChanges(form.state, exam);
-
-  // Предпросмотр — отдельная страница, и читает она сохранённый экзамен
-  // (ExamPreviewScreen.tsx, ADR-0033). Поэтому правки уходят на сервер
-  // первыми: иначе учитель видит новый вопрос в списке, а «глазами ученика»
-  // его нет (2026-09-21). Форма не прошла — остаёмся с ошибкой на месте, как
-  // у «Сохранить» (useEditorFormActions.ts).
-  async function openPreview(examId: string): Promise<void> {
-    if (unsaved && !(await form.submit())) {
-      scrollToFirstAlertSoon(formRef.current);
-      return;
-    }
-    void navigate(`${EXAMS_PATH}/${examId}/preview`);
-  }
+  const preview = useSaveAndPreview(exam, form, formRef);
 
   // Вопрос убрали из списка — отметка «обязательный» уходит вместе с ним
   // (ADR-0082, дополнение); на добавлении и перестановке — просто нет эффекта.
@@ -142,7 +128,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           <ExamEditorFooter
             status={exam ? exam.status : null}
             pending={form.pending}
-            preview={exam ? { unsaved, onOpen: () => void openPreview(exam.id) } : null}
+            preview={exam ? preview : null}
             onRemove={removeConfirm.requestRemove}
           />
         </div>

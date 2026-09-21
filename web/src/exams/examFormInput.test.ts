@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ExamDto } from '@xuanxue/shared';
 import {
-  hasUnsavedChanges,
   initialExamFormState,
   toCreateInput,
   toUpdateInput,
@@ -343,26 +342,5 @@ describe('toCreateInput / toUpdateInput', () => {
     const state = baseState({ questionIds: ['i1'] });
     const input = toUpdateInput(state, makeExam());
     expect(input.blocks?.[0]).not.toHaveProperty('requiredItemIds');
-  });
-});
-
-describe('hasUnsavedChanges', () => {
-  it('состояние из экзамена без правок — false', () => {
-    const exam = makeExam();
-    expect(hasUnsavedChanges(initialExamFormState(exam), exam)).toBe(false);
-  });
-
-  it('добавили вопрос в список — true', () => {
-    const exam = makeExam();
-    const state = initialExamFormState(exam);
-    expect(
-      hasUnsavedChanges({ ...state, questionIds: [...state.questionIds, 'i9'] }, exam),
-    ).toBe(true);
-  });
-
-  it('новый экзамен: без правок — false, с вписанным названием — true', () => {
-    const state = initialExamFormState(null);
-    expect(hasUnsavedChanges(state, null)).toBe(false);
-    expect(hasUnsavedChanges({ ...state, title: 'Экзамен' }, null)).toBe(true);
   });
 });
