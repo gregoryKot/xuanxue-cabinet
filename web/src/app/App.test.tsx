@@ -365,7 +365,7 @@ describe('App', () => {
     // связки (ADR-0034) — здесь проверяется маршрут, не она.
     mockRoute(
       { ...TEACHER, telegramLinked: true, botChatActive: true },
-      { '/me/notifications': { enabled: [] } },
+      { '/me/notifications': { enabled: [] }, '/push/public-key': { publicKey: null } },
     );
 
     renderAt('/profile');
@@ -387,7 +387,10 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
     };
-    mockRoute(student, { '/me/notifications': { enabled: [] } });
+    mockRoute(student, {
+      '/me/notifications': { enabled: [] },
+      '/push/public-key': { publicKey: null },
+    });
 
     renderAt('/profile');
 
