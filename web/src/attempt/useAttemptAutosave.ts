@@ -1,33 +1,34 @@
 // Автосохранение ответов попытки (ТЗ п.2, ADR-0022 «автосохранение и
 // возврат»): PATCH через 2 секунды после последней правки, сбой не теряет
 // ответ — повтор идёт сам, без кнопки, и снова при первой возможности, если
-// сеть на телефоне вернулась (`online`). Ответы держим в `Map` через ref, а
-// не в состоянии: правка на каждый символ не должна пересобирать объект и
-// гонять сравнение всего списка — счётчик ниже только просит React
-// перерисовать поле, которое уже показывает актуальное значение из ref.
-// Каждая правка дублируется и в localStorage — attemptLocalDraft.ts (аудит
-// 2026-09-21, «потеря ответа ученика»): копия не должна жить только здесь.
+// сеть на телефоне вернулась (`online`, useAttemptAutosaveLifecycle.ts).
+// Ответы держим в `Map` через ref, а не в состоянии: правка на каждый символ
+// не должна пересобирать объект и гонять сравнение всего списка — счётчик
+// ниже только просит React перерисовать поле, которое уже показывает
+// актуальное значение из ref. Каждая правка дублируется и в localStorage —
+// attemptLocalDraft.ts (аудит 2026-09-21, «потеря ответа ученика»): копия не
+// должна жить только здесь.
+//
+// Само сохранение (дебаунс, повтор, `flush()` с промисом — аудит 2026-09-21,
+// HIGH «потеря последнего ответа ученика») — useAttemptSaveRunner.ts: этот
+// файл держит только карту ответов и то, что из неё «грязно».
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ATTEMPT_EXPIRED_MESSAGE, type AttemptAnswerDto } from '@xuanxue/shared';
-import { apiFetch, ApiError } from '../api/http';
-import {
-  bootstrapAttemptAnswers,
-  clearAttemptDraft,
-  forgetSavedAnswers,
-  writeAttemptAnswerDraft,
-} from './attemptLocalDraft';
+import type { AttemptAnswerDto } from '@xuanxue/shared';
+import { bootstrapAttemptAnswers, writeAttemptAnswerDraft } from './attemptLocalDraft';
+import { useAttemptAutosaveLifecycle } from './useAttemptAutosaveLifecycle';
+import { useAttemptSaveRunner, type AutosaveStatus } from './useAttemptSaveRunner';
 
-export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-
-const DEBOUNCE_MS = 2000;
-const RETRY_DELAY_MS = 4000;
+export type { AutosaveStatus } from './useAttemptSaveRunner';
 
 export interface UseAttemptAutosaveResult {
   getAnswer: (itemId: string) => AttemptAnswerDto | undefined;
   setText: (itemId: string, text: string) => void;
   setOptions: (itemId: string, optionIds: string[]) => void;
-  /** Сохранить прямо сейчас, не дожидаясь дебаунса — «уход с вопроса» (ТЗ). */
-  flush: () => void;
+  /** Сохранить прямо сейчас, не дожидаясь дебаунса — «уход с вопроса» (ТЗ) и
+   * условие отправки попытки. Резолвится, когда все правки (и уже летящая
+   * попытка, и то, что только копилось) реально на сервере; реджектится при
+   * сбое — без ожидания фонового повтора (useAttemptSaveRunner.ts). */
+  flush: () => Promise<void>;
   status: AutosaveStatus;
 }
 
@@ -49,67 +50,14 @@ export function useAttemptAutosave(
   const [bootstrap] = useState(() => bootstrapAttemptAnswers(attemptId, initialAnswers));
   const answers = useRef(bootstrap.answers);
   const dirty = useRef(new Set<string>(bootstrap.recoveredIds));
-  const debounceTimer = useRef<number | null>(null);
-  const retryTimer = useRef<number | null>(null);
-  const saving = useRef(false);
-  const rerunPending = useRef(false);
   const [, bump] = useState(0);
-  const [status, setStatus] = useState<AutosaveStatus>('idle');
 
-  const runSave = useCallback(async () => {
-    if (dirty.current.size === 0) return;
-    if (saving.current) {
-      rerunPending.current = true;
-      return;
-    }
-    const ids = [...dirty.current];
-    // `dirty` и `answers` заполняются в одной операции (setAnswer ниже), так
-    // что запись всегда есть — фильтр вместо `!` (CLAUDE.md «Код»: без
-    // non-null assertion там, где можно спокойно обойтись).
-    const body = {
-      answers: ids
-        .map((id) => answers.current.get(id))
-        .filter((a): a is AttemptAnswerDto => a !== undefined),
-    };
-    saving.current = true;
-    setStatus('saving');
-    try {
-      await apiFetch(`/attempts/${attemptId}/answers`, { method: 'PATCH', body });
-      for (const id of ids) dirty.current.delete(id);
-      // Ушло на сервер — локальная копия этих ответов не нужна.
-      forgetSavedAnswers(attemptId, ids);
-      setStatus('saved');
-    } catch (err) {
-      setStatus('error');
-      if (err instanceof ApiError && err.message === ATTEMPT_EXPIRED_MESSAGE) {
-        // Попытка закрыта дедлайном — черновик убирается целиком.
-        clearAttemptDraft(attemptId);
-        onExpired?.();
-      } else {
-        if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
-        retryTimer.current = window.setTimeout(() => void runSave(), RETRY_DELAY_MS);
-      }
-    } finally {
-      saving.current = false;
-      if (rerunPending.current) {
-        rerunPending.current = false;
-        void runSave();
-      }
-    }
-  }, [attemptId, onExpired]);
-
-  const scheduleSave = useCallback(() => {
-    if (debounceTimer.current !== null) window.clearTimeout(debounceTimer.current);
-    debounceTimer.current = window.setTimeout(() => void runSave(), DEBOUNCE_MS);
-  }, [runSave]);
-
-  const flush = useCallback(() => {
-    if (debounceTimer.current !== null) {
-      window.clearTimeout(debounceTimer.current);
-      debounceTimer.current = null;
-    }
-    void runSave();
-  }, [runSave]);
+  const { scheduleSave, flush, status } = useAttemptSaveRunner(
+    attemptId,
+    dirty,
+    answers,
+    onExpired,
+  );
 
   const setAnswer = useCallback(
     (itemId: string, patch: Omit<AttemptAnswerDto, 'itemId'>) => {
@@ -132,35 +80,15 @@ export function useAttemptAutosave(
     [setAnswer],
   );
 
-  // Возврат сети (телефон в метро) — сразу пробуем сохранить то, что
-  // накопилось, не дожидаясь очередного таймера ретрая.
-  useEffect(() => {
-    const handleOnline = () => dirty.current.size > 0 && void runSave();
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [runSave]);
+  useAttemptAutosaveLifecycle(flush);
 
-  // Закрытие вкладки раньше дебаунса/blur теряло правку (PR #175, PLAN §11):
-  // pagehide — вкладка закрылась, hidden — уход в фон на телефоне, где
-  // pagehide не успевает; оба ведут в flush(), тот же путь, что у blur.
+  // Монтирование — досылаем уцелевший черновик (flush() сам ничего не шлёт,
+  // если восстанавливать нечего); сбой здесь фоновый, не критичный (см.
+  // комментарий-шапку useAttemptAutosaveLifecycle.ts).
   useEffect(() => {
-    const handleHide = () => flush();
-    const handleVisibility = () => document.visibilityState === 'hidden' && flush();
-    window.addEventListener('pagehide', handleHide);
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      window.removeEventListener('pagehide', handleHide);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [flush]);
-
-  // Монтирование — досылаем уцелевший черновик; размонтирование — снимаем таймеры.
-  useEffect(() => {
-    if (dirty.current.size > 0) void runSave();
-    return () => {
-      if (debounceTimer.current !== null) window.clearTimeout(debounceTimer.current);
-      if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
-    };
+    flush().catch(() => {
+      /* фоновая попытка — сбой уже виден в status */
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- один раз при монтировании
   }, []);
 
