@@ -16,7 +16,12 @@ import { hasOptions } from '../exam-items/examItemFormInput';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { useNewQuestionForm } from './useNewQuestionForm';
 
-const EXPLANATION = 'Вопрос сохранится в «Вопросах» и сразу попадёт в этот экзамен.';
+// Прежний текст обещал «сразу попадёт в этот экзамен» — на деле вопрос
+// встаёт в список формы, а в экзамене закрепляется следующим сохранением
+// (2026-09-21: учитель не нашёл добавленный вопрос «глазами ученика»).
+const EXPLANATION =
+  'Вопрос сохранится в «Вопросах» и встанет в список ниже. ' +
+  'В экзамене он закрепится, когда вы нажмёте «Сохранить».';
 const SAVE_LABEL = 'Сохранить вопрос';
 
 const wrapStyle: CSSProperties = {

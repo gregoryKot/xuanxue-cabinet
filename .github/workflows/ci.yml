@@ -104,6 +104,8 @@ jobs:
           cache: npm
       - name: route collisions
         run: node scripts/check-route-collisions.mjs
+      - name: списки карточек — промежуток между строками задан
+        run: node scripts/check-card-list-gap.mjs
       - name: нумерация ADR — один номер, одно решение
         run: node scripts/check-adr-numbers.mjs
       - name: тесты скриптов-храповиков (node:test)
