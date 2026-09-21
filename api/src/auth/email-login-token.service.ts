@@ -97,6 +97,13 @@ export class EmailLoginTokenService {
     return doc?.email ?? null;
   }
 
+  /** Снять заявку адреса — EmailAuthService.requestLink зовёт, когда issue()
+   * выдал её, а письмо не ушло (аудит 2026-09-21): иначе повтор в окне
+   * cooldown получит от issue() null и письмо не уйдёт второй раз тоже. */
+  async revoke(email: string): Promise<void> {
+    await this.model.deleteMany({ email });
+  }
+
   /** Код из письма — второй способ потратить ту же заявку (ADR-0104): та же
    * запись, что у ссылки, и то же «не различаем причину отказа» наружу
    * (SECURITY §2). Счётчик попыток растёт ДО сравнения хешей вызовом
