@@ -12,6 +12,7 @@ import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema
 import { NotificationPrefsRecord } from '../../notifications/notification-prefs.schema';
 import { NotificationPrefsService } from '../../notifications/notification-prefs.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
+import type { SettingsService } from '../../settings/settings.service';
 import { UserRecord, UserSchema } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotSessionRecord, BotSessionSchema } from '../bot-session.schema';
@@ -83,6 +84,7 @@ export function buildHandler(
     new ExamCommandHandler(
       new BotUserAccessService(overrides.usersService ?? usersService),
       examRegistry(),
+      fakeSettings(),
     ),
     new BotUserAccessService(overrides.usersService ?? usersService),
     fakeConfig(),
@@ -90,6 +92,12 @@ export function buildHandler(
     // (new-exam-*.spec.ts), здесь достаточно рабочего экземпляра.
     new NewExamCommandHandler(personalChats, examBotPorts, botSessions),
   );
+}
+
+// Настройки школы нужны ExamCommandHandler только ради отказа незнакомцу
+// (stranger-reply.ts, ADR-0090), до которого кнопка «Экзамены» не доходит.
+function fakeSettings(): SettingsService {
+  return { get: () => Promise.resolve({}) } as unknown as SettingsService;
 }
 
 // PUBLIC_URL не нужен большинству спеков кнопок (только «Сохранить» диалога

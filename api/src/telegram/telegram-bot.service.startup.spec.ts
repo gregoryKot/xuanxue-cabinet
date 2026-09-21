@@ -2,8 +2,20 @@
 // блокируют старт), поэтому спеки ждут `flush()` перед проверкой. Сеть не
 // трогаем: фабрика Telegraf подменена, callApi — jest-заглушка.
 import type { Telegraf } from 'telegraf';
+import { BotIdentityService } from './bot-identity.service';
+import { STAFF_BOT_COMMANDS, STUDENT_BOT_COMMANDS } from './bot-commands';
+import type { CallbackQueryHandler } from './handlers/callback-query.handler';
 import type { ChatMemberHandler } from './handlers/chat-member.handler';
+import type { ExamCommandHandler } from './handlers/exam-command.handler';
+import type { GradeQueueHandler } from './handlers/grade-queue.handler';
+import type { MenuCommandHandler } from './handlers/menu-command.handler';
+import type { MessageHandler } from './handlers/message.handler';
+import type { NewExamCommandHandler } from './handlers/new-exam-command.handler';
+import type { NewExamItemCommandHandler } from './handlers/new-exam-item-command.handler';
+import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { StartHandler } from './handlers/start.handler';
+import type { TopicCommandHandler } from './handlers/topic-command.handler';
+import type { PersonalChats } from './personal-chats';
 import {
   CHAT_MEMBER_UPDATE,
   TOKEN,
@@ -183,21 +195,42 @@ describe('TelegramBotService — регистрация вебхука при с
     await flush();
   });
 
-  it('при старте регистрируется список команд — меню бота не остаётся пустым', async () => {
+  it('при старте регистрируется список команд — общему scope ученический список, штатному чату полный', async () => {
+    // Регрессия 2026-09-21 (баг владельца «зашёл в бот с ученика — видны все
+    // команды и для учителя»): раньше был один общий список на всех, теперь
+    // общий (ученический) список не должен содержать штатные команды вроде
+    // /тема, а подключённый штат получает их персонально на свой чат.
     const fake = createFakeTelegrafFactory();
+    const personalChats = {
+      list: () => Promise.resolve([{ chatId: '999', userId: 'u1', name: 'Тест' }]),
+    } as unknown as PersonalChats;
     const service = new TelegramBotService(
       fakeConfig({ BOT_TOKEN: TOKEN }),
       fake.factory,
       fakeHandler() as unknown as ChatMemberHandler,
       fakeHandler() as unknown as StartHandler,
-      ...fakeExtraHandlers(),
+      fakeHandler() as unknown as CallbackQueryHandler,
+      fakeHandler() as unknown as TopicCommandHandler,
+      fakeHandler() as unknown as NotificationsCommandHandler,
+      fakeHandler() as unknown as MenuCommandHandler,
+      fakeHandler() as unknown as MessageHandler,
+      fakeHandler() as unknown as ExamCommandHandler,
+      fakeHandler() as unknown as NewExamItemCommandHandler,
+      fakeHandler() as unknown as NewExamCommandHandler,
+      fakeHandler() as unknown as GradeQueueHandler,
+      new BotIdentityService(),
+      personalChats,
     );
 
     service.onApplicationBootstrap();
     await flush();
 
-    expect(fake.commandCalls).toHaveLength(1);
-    expect(fake.commandCalls[0]?.map((c) => c.command)).toContain('menu');
+    expect(fake.commandCalls).toEqual([
+      { commands: STUDENT_BOT_COMMANDS, scope: { type: 'all_private_chats' } },
+      { commands: [], scope: { type: 'default' } },
+      { commands: STAFF_BOT_COMMANDS, scope: { type: 'chat', chat_id: '999' } },
+    ]);
+    expect(STUDENT_BOT_COMMANDS.map((c) => c.command)).not.toContain('topic');
   });
 
   it('setMyCommands отклонён — меню без команд, но приложение поднялось', async () => {

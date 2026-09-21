@@ -152,8 +152,11 @@ export async function clearStartHandlerHarness(
   await harness.botSessionModel.deleteMany({});
 }
 
-/** `failSecondReply` — проактивное меню после /start должно пережить сбой
- * сети (человек заблокировал бота между двумя ответами), не повод падать. */
+/** `failSecondReply` — меню после /start переживает сбой сети (человек
+ * заблокировал бота между двумя ответами). `commands` — те же jest-моки, что
+ * и в `ctx.telegram` (список команд на чат ставит /start, bot-commands.ts):
+ * отдельным полем, иначе спек срывает метод с объекта (eslint
+ * `unbound-method`). */
 export function fakeCtx(
   telegramId: number | undefined,
   chatType: 'private' | 'group' = 'private',
@@ -163,13 +166,16 @@ export function fakeCtx(
 ): {
   ctx: Context;
   replies: string[];
+  commands: { setMyCommands: jest.Mock; deleteMyCommands: jest.Mock };
 } {
   const replies: string[] = [];
+  const commands = { setMyCommands: jest.fn(), deleteMyCommands: jest.fn() };
   const ctx = {
     chat: { type: chatType },
     from:
       telegramId === undefined ? undefined : { id: telegramId, first_name: firstName },
     message: { text: startPayload ? `/start ${startPayload}` : '/start' },
+    telegram: commands,
     reply: (text: string) => {
       if (failSecondReply && replies.length === 1) {
         return Promise.reject(new Error('бот заблокирован'));
@@ -178,5 +184,5 @@ export function fakeCtx(
       return Promise.resolve();
     },
   } as unknown as Context;
-  return { ctx, replies };
+  return { ctx, replies, commands };
 }

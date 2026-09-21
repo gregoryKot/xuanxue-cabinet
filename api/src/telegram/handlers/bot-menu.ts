@@ -3,19 +3,15 @@
 // ничего нет»). Чистая логика без Mongo и без Telegram (CLAUDE.md «Логика
 // вне контроллеров»): кому что положено — проверяется юнит-тестом, сами
 // экраны рисуют bot-schedule.ts и notifications-menu.ts.
-import { isStaffRole, type UserRole } from '@xuanxue/shared';
 import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 
-export type BotMenuAudience = 'staff' | 'student' | 'stranger';
-
-/** `roles` — `null`, если человека с таким telegramId нет в базе. «Ученик»
- * здесь — не роль `student`, а любой найденный человек без учительских
- * ролей, включая того, кто просто вошёл в кабинет через Telegram-виджет. */
-export function classifyBotMenuAudience(roles: UserRole[] | null): BotMenuAudience {
-  if (!roles) return 'stranger';
-  return isStaffRole(roles) ? 'staff' : 'student';
-}
+// «Незнакомца» здесь больше нет (отзыв владельца 2026-09-21): аудиторию
+// решает MenuCommandHandler через BotUserAccessService — unknown отвечает
+// buildStrangerMessage напрямую, до этого типа дело не доходит. «Ученик» —
+// не роль `student`, а любой найденный в users человек без штатной роли
+// (isStaffRole), включая того, кто нашёл бота, не нажав /start учителем.
+export type BotMenuAudience = 'staff' | 'student';
 
 export interface BotMenu {
   text: string;
@@ -86,11 +82,10 @@ export function buildStudentMenu(): BotMenu {
   };
 }
 
-/** Текст /help — по той же аудитории, что и меню. Незнакомцу — тот же
- * отказ, что у /start: рассказывать устройство бота человеку без доступа
- * нечего. */
-export function buildHelpText(audience: BotMenuAudience, schoolSiteUrl?: string): string {
-  if (audience === 'stranger') return buildStrangerMessage(schoolSiteUrl);
+/** Текст /help — по аудитории меню (штат/ученик). Незнакомцу отвечает сам
+ * MenuCommandHandler текстом buildStrangerMessage — второй путь к тому же
+ * отказу здесь не заводим (CLAUDE.md «Дубли и мёртвый код»). */
+export function buildHelpText(audience: BotMenuAudience): string {
   return audience === 'staff' ? STAFF_HELP_TEXT : STUDENT_HELP_TEXT;
 }
 

@@ -14,6 +14,7 @@ import { ChannelRecord } from '../../channels/channel.schema';
 import { UserRecord } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotUserAccessService } from '../bot-user-access.service';
+import { STAFF_BOT_COMMANDS } from '../bot-commands';
 import { StartHandler } from './start.handler';
 import {
   buildStartHandler,
@@ -204,6 +205,25 @@ describe('StartHandler', () => {
     expect(replies).toHaveLength(1);
     const channel = await channelModel.findOne({ target: '111' }).lean();
     expect(channel?.title).toBe(`Личные сообщения: ${teacher.name}`);
+  });
+
+  // Регрессия 2026-09-21: список команд в меню Telegram клиентский, поэтому
+  // /start выставляет его на чат сразу, как узнал, кто это (bot-commands.ts).
+  it('/start штата ставит ему полный список команд, /start ученика снимает штатный', async () => {
+    await userModel.create({ name: 'Мария', telegramId: 111, roles: ['teacher'] });
+    await userModel.create({ name: 'Ольга', telegramId: 333, roles: [] });
+
+    const teacher = fakeCtx(111);
+    await handler.handle(teacher.ctx, NOW);
+    expect(teacher.commands.setMyCommands).toHaveBeenCalledWith(STAFF_BOT_COMMANDS, {
+      scope: { type: 'chat', chat_id: '111' },
+    });
+
+    const student = fakeCtx(333);
+    await handler.handle(student.ctx, NOW);
+    expect(student.commands.deleteMyCommands).toHaveBeenCalledWith({
+      scope: { type: 'chat', chat_id: '333' },
+    });
   });
 
   describe('deep link «Отправить видео» (exam_<attemptId>, ADR-0023)', () => {

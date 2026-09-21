@@ -3,6 +3,7 @@
 // handleUpdate() — разбор апдейта остаётся здесь, не в контроллере.
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DateTime } from 'luxon';
 import type { Telegraf } from 'telegraf';
 import type { InlineKeyboardButton, Update } from 'telegraf/types';
 import { errorMessage, errorStack } from '../common/error-info';
@@ -21,11 +22,11 @@ import { NotificationsCommandHandler } from './handlers/notifications-command.ha
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
 import { registerHandlers } from './register-handlers';
-import { registerBotCommands } from './bot-commands';
+import { syncBotCommands } from './bot-commands';
+import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, type TelegrafFactory } from './telegraf-instance';
 
-// Реэкспорт для существующих потребителей (телеграм-контроллер, тесты) —
-// путь вебхука теперь объявлен в bot-startup.ts вместе с его регистрацией.
+// Реэкспорт для потребителей (контроллер, тесты) — путь объявлен в bot-startup.ts.
 export { TELEGRAM_WEBHOOK_PATH } from './bot-startup';
 
 @Injectable()
@@ -48,6 +49,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     private readonly newExamCommandHandler: NewExamCommandHandler,
     private readonly gradeQueueHandler: GradeQueueHandler,
     private readonly botIdentity: BotIdentityService,
+    private readonly personalChats: PersonalChats,
   ) {}
 
   // Не async: внутри всё намеренно fire-and-forget (см. ниже).
@@ -79,9 +81,8 @@ export class TelegramBotService implements OnApplicationBootstrap {
     });
     this.bot = bot;
 
-    // Сетевые вызовы старта — не await, ошибки в лог: они не должны
-    // задерживать подъём приложения. Пустое меню команд читается как
-    // «бот ничего не умеет» (bot-commands.ts), поэтому оно тоже здесь.
+    // Сетевые вызовы старта — не await, ошибки в лог, не должны задерживать
+    // подъём приложения (пустое меню команд читается как «бот ничего не умеет»).
     void ensureBotInfo(bot)
       .then(() => this.syncBotIdentity())
       .catch((err) => {
@@ -90,9 +91,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     void registerWebhook(bot, this.config, this.logger).catch((err) => {
       this.logger.error(`telegram.setWebhook: ${errorMessage(err)}`, errorStack(err));
     });
-    void registerBotCommands(bot).catch((err) => {
-      this.logger.warn(`telegram.setMyCommands: ${errorMessage(err)}`);
-    });
+    void syncBotCommands(bot.telegram, this.personalChats, DateTime.utc());
   }
 
   /** Ответ 200 всегда — Telegram ретраит апдейт при не-200 (дубли доставки),

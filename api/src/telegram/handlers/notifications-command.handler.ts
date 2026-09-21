@@ -2,17 +2,24 @@
 // личном чате. Доступ — BotUserAccessService, не resolvePrivatePersonalChatId
 // (private-teacher-chat.ts, штат школы): своими уведомлениями вправе
 // управлять любой вошедший, включая ученика (отзыв владельца 2026-09-19,
-// ADR-0065) — unknown молчит, denied отвечает ACCESS_MESSAGE (CLAUDE.md
-// «тихий отказ — самая дорогая ошибка»). Рендер экрана — notifications-menu.ts,
-// тот же, что и у нажатия кнопки (CallbackQueryHandler → handleNotificationToggle)
-// — CLAUDE.md «Одна механика — один компонент».
+// ADR-0065). /notifications — в общем списке команд Telegram
+// (all_private_chats, ADR-0090), его видит и незнакомец ещё до нажатия,
+// поэтому unknown отвечает тем же вежливым отказом, что и /start
+// (replyStranger, stranger-reply.ts), а не молчанием: отзыв владельца
+// 2026-09-21 читал такое молчание как «бот сломан». denied отвечает
+// ACCESS_MESSAGE (CLAUDE.md «тихий отказ — самая дорогая ошибка»). Рендер
+// экрана — notifications-menu.ts, тот же, что и у нажатия кнопки
+// (CallbackQueryHandler → handleNotificationToggle) — CLAUDE.md «Одна
+// механика — один компонент».
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { errorMessage, errorStack } from '../../common/error-info';
 import { NotificationPrefsService } from '../../notifications/notification-prefs.service';
+import { SettingsService } from '../../settings/settings.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import { buildNotificationsMenu } from './notifications-menu';
+import { replyStranger } from './stranger-reply';
 
 @Injectable()
 export class NotificationsCommandHandler {
@@ -21,6 +28,7 @@ export class NotificationsCommandHandler {
   constructor(
     private readonly botAccess: BotUserAccessService,
     private readonly notificationPrefsService: NotificationPrefsService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   // `now` не используется — BotUserAccessService.resolve() времени не
@@ -31,7 +39,10 @@ export class NotificationsCommandHandler {
     try {
       if (ctx.chat?.type !== 'private') return;
       const access = await this.botAccess.resolve(ctx.chat.id);
-      if (access.kind === 'unknown') return;
+      if (access.kind === 'unknown') {
+        await replyStranger(ctx, this.settingsService);
+        return;
+      }
       if (access.kind === 'denied') {
         await ctx.reply(access.message).catch(() => null);
         return;

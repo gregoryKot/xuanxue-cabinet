@@ -40,8 +40,14 @@ export interface FakeTelegraf {
    * (CLAUDE.md «Telegram»), а не новым — без этого списка e2e видит только
    * ответы на текст и слеп к половине шагов. */
   editMessageCalls: SendMessageCall[];
-  /** Команды, которые бот зарегистрировал в меню Telegram (bot-commands.ts). */
-  commandCalls: { command: string; description: string }[][];
+  /** Команды, которые бот зарегистрировал в меню Telegram (bot-commands.ts):
+   * список плюс scope, на который он выставлен (без scope — не тот тест). */
+  commandCalls: {
+    commands: { command: string; description: string }[];
+    scope: unknown;
+  }[];
+  /** Scope, с которого список команд сняли (deleteMyCommands, bot-commands.ts). */
+  commandDeletes: unknown[];
 }
 
 /** `failSendMessage` — проактивная отправка (PreviewService и т. п.) должна
@@ -53,7 +59,11 @@ export function createFakeTelegrafFactory(
   const webhookCalls: WebhookCall[] = [];
   const sendMessageCalls: SendMessageCall[] = [];
   const editMessageCalls: SendMessageCall[] = [];
-  const commandCalls: { command: string; description: string }[][] = [];
+  const commandCalls: {
+    commands: { command: string; description: string }[];
+    scope: unknown;
+  }[] = [];
+  const commandDeletes: unknown[] = [];
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
     const fakeCallApi = ((method: string, payload?: Record<string, unknown>) => {
@@ -69,10 +79,16 @@ export function createFakeTelegrafFactory(
         return Promise.resolve(true);
       }
       if (method === 'setMyCommands') {
-        commandCalls.push(
-          (payload?.commands as { command: string; description: string }[] | undefined) ??
-            [],
-        );
+        commandCalls.push({
+          commands:
+            (payload?.commands as
+              { command: string; description: string }[] | undefined) ?? [],
+          scope: payload?.scope,
+        });
+        return Promise.resolve(true);
+      }
+      if (method === 'deleteMyCommands') {
+        commandDeletes.push(payload?.scope);
         return Promise.resolve(true);
       }
       if (method === 'sendMessage') {
@@ -106,5 +122,12 @@ export function createFakeTelegrafFactory(
       fakeCallApi;
     return bot;
   };
-  return { factory, webhookCalls, sendMessageCalls, editMessageCalls, commandCalls };
+  return {
+    factory,
+    webhookCalls,
+    sendMessageCalls,
+    editMessageCalls,
+    commandCalls,
+    commandDeletes,
+  };
 }

@@ -3,26 +3,8 @@ import {
   buildBotMenu,
   buildHelpText,
   buildStrangerMessage,
-  classifyBotMenuAudience,
   isMenuScreenAction,
 } from './bot-menu';
-
-describe('classifyBotMenuAudience', () => {
-  it('нет такого человека в базе — незнакомец', () => {
-    expect(classifyBotMenuAudience(null)).toBe('stranger');
-  });
-
-  it('учитель, помощник и админ — сотрудники школы', () => {
-    expect(classifyBotMenuAudience(['teacher'])).toBe('staff');
-    expect(classifyBotMenuAudience(['assistant'])).toBe('staff');
-    expect(classifyBotMenuAudience(['admin'])).toBe('staff');
-  });
-
-  it('вошедший без ролей и бухгалтер — ученик', () => {
-    expect(classifyBotMenuAudience([])).toBe('student');
-    expect(classifyBotMenuAudience(['accountant'])).toBe('student');
-  });
-});
 
 describe('buildBotMenu', () => {
   it('пять кнопок экранов и подсказка про тему занятия', () => {
@@ -74,10 +56,6 @@ describe('buildHelpText', () => {
 
   it('ученику рассказываем про экзамены в боте', () => {
     expect(buildHelpText('student')).toContain('/exams');
-  });
-
-  it('незнакомцу — тот же отказ, что у /start', () => {
-    expect(buildHelpText('stranger', 'https://xuanxue.su')).toContain('Сюань-Сюэ');
   });
 });
 
