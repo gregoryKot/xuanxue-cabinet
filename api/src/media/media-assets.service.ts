@@ -15,7 +15,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
-import { Model, Types } from 'mongoose';
+import type { Model } from 'mongoose';
 import {
   ATTEMPT_NOT_FOUND_MESSAGE,
   EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
@@ -23,29 +23,17 @@ import {
 } from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
+import { UsersService } from '../users/users.service';
 import { ExamMediaNotifierRegistry } from './exam-media-notifier.registry';
+import { ExamVideoDeliveryRegistry } from './exam-video-delivery.registry';
+import type { TelegramVideoSource, AttachedTelegramMedia } from './media-asset-insert';
 import { insertMediaAsset } from './media-asset-insert';
+import { listMediaForAttempts } from './media-asset-list';
+import { sendMediaToChat } from './media-asset-send';
 import { loadAttemptOwnerInfo } from './media-attempt-owner';
 import { isVideoItemInSnapshot } from './media-item-lookup';
 import { addLinkMediaAsset } from './media-link-add';
-import {
-  decryptMediaAsset,
-  toExamMediaDto,
-  type RawLeanMediaAsset,
-} from './media-asset.mapper';
 import { MediaAssetRecord } from './media-asset.schema';
-
-export interface TelegramVideoSource {
-  fileId: string;
-  fileUniqueId: string;
-  durationSec?: number;
-  sizeBytes?: number;
-}
-
-export interface AttachedTelegramMedia {
-  media: ExamMediaDto;
-  examTitle: string;
-}
 
 @Injectable()
 export class MediaAssetsService {
@@ -53,7 +41,9 @@ export class MediaAssetsService {
     @InjectModel(MediaAssetRecord.name) private readonly model: Model<MediaAssetRecord>,
     @InjectModel(ExamAttemptRecord.name)
     private readonly attemptModel: Model<ExamAttemptRecord>,
+    private readonly usersService: UsersService,
     private readonly examMediaNotifiers: ExamMediaNotifierRegistry,
+    private readonly deliveryRegistry: ExamVideoDeliveryRegistry,
   ) {}
 
   async listForAttempt(attemptId: string): Promise<ExamMediaDto[]> {
@@ -61,22 +51,10 @@ export class MediaAssetsService {
     return map.get(attemptId) ?? [];
   }
 
-  /** Один запрос на список попыток (учитель, `GET /attempts`) — не N+1. */
+  /** Запрос и группировка по попытке — media-asset-list.ts (файл-лимит
+   * CLAUDE.md «Храповики»). */
   async listForAttempts(attemptIds: string[]): Promise<Map<string, ExamMediaDto[]>> {
-    const ids = attemptIds.filter((id) => Types.ObjectId.isValid(id));
-    const byAttempt = new Map<string, ExamMediaDto[]>();
-    if (ids.length === 0) return byAttempt;
-
-    const docs = await this.model
-      .find({ attemptId: { $in: ids } })
-      .sort({ receivedAt: -1 })
-      .lean<RawLeanMediaAsset[]>();
-    for (const doc of docs) {
-      const key = doc.attemptId.toString();
-      const dto = toExamMediaDto(decryptMediaAsset(doc));
-      byAttempt.set(key, [...(byAttempt.get(key) ?? []), dto]);
-    }
-    return byAttempt;
+    return listMediaForAttempts(this.model, attemptIds);
   }
 
   /** Привязка видео из бота — только владельцу попытки (SECURITY §3,
@@ -101,6 +79,7 @@ export class MediaAssetsService {
       kind: 'telegram',
       fileId: source.fileId,
       fileUniqueId: source.fileUniqueId,
+      telegramType: source.telegramType,
       durationSec: source.durationSec,
       sizeBytes: source.sizeBytes,
       receivedAt: now,
@@ -153,5 +132,26 @@ export class MediaAssetsService {
       note,
       receivedAt: now,
     });
+  }
+
+  /** Учитель просит переслать видео себе в бота ещё раз — кнопка на карточке
+   * проверки (ADR-0095), не автоматика: переключатель уведомлений тут ни при
+   * чём (SECURITY §9). Логика — media-asset-send.ts (файл-лимит). */
+  async sendToChat(
+    attemptId: string,
+    mediaId: string,
+    requesterId: string,
+  ): Promise<void> {
+    await sendMediaToChat(
+      {
+        model: this.model,
+        attemptModel: this.attemptModel,
+        usersService: this.usersService,
+      },
+      this.deliveryRegistry.get(),
+      attemptId,
+      mediaId,
+      requesterId,
+    );
   }
 }

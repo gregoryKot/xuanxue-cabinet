@@ -90,7 +90,7 @@ describe('describeNoAction', () => {
 
   it('попыток не открыто вовсе', () => {
     expect(describeNoAction(makeExam({ attemptsAllowed: 0 }))).toBe(
-      'Учитель пока не открыл ни одной попытки',
+      'Попыток по этому экзамену пока нет',
     );
   });
 });

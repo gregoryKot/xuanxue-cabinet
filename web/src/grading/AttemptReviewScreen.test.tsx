@@ -1,12 +1,22 @@
 // «Карточка» проверки целиком — критерии и ответ ученика видны, отправка
 // оценки шлёт правильное тело запроса, ошибка сервера показывается (ТЗ 4.6).
+// Экран теперь читает useAuth() (кнопка «Прислать мне в Telegram» смотрит на
+// botChatActive) — рендер обязан идти под <AuthProvider>, а мок сети обязан
+// отвечать и на /auth/me, не только на /attempts (тот же приём, что
+// attempt/AttemptScreen.test.tsx). renderAt поэтому сам собирает конверт
+// mockApiByPath из /auth/me по умолчанию и хендлеров теста — раньше тесты
+// звали mockApiByPath/mockedApiFetch сами перед renderAt, но с двумя
+// параллельными запросами при монтировании очередь `…Once` не гарантирует,
+// какой ответ достанется какому (см. комментарий test-support/apiFetchMock.ts
+// про a155bc1).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { AttemptReviewDto } from '@xuanxue/shared';
+import type { AttemptReviewDto, MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
+import { AuthProvider } from '../auth/AuthProvider';
 import {
   mockApiByPath,
   mockedApiFetch,
@@ -20,6 +30,21 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+
+// Учитель с активным чатом с ботом — по умолчанию: тестам ниже, которым
+// botChatActive не важен, нечего лишний раз объяснять про кнопку «Прислать
+// мне в Telegram» (её собственное поведение — AttemptReviewMedia.test.tsx).
+const TEACHER: MeDto = {
+  id: 't1',
+  name: 'Дима',
+  roles: ['teacher'],
+  status: 'active',
+  telegramLinked: true,
+  botChatActive: true,
+  hasEmail: true,
+  noTelegram: false,
+  needsProfile: false,
+};
 
 function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto {
   return {
@@ -50,22 +75,30 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
   };
 }
 
-function renderAt(attemptId: string) {
+/** `handlers` — конверт mockApiByPath для запроса карточки (и всего, что
+ * тест шлёт при монтировании); `/auth/me` подставляется сам, если тест его
+ * не переопределил явно. */
+function renderAt(
+  attemptId: string,
+  handlers: Record<string, unknown>,
+  me: MeDto = TEACHER,
+) {
+  mockApiByPath({ '/auth/me': me, ...handlers });
   return render(
     <MemoryRouter initialEntries={[`/grading/${attemptId}`]}>
-      <Routes>
-        <Route path="/grading" element={<p>Очередь проверки</p>} />
-        <Route path="/grading/:attemptId" element={<AttemptReviewScreen />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/grading" element={<p>Очередь проверки</p>} />
+          <Route path="/grading/:attemptId" element={<AttemptReviewScreen />} />
+        </Routes>
+      </AuthProvider>
     </MemoryRouter>,
   );
 }
 
 describe('AttemptReviewScreen — загрузка', () => {
   it('показывает скелетон, пока карточка не пришла', () => {
-    mockApiByPath({ '/attempts': new Promise(() => {}) });
-
-    const { container } = renderAt('a1');
+    const { container } = renderAt('a1', { '/attempts': new Promise(() => {}) });
 
     expect(container.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
   });
@@ -73,11 +106,13 @@ describe('AttemptReviewScreen — загрузка', () => {
 
 describe('AttemptReviewScreen — сбой загрузки', () => {
   it('ApiError — текст ошибки и кнопка повтора', async () => {
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Работа не найдена. Обновите страницу.', 404, 'not_found'),
-    );
-
-    renderAt('a1');
+    renderAt('a1', {
+      '/attempts': new ApiError(
+        'Работа не найдена. Обновите страницу.',
+        404,
+        'not_found',
+      ),
+    });
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Работа не найдена. Обновите страницу.',
@@ -88,13 +123,11 @@ describe('AttemptReviewScreen — сбой загрузки', () => {
 describe('AttemptReviewScreen — повтор и путь без id', () => {
   it('«Попробовать ещё раз» повторяет запрос карточки', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Сеть подвела', 500, 'internal_error'),
-    );
-
-    renderAt('a1');
+    renderAt('a1', {
+      '/attempts': new ApiError('Сеть подвела', 500, 'internal_error'),
+    });
     await screen.findByRole('alert');
-    mockedApiFetch.mockResolvedValueOnce(makeReview());
+    mockApiByPath({ '/attempts': makeReview() });
 
     await user.click(screen.getByRole('button', { name: /ещё раз/i }));
 
@@ -105,15 +138,18 @@ describe('AttemptReviewScreen — повтор и путь без id', () => {
   // падать на `undefined` в пути — хук получает пустую строку и показывает
   // баннер, а не белый экран.
   it('путь без id — баннер вместо падения', async () => {
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Работа не найдена', 404, 'not_found'),
-    );
+    mockApiByPath({
+      '/auth/me': TEACHER,
+      '/attempts': new ApiError('Работа не найдена', 404, 'not_found'),
+    });
 
     render(
       <MemoryRouter initialEntries={['/grading/']}>
-        <Routes>
-          <Route path="/grading/" element={<AttemptReviewScreen />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/grading/" element={<AttemptReviewScreen />} />
+          </Routes>
+        </AuthProvider>
       </MemoryRouter>,
     );
 
@@ -126,9 +162,7 @@ describe('AttemptReviewScreen — нет данных без ошибки сет
   // GET, но защитная ветка на случай пустого ответа без ApiError не должна
   // падать: баннер с пустым текстом, не белый экран.
   it('ответ без review и без ошибки — баннер без падения', async () => {
-    mockedApiFetch.mockResolvedValueOnce(undefined);
-
-    renderAt('a1');
+    renderAt('a1', { '/attempts': undefined });
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
@@ -136,9 +170,7 @@ describe('AttemptReviewScreen — нет данных без ошибки сет
 
 describe('AttemptReviewScreen — карточка', () => {
   it('видны критерии проверки вопроса и ответ ученика', async () => {
-    mockApiByPath({ '/attempts': makeReview() });
-
-    renderAt('a1');
+    renderAt('a1', { '/attempts': makeReview() });
 
     expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
     expect(screen.getByText('Иван Иванов')).toBeInTheDocument();
@@ -149,7 +181,7 @@ describe('AttemptReviewScreen — карточка', () => {
   });
 
   it('вопрос с вариантами — виден верный и выбранный ученика', async () => {
-    mockApiByPath({
+    renderAt('a1', {
       '/attempts': makeReview({
         blocks: [
           {
@@ -177,8 +209,6 @@ describe('AttemptReviewScreen — карточка', () => {
       }),
     });
 
-    renderAt('a1');
-
     const correctOption = await screen.findByText('Три');
     expect(correctOption.closest('li')).toHaveTextContent('Три — верный');
     const selectedOption = screen.getByText('Пять');
@@ -187,7 +217,7 @@ describe('AttemptReviewScreen — карточка', () => {
   });
 
   it('оценка уже стоит — ответ сервера открывает форму заполненной', async () => {
-    mockApiByPath({
+    renderAt('a1', {
       '/attempts': makeReview({
         grading: {
           id: 'g1',
@@ -202,8 +232,6 @@ describe('AttemptReviewScreen — карточка', () => {
       }),
     });
 
-    renderAt('a1');
-
     expect(await screen.findByLabelText('Комментарий')).toHaveValue('Проверьте дыхание');
     expect(screen.getByLabelText('Итог')).toHaveValue('needs_work');
     expect(screen.getByRole('button', { name: 'Переписать оценку' })).toBeInTheDocument();
@@ -213,9 +241,7 @@ describe('AttemptReviewScreen — карточка', () => {
 describe('AttemptReviewScreen — отправка оценки', () => {
   it('заполненная форма — PUT с правильным телом, карточка обновляется из его ответа (ADR-0087)', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/attempts': makeReview() });
-
-    renderAt('a1');
+    renderAt('a1', { '/attempts': makeReview() });
     await screen.findByText('Форма первого уровня');
 
     await user.type(screen.getByLabelText('Комментарий'), 'Хорошо сдал');
@@ -254,9 +280,7 @@ describe('AttemptReviewScreen — отправка оценки', () => {
 
   it('сбой сервера — сообщение под формой', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/attempts': makeReview() });
-
-    renderAt('a1');
+    renderAt('a1', { '/attempts': makeReview() });
     await screen.findByText('Форма первого уровня');
 
     await user.selectOptions(screen.getByLabelText('Итог'), 'passed');
@@ -296,9 +320,7 @@ const VIDEO_QUESTION_BLOCKS = [
 describe('AttemptReviewScreen — видео у своего вопроса (ADR-0023, ADR-0037)', () => {
   it('видео-вопрос без видео — кнопка ручной отметки шлёт POST с itemId и перечитывает карточку', async () => {
     const user = userEvent.setup();
-    mockApiByPath({ '/attempts': makeReview({ blocks: VIDEO_QUESTION_BLOCKS }) });
-
-    renderAt('a1');
+    renderAt('a1', { '/attempts': makeReview({ blocks: VIDEO_QUESTION_BLOCKS }) });
     await screen.findByText('Видео пока не получено.');
 
     // Ответы на клик — по пути (см. mockApiByPath в test-support): очередь
@@ -330,7 +352,7 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
   });
 
   it('видео своего вопроса получено по ссылке — метка «Есть ответ» и кликабельная ссылка у вопроса', async () => {
-    mockApiByPath({
+    renderAt('a1', {
       '/attempts': makeReview({
         blocks: VIDEO_QUESTION_BLOCKS,
         media: [
@@ -346,8 +368,6 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
       }),
     });
 
-    renderAt('a1');
-
     expect(await screen.findByText('Есть ответ')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Открыть ссылку на видео' })).toHaveAttribute(
       'href',
@@ -356,7 +376,7 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
   });
 
   it('видео без itemId (деплой на стыке версий) — отдельный блок «Видео без вопроса», не теряется', async () => {
-    mockApiByPath({
+    renderAt('a1', {
       '/attempts': makeReview({
         media: [
           {
@@ -370,13 +390,113 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
       }),
     });
 
-    renderAt('a1');
+    expect(
+      await screen.findByRole('heading', { name: 'Видео без вопроса' }),
+    ).toBeInTheDocument();
+    // Не «видео смотрите там же» — карточка больше не обещает, что запись
+    // уже в чате учителя (examMediaSourceText.ts).
+    expect(screen.getByText('Прислано сообщением боту в Telegram.')).toBeInTheDocument();
+  });
+
+  // Сквозной сценарий четвёртого способа (доп. к ADR-0023) — своё поведение
+  // кнопки/состояний покрыто в AttemptReviewMedia.test.tsx; здесь только
+  // подтверждение, что она доезжает до экрана и шлёт запрос по attemptId.
+  it('активный чат с ботом — «Прислать мне в Telegram» шлёт POST на send-to-me', async () => {
+    const user = userEvent.setup();
+    renderAt(
+      'a1',
+      {
+        '/attempts': makeReview({
+          media: [
+            {
+              id: 'm1',
+              attemptId: 'a1',
+              kind: 'telegram',
+              durationSec: 12,
+              receivedAt: '2026-09-12T00:00:00Z',
+            },
+          ],
+        }),
+      },
+      TEACHER,
+    );
+    await screen.findByRole('heading', { name: 'Видео без вопроса' });
+    mockApiByPath({ '/attempts/a1/media/m1/send-to-me': undefined });
+
+    await user.click(screen.getByRole('button', { name: 'Прислать мне в Telegram' }));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/m1/send-to-me', {
+      method: 'POST',
+    });
+    expect(
+      await screen.findByText('Видео ушло в чат с ботом. Откройте Telegram — оно там.'),
+    ).toBeInTheDocument();
+  });
+
+  // noTelegram: true — иначе showsTelegramOffer(me) предложил бы связку
+  // (TelegramLinkButton), и на месте кнопки была бы её собственная строка,
+  // а не эта (обе ветки разобраны отдельно в AttemptReviewMedia.test.tsx).
+  // /auth/me и /attempts/:id/review — два независимых запроса; если карточка
+  // пришла раньше сессии, video собирается с me === null (useAuth() ещё не
+  // ответил) — `me?.botChatActive ?? false` не должен упасть на этом кадре.
+  it('карточка пришла раньше сессии — без кнопки, без падения', async () => {
+    mockApiByPath({
+      '/auth/me': new Promise(() => {}),
+      '/attempts': makeReview({
+        media: [
+          {
+            id: 'm1',
+            attemptId: 'a1',
+            kind: 'telegram',
+            durationSec: 12,
+            receivedAt: '2026-09-12T00:00:00Z',
+          },
+        ],
+      }),
+    });
+    render(
+      <MemoryRouter initialEntries={['/grading/a1']}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/grading/:attemptId" element={<AttemptReviewScreen />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
 
     expect(
       await screen.findByRole('heading', { name: 'Видео без вопроса' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Переслано боту в Telegram. Видео смотрите там же.'),
+      screen.queryByRole('button', { name: 'Прислать мне в Telegram' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('нет активного чата с ботом — кнопки нет, есть объяснение', async () => {
+    renderAt(
+      'a1',
+      {
+        '/attempts': makeReview({
+          media: [
+            {
+              id: 'm1',
+              attemptId: 'a1',
+              kind: 'telegram',
+              durationSec: 12,
+              receivedAt: '2026-09-12T00:00:00Z',
+            },
+          ],
+        }),
+      },
+      { ...TEACHER, botChatActive: false, noTelegram: true },
+    );
+    await screen.findByRole('heading', { name: 'Видео без вопроса' });
+
+    expect(
+      screen.queryByRole('button', { name: 'Прислать мне в Telegram' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Бот пришлёт видео, когда у вас будет открыт чат с ним.'),
     ).toBeInTheDocument();
   });
 });
@@ -387,23 +507,18 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
 // ровно строку инлайн-стиля, не вычисленный цвет.
 describe('AttemptReviewScreen — облик (снимок владельца, ADR-0043)', () => {
   it('рубрика над именем есть, длинное имя-почта переносится, а не обрезается', async () => {
-    mockApiByPath({
+    renderAt('a1', {
       '/attempts': makeReview({ userName: 'doctor.martynova@gmail.com' }),
     });
 
-    renderAt('a1');
-    await screen.findByText('Форма первого уровня');
-
-    expect(screen.getByText('Работа ученика')).toBeInTheDocument();
+    expect(await screen.findByText('Работа ученика')).toBeInTheDocument();
     const heading = screen.getByRole('heading', { level: 1 });
     expect(heading).toHaveTextContent('doctor.martynova@gmail.com');
     expect(heading.style.overflowWrap).toBe('anywhere');
   });
 
   it('ссылка возврата к очереди — по содержимому, не растянута на всю ширину', async () => {
-    mockApiByPath({ '/attempts': makeReview() });
-
-    renderAt('a1');
+    renderAt('a1', { '/attempts': makeReview() });
     await screen.findByText('Форма первого уровня');
 
     const backLink = screen.getByRole('link', { name: 'Вернуться к очереди проверки' });
@@ -411,9 +526,7 @@ describe('AttemptReviewScreen — облик (снимок владельца, A
   });
 
   it('карточка ответов и карточка проверки — с фоном var(--card)', async () => {
-    mockApiByPath({ '/attempts': makeReview() });
-
-    const { container } = renderAt('a1');
+    const { container } = renderAt('a1', { '/attempts': makeReview() });
     await screen.findByText('Форма первого уровня');
 
     const cards = Array.from(

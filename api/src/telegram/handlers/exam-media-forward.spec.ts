@@ -4,6 +4,7 @@
 // именно аудит 2026-09, находка 1: раньше видео шло `personalChats.list()`
 // (весь штат с подключённым ботом) мимо переключателя уведомлений и мимо
 // решения владельца не давать этот вид админу.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import type { Context } from 'telegraf';
@@ -132,8 +133,14 @@ describe('forwardExamVideoToTeachers (аудит 2026-09, находка 1)', ()
     expect(copiedTo).not.toContain('333');
   });
 
-  it('ни у кого нет личного чата — не падает, ничего не шлёт', async () => {
+  // Находка 3 (ADR-0095): раньше пустой список адресатов уходил молча
+  // (`return` без следа) — теперь остаётся error-строка с attemptId, по
+  // которой это видно в логе Railway.
+  it('ни у кого нет личного чата — не падает, ничего не шлёт, пишет error с attemptId', async () => {
     const { ctx, sentMessages, copiedTo } = fakeCtx();
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
 
     await expect(
       forwardExamVideoToTeachers(
@@ -147,5 +154,10 @@ describe('forwardExamVideoToTeachers (аудит 2026-09, находка 1)', ()
     ).resolves.toBeUndefined();
     expect(sentMessages).toEqual([]);
     expect(copiedTo).toEqual([]);
+    expect(error).toHaveBeenCalledWith(
+      'telegram.examMedia.forward: некому переслать — нет адресатов attempt_submitted',
+      { attemptId: ATTEMPT_ID },
+    );
+    error.mockRestore();
   });
 });

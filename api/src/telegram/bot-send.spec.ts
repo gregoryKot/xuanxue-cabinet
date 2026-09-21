@@ -1,24 +1,12 @@
 // Чистая проверка сборки запроса — без сети (CLAUDE.md «Тесты»): подменён
-// bot.telegram.callApi, реального Telegraf не создаём.
-import type { Telegraf } from 'telegraf';
+// bot.telegram.callApi (test-support/fake-call-api-bot.ts), реального
+// Telegraf не создаём.
 import { sendBotMessage } from './bot-send';
-
-function fakeBot(): { bot: Telegraf; calls: [string, Record<string, unknown>][] } {
-  const calls: [string, Record<string, unknown>][] = [];
-  const bot = {
-    telegram: {
-      callApi: (method: string, payload: Record<string, unknown>) => {
-        calls.push([method, payload]);
-        return Promise.resolve(true);
-      },
-    },
-  } as unknown as Telegraf;
-  return { bot, calls };
-}
+import { fakeCallApiBot } from './test-support/fake-call-api-bot';
 
 describe('sendBotMessage', () => {
   it('без кнопок — chat_id/text, без reply_markup', async () => {
-    const { bot, calls } = fakeBot();
+    const { bot, calls } = fakeCallApiBot();
 
     await sendBotMessage(bot, '111', 'Привет');
 
@@ -28,7 +16,7 @@ describe('sendBotMessage', () => {
   });
 
   it('с кнопками — reply_markup.inline_keyboard', async () => {
-    const { bot, calls } = fakeBot();
+    const { bot, calls } = fakeCallApiBot();
     const buttons = [[{ text: 'Отменить', callback_data: 'cancel:1' }]];
 
     await sendBotMessage(bot, '111', 'Привет', buttons);

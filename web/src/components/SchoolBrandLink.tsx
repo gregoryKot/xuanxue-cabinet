@@ -5,16 +5,17 @@
 // ссылка про роли не знает (CLAUDE.md «Логика вне компонентов»).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { SchoolMark, SCHOOL_NAME } from './SchoolMark';
+import { SchoolWordmark } from './SchoolWordmark';
 
 const linkStyle: CSSProperties = {
+  // Раскладку знака и названия (строка, зазор) несёт сама SchoolWordmark —
+  // здесь остаётся только то, что нужно самой цели нажатия. `display:flex`
+  // не дублирует её: `min-height` не действует на строчный (inline) элемент,
+  // которым иначе была бы ссылка, так что это условие, чтобы `minHeight`
+  // ниже вообще что-то делал, плюс центрирует единственного ребёнка по
+  // высоте цели нажатия.
   display: 'flex',
   alignItems: 'center',
-  // Тот же зазор, что был между знаком и названием в местах, где эта пара
-  // раньше рисовалась напрямую (sideBrandRowStyle в sideNavStyles.ts,
-  // rowStyle в AppShellBrandRow.tsx) — переезд в ссылку не должен сдвинуть
-  // уже привычную раскладку.
-  gap: 10,
   textDecoration: 'none',
   color: 'inherit',
   minWidth: 0,
@@ -25,17 +26,15 @@ const linkStyle: CSSProperties = {
 
 interface SchoolBrandLinkProps {
   to: string;
-  titleStyle: CSSProperties;
 }
 
 /** Доступное имя ссылки даёт видимый текст «Школа Сюань-Сюэ» — знак рядом
  * декоративный (alt="", SchoolMark.tsx), aria-label дублировал бы то, что
  * скринридер и так прочитает. */
-export function SchoolBrandLink({ to, titleStyle }: SchoolBrandLinkProps) {
+export function SchoolBrandLink({ to }: SchoolBrandLinkProps) {
   return (
     <Link to={to} style={linkStyle}>
-      <SchoolMark />
-      <span style={titleStyle}>{SCHOOL_NAME}</span>
+      <SchoolWordmark />
     </Link>
   );
 }

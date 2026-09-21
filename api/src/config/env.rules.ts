@@ -79,3 +79,20 @@ export const R2_SECRET_ACCESS_KEY_MESSAGE =
   'R2_SECRET_ACCESS_KEY должен быть не короче 32 символов';
 export const R2_BUCKET_MESSAGE =
   'R2_BUCKET должен быть именем бакета: строчные латиница, цифры, точка и дефис';
+
+// Ключи VAPID (ADR-0092, push-уведомления браузера) — `scripts/generate-vapid-keys.mjs`
+// печатает их в этом же формате. Длина зашита не с потолка: несжатая точка
+// P-256 (65 байт) и сырой скаляр `d` (32 байта) в base64url без паддинга дают
+// ровно 87 и 43 символа (RFC 8291/8292) при любом сгенерированном ключе.
+export const VAPID_PUBLIC_KEY_RE = /^[A-Za-z0-9_-]{87}$/;
+export const VAPID_PRIVATE_KEY_RE = /^[A-Za-z0-9_-]{43}$/;
+// Контакт школы для push-сервиса (RFC 8292) — mailto: или https:, без него
+// провайдер не знает, кому написать при проблеме с доставкой.
+export const VAPID_SUBJECT_RE = /^(mailto:[^\s@]+@[^\s@]+\.[^\s@]+|https:\/\/\S+)$/;
+
+export const VAPID_PUBLIC_KEY_MESSAGE =
+  'VAPID_PUBLIC_KEY должен быть 87 символами base64url — сгенерируйте node scripts/generate-vapid-keys.mjs';
+export const VAPID_PRIVATE_KEY_MESSAGE =
+  'VAPID_PRIVATE_KEY должен быть 43 символами base64url — сгенерируйте node scripts/generate-vapid-keys.mjs';
+export const VAPID_SUBJECT_MESSAGE =
+  'VAPID_SUBJECT должен быть адресом вида mailto:you@example.com или https://адрес';

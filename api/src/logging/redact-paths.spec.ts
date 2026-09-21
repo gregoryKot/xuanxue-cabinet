@@ -68,6 +68,11 @@ function logSample(): Record<string, unknown> {
         text: 'ссылка https://zoom.example/2 пароль 1111',
         kind: 'lesson_link',
       },
+      pushSubscription: {
+        endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
+        p256dh: 'p256dh-key',
+        auth: 'auth-secret',
+      },
     },
     'проверка редакции',
   );
@@ -88,6 +93,7 @@ describe('REDACT_PATHS', () => {
     const lesson = logged.lesson as Record<string, unknown>;
     const broadcast = logged.broadcast as Record<string, unknown>;
     const vk = logged.vk as Record<string, unknown>;
+    const pushSubscription = logged.pushSubscription as Record<string, unknown>;
 
     expect(headers.authorization).toBe('[Redacted]');
     expect(headers.cookie).toBe('[Redacted]');
@@ -114,6 +120,9 @@ describe('REDACT_PATHS', () => {
     expect(lesson.zoomPasswordOverride).toBe('[Redacted]');
     expect(lesson.note).toBe('[Redacted]');
     expect(broadcast.text).toBe('[Redacted]');
+    expect(pushSubscription.endpoint).toBe('[Redacted]');
+    expect(pushSubscription.p256dh).toBe('[Redacted]');
+    expect(pushSubscription.auth).toBe('[Redacted]');
   });
 
   it('не трогает соседние не-секретные поля', () => {

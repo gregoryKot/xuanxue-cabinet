@@ -74,6 +74,12 @@
 // `userId` есть. Удаление аккаунта тем не менее обязано унести и байты,
 // иначе снимок ученика переживёт его аккаунт: для этого USER_OWNED_CASCADES
 // ниже.
+//
+// ADR-0092, «Порядок работ» PR №3 (push_subscriptions) — подписка браузера
+// на push: данные человека, `userId` — чьё устройство. Живёт, пока жив
+// аккаунт, тем же путём, что NotificationPrefsRecord выше; удаление аккаунта
+// обязано унести и её — иначе push продолжал бы падать на устройство
+// удалённого человека молча.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
@@ -83,6 +89,7 @@ export const USER_OWNED_COLLECTIONS = [
   'PaymentRecord',
   'EmailLinkTokenRecord',
   'NotificationRecord',
+  'PushSubscriptionRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
