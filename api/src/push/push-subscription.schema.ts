@@ -5,8 +5,8 @@
 // retention: живёт, пока жив аккаунт (в USER_OWNED_COLLECTIONS,
 // user-data.registry.ts — DELETE /users/:id уносит её тем же путём, что
 // NotificationPrefsRecord); удаление мёртвых подписок по ответу 404/410 от
-// push-сервиса (браузер снесён или разрешение отозвано) — PR №4, здесь
-// только хранение.
+// push-сервиса (браузер снесён или разрешение отозвано) —
+// PushSenderService.sendOne (push-sender.service.ts).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
 
@@ -31,6 +31,14 @@ export class PushSubscriptionRecord {
   // Ключи шифрования содержимого push (RFC 8291) — секреты доставки, тот же
   // уровень, что токен канала (SECURITY §5): кто их знает, может слать
   // push-сообщения на это устройство от имени школы.
+  //
+  // Сейчас их не читает ни один код: тело push пустое (ADR-0092 «Решение»,
+  // PushSenderService), а шифрование содержимого нужно только текстовому
+  // push. Поле не мёртвое — хранится впрок: перевод на push с текстом не
+  // потребует заново спрашивать разрешение у всех, ключи уже в базе. Удалять
+  // нельзя, даже если knip или храповик когда-нибудь заметят, что их никто
+  // не импортирует, — decryptPushSubscription (push-subscription.mapper.ts)
+  // их читает ради read-after-write теста и как раз ради этого впрок.
   @Prop({ type: String, required: true })
   p256dh!: string;
 

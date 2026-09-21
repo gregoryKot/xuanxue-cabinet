@@ -31,6 +31,7 @@ import { UsersService } from '../users/users.service';
 import { staffWriteDeps, writeNotificationRow, writeToStaff } from './in-app-staff-write';
 import { NotificationPrefsService } from './notification-prefs.service';
 import { NotificationRecord } from './notification.schema';
+import { findNotifiedUser } from './notified-user';
 
 const ATTEMPT_SUBMITTED_KIND: NotificationKind = 'attempt_submitted';
 const EXAM_RESULT_KIND: NotificationKind = 'exam_result';
@@ -78,11 +79,8 @@ export class InAppExamNotifier implements ExamNotifier {
     _now: DateTime,
   ): Promise<ExamNotifyResult> {
     try {
-      const user = await this.usersService.findById(context.userId);
+      const user = await findNotifiedUser(this.deps(), context.userId, EXAM_RESULT_KIND);
       if (!user) return { recipients: 0 };
-
-      const prefs = await this.notificationPrefsService.get(user.id, user.roles);
-      if (!prefs.enabled.includes(EXAM_RESULT_KIND)) return { recipients: 0 };
 
       await writeNotificationRow(this.model, {
         userId: context.userId,
