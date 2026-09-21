@@ -94,6 +94,26 @@ export const personBlockStyle: CSSProperties = {
 };
 
 /** Строка «Профиль · Выйти» внутри блока человека. */
+/** Ссылка внутри блока человека — «Профиль». Без линии снизу: линия в
+ * кабинете помечает текстовую ссылку в потоке содержимого, а оболочка
+ * состоит из одних ссылок, и отличать их друг от друга ей нечем
+ * (docs/adr/0098). От неинтерактивной строки рядом («Вы вошли как …»,
+ * приглушённой `personBlockStyle`) ссылка отличается тушью — тем же
+ * приёмом, что «Уведомления» наверху колонки
+ * (notifications/NotificationsNavLink.tsx). Кегль наследуется от блока (13),
+ * свой не нужен. `minHeight` свой: строка выравнивает детей по центру
+ * (`personActionsRowStyle`, `align-items: center`), а не растягивает, поэтому
+ * 44px соседней кнопки «Выйти» на ссылку не переходят — без этого цель
+ * нажатия была бы ниже 44 (CLAUDE.md «Доступность»). Высоту строки это не
+ * меняет: кнопка рядом и так 44. */
+export const personLinkStyle: CSSProperties = {
+  color: 'var(--ink)',
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: 44,
+};
+
 export const personActionsRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',

@@ -36,14 +36,16 @@ const linkCardStyle: CSSProperties = {
   textDecoration: 'none',
 };
 
-// Подпись числа-ссылки — линия под текстом вместо подчёркивания, как у
-// остальных текстовых ссылок кабинета (components/screenLayout.ts): без неё
-// карточка ничем не показывает, что по ней переходят.
-const linkLabelStyle: CSSProperties = {
-  alignSelf: 'flex-start',
-  borderBottom: '1px solid var(--control-border)',
-  paddingBottom: 2,
-};
+// Подпись карточки-ссылки — тушью, а не приглушённым тоном соседних
+// подписей, и со знаком «›» в конце. Линии снизу здесь нет: она помечает
+// текстовую ссылку в потоке содержимого, а тут кликается вся карточка
+// (docs/adr/0098). В ряду одинаковых на вид карточек линия под одной из
+// подписей читалась опечаткой, а не приглашением нажать.
+const linkLabelStyle: CSSProperties = { color: 'var(--ink)' };
+// Знак перехода. Декоративный: доступное имя ссылки даёт подпись, «›» в нём
+// читалось бы мусором. Отступ слева — чтобы не липнул к последней букве.
+const LINK_ARROW = '›';
+const linkArrowStyle: CSSProperties = { marginLeft: 4 };
 
 interface SummaryNumber {
   value: number;
@@ -89,6 +91,13 @@ export function SummaryNumbers({ summary }: { summary: SummaryDto }) {
             label={number.label}
             valueStyle={{ ...valueSizeStyle, ...number.valueStyle }}
             labelStyle={number.href ? linkLabelStyle : undefined}
+            labelTrailing={
+              number.href ? (
+                <span aria-hidden="true" style={linkArrowStyle}>
+                  {LINK_ARROW}
+                </span>
+              ) : undefined
+            }
           />
         );
         // Ссылкой становится вся карточка, а не одна подпись: подпись 13px —

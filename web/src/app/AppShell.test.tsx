@@ -229,10 +229,17 @@ describe('AppShell — учитель', () => {
 
     expect(within(column).getByText(/Вы вошли как Дима/)).toBeInTheDocument();
     expect(within(column).getByRole('button', { name: 'Выйти' })).toBeInTheDocument();
-    expect(within(column).getByRole('link', { name: 'Профиль' })).toHaveAttribute(
-      'href',
-      '/profile',
-    );
+    const profile = within(column).getByRole('link', { name: 'Профиль' });
+    expect(profile).toHaveAttribute('href', '/profile');
+    // Линия снизу помечает текстовую ссылку в потоке содержимого, а оболочка
+    // состоит из одних ссылок — отличать их друг от друга ей нечем
+    // (docs/adr/0098, владелец по снимку: «подчёркивания, нужны?»). От
+    // приглушённой строки «Вы вошли как …» рядом ссылка отличается тушью, а
+    // цель нажатия держит свой minHeight: строка выравнивает детей по центру
+    // и 44px соседней кнопки «Выйти» на ссылку не переходят.
+    expect(profile.style.borderBottom).toBe('');
+    expect(profile.style.color).toBe('var(--ink)');
+    expect(profile.style.minHeight).toBe('44px');
     // Подвала под содержимым на мониторе больше нет — ровно это и убирало
     // осиротевшую строку в 650px под контентом (ADR-0043 «Контекст»).
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
