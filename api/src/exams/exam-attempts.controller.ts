@@ -31,10 +31,16 @@ import {
   Query,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { AttemptReviewDto, ExamAttemptDto, ExamGradingDto } from '@xuanxue/shared';
+import type {
+  AttemptReviewDto,
+  ExamAttemptCountDto,
+  ExamAttemptDto,
+  ExamGradingDto,
+} from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import { MediaAssetsService } from '../media/media-assets.service';
 import type { UserLean } from '../users/users.service';
+import { ExamAttemptCountService } from './exam-attempt-count.service';
 import {
   withAttemptMedia,
   withAttemptsMedia,
@@ -54,6 +60,7 @@ export class ExamAttemptsController {
     private readonly examAttemptsService: ExamAttemptsService,
     private readonly examGradingsService: ExamGradingsService,
     private readonly mediaAssetsService: MediaAssetsService,
+    private readonly examAttemptCountService: ExamAttemptCountService,
   ) {}
 
   // Не всегда создаёт новую попытку (идемпотентный старт — ТЗ 4.4, п.3), но
@@ -68,6 +75,15 @@ export class ExamAttemptsController {
   ): Promise<ExamAttemptDto> {
     const attempt = await this.examAttemptsService.start(examId, user.id, DateTime.utc());
     return withAttemptMedia(this.mediaAssetsService, attempt);
+  }
+
+  // Редактору формы — сколько попыток затронет правка вопроса (ADR-0022):
+  // попытка живёт снимком формы на момент старта, редактор должен видеть
+  // охват до сохранения. Штат школы — как review ниже, ученику не нужно.
+  @Get('exams/:examId/attempt-count')
+  @Roles(...STAFF_ONLY_ROLES)
+  countByExam(@Param('examId') examId: string): Promise<ExamAttemptCountDto> {
+    return this.examAttemptCountService.countByExam(examId);
   }
 
   @Patch('attempts/:id/answers')

@@ -301,6 +301,14 @@ export interface ListAttemptsQuery {
   limit?: number;
 }
 
+/** Сколько попыток по экзамену уже завели ученики. Число нужно редактору:
+ * попытка живёт снимком формы на момент старта (ADR-0022), и учитель должен
+ * видеть, что его правка достанется только тем, кто начнёт заново. */
+export interface ExamAttemptCountDto {
+  /** Все попытки экзамена: и те, что идут сейчас, и уже сданные. */
+  total: number;
+}
+
 export const ATTEMPT_LIMITS = { answerText: 5000, optionsPerAnswer: 10 } as const;
 
 export const ATTEMPT_NOT_FOUND_MESSAGE = 'Попытка не найдена. Обновите страницу.';
