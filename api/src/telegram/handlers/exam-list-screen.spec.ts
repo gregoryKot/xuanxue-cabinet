@@ -1,5 +1,8 @@
 // Чистая логика, без Mongo и без Telegram (CLAUDE.md «Тесты»): экран
-// «Экзамены» — кнопка «Начать»/«Продолжить» или честный текст без кнопки.
+// «Экзамены» — кнопка «Начать»/«Продолжить»/«Начать ещё раз» или честный
+// текст без кнопки. Само правило, когда какая кнопка, проверяет
+// shared/src/my-exams.spec.ts (getMyExamAction) — здесь только то, что
+// принадлежит боту: подписи кнопок и текст причины.
 import type { MyExamDto } from '@xuanxue/shared';
 import { buildExamListScreen } from './exam-list-screen';
 
@@ -39,17 +42,37 @@ describe('buildExamListScreen', () => {
 
   it('попытка в работе — кнопка «Продолжить», не «Начать»', () => {
     const menu = buildExamListScreen([
-      exam({ attemptsUsed: 1, lastAttempt: { id: 'a1', status: 'in_progress' } }),
+      exam({
+        attemptsUsed: 1,
+        lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+      }),
     ]);
     expect(menu.buttons[0]?.[0]?.text).toBe('Продолжить: Форма третьего уровня');
   });
 
-  it('сдана, есть ещё попытки — «Начать ещё раз»', () => {
+  // Решение владельца 2026-09-21 (ADR-0091): сдал сам и ждёт проверки — вторая
+  // попытка была бы обходом проверки, кнопки быть не должно, даже если лимит
+  // попыток формы это разрешает. До этого решения бот путал `status:
+  // 'submitted'` с «можно начать заново» и давал кнопку независимо от того,
+  // кто закрыл попытку — эта ветка ловит именно тот баг.
+  it('сдана вручную, есть ещё попытки — кнопки нет, «Сдано, ждёт проверки.»', () => {
     const menu = buildExamListScreen([
       exam({
         attemptsAllowed: 2,
         attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'submitted' },
+        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+      }),
+    ]);
+    expect(menu.text).toContain('Сдано, ждёт проверки.');
+    expect(menu.buttons).toHaveLength(1); // только «В меню»
+  });
+
+  it('попытку закрыло время, есть ещё попытки — «Начать ещё раз»', () => {
+    const menu = buildExamListScreen([
+      exam({
+        attemptsAllowed: 2,
+        attemptsUsed: 1,
+        lastAttempt: { id: 'a1', status: 'submitted', expired: true },
       }),
     ]);
     expect(menu.buttons[0]?.[0]?.text).toBe('Начать ещё раз: Форма третьего уровня');
@@ -57,7 +80,10 @@ describe('buildExamListScreen', () => {
 
   it('сдана, попыток больше нет — «Сдано, ждёт проверки», без кнопки', () => {
     const menu = buildExamListScreen([
-      exam({ attemptsUsed: 1, lastAttempt: { id: 'a1', status: 'submitted' } }),
+      exam({
+        attemptsUsed: 1,
+        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+      }),
     ]);
     expect(menu.text).toContain('Сдано, ждёт проверки.');
     expect(menu.buttons).toHaveLength(1); // только «В меню»
@@ -67,7 +93,7 @@ describe('buildExamListScreen', () => {
     const menu = buildExamListScreen([
       exam({
         attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'graded', outcome: 'passed' },
+        lastAttempt: { id: 'a1', status: 'graded', expired: false, outcome: 'passed' },
       }),
     ]);
     expect(menu.text).toContain('Использованы все попытки — 1 из 1.');
@@ -95,7 +121,7 @@ describe('buildExamListScreen', () => {
         id: 'e2',
         title: 'Вторая',
         attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'submitted' },
+        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
       }),
     ]);
     expect(menu.buttons).toHaveLength(2); // «Начать: Первая» + «В меню» (у второй кнопки нет)

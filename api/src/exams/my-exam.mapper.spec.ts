@@ -21,15 +21,24 @@ describe('toMyExamDto', () => {
   });
 
   it('есть попытка — attemptsUsed и lastAttempt переданы как есть', () => {
-    const dto = toMyExamDto(exam(), 1, { id: 'attempt-1', status: 'submitted' });
+    const dto = toMyExamDto(exam(), 1, {
+      id: 'attempt-1',
+      status: 'submitted',
+      expired: true,
+    });
     expect(dto.attemptsUsed).toBe(1);
-    expect(dto.lastAttempt).toEqual({ id: 'attempt-1', status: 'submitted' });
+    expect(dto.lastAttempt).toEqual({
+      id: 'attempt-1',
+      status: 'submitted',
+      expired: true,
+    });
   });
 
   it('оценка выставлена — outcome/comment переданы как есть (слой 4.6)', () => {
     const dto = toMyExamDto(exam(), 1, {
       id: 'attempt-1',
       status: 'graded',
+      expired: false,
       outcome: 'passed',
       comment: 'Хорошая работа',
     });
@@ -37,6 +46,7 @@ describe('toMyExamDto', () => {
     expect(dto.lastAttempt).toEqual({
       id: 'attempt-1',
       status: 'graded',
+      expired: false,
       outcome: 'passed',
       comment: 'Хорошая работа',
     });

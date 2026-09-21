@@ -1,9 +1,20 @@
-// Положение ученика по одному экзамену (ТЗ п.1) — чистая логика без DOM и
-// без сети, юнит-тест на все ветки (CLAUDE.md «Тесты»). Три возможных
-// статуса попытки (EXAM_ATTEMPT_STATUSES) дают ровно три формулировки —
-// «вы отвечаете» показывать не нужно отдельно: карточка вместо неё рисует
-// кнопку «Продолжить».
-import { pluralRu, type GradingOutcome, type MyExamDto } from '@xuanxue/shared';
+// Тексты кабинета про положение ученика по одному экзамену (ТЗ п.1) — чистая
+// логика без DOM и без сети, юнит-тест на все ветки (CLAUDE.md «Тесты»). Три
+// возможных статуса попытки (EXAM_ATTEMPT_STATUSES) дают ровно три
+// формулировки — «вы отвечаете» показывать не нужно отдельно: карточка
+// вместо неё рисует кнопку «Продолжить».
+//
+// Какую кнопку показать (или не показывать вовсе) — не здесь: правило одно
+// на кабинет и на бота, `getMyExamAction` в shared/src/my-exams.ts
+// (ADR-0091). Раньше оно жило тут же под именем `getExamAction` и
+// разъезжалось с тем, что решал бот, — с переездом в shared разъехаться
+// негде: экраны читают одну функцию.
+import {
+  pluralRu,
+  myExamAttemptsLeft,
+  type GradingOutcome,
+  type MyExamDto,
+} from '@xuanxue/shared';
 
 const ATTEMPT_FORMS = {
   one: 'попытка',
@@ -31,38 +42,12 @@ export function describeOutcome(outcome: GradingOutcome): string {
   return OUTCOME_TEXT[outcome];
 }
 
-export type ExamCardAction = 'continue' | 'start' | 'retry' | null;
-
-export function getAttemptsLeft(exam: MyExamDto): number {
-  return Math.max(0, exam.attemptsAllowed - exam.attemptsUsed);
-}
-
 /** «Осталось 2 попытки» / «Попытки закончились» — вторая форма честная, а не
  * «0 попыток» (CLAUDE.md «Продуктовая фича = число»). */
 export function formatAttemptsLeft(exam: MyExamDto): string {
-  const left = getAttemptsLeft(exam);
+  const left = myExamAttemptsLeft(exam);
   if (left === 0) return 'Попытки закончились';
   return `Осталось ${left} ${pluralRu(left, ATTEMPT_FORMS)}`;
-}
-
-/**
- * Одна кнопка по смыслу (ТЗ п.1): попытка в работе — «Продолжить»; работу
- * проверили, а попытки ещё остались — «Пройти ещё раз»; попытки ещё не было —
- * «Начать»; в остальных случаях (сдано и ждёт проверки, попытки кончились) —
- * кнопки нет.
- *
- * «Пройти ещё раз» появился со слоем 4.7: учитель ставит итог «нужно
- * доработать», и ученику надо куда-то нажать — иначе разбор упирается в
- * тупик. API это и так разрешает (`ExamAttemptsService.start` пускает, пока
- * `attemptsUsed < attemptsAllowed`), кабинет просто не показывал.
- * Сданную, но ещё не проверенную попытку не перезапускаем: пока учитель не
- * посмотрел работу, вторая попытка — не «доработка», а обход проверки.
- */
-export function getExamAction(exam: MyExamDto): ExamCardAction {
-  if (exam.lastAttempt?.status === 'in_progress') return 'continue';
-  if (getAttemptsLeft(exam) <= 0) return null;
-  if (exam.lastAttempt?.status === 'graded') return 'retry';
-  return exam.lastAttempt ? null : 'start';
 }
 
 /** Честная строка вместо кнопки — состояние последней попытки простыми

@@ -13,9 +13,10 @@
 // один запрос GET /me/exams через контекст, а не заводят каждый свой.
 //
 // Новое здесь — рубрики: задания, к которым ученик ещё не приступал
-// (getExamAction === 'start'), идут первыми под своей рубрикой, остальные —
-// ниже под «Остальные». Разделение — splitNewTasks.ts, чистая функция с
-// тестом (CLAUDE.md «Логика вне компонентов»).
+// (getMyExamAction === 'start', shared/src/my-exams.ts), идут первыми под
+// своей рубрикой, остальные — ниже под «Остальные». Разделение —
+// splitNewTasks.ts, чистая функция с тестом (CLAUDE.md «Логика вне
+// компонентов»).
 import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { MyExamDto } from '@xuanxue/shared';
