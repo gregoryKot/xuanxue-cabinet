@@ -137,7 +137,8 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
   каждая ссылка на файл решения ведёт к нему. Номер, занятый в ещё не слитой чужой
   ветке, гейт не видит — ищи свободный и по ним (`git ls-remote --heads origin`).
 - `check-env-example.mjs` — каждая читаемая env-переменная описана в `.env.example`.
-- `check-shared-exports.mjs` — имя из барабана `shared/src/index.ts`, которое никто не
+- `check-shared-exports.mjs` — в барабане `shared/src/index.ts` только `export … from`,
+  и его размер храповик не считает (ADR-0081); имя из барабана, которое никто не
   импортирует, роняет CI (`knip` этого не видит: `api` и `web` тянут `dist`, не исходники).
 - `knip` — неиспользуемые файлы, экспорты и зависимости роняют CI.
 
