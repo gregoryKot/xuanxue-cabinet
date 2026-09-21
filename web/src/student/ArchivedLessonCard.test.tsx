@@ -78,6 +78,26 @@ describe('ArchivedLessonCard — записи', () => {
     expect(screen.getByRole('link', { name: 'Открыть запись' })).toBeInTheDocument();
   });
 
+  // ADR-0100: запись смотрят не уходя из архива. Фрейм подставляется по
+  // нажатию, ссылка «Открыть запись» остаётся рядом.
+  it('запись на YouTube — кнопка плеера рядом со ссылкой', () => {
+    renderCard({
+      recordings: [{ title: 'Занятие целиком', url: 'https://youtu.be/dQw4w9WgXcQ' }],
+    });
+
+    expect(screen.getByRole('button', { name: 'Смотреть здесь' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть запись' })).toBeInTheDocument();
+  });
+
+  it('запись на невстраиваемом хостинге — плеера нет, ссылка остаётся', () => {
+    renderCard({ recordings: [{ url: 'https://cloud.example/rec' }] });
+
+    expect(
+      screen.queryByRole('button', { name: 'Смотреть здесь' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть запись' })).toBeInTheDocument();
+  });
+
   it('запись inTelegramOnly — не кнопка, а объяснение, мёртвой ссылки нет', () => {
     renderCard({ recordings: [{ title: 'В канале', inTelegramOnly: true }] });
     expect(

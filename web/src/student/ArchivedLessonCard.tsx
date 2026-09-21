@@ -14,6 +14,7 @@
 import type { CSSProperties } from 'react';
 import type { ArchivedRecordingDto, MyArchivedLessonDto } from '@xuanxue/shared';
 import { dividedListStyle } from '../components/listCardStyles';
+import { VideoEmbed } from '../components/VideoEmbed';
 import { textLinkHitAreaStyle, textLinkLineStyle } from '../components/screenLayout';
 import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
 import { StudentMaterialCard } from './StudentMaterialCard';
@@ -61,7 +62,7 @@ const materialsHeadingStyle: CSSProperties = {
 function ArchivedRecordingRow({ recording }: { recording: ArchivedRecordingDto }) {
   if (recording.url) {
     return (
-      <p style={recordingRowStyle}>
+      <div style={recordingRowStyle}>
         {recording.title && <span style={recordingTitleStyle}>{recording.title}</span>}
         <a
           href={recording.url}
@@ -71,7 +72,11 @@ function ArchivedRecordingRow({ recording }: { recording: ArchivedRecordingDto }
         >
           <span style={textLinkLineStyle}>{OPEN_RECORDING_TEXT}</span>
         </a>
-      </p>
+        {/* Плеер рядом со ссылкой, не вместо неё (ADR-0100): встраивание
+            может быть выключено автором, у приватной записи фрейм покажет
+            отказ. Хостинг не встраивается — компонент не рендерит ничего. */}
+        <VideoEmbed url={recording.url} title={recording.title ?? 'Запись занятия'} />
+      </div>
     );
   }
   // Мёртвой кнопки быть не должно (ТЗ §14): запись без ссылки — либо файл в

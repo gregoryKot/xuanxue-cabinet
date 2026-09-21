@@ -8,6 +8,7 @@ import type { CSSProperties } from 'react';
 import type { MyMaterialDto } from '@xuanxue/shared';
 import { materialFilePath } from '../api/apiPaths';
 import { textLinkHitAreaStyle, textLinkLineStyle } from '../components/screenLayout';
+import { VideoEmbed } from '../components/VideoEmbed';
 
 const OPEN_LABEL = 'Открыть';
 // У материала бывает и ссылка, и свой файл — второе действие рядом с
@@ -35,21 +36,28 @@ export function StudentMaterialCardActions({
   material,
 }: StudentMaterialCardActionsProps) {
   return (
-    <div style={actionRowStyle}>
-      {material.url && (
-        <a href={material.url} target="_blank" rel="noreferrer" style={openLinkStyle}>
-          <span style={textLinkLineStyle}>{OPEN_LABEL}</span>
-        </a>
-      )}
-      {material.file && (
-        // Обычная ссылка, не apiFetch: сервер отвечает 302 на подписанный
-        // адрес в другом домене, а `connectSrc: 'self'` в CSP
-        // (api/src/security/csp.ts) оборвал бы такой редирект у fetch —
-        // навигация по <a href> под CSP не ограничена, не «чинить» на apiFetch.
-        <a href={`/api${materialFilePath(material.id)}`} style={openLinkStyle}>
-          <span style={textLinkLineStyle}>{DOWNLOAD_FILE_LABEL}</span>
-        </a>
-      )}
-    </div>
+    <>
+      <div style={actionRowStyle}>
+        {material.url && (
+          <a href={material.url} target="_blank" rel="noreferrer" style={openLinkStyle}>
+            <span style={textLinkLineStyle}>{OPEN_LABEL}</span>
+          </a>
+        )}
+        {material.file && (
+          // Обычная ссылка, не apiFetch: сервер отвечает 302 на подписанный
+          // адрес в другом домене, а `connectSrc: 'self'` в CSP
+          // (api/src/security/csp.ts) оборвал бы такой редирект у fetch —
+          // навигация по <a href> под CSP не ограничена, не «чинить» на apiFetch.
+          <a href={`/api${materialFilePath(material.id)}`} style={openLinkStyle}>
+            <span style={textLinkLineStyle}>{DOWNLOAD_FILE_LABEL}</span>
+          </a>
+        )}
+      </div>
+      {/* Материал вида «видео» — смотреть, не уходя из библиотеки (ADR-0100).
+          Вид тут не проверяем: решает сам адрес, и статья со ссылкой на
+          YouTube получит плеер так же законно, как видео. Не встраивается —
+          компонент не рендерит ничего, остаётся ссылка «Открыть». */}
+      {material.url && <VideoEmbed url={material.url} title={material.title} />}
+    </>
   );
 }

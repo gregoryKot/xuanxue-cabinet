@@ -9,16 +9,6 @@ import type { CSSProperties } from 'react';
 import { videoEmbedUrl } from '@xuanxue/shared';
 import { Button } from './Button';
 
-const placeholderStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: '100%',
-  aspectRatio: '16 / 9',
-  background: 'var(--panel)',
-  borderRadius: 'var(--radius-card)',
-};
-
 const frameStyle: CSSProperties = {
   display: 'block',
   width: '100%',
@@ -44,13 +34,15 @@ export function VideoEmbed({ url, title }: { url: string; title?: string }) {
     return null;
   }
 
+  // До нажатия — только кнопка, без серого прямоугольника 16:9 на её месте:
+  // показывать нечего (превью с хостинга мы не грузим намеренно), а пустая
+  // коробка в списке материалов или записей растит каждую строку на экран
+  // высотой ни за чем.
   if (!opened) {
     return (
-      <div style={placeholderStyle}>
-        <Button variant="secondary" onClick={() => setOpened(true)}>
-          {WATCH_LABEL}
-        </Button>
-      </div>
+      <Button variant="secondary" onClick={() => setOpened(true)}>
+        {WATCH_LABEL}
+      </Button>
     );
   }
 
