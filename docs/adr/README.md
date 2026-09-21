@@ -125,3 +125,4 @@
 | [0087](0087-fresh-state-comes-from-the-write-response.md)      | Свежее состояние берётся из ответа на запись, отдельного GET следом нет                     |
 | [0088](0088-list-declares-the-gap-between-rows.md)             | Промежуток между строками списка объявляет контейнер; гейт check-card-list-gap              |
 | [0089](0089-press-feedback-is-a-global-active-rule.md)         | Отклик на нажатие — глобальное правило `:active`, спиннер только на кнопке действия         |
+| [0092](0092-web-push-returns.md)                               | Push возвращается: свой service worker, пинг без содержимого                                |
