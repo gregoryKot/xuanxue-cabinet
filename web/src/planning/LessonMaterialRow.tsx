@@ -5,7 +5,8 @@
 // механика — один компонент», jscpd).
 import type { CSSProperties } from 'react';
 import { MATERIAL_KIND_LABELS, type MaterialDto } from '@xuanxue/shared';
-import { textLinkButtonStyle } from '../components/screenLayout';
+import { textLinkStyle } from '../components/screenLayout';
+import { TextLinkButton } from '../components/TextLinkButton';
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -39,14 +40,12 @@ export function LessonMaterialRow({
   return (
     <li style={rowStyle}>
       <div style={titleColumnStyle}>
-        <a href={material.url} target="_blank" rel="noreferrer">
+        <a href={material.url} target="_blank" rel="noreferrer" style={textLinkStyle}>
           {material.title}
         </a>
         <div style={metaStyle}>{meta}</div>
       </div>
-      <button type="button" style={textLinkButtonStyle} onClick={onAction}>
-        {actionLabel}
-      </button>
+      <TextLinkButton onClick={onAction}>{actionLabel}</TextLinkButton>
     </li>
   );
 }

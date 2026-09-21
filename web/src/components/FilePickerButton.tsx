@@ -8,7 +8,7 @@
 // (CLAUDE.md «Доступность»); рамка фокуса — класс `.xuanxue-file-label` в
 // index.css (`:focus-within`, инлайн-стиль так не умеет).
 import type { ChangeEvent, CSSProperties } from 'react';
-import { noteStyle, textLinkButtonStyle } from './screenLayout';
+import { noteStyle, textLinkHitAreaStyle, textLinkLineStyle } from './screenLayout';
 
 const PENDING_TEXT = 'Загружаем…';
 
@@ -19,14 +19,14 @@ const hiddenInputStyle: CSSProperties = {
   height: 1,
   overflow: 'hidden',
 };
-// <label> — строчный элемент, minHeight из textLinkButtonStyle на нём не
-// работает; inline-flex делает цель нажатия честными 44 px. position:
-// relative — скрытый input позиционируется относительно самой кнопки, иначе
-// фокус на нём мог бы прокрутить страницу к чужому месту.
+// <label> остаётся строчным элементом, но цель нажатия ему даёт
+// textLinkHitAreaStyle (screenLayout.ts) — без линии: border-bottom на
+// коробке 44px рисовался бы по её дну, в стороне от подписи (разбор приёма —
+// там же). Линия — на внутреннем <span> вокруг подписи, ниже по разметке.
+// position: relative — скрытый input позиционируется относительно самой
+// кнопки, иначе фокус на нём мог бы прокрутить страницу к чужому месту.
 const labelStyle: CSSProperties = {
-  ...textLinkButtonStyle,
-  display: 'inline-flex',
-  alignItems: 'center',
+  ...textLinkHitAreaStyle,
   position: 'relative',
 };
 // Замена кнопки на время загрузки — не кнопка со спиннером (CLAUDE.md
@@ -79,7 +79,7 @@ export function FilePickerButton({
 
   return (
     <label className="xuanxue-file-label" style={labelStyle}>
-      {label}
+      <span style={textLinkLineStyle}>{label}</span>
       <input
         type="file"
         accept={accept}

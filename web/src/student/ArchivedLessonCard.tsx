@@ -14,7 +14,7 @@
 import type { CSSProperties } from 'react';
 import type { ArchivedRecordingDto, MyArchivedLessonDto } from '@xuanxue/shared';
 import { dividedListStyle } from '../components/listCardStyles';
-import { textLinkStyle } from '../components/screenLayout';
+import { textLinkHitAreaStyle, textLinkLineStyle } from '../components/screenLayout';
 import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
 import { StudentMaterialCard } from './StudentMaterialCard';
 
@@ -40,14 +40,10 @@ const recordingRowStyle: CSSProperties = {
   flexWrap: 'wrap',
 };
 const recordingTitleStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
-// Цель нажатия ≥44 по высоте (CLAUDE.md «Доступность») — тот же приём, что у
-// quietLinkStyle в StudentLessonMeeting.tsx.
-const recordingLinkStyle: CSSProperties = {
-  ...textLinkStyle,
-  display: 'inline-flex',
-  alignItems: 'center',
-  minHeight: 44,
-};
+// Цель нажатия 44 — оболочка textLinkHitAreaStyle, линию под буквами несёт
+// внутренний span с textLinkLineStyle (см. JSX ниже): тот же приём, что у
+// quietLinkStyle в StudentLessonMeeting.tsx (разбор — в screenLayout.ts).
+const recordingLinkStyle: CSSProperties = textLinkHitAreaStyle;
 const plainTextStyle: CSSProperties = {
   margin: 0,
   fontSize: 13,
@@ -73,7 +69,7 @@ function ArchivedRecordingRow({ recording }: { recording: ArchivedRecordingDto }
           rel="noreferrer"
           style={recordingLinkStyle}
         >
-          {OPEN_RECORDING_TEXT}
+          <span style={textLinkLineStyle}>{OPEN_RECORDING_TEXT}</span>
         </a>
       </p>
     );

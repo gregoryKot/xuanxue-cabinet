@@ -16,8 +16,11 @@
 // механики — удаляем с концами»).
 //
 // На телефоне (`!hasSideNav`, у любой роли) колонку заменяет
-// AppShellBrandRow.tsx — знак школы и значок профиля первой строкой;
-// «Выйти» — на самом экране «Профиль» (ADR-0045), не в оболочке.
+// AppShellBrandRow.tsx — знак школы и значки колокольчика и профиля первой
+// строкой; «Выйти» — на самом экране «Профиль» (ADR-0045), не в оболочке.
+// На широком экране первой строкой содержимого идёт один колокольчик у
+// правого края (contentTopBarStyle): знак школы слева и значок справа стоят
+// на одной линии, экран начинается под ними.
 //
 // Чужой маршрут — редирект, а не подмена экрана: правило «что этой роли
 // открыто» и «куда её вести иначе» — canSeeRoute/rootPathFor в
@@ -47,11 +50,16 @@ import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { NotificationsNavLink } from '../notifications/NotificationsNavLink';
+import { NotificationBell } from '../notifications/NotificationBell';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import { AppNav } from './AppNav';
-import { contentColumnStyle, shellRowStyle, shellStyle } from './appShellStyles';
+import {
+  contentColumnStyle,
+  contentTopBarStyle,
+  shellRowStyle,
+  shellStyle,
+} from './appShellStyles';
 import { personLinkStyle } from './sideNavStyles';
 import { AppShellBrandRow } from './AppShellBrandRow';
 import { canSeeRoute, rootPathFor } from './screenAccess';
@@ -89,7 +97,6 @@ export function AppShell() {
               <AppNav
                 isMobile={false}
                 me={me}
-                notificationsLink={<NotificationsNavLink />}
                 profileLink={
                   <Link to={PROFILE_PATH} style={personLinkStyle}>
                     Профиль
@@ -99,9 +106,18 @@ export function AppShell() {
               />
             )}
             <div style={contentColumnStyle}>
-              {/* Мобильный колокольчик рисует сама AppShellBrandRow.tsx — она
-                  уже импортирует ProfileIcon напрямую тем же приёмом. */}
-              {!hasSideNav && <AppShellBrandRow isMobile={isMobile} me={me} />}
+              {/* Один колокольчик на обе раскладки (ADR-0063): на широком
+                  экране — сам по себе в правом верхнем углу, на телефоне его
+                  рисует AppShellBrandRow.tsx рядом со значком профиля. В
+                  боковой колонке его больше нет: пунктом меню он спорил с
+                  разделом, у которого домен есть (ADR-0025). */}
+              {hasSideNav ? (
+                <div style={contentTopBarStyle}>
+                  <NotificationBell />
+                </div>
+              ) : (
+                <AppShellBrandRow isMobile={isMobile} me={me} />
+              )}
               <main>
                 {canSee ? <Outlet /> : <Navigate to={rootPathFor(me)} replace />}
               </main>

@@ -40,7 +40,6 @@ function renderNav(
   path = '/planning',
   personProps: {
     profileLink?: ReactNode;
-    notificationsLink?: ReactNode;
     logoutButton?: ReactNode;
   } = {},
 ) {
@@ -267,30 +266,17 @@ describe('AppNav — блок человека (боковая колонка, A
   });
 });
 
-// Правка 2026-09-21 (отзыв владельца, ADR-0063): ссылку было не найти внизу
-// колонки, тусклой текстовой строкой в блоке человека. Теперь это первая
-// строка колонки после знака школы, ярче пунктов меню.
-describe('AppNav — ссылка на уведомления наверху колонки (ADR-0063)', () => {
-  it('стоит перед <nav aria-label="Разделы кабинета">, не внутри него', () => {
+// Правка 2026-09-21 (отзыв владельца, ADR-0063): колокольчик стоял отдельным
+// пунктом перед разделами и спорил с ними весом. Его место — правый верхний
+// угол содержимого (AppShell.test.tsx), колонка про него больше не знает.
+describe('AppNav — колокольчика в колонке нет (ADR-0063)', () => {
+  it('в колонке только разделы, знак школы и блок человека', () => {
     renderNav(false, TEACHER, '/planning', {
-      notificationsLink: <a href="/notifications">Уведомления</a>,
       profileLink: <a href="/profile">Профиль</a>,
       logoutButton: <button type="button">Выйти</button>,
     });
 
-    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
-    const notifLink = screen.getByRole('link', { name: 'Уведомления' });
-
-    // Не внутри ориентира «Разделы кабинета» — та же причина, что у знака
-    // школы и блока человека (комментарий в AppNav.tsx у самого <nav>).
-    expect(
-      within(nav).queryByRole('link', { name: 'Уведомления' }),
-    ).not.toBeInTheDocument();
-    // И раньше <nav> в разметке колонки, не после (тот же приём, что у
-    // ExamEditorScreen.test.tsx — «Опубликовать» выше списка вопросов).
-    expect(
-      notifLink.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Уведомления/ })).not.toBeInTheDocument();
   });
 });
 

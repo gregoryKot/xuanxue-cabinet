@@ -47,6 +47,21 @@ describe('LessonCard', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
+  // Инцидент 2026-09-21 (снимок владельца): название и тема слипались в одну
+  // строку — «Медитация чжи-гуаньТема не задана». Вертикальный отступ на
+  // строчном <span> браузер игнорирует, поэтому зазор должна задавать
+  // flex-колонка (тот же приём, что в TodayLessonCard.tsx). jsdom раскладку
+  // не считает — проверяем механизм (display/flexDirection), а не пиксели.
+  it('название и тема — колонка, а не одна строка (инцидент 2026-09-21)', () => {
+    renderCard(makeLesson());
+    const title = screen.getByText('Тайцзицюань');
+    const container = title.parentElement;
+    expect(container).not.toBeNull();
+    const containerStyle = getComputedStyle(container as HTMLElement);
+    expect(containerStyle.display).toBe('flex');
+    expect(containerStyle.flexDirection).toBe('column');
+  });
+
   it('без рассылки — бейджа нет вовсе', () => {
     renderCard(makeLesson());
     expect(screen.queryByText(/Ссылка/)).not.toBeInTheDocument();

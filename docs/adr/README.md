@@ -132,3 +132,4 @@
 | [0094](0094-list-is-patched-from-the-write-response.md)        | Список правится из ответа записи; перечитывание остаётся только осознанно                   |
 | [0095](0095-exam-video-redelivery-on-demand.md)                | Видео экзамена можно запросить боту повторно; реестр доставки — у MediaModule               |
 | [0098](0098-underline-marks-a-text-link-not-every-link.md)     | Линия снизу — признак текстовой ссылки в тексте; оболочка и карточки её не носят            |
+| [0099](0099-touch-target-and-visible-line-are-two-elements.md) | Цель нажатия и линия текстовой ссылки — разные элементы: линию носит внутренний span        |

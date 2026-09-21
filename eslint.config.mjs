@@ -79,7 +79,7 @@ const SHELL_RESTRICTED_IMPORTS = {
     ...WEB_RESTRICTED_IMPORTS.patterns,
     {
       group: ['**/screenLayout', '**/components/screenLayout'],
-      importNames: ['textLinkStyle', 'textLinkButtonStyle'],
+      importNames: ['textLinkStyle', 'textLinkLineStyle'],
       message:
         'Оболочка не носит линию снизу — это признак текстовой ссылки в содержимом (docs/adr/0098). Ссылка оболочки берёт personLinkStyle/sideLinkStyle из app/sideNavStyles.ts.',
     },

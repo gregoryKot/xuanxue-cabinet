@@ -11,7 +11,8 @@ import { EXAM_LIMITS, type ExamItemDto } from '@xuanxue/shared';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { dividedListStyle } from '../components/listCardStyles';
 import { SearchField } from '../components/SearchField';
-import { textLinkButtonStyle, textLinkStyle } from '../components/screenLayout';
+import { textLinkStyle } from '../components/screenLayout';
+import { TextLinkButton } from '../components/TextLinkButton';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
 import { filterQuestionCandidates } from './examQuestions';
 
@@ -99,13 +100,7 @@ export function ExamQuestionSearch({
                 <div>{item.prompt}</div>
                 <div style={metaStyle}>{formatExamItemMeta(item)}</div>
               </div>
-              <button
-                type="button"
-                style={textLinkButtonStyle}
-                onClick={() => onAdd(item.id)}
-              >
-                Добавить
-              </button>
+              <TextLinkButton onClick={() => onAdd(item.id)}>Добавить</TextLinkButton>
             </li>
           ))}
         </ul>

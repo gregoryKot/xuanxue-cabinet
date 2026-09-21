@@ -5,7 +5,7 @@
 import type { CSSProperties } from 'react';
 import type { MyMaterialDto } from '@xuanxue/shared';
 import { materialFilePath } from '../api/apiPaths';
-import { textLinkStyle } from '../components/screenLayout';
+import { textLinkHitAreaStyle, textLinkLineStyle } from '../components/screenLayout';
 
 const OPEN_LABEL = 'Открыть';
 // У материала бывает и ссылка, и свой файл — второе действие рядом с
@@ -27,14 +27,12 @@ const lockedTextStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',
 };
-// Цель нажатия ≥44 по высоте (CLAUDE.md «Доступность») — тот же приём, что у
-// recordingLinkStyle в ArchivedLessonCard.tsx.
-const openLinkStyle: CSSProperties = {
-  ...textLinkStyle,
-  display: 'inline-flex',
-  alignItems: 'center',
-  minHeight: 44,
-};
+// Цель нажатия 44 — оболочка textLinkHitAreaStyle, линию под буквами несёт
+// внутренний span с textLinkLineStyle (см. JSX ниже): тот же приём, что у
+// recordingLinkStyle в ArchivedLessonCard.tsx. Здесь две такие ссылки стоят
+// в одном ряду («Открыть» и «Скачать файл») — раньше их линии рисовались по
+// дну общей коробки 44px и тянулись одной полосой под обеими сразу.
+const openLinkStyle: CSSProperties = textLinkHitAreaStyle;
 
 interface StudentMaterialCardActionsProps {
   material: MyMaterialDto;
@@ -55,7 +53,7 @@ export function StudentMaterialCardActions({
     <div style={actionRowStyle}>
       {material.url && (
         <a href={material.url} target="_blank" rel="noreferrer" style={openLinkStyle}>
-          {OPEN_LABEL}
+          <span style={textLinkLineStyle}>{OPEN_LABEL}</span>
         </a>
       )}
       {material.file && (
@@ -64,7 +62,7 @@ export function StudentMaterialCardActions({
         // (api/src/security/csp.ts) оборвал бы такой редирект у fetch —
         // навигация по <a href> под CSP не ограничена, не «чинить» на apiFetch.
         <a href={`/api${materialFilePath(material.id)}`} style={openLinkStyle}>
-          {DOWNLOAD_FILE_LABEL}
+          <span style={textLinkLineStyle}>{DOWNLOAD_FILE_LABEL}</span>
         </a>
       )}
     </div>
