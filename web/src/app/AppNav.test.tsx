@@ -254,28 +254,6 @@ describe('AppNav — блок человека (боковая колонка, A
     expect(within(nav).queryByText(/Вы вошли как/)).not.toBeInTheDocument();
   });
 
-  // ADR-0063: колокольчик встаёт своей строкой между именем и «Профиль ·
-  // Выйти» — расчёт ширины, почему не третьим пунктом в ряду, живёт в
-  // AppNav.tsx рядом с местом рендера.
-  it('notificationsLink — своя строка в блоке человека, перед «Профиль · Выйти»', () => {
-    renderNav(false, TEACHER, '/planning', {
-      notificationsLink: <a href="/notifications">Уведомления</a>,
-      profileLink: <a href="/profile">Профиль</a>,
-      logoutButton: <button type="button">Выйти</button>,
-    });
-
-    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
-    const column = nav.parentElement as HTMLElement;
-    const personBlock = within(column).getByText(/Вы вошли как/)
-      .parentElement as HTMLElement;
-
-    const rows = Array.from(personBlock.children).map((el) => el.textContent);
-    const notifRow = rows.indexOf('Уведомления');
-    const actionsRow = rows.findIndex((text) => text?.includes('Профиль'));
-    expect(notifRow).toBeGreaterThanOrEqual(0);
-    expect(notifRow).toBeLessThan(actionsRow);
-  });
-
   // Мокап телефона такой блок не рисует вовсе — эту роль на телефоне играет
   // подвал AppShell.tsx, а не эта колонка (её на телефоне и не видно).
   it('на телефоне блок человека не рисуется, даже если узлы переданы', () => {
@@ -286,6 +264,33 @@ describe('AppNav — блок человека (боковая колонка, A
 
     expect(screen.queryByText(/Вы вошли как/)).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Профиль' })).not.toBeInTheDocument();
+  });
+});
+
+// Правка 2026-09-21 (отзыв владельца, ADR-0063): ссылку было не найти внизу
+// колонки, тусклой текстовой строкой в блоке человека. Теперь это первая
+// строка колонки после знака школы, ярче пунктов меню.
+describe('AppNav — ссылка на уведомления наверху колонки (ADR-0063)', () => {
+  it('стоит перед <nav aria-label="Разделы кабинета">, не внутри него', () => {
+    renderNav(false, TEACHER, '/planning', {
+      notificationsLink: <a href="/notifications">Уведомления</a>,
+      profileLink: <a href="/profile">Профиль</a>,
+      logoutButton: <button type="button">Выйти</button>,
+    });
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    const notifLink = screen.getByRole('link', { name: 'Уведомления' });
+
+    // Не внутри ориентира «Разделы кабинета» — та же причина, что у знака
+    // школы и блока человека (комментарий в AppNav.tsx у самого <nav>).
+    expect(
+      within(nav).queryByRole('link', { name: 'Уведомления' }),
+    ).not.toBeInTheDocument();
+    // И раньше <nav> в разметке колонки, не после (тот же приём, что у
+    // ExamEditorScreen.test.tsx — «Опубликовать» выше списка вопросов).
+    expect(
+      notifLink.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 

@@ -14,12 +14,12 @@
 // внутренней линейки.
 import type { CSSProperties } from 'react';
 import type { AttemptBlockDto } from '@xuanxue/shared';
+import { dividedListStyle } from '../components/listCardStyles';
 import type { AttemptVideoControls } from './useAttemptMedia';
 import type { UseAttemptAutosaveResult } from './useAttemptAutosave';
 import { AttemptQuestion } from './AttemptQuestion';
 
 const titleStyle: CSSProperties = { display: 'block', paddingBottom: 6 };
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 
 interface AttemptBlockProps {
   block: AttemptBlockDto;
@@ -35,7 +35,7 @@ export function AttemptBlock({ block, autosave, video }: AttemptBlockProps) {
           {block.title}
         </span>
       )}
-      <ol style={listStyle}>
+      <ol style={dividedListStyle}>
         {block.questions.map((question, index) => (
           <AttemptQuestion
             key={question.itemId}
