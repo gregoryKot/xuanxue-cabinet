@@ -169,6 +169,26 @@ describe('AttemptInProgress — подсказка и оставшееся вр�
   });
 });
 
+// ADR-0091: учитель вставляет ссылку на видео прямо в текст вопроса вместо
+// отдельного поля — кабинет находит её сам и показывает кликабельной, тем же
+// PromptText.tsx, что и в предпросмотре (exams/ExamPreviewQuestion.test.tsx).
+describe('AttemptInProgress — ссылка в формулировке (ADR-0091)', () => {
+  it('ссылка на видео в тексте вопроса кликабельна на экране сдачи', () => {
+    const attempt = makeAttempt();
+    const block = attempt.blocks[0];
+    if (!block) throw new Error('в фикстуре должен быть блок');
+    const question = block.questions[1];
+    if (!question) throw new Error('в фикстуре должен быть вопрос');
+    question.prompt = 'Посмотрите демонстрацию https://youtu.be/demo и повторите';
+
+    renderAttempt(attempt);
+
+    const link = screen.getByRole('link', { name: 'https://youtu.be/demo' });
+    expect(link).toHaveAttribute('href', 'https://youtu.be/demo');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+});
+
 describe('AttemptInProgress', () => {
   // ADR-0037: видео — ответ на конкретный вопрос, у него на самой форме
   // сдачи есть и кнопка бота с deep link на вопрос, и форма ссылки; поля

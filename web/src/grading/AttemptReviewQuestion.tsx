@@ -19,12 +19,18 @@
 // Сам список вариантов — AttemptReviewQuestionOptions.tsx (там же картинка
 // варианта, ADR-0035): этот файл стоял на пределе размера, и подкомпонент —
 // то, что велит делать CLAUDE.md «Храповики», а не сдвиг бейслайна вверх.
+//
+// Формулировка здесь рендерится своим кодом, не через QuestionRow.tsx
+// (у карточки проверки свой макет строки — номер и статус в одной шапке),
+// поэтому ссылку в ней делает кликабельной PromptText.tsx напрямую
+// (ADR-0091), тем же приёмом.
 import type { CSSProperties } from 'react';
 import {
   ATTEMPT_NO_ANSWER_TEXT,
   type AttemptReviewQuestionDto,
   type ExamMediaDto,
 } from '@xuanxue/shared';
+import { PromptText } from '../components/PromptText';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { AttemptReviewQuestionOptions } from './AttemptReviewQuestionOptions';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
@@ -95,7 +101,7 @@ export function AttemptReviewQuestion({
     <div style={rowStyle}>
       <div style={headStyle}>
         <span style={promptStyle}>
-          {index + 1}. {question.prompt}
+          {index + 1}. <PromptText text={question.prompt} />
         </span>
         {status && (
           <span
@@ -106,7 +112,14 @@ export function AttemptReviewQuestion({
           </span>
         )}
       </div>
-      {question.hint && <p style={metaStyle}>Подсказка ученику: {question.hint}</p>}
+      {/* Ссылка и в подсказке кликабельна (ADR-0091): ученик видит её такой
+          на экране сдачи (QuestionRow.tsx), и учитель, проверяя работу,
+          должен открыть ровно то же, а не переписывать адрес руками. */}
+      {question.hint && (
+        <p style={metaStyle}>
+          Подсказка ученику: <PromptText text={question.hint} />
+        </p>
+      )}
       {question.criteria && (
         <p style={metaStyle}>Критерии проверки: {question.criteria}</p>
       )}
