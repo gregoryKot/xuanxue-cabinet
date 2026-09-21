@@ -1,8 +1,17 @@
+// Черновик (ADR-0052, дополнение 2026-09-21) пишется в реальный localStorage
+// под ключом lesson:<id>/lesson:new — очищаем между тестами, иначе черновик
+// одного теста восстановился бы в соседнем (id занятия в makeLesson() один
+// и тот же).
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ClassDto, LessonDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
+import { readDraft } from '../lib/formDraft';
 import { useLessonForm } from './useLessonForm';
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
   return {
@@ -191,5 +200,58 @@ describe('useLessonForm — cancelLesson/restoreLesson сбой', () => {
 
     expect(ok).toBe(true);
     expect(onUpdate).toHaveBeenCalledWith('l1', { status: 'cancelled' });
+  });
+});
+
+// Сама механика черновика (восстановление, dirty, beforeunload) проверена в
+// hooks/useFormDraft.test.ts — здесь только то, что форма занятия реально
+// его подключает и снимает при успехе (аудит 2026-09-21, HIGH — раньше
+// useLessonForm не был защищён вовсе, случайный «Назад» стирал тему занятия
+// и ссылку на запись молча).
+describe('useLessonForm — черновик (ADR-0052, дополнение 2026-09-21)', () => {
+  it('ввёл тему → размонтировал → смонтировал заново → значение на месте', () => {
+    const first = renderHook(() => useLessonForm(null, CLASSES, vi.fn(), vi.fn()));
+    act(() => first.result.current.setField('topic', 'Черновик темы'));
+    first.unmount();
+
+    const second = renderHook(() => useLessonForm(null, CLASSES, vi.fn(), vi.fn()));
+
+    expect(second.result.current.state.topic).toBe('Черновик темы');
+    expect(second.result.current.draftRestored).toBe(true);
+  });
+
+  it('успешный submit — черновик снят', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useLessonForm(null, CLASSES, onCreate, vi.fn()));
+    act(() => result.current.setField('startsAtLocal', '2026-09-08T19:00'));
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(readDraft('lesson:new', Date.now())).toBeNull();
+  });
+
+  it('успешная отмена занятия — черновик снят', async () => {
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    const lesson = makeLesson();
+    const { result } = renderHook(() => useLessonForm(lesson, [], vi.fn(), onUpdate));
+    act(() => result.current.setField('topic', 'Правка перед отменой'));
+
+    await act(async () => {
+      await result.current.cancelLesson();
+    });
+
+    expect(readDraft(`lesson:${lesson.id}`, Date.now())).toBeNull();
+  });
+
+  it('непустой черновик — beforeunload отменяет событие', () => {
+    const { result } = renderHook(() => useLessonForm(null, CLASSES, vi.fn(), vi.fn()));
+    act(() => result.current.setField('topic', 'Тема'));
+
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 });
