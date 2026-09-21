@@ -32,7 +32,7 @@ const EXCLUDE = [
   /(^|\/)[\w.-]*\.config\.(ts|js|mjs|cjs)$/,
   // Баррель shared/src/index.ts — одни `export … from`, растёт от каждого модуля
   // shared: размер не про сложность, а --update требовался почти в каждом PR.
-  // Что логики в нём нет, держит check-shared-exports.mjs (ADR-0080).
+  // Что логики в нём нет, держит check-shared-exports.mjs (ADR-0081).
   /^shared\/src\/index\.ts$/,
 ];
 
@@ -75,7 +75,7 @@ for (const f of files) {
 if (UPDATE) {
   // По пути, а не по размеру: у записи стабильное место, поэтому --update из
   // разных PR правит разные строки и сливается — при сортировке по размеру
-  // запись переезжала от любого изменения размера и конфликтовала (ADR-0080).
+  // запись переезжала от любого изменения размера и конфликтовала (ADR-0081).
   const sorted = {};
   for (const f of Object.keys(sizes).sort()) sorted[f] = sizes[f];
   writeFileSync(BASELINE_PATH, JSON.stringify(sorted, null, 2) + '\n');
