@@ -30,6 +30,12 @@ export function EntryColumn({ children }: { children: ReactNode }) {
   return (
     <main className="xuanxue-entry-page">
       <div style={columnStyle}>
+        {/* Знак здесь НЕ ссылка (в отличие от AppNav.tsx/AppShellBrandRow.tsx,
+            SchoolBrandLink.tsx) — до входа у кабинета ещё нет своей главной:
+            «/» лежит за RequireAuth и без сессии гвард уводит с него обратно
+            на «/login» (cabinetRoutes.tsx, RequireAuth.tsx), а сами экраны
+            этой колонки и есть «/login»/приглашение — ссылка вела бы сама в
+            себя. */}
         <span style={markRowStyle}>
           <SchoolMark />
           <span className="xuanxue-eyebrow">{SCHOOL_NAME}</span>
