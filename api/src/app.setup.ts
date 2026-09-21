@@ -7,11 +7,13 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { EXAM_IMAGE_LIMITS, MATERIAL_FILE_LIMITS } from '@xuanxue/shared';
+import { SESSION_SECRET } from './auth/session-token';
 import { CSP_DIRECTIVES } from './security/csp';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
+import { makeRawUploadConcurrencyLimit } from './common/raw-upload-concurrency';
 import { formatValidationErrors } from './common/validation-messages';
-import { isRawImageUpload } from './exam-images/exam-image-body';
-import { isMaterialFileUpload } from './materials/material-file-body';
+import { makeIsRawImageUpload } from './exam-images/exam-image-body';
+import { makeIsMaterialFileUpload } from './materials/material-file-body';
 
 export function configureApp(app: NestExpressApplication): void {
   // nestjs-pino вместо встроенного логгера Nest — правило CLAUDE.md «Ошибки»:
@@ -33,13 +35,31 @@ export function configureApp(app: NestExpressApplication): void {
   // иначе дефолтный парсер (лимит ~100kb) успевает отработать первым, и наш
   // лимит ниже никогда не применяется.
   app.useBodyParser('json', { limit: '1mb' });
+
+  // Секрет сессии — из DI, один раз здесь (не в самих предикатах: они
+  // чистые функции без Nest-контекста), и замыкается на оба предиката ниже
+  // (SECURITY §4, ADR-0083, мера 1). app.get() безопасен до app.init():
+  // NestExpressApplication резолвит уже созданный граф провайдеров.
+  const sessionSecret = app.get<string>(SESSION_SECRET);
+  const isRawImageUpload = makeIsRawImageUpload(sessionSecret);
+  const isMaterialFileUpload = makeIsMaterialFileUpload(sessionSecret);
+
+  // Мера 2 (SECURITY §4, ADR-0083) — потолок на число сырых загрузок
+  // «в полёте» одновременно, ДО обоих парсеров ниже: иначе тело уже легло
+  // бы в память к моменту отказа. Один счётчик на оба маршрута — общий
+  // бюджет памяти инстанса, не по маршруту.
+  app.use(
+    makeRawUploadConcurrencyLimit(
+      (req) => isRawImageUpload(req) || isMaterialFileUpload(req),
+    ),
+  );
   // Сырое тело — исключение из «файлы мимо API» (SECURITY §4) ровно на два
   // маршрута: картинки вариантов ответа (ADR-0035) и снимок перевода
-  // (ADR-0050). Оба — картинки до 1 МБ. Включается по предикату маршрута и
-  // заявленного типа (exam-image-body.ts, там же список маршрутов), а не по
-  // image/* глобально — иначе такое тело в любом другом запросе стало бы
-  // Buffer, и ValidationPipe (whitelist/forbidNonWhitelisted) перебирал бы
-  // его как «лишние поля».
+  // (ADR-0050). Оба — картинки до 1 МБ. Включается по предикату маршрута,
+  // заявленного типа и подписанной сессии (exam-image-body.ts, там же
+  // список маршрутов), а не по image/* глобально — иначе такое тело в любом
+  // другом запросе стало бы Buffer, и ValidationPipe
+  // (whitelist/forbidNonWhitelisted) перебирал бы его как «лишние поля».
   app.useBodyParser('raw', {
     type: isRawImageUpload,
     limit: EXAM_IMAGE_LIMITS.maxBytes,

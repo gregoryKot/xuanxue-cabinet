@@ -118,3 +118,4 @@
 | [0080](0080-docx-accepted-by-reading-the-zip-directory.md)     | `.docx` принимается: ZIP-контейнер проверяется по именам записей каталога                   |
 | [0081](0081-shared-barrel-out-of-size-ratchet.md)              | Размер барреля `shared` храповик не считает, взамен в нём только `export … from`            |
 | [0082](0082-exam-random-subset-of-questions.md)                | Экзамен показывает N случайных вопросов из списка; число — у блока рядом с `shuffle`        |
+| [0083](0083-raw-body-buffered-only-for-signed-session.md)      | Сырое тело буферизуется только для подписанной сессии, число загрузок ограничено            |

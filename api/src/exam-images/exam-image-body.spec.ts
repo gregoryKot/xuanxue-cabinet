@@ -1,21 +1,39 @@
 // Чистая логика без Mongo/DI/HTTP (CLAUDE.md «Тесты») — каждая ветка
-// предиката отдельно, чтобы падение указывало ровно на причину.
-import { EXAM_IMAGES_ROUTE_PATH, isRawImageUpload } from './exam-image-body';
+// предиката отдельно, чтобы падение указывало ровно на причину. Сессия —
+// та же проверка, что у material-file-body.ts: common/raw-body-session.spec.ts
+// покрывает её ветки по отдельности, здесь — только что предикат её зовёт.
+import { DateTime } from 'luxon';
+import { SESSION_COOKIE } from '../auth/session-cookie';
+import { SESSION_MAX_AGE_DAYS, signSession } from '../auth/session-token';
+import { EXAM_IMAGES_ROUTE_PATH, makeIsRawImageUpload } from './exam-image-body';
+
+const SECRET = 'a'.repeat(32);
+
+function validCookie(secret = SECRET): string {
+  const token = signSession({ userId: 'u1', issuedAt: DateTime.utc() }, secret);
+  return `${SESSION_COOKIE}=${token}`;
+}
 
 function req(overrides: {
   method?: string;
   url?: string;
   contentType?: string | string[];
-}): Parameters<typeof isRawImageUpload>[0] {
+  cookie?: string;
+}): Parameters<ReturnType<typeof makeIsRawImageUpload>>[0] {
   return {
     method: overrides.method ?? 'POST',
     url: overrides.url ?? EXAM_IMAGES_ROUTE_PATH,
-    headers: { 'content-type': overrides.contentType ?? 'image/jpeg' },
+    headers: {
+      'content-type': overrides.contentType ?? 'image/jpeg',
+      cookie: overrides.cookie ?? validCookie(),
+    },
   };
 }
 
-describe('isRawImageUpload', () => {
-  it('POST на /api/exam-images с image/jpeg — true', () => {
+describe('makeIsRawImageUpload', () => {
+  const isRawImageUpload = makeIsRawImageUpload(SECRET);
+
+  it('POST на /api/exam-images с image/jpeg и валидной сессией — true', () => {
     expect(isRawImageUpload(req({}))).toBe(true);
   });
 
@@ -59,12 +77,49 @@ describe('isRawImageUpload', () => {
 
   it('заголовок content-type отсутствует — false', () => {
     expect(
-      isRawImageUpload({ method: 'POST', url: EXAM_IMAGES_ROUTE_PATH, headers: {} }),
+      isRawImageUpload({
+        method: 'POST',
+        url: EXAM_IMAGES_ROUTE_PATH,
+        headers: { cookie: validCookie() },
+      }),
     ).toBe(false);
   });
 
   it('заголовок-массив — false', () => {
     expect(isRawImageUpload(req({ contentType: ['image/jpeg'] }))).toBe(false);
+  });
+
+  // Мера 1 (SECURITY §4, ADR-0083) — метод/путь/тип уже валидны, отказать
+  // должна именно проверка сессии: эти случаи проверяют только её.
+  describe('сессия (SECURITY §4, ADR-0083)', () => {
+    it('нет заголовка Cookie — false', () => {
+      expect(
+        isRawImageUpload({
+          method: 'POST',
+          url: EXAM_IMAGES_ROUTE_PATH,
+          headers: { 'content-type': 'image/jpeg' },
+        }),
+      ).toBe(false);
+    });
+
+    it('токен подписан чужим секретом — false', () => {
+      expect(isRawImageUpload(req({ cookie: validCookie('b'.repeat(32)) }))).toBe(false);
+    });
+
+    it('протухший токен — false', () => {
+      const token = signSession(
+        {
+          userId: 'u1',
+          issuedAt: DateTime.utc().minus({ days: SESSION_MAX_AGE_DAYS, seconds: 1 }),
+        },
+        SECRET,
+      );
+      expect(isRawImageUpload(req({ cookie: `${SESSION_COOKIE}=${token}` }))).toBe(false);
+    });
+
+    it('валидный токен — true', () => {
+      expect(isRawImageUpload(req({ cookie: validCookie() }))).toBe(true);
+    });
   });
 
   // Второй маршрут сырого тела (ADR-0050, SECURITY §4) — снимок перевода.
