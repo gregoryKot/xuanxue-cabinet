@@ -27,6 +27,14 @@ describe('RecordingSection — список записей', () => {
     );
   });
 
+  // ADR-0100: та же механика, что в архиве ученика — один компонент.
+  it('запись на YouTube — кнопка плеера рядом со ссылкой', () => {
+    renderSection([{ id: 'r1', title: 'Часть 1', url: 'https://youtu.be/dQw4w9WgXcQ' }]);
+
+    expect(screen.getByRole('button', { name: 'Смотреть здесь' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Часть 1' })).toBeInTheDocument();
+  });
+
   it('запись без ссылки (видео из Telegram) — название без ссылки', () => {
     renderSection([{ id: 'r1', title: 'Видео в чате' }]);
     expect(screen.getByText('Видео в чате')).toBeInTheDocument();

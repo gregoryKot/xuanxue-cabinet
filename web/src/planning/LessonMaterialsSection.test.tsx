@@ -100,6 +100,18 @@ describe('LessonMaterialsSection — привязанные материалы',
     expect(screen.getByText('Книга · для старшей')).toBeInTheDocument();
   });
 
+  // ADR-0100: у материала-видео плеер прямо в строке занятия — учителю не
+  // нужно открывать вкладку, чтобы вспомнить, что он привязал.
+  it('материал со ссылкой на YouTube — кнопка плеера рядом с названием', async () => {
+    renderSection({
+      attached: [makeMaterial({ kind: 'video', url: 'https://youtu.be/dQw4w9WgXcQ' })],
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Смотреть здесь' }),
+    ).toBeInTheDocument();
+  });
+
   it('пока ни одного материала — объяснение, зачем это поле', async () => {
     renderSection();
 

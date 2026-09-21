@@ -6,6 +6,7 @@
 import type { CSSProperties } from 'react';
 import { MATERIAL_KIND_LABELS, type MaterialDto } from '@xuanxue/shared';
 import { textLinkStyle } from '../components/screenLayout';
+import { VideoEmbed } from '../components/VideoEmbed';
 import { TextLinkButton } from '../components/TextLinkButton';
 
 const rowStyle: CSSProperties = {
@@ -44,6 +45,9 @@ export function LessonMaterialRow({
           {material.title}
         </a>
         <div style={metaStyle}>{meta}</div>
+        {/* Плеер у материала-видео (ADR-0100) — решает адрес, не вид;
+            комментарий в student/StudentMaterialCardActions.tsx. */}
+        <VideoEmbed url={material.url} title={material.title} />
       </div>
       <TextLinkButton onClick={onAction}>{actionLabel}</TextLinkButton>
     </li>

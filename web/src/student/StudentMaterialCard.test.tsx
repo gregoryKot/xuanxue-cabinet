@@ -51,6 +51,25 @@ describe('StudentMaterialCard — название и вид', () => {
 
   // Занятие приезжает названием с сервера (MaterialsService.listForStudent):
   // `GET /classes` ученику закрыт ролью, подписать id было бы нечем (ADR-0047).
+  // ADR-0100: материал-видео смотрят прямо в библиотеке. Вид материала при
+  // этом не проверяется — решает сам адрес: статья со ссылкой на YouTube
+  // получит плеер так же законно.
+  it('материал со ссылкой на YouTube — кнопка плеера рядом с «Открыть»', () => {
+    renderCard(makeMaterial({ kind: 'video', url: 'https://youtu.be/dQw4w9WgXcQ' }));
+
+    expect(screen.getByRole('button', { name: 'Смотреть здесь' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть' })).toBeInTheDocument();
+  });
+
+  it('материал на невстраиваемом адресе — плеера нет, ссылка остаётся', () => {
+    renderCard(makeMaterial());
+
+    expect(
+      screen.queryByRole('button', { name: 'Смотреть здесь' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Открыть' })).toBeInTheDocument();
+  });
+
   it('привязанные занятия стоят в подписи рядом с видом', () => {
     renderCard(makeMaterial({ classTitles: ['Тайцзицюань, средняя группа'] }));
     expect(screen.getByText('Книга · Тайцзицюань, средняя группа')).toBeInTheDocument();
