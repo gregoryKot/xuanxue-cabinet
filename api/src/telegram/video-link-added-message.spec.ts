@@ -58,7 +58,18 @@ describe('videoLinkAddedMessage', () => {
   // ADR-0009: ссылки только от PUBLIC_URL — без него в тексте не должно
   // появиться «undefined/grading/...».
   it('PUBLIC_URL не задан — сообщение без карточки, а не с «undefined»', () => {
-    const text = build({}, undefined);
+    // Зовём напрямую, а не через build(): значение по умолчанию у параметра
+    // подставилось бы ровно на `undefined`, и тест проверял бы не тот случай.
+    const text = videoLinkAddedMessage(
+      {
+        studentName: 'Мария',
+        examTitle: EXAM_TITLE,
+        questionPrompt: 'Повторите форму Ци-ши',
+        url: URL,
+        attemptId: ATTEMPT_ID,
+      },
+      undefined,
+    );
 
     expect(text).not.toContain('undefined');
     expect(text).not.toContain('/grading/');
