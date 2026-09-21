@@ -157,4 +157,26 @@ describe('PushSubscriptionsService', () => {
     expect(service.isEnabled).toBe(true);
     expect(new PushSubscriptionsService(model, VAPID_OFF).isEnabled).toBe(false);
   });
+
+  it('listEndpointsFor: подписался → нашёлся по userId (read-after-write), без p256dh/auth', async () => {
+    await service.subscribe('u1', SUBSCRIPTION_A);
+    await service.subscribe('u1', {
+      ...SUBSCRIPTION_A,
+      endpoint: 'https://fcm.googleapis.com/fcm/send/device-2',
+    });
+    await service.subscribe('u2', {
+      ...SUBSCRIPTION_A,
+      endpoint: 'https://fcm.googleapis.com/fcm/send/device-other-user',
+    });
+
+    const endpoints = await service.listEndpointsFor('u1');
+
+    expect(endpoints.sort()).toEqual(
+      [SUBSCRIPTION_A.endpoint, 'https://fcm.googleapis.com/fcm/send/device-2'].sort(),
+    );
+  });
+
+  it('listEndpointsFor: человек без подписок — пустой список, не ошибка', async () => {
+    await expect(service.listEndpointsFor('нет-такого')).resolves.toEqual([]);
+  });
 });

@@ -58,13 +58,20 @@
 // ExamMediaLinkNotifier (ADR-0084, слой 4.5) — тем же приёмом кладёт себя в
 // ExamMediaNotifierRegistry (media/), которую MediaModule уже экспортирует:
 // второго импорта заводить не пришлось, ExamsModule и так импортирует
-// MediaModule выше. Оба плеча (InApp/Telegram) уже провайдеры этого модуля.
+// MediaModule выше. Три плеча (InApp/Telegram/Push) — уже провайдеры модуля.
+//
+// Импортирует PushModule ради PushSenderService (третье плечо EXAM_NOTIFIER,
+// ADR-0092) — тем же приёмом, что NotificationsModule выше: PushExamNotifier
+// физически живёт в api/src/push, но собирается здесь, провайдером
+// ExamsModule. Цикла нет — PushModule про exams/ не знает.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
 import { MediaModule } from '../media/media.module';
 import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PushExamNotifier } from '../push/push-exam-notifier';
+import { PushModule } from '../push/push.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import { InAppVideoLinkNotifier } from '../notifications/in-app-video-link-notifier';
@@ -97,6 +104,7 @@ import { MyExamsService } from './my-exams.service';
     MediaModule,
     ExamImagesModule,
     NotificationsModule,
+    PushModule,
     MongooseModule.forFeature([
       { name: ExamItemRecord.name, schema: ExamItemSchema },
       { name: ExamRecord.name, schema: ExamSchema },
@@ -118,11 +126,11 @@ import { MyExamsService } from './my-exams.service';
     ExamAttemptCountService,
     ExamGradingsService,
     MyExamsService,
-    // Кабинет и Telegram — по отдельному провайдеру своего класса,
-    // EXAM_NOTIFIER собирает их вместе (CompositeExamNotifier, ADR-0061):
-    // вызывающему коду не важно, что каналов два.
+    // Кабинет, Telegram и push — по отдельному провайдеру, EXAM_NOTIFIER
+    // собирает их вместе (CompositeExamNotifier, ADR-0061/ADR-0092).
     InAppExamNotifier,
     TelegramExamNotifier,
+    PushExamNotifier,
     // Плечо Telegram у уведомления о присланной ссылке (ADR-0084) — отдельный
     // провайдер, а не метод TelegramExamNotifier: файл-лимит и другое событие,
     // комментарий в telegram-video-link-notifier.ts.
