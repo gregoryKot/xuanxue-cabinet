@@ -35,11 +35,11 @@ interface VerifyCall {
  * auth.controller.spec.ts). */
 function fakeResponse(): { res: ResponseLike; headers: Record<string, string> } {
   const headers: Record<string, string> = {};
-  const res = {
+  const res: ResponseLike = {
     setHeader: (name: string, value: string) => {
       headers[name] = value;
     },
-  } as unknown as ResponseLike;
+  };
   return { res, headers };
 }
 
