@@ -38,13 +38,13 @@ export function configureApp(app: NestExpressApplication): void {
 
   // Секрет сессии — из DI, один раз здесь (не в самих предикатах: они
   // чистые функции без Nest-контекста), и замыкается на оба предиката ниже
-  // (SECURITY §4, ADR-0081, мера 1). app.get() безопасен до app.init():
+  // (SECURITY §4, ADR-0082, мера 1). app.get() безопасен до app.init():
   // NestExpressApplication резолвит уже созданный граф провайдеров.
   const sessionSecret = app.get<string>(SESSION_SECRET);
   const isRawImageUpload = makeIsRawImageUpload(sessionSecret);
   const isMaterialFileUpload = makeIsMaterialFileUpload(sessionSecret);
 
-  // Мера 2 (SECURITY §4, ADR-0081) — потолок на число сырых загрузок
+  // Мера 2 (SECURITY §4, ADR-0082) — потолок на число сырых загрузок
   // «в полёте» одновременно, ДО обоих парсеров ниже: иначе тело уже легло
   // бы в память к моменту отказа. Один счётчик на оба маршрута — общий
   // бюджет памяти инстанса, не по маршруту.

@@ -1,4 +1,4 @@
-// Мера 1 против буферизации сырого тела до гвардов (SECURITY §4, ADR-0081).
+// Мера 1 против буферизации сырого тела до гвардов (SECURITY §4, ADR-0082).
 // Предикаты сырого парсера (materials/material-file-body.ts,
 // exam-images/exam-image-body.ts) отрабатывают в app.setup.ts ДО
 // ThrottlerGuard и AuthGuard — они express-middleware, а не Nest-гварды, и

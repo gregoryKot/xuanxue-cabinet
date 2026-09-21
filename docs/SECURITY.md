@@ -265,7 +265,7 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   413 в общем конверте, не 500. Обещания «скриншоты идут напрямую в хранилище по
   подписанной ссылке» по-прежнему нет: подписанной ссылкой у нас отдаётся только
   файл материала, и наружу она уходит после нашей же проверки права.
-- **Сырое тело парсится до гвардов** (ADR-0081). `app.useBodyParser('raw', { type: predicate })`
+- **Сырое тело парсится до гвардов** (ADR-0082). `app.useBodyParser('raw', { type: predicate })`
   в `app.setup.ts` — express-middleware, она отрабатывает раньше, чем Nest дойдёт до
   `ThrottlerGuard` и `AuthGuard`: без дополнительных мер неавторизованный
   `POST /api/materials/<24 hex>/file` с `Content-Type: application/pdf` буферизовался
