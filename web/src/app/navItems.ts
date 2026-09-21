@@ -16,6 +16,11 @@
 import type { MeDto, UserRole } from '@xuanxue/shared';
 import { isTeacher } from './screenAccess';
 
+/** Имя значка нижней панели телефона (NavIcon.tsx, ADR-0097). Union строк,
+ * не `enum` (CLAUDE.md «TypeScript строгий»). */
+export type NavIconName =
+  'lessons' | 'broadcasts' | 'exams' | 'people' | 'materials' | 'tasks';
+
 export interface NavItem {
   to: string;
   label: string;
@@ -25,25 +30,32 @@ export interface NavItem {
   /** Дочерние маршруты раздела — по ним `activeSectionPath` подсвечивает
    * пункт меню, когда открыт не сам раздел, а его подэкран. */
   childPaths: string[];
+  /** Имя значка нижней панели телефона, не готовый узел: `navItems.ts`
+   * остаётся модулем без JSX, рисует значок NavIcon.tsx (ADR-0097). Боковая
+   * колонка на мониторе значок не берёт — там подпись остаётся словом. */
+  icon: NavIconName;
 }
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
-  { to: '/planning', label: 'Занятия', childPaths: ['/schedule'] },
+  { to: '/planning', label: 'Занятия', childPaths: ['/schedule'], icon: 'lessons' },
   {
     to: '/broadcasts',
     label: 'Рассылки',
     childPaths: ['/channels', '/templates'],
+    icon: 'broadcasts',
   },
   {
     to: '/exams',
     label: 'Экзамены',
     childPaths: ['/exam-items', '/grading'],
+    icon: 'exams',
   },
   {
     to: '/people',
     label: 'Ученики',
     roles: ['admin', 'teacher'],
     childPaths: [],
+    icon: 'people',
   },
   // Пятый пункт, добавленный ADR-0055 — единственное названное исключение
   // из правила выше. `/materials/new` и `/materials/:materialId`
@@ -51,18 +63,28 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
   // подсвечивают, `activeSectionPath` сравнивает путь целиком) — а
   // `/materials/tags` (ADR-0075) в childPaths: это подэкран «Материалов»,
   // тот же приём, что у «/archive»/«/library» под «Занятиями» ученика.
-  { to: '/materials', label: 'Материалы', childPaths: ['/materials/tags'] },
+  {
+    to: '/materials',
+    label: 'Материалы',
+    childPaths: ['/materials/tags'],
+    icon: 'materials',
+  },
 ];
 
 /** Решение владельца: экзамены — отдельный экран и первый после входа,
  * занятия — второй (docs/PLAN.md §11). */
 export const STUDENT_NAV_ITEMS: NavItem[] = [
-  { to: '/tasks', label: 'Задания', childPaths: [] },
+  { to: '/tasks', label: 'Задания', childPaths: [], icon: 'tasks' },
   // «/archive» («Записи занятий», слой 3.3) и «/library» («Библиотека»,
   // слой 3.2) — подэкраны «Занятий», вход карточкой SectionLink на
   // LessonsScreen.tsx (ADR-0025): вкладка «Занятия» остаётся подсвеченной,
   // когда ученик уже открыл один из них.
-  { to: '/lessons', label: 'Занятия', childPaths: ['/archive', '/library'] },
+  {
+    to: '/lessons',
+    label: 'Занятия',
+    childPaths: ['/archive', '/library'],
+    icon: 'lessons',
+  },
 ];
 
 /** Пункты навигации для роли этого человека (AppNav.tsx). */
