@@ -36,6 +36,13 @@
 // цифру на значке до следующего похода в сеть. Ему нужна роль (`me`) —
 // экзамены в счётчике считаются только у ученика, у штата школы попыток нет
 // (ADR-0074).
+//
+// MyExamsProvider — снаружи NotificationsProvider и тоже с `me`: список
+// экзаменов нужен и центру уведомлений (счётчик новых заданий у колокольчика,
+// useNotificationsData.ts), и экрану «Задания» ниже по Outlet — обоим с
+// одного запроса GET /me/exams, а не с двух копий состояния. Роль решает,
+// идёт ли сам запрос — у штата школы он выключен везде, кроме «/tasks»
+// (ADR-0074, MyExamsProvider.tsx).
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
@@ -43,6 +50,7 @@ import { textLinkStyle } from '../components/screenLayout';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { NotificationsNavLink } from '../notifications/NotificationsNavLink';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
+import { MyExamsProvider } from '../student/MyExamsProvider';
 import { AppNav } from './AppNav';
 import { contentColumnStyle, shellRowStyle, shellStyle } from './appShellStyles';
 import { AppShellBrandRow } from './AppShellBrandRow';
@@ -73,32 +81,36 @@ export function AppShell() {
   const hasSideNav = !isMobile;
 
   return (
-    <NotificationsProvider me={me}>
-      <div style={shellStyle}>
-        <div style={shellRowStyle}>
-          {hasSideNav && (
-            <AppNav
-              isMobile={false}
-              me={me}
-              notificationsLink={<NotificationsNavLink />}
-              profileLink={
-                <Link to={PROFILE_PATH} style={textLinkStyle}>
-                  Профиль
-                </Link>
-              }
-              logoutButton={<LogoutButton />}
-            />
-          )}
-          <div style={contentColumnStyle}>
-            {/* Мобильный колокольчик рисует сама AppShellBrandRow.tsx — она
-                уже импортирует ProfileIcon напрямую тем же приёмом. */}
-            {!hasSideNav && <AppShellBrandRow isMobile={isMobile} />}
-            <main>{canSee ? <Outlet /> : <Navigate to={rootPathFor(me)} replace />}</main>
+    <MyExamsProvider me={me}>
+      <NotificationsProvider me={me}>
+        <div style={shellStyle}>
+          <div style={shellRowStyle}>
+            {hasSideNav && (
+              <AppNav
+                isMobile={false}
+                me={me}
+                notificationsLink={<NotificationsNavLink />}
+                profileLink={
+                  <Link to={PROFILE_PATH} style={textLinkStyle}>
+                    Профиль
+                  </Link>
+                }
+                logoutButton={<LogoutButton />}
+              />
+            )}
+            <div style={contentColumnStyle}>
+              {/* Мобильный колокольчик рисует сама AppShellBrandRow.tsx — она
+                  уже импортирует ProfileIcon напрямую тем же приёмом. */}
+              {!hasSideNav && <AppShellBrandRow isMobile={isMobile} />}
+              <main>
+                {canSee ? <Outlet /> : <Navigate to={rootPathFor(me)} replace />}
+              </main>
+            </div>
           </div>
-        </div>
 
-        {isMobile && <AppNav isMobile me={me} />}
-      </div>
-    </NotificationsProvider>
+          {isMobile && <AppNav isMobile me={me} />}
+        </div>
+      </NotificationsProvider>
+    </MyExamsProvider>
   );
 }

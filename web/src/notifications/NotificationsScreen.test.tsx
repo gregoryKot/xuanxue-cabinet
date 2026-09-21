@@ -17,6 +17,7 @@ import {
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
+import { MyExamsProvider } from '../student/MyExamsProvider';
 import {
   mockApiByPath,
   mockedApiFetch,
@@ -93,9 +94,11 @@ function renderScreen(overrides: Record<string, unknown> = {}) {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <NotificationsProvider me={ME_LINKED}>
-          <NotificationsScreen />
-        </NotificationsProvider>
+        <MyExamsProvider me={ME_LINKED}>
+          <NotificationsProvider me={ME_LINKED}>
+            <NotificationsScreen />
+          </NotificationsProvider>
+        </MyExamsProvider>
       </AuthProvider>
     </MemoryRouter>,
   );

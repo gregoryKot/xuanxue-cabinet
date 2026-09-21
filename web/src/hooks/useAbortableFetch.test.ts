@@ -77,9 +77,9 @@ describe('useAbortableFetch — enabled: false (ADR-0030)', () => {
   });
 
   // Пара к тесту выше: явный reload() человека выключенный хук будит, а
-  // фоновый тик — нет (ADR-0076). Иначе `useMyExams({ enabled: !isTeacher })`
-  // у счётчика уведомлений сходил бы за экзаменами штата раз в минуту —
-  // ровно то хождение, которое убрал ADR-0074.
+  // фоновый тик — нет (ADR-0076). Иначе MyExamsProvider (student/
+  // MyExamsProvider.tsx), выключенный у штата школы, сходил бы за экзаменами
+  // раз в минуту — ровно то хождение, которое убрал ADR-0074.
   it('refresh() на выключенном хуке молчит — фоновый тик его не будит', async () => {
     const load = vi.fn().mockResolvedValue('готово');
     const { result } = renderHook(() =>
