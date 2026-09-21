@@ -28,8 +28,8 @@ import { buildOptionId, buildQuestionId } from './exam-callback-ids';
 const TEXT_QUESTION_PROMPT = 'Напишите ответ сообщением — обычным текстом, прямо сюда.';
 const VIDEO_QUESTION_PROMPT =
   'Снимите или пришлите видео сюда — видеосообщение, «кружок» или файл с видео.';
-// Замены нет: attachTelegramVideo всегда вставляет новую запись, у kind:
-// 'telegram' уникального индекса нет сознательно — старая запись остаётся и видна учителю.
+// Замены нет: attachTelegramVideo всегда вставляет новую запись — у kind:
+// 'telegram' уникального индекса нет сознательно, старая остаётся видна учителю.
 const VIDEO_RECEIVED_NOTE = 'Видео получено. Пришлёте ещё одно — учитель увидит оба.';
 
 const BACK_LABEL = 'Назад';
