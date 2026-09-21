@@ -163,6 +163,41 @@ describe('EmailLinkService.link', () => {
     expect((err as Error).message).toBe(EMAIL_LINK_OTHER_EMAIL_MESSAGE);
   });
 
+  // Опечатка в ещё не подтверждённом адресе — письмо ушло бы в никуда:
+  // pendingEmail не блокирует смену (в отличие от подтверждённого email
+  // выше), второй link() принимает другой адрес как обычную привязку.
+  it('pendingEmail уже есть, подтверждённого email нет — другой адрес принимается', async () => {
+    const calls: string[] = [];
+    let sentTo: string | undefined;
+    const service = buildService({
+      userEmailService: fakeUserEmailService({
+        setPendingEmail: (userId, email) => {
+          calls.push('setPendingEmail');
+          expect(userId).toBe(BASE_USER.id);
+          expect(email).toBe('right@example.com');
+          return Promise.resolve();
+        },
+      }),
+      tokens: fakeTokens((userId, email) => {
+        calls.push('issue');
+        expect(userId).toBe(BASE_USER.id);
+        expect(email).toBe('right@example.com');
+        return Promise.resolve('b'.repeat(64));
+      }),
+      mail: fakeMail((input) => {
+        calls.push('sendEmailConfirmLink');
+        sentTo = input.to;
+        return Promise.resolve();
+      }),
+    });
+    const user: UserLean = { ...BASE_USER, pendingEmail: 'typo@example.com' };
+
+    await service.link(user, 'right@example.com', NOW);
+
+    expect(calls).toEqual(['setPendingEmail', 'issue', 'sendEmailConfirmLink']);
+    expect(sentTo).toBe('right@example.com');
+  });
+
   it('адрес уже занят другим аккаунтом — ConflictError, pendingEmail не пишем', async () => {
     let touched = false;
     const service = buildService({

@@ -14,9 +14,17 @@ const textStyle = { margin: 0 };
 interface PendingEmailNoticeProps {
   email: string;
   refresh: () => Promise<void>;
+  /** Опечатка в адресе иначе неисправима: письмо уходит в никуда, а человек
+   * не понимает почему «Прислать ссылку ещё раз» не помогает. Переключает
+   * SecondLoginKey.tsx на EmailLinkForm с этим же адресом в поле. */
+  onChangeAddress: () => void;
 }
 
-export function PendingEmailNotice({ email, refresh }: PendingEmailNoticeProps) {
+export function PendingEmailNotice({
+  email,
+  refresh,
+  onChangeAddress,
+}: PendingEmailNoticeProps) {
   const { status, error, link } = useEmailLink(refresh);
 
   return (
@@ -29,6 +37,7 @@ export function PendingEmailNotice({ email, refresh }: PendingEmailNoticeProps) 
       <TextLinkButton disabled={status === 'pending'} onClick={() => void link(email)}>
         Прислать ссылку ещё раз
       </TextLinkButton>
+      <TextLinkButton onClick={onChangeAddress}>Указать другой адрес</TextLinkButton>
     </div>
   );
 }
