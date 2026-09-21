@@ -11,8 +11,10 @@ import {
   type ExamDto,
   type UpdateExamInput,
 } from '@xuanxue/shared';
+import { validateQuestionsPerAttemptText } from './questionsPerAttempt';
 import {
   initialQuestionIds,
+  initialQuestionsPerAttempt,
   initialShuffleQuestions,
   toBlockInputs,
 } from './examQuestions';
@@ -23,6 +25,7 @@ import {
 const MIN_TIME_LIMIT_MIN = 1;
 const MIN_ATTEMPTS_ALLOWED = 1;
 const DEFAULT_ATTEMPTS_ALLOWED = 1;
+const MIN_QUESTIONS_PER_ATTEMPT = 1;
 
 export interface ExamFormState {
   title: string;
@@ -34,9 +37,13 @@ export interface ExamFormState {
   questionIds: string[];
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
+  /** Сколько вопросов из списка достаётся сдающему — строкой по той же
+   * причине, что timeLimitMinText выше; пусто — все вопросы (ADR-0082). */
+  questionsPerAttemptText: string;
 }
 
 export function initialExamFormState(exam: ExamDto | null): ExamFormState {
+  const questionsPerAttempt = initialQuestionsPerAttempt(exam);
   return {
     title: exam?.title ?? '',
     description: exam?.description ?? '',
@@ -46,6 +53,8 @@ export function initialExamFormState(exam: ExamDto | null): ExamFormState {
     questionIds: initialQuestionIds(exam),
     shuffleQuestions: initialShuffleQuestions(exam),
     shuffleOptions: exam?.shuffleOptions ?? false,
+    questionsPerAttemptText:
+      questionsPerAttempt !== undefined ? String(questionsPerAttempt) : '',
   };
 }
 
@@ -74,6 +83,15 @@ export function validateExamForm(state: ExamFormState): string | null {
   ) {
     return `Число попыток — целое число от ${MIN_ATTEMPTS_ALLOWED} до ${EXAM_LIMITS.attemptsMax}.`;
   }
+  if (state.questionsPerAttemptText.trim() !== '') {
+    const error = validateQuestionsPerAttemptText(
+      state.questionsPerAttemptText,
+      MIN_QUESTIONS_PER_ATTEMPT,
+      EXAM_LIMITS.itemsPerBlockMax,
+      state.questionIds.length,
+    );
+    if (error) return error;
+  }
   return null;
 }
 
@@ -82,7 +100,14 @@ export function toCreateInput(state: ExamFormState): CreateExamInput {
     title: state.title.trim(),
     description: state.description.trim() || undefined,
     level: state.level.trim() || undefined,
-    blocks: toBlockInputs(state.questionIds, state.shuffleQuestions, null),
+    blocks: toBlockInputs({
+      itemIds: state.questionIds,
+      shuffle: state.shuffleQuestions,
+      questionsPerAttempt: state.questionsPerAttemptText.trim()
+        ? Number(state.questionsPerAttemptText)
+        : undefined,
+      exam: null,
+    }),
     shuffleOptions: state.shuffleOptions,
     timeLimitMin: state.timeLimitMinText.trim()
       ? Number(state.timeLimitMinText)
@@ -104,7 +129,14 @@ export function toUpdateInput(
     title: state.title.trim(),
     description: state.description.trim() || null,
     level: state.level.trim() || null,
-    blocks: toBlockInputs(state.questionIds, state.shuffleQuestions, exam),
+    blocks: toBlockInputs({
+      itemIds: state.questionIds,
+      shuffle: state.shuffleQuestions,
+      questionsPerAttempt: state.questionsPerAttemptText.trim()
+        ? Number(state.questionsPerAttemptText)
+        : undefined,
+      exam,
+    }),
     shuffleOptions: state.shuffleOptions,
     timeLimitMin: state.timeLimitMinText.trim() ? Number(state.timeLimitMinText) : null,
     attemptsAllowed: Number(state.attemptsAllowedText),

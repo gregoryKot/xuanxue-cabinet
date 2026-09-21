@@ -5,6 +5,7 @@
 import type { CSSProperties } from 'react';
 import { Field, inputStyle } from '../components/Field';
 import { Toggle } from '../components/Toggle';
+import { questionsPerAttemptHint } from './questionsPerAttempt';
 import type { ExamFormState } from './examFormInput';
 
 const SHUFFLE_QUESTIONS_LABEL = 'Перемешивать вопросы';
@@ -12,6 +13,7 @@ const SHUFFLE_QUESTIONS_HINT = 'У каждого ученика свой пор
 const SHUFFLE_OPTIONS_LABEL = 'Перемешивать варианты ответов';
 const SHUFFLE_OPTIONS_HINT = 'Верный вариант не стоит на одном и том же месте';
 const TIME_LIMIT_HINT = 'Пусто — без ограничения.';
+const QUESTIONS_PER_ATTEMPT_LABEL = 'Вопросов ученику';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
 
@@ -55,6 +57,22 @@ export function ExamFlowFields({ state, setField }: ExamFlowFieldsProps) {
           />
         </Field>
       </div>
+
+      {/* Отдельным полем под сеткой, не третьей колонкой xuanxue-form-columns:
+          у той сетки два столбца, третье поле просто съедет вниз и оставит
+          пустоту рядом (сетка — CLAUDE.md «Одна механика — один компонент»,
+          менять её ради одного нечастого поля незачем). */}
+      <Field
+        label={QUESTIONS_PER_ATTEMPT_LABEL}
+        hint={questionsPerAttemptHint(state.questionIds.length)}
+      >
+        <input
+          style={inputStyle}
+          inputMode="numeric"
+          value={state.questionsPerAttemptText}
+          onChange={(e) => setField('questionsPerAttemptText', e.target.value)}
+        />
+      </Field>
     </div>
   );
 }

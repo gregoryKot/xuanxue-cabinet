@@ -41,7 +41,7 @@ describe('parseMaterialFileUpload', () => {
     });
   });
 
-  it('настоящий .docx — bytes и OOXML-тип Word (ADR-0080)', () => {
+  it('настоящий .docx — bytes и OOXML-тип Word (ADR-0082)', () => {
     expect(parseMaterialFileUpload(DOCX_BYTES)).toEqual({
       bytes: DOCX_BYTES,
       contentType: MATERIAL_FILE_DOCX_CONTENT_TYPE,

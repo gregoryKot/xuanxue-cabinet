@@ -18,15 +18,41 @@ export function initialShuffleQuestions(exam: ExamDto | null): boolean {
   return exam?.blocks[0]?.shuffle ?? false;
 }
 
+/** Сколько вопросов из списка достаётся сдающему — тоже поле единственного
+ * блока (ADR-0082). Нет поля у формы или у блока — сдающий получает все
+ * вопросы, как раньше. */
+export function initialQuestionsPerAttempt(exam: ExamDto | null): number | undefined {
+  return exam?.blocks[0]?.questionsPerAttempt;
+}
+
+interface ToBlockInputsParams {
+  itemIds: string[];
+  shuffle: boolean;
+  /** `undefined` — поле не отправляется вовсе, а не «сброшено» (ADR-0082:
+   * нет ключа — сдающий получает все вопросы). */
+  questionsPerAttempt: number | undefined;
+  exam: ExamDto | null;
+}
+
 /** Экран всегда отправляет один блок без заголовка: `id` первого блока
  * сохраняется, остальные блоки старой формы исчезают вместе со слиянием их
- * вопросов в общий список (ADR-0033). */
-export function toBlockInputs(
-  itemIds: string[],
-  shuffle: boolean,
-  exam: ExamDto | null,
-): ExamBlockInput[] {
-  return [{ id: exam?.blocks[0]?.id, title: '', itemIds, shuffle }];
+ * вопросов в общий список (ADR-0033). Параметры объектом — CLAUDE.md
+ * «параметров больше трёх — объект». */
+export function toBlockInputs({
+  itemIds,
+  shuffle,
+  questionsPerAttempt,
+  exam,
+}: ToBlockInputsParams): ExamBlockInput[] {
+  return [
+    {
+      id: exam?.blocks[0]?.id,
+      title: '',
+      itemIds,
+      shuffle,
+      ...(questionsPerAttempt !== undefined && { questionsPerAttempt }),
+    },
+  ];
 }
 
 /** Меняет местами соседей `index` и `index + 1`. Через срезы, а не через

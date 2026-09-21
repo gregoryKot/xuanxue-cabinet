@@ -21,7 +21,7 @@ import { isTeacher } from '../app/screenAccess';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { usePollWhileVisible } from '../hooks/usePollWhileVisible';
 import { getExamAction } from '../student/examAttemptState';
-import { useMyExams } from '../student/useMyExams';
+import { useMyExams } from '../student/MyExamsProvider';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить уведомления. Попробуйте ещё раз.';
 
@@ -64,26 +64,30 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
     LOAD_ERROR_MESSAGE,
   );
 
-  // Экзамены сдаёт ученик (docs/PLAN.md §11), у штата школы попыток нет —
-  // значит каждая опубликованная форма выглядела бы «новым заданием», и
-  // цифра на значке врала бы. Роль решает сам запрос, а не фильтр после
-  // него: у штата useMyExams выключен через `enabled`, а не отфильтрован
-  // постфактум, поэтому лишнего похода в сеть на каждом экране штата тоже
-  // больше нет (ADR-0074). Выключенный запрос оставляет exams === null, и
-  // `exams ?? []` ниже даёт пустой список без второго критерия «новое».
+  // Экзамены приходят из общего контекста (MyExamsProvider, ADR-0063) —
+  // своего запроса за ними здесь нет, TasksScreen.tsx и этот хук делят один
+  // GET /me/exams. Сам запрос провайдер выключает у штата школы везде, кроме
+  // «/tasks» (ADR-0074) — там список нужен самому экрану, не счётчику, и
+  // отключить его нельзя. Поэтому здесь остаётся вторая, лёгкая часть того
+  // же правила: роль решает, что из ответа значит «новое задание» — штат
+  // попыток не сдаёт (docs/PLAN.md §11), и его формы в счётчик не идут, даже
+  // если общий запрос сейчас включён ради «/tasks» (тот же человек в роли
+  // помощника учителя видит список на экране, но не в счётчике — «Контекст»
+  // ADR-0074). У карточки задания нет флага «прочитано» — сбой этого запроса
+  // не должен ронять ленту, она здесь главное, задания — гость: значит, и
+  // loading/error ниже читаем только у неё.
   //
   // Тот же критерий, что рубрика «Новые задания» на экране «Задания»
-  // (examAttemptState.getExamAction, splitNewTasks.ts) — свой запрос за
-  // экзаменами и свой критерий «новое» не заводим, иначе две копии
-  // разъехались бы на следующей правке экрана. У карточки задания нет флага
-  // «прочитано» — сбой этого запроса не должен ронять ленту, она здесь
-  // главное, задания — гость: значит, и loading/error ниже читаем только у неё.
-  const { data: exams, refresh: refreshExams } = useMyExams({
-    enabled: !isTeacher(me),
-  });
+  // (examAttemptState.getExamAction, splitNewTasks.ts) — свой критерий
+  // «новое» не заводим, иначе две копии разъехались бы на следующей правке
+  // экрана.
+  const { data: exams, refresh: refreshExams } = useMyExams();
   const newTasks = useMemo(
-    () => (exams ?? []).filter((exam) => getExamAction(exam) === 'start'),
-    [exams],
+    () =>
+      isTeacher(me)
+        ? []
+        : (exams ?? []).filter((exam) => getExamAction(exam) === 'start'),
+    [exams, me],
   );
 
   // Один тик обновляет оба источника: непрочитанные строки и «новое задание»
@@ -93,8 +97,8 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
   // публичный NotificationsData не расширяем, у reload() свои читатели
   // (markRead/markAllRead, баннер ошибки на экране).
   //
-  // У штата школы запрос экзаменов выключен (`enabled` выше, ADR-0074), и
-  // будить его тиком нельзя — иначе выключенный запрос вернулся бы раз в
+  // У штата школы запрос экзаменов выключен (MyExamsProvider.tsx, ADR-0074),
+  // и будить его тиком нельзя — иначе выключенный запрос вернулся бы раз в
   // минуту. Условие здесь не дублируется: тихий refresh() сам молчит на
   // выключенном хуке (useAbortableFetch.ts), поэтому правило живёт в одном
   // месте.

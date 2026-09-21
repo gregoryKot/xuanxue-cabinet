@@ -331,6 +331,36 @@ describe('ExamsService', () => {
     );
   });
 
+  // ADR-0082: questionsPerAttempt не может быть больше длины itemIds.
+  it('questionsPerAttempt больше длины списка — InvalidInputError, форма не создаётся', async () => {
+    const itemId = await createItem('published');
+
+    await expect(
+      service.create(
+        {
+          title: 'Экзамен',
+          blocks: [{ itemIds: [itemId], questionsPerAttempt: 2 }],
+        },
+        CREATED_BY,
+      ),
+    ).rejects.toThrow('а ученику вы хотите показать');
+    await expect(model.countDocuments({})).resolves.toBe(0);
+  });
+
+  it('questionsPerAttempt равен длине списка — сохраняется и возвращается в DTO', async () => {
+    const itemId = await createItem('published');
+
+    const created = await service.create(
+      {
+        title: 'Экзамен',
+        blocks: [{ itemIds: [itemId], questionsPerAttempt: 1 }],
+      },
+      CREATED_BY,
+    );
+
+    expect(created.blocks[0]?.questionsPerAttempt).toBe(1);
+  });
+
   it('PATCH { level: null, description: null } — сброс к пустой строке', async () => {
     const created = await service.create(
       { title: 'Экзамен', level: 'начальный', description: 'описание' },

@@ -21,7 +21,7 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { encryptRecord } from '../utils/encryption';
 import { ExamAttemptRecord } from './exam-attempt.schema';
-import { assertNoRepeatedItems, hasAnyQuestion, mapBlocks } from './exam-blocks';
+import { assertBlocksConsistent, hasAnyQuestion, mapBlocks } from './exam-blocks';
 import { assertItemsEligible } from './exam-items-eligible';
 import { removeExamIfNotAttempted } from './exam-attempt-references';
 import { ExamItemRecord } from './exam-item.schema';
@@ -134,7 +134,7 @@ export class ExamsService {
    * опубликованный вопрос банка. Зовётся при каждом сохранении блоков —
    * черновик формы уже не должен ссылаться на чужой/удалённый/неопубликованный id. */
   private async assertBlocksSavable(blocks: ExamBlockRecord[]): Promise<void> {
-    assertNoRepeatedItems(blocks);
+    assertBlocksConsistent(blocks);
     await assertItemsEligible(this.itemModel, blocks);
   }
 

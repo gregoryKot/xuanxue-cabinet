@@ -89,9 +89,9 @@ describe('makeIsRawImageUpload', () => {
     expect(isRawImageUpload(req({ contentType: ['image/jpeg'] }))).toBe(false);
   });
 
-  // Мера 1 (SECURITY §4, ADR-0082) — метод/путь/тип уже валидны, отказать
+  // Мера 1 (SECURITY §4, ADR-0083) — метод/путь/тип уже валидны, отказать
   // должна именно проверка сессии: эти случаи проверяют только её.
-  describe('сессия (SECURITY §4, ADR-0082)', () => {
+  describe('сессия (SECURITY §4, ADR-0083)', () => {
     it('нет заголовка Cookie — false', () => {
       expect(
         isRawImageUpload({

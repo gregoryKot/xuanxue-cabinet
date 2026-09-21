@@ -1,7 +1,9 @@
 // Редактор экзамена — страница с адресом, а не лист поверх списка (макет
-// Form.dc.html, ADR-0033). Сверху вниз: «О чём экзамен», «Вопросы · N» с
-// поиском и «Новый вопрос» (ADR-0040), «Как проходит экзамен», подвал с
-// сохранением и статусом. Вопросы грузятся один раз на всю страницу
+// Form.dc.html, ADR-0033). Сверху вниз: название со строкой статуса
+// («Опубликовать» / «В архив» — под заголовком, не в подвале: у экзамена
+// на 50 вопросов подвал далеко), «О чём экзамен», «Вопросы · N» с поиском и
+// «Новый вопрос» (ADR-0040), «Как проходит экзамен», подвал с сохранением.
+// Вопросы грузятся один раз на всю страницу
 // (useExamItems без фильтров сервера — поиск локальный, examQuestions.ts):
 // один запрос обслуживает и список для добавления, и подстановку
 // формулировок в выбранных вопросах. Предпросмотр глазами ученика — своя
@@ -9,6 +11,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EditorStatusRow } from '../components/EditorStatusRow';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
 import { screenTitleStyle } from '../components/screenLayout';
@@ -21,7 +24,7 @@ import {
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useExamItems } from '../exam-items/useExamItems';
 import { ExamAboutFields } from './ExamAboutFields';
-import { ExamEditorFooter } from './ExamEditorFooter';
+import { EXAM_STATUS_EXPLANATIONS, ExamEditorFooter } from './ExamEditorFooter';
 import { ExamFlowFields } from './ExamFlowFields';
 import { ExamQuestionsSection } from './ExamQuestionsSection';
 import { useExamForm } from './useExamForm';
@@ -58,6 +61,15 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
         <div style={editorHeadingStyle}>
           <span className="xuanxue-eyebrow">Экзамен</span>
           <h1 style={screenTitleStyle}>{exam ? exam.title : NEW_EXAM_TITLE}</h1>
+          {exam && (
+            <EditorStatusRow
+              status={exam.status}
+              explanations={EXAM_STATUS_EXPLANATIONS}
+              placement="heading"
+              pending={form.pending}
+              onChangeStatus={(status) => void handleChangeStatus(status)}
+            />
+          )}
         </div>
 
         <FormDraftNote restored={form.draftRestored} onDiscard={form.discardDraft} />
@@ -91,7 +103,6 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
             status={exam ? exam.status : null}
             pending={form.pending}
             previewPath={exam ? `${EXAMS_PATH}/${exam.id}/preview` : null}
-            onChangeStatus={(status) => void handleChangeStatus(status)}
             onRemove={removeConfirm.requestRemove}
           />
         </div>
