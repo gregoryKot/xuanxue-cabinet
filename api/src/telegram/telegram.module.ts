@@ -13,7 +13,15 @@
 // незнакомца, В6 аудита); NotificationsModule — NotificationPrefsService
 // (PersonalChats.listFor, кнопки «Уведомления»); MediaModule —
 // MediaAssetsService (ExamMediaMessageHandler, слой 4.5, ADR-0023): бот
-// привязывает видео экзамена и пересылает его учителю. PaymentsModule —
+// привязывает видео экзамена и пересылает его учителю.
+//
+// TelegramExamMediaNotifier (ADR-0084) — уведомление учителю/помощнику о
+// привязанной ссылке на видео-ответ: MediaModule не может импортировать
+// TelegramModule обратно (цикл, см. абзац выше про MediaModule), поэтому
+// порт и реестр (ExamMediaNotifierRegistry) живут в api/src/media/, а эта
+// реализация кладёт себя в реестр сама, в конструкторе — тот же приём, что
+// ExamBotService у ExamBotPortRegistry (exam-bot-port.registry.ts).
+// PaymentsModule —
 // PaymentsService (PaymentScreenshotMessageHandler, слой 2.2, ADR-0050): бот
 // тем же приёмом привязывает скриншот оплаты. Ни один из них не
 // импортирует TelegramModule обратно — цикла нет (ADR-0013). MediaModule в
@@ -67,6 +75,7 @@ import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, createTelegraf } from './telegraf-instance';
 import { TelegramAppErrorAlerts } from './telegram-app-error-alerts';
 import { TelegramBotService } from './telegram-bot.service';
+import { TelegramExamMediaNotifier } from './telegram-exam-media-notifier';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookGuard } from './telegram-webhook.guard';
 
@@ -111,6 +120,7 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     GradeCommentHandler,
     GradeQueueHandler,
     ExamBotPortRegistry,
+    TelegramExamMediaNotifier,
     PersonalChats,
     BotSessionService,
     BotUserAccessService,

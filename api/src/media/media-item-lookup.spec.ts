@@ -1,6 +1,6 @@
 // Чистая логика — юнит-тест без Mongo и без DI (CLAUDE.md «Тесты»).
 import type { AttemptBlockRecord } from '../exams/exam-attempt.schema';
-import { isVideoItemInSnapshot } from './media-item-lookup';
+import { findQuestionInSnapshot, isVideoItemInSnapshot } from './media-item-lookup';
 
 const BLOCKS: AttemptBlockRecord[] = [
   {
@@ -39,5 +39,29 @@ describe('isVideoItemInSnapshot', () => {
 
   it('пустой снимок — false, не падает', () => {
     expect(isVideoItemInSnapshot([], 'i1')).toBe(false);
+  });
+});
+
+describe('findQuestionInSnapshot', () => {
+  it('itemId есть в снимке — вопрос и его номер по сквозному порядку (1-based)', () => {
+    expect(findQuestionInSnapshot(BLOCKS, 'i2')).toEqual({
+      question: BLOCKS[0]?.questions[1],
+      order: 2,
+    });
+  });
+
+  it('itemId из второго блока — номер продолжает сквозной порядок первого блока', () => {
+    expect(findQuestionInSnapshot(BLOCKS, 'i3')).toEqual({
+      question: BLOCKS[1]?.questions[0],
+      order: 3,
+    });
+  });
+
+  it('itemId, которого нет в снимке вовсе — null, не падает', () => {
+    expect(findQuestionInSnapshot(BLOCKS, 'чужой')).toBeNull();
+  });
+
+  it('пустой снимок — null', () => {
+    expect(findQuestionInSnapshot([], 'i1')).toBeNull();
   });
 });

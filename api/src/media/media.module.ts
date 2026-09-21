@@ -3,9 +3,17 @@
 // импортирует этот модуль ради ExamAttemptDto.media/AttemptReviewDto.media
 // (exam-attempt-media.ts). MediaAssetsService проверяет владение попыткой
 // (SECURITY §3) через модель из ExamAttemptModelModule.
+//
+// ExamMediaNotifierRegistry (ADR-0084) — наружу: TelegramModule уже
+// импортирует MediaModule (ExamMediaMessageHandler, тот же слой 4.5),
+// обратный импорт закольцевал бы граф, поэтому порт и реестр уведомления о
+// привязанной ссылке живут здесь, а реализация (TelegramExamMediaNotifier,
+// api/src/telegram/) кладёт себя в реестр сама — комментарий в
+// exam-media-notifier.port.ts.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExamAttemptModelModule } from '../exams/exam-attempt-model.module';
+import { ExamMediaNotifierRegistry } from './exam-media-notifier.port';
 import { ExamMediaController } from './exam-media.controller';
 import { MediaAssetRecord, MediaAssetSchema } from './media-asset.schema';
 import { MediaAssetsService } from './media-assets.service';
@@ -18,7 +26,7 @@ import { MediaAssetsService } from './media-assets.service';
     ]),
   ],
   controllers: [ExamMediaController],
-  providers: [MediaAssetsService],
-  exports: [MongooseModule, MediaAssetsService],
+  providers: [MediaAssetsService, ExamMediaNotifierRegistry],
+  exports: [MongooseModule, MediaAssetsService, ExamMediaNotifierRegistry],
 })
 export class MediaModule {}

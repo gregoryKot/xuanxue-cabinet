@@ -14,6 +14,10 @@ import {
   ExamAttemptSchema,
   type AttemptBlockRecord,
 } from '../exams/exam-attempt.schema';
+import {
+  ExamMediaNotifierRegistry,
+  type LinkAttachedContext,
+} from './exam-media-notifier.port';
 import { MediaAssetRecord, MediaAssetSchema } from './media-asset.schema';
 import { MediaAssetsService } from './media-assets.service';
 
@@ -81,7 +85,18 @@ describe('MediaAssetsService', () => {
       MediaAssetSchema,
     );
     await mediaModel.syncIndexes();
-    service = new MediaAssetsService(mediaModel, attemptModel);
+    // Без зарегистрированного порта (get() → null) — уведомление молча не
+    // шлётся (легитимно, exam-media-notifier.port.ts): так же ведёт себя
+    // окружение без бота (нет TELEGRAM_BOT_TOKEN), addLink обязан отработать
+    // и тогда. Поведение проверяют все тесты ниже неявно (ни один не падает
+    // и не виснет на уведомлении); адресный тест на сам вызов порта — в
+    // describe('уведомление о привязанной ссылке (ADR-0084)') с отдельным
+    // экземпляром сервиса и фейковым портом.
+    service = new MediaAssetsService(
+      mediaModel,
+      attemptModel,
+      new ExamMediaNotifierRegistry(),
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -452,6 +467,117 @@ describe('MediaAssetsService', () => {
           service.addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW, TEXT_ITEM_ID),
         ).rejects.toBeInstanceOf(NotFoundError);
       });
+    });
+  });
+
+  // ADR-0084: ссылка — основной путь ответа на видео-вопрос, поэтому addLink
+  // (и только он — не addManual/attachTelegramVideo, см. notify-link-attached.ts)
+  // после записи зовёт порт уведомления. Отдельный экземпляр сервиса с
+  // фейковым портом в своём реестре — без Telegram (CLAUDE.md «Тесты»), общий
+  // `service` из beforeAll этот порт не регистрирует нигде (см. комментарий
+  // там же) и остаётся годным для всех остальных describe-блоков файла.
+  describe('уведомление о привязанной ссылке (ADR-0084)', () => {
+    // Не ExamMediaNotifierPort напрямую — его метод объявлен method-синтаксисом
+    // интерфейса, eslint @typescript-eslint/unbound-method ловит
+    // `expect(port.notifyLinkAttached)` как потерю `this` (тот же приём, что
+    // FakeNotifier в exams/exam-notifier.composite.spec.ts) — здесь обычное
+    // свойство-функция, не метод.
+    interface FakePort {
+      notifyLinkAttached: jest.Mock;
+    }
+
+    function fakePort(behavior: 'ok' | 'throws' = 'ok'): FakePort {
+      return {
+        notifyLinkAttached:
+          behavior === 'ok'
+            ? jest.fn().mockResolvedValue(undefined)
+            : jest.fn().mockRejectedValue(new Error('telegram недоступен')),
+      };
+    }
+
+    function serviceWithPort(port: FakePort): MediaAssetsService {
+      const registry = new ExamMediaNotifierRegistry();
+      // `jest.Mock` уже структурно совместим с методом интерфейса — в отличие
+      // от FakeNotifier в exam-notifier.composite.spec.ts (там цель — класс с
+      // приватными полями, нужен двойной каст через `unknown`), здесь он не нужен.
+      registry.set(port);
+      return new MediaAssetsService(mediaModel, attemptModel, registry);
+    }
+
+    it('addLink — зовёт порт с контекстом ссылки (без вопроса — itemId не передан)', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const port = fakePort();
+
+      await serviceWithPort(port).addLink(
+        attemptId,
+        USER_A,
+        'https://vk.com/video-1',
+        NOW,
+      );
+
+      expect(port.notifyLinkAttached).toHaveBeenCalledTimes(1);
+      const [context] = port.notifyLinkAttached.mock.calls[0] as [
+        LinkAttachedContext,
+        DateTime,
+      ];
+      expect(context).toEqual({
+        attemptId,
+        userId: USER_A,
+        examTitle: 'Форма первого уровня',
+        url: 'https://vk.com/video-1',
+        question: undefined,
+      });
+    });
+
+    it('addLink с itemId video-вопроса — контекст несёт номер и формулировку вопроса', async () => {
+      const attemptId = await seedAttempt(USER_A, { blocks: BLOCKS_WITH_VIDEO });
+      const port = fakePort();
+
+      await serviceWithPort(port).addLink(
+        attemptId,
+        USER_A,
+        'https://vk.com/video-1',
+        NOW,
+        VIDEO_ITEM_ID,
+      );
+
+      const [context] = port.notifyLinkAttached.mock.calls[0] as [
+        LinkAttachedContext,
+        DateTime,
+      ];
+      expect(context.question).toEqual({ order: 1, prompt: 'Снимите форму' });
+    });
+
+    it('addManual — порт не зовётся (учитель не шлёт уведомление сам себе)', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const port = fakePort();
+
+      await serviceWithPort(port).addManual(attemptId, 'заметка', NOW);
+
+      expect(port.notifyLinkAttached).not.toHaveBeenCalled();
+    });
+
+    it('attachTelegramVideo — порт не зовётся (видео пересылается отдельно, exam-media-forward.ts)', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const port = fakePort();
+
+      await serviceWithPort(port).attachTelegramVideo(
+        attemptId,
+        USER_A,
+        { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
+        NOW,
+      );
+
+      expect(port.notifyLinkAttached).not.toHaveBeenCalled();
+    });
+
+    it('порт бросает — addLink всё равно возвращает запись, сбой не пробрасывается', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const port = fakePort('throws');
+
+      await expect(
+        serviceWithPort(port).addLink(attemptId, USER_A, 'https://vk.com/video-1', NOW),
+      ).resolves.toMatchObject({ url: 'https://vk.com/video-1' });
     });
   });
 

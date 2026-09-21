@@ -11,7 +11,8 @@
 // (loadAttemptOwnerInfo, media-attempt-owner.ts, вынесено ради файл-лимита).
 //
 // addLink — исключение: повторная ссылка на тот же вопрос заменяет прежнюю
-// (upsertLinkMediaAsset, ADR-0086), пока попытку не проверили (graded).
+// (upsertLinkMediaAsset, ADR-0086), пока попытку не проверили (graded), и
+// после записи уведомляет Telegram (ADR-0084, notify-link-attached.ts).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -24,6 +25,7 @@ import {
 } from '@xuanxue/shared';
 import { ConflictError, NotFoundError } from '../common/errors';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
+import { ExamMediaNotifierRegistry } from './exam-media-notifier.port';
 import { insertMediaAsset, upsertLinkMediaAsset } from './media-asset-insert';
 import { loadAttemptOwnerInfo } from './media-attempt-owner';
 import { isVideoItemInSnapshot } from './media-item-lookup';
@@ -33,6 +35,7 @@ import {
   type RawLeanMediaAsset,
 } from './media-asset.mapper';
 import { MediaAssetRecord } from './media-asset.schema';
+import { notifyLinkAttached } from './notify-link-attached';
 
 export interface TelegramVideoSource {
   fileId: string;
@@ -52,6 +55,7 @@ export class MediaAssetsService {
     @InjectModel(MediaAssetRecord.name) private readonly model: Model<MediaAssetRecord>,
     @InjectModel(ExamAttemptRecord.name)
     private readonly attemptModel: Model<ExamAttemptRecord>,
+    private readonly notifierRegistry: ExamMediaNotifierRegistry,
   ) {}
 
   async listForAttempt(attemptId: string): Promise<ExamMediaDto[]> {
@@ -130,13 +134,17 @@ export class MediaAssetsService {
       throw new ConflictError(EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE);
     }
 
-    return upsertLinkMediaAsset(this.model, {
+    const media = await upsertLinkMediaAsset(this.model, {
       attemptId,
       userId,
       itemId,
       url,
       receivedAt: now,
     });
+    // Fire-and-forget (ADR-0084, CLAUDE.md «Тихий отказ») — не блокирует
+    // ответ ученику, сбой не пробрасывается наружу (notify-link-attached.ts).
+    notifyLinkAttached(this.notifierRegistry, attemptId, owner, url, itemId, now);
+    return media;
   }
 
   /** Третий путь — учитель отмечает «принято» вручную (ADR-0023). Роль
