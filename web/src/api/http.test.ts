@@ -2,14 +2,26 @@
 // компонент»): формат ошибок и заголовки проверяются здесь один раз, а не в
 // каждом компоненте, который ходит в API.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CSRF_HEADER } from '@xuanxue/shared';
+import { APP_VERSION_HEADER, CSRF_HEADER } from '@xuanxue/shared';
+import { hasNewAppVersion } from './appVersion';
 import { ApiError, apiFetch, setUnauthorizedListener } from './http';
 import { putPrefetched } from './prefetchCache';
 
-function jsonResponse(status: number, body: unknown): Response {
+// По умолчанию заголовка версии нет (`null`) — как у настоящего ответа без
+// него; тесты версии (ADR-0099) передают свой набор заголовков явно.
+function fakeHeaders(headers: Record<string, string> = {}): Pick<Headers, 'get'> {
+  return { get: (name: string) => headers[name] ?? null };
+}
+
+function jsonResponse(
+  status: number,
+  body: unknown,
+  headers?: Record<string, string>,
+): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: fakeHeaders(headers),
     json: () => Promise.resolve(body),
   } as Response;
 }
@@ -18,6 +30,7 @@ function brokenJsonResponse(status: number): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: fakeHeaders(),
     json: () => Promise.reject(new SyntaxError('Unexpected token')),
   } as Response;
 }
@@ -245,5 +258,45 @@ describe('apiFetch — 401 оповещает подписчика (AuthProvider
     await expectApiError(apiFetch('/classes'));
 
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe('apiFetch — версия сборки в заголовке ответа (ADR-0099)', () => {
+  // Один тест, не два: appVersion.ts — модульное состояние без сброса между
+  // it() в этом файле (см. header-комментарий appVersion.test.ts), поэтому
+  // последовательность собрана так, чтобы каждое ожидание было значимым, а не
+  // унаследованным флагом с прошлого it().
+  it('версия читается до проверки статуса и поднимает флаг только при смене', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse(200, { ok: true }, { [APP_VERSION_HEADER]: 'sha-a' }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse(
+            500,
+            { statusCode: 500, code: 'unknown', message: 'Сбой' },
+            { [APP_VERSION_HEADER]: 'sha-a' },
+          ),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse(
+            500,
+            { statusCode: 500, code: 'unknown', message: 'Сбой' },
+            { [APP_VERSION_HEADER]: 'sha-b' },
+          ),
+        ),
+    );
+
+    await apiFetch('/schedule');
+    expect(hasNewAppVersion()).toBe(false); // первый ответ версию только запомнил
+
+    await expectApiError(apiFetch('/schedule')); // тот же sha, но ответ с ошибкой
+    expect(hasNewAppVersion()).toBe(false); // версия не сменилась — флаг молчит
+
+    await expectApiError(apiFetch('/schedule')); // ошибка с другим sha
+    expect(hasNewAppVersion()).toBe(true); // версия из ответа об ошибке подняла флаг
   });
 });

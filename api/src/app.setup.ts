@@ -4,14 +4,17 @@
 // одно место»). Сюда НЕ входит .listen() — в e2e его не вызывают.
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { EXAM_IMAGE_LIMITS, MATERIAL_FILE_LIMITS } from '@xuanxue/shared';
 import { SESSION_SECRET } from './auth/session-token';
 import { CSP_DIRECTIVES } from './security/csp';
+import { makeAppVersionHeader } from './common/app-version-header';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { makeRawUploadConcurrencyLimit } from './common/raw-upload-concurrency';
 import { formatValidationErrors } from './common/validation-messages';
+import { shortCommitSha } from './health/health-commit';
 import { makeIsRawImageUpload } from './exam-images/exam-image-body';
 import { makeIsMaterialFileUpload } from './materials/material-file-body';
 
@@ -29,6 +32,15 @@ export function configureApp(app: NestExpressApplication): void {
     helmet({
       contentSecurityPolicy: { useDefaults: false, directives: CSP_DIRECTIVES },
     }),
+  );
+
+  // Заголовок версии сборки (ADR-0099) — до парсеров тела и до маршрутов,
+  // чтобы он был и на ответах об ошибке (400 от ValidationPipe, 5xx из
+  // фильтра). Тот же короткий SHA, что в /api/health — health-commit.ts
+  // режет его один раз на всё приложение.
+  const config = app.get(ConfigService);
+  app.use(
+    makeAppVersionHeader(shortCommitSha(config.get<string>('RAILWAY_GIT_COMMIT_SHA'))),
   );
 
   // bodyParser отключён в NestFactory.create (см. main.ts/create-app.ts) —

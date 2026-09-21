@@ -11,6 +11,9 @@ function jsonResponse(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    // http.ts читает заголовок версии сборки на каждом ответе (ADR-0099) —
+    // без headers.get апи упало бы здесь ещё до проверки статуса.
+    headers: { get: () => null } as Headers,
     json: () => Promise.resolve(body),
   } as Response;
 }

@@ -54,6 +54,7 @@ import { AppNav } from './AppNav';
 import { contentColumnStyle, shellRowStyle, shellStyle } from './appShellStyles';
 import { personLinkStyle } from './sideNavStyles';
 import { AppShellBrandRow } from './AppShellBrandRow';
+import { NewVersionBanner } from './NewVersionBanner';
 import { canSeeRoute, rootPathFor } from './screenAccess';
 import { usePrefetchRoutes } from './usePrefetchRoutes';
 
@@ -102,6 +103,7 @@ export function AppShell() {
               {/* Мобильный колокольчик рисует сама AppShellBrandRow.tsx — она
                   уже импортирует ProfileIcon напрямую тем же приёмом. */}
               {!hasSideNav && <AppShellBrandRow isMobile={isMobile} me={me} />}
+              <NewVersionBanner />
               <main>
                 {canSee ? <Outlet /> : <Navigate to={rootPathFor(me)} replace />}
               </main>
