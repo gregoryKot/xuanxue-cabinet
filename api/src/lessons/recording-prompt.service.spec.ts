@@ -1,6 +1,7 @@
 // Против настоящей Mongo (CLAUDE.md «Тесты») — условный апдейт
 // recordingPromptedAt ДО отправки, окно «занятие закончилось», ожидание
 // записи заводится каждому чату; PersonalChats/TelegramBotService — фейки.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
@@ -301,5 +302,50 @@ describe('RecordingPromptService.prompt', () => {
     expect(bot.sendMessage).toHaveBeenCalledTimes(1);
     const updated = await lessonModel.findById(lesson._id).lean();
     expect(updated?.recordingPromptedAt).toBeInstanceOf(Date);
+  });
+
+  // Аудит 2026-09-21 (HIGH): claim стоял без try/catch — упади отправка
+  // вопроса на одном занятии, весь цикл prompt() рвался, и claim этого
+  // занятия оставался стоять навсегда. claimAndRun это чинит: падение
+  // изолировано на одном элементе.
+  it('вопрос упал на одном занятии — второе всё равно обработано, recordingPromptedAt на упавшем снят', async () => {
+    const errorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const cls = await createClass();
+    const a = await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.minus({ hours: 1, minutes: 5 }).toJSDate(),
+      durationMin: 60,
+      topic: 'цигун',
+      status: 'scheduled',
+    });
+    const b = await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.minus({ hours: 2 }).toJSDate(),
+      durationMin: 60,
+      topic: 'ушу',
+      status: 'scheduled',
+    });
+    const bot = fakeBot();
+    bot.sendMessage.mockRejectedValueOnce(new Error('сеть моргнула'));
+    const { service } = build(fakePersonalChats(), bot);
+
+    const result = await service.prompt(NOW);
+
+    expect(result).toEqual({ prompted: 1 }); // упавшее занятие не в счёте
+    expect(bot.sendMessage).toHaveBeenCalledTimes(2); // цикл не прервался
+    expect(errorSpy).toHaveBeenCalled();
+
+    const [aAfter, bAfter] = await Promise.all([
+      lessonModel.findById(a._id).lean(),
+      lessonModel.findById(b._id).lean(),
+    ]);
+    const marked = [aAfter, bAfter].filter((doc) => doc?.recordingPromptedAt);
+    const unmarked = [aAfter, bAfter].filter((doc) => !doc?.recordingPromptedAt);
+    expect(marked).toHaveLength(1); // успешное — отметка стоит
+    expect(unmarked).toHaveLength(1); // упавшее — claim снят следующему тику
+
+    errorSpy.mockRestore();
   });
 });

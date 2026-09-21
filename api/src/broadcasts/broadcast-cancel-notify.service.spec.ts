@@ -2,6 +2,7 @@
 // teacherNotifiedAt ДО отправки, признак «автоматический плейсхолдер»
 // (channelIds: []), дедуп. Тексты по причине — telegram/
 // broadcast-cancel-message.spec.ts, здесь только маршрутизация к notifier'у.
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
 import { claimOnce } from '../common/claim-once';
@@ -159,16 +160,45 @@ describe('BroadcastCancelNotifyService.notifyPending', () => {
     expect(notifier.notifyBroadcastCancelled).toHaveBeenCalledTimes(2);
   });
 
-  it('notifier бросает — не мешает: ошибку ловит вызывающий шаг тика (scheduler.service.ts)', async () => {
-    await createCancelled();
+  // Аудит 2026-09-21 (HIGH): notifier раньше бросал наружу и рвал весь цикл
+  // notifyPending — claim первого элемента оставался стоять навсегда,
+  // остальные due-рассылки в этом тике не обрабатывались. claimAndRun это
+  // чинит: падение изолировано на одном элементе.
+  it('notifier бросает на одном элементе — второй всё равно обработан, отметка на упавшем снята', async () => {
+    const errorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const a = await createCancelled();
+    const b = await createCancelled({
+      lessonId: new Types.ObjectId(),
+      text: CANCEL_REASON.noLink,
+    });
     const notifier = {
-      notifyBroadcastCancelled: jest.fn().mockRejectedValue(new Error('бот молчит')),
+      notifyBroadcastCancelled: jest
+        .fn()
+        .mockRejectedValueOnce(new Error('бот молчит'))
+        .mockResolvedValue(undefined),
     };
     const service = new BroadcastCancelNotifyService(
       broadcastModel,
       notifier as unknown as TeacherNotifier,
     );
 
-    await expect(service.notifyPending(NOW)).rejects.toThrow('бот молчит');
+    const result = await service.notifyPending(NOW);
+
+    expect(result).toEqual({ claimed: 1 }); // упавший элемент не в счёте
+    expect(notifier.notifyBroadcastCancelled).toHaveBeenCalledTimes(2); // цикл не прервался
+    expect(errorSpy).toHaveBeenCalled();
+
+    const [aAfter, bAfter] = await Promise.all([
+      broadcastModel.findById(a._id).lean(),
+      broadcastModel.findById(b._id).lean(),
+    ]);
+    const marked = [aAfter, bAfter].filter((doc) => doc?.teacherNotifiedAt);
+    const unmarked = [aAfter, bAfter].filter((doc) => !doc?.teacherNotifiedAt);
+    expect(marked).toHaveLength(1); // успешный — отметка стоит
+    expect(unmarked).toHaveLength(1); // упавший — claim снят следующему тику
+
+    errorSpy.mockRestore();
   });
 });

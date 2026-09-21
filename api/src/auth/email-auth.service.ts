@@ -5,7 +5,7 @@
 // issueSession — тот же узел выпуска cookie, что и у Telegram-входа
 // (ADR-0012). Поиск/создание человека — LoginIdentityService (ADR-0030/0036):
 // новый заводится только с валидной ссылкой-приглашением.
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ACCESS_MESSAGE,
@@ -15,6 +15,7 @@ import {
   INVITE_QUERY_PARAM,
 } from '@xuanxue/shared';
 import type { DateTime } from 'luxon';
+import { errorMessage } from '../common/error-info';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import { InviteLinkService } from '../users/invite-link.service';
 import { LoginIdentityService } from '../users/login-identity.service';
@@ -31,6 +32,8 @@ export interface EmailLoginResult {
 
 @Injectable()
 export class EmailAuthService {
+  private readonly logger = new Logger(EmailAuthService.name);
+
   constructor(
     private readonly config: ConfigService,
     private readonly tokens: EmailLoginTokenService,
@@ -75,7 +78,20 @@ export class EmailAuthService {
         ? `&${INVITE_QUERY_PARAM}=${inviteCode}`
         : '';
     const link = `${publicUrl}/login/email?token=${issued.token}${join}`;
-    await this.mail.sendLoginLink({ to: normalized, link, code: issued.code });
+    try {
+      await this.mail.sendLoginLink({ to: normalized, link, code: issued.code });
+    } catch (err) {
+      // Заявка уже в базе (issue() выше), а письмо не ушло — не снять её
+      // нельзя: иначе повтор в окне cooldown получит от issue() null и тихо
+      // ответит 204, будто письмо было (аудит 2026-09-21). revoke — best-effort:
+      // его ошибку логируем отдельно, чтобы не заслонить причину сбоя отправки.
+      await this.tokens.revoke(normalized).catch((revokeErr: unknown) => {
+        this.logger.error(
+          `Не удалось снять токен email-входа после сбоя отправки письма: ${errorMessage(revokeErr)}`,
+        );
+      });
+      throw err;
+    }
   }
 
   /** Вход по ссылке — токен потребляется один раз (EmailLoginTokenService.
