@@ -14,6 +14,7 @@ import type { NewExamItemCommandHandler } from './handlers/new-exam-item-command
 import type { NotificationsCommandHandler } from './handlers/notifications-command.handler';
 import type { TopicCommandHandler } from './handlers/topic-command.handler';
 import { BotIdentityService } from './bot-identity.service';
+import type { PersonalChats } from './personal-chats';
 import {
   TOKEN,
   fakeConfig,
@@ -48,6 +49,7 @@ function buildService(): {
     fakeHandlerWithNow() as unknown as NewExamCommandHandler,
     fakeHandlerWithNow() as unknown as GradeQueueHandler,
     new BotIdentityService(),
+    { list: () => Promise.resolve([]) } as unknown as PersonalChats,
   );
   service.onApplicationBootstrap();
   return { service, exams, message };

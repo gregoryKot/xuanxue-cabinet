@@ -1,18 +1,23 @@
-// Фейковый ExamBotPort и фейковый BotUserAccessService, без Mongo и без сети
-// (CLAUDE.md «Тесты»): /exams, /экзамены — то же самое, что MyExamsService
-// отдаёт кабинету (через порт), незнакомцу бот не отвечает, blocked —
-// отказ вместо списка (SECURITY §9).
+// Фейковый ExamBotPort, фейковый BotUserAccessService и фейковый
+// SettingsService, без Mongo и без сети (CLAUDE.md «Тесты»): /exams,
+// /экзамены — то же самое, что MyExamsService отдаёт кабинету (через порт),
+// незнакомцу — вежливый отказ, как у /start (ADR-0090, отзыв владельца
+// 2026-09-21: молчание на пункте общего меню читалось как «бот сломан»),
+// blocked — отказ вместо списка (SECURITY §9).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { ACCESS_MESSAGE, type MyExamDto } from '@xuanxue/shared';
+import type { SettingsService } from '../../settings/settings.service';
 import type { UserLean } from '../../users/users.service';
 import type { BotUserAccessService } from '../bot-user-access.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
+import { buildStrangerMessage } from './bot-menu';
 import { ExamCommandHandler } from './exam-command.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
+const SCHOOL_SITE_URL = 'https://xuanxue.su';
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
@@ -35,6 +40,12 @@ function stubExams(exams: MyExamDto[]) {
   return { registry, listMyExams: port.listMyExams };
 }
 
+function fakeSettings(): SettingsService {
+  return {
+    get: () => Promise.resolve({ schoolSiteUrl: SCHOOL_SITE_URL }),
+  } as unknown as SettingsService;
+}
+
 function fakeCtx(chatType: 'private' | 'group' = 'private'): {
   ctx: Context;
   replies: string[];
@@ -53,6 +64,7 @@ describe('ExamCommandHandler.handle', () => {
     const handler = new ExamCommandHandler(
       fakeBotUserAccess(activeAccess(USER)),
       registry,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx();
 
@@ -62,17 +74,21 @@ describe('ExamCommandHandler.handle', () => {
     expect(replies[0]).toContain('Форма');
   });
 
-  it('незнакомец — бот молчит', async () => {
+  // ADR-0090 + отзыв владельца 2026-09-21: /exams — в общем списке команд
+  // Telegram, его видит и незнакомец; молчание на нём читалось как «бот
+  // сломан», поэтому теперь тот же вежливый отказ, что и у /start.
+  it('незнакомец — вежливый отказ, как у /start, а не молчание', async () => {
     const { registry } = stubExams([]);
     const handler = new ExamCommandHandler(
       fakeBotUserAccess({ kind: 'unknown' }),
       registry,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx();
 
     await handler.handle(ctx, NOW);
 
-    expect(replies).toEqual([]);
+    expect(replies).toEqual([buildStrangerMessage(SCHOOL_SITE_URL)]);
   });
 
   it('заблокированный — отказ тем же текстом, что в вебе, список не запрашивается', async () => {
@@ -80,6 +96,7 @@ describe('ExamCommandHandler.handle', () => {
     const handler = new ExamCommandHandler(
       fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
       registry,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx();
 
@@ -94,6 +111,7 @@ describe('ExamCommandHandler.handle', () => {
     const handler = new ExamCommandHandler(
       fakeBotUserAccess(activeAccess(USER)),
       registry,
+      fakeSettings(),
     );
     const { ctx, replies } = fakeCtx('group');
 
@@ -107,7 +125,7 @@ describe('ExamCommandHandler.handle', () => {
     const failingAccess = {
       resolve: jest.fn().mockRejectedValue(new Error('Mongo недоступна')),
     } as unknown as BotUserAccessService;
-    const handler = new ExamCommandHandler(failingAccess, registry);
+    const handler = new ExamCommandHandler(failingAccess, registry, fakeSettings());
     const { ctx, replies } = fakeCtx();
 
     await expect(handler.handle(ctx, NOW)).resolves.toBeUndefined();
@@ -121,6 +139,7 @@ describe('ExamCommandHandler.listScreen', () => {
     const handler = new ExamCommandHandler(
       fakeBotUserAccess(activeAccess(USER)),
       registry,
+      fakeSettings(),
     );
 
     const menu = await handler.listScreen(111, NOW);
@@ -128,11 +147,15 @@ describe('ExamCommandHandler.listScreen', () => {
     expect(menu?.text).toContain('Форма');
   });
 
+  // Контракт не меняется: кнопка меню (open-menu-screen.ts) от null просто
+  // не трогает сообщение — вежливый отказ незнакомцу собирает handle(),
+  // отдельным тестом выше в ExamCommandHandler.handle.
   it('незнакомец — null, не пустой экран', async () => {
     const { registry } = stubExams([]);
     const handler = new ExamCommandHandler(
       fakeBotUserAccess({ kind: 'unknown' }),
       registry,
+      fakeSettings(),
     );
 
     expect(await handler.listScreen(111, NOW)).toBeNull();
@@ -143,6 +166,7 @@ describe('ExamCommandHandler.listScreen', () => {
     const handler = new ExamCommandHandler(
       fakeBotUserAccess({ kind: 'denied', message: ACCESS_MESSAGE }),
       registry,
+      fakeSettings(),
     );
 
     const menu = await handler.listScreen(111, NOW);
