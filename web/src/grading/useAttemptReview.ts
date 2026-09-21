@@ -1,8 +1,10 @@
 // Данные экрана проверки — карточка попытки (`GET /attempts/:id/review`) и
 // отправка оценки (`PUT /attempts/:id/grading`, ТЗ 4.6, п.2). Read-after-write
-// (CLAUDE.md): после сохранения перечитываем карточку — обновлённая `grading`
-// приходит уже с сервера, а не собирается на клиенте из того, что мы сами
-// отправили.
+// (CLAUDE.md) держится по-разному у двух действий хука: submitGrading()
+// кладёт ответ PUT через applyData (ADR-0087) — эндпоинт теперь возвращает
+// AttemptReviewDto целиком, второй GET не нужен. markMediaManual() как звал
+// reload(), так и зовёт — почему у соседних действий разный приём, см.
+// комментарий у неё самой.
 import { useCallback, useState } from 'react';
 import {
   type AttemptReviewDto,
@@ -57,7 +59,7 @@ export interface UseAttemptReviewResult {
 }
 
 export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiFetch<AttemptReviewDto>(attemptReviewPath(attemptId), { signal }),
     LOAD_ERROR_MESSAGE,
   );
@@ -69,8 +71,12 @@ export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
       setSaving(true);
       setSaveError(null);
       try {
-        await apiFetch(`/attempts/${attemptId}/grading`, { method: 'PUT', body: input });
-        await reload();
+        applyData(
+          await apiFetch<AttemptReviewDto>(`/attempts/${attemptId}/grading`, {
+            method: 'PUT',
+            body: input,
+          }),
+        );
         return true;
       } catch (err) {
         setSaveError(errorFrom(err, SAVE_ERROR_MESSAGE));
@@ -79,7 +85,7 @@ export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
         setSaving(false);
       }
     },
-    [attemptId, reload],
+    [attemptId, applyData],
   );
 
   // Одно состояние на хук, а не Map по itemId: отметить можно только один
@@ -89,8 +95,14 @@ export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
     (MarkMediaState & { itemId: string }) | null
   >(null);
 
-  // Read-after-write: перечитываем карточку на успех — `media` в ответе уже
-  // содержит новую запись `kind: 'manual'` с сервера, не собранную на клиенте.
+  // Звучит как недоделка рядом с applyData() у submitGrading() выше, но это
+  // осознанная асимметрия: POST .../media/manual нарочно остался с
+  // ExamMediaDto, не AttemptReviewDto (exam-media.controller.ts) — собрать
+  // карточку целиком здесь значило бы новый цикл в графе Nest
+  // (ExamGradingsService — из ExamsModule, а тот уже импортирует MediaModule
+  // ради MediaAssetsService; forwardRef в проекте запрещён, ADR-0013).
+  // Поэтому здесь остаётся честный reload() — `media` в ответе уже содержит
+  // новую запись `kind: 'manual'` с сервера, не собранную на клиенте.
   const markMediaManual = useCallback(
     async (itemId: string): Promise<boolean> => {
       setMarkState({ itemId, pending: true, error: null });

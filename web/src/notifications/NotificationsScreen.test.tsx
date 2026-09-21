@@ -156,14 +156,23 @@ describe('NotificationsScreen — ссылка на предмет (ADR-0070)', 
   });
 });
 
-describe('NotificationsScreen — отметка прочитанной', () => {
-  it('клик по непрочитанной строке шлёт POST по её адресу и перечитывает ленту', async () => {
+describe('NotificationsScreen — отметка прочитанной (ответ записи на экране, ADR-0087)', () => {
+  it('клик по непрочитанной строке шлёт один POST и берёт ленту из его ответа', async () => {
     const user = userEvent.setup();
     renderScreen({
       [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
     });
 
     const button = await screen.findByRole('button', { name: /Текст события/ });
+    // Ответ действия — отдельный вызов mockApiByPath поверх начального (см.
+    // комментарий в test-support/apiFetchMock.ts): без него POST ответил бы
+    // пустым телом, и applyData уронил бы ленту в undefined.
+    mockApiByPath({
+      [notificationReadPath('n1')]: {
+        items: [makeNotification({ readAt: '2026-09-20T09:05:00.000Z' })],
+        unreadCount: 0,
+      },
+    });
     await user.click(button);
 
     await waitFor(() =>
@@ -171,6 +180,13 @@ describe('NotificationsScreen — отметка прочитанной', () => 
         notificationReadPath('n1'),
         expect.objectContaining({ method: 'POST' }),
       ),
+    );
+    // unreadCount взят из ответа записи, без второго GET — «Прочитать все»
+    // пропадает без похода в сеть за лентой ещё раз.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Прочитать все' }),
+      ).not.toBeInTheDocument(),
     );
   });
 
@@ -185,7 +201,20 @@ describe('NotificationsScreen — отметка прочитанной', () => 
       },
     });
 
-    await user.click(await screen.findByRole('button', { name: /Текст события/ }));
+    const button = await screen.findByRole('button', { name: /Текст события/ });
+    mockApiByPath({
+      [notificationReadPath('n9')]: {
+        items: [
+          makeNotification({
+            id: 'n9',
+            createdAt: '2026-09-10T09:00:00.000Z',
+            readAt: '2026-09-20T09:05:00.000Z',
+          }),
+        ],
+        unreadCount: 0,
+      },
+    });
+    await user.click(button);
 
     await waitFor(() =>
       expect(mockedApiFetch).toHaveBeenCalledWith(
@@ -207,19 +236,31 @@ describe('NotificationsScreen — «Прочитать все»', () => {
     ).toBeInTheDocument();
   });
 
-  it('нажатие шлёт POST на read-all', async () => {
+  it('нажатие шлёт POST на read-all и берёт ленту из его ответа', async () => {
     const user = userEvent.setup();
     renderScreen({
       [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
     });
 
-    await user.click(await screen.findByRole('button', { name: 'Прочитать все' }));
+    const markAllButton = await screen.findByRole('button', { name: 'Прочитать все' });
+    mockApiByPath({
+      [NOTIFICATIONS_READ_ALL_PATH]: {
+        items: [makeNotification({ readAt: '2026-09-20T09:05:00.000Z' })],
+        unreadCount: 0,
+      },
+    });
+    await user.click(markAllButton);
 
     await waitFor(() =>
       expect(mockedApiFetch).toHaveBeenCalledWith(
         NOTIFICATIONS_READ_ALL_PATH,
         expect.objectContaining({ method: 'POST' }),
       ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Прочитать все' }),
+      ).not.toBeInTheDocument(),
     );
   });
 
