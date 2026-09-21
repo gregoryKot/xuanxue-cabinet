@@ -173,7 +173,9 @@ describe('EmailAuthService.requestLink', () => {
     let sentLink: string | undefined;
     const code = 'b'.repeat(32);
     const service = buildService({
-      tokens: fakeTokens(() => Promise.resolve({ token: 'a'.repeat(64), code: '135790' })),
+      tokens: fakeTokens(() =>
+        Promise.resolve({ token: 'a'.repeat(64), code: '135790' }),
+      ),
       mail: fakeMail((input) => {
         sentLink = input.link;
         return Promise.resolve();
@@ -191,7 +193,9 @@ describe('EmailAuthService.requestLink', () => {
   it('невалидный inviteCode — молча игнорируется, ссылка без join=', async () => {
     let sentLink: string | undefined;
     const service = buildService({
-      tokens: fakeTokens(() => Promise.resolve({ token: 'a'.repeat(64), code: '135790' })),
+      tokens: fakeTokens(() =>
+        Promise.resolve({ token: 'a'.repeat(64), code: '135790' }),
+      ),
       mail: fakeMail((input) => {
         sentLink = input.link;
         return Promise.resolve();
@@ -290,7 +294,9 @@ describe('EmailAuthService.verifyCode', () => {
 
     const call = service.verifyCode('a@example.com', '000000', NOW);
     await expect(call).rejects.toBeInstanceOf(UnauthorizedError);
-    await expect(call).rejects.toMatchObject({ message: EMAIL_LOGIN_CODE_INVALID_MESSAGE });
+    await expect(call).rejects.toMatchObject({
+      message: EMAIL_LOGIN_CODE_INVALID_MESSAGE,
+    });
   });
 
   it('нормализует email в lowercase перед consumeCode, дальше — тот же хвост, что у verify', async () => {
@@ -322,9 +328,9 @@ describe('EmailAuthService.verifyCode', () => {
       users: fakeUsersService(() => (touched = true)),
     });
 
-    await expect(service.verifyCode('a@example.com', '482913', NOW)).rejects.toBeInstanceOf(
-      ForbiddenError,
-    );
+    await expect(
+      service.verifyCode('a@example.com', '482913', NOW),
+    ).rejects.toBeInstanceOf(ForbiddenError);
     expect(touched).toBe(false);
   });
 });

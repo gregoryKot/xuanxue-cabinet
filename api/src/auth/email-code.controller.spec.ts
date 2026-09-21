@@ -54,7 +54,12 @@ async function buildController(): Promise<{
       {
         provide: EmailAuthService,
         useValue: {
-          verifyCode: (email: string, code: string, _now: unknown, inviteCode?: string) => {
+          verifyCode: (
+            email: string,
+            code: string,
+            _now: unknown,
+            inviteCode?: string,
+          ) => {
             verifyCalls.push({ email, code, inviteCode });
             return Promise.resolve({ user: USER, cookie: COOKIE });
           },

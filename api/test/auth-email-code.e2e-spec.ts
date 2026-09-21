@@ -21,7 +21,10 @@ import {
   createEmailVerifyHelpers,
   freshIp,
 } from './e2e-support/auth-email-verify-fixtures';
-import { createFakeMailService, type FakeMailService } from './e2e-support/fake-mail-service';
+import {
+  createFakeMailService,
+  type FakeMailService,
+} from './e2e-support/fake-mail-service';
 
 describe('POST /auth/email/code (e2e), Resend подключён', () => {
   let testApp: TestApp;
@@ -95,7 +98,11 @@ describe('POST /auth/email/code (e2e), Resend подключён', () => {
     const code = helpers.lastSentCode();
 
     for (let i = 0; i < EMAIL_LOGIN_CODE_MAX_ATTEMPTS; i += 1) {
-      const attempt = await helpers.postCode('code-locked@example.com', '000000', freshIp());
+      const attempt = await helpers.postCode(
+        'code-locked@example.com',
+        '000000',
+        freshIp(),
+      );
       expect(attempt.status).toBe(401);
     }
 
@@ -116,7 +123,12 @@ describe('POST /auth/email/code (e2e), Resend подключён', () => {
     await helpers.postRequest('code-once@example.com', freshIp());
     const code = helpers.lastSentCode();
 
-    const first = await helpers.postCode('code-once@example.com', code, freshIp(), invite);
+    const first = await helpers.postCode(
+      'code-once@example.com',
+      code,
+      freshIp(),
+      invite,
+    );
     expect(first.status).toBe(200);
 
     const second = await helpers.postCode('code-once@example.com', code, freshIp());

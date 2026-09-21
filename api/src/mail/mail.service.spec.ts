@@ -28,7 +28,11 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig({}));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
+      service.sendLoginLink({
+        to: 'a@example.com',
+        link: 'https://x/login',
+        code: '123456',
+      }),
     ).rejects.toBeInstanceOf(NotAvailableError);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -42,7 +46,11 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig({}));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
+      service.sendLoginLink({
+        to: 'a@example.com',
+        link: 'https://x/login',
+        code: '123456',
+      }),
     ).rejects.toBeInstanceOf(NotAvailableError);
     expect(error).toHaveBeenCalledWith(expect.stringContaining('RESEND_API_KEY'));
   });
@@ -84,7 +92,11 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig(CONFIGURED));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
+      service.sendLoginLink({
+        to: 'a@example.com',
+        link: 'https://x/login',
+        code: '123456',
+      }),
     ).rejects.toMatchObject({
       message: 'Не удалось отправить письмо. Попробуйте ещё раз через минуту.',
     });
@@ -95,7 +107,11 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig(CONFIGURED));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
+      service.sendLoginLink({
+        to: 'a@example.com',
+        link: 'https://x/login',
+        code: '123456',
+      }),
     ).rejects.toBeInstanceOf(NotAvailableError);
   });
 });

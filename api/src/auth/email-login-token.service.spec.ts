@@ -177,7 +177,9 @@ describe('EmailLoginTokenService', () => {
       const { code } = await issue('code-locked@example.com', NOW);
 
       for (let i = 0; i < EMAIL_LOGIN_CODE_MAX_ATTEMPTS; i += 1) {
-        expect(await service.consumeCode('code-locked@example.com', '000000', NOW)).toBeNull();
+        expect(
+          await service.consumeCode('code-locked@example.com', '000000', NOW),
+        ).toBeNull();
       }
 
       const withCorrectCode = await service.consumeCode(
