@@ -7,7 +7,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
-import { claimOnce } from '../common/claim-once';
+import { claimAndRun } from '../common/claim-once';
+import { errorMessage, errorStack } from '../common/error-info';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { decrypt } from '../utils/encryption';
@@ -63,9 +64,25 @@ export class ManualPromptService {
 
     let prompted = 0;
     for (const delivery of due) {
-      if (!(await claimOnce(this.deliveryModel, delivery._id, 'manualPromptedAt', now)))
-        continue;
-      if (await this.promptTeachers(delivery, chats)) prompted += 1;
+      // claimAndRun (аудит 2026-09-21, HIGH): раньше claim стоял без
+      // try/catch — упади promptTeachers (например, сетевой блип к Mongo
+      // в findById), отметка осталась бы стоять навсегда, а с ней и
+      // единственный шанс попросить учителя отправить пост руками (см.
+      // комментарий выше). Теперь падение снимает claim, следующий тик
+      // подхватит доставку заново.
+      const done = await claimAndRun(
+        this.deliveryModel,
+        delivery._id,
+        'manualPromptedAt',
+        now,
+        () => this.promptTeachers(delivery, chats),
+        (error) =>
+          this.logger.error(
+            `ручная доставка ${delivery._id.toString()} упала после claim: ${errorMessage(error)}`,
+            errorStack(error),
+          ),
+      );
+      if (done) prompted += 1;
     }
     return { prompted };
   }
