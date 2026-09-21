@@ -12,7 +12,7 @@
 // вызовов ровно столько, сколько нажатий, и флаг «уже стартовал» не нужен.
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { VerifyEmailCodeInput } from '@xuanxue/shared';
+import type { MeDto, VerifyEmailCodeInput } from '@xuanxue/shared';
 import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { postLoginPath } from './returnTo';
 
@@ -24,13 +24,16 @@ export interface UseEmailCodeLoginResult {
   submit: (email: string, code: string) => Promise<void>;
 }
 
-/** `refresh` — параметром, не через useAuth() внутри хука (тот же приём, что
+/** `applyMe`, а не `refresh` (ADR-0087): эндпоинт отвечает тем же `MeDto`,
+ * что и `GET /auth/me`, — перечитывать профиль вторым запросом не за чем,
+ * свежее состояние уже в ответе записи (гейт `check-write-then-reload.mjs`).
+ * Параметром, не через useAuth() внутри хука (тот же приём, что
  * useEmailLoginVerify.ts и useEmailLink.ts): так хук проверяется без
  * <AuthProvider> в дереве, а вызывающий компонент сам решает, откуда его
  * взять. `inviteCode` — код ссылки-приглашения школы (ADR-0030/0036), как и
  * у входа по ссылке: без него новый человек в кабинет не попадает. */
 export function useEmailCodeLogin(
-  refresh: () => Promise<void>,
+  applyMe: (me: MeDto) => void,
   inviteCode?: string,
 ): UseEmailCodeLoginResult {
   const navigate = useNavigate();
@@ -45,15 +48,15 @@ export function useEmailCodeLogin(
         ? { email, code, inviteCode }
         : { email, code };
       try {
-        await apiFetch<void>('/auth/email/code', { method: 'POST', body });
-        await refresh();
+        const me = await apiFetch<MeDto>('/auth/email/code', { method: 'POST', body });
+        applyMe(me);
         void navigate(postLoginPath(), { replace: true });
       } catch (err) {
         setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
         setStatus('error');
       }
     },
-    [inviteCode, refresh, navigate],
+    [inviteCode, applyMe, navigate],
   );
 
   return { status, error, submit };

@@ -46,9 +46,9 @@ interface EmailCodeFormProps {
 }
 
 export function EmailCodeForm({ email, onEmailChange, inviteCode }: EmailCodeFormProps) {
-  const { refresh } = useAuth();
+  const { applyMe } = useAuth();
   const [code, setCode] = useState('');
-  const { status, error, submit } = useEmailCodeLogin(refresh, inviteCode);
+  const { status, error, submit } = useEmailCodeLogin(applyMe, inviteCode);
 
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
