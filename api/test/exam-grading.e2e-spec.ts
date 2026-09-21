@@ -126,6 +126,10 @@ describe('Проверка работ (e2e)', () => {
     expect(review.status).toBe(200);
     const reviewBody = review.body as AttemptReviewDto;
     expect(reviewBody.userName).toBe('Ученик Петров'); // не голый userId (слой 4.6)
+    // Ученик заведён без telegramId (createUserWithSession) — карточка
+    // честно говорит, что в Telegram итог не уйдёт (ADR-0099, отзыв
+    // владельца 2026-09-21).
+    expect(reviewBody.notifiesUserInTelegram).toBe(false);
     const question = reviewBody.blocks[0]?.questions[0];
     expect(question?.criteria).toBe('Смотреть на колено и центр тяжести');
 

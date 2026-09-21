@@ -16,11 +16,13 @@ import {
   DELETED_USER_NAME,
   type AttemptReviewDto,
   type ExamGradingDto,
+  type NotificationKind,
   type PutGradingInput,
 } from '@xuanxue/shared';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
+import { PersonalChats } from '../telegram/personal-chats';
 import { encryptRecord } from '../utils/encryption';
 import { UserNamesService } from '../users/user-names.service';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
@@ -40,6 +42,11 @@ import {
 } from './exam-grading.mapper';
 import { EXAM_GRADING_ENCRYPT_SCHEMA, ExamGradingRecord } from './exam-grading.schema';
 
+// Тот же вид уведомления, что реально шлёт TelegramExamNotifier.notifyExamGraded
+// (именованная константа рядом с использованием — CLAUDE.md «Магические
+// строки», тот же приём, что EXAM_RESULT_KIND в exam-notifier.composite.ts).
+const EXAM_RESULT_KIND: NotificationKind = 'exam_result';
+
 @Injectable()
 export class ExamGradingsService {
   constructor(
@@ -48,18 +55,25 @@ export class ExamGradingsService {
     @InjectModel(ExamGradingRecord.name)
     private readonly gradingModel: Model<ExamGradingRecord>,
     private readonly userNamesService: UserNamesService,
+    private readonly personalChats: PersonalChats,
     @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
   ) {}
 
   /** ТЗ 4.6, п.3: ответы рядом с критериями вопроса и правильностью
    * вариантов (снимок попытки, не банк — вопрос могли переписать) и уже
-   * выставленная оценка, если есть. */
+   * выставленная оценка, если есть. Признак `notifiesUserInTelegram`
+   * считаем здесь, а не в контроллере (ADR-0099, отзыв владельца
+   * 2026-09-21): карточку строит ещё и бот (ExamBotPort.loadAttemptReview →
+   * ExamBotService.loadAttemptReview зовёт этот же getReview), второй
+   * сборки того же контракта в контроллере быть не должно — иначе экран и
+   * бот однажды разъедутся условием. */
   async getReview(attemptId: string): Promise<AttemptReviewDto> {
     const attempt = await this.loadAttempt(attemptId);
     const grading = await this.findGradingDto(attemptId);
     const userId = attempt.userId.toString();
     // Не пустая строка, если аккаунт уже удалён (аудит В11): DELETED_USER_NAME.
     const names = await this.userNamesService.namesByIds([userId]);
+    const chat = await this.personalChats.chatFor(userId, EXAM_RESULT_KIND);
     return {
       attemptId: attempt._id.toString(),
       examId: attempt.examId.toString(),
@@ -68,6 +82,7 @@ export class ExamGradingsService {
       userName: names.get(userId) ?? DELETED_USER_NAME,
       status: attempt.status,
       blocks: buildReviewBlocks(attempt.blocks, attempt.answers),
+      notifiesUserInTelegram: chat !== null,
       grading,
     };
   }

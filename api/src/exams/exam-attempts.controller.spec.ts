@@ -118,6 +118,7 @@ describe('ExamAttemptsController', () => {
       userName: 'Ученик',
       status: 'submitted',
       blocks: [],
+      notifiesUserInTelegram: false,
       media: [],
     };
     const getReview = jest.fn().mockResolvedValue(reviewDto);
@@ -145,6 +146,7 @@ describe('ExamAttemptsController', () => {
       userName: 'Ученик',
       status: 'graded',
       blocks: [],
+      notifiesUserInTelegram: true,
       grading: gradingDto,
       media: [],
     };

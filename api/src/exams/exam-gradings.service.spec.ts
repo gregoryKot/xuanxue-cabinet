@@ -170,6 +170,71 @@ describe('ExamGradingsService', () => {
     ).resolves.toBe(1);
   });
 
+  // Отзыв владельца 2026-09-21 (ADR-0099): карточка проверки должна честно
+  // отвечать, дойдёт ли итог ученику в Telegram — три случая ниже проверяют
+  // ровно то условие, по которому реально шлёт TelegramExamNotifier.notifyExamGraded.
+  it('у ученика нет активного канала telegram — notifiesUserInTelegram false (отзыв владельца 2026-09-21)', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam(itemId);
+    const started = await ctx.service.start(examId, USER_A, NOW);
+
+    const review = await ctx.gradingsService.getReview(started.id);
+
+    expect(review.notifiesUserInTelegram).toBe(false);
+  });
+
+  it('у ученика активный личный чат с ботом — notifiesUserInTelegram true (отзыв владельца 2026-09-21)', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam(itemId);
+    const telegramId = 123456;
+    const student = await ctx.userModel.create({
+      name: 'Ученик',
+      roles: [],
+      telegramId,
+    });
+    const studentId = student._id.toString();
+    await ctx.channelModel.create({
+      type: 'telegram',
+      title: `Личные сообщения: ${student.name}`,
+      config: '{}',
+      target: String(telegramId),
+      active: true,
+    });
+    const started = await ctx.service.start(examId, studentId, NOW);
+
+    const review = await ctx.gradingsService.getReview(started.id);
+
+    expect(review.notifiesUserInTelegram).toBe(true);
+  });
+
+  it('тот же ученик выключил вид «результат экзамена» в уведомлениях — notifiesUserInTelegram false (отзыв владельца 2026-09-21)', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam(itemId);
+    const telegramId = 654321;
+    const student = await ctx.userModel.create({
+      name: 'Ученик',
+      roles: [],
+      telegramId,
+    });
+    const studentId = student._id.toString();
+    await ctx.channelModel.create({
+      type: 'telegram',
+      title: `Личные сообщения: ${student.name}`,
+      config: '{}',
+      target: String(telegramId),
+      active: true,
+    });
+    await ctx.notificationPrefsModel.create({
+      userId: studentId,
+      overrides: [{ kind: 'exam_result', enabled: false }],
+    });
+    const started = await ctx.service.start(examId, studentId, NOW);
+
+    const review = await ctx.gradingsService.getReview(started.id);
+
+    expect(review.notifiesUserInTelegram).toBe(false);
+  });
+
   it('оценка одной попытки не задевает оценку другой', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam(itemId);

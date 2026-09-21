@@ -3,10 +3,17 @@
 // спеков, тот же приём, что у telegram-teacher-notifier.test-support.ts,
 // CLAUDE.md «Файлы»/«Храповики», jscpd).
 import type { Connection, Model } from 'mongoose';
+import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
 import { ExamVideoDeliveryRegistry } from '../media/exam-video-delivery.registry';
 import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
 import { MediaAssetsService } from '../media/media-assets.service';
+import {
+  NotificationPrefsRecord,
+  NotificationPrefsSchema,
+} from '../notifications/notification-prefs.schema';
+import { NotificationPrefsService } from '../notifications/notification-prefs.service';
+import { PersonalChats } from '../telegram/personal-chats';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
 import { ExamImagesService } from '../exam-images/exam-images.service';
@@ -40,6 +47,11 @@ export interface AttemptsTestContext {
   // картинки варианта; спекам, которым нужна картинка в снимке попытки, тоже
   // не поднимать модель второй раз.
   imageModel: Model<ExamImageRecord>;
+  // ADR-0099: PersonalChats внутри gradingsService читает их, чтобы решить
+  // notifiesUserInTelegram — спекам, которым нужен настоящий Telegram-канал
+  // ученика или выключенный вид уведомления, тоже не поднимать модели второй раз.
+  channelModel: Model<ChannelRecord>;
+  notificationPrefsModel: Model<NotificationPrefsRecord>;
   examsService: ExamsService;
   examItemsService: ExamItemsService;
   examImagesService: ExamImagesService;
@@ -74,11 +86,26 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     ExamImageRecord.name,
     ExamImageSchema,
   );
+  const channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
+  const notificationPrefsModel = connection.model<NotificationPrefsRecord>(
+    NotificationPrefsRecord.name,
+    NotificationPrefsSchema,
+  );
   const examsService = new ExamsService(examModel, itemModel, attemptModel);
   const examImagesService = new ExamImagesService(imageModel, attemptModel);
   const examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
   const userNamesService = new UserNamesService(userModel);
   const examNotifier = fakeExamNotifier();
+  // Один инстанс UsersService на MediaAssetsService и PersonalChats — тот же
+  // userModel, не два разных подключения к одному и тому же (CLAUDE.md
+  // «Дубли»).
+  const usersService = new UsersService(userModel);
+  const notificationPrefsService = new NotificationPrefsService(notificationPrefsModel);
+  const personalChats = new PersonalChats(
+    usersService,
+    channelModel,
+    notificationPrefsService,
+  );
   const service = new ExamAttemptsService(
     attemptModel,
     gradingModel,
@@ -91,6 +118,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     attemptModel,
     gradingModel,
     userNamesService,
+    personalChats,
     examNotifier,
   );
   // Реестр нотификатора ссылок (ADR-0084) — не собран в этих спеках
@@ -99,7 +127,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   const mediaAssetsService = new MediaAssetsService(
     mediaModel,
     attemptModel,
-    new UsersService(userModel),
+    usersService,
     new ExamMediaNotifierRegistry(),
     new ExamVideoDeliveryRegistry(),
   );
@@ -112,6 +140,8 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     userModel,
     mediaModel,
     imageModel,
+    channelModel,
+    notificationPrefsModel,
     examsService,
     examItemsService,
     examImagesService,
@@ -131,6 +161,8 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.userModel.deleteMany({});
   await ctx.imageModel.deleteMany({});
   await ctx.mediaModel.deleteMany({});
+  await ctx.channelModel.deleteMany({});
+  await ctx.notificationPrefsModel.deleteMany({});
   // Иначе вызовы ExamNotifier из одного теста утекают в счётчик следующего —
   // общий ctx на файл (afterEach), не свой инстанс на тест.
   ctx.examNotifier.notifyAttemptSubmitted.mockClear();

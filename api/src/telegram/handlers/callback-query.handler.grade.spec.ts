@@ -31,6 +31,7 @@ function fakeReview(): AttemptReviewDto {
     userName: 'Ольга',
     status: 'submitted',
     blocks: [],
+    notifiesUserInTelegram: true,
   };
 }
 

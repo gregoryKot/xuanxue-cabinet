@@ -14,6 +14,7 @@ function fakeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
     userName: 'Мария',
     status: 'submitted',
     blocks: [],
+    notifiesUserInTelegram: true,
     ...overrides,
   };
 }

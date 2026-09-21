@@ -79,6 +79,18 @@ export interface AttemptReviewDto {
   userName: string;
   status: ExamAttemptStatus;
   blocks: AttemptReviewBlockDto[];
+  /** Дойдёт ли итог этому ученику в Telegram — то самое условие, по
+   * которому реально шлёт `TelegramExamNotifier.notifyExamGraded`
+   * (`PersonalChats.chatFor(userId, 'exam_result') !== null`: активный
+   * личный чат с ботом и включённый вид «результат экзамена»). Не
+   * опционально, в отличие от `media` ниже: там причина — старые фикстуры
+   * web/, здесь «нет данных» не бывает — сервис всегда знает ответ на
+   * момент сборки карточки. Заведено по отзыву владельца 2026-09-21:
+   * строка «итог уйдёт в Telegram» стояла безусловно, а у конкретного
+   * ученика Telegram может не быть (ADR-0099). Итог в любом случае виден
+   * ученику в кабинете (InAppExamNotifier, ADR-0061) — это поле только про
+   * канал Telegram. */
+  notifiesUserInTelegram: boolean;
   /** Есть, только если оценка уже выставлена. */
   grading?: ExamGradingDto;
   /** Видео экзамена (слой 4.5, ADR-0023) — учитель видит в карточке проверки.
