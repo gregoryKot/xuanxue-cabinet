@@ -28,7 +28,7 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig({}));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login' }),
+      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
     ).rejects.toBeInstanceOf(NotAvailableError);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -42,7 +42,7 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig({}));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login' }),
+      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
     ).rejects.toBeInstanceOf(NotAvailableError);
     expect(error).toHaveBeenCalledWith(expect.stringContaining('RESEND_API_KEY'));
   });
@@ -56,6 +56,7 @@ describe('MailService.sendLoginLink', () => {
     await service.sendLoginLink({
       to: 'ученик@example.com',
       link: 'https://xuanxue.su/login/email?token=abc',
+      code: '482913',
     });
 
     const [url, init] = fetchSpy.mock.calls[0] ?? [];
@@ -72,6 +73,10 @@ describe('MailService.sendLoginLink', () => {
     expect(body.from).toBe(CONFIGURED.MAIL_FROM);
     expect(body.to).toBe('ученик@example.com');
     expect(body.text).toContain('https://xuanxue.su/login/email?token=abc');
+    // Код письма (ADR-0104) — второй способ потратить ту же заявку, для
+    // приложения на домашнем экране айфона со своими cookie.
+    expect(body.text).toContain('482913');
+    expect(body.text).toContain('домашнем экране');
   });
 
   it('Resend ответил не-ok — NotAvailableError с текстом для пользователя', async () => {
@@ -79,7 +84,7 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig(CONFIGURED));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login' }),
+      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
     ).rejects.toMatchObject({
       message: 'Не удалось отправить письмо. Попробуйте ещё раз через минуту.',
     });
@@ -90,7 +95,7 @@ describe('MailService.sendLoginLink', () => {
     const service = new MailService(fakeConfig(CONFIGURED));
 
     await expect(
-      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login' }),
+      service.sendLoginLink({ to: 'a@example.com', link: 'https://x/login', code: '123456' }),
     ).rejects.toBeInstanceOf(NotAvailableError);
   });
 });
