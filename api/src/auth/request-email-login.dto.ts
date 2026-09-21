@@ -4,7 +4,9 @@
 import { IsEmail, IsOptional, Matches, MaxLength } from 'class-validator';
 import { INVITE_CODE_RE, type RequestEmailLoginInput } from '@xuanxue/shared';
 
-const EMAIL_MAX_LENGTH = 254;
+// Экспортирован — тем же числом пользуется VerifyEmailCodeDto
+// (verify-email-code.dto.ts): длина поля email не пишется в коде дважды.
+export const EMAIL_MAX_LENGTH = 254;
 const INVALID_INVITE_CODE_MESSAGE = 'Ссылка повреждена. Скопируйте её ещё раз.';
 
 export class RequestEmailLoginDto implements RequestEmailLoginInput {
