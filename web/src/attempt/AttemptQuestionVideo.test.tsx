@@ -144,6 +144,27 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
       form.compareDocumentPosition(botLink) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  // Read-after-write (CLAUDE.md): отметка о получении обновится сама
+  // (useAttemptVideoPoll.ts, ADR-0076) — строка рядом с кнопкой бота
+  // говорит об этом прямо, перезагружать страницу вручную не нужно.
+  it('рядом с кнопкой бота есть строка, что отметка появится сама', () => {
+    renderVideo(makeVideo());
+
+    expect(
+      screen.getByText(
+        'Отправите боту — здесь появится отметка, что видео дошло. Обновлять страницу не нужно.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('Telegram не привязан — строки про автообновление нет, кнопки бота тоже нет', () => {
+    renderVideo(makeVideo({ telegramLinked: false, offersTelegramLink: true }));
+
+    expect(
+      screen.queryByText(/здесь появится отметка, что видео дошло/),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('AttemptQuestionVideo — видео уже получено', () => {

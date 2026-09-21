@@ -26,12 +26,12 @@ import { AttemptSubmitted } from './AttemptSubmitted';
 import { attemptPageStyle } from './attemptLayout';
 import { useAttempt } from './useAttempt';
 import { useAttemptMedia, type AttemptVideoControls } from './useAttemptMedia';
+import { useAttemptVideoPoll } from './useAttemptVideoPoll';
 
 export default function AttemptScreen() {
   const { id } = useParams<{ id: string }>();
-  const { attempt, loading, error, reload, submit, submitting, submitError } = useAttempt(
-    id ?? '',
-  );
+  const { attempt, loading, error, reload, refresh, submit, submitting, submitError } =
+    useAttempt(id ?? '');
   const { config } = useAuthConfig();
   // Кнопку «Отправить видео боту» показываем только тем, кого бот узнает
   // (ADR-0037, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.
@@ -39,6 +39,10 @@ export default function AttemptScreen() {
   // Хук — до ранних return (правило хуков): пока attempt не загружен,
   // addMediaLink и linkStateFor всё равно не зовутся, им нужен только id.
   const media = useAttemptMedia(id ?? '', reload);
+  // Фоновый опрос, пока ждём видео из Telegram (ADR-0076, ADR-0023/0037,
+  // useAttemptVideoPoll.ts) — тоже до ранних return: пока attempt === null,
+  // хук сам не ходит в сеть, решение живёт внутри него.
+  useAttemptVideoPoll(attempt, refresh);
 
   if (loading) {
     return (
