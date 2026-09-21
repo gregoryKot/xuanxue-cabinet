@@ -81,12 +81,10 @@ export class EmailAuthService {
     try {
       await this.mail.sendLoginLink({ to: normalized, link, code: issued.code });
     } catch (err) {
-      // Токен уже в базе (this.tokens.issue() выше), а письмо не ушло
-      // (Resend недоступен/таймаут) — не снять токен нельзя: иначе повторный
-      // запрос в окне cooldown получит от issue() null и тихо ответит 204,
-      // как будто письмо было отправлено (аудит 2026-09-21, HIGH). revoke —
-      // best-effort: его собственную ошибку логируем отдельно, чтобы не
-      // заслонить исходную причину сбоя отправки при rethrow ниже.
+      // Заявка уже в базе (issue() выше), а письмо не ушло — не снять её
+      // нельзя: иначе повтор в окне cooldown получит от issue() null и тихо
+      // ответит 204, будто письмо было (аудит 2026-09-21). revoke — best-effort:
+      // его ошибку логируем отдельно, чтобы не заслонить причину сбоя отправки.
       await this.tokens.revoke(normalized).catch((revokeErr: unknown) => {
         this.logger.error(
           `Не удалось снять токен email-входа после сбоя отправки письма: ${errorMessage(revokeErr)}`,

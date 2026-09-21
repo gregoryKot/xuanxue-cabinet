@@ -97,11 +97,9 @@ export class EmailLoginTokenService {
     return doc?.email ?? null;
   }
 
-  /** Снять непотреблённые токены адреса — вызывает EmailAuthService.requestLink,
-   * когда issue() выдал токен, но письмо с ним не ушло (Resend недоступен,
-   * аудит 2026-09-21, HIGH): без этого токен остаётся в базе, и повторный
-   * запрос в окне EMAIL_LOGIN_RESEND_COOLDOWN_MIN получит от issue() null —
-   * решит, что письмо уже отправлено, и второй раз не пошлёт его тоже. */
+  /** Снять заявку адреса — EmailAuthService.requestLink зовёт, когда issue()
+   * выдал её, а письмо не ушло (аудит 2026-09-21): иначе повтор в окне
+   * cooldown получит от issue() null и письмо не уйдёт второй раз тоже. */
   async revoke(email: string): Promise<void> {
     await this.model.deleteMany({ email });
   }
