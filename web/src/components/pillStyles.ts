@@ -9,17 +9,23 @@ import type { CSSProperties } from 'react';
 // высоте: паддинг и радиус остаются макетными, лишнюю высоту/ширину даёт сама
 // цель нажатия вокруг видимой пилюли (тот же приём, что и в ADR-0043 для
 // rowControlStyle — отклонение зафиксировано там же, CLAUDE.md «Доступность»).
+// Паддинг живёт не здесь, а классом PILL_CLASS в index.css: на телефоне он
+// уже, чем на мониторе (четыре пилюли статуса на «Экзаменах» иначе не
+// помещаются в одну строку на 360px — снимок владельца 2026-09-21), а
+// `CSSProperties` не умеет медиа-запрос. Каждый, кто берёт pillStyle, ставит
+// и className={PILL_CLASS} — без него пилюля рисуется без отступов.
 // Рамка — раздельными полями (border-width/style/color), не шорткатом
 // `border`: активное состояние меняет только цвет рамки, и React
 // предупреждает при смене шортката на отдельное поле между рендерами (тот же
 // приём, что раньше был у border-bottom-* здесь же).
+export const PILL_CLASS = 'xuanxue-pill';
+
 export const pillStyle: CSSProperties = {
   minHeight: 44,
   minWidth: 44,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '7px 14px',
   borderRadius: 'var(--radius-pill)',
   borderWidth: 1,
   borderStyle: 'solid',

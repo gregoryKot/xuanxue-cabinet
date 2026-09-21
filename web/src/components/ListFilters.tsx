@@ -14,7 +14,7 @@
 // компонент»).
 import type { CSSProperties, ReactNode } from 'react';
 import { inputStyle } from './Field';
-import { pillActiveStyle, pillStyle } from './pillStyles';
+import { PILL_CLASS, pillActiveStyle, pillStyle } from './pillStyles';
 
 const ALL_LABEL = 'Все';
 
@@ -84,6 +84,7 @@ export function ListFilters<TStatus extends string>({
           <button
             key={option.status || 'all'}
             type="button"
+            className={PILL_CLASS}
             style={
               value === option.status ? { ...pillStyle, ...pillActiveStyle } : pillStyle
             }
