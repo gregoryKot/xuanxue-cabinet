@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Гейт PWA-сборки (ADR-0032, CLAUDE.md «Приложение на телефоне»): после
+// Гейт PWA-сборки (ADR-0092, CLAUDE.md «Приложение на телефоне»): после
 // `npm run build --workspace=web` проверяет статический манифест и иконки
 // (копируются из web/public/ без изменений — vite build просто переносит
-// файл), а также что по адресу /sw.js лежит именно заглушка-килсвитч
-// (web/public/sw.js), а не случайно вернувшийся Workbox-worker с прекешем.
-// Здесь же — сверка бумаги оболочки с токеном --paper (scripts/
-// pwa-shell-colors.mjs) и сверка «знак везде один» (scripts/
-// pwa-icon-sources.mjs, docs/adr/0085): иконку, заставку и полоску браузера
-// человек видит раньше любого экрана кабинета. CI-джоба `web`.
+// файл), а также что по адресу /sw.js лежит push-worker (web/public/sw.js,
+// ADR-0092), а не заглушка-пустышка и не случайно вернувшийся
+// Workbox-worker с прекешем. Здесь же — сверка бумаги оболочки с токеном
+// --paper (scripts/pwa-shell-colors.mjs) и сверка «знак везде один»
+// (scripts/pwa-icon-sources.mjs, docs/adr/0085): иконку, заставку и полоску
+// браузера человек видит раньше любого экрана кабинета. CI-джоба `web`.
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { findShellColorProblems } from './pwa-shell-colors.mjs';
@@ -58,9 +58,11 @@ for (const icon of icons) {
 }
 
 if (!existsSync(SW_PATH)) {
-  // Килсвитч обязан быть по старому адресу (ADR-0032) — без него браузеры,
-  // у которых уже стоит старый Workbox-worker, годами не увидят обновления.
-  errors.push('web/dist/sw.js не найден — заглушка service worker не скопировалась');
+  // Push-worker обязан быть по тому же адресу, где раньше жил килсвитч
+  // (ADR-0032 → ADR-0092) — без него браузеры, у которых уже стоит старый
+  // Workbox-worker, годами не увидят обновления, а у новых людей не будет
+  // регистрации для push.
+  errors.push('web/dist/sw.js не найден — push-worker не скопировался');
 } else {
   const swText = readFileSync(SW_PATH, 'utf8');
   if (
@@ -69,7 +71,16 @@ if (!existsSync(SW_PATH)) {
     swText.includes('"url":')
   )
     errors.push(
-      'web/dist/sw.js похож на настоящий Workbox-worker с прекешем, а не на заглушку-килсвитч (ADR-0032)',
+      'web/dist/sw.js похож на настоящий Workbox-worker с прекешем — прекеш не должен вернуться вместе с push (ADR-0092)',
+    );
+  // Пустышка (или регресс обратно в килсвитч) прошла бы проверку выше молча —
+  // этот файл обязан реально уметь push: слушать событие и показывать
+  // уведомление (ADR-0092, «Порядок работ» п.2).
+  if (!/addEventListener\(\s*['"]push['"]/.test(swText))
+    errors.push('web/dist/sw.js не слушает событие push (ADR-0092)');
+  if (!swText.includes('showNotification'))
+    errors.push(
+      'web/dist/sw.js не вызывает showNotification — push нечем показать (ADR-0092)',
     );
 }
 
@@ -114,4 +125,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('✓ check-pwa: манифест, иконки, цвет оболочки, знак и заглушка sw в порядке');
+console.log('✓ check-pwa: манифест, иконки, цвет оболочки, знак и push-worker в порядке');

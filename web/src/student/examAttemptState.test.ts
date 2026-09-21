@@ -1,11 +1,12 @@
+// Какую кнопку показать — тестирует shared/src/my-exams.spec.ts
+// (getMyExamAction, ADR-0091, переезд из этого файла); здесь остались только
+// тексты кабинета, которые от кнопки не зависят.
 import { describe, expect, it } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
 import {
   describeNoAction,
   describeOutcome,
   formatAttemptsLeft,
-  getAttemptsLeft,
-  getExamAction,
 } from './examAttemptState';
 
 function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
@@ -19,16 +20,6 @@ function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
     ...overrides,
   };
 }
-
-describe('getAttemptsLeft', () => {
-  it('разница попыток', () => {
-    expect(getAttemptsLeft(makeExam({ attemptsAllowed: 3, attemptsUsed: 1 }))).toBe(2);
-  });
-
-  it('не уходит в минус, когда учитель уменьшил лимит', () => {
-    expect(getAttemptsLeft(makeExam({ attemptsAllowed: 1, attemptsUsed: 2 }))).toBe(0);
-  });
-});
 
 describe('formatAttemptsLeft', () => {
   it('склонение — 1 попытка', () => {
@@ -50,64 +41,6 @@ describe('formatAttemptsLeft', () => {
   });
 });
 
-describe('getExamAction', () => {
-  it('попытка в работе — «Продолжить», даже если лимит уже исчерпан', () => {
-    const exam = makeExam({
-      attemptsAllowed: 1,
-      attemptsUsed: 1,
-      lastAttempt: { id: 'a1', status: 'in_progress' },
-    });
-    expect(getExamAction(exam)).toBe('continue');
-  });
-
-  it('попыток не начинали, лимит не исчерпан — «Начать»', () => {
-    expect(getExamAction(makeExam({ attemptsAllowed: 1, attemptsUsed: 0 }))).toBe(
-      'start',
-    );
-  });
-
-  it('лимит исчерпан, попытки не было (attemptsAllowed=0) — кнопки нет', () => {
-    expect(getExamAction(makeExam({ attemptsAllowed: 0, attemptsUsed: 0 }))).toBeNull();
-  });
-
-  it('последняя попытка отправлена — кнопки нет', () => {
-    const exam = makeExam({
-      attemptsAllowed: 2,
-      attemptsUsed: 1,
-      lastAttempt: { id: 'a1', status: 'submitted' },
-    });
-    expect(getExamAction(exam)).toBeNull();
-  });
-
-  it('последняя попытка проверена, попытки кончились — кнопки нет', () => {
-    const exam = makeExam({
-      attemptsAllowed: 1,
-      attemptsUsed: 1,
-      lastAttempt: { id: 'a1', status: 'graded' },
-    });
-    expect(getExamAction(exam)).toBeNull();
-  });
-
-  // Слой 4.7: итог «нужно доработать» без кнопки был бы тупиком.
-  it('работу проверили, попытка ещё есть — «Пройти ещё раз»', () => {
-    const exam = makeExam({
-      attemptsAllowed: 2,
-      attemptsUsed: 1,
-      lastAttempt: { id: 'a1', status: 'graded', outcome: 'needs_work' },
-    });
-    expect(getExamAction(exam)).toBe('retry');
-  });
-
-  it('сдано и ждёт проверки, попытка ещё есть — кнопки нет: проверку не обходят', () => {
-    const exam = makeExam({
-      attemptsAllowed: 2,
-      attemptsUsed: 1,
-      lastAttempt: { id: 'a1', status: 'submitted' },
-    });
-    expect(getExamAction(exam)).toBeNull();
-  });
-});
-
 describe('describeOutcome', () => {
   it('сдал', () => {
     expect(describeOutcome('passed')).toBe('Экзамен сдан');
@@ -125,13 +58,33 @@ describe('describeOutcome', () => {
 describe('describeNoAction', () => {
   it('проверено', () => {
     expect(
-      describeNoAction(makeExam({ lastAttempt: { id: 'a1', status: 'graded' } })),
+      describeNoAction(
+        makeExam({ lastAttempt: { id: 'a1', status: 'graded', expired: false } }),
+      ),
     ).toBe('Экзамен проверен');
   });
 
-  it('отправлено', () => {
+  it('отправлено — сдал сам', () => {
     expect(
-      describeNoAction(makeExam({ lastAttempt: { id: 'a1', status: 'submitted' } })),
+      describeNoAction(
+        makeExam({ lastAttempt: { id: 'a1', status: 'submitted', expired: false } }),
+      ),
+    ).toBe('Отправлено, ждём проверки');
+  });
+
+  // Тот же текст и когда попытку закрыло время, но попыток больше не
+  // осталось: карточка тут не рисует кнопку «Пройти ещё раз» (getMyExamAction
+  // вернул бы null из-за исчерпанного лимита), а работа всё равно ждёт
+  // проверки учителя — сообщать об этом нужно тем же честным текстом.
+  it('отправлено — закрыло время, но лимит попыток уже исчерпан', () => {
+    expect(
+      describeNoAction(
+        makeExam({
+          attemptsAllowed: 1,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+        }),
+      ),
     ).toBe('Отправлено, ждём проверки');
   });
 

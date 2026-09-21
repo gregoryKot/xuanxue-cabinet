@@ -2,9 +2,15 @@
 // ADR-0024, PLAN.md §12): то же самое, что ученик видит в кабинете
 // (MyExamsService.list через ExamBotPort — не второй запрос) — опубликованные
 // формы и положение ученика по каждой. У строки — кнопка «Начать»/
-// «Продолжить», либо честный текст, почему кнопки нет (попытки кончились,
-// работа на проверке). Чистая логика без Mongo и без сети.
-import type { MyExamDto } from '@xuanxue/shared';
+// «Продолжить»/«Начать ещё раз», либо честный текст, почему кнопки нет
+// (попытки кончились, работа на проверке). Чистая логика без Mongo и без сети.
+//
+// Что предложить нажать — решает одна функция на кабинет и на бота
+// (getMyExamAction, shared/src/my-exams.ts, ADR-0091): здесь только подписи
+// кнопки и текст причины, когда кнопки нет. До этого решения бот считал
+// правило сам и пускал на «Начать ещё раз» любую сданную работу, даже ещё не
+// проверенную, — сюда это больше не возвращается.
+import { getMyExamAction, type MyExamAction, type MyExamDto } from '@xuanxue/shared';
 import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 import { backToMenuButton, type BotMenu } from './bot-menu';
@@ -13,6 +19,12 @@ const TITLE = 'Экзамены:';
 const EMPTY_TEXT = 'Пока нечего сдавать: учитель ещё не опубликовал ни одной формы.';
 const SUBMITTED_TEXT = 'Сдано, ждёт проверки.';
 const BUTTON_TITLE_MAX = 40;
+
+const ACTION_LABELS: Record<Exclude<MyExamAction, null>, string> = {
+  continue: 'Продолжить',
+  start: 'Начать',
+  retry: 'Начать ещё раз',
+};
 
 interface ExamRowStatus {
   actionLabel?: string;
@@ -24,10 +36,8 @@ interface ExamRowStatus {
  * только то, что можно сказать заранее по данным списка, не второе решение
  * того же правила. */
 function examRowStatus(exam: MyExamDto): ExamRowStatus {
-  if (exam.lastAttempt?.status === 'in_progress') return { actionLabel: 'Продолжить' };
-  if (exam.attemptsUsed < exam.attemptsAllowed) {
-    return { actionLabel: exam.attemptsUsed === 0 ? 'Начать' : 'Начать ещё раз' };
-  }
+  const action = getMyExamAction(exam);
+  if (action) return { actionLabel: ACTION_LABELS[action] };
   if (exam.lastAttempt?.status === 'submitted') return { reason: SUBMITTED_TEXT };
   return {
     reason: `Использованы все попытки — ${exam.attemptsUsed} из ${exam.attemptsAllowed}.`,

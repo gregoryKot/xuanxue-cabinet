@@ -62,7 +62,7 @@ const NEW_EXAM: MyExamDto = {
   attemptsAllowed: 3,
   attemptsUsed: 0,
 };
-// Уже сдан на проверку — не «новое», getExamAction возвращает не 'start'.
+// Уже сдан на проверку — не «новое», getMyExamAction возвращает не 'start'.
 const STARTED_EXAM: MyExamDto = {
   id: 'e2',
   title: 'Форма 2',
@@ -70,7 +70,7 @@ const STARTED_EXAM: MyExamDto = {
   level: '1',
   attemptsAllowed: 3,
   attemptsUsed: 1,
-  lastAttempt: { id: 'a1', status: 'submitted' },
+  lastAttempt: { id: 'a1', status: 'submitted', expired: false },
 };
 
 const UNREAD: NotificationDto = {
@@ -231,7 +231,7 @@ describe('useNotificationsData — ошибки', () => {
 
 // Баг, который чинит этот файл: у штата школы (teacher/assistant/admin)
 // попыток экзамена нет, а до ADR-0074 хук всё равно звал useMyExams() за
-// любую роль — getExamAction() на каждой опубликованной форме отвечал
+// любую роль — getMyExamAction() на каждой опубликованной форме отвечал
 // 'start' (попыток не было ⇒ «начать»), и эти формы утекали в newTasks и в
 // count. Цифра на значке врала, а на /notifications висели чужие карточки
 // экзаменов. Ниже проверяется не только итог (count/newTasks), но и что

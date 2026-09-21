@@ -25,14 +25,16 @@ describe('splitNewTasks', () => {
   });
 
   it('попытка в работе — остальные, не новое', () => {
-    const exam = makeExam({ lastAttempt: { id: 'a1', status: 'in_progress' } });
+    const exam = makeExam({
+      lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+    });
     expect(splitNewTasks([exam])).toEqual({ newTasks: [], restTasks: [exam] });
   });
 
   it('сдано, ждёт проверки — остальные', () => {
     const exam = makeExam({
       attemptsAllowed: 2,
-      lastAttempt: { id: 'a1', status: 'submitted' },
+      lastAttempt: { id: 'a1', status: 'submitted', expired: false },
     });
     expect(splitNewTasks([exam])).toEqual({ newTasks: [], restTasks: [exam] });
   });
@@ -40,7 +42,17 @@ describe('splitNewTasks', () => {
   it('проверено, можно пройти ещё раз — остальные, не новое', () => {
     const exam = makeExam({
       attemptsAllowed: 2,
-      lastAttempt: { id: 'a1', status: 'graded', outcome: 'needs_work' },
+      lastAttempt: { id: 'a1', status: 'graded', outcome: 'needs_work', expired: false },
+    });
+    expect(splitNewTasks([exam])).toEqual({ newTasks: [], restTasks: [exam] });
+  });
+
+  // Повтор после дедлайна («retry») — не новое задание, а старое, которое
+  // не успели сдать: рубрика «Новое задание» для него была бы враньём.
+  it('закрыло время, можно пройти ещё раз — остальные, не новое', () => {
+    const exam = makeExam({
+      attemptsAllowed: 2,
+      lastAttempt: { id: 'a1', status: 'submitted', expired: true },
     });
     expect(splitNewTasks([exam])).toEqual({ newTasks: [], restTasks: [exam] });
   });
@@ -52,7 +64,10 @@ describe('splitNewTasks', () => {
 
   it('порядок внутри каждой группы — как в исходном списке', () => {
     const newA = makeExam({ id: 'n1' });
-    const oldB = makeExam({ id: 'o1', lastAttempt: { id: 'a1', status: 'submitted' } });
+    const oldB = makeExam({
+      id: 'o1',
+      lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+    });
     const newC = makeExam({ id: 'n2' });
 
     expect(splitNewTasks([newA, oldB, newC])).toEqual({

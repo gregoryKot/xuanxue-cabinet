@@ -95,7 +95,11 @@ describe('MyExamsService', () => {
     const list = await service.list({}, USER_A, NOW);
 
     expect(list[0]?.attemptsUsed).toBe(1);
-    expect(list[0]?.lastAttempt).toEqual({ id: started.id, status: 'in_progress' });
+    expect(list[0]?.lastAttempt).toEqual({
+      id: started.id,
+      status: 'in_progress',
+      expired: false,
+    });
   });
 
   it('чужая попытка не влияет: у Б своё положение, отдельное от А', async () => {
@@ -119,17 +123,43 @@ describe('MyExamsService', () => {
     const list = await service.list({}, USER_A, NOW);
 
     expect(list[0]?.attemptsUsed).toBe(2);
-    expect(list[0]?.lastAttempt).toEqual({ id: second.id, status: 'in_progress' });
+    expect(list[0]?.lastAttempt).toEqual({
+      id: second.id,
+      status: 'in_progress',
+      expired: false,
+    });
   });
 
-  it('дедлайн истёк — последняя попытка видна уже submitted/expired, не in_progress', async () => {
+  // Решение владельца 2026-09-21 (ADR-0091): кабинет и бот предлагают
+  // «Пройти ещё раз» именно по этому полю, не по одному статусу — поэтому
+  // здесь и в тесте ниже сравнивается весь lastAttempt, а не только status.
+  it('дедлайн истёк — последняя попытка приезжает submitted и expired: true', async () => {
     const itemId = await createPublishedItem();
     const examId = await createExam({ itemId, timeLimitMin: 10 });
-    await ctx.service.start(examId, USER_A, NOW);
+    const started = await ctx.service.start(examId, USER_A, NOW);
 
     const list = await service.list({}, USER_A, NOW.plus({ minutes: 11 }));
 
-    expect(list[0]?.lastAttempt?.status).toBe('submitted');
+    expect(list[0]?.lastAttempt).toEqual({
+      id: started.id,
+      status: 'submitted',
+      expired: true,
+    });
+  });
+
+  it('сдана вручную (не по дедлайну) — lastAttempt приезжает с expired: false', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createExam({ itemId });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+    await ctx.service.submit(started.id, USER_A, NOW);
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list[0]?.lastAttempt).toEqual({
+      id: started.id,
+      status: 'submitted',
+      expired: false,
+    });
   });
 
   it('limit ограничивает список опубликованных форм', async () => {
@@ -168,6 +198,7 @@ describe('MyExamsService', () => {
     expect(list[0]?.lastAttempt).toEqual({
       id: started.id,
       status: 'graded',
+      expired: false,
       outcome: 'passed',
       comment: 'Общий комментарий учителя',
     });
@@ -181,6 +212,10 @@ describe('MyExamsService', () => {
     const list = await service.list({}, USER_A, NOW);
 
     expect(list[0]?.lastAttempt?.outcome).toBeUndefined();
-    expect(list[0]?.lastAttempt).toEqual({ id: started.id, status: 'in_progress' });
+    expect(list[0]?.lastAttempt).toEqual({
+      id: started.id,
+      status: 'in_progress',
+      expired: false,
+    });
   });
 });
