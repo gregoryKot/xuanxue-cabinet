@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
 import { screenTitleStyle } from '../components/screenLayout';
 import {
@@ -77,6 +78,8 @@ export function ClassEditorForm({ classDto, channels, editor }: ClassEditorFormP
           <span className="xuanxue-eyebrow">{EYEBROW}</span>
           <h1 style={screenTitleStyle}>{classDto ? classDto.title : NEW_CLASS_TITLE}</h1>
         </div>
+
+        <FormDraftNote restored={form.draftRestored} onDiscard={form.discardDraft} />
 
         <ClassFormFields
           state={form.state}
