@@ -6,17 +6,27 @@
 исходное решение — [ADR-0006](adr/0006-pwa-and-web-push.md). Правила:
 
 - Манифест — статический файл `web/public/manifest.webmanifest`, `index.html`
-  ссылается на него `<link rel="manifest">`. Иконки — `web/public/icons/`
-  (192/512 и maskable). Гейт: `scripts/check-pwa.mjs` после сборки.
-- **Цвет оболочки — из палитры кабинета.** Фон иконки, `theme_color` и
-  `background_color` манифеста и `<meta name="theme-color">` в `web/index.html`
-  равны токену `--paper`, знак на иконке — `--terracotta`
-  ([ADR-0043](adr/0043-visual-direction-warm-school.md), значения — в
-  `web/src/index.css`). Иконку на домашнем экране, заставку и полоску браузера
-  человек видит раньше любого экрана: знак там обязан совпадать со знаком в
-  кабинете. Сменилась палитра — правятся все четыре места и перегенерируется
-  растр: `node scripts/generate-pwa-icons.mjs` (четыре png лежат в гите). Гейт:
-  `scripts/check-pwa.mjs` сверяет цвета с токенами и краснеет на расхождении.
+  ссылается на него `<link rel="manifest">`. Гейт: `scripts/check-pwa.mjs`
+  после сборки.
+- **Знак школы всюду один, и собирается он из одного файла.** Источник —
+  `web/brand/school-mark.webp` (круглая печать с черепахой, 512×512, углы
+  прозрачные); лежит вне `web/public`, браузеру не раздаётся. Из него
+  `node scripts/generate-pwa-icons.mjs` делает все картинки в
+  `web/public/icons/`: 192 и 512 для манифеста, maskable 512 для Android, 180
+  для iOS, 64 для знака в кабинете (`web/src/components/SchoolMark.tsx`) и
+  32/16 для вкладки браузера. Результат лежит в гите. Сменился знак — замени
+  источник, выполни скрипт, закоммить картинки
+  ([ADR-0084](adr/0084-school-mark-is-a-raster-seal.md)).
+- **Цвет оболочки — из палитры кабинета.** `theme_color` и
+  `background_color` манифеста, `<meta name="theme-color">` в
+  `web/index.html` и сплошной фон под знаком на иконках iOS и Android равны
+  токену `--paper` ([ADR-0043](adr/0043-visual-direction-warm-school.md),
+  значение — в `web/src/index.css`). Иконку на домашнем экране, заставку и
+  полоску браузера человек видит раньше любого экрана. Сменилась палитра —
+  правятся все три места и перегенерируется растр:
+  `node scripts/generate-pwa-icons.mjs`. Гейт: `scripts/check-pwa.mjs` сверяет
+  цвета с токенами, а заодно помнит sha256 источника знака и перечень
+  собранных из него файлов — поменять печать и забыть перегенерацию не выйдет.
 - Safe-area iOS — только в `@media (display-mode: standalone)`
   (`web/src/pwa/standalone.css`): в браузере вкладка сама рисует чёлку, в
   установленном приложении контент обязан не залезать под неё сам.

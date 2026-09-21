@@ -11,8 +11,14 @@
          docs/adr/0043), тот же тон, что theme_color манифеста
          (web/public/manifest.webmanifest). Сверяет scripts/check-pwa.mjs. -->
     <meta name="theme-color" content="#f4f1ea" />
-    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+    <!-- Знак — фотография печати (черепаха, XUANXUE, 玄学; docs/adr/0084), не
+         фигура: вектором её не нарисовать, поэтому вкладка и экран «Домой»
+         берут растр из web/public/icons/, а не svg, как раньше. Источник и
+         вся линейка размеров — web/brand/school-mark.webp,
+         node scripts/generate-pwa-icons.mjs. -->
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/icons/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/school-mark-apple-180.png" />
     <meta name="apple-mobile-web-app-title" content="Сюань-Сюэ" />
     <!-- Манифест статический (web/public/manifest.webmanifest, ADR-0032) —
          нужен только для установки ярлыка на телефон, service worker нет. -->

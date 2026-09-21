@@ -20,9 +20,11 @@
 // не помещается.
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import type { MeDto } from '@xuanxue/shared';
 import { ProfileIcon } from '../components/ProfileIcon';
-import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
+import { SchoolBrandLink } from '../components/SchoolBrandLink';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { rootPathFor } from './screenAccess';
 
 const PROFILE_PATH = '/profile';
 const PROFILE_LABEL = 'Профиль';
@@ -73,13 +75,16 @@ const profileLinkStyle: CSSProperties = {
 
 interface AppShellBrandRowProps {
   isMobile: boolean;
+  /** Знак и название — ссылка на корень роли (SchoolBrandLink.tsx,
+   * rootPathFor из screenAccess.ts): адрес зависит от роли, поэтому строке
+   * нужен `me`, а не готовый путь — AppShell.tsx его уже держит. */
+  me: MeDto | null;
 }
 
-export function AppShellBrandRow({ isMobile }: AppShellBrandRowProps) {
+export function AppShellBrandRow({ isMobile, me }: AppShellBrandRowProps) {
   return (
     <span style={rowStyle}>
-      <SchoolMark />
-      <span style={titleStyle}>{SCHOOL_NAME}</span>
+      <SchoolBrandLink to={rootPathFor(me)} titleStyle={titleStyle} />
       {isMobile && (
         <span style={actionsStyle}>
           <NotificationBell />
