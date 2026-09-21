@@ -11,17 +11,16 @@
 // будет. Отправка — best-effort и не бросает наружу: сбой резолва (Mongo,
 // гонка индекса) ловится try/catch и уходит в Logger.warn, тем же приёмом,
 // что у соседнего плеча.
+//
+// Выбор получателей и запись строки живут в in-app-staff-write.ts: тем же
+// модулем пользуется плечо «прислали ссылку на видео»
+// (in-app-video-link-notifier.ts, ADR-0084).
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
-import {
-  rolesWithNotification,
-  type GradingOutcome,
-  type NotificationKind,
-} from '@xuanxue/shared';
+import type { NotificationKind } from '@xuanxue/shared';
 import { errorMessage } from '../common/error-info';
-import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import type {
   AttemptSubmittedContext,
   ExamGradedContext,
@@ -29,21 +28,12 @@ import type {
   ExamNotifyResult,
 } from '../exams/exam-notifier';
 import { UsersService } from '../users/users.service';
-import { encryptRecord } from '../utils/encryption';
+import { staffWriteDeps, writeNotificationRow, writeToStaff } from './in-app-staff-write';
 import { NotificationPrefsService } from './notification-prefs.service';
-import { NOTIFICATION_ENCRYPT_SCHEMA, NotificationRecord } from './notification.schema';
+import { NotificationRecord } from './notification.schema';
 
 const ATTEMPT_SUBMITTED_KIND: NotificationKind = 'attempt_submitted';
 const EXAM_RESULT_KIND: NotificationKind = 'exam_result';
-
-interface WriteInput {
-  userId: string;
-  kind: NotificationKind;
-  examId: string;
-  examTitle: string;
-  attemptId: string;
-  outcome?: GradingOutcome;
-}
 
 @Injectable()
 export class InAppExamNotifier implements ExamNotifier {
@@ -61,35 +51,23 @@ export class InAppExamNotifier implements ExamNotifier {
     _now: DateTime,
   ): Promise<ExamNotifyResult> {
     try {
-      const staff = await this.usersService.listActiveWithRoles(
-        rolesWithNotification(ATTEMPT_SUBMITTED_KIND),
-      );
-      if (staff.length === 0) return { recipients: 0 };
-
-      const enabledByUser = await this.notificationPrefsService.getManyEnabled(staff);
-      const recipients = staff.filter((s) =>
-        enabledByUser.get(s.id)?.includes(ATTEMPT_SUBMITTED_KIND),
-      );
-      if (recipients.length === 0) return { recipients: 0 };
-
-      await Promise.all(
-        recipients.map((r) =>
-          this.write({
-            userId: r.id,
-            kind: ATTEMPT_SUBMITTED_KIND,
-            examId: context.examId,
-            examTitle: context.examTitle,
-            attemptId: context.attemptId,
-          }),
-        ),
-      );
-      return { recipients: recipients.length };
+      const recipients = await writeToStaff(this.deps(), {
+        kind: ATTEMPT_SUBMITTED_KIND,
+        examId: context.examId,
+        examTitle: context.examTitle,
+        attemptId: context.attemptId,
+      });
+      return { recipients };
     } catch (err) {
       this.logger.warn(`exam.notifyAttemptSubmitted (кабинет): ${errorMessage(err)}`, {
         attemptId: context.attemptId,
       });
       return { recipients: 0 };
     }
+  }
+
+  private deps() {
+    return staffWriteDeps(this.usersService, this.notificationPrefsService, this.model);
   }
 
   // `_now` не используется — параметр остаётся ради интерфейса ExamNotifier
@@ -106,7 +84,7 @@ export class InAppExamNotifier implements ExamNotifier {
       const prefs = await this.notificationPrefsService.get(user.id, user.roles);
       if (!prefs.enabled.includes(EXAM_RESULT_KIND)) return { recipients: 0 };
 
-      await this.write({
+      await writeNotificationRow(this.model, {
         userId: context.userId,
         kind: EXAM_RESULT_KIND,
         examId: context.examId,
@@ -143,31 +121,4 @@ export class InAppExamNotifier implements ExamNotifier {
    * `confirmPayment`: MongoDB не гарантирует, что upsert сам не столкнётся
    * с дублем при параллельной записи.
    */
-  private async write(input: WriteInput): Promise<void> {
-    const filter = {
-      userId: input.userId,
-      kind: input.kind,
-      attemptId: input.attemptId,
-    };
-    // Название формы шифруется той же схемой, какой маппер его расшифровывает
-    // (NOTIFICATION_ENCRYPT_SCHEMA) — записать мимо неё значило бы отдать
-    // клиенту шифротекст вместо названия. Переоценка перезаписывает снимок
-    // свежим названием: строка одна, и показывать в ней форму под старым
-    // именем, когда учитель её переименовал, незачем.
-    const payload = encryptRecord(
-      {
-        examId: input.examId,
-        examTitle: input.examTitle,
-        readAt: null,
-        ...(input.outcome !== undefined ? { outcome: input.outcome } : {}),
-      },
-      NOTIFICATION_ENCRYPT_SCHEMA,
-    );
-    try {
-      await this.model.findOneAndUpdate(filter, { $set: payload }, { upsert: true });
-    } catch (err) {
-      if (!isDuplicateKeyError(err)) throw err;
-      await this.model.updateOne(filter, { $set: payload });
-    }
-  }
 }
