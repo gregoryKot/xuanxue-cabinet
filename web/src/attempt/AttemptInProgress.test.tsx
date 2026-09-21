@@ -167,6 +167,26 @@ describe('AttemptInProgress — подсказка и оставшееся вр�
 
     expect(screen.getByText(/осталось/i)).toBeInTheDocument();
   });
+
+  // Форма без лимита времени не монтирует AttemptDeadlineTimer вовсе: иначе
+  // его `useNow` будил бы React раз в секунду там, где считать нечего, — а
+  // экзамен идут сдавать с телефона (CLAUDE.md «Мобильный экран первым»).
+  it('форма без лимита времени — отсчёта на экране нет', () => {
+    render(
+      <MemoryRouter>
+        <AttemptInProgress
+          attempt={makeAttempt({ deadlineAt: undefined })}
+          reload={() => Promise.resolve()}
+          onSubmit={() => Promise.resolve()}
+          submitting={false}
+          submitError={null}
+          video={makeVideo()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText(/осталось/i)).not.toBeInTheDocument();
+  });
 });
 
 describe('AttemptInProgress', () => {

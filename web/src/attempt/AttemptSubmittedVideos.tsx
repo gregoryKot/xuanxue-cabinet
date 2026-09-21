@@ -9,7 +9,7 @@
 // вопроса — общий QuestionRow.tsx (CLAUDE.md «Одна механика — один
 // компонент»): номер и текст вопроса не должны собираться дважды по-разному.
 import type { ExamAttemptDto } from '@xuanxue/shared';
-import { blockCardStyle } from '../components/listCardStyles';
+import { blockCardStyle, dividedListStyle } from '../components/listCardStyles';
 import { QuestionRow } from '../components/QuestionRow';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { AttemptQuestionVideo } from './AttemptQuestionVideo';
@@ -21,8 +21,6 @@ import {
 } from './attemptVideoStyles';
 import { collectVideoQuestions } from './attemptVideoQuestions';
 import type { AttemptVideoControls } from './useAttemptMedia';
-
-const listStyle = { margin: 0, padding: 0, listStyle: 'none' } as const;
 
 // Старый инстанс мог записать видео без itemId во время деплоя
 // (expand → contract, ADR-0037 «Последствия») — такая запись ни к одному
@@ -46,7 +44,7 @@ export function AttemptSubmittedVideos({ attempt, video }: AttemptSubmittedVideo
       <h2 style={attemptVideoHeadingStyle}>Видео</h2>
       {videoQuestions.length > 0 && (
         <div style={blockCardStyle}>
-          <ol style={listStyle}>
+          <ol style={dividedListStyle}>
             {videoQuestions.map(({ question, index }) => (
               <QuestionRow
                 key={question.itemId}

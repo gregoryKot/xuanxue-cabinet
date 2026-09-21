@@ -132,6 +132,8 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-coverage-ratchet.mjs` — покрытие api не падает, жёсткий пол на `api/src/utils`.
 - `check-robot-phrases.mjs` — канцелярит и «это не X, это Y» в user-facing тексте.
 - `check-route-collisions.mjs` — один маршрут, один контроллер.
+- `check-card-list-gap.mjs` — список карточек объявляет промежуток между строками
+  (`gap` или обёртка «одной карточкой»), иначе плашки слипаются (ADR-0088).
 - `check-name-collisions.mjs` — в каталоге нет имён, различающихся только регистром.
 - `check-adr-numbers.mjs` — один номер ADR, одно решение; каждое есть в оглавлении,
   каждая ссылка на файл решения ведёт к нему. Номер, занятый в ещё не слитой чужой
@@ -262,6 +264,12 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
   корне. **Любой `position: fixed; inset: 0`** (лист, оверлей, экран упражнения) —
   через `useHistorySheet(onClose)`, все кнопки «Назад/Закрыть» вызывают `goBack()`:
   иначе «Назад» браузера уводит из приложения. `history.pushState` напрямую запрещён.
+- **Промежуток между строками списка задаёт контейнер, а не строка**: свой литерал
+  `listStyle: 'none'` не пишется, берётся одна из трёх форм из
+  `components/listCardStyles.ts` — `cardListStyle` (колонка со `gap`),
+  `oneCardListStyle` (одна карточка, строки делит линия), `dividedListStyle`
+  (линия у строки, `gap: 0`). Иначе карточки слипаются в одну плашку — так было
+  трижды (ADR-0088). Гейт: `check-card-list-gap.mjs`.
 - **Загрузка** — скелетоны по форме будущего контента из `web/src/components/Skeleton.tsx`,
   не спиннеры и не пустота. Спиннер допустим только на кнопке действия.
 - **Доступность**: семантические элементы (`<button>`, `<label>`), цели нажатия ≥44×44,
@@ -279,7 +287,7 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 ## Приложение на телефоне
 
 Манифест, установка на телефон, килсвитч старого service worker —
-[docs/PWA.md](docs/PWA.md); решение — ADR-0087 (заменяет ADR-0032, push
+[docs/PWA.md](docs/PWA.md); решение — ADR-0092 (заменяет ADR-0032, push
 возвращается). Гейт: `scripts/check-pwa.mjs`.
 
 ## Продукт

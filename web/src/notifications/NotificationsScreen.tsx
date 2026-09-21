@@ -15,6 +15,7 @@
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { cardListStyle } from '../components/listCardStyles';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
@@ -39,14 +40,6 @@ const TELEGRAM_EXPLANATION =
   'Бот пишет обо всём этом в личный чат, а вашего чата с ним пока нет. ' +
   'Свяжите Telegram и нажмите в боте «Запустить».';
 
-const cardsListStyle: CSSProperties = {
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-};
 // «Выйти» на ProfileScreen.tsx — тот же приём: волосяная линия отделяет
 // второстепенный блок от основного содержимого экрана.
 const telegramRowStyle: CSSProperties = {
@@ -104,7 +97,7 @@ export default function NotificationsScreen() {
       {loading && items === null && <SkeletonList rows={4} h={72} />}
 
       {newTasks.length > 0 && (
-        <ul style={cardsListStyle}>
+        <ul style={cardListStyle}>
           {newTasks.map((exam) => (
             <NewTaskCard key={exam.id} exam={exam} />
           ))}
