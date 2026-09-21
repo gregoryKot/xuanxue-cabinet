@@ -3,6 +3,7 @@
 // которые ТЗ требует показать человеку по-своему, собраны здесь и проверяются
 // без компонента и без usePushSubscription.ts (CLAUDE.md, ревью «тестируется
 // без DOM?»).
+import { waitServiceWorkerReady } from '../pwa/serviceWorkerReady';
 import { iosNeedsHomeScreenInstall, isPushBrowserSupported } from './webPushEnvironment';
 
 export type PushSectionState =
@@ -41,7 +42,15 @@ export async function resolvePushSectionState(
   if (permission === 'denied') return { kind: 'denied' };
   if (permission === 'default') return { kind: 'default' };
 
-  const registration = await navigator.serviceWorker.ready;
+  // Таймаут вместо голого `navigator.serviceWorker.ready` (аудит 2026-09-21,
+  // HIGH): если регистрация не прошла (registerServiceWorker.ts проглотил
+  // ошибку), `ready` не резолвится никогда — без таймера usePushSubscription.ts
+  // повис бы в loading вечным скелетоном. `null` бросаем дальше как ошибку:
+  // usePushSubscription.load() уже ловит и показывает её в loadError с
+  // кнопкой «Повторить» (LoadErrorBanner) — отдельное состояние раздела
+  // тут не нужно, оно уже есть.
+  const registration = await waitServiceWorkerReady();
+  if (!registration) throw new Error('service worker не готов вовремя');
   const subscription = await registration.pushManager.getSubscription();
   return { kind: subscription ? 'subscribed' : 'not-subscribed' };
 }

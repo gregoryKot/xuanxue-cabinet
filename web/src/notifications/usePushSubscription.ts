@@ -10,10 +10,12 @@ import type {
   SubscribePushInput,
 } from '@xuanxue/shared';
 import { ApiError, apiFetch } from '../api/http';
+import { waitServiceWorkerReady } from '../pwa/serviceWorkerReady';
 import {
   PUSH_DISABLE_ERROR_MESSAGE,
   PUSH_ENABLE_ERROR_MESSAGE,
   PUSH_LOAD_ERROR_MESSAGE,
+  PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE,
 } from './pushNotificationsCopy';
 import { arrayBufferToBase64Url, base64UrlToUint8Array } from './pushSubscriptionCodec';
 import { resolvePushSectionState, type PushSectionState } from './pushSectionState';
@@ -88,7 +90,17 @@ export function usePushSubscription(): UsePushSubscriptionResult {
         if (permission === 'default') return;
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      // Таймаут вместо голого `ready` (аудит 2026-09-21, HIGH): если
+      // регистрация не прошла (registerServiceWorker.ts проглотил ошибку),
+      // `ready` не резолвится никогда — кнопка висела бы в pending вечно.
+      // Простой повтор клика не поможет: registerServiceWorker.ts пробует
+      // регистрацию только один раз, при старте (main.tsx) — отсюда совет
+      // перезагрузить страницу, а не общий «попробуйте ещё раз».
+      const registration = await waitServiceWorkerReady();
+      if (!registration) {
+        setActionError(PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE);
+        return;
+      }
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: base64UrlToUint8Array(publicKey),
@@ -119,7 +131,14 @@ export function usePushSubscription(): UsePushSubscriptionResult {
     setPending(true);
     setActionError(null);
     try {
-      const registration = await navigator.serviceWorker.ready;
+      // Тот же таймаут и тот же довод, что в enable() выше (аудит 2026-09-21,
+      // HIGH): без него кнопка «Выключить» висела бы в pending вечно, если
+      // service worker не зарегистрировался.
+      const registration = await waitServiceWorkerReady();
+      if (!registration) {
+        setActionError(PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE);
+        return;
+      }
       const subscription = await registration.pushManager.getSubscription();
       // Отписка в браузере и снятие записи на сервере — оба вызова, одно без
       // другого оставляет мусор (ТЗ ПР №5). Подписки уже нет локально (редкий
