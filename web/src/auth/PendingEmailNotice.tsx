@@ -4,6 +4,7 @@
 // useEmailLink с тем же адресом: повтор отправки — действие второго плана,
 // поэтому текстовая ссылка, а не кнопка во всю ширину (тот же приём, что
 // «Отправить ещё раз» в EmailLoginForm.tsx).
+import type { MeDto } from '@xuanxue/shared';
 import { FormServerError } from '../components/FormServerError';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { useEmailLink } from './useEmailLink';
@@ -13,7 +14,7 @@ const textStyle = { margin: 0 };
 
 interface PendingEmailNoticeProps {
   email: string;
-  refresh: () => Promise<void>;
+  applyMe: (next: MeDto) => void;
   /** Опечатка в адресе иначе неисправима: письмо уходит в никуда, а человек
    * не понимает почему «Прислать ссылку ещё раз» не помогает. Переключает
    * SecondLoginKey.tsx на EmailLinkForm с этим же адресом в поле. */
@@ -22,10 +23,10 @@ interface PendingEmailNoticeProps {
 
 export function PendingEmailNotice({
   email,
-  refresh,
+  applyMe,
   onChangeAddress,
 }: PendingEmailNoticeProps) {
-  const { status, error, link } = useEmailLink(refresh);
+  const { status, error, link } = useEmailLink(applyMe);
 
   return (
     <div style={wrapStyle}>

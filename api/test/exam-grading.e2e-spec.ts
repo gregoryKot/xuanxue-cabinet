@@ -5,7 +5,6 @@ import type {
   AttemptReviewDto,
   ExamAttemptDto,
   ExamDto,
-  ExamGradingDto,
   ExamItemDto,
   MyExamDto,
 } from '@xuanxue/shared';
@@ -136,7 +135,11 @@ describe('Проверка работ (e2e)', () => {
       .set('Cookie', teacherCookie)
       .send({ comment: 'Хорошая работа, держите центр.', outcome: 'passed' });
     expect(graded.status).toBe(200);
-    expect((graded.body as ExamGradingDto).outcome).toBe('passed');
+    expect((graded.body as AttemptReviewDto).grading?.outcome).toBe('passed');
+    const reviewAfterGrading = await request(server())
+      .get(`/api/attempts/${attempt.id}/review`)
+      .set('Cookie', teacherCookie);
+    expect(graded.body).toEqual(reviewAfterGrading.body); // ADR-0087: тело = GET сразу после
 
     const mine = await request(server())
       .get('/api/me/exams')
@@ -192,19 +195,19 @@ describe('Проверка работ (e2e)', () => {
     });
     const attempt = await submittedAttempt(exam.id, studentCookie);
 
-    async function grade(outcome: string): Promise<ExamGradingDto> {
+    async function grade(outcome: string): Promise<AttemptReviewDto> {
       const res = await withCsrf(
         request(server()).put(`/api/attempts/${attempt.id}/grading`),
       )
         .set('Cookie', teacherCookie)
         .send({ outcome });
-      return res.body as ExamGradingDto;
+      return res.body as AttemptReviewDto;
     }
 
     const first = await grade('needs_work');
     const second = await grade('passed');
 
-    expect(second.id).toBe(first.id);
+    expect(second.grading?.id).toBe(first.grading?.id); // апдейт, не вторая запись
     const after = await request(server())
       .get(`/api/attempts/${attempt.id}/review`)
       .set('Cookie', teacherCookie);

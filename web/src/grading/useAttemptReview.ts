@@ -1,8 +1,9 @@
 // Данные экрана проверки — карточка попытки (`GET /attempts/:id/review`) и
 // отправка оценки (`PUT /attempts/:id/grading`, ТЗ 4.6, п.2). Read-after-write
-// (CLAUDE.md): после сохранения перечитываем карточку — обновлённая `grading`
-// приходит уже с сервера, а не собирается на клиенте из того, что мы сами
-// отправили. Видео (ручная отметка, «Прислать мне в Telegram») —
+// (CLAUDE.md) соблюдён без второго запроса: PUT возвращает AttemptReviewDto
+// целиком (ADR-0087), и applyData кладёт этот ответ на экран — обновлённая
+// `grading` всё так же приходит с сервера, а не собирается на клиенте из
+// того, что мы сами отправили. Видео (ручная отметка, «Прислать мне в Telegram») —
 // useAttemptReviewMedia.ts (вынесено оттуда же, чтобы этот файл не пух —
 // CLAUDE.md «Храповики»): зовём хук и отдаём наружу тем же составом полей,
 // что раньше, поэтому AttemptReviewScreen.tsx в этой части не меняется.
@@ -31,7 +32,7 @@ export interface UseAttemptReviewResult extends UseAttemptReviewMediaResult {
 }
 
 export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiFetch<AttemptReviewDto>(attemptReviewPath(attemptId), { signal }),
     LOAD_ERROR_MESSAGE,
   );
@@ -43,8 +44,11 @@ export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
       setSaving(true);
       setSaveError(null);
       try {
-        await apiFetch(`/attempts/${attemptId}/grading`, { method: 'PUT', body: input });
-        await reload();
+        const next = await apiFetch<AttemptReviewDto>(`/attempts/${attemptId}/grading`, {
+          method: 'PUT',
+          body: input,
+        });
+        applyData(next);
         return true;
       } catch (err) {
         setSaveError(errorFrom(err, SAVE_ERROR_MESSAGE));
@@ -53,7 +57,7 @@ export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
         setSaving(false);
       }
     },
-    [attemptId, reload],
+    [attemptId, applyData],
   );
 
   const media = useAttemptReviewMedia(attemptId, reload);

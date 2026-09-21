@@ -57,18 +57,36 @@ describe('PUT /me/no-telegram (e2e)', () => {
     expect(res.status).toBe(403);
   });
 
-  it('А ставит отметку — 204, GET /auth/me у А: noTelegram true, у Б — false (read-after-write)', async () => {
+  it('А ставит отметку — noTelegram true сразу в ответе PUT, у Б — false (read-after-write)', async () => {
     const a = await createUserWithSession(testApp.app, { name: 'Ученик А', roles: [] });
     const b = await createUserWithSession(testApp.app, { name: 'Ученик Б', roles: [] });
 
     const put = await putNoTelegram(a.cookie, { noTelegram: true });
-    expect(put.status).toBe(204);
+    expect(put.status).toBe(200);
+    expect((put.body as MeDto).noTelegram).toBe(true);
 
     const meA = await getMe(a.cookie);
     expect((meA.body as MeDto).noTelegram).toBe(true);
 
     const meB = await getMe(b.cookie);
     expect((meB.body as MeDto).noTelegram).toBe(false);
+  });
+
+  // Экран профиля кладёт тело ответа PUT прямо на себя, без GET следом
+  // (ADR-0087): неполный ответ ломает AuthProvider (web/src/auth/AuthProvider.tsx,
+  // applyMe ждёт целый MeDto). Тела сверяются целиком.
+  it('PUT /me/no-telegram — тело ответа равно телу GET /auth/me сразу после (ADR-0087)', async () => {
+    const { cookie } = await createUserWithSession(testApp.app, {
+      name: 'Ученик',
+      roles: [],
+    });
+
+    const put = await putNoTelegram(cookie, { noTelegram: true });
+    expect(put.status).toBe(200);
+
+    const got = await getMe(cookie);
+    expect(got.status).toBe(200);
+    expect(put.body).toEqual(got.body);
   });
 
   // userId — не поле ввода (SECURITY §2): владелец — только @CurrentUser() из
@@ -79,7 +97,7 @@ describe('PUT /me/no-telegram (e2e)', () => {
   // приём и тот же результат, что в notifications-ownership.e2e-spec.ts).
   // Итог для владения тот же: подставить чужой id и переставить отметку не
   // получается — здесь это доказывается через 400, а не через «успешный»
-  // 204 с обрезанным телом.
+  // 200 с обрезанным телом.
   it('чужой userId в теле — 400, не подмена (whitelist его не пропускает)', async () => {
     const a = await createUserWithSession(testApp.app, { name: 'Ученик А', roles: [] });
     const b = await createUserWithSession(testApp.app, { name: 'Ученик Б', roles: [] });
@@ -96,16 +114,17 @@ describe('PUT /me/no-telegram (e2e)', () => {
     expect((meB.body as MeDto).noTelegram).toBe(false);
   });
 
-  it('А снимает отметку — GET /auth/me снова noTelegram: false (дорога назад работает)', async () => {
+  it('А снимает отметку — ответ PUT снова noTelegram: false (дорога назад работает)', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Ученик А',
       roles: [],
     });
     const first = await putNoTelegram(cookie, { noTelegram: true });
-    expect(first.status).toBe(204);
+    expect(first.status).toBe(200);
 
     const second = await putNoTelegram(cookie, { noTelegram: false });
-    expect(second.status).toBe(204);
+    expect(second.status).toBe(200);
+    expect((second.body as MeDto).noTelegram).toBe(false);
 
     const me = await getMe(cookie);
     expect((me.body as MeDto).noTelegram).toBe(false);

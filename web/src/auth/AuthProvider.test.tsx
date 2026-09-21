@@ -102,6 +102,88 @@ describe('AuthProvider — статусы', () => {
   });
 });
 
+describe('AuthProvider — applyMe (ADR-0087)', () => {
+  it('applyMe() кладёт профиль и переводит статус в ok, не делая запроса', async () => {
+    mockedApiFetch.mockRejectedValue(new ApiError('Войдите', 401, 'unauthorized'));
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.status).toBe('guest'));
+    const callsBeforeApply = mockedApiFetch.mock.calls.length;
+
+    const me: MeDto = {
+      id: 'u1',
+      name: 'Дима',
+      roles: ['teacher'],
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
+      needsProfile: false,
+    };
+
+    act(() => {
+      result.current.applyMe(me);
+    });
+
+    expect(result.current.me).toEqual(me);
+    expect(result.current.status).toBe('ok');
+    // Ни PATCH/PUT/POST записи (уже отработал раньше в вызывающем хуке), ни
+    // тем более новый GET — applyMe() только кладёт то, что уже на руках.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(callsBeforeApply);
+  });
+
+  // Образец приёма — useAbortableFetch.test.ts, «главный тест: ответ уже
+  // летящего load() после applyData() не перезаписывает применённые данные»:
+  // тот же управляемый промис вместо setTimeout (CLAUDE.md «Детерминизм»).
+  it('главный тест: ответ уже летящего refresh() после applyMe() не перезаписывает применённый профиль', async () => {
+    const mounted: MeDto = {
+      id: 'u1',
+      name: 'Дима',
+      roles: ['teacher'],
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
+      needsProfile: false,
+    };
+    let resolveRefresh: ((value: MeDto) => void) | undefined;
+    mockedApiFetch.mockResolvedValueOnce(mounted).mockImplementationOnce(
+      () =>
+        new Promise<MeDto>((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.status).toBe('ok'));
+
+    // Второй refresh() (не монтирование) повисает — apiFetch ещё не ответил.
+    let refreshPromise: Promise<void> | undefined;
+    act(() => {
+      refreshPromise = result.current.refresh();
+    });
+    expect(result.current.status).toBe('loading');
+
+    // PATCH/PUT/POST записи уже ответил — applyMe() кладёт его результат,
+    // пока висящий refresh() выше ещё не разрешился.
+    const applied: MeDto = { ...mounted, name: 'Дима (сохранено записью)' };
+    act(() => {
+      result.current.applyMe(applied);
+    });
+    expect(result.current.me).toEqual(applied);
+    expect(result.current.status).toBe('ok');
+
+    // Висящий refresh() наконец отвечает — устаревшим к этому моменту профилем.
+    await act(async () => {
+      resolveRefresh?.({ ...mounted, name: 'устаревший ответ висящего refresh()' });
+      await refreshPromise;
+    });
+
+    expect(result.current.me).toEqual(applied);
+    expect(result.current.status).toBe('ok');
+  });
+});
+
 describe('hasSession', () => {
   it('true для ok и blocked (сессия есть), false для остального', () => {
     expect(hasSession('ok')).toBe(true);

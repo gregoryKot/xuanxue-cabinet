@@ -5,6 +5,7 @@
 // «Профиль» — «Сохранить имя») уже держит терракоту, вторая заливка на том же
 // экране была бы вторым акцентом (docs/adr/0031, правило акцента).
 import { useState, type FormEvent } from 'react';
+import type { MeDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { EmailField } from '../components/EmailField';
 import { FormServerError } from '../components/FormServerError';
@@ -14,7 +15,7 @@ import { useEmailLink } from './useEmailLink';
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 
 interface EmailLinkFormProps {
-  refresh: () => Promise<void>;
+  applyMe: (next: MeDto) => void;
   /** Опечатанный адрес при смене (SecondLoginKey.tsx, PendingEmailNotice —
    * «Указать другой адрес»): поправить, а не набирать заново. */
   initialEmail?: string;
@@ -23,9 +24,9 @@ interface EmailLinkFormProps {
   onCancel?: () => void;
 }
 
-export function EmailLinkForm({ refresh, initialEmail, onCancel }: EmailLinkFormProps) {
+export function EmailLinkForm({ applyMe, initialEmail, onCancel }: EmailLinkFormProps) {
   const [email, setEmail] = useState(initialEmail ?? '');
-  const { status, error, link } = useEmailLink(refresh);
+  const { status, error, link } = useEmailLink(applyMe);
 
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();

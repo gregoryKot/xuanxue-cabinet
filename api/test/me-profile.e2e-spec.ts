@@ -35,7 +35,7 @@ describe('PATCH /me/profile (e2e)', () => {
 
   // roles: [] — ученик (ADR-0026), ровно та роль, для которой сделан экран
   // `/welcome`: маршрут не за @Roles (CLAUDE.md «Ноль нагрузки на ученика»).
-  it('204, затем GET /auth/me отдаёт склеенное имя и needsProfile: false (read-after-write)', async () => {
+  it('склеенное имя и needsProfile: false сразу в ответе PATCH (read-after-write)', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Новый ученик',
       roles: [],
@@ -45,13 +45,32 @@ describe('PATCH /me/profile (e2e)', () => {
       firstName: 'Анна',
       lastName: 'Петрова',
     });
-    expect(patched.status).toBe(204);
+    expect(patched.status).toBe(200);
+    const body = patched.body as MeDto;
+    expect(body.name).toBe('Анна Петрова');
+    expect(body.needsProfile).toBe(false);
 
     const me = await getMe(cookie);
     expect(me.status).toBe(200);
-    const body = me.body as MeDto;
-    expect(body.name).toBe('Анна Петрова');
-    expect(body.needsProfile).toBe(false);
+    expect((me.body as MeDto).name).toBe('Анна Петрова');
+  });
+
+  // Экран `/welcome` кладёт тело ответа PATCH прямо на себя, без GET следом
+  // (ADR-0087): неполный ответ — не «на одно поле меньше», а сломанный
+  // AuthProvider (web/src/auth/AuthProvider.tsx, applyMe ждёт целый MeDto).
+  // Тела сверяются целиком, новое поле MeDto попадёт под гейт само.
+  it('PATCH /me/profile — тело ответа равно телу GET /auth/me сразу после (ADR-0087)', async () => {
+    const { cookie } = await createUserWithSession(testApp.app, {
+      name: 'Новый ученик',
+      roles: [],
+    });
+
+    const patched = await patchProfile(cookie, { firstName: 'Анна' });
+    expect(patched.status).toBe(200);
+
+    const got = await getMe(cookie);
+    expect(got.status).toBe(200);
+    expect(patched.body).toEqual(got.body);
   });
 
   it('владение: правка пользователем Б не меняет имени пользователя А', async () => {
@@ -65,7 +84,7 @@ describe('PATCH /me/profile (e2e)', () => {
     });
 
     const patched = await patchProfile(b.cookie, { firstName: 'Борис' });
-    expect(patched.status).toBe(204);
+    expect(patched.status).toBe(200);
 
     const meA = await getMe(a.cookie);
     expect((meA.body as MeDto).name).toBe('Новый ученик');

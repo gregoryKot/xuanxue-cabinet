@@ -1,7 +1,8 @@
 // Test.createTestingModule с фейком сервиса — образец notification-prefs.controller.spec.ts:
 // без HTTP, без Mongo. Владение проверяет e2e (inbox-ownership.e2e-spec.ts)
 // на настоящем гварде — здесь только «контроллер зовёт сервис с userId из
-// сессии и отдаёт ответ».
+// сессии и отдаёт ответ». markRead()/markAllRead() отдают InboxPageDto
+// целиком, не NotificationDto/204 — ADR-0087.
 import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
 import type { InboxPageDto, NotificationDto } from '@xuanxue/shared';
@@ -47,19 +48,25 @@ describe('InboxController', () => {
     expect(list).toHaveBeenCalledWith(USER.id, query);
   });
 
-  it('markRead() передаёт userId и id из пути, отдаёт запись', async () => {
+  it('markRead() отмечает строку, затем отдаёт ленту целиком (страница по умолчанию, не 204)', async () => {
     const markRead = jest.fn().mockResolvedValue(NOTIFICATION_DTO);
-    const controller = await buildController({ markRead });
+    const list = jest.fn().mockResolvedValue(PAGE_DTO);
+    const controller = await buildController({ markRead, list });
 
-    await expect(controller.markRead('n1', USER)).resolves.toEqual(NOTIFICATION_DTO);
+    await expect(controller.markRead('n1', USER)).resolves.toEqual(PAGE_DTO);
+
     expect(markRead).toHaveBeenCalledWith(USER.id, 'n1', expect.any(DateTime));
+    expect(list).toHaveBeenCalledWith(USER.id, {});
   });
 
-  it('markAllRead() передаёт userId из сессии', async () => {
+  it('markAllRead() гасит ленту, затем отдаёт её целиком (страница по умолчанию, не 204)', async () => {
     const markAllRead = jest.fn().mockResolvedValue(undefined);
-    const controller = await buildController({ markAllRead });
+    const list = jest.fn().mockResolvedValue(PAGE_DTO);
+    const controller = await buildController({ markAllRead, list });
 
-    await controller.markAllRead(USER);
+    await expect(controller.markAllRead(USER)).resolves.toEqual(PAGE_DTO);
+
     expect(markAllRead).toHaveBeenCalledWith(USER.id, expect.any(DateTime));
+    expect(list).toHaveBeenCalledWith(USER.id, {});
   });
 });

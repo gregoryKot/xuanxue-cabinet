@@ -85,6 +85,11 @@ export function useAttemptReviewMedia(
 
   // Read-after-write: перечитываем карточку на успех — `media` в ответе уже
   // содержит новую запись `kind: 'manual'` с сервера, не собранную на клиенте.
+  // Рядом с submitGrading(), который ответ записи кладёт через applyData
+  // (ADR-0087), это выглядит недоделкой — но асимметрия осознанная: собрать
+  // здесь AttemptReviewDto значило бы цикл в графе Nest (ExamGradingsService
+  // из ExamsModule, а тот уже импортирует MediaModule; forwardRef запрещён
+  // ADR-0013). Разбор — exam-media.controller.ts и аллоу-лист гейта.
   const markMediaManual = useCallback(
     async (itemId: string): Promise<boolean> => {
       setMarkState({ itemId, pending: true, error: null });

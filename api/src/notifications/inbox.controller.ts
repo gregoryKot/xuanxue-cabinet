@@ -16,7 +16,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { InboxPageDto, NotificationDto } from '@xuanxue/shared';
+import type { InboxPageDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
 import type { UserLean } from '../users/users.service';
 import { ListInboxDto } from './dto/list-inbox.dto';
@@ -34,21 +34,30 @@ export class InboxController {
     return this.inboxService.list(user.id, query);
   }
 
+  // Отдаёт страницу ленты целиком (InboxPageDto), не одну отмеченную строку
+  // (NotificationDto) — экран держит ленту вместе с агрегатом unreadCount,
+  // и подставить в него одну строку было бы недостаточно: досчитывать
+  // unreadCount на клиенте значило бы завести там вторую копию правила
+  // подсчёта, чего ADR-0087 прямо не советует. Тот же список, что у GET —
+  // с лимитом по умолчанию (ListInboxQuery без параметров), не «дай всё».
   @Post(':id/read')
   @HttpCode(HttpStatus.OK)
-  markRead(
+  async markRead(
     @Param('id') id: string,
     @CurrentUser() user: UserLean,
-  ): Promise<NotificationDto> {
-    return this.inboxService.markRead(user.id, id, DateTime.utc());
+  ): Promise<InboxPageDto> {
+    await this.inboxService.markRead(user.id, id, DateTime.utc());
+    return this.inboxService.list(user.id, {});
   }
 
-  // 204 — пометка целой ленты, не одной строки: клиенту нечего подставить в
-  // экран точечно, только погасить бейдж (тот же приём, что у DELETE-действий
-  // без тела, classes.controller.ts/materials.controller.ts).
+  // Было 204 — пометка целой ленты, клиенту нечего было подставить в экран
+  // точечно, только погасить бейдж. Теперь бейдж и есть unreadCount из
+  // InboxPageDto: отдаём страницу целиком тем же приёмом, что markRead()
+  // выше — вместо 204 и отдельного GET следом (ADR-0087, «Последствия»).
   @Post('read-all')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  markAllRead(@CurrentUser() user: UserLean): Promise<void> {
-    return this.inboxService.markAllRead(user.id, DateTime.utc());
+  @HttpCode(HttpStatus.OK)
+  async markAllRead(@CurrentUser() user: UserLean): Promise<InboxPageDto> {
+    await this.inboxService.markAllRead(user.id, DateTime.utc());
+    return this.inboxService.list(user.id, {});
   }
 }

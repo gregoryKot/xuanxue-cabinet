@@ -47,8 +47,8 @@ describe('useAttemptReview — загрузка', () => {
   });
 });
 
-describe('useAttemptReview — отправка оценки', () => {
-  it('успех: PUT на grading с телом, потом перечитанная карточка (read-after-write)', async () => {
+describe('useAttemptReview — отправка оценки (ADR-0087: ответ PUT — на экране без второго GET)', () => {
+  it('успех: PUT на grading отвечает карточкой проверки целиком, второго GET нет', async () => {
     const graded = makeReview({
       status: 'graded',
       grading: {
@@ -62,10 +62,7 @@ describe('useAttemptReview — отправка оценки', () => {
         gradedAt: '2026-01-01T00:00:00Z',
       },
     });
-    mockedApiFetch
-      .mockResolvedValueOnce(makeReview())
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(graded);
+    mockedApiFetch.mockResolvedValueOnce(makeReview()).mockResolvedValueOnce(graded);
     const { result } = renderHook(() => useAttemptReview('a1'));
     await waitFor(() => expect(result.current.review).not.toBeNull());
 
@@ -79,7 +76,8 @@ describe('useAttemptReview — отправка оценки', () => {
     });
 
     expect(succeeded).toBe(true);
-    expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/grading', {
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2); // начальный GET + этот PUT
+    expect(mockedApiFetch).toHaveBeenLastCalledWith('/attempts/a1/grading', {
       method: 'PUT',
       body: input,
     });
@@ -88,7 +86,7 @@ describe('useAttemptReview — отправка оценки', () => {
     expect(result.current.saving).toBe(false);
   });
 
-  it('сбой: ошибка видна, review не перечитывается', async () => {
+  it('сбой: ошибка видна, review не меняется', async () => {
     mockedApiFetch
       .mockResolvedValueOnce(makeReview())
       .mockRejectedValueOnce(

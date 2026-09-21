@@ -1,6 +1,6 @@
 // Ветки показа (CLAUDE.md «Тесты») — что предложить, решает `me` и
 // конфигурация email-входа (useAuthConfig). <AuthProvider> нужен только ради
-// useAuth().refresh — сам `me`, который решает, что показать, приходит
+// useAuth().applyMe — сам `me`, который решает, что показать, приходит
 // пропом, не из сессии (тот же приём мока сети, что TelegramLinkButton.test.tsx).
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -159,8 +159,11 @@ describe('SecondLoginKey — pendingEmail', () => {
 
   it('поправили адрес и отправили — POST на новый адрес, потом снова напоминание', async () => {
     const user = userEvent.setup();
+    // Ответ POST /auth/email/link (ADR-0087) — applyMeAfterLink() кладёт его
+    // и прячет форму; на какой именно адрес он пришёл, для этого теста не
+    // важно, важно, что это валидный MeDto, а не 204.
     mockApiByPath({
-      '/auth/email/link': undefined,
+      '/auth/email/link': { ...BASE, hasEmail: false, pendingEmail: 'b@example.com' },
       '/auth/me': { ...BASE, hasEmail: false, pendingEmail: 'a@example.com' },
       '/auth/config': { emailLoginEnabled: true },
     });

@@ -239,7 +239,7 @@ describe('AttemptReviewScreen — карточка', () => {
 });
 
 describe('AttemptReviewScreen — отправка оценки', () => {
-  it('заполненная форма — PUT с правильным телом', async () => {
+  it('заполненная форма — PUT с правильным телом, карточка обновляется из его ответа (ADR-0087)', async () => {
     const user = userEvent.setup();
     renderAt('a1', { '/attempts': makeReview() });
     await screen.findByText('Форма первого уровня');
@@ -247,9 +247,22 @@ describe('AttemptReviewScreen — отправка оценки', () => {
     await user.type(screen.getByLabelText('Комментарий'), 'Хорошо сдал');
     await user.selectOptions(screen.getByLabelText('Итог'), 'passed');
 
+    // PUT отвечает карточкой проверки целиком (AttemptReviewDto) — второго
+    // GET /attempts/a1/review за обновлённым статусом больше нет.
     mockApiByPath({
-      '/attempts/a1/grading': undefined,
-      '/attempts/a1/review': makeReview({ status: 'graded' }),
+      '/attempts/a1/grading': makeReview({
+        status: 'graded',
+        grading: {
+          id: 'g1',
+          attemptId: 'a1',
+          examId: 'e1',
+          userId: 'u1',
+          graderId: 't1',
+          comment: 'Хорошо сдал',
+          outcome: 'passed',
+          gradedAt: '2026-01-01T00:00:00Z',
+        },
+      }),
     });
     await user.click(screen.getByRole('button', { name: 'Сохранить оценку' }));
 
@@ -260,6 +273,9 @@ describe('AttemptReviewScreen — отправка оценки', () => {
         outcome: 'passed',
       },
     });
+    expect(
+      await screen.findByRole('button', { name: 'Переписать оценку' }),
+    ).toBeInTheDocument();
   });
 
   it('сбой сервера — сообщение под формой', async () => {

@@ -9,7 +9,7 @@
 // direction-warm-school.md) отдаёт цифры интерфейсному гротеску Golos Text.
 // Светлая антиква (Cormorant Garamond 300) на кегле 52 давала голый штрих —
 // единица читалась как римская «I» (снимок владельца с экрана «Экзамены»).
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 // Колонка — разметка по умолчанию: число над подписью, как в «Рассылках».
 // «Экзамены» показывают число и подпись в строку по базовой линии и передают
@@ -49,8 +49,12 @@ interface StatNumberProps {
    * механика — один компонент»). */
   valueStyle?: CSSProperties;
   /** Точечная правка подписи поверх вида по умолчанию — симметрично
-   * valueStyle, для чисел-ссылок (подпись тогда ещё и подчёркнута). */
+   * valueStyle, для чисел-ссылок. */
   labelStyle?: CSSProperties;
+  /** Хвост подписи — знак «›» у карточки-ссылки (docs/adr/0098). Отдельным
+   * узлом, а не склейкой со строкой `label`: `label` — это данные, и
+   * доступное имя ссылки от значка меняться не должно. */
+  labelTrailing?: ReactNode;
 }
 
 export function StatNumber({
@@ -59,11 +63,15 @@ export function StatNumber({
   style,
   valueStyle,
   labelStyle,
+  labelTrailing,
 }: StatNumberProps) {
   return (
     <span style={{ ...wrapperStyle, ...style }}>
       <span style={{ ...defaultValueStyle, ...valueStyle }}>{value}</span>
-      <span style={{ ...defaultLabelStyle, ...labelStyle }}>{label}</span>
+      <span style={{ ...defaultLabelStyle, ...labelStyle }}>
+        {label}
+        {labelTrailing}
+      </span>
     </span>
   );
 }

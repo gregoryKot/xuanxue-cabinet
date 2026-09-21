@@ -23,8 +23,8 @@ interface NoTelegramSwitchProps {
 }
 
 export function NoTelegramSwitch({ noTelegram }: NoTelegramSwitchProps) {
-  const { refresh } = useAuth();
-  const { pending, error, set } = useNoTelegram(refresh);
+  const { applyMe } = useAuth();
+  const { pending, error, set } = useNoTelegram(applyMe);
 
   return (
     <div style={wrapStyle}>

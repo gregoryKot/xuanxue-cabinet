@@ -1,42 +1,18 @@
 {
-  "web/src/attempt/useAttempt.ts": {
-    "count": 1,
-    "reason": "submit(): POST /attempts/:id/submit отвечает свежим ExamAttemptDto целиком (exam-attempts.controller.ts) — брать есть что. Но своего GET /attempts/:id у API нет (см. комментарий в шапке файла), хук держит СПИСОК всех попыток (ExamAttemptDto[] из GET /attempts) и ищет нужную по id — ответ записи меняет один элемент этого списка, а не список целиком. Уйдёт из списка, когда submit() заменит попытку в списке через applyData (data.map(a => a.id === attemptId ? next : a), по образцу replacedById из web/src/lib/listPatch.ts) вместо reload()."
-  },
   "web/src/attempt/useAttemptMedia.ts": {
     "count": 1,
     "reason": "addMediaLink(): POST /attempts/:id/media/link отвечает только новой записью ExamMediaDto (exam-media.controller.ts), не попыткой целиком — reload здесь чужой, его передаёт вызывающий (AttemptScreen.tsx передаёт reload от useAttempt.ts, который перечитывает весь список попыток). Уйдёт из списка, когда у вызывающего появится способ дописать этот ExamMediaDto в массив media уже загруженного объекта через applyData, не перечитывая родителя целиком."
-  },
-  "web/src/auth/useEmailLink.ts": {
-    "count": 1,
-    "reason": "link(): POST /auth/email/link отвечает 204 (auth/email-link.controller.ts) — брать из ответа нечего, me.pendingEmail появляется только после следующего GET /auth/me. Уйдёт из списка, если эндпоинт станет отдавать MeDto (или хотя бы { pendingEmail }) вместо 204."
   },
   "web/src/broadcasts/useBroadcasts.ts": {
     "count": 1,
     "reason": "cancel(): POST /broadcasts/:id/cancel отвечает изменённой рассылкой BroadcastDto целиком (broadcasts.controller.ts), но список читается с фильтром status в запросе (GET /broadcasts?...&status=) — после отмены рассылка обязана уйти из выборки «активные», а это решает WHERE на сервере, не клиент. Ровно этот случай (журнал рассылок по статусу) как пример списка с фильтром, для которого локальная правка разошлась бы с выборкой сервера, называет комментарий web/src/lib/listPatch.ts («КОГДА НЕ ГОДИТСЯ»). Уйдёт из списка, если экран откажется от фильтра по статусу на сервере в пользу фильтра на клиенте по уже загруженному списку — сейчас это отдельная смена архитектуры экрана, не разговор попутно с этим гейтом."
   },
-  "web/src/grading/useAttemptReview.ts": {
-    "count": 1,
-    "reason": "submitGrading(): PUT /attempts/:id/grading отвечает ExamGradingDto (exam-attempts.controller.ts), а экран читает AttemptReviewDto (GET /attempts/:id/review) — это больше, чем только оценка, там же карточка попытки и медиа. Второй эндпоинт, что раньше жил в этом же файле (markMediaManual), переехал в useAttemptReviewMedia.ts вместе со своей записью в этом аллоу-листе — файл перевалил за 150 строк с четвёртым способом увидеть видео, «Прислать мне в Telegram» (CLAUDE.md «Храповики»). Уйдёт из списка, если grade() станет отдавать AttemptReviewDto целиком (симметрично тому, как review() его уже отдаёт) — тогда submitGrading() сможет звать applyData(response) напрямую."
-  },
   "web/src/grading/useAttemptReviewMedia.ts": {
     "count": 1,
-    "reason": "Переехало из web/src/grading/useAttemptReview.ts вместе с функцией markMediaManual — файл перевалил за 150 строк с четвёртым способом увидеть видео, «Прислать мне в Telegram» (CLAUDE.md «Храповики»); исходная причина не изменилась. markMediaManual(): POST /attempts/:id/media/manual отвечает только новым ExamMediaDto (exam-media.controller.ts), не карточкой целиком. Уйдёт из списка, если addManual() станет отдавать AttemptReviewDto целиком (симметрично тому, как review() его уже отдаёт) — тогда markMediaManual() сможет звать applyData(response) напрямую. Второй эндпоинт этого файла, sendMediaToMe() (POST .../media/:mediaId/send-to-me), сюда не попадает: он ничего не меняет на сервере (меняется чат в Telegram) и reload()/refresh() не зовёт вовсе."
-  },
-  "web/src/notifications/useNotificationsData.ts": {
-    "count": 2,
-    "reason": "Два разных эндпоинта в одном файле. markRead(): POST /me/inbox/:id/read отвечает только отмеченной строкой NotificationDto (notifications/inbox.controller.ts), а хук держит страницу ленты целиком (InboxPageDto: items + агрегат unreadCount) — досчитать unreadCount на клиенте значило бы завести на фронте вторую копию правила подсчёта (ADR-0087 отдельно отказывается от такого приёма для useNotificationPrefs, «Альтернативы»). markAllRead(): POST /me/inbox/read-all отвечает 204 нарочно (комментарий в inbox.controller.ts: «клиенту нечего подставить в экран точечно, только погасить бейдж»). Уйдёт из списка, если markRead() станет получать из ответа ещё и новый unreadCount (эндпоинт — полный InboxPageDto или хотя бы { item, unreadCount }), а markAllRead() — если начнёт отдавать посчитанный unreadCount вместо 204."
+    "reason": "Переехало из useAttemptReview.ts вместе с markMediaManual — тот файл перевалил за 150 строк с четвёртым способом увидеть видео (CLAUDE.md «Храповики»). markMediaManual(): POST /attempts/:id/media/manual отвечает только новым ExamMediaDto (exam-media.controller.ts), а экран читает AttemptReviewDto целиком. Отдать карточку оттуда нельзя не по недосмотру: для неё нужен ExamGradingsService из ExamsModule, а ExamsModule сам импортирует MediaModule — обратный импорт закольцевал бы граф Nest, forwardRef запрещён ADR-0013. Соседний submitGrading() перечитывание уже не делает: PUT /attempts/:id/grading отдаёт AttemptReviewDto. Уйдёт из списка, когда у media/ появится порт-запрос к exams/ по образцу ExamMediaNotifierRegistry (та же инверсия, только на чтение) — тогда addManual() сможет вернуть карточку целиком. Второй эндпоинт файла, sendMediaToMe(), сюда не попадает: он ничего не меняет на сервере и перечитывания не зовёт вовсе."
   },
   "web/src/planning/useLessonMaterials.ts": {
     "count": 1,
     "reason": "saveLessonIds(): PATCH /materials/:id отвечает изменённым MaterialDto целиком (materials.controller.ts), но экран читает список материалов ЭТОГО занятия, отфильтрованный на сервере (GET /materials?lessonId=). Привязка/отвязка меняет lessonIds материала — то есть может как раз изменить, входит ли он в этот отфильтрованный список, а точечный ответ записи сам по себе этого не решает (тот же случай, что useBroadcasts.ts, — список с фильтром в запросе). Уйдёт из списка, когда список материалов лекции научится сам решать по lessonIds из ответа, добавить материал в список или убрать (условная версия replacedById/appended из web/src/lib/listPatch.ts), либо когда появится отдельный GET /materials/:id для точечного обновления карточки."
-  },
-  "web/src/telegram/useNoTelegram.ts": {
-    "count": 1,
-    "reason": "set(): PUT /me/no-telegram отвечает 204 (users/my-no-telegram.controller.ts, комментарий там же: «фронт после этого сам перечитывает GET /auth/me») — брать из ответа нечего. Уйдёт из списка, если эндпоинт станет отдавать MeDto вместо 204."
-  },
-  "web/src/welcome/useProfileSetup.ts": {
-    "count": 1,
-    "reason": "save(): PATCH /me/profile отвечает 204 (users/my-profile.controller.ts, комментарий там же: «фронт после этого сам перечитывает GET /auth/me») — брать из ответа нечего, а имя после сохранения должно обновиться во всём кабинете (шапка, приветствие), не только в этой форме. Уйдёт из списка, если эндпоинт станет отдавать MeDto вместо 204."
   }
 }

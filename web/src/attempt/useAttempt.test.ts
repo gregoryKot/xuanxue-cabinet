@@ -1,7 +1,8 @@
-// Отправка попытки: успех перечитывает список (read-after-write — статус на
-// экране приходит с сервера, а не рисуется по факту нажатия), сбой оставляет
-// ошибку видимой на экране сдачи, потому что диалог подтверждения к этому
-// моменту уже закрылся (useAttempt.ts, комментарий к `submit`).
+// Отправка попытки: успех правит список ответом самого POST (ADR-0094, без
+// второго GET) — статус на экране приходит с сервера, а не рисуется по факту
+// нажатия; сбой оставляет ошибку видимой на экране сдачи, потому что диалог
+// подтверждения к этому моменту уже закрылся (useAttempt.ts, комментарий к
+// `submit`).
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto } from '@xuanxue/shared';
@@ -30,11 +31,9 @@ const ATTEMPT: ExamAttemptDto = {
 };
 
 describe('useAttempt — отправка', () => {
-  it('успех: POST на submit, потом перечитанный список со статусом «отправлено»', async () => {
-    mockedApiFetch
-      .mockResolvedValueOnce([ATTEMPT])
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce([{ ...ATTEMPT, status: 'submitted' }]);
+  it('успех: ровно один запрос на submit(), список правится его ответом', async () => {
+    const submitted: ExamAttemptDto = { ...ATTEMPT, status: 'submitted' };
+    mockedApiFetch.mockResolvedValueOnce([ATTEMPT]).mockResolvedValueOnce(submitted);
     const { result } = renderHook(() => useAttempt('a1'));
     await waitFor(() => expect(result.current.attempt).not.toBeNull());
 
@@ -45,7 +44,10 @@ describe('useAttempt — отправка', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/submit', {
       method: 'POST',
     });
-    await waitFor(() => expect(result.current.attempt?.status).toBe('submitted'));
+    // Загрузка списка + submit(), ни одного похода в сеть сверх этого
+    // (нет reload()).
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(result.current.attempt).toEqual(submitted);
     expect(result.current.submitError).toBeNull();
     expect(result.current.submitting).toBe(false);
   });
