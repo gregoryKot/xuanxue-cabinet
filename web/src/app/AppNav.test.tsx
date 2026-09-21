@@ -50,6 +50,12 @@ function renderNav(
   );
 }
 
+/** «3px» → 3. Числа в гейтах высоты берём из отрисованных стилей, а не из
+ * констант bottomNavStyles.ts: копия константы в тесте проверяла бы сама себя. */
+function px(value: string | undefined): number {
+  return Number.parseFloat(value ?? '0');
+}
+
 describe('AppNav — раскладка', () => {
   // Проверяем ширину и направление, а не рамку: значения через `var(--…)`
   // jsdom не вычисляет, и сравнение стилей на них всегда ложно-отрицательное.
@@ -90,24 +96,20 @@ describe('AppNav — раскладка', () => {
 describe('AppNav — пункты и роль (отзыв владельца 2026-09-12, уточнение ADR-0030)', () => {
   // Решение владельца: у ученика два своих экрана — не подмножество меню
   // штата, отфильтрованное по роли, а отдельный список (navItems.ts).
-  // На телефоне видимого текста в панели нет (ADR-0097) — состав читаем
-  // через `aria-label` ссылок, доступное имя пункта.
+  // Состав панели читаем с видимых подписей (ADR-0103): на телефоне имя
+  // раздела снова стоит словом под значком.
   it('ученик без роли — два своих экрана, не пункты штата', () => {
     const student: MeDto = { ...TEACHER, roles: [] };
     renderNav(true, student);
 
-    const labels = screen
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('aria-label'));
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
     expect(labels).toEqual(['Задания', 'Занятия']);
   });
 
   it('админ — пять пунктов, «Материалы» последним', () => {
     renderNav(true, ADMIN);
 
-    const labels = screen
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('aria-label'));
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
@@ -116,20 +118,21 @@ describe('AppNav — пункты и роль (отзыв владельца 202
   it('учитель — тоже видит «Ученики» (ADR-0030, ссылка-приглашение)', () => {
     renderNav(true, TEACHER);
 
-    const labels = screen
-      .getAllByRole('link')
-      .map((link) => link.getAttribute('aria-label'));
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
     expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
   });
 
-  // ADR-0097: на телефоне видимой подписи в панели больше нет — имя раздела
-  // живёт в `aria-label` ссылки, внутри плашки лежит decorative-only значок
-  // (`aria-hidden`). В боковой колонке подпись остаётся текстом — её эта
-  // правка не трогает.
-  it('телефон — имя раздела в aria-label, значок decorative-only; колонка — подпись текстом', () => {
+  // ADR-0103 (заменил ADR-0097): на телефоне имя раздела снова видно — словом
+  // под значком, и оно же даёт ссылке доступное имя, поэтому `aria-label` у
+  // неё нет: два имени одного пункта разъехались бы при первой правке одного
+  // из них. Значок внутри плашки — decorative-only (`aria-hidden`), иначе
+  // раздел назывался бы дважды. В боковой колонке подпись текстом была и
+  // осталась — её эта правка не трогает.
+  it('телефон — подпись словом под значком, значок decorative-only; колонка — подпись текстом', () => {
     const { unmount } = renderNav(true);
     const link = screen.getByRole('link', { name: 'Занятия' });
-    expect(link.textContent).toBe('');
+    expect(link.textContent).toBe('Занятия');
+    expect(link).not.toHaveAttribute('aria-label');
     const svg = link.querySelector('svg');
     expect(svg).not.toBeNull();
     expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -309,10 +312,11 @@ describe('AppNav — название школы в колонке не пере
 });
 
 // ADR-0055 «Последствия»: «Ширина проверяется тестом AppNav.test.tsx и
-// вручную на 360 px — это условие мержа, а не пожелание». Подписи в панели
-// больше нет (ADR-0097), поэтому ушли гейты кегля и потолка длины подписи в
-// знаках — мерить стало нечего; число дорожек сетки от состава подписи не
-// зависит и остаётся.
+// вручную на 360 px — это условие мержа, а не пожелание». Гейтов кегля и
+// потолка длины подписи в знаках здесь больше нет: подпись вернулась в панель
+// (ADR-0103) вместе с подрезкой, которая и держит слово внутри дорожки, а
+// потолок в знаках был прикидкой, на которую ADR-0055 сам велел не полагаться.
+// Число дорожек сетки от состава подписи не зависит и остаётся.
 describe('AppNav — гейт ширины нижней панели (ADR-0055)', () => {
   // Дорожек сетки должно быть ровно столько, сколько отрисованных пунктов
   // (bottomStyle(items.length), bottomNavStyles.ts) — иначе лишний пункт
@@ -352,15 +356,16 @@ describe('AppNav — гейт ширины нижней панели (ADR-0055)'
   });
 });
 
-// ADR-0097, «Последствия»: «AppNav.test.tsx — у каждой вкладки телефона
-// aria-label с именем раздела, значок aria-hidden, цель нажатия 44 px».
-describe('AppNav — вкладки телефона называют себя и держат цель нажатия (ADR-0097)', () => {
-  it('у каждой вкладки aria-label равен имени раздела штата, цель нажатия — 44px', () => {
+// ADR-0103, «Последствия»: «AppNav.test.tsx — у каждой вкладки телефона
+// подпись словом под значком, цель нажатия 44 px, столбец значка с подписью не
+// выше этой цели, подпись подрезается многоточием».
+describe('AppNav — вкладки телефона называют себя и держат цель нажатия (ADR-0103)', () => {
+  it('у каждой вкладки подпись равна имени раздела штата, цель нажатия — 44px', () => {
     renderNav(true, ADMIN);
 
     for (const { label } of STAFF_NAV_ITEMS) {
       const link = screen.getByRole('link', { name: label });
-      expect(link).toHaveAttribute('aria-label', label);
+      expect(link.textContent).toBe(label);
       expect(link.style.minHeight).toBe('44px');
     }
   });
@@ -371,8 +376,50 @@ describe('AppNav — вкладки телефона называют себя �
 
     for (const { label } of STUDENT_NAV_ITEMS) {
       const link = screen.getByRole('link', { name: label });
-      expect(link).toHaveAttribute('aria-label', label);
+      expect(link.textContent).toBe(label);
       expect(link.style.minHeight).toBe('44px');
     }
+  });
+
+  // Подпись вернулась ВНУТРЬ цели нажатия, а не поверх неё: перерасти столбец
+  // «отступ + значок + промежуток + строка подписи + отступ» 44px — и панель
+  // станет выше родной вкладочной панели iOS, ради которой считались отступы
+  // (bottomNavStyles.ts, расчёт 3 + 22 + 2 + 11 + 3 = 41). Складываем не
+  // константы из файла стилей, а то, что реально отрисовано: числа из inline-
+  // стилей и высоту значка из самого svg — тогда гейт видит и правку кегля, и
+  // правку размера значка в NavIcon.tsx.
+  it('столбец «значок и подпись» не выше цели нажатия 44px', () => {
+    renderNav(true, ADMIN);
+
+    const link = screen.getByRole('link', { name: 'Материалы' });
+    const pill = link.querySelector('span');
+    expect(pill).not.toBeNull();
+    const svg = link.querySelector('svg');
+    const iconHeightPx = Number(svg?.getAttribute('height') ?? 0);
+    expect(iconHeightPx).toBeGreaterThan(0);
+
+    const label = screen.getByText('Материалы');
+    const lineHeightPx = px(label.style.fontSize) * Number(label.style.lineHeight);
+    const columnPx =
+      2 * px(pill?.style.paddingTop) +
+      iconHeightPx +
+      px(pill?.style.gap) +
+      Math.ceil(lineHeightPx);
+
+    expect(columnPx).toBeLessThanOrEqual(px(link.style.minHeight));
+  });
+
+  // Ширину подписи меряет только браузер (урок ADR-0055), поэтому здесь — не
+  // замер, а страховка: слово, которое не поместилось в свою дорожку,
+  // подрезается многоточием и не раздвигает панель до горизонтального скролла.
+  it('подпись подрезается в своей дорожке, а не растягивает её', () => {
+    renderNav(true, ADMIN);
+
+    const label = screen.getByText('Материалы');
+    expect(label.style.whiteSpace).toBe('nowrap');
+    expect(label.style.overflow).toBe('hidden');
+    expect(label.style.maxWidth).toBe('100%');
+    // Доступное имя ссылки остаётся целым: подрезает CSS, а не разметка.
+    expect(screen.getByRole('link', { name: 'Материалы' })).toBeInTheDocument();
   });
 });
