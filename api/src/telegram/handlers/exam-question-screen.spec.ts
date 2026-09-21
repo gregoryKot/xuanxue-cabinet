@@ -156,6 +156,10 @@ describe('buildQuestionScreen', () => {
       0,
     );
     expect(view.text).toContain('Видео получено.');
+    // Замены нет — второе видео ложится рядом (media-asset.schema.ts), и
+    // текст обещает ровно это, а не «заменит».
+    expect(view.text).toContain('учитель увидит оба');
+    expect(view.text).not.toContain('заменит');
     expect(view.text).not.toContain('Снимите или пришлите видео сюда');
   });
 

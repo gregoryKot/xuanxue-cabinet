@@ -28,7 +28,13 @@ import { buildOptionId, buildQuestionId } from './exam-callback-ids';
 const TEXT_QUESTION_PROMPT = 'Напишите ответ сообщением — обычным текстом, прямо сюда.';
 const VIDEO_QUESTION_PROMPT =
   'Снимите или пришлите видео сюда — видеосообщение, «кружок» или файл с видео.';
-const VIDEO_RECEIVED_NOTE = 'Видео получено. Пришлите другое — заменит это.';
+// Второе видео не заменяет первое: attachTelegramVideo всегда вставляет
+// новую запись (media-asset.schema.ts — уникального индекса у kind
+// 'telegram' нет сознательно, «кружок» и файл с видео — два файла одного
+// ответа). Учитель видит оба, недавнее сверху (listForAttempts сортирует по
+// receivedAt: -1) — так и пишем, чтобы текст не обещал замену.
+const VIDEO_RECEIVED_NOTE =
+  'Видео получено. Пришлёте ещё одно — учитель увидит оба, новое сверху.';
 
 const BACK_LABEL = 'Назад';
 const NEXT_LABEL = 'Дальше';
@@ -84,9 +90,9 @@ function navButtons(
   return buttons;
 }
 
-/** `answer`/`hasVideo` отражают уже сохранённое — эхо своего текста, чтобы
- * было видно, что ответ принят (и что новое сообщение его заменит), «видео
- * получено» вместо повторной просьбы прислать. */
+/** `answer`/`hasVideo` отражают уже сохранённое: у текста — эхо ответа (новое
+ * сообщение его заменит), у видео — «видео получено» вместо повторной просьбы
+ * прислать. Замены у видео нет, см. VIDEO_RECEIVED_NOTE. */
 function questionNote(
   question: AttemptQuestionDto,
   answer: AttemptAnswerDto | undefined,

@@ -34,4 +34,13 @@ describe('тексты ошибок', () => {
       expect(message).not.toContain('осуществляется');
     }
   });
+
+  // ADR-0037: ссылка одна на ВОПРОС, не на попытку. И никакого «напишите
+  // учителю, он поправит» — механизма правки нет ни у кого (CLAUDE.md:
+  // правило без механизма не работает).
+  it('отказ по повторной ссылке говорит про вопрос и не обещает правку', () => {
+    expect(EXAM_MEDIA_ALREADY_LINKED_MESSAGE).toContain('вопрос');
+    expect(EXAM_MEDIA_ALREADY_LINKED_MESSAGE).not.toContain('попытк');
+    expect(EXAM_MEDIA_ALREADY_LINKED_MESSAGE).not.toContain('поправит');
+  });
 });
