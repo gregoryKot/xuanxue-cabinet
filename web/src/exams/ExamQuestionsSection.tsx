@@ -9,6 +9,7 @@
 import { useState, type CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { noteStyle } from '../components/screenLayout';
 import { ExamQuestionList } from './ExamQuestionList';
 import { ExamQuestionSearch } from './ExamQuestionSearch';
 import { NewQuestionForm } from './NewQuestionForm';
@@ -19,6 +20,7 @@ import {
   moveQuestionUp,
   removeQuestion,
 } from './examQuestions';
+import { questionsListNote } from './questionsPerAttempt';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 14 };
 
@@ -27,6 +29,12 @@ const NEW_QUESTION_LABEL = 'Новый вопрос';
 interface ExamQuestionsSectionProps {
   itemIds: string[];
   onChange: (itemIds: string[]) => void;
+  requiredIds: string[];
+  requiredEnabled: boolean;
+  /** Значение «Вопросов ученику» — только для заметки под рубрикой ниже;
+   * `undefined`, пока поле пусто или не дописано числом. */
+  questionsPerAttempt: number | undefined;
+  onToggleRequired: (itemId: string) => void;
   bankItems: ExamItemDto[] | null;
   bankLoading: boolean;
   bankError: string | null;
@@ -36,6 +44,10 @@ interface ExamQuestionsSectionProps {
 export function ExamQuestionsSection({
   itemIds,
   onChange,
+  requiredIds,
+  requiredEnabled,
+  questionsPerAttempt,
+  onToggleRequired,
   bankItems,
   bankLoading,
   bankError,
@@ -54,11 +66,17 @@ export function ExamQuestionsSection({
   return (
     <div style={columnStyle}>
       <span className="xuanxue-eyebrow">Вопросы · {itemIds.length}</span>
+      {questionsPerAttempt !== undefined && (
+        <p style={noteStyle}>{questionsListNote(questionsPerAttempt, itemIds.length)}</p>
+      )}
 
       <ExamQuestionList
         itemIds={itemIds}
         bankItems={listItems}
         bankLoading={bankLoading}
+        requiredIds={requiredIds}
+        requiredEnabled={requiredEnabled}
+        onToggleRequired={onToggleRequired}
         onMoveUp={(index) => onChange(moveQuestionUp(itemIds, index))}
         onMoveDown={(index) => onChange(moveQuestionDown(itemIds, index))}
         onRemove={(itemId) => onChange(removeQuestion(itemIds, itemId))}

@@ -24,9 +24,10 @@ export async function renderExamMediaAnswer(
   const attempt = await examBot.loadOwnAttempt(attemptId, user, now);
   if (!attempt) return; // попытка пропала между привязкой и рендером — маловероятно, не падаем
 
-  // Видео — один ответ на всю попытку, не на вопрос (ADR-0023): сохранять
-  // нечего, привязка сама по себе и есть ответ. Дальше — как text/single:
-  // сообщение отправлено — вопрос закрыт, экран переходит к следующему.
+  // Ответ видео-вопроса живёт в media_assets, а не в answers попытки
+  // (ADR-0037), поэтому сохранять здесь нечего — привязка сама и есть ответ.
+  // Дальше — как text/single: сообщение отправлено — вопрос закрыт, экран
+  // переходит к следующему.
   const total = flattenAttemptQuestions(attempt).length;
   const nextIndex = Math.min(questionIndex + 1, total - 1);
   const view = await renderAttemptScreen(

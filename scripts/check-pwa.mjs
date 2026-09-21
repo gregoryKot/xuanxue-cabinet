@@ -6,7 +6,7 @@
 // (web/public/sw.js), а не случайно вернувшийся Workbox-worker с прекешем.
 // Здесь же — сверка бумаги оболочки с токеном --paper (scripts/
 // pwa-shell-colors.mjs) и сверка «знак везде один» (scripts/
-// pwa-icon-sources.mjs, docs/adr/0084): иконку, заставку и полоску браузера
+// pwa-icon-sources.mjs, docs/adr/0085): иконку, заставку и полоску браузера
 // человек видит раньше любого экрана кабинета. CI-джоба `web`.
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
@@ -108,7 +108,7 @@ if (errors.length) {
     );
   if (iconSourceProblems.length)
     console.error(
-      'Знак школы на входе, в кабинете и на иконках — один файл (docs/adr/0084): ' +
+      'Знак школы на входе, в кабинете и на иконках — один файл (docs/adr/0085): ' +
         `смени его или палитру и собери заново — ${REGENERATE_HINT}`,
     );
   process.exit(1);

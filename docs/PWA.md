@@ -16,7 +16,7 @@
   для iOS, 64 для знака в кабинете (`web/src/components/SchoolMark.tsx`) и
   32/16 для вкладки браузера. Результат лежит в гите. Сменился знак — замени
   источник, выполни скрипт, закоммить картинки
-  ([ADR-0084](adr/0084-school-mark-is-a-raster-seal.md)).
+  ([ADR-0085](adr/0085-school-mark-is-a-raster-seal.md)).
 - **Цвет оболочки — из палитры кабинета.** `theme_color` и
   `background_color` манифеста, `<meta name="theme-color">` в
   `web/index.html` и сплошной фон под знаком на иконках iOS и Android равны
