@@ -103,7 +103,7 @@
   "api/src/common/app-version-header.ts": 34,
   "api/src/common/claim-once.ts": 24,
   "api/src/common/date-window.ts": 23,
-  "api/src/common/domain-exception.filter.ts": 127,
+  "api/src/common/domain-exception.filter.ts": 126,
   "api/src/common/error-info.ts": 11,
   "api/src/common/errors.ts": 49,
   "api/src/common/field-policy.ts": 33,

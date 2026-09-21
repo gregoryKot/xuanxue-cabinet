@@ -17,7 +17,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
-  ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_FOUND_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
   isStaffRole,
@@ -40,6 +39,7 @@ import {
   findInProgressAttempt,
 } from './exam-attempt-lifecycle';
 import { saveAttemptAnswers } from './exam-attempt-save';
+import { resolveSubmitConflict } from './exam-attempt-submit-outcome';
 import {
   attemptSubmittedCallback,
   notifyAttemptSubmitted,
@@ -140,10 +140,10 @@ export class ExamAttemptsService {
         { returnDocument: 'after' },
       )
       .lean<RawLeanExamAttempt>();
-    if (!updated) throw new InvalidInputError(ATTEMPT_EXPIRED_MESSAGE);
+    if (!updated)
+      return toAttemptDto(await resolveSubmitConflict(this.model, attemptId, userId));
     const decrypted = decryptAttempt(updated);
-    // Выиграл гонку findOneAndUpdate выше — ровно одно уведомление на
-    // попытку (тот же приём, что closeIfExpiredAttempt, её комментарий-шапка).
+    // Выиграл гонку выше — ровно одно уведомление (closeIfExpiredAttempt, шапка файла).
     notifyAttemptSubmitted(this.examNotifier, decrypted, now);
     return toAttemptDto(decrypted);
   }
