@@ -123,6 +123,11 @@ export class MyExamsService {
         lastAttempt: {
           id: closed._id.toString(),
           status: closed.status,
+          // Сравнение, не просто поле: `.lean()` не переприменяет схемный
+          // default(false) к документу без поля вовсе (та же оговорка, что
+          // у description/level в toMyExamDto) — у попыток старше этого
+          // поля expired отсутствует в самом документе, а не false.
+          expired: closed.expired === true,
           outcome: grading?.outcome,
           comment: grading?.comment,
         },

@@ -3,12 +3,13 @@
 // рубриками. Чистая функция рядом с экраном, а не выражение в JSX (CLAUDE.md
 // «Логика вне компонентов», «Тесты»: ветвление проверяется без DOM).
 //
-// «Новое» — ровно то же самое действие, что уже решает карточку кнопки
-// (getExamAction === 'start'): попытки не было и лимит не исчерпан. Один и
-// тот же критерий для кнопки и для рубрики не расходится сам с собой на
-// следующей правке экрана.
-import type { MyExamDto } from '@xuanxue/shared';
-import { getExamAction } from './examAttemptState';
+// «Новое» — ровно то же самое действие, что уже решает кнопку карточки
+// (getMyExamAction === 'start', shared/src/my-exams.ts, ADR-0091): попытки
+// не было и лимит не исчерпан. Повтор после дедлайна (`retry`) — не новое
+// задание, а старое, которое не успели сдать, поэтому попадает в
+// «Остальные» тем же критерием. Один и тот же критерий для кнопки и для
+// рубрики не расходится сам с собой на следующей правке экрана.
+import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 
 export interface SplitTasksResult {
   newTasks: MyExamDto[];
@@ -16,7 +17,7 @@ export interface SplitTasksResult {
 }
 
 export function splitNewTasks(exams: MyExamDto[]): SplitTasksResult {
-  const newTasks = exams.filter((exam) => getExamAction(exam) === 'start');
-  const restTasks = exams.filter((exam) => getExamAction(exam) !== 'start');
+  const newTasks = exams.filter((exam) => getMyExamAction(exam) === 'start');
+  const restTasks = exams.filter((exam) => getMyExamAction(exam) !== 'start');
   return { newTasks, restTasks };
 }

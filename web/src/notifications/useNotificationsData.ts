@@ -10,7 +10,13 @@
 // неделями не перезагружают — без фонового перечитывания счётчик застыл бы на
 // значении первой отрисовки оболочки.
 import { useCallback, useMemo } from 'react';
-import type { InboxPageDto, MeDto, MyExamDto, NotificationDto } from '@xuanxue/shared';
+import {
+  getMyExamAction,
+  type InboxPageDto,
+  type MeDto,
+  type MyExamDto,
+  type NotificationDto,
+} from '@xuanxue/shared';
 import {
   NOTIFICATIONS_FEED_PATH,
   NOTIFICATIONS_READ_ALL_PATH,
@@ -20,7 +26,6 @@ import { apiFetch } from '../api/http';
 import { isTeacher } from '../app/screenAccess';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { usePollWhileVisible } from '../hooks/usePollWhileVisible';
-import { getExamAction } from '../student/examAttemptState';
 import { useMyExams } from '../student/MyExamsProvider';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить уведомления. Попробуйте ещё раз.';
@@ -78,15 +83,15 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
   // loading/error ниже читаем только у неё.
   //
   // Тот же критерий, что рубрика «Новые задания» на экране «Задания»
-  // (examAttemptState.getExamAction, splitNewTasks.ts) — свой критерий
-  // «новое» не заводим, иначе две копии разъехались бы на следующей правке
-  // экрана.
+  // (getMyExamAction, shared/src/my-exams.ts, splitNewTasks.ts) — свой
+  // критерий «новое» не заводим, иначе две копии разъехались бы на
+  // следующей правке экрана.
   const { data: exams, refresh: refreshExams } = useMyExams();
   const newTasks = useMemo(
     () =>
       isTeacher(me)
         ? []
-        : (exams ?? []).filter((exam) => getExamAction(exam) === 'start'),
+        : (exams ?? []).filter((exam) => getMyExamAction(exam) === 'start'),
     [exams, me],
   );
 

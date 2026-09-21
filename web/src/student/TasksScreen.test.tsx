@@ -102,7 +102,7 @@ describe('TasksScreen — рубрики новых заданий', () => {
       makeExam({
         id: 'e1',
         attemptsAllowed: 2,
-        lastAttempt: { id: 'a1', status: 'submitted' },
+        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
       }),
     ]);
     renderScreen();
@@ -119,7 +119,7 @@ describe('TasksScreen — рубрики новых заданий', () => {
         id: 'e1',
         title: 'Уже отвечал',
         attemptsAllowed: 2,
-        lastAttempt: { id: 'a1', status: 'submitted' },
+        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
       }),
       makeExam({ id: 'e2', title: 'Ещё не начинал' }),
     ]);
