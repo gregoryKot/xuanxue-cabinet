@@ -109,6 +109,26 @@ describe('Settings (e2e)', () => {
     });
   });
 
+  // Экран «Шаблоны» кладёт тело ответа PATCH прямо на себя, без GET следом
+  // (ADR-0087), поэтому неполный ответ — не «на одно поле меньше», а белый
+  // экран у учителя: settings.templates упадёт при рендере. Тела сверяются
+  // целиком — новое поле SettingsDto попадёт под гейт без правки теста.
+  it('PATCH /settings — тело ответа равно телу GET сразу после (ADR-0087)', async () => {
+    const cookie = await sessionFor(['teacher']);
+
+    const patched = await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({
+        previewMinutes: 25,
+        templates: { recording: 'Запись готова: {название}' },
+      });
+    expect(patched.status).toBe(200);
+
+    const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+    expect(got.status).toBe(200);
+    expect(patched.body).toEqual(got.body);
+  });
+
   it('PATCH с неизвестной подстановкой — 400 с текстом в конверте', async () => {
     const cookie = await sessionFor(['teacher']);
 

@@ -1,8 +1,12 @@
 // Данные экрана «Уведомления» — какие виды доступны этому человеку по его
-// ролям и какие включены сейчас (CLAUDE.md «Read-after-write»): после PATCH
-// состояние перечитывается заново, тем же приёмом, что usePeople делает
-// с ролями — не рисуем переключатель заранее, показываем результат уже
-// с сервера (ТЗ notifications-web.md, п.4).
+// ролям и какие включены сейчас. PATCH /me/notifications уже возвращает
+// полный NotificationPrefsDto (notification-prefs.controller.ts: «бот и
+// кабинет обновляют экран настроек одним ответом, без отдельного GET
+// следом») — applyData() кладёт этот ответ на экран напрямую, второй запрос
+// за тем же самым не нужен. Read-after-write (CLAUDE.md) не нарушается: мы
+// показываем ровно то, что сервер вернул после записи, — просто это тело
+// ответа PATCH, а не отдельный GET следом (отзыв владельца 2026-09-21:
+// переключатель ждал оба запроса подряд и стоял серым 1–2 секунды).
 import { useCallback } from 'react';
 import {
   defaultNotifications,
@@ -28,20 +32,20 @@ export interface UseNotificationPrefsResult {
 }
 
 export function useNotificationPrefs(me: MeDto | null): UseNotificationPrefsResult {
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiFetch<NotificationPrefsDto>(NOTIFICATION_PREFS_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
 
   const setEnabled = useCallback(
     async (kind: NotificationKind, enabled: boolean) => {
-      await apiFetch(NOTIFICATION_PREFS_PATH, {
+      const next = await apiFetch<NotificationPrefsDto>(NOTIFICATION_PREFS_PATH, {
         method: 'PATCH',
         body: { kind, enabled },
       });
-      await reload();
+      applyData(next);
     },
-    [reload],
+    [applyData],
   );
 
   return {
