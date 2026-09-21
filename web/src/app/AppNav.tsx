@@ -39,10 +39,10 @@ interface AppNavProps {
    * телефоне его держит подвал AppShell.tsx, поэтому мобильный вызов может
    * их не передавать вовсе. */
   profileLink?: ReactNode;
-  /** Ссылка на «Уведомления» (ADR-0063), своей строкой над «Профиль ·
-   * Выйти» — расчёт ширины у JSX ниже. Навигация про уведомления не знает,
-   * узел приходит готовым, как profileLink/logoutButton (CLAUDE.md «Логика
-   * вне компонентов»). */
+  /** Ссылка на «Уведомления» (ADR-0063) — верх колонки, перед списком
+   * разделов (JSX ниже). Навигация про уведомления не знает, узел приходит
+   * готовым, как profileLink/logoutButton (CLAUDE.md «Логика вне
+   * компонентов»). */
   notificationsLink?: ReactNode;
   logoutButton?: ReactNode;
 }
@@ -109,18 +109,17 @@ export function AppNav({
         <SchoolMark />
         <span style={sideBrandTitleStyle}>{SCHOOL_NAME}</span>
       </span>
+      {/* Наверху колонки, не внизу у «Профиль · Выйти»: владелец не нашёл
+          тусклую текстовую ссылку в блоке человека (отзыв 2026-09-21) —
+          колокольчик (NotificationsNavLink.tsx) теперь первым пунктом видимой
+          строки. Снаружи `<nav>` по той же причине, что знак школы и блок
+          человека ниже, — см. комментарий у самого `<nav>`. */}
+      {notificationsLink}
       <nav style={sideSectionsStyle} aria-label={SECTIONS_LABEL}>
         {links}
       </nav>
       <div style={personBlockStyle}>
         <span>Вы вошли как {me?.name ?? '—'}</span>
-        {/* Своей строкой, не третьим пунктом в ряду ниже: колонка 236px
-            (SIDE_NAV_WIDTH_PX), из них 32 съедает её паддинг (sideStyle:
-            16×2) и 28 — паддинг блока человека (personBlockStyle: 14×2), под
-            текст остаётся около 176. «Уведомления ③ · Профиль · Выйти» при
-            кегле 13 просит около 195 — ряд уехал бы за колонку (тот же
-            способ рассуждения, что у sideBrandTitleStyle, sideNavStyles.ts). */}
-        {notificationsLink}
         <span style={personActionsRowStyle}>
           {profileLink}
           <span>·</span>
