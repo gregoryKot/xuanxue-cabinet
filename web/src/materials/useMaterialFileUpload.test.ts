@@ -11,7 +11,7 @@ import {
   type MaterialDto,
 } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { ApiError } from '../api/http';
+import { ApiError, UPLOAD_TIMEOUT_MS } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { useMaterialFileUpload } from './useMaterialFileUpload';
 
@@ -108,6 +108,7 @@ describe('useMaterialFileUpload — загрузка', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith('/materials/m1/file?name=book.pdf', {
       method: 'POST',
       body: file,
+      timeoutMs: UPLOAD_TIMEOUT_MS,
     });
     expect(result.current.error).toBeNull();
     expect(result.current.pending).toBe(false);

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
-import { ApiError } from '../api/http';
+import { ApiError, UPLOAD_TIMEOUT_MS } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { useExamImageUpload } from './useExamImageUpload';
 
@@ -43,6 +43,7 @@ describe('useExamImageUpload — успех', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith('/exam-images', {
       method: 'POST',
       body: blob,
+      timeoutMs: UPLOAD_TIMEOUT_MS,
     });
     expect(result.current.error).toBeNull();
     expect(result.current.pending).toBe(false);

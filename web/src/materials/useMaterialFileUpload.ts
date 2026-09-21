@@ -15,7 +15,7 @@ import {
   type MaterialFileContentType,
 } from '@xuanxue/shared';
 import { materialFilePath, materialFileUploadPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
 
 // И сетевой ApiError, и собственная проверка ниже несут готовый текст по
 // VOICE — этот запасной только на непредвиденное исключение, которое ни
@@ -72,7 +72,13 @@ export function useMaterialFileUpload(materialId: string): UseMaterialFileUpload
     setPending(true);
     try {
       const path = materialFileUploadPath(materialId, truncateFileName(file.name));
-      return await apiFetch<MaterialDto>(path, { method: 'POST', body: file });
+      // Дефолтных 30 секунд (API_TIMEOUT_MS) файлу на плохой связи ученика
+      // может не хватить — свой запас на загрузку (аудит 2026-09-21).
+      return await apiFetch<MaterialDto>(path, {
+        method: 'POST',
+        body: file,
+        timeoutMs: UPLOAD_TIMEOUT_MS,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : UPLOAD_ERROR_MESSAGE);
       return null;
