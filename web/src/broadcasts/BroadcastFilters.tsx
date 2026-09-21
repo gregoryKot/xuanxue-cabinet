@@ -8,16 +8,13 @@
 // один ряд переключателей рядом со статусами на 360 px не помещается.
 // Подпись «Период» только для скринридера — на экране её заменяет сам выбор
 // («2 недели» читается как период без объяснений).
-import type { CSSProperties } from 'react';
 import { BROADCAST_STATUSES, type BroadcastStatus } from '@xuanxue/shared';
-import { inputStyle } from '../components/Field';
 import { ListFilters } from '../components/ListFilters';
+import { Select } from '../components/Select';
 import { BROADCAST_STATUS_LABELS_RU } from './broadcastLabels';
 import { JOURNAL_RANGE_OPTIONS, type JournalRangeWeeks } from './broadcastWindow';
 
 const PERIOD_LABEL = 'Период';
-
-const selectStyle: CSSProperties = { ...inputStyle, width: '100%' };
 
 interface BroadcastFiltersProps {
   rangeWeeks: JournalRangeWeeks;
@@ -39,9 +36,8 @@ export function BroadcastFilters({
       value={status}
       onChange={onStatusChange}
       trailing={
-        <select
+        <Select
           aria-label={PERIOD_LABEL}
-          style={selectStyle}
           value={rangeWeeks}
           onChange={(e) =>
             onRangeWeeksChange(Number(e.target.value) as JournalRangeWeeks)
@@ -52,7 +48,7 @@ export function BroadcastFilters({
               {option.label}
             </option>
           ))}
-        </select>
+        </Select>
       }
     />
   );
