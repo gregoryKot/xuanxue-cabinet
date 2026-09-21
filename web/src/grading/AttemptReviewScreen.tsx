@@ -35,12 +35,12 @@ import { backLinkStyle } from '../components/editorLayout';
 import { SkeletonLines } from '../components/Skeleton';
 import { showsTelegramOffer } from '../telegram/showsTelegramOffer';
 import { AttemptReviewAnswers } from './AttemptReviewAnswers';
+import { gradingDeliveryHint } from './gradingDeliveryHint';
 import { GradingForm } from './GradingForm';
 import { useAttemptReview } from './useAttemptReview';
 import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
 const GRADING_HEADING_ID = 'grading-heading';
-const GRADING_HINT = 'Итог и комментарий уйдут ученику в Telegram сразу после отправки.';
 // Рубрика над именем: само по себе имя не называет экран — читатель шёл из
 // очереди проверки и должен понять, что открыл одну работу (тот же приём,
 // что у `.xuanxue-eyebrow` в student/StudentExamsSection.tsx).
@@ -126,7 +126,9 @@ export default function AttemptReviewScreen() {
           <h2 id={GRADING_HEADING_ID} style={screenColumnTitleStyle}>
             Проверка
           </h2>
-          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>{GRADING_HINT}</p>
+          <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>
+            {gradingDeliveryHint(review.notifiesUserInTelegram)}
+          </p>
           <GradingForm
             key={review.attemptId}
             grading={review.grading}

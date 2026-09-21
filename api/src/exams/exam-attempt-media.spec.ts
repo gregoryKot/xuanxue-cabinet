@@ -77,6 +77,7 @@ describe('withReviewMedia', () => {
       userName: 'Ученик',
       status: 'submitted',
       blocks: [],
+      notifiesUserInTelegram: false,
     };
     const service = fakeService(new Map([['a1', [MEDIA]]]));
 
