@@ -132,6 +132,29 @@ describe('TasksScreen — рубрики новых заданий', () => {
   });
 });
 
+// Регрессия: владелец трижды присылал снимок, где карточки списка стоят
+// вплотную и читаются одной плашкой; третий раз — ровно этот экран, две
+// карточки экзамена (docs/adr/0086). Причина была в контейнере `<ul>` без
+// `gap` — строка тёплой плашки своего отступа не несёт. Теперь список берёт
+// `cardListStyle` (web/src/components/listCardStyles.ts), тест проверяет
+// именно это: у `<ul>` со строками есть ненулевой зазор.
+describe('TasksScreen — карточки заданий не стоят вплотную', () => {
+  it('у списка есть промежуток между двумя карточками экзамена', async () => {
+    mockedApiFetch.mockResolvedValueOnce([
+      makeExam({ id: 'e1' }),
+      makeExam({ id: 'e2', title: 'Форма второго уровня' }),
+    ]);
+    renderScreen();
+
+    const items = await screen.findAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    const list = items[0]?.closest('ul');
+    expect(list).not.toBeNull();
+    expect(list?.style.gap).not.toBe('');
+    expect(list?.style.gap).not.toBe('0px');
+  });
+});
+
 describe('TasksScreen — старт попытки', () => {
   it('«Начать» — стартует попытку и уводит на экран сдачи', async () => {
     mockedApiFetch.mockResolvedValueOnce([makeExam()]);

@@ -13,8 +13,6 @@ import { SkeletonList } from './Skeleton';
 const SKELETON_ROWS = 5;
 const SKELETON_ROW_HEIGHT_PX = 72;
 
-const plainListStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
-
 interface ListScreenBodyProps<TItem> {
   /** `null` — ещё не загружено. */
   items: TItem[] | null;
@@ -27,11 +25,14 @@ interface ListScreenBodyProps<TItem> {
    * `Array.prototype.map`, — по ним строка знает, что она последняя
    * (exams/ExamsScreen.tsx, docs/adr/0043). */
   renderItem: (item: TItem, index: number, items: TItem[]) => ReactNode;
-  /** Стиль обёртки `<ul>` — по умолчанию голый список без своего фона.
-   * Экран передаёт карточку-обёртку, когда строки красит волосяная линия
-   * сама, а не своя карточка на строку (exams/ExamsScreen.tsx, тот же приём,
-   * что у журнала рассылок, docs/adr/0043). */
-  listStyle?: CSSProperties;
+  /** Стиль обёртки `<ul>` — одна из трёх готовых форм
+   * `components/listCardStyles.ts` (docs/adr/0086): промежуток между строками
+   * заявляет список, а не строка, поэтому у пропа нет умолчания — экран
+   * выбирает форму сам, под свою строку (`oneCardListStyle` — общая карточка
+   * с волосяной линией, как у exams/ExamsScreen.tsx; `cardListStyle` — колонка
+   * карточек-строк с воздухом; `dividedListStyle` — голый список, где ритм
+   * держит линия у самой строки). */
+  listStyle: CSSProperties;
   /** Подпись кнопки повтора — по умолчанию VOICE-умолчание LoadErrorBanner;
    * «Обновить» переопределяет её там, где пользователей уже приучили к этой
    * подписи (ArchiveScreen.tsx/LibraryScreen.tsx, docs/PLAN.md §14). */
@@ -61,5 +62,5 @@ export function ListScreenBody<TItem>({
   if (loading) return <SkeletonList rows={skeletonRows} h={skeletonHeight} />;
   if (!items || items.length === 0) return <p style={{ margin: 0 }}>{emptyMessage}</p>;
 
-  return <ul style={listStyle ?? plainListStyle}>{items.map(renderItem)}</ul>;
+  return <ul style={listStyle}>{items.map(renderItem)}</ul>;
 }
