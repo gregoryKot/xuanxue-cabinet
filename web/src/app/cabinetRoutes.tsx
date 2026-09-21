@@ -10,39 +10,40 @@
 // Фрагмент, а не компонент: `<Routes>` разбирает детей сам и умеет заглянуть
 // внутрь `<React.Fragment>`, а компонент между `<Route>` и его детьми сломал
 // бы разбор.
-import { lazy } from 'react';
 import { Navigate, Route } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
+import { lazyRoute } from './lazyRoute';
 import { ROUTE_MODULES } from './routeModules';
 import { rootPathFor } from './screenAccess';
 
-const ScheduleScreen = lazy(ROUTE_MODULES.schedule.load);
-const ClassEditorScreen = lazy(ROUTE_MODULES.classEditor.load);
-const PlanningScreen = lazy(ROUTE_MODULES.planning.load);
-const LessonEditorScreen = lazy(ROUTE_MODULES.lessonEditor.load);
-const ChannelsScreen = lazy(ROUTE_MODULES.channels.load);
-const ChannelEditorScreen = lazy(ROUTE_MODULES.channelEditor.load);
-const MaterialsScreen = lazy(ROUTE_MODULES.materials.load);
-const MaterialEditorScreen = lazy(ROUTE_MODULES.materialEditor.load);
-const BroadcastsScreen = lazy(ROUTE_MODULES.broadcasts.load);
-const BroadcastNewScreen = lazy(ROUTE_MODULES.broadcastNew.load);
-const TemplatesScreen = lazy(ROUTE_MODULES.templates.load);
-const PeopleScreen = lazy(ROUTE_MODULES.people.load);
-const ExamItemsScreen = lazy(ROUTE_MODULES.examItems.load);
-const ExamItemEditorScreen = lazy(ROUTE_MODULES.examItemEditor.load);
-const ExamsScreen = lazy(ROUTE_MODULES.exams.load);
-const ExamEditorScreen = lazy(ROUTE_MODULES.examEditor.load);
-const ExamPreviewScreen = lazy(ROUTE_MODULES.examPreview.load);
-const GradingQueueScreen = lazy(ROUTE_MODULES.grading.load);
-const AttemptReviewScreen = lazy(ROUTE_MODULES.attemptReview.load);
-const AttemptScreen = lazy(ROUTE_MODULES.attempt.load);
-const ProfileScreen = lazy(ROUTE_MODULES.profile.load);
-const NotificationsScreen = lazy(ROUTE_MODULES.notifications.load);
-const TasksScreen = lazy(ROUTE_MODULES.tasks.load);
-const LessonsScreen = lazy(ROUTE_MODULES.studentLessons.load);
-const ArchiveScreen = lazy(ROUTE_MODULES.archive.load);
-const LibraryScreen = lazy(ROUTE_MODULES.library.load);
+const ScheduleScreen = lazyRoute(ROUTE_MODULES.schedule.load);
+const ClassEditorScreen = lazyRoute(ROUTE_MODULES.classEditor.load);
+const PlanningScreen = lazyRoute(ROUTE_MODULES.planning.load);
+const LessonEditorScreen = lazyRoute(ROUTE_MODULES.lessonEditor.load);
+const ChannelsScreen = lazyRoute(ROUTE_MODULES.channels.load);
+const ChannelEditorScreen = lazyRoute(ROUTE_MODULES.channelEditor.load);
+const MaterialsScreen = lazyRoute(ROUTE_MODULES.materials.load);
+const MaterialsTagsScreen = lazyRoute(ROUTE_MODULES.materialsTags.load);
+const MaterialEditorScreen = lazyRoute(ROUTE_MODULES.materialEditor.load);
+const BroadcastsScreen = lazyRoute(ROUTE_MODULES.broadcasts.load);
+const BroadcastNewScreen = lazyRoute(ROUTE_MODULES.broadcastNew.load);
+const TemplatesScreen = lazyRoute(ROUTE_MODULES.templates.load);
+const PeopleScreen = lazyRoute(ROUTE_MODULES.people.load);
+const ExamItemsScreen = lazyRoute(ROUTE_MODULES.examItems.load);
+const ExamItemEditorScreen = lazyRoute(ROUTE_MODULES.examItemEditor.load);
+const ExamsScreen = lazyRoute(ROUTE_MODULES.exams.load);
+const ExamEditorScreen = lazyRoute(ROUTE_MODULES.examEditor.load);
+const ExamPreviewScreen = lazyRoute(ROUTE_MODULES.examPreview.load);
+const GradingQueueScreen = lazyRoute(ROUTE_MODULES.grading.load);
+const AttemptReviewScreen = lazyRoute(ROUTE_MODULES.attemptReview.load);
+const AttemptScreen = lazyRoute(ROUTE_MODULES.attempt.load);
+const ProfileScreen = lazyRoute(ROUTE_MODULES.profile.load);
+const NotificationsScreen = lazyRoute(ROUTE_MODULES.notifications.load);
+const TasksScreen = lazyRoute(ROUTE_MODULES.tasks.load);
+const LessonsScreen = lazyRoute(ROUTE_MODULES.studentLessons.load);
+const ArchiveScreen = lazyRoute(ROUTE_MODULES.archive.load);
+const LibraryScreen = lazyRoute(ROUTE_MODULES.library.load);
 
 /** «/» — первый экран уже известной роли (решение владельца: у ученика это
  * «Задания», у штата — «Занятия»/планирование). Роль решает rootPathFor
@@ -76,6 +77,12 @@ export const cabinetRoutes = (
         контроллере (MaterialsController). */}
     <Route path={ROUTE_MODULES.materials.path} element={<MaterialsScreen />} />
     <Route path={ROUTE_MODULES.materialNew.path} element={<MaterialEditorScreen />} />
+    {/* Подэкран «Материалов» — общая выдача по тегу (ADR-0075/0078), вход
+        карточкой на MaterialsScreen.tsx и пилюлей тега на карточке
+        материала/занятия (ADR-0025: не пункт меню). Раньше
+        /materials/:materialId — та же причина, что у /materials/new выше:
+        статический сегмент должен выигрывать у параметра. */}
+    <Route path={ROUTE_MODULES.materialsTags.path} element={<MaterialsTagsScreen />} />
     <Route path={ROUTE_MODULES.materialEditor.path} element={<MaterialEditorScreen />} />
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
     <Route path={ROUTE_MODULES.broadcastNew.path} element={<BroadcastNewScreen />} />
@@ -102,7 +109,7 @@ export const cabinetRoutes = (
         не из навигации разделов (docs/adr/0025). Доступен любой роли:
         canSeeRoute (screenAccess.ts) не ограничивает его по роли. */}
     <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
-    {/* Лента событий и новых заданий (ADR-0065) — личное место человека, как
+    {/* Лента событий и новых заданий (ADR-0063) — личное место человека, как
         «/profile» выше, вход значком в оболочке, не из навигации разделов
         (ADR-0025). Доступен любой роли: canSeeRoute (screenAccess.ts) не
         ограничивает его по роли. */}

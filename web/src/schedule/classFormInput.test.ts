@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ChannelDto, ClassDto } from '@xuanxue/shared';
+import { TAG_LIMITS, type ChannelDto, type ClassDto } from '@xuanxue/shared';
 import {
   initialClassFormState,
   toCreateInput,
@@ -34,6 +34,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     channelIds: [],
     leadMinutes: 15,
     active: true,
+    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -52,6 +53,7 @@ function baseState(overrides: Partial<ClassFormState> = {}): ClassFormState {
     tz: 'Asia/Jerusalem',
     channelIds: [],
     leaderId: '',
+    tagsText: '',
     rules: [{ weekday: 1, time: '19:00', durationMinText: '60' }],
     ...overrides,
   };
@@ -111,6 +113,16 @@ describe('initialClassFormState', () => {
     const state = initialClassFormState(makeClass({ channelIds: [] }), channels);
     expect(state.channelIds).toEqual([]);
   });
+
+  it('существующее занятие с тегами — собраны в строку через запятую (ADR-0072)', () => {
+    const state = initialClassFormState(makeClass({ tags: ['начинающие', 'медитация'] }));
+    expect(state.tagsText).toBe('начинающие, медитация');
+  });
+
+  it('занятие без тегов — пустая строка, не undefined', () => {
+    const state = initialClassFormState(makeClass({ tags: [] }));
+    expect(state.tagsText).toBe('');
+  });
 });
 
 describe('validateClassForm', () => {
@@ -155,6 +167,19 @@ describe('validateClassForm', () => {
   it('валидная форма — null', () => {
     expect(validateClassForm(baseState())).toBeNull();
   });
+
+  it('тег длиннее лимита — ошибка с текстом тега и лимитом (ADR-0072)', () => {
+    const longTag = 'а'.repeat(TAG_LIMITS.length + 1);
+    expect(validateClassForm(baseState({ tagsText: `база, ${longTag}` }))).toBe(
+      `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
+    );
+  });
+
+  it('теги в пределах лимита — форма валидна', () => {
+    expect(
+      validateClassForm(baseState({ tagsText: 'начинающие, медитация' })),
+    ).toBeNull();
+  });
 });
 
 describe('toCreateInput / toUpdateInput — очистка nullable-полей (ревью п.8)', () => {
@@ -197,5 +222,17 @@ describe('toCreateInput / toUpdateInput — очистка nullable-полей (
     const state = baseState({ leaderId: '' });
     expect(toCreateInput(state).leaderId).toBeUndefined();
     expect(toUpdateInput(state).leaderId).toBeNull();
+  });
+
+  it('теги — строка через запятую превращается в массив на выходе, создание и правка (ADR-0072)', () => {
+    const state = baseState({ tagsText: 'начинающие, медитация' });
+    expect(toCreateInput(state).tags).toEqual(['начинающие', 'медитация']);
+    expect(toUpdateInput(state).tags).toEqual(['начинающие', 'медитация']);
+  });
+
+  it('пустые теги — пустой массив, а не отсутствующее поле', () => {
+    const state = baseState({ tagsText: '' });
+    expect(toCreateInput(state).tags).toEqual([]);
+    expect(toUpdateInput(state).tags).toEqual([]);
   });
 });

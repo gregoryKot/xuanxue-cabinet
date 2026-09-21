@@ -17,12 +17,8 @@ import type {
   UpdateChannelInput,
 } from '@xuanxue/shared';
 
-/** Тип, который можно выбрать в форме — webpush создаётся своей подпиской,
- * этой форме недоступен (channelTypeLabels.ts, CREATABLE_CHANNEL_TYPES). */
-type CreatableChannelType = Exclude<ChannelType, 'webpush'>;
-
 export interface ChannelFormState {
-  type: CreatableChannelType;
+  type: ChannelType;
   title: string;
   /** Выключенный канал остаётся в списке, но рассылки в него не уходят.
    * Поле формы, а не отдельная мутация с переключателем в списке: одно
@@ -42,16 +38,9 @@ export interface ChannelFormError {
   message: string;
 }
 
-/** Каналу webpush этот экран не даёт открыть свою страницу (создаётся
- * подпиской, не формой) — резерв «manual» на случай, если он всё же попал в
- * список. */
-function toCreatableType(type: ChannelType): CreatableChannelType {
-  return type === 'webpush' ? 'manual' : type;
-}
-
 export function initialChannelFormState(channelDto: ChannelDto | null): ChannelFormState {
   return {
-    type: channelDto ? toCreatableType(channelDto.type) : 'vk',
+    type: channelDto ? channelDto.type : 'vk',
     title: channelDto?.title ?? '',
     active: channelDto?.active ?? true,
     chatId: channelDto?.type === 'telegram' ? channelDto.target : '',
@@ -75,7 +64,7 @@ export function validateChannelForm(
   if (!state.title.trim()) {
     return { field: 'title', message: 'Впишите название канала.' };
   }
-  const type = isCreate ? state.type : toCreatableType(existing?.type ?? state.type);
+  const type = isCreate ? state.type : (existing?.type ?? state.type);
 
   if (type === 'telegram' && !state.chatId.trim()) {
     return {
@@ -105,7 +94,7 @@ export function validateChannelForm(
   return null;
 }
 
-function configFor(state: ChannelFormState, type: CreatableChannelType): ChannelConfig {
+function configFor(state: ChannelFormState, type: ChannelType): ChannelConfig {
   if (type === 'telegram') return { chatId: state.chatId.trim() };
   if (type === 'vk')
     return { token: state.token.trim(), peerId: Number(state.peerIdText) };

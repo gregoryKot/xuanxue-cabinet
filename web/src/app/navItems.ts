@@ -46,10 +46,12 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     childPaths: [],
   },
   // Пятый пункт, добавленный ADR-0055 — единственное названное исключение
-  // из правила выше. `childPaths: []` — как у «Учеников»: `/materials/new`
-  // и `/materials/:materialId` подсвечивать пункт не должны (и без того не
-  // подсвечивают, `activeSectionPath` сравнивает путь целиком).
-  { to: '/materials', label: 'Материалы', childPaths: [] },
+  // из правила выше. `/materials/new` и `/materials/:materialId`
+  // подсвечивать пункт не должны отдельной записью (и без того не
+  // подсвечивают, `activeSectionPath` сравнивает путь целиком) — а
+  // `/materials/tags` (ADR-0075) в childPaths: это подэкран «Материалов»,
+  // тот же приём, что у «/archive»/«/library» под «Занятиями» ученика.
+  { to: '/materials', label: 'Материалы', childPaths: ['/materials/tags'] },
 ];
 
 /** Решение владельца: экзамены — отдельный экран и первый после входа,

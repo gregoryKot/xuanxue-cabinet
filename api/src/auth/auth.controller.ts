@@ -22,6 +22,7 @@ import { DateTime } from 'luxon';
 import { INVITE_QUERY_PARAM, type AuthConfigDto, type MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { SettingsService } from '../settings/settings.service';
+import { FileStoreService } from '../storage/file-store.service';
 import { PersonalChats } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { botIdFromToken } from './bot-id-from-token';
@@ -49,6 +50,7 @@ export class AuthController {
     private readonly telegramAuthService: TelegramAuthService,
     private readonly emailAuthService: EmailAuthService,
     private readonly configService: ConfigService,
+    private readonly fileStore: FileStoreService,
     private readonly settingsService: SettingsService,
     private readonly telegramBotService: TelegramBotService,
     private readonly personalChats: PersonalChats,
@@ -72,6 +74,9 @@ export class AuthController {
       telegramBotUsername: this.telegramBotService.botUsername(),
       schoolSiteUrl: settings.schoolSiteUrl,
       emailLoginEnabled: this.emailAuthService.isEnabled(),
+      // Тот же признак, что решает «показывать ли поле загрузки» на странице
+      // материала (ADR-0057): проверяет наличие ключей R2, в сеть не ходит.
+      fileStorageEnabled: this.fileStore.isEnabled,
     };
   }
 

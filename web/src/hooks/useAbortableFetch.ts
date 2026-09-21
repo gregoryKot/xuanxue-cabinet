@@ -3,6 +3,13 @@
 // раньше первого, размонтирование посреди загрузки) не перезаписывает более
 // новый (ревью п.13). Раньше эта логика была скопирована в каждый хук по
 // отдельности — jscpd-храповик поймал дубль (CLAUDE.md «Дубли и мёртвый код»).
+//
+// `refresh()` — тихое перечитывание для фонового опроса (usePollWhileVisible,
+// ADR-0076): человек его не заказывал, поэтому скелетон и баннер ошибки не
+// должны мигнуть, а сбой должен молча пройти мимо — список на экране остаётся
+// прежним. `reload()` и `refresh()` — один и тот же запрос с разным
+// поведением на границах, поэтому обе стоят на одной функции `run({ quiet })`
+// (без копипасты, jscpd-храповик).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/http';
 
@@ -11,6 +18,9 @@ export interface UseAbortableFetchResult<T> {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  /** Фоновое перечитывание без скелетона и баннера ошибки — для опроса,
+   * которого человек не заказывал (usePollWhileVisible.ts). */
+  refresh: () => Promise<void>;
 }
 
 export interface UseAbortableFetchOptions {
@@ -22,10 +32,10 @@ export interface UseAbortableFetchOptions {
 }
 
 /**
- * `load` вызывается заново на каждый `reload()` с актуальным `AbortSignal`;
- * держим последнюю версию в ref, а не в зависимостях `useCallback` — иначе
- * хук вроде `useLessons` (окно `from/to` пересчитывается на каждый вызов)
- * гонял бы лишний `reload` при каждом рендере.
+ * `load` вызывается заново на каждый `reload()`/`refresh()` с актуальным
+ * `AbortSignal`; держим последнюю версию в ref, а не в зависимостях
+ * `useCallback` — иначе хук вроде `useLessons` (окно `from/to` пересчитывается
+ * на каждый вызов) гонял бы лишний `reload` при каждом рендере.
  */
 export function useAbortableFetch<T>(
   load: (signal: AbortSignal) => Promise<T>,
@@ -42,26 +52,58 @@ export function useAbortableFetch<T>(
   useEffect(() => {
     loadRef.current = load;
   });
+  // Идёт ли уже запрос (свой или чужой) — тихий тик смотрит сюда и просто
+  // выходит, а не обрывает то, что уже в полёте: обрыв чужого запроса увёл бы
+  // его в отдельную, проигранную ветку сверки requestId, и его finally
+  // никогда не снял бы loading (см. run() ниже).
+  const inFlight = useRef(false);
 
-  const reload = useCallback(async () => {
-    abortController.current?.abort();
-    const controller = new AbortController();
-    abortController.current = controller;
-    const thisRequest = (requestId.current += 1);
+  const run = useCallback(
+    async ({ quiet }: { quiet: boolean }) => {
+      // Выключенный хук (`enabled: false`) фоном не опрашивается: тик разбудил
+      // бы запрос, который вызывающий выключил нарочно — например
+      // `MyExamsProvider` (student/MyExamsProvider.tsx) выключает его у
+      // штата школы (ADR-0074), и без этой проверки тик всё равно сходил бы
+      // за экзаменами штата раз в минуту. Явный `reload()` по-прежнему
+      // работает и на выключенном хуке: его зовёт человек, а не таймер.
+      if (quiet && !enabled) return;
+      if (quiet && inFlight.current) return;
 
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await loadRef.current(controller.signal);
-      if (requestId.current !== thisRequest) return;
-      setData(result);
-    } catch (err) {
-      if (requestId.current !== thisRequest) return;
-      setError(err instanceof ApiError ? err.message : fallbackErrorMessage);
-    } finally {
-      if (requestId.current === thisRequest) setLoading(false);
-    }
-  }, [fallbackErrorMessage]);
+      abortController.current?.abort();
+      const controller = new AbortController();
+      abortController.current = controller;
+      const thisRequest = (requestId.current += 1);
+      inFlight.current = true;
+
+      if (!quiet) {
+        setLoading(true);
+        setError(null);
+      }
+      try {
+        const result = await loadRef.current(controller.signal);
+        if (requestId.current !== thisRequest) return;
+        setData(result);
+        setError(null);
+      } catch (err) {
+        if (requestId.current !== thisRequest) return;
+        // Тихий сбой не пишет ничего: список на экране остаётся прежним —
+        // баннер поверх ещё живых данных был бы неправдой (сеть моргнула
+        // сама по себе, а не запрошенное человеком действие провалилось).
+        if (!quiet) {
+          setError(err instanceof ApiError ? err.message : fallbackErrorMessage);
+        }
+      } finally {
+        if (requestId.current === thisRequest) {
+          inFlight.current = false;
+          if (!quiet) setLoading(false);
+        }
+      }
+    },
+    [fallbackErrorMessage, enabled],
+  );
+
+  const reload = useCallback(() => run({ quiet: false }), [run]);
+  const refresh = useCallback(() => run({ quiet: true }), [run]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -69,5 +111,5 @@ export function useAbortableFetch<T>(
     return () => abortController.current?.abort();
   }, [reload, enabled]);
 
-  return { data, loading, error, reload };
+  return { data, loading, error, reload, refresh };
 }

@@ -1,4 +1,4 @@
-// e2e на теги дат занятий (ADR-0059, уточняет ADR-0058) — рубрикация
+// e2e на теги дат занятий (ADR-0075, уточняет ADR-0058) — рубрикация
 // свободным текстом, не доступ: отдельный файл от lessons.e2e-spec.ts, тот
 // же приём, что у materials-tags.e2e-spec.ts. Настоящий AppModule на
 // MongoMemoryServer.
@@ -17,7 +17,7 @@ import {
   TO,
 } from './e2e-support/lessons-fixtures';
 
-describe('Теги дат занятий (e2e, ADR-0059)', () => {
+describe('Теги дат занятий (e2e, ADR-0075)', () => {
   let testApp: TestApp;
   const {
     server,

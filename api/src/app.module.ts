@@ -6,7 +6,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { validateEnv, type NodeEnv } from './config/env.validation';
+import { validateEnv } from './config/env.validate';
+import type { NodeEnv } from './config/env.validation';
 import { LoggingModule } from './logging/logging.module';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { DatabaseModule } from './database/database.module';
@@ -16,6 +17,7 @@ import { ClassesModule } from './classes/classes.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
+import { ClientErrorsModule } from './client-errors/client-errors.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
 import { ExamImagesModule } from './exam-images/exam-images.module';
@@ -26,6 +28,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
+import { TagsModule } from './tags/tags.module';
 import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -73,12 +76,14 @@ import { staticAssetsOptions } from './static/static-cache-control';
     DeliveriesModule,
     ExamsModule,
     ExamImagesModule,
+    ClientErrorsModule,
     GradingPresetsModule,
     MaterialsModule,
     NotificationsModule,
     PaymentsModule,
     SettingsModule,
     SummaryModule,
+    TagsModule,
     UsersModule,
     // Без контроллера и планировщика — сервис для одноразового CLI-импорта
     // (seed-classes.ts, PLAN.md §9), в HTTP-приложении бездействует.

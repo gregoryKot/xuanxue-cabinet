@@ -23,6 +23,7 @@ function fullClass(): LeanClass {
     channelIds: [CHANNEL_ID],
     leadMinutes: 30,
     active: true,
+    tags: ['начинающие'],
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT,
   };
@@ -44,6 +45,7 @@ describe('toClassDto', () => {
       channelIds: [CHANNEL_ID.toString()],
       leadMinutes: 30,
       active: true,
+      tags: ['начинающие'],
       createdAt: '2026-09-01T10:00:00.000Z',
       updatedAt: '2026-09-02T11:00:00.000Z',
     });
@@ -74,5 +76,15 @@ describe('toClassDto', () => {
 
     expect(dto.rules).toEqual([]);
     expect(dto.channelIds).toEqual([]);
+  });
+
+  // Занятия, заведённые до ADR-0072, не имеют поля в документе — `.lean()`
+  // не подставляет default схемы при чтении, маппер сам отдаёт [].
+  it('документ без поля tags (занятие до этого PR) — tags: []', () => {
+    const { tags: _tags, ...doc } = fullClass();
+
+    const dto = toClassDto(doc);
+
+    expect(dto.tags).toEqual([]);
   });
 });

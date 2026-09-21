@@ -62,7 +62,11 @@ function mockMaterial(material: MaterialDto) {
   });
 }
 
-/** Материал и занятия уже пришли — единственные запросы монтирования позади. */
+/** Материал и занятия пришли, поля на экране. Запросы монтирования при этом
+ * позади не все: подсказку тегов (useMaterialTagOptions.ts) поля заказывают
+ * сами, и её запрос уходит в тот же миг — до или после этого ожидания, как
+ * решит планировщик React. Поэтому ответы на действие после этой точки
+ * ставятся по пути (mockApiByPath), а не очередью `…Once`. */
 async function waitForMounted() {
   await screen.findByLabelText('Название');
 }
@@ -334,9 +338,19 @@ describe('MaterialEditorScreen — правка', () => {
 
     renderAt('/materials/m1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Проверьте поля.', 400, 'invalid_input', ['url: недоступен']),
-    );
+    // Ответ на клик — по пути (правило у mockApiByPath в test-support):
+    // очередь `…Once` здесь забирала подсказка тегов, сохранение проходило
+    // успешно, экран уезжал на список — тест мигал 6 раз на 300 монтирований
+    // (расследование 2026-09-20). Путь сохранения тот же, что у чтения
+    // материала: страница после сохранения его не перечитывает, так что
+    // ошибку получает именно PATCH.
+    mockApiByPath({
+      '/materials/m1': new ApiError('Проверьте поля.', 400, 'invalid_input', [
+        'url: недоступен',
+      ]),
+      '/materials': makeMaterial(),
+      '/classes': [makeClass()],
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     const alert = await screen.findByRole('alert');
@@ -373,5 +387,91 @@ describe('MaterialEditorScreen — удаление', () => {
 
     await waitFor(() => expect(callsWithMethod('DELETE')).toHaveLength(1));
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
+  });
+});
+
+// Слой 3.10 (ADR-0057): поле файла рисуется только когда есть куда класть
+// файл (материал уже сохранён, у /materials/new ещё нет id) и хранилище
+// подключено (fileStorageEnabled). Нет ключей R2 — поля нет вовсе, а не
+// кнопка, которая ответит 503.
+describe('MaterialEditorScreen — поле файла (ADR-0057)', () => {
+  it('fileStorageEnabled: false — поля загрузки нет', async () => {
+    mockApiByPath({
+      '/materials/m1': makeMaterial(),
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: false },
+    });
+
+    renderAt('/materials/m1');
+    await waitForMounted();
+
+    expect(screen.queryByText('Добавить файл')).not.toBeInTheDocument();
+    expect(screen.queryByText('Файл материала')).not.toBeInTheDocument();
+  });
+
+  it('fileStorageEnabled: true, материал сохранён — поле загрузки есть', async () => {
+    mockApiByPath({
+      '/materials/m1': makeMaterial(),
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+
+    renderAt('/materials/m1');
+    await waitForMounted();
+
+    expect(await screen.findByText('Файл материала')).toBeInTheDocument();
+    expect(screen.getByText('Добавить файл')).toBeInTheDocument();
+  });
+
+  // Поле рисует файл из `material`, а тот меняется только перечитыванием
+  // (editor.reload() в onChanged) — значит, появившееся имя файла и есть
+  // доказательство, что страница перечитала материал после загрузки.
+  // Путь файла стоит раньше пути материала: mockApiByPath сопоставляет по
+  // префиксу, и «/materials/m1» перехватил бы «/materials/m1/file».
+  it('удачная загрузка — страница перечитывает материал и показывает файл', async () => {
+    const withFile: MaterialDto = {
+      ...makeMaterial(),
+      file: {
+        name: 'Методичка.pdf',
+        contentType: 'application/pdf',
+        sizeBytes: 2 * 1024 * 1024,
+        uploadedAt: '2026-09-20T10:00:00.000Z',
+      },
+    };
+    mockApiByPath({
+      '/materials/m1/file': withFile,
+      '/materials/m1': makeMaterial(),
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+
+    renderAt('/materials/m1');
+    await waitForMounted();
+    mockApiByPath({
+      '/materials/m1/file': withFile,
+      '/materials/m1': withFile,
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+    await userEvent.upload(
+      await screen.findByLabelText('Добавить файл'),
+      new File(['%PDF-1.7'], 'Методичка.pdf', { type: 'application/pdf' }),
+    );
+
+    expect(await screen.findByText('Методичка.pdf')).toBeInTheDocument();
+    expect(screen.getByText('2,0 МБ')).toBeInTheDocument();
+  });
+
+  it('fileStorageEnabled: true, новый материал (/materials/new) — поля всё равно нет', async () => {
+    mockApiByPath({
+      '/materials': [],
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+
+    renderAt('/materials/new');
+    await screen.findByLabelText('Название');
+
+    expect(screen.queryByText('Файл материала')).not.toBeInTheDocument();
   });
 });

@@ -1,31 +1,28 @@
 // Текстовое/видео/документ-сообщение вне ответа на кнопку (docs/PLAN.md §6):
 // активное ожидание чата решает, что это — тема, запись, видео экзамена
-// (ADR-0023, слой 4.5) или свободный текст ответа на вопрос экзамена (ТЗ
-// 4б.2 часть 2). Видео и текст экзамена ждём от ЛЮБОГО пользователя Telegram
-// (экзамен сдают ученики) — проверяем и активное, и истёкшее ожидание
-// экзамена ДО гейта `personalChats` ниже, который остаётся штатным для
-// темы/записи (SECURITY.md §4: только личный чат учителя/админа с активным
-// каналом — как у CallbackQueryHandler).
+// (ADR-0023, слой 4.5), свободный текст ответа на вопрос экзамена (ТЗ 4б.2
+// часть 2) или скриншот оплаты (ADR-0050, слой 2.2). Видео/текст экзамена и
+// скриншот оплаты ждём от ЛЮБОГО пользователя Telegram (их шлют ученики) —
+// проверяем и активное, и истёкшее ожидание ДО гейта `personalChats` ниже,
+// который остаётся штатным для темы/записи (SECURITY.md §4: только личный
+// чат учителя/админа с активным каналом — как у CallbackQueryHandler).
 // `now` — параметром (CLAUDE.md «Время»), хендлер сам DateTime.utc() не зовёт.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
-import type { Types } from 'mongoose';
 import type { Context } from 'telegraf';
-import { LESSON_LIMITS } from '@xuanxue/shared';
-import { LessonLinkRebuildService } from '../../broadcasts/lesson-link-rebuild.service';
 import { errorMessage, errorStack } from '../../common/error-info';
-import { LessonsService } from '../../lessons/lessons.service';
 import { BotSessionService } from '../bot-session.service';
 import { PersonalChats } from '../personal-chats';
 import { ExamMediaMessageHandler } from './exam-media-message.handler';
 import { ExamTextAnswerHandler } from './exam-text-answer.handler';
 import { GradeCommentHandler } from './grade-comment.handler';
 import { GRADE_COMMENT_EXPIRED_MESSAGE } from './grade-messages';
-import { saveOrExplain } from './message-save';
 import { NewExamMessageHandler } from './new-exam-message.handler';
 import { NewExamItemMessageHandler } from './new-exam-item-message.handler';
+import { PaymentScreenshotMessageHandler } from './payment-screenshot-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
 import { extractRecordingSource } from './recording-source';
+import { TopicWaitHandler } from './topic-wait.handler';
 
 const NOT_UNDERSTOOD_MESSAGE =
   'Не понял, к какому занятию это. Ответьте на сообщение бота о закончившемся ' +
@@ -39,6 +36,10 @@ const RECORDING_EXPIRED_MESSAGE =
 // пришедший позже TTL (docs/PLAN.md §12, PR #175).
 const EXAM_WAIT_EXPIRED_MESSAGE =
   'Ожидание ответа истекло. Откройте экзамен снова: команда /экзамены в боте или кнопка в кабинете.';
+// Скриншот оплаты (ADR-0050) — та же логика, что EXAM_WAIT_EXPIRED_MESSAGE,
+// но своя ссылка: «кнопка в кабинете» экзамена ученику про оплату не поможет.
+const PAYMENT_WAIT_EXPIRED_MESSAGE =
+  'Ссылка на отправку скриншота устарела. Откройте «Отправить скриншот» в кабинете ещё раз.';
 // Черновик вопроса (ТЗ 4б.3) — штатное ожидание, как у темы/записи: истёкшее
 // проверяется тут же, после гейта personalChats ниже.
 const NEW_EXAM_ITEM_EXPIRED_MESSAGE =
@@ -54,11 +55,11 @@ export class MessageHandler {
   constructor(
     private readonly personalChats: PersonalChats,
     private readonly botSessions: BotSessionService,
-    private readonly lessonsService: LessonsService,
-    private readonly lessonLinkRebuild: LessonLinkRebuildService,
+    private readonly topicWaitHandler: TopicWaitHandler,
     private readonly recordingWaitHandler: RecordingWaitHandler,
     private readonly examMediaHandler: ExamMediaMessageHandler,
     private readonly examTextHandler: ExamTextAnswerHandler,
+    private readonly paymentScreenshotHandler: PaymentScreenshotMessageHandler,
     private readonly newExamItemHandler: NewExamItemMessageHandler,
     private readonly newExamHandler: NewExamMessageHandler,
     private readonly gradeCommentHandler: GradeCommentHandler,
@@ -82,9 +83,13 @@ export class MessageHandler {
         await this.examTextHandler.handle(ctx, from.id, session, now);
         return;
       }
+      if (session?.kind === 'payment') {
+        await this.paymentScreenshotHandler.handle(ctx, from.id, session, now);
+        return;
+      }
 
-      // Истёкшее ожидание экзамена — проверяем ДО гейта personalChats ниже
-      // (тот пускает только штат): для ученика эта проверка раньше не
+      // Истёкшее ожидание экзамена/оплаты — проверяем ДО гейта personalChats
+      // ниже (тот пускает только штат): для ученика эта проверка раньше не
       // выполнялась вовсе, бот молча пропускал ответ (docs/PLAN.md §12, PR
       // #175). Активная сессия обработана выше и сюда не доходит — запрос
       // нужен только когда её нет.
@@ -95,12 +100,22 @@ export class MessageHandler {
         await ctx.reply(EXAM_WAIT_EXPIRED_MESSAGE).catch(() => null);
         return;
       }
+      if (expiredKind === 'payment') {
+        await ctx.reply(PAYMENT_WAIT_EXPIRED_MESSAGE).catch(() => null);
+        return;
+      }
 
       const chats = await this.personalChats.list(now);
       if (!chats.some((c) => c.chatId === String(from.id))) return;
 
       if (session?.kind === 'topic' && session.lessonId) {
-        await this.handleTopic(ctx, session.lessonId, from.id, now);
+        await this.topicWaitHandler.handle(
+          ctx,
+          session.lessonId,
+          from.id,
+          now,
+          this.logSaveError,
+        );
         return;
       }
       if (session?.kind === 'recording' && session.lessonId) {
@@ -147,38 +162,5 @@ export class MessageHandler {
     } catch (err) {
       this.logger.error(`telegram.message: ${errorMessage(err)}`, errorStack(err));
     }
-  }
-
-  private async handleTopic(
-    ctx: Context,
-    lessonId: Types.ObjectId,
-    chatId: number,
-    now: DateTime,
-  ): Promise<void> {
-    const message = ctx.message;
-    const text = message && 'text' in message ? message.text.trim() : undefined;
-    if (!text || text.startsWith('/')) return; // не текст темы — ждём дальше, сессия не закрывается
-
-    const topic = text.slice(0, LESSON_LIMITS.topic);
-    const saved = await saveOrExplain(
-      ctx,
-      this.botSessions,
-      chatId,
-      async () => {
-        await this.lessonsService.update(lessonId.toString(), { topic }, now);
-      },
-      {
-        notFound:
-          'Занятие не найдено — возможно, его отменили. Откройте предпросмотр заново.',
-        failed: 'Не получилось сохранить тему. Попробуйте ещё раз.',
-      },
-      this.logSaveError,
-    );
-    if (!saved) return;
-
-    await this.botSessions.clear(chatId);
-    const rebuilt = await this.lessonLinkRebuild.rebuild(lessonId, now);
-    const suffix = rebuilt ? '' : '. Пост уже ушёл в каналы со старой темой.';
-    await ctx.reply(`Тема сохранена: ${topic}${suffix}`).catch(() => null);
   }
 }

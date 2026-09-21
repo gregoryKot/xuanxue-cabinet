@@ -1,8 +1,9 @@
-// Контекст центра уведомлений (ADR-0065). Сами данные проверяет
+// Контекст центра уведомлений (ADR-0063). Сами данные проверяет
 // useNotificationsData.test.ts, а экран и значок — свои тесты; здесь только
 // то, за что отвечает сама обёртка: один и тот же счётчик двум читателям и
 // понятный отказ, когда провайдера над ними нет.
 import { render, renderHook, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
@@ -38,12 +39,14 @@ describe('NotificationsProvider — один счётчик на всех', () =
     }
 
     render(
-      <MyExamsProvider>
-        <NotificationsProvider>
-          <Count label="значок" />
-          <Count label="экран" />
-        </NotificationsProvider>
-      </MyExamsProvider>,
+      <MemoryRouter>
+        <MyExamsProvider me={null}>
+          <NotificationsProvider me={null}>
+            <Count label="значок" />
+            <Count label="экран" />
+          </NotificationsProvider>
+        </MyExamsProvider>
+      </MemoryRouter>,
     );
 
     // Ради этого провайдер и существует: без общего контекста «Прочитать все»

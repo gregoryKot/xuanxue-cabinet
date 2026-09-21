@@ -24,6 +24,7 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 
 function prefetchAt(pathname: string): string[] {
@@ -65,6 +66,14 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/materials — список без фильтра и классы (рубрикация строки)', () => {
     expect(prefetchAt('/materials')).toEqual([materialsListPath(''), CLASSES_LIST_PATH]);
+  });
+
+  // Экран тега (ADR-0075/0078): тег — query-параметр, недоступный
+  // prefetch(pathname), поэтому греем только то, что не зависит от выбора —
+  // сводку тегов и классы для рубрикации строк (тот же приём, что у
+  // /materials выше).
+  it('/materials/tags — сводка тегов и классы, без выбранного тега', () => {
+    expect(prefetchAt('/materials/tags')).toEqual([TAGS_LIST_PATH, CLASSES_LIST_PATH]);
   });
 
   it('/templates — настройки и ближайшие занятия для предпросмотра', () => {
@@ -237,6 +246,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/channels/652f00000000000000000003',
       '/materials',
       '/materials/new',
+      '/materials/tags',
       '/materials/652f00000000000000000008',
       '/templates',
       '/exam-items',

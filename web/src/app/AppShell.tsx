@@ -30,15 +30,19 @@
 // уже видит свой маршрут, либо гвард (RequireAuth) увёл его на /login раньше,
 // чем этот компонент вообще отрисовался.
 //
-// NotificationsProvider (ADR-0065) — здесь, у корня оболочки: значок в
+// NotificationsProvider (ADR-0063) — здесь, у корня оболочки: значок в
 // AppNav/AppShellBrandRow и сам экран «/notifications» (Outlet ниже) обязаны
 // читать один и тот же счётчик, иначе «Прочитать все» на экране не погасит
-// цифру на значке до следующего похода в сеть.
+// цифру на значке до следующего похода в сеть. Ему нужна роль (`me`) —
+// экзамены в счётчике считаются только у ученика, у штата школы попыток нет
+// (ADR-0074).
 //
-// MyExamsProvider (ADR-0063) — снаружи NotificationsProvider: список
+// MyExamsProvider — снаружи NotificationsProvider и тоже с `me`: список
 // экзаменов нужен и центру уведомлений (счётчик новых заданий у колокольчика,
 // useNotificationsData.ts), и экрану «Задания» ниже по Outlet — обоим с
-// одного запроса GET /me/exams, а не с двух копий состояния.
+// одного запроса GET /me/exams, а не с двух копий состояния. Роль решает,
+// идёт ли сам запрос — у штата школы он выключен везде, кроме «/tasks»
+// (ADR-0074, MyExamsProvider.tsx).
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
@@ -77,8 +81,8 @@ export function AppShell() {
   const hasSideNav = !isMobile;
 
   return (
-    <MyExamsProvider>
-      <NotificationsProvider>
+    <MyExamsProvider me={me}>
+      <NotificationsProvider me={me}>
         <div style={shellStyle}>
           <div style={shellRowStyle}>
             {hasSideNav && (

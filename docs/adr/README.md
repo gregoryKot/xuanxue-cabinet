@@ -34,74 +34,84 @@
 
 Отменённое решение не удаляется: статус меняется, добавляется ссылка на новое.
 
-| №                                                          | Решение                                                                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [0001](0001-stack-nestjs-mongoose-react.md)                | NestJS + Mongoose + React, монорепо с `shared/`                                             |
-| [0002](0002-single-service-railway-atlas.md)               | Один сервис на Railway, база в MongoDB Atlas                                                |
-| [0003](0003-time-model-luxon.md)                           | Правила расписания в поясе школы, события в UTC, только Luxon                               |
-| [0004](0004-idempotent-delivery-unique-index.md)           | Идемпотентная доставка через уникальный индекс, без Redis                                   |
-| [0005](0005-passwordless-auth.md)                          | Вход без паролей: email-ссылка, Telegram, Google; одна форма «вы»                           |
-| [0006](0006-pwa-and-web-push.md)                           | Устанавливаемое приложение (PWA) и push как канал доставки                                  |
-| [0007](0007-quality-gates-ratchets.md)                     | Качество кода держат храповики в CI, а не договорённости                                    |
-| [0008](0008-no-threads-channel.md)                         | Канала Threads нет: Telegram, ВК, ручной режим для Facebook                                 |
-| [0009](0009-domain-xuanxue-su.md)                          | Домен `xuanxue.su` — единый origin сайта, API, вебхука и писем                              |
-| [0010](0010-school-scoped-data-roles.md)                   | Данные школы скоупятся по роли, не по владельцу                                             |
-| [0011](0011-template-syntax.md)                            | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`                               |
-| [0012](0012-session-hmac-jwt-builtin-crypto.md)            | Сессия: HMAC-JWT и cookie на встроенном crypto, rolling 90/7 дней                           |
-| [0013](0013-model-module-breaks-domain-cycle.md)           | Отдельный модуль модели разрывает цикл Nest-модулей Classes ↔ Lessons                       |
-| [0014](0014-delivery-lease-at-least-once.md)               | Доставка — at-least-once через лизинг захвата, не exactly-once                              |
-| [0015](0015-telegram-chats-self-register-as-channels.md)   | Каналы Telegram регистрирует бот, не админ                                                  |
-| [0016](0016-shared-cjs-and-vite.md)                        | `shared` остаётся CommonJS, web подключает его через `commonjsOptions`                      |
-| [0017](0017-mongo-backups.md)                              | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions                                |
-| [0018](0018-istanbul-coverage-for-web.md)                  | Покрытие web через istanbul, не v8 — детерминированные пороги                               |
-| [0019](0019-school-schedule-seeded-by-migration.md)        | Расписание школы приносит миграция, ссылки Zoom — экран «Занятия»                           |
-| [0020](0020-telegram-login-redirect-on-touch.md)           | Вход через Telegram с телефона — переходом вкладки, не попапом                              |
-| [0021](0021-exam-media-on-r2.md)                           | ~~Видео экзаменов — Cloudflare R2~~ — заменено ADR-0023                                     |
-| [0022](0022-exam-model-item-bank-and-snapshot.md)          | Экзамен: банк вопросов с версиями, снимок формы в попытке — рубрика отменена ADR-0038       |
-| [0023](0023-exam-video-via-telegram-and-links.md)          | Видео экзамена — сообщением боту и ссылкой, без своего хранилища                            |
-| [0024](0024-bot-first-cabinet-as-fallback.md)              | Бот — первый интерфейс, кабинет — резервный                                                 |
-| [0025](0025-navigation-by-domain.md)                       | Навигация по доменам — четыре раздела вместо «Сводки» и «Настроек»                          |
-| [0026](0026-student-access-after-confirmation.md)          | Ученик — `active` без ролей, роль `student` не нужна (см. ADR-0036)                         |
-| [0027](0027-student-personal-channel-not-broadcast.md)     | Личный канал ученика — не канал школы, не получатель рассылок                               |
-| [0028](0028-telegram-login-redirect-everywhere.md)         | Вход через Telegram — переходом вкладки на любом устройстве, без попапа                     |
-| [0029](0029-email-login-via-resend-fetch.md)               | Вход по email-ссылке: Resend через fetch, без SDK                                           |
-| [0030](0030-school-invite-link.md)                         | Ссылка-приглашение школы — вход и регистрация одним запросом (ADR-0036)                     |
-| [0031](0031-visual-direction-quiet-and-noble.md)           | ~~Визуальное направление «тихо и благородно»~~ — заменено ADR-0043                          |
-| [0032](0032-no-service-worker.md)                          | Service worker убран, манифест остаётся — килсвитч по старому адресу                        |
-| [0033](0033-exam-as-question-list.md)                      | Экзамен для учителя — список вопросов; вопрос банка сразу опубликован                       |
-| [0034](0034-link-telegram-to-existing-account.md)          | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link                          |
-| [0035](0035-exam-option-images-in-mongo.md)                | Картинки вариантов ответа — в MongoDB, через свой API                                       |
-| [0036](0036-no-pending-approval.md)                        | Статуса «ждёт подтверждения» больше нет — регистрация только по ссылке                      |
-| [0037](0037-video-answer-belongs-to-question.md)           | Видео — ответ на вопрос: `media_assets.itemId`, а не вложение к попытке                     |
-| [0038](0038-grading-without-rubric.md)                     | Проверка экзамена без рубрики и баллов — итог и комментарий учителя                         |
-| [0039](0039-exam-notifications-by-email-fallback.md)       | ~~Почта — резервный канал уведомлений экзамена, только когда нет чата~~ — заменено ADR-0061 |
-| [0040](0040-questions-are-shared-not-a-bank.md)            | «Банк» уходит из интерфейса; вопрос заводится там, где нужен                                |
-| [0041](0041-grading-comment-presets.md)                    | Заготовки частых комментариев при проверке — общий список школы, не личный                  |
-| [0042](0042-bot-chat-active-in-me-dto.md)                  | `botChatActive` в `MeDto` — «боту есть куда писать», отдельно от `telegramLinked`           |
-| [0043](0043-visual-direction-warm-school.md)               | Направление «Тёплая школа» — Golos Text, карточки, терракота, знак в колонке                |
-| [0044](0044-soft-first-entry.md)                           | Первый вход спрашивает имя и фамилию; письмо входит само, без подтверждения                 |
-| [0045](0045-profile-screen-replaces-notifications.md)      | «Профиль» заменил «Уведомления»; на телефоне вместо имени — значок                          |
-| [0046](0046-student-tasks-screen.md)                       | У ученика два своих экрана и вкладки, первый после входа — «Задания»                        |
-| [0047](0047-materials-bound-to-classes.md)                 | Материал привязан к занятию расписания, вид — закрытый список из четырёх                    |
-| [0048](0048-paid-access-is-a-school-switch.md)             | Доступ по оплате — отметка у материала и рубильник школы; архив записей открыт              |
-| [0049](0049-payment-month-and-statuses.md)                 | Оплата: месяц в поясе школы, три состояния, деньги целым числом                             |
-| [0050](0050-payment-screenshot-via-bot.md)                 | Скриншот оплаты — фото боту, загрузка запасным путём, срок хранения                         |
-| [0051](0051-payment-reminder-is-personal-not-broadcast.md) | Напоминание об оплате — личное сообщение, не рассылка школы                                 |
-| [0052](0052-unsaved-form-draft-in-browser.md)              | Несохранённый черновик редактора — в браузере, не блокировка навигации                      |
-| [0053](0053-server-errors-alert-admin-in-telegram.md)      | Ошибка сервера (500) будит админа в Telegram, вид уведомления `app_error`                   |
-| [0054](0054-lesson-move-syncs-broadcast.md)                | Перенос занятия приводит ещё не ушедшую рассылку в соответствие                             |
-| [0055](0055-materials-are-a-section.md)                    | «Материалы» — пятый раздел навигации, предел остаётся пятью                                 |
-| [0056](0056-material-attaches-to-lesson-and-class.md)      | Материал привязывается и к дате занятия, и к курсу; хранилище одно                          |
-| [0057](0057-material-files-in-r2.md)                       | Файлы материалов — в Cloudflare R2, ученику подписанной ссылкой                             |
-| [0058](0058-material-tags-are-rubrication.md)              | Теги материала — свободный текст и рубрикация; «для преподавателей» — видимость             |
-| [0059](0059-second-login-key.md)                           | Второй способ входа предлагается сразу после первого                                        |
-| [0060](0060-viewer-timezone-comes-from-the-device.md)      | Пояс человека — с его устройства, поле `users.tz` удалено                                   |
-| [0061](0061-in-app-inbox-becomes-primary-channel.md)       | Кабинет — основной канал уведомлений экзамена, не резерв; почтовое плечо снято              |
-| [0062](0062-student-notifications-exam-only.md)            | Дефолт уведомлений ученика — только экзамен; вид «Сообщение от учителя» удалён              |
-| [0063](0063-notification-center-in-cabinet.md)             | Центр уведомлений в кабинете: значок со счётчиком и лента `/notifications`                  |
-| [0064](0064-first-exam-content-by-cli-import.md)           | Содержимое первого экзамена — файлом в репозитории, в базу его приносит `seed:exam`         |
-| [0065](0065-notifications-open-to-student-in-bot.md)       | Уведомления в боте доступны каждому вошедшему, не только штату                              |
-| [0066](0066-one-telegram-offer-per-screen.md)              | Одно предложение связать Telegram на экран, вопросное имеет приоритет                       |
-| [0067](0067-no-telegram-mark.md)                           | Отметка «у меня нет Telegram» гасит предложение связки, но не доставку                      |
-| [0068](0068-student-tag-is-an-action-not-a-screen.md)      | Тег в библиотеке ученика — действие на карточке, экрана тега нет                            |
-| [0069](0069-lesson-soon-removed-no-delivery.md)            | Вид «Занятие скоро» удалён: переключателя без доставки в контракте не бывает                |
+| №                                                              | Решение                                                                                     |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [0001](0001-stack-nestjs-mongoose-react.md)                    | NestJS + Mongoose + React, монорепо с `shared/`                                             |
+| [0002](0002-single-service-railway-atlas.md)                   | Один сервис на Railway, база в MongoDB Atlas                                                |
+| [0003](0003-time-model-luxon.md)                               | Правила расписания в поясе школы, события в UTC, только Luxon                               |
+| [0004](0004-idempotent-delivery-unique-index.md)               | Идемпотентная доставка через уникальный индекс, без Redis                                   |
+| [0005](0005-passwordless-auth.md)                              | Вход без паролей: email-ссылка, Telegram, Google; одна форма «вы»                           |
+| [0006](0006-pwa-and-web-push.md)                               | Устанавливаемое приложение (PWA) и push как канал доставки                                  |
+| [0007](0007-quality-gates-ratchets.md)                         | Качество кода держат храповики в CI, а не договорённости                                    |
+| [0008](0008-no-threads-channel.md)                             | Канала Threads нет: Telegram, ВК, ручной режим для Facebook                                 |
+| [0009](0009-domain-xuanxue-su.md)                              | Домен `xuanxue.su` — единый origin сайта, API, вебхука и писем                              |
+| [0010](0010-school-scoped-data-roles.md)                       | Данные школы скоупятся по роли, не по владельцу                                             |
+| [0011](0011-template-syntax.md)                                | Синтаксис шаблонов постов: allow-list плейсхолдеров и `[ … ]`                               |
+| [0012](0012-session-hmac-jwt-builtin-crypto.md)                | Сессия: HMAC-JWT и cookie на встроенном crypto, rolling 90/7 дней                           |
+| [0013](0013-model-module-breaks-domain-cycle.md)               | Отдельный модуль модели разрывает цикл Nest-модулей Classes ↔ Lessons                       |
+| [0014](0014-delivery-lease-at-least-once.md)                   | Доставка — at-least-once через лизинг захвата, не exactly-once                              |
+| [0015](0015-telegram-chats-self-register-as-channels.md)       | Каналы Telegram регистрирует бот, не админ                                                  |
+| [0016](0016-shared-cjs-and-vite.md)                            | `shared` остаётся CommonJS, web подключает его через `commonjsOptions`                      |
+| [0017](0017-mongo-backups.md)                                  | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions                                |
+| [0018](0018-istanbul-coverage-for-web.md)                      | Покрытие web через istanbul, не v8 — детерминированные пороги                               |
+| [0019](0019-school-schedule-seeded-by-migration.md)            | Расписание школы приносит миграция, ссылки Zoom — экран «Занятия»                           |
+| [0020](0020-telegram-login-redirect-on-touch.md)               | Вход через Telegram с телефона — переходом вкладки, не попапом                              |
+| [0021](0021-exam-media-on-r2.md)                               | ~~Видео экзаменов — Cloudflare R2~~ — заменено ADR-0023                                     |
+| [0022](0022-exam-model-item-bank-and-snapshot.md)              | Экзамен: банк вопросов с версиями, снимок формы в попытке — рубрика отменена ADR-0038       |
+| [0023](0023-exam-video-via-telegram-and-links.md)              | Видео экзамена — сообщением боту и ссылкой, без своего хранилища                            |
+| [0024](0024-bot-first-cabinet-as-fallback.md)                  | Бот — первый интерфейс, кабинет — резервный                                                 |
+| [0025](0025-navigation-by-domain.md)                           | Навигация по доменам — четыре раздела вместо «Сводки» и «Настроек»                          |
+| [0026](0026-student-access-after-confirmation.md)              | Ученик — `active` без ролей, роль `student` не нужна (см. ADR-0036)                         |
+| [0027](0027-student-personal-channel-not-broadcast.md)         | Личный канал ученика — не канал школы, не получатель рассылок                               |
+| [0028](0028-telegram-login-redirect-everywhere.md)             | Вход через Telegram — переходом вкладки на любом устройстве, без попапа                     |
+| [0029](0029-email-login-via-resend-fetch.md)                   | Вход по email-ссылке: Resend через fetch, без SDK                                           |
+| [0030](0030-school-invite-link.md)                             | Ссылка-приглашение школы — вход и регистрация одним запросом (ADR-0036)                     |
+| [0031](0031-visual-direction-quiet-and-noble.md)               | ~~Визуальное направление «тихо и благородно»~~ — заменено ADR-0043                          |
+| [0032](0032-no-service-worker.md)                              | Service worker убран, манифест остаётся — килсвитч по старому адресу                        |
+| [0033](0033-exam-as-question-list.md)                          | Экзамен для учителя — список вопросов; вопрос банка сразу опубликован                       |
+| [0034](0034-link-telegram-to-existing-account.md)              | Связка Telegram с аккаунтом кабинета — одноразовый код и deep link                          |
+| [0035](0035-exam-option-images-in-mongo.md)                    | Картинки вариантов ответа — в MongoDB, через свой API                                       |
+| [0036](0036-no-pending-approval.md)                            | Статуса «ждёт подтверждения» больше нет — регистрация только по ссылке                      |
+| [0037](0037-video-answer-belongs-to-question.md)               | Видео — ответ на вопрос: `media_assets.itemId`, а не вложение к попытке                     |
+| [0038](0038-grading-without-rubric.md)                         | Проверка экзамена без рубрики и баллов — итог и комментарий учителя                         |
+| [0039](0039-exam-notifications-by-email-fallback.md)           | ~~Почта — резервный канал уведомлений экзамена, только когда нет чата~~ — заменено ADR-0061 |
+| [0040](0040-questions-are-shared-not-a-bank.md)                | «Банк» уходит из интерфейса; вопрос заводится там, где нужен                                |
+| [0041](0041-grading-comment-presets.md)                        | Заготовки частых комментариев при проверке — общий список школы, не личный                  |
+| [0042](0042-bot-chat-active-in-me-dto.md)                      | `botChatActive` в `MeDto` — «боту есть куда писать», отдельно от `telegramLinked`           |
+| [0043](0043-visual-direction-warm-school.md)                   | Направление «Тёплая школа» — Golos Text, карточки, терракота, знак в колонке                |
+| [0044](0044-soft-first-entry.md)                               | Первый вход спрашивает имя и фамилию; письмо входит само, без подтверждения                 |
+| [0045](0045-profile-screen-replaces-notifications.md)          | «Профиль» заменил «Уведомления»; на телефоне вместо имени — значок                          |
+| [0046](0046-student-tasks-screen.md)                           | У ученика два своих экрана и вкладки, первый после входа — «Задания»                        |
+| [0047](0047-materials-bound-to-classes.md)                     | Материал привязан к занятию расписания, вид — закрытый список из четырёх                    |
+| [0048](0048-paid-access-is-a-school-switch.md)                 | Доступ по оплате — отметка у материала и рубильник школы; архив записей открыт              |
+| [0049](0049-payment-month-and-statuses.md)                     | Оплата: месяц в поясе школы, три состояния, деньги целым числом                             |
+| [0050](0050-payment-screenshot-via-bot.md)                     | Скриншот оплаты — фото боту, загрузка запасным путём, срок хранения                         |
+| [0051](0051-payment-reminder-is-personal-not-broadcast.md)     | Напоминание об оплате — личное сообщение, не рассылка школы                                 |
+| [0052](0052-unsaved-form-draft-in-browser.md)                  | Несохранённый черновик редактора — в браузере, не блокировка навигации                      |
+| [0053](0053-server-errors-alert-admin-in-telegram.md)          | Ошибка сервера (500) будит админа в Telegram, вид уведомления `app_error`                   |
+| [0054](0054-lesson-move-syncs-broadcast.md)                    | Перенос занятия приводит ещё не ушедшую рассылку в соответствие                             |
+| [0055](0055-materials-are-a-section.md)                        | «Материалы» — пятый раздел навигации, предел остаётся пятью                                 |
+| [0056](0056-material-attaches-to-lesson-and-class.md)          | Материал привязывается и к дате занятия, и к курсу; хранилище одно                          |
+| [0057](0057-material-files-in-r2.md)                           | Файлы материалов — в Cloudflare R2, ученику подписанной ссылкой                             |
+| [0058](0058-material-tags-are-rubrication.md)                  | Теги материала — свободный текст и рубрикация; «для преподавателей» — видимость             |
+| [0059](0059-second-login-key.md)                               | Второй способ входа предлагается сразу после первого                                        |
+| [0060](0060-viewer-timezone-comes-from-the-device.md)          | Пояс человека — с его устройства, поле `users.tz` удалено                                   |
+| [0061](0061-in-app-inbox-becomes-primary-channel.md)           | Кабинет — основной канал уведомлений экзамена, не резерв; почтовое плечо снято              |
+| [0062](0062-student-notifications-exam-only.md)                | Дефолт уведомлений ученика — только экзамен; вид «Сообщение от учителя» удалён              |
+| [0063](0063-notification-center-in-cabinet.md)                 | Центр уведомлений в кабинете: значок со счётчиком и лента `/notifications`                  |
+| [0064](0064-first-exam-content-by-cli-import.md)               | Содержимое первого экзамена — миграцией на деплой, `seed:exam` остаётся вторым путём        |
+| [0065](0065-notifications-open-to-student-in-bot.md)           | Уведомления в боте доступны каждому вошедшему, не только штату                              |
+| [0066](0066-one-telegram-offer-per-screen.md)                  | Одно предложение связать Telegram на экран, вопросное имеет приоритет                       |
+| [0067](0067-no-telegram-mark.md)                               | Отметка «у меня нет Telegram» гасит предложение связки, но не доставку                      |
+| [0068](0068-student-tag-is-an-action-not-a-screen.md)          | Тег в библиотеке ученика — действие на карточке, экрана тега нет                            |
+| [0069](0069-lesson-soon-removed-no-delivery.md)                | Вид «Занятие скоро» удалён: переключателя без доставки в контракте не бывает                |
+| [0070](0070-feed-row-leads-to-its-subject.md)                  | Строка ленты ведёт к своему предмету; адрес считается по виду уведомления                   |
+| [0071](0071-browser-errors-reach-the-server.md)                | Сбой в браузере доезжает до сервера; чанк после деплоя вкладка лечит сама                   |
+| [0072](0072-class-tags-are-the-constant-of-a-course.md)        | Тег у занятия расписания — постоянный признак курса, дата наследует его в поиске            |
+| [0073](0073-claude-md-line-cap-removed.md)                     | Потолок 400 строк для CLAUDE.md снят; «индекс, не энциклопедия» держится ревью              |
+| [0074](0074-new-tasks-count-only-for-student.md)               | Новые задания в счётчике — только у ученика, за штат школы в `/me/exams` не ходим           |
+| [0075](0075-lesson-tags-and-tag-screen.md)                     | Тег живёт и у даты занятия; экран тега собирает по нему всю школу                           |
+| [0076](0076-notification-feed-polling.md)                      | Опрос ленты уведомлений раз в минуту, пока вкладка видима                                   |
+| [0077](0077-e2e-memory-limit-and-honest-check.md)              | e2e под потолком памяти воркера, шаги `check` — через раннер                                |
+| [0078](0078-tag-output-is-not-bound-by-the-planning-window.md) | Выдача по тегу не ограничена окном планирования; число у тега считается той же выборкой     |
+| [0079](0079-orphan-objects-are-logged-not-listed.md)           | Сироту в хранилище находит запись в базе, а не обход бакета                                 |

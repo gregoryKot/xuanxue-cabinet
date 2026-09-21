@@ -1,4 +1,4 @@
-// Тесты телефонного облика значка уведомлений (ADR-0065) — сеть провайдера
+// Тесты телефонного облика значка уведомлений (ADR-0063) — сеть провайдера
 // замокана тем же приёмом, что useNotificationsData.test.ts.
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -24,8 +24,8 @@ function renderBell(unreadCount: number) {
   });
   return render(
     <MemoryRouter>
-      <MyExamsProvider>
-        <NotificationsProvider>
+      <MyExamsProvider me={null}>
+        <NotificationsProvider me={null}>
           <NotificationBell />
         </NotificationsProvider>
       </MyExamsProvider>

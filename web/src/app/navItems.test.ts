@@ -62,6 +62,12 @@ describe('activeSectionPath — список штата', () => {
     expect(activeSectionPath('/materials', STAFF_NAV_ITEMS)).toBe('/materials');
   });
 
+  // ADR-0075 — «Теги» подэкран «Материалов», тот же приём, что у
+  // «/archive»/«/library» под «Занятиями» ученика ниже.
+  it('/materials/tags — подэкран «Материалов»', () => {
+    expect(activeSectionPath('/materials/tags', STAFF_NAV_ITEMS)).toBe('/materials');
+  });
+
   it('путь вне навигации — null', () => {
     expect(activeSectionPath('/login', STAFF_NAV_ITEMS)).toBeNull();
   });

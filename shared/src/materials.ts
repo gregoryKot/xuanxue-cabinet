@@ -3,6 +3,9 @@
 // штата, как заготовки комментариев (grading-comment-preset.ts) или шаблоны
 // рассылок. `classIds[]` — рубрикация и фильтр, не доступ (ADR-0047): пустой
 // массив значит «материал всей школы», привязка не меняет, кто его видит.
+// Файл материала (слой 3.10, ADR-0057) — соседний material-files.ts.
+
+import type { MaterialFileDto } from './material-files';
 
 /** Закрытый список видов — новый вид требует ADR-0047-подобного решения, не
  * правки массива (ADR-0047). */
@@ -58,6 +61,9 @@ export interface MaterialDto {
    * кто видит материал, решает `access`. Нормализуется при записи
    * (`normalizeTags`, shared/src/tags.ts). */
   tags: string[];
+  /** Файл в хранилище (ADR-0057), если он загружен. Скачивается отдельным
+   * запросом по своему адресу — байты в JSON не ходят. */
+  file?: MaterialFileDto;
   createdBy: string;
   createdAt: string; // ISO UTC с Z
   updatedAt: string; // ISO UTC с Z
@@ -115,6 +121,10 @@ export interface MyMaterialDto {
    * одному учителю. */
   tags: string[];
   url?: string;
+  /** У закрытого материала (`locked`) файла в ответе нет — тем же правилом,
+   * что и `url` (ADR-0048, ADR-0057): иначе рубильник оплаты обходится
+   * прямым адресом файла. */
+  file?: MaterialFileDto;
   locked?: true;
 }
 

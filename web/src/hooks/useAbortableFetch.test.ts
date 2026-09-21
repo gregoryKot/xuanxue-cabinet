@@ -75,6 +75,24 @@ describe('useAbortableFetch — enabled: false (ADR-0030)', () => {
 
     expect(result.current.data).toBe('готово');
   });
+
+  // Пара к тесту выше: явный reload() человека выключенный хук будит, а
+  // фоновый тик — нет (ADR-0076). Иначе MyExamsProvider (student/
+  // MyExamsProvider.tsx), выключенный у штата школы, сходил бы за экзаменами
+  // раз в минуту — ровно то хождение, которое убрал ADR-0074.
+  it('refresh() на выключенном хуке молчит — фоновый тик его не будит', async () => {
+    const load = vi.fn().mockResolvedValue('готово');
+    const { result } = renderHook(() =>
+      useAbortableFetch(load, FALLBACK, { enabled: false }),
+    );
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(result.current.data).toBeNull();
+  });
 });
 
 describe('useAbortableFetch — гонка запросов (ревью п.13)', () => {
@@ -123,5 +141,107 @@ describe('useAbortableFetch — гонка запросов (ревью п.13)',
 
     expect(result.current.error).toBeNull();
     expect(result.current.data).toBe('готово');
+  });
+});
+
+describe('useAbortableFetch — refresh() тихое перечитывание (ADR-0076)', () => {
+  it('не поднимает loading, пока идёт тихий запрос', async () => {
+    let resolveRefresh: ((value: string) => void) | undefined;
+    const load = vi
+      .fn()
+      .mockResolvedValueOnce('первое')
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveRefresh = resolve;
+          }),
+      );
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let refreshPromise: Promise<void> | undefined;
+    act(() => {
+      refreshPromise = result.current.refresh();
+    });
+    // Синхронная часть refresh() уже отработала (до await load()) — если бы
+    // тихий режим поднимал loading, act() выше успел бы это отрисовать.
+    expect(result.current.loading).toBe(false);
+
+    await act(async () => {
+      resolveRefresh?.('обновлено');
+      await refreshPromise;
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toBe('обновлено');
+  });
+
+  it('сбой refresh() не пишет в состояние — данные и error остаются прежними', async () => {
+    const load = vi.fn().mockResolvedValueOnce('данные');
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.data).toBe('данные'));
+
+    load.mockRejectedValueOnce(new ApiError('Сервис недоступен', 503, 'unknown'));
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.data).toBe('данные');
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('успешный refresh() гасит прежнюю ошибку', async () => {
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError('Сервис недоступен', 503, 'unknown'))
+      .mockResolvedValueOnce('починили');
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.error).toBe('Сервис недоступен'));
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.data).toBe('починили');
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('тик опроса пропускается, пока живой reload() в полёте — reload() доигрывает как обычно', async () => {
+    let resolveReload: ((value: string) => void) | undefined;
+    const load = vi
+      .fn()
+      .mockResolvedValueOnce('первое')
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveReload = resolve;
+          }),
+      );
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let reloadPromise: Promise<void> | undefined;
+    act(() => {
+      reloadPromise = result.current.reload();
+    });
+    expect(result.current.loading).toBe(true);
+    expect(load).toHaveBeenCalledTimes(2);
+
+    // Тик опроса во время живого reload() — молча выходит, не зовёт load() снова.
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      resolveReload?.('живой');
+      await reloadPromise;
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toBe('живой');
   });
 });

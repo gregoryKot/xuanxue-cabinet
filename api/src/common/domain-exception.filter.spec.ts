@@ -62,7 +62,12 @@ function buildAppErrorAlerts(rejectWith?: Error): {
     calls.push(context);
     return rejectWith ? Promise.reject(rejectWith) : Promise.resolve();
   };
-  return { appErrorAlerts: { notifyServerError }, calls };
+  // DomainExceptionFilter зовёт только notifyServerError — заглушка нужна
+  // только чтобы удовлетворить интерфейс AppErrorAlerts (ADR-0071 добавил
+  // второй метод порта; вызывающий код для него — ClientErrorsService, не
+  // этот фильтр, отдельный тест — client-errors.service.spec.ts).
+  const notifyClientError = (): Promise<void> => Promise.resolve();
+  return { appErrorAlerts: { notifyServerError, notifyClientError }, calls };
 }
 
 describe('DomainExceptionFilter', () => {

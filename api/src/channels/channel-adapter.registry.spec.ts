@@ -16,6 +16,6 @@ describe('ChannelAdapterRegistry', () => {
   it('get(): типа нет среди зарегистрированных — NotAvailableError (503)', () => {
     const registry = new ChannelAdapterRegistry([fakeAdapter('telegram')]);
 
-    expect(() => registry.get('webpush')).toThrow('пока не поддерживается');
+    expect(() => registry.get('vk')).toThrow('пока не поддерживается');
   });
 });

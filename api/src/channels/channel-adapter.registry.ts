@@ -17,9 +17,9 @@ export class ChannelAdapterRegistry {
   get(type: ChannelType): ChannelAdapter {
     const adapter = this.byType.get(type);
     if (!adapter) {
-      // webpush — типы канала есть в перечислении (shared), адаптер появится
-      // отдельным PR (ADR-0006). Не вина клиента и не 500 — сервис сам ещё
-      // не готов обслужить этот тип.
+      // `vk` — тип в перечислении есть, но адаптер в CHANNEL_ADAPTERS ещё не
+      // включён (channels.module.ts). Не вина клиента и не 500 — сервис сам
+      // ещё не готов обслужить этот тип.
       throw new NotAvailableError(`Канал типа «${type}» пока не поддерживается`);
     }
     return adapter;

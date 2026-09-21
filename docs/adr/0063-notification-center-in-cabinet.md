@@ -78,6 +78,12 @@ ADR-0045). Единственный путь уведомления — личн
 `NotificationsProvider` в `AppShell.tsx`. Экран и значок читают один и тот же запрос,
 а не заводят каждый свой.
 
+За штат школы этот запрос не уходит вовсе (кроме самого «/tasks», где список нужен
+экрану), и новые задания ему не считаются
+([ADR-0074](0074-new-tasks-count-only-for-student.md)): экзамены сдаёт ученик, а у
+учителя, помощника и админа попыток нет — каждая опубликованная форма выглядела бы
+«новым заданием».
+
 `markRead` перечитывает ленту (read-after-write, тот же приём, что у
 `useNotificationPrefs.setEnabled`), поэтому скелетон показывается только на первой
 загрузке (`loading && items === null`) — иначе список схлопывался бы от каждого нажатия.
@@ -92,7 +98,7 @@ ADR-0045). Единственный путь уведомления — личн
 
 Гейты: `NotificationsScreen.test.tsx`, `NotificationRow.test.tsx`,
 `NewTaskCard.test.tsx`, `NotificationBell.test.tsx`, `NotificationsNavLink.test.tsx`,
-`useNotificationsData.test.ts`, `MyExamsProvider.test.tsx` и `TasksScreen.test.tsx`
+`useNotificationsData.test.tsx`, `MyExamsProvider.test.tsx` и `TasksScreen.test.tsx`
 (регрессия на двойной запрос `/me/exams`: дедупликация у самого провайдера и экран
 вместе с центром уведомлений, как в оболочке — см. «Последствия»),
 `notificationFeed.test.ts` (границы суток в

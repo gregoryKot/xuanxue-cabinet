@@ -115,7 +115,8 @@ export const EMAIL_LOGIN_SEND_FAILED_MESSAGE =
  * гостя без роли и незнакомца в боте (не `PUBLIC_URL` — тот адрес самого
  * кабинета, В6 аудита, ADR-0009-доп.). `emailLoginEnabled` — не опционально:
  * `false` без `RESEND_API_KEY`/`MAIL_FROM`/`PUBLIC_URL` (ADR-0029), форма
- * почты тогда скрыта, а не зовёт впустую 503. */
+ * почты тогда скрыта, а не зовёт впустую 503; `fileStorageEnabled` — тем же
+ * правилом про файлы материалов (ADR-0057). */
 export interface AuthConfigDto {
   telegramBotId?: number;
   /** Имя бота (`@имя` без собачки) — из него кабинет собирает ссылку в чат:
@@ -124,4 +125,10 @@ export interface AuthConfigDto {
   telegramBotUsername?: string;
   schoolSiteUrl?: string;
   emailLoginEnabled: boolean;
+  /** Хранилище файлов подключено (четыре переменные R2, ADR-0057) — не
+   * опционально, ровно как `emailLoginEnabled` рядом: `false` значит, что
+   * поля загрузки на странице материала нет вовсе, а не кнопка, которая
+   * ответит 503. Ученику оно ничего не меняет: файл ему виден по самому
+   * `MyMaterialDto.file`. */
+  fileStorageEnabled: boolean;
 }

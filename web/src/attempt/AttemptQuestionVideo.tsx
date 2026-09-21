@@ -9,7 +9,12 @@
 // не узнаёт. Инцидент 2026-09-16 (RUNBOOK §8.17): ученик сходил по кнопке,
 // снял «кружок» и получил отказ — теперь такого пути с экрана просто нет.
 // На его месте — «Связать Telegram» (ADR-0034): непривязанному предлагаем не
-// обходной путь, а способ открыть основной.
+// обходной путь, а способ открыть основной. Условие — общий
+// `showsTelegramLinkOffer` (`video.offersTelegramLink`), а не своё
+// `!telegramLinked`: отметившему «у меня нет Telegram» (ADR-0067) звать
+// некуда, и до этой правки видео-вопрос оставался единственным местом, где
+// кабинет звал его всё равно. Запасной путь у него остаётся — форма ссылки
+// ниже, ради неё предложение и уступает.
 // Видео уже получено — вместо формы честная строка, что и когда пришло:
 // показать форму заново после того, как всё уже сделано, читается как
 // «кабинет не поверил», что противоречит Read-after-write (CLAUDE.md).
@@ -79,7 +84,7 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
         </a>
       )}
 
-      {telegramBotUsername && !video.telegramLinked && (
+      {telegramBotUsername && video.offersTelegramLink && (
         <TelegramLinkButton explanation={TELEGRAM_NOT_LINKED_EXPLANATION} />
       )}
 

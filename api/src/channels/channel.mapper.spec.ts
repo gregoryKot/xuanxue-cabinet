@@ -28,10 +28,6 @@ describe('targetOf', () => {
     expect(targetOf('manual', {})).toBe('');
   });
 
-  it('webpush: пустая строка (адаптер появится отдельным PR)', () => {
-    expect(targetOf('webpush', {})).toBe('');
-  });
-
   it('telegram с чужим config (защита в глубину) — пустая строка, не падает', () => {
     expect(targetOf('telegram', {})).toBe('');
   });

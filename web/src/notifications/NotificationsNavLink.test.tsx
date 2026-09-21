@@ -1,4 +1,4 @@
-// Тесты облика значка уведомлений для монитора (ADR-0065) — та же сеть, что
+// Тесты облика значка уведомлений для монитора (ADR-0063) — та же сеть, что
 // у NotificationBell.test.tsx: провайдер ходит в /me/inbox и /me/exams.
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -24,8 +24,8 @@ function renderLink(unreadCount: number) {
   });
   return render(
     <MemoryRouter>
-      <MyExamsProvider>
-        <NotificationsProvider>
+      <MyExamsProvider me={null}>
+        <NotificationsProvider me={null}>
           <NotificationsNavLink />
         </NotificationsProvider>
       </MyExamsProvider>

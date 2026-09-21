@@ -10,12 +10,14 @@
 // Блок не переведён на showsTelegramOffer целиком: там другой вопрос —
 // «Telegram — ключ входа» (признак `telegramLinked`), а showsTelegramOffer
 // отвечает на «есть ли чат с ботом» (признак `botChatActive`, ADR-0042).
-// Общая у них часть — ровно чтение отметки «у меня нет Telegram»: она
-// вынесена в telegram/acceptsTelegramOffer.ts (ADR-0067), и здесь читается
-// через неё же, а не вторым условием на месте.
+// Общая у них часть — отметка «у меня нет Telegram» вместе с признаком
+// `telegramLinked`: она вынесена в telegram/acceptsTelegramOffer.ts
+// (showsTelegramLinkOffer, ADR-0067) и читается через неё же, а не вторым
+// условием на месте. Тот же предикат спрашивает видео-вопрос попытки —
+// вопрос у них буквально один (attempt/AttemptQuestionVideo.tsx).
 import type { MeDto } from '@xuanxue/shared';
 import { screenExplanationStyle } from '../components/screenLayout';
-import { acceptsTelegramOffer } from '../telegram/acceptsTelegramOffer';
+import { showsTelegramLinkOffer } from '../telegram/acceptsTelegramOffer';
 import { NoTelegramSwitch } from '../telegram/NoTelegramSwitch';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { useAuth } from './AuthProvider';
@@ -47,7 +49,7 @@ interface SecondLoginKeyProps {
 
 export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
   const { refresh } = useAuth();
-  const needsTelegram = acceptsTelegramOffer(me) && !me.telegramLinked;
+  const needsTelegram = showsTelegramLinkOffer(me);
   const needsEmail = !me.hasEmail;
   // enabled: needsEmail — у кого почта уже есть, лишний GET /auth/config не
   // нужен (тот же приём, что у LoginScreen.tsx через JoinScreen, ревью PR #150).

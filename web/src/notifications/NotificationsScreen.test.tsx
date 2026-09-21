@@ -1,4 +1,4 @@
-// Экран «Уведомления» (ADR-0065) — шапка, рубрики ленты, карточки новых
+// Экран «Уведомления» (ADR-0063) — шапка, рубрики ленты, карточки новых
 // заданий, «Прочитать все», пустой экран и предложение связать Telegram.
 // Часы заморожены на `Date`, не на всех таймерах (образец — routePrefetch.test.ts):
 // только так граница «Сегодня»/«Раньше» устойчива, а userEvent продолжает
@@ -94,8 +94,8 @@ function renderScreen(overrides: Record<string, unknown> = {}) {
   return render(
     <MemoryRouter>
       <AuthProvider>
-        <MyExamsProvider>
-          <NotificationsProvider>
+        <MyExamsProvider me={ME_LINKED}>
+          <NotificationsProvider me={ME_LINKED}>
             <NotificationsScreen />
           </NotificationsProvider>
         </MyExamsProvider>
@@ -137,6 +137,22 @@ describe('NotificationsScreen — рубрики ленты', () => {
 
     expect(await screen.findByText('Раньше')).toBeInTheDocument();
     expect(screen.queryByText('Сегодня')).not.toBeInTheDocument();
+  });
+});
+
+describe('NotificationsScreen — ссылка на предмет (ADR-0070)', () => {
+  it('строка exam_result в ленте нарисована ссылкой на «/tasks»', async () => {
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: {
+        items: [makeNotification({ kind: 'exam_result' })],
+        unreadCount: 1,
+      },
+    });
+
+    expect(await screen.findByRole('link', { name: /Текст события/ })).toHaveAttribute(
+      'href',
+      '/tasks',
+    );
   });
 });
 

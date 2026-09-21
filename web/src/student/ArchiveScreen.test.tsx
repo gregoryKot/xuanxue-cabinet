@@ -28,6 +28,7 @@ function makeLesson(overrides: Partial<MyArchivedLessonDto> = {}): MyArchivedLes
     status: 'scheduled',
     tags: [],
     recordings: [{ title: 'Занятие целиком', url: 'https://cloud.example/rec' }],
+    materials: [],
     ...overrides,
   };
 }

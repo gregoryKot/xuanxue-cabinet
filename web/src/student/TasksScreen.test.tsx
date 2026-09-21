@@ -5,10 +5,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
+import type { ExamAttemptDto, MeDto, MyExamDto } from '@xuanxue/shared';
 import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
+import { NotificationBell } from '../notifications/NotificationBell';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
 import {
   mockApiByPath,
@@ -40,7 +41,7 @@ function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
 function renderScreen() {
   return render(
     <MemoryRouter initialEntries={['/']}>
-      <MyExamsProvider>
+      <MyExamsProvider me={null}>
         <Routes>
           <Route path="/" element={<TasksScreen />} />
           <Route path="/attempts/:id" element={<p>Экран сдачи</p>} />
@@ -195,8 +196,8 @@ describe('TasksScreen — список грузится один раз на э�
 
     render(
       <MemoryRouter initialEntries={['/']}>
-        <MyExamsProvider>
-          <NotificationsProvider>
+        <MyExamsProvider me={null}>
+          <NotificationsProvider me={null}>
             <Routes>
               <Route path="/" element={<TasksScreen />} />
             </Routes>
@@ -210,5 +211,51 @@ describe('TasksScreen — список грузится один раз на э�
       ([path]) => path === MY_EXAMS_PATH,
     );
     expect(examsCalls).toHaveLength(1);
+  });
+});
+
+// ADR-0074, уточнение после слияния с MyExamsProvider: «/tasks» — маршрут
+// штата школы, на котором общий запрос экзаменов всё-таки включён (иначе сам
+// экран не увидел бы список), но это не должно вернуть штату старый баг —
+// «новое задание» в счётчике уведомлений. Гарантия — на useNotificationsData
+// (роль фильтрует newTasks независимо от того, идёт ли сейчас запрос), не
+// здесь; этот тест проверяет ровно то, что у одного человека оба факта верны
+// одновременно, воспроизводя реальный состав экрана (AppShell.tsx).
+describe('TasksScreen — штат школы на «/tasks»: список виден, но не в счётчике уведомлений', () => {
+  it('ассистент видит форму на экране, а колокольчик её не считает', async () => {
+    const ASSISTANT: MeDto = {
+      id: 'u3',
+      name: 'Помощник',
+      roles: ['assistant'],
+      status: 'active',
+      telegramLinked: false,
+      botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
+      needsProfile: false,
+    };
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [makeExam()],
+      [NOTIFICATIONS_FEED_PATH]: { items: [], unreadCount: 0 },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/tasks']}>
+        <MyExamsProvider me={ASSISTANT}>
+          <NotificationsProvider me={ASSISTANT}>
+            <NotificationBell />
+            <Routes>
+              <Route path="/tasks" element={<TasksScreen />} />
+            </Routes>
+          </NotificationsProvider>
+        </MyExamsProvider>
+      </MemoryRouter>,
+    );
+
+    // Экран — форма видна и её можно начать (запрос включён ради «/tasks»).
+    expect(await screen.findByRole('button', { name: 'Начать' })).toBeInTheDocument();
+    // Колокольчик — «новое задание» в счётчик не идёт: имя ссылки без
+    // «, N новых» и есть отсутствие пилюли (NotificationBell.test.tsx).
+    expect(screen.getByRole('link', { name: 'Уведомления' })).toBeInTheDocument();
   });
 });
