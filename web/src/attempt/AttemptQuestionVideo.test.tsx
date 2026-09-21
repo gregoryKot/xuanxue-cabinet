@@ -2,7 +2,7 @@
 // та живёт внутри AuthProvider и ходит в /auth/telegram/link-code — поэтому
 // здесь мок http и провайдер вокруг рендера, хотя сам компонент остаётся
 // обычным без сети (кроме самого addMediaLink, который приходит пропсом).
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -247,6 +247,14 @@ describe('AttemptQuestionVideo — «Заменить»/«Убрать» у св
     await user.click(screen.getByRole('button', { name: 'Убрать ссылку' }));
 
     expect(removeMedia).toHaveBeenCalledWith('m1');
+    // Подтверждение закрывается само (ConfirmDialog), и экран остаётся на
+    // месте: уходить некуда — список сам покажет форму, когда попытка
+    // перечитается (AttemptQuestionVideoReceived.tsx, STAY_ON_SCREEN).
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Убрать ссылку на видео?' }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   // Read-after-write: в реальном экране media после removeMedia приходит из
