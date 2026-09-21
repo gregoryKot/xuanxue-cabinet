@@ -21,9 +21,11 @@ import {
   editorPageStyle,
   editorSectionStyle,
 } from '../components/editorLayout';
+import { scrollToFirstAlertSoon } from '../lib/scrollToFirstAlert';
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useExamItems } from '../exam-items/useExamItems';
 import { ExamAboutFields } from './ExamAboutFields';
+import { hasUnsavedChanges } from './examFormInput';
 import { EXAM_STATUS_EXPLANATIONS, ExamEditorFooter } from './ExamEditorFooter';
 import { ExamFlowFields } from './ExamFlowFields';
 import { ExamQuestionsSection } from './ExamQuestionsSection';
@@ -50,6 +52,20 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   const bank = useExamItems(NO_STATUS_FILTER);
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
+  const unsaved = hasUnsavedChanges(form.state, exam);
+
+  // Предпросмотр — отдельная страница, и читает она сохранённый экзамен
+  // (ExamPreviewScreen.tsx, ADR-0033). Поэтому правки уходят на сервер
+  // первыми: иначе учитель видит новый вопрос в списке, а «глазами ученика»
+  // его нет (2026-09-21). Форма не прошла — остаёмся с ошибкой на месте, как
+  // у «Сохранить» (useEditorFormActions.ts).
+  async function openPreview(examId: string): Promise<void> {
+    if (unsaved && !(await form.submit())) {
+      scrollToFirstAlertSoon(formRef.current);
+      return;
+    }
+    void navigate(`${EXAMS_PATH}/${examId}/preview`);
+  }
 
   return (
     <>
@@ -102,7 +118,9 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           <ExamEditorFooter
             status={exam ? exam.status : null}
             pending={form.pending}
-            previewPath={exam ? `${EXAMS_PATH}/${exam.id}/preview` : null}
+            preview={
+              exam ? { unsaved, onOpen: () => void openPreview(exam.id) } : null
+            }
             onRemove={removeConfirm.requestRemove}
           />
         </div>

@@ -142,3 +142,9 @@ export function toUpdateInput(
     attemptsAllowed: Number(state.attemptsAllowedText),
   };
 }
+
+/** Есть ли правки, которых нет на сервере — по ним подписана кнопка предпросмотра
+ * (ExamEditorFooter.tsx); снимки целиком, как `dirty` черновика (useFormDraft.ts). */
+export function hasUnsavedChanges(state: ExamFormState, exam: ExamDto | null): boolean {
+  return JSON.stringify(state) !== JSON.stringify(initialExamFormState(exam));
+}
