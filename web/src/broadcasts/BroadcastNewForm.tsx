@@ -9,6 +9,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ChannelDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
 import { noteStyle, screenTitleStyle } from '../components/screenLayout';
 import {
@@ -54,6 +55,8 @@ export function BroadcastNewForm({ channels }: BroadcastNewFormProps) {
         <h1 style={screenTitleStyle}>{TITLE}</h1>
         <p style={noteStyle}>{EXPLANATION}</p>
       </div>
+
+      <FormDraftNote restored={form.draftRestored} onDiscard={form.discardDraft} />
 
       <BroadcastFormFields
         state={form.state}

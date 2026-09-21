@@ -9,6 +9,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { AddRecordingInput, ClassDto, LessonDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
 import { screenTitleStyle } from '../components/screenLayout';
 import {
@@ -22,8 +23,7 @@ import { formatDateTime } from '../lib/formatDate';
 import { useTeachers } from '../people/useTeachers';
 import { LessonEditorFooter } from './LessonEditorFooter';
 import { LessonFormFields } from './LessonFormFields';
-import { LessonMaterialsSection } from './LessonMaterialsSection';
-import { RecordingSection } from './RecordingSection';
+import { LessonRecordingsSection } from './LessonRecordingsSection';
 import { SendNowButton } from './SendNowButton';
 import { useLessonForm } from './useLessonForm';
 import type { UseLessonEditorResult } from './useLessonEditor';
@@ -86,6 +86,8 @@ export function LessonEditorForm({ lesson, classes, editor }: LessonEditorFormPr
           </h1>
         </div>
 
+        <FormDraftNote restored={form.draftRestored} onDiscard={form.discardDraft} />
+
         <LessonFormFields
           state={form.state}
           setField={form.setField}
@@ -120,17 +122,11 @@ export function LessonEditorForm({ lesson, classes, editor }: LessonEditorFormPr
         )}
 
         {lesson && (
-          <div style={editorSectionStyle}>
-            <RecordingSection
-              lessonId={lesson.id}
-              recordings={recordings}
-              onAdd={handleAddRecording}
-            />
-            {/* Материалы — сразу под записью (ADR-0056): «что было во вторник»
-                собрано в одном месте. Свою волосяную линию сверху секция несёт
-                сама (editorSectionStyle внутри неё). */}
-            <LessonMaterialsSection lessonId={lesson.id} />
-          </div>
+          <LessonRecordingsSection
+            lessonId={lesson.id}
+            recordings={recordings}
+            onAdd={handleAddRecording}
+          />
         )}
       </form>
 
