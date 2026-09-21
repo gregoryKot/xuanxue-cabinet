@@ -115,4 +115,5 @@
 | [0077](0077-e2e-memory-limit-and-honest-check.md)              | e2e под потолком памяти воркера, шаги `check` — через раннер                                |
 | [0078](0078-tag-output-is-not-bound-by-the-planning-window.md) | Выдача по тегу не ограничена окном планирования; число у тега считается той же выборкой     |
 | [0079](0079-orphan-objects-are-logged-not-listed.md)           | Сироту в хранилище находит запись в базе, а не обход бакета                                 |
-| [0080](0080-material-file-download-on-the-lesson-page.md)      | Файл материала на странице даты занятия — только скачивание, одной ссылкой                  |
+| [0080](0080-docx-accepted-by-reading-the-zip-directory.md)     | `.docx` принимается: ZIP-контейнер проверяется по именам записей каталога                   |
+| [0081](0081-material-file-download-on-the-lesson-page.md)      | Файл материала на странице даты занятия — только скачивание, одной ссылкой                  |

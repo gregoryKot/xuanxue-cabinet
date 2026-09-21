@@ -9,16 +9,20 @@
 import request from 'supertest';
 import type { ApiErrorBody, MaterialDto, MyMaterialDto } from '@xuanxue/shared';
 import {
+  MATERIAL_FILE_DOCX_CONTENT_TYPE,
   MATERIAL_FILE_EMPTY_MESSAGE,
   MATERIAL_FILE_NOT_FOUND_MESSAGE,
   MATERIAL_FILE_UNSUPPORTED_MESSAGE,
 } from '@xuanxue/shared';
+import { PLAIN_ZIP_BYTES } from '../src/common/zip-fixture.test-support';
 import { FileStoreService } from '../src/storage/file-store.service';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { FakeFileStore } from './e2e-support/fake-file-store';
 import { sessionCookieFor } from './e2e-support/http';
 import {
   createMaterialFileRequests,
+  DOCX_BYTES,
+  DOCX_FILE_NAME,
   FILE_NAME,
   OPEN_MATERIAL,
   PAID_MATERIAL,
@@ -161,6 +165,50 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
       const id = (created.body as MaterialDto).id;
 
       const res = await api.uploadFile(cookie, id, Buffer.from('просто текст', 'utf8'));
+
+      expect(res.status).toBe(400);
+      expect((res.body as ApiErrorBody).message).toBe(MATERIAL_FILE_UNSUPPORTED_MESSAGE);
+      expect(store.objects.size).toBe(0);
+    });
+
+    // `.docx` — единственный формат из MATERIAL_FILE_CONTENT_TYPES, у
+    // которого сигнатуры первых байтов мало (это ZIP, как и любой OOXML):
+    // проверка живёт в содержимом контейнера — центральном каталоге ZIP
+    // (ADR-0080).
+    it('.docx загружается — формат узнан по записям ZIP-каталога', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const created = await api.postMaterial(cookie, OPEN_MATERIAL);
+      const id = (created.body as MaterialDto).id;
+
+      const res = await api.uploadFile(
+        cookie,
+        id,
+        DOCX_BYTES,
+        MATERIAL_FILE_DOCX_CONTENT_TYPE,
+        DOCX_FILE_NAME,
+      );
+
+      expect(res.status).toBe(200);
+      expect((res.body as MaterialDto).file).toMatchObject({
+        name: DOCX_FILE_NAME,
+        contentType: MATERIAL_FILE_DOCX_CONTENT_TYPE,
+        sizeBytes: DOCX_BYTES.length,
+      });
+      expect(store.objects.size).toBe(1);
+    });
+
+    it('ZIP под видом .docx — отказ: заголовку не верим, решает содержимое', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const created = await api.postMaterial(cookie, OPEN_MATERIAL);
+      const id = (created.body as MaterialDto).id;
+
+      const res = await api.uploadFile(
+        cookie,
+        id,
+        PLAIN_ZIP_BYTES,
+        MATERIAL_FILE_DOCX_CONTENT_TYPE,
+        DOCX_FILE_NAME,
+      );
 
       expect(res.status).toBe(400);
       expect((res.body as ApiErrorBody).message).toBe(MATERIAL_FILE_UNSUPPORTED_MESSAGE);

@@ -35,7 +35,7 @@ const LESSON_ID = 'l1';
 // вычисление проверяемого кода.
 const ATTACHED_PATH = `/materials?lessonId=${LESSON_ID}&limit=${LIST_LIMIT_MAX}`;
 const LIBRARY_PATH = materialsListPath('', '');
-// Признак хранилища файлов секция читает сама (useAuthConfig, ADR-0080) —
+// Признак хранилища файлов секция читает сама (useAuthConfig, ADR-0081) —
 // путь добавлен в мок, иначе запрос уходит в «неожиданный путь».
 const AUTH_CONFIG_PATH = '/auth/config';
 

@@ -4,7 +4,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { MaterialDto, MaterialFileDto } from '@xuanxue/shared';
+import {
+  MATERIAL_FILE_DOCX_CONTENT_TYPE,
+  MATERIAL_FILE_UNSUPPORTED_MESSAGE,
+  type MaterialDto,
+  type MaterialFileDto,
+} from '@xuanxue/shared';
 import { MaterialFileField } from './MaterialFileField';
 import { useMaterialFileUpload } from './useMaterialFileUpload';
 
@@ -58,7 +63,19 @@ describe('MaterialFileField — файла нет', () => {
 
     expect(screen.getByText('Добавить файл')).toBeInTheDocument();
     expect(screen.getByText(/PDF/)).toHaveTextContent('30 МБ');
+    expect(screen.getByText(/PDF/)).toHaveTextContent('.docx');
     expect(screen.queryByRole('link', { name: 'Скачать файл' })).not.toBeInTheDocument();
+  });
+
+  it('accept у поля выбора включает формат Word (.docx)', () => {
+    stubUpload();
+    render(<MaterialFileField materialId={MATERIAL_ID} onChanged={vi.fn()} />);
+
+    const input = screen.getByLabelText('Добавить файл');
+    expect(input).toHaveAttribute(
+      'accept',
+      expect.stringContaining(MATERIAL_FILE_DOCX_CONTENT_TYPE),
+    );
   });
 
   it('выбор файла зовёт upload(); успех — onChanged()', async () => {
@@ -95,16 +112,10 @@ describe('MaterialFileField — файла нет', () => {
   });
 
   it('error — текст сбоя виден под полем', () => {
-    stubUpload({
-      error: 'Такой формат не подходит. Загрузите PDF или картинку — JPG, PNG, WebP.',
-    });
+    stubUpload({ error: MATERIAL_FILE_UNSUPPORTED_MESSAGE });
     render(<MaterialFileField materialId={MATERIAL_ID} onChanged={vi.fn()} />);
 
-    expect(
-      screen.getByText(
-        'Такой формат не подходит. Загрузите PDF или картинку — JPG, PNG, WebP.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(MATERIAL_FILE_UNSUPPORTED_MESSAGE)).toBeInTheDocument();
   });
 });
 
