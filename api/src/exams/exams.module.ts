@@ -71,6 +71,7 @@ import { InAppVideoLinkNotifier } from '../notifications/in-app-video-link-notif
 import { TelegramVideoLinkNotifier } from '../telegram/telegram-video-link-notifier';
 import { UsersModule } from '../users/users.module';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
+import { ExamAttemptCountService } from './exam-attempt-count.service';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamBotService } from './exam-bot.service';
@@ -114,6 +115,7 @@ import { MyExamsService } from './my-exams.service';
     ExamItemStatsService,
     ExamsService,
     ExamAttemptsService,
+    ExamAttemptCountService,
     ExamGradingsService,
     MyExamsService,
     // Кабинет и Telegram — по отдельному провайдеру своего класса,
