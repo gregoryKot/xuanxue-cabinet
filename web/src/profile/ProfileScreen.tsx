@@ -36,7 +36,7 @@ const logoutRowStyle: CSSProperties = {
 };
 
 export default function ProfileScreen() {
-  const { me, refresh } = useAuth();
+  const { me, applyMe } = useAuth();
 
   return (
     <section style={screenSectionStyle}>
@@ -48,7 +48,7 @@ export default function ProfileScreen() {
       {me === null ? (
         <SkeletonList rows={2} h={48} />
       ) : (
-        <ProfileNameSection initialName={me.name} refresh={refresh} />
+        <ProfileNameSection initialName={me.name} applyMe={applyMe} />
       )}
 
       <NotificationPrefsSection />

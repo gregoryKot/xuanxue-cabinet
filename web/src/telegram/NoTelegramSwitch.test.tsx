@@ -1,10 +1,11 @@
 // Ссылка «У меня нет Telegram» / «Telegram у меня появился» (ADR-0067) —
 // сеть замокана через apiFetch (тот же приём, что SecondLoginKey.test.tsx),
-// <AuthProvider> нужен только ради useAuth().refresh, сам `me` этому
+// <AuthProvider> нужен только ради useAuth().applyMe, сам `me` этому
 // компоненту не идёт: он получает готовое `noTelegram` пропом.
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
 import {
@@ -21,8 +22,25 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
+// Ответ PUT /me/no-telegram (ADR-0087) — applyMe() кладёт его напрямую,
+// компонент значение `noTelegram` на нём не проверяет (оно приходит пропом).
+const ME_AFTER_TOGGLE: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: [],
+  status: 'active',
+  telegramLinked: false,
+  botChatActive: false,
+  hasEmail: true,
+  noTelegram: true,
+  needsProfile: false,
+};
+
 function renderSwitch(noTelegram: boolean) {
-  mockApiByPath({ '/auth/me': new Error('нет сессии'), '/me/no-telegram': undefined });
+  mockApiByPath({
+    '/auth/me': new Error('нет сессии'),
+    '/me/no-telegram': ME_AFTER_TOGGLE,
+  });
   return render(
     <AuthProvider>
       <NoTelegramSwitch noTelegram={noTelegram} />

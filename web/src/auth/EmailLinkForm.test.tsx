@@ -1,8 +1,9 @@
 // Форма в изоляции (тот же приём, что welcome/useProfileSetup.test.ts —
-// apiFetch замокан, refresh() — обычный колбэк, без <AuthProvider>).
+// apiFetch замокан, applyMe() — обычный колбэк, без <AuthProvider>).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { EmailLinkForm } from './EmailLinkForm';
@@ -14,20 +15,34 @@ vi.mock('../api/http', async () => {
 
 const mockedApiFetch = vi.mocked(apiFetch);
 
+// Ответ POST /auth/email/link (ADR-0087) — applyMe() получает его напрямую.
+const ME: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: [],
+  status: 'active',
+  telegramLinked: true,
+  botChatActive: false,
+  hasEmail: false,
+  pendingEmail: 'a@example.com',
+  noTelegram: false,
+  needsProfile: false,
+};
+
 afterEach(() => {
   mockedApiFetch.mockReset();
 });
 
 describe('EmailLinkForm — кнопка «Привязать почту»', () => {
   it('недоступна при пустом поле', () => {
-    render(<EmailLinkForm refresh={vi.fn()} />);
+    render(<EmailLinkForm applyMe={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Привязать почту' })).toBeDisabled();
   });
 
   it('доступна, когда адрес введён', async () => {
     const user = userEvent.setup();
-    render(<EmailLinkForm refresh={vi.fn()} />);
+    render(<EmailLinkForm applyMe={vi.fn()} />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
 
@@ -35,7 +50,7 @@ describe('EmailLinkForm — кнопка «Привязать почту»', () 
   });
 
   it('initialEmail подставляется в поле — кнопка сразу доступна', () => {
-    render(<EmailLinkForm refresh={vi.fn()} initialEmail="a@example.com" />);
+    render(<EmailLinkForm applyMe={vi.fn()} initialEmail="a@example.com" />);
 
     expect(screen.getByLabelText('Почта')).toHaveValue('a@example.com');
     expect(screen.getByRole('button', { name: 'Привязать почту' })).toBeEnabled();
@@ -44,7 +59,7 @@ describe('EmailLinkForm — кнопка «Привязать почту»', () 
 
 describe('EmailLinkForm — «Оставить прежний адрес»', () => {
   it('без onCancel ссылки нет', () => {
-    render(<EmailLinkForm refresh={vi.fn()} />);
+    render(<EmailLinkForm applyMe={vi.fn()} />);
 
     expect(
       screen.queryByRole('button', { name: 'Оставить прежний адрес' }),
@@ -54,7 +69,7 @@ describe('EmailLinkForm — «Оставить прежний адрес»', () 
   it('с onCancel ссылка есть и зовёт его', async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();
-    render(<EmailLinkForm refresh={vi.fn()} onCancel={onCancel} />);
+    render(<EmailLinkForm applyMe={vi.fn()} onCancel={onCancel} />);
 
     await user.click(screen.getByRole('button', { name: 'Оставить прежний адрес' }));
 
@@ -63,11 +78,11 @@ describe('EmailLinkForm — «Оставить прежний адрес»', () 
 });
 
 describe('EmailLinkForm — отправка', () => {
-  it('успех — POST /auth/email/link с введённым адресом, затем refresh()', async () => {
+  it('успех — POST /auth/email/link с введённым адресом, затем applyMe(next)', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockResolvedValue(undefined);
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    render(<EmailLinkForm refresh={refresh} />);
+    mockedApiFetch.mockResolvedValue(ME);
+    const applyMe = vi.fn();
+    render(<EmailLinkForm applyMe={applyMe} />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
     await user.click(screen.getByRole('button', { name: 'Привязать почту' }));
@@ -76,7 +91,7 @@ describe('EmailLinkForm — отправка', () => {
       method: 'POST',
       body: { email: 'a@example.com' },
     });
-    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(applyMe).toHaveBeenCalledWith(ME));
   });
 
   it('409 — текст сервера показан под полем', async () => {
@@ -88,7 +103,7 @@ describe('EmailLinkForm — отправка', () => {
         'conflict',
       ),
     );
-    render(<EmailLinkForm refresh={vi.fn()} />);
+    render(<EmailLinkForm applyMe={vi.fn()} />);
 
     await user.type(screen.getByLabelText('Почта'), 'a@example.com');
     await user.click(screen.getByRole('button', { name: 'Привязать почту' }));
