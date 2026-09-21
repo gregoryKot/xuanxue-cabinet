@@ -5,12 +5,15 @@ import {
   filterQuestionCandidates,
   initialQuestionIds,
   initialQuestionsPerAttempt,
+  initialRequiredIds,
   initialShuffleQuestions,
   mergeCreatedItems,
   moveQuestionDown,
   moveQuestionUp,
+  pruneRequiredIds,
   removeQuestion,
   toBlockInputs,
+  toggleRequired,
 } from './examQuestions';
 
 function block(
@@ -110,6 +113,7 @@ describe('toBlockInputs', () => {
       itemIds: ['a', 'b', 'c'],
       shuffle: true,
       questionsPerAttempt: undefined,
+      requiredItemIds: [],
       exam: exam([block('b1', ['a', 'b']), block('b2', ['c'])]),
     });
 
@@ -124,6 +128,7 @@ describe('toBlockInputs', () => {
         itemIds: ['a'],
         shuffle: false,
         questionsPerAttempt: undefined,
+        requiredItemIds: [],
         exam: null,
       }),
     ).toEqual([{ id: undefined, title: '', itemIds: ['a'], shuffle: false }]);
@@ -135,6 +140,7 @@ describe('toBlockInputs', () => {
         itemIds: ['a'],
         shuffle: false,
         questionsPerAttempt: undefined,
+        requiredItemIds: [],
         exam: exam([]),
       }),
     ).toEqual([{ id: undefined, title: '', itemIds: ['a'], shuffle: false }]);
@@ -145,6 +151,7 @@ describe('toBlockInputs', () => {
       itemIds: ['a', 'b'],
       shuffle: false,
       questionsPerAttempt: 1,
+      requiredItemIds: [],
       exam: null,
     });
 
@@ -164,10 +171,92 @@ describe('toBlockInputs', () => {
       itemIds: ['a'],
       shuffle: false,
       questionsPerAttempt: undefined,
+      requiredItemIds: [],
       exam: null,
     });
 
     expect(blocks[0]).not.toHaveProperty('questionsPerAttempt');
+  });
+
+  it('requiredItemIds непустой — попадает в блок', () => {
+    const blocks = toBlockInputs({
+      itemIds: ['a', 'b'],
+      shuffle: false,
+      questionsPerAttempt: 1,
+      requiredItemIds: ['a'],
+      exam: null,
+    });
+
+    expect(blocks[0]).toMatchObject({ requiredItemIds: ['a'] });
+  });
+
+  it('requiredItemIds пуст — ключа в блоке нет вовсе', () => {
+    const blocks = toBlockInputs({
+      itemIds: ['a'],
+      shuffle: false,
+      questionsPerAttempt: undefined,
+      requiredItemIds: [],
+      exam: null,
+    });
+
+    expect(blocks[0]).not.toHaveProperty('requiredItemIds');
+  });
+
+  it('вопрос убрали из списка — отметка не отправляется (пруним перед сохранением)', () => {
+    const blocks = toBlockInputs({
+      itemIds: ['a'],
+      shuffle: false,
+      questionsPerAttempt: undefined,
+      requiredItemIds: ['a', 'gone'],
+      exam: null,
+    });
+
+    expect(blocks[0]).toMatchObject({ requiredItemIds: ['a'] });
+  });
+});
+
+describe('initialRequiredIds', () => {
+  it('нового экзамена ещё нет — пустой список', () => {
+    expect(initialRequiredIds(null)).toEqual([]);
+  });
+
+  it('обязательные вопросы собираются со всех блоков', () => {
+    const required = initialRequiredIds(
+      exam([
+        block('b1', ['a', 'b'], { requiredItemIds: ['a'] }),
+        block('b2', ['c'], { requiredItemIds: ['c'] }),
+      ]),
+    );
+
+    expect(required).toEqual(['a', 'c']);
+  });
+
+  it('у блока нет отметок — пустой список', () => {
+    expect(initialRequiredIds(exam([block('b1', ['a'])]))).toEqual([]);
+  });
+});
+
+describe('toggleRequired', () => {
+  it('вопроса не было в списке — добавляется', () => {
+    expect(toggleRequired([], 'a')).toEqual(['a']);
+  });
+
+  it('вопрос уже был в списке — убирается', () => {
+    expect(toggleRequired(['a', 'b'], 'a')).toEqual(['b']);
+  });
+});
+
+describe('pruneRequiredIds', () => {
+  it('id есть в списке вопросов — остаётся', () => {
+    expect(pruneRequiredIds(['a', 'b'], ['a', 'b', 'c'])).toEqual(['a', 'b']);
+  });
+
+  it('id убранного вопроса пропадает', () => {
+    expect(pruneRequiredIds(['a', 'b'], ['a'])).toEqual(['a']);
+  });
+
+  it('пустая отметка — пустой список', () => {
+    expect(pruneRequiredIds([], ['a'])).toEqual([]);
   });
 });
 

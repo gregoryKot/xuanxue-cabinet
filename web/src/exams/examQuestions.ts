@@ -25,12 +25,34 @@ export function initialQuestionsPerAttempt(exam: ExamDto | null): number | undef
   return exam?.blocks[0]?.questionsPerAttempt;
 }
 
+/** Отметка «обязательный» — у блока формы, не у вопроса банка (ADR-0082,
+ * дополнение): один вопрос может стоять в нескольких экзаменах и быть
+ * обязательным только в одном. */
+export function initialRequiredIds(exam: ExamDto | null): string[] {
+  return exam?.blocks.flatMap((block) => block.requiredItemIds ?? []) ?? [];
+}
+
+/** Клик по ★/☆ строки вопроса: отметка есть — снимаем, нет — ставим. */
+export function toggleRequired(requiredIds: string[], itemId: string): string[] {
+  return requiredIds.includes(itemId)
+    ? requiredIds.filter((id) => id !== itemId)
+    : [...requiredIds, itemId];
+}
+
+/** Вопрос убрали из списка — отметка «обязательный» уходит вместе с ним,
+ * иначе id висел бы в состоянии без вопроса, на который указывает. */
+export function pruneRequiredIds(requiredIds: string[], itemIds: string[]): string[] {
+  const known = new Set(itemIds);
+  return requiredIds.filter((id) => known.has(id));
+}
+
 interface ToBlockInputsParams {
   itemIds: string[];
   shuffle: boolean;
   /** `undefined` — поле не отправляется вовсе, а не «сброшено» (ADR-0082:
    * нет ключа — сдающий получает все вопросы). */
   questionsPerAttempt: number | undefined;
+  requiredItemIds: string[];
   exam: ExamDto | null;
 }
 
@@ -42,8 +64,10 @@ export function toBlockInputs({
   itemIds,
   shuffle,
   questionsPerAttempt,
+  requiredItemIds,
   exam,
 }: ToBlockInputsParams): ExamBlockInput[] {
+  const prunedRequiredIds = pruneRequiredIds(requiredItemIds, itemIds);
   return [
     {
       id: exam?.blocks[0]?.id,
@@ -51,6 +75,7 @@ export function toBlockInputs({
       itemIds,
       shuffle,
       ...(questionsPerAttempt !== undefined && { questionsPerAttempt }),
+      ...(prunedRequiredIds.length > 0 && { requiredItemIds: prunedRequiredIds }),
     },
   ];
 }

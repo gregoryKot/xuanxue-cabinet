@@ -141,6 +141,10 @@ export interface ExamBlockDto {
    * выборка при старте (ADR-0082). Нет поля — все вопросы списка. Не больше
    * `itemIds.length`: сервис отказывает при сохранении. */
   questionsPerAttempt?: number;
+  /** Обязательные вопросы — попадают каждому сдающему, остальное до
+   * `questionsPerAttempt` добирается случайно (ADR-0082, дополнение). Подмножество
+   * `itemIds`, не больше `questionsPerAttempt`; без выборки ни на что не влияет. */
+  requiredItemIds?: string[];
 }
 
 /** `id` есть у существующего блока (сервис сохраняет его как есть — `mapBlocks`,
@@ -153,6 +157,7 @@ export interface ExamBlockInput {
   shuffle?: boolean;
   /** Нет поля — все вопросы списка (ADR-0082). */
   questionsPerAttempt?: number;
+  requiredItemIds?: string[];
 }
 
 export interface ExamDto {

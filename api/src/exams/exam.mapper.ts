@@ -57,6 +57,11 @@ function toBlockDto(block: ExamBlockRecord): ExamBlockDto {
     ...(block.questionsPerAttempt !== undefined
       ? { questionsPerAttempt: block.questionsPerAttempt }
       : {}),
+    // ADR-0082, дополнение: mapBlocks никогда не пишет пустой массив — здесь
+    // undefined и есть единственный случай, когда ключ можно опустить.
+    ...(block.requiredItemIds !== undefined
+      ? { requiredItemIds: block.requiredItemIds }
+      : {}),
   };
 }
 

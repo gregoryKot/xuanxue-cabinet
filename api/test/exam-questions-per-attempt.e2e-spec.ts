@@ -70,4 +70,63 @@ describe('Экзамен: вопросов ученику в попытке (e2e
     expect(res.status).toBe(400);
     expect((res.body as ApiErrorBody).code).toBe('invalid_input');
   });
+
+  // ADR-0082, дополнение: обязательные вопросы.
+  describe('requiredItemIds', () => {
+    it('сохранили — оно в ответе POST и в GET /exams/:id', async () => {
+      const itemIds = [await createItem(), await createItem()];
+      const created = await withCsrf(request(server()).post('/api/exams'))
+        .set('Cookie', cookie)
+        .send({
+          title: 'Форма 1',
+          blocks: [{ itemIds, questionsPerAttempt: 1, requiredItemIds: [itemIds[0]] }],
+        });
+
+      expect(created.status).toBe(201);
+      expect((created.body as ExamDto).blocks[0]?.requiredItemIds).toEqual([itemIds[0]]);
+
+      const read = await request(server())
+        .get(`/api/exams/${(created.body as ExamDto).id}`)
+        .set('Cookie', cookie);
+      expect(read.status).toBe(200);
+      expect((read.body as ExamDto).blocks[0]?.requiredItemIds).toEqual([itemIds[0]]);
+    });
+
+    it('id вне itemIds — отброшен в ответе (mapBlocks, exam-blocks.ts)', async () => {
+      const [keptId, otherItemId] = [await createItem(), await createItem()];
+      const created = await withCsrf(request(server()).post('/api/exams'))
+        .set('Cookie', cookie)
+        .send({
+          title: 'Форма 1',
+          blocks: [
+            {
+              itemIds: [keptId],
+              questionsPerAttempt: 1,
+              requiredItemIds: [keptId, otherItemId],
+            },
+          ],
+        });
+
+      expect(created.status).toBe(201);
+      expect((created.body as ExamDto).blocks[0]?.requiredItemIds).toEqual([keptId]);
+    });
+
+    it('обязательных больше, чем «Вопросов ученику» — 400 с текстом, что делать', async () => {
+      const itemIds = [await createItem(), await createItem()];
+      const res = await withCsrf(request(server()).post('/api/exams'))
+        .set('Cookie', cookie)
+        .send({
+          title: 'Форма 1',
+          blocks: [{ itemIds, questionsPerAttempt: 1, requiredItemIds: itemIds }],
+        });
+
+      expect(res.status).toBe(400);
+      const body = res.body as ApiErrorBody;
+      expect(body.code).toBe('invalid_input');
+      expect(body.message).toBe(
+        'Обязательных вопросов 2, а ученику вы показываете 1. ' +
+          'Уменьшите число обязательных или увеличьте «Вопросов ученику».',
+      );
+    });
+  });
 });
