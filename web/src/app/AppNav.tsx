@@ -13,7 +13,12 @@ import type { MeDto } from '@xuanxue/shared';
 import { hasRole } from '../auth/hasRole';
 import { SchoolBrandLink } from '../components/SchoolBrandLink';
 import { NavIcon } from './NavIcon';
-import { bottomLinkStyle, bottomPillStyle, bottomStyle } from './bottomNavStyles';
+import {
+  bottomLabelStyle,
+  bottomLinkStyle,
+  bottomPillStyle,
+  bottomStyle,
+} from './bottomNavStyles';
 import {
   personActionsRowStyle,
   personBlockStyle,
@@ -51,10 +56,15 @@ export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps)
   const active = activeSectionPath(pathname, items);
 
   // Нижняя панель — своя разметка: цель нажатия (`<Link>`, 44px, без вида) и
-  // видимая плашка вокруг значка (`<span>`, размер макета) — разные элементы,
-  // не один стиль на двоих (bottomNavStyles.ts: bottomLinkStyle/bottomPillStyle).
-  // Подписи в панели нет (ADR-0097): имя раздела читает `aria-label` ссылки,
-  // значок внутри плашки — decorative-only (`aria-hidden`, NavIcon.tsx).
+  // видимая плашка вокруг значка с подписью (`<span>`, размер макета) — разные
+  // элементы, не один стиль на двоих (bottomNavStyles.ts: bottomLinkStyle /
+  // bottomPillStyle). Пункт называет себя словом под значком (ADR-0103,
+  // заменил ADR-0097: «просто картинки не понятно внизу», отзыв владельца
+  // 2026-09-21). `aria-label` у ссылки поэтому нет: имя ей даёт та же видимая
+  // подпись, которую читает человек, — два имени разъехались бы при первой же
+  // правке одного из них (WCAG «Label in Name»). Значок остаётся
+  // decorative-only (`aria-hidden`, NavIcon.tsx), иначе скринридер назвал бы
+  // раздел дважды.
   if (isMobile) {
     return (
       <nav style={bottomStyle(items.length)} aria-label={SECTIONS_LABEL}>
@@ -64,12 +74,12 @@ export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps)
             <Link
               key={to}
               to={to}
-              aria-label={label}
               aria-current={isActive ? 'page' : undefined}
               style={bottomLinkStyle}
             >
               <span style={bottomPillStyle(isActive)}>
                 <NavIcon name={icon} />
+                <span style={bottomLabelStyle}>{label}</span>
               </span>
             </Link>
           );
