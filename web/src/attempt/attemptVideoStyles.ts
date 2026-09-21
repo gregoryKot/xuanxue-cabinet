@@ -38,6 +38,17 @@ export const attemptVideoReceivedListStyle: CSSProperties = {
   gap: 4,
 };
 
+// Строка «Заменить»/«Убрать» у своей ссылки (ADR-0086,
+// AttemptQuestionVideoReceived.tsx) — тот же приём, что actionsStyle в
+// broadcasts/BroadcastCardActions.tsx: небольшой gap без верхнего отступа,
+// кнопки читаются продолжением строки времени получения, а не новым блоком.
+export const attemptVideoReceivedActionsStyle: CSSProperties = {
+  display: 'flex',
+  gap: 20,
+  flexWrap: 'wrap',
+  marginTop: 4,
+};
+
 // Визуально — как Button variant="secondary" (components/Button.tsx), но это
 // переход по внешней ссылке (t.me), не действие в кабинете: <a>, не
 // <button> (тот же приём, что StudentLessonMeeting.tsx: zoomLinkStyle).

@@ -4,6 +4,7 @@
 // обычным без сети (кроме самого addMediaLink, который приходит пропсом).
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamMediaDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -28,18 +29,27 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     telegramBotUsername: 'xuanxue_bot',
     telegramLinked: true,
     offersTelegramLink: false,
+    canChangeAnswer: true,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
+    removeMedia: vi.fn().mockResolvedValue(true),
+    removeStateFor: () => ({ pending: false, error: null }),
     ...overrides,
   };
 }
 
+// MemoryRouter — «Убрать» открывает ConfirmDialog, а тот закрывается через
+// useHistorySheet (useNavigate). Возвращает результат render(): тесту
+// «Заменить» нужен rerender — подделать media так, как его вернул бы
+// перечитанный после удаления ответ сервера.
 function renderVideo(video: AttemptVideoControls, itemId = 'q3') {
   mockApiByPath({ '/auth/me': new Promise(() => {}) });
-  render(
-    <AuthProvider>
-      <AttemptQuestionVideo itemId={itemId} video={video} />
-    </AuthProvider>,
+  return render(
+    <MemoryRouter>
+      <AuthProvider>
+        <AttemptQuestionVideo itemId={itemId} video={video} />
+      </AuthProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -180,5 +190,106 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
 
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
     expect(screen.queryByText(/Видео получено/)).not.toBeInTheDocument();
+  });
+});
+
+// ADR-0086: снять ошибочную ссылку может тот, кто её прислал — только свою
+// запись kind: 'link' и только пока попытку не оценили.
+describe('AttemptQuestionVideo — «Заменить»/«Убрать» у своей ссылки (ADR-0086)', () => {
+  const LINK: ExamMediaDto = {
+    id: 'm1',
+    attemptId: 'a1',
+    itemId: 'q3',
+    kind: 'link',
+    url: 'https://example.com/v',
+    receivedAt: '2026-09-12T16:30:00.000Z',
+  };
+  const FROM_BOT: ExamMediaDto = {
+    id: 'm2',
+    attemptId: 'a1',
+    itemId: 'q3',
+    kind: 'telegram',
+    durationSec: 40,
+    receivedAt: '2026-09-12T16:31:00.000Z',
+  };
+  const MANUAL: ExamMediaDto = {
+    id: 'm3',
+    attemptId: 'a1',
+    itemId: 'q3',
+    kind: 'manual',
+    note: 'Показал на занятии',
+    receivedAt: '2026-09-12T16:32:00.000Z',
+  };
+
+  it('у своей ссылки видны «Заменить» и «Убрать», у записи бота и ручной отметки — нет', () => {
+    renderVideo(makeVideo({ media: [LINK, FROM_BOT, MANUAL] }));
+
+    expect(screen.getAllByRole('button', { name: 'Заменить' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Убрать' })).toHaveLength(1);
+  });
+
+  it('попытку оценили (canChangeAnswer: false) — кнопок нет ни у какой записи', () => {
+    renderVideo(makeVideo({ media: [LINK, FROM_BOT], canChangeAnswer: false }));
+
+    expect(screen.queryByRole('button', { name: 'Заменить' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Убрать' })).not.toBeInTheDocument();
+  });
+
+  it('«Убрать» → подтверждение → зовёт removeMedia с id этой записи', async () => {
+    const removeMedia = vi.fn().mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderVideo(makeVideo({ media: [LINK], removeMedia }));
+
+    await user.click(screen.getByRole('button', { name: 'Убрать' }));
+    expect(
+      screen.getByRole('dialog', { name: 'Убрать ссылку на видео?' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Убрать ссылку' }));
+
+    expect(removeMedia).toHaveBeenCalledWith('m1');
+  });
+
+  // Read-after-write: в реальном экране media после removeMedia приходит из
+  // перечитанной попытки (useAttemptMedia.ts), здесь этот ответ подделан
+  // через rerender — форма ссылки должна вернуться на место записи.
+  it('«Заменить» → после успеха на месте записи снова форма ссылки', async () => {
+    const removeMedia = vi.fn().mockResolvedValue(true);
+    const user = userEvent.setup();
+    const { rerender } = renderVideo(makeVideo({ media: [LINK], removeMedia }));
+
+    await user.click(screen.getByRole('button', { name: 'Заменить' }));
+    expect(removeMedia).toHaveBeenCalledWith('m1');
+
+    rerender(
+      <MemoryRouter>
+        <AuthProvider>
+          <AttemptQuestionVideo
+            itemId="q3"
+            video={makeVideo({ media: [], removeMedia })}
+          />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
+  });
+
+  it('ошибка удаления видна пользователю', () => {
+    renderVideo(
+      makeVideo({
+        media: [LINK],
+        removeStateFor: (mediaId) =>
+          mediaId === 'm1'
+            ? {
+                pending: false,
+                error: { message: 'Работу уже проверили, менять ответ поздно.' },
+              }
+            : { pending: false, error: null },
+      }),
+    );
+
+    expect(
+      screen.getByText('Работу уже проверили, менять ответ поздно.'),
+    ).toBeInTheDocument();
   });
 });

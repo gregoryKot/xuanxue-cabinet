@@ -25,14 +25,15 @@
 //
 // Видео уже получено — вместо формы честная строка, что и когда пришло:
 // показать форму заново после того, как всё уже сделано, читается как
-// «кабинет не поверил», что противоречит Read-after-write (CLAUDE.md).
-import { formatExamMediaReceivedAt } from '../lib/examMedia';
+// «кабинет не поверил», что противоречит Read-after-write (CLAUDE.md). Сам
+// список и «Заменить»/«Убрать» у своей ссылки (ADR-0086) — в
+// AttemptQuestionVideoReceived.tsx, там же и причина, почему отдельным файлом.
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
+import { AttemptQuestionVideoReceived } from './AttemptQuestionVideoReceived';
 import { AttemptVideoHowTo } from './AttemptVideoHowTo';
 import {
   attemptVideoHintStyle,
-  attemptVideoReceivedListStyle,
   attemptVideoTelegramLinkStyle,
 } from './attemptVideoStyles';
 import { buildExamMediaTelegramLink } from './examMediaDeepLink';
@@ -74,13 +75,7 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
   const { pending, error } = video.linkStateFor(itemId);
 
   if (received.length > 0) {
-    return (
-      <ul style={attemptVideoReceivedListStyle}>
-        {received.map((item) => (
-          <li key={item.id}>{formatExamMediaReceivedAt(item)}.</li>
-        ))}
-      </ul>
-    );
+    return <AttemptQuestionVideoReceived received={received} video={video} />;
   }
 
   return (

@@ -62,8 +62,14 @@ export default function AttemptScreen() {
     telegramBotUsername: config?.telegramBotUsername,
     telegramLinked: me?.telegramLinked ?? false,
     offersTelegramLink: showsTelegramLinkOffer(me),
+    // ADR-0086: «Заменить»/«Убрать» у своей ссылки видны только пока попытку
+    // не оценили — на graded сервер и так откажет (400), кнопки прячем
+    // заранее, чтобы не предлагать действие, которое не сработает.
+    canChangeAnswer: attempt.status !== 'graded',
     addMediaLink: media.addMediaLink,
     linkStateFor: media.linkStateFor,
+    removeMedia: media.removeMedia,
+    removeStateFor: media.removeStateFor,
   };
 
   if (attempt.status !== 'in_progress') {
