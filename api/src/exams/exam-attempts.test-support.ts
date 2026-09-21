@@ -3,6 +3,7 @@
 // спеков, тот же приём, что у telegram-teacher-notifier.test-support.ts,
 // CLAUDE.md «Файлы»/«Храповики», jscpd).
 import type { Connection, Model } from 'mongoose';
+import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
 import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -89,7 +90,14 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     userNamesService,
     examNotifier,
   );
-  const mediaAssetsService = new MediaAssetsService(mediaModel, attemptModel);
+  // Реестр нотификатора ссылок (ADR-0084) — не собран в этих спеках
+  // (ExamsModule здесь не поднимается): getOrNull() вернёт null, addLink()
+  // это переживает молча (ExamMediaNotifierRegistry, комментарий там же).
+  const mediaAssetsService = new MediaAssetsService(
+    mediaModel,
+    attemptModel,
+    new ExamMediaNotifierRegistry(),
+  );
   return {
     memory,
     attemptModel,

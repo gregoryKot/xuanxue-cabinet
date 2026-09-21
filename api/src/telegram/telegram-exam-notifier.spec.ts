@@ -21,6 +21,7 @@ import { ExamBotPortRegistry } from './exam-bot-port.registry';
 import { fakeExamBotPort } from './exam-bot.port.test-support';
 import { PersonalChats } from './personal-chats';
 import { TelegramExamNotifier } from './telegram-exam-notifier';
+import { TelegramVideoLinkNotifier } from './telegram-video-link-notifier';
 import type { TelegramBotService } from './telegram-bot.service';
 
 const NOW = DateTime.fromISO('2026-09-13T09:00:00Z', { zone: 'utc' });
@@ -124,6 +125,23 @@ describe('TelegramExamNotifier', () => {
     examBotPorts: ExamBotPortRegistry = fakePortRegistry(fakeReview()),
   ): TelegramExamNotifier {
     return new TelegramExamNotifier(
+      personalChats,
+      examBotPorts,
+      bot as unknown as TelegramBotService,
+      config,
+    );
+  }
+
+  // Соседний класс с теми же зависимостями (ADR-0084) — тестируется здесь же,
+  // а не в своём файле: фикстура (Mongo в памяти, подключённые люди, фейки
+  // бота и порта) уже стоит тут, а её копия в соседнем спеке была бы дублем
+  // на полсотни строк (CLAUDE.md «Дубли»).
+  function buildVideoLinkNotifier(
+    bot: ReturnType<typeof fakeBot>,
+    config: ConfigService = fakeConfig(),
+    examBotPorts: ExamBotPortRegistry = fakePortRegistry(fakeReview()),
+  ): TelegramVideoLinkNotifier {
+    return new TelegramVideoLinkNotifier(
       personalChats,
       examBotPorts,
       bot as unknown as TelegramBotService,
@@ -428,6 +446,138 @@ describe('TelegramExamNotifier', () => {
         }),
       );
       error.mockRestore();
+    });
+  });
+
+  // ADR-0084: адресаты и приём отправки — те же, что у notifyAttemptSubmitted
+  // (тот же вид attempt_submitted), но метод не часть ExamNotifier — своя
+  // группа тестов, не общий describe.
+  describe('notifyVideoLinkAdded', () => {
+    const VIDEO_LINK_CONTEXT = {
+      ...ATTEMPT_CONTEXT,
+      userId: 'u1',
+      questionPrompt: 'Повторите форму Ци-ши',
+      url: 'https://vk.com/video-1',
+    };
+
+    it('уходит учителю и помощнику (дефолт роли), не уходит админу', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      await connectPerson(222, 'Пётр', ['assistant']);
+      await connectPerson(333, 'Дима', ['admin']);
+      const bot = fakeBot();
+
+      await buildVideoLinkNotifier(
+        bot,
+        fakeConfig(),
+        fakePortRegistry(fakeReview({ userName: 'Ольга' })),
+      ).notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW);
+
+      const chatIds = bot.sendMessage.mock.calls.map(([chatId]) => chatId);
+      expect(chatIds.sort()).toEqual(['111', '222']);
+    });
+
+    it('вид «работу сдали» выключен у всех — warn, не тишина, ничего не шлёт', async () => {
+      const teacherId = await connectPerson(111, 'Мария', ['teacher']);
+      await notificationPrefsModel.create({
+        userId: teacherId,
+        overrides: [{ kind: 'attempt_submitted', enabled: false }],
+      });
+      const bot = fakeBot();
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      await buildVideoLinkNotifier(bot).notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW);
+
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('некому отправить'),
+        expect.objectContaining({ attemptId: ATTEMPT_CONTEXT.attemptId }),
+      );
+      warn.mockRestore();
+    });
+
+    it('текст несёт имя ученика, формулировку вопроса и саму ссылку', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      const bot = fakeBot();
+
+      await buildVideoLinkNotifier(
+        bot,
+        fakeConfig(),
+        fakePortRegistry(fakeReview({ userName: 'Ольга' })),
+      ).notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW);
+
+      const [, text] = bot.sendMessage.mock.calls[0] ?? [];
+      expect(text).toContain('Ольга');
+      expect(text).toContain('Повторите форму Ци-ши');
+      expect(text).toContain(VIDEO_LINK_CONTEXT.url);
+    });
+
+    it('попытка не найдена в карточке — не падает, ничего не шлёт (защита в глубину)', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      const bot = fakeBot();
+
+      await expect(
+        buildVideoLinkNotifier(
+          bot,
+          fakeConfig(),
+          fakePortRegistry(null),
+        ).notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW),
+      ).resolves.toBeUndefined();
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('сбой доставки всем адресатам — эскалация error-логом, не тишина', async () => {
+      await connectPerson(111, 'Мария', ['teacher']);
+      const bot = fakeBot(false);
+      const error = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      await buildVideoLinkNotifier(
+        bot,
+        fakeConfig(),
+        fakePortRegistry(fakeReview()),
+      ).notifyVideoLinkAdded(VIDEO_LINK_CONTEXT, NOW);
+
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining('доставка не удалась'),
+        expect.objectContaining({
+          attemptId: ATTEMPT_CONTEXT.attemptId,
+          kind: 'attempt_submitted',
+        }),
+      );
+      error.mockRestore();
+    });
+
+    it('сбой резолва (карточка бросила) — warn, не бросает наружу', async () => {
+      const registry = new ExamBotPortRegistry();
+      registry.set(
+        fakeExamBotPort({
+          loadAttemptReview: jest.fn().mockRejectedValue(new Error('mongo упал')),
+        }),
+      );
+      await connectPerson(111, 'Мария', ['teacher']);
+      const bot = fakeBot();
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      await expect(
+        buildVideoLinkNotifier(bot, fakeConfig(), registry).notifyVideoLinkAdded(
+          VIDEO_LINK_CONTEXT,
+          NOW,
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+      // Кто именно упал, говорит контекст логгера (TelegramVideoLinkNotifier),
+      // в самой строке — причина сбоя, без PII.
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('mongo упал'),
+        expect.objectContaining({ attemptId: ATTEMPT_CONTEXT.attemptId }),
+      );
+      warn.mockRestore();
     });
   });
 });
