@@ -28,6 +28,10 @@ const frameStyle: CSSProperties = {
 };
 
 const WATCH_LABEL = 'Смотреть здесь';
+// Доступное имя фрейма — про содержимое, а не про кнопку: скринридер читает
+// его как «запись, фрейм», и «Смотреть здесь, фрейм» там звучало бы как
+// второе действие (CLAUDE.md «Доступность»).
+const FRAME_TITLE = 'Запись видео';
 
 export function VideoEmbed({ url, title }: { url: string; title?: string }) {
   const [opened, setOpened] = useState(false);
@@ -53,7 +57,7 @@ export function VideoEmbed({ url, title }: { url: string; title?: string }) {
   return (
     <iframe
       src={embedUrl}
-      title={title ?? WATCH_LABEL}
+      title={title ?? FRAME_TITLE}
       style={frameStyle}
       allowFullScreen
     />

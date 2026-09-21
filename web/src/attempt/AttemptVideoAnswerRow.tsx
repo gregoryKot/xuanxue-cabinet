@@ -13,6 +13,7 @@
 // не смотрели.
 import type { CSSProperties } from 'react';
 import type { ExamMediaDto, ExamMediaKind } from '@xuanxue/shared';
+import { VideoEmbed } from '../components/VideoEmbed';
 import { formatExamMediaWhen } from '../lib/examMedia';
 
 // Что пришло — по способу привязки (ADR-0023). Тексты ученику, не учителю:
@@ -52,6 +53,11 @@ export function AttemptVideoAnswerRow({ media }: { media: ExamMediaDto }) {
           {media.url}
         </a>
       )}
+      {/* Плеер под ссылкой, а не вместо неё (ADR-0099): встраивание может
+          быть выключено автором, а у приватной записи фрейм покажет отказ —
+          ссылка остаётся путём открыть видео снаружи. Хостинг не
+          встраивается — компонент не рендерит ничего. */}
+      {media.url && <VideoEmbed url={media.url} title="Ваша запись" />}
       {media.note && <span style={metaStyle}>{media.note}</span>}
       <span style={metaStyle}>Получено {formatExamMediaWhen(media)}</span>
     </li>

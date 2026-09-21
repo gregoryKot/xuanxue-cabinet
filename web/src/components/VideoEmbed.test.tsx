@@ -28,7 +28,9 @@ describe('VideoEmbed', () => {
   });
 
   it('невстраиваемая ссылка (Яндекс.Диск) — компонент не рендерит ничего', () => {
-    const { container } = render(<VideoEmbed url="https://disk.yandex.ru/i/aBcDeFgHiJkLmN" />);
+    const { container } = render(
+      <VideoEmbed url="https://disk.yandex.ru/i/aBcDeFgHiJkLmN" />,
+    );
 
     expect(container).toBeEmptyDOMElement();
   });

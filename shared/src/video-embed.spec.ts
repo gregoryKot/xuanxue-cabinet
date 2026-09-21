@@ -72,7 +72,47 @@ describe('videoEmbedUrl', () => {
     expect(videoEmbedUrl('https://disk.yandex.ru/i/aBcDeFgHiJkLmN')).toBeNull();
   });
 
-  it.each(['', 'не-ссылка', 'javascript:alert(1)'])('мусор %s → null без исключения', (url) => {
-    expect(videoEmbedUrl(url)).toBeNull();
+  it.each(['', 'не-ссылка', 'javascript:alert(1)'])(
+    'мусор %s → null без исключения',
+    (url) => {
+      expect(videoEmbedUrl(url)).toBeNull();
+    },
+  );
+
+  // Хост знакомый, а путь — не видео: лента, канал, корень сайта. Плеера там
+  // нет, и гадать нечего.
+  it('YouTube с путём, который не видео, — null', () => {
+    expect(videoEmbedUrl('https://www.youtube.com/feed/subscriptions')).toBeNull();
+    expect(videoEmbedUrl('https://www.youtube.com/')).toBeNull();
+  });
+
+  it('Rutube с путём, который не видео, — null', () => {
+    expect(videoEmbedUrl('https://rutube.ru/feeds/main/')).toBeNull();
+    expect(videoEmbedUrl('https://rutube.ru/')).toBeNull();
+  });
+
+  it('пустая метка времени (`t=`) — адрес без start, а не «с начала»', () => {
+    expect(videoEmbedUrl('https://youtu.be/dQw4w9WgXcQ?t=')).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    );
+  });
+
+  // Метка времени бывает и неполной — только часы или только минуты.
+  it('метка только из часов и только из минут', () => {
+    expect(videoEmbedUrl('https://youtu.be/dQw4w9WgXcQ?t=2h')).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=7200',
+    );
+    expect(videoEmbedUrl('https://youtu.be/dQw4w9WgXcQ?t=5m')).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=300',
+    );
+  });
+
+  // Адрес нужной формы, но без самого идентификатора: обрезали при копировании
+  // или человек дал ссылку на раздел. Угадывать нечего.
+  it('форма верная, идентификатора нет — null', () => {
+    expect(videoEmbedUrl('https://www.youtube.com/watch')).toBeNull();
+    expect(videoEmbedUrl('https://www.youtube.com/shorts/')).toBeNull();
+    expect(videoEmbedUrl('https://rutube.ru/play/embed/')).toBeNull();
+    expect(videoEmbedUrl('https://rutube.ru/video/')).toBeNull();
   });
 });

@@ -27,14 +27,19 @@ function parseTimestampSeconds(raw: string): number | null {
   if (/^\d+$/.test(raw)) {
     return Number(raw);
   }
+  // Пустую метку (`t=`) регулярка ниже принимает — все три группы
+  // необязательные, — и вернула бы 0, то есть «с начала», как будто человек
+  // так и просил. Отсекаем отдельно.
+  if (raw === '') {
+    return null;
+  }
   const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(raw);
-  if (!match || raw === '') {
+  if (!match) {
     return null;
   }
+  // Проверять «все группы пусты» не нужно: строка непустая, а совпасть с ней
+  // регулярка могла только через эти группы.
   const [, h, m, s] = match;
-  if (!h && !m && !s) {
-    return null;
-  }
   return Number(h ?? 0) * 3600 + Number(m ?? 0) * 60 + Number(s ?? 0);
 }
 
