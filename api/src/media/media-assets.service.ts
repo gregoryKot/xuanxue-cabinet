@@ -18,15 +18,16 @@ import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
 import {
   ATTEMPT_NOT_FOUND_MESSAGE,
-  EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE,
   EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
   type ExamMediaDto,
 } from '@xuanxue/shared';
-import { ConflictError, NotFoundError } from '../common/errors';
+import { NotFoundError } from '../common/errors';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
-import { insertMediaAsset, upsertLinkMediaAsset } from './media-asset-insert';
+import { ExamMediaNotifierRegistry } from './exam-media-notifier.registry';
+import { insertMediaAsset } from './media-asset-insert';
 import { loadAttemptOwnerInfo } from './media-attempt-owner';
 import { isVideoItemInSnapshot } from './media-item-lookup';
+import { addLinkMediaAsset } from './media-link-add';
 import {
   decryptMediaAsset,
   toExamMediaDto,
@@ -52,6 +53,7 @@ export class MediaAssetsService {
     @InjectModel(MediaAssetRecord.name) private readonly model: Model<MediaAssetRecord>,
     @InjectModel(ExamAttemptRecord.name)
     private readonly attemptModel: Model<ExamAttemptRecord>,
+    private readonly examMediaNotifiers: ExamMediaNotifierRegistry,
   ) {}
 
   async listForAttempt(attemptId: string): Promise<ExamMediaDto[]> {
@@ -106,10 +108,9 @@ export class MediaAssetsService {
     return { media, examTitle: owner.examTitle };
   }
 
-  /** Запасной путь — ссылка (ADR-0023), владелец из сессии (SECURITY §3):
-   * чужой attemptId — тот же отказ, что несуществующий. itemId не
-   * video-вопроса снимка (ADR-0037) — здесь есть кому объяснить причину, в
-   * отличие от бота. Повторный вызов заменяет прежнюю ссылку (ADR-0086). */
+  /** Запасной путь — ссылка (ADR-0023), он же основной путь ответа с
+   * ADR-0084. Проверки и запись — media-link-add.ts (файл-лимит CLAUDE.md),
+   * здесь только DI: сервис остаётся точкой входа для контроллера и бота. */
   async addLink(
     attemptId: string,
     userId: string,
@@ -117,31 +118,21 @@ export class MediaAssetsService {
     now: DateTime,
     itemId?: string,
   ): Promise<ExamMediaDto> {
-    const owner = await loadAttemptOwnerInfo(this.attemptModel, attemptId);
-    if (!owner || owner.userId !== userId) {
-      throw new NotFoundError(ATTEMPT_NOT_FOUND_MESSAGE);
-    }
-    if (itemId !== undefined && !isVideoItemInSnapshot(owner.blocks, itemId)) {
-      throw new NotFoundError(EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE);
-    }
-    // ADR-0086: работу уже проверили — учитель поставил итог, глядя на
-    // конкретное видео, молча подменять его новой ссылкой нельзя.
-    if (owner.status === 'graded') {
-      throw new ConflictError(EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE);
-    }
-
-    return upsertLinkMediaAsset(this.model, {
-      attemptId,
-      userId,
-      itemId,
-      url,
-      receivedAt: now,
-    });
+    return addLinkMediaAsset(
+      {
+        model: this.model,
+        attemptModel: this.attemptModel,
+        notifiers: this.examMediaNotifiers,
+      },
+      { attemptId, userId, url, now, itemId },
+    );
   }
 
   /** Третий путь — учитель отмечает «принято» вручную (ADR-0023). Роль
    * проверяет контроллер (`@Roles`); владельца попытки сервис берёт сам —
-   * см. комментарий в начале файла. `itemId` — та же проверка, что у addLink. */
+   * см. комментарий в начале файла. `itemId` — та же проверка, что у addLink.
+   * Уведомление не шлём (в отличие от addLink) — отметку ставит сам учитель,
+   * сообщать ему же о его собственном действии незачем. */
   async addManual(
     attemptId: string,
     note: string | undefined,

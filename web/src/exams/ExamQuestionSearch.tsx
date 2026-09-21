@@ -9,6 +9,7 @@ import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { EXAM_LIMITS, type ExamItemDto } from '@xuanxue/shared';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { dividedListStyle } from '../components/listCardStyles';
 import { SearchField } from '../components/SearchField';
 import { textLinkButtonStyle, textLinkStyle } from '../components/screenLayout';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
@@ -26,7 +27,6 @@ const ALL_CHOSEN_TEXT = 'Все вопросы уже в экзамене.';
 const LIMIT_TEXT = `Больше ${EXAM_LIMITS.itemsPerBlockMax} вопросов в один экзамен не поместится.`;
 
 const wrapStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 const rowStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
@@ -92,7 +92,7 @@ export function ExamQuestionSearch({
       )}
 
       {!atLimit && candidates.length > 0 && (
-        <ul style={listStyle}>
+        <ul style={dividedListStyle}>
           {candidates.map((item) => (
             <li key={item.id} style={rowStyle}>
               <div style={promptColumnStyle}>

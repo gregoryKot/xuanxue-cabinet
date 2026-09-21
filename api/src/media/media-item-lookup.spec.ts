@@ -1,6 +1,9 @@
 // Чистая логика — юнит-тест без Mongo и без DI (CLAUDE.md «Тесты»).
 import type { AttemptBlockRecord } from '../exams/exam-attempt.schema';
-import { isVideoItemInSnapshot } from './media-item-lookup';
+import {
+  isVideoItemInSnapshot,
+  videoQuestionPromptInSnapshot,
+} from './media-item-lookup';
 
 const BLOCKS: AttemptBlockRecord[] = [
   {
@@ -39,5 +42,29 @@ describe('isVideoItemInSnapshot', () => {
 
   it('пустой снимок — false, не падает', () => {
     expect(isVideoItemInSnapshot([], 'i1')).toBe(false);
+  });
+});
+
+// Формулировка, а не номер: у вопроса номеров три разных (карточка
+// проверки, сводка бота, форма сдачи) — комментарий в media-item-lookup.ts.
+describe('videoQuestionPromptInSnapshot', () => {
+  it('video-вопрос первого блока — его формулировка', () => {
+    expect(videoQuestionPromptInSnapshot(BLOCKS, 'i2')).toBe('вопрос 2');
+  });
+
+  it('video-вопрос второго блока — своя формулировка, блоки не мешают', () => {
+    expect(videoQuestionPromptInSnapshot(BLOCKS, 'i3')).toBe('вопрос 3');
+  });
+
+  it('вопрос есть в снимке, но не video — null', () => {
+    expect(videoQuestionPromptInSnapshot(BLOCKS, 'i1')).toBeNull();
+  });
+
+  it('itemId не передан — null', () => {
+    expect(videoQuestionPromptInSnapshot(BLOCKS, undefined)).toBeNull();
+  });
+
+  it('itemId, которого нет в снимке вовсе — null', () => {
+    expect(videoQuestionPromptInSnapshot(BLOCKS, 'чужой')).toBeNull();
   });
 });

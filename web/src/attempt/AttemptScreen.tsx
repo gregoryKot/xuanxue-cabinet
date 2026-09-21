@@ -15,10 +15,16 @@
 // ранних return, поэтому useAttemptMedia зовём выше них, а объект video
 // собираем только когда attempt уже точно есть (иначе attempt.id и attempt.media
 // звать не от чего).
+//
+// Попап «Время вышло» (отзыв владельца 2026-09-21, useExpiryNotice.ts) —
+// только когда дедлайн настиг попытку прямо на этом сеансе экрана; рисуется
+// поверх AttemptSubmitted тем же переключением по attempt.status с сервера
+// (комментарий выше), хук — до ранних return вместе с остальными.
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { NoticeDialog } from '../components/NoticeDialog';
 import { SkeletonLines } from '../components/Skeleton';
 import { showsTelegramLinkOffer } from '../telegram/acceptsTelegramOffer';
 import { AttemptInProgress } from './AttemptInProgress';
@@ -26,12 +32,17 @@ import { AttemptSubmitted } from './AttemptSubmitted';
 import { attemptPageStyle } from './attemptLayout';
 import { useAttempt } from './useAttempt';
 import { useAttemptMedia, type AttemptVideoControls } from './useAttemptMedia';
+import { useAttemptVideoPoll } from './useAttemptVideoPoll';
+import { useExpiryNotice } from './useExpiryNotice';
+
+const EXPIRY_NOTICE_TITLE = 'Время вышло';
+const EXPIRY_NOTICE_MESSAGE =
+  'Попытка закрыта и ушла учителю на проверку. Ответы, которые вы успели дать, сохранены.';
 
 export default function AttemptScreen() {
   const { id } = useParams<{ id: string }>();
-  const { attempt, loading, error, reload, submit, submitting, submitError } = useAttempt(
-    id ?? '',
-  );
+  const { attempt, loading, error, reload, refresh, submit, submitting, submitError } =
+    useAttempt(id ?? '');
   const { config } = useAuthConfig();
   // Кнопку «Отправить видео боту» показываем только тем, кого бот узнает
   // (ADR-0037, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.
@@ -39,6 +50,11 @@ export default function AttemptScreen() {
   // Хук — до ранних return (правило хуков): пока attempt не загружен,
   // addMediaLink и linkStateFor всё равно не зовутся, им нужен только id.
   const media = useAttemptMedia(id ?? '', reload);
+  // Фоновый опрос, пока ждём видео из Telegram (ADR-0076, ADR-0023/0037,
+  // useAttemptVideoPoll.ts) — тоже до ранних return: пока attempt === null,
+  // хук сам не ходит в сеть, решение живёт внутри него.
+  useAttemptVideoPoll(attempt, refresh);
+  const expiryNotice = useExpiryNotice(attempt);
 
   if (loading) {
     return (
@@ -69,7 +85,18 @@ export default function AttemptScreen() {
   };
 
   if (attempt.status !== 'in_progress') {
-    return <AttemptSubmitted attempt={attempt} video={video} />;
+    return (
+      <>
+        <AttemptSubmitted attempt={attempt} video={video} />
+        {expiryNotice.showing && (
+          <NoticeDialog
+            title={EXPIRY_NOTICE_TITLE}
+            message={EXPIRY_NOTICE_MESSAGE}
+            onClose={expiryNotice.dismiss}
+          />
+        )}
+      </>
+    );
   }
 
   return (

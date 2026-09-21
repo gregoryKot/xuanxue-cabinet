@@ -7,7 +7,7 @@
 // components/QuestionRow.tsx), а не рамкой.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
-import { blockCardStyle } from '../components/listCardStyles';
+import { blockCardStyle, dividedListStyle } from '../components/listCardStyles';
 import { noteStyle } from '../components/screenLayout';
 import { questionsPerAttemptNote } from './questionsPerAttempt';
 import { ExamPreviewQuestion } from './ExamPreviewQuestion';
@@ -21,7 +21,6 @@ const EMPTY_NOTE = 'В экзамене пока нет вопросов — с�
 // Заметки о перемешивании и сам список — колонкой с зазором: у общего
 // noteStyle отступов нет, и две заметки подряд слипались бы в один абзац.
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
-const listStyle: CSSProperties = { margin: 0, padding: 0, listStyle: 'none' };
 
 interface ExamPreviewQuestionsProps {
   itemIds: string[];
@@ -60,7 +59,7 @@ export function ExamPreviewQuestions({
       {itemIds.length === 0 && <p style={noteStyle}>{EMPTY_NOTE}</p>}
       {itemIds.length > 0 && (
         <div style={blockCardStyle}>
-          <ol style={listStyle}>
+          <ol style={dividedListStyle}>
             {itemIds.map((itemId, index) => (
               <ExamPreviewQuestion
                 key={itemId}

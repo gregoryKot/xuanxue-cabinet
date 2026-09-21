@@ -54,6 +54,11 @@
 // NotificationRecord доступна ему потому, что NotificationsModule
 // регистрирует её через MongooseModule.forFeature и экспортирует
 // MongooseModule — второй раз forFeature здесь заводить не нужно.
+//
+// ExamMediaLinkNotifier (ADR-0084, слой 4.5) — тем же приёмом кладёт себя в
+// ExamMediaNotifierRegistry (media/), которую MediaModule уже экспортирует:
+// второго импорта заводить не пришлось, ExamsModule и так импортирует
+// MediaModule выше. Оба плеча (InApp/Telegram) уже провайдеры этого модуля.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
@@ -62,12 +67,15 @@ import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
+import { InAppVideoLinkNotifier } from '../notifications/in-app-video-link-notifier';
+import { TelegramVideoLinkNotifier } from '../telegram/telegram-video-link-notifier';
 import { UsersModule } from '../users/users.module';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptCountService } from './exam-attempt-count.service';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamBotService } from './exam-bot.service';
+import { ExamMediaLinkNotifier } from './exam-media-link-notifier';
 import { CompositeExamNotifier } from './exam-notifier.composite';
 import { EXAM_NOTIFIER } from './exam-notifier';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
@@ -115,11 +123,19 @@ import { MyExamsService } from './my-exams.service';
     // вызывающему коду не важно, что каналов два.
     InAppExamNotifier,
     TelegramExamNotifier,
+    // Плечо Telegram у уведомления о присланной ссылке (ADR-0084) — отдельный
+    // провайдер, а не метод TelegramExamNotifier: файл-лимит и другое событие,
+    // комментарий в telegram-video-link-notifier.ts.
+    TelegramVideoLinkNotifier,
+    InAppVideoLinkNotifier,
     { provide: EXAM_NOTIFIER, useClass: CompositeExamNotifier },
     // Бот — второй клиент этих же сервисов (ADR-0024, слой 4б.2): кладёт
     // себя в ExamBotPort сама в конструкторе, комментарий там же — почему
     // не обычный экспорт/импорт модуля (цикл с TelegramModule).
     ExamBotService,
+    // Ссылка на видео — кладёт себя в ExamMediaNotifierRegistry сама в
+    // onModuleInit (ADR-0084, комментарий в exam-media-link-notifier.ts).
+    ExamMediaLinkNotifier,
   ],
   exports: [MongooseModule, ExamItemsService, ExamsService, ExamAttemptsService],
 })

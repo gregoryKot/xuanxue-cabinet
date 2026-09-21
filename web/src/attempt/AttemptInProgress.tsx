@@ -16,32 +16,24 @@
 // «Экзамен закончен» решает только сервер (ТЗ 4.4, п.7, блокер аудита
 // 2026-09-15 «Дедлайн решает сервер»): этот компонент вообще не показывает
 // свой терминальный экран — AttemptScreen.tsx уже переключает на
-// AttemptSubmitted по `attempt.status`, пришедшему с сервера. Локальный
-// `timeStatus` из attemptDeadline.ts — только отображение (её же
-// комментарий-шапка): часы телефона, что спешат, раньше запирали ученика
-// в честной попытке навсегда (`timeStatus.expired` не меняется обратно, даже
-// когда сервер отвечает «ещё не время»), а часы, что отстают, оставляли
-// автосохранение писать в уже закрытую попытку без единого слова об этом —
-// вторую половину чинит `onExpired` в useAttemptAutosave.
-import { useEffect, useRef } from 'react';
+// AttemptSubmitted по `attempt.status`, пришедшему с сервера. Живой отсчёт и
+// связанный с ним повторный запрос при локальном «время вышло» — целиком в
+// AttemptDeadlineTimer.tsx (её же комментарий-шапка): часы телефона, что
+// спешат, раньше запирали ученика в честной попытке навсегда, а часы, что
+// отстают, оставляли автосохранение писать в уже закрытую попытку без
+// единого слова об этом — вторую половину чинит `onExpired` в
+// useAttemptAutosave.
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import type { FormError } from '../components/FormServerError';
 import { blockCardStyle } from '../components/listCardStyles';
-import { screenHintStyle, screenTitleStyle } from '../components/screenLayout';
+import { screenTitleStyle } from '../components/screenLayout';
 import { AttemptBlock } from './AttemptBlock';
+import { AttemptDeadlineTimer } from './AttemptDeadlineTimer';
 import { AttemptSubmitBar } from './AttemptSubmitBar';
-import { getAttemptTimeStatus } from './attemptDeadline';
 import { ATTEMPT_EYEBROW, attemptHeaderStyle, attemptPageStyle } from './attemptLayout';
 import { formatSaveStatus } from './attemptSaveStatusLabel';
 import { useAttemptAutosave } from './useAttemptAutosave';
 import type { AttemptVideoControls } from './useAttemptMedia';
-import { useNow } from './useNow';
-
-const NOW_REFRESH_MS = 30_000;
-
-// Приписку держит `gap` шапки — отрицательный отступ screenHintStyle
-// подтянул бы её вплотную к заголовку (тот же приём, что LessonsScreen.tsx).
-const deadlineStyle = { ...screenHintStyle, margin: 0 };
 
 interface AttemptInProgressProps {
   attempt: ExamAttemptDto;
@@ -65,30 +57,28 @@ export function AttemptInProgress({
   // в шапке файла и в самом useAttemptAutosave). Обёртка в `() => void ...`
   // — `onExpired` синхронный, а `reload()` возвращает `Promise<void>`.
   const autosave = useAttemptAutosave(attempt.id, attempt.answers, () => void reload());
-  const now = useNow(NOW_REFRESH_MS);
-  const timeStatus = getAttemptTimeStatus(attempt.deadlineAt, now);
-  const reloadedForExpiry = useRef(false);
-
-  // Локальный отсчёт добежал до нуля раньше, чем об этом узнал сервер —
-  // перечитываем попытку один раз, чтобы увидеть настоящий статус
-  // (ExamAttemptsService.closeIfExpiredAttempt закрывает её на любом
-  // запросе, включая этот GET /attempts). Сам факт локального «времени
-  // вышло» экран не показывает как приговор — только как повод спросить
-  // сервер: часы телефона спешат чаще, чем отстают, и «заперли до звонка
-  // учителю» хуже, чем лишний перезапрос.
-  useEffect(() => {
-    if (!timeStatus.expired || reloadedForExpiry.current) return;
-    reloadedForExpiry.current = true;
-    void reload();
-  }, [timeStatus.expired, reload]);
 
   return (
     <section style={attemptPageStyle}>
       <div style={attemptHeaderStyle}>
         <span className="xuanxue-eyebrow">{ATTEMPT_EYEBROW}</span>
         <h1 style={screenTitleStyle}>{attempt.examTitle}</h1>
-        {timeStatus.label && <p style={deadlineStyle}>{timeStatus.label}</p>}
       </div>
+
+      {/* Отдельный компонент, не строка здесь же: тикает раз в секунду сам
+          по себе, не перерисовывая форму из полусотни вопросов ниже (её же
+          комментарий-шапка). Прямой потомок секции, а не вложен в шапку выше
+          — `position: sticky` внутри AttemptDeadlineTimer.tsx ограничен
+          высотой родителя, и маленькая шапка не даёт отсчёту оставаться
+          видимым дольше первых своих пикселей прокрутки. Формы без лимита
+          времени не монтируют его вовсе — незачем будить React раз в секунду
+          там, где считать нечего. */}
+      {attempt.deadlineAt && (
+        <AttemptDeadlineTimer
+          deadlineAt={attempt.deadlineAt}
+          onExpired={() => void reload()}
+        />
+      )}
 
       <div style={blockCardStyle}>
         {attempt.blocks.map((block) => (
