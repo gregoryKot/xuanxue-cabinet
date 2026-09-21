@@ -6,13 +6,13 @@ import { Test } from '@nestjs/testing';
 import type { MyPaymentDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { MyPaymentsController } from './my-payments.controller';
+import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentsService } from './payments.service';
 
 const STUDENT: UserLean = {
   id: 'u1',
   name: 'Ученик',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 
@@ -22,10 +22,14 @@ const MY_PAYMENTS: MyPaymentDto[] = [
 
 async function buildController(
   service: Partial<PaymentsService> = {},
+  screenshots: Partial<PaymentScreenshotsService> = {},
 ): Promise<MyPaymentsController> {
   const module = await Test.createTestingModule({
     controllers: [MyPaymentsController],
-    providers: [{ provide: PaymentsService, useValue: service }],
+    providers: [
+      { provide: PaymentsService, useValue: service },
+      { provide: PaymentScreenshotsService, useValue: screenshots },
+    ],
   }).compile();
   return module.get(MyPaymentsController);
 }
@@ -37,5 +41,20 @@ describe('MyPaymentsController', () => {
 
     await expect(controller.list(STUDENT)).resolves.toEqual(MY_PAYMENTS);
     expect(listMine).toHaveBeenCalledWith(STUDENT.id);
+  });
+
+  it('uploadScreenshot() берёт владельца из сессии, а тело — сырым из запроса', async () => {
+    const upload = jest.fn().mockResolvedValue(MY_PAYMENTS[0]);
+    const controller = await buildController({}, { upload });
+    const bytes = Buffer.from([0xff, 0xd8, 0xff]);
+
+    await expect(
+      controller.uploadScreenshot('2026-09', { body: bytes }, STUDENT),
+    ).resolves.toEqual(MY_PAYMENTS[0]);
+
+    const [passedBody, passedUserId, passedMonth] = upload.mock.calls[0] as unknown[];
+    expect(passedBody).toBe(bytes);
+    expect(passedUserId).toBe(STUDENT.id);
+    expect(passedMonth).toBe('2026-09');
   });
 });

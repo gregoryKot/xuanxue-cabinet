@@ -86,3 +86,23 @@ describe('ConfirmDialog', () => {
     expect(screen.getByRole('button', { name: 'Удалить' })).toBeDisabled();
   });
 });
+
+// Переезд на «Тёплую школу» (ADR-0043): диалог поверх затемнения — белая
+// карточка с мягкой тенью и радиусом блока. jsdom не вычисляет `var(--…)` —
+// сравниваем ровно строку инлайн-стиля, не вычисленный цвет; у cssstyle
+// сокращённое `style.borderBottom` для снятой границы отдаёт 'medium',
+// поэтому спрашиваем borderBottomStyle.
+describe('ConfirmDialog — облик (ADR-0043)', () => {
+  it('карточка диалога — var(--card) с радиусом блока, без границы', () => {
+    renderDialog();
+
+    const cards = Array.from(
+      screen.getByRole('dialog').querySelectorAll<HTMLElement>('div'),
+    ).filter((el) => el.style.background === 'var(--card)');
+    expect(cards).toHaveLength(1);
+    const [card] = cards;
+    expect(card?.style.borderRadius).toBe('var(--radius-block)');
+    expect(card?.style.boxShadow).toBe('var(--shadow-card)');
+    expect(card?.style.borderBottomStyle).toBe('');
+  });
+});

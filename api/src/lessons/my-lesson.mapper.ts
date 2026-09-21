@@ -27,6 +27,10 @@ export interface MyLessonInput {
   status: LessonStatus;
   zoomLinkOverride?: string;
   zoomPasswordOverride?: string;
+  /** Честно необязателен — у дат занятий до ADR-0075 поля в документе нет,
+   * `.lean()` default не подставляет; toMyLessonDto отдаёт `[]` (тот же
+   * приём, что у LeanLesson, lesson.mapper.ts). */
+  tags?: string[];
 }
 
 export function toMyLessonDto(
@@ -50,5 +54,7 @@ export function toMyLessonDto(
       : cls.zoomPassword,
     topic: lesson.topic,
     status: lesson.status,
+    // Тег видит и ученик (ADR-0075) — рубрика школы, не секрет.
+    tags: lesson.tags ?? [],
   };
 }

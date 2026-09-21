@@ -40,16 +40,25 @@ export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
 export { type PluralForms, pluralRu } from './plural-ru';
+export type { TagSummaryDto, ListTagsQuery } from './tags';
 export { TAG_LIMITS, normalizeTags, parseTagsText } from './tags';
 export type {
   UserRole,
   UserStatus,
-  MeDto,
   TelegramLoginInput,
   RequestEmailLoginInput,
   VerifyEmailLoginInput,
   AuthConfigDto,
 } from './auth';
+export type { MeDto, SetNoTelegramInput } from './me';
+export type { LinkEmailInput, ConfirmEmailInput } from './email-link';
+export {
+  EMAIL_CONFIRM_TOKEN_RE,
+  EMAIL_LINK_TAKEN_MESSAGE,
+  EMAIL_LINK_OTHER_EMAIL_MESSAGE,
+  EMAIL_CONFIRM_RESEND_TOO_SOON_MESSAGE,
+  EMAIL_CONFIRM_EXPIRED_MESSAGE,
+} from './email-link';
 export {
   USER_ROLES,
   ROLE_LABELS,
@@ -69,6 +78,13 @@ export {
   splitPersonName,
 } from './person-name';
 export { CSRF_HEADER, isMutatingMethod } from './csrf';
+export type { ClientErrorKind, ReportClientErrorInput } from './client-errors';
+export {
+  CLIENT_ERROR_KINDS,
+  CLIENT_ERROR_LIMITS,
+  CLIENT_ERROR_PATH_RE,
+  clampClientErrorText,
+} from './client-errors';
 export type {
   ClassDto,
   CreateClassInput,
@@ -169,6 +185,16 @@ export {
   EXAM_IMAGE_TOO_LARGE_MESSAGE,
   EXAM_IMAGE_NOT_FOUND_MESSAGE,
 } from './exam-images';
+export { FILE_STORAGE_OFF_MESSAGE, FILE_STORAGE_FAILED_MESSAGE } from './file-store';
+export type { MaterialFileContentType, MaterialFileDto } from './material-files';
+export {
+  MATERIAL_FILE_CONTENT_TYPES,
+  MATERIAL_FILE_LIMITS,
+  MATERIAL_FILE_EMPTY_MESSAGE,
+  MATERIAL_FILE_UNSUPPORTED_MESSAGE,
+  MATERIAL_FILE_TOO_LARGE_MESSAGE,
+  MATERIAL_FILE_NOT_FOUND_MESSAGE,
+} from './material-files';
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamDto, ListMyExamsQuery } from './my-exams';
 export type {
@@ -287,6 +313,8 @@ export {
   isNotificationKind,
   rolesWithNotification,
 } from './notifications';
+export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';
+export { INBOX_ITEM_NOT_FOUND_MESSAGE } from './inbox';
 export type {
   GradingCommentPresetDto,
   CreateGradingCommentPresetInput,
@@ -311,8 +339,10 @@ export {
   MATERIAL_KINDS,
   MATERIAL_KIND_LABELS,
   MATERIAL_ACCESS_LEVELS,
+  MATERIAL_ACCESS_LABELS,
   MATERIAL_LIMITS,
   MATERIAL_MAX_CLASS_IDS,
+  MATERIAL_MAX_LESSON_IDS,
   MATERIAL_NOT_FOUND_MESSAGE,
   MATERIALS_LIMIT_DEFAULT,
   MY_MATERIALS_LIMIT_DEFAULT,
@@ -330,6 +360,9 @@ export {
   PAYMENT_STATUSES,
   MONTH_KEY_RE,
   isMonthKey,
+  PAYMENT_TELEGRAM_START_PREFIX,
+  formatMonthRu,
+  shiftMonth,
   PAYMENT_LIMITS,
   PAYMENT_MONTH_INVALID_MESSAGE,
   PAYMENT_STUDENT_NOT_FOUND_MESSAGE,

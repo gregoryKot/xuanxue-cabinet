@@ -2,6 +2,7 @@
 // grading-presets.controller.spec.ts: без HTTP, без Mongo. Роли, CSRF, 404 и
 // то, что ученик не видит служебных полей, проверяет e2e
 // (api/test/materials.e2e-spec.ts).
+import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
 import type { MaterialDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
@@ -14,6 +15,7 @@ const MATERIAL_DTO: MaterialDto = {
   url: 'https://example.com/book',
   kind: 'book',
   classIds: [],
+  lessonIds: [],
   access: 'all',
   tags: [],
   createdBy: 't1',
@@ -25,7 +27,6 @@ const TEACHER: UserLean = {
   id: 't1',
   name: 'Учитель',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 
@@ -74,11 +75,14 @@ describe('MaterialsController', () => {
     expect(update).toHaveBeenCalledWith('m1', body);
   });
 
-  it('remove() передаёт id в сервис', async () => {
+  // `now` контроллер берёт из часов (DateTime.utc()) — сервису он нужен,
+  // чтобы подписать удаление объекта в хранилище (ADR-0057). Проверяем id и
+  // то, что вторым аргументом приехал момент времени, а не что именно этот.
+  it('remove() передаёт id и момент времени в сервис', async () => {
     const remove = jest.fn().mockResolvedValue(undefined);
     const controller = await buildController({ remove });
 
     await controller.remove('m1');
-    expect(remove).toHaveBeenCalledWith('m1');
+    expect(remove).toHaveBeenCalledWith('m1', expect.any(DateTime));
   });
 });

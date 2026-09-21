@@ -62,3 +62,20 @@ export const RAILWAY_GIT_COMMIT_SHA_MESSAGE =
   'RAILWAY_GIT_COMMIT_SHA должен быть SHA коммита (7-40 hex-символов)';
 export const MAIL_FROM_MESSAGE =
   'MAIL_FROM должен быть адресом (name@domain) или видом «Имя <адрес@домен>»';
+
+// Четыре переменные Cloudflare R2 (ADR-0057). Значения попадают в адрес
+// запроса: R2_ACCOUNT_ID — в имя хоста, R2_BUCKET — в путь. Поэтому регэкспы
+// здесь не косметика, а запрет на «/», «@» и прочее, чем подменяют адрес.
+export const R2_ACCOUNT_ID_RE = /^[A-Za-z0-9]{16,64}$/;
+export const R2_ACCESS_KEY_ID_RE = /^[A-Za-z0-9]{16,128}$/;
+// Имя бакета по правилам S3: строчные буквы, цифры, точка и дефис.
+export const R2_BUCKET_RE = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
+
+export const R2_ACCOUNT_ID_MESSAGE =
+  'R2_ACCOUNT_ID должен быть идентификатором аккаунта Cloudflare (16-64 буквы и цифры)';
+export const R2_ACCESS_KEY_ID_MESSAGE =
+  'R2_ACCESS_KEY_ID должен быть 16-128 символами из латиницы и цифр';
+export const R2_SECRET_ACCESS_KEY_MESSAGE =
+  'R2_SECRET_ACCESS_KEY должен быть не короче 32 символов';
+export const R2_BUCKET_MESSAGE =
+  'R2_BUCKET должен быть именем бакета: строчные латиница, цифры, точка и дефис';

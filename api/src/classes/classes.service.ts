@@ -14,6 +14,7 @@ import type {
 import {
   CLASS_NOT_FOUND_MESSAGE,
   LIST_LIMIT_DEFAULT,
+  normalizeTags,
   NULLABLE_CLASS_FIELDS,
 } from '@xuanxue/shared';
 import { ChannelRecord } from '../channels/channel.schema';
@@ -22,6 +23,8 @@ import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { LessonRecord } from '../lessons/lesson.schema';
+import { MaterialRecord } from '../materials/material.schema';
+import { detachMaterialReference } from '../materials/materials.queries';
 import { assertLeaderIdIfProvided } from '../users/assert-teacher';
 import { UserRecord } from '../users/user.schema';
 import { CLASS_ENCRYPT_SCHEMA, ClassRecord } from './class.schema';
@@ -39,10 +42,17 @@ export class ClassesService {
     @InjectModel(LessonRecord.name) private readonly lessonModel: Model<LessonRecord>,
     @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
+    @InjectModel(MaterialRecord.name)
+    private readonly materialModel: Model<MaterialRecord>,
   ) {}
 
   async list(query: ListClassesQuery): Promise<ClassDto[]> {
-    const filter = query.active === undefined ? {} : { active: query.active };
+    const filter: Record<string, unknown> =
+      query.active === undefined ? {} : { active: query.active };
+    // Истинностная проверка, не `!== undefined` (тот же приём, что у
+    // buildLessonsFilter/buildMaterialsFilter, ADR-0072): пустая строка в
+    // query — «фильтр не задан», а не «тег — пустая строка».
+    if (query.tag) filter.tags = query.tag;
     const docs = await this.model
       .find(filter)
       // Без collation Mongo сортирует по кодам символов — «Яблоко» ушло бы
@@ -78,6 +88,10 @@ export class ClassesService {
     if (payload.channelIds === undefined) {
       payload.channelIds = await this.defaultTelegramChannelIds();
     }
+    // Нормализация здесь, не в DTO: тег — фильтр (ADR-0072), опечатка и дубль
+    // в базе разъехались бы с фильтром `tag` при чтении (тот же приём, что у
+    // LessonsService.create/lessons.create.ts).
+    payload.tags = normalizeTags(input.tags ?? []);
     // CreateClassDto (implements CreateClassInput) уже проверен ValidationPipe —
     // форма payload совпадает с ClassRecord, spread просто не виден TS.
     const created = await this.model.create(encryptRecord(payload, CLASS_ENCRYPT_SCHEMA));
@@ -98,7 +112,12 @@ export class ClassesService {
   async update(id: string, input: UpdateClassInput): Promise<ClassDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     await assertLeaderIdIfProvided(this.userModel, input.leaderId);
-    const { rules, ...rest } = input;
+    // `tags` нормализуется, только если его прислали — иначе PATCH без
+    // тегов случайно записал бы пустой нормализованный массив вместо
+    // «поле не трогать» (тот же приём, что у MaterialsService.update).
+    const normalized =
+      input.tags === undefined ? input : { ...input, tags: normalizeTags(input.tags) };
+    const { rules, ...rest } = normalized;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_CLASS_FIELDS);
     if (rules !== undefined) $set.rules = mapRules(rules);
 
@@ -112,11 +131,16 @@ export class ClassesService {
     return toClassDto(decryptRecord(doc, CLASS_ENCRYPT_SCHEMA));
   }
 
+  // Отвязка от materials.classIds — дыра, которая была до ADR-0056: класс
+  // без дат занятий удалялся, а материалы школы продолжали ссылаться на
+  // пропавший id (ADR-0047 «Последствия»). Тот же приём, что у
+  // LessonsService.remove: после удаления, не до.
   async remove(id: string): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const hasLessons = await this.lessonModel.exists({ classId: id });
     if (hasLessons) throw new ConflictError(HAS_LESSONS_MESSAGE);
     const { deletedCount } = await this.model.deleteOne({ _id: id });
     if (deletedCount === 0) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    await detachMaterialReference(this.materialModel, 'classIds', id);
   }
 }

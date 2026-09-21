@@ -2,15 +2,23 @@
 // `ruleId` тут нет: их ставит только планировщик (identity слота из правила),
 // у разового занятия их нет вовсе (docs/PLAN.md §6 «Планировщик»).
 import {
+  ArrayMaxSize,
+  IsArray,
   IsInt,
   IsISO8601,
   IsMongoId,
+  IsOptional,
   IsString,
   Max,
   MaxLength,
   Min,
 } from 'class-validator';
-import { CLASS_LIMITS, LESSON_LIMITS, type CreateLessonInput } from '@xuanxue/shared';
+import {
+  CLASS_LIMITS,
+  LESSON_LIMITS,
+  TAG_LIMITS,
+  type CreateLessonInput,
+} from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
 export class CreateLessonDto implements CreateLessonInput {
@@ -31,4 +39,13 @@ export class CreateLessonDto implements CreateLessonInput {
   @IsString()
   @MaxLength(LESSON_LIMITS.topic)
   topic?: string;
+
+  // Рубрикация свободным текстом (ADR-0075) — нормализация (обрезка, дедуп
+  // без учёта регистра) при записи, LessonsService/lessons.create.ts.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(TAG_LIMITS.perRecord)
+  @IsString({ each: true })
+  @MaxLength(TAG_LIMITS.length, { each: true })
+  tags?: string[];
 }

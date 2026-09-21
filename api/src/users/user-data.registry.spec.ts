@@ -5,6 +5,7 @@ import { MODEL_DEFINITIONS } from '../common/model.registry';
 import { UserRecord } from './user.schema';
 import {
   USER_MODEL_NAME,
+  USER_OWNED_CASCADES,
   USER_OWNED_COLLECTIONS,
   USER_REFERENCE_PATHS,
 } from './user-data.registry';
@@ -24,6 +25,36 @@ describe('USER_OWNED_COLLECTIONS', () => {
     expect(withUserId.sort()).toEqual([...USER_OWNED_COLLECTIONS].sort());
     for (const name of USER_OWNED_COLLECTIONS) {
       expect(MODEL_DEFINITIONS.some((def) => def.name === name)).toBe(true);
+    }
+  });
+});
+
+describe('USER_OWNED_CASCADES', () => {
+  it('модели from/model из каждой записи существуют в MODEL_DEFINITIONS', () => {
+    for (const { from, model } of USER_OWNED_CASCADES) {
+      expect(MODEL_DEFINITIONS.some((def) => def.name === from)).toBe(true);
+      expect(MODEL_DEFINITIONS.some((def) => def.name === model)).toBe(true);
+    }
+  });
+
+  it('from обязан быть во владении (USER_OWNED_COLLECTIONS) — иначе каскад никогда не найдёт ids по userId', () => {
+    for (const { from } of USER_OWNED_CASCADES) {
+      expect((USER_OWNED_COLLECTIONS as readonly string[]).includes(from)).toBe(true);
+    }
+  });
+
+  it('model НЕ во владении и в её схеме нет userId — иначе каскад лишний, цель и так уносится USER_OWNED_COLLECTIONS', () => {
+    for (const { model } of USER_OWNED_CASCADES) {
+      expect((USER_OWNED_COLLECTIONS as readonly string[]).includes(model)).toBe(false);
+      const def = MODEL_DEFINITIONS.find((d) => d.name === model);
+      expect(Object.keys(def?.schema.paths ?? {})).not.toContain('userId');
+    }
+  });
+
+  it('path существует в схеме модели from — иначе каскад читает несуществующее поле', () => {
+    for (const { from, path } of USER_OWNED_CASCADES) {
+      const def = MODEL_DEFINITIONS.find((d) => d.name === from);
+      expect(Object.keys(def?.schema.paths ?? {})).toContain(path);
     }
   });
 });

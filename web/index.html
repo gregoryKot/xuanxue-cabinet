@@ -6,10 +6,11 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <!-- Красит статус-бар мобильного браузера и совпадает с шапкой кабинета —
-         бумага палитры «тихо и благородно» (docs/adr/0031), тот же тон, что
-         theme_color манифеста (web/public/manifest.webmanifest). -->
-    <meta name="theme-color" content="#faf8f4" />
+    <!-- Красит статус-бар мобильного браузера и совпадает с фоном кабинета —
+         бумага направления «Тёплая школа» (токен --paper в web/src/index.css,
+         docs/adr/0043), тот же тон, что theme_color манифеста
+         (web/public/manifest.webmanifest). Сверяет scripts/check-pwa.mjs. -->
+    <meta name="theme-color" content="#f4f1ea" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
     <meta name="apple-mobile-web-app-title" content="Сюань-Сюэ" />

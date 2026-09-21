@@ -1,22 +1,37 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): фильтр «назад от now», отменённые прошедшие занятия видны со
 // своим статусом, лимит по умолчанию и явный, класс не найден — дата
-// пропущена (ТЗ docs/PLAN.md §14, «3.3. Архив занятий у ученика»).
+// пропущена (ТЗ docs/PLAN.md §14, «3.3. Архив занятий у ученика»). Материалы
+// даты (слой 3.9, ADR-0056) — через настоящий LessonMaterialsService, не мок:
+// join и правило доступа проверяет его собственный спек
+// (lesson-materials.service.spec.ts), здесь — что архив зовёт его с id
+// именно своего списка дат.
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
+import { LessonMaterialsService } from '../materials/lesson-materials.service';
+import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
+import { fakeStorageOrphans } from '../test-support/fake-storage-orphans';
+import { MaterialsService } from '../materials/materials.service';
+import { SettingsRecord, SettingsSchema } from '../settings/settings.schema';
+import { SettingsService } from '../settings/settings.service';
+import { UserRecord, UserSchema } from '../users/user.schema';
+import { UsersService } from '../users/users.service';
 import { LessonRecord, LessonSchema } from './lesson.schema';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 const NOW = DateTime.fromISO('2026-09-15T12:00:00Z', { zone: 'utc' });
+const AUTHOR_ID = new Types.ObjectId().toString();
 
 describe('MyLessonsArchiveService', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
+  let materialModel: Model<MaterialRecord>;
+  let materialsService: MaterialsService;
   let service: MyLessonsArchiveService;
 
   beforeAll(async () => {
@@ -24,7 +39,34 @@ describe('MyLessonsArchiveService', () => {
     connection = memory.connection;
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
-    service = new MyLessonsArchiveService(lessonModel, classModel);
+    materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
+    const settingsModel = connection.model<SettingsRecord>(
+      SettingsRecord.name,
+      SettingsSchema,
+    );
+    const userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
+    const settingsService = new SettingsService(
+      settingsModel,
+      lessonModel,
+      classModel,
+      new UsersService(userModel),
+    );
+    materialsService = new MaterialsService(
+      materialModel,
+      classModel,
+      settingsService,
+      fakeStorageOrphans().service,
+    );
+    const lessonMaterialsService = new LessonMaterialsService(
+      materialModel,
+      classModel,
+      settingsService,
+    );
+    service = new MyLessonsArchiveService(
+      lessonModel,
+      classModel,
+      lessonMaterialsService,
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -34,6 +76,7 @@ describe('MyLessonsArchiveService', () => {
   afterEach(async () => {
     await lessonModel.deleteMany({});
     await classModel.deleteMany({});
+    await materialModel.deleteMany({});
   });
 
   async function createClass(overrides: Partial<ClassRecord> = {}): Promise<string> {
@@ -67,7 +110,7 @@ describe('MyLessonsArchiveService', () => {
     });
     await createLesson(classId, { startsAt: NOW.plus({ hours: 1 }).toJSDate() });
 
-    const list = await service.list({}, NOW);
+    const list = await service.list({}, NOW, false);
 
     expect(list.map((l) => l.id)).toEqual([pastId]);
   });
@@ -81,7 +124,7 @@ describe('MyLessonsArchiveService', () => {
       startsAt: NOW.minus({ hours: 1 }).toJSDate(),
     });
 
-    const list = await service.list({}, NOW);
+    const list = await service.list({}, NOW, false);
 
     expect(list.map((l) => l.id)).toEqual([laterId, earlierId]);
   });
@@ -90,7 +133,7 @@ describe('MyLessonsArchiveService', () => {
     const classId = await createClass();
     const cancelledId = await createLesson(classId, { status: 'cancelled' });
 
-    const list = await service.list({}, NOW);
+    const list = await service.list({}, NOW, false);
 
     expect(list).toHaveLength(1);
     expect(list[0]?.id).toBe(cancelledId);
@@ -103,7 +146,7 @@ describe('MyLessonsArchiveService', () => {
       await createLesson(classId, { startsAt: NOW.minus({ hours: i + 1 }).toJSDate() });
     }
 
-    const list = await service.list({}, NOW);
+    const list = await service.list({}, NOW, false);
 
     expect(list).toHaveLength(20);
   });
@@ -114,7 +157,7 @@ describe('MyLessonsArchiveService', () => {
       await createLesson(classId, { startsAt: NOW.minus({ hours: i + 1 }).toJSDate() });
     }
 
-    const list = await service.list({ limit: 2 }, NOW);
+    const list = await service.list({ limit: 2 }, NOW, false);
 
     expect(list).toHaveLength(2);
   });
@@ -127,7 +170,7 @@ describe('MyLessonsArchiveService', () => {
       topic: 'Сирота',
     });
 
-    const list = await service.list({}, NOW);
+    const list = await service.list({}, NOW, false);
 
     expect(list).toEqual([]);
   });
@@ -136,7 +179,7 @@ describe('MyLessonsArchiveService', () => {
     const classId = await createClass({ title: 'Ушу', groupLabel: 'вечерняя' });
     await createLesson(classId);
 
-    const list = await service.list({}, NOW);
+    const list = await service.list({}, NOW, false);
 
     expect(list[0]?.classTitle).toBe('Ушу');
     expect(list[0]?.groupLabel).toBe('вечерняя');
@@ -151,7 +194,7 @@ describe('MyLessonsArchiveService', () => {
       ],
     });
 
-    const list = await service.list({}, NOW);
+    const list = await service.list({}, NOW, false);
 
     expect(list[0]?.recordings).toEqual([
       { title: 'Занятие целиком', url: 'https://cloud.example/rec-1' },
@@ -184,9 +227,42 @@ describe('MyLessonsArchiveService', () => {
       startsAt: now.plus({ minutes: 1 }).toUTC().toJSDate(),
     });
 
-    const list = await service.list({}, now.toUTC());
+    const list = await service.list({}, now.toUTC(), false);
 
     expect(list.map((l) => l.id)).toEqual([pastId]);
     expect(list.map((l) => l.id)).not.toContain(futureId);
+  });
+
+  // Слой 3.9 (ADR-0056, «Ученик видит привязку там, где ищет») — материалы
+  // своей даты едут вместе с занятием в архиве.
+  it('материал своей даты приехал в архив, материал соседней даты в неё не попал', async () => {
+    const classId = await createClass();
+    const ownLessonId = await createLesson(classId);
+    const otherLessonId = await createLesson(classId);
+    await materialsService.create(
+      {
+        title: 'Материал своей даты',
+        url: 'https://example.com/own',
+        kind: 'document',
+        lessonIds: [ownLessonId],
+      },
+      AUTHOR_ID,
+    );
+    await materialsService.create(
+      {
+        title: 'Материал соседней даты',
+        url: 'https://example.com/other',
+        kind: 'document',
+        lessonIds: [otherLessonId],
+      },
+      AUTHOR_ID,
+    );
+
+    const list = await service.list({}, NOW, false);
+
+    const own = list.find((l) => l.id === ownLessonId);
+    const other = list.find((l) => l.id === otherLessonId);
+    expect(own?.materials.map((m) => m.title)).toEqual(['Материал своей даты']);
+    expect(other?.materials.map((m) => m.title)).toEqual(['Материал соседней даты']);
   });
 });

@@ -9,6 +9,7 @@
 // вопроса — общий QuestionRow.tsx (CLAUDE.md «Одна механика — один
 // компонент»): номер и текст вопроса не должны собираться дважды по-разному.
 import type { ExamAttemptDto } from '@xuanxue/shared';
+import { blockCardStyle } from '../components/listCardStyles';
 import { QuestionRow } from '../components/QuestionRow';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { AttemptQuestionVideo } from './AttemptQuestionVideo';
@@ -43,19 +44,23 @@ export function AttemptSubmittedVideos({ attempt, video }: AttemptSubmittedVideo
   return (
     <section style={attemptVideoSectionStyle}>
       <h2 style={attemptVideoHeadingStyle}>Видео</h2>
-      <ol style={listStyle}>
-        {videoQuestions.map(({ question, index }) => (
-          <QuestionRow
-            key={question.itemId}
-            index={index}
-            promptId={`attempt-prompt-${question.itemId}`}
-            prompt={question.prompt}
-            hint={question.hint}
-          >
-            <AttemptQuestionVideo itemId={question.itemId} video={video} />
-          </QuestionRow>
-        ))}
-      </ol>
+      {videoQuestions.length > 0 && (
+        <div style={blockCardStyle}>
+          <ol style={listStyle}>
+            {videoQuestions.map(({ question, index }) => (
+              <QuestionRow
+                key={question.itemId}
+                index={index}
+                promptId={`attempt-prompt-${question.itemId}`}
+                prompt={question.prompt}
+                hint={question.hint}
+              >
+                <AttemptQuestionVideo itemId={question.itemId} video={video} />
+              </QuestionRow>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {orphanMedia.length > 0 && (
         <>

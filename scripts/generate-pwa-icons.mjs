@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Растровые PWA-иконки из web/public/icons/icon.svg (ADR-0006, CLAUDE.md
+// Растровые PWA-иконки из web/public/icons/icon.svg (ADR-0032, CLAUDE.md
 // «Приложение на телефоне»). Скрипт идемпотентный: результат зависит только
 // от icon.svg, перегенерировать после его правки —
 //   node scripts/generate-pwa-icons.mjs
 //
-// icon.svg — печать школы киноварью на бумаге (тот же знак, что
-// SchoolMark.tsx), без <text> (в CI-рендере sharp нет CJK-шрифтов, символ —
-// только rect). Отсюда четыре файла:
+// icon.svg — печать школы терракотой на бумаге (тот же знак, что
+// SchoolMark.tsx; направление «Тёплая школа», docs/adr/0043), без <text>
+// (в CI-рендере sharp нет CJK-шрифтов, символ — только rect). Отсюда четыре
+// файла:
 //   icon-192.png, icon-512.png    — обычная иконка (manifest purpose "any"),
 //                                    фон вне круга прозрачный.
 //   icon-maskable-512.png         — Android adaptive icons: сплошной фон на
@@ -16,17 +17,27 @@
 //   apple-touch-icon-180.png      — iOS игнорирует альфа-канал (красит
 //                                    прозрачное чёрным), поэтому фон сплошной.
 import sharp from 'sharp';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const ROOT = join(import.meta.dirname, '..');
 const SVG_PATH = join(ROOT, 'web', 'public', 'icons', 'icon.svg');
 const OUT_DIR = join(ROOT, 'web', 'public', 'icons');
 
-// Тот же тон, что фон icon.svg и theme_color/background_color манифеста
-// (web/public/manifest.webmanifest) — «бумага» палитры «тихо и благородно»
-// (docs/adr/0031). Совпадает с фоном самого SVG, поэтому обрезка маской или
-// флатенинг не оставляют шов другого цвета.
-const SOLID_BG = '#faf8f4';
+/** Заливка фонового прямоугольника — первый fill в файле. */
+function readBackgroundColor(svg) {
+  const match = /fill="(#[0-9a-fA-F]{3,8})"/.exec(svg);
+  if (!match) throw new Error('в icon.svg не нашёлся fill фонового прямоугольника');
+  return match[1];
+}
+
+// Фон сплошных вариантов — из самого icon.svg (первый rect), не отдельной
+// константой: второй источник правды о цвете уже разъезжался — кабинет
+// переехал на «Тёплую школу» (docs/adr/0043), а оболочка осталась в палитре
+// ADR-0031. Совпадение с фоном SVG обязательно и само по себе: иначе обрезка
+// маской или флатенинг оставляют шов другого цвета. Что фон SVG равен токену
+// --paper из web/src/index.css, следит scripts/check-pwa.mjs.
+const SOLID_BG = readBackgroundColor(readFileSync(SVG_PATH, 'utf8'));
 // Доля площади квадрата, которую занимает символ в maskable-варианте.
 const MASKABLE_SAFE_ZONE = 0.8;
 

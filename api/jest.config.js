@@ -8,6 +8,10 @@ module.exports = {
   // метаданные через reflect-metadata — в проде её грузит main.ts, в тестах
   // точки входа нет, поэтому полифилл ставится здесь один раз для всех спеков.
   setupFiles: ['reflect-metadata', '<rootDir>/test/jest.setup.ts'],
+  // Скачивание бинаря mongod — до воркеров, один раз на прогон: иначе на
+  // холодном кеше они дерутся за файл-замок и часть падает в beforeAll.
+  // Причина целиком — в шапке самого файла.
+  globalSetup: '<rootDir>/test/jest.global-setup.ts',
   // Три настройки ниже держат прогон на машине с 8 ядрами и 8 ГБ. По дефолтам
   // jest берёт воркера на ядро минус одно, каждый воркер поднимает свой mongod
   // и держит в памяти кеш ts-jest; на 236 наборах память кончалась, машина
@@ -48,6 +52,10 @@ module.exports = {
     // логика вынесена в seed.service.ts/seed-file.ts и покрыта юнит-тестами;
     // ручная проверка CLI — PLAN.md §9, RUNBOOK §2.2.
     '!src/seed/seed-classes.ts',
+    // Третья точка входа (CLI импорта экзамена) — та же проводка без
+    // ветвлений, логика в seed-exam.service.ts/seed-exam-file.ts и покрыта
+    // юнит-тестами; ручная проверка CLI — RUNBOOK §2.3.
+    '!src/seed/seed-exam.ts',
     '!src/app.setup.ts',
     '!src/**/*.module.ts',
   ],

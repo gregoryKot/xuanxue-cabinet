@@ -111,13 +111,6 @@ export class PersonalChats {
     return !!channel;
   }
 
-  /** То же по userId — для мест, где человек ещё не прочитан
-   * (MailExamNotifier, ADR-0039): письмо-резерв уходит только тем, у кого
-   * чата с ботом нет вовсе, а не тем, кто выключил один вид уведомления. */
-  async hasActiveChat(userId: string): Promise<boolean> {
-    return this.hasActiveChatFor(await this.usersService.findById(userId));
-  }
-
   /** Общий первый шаг list()/listFor() — контакт с переданной ролью
    * (UsersService.listContactsWithRoles) и активным каналом. */
   private async activeContacts(roles: readonly UserRole[]): Promise<ActiveContact[]> {

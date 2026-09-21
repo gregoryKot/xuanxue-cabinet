@@ -9,7 +9,10 @@
 //
 // Фильтр по тегу — локальный (ADR-0058): один запрос `/me/materials`, весь
 // список — одна страница, второй запрос ради фильтра не нужен (в отличие от
-// «Библиотеки» учителя, materials/MaterialsScreen.tsx, где фильтр серверный).
+// «Материалов» учителя, materials/MaterialsScreen.tsx, где фильтр серверный).
+//
+// Пилюля тега в строке материала (ADR-0068) ставит тот же `tag`, что и
+// пилюли фильтра выше, — состояние одно, второго источника правды нет.
 import { useMemo, useState } from 'react';
 import { ListScreenBody } from '../components/ListScreenBody';
 import { oneCardListStyle } from '../components/listCardStyles';
@@ -56,6 +59,8 @@ export default function LibraryScreen() {
           <StudentMaterialCard
             key={material.id}
             material={material}
+            selectedTag={tag}
+            onSelectTag={setTag}
             isLast={index === all.length - 1}
           />
         )}

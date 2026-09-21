@@ -10,6 +10,8 @@ import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { ExamGradingRecord } from '../exams/exam-grading.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { NotificationPrefsRecord } from '../notifications/notification-prefs.schema';
+import { PaymentRecord } from '../payments/payment.schema';
+import { PaymentScreenshotRecord } from '../payments/payment-screenshot.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserDeletionService } from './user-deletion.service';
@@ -40,6 +42,8 @@ describe('UserDeletionService', () => {
   let attemptModel: Model<ExamAttemptRecord>;
   let gradingModel: Model<ExamGradingRecord>;
   let notificationPrefsModel: Model<NotificationPrefsRecord>;
+  let paymentModel: Model<PaymentRecord>;
+  let screenshotModel: Model<PaymentScreenshotRecord>;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -53,6 +57,10 @@ describe('UserDeletionService', () => {
     gradingModel = memory.connection.model<ExamGradingRecord>(ExamGradingRecord.name);
     notificationPrefsModel = memory.connection.model<NotificationPrefsRecord>(
       NotificationPrefsRecord.name,
+    );
+    paymentModel = memory.connection.model<PaymentRecord>(PaymentRecord.name);
+    screenshotModel = memory.connection.model<PaymentScreenshotRecord>(
+      PaymentScreenshotRecord.name,
     );
   }, 60_000);
 
@@ -71,6 +79,8 @@ describe('UserDeletionService', () => {
       attemptModel.deleteMany({}),
       gradingModel.deleteMany({}),
       notificationPrefsModel.deleteMany({}),
+      paymentModel.deleteMany({}),
+      screenshotModel.deleteMany({}),
     ]);
   });
 
@@ -239,8 +249,8 @@ describe('UserDeletionService', () => {
       status: 'active',
     });
     await notificationPrefsModel.create([
-      { userId: student.id, overrides: [{ kind: 'lesson_soon', enabled: false }] },
-      { userId: other.id, overrides: [{ kind: 'lesson_soon', enabled: false }] },
+      { userId: student.id, overrides: [{ kind: 'post_draft', enabled: false }] },
+      { userId: other.id, overrides: [{ kind: 'post_draft', enabled: false }] },
     ]);
 
     await deletion.deleteAllUserData(student.id, 'кто-то-другой');
@@ -295,6 +305,56 @@ describe('UserDeletionService', () => {
 
     expect(await gradingModel.countDocuments({ userId: student.id })).toBe(0);
     expect(await gradingModel.countDocuments({ userId: other.id })).toBe(1);
+  });
+
+  // Каскад без userId у цели (USER_OWNED_CASCADES, ADR-0050): чей снимок,
+  // знает не сама коллекция payment_screenshots, а оплата
+  // (payments.screenshotImageId) — удаление обязано дойти до байт по этой
+  // ссылке ДО того, как deleteMany по payments сотрёт саму ссылку.
+  it('уносит снимок оплаты ученика по каскаду (payments.screenshotImageId → payment_screenshots) и не трогает чужой', async () => {
+    const student = await users.createFromTelegram({
+      telegramId: 5018,
+      name: 'Ученик со снимком',
+      roles: [],
+      status: 'active',
+    });
+    const other = await users.createFromTelegram({
+      telegramId: 5019,
+      name: 'Другой ученик со снимком',
+      roles: [],
+      status: 'active',
+    });
+    const screenshot = await screenshotModel.create({
+      bytes: Buffer.from('снимок ученика'),
+      contentType: 'image/jpeg',
+      sizeBytes: 15,
+    });
+    const otherScreenshot = await screenshotModel.create({
+      bytes: Buffer.from('снимок другого ученика'),
+      contentType: 'image/jpeg',
+      sizeBytes: 23,
+    });
+    await paymentModel.create({
+      userId: new Types.ObjectId(student.id),
+      month: '2026-09',
+      status: 'unpaid',
+      screenshotKind: 'upload',
+      screenshotImageId: screenshot._id,
+    });
+    await paymentModel.create({
+      userId: new Types.ObjectId(other.id),
+      month: '2026-09',
+      status: 'unpaid',
+      screenshotKind: 'upload',
+      screenshotImageId: otherScreenshot._id,
+    });
+
+    await deletion.deleteAllUserData(student.id, 'кто-то-другой');
+
+    expect(await screenshotModel.findById(screenshot._id)).toBeNull();
+    expect(await paymentModel.countDocuments({ userId: student.id })).toBe(0);
+    expect(await screenshotModel.findById(otherScreenshot._id)).not.toBeNull();
+    expect(await paymentModel.countDocuments({ userId: other.id })).toBe(1);
   });
 
   it('обнуляет leaderId в классе и занятии — $unset, документы остаются', async () => {

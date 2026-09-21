@@ -25,20 +25,22 @@ const TEACHER: MeDto = {
   id: 'u1',
   name: 'Дима',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
+  hasEmail: true,
   needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
   name: 'Маша',
   roles: ['admin'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  noTelegram: false,
+  hasEmail: true,
   needsProfile: false,
 };
 
@@ -268,10 +270,11 @@ describe('App', () => {
       id: 's1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/exams': [] });
@@ -297,10 +300,11 @@ describe('App', () => {
       id: 's1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/exams': [] });
@@ -315,10 +319,11 @@ describe('App', () => {
       id: 's1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/exams': [] });
@@ -336,10 +341,11 @@ describe('App', () => {
       id: 's1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/lessons': [] });
@@ -374,17 +380,18 @@ describe('App', () => {
       id: 's1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, { '/me/notifications': { enabled: [] } });
 
     renderAt('/profile');
 
-    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
+    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
   });
 
   // Экран сдачи (ТЗ student-exams.md) — доступен любой роли, вход не за
@@ -394,10 +401,11 @@ describe('App', () => {
       id: 's1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockRoute(student, {

@@ -47,10 +47,11 @@ function meWithNeedsProfile(needsProfile: boolean): MeDto {
     id: 'u1',
     name: 'Новый ученик',
     roles: [],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
+    noTelegram: false,
+    hasEmail: true,
     needsProfile,
   };
 }
@@ -78,10 +79,11 @@ describe('RequireAuth', () => {
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -99,10 +101,11 @@ describe('RequireAuth', () => {
       id: 's1',
       name: 'Ваня',
       roles: [],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(student);
@@ -143,10 +146,11 @@ describe('RequireAuth', () => {
       id: 'u1',
       name: 'Дима',
       roles: ['teacher'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValue(me);
@@ -163,10 +167,11 @@ describe('RequireAuth', () => {
       id: 'u1',
       name: 'Дима',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      noTelegram: false,
+      hasEmail: true,
       needsProfile: false,
     };
     mockedApiFetch.mockResolvedValueOnce(me);

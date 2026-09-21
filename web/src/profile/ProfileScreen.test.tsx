@@ -20,14 +20,18 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
+// hasEmail: true — почта уже подтверждена (тот же ключ, которым вошли),
+// Telegram не связан: ровно один ключ есть, SecondLoginKey (ADR-0059)
+// предлагает второй, как это бывает в жизни (не оба ключа отсутствуют разом).
 const STUDENT: MeDto = {
   id: 'u1',
   name: 'Мария Ли',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  hasEmail: true,
+  noTelegram: false,
   needsProfile: false,
 };
 
@@ -73,25 +77,44 @@ describe('ProfileScreen — имя', () => {
 });
 
 describe('ProfileScreen — список уведомлений по роли', () => {
-  it('ученик видит свои два вида уведомлений с подписью и подсказкой', async () => {
-    renderScreen(STUDENT, { enabled: ['lesson_soon'] });
+  it('ученик видит один вид уведомлений — результат экзамена (ADR-0062)', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
 
-    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
-    expect(screen.getByText('Сообщение от учителя')).toBeInTheDocument();
+    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
     expect(
-      screen.getByText('Придёт перед началом занятия — за сколько, настраивает школа.'),
+      screen.getByText(
+        'Придёт, когда учитель проверит вашу работу и выставит результат.',
+      ),
     ).toBeInTheDocument();
     // «Черновик поста» — вид для учителя, ученику его показывать незачем.
     expect(screen.queryByText('Черновик поста')).not.toBeInTheDocument();
   });
 
-  it('включённый вид — переключатель отмечен, выключенный — нет', async () => {
-    renderScreen(STUDENT, { enabled: ['lesson_soon'] });
-    await screen.findByText('Занятие скоро');
+  // Бот и «Профиль» переключают одно и то же (ADR-0065) — строка про бота
+  // рядом с самими переключателями, не только в справке.
+  it('подсказка про бота — то же самое переключается командой /notifications', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
 
-    expect(screen.getByRole('checkbox', { name: 'Занятие скоро' })).toBeChecked();
     expect(
-      screen.getByRole('checkbox', { name: 'Сообщение от учителя' }),
+      await screen.findByText(
+        'То же самое можно переключить в боте — командой /notifications.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('включённый вид — переключатель отмечен', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
+    await screen.findByText('Результат экзамена');
+
+    expect(screen.getByRole('checkbox', { name: 'Результат экзамена' })).toBeChecked();
+  });
+
+  it('выключенный вид — переключатель не отмечен', async () => {
+    renderScreen(STUDENT, { enabled: [] });
+    await screen.findByText('Результат экзамена');
+
+    expect(
+      screen.getByRole('checkbox', { name: 'Результат экзамена' }),
     ).not.toBeChecked();
   });
 
@@ -110,24 +133,26 @@ describe('ProfileScreen — список уведомлений по роли', 
 });
 
 describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
-  it('Telegram связан — кнопки связки нет, остаётся подсказка про личный чат', async () => {
+  it('Telegram связан, почта тоже — оба ключа на месте, блока нет вовсе, остаётся подсказка про личный чат', async () => {
     renderScreen(
       { ...STUDENT, telegramLinked: true, botChatActive: true },
       { enabled: [] },
     );
 
     await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/);
+    expect(screen.queryByText('Второй способ входа')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Связать Telegram' }),
     ).not.toBeInTheDocument();
   });
 
-  it('Telegram не связан — кнопка связки со своим объяснением', async () => {
+  it('Telegram не связан — блок «Второй способ входа» с кнопкой связки (ADR-0059)', async () => {
     renderScreen(STUDENT, { enabled: [] });
 
+    expect(await screen.findByText('Второй способ входа')).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        'Telegram ещё не связан с кабинетом. Свяжите его, чтобы уведомления начали приходить.',
+      screen.getByText(
+        'Сейчас в кабинет пускает только почта. Свяжите Telegram — если потеряете доступ к ящику, войдёте через него.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
@@ -137,11 +162,11 @@ describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
 describe('ProfileScreen — переключение уведомлений (read-after-write)', () => {
   it('клик шлёт PATCH с нужным телом и перерисовывает состояние', async () => {
     renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Занятие скоро' });
+    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
     expect(toggle).not.toBeChecked();
 
     mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce({ enabled: ['lesson_soon'] });
+    mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
     toggle.click();
 
     await waitFor(() => expect(toggle).toBeChecked());
@@ -149,14 +174,14 @@ describe('ProfileScreen — переключение уведомлений (rea
       '/me/notifications',
       expect.objectContaining({
         method: 'PATCH',
-        body: { kind: 'lesson_soon', enabled: true },
+        body: { kind: 'exam_result', enabled: true },
       }),
     );
   });
 
   it('ошибка сети — сообщение под списком, переключатель остаётся в прежнем положении', async () => {
     renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Занятие скоро' });
+    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
 
     mockedApiFetch.mockRejectedValueOnce(
       new ApiError(
@@ -177,7 +202,7 @@ describe('ProfileScreen — переключение уведомлений (rea
 
   it('неопознанная ошибка (не ApiError) — общий текст, не текст исключения', async () => {
     renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Занятие скоро' });
+    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
 
     mockedApiFetch.mockRejectedValueOnce(new Error('boom'));
     toggle.click();
@@ -225,6 +250,6 @@ describe('ProfileScreen — ошибка загрузки уведомлений
     retryButton.click();
 
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-    expect(await screen.findByText('Занятие скоро')).toBeInTheDocument();
+    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
   });
 });

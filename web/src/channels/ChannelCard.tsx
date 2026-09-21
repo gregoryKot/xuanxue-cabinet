@@ -9,10 +9,6 @@
 // канала (ADR-0033, макет Main.dc.html): три интерактивных элемента в строке
 // ломали её как список, а тест уходит в живой канал — такое нажимают
 // осознанно, а не мимоходом.
-//
-// webpush создаётся push-подпиской, не этой формой (channelFormInput.ts) —
-// его строка не ведёт на страницу правки (ревью п.14): вместо <button> —
-// немая <div> той же геометрии строки, курсор `default`.
 import type { CSSProperties, ReactNode } from 'react';
 import type { ChannelDto } from '@xuanxue/shared';
 import { listCardMetaStyle, listCardTitleStyle } from '../components/listCardStyles';
@@ -35,7 +31,6 @@ const rowButtonStyle: CSSProperties = {
   textAlign: 'left',
   cursor: 'pointer',
 };
-const readOnlyStyle: CSSProperties = { ...rowButtonStyle, cursor: 'default' };
 
 interface ChannelCardProps {
   channel: ChannelDto;
@@ -46,7 +41,6 @@ interface ChannelCardProps {
 }
 
 export function ChannelCard({ channel, onSelect, isLast = false }: ChannelCardProps) {
-  const openable = channel.type !== 'webpush';
   const content: ReactNode = (
     <>
       <div style={listCardTitleStyle}>
@@ -61,13 +55,9 @@ export function ChannelCard({ channel, onSelect, isLast = false }: ChannelCardPr
 
   return (
     <li style={{ borderBottom: isLast ? 'none' : '1px solid var(--panel)' }}>
-      {openable ? (
-        <button type="button" style={rowButtonStyle} onClick={onSelect}>
-          {content}
-        </button>
-      ) : (
-        <div style={readOnlyStyle}>{content}</div>
-      )}
+      <button type="button" style={rowButtonStyle} onClick={onSelect}>
+        {content}
+      </button>
     </li>
   );
 }

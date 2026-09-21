@@ -18,7 +18,6 @@ const EXISTING: UserLean = {
   name: 'Дима',
   telegramId: 42,
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

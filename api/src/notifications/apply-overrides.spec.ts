@@ -3,25 +3,25 @@ import { applyOverrides } from './apply-overrides';
 
 describe('applyOverrides', () => {
   it('без overrides — возвращает дефолт как есть', () => {
-    expect(applyOverrides(['lesson_soon', 'teacher_message'], [])).toEqual([
-      'lesson_soon',
-      'teacher_message',
+    expect(applyOverrides(['exam_result', 'post_draft'], [])).toEqual([
+      'exam_result',
+      'post_draft',
     ]);
   });
 
   it('enabled:false убирает вид из дефолта', () => {
     expect(
       applyOverrides(
-        ['lesson_soon', 'teacher_message'],
-        [{ kind: 'teacher_message', enabled: false }],
+        ['exam_result', 'post_draft'],
+        [{ kind: 'post_draft', enabled: false }],
       ),
-    ).toEqual(['lesson_soon']);
+    ).toEqual(['exam_result']);
   });
 
   it('enabled:true добавляет вид, которого не было в дефолте', () => {
     expect(
-      applyOverrides(['lesson_soon'], [{ kind: 'delivery_failed', enabled: true }]),
-    ).toEqual(['lesson_soon', 'delivery_failed']);
+      applyOverrides(['exam_result'], [{ kind: 'delivery_failed', enabled: true }]),
+    ).toEqual(['exam_result', 'delivery_failed']);
   });
 
   it('результат — в каноническом порядке NOTIFICATION_KINDS, не в порядке overrides', () => {
@@ -30,21 +30,21 @@ describe('applyOverrides', () => {
         [],
         [
           { kind: 'payments', enabled: true },
-          { kind: 'lesson_soon', enabled: true },
+          { kind: 'exam_result', enabled: true },
         ],
       ),
-    ).toEqual(['lesson_soon', 'payments']);
+    ).toEqual(['exam_result', 'payments']);
   });
 
   it('повторный override того же вида — последний побеждает', () => {
     expect(
       applyOverrides(
-        ['lesson_soon'],
+        ['exam_result'],
         [
-          { kind: 'lesson_soon', enabled: false },
-          { kind: 'lesson_soon', enabled: true },
+          { kind: 'exam_result', enabled: false },
+          { kind: 'exam_result', enabled: true },
         ],
       ),
-    ).toEqual(['lesson_soon']);
+    ).toEqual(['exam_result']);
   });
 });

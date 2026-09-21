@@ -9,22 +9,23 @@ function fullUser(): UserLean {
     telegramId: 12345,
     googleId: 'g-1',
     roles: ['admin'],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     lastLoginAt: new Date('2026-09-05T00:00:00Z'),
   };
 }
 
 describe('toMeDto', () => {
-  it('переносит id, name, roles, tz, status; botChatActive — параметром', () => {
+  it('переносит id, name, roles, status; botChatActive — параметром', () => {
     expect(toMeDto(fullUser(), true)).toEqual({
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: true,
       botChatActive: true,
+      hasEmail: true,
+      pendingEmail: undefined,
+      noTelegram: false,
       needsProfile: true,
     });
   });
@@ -39,6 +40,19 @@ describe('toMeDto', () => {
       profileNamedAt: new Date('2026-09-10T00:00:00Z'),
     };
     expect(toMeDto(named, true).needsProfile).toBe(false);
+  });
+
+  // ADR-0067: отметка «не предлагать связку», а не «не слать» — доставку
+  // решает отдельно наличие личного чата с ботом (PersonalChats.chatFor()),
+  // а не это поле; та же пара «дата → булево», что у needsProfile выше.
+  it('noTelegram: false без noTelegramAt, true — с ним', () => {
+    expect(toMeDto(fullUser(), true).noTelegram).toBe(false);
+
+    const saidNoTelegram: UserLean = {
+      ...fullUser(),
+      noTelegramAt: new Date('2026-09-19T00:00:00Z'),
+    };
+    expect(toMeDto(saidNoTelegram, true).noTelegram).toBe(true);
   });
 
   // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедшего по почте бот не узнаёт, и
@@ -63,21 +77,41 @@ describe('toMeDto', () => {
   });
 
   // `status` наружу идёт (ADR-0026, ADR-0036: active/blocked, ждать больше
-  // нечего); ключи входа не идут по-прежнему.
-  it('не содержит email, telegramId, googleId', () => {
+  // нечего); telegramId/googleId по-прежнему закрыты, свой email — только
+  // признаком hasEmail (ADR-0059).
+  it('email отдаётся только признаком hasEmail — telegramId и googleId не выходят', () => {
     const dto = toMeDto(fullUser(), true) as unknown as Record<string, unknown>;
     expect(dto.email).toBeUndefined();
     expect(dto.telegramId).toBeUndefined();
     expect(dto.googleId).toBeUndefined();
+    expect(dto.hasEmail).toBe(true);
     expect(Object.keys(dto).sort()).toEqual([
       'botChatActive',
+      'hasEmail',
       'id',
       'name',
       'needsProfile',
+      'noTelegram',
+      'pendingEmail',
       'roles',
       'status',
       'telegramLinked',
-      'tz',
     ]);
+  });
+
+  // ADR-0059: свой подтверждённый адрес — единственное исключение из
+  // «ключи входа наружу не идут», и то только признаком, не значением.
+  it('hasEmail: true при заполненном email, false — без него', () => {
+    expect(toMeDto(fullUser(), true).hasEmail).toBe(true);
+
+    const noEmail: UserLean = { ...fullUser(), email: undefined };
+    expect(toMeDto(noEmail, true).hasEmail).toBe(false);
+  });
+
+  it('pendingEmail переносится как есть — пусто, если адрес не назван или уже подтверждён', () => {
+    expect(toMeDto(fullUser(), true).pendingEmail).toBeUndefined();
+
+    const pending: UserLean = { ...fullUser(), pendingEmail: 'ждёт@example.com' };
+    expect(toMeDto(pending, true).pendingEmail).toBe('ждёт@example.com');
   });
 });

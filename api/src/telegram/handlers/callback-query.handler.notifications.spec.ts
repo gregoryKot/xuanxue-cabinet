@@ -1,6 +1,9 @@
 // Против настоящей Mongo (mongodb-memory-server — CLAUDE.md «Тесты»): кнопка-
-// тумблер «Уведомления» (ТЗ notifications-delivery.md §3). cancel/topic,
-// norec/sent и общий доступ — соседние callback-query.handler.*.spec.ts.
+// тумблер «Уведомления» (ТЗ notifications-delivery.md §3) — открыта и
+// ученику (ADR-0065), доступ через BotUserAccessService, не PersonalChats.
+// cancel/topic, norec/sent и общий доступ — соседние
+// callback-query.handler.*.spec.ts.
+import { ACCESS_MESSAGE } from '@xuanxue/shared';
 import type { UsersService } from '../../users/users.service';
 import {
   buildHandler,
@@ -68,7 +71,7 @@ describe('CallbackQueryHandler — notif (Уведомления)', () => {
     expect(otherPrefs).toBeNull();
   });
 
-  it('пользователь отвязан между проверкой доступа и резолвом (гонка) — тихо игнорируется', async () => {
+  it('BotUserAccessService не находит пользователя (unknown) — тихо игнорируется', async () => {
     await seedTeacher(ctx.userModel, ctx.channelModel, 111);
     const missingUserService = {
       findByTelegramId: jest.fn().mockResolvedValue(null),
@@ -88,5 +91,42 @@ describe('CallbackQueryHandler — notif (Уведомления)', () => {
     await expect(ctx.handler.handle(cbCtx, NOW)).resolves.toBeUndefined();
 
     expect(editCalls).toEqual([]);
+  });
+
+  it('ученик без ролей (ADR-0065) выключает свой единственный вид', async () => {
+    const student = await ctx.userModel.create({
+      name: 'Ваня',
+      telegramId: 111,
+      roles: [],
+    });
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 111, data: 'notif:exam_result' });
+
+    await ctx.handler.handle(cbCtx, NOW);
+
+    expect(editCalls).toHaveLength(1);
+    expect(editCalls[0]).toContain('Результат экзамена — выключено');
+
+    const prefs = await ctx.notificationPrefsModel
+      .findOne({ userId: student._id.toString() })
+      .lean();
+    expect(prefs?.overrides).toEqual([{ kind: 'exam_result', enabled: false }]);
+  });
+
+  it('заблокированный — ACCESS_MESSAGE вместо тумблера, настройка не меняется', async () => {
+    const blocked = await ctx.userModel.create({
+      name: 'Ваня',
+      telegramId: 111,
+      roles: [],
+      status: 'blocked',
+    });
+    const { ctx: cbCtx, editCalls } = fakeCtx({ chatId: 111, data: 'notif:exam_result' });
+
+    await ctx.handler.handle(cbCtx, NOW);
+
+    expect(editCalls).toEqual([ACCESS_MESSAGE]);
+    const prefs = await ctx.notificationPrefsModel
+      .findOne({ userId: blocked._id.toString() })
+      .lean();
+    expect(prefs).toBeNull();
   });
 });

@@ -28,6 +28,7 @@ const LESSON_DTO: LessonDto = {
   topic: '',
   status: 'scheduled',
   recordings: [],
+  tags: [],
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z',
 };

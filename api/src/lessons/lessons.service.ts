@@ -5,10 +5,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
-import { Model, Types } from 'mongoose';
+import { Model, type Types } from 'mongoose';
 import {
   CLASS_NOT_FOUND_MESSAGE,
-  LIST_LIMIT_MAX,
   type AddRecordingInput,
   type CreateLessonInput,
   type LessonDto,
@@ -21,12 +20,13 @@ import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { LessonLinkRebuildService } from '../broadcasts/lesson-link-rebuild.service';
 import { RecordingBroadcastService } from '../broadcasts/recording-broadcast.service';
 import { ClassRecord } from '../classes/class.schema';
+import { MaterialRecord } from '../materials/material.schema';
+import { detachMaterialReference } from '../materials/materials.queries';
 import { assertLeaderIdIfProvided } from '../users/assert-teacher';
 import { UserRecord } from '../users/user.schema';
 import { findLinkBroadcastStatusByLessonId } from './lesson-broadcast-status';
 import { LESSON_ENCRYPT_SCHEMA, LessonRecord } from './lesson.schema';
 import { toLessonDto, type LeanLesson } from './lesson.mapper';
-import { assertListWindow, parseUtcIso } from './lesson-dates';
 import { buildCreatePayload } from './lessons.create';
 import {
   LESSON_NOT_FOUND,
@@ -35,6 +35,7 @@ import {
   deleteOneOffLesson,
   findClassTitle,
   findLessonDto,
+  findLessonsList,
 } from './lessons.queries';
 import {
   assertHasRecordingSource,
@@ -53,26 +54,15 @@ export class LessonsService {
     private readonly lessonLinkRebuild: LessonLinkRebuildService,
     @InjectModel(BroadcastRecord.name) private readonly broadcast: Model<BroadcastRecord>,
     @InjectModel(UserRecord.name) private readonly userModel: Model<UserRecord>,
+    @InjectModel(MaterialRecord.name)
+    private readonly materialModel: Model<MaterialRecord>,
   ) {}
 
+  // Окно и его обязательность — findLessonsList/resolveLessonsWindow
+  // (ADR-0078): без тега окно обязательно и сортировка по возрастанию, с
+  // тегом без окна — от новых к старым по всей истории (lessons.queries.ts).
   async list(query: ListLessonsQuery): Promise<LessonDto[]> {
-    const from = parseUtcIso(query.from, 'from');
-    const to = parseUtcIso(query.to, 'to');
-    assertListWindow(from, to);
-    if (query.classId !== undefined && !Types.ObjectId.isValid(query.classId)) {
-      throw new NotFoundError(CLASS_NOT_FOUND_MESSAGE);
-    }
-    const filter: Record<string, unknown> = {
-      startsAt: { $gte: from.toJSDate(), $lt: to.toJSDate() },
-    };
-    if (query.classId !== undefined) filter.classId = query.classId;
-    const docs = await this.model
-      .find(filter)
-      .sort({ startsAt: 1 })
-      // По умолчанию максимум, не LIST_LIMIT_DEFAULT: экран «Планирование»
-      // показывает весь горизонт целиком (30 слотов × 4 недели < 200).
-      .limit(query.limit ?? LIST_LIMIT_MAX)
-      .lean<LeanLesson[]>();
+    const docs = await findLessonsList(this.model, this.classModel, query);
     // Статус ссылки на карточке (docs/PLAN.md §6 п.3, см. lesson-broadcast-status.ts).
     const statusByLessonId = await findLinkBroadcastStatusByLessonId(
       this.broadcast,
@@ -120,8 +110,12 @@ export class LessonsService {
     return toLessonDto(decryptRecord(doc, LESSON_ENCRYPT_SCHEMA));
   }
 
-  remove(id: string): Promise<void> {
-    return deleteOneOffLesson(this.model, id);
+  // Отвязка от materials.lessonIds после удаления, не до: если удаление
+  // упадёт (дата из расписания, ConflictError), привязка должна остаться
+  // как была (ADR-0056 «Последствия»).
+  async remove(id: string): Promise<void> {
+    await deleteOneOffLesson(this.model, id);
+    await detachMaterialReference(this.materialModel, 'lessonIds', id);
   }
 
   async addRecording(

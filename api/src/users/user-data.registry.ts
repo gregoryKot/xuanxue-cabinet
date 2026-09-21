@@ -53,6 +53,27 @@
 // Этап 2, слой 2.1 (payments, PLAN.md §15, ADR-0049) — абонемент по
 // месяцам: данные ученика (деньги конкретного человека, ADR-0010 наоборот),
 // живёт, пока жив аккаунт — финансовый след школы, не свободный текст.
+//
+// ADR-0059 — токен подтверждения привязки почты (email_link_tokens,
+// email-link-token.schema.ts): userId здесь тоже признак того, чья сессия
+// привязывает адрес (владелец, не жертва удаления), тем же доводом, что у
+// telegram_link_codes выше — живёт минуты и почти всегда пуст к моменту
+// удаления аккаунта, внесён ради явного решения в сверочном тесте, а не
+// ради переноса при merge/delete.
+//
+// Слой in-app уведомлений (notifications, ADR-0061) — лента кабинета
+// (InAppExamNotifier, третье плечо ExamNotifier рядом с Telegram и почтой):
+// данные человека, `userId` — кому адресована запись. Срок хранения и так
+// короткий — TTL-индекс 90 дней (notification.schema.ts), удаление аккаунта
+// не ждёт его: уносит записи сразу, тем же путём, что и остальные.
+//
+// Этап 2, слой 2.2 (payment_screenshots, ADR-0050) — байты снимка перевода.
+// `userId` у коллекции нет: чей снимок, знает оплата
+// (`payments.screenshotImageId`), поэтому в список владения она не входит —
+// сверочный тест ниже сравнивает его именно со схемами, у которых путь
+// `userId` есть. Удаление аккаунта тем не менее обязано унести и байты,
+// иначе снимок ученика переживёт его аккаунт: для этого USER_OWNED_CASCADES
+// ниже.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
@@ -60,6 +81,8 @@ export const USER_OWNED_COLLECTIONS = [
   'MediaAssetRecord',
   'TelegramLinkCodeRecord',
   'PaymentRecord',
+  'EmailLinkTokenRecord',
+  'NotificationRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
@@ -69,6 +92,16 @@ export const USER_OWNED_COLLECTIONS = [
 export const USER_MODEL_NAME = 'UserRecord';
 
 export type UserOwnedCollection = (typeof USER_OWNED_COLLECTIONS)[number];
+
+// Данные человека, до которых не дотянуться по `userId`: ссылка на них идёт
+// от документа владения (`payments.screenshotImageId` → `payment_screenshots`,
+// ADR-0050). Удаление аккаунта читает ссылки ДО `deleteMany` по владению —
+// после него читать будет нечего, и байты остались бы в базе навсегда.
+// `from` обязан быть в USER_OWNED_COLLECTIONS, иначе каскад не сработает
+// (сверка — user-data.registry.spec.ts).
+export const USER_OWNED_CASCADES = [
+  { from: 'PaymentRecord', path: 'screenshotImageId', model: 'PaymentScreenshotRecord' },
+] as const;
 
 // Ссылки на пользователя в данных школы: слияние аккаунтов переписывает их на
 // новый id (`$set`), удаление аккаунта — обнуляет (`$unset`). Не признак

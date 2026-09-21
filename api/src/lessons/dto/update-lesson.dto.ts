@@ -7,6 +7,8 @@
 // `@IsOptional()` здесь пропускает и `undefined`, и `null` — декораторы
 // после него на `null` уже не запускаются.
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsInt,
   IsISO8601,
@@ -22,6 +24,7 @@ import {
   CLASS_LIMITS,
   LESSON_LIMITS,
   LESSON_STATUSES,
+  TAG_LIMITS,
   type LessonStatus,
   type UpdateLessonInput,
 } from '@xuanxue/shared';
@@ -66,4 +69,14 @@ export class UpdateLessonDto implements UpdateLessonInput {
   @IsString()
   @MaxLength(LESSON_LIMITS.note)
   note?: string | null;
+
+  // Рубрикация свободным текстом (ADR-0075) — нормализация, только если
+  // поле прислали (LessonsService/lessons.update.ts): `null` сюда не входит,
+  // тегов нет в NULLABLE_LESSON_FIELDS — сбрасывать их пустым массивом, не `null`.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(TAG_LIMITS.perRecord)
+  @IsString({ each: true })
+  @MaxLength(TAG_LIMITS.length, { each: true })
+  tags?: string[];
 }

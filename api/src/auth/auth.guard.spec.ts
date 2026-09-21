@@ -60,7 +60,6 @@ function activeUser(overrides: Partial<UserLean> = {}): UserLean {
     id: 'u1',
     name: 'Мария',
     roles: ['teacher'],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     ...overrides,
   };

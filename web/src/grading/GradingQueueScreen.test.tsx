@@ -22,20 +22,22 @@ const TEACHER: MeDto = {
   id: 'u1',
   name: 'Дима',
   roles: ['teacher'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: true,
   botChatActive: true,
+  hasEmail: true,
+  noTelegram: false,
   needsProfile: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
   name: 'Маша',
   roles: ['admin'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: true,
   botChatActive: false,
+  hasEmail: true,
+  noTelegram: false,
   needsProfile: false,
 };
 

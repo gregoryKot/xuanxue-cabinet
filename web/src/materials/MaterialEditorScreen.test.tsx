@@ -23,7 +23,7 @@ vi.mock('../api/http', async () => {
 
 resetApiFetchBetweenTests();
 
-const LIST_MARKER = 'Здесь библиотека';
+const LIST_MARKER = 'Здесь материалы';
 
 function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   return {
@@ -32,6 +32,7 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
     url: 'https://example.com/book',
     kind: 'book',
     classIds: [],
+    lessonIds: [],
     access: 'all',
     tags: [],
     createdBy: 'u1',
@@ -61,7 +62,11 @@ function mockMaterial(material: MaterialDto) {
   });
 }
 
-/** Материал и занятия уже пришли — единственные запросы монтирования позади. */
+/** Материал и занятия пришли, поля на экране. Запросы монтирования при этом
+ * позади не все: подсказку тегов (useMaterialTagOptions.ts) поля заказывают
+ * сами, и её запрос уходит в тот же миг — до или после этого ожидания, как
+ * решит планировщик React. Поэтому ответы на действие после этой точки
+ * ставятся по пути (mockApiByPath), а не очередью `…Once`. */
 async function waitForMounted() {
   await screen.findByLabelText('Название');
 }
@@ -116,19 +121,19 @@ describe('MaterialEditorScreen — загрузка', () => {
     ).toBe(false);
   });
 
-  it('«К библиотеке» — ссылка наверху страницы', async () => {
+  it('«К материалам» — ссылка наверху страницы', async () => {
     const user = userEvent.setup();
     mockMaterial(makeMaterial());
 
     renderAt('/materials/m1');
-    await user.click(await screen.findByRole('link', { name: 'К библиотеке' }));
+    await user.click(await screen.findByRole('link', { name: 'К материалам' }));
 
     expect(screen.getByText(LIST_MARKER)).toBeInTheDocument();
   });
 });
 
 describe('MaterialEditorScreen — создание', () => {
-  it('заполненная форма — POST с собранным телом, возврат к библиотеке', async () => {
+  it('заполненная форма — POST с собранным телом, возврат к материалам', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
 
@@ -214,7 +219,7 @@ describe('MaterialEditorScreen — создание', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('вид и занятие выбраны, галочка оплаты — access: paid и classIds в теле', async () => {
+  it('вид и занятие выбраны, переключатель «После оплаты» — access: paid и classIds в теле', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
 
@@ -223,7 +228,7 @@ describe('MaterialEditorScreen — создание', () => {
     await user.type(screen.getByLabelText('Ссылка'), 'https://example.com/video');
     await user.click(screen.getByLabelText('Видео'));
     await user.click(screen.getByLabelText('Тайцзицюань, средняя группа'));
-    await user.click(screen.getByLabelText('Открывать только после оплаты'));
+    await user.click(screen.getByLabelText('После оплаты'));
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
@@ -234,6 +239,29 @@ describe('MaterialEditorScreen — создание', () => {
       kind: 'video',
       classIds: ['c1'],
       access: 'paid',
+      tags: [],
+    });
+  });
+
+  // ADR-0058: третье значение access — видит только штат школы.
+  it('переключатель «Только преподаватели» — access: staff в теле запроса', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/materials': makeMaterial(), '/classes': [makeClass()] });
+
+    renderAt('/materials/new');
+    await user.type(await screen.findByLabelText('Название'), 'Методичка');
+    await user.type(screen.getByLabelText('Ссылка'), 'https://example.com/staff-doc');
+    await user.click(screen.getByLabelText('Только преподаватели'));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
+    const body = callsWithMethod('POST')[0]?.[1] as { body: unknown };
+    expect(body.body).toEqual({
+      title: 'Методичка',
+      url: 'https://example.com/staff-doc',
+      kind: 'book',
+      classIds: [],
+      access: 'staff',
       tags: [],
     });
   });
@@ -260,7 +288,19 @@ describe('MaterialEditorScreen — правка', () => {
     expect(screen.getByLabelText('Ссылка')).toHaveValue('https://example.com/book');
     expect(screen.getByLabelText('Книга')).toBeChecked();
     expect(screen.getByLabelText('Тайцзицюань, средняя группа')).toBeChecked();
-    expect(screen.getByLabelText('Открывать только после оплаты')).toBeChecked();
+    expect(screen.getByLabelText('После оплаты')).toBeChecked();
+  });
+
+  // ADR-0058: открытый на правку staff-материал показывает выбранным нужный
+  // переключатель, а не «После оплаты» и не «Все ученики».
+  it('staff-материал — выбран переключатель «Только преподаватели»', async () => {
+    mockMaterial(makeMaterial({ access: 'staff' }));
+
+    renderAt('/materials/m1');
+
+    expect(await screen.findByLabelText('Только преподаватели')).toBeChecked();
+    expect(screen.getByLabelText('Все ученики')).not.toBeChecked();
+    expect(screen.getByLabelText('После оплаты')).not.toBeChecked();
   });
 
   it('теги материала — поле «Теги» предзаполнено строкой через запятую', async () => {
@@ -298,9 +338,19 @@ describe('MaterialEditorScreen — правка', () => {
 
     renderAt('/materials/m1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Проверьте поля.', 400, 'invalid_input', ['url: недоступен']),
-    );
+    // Ответ на клик — по пути (правило у mockApiByPath в test-support):
+    // очередь `…Once` здесь забирала подсказка тегов, сохранение проходило
+    // успешно, экран уезжал на список — тест мигал 6 раз на 300 монтирований
+    // (расследование 2026-09-20). Путь сохранения тот же, что у чтения
+    // материала: страница после сохранения его не перечитывает, так что
+    // ошибку получает именно PATCH.
+    mockApiByPath({
+      '/materials/m1': new ApiError('Проверьте поля.', 400, 'invalid_input', [
+        'url: недоступен',
+      ]),
+      '/materials': makeMaterial(),
+      '/classes': [makeClass()],
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     const alert = await screen.findByRole('alert');
@@ -327,7 +377,7 @@ describe('MaterialEditorScreen — удаление', () => {
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 
-  it('подтверждение — DELETE и возврат к библиотеке', async () => {
+  it('подтверждение — DELETE и возврат к материалам', async () => {
     const user = userEvent.setup();
     mockMaterial(makeMaterial());
 
@@ -337,5 +387,91 @@ describe('MaterialEditorScreen — удаление', () => {
 
     await waitFor(() => expect(callsWithMethod('DELETE')).toHaveLength(1));
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
+  });
+});
+
+// Слой 3.10 (ADR-0057): поле файла рисуется только когда есть куда класть
+// файл (материал уже сохранён, у /materials/new ещё нет id) и хранилище
+// подключено (fileStorageEnabled). Нет ключей R2 — поля нет вовсе, а не
+// кнопка, которая ответит 503.
+describe('MaterialEditorScreen — поле файла (ADR-0057)', () => {
+  it('fileStorageEnabled: false — поля загрузки нет', async () => {
+    mockApiByPath({
+      '/materials/m1': makeMaterial(),
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: false },
+    });
+
+    renderAt('/materials/m1');
+    await waitForMounted();
+
+    expect(screen.queryByText('Добавить файл')).not.toBeInTheDocument();
+    expect(screen.queryByText('Файл материала')).not.toBeInTheDocument();
+  });
+
+  it('fileStorageEnabled: true, материал сохранён — поле загрузки есть', async () => {
+    mockApiByPath({
+      '/materials/m1': makeMaterial(),
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+
+    renderAt('/materials/m1');
+    await waitForMounted();
+
+    expect(await screen.findByText('Файл материала')).toBeInTheDocument();
+    expect(screen.getByText('Добавить файл')).toBeInTheDocument();
+  });
+
+  // Поле рисует файл из `material`, а тот меняется только перечитыванием
+  // (editor.reload() в onChanged) — значит, появившееся имя файла и есть
+  // доказательство, что страница перечитала материал после загрузки.
+  // Путь файла стоит раньше пути материала: mockApiByPath сопоставляет по
+  // префиксу, и «/materials/m1» перехватил бы «/materials/m1/file».
+  it('удачная загрузка — страница перечитывает материал и показывает файл', async () => {
+    const withFile: MaterialDto = {
+      ...makeMaterial(),
+      file: {
+        name: 'Методичка.pdf',
+        contentType: 'application/pdf',
+        sizeBytes: 2 * 1024 * 1024,
+        uploadedAt: '2026-09-20T10:00:00.000Z',
+      },
+    };
+    mockApiByPath({
+      '/materials/m1/file': withFile,
+      '/materials/m1': makeMaterial(),
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+
+    renderAt('/materials/m1');
+    await waitForMounted();
+    mockApiByPath({
+      '/materials/m1/file': withFile,
+      '/materials/m1': withFile,
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+    await userEvent.upload(
+      await screen.findByLabelText('Добавить файл'),
+      new File(['%PDF-1.7'], 'Методичка.pdf', { type: 'application/pdf' }),
+    );
+
+    expect(await screen.findByText('Методичка.pdf')).toBeInTheDocument();
+    expect(screen.getByText('2,0 МБ')).toBeInTheDocument();
+  });
+
+  it('fileStorageEnabled: true, новый материал (/materials/new) — поля всё равно нет', async () => {
+    mockApiByPath({
+      '/materials': [],
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+
+    renderAt('/materials/new');
+    await screen.findByLabelText('Название');
+
+    expect(screen.queryByText('Файл материала')).not.toBeInTheDocument();
   });
 });

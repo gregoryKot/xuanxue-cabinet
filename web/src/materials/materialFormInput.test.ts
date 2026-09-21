@@ -17,6 +17,7 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
     url: 'https://example.com/book',
     kind: 'book',
     classIds: ['c1'],
+    lessonIds: [],
     access: 'all',
     tags: [],
     createdBy: 'u1',
@@ -32,30 +33,35 @@ function makeState(overrides: Partial<MaterialFormState> = {}): MaterialFormStat
     url: 'https://example.com/book',
     kind: 'book',
     classIds: [],
-    paid: false,
+    access: 'all',
     tagsText: '',
     ...overrides,
   };
 }
 
 describe('initialMaterialFormState', () => {
-  it('создание — вид по умолчанию первый из списка, пустые поля, не платно', () => {
+  it('создание — вид по умолчанию первый из списка, пустые поля, доступ — все ученики', () => {
     const state = initialMaterialFormState(null);
     expect(state.title).toBe('');
     expect(state.url).toBe('');
     expect(state.kind).toBe('book');
     expect(state.classIds).toEqual([]);
-    expect(state.paid).toBe(false);
+    expect(state.access).toBe('all');
     expect(state.tagsText).toBe('');
   });
 
-  it('правка — поля предзаполнены из материала, access: paid включает галочку', () => {
+  it('правка — поля предзаполнены из материала, включая access', () => {
     const state = initialMaterialFormState(
       makeMaterial({ kind: 'video', classIds: ['c1', 'c2'], access: 'paid' }),
     );
     expect(state.kind).toBe('video');
     expect(state.classIds).toEqual(['c1', 'c2']);
-    expect(state.paid).toBe(true);
+    expect(state.access).toBe('paid');
+  });
+
+  it('правка — access: staff предзаполняется как есть', () => {
+    const state = initialMaterialFormState(makeMaterial({ access: 'staff' }));
+    expect(state.access).toBe('staff');
   });
 
   it('правка — теги материала собраны в строку через запятую', () => {
@@ -117,7 +123,7 @@ describe('validateMaterialForm', () => {
 });
 
 describe('toCreateInput / toUpdateInput', () => {
-  it('обрезает пробелы у названия и ссылки, access: all у выключенной галочки', () => {
+  it('обрезает пробелы у названия и ссылки, access: all по умолчанию', () => {
     const input = toCreateInput(
       makeState({ title: '  Название  ', url: '  https://example.com  ' }),
     );
@@ -142,9 +148,9 @@ describe('toCreateInput / toUpdateInput', () => {
     ]);
   });
 
-  it('paid — access: paid', () => {
-    const input = toCreateInput(makeState({ paid: true }));
-    expect(input.access).toBe('paid');
+  it('access переносится в тело как есть', () => {
+    expect(toCreateInput(makeState({ access: 'paid' })).access).toBe('paid');
+    expect(toCreateInput(makeState({ access: 'staff' })).access).toBe('staff');
   });
 
   it('пустой список занятий уходит пустым массивом, а не отсутствует', () => {
@@ -159,7 +165,7 @@ describe('toCreateInput / toUpdateInput', () => {
   });
 
   it('toUpdateInput собирает то же тело, что и toCreateInput', () => {
-    const state = makeState({ classIds: ['c1'], paid: true });
+    const state = makeState({ classIds: ['c1'], access: 'paid' });
     expect(toUpdateInput(state)).toEqual(toCreateInput(state));
   });
 });

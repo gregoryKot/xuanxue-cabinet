@@ -26,10 +26,11 @@ const STUDENT_WITH_TELEGRAM: MeDto = {
   id: 'u1',
   name: 'Ученик',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
   telegramLinked: true,
   botChatActive: true,
+  noTelegram: false,
+  hasEmail: true,
   needsProfile: false,
 };
 
@@ -114,7 +115,9 @@ describe('AttemptScreen', () => {
     renderAt('a1');
 
     expect(
-      await screen.findByText('Отправлено. Учитель проверит и пришлёт результат.'),
+      await screen.findByText(
+        'Отправлено. Учитель проверит — результат будет на карточке экзамена в кабинете.',
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument();
   });
@@ -166,6 +169,25 @@ describe('AttemptScreen', () => {
     expect(await screen.findByLabelText('Ссылка на видео')).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: /Отправить видео боту/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  // ADR-0067 обещает, что отметка «у меня нет Telegram» гасит предложение на
+  // всех экранах сразу. Видео-вопрос оставался последним местом, где кабинет
+  // звал отметившегося в Telegram: условие показа было своё
+  // (`!telegramLinked`), мимо общего предиката.
+  it('отметка «у меня нет Telegram» — связку не предлагаем, форма ссылки остаётся', async () => {
+    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }], {
+      ...STUDENT_WITH_TELEGRAM,
+      telegramLinked: false,
+      botChatActive: false,
+      noTelegram: true,
+    });
+    renderAt('a1');
+
+    expect(await screen.findByLabelText('Ссылка на видео')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Связать Telegram' }),
     ).not.toBeInTheDocument();
   });
 

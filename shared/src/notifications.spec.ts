@@ -66,8 +66,20 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
 });
 
 describe('defaultNotifications', () => {
-  it('ученик (без ролей) — занятие скоро, сообщение от учителя, результат экзамена', () => {
+  it('ученик (без ролей) — только результат экзамена (ADR-0062)', () => {
     expect(defaultNotifications([])).toEqual(STUDENT_NOTIFICATIONS);
+    expect(STUDENT_NOTIFICATIONS).toEqual(['exam_result']);
+  });
+
+  // ADR-0069: вид без доставки — переключатель, который врёт. Проверяем не
+  // «нет строки lesson_soon» (такой тест не переживёт следующего удаления), а
+  // само условие входа в список: у каждого вида есть либо получатель по роли,
+  // либо он ученический — а ученический сейчас ровно один.
+  it('у каждого вида есть получатель: роль по умолчанию или ученик', () => {
+    for (const kind of NOTIFICATION_KINDS) {
+      const hasRole = rolesWithNotification(kind).length > 0;
+      expect(hasRole || STUDENT_NOTIFICATIONS.includes(kind)).toBe(true);
+    }
   });
 
   it('учитель — черновик, запрос записи, сбой отправки, работа на проверку', () => {
@@ -131,9 +143,7 @@ describe('rolesWithNotification', () => {
     expect(rolesWithNotification('attempt_submitted')).toEqual(['teacher', 'assistant']);
   });
 
-  it('вид, которого нет ни у одной роли (ученические lesson_soon/teacher_message/exam_result), — пустой массив', () => {
-    expect(rolesWithNotification('lesson_soon')).toEqual([]);
-    expect(rolesWithNotification('teacher_message')).toEqual([]);
+  it('вид, которого нет ни у одной роли (ученический exam_result), — пустой массив', () => {
     expect(rolesWithNotification('exam_result')).toEqual([]);
   });
 });

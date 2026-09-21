@@ -6,8 +6,11 @@
 // 3.4 (ADR-0048) добавил сюда рубильник школы: `isMaterialLocked` решает,
 // закрыт ли конкретный материал, settings читаются тем же SettingsService,
 // что и остальные потребители (auth.controller.ts, broadcast-planner).
+// `access: 'staff'` (ADR-0058) не закрывается постфактум, а вырезается
+// фильтром запроса — иначе служебные материалы съедали бы лимит списка.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
   MATERIAL_NOT_FOUND_MESSAGE,
@@ -25,6 +28,7 @@ import { ClassRecord } from '../classes/class.schema';
 import { NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { SettingsService } from '../settings/settings.service';
+import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { encryptRecord } from '../utils/encryption';
 import { isMaterialLocked } from './material-access';
 import { findMaterialClassTitles } from './material-classes.lookup';
@@ -45,6 +49,7 @@ export class MaterialsService {
     @InjectModel(MaterialRecord.name) private readonly model: Model<MaterialRecord>,
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
     private readonly settingsService: SettingsService,
+    private readonly orphans: StorageOrphansService,
   ) {}
 
   /** Порядок — свежие материалы первыми (MaterialSchema.index({createdAt: -1})). */
@@ -66,6 +71,7 @@ export class MaterialsService {
         url: input.url,
         kind: input.kind,
         classIds: input.classIds ?? [],
+        lessonIds: input.lessonIds ?? [],
         access: input.access ?? 'all',
         // Нормализация здесь, не в DTO: список — фильтр (ADR-0058), опечатка
         // и дубль в базе разъехались бы с фильтром `tag` при чтении.
@@ -96,22 +102,32 @@ export class MaterialsService {
     return toMaterialDto(decryptMaterial(doc));
   }
 
-  async remove(id: string): Promise<void> {
+  /** Файл материала уходит тем же действием (ADR-0057). Не удалось удалить
+   * объект сейчас — он остался в журнале и уйдёт шагом планировщика
+   * (ADR-0079); материал при этом удаляется в любом случае. */
+  async remove(id: string, now: DateTime): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const { deletedCount } = await this.model.deleteOne({ _id: id });
-    if (deletedCount === 0) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    const doc = await this.model.findOneAndDelete({ _id: id }).lean<RawLeanMaterial>();
+    if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
+    if (doc.fileKey) await this.orphans.removeNow(doc.fileKey, now);
   }
 
   /** `isStaff` — уже вычисленный `isStaffRole(user.roles)` из контроллера
    * (MyMaterialsController): сервис не должен решать по объекту пользователя
-   * целиком, только по признаку роли (ADR-0048). */
+   * целиком, только по признаку роли (ADR-0048).
+   *
+   * `staff`-материал ученику не приходит вовсе — фильтр запроса Mongo
+   * (`access: { $ne: 'staff' }`), а не отбрасывание после выборки: иначе
+   * служебные материалы съедали бы лимит списка (ADR-0058). Штат видит всё,
+   * фильтра для него нет. */
   async listForStudent(
     query: ListMyMaterialsQuery,
     isStaff: boolean,
   ): Promise<MyMaterialDto[]> {
+    const filter: Record<string, unknown> = isStaff ? {} : { access: { $ne: 'staff' } };
     const [docs, settings] = await Promise.all([
       this.model
-        .find()
+        .find(filter)
         .sort({ createdAt: -1 })
         .limit(query.limit ?? MY_MATERIALS_LIMIT_DEFAULT)
         .lean<RawLeanMaterial[]>(),

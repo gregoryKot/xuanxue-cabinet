@@ -4,6 +4,11 @@
 // обходить этот список и брать `encryptSchemaFrom(fieldPolicy)` для каждой
 // модели — другого реестра шифруемых полей в проекте нет.
 import type { Schema } from 'mongoose';
+import {
+  StorageOrphanRecord,
+  StorageOrphanSchema,
+  STORAGE_ORPHAN_FIELD_POLICY,
+} from '../storage/storage-orphan.schema';
 import { ClassRecord, ClassSchema, CLASS_FIELD_POLICY } from '../classes/class.schema';
 import {
   LessonRecord,
@@ -58,10 +63,20 @@ import {
   TELEGRAM_LINK_CODE_FIELD_POLICY,
 } from '../users/telegram-link-code.schema';
 import {
+  EmailLinkTokenRecord,
+  EmailLinkTokenSchema,
+  EMAIL_LINK_TOKEN_FIELD_POLICY,
+} from '../users/email-link-token.schema';
+import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
   NOTIFICATION_PREFS_FIELD_POLICY,
 } from '../notifications/notification-prefs.schema';
+import {
+  NotificationRecord,
+  NotificationSchema,
+  NOTIFICATION_FIELD_POLICY,
+} from '../notifications/notification.schema';
 import {
   SettingsRecord,
   SettingsSchema,
@@ -97,6 +112,11 @@ import {
   PaymentSchema,
   PAYMENT_FIELD_POLICY,
 } from '../payments/payment.schema';
+import {
+  PaymentScreenshotRecord,
+  PaymentScreenshotSchema,
+  PAYMENT_SCREENSHOT_FIELD_POLICY,
+} from '../payments/payment-screenshot.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -152,9 +172,19 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     fieldPolicy: TELEGRAM_LINK_CODE_FIELD_POLICY,
   },
   {
+    name: EmailLinkTokenRecord.name,
+    schema: EmailLinkTokenSchema,
+    fieldPolicy: EMAIL_LINK_TOKEN_FIELD_POLICY,
+  },
+  {
     name: NotificationPrefsRecord.name,
     schema: NotificationPrefsSchema,
     fieldPolicy: NOTIFICATION_PREFS_FIELD_POLICY,
+  },
+  {
+    name: NotificationRecord.name,
+    schema: NotificationSchema,
+    fieldPolicy: NOTIFICATION_FIELD_POLICY,
   },
   {
     name: SettingsRecord.name,
@@ -190,5 +220,15 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: PaymentRecord.name,
     schema: PaymentSchema,
     fieldPolicy: PAYMENT_FIELD_POLICY,
+  },
+  {
+    name: PaymentScreenshotRecord.name,
+    schema: PaymentScreenshotSchema,
+    fieldPolicy: PAYMENT_SCREENSHOT_FIELD_POLICY,
+  },
+  {
+    name: StorageOrphanRecord.name,
+    schema: StorageOrphanSchema,
+    fieldPolicy: STORAGE_ORPHAN_FIELD_POLICY,
   },
 ];

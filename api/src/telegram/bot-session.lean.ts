@@ -26,6 +26,9 @@ export interface BotSessionLean {
   /** Вопрос-видео (ADR-0037, bot-session.schema.ts) — есть только у
    * 'examMedia', когда он известен (deep link с вопросом или поток бота). */
   itemId?: Types.ObjectId | null;
+  /** Месяц скриншота оплаты (ADR-0050, bot-session.schema.ts) — есть только
+   * у 'payment'. */
+  month?: string | null;
   /** Черновик вопроса (ТЗ 4б.3) — есть только у 'examItemDraft', уже
    * расшифрован (get()). `options: []`, не `undefined`, когда вариантов пока
    * нет — тем же приёмом, что assertOptionsForKind у самого банка вопросов. */
@@ -73,6 +76,7 @@ export const BOT_SESSION_LEAN_PROJECTION = {
   attemptId: 1,
   questionIndex: 1,
   itemId: 1,
+  month: 1,
   draftStep: 1,
   draftKind: 1,
   draftPrompt: 1,

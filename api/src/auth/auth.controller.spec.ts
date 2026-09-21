@@ -11,6 +11,7 @@ import {
 } from '@xuanxue/shared';
 import { fakeResponse } from '../test-support/http-fakes';
 import { SettingsService } from '../settings/settings.service';
+import { FileStoreService } from '../storage/file-store.service';
 import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -33,7 +34,6 @@ const USER: UserLean = {
   name: 'Мария',
   email: 'maria@example.com',
   roles: ['admin'],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 
@@ -52,6 +52,10 @@ async function buildController(
   // telegramLinked: false у USER ниже, отдельный тест ниже подменяет фейк на
   // true и проверяет, что значение долетает до ответа.
   hasActiveChatFor: PersonalChats['hasActiveChatFor'] = () => Promise.resolve(false),
+  // Хранилище файлов (ADR-0057) — тот же признак, что у emailLoginEnabled:
+  // контроллер только пересказывает `FileStoreService.isEnabled`, в сеть не
+  // ходит ни он, ни фейк.
+  fileStorageEnabled = false,
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
@@ -70,6 +74,7 @@ async function buildController(
       { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
       { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },
       { provide: PersonalChats, useValue: { hasActiveChatFor } },
+      { provide: FileStoreService, useValue: { isEnabled: fileStorageEnabled } },
     ],
   }).compile();
   return module.get(AuthController);
@@ -83,6 +88,7 @@ describe('AuthController.getConfig', () => {
       telegramBotUsername: undefined,
       schoolSiteUrl: undefined,
       emailLoginEnabled: false,
+      fileStorageEnabled: false,
     });
   });
 
@@ -97,6 +103,7 @@ describe('AuthController.getConfig', () => {
       telegramBotUsername: undefined,
       schoolSiteUrl: 'https://xuanxue.su',
       emailLoginEnabled: false,
+      fileStorageEnabled: false,
     });
   });
 
@@ -116,6 +123,31 @@ describe('AuthController.getConfig', () => {
 
   // EmailAuthService.isEnabled() — источник поля целиком (CLAUDE.md «Дубли»):
   // контроллер не пересчитывает условие сам, только проксирует.
+  // ADR-0057: без ключей R2 поля загрузки на странице материала нет вовсе.
+  it('FileStoreService.isEnabled решает fileStorageEnabled в ответе', async () => {
+    const off = await buildController(
+      undefined,
+      {},
+      SETTINGS_WITHOUT_SITE,
+      undefined,
+      false,
+      undefined,
+      false,
+    );
+    const on = await buildController(
+      undefined,
+      {},
+      SETTINGS_WITHOUT_SITE,
+      undefined,
+      false,
+      undefined,
+      true,
+    );
+
+    expect((await off.getConfig()).fileStorageEnabled).toBe(false);
+    expect((await on.getConfig()).fileStorageEnabled).toBe(true);
+  });
+
   it('EmailAuthService.isEnabled() true — emailLoginEnabled true в ответе', async () => {
     const controller = await buildController(
       undefined,
@@ -137,10 +169,11 @@ describe('AuthController.me', () => {
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
+      noTelegram: false,
       needsProfile: true,
     });
   });
@@ -192,6 +225,7 @@ describe('AuthController.requestEmailLogin', () => {
         { provide: SettingsService, useValue: {} },
         { provide: TelegramBotService, useValue: {} },
         { provide: PersonalChats, useValue: {} },
+        { provide: FileStoreService, useValue: { isEnabled: false } },
       ],
     }).compile();
     const controller = module.get(AuthController);
@@ -225,6 +259,7 @@ describe('AuthController.verifyEmailLogin', () => {
           provide: PersonalChats,
           useValue: { hasActiveChatFor: () => Promise.resolve(false) },
         },
+        { provide: FileStoreService, useValue: { isEnabled: false } },
       ],
     }).compile();
     const controller = module.get(AuthController);
@@ -237,10 +272,11 @@ describe('AuthController.verifyEmailLogin', () => {
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
+      noTelegram: false,
       needsProfile: true,
     });
   });
@@ -284,10 +320,11 @@ describe('AuthController.loginWithTelegram', () => {
       id: 'u1',
       name: 'Мария',
       roles: ['admin'],
-      tz: 'Asia/Jerusalem',
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      hasEmail: true,
+      noTelegram: false,
       needsProfile: true,
     });
   });

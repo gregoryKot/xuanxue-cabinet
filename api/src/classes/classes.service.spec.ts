@@ -1,11 +1,12 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): шифрование секретов и read-after-write, PATCH null → $unset,
 // запрет удаления класса с занятиями (clarification 7 ТЗ PR D).
-import type { Connection, Model } from 'mongoose';
+import { Types, type Connection, type Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from './class.schema';
 import { ClassesService } from './classes.service';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
+import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
@@ -16,6 +17,7 @@ describe('ClassesService', () => {
   let lessonModel: Model<LessonRecord>;
   let channelModel: Model<ChannelRecord>;
   let userModel: Model<UserRecord>;
+  let materialModel: Model<MaterialRecord>;
   let service: ClassesService;
 
   beforeAll(async () => {
@@ -25,7 +27,14 @@ describe('ClassesService', () => {
     lessonModel = connection.model<LessonRecord>(LessonRecord.name, LessonSchema);
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
     userModel = connection.model<UserRecord>(UserRecord.name, UserSchema);
-    service = new ClassesService(model, lessonModel, channelModel, userModel);
+    materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
+    service = new ClassesService(
+      model,
+      lessonModel,
+      channelModel,
+      userModel,
+      materialModel,
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -37,6 +46,7 @@ describe('ClassesService', () => {
     await lessonModel.deleteMany({});
     await channelModel.deleteMany({});
     await userModel.deleteMany({});
+    await materialModel.deleteMany({});
   });
 
   it('create → getById: read-after-write, zoomLink расшифрован в ответе', async () => {
@@ -227,6 +237,27 @@ describe('ClassesService', () => {
     });
   });
 
+  // Дыра, которая была до ADR-0056: класс без дат занятий удалялся, а
+  // материалы школы продолжали ссылаться на пропавший id.
+  it('remove: отвязывает удалённый класс от materials.classIds, материал остаётся', async () => {
+    const created = await service.create({ title: 'Без занятий', format: 'online' });
+    const material = await materialModel.create({
+      title: 'Книга курса',
+      url: 'https://example.com/book',
+      kind: 'book',
+      classIds: [created.id],
+      lessonIds: [],
+      access: 'all',
+      createdBy: new Types.ObjectId(),
+    });
+
+    await service.remove(created.id);
+
+    const afterRemove = await materialModel.findById(material._id).lean();
+    expect(afterRemove).not.toBeNull();
+    expect(afterRemove?.classIds).toEqual([]);
+  });
+
   it('PATCH с тем же id правила — id сохраняется, поля обновляются', async () => {
     const created = await service.create({
       title: 'С правилом',
@@ -321,6 +352,86 @@ describe('ClassesService', () => {
       const updated = await service.update(created.id, { leaderId: null });
 
       expect(updated.leaderId).toBeUndefined();
+    });
+  });
+
+  // Постоянный признак курса, не вечера (ADR-0072) — нормализация,
+  // read-after-write и фильтр списка, тот же приём, что у материалов и дат.
+  describe('tags — постоянный признак курса (ADR-0072)', () => {
+    it('create нормализует теги: обрезка пробелов и дедуп без учёта регистра', async () => {
+      const created = await service.create({
+        title: 'Тайцзицюань',
+        format: 'online',
+        tags: ['  Начинающие ', 'начинающие', 'дракон'],
+      });
+
+      expect(created.tags).toEqual(['Начинающие', 'дракон']);
+    });
+
+    it('create без tags — пустой массив, не undefined', async () => {
+      const created = await service.create({ title: 'Без тегов', format: 'online' });
+
+      expect(created.tags).toEqual([]);
+    });
+
+    it('update с tags нормализует и заменяет прежний набор', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        tags: ['старый'],
+      });
+
+      const updated = await service.update(created.id, {
+        tags: ['Новый', 'новый', '  Третий  '],
+      });
+
+      expect(updated.tags).toEqual(['Новый', 'Третий']);
+    });
+
+    it('update без tags — прежние теги остаются на месте', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        tags: ['начинающие'],
+      });
+
+      const updated = await service.update(created.id, { groupLabel: 'группа А' });
+
+      expect(updated.tags).toEqual(['начинающие']);
+    });
+
+    it('update с tags: [] — снимает все теги', async () => {
+      const created = await service.create({
+        title: 'Курс',
+        format: 'online',
+        tags: ['начинающие'],
+      });
+
+      const updated = await service.update(created.id, { tags: [] });
+
+      expect(updated.tags).toEqual([]);
+    });
+
+    it('list: фильтр по тегу находит только занятия с этим тегом', async () => {
+      const tagged = await service.create({
+        title: 'С тегом',
+        format: 'online',
+        tags: ['начинающие'],
+      });
+      await service.create({ title: 'Без тега', format: 'online' });
+
+      const list = await service.list({ tag: 'начинающие' });
+
+      expect(list.map((c) => c.id)).toEqual([tagged.id]);
+    });
+
+    it('list: пустая строка в query.tag не фильтрует', async () => {
+      await service.create({ title: 'Первое', format: 'online', tags: ['x'] });
+      await service.create({ title: 'Второе', format: 'online' });
+
+      const list = await service.list({ tag: '' });
+
+      expect(list).toHaveLength(2);
     });
   });
 });

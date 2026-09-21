@@ -1,21 +1,19 @@
-// Единственная точка чтения/записи UserRecord. Вход (виджет, сессия) — в
-// api/src/auth/; здесь только CRUD с типизированным возвратом (контроллер/
-// гвард не лезут в Mongoose напрямую, CLAUDE.md). Список и назначение ролей
-// «Люди» — в user-roles.service.ts, чтобы этот файл не вырос за 150 строк.
+// Единственная точка чтения/записи UserRecord — CRUD с типизированным
+// возвратом; вход — в api/src/auth/, список и роли — в user-roles.service.ts.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model, Types } from 'mongoose';
-import { SCHOOL_TZ, type UserRole, type UserStatus } from '@xuanxue/shared';
+import type { UserRole, UserStatus } from '@xuanxue/shared';
 import { UserRecord } from './user.schema';
+import {
+  listActiveWithRoles as listActiveWithRolesQuery,
+  type ActiveRoledUser,
+} from './list-active-with-roles';
 import {
   listContactsWithRoles as listContactsWithRolesQuery,
   type RoledContact,
 } from './list-contacts-with-roles';
-import {
-  listStaffWithEmail as listStaffWithEmailQuery,
-  type StaffEmailContact,
-} from './list-staff-with-email';
 import { attachTelegramId as attachTelegramIdWrite } from './attach-telegram-id';
 import { markJoinedViaInvite as markJoinedViaInviteWrite } from './mark-joined-via-invite';
 import { normalizeUserStatus } from './normalize-user-status';
@@ -27,14 +25,15 @@ export interface UserLean {
   id: string;
   name: string;
   email?: string;
+  pendingEmail?: string;
   telegramId?: number;
   googleId?: string;
   roles: UserRole[];
-  tz: string;
   status: UserStatus;
   lastLoginAt?: Date;
   joinedViaInviteAt?: Date;
   profileNamedAt?: Date;
+  noTelegramAt?: Date;
 }
 
 export type UserDoc = UserRecord & { _id: Types.ObjectId };
@@ -55,14 +54,15 @@ export function toLean(doc: UserDoc): UserLean {
     id: doc._id.toString(),
     name: doc.name,
     email: doc.email,
+    pendingEmail: doc.pendingEmail,
     telegramId: doc.telegramId,
     googleId: doc.googleId,
     roles: doc.roles,
-    tz: doc.tz,
     status: normalizeUserStatus(doc.status, doc._id.toString()),
     lastLoginAt: doc.lastLoginAt,
     joinedViaInviteAt: doc.joinedViaInviteAt,
     profileNamedAt: doc.profileNamedAt,
+    noTelegramAt: doc.noTelegramAt,
   };
 }
 
@@ -90,10 +90,12 @@ export class UsersService {
     return listContactsWithRolesQuery(this.model, roles);
   }
 
-  /** Штат с подтверждённым email (слой 4.7, ADR-0039) — почтовый резерв для
-   * `attempt_submitted`, логика выноса та же, что у listContactsWithRoles. */
-  async listStaffWithEmail(): Promise<StaffEmailContact[]> {
-    return listStaffWithEmailQuery(this.model);
+  /** Активные люди с такими ролями — кандидаты записи кабинета
+   * (InAppExamNotifier, ADR-0061), без требования канала связи (в отличие
+   * от listContactsWithRoles). Логика — в list-active-with-roles.ts (та же
+   * причина выноса, что у upsert-user-by-key.ts). */
+  async listActiveWithRoles(roles: readonly UserRole[]): Promise<ActiveRoledUser[]> {
+    return listActiveWithRolesQuery(this.model, roles);
   }
 
   /** Первый вход через Telegram (SECURITY §2, ADR-0030/0036): всегда
@@ -131,7 +133,6 @@ export class UsersService {
         telegramId: input.telegramId,
         name: input.name,
         roles: input.roles,
-        tz: SCHOOL_TZ,
         status: input.status,
       },
     );

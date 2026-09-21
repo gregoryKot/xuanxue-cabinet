@@ -106,9 +106,8 @@ export class CallbackQueryHandler {
 
       // «Экзамены» и «В меню» из главного меню — тем же путём, что и выше:
       // экзамен сдают ученики, и меню (ADR-0027, docs/PLAN.md §11 слой 4.7)
-      // показывает и штату, и ученику кнопку «Экзамены». «Ближайшие
-      // занятия»/«Уведомления» штата ниже по-прежнему только для
-      // PersonalChats — их у ученика в меню нет вовсе.
+      // показывает и штату, и ученику кнопку «Экзамены». «Ближайшие занятия»
+      // штата ниже по-прежнему только для PersonalChats — у ученика их нет.
       if (action === 'menu' && (id === 'exams' || id === 'back')) {
         await handleOpenMenuScreen(
           ctx,
@@ -117,6 +116,20 @@ export class CallbackQueryHandler {
           now,
           this.botAccess,
           this.examCommandHandler,
+        );
+        return;
+      }
+
+      // Тумблер «Уведомления» — тем же путём: своими уведомлениями управляет
+      // любой вошедший, включая ученика (отзыв владельца 2026-09-19,
+      // ADR-0065), доступ — BotUserAccessService, не PersonalChats.
+      if (action === 'notif' && isNotificationKind(id)) {
+        await handleNotificationToggle(
+          ctx,
+          this.botAccess,
+          this.notificationPrefsService,
+          chatId,
+          id,
         );
         return;
       }
@@ -162,15 +175,6 @@ export class CallbackQueryHandler {
         id,
         chatId,
         now,
-      );
-    }
-    if (action === 'notif' && isNotificationKind(id)) {
-      return handleNotificationToggle(
-        ctx,
-        this.usersService,
-        this.notificationPrefsService,
-        chatId,
-        id,
       );
     }
     if (isNewExamItemCallbackAction(action)) {

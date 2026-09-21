@@ -32,7 +32,6 @@ const ACTIVE_USER: UserLean = {
   id: 'u1',
   name: 'Игорь',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 const JOIN_SUCCESS_WITH_URL =

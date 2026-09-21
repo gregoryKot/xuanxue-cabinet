@@ -14,7 +14,7 @@
 // перерисовывать кнопку.
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../auth/AuthProvider';
-import { Button } from '../components/Button';
+import { Button, type ButtonVariant } from '../components/Button';
 import { useTelegramLinkCode } from './useTelegramLinkCode';
 
 const BUTTON_LABEL = 'Связать Telegram';
@@ -23,9 +23,28 @@ interface TelegramLinkButtonProps {
   /** Зачем связка нужна именно на этом экране (CLAUDE.md «каждая фича
    * объясняет откуда это и зачем до первого действия»). */
   explanation?: string;
+  /** Дождаться перед `link()`, то есть до ухода вкладки в Telegram (ADR-0059,
+   * welcome/WelcomeScreen.tsx): человек на `/welcome` мог уже набрать имя, а
+   * переход в Telegram уносит вкладку — набранное пропало бы. `/welcome`
+   * передаёт сюда сохранение черновика, и заодно человек возвращается из
+   * Telegram уже внутрь кабинета (имя успело сохраниться, needsProfile снят
+   * ещё до перехода). profile/ProfileScreen.tsx и
+   * attempt/AttemptQuestionVideo.tsx проп не передают — там уходить некуда,
+   * их поведение не меняется. */
+  onBeforeLink?: () => Promise<void>;
+  /** По умолчанию — первичная заливка (экран сдачи, «Профиль»). На
+   * «Уведомлениях» терракота уже занята точками непрочитанного, поэтому
+   * предложение связать бота там идёт вторичным силуэтом — правило «один
+   * акцент на экран» (ADR-0043), тот же приём, что у кнопки в
+   * student/StudentExamCard.tsx. */
+  variant?: ButtonVariant;
 }
 
-export function TelegramLinkButton({ explanation }: TelegramLinkButtonProps) {
+export function TelegramLinkButton({
+  explanation,
+  onBeforeLink,
+  variant,
+}: TelegramLinkButtonProps) {
   const { refresh } = useAuth();
   const { pending, error, link } = useTelegramLinkCode();
   const linkStartedRef = useRef(false);
@@ -41,6 +60,7 @@ export function TelegramLinkButton({ explanation }: TelegramLinkButtonProps) {
   }, [refresh]);
 
   async function handleClick(): Promise<void> {
+    if (onBeforeLink) await onBeforeLink();
     // Флаг ставим по итогу запроса: сбой (бот не подключён, сеть) не должен
     // выглядеть как «начатая связка» — возврат на вкладку не должен зря
     // перечитывать сессию.
@@ -56,6 +76,7 @@ export function TelegramLinkButton({ explanation }: TelegramLinkButtonProps) {
         </p>
       )}
       <Button
+        variant={variant}
         pending={pending}
         onClick={() => void handleClick()}
         style={{ alignSelf: 'flex-start' }}

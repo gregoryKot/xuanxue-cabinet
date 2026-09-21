@@ -7,10 +7,11 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     id: 'u1',
     name: 'Дима',
     roles: ['teacher'],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
+    noTelegram: false,
+    hasEmail: true,
     needsProfile: false,
     ...overrides,
   };
@@ -60,6 +61,13 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/channels')).toBe(false);
   });
 
+  // ADR-0075 «Ученику экран тега пока не даётся»: /materials/tags не назван
+  // в списке открытых ученику путей — как и /materials сам по себе.
+  it('ученик на «/materials/tags» — false, экран тега пока только штату', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/materials')).toBe(false);
+    expect(canSeeRoute(makeMe({ roles: [] }), '/materials/tags')).toBe(false);
+  });
+
   it('ученик на своих «/tasks»/«/lessons»/«/archive»/«/library» — true', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/tasks')).toBe(true);
     expect(canSeeRoute(makeMe({ roles: [] }), '/lessons')).toBe(true);
@@ -69,6 +77,10 @@ describe('canSeeRoute', () => {
 
   it('ученик на «/profile» — true, личный экран доступен всем (ADR-0045)', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/profile')).toBe(true);
+  });
+
+  it('ученик на «/notifications» — true, лента событий доступна всем (ADR-0063)', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/notifications')).toBe(true);
   });
 
   it('ученик на «/attempts/:id» — true, экран сдачи доступен всем', () => {

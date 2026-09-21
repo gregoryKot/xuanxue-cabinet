@@ -6,39 +6,17 @@ import {
   EXAM_IMAGE_UNSUPPORTED_MESSAGE,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
-import { parseExamImageUpload, sniffExamImageType } from './exam-image-upload';
+import { parseExamImageUpload } from './exam-image-upload';
 
 function jpegOfSize(size: number): Buffer {
   return Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(size - 3)]);
 }
 
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2]);
-const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2]);
-const WEBP = Buffer.concat([
-  Buffer.from('RIFF', 'ascii'),
-  Buffer.from([0, 0, 0, 0]),
-  Buffer.from('WEBP', 'ascii'),
-]);
 const GARBAGE = Buffer.from('это просто текст, не картинка', 'utf8');
 
-describe('sniffExamImageType', () => {
-  it.each([
-    ['JPEG', JPEG, 'image/jpeg'],
-    ['PNG', PNG, 'image/png'],
-    ['WebP', WEBP, 'image/webp'],
-  ] as const)('сигнатура %s → свой тип', (_label, bytes, expected) => {
-    expect(sniffExamImageType(bytes)).toBe(expected);
-  });
-
-  it('мусор — null', () => {
-    expect(sniffExamImageType(GARBAGE)).toBeNull();
-  });
-
-  it('обрезанная сигнатура (короче эталона) — null, не падает', () => {
-    expect(sniffExamImageType(Buffer.from([0xff, 0xd8]))).toBeNull();
-  });
-});
-
+// Сигнатуры проверяются там, где живут, — common/raw-upload.spec.ts. Здесь
+// остаётся своя часть картинки варианта: лимит, тексты и границы.
 describe('parseExamImageUpload', () => {
   it('JPEG — распознанные bytes и contentType', () => {
     expect(parseExamImageUpload(JPEG)).toEqual({

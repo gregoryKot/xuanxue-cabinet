@@ -5,11 +5,19 @@
 // «контроллер зовёт сервис с query и отдаёт ответ».
 import { Test } from '@nestjs/testing';
 import type { MyArchivedLessonDto, MyLessonDto } from '@xuanxue/shared';
+import type { UserLean } from '../users/users.service';
 import { ListMyArchivedLessonsDto } from './dto/list-my-archived-lessons.dto';
 import { ListMyLessonsDto } from './dto/list-my-lessons.dto';
 import { MyLessonsArchiveService } from './my-lessons-archive.service';
 import { MyLessonsController } from './my-lessons.controller';
 import { MyLessonsService } from './my-lessons.service';
+
+const STUDENT: UserLean = {
+  id: 'u1',
+  name: 'Ученик',
+  roles: [],
+  status: 'active',
+};
 
 const LESSONS: MyLessonDto[] = [
   {
@@ -21,6 +29,7 @@ const LESSONS: MyLessonDto[] = [
     format: 'online',
     topic: 'Форма 24',
     status: 'scheduled',
+    tags: [],
   },
 ];
 
@@ -33,6 +42,8 @@ const ARCHIVED_LESSONS: MyArchivedLessonDto[] = [
     topic: 'Форма 8',
     status: 'scheduled',
     recordings: [],
+    tags: [],
+    materials: [],
   },
 ];
 
@@ -60,12 +71,14 @@ describe('MyLessonsController', () => {
     expect(list).toHaveBeenCalledWith(query, expect.anything());
   });
 
-  it('listArchive() передаёт query в архивный сервис и отдаёт его ответ как есть', async () => {
+  it('listArchive() передаёт query, время и признак штата в архивный сервис', async () => {
     const list = jest.fn().mockResolvedValue(ARCHIVED_LESSONS);
     const controller = await buildController({}, { list });
     const query: ListMyArchivedLessonsDto = { limit: 5 };
 
-    await expect(controller.listArchive(query)).resolves.toEqual(ARCHIVED_LESSONS);
-    expect(list).toHaveBeenCalledWith(query, expect.anything());
+    await expect(controller.listArchive(query, STUDENT)).resolves.toEqual(
+      ARCHIVED_LESSONS,
+    );
+    expect(list).toHaveBeenCalledWith(query, expect.anything(), false);
   });
 });

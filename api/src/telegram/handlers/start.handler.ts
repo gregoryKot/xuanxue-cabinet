@@ -33,6 +33,11 @@
 // (telegram-link-deep-link.ts): тот самый «незнакомец» из инцидента выше
 // перестаёт им быть. BotUserAccessService здесь не вызывается — личность даёт
 // сам код, telegramId на аккаунте ещё не стоит (комментарий в том же файле).
+//
+// `pay_<YYYY-MM>` (ADR-0050, docs/PLAN.md §15 слой 2.2) — deep link
+// «Отправить скриншот», вынесен в payment-screenshot-deep-link.ts (тот же
+// приём, что exam_/link_ выше): `unknown` получает отказ до того, как
+// потратит время на скриншот, тем же приёмом, что видео экзамена.
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
@@ -47,6 +52,7 @@ import { BotUserAccessService } from '../bot-user-access.service';
 import { buildStrangerMessage } from './bot-menu';
 import { handleExamMediaDeepLink } from './exam-media-deep-link';
 import { handleInviteDeepLink } from './join-invite-deep-link';
+import { handlePaymentScreenshotDeepLink } from './payment-screenshot-deep-link';
 import { parseStartPayload } from './start-payload';
 import { welcomeConnectedUser } from './start-welcome';
 import { handleTelegramLinkDeepLink } from './telegram-link-deep-link';
@@ -94,6 +100,13 @@ export class StartHandler {
           await handleTelegramLinkDeepLink(ctx, payload.code, from.id, now, {
             linkService: this.telegramLinkService,
             channelConfig: this.channelConfig,
+          });
+          return;
+        case 'paymentScreenshot':
+          await handlePaymentScreenshotDeepLink(ctx, from.id, payload.month, now, {
+            botSessions: this.botSessions,
+            botAccess: this.botAccess,
+            settingsService: this.settingsService,
           });
           return;
         case undefined:

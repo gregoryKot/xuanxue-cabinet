@@ -1,7 +1,7 @@
 // Запись подтверждения/снятия оплаты — вынесено из payments.service.ts
 // (файл-лимит CLAUDE.md «Храповики»), тем же приёмом, что media-asset-insert.ts:
 // бизнес-правила владения остаются в сервисе, здесь только сама запись.
-import type { Model } from 'mongoose';
+import type { Model, UpdateQuery } from 'mongoose';
 import { Types } from 'mongoose';
 import type { DateTime } from 'luxon';
 import {
@@ -12,7 +12,43 @@ import { ConflictError } from '../common/errors';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
 import { decryptPayment, type RawLeanPayment } from './payment.mapper';
-import { PAYMENT_ENCRYPT_SCHEMA, type PaymentRecord } from './payment.schema';
+import {
+  PAYMENT_ENCRYPT_SCHEMA,
+  type PaymentRecord,
+  type TelegramScreenshotSource,
+} from './payment.schema';
+
+/**
+ * Upsert `(userId, month)` общий для всех, кто пишет в оплату:
+ * confirmPayment, attachTelegramScreenshot (оба ниже) и приём снимка из
+ * кабинета (payment-screenshot.write.ts) — jscpd: одна и та же гонка, один и
+ * тот же приём лечения. E11000 на апсерте значит, что конкурент (второй
+ * клик, ретрай сети, двойная отправка фото) успел вставить документ первым;
+ * повтор апдейта без `upsert` находит уже вставленный. `update` целиком, а
+ * не один `$set`: кабинету нужен ещё и `$unset` полей прежнего снимка.
+ */
+export async function upsertPaymentByFilter(
+  model: Model<PaymentRecord>,
+  filter: Record<string, unknown>,
+  update: UpdateQuery<PaymentRecord>,
+): Promise<RawLeanPayment> {
+  try {
+    const doc = await model
+      .findOneAndUpdate(filter, update, { upsert: true, returnDocument: 'after' })
+      .lean<RawLeanPayment>();
+    return decryptPayment(doc);
+  } catch (err) {
+    if (!isDuplicateKeyError(err)) throw err;
+    const doc = await model
+      .findOneAndUpdate(filter, update, { returnDocument: 'after' })
+      .lean<RawLeanPayment | null>();
+    // Крайний случай: конкурент успел вставить документ и удалить его до
+    // повтора (двойной клик почти одновременно со снятием подтверждения) —
+    // не проглатываем, иначе ответ соврёт об успешной записи.
+    if (!doc) throw err;
+    return decryptPayment(doc);
+  }
+}
 
 /**
  * Идемпотентный upsert `(userId, month)` (ADR-0049): уже `paid` — тот же
@@ -44,27 +80,32 @@ export async function confirmPayment(
   );
 
   const filter = { userId: new Types.ObjectId(userId), month };
-  try {
-    const doc = await model
-      .findOneAndUpdate(
-        filter,
-        { $set: payload },
-        { upsert: true, returnDocument: 'after' },
-      )
-      .lean<RawLeanPayment>();
-    return decryptPayment(doc);
-  } catch (err) {
-    // Двойной клик по «Подтвердить» и ретрай сети: оба запроса увидели
-    // «документа нет» и оба пошли вставлять — второй упирается в уникальный
-    // (userId, month) (ADR-0049). Индекс и есть защита, повтор апдейта уже
-    // находит вставленный документ.
-    if (!isDuplicateKeyError(err)) throw err;
-    const doc = await model
-      .findOneAndUpdate(filter, { $set: payload }, { returnDocument: 'after' })
-      .lean<RawLeanPayment | null>();
-    if (!doc) throw err;
-    return decryptPayment(doc);
-  }
+  return upsertPaymentByFilter(model, filter, { $set: payload });
+}
+
+/** Скриншот из бота (ADR-0050, слой 2.2) — upsert как у confirmPayment; `paid`
+ * не трогаем (ADR-0049), иначе идём в `awaiting`. */
+export async function attachTelegramScreenshot(
+  model: Model<PaymentRecord>,
+  userId: string,
+  month: string,
+  source: TelegramScreenshotSource,
+  now: DateTime,
+): Promise<RawLeanPayment> {
+  const existing = await model.findOne({ userId, month }).lean<RawLeanPayment | null>();
+  const payload = encryptRecord(
+    {
+      screenshotKind: 'telegram' as const,
+      screenshotFileId: source.fileId,
+      screenshotFileUniqueId: source.fileUniqueId,
+      screenshotAt: now.toJSDate(),
+      ...(existing?.status === 'paid' ? {} : { status: 'awaiting' as const }),
+    },
+    PAYMENT_ENCRYPT_SCHEMA,
+  );
+
+  const filter = { userId: new Types.ObjectId(userId), month };
+  return upsertPaymentByFilter(model, filter, { $set: payload });
 }
 
 /**

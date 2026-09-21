@@ -1,4 +1,4 @@
-// Юнит на чистый разбор — без Mongo и без DI (CLAUDE.md «Тесты»): три вида
+// Юнит на чистый разбор — без Mongo и без DI (CLAUDE.md «Тесты»): четыре вида
 // deep link не пересекаются, битый и чужой payload дают null.
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
@@ -83,6 +83,27 @@ describe('parseStartPayload', () => {
 
     it('короче 32 символов — null', () => {
       expect(parseStartPayload(fakeCtx('/start link_' + 'b'.repeat(31)))).toBeNull();
+    });
+  });
+
+  describe('pay_<YYYY-MM>', () => {
+    it('валидный месяц — paymentScreenshot', () => {
+      expect(parseStartPayload(fakeCtx('/start pay_2026-09'))).toEqual({
+        kind: 'paymentScreenshot',
+        month: '2026-09',
+      });
+    });
+
+    it('битый месяц (без ведущего нуля) — null', () => {
+      expect(parseStartPayload(fakeCtx('/start pay_2026-9'))).toBeNull();
+    });
+
+    it('месяц вне 01–12 — null', () => {
+      expect(parseStartPayload(fakeCtx('/start pay_2026-13'))).toBeNull();
+    });
+
+    it('сокращённый год — null', () => {
+      expect(parseStartPayload(fakeCtx('/start pay_26-09'))).toBeNull();
     });
   });
 

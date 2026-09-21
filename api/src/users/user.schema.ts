@@ -15,9 +15,11 @@
 // profileNamedAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY
 // (не свободный текст): момент, когда человек сам назвал себя на экране
 // `/welcome` (ADR-0044, PATCH /me/profile, UserProfileService.setName).
+// noTelegramAt — тоже Date, та же причина не попасть в USER_FIELD_POLICY
+// (не свободный текст): момент, когда человек сказал, что Telegram у него
+// нет (ADR-0067, PUT /me/no-telegram, UserNoTelegramService.setNoTelegram).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
-  SCHOOL_TZ,
   USER_ROLES,
   USER_STATUSES,
   type UserRole,
@@ -33,6 +35,21 @@ export class UserRecord {
   @Prop({ type: String, required: false, lowercase: true })
   email?: string;
 
+  // Адрес назван, но ещё не подтверждён переходом по ссылке из письма
+  // (ADR-0059, EmailLinkService) — отдельное поле от email: email — ключ
+  // входа, и поиск при входе (LoginIdentityService.resolveEmailUser,
+  // EmailLoginUserService.findByEmail) обязан находить только подтверждённые
+  // адреса — опечатка в адресе иначе отдала бы ключ от кабинета постороннему,
+  // то же, от чего закрылись ссылкой-приглашением (ADR-0030/0036, SECURITY
+  // §2). Уникального индекса здесь нет и не должно быть: занят адрес или
+  // нет, решает подтверждение, а не заявка — двое могут набрать один и тот
+  // же адрес, войдёт тот, кто откроет письмо; уникальность дала бы
+  // постороннему способ заблокировать чужой адрес, выставив его себе в
+  // pendingEmail. retention: живёт до подтверждения, замены или удаления
+  // аккаунта.
+  @Prop({ type: String, required: false, lowercase: true })
+  pendingEmail?: string;
+
   @Prop({ type: Number, required: false })
   telegramId?: number;
 
@@ -45,9 +62,6 @@ export class UserRecord {
   // текст.
   @Prop({ type: [{ type: String, enum: USER_ROLES }], default: [] })
   roles!: UserRole[];
-
-  @Prop({ type: String, default: SCHOOL_TZ })
-  tz!: string;
 
   @Prop({ type: String, enum: USER_STATUSES, default: 'active' })
   status!: UserStatus;
@@ -72,6 +86,19 @@ export class UserRecord {
   // до этого PR, — миграция 0009 проставляет его тем, чьё имя уже настоящее.
   @Prop({ type: Date, required: false })
   profileNamedAt?: Date;
+
+  // Человек сказал, что Telegram у него нет (ADR-0067, PUT /me/no-telegram,
+  // UserNoTelegramService.setNoTelegram). Date, не Boolean — та же причина,
+  // что у lastLoginAt/joinedViaInviteAt/profileNamedAt выше: момент нужен
+  // для журнала, а факт «есть значение» даёт булево MeDto.noTelegram
+  // (auth/user.mapper.ts). Отметка гасит предложение связки в кабинете и
+  // НИЧЕГО не решает о доставке: без личного чата с ботом
+  // PersonalChats.chatFor() и так отдаёт null, слать некуда — строить на
+  // этом поле логику планировщика или канала нельзя (ADR-0067). Снимается
+  // тем же маршрутом ($unset, не запись null) — человек мог завести
+  // Telegram позже, и дорога назад обязана быть.
+  @Prop({ type: Date, required: false })
+  noTelegramAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserRecord);
@@ -92,6 +119,9 @@ UserSchema.index(
 export const USER_FIELD_POLICY: FieldPolicy = {
   name: plain('показывается учителю и админу, подстановка «{ведущий}»'),
   email: plain('ключ поиска при входе, не свободный текст'),
+  pendingEmail: plain(
+    'сравнивается точно при подтверждении (ADR-0059) — шифрование со случайным IV ' +
+      'сделало бы такое сравнение невозможным, тот же класс данных, что email рядом',
+  ),
   googleId: plain('ключ входа от Google, непрозрачный id, не секрет'),
-  tz: plain('IANA-зона пользователя, нужна для расписания и выборок'),
 };

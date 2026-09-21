@@ -48,10 +48,8 @@ export interface ChannelDto {
   updatedAt: string;
 }
 
-/** `webpush` создаётся своей подпиской (`push_subscriptions`), не этим
- * эндпоинтом — исключён из типов входа. */
 export interface CreateChannelInput {
-  type: Exclude<ChannelType, 'webpush'>;
+  type: ChannelType;
   title: string;
   config: ChannelConfig;
 }

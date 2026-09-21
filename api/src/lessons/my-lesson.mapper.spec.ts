@@ -65,4 +65,17 @@ describe('toMyLessonDto', () => {
     expect(dto.format).toBe(CLASS.format);
     expect(dto.status).toBe('cancelled');
   });
+
+  // ADR-0075: тег видит и ученик — рубрика школы, не секрет.
+  it('теги приезжают как есть', () => {
+    const dto = toMyLessonDto(lesson({ tags: ['дракон', 'начинающие'] }), CLASS);
+    expect(dto.tags).toEqual(['дракон', 'начинающие']);
+  });
+
+  // Дата занятия до ADR-0075 не хранит поле в документе — `.lean()` не
+  // подставляет default схемы при чтении, маппер сам отдаёт [].
+  it('документ без поля tags — []', () => {
+    const dto = toMyLessonDto(lesson(), CLASS);
+    expect(dto.tags).toEqual([]);
+  });
 });

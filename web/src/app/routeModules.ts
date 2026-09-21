@@ -37,6 +37,7 @@ import {
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
   MY_MATERIALS_PATH,
+  NOTIFICATIONS_FEED_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
@@ -49,9 +50,10 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
-type RouteLoader = () => Promise<{ default: ComponentType }>;
+export type RouteLoader = () => Promise<{ default: ComponentType }>;
 
 /** GET-пути данных этого экрана — что предзагрузить (prefetchFirstScreen.ts). */
 type RoutePrefetch = (pathname: string) => string[];
@@ -104,6 +106,14 @@ export const ROUTE_MODULES = {
     warm: false,
   },
   join: { path: '/join/:code', load: () => import('../join/JoinScreen'), warm: false },
+  // Подтверждение почты вторым ключом входа (ADR-0059) — публичный маршрут,
+  // как login/emailLogin/join: не требует сессии и не выдаёт её (комментарий
+  // в EmailConfirmScreen.tsx), вошедшему чанк не нужен, греть в фоне нечего.
+  emailConfirm: {
+    path: '/email/confirm',
+    load: () => import('../auth/EmailConfirmScreen'),
+    warm: false,
+  },
   // Экран первого входа (ADR-0044) — как login/emailLogin/join, вошедшему,
   // который уже назвался, чанк не нужен, греть в фоне нечего.
   welcome: {
@@ -184,25 +194,33 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [entityPath(CHANNELS_PATH, lastSegment(pathname))],
   },
-  // «Библиотека» (слой 3.2, docs/PLAN.md §14) — подэкран «Занятий», вход
-  // кнопкой в шапке PlanningActions.tsx, не пункт меню (ADR-0025). Занятия
-  // расписания нужны и списку (рубрикация строки, MaterialCard.tsx), и форме
-  // (привязка галочками, MaterialClassesField.tsx) — греем их вместе с самим
-  // ресурсом.
+  // «Материалы» — раздел меню штата, пятый пункт навигации (ADR-0055), не
+  // подэкран «Занятий» и не кнопка в шапке (так было раньше). Занятия
+  // расписания нужны и списку (рубрикация строки, MaterialCard.tsx), и
+  // форме (привязка галочками, MaterialClassesField.tsx) — греем их вместе
+  // с самим ресурсом.
   materials: {
     path: '/materials',
     load: () => import('../materials/MaterialsScreen'),
     warm: true,
     prefetch: () => [materialsListPath(''), CLASSES_LIST_PATH],
   },
-  // `/materials/new` раньше `/materials/:materialId` — тот же порядок, что у
-  // соседних редакторов (ADR-0033): статический сегмент должен выигрывать у
-  // параметра.
+  // `/materials/new` раньше `/materials/:materialId` — та же причина, что у
+  // classNew/lessonNew выше (ADR-0033).
   materialNew: {
     path: '/materials/new',
     load: loadMaterialEditor,
     warm: true,
     prefetch: () => [CLASSES_LIST_PATH],
+  },
+  // Подэкран «Материалов»: общая выдача по тегу (ADR-0075/0078). Тоже
+  // раньше materialEditor — та же причина, что у materialNew выше.
+  materialsTags: {
+    path: '/materials/tags',
+    load: () => import('../materials/MaterialsTagsScreen'),
+    warm: true,
+    // Тег в prefetch(pathname) недоступен — греем то, что не зависит от выбора.
+    prefetch: () => [TAGS_LIST_PATH, CLASSES_LIST_PATH],
   },
   materialEditor: {
     path: '/materials/:materialId',
@@ -304,6 +322,15 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH],
   },
+  // Личное место человека, не раздел домена — как «/profile» выше, вход не из
+  // навигации разделов, а значком в оболочке (ADR-0025, ADR-0063). Открыт
+  // любой роли (screenAccess.ts, canSeeRoute).
+  notifications: {
+    path: '/notifications',
+    load: () => import('../notifications/NotificationsScreen'),
+    warm: true,
+    prefetch: () => [NOTIFICATIONS_FEED_PATH, MY_EXAMS_PATH],
+  },
   // «Задания» и «Занятия» ученика (решение владельца: экзамены — отдельный
   // экран и первый после входа, docs/PLAN.md §11) — как «/profile» выше,
   // открыты любой роли (screenAccess.ts, canSeeRoute).
@@ -321,7 +348,7 @@ export const ROUTE_MODULES = {
   },
   // «Записи занятий» (слой 3.3, docs/PLAN.md §14) — подэкран «Занятий», вход
   // карточкой SectionLink на LessonsScreen.tsx, не пункт меню (ADR-0025), тот
-  // же приём, что у «Библиотеки» штата (materials выше).
+  // же приём, что у «Библиотеки» ученика (library ниже).
   archive: {
     path: '/archive',
     load: () => import('../student/ArchiveScreen'),

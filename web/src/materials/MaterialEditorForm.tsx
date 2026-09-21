@@ -4,13 +4,15 @@
 // ChannelEditorForm.tsx): здесь только поля материала.
 import type { ClassDto, MaterialDto } from '@xuanxue/shared';
 import { MATERIALS_PATH } from '../api/apiPaths';
+import { useAuthConfig } from '../auth/useAuthConfig';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { SimpleEditorForm } from '../components/SimpleEditorForm';
+import { MaterialFileField } from './MaterialFileField';
 import { MaterialFormFields } from './MaterialFormFields';
 import { useMaterialForm } from './useMaterialForm';
 import type { UseMaterialEditorResult } from './useMaterialEditor';
 
-const BACK_TEXT = 'К библиотеке';
+const BACK_TEXT = 'К материалам';
 const NEW_MATERIAL_TITLE = 'Новый материал';
 const REMOVE_LABEL = 'Удалить материал';
 const REMOVE_MESSAGE = 'Материал исчезнет из библиотеки ученика. Отменить нельзя.';
@@ -27,6 +29,11 @@ export function MaterialEditorForm({
   editor,
 }: MaterialEditorFormProps) {
   const form = useMaterialForm(material, editor.create, editor.update, editor.remove);
+  // Нет ключей R2 (ADR-0057) — поля загрузки нет вовсе, а не кнопка, которая
+  // ответит 503. Хук уже используется вне экрана входа (AttemptScreen.tsx).
+  const authConfig = useAuthConfig();
+  const showFileField =
+    material !== null && authConfig.config?.fileStorageEnabled === true;
 
   return (
     <SimpleEditorForm
@@ -58,6 +65,13 @@ export function MaterialEditorForm({
         error={form.validationError}
         classes={classes}
       />
+      {showFileField && material && (
+        <MaterialFileField
+          materialId={material.id}
+          file={material.file}
+          onChanged={() => void editor.reload()}
+        />
+      )}
     </SimpleEditorForm>
   );
 }

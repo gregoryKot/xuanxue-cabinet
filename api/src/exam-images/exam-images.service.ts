@@ -47,13 +47,16 @@ export class ExamImagesService {
     private readonly attemptModel: Model<ExamAttemptRecord>,
   ) {}
 
-  async upload(body: unknown, createdBy: string): Promise<ExamImageDto> {
+  // createdBy необязателен — CLI-импорт сида (seed-exam.service.ts) грузит
+  // картинки без вошедшего в систему человека; схема поля не требует
+  // (ExamImageRecord.createdBy, required: false).
+  async upload(body: unknown, createdBy?: string): Promise<ExamImageDto> {
     const { bytes, contentType } = parseExamImageUpload(body);
     const created = await this.model.create({
       bytes: encryptBytes(bytes),
       contentType,
       sizeBytes: bytes.length,
-      createdBy: new Types.ObjectId(createdBy),
+      ...(createdBy !== undefined ? { createdBy: new Types.ObjectId(createdBy) } : {}),
     });
     const doc = await this.model.findById(created._id).lean<RawLeanExamImage>();
     if (!doc) {

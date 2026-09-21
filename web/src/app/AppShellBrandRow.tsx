@@ -12,10 +12,17 @@
 // одной ссылкой, а называет её `aria-label`, не текст в строке. На мониторе
 // у ученика (боковой колонки не бывает) эту роль по-прежнему играет подвал
 // под содержимым (AppShell.tsx).
+//
+// Колокольчик (ADR-0063) встал сюда же, слева от значка профиля, а не ещё
+// одним пунктом нижней панели: ADR-0025 (навигация по доменам) закрепляет
+// панель ровно за доменами школы, у уведомлений домена нет; и панель уже
+// занята пятью доменными разделами (ADR-0055) — шестая подпись на 360 px
+// не помещается.
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ProfileIcon } from '../components/ProfileIcon';
 import { SchoolMark, SCHOOL_NAME } from '../components/SchoolMark';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 const PROFILE_PATH = '/profile';
 const PROFILE_LABEL = 'Профиль';
@@ -31,16 +38,31 @@ const rowStyle: CSSProperties = {
   gap: 10,
   padding: '12px 16px',
 };
+// На 360px строка несёт знак школы, название и теперь два значка по 44px
+// (колокольчик и профиль) — длинное название школы обязано подрезаться
+// многоточием внутри строки, а не вылезать за неё (тот же приём и тот же
+// довод, что у sideBrandTitleStyle в sideNavStyles.ts, и PR #237 «ничего не
+// вылезает за свой контейнер»).
 const titleStyle: CSSProperties = {
   fontFamily: 'var(--font-display)',
   fontWeight: 500,
   fontSize: 21,
   color: 'var(--ink)',
+  minWidth: 0,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+// Общий отступ от названия школы несёт обёртка — обеим целям нажатия своего
+// зазора не нужно: они уже по 44px, видимые значки 20px и так расходятся.
+const actionsStyle: CSSProperties = {
+  marginLeft: 'auto',
+  display: 'flex',
+  alignItems: 'center',
 };
 // Не textLinkStyle (screenLayout.ts): подчёркивание — приём текстовой
 // ссылки, а тут значок без подписи рядом.
 const profileLinkStyle: CSSProperties = {
-  marginLeft: 'auto',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -59,9 +81,12 @@ export function AppShellBrandRow({ isMobile }: AppShellBrandRowProps) {
       <SchoolMark />
       <span style={titleStyle}>{SCHOOL_NAME}</span>
       {isMobile && (
-        <Link to={PROFILE_PATH} aria-label={PROFILE_LABEL} style={profileLinkStyle}>
-          <ProfileIcon />
-        </Link>
+        <span style={actionsStyle}>
+          <NotificationBell />
+          <Link to={PROFILE_PATH} aria-label={PROFILE_LABEL} style={profileLinkStyle}>
+            <ProfileIcon />
+          </Link>
+        </span>
       )}
     </span>
   );

@@ -26,7 +26,7 @@ describe('GET /auth/config (e2e), без BOT_TOKEN', () => {
     const body = res.body as AuthConfigDto;
     expect(body.telegramBotId).toBeUndefined();
     expect(body.schoolSiteUrl).toBeUndefined();
-    expect(Object.keys(body)).toEqual(['emailLoginEnabled']);
+    expect(Object.keys(body)).toEqual(['emailLoginEnabled', 'fileStorageEnabled']);
   });
 
   // Без RESEND_API_KEY/MAIL_FROM (createTestApp по умолчанию их не ставит,
@@ -36,5 +36,13 @@ describe('GET /auth/config (e2e), без BOT_TOKEN', () => {
     const res = await request(testApp.app.getHttpServer()).get('/api/auth/config');
 
     expect((res.body as AuthConfigDto).emailLoginEnabled).toBe(false);
+  });
+
+  // Без ключей R2 (createTestApp их не ставит) поля загрузки на странице
+  // материала быть не должно — ADR-0057, тем же правилом, что у почты.
+  it('без переменных R2 — fileStorageEnabled: false', async () => {
+    const res = await request(testApp.app.getHttpServer()).get('/api/auth/config');
+
+    expect((res.body as AuthConfigDto).fileStorageEnabled).toBe(false);
   });
 });

@@ -1,21 +1,23 @@
 // Чистая логика страницы материала — состояние, валидация, сборка тела
 // запроса (CLAUDE.md «Тесты»), по образцу channels/channelFormInput.ts.
-// `paid` — булев переключатель формы, `access` собирается из него только при
-// отправке: `MaterialAccess` — контракт сервера, форме удобнее галочка
-// (ADR-0048, MaterialFormFields.tsx). Теги хранятся строкой через запятую
-// (tagsText), не массивом — та же причина, что у exam-items/examItemFormInput.ts:
-// набранная запятая или пробел в конце иначе мгновенно теряются при разборе
-// на каждое нажатие клавиши. Разбор — общий `parseTagsText` (ADR-0058).
+// `access` — контракт сервера как есть, три значения радиогруппой
+// (ADR-0058, MaterialAccessField.tsx), не два булевых флага: честное
+// состояние формы совпадает с тем, что уходит на сервер. Теги хранятся
+// строкой через запятую (tagsText), не массивом — та же причина, что у
+// exam-items/examItemFormInput.ts: набранная запятая или пробел в конце иначе
+// мгновенно теряются при разборе на каждое нажатие клавиши. Разбор — общий
+// `parseTagsText` (ADR-0058).
 import {
   MATERIAL_KINDS,
   MATERIAL_LIMITS,
   parseTagsText,
-  TAG_LIMITS,
   type CreateMaterialInput,
+  type MaterialAccess,
   type MaterialDto,
   type MaterialKind,
   type UpdateMaterialInput,
 } from '@xuanxue/shared';
+import { longTagError } from '../lib/longTagError';
 
 const URL_RE = /^https?:\/\//i;
 
@@ -24,8 +26,7 @@ export interface MaterialFormState {
   url: string;
   kind: MaterialKind;
   classIds: string[];
-  /** `access === 'paid'` — форме удобнее галочка, чем строковый союз. */
-  paid: boolean;
+  access: MaterialAccess;
   tagsText: string;
 }
 
@@ -44,7 +45,7 @@ export function initialMaterialFormState(
     url: materialDto?.url ?? '',
     kind: materialDto?.kind ?? MATERIAL_KINDS[0],
     classIds: materialDto?.classIds ?? [],
-    paid: materialDto?.access === 'paid',
+    access: materialDto?.access ?? 'all',
     tagsText: materialDto?.tags.join(', ') ?? '',
   };
 }
@@ -68,18 +69,12 @@ export function validateMaterialForm(state: MaterialFormState): MaterialFormErro
     return { field: 'url', message: `Ссылка длиннее ${MATERIAL_LIMITS.url} символов.` };
   }
 
-  // Сервер такой тег отклонит (`@MaxLength`, ADR-0058) — форма ловит его
-  // раньше, чтобы не давать круг «сохранить → 400». Число тегов сверх
-  // лимита parseTagsText отбрасывает молча, как и у вопросов экзамена —
-  // подсказка под полем называет лимит заранее.
-  const longTag = parseTagsText(state.tagsText).find(
-    (tag) => tag.length > TAG_LIMITS.length,
-  );
-  if (longTag) {
-    return {
-      field: 'tags',
-      message: `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
-    };
+  // Число тегов сверх лимита parseTagsText отбрасывает молча, как и у
+  // вопросов экзамена — подсказка под полем называет лимит заранее. Почему
+  // длину тега проверяем на клиенте — шапка lib/longTagError.ts.
+  const tagError = longTagError(state.tagsText);
+  if (tagError) {
+    return { field: 'tags', message: tagError };
   }
   return null;
 }
@@ -93,7 +88,7 @@ export function toCreateInput(state: MaterialFormState): CreateMaterialInput {
     url: state.url.trim(),
     kind: state.kind,
     classIds: [...state.classIds],
-    access: state.paid ? 'paid' : 'all',
+    access: state.access,
     tags: parseTagsText(state.tagsText),
   };
 }

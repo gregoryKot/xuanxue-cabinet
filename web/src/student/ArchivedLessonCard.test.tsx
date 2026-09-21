@@ -4,8 +4,20 @@
 // машины (CI гоняет vitest ещё и под TZ=Australia/Sydney).
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { MyArchivedLessonDto } from '@xuanxue/shared';
+import type { MyArchivedLessonDto, MyMaterialDto } from '@xuanxue/shared';
 import { ArchivedLessonCard } from './ArchivedLessonCard';
+
+function makeMaterial(overrides: Partial<MyMaterialDto> = {}): MyMaterialDto {
+  return {
+    id: 'm1',
+    title: 'Ван Пэйшэн, «Ба-гуа-чжан»',
+    kind: 'book',
+    classTitles: [],
+    tags: [],
+    url: 'https://example.com/book',
+    ...overrides,
+  };
+}
 
 const TZ = 'Asia/Jerusalem';
 
@@ -17,7 +29,9 @@ function makeLesson(overrides: Partial<MyArchivedLessonDto> = {}): MyArchivedLes
     groupLabel: 'Средняя группа',
     topic: 'Форма 24',
     status: 'scheduled',
+    tags: [],
     recordings: [],
+    materials: [],
     ...overrides,
   };
 }
@@ -86,6 +100,50 @@ describe('ArchivedLessonCard — записи', () => {
     expect(
       screen.getByText('Запись ушла в канал школы — ищите её там под датой занятия.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('ArchivedLessonCard — материалы занятия (ADR-0056)', () => {
+  it('материалов нет — рубрики «Материалы» нет вовсе', () => {
+    renderCard({ materials: [] });
+    expect(screen.queryByText('Материалы')).not.toBeInTheDocument();
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('материал со ссылкой — название и «Открыть» ведёт по адресу в новой вкладке', () => {
+    renderCard({ materials: [makeMaterial({ title: 'Форма 24, разбор' })] });
+    expect(screen.getByText('Материалы')).toBeInTheDocument();
+    expect(screen.getByText('Форма 24, разбор')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Открыть' });
+    expect(link).toHaveAttribute('href', 'https://example.com/book');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('закрытый материал (locked: true, без url) — объяснение, мёртвой ссылки нет', () => {
+    renderCard({ materials: [makeMaterial({ url: undefined, locked: true })] });
+    expect(
+      screen.getByText(
+        'Этот материал школа открывает после оплаты месяца. Напишите в чат школы — там подскажут, как оплатить.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('несколько материалов — каждый своей строкой', () => {
+    renderCard({
+      materials: [
+        makeMaterial({ id: 'm1', title: 'Форма 24, разбор' }),
+        makeMaterial({
+          id: 'm2',
+          title: 'Ба-гуа-чжан, статья',
+          url: 'https://example.com/2',
+        }),
+      ],
+    });
+    expect(screen.getByText('Форма 24, разбор')).toBeInTheDocument();
+    expect(screen.getByText('Ба-гуа-чжан, статья')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Открыть' })).toHaveLength(2);
   });
 });
 

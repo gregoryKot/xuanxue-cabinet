@@ -12,6 +12,7 @@ import { ChannelRecord, ChannelSchema } from '../../channels/channel.schema';
 import { DeliveryRecord, DeliverySchema } from '../../deliveries/delivery.schema';
 import { LessonRecord, LessonSchema } from '../../lessons/lesson.schema';
 import { LessonsService } from '../../lessons/lessons.service';
+import { MaterialRecord, MaterialSchema } from '../../materials/material.schema';
 import { SettingsRecord, SettingsSchema } from '../../settings/settings.schema';
 import { SettingsService } from '../../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../../test-support/mongo-memory';
@@ -26,7 +27,9 @@ import type { GradeCommentHandler } from './grade-comment.handler';
 import { MessageHandler } from './message.handler';
 import type { NewExamMessageHandler } from './new-exam-message.handler';
 import type { NewExamItemMessageHandler } from './new-exam-item-message.handler';
+import type { PaymentScreenshotMessageHandler } from './payment-screenshot-message.handler';
 import { RecordingWaitHandler } from './recording-wait.handler';
+import { TopicWaitHandler } from './topic-wait.handler';
 
 export interface MessageHandlerTestContext {
   memory: MemoryMongo;
@@ -39,12 +42,14 @@ export interface MessageHandlerTestContext {
   channelModel: Model<ChannelRecord>;
   botSessionModel: Model<BotSessionRecord>;
   settingsModel: Model<SettingsRecord>;
+  materialModel: Model<MaterialRecord>;
   handler: MessageHandler;
   // Тип object-фейка, не класса (тот же приём, что fakeHandler() у
   // TelegramBotService) — иначе `expect(examMediaHandler.handle)` в спеке
   // ловит eslint unbound-method: ссылка на метод класса без вызова.
   examMediaHandler: { handle: jest.Mock };
   examTextHandler: { handle: jest.Mock };
+  paymentScreenshotHandler: { handle: jest.Mock };
   newExamItemHandler: { handle: jest.Mock };
   newExamHandler: { handle: jest.Mock };
   gradeCommentHandler: { handle: jest.Mock };
@@ -74,6 +79,10 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     BotSessionSchema,
   );
   await botSessionModel.syncIndexes();
+  const materialModel = connection.model<MaterialRecord>(
+    MaterialRecord.name,
+    MaterialSchema,
+  );
   const usersService = new UsersService(userModel);
   const broadcastModels = new BroadcastModels(
     lessonModel,
@@ -99,6 +108,7 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     lessonLinkRebuild,
     broadcastModel,
     userModel,
+    materialModel,
   );
   const recordingWaitHandler = new RecordingWaitHandler(
     new BotSessionService(botSessionModel),
@@ -106,23 +116,28 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     broadcastModel,
     classModel,
   );
-  // Видео экзамена — своя ветка диспетчера; саму механику (привязка,
-  // пересылка) проверяет exam-media-message.handler.spec.ts своими фейками,
-  // здесь — фейк с проверяемым вызовом: message.handler.access.spec.ts
-  // подтверждает, что MessageHandler зовёт именно его при kind: 'examMedia'.
+  const topicWaitHandler = new TopicWaitHandler(
+    new BotSessionService(botSessionModel),
+    lessonsService,
+    lessonLinkRebuild,
+  );
+  // Видео/текст/оплата — свои ветки диспетчера; саму механику проверяют
+  // exam-media-message.handler.spec.ts и соседи фейками, здесь — фейк с
+  // проверяемым вызовом (message.handler.access.spec.ts сверяет адрес).
   const examMediaHandler = { handle: jest.fn() };
   const examTextHandler = { handle: jest.fn() };
+  const paymentScreenshotHandler = { handle: jest.fn() };
   const newExamItemHandler = { handle: jest.fn() };
   const newExamHandler = { handle: jest.fn() };
   const gradeCommentHandler = { handle: jest.fn() };
   const handler = new MessageHandler(
     buildPersonalChats(connection, usersService, channelModel),
     new BotSessionService(botSessionModel),
-    lessonsService,
-    lessonLinkRebuild,
+    topicWaitHandler,
     recordingWaitHandler,
     examMediaHandler as unknown as ExamMediaMessageHandler,
     examTextHandler as unknown as ExamTextAnswerHandler,
+    paymentScreenshotHandler as unknown as PaymentScreenshotMessageHandler,
     newExamItemHandler as unknown as NewExamItemMessageHandler,
     newExamHandler as unknown as NewExamMessageHandler,
     gradeCommentHandler as unknown as GradeCommentHandler,
@@ -138,9 +153,11 @@ export async function setupMessageHandlerTest(): Promise<MessageHandlerTestConte
     channelModel,
     botSessionModel,
     settingsModel,
+    materialModel,
     handler,
     examMediaHandler,
     examTextHandler,
+    paymentScreenshotHandler,
     newExamItemHandler,
     newExamHandler,
     gradeCommentHandler,
@@ -158,5 +175,6 @@ export async function clearMessageHandlerTest(
     ctx.deliveryModel.deleteMany({}),
     ctx.channelModel.deleteMany({}),
     ctx.botSessionModel.deleteMany({}),
+    ctx.materialModel.deleteMany({}),
   ]);
 }

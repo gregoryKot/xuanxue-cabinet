@@ -42,18 +42,23 @@
 // ExamAttemptModelModule (тонкая регистрация модели попытки, без контроллеров
 // и остального ExamsModule), про ExamsModule он не знает.
 //
-// Импортирует MailModule (MailService) и NotificationsModule
-// (NotificationPrefsService) ради MailExamNotifier — почтового резерва
-// EXAM_NOTIFIER (слой 4.7, ADR-0039): TelegramModule уже импортирует
-// NotificationsModule сам, но не экспортирует NotificationPrefsService
-// наружу, поэтому ExamsModule берёт его отдельно. Циклов нет — ни один из
-// двух модулей про exams/ не знает.
+// Импортирует NotificationsModule ради InAppExamNotifier (слой in-app
+// уведомлений, ADR-0061) — второе плечо EXAM_NOTIFIER рядом с
+// TelegramExamNotifier: класс физически живёт в notifications/ (там же
+// коллекция notifications и лента `/me/inbox`), но собирается здесь, тем же
+// приёмом, что TelegramExamNotifier — не провайдер своего модуля, а
+// провайдер ExamsModule. Ему нужен NotificationPrefsService — TelegramModule
+// уже импортирует NotificationsModule сам, но не экспортирует
+// NotificationPrefsService наружу, поэтому ExamsModule берёт его отдельно.
+// Циклов нет — ни один из двух модулей про exams/ не знает. Модель
+// NotificationRecord доступна ему потому, что NotificationsModule
+// регистрирует её через MongooseModule.forFeature и экспортирует
+// MongooseModule — второй раз forFeature здесь заводить не нужно.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
-import { MailModule } from '../mail/mail.module';
-import { MailExamNotifier } from '../mail/mail-exam-notifier';
 import { MediaModule } from '../media/media.module';
+import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
@@ -82,7 +87,6 @@ import { MyExamsService } from './my-exams.service';
     TelegramModule,
     MediaModule,
     ExamImagesModule,
-    MailModule,
     NotificationsModule,
     MongooseModule.forFeature([
       { name: ExamItemRecord.name, schema: ExamItemSchema },
@@ -104,11 +108,11 @@ import { MyExamsService } from './my-exams.service';
     ExamAttemptsService,
     ExamGradingsService,
     MyExamsService,
-    // Telegram и почта — по отдельному провайдеру своего класса, EXAM_NOTIFIER
-    // собирает их вместе (CompositeExamNotifier, ADR-0039): вызывающему коду
-    // не важно, что каналов два.
+    // Кабинет и Telegram — по отдельному провайдеру своего класса,
+    // EXAM_NOTIFIER собирает их вместе (CompositeExamNotifier, ADR-0061):
+    // вызывающему коду не важно, что каналов два.
+    InAppExamNotifier,
     TelegramExamNotifier,
-    MailExamNotifier,
     { provide: EXAM_NOTIFIER, useClass: CompositeExamNotifier },
     // Бот — второй клиент этих же сервисов (ADR-0024, слой 4б.2): кладёт
     // себя в ExamBotPort сама в конструкторе, комментарий там же — почему

@@ -26,10 +26,12 @@ describe('matchRoute', () => {
     );
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
     expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
+    expect(loaderAt('/notifications')).toBe(ROUTE_MODULES.notifications.load);
     expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
     expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
     expect(loaderAt('/library')).toBe(ROUTE_MODULES.library.load);
+    expect(loaderAt('/email/confirm')).toBe(ROUTE_MODULES.emailConfirm.load);
     expect(loaderAt('/planning')).toBe(ROUTE_MODULES.planning.load);
     expect(loaderAt('/planning/new')).toBe(ROUTE_MODULES.lessonNew.load);
     expect(loaderAt('/planning/652f00000000000000000003')).toBe(
@@ -42,15 +44,41 @@ describe('matchRoute', () => {
     );
     expect(loaderAt('/materials')).toBe(ROUTE_MODULES.materials.load);
     expect(loaderAt('/materials/new')).toBe(ROUTE_MODULES.materialNew.load);
+    expect(loaderAt('/materials/tags')).toBe(ROUTE_MODULES.materialsTags.load);
     expect(loaderAt('/materials/652f00000000000000000008')).toBe(
       ROUTE_MODULES.materialEditor.load,
     );
+  });
+
+  // Публичный маршрут подтверждения почты (ADR-0059) — вошедшему он не нужен,
+  // поэтому `warm: false`. Проверяем и сам загрузчик: опечатка в пути модуля
+  // иначе всплыла бы только в браузере, пустым экраном под Suspense (тот же
+  // довод, что у канала ниже).
+  it('подтверждение почты — свой чанк, в фоне не греется (ADR-0059)', async () => {
+    expect(ROUTE_MODULES.emailConfirm.warm).toBe(false);
+    await expect(ROUTE_MODULES.emailConfirm.load()).resolves.toHaveProperty('default');
+  });
+
+  // Центр уведомлений (ADR-0063) — свой чанк, греется в фоне, как «Профиль».
+  // Загрузчик зовём по-настоящему: опечатка в пути модуля иначе всплыла бы
+  // только в браузере, пустым экраном под Suspense.
+  it('экран «Уведомления» — свой чанк, греется в фоне (ADR-0063)', async () => {
+    expect(ROUTE_MODULES.notifications.warm).toBe(true);
+    await expect(ROUTE_MODULES.notifications.load()).resolves.toHaveProperty('default');
   });
 
   it('страница материала — один чанк на «новый» и на правку (ADR-0033)', async () => {
     expect(ROUTE_MODULES.materialNew.load).toBe(ROUTE_MODULES.materialEditor.load);
     await expect(ROUTE_MODULES.materialNew.load()).resolves.toHaveProperty('default');
     await expect(ROUTE_MODULES.materials.load()).resolves.toHaveProperty('default');
+  });
+
+  // Экран тега (ADR-0075) — свой чанк, отдельный от редактора материала:
+  // «/materials/tags» не должен провалиться в materialEditor (:materialId
+  // совпал бы со строкой «tags»), если бы запись стояла после него.
+  it('«/materials/tags» — свой чанк, не редактор материала', async () => {
+    expect(ROUTE_MODULES.materialsTags.load).not.toBe(ROUTE_MODULES.materialEditor.load);
+    await expect(ROUTE_MODULES.materialsTags.load()).resolves.toHaveProperty('default');
   });
 
   it('страница канала — один чанк на «новый» и на правку (ADR-0033)', async () => {
@@ -125,6 +153,7 @@ describe('ROUTE_MODULES', () => {
   it('экраны входа не греются в фоне — вошедшему они не нужны', () => {
     const notWarmed = routes.filter((route) => !route.warm).map((route) => route.path);
     expect(notWarmed.sort()).toEqual([
+      '/email/confirm',
       '/join/:code',
       '/login',
       '/login/email',

@@ -2,7 +2,7 @@
 // MaterialDto/MyMaterialDto (CLAUDE.md, раздел «API»: документ Mongoose
 // наружу не возвращается).
 import type { Types } from 'mongoose';
-import type { MaterialDto, MyMaterialDto } from '@xuanxue/shared';
+import type { MaterialDto, MaterialFileDto, MyMaterialDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
 import { decryptRecord } from '../utils/encryption';
 import { MATERIAL_ENCRYPT_SCHEMA, type MaterialRecord } from './material.schema';
@@ -25,6 +25,28 @@ export function decryptMaterial(doc: RawLeanMaterial): RawLeanMaterial {
   return decryptRecord(doc, MATERIAL_ENCRYPT_SCHEMA);
 }
 
+/** Пять полей документа (ADR-0057) → одно описание файла в ответе. Ключ
+ * объекта (`fileKey`) наружу не уходит: по нему файл и скачивается, а право
+ * на скачивание проверяем мы. `undefined`, пока файла нет — тогда ключа
+ * `file` в JSON не будет вовсе, как у `url` закрытого материала. */
+function toMaterialFileDto(doc: RawLeanMaterial): MaterialFileDto | undefined {
+  const { fileKey, fileName, fileContentType, fileSizeBytes, fileUploadedAt } = doc;
+  if (!fileKey || !fileName || !fileContentType || !fileUploadedAt) return undefined;
+  return {
+    name: fileName,
+    contentType: fileContentType,
+    sizeBytes: fileSizeBytes ?? 0,
+    uploadedAt: toIsoUtc(fileUploadedAt),
+  };
+}
+
+/** Одно место, где решается «какие ключи описания файла попадут в объект» —
+ * и у штата, и у ученика (CLAUDE.md «Дубли»). */
+function fileEntry(doc: RawLeanMaterial): { file?: MaterialFileDto } {
+  const file = toMaterialFileDto(doc);
+  return file ? { file } : {};
+}
+
 export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
   return {
     id: doc._id.toString(),
@@ -32,8 +54,10 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
     url: doc.url,
     kind: doc.kind,
     classIds: doc.classIds.map((id) => id.toString()),
+    lessonIds: doc.lessonIds.map((id) => id.toString()),
     access: doc.access,
     tags: doc.tags ?? [],
+    ...fileEntry(doc),
     createdBy: doc.createdBy.toString(),
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
@@ -67,5 +91,9 @@ export function toMyMaterialDto(
   // `locked`/`url` — ключи, не значения undefined: `toHaveProperty` и
   // JSON.stringify не должны видеть ни намёка на то, что url когда-то был
   // (SECURITY §3, ADR-0048).
-  return isLocked ? { ...base, locked: true } : { ...base, url: doc.url };
+  // Закрытому материалу не достаётся ни `url`, ни `file`: иначе рубильник
+  // оплаты обходится прямым адресом файла (ADR-0057, ADR-0048).
+  return isLocked
+    ? { ...base, locked: true }
+    : { ...base, url: doc.url, ...fileEntry(doc) };
 }

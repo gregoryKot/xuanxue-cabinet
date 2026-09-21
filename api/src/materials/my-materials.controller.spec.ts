@@ -23,7 +23,6 @@ const STUDENT: UserLean = {
   id: 'u1',
   name: 'Ученик',
   roles: [],
-  tz: 'Asia/Jerusalem',
   status: 'active',
 };
 

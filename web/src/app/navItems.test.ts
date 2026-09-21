@@ -12,10 +12,11 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     id: 'u1',
     name: 'Дима',
     roles: ['teacher'],
-    tz: 'UTC',
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
+    noTelegram: false,
+    hasEmail: true,
     needsProfile: false,
     ...overrides,
   };
@@ -54,6 +55,17 @@ describe('activeSectionPath — список штата', () => {
   it('/exam-items и /grading — подэкраны «Экзаменов»', () => {
     expect(activeSectionPath('/exam-items', STAFF_NAV_ITEMS)).toBe('/exams');
     expect(activeSectionPath('/grading', STAFF_NAV_ITEMS)).toBe('/exams');
+  });
+
+  // ADR-0055 — пятый пункт штата, подсвечивает сам себя, как и остальные.
+  it('/materials подсвечивает сам себя', () => {
+    expect(activeSectionPath('/materials', STAFF_NAV_ITEMS)).toBe('/materials');
+  });
+
+  // ADR-0075 — «Теги» подэкран «Материалов», тот же приём, что у
+  // «/archive»/«/library» под «Занятиями» ученика ниже.
+  it('/materials/tags — подэкран «Материалов»', () => {
+    expect(activeSectionPath('/materials/tags', STAFF_NAV_ITEMS)).toBe('/materials');
   });
 
   it('путь вне навигации — null', () => {

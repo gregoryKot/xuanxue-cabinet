@@ -1,7 +1,7 @@
 // Экран «Библиотека» ученика — состояния загрузки списка (ТЗ docs/PLAN.md
 // §14 слой 3.2, ADR-0047, ADR-0048). Мокаем apiFetch (CLAUDE.md «Сеть только
 // через http.ts»), по образцу ArchiveScreen.test.tsx.
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { MyMaterialDto } from '@xuanxue/shared';
@@ -121,14 +121,46 @@ describe('LibraryScreen — пилюли тегов (ADR-0058)', () => {
     render(<LibraryScreen />);
     await screen.findByText('Ван Пэйшэн, «Ба-гуа-чжан»');
 
-    await user.click(screen.getByRole('button', { name: 'старшая' }));
+    // Тег «старшая» теперь есть и на пилюле фильтра, и на пилюле в строке
+    // материала (ADR-0068) — без scope до группы фильтра запрос неоднозначен.
+    const filterGroup = within(screen.getByRole('group', { name: 'Теги' }));
+    await user.click(filterGroup.getByRole('button', { name: 'старшая' }));
 
     expect(screen.getByText('Ван Пэйшэн, «Ба-гуа-чжан»')).toBeInTheDocument();
     expect(screen.queryByText('Разбор формы 24')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Все' }));
+    await user.click(filterGroup.getByRole('button', { name: 'Все' }));
 
     expect(screen.getByText('Ван Пэйшэн, «Ба-гуа-чжан»')).toBeInTheDocument();
     expect(screen.getByText('Разбор формы 24')).toBeInTheDocument();
+  });
+
+  // ADR-0068: тег в строке материала — то же действие, что пилюля фильтра
+  // наверху, с одним состоянием на двоих (не второй источник правды).
+  it('клик по тегу в строке материала сужает список и отмечает пилюлю фильтра наверху', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/me/materials': [
+        makeMaterial({ id: 'm1', title: 'Ван Пэйшэн, «Ба-гуа-чжан»', tags: ['старшая'] }),
+        makeMaterial({ id: 'm2', title: 'Разбор формы 24', tags: [] }),
+      ],
+    });
+
+    render(<LibraryScreen />);
+    await screen.findByText('Ван Пэйшэн, «Ба-гуа-чжан»');
+
+    // У m2 тегов нет, поэтому группа «Теги материала» на экране одна — она
+    // принадлежит карточке m1.
+    const cardTags = within(screen.getByRole('group', { name: 'Теги материала' }));
+    await user.click(cardTags.getByRole('button', { name: 'старшая' }));
+
+    expect(screen.getByText('Ван Пэйшэн, «Ба-гуа-чжан»')).toBeInTheDocument();
+    expect(screen.queryByText('Разбор формы 24')).not.toBeInTheDocument();
+
+    const filterGroup = within(screen.getByRole('group', { name: 'Теги' }));
+    expect(filterGroup.getByRole('button', { name: 'старшая' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });

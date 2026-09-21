@@ -11,12 +11,15 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Logger } from 'nestjs-pino';
 import { MailModule } from '../mail/mail.module';
 import { SettingsModule } from '../settings/settings.module';
+import { StorageModule } from '../storage/storage.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { EmailAuthService } from './email-auth.service';
+import { EmailLinkController } from './email-link.controller';
+import { EmailLinkService } from './email-link.service';
 import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
 import { EmailLoginTokenService } from './email-login-token.service';
 import { JoinController } from './join.controller';
@@ -35,23 +38,37 @@ import { TelegramLinkController } from './telegram-link.controller';
   imports: [
     UsersModule,
     SettingsModule,
+    // StorageModule — GET /auth/config сообщает экрану, подключено ли
+    // хранилище файлов (ADR-0057), тем же признаком, что решает судьбу
+    // загрузки. Хранилище про вход не знает — цикла нет.
+    StorageModule,
     TelegramModule,
     MailModule,
     MongooseModule.forFeature([
       { name: EmailLoginTokenRecord.name, schema: EmailLoginTokenSchema },
     ]),
   ],
-  controllers: [AuthController, JoinController, TelegramLinkController],
+  controllers: [
+    AuthController,
+    JoinController,
+    TelegramLinkController,
+    EmailLinkController,
+  ],
   providers: [
     AuthService,
     TelegramAuthService,
     EmailAuthService,
     EmailLoginTokenService,
+    EmailLinkService,
     // Ссылка-приглашение школы (ADR-0030/0036): InviteLinkService и
     // LoginIdentityService приходят как экспорт UsersModule (импортирован
     // выше, второй провайдер здесь не заводим).
     // Связка Telegram (ADR-0034): TelegramLinkCodeService для
     // TelegramLinkController — тем же путём, экспорт UsersModule.
+    // Привязка почты (ADR-0059): EmailLinkService берёт
+    // EmailLinkTokenService/UserEmailService как экспорт UsersModule
+    // (импортирован выше) и MailService — как экспорт MailModule, второй раз
+    // их не заводим.
     { provide: APP_GUARD, useClass: AuthGuard },
     {
       provide: SESSION_SECRET,

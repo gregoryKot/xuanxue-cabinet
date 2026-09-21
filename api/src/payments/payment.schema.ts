@@ -1,13 +1,14 @@
 // Абонемент по месяцам (docs/PLAN.md §15, ADR-0049) — данные ученика
 // (ADR-0010 наоборот: не занятие/канал школы, а деньги конкретного
-// человека), чеклист CLAUDE.md «Новая коллекция с полем userId» целиком.
-// Срок хранения — пока жив аккаунт: финансовый след школы, не свободный
-// текст — уносит его `deleteAllUserData` по `USER_OWNED_COLLECTIONS` вместе
-// с остальными данными человека (ADR-0049 «Последствия»).
+// человека), чеклист CLAUDE.md «Новая коллекция» целиком. Срок хранения —
+// пока жив аккаунт: финансовый след школы, не свободный текст — уносит его
+// `deleteAllUserData` по `USER_OWNED_COLLECTIONS` вместе с остальными
+// данными человека (ADR-0049 «Последствия»).
 //
-// Поля скриншота (screenshotKind/…FileId/…FileUniqueId/…ImageId/…At) заведены
-// здесь, но ни один эндпоинт этого PR их не пишет — слой 2.2 (приём
-// скриншота, ADR-0050) следующим PR, чтобы схема не менялась ещё раз.
+// Поля скриншота (screenshotKind/…FileId/…FileUniqueId/…At) пишет путь бота
+// (слой 2.2, ADR-0050): `attachTelegramScreenshot` в payments.write.ts.
+// `screenshotImageId` ждёт второго пути — загрузки в кабинете; он заведён
+// заранее, чтобы схема не менялась ещё раз.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { PAYMENT_STATUSES } from '@xuanxue/shared';
@@ -15,11 +16,22 @@ import type { PaymentStatus } from '@xuanxue/shared';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 import { enc, plain, encryptSchemaFrom, type FieldPolicy } from '../common/field-policy';
 
-// Источник скриншота (ADR-0050, слой 2.2) — бот (file_id Telegram) или
-// загрузка в кабинете (payment_screenshots). Список закрыт здесь же, не в
-// shared: наружу (DTO) поле не идёт ни в одном эндпоинте этого PR.
+// Источник скриншота (ADR-0050) — бот (file_id Telegram) или загрузка в
+// кабинете (payment_screenshots, следующий PR). Список закрыт здесь же, не в
+// shared: наружу (DTO) поле не идёт ни в одном эндпоинте — снаружи видно
+// только `hasScreenshot`.
 const PAYMENT_SCREENSHOT_KINDS = ['telegram', 'upload'] as const;
 type PaymentScreenshotKind = (typeof PAYMENT_SCREENSHOT_KINDS)[number];
+
+/** Источник скриншота из бота (payments.write.ts, attachTelegramScreenshot) —
+ * та же форма, что `PaymentScreenshotSource` в telegram/handlers/
+ * payment-screenshot-source.ts. Телеграм-слой сюда не импортируется:
+ * структурная совместимость типов делает своё дело, тем же приёмом, что
+ * `TelegramVideoSource` у media_assets. */
+export interface TelegramScreenshotSource {
+  fileId: string;
+  fileUniqueId: string;
+}
 
 @Schema({ timestamps: true, collection: 'payments' })
 export class PaymentRecord {
@@ -51,7 +63,7 @@ export class PaymentRecord {
   @Prop({ type: Date, required: false })
   confirmedAt?: Date;
 
-  // Слой 2.2 (ADR-0050, следующий PR) — источник скриншота, ниже.
+  // Источник скриншота (ADR-0050) — бот или загрузка, см. перечисление выше.
   @Prop({ type: String, enum: PAYMENT_SCREENSHOT_KINDS, required: false })
   screenshotKind?: PaymentScreenshotKind;
 

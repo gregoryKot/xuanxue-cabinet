@@ -9,8 +9,8 @@ import type { BroadcastsService } from '../../broadcasts/broadcasts.service';
 import { ConflictError, NotFoundError } from '../../common/errors';
 import type { DeliveriesService } from '../../deliveries/deliveries.service';
 import type { NotificationPrefsService } from '../../notifications/notification-prefs.service';
-import type { UsersService } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
+import type { BotUserAccessService } from '../bot-user-access.service';
 import { buildNotificationsMenu } from './notifications-menu';
 
 // Экспортирована — callback-query.handler.ts зовёт её же в своём catch, не
@@ -82,19 +82,25 @@ export async function handleSent(
 }
 
 /** Кнопка-тумблер экрана «Уведомления» (ТЗ notifications-delivery.md §3):
- * личность отправителя (teacher/assistant/admin с активным чатом) уже
- * проверена в CallbackQueryHandler.handle — здесь только резолв userId/roles
- * по chatId для самой настройки. Пользователь не найден (чат отвязан между
- * проверкой доступа и этим вызовом) — тихо игнорируем, как чужой параметр. */
+ * доступ — BotUserAccessService, та же точка, что у кнопок экзамена
+ * (exam-callback-router.ts) и «Экзамены»/«В меню» (open-menu-screen.ts) —
+ * своими уведомлениями управляет любой вошедший, включая ученика (отзыв
+ * владельца 2026-09-19, ADR-0065): unknown молчит, denied отвечает
+ * ACCESS_MESSAGE (CLAUDE.md «тихий отказ — самая дорогая ошибка»). */
 export async function handleNotificationToggle(
   ctx: Context,
-  users: UsersService,
+  botAccess: BotUserAccessService,
   notificationPrefs: NotificationPrefsService,
   chatId: number,
   kind: NotificationKind,
 ): Promise<void> {
-  const user = await users.findByTelegramId(chatId);
-  if (!user) return;
+  const access = await botAccess.resolve(chatId);
+  if (access.kind === 'unknown') return;
+  if (access.kind === 'denied') {
+    await ctx.editMessageText(access.message).catch(() => null);
+    return;
+  }
+  const { user } = access;
 
   const current = await notificationPrefs.get(user.id, user.roles);
   await notificationPrefs.set(user.id, kind, !current.enabled.includes(kind));

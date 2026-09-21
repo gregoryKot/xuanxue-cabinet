@@ -46,10 +46,11 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     id: 'u1',
     name: 'Дима',
     roles: ['teacher'],
-    tz: 'UTC',
     status: 'active',
     telegramLinked: false,
     botChatActive: false,
+    noTelegram: false,
+    hasEmail: true,
     needsProfile: false,
     ...overrides,
   };

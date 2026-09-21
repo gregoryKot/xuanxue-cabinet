@@ -13,6 +13,7 @@ import {
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
   MY_MATERIALS_PATH,
+  NOTIFICATIONS_FEED_PATH,
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
@@ -23,6 +24,7 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 
 function prefetchAt(pathname: string): string[] {
@@ -66,6 +68,14 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/materials')).toEqual([materialsListPath(''), CLASSES_LIST_PATH]);
   });
 
+  // Экран тега (ADR-0075/0078): тег — query-параметр, недоступный
+  // prefetch(pathname), поэтому греем только то, что не зависит от выбора —
+  // сводку тегов и классы для рубрикации строк (тот же приём, что у
+  // /materials выше).
+  it('/materials/tags — сводка тегов и классы, без выбранного тега', () => {
+    expect(prefetchAt('/materials/tags')).toEqual([TAGS_LIST_PATH, CLASSES_LIST_PATH]);
+  });
+
   it('/templates — настройки и ближайшие занятия для предпросмотра', () => {
     expect(prefetchAt('/templates')).toEqual([SETTINGS_PATH, nextLessonsPath()]);
   });
@@ -88,6 +98,13 @@ describe('RouteModule.prefetch — маршруты без параметра', 
 
   it('/profile — настройки уведомлений', () => {
     expect(prefetchAt('/profile')).toEqual([NOTIFICATION_PREFS_PATH]);
+  });
+
+  it('/notifications — лента событий и список своих экзаменов (новые задания)', () => {
+    expect(prefetchAt('/notifications')).toEqual([
+      NOTIFICATIONS_FEED_PATH,
+      MY_EXAMS_PATH,
+    ]);
   });
 
   // Решение владельца: экзамены — отдельный экран и первый после входа
@@ -229,6 +246,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/channels/652f00000000000000000003',
       '/materials',
       '/materials/new',
+      '/materials/tags',
       '/materials/652f00000000000000000008',
       '/templates',
       '/exam-items',
@@ -240,6 +258,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/grading',
       '/grading/652f00000000000000000006',
       '/profile',
+      '/notifications',
       '/tasks',
       '/lessons',
       '/archive',

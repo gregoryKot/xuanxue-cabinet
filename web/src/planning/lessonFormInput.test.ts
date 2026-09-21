@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ClassDto, LessonDto } from '@xuanxue/shared';
+import { TAG_LIMITS, type ClassDto, type LessonDto } from '@xuanxue/shared';
 import {
   initialLessonFormState,
   toCreateInput,
@@ -18,6 +18,7 @@ function makeClass(overrides: Partial<ClassDto> = {}): ClassDto {
     channelIds: [],
     leadMinutes: 30,
     active: true,
+    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -32,6 +33,7 @@ function makeLesson(overrides: Partial<LessonDto> = {}): LessonDto {
     durationMin: 60,
     topic: 'Пятое занятие цикла',
     status: 'scheduled',
+    tags: [],
     recordings: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -71,6 +73,19 @@ describe('initialLessonFormState', () => {
       '',
     );
   });
+
+  it('правка — теги даты собраны в строку через запятую (ADR-0075)', () => {
+    const state = initialLessonFormState(
+      makeLesson({ tags: ['дракон', 'начинающие'] }),
+      [],
+    );
+    expect(state.tagsText).toBe('дракон, начинающие');
+  });
+
+  it('занятие без тегов — пустая строка, не undefined', () => {
+    const state = initialLessonFormState(makeLesson({ tags: [] }), []);
+    expect(state.tagsText).toBe('');
+  });
 });
 
 describe('validateLessonForm', () => {
@@ -103,6 +118,13 @@ describe('validateLessonForm', () => {
   it('валидная форма — null', () => {
     expect(validateLessonForm(base, false)).toBeNull();
     expect(validateLessonForm({ ...base, classId: 'c1' }, true)).toBeNull();
+  });
+
+  it('тег длиннее лимита — та же ошибка, что у формы занятия расписания (ADR-0075/ADR-0072)', () => {
+    const longTag = 'а'.repeat(TAG_LIMITS.length + 1);
+    expect(validateLessonForm({ ...base, tagsText: `база, ${longTag}` }, false)).toBe(
+      `Тег «${longTag}» длиннее ${TAG_LIMITS.length} символов. Сократите его.`,
+    );
   });
 });
 
@@ -144,5 +166,27 @@ describe('toCreateInput / toUpdateInput', () => {
   it('toUpdateInput — leaderId «— не указан —» — null (явный сброс)', () => {
     const state = initialLessonFormState(makeLesson({ leaderId: 't1' }), []);
     expect(toUpdateInput({ ...state, leaderId: '' }).leaderId).toBeNull();
+  });
+
+  it('toUpdateInput — теги нормализуются: пробелы схлопываются, дубли по регистру убираются', () => {
+    const state = {
+      ...initialLessonFormState(makeLesson(), []),
+      tagsText: '  Дракон , дракон,  толчок   руками ',
+    };
+    expect(toUpdateInput(state).tags).toEqual(['Дракон', 'толчок руками']);
+  });
+
+  it('toUpdateInput — пустая строка тегов даёт [] (сброс тегов, ADR-0075)', () => {
+    const state = initialLessonFormState(makeLesson({ tags: ['дракон'] }), []);
+    expect(toUpdateInput({ ...state, tagsText: '' }).tags).toEqual([]);
+  });
+
+  it('toCreateInput — тегов не отправляет: поле формы недоступно при создании (ADR-0075)', () => {
+    const state = {
+      ...initialLessonFormState(null, [makeClass()]),
+      startsAtLocal: '2026-09-08T19:00',
+      tagsText: 'дракон',
+    };
+    expect(toCreateInput(state).tags).toBeUndefined();
   });
 });

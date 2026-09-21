@@ -3,10 +3,15 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './app/App';
 import { matchRoute } from './app/routeMatch';
+import { installGlobalErrorReporting } from './errors/globalErrorReporting';
 import './fonts';
 import './pwa/standalone.css';
 import './index.css';
 import { unregisterServiceWorker } from './pwa/unregisterServiceWorker';
+
+// До первой же строчки остального кода (ADR-0071) — даже сбой прогрева
+// чанка чуть ниже должен долететь до сервера.
+installGlobalErrorReporting();
 
 // Чанк текущего экрана — до первого рендера, а не после ответа про сессию.
 // Измерено на проде 2026-09-15: TTFB 0.5–1.1 с, первый экран ждал пяти

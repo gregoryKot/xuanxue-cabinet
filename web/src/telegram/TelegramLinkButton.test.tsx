@@ -32,10 +32,10 @@ afterEach(() => {
 const LINK_CODE_PATH = '/auth/telegram/link-code';
 const LINK_URL = 'https://t.me/xuanxue_bot?start=link_' + 'a'.repeat(32);
 
-function renderButton(explanation?: string) {
+function renderButton(explanation?: string, onBeforeLink?: () => Promise<void>) {
   return render(
     <AuthProvider>
-      <TelegramLinkButton explanation={explanation} />
+      <TelegramLinkButton explanation={explanation} onBeforeLink={onBeforeLink} />
     </AuthProvider>,
   );
 }
@@ -97,6 +97,41 @@ describe('TelegramLinkButton — клик', () => {
   });
 });
 
+describe('TelegramLinkButton — onBeforeLink (ADR-0059)', () => {
+  it('дожидается onBeforeLink до link() — в Telegram уходит только после того, как он выполнился', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      origin: 'https://xuanxue.su',
+      href: 'https://xuanxue.su/welcome',
+      assign,
+    });
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/auth/me': new Error('нет сессии'),
+      [LINK_CODE_PATH]: { telegramUrl: LINK_URL },
+    });
+    let resolveBeforeLink: () => void = () => {};
+    const onBeforeLink = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveBeforeLink = resolve;
+        }),
+    );
+    renderButton(undefined, onBeforeLink);
+
+    await user.click(await screen.findByRole('button', { name: 'Связать Telegram' }));
+
+    // onBeforeLink уже вызван, но пока не выполнился — link() ждёт его и в
+    // сеть за кодом связки ещё не ходил.
+    expect(onBeforeLink).toHaveBeenCalledTimes(1);
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(LINK_CODE_PATH, expect.anything());
+
+    resolveBeforeLink();
+
+    await waitFor(() => expect(assign).toHaveBeenCalledWith(LINK_URL));
+  });
+});
+
 describe('TelegramLinkButton — возврат из Telegram (read-after-write)', () => {
   it('связку не начинали — возврат на вкладку не перечитывает /auth/me', async () => {
     mockApiByPath({ '/auth/me': new Error('нет сессии') });
@@ -143,5 +178,22 @@ describe('TelegramLinkButton — возврат из Telegram (read-after-write)
     document.dispatchEvent(new Event('visibilitychange'));
 
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith('/auth/me'));
+  });
+});
+
+// Проп добавлен для «Уведомлений» (ADR-0063): терракота там уже занята
+// точками непрочитанного, кнопка связки идёт вторичным силуэтом.
+describe('TelegramLinkButton — variant', () => {
+  it('variant="secondary" доходит до кнопки', async () => {
+    mockApiByPath({ '/auth/me': new Error('нет сессии') });
+    render(
+      <AuthProvider>
+        <TelegramLinkButton variant="secondary" />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Связать Telegram' })).toHaveStyle({
+      background: 'transparent',
+    });
   });
 });

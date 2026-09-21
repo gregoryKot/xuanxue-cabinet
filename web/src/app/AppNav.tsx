@@ -4,7 +4,7 @@
 // человека снизу (ADR-0043): «Профиль» (ADR-0045) и «Выйти» приходят
 // готовыми узлами через пропсы — сама навигация про авторизацию не знает
 // (CLAUDE.md «Логика вне компонентов»). На телефоне блок человека рисует
-// AppShell.tsx под содержимым, эта колонка там — только четыре пункта.
+// AppShell.tsx под содержимым, эта колонка там — только пункты меню.
 // Вынесено из AppShell.tsx: там иначе два набора стилей и ветка на файл в
 // 150 строк (CLAUDE.md «Храповики», «Логика вне компонентов»).
 import type { ReactNode } from 'react';
@@ -39,10 +39,21 @@ interface AppNavProps {
    * телефоне его держит подвал AppShell.tsx, поэтому мобильный вызов может
    * их не передавать вовсе. */
   profileLink?: ReactNode;
+  /** Ссылка на «Уведомления» (ADR-0063), своей строкой над «Профиль ·
+   * Выйти» — расчёт ширины у JSX ниже. Навигация про уведомления не знает,
+   * узел приходит готовым, как profileLink/logoutButton (CLAUDE.md «Логика
+   * вне компонентов»). */
+  notificationsLink?: ReactNode;
   logoutButton?: ReactNode;
 }
 
-export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps) {
+export function AppNav({
+  isMobile,
+  me,
+  profileLink,
+  notificationsLink,
+  logoutButton,
+}: AppNavProps) {
   const { pathname } = useLocation();
   const items = navItemsFor(me).filter(
     (item) => !item.roles || item.roles.some((role) => hasRole(me, role)),
@@ -54,7 +65,7 @@ export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps)
   // не один стиль на двоих (bottomNavStyles.ts: bottomLinkStyle/bottomPillStyle).
   if (isMobile) {
     return (
-      <nav style={bottomStyle} aria-label={SECTIONS_LABEL}>
+      <nav style={bottomStyle(items.length)} aria-label={SECTIONS_LABEL}>
         {items.map(({ to, label }) => {
           const isActive = active === to;
           return (
@@ -103,6 +114,13 @@ export function AppNav({ isMobile, me, profileLink, logoutButton }: AppNavProps)
       </nav>
       <div style={personBlockStyle}>
         <span>Вы вошли как {me?.name ?? '—'}</span>
+        {/* Своей строкой, не третьим пунктом в ряду ниже: колонка 236px
+            (SIDE_NAV_WIDTH_PX), из них 32 съедает её паддинг (sideStyle:
+            16×2) и 28 — паддинг блока человека (personBlockStyle: 14×2), под
+            текст остаётся около 176. «Уведомления ③ · Профиль · Выйти» при
+            кегле 13 просит около 195 — ряд уехал бы за колонку (тот же
+            способ рассуждения, что у sideBrandTitleStyle, sideNavStyles.ts). */}
+        {notificationsLink}
         <span style={personActionsRowStyle}>
           {profileLink}
           <span>·</span>

@@ -26,7 +26,6 @@ describe('AuthProvider — реальный http.ts', () => {
         id: 'u1',
         name: 'Дима',
         roles: ['teacher'],
-        tz: 'Asia/Jerusalem',
       }),
     );
     vi.stubGlobal('fetch', fetchMock);

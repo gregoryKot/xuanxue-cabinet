@@ -50,6 +50,7 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
     url: 'https://example.com/book',
     kind: 'book',
     classIds: [],
+    lessonIds: [],
     access: 'all',
     tags: [],
     createdBy: 'u1',
@@ -59,12 +60,15 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   };
 }
 
+const TAGS_MARKER = 'Здесь экран тега';
+
 function renderScreen() {
   return render(
     <MemoryRouter initialEntries={['/materials']}>
       <Routes>
         <Route path="/materials" element={<MaterialsScreen />} />
         <Route path="/materials/new" element={<p>{NEW_MARKER}</p>} />
+        <Route path="/materials/tags" element={<p>{TAGS_MARKER}</p>} />
         <Route path="/materials/:materialId" element={<p>{EDITOR_MARKER}</p>} />
       </Routes>
     </MemoryRouter>,
@@ -176,6 +180,18 @@ describe('MaterialsScreen — список материалов', () => {
     expect(await screen.findByText(NEW_MARKER)).toBeInTheDocument();
   });
 
+  // ADR-0075: вход в подэкран «Теги» — карточка-переход, как «Библиотека» у
+  // LessonsScreen.tsx.
+  it('карточка «Теги» ведёт на экран тега', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/settings': SETTINGS, '/materials': [], '/classes': [makeClass()] });
+
+    renderScreen();
+    await user.click(await screen.findByText('Теги'));
+
+    expect(await screen.findByText(TAGS_MARKER)).toBeInTheDocument();
+  });
+
   it('фильтр по виду — список видов и пустой ответ с фильтром', async () => {
     mockApiByPath({
       '/settings': SETTINGS,
@@ -192,6 +208,25 @@ describe('MaterialsScreen — список материалов', () => {
 
     expect(
       await screen.findByText('С таким фильтром материалов нет.'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('MaterialsScreen — счётчик «после оплаты» (ADR-0058)', () => {
+  it('staff-материал не попадает в число «после оплаты»', async () => {
+    mockApiByPath({
+      '/settings': SETTINGS,
+      '/materials': [
+        makeMaterial({ id: 'm1', access: 'paid' }),
+        makeMaterial({ id: 'm2', title: 'Методичка', access: 'staff' }),
+      ],
+      '/classes': [makeClass()],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(/Сейчас так помечено 1 материал\./),
     ).toBeInTheDocument();
   });
 });

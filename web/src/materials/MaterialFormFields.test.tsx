@@ -25,6 +25,7 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
     url: 'https://example.com/book',
     kind: 'book',
     classIds: [],
+    lessonIds: [],
     access: 'all',
     tags: [],
     createdBy: 'u1',
@@ -40,7 +41,7 @@ function makeState(overrides: Partial<MaterialFormState> = {}): MaterialFormStat
     url: '',
     kind: 'book',
     classIds: [],
-    paid: false,
+    access: 'all',
     tagsText: '',
     ...overrides,
   };

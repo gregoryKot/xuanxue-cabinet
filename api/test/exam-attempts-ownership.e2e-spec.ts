@@ -1,7 +1,7 @@
 // e2e на владение попыткой (ADR-0022, SECURITY §3) — данные ученика: ученик
 // А не должен читать, сохранять или сдавать попытку ученика Б (чеклист
-// CLAUDE.md «Новая коллекция с полем userId», e2e-support/README.md «данные
-// ученика»). Настоящий AppModule на MongoMemoryServer.
+// CLAUDE.md «Новая коллекция», e2e-support/README.md «данные ученика»).
+// Настоящий AppModule на MongoMemoryServer.
 import type { ApiErrorBody, ExamAttemptDto, ExamDto, ExamItemDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';

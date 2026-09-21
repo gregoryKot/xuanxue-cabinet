@@ -33,6 +33,7 @@ import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { isLastAdmin, rollbackIfNoAdminLeft } from './last-admin';
 import {
   USER_MODEL_NAME,
+  USER_OWNED_CASCADES,
   USER_OWNED_COLLECTIONS,
   USER_REFERENCE_PATHS,
 } from './user-data.registry';
@@ -85,6 +86,19 @@ export class UserDeletionService {
     // Счётчики по каждой части реестра — в лог идёт только userId и числа
     // (CLAUDE.md «Логи»: PII туда не попадает, ни имя, ни email, ни telegramId).
     const removed: Record<string, number> = {};
+
+    // Каскады — ДО удаления самих документов владения: ссылки на байты
+    // живут в них (`payments.screenshotImageId`, ADR-0050), и после
+    // deleteMany ниже искать снимок было бы уже нечем.
+    for (const { from, path, model } of USER_OWNED_CASCADES) {
+      const ids = await this.connection
+        .model<GenericRecord>(from)
+        .distinct(path, { userId });
+      const res = await this.connection
+        .model<GenericRecord>(model)
+        .deleteMany({ _id: { $in: ids } });
+      removed[model] = res.deletedCount;
+    }
 
     for (const name of USER_OWNED_COLLECTIONS) {
       const res = await this.connection.model<GenericRecord>(name).deleteMany({ userId });

@@ -3,6 +3,9 @@
 // штата, как заготовки комментариев (grading-comment-preset.ts) или шаблоны
 // рассылок. `classIds[]` — рубрикация и фильтр, не доступ (ADR-0047): пустой
 // массив значит «материал всей школы», привязка не меняет, кто его видит.
+// Файл материала (слой 3.10, ADR-0057) — соседний material-files.ts.
+
+import type { MaterialFileDto } from './material-files';
 
 /** Закрытый список видов — новый вид требует ADR-0047-подобного решения, не
  * правки массива (ADR-0047). */
@@ -19,10 +22,29 @@ export const MATERIAL_KIND_LABELS: Record<MaterialKind, string> = {
   document: 'Документ',
 };
 
-/** Отметка «после оплаты» у материала (ADR-0048) — школьный рубильник
- * `settings.materialsPaidAccess` решает, действует ли она сейчас. */
-export const MATERIAL_ACCESS_LEVELS = ['all', 'paid'] as const;
+/**
+ * Кто видит материал (ADR-0048, ADR-0058) — одно поле, один запрос, одна
+ * функция (`isMaterialLocked`), не второй механизм рядом с ролями (ADR-0010):
+ *
+ * - `all` — видят все ученики.
+ * - `paid` — видят все, пока школьный рубильник `settings.materialsPaidAccess`
+ *   выключен (по умолчанию); включённый рубильник закрывает такой материал
+ *   ученику (карточка остаётся, ссылки нет). Решает рубильник, не роль.
+ * - `staff` — видит только штат школы (`isStaffRole`); рубильник оплаты к
+ *   этому значению отношения не имеет, оно не приходит ученику вовсе — ни
+ *   материалом, ни строкой в лимите списка (ADR-0058).
+ */
+export const MATERIAL_ACCESS_LEVELS = ['all', 'paid', 'staff'] as const;
 export type MaterialAccess = (typeof MATERIAL_ACCESS_LEVELS)[number];
+
+/** Подписи уровней доступа для интерфейса — один источник (по образцу
+ * MATERIAL_KIND_LABELS): те же слова в переключателе формы
+ * (MaterialAccessField.tsx) и в пилюле строки списка (MaterialCard.tsx). */
+export const MATERIAL_ACCESS_LABELS: Record<MaterialAccess, string> = {
+  all: 'Все ученики',
+  paid: 'После оплаты',
+  staff: 'Только преподаватели',
+};
 
 /** Материал глазами штата школы — видит всё, включая служебные поля. */
 export interface MaterialDto {
@@ -31,11 +53,17 @@ export interface MaterialDto {
   url: string;
   kind: MaterialKind;
   classIds: string[];
+  /** Даты занятий, к которым привязан материал (ADR-0056) — рядом с
+   * `classIds`, тот же смысл рубрикации и фильтра, не доступа. */
+  lessonIds: string[];
   access: MaterialAccess;
   /** Рубрикация свободным текстом (ADR-0058) — фильтр списка, не доступ:
    * кто видит материал, решает `access`. Нормализуется при записи
    * (`normalizeTags`, shared/src/tags.ts). */
   tags: string[];
+  /** Файл в хранилище (ADR-0057), если он загружен. Скачивается отдельным
+   * запросом по своему адресу — байты в JSON не ходят. */
+  file?: MaterialFileDto;
   createdBy: string;
   createdAt: string; // ISO UTC с Z
   updatedAt: string; // ISO UTC с Z
@@ -46,6 +74,7 @@ export interface CreateMaterialInput {
   url: string;
   kind: MaterialKind;
   classIds?: string[];
+  lessonIds?: string[];
   access?: MaterialAccess;
   tags?: string[];
 }
@@ -55,12 +84,16 @@ export interface UpdateMaterialInput {
   url?: string;
   kind?: MaterialKind;
   classIds?: string[];
+  lessonIds?: string[];
   access?: MaterialAccess;
   tags?: string[];
 }
 
 export interface ListMaterialsQuery {
   classId?: string;
+  /** Дата занятия (ADR-0056) — сочетается с `classId` через «И», не «ИЛИ»
+   * (materials.queries.ts, buildMaterialsFilter). */
+  lessonId?: string;
   kind?: MaterialKind;
   /** Точное совпадение тега — рубрикация, серверный фильтр (ADR-0058). */
   tag?: string;
@@ -88,6 +121,10 @@ export interface MyMaterialDto {
    * одному учителю. */
   tags: string[];
   url?: string;
+  /** У закрытого материала (`locked`) файла в ответе нет — тем же правилом,
+   * что и `url` (ADR-0048, ADR-0057): иначе рубильник оплаты обходится
+   * прямым адресом файла. */
+  file?: MaterialFileDto;
   locked?: true;
 }
 
@@ -100,6 +137,11 @@ export const MATERIAL_LIMITS = { title: 200, url: 500 } as const;
 /** Максимум занятий, к которым можно привязать один материал — не про
  * доступ (ADR-0047), просто разумный потолок формы. */
 export const MATERIAL_MAX_CLASS_IDS = 20;
+
+/** Максимум дат занятий у одного материала (ADR-0056) — тот же потолок
+ * формы, что и у `MATERIAL_MAX_CLASS_IDS`, своя константа: привязки разные
+ * и растут независимо. */
+export const MATERIAL_MAX_LESSON_IDS = 20;
 
 // VOICE.md: конкретика вместо «произошла ошибка» — что случилось и что делать.
 export const MATERIAL_NOT_FOUND_MESSAGE =

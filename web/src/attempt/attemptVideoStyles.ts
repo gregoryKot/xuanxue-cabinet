@@ -41,18 +41,19 @@ export const attemptVideoReceivedListStyle: CSSProperties = {
 // Визуально — как Button variant="primary" (components/Button.tsx), но это
 // переход по внешней ссылке (t.me), не действие в кабинете: <a>, не
 // <button> (тот же приём, что StudentLessonMeeting.tsx: zoomLinkStyle).
-// Единственная киноварь на этом экране (правило акцента, docs/adr/0031):
-// прислать видео — то, ради чего ученик сюда вернулся.
+// Единственная заливка терракотой на этом экране (правило акцента,
+// docs/adr/0031, осталось в силе после ADR-0043): прислать видео — то, ради
+// чего ученик сюда вернулся.
 export const attemptVideoTelegramLinkStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   minHeight: 44,
   padding: '10px 18px',
-  borderRadius: 3,
+  borderRadius: 'var(--radius-control)',
   fontWeight: 600,
-  background: 'var(--cinnabar)',
-  color: 'var(--cinnabar-contrast)',
+  background: 'var(--terracotta)',
+  color: 'var(--terracotta-contrast)',
   textDecoration: 'none',
   alignSelf: 'flex-start',
 };

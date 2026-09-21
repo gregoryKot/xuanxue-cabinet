@@ -26,7 +26,9 @@ function makeLesson(overrides: Partial<MyArchivedLessonDto> = {}): MyArchivedLes
     groupLabel: 'Средняя группа',
     topic: 'Форма 24',
     status: 'scheduled',
+    tags: [],
     recordings: [{ title: 'Занятие целиком', url: 'https://cloud.example/rec' }],
+    materials: [],
     ...overrides,
   };
 }

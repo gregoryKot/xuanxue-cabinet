@@ -20,7 +20,6 @@ function userLean(overrides: Partial<UserLean> = {}): UserLean {
     id: new Types.ObjectId().toString(),
     name: 'Т',
     roles: [],
-    tz: 'Asia/Jerusalem',
     status: 'active',
     ...overrides,
   };
@@ -90,6 +89,13 @@ describe('ExamImagesService', () => {
         service.upload(Buffer.from('мусор'), new Types.ObjectId().toString()),
       ).rejects.toBeInstanceOf(InvalidInputError);
       await expect(imageModel.countDocuments({})).resolves.toBe(0);
+    });
+
+    it('создаётся без автора (CLI-импорт сида) — createdBy не пишется в документ', async () => {
+      const dto = await service.upload(JPEG);
+
+      const raw = await imageModel.findById(dto.id).lean();
+      expect(raw?.createdBy).toBeUndefined();
     });
   });
 
