@@ -246,6 +246,15 @@ Railway → Service → Logs. Формат JSON (pino). Полезные фил�
 Секреты и PII в логах замаскированы (`[Redacted]`); если видишь открытый токен или
 email — это баг, правь `api/src/logging/redact-paths.ts` и тест к нему.
 
+С аудита 2026-09-21 процесс ловит и `unhandledRejection`, и `uncaughtException`
+(`api/src/common/process-guards.ts`, устанавливается в `main.ts`). Необработанный
+reject пишется строкой `"msg":"process.unhandledRejection: …"` (`level:50`) и жизни
+процесса не стоит — инстанс продолжает работать. `uncaughtException` пишется строкой
+`"msg":"process.uncaughtException: …"` и следом процесс сам завершается (`process.exit(1)`):
+после такого исключения состояние процесса недостоверно, Railway поднимает инстанс
+заново. Сбой самого `bootstrap()` (до того, как поднялся логгер) — отдельная строка
+в stderr вида `"msg":"bootstrap failed"` тем же `level:50`.
+
 ## 5. Переменные окружения
 
 Railway → Variables. Изменение = перезапуск сервиса. Полный список с описанием —
