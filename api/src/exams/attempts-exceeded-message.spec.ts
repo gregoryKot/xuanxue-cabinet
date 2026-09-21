@@ -14,9 +14,9 @@ describe('attemptsExceededMessage', () => {
     expect(attemptsExceededMessage(5)).toContain('5 попыток');
   });
 
-  it('называет действие — открыть ещё попытку у учителя', () => {
-    expect(attemptsExceededMessage(1)).toContain(
-      'Попросите учителя открыть ещё одну попытку',
-    );
+  // Решение владельца 2026-09-21: просить учителя ученику незачем — открыть
+  // попытку адресно всё равно нечем.
+  it('не отсылает к учителю', () => {
+    expect(attemptsExceededMessage(1)).not.toContain('учител');
   });
 });

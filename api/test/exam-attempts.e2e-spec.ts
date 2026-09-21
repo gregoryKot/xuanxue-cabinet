@@ -176,7 +176,7 @@ describe('Exam attempts (e2e)', () => {
     ).set('Cookie', studentCookie);
 
     expect(res.status).toBe(400);
-    expect((res.body as ApiErrorBody).message).toContain('открыть ещё одну попытку');
+    expect((res.body as ApiErrorBody).message).toContain('Вы использовали 1 попытку');
   });
 
   it('учитель тоже может стартовать попытку (проверка формы изнутри)', async () => {
