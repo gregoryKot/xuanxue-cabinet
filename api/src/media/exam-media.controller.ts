@@ -32,6 +32,18 @@ export class ExamMediaController {
     );
   }
 
+  // Оставлена ExamMediaDto — рассмотрена и НЕ переведена на AttemptReviewDto
+  // при исполнении ADR-0087 (2026-09): экран проверки кладёт этот ответ на
+  // себя через явный reload() GET /attempts/:id/review, что ADR-0087 разрешает
+  // («либо DTO, либо вызывающий осознанно перечитывает»). Собрать
+  // AttemptReviewDto здесь напрямую нельзя без нового цикла в графе Nest:
+  // ExamGradingsService.getReview() (нужен для AttemptReviewDto) — провайдер
+  // ExamsModule, а ExamsModule уже импортирует MediaModule (ради
+  // MediaAssetsService, exams.module.ts) — обратный импорт закольцевал бы
+  // граф (ADR-0013, forwardRef в проекте не используется). Решение, если
+  // понадобится: query-порт по образцу ExamMediaNotifierRegistry
+  // (exam-media-notifier.port.ts/registry.ts) — тем же приёмом инверсии,
+  // только для чтения, а не уведомления, с реализацией в exams/.
   @Post(':id/media/manual')
   @HttpCode(HttpStatus.CREATED)
   @Roles(...STAFF_ONLY_ROLES)

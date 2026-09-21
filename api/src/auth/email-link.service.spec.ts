@@ -71,13 +71,16 @@ function fakeTokens(
 function fakeUserEmailService(
   options: {
     isEmailTaken?: (email: string) => Promise<boolean>;
-    setPendingEmail?: (userId: string, email: string) => Promise<void>;
+    setPendingEmail?: (userId: string, email: string) => Promise<UserLean>;
     confirmEmail?: (userId: string, email: string) => Promise<'ok' | 'taken' | 'stale'>;
   } = {},
 ): UserEmailService {
   return {
     isEmailTaken: options.isEmailTaken ?? (() => Promise.resolve(false)),
-    setPendingEmail: options.setPendingEmail ?? (() => Promise.resolve()),
+    setPendingEmail:
+      options.setPendingEmail ??
+      ((userId: string, email: string) =>
+        Promise.resolve({ ...BASE_USER, id: userId, pendingEmail: email })),
     confirmEmail:
       options.confirmEmail ??
       (() => Promise.reject(new Error('confirmEmail() не должен был вызываться'))),
@@ -124,7 +127,7 @@ describe('EmailLinkService.link', () => {
         userEmailService: fakeUserEmailService({
           setPendingEmail: () => {
             touched = true;
-            return Promise.resolve();
+            return Promise.resolve(BASE_USER);
           },
         }),
       });
@@ -137,19 +140,21 @@ describe('EmailLinkService.link', () => {
     },
   );
 
-  it('email уже равен текущему (в любом регистре) — тихо выходим, идемпотентно', async () => {
+  it('email уже равен текущему (в любом регистре) — тихо выходим, идемпотентно, отдаёт того же user', async () => {
     let touched = false;
     const service = buildService({
       userEmailService: fakeUserEmailService({
         setPendingEmail: () => {
           touched = true;
-          return Promise.resolve();
+          return Promise.resolve(BASE_USER);
         },
       }),
     });
     const user: UserLean = { ...BASE_USER, email: 'maria@example.com' };
 
-    await expect(service.link(user, 'Maria@Example.com', NOW)).resolves.toBeUndefined();
+    // Тот же объект, не второй findById ради него же (ADR-0087, комментарий
+    // у link()).
+    await expect(service.link(user, 'Maria@Example.com', NOW)).resolves.toBe(user);
     expect(touched).toBe(false);
   });
 
@@ -175,7 +180,7 @@ describe('EmailLinkService.link', () => {
           calls.push('setPendingEmail');
           expect(userId).toBe(BASE_USER.id);
           expect(email).toBe('right@example.com');
-          return Promise.resolve();
+          return Promise.resolve({ ...BASE_USER, pendingEmail: email });
         },
       }),
       tokens: fakeTokens((userId, email) => {
@@ -192,10 +197,13 @@ describe('EmailLinkService.link', () => {
     });
     const user: UserLean = { ...BASE_USER, pendingEmail: 'typo@example.com' };
 
-    await service.link(user, 'right@example.com', NOW);
+    const updated = await service.link(user, 'right@example.com', NOW);
 
     expect(calls).toEqual(['setPendingEmail', 'issue', 'sendEmailConfirmLink']);
     expect(sentTo).toBe('right@example.com');
+    // Ответ несёт новый pendingEmail, не старый (typo@example.com) — иначе
+    // MeDto в ответе контроллера показал бы адрес, который уже не тот.
+    expect(updated.pendingEmail).toBe('right@example.com');
   });
 
   it('адрес уже занят другим аккаунтом — ConflictError, pendingEmail не пишем', async () => {
@@ -205,7 +213,7 @@ describe('EmailLinkService.link', () => {
         isEmailTaken: () => Promise.resolve(true),
         setPendingEmail: () => {
           touched = true;
-          return Promise.resolve();
+          return Promise.resolve(BASE_USER);
         },
       }),
     });
@@ -217,15 +225,15 @@ describe('EmailLinkService.link', () => {
     expect(touched).toBe(false);
   });
 
-  it('успех — нормализует email в lowercase, пишет pendingEmail ДО отправки письма, ссылка на /email/confirm', async () => {
+  it('успех — нормализует email в lowercase, пишет pendingEmail ДО отправки письма, ссылка на /email/confirm, отдаёт свежего user', async () => {
     const calls: string[] = [];
     let sentTo: string | undefined;
     let sentLink: string | undefined;
     const service = buildService({
       userEmailService: fakeUserEmailService({
-        setPendingEmail: () => {
+        setPendingEmail: (userId, email) => {
           calls.push('setPendingEmail');
-          return Promise.resolve();
+          return Promise.resolve({ ...BASE_USER, id: userId, pendingEmail: email });
         },
       }),
       tokens: fakeTokens((userId, email) => {
@@ -242,7 +250,10 @@ describe('EmailLinkService.link', () => {
       }),
     });
 
-    await service.link(BASE_USER, 'Student@Example.com', NOW);
+    const updated = await service.link(BASE_USER, 'Student@Example.com', NOW);
+    // Ответ несёт то, что POST /auth/email/link кладёт в MeDto.pendingEmail
+    // (ADR-0087) — не пустышку.
+    expect(updated.pendingEmail).toBe('student@example.com');
 
     expect(calls).toEqual(['setPendingEmail', 'issue', 'sendEmailConfirmLink']);
     expect(sentTo).toBe('student@example.com');

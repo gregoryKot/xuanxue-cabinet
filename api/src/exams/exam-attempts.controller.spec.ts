@@ -127,7 +127,7 @@ describe('ExamAttemptsController', () => {
     expect(getReview).toHaveBeenCalledWith('a1');
   });
 
-  it('grade() передаёт id попытки, тело и id проверяющего в сервис проверки', async () => {
+  it('grade() пишет оценку, затем отдаёт карточку проверки целиком (не ExamGradingDto, не 204)', async () => {
     const gradingDto: ExamGradingDto = {
       id: 'g1',
       attemptId: 'a1',
@@ -137,12 +137,25 @@ describe('ExamAttemptsController', () => {
       outcome: 'passed',
       gradedAt: '2026-09-12T10:00:00.000Z',
     };
+    const reviewDto: AttemptReviewDto = {
+      attemptId: 'a1',
+      examId: 'e1',
+      examTitle: 'Экзамен',
+      userId: 'u1',
+      userName: 'Ученик',
+      status: 'graded',
+      blocks: [],
+      grading: gradingDto,
+      media: [],
+    };
     const grade = jest.fn().mockResolvedValue(gradingDto);
-    const controller = await buildController({}, { grade });
+    const getReview = jest.fn().mockResolvedValue(reviewDto);
+    const controller = await buildController({}, { grade, getReview });
     const teacher: UserLean = { ...USER, id: 'teacher1', roles: ['teacher'] };
     const body = { outcome: 'passed' as const };
 
-    await expect(controller.grade('a1', body, teacher)).resolves.toEqual(gradingDto);
+    await expect(controller.grade('a1', body, teacher)).resolves.toEqual(reviewDto);
     expect(grade).toHaveBeenCalledWith('a1', 'teacher1', body, expect.anything());
+    expect(getReview).toHaveBeenCalledWith('a1');
   });
 });

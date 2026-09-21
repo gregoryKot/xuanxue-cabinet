@@ -48,16 +48,19 @@ describe('Смена ещё не подтверждённого адреса п�
     });
 
     const firstLinked = await helpers.postLink(cookie, 'typo-1@example.com');
-    expect(firstLinked.status).toBe(204);
+    expect(firstLinked.status).toBe(200);
     const oldToken = helpers.lastConfirmToken();
 
     const secondLinked = await helpers.postLink(cookie, 'right-1@example.com');
-    expect(secondLinked.status).toBe(204);
-
-    const meAfterSecondLink = await helpers.getMe(cookie);
-    const bodyAfterSecondLink = meAfterSecondLink.body as MeDto;
+    expect(secondLinked.status).toBe(200);
+    // Тело ответа второго POST уже несёт новый адрес — не нужно перечитывать
+    // GET /auth/me, чтобы его увидеть (ADR-0087).
+    const bodyAfterSecondLink = secondLinked.body as MeDto;
     expect(bodyAfterSecondLink.pendingEmail).toBe('right-1@example.com');
     expect(bodyAfterSecondLink.hasEmail).toBe(false);
+
+    const meAfterSecondLink = await helpers.getMe(cookie);
+    expect((meAfterSecondLink.body as MeDto).pendingEmail).toBe('right-1@example.com');
 
     const oldConfirm = await helpers.postConfirm(oldToken);
     expect(oldConfirm.status).toBe(401);
