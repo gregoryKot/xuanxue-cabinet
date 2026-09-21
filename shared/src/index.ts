@@ -77,6 +77,7 @@ export {
   joinPersonName,
   splitPersonName,
 } from './person-name';
+export { APP_VERSION_HEADER } from './app-version';
 export { CSRF_HEADER, isMutatingMethod } from './csrf';
 export type { ClientErrorKind, ReportClientErrorInput } from './client-errors';
 export {
