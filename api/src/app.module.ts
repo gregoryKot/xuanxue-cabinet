@@ -11,7 +11,7 @@ import type { NodeEnv } from './config/env.validation';
 import { LoggingModule } from './logging/logging.module';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { DatabaseModule } from './database/database.module';
-import { MONGO_RUNTIME_ADAPTERS } from './database/mongo-runtime-adapters';
+import { mongooseOptions } from './database/mongoose-options';
 import { MigrationsModule } from './migrations/migrations.module';
 import { ClassesModule } from './classes/classes.module';
 import { LessonsModule } from './lessons/lessons.module';
@@ -41,17 +41,21 @@ import { staticAssetsOptions } from './static/static-cache-control';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     LoggingModule,
+    // Опции подключения (retry на старте, autoIndex, runtimeAdapters) — в
+    // mongoose-options.ts: аудит 2026-09-21, retryAttempts/retryDelay были
+    // не заданы, Nest ждал Mongo дефолтные 27с и ронял процесс раньше, чем
+    // Atlas M0 успевала отвечать после блипа (RUNBOOK §8.3).
     MongooseModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri: config.get<string>('MONGODB_URI'),
-        // В production индексы строит только IndexSyncService при старте
-        // (CLAUDE.md «Данные») — автостроение на живом трафике конкурирует
-        // с этим и маскирует ошибку индекса до первого рестарта.
-        autoIndex: config.get<NodeEnv>('NODE_ENV') !== 'production',
-        // mongo-runtime-adapters.ts: обход бага хендшейка mongodb@7.6+ под Jest.
-        runtimeAdapters: MONGO_RUNTIME_ADAPTERS,
-      }),
+      // getOrThrow, а не get(): mongooseOptions() принимает uri/nodeEnv как
+      // обязательные строки (тип строже, чем возвращает голый get() без
+      // ConfigService<Schema, true>) — обе переменные уже гарантированы
+      // env.validate при старте, getOrThrow лишь делает это явным для tsc.
+      useFactory: (config: ConfigService) =>
+        mongooseOptions({
+          uri: config.getOrThrow<string>('MONGODB_URI'),
+          nodeEnv: config.getOrThrow<NodeEnv>('NODE_ENV'),
+        }),
     }),
     // Тик планировщика (SchedulerModule) можно выключить в e2e/юнит-тестах —
     // реальный тик остаётся в проде и в Docker-смоке CI (CLAUDE.md
