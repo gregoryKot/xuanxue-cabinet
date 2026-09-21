@@ -24,10 +24,15 @@ describe('usePreview', () => {
       await result.current.preview('lesson_link', 'l1');
     });
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/settings/preview', {
-      method: 'POST',
-      body: { kind: 'lesson_link', lessonId: 'l1' },
-    });
+    // objectContaining — вызов несёт ещё и signal (AbortController ниже),
+    // сверять его отдельным значением незачем.
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/settings/preview',
+      expect.objectContaining({
+        method: 'POST',
+        body: { kind: 'lesson_link', lessonId: 'l1' },
+      }),
+    );
     expect(result.current.result).toEqual({ text: 'Через 30 минут занятие' });
   });
 
@@ -75,5 +80,41 @@ describe('usePreview', () => {
     expect(result.current.error).toBe(
       'Не удалось показать предпросмотр. Попробуйте ещё раз.',
     );
+  });
+
+  // Аудит 2026-09-21 (MED): быстрое переключение занятия в select слало два
+  // POST в полёте, и более поздний ответ на СТАРОЕ занятие переписывал уже
+  // показанный результат нового — сюда как раз тот порядок ответов.
+  it('гонка — второй вызов обгоняет первый, поздний ответ на первый не побеждает', async () => {
+    const { result } = renderHook(() => usePreview());
+
+    let resolveFirst: (value: { text: string }) => void = () => {};
+    mockedApiFetch.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFirst = resolve;
+      }),
+    );
+    mockedApiFetch.mockResolvedValueOnce({ text: 'Занятие 2' });
+
+    let firstPreview!: Promise<void>;
+    act(() => {
+      firstPreview = result.current.preview('lesson_link', 'l1');
+    });
+    await act(async () => {
+      await result.current.preview('lesson_link', 'l2');
+    });
+
+    // Второй вызов реально отменил первый (signal), не только по requestId —
+    // требование аудита: «предыдущий запрос отменяется через signal в apiFetch».
+    const firstInit = mockedApiFetch.mock.calls[0]?.[1] as { signal?: AbortSignal };
+    expect(firstInit.signal?.aborted).toBe(true);
+    expect(result.current.result).toEqual({ text: 'Занятие 2' });
+
+    // Первый резолвится последним — его ответ устарел и не должен победить.
+    await act(async () => {
+      resolveFirst({ text: 'Занятие 1' });
+      await firstPreview;
+    });
+    expect(result.current.result).toEqual({ text: 'Занятие 2' });
   });
 });

@@ -74,10 +74,15 @@ describe('useAutoPreview — автозапуск предпросмотра', (
     await waitFor(() =>
       expect(result.current.preview.result).toEqual({ text: 'Через 30 минут занятие' }),
     );
-    expect(mockedApiFetch).toHaveBeenCalledWith('/settings/preview', {
-      method: 'POST',
-      body: { kind: 'lesson_link', lessonId: 'l1' },
-    });
+    // objectContaining — вызов несёт ещё и signal (usePreview.ts, requestId +
+    // AbortController, аудит 2026-09-21), сверять его отдельным значением незачем.
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/settings/preview',
+      expect.objectContaining({
+        method: 'POST',
+        body: { kind: 'lesson_link', lessonId: 'l1' },
+      }),
+    );
   });
 
   it('несохранённые правки — автозапроса нет', async () => {
