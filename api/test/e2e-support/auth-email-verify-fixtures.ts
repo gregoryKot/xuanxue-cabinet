@@ -43,9 +43,29 @@ export function createEmailVerifyHelpers(
       .send(inviteCode ? { token, inviteCode } : { token });
   }
 
+  // Код из письма (ADR-0104) — второй способ потратить ту же заявку, рядом с
+  // postVerify() тем же приёмом.
+  function postCode(
+    email: string,
+    code: string,
+    ip: string,
+    inviteCode?: string,
+  ): request.Test {
+    return request(server())
+      .post('/api/auth/email/code')
+      .set('x-requested-with', 'fetch')
+      .set('x-forwarded-for', ip)
+      .send(inviteCode ? { email, code, inviteCode } : { email, code });
+  }
+
   function lastSentLink(): string {
     const sent = getFakeMail().sent;
     return sent[sent.length - 1]?.link ?? '';
+  }
+
+  function lastSentCode(): string {
+    const sent = getFakeMail().sent;
+    return sent[sent.length - 1]?.code ?? '';
   }
 
   async function currentInviteCode(): Promise<string> {
@@ -58,5 +78,14 @@ export function createEmailVerifyHelpers(
     return url.split('/join/')[1] as string;
   }
 
-  return { server, userModel, postRequest, postVerify, lastSentLink, currentInviteCode };
+  return {
+    server,
+    userModel,
+    postRequest,
+    postVerify,
+    postCode,
+    lastSentLink,
+    lastSentCode,
+    currentInviteCode,
+  };
 }
