@@ -26,12 +26,16 @@ export interface UseAbortableFetchResult<T> {
 /** `applyData` — не поле `UseAbortableFetchResult`: часть потребителей
  * (`UseMyExamsResult`, student/MyExamsProvider.tsx) наследует этот интерфейс
  * своим, более узким, и не обязана тащить через себя поле, которым не
- * пользуется. Кому оно нужно (useSettings.ts, useNotificationPrefs.ts) —
- * получает его из фактического типа возврата `useAbortableFetch` ниже. */
+ * пользуется. Кому оно нужно (useSettings.ts, useNotificationPrefs.ts,
+ * usePeople.ts, useGradingPresets.ts) — получает его из фактического типа
+ * возврата `useAbortableFetch` ниже. */
 export type UseAbortableFetchResultWithApply<T> = UseAbortableFetchResult<T> & {
-  /** Принять ответ, который уже на руках (PATCH уже вернул свежий DTO), без
-   * нового запроса за тем же самым. */
-  applyData: (next: T) => void;
+  /** Принять ответ, который уже на руках (PATCH/POST уже вернул свежий DTO),
+   * без нового запроса за тем же самым. Форма-обновитель — как у `setState`
+   * React: вызывающий список правит от актуального значения, не таща `data`
+   * в зависимости своего `useCallback` (web/src/lib/listPatch.ts — чистые
+   * помощники самой правки). */
+  applyData: (next: T | ((prev: T | null) => T | null)) => void;
 };
 
 export interface UseAbortableFetchOptions {
@@ -116,16 +120,18 @@ export function useAbortableFetch<T>(
   const reload = useCallback(() => run({ quiet: false }), [run]);
   const refresh = useCallback(() => run({ quiet: true }), [run]);
 
-  // Кладёт уже готовый ответ (PATCH вернул свежий DTO) без нового запроса —
-  // второй GET после записи был бы тем самым лишним запросом, из-за которого
-  // переключатель стоял серым 1–2 секунды (отзыв владельца 2026-09-21).
-  // Сверка requestId — тот же приём, что в run(): без нашего "+1" ответ уже
-  // летящего reload()/refresh() пришёл бы позже и переписал этот, более
-  // свежий, результат старым состоянием (гонка «PATCH ответил раньше
-  // висящего GET»). abort() обрывает этот висящий запрос — иначе он доиграет
-  // вхолостую; inFlight сбрасываем сами, потому что его finally, увидев чужой
-  // requestId, себя не сбросит (см. run() выше).
-  const applyData = useCallback((next: T) => {
+  // Кладёт уже готовый ответ (PATCH/POST вернул свежий DTO) без нового
+  // запроса — второй GET после записи был бы тем самым лишним запросом, из-за
+  // которого переключатель стоял серым 1–2 секунды (отзыв владельца
+  // 2026-09-21). Сверка requestId — тот же приём, что в run(): без нашего
+  // "+1" ответ уже летящего reload()/refresh() пришёл бы позже и переписал
+  // этот, более свежий, результат старым состоянием (гонка «PATCH ответил
+  // раньше висящего GET»). abort() обрывает этот висящий запрос — иначе он
+  // доиграет вхолостую; inFlight сбрасываем сами, потому что его finally,
+  // увидев чужой requestId, себя не сбросит (см. run() выше). Функцию-
+  // обновитель setData различает от значения сама (typeof), тем же приёмом,
+  // что React useState, — applyData её не разбирает.
+  const applyData = useCallback((next: T | ((prev: T | null) => T | null)) => {
     abortController.current?.abort();
     inFlight.current = false;
     requestId.current += 1;

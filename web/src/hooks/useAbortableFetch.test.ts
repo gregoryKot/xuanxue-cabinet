@@ -145,6 +145,20 @@ describe('useAbortableFetch — гонка запросов (ревью п.13)',
 });
 
 describe('useAbortableFetch — applyData() (отзыв владельца 2026-09-21)', () => {
+  it('форма-обновитель — получает текущее значение и кладёт результат (usePeople.ts, useGradingPresets.ts)', async () => {
+    const load = vi.fn().mockResolvedValueOnce('было');
+    const { result } = renderHook(() => useAbortableFetch(load, FALLBACK));
+    await waitFor(() => expect(result.current.data).toBe('было'));
+
+    act(() => {
+      result.current.applyData((prev: string | null) => `${prev}+патч`);
+    });
+
+    expect(result.current.data).toBe('было+патч');
+    expect(result.current.error).toBeNull();
+    expect(result.current.loading).toBe(false);
+  });
+
   it('кладёт данные без нового запроса — error и loading сброшены', async () => {
     const load = vi
       .fn()

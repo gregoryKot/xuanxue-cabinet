@@ -171,11 +171,11 @@ describe('PeopleScreen — список', () => {
     renderScreen();
     await screen.findByText('Гриша');
 
-    queueUsers({});
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: ['teacher'] }),
-    ]);
+    // Один ответ на одно действие: PATCH /users/:id возвращает изменённого
+    // человека, и usePeople правит строку списка прямо из этого ответа
+    // (ADR-0094). Прежняя пара «заглушка {} на PATCH плюс полный список на
+    // второй GET» описывала приём, которого больше нет.
+    queueUsers(makePerson({ id: 'u1', name: 'Гриша', roles: ['teacher'] }));
 
     // Пилюли ролей есть у КАЖДОЙ строки (PersonRoleBadge.tsx), поэтому
     // «Учитель» ищется внутри строки Гриши, а не по всему экрану.
@@ -210,11 +210,8 @@ describe('PeopleScreen — список', () => {
     renderScreen();
     await screen.findByText('Гриша');
 
-    queueUsers({});
-    queueUsers([
-      makePerson({ id: 'admin-1', name: 'Маша', roles: ['admin'] }),
-      makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'blocked' }),
-    ]);
+    // Как и выше: ответ PATCH /users/:id/status сам приносит новую строку.
+    queueUsers(makePerson({ id: 'u1', name: 'Гриша', roles: [], status: 'blocked' }));
 
     await user.click(screen.getByRole('button', { name: 'Закрыть доступ' }));
 

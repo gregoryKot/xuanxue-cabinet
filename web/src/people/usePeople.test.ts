@@ -1,5 +1,6 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { UserDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { usePeople } from './usePeople';
@@ -14,6 +15,19 @@ const mockedApiFetch = vi.mocked(apiFetch);
 afterEach(() => {
   mockedApiFetch.mockReset();
 });
+
+// «Ученик» — не роль (ADR-0026, shared/src/auth.ts): по умолчанию без ролей.
+function makeUser(overrides: Partial<UserDto> = {}): UserDto {
+  return {
+    id: 'u1',
+    name: 'Аня',
+    roles: [],
+    status: 'active',
+    hasTelegram: true,
+    joinedViaInvite: true,
+    ...overrides,
+  };
+}
 
 describe('usePeople — загрузка', () => {
   it('запрашивает /users с лимитом', async () => {
@@ -39,55 +53,71 @@ describe('usePeople — enabled: false (ADR-0030, учитель на «Люди
   });
 });
 
-describe('usePeople — updateRoles (read-after-write)', () => {
-  it('PATCH /users/:id, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
+describe('usePeople — updateRoles (read-after-write, ADR-0087)', () => {
+  it('ровно один запрос — PATCH правит список ответом записи, второго GET нет', async () => {
+    mockedApiFetch.mockResolvedValueOnce([makeUser({ roles: [] })]);
     const { result } = renderHook(() => usePeople());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    mockedApiFetch.mockResolvedValueOnce({});
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await result.current.updateRoles('u1', { roles: ['teacher'] });
+    const updated = makeUser({ roles: ['teacher'] });
+    mockedApiFetch.mockResolvedValueOnce(updated);
+    await act(async () => {
+      await result.current.updateRoles('u1', { roles: ['teacher'] });
+    });
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/users/u1',
       expect.objectContaining({ method: 'PATCH', body: { roles: ['teacher'] } }),
     );
+    // Загрузка + запись, ни одного похода в сеть сверх этого (нет reload()).
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    // На экране — то, что вернул PATCH, взятое без второго GET.
+    expect(result.current.people).toEqual([updated]);
   });
 });
 
-describe('usePeople — updateStatus (read-after-write)', () => {
-  it('PATCH /users/:id/status, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
+describe('usePeople — updateStatus (read-after-write, ADR-0087)', () => {
+  it('ровно один запрос — PATCH правит список ответом записи, второго GET нет', async () => {
+    mockedApiFetch.mockResolvedValueOnce([makeUser({ status: 'active' })]);
     const { result } = renderHook(() => usePeople());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    mockedApiFetch.mockResolvedValueOnce({});
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await result.current.updateStatus('u1', 'blocked');
+    const updated = makeUser({ status: 'blocked' });
+    mockedApiFetch.mockResolvedValueOnce(updated);
+    await act(async () => {
+      await result.current.updateStatus('u1', 'blocked');
+    });
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/users/u1/status',
       expect.objectContaining({ method: 'PATCH', body: { status: 'blocked' } }),
     );
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(result.current.people).toEqual([updated]);
   });
 });
 
-describe('usePeople — remove (read-after-write)', () => {
-  it('DELETE /users/:id, затем перечитывает список', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
+describe('usePeople — remove (read-after-write, ADR-0087)', () => {
+  it('ровно один запрос — DELETE, удалённый элемент выкинут из списка без второго GET', async () => {
+    mockedApiFetch.mockResolvedValueOnce([
+      makeUser({ id: 'u1', name: 'Аня' }),
+      makeUser({ id: 'u2', name: 'Боря' }),
+    ]);
     const { result } = renderHook(() => usePeople());
     await waitFor(() => expect(result.current.loading).toBe(false));
 
+    // DELETE отвечает 204 без тела (apiFetch возвращает undefined) — тем же
+    // приёмом, что и в проде, а не выдуманным телом ответа.
     mockedApiFetch.mockResolvedValueOnce(undefined);
-    mockedApiFetch.mockResolvedValueOnce([]);
-    await result.current.remove('u1');
+    await act(async () => {
+      await result.current.remove('u1');
+    });
 
     expect(mockedApiFetch).toHaveBeenCalledWith(
       '/users/u1',
       expect.objectContaining({ method: 'DELETE' }),
     );
-    // Перечитывание — второй вызов apiFetch, тот же /users?limit, что при загрузке.
-    expect(mockedApiFetch).toHaveBeenCalledTimes(3);
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(result.current.people).toEqual([makeUser({ id: 'u2', name: 'Боря' })]);
   });
 });
