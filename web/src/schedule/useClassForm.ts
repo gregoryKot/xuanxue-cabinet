@@ -1,14 +1,18 @@
-// Оркестрация формы занятия — состояние, валидация и сборка тела запроса в
-// classFormInput.ts (чистая логика, тестируется без React); здесь только
-// связка с submit/remove и их сетевыми ошибками.
-import { useState } from 'react';
+// Оркестрация формы занятия расписания — состояние, сохранение и удаление,
+// общая механика — hooks/useEntityForm.ts (тот же хук, что у канала,
+// channels/useChannelForm.ts, и материала, materials/useMaterialForm.ts —
+// занятие расписания без статуса, `never` вторым параметром результата).
+// Логика поля/валидации/сборки тела запроса — в classFormInput.ts
+// (тестируется без React). Черновик (ADR-0052, дополнение 2026-09-21):
+// раньше формы в списке защищённых не было — случайный «Назад» на телефоне
+// стирал набранное расписание молча (аудит 2026-09-21, HIGH).
 import type {
   ChannelDto,
   ClassDto,
   CreateClassInput,
   UpdateClassInput,
 } from '@xuanxue/shared';
-import { errorFrom, type FormError } from '../components/FormServerError';
+import { useEntityForm, type UseEntityFormResult } from '../hooks/useEntityForm';
 import {
   initialClassFormState,
   toCreateInput,
@@ -17,15 +21,11 @@ import {
   type ClassFormState,
 } from './classFormInput';
 
-export interface UseClassFormResult {
-  state: ClassFormState;
-  setField: <K extends keyof ClassFormState>(key: K, value: ClassFormState[K]) => void;
-  validationError: string | null;
-  serverError: FormError | null;
-  pending: boolean;
-  submit: () => Promise<boolean>;
-  remove: () => Promise<boolean>;
-}
+const SAVE_ERROR_MESSAGE = 'Не удалось сохранить. Попробуйте ещё раз.';
+const REMOVE_ERROR_MESSAGE = 'Не удалось удалить. Попробуйте ещё раз.';
+const DRAFT_DOMAIN = 'class';
+
+export type UseClassFormResult = UseEntityFormResult<ClassFormState>;
 
 export function useClassForm(
   classDto: ClassDto | null,
@@ -34,50 +34,18 @@ export function useClassForm(
   onUpdate: (id: string, input: UpdateClassInput) => Promise<void>,
   onRemove: (id: string) => Promise<void>,
 ): UseClassFormResult {
-  const [state, setState] = useState<ClassFormState>(() =>
-    initialClassFormState(classDto, channels),
-  );
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [serverError, setServerError] = useState<FormError | null>(null);
-  const [pending, setPending] = useState(false);
-
-  function setField<K extends keyof ClassFormState>(key: K, value: ClassFormState[K]) {
-    setState((prev) => ({ ...prev, [key]: value }));
-  }
-
-  async function submit(): Promise<boolean> {
-    const invalid = validateClassForm(state);
-    setValidationError(invalid);
-    if (invalid) return false;
-
-    setServerError(null);
-    setPending(true);
-    try {
-      if (classDto) await onUpdate(classDto.id, toUpdateInput(state));
-      else await onCreate(toCreateInput(state));
-      return true;
-    } catch (err) {
-      setServerError(errorFrom(err, 'Не удалось сохранить. Попробуйте ещё раз.'));
-      return false;
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function remove(): Promise<boolean> {
-    if (!classDto) return false;
-    setServerError(null);
-    setPending(true);
-    try {
-      await onRemove(classDto.id);
-      return true;
-    } catch (err) {
-      setServerError(errorFrom(err, 'Не удалось удалить. Попробуйте ещё раз.'));
-      return false;
-    } finally {
-      setPending(false);
-    }
-  }
-
-  return { state, setField, validationError, serverError, pending, submit, remove };
+  return useEntityForm({
+    entity: classDto,
+    getId: (c) => c.id,
+    initialState: (c) => initialClassFormState(c, channels),
+    validate: validateClassForm,
+    toCreateInput,
+    toUpdateInput,
+    onCreate,
+    onUpdate,
+    onRemove,
+    saveErrorMessage: SAVE_ERROR_MESSAGE,
+    removeErrorMessage: REMOVE_ERROR_MESSAGE,
+    draftKey: `${DRAFT_DOMAIN}:${classDto?.id ?? 'new'}`,
+  });
 }

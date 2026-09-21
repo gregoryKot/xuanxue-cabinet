@@ -2,6 +2,14 @@
 // статуса (отменить/вернуть в расписание), по образцу schedule/useClassForm.ts.
 // Логика поля/валидации/сборки тела запроса — в lessonFormInput.ts (тестируется
 // без React).
+//
+// Черновик (ADR-0052, дополнение 2026-09-21) подключён напрямую через
+// hooks/useFormDraft.ts, а не через hooks/useEntityForm.ts: смена статуса
+// здесь — частичное тело `{ status }` с отдельным текстом ошибки под каждую
+// кнопку («Отменить»/«Вернуть»), а changeStatus() у useEntityForm всегда шлёт
+// toUpdateInput(state) целиком с одним общим текстом ошибки — так исторически
+// разошлось до этого аудита, а переписывать механику статуса ради черновика
+// не в задаче (аудит 2026-09-21, HIGH — раньше черновика не было вовсе).
 import { useState } from 'react';
 import type {
   ClassDto,
@@ -10,6 +18,7 @@ import type {
   UpdateLessonInput,
 } from '@xuanxue/shared';
 import { errorFrom, type FormError } from '../components/FormServerError';
+import { useFormDraft } from '../hooks/useFormDraft';
 import {
   initialLessonFormState,
   toCreateInput,
@@ -17,6 +26,8 @@ import {
   validateLessonForm,
   type LessonFormState,
 } from './lessonFormInput';
+
+const DRAFT_DOMAIN = 'lesson';
 
 export interface UseLessonFormResult {
   state: LessonFormState;
@@ -27,6 +38,8 @@ export interface UseLessonFormResult {
   submit: () => Promise<boolean>;
   cancelLesson: () => Promise<boolean>;
   restoreLesson: () => Promise<boolean>;
+  draftRestored: boolean;
+  discardDraft: () => void;
 }
 
 export function useLessonForm(
@@ -35,9 +48,11 @@ export function useLessonForm(
   onCreate: (input: CreateLessonInput) => Promise<void>,
   onUpdate: (id: string, input: UpdateLessonInput) => Promise<void>,
 ): UseLessonFormResult {
-  const [state, setState] = useState<LessonFormState>(() =>
+  const draftKey = `${DRAFT_DOMAIN}:${lessonDto?.id ?? 'new'}`;
+  const draft = useFormDraft<LessonFormState>(draftKey, () =>
     initialLessonFormState(lessonDto, classes),
   );
+  const { state, setState } = draft;
   const [validationError, setValidationError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<FormError | null>(null);
   const [pending, setPending] = useState(false);
@@ -56,6 +71,7 @@ export function useLessonForm(
     try {
       if (lessonDto) await onUpdate(lessonDto.id, toUpdateInput(state));
       else await onCreate(toCreateInput(state));
+      draft.forgetDraft();
       return true;
     } catch (err) {
       setServerError(errorFrom(err, 'Не удалось сохранить. Попробуйте ещё раз.'));
@@ -79,6 +95,7 @@ export function useLessonForm(
     setPending(true);
     try {
       await onUpdate(lessonDto.id, { status });
+      draft.forgetDraft();
       return true;
     } catch (err) {
       setServerError(errorFrom(err, STATUS_ERROR_MESSAGE[status]));
@@ -97,5 +114,7 @@ export function useLessonForm(
     submit,
     cancelLesson: () => setStatus('cancelled'),
     restoreLesson: () => setStatus('scheduled'),
+    draftRestored: draft.restored,
+    discardDraft: draft.discardDraft,
   };
 }

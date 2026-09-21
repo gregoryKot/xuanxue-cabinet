@@ -1,8 +1,7 @@
-// Подписка на push браузера (ADR-0092, ПР №5, последний из «Порядка работ»)
-// — логика вынесена из PushNotificationsSection.tsx (CLAUDE.md «Логика вне
-// компонентов»). Мутации своего хука — не в api/apiPaths.ts: там только
-// GET-пути, общие с предзагрузкой экрана (см. шапку apiPaths.ts), тем же
-// приёмом, что NO_TELEGRAM_PATH в telegram/useNoTelegram.ts.
+// Подписка на push браузера (ADR-0092, ПР №5) — логика вынесена из
+// PushNotificationsSection.tsx (CLAUDE.md «Логика вне компонентов»). Мутации
+// своего хука — не в api/apiPaths.ts: там только GET, общие с предзагрузкой
+// экрана, тем же приёмом, что NO_TELEGRAM_PATH в telegram/useNoTelegram.ts.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   PushPublicKeyDto,
@@ -16,7 +15,11 @@ import {
   PUSH_LOAD_ERROR_MESSAGE,
 } from './pushNotificationsCopy';
 import { arrayBufferToBase64Url, base64UrlToUint8Array } from './pushSubscriptionCodec';
-import { resolvePushSectionState, type PushSectionState } from './pushSectionState';
+import {
+  resolvePushSectionState,
+  waitRegistrationOrReportError,
+  type PushSectionState,
+} from './pushSectionState';
 
 const PUSH_PUBLIC_KEY_PATH = '/push/public-key';
 const PUSH_SUBSCRIPTIONS_PATH = '/me/push-subscriptions';
@@ -42,13 +45,10 @@ export function usePushSubscription(): UsePushSubscriptionResult {
   const [state, setState] = useState<PushSectionState | null>(null);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Ключ сервера нужен только внутри enable() (applicationServerKey) — не
-  // часть состояния экрана, перерисовку по нему заказывать незачем. Тип
-  // `string`, не `string | null`: enable() читает ref, только когда state.kind
-  // — 'default'/'not-subscribed', а resolvePushSectionState отдаёт их
-  // исключительно при непустом publicKey (см. ниже) — пустая строка сюда
-  // никогда не доходит до реального чтения, `!`/`as` для сужения типа не
-  // нужны (CLAUDE.md «TypeScript строгий»: чини типы, не глуши линт).
+  // enable() читает ключ только из ref (не часть состояния экрана). Тип
+  // `string`, не `string | null`: resolvePushSectionState отдаёт
+  // 'default'/'not-subscribed' лишь при непустом publicKey — пустая строка
+  // сюда не доходит, `!`/`as` не нужны (CLAUDE.md «TypeScript строгий»).
   const publicKeyRef = useRef<string>('');
 
   const load = useCallback(async () => {
@@ -70,8 +70,7 @@ export function usePushSubscription(): UsePushSubscriptionResult {
   }, [load]);
 
   const enable = useCallback(async () => {
-    // Кнопка включения видна только в этих двух состояниях
-    // (PushNotificationsSection.tsx) — защита от вызова из чужого места.
+    // Кнопка видна только в default/not-subscribed — защита от чужого вызова.
     if (!state || (state.kind !== 'default' && state.kind !== 'not-subscribed')) return;
     const publicKey = publicKeyRef.current;
     setPending(true);
@@ -88,7 +87,8 @@ export function usePushSubscription(): UsePushSubscriptionResult {
         if (permission === 'default') return;
       }
 
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await waitRegistrationOrReportError(setActionError);
+      if (!registration) return;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: base64UrlToUint8Array(publicKey),
@@ -119,12 +119,12 @@ export function usePushSubscription(): UsePushSubscriptionResult {
     setPending(true);
     setActionError(null);
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await waitRegistrationOrReportError(setActionError);
+      if (!registration) return;
       const subscription = await registration.pushManager.getSubscription();
-      // Отписка в браузере и снятие записи на сервере — оба вызова, одно без
-      // другого оставляет мусор (ТЗ ПР №5). Подписки уже нет локально (редкий
-      // случай, рассинхрон) — сервер тоже нечего снимать по известному
-      // endpoint, дальше просто фиксируем итог.
+      // Отписка в браузере и снятие записи на сервере — пара, одно без
+      // другого оставляет мусор (ТЗ ПР №5). Подписки уже нет локально
+      // (рассинхрон) — серверу тоже нечего снимать, фиксируем итог.
       if (subscription) {
         const endpoint = subscription.endpoint;
         await subscription.unsubscribe();
