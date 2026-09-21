@@ -1,5 +1,5 @@
 // Форма имени внутри «Профиля» в изоляции (тот же приём, что
-// useProfileSetup.test.ts): apiFetch замокан, `refresh()` — обычный колбэк,
+// useProfileSetup.test.ts): apiFetch замокан, `applyMe()` — обычный колбэк,
 // <AuthProvider> не нужен. Начальные поля из me.name и переход после
 // сохранения на /welcome проверяют WelcomeScreen.test.tsx и
 // profile/ProfileScreen.test.tsx — здесь только то, что специфично для
@@ -7,6 +7,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { ProfileNameSection } from './ProfileNameSection';
@@ -18,15 +19,29 @@ vi.mock('../api/http', async () => {
 
 const mockedApiFetch = vi.mocked(apiFetch);
 
+// Ответ PATCH /me/profile (ADR-0087) — applyMe() получает его напрямую,
+// второго GET /auth/me тест не ждёт.
+const ME: MeDto = {
+  id: 'u1',
+  name: 'Дмитрий Котова',
+  roles: [],
+  status: 'active',
+  telegramLinked: true,
+  botChatActive: false,
+  hasEmail: false,
+  noTelegram: false,
+  needsProfile: false,
+};
+
 afterEach(() => {
   mockedApiFetch.mockReset();
 });
 
 function renderSection(initialName = 'Дмитрий Котов') {
-  const refresh = vi.fn().mockResolvedValue(undefined);
+  const applyMe = vi.fn();
   return {
-    refresh,
-    ...render(<ProfileNameSection initialName={initialName} refresh={refresh} />),
+    applyMe,
+    ...render(<ProfileNameSection initialName={initialName} applyMe={applyMe} />),
   };
 }
 
@@ -59,8 +74,8 @@ describe('ProfileNameSection — кнопка «Сохранить имя»', ()
 describe('ProfileNameSection — сохранение', () => {
   it('успех — PATCH /me/profile, «Имя сохранено», форма остаётся на месте', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockResolvedValue(undefined);
-    const { refresh } = renderSection();
+    mockedApiFetch.mockResolvedValue(ME);
+    const { applyMe } = renderSection();
 
     await user.type(await screen.findByLabelText('Фамилия'), 'а');
     await user.click(screen.getByRole('button', { name: 'Сохранить имя' }));
@@ -70,14 +85,14 @@ describe('ProfileNameSection — сохранение', () => {
       method: 'PATCH',
       body: { firstName: 'Дмитрий', lastName: 'Котова' },
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(applyMe).toHaveBeenCalledWith(ME);
     // Форма никуда не уводит — поле со значением всё ещё на экране.
     expect(screen.getByLabelText('Имя')).toHaveValue('Дмитрий');
   });
 
   it('повторное изменение поля прячет «Имя сохранено» — сообщение устарело', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockResolvedValue(undefined);
+    mockedApiFetch.mockResolvedValue(ME);
     renderSection();
 
     await user.type(await screen.findByLabelText('Фамилия'), 'а');

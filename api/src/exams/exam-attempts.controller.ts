@@ -35,7 +35,6 @@ import type {
   AttemptReviewDto,
   ExamAttemptCountDto,
   ExamAttemptDto,
-  ExamGradingDto,
 } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import { MediaAssetsService } from '../media/media-assets.service';
@@ -129,13 +128,22 @@ export class ExamAttemptsController {
     return withReviewMedia(this.mediaAssetsService, review);
   }
 
+  // Отдаёт карточку проверки целиком (AttemptReviewDto), не голую оценку
+  // (ExamGradingDto) — экран проверки кладёт этот ответ прямо на себя вместо
+  // повторного GET /attempts/:id/review (ADR-0087, «Последствия»), тем же
+  // ExamGradingsService.getReview()/withReviewMedia(), что и review() выше.
+  // ExamGradingsService.grade() при этом как был, так и остаётся —
+  // ExamGradingDto, что он возвращает, нужен боту (ExamBotPort.gradeAttempt,
+  // api/src/telegram/handlers/grade-comment-save.ts), трогать его нельзя.
   @Put('attempts/:id/grading')
   @Roles(...STAFF_ONLY_ROLES)
-  grade(
+  async grade(
     @Param('id') id: string,
     @Body() body: PutGradingDto,
     @CurrentUser() user: UserLean,
-  ): Promise<ExamGradingDto> {
-    return this.examGradingsService.grade(id, user.id, body, DateTime.utc());
+  ): Promise<AttemptReviewDto> {
+    await this.examGradingsService.grade(id, user.id, body, DateTime.utc());
+    const review = await this.examGradingsService.getReview(id);
+    return withReviewMedia(this.mediaAssetsService, review);
   }
 }

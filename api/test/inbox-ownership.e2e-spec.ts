@@ -8,7 +8,7 @@
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import request from 'supertest';
-import type { ApiErrorBody, InboxPageDto, NotificationDto } from '@xuanxue/shared';
+import type { ApiErrorBody, InboxPageDto } from '@xuanxue/shared';
 import { NotificationRecord } from '../src/notifications/notification.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { createUserWithSession } from './e2e-support/session';
@@ -111,10 +111,13 @@ describe('Лента кабинета — владение (e2e)', () => {
       request(server()).post(`/api/me/inbox/${notification._id.toString()}/read`),
     ).set('Cookie', cookieA);
     expect(read.status).toBe(200);
-    expect((read.body as NotificationDto).readAt).toBeDefined();
-
+    const readBody = read.body as InboxPageDto; // вся лента, не одна строка (ADR-0087)
+    expect(readBody.unreadCount).toBe(0);
+    expect(
+      readBody.items.find((item) => item.id === notification._id.toString())?.readAt,
+    ).toBeDefined();
     const getA = await request(server()).get('/api/me/inbox').set('Cookie', cookieA);
-    expect((getA.body as InboxPageDto).unreadCount).toBe(0);
+    expect(read.body).toEqual(getA.body);
   });
 
   it('read-all гасит только свои непрочитанные, чужие не трогает', async () => {
@@ -150,10 +153,12 @@ describe('Лента кабинета — владение (e2e)', () => {
       'Cookie',
       cookieA,
     );
-    expect(readAll.status).toBe(204);
+    expect(readAll.status).toBe(200); // было 204, теперь лента целиком (ADR-0087)
+    expect((readAll.body as InboxPageDto).unreadCount).toBe(0);
 
     const getA = await request(server()).get('/api/me/inbox').set('Cookie', cookieA);
     expect((getA.body as InboxPageDto).unreadCount).toBe(0);
+    expect(readAll.body).toEqual(getA.body);
 
     const getB = await request(server()).get('/api/me/inbox').set('Cookie', cookieB);
     expect((getB.body as InboxPageDto).unreadCount).toBe(1);

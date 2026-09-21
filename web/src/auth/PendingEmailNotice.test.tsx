@@ -1,8 +1,9 @@
-// В изоляции, как EmailLinkForm.test.tsx — apiFetch замокан, refresh()
+// В изоляции, как EmailLinkForm.test.tsx — apiFetch замокан, applyMe()
 // обычный колбэк.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { PendingEmailNotice } from './PendingEmailNotice';
@@ -14,6 +15,20 @@ vi.mock('../api/http', async () => {
 
 const mockedApiFetch = vi.mocked(apiFetch);
 
+// Ответ POST /auth/email/link (ADR-0087) — applyMe() получает его напрямую.
+const ME: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: [],
+  status: 'active',
+  telegramLinked: true,
+  botChatActive: false,
+  hasEmail: false,
+  pendingEmail: 'a@example.com',
+  noTelegram: false,
+  needsProfile: false,
+};
+
 afterEach(() => {
   mockedApiFetch.mockReset();
 });
@@ -23,7 +38,7 @@ describe('PendingEmailNotice', () => {
     render(
       <PendingEmailNotice
         email="a@example.com"
-        refresh={vi.fn()}
+        applyMe={vi.fn()}
         onChangeAddress={vi.fn()}
       />,
     );
@@ -33,12 +48,12 @@ describe('PendingEmailNotice', () => {
 
   it('«Прислать ссылку ещё раз» шлёт POST /auth/email/link с тем же адресом', async () => {
     const user = userEvent.setup();
-    mockedApiFetch.mockResolvedValue(undefined);
-    const refresh = vi.fn().mockResolvedValue(undefined);
+    mockedApiFetch.mockResolvedValue(ME);
+    const applyMe = vi.fn();
     render(
       <PendingEmailNotice
         email="a@example.com"
-        refresh={refresh}
+        applyMe={applyMe}
         onChangeAddress={vi.fn()}
       />,
     );
@@ -49,7 +64,7 @@ describe('PendingEmailNotice', () => {
       method: 'POST',
       body: { email: 'a@example.com' },
     });
-    await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(applyMe).toHaveBeenCalledWith(ME));
   });
 
   it('сбой повтора — текст ошибки под адресом', async () => {
@@ -58,7 +73,7 @@ describe('PendingEmailNotice', () => {
     render(
       <PendingEmailNotice
         email="a@example.com"
-        refresh={vi.fn()}
+        applyMe={vi.fn()}
         onChangeAddress={vi.fn()}
       />,
     );
@@ -78,7 +93,7 @@ describe('PendingEmailNotice', () => {
     render(
       <PendingEmailNotice
         email="a@example.com"
-        refresh={vi.fn()}
+        applyMe={vi.fn()}
         onChangeAddress={onChangeAddress}
       />,
     );

@@ -1,8 +1,9 @@
 // Юнит-тест хука без компонента/DOM (CLAUDE.md «Тесты») — тело запроса,
-// read-after-write через refresh() и текст ошибки. Сеть замокана через
-// apiFetch (тот же приём, что useEmailLink.test.ts).
+// read-after-write через applyMe() (ADR-0087) и текст ошибки. Сеть замокана
+// через apiFetch (тот же приём, что useEmailLink.test.ts).
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
 import { useNoTelegram } from './useNoTelegram';
@@ -13,6 +14,20 @@ vi.mock('../api/http', async () => {
 });
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+// Ответ PUT /me/no-telegram (ADR-0087) — конкретное значение поля не важно
+// тестам этого файла, важно, что applyMe() получает именно его.
+const ME: MeDto = {
+  id: 'u1',
+  name: 'Дима',
+  roles: [],
+  status: 'active',
+  telegramLinked: false,
+  botChatActive: false,
+  hasEmail: true,
+  noTelegram: true,
+  needsProfile: false,
+};
 
 afterEach(() => {
   mockedApiFetch.mockReset();
@@ -26,10 +41,10 @@ describe('useNoTelegram', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('постановка отметки — PUT с { noTelegram: true }, затем refresh()', async () => {
-    mockedApiFetch.mockResolvedValue(undefined);
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useNoTelegram(refresh));
+  it('постановка отметки — PUT с { noTelegram: true }, затем applyMe(next)', async () => {
+    mockedApiFetch.mockResolvedValue(ME);
+    const applyMe = vi.fn();
+    const { result } = renderHook(() => useNoTelegram(applyMe));
 
     await act(() => result.current.set(true));
 
@@ -37,15 +52,15 @@ describe('useNoTelegram', () => {
       method: 'PUT',
       body: { noTelegram: true },
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(applyMe).toHaveBeenCalledWith(ME);
     expect(result.current.pending).toBe(false);
     expect(result.current.error).toBeNull();
   });
 
   it('снятие отметки — PUT с { noTelegram: false }', async () => {
-    mockedApiFetch.mockResolvedValue(undefined);
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useNoTelegram(refresh));
+    mockedApiFetch.mockResolvedValue(ME);
+    const applyMe = vi.fn();
+    const { result } = renderHook(() => useNoTelegram(applyMe));
 
     await act(() => result.current.set(false));
 
@@ -53,21 +68,21 @@ describe('useNoTelegram', () => {
       method: 'PUT',
       body: { noTelegram: false },
     });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(applyMe).toHaveBeenCalledWith(ME);
   });
 
-  it('ошибка сервера — текст в error, refresh() не вызван', async () => {
+  it('ошибка сервера — текст в error, applyMe() не вызван', async () => {
     mockedApiFetch.mockRejectedValue(
       new ApiError('Сервер не ответил. Попробуйте ещё раз.', 500, 'unknown'),
     );
-    const refresh = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() => useNoTelegram(refresh));
+    const applyMe = vi.fn();
+    const { result } = renderHook(() => useNoTelegram(applyMe));
 
     await act(() => result.current.set(true));
 
     expect(result.current.pending).toBe(false);
     expect(result.current.error).toBe('Сервер не ответил. Попробуйте ещё раз.');
-    expect(refresh).not.toHaveBeenCalled();
+    expect(applyMe).not.toHaveBeenCalled();
   });
 
   it('сетевой сбой (не ApiError) — общий текст «Нет связи…»', async () => {

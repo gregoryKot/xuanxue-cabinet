@@ -4,11 +4,12 @@
 // компонентов»). Куда идти после сохранения решает экран, не хук: `/welcome`
 // уходит на postLoginPath(), «Профиль» остаётся на месте и показывает тихую
 // строку «Имя сохранено» — поэтому `onSaved()` обязателен третьим параметром
-// и зовётся уже после refresh() сессии. Поля формы тоже здесь, не в
-// компоненте: обрезка пробелов при отправке и то, что при ошибке они не
-// стираются, — часть той же логики, не рендера.
+// и зовётся уже после того, как свежий профиль применён (`applyMe`,
+// ADR-0087). Поля формы тоже здесь, не в компоненте: обрезка пробелов при
+// отправке и то, что при ошибке они не стираются, — часть той же логики, не
+// рендера.
 import { useCallback, useState } from 'react';
-import { splitPersonName, type UpdateMyProfileInput } from '@xuanxue/shared';
+import { splitPersonName, type MeDto, type UpdateMyProfileInput } from '@xuanxue/shared';
 import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
 
 type ProfileSetupStatus = 'idle' | 'pending' | 'error';
@@ -34,14 +35,16 @@ export interface UseProfileSetupResult {
  * `initialName` — то, что кабинет уже знает о человеке (`me.name`): у
  * пришедшего через Telegram это имя и фамилия из Telegram, у пришедшего по
  * почте — заглушка `NEW_PERSON_NAME`, `splitPersonName` превращает её в
- * пустые поля. `refresh` берётся из useAuth() самим экраном, не отсюда (тот
+ * пустые поля. `applyMe` берётся из useAuth() самим экраном, не отсюда (тот
  * же приём, что у useEmailLoginVerify.ts) — так хук проверяется без
- * <AuthProvider> в дереве. `onSaved` — тоже забота экрана: `/welcome` уходит
- * дальше, «Профиль» просто показывает результат.
+ * <AuthProvider> в дереве. `PATCH /me/profile` возвращает свежий `MeDto`
+ * (ADR-0087) — кладём его прямо в сессию вместо второго `GET /auth/me`.
+ * `onSaved` — тоже забота экрана: `/welcome` уходит дальше, «Профиль» просто
+ * показывает результат.
  */
 export function useProfileSetup(
   initialName: string,
-  refresh: () => Promise<void>,
+  applyMe: (next: MeDto) => void,
   onSaved: () => void,
 ): UseProfileSetupResult {
   const initial = splitPersonName(initialName);
@@ -63,8 +66,8 @@ export function useProfileSetup(
       ? { firstName: trimmedFirstName, lastName: trimmedLastName }
       : { firstName: trimmedFirstName };
     try {
-      await apiFetch<void>('/me/profile', { method: 'PATCH', body });
-      await refresh();
+      const next = await apiFetch<MeDto>('/me/profile', { method: 'PATCH', body });
+      applyMe(next);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
       setStatus('error');
@@ -72,7 +75,7 @@ export function useProfileSetup(
     }
     setStatus('idle');
     return true;
-  }, [firstName, lastName, refresh]);
+  }, [firstName, lastName, applyMe]);
 
   const submit = useCallback(async () => {
     // Подстраховка: кнопка и так недоступна при пустом имени

@@ -44,20 +44,28 @@ export class EmailLinkService {
    * записью оставил бы человека с письмом на руках и без токена в базе.
    * Запись первой хотя бы гарантирует пару «pendingEmail есть» и «токен
    * существует», прежде чем письмо вообще пробует уйти.
+   *
+   * Возвращает свежего `UserLean` — `EmailLinkController` собирает из него
+   * `MeDto` тем же `toMeDto()`, что `GET /auth/me` (ADR-0087): в ответе
+   * важен появившийся `pendingEmail`, а второй `findById` ради него не
+   * нужен, `UserEmailService.setPendingEmail` уже возвращает документ
+   * «после записи». В ветке идемпотентного выхода ничего не поменялось —
+   * отдаём тот же `user`, что пришёл параметром, лишний `findById` был бы
+   * тем же чтением второй раз.
    */
-  async link(user: UserLean, email: string, now: DateTime): Promise<void> {
+  async link(user: UserLean, email: string, now: DateTime): Promise<UserLean> {
     const publicUrl = emailLoginPublicUrl(this.config);
     if (!publicUrl) throw new NotAvailableError(EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE);
 
     const normalized = email.toLowerCase();
-    if (user.email === normalized) return; // идемпотентно: уже подтверждён
+    if (user.email === normalized) return user; // идемпотентно: уже подтверждён
 
     if (user.email != null) throw new ConflictError(EMAIL_LINK_OTHER_EMAIL_MESSAGE);
     if (await this.userEmailService.isEmailTaken(normalized)) {
       throw new ConflictError(EMAIL_LINK_TAKEN_MESSAGE);
     }
 
-    await this.userEmailService.setPendingEmail(user.id, normalized);
+    const updated = await this.userEmailService.setPendingEmail(user.id, normalized);
     const token = await this.tokens.issue(user.id, normalized, now);
     // `null` — на этот же адрес письмо ушло пару минут назад
     // (EMAIL_CONFIRM_RESEND_COOLDOWN_MIN): квота Resend — 100 писем в сутки,
@@ -69,6 +77,7 @@ export class EmailLinkService {
 
     const link = `${publicUrl}/email/confirm?token=${token}`;
     await this.mail.sendEmailConfirmLink({ to: normalized, link });
+    return updated;
   }
 
   /**

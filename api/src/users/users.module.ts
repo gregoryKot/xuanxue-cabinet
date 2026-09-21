@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ChannelModelModule } from '../channels/channel-model.module';
 import { BotIdentityModule } from '../telegram/bot-identity.module';
 import { UserRecord, UserSchema } from './user.schema';
 import { InviteLinkRecord, InviteLinkSchema } from './invite-link.schema';
@@ -17,6 +18,7 @@ import { MyProfileController } from './my-profile.controller';
 import { TeachersService } from './teachers.service';
 import { TelegramLinkCodeService } from './telegram-link-code.service';
 import { TelegramLinkService } from './telegram-link.service';
+import { UserBotChatStatusService } from './user-bot-chat-status.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserEmailService } from './user-email.service';
 import { UserNamesService } from './user-names.service';
@@ -31,7 +33,13 @@ import { UsersService } from './users.service';
   // BotIdentityModule — имя бота для InviteLinkDto.telegramUrl, без импорта
   // TelegramModule целиком (bot-identity.service.ts). ChannelsModule (для
   // группового автоподтверждения, ADR-0026) больше не нужен — механика
-  // удалена целиком (ADR-0036).
+  // удалена целиком (ADR-0036); ChannelModelModule — за другим: только модель
+  // ChannelRecord для UserBotChatStatusService (MeDto.botChatActive у PATCH
+  // /me/profile и PUT /me/no-telegram, ADR-0087) — полный ChannelsModule
+  // сюда не завести, у него нет причины знать про UsersModule, а полный
+  // TelegramModule (у которого есть готовый PersonalChats.hasActiveChatFor)
+  // сам импортирует UsersModule — обратный импорт закольцевал бы граф
+  // (ADR-0013, тот же приём, что LessonModelModule/UserModelModule).
   imports: [
     MongooseModule.forFeature([
       { name: UserRecord.name, schema: UserSchema },
@@ -40,6 +48,7 @@ import { UsersService } from './users.service';
       { name: EmailLinkTokenRecord.name, schema: EmailLinkTokenSchema },
     ]),
     BotIdentityModule,
+    ChannelModelModule,
   ],
   controllers: [UsersController, MyProfileController, MyNoTelegramController],
   providers: [
@@ -51,6 +60,7 @@ import { UsersService } from './users.service';
     UserNamesService,
     UserProfileService,
     UserNoTelegramService,
+    UserBotChatStatusService,
     UserEmailService,
     EmailLoginUserService,
     InviteLinkService,

@@ -12,7 +12,6 @@ import type {
   AttemptReviewDto,
   ExamAttemptDto,
   ExamDto,
-  ExamGradingDto,
   MyExamDto,
 } from '@xuanxue/shared';
 import { DateTime, Settings } from 'luxon';
@@ -236,8 +235,9 @@ describe('Экзамен целиком через кабинет (e2e, крит
 
     const graded = await putGrading(teacherCookie, attempt.id);
     expect(graded.status).toBe(200);
-    expect((graded.body as ExamGradingDto).outcome).toBe('passed');
-    expect((graded.body as ExamGradingDto).gradedAt).toBe(gradedAt.toISO());
+    // Ответ PUT — карточка проверки целиком, не голая ExamGradingDto (ADR-0087).
+    expect((graded.body as AttemptReviewDto).grading?.outcome).toBe('passed');
+    expect((graded.body as AttemptReviewDto).grading?.gradedAt).toBe(gradedAt.toISO());
     // Повторное «Сохранить» с теми же значениями — второго уведомления нет.
     const gradedAgain = await putGrading(teacherCookie, attempt.id);
     expect(gradedAgain.status).toBe(200);

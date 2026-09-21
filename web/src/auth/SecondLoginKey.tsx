@@ -49,16 +49,20 @@ interface SecondLoginKeyProps {
 }
 
 export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
-  const { refresh } = useAuth();
+  const { applyMe } = useAuth();
   // Пока true — вместо напоминания «Мы отправили ссылку на …» показана
   // форма с этим же адресом в поле (PendingEmailNotice — «Указать другой
-  // адрес»). Сбрасывается не эффектом, а самим refreshAfterLink после
-  // успешной отправки: read-after-write, новый me.pendingEmail уже пришёл.
+  // адрес»). Сбрасывается не эффектом, а самим applyMeAfterLink после
+  // успешной отправки: read-after-write, новый me.pendingEmail уже пришёл в
+  // ответе самой записи (ADR-0087) — applyMe синхронный, второго GET нет.
   const [editingEmail, setEditingEmail] = useState(false);
-  const refreshAfterLink = useCallback(async () => {
-    await refresh();
-    setEditingEmail(false);
-  }, [refresh]);
+  const applyMeAfterLink = useCallback(
+    (next: MeDto) => {
+      applyMe(next);
+      setEditingEmail(false);
+    },
+    [applyMe],
+  );
   const needsTelegram = showsTelegramLinkOffer(me);
   const needsEmail = !me.hasEmail;
   // enabled: needsEmail — у кого почта уже есть, лишний GET /auth/config не
@@ -95,12 +99,12 @@ export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
         (me.pendingEmail && !editingEmail ? (
           <PendingEmailNotice
             email={me.pendingEmail}
-            refresh={refresh}
+            applyMe={applyMe}
             onChangeAddress={() => setEditingEmail(true)}
           />
         ) : (
           <EmailLinkForm
-            refresh={refreshAfterLink}
+            applyMe={applyMeAfterLink}
             initialEmail={me.pendingEmail}
             onCancel={me.pendingEmail ? () => setEditingEmail(false) : undefined}
           />

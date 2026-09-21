@@ -48,7 +48,7 @@ describe('Привязка почты к аккаунту (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('привязал адрес — GET /auth/me показывает pendingEmail, hasEmail: false (read-after-write)', async () => {
+  it('привязал адрес — pendingEmail и hasEmail: false сразу в ответе POST (read-after-write)', async () => {
     const { cookie } = await createUserWithSession(testApp.app, {
       name: 'Вошёл через Telegram',
       roles: [],
@@ -56,12 +56,13 @@ describe('Привязка почты к аккаунту (e2e)', () => {
     });
 
     const linked = await helpers.postLink(cookie, 'student-1@example.com');
-    expect(linked.status).toBe(204);
-
-    const me = await helpers.getMe(cookie);
-    const body = me.body as MeDto;
+    expect(linked.status).toBe(200);
+    const body = linked.body as MeDto;
     expect(body.hasEmail).toBe(false);
     expect(body.pendingEmail).toBe('student-1@example.com');
+
+    const me = await helpers.getMe(cookie); // тело равно GET сразу после (ADR-0087)
+    expect(linked.body).toEqual(me.body);
   });
 
   it('неподтверждённый адрес не пускает — вход по нему не открывает этот аккаунт', async () => {

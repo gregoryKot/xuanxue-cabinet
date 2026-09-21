@@ -7,9 +7,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { USER_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
+import { NotFoundError } from '../common/errors';
 import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { assertObjectId } from '../common/object-id';
 import { UserRecord } from './user.schema';
+import { toLean, type UserDoc, type UserLean } from './users.service';
 
 @Injectable()
 export class UserEmailService {
@@ -26,10 +28,23 @@ export class UserEmailService {
   }
 
   /** `userId` — из сессии (`@CurrentUser()`), тот же приём защиты, что у
-   * UserProfileService.setName: невалидный ObjectId — не повод падать 500. */
-  async setPendingEmail(userId: string, email: string): Promise<void> {
+   * UserProfileService.setName: невалидный ObjectId — не повод падать 500.
+   * Возвращает свежего `UserLean` (не `void`) — `POST /auth/email/link`
+   * собирает из него `MeDto` тем же `toMeDto()`, что `GET /auth/me`, без
+   * второго `findById` рядом (ADR-0087). Аккаунт мог исчезнуть между
+   * выдачей сессии и этим вызовом — `NotFoundError`, тот же приём, что у
+   * UserProfileService.setName/UserNoTelegramService.setNoTelegram. */
+  async setPendingEmail(userId: string, email: string): Promise<UserLean> {
     assertObjectId(userId, USER_NOT_FOUND_MESSAGE);
-    await this.model.updateOne({ _id: userId }, { $set: { pendingEmail: email } });
+    const doc = await this.model
+      .findOneAndUpdate(
+        { _id: userId },
+        { $set: { pendingEmail: email } },
+        { returnDocument: 'after' },
+      )
+      .lean<UserDoc>();
+    if (!doc) throw new NotFoundError(USER_NOT_FOUND_MESSAGE);
+    return toLean(doc);
   }
 
   /**
