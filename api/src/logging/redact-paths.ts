@@ -55,6 +55,14 @@ export const REDACT_PATHS: string[] = [
   // error из любой строки лога и ослепил бы отладку. Токен канала из текста
   // ошибки провайдера вычищается в ChannelsService (test()) и в сервисе
   // доставок, до записи в базу и до лога (SECURITY §6).
+  // Подписка браузера на push (ADR-0092, POST/DELETE /me/push-subscriptions):
+  // endpoint — адрес push-сервиса конкретного устройства, p256dh/auth — его
+  // ключи доставки (секреты, как токен канала, SECURITY §5). Тело запроса и
+  // так не логируется целиком, но объект подписки может попасть в лог
+  // где-то ещё (ошибка, будущий PR №4) — тот же довод, что у zoomLink/config.
+  '*.endpoint',
+  '*.p256dh',
+  '*.auth',
   '*.token',
   '*.accessToken',
   // Форма ВК (`access_token` в теле запроса messages.send) — snake_case,

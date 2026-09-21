@@ -21,6 +21,14 @@ import { EXAM_MEDIA_KINDS } from '@xuanxue/shared';
 import type { ExamMediaKind } from '@xuanxue/shared';
 import { enc, plain, encryptSchemaFrom, type FieldPolicy } from '../common/field-policy';
 
+// Тип вложения, которым видео пришло в Telegram (ADR-0023, ADR-0095) — свой
+// метод Bot API на каждый вид (sendVideo/sendVideoNote/sendDocument,
+// telegram/bot-send-video.ts), поэтому тип сохраняется вместе с file_id, а не
+// теряется на границе telegram → media. Не в shared/: поле служебное,
+// ExamMediaDto его не несёт (media-asset.mapper.ts).
+export const EXAM_VIDEO_TELEGRAM_TYPES = ['video', 'video_note', 'document'] as const;
+export type ExamVideoTelegramType = (typeof EXAM_VIDEO_TELEGRAM_TYPES)[number];
+
 @Schema({ timestamps: true, collection: 'media_assets' })
 export class MediaAssetRecord {
   // Группировка по попытке — не признак владения (это userId ниже), просто
@@ -56,6 +64,13 @@ export class MediaAssetRecord {
 
   @Prop({ type: String, required: false })
   fileUniqueId?: string;
+
+  // Тип вложения (ADR-0095) — только `kind: 'telegram'`. Необязателен: записи
+  // с прода до этой правки его не несут (expand → contract, тот же приём, что
+  // itemId выше) — повторная отправка для них перебирает методы по очереди
+  // (telegram-exam-video-delivery.ts).
+  @Prop({ type: String, enum: EXAM_VIDEO_TELEGRAM_TYPES, required: false })
+  telegramType?: ExamVideoTelegramType;
 
   // Только `kind: 'telegram'` — Telegram отдаёт их прямо в сообщении,
   // перекачивать видео ради длительности/размера не нужно (ADR-0023: `getFile`
@@ -102,6 +117,9 @@ export const MEDIA_ASSET_FIELD_POLICY: FieldPolicy = {
   // как attemptId/userId выше (те вне гейта encryption-coverage.spec.ts, не
   // String-тип, но то же решение — явное здесь для читателя схемы).
   itemId: plain('идентификатор, не шифруется (SECURITY §5), как attemptId/userId'),
+  telegramType: plain(
+    'перечисление — тип вложения Telegram, нужен для выбора метода отправки',
+  ),
   fileId: enc,
   fileUniqueId: enc,
   url: enc,

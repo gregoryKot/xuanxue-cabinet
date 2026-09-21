@@ -158,7 +158,7 @@ describe('владение попыткой в боте — по telegramId от
     const videoFromA = fakeFlowCtx({ video: true });
     await mediaHandler.handle(videoFromA.ctx, CHAT_A, sessionA, NOW);
 
-    expect(videoFromA.replies[0]).toContain('Видео получено');
+    expect(videoFromA.replies[0]).toContain('Видео дошло');
     const media = await flow.ctx.mediaAssetsService.listForAttempt(attemptA.id);
     expect(media).toHaveLength(1);
     expect(media[0]).toMatchObject({ kind: 'telegram', itemId: itemIds[0] });

@@ -29,4 +29,9 @@ export const EMPTY_AS_ABSENT_KEYS = [
   'R2_ACCESS_KEY_ID',
   'R2_SECRET_ACCESS_KEY',
   'R2_BUCKET',
+  // Push (ADR-0092) — та же логика: три пустые строки в .env значат
+  // «выключено», а не «половина набора» для env.vapid-group.ts.
+  'VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
 ] as const;

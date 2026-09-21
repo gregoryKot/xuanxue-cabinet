@@ -17,7 +17,7 @@ import { AttemptReviewBlock } from './AttemptReviewBlock';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { formatAttemptAnswersSummary } from './attemptReviewAnswersMeta';
 import { attemptReviewMediaByQuestion } from './attemptReviewMediaByQuestion';
-import type { AttemptReviewVideoControls } from './useAttemptReview';
+import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
 const ORPHAN_MEDIA_HEADING = 'Видео без вопроса';
 // VOICE: коротко, на «вы», что случилось и что делать. Причин две, и обе
@@ -61,6 +61,10 @@ export function AttemptReviewAnswers({ blocks, video }: AttemptReviewAnswersProp
           media={unassigned}
           heading={ORPHAN_MEDIA_HEADING}
           description={ORPHAN_MEDIA_EXPLANATION}
+          onSendToMe={video.sendMediaToMe}
+          sendStateFor={video.sendMediaStateFor}
+          botChatActive={video.botChatActive}
+          offersTelegramLink={video.offersTelegramLink}
         />
       )}
 

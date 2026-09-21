@@ -11,6 +11,7 @@ import { validateSync } from 'class-validator';
 import { EMPTY_AS_ABSENT_KEYS } from './env.empty-as-absent';
 import { productionRequiredMessages } from './env.production-required';
 import { r2GroupMessages } from './env.r2-group';
+import { vapidGroupMessages } from './env.vapid-group';
 import { EnvSchema } from './env.validation';
 
 export function validateEnv(raw: Record<string, unknown>): EnvSchema {
@@ -29,6 +30,9 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
   // Проверяется в любом окружении: половина набора R2 — опечатка при
   // настройке, а не «хранилище выключено» (ADR-0057).
   messages.push(...r2GroupMessages(instance));
+  // Та же логика для VAPID (ADR-0092) — push не обязателен нигде, включая
+  // production, но половина набора не проходит ни там, ни здесь.
+  messages.push(...vapidGroupMessages(instance));
 
   if (messages.length > 0) {
     throw new Error(
