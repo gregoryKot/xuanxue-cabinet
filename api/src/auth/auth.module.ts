@@ -18,6 +18,7 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { EmailAuthService } from './email-auth.service';
+import { EmailCodeController } from './email-code.controller';
 import { EmailLinkController } from './email-link.controller';
 import { EmailLinkService } from './email-link.service';
 import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
@@ -53,6 +54,7 @@ import { TelegramLinkController } from './telegram-link.controller';
     JoinController,
     TelegramLinkController,
     EmailLinkController,
+    EmailCodeController,
   ],
   providers: [
     AuthService,
