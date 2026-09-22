@@ -15,7 +15,7 @@ import { ChannelPicker } from '../channels/ChannelPicker';
 import { textLinkStyle } from '../components/screenLayout';
 
 const EXPLANATION =
-  'Сюда уйдут ссылка на занятие и запись. Telegram-группы с ботом подключаются к новым занятиям сами; здесь можно снять или добавить каналы.';
+  'Сюда уйдут ссылка на занятие и запись. Telegram-группы с ботом подключаются к новым занятиям сами.';
 
 interface ClassChannelsFieldProps {
   channels: ChannelDto[];

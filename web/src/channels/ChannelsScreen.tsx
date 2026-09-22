@@ -20,7 +20,7 @@ import { useChannels } from './useChannels';
 
 const TITLE = 'Каналы';
 const EXPLANATION =
-  'Каналы — куда уходят ссылки и записи. Telegram-группа подключается сама: добавьте бота в группу. ВК и ручные каналы добавьте здесь.';
+  'Каналы — куда уходят ссылки и записи. Telegram подключается сам, ВК и ручные каналы добавьте здесь.';
 const EMPTY_MESSAGE = 'Пока нет ни одного канала — добавьте первый.';
 const CHANNELS_PATH = '/channels';
 

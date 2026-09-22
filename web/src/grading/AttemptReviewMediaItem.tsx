@@ -31,6 +31,7 @@ import { FormServerError, type FormError } from '../components/FormServerError';
 import { textLinkStyle } from '../components/screenLayout';
 import { VideoEmbed } from '../components/VideoEmbed';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
+import { TELEGRAM_CHAT_EXPLANATION } from '../telegram/telegramChatExplanation';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { describeMediaSource } from './examMediaSourceText';
 
@@ -60,15 +61,10 @@ const sourceTextStyle: CSSProperties = {
 const SEND_BUTTON_LABEL = 'Прислать мне в Telegram';
 // VOICE: короткая строка, куда идти смотреть — без обещания, что видео уже
 // там до клика (это и была ошибка старого текста describeMediaSource).
-const SEND_SUCCESS_TEXT = 'Видео ушло в чат с ботом. Откройте Telegram — оно там.';
+const SEND_SUCCESS_TEXT = 'Видео в чате с ботом — откройте Telegram.';
 // Чата нет — кнопки нет (эндпоинт ответил бы 409): объясняем, откуда
 // возьмётся видео, вместо тупика.
 const NO_CHAT_EXPLANATION = 'Бот пришлёт видео, когда у вас будет открыт чат с ним.';
-// Проп `explanation` у TelegramLinkButton — своя причина связки именно
-// здесь (CLAUDE.md «откуда это и зачем»): описываемый факт уже сказан выше
-// (describeMediaSource), поэтому этот текст его не повторяет.
-const TELEGRAM_LINK_EXPLANATION =
-  'Свяжите Telegram и нажмите в боте «Запустить» — тогда бот сможет прислать вам это видео.';
 
 interface AttemptReviewMediaItemProps {
   item: ExamMediaDto;
@@ -128,7 +124,7 @@ export function AttemptReviewMediaItem({
             )
           ) : offersTelegramLink ? (
             <TelegramLinkButton
-              explanation={TELEGRAM_LINK_EXPLANATION}
+              explanation={TELEGRAM_CHAT_EXPLANATION}
               variant="secondary"
             />
           ) : (

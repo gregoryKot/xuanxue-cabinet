@@ -12,11 +12,22 @@ import { noteStyle } from '../components/screenLayout';
 import { questionsPerAttemptNote } from './questionsPerAttempt';
 import { ExamPreviewQuestion } from './ExamPreviewQuestion';
 
-const SHUFFLE_QUESTIONS_NOTE =
-  'Порядок вопросов будет другим у каждого сдающего — здесь показан один из вариантов.';
-const SHUFFLE_OPTIONS_NOTE =
-  'Варианты ответа тоже встанут в другом порядке у каждого сдающего.';
 const EMPTY_NOTE = 'В экзамене пока нет вопросов — сдающий увидит пустой экран.';
+
+/** Оба перемешивания — про одно и то же (порядок у каждого сдающего свой),
+ * поэтому один абзац на оба случая, а не два подряд об одной мысли (VOICE). */
+function shuffleNote(shuffleQuestions: boolean, shuffleOptions: boolean): string | null {
+  if (shuffleQuestions && shuffleOptions) {
+    return 'Порядок вопросов и вариантов ответа будет другим у каждого сдающего — здесь показан один из вариантов.';
+  }
+  if (shuffleQuestions) {
+    return 'Порядок вопросов будет другим у каждого сдающего — здесь показан один из вариантов.';
+  }
+  if (shuffleOptions) {
+    return 'Порядок вариантов ответа будет другим у каждого сдающего.';
+  }
+  return null;
+}
 
 // Заметки о перемешивании и сам список — колонкой с зазором: у общего
 // noteStyle отступов нет, и две заметки подряд слипались бы в один абзац.
@@ -43,6 +54,8 @@ export function ExamPreviewQuestions({
   requiredIds,
   bankItems,
 }: ExamPreviewQuestionsProps) {
+  const shuffle = shuffleNote(shuffleQuestions, shuffleOptions);
+
   return (
     <section style={sectionStyle}>
       {questionsPerAttempt !== undefined && (
@@ -54,8 +67,7 @@ export function ExamPreviewQuestions({
           )}
         </p>
       )}
-      {shuffleQuestions && <p style={noteStyle}>{SHUFFLE_QUESTIONS_NOTE}</p>}
-      {shuffleOptions && <p style={noteStyle}>{SHUFFLE_OPTIONS_NOTE}</p>}
+      {shuffle && <p style={noteStyle}>{shuffle}</p>}
       {itemIds.length === 0 && <p style={noteStyle}>{EMPTY_NOTE}</p>}
       {itemIds.length > 0 && (
         <div style={blockCardStyle}>

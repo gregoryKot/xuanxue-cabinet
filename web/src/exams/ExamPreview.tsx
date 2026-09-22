@@ -28,8 +28,7 @@ import { ExamPreviewQuestions } from './ExamPreviewQuestions';
 const EXAMS_PATH = '/exams';
 const BACK_TEXT = 'К экзамену';
 const EYEBROW = 'Глазами ученика';
-const PREVIEW_NOTE =
-  'Так экзамен выглядит у ученика. Поля выключены — здесь ничего не сохраняется.';
+const PREVIEW_NOTE = 'Поля выключены — здесь ничего не сохраняется.';
 
 const descriptionStyle: CSSProperties = {
   margin: 0,

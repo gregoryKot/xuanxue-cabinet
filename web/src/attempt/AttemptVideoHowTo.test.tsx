@@ -16,7 +16,7 @@ describe('AttemptVideoHowTo', () => {
       'aria-expanded',
       'false',
     );
-    expect(screen.queryByText(/YouTube\. Загрузите запись/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/YouTube\. В настройках доступа/)).not.toBeInTheDocument();
   });
 
   // CLAUDE.md «Доступность»: ревью с клавиатуры — раскрытие тоже должно
@@ -32,10 +32,12 @@ describe('AttemptVideoHowTo', () => {
       'aria-expanded',
       'true',
     );
-    expect(screen.getByText(/YouTube\. Загрузите запись/)).toBeInTheDocument();
+    expect(screen.getByText(/YouTube\. В настройках доступа/)).toBeInTheDocument();
     expect(screen.getByText(/ВКонтакте\. Загрузите видео/)).toBeInTheDocument();
     expect(screen.getByText(/Rutube, Яндекс\.Диск, Облако Mail\.ru/)).toBeInTheDocument();
-    expect(screen.getByText(/Частая ошибка — приватная запись/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Проверьте ссылку в окне, где вы не вошли в свой аккаунт/),
+    ).toBeInTheDocument();
   });
 
   it('повторное нажатие закрывает блок', async () => {
@@ -48,6 +50,6 @@ describe('AttemptVideoHowTo', () => {
 
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText(/YouTube\. Загрузите запись/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/YouTube\. В настройках доступа/)).not.toBeInTheDocument();
   });
 });

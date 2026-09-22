@@ -30,9 +30,7 @@ import { useManualDeliveries } from './useManualDeliveries';
 const TITLE = 'Рассылки';
 // VOICE.md «Начинать с сути, а не с определения темы» — не «Здесь журнал...»
 // (pr-k3-fixes.md п.19).
-const EXPLANATION =
-  'Журнал показывает, что ушло, что ждёт и что не отправилось. Разовую рассылку с ' +
-  'текстом на все выбранные каналы можно отправить прямо отсюда.';
+const EXPLANATION = 'Журнал показывает, что ушло, что ждёт и что не отправилось.';
 const BROADCASTS_PATH = '/broadcasts';
 
 export default function BroadcastsScreen() {

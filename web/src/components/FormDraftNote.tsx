@@ -4,7 +4,7 @@
 import { noteStyle } from './screenLayout';
 import { TextLinkButton } from './TextLinkButton';
 
-const NOTE_TEXT = 'Здесь то, что вы набрали в прошлый раз и не успели сохранить.';
+const NOTE_TEXT = 'Здесь то, что вы набрали в прошлый раз.';
 const DISCARD_LABEL = 'Убрать черновик';
 
 interface FormDraftNoteProps {
