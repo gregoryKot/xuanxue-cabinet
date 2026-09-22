@@ -81,9 +81,11 @@ function mockItemAndStats(item: ExamItemDto) {
 }
 
 /** Форма появляется раньше, чем уйдёт запрос статистики (эффект после
- * коммита): отказ, поставленный в очередь сразу после формы, достался бы не
- * сохранению. Ждём строку статистики — значит, оба запроса монтирования уже
- * ушли. */
+ * коммита). Ждём строку статистики — сигнал, что оба запроса монтирования
+ * ушли, но ответ на действие ниже всё равно ставится вторым вызовом
+ * `mockApiByPath`, не `…Once`: подсказка тегов (useTagOptions.ts) уходит
+ * своим GET /tags тем же приёмом, и «следующий вызов» иногда доставался бы
+ * ей (тот же флейк, что уже был у AttemptReviewScreen.test.tsx). */
 async function waitForMounted() {
   await screen.findByText('Этот вопрос ещё никому не задавали.');
 }
@@ -283,9 +285,9 @@ describe('ExamItemEditorScreen — поля', () => {
 
     renderAt('/exam-items/e1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Проверьте поля.', 400, 'invalid_input'),
-    );
+    mockApiByPath({
+      '/exam-items/e1': new ApiError('Проверьте поля.', 400, 'invalid_input'),
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     expect(await screen.findByText('Проверьте поля.')).toBeInTheDocument();
@@ -414,9 +416,9 @@ describe('ExamItemEditorScreen — удаление черновика', () => {
 
     renderAt('/exam-items/e1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Удалить можно только черновик.', 409, 'conflict'),
-    );
+    mockApiByPath({
+      '/exam-items/e1': new ApiError('Удалить можно только черновик.', 409, 'conflict'),
+    });
     await user.click(screen.getByRole('button', { name: 'Удалить вопрос' }));
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
 

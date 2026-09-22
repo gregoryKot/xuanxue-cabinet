@@ -54,8 +54,13 @@ function mockChannel(channel: ChannelDto) {
   mockApiByPath({ '/channels/ch1': channel, '/channels': channel });
 }
 
-/** Канал уже пришёл с сервера — единственный запрос монтирования позади, и
- * отказ, поставленный следующим, достанется сохранению, а не загрузке. */
+/** Канал пришёл с сервера, форма на экране. Подсказку тегов (useTagOptions.ts)
+ * поле заказывает само, и её GET /tags уходит в тот же миг — до или после
+ * этого ожидания, как решит планировщик React, поэтому ответ на действие
+ * ниже ставится вторым вызовом `mockApiByPath` по своему пути, не очередью
+ * `…Once` (та ловит СЛЕДУЮЩИЙ вызов вообще, будь то сохранение или эта
+ * подсказка — тот же флейк, что уже был у AttemptReviewScreen.test.tsx,
+ * apiFetchMock.ts). */
 async function waitForMounted() {
   await screen.findByLabelText('Название');
 }
@@ -297,9 +302,11 @@ describe('ChannelEditorScreen — правка', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Проверьте поля.', 400, 'invalid_input', ['title: занято']),
-    );
+    mockApiByPath({
+      '/channels/ch1': new ApiError('Проверьте поля.', 400, 'invalid_input', [
+        'title: занято',
+      ]),
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     const alert = await screen.findByRole('alert');
@@ -345,9 +352,9 @@ describe('ChannelEditorScreen — удаление', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Канал используется в рассылке.', 409, 'conflict'),
-    );
+    mockApiByPath({
+      '/channels/ch1': new ApiError('Канал используется в рассылке.', 409, 'conflict'),
+    });
     await user.click(screen.getByRole('button', { name: 'Удалить канал' }));
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
 
@@ -363,7 +370,7 @@ describe('ChannelEditorScreen — проверка канала', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockedApiFetch.mockResolvedValueOnce({ status: 'sent' });
+    mockApiByPath({ '/channels/ch1/test': { status: 'sent' } });
     await user.click(screen.getByRole('button', { name: 'Отправить тест' }));
 
     expect(await screen.findByRole('status')).toHaveTextContent('Тест доставлен');
@@ -375,7 +382,9 @@ describe('ChannelEditorScreen — проверка канала', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockedApiFetch.mockResolvedValueOnce({ status: 'failed', error: 'Бот не в группе' });
+    mockApiByPath({
+      '/channels/ch1/test': { status: 'failed', error: 'Бот не в группе' },
+    });
     await user.click(screen.getByRole('button', { name: 'Отправить тест' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -390,9 +399,9 @@ describe('ChannelEditorScreen — проверка канала', () => {
 
     renderAt('/channels/ch1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Бот не в группе.', 502, 'unknown'),
-    );
+    mockApiByPath({
+      '/channels/ch1/test': new ApiError('Бот не в группе.', 502, 'unknown'),
+    });
     await user.click(screen.getByRole('button', { name: 'Отправить тест' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Бот не в группе.');
