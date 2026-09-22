@@ -149,7 +149,7 @@ describe('Telegram webhook (e2e) — «Новый вопрос» в боте (Т
 
     await text(TEACHER_CHAT, 'Мабу');
     await text(TEACHER_CHAT, 'Гунбу');
-    expect(lastReply(TEACHER_CHAT)).toContain('Добавлено вариантов: 2');
+    expect(lastReply(TEACHER_CHAT)).toMatch(/1\. Мабу[\s\S]*2\. Гунбу/);
 
     await press(TEACHER_CHAT, 'nqd:options');
     expect(lastScreen(TEACHER_CHAT)).toContain('Какой вариант верный?');
