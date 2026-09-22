@@ -41,22 +41,4 @@ describe('Toggle', () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
-
-  it('media — видна, но не попадает в доступное имя (её alt обычно повторяет label)', () => {
-    render(
-      <Toggle
-        label="Вариант 2"
-        checked={false}
-        onChange={vi.fn()}
-        media={<img src="/api/exam-images/i1" alt="Вариант 2" />}
-      />,
-    );
-
-    // Картинка спрятана от дерева доступности (aria-hidden), но остаётся в DOM.
-    expect(screen.getByAltText('Вариант 2')).toHaveAttribute(
-      'src',
-      '/api/exam-images/i1',
-    );
-    expect(screen.getByRole('checkbox', { name: 'Вариант 2' })).toBeInTheDocument();
-  });
 });

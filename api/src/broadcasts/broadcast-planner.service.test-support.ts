@@ -123,7 +123,7 @@ type ChannelFixtureContext = Pick<PlannerTestContext, 'channelModel'>;
 type ClassFixtureContext = Pick<PlannerTestContext, 'classModel' | 'channelModel'>;
 type LessonFixtureContext = Pick<PlannerTestContext, 'lessonModel'>;
 
-/** Активный telegram-канал без тегов (принимает любую дату, ADR-0106) — по
+/** Активный telegram-канал без тегов (принимает любую дату, ADR-0108) — по
  * умолчанию у класса есть хотя бы один такой, иначе рассылка не создаётся. */
 export async function createChannel(
   ctx: ChannelFixtureContext,

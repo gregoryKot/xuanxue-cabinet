@@ -210,7 +210,7 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
     await expect(deliveryModel.countDocuments({})).resolves.toBe(0);
   });
 
-  it('запись занятия «новичков» не уезжает в канал «средних» (ADR-0106) — cancelled с новой причиной', async () => {
+  it('запись занятия «новичков» не уезжает в канал «средних» (ADR-0108) — cancelled с новой причиной', async () => {
     const intermediateChannel = await channelModel.create({
       type: 'telegram',
       title: 'Средние',
@@ -237,7 +237,7 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
     await expect(deliveryModel.countDocuments({})).resolves.toBe(0);
   });
 
-  it('запись занятия «новичков» уезжает в канал с тем же тегом (ADR-0106)', async () => {
+  it('запись занятия «новичков» уезжает в канал с тем же тегом (ADR-0108)', async () => {
     const noviceChannel = await channelModel.create({
       type: 'telegram',
       title: 'Новички',

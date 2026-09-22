@@ -69,7 +69,7 @@ describe('SendNowService.sendNow', () => {
     });
   });
 
-  it('канал активен, но не подписан на тег занятия (ADR-0106) — InvalidInputError, другой текст', async () => {
+  it('канал активен, но не подписан на тег занятия (ADR-0108) — InvalidInputError, другой текст', async () => {
     const channel = await createChannel(ctx, { tags: ['средние'] });
     const cls = await createClass(ctx, { channelIds: [channel._id] });
     const lesson = await createLesson(

@@ -127,7 +127,7 @@ describe('ChannelsService', () => {
     expect(found).toEqual(created);
   });
 
-  it('create: tags не прислали — пустой массив (канал получает всё, ADR-0106)', async () => {
+  it('create: tags не прислали — пустой массив (канал получает всё, ADR-0108)', async () => {
     const created = await service.create({
       type: 'manual',
       title: 'Facebook',

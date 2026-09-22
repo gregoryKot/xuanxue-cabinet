@@ -8,6 +8,7 @@
 // их на строках-фикстурах, не на реальном дереве api/src.
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
+import { stripComments } from './source-text.mjs';
 
 const ROUTE_METHODS = ['Get', 'Post', 'Put', 'Patch', 'Delete', 'All'];
 
@@ -16,9 +17,15 @@ const ROUTE_METHODS = ['Get', 'Post', 'Put', 'Patch', 'Delete', 'All'];
  * `@Controller(['a', 'b'])` — префикс на каждый элемент массива (Nest
  * регистрирует маршруты под каждым). Неизвестный вид аргумента (объект,
  * переменная) — тоже один пустой префикс, как раньше: не ловим коллизию по
- * тексту, но и не падаем на разборе. */
+ * тексту, но и не падаем на разборе.
+ *
+ * Комментарии гасятся до поиска: берётся первое вхождение в файле, и
+ * комментарий-объяснение со словом `@Controller()` выше настоящего
+ * декоратора подменял префикс пустым — у api/src/auth/join.controller.ts
+ * гейт из-за этого сторожил `POST /join/check` вместо настоящего
+ * `POST /auth/join/check` (аудит 2026-09-22, docs/audits/). */
 export function parseControllerPrefixes(src) {
-  const m = /@Controller\(([^)]*)\)/.exec(src);
+  const m = /@Controller\(([^)]*)\)/.exec(stripComments(src));
   if (!m) return null;
   const arg = m[1].trim();
   if (arg === '') return [''];
@@ -35,13 +42,16 @@ export function parseControllerPrefixes(src) {
  * `@Get/@Post/.../@All` в файле. `fileLabel` — что положить в список файлов
  * маршрута (относительный путь при разборе дерева, любая строка в тесте). */
 export function extractRoutes(fileLabel, src) {
-  const prefixes = parseControllerPrefixes(src) ?? [''];
+  // Тот же сканер, что и у префикса выше: закомментированный `@Get('old')`
+  // рядом с живым кодом иначе даёт маршрут-призрак и с ним ложную коллизию.
+  const code = stripComments(src);
+  const prefixes = parseControllerPrefixes(code) ?? [''];
   const methodPattern = new RegExp(
     `@(${ROUTE_METHODS.join('|')})\\((?:['"]([^'"]*)['"])?\\)`,
     'g',
   );
   const routes = [];
-  for (const m of src.matchAll(methodPattern)) {
+  for (const m of code.matchAll(methodPattern)) {
     const handlerPath = m[2] ?? '';
     for (const prefix of prefixes) {
       const path = [prefix, handlerPath]

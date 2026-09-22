@@ -29,6 +29,27 @@ test('parseControllerPrefixes: массив в двойных кавычках',
   assert.deepEqual(parseControllerPrefixes(`@Controller(["a", "b"])`), ['a', 'b']);
 });
 
+// Регрессия аудита 2026-09-22: комментарий-объяснение со словом
+// `@Controller()` стоял выше настоящего декоратора, парсер брал первое
+// вхождение — и гейт сторожил `POST /join/check` вместо настоящего
+// `POST /auth/join/check`, то есть молча не делал свою работу.
+test('parseControllerPrefixes: @Controller() в комментарии не подменяет префикс', () => {
+  const src = `// @Controller() без коллизии — так было в объяснении рядом.
+/** и в блочном тоже: @Controller() */
+@Controller('auth')
+class AuthController {}`;
+  assert.deepEqual(parseControllerPrefixes(src), ['auth']);
+});
+
+test('extractRoutes: комментарий с @Get() не добавляет маршрута', () => {
+  const src = `// раньше здесь был @Get('old')
+@Controller('auth')
+class C { @Post('join/check') check() {} }`;
+  assert.deepEqual(extractRoutes('auth.controller.ts', src), [
+    { route: 'POST /auth/join/check', file: 'auth.controller.ts' },
+  ]);
+});
+
 test('parseControllerPrefixes: файл без @Controller — null', () => {
   assert.equal(parseControllerPrefixes('export class NotAController {}'), null);
 });

@@ -133,6 +133,12 @@ jobs:
         run: node scripts/check-card-list-gap.mjs
       - name: запись + перечитывание — новых мест сверх аллоу-листа нет (ADR-0087)
         run: node scripts/check-write-then-reload.mjs
+      - name: каждый контроллер закрыт e2e на отказ чужому (ADR-0106)
+        run: node scripts/check-ownership-e2e.mjs
+      - name: тесты что-то проверяют — без .only, .skip и пустых тел (ADR-0106)
+        run: node scripts/check-test-assertions.mjs
+      - name: вызовы в сеть с таймаутом (ADR-0106)
+        run: node scripts/check-outbound-timeout.mjs
       - name: нумерация ADR — один номер, одно решение
         run: node scripts/check-adr-numbers.mjs
       - name: тесты скриптов-храповиков (node:test)

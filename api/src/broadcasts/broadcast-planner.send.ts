@@ -1,5 +1,5 @@
 // Отправка одной даты занятия: активные и подходящие по тегу каналы
-// (ADR-0106) → текст поста → insert broadcast+deliveries — вынесено из
+// (ADR-0108) → текст поста → insert broadcast+deliveries — вынесено из
 // broadcast-planner.service.ts (файл-лимит 150 строк, CLAUDE.md «Храповики»).
 import type { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
@@ -25,7 +25,7 @@ export interface SendLessonDeps {
   logger: Logger;
 }
 
-/** Активные и подходящие по тегу каналы (ADR-0106) → текст поста-ссылки →
+/** Активные и подходящие по тегу каналы (ADR-0108) → текст поста-ссылки →
  * broadcast+deliveries. Пустой список активных каналов и пустой список
  * подошедших по тегу — разные cancelled-плейсхолдеры, не одна причина
  * (docs/PLAN.md §6). */

@@ -154,7 +154,7 @@ describe('ChannelEditorScreen — создание', () => {
     });
   });
 
-  it('теги — набранное через запятую уходит массивом в тело запроса (ADR-0106)', async () => {
+  it('теги — набранное через запятую уходит массивом в тело запроса (ADR-0108)', async () => {
     const user = userEvent.setup();
     mockApiByPath({ '/channels': makeChannel() });
 
@@ -248,7 +248,7 @@ describe('ChannelEditorScreen — правка', () => {
     });
   });
 
-  it('теги предзаполнены из канала, правка уходит массивом (ADR-0106)', async () => {
+  it('теги предзаполнены из канала, правка уходит массивом (ADR-0108)', async () => {
     const user = userEvent.setup();
     mockChannel(makeChannel({ tags: ['новички'] }));
 

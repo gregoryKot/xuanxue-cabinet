@@ -37,7 +37,7 @@ export class CreateChannelDto implements CreateChannelInput {
   @IsObject()
   config!: ChannelConfig;
 
-  // Отбор рассылок по тегу (ADR-0106) — нормализация (обрезка, дедуп без
+  // Отбор рассылок по тегу (ADR-0108) — нормализация (обрезка, дедуп без
   // учёта регистра), только если поле прислали, ChannelsService (тот же
   // приём, что у CreateLessonDto.tags).
   @IsOptional()

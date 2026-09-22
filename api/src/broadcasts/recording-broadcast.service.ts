@@ -28,7 +28,7 @@ interface RecordingLesson {
   startsAt: Date;
   durationMin: number;
   leaderId?: Types.ObjectId;
-  tags?: string[]; // отбор по тегу (ADR-0106) — опционально, как у PlannerLesson.tags
+  tags?: string[]; // отбор по тегу (ADR-0108) — опционально, как у PlannerLesson.tags
 }
 
 const LESSON_PROJECTION = {
@@ -110,7 +110,7 @@ export class RecordingBroadcastService {
     if (!cls) return this.cancel(lessonId, recording, REASON.noClass, now);
     if (!cls.active) return this.cancel(lessonId, recording, REASON.classDisabled, now);
 
-    // Отбор по тегу (ADR-0106) — тот же приём, что у broadcast-planner.send.ts.
+    // Отбор по тегу (ADR-0108) — тот же приём, что у broadcast-planner.send.ts.
     const lessonTags = [...(lesson.tags ?? []), ...(cls.tags ?? [])];
     const { activeChannelIds, matchingChannelIds } = await findChannelsForLesson(
       this.models.channelModel,

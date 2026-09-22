@@ -1,6 +1,6 @@
 // Сборка payload для create()/update() ChannelsService — вынесено, чтобы
 // файл сервиса уместился в лимит (CLAUDE.md «Храповики», 150 строк):
-// нормализация тегов (ADR-0106) живёт рядом со сборкой остальных полей
+// нормализация тегов (ADR-0108) живёт рядом со сборкой остальных полей
 // записи, не размазана по двум методам сервиса.
 import {
   normalizeTags,
@@ -11,7 +11,7 @@ import {
 /** Тело POST /channels → документ модели. `Record<string, unknown>` явно:
  * тело уже проверено ValidationPipe (CreateChannelDto implements
  * CreateChannelInput). Теги не прислали — канал получает все рассылки своих
- * занятий (ADR-0106, прежнее поведение); тот же приём нормализации, что у
+ * занятий (ADR-0108, прежнее поведение); тот же приём нормализации, что у
  * ClassesService.create. */
 export function buildChannelCreatePayload(
   input: CreateChannelInput,

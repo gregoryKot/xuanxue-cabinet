@@ -194,7 +194,7 @@ describe('toCreateInput', () => {
     });
   });
 
-  it('теги — нормализованный массив из tagsText (новички/средние, ADR-0106)', () => {
+  it('теги — нормализованный массив из tagsText (новички/средние, ADR-0108)', () => {
     const state = {
       ...initialChannelFormState(null),
       type: 'manual' as const,
@@ -278,7 +278,7 @@ describe('toUpdateInput', () => {
     expect(toUpdateInput(state, 'vk').tags).toEqual(['новички']);
   });
 
-  it('сброс тегов пустой строкой — уходит пустой массив, не undefined (ADR-0106)', () => {
+  it('сброс тегов пустой строкой — уходит пустой массив, не undefined (ADR-0108)', () => {
     const channel = makeChannel({ tags: ['новички'] });
     const state = { ...initialChannelFormState(channel), tagsText: '' };
     expect(toUpdateInput(state, 'vk').tags).toEqual([]);

@@ -1,4 +1,4 @@
-// e2e на теги канала (ADR-0106) — отбор рассылок по тегу занятия/даты:
+// e2e на теги канала (ADR-0108) — отбор рассылок по тегу занятия/даты:
 // отдельный файл от channels.e2e-spec.ts, тот же приём, что у
 // classes-tags.e2e-spec.ts/lessons-tags.e2e-spec.ts. Настоящий AppModule на
 // MongoMemoryServer, TelegramClientFactory не нужна — тела запросов manual.
@@ -8,7 +8,7 @@ import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { withCsrf } from './e2e-support/http';
 import { createChannelTestHelpers, MANUAL_BODY } from './e2e-support/channels-fixtures';
 
-describe('Теги канала (e2e, ADR-0106)', () => {
+describe('Теги канала (e2e, ADR-0108)', () => {
   let testApp: TestApp;
   const { server, postChannel, sessionFor } = createChannelTestHelpers(() => testApp);
 

@@ -31,7 +31,7 @@ export interface ChannelFormState {
   chatId: string;
   token: string;
   peerIdText: string;
-  /** Отбор по тегу (ADR-0106): пусто — канал получает все рассылки своих
+  /** Отбор по тегу (ADR-0108): пусто — канал получает все рассылки своих
    * занятий, как раньше; строкой через запятую, тот же приём и тот же
    * `parseTagsText`, что у schedule/classFormInput.ts — второй разбор не
    * заводим. */

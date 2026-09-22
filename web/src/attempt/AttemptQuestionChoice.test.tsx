@@ -126,3 +126,66 @@ describe('AttemptQuestionChoice — картинка варианта (ADR-0035)
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 });
+
+describe('AttemptQuestionChoice — плитки вместо строк (docs/adr/0105)', () => {
+  it('у картинки есть хоть один вариант — выбор плитки отдаёт id этого варианта', async () => {
+    const options: AttemptOptionDto[] = [
+      { id: 'o1', text: '', imageId: 'img1' },
+      { id: 'o2', text: '', imageId: 'img2' },
+    ];
+    const onChange = vi.fn();
+    render(
+      <>
+        <span id={PROMPT_ID}>Куда уходит вес?</span>
+        <AttemptQuestionChoice
+          labelledBy={PROMPT_ID}
+          itemId="i1"
+          kind="single"
+          options={options}
+          selected={[]}
+          onChange={onChange}
+        />
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Вариант 2' }));
+
+    expect(onChange).toHaveBeenCalledWith(['o2']);
+  });
+
+  it('картинка есть у одного варианта, у второго только текст — оба плитки, каждый находится по своей роли и имени', () => {
+    const options: AttemptOptionDto[] = [
+      { id: 'o1', text: '', imageId: 'img1' },
+      { id: 'o2', text: 'Влево' },
+    ];
+    render(
+      <>
+        <span id={PROMPT_ID}>Куда уходит вес?</span>
+        <AttemptQuestionChoice
+          labelledBy={PROMPT_ID}
+          itemId="i1"
+          kind="single"
+          options={options}
+          selected={[]}
+          onChange={vi.fn()}
+        />
+      </>,
+    );
+
+    // Смешивать строку Toggle и плитку в одном вопросе не стали — раз есть
+    // картинка хоть у одного варианта, группа целиком переходит на плитки.
+    expect(screen.getByRole('radiogroup', { name: 'Куда уходит вес?' })).toHaveClass(
+      'xuanxue-option-tiles',
+    );
+    expect(screen.getByRole('radio', { name: 'Вариант 1' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Влево' })).toBeInTheDocument();
+  });
+
+  it('вопрос без картинок остаётся строками Toggle — группа без класса плиток', () => {
+    renderChoice('single', []);
+
+    expect(screen.getByRole('radiogroup', { name: 'Куда уходит вес?' })).not.toHaveClass(
+      'xuanxue-option-tiles',
+    );
+  });
+});

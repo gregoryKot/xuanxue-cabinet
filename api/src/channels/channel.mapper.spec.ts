@@ -56,7 +56,7 @@ describe('toChannelDto', () => {
     expect(toChannelDto(doc).target).toBe('');
   });
 
-  it('tags отсутствуют в документе (канал создан до ADR-0106) — пустой массив, не undefined', () => {
+  it('tags отсутствуют в документе (канал создан до ADR-0108) — пустой массив, не undefined', () => {
     const doc = lean({ tags: undefined });
     expect(toChannelDto(doc).tags).toEqual([]);
   });

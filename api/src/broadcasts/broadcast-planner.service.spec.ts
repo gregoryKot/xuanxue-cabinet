@@ -144,7 +144,7 @@ describe('BroadcastPlannerService.plan', () => {
     expect(deliveries[0]?.channelId.toString()).toBe(active._id.toString());
   });
 
-  it('владелец: два канала по тегам («новички»/«средние») — дата уходит только в свой (ADR-0106)', async () => {
+  it('владелец: два канала по тегам («новички»/«средние») — дата уходит только в свой (ADR-0108)', async () => {
     const noviceChannel = await createChannel(ctx, { tags: ['новички'] });
     const intermediateChannel = await createChannel(ctx, { tags: ['средние'] });
     const cls = await createClass(ctx, {
