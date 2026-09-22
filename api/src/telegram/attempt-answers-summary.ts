@@ -27,14 +27,14 @@ function summarizeChoice(question: AttemptReviewQuestionDto): string {
   return `Верно ${correctSelectedCount} из ${correctTotalCount}${extra}.`;
 }
 
-function summarizeText(question: AttemptReviewQuestionDto, gradingLink?: string): string {
+// Ссылка на кабинет здесь не печатается: при нескольких длинных ответах в
+// одной попытке она повторялась бы столько же раз, а в подвале сообщения
+// (attempt-submitted-message.ts) она и так стоит один раз.
+function summarizeText(question: AttemptReviewQuestionDto): string {
   const text = question.answerText?.trim();
   if (!text) return ATTEMPT_NO_ANSWER_TEXT;
   if (text.length <= ANSWER_PREVIEW_LENGTH) return text;
-  const suffix = gradingLink
-    ? `… Полностью — в кабинете: ${gradingLink}`
-    : '… Полностью — в кабинете.';
-  return `${text.slice(0, ANSWER_PREVIEW_LENGTH)}${suffix}`;
+  return `${text.slice(0, ANSWER_PREVIEW_LENGTH)}… Полностью — в кабинете.`;
 }
 
 function summarizeVideo(media: readonly ExamMediaDto[]): string {
@@ -66,25 +66,23 @@ function mediaByItem(media: readonly ExamMediaDto[]): Map<string, ExamMediaDto[]
 function summarizeQuestion(
   question: AttemptReviewQuestionDto,
   media: Map<string, ExamMediaDto[]>,
-  gradingLink?: string,
 ): string {
   if (question.kind === 'video') {
     return summarizeVideo(media.get(question.itemId) ?? []);
   }
   if (question.options.length > 0) return summarizeChoice(question);
-  return summarizeText(question, gradingLink);
+  return summarizeText(question);
 }
 
 export function attemptAnswersSummary(
   blocks: readonly AttemptReviewBlockDto[],
   media: readonly ExamMediaDto[],
-  gradingLink?: string,
 ): string {
   const byItem = mediaByItem(media);
   const questions = blocks.flatMap((block) => block.questions);
   const lines = questions.map(
     (question, index) =>
-      `${index + 1}. ${question.prompt}\n${summarizeQuestion(question, byItem, gradingLink)}`,
+      `${index + 1}. ${question.prompt}\n${summarizeQuestion(question, byItem)}`,
   );
   return lines.join('\n\n');
 }

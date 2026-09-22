@@ -16,7 +16,7 @@ import { inlineButton } from '../callback-data';
 import { backToMenuButton, type BotMenu } from './bot-menu';
 
 const TITLE = 'Экзамены:';
-const EMPTY_TEXT = 'Пока нечего сдавать: учитель ещё не опубликовал ни одной формы.';
+const EMPTY_TEXT = 'Пока нечего сдавать.';
 const SUBMITTED_TEXT = 'Сдано, ждёт проверки.';
 const BUTTON_TITLE_MAX = 40;
 

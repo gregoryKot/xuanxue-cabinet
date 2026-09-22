@@ -16,7 +16,7 @@ import { GENERIC_ERROR } from './callback-actions';
 import { attemptsScreen, timeLimitScreen } from './new-exam-screens';
 import { isActiveNewExamDraft } from './new-exam-types';
 
-const NOT_TEXT_MESSAGE = 'Нажмите одну из кнопок или пришлите текст, где это нужно.';
+const NOT_TEXT_MESSAGE = 'Нажмите одну из кнопок или пришлите текст.';
 const NOT_A_NUMBER_MESSAGE =
   'Пришлите число минут или нажмите одну из кнопок: без лимита, 15, 30, 60.';
 
