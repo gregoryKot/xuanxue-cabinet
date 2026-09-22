@@ -23,16 +23,20 @@ import { useEmailLoginRequest } from './useEmailLoginRequest';
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 const sentTextStyle = { margin: 0 };
 
-// Кнопка называет оба ключа, которые везёт письмо (ADR-0104), а не одну
-// ссылку: на айфоне, ради которого код и заведён, ссылка как раз и не
-// работает — обещать её одну значит звать человека ровно туда, откуда он
-// пришёл жаловаться (отзыв владельца 2026-09-22 на первую версию экрана).
+// Экран говорит про код и молчит про устройство входа (отзыв владельца
+// 2026-09-22: «объяснения непонятные вообще»). Прежние версии сначала
+// обещали одну ссылку, потом объясняли, что «ссылка войдёт в браузере, а не
+// здесь» — то есть пересказывали ученику, как у нас устроены cookie. Ему
+// выбирать не из чего: код работает и в браузере, и в приложении с иконки,
+// поэтому история одна — попросили код, ввели код, вошли. Про ссылку
+// рассказывает письмо (api/src/mail/mail.service.ts), где выбор и правда
+// есть.
 
-/** Объяснение над полем кода — общее для обоих мест, где стоит
- * EmailCodeForm (CLAUDE.md «Без магических чисел и строк»): один текст
- * константой, а не две похожие строки в разных ветках файла. */
-const CODE_HINT_MESSAGE =
-  'Кабинет открыт с домашнего экрана телефона? Ссылка войдёт в браузере, а не здесь — тогда введите код.';
+/** Подсказка для случая, когда человек пришёл вводить код, не отправив
+ * письмо в этой же вкладке: адрес у формы пустой, и без строки непонятно,
+ * чего от него хотят. После отправки письма она не нужна — там всё сказано
+ * абзацем выше. */
+const MANUAL_CODE_MESSAGE = 'Введите адрес почты и код из письма.';
 
 interface EmailLoginFormProps {
   /** Код ссылки-приглашения школы (ADR-0030), когда форма открыта с
@@ -59,11 +63,10 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
     return (
       <div style={formStyle}>
         <p style={sentTextStyle}>
-          Письмо ушло на {email}. В нём ссылка и код, оба работают 15 минут. Не пришло —
+          Письмо ушло на {email}. Введите код из него — он работает 15 минут. Не пришло —
           проверьте «Спам».
         </p>
         <FormServerError error={error ? { message: error } : null} />
-        <p style={screenExplanationStyle}>{CODE_HINT_MESSAGE}</p>
         <EmailCodeForm email={email} inviteCode={inviteCode} />
         {/* Текстовая ссылка, а не кнопка: повтор отправки — действие
             второго плана, контурная кнопка во всю ширину звала бы нажать
@@ -81,7 +84,7 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
   if (manualCode) {
     return (
       <div style={formStyle}>
-        <p style={screenExplanationStyle}>{CODE_HINT_MESSAGE}</p>
+        <p style={screenExplanationStyle}>{MANUAL_CODE_MESSAGE}</p>
         <EmailCodeForm email={email} onEmailChange={setEmail} inviteCode={inviteCode} />
         <TextLinkButton onClick={() => setManualCode(false)}>Назад</TextLinkButton>
       </div>
@@ -103,13 +106,13 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
         disabled={!email.trim()}
         style={{ width: '100%' }}
       >
-        Прислать ссылку и код
+        Прислать код
       </Button>
       {/* Дверь в ввод кода без повторной отправки письма (ADR-0104, см.
           комментарий выше файла) — на случай, если «письмо ушло» в памяти
           вкладки не пережило перезапуск приложения. */}
       <TextLinkButton onClick={() => setManualCode(true)}>
-        Ввести код из письма
+        У меня уже есть код
       </TextLinkButton>
     </form>
   );
