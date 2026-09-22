@@ -50,11 +50,9 @@ function hasAnswer(answer: AttemptAnswerDto | undefined): boolean {
 }
 
 /** Текст подтверждения, когда что-то осталось без ответа. Число — в тексте
- * (docs/VOICE.md: конкретика вместо обобщений), согласование у отметки
- * вручную: «он отмечен» против «они отмечены» — `pluralRu` склоняет только
- * существительное. */
+ * (docs/VOICE.md: конкретика вместо обобщений); что вопросы уже подсвечены,
+ * и так видно на форме — повторять незачем. */
 export function formatUnansweredConfirm(count: number): string {
   const questions = `${count} ${pluralRu(count, QUESTION_FORMS)}`;
-  const marked = count === 1 ? 'Он отмечен в форме' : 'Они отмечены в форме';
-  return `Без ответа ${questions}. ${marked}. После отправки менять ответы будет нельзя.`;
+  return `Без ответа ${questions}. После отправки менять ответы будет нельзя.`;
 }

@@ -8,8 +8,7 @@
 // класс общий (.xuanxue-block-grid, docs/adr/0043).
 import { SectionLink } from '../components/SectionLink';
 
-const CHANNELS_LINK_HINT =
-  'Куда уходят посты. Telegram-группа подключается сама, когда в неё добавили бота.';
+const CHANNELS_LINK_HINT = 'Куда уходят посты.';
 const TEMPLATES_LINK_HINT = 'Тексты, которыми бот пишет в канал, и адрес сайта школы.';
 
 export function BroadcastsSectionLinks() {

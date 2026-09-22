@@ -12,7 +12,7 @@ import { formatChannelTestResult } from './formatChannelTestResult';
 import { useChannelTest } from './useChannelTest';
 
 const EXPLANATION =
-  'Бот отправит в канал короткое сообщение — так видно, что доступ на месте и пост дойдёт.';
+  'Бот отправит в канал короткое сообщение — проверить, что пост дойдёт.';
 
 const sectionStyle: CSSProperties = {
   ...editorSectionStyle,

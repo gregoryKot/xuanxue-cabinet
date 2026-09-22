@@ -5,9 +5,11 @@
 // попытка не отвечает (SECURITY §3). Text/video (ТЗ 4б.2 часть 2) — то же,
 // плюс bot_sessions (BotSessionService) против той же Mongo, не мок модели.
 import { DateTime } from 'luxon';
+import { ATTEMPT_NOT_IN_PROGRESS_MESSAGE } from '@xuanxue/shared';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { AUTHOR_ID, USER_A, USER_B } from '../../exams/exam-attempts.test-support';
 import { handleExamOption, handleExamSubmit } from './exam-attempt-answer';
+import { CONTINUE_QUESTION_INDEX } from './exam-callback-ids';
 import {
   botUser as user,
   CHAT_ID,
@@ -190,6 +192,64 @@ describe('бот — второй клиент ExamAttemptsService (интегр
 
     const after = await ctx.service.list({}, { ...user(USER_A) }, NOW);
     expect(after[0]?.status).toBe('submitted');
+  });
+
+  // Главный регрессионный тест (отзыв владельца 2026-09-22, ADR-0119): в чате
+  // сообщение со старыми кнопками «Продолжить» висит вечно, обновить его
+  // нечем. Ученик сдал работу, потом нажал «Продолжить» из старого
+  // сообщения — раньше это звало ExamAttemptsService.start заново и заводило
+  // новую пустую попытку, списывая её из лимита. Кнопка несёт attemptId и
+  // идёт через `eq`/handleExamQuestion (CONTINUE_QUESTION_INDEX) — попытка
+  // на сервере не трогается вовсе.
+  it('«Продолжить» на уже отправленной попытке не заводит новую и не жжёт лимит попыток', async () => {
+    const { examId } = await publishedExam('single');
+    const start = fakeCtx();
+    await handleExamStart(
+      start.ctx,
+      examBot,
+      botSessions,
+      user(USER_A),
+      CHAT_ID,
+      examId,
+      NOW,
+    );
+    const attempts = await ctx.service.list({}, { ...user(USER_A) }, NOW);
+    const attemptId = attempts[0]?.id;
+    if (!attemptId) throw new Error('unreachable');
+
+    const submit = fakeCtx();
+    await handleExamSubmit(
+      submit.ctx,
+      examBot,
+      botSessions,
+      user(USER_A),
+      CHAT_ID,
+      attemptId,
+      NOW,
+    );
+
+    const stale = fakeCtx();
+    await handleExamQuestion(
+      stale.ctx,
+      examBot,
+      botSessions,
+      user(USER_A),
+      CHAT_ID,
+      { attemptId, index: CONTINUE_QUESTION_INDEX },
+      NOW,
+    );
+    expect(stale.edits).toEqual([ATTEMPT_NOT_IN_PROGRESS_MESSAGE]);
+
+    const attemptCount = await ctx.attemptModel.countDocuments({
+      examId,
+      userId: USER_A,
+    });
+    expect(attemptCount).toBe(1);
+
+    const exams = await examBot.listMyExams(user(USER_A), NOW);
+    expect(exams[0]?.attemptsUsed).toBe(1);
+    expect(exams[0]?.lastAttempt?.id).toBe(attemptId);
+    expect(exams[0]?.lastAttempt?.status).toBe('submitted');
   });
 
   it('вопрос text: старт ставит examText-ожидание в bot_sessions, сообщение сохраняет ответ', async () => {

@@ -30,56 +30,34 @@
 // цвета — тот же приём, что у непроверенного вопроса разбора
 // (.xuanxue-question-row--unanswered, index.css). Правило «один акцент на
 // экран» (ADR-0043) не тронуто: заливки нет, кнопка остаётся `secondary`.
-import type { CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import { EXAM_IN_PROGRESS_LABEL, getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { textLinkStyle } from '../components/screenLayout';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeExamState, formatAttemptsLeft } from './examAttemptState';
+import {
+  actionRowStyle,
+  attemptsLeftStyle,
+  cardStyle,
+  descriptionStyle,
+  metaStyle,
+  rubricStyle,
+  runningCardStyle,
+  runningRubricStyle,
+  titleStyle,
+} from './studentExamCardStyles';
 import { useExamTimeLine } from './useExamTimeLine';
 
 const RUBRIC = 'Экзамен';
-
-const cardStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  padding: '18px 20px',
-  borderRadius: 'var(--radius-block)',
-  background: 'var(--panel-warm)',
-};
-// Полоса слева у идущей попытки — только цвет состояния, не вторая заливка
-// (ADR-0043).
-const runningCardStyle: CSSProperties = {
-  ...cardStyle,
-  borderLeft: '4px solid var(--terracotta)',
-};
-// #55584e, не --ink-soft: тот же прецедент, что у тёплой плашки «Ждут
-// отправки вручную» и сводки «Экзаменов» — на --panel-warm --ink-soft держит
-// только ~4.06:1, ниже AA 4.5 для этого кегля; #55584e даёт 5.74:1
-// (broadcasts/ManualDeliveriesSection.tsx, exams/ExamsSectionStats.tsx).
-const rubricStyle: CSSProperties = {
-  fontSize: 12,
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase',
-  color: '#55584e',
-};
-// #9d4e31, не --terracotta-text: тот же прецедент, что у #55584e выше —
-// --terracotta-text на --panel-warm держит только 4.21:1, ниже AA 4.5 для
-// этого кегля; #9d4e31 даёт 4.65:1.
-const runningRubricStyle: CSSProperties = { ...rubricStyle, color: '#9d4e31' };
-const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 22 };
-const metaStyle: CSSProperties = { fontSize: 14, color: '#55584e' };
-const descriptionStyle: CSSProperties = { margin: 0, fontSize: 14, color: '#55584e' };
-const actionRowStyle: CSSProperties = { marginTop: 4 };
-// Остаток попыток стоит вплотную к кнопке: он объясняет именно её, а не
-// карточку целиком.
-const attemptsLeftStyle: CSSProperties = { ...metaStyle, margin: '0 0 6px' };
 
 const ACTION_LABEL = {
   continue: 'Продолжить',
   start: 'Начать',
   retry: 'Пройти ещё раз',
 } as const;
+
+const REVIEW_LINK_TEXT = 'Посмотреть свою работу';
 
 interface StudentExamCardProps {
   exam: MyExamDto;
@@ -103,6 +81,9 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
   // Попытку правда можно начать только этими двумя кнопками: «Продолжить»
   // открывает начатую, и остаток попыток к ней отношения не имеет.
   const showAttemptsLeft = action === 'start' || action === 'retry';
+  // Попытка в работе уже открывается кнопкой «Продолжить» — ссылка нужна
+  // ровно там, где кнопки на вход нет: сдал сам или закрыло время.
+  const showReviewLink = attempt !== undefined && attempt.status !== 'in_progress';
 
   return (
     <li>
@@ -135,6 +116,18 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             <Button type="button" variant="secondary" pending={pending} onClick={onStart}>
               {ACTION_LABEL[action]}
             </Button>
+          </div>
+        )}
+
+        {/* Ссылка, не вторая кнопка: главное действие на карточке одно
+            (ADR-0043). Ведёт на экран сдачи — он же читает попытку и рисует
+            её ответы в выключенном виде (attempt/AttemptSubmittedAnswers.tsx,
+            docs/adr/0123), уже сделанного не выдавая за форму. */}
+        {showReviewLink && attempt && (
+          <div style={actionRowStyle}>
+            <Link to={`/attempts/${attempt.id}`} style={textLinkStyle}>
+              {REVIEW_LINK_TEXT}
+            </Link>
           </div>
         )}
 

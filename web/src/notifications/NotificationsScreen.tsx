@@ -17,6 +17,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { showsTelegramOffer } from '../telegram/showsTelegramOffer';
+import { TELEGRAM_CHAT_EXPLANATION } from '../telegram/telegramChatExplanation';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { NewTaskCard } from './NewTaskCard';
 import { NotificationGroup } from './NotificationGroup';
@@ -24,17 +25,10 @@ import { groupByDay } from './notificationFeed';
 import { useNotifications } from './NotificationsProvider';
 
 const TITLE = 'Уведомления';
-const EXPLANATION =
-  'Те же события, что уходят вам в Telegram, — на случай, если бот пока не написал.';
 const EMPTY_MESSAGE = 'Уведомлений пока нет.';
 const TODAY_RUBRIC = 'Сегодня';
 const EARLIER_RUBRIC = 'Раньше';
 const MARK_ALL_LABEL = 'Прочитать все';
-// Тот же приём, что TELEGRAM_LINK_EXPLANATION на GradingQueueScreen.tsx: там
-// причина — про очередь проверки, здесь — про уведомления вообще (ADR-0042).
-const TELEGRAM_EXPLANATION =
-  'Бот пишет обо всём этом в личный чат, а вашего чата с ним пока нет. ' +
-  'Свяжите Telegram и нажмите в боте «Запустить».';
 
 // «Выйти» на ProfileScreen.tsx — тот же приём: волосяная линия отделяет
 // второстепенный блок от основного содержимого экрана.
@@ -74,14 +68,13 @@ export default function NotificationsScreen() {
   // всех четырёх обязано меняться разом (ADR-0042 — почему `botChatActive`, а
   // не `telegramLinked`).
   const telegramSuggestion = showsTelegramOffer(me) && (
-    <TelegramLinkButton explanation={TELEGRAM_EXPLANATION} variant="secondary" />
+    <TelegramLinkButton explanation={TELEGRAM_CHAT_EXPLANATION} variant="secondary" />
   );
 
   return (
     <section style={screenSectionStyle}>
       <ScreenHeader
         title={TITLE}
-        explanation={EXPLANATION}
         action={
           // Именно unreadCount, не общий count: в count входят ещё карточки
           // новых заданий, которых «Прочитать все» не касается, а кнопка, что

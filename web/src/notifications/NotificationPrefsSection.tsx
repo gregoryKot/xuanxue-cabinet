@@ -15,14 +15,12 @@ import {
 import { ApiError } from '../api/http';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
+import { screenHintStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { Toggle } from '../components/Toggle';
 import { useNotificationPrefs } from './useNotificationPrefs';
 
 const HEADING = 'Уведомления';
-const EXPLANATION =
-  'Здесь вы решаете, что вам приходит. У каждого вида — своя причина и свой переключатель.';
 // Бот и «Профиль» переключают одно и то же (отзыв владельца 2026-09-19,
 // ADR-0065) — короткая строка тут же, чтобы человек не держал в голове два
 // разных места ради одной настройки.
@@ -75,7 +73,6 @@ export function NotificationPrefsSection() {
       <h2 className="xuanxue-eyebrow" style={headingStyle}>
         {HEADING}
       </h2>
-      <p style={screenExplanationStyle}>{EXPLANATION}</p>
       {/* Строка про команду бота — только когда боту есть куда писать
           (отзыв владельца 2026-09-22): без личного чата с ботом команда
           /notifications недоступна и спорит с блоком «Второй способ входа»

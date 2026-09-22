@@ -106,9 +106,7 @@ describe('App', () => {
 
     renderAt('/channels');
 
-    expect(
-      await screen.findByText(/Telegram-группа подключается сама/),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Каналы' })).toBeInTheDocument();
   });
 
   it('учитель на /broadcasts — маршрут «Рассылки» открывает BroadcastsScreen (pr-k3-fixes.md п.20)', async () => {
@@ -180,9 +178,7 @@ describe('App', () => {
 
     renderAt('/exam-items');
 
-    expect(
-      await screen.findByText(/Из этих вопросов собирается экзамен/),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Вопросы' })).toBeInTheDocument();
   });
 
   it('учитель на /exam-items/new — маршрут страницы вопроса (ADR-0033)', async () => {
@@ -200,7 +196,7 @@ describe('App', () => {
 
     renderAt('/exams');
 
-    expect(await screen.findByText(/собирается из вопросов/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Экзамены' })).toBeInTheDocument();
   });
 
   it('учитель на /exams/new — маршрут редактора экзамена (ADR-0033)', async () => {
@@ -361,18 +357,14 @@ describe('App', () => {
   // Личный экран человека — маршрут не за RequirePeopleAccess и открыт любой
   // роли в canSeeRoute (screenAccess.ts), доступен и ученику (ADR-0045).
   it('учитель на /profile — маршрут «Профиль» открывает ProfileScreen', async () => {
-    // telegramLinked: у несвязанного на месте этой подсказки стоит кнопка
-    // связки (ADR-0034) — здесь проверяется маршрут, не она.
-    mockRoute(
-      { ...TEACHER, telegramLinked: true, botChatActive: true },
-      { '/me/notifications': { enabled: [] }, '/push/public-key': { publicKey: null } },
-    );
+    mockRoute(TEACHER, {
+      '/me/notifications': { enabled: [] },
+      '/push/public-key': { publicKey: null },
+    });
 
     renderAt('/profile');
 
-    expect(
-      await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Профиль' })).toBeInTheDocument();
   });
 
   it('ученик на /profile — маршрут ему открыт, как и штату', async () => {

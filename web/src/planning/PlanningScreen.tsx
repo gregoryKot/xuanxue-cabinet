@@ -28,7 +28,7 @@ import { useLessons } from './useLessons';
 import { useLessonRecordingSummary } from './useLessonRecordingSummary';
 
 const TITLE = 'Занятия';
-const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд. Дни, время и ссылки Zoom — в «Расписании». Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
+const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
 // Блок текста шапки уже макета (1c-planning.html, docs/adr/0043) — рядом
 // теперь пара действий, «Расписание» и «Разовое занятие»
 // (PlanningActions.tsx, отзыв владельца 2026-09-18): на 880px общей ширины

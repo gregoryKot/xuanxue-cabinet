@@ -30,7 +30,7 @@ import {
 import { useProfileSetup } from './useProfileSetup';
 
 const CONTINUE_HINT = 'Дальше — расписание занятий, ссылки на Zoom и записи.';
-const SECOND_KEY_HINT = 'Необязательно. Вернуться к этому можно в «Профиле».';
+const SECOND_KEY_HINT = 'Необязательно.';
 const formStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 const fullWidthStyle: CSSProperties = { width: '100%' };
 // Приписка не сразу под объяснением экрана (та под заголовком выше), а под
@@ -119,9 +119,7 @@ function ProfileSetupForm({ me, applyMe, destination }: ProfileSetupFormProps) {
   return (
     <EntryColumn>
       <h1 style={screenTitleStyle}>Как вас зовут?</h1>
-      <p style={screenExplanationStyle}>
-        Имя увидит учитель в списке учеников. Больше кабинет ничего не спросит.
-      </p>
+      <p style={screenExplanationStyle}>Имя увидит учитель в списке учеников.</p>
       <form onSubmit={handleSubmit} style={formStyle}>
         <PersonNameFields
           firstName={setup.firstName}

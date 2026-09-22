@@ -5,6 +5,7 @@ import { Types } from 'mongoose';
 import {
   buildOptionId,
   buildQuestionId,
+  CONTINUE_QUESTION_INDEX,
   parseOptionId,
   parseQuestionId,
 } from './exam-callback-ids';
@@ -28,10 +29,23 @@ describe('buildQuestionId / parseQuestionId', () => {
     expect(parseQuestionId('не-id:1')).toBeNull();
   });
 
-  it('нечисловой/отрицательный индекс — null', () => {
+  it('нечисловой/отрицательный индекс — null (кроме сентинела «Продолжить»)', () => {
     expect(parseQuestionId(`${ATTEMPT_ID}:abc`)).toBeNull();
-    expect(parseQuestionId(`${ATTEMPT_ID}:-1`)).toBeNull();
+    expect(parseQuestionId(`${ATTEMPT_ID}:-2`)).toBeNull();
     expect(parseQuestionId(`${ATTEMPT_ID}:1.5`)).toBeNull();
+  });
+
+  // «Продолжить» из списка экзаменов не знает номера вопроса заранее
+  // (отзыв владельца 2026-09-22, ADR-0119) — CONTINUE_QUESTION_INDEX
+  // разбирается как обычный индекс, handleExamQuestion сам находит первый
+  // вопрос без ответа.
+  it('CONTINUE_QUESTION_INDEX разбирается как обычный индекс, не как «нет числа»', () => {
+    expect(parseQuestionId(buildQuestionId(ATTEMPT_ID, CONTINUE_QUESTION_INDEX))).toEqual(
+      {
+        attemptId: ATTEMPT_ID,
+        index: CONTINUE_QUESTION_INDEX,
+      },
+    );
   });
 
   it('умещается в лимит callback_data 64 байта вместе с действием', () => {

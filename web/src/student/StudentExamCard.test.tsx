@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
@@ -21,16 +22,32 @@ function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
   };
 }
 
+interface RenderCardProps {
+  exam: MyExamDto;
+  pending?: boolean;
+  error?: string | null;
+  onStart?: () => void;
+}
+
+// Карточка несёт <Link> (ссылка «Посмотреть свою работу») — без роутера
+// вокруг react-router-dom падает, поэтому каждый рендер идёт через этот
+// хелпер, а не голый render().
+function renderCard({
+  exam,
+  pending = false,
+  error = null,
+  onStart = vi.fn(),
+}: RenderCardProps) {
+  return render(
+    <MemoryRouter>
+      <StudentExamCard exam={exam} pending={pending} error={error} onStart={onStart} />
+    </MemoryRouter>,
+  );
+}
+
 describe('StudentExamCard', () => {
   it('попытки не было — кнопка «Начать»', () => {
-    render(
-      <StudentExamCard
-        exam={makeExam()}
-        pending={false}
-        error={null}
-        onStart={vi.fn()}
-      />,
-    );
+    renderCard({ exam: makeExam() });
 
     expect(screen.getByText('Форма первого уровня')).toBeInTheDocument();
     expect(screen.getByText('Осталось 1 попытка')).toBeInTheDocument();
@@ -41,14 +58,7 @@ describe('StudentExamCard', () => {
   // ровно та путаница, на которую пожаловался владелец («Осталось 6 попыток»
   // над «Отправлено, ждём проверки»).
   it('остаток попыток идёт после названия, прямо перед кнопкой', () => {
-    render(
-      <StudentExamCard
-        exam={makeExam({ attemptsAllowed: 3 })}
-        pending={false}
-        error={null}
-        onStart={vi.fn()}
-      />,
-    );
+    renderCard({ exam: makeExam({ attemptsAllowed: 3 }) });
 
     const card = screen.getByText('Форма первого уровня').parentElement;
     const texts = Array.from(card?.querySelectorAll('span, p, button') ?? [])
@@ -66,9 +76,7 @@ describe('StudentExamCard', () => {
     const exam = makeExam({
       lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.getByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
     expect(screen.getByText('Попытка не закончена')).toBeInTheDocument();
@@ -83,9 +91,7 @@ describe('StudentExamCard', () => {
       attemptsUsed: 1,
       lastAttempt: { id: 'a1', status: 'submitted', expired: false },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByText('Отправлено, ждём проверки')).toBeInTheDocument();
@@ -102,9 +108,7 @@ describe('StudentExamCard', () => {
       attemptsUsed: 1,
       lastAttempt: { id: 'a1', status: 'submitted', expired: true },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.getByRole('button', { name: 'Пройти ещё раз' })).toBeInTheDocument();
     expect(screen.getByText('Время вышло, попытка ушла на проверку')).toBeInTheDocument();
@@ -120,9 +124,7 @@ describe('StudentExamCard', () => {
       attemptsUsed: 1,
       lastAttempt: { id: 'a1', status: 'submitted', expired: false },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(
@@ -133,14 +135,7 @@ describe('StudentExamCard', () => {
 
   it('клик по кнопке зовёт onStart', () => {
     const onStart = vi.fn();
-    render(
-      <StudentExamCard
-        exam={makeExam()}
-        pending={false}
-        error={null}
-        onStart={onStart}
-      />,
-    );
+    renderCard({ exam: makeExam(), onStart });
 
     screen.getByRole('button', { name: 'Начать' }).click();
     expect(onStart).toHaveBeenCalledTimes(1);
@@ -148,22 +143,13 @@ describe('StudentExamCard', () => {
 
   it('описание формы, если учитель его заполнил', () => {
     const exam = makeExam({ description: 'Форма стойки и базовые связки.' });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.getByText('Форма стойки и базовые связки.')).toBeInTheDocument();
   });
 
   it('ошибка старта попытки видна рядом с кнопкой', () => {
-    render(
-      <StudentExamCard
-        exam={makeExam()}
-        pending={false}
-        error="Нет связи с сервером."
-        onStart={vi.fn()}
-      />,
-    );
+    renderCard({ exam: makeExam(), error: 'Нет связи с сервером.' });
 
     expect(screen.getByRole('alert')).toHaveTextContent('Нет связи с сервером.');
   });
@@ -180,9 +166,7 @@ describe('StudentExamCard', () => {
         comment: 'Проверьте стойку в начале формы.',
       },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByText('Нужно доработать')).toBeInTheDocument();
@@ -208,9 +192,7 @@ describe('StudentExamCard', () => {
         comment: 'Проверьте стойку в начале формы.',
       },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={onStart} />,
-    );
+    renderCard({ exam, onStart });
 
     expect(screen.getByText('Нужно доработать')).toBeInTheDocument();
     expect(
@@ -227,9 +209,7 @@ describe('StudentExamCard', () => {
       attemptsUsed: 1,
       lastAttempt: { id: 'a1', status: 'submitted', expired: false },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.getByText('Отправлено, ждём проверки')).toBeInTheDocument();
     expect(screen.queryByText(/из \d+$/)).not.toBeInTheDocument();
@@ -241,11 +221,55 @@ describe('StudentExamCard', () => {
       attemptsUsed: 1,
       lastAttempt: { id: 'a1', status: 'graded', expired: false },
     });
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(screen.getByText('Экзамен проверен')).toBeInTheDocument();
+  });
+});
+
+describe('StudentExamCard — ссылка на сданную работу', () => {
+  it('попытка сдана — ссылка «Посмотреть свою работу» ведёт на экран сдачи', () => {
+    const exam = makeExam({
+      lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+    });
+    renderCard({ exam });
+
+    expect(screen.getByRole('link', { name: 'Посмотреть свою работу' })).toHaveAttribute(
+      'href',
+      '/attempts/a1',
+    );
+  });
+
+  it('попытка проверена — ссылка есть рядом с итогом', () => {
+    const exam = makeExam({
+      attemptsAllowed: 1,
+      attemptsUsed: 1,
+      lastAttempt: { id: 'a1', status: 'graded', expired: false, outcome: 'passed' },
+    });
+    renderCard({ exam });
+
+    expect(
+      screen.getByRole('link', { name: 'Посмотреть свою работу' }),
+    ).toBeInTheDocument();
+  });
+
+  it('попытка в работе — ссылки нет: вход уже даёт кнопка «Продолжить»', () => {
+    const exam = makeExam({
+      lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+    });
+    renderCard({ exam });
+
+    expect(
+      screen.queryByRole('link', { name: 'Посмотреть свою работу' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('попытки не было — ссылки нет', () => {
+    renderCard({ exam: makeExam() });
+
+    expect(
+      screen.queryByRole('link', { name: 'Посмотреть свою работу' }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -257,14 +281,7 @@ describe('StudentExamCard — время попытки', () => {
   stubViewerTimeZone();
 
   it('попытки не было — сколько времени даётся на попытку', () => {
-    render(
-      <StudentExamCard
-        exam={makeExam({ timeLimitMin: 40 })}
-        pending={false}
-        error={null}
-        onStart={vi.fn()}
-      />,
-    );
+    renderCard({ exam: makeExam({ timeLimitMin: 40 }) });
 
     expect(screen.getByText('На попытку даётся 40 минут')).toBeInTheDocument();
   });
@@ -284,9 +301,7 @@ describe('StudentExamCard — время попытки', () => {
       },
     });
 
-    render(
-      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
-    );
+    renderCard({ exam });
 
     expect(
       screen.getByText(
@@ -298,14 +313,7 @@ describe('StudentExamCard — время попытки', () => {
   });
 
   it('форма без лимита времени — строки про время нет вовсе', () => {
-    render(
-      <StudentExamCard
-        exam={makeExam()}
-        pending={false}
-        error={null}
-        onStart={vi.fn()}
-      />,
-    );
+    renderCard({ exam: makeExam() });
 
     expect(screen.queryByText(/попытку даётся|Осталось \d+ мин/)).not.toBeInTheDocument();
   });

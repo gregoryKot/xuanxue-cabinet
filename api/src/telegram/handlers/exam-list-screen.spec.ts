@@ -4,6 +4,7 @@
 // shared/src/my-exams.spec.ts (getMyExamAction) — здесь только то, что
 // принадлежит боту: подписи кнопок и текст причины.
 import type { MyExamDto } from '@xuanxue/shared';
+import { CONTINUE_QUESTION_INDEX } from './exam-callback-ids';
 import { buildExamListScreen } from './exam-list-screen';
 
 // Момент «сейчас» фиксированный (CLAUDE.md «Детерминизм»), не Date.now().
@@ -41,7 +42,13 @@ describe('buildExamListScreen', () => {
     ]);
   });
 
-  it('попытка в работе — кнопка «Продолжить», не «Начать»', () => {
+  // Регрессия (отзыв владельца 2026-09-22, ADR-0119): «Продолжить» несёт
+  // attemptId, не examId — тот же callback, что «Начать»/«Начать ещё раз»,
+  // вёл в ExamAttemptsService.start, который для уже отправленной попытки
+  // заводит новую пустую и списывает её из лимита. Кнопка открывает
+  // существующую попытку напрямую (`eq`, handleExamQuestion) с сентинелом
+  // CONTINUE_QUESTION_INDEX — сам номер вопроса список не знает.
+  it('попытка в работе — кнопка «Продолжить» несёт id попытки, не экзамена', () => {
     const menu = buildExamListScreen(
       [
         exam({
@@ -51,7 +58,10 @@ describe('buildExamListScreen', () => {
       ],
       NOW_MS,
     );
-    expect(menu.buttons[0]?.[0]?.text).toBe('Продолжить: Форма третьего уровня');
+    expect(menu.buttons[0]?.[0]).toEqual({
+      text: 'Продолжить: Форма третьего уровня',
+      callback_data: `eq:a1:${CONTINUE_QUESTION_INDEX}`,
+    });
   });
 
   // Решение владельца 2026-09-21 (ADR-0091): сдал сам и ждёт проверки — вторая
@@ -74,10 +84,11 @@ describe('buildExamListScreen', () => {
     expect(menu.buttons).toHaveLength(1); // только «В меню»
   });
 
-  it('попытку закрыло время, есть ещё попытки — «Начать ещё раз»', () => {
+  it('попытку закрыло время, есть ещё попытки — «Начать ещё раз», id экзамена, не попытки', () => {
     const menu = buildExamListScreen(
       [
         exam({
+          id: 'e1',
           attemptsAllowed: 2,
           attemptsUsed: 1,
           lastAttempt: { id: 'a1', status: 'submitted', expired: true },
@@ -85,7 +96,10 @@ describe('buildExamListScreen', () => {
       ],
       NOW_MS,
     );
-    expect(menu.buttons[0]?.[0]?.text).toBe('Начать ещё раз: Форма третьего уровня');
+    expect(menu.buttons[0]?.[0]).toEqual({
+      text: 'Начать ещё раз: Форма третьего уровня',
+      callback_data: 'exam:e1',
+    });
   });
 
   it('сдана, попыток больше нет — «Сдано, ждёт проверки», без кнопки', () => {
@@ -213,7 +227,11 @@ describe('buildExamListScreen — кнопка «exc» перед стартом
     });
   });
 
-  it('лимит есть, попытка уже идёт («Продолжить») — часы тикают, кнопка на exam', () => {
+  // «Продолжить» подтверждения не получает ни при каком лимите: часы уже
+  // тикают, вопрос запоздал бы. Кнопка ведёт прямо в свою попытку (`eq` с
+  // CONTINUE_QUESTION_INDEX, ADR-0119) — ни `exc`, ни `exam`: через
+  // `exam:<examId>` она заводила бы новую попытку вместо открытия старой.
+  it('лимит есть, попытка уже идёт («Продолжить») — без вопроса, прямо в свою попытку', () => {
     const menu = buildExamListScreen(
       [
         exam({
@@ -226,7 +244,7 @@ describe('buildExamListScreen — кнопка «exc» перед стартом
     );
     expect(menu.buttons[0]?.[0]).toEqual({
       text: 'Продолжить: Форма третьего уровня',
-      callback_data: 'exam:507f1f77bcf86cd799439011',
+      callback_data: `eq:a1:${CONTINUE_QUESTION_INDEX}`,
     });
   });
 

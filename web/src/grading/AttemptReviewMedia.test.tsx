@@ -210,7 +210,7 @@ describe('AttemptReviewMedia — прислать себе видео из Teleg
     });
 
     expect(
-      screen.getByText('Видео ушло в чат с ботом. Откройте Telegram — оно там.'),
+      screen.getByText('Видео в чате с ботом — откройте Telegram.'),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Прислать мне в Telegram' }),
@@ -255,9 +255,7 @@ describe('AttemptReviewMedia — прислать себе видео из Teleg
       screen.queryByRole('button', { name: 'Прислать мне в Telegram' }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
-    expect(
-      screen.getByText(/тогда бот сможет прислать вам это видео/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Бот пишет в личный чат, а вашего чата/)).toBeInTheDocument();
   });
 
   // ADR-0067: отметка «у меня нет Telegram» гасит и это предложение — кнопки

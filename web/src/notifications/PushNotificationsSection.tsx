@@ -15,7 +15,6 @@ import {
   PUSH_EXPLANATION_DEFAULT,
   PUSH_EXPLANATION_DENIED,
   PUSH_EXPLANATION_IOS_INSTALL,
-  PUSH_EXPLANATION_NOT_SUBSCRIBED,
   PUSH_SECTION_HEADING,
   PUSH_SUBSCRIBED_STATUS,
 } from './pushNotificationsCopy';
@@ -68,9 +67,6 @@ export function PushNotificationsSection() {
           <p style={screenExplanationStyle}>{PUSH_EXPLANATION_DEFAULT}</p>
           <p style={screenExplanationStyle}>{PUSH_BLOCK_WARNING}</p>
         </>
-      )}
-      {state.kind === 'not-subscribed' && (
-        <p style={screenExplanationStyle}>{PUSH_EXPLANATION_NOT_SUBSCRIBED}</p>
       )}
       {state.kind === 'subscribed' && (
         <p style={screenExplanationStyle}>{PUSH_SUBSCRIBED_STATUS}</p>

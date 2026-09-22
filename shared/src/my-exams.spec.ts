@@ -2,7 +2,14 @@
 // (getMyExamAction, ADR-0091, решение владельца 2026-09-21). Чистая логика
 // без DOM и без сети, тест на каждую из шести веток по порядку из функции.
 import { describe, expect, it } from 'vitest';
-import { getMyExamAction, myExamAttemptsLeft, type MyExamDto } from './my-exams';
+import type { AttemptBlockDto, ExamAttemptDto } from './exams';
+import type { ExamMediaDto } from './exam-media';
+import {
+  firstUnansweredQuestionIndex,
+  getMyExamAction,
+  myExamAttemptsLeft,
+  type MyExamDto,
+} from './my-exams';
 
 function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
   return {
@@ -85,5 +92,85 @@ describe('getMyExamAction', () => {
       lastAttempt: { id: 'a1', status: 'submitted', expired: false },
     });
     expect(getMyExamAction(exam)).toBeNull();
+  });
+});
+
+// Куда боту открывать «Продолжить» (отзыв владельца 2026-09-22, ADR-0119):
+// бот показывает по вопросу на экран, кабинету эта функция не нужна (вся
+// форма на одной странице).
+describe('firstUnansweredQuestionIndex', () => {
+  function block(questions: AttemptBlockDto['questions']): AttemptBlockDto {
+    return { id: 'b1', title: '', questions };
+  }
+
+  function attempt(
+    overrides: Pick<ExamAttemptDto, 'blocks' | 'answers'> & { media?: ExamMediaDto[] },
+  ): Pick<ExamAttemptDto, 'blocks' | 'answers' | 'media'> {
+    return overrides;
+  }
+
+  it('первый вопрос без ответа — не первый в списке', () => {
+    const a = attempt({
+      blocks: [
+        block([
+          { itemId: 'i1', version: 1, kind: 'single', prompt: 'В1', options: [] },
+          { itemId: 'i2', version: 1, kind: 'single', prompt: 'В2', options: [] },
+          { itemId: 'i3', version: 1, kind: 'single', prompt: 'В3', options: [] },
+        ]),
+      ],
+      answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+    });
+    expect(firstUnansweredQuestionIndex(a)).toBe(1);
+  });
+
+  it('текстовый ответ из одних пробелов — не отвечено (то же правило, что exam-attempt-review.ts)', () => {
+    const a = attempt({
+      blocks: [
+        block([{ itemId: 'i1', version: 1, kind: 'text', prompt: 'В1', options: [] }]),
+      ],
+      answers: [{ itemId: 'i1', text: '   ' }],
+    });
+    expect(firstUnansweredQuestionIndex(a)).toBe(0);
+  });
+
+  it('видео-вопрос отвечает записью в media, не строкой в answers (ADR-0037)', () => {
+    const media: ExamMediaDto = {
+      id: 'm1',
+      attemptId: 'a1',
+      itemId: 'i1',
+      kind: 'telegram',
+      receivedAt: '2026-09-22T10:00:00Z',
+    };
+    const a = attempt({
+      blocks: [
+        block([
+          { itemId: 'i1', version: 1, kind: 'video', prompt: 'В1', options: [] },
+          { itemId: 'i2', version: 1, kind: 'single', prompt: 'В2', options: [] },
+        ]),
+      ],
+      answers: [],
+      media: [media],
+    });
+    expect(firstUnansweredQuestionIndex(a)).toBe(1);
+  });
+
+  it('все отвечены — последний вопрос, не первый', () => {
+    const a = attempt({
+      blocks: [
+        block([
+          { itemId: 'i1', version: 1, kind: 'single', prompt: 'В1', options: [] },
+          { itemId: 'i2', version: 1, kind: 'single', prompt: 'В2', options: [] },
+        ]),
+      ],
+      answers: [
+        { itemId: 'i1', optionIds: ['o1'] },
+        { itemId: 'i2', optionIds: ['o1'] },
+      ],
+    });
+    expect(firstUnansweredQuestionIndex(a)).toBe(1);
+  });
+
+  it('пустой снимок — 0, не падает', () => {
+    expect(firstUnansweredQuestionIndex(attempt({ blocks: [], answers: [] }))).toBe(0);
   });
 });

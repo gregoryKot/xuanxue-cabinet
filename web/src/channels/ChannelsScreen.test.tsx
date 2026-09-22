@@ -83,7 +83,7 @@ describe('ChannelsScreen — список', () => {
 
     expect(await screen.findByText(/Пока нет ни одного канала/)).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Каналы' })).toBeInTheDocument();
-    expect(screen.getByText(/Telegram-группа подключается сама/)).toBeInTheDocument();
+    expect(screen.getByText(/Telegram подключается сам/)).toBeInTheDocument();
   });
 
   it('строка канала ведёт на его страницу', async () => {

@@ -32,8 +32,7 @@ import { MaterialTagFilter } from './MaterialTagFilter';
 import { useMaterials } from './useMaterials';
 
 const TITLE = 'Материалы';
-const EXPLANATION =
-  'Книги, статьи и видео, которыми вы делитесь с учениками. Ученик видит их у себя на экране.';
+const EXPLANATION = 'Книги, статьи и видео, которыми вы делитесь с учениками.';
 const EMPTY_MESSAGE =
   'Пока ни одного материала. Добавьте первый — ученики увидят его сразу.';
 const EMPTY_FILTERED_MESSAGE = 'С таким фильтром материалов нет.';

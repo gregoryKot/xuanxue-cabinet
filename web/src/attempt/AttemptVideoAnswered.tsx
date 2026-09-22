@@ -29,7 +29,6 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 // принадлежит главному действию, а замена ошибочной ссылки — действие
 // второго плана.
 const REPLACE_TOGGLE = 'Прислать другую ссылку';
-const REPLACE_LINK_HINT = 'Новая ссылка заменит прежнюю.';
 
 interface AttemptVideoAnsweredProps {
   itemId: string;
@@ -66,14 +65,11 @@ export function AttemptVideoAnswered({
             {REPLACE_TOGGLE}
           </TextLinkButton>
           {replacing && (
-            <>
-              <p style={attemptVideoHintStyle}>{REPLACE_LINK_HINT}</p>
-              <AttemptMediaLinkForm
-                onSubmit={(url) => video.addMediaLink(itemId, url)}
-                pending={pending}
-                error={error}
-              />
-            </>
+            <AttemptMediaLinkForm
+              onSubmit={(url) => video.addMediaLink(itemId, url)}
+              pending={pending}
+              error={error}
+            />
           )}
         </>
       ) : (

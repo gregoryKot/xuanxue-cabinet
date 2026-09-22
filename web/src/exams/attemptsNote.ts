@@ -16,7 +16,6 @@ export function attemptsNote(total: number): string | null {
   if (total === 0) return null;
   return (
     `Экзамен уже проходили — ${total} ${pluralRu(total, WORK_FORMS)}. Новые вопросы ` +
-    'увидят только те, кто начнёт заново: в начатой и сданной работе набор ' +
-    'вопросов не меняется.'
+    'увидят только те, кто начнёт заново.'
   );
 }

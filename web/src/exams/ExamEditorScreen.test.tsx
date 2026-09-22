@@ -523,9 +523,8 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     expect(await screen.findByLabelText('Вопросов ученику')).toHaveValue('');
     expect(
       screen.getByText(
-        'Пусто — каждый ученик отвечает на все 2 вопроса списка. Впишите число — ' +
-          'и каждому ученику достанется столько случайных вопросов из 2, у каждого ' +
-          'свои. ★ в списке ниже — обязательные, они попадут всем.',
+        'Пусто — ученик отвечает на все 2 вопроса списка. Впишите число — и каждому ' +
+          'достанется случайная часть из 2. ★ — обязательные, попадут всем.',
       ),
     ).toBeInTheDocument();
   });
@@ -564,29 +563,6 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     await user.type(await screen.findByLabelText('Вопросов ученику'), '1');
 
     expect(screen.getAllByRole('button', { name: 'Обязательный' })).toHaveLength(2);
-  });
-
-  it('«Вопросов ученику» пусто — заметки под «Вопросы · N» нет', async () => {
-    mockExamAndBank(makeExam());
-
-    renderAt('/exams/x1');
-    await screen.findByText('Зачем придумали тайцзи?');
-
-    expect(screen.queryByText(/Каждому ученику достанется/)).not.toBeInTheDocument();
-  });
-
-  it('«Вопросов ученику» заполнено — заметка под «Вопросы · N» называет число', async () => {
-    const user = userEvent.setup();
-    mockExamAndBank(makeExam());
-
-    renderAt('/exams/x1');
-    await user.type(await screen.findByLabelText('Вопросов ученику'), '1');
-
-    expect(
-      await screen.findByText(
-        'Каждому ученику достанется 1 из 2, случайно. ★ — обязательные, попадут всем.',
-      ),
-    ).toBeInTheDocument();
   });
 
   it('клик по ☆ отмечает вопрос обязательным — уходит в PATCH requiredItemIds', async () => {
@@ -996,7 +972,7 @@ describe('ExamEditorScreen — черновик (ADR-0052)', () => {
       'Набранное, но не сохранённое',
     );
     expect(
-      screen.getByText('Здесь то, что вы набрали в прошлый раз и не успели сохранить.'),
+      screen.getByText('Здесь то, что вы набрали в прошлый раз.'),
     ).toBeInTheDocument();
   });
 

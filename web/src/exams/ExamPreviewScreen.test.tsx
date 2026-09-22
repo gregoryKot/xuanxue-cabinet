@@ -196,7 +196,7 @@ describe('ExamPreviewScreen — вопросы', () => {
     expect(rows[1]).toHaveTextContent('Второй вопрос');
   });
 
-  it('перемешивание вопросов и вариантов — заметки о каждом', async () => {
+  it('перемешивание вопросов и вариантов — одна общая заметка', async () => {
     mockExamAndBank(
       makeExam({
         blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: true }],
@@ -206,8 +206,40 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    expect(await screen.findByText(/Порядок вопросов будет другим/)).toBeInTheDocument();
-    expect(screen.getByText(/Варианты ответа тоже встанут/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Порядок вопросов и вариантов ответа будет другим/),
+    ).toBeInTheDocument();
+  });
+
+  it('перемешаны только вопросы — заметка только про вопросы', async () => {
+    mockExamAndBank(
+      makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: true }] }),
+    );
+
+    renderAt('/exams/x1/preview');
+
+    expect(
+      await screen.findByText(
+        'Порядок вопросов будет другим у каждого сдающего — здесь показан один из вариантов.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('перемешаны только варианты ответа — заметка только про варианты', async () => {
+    mockExamAndBank(
+      makeExam({
+        blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: false }],
+        shuffleOptions: true,
+      }),
+    );
+
+    renderAt('/exams/x1/preview');
+
+    expect(
+      await screen.findByText(
+        'Порядок вариантов ответа будет другим у каждого сдающего.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('без перемешивания — заметок нет', async () => {

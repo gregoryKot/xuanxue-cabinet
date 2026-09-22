@@ -19,7 +19,8 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 
 const OFFER_EXPLANATION = /бот напишет, как только учитель поставит итог/;
-const VIDEO_EXPLANATION = /Бот в Telegram узнаёт вас по аккаунту/;
+const VIDEO_EXPLANATION =
+  /Свяжите Telegram — и видео можно будет прислать боту одним сообщением/;
 const LINK_BUTTON_NAME = 'Связать Telegram';
 
 /** Ученик без личного чата с ботом — тот, ради кого предложение и стоит. */
@@ -136,6 +137,82 @@ describe('AttemptSubmitted', () => {
       'href',
       '/',
     );
+  });
+});
+
+describe('AttemptSubmitted — свои ответы', () => {
+  it('текстовый вопрос — виден с ответом ученика, поле выключено', async () => {
+    await renderSubmitted(
+      makeAttempt({
+        blocks: [
+          {
+            id: 'b1',
+            title: '',
+            questions: [
+              {
+                itemId: 'q1',
+                version: 1,
+                kind: 'text',
+                prompt: 'Опишите принцип песчинки',
+                options: [],
+              },
+            ],
+          },
+        ],
+        answers: [{ itemId: 'q1', text: 'Песчинка тянет за собой всю цепь' }],
+      }),
+    );
+
+    expect(screen.getByText('Ваши ответы')).toBeInTheDocument();
+    expect(screen.getByText('Опишите принцип песчинки')).toBeInTheDocument();
+    const textbox = screen.getByRole('textbox');
+    expect(textbox).toBeDisabled();
+    expect(textbox).toHaveValue('Песчинка тянет за собой всю цепь');
+  });
+
+  it('вопрос с вариантами — выбранный отмечен, все контролы выключены', async () => {
+    await renderSubmitted(
+      makeAttempt({
+        blocks: [
+          {
+            id: 'b1',
+            title: '',
+            questions: [
+              {
+                itemId: 'q1',
+                version: 1,
+                kind: 'single',
+                prompt: 'Сколько форм в тайцзицюань 24 формы?',
+                options: [
+                  { id: 'o1', text: '24' },
+                  { id: 'o2', text: '108' },
+                ],
+              },
+            ],
+          },
+        ],
+        answers: [{ itemId: 'q1', optionIds: ['o1'] }],
+      }),
+    );
+
+    const radios = screen.getAllByRole('radio');
+    expect(radios).toHaveLength(2);
+    radios.forEach((radio) => expect(radio).toBeDisabled());
+    expect(screen.getByRole('radio', { name: '24' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '108' })).not.toBeChecked();
+  });
+
+  it('попытка без вопросов — раздела «Ваши ответы» нет', async () => {
+    await renderSubmitted(makeAttempt({ blocks: [] }));
+
+    expect(screen.queryByText('Ваши ответы')).not.toBeInTheDocument();
+  });
+
+  it('попытка из одних видео-вопросов — раздела «Ваши ответы» нет, формулировка встречается один раз', async () => {
+    await renderSubmitted(makeAttempt({ blocks: VIDEO_BLOCKS }));
+
+    expect(screen.queryByText('Ваши ответы')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Покажите форму')).toHaveLength(1);
   });
 });
 

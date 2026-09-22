@@ -10,8 +10,7 @@ import { useNoTelegram } from './useNoTelegram';
 
 const NO_TELEGRAM_LABEL = 'У меня нет Telegram';
 const HAS_TELEGRAM_LABEL = 'Telegram у меня появился';
-const NO_TELEGRAM_NOTICE =
-  'Вы сказали, что Telegram у вас нет. Кабинет больше его не предлагает.';
+const NO_TELEGRAM_NOTICE = 'Вы сказали, что Telegram у вас нет.';
 
 const wrapStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 const textStyle = { margin: 0 };

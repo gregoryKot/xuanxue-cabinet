@@ -45,7 +45,10 @@ const titleColumnStyle: CSSProperties = {
 
 interface ScreenHeaderProps {
   title: string;
-  explanation: string;
+  /** Не у каждого экрана есть что сказать сверх заголовка и содержимого —
+   * не рисуется, если не задано (docs/VOICE.md: абзац, который не говорит,
+   * что делать, — шум). */
+  explanation?: string;
   /** Тихая приписка под объяснением; `null`/пусто — не рисуется. */
   hint?: string | null;
   /** Пока список грузится, действия нет: нажимать не на что. */
@@ -65,7 +68,7 @@ export function ScreenHeader({
     <div style={rowStyle}>
       <div style={{ ...titleColumnStyle, maxWidth: titleMaxWidth }}>
         <h1 style={screenTitleStyle}>{title}</h1>
-        <p style={screenExplanationStyle}>{explanation}</p>
+        {explanation && <p style={screenExplanationStyle}>{explanation}</p>}
         {hint && <p style={screenHintStyle}>{hint}</p>}
       </div>
       {action}

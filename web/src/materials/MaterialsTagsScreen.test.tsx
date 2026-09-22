@@ -89,11 +89,7 @@ describe('MaterialsTagsScreen — сводка тегов школы', () => {
 
     renderScreen();
 
-    expect(
-      await screen.findByText(
-        'У школы пока нет тегов. Поставьте тег на дате занятия или в материале — он появится в этом списке.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('У школы пока нет тегов.')).toBeInTheDocument();
   });
 
   it('сбой загрузки сводки — баннер и повтор', async () => {
