@@ -43,6 +43,12 @@ export class SettingsRecord {
   // который `.lean()` не применяет к уже существующим документам.
   @Prop({ type: Number })
   previewMinutes?: number;
+
+  // Не required и без default по той же причине, что и previewMinutes:
+  // старая база без этой настройки не имеет поля вовсе — дефолт
+  // (DEFAULT_NEWCOMER_CONTACT) подставляется явно при чтении (toSettingsDto).
+  @Prop({ type: String })
+  newcomerContact?: string;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(SettingsRecord);
@@ -53,5 +59,8 @@ export const SETTINGS_FIELD_POLICY: FieldPolicy = {
   tz: plain('часовой пояс школы, нужен для выборок'),
   schoolSiteUrl: plain(
     'публичный адрес сайта школы — отдаётся всем через GET /auth/config',
+  ),
+  newcomerContact: plain(
+    'текст публичный — бот называет этот контакт незнакомцу (ADR-0115)',
   ),
 };

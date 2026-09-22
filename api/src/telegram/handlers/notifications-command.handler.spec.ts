@@ -18,7 +18,7 @@ import { buildStrangerMessage } from './bot-menu';
 import { NotificationsCommandHandler } from './notifications-command.handler';
 
 const NOW = DateTime.fromISO('2026-09-06T18:00:00Z', { zone: 'utc' });
-const SCHOOL_SITE_URL = 'https://xuanxue.su';
+const NEWCOMER_CONTACT = 'Диме @Dmitry_Deitch';
 const TEACHER: UserLean = {
   id: 'u1',
   name: 'Мария',
@@ -37,7 +37,7 @@ function fakePrefs(enabled: NotificationKind[]): {
 
 function fakeSettings(): SettingsService {
   return {
-    get: () => Promise.resolve({ schoolSiteUrl: SCHOOL_SITE_URL }),
+    get: () => Promise.resolve({ newcomerContact: NEWCOMER_CONTACT }),
   } as unknown as SettingsService;
 }
 
@@ -119,7 +119,7 @@ describe('NotificationsCommandHandler', () => {
 
     await handler.handle(ctx, NOW);
 
-    expect(replies).toEqual([buildStrangerMessage(SCHOOL_SITE_URL)]);
+    expect(replies).toEqual([buildStrangerMessage(NEWCOMER_CONTACT)]);
     expect(prefs.get).not.toHaveBeenCalled();
   });
 

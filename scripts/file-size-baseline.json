@@ -703,7 +703,7 @@
   "api/test/push-subscriptions-ownership.e2e-spec.ts": 181,
   "api/test/push-vapid-off.e2e-spec.ts": 73,
   "api/test/raw-upload-guard.e2e-spec.ts": 41,
-  "api/test/settings.e2e-spec.ts": 283,
+  "api/test/settings.e2e-spec.ts": 323,
   "api/test/stage3-archive-flow.e2e-spec.ts": 126,
   "api/test/static-cache.e2e-spec.ts": 91,
   "api/test/student-role-access.e2e-spec.ts": 99,

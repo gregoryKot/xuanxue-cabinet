@@ -70,6 +70,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   recording: 'Шаблон «Запись»',
   schoolSiteUrl: 'Адрес сайта школы',
   previewMinutes: 'За сколько минут показывать черновик поста',
+  newcomerContact: 'Кому писать, если человек ещё не в школе',
 
   // users — /users (экран «Люди»).
   roles: 'Роли',

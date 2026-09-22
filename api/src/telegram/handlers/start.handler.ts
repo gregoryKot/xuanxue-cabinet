@@ -3,8 +3,9 @@
 // BotUserAccessService.resolve() (не UsersService.findByTelegramId напрямую,
 // SECURITY §9): `active` подключается (штат — welcomeConnectedUser даёт канал
 // школы, ученик — личный канал, ADR-0027), `denied` (blocked) получает
-// готовый отказ, `unknown` (нет записи в users) — вежливый отказ по VOICE с
-// адресом сайта школы, если он заполнен (settings.schoolSiteUrl, не PUBLIC_URL).
+// готовый отказ, `unknown` (нет записи в users) — вежливый отказ по VOICE:
+// ученику школы путь до кнопки связки, человеку со стороны — контакт, кому
+// написать (settings.newcomerContact, ADR-0115).
 // Только приватный чат: Telegram шлёт /start и в группах (например, при
 // добавлении бота с командой в описании) — там это не про личный канал
 // человека, отвечать/создавать канал не нужно (обрабатывает my_chat_member).
@@ -129,7 +130,7 @@ export class StartHandler {
   }
 
   private async strangerMessage(): Promise<string> {
-    const { schoolSiteUrl } = await this.settingsService.get();
-    return buildStrangerMessage(schoolSiteUrl);
+    const { newcomerContact } = await this.settingsService.get();
+    return buildStrangerMessage(newcomerContact);
   }
 }

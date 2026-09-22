@@ -3,6 +3,7 @@ import {
   buildBotMenu,
   buildHelpText,
   buildStrangerMessage,
+  buildStudentMenu,
   isMenuScreenAction,
 } from './bot-menu';
 
@@ -36,12 +37,30 @@ describe('buildBotMenu', () => {
 });
 
 describe('buildStrangerMessage', () => {
-  it('адрес школы не заполнен — только объяснение, без пустой ссылки', () => {
-    expect(buildStrangerMessage()).toBe('Этот бот для учителя школы Сюань-Сюэ.');
+  it('контакт не задан — текст обрывается на связке, без «Напишите» в пустоту', () => {
+    expect(buildStrangerMessage()).not.toContain('Напишите');
+    expect(buildStrangerMessage()).toContain('Сюань-Сюэ');
   });
 
-  it('адрес заполнен — незнакомцу есть куда пойти', () => {
-    expect(buildStrangerMessage('https://xuanxue.su')).toContain('https://xuanxue.su');
+  it('контакт задан — новичку есть кому написать', () => {
+    expect(buildStrangerMessage('Диме @Dmitry_Deitch')).toContain(
+      'Ещё не занимаетесь в школе? Напишите Диме @Dmitry_Deitch',
+    );
+  });
+
+  // ADR-0115: отказ без пути внутрь оставлял ученика, не нажавшего «Связать
+  // Telegram», перед закрытой дверью — тот, у кого кабинет есть, должен
+  // прочитать, что именно нажать. Две ветки в одном тексте: различить
+  // ученика школы и человека со стороны мы не можем (SECURITY §2).
+  it('называет обе ветки: ученику — кнопку связки, новичку — контакт', () => {
+    const text = buildStrangerMessage('Диме @Dmitry_Deitch');
+
+    expect(text).toContain('Связать Telegram');
+    expect(text).toContain('Напишите Диме @Dmitry_Deitch');
+  });
+
+  it('бот назван учеников, а не учителя (отзыв владельца 2026-09-22)', () => {
+    expect(buildStrangerMessage()).toContain('для её учеников');
   });
 });
 
@@ -66,5 +85,23 @@ describe('isMenuScreenAction', () => {
     expect(isMenuScreenAction('exams')).toBe(true);
     expect(isMenuScreenAction('back')).toBe(true);
     expect(isMenuScreenAction('делай-что-хочешь')).toBe(false);
+  });
+});
+
+// Ошибка 2026-09-22 (ADR-0115, CLAUDE.md «Ошибка чинится вместе с причиной»):
+// бот обзавёлся второй аудиторией — экзамены (ADR-0024), личный канал
+// ученика (ADR-0027), его уведомления (ADR-0065), — а единственный текст,
+// называющий аудиторию, остался учительским, и ученик читал в нём отказ.
+// Гейт на весь класс ошибки, а не на одну строку: ни один текст, который бот
+// шлёт не-штату, не объявляет бота чужим. Новый такой текст дописывается в
+// список ниже — иначе он выпадет из проверки молча.
+describe('тексты бота не-штату', () => {
+  it.each<[string, string]>([
+    ['незнакомцу без контакта новичка', buildStrangerMessage()],
+    ['незнакомцу с контактом новичка', buildStrangerMessage('Диме @Dmitry_Deitch')],
+    ['/help ученику', buildHelpText('student')],
+    ['меню ученика', buildStudentMenu().text],
+  ])('%s — бот не объявлен учительским', (_place, text) => {
+    expect(text).not.toMatch(/для\s+учител[яю]|бот\s+учител[яю]/i);
   });
 });

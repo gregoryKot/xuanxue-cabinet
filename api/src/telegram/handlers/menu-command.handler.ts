@@ -104,8 +104,8 @@ export class MenuCommandHandler {
     // работают.
     const access = await this.botAccess.resolve(ctx.chat.id);
     if (access.kind === 'unknown') {
-      const { schoolSiteUrl } = await this.settingsService.get();
-      return { denied: buildStrangerMessage(schoolSiteUrl) };
+      const { newcomerContact } = await this.settingsService.get();
+      return { denied: buildStrangerMessage(newcomerContact) };
     }
     if (access.kind === 'denied') return { denied: access.message };
     return { audience: 'student' };

@@ -22,6 +22,7 @@ import { primaryActionStyle } from '../components/screenLayout';
 import { editorPageStyle, editorSectionStyle } from '../components/editorLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
+import { NewcomerContactField } from './NewcomerContactField';
 import { SchoolSiteField } from './SchoolSiteField';
 import { useNextLessons } from './useNextLessons';
 import { TemplateEditor } from './TemplateEditor';
@@ -103,6 +104,7 @@ export default function TemplatesScreen() {
       {!settingsState.loading && !settingsState.error && texts && (
         <>
           <SchoolSiteField settings={settings} update={settingsState.update} />
+          <NewcomerContactField settings={settings} update={settingsState.update} />
 
           {TEMPLATE_KINDS.map((kind) => (
             <TemplateEditor
