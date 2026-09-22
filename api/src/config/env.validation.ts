@@ -19,8 +19,10 @@ import {
   ENCRYPTION_KEY_MESSAGE,
   ENCRYPTION_KEY_OLD_MESSAGE,
   GIT_SHA_RE,
+  HEARTBEAT_PING_URL_MESSAGE,
   HEX64_LIST_RE,
   HEX64_RE,
+  HTTP_URL_OPTIONS,
   JWT_SECRET_MESSAGE,
   LOG_LEVEL_MESSAGE,
   LOG_LEVELS,
@@ -92,15 +94,12 @@ export class EnvSchema {
   BOOTSTRAP_ADMIN_TELEGRAM_ID?: number;
 
   @IsOptional()
-  @IsUrl(
-    { require_tld: false, require_protocol: true, protocols: ['http', 'https'] },
-    { message: PUBLIC_URL_MESSAGE },
-  )
+  @IsUrl(HTTP_URL_OPTIONS, { message: PUBLIC_URL_MESSAGE })
   @Matches(NO_TRAILING_SLASH_RE, { message: PUBLIC_URL_TRAILING_SLASH_MESSAGE })
   PUBLIC_URL?: string;
 
-  // Секрет вебхука бота (SECURITY §2). Обязателен в production (см. ниже) —
-  // без него бот молча не работал на проде (2026-09-08); 503 — только вне prod.
+  // Секрет вебхука бота (SECURITY §2). Обязателен в production — без него бот
+  // молча не работал на проде (2026-09-08); 503 — только вне prod.
   @IsOptional()
   @Matches(TELEGRAM_WEBHOOK_SECRET_RE, { message: TELEGRAM_WEBHOOK_SECRET_MESSAGE })
   TELEGRAM_WEBHOOK_SECRET?: string;
@@ -117,6 +116,11 @@ export class EnvSchema {
   @Matches(GIT_SHA_RE, { message: RAILWAY_GIT_COMMIT_SHA_MESSAGE })
   RAILWAY_GIT_COMMIT_SHA?: string;
 
+  // Кнопка жизни dead man's switch (ADR-0112), не задана — пинга нет.
+  @IsOptional()
+  @IsUrl(HTTP_URL_OPTIONS, { message: HEARTBEAT_PING_URL_MESSAGE })
+  HEARTBEAT_PING_URL?: string;
+
   // Email-вход (ADR-0029) — опциональны, без них выключен, production не требует.
   @IsOptional()
   RESEND_API_KEY?: string;
@@ -127,8 +131,7 @@ export class EnvSchema {
 
   // Файлы материалов в Cloudflare R2 (ADR-0057) — все четыре или ни одной
   // (env.r2-group.ts). Без них загрузка выключена, кабинет поднимается как
-  // прежде: локальная разработка, CI и Docker-смок не зависят от внешнего
-  // хранилища.
+  // прежде: локальная разработка, CI и Docker-смок хранилища не касаются.
   @IsOptional()
   @Matches(R2_ACCOUNT_ID_RE, { message: R2_ACCOUNT_ID_MESSAGE })
   R2_ACCOUNT_ID?: string;
@@ -146,10 +149,9 @@ export class EnvSchema {
   R2_BUCKET?: string;
 
   // Push-уведомления браузера (ADR-0092) — три переменные все вместе или ни
-  // одной (env.vapid-group.ts), как у R2 выше. Без них push выключен, кабинет
-  // поднимается как прежде: риск сначала на владельце (CLAUDE.md
-  // «Рискованная фича — за флагом»), отсутствие ключей и есть выключатель.
-  // Сгенерировать пару — node scripts/generate-vapid-keys.mjs.
+  // одной (env.vapid-group.ts), как у R2 выше. Без них push выключен: риск
+  // сначала на владельце (CLAUDE.md «Рискованная фича — за флагом»),
+  // отсутствие ключей и есть выключатель. Пара — scripts/generate-vapid-keys.mjs.
   @IsOptional()
   @Matches(VAPID_PUBLIC_KEY_RE, { message: VAPID_PUBLIC_KEY_MESSAGE })
   VAPID_PUBLIC_KEY?: string;

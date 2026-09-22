@@ -51,8 +51,17 @@ export const JWT_SECRET_MESSAGE = 'JWT_SECRET должен быть не кор�
 export const BOT_TOKEN_MESSAGE = 'BOT_TOKEN должен быть в формате <числовой id>:<токен>';
 export const BOOTSTRAP_ADMIN_TELEGRAM_ID_MESSAGE =
   'BOOTSTRAP_ADMIN_TELEGRAM_ID должен быть положительным числом (Telegram ID)';
+// Общие опции @IsUrl: и PUBLIC_URL, и HEARTBEAT_PING_URL — обычный http(s)
+// адрес, протокол обязателен, домен без TLD тоже валиден (локальный стенд).
+export const HTTP_URL_OPTIONS = {
+  require_tld: false,
+  require_protocol: true,
+  protocols: ['http', 'https'],
+};
 export const PUBLIC_URL_MESSAGE = 'PUBLIC_URL должен быть корректным http(s) URL';
 export const PUBLIC_URL_TRAILING_SLASH_MESSAGE = 'PUBLIC_URL без завершающего слэша';
+export const HEARTBEAT_PING_URL_MESSAGE =
+  'HEARTBEAT_PING_URL должен быть корректным http(s) URL';
 export const TELEGRAM_WEBHOOK_SECRET_MESSAGE =
   'TELEGRAM_WEBHOOK_SECRET должен быть 1-256 символов: латиница, цифры, "_" и "-"';
 export const LOG_LEVEL_MESSAGE =
