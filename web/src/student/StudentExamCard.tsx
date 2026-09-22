@@ -12,8 +12,10 @@
 // ExamAttemptOutcome — своя логика, что показывать, не должна раздувать саму
 // карточку (CLAUDE.md «Храповики», лимит 150 строк).
 import type { CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { textLinkStyle } from '../components/screenLayout';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeNoAction, formatAttemptsLeft } from './examAttemptState';
 
@@ -54,6 +56,7 @@ const ACTION_LABEL = {
 // время истекло раньше, чем ученик успел сдать сам — без строки рядом кнопка
 // выглядела бы случайной (CLAUDE.md: «каждая фича объясняет, откуда это»).
 const EXPIRED_RETRY_NOTE = 'Прошлую попытку закрыло время';
+const REVIEW_LINK_TEXT = 'Посмотреть свою работу';
 
 interface StudentExamCardProps {
   exam: MyExamDto;
@@ -70,6 +73,9 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
   // объяснил итогом учителя (см. комментарий у EXPIRED_RETRY_NOTE).
   const showExpiredNote =
     action === 'retry' && attempt?.status === 'submitted' && attempt.expired;
+  // Попытка в работе уже открывается кнопкой «Продолжить» — ссылка нужна
+  // ровно там, где кнопки на вход нет: сдал сам или закрыло время.
+  const showReviewLink = attempt !== undefined && attempt.status !== 'in_progress';
 
   return (
     <li>
@@ -106,6 +112,18 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
               <p style={metaStyle}>{describeNoAction(exam)}</p>
             </div>
           )
+        )}
+
+        {/* Ссылка, не вторая кнопка: главное действие на карточке одно
+            (ADR-0043). Ведёт на экран сдачи — он же читает попытку и рисует
+            её ответы в выключенном виде (attempt/AttemptSubmittedAnswers.tsx,
+            docs/adr/0123), уже сделанного не выдавая за форму. */}
+        {showReviewLink && attempt && (
+          <div style={actionRowStyle}>
+            <Link to={`/attempts/${attempt.id}`} style={textLinkStyle}>
+              {REVIEW_LINK_TEXT}
+            </Link>
+          </div>
         )}
 
         {error && (

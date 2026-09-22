@@ -1,27 +1,11 @@
 // Стили видео-вопроса (AttemptQuestionVideo.tsx) и списка видео-вопросов на
-// «Отправлено» (AttemptSubmittedVideos.tsx) — общий облик обоих мест
-// (CLAUDE.md «Одна механика — один компонент»). Отдельный модуль, а не
-// константы в компоненте: компонент вопроса должен остаться под 150 строк
-// (scripts/check-file-size-ratchet.mjs), а стили нужны и списку на «Отправлено».
+// «Отправлено» (AttemptSubmittedVideos.tsx). Облик самого раздела
+// («Видео») — attemptSectionStyle/attemptSectionHeadingStyle в
+// attemptLayout.ts: он общий ещё и с разделом «Ваши ответы»
+// (AttemptSubmittedAnswers.tsx), поэтому и переехал туда. Здесь остаются
+// только стили внутри блока — компонент вопроса должен остаться под 150
+// строк (scripts/check-file-size-ratchet.mjs).
 import type { CSSProperties } from 'react';
-
-export const attemptVideoSectionStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-  paddingTop: 20,
-  borderTop: '1px solid var(--line)',
-};
-
-// Заголовок блока антиквой, но заметно легче названия экзамена
-// (screenTitleStyle, 34): внутри экрана это раздел, а не второй экран.
-export const attemptVideoHeadingStyle: CSSProperties = {
-  margin: 0,
-  fontFamily: 'var(--font-display)',
-  fontWeight: 300,
-  fontSize: 22,
-  lineHeight: 1.1,
-};
 
 export const attemptVideoHintStyle: CSSProperties = {
   margin: 0,

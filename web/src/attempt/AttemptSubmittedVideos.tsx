@@ -13,11 +13,10 @@ import { blockCardStyle, dividedListStyle } from '../components/listCardStyles';
 import { QuestionRow } from '../components/QuestionRow';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { AttemptQuestionVideo } from './AttemptQuestionVideo';
+import { attemptSectionHeadingStyle, attemptSectionStyle } from './attemptLayout';
 import {
-  attemptVideoHeadingStyle,
   attemptVideoHintStyle,
   attemptVideoReceivedListStyle,
-  attemptVideoSectionStyle,
 } from './attemptVideoStyles';
 import { collectVideoQuestions } from './attemptVideoQuestions';
 import type { AttemptVideoControls } from './useAttemptMedia';
@@ -40,8 +39,8 @@ export function AttemptSubmittedVideos({ attempt, video }: AttemptSubmittedVideo
   if (videoQuestions.length === 0 && orphanMedia.length === 0) return null;
 
   return (
-    <section style={attemptVideoSectionStyle}>
-      <h2 style={attemptVideoHeadingStyle}>Видео</h2>
+    <section style={attemptSectionStyle}>
+      <h2 style={attemptSectionHeadingStyle}>Видео</h2>
       {videoQuestions.length > 0 && (
         <div style={blockCardStyle}>
           <ol style={dividedListStyle}>

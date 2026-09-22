@@ -1,8 +1,14 @@
 // Экран «Отправлено» (ТЗ п.2) — после успешной отправки и при возврате на
 // уже отправленную/проверенную попытку (обновление страницы отдаёт тот же
-// статус с сервера, GET /attempts). Итога с комментарием здесь нет: их
-// видно на карточке экзамена в кабинете (web/src/student), куда ученик и
-// возвращается ссылкой ниже, — этот экран говорит только про саму сдачу.
+// статус с сервера, GET /attempts). Итога с комментарием здесь нет и не
+// будет: они живут ТОЛЬКО на карточке экзамена в кабинете
+// (web/src/student/ExamAttemptOutcome.tsx), куда ученик и возвращается
+// ссылкой ниже — два места с одним и тем же итогом читались бы как два
+// сообщения об одном. К тому же технически иначе и нельзя: ученику
+// `ExamAttemptDto.outcome` вовсе не приходит — поле помечено «только
+// сотруднику школы» (комментарий у него в shared/src/exams.ts). Раздел
+// «Ваши ответы» ниже (AttemptSubmittedAnswers.tsx, docs/adr/0123) —
+// не итог, а протокол уже сделанного: сама сдача, без оценки.
 // Блок «Видео» (ADR-0037) показан для любого статуса ниже, включая
 // «Проверен»: попытка одна и та же, и видео к её вопросам может
 // понадобиться независимо от того, когда его прислали — до оценки или
@@ -26,6 +32,7 @@ import {
 } from '../components/screenLayout';
 import { showsTelegramOffer } from '../telegram/showsTelegramOffer';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
+import { AttemptSubmittedAnswers } from './AttemptSubmittedAnswers';
 import { AttemptSubmittedVideos } from './AttemptSubmittedVideos';
 import { ATTEMPT_EYEBROW, attemptHeaderStyle, attemptPageStyle } from './attemptLayout';
 import { collectVideoQuestions } from './attemptVideoQuestions';
@@ -81,6 +88,7 @@ export function AttemptSubmitted({ attempt, video }: AttemptSubmittedProps) {
 
       {offersTelegram && <TelegramLinkButton explanation={TELEGRAM_OFFER_EXPLANATION} />}
 
+      <AttemptSubmittedAnswers attempt={attempt} />
       <AttemptSubmittedVideos attempt={attempt} video={video} />
 
       <p style={backStyle}>
