@@ -18,7 +18,10 @@ import type {
   ExamAttemptDto,
 } from '@xuanxue/shared';
 
-export interface SubmittedQuestion {
+// Не экспортируется: наружу уходит только SubmittedBlock — форма, в которой
+// раздел получает готовые блоки. Экспортированное имя, которое никто не
+// импортирует, роняет CI (knip, CLAUDE.md «Дубли и мёртвый код»).
+interface SubmittedQuestion {
   question: AttemptQuestionDto;
   /** Номер вопроса внутри блока — тот же, что ученик видел на форме сдачи. */
   index: number;
