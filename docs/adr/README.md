@@ -154,4 +154,4 @@
 | [0116](0116-tag-is-picked-from-what-the-school-already-has.md)   | Тег выбирают из того, что в школе уже есть; список подсказок — проекция, не справочник          |
 | [0118](0118-option-photo-carries-its-own-caption.md)             | Картинка варианта — своим `sendPhoto` со своей подписью, не общим альбомом; на кнопке — номер   |
 | [0119](0119-continue-opens-its-own-attempt.md)                   | «Продолжить» открывает попытку по её id, без POST; список правится ответом записи, не reload    |
-| [0120](0120-exam-card-shows-the-clock-that-keeps-running.md)     | Время попытки видно на карточке экзамена и в боте; формулировку считает одна функция в `shared` |
+| [0122](0122-exam-card-shows-the-clock-that-keeps-running.md)     | Время попытки видно на карточке экзамена и в боте; формулировку считает одна функция в `shared` |

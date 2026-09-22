@@ -82,7 +82,7 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
         <span style={titleStyle}>{exam.title}</span>
         <span style={metaStyle}>{formatAttemptsLeft(exam)}</span>
         {/* Время попытки идёт, пока ученик вышел, и просроченную попытку
-            сервер закрывает сам (ADR-0120) — остаток он обязан видеть здесь,
+            сервер закрывает сам (ADR-0122) — остаток он обязан видеть здесь,
             а не только внутри самой попытки. У формы без лимита времени
             строки нет вовсе. */}
         {timeLine && <span style={metaStyle}>{timeLine}</span>}

@@ -1,6 +1,11 @@
 // Юнит-тест toMyExamDto — без Mongo и DI (CLAUDE.md «Тесты»).
 import { Types } from 'mongoose';
-import { toMyExamDto, type MyExamInput } from './my-exam.mapper';
+import type { LeanExamAttempt } from './exam-attempt.mapper';
+import {
+  toMyExamDto,
+  toMyExamLastAttemptInput,
+  type MyExamInput,
+} from './my-exam.mapper';
 
 function exam(overrides: Partial<MyExamInput> = {}): MyExamInput {
   return {
@@ -97,5 +102,69 @@ describe('toMyExamDto', () => {
     );
     expect(dto.description).toBe('');
     expect(dto.level).toBe('');
+  });
+});
+
+// Сборка положения по последней попытке (ADR-0122) — та часть ответа
+// `/me/exams`, где решается, тикает ли ещё время попытки.
+function leanAttempt(overrides: Partial<LeanExamAttempt> = {}): LeanExamAttempt {
+  return {
+    _id: new Types.ObjectId(),
+    examId: new Types.ObjectId(),
+    examTitle: 'Экзамен',
+    userId: new Types.ObjectId(),
+    attemptNo: 1,
+    status: 'in_progress',
+    blocks: [],
+    answers: [],
+    imageIds: [],
+    startedAt: new Date('2026-09-22T16:00:00.000Z'),
+    expired: false,
+    createdAt: new Date('2026-09-22T16:00:00.000Z'),
+    updatedAt: new Date('2026-09-22T16:00:00.000Z'),
+    ...overrides,
+  };
+}
+
+describe('toMyExamLastAttemptInput', () => {
+  it('идущая попытка — deadlineAt в ISO UTC', () => {
+    const input = toMyExamLastAttemptInput(
+      leanAttempt({ deadlineAt: new Date('2026-09-22T16:40:00.000Z') }),
+      undefined,
+    );
+
+    expect(input.status).toBe('in_progress');
+    expect(input.deadlineAt).toBe('2026-09-22T16:40:00.000Z');
+  });
+
+  // Главное здесь: у закрытой попытки отметка в записи остаётся старой, и
+  // отданная наружу читалась бы кабинетом и ботом как живой дедлайн.
+  it('попытка уже закрыта — deadlineAt наружу не идёт', () => {
+    const input = toMyExamLastAttemptInput(
+      leanAttempt({
+        status: 'submitted',
+        expired: true,
+        deadlineAt: new Date('2026-09-22T16:40:00.000Z'),
+      }),
+      undefined,
+    );
+
+    expect(input.expired).toBe(true);
+    expect(input.deadlineAt).toBeUndefined();
+  });
+
+  it('у формы без лимита дедлайна нет вовсе', () => {
+    expect(toMyExamLastAttemptInput(leanAttempt(), undefined).deadlineAt).toBeUndefined();
+  });
+
+  // `.lean()` не переприменяет схемный default(false): у попыток старше
+  // самого поля `expired` его в документе нет, а не false.
+  it('поля expired в документе нет — в ответе false, не undefined', () => {
+    const { expired, ...withoutExpired } = leanAttempt();
+    expect(expired).toBe(false);
+
+    expect(
+      toMyExamLastAttemptInput(withoutExpired as LeanExamAttempt, undefined).expired,
+    ).toBe(false);
   });
 });

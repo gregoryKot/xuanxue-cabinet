@@ -28,10 +28,10 @@ import { ExamAttemptRecord } from './exam-attempt.schema';
 import { decryptGrading, type RawLeanExamGrading } from './exam-grading.mapper';
 import { ExamGradingRecord } from './exam-grading.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord } from './exam.schema';
-import { toIsoUtc } from '../common/iso-date';
 import { decryptRecord } from '../utils/encryption';
 import {
   toMyExamDto,
+  toMyExamLastAttemptInput,
   type MyExamInput,
   type MyExamLastAttemptInput,
 } from './my-exam.mapper';
@@ -121,25 +121,7 @@ export class MyExamsService {
       const grading = gradingByAttemptId.get(closed._id.toString());
       result.set(key, {
         attemptsUsed: attemptsUsedByExamId.get(key) ?? 0,
-        lastAttempt: {
-          id: closed._id.toString(),
-          status: closed.status,
-          // Сравнение, не просто поле: `.lean()` не переприменяет схемный
-          // default(false) к документу без поля вовсе (та же оговорка, что
-          // у description/level в toMyExamDto) — у попыток старше этого
-          // поля expired отсутствует в самом документе, а не false.
-          expired: closed.expired === true,
-          outcome: grading?.outcome,
-          comment: grading?.comment,
-          // Только у идущей попытки: закрытую (submitted/graded) время уже
-          // не отсчитывает, а `deadlineAt` в записи остаётся старым значением
-          // и введёт в заблуждение (describeExamTime смотрит на то же
-          // условие статуса — exam-time.ts).
-          deadlineAt:
-            closed.status === 'in_progress' && closed.deadlineAt
-              ? toIsoUtc(closed.deadlineAt)
-              : undefined,
-        },
+        lastAttempt: toMyExamLastAttemptInput(closed, grading),
       });
     }
     return result;

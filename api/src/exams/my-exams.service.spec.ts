@@ -162,7 +162,7 @@ describe('MyExamsService', () => {
     });
   });
 
-  // Read-after-write слоя 4.7 (ADR-0120): форма с лимитом — timeLimitMin в
+  // Read-after-write слоя 4.7 (ADR-0122): форма с лимитом — timeLimitMin в
   // ответе, а у идущей попытки deadlineAt = startedAt + timeLimitMin, ISO UTC.
   it('форма с лимитом времени — timeLimitMin и deadlineAt идущей попытки в ответе', async () => {
     const itemId = await createPublishedItem();
