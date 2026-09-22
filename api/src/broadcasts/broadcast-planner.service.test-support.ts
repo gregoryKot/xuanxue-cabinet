@@ -123,8 +123,8 @@ type ChannelFixtureContext = Pick<PlannerTestContext, 'channelModel'>;
 type ClassFixtureContext = Pick<PlannerTestContext, 'classModel' | 'channelModel'>;
 type LessonFixtureContext = Pick<PlannerTestContext, 'lessonModel'>;
 
-/** Активный telegram-канал — по умолчанию у класса есть хотя бы один такой
- * (findActiveChannelIds иначе не находит ничего и рассылка не создаётся). */
+/** Активный telegram-канал без тегов (принимает любую дату, ADR-0106) — по
+ * умолчанию у класса есть хотя бы один такой, иначе рассылка не создаётся. */
 export async function createChannel(
   ctx: ChannelFixtureContext,
   overrides: Partial<ChannelRecord> = {},

@@ -19,6 +19,10 @@ import { CHANNEL_TYPE_LABELS_RU } from './channelTypeLabels';
 
 const OFF_LABEL = 'Выключен';
 const NO_TARGET = '—';
+// Голый список тегов после адреса читался бы продолжением адреса, не
+// фильтром (замечание координатора, ревью карточки) — подпись перед списком
+// сразу говорит: канал получает только занятия с этими тегами, не все свои.
+const TAGS_PREFIX = 'Только';
 
 // `<button>` приносит свою рамку и фон — без явного сброса строка выглядела
 // бы обведённой поверх общей карточки списка (тот же баг, что и до
@@ -52,7 +56,7 @@ export function ChannelCard({ channel, onSelect, isLast = false }: ChannelCardPr
       <div style={listCardMetaStyle}>
         {channel.target || NO_TARGET}
         {!channel.active && ` · ${OFF_LABEL}`}
-        {channel.tags.length > 0 && ` · ${channel.tags.join(', ')}`}
+        {channel.tags.length > 0 && ` · ${TAGS_PREFIX}: ${channel.tags.join(', ')}`}
       </div>
     </>
   );
