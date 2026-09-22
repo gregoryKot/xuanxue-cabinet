@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
 import { StudentExamCard } from './StudentExamCard';
 
+// Порядок строк на карточке — отзыв владельца 2026-09-22 (ADR-0120): сначала
+// то, что происходит сейчас, остаток попыток — только там, где попытку правда
+// можно начать. Оба правила проверяются ниже своими тестами.
+
 function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
   return {
     id: 'e1',
@@ -32,6 +36,31 @@ describe('StudentExamCard', () => {
     expect(screen.getByRole('button', { name: 'Начать' })).toBeInTheDocument();
   });
 
+  // Остаток попыток стоит у кнопки, а не первой строкой над состоянием:
+  // ровно та путаница, на которую пожаловался владелец («Осталось 6 попыток»
+  // над «Отправлено, ждём проверки»).
+  it('остаток попыток идёт после названия, прямо перед кнопкой', () => {
+    render(
+      <StudentExamCard
+        exam={makeExam({ attemptsAllowed: 3 })}
+        pending={false}
+        error={null}
+        onStart={vi.fn()}
+      />,
+    );
+
+    const card = screen.getByText('Форма первого уровня').parentElement;
+    const texts = Array.from(card?.querySelectorAll('span, p, button') ?? [])
+      .map((node) => node.textContent)
+      .filter((text): text is string => Boolean(text));
+    expect(texts).toEqual([
+      'Экзамен',
+      'Форма первого уровня',
+      'Осталось 3 попытки',
+      'Начать',
+    ]);
+  });
+
   it('попытка в работе — кнопка «Продолжить»', () => {
     const exam = makeExam({
       lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
@@ -41,6 +70,10 @@ describe('StudentExamCard', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
+    expect(screen.getByText('Попытка не закончена')).toBeInTheDocument();
+    // «Продолжить» открывает начатую попытку — новую оно не тратит, и
+    // остаток попыток рядом с ним не при чём.
+    expect(screen.queryByText(/Осталось/)).not.toBeInTheDocument();
   });
 
   it('последняя попытка отправлена — без кнопки, честная строка', () => {
@@ -55,12 +88,13 @@ describe('StudentExamCard', () => {
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.getByText('Отправлено, ждём проверки')).toBeInTheDocument();
+    expect(screen.queryByText(/Осталось/)).not.toBeInTheDocument();
   });
 
   // Решение владельца 2026-09-21 (ADR-0091): «Пройти ещё раз» появляется, раз
-  // попытку закрыло время, а не сам ученик, — рядом с кнопкой строка-
-  // объяснение тем же metaStyle, что «Осталось N попыток» (CLAUDE.md: «каждая
-  // фича объясняет, откуда это и зачем»).
+  // попытку закрыло время, а не сам ученик. Строка про время теперь стоит
+  // первой — это и есть «что происходит сейчас» (ADR-0120), — и говорит, куда
+  // ушла работа: иначе она читалась бы как потеря сделанного.
   it('попытку закрыло время, есть ещё попытки — кнопка и строка-объяснение рядом', () => {
     const exam = makeExam({
       attemptsAllowed: 2,
@@ -72,7 +106,8 @@ describe('StudentExamCard', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Пройти ещё раз' })).toBeInTheDocument();
-    expect(screen.getByText('Прошлую попытку закрыло время')).toBeInTheDocument();
+    expect(screen.getByText('Время вышло, попытка ушла на проверку')).toBeInTheDocument();
+    expect(screen.getByText('Осталось 1 попытка')).toBeInTheDocument();
   });
 
   // Пара к тесту выше: тот же остаток попыток, но сдал сам — ни кнопки, ни
@@ -89,7 +124,9 @@ describe('StudentExamCard', () => {
     );
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByText('Прошлую попытку закрыло время')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Время вышло, попытка ушла на проверку'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Отправлено, ждём проверки')).toBeInTheDocument();
   });
 
@@ -175,7 +212,9 @@ describe('StudentExamCard', () => {
     );
 
     expect(screen.getByText('Нужно доработать')).toBeInTheDocument();
-    expect(screen.queryByText('Прошлую попытку закрыло время')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Время вышло, попытка ушла на проверку'),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Пройти ещё раз' }));
 
     expect(onStart).toHaveBeenCalledTimes(1);
