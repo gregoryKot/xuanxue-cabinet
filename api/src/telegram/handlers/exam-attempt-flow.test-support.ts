@@ -28,7 +28,7 @@ import {
 
 export const CHAT_ID = 111;
 
-// Фото для sendPhoto/sendMediaGroup (ADR-0035) — два размера, самый большой
+// Фото для sendPhoto (ADR-0035, ADR-0118) — два размера, самый большой
 // последним: exam-question-album-send.ts берёт file_id именно так.
 const SENT_PHOTO_SIZES = [{ file_id: 'f-small' }, { file_id: 'f-big' }];
 
@@ -43,7 +43,6 @@ export interface FlowFakeCtx {
   buttonTexts: string[][];
   deletes: number[];
   sendPhotoCalls: unknown[][];
-  sendMediaGroupCalls: unknown[][];
 }
 
 export function fakeFlowCtx(
@@ -54,7 +53,6 @@ export function fakeFlowCtx(
   const buttonTexts: string[][] = [];
   const deletes: number[] = [];
   const sendPhotoCalls: unknown[][] = [];
-  const sendMediaGroupCalls: unknown[][] = [];
   const captureButtons = (extra?: {
     reply_markup?: { inline_keyboard?: { text: string }[][] };
   }) =>
@@ -87,12 +85,6 @@ export function fakeFlowCtx(
         sendPhotoCalls.push([chatId, media, extra]);
         return Promise.resolve({ message_id: 900, photo: SENT_PHOTO_SIZES });
       },
-      sendMediaGroup: (chatId: number, media: unknown[]) => {
-        sendMediaGroupCalls.push([chatId, media]);
-        return Promise.resolve(
-          media.map((_, i) => ({ message_id: 900 + i, photo: SENT_PHOTO_SIZES })),
-        );
-      },
     },
   } as unknown as Context;
   return {
@@ -102,7 +94,6 @@ export function fakeFlowCtx(
     buttonTexts,
     deletes,
     sendPhotoCalls,
-    sendMediaGroupCalls,
   };
 }
 

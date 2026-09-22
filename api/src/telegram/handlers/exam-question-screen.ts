@@ -1,9 +1,8 @@
-// Экран «Вопрос N из M» — один вопрос попытки на сообщение (ТЗ 4б.2,
-// ADR-0024, PLAN.md §12). Вопросы читаются из снимка попытки
-// (ExamAttemptDto.blocks) по сквозному порядку — блоки формы сами по себе
-// экрану не нужны, только порядок вопросов внутри них (тот же снимок, что
-// в кабинете, web/src/attempt/AttemptBlock.tsx, только по одному вопросу,
-// не всей формой сразу). Чистая логика без Mongo и без сети.
+// Экран «Вопрос N из M» — один вопрос попытки на сообщение (ТЗ 4б.2, ADR-0024, PLAN.md
+// §12). Вопросы читаются из снимка попытки (ExamAttemptDto.blocks) по сквозному порядку —
+// блоки формы сами по себе экрану не нужны, только порядок вопросов внутри них (тот же
+// снимок, что в кабинете, web/src/attempt/AttemptBlock.tsx, только по одному вопросу, не
+// всей формой сразу). Чистая логика без Mongo и без сети.
 import {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
@@ -17,13 +16,12 @@ import { inlineButton } from '../callback-data';
 import { backToMenuButton, type BotMenu } from './bot-menu';
 import { buildOptionId, buildQuestionId } from './exam-callback-ids';
 
-// Вопросы text/video отвечаются прямо здесь (ТЗ 4б.2 часть 2): подсказка на
-// экране — вся инструкция, кнопки не нужно, ждём просто следующее сообщение
-// в чат. Ожидание ответа ставит exam-question-render.ts при каждом показе
-// этого экрана (bot-session.service.ts, kind 'examText'/'examMedia' с
-// номером вопроса) — сам экран, как и раньше, чистая функция без Mongo.
-// Кабинет остаётся запасным путём (ADR-0024): у видео там же добавляется
-// ссылка или ручная отметка учителя (ADR-0023) — это не первое, что видит
+// Вопросы text/video отвечаются прямо здесь (ТЗ 4б.2 часть 2): подсказка на экране — вся
+// инструкция, кнопки не нужно, ждём просто следующее сообщение в чат. Ожидание ответа
+// ставит exam-question-render.ts при каждом показе этого экрана (bot-session.service.ts,
+// kind 'examText'/'examMedia' с номером вопроса) — сам экран, как и раньше, чистая
+// функция без Mongo. Кабинет остаётся запасным путём (ADR-0024): у видео там же
+// добавляется ссылка или ручная отметка учителя (ADR-0023) — это не первое, что видит
 // ученик, но никуда не делось.
 const TEXT_QUESTION_PROMPT = 'Напишите ответ сообщением — обычным текстом, прямо сюда.';
 const VIDEO_QUESTION_PROMPT =
@@ -53,6 +51,9 @@ function optionMark(kind: AttemptQuestionDto['kind'], selected: boolean): string
   return kind === 'multiple' ? '☑ ' : '✓ ';
 }
 
+// Подпись фото ученику видна в ленте, сетка альбома — нет (ADR-0118): номер
+// на кнопке — единственная связь фото с кнопкой, когда у варианта есть текст
+// (он в подписи фото ещё и обрезан до 100 знаков).
 function optionButtons(
   attemptId: string,
   index: number,
@@ -60,9 +61,10 @@ function optionButtons(
   answer: AttemptAnswerDto | undefined,
 ): InlineKeyboardButton[][] {
   const selectedIds = new Set(answer?.optionIds ?? []);
+  const numbered = question.options.some((option) => option.imageId);
   return question.options.map((option, optionIndex) => [
     inlineButton(
-      `${optionMark(question.kind, selectedIds.has(option.id))}${formatOptionLabel(option.text, optionIndex)}`,
+      `${optionMark(question.kind, selectedIds.has(option.id))}${numbered ? `${optionIndex + 1}. ` : ''}${formatOptionLabel(option.text, optionIndex)}`,
       'eo',
       buildOptionId(attemptId, index, optionIndex),
     ),
@@ -104,10 +106,9 @@ function questionNote(
   return null;
 }
 
-/** Экран вопроса попытки, ещё «в работе». Индекс вне снимка (защита в
- * глубину — устаревшая кнопка, попытка пересобрана) — честный откат к
- * «попытка не найдена» оставляем вызывающему коду, здесь просто пустой
- * экран без кнопок, ничего не рендерим как вопрос. */
+/** Экран вопроса попытки, ещё «в работе». Индекс вне снимка (защита в глубину — устаревшая
+ * кнопка, попытка пересобрана) — честный откат к «попытка не найдена» оставляем
+ * вызывающему коду, здесь просто пустой экран без кнопок, ничего не рендерим как вопрос. */
 export function buildQuestionScreen(attempt: ExamAttemptDto, index: number): BotMenu {
   const questions = flattenAttemptQuestions(attempt);
   const question = questions[index];
@@ -133,10 +134,9 @@ export function buildQuestionScreen(attempt: ExamAttemptDto, index: number): Bot
 }
 
 /** Экран попытки, которая больше не «в работе»: сдана вручную только что
- * (`justSubmitted`), сдана раньше или закрыта по дедлайну — тексты те же,
- * что уже показывает кабинет (ATTEMPT_EXPIRED_MESSAGE/
- * ATTEMPT_NOT_IN_PROGRESS_MESSAGE, shared/src/exams.ts), не второй текст той
- * же мысли. */
+ * (`justSubmitted`), сдана раньше или закрыта по дедлайну — тексты те же, что уже
+ * показывает кабинет (ATTEMPT_EXPIRED_MESSAGE/ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
+ * shared/src/exams.ts), не второй текст той же мысли. */
 export function buildFinishedScreen(
   attempt: ExamAttemptDto,
   justSubmitted: boolean,

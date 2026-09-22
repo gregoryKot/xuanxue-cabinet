@@ -174,7 +174,6 @@ function fakeCtx(): {
     },
     telegram: {
       sendPhoto: () => Promise.resolve({ message_id: 1, photo: [{ file_id: 'f' }] }),
-      sendMediaGroup: () => Promise.resolve([]),
     },
   } as unknown as Context;
   return { ctx, edits, replies, deletes };

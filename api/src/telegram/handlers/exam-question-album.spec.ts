@@ -1,7 +1,8 @@
 // Чистая сборка альбома (без Mongo/Telegram) + отправка с фейковыми ctx и
 // ExamBotPort (CLAUDE.md «Тесты») — сборка и порядок совпадают с тем, что
 // видно на экране вопроса (headerLine/formatOptionLabel, exam-question-screen.ts);
-// отправка — кэш file_id, деградация при сбое (ADR-0035, PLAN.md §12 слой 4б.2).
+// отправка — каждая картинка своим sendPhoto со своей подписью (ADR-0118),
+// кэш file_id, деградация при сбое (ADR-0035, PLAN.md §12 слой 4б.2).
 import { Logger } from '@nestjs/common';
 import type { Context } from 'telegraf';
 import type { AttemptQuestionDto } from '@xuanxue/shared';
@@ -35,23 +36,13 @@ function photoSize(fileId: string) {
   return { file_id: fileId, file_unique_id: `u-${fileId}`, width: 10, height: 10 };
 }
 
-function fakeCtx(): { ctx: Context; sendPhoto: jest.Mock; sendMediaGroup: jest.Mock } {
+function fakeCtx(): { ctx: Context; sendPhoto: jest.Mock } {
   const sendPhoto = jest.fn().mockResolvedValue({
     message_id: 1,
     photo: [photoSize('f-small'), photoSize('f-big')],
   });
-  const sendMediaGroup = jest
-    .fn()
-    .mockImplementation((_chatId: number, media: unknown[]) =>
-      Promise.resolve(
-        media.map((_, i) => ({
-          message_id: i + 1,
-          photo: [photoSize(`f-small-${i}`), photoSize(`f-big-${i}`)],
-        })),
-      ),
-    );
-  const ctx = { telegram: { sendPhoto, sendMediaGroup } } as unknown as Context;
-  return { ctx, sendPhoto, sendMediaGroup };
+  const ctx = { telegram: { sendPhoto } } as unknown as Context;
+  return { ctx, sendPhoto };
 }
 
 describe('buildOptionAlbum', () => {
@@ -100,25 +91,23 @@ describe('buildOptionAlbum', () => {
 
 describe('sendOptionAlbum', () => {
   it('пустой альбом — ничего не отправляет и не зовёт порт', async () => {
-    const { ctx, sendPhoto, sendMediaGroup } = fakeCtx();
+    const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort();
 
     await sendOptionAlbum(ctx, port, USER, CHAT_ID, [], ATTEMPT_ID);
 
     expect(sendPhoto).not.toHaveBeenCalled();
-    expect(sendMediaGroup).not.toHaveBeenCalled();
     expect(port.loadOptionImage).not.toHaveBeenCalled();
   });
 
   it('одна картинка — sendPhoto байтами, file_id (самого большого размера) сохраняется через порт', async () => {
-    const { ctx, sendPhoto, sendMediaGroup } = fakeCtx();
+    const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort({ loadOptionImage: jest.fn().mockResolvedValue(IMAGE) });
     const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }];
 
     await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
 
     expect(sendPhoto).toHaveBeenCalledTimes(1);
-    expect(sendMediaGroup).not.toHaveBeenCalled();
     const [, media, extra] = sendPhoto.mock.calls[0] as [
       number,
       { source: Buffer; filename: string },
@@ -130,8 +119,47 @@ describe('sendOptionAlbum', () => {
     expect(port.rememberTelegramFileId).toHaveBeenCalledWith('img-1', 'f-big');
   });
 
-  it('2–10 картинок — sendMediaGroup, а не sendPhoto; file_id каждой сохраняется', async () => {
-    const { ctx, sendPhoto, sendMediaGroup } = fakeCtx();
+  // Причина, ради которой затевался ADR-0118: sendMediaGroup прячет подписи
+  // отдельных плиток от ученика в ленте — теперь каждая картинка идёт своим
+  // сообщением со своей подписью, и подпись видна сразу под фото.
+  it('две картинки — два отдельных sendPhoto, у каждого своя подпись с номером своего варианта', async () => {
+    const { ctx, sendPhoto } = fakeCtx();
+    sendPhoto
+      .mockResolvedValueOnce({ message_id: 1, photo: [photoSize('f-1')] })
+      .mockResolvedValueOnce({ message_id: 2, photo: [photoSize('f-2')] });
+    const port = fakeExamBotPort({ loadOptionImage: jest.fn().mockResolvedValue(IMAGE) });
+    const album = [
+      { imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' },
+      { imageId: 'img-2', optionIndex: 2, caption: 'Вопрос 1 — вариант 3' },
+    ];
+
+    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
+
+    expect(sendPhoto).toHaveBeenCalledTimes(2);
+    const [, firstMedia, firstExtra] = sendPhoto.mock.calls[0] as [
+      number,
+      { filename: string },
+      { caption: string },
+    ];
+    const [, secondMedia, secondExtra] = sendPhoto.mock.calls[1] as [
+      number,
+      { filename: string },
+      { caption: string },
+    ];
+    expect(firstMedia.filename).toBe('variant-1.jpg');
+    expect(firstExtra.caption).toBe('Вопрос 1 — вариант 1');
+    expect(secondMedia.filename).toBe('variant-3.jpg');
+    expect(secondExtra.caption).toBe('Вопрос 1 — вариант 3');
+    expect(port.rememberTelegramFileId).toHaveBeenCalledWith('img-1', 'f-1');
+    expect(port.rememberTelegramFileId).toHaveBeenCalledWith('img-2', 'f-2');
+  });
+
+  it('первая картинка не ушла — вторая всё равно отправлена', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { ctx, sendPhoto } = fakeCtx();
+    sendPhoto
+      .mockRejectedValueOnce(new Error('сеть недоступна'))
+      .mockResolvedValueOnce({ message_id: 2, photo: [photoSize('f-2')] });
     const port = fakeExamBotPort({ loadOptionImage: jest.fn().mockResolvedValue(IMAGE) });
     const album = [
       { imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' },
@@ -140,16 +168,17 @@ describe('sendOptionAlbum', () => {
 
     await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
 
-    expect(sendMediaGroup).toHaveBeenCalledTimes(1);
-    expect(sendPhoto).not.toHaveBeenCalled();
-    const [, media] = sendMediaGroup.mock.calls[0] as [
+    expect(sendPhoto).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const [, , secondExtra] = sendPhoto.mock.calls[1] as [
       number,
-      { type: string; media: unknown }[],
+      unknown,
+      { caption: string },
     ];
-    expect(media).toHaveLength(2);
-    expect(media.every((m) => m.type === 'photo')).toBe(true);
-    expect(port.rememberTelegramFileId).toHaveBeenCalledWith('img-1', 'f-big-0');
-    expect(port.rememberTelegramFileId).toHaveBeenCalledWith('img-2', 'f-big-1');
+    expect(secondExtra.caption).toBe('Вопрос 1 — вариант 2');
+    expect(port.rememberTelegramFileId).toHaveBeenCalledTimes(1);
+    expect(port.rememberTelegramFileId).toHaveBeenCalledWith('img-2', 'f-2');
+    warn.mockRestore();
   });
 
   it('известный file_id — шлётся строкой, не байтами, повторно не запоминается', async () => {
@@ -211,7 +240,7 @@ describe('sendOptionAlbum', () => {
 
   it('сбой чтения байтов (порт бросил) — warn, без исключения и без отправки', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-    const { ctx, sendPhoto, sendMediaGroup } = fakeCtx();
+    const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort({
       loadOptionImage: jest.fn().mockRejectedValue(new Error('mongo упал')),
     });
@@ -222,13 +251,12 @@ describe('sendOptionAlbum', () => {
     ).resolves.toBeUndefined();
 
     expect(sendPhoto).not.toHaveBeenCalled();
-    expect(sendMediaGroup).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
 
   it('картинка недоступна (удалена/не своя) — то фото пропускается, остальные уходят', async () => {
-    const { ctx, sendPhoto, sendMediaGroup } = fakeCtx();
+    const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort({
       loadOptionImage: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(IMAGE),
     });
@@ -239,14 +267,13 @@ describe('sendOptionAlbum', () => {
 
     await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
 
-    expect(sendMediaGroup).not.toHaveBeenCalled();
     expect(sendPhoto).toHaveBeenCalledTimes(1); // осталась одна картинка из двух
     const [, , extra] = sendPhoto.mock.calls[0] as [number, unknown, { caption: string }];
     expect(extra.caption).toBe('C2');
   });
 
   it('ни одна картинка не нашлась — ничего не отправляет, без исключения', async () => {
-    const { ctx, sendPhoto, sendMediaGroup } = fakeCtx();
+    const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort();
     const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'C1' }];
 
@@ -254,6 +281,5 @@ describe('sendOptionAlbum', () => {
       sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID),
     ).resolves.toBeUndefined();
     expect(sendPhoto).not.toHaveBeenCalled();
-    expect(sendMediaGroup).not.toHaveBeenCalled();
   });
 });
