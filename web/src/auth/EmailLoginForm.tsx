@@ -23,11 +23,16 @@ import { useEmailLoginRequest } from './useEmailLoginRequest';
 const formStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 const sentTextStyle = { margin: 0 };
 
+// Кнопка называет оба ключа, которые везёт письмо (ADR-0104), а не одну
+// ссылку: на айфоне, ради которого код и заведён, ссылка как раз и не
+// работает — обещать её одну значит звать человека ровно туда, откуда он
+// пришёл жаловаться (отзыв владельца 2026-09-22 на первую версию экрана).
+
 /** Объяснение над полем кода — общее для обоих мест, где стоит
  * EmailCodeForm (CLAUDE.md «Без магических чисел и строк»): один текст
  * константой, а не две похожие строки в разных ветках файла. */
 const CODE_HINT_MESSAGE =
-  'Кабинет открыт с домашнего экрана телефона? Ссылка из письма войдёт в браузере, а не здесь — тогда введите код из письма.';
+  'Кабинет открыт с домашнего экрана телефона? Ссылка войдёт в браузере, а не здесь — тогда введите код.';
 
 interface EmailLoginFormProps {
   /** Код ссылки-приглашения школы (ADR-0030), когда форма открыта с
@@ -54,8 +59,8 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
     return (
       <div style={formStyle}>
         <p style={sentTextStyle}>
-          Письмо ушло на {email}. Откройте ссылку из него, она работает 15 минут. Не
-          пришло — проверьте «Спам».
+          Письмо ушло на {email}. В нём ссылка и код, оба работают 15 минут. Не пришло —
+          проверьте «Спам».
         </p>
         <FormServerError error={error ? { message: error } : null} />
         <p style={screenExplanationStyle}>{CODE_HINT_MESSAGE}</p>
@@ -98,7 +103,7 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
         disabled={!email.trim()}
         style={{ width: '100%' }}
       >
-        Прислать ссылку для входа
+        Прислать ссылку и код
       </Button>
       {/* Дверь в ввод кода без повторной отправки письма (ADR-0104, см.
           комментарий выше файла) — на случай, если «письмо ушло» в памяти

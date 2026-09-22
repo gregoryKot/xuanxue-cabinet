@@ -438,7 +438,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     renderScreen();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
 
     expect(await screen.findByText(/Письмо ушло на a@example\.com/)).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
@@ -460,7 +460,7 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     renderScreen();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку для входа' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
 
     expect(await screen.findByText(/Нет связи с сервером/)).toBeInTheDocument();
   });
