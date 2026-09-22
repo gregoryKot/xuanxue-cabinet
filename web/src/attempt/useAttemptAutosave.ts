@@ -5,9 +5,17 @@
 // не в состоянии: правка на каждый символ не должна пересобирать объект и
 // гонять сравнение всего списка — счётчик ниже только просит React
 // перерисовать поле, которое уже показывает актуальное значение из ref.
+// Каждая правка дублируется и в localStorage — attemptLocalDraft.ts (аудит
+// 2026-09-21, «потеря ответа ученика»): копия не должна жить только здесь.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ATTEMPT_EXPIRED_MESSAGE, type AttemptAnswerDto } from '@xuanxue/shared';
 import { apiFetch, ApiError } from '../api/http';
+import {
+  bootstrapAttemptAnswers,
+  clearAttemptDraft,
+  forgetSavedAnswers,
+  writeAttemptAnswerDraft,
+} from './attemptLocalDraft';
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -35,8 +43,10 @@ export function useAttemptAutosave(
   // ответы в пустоту» каждые 4 секунды.
   onExpired?: () => void,
 ): UseAttemptAutosaveResult {
-  const answers = useRef(new Map(initialAnswers.map((a) => [a.itemId, a])));
-  const dirty = useRef(new Set<string>());
+  // Серверный снимок — база, черновик localStorage — поверх (attemptLocalDraft.ts).
+  const [bootstrap] = useState(() => bootstrapAttemptAnswers(attemptId, initialAnswers));
+  const answers = useRef(bootstrap.answers);
+  const dirty = useRef(new Set<string>(bootstrap.recoveredIds));
   const debounceTimer = useRef<number | null>(null);
   const retryTimer = useRef<number | null>(null);
   const saving = useRef(false);
@@ -64,10 +74,14 @@ export function useAttemptAutosave(
     try {
       await apiFetch(`/attempts/${attemptId}/answers`, { method: 'PATCH', body });
       for (const id of ids) dirty.current.delete(id);
+      // Ушло на сервер — локальная копия этих ответов не нужна.
+      forgetSavedAnswers(attemptId, ids);
       setStatus('saved');
     } catch (err) {
       setStatus('error');
       if (err instanceof ApiError && err.message === ATTEMPT_EXPIRED_MESSAGE) {
+        // Попытка закрыта дедлайном — черновик убирается целиком.
+        clearAttemptDraft(attemptId);
         onExpired?.();
       } else {
         if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
@@ -97,12 +111,14 @@ export function useAttemptAutosave(
 
   const setAnswer = useCallback(
     (itemId: string, patch: Omit<AttemptAnswerDto, 'itemId'>) => {
-      answers.current.set(itemId, { itemId, ...patch });
+      const answer = { itemId, ...patch };
+      answers.current.set(itemId, answer);
       dirty.current.add(itemId);
+      writeAttemptAnswerDraft(attemptId, answer);
       bump((n) => n + 1);
       scheduleSave();
     },
-    [scheduleSave],
+    [attemptId, scheduleSave],
   );
 
   const setText = useCallback(
@@ -136,13 +152,15 @@ export function useAttemptAutosave(
     };
   }, [flush]);
 
-  useEffect(
-    () => () => {
+  // Монтирование — досылаем уцелевший черновик; размонтирование — снимаем таймеры.
+  useEffect(() => {
+    if (dirty.current.size > 0) void runSave();
+    return () => {
       if (debounceTimer.current !== null) window.clearTimeout(debounceTimer.current);
       if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
-    },
-    [],
-  );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- один раз при монтировании
+  }, []);
 
   const getAnswer = useCallback((itemId: string) => answers.current.get(itemId), []);
 

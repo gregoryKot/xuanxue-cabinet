@@ -378,6 +378,71 @@ describe('useAttemptAutosave — закрытие вкладки', () => {
   });
 });
 
+describe('useAttemptAutosave — локальный черновик (аудит 2026-09-21, MED «потеря ответа ученика»)', () => {
+  const DRAFT_STORAGE_KEY = 'xuanxue.draft.attempt:attempt-1';
+
+  it('несохранённый ответ переживает выгрузку вкладки — новый хук отправляет его сам', async () => {
+    // Правка ушла в PATCH, сеть пропала раньше ответа (метро, форс-килл PWA):
+    // повтор через 4 с уже не сработает — вкладку убила ОС.
+    mockedApiFetch.mockRejectedValueOnce(new Error('сеть недоступна'));
+    const { result, unmount } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+
+    // Вкладку выгрузили до повтора — таймеры сняты размонтированием, а
+    // единственная копия ответа осталась в localStorage, не в памяти вкладки.
+    unmount();
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).not.toBeNull();
+
+    // Новое открытие того же экрана — свежий хук того же attemptId; сервер
+    // ответ ещё не видел (initialAnswers пуст), черновик его восстанавливает
+    // и сразу отправляет, не дожидаясь новой правки от ученика.
+    mockedApiFetch.mockResolvedValueOnce(undefined);
+    await act(async () => {
+      renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(mockedApiFetch).toHaveBeenLastCalledWith('/attempts/attempt-1/answers', {
+      method: 'PATCH',
+      body: { answers: [{ itemId: 'item-1', text: 'ответ' }] },
+    });
+  });
+
+  it('успешное сохранение снимает локальную копию из localStorage', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).not.toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).toBeNull();
+  });
+
+  it('дедлайн закрыл попытку — локальный черновик убирается целиком', async () => {
+    mockedApiFetch.mockRejectedValue(
+      new ApiError(ATTEMPT_EXPIRED_MESSAGE, 400, 'invalid_input'),
+    );
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'поздно'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).toBeNull();
+  });
+});
+
 describe('useAttemptAutosave — брошенная попытка', () => {
   it('открывается с уже сохранёнными ответами, и дозапись шлёт только изменённый', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
