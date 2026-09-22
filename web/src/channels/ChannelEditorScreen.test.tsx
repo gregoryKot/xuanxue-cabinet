@@ -98,7 +98,11 @@ describe('ChannelEditorScreen — загрузка', () => {
     expect(
       await screen.findByRole('heading', { name: 'Новый канал' }),
     ).toBeInTheDocument();
-    expect(mockedApiFetch).not.toHaveBeenCalled();
+    // Подсказка тегов (useTagOptions.ts) всё равно уходит в сеть — не должно
+    // быть только запроса за конкретным (несуществующим) каналом.
+    expect(
+      mockedApiFetch.mock.calls.some(([path]) => /^\/channels\/[^?]/.test(String(path))),
+    ).toBe(false);
   });
 
   it('«К списку каналов» — ссылка наверху страницы', async () => {

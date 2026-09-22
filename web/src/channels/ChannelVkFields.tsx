@@ -3,7 +3,7 @@
 // храповика, дробим при первом же росте, а не растим дальше.
 import { CHANNEL_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
-import { errorFor, type ChannelFormError, type ChannelFormState } from './channelFormInput';
+import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 
 interface ChannelVkFieldsProps {
   state: ChannelFormState;
@@ -15,7 +15,21 @@ interface ChannelVkFieldsProps {
   error: ChannelFormError | null;
 }
 
-export function ChannelVkFields({ state, setField, isCreate, error }: ChannelVkFieldsProps) {
+// Своя копия — см. ChannelFormFields.tsx: делить её через модуль дороже, чем
+// повторить четыре строки короче jscpd-порога.
+function errorFor(
+  error: ChannelFormError | null,
+  field: keyof ChannelFormState,
+): string | undefined {
+  return error?.field === field ? error.message : undefined;
+}
+
+export function ChannelVkFields({
+  state,
+  setField,
+  isCreate,
+  error,
+}: ChannelVkFieldsProps) {
   return (
     <>
       <Field

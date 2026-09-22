@@ -8,7 +8,7 @@ import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
 import { useTagOptions } from '../hooks/useTagOptions';
-import { errorFor, type ChannelFormError, type ChannelFormState } from './channelFormInput';
+import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
 import { ChannelVkFields } from './ChannelVkFields';
 
@@ -28,6 +28,17 @@ interface ChannelFormFieldsProps {
   ) => void;
   error: ChannelFormError | null;
   isCreate: boolean;
+}
+
+// Своя копия и здесь, и в ChannelVkFields.tsx: общий модуль между двумя
+// компонентами формы завёл бы либо цикл импорта, либо третий файл ради
+// одной строки — функция короче jscpd-порога (70 токенов), дублировать
+// дешевле.
+function errorFor(
+  error: ChannelFormError | null,
+  field: keyof ChannelFormState,
+): string | undefined {
+  return error?.field === field ? error.message : undefined;
 }
 
 export function ChannelFormFields({
@@ -105,7 +116,12 @@ export function ChannelFormFields({
       )}
 
       {state.type === 'vk' && (
-        <ChannelVkFields state={state} setField={setField} isCreate={isCreate} error={error} />
+        <ChannelVkFields
+          state={state}
+          setField={setField}
+          isCreate={isCreate}
+          error={error}
+        />
       )}
     </>
   );

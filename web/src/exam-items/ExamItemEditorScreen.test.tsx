@@ -130,7 +130,13 @@ describe('ExamItemEditorScreen — загрузка', () => {
     expect(
       await screen.findByRole('heading', { name: 'Новый вопрос' }),
     ).toBeInTheDocument();
-    expect(mockedApiFetch).not.toHaveBeenCalled();
+    // Подсказка тегов (useTagOptions.ts) всё равно уходит в сеть — не должно
+    // быть только запроса за конкретным (несуществующим) вопросом.
+    expect(
+      mockedApiFetch.mock.calls.some(([path]) =>
+        /^\/exam-items\/[^?]/.test(String(path)),
+      ),
+    ).toBe(false);
   });
 
   it('длинная формулировка — в заголовке первые слова', async () => {

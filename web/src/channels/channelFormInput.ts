@@ -45,14 +45,6 @@ export interface ChannelFormError {
   message: string;
 }
 
-/** Общая для ChannelFormFields.tsx и ChannelVkFields.tsx — их взаимный импорт друг у друга завёл бы цикл. */
-export function errorFor(
-  error: ChannelFormError | null,
-  field: keyof ChannelFormState,
-): string | undefined {
-  return error?.field === field ? error.message : undefined;
-}
-
 export function initialChannelFormState(channelDto: ChannelDto | null): ChannelFormState {
   return {
     type: channelDto ? channelDto.type : 'vk',
