@@ -76,7 +76,17 @@ export function NotificationPrefsSection() {
         {HEADING}
       </h2>
       <p style={screenExplanationStyle}>{EXPLANATION}</p>
-      <p style={screenHintStyle}>{BOT_HINT}</p>
+      {/* Строка про команду бота — только когда боту есть куда писать
+          (отзыв владельца 2026-09-22): без личного чата с ботом команда
+          /notifications недоступна и спорит с блоком «Второй способ входа»
+          на этом же экране («Telegram у вас нет» / связан без чата с ботом).
+          Признак — `botChatActive`, не `telegramLinked`: у вошедшего через
+          виджет Telegram `telegramLinked` истинен сразу, а личного чата с
+          ботом нет (ADR-0042, то же в telegram/showsTelegramOffer.ts). Читаем
+          поле прямо тут, как AttemptReviewScreen.tsx — вопрос «работает ли
+          команда бота» не тот же, что у showsTelegramOffer/showsTelegramHint
+          («предлагать ли связать»), отдельного предиката под него не заводим. */}
+      {(me?.botChatActive ?? false) && <p style={screenHintStyle}>{BOT_HINT}</p>}
 
       {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
 
