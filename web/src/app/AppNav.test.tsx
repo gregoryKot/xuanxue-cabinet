@@ -356,6 +356,29 @@ describe('AppNav — гейт ширины нижней панели (ADR-0055)'
   });
 });
 
+// Отзыв владельца 2026-09-22 (снимок «Заданий» с телефона): «белый низ с
+// коричневатыми кнопками вижу багом». Панель стояла на белой --card, а плашка
+// активного пункта — на тёплой константе; на остальной странице белых
+// поверхностей нет, и плашка читалась коричневым пятном. Регрессия —
+// ADR-0110: панель стоит на той же бумаге, что страница, плашка активного
+// пункта — на тихой подложке `--panel`, у неактивного пункта заливки нет.
+describe('AppNav — нижняя панель на бумаге страницы, не на белой карточке (ADR-0110)', () => {
+  it('фон панели — бумага, плашка активного пункта — тихая подложка, у неактивного — прозрачная', () => {
+    renderNav(true, TEACHER, '/planning');
+
+    const nav = screen.getByRole('navigation', { name: 'Разделы кабинета' });
+    expect(nav.style.background).toBe('var(--paper)');
+
+    const active = screen.getByRole('link', { name: 'Занятия' });
+    const activePill = active.querySelector('span') as HTMLElement;
+    expect(activePill.style.background).toBe('var(--panel)');
+
+    const inactive = screen.getByRole('link', { name: 'Рассылки' });
+    const inactivePill = inactive.querySelector('span') as HTMLElement;
+    expect(inactivePill.style.background).toBe('transparent');
+  });
+});
+
 // ADR-0103, «Последствия»: «AppNav.test.tsx — у каждой вкладки телефона
 // подпись словом под значком, цель нажатия 44 px, столбец значка с подписью не
 // выше этой цели, подпись подрезается многоточием».
