@@ -6,13 +6,26 @@
 // «Включить уведомления» (отдельный PR) — регистрация и разрешение
 // нарочно разведены, тихая регистрация ничего не спрашивает у ученика и не
 // нарушает «ноль нагрузки на ученика» (CLAUDE.md).
-export async function registerServiceWorker(): Promise<void> {
-  if (!('serviceWorker' in navigator)) return;
+//
+// Отказ register() (сеть моргнула на /sw.js, приватный режим, блокировка
+// расширением) раньше тонул в пустом catch — «приёмник не встал» было
+// неотличимо от «всё хорошо» и для кода, и для человека с открытыми
+// devtools (баг с прода 2026-09-22: бесконечный кружок на «Включить
+// уведомления», CLAUDE.md «тихий отказ — самая дорогая ошибка»). Кабинет
+// по-прежнему не падает без worker'а — push просто недоступен, — но теперь
+// честно возвращает исход вызывающему коду (main.tsx), а не молчит в void.
+// Хранить этот исход где-то ради экрана push не нужно: тот при нажатии
+// кнопки проверяет живую регистрацию заново (waitServiceWorkerReady в
+// pushSectionState.ts), а не полагается на память этого вызова при старте.
+export async function registerServiceWorker(): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) return false;
 
   try {
     await navigator.serviceWorker.register('/sw.js');
+    return true;
   } catch {
     // Кабинет работает и без worker'а — тогда просто недоступен push, тот
     // же довод, что был у снятия регистрации в удалённом unregisterServiceWorker.ts.
+    return false;
   }
 }

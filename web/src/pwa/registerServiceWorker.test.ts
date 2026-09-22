@@ -9,25 +9,25 @@ afterEach(() => {
 });
 
 describe('registerServiceWorker', () => {
-  it('регистрирует /sw.js, когда serviceWorker доступен', async () => {
+  it('регистрирует /sw.js, когда serviceWorker доступен, — отдаёт true', async () => {
     const register = vi.fn(() => Promise.resolve({}));
     vi.stubGlobal('navigator', { serviceWorker: { register } });
 
-    await registerServiceWorker();
+    await expect(registerServiceWorker()).resolves.toBe(true);
 
     expect(register).toHaveBeenCalledWith('/sw.js');
   });
 
-  it('не падает, если в браузере нет serviceWorker', async () => {
+  it('не падает, если в браузере нет serviceWorker, — отдаёт false', async () => {
     vi.stubGlobal('navigator', {});
 
-    await expect(registerServiceWorker()).resolves.toBeUndefined();
+    await expect(registerServiceWorker()).resolves.toBe(false);
   });
 
-  it('не падает при отказе register()', async () => {
+  it('не падает при отказе register() — отдаёт false, а не тишину (баг с прода 2026-09-22)', async () => {
     const register = vi.fn(() => Promise.reject(new Error('регистрация недоступна')));
     vi.stubGlobal('navigator', { serviceWorker: { register } });
 
-    await expect(registerServiceWorker()).resolves.toBeUndefined();
+    await expect(registerServiceWorker()).resolves.toBe(false);
   });
 });

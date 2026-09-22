@@ -24,9 +24,18 @@ void matchRoute(window.location.pathname)?.load();
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('Не найден #root');
 
-// Push-worker web/public/sw.js (ADR-0092) — регистрируем молча, без запроса
-// разрешения на уведомления (оно просится по кнопке, отдельный PR).
-void registerServiceWorker();
+// Push-worker web/public/sw.js (ADR-0092) — регистрируем без запроса
+// разрешения на уведомления (оно просится по кнопке, отдельный PR), но не
+// молча в смысле «неважно, получилось ли»: отказ виден в консоли сразу же,
+// а не только пять секунд спустя таймаутом на «Профиле» (баг с прода
+// 2026-09-22, CLAUDE.md «тихий отказ — самая дорогая ошибка»).
+void registerServiceWorker().then((registered) => {
+  if (!registered) {
+    console.warn(
+      'Push-worker /sw.js не зарегистрировался — push-уведомления недоступны в этой вкладке.',
+    );
+  }
+});
 
 createRoot(rootEl).render(
   <StrictMode>
