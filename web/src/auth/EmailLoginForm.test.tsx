@@ -50,24 +50,22 @@ describe('EmailLoginForm', () => {
   it('пустое поле — кнопка недоступна', async () => {
     mockRoutes(() => undefined);
     renderForm();
-    expect(
-      await screen.findByRole('button', { name: 'Прислать ссылку и код' }),
-    ).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Прислать код' })).toBeDisabled();
   });
 
   // Отзыв владельца 2026-09-22 на первую версию экрана: кнопка и абзац
   // «письмо ушло» обещали одну ссылку, а на айфоне работает как раз код.
   // Регресс вернулся бы молча — про тексты входа больше не догадываются.
-  it('до отправки кнопка называет код, а не одну ссылку', async () => {
+  it('до отправки кнопка называет код', async () => {
     mockRoutes(() => undefined);
     renderForm();
 
     expect(
-      await screen.findByRole('button', { name: 'Прислать ссылку и код' }),
+      await screen.findByRole('button', { name: 'Прислать код' }),
     ).toBeInTheDocument();
   });
 
-  it('после отправки абзац называет оба ключа из письма', async () => {
+  it('после отправки абзац ведёт к коду, а не к ссылке', async () => {
     const user = userEvent.setup();
     mockRoutes((path) =>
       path === '/auth/email/request' ? Promise.resolve(undefined) : undefined,
@@ -75,9 +73,9 @@ describe('EmailLoginForm', () => {
     renderForm();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
 
-    expect(await screen.findByText(/В нём ссылка и код/)).toBeInTheDocument();
+    expect(await screen.findByText(/Введите код из него/)).toBeInTheDocument();
   });
 
   it('inviteCode (ADR-0030) — уходит в теле запроса вместе с email', async () => {
@@ -88,7 +86,7 @@ describe('EmailLoginForm', () => {
     renderForm({ inviteCode: 'a'.repeat(32) });
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
 
     await screen.findByText(/Письмо ушло/);
     expect(mockedApiFetch).toHaveBeenCalledWith('/auth/email/request', {
@@ -105,7 +103,7 @@ describe('EmailLoginForm', () => {
     renderForm();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
 
     expect(await screen.findByText(/Письмо ушло на a@example\.com/)).toBeInTheDocument();
     expect(screen.getByLabelText('Код из письма')).toBeInTheDocument();
@@ -121,7 +119,7 @@ describe('EmailLoginForm', () => {
     renderForm();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
     await screen.findByText(/Письмо ушло/);
 
     await user.click(screen.getByRole('button', { name: 'Отправить ещё раз' }));
@@ -151,7 +149,7 @@ describe('EmailLoginForm', () => {
     renderForm();
 
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
 
     expect(await screen.findByText('Email-вход пока не подключён.')).toBeInTheDocument();
     expect(screen.getByLabelText('Почта')).toBeInTheDocument();
@@ -169,7 +167,7 @@ describe('EmailLoginForm', () => {
     });
     renderForm();
     await user.type(await screen.findByLabelText('Почта'), 'a@example.com');
-    await user.click(screen.getByRole('button', { name: 'Прислать ссылку и код' }));
+    await user.click(screen.getByRole('button', { name: 'Прислать код' }));
     await screen.findByText(/Письмо ушло/);
 
     await user.click(screen.getByRole('button', { name: 'Отправить ещё раз' }));
@@ -181,18 +179,18 @@ describe('EmailLoginForm', () => {
 });
 
 describe('EmailLoginForm — дверь в код из состояния покоя (ADR-0104)', () => {
-  it('в покое есть «Ввести код из письма», она открывает форму с полем адреса', async () => {
+  it('в покое есть «У меня уже есть код», она открывает форму с полем адреса', async () => {
     const user = userEvent.setup();
     mockRoutes(() => undefined);
     renderForm();
 
-    await user.click(await screen.findByRole('button', { name: 'Ввести код из письма' }));
+    await user.click(await screen.findByRole('button', { name: 'У меня уже есть код' }));
 
     expect(screen.getByLabelText('Почта')).toBeInTheDocument();
     expect(screen.getByLabelText('Код из письма')).toBeInTheDocument();
     // Форма отправки ссылки спрятана — сейчас на экране только код.
     expect(
-      screen.queryByRole('button', { name: 'Прислать ссылку и код' }),
+      screen.queryByRole('button', { name: 'Прислать код' }),
     ).not.toBeInTheDocument();
   });
 
@@ -201,12 +199,10 @@ describe('EmailLoginForm — дверь в код из состояния пок
     mockRoutes(() => undefined);
     renderForm();
 
-    await user.click(await screen.findByRole('button', { name: 'Ввести код из письма' }));
+    await user.click(await screen.findByRole('button', { name: 'У меня уже есть код' }));
     await user.click(screen.getByRole('button', { name: 'Назад' }));
 
-    expect(
-      screen.getByRole('button', { name: 'Прислать ссылку и код' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Прислать код' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Код из письма')).not.toBeInTheDocument();
   });
 });
