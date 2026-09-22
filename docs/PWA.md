@@ -31,7 +31,18 @@ worker умеет показать push, сервер умеет принять 
   для iOS, 64 для знака в кабинете (`web/src/components/SchoolMark.tsx`) и
   32/16 для вкладки браузера. Результат лежит в гите. Сменился знак — замени
   источник, выполни скрипт, закоммить картинки
-  ([ADR-0085](adr/0085-school-mark-is-a-raster-seal.md)).
+  ([ADR-0085](adr/0085-school-mark-is-a-raster-seal.md)). Иконка iOS —
+  квадратный кроп самой печати во всю плитку (картинка увеличена до √2 и
+  обрезана по вписанному квадрату), а не круг на бумаге: иначе в квадратной
+  плитке домашнего экрана углы остаются цветом бумаги
+  ([ADR-0117](adr/0117-link-preview-and-full-bleed-ios-icon.md)).
+- **Превью ссылки в мессенджере живёт в `web/index.html`.** Приглашение на
+  `/join`, адрес занятия, напоминание об оплате — ссылку на кабинет человек
+  почти всегда получает в переписке, и превью собирает статические теги
+  Open Graph и `twitter:card`, одни на все маршруты. Картинку
+  `web/public/og-cover.png` рисует тот же `scripts/generate-pwa-icons.mjs`
+  из того же знака `web/brand/school-mark.webp`. Гейт: `scripts/check-pwa.mjs`
+  ([ADR-0117](adr/0117-link-preview-and-full-bleed-ios-icon.md)).
 - **Цвет оболочки — из палитры кабинета.** `theme_color` и
   `background_color` манифеста, `<meta name="theme-color">` в
   `web/index.html` и сплошной фон под знаком на иконках iOS и Android равны

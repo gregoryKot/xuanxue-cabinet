@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { findShellColorProblems } from './pwa-shell-colors.mjs';
 import { collectIconSourceProblems, REGENERATE_HINT } from './pwa-icon-sources.mjs';
+import { collectPreviewMetaProblems, PREVIEW_HINT } from './pwa-preview-meta.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const DIST = join(ROOT, 'web', 'dist');
@@ -95,9 +96,10 @@ if (!existsSync(INDEX_PATH)) {
 }
 
 const cssText = readFileSync(CSS_PATH, 'utf8');
+const indexHtmlSrc = readFileSync(HTML_SRC_PATH, 'utf8');
 const shellProblems = findShellColorProblems({
   css: cssText,
-  indexHtml: readFileSync(HTML_SRC_PATH, 'utf8'),
+  indexHtml: indexHtmlSrc,
   manifest: JSON.parse(readFileSync(MANIFEST_SRC_PATH, 'utf8')),
 });
 errors.push(...shellProblems);
@@ -108,6 +110,13 @@ const iconSourceProblems = collectIconSourceProblems({
   css: cssText,
 });
 errors.push(...iconSourceProblems);
+
+const previewMetaProblems = collectPreviewMetaProblems({
+  root: ROOT,
+  dist: DIST,
+  html: indexHtmlSrc,
+});
+errors.push(...previewMetaProblems);
 
 if (errors.length) {
   console.error('❌ check-pwa: найдены проблемы PWA-сборки:');
@@ -121,6 +130,11 @@ if (errors.length) {
     console.error(
       'Знак школы на входе, в кабинете и на иконках — один файл (docs/adr/0085): ' +
         `смени его или палитру и собери заново — ${REGENERATE_HINT}`,
+    );
+  if (previewMetaProblems.length)
+    console.error(
+      'Превью ссылки в мессенджере читает web/index.html (og:*, twitter:card): ' +
+        `поправь теги или картинку и собери заново — ${PREVIEW_HINT}`,
     );
   process.exit(1);
 }

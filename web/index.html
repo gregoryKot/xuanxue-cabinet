@@ -24,6 +24,38 @@
          нужен для установки ярлыка на телефон; push-worker registerServiceWorker.ts
          регистрируется отдельно, к манифесту не привязан (ADR-0092). -->
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Превью ссылки в мессенджере. Ссылку на кабинет человек получает в
+         переписке — приглашение на /join, адрес занятия, напоминание, — и
+         без этих тегов превью выглядит серой плашкой с одним словом
+         «xuanxue.su» (снимок владельца из iMessage, 2026-09-22): непонятно,
+         куда зовут. Теги статические и одни на все маршруты: index.html
+         отдаётся SPA-фолбэком по любому адресу (api/src/static/), поэтому код
+         приглашения в превью не попадает — краулер мессенджера видит ровно то
+         же, что посторонний. Адреса абсолютные: относительный og:image часть
+         краулеров (Facebook, VK) не разворачивает. Домен — ADR-0009, картинку
+         рисует scripts/generate-pwa-icons.mjs из того же знака, что и иконки
+         (ADR-0085). Сверяет scripts/check-pwa.mjs. -->
+    <meta
+      name="description"
+      content="Расписание занятий, ссылки на встречи и записи тренировок школы тайцзицюань «Сюань-Сюэ»."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Школа Сюань-Сюэ" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:title" content="Школа Сюань-Сюэ" />
+    <meta
+      property="og:description"
+      content="Расписание занятий, ссылки на встречи и записи тренировок школы тайцзицюань «Сюань-Сюэ»."
+    />
+    <meta property="og:url" content="https://xuanxue.su/" />
+    <meta property="og:image" content="https://xuanxue.su/og-cover.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Печать школы: черепаха, надпись XUANXUE и иероглифы 玄学"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <!-- Сессию браузер начинает спрашивать ещё при разборе HTML, параллельно
          со скачиванием главного JS. Измерено на проде 2026-09-15: TTFB
          0.5–1.1 с, а GET /api/auth/me уходил только после того, как
