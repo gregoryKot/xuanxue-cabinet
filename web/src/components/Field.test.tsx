@@ -50,4 +50,20 @@ describe('Field', () => {
     expect(large.border).toBe(inputStyle.border);
     expect(large.borderRadius).toBe(inputStyle.borderRadius);
   });
+
+  // Регрессия на отзыв владельца 2026-09-22 («при нажатии на поле почты всё
+  // приложение зумится ближе», docs/adr/0109): кегль контрола обязан жить в
+  // index.css, а не в инлайн-объекте стиля — инлайн-стиль в каскаде сильнее
+  // правила таблицы стилей и вернул бы зум на iPhone, даже если правило
+  // index.css останется на месте.
+  it('getInputStyle() не задаёт шрифт инлайном — размер живёт в index.css', () => {
+    expect(inputStyle.font).toBeUndefined();
+    expect(inputStyle.fontSize).toBeUndefined();
+  });
+
+  it('getInputStyle("large") тоже не задаёт шрифт инлайном', () => {
+    const large = getInputStyle('large');
+    expect(large.font).toBeUndefined();
+    expect(large.fontSize).toBeUndefined();
+  });
 });

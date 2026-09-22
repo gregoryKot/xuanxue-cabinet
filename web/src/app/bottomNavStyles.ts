@@ -43,7 +43,16 @@ export function bottomStyle(itemCount: number): CSSProperties {
     gridTemplateColumns: `repeat(${itemCount}, 1fr)`,
     gap: 4,
     padding: `${BOTTOM_NAV_PADDING_PX}px 12px`,
-    background: 'var(--card)',
+    // Та же бумага, что у всей страницы (фон body — index.css, верхняя
+    // строка — AppShellBrandRow.tsx, цвет строки состояния — theme-color в
+    // index.html), не --card: отзыв владельца 2026-09-22 на снимке «Заданий»
+    // с телефона — «белый низ с коричневатыми кнопками вижу багом». Белой
+    // панель и была единственной белой поверхностью экрана, и тёплая плашка
+    // активного пункта на ней читалась коричневым пятном (ADR-0110). Своей
+    // непрозрачной поверхности панели не нужно: она ничего не маскирует —
+    // содержимое лежит в отдельном скроллере (contentColumnStyle,
+    // appShellStyles.ts) и под панель не заезжает, хватает волоска сверху.
+    background: 'var(--paper)',
     borderTop: '1px solid var(--line)',
     // Колонка оболочки отдаёт остаток высоты области содержимого — панель не
     // должна сжиматься ни при каком объёме списка.
@@ -56,12 +65,6 @@ export function bottomStyle(itemCount: number): CSSProperties {
     paddingBottom: `calc(${BOTTOM_NAV_PADDING_PX}px + env(safe-area-inset-bottom))`,
   };
 }
-
-// Тон подложки активного пункта нижней панели — из макета (screens/
-// 1c-planning.html, ADR-0043): светлее --panel (#f0ece3). Отдельного токена
-// под один частный случай не заводим — достаточно именованной константы
-// рядом с использованием (CLAUDE.md «Без магических чисел»).
-const MOBILE_ACTIVE_BACKGROUND = '#f4efe6';
 
 // Цель нажатия 44px и видимая плашка макета — разные числа, и раньше
 // `minHeight: 44` стояла прямо на плашке: она распухла и стала заметно
@@ -117,10 +120,14 @@ export const bottomPillStyle = (isActive: boolean): CSSProperties => ({
   minWidth: 0,
   padding: `${PILL_PADDING_PX}px 0`,
   borderRadius: 'var(--radius-control)',
-  // Красит и штрих значка через `currentColor` (NavIcon.tsx), и подпись —
-  // цвет у пары один, второй константы не нужно.
+  // Активный пункт держится прежде всего тушью, не заливкой: `--ink` против
+  // приглушённого `--ink-soft` красит через `currentColor` и штрих значка
+  // (NavIcon.tsx), и подпись — одной парой, второй константы не нужно.
+  // `--panel` — тихая подложка (ADR-0110), только поддерживает форму плашки
+  // поверх бумаги `--paper` панели (bottomStyle выше), сама по себе разницу
+  // не несёт.
   color: isActive ? 'var(--ink)' : 'var(--ink-soft)',
-  background: isActive ? MOBILE_ACTIVE_BACKGROUND : 'transparent',
+  background: isActive ? 'var(--panel)' : 'transparent',
 });
 
 /** Подпись под значком. Подрезка многоточием — не украшение, а страховка от

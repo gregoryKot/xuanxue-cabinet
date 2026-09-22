@@ -176,6 +176,10 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-shared-exports.mjs` — в барабане `shared/src/index.ts` только `export … from`,
   и его размер храповик не считает (ADR-0081); имя из барабана, которое никто не
   импортирует, роняет CI (`knip` этого не видит: `api` и `web` тянут `dist`, не исходники).
+- `check-control-font-size.mjs` — кегль input/textarea/select держит одно
+  правило в index.css (≥16px), инлайн `font`/`fontSize` на контроле запрещён:
+  иначе Safari на iPhone зумит страницу при фокусе и не отзумливает обратно
+  (ADR-0109).
 - `knip` — неиспользуемые файлы, экспорты и зависимости роняют CI.
 
 ### 6. Дубли и мёртвый код

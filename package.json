@@ -20,7 +20,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
-    "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-card-list-gap.mjs && node scripts/check-write-then-reload.mjs && node scripts/check-name-collisions.mjs && node scripts/check-ownership-e2e.mjs && node scripts/check-test-assertions.mjs && node scripts/check-outbound-timeout.mjs && node scripts/check-adr-numbers.mjs && node scripts/check-shared-exports.mjs && node --test scripts/*.test.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
+    "gates": "node scripts/check-coverage-ratchet.mjs && node scripts/check-eslint-ratchet.mjs && node scripts/check-jscpd-ratchet.mjs && node scripts/check-file-size-ratchet.mjs && node scripts/check-robot-phrases.mjs && node scripts/check-route-collisions.mjs && node scripts/check-card-list-gap.mjs && node scripts/check-write-then-reload.mjs && node scripts/check-name-collisions.mjs && node scripts/check-ownership-e2e.mjs && node scripts/check-test-assertions.mjs && node scripts/check-outbound-timeout.mjs && node scripts/check-adr-numbers.mjs && node scripts/check-shared-exports.mjs && node scripts/check-control-font-size.mjs && node --test scripts/*.test.mjs && node scripts/check-env-example.mjs && node scripts/check-pwa.mjs && node scripts/check-bundle-size.mjs",
     "check": "node scripts/check.mjs"
   },
   "devDependencies": {
