@@ -162,6 +162,39 @@ describe('MyExamsService', () => {
     });
   });
 
+  // Read-after-write слоя 4.7 (ADR-0122): форма с лимитом — timeLimitMin в
+  // ответе, а у идущей попытки deadlineAt = startedAt + timeLimitMin, ISO UTC.
+  it('форма с лимитом времени — timeLimitMin и deadlineAt идущей попытки в ответе', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createExam({ itemId, timeLimitMin: 40 });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list[0]?.timeLimitMin).toBe(40);
+    expect(list[0]?.lastAttempt).toEqual({
+      id: started.id,
+      status: 'in_progress',
+      expired: false,
+      deadlineAt: NOW.plus({ minutes: 40 }).toUTC().toISO(),
+    });
+  });
+
+  it('форма без лимита времени — ни timeLimitMin, ни deadlineAt в ответе нет', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createExam({ itemId });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list[0]?.timeLimitMin).toBeUndefined();
+    expect(list[0]?.lastAttempt).toEqual({
+      id: started.id,
+      status: 'in_progress',
+      expired: false,
+    });
+  });
+
   it('limit ограничивает список опубликованных форм', async () => {
     const itemId = await createPublishedItem();
     await createExam({ itemId });
