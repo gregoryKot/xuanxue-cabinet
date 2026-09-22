@@ -7,8 +7,10 @@ import { Field, inputStyle } from '../components/Field';
 import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
+import { useTagOptions } from '../hooks/useTagOptions';
 import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
+import { ChannelVkFields } from './ChannelVkFields';
 
 // Механика тегов объясняется до первого действия (CLAUDE.md «Каждая фича
 // объясняет откуда и зачем») — без этой строки учитель узнал бы про фильтр
@@ -28,6 +30,10 @@ interface ChannelFormFieldsProps {
   isCreate: boolean;
 }
 
+// Своя копия и здесь, и в ChannelVkFields.tsx: общий модуль между двумя
+// компонентами формы завёл бы либо цикл импорта, либо третий файл ради
+// одной строки — функция короче jscpd-порога (70 токенов), дублировать
+// дешевле.
 function errorFor(
   error: ChannelFormError | null,
   field: keyof ChannelFormState,
@@ -41,6 +47,10 @@ export function ChannelFormFields({
   error,
   isCreate,
 }: ChannelFormFieldsProps) {
+  // Сбой useTagOptions.ts просто оставляет список пустым — без подсказок,
+  // но поле работает как обычный текстовый ввод.
+  const tagOptions = useTagOptions();
+
   return (
     <>
       {isCreate ? (
@@ -86,6 +96,7 @@ export function ChannelFormFields({
         value={state.tagsText}
         onChange={(value) => setField('tagsText', value)}
         hint={TAGS_HINT}
+        options={tagOptions}
         error={errorFor(error, 'tagsText')}
       />
 
@@ -105,40 +116,12 @@ export function ChannelFormFields({
       )}
 
       {state.type === 'vk' && (
-        <>
-          <Field
-            label="Токен сообщества"
-            hint={
-              isCreate
-                ? 'Настройки сообщества → Работа с API → Ключи доступа → создать ключ с правом «Сообщения сообщества»'
-                : 'Оставьте пустым, чтобы не менять'
-            }
-            error={errorFor(error, 'token')}
-          >
-            <input
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              style={inputStyle}
-              maxLength={CHANNEL_LIMITS.token}
-              value={state.token}
-              onChange={(e) => setField('token', e.target.value)}
-            />
-          </Field>
-          <Field
-            label="ID беседы"
-            hint="Обычно 2000000000 + номер беседы, куда добавлен бот сообщества"
-            error={errorFor(error, 'peerIdText')}
-          >
-            <input
-              type="text"
-              inputMode="numeric"
-              style={inputStyle}
-              value={state.peerIdText}
-              onChange={(e) => setField('peerIdText', e.target.value)}
-            />
-          </Field>
-        </>
+        <ChannelVkFields
+          state={state}
+          setField={setField}
+          isCreate={isCreate}
+          error={error}
+        />
       )}
     </>
   );
