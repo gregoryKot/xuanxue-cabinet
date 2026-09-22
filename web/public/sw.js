@@ -34,6 +34,12 @@ const NOTIFICATION_ICON = '/icons/school-mark-192.png';
 // уведомления здесь быть не должно (CLAUDE.md «Логи и наблюдаемость»).
 const FALLBACK_NOTIFICATION_BODY = 'Есть новое уведомление';
 const INBOX_URL = '/api/me/inbox?limit=20';
+// Таймаут чтения ленты. Сеть, которая не рвётся, а молчит (обычное дело на
+// телефоне в метро), держала бы fetch до таймаута платформы — а push ждёт
+// showNotification внутри event.waitUntil, и браузер, не дождавшийся его,
+// рисует своё «сайт обновился в фоне» вместо нашего текста. Лучше запасная
+// строка через три секунды, чем чужая заглушка через минуту.
+const INBOX_TIMEOUT_MS = 3000;
 const NOTIFICATIONS_PATH = '/notifications';
 
 self.addEventListener('install', () => {
@@ -69,7 +75,10 @@ self.addEventListener('activate', (event) => {
  */
 async function loadNotificationBody() {
   try {
-    const response = await fetch(INBOX_URL, { credentials: 'include' });
+    const response = await fetch(INBOX_URL, {
+      credentials: 'include',
+      signal: AbortSignal.timeout(INBOX_TIMEOUT_MS),
+    });
     if (!response.ok) return FALLBACK_NOTIFICATION_BODY;
     const page = await response.json();
     const unread = (page.items ?? []).find((item) => !item.readAt);

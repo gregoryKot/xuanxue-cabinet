@@ -158,6 +158,33 @@ describe('push', () => {
     );
   });
 
+  // Регрессия аудита 2026-09-22: чтение ленты уходило без таймаута. Молчащая
+  // сеть (не разрыв, а тишина — обычное дело на телефоне) держала бы
+  // event.waitUntil до таймаута платформы, и браузер рисовал бы своё «сайт
+  // обновился в фоне» вместо нашего текста. Гейт scripts/check-outbound-timeout.mjs
+  // держит это правилом, тест — поведением.
+  it('чтение ленты уходит с таймаутом, обрыв по нему — запасная строка', async () => {
+    const abort = Object.assign(new Error('The operation was aborted'), {
+      name: 'TimeoutError',
+    });
+    const fetchMock = vi.fn((_url: string, _init?: RequestInit) => Promise.reject(abort));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { event, settle } = withWaitUntil();
+    getListener('push')(event);
+    await settle();
+
+    // Разбор вызова, а не expect.any(AbortSignal): матчер отдаёт `any`, и
+    // типизированный eslint его не пропускает (no-unsafe-assignment).
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('/api/me/inbox?limit=20');
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    expect(fakeSelf.registration.showNotification).toHaveBeenCalledWith(
+      'Школа Сюань-Сюэ',
+      expect.objectContaining({ body: 'Есть новое уведомление' }),
+    );
+  });
+
   it('непрочитанных нет — запасная строка', async () => {
     stubInboxResponse([
       { text: 'старое, уже прочитано', readAt: '2026-09-20T10:00:00Z' },
