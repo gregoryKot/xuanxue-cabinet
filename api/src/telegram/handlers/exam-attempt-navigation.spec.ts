@@ -61,7 +61,6 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
   replies: string[];
   deletes: number[];
   sendPhoto: jest.Mock;
-  sendMediaGroup: jest.Mock;
 } {
   const edits: string[] = [];
   const replies: string[] = [];
@@ -72,7 +71,6 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
     message_id: 1,
     photo: [{ file_id: 'f-small' }, { file_id: 'f-big' }],
   });
-  const sendMediaGroup = jest.fn().mockResolvedValue([]);
   const ctx = {
     editMessageText: (text: string) =>
       options.failEdit
@@ -86,9 +84,9 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
       deletes.push(1);
       return Promise.resolve(true);
     },
-    telegram: { sendPhoto, sendMediaGroup },
+    telegram: { sendPhoto },
   } as unknown as Context;
-  return { ctx, edits, replies, deletes, sendPhoto, sendMediaGroup };
+  return { ctx, edits, replies, deletes, sendPhoto };
 }
 
 describe('handleExamStart', () => {

@@ -315,9 +315,8 @@ describe('бот — второй клиент ExamAttemptsService (интегр
       // Старый экран (список экзаменов, показанный кнопкой) убран, чтобы
       // его кнопки не повисли выше альбома.
       expect(start.deletes).toHaveLength(1);
-      // Одна картинка — sendPhoto, не sendMediaGroup.
+      // Одна картинка — одно sendPhoto со своей подписью (ADR-0118).
       expect(start.sendPhotoCalls).toHaveLength(1);
-      expect(start.sendMediaGroupCalls).toHaveLength(0);
       // Экран пришёл НОВЫМ сообщением, не правкой старого.
       expect(start.edits).toHaveLength(0);
       expect(start.replies).toHaveLength(1);
@@ -354,11 +353,69 @@ describe('бот — второй клиент ExamAttemptsService (интегр
       );
 
       expect(toggle.sendPhotoCalls).toHaveLength(0);
-      expect(toggle.sendMediaGroupCalls).toHaveLength(0);
       expect(toggle.deletes).toHaveLength(0);
       // Тот же вопрос — просто editMessageText, как раньше.
       expect(toggle.edits).toHaveLength(1);
       expect(toggle.replies).toHaveLength(0);
+    });
+
+    // ADR-0118: картинка есть только у вариантов 1 и 3 — вариант 2 без
+    // картинки не должен сдвигать нумерацию соседей, а подпись фото должна
+    // совпадать с номером на кнопке того же варианта.
+    it('картинка у вариантов 1 и 3 (у второго нет) — подпись фото и номер на кнопке совпадают со своим вариантом', async () => {
+      const image1 = await ctx.examImagesService.upload(JPEG_BYTES, AUTHOR_ID);
+      const image3 = await ctx.examImagesService.upload(JPEG_BYTES, AUTHOR_ID);
+      const item = await ctx.examItemsService.create(
+        {
+          kind: 'single',
+          prompt: 'Какая стойка на фото?',
+          options: [
+            { text: 'Стойка А', imageId: image1.id, correct: true },
+            { text: 'Стойка Б' },
+            { text: 'Стойка В', imageId: image3.id },
+          ],
+        },
+        AUTHOR_ID,
+      );
+      await ctx.examItemsService.update(item.id, { status: 'published' }, NOW);
+      const exam = await ctx.examsService.create(
+        { title: 'Стойки', blocks: [{ title: '', itemIds: [item.id] }] },
+        AUTHOR_ID,
+      );
+      await ctx.examsService.update(exam.id, { status: 'published' });
+
+      const start = fakeCtx();
+      await handleExamStart(
+        start.ctx,
+        examBot,
+        botSessions,
+        user(USER_A),
+        CHAT_ID,
+        exam.id,
+        NOW,
+      );
+
+      expect(start.sendPhotoCalls).toHaveLength(2);
+      const [, , firstExtra] = start.sendPhotoCalls[0] as [
+        number,
+        unknown,
+        { caption: string },
+      ];
+      const [, , secondExtra] = start.sendPhotoCalls[1] as [
+        number,
+        unknown,
+        { caption: string },
+      ];
+      expect(firstExtra.caption).toBe('Вопрос 1 — вариант 1: Стойка А');
+      expect(secondExtra.caption).toBe('Вопрос 1 — вариант 3: Стойка В');
+
+      // Кнопки вопроса — те же номера, что подписи фото; вариант без картинки
+      // (2) идёт по счёту между ними, не выпадает из нумерации.
+      expect(start.buttonTexts[0]?.slice(0, 3)).toEqual([
+        '1. Стойка А',
+        '2. Стойка Б',
+        '3. Стойка В',
+      ]);
     });
   });
 });
