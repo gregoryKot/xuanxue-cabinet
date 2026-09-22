@@ -93,4 +93,50 @@ describe('splitTasksToDo', () => {
       done: [middle],
     });
   });
+
+  // ADR-0121 (отзыв владельца 2026-09-22): идущая попытка — первой в
+  // «Сдавать сейчас», у неё одной тикают часы.
+  it('идущая попытка — первой в «Сдавать сейчас», даже если стоит последней в ответе', () => {
+    const notStarted = makeExam({ id: 'e1' });
+    const running = makeExam({
+      id: 'e2',
+      lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+    });
+
+    expect(splitTasksToDo([notStarted, running])).toEqual({
+      toDo: [running, notStarted],
+      done: [],
+    });
+  });
+
+  it('сортировка стабильна: порядок карточек без идущей попытки не меняется', () => {
+    const running = makeExam({
+      id: 'e1',
+      lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+    });
+    const second = makeExam({ id: 'e2' });
+    const third = makeExam({ id: 'e3' });
+
+    expect(splitTasksToDo([second, running, third])).toEqual({
+      toDo: [running, second, third],
+      done: [],
+    });
+  });
+
+  it('несколько идущих попыток сразу — обе впереди, остальные не трогает', () => {
+    const notStarted = makeExam({ id: 'e1' });
+    const running1 = makeExam({
+      id: 'e2',
+      lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+    });
+    const running2 = makeExam({
+      id: 'e3',
+      lastAttempt: { id: 'a2', status: 'in_progress', expired: false },
+    });
+
+    expect(splitTasksToDo([notStarted, running1, running2])).toEqual({
+      toDo: [running1, running2, notStarted],
+      done: [],
+    });
+  });
 });

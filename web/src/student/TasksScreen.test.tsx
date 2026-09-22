@@ -425,3 +425,81 @@ describe('TasksScreen — штат школы на «/tasks»: список ви
     expect(screen.getByRole('link', { name: 'Уведомления' })).toBeInTheDocument();
   });
 });
+
+// Отзыв владельца 2026-09-22 (ADR-0121): «попытка с лимитом стартует
+// молча». Форма с лимитом времени сперва спрашивает, реальный POST уходит
+// только из подтверждения (useTaskStart.ts, examStartConfirm.ts).
+describe('TasksScreen — подтверждение перед стартом с лимитом времени (ADR-0121)', () => {
+  it('форма с лимитом — «Начать» открывает вопрос, POST ещё не уходит', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })] });
+    renderScreen();
+
+    const button = await screen.findByRole('button', { name: 'Начать' });
+    button.click();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Вы начинаете экзамен' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/На экзамен — 40 минут/)).toBeInTheDocument();
+    // Ровно один вызов апи за весь тест — сам список; POST старта не ушёл.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  // Регрессия, пойманная на прошлой реализации: ConfirmDialog сам закрывает
+  // себя через history.back() сразу после того, как onConfirm разрезолвится
+  // — переход на /attempts/:id прямо внутри onConfirm этим же back()
+  // откатывался бы. useTaskStart.ts откладывает navigate() до того, как
+  // confirmExam вернулся в null, то есть диалог действительно закрылся.
+  it('подтверждение — стартует попытку, диалог закрывается и виден экран сдачи', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })],
+      '/exams/e1/attempts': { id: 'attempt-1', examId: 'e1' },
+    });
+    renderScreen();
+
+    (await screen.findByRole('button', { name: 'Начать' })).click();
+    (await screen.findByRole('button', { name: 'Начать экзамен' })).click();
+
+    expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith('/exams/e1/attempts', { method: 'POST' });
+    expect(
+      screen.queryByRole('heading', { name: 'Вы начинаете экзамен' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('«Не сейчас» — POST не уходит, список экрана остаётся на месте', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })] });
+    renderScreen();
+
+    (await screen.findByRole('button', { name: 'Начать' })).click();
+    (await screen.findByRole('button', { name: 'Не сейчас' })).click();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Вы начинаете экзамен' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('button', { name: 'Начать' })).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  // «Продолжить» — часы уже тикают, вопрос запоздал бы (examStartConfirm.ts).
+  it('лимит есть, но попытка уже идёт — «Продолжить» без вопроса', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [
+        makeExam({
+          timeLimitMin: 40,
+          lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+        }),
+      ],
+    });
+    renderScreen();
+
+    (await screen.findByRole('button', { name: 'Продолжить' })).click();
+
+    expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Вы начинаете экзамен' }),
+    ).not.toBeInTheDocument();
+  });
+});

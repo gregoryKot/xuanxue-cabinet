@@ -12,10 +12,14 @@ import type { BotSessionService } from '../bot-session.service';
 import type { BotUserAccessService } from '../bot-user-access.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import { handleExamOption, handleExamSubmit } from './exam-attempt-answer';
-import { handleExamQuestion, handleExamStart } from './exam-attempt-navigation';
+import {
+  handleExamQuestion,
+  handleExamStart,
+  handleExamStartConfirm,
+} from './exam-attempt-navigation';
 import { parseOptionId, parseQuestionId } from './exam-callback-ids';
 
-const EXAM_CALLBACK_ACTIONS = ['exam', 'eq', 'eo', 'es'] as const;
+const EXAM_CALLBACK_ACTIONS = ['exam', 'exc', 'eq', 'eo', 'es'] as const;
 
 export function isExamCallbackAction(
   action: CallbackAction,
@@ -43,6 +47,10 @@ export async function routeExamCallback(
 
   if (action === 'exam') {
     await handleExamStart(ctx, examBot, botSessions, user, chatId, id, now);
+    return;
+  }
+  if (action === 'exc') {
+    await handleExamStartConfirm(ctx, examBot, botSessions, user, chatId, id, now);
     return;
   }
   if (action === 'es') {

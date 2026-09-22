@@ -5,7 +5,7 @@
 // единого слова — теперь у формы с лимитом между списком и стартом встаёт
 // этот вопрос, и только его кнопка «Начать экзамен» заводит попытку
 // (exam-attempt-navigation.ts, handleExamStartConfirm). Текст — общий с
-// кабинетом (shared/src/exam-time-notice.ts, ADR-0091): та же мысль одними
+// кабинетом (shared/src/exam-time-notice.ts, ADR-0121): та же мысль одними
 // словами в обоих местах. Чистая логика без Mongo и без Telegram.
 import {
   EXAM_START_CONFIRM_TITLE,

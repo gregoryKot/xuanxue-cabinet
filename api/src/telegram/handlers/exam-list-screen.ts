@@ -10,6 +10,11 @@
 // кнопки и текст причины, когда кнопки нет. До этого решения бот считал
 // правило сам и пускал на «Начать ещё раз» любую сданную работу, даже ещё не
 // проверенную, — сюда это больше не возвращается.
+//
+// Кнопка формы с лимитом времени у «Начать»/«Начать ещё раз» ведёт на `exc`
+// — вопрос «Вы начинаете экзамен» перед стартом (ADR-0121, отзыв владельца
+// 2026-09-22), а не сразу на `exam`. «Продолжить» — часы уже тикают, вопрос
+// запоздал бы; форма без лимита — тоже сразу на `exam`, спрашивать нечего.
 import {
   describeExamTime,
   getMyExamAction,
@@ -41,13 +46,18 @@ interface ExamRowStatus {
  * вместо новой и сам отказывает, когда попыток больше не осталось — здесь
  * только то, что можно сказать заранее по данным списка, не второе решение
  * того же правила. */
-function examRowStatus(exam: MyExamDto): ExamRowStatus {
-  const action = getMyExamAction(exam);
+function examRowStatus(exam: MyExamDto, action: MyExamAction): ExamRowStatus {
   if (action) return { actionLabel: ACTION_LABELS[action] };
   if (exam.lastAttempt?.status === 'submitted') return { reason: SUBMITTED_TEXT };
   return {
     reason: `Использованы все попытки — ${exam.attemptsUsed} из ${exam.attemptsAllowed}.`,
   };
+}
+
+/** Форма с лимитом времени и реальным стартом («start»/«retry») — сперва
+ * вопрос, не старт сразу; см. комментарий вверху файла. */
+function needsStartConfirm(exam: MyExamDto, action: MyExamAction): boolean {
+  return Boolean(exam.timeLimitMin) && (action === 'start' || action === 'retry');
 }
 
 function truncateForButton(title: string): string {
@@ -63,7 +73,8 @@ interface ExamRow {
 
 function buildExamRow(exam: MyExamDto, nowMs: number): ExamRow {
   const header = exam.level ? `${exam.title} (${exam.level})` : exam.title;
-  const status = examRowStatus(exam);
+  const action = getMyExamAction(exam);
+  const status = examRowStatus(exam, action);
   // Бот не знает часов зрителя (в отличие от кабинета, ADR-0060) — время
   // экзамена показывает по часам школы и всегда подписывает пояс, иначе
   // ученик прочтёт час закрытия как свой собственный.
@@ -80,7 +91,7 @@ function buildExamRow(exam: MyExamDto, nowMs: number): ExamRow {
     ? [
         inlineButton(
           `${status.actionLabel}: ${truncateForButton(exam.title)}`,
-          'exam',
+          needsStartConfirm(exam, action) ? 'exc' : 'exam',
           exam.id,
         ),
       ]

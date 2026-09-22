@@ -6,15 +6,21 @@ import type { Context } from 'telegraf';
 import {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_FOUND_MESSAGE,
+  EXAM_NOT_FOUND_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
   type ExamAttemptDto,
+  type MyExamDto,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../../common/errors';
 import type { UserLean } from '../../users/users.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { GENERIC_ERROR } from './callback-actions';
-import { handleExamQuestion, handleExamStart } from './exam-attempt-navigation';
+import {
+  handleExamQuestion,
+  handleExamStart,
+  handleExamStartConfirm,
+} from './exam-attempt-navigation';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const ATTEMPT_ID = '507f1f77bcf86cd799439011';
@@ -51,6 +57,18 @@ function attempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
     answers: [],
     startedAt: NOW.toISO() ?? '',
     expired: false,
+    ...overrides,
+  };
+}
+
+function exam(overrides: Partial<MyExamDto> = {}): MyExamDto {
+  return {
+    id: 'e1',
+    title: 'Форма третьего уровня',
+    description: '',
+    level: '',
+    attemptsAllowed: 1,
+    attemptsUsed: 0,
     ...overrides,
   };
 }
@@ -183,6 +201,116 @@ describe('handleExamStart', () => {
     expect(sendPhoto).toHaveBeenCalledTimes(1);
     expect(edits).toHaveLength(0); // экран НЕ редактирует старое сообщение
     expect(replies).toEqual([expect.stringContaining('Какая стойка на фото?')]);
+  });
+});
+
+// ADR-0121, отзыв владельца 2026-09-22: вопрос «Вы начинаете экзамен» перед
+// стартом попытки с лимитом времени.
+describe('handleExamStartConfirm', () => {
+  it('лимит есть, попытки не было — экран подтверждения, старт ещё не зовётся', async () => {
+    const port = fakeExamBotPort({
+      listMyExams: jest.fn().mockResolvedValue([exam({ timeLimitMin: 45 })]),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamStartConfirm(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      'e1',
+      NOW,
+    );
+
+    expect(port.startAttempt).not.toHaveBeenCalled();
+    expect(edits[0]).toContain('Вы начинаете экзамен');
+    expect(edits[0]).toContain('45 минут');
+  });
+
+  it('лимита нет — защита в глубину, сразу старт, без вопроса', async () => {
+    const port = fakeExamBotPort({
+      listMyExams: jest.fn().mockResolvedValue([exam()]),
+      startAttempt: jest.fn().mockResolvedValue(attempt()),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamStartConfirm(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      'e1',
+      NOW,
+    );
+
+    expect(port.startAttempt).toHaveBeenCalledWith('e1', USER, NOW);
+    expect(edits[0]).toContain('Вопрос 1 из 1');
+  });
+
+  it('действие «continue» (попытка уже идёт) — защита в глубину, сразу старт', async () => {
+    const port = fakeExamBotPort({
+      listMyExams: jest.fn().mockResolvedValue([
+        exam({
+          timeLimitMin: 45,
+          lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+        }),
+      ]),
+      startAttempt: jest.fn().mockResolvedValue(attempt()),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamStartConfirm(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      'e1',
+      NOW,
+    );
+
+    expect(port.startAttempt).toHaveBeenCalledWith('e1', USER, NOW);
+    expect(edits[0]).toContain('Вопрос 1 из 1');
+  });
+
+  it('форма не найдена в свежем списке — EXAM_NOT_FOUND_MESSAGE, callback data не пробрасывается на веру', async () => {
+    const port = fakeExamBotPort({ listMyExams: jest.fn().mockResolvedValue([]) });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamStartConfirm(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      'e1',
+      NOW,
+    );
+
+    expect(edits).toEqual([EXAM_NOT_FOUND_MESSAGE]);
+    expect(port.startAttempt).not.toHaveBeenCalled();
+  });
+
+  it('сервис отказал — общий текст, не исключение наружу', async () => {
+    const port = fakeExamBotPort({
+      listMyExams: jest.fn().mockRejectedValue(new Error('boom')),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await expect(
+      handleExamStartConfirm(
+        ctx,
+        port,
+        fakeBotSessionService(),
+        USER,
+        CHAT_ID,
+        'e1',
+        NOW,
+      ),
+    ).resolves.toBeUndefined();
+    expect(edits).toEqual([GENERIC_ERROR]);
   });
 });
 

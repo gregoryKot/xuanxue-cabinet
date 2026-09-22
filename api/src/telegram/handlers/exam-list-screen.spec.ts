@@ -183,3 +183,58 @@ describe('buildExamListScreen', () => {
     expect(menu.text).toBe('Экзамены:\n\nФорма третьего уровня');
   });
 });
+
+// Отзыв владельца 2026-09-22 (ADR-0121): кнопка формы с лимитом времени
+// сперва задаёт вопрос, не стартует попытку сразу.
+describe('buildExamListScreen — кнопка «exc» перед стартом с лимитом (ADR-0121)', () => {
+  it('лимит есть, попытки не было («Начать») — кнопка ведёт на exc, не exam', () => {
+    const menu = buildExamListScreen([exam({ timeLimitMin: 40 })], NOW_MS);
+    expect(menu.buttons[0]?.[0]).toEqual({
+      text: 'Начать: Форма третьего уровня',
+      callback_data: 'exc:507f1f77bcf86cd799439011',
+    });
+  });
+
+  it('лимит есть, время закрыло попытку («Начать ещё раз») — тоже exc', () => {
+    const menu = buildExamListScreen(
+      [
+        exam({
+          timeLimitMin: 40,
+          attemptsAllowed: 2,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+        }),
+      ],
+      NOW_MS,
+    );
+    expect(menu.buttons[0]?.[0]).toEqual({
+      text: 'Начать ещё раз: Форма третьего уровня',
+      callback_data: 'exc:507f1f77bcf86cd799439011',
+    });
+  });
+
+  it('лимит есть, попытка уже идёт («Продолжить») — часы тикают, кнопка на exam', () => {
+    const menu = buildExamListScreen(
+      [
+        exam({
+          timeLimitMin: 40,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+        }),
+      ],
+      NOW_MS,
+    );
+    expect(menu.buttons[0]?.[0]).toEqual({
+      text: 'Продолжить: Форма третьего уровня',
+      callback_data: 'exam:507f1f77bcf86cd799439011',
+    });
+  });
+
+  it('лимита нет — кнопка сразу на exam, спрашивать нечего', () => {
+    const menu = buildExamListScreen([exam()], NOW_MS);
+    expect(menu.buttons[0]?.[0]).toEqual({
+      text: 'Начать: Форма третьего уровня',
+      callback_data: 'exam:507f1f77bcf86cd799439011',
+    });
+  });
+});
