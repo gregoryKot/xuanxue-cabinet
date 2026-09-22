@@ -246,6 +246,38 @@ describe('validateEnv', () => {
     });
     expect(env.RAILWAY_GIT_COMMIT_SHA).toBeUndefined();
   });
+
+  it('HEARTBEAT_PING_URL: валидный http(s) URL проходит, отсутствующий — тоже', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      HEARTBEAT_PING_URL: 'https://hc-ping.com/11111111-2222-3333-4444-555555555555',
+    });
+    expect(env.HEARTBEAT_PING_URL).toBe(
+      'https://hc-ping.com/11111111-2222-3333-4444-555555555555',
+    );
+    expect(
+      validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' }).HEARTBEAT_PING_URL,
+    ).toBeUndefined();
+  });
+
+  it('HEARTBEAT_PING_URL: не URL — падает; пустая строка — отсутствует', () => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        HEARTBEAT_PING_URL: 'не-урл',
+      }),
+    ).toThrow(/HEARTBEAT_PING_URL/);
+
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      HEARTBEAT_PING_URL: '',
+    });
+    expect(env.HEARTBEAT_PING_URL).toBeUndefined();
+  });
+
+  it('production без HEARTBEAT_PING_URL тоже поднимается — не обязателен нигде', () => {
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
 });
 
 // Файлы материалов в R2 (ADR-0057). Главное здесь — первый тест: без ключей

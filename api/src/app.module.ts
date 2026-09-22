@@ -30,7 +30,7 @@ import { PushModule } from './push/push.module';
 import { SettingsModule } from './settings/settings.module';
 import { SummaryModule } from './summary/summary.module';
 import { TagsModule } from './tags/tags.module';
-import { HealthController } from './health/health.controller';
+import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { SeedModule } from './seed/seed.module';
@@ -91,6 +91,10 @@ import { staticAssetsOptions } from './static/static-cache-control';
     SummaryModule,
     TagsModule,
     UsersModule,
+    // GET /api/health и HealthPingService (ADR-0112) — контроллер раньше жил
+    // прямо здесь (controllers), свой модуль появился вместе с первым
+    // провайдером области.
+    HealthModule,
     // Без контроллера и планировщика — сервис для одноразового CLI-импорта
     // (seed-classes.ts, PLAN.md §9), в HTTP-приложении бездействует.
     SeedModule,
@@ -106,7 +110,6 @@ import { staticAssetsOptions } from './static/static-cache-control';
       staticAssetsOptions(join(__dirname, '..', '..', 'web', 'dist')),
     ),
   ],
-  controllers: [HealthController],
   providers: [DomainExceptionFilter, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

@@ -137,7 +137,7 @@
   "api/src/config/env.r2-group.ts": 37,
   "api/src/config/env.rules.ts": 98,
   "api/src/config/env.validate.ts": 45,
-  "api/src/config/env.validation.ts": 164,
+  "api/src/config/env.validation.ts": 166,
   "api/src/config/env.vapid-group.ts": 30,
   "api/src/database/database.module.ts": 12,
   "api/src/database/index-sync.service.ts": 42,

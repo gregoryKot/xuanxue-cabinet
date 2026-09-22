@@ -20,6 +20,7 @@ export const EMPTY_AS_ABSENT_KEYS = [
   'MONGODB_URI',
   'SCHEDULER_ENABLED',
   'RAILWAY_GIT_COMMIT_SHA',
+  'HEARTBEAT_PING_URL',
   'RESEND_API_KEY',
   'MAIL_FROM',
   // Незаполненные R2_* в .env — «хранилище не подключено», а не «задано

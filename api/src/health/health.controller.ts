@@ -2,7 +2,6 @@ import { Controller, Get, Inject, Optional, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { SkipThrottle } from '@nestjs/throttler';
-import { DateTime } from 'luxon';
 import type { Connection } from 'mongoose';
 import pkg from '../../package.json';
 import { Public } from '../auth/auth.decorators';
@@ -10,7 +9,7 @@ import {
   SCHEDULER_HEARTBEAT,
   type SchedulerHeartbeatReader,
 } from '../common/scheduler-heartbeat';
-import { healthOutcome } from './health-outcome';
+import { buildHealthOutcome } from './health-outcome';
 import { shortCommitSha } from './health-commit';
 
 export interface HealthStatus {
@@ -66,10 +65,9 @@ export class HealthController {
   @Get()
   check(@Res({ passthrough: true }) res: HealthResponseLike): HealthStatus {
     const uptimeSec = Math.floor(process.uptime());
-    const outcome = healthOutcome(this.connection.readyState, {
-      enabled: this.config.get<string>('SCHEDULER_ENABLED') !== 'false',
-      heartbeat: this.heartbeat ?? null,
-      now: DateTime.utc(),
+    const outcome = buildHealthOutcome(this.connection.readyState, {
+      schedulerEnabledSetting: this.config.get<string>('SCHEDULER_ENABLED'),
+      heartbeat: this.heartbeat,
       uptimeSec,
     });
     res.status(outcome.httpStatus);
