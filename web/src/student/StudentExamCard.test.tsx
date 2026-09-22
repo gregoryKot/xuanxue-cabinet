@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { StudentExamCard } from './StudentExamCard';
 
 // Порядок строк на карточке — отзыв владельца 2026-09-22 (ADR-0120): сначала
@@ -57,14 +58,7 @@ describe('StudentExamCard', () => {
   // ровно та путаница, на которую пожаловался владелец («Осталось 6 попыток»
   // над «Отправлено, ждём проверки»).
   it('остаток попыток идёт после названия, прямо перед кнопкой', () => {
-    render(
-      <StudentExamCard
-        exam={makeExam({ attemptsAllowed: 3 })}
-        pending={false}
-        error={null}
-        onStart={vi.fn()}
-      />,
-    );
+    renderCard({ exam: makeExam({ attemptsAllowed: 3 }) });
 
     const card = screen.getByText('Форма первого уровня').parentElement;
     const texts = Array.from(card?.querySelectorAll('span, p, button') ?? [])
@@ -276,5 +270,51 @@ describe('StudentExamCard — ссылка на сданную работу', ()
     expect(
       screen.queryByRole('link', { name: 'Посмотреть свою работу' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// Отзыв владельца 2026-09-22: на карточке должно стоять время. Время попытки
+// идёт, пока ученик вышел, и просроченную попытку сервер закрывает сам
+// (ADR-0122) — остаток он обязан увидеть до того, как тот кончится. Пояс
+// зрителя — stubViewerTimeZone (Europe/Moscow), не пояс машины.
+describe('StudentExamCard — время попытки', () => {
+  stubViewerTimeZone();
+
+  it('попытки не было — сколько времени даётся на попытку', () => {
+    renderCard({ exam: makeExam({ timeLimitMin: 40 }) });
+
+    expect(screen.getByText('На попытку даётся 40 минут')).toBeInTheDocument();
+  });
+
+  it('попытка идёт — остаток и час закрытия по часам зрителя', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-22T16:15:00Z'));
+    const exam = makeExam({
+      timeLimitMin: 40,
+      attemptsAllowed: 2,
+      attemptsUsed: 1,
+      lastAttempt: {
+        id: 'a1',
+        status: 'in_progress',
+        expired: false,
+        deadlineAt: '2026-09-22T16:40:00Z',
+      },
+    });
+
+    renderCard({ exam });
+
+    expect(
+      screen.getByText(
+        'Осталось 25 мин, попытка закроется в 19:40 по вашим часам ' +
+          '(школа живёт по Asia/Jerusalem)',
+      ),
+    ).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('форма без лимита времени — строки про время нет вовсе', () => {
+    renderCard({ exam: makeExam() });
+
+    expect(screen.queryByText(/попытку даётся|Осталось \d+ мин/)).not.toBeInTheDocument();
   });
 });

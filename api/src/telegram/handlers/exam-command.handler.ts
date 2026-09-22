@@ -72,6 +72,6 @@ export class ExamCommandHandler {
       return { text: access.message, buttons: [backToMenuButton()] };
     }
     const exams = await this.examBotPorts.get().listMyExams(access.user, now);
-    return buildExamListScreen(exams);
+    return buildExamListScreen(exams, now.toMillis());
   }
 }

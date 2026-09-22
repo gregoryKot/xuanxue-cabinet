@@ -30,3 +30,16 @@ describe('useNow', () => {
     expect(result.current).toBe(afterTick);
   });
 });
+
+describe('useNow — без тика', () => {
+  it('интервал null — таймера нет вовсе, время остаётся моментом первого рендера', () => {
+    const { result } = renderHook(() => useNow(null));
+    const first = result.current;
+
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(result.current).toBe(first);
+  });
+});

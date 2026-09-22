@@ -13,9 +13,11 @@
 import {
   pluralRu,
   myExamAttemptsLeft,
+  SCHOOL_TZ,
   type GradingOutcome,
   type MyExamDto,
 } from '@xuanxue/shared';
+import { tzBadge } from '../schedule/timezoneLabel';
 
 const ATTEMPT_FORMS = {
   one: 'попытка',
@@ -81,4 +83,18 @@ export function describeExamState(exam: MyExamDto): string | null {
   if (attempt?.status === 'graded') return 'Экзамен проверен';
   if (myExamAttemptsLeft(exam) === 0) return 'Попыток по этому экзамену пока нет';
   return null;
+}
+
+/** Чьи часы стоят в «попытка закроется в 19:40» (ADR-0060: время показываем
+ * по часам устройства зрителя, рядом называем пояс школы, если он другой).
+ * `null` — зритель и школа живут по одним часам, называть нечего: приписка у
+ * каждой карточки превратила бы список в частокол «Asia/Jerusalem», ровно то,
+ * от чего ушли подписи расписания (schedule/timezoneLabel.ts).
+ *
+ * Сам пояс школы — константа SCHOOL_TZ, не `settings.tz`: экран ученика
+ * настройки школы не грузит, а дедлайн попытки и так абсолютный момент —
+ * пояс здесь отвечает только за то, по каким часам прочитан показанный час. */
+export function examTimeZoneNote(browserTimeZone?: string): string | null {
+  const schoolTz = tzBadge(SCHOOL_TZ, browserTimeZone);
+  return schoolTz ? `по вашим часам (школа живёт по ${schoolTz})` : null;
 }

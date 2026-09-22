@@ -16,6 +16,12 @@
 // попыток у самой кнопки. Раньше «Осталось 6 попыток» стояло первой строкой
 // над «Отправлено, ждём проверки», и было непонятно, при чём тут попытки,
 // если работа уже у учителя.
+//
+// Строка про время (useExamTimeLine.ts, ADR-0122) встаёт по тому же
+// правилу: у идущей попытки остаток — настоящее, он под названием; у
+// незапущенной «На попытку даётся 40 минут» — цена нажатия, и она стоит у
+// кнопки рядом с остатком попыток. Текст обеим строкам считает shared, один
+// на кабинет и бота.
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
@@ -23,6 +29,7 @@ import { Button } from '../components/Button';
 import { textLinkStyle } from '../components/screenLayout';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeExamState, formatAttemptsLeft } from './examAttemptState';
+import { useExamTimeLine } from './useExamTimeLine';
 
 const RUBRIC = 'Экзамен';
 
@@ -70,6 +77,11 @@ interface StudentExamCardProps {
 export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCardProps) {
   const action = getMyExamAction(exam);
   const attempt = exam.lastAttempt;
+  const timeLine = useExamTimeLine(exam);
+  // Время идёт, пока ученик вышел, и просроченную попытку сервер закрывает
+  // сам (ADR-0122) — у идущей попытки остаток стоит в настоящем, под
+  // названием, а не у кнопки.
+  const running = attempt?.status === 'in_progress';
   const showOutcome = attempt?.status === 'graded' && attempt.outcome !== undefined;
   // Итог учителя уже говорит, что с экзаменом сейчас, — вторая строка об
   // одном и том же читается как сбой.
@@ -92,6 +104,7 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             вовсе — честное отсутствие вместо пустых строк (CLAUDE.md «число
             в своём разделе»). */}
         {state && <span style={metaStyle}>{state}</span>}
+        {running && timeLine && <span style={metaStyle}>{timeLine}</span>}
         {showOutcome && attempt?.outcome && (
           <ExamAttemptOutcome outcome={attempt.outcome} comment={attempt.comment} />
         )}
@@ -105,6 +118,7 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             {showAttemptsLeft && (
               <p style={attemptsLeftStyle}>{formatAttemptsLeft(exam)}</p>
             )}
+            {!running && timeLine && <p style={attemptsLeftStyle}>{timeLine}</p>}
             <Button type="button" variant="secondary" pending={pending} onClick={onStart}>
               {ACTION_LABEL[action]}
             </Button>

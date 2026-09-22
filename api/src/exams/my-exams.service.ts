@@ -31,6 +31,7 @@ import { EXAM_ENCRYPT_SCHEMA, ExamRecord } from './exam.schema';
 import { decryptRecord } from '../utils/encryption';
 import {
   toMyExamDto,
+  toMyExamLastAttemptInput,
   type MyExamInput,
   type MyExamLastAttemptInput,
 } from './my-exam.mapper';
@@ -40,7 +41,7 @@ import {
 // `T extends Record<string, unknown>` у decryptRecord.
 type RawLeanMyExam = Pick<
   ExamRecord,
-  'title' | 'description' | 'level' | 'attemptsAllowed'
+  'title' | 'description' | 'level' | 'attemptsAllowed' | 'timeLimitMin'
 > & { _id: Types.ObjectId };
 
 interface AttemptSummary {
@@ -120,17 +121,7 @@ export class MyExamsService {
       const grading = gradingByAttemptId.get(closed._id.toString());
       result.set(key, {
         attemptsUsed: attemptsUsedByExamId.get(key) ?? 0,
-        lastAttempt: {
-          id: closed._id.toString(),
-          status: closed.status,
-          // Сравнение, не просто поле: `.lean()` не переприменяет схемный
-          // default(false) к документу без поля вовсе (та же оговорка, что
-          // у description/level в toMyExamDto) — у попыток старше этого
-          // поля expired отсутствует в самом документе, а не false.
-          expired: closed.expired === true,
-          outcome: grading?.outcome,
-          comment: grading?.comment,
-        },
+        lastAttempt: toMyExamLastAttemptInput(closed, grading),
       });
     }
     return result;
