@@ -3,7 +3,13 @@
 // navigator/window/Notification подменяются через vi.stubGlobal, сети и
 // setTimeout нет — детерминизм (CLAUDE.md «Тесты»).
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolvePushSectionState } from './pushSectionState';
+import { ApiError } from '../api/http';
+import { TimeoutError } from '../lib/withTimeout';
+import {
+  PUSH_ACTION_TIMEOUT_MS,
+  pushActionErrorMessage,
+  resolvePushSectionState,
+} from './pushSectionState';
 
 const DESKTOP_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 const IPHONE_UA =
@@ -118,8 +124,8 @@ describe('resolvePushSectionState — разрешено', () => {
 
 describe('resolvePushSectionState — service worker не зарегистрировался (аудит 2026-09-21)', () => {
   it('serviceWorker.ready не резолвится — функция падает, а не висит вечно; usePushSubscription.load() ловит это как loadError', async () => {
-    // registerServiceWorker.ts молча проглотил ошибку регистрации — ready
-    // не резолвится никогда. Раньше resolvePushSectionState зависала бы на
+    // registerServiceWorker.ts мог не зарегистрировать worker — ready не
+    // резолвится никогда. Раньше resolvePushSectionState зависала бы на
     // await, и loading в usePushSubscription.ts не снимался вовсе.
     vi.useFakeTimers();
     vi.stubGlobal('navigator', {
@@ -137,5 +143,59 @@ describe('resolvePushSectionState — service worker не зарегистрир
     await vi.advanceTimersByTimeAsync(5000);
     await rejection;
     vi.useRealTimers();
+  });
+});
+
+describe('pushActionErrorMessage — текст под кнопкой enable()/disable() (баг с прода 2026-09-22)', () => {
+  it('TimeoutError (предел subscribe/getSubscription/unsubscribe сработал) — его собственный текст', () => {
+    const err = new TimeoutError('браузер не ответил на запрос подписки');
+
+    expect(pushActionErrorMessage(err, 'запасной текст')).toBe(
+      'браузер не ответил на запрос подписки',
+    );
+  });
+
+  it('ApiError (сервер отказал в POST/DELETE подписки) — его текст, не запасной', () => {
+    const err = new ApiError('Нет связи с сервером.', 0, 'network');
+
+    expect(pushActionErrorMessage(err, 'запасной текст')).toBe('Нет связи с сервером.');
+  });
+
+  it('любая другая ошибка браузера — запасной текст действия, не текст исключения', () => {
+    expect(
+      pushActionErrorMessage(new Error('DOMException where'), 'запасной текст'),
+    ).toBe('запасной текст');
+    expect(pushActionErrorMessage('строка вместо ошибки', 'запасной текст')).toBe(
+      'запасной текст',
+    );
+  });
+});
+
+describe('resolvePushSectionState — getSubscription не отвечает', () => {
+  it('срабатывает предел ожидания: раздел не остаётся в скелетоне навсегда', async () => {
+    vi.useFakeTimers();
+    try {
+      // Тот же класс отказа, что поймал subscribe() на проде 2026-09-22,
+      // только на шаг раньше — на первичной загрузке раздела.
+      vi.stubGlobal('navigator', {
+        userAgent: DESKTOP_UA,
+        serviceWorker: {
+          ready: Promise.resolve({
+            pushManager: { getSubscription: () => new Promise(() => {}) },
+          }),
+        },
+      });
+      stubMatchMedia(false);
+      vi.stubGlobal('PushManager', {});
+      vi.stubGlobal('Notification', { permission: 'granted' });
+
+      const assertion = expect(resolvePushSectionState('key')).rejects.toBeInstanceOf(
+        TimeoutError,
+      );
+      await vi.advanceTimersByTimeAsync(PUSH_ACTION_TIMEOUT_MS);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

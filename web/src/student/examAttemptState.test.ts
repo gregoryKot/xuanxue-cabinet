@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
 import {
-  describeNoAction,
+  describeExamState,
   describeOutcome,
   formatAttemptsLeft,
 } from './examAttemptState';
@@ -34,9 +34,9 @@ describe('formatAttemptsLeft', () => {
     );
   });
 
-  it('ноль — честная строка, не «0 попыток»', () => {
-    expect(formatAttemptsLeft(makeExam({ attemptsAllowed: 1, attemptsUsed: 1 }))).toBe(
-      'Попытки закончились',
+  it('склонение — 5 попыток', () => {
+    expect(formatAttemptsLeft(makeExam({ attemptsAllowed: 5, attemptsUsed: 0 }))).toBe(
+      'Осталось 5 попыток',
     );
   });
 });
@@ -55,41 +55,69 @@ describe('describeOutcome', () => {
   });
 });
 
-describe('describeNoAction', () => {
-  it('проверено', () => {
+describe('describeExamState', () => {
+  // Попытки не было, начать можно: строке сказать нечего — рядом стоят
+  // «Осталось N попыток» и кнопка «Начать» (ADR-0120).
+  it('ещё не приступал — строки нет вовсе', () => {
+    expect(describeExamState(makeExam())).toBeNull();
+  });
+
+  it('попытка открыта и не закончена', () => {
     expect(
-      describeNoAction(
-        makeExam({ lastAttempt: { id: 'a1', status: 'graded', expired: false } }),
+      describeExamState(
+        makeExam({ lastAttempt: { id: 'a1', status: 'in_progress', expired: false } }),
       ),
-    ).toBe('Экзамен проверен');
+    ).toBe('Попытка не закончена');
   });
 
   it('отправлено — сдал сам', () => {
     expect(
-      describeNoAction(
+      describeExamState(
         makeExam({ lastAttempt: { id: 'a1', status: 'submitted', expired: false } }),
       ),
     ).toBe('Отправлено, ждём проверки');
   });
 
-  // Тот же текст и когда попытку закрыло время, но попыток больше не
-  // осталось: карточка тут не рисует кнопку «Пройти ещё раз» (getMyExamAction
-  // вернул бы null из-за исчерпанного лимита), а работа всё равно ждёт
-  // проверки учителя — сообщать об этом нужно тем же честным текстом.
-  it('отправлено — закрыло время, но лимит попыток уже исчерпан', () => {
+  // Попытку закрыло время: строка говорит и что случилось, и куда делась
+  // работа — планировщик отправляет её учителю тем же путём, что и обычную
+  // сдачу (api/src/exams/exam-deadline-close.service.ts).
+  it('время закрыло попытку — сказано и про время, и про проверку', () => {
     expect(
-      describeNoAction(
+      describeExamState(
+        makeExam({
+          attemptsAllowed: 2,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+        }),
+      ),
+    ).toBe('Время вышло, попытка ушла на проверку');
+  });
+
+  // Тот же текст и когда попыток больше не осталось: кнопки «Пройти ещё раз»
+  // тут нет (getMyExamAction вернул бы null из-за лимита), а работа у
+  // учителя — и сказать об этом нужно так же честно.
+  it('время закрыло попытку, лимит исчерпан — текст тот же', () => {
+    expect(
+      describeExamState(
         makeExam({
           attemptsAllowed: 1,
           attemptsUsed: 1,
           lastAttempt: { id: 'a1', status: 'submitted', expired: true },
         }),
       ),
-    ).toBe('Отправлено, ждём проверки');
+    ).toBe('Время вышло, попытка ушла на проверку');
+  });
+
+  it('помечено проверенным — запасной текст на случай, если оценки ещё нет', () => {
+    expect(
+      describeExamState(
+        makeExam({ lastAttempt: { id: 'a1', status: 'graded', expired: false } }),
+      ),
+    ).toBe('Экзамен проверен');
   });
 
   it('попыток не открыто вовсе', () => {
-    expect(describeNoAction(makeExam({ attemptsAllowed: 0 }))).toBe(
+    expect(describeExamState(makeExam({ attemptsAllowed: 0 }))).toBe(
       'Попыток по этому экзамену пока нет',
     );
   });

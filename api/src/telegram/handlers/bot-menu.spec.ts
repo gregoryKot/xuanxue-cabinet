@@ -8,10 +8,9 @@ import {
 } from './bot-menu';
 
 describe('buildBotMenu', () => {
-  it('пять кнопок экранов и подсказка про тему занятия', () => {
+  it('пять кнопок экранов', () => {
     const menu = buildBotMenu();
 
-    expect(menu.text).toContain('/topic');
     expect(menu.buttons.flat().map((b) => b.text)).toEqual([
       'Ближайшие занятия',
       'Экзамены',
@@ -65,8 +64,10 @@ describe('buildStrangerMessage', () => {
 });
 
 describe('buildHelpText', () => {
-  it('учителю перечислены команды, включая тему занятия', () => {
-    expect(buildHelpText('staff')).toContain('/topic');
+  // Список команд не дублируем — Telegram уже показывает их в меню чата
+  // (bot-commands.ts); /help называет то, чего там нет.
+  it('учителю сказано, куда девать запись занятия — этого нет в меню Telegram', () => {
+    expect(buildHelpText('staff')).toContain('Запись занятия');
   });
 
   it('ученику про тему занятия не рассказываем — это не его дело', () => {

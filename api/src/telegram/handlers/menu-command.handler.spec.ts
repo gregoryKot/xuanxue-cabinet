@@ -218,13 +218,16 @@ describe('MenuCommandHandler', () => {
     expect(replies[0]?.text).toBe('Ближайших занятий нет.');
   });
 
-  it('/help перечисляет команды и оставляет кнопки меню', async () => {
+  // Список команд не дублируем текстом — Telegram уже показывает их в меню
+  // чата (bot-commands.ts); /help называет то, чего там нет: куда девать
+  // запись занятия.
+  it('/help называет то, чего нет в меню Telegram, и оставляет кнопки меню', async () => {
     await seedTeacher(userModel, channelModel, 111);
     const { ctx, replies } = fakeCtx(111);
 
     await handler.showHelp(ctx, NOW);
 
-    expect(replies[0]?.text).toContain('/schedule');
+    expect(replies[0]?.text).toContain('Запись занятия');
     expect(replies[0]?.buttons).toHaveLength(5);
   });
 

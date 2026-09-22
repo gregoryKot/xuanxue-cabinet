@@ -5,11 +5,11 @@
 // материал заводят как материал библиотеки, а не как ссылку с одного занятия.
 import { TAG_LIMITS, type ClassDto } from '@xuanxue/shared';
 import { TagsField } from '../components/TagsField';
+import { useTagOptions } from '../hooks/useTagOptions';
 import { MaterialAccessField } from './MaterialAccessField';
 import { MaterialBasicFields, errorFor } from './MaterialBasicFields';
 import { MaterialClassesField } from './MaterialClassesField';
 import type { MaterialFormError, MaterialFormState } from './materialFormInput';
-import { useMaterialTagOptions } from './useMaterialTagOptions';
 
 // ADR-0058: теги — рубрикация, не служебная пометка, и их видит ученик —
 // значит, ни имени, ни телефона в тексте тега быть не должно.
@@ -31,9 +31,9 @@ export function MaterialFormFields({
   error,
   classes,
 }: MaterialFormFieldsProps) {
-  // Сбой useMaterialTagOptions.ts просто оставляет список пустым — без
-  // подсказок, но поле работает как обычный текстовый ввод.
-  const tagOptions = useMaterialTagOptions();
+  // Сбой useTagOptions.ts просто оставляет список пустым — без подсказок,
+  // но поле работает как обычный текстовый ввод.
+  const tagOptions = useTagOptions();
 
   return (
     <>

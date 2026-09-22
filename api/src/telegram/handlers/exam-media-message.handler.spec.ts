@@ -150,7 +150,7 @@ describe('ExamMediaMessageHandler', () => {
     await handler.handle(ctx, 111, SESSION, NOW);
 
     expect(replies).toEqual([
-      'Ждём видео для экзамена: видеосообщение, «кружок» или файл с видео. Пришлите его сюда.',
+      'Видео для экзамена — видеосообщение, «кружок» или файл с видео.',
     ]);
     expect(clear).not.toHaveBeenCalled();
   });
@@ -185,9 +185,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
-    expect(replies).toEqual([
-      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
-    ]);
+    expect(replies).toEqual(['Видео дошло. Учитель его увидит.']);
     expect(clear).toHaveBeenCalledWith(111);
     expect(sentMessages).toEqual([
       { chatId: '201', text: 'Видео от Ученик Иванов — экзамен «Форма первого уровня».' },
@@ -271,9 +269,7 @@ describe('ExamMediaMessageHandler', () => {
     const { ctx, replies } = fakeCtx({ video: true });
 
     await expect(handler.handle(ctx, 111, SESSION, NOW)).resolves.toBeUndefined();
-    expect(replies).toEqual([
-      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
-    ]);
+    expect(replies).toEqual(['Видео дошло. Учитель его увидит.']);
   });
 
   it('пересылка одному учителю упала (заблокировал бота) — остальные всё равно получают видео', async () => {
@@ -405,9 +401,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await handler.handle(ctxWithoutChat, 111, SESSION, NOW);
 
-    expect(replies).toContain(
-      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
-    );
+    expect(replies).toContain('Видео дошло. Учитель его увидит.');
     expect(copiedTo).toEqual([]);
   });
 
@@ -459,9 +453,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await handler.handle(ctx, 111, IN_FLOW_SESSION, NOW);
 
-    expect(replies).not.toContain(
-      'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.',
-    );
+    expect(replies).not.toContain('Видео дошло. Учитель его увидит.');
     expect(replies.some((r) => r.includes('Видео получено.'))).toBe(true);
   });
 

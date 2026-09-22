@@ -50,7 +50,7 @@ import { extractExamVideoSource } from './exam-video-source';
 import { resolveActiveBotUser } from './resolve-active-bot-user';
 
 const NOT_A_VIDEO_MESSAGE =
-  'Ждём видео для экзамена: видеосообщение, «кружок» или файл с видео. Пришлите его сюда.';
+  'Видео для экзамена — видеосообщение, «кружок» или файл с видео.';
 const ATTEMPT_NOT_YOURS_MESSAGE =
   'Не нашли эту попытку среди ваших. Откройте экзамен из своего кабинета ещё раз ' +
   'или вставьте там ссылку на видео.';

@@ -8,7 +8,7 @@ import type {
   PushSubscriptionDto,
   SubscribePushInput,
 } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { apiFetch } from '../api/http';
 import {
   PUSH_DISABLE_ERROR_MESSAGE,
   PUSH_ENABLE_ERROR_MESSAGE,
@@ -16,8 +16,10 @@ import {
 } from './pushNotificationsCopy';
 import { arrayBufferToBase64Url, base64UrlToUint8Array } from './pushSubscriptionCodec';
 import {
+  pushActionErrorMessage,
   resolvePushSectionState,
   waitRegistrationOrReportError,
+  withPushActionTimeout,
   type PushSectionState,
 } from './pushSectionState';
 
@@ -59,7 +61,9 @@ export function usePushSubscription(): UsePushSubscriptionResult {
       if (publicKey !== null) publicKeyRef.current = publicKey;
       setState(await resolvePushSectionState(publicKey));
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : PUSH_LOAD_ERROR_MESSAGE);
+      // Разбор как у enable()/disable(): зависшая загрузка говорит своим
+      // текстом, не общим (баг с прода 2026-09-22).
+      setLoadError(pushActionErrorMessage(err, PUSH_LOAD_ERROR_MESSAGE));
     } finally {
       setLoading(false);
     }
@@ -89,10 +93,14 @@ export function usePushSubscription(): UsePushSubscriptionResult {
 
       const registration = await waitRegistrationOrReportError(setActionError);
       if (!registration) return;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: base64UrlToUint8Array(publicKey),
-      });
+      // subscribe() ничем не отменить, и на проде 2026-09-22 кнопка крутилась
+      // вечно именно здесь — предел ожидания в pushSectionState.ts.
+      const subscription = await withPushActionTimeout(
+        registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: base64UrlToUint8Array(publicKey),
+        }),
+      );
       const p256dhKey = subscription.getKey('p256dh');
       const authKey = subscription.getKey('auth');
       if (!p256dhKey || !authKey) throw new Error(PUSH_ENABLE_ERROR_MESSAGE);
@@ -108,7 +116,7 @@ export function usePushSubscription(): UsePushSubscriptionResult {
       });
       setState({ kind: 'subscribed' });
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : PUSH_ENABLE_ERROR_MESSAGE);
+      setActionError(pushActionErrorMessage(err, PUSH_ENABLE_ERROR_MESSAGE));
     } finally {
       setPending(false);
     }
@@ -121,13 +129,17 @@ export function usePushSubscription(): UsePushSubscriptionResult {
     try {
       const registration = await waitRegistrationOrReportError(setActionError);
       if (!registration) return;
-      const subscription = await registration.pushManager.getSubscription();
+      // Тот же предел, что у subscribe() в enable() — getSubscription() и
+      // unsubscribe() ничем не отменить (баг с прода 2026-09-22).
+      const subscription = await withPushActionTimeout(
+        registration.pushManager.getSubscription(),
+      );
       // Отписка в браузере и снятие записи на сервере — пара, одно без
       // другого оставляет мусор (ТЗ ПР №5). Подписки уже нет локально
       // (рассинхрон) — серверу тоже нечего снимать, фиксируем итог.
       if (subscription) {
         const endpoint = subscription.endpoint;
-        await subscription.unsubscribe();
+        await withPushActionTimeout(subscription.unsubscribe());
         await apiFetch<void>(PUSH_SUBSCRIPTIONS_PATH, {
           method: 'DELETE',
           body: { endpoint },
@@ -135,7 +147,7 @@ export function usePushSubscription(): UsePushSubscriptionResult {
       }
       setState({ kind: 'not-subscribed' });
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : PUSH_DISABLE_ERROR_MESSAGE);
+      setActionError(pushActionErrorMessage(err, PUSH_DISABLE_ERROR_MESSAGE));
     } finally {
       setPending(false);
     }

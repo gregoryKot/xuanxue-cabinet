@@ -8,7 +8,7 @@ import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 
 const TITLE = 'Сдано, ждёт проверки:';
-const EMPTY_TEXT = 'Пока нечего проверять: непроверенных сданных работ нет.';
+const EMPTY_TEXT = 'Пока нечего проверять.';
 const BUTTON_TITLE_MAX = 40;
 // Ученик — единственное поле, которого не бывает у студенческого DTO, но
 // точно есть у штатного (ExamAttemptDto.userName, ExamAttemptsService.list) —

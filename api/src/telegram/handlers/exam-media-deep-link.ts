@@ -20,14 +20,11 @@ import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { BotSessionService } from '../bot-session.service';
 import type { BotUserAccessService } from '../bot-user-access.service';
+import { VIDEO_QUESTION_PROMPT } from './exam-question-screen';
 
 export const TELEGRAM_NOT_LINKED_MESSAGE =
   'Этот Telegram не связан с вашим кабинетом, поэтому видео сюда не примем. ' +
   'Вернитесь в кабинет и вставьте ссылку на видео на экране попытки.';
-
-const EXAM_MEDIA_WAIT_MESSAGE =
-  'Снимите или пришлите видео прямо сюда — обычным сообщением, «кружком» ' +
-  'или файлом. Как только дойдёт, учитель сможет его посмотреть.';
 
 export interface ExamMediaDeepLinkDeps {
   botSessions: BotSessionService;
@@ -58,5 +55,5 @@ export async function handleExamMediaDeepLink(
     undefined,
     itemId,
   );
-  await ctx.reply(EXAM_MEDIA_WAIT_MESSAGE).catch(() => null);
+  await ctx.reply(VIDEO_QUESTION_PROMPT).catch(() => null);
 }

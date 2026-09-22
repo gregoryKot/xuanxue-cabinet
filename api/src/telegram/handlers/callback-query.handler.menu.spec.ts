@@ -55,7 +55,7 @@ describe('CallbackQueryHandler — menu (главное меню)', () => {
 
     await ctx.handler.handle(cbCtx, NOW);
 
-    expect(editCalls[0]).toContain('/topic');
+    expect(editCalls[0]).toContain('Что показать?');
   });
 
   // ТЗ 4б.3 (docs/PLAN.md §12) — «Новый вопрос» в главном меню — screen 1

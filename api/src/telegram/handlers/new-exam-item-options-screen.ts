@@ -28,8 +28,7 @@ export function optionsWaitScreen(options: readonly NewExamItemDraftOption[]): B
   const header =
     options.length === 0
       ? 'Пришлите первый вариант ответа отдельным сообщением.'
-      : `Добавлено вариантов: ${options.length}.\n` +
-        options.map((o, i) => optionLine(o, i)).join('\n') +
+      : options.map((o, i) => optionLine(o, i)).join('\n') +
         '\n\nПришлите ещё один или нажмите «Готово».';
   return {
     text: header,

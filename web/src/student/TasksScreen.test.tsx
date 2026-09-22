@@ -1,6 +1,6 @@
-// Экран «Задания» — рубрики новых/остальных заданий, старт попытки и переход
-// на экран сдачи (решение владельца: экзамены — отдельный экран, первый
-// после входа). Навигацию проверяем через настоящий react-router
+// Экран «Задания» — рубрики «Сдавать сейчас»/«Уже позади», старт попытки и
+// переход на экран сдачи (решение владельца: экзамены — отдельный экран,
+// первый после входа). Навигацию проверяем через настоящий react-router
 // (MemoryRouter + Routes), как раньше StudentExamsSection.test.tsx.
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -16,7 +16,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
-import { MyExamsProvider } from './MyExamsProvider';
+import { MyExamsProvider, useMyExams } from './MyExamsProvider';
 import TasksScreen from './TasksScreen';
 
 vi.mock('../api/http', async () => {
@@ -51,84 +51,108 @@ function renderScreen() {
   );
 }
 
+// Отзыв владельца 2026-09-22: прежнее объяснение пересказывало список
+// («Экзамены, которые открыл учитель. Каждый — с числом попыток и итогом
+// проверки»). Теперь шапка говорит, что делать и что узнать до первого
+// нажатия: срок попытки идёт без пауз, просроченную работу учитель получит
+// как есть (ADR-0120).
 describe('TasksScreen — заголовок раздела', () => {
-  it('заголовок и объяснение — как у остальных разделов кабинета', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
+  it('объяснение говорит, что нажать и чем грозит срок, а не пересказывает список', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [] });
     renderScreen();
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Задания' }),
     ).toBeInTheDocument();
+    const explanation = screen.getByText(/Выберите экзамен/);
+    expect(explanation).toHaveTextContent('нажмите «Начать»');
+    expect(explanation).toHaveTextContent('часы идут без остановки');
+    expect(explanation).toHaveTextContent('попытка уходит учителю такой, какая есть');
     expect(
-      screen.getByText(
-        'Экзамены, которые открыл учитель. Каждый — с числом попыток и итогом проверки.',
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText(/Экзамены, которые открыл учитель/),
+    ).not.toBeInTheDocument();
   });
 });
 
 describe('TasksScreen — пусто', () => {
   it('заданий нет совсем — честная фраза, не «0»', async () => {
-    mockedApiFetch.mockResolvedValueOnce([]);
+    mockApiByPath({ [MY_EXAMS_PATH]: [] });
     renderScreen();
 
     expect(await screen.findByText('Заданий пока нет.')).toBeInTheDocument();
   });
 });
 
-describe('TasksScreen — рубрики новых заданий', () => {
-  it('одно новое — рубрика в единственном числе, «Остальных» нет', async () => {
-    mockedApiFetch.mockResolvedValueOnce([makeExam({ id: 'e1' })]);
+describe('TasksScreen — рубрики «Сдавать сейчас» и «Уже позади»', () => {
+  it('ждёт действия — под рубрикой «Сдавать сейчас», «Уже позади» нет', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [makeExam({ id: 'e1' })] });
     renderScreen();
 
-    expect(await screen.findByText('Новое задание')).toBeInTheDocument();
-    expect(screen.queryByText('Новые задания')).not.toBeInTheDocument();
-    expect(screen.queryByText('Остальные')).not.toBeInTheDocument();
+    expect(await screen.findByText('Сдавать сейчас')).toBeInTheDocument();
+    expect(screen.queryByText('Уже позади')).not.toBeInTheDocument();
   });
 
-  it('несколько новых — рубрика во множественном числе', async () => {
-    mockedApiFetch.mockResolvedValueOnce([
-      makeExam({ id: 'e1' }),
-      makeExam({ id: 'e2', title: 'Форма второго уровня' }),
-    ]);
+  // Рубрика стоит и над одинокой группой: она отвечает на главный вопрос
+  // экрана — ждут меня или нет (ADR-0120). Раньше единственная группа шла
+  // без заголовка, и сданное молча смешивалось с несданным.
+  it('делать нечего — одинокая группа всё равно подписана «Уже позади»', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [
+        makeExam({
+          id: 'e1',
+          attemptsAllowed: 2,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+        }),
+      ],
+    });
     renderScreen();
 
-    expect(await screen.findByText('Новые задания')).toBeInTheDocument();
-    expect(screen.queryByText('Новое задание')).not.toBeInTheDocument();
+    expect(await screen.findByText('Уже позади')).toBeInTheDocument();
+    expect(screen.queryByText('Сдавать сейчас')).not.toBeInTheDocument();
   });
 
-  it('новых нет — рубрики нет вовсе, список идёт без заголовков', async () => {
-    mockedApiFetch.mockResolvedValueOnce([
-      makeExam({
-        id: 'e1',
-        attemptsAllowed: 2,
-        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
-      }),
-    ]);
+  it('и то и другое — «Сдавать сейчас» сверху, «Уже позади» ниже', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [
+        makeExam({
+          id: 'e1',
+          title: 'Уже отправил',
+          attemptsAllowed: 2,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+        }),
+        makeExam({ id: 'e2', title: 'Ещё не начинал' }),
+      ],
+    });
     renderScreen();
 
-    await screen.findByText('Форма первого уровня');
-    expect(screen.queryByText('Новое задание')).not.toBeInTheDocument();
-    expect(screen.queryByText('Новые задания')).not.toBeInTheDocument();
-    expect(screen.queryByText('Остальные')).not.toBeInTheDocument();
-  });
-
-  it('новое и старое вместе — новое сверху под своей рубрикой, старое — под «Остальные»', async () => {
-    mockedApiFetch.mockResolvedValueOnce([
-      makeExam({
-        id: 'e1',
-        title: 'Уже отвечал',
-        attemptsAllowed: 2,
-        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
-      }),
-      makeExam({ id: 'e2', title: 'Ещё не начинал' }),
-    ]);
-    renderScreen();
-
-    expect(await screen.findByText('Новое задание')).toBeInTheDocument();
-    expect(screen.getByText('Остальные')).toBeInTheDocument();
+    await screen.findByText('Сдавать сейчас');
     const headings = screen.getAllByRole('heading', { level: 2 });
-    expect(headings.map((h) => h.textContent)).toEqual(['Новое задание', 'Остальные']);
+    expect(headings.map((h) => h.textContent)).toEqual(['Сдавать сейчас', 'Уже позади']);
+    // Карточка едет за своей рубрикой, а не остаётся в порядке ответа.
+    const cards = screen.getAllByRole('listitem');
+    expect(cards.map((card) => card.textContent)).toEqual([
+      expect.stringContaining('Ещё не начинал'),
+      expect.stringContaining('Уже отправил'),
+    ]);
+  });
+
+  // ADR-0120: кнопка «Пройти ещё раз» у сданного экзамена остаётся, но звать
+  // сдавать уже сданное экран не должен.
+  it('экзамен сдан — карточка уезжает к «Уже позади», хотя кнопка на ней есть', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [
+        makeExam({
+          id: 'e1',
+          attemptsAllowed: 2,
+          lastAttempt: { id: 'a1', status: 'graded', outcome: 'passed', expired: false },
+        }),
+      ],
+    });
+    renderScreen();
+
+    expect(await screen.findByText('Уже позади')).toBeInTheDocument();
+    expect(screen.queryByText('Сдавать сейчас')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Пройти ещё раз' })).toBeInTheDocument();
   });
 });
 
@@ -202,7 +226,126 @@ describe('TasksScreen — старт попытки', () => {
     expect(await screen.findByRole('button', { name: 'Начать' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('«Пройти ещё раз» — по-прежнему стартует новую попытку через POST', async () => {
+    mockedApiFetch.mockResolvedValueOnce([
+      makeExam({
+        attemptsAllowed: 2,
+        attemptsUsed: 1,
+        lastAttempt: {
+          id: 'старая',
+          status: 'graded',
+          expired: false,
+          outcome: 'needs_work',
+          comment: 'Ниже стойки',
+        },
+      }),
+    ]);
+    const attempt: Partial<ExamAttemptDto> = { id: 'новая', examId: 'e1' };
+    mockedApiFetch.mockResolvedValueOnce(attempt);
+    renderScreen();
+
+    const button = await screen.findByRole('button', { name: 'Пройти ещё раз' });
+    button.click();
+
+    expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
+    expect(mockedApiFetch).toHaveBeenCalledWith('/exams/e1/attempts', { method: 'POST' });
+  });
 });
+
+// Замок 1 (ADR-0119): «Продолжить» означает, что попытка уже есть и её id
+// известен из списка — экран обязан открыть её напрямую, без похода на
+// сервер. Устаревший клик (список ещё не знает об отправке) в худшем случае
+// покажет уже отправленную попытку, а не заведёт вторую пустую и не спишет
+// её из лимита (отзыв тестировщика 2026-09-22: «кнопка продолжить, а ответы
+// обнуляются» — воспроизводится, если этот тест начнёт слать POST).
+describe('TasksScreen — «Продолжить» открывает попытку по id (ADR-0119)', () => {
+  it('ведёт на /attempts/<id>, без POST /exams/:id/attempts', async () => {
+    mockedApiFetch.mockResolvedValueOnce([
+      makeExam({
+        attemptsAllowed: 2,
+        lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+      }),
+    ]);
+    renderScreen();
+
+    const button = await screen.findByRole('button', { name: 'Продолжить' });
+    button.click();
+
+    expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
+    // Ровно один вызов апи за весь тест — сам список; POST старта не ушёл.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(
+      expect.stringMatching(/\/exams\/.+\/attempts/),
+      expect.anything(),
+    );
+  });
+});
+
+// Замок 2 (ADR-0119) — регрессия ровно на найденный баг: отправили попытку,
+// вернулись на «Задания» без перезагрузки страницы — список правится ответом
+// самой отправки (MyExamsProvider.applyAttempt), а не вторым GET.
+describe('TasksScreen — список без перезагрузки после отправки попытки (ADR-0119)', () => {
+  /** Заглушка вместо настоящего AttemptScreen (там своя цепочка
+   * auth/useAttempt) — важна только сама механика: успешный
+   * `POST /attempts/:id/submit` зовёт applyAttempt() с ответом сервера,
+   * ровно то, что делает useAttempt.ts. */
+  function FakeAttemptScreen() {
+    const { applyAttempt } = useMyExams();
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          const submitted: Partial<ExamAttemptDto> = {
+            id: 'a1',
+            examId: 'e1',
+            status: 'submitted',
+            expired: false,
+          };
+          applyAttempt(submitted as ExamAttemptDto);
+        }}
+      >
+        Отправить (заглушка)
+      </button>
+    );
+  }
+
+  it('карточка перестаёт предлагать «Продолжить» и показывает «Отправлено, ждём проверки»', async () => {
+    mockedApiFetch.mockResolvedValueOnce([
+      makeExam({
+        attemptsAllowed: 2,
+        lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+      }),
+    ]);
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <MyExamsProvider me={null}>
+          <Routes>
+            <Route path="/" element={<TasksScreen />} />
+          </Routes>
+          <FakeAttemptScreen />
+        </MyExamsProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
+
+    screen.getByRole('button', { name: 'Отправить (заглушка)' }).click();
+
+    expect(await screen.findByText('Отправлено, ждём проверки')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Продолжить' })).not.toBeInTheDocument();
+    // Список загрузился один раз — правка пришла из applyAttempt, без reload().
+    expect(examsCallCount()).toBe(1);
+  });
+});
+
+/** Сколько раз апи звали ровно по адресу списка экзаменов — как в
+ * MyExamsProvider.test.tsx, локальная копия ради независимости файлов теста
+ * друг от друга. */
+function examsCallCount(): number {
+  return mockedApiFetch.mock.calls.filter(([path]) => path === MY_EXAMS_PATH).length;
+}
 
 // Состав как в проде: центр уведомлений (ADR-0063) висит у корня оболочки
 // (AppShell.tsx) и читает те же экзамены — счётчик новых заданий у

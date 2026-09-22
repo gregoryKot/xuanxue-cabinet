@@ -26,9 +26,9 @@ describe('optionsWaitScreen', () => {
     ]);
   });
 
-  it('с вариантами — список и предложение продолжить или завершить', () => {
+  it('с вариантами — список (без пересказа числа) и предложение продолжить или завершить', () => {
     const screen = optionsWaitScreen([{ text: 'A', correct: false }]);
-    expect(screen.text).toContain('Добавлено вариантов: 1');
+    expect(screen.text).not.toContain('Добавлено вариантов');
     expect(screen.text).toContain('1. A');
     expect(screen.text).toContain('Готово');
   });

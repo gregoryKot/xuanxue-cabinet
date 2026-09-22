@@ -82,27 +82,10 @@ describe('attemptAnswersSummary', () => {
     expect(text).not.toContain('кабинете');
   });
 
-  it('текст длиннее лимита — честная обрезка со ссылкой на кабинет', () => {
-    const longText = 'а'.repeat(250);
-    const text = attemptAnswersSummary(
-      blocks([question({ answerText: longText, answered: true })]),
-      [],
-      'https://xuanxue.su/grading/507f1f77bcf86cd799439011',
-    );
-
-    expect(text).toContain(
-      'Полностью — в кабинете: https://xuanxue.su/grading/507f1f77bcf86cd799439011',
-    );
-    expect(text).not.toContain(longText);
-  });
-
-  it('текст без ответа — «Ответа нет.», не пустая строка', () => {
-    const text = attemptAnswersSummary(blocks([question({})]), []);
-
-    expect(text).toContain('Ответа нет.');
-  });
-
-  it('текст длиннее лимита, без PUBLIC_URL — обрезка без ссылки, не «undefined»', () => {
+  // Ссылка сюда не печатается ни разу: при нескольких длинных ответах в одной
+  // попытке она повторялась бы столько же раз — она одна, в подвале
+  // attempt-submitted-message.ts (отзыв владельца 2026-09-22).
+  it('текст длиннее лимита — честная обрезка, без ссылки и без «undefined»', () => {
     const longText = 'а'.repeat(250);
     const text = attemptAnswersSummary(
       blocks([question({ answerText: longText, answered: true })]),
@@ -110,7 +93,15 @@ describe('attemptAnswersSummary', () => {
     );
 
     expect(text).toContain('… Полностью — в кабинете.');
+    expect(text).not.toContain(longText);
     expect(text).not.toContain('undefined');
+    expect(text).not.toContain('http');
+  });
+
+  it('текст без ответа — «Ответа нет.», не пустая строка', () => {
+    const text = attemptAnswersSummary(blocks([question({})]), []);
+
+    expect(text).toContain('Ответа нет.');
   });
 
   it('вариант без автопроверки (защита в глубину) — «Ответа нет.»', () => {

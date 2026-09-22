@@ -106,7 +106,7 @@ describe('ExamTextAnswerHandler', () => {
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
-    expect(replies).toEqual(['Ждём ответ текстом — пришлите его обычным сообщением.']);
+    expect(replies).toEqual(['Ответ пришлите текстом, обычным сообщением.']);
     expect(botSessions.clear).not.toHaveBeenCalled();
   });
 
@@ -192,7 +192,7 @@ describe('ExamTextAnswerHandler', () => {
     const { ctx, replies } = fakeCtx('мой ответ');
 
     await expect(handler.handle(ctx, 111, SESSION, NOW)).resolves.toBeUndefined();
-    expect(replies).toEqual(['Что-то пошло не так. Попробуйте ещё раз.']);
+    expect(replies).toEqual(['Не получилось. Откройте /menu и попробуйте ещё раз.']);
   });
 
   it('заблокированный — отказ тем же текстом, что в вебе, сессия закрывается, ответ не сохраняется', async () => {

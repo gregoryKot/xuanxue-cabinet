@@ -1,8 +1,7 @@
 // Экран «Вопрос N из M» — один вопрос попытки на сообщение (ТЗ 4б.2, ADR-0024, PLAN.md
 // §12). Вопросы читаются из снимка попытки (ExamAttemptDto.blocks) по сквозному порядку —
 // блоки формы сами по себе экрану не нужны, только порядок вопросов внутри них (тот же
-// снимок, что в кабинете, web/src/attempt/AttemptBlock.tsx, только по одному вопросу, не
-// всей формой сразу). Чистая логика без Mongo и без сети.
+// снимок, что в кабинете, web/src/attempt/AttemptBlock.tsx). Чистая логика без Mongo и без сети.
 import {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
@@ -24,11 +23,12 @@ import { buildOptionId, buildQuestionId } from './exam-callback-ids';
 // добавляется ссылка или ручная отметка учителя (ADR-0023) — это не первое, что видит
 // ученик, но никуда не делось.
 const TEXT_QUESTION_PROMPT = 'Напишите ответ сообщением — обычным текстом, прямо сюда.';
-const VIDEO_QUESTION_PROMPT =
+// Экспортирован — exam-media-deep-link.ts зовёт тем же текстом (CLAUDE.md «Дубли»).
+export const VIDEO_QUESTION_PROMPT =
   'Снимите или пришлите видео сюда — видеосообщение, «кружок» или файл с видео.';
 // Замены нет: attachTelegramVideo всегда вставляет новую запись — у kind:
 // 'telegram' уникального индекса нет сознательно, старая остаётся видна учителю.
-const VIDEO_RECEIVED_NOTE = 'Видео получено. Пришлёте ещё одно — учитель увидит оба.';
+const VIDEO_RECEIVED_NOTE = 'Видео получено.';
 
 const BACK_LABEL = 'Назад';
 const NEXT_LABEL = 'Дальше';
@@ -98,7 +98,7 @@ function questionNote(
 ): string | null {
   if (question.kind === 'text') {
     return answer?.text
-      ? `Ваш ответ: «${answer.text}»\n\nПришлите новый — заменит этот.`
+      ? `Ваш ответ: «${answer.text}» — пришлите новый, если хотите заменить.`
       : TEXT_QUESTION_PROMPT;
   }
   if (question.kind === 'video')

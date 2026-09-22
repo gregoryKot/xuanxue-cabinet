@@ -59,11 +59,11 @@ describe('StartHandler', () => {
     const channel = await channelModel.findOne({ target: '111' }).lean();
     expect(channel?.active).toBe(true);
     expect(channel?.title).toBe(`Личные сообщения: ${teacher.name}`);
-    // Два сообщения: «вы подключены» и следом меню кнопками — раньше /start
-    // заканчивался первым и человек не видел, что бот ещё что-то умеет.
-    expect(replies).toHaveLength(2);
+    // Одно сообщение с кнопками меню — раньше /start заканчивался только
+    // текстом подключения, и человек не видел, что бот ещё что-то умеет;
+    // с 2026-09-22 «вы подключены» и меню — тоже одно сообщение, не два.
+    expect(replies).toHaveLength(1);
     expect(replies[0]).toContain('Вы подключены');
-    expect(replies[1]).toContain('/topic');
   });
 
   it('админ — тоже получает личный канал', async () => {

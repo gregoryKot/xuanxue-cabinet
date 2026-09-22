@@ -14,8 +14,10 @@ import type { BotUserAccessService } from '../bot-user-access.service';
 import { buildNotificationsMenu } from './notifications-menu';
 
 // Экспортирована — callback-query.handler.ts зовёт её же в своём catch, не
-// повторяет литерал (CLAUDE.md «Одна механика — один компонент»).
-export const GENERIC_ERROR = 'Что-то пошло не так. Попробуйте ещё раз.';
+// повторяет литерал (CLAUDE.md «Одна механика — один компонент»). Что делать
+// дальше — конкретно: открыть меню заново (VOICE.md «текст ошибки говорит,
+// что делать»).
+export const GENERIC_ERROR = 'Не получилось. Откройте /menu и попробуйте ещё раз.';
 
 /** Ошибка домена (рассылка уже отправлена/отменена, доставка не найдена) —
  * текст уже готов по VOICE (broadcast-journal.queries.ts/deliveries.service.ts),

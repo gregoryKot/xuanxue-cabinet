@@ -19,7 +19,9 @@ export function attemptSubmittedMessage(
   // «Работа от {имя}», не «{имя} сдал(а)» — глагол прошедшего времени
   // требовал бы знать пол ученика, которого в данных нет (UserLean).
   const header = `Работа от ${review.userName} по «${review.examTitle}» — ждёт вашей проверки.`;
-  const body = attemptAnswersSummary(review.blocks, review.media ?? [], link);
+  // Ссылка на кабинет — один раз, в подвале (footer ниже), не в каждом
+  // длинном ответе построчной сводки (attempt-answers-summary.ts).
+  const body = attemptAnswersSummary(review.blocks, review.media ?? []);
   const footer = link ? `Открыть в кабинете: ${link}` : undefined;
   return [header, body, footer]
     .filter((part): part is string => Boolean(part))
