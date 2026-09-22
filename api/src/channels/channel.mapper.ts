@@ -13,10 +13,14 @@ import {
 import { toIsoUtc } from '../common/iso-date';
 import type { ChannelRecord } from './channel.schema';
 
-export type LeanChannel = Omit<ChannelRecord, 'config'> & {
+// `tags` вынесен из Omit и объявлен опциональным — как у LeanClass/LeanLesson:
+// у канала, созданного до ADR-0106, поля в документе нет, `.lean()` не
+// подставляет default за него.
+export type LeanChannel = Omit<ChannelRecord, 'config' | 'tags'> & {
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  tags?: string[];
 };
 
 /** Только для чтения расшифрованного config на сервере (ChannelsService.readConfig) —
@@ -47,6 +51,9 @@ export function toChannelDto(doc: LeanChannel): ChannelDto {
     // Страховка для документов, созданных до появления поля target в схеме —
     // `doc.target` из старой записи может быть undefined, DTO его не отдаёт.
     target: doc.target ?? '',
+    // Тот же приём: у каналов, созданных до ADR-0106, поля tags в документе
+    // нет — `.lean()` не подставляет default при чтении.
+    tags: doc.tags ?? [],
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
   };

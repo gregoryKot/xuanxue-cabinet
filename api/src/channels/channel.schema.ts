@@ -44,6 +44,17 @@ export class ChannelRecord {
   @Prop({ type: Boolean, default: true })
   broadcastEligible!: boolean;
 
+  // Отбор рассылок по тегу (ADR-0106): пусто — канал получает всё, что
+  // уходит по датам занятий, привязанным к нему через занятие в расписании
+  // (прежнее поведение); один тег и больше — только даты занятий, у которых
+  // есть тот же тег: свой тег даты занятия (LessonRecord.tags, ADR-0075) или
+  // тег занятия в расписании, к которому дата относится (ClassRecord.tags,
+  // ADR-0072). Без индекса: каналы рассылки выбираются по `_id` (channelIds
+  // занятия в расписании), не по тегу — фильтрация по тегам идёт в JS уже на
+  // маленьком списке каналов (channel-tag-match.ts).
+  @Prop({ type: [String], default: [] })
+  tags!: string[];
+
   // См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
@@ -65,5 +76,8 @@ export const CHANNEL_FIELD_POLICY: FieldPolicy = {
   config: encJson,
   target: plain(
     'адрес назначения без секрета: по нему бот находит канал, когда его добавили в группу; chatId/peerId не секреты — SECURITY §3',
+  ),
+  tags: plain(
+    'рубрика рассылки, фильтр по тегу занятия в расписании или даты занятия; не персональные данные',
   ),
 };

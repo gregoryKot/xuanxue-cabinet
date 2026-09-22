@@ -2,12 +2,21 @@
 // Тип выбирается только при создании (UpdateChannelInput его не принимает);
 // при правке — подпись типа как текст, поля зависят от него. Ошибка ловится
 // под своим полем (ChannelFormError.field, ревью п.7), не одним общим текстом.
-import { CHANNEL_LIMITS } from '@xuanxue/shared';
+import { CHANNEL_LIMITS, TAG_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { Select } from '../components/Select';
+import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
 import type { ChannelFormError, ChannelFormState } from './channelFormInput';
 import { CHANNEL_TYPE_LABELS_RU, CREATABLE_CHANNEL_TYPES } from './channelTypeLabels';
+
+// Механика тегов объясняется до первого действия (CLAUDE.md «Каждая фича
+// объясняет откуда и зачем») — без этой строки учитель узнал бы про фильтр
+// только после того, как рассылка перестала бы доходить до части учеников.
+const TAGS_HINT =
+  `Пусто — в канал уходит всё по его занятиям. Впишите теги через запятую — ` +
+  `останутся только занятия с этими тегами: своими или тегами занятия в ` +
+  `расписании. До ${TAG_LIMITS.perRecord}.`;
 
 interface ChannelFormFieldsProps {
   state: ChannelFormState;
@@ -72,6 +81,13 @@ export function ChannelFormFields({
           onChange={(e) => setField('title', e.target.value)}
         />
       </Field>
+
+      <TagsField
+        value={state.tagsText}
+        onChange={(value) => setField('tagsText', value)}
+        hint={TAGS_HINT}
+        error={errorFor(error, 'tagsText')}
+      />
 
       {state.type === 'telegram' && (
         <Field

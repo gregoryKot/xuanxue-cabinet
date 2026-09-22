@@ -14,6 +14,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     title: 'ВК школы',
     active: true,
     target: '777',
+    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -55,6 +56,18 @@ describe('ChannelCard', () => {
   it('включённый канал подписи «Выключен» не несёт', () => {
     renderCard({ active: true });
     expect(screen.queryByText(/Выключен/)).not.toBeInTheDocument();
+  });
+
+  // ADR-0106: теги-фильтр канала — по ним видно в списке, какой канал что
+  // получает («новички» отдельно от «средних»), не открывая каждый.
+  it('теги заданы — видны в строке после адреса', () => {
+    renderCard({ tags: ['новички', 'средние'] });
+    expect(screen.getByText('777 · новички, средние')).toBeInTheDocument();
+  });
+
+  it('тегов нет — строка не меняется', () => {
+    renderCard({ tags: [] });
+    expect(screen.getByText('777')).toBeInTheDocument();
   });
 
   // Список каналов — одна карточка (docs/adr/0043): волосяную линию между

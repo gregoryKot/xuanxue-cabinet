@@ -31,6 +31,7 @@ function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
     title: 'ВК школы',
     active: true,
     target: '777',
+    tags: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -128,6 +129,7 @@ describe('ChannelEditorScreen — создание', () => {
       type: 'telegram',
       title: 'Канал школы',
       config: { chatId: '@school_channel' },
+      tags: [],
     });
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
   });
@@ -148,7 +150,24 @@ describe('ChannelEditorScreen — создание', () => {
       type: 'vk',
       title: 'ВК школы',
       config: { token: 'secret', peerId: 42 },
+      tags: [],
     });
+  });
+
+  it('теги — набранное через запятую уходит массивом в тело запроса (ADR-0106)', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({ '/channels': makeChannel() });
+
+    renderAt('/channels/new');
+    await user.type(await screen.findByLabelText('Название'), 'ВК школы');
+    await user.type(screen.getByLabelText('Токен сообщества'), 'secret');
+    await user.type(screen.getByLabelText('ID беседы'), '42');
+    await user.type(screen.getByLabelText('Теги'), 'новички, средние');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('POST')).toHaveLength(1));
+    const body = callsWithMethod('POST')[0]?.[1] as { body: { tags: string[] } };
+    expect(body.body.tags).toEqual(['новички', 'средние']);
   });
 
   it('пустое название — ошибка формы, запроса нет', async () => {
@@ -208,7 +227,7 @@ describe('ChannelEditorScreen — правка', () => {
 
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const body = callsWithMethod('PATCH')[0]?.[1] as { body: unknown };
-    expect(body.body).toEqual({ title: 'ВК школы', active: true });
+    expect(body.body).toEqual({ title: 'ВК школы', active: true, tags: [] });
   });
 
   it('заполненный токен — config уходит целиком', async () => {
@@ -225,7 +244,24 @@ describe('ChannelEditorScreen — правка', () => {
       title: 'ВК школы',
       active: true,
       config: { token: 'newsecret', peerId: 777 },
+      tags: [],
     });
+  });
+
+  it('теги предзаполнены из канала, правка уходит массивом (ADR-0106)', async () => {
+    const user = userEvent.setup();
+    mockChannel(makeChannel({ tags: ['новички'] }));
+
+    renderAt('/channels/ch1');
+    const tagsField = await screen.findByLabelText('Теги');
+    expect(tagsField).toHaveValue('новички');
+
+    await user.type(tagsField, ', средние');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const body = callsWithMethod('PATCH')[0]?.[1] as { body: { tags: string[] } };
+    expect(body.body.tags).toEqual(['новички', 'средние']);
   });
 
   it('«Включён» снят — PATCH с active: false', async () => {
