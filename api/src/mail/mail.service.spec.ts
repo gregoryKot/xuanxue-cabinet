@@ -81,10 +81,14 @@ describe('MailService.sendLoginLink', () => {
     expect(body.from).toBe(CONFIGURED.MAIL_FROM);
     expect(body.to).toBe('ученик@example.com');
     expect(body.text).toContain('https://xuanxue.su/login/email?token=abc');
-    // Код письма (ADR-0104) — второй способ потратить ту же заявку, для
-    // приложения на домашнем экране айфона со своими cookie.
+    // Код письма (ADR-0104) — второй способ потратить ту же заявку. Стоит
+    // первым и с указанием, что делать: он подходит везде, а ссылка ниже —
+    // только там, где кабинет открыт в браузере (отзыв владельца
+    // 2026-09-22 про непонятные объяснения).
     expect(body.text).toContain('482913');
-    expect(body.text).toContain('домашнем экране');
+    expect(body.text).toContain('Код для входа: 482913');
+    expect(body.text).toContain('Введите его на странице входа');
+    expect(body.text.indexOf('482913')).toBeLessThan(body.text.indexOf('token=abc'));
   });
 
   it('Resend ответил не-ok — NotAvailableError с текстом для пользователя', async () => {
