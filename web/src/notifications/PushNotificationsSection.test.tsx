@@ -206,7 +206,7 @@ describe('PushNotificationsSection — разрешено и подписан', 
 });
 
 describe('PushNotificationsSection — разрешено, подписки нет', () => {
-  it('объясняет новое устройство, кнопка включения не спрашивает разрешение повторно', async () => {
+  it('кнопка включения на месте, разрешение спрашивать повторно не нужно', async () => {
     const requestPermission = vi.fn(() =>
       Promise.resolve('granted' as NotificationPermission),
     );
@@ -217,10 +217,7 @@ describe('PushNotificationsSection — разрешено, подписки не
     render(<PushNotificationsSection />);
 
     expect(
-      await screen.findByText(/Разрешение на этом устройстве уже есть/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Включить уведомления' }),
+      await screen.findByRole('button', { name: 'Включить уведомления' }),
     ).toBeInTheDocument();
   });
 });

@@ -9,7 +9,6 @@
 import { useState, type CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
-import { noteStyle } from '../components/screenLayout';
 import { ExamAttemptsNote } from './ExamAttemptsNote';
 import { ExamQuestionList } from './ExamQuestionList';
 import { ExamQuestionSearch } from './ExamQuestionSearch';
@@ -21,7 +20,6 @@ import {
   moveQuestionUp,
   removeQuestion,
 } from './examQuestions';
-import { questionsListNote } from './questionsPerAttempt';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 14 };
 
@@ -32,9 +30,6 @@ interface ExamQuestionsSectionProps {
   onChange: (itemIds: string[]) => void;
   requiredIds: string[];
   requiredEnabled: boolean;
-  /** Значение «Вопросов ученику» — только для заметки под рубрикой ниже;
-   * `undefined`, пока поле пусто или не дописано числом. */
-  questionsPerAttempt: number | undefined;
   onToggleRequired: (itemId: string) => void;
   bankItems: ExamItemDto[] | null;
   bankLoading: boolean;
@@ -50,7 +45,6 @@ export function ExamQuestionsSection({
   onChange,
   requiredIds,
   requiredEnabled,
-  questionsPerAttempt,
   onToggleRequired,
   bankItems,
   bankLoading,
@@ -72,9 +66,6 @@ export function ExamQuestionsSection({
     <div style={columnStyle}>
       <span className="xuanxue-eyebrow">Вопросы · {itemIds.length}</span>
       {examId && <ExamAttemptsNote examId={examId} />}
-      {questionsPerAttempt !== undefined && (
-        <p style={noteStyle}>{questionsListNote(questionsPerAttempt, itemIds.length)}</p>
-      )}
 
       <ExamQuestionList
         itemIds={itemIds}

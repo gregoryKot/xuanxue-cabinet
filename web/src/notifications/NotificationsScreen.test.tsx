@@ -112,14 +112,11 @@ function renderScreen(overrides: Record<string, unknown> = {}) {
 }
 
 describe('NotificationsScreen — шапка', () => {
-  it('заголовок и объяснение видны', async () => {
+  it('заголовок виден', async () => {
     renderScreen();
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Уведомления' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Те же события, что уходят вам в Telegram/),
     ).toBeInTheDocument();
   });
 });

@@ -464,7 +464,7 @@ describe('AttemptReviewScreen — видео у своего вопроса (ADR
       method: 'POST',
     });
     expect(
-      await screen.findByText('Видео ушло в чат с ботом. Откройте Telegram — оно там.'),
+      await screen.findByText('Видео в чате с ботом — откройте Telegram.'),
     ).toBeInTheDocument();
   });
 

@@ -16,7 +16,7 @@ describe('FormDraftNote', () => {
   it('restored === true — текст черновика и кнопка, без role="alert"', () => {
     render(<FormDraftNote restored onDiscard={vi.fn()} />);
 
-    expect(screen.getByText(/не успели сохранить/)).toBeInTheDocument();
+    expect(screen.getByText(/набрали в прошлый раз/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Убрать черновик' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });

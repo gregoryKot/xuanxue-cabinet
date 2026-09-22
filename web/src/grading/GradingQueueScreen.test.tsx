@@ -204,9 +204,7 @@ describe('GradingQueueScreen — подсказка про Telegram (ADR-0042)',
     renderScreen([], [], { ...TEACHER, botChatActive: false });
 
     await screen.findByText('Пока нечего проверять — сданных работ нет.');
-    expect(
-      screen.getByText(/Бот пишет о сданных работах в личный чат/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Бот пишет в личный чат, а вашего чата/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
   });
 
@@ -215,7 +213,7 @@ describe('GradingQueueScreen — подсказка про Telegram (ADR-0042)',
 
     await screen.findByText('Пока нечего проверять — сданных работ нет.');
     expect(
-      screen.queryByText(/Бот пишет о сданных работах в личный чат/),
+      screen.queryByText(/Бот пишет в личный чат, а вашего чата/),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Связать Telegram' }),
@@ -227,7 +225,7 @@ describe('GradingQueueScreen — подсказка про Telegram (ADR-0042)',
 
     await screen.findByText('Пока нечего проверять — сданных работ нет.');
     expect(
-      screen.queryByText(/Бот пишет о сданных работах в личный чат/),
+      screen.queryByText(/Бот пишет в личный чат, а вашего чата/),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Связать Telegram' }),

@@ -67,7 +67,7 @@ describe('ProfileScreen — шапка', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Профиль' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Ваше имя видят учитель и помощники/)).toBeInTheDocument();
+    expect(screen.getByText('Ниже — что присылать и куда.')).toBeInTheDocument();
   });
 });
 
@@ -150,29 +150,16 @@ describe('ProfileScreen — список уведомлений по роли', 
       screen.getByRole('checkbox', { name: 'Результат экзамена' }),
     ).not.toBeChecked();
   });
-
-  // Подсказка про личный чат — для связавшего Telegram: несвязанному на её
-  // месте стоит кнопка связки (ADR-0034), проверка ниже.
-  it('честно про Telegram — уведомления придут в личный чат с ботом', async () => {
-    renderScreen(
-      { ...STUDENT, telegramLinked: true, botChatActive: true },
-      { enabled: [] },
-    );
-
-    expect(
-      await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/),
-    ).toBeInTheDocument();
-  });
 });
 
 describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
-  it('Telegram связан, почта тоже — оба ключа на месте, блока нет вовсе, остаётся подсказка про личный чат', async () => {
+  it('Telegram связан, почта тоже — оба ключа на месте, блока нет вовсе', async () => {
     renderScreen(
       { ...STUDENT, telegramLinked: true, botChatActive: true },
       { enabled: [] },
     );
 
-    await screen.findByText(/В Telegram уведомления приходят в личный чат с ботом/);
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
     expect(screen.queryByText('Второй способ входа')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Связать Telegram' }),

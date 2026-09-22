@@ -8,14 +8,10 @@
 // школа», docs/adr/0043), сам экран остаётся тонкой сборкой двух хуков.
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import {
-  screenExplanationStyle,
-  screenSectionStyle,
-  screenTitleStyle,
-} from '../components/screenLayout';
+import { screenSectionStyle, screenTitleStyle } from '../components/screenLayout';
+import { TELEGRAM_CHAT_EXPLANATION } from '../telegram/telegramChatExplanation';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { GradingQueueSection } from './GradingQueueSection';
-import { GRADING_QUEUE_EXPLANATION } from './gradingQueueHint';
 import { showsTelegramHint } from './showsTelegramHint';
 import { sortGradedAttempts } from './sortGradedAttempts';
 import { useGradedAttempts } from './useGradedAttempts';
@@ -26,14 +22,6 @@ const QUEUE_TITLE = 'Ждут проверки';
 const QUEUE_EMPTY_MESSAGE = 'Пока нечего проверять — сданных работ нет.';
 const GRADED_TITLE = 'Проверенные';
 const GRADED_EMPTY_MESSAGE = 'Проверенных работ пока нет.';
-// У каждого экрана своя причина связки — так и задуман проп `explanation`
-// у TelegramLinkButton (ADR-0034). На «Уведомлениях» речь про уведомления
-// вообще, здесь — про эту очередь: почему о сданных работах никто не пишет
-// (ADR-0042). Ничего не обещаем про «уведомления начнут приходить»: сам вид
-// человек мог выключить, а это мы здесь не спрашиваем.
-const TELEGRAM_LINK_EXPLANATION =
-  'Бот пишет о сданных работах в личный чат, а вашего чата с ним пока нет. ' +
-  'Свяжите Telegram и нажмите в боте «Запустить».';
 
 export default function GradingQueueScreen() {
   const queue = useGradingQueue();
@@ -48,7 +36,6 @@ export default function GradingQueueScreen() {
   return (
     <section style={screenSectionStyle}>
       <h1 style={screenTitleStyle}>{TITLE}</h1>
-      <p style={screenExplanationStyle}>{GRADING_QUEUE_EXPLANATION}</p>
 
       <GradingQueueSection
         title={QUEUE_TITLE}
@@ -71,7 +58,7 @@ export default function GradingQueueScreen() {
       />
 
       {showsTelegramHint(me) && (
-        <TelegramLinkButton explanation={TELEGRAM_LINK_EXPLANATION} />
+        <TelegramLinkButton explanation={TELEGRAM_CHAT_EXPLANATION} />
       )}
     </section>
   );

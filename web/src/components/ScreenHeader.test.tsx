@@ -1,6 +1,6 @@
-// Шапка раздела (components/ScreenHeader.tsx) — три необязательных куска
-// дают четыре сочетания, и ветки проверяются здесь, а не в каждом экране,
-// который её рисует (CLAUDE.md «Тесты»: ветвление = логика).
+// Шапка раздела (components/ScreenHeader.tsx) — четыре необязательных куска
+// (объяснение, приписка, действие и своя ширина), и ветки проверяются здесь,
+// а не в каждом экране, который её рисует (CLAUDE.md «Тесты»: ветвление = логика).
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ScreenHeader } from './ScreenHeader';
@@ -38,6 +38,15 @@ describe('ScreenHeader', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('без объяснения — заголовок один, без пустого абзаца (NotificationsScreen.tsx)', () => {
+    render(<ScreenHeader title="Уведомления" />);
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Уведомления' }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('p')).toBeNull();
   });
 
   it('titleMaxWidth — своя ширина блока заголовка («Занятия», docs/adr/0043)', () => {

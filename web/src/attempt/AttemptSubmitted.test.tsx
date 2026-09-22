@@ -19,7 +19,8 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 
 const OFFER_EXPLANATION = /бот напишет, как только учитель поставит итог/;
-const VIDEO_EXPLANATION = /Бот в Telegram узнаёт вас по аккаунту/;
+const VIDEO_EXPLANATION =
+  /Свяжите Telegram — и видео можно будет прислать боту одним сообщением/;
 const LINK_BUTTON_NAME = 'Связать Telegram';
 
 /** Ученик без личного чата с ботом — тот, ради кого предложение и стоит. */

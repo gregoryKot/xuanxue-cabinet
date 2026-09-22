@@ -20,8 +20,7 @@ import { useCopyText } from '../broadcasts/useCopyText';
 import { InviteLinkTelegramRow } from './InviteLinkTelegramRow';
 import { useInviteLink } from './useInviteLink';
 
-const EXPLANATION =
-  'Отправьте ссылку ученику или опубликуйте в канале. Кто откроет её и войдёт, сразу попадёт в кабинет.';
+const EXPLANATION = 'Отправьте ссылку ученику или опубликуйте в канале.';
 const CREATE_LABEL = 'Создать ссылку';
 const COPY_LABEL = 'Скопировать';
 const COPIED_LABEL = 'Скопировано';

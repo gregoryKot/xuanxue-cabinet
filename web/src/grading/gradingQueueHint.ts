@@ -20,14 +20,6 @@ import { pluralRu } from '@xuanxue/shared';
 const WORK_FORMS = { one: 'работа', few: 'работы', many: 'работ', other: 'работы' };
 const WAIT_VERB_FORMS = { one: 'ждёт', few: 'ждут', many: 'ждут', other: 'ждут' };
 
-/** Общее описание, зачем открывать «Проверку работ», без чисел — строка
- * объяснения экрана (GradingQueueScreen.tsx). Живёт в этом чистом текстовом
- * модуле, а не в самом экране: `/exams` тянет отсюда formatGradingQueueHint
- * (см. выше) и не должен из-за этого тащить код экрана `/grading` в свой
- * чанк (React.lazy, app/routeModules.ts). */
-export const GRADING_QUEUE_EXPLANATION =
-  'Работы, которые ученики уже сдали. Откройте любую, чтобы поставить итог и написать комментарий.';
-
 export function formatGradingQueueHint(count: number | null): string | null {
   if (count === null) return null;
   if (count === 0) return 'Пока нечего проверять.';

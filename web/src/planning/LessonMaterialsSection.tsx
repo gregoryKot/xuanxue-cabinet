@@ -19,10 +19,8 @@ import { NewLessonMaterialForm } from './NewLessonMaterialForm';
 import { useLessonMaterials } from './useLessonMaterials';
 
 const TITLE = 'Материалы';
-const EXPLANATION =
-  'Ссылки этого занятия: конспект, видео, статья. Они же встают в «Материалы» — заводить их там второй раз не нужно.';
-const EMPTY_TEXT =
-  'Пока ни одной. Добавьте — ученик увидит её в архиве занятия, рядом с записью.';
+const EXPLANATION = 'Ссылки этого занятия: конспект, видео, статья.';
+const EMPTY_TEXT = 'Пока ни одной.';
 const LOADING_TEXT = 'Загружаем материалы занятия…';
 const NEW_LABEL = 'Добавить ссылку';
 const LIBRARY_LABEL = 'Из библиотеки';

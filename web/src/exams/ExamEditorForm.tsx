@@ -41,13 +41,6 @@ const BACK_TEXT = 'К списку экзаменов';
 const NEW_EXAM_TITLE = 'Новый экзамен';
 const REMOVE_MESSAGE = 'Экзамен исчезнет вместе с набором вопросов. Отменить нельзя.';
 
-/** `undefined` и для пустого поля, и для ещё не дописанного числа — заметка
- * под «Вопросы · N» (ExamQuestionsSection.tsx) не должна мигать «NaN». */
-function parseCount(text: string): number | undefined {
-  const value = Number(text.trim());
-  return text.trim() !== '' && Number.isInteger(value) ? value : undefined;
-}
-
 interface ExamEditorFormProps {
   exam: ExamDto | null;
   editor: UseExamEditorResult;
@@ -111,7 +104,6 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
             onChange={handleQuestionIdsChange}
             requiredIds={form.state.requiredIds}
             requiredEnabled={form.state.questionsPerAttemptText.trim() !== ''}
-            questionsPerAttempt={parseCount(form.state.questionsPerAttemptText)}
             onToggleRequired={(itemId) =>
               form.setField('requiredIds', toggleRequired(form.state.requiredIds, itemId))
             }
