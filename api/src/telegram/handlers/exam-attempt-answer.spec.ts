@@ -70,7 +70,6 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
   replies: string[];
   deletes: number[];
   sendPhoto: jest.Mock;
-  sendMediaGroup: jest.Mock;
 } {
   const edits: string[] = [];
   const buttonTexts: string[][] = [];
@@ -82,7 +81,6 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
     message_id: 1,
     photo: [{ file_id: 'f-small' }, { file_id: 'f-big' }],
   });
-  const sendMediaGroup = jest.fn().mockResolvedValue([]);
   const ctx = {
     editMessageText: (
       text: string,
@@ -103,9 +101,9 @@ function fakeCtx(options: { failEdit?: boolean } = {}): {
       deletes.push(1);
       return Promise.resolve(true);
     },
-    telegram: { sendPhoto, sendMediaGroup },
+    telegram: { sendPhoto },
   } as unknown as Context;
-  return { ctx, edits, buttonTexts, replies, deletes, sendPhoto, sendMediaGroup };
+  return { ctx, edits, buttonTexts, replies, deletes, sendPhoto };
 }
 
 describe('handleExamOption', () => {
@@ -287,7 +285,7 @@ describe('handleExamOption', () => {
       loadOwnAttempt: jest.fn().mockResolvedValue(current),
       saveAnswer: jest.fn().mockResolvedValue(saved),
     });
-    const { ctx, edits, deletes, sendPhoto, sendMediaGroup } = fakeCtx();
+    const { ctx, edits, deletes, sendPhoto } = fakeCtx();
 
     await handleExamOption(
       ctx,
@@ -300,7 +298,6 @@ describe('handleExamOption', () => {
     );
 
     expect(sendPhoto).not.toHaveBeenCalled();
-    expect(sendMediaGroup).not.toHaveBeenCalled();
     expect(deletes).toHaveLength(0);
     expect(edits).toHaveLength(1); // тот же вопрос — просто editMessageText
     expect(port.loadOptionImage).not.toHaveBeenCalled();

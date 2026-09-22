@@ -39,7 +39,7 @@ export default function LibraryScreen() {
 
   // Набор пилюль — из полного списка (не из уже отфильтрованного): иначе
   // выбор тега сразу же убирал бы соседние пилюли из-под пальца (тот же
-  // приём, что у useMaterialTagOptions.ts учителя).
+  // приём, что у useTagOptions.ts учителя).
   const tagOptions = useMemo(() => collectUniqueTags(materials ?? []), [materials]);
   const visibleMaterials = materials ? filterMaterialsByTag(materials, tag) : null;
 

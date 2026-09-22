@@ -81,7 +81,7 @@ describe('buildQuestionScreen', () => {
   });
 
   // ADR-0037: вариант-картинка без подписи — Telegram отклоняет кнопку с
-  // пустым текстом, поэтому кнопка подписана номером.
+  // пустым текстом, поэтому кнопка подписана номером (formatOptionLabel).
   it('single — вариант без текста (картинка без подписи) подписан номером', () => {
     const q = question({
       options: [
@@ -90,8 +90,52 @@ describe('buildQuestionScreen', () => {
       ],
     });
     const view = buildQuestionScreen(attempt([q]), 0);
-    expect(view.buttons[0]?.[0]?.text).toBe('Вариант 1');
-    expect(view.buttons[1]?.[0]?.text).toBe('Пять');
+    // У вопроса есть картинка — номер добавлен ко всем кнопкам (ADR-0118),
+    // formatOptionLabel у первой и так подставил «Вариант 1» — номер виден
+    // дважды, это ожидаемо (тот же номер, что и в подписи фото).
+    expect(view.buttons[0]?.[0]?.text).toBe('1. Вариант 1');
+    expect(view.buttons[1]?.[0]?.text).toBe('2. Пять');
+  });
+
+  // ADR-0118: подпись фото ученику видна, сетка альбома — нет; номер на
+  // кнопке — единственная связь фото с кнопкой варианта с текстом.
+  it('картинка хотя бы у одного варианта — номер после пометки выбора: «✓ 2. …»', () => {
+    const q = question({
+      options: [
+        { id: 'o1', text: 'Три', imageId: 'img1' },
+        { id: 'o2', text: 'Пять' },
+      ],
+    });
+    const view = buildQuestionScreen(
+      attempt([q], { answers: [{ itemId: 'i1', optionIds: ['o2'] }] }),
+      0,
+    );
+    expect(view.buttons[0]?.[0]?.text).toBe('1. Три');
+    expect(view.buttons[1]?.[0]?.text).toBe('✓ 2. Пять');
+  });
+
+  // Кейс жалобы тестировщика (2026-09-22): картинка есть у вариантов 1 и 3,
+  // у второго нет — второй не сдвигает нумерацию соседей, номера на кнопках
+  // остаются теми же, что в подписях фото (exam-question-album.ts).
+  it('картинка у вариантов 1 и 3 (у второго нет) — номера кнопок не сдвигаются', () => {
+    const q = question({
+      options: [
+        { id: 'o1', text: 'A', imageId: 'img-a' },
+        { id: 'o2', text: 'B' },
+        { id: 'o3', text: 'C', imageId: 'img-c' },
+      ],
+    });
+    const view = buildQuestionScreen(attempt([q]), 0);
+    expect(view.buttons.slice(0, 3).map((row) => row[0]?.text)).toEqual([
+      '1. A',
+      '2. B',
+      '3. C',
+    ]);
+  });
+
+  it('без картинок у вариантов вопроса — кнопки без номеров', () => {
+    const view = buildQuestionScreen(attempt([question()]), 0);
+    expect(view.buttons.slice(0, 2).map((row) => row[0]?.text)).toEqual(['Три', 'Пять']);
   });
 
   it('single — выбранный вариант отмечен галочкой', () => {

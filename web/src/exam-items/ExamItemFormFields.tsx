@@ -6,6 +6,7 @@ import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { TagsField } from '../components/TagsField';
+import { useTagOptions } from '../hooks/useTagOptions';
 import type { ExamItemFormState } from './examItemFormInput';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16 };
@@ -23,6 +24,10 @@ interface ExamItemFormFieldsProps {
 }
 
 export function ExamItemFormFields({ state, setField, error }: ExamItemFormFieldsProps) {
+  // Сбой useTagOptions.ts просто оставляет список пустым — без подсказок,
+  // но поле работает как обычный текстовый ввод.
+  const tagOptions = useTagOptions();
+
   return (
     <div style={columnStyle}>
       <Field label="Формулировка" error={error ?? undefined}>
@@ -59,6 +64,7 @@ export function ExamItemFormFields({ state, setField, error }: ExamItemFormField
         value={state.tagsText}
         onChange={(value) => setField('tagsText', value)}
         hint={`Через запятую — раздел программы, уровень. До ${EXAM_ITEM_LIMITS.tagsMax}`}
+        options={tagOptions}
       />
     </div>
   );
