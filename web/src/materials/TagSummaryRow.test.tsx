@@ -7,7 +7,14 @@ import type { TagSummaryDto } from '@xuanxue/shared';
 import { TagSummaryRow } from './TagSummaryRow';
 
 function makeSummary(overrides: Partial<TagSummaryDto> = {}): TagSummaryDto {
-  return { tag: 'дракон', lessonCount: 3, materialCount: 2, ...overrides };
+  return {
+    tag: 'дракон',
+    lessonCount: 3,
+    materialCount: 2,
+    channelCount: 0,
+    examItemCount: 0,
+    ...overrides,
+  };
 }
 
 describe('TagSummaryRow', () => {

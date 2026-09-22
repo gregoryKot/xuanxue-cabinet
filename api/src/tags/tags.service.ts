@@ -36,12 +36,13 @@ export class TagsService {
   ) {}
 
   async list(query: ListTagsQuery): Promise<TagSummaryDto[]> {
-    const [lessonCounts, materialCounts, channelCounts, examItemCounts] = await Promise.all([
-      countLessonsByTag(this.lessonModel, this.classModel),
-      countMaterialsByTag(this.materialModel),
-      countChannelsByTag(this.channelModel),
-      countExamItemsByTag(this.examItemModel),
-    ]);
+    const [lessonCounts, materialCounts, channelCounts, examItemCounts] =
+      await Promise.all([
+        countLessonsByTag(this.lessonModel, this.classModel),
+        countMaterialsByTag(this.materialModel),
+        countChannelsByTag(this.channelModel),
+        countExamItemsByTag(this.examItemModel),
+      ]);
     return mergeTagSummaries(
       lessonCounts,
       materialCounts,

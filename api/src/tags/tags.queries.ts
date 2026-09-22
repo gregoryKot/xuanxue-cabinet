@@ -5,7 +5,7 @@
 // (plain, class.schema.ts/lesson.schema.ts/material.schema.ts/
 // channel.schema.ts/exam-item.schema.ts) — агрегация работает прямо в Mongo,
 // без расшифровки в приложении.
-import type { Model } from 'mongoose';
+import type { Model, PipelineStage } from 'mongoose';
 import type { TagSummaryDto } from '@xuanxue/shared';
 import type { ChannelRecord } from '../channels/channel.schema';
 import type { ClassRecord } from '../classes/class.schema';
@@ -18,17 +18,31 @@ interface TagCountRow {
   count: number;
 }
 
-/** Тег → число материалов с ним, по всей библиотеке. `$unwind` на
- * отсутствующем или пустом `tags` сам исключает документ без тегов —
- * специального случая для материалов до ADR-0058 не нужно. */
-export async function countMaterialsByTag(
-  model: Model<MaterialRecord>,
+/** Тег → число документов модели с ним по полю `tags`: общий хвост
+ * `$unwind`+`$group` для материалов, каналов и вопросов экзамена (jscpd —
+ * три места с одним и тем же приёмом это уже дубль, CLAUDE.md «Храповики»).
+ * `preStages` — то, что нужно отфильтровать до подсчёта (например, личный
+ * канал ученика); `$unwind` на отсутствующем или пустом `tags` сам исключает
+ * документ без тегов — специального случая не нужно. Дате занятия с
+ * наследованием тега курса это не подходит (`countLessonsByTag`, свой
+ * `$lookup`), у неё своя агрегация. */
+async function countTagOccurrences<T>(
+  model: Model<T>,
+  preStages: PipelineStage[] = [],
 ): Promise<Map<string, number>> {
   const rows = await model.aggregate<TagCountRow>([
+    ...preStages,
     { $unwind: '$tags' },
     { $group: { _id: '$tags', count: { $sum: 1 } } },
   ]);
   return new Map(rows.map((row) => [row._id, row.count]));
+}
+
+/** Тег → число материалов с ним, по всей библиотеке. */
+export function countMaterialsByTag(
+  model: Model<MaterialRecord>,
+): Promise<Map<string, number>> {
+  return countTagOccurrences(model);
 }
 
 /** Тег → число дат занятий с ним, с наследованием тега курса (ADR-0072):
@@ -70,26 +84,17 @@ export async function countLessonsByTag(
 /** Тег → число каналов школы с ним (ADR-0108, ADR-0116). Личный канал
  * ученика (`broadcastEligible: false`, ADR-0027) не считается — это не
  * канал школы, тот же фильтр, что `ChannelsService.list`. */
-export async function countChannelsByTag(
+export function countChannelsByTag(
   model: Model<ChannelRecord>,
 ): Promise<Map<string, number>> {
-  const rows = await model.aggregate<TagCountRow>([
-    { $match: { broadcastEligible: { $ne: false } } },
-    { $unwind: '$tags' },
-    { $group: { _id: '$tags', count: { $sum: 1 } } },
-  ]);
-  return new Map(rows.map((row) => [row._id, row.count]));
+  return countTagOccurrences(model, [{ $match: { broadcastEligible: { $ne: false } } }]);
 }
 
 /** Тег → число вопросов банка экзамена с ним, по всей истории школы. */
-export async function countExamItemsByTag(
+export function countExamItemsByTag(
   model: Model<ExamItemRecord>,
 ): Promise<Map<string, number>> {
-  const rows = await model.aggregate<TagCountRow>([
-    { $unwind: '$tags' },
-    { $group: { _id: '$tags', count: { $sum: 1 } } },
-  ]);
-  return new Map(rows.map((row) => [row._id, row.count]));
+  return countTagOccurrences(model);
 }
 
 /**

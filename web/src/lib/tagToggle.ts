@@ -24,8 +24,6 @@ export function toggleTagInText(text: string, tag: string): string {
  * Сравнение без учёта регистра, тем же приёмом, что и toggleTagInText выше.
  */
 export function selectedTagOptions(text: string, options: readonly string[]): string[] {
-  const selectedLowerCase = new Set(
-    parseTagsText(text).map((tag) => tag.toLowerCase()),
-  );
+  const selectedLowerCase = new Set(parseTagsText(text).map((tag) => tag.toLowerCase()));
   return options.filter((option) => selectedLowerCase.has(option.toLowerCase()));
 }

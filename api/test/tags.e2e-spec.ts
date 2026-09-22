@@ -8,7 +8,9 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Types, type Model } from 'mongoose';
 import request from 'supertest';
 import type { TagSummaryDto } from '@xuanxue/shared';
+import { ChannelRecord } from '../src/channels/channel.schema';
 import { ClassRecord } from '../src/classes/class.schema';
+import { ExamItemRecord } from '../src/exams/exam-item.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { MaterialRecord } from '../src/materials/material.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -19,6 +21,8 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
   let lessonModel: Model<LessonRecord>;
   let classModel: Model<ClassRecord>;
   let materialModel: Model<MaterialRecord>;
+  let channelModel: Model<ChannelRecord>;
+  let examItemModel: Model<ExamItemRecord>;
 
   beforeAll(async () => {
     testApp = await createTestApp();
@@ -32,6 +36,14 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
       getModelToken(MaterialRecord.name),
       { strict: false },
     );
+    channelModel = testApp.app.get<Model<ChannelRecord>>(
+      getModelToken(ChannelRecord.name),
+      { strict: false },
+    );
+    examItemModel = testApp.app.get<Model<ExamItemRecord>>(
+      getModelToken(ExamItemRecord.name),
+      { strict: false },
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -43,6 +55,8 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
       lessonModel.deleteMany({}),
       classModel.deleteMany({}),
       materialModel.deleteMany({}),
+      channelModel.deleteMany({}),
+      examItemModel.deleteMany({}),
     ]);
   });
 
@@ -70,7 +84,7 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
     }
   });
 
-  it('материал и дата занятия с тегом — сводка считает оба через реально подключённый модуль', async () => {
+  it('материал, дата занятия, канал и вопрос экзамена с тегом — сводка считает все четыре источника через реально подключённый модуль (ADR-0108, ADR-0116)', async () => {
     const cls = await classModel.create({ title: 'Курс', format: 'online' });
     await lessonModel.create({
       classId: cls._id,
@@ -85,12 +99,27 @@ describe('Сводка тегов (e2e, GET /api/tags)', () => {
       createdBy: new Types.ObjectId(),
       tags: ['дракон'],
     });
+    await channelModel.create({
+      type: 'telegram',
+      title: 'Канал школы',
+      config: '{}',
+      target: new Types.ObjectId().toString(),
+      active: true,
+      tags: ['дракон'],
+    });
+    await examItemModel.create({ kind: 'text', prompt: 'Вопрос', tags: ['дракон'] });
 
     const cookie = await sessionCookieFor(testApp.app, ['teacher']);
     const res = await request(server()).get('/api/tags').set('Cookie', cookie);
 
     expect(res.status).toBe(200);
     const dto = (res.body as TagSummaryDto[]).find((t) => t.tag === 'дракон');
-    expect(dto).toEqual({ tag: 'дракон', lessonCount: 1, materialCount: 1 });
+    expect(dto).toEqual({
+      tag: 'дракон',
+      lessonCount: 1,
+      materialCount: 1,
+      channelCount: 1,
+      examItemCount: 1,
+    });
   });
 });

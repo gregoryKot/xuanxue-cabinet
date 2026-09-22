@@ -23,10 +23,7 @@ describe('countChannelsByTag / countExamItemsByTag', () => {
     memory = await openMemoryMongo();
     connection = memory.connection;
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    examItemModel = connection.model<ExamItemRecord>(
-      ExamItemRecord.name,
-      ExamItemSchema,
-    );
+    examItemModel = connection.model<ExamItemRecord>(ExamItemRecord.name, ExamItemSchema);
   }, 60_000);
 
   afterAll(async () => {
@@ -107,7 +104,13 @@ describe('mergeTagSummaries', () => {
     );
 
     expect(result).toEqual([
-      { tag: 'дракон', lessonCount: 1, materialCount: 2, channelCount: 3, examItemCount: 4 },
+      {
+        tag: 'дракон',
+        lessonCount: 1,
+        materialCount: 2,
+        channelCount: 3,
+        examItemCount: 4,
+      },
     ]);
   });
 

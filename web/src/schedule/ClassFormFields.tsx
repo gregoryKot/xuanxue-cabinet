@@ -15,6 +15,7 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
 import { Toggle } from '../components/Toggle';
+import { useTagOptions } from '../hooks/useTagOptions';
 import type { ClassFormState } from './classFormInput';
 import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 
@@ -44,6 +45,10 @@ export function ClassFormFields({
   teachersError,
   onRetryTeachers,
 }: ClassFormFieldsProps) {
+  // Сбой useTagOptions.ts просто оставляет список пустым — без подсказок,
+  // но поле работает как обычный текстовый ввод.
+  const tagOptions = useTagOptions();
+
   return (
     <>
       <Field label="Название" error={error ?? undefined}>
@@ -69,6 +74,7 @@ export function ClassFormFields({
         value={state.tagsText}
         onChange={(value) => setField('tagsText', value)}
         hint={TAG_HINT}
+        options={tagOptions}
       />
 
       <Field label="Формат">

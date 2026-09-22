@@ -105,7 +105,7 @@ export const MATERIALS_PATH = '/materials';
 
 /** Пустой вид или тег — «Все» (тот же приём, что у examItemsListPath). Без
  * аргумента тега — тот же путь, что даёт список для подсказки тегов
- * (useMaterialTagOptions.ts): рубрикация школы не зависит от фильтра экрана. */
+ * (useTagOptions.ts): рубрикация школы не зависит от фильтра экрана. */
 export function materialsListPath(kind: MaterialKind | '', tag: string = ''): string {
   const params = [`limit=${LIST_LIMIT_MAX}`];
   if (kind) params.push(`kind=${kind}`);

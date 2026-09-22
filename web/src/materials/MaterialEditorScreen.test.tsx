@@ -63,7 +63,7 @@ function mockMaterial(material: MaterialDto) {
 }
 
 /** Материал и занятия пришли, поля на экране. Запросы монтирования при этом
- * позади не все: подсказку тегов (useMaterialTagOptions.ts) поля заказывают
+ * позади не все: подсказку тегов (useTagOptions.ts) поля заказывают
  * сами, и её запрос уходит в тот же миг — до или после этого ожидания, как
  * решит планировщик React. Поэтому ответы на действие после этой точки
  * ставятся по пути (mockApiByPath), а не очередью `…Once`. */
@@ -114,7 +114,7 @@ describe('MaterialEditorScreen — загрузка', () => {
     expect(
       await screen.findByRole('heading', { name: 'Новый материал' }),
     ).toBeInTheDocument();
-    // Подсказка тегов (useMaterialTagOptions.ts) всё равно уходит в сеть — не
+    // Подсказка тегов (useTagOptions.ts) всё равно уходит в сеть — не
     // должно быть только запроса за конкретным (несуществующим) материалом.
     expect(
       mockedApiFetch.mock.calls.some(([path]) => /^\/materials\/[^?]/.test(String(path))),

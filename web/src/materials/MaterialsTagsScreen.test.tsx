@@ -27,7 +27,14 @@ stubViewerTimeZone();
 const SLASH_TAG = 'ушу/тайцзи';
 
 function makeTagSummary(overrides: Partial<TagSummaryDto> = {}): TagSummaryDto {
-  return { tag: 'дракон', lessonCount: 3, materialCount: 2, ...overrides };
+  return {
+    tag: 'дракон',
+    lessonCount: 3,
+    materialCount: 2,
+    channelCount: 0,
+    examItemCount: 0,
+    ...overrides,
+  };
 }
 
 function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
