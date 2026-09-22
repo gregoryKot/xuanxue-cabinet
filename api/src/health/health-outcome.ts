@@ -5,8 +5,9 @@
 // не завис ли планировщик — контроллер сам не решает.
 import { HttpStatus } from '@nestjs/common';
 import { ConnectionStates } from 'mongoose';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import type { HealthStatus } from './health.controller';
+import type { SchedulerHeartbeatReader } from '../common/scheduler-heartbeat';
 
 // Аудит 2026-09-21 (MED): будущий тик без таймаута может зависнуть —
 // `waitForCompletion: true` молча пропускает все следующие тики
@@ -77,4 +78,35 @@ export function healthOutcome(
       stale,
     },
   };
+}
+
+/** Сырые значения, из которых оба потребителя (HealthController,
+ * HealthPingService, ADR-0112) собирают SchedulerHealthInput — то же
+ * ConfigService.get('SCHEDULER_ENABLED'), тот же @Optional() heartbeat и
+ * текущий uptime. */
+export interface HealthOutcomeSource {
+  /** Значение ConfigService.get('SCHEDULER_ENABLED') как есть, до приведения
+   * к boolean: 'false' строкой выключает, всё остальное, включая
+   * undefined, — включено. */
+  schedulerEnabledSetting: string | undefined;
+  heartbeat: SchedulerHeartbeatReader | null | undefined;
+  uptimeSec: number;
+}
+
+// Не чистая функция (берёт DateTime.utc() сама) — сборка входа для реальных
+// вызовов, а не замена healthOutcome() в тестах: там нужен фиксированный
+// `now`, поэтому health-outcome.spec.ts продолжает звать healthOutcome()
+// напрямую. Вынесено сюда из health.controller.ts, чтобы HealthPingService
+// не повторял ту же сборку — иначе то же самое всплыло бы в
+// check-jscpd-ratchet.mjs (CLAUDE.md «Храповики»).
+export function buildHealthOutcome(
+  readyState: ConnectionStates,
+  source: HealthOutcomeSource,
+): HealthOutcome {
+  return healthOutcome(readyState, {
+    enabled: source.schedulerEnabledSetting !== 'false',
+    heartbeat: source.heartbeat ?? null,
+    now: DateTime.utc(),
+    uptimeSec: source.uptimeSec,
+  });
 }
