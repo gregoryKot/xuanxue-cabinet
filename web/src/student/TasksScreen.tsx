@@ -4,23 +4,20 @@
 // см. exams/ExamsScreen.tsx, broadcasts/BroadcastsScreen.tsx).
 //
 // Список приехал из StudentExamsSection.tsx (файл удалён вместе с тестом —
-// второй копии не осталось): та же карточка (StudentExamCard.tsx, без
-// изменений). Куда ведёт нажатие — теперь не всегда POST, см. комментарий
-// ниже про resolveTaskStartTarget.ts.
+// второй копии не осталось): та же карточка (StudentExamCard.tsx). Куда
+// ведёт нажатие и что делает старт — useTaskStart.ts (ADR-0119, оба замка:
+// «Продолжить» открывает уже известную попытку по id без запроса, успешный
+// старт правит список ответом записи, без второго GET).
 //
 // useMyExams — из MyExamsProvider.tsx (ADR-0063): список общий на всё
 // приложение, этот экран и центр уведомлений (счётчик у колокольчика) читают
 // один запрос GET /me/exams через контекст, а не заводят каждый свой.
 //
-// Новое здесь — рубрики: задания, к которым ученик ещё не приступал
-// (getMyExamAction === 'start', shared/src/my-exams.ts), идут первыми под
-// своей рубрикой, остальные — ниже под «Остальные». Разделение —
-// splitNewTasks.ts, чистая функция с тестом (CLAUDE.md «Логика вне
-// компонентов»).
-//
-// Куда ведёт кнопка карточки и что делает старт — useTaskStart.ts (ADR-0119,
-// оба замка: «Продолжить» открывает уже известную попытку по id без запроса,
-// успешный старт правит список ответом записи, без второго GET).
+// Рубрики — отзыв владельца 2026-09-22 (ADR-0120): живое и законченное
+// лежали вперемешку. Теперь наверху то, что ждёт ученика, ниже — то, что уже
+// позади; деление — splitTasksToDo.ts, чистая функция с тестом (CLAUDE.md
+// «Логика вне компонентов»). Рубрика стоит и над одинокой группой: она
+// отвечает на главный вопрос экрана — ждут меня или нет.
 import type { CSSProperties } from 'react';
 import type { MyExamDto } from '@xuanxue/shared';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -29,20 +26,24 @@ import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useMyExams } from './MyExamsProvider';
-import { splitNewTasks } from './splitNewTasks';
+import { splitTasksToDo } from './splitTasksToDo';
 import { StudentExamCard } from './StudentExamCard';
 import { useTaskStart } from './useTaskStart';
 
 const TITLE = 'Задания';
+// Объяснение говорит, что делать и что узнать до первого нажатия, — про
+// содержимое списка ученик и так видит по карточкам (отзыв владельца
+// 2026-09-22). Срок есть не у каждого экзамена (`timeLimitMin` необязателен),
+// отсюда «бывает»; часы у начатой попытки идут от `startedAt` и пауз не
+// знают, а просроченную попытку закрывает и отправляет учителю планировщик
+// (api/src/exams/exam-deadline-close.service.ts) — поэтому «уходит учителю».
 const EXPLANATION =
-  'Экзамены, которые открыл учитель. Каждый — с числом попыток и итогом проверки.';
+  'Выберите экзамен и нажмите «Начать». У экзамена бывает срок — тогда часы ' +
+  'идут без остановки, даже если вы закрыли вкладку. Не успели — попытка ' +
+  'уходит учителю такой, какая есть.';
 const EMPTY_MESSAGE = 'Заданий пока нет.';
-// Склонение — по числу новых заданий; двух форм хватает (pluralRu тут не
-// нужен, ветвлений всего две — CLAUDE.md «Без магических чисел»: константы
-// рядом с использованием).
-const NEW_RUBRIC_ONE = 'Новое задание';
-const NEW_RUBRIC_MANY = 'Новые задания';
-const REST_RUBRIC = 'Остальные';
+const TO_DO_RUBRIC = 'Сдавать сейчас';
+const DONE_RUBRIC = 'Уже позади';
 
 const groupStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 // У `<h2>` свои отступы от браузера — расстояние держит `gap` колонки.
@@ -64,10 +65,20 @@ export default function TasksScreen() {
     );
   }
 
+  function renderGroup(rubric: string, tasks: MyExamDto[]) {
+    if (tasks.length === 0) return null;
+    return (
+      <div style={groupStyle}>
+        <h2 className="xuanxue-eyebrow" style={headingStyle}>
+          {rubric}
+        </h2>
+        <ul style={cardListStyle}>{tasks.map(renderCard)}</ul>
+      </div>
+    );
+  }
+
   const ready = !loading && !error && exams !== null;
-  const { newTasks, restTasks } = ready
-    ? splitNewTasks(exams)
-    : { newTasks: [], restTasks: [] };
+  const { toDo, done } = ready ? splitTasksToDo(exams) : { toDo: [], done: [] };
 
   return (
     <section style={screenSectionStyle}>
@@ -85,27 +96,8 @@ export default function TasksScreen() {
 
       {ready && exams.length === 0 && <p style={{ margin: 0 }}>{EMPTY_MESSAGE}</p>}
 
-      {/* Рубрики только когда список разбит на две группы — одни «старые»
-          задания идут плоским списком, без «Остальных» над пустым местом. */}
-      {ready && newTasks.length > 0 && (
-        <div style={groupStyle}>
-          <h2 className="xuanxue-eyebrow" style={headingStyle}>
-            {newTasks.length === 1 ? NEW_RUBRIC_ONE : NEW_RUBRIC_MANY}
-          </h2>
-          <ul style={cardListStyle}>{newTasks.map(renderCard)}</ul>
-        </div>
-      )}
-
-      {ready && restTasks.length > 0 && (
-        <div style={groupStyle}>
-          {newTasks.length > 0 && (
-            <h2 className="xuanxue-eyebrow" style={headingStyle}>
-              {REST_RUBRIC}
-            </h2>
-          )}
-          <ul style={cardListStyle}>{restTasks.map(renderCard)}</ul>
-        </div>
-      )}
+      {ready && renderGroup(TO_DO_RUBRIC, toDo)}
+      {ready && renderGroup(DONE_RUBRIC, done)}
     </section>
   );
 }
