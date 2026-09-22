@@ -15,6 +15,9 @@ import { LessonRecord } from '../src/lessons/lesson.schema';
 import { MaterialRecord } from '../src/materials/material.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
+import { postRecording } from './e2e-support/lessons-fixtures';
+
+const REC_URL = 'https://cloud.example/archive-material-rec';
 
 describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR-0058)', () => {
   let testApp: TestApp;
@@ -61,20 +64,6 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
       .send(body);
   }
 
-  // Запись обязательна (ADR-0114) — без неё дата не попадёт в архив и тест
-  // на материал даты (не на запись) проверял бы уже несуществующую дату.
-  async function addRecording(teacherCookie: string, lessonId: string): Promise<void> {
-    const res = await withCsrf(
-      request(server()).post(`/api/lessons/${lessonId}/recording`),
-    )
-      .set('Cookie', teacherCookie)
-      .send({
-        title: 'Запись занятия',
-        url: 'https://cloud.example/archive-material-rec',
-      });
-    expect(res.status).toBe(201);
-  }
-
   async function createPastLesson(teacherCookie: string): Promise<string> {
     const cls = await classModel().create({
       title: 'Тайцзицюань',
@@ -88,7 +77,10 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
     });
     expect(res.status).toBe(201);
     const lessonId = (res.body as { id: string }).id;
-    await addRecording(teacherCookie, lessonId);
+    // Запись обязательна (ADR-0114): без неё дата в архив не попадёт, и тест
+    // про материал даты проверял бы уже несуществующую дату.
+    const rec = await postRecording(server(), teacherCookie, lessonId, REC_URL);
+    expect(rec.status).toBe(201);
     return lessonId;
   }
 

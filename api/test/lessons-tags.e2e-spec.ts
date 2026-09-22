@@ -10,13 +10,15 @@ import type {
 } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
-import { withCsrf } from './e2e-support/http';
 import {
   createLessonTestHelpers,
   FROM,
+  postRecording,
   STARTS_AT,
   TO,
 } from './e2e-support/lessons-fixtures';
+
+const ARCHIVE_REC_URL = 'https://cloud.example/tags-archive-rec';
 
 describe('Теги дат занятий (e2e, ADR-0075)', () => {
   let testApp: TestApp;
@@ -169,15 +171,11 @@ describe('Теги дат занятий (e2e, ADR-0075)', () => {
       startsAt: STARTS_AT,
       tags: ['дракон'],
     });
-    // Запись обязательна (ADR-0114) — без неё дата не попадёт в архив вовсе,
-    // а этот тест проверяет именно теги, не правило про запись.
+    // Запись обязательна (ADR-0114): без неё дата в архив не попадёт, а тест
+    // проверяет теги, не правило про запись.
     const lessonId = (created.body as LessonDto).id;
-    const addedRecording = await withCsrf(
-      request(server()).post(`/api/lessons/${lessonId}/recording`),
-    )
-      .set('Cookie', teacherCookie)
-      .send({ title: 'Запись занятия', url: 'https://cloud.example/tags-archive-rec' });
-    expect(addedRecording.status).toBe(201);
+    const rec = await postRecording(server(), teacherCookie, lessonId, ARCHIVE_REC_URL);
+    expect(rec.status).toBe(201);
 
     const studentCookie = await sessionFor([]);
     const res = await request(server())
