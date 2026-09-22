@@ -101,8 +101,13 @@ describe('useCopyText', () => {
     });
     unmount();
 
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
+    // Проверяется именно это: таймер, доживший до размонтирования, не
+    // трогает состояние снятого хука. Раньше проверкой был зелёный прогон —
+    // гейт check-test-assertions.mjs такого не пропускает (аудит 2026-09-22).
+    expect(() =>
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      }),
+    ).not.toThrow();
   });
 });
