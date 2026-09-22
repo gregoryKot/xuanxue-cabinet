@@ -23,8 +23,10 @@
 // кнопки рядом с остатком попыток. Текст обеим строкам считает shared, один
 // на кабинет и бота.
 import type { CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { textLinkStyle } from '../components/screenLayout';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeExamState, formatAttemptsLeft } from './examAttemptState';
 import { useExamTimeLine } from './useExamTimeLine';
@@ -63,6 +65,8 @@ const ACTION_LABEL = {
   retry: 'Пройти ещё раз',
 } as const;
 
+const REVIEW_LINK_TEXT = 'Посмотреть свою работу';
+
 interface StudentExamCardProps {
   exam: MyExamDto;
   pending: boolean;
@@ -85,6 +89,9 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
   // Попытку правда можно начать только этими двумя кнопками: «Продолжить»
   // открывает начатую, и остаток попыток к ней отношения не имеет.
   const showAttemptsLeft = action === 'start' || action === 'retry';
+  // Попытка в работе уже открывается кнопкой «Продолжить» — ссылка нужна
+  // ровно там, где кнопки на вход нет: сдал сам или закрыло время.
+  const showReviewLink = attempt !== undefined && attempt.status !== 'in_progress';
 
   return (
     <li>
@@ -115,6 +122,18 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             <Button type="button" variant="secondary" pending={pending} onClick={onStart}>
               {ACTION_LABEL[action]}
             </Button>
+          </div>
+        )}
+
+        {/* Ссылка, не вторая кнопка: главное действие на карточке одно
+            (ADR-0043). Ведёт на экран сдачи — он же читает попытку и рисует
+            её ответы в выключенном виде (attempt/AttemptSubmittedAnswers.tsx,
+            docs/adr/0123), уже сделанного не выдавая за форму. */}
+        {showReviewLink && attempt && (
+          <div style={actionRowStyle}>
+            <Link to={`/attempts/${attempt.id}`} style={textLinkStyle}>
+              {REVIEW_LINK_TEXT}
+            </Link>
           </div>
         )}
 

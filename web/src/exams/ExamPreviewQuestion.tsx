@@ -1,23 +1,17 @@
 // Один вопрос в предпросмотре «глазами ученика» (ТЗ 4.3): формулировка и поле
-// ответа по типу — те же компоненты, что у сдачи (attempt/AttemptQuestion*.tsx),
-// но всегда неактивные: предпросмотр показывает сохранённый экзамен, а не
-// форму сдачи, отвечать здесь нельзя. Строка вопроса — общий
+// ответа по типу — общий AttemptAnswerFields.tsx (те же компоненты, что у
+// сдачи, но всегда неактивные): предпросмотр показывает сохранённый экзамен,
+// а не форму сдачи, отвечать здесь нельзя. Строка вопроса — общий
 // components/QuestionRow.tsx (его же комментарий-шапка про то, почему общий).
-//
-// Пропсы у компонентов сдачи обязательные — там без обработчика нельзя.
-// `IGNORE_INPUT` — пустой обработчик: поля выключены (`disabled`), реально не
-// вызывается.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
-import { AttemptQuestionChoice } from '../attempt/AttemptQuestionChoice';
-import { AttemptQuestionText } from '../attempt/AttemptQuestionText';
+import { AttemptAnswerFields } from '../attempt/AttemptAnswerFields';
 import { AttemptQuestionVideoNote } from '../attempt/AttemptQuestionVideo';
 import { QuestionRow } from '../components/QuestionRow';
 
 const MISSING_NOTE = 'Вопрос недоступен — его удалили или спрятали в черновик.';
 const REQUIRED_TEXT = 'Обязательный';
 
-const IGNORE_INPUT = () => undefined;
 // Отдельной строкой над полем ответа, а не суффиксом формулировки: у
 // QuestionRow формулировка — `aria-labelledby` поля ответа, добавлять туда
 // служебный текст значило бы читать его скринридеру при каждом фокусе поля.
@@ -47,24 +41,12 @@ export function ExamPreviewQuestion({ index, item, required }: ExamPreviewQuesti
   return (
     <QuestionRow index={index} promptId={promptId} prompt={item.prompt} hint={item.hint}>
       {required && <span style={requiredStyle}>{REQUIRED_TEXT}</span>}
-      {item.kind === 'text' && (
-        <AttemptQuestionText
-          labelledBy={promptId}
-          value=""
-          disabled
-          onChange={IGNORE_INPUT}
-          onBlur={IGNORE_INPUT}
-        />
-      )}
-      {(item.kind === 'single' || item.kind === 'multiple') && (
-        <AttemptQuestionChoice
+      {item.kind !== 'video' && (
+        <AttemptAnswerFields
           labelledBy={promptId}
           itemId={item.id}
           kind={item.kind}
           options={item.options}
-          selected={[]}
-          disabled
-          onChange={IGNORE_INPUT}
         />
       )}
       {item.kind === 'video' && <AttemptQuestionVideoNote />}
