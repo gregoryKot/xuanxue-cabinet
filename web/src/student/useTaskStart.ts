@@ -25,7 +25,7 @@ import { resolveTaskStartTarget } from './resolveTaskStartTarget';
 const START_ERROR_MESSAGE = 'Не удалось начать попытку. Попробуйте ещё раз.';
 
 /** Открытый вопрос «Вы начинаете экзамен»: чей он и какими словами задан. */
-export interface ExamStartConfirmState {
+interface ExamStartConfirmState {
   exam: MyExamDto;
   copy: ExamStartConfirm;
 }
