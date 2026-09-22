@@ -40,7 +40,11 @@ export const titleStyle: CSSProperties = {
   fontSize: 22,
 };
 export const metaStyle: CSSProperties = { fontSize: 14, color: '#55584e' };
-export const descriptionStyle: CSSProperties = { margin: 0, fontSize: 14, color: '#55584e' };
+export const descriptionStyle: CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  color: '#55584e',
+};
 export const actionRowStyle: CSSProperties = { marginTop: 4 };
 
 // Остаток попыток стоит вплотную к кнопке: он объясняет именно её, а не
