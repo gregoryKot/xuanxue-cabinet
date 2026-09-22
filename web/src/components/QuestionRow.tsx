@@ -39,6 +39,11 @@ const hintStyle: CSSProperties = {
   color: 'var(--ink-soft)',
   marginTop: -6,
 };
+// Отметка «без ответа» перед отправкой (attempt/attemptUnanswered.ts).
+// Терракота здесь текстом (--terracotta-text), а заливка на экране остаётся
+// одна — кнопка «Отправить» (правило акцента, docs/adr/0031).
+const unansweredStyle: CSSProperties = { color: 'var(--terracotta-text)' };
+const UNANSWERED_LABEL = 'Без ответа';
 
 interface QuestionRowProps {
   index: number;
@@ -46,6 +51,11 @@ interface QuestionRowProps {
   promptId: string;
   prompt: string;
   hint?: string;
+  /** Вопрос подсвечен как оставшийся без ответа — ученик нажал «Отправить»,
+   * и подтверждение отправило его искать пропуски (attempt/
+   * AttemptInProgress.tsx). Пока не нажал, не подсвечиваем ничего: ругать
+   * форму, которую ещё заполняют, не за что. */
+  unanswered?: boolean;
   children?: ReactNode;
 }
 
@@ -54,10 +64,17 @@ export function QuestionRow({
   promptId,
   prompt,
   hint,
+  unanswered,
   children,
 }: QuestionRowProps) {
   return (
-    <li className="xuanxue-question-row">
+    <li
+      className={
+        unanswered
+          ? 'xuanxue-question-row xuanxue-question-row--unanswered'
+          : 'xuanxue-question-row'
+      }
+    >
       <span style={numberStyle}>{index + 1}</span>
       <div style={bodyStyle}>
         <span id={promptId} style={promptStyle}>
@@ -66,6 +83,11 @@ export function QuestionRow({
         {hint && (
           <span style={hintStyle}>
             <PromptText text={hint} />
+          </span>
+        )}
+        {unanswered && (
+          <span className="xuanxue-status-label" style={unansweredStyle}>
+            {UNANSWERED_LABEL}
           </span>
         )}
         {children}

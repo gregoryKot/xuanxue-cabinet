@@ -13,6 +13,12 @@ interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmLabel: string;
+  /** Подпись отказа — по умолчанию «Отмена». Своя нужна там, где отказ ведёт
+   * не в никуда, а обратно к работе: «Вернуться к вопросам» на форме сдачи
+   * (attempt/AttemptSubmitBar.tsx) — ученику сказали, что вопросы без ответа
+   * подсвечены, и кнопка обязана вести именно туда (docs/VOICE.md: кнопка —
+   * глагол и действие). */
+  cancelLabel?: string;
   pending?: boolean;
   /** Стиль кнопки подтверждения — по умолчанию `danger` (необратимое
    * действие: отмена занятия/рассылки, удаление канала). «Отправить сейчас»
@@ -27,6 +33,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  cancelLabel = 'Отмена',
   pending,
   confirmVariant = 'danger',
   onConfirm,
@@ -44,7 +51,7 @@ export function ConfirmDialog({
       renderActions={(close) => (
         <>
           <Button type="button" variant="secondary" onClick={close}>
-            Отмена
+            {cancelLabel}
           </Button>
           <Button
             type="button"
