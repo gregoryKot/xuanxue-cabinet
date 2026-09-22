@@ -61,6 +61,20 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
       .send(body);
   }
 
+  // Запись обязательна (ADR-0114) — без неё дата не попадёт в архив и тест
+  // на материал даты (не на запись) проверял бы уже несуществующую дату.
+  async function addRecording(teacherCookie: string, lessonId: string): Promise<void> {
+    const res = await withCsrf(
+      request(server()).post(`/api/lessons/${lessonId}/recording`),
+    )
+      .set('Cookie', teacherCookie)
+      .send({
+        title: 'Запись занятия',
+        url: 'https://cloud.example/archive-material-rec',
+      });
+    expect(res.status).toBe(201);
+  }
+
   async function createPastLesson(teacherCookie: string): Promise<string> {
     const cls = await classModel().create({
       title: 'Тайцзицюань',
@@ -73,7 +87,9 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
       topic: 'Форма 24',
     });
     expect(res.status).toBe(201);
-    return (res.body as { id: string }).id;
+    const lessonId = (res.body as { id: string }).id;
+    await addRecording(teacherCookie, lessonId);
+    return lessonId;
   }
 
   it('учитель заводит занятие и материал с lessonIds — ученик видит материал у своей даты', async () => {

@@ -43,7 +43,8 @@ describe('ArchiveScreen — заголовок и объяснение', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Занятия, которые уже прошли. Пропустили — посмотрите запись здесь.',
+        'Прошедшие занятия, у которых есть запись. Пока учитель не выложил её, ' +
+          'занятия в списке нет.',
       ),
     ).toBeInTheDocument();
   });
@@ -73,26 +74,41 @@ describe('ArchiveScreen — сбой загрузки', () => {
     mockApiByPath({ '/me/lessons/archive': [] });
     await user.click(retry);
 
-    expect(await screen.findByText('Прошедших занятий пока нет.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Записей пока нет. Появятся, когда учитель выложит первую.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
 
 describe('ArchiveScreen — пустой список', () => {
+  // Пусто здесь не значит «занятий не было» — только что записи к ним ещё
+  // нет (ADR-0114): сервер уже отфильтровал занятия без записи, список может
+  // быть пуст и на школе, где занятия идут каждую неделю.
   it('честное объяснение вместо пустого места', async () => {
     mockApiByPath({ '/me/lessons/archive': [] });
     render(<ArchiveScreen />);
 
-    expect(await screen.findByText('Прошедших занятий пока нет.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'Записей пока нет. Появятся, когда учитель выложит первую.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
 describe('ArchiveScreen — список занятий', () => {
-  it('рендерит карточку по каждому занятию, самая свежая запись открывается ссылкой', async () => {
+  it('рендерит карточку по каждому занятию, запись открывается ссылкой', async () => {
     mockApiByPath({
       '/me/lessons/archive': [
         makeLesson({ id: 'l1', classTitle: 'Тайцзицюань' }),
-        makeLesson({ id: 'l2', classTitle: 'Цигун', recordings: [] }),
+        makeLesson({
+          id: 'l2',
+          classTitle: 'Цигун',
+          recordings: [{ title: 'Занятие целиком', url: 'https://cloud.example/rec-2' }],
+        }),
       ],
     });
 
@@ -100,10 +116,9 @@ describe('ArchiveScreen — список занятий', () => {
 
     expect(await screen.findByText('Тайцзицюань')).toBeInTheDocument();
     expect(screen.getByText('Цигун')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Открыть запись' })).toHaveAttribute(
-      'href',
-      'https://cloud.example/rec',
-    );
-    expect(screen.getByText('Записи нет')).toBeInTheDocument();
+    const links = screen.getAllByRole('link', { name: 'Открыть запись' });
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute('href', 'https://cloud.example/rec');
+    expect(links[1]).toHaveAttribute('href', 'https://cloud.example/rec-2');
   });
 });

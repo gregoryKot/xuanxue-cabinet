@@ -8,7 +8,15 @@
 // здесь развела бы их по разным полям.
 // `/me/lessons` отдаёт список уже по возрастанию startsAt (сортировка в
 // MyLessonsService), поэтому ближайшее — первое, без пересортировки здесь.
-import type { CSSProperties } from 'react';
+//
+// `afterNextLesson` — отзыв владельца 2026-09-22: карточки-переходы «Записи
+// занятий» и «Библиотека» стояли в подвале LessonsScreen.tsx, под этим же
+// списком, и длинный список будущих занятий сносил их вниз экрана — ученик
+// их не видел. LessonsScreen.tsx кладёт их сюда, сразу под ближайшим
+// занятием и до «Дальше». Слот рисуется независимо от `loading`/`error`/
+// пустого списка — карточки не про загрузку занятий, им незачем мигать
+// вместе с скелетоном или пропадать при сбое сети.
+import type { CSSProperties, ReactNode } from 'react';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { SkeletonList } from '../components/Skeleton';
@@ -29,7 +37,14 @@ const laterStyle: CSSProperties = { display: 'flex', flexDirection: 'column', ga
 // списку — расстояние держит `gap` колонки.
 const eyebrowHeadingStyle: CSSProperties = { margin: 0 };
 
-export function StudentLessonsScreen() {
+interface StudentLessonsScreenProps {
+  /** Рисуется сразу после блока ближайшего занятия и до «Дальше» — место
+   * карточек-переходов раздела (см. комментарий файла). Необязателен: без
+   * него слота нет вовсе, не пустого места. */
+  afterNextLesson?: ReactNode;
+}
+
+export function StudentLessonsScreen({ afterNextLesson }: StudentLessonsScreenProps) {
   const { data: lessons, loading, error, reload } = useMyLessons();
   const ready = !loading && !error && lessons !== null;
   const [nextLesson, ...laterLessons] = ready ? lessons : [];
@@ -49,6 +64,8 @@ export function StudentLessonsScreen() {
       {ready && lessons.length === 0 && <p style={{ margin: 0 }}>{EMPTY_MESSAGE}</p>}
 
       {nextLesson && <StudentNextLesson lesson={nextLesson} />}
+
+      {afterNextLesson}
 
       {laterLessons.length > 0 && (
         <div style={laterStyle}>
