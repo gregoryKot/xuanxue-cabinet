@@ -15,6 +15,9 @@ import { AttemptQuestionVideo } from './AttemptQuestionVideo';
 interface AttemptQuestionProps {
   index: number;
   question: AttemptQuestionDto;
+  /** Вопрос остался без ответа, а ученик уже нажал «Отправить»
+   * (attemptUnanswered.ts): строка подсвечена, пока ответа нет. */
+  unanswered: boolean;
   autosave: UseAttemptAutosaveResult;
   video: AttemptVideoControls;
 }
@@ -22,6 +25,7 @@ interface AttemptQuestionProps {
 export function AttemptQuestion({
   index,
   question,
+  unanswered,
   autosave,
   video,
 }: AttemptQuestionProps) {
@@ -43,6 +47,7 @@ export function AttemptQuestion({
       promptId={promptId}
       prompt={question.prompt}
       hint={question.hint}
+      unanswered={unanswered}
     >
       {question.kind === 'text' && (
         <AttemptQuestionText
