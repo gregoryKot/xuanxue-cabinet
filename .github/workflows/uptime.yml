@@ -1,0 +1,73 @@
+name: Uptime (страховка)
+
+# Раз в 6 часов — не монитор, а страховка на случай, если сам внешний сервис
+# из RUNBOOK §10.1 (UptimeRobot/Better Stack) молчит: поминутную частоту
+# держит он, не эта джоба. Чаще нельзя: биллинг Actions на приватном
+# репозитории округляет каждый запуск вверх до минуты — на 5-минутный cron
+# бесплатных 2000 минут/месяц не хватит и CI встанет вместе с мониторингом
+# (docs/adr/0111). '23 * ...' — минута смещена от ровного часа, тем же
+# приёмом, что и в backup.yml.
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Адрес /api/health (по умолчанию — прод)'
+        required: false
+
+permissions:
+  contents: read
+
+# Один прогон проверки за раз — ручной запуск (проверка канала, RUNBOOK
+# §10.2) наложился на расписание — второй ждёт своей очереди, а не бьёт
+# в прод второй попыткой параллельно первой (тот же приём, что в backup.yml).
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # fetch-depth: 0 — вся история, а не последний коммит: git rev-list в
+      # check-prod-health.mjs ищет последний коммит, менявший код (§8.14),
+      # и всё, что после него до HEAD, — мелкий чекаут её не видит.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # shell: bash — явно, ради pipefail: без него на Linux run: идёт как
+      # `bash -e {0}`, БЕЗ pipefail, и статус шага = статус `tee` (почти
+      # всегда 0), даже если check-prod-health.mjs слева упал с exit 1 —
+      # проверка тогда никогда не красит джобу. `shell: bash` переключает
+      # раннер на `bash --noprofile --norc -eo pipefail {0}`, и падение
+      # node доходит до статуса шага сквозь пайп. health-output.txt читает
+      # следующий шаг, чтобы не запрашивать прод второй раз ради текста алерта.
+      - name: проверка прода (scripts/check-prod-health.mjs)
+        shell: bash
+        env:
+          HEALTH_URL: ${{ inputs.url || 'https://xuanxue.su/api/health' }}
+          CHECK_COMMIT: 'true'
+        run: node scripts/check-prod-health.mjs | tee health-output.txt
+
+      # shell: bash — тот же пайп, хоть здесь и не критично: notify-telegram.mjs
+      # сам не роняет шаг (см. его комментарий про exit 0), но раз завели
+      # правило для соседнего шага — держим его одинаково для обоих пайпов.
+      - name: алерт в Telegram
+        if: failure()
+        shell: bash
+        env:
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          {
+            cat health-output.txt 2>/dev/null || echo "Прод не отвечает: подробности проверки недоступны."
+            echo
+            echo "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } | node scripts/notify-telegram.mjs

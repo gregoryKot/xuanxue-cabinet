@@ -30,6 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Нужен только для алерта ниже (node scripts/notify-telegram.mjs) — сам
+      # бэкап это bash/mongodump/openssl без Node.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
       - name: mongodb-database-tools (mongodump)
         run: |
           curl -fsSL -o /tmp/tools.tgz \
@@ -59,3 +65,22 @@ jobs:
           name: mongo-backup-${{ github.run_id }}
           path: ${{ steps.backup_file.outputs.path }}
           retention-days: 90
+
+      # Упавший ночью бэкап раньше не доходил ни до кого (docs/adr/0111,
+      # RUNBOOK §10.2) — тот же канал и скрипт, что у страховки uptime.yml.
+      # shell: bash — тем же приёмом, что в uptime.yml: без него run: на
+      # Linux — `bash -e {0}` без pipefail, и падение notify-telegram.mjs
+      # слева от `|` не дошло бы до статуса шага (здесь не критично, см. его
+      # комментарий про exit 0, но держим оба пайпа одинаково).
+      - name: алерт в Telegram
+        if: failure()
+        shell: bash
+        env:
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          {
+            echo "Ночной бэкап Mongo упал — копии за эту ночь не будет."
+            echo
+            echo "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } | node scripts/notify-telegram.mjs
