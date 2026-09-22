@@ -16,7 +16,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
-import { MyExamsProvider, useMyExams } from './MyExamsProvider';
+import { MyExamsProvider, useMyExams, useMyExamsApplyAttempt } from './MyExamsProvider';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -75,6 +75,35 @@ describe('useMyExams вне MyExamsProvider', () => {
   });
 });
 
+// useMyExamsApplyAttempt — единственный потребитель вне контроля этого
+// провайдера (attempt/AttemptScreen.tsx): в проде он всегда внутри
+// MyExamsProvider (AppShell.tsx), но его собственный тест рендерит его в
+// изоляции — там эта функция обязана не бросать, а тихо ничего не делать.
+describe('useMyExamsApplyAttempt', () => {
+  it('вне MyExamsProvider — не бросает, отдаёт no-op', () => {
+    const { result } = renderHook(() => useMyExamsApplyAttempt());
+    expect(() => result.current({} as ExamAttemptDto)).not.toThrow();
+  });
+
+  it('внутри MyExamsProvider — та же функция, что у useMyExams().applyAttempt', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
+
+    const { result } = renderHook(
+      () => ({ apply: useMyExamsApplyAttempt(), ctx: useMyExams() }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <MemoryRouter>
+            <MyExamsProvider me={STUDENT}>{children}</MyExamsProvider>
+          </MemoryRouter>
+        ),
+      },
+    );
+    await waitFor(() => expect(result.current.ctx.loading).toBe(false));
+
+    expect(result.current.apply).toBe(result.current.ctx.applyAttempt);
+  });
+});
+
 describe('MyExamsProvider — один запрос на всех', () => {
   it('два читателя под одним провайдером видят один список и один запрос GET /me/exams', async () => {
     mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
@@ -119,6 +148,48 @@ describe('MyExamsProvider — startAttempt', () => {
     expect(mockedApiFetch).toHaveBeenCalledWith('/exams/e1/attempts', {
       method: 'POST',
     });
+  });
+});
+
+// Замок 2 (ADR-0119): applyAttempt — без него «Осталось N попыток» и
+// «Продолжить»/«Отправлено» отставали бы от того, что уже случилось на
+// сервере, до следующей перезагрузки страницы. Сама правка списка (чистая
+// функция) — applyExamAttempt.test.ts; здесь — что контекст действительно
+// отдаёт эту функцию и она меняет то, что видит читатель хука.
+describe('MyExamsProvider — applyAttempt', () => {
+  it('новая попытка — attemptsUsed растёт на 1 без второго GET /me/exams', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
+
+    const { result } = renderHook(() => useMyExams(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <MemoryRouter>
+          <MyExamsProvider me={STUDENT}>{children}</MyExamsProvider>
+        </MemoryRouter>
+      ),
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data?.[0]?.attemptsUsed).toBe(0);
+
+    const attempt: ExamAttemptDto = {
+      id: 'attempt-1',
+      examId: 'e1',
+      examTitle: EXAM.title,
+      userId: STUDENT.id,
+      status: 'in_progress',
+      blocks: [],
+      answers: [],
+      startedAt: '2026-09-22T10:00:00Z',
+      expired: false,
+    };
+    result.current.applyAttempt(attempt);
+
+    await waitFor(() => expect(result.current.data?.[0]?.attemptsUsed).toBe(1));
+    expect(result.current.data?.[0]?.lastAttempt).toEqual({
+      id: 'attempt-1',
+      status: 'in_progress',
+      expired: false,
+    });
+    expect(examsCallCount()).toBe(1);
   });
 });
 
