@@ -37,20 +37,30 @@ describe('buildBotMenu', () => {
 });
 
 describe('buildStrangerMessage', () => {
-  it('адрес школы не заполнен — только объяснение, без пустой ссылки', () => {
-    expect(buildStrangerMessage()).not.toContain('на сайте');
+  it('контакт не задан — текст обрывается на связке, без «Напишите» в пустоту', () => {
+    expect(buildStrangerMessage()).not.toContain('Напишите');
     expect(buildStrangerMessage()).toContain('Сюань-Сюэ');
   });
 
-  it('адрес заполнен — незнакомцу есть куда пойти', () => {
-    expect(buildStrangerMessage('https://xuanxue.su')).toContain('https://xuanxue.su');
+  it('контакт задан — новичку есть кому написать', () => {
+    expect(buildStrangerMessage('Диме @Dmitry_Deitch')).toContain(
+      'Ещё не занимаетесь в школе? Напишите Диме @Dmitry_Deitch',
+    );
   });
 
   // ADR-0115: отказ без пути внутрь оставлял ученика, не нажавшего «Связать
   // Telegram», перед закрытой дверью — тот, у кого кабинет есть, должен
-  // прочитать, что именно нажать.
-  it('называет, что нажать в кабинете, а не только куда не пускают', () => {
-    expect(buildStrangerMessage()).toContain('Связать Telegram');
+  // прочитать, что именно нажать. Две ветки в одном тексте: различить
+  // ученика школы и человека со стороны мы не можем (SECURITY §2).
+  it('называет обе ветки: ученику — кнопку связки, новичку — контакт', () => {
+    const text = buildStrangerMessage('Диме @Dmitry_Deitch');
+
+    expect(text).toContain('Связать Telegram');
+    expect(text).toContain('Напишите Диме @Dmitry_Deitch');
+  });
+
+  it('бот назван учеников, а не учителя (отзыв владельца 2026-09-22)', () => {
+    expect(buildStrangerMessage()).toContain('для её учеников');
   });
 });
 
@@ -87,8 +97,8 @@ describe('isMenuScreenAction', () => {
 // список ниже — иначе он выпадет из проверки молча.
 describe('тексты бота не-штату', () => {
   it.each<[string, string]>([
-    ['незнакомцу без адреса школы', buildStrangerMessage()],
-    ['незнакомцу с адресом школы', buildStrangerMessage('https://xuanxue.su')],
+    ['незнакомцу без контакта новичка', buildStrangerMessage()],
+    ['незнакомцу с контактом новичка', buildStrangerMessage('Диме @Dmitry_Deitch')],
     ['/help ученику', buildHelpText('student')],
     ['меню ученика', buildStudentMenu().text],
   ])('%s — бот не объявлен учительским', (_place, text) => {

@@ -10,7 +10,12 @@ import type {
   SettingsDto,
   UserRole,
 } from '@xuanxue/shared';
-import { DEFAULT_PREVIEW_MINUTES, DEFAULT_TEMPLATES } from '@xuanxue/shared';
+import {
+  DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PREVIEW_MINUTES,
+  DEFAULT_TEMPLATES,
+  SETTINGS_LIMITS,
+} from '@xuanxue/shared';
 import { ClassRecord } from '../src/classes/class.schema';
 import { LessonRecord } from '../src/lessons/lesson.schema';
 import { SettingsRecord } from '../src/settings/settings.schema';
@@ -77,6 +82,7 @@ describe('Settings (e2e)', () => {
     expect(dto.templates.lesson_link).toBe(DEFAULT_TEMPLATES.lesson_link);
     expect(dto.tz).toBe('Asia/Jerusalem');
     expect(dto.previewMinutes).toBe(DEFAULT_PREVIEW_MINUTES);
+    expect(dto.newcomerContact).toBe(DEFAULT_NEWCOMER_CONTACT);
   });
 
   describe('PATCH previewMinutes', () => {
@@ -106,6 +112,40 @@ describe('Settings (e2e)', () => {
       expect(res.status).toBe(400);
       const got = await request(server()).get('/api/settings').set('Cookie', cookie);
       expect((got.body as SettingsDto).previewMinutes).toBe(DEFAULT_PREVIEW_MINUTES);
+    });
+  });
+
+  describe('PATCH newcomerContact', () => {
+    it('валидное значение — GET после видит его (read-after-write)', async () => {
+      const cookie = await sessionFor(['teacher']);
+
+      const patched = await withCsrf(request(server()).patch('/api/settings'))
+        .set('Cookie', cookie)
+        .send({ newcomerContact: 'Маше @masha_teacher' });
+      expect(patched.status).toBe(200);
+      expect((patched.body as SettingsDto).newcomerContact).toBe('Маше @masha_teacher');
+
+      const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+      expect((got.body as SettingsDto).newcomerContact).toBe('Маше @masha_teacher');
+    });
+
+    // Пустая строка и строка из одних пробелов/переводов строк — 400
+    // (`\S`, как у шаблонов): иначе бот оборвал бы фразу «Напишите …» на
+    // полуслове. Строка длиннее newcomerContactMaxLength — тоже 400.
+    it.each<[string, string]>([
+      ['пустая строка', ''],
+      ['одни пробелы и переводы строк', '   \n  '],
+      ['длиннее предела', 'x'.repeat(SETTINGS_LIMITS.newcomerContactMaxLength + 1)],
+    ])('%s — 400, ничего не сохраняется', async (_case, value) => {
+      const cookie = await sessionFor(['teacher']);
+
+      const res = await withCsrf(request(server()).patch('/api/settings'))
+        .set('Cookie', cookie)
+        .send({ newcomerContact: value });
+
+      expect(res.status).toBe(400);
+      const got = await request(server()).get('/api/settings').set('Cookie', cookie);
+      expect((got.body as SettingsDto).newcomerContact).toBe(DEFAULT_NEWCOMER_CONTACT);
     });
   });
 

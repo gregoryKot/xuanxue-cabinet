@@ -3,13 +3,13 @@
 // фейковый объект с `.from`, `.reply` и `.startPayload` (маршрутизацию
 // Telegraf проверяет telegram-bot.service.spec.ts). SettingsService —
 // настоящий (LessonModel/ClassModel этой же memory-Mongo), чтобы
-// schoolSiteUrl шёл по реальному сервису, не фейку с одним методом. Сборка
+// newcomerContact шёл по реальному сервису, не фейку с одним методом. Сборка
 // харнесса и join_<code> (ADR-0030/0036) — в start.handler.test-support.ts
 // и start.handler.join.spec.ts (файловый храповик, CLAUDE.md «Храповики»).
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
-import { ACCESS_MESSAGE } from '@xuanxue/shared';
+import { ACCESS_MESSAGE, DEFAULT_NEWCOMER_CONTACT } from '@xuanxue/shared';
 import { ChannelRecord } from '../../channels/channel.schema';
 import { UserRecord } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
@@ -75,15 +75,15 @@ describe('StartHandler', () => {
     expect(await channelModel.countDocuments({ target: '222' })).toBe(1);
   });
 
-  it('чужой Telegram ID — отказ со ссылкой на сайт школы, канал не создан', async () => {
-    await harness.settingsService.update({ schoolSiteUrl: 'https://xuanxue.su' });
+  it('чужой Telegram ID — отказ с контактом для новичка, канал не создан', async () => {
+    await harness.settingsService.update({ newcomerContact: 'Диме @Dmitry_Deitch' });
 
     const { ctx, replies } = fakeCtx(999);
     await handler.handle(ctx, NOW);
 
     expect(await channelModel.countDocuments({})).toBe(0);
     expect(replies).toHaveLength(1);
-    expect(replies[0]).toContain('https://xuanxue.su');
+    expect(replies[0]).toContain('Напишите Диме @Dmitry_Deitch');
     expect(replies[0]).not.toContain('Вы подключены');
   });
 
@@ -166,13 +166,16 @@ describe('StartHandler', () => {
     expect(await channelModel.countDocuments({})).toBe(0);
   });
 
-  it('schoolSiteUrl не задан (учитель ещё не заполнил экран «Шаблоны») — отказ без падения, без «на сайте …»', async () => {
+  it('контакт новичка пуст в базе — отказ без падения и без «Напишите» в пустоту', async () => {
+    // Поле не required: у базы, заведённой до этой настройки, его нет, и
+    // toSettingsDto подставляет DEFAULT_NEWCOMER_CONTACT. Здесь важен сам
+    // хендлер — что он берёт текст из общего buildStrangerMessage, а не
+    // собирает свой (ADR-0115).
     const { ctx, replies } = fakeCtx(888);
 
     await handler.handle(ctx, NOW);
 
-    expect(replies[0]).toBe(buildStrangerMessage());
-    expect(replies[0]).not.toContain('на сайте');
+    expect(replies[0]).toBe(buildStrangerMessage(DEFAULT_NEWCOMER_CONTACT));
   });
 
   it('ошибка UsersService (внутри BotUserAccessService) — логируется, не выбрасывается, ответа нет', async () => {

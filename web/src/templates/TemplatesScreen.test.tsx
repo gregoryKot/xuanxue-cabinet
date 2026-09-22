@@ -3,7 +3,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_PREVIEW_MINUTES, type SettingsDto } from '@xuanxue/shared';
+import {
+  DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PREVIEW_MINUTES,
+  type SettingsDto,
+} from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import TemplatesScreen from './TemplatesScreen';
@@ -24,6 +28,7 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
     templates: { lesson_link: 'Анонс {название}', recording: 'Запись {название}' },
     tz: 'Asia/Jerusalem',
     previewMinutes: DEFAULT_PREVIEW_MINUTES,
+    newcomerContact: DEFAULT_NEWCOMER_CONTACT,
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
   };
@@ -436,5 +441,110 @@ describe('TemplatesScreen — время предпросмотра', () => {
     expect(
       screen.getByRole('button', { name: 'Сохранить время предпросмотра' }),
     ).toBeDisabled();
+  });
+});
+
+// Поле «Кому писать, если человек ещё не в школе» (ADR-0115) — та же
+// PATCH-механика, что у адреса сайта и времени предпросмотра выше
+// (NewcomerContactField.tsx), отдельная кнопка «Сохранить контакт». В
+// отличие от адреса сайта поле нельзя очистить: пустое значение не проходит
+// на сервере (UpdateSettingsInput.newcomerContact, shared/src/settings.ts).
+describe('TemplatesScreen — контакт для новичков', () => {
+  const LABEL = 'Кому писать, если человек ещё не в школе';
+
+  it('дефолт школы без документа настроек — поле показывает контакт по умолчанию', async () => {
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(await screen.findByLabelText(LABEL)).toHaveValue(DEFAULT_NEWCOMER_CONTACT);
+  });
+
+  it('сохранённый контакт показан в поле', async () => {
+    mockByPath({
+      '/settings': makeSettings({ newcomerContact: 'Ире @irina_school' }),
+      '/lessons': [],
+    });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(await screen.findByDisplayValue('Ире @irina_school')).toHaveAccessibleName(
+      LABEL,
+    );
+  });
+
+  it('«Сохранить контакт» — PATCH /settings с { newcomerContact }', async () => {
+    const user = userEvent.setup();
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    const field = await screen.findByLabelText(LABEL);
+    await user.clear(field);
+    await user.type(field, 'Ире @irina_school');
+
+    mockByPath({
+      '/settings': makeSettings({
+        newcomerContact: 'Ире @irina_school',
+        updatedAt: '2026-01-02T00:00:00Z',
+      }),
+      '/lessons': [],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить контакт' }));
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/settings',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: { newcomerContact: 'Ире @irina_school' },
+        }),
+      ),
+    );
+  });
+
+  it('поле очищено — «Сохранить контакт» неактивна, PATCH не уходит', async () => {
+    const user = userEvent.setup();
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    const field = await screen.findByLabelText(LABEL);
+    await user.clear(field);
+
+    expect(screen.getByRole('button', { name: 'Сохранить контакт' })).toBeDisabled();
+
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(
+      '/settings',
+      expect.objectContaining({ method: 'PATCH' }),
+    );
+  });
+
+  it('сбой сохранения — ошибка сервера видна под полем', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('../api/http');
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    const field = await screen.findByLabelText(LABEL);
+    await user.clear(field);
+    await user.type(field, 'Ире @irina_school');
+
+    mockedApiFetch.mockRejectedValueOnce(
+      new ApiError('Контакт для новичков: заполните поле.', 400, 'invalid_input'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить контакт' }));
+
+    expect(
+      await screen.findByText('Контакт для новичков: заполните поле.'),
+    ).toBeInTheDocument();
   });
 });

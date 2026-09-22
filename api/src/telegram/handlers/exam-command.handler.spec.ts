@@ -17,7 +17,7 @@ import { buildStrangerMessage } from './bot-menu';
 import { ExamCommandHandler } from './exam-command.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
-const SCHOOL_SITE_URL = 'https://xuanxue.su';
+const NEWCOMER_CONTACT = 'Диме @Dmitry_Deitch';
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
@@ -42,7 +42,7 @@ function stubExams(exams: MyExamDto[]) {
 
 function fakeSettings(): SettingsService {
   return {
-    get: () => Promise.resolve({ schoolSiteUrl: SCHOOL_SITE_URL }),
+    get: () => Promise.resolve({ newcomerContact: NEWCOMER_CONTACT }),
   } as unknown as SettingsService;
 }
 
@@ -88,7 +88,7 @@ describe('ExamCommandHandler.handle', () => {
 
     await handler.handle(ctx, NOW);
 
-    expect(replies).toEqual([buildStrangerMessage(SCHOOL_SITE_URL)]);
+    expect(replies).toEqual([buildStrangerMessage(NEWCOMER_CONTACT)]);
   });
 
   it('заблокированный — отказ тем же текстом, что в вебе, список не запрашивается', async () => {
