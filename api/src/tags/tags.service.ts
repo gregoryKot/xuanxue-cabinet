@@ -1,7 +1,7 @@
-// Сводка тегов школы (GET /api/tags, ADR-0075, ADR-0078) — по всей истории,
-// без окна планирования: тег ставят после занятия, часто уже за пределами
-// любого допустимого окна (ADR-0078 «Контекст»). Ничего не денормализуется —
-// две агрегации на каждый запрос (tags.queries.ts).
+// Сводка тегов школы (GET /api/tags, ADR-0075, ADR-0078, ADR-0116) — по всей
+// истории, без окна планирования: тег ставят после занятия, часто уже за
+// пределами любого допустимого окна (ADR-0078 «Контекст»). Ничего не
+// денормализуется — четыре агрегации на каждый запрос (tags.queries.ts).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
@@ -10,10 +10,14 @@ import {
   type ListTagsQuery,
   type TagSummaryDto,
 } from '@xuanxue/shared';
+import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
+import { ExamItemRecord } from '../exams/exam-item.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
 import { MaterialRecord } from '../materials/material.schema';
 import {
+  countChannelsByTag,
+  countExamItemsByTag,
   countLessonsByTag,
   countMaterialsByTag,
   mergeTagSummaries,
@@ -26,16 +30,23 @@ export class TagsService {
     @InjectModel(ClassRecord.name) private readonly classModel: Model<ClassRecord>,
     @InjectModel(MaterialRecord.name)
     private readonly materialModel: Model<MaterialRecord>,
+    @InjectModel(ChannelRecord.name) private readonly channelModel: Model<ChannelRecord>,
+    @InjectModel(ExamItemRecord.name)
+    private readonly examItemModel: Model<ExamItemRecord>,
   ) {}
 
   async list(query: ListTagsQuery): Promise<TagSummaryDto[]> {
-    const [lessonCounts, materialCounts] = await Promise.all([
+    const [lessonCounts, materialCounts, channelCounts, examItemCounts] = await Promise.all([
       countLessonsByTag(this.lessonModel, this.classModel),
       countMaterialsByTag(this.materialModel),
+      countChannelsByTag(this.channelModel),
+      countExamItemsByTag(this.examItemModel),
     ]);
-    return mergeTagSummaries(lessonCounts, materialCounts).slice(
-      0,
-      query.limit ?? LIST_LIMIT_DEFAULT,
-    );
+    return mergeTagSummaries(
+      lessonCounts,
+      materialCounts,
+      channelCounts,
+      examItemCounts,
+    ).slice(0, query.limit ?? LIST_LIMIT_DEFAULT);
   }
 }
