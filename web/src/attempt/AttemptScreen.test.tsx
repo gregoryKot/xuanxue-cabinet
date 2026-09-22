@@ -2,7 +2,7 @@
 // (своего GET /attempts/:id у API нет, useAttempt.ts берёт список и находит
 // по id). Форма ответа и «Отправлено» — свои тесты в AttemptInProgress.test.tsx
 // и AttemptSubmitted.test.tsx, здесь только маршрутизация между ними.
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -312,6 +312,128 @@ describe('AttemptScreen', () => {
 // автоматическая перезагрузка попытки, которую AttemptDeadlineTimer.tsx
 // вызывает сама, когда локальный отсчёт уже в прошлом (никакого клика не
 // нужно, а значит и никакой гонки с моментом, когда он случится).
+// Аудит 2026-09-21, HIGH «потеря последнего ответа ученика»: `submit()`
+// (useAttempt.ts) слал POST /submit не дожидаясь PATCH /answers — выбор
+// варианта в последний момент терял ответ (гонка PATCH/POST, сервер отвечал
+// «попытка уже не in_progress», exam-attempt-save.ts) или улетал в пустоту
+// вовсе (debounce 2 с не успевал). Чинит AttemptInProgress.tsx: перед
+// onSubmit зовёт `await autosave.flush()`. На старом коде (submit без
+// ожидания flush) первый тест ниже упал бы — POST ушёл бы раньше, чем
+// PATCH получил ответ.
+describe('AttemptScreen — отправка ждёт сохранения (аудит 2026-09-21)', () => {
+  const CHOICE_ATTEMPT: ExamAttemptDto = {
+    id: 'a1',
+    examId: 'e1',
+    examTitle: 'Форма первого уровня',
+    userId: 'u1',
+    status: 'in_progress',
+    blocks: [
+      {
+        id: 'b1',
+        title: '',
+        questions: [
+          {
+            itemId: 'q1',
+            version: 1,
+            kind: 'single',
+            prompt: 'Сколько стоек в форме?',
+            options: [
+              { id: 'o1', text: 'Три' },
+              { id: 'o2', text: 'Пять' },
+            ],
+          },
+        ],
+      },
+    ],
+    answers: [],
+    startedAt: '2026-09-01T00:00:00Z',
+    expired: false,
+  };
+
+  async function confirmSubmit(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+    const dialog = screen.getByRole('dialog', { name: 'Отправить экзамен?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Отправить' }));
+  }
+
+  it('выбор варианта → сразу «Отправить» — PATCH долетает раньше POST submit', async () => {
+    const calls: string[] = [];
+    let resolvePatch: (() => void) | undefined;
+    mockedApiFetch.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path === '/auth/me') return Promise.resolve(STUDENT_WITH_TELEGRAM);
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotUsername: 'xx_bot' });
+      if (path === '/attempts/a1/answers' && init?.method === 'PATCH') {
+        calls.push('PATCH');
+        return new Promise<void>((resolve) => {
+          resolvePatch = resolve;
+        });
+      }
+      if (path === '/attempts/a1/submit' && init?.method === 'POST') {
+        calls.push('POST');
+        return Promise.resolve({ ...CHOICE_ATTEMPT, status: 'submitted' });
+      }
+      if (path.startsWith('/attempts')) return Promise.resolve([CHOICE_ATTEMPT]);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+    renderAt('a1');
+    const user = userEvent.setup();
+
+    // Выбор варианта — changeOptions флашит сразу (AttemptQuestion.tsx), PATCH
+    // уже ушёл, но сервер ещё не ответил.
+    await user.click(await screen.findByRole('radio', { name: 'Пять' }));
+    expect(calls).toEqual(['PATCH']);
+
+    // «Отправить» сразу же, пока PATCH висит без ответа.
+    await confirmSubmit(user);
+    expect(calls).toEqual(['PATCH']);
+
+    resolvePatch?.();
+    await waitFor(() => expect(calls).toEqual(['PATCH', 'POST']));
+  });
+
+  it('PATCH упал — POST submit не уходит, на экране текст об ошибке сохранения', async () => {
+    let submitCalled = false;
+    mockedApiFetch.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path === '/auth/me') return Promise.resolve(STUDENT_WITH_TELEGRAM);
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotUsername: 'xx_bot' });
+      if (path === '/attempts/a1/answers' && init?.method === 'PATCH') {
+        return Promise.reject(new Error('сеть недоступна'));
+      }
+      if (path === '/attempts/a1/submit' && init?.method === 'POST') {
+        submitCalled = true;
+        return Promise.resolve({ ...CHOICE_ATTEMPT, status: 'submitted' });
+      }
+      if (path.startsWith('/attempts')) return Promise.resolve([CHOICE_ATTEMPT]);
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+    renderAt('a1');
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('radio', { name: 'Пять' }));
+    await confirmSubmit(user);
+
+    expect(
+      await screen.findByText(
+        'Не удалось сохранить последний ответ. Проверьте интернет и попробуйте ещё раз.',
+      ),
+    ).toBeInTheDocument();
+    expect(submitCalled).toBe(false);
+    // ConfirmDialog закрывает себя после onConfirm независимо от исхода
+    // (её же комментарий-шапка) — дожидаемся закрытия, иначе кнопка
+    // «Отправить» под подвалом формы и в уже закрывающемся диалоге временно
+    // совпадают, и запрос неоднозначен.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Отправить экзамен?' }),
+      ).not.toBeInTheDocument(),
+    );
+    // Форма осталась открытой — попытка не отправлена.
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeInTheDocument();
+  });
+});
+
 describe('AttemptScreen — попап «Время вышло»', () => {
   it('попытка была в работе, сервер закрыл её по дедлайну — показывается попап поверх «Отправлено»', async () => {
     let attemptsCallCount = 0;

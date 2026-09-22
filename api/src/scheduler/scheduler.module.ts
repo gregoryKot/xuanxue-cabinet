@@ -39,6 +39,7 @@
 // должен получить push так же, как и при явном submit.
 import { Module } from '@nestjs/common';
 import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
+import { SCHEDULER_HEARTBEAT } from '../common/scheduler-heartbeat';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import { BroadcastsModule } from '../broadcasts/broadcasts.module';
 import { PreviewService } from '../broadcasts/preview.service';
@@ -72,6 +73,7 @@ import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import { TelegramTeacherNotifier } from '../telegram/telegram-teacher-notifier';
 import { UsersModule } from '../users/users.module';
+import { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { SchedulerService } from './scheduler.service';
 
 @Module({
@@ -120,7 +122,14 @@ import { SchedulerService } from './scheduler.service';
     TelegramExamNotifier,
     PushExamNotifier,
     { provide: EXAM_NOTIFIER, useClass: CompositeExamNotifier },
+    SchedulerHeartbeat,
+    // Тот же синглтон под токеном — HealthController (AppModule, common/
+    // scheduler-heartbeat.ts) не может импортировать SchedulerModule целиком
+    // ради одного показателя (аудит 2026-09-21, MED): useExisting не создаёт
+    // второй экземпляр, SchedulerService видит те же noteTickStarted/Finished.
+    { provide: SCHEDULER_HEARTBEAT, useExisting: SchedulerHeartbeat },
     SchedulerService,
   ],
+  exports: [SCHEDULER_HEARTBEAT],
 })
 export class SchedulerModule {}

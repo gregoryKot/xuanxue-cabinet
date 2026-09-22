@@ -20,10 +20,10 @@ import { SkeletonList } from '../components/Skeleton';
 import { useScrollToHash } from '../hooks/useScrollToHash';
 import { planningTzNote } from '../schedule/timezoneLabel';
 import { useClasses } from '../schedule/useClasses';
-import { groupLessonsByDay } from './groupLessonsByDay';
 import { LessonDayGroup } from './LessonDayGroup';
 import { PlanningActions } from './PlanningActions';
 import { PlanningToday } from './PlanningToday';
+import { upcomingDayGroups } from './upcomingDayGroups';
 import { useLessons } from './useLessons';
 import { useLessonRecordingSummary } from './useLessonRecordingSummary';
 
@@ -73,7 +73,7 @@ export default function PlanningScreen() {
     [classesById],
   );
   const groups = useMemo(
-    () => groupLessonsByDay(lessonsState.lessons ?? []),
+    () => upcomingDayGroups(lessonsState.lessons ?? []),
     [lessonsState.lessons],
   );
   // Без подписи время читается как время школы — приписка у каждой строки
@@ -125,8 +125,8 @@ export default function PlanningScreen() {
 
       {!lessonsState.loading && !lessonsError && groups.length === 0 && (
         <p style={{ margin: 0 }}>
-          В ближайшие {PLANNING_HORIZON_WEEKS} недели занятий нет. Добавьте правило в
-          «Расписании» или создайте разовое занятие.
+          Пока ничего не запланировано. Добавьте правило в «Расписании» или создайте
+          разовое занятие.
         </p>
       )}
 

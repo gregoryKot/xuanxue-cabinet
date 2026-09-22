@@ -5,6 +5,7 @@
 // поиска/создания человека — в login-identity.service.spec.ts, здесь —
 // только склейка сервиса.
 import type { ConfigService } from '@nestjs/config';
+import { EMAIL_LOGIN_CODE_INVALID_MESSAGE } from '@xuanxue/shared';
 import { DateTime } from 'luxon';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import type { InviteLinkService } from '../users/invite-link.service';
@@ -28,16 +29,59 @@ function fakeConfig(values: Record<string, string | undefined>): ConfigService {
 }
 
 function fakeTokens(
-  issue: (email: string) => Promise<string | null> = () =>
-    Promise.resolve('t'.repeat(64)),
+  issue: (email: string) => Promise<{ token: string; code: string } | null> = () =>
+    Promise.resolve({ token: 't'.repeat(64), code: '135790' }),
   consume: (token: string) => Promise<string | null> = () =>
     Promise.reject(new Error('consume() не должен был вызываться в этом тесте')),
+  consumeCode: (email: string, code: string) => Promise<string | null> = () =>
+    Promise.reject(new Error('consumeCode() не должен был вызываться в этом тесте')),
+  revoke: (email: string) => Promise<void> = () =>
+    Promise.reject(new Error('revoke() не должен был вызываться в этом тесте')),
 ): EmailLoginTokenService {
-  return { issue, consume } as unknown as EmailLoginTokenService;
+  return { issue, consume, consumeCode, revoke } as unknown as EmailLoginTokenService;
+}
+
+/** Стейтфул-фейк токенов для сценария «отправка упала → токен снят →
+ * повтор в окне cooldown снова выдаёт токен» (аудит 2026-09-21, HIGH):
+ * настоящее поведение cooldown/revoke уже проверено против Mongo в
+ * email-login-token.service.spec.ts, здесь — только то, что EmailAuthService
+ * действительно зовёт revoke() при сбое и issue() при следующем requestLink(). */
+function fakeTokensWithCooldownState(): {
+  tokens: EmailLoginTokenService;
+  issuedFor: string[];
+  revokedFor: string[];
+} {
+  const issuedFor: string[] = [];
+  const revokedFor: string[] = [];
+  const hasActiveToken = new Set<string>();
+  let counter = 0;
+  const tokens = {
+    issue: (email: string) => {
+      issuedFor.push(email);
+      if (hasActiveToken.has(email)) return Promise.resolve(null);
+      hasActiveToken.add(email);
+      counter += 1;
+      return Promise.resolve({
+        token: String(counter).padStart(64, '0'),
+        code: '135790',
+      });
+    },
+    revoke: (email: string) => {
+      revokedFor.push(email);
+      hasActiveToken.delete(email);
+      return Promise.resolve();
+    },
+    consume: () =>
+      Promise.reject(new Error('consume() не должен был вызываться в этом тесте')),
+    consumeCode: () =>
+      Promise.reject(new Error('consumeCode() не должен был вызываться в этом тесте')),
+  } as unknown as EmailLoginTokenService;
+  return { tokens, issuedFor, revokedFor };
 }
 
 function fakeMail(
-  send: (input: { to: string; link: string }) => Promise<void> = () => Promise.resolve(),
+  send: (input: { to: string; link: string; code: string }) => Promise<void> = () =>
+    Promise.resolve(),
 ): MailService {
   return { sendLoginLink: send } as unknown as MailService;
 }
@@ -128,7 +172,7 @@ describe('EmailAuthService.requestLink', () => {
         config,
         tokens: fakeTokens(() => {
           issued = true;
-          return Promise.resolve('t'.repeat(64));
+          return Promise.resolve({ token: 't'.repeat(64), code: '135790' });
         }),
       });
 
@@ -139,18 +183,20 @@ describe('EmailAuthService.requestLink', () => {
     },
   );
 
-  it('доступно — нормализует email в lowercase, шлёт ссылку с токеном', async () => {
+  it('доступно — нормализует email в lowercase, шлёт ссылку и код письма (ADR-0104)', async () => {
     let issuedFor: string | undefined;
     let sentTo: string | undefined;
     let sentLink: string | undefined;
+    let sentCode: string | undefined;
     const service = buildService({
       tokens: fakeTokens((email) => {
         issuedFor = email;
-        return Promise.resolve('a'.repeat(64));
+        return Promise.resolve({ token: 'a'.repeat(64), code: '482913' });
       }),
       mail: fakeMail((input) => {
         sentTo = input.to;
         sentLink = input.link;
+        sentCode = input.code;
         return Promise.resolve();
       }),
     });
@@ -160,13 +206,16 @@ describe('EmailAuthService.requestLink', () => {
     expect(issuedFor).toBe('ученик@example.com');
     expect(sentTo).toBe('ученик@example.com');
     expect(sentLink).toBe(`https://xuanxue.su/login/email?token=${'a'.repeat(64)}`);
+    expect(sentCode).toBe('482913');
   });
 
   it('валидный inviteCode — ссылка содержит join=<code> (ADR-0030)', async () => {
     let sentLink: string | undefined;
     const code = 'b'.repeat(32);
     const service = buildService({
-      tokens: fakeTokens(() => Promise.resolve('a'.repeat(64))),
+      tokens: fakeTokens(() =>
+        Promise.resolve({ token: 'a'.repeat(64), code: '135790' }),
+      ),
       mail: fakeMail((input) => {
         sentLink = input.link;
         return Promise.resolve();
@@ -184,7 +233,9 @@ describe('EmailAuthService.requestLink', () => {
   it('невалидный inviteCode — молча игнорируется, ссылка без join=', async () => {
     let sentLink: string | undefined;
     const service = buildService({
-      tokens: fakeTokens(() => Promise.resolve('a'.repeat(64))),
+      tokens: fakeTokens(() =>
+        Promise.resolve({ token: 'a'.repeat(64), code: '135790' }),
+      ),
       mail: fakeMail((input) => {
         sentLink = input.link;
         return Promise.resolve();
@@ -209,6 +260,53 @@ describe('EmailAuthService.requestLink', () => {
 
     await expect(service.requestLink('a@example.com', NOW)).resolves.toBeUndefined();
     expect(sent).toBe(false);
+  });
+
+  // Аудит 2026-09-21 (HIGH): mail.sendLoginLink бросил — issue() уже
+  // записал токен в базу, и если его не снять, второй запрос в окне
+  // cooldown получит от issue() null и тихо ответит 204, как будто письмо
+  // ушло, хотя оно так и не было отправлено.
+  it('mail.sendLoginLink бросил → токен снят → второй requestLink в окне cooldown снова выдаёт токен и зовёт mail', async () => {
+    const { tokens, issuedFor, revokedFor } = fakeTokensWithCooldownState();
+    let mailCalls = 0;
+    let shouldFail = true;
+    const service = buildService({
+      tokens,
+      mail: fakeMail(() => {
+        mailCalls += 1;
+        if (shouldFail) return Promise.reject(new Error('Resend недоступен'));
+        return Promise.resolve();
+      }),
+    });
+
+    await expect(service.requestLink('flaky@example.com', NOW)).rejects.toThrow(
+      'Resend недоступен',
+    );
+    expect(revokedFor).toEqual(['flaky@example.com']);
+    expect(mailCalls).toBe(1);
+
+    // Тот же адрес, «в окне cooldown» — с не снятым токеном issue() ниже
+    // вернул бы null и requestLink() вышел бы молча, письмо второй раз не
+    // отправив; тест обязан упасть на коде без revoke() (FIXER-RULES).
+    shouldFail = false;
+    await service.requestLink('flaky@example.com', NOW);
+
+    expect(issuedFor).toEqual(['flaky@example.com', 'flaky@example.com']);
+    expect(mailCalls).toBe(2);
+  });
+
+  it('mail.sendLoginLink бросил и revoke() тоже упал — пробрасывается исходная ошибка отправки, не ошибка revoke', async () => {
+    const tokens = fakeTokens(undefined, undefined, undefined, () =>
+      Promise.reject(new Error('Mongo недоступна')),
+    );
+    const service = buildService({
+      tokens,
+      mail: fakeMail(() => Promise.reject(new Error('Resend недоступен'))),
+    });
+
+    await expect(service.requestLink('a@example.com', NOW)).rejects.toThrow(
+      'Resend недоступен',
+    );
   });
 });
 
@@ -271,6 +369,55 @@ describe('EmailAuthService.verify', () => {
     await expect(service.verify('x'.repeat(64), NOW)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
+    expect(touched).toBe(false);
+  });
+});
+
+describe('EmailAuthService.verifyCode', () => {
+  it('неверный/протухший/исчерпанный код — UnauthorizedError с EMAIL_LOGIN_CODE_INVALID_MESSAGE', async () => {
+    const service = buildService({
+      tokens: fakeTokens(undefined, undefined, () => Promise.resolve(null)),
+    });
+
+    const call = service.verifyCode('a@example.com', '000000', NOW);
+    await expect(call).rejects.toBeInstanceOf(UnauthorizedError);
+    await expect(call).rejects.toMatchObject({
+      message: EMAIL_LOGIN_CODE_INVALID_MESSAGE,
+    });
+  });
+
+  it('нормализует email в lowercase перед consumeCode, дальше — тот же хвост, что у verify', async () => {
+    let received: { email: string; code: string } | undefined;
+    let touchedId: string | undefined;
+    const service = buildService({
+      tokens: fakeTokens(undefined, undefined, (email, code) => {
+        received = { email, code };
+        return Promise.resolve(BASE_USER.email as string);
+      }),
+      users: fakeUsersService((id) => (touchedId = id)),
+    });
+
+    const result = await service.verifyCode('Ученик@Example.com', '482913', NOW);
+
+    expect(received).toEqual({ email: 'ученик@example.com', code: '482913' });
+    expect(touchedId).toBe(BASE_USER.id);
+    expect(result.cookie).toBe('session=tok');
+  });
+
+  it('заблокированный пользователь — ForbiddenError, сессия не выпускается', async () => {
+    const blocked: UserLean = { ...BASE_USER, status: 'blocked' };
+    let touched = false;
+    const service = buildService({
+      tokens: fakeTokens(undefined, undefined, () =>
+        Promise.resolve(blocked.email as string),
+      ),
+      loginIdentity: fakeLoginIdentity(() => Promise.resolve(blocked)),
+      users: fakeUsersService(() => (touched = true)),
+    });
+
+    await expect(
+      service.verifyCode('a@example.com', '482913', NOW),
+    ).rejects.toBeInstanceOf(ForbiddenError);
     expect(touched).toBe(false);
   });
 });

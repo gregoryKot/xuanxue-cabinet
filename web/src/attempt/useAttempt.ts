@@ -11,6 +11,7 @@ import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { replacedById } from '../lib/listPatch';
 import { errorFrom, type FormError } from '../components/FormServerError';
+import { clearAttemptDraft } from './attemptLocalDraft';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить попытку. Обновите страницу.';
 const SUBMIT_ERROR_MESSAGE = 'Не удалось отправить экзамен. Попробуйте ещё раз.';
@@ -68,6 +69,9 @@ export function useAttempt(attemptId: string): UseAttemptResult {
         method: 'POST',
       });
       applyData((prev) => replacedById(prev, next));
+      // Отправлено — редактировать больше нечего, локальный черновик ответов
+      // убирается целиком (attemptLocalDraft.ts, аудит 2026-09-21).
+      clearAttemptDraft(attemptId);
     } catch (err) {
       setSubmitError(errorFrom(err, SUBMIT_ERROR_MESSAGE));
     } finally {

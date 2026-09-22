@@ -4,8 +4,31 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { APP_VERSION_HEADER, CSRF_HEADER } from '@xuanxue/shared';
 import { hasNewAppVersion } from './appVersion';
-import { ApiError, apiFetch, setUnauthorizedListener } from './http';
+import {
+  API_TIMEOUT_MS,
+  ApiError,
+  NETWORK_ERROR_MESSAGE,
+  TIMEOUT_ERROR_MESSAGE,
+  apiFetch,
+  setUnauthorizedListener,
+} from './http';
 import { putPrefetched } from './prefetchCache';
+
+/** Мок fetch, который никогда сам не резолвится и не реджектится — ведёт
+ * себя как настоящий fetch, только реагирует на переданный signal (реальный
+ * fetch реджектится AbortError, когда signal отменяют). Нужен тестам
+ * таймаута ниже: без него `await fetch` в http.ts повис бы, а никакого
+ * abort от нашего кода не было бы, чтобы этот повисший промис снять. */
+function neverSettlingFetch(): ReturnType<typeof vi.fn> {
+  return vi.fn().mockImplementation(
+    (_url: string, options: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        options.signal?.addEventListener('abort', () => {
+          reject(new DOMException('The operation was aborted.', 'AbortError'));
+        });
+      }),
+  );
+}
 
 // По умолчанию заголовка версии нет (`null`) — как у настоящего ответа без
 // него; тесты версии (ADR-0101) передают свой набор заголовков явно.
@@ -37,6 +60,9 @@ function brokenJsonResponse(status: number): Response {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // Тесты таймаута ниже включают фейковые таймеры сами — возвращаем
+  // настоящие безусловно, иначе упавший тест оставил бы их всем остальным.
+  vi.useRealTimers();
 });
 
 /** Ждёт, что промис отклонится, и возвращает причину как ApiError. */
@@ -216,6 +242,50 @@ describe('apiFetch — сетевой сбой', () => {
     expect(error.message).toBe(
       'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     );
+  });
+});
+
+describe('apiFetch — таймаут (аудит 2026-09-21)', () => {
+  it('когда fetch не отвечает, через API_TIMEOUT_MS бросает ApiError с TIMEOUT_ERROR_MESSAGE', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', neverSettlingFetch());
+
+    const errorPromise = expectApiError(apiFetch('/lessons'));
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS);
+    const error = await errorPromise;
+
+    expect(error.status).toBe(0);
+    expect(error.code).toBe('network');
+    expect(error.message).toBe(TIMEOUT_ERROR_MESSAGE);
+  });
+
+  it('timeoutMs переопределяет дефолт таймаута', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', neverSettlingFetch());
+    const customTimeoutMs = 5_000; // меньше API_TIMEOUT_MS — сработай он не переопределён, тест бы завис
+
+    const errorPromise = expectApiError(
+      apiFetch('/lessons', { timeoutMs: customTimeoutMs }),
+    );
+    await vi.advanceTimersByTimeAsync(customTimeoutMs);
+    const error = await errorPromise;
+
+    expect(error.message).toBe(TIMEOUT_ERROR_MESSAGE);
+  });
+
+  it('отмену вызывающим (свой signal) от таймаута не отличает — поведение как раньше', async () => {
+    vi.stubGlobal('fetch', neverSettlingFetch());
+    const controller = new AbortController();
+
+    const errorPromise = expectApiError(
+      apiFetch('/lessons', { signal: controller.signal }),
+    );
+    controller.abort();
+    const error = await errorPromise;
+
+    expect(error.status).toBe(0);
+    expect(error.code).toBe('network');
+    expect(error.message).toBe(NETWORK_ERROR_MESSAGE);
   });
 });
 

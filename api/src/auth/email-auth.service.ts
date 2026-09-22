@@ -1,19 +1,21 @@
-// Вход по одноразовой ссылке на email (ADR-0005, ADR-0029, SECURITY §2).
-// Провайдер писем спрятан за MailService — этот сервис не знает деталей
-// HTTP до Resend. Токен — EmailLoginTokenService (одноразовый, TTL 15
-// минут, sha256 в базе). AuthService.issueSession — тот же узел выпуска
-// cookie, что и у Telegram-входа (ADR-0012). Поиск/создание человека —
-// LoginIdentityService (ADR-0030/0036): новый заводится только с валидной
-// ссылкой-приглашением.
-import { Injectable } from '@nestjs/common';
+// Вход по одноразовой заявке на email — ссылка и код (ADR-0005, ADR-0029,
+// ADR-0104, SECURITY §2). Провайдер писем спрятан за MailService — этот
+// сервис не знает деталей HTTP до Resend. Заявка — EmailLoginTokenService
+// (одна запись на оба способа, TTL 15 минут, sha256 в базе). AuthService.
+// issueSession — тот же узел выпуска cookie, что и у Telegram-входа
+// (ADR-0012). Поиск/создание человека — LoginIdentityService (ADR-0030/0036):
+// новый заводится только с валидной ссылкой-приглашением.
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { DateTime } from 'luxon';
 import {
   ACCESS_MESSAGE,
+  EMAIL_LOGIN_CODE_INVALID_MESSAGE,
   EMAIL_LOGIN_EXPIRED_MESSAGE,
   EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE,
   INVITE_QUERY_PARAM,
 } from '@xuanxue/shared';
+import type { DateTime } from 'luxon';
+import { errorMessage } from '../common/error-info';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
 import { InviteLinkService } from '../users/invite-link.service';
 import { LoginIdentityService } from '../users/login-identity.service';
@@ -30,6 +32,8 @@ export interface EmailLoginResult {
 
 @Injectable()
 export class EmailAuthService {
+  private readonly logger = new Logger(EmailAuthService.name);
+
   constructor(
     private readonly config: ConfigService,
     private readonly tokens: EmailLoginTokenService,
@@ -64,19 +68,34 @@ export class EmailAuthService {
     if (!publicUrl) throw new NotAvailableError(EMAIL_LOGIN_NOT_AVAILABLE_MESSAGE);
 
     const normalized = email.toLowerCase();
-    const token = await this.tokens.issue(normalized, now);
+    const issued = await this.tokens.issue(normalized, now);
     // null — этому адресу совсем недавно уже отправляли письмо
     // (EMAIL_LOGIN_RESEND_COOLDOWN_MIN); ответ клиенту не меняется.
-    if (!token) return;
+    if (!issued) return;
 
     const join =
       inviteCode && (await this.inviteLinkService.isValid(inviteCode))
         ? `&${INVITE_QUERY_PARAM}=${inviteCode}`
         : '';
-    const link = `${publicUrl}/login/email?token=${token}${join}`;
-    await this.mail.sendLoginLink({ to: normalized, link });
+    const link = `${publicUrl}/login/email?token=${issued.token}${join}`;
+    try {
+      await this.mail.sendLoginLink({ to: normalized, link, code: issued.code });
+    } catch (err) {
+      // Заявка уже в базе (issue() выше), а письмо не ушло — не снять её
+      // нельзя: иначе повтор в окне cooldown получит от issue() null и тихо
+      // ответит 204, будто письмо было (аудит 2026-09-21). revoke — best-effort:
+      // его ошибку логируем отдельно, чтобы не заслонить причину сбоя отправки.
+      await this.tokens.revoke(normalized).catch((revokeErr: unknown) => {
+        this.logger.error(
+          `Не удалось снять токен email-входа после сбоя отправки письма: ${errorMessage(revokeErr)}`,
+        );
+      });
+      throw err;
+    }
   }
 
+  /** Вход по ссылке — токен потребляется один раз (EmailLoginTokenService.
+   * consume), тем же удалением сгорает и код той же заявки (ADR-0104). */
   async verify(
     token: string,
     now: DateTime,
@@ -84,7 +103,35 @@ export class EmailAuthService {
   ): Promise<EmailLoginResult> {
     const email = await this.tokens.consume(token, now);
     if (!email) throw new UnauthorizedError(EMAIL_LOGIN_EXPIRED_MESSAGE);
+    return this.finishLogin(email, now, inviteCode);
+  }
 
+  /** Вход по коду из письма (ADR-0104) — второй способ потратить ту же
+   * заявку, для устройства, у которого своя, отдельная от Safari кука
+   * (приложение на домашнем экране айфона). Email нормализуем тем же
+   * приёмом, что requestLink() — заявка в базе лежит по lowercase-адресу.
+   * consumeCode не различает наружу причину отказа (неверный код, попытки
+   * кончились, заявка протухла) — один текст на всё, SECURITY §2. */
+  async verifyCode(
+    email: string,
+    code: string,
+    now: DateTime,
+    inviteCode?: string,
+  ): Promise<EmailLoginResult> {
+    const owner = await this.tokens.consumeCode(email.toLowerCase(), code, now);
+    if (!owner) throw new UnauthorizedError(EMAIL_LOGIN_CODE_INVALID_MESSAGE);
+    return this.finishLogin(owner, now, inviteCode);
+  }
+
+  /** Общий хвост verify()/verifyCode() (CLAUDE.md «Дубли»): найти-или-
+   * завести человека, отказать заблокированному, отметить вход, выпустить
+   * сессию. Различаются только способом добраться до email владельца
+   * заявки — то, что происходит после, от способа не зависит. */
+  private async finishLogin(
+    email: string,
+    now: DateTime,
+    inviteCode?: string,
+  ): Promise<EmailLoginResult> {
     const user = await this.loginIdentity.resolveEmailUser(email, inviteCode, now);
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 

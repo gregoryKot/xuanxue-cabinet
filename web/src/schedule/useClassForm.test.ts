@@ -1,11 +1,19 @@
 // Валидация и сборка тела запроса — в classFormInput.test.ts (чистая логика,
 // без хука). Здесь — только оркестрация: submit/remove вызывают правильный
-// колбэк и правильно репортят ошибку.
+// колбэк и правильно репортят ошибку. Черновик (ADR-0052, дополнение
+// 2026-09-21) пишется в реальный localStorage под ключом class:<id>/class:new —
+// очищаем между тестами, иначе черновик одного теста восстановился бы в
+// соседнем (id занятия в makeClass() один и тот же).
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelDto, ClassDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
+import { readDraft } from '../lib/formDraft';
 import { useClassForm } from './useClassForm';
+
+afterEach(() => {
+  localStorage.clear();
+});
 
 function makeChannel(overrides: Partial<ChannelDto> = {}): ChannelDto {
   return {
@@ -226,5 +234,53 @@ describe('useClassForm — правка и удаление', () => {
     expect(result.current.serverError?.message).toBe(
       'Не удалось удалить. Попробуйте ещё раз.',
     );
+  });
+});
+
+// Сама механика черновика (восстановление, dirty, discardDraft) проверена
+// в hooks/useFormDraft.test.ts и hooks/useEntityForm.test.ts — здесь только
+// то, что форма занятия реально в неё включена (аудит 2026-09-21, HIGH —
+// раньше useClassForm не подключал черновик вовсе).
+describe('useClassForm — черновик (ADR-0052, дополнение 2026-09-21)', () => {
+  it('ввёл название → размонтировал → смонтировал заново → значение на месте', () => {
+    const first = renderHook(() => useClassForm(null, [], vi.fn(), vi.fn(), vi.fn()));
+    act(() => first.result.current.setField('title', 'Черновик занятия'));
+    first.unmount();
+
+    const second = renderHook(() => useClassForm(null, [], vi.fn(), vi.fn(), vi.fn()));
+
+    expect(second.result.current.state.title).toBe('Черновик занятия');
+    expect(second.result.current.draftRestored).toBe(true);
+  });
+
+  it('успешный submit — черновик снят', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useClassForm(null, [], onCreate, vi.fn(), vi.fn()),
+    );
+    act(() => {
+      result.current.setField('title', 'Занятие');
+      result.current.setField('rules', [
+        { weekday: 1, time: '19:00', durationMinText: '60' },
+      ]);
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(readDraft('class:new', Date.now())).toBeNull();
+  });
+
+  it('непустой черновик — beforeunload отменяет событие', () => {
+    const { result } = renderHook(() =>
+      useClassForm(null, [], vi.fn(), vi.fn(), vi.fn()),
+    );
+    act(() => result.current.setField('title', 'Занятие'));
+
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 });

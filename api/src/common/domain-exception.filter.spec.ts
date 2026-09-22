@@ -38,15 +38,23 @@ function buildHost(
   return { host, getStatusCode: () => statusCode, getJsonBody: () => jsonBody };
 }
 
+// `warnCalls` — для body-parser-ошибок помимо entity.too.large (аудит
+// 2026-09-21): фильтр пишет их через warn, не error, — отдельный массив,
+// чтобы тесты на 500 (errorCalls) не путались с этой веткой.
 function buildLogger(): {
   logger: Logger;
   errorCalls: Array<{ message: string; stack?: string }>;
+  warnCalls: string[];
 } {
   const errorCalls: Array<{ message: string; stack?: string }> = [];
+  const warnCalls: string[] = [];
   const error = (message: string, stack?: string): void => {
     errorCalls.push({ message, stack });
   };
-  return { logger: { error } as unknown as Logger, errorCalls };
+  const warn = (message: string): void => {
+    warnCalls.push(message);
+  };
+  return { logger: { error, warn } as unknown as Logger, errorCalls, warnCalls };
 }
 
 // Фейк AppErrorAlerts — сам факт и содержимое вызова, без Telegram/PersonalChats
@@ -202,6 +210,49 @@ describe('DomainExceptionFilter', () => {
     expect(errorCalls).toHaveLength(0);
   });
 
+  // Регрессия на аудит 2026-09-21 (HIGH): битый JSON и неподдерживаемый
+  // charset раньше не отличались фильтром от «непредвиденной ошибки» и
+  // падали в 500 с error-логом — ложная тревога на обычный отказ по вводу.
+  it('битый JSON в теле (body-parser entity.parse.failed, 400) → bad_request, без error-лога', () => {
+    const { logger, errorCalls, warnCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host, getStatusCode, getJsonBody } = buildHost('req-14');
+
+    const bodyParserError = Object.assign(new Error('Unexpected token } in JSON'), {
+      status: 400,
+      expose: true,
+      type: 'entity.parse.failed',
+    });
+    filter.catch(bodyParserError, host);
+
+    expect(getStatusCode()).toBe(400);
+    expect(getJsonBody()).toEqual({
+      statusCode: 400,
+      code: 'bad_request',
+      message: 'Не удалось прочитать запрос. Обновите страницу и попробуйте ещё раз.',
+      requestId: 'req-14',
+    });
+    expect(errorCalls).toHaveLength(0);
+    expect(warnCalls).toHaveLength(1);
+  });
+
+  it('неподдерживаемый charset (body-parser charset.unsupported, 415) → bad_request её же статусом', () => {
+    const { logger, errorCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host, getStatusCode, getJsonBody } = buildHost('req-15');
+
+    const bodyParserError = Object.assign(new Error('unsupported charset "UTF-7"'), {
+      status: 415,
+      expose: true,
+      type: 'charset.unsupported',
+    });
+    filter.catch(bodyParserError, host);
+
+    expect(getStatusCode()).toBe(415);
+    expect(getJsonBody()).toMatchObject({ statusCode: 415, code: 'bad_request' });
+    expect(errorCalls).toHaveLength(0);
+  });
+
   it('непредвиденная ошибка → 500, нейтральный текст, стек уходит в логгер, а не в ответ', () => {
     const { logger, errorCalls } = buildLogger();
     const filter = new DomainExceptionFilter(logger);
@@ -305,6 +356,22 @@ describe('DomainExceptionFilter — алёрт админу (AppErrorAlerts)', (
       status: 413,
       expose: true,
       type: 'entity.too.large',
+    });
+    filter.catch(bodyParserError, host);
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it('битый JSON (bad_request) — не зовёт порт, это не сбой сервера', () => {
+    const { logger } = buildLogger();
+    const { appErrorAlerts, calls } = buildAppErrorAlerts();
+    const filter = new DomainExceptionFilter(logger, appErrorAlerts);
+    const { host } = buildHost('req-16', { method: 'POST', url: '/api/x' });
+
+    const bodyParserError = Object.assign(new Error('Unexpected token } in JSON'), {
+      status: 400,
+      expose: true,
+      type: 'entity.parse.failed',
     });
     filter.catch(bodyParserError, host);
 
