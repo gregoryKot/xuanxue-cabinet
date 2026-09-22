@@ -214,6 +214,44 @@ describe('usePushSubscription — enable() из default', () => {
     expect(result.current.pending).toBe(false);
   });
 
+  it('service worker не зарегистрировался — ready не резолвится, кнопка выходит из pending с честной ошибкой (аудит 2026-09-21)', async () => {
+    // registerServiceWorker.ts мог проглотить ошибку регистрации — ready
+    // тогда не резолвится никогда. Раньше кнопка «Включить уведомления»
+    // висела бы в pending вечно; SW_READY_TIMEOUT_MS должен это оборвать.
+    vi.stubGlobal('navigator', {
+      userAgent: DESKTOP_UA,
+      serviceWorker: { ready: new Promise(() => {}) },
+    });
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false }));
+    vi.stubGlobal('PushManager', {});
+    vi.stubGlobal('Notification', {
+      permission: 'default',
+      requestPermission: vi.fn(() => Promise.resolve('granted')),
+    });
+
+    mockedApiFetch.mockResolvedValueOnce({ publicKey: PUBLIC_KEY });
+    const { result } = renderHook(() => usePushSubscription());
+    await waitFor(() => expect(result.current.state).toEqual({ kind: 'default' }));
+
+    // Фейковые таймеры — только на сам клик: waitFor выше опирается на
+    // настоящий setTimeout для опроса, а advanceTimersByTimeAsync и
+    // ожидаемый промис обязаны идти внутри одного act() (иначе react
+    // зависает между незавершённым act() и продвижением таймера).
+    vi.useFakeTimers();
+    await act(async () => {
+      const enablePromise = result.current.enable();
+      await vi.advanceTimersByTimeAsync(5000);
+      await enablePromise;
+    });
+    vi.useRealTimers();
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа
+    expect(result.current.actionError).toBe(
+      'Не получилось подключить уведомления. Обновите страницу и попробуйте ещё раз.',
+    );
+    expect(result.current.pending).toBe(false);
+  });
+
   it('браузер не отдал ключи подписки — честная ошибка, POST не уходит', async () => {
     // getKey() возвращает null — вырожденный случай реального браузера
     // (subscription.getKey('p256dh'|'auth')), а не то, что тестовый фейк
@@ -381,6 +419,43 @@ describe('usePushSubscription — disable()', () => {
       'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
     );
     // Итог нечестно не подделан: подписка на экране не «пропала» сама.
+    expect(result.current.state).toEqual({ kind: 'subscribed' });
+  });
+
+  it('service worker не зарегистрировался — ready не резолвится, disable() завершается ошибкой (аудит 2026-09-21)', async () => {
+    const sub = {
+      endpoint: 'https://push.example/i',
+      unsubscribe: vi.fn(() => Promise.resolve(true)),
+    };
+    stubBrowser({ permission: 'granted', getSubscriptionResult: sub });
+
+    mockedApiFetch.mockResolvedValueOnce({ publicKey: PUBLIC_KEY });
+    const { result } = renderHook(() => usePushSubscription());
+    await waitFor(() => expect(result.current.state).toEqual({ kind: 'subscribed' }));
+
+    // Между загрузкой раздела и кликом «Выключить» регистрация могла
+    // пропасть (второй SW снят браузером, вкладка долго висела открытой) —
+    // ready у нового вызова подменяем на вечно висящий промис. Фейковые
+    // таймеры — только на сам клик, тем же приёмом, что в enable() выше.
+    vi.stubGlobal('navigator', {
+      userAgent: DESKTOP_UA,
+      serviceWorker: { ready: new Promise(() => {}) },
+    });
+
+    vi.useFakeTimers();
+    await act(async () => {
+      const disablePromise = result.current.disable();
+      await vi.advanceTimersByTimeAsync(5000);
+      await disablePromise;
+    });
+    vi.useRealTimers();
+
+    expect(sub.unsubscribe).not.toHaveBeenCalled();
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа
+    expect(result.current.actionError).toBe(
+      'Не получилось подключить уведомления. Обновите страницу и попробуйте ещё раз.',
+    );
+    expect(result.current.pending).toBe(false);
     expect(result.current.state).toEqual({ kind: 'subscribed' });
   });
 

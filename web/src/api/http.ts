@@ -8,6 +8,7 @@ import {
   type ApiErrorBody,
   type ApiErrorCode,
 } from '@xuanxue/shared';
+import { combineAbortSignals } from './abortSignals';
 import { noteAppVersion } from './appVersion';
 import { takePrefetched } from './prefetchCache';
 
@@ -48,7 +49,24 @@ interface ApiFetchInit {
    * keepalive-запросы разом, поэтому ставится точечно — отчёт о сбое
    * (ADR-0071), а не все подряд. */
   keepalive?: boolean;
+  /** Свой таймаут вместо `API_TIMEOUT_MS`, см. `UPLOAD_TIMEOUT_MS`. */
+  timeoutMs?: number;
 }
+
+// Аудит 2026-09-21: без своего таймера зависший TCP/TLS или не отвечающий
+// сервер держал `await fetch` до системного таймаута браузера (минуты) —
+// скелетон/кнопка висли в pending без ошибки и без повтора. На бэке так уже
+// у каждого исходящего fetch (`AbortSignal.timeout`).
+export const API_TIMEOUT_MS = 30_000;
+// Загрузка файла (сырое тело Blob) на плохой связи ученика в API_TIMEOUT_MS
+// не укладывается — ставится явным `timeoutMs` в местах загрузки.
+export const UPLOAD_TIMEOUT_MS = 120_000;
+
+// Текст по docs/VOICE.md. Отдельно от NETWORK_ERROR_MESSAGE: вызывающий код
+// (useAbortableFetch и т.п.) различает «сети нет» и «сервер не отвечает»,
+// хотя оба приходят как ApiError со status 0 и code 'network'.
+export const TIMEOUT_ERROR_MESSAGE =
+  'Сервер долго не отвечает. Проверьте интернет и попробуйте ещё раз.';
 
 // Экспортирован: тот же текст нужен экранам, которые сами ловят сетевой сбой
 // вне apiFetch (LoginScreen, RequireAuth, экран входа по email) — общий
@@ -75,7 +93,7 @@ export function setUnauthorizedListener(listener: UnauthorizedListener | null): 
  * на не-2xx ответ (парсит конверт бэкенда) и на 204 возвращает `undefined`.
  */
 export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
-  const { method = 'GET', body, signal, keepalive } = init;
+  const { method = 'GET', body, signal, keepalive, timeoutMs = API_TIMEOUT_MS } = init;
 
   // Данные первого экрана могли начать грузиться раньше, чем этот компонент
   // успел смонтироваться (prefetchFirstScreen.ts кладёт их сюда сразу после
@@ -99,6 +117,15 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   // поставит, обычный fetch с credentials — всегда.
   if (isMutatingMethod(method)) headers[CSRF_HEADER] = 'fetch';
 
+  // Свой таймер, не только signal вызывающего — сеть, которая не рвётся, а
+  // просто не отвечает, держала бы fetch до таймаута браузера. combineAbort-
+  // Signals — только когда внешний signal реально есть.
+  const timeoutController = new AbortController();
+  const timer = setTimeout(() => timeoutController.abort(), timeoutMs);
+  const requestSignal = signal
+    ? combineAbortSignals([timeoutController.signal, signal])
+    : timeoutController.signal;
+
   let response: Response;
   try {
     response = await fetch(`/api${path}`, {
@@ -106,11 +133,20 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       headers,
       credentials: 'include',
       body: isBlobBody || body === undefined ? body : JSON.stringify(body),
-      signal,
+      signal: requestSignal,
       keepalive,
     });
   } catch {
+    // Отличаем свой таймаут от отмены вызывающим: сработал наш таймер, а не
+    // внешний signal — сервер завис, а не запрос отменили нарочно
+    // (useAbortableFetch отменяет устаревшие запросы через свой signal).
+    // Отмену вызывающим оставляем как раньше — тем же ApiError, тем же текстом.
+    if (timeoutController.signal.aborted && !signal?.aborted) {
+      throw new ApiError(TIMEOUT_ERROR_MESSAGE, 0, 'network');
+    }
     throw new ApiError(NETWORK_ERROR_MESSAGE, 0, 'network');
+  } finally {
+    clearTimeout(timer);
   }
 
   // До проверок статуса: версия сборки (ADR-0101) едет и в ответе об ошибке,

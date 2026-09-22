@@ -1,10 +1,15 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Inject, Optional, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { SkipThrottle } from '@nestjs/throttler';
+import { DateTime } from 'luxon';
 import type { Connection } from 'mongoose';
 import pkg from '../../package.json';
 import { Public } from '../auth/auth.decorators';
+import {
+  SCHEDULER_HEARTBEAT,
+  type SchedulerHeartbeatReader,
+} from '../common/scheduler-heartbeat';
 import { healthOutcome } from './health-outcome';
 import { shortCommitSha } from './health-commit';
 
@@ -18,6 +23,13 @@ export interface HealthStatus {
   commit?: string;
   mongo: 'up' | 'down';
   uptimeSec: number;
+  /** Аудит 2026-09-21 (MED, RUNBOOK §8 п.4): признаки жизни планировщика —
+   * без них зависший без таймаута тик выглядел бы как ok навсегда. */
+  scheduler: {
+    enabled: boolean;
+    lastTickFinishedAt: string | null;
+    stale: boolean;
+  };
 }
 
 // Только код ответа — не весь ResponseLike (common/http-headers.ts): тому
@@ -37,23 +49,37 @@ export class HealthController {
   constructor(
     @InjectConnection() private readonly connection: Connection,
     private readonly config: ConfigService,
+    // @Optional(): без SchedulerModule на пути (юнит-тесты этого контроллера)
+    // health обязан отвечать как раньше — см. SchedulerHealthInput в
+    // health-outcome.ts: heartbeat === null никогда не даёт stale: true.
+    @Optional()
+    @Inject(SCHEDULER_HEARTBEAT)
+    private readonly heartbeat?: SchedulerHeartbeatReader,
   ) {}
 
-  // 503 при недоступной Mongo — тем же телом, не конвертом ошибок
-  // (ApiErrorBody): health читают люди и Railway, которому важен только код
-  // ответа (RUNBOOK §2 — трафик переключается после успешного GET). Поэтому
-  // код ответа выставляется через @Res({ passthrough: true }), а не бросок
-  // DomainError/HttpException — тело остаётся HealthStatus как есть.
+  // 503 при недоступной Mongo или зависшем планировщике — тем же телом, не
+  // конвертом ошибок (ApiErrorBody): health читают люди и Railway, которому
+  // важен только код ответа (RUNBOOK §2 — трафик переключается после
+  // успешного GET). Поэтому код ответа выставляется через
+  // @Res({ passthrough: true }), а не бросок DomainError/HttpException —
+  // тело остаётся HealthStatus как есть.
   @Get()
   check(@Res({ passthrough: true }) res: HealthResponseLike): HealthStatus {
-    const outcome = healthOutcome(this.connection.readyState);
+    const uptimeSec = Math.floor(process.uptime());
+    const outcome = healthOutcome(this.connection.readyState, {
+      enabled: this.config.get<string>('SCHEDULER_ENABLED') !== 'false',
+      heartbeat: this.heartbeat ?? null,
+      now: DateTime.utc(),
+      uptimeSec,
+    });
     res.status(outcome.httpStatus);
     return {
       status: outcome.status,
       version: pkg.version,
       commit: shortCommitSha(this.config.get<string>('RAILWAY_GIT_COMMIT_SHA')),
       mongo: outcome.mongo,
-      uptimeSec: Math.floor(process.uptime()),
+      uptimeSec,
+      scheduler: outcome.scheduler,
     };
   }
 }

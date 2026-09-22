@@ -115,3 +115,27 @@ describe('resolvePushSectionState — разрешено', () => {
     });
   });
 });
+
+describe('resolvePushSectionState — service worker не зарегистрировался (аудит 2026-09-21)', () => {
+  it('serviceWorker.ready не резолвится — функция падает, а не висит вечно; usePushSubscription.load() ловит это как loadError', async () => {
+    // registerServiceWorker.ts молча проглотил ошибку регистрации — ready
+    // не резолвится никогда. Раньше resolvePushSectionState зависала бы на
+    // await, и loading в usePushSubscription.ts не снимался вовсе.
+    vi.useFakeTimers();
+    vi.stubGlobal('navigator', {
+      userAgent: DESKTOP_UA,
+      serviceWorker: { ready: new Promise(() => {}) },
+    });
+    stubMatchMedia(false);
+    vi.stubGlobal('PushManager', {});
+    vi.stubGlobal('Notification', { permission: 'granted' });
+
+    // Обработчик отклонения вешаем сразу же, до продвижения таймера — иначе
+    // промис успевает упасть без подписчика между advanceTimersByTimeAsync
+    // и await expect(...), и vitest ругается на unhandled rejection.
+    const rejection = expect(resolvePushSectionState('key')).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(5000);
+    await rejection;
+    vi.useRealTimers();
+  });
+});
