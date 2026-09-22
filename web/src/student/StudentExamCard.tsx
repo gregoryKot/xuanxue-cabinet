@@ -10,12 +10,15 @@
 // (StudentLessonMeeting.tsx) — правило «один акцент на экран» (ADR-0043) не
 // делает исключения для второй кнопки того же цвета. Итог вынесен в
 // ExamAttemptOutcome — своя логика, что показывать, не должна раздувать саму
-// карточку (CLAUDE.md «Храповики», лимит 150 строк).
+// карточку (CLAUDE.md «Храповики», лимит 150 строк). Строка про время —
+// useExamTimeLine.ts: её текст считает shared (один на кабинет и бота), а
+// тик раз в полминуты не должен жить в карточке.
 import type { CSSProperties } from 'react';
 import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeNoAction, formatAttemptsLeft } from './examAttemptState';
+import { useExamTimeLine } from './useExamTimeLine';
 
 const RUBRIC = 'Экзамен';
 
@@ -64,6 +67,7 @@ interface StudentExamCardProps {
 
 export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCardProps) {
   const action = getMyExamAction(exam);
+  const timeLine = useExamTimeLine(exam);
   const attempt = exam.lastAttempt;
   const showOutcome = attempt?.status === 'graded' && attempt.outcome !== undefined;
   // Не «весь retry» — только та его причина, которую сам экран ещё не
@@ -77,6 +81,11 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
         <span style={rubricStyle}>{RUBRIC}</span>
         <span style={titleStyle}>{exam.title}</span>
         <span style={metaStyle}>{formatAttemptsLeft(exam)}</span>
+        {/* Время попытки идёт, пока ученик вышел, и просроченную попытку
+            сервер закрывает сам (ADR-0120) — остаток он обязан видеть здесь,
+            а не только внутри самой попытки. У формы без лимита времени
+            строки нет вовсе. */}
+        {timeLine && <span style={metaStyle}>{timeLine}</span>}
         {exam.description && <p style={descriptionStyle}>{exam.description}</p>}
 
         {/* Итог — рядом с кнопкой, а не вместо неё: после «нужно доработать»

@@ -28,6 +28,7 @@ import { ExamAttemptRecord } from './exam-attempt.schema';
 import { decryptGrading, type RawLeanExamGrading } from './exam-grading.mapper';
 import { ExamGradingRecord } from './exam-grading.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord } from './exam.schema';
+import { toIsoUtc } from '../common/iso-date';
 import { decryptRecord } from '../utils/encryption';
 import {
   toMyExamDto,
@@ -40,7 +41,7 @@ import {
 // `T extends Record<string, unknown>` у decryptRecord.
 type RawLeanMyExam = Pick<
   ExamRecord,
-  'title' | 'description' | 'level' | 'attemptsAllowed'
+  'title' | 'description' | 'level' | 'attemptsAllowed' | 'timeLimitMin'
 > & { _id: Types.ObjectId };
 
 interface AttemptSummary {
@@ -130,6 +131,14 @@ export class MyExamsService {
           expired: closed.expired === true,
           outcome: grading?.outcome,
           comment: grading?.comment,
+          // Только у идущей попытки: закрытую (submitted/graded) время уже
+          // не отсчитывает, а `deadlineAt` в записи остаётся старым значением
+          // и введёт в заблуждение (describeExamTime смотрит на то же
+          // условие статуса — exam-time.ts).
+          deadlineAt:
+            closed.status === 'in_progress' && closed.deadlineAt
+              ? toIsoUtc(closed.deadlineAt)
+              : undefined,
         },
       });
     }

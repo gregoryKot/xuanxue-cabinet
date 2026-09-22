@@ -6,6 +6,9 @@
 import type { MyExamDto } from '@xuanxue/shared';
 import { buildExamListScreen } from './exam-list-screen';
 
+// Момент «сейчас» фиксированный (CLAUDE.md «Детерминизм»), не Date.now().
+const NOW_MS = Date.parse('2026-09-22T16:00:00Z');
+
 function exam(overrides: Partial<MyExamDto> = {}): MyExamDto {
   return {
     id: '507f1f77bcf86cd799439011',
@@ -20,7 +23,7 @@ function exam(overrides: Partial<MyExamDto> = {}): MyExamDto {
 
 describe('buildExamListScreen', () => {
   it('пустой список — честное «пока нечего сдавать»', () => {
-    const menu = buildExamListScreen([]);
+    const menu = buildExamListScreen([], NOW_MS);
     expect(menu.text).toBe(
       'Пока нечего сдавать: учитель ещё не опубликовал ни одной формы.',
     );
@@ -30,7 +33,7 @@ describe('buildExamListScreen', () => {
   });
 
   it('ещё не начата — кнопка «Начать»', () => {
-    const menu = buildExamListScreen([exam()]);
+    const menu = buildExamListScreen([exam()], NOW_MS);
     expect(menu.text).toContain('Форма третьего уровня');
     expect(menu.buttons[0]).toEqual([
       {
@@ -41,12 +44,15 @@ describe('buildExamListScreen', () => {
   });
 
   it('попытка в работе — кнопка «Продолжить», не «Начать»', () => {
-    const menu = buildExamListScreen([
-      exam({
-        attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
-      }),
-    ]);
+    const menu = buildExamListScreen(
+      [
+        exam({
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+        }),
+      ],
+      NOW_MS,
+    );
     expect(menu.buttons[0]?.[0]?.text).toBe('Продолжить: Форма третьего уровня');
   });
 
@@ -56,58 +62,70 @@ describe('buildExamListScreen', () => {
   // 'submitted'` с «можно начать заново» и давал кнопку независимо от того,
   // кто закрыл попытку — эта ветка ловит именно тот баг.
   it('сдана вручную, есть ещё попытки — кнопки нет, «Сдано, ждёт проверки.»', () => {
-    const menu = buildExamListScreen([
-      exam({
-        attemptsAllowed: 2,
-        attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
-      }),
-    ]);
+    const menu = buildExamListScreen(
+      [
+        exam({
+          attemptsAllowed: 2,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+        }),
+      ],
+      NOW_MS,
+    );
     expect(menu.text).toContain('Сдано, ждёт проверки.');
     expect(menu.buttons).toHaveLength(1); // только «В меню»
   });
 
   it('попытку закрыло время, есть ещё попытки — «Начать ещё раз»', () => {
-    const menu = buildExamListScreen([
-      exam({
-        attemptsAllowed: 2,
-        attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'submitted', expired: true },
-      }),
-    ]);
+    const menu = buildExamListScreen(
+      [
+        exam({
+          attemptsAllowed: 2,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+        }),
+      ],
+      NOW_MS,
+    );
     expect(menu.buttons[0]?.[0]?.text).toBe('Начать ещё раз: Форма третьего уровня');
   });
 
   it('сдана, попыток больше нет — «Сдано, ждёт проверки», без кнопки', () => {
-    const menu = buildExamListScreen([
-      exam({
-        attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
-      }),
-    ]);
+    const menu = buildExamListScreen(
+      [
+        exam({
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+        }),
+      ],
+      NOW_MS,
+    );
     expect(menu.text).toContain('Сдано, ждёт проверки.');
     expect(menu.buttons).toHaveLength(1); // только «В меню»
   });
 
   it('проверена, попыток больше нет — «Использованы все попытки», без кнопки', () => {
-    const menu = buildExamListScreen([
-      exam({
-        attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'graded', expired: false, outcome: 'passed' },
-      }),
-    ]);
+    const menu = buildExamListScreen(
+      [
+        exam({
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'graded', expired: false, outcome: 'passed' },
+        }),
+      ],
+      NOW_MS,
+    );
     expect(menu.text).toContain('Использованы все попытки — 1 из 1.');
     expect(menu.buttons).toHaveLength(1);
   });
 
   it('уровень формы показан рядом с названием', () => {
-    const menu = buildExamListScreen([exam({ level: 'третий уровень' })]);
+    const menu = buildExamListScreen([exam({ level: 'третий уровень' })], NOW_MS);
     expect(menu.text).toContain('Форма третьего уровня (третий уровень)');
   });
 
   it('длинное название формы обрезается только в кнопке, не в тексте', () => {
     const longTitle = 'О'.repeat(80);
-    const menu = buildExamListScreen([exam({ title: longTitle })]);
+    const menu = buildExamListScreen([exam({ title: longTitle })], NOW_MS);
     expect(menu.text).toContain(longTitle);
     const buttonText = menu.buttons[0]?.[0]?.text ?? '';
     expect(buttonText.length).toBeLessThan(longTitle.length);
@@ -115,18 +133,55 @@ describe('buildExamListScreen', () => {
   });
 
   it('несколько форм — по строке и кнопке на каждую, «В меню» в конце', () => {
-    const menu = buildExamListScreen([
-      exam({ id: 'e1', title: 'Первая' }),
-      exam({
-        id: 'e2',
-        title: 'Вторая',
-        attemptsUsed: 1,
-        lastAttempt: { id: 'a1', status: 'submitted', expired: false },
-      }),
-    ]);
+    const menu = buildExamListScreen(
+      [
+        exam({ id: 'e1', title: 'Первая' }),
+        exam({
+          id: 'e2',
+          title: 'Вторая',
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+        }),
+      ],
+      NOW_MS,
+    );
     expect(menu.buttons).toHaveLength(2); // «Начать: Первая» + «В меню» (у второй кнопки нет)
     expect(menu.buttons[menu.buttons.length - 1]).toEqual([
       { text: 'В меню', callback_data: 'menu:back' },
     ]);
+  });
+
+  // Строка времени — describeExamTime (shared/src/exam-time.ts, ADR-0120),
+  // бот своих слов про время не сочиняет; здесь только что она встала на
+  // место между заголовком и причиной, и что пояс школы подписан всегда.
+  it('форма с лимитом, попытки не было — «На попытку даётся 40 минут»', () => {
+    const menu = buildExamListScreen([exam({ timeLimitMin: 40 })], NOW_MS);
+    expect(menu.text).toContain('Форма третьего уровня\nНа попытку даётся 40 минут');
+  });
+
+  it('идёт попытка — «Осталось …, попытка закроется в … (Asia/Jerusalem)»', () => {
+    const menu = buildExamListScreen(
+      [
+        exam({
+          timeLimitMin: 40,
+          attemptsUsed: 1,
+          lastAttempt: {
+            id: 'a1',
+            status: 'in_progress',
+            expired: false,
+            deadlineAt: '2026-09-22T16:40:00.000Z',
+          },
+        }),
+      ],
+      NOW_MS,
+    );
+    expect(menu.text).toContain(
+      'Осталось 40 мин, попытка закроется в 19:40 (Asia/Jerusalem)',
+    );
+  });
+
+  it('форма без лимита времени — строки про время нет', () => {
+    const menu = buildExamListScreen([exam()], NOW_MS);
+    expect(menu.text).toBe('Экзамены:\n\nФорма третьего уровня');
   });
 });

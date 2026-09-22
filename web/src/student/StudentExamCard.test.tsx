@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { StudentExamCard } from './StudentExamCard';
 
 function makeExam(overrides: Partial<MyExamDto> = {}): MyExamDto {
@@ -206,5 +207,67 @@ describe('StudentExamCard', () => {
     );
 
     expect(screen.getByText('Экзамен проверен')).toBeInTheDocument();
+  });
+});
+
+// Отзыв владельца 2026-09-22: на карточке должно стоять время. Время попытки
+// идёт, пока ученик вышел, и просроченную попытку сервер закрывает сам
+// (ADR-0120) — остаток он обязан увидеть до того, как тот кончится. Пояс
+// зрителя — stubViewerTimeZone (Europe/Moscow), не пояс машины.
+describe('StudentExamCard — время попытки', () => {
+  stubViewerTimeZone();
+
+  it('попытки не было — сколько времени даётся на попытку', () => {
+    render(
+      <StudentExamCard
+        exam={makeExam({ timeLimitMin: 40 })}
+        pending={false}
+        error={null}
+        onStart={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('На попытку даётся 40 минут')).toBeInTheDocument();
+  });
+
+  it('попытка идёт — остаток и час закрытия по часам зрителя', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-22T16:15:00Z'));
+    const exam = makeExam({
+      timeLimitMin: 40,
+      attemptsAllowed: 2,
+      attemptsUsed: 1,
+      lastAttempt: {
+        id: 'a1',
+        status: 'in_progress',
+        expired: false,
+        deadlineAt: '2026-09-22T16:40:00Z',
+      },
+    });
+
+    render(
+      <StudentExamCard exam={exam} pending={false} error={null} onStart={vi.fn()} />,
+    );
+
+    expect(
+      screen.getByText(
+        'Осталось 25 мин, попытка закроется в 19:40 по вашим часам ' +
+          '(школа живёт по Asia/Jerusalem)',
+      ),
+    ).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('форма без лимита времени — строки про время нет вовсе', () => {
+    render(
+      <StudentExamCard
+        exam={makeExam()}
+        pending={false}
+        error={null}
+        onStart={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/попытку даётся|Осталось \d+ мин/)).not.toBeInTheDocument();
   });
 });

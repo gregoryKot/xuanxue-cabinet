@@ -10,7 +10,13 @@
 // кнопки и текст причины, когда кнопки нет. До этого решения бот считал
 // правило сам и пускал на «Начать ещё раз» любую сданную работу, даже ещё не
 // проверенную, — сюда это больше не возвращается.
-import { getMyExamAction, type MyExamAction, type MyExamDto } from '@xuanxue/shared';
+import {
+  describeExamTime,
+  getMyExamAction,
+  SCHOOL_TZ,
+  type MyExamAction,
+  type MyExamDto,
+} from '@xuanxue/shared';
 import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 import { backToMenuButton, type BotMenu } from './bot-menu';
@@ -55,10 +61,21 @@ interface ExamRow {
   button?: InlineKeyboardButton[];
 }
 
-function buildExamRow(exam: MyExamDto): ExamRow {
+function buildExamRow(exam: MyExamDto, nowMs: number): ExamRow {
   const header = exam.level ? `${exam.title} (${exam.level})` : exam.title;
   const status = examRowStatus(exam);
-  const line = status.reason ? `${header}\n${status.reason}` : header;
+  // Бот не знает часов зрителя (в отличие от кабинета, ADR-0060) — время
+  // экзамена показывает по часам школы и всегда подписывает пояс, иначе
+  // ученик прочтёт час закрытия как свой собственный.
+  const timeLine = describeExamTime(exam, {
+    nowMs,
+    timeZone: SCHOOL_TZ,
+    zoneNote: `(${SCHOOL_TZ})`,
+  });
+  const lines = [header, timeLine, status.reason].filter(
+    (line): line is string => line !== null && line !== undefined,
+  );
+  const line = lines.join('\n');
   const button = status.actionLabel
     ? [
         inlineButton(
@@ -71,9 +88,9 @@ function buildExamRow(exam: MyExamDto): ExamRow {
   return { line, button };
 }
 
-export function buildExamListScreen(exams: MyExamDto[]): BotMenu {
+export function buildExamListScreen(exams: MyExamDto[], nowMs: number): BotMenu {
   if (exams.length === 0) return { text: EMPTY_TEXT, buttons: [backToMenuButton()] };
-  const rows = exams.map(buildExamRow);
+  const rows = exams.map((exam) => buildExamRow(exam, nowMs));
   const text = `${TITLE}\n\n${rows.map((row) => row.line).join('\n\n')}`;
   const buttons: InlineKeyboardButton[][] = [
     ...rows.flatMap((row) => (row.button ? [row.button] : [])),

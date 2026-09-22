@@ -212,6 +212,8 @@ export {
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamDto, ListMyExamsQuery, MyExamAction } from './my-exams';
 export { myExamAttemptsLeft, getMyExamAction } from './my-exams';
+export type { ExamTimeOptions } from './exam-time';
+export { describeExamTime } from './exam-time';
 export type {
   AttemptOptionCheckDto,
   AttemptReviewOptionDto,

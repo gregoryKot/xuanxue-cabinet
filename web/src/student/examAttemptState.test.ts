@@ -6,6 +6,7 @@ import type { MyExamDto } from '@xuanxue/shared';
 import {
   describeNoAction,
   describeOutcome,
+  examTimeZoneNote,
   formatAttemptsLeft,
 } from './examAttemptState';
 
@@ -92,5 +93,17 @@ describe('describeNoAction', () => {
     expect(describeNoAction(makeExam({ attemptsAllowed: 0 }))).toBe(
       'Попыток по этому экзамену пока нет',
     );
+  });
+});
+
+describe('examTimeZoneNote', () => {
+  it('часы зрителя не школьные — называем пояс школы', () => {
+    expect(examTimeZoneNote('Europe/Moscow')).toBe(
+      'по вашим часам (школа живёт по Asia/Jerusalem)',
+    );
+  });
+
+  it('зритель живёт по часам школы — приписки нет', () => {
+    expect(examTimeZoneNote('Asia/Jerusalem')).toBeNull();
   });
 });

@@ -52,6 +52,40 @@ describe('toMyExamDto', () => {
     });
   });
 
+  it('у формы есть лимит времени — timeLimitMin передан как есть', () => {
+    const dto = toMyExamDto(exam({ timeLimitMin: 40 }), 0, undefined);
+    expect(dto.timeLimitMin).toBe(40);
+  });
+
+  it('у формы нет лимита времени — timeLimitMin отсутствует', () => {
+    const dto = toMyExamDto(exam(), 0, undefined);
+    expect(dto.timeLimitMin).toBeUndefined();
+  });
+
+  it('у попытки есть дедлайн — deadlineAt передан в lastAttempt как есть', () => {
+    const dto = toMyExamDto(exam({ timeLimitMin: 40 }), 1, {
+      id: 'attempt-1',
+      status: 'in_progress',
+      expired: false,
+      deadlineAt: '2026-09-22T16:40:00.000Z',
+    });
+    expect(dto.lastAttempt).toEqual({
+      id: 'attempt-1',
+      status: 'in_progress',
+      expired: false,
+      deadlineAt: '2026-09-22T16:40:00.000Z',
+    });
+  });
+
+  it('у попытки нет дедлайна — deadlineAt в lastAttempt отсутствует', () => {
+    const dto = toMyExamDto(exam(), 1, {
+      id: 'attempt-1',
+      status: 'in_progress',
+      expired: false,
+    });
+    expect(dto.lastAttempt?.deadlineAt).toBeUndefined();
+  });
+
   it('description/level отсутствуют в документе (после $unset) — пустая строка, не undefined', () => {
     const dto = toMyExamDto(
       exam({

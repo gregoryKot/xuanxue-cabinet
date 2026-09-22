@@ -11,6 +11,8 @@ export interface MyExamInput {
   description: string;
   level: string;
   attemptsAllowed: number;
+  // Нет поля — у формы не было лимита времени (ADR-0120, describeExamTime).
+  timeLimitMin?: number;
 }
 
 /** Оценка последней попытки, если она уже выставлена (слой 4.6) — итог и
@@ -26,6 +28,9 @@ export interface MyExamLastAttemptInput {
   expired: boolean;
   outcome?: GradingOutcome;
   comment?: string;
+  // Когда попытку закроет время — нет поля, если у попытки не было дедлайна
+  // (форма без лимита или лимит появился уже после старта, ADR-0120).
+  deadlineAt?: string;
 }
 
 export function toMyExamDto(
@@ -42,6 +47,9 @@ export function toMyExamDto(
     level: exam.level ?? '',
     attemptsAllowed: exam.attemptsAllowed,
     attemptsUsed,
+    // Прямое присваивание, как у lastAttempt выше: undefined-ключ Mongoose/
+    // JSON.stringify не отдаёт — второго приёма ради одного поля не заводим.
+    timeLimitMin: exam.timeLimitMin,
     lastAttempt,
   };
 }
