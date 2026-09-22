@@ -23,6 +23,7 @@
 // отстают, оставляли автосохранение писать в уже закрытую попытку без
 // единого слова об этом — вторую половину чинит `onExpired` в
 // useAttemptAutosave.
+import { useCallback, useState } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import type { FormError } from '../components/FormServerError';
 import { blockCardStyle } from '../components/listCardStyles';
@@ -34,6 +35,14 @@ import { ATTEMPT_EYEBROW, attemptHeaderStyle, attemptPageStyle } from './attempt
 import { formatSaveStatus } from './attemptSaveStatusLabel';
 import { useAttemptAutosave } from './useAttemptAutosave';
 import type { AttemptVideoControls } from './useAttemptMedia';
+
+// Отправка ждёт сохранения (аудит 2026-09-21, HIGH «потеря последнего ответа
+// ученика», docs/PLAN.md §11): раньше submit() (useAttempt.ts) слал POST не
+// дожидаясь PATCH — выбор варианта в последние секунды или гонка PATCH/POST
+// теряли ответ, сервер отвечал «попытка уже не in_progress»
+// (exam-attempt-save.ts). Текст — VOICE.md: на «вы», с действием.
+const FLUSH_ERROR_MESSAGE =
+  'Не удалось сохранить последний ответ. Проверьте интернет и попробуйте ещё раз.';
 
 interface AttemptInProgressProps {
   attempt: ExamAttemptDto;
@@ -57,6 +66,27 @@ export function AttemptInProgress({
   // в шапке файла и в самом useAttemptAutosave). Обёртка в `() => void ...`
   // — `onExpired` синхронный, а `reload()` возвращает `Promise<void>`.
   const autosave = useAttemptAutosave(attempt.id, attempt.answers, () => void reload());
+  const [flushError, setFlushError] = useState<FormError | null>(null);
+  const [flushing, setFlushing] = useState(false);
+
+  // Отправка ждёт flush() (см. константу выше): PATCH и POST раньше летели
+  // не дожидаясь друг друга — теперь submit() зовётся, только когда все
+  // правки реально на сервере. ConfirmDialog закрывает себя после
+  // `onConfirm` независимо от исхода (ConfirmDialog.tsx) — эта функция не
+  // бросает, иначе диалог остался бы открыт, а текст ошибки под ним.
+  const handleSubmit = useCallback(async () => {
+    setFlushing(true);
+    try {
+      await autosave.flush();
+    } catch {
+      setFlushError({ message: FLUSH_ERROR_MESSAGE });
+      return;
+    } finally {
+      setFlushing(false);
+    }
+    setFlushError(null);
+    await onSubmit();
+  }, [autosave, onSubmit]);
 
   return (
     <section style={attemptPageStyle}>
@@ -88,9 +118,9 @@ export function AttemptInProgress({
 
       <AttemptSubmitBar
         saveLabel={formatSaveStatus(autosave.status)}
-        onSubmit={onSubmit}
-        submitting={submitting}
-        submitError={submitError}
+        onSubmit={handleSubmit}
+        submitting={flushing || submitting}
+        submitError={flushError ?? submitError}
       />
     </section>
   );

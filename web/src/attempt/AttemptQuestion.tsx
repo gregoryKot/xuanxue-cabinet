@@ -30,7 +30,11 @@ export function AttemptQuestion({
 
   function changeOptions(optionIds: string[]) {
     autosave.setOptions(question.itemId, optionIds);
-    autosave.flush();
+    // flush() теперь возвращает промис (useAttemptAutosave.ts, аудит
+    // 2026-09-21) — здесь сбой не критичен, status уже показывает «не
+    // сохранилось», а фоновый повтор и submit() (AttemptInProgress.tsx)
+    // подхватят сами.
+    autosave.flush().catch(() => {});
   }
 
   return (
@@ -45,7 +49,9 @@ export function AttemptQuestion({
           labelledBy={promptId}
           value={answer?.text ?? ''}
           onChange={(text) => autosave.setText(question.itemId, text)}
-          onBlur={autosave.flush}
+          onBlur={() => {
+            autosave.flush().catch(() => {});
+          }}
         />
       )}
       {(question.kind === 'single' || question.kind === 'multiple') && (

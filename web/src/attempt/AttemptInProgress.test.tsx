@@ -323,6 +323,25 @@ describe('AttemptInProgress', () => {
     );
   });
 
+  // Гейт: check-vitest-coverage-ratchet.mjs (functions) — `onBlur` в
+  // AttemptQuestion.tsx сам ловит провал flush() (`.catch(() => {})`), это
+  // тихий фоновый путь: status уже показывает сбой, экран не должен упасть
+  // и не должен звать submit() сам.
+  it('уход с текстового вопроса (blur), PATCH падает — сбой тихий, статус «не сохранилось»', async () => {
+    mockedApiFetch.mockRejectedValue(new Error('сеть недоступна'));
+    const user = userEvent.setup();
+    renderAttempt(makeAttempt());
+
+    const textarea = screen.getByLabelText('Опишите дыхание');
+    await user.click(textarea);
+    await user.type(textarea, 'Ровно и глубоко');
+    await user.tab();
+
+    expect(
+      await screen.findByText('Не сохранилось — попробуем ещё раз'),
+    ).toBeInTheDocument();
+  });
+
   it('отправка — требует подтверждения и зовёт onSubmit', async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderAttempt(makeAttempt());
