@@ -14,6 +14,17 @@ export interface QuestionId {
   index: number;
 }
 
+/** Индекс-сентинел «Продолжить» из списка экзаменов (exam-list-screen.ts,
+ * отзыв владельца 2026-09-22, ADR-0119): список видит только положение
+ * ученика (`MyExamDto`, shared/src/my-exams.ts), не снимок попытки — назвать
+ * настоящий номер вопроса заранее ему нечем. Кнопка передаёт этот индекс,
+ * handleExamQuestion (exam-attempt-navigation.ts) видит его и сам находит
+ * первый вопрос без ответа (`firstUnansweredQuestionIndex`, shared). Занято
+ * ровно одно отрицательное значение, не весь отрицательный диапазон —
+ * настоящим номером вопроса «-1» быть не может, дальше parseQuestionId
+ * по-прежнему отсеивает остальные отрицательные как битые данные. */
+export const CONTINUE_QUESTION_INDEX = -1;
+
 export function buildQuestionId(attemptId: string, index: number): string {
   return `${attemptId}:${index}`;
 }
@@ -22,7 +33,8 @@ export function parseQuestionId(id: string): QuestionId | null {
   const [attemptId, indexRaw] = id.split(':');
   if (!attemptId || !Types.ObjectId.isValid(attemptId)) return null;
   const index = Number(indexRaw);
-  if (!Number.isInteger(index) || index < 0) return null;
+  if (!Number.isInteger(index)) return null;
+  if (index < 0 && index !== CONTINUE_QUESTION_INDEX) return null;
   return { attemptId, index };
 }
 

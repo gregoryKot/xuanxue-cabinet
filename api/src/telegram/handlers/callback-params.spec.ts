@@ -1,6 +1,7 @@
 // Параметр кнопки приходит снаружи: его может подделать кто угодно, кто видел
 // callback data (CLAUDE.md «Telegram»: параметры валидируются). Чистая
 // функция — проверяется без Telegram и без Mongo.
+import { CONTINUE_QUESTION_INDEX } from './exam-callback-ids';
 import { isValidCallbackParam } from './callback-params';
 
 const OBJECT_ID = '000000000000000000000000';
@@ -39,6 +40,14 @@ describe('isValidCallbackParam', () => {
   it('eq/eo — попытка и номера', () => {
     expect(isValidCallbackParam('eq', `${OBJECT_ID}:0`)).toBe(true);
     expect(isValidCallbackParam('eo', `${OBJECT_ID}:0:2`)).toBe(true);
+  });
+
+  // «Продолжить» из списка экзаменов (exam-list-screen.ts, ADR-0119) — сентинел,
+  // не битые данные.
+  it('eq — CONTINUE_QUESTION_INDEX проходит', () => {
+    expect(isValidCallbackParam('eq', `${OBJECT_ID}:${CONTINUE_QUESTION_INDEX}`)).toBe(
+      true,
+    );
   });
 
   // ТЗ 4б.3 (docs/PLAN.md §12) — «Новый вопрос»: nqk (тип), nqo (номер
