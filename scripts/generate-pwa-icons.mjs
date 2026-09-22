@@ -15,21 +15,32 @@
 //                                  весь квадрат, знак уменьшен до центральных
 //                                  ~80% — safe zone маски (круг/сквиркл),
 //                                  иначе OS обрежет знак.
-//   school-mark-apple-180.png   — iOS игнорирует альфа-канал (красит
-//                                  прозрачное чёрным), поэтому фон сплошной;
-//                                  safe zone не нужен — угол скругляет сама ОС.
+//   school-mark-apple-180.png   — iOS: квадратный кроп самой печати во всю
+//                                  плитку (ADR-0117) — круг на бумаге оставлял
+//                                  углы пустыми (снимок владельца 2026-09-22);
+//                                  safe zone не нужен, угол скругляет сама ОС.
 //   school-mark-64.png          — знак в интерфейсе (SchoolMark.tsx рисует
 //                                  его 26×26 — 64 закрывает экраны 2×).
 //   favicon-32.png, favicon-16.png — вкладка браузера.
-import sharp from 'sharp';
+// Восьмой файл — web/public/og-cover.png, превью ссылки в мессенджере
+// (scripts/brand-preview.mjs, ADR-0117): знак у превью и у иконок один.
 import { createHash } from 'crypto';
 import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { BRAND_FONT_FAMILY, loadSharpWithBrandFonts } from './brand-fonts.mjs';
+import { renderLinkPreview } from './brand-preview.mjs';
+
+// Единственная точка загрузки sharp: превью набирает текст шрифтом кабинета,
+// а его fontconfig обязан увидеть раньше, чем sharp поднимется (brand-fonts.mjs).
+const sharp = await loadSharpWithBrandFonts();
 
 const ROOT = join(import.meta.dirname, '..');
 const SOURCE_PATH = join(ROOT, 'web', 'brand', 'school-mark.webp');
 const SOURCE_REL = 'web/brand/school-mark.webp';
-const OUT_DIR = join(ROOT, 'web', 'public', 'icons');
+const PUBLIC_DIR = join(ROOT, 'web', 'public');
+const OUT_DIR = join(PUBLIC_DIR, 'icons');
+const PREVIEW_PATH = join(PUBLIC_DIR, 'og-cover.png');
+const WORDMARK_PATH = join(ROOT, 'web', 'src', 'components', 'SchoolWordmark.tsx');
 const CSS_PATH = join(ROOT, 'web', 'src', 'index.css');
 const BASELINE_PATH = join(ROOT, 'scripts', 'pwa-icons-baseline.json');
 
@@ -37,13 +48,20 @@ const BASELINE_PATH = join(ROOT, 'scripts', 'pwa-icons-baseline.json');
  * константа в скрипте: второй источник правды о цвете уже разъезжался —
  * оболочка отставала от палитры два месяца (docs/adr/0085). Совпадение с
  * этим же токеном при следующей смене палитры держит scripts/check-pwa.mjs. */
-function readPaperToken(css) {
-  const match = /--paper:\s*(#[0-9a-fA-F]{3,8})/.exec(css);
-  if (!match) throw new Error('в web/src/index.css не нашёлся токен --paper');
+function readColorToken(css, name) {
+  const match = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`).exec(css);
+  if (!match) throw new Error(`в web/src/index.css не нашёлся токен --${name}`);
   return match[1];
 }
 
-const SOLID_BG = readPaperToken(readFileSync(CSS_PATH, 'utf8'));
+const CSS = readFileSync(CSS_PATH, 'utf8');
+const SOLID_BG = readColorToken(CSS, 'paper');
+// Превью набирает две строки: название тушью, пояснение тусклым текстом.
+const PREVIEW_COLORS = {
+  paper: SOLID_BG,
+  ink: readColorToken(CSS, 'ink'),
+  inkSoft: readColorToken(CSS, 'ink-soft'),
+};
 // Доля площади квадрата, которую занимает знак в maskable-варианте.
 const MASKABLE_SAFE_ZONE = 0.8;
 // Палитровое png: фотография в полном цвете 512×512 весит 536 КБ, палитровая
@@ -73,9 +91,16 @@ async function renderMaskable(size, outFile) {
     .toFile(join(OUT_DIR, outFile));
 }
 
-async function renderOpaque(size, outFile) {
+/** Печать увеличивается до √2 и режется по вписанному квадрату: круг тогда
+ * перекрывает плитку целиком, а надпись XUANXUE и черепаха — то, по чему знак
+ * узнают, — остаются в кадре (ADR-0117). flatten тут страховка: прозрачных
+ * точек после кропа нет, но iOS красит прозрачное чёрным. */
+async function renderAppleCover(size, outFile) {
+  const covered = Math.ceil(size * Math.SQRT2);
+  const offset = Math.round((covered - size) / 2);
   await sharp(SOURCE_PATH)
-    .resize(size, size)
+    .resize(covered, covered)
+    .extract({ left: offset, top: offset, width: size, height: size })
     .flatten({ background: SOLID_BG })
     .png(PNG_OPTIONS)
     .toFile(join(OUT_DIR, outFile));
@@ -86,10 +111,20 @@ async function renderOpaque(size, outFile) {
 await renderTransparent(512, 'school-mark-512.png');
 await renderTransparent(192, 'school-mark-192.png');
 await renderMaskable(512, 'school-mark-maskable-512.png');
-await renderOpaque(180, 'school-mark-apple-180.png');
+await renderAppleCover(180, 'school-mark-apple-180.png');
 await renderTransparent(64, 'school-mark-64.png');
 await renderTransparent(32, 'favicon-32.png');
 await renderTransparent(16, 'favicon-16.png');
+
+await renderLinkPreview({
+  sharp,
+  sourcePath: SOURCE_PATH,
+  wordmarkPath: WORDMARK_PATH,
+  colors: PREVIEW_COLORS,
+  fontFamily: BRAND_FONT_FAMILY,
+  pngOptions: PNG_OPTIONS,
+  outFile: PREVIEW_PATH,
+});
 
 // Бейслайн — то, за чем следит check-pwa.mjs (docs/adr/0085): sha источника
 // ловит «поменяли лого и забыли перегенерировать», background — «сменили
@@ -111,4 +146,4 @@ const baseline = {
 };
 writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + '\n');
 
-console.log('✓ PWA-иконки сгенерированы в web/public/icons/, бейслайн обновлён');
+console.log('✓ web/public/icons/, og-cover.png и бейслайн обновлены');
