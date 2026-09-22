@@ -37,14 +37,13 @@ import { forwardPaymentScreenshotToAccountant } from './payment-screenshot-forwa
 import { extractPaymentScreenshotSource } from './payment-screenshot-source';
 import { resolveActiveBotUser } from './resolve-active-bot-user';
 
-const NOT_A_PHOTO_MESSAGE =
-  'Ждём фото скриншота: обычное фото или файл-картинка. Пришлите его сюда.';
+const NOT_A_PHOTO_MESSAGE = 'Нужен скриншот: обычное фото или файл-картинка.';
 
 function receivedMessage(month: string, status: PaymentStatus): string {
   const monthRu = formatMonthRu(month);
   return status === 'paid'
     ? `За ${monthRu} уже отмечено «Оплачено». Скриншот всё равно сохранили.`
-    : `Скриншот за ${monthRu} получили, спасибо. Дальше подтвердит школа — увидите отметку в кабинете.`;
+    : `Скриншот за ${monthRu} получили. Дальше подтвердит школа — увидите отметку в кабинете.`;
 }
 
 @Injectable()

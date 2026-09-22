@@ -43,10 +43,12 @@ import type { ChannelConfigService } from '../../channels/channel-config.service
 import type { TelegramLinkService } from '../../users/telegram-link.service';
 import { welcomeConnectedUser } from './start-welcome';
 
-function linkedMessage(name: string): string {
+// Вступление к welcomeConnectedUser, не отдельное сообщение (отзыв владельца
+// 2026-09-22: несколько сообщений подряд об одном событии — шум): имя
+// аккаунта — защита от чужого кода, «связывали не вы?» — остаётся.
+function linkedIntro(name: string): string {
   return (
-    `Готово. Этот Telegram связан с аккаунтом «${name}» в кабинете школы — ` +
-    'присылайте видео экзамена прямо сюда.\n\n' +
+    `Готово. Этот Telegram связан с аккаунтом «${name}» в кабинете школы.\n\n` +
     'Связывали не вы? Напишите администратору школы.'
   );
 }
@@ -79,8 +81,13 @@ export async function handleTelegramLinkDeepLink(
       await ctx.reply(TELEGRAM_LINK_OTHER_TELEGRAM_MESSAGE).catch(() => null);
       return;
     case 'linked':
-      await ctx.reply(linkedMessage(result.user.name)).catch(() => null);
-      await welcomeConnectedUser(ctx, telegramId, result.user, deps.channelConfig);
+      await welcomeConnectedUser(
+        ctx,
+        telegramId,
+        result.user,
+        deps.channelConfig,
+        linkedIntro(result.user.name),
+      );
       return;
   }
 }

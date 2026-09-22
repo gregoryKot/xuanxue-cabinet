@@ -17,8 +17,7 @@ import { forwardExamVideoToTeachers } from './exam-media-forward';
 // посмотреть» обещало то, чего могло не случиться. Кнопка на карточке
 // проверки достаёт то же видео заново в любой момент, поэтому это по-прежнему
 // честно и без «уже».
-const RECEIVED_MESSAGE =
-  'Видео дошло, спасибо! Сохранили его к попытке — учитель сможет посмотреть.';
+const RECEIVED_MESSAGE = 'Видео дошло. Учитель его увидит.';
 
 export interface RespondToAttachedMediaDeps {
   personalChats: PersonalChats;

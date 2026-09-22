@@ -34,7 +34,9 @@ const ACTIVE_USER: UserLean = {
   roles: [],
   status: 'active',
 };
-const JOIN_SUCCESS_WITH_URL =
+// Одно сообщение, не несколько подряд (отзыв владельца 2026-09-22): ссылка на
+// кабинет — вступление к welcomeConnectedUser, не отдельная реплика.
+const JOIN_SUCCESS_INTRO_WITH_URL =
   'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su';
 
 function fakeCtx(): { ctx: Context; replies: string[] } {
@@ -90,8 +92,10 @@ describe('handleInviteDeepLink', () => {
     expect(resolveTelegramUser).toHaveBeenCalledWith(1, 'Игорь', CODE, NOW);
     // Регрессия 2026-09-16 (#163): после успеха — тот же welcomeConnectedUser,
     // что и обычный /start (ADR-0027): личный канал ученику и его меню.
-    expect(replies[0]).toBe(JOIN_SUCCESS_WITH_URL);
-    expect(replies.at(-1)).toEqual(expect.stringContaining('Экзамены можно сдать'));
+    // Одно сообщение (2026-09-22), не два: ссылка на кабинет и меню вместе.
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toContain(JOIN_SUCCESS_INTRO_WITH_URL);
+    expect(replies[0]).toContain('Экзамены можно сдать');
     expect(upsertPersonalTelegramChat).toHaveBeenCalledWith({
       chatId: '1',
       title: 'Личные сообщения: Игорь',
@@ -99,7 +103,7 @@ describe('handleInviteDeepLink', () => {
     expect(upsertTelegramChat).not.toHaveBeenCalled();
   });
 
-  it('PUBLIC_URL не задан — тот же текст успеха, без адреса в конце', async () => {
+  it('PUBLIC_URL не задан — текст успеха обрывается на кабинете, без пустого адреса', async () => {
     const resolveTelegramUser = jest.fn().mockResolvedValue(ACTIVE_USER);
     const { ctx, replies } = fakeCtx();
 
@@ -111,9 +115,8 @@ describe('handleInviteDeepLink', () => {
       buildDeps(resolveTelegramUser, undefined).deps,
     );
 
-    expect(replies[0]).toBe(
-      'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: ',
-    );
+    expect(replies[0]).toContain('Вы в кабинете школы Сюань-Сюэ.');
+    expect(replies[0]).not.toContain('здесь: ');
   });
 
   // Штат (учитель/помощник/админ) по ссылке — тот же путь, что и обычный
@@ -135,8 +138,9 @@ describe('handleInviteDeepLink', () => {
 
     await handleInviteDeepLink(ctx, FROM, CODE, NOW, deps);
 
-    expect(replies[0]).toBe(JOIN_SUCCESS_WITH_URL);
-    expect(replies[1]).toContain('Вы подключены');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toContain(JOIN_SUCCESS_INTRO_WITH_URL);
+    expect(replies[0]).toContain('Вы подключены');
     expect(upsertTelegramChat).toHaveBeenCalledWith({
       chatId: '1',
       title: 'Личные сообщения: Мария',

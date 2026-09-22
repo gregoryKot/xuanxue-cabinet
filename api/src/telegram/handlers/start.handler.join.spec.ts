@@ -25,7 +25,9 @@ import {
 } from './start.handler.test-support';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
-const JOIN_SUCCESS =
+// Одно сообщение, не несколько подряд (отзыв владельца 2026-09-22): ссылка
+// на кабинет — вступление к welcomeConnectedUser, не отдельная реплика.
+const JOIN_SUCCESS_INTRO =
   'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su';
 
 describe('StartHandler — deep link «Ссылка-приглашение» (join_<code>, ADR-0030)', () => {
@@ -59,8 +61,9 @@ describe('StartHandler — deep link «Ссылка-приглашение» (jo
 
     await handler.handle(ctx, NOW);
 
-    expect(replies[0]).toBe(JOIN_SUCCESS);
-    expect(replies.at(-1)).toEqual(expect.stringContaining('Экзамены можно сдать'));
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toContain(JOIN_SUCCESS_INTRO);
+    expect(replies[0]).toContain('Экзамены можно сдать');
     const created = await userModel.findOne({ telegramId: 604 }).lean();
     expect(created?.status).toBe('active');
     expect(created?.name).toBe('Аня');
@@ -113,8 +116,9 @@ describe('StartHandler — deep link «Ссылка-приглашение» (jo
 
     // Повторный /start того же человека тоже даёт успех + меню — идемпотентно,
     // тот же приём, что и обычный /start.
-    expect(replies[0]).toBe(JOIN_SUCCESS);
-    expect(replies.at(-1)).toEqual(expect.stringContaining('Экзамены можно сдать'));
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toContain(JOIN_SUCCESS_INTRO);
+    expect(replies[0]).toContain('Экзамены можно сдать');
     const channel = await channelModel
       .findOne({ type: 'telegram', target: '605' })
       .lean();
@@ -156,8 +160,9 @@ describe('StartHandler — deep link «Ссылка-приглашение» (jo
 
     await handler.handle(ctx, NOW);
 
-    expect(replies[0]).toBe(JOIN_SUCCESS);
-    expect(replies[1]).toContain('Вы подключены');
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toContain(JOIN_SUCCESS_INTRO);
+    expect(replies[0]).toContain('Вы подключены');
     const created = await userModel
       .findOne({ telegramId: TEST_BOOTSTRAP_ADMIN_TELEGRAM_ID })
       .lean();

@@ -15,12 +15,12 @@ import {
   newExamItemCancelButton,
 } from './new-exam-item-types';
 
+// Пункты списка — только подсказка: сам тип ответа называет кнопка под
+// текстом, повторять его ярлык в списке незачем (кнопки ниже — в том же
+// порядке, что EXAM_ITEM_KINDS).
 const KIND_SCREEN_TEXT =
   'Заведём вопрос. Выберите тип ответа:\n\n' +
-  EXAM_ITEM_KINDS.map(
-    (kind) =>
-      `• ${EXAM_ITEM_KIND_LABELS_BOT_RU[kind]} — ${EXAM_ITEM_KIND_HINTS_BOT_RU[kind]}.`,
-  ).join('\n');
+  EXAM_ITEM_KINDS.map((kind) => `• ${EXAM_ITEM_KIND_HINTS_BOT_RU[kind]}.`).join('\n');
 
 export function kindSelectScreen(): BotMenu {
   return {
@@ -47,7 +47,7 @@ export function criteriaWaitScreen(): BotMenu {
   return {
     text:
       'Есть критерии проверки? Пришлите их одним сообщением или нажмите ' +
-      '«Пропустить» — критерии видит только учитель, они помогают проверять ответ.',
+      '«Пропустить» — критерии видит только учитель.',
     buttons: [[inlineButton(SKIP_LABEL, 'nqf', 'skip')], newExamItemCancelButton()],
   };
 }

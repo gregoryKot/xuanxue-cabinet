@@ -57,7 +57,7 @@ describe('handleNewExamItemSave', () => {
       handleNewExamItemSave(ctx, botSessions, port, users, undefined, CHAT_ID, NOW),
     ).resolves.toBeUndefined();
 
-    expect(edits[0]).toBe('Что-то пошло не так. Попробуйте ещё раз.');
+    expect(edits[0]).toBe('Не получилось. Откройте /menu и попробуйте ещё раз.');
     expect(botSessions.setNewExamItemDraft).not.toHaveBeenCalled();
   });
 

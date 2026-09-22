@@ -112,7 +112,7 @@ describe('PaymentScreenshotMessageHandler', () => {
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
-    expect(replies[0]).toContain('Ждём фото');
+    expect(replies[0]).toContain('Нужен скриншот');
     expect(clear).not.toHaveBeenCalled();
   });
 

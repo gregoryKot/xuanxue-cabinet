@@ -84,7 +84,7 @@ describe('CallbackQueryHandler — действия кнопок', () => {
 
     await failingHandler.handle(msgCtx, NOW);
 
-    expect(editCalls).toEqual(['Что-то пошло не так. Попробуйте ещё раз.']);
+    expect(editCalls).toEqual(['Не получилось. Откройте /menu и попробуйте ещё раз.']);
   });
 
   it('неожиданная ошибка вне handleCancel/handleTopicButton — лог, общий ответ через reply', async () => {
@@ -100,7 +100,7 @@ describe('CallbackQueryHandler — действия кнопок', () => {
 
     await failingHandler.handle(msgCtx, NOW);
 
-    expect(editCalls).toEqual(['Что-то пошло не так. Попробуйте ещё раз.']);
+    expect(editCalls).toEqual(['Не получилось. Откройте /menu и попробуйте ещё раз.']);
   });
 
   it('topic: — заводит ожидание темы, просит написать одним сообщением', async () => {

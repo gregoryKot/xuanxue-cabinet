@@ -13,10 +13,10 @@ describe('kindSelectScreen', () => {
   it('четыре типа кнопками, у каждого объяснение в тексте, и «Отмена»', () => {
     const screen = kindSelectScreen();
 
-    expect(screen.text).toContain('Свободный ответ — ученик пишет ответ словами');
-    expect(screen.text).toContain('Один правильный вариант');
-    expect(screen.text).toContain('Несколько правильных');
-    expect(screen.text).toContain('Видео');
+    // Пункт списка — только подсказка: сам тип называет кнопка под текстом,
+    // ярлык в списке не повторяем (2026-09-22).
+    expect(screen.text).toContain('ученик пишет ответ словами, проверяете вы');
+    expect(screen.text).not.toContain('Свободный ответ —');
     expect(screen.buttons.flat().map((b) => b.text)).toEqual([
       'Свободный ответ',
       'Один правильный вариант',

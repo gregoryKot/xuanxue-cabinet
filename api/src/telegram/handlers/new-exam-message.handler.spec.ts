@@ -35,9 +35,7 @@ describe('NewExamMessageHandler', () => {
 
     await handler.handle(ctx, CHAT_ID, draftSession({ buildStep: 'title' }), NOW);
 
-    expect(replies).toEqual([
-      'Нажмите одну из кнопок или пришлите текст, где это нужно.',
-    ]);
+    expect(replies).toEqual(['Нажмите одну из кнопок или пришлите текст.']);
     expect(botSessions.setNewExamDraft).not.toHaveBeenCalled();
   });
 
@@ -47,9 +45,7 @@ describe('NewExamMessageHandler', () => {
 
     await handler.handle(ctx, CHAT_ID, draftSession({ buildStep: 'attempts' }), NOW);
 
-    expect(replies).toEqual([
-      'Нажмите одну из кнопок или пришлите текст, где это нужно.',
-    ]);
+    expect(replies).toEqual(['Нажмите одну из кнопок или пришлите текст.']);
   });
 
   it('название не проходит DTO-лимит — ошибка, шаг не меняется', async () => {
