@@ -82,7 +82,7 @@ describe('ExamItemsScreen — сбой загрузки', () => {
 });
 
 describe('ExamItemsScreen — пустая база', () => {
-  it('заголовок раздела, объяснение и честный текст вместо списка', async () => {
+  it('заголовок раздела и честный текст вместо списка', async () => {
     mockedApiFetch.mockResolvedValue([]);
 
     renderScreen();
@@ -91,7 +91,6 @@ describe('ExamItemsScreen — пустая база', () => {
       await screen.findByText(/Вопросов пока нет\. Добавьте первый/),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Вопросы' })).toBeInTheDocument();
-    expect(screen.getByText(/собирается экзамен/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Новый вопрос' })).toBeInTheDocument();
   });
 });

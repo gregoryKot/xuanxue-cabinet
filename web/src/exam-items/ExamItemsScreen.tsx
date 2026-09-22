@@ -24,8 +24,6 @@ import { EXAM_ITEM_STATUS_LABELS_RU } from './examItemLabels';
 import { useExamItems } from './useExamItems';
 
 const TITLE = 'Вопросы';
-const EXPLANATION =
-  'Из этих вопросов собирается экзамен — один вопрос можно поставить в несколько экзаменов.';
 const EMPTY_MESSAGE = 'Вопросов пока нет. Добавьте первый — из них соберётся экзамен.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами вопросов нет.';
 const SEARCH_LABEL = 'Поиск по вопросу и тегу';
@@ -45,7 +43,6 @@ export default function ExamItemsScreen() {
     <section style={screenSectionStyle}>
       <ScreenHeader
         title={TITLE}
-        explanation={EXPLANATION}
         action={
           !loading && (
             <Button

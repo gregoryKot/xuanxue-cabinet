@@ -73,7 +73,6 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     expect(
       screen.queryByRole('link', { name: /Отправить видео боту/ }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/вы вошли по почте/)).toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
   });
 
@@ -83,7 +82,9 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
 
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
     expect(
-      screen.getByText(/Свяжите его — и видео можно будет прислать одним сообщением/),
+      screen.getByText(
+        /Свяжите Telegram — и видео можно будет прислать боту одним сообщением/,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -97,7 +98,9 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
       screen.queryByRole('button', { name: 'Связать Telegram' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/Свяжите его — и видео можно будет прислать одним сообщением/),
+      screen.queryByText(
+        /Свяжите Telegram — и видео можно будет прислать боту одним сообщением/,
+      ),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
   });
@@ -144,27 +147,6 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     expect(
       form.compareDocumentPosition(botLink) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-  });
-
-  // Read-after-write (CLAUDE.md): отметка о получении обновится сама
-  // (useAttemptVideoPoll.ts, ADR-0076) — строка рядом с кнопкой бота
-  // говорит об этом прямо, перезагружать страницу вручную не нужно.
-  it('рядом с кнопкой бота есть строка, что отметка появится сама', () => {
-    renderVideo(makeVideo());
-
-    expect(
-      screen.getByText(
-        'Отправите боту — здесь появится отметка, что видео дошло. Обновлять страницу не нужно.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('Telegram не привязан — строки про автообновление нет, кнопки бота тоже нет', () => {
-    renderVideo(makeVideo({ telegramLinked: false, offersTelegramLink: true }));
-
-    expect(
-      screen.queryByText(/здесь появится отметка, что видео дошло/),
-    ).not.toBeInTheDocument();
   });
 });
 
@@ -230,7 +212,6 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     await user.click(screen.getByRole('button', { name: 'Прислать другую ссылку' }));
 
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
-    expect(screen.getByText('Новая ссылка заменит прежнюю.')).toBeInTheDocument();
   });
 
   // Видео из Telegram заменить нельзя (их может быть несколько на один

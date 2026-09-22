@@ -88,9 +88,7 @@ export default function JoinScreen() {
   return (
     <EntryColumn>
       <h1 style={screenTitleStyle}>Вас пригласили в школу</h1>
-      <p style={screenExplanationStyle}>
-        Войдите через Telegram или почту — и сразу попадёте в кабинет.
-      </p>
+      <p style={screenExplanationStyle}>Войдите через Telegram или почту.</p>
       <TelegramLoginSection
         config={config}
         configStatus={configStatus}

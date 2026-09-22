@@ -31,8 +31,6 @@ import { ExamsSectionStats } from './ExamsSectionStats';
 import { useExams } from './useExams';
 
 const TITLE = 'Экзамены';
-const EXPLANATION =
-  'Экзамен собирается из вопросов — один вопрос можно поставить в несколько экзаменов.';
 const EMPTY_MESSAGE = 'Экзаменов пока нет. Соберите первый из своих вопросов.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами экзаменов нет.';
 const SEARCH_LABEL = 'Поиск по названию';
@@ -58,7 +56,6 @@ export default function ExamsScreen() {
     <section style={screenSectionStyle}>
       <ScreenHeader
         title={TITLE}
-        explanation={EXPLANATION}
         action={
           !loading && (
             <Button

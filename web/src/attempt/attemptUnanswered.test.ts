@@ -80,14 +80,14 @@ describe('collectUnansweredIds', () => {
 });
 
 describe('formatUnansweredConfirm', () => {
-  it('один вопрос — единственное число и согласование «он отмечен»', () => {
+  it('один вопрос — единственное число', () => {
     expect(formatUnansweredConfirm(1)).toBe(
-      'Без ответа 1 вопрос. Он отмечен в форме. После отправки менять ответы будет нельзя.',
+      'Без ответа 1 вопрос. После отправки менять ответы будет нельзя.',
     );
   });
 
-  it('несколько вопросов — склонение и «они отмечены»', () => {
-    expect(formatUnansweredConfirm(3)).toContain('3 вопроса. Они отмечены в форме');
-    expect(formatUnansweredConfirm(5)).toContain('5 вопросов. Они отмечены в форме');
+  it('несколько вопросов — склонение', () => {
+    expect(formatUnansweredConfirm(3)).toContain('3 вопроса.');
+    expect(formatUnansweredConfirm(5)).toContain('5 вопросов.');
   });
 });

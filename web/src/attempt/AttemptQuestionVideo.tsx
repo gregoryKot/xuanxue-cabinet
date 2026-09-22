@@ -41,26 +41,16 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 // Объяснение стоит до первого действия (CLAUDE.md «откуда это и зачем»):
 // куда именно слать, говорят кнопка и подсказка ниже — они зависят от того,
 // есть ли бот и привязан ли Telegram, а сама фраза от этого не меняется.
-const VIDEO_ANSWER_EXPLANATION =
-  'Ответ на этот вопрос — видео: снимите, как вы выполняете задание, и пришлите запись.';
+const VIDEO_ANSWER_EXPLANATION = 'Ответ на этот вопрос — видео.';
 // Ссылка — основной путь (ADR-0084): подсказка стоит перед формой у всех, а
 // не только у тех, кому не досталось бота.
 const LINK_HINT =
   'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и вставьте сюда ссылку.';
-// Показывается только рядом с кнопкой бота (telegramLinked): «или» здесь
-// относится к уже сказанной выше ссылке, а не наоборот.
-const BOT_HINT = 'Или пришлите видео боту — одним сообщением прямо из Telegram.';
-// Под кнопкой бота: ученик уходит отвечать в Telegram и возвращается на эту
-// же вкладку — фоновый опрос (useAttemptVideoPoll.ts, ADR-0076) сам заменит
-// форму строкой «Видео получено» (Read-after-write, CLAUDE.md). Обещание
-// дано прямо у кнопки, чтобы человек не решил, что кабинет не увидел запись.
-const BOT_AUTO_UPDATE_HINT =
-  'Отправите боту — здесь появится отметка, что видео дошло. Обновлять страницу не нужно.';
 // Telegram к кабинету не привязан: объясняем, почему кнопки бота нет, и тут
 // же даём связку (ADR-0034) — у человека остаётся способ короче ссылки, а не
 // вопрос без ответа (docs/VOICE.md).
 const TELEGRAM_NOT_LINKED_EXPLANATION =
-  'Бот в Telegram узнаёт вас по аккаунту, а вы вошли по почте. Свяжите его — и видео можно будет прислать одним сообщением, без ссылки.';
+  'Свяжите Telegram — и видео можно будет прислать боту одним сообщением.';
 
 /** Объяснение видео-вопроса без кнопок и формы — для предпросмотра учителя
  * (exams/ExamPreviewQuestion.tsx): там отвечать нельзя, но зачем нужно
@@ -95,22 +85,14 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
       />
 
       {telegramBotUsername && video.telegramLinked && (
-        <>
-          <p style={attemptVideoHintStyle}>{BOT_HINT}</p>
-          <a
-            href={buildExamMediaTelegramLink(
-              telegramBotUsername,
-              video.attemptId,
-              itemId,
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={attemptVideoTelegramLinkStyle}
-          >
-            Отправить видео боту в Telegram
-          </a>
-          <p style={attemptVideoHintStyle}>{BOT_AUTO_UPDATE_HINT}</p>
-        </>
+        <a
+          href={buildExamMediaTelegramLink(telegramBotUsername, video.attemptId, itemId)}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={attemptVideoTelegramLinkStyle}
+        >
+          Отправить видео боту в Telegram
+        </a>
       )}
 
       {telegramBotUsername && video.offersTelegramLink && (

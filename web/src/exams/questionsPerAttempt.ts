@@ -15,7 +15,7 @@ function requiredNote(requiredCount: number): string {
 
 /** Заметка предпросмотра «глазами ученика»: список показывает весь пул, а
  * сдающему достанется случайная часть (ADR-0082) — то же место, что у
- * SHUFFLE_QUESTIONS_NOTE (ExamPreviewQuestions.tsx). `requiredCount` — сколько
+ * shuffleNote (ExamPreviewQuestions.tsx). `requiredCount` — сколько
  * из них обязательные (ADR-0082, дополнение): они не участвуют в случайности,
  * попадают каждому, нулю — отдельного упоминания не нужно. */
 export function questionsPerAttemptNote(
@@ -85,24 +85,11 @@ export function validateQuestionsPerAttemptText(
  * «все N» с N = 0 не на что сослаться, вопросы ещё не добавлены. */
 export function questionsPerAttemptHint(questionCount: number): string {
   if (questionCount === 0) {
-    return (
-      'Пусто — каждый ученик отвечает на все вопросы списка. Впишите число — ' +
-      'и каждому достанется столько случайных вопросов, у каждого свои. ' +
-      'Вопросы добавляются ниже.'
-    );
+    return 'Пусто — ученик отвечает на все вопросы списка. Впишите число — и каждому достанется случайная часть. Вопросы добавляются ниже.';
   }
   return (
-    `Пусто — каждый ученик отвечает на все ${questionCount} ` +
+    `Пусто — ученик отвечает на все ${questionCount} ` +
     `${pluralRu(questionCount, QUESTION_FORMS)} списка. Впишите число — и каждому ` +
-    `ученику достанется столько случайных вопросов из ${questionCount}, у каждого ` +
-    'свои. ★ в списке ниже — обязательные, они попадут всем.'
+    `достанется случайная часть из ${questionCount}. ★ — обязательные, попадут всем.`
   );
-}
-
-/** Короткая заметка под «Вопросы · N» (ExamQuestionsSection.tsx), пока в
- * «Вопросов ученику» вписано число — тот же смысл, что и у подсказки поля
- * выше, но на месте самого списка: учитель добавляет вопросы, глядя уже не
- * на поле настройки, а на список. */
-export function questionsListNote(perAttempt: number, total: number): string {
-  return `Каждому ученику достанется ${perAttempt} из ${total}, случайно. ★ — обязательные, попадут всем.`;
 }

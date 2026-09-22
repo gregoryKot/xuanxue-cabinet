@@ -111,7 +111,6 @@ describe('ExamsScreen — пустая база', () => {
     expect(
       await screen.findByText(/Экзаменов пока нет\. Соберите первый/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/собирается из вопросов/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Новый экзамен' })).toBeInTheDocument();
   });
 });

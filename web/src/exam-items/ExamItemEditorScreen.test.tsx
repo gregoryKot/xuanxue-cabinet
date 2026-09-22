@@ -167,7 +167,7 @@ describe('ExamItemEditorScreen — тип ответа', () => {
     expect(await screen.findByLabelText('Свободный ответ')).toBeChecked();
     expect(screen.getByLabelText('Один правильный вариант')).not.toBeChecked();
     expect(
-      screen.getByText('Ученик отмечает один вариант — ответ сверяется сам.'),
+      screen.getByText('Один вариант из списка. Сверяется сам.'),
     ).toBeInTheDocument();
     expect(screen.queryByText('Варианты ответа')).not.toBeInTheDocument();
   });
@@ -441,7 +441,7 @@ describe('ExamItemEditorScreen — «Как отвечают»', () => {
 });
 
 describe('ExamItemEditorScreen — черновик (ADR-0052)', () => {
-  const DRAFT_NOTE_TEXT = 'Здесь то, что вы набрали в прошлый раз и не успели сохранить.';
+  const DRAFT_NOTE_TEXT = 'Здесь то, что вы набрали в прошлый раз.';
 
   it('ушли со страницы с набранным и вернулись — черновик на месте', async () => {
     const user = userEvent.setup();

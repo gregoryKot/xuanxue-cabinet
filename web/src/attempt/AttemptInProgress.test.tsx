@@ -452,9 +452,7 @@ describe('AttemptInProgress — вопросы без ответа', () => {
     await user.click(screen.getByRole('button', { name: 'Отправить' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Отправить без ответов?' });
-    expect(
-      within(dialog).getByText(/Без ответа 3 вопроса\. Они отмечены в форме\./),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/Без ответа 3 вопроса\./)).toBeInTheDocument();
     await user.click(
       within(dialog).getByRole('button', { name: 'Вернуться к вопросам' }),
     );

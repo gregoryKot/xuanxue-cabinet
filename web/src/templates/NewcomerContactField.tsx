@@ -20,8 +20,7 @@ import { editorSectionStyle } from '../components/editorLayout';
 import { useNewcomerContactField } from './useNewcomerContactField';
 
 const EXPLANATION =
-  'Бот даёт этот контакт тому, кто написал ему, а в школе ещё не занимается. ' +
-  'Своим ученикам он вместо этого предлагает связать Telegram в кабинете.';
+  'Бот даёт этот контакт тому, кто написал ему, а в школе ещё не занимается.';
 
 // Раздел отбит волосяной линией сверху, как «Школа» рядом (SchoolSiteField.tsx).
 const sectionStyle: CSSProperties = {

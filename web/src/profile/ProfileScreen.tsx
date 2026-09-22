@@ -17,21 +17,15 @@ import { useAuth } from '../auth/AuthProvider';
 import { LogoutButton } from '../auth/LogoutButton';
 import { SecondLoginKey } from '../auth/SecondLoginKey';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
+import { screenSectionStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
 import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
 import { ProfileNameSection } from './ProfileNameSection';
 
 const TITLE = 'Профиль';
-const EXPLANATION = 'Ваше имя видят учитель и помощники. Ниже — что присылать и куда.';
-const TELEGRAM_HINT =
-  'В Telegram уведомления приходят в личный чат с ботом. Не писали боту — присылать будет некуда.';
+const EXPLANATION = 'Ниже — что присылать и куда.';
 
-// Приписка того же веса, что подсказка под шапкой, но стоит внизу — своего
-// отрицательного отступа ей не нужно (перенесено из удалённого экрана
-// «Уведомления»).
-const telegramHintStyle: CSSProperties = { ...screenHintStyle, margin: 0 };
 // «Выйти» — отдельно от остального волосяной линией (перенесено оттуда же).
 const logoutRowStyle: CSSProperties = {
   paddingTop: 20,
@@ -58,17 +52,8 @@ export default function ProfileScreen() {
       <PushNotificationsSection />
 
       {/* Второй способ входа (ADR-0059) — SecondLoginKey сам решает, что
-          предложить (или не рисует ничего, если оба ключа уже на месте).
-          TELEGRAM_HINT про личный чат с ботом — отдельная тема (уведомления,
-          не вход), остаётся тут же, пока Telegram уже связан. */}
-      {me === null ? (
-        <SkeletonList rows={1} h={44} />
-      ) : (
-        <>
-          <SecondLoginKey me={me} />
-          {me.telegramLinked && <p style={telegramHintStyle}>{TELEGRAM_HINT}</p>}
-        </>
-      )}
+          предложить (или не рисует ничего, если оба ключа уже на месте). */}
+      {me === null ? <SkeletonList rows={1} h={44} /> : <SecondLoginKey me={me} />}
 
       <div style={logoutRowStyle}>
         <LogoutButton />

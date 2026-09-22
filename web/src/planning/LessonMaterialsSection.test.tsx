@@ -115,11 +115,7 @@ describe('LessonMaterialsSection — привязанные материалы',
   it('пока ни одного материала — объяснение, зачем это поле', async () => {
     renderSection();
 
-    expect(
-      await screen.findByText(
-        'Пока ни одной. Добавьте — ученик увидит её в архиве занятия, рядом с записью.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Пока ни одной.')).toBeInTheDocument();
   });
 
   it('материалы ещё грузятся — строка загрузки, а не «пока ни одной»', () => {
