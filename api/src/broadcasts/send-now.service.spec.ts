@@ -86,6 +86,22 @@ describe('SendNowService.sendNow', () => {
     });
   });
 
+  it('у даты и у занятия в расписании совсем нет поля tags (запись до ADR-0075/0072) — не падает, ссылка уходит', async () => {
+    const cls = await createClass(ctx);
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
+    // default: [] подставляет Mongoose только при создании — симулируем
+    // документы, заведённые до появления поля tags: в базе его нет вовсе.
+    await ctx.classModel.collection.updateOne({ _id: cls._id }, { $unset: { tags: '' } });
+    await ctx.lessonModel.collection.updateOne(
+      { _id: lesson._id },
+      { $unset: { tags: '' } },
+    );
+
+    const dto = await ctx.service.sendNow(lesson._id.toString(), NOW);
+
+    expect(dto.status).toBe('scheduled');
+  });
+
   it('рассылки ещё не было — создаёт scheduled-рассылку и доставки на активные каналы', async () => {
     const cls = await createClass(ctx);
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());

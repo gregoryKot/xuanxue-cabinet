@@ -36,6 +36,20 @@ describe('findChannelsForLesson', () => {
     });
   }
 
+  it('в документе канала совсем нет поля tags (запись до ADR-0106) — как явный [], принимает всё', async () => {
+    const channel = await createChannel();
+    // default: [] подставляет Mongoose только при создании — симулируем
+    // документ, заведённый до появления поля: его в базе нет вовсе.
+    await channelModel.collection.updateOne(
+      { _id: channel._id },
+      { $unset: { tags: '' } },
+    );
+
+    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
+
+    expect(result.matchingChannelIds.map(String)).toEqual([channel._id.toString()]);
+  });
+
   it('канал без тегов — активный и подходит под любой тег занятия', async () => {
     const channel = await createChannel();
 

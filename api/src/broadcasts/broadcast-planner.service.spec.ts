@@ -213,6 +213,23 @@ describe('BroadcastPlannerService.plan', () => {
     await expect(ctx.deliveryModel.countDocuments({})).resolves.toBe(0);
   });
 
+  it('у даты и у занятия в расписании совсем нет поля tags (запись до ADR-0075/0072) — не падает, уходит как без тегов', async () => {
+    const openChannel = await createChannel(ctx);
+    const cls = await createClass(ctx, { channelIds: [openChannel._id] });
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
+    // default: [] подставляет Mongoose только при создании — симулируем
+    // документы, заведённые до появления поля tags: в базе его нет вовсе.
+    await ctx.classModel.collection.updateOne({ _id: cls._id }, { $unset: { tags: '' } });
+    await ctx.lessonModel.collection.updateOne(
+      { _id: lesson._id },
+      { $unset: { tags: '' } },
+    );
+
+    const result = await ctx.service.plan(NOW);
+
+    expect(result).toEqual({ broadcasts: 1 });
+  });
+
   it('занятие ещё не в окне — ничего не создаётся', async () => {
     const cls = await createClass(ctx);
     await createLesson(ctx, cls._id, NOW.plus({ hours: 3 }).toJSDate());
