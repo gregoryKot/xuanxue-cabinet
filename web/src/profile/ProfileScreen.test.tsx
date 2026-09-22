@@ -95,15 +95,44 @@ describe('ProfileScreen — список уведомлений по роли', 
   });
 
   // Бот и «Профиль» переключают одно и то же (ADR-0065) — строка про бота
-  // рядом с самими переключателями, не только в справке.
-  it('подсказка про бота — то же самое переключается командой /notifications', async () => {
-    renderScreen(STUDENT, { enabled: ['exam_result'] });
+  // рядом с самими переключателями, не только в справке. Строка зависит от
+  // botChatActive (отзыв владельца 2026-09-22, регрессия — раньше рисовалась
+  // безусловно и спорила с блоком «Второй способ входа» на этом же экране).
+  it('есть личный чат с ботом — подсказка про команду /notifications на месте', async () => {
+    renderScreen(
+      { ...STUDENT, telegramLinked: true, botChatActive: true },
+      { enabled: ['exam_result'] },
+    );
 
     expect(
       await screen.findByText(
         'То же самое можно переключить в боте — командой /notifications.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('нет личного чата с ботом — подсказки про команду /notifications нет', async () => {
+    renderScreen(STUDENT, { enabled: ['exam_result'] });
+
+    await screen.findByText('Результат экзамена');
+    expect(
+      screen.queryByText(
+        'То же самое можно переключить в боте — командой /notifications.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  // «Telegram у меня нет» — тем более нет чата с ботом, команда так же
+  // недоступна (отзыв владельца 2026-09-22).
+  it('отметка «Telegram у меня нет» — подсказки про команду /notifications нет', async () => {
+    renderScreen({ ...STUDENT, noTelegram: true }, { enabled: ['exam_result'] });
+
+    await screen.findByText('Результат экзамена');
+    expect(
+      screen.queryByText(
+        'То же самое можно переключить в боте — командой /notifications.',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('включённый вид — переключатель отмечен', async () => {
