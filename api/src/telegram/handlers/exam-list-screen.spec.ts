@@ -24,9 +24,7 @@ function exam(overrides: Partial<MyExamDto> = {}): MyExamDto {
 describe('buildExamListScreen', () => {
   it('пустой список — честное «пока нечего сдавать»', () => {
     const menu = buildExamListScreen([], NOW_MS);
-    expect(menu.text).toBe(
-      'Пока нечего сдавать: учитель ещё не опубликовал ни одной формы.',
-    );
+    expect(menu.text).toBe('Пока нечего сдавать.');
     expect(menu.buttons).toEqual(
       [{ text: 'В меню', callback_data: 'menu:back' }].map((b) => [b]),
     );

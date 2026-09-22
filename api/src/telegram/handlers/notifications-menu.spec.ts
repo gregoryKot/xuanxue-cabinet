@@ -14,20 +14,10 @@ describe('buildNotificationsMenu', () => {
     expect(menu.text).toContain('Пост не ушёл — включено');
     expect(menu.text).toContain('Работа на проверку — включено');
     expect(menu.buttons).toEqual([
-      [{ text: 'Выключить: Черновик поста', callback_data: 'notif:post_draft' }],
-      [
-        {
-          text: 'Выключить: Напоминание про запись',
-          callback_data: 'notif:recording_request',
-        },
-      ],
-      [{ text: 'Выключить: Пост не ушёл', callback_data: 'notif:delivery_failed' }],
-      [
-        {
-          text: 'Выключить: Работа на проверку',
-          callback_data: 'notif:attempt_submitted',
-        },
-      ],
+      [{ text: 'Выключить', callback_data: 'notif:post_draft' }],
+      [{ text: 'Выключить', callback_data: 'notif:recording_request' }],
+      [{ text: 'Выключить', callback_data: 'notif:delivery_failed' }],
+      [{ text: 'Выключить', callback_data: 'notif:attempt_submitted' }],
     ]);
   });
 
@@ -39,7 +29,7 @@ describe('buildNotificationsMenu', () => {
 
     expect(menu.text).toContain('Черновик поста — выключено');
     expect(menu.buttons[0]).toEqual([
-      { text: 'Включить: Черновик поста', callback_data: 'notif:post_draft' },
+      { text: 'Включить', callback_data: 'notif:post_draft' },
     ]);
   });
 
@@ -48,20 +38,20 @@ describe('buildNotificationsMenu', () => {
 
     expect(menu.text).not.toContain('Черновик поста');
     expect(menu.buttons).toEqual([
-      [{ text: 'Выключить: Результат экзамена', callback_data: 'notif:exam_result' }],
+      [{ text: 'Выключить', callback_data: 'notif:exam_result' }],
     ]);
   });
 
-  it('несколько ролей — объединение доступных видов', () => {
+  it('несколько ролей — объединение доступных видов, ярлык вида — только в тексте, не на кнопке', () => {
     const menu = buildNotificationsMenu(['teacher', 'accountant'], ['post_draft']);
 
     const callbackData = menu.buttons.map((row) => row[0]?.text);
     expect(callbackData).toEqual([
-      'Выключить: Черновик поста',
-      'Включить: Напоминание про запись',
-      'Включить: Пост не ушёл',
-      'Включить: Работа на проверку',
-      'Включить: Оплаты и долги',
+      'Выключить',
+      'Включить',
+      'Включить',
+      'Включить',
+      'Включить',
     ]);
   });
 
@@ -71,24 +61,16 @@ describe('buildNotificationsMenu', () => {
     expect(menu.buttons).toHaveLength(1);
   });
 
-  it('строка про кабинет — на месте и у штата, и у ученика (ADR-0065)', () => {
-    const staffMenu = buildNotificationsMenu(['teacher'], ['post_draft']);
-    const studentMenu = buildNotificationsMenu([], ['exam_result']);
-
-    expect(staffMenu.text).toContain('То же самое есть в кабинете, в «Профиле».');
-    expect(studentMenu.text).toContain('То же самое есть в кабинете, в «Профиле».');
-  });
-
   it('ученик с одним видом — меню не разваливается на пустых строках вокруг подсказки', () => {
     const menu = buildNotificationsMenu([], ['exam_result']);
 
-    // Один вид + подсказка про кабинет — ровно два блока текста после
-    // заголовка, разделённые пустой строкой, без утроенных переносов.
+    // Один вид — ровно один блок текста после заголовка, без утроенных
+    // переносов и без хвоста про кабинет (ADR-0065: бот и «Профиль»
+    // переключают одно и то же, повторять это на экране незачем).
     expect(menu.text).toBe(
       'Уведомления, которые вам доступны:\n\n' +
         'Результат экзамена — включено\n' +
-        'Придёт, когда учитель проверит вашу работу и выставит результат.\n\n' +
-        'То же самое есть в кабинете, в «Профиле».',
+        'Придёт, когда учитель проверит вашу работу и выставит результат.',
     );
   });
 });

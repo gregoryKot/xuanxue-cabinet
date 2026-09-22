@@ -29,8 +29,14 @@ import type { LoginIdentityService } from '../../users/login-identity.service';
 import type { UserLean } from '../../users/users.service';
 import { welcomeConnectedUser } from './start-welcome';
 
-const JOIN_SUCCESS_PREFIX =
-  'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: ';
+// Ссылка на кабинет — часть одного приветственного сообщения
+// (welcomeConnectedUser), не отдельная реплика перед ним (отзыв владельца
+// 2026-09-22: несколько сообщений подряд об одном событии — шум).
+function joinSuccessIntro(publicUrl: string | undefined): string {
+  return publicUrl
+    ? `Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: ${publicUrl}`
+    : 'Вы в кабинете школы Сюань-Сюэ.';
+}
 
 export interface JoinDeepLinkDeps {
   loginIdentity: LoginIdentityService;
@@ -67,8 +73,14 @@ export async function handleInviteDeepLink(
   }
   // Уже active (код игнорируется, как и в вебе) — идемпотентно тот же
   // успех, что у новичка: повторное открытие ссылки не ошибка.
-  await ctx.reply(JOIN_SUCCESS_PREFIX + (deps.publicUrl ?? '')).catch(() => null);
   // Тот же шаг подключения, что и у обычного /start для active (ADR-0027):
-  // личный канал (ученику — broadcastEligible:false, штату — канал школы) и меню.
-  await welcomeConnectedUser(ctx, from.id, user, deps.channelConfig);
+  // личный канал (ученику — broadcastEligible:false, штату — канал школы) и меню,
+  // ссылка на кабинет — во вступлении к тому же сообщению.
+  await welcomeConnectedUser(
+    ctx,
+    from.id,
+    user,
+    deps.channelConfig,
+    joinSuccessIntro(deps.publicUrl),
+  );
 }

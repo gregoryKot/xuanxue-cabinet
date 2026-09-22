@@ -18,10 +18,6 @@ import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 
 const TITLE = 'Уведомления, которые вам доступны:';
-// Бот и «Профиль» в кабинете переключают одно и то же (отзыв владельца
-// 2026-09-19, ADR-0065) — короткая строка тут же, чтобы не держать в двух
-// местах разные экраны и не путать, где менять.
-const CABINET_HINT = 'То же самое есть в кабинете, в «Профиле».';
 
 export interface NotificationsMenu {
   text: string;
@@ -42,12 +38,13 @@ export function buildNotificationsMenu(
     return `${NOTIFICATION_LABELS[kind]} — ${state}\n${NOTIFICATION_HINTS[kind]}`;
   });
   const buttons = available.map((kind) => [
-    inlineButton(toggleButtonLabel(kind, enabledSet.has(kind)), 'notif', kind),
+    inlineButton(toggleButtonLabel(enabledSet.has(kind)), 'notif', kind),
   ]);
-  return { text: `${TITLE}\n\n${lines.join('\n\n')}\n\n${CABINET_HINT}`, buttons };
+  return { text: `${TITLE}\n\n${lines.join('\n\n')}`, buttons };
 }
 
-function toggleButtonLabel(kind: NotificationKind, isEnabled: boolean): string {
-  const action = isEnabled ? 'Выключить' : 'Включить';
-  return `${action}: ${NOTIFICATION_LABELS[kind]}`;
+// Название вида уведомления уже стоит над каждой кнопкой (ярлык + подсказка
+// в тексте выше) — на самой кнопке оставляем только действие.
+function toggleButtonLabel(isEnabled: boolean): string {
+  return isEnabled ? 'Выключить' : 'Включить';
 }

@@ -13,8 +13,7 @@ import { newExamCancelButton, truncatePromptForButton } from './new-exam-types';
 const PAGE_SIZE = 6;
 
 export const NO_ITEMS_TEXT =
-  'Нет опубликованных вопросов. Заведите вопрос командой /вопрос, потом ' +
-  'соберите экзамен.';
+  'Нет опубликованных вопросов. Заведите вопрос командой /вопрос.';
 
 export function pageCount(totalItems: number): number {
   return Math.max(1, Math.ceil(totalItems / PAGE_SIZE));

@@ -25,7 +25,7 @@ import { examUserFacingError } from './exam-attempt-error';
 import { flattenAttemptQuestions } from './exam-question-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
 
-const NOT_TEXT_MESSAGE = 'Ждём ответ текстом — пришлите его обычным сообщением.';
+const NOT_TEXT_MESSAGE = 'Ответ пришлите текстом, обычным сообщением.';
 
 @Injectable()
 export class ExamTextAnswerHandler {

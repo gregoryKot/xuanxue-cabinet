@@ -26,11 +26,16 @@ function personalChatTitle(name: string): string {
   return `Личные сообщения: ${name}`;
 }
 
+/** `intro` — то, что вызывающий код (join_<код>, link_<код>) раньше слал
+ * отдельным сообщением до этого меню (подтверждение связки, ссылка на
+ * кабинет). Одно сообщение с кнопками вместо двух-трёх подряд — в чате
+ * это заметнее, чем на экране (отзыв владельца 2026-09-22). */
 export async function welcomeConnectedUser(
   ctx: Context,
   telegramId: number,
   user: UserLean,
   channelConfig: ChannelConfigService,
+  intro?: string,
 ): Promise<void> {
   const chatId = String(telegramId);
   const title = personalChatTitle(user.name);
@@ -43,11 +48,9 @@ export async function welcomeConnectedUser(
     await channelConfig.upsertTelegramChat({ chatId, title });
     await setStaffBotCommands(ctx.telegram, chatId);
     const menu = buildBotMenu();
-    // Раньше /start заканчивался этой строкой, и всё, что бот ещё умеет,
-    // оставалось невидимым (отзыв владельца 2026-09-12) — следом идёт меню.
-    await ctx.reply(TEACHER_MESSAGE);
+    const text = [intro, TEACHER_MESSAGE, menu.text].filter(Boolean).join('\n\n');
     await ctx
-      .reply(menu.text, { reply_markup: { inline_keyboard: menu.buttons } })
+      .reply(text, { reply_markup: { inline_keyboard: menu.buttons } })
       .catch(() => null);
     return;
   }
@@ -55,7 +58,8 @@ export async function welcomeConnectedUser(
   await channelConfig.upsertPersonalTelegramChat({ chatId, title });
   await resetChatBotCommands(ctx.telegram, chatId);
   const menu = buildStudentMenu();
+  const text = [intro, menu.text].filter(Boolean).join('\n\n');
   await ctx
-    .reply(menu.text, { reply_markup: { inline_keyboard: menu.buttons } })
+    .reply(text, { reply_markup: { inline_keyboard: menu.buttons } })
     .catch(() => null);
 }

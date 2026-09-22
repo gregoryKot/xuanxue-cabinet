@@ -233,8 +233,7 @@ describe('проверка сданной работы в боте (интегр
     await gradeCommentHandler.handle(notTextCtx.ctx, TEACHER_CHAT_ID, session, NOW);
 
     expect(notTextCtx.replies).toEqual([
-      'Ждём комментарий текстом — пришлите его обычным сообщением, ' +
-        'или нажмите «Без комментария» под предыдущим сообщением.',
+      'Комментарий — текстом, обычным сообщением. Или нажмите «Без комментария».',
     ]);
     expect(await flow.botSessions.get(TEACHER_CHAT_ID, NOW)).not.toBeNull();
   });
@@ -268,8 +267,7 @@ describe('проверка сданной работы в боте (интегр
     await gradeCommentHandler.handle(videoCtx.ctx, TEACHER_CHAT_ID, session, NOW);
 
     expect(videoCtx.replies).toEqual([
-      'Ждём комментарий текстом — пришлите его обычным сообщением, ' +
-        'или нажмите «Без комментария» под предыдущим сообщением.',
+      'Комментарий — текстом, обычным сообщением. Или нажмите «Без комментария».',
     ]);
     expect(await flow.botSessions.get(TEACHER_CHAT_ID, NOW)).not.toBeNull();
   });
@@ -324,7 +322,9 @@ describe('проверка сданной работы в боте (интегр
       brokenHandler.handle(failCtx.ctx, TEACHER_CHAT_ID, session, NOW),
     ).resolves.toBeUndefined();
 
-    expect(failCtx.replies).toEqual(['Что-то пошло не так. Попробуйте ещё раз.']);
+    expect(failCtx.replies).toEqual([
+      'Не получилось. Откройте /menu и попробуйте ещё раз.',
+    ]);
     expect(await flow.botSessions.get(TEACHER_CHAT_ID, NOW)).not.toBeNull();
   });
 

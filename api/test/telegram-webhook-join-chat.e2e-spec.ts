@@ -85,11 +85,15 @@ describe('Telegram webhook (e2e) — личный чат по ссылке-пр�
     const list = await request(server()).get('/api/channels').set('Cookie', adminCookie);
     expect((list.body as ChannelDto[]).some((c) => c.target === '900557')).toBe(false);
 
+    // Одно сообщение, не два подряд: ссылка на кабинет стала вступлением к
+    // тому же приветствию с кнопками (правка текстового шума 2026-09-22 —
+    // несколько реплик об одном событии в чате читаются хуже, чем на
+    // экране). Проверяем, что в нём осталось и то, и другое.
     const toStudent = fake.sendMessageCalls.filter((c) => c.chatId === '900557');
-    expect(toStudent).toHaveLength(2);
+    expect(toStudent).toHaveLength(1);
     expect(toStudent[0]?.text).toMatch(/^Вы в кабинете школы Сюань-Сюэ/);
-    expect(toStudent[1]?.text).toContain('Экзамены можно сдать');
-    expect(toStudent[1]?.replyMarkup).toBeDefined();
+    expect(toStudent[0]?.text).toContain('Экзамены можно сдать');
+    expect(toStudent[0]?.replyMarkup).toBeDefined();
   });
 
   it('неверный код — канал не создан, в чат ушло ровно одно сообщение (отказ)', async () => {
