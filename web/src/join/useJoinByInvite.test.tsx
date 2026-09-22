@@ -68,10 +68,12 @@ describe('useJoinByInvite', () => {
 
     const { unmount } = renderHook(() => useJoinByInvite(CODE));
     unmount();
-    resolveCheck({ valid: true });
 
-    // Ничего не бросает после unmount — сам факт, что тест дошёл сюда без
-    // ошибки, и есть проверка (cancelled-гвард эффекта в useJoinByInvite.ts).
+    // Ответ, пришедший после unmount, не бросает — его гасит cancelled-гвард
+    // эффекта в useJoinByInvite.ts. Утверждение названо явно: зелёный прогон
+    // сам по себе проверкой не считается (аудит 2026-09-22).
+    expect(() => resolveCheck({ valid: true })).not.toThrow();
+
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -87,7 +89,9 @@ describe('useJoinByInvite', () => {
 
     const { unmount } = renderHook(() => useJoinByInvite(CODE));
     unmount();
-    rejectCheck(new Error('boom'));
+
+    // То же для отказа: catch эффекта после unmount молчит, а не падает.
+    expect(() => rejectCheck(new Error('boom'))).not.toThrow();
 
     await Promise.resolve();
     await Promise.resolve();

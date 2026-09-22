@@ -1,40 +1,14 @@
 // Тест на парсер check-test-assertions.mjs (CLAUDE.md, храповик
 // «check-test-assertions.mjs»): фикстуры-строки, не реальное дерево — ловим
-// именно то, ради чего написан stripLiterals: скобки в названии теста,
-// шаблонные строки, регулярки, комментарии и .only/.skip внутри литералов.
+// именно то, ради чего нужен общий сканер scripts/source-text.mjs: скобки
+// в названии теста, шаблонные строки, регулярки, комментарии и .only/.skip
+// внутри литералов. Сам сканер проверяется отдельно — source-text.test.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  stripLiterals,
   findDisabledTests,
   findTestsWithoutAssertions,
 } from './check-test-assertions.mjs';
-
-test('stripLiterals: строка и комментарий гасятся, длина и \\n сохраняются', () => {
-  const src = "const s = 'a ( b'; // it.skip(\n";
-  const cleaned = stripLiterals(src);
-  assert.equal(cleaned.length, src.length);
-  assert.equal(cleaned.includes('('), false);
-  assert.equal(cleaned.includes('it.skip'), false);
-  assert.equal(cleaned.endsWith('\n'), true);
-});
-
-test('stripLiterals: блочный комментарий на несколько строк — переносы на месте', () => {
-  const src = '/* line1\nline2 ( */\ncode();';
-  const cleaned = stripLiterals(src);
-  const lines = cleaned.split('\n');
-  assert.equal(lines.length, src.split('\n').length);
-  assert.equal(lines[1].trim(), '');
-  assert.equal(lines[2], 'code();');
-});
-
-test('stripLiterals: шаблонный литерал с ${} и скобками гасится целиком', () => {
-  const src = 'const msg = `total: ${a + b} (ok)`;';
-  const cleaned = stripLiterals(src);
-  assert.equal(cleaned.length, src.length);
-  assert.equal(cleaned.includes('('), false);
-  assert.equal(cleaned.includes('${'), false);
-});
 
 test('findDisabledTests: only-семейство — сфокусированные находки', () => {
   const src = [
@@ -45,7 +19,10 @@ test('findDisabledTests: only-семейство — сфокусированн�
   ].join('\n');
   const found = findDisabledTests(src).map((f) => f.name);
   assert.equal(found.length, 4);
-  assert.equal(found.some((n) => n.includes('первый')), true);
+  assert.equal(
+    found.some((n) => n.includes('первый')),
+    true,
+  );
 });
 
 test('findDisabledTests: skip/todo-семейство — выключенные находки', () => {
@@ -106,16 +83,12 @@ test('findTestsWithoutAssertions: assert.deepEqual (node:assert) — распо�
   assert.deepEqual(findTestsWithoutAssertions(src), []);
 });
 
-test('findTestsWithoutAssertions: .rejects и .resolves сами по себе — распознаются', () => {
-  const rejects = "it('падает', () => {\n  return p.rejects;\n});";
-  const resolves = "it('ждёт', () => {\n  return p.resolves;\n});";
-  assert.deepEqual(findTestsWithoutAssertions(rejects), []);
-  assert.deepEqual(findTestsWithoutAssertions(resolves), []);
-});
-
-test('findTestsWithoutAssertions: toHaveBeenCalled сам по себе — распознаётся', () => {
-  const src = "it('вызывает колбэк', () => {\n  spy.toHaveBeenCalled();\n});";
-  assert.deepEqual(findTestsWithoutAssertions(src), []);
+test('findTestsWithoutAssertions: .rejects/.resolves/toHaveBeenCalled сами по себе', () => {
+  const bodies = ['return p.rejects;', 'return p.resolves;', 'spy.toHaveBeenCalled();'];
+  for (const body of bodies) {
+    const src = `it('x', () => {\n  ${body}\n});`;
+    assert.deepEqual(findTestsWithoutAssertions(src), []);
+  }
 });
 
 test('findTestsWithoutAssertions: утверждение только в комментарии — находка', () => {
@@ -127,6 +100,16 @@ test('findTestsWithoutAssertions: утверждение только в ком�
   const found = findTestsWithoutAssertions(src);
   assert.equal(found.length, 1);
   assert.equal(found[0].name, 'якобы проверяет');
+});
+
+test('findTestsWithoutAssertions: .test( в it.each — не отдельный вызов test()', () => {
+  // Регрессия: shared/src/invite-link.spec.ts — RE.test(value) внутри
+  // it.each(...)(...) читался как бестелесный test(value), «без утверждения».
+  const src =
+    "it.each([1, 2])('%s', (value) => {\n" +
+    '  expect(RE.test(value)).toBe(false);\n' +
+    '});';
+  assert.deepEqual(findTestsWithoutAssertions(src), []);
 });
 
 test('findTestsWithoutAssertions: вложенный it() внутри тела не роняет парсер', () => {
