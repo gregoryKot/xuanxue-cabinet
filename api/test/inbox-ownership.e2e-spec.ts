@@ -120,6 +120,59 @@ describe('Лента кабинета — владение (e2e)', () => {
     expect(read.body).toEqual(getA.body);
   });
 
+  it('Б не может убрать (DELETE) строку А', async () => {
+    const { userId: userIdA, cookie: cookieA } = await createUserWithSession(
+      testApp.app,
+      { name: 'Ученик А', roles: [] },
+    );
+    const { cookie: cookieB } = await createUserWithSession(testApp.app, {
+      name: 'Ученик Б',
+      roles: [],
+    });
+    const notification = await notificationModel.create({
+      userId: userIdA,
+      kind: 'exam_result',
+      attemptId: 'a1',
+      outcome: 'passed',
+      readAt: null,
+    });
+
+    const dismissByB = await withCsrf(
+      request(server()).delete(`/api/me/inbox/${notification._id.toString()}`),
+    ).set('Cookie', cookieB);
+    expect(dismissByB.status).toBe(404);
+    expect((dismissByB.body as ApiErrorBody).code).toBe('not_found');
+
+    // Строка А осталась в ленте — Б её не убрал.
+    const getA = await request(server()).get('/api/me/inbox').set('Cookie', cookieA);
+    expect((getA.body as InboxPageDto).items).toHaveLength(1);
+  });
+
+  it('А убирает свою строку (DELETE) — read-after-write, ушла из ленты и из unreadCount', async () => {
+    const { userId: userIdA, cookie: cookieA } = await createUserWithSession(
+      testApp.app,
+      { name: 'Ученик А', roles: [] },
+    );
+    const notification = await notificationModel.create({
+      userId: userIdA,
+      kind: 'exam_result',
+      attemptId: 'a1',
+      outcome: 'passed',
+      readAt: null,
+    });
+
+    const dismiss = await withCsrf(
+      request(server()).delete(`/api/me/inbox/${notification._id.toString()}`),
+    ).set('Cookie', cookieA);
+    expect(dismiss.status).toBe(200); // не 204 — лента целиком (ADR-0087)
+    const dismissBody = dismiss.body as InboxPageDto;
+    expect(dismissBody.items).toEqual([]);
+    expect(dismissBody.unreadCount).toBe(0);
+
+    const getA = await request(server()).get('/api/me/inbox').set('Cookie', cookieA);
+    expect(dismiss.body).toEqual(getA.body);
+  });
+
   it('read-all гасит только свои непрочитанные, чужие не трогает', async () => {
     const { userId: userIdA, cookie: cookieA } = await createUserWithSession(
       testApp.app,
@@ -176,7 +229,7 @@ describe('Лента кабинета — владение (e2e)', () => {
     expect(res.body as InboxPageDto).toEqual({ items: [], unreadCount: 0 });
   });
 
-  it('без сессии — 401 на всех трёх маршрутах', async () => {
+  it('без сессии — 401 на всех четырёх маршрутах', async () => {
     const list = await request(server()).get('/api/me/inbox');
     expect(list.status).toBe(401);
 
@@ -187,5 +240,10 @@ describe('Лента кабинета — владение (e2e)', () => {
 
     const readAll = await withCsrf(request(server()).post('/api/me/inbox/read-all'));
     expect(readAll.status).toBe(401);
+
+    const dismiss = await withCsrf(
+      request(server()).delete('/api/me/inbox/507f1f77bcf86cd799439011'),
+    );
+    expect(dismiss.status).toBe(401);
   });
 });

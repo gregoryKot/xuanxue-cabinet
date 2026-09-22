@@ -12,6 +12,7 @@ import {
   MY_EXAMS_PATH,
   NOTIFICATIONS_FEED_PATH,
   NOTIFICATIONS_READ_ALL_PATH,
+  notificationItemPath,
   notificationReadPath,
 } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
@@ -60,6 +61,12 @@ const ME_NOT_LINKED: MeDto = {
   telegramLinked: false,
   botChatActive: false,
 };
+
+// Строка сама теперь обёрнута в SwipeRow (просьба владельца 2026-09-22) — у
+// неё под содержимым всегда есть вторая кнопка «Убрать», имя которой тоже
+// содержит текст события (CLAUDE.md «Доступность»). Поиск по одному тексту
+// события находил бы обе — уточняем именем собственной кнопки строки.
+const UNREAD_BUTTON_NAME = /^Не прочитано/;
 
 function makeNotification(overrides: Partial<NotificationDto> = {}): NotificationDto {
   return {
@@ -163,7 +170,7 @@ describe('NotificationsScreen — отметка прочитанной (отв�
       [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
     });
 
-    const button = await screen.findByRole('button', { name: /Текст события/ });
+    const button = await screen.findByRole('button', { name: UNREAD_BUTTON_NAME });
     // Ответ действия — отдельный вызов mockApiByPath поверх начального (см.
     // комментарий в test-support/apiFetchMock.ts): без него POST ответил бы
     // пустым телом, и applyData уронил бы ленту в undefined.
@@ -201,7 +208,7 @@ describe('NotificationsScreen — отметка прочитанной (отв�
       },
     });
 
-    const button = await screen.findByRole('button', { name: /Текст события/ });
+    const button = await screen.findByRole('button', { name: UNREAD_BUTTON_NAME });
     mockApiByPath({
       [notificationReadPath('n9')]: {
         items: [
@@ -365,7 +372,7 @@ describe('NotificationsScreen — сбой отметки прочитанной
       [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
     });
 
-    const button = await screen.findByRole('button', { name: /Текст события/ });
+    const button = await screen.findByRole('button', { name: UNREAD_BUTTON_NAME });
     mockApiByPath({
       [notificationReadPath('n1')]: new ApiError('Сервис недоступен', 503, 'unknown'),
     });
@@ -391,5 +398,41 @@ describe('NotificationsScreen — сбой отметки прочитанной
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Сервис недоступен');
+  });
+});
+
+// Просьба владельца 2026-09-22: «уведомление нельзя смахнуть, удалить» —
+// кнопка «Убрать» всегда в DOM под строкой (SwipeRow.tsx), клик по ней и без
+// жеста шлёт DELETE и берёт ленту из его ответа (ADR-0087), а не отдельным GET.
+describe('NotificationsScreen — «Убрать» (SwipeRow, DELETE /me/inbox/:id)', () => {
+  it('клик по «Убрать» шлёт DELETE и берёт ленту из его ответа', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    const dismissButton = await screen.findByRole('button', { name: /^Убрать/ });
+    // Счёт вызовов ленты ДО действия — единственный, от первой загрузки
+    // экрана; ниже проверяем, что DELETE его не прибавил.
+    const feedCallsBefore = mockedApiFetch.mock.calls.filter(
+      ([path]) => path === NOTIFICATIONS_FEED_PATH,
+    ).length;
+    mockApiByPath({
+      [notificationItemPath('n1')]: { items: [], unreadCount: 0 },
+    });
+    await user.click(dismissButton);
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        notificationItemPath('n1'),
+        expect.objectContaining({ method: 'DELETE' }),
+      ),
+    );
+    // Лента перерисована из ответа DELETE (пустой список) — строка пропадает.
+    expect(await screen.findByText('Уведомлений пока нет.')).toBeInTheDocument();
+    const feedCallsAfter = mockedApiFetch.mock.calls.filter(
+      ([path]) => path === NOTIFICATIONS_FEED_PATH,
+    ).length;
+    expect(feedCallsAfter).toBe(feedCallsBefore);
   });
 });

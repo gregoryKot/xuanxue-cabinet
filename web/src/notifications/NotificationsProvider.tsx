@@ -34,6 +34,7 @@ export function NotificationsProvider({
     reload,
     markRead,
     markAllRead,
+    dismiss,
   } = data;
 
   // Разложено по полям, а не `[data]`: сам объект хук пересобирает каждым
@@ -50,6 +51,7 @@ export function NotificationsProvider({
       reload,
       markRead,
       markAllRead,
+      dismiss,
     }),
     [
       items,
@@ -62,6 +64,7 @@ export function NotificationsProvider({
       reload,
       markRead,
       markAllRead,
+      dismiss,
     ],
   );
 

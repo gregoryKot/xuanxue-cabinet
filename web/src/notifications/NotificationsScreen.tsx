@@ -1,17 +1,13 @@
-// Экран «Уведомления» (`/notifications`, ADR-0063) — лента событий, которые
-// уходят человеку в Telegram, плюс карточки заданий, к которым ученик ещё не
-// приступал. Данные — общий контекст NotificationsProvider (тот же, что
-// кормит значок в оболочке), здесь их только читаем.
-//
-// `ListScreenBody` не подходит: он рисует ОДИН список по единому состоянию
-// загрузки, а здесь над рубриками ленты ещё стоят карточки новых заданий, и
-// у ленты своя пара «Сегодня»/«Раньше». Состав собран руками, тем же приёмом,
-// что уже сделан на TasksScreen.tsx (баннер ошибки, скелетон, честная фраза,
-// группы).
-//
-// Экран — страница по адресу, не лист поверх списка: ADR-0033 увёл редакторы
-// на адреса, единственный оставшийся в кабинете `position: fixed; inset: 0` —
-// components/ConfirmDialog.tsx, второй оверлей пошёл бы против течения.
+// Экран «Уведомления» (`/notifications`, ADR-0063) — лента событий из
+// Telegram-бота плюс карточки ещё не начатых заданий; данные — общий контекст
+// NotificationsProvider (тот же, что кормит значок в оболочке). `ListScreen-
+// Body` не подходит: он рисует один список по единому состоянию загрузки, а
+// здесь ещё карточки заданий и своя пара рубрик «Сегодня»/«Раньше» — состав
+// собран руками, как на TasksScreen.tsx (баннер, скелетон, честная фраза,
+// группы). Строка ленты смахивается — кнопка «Убрать» под ней (SwipeRow.tsx,
+// просьба владельца 2026-09-22). Страница по адресу, не лист поверх списка:
+// ADR-0033 увёл редакторы на адреса, единственный оставшийся в кабинете
+// `position: fixed; inset: 0` — components/ConfirmDialog.tsx.
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -58,6 +54,7 @@ export default function NotificationsScreen() {
     reload,
     markRead,
     markAllRead,
+    dismiss,
   } = useNotifications();
   const { me } = useAuth();
 
@@ -124,6 +121,7 @@ export default function NotificationsScreen() {
           items={groups.today}
           nowIso={nowIso}
           onRead={(id) => void markRead(id)}
+          onDismiss={(id) => void dismiss(id)}
         />
       )}
       {groups && groups.earlier.length > 0 && (
@@ -132,6 +130,7 @@ export default function NotificationsScreen() {
           items={groups.earlier}
           nowIso={nowIso}
           onRead={(id) => void markRead(id)}
+          onDismiss={(id) => void dismiss(id)}
         />
       )}
 

@@ -29,15 +29,17 @@ export class InboxService {
    * индекса в notification.schema.ts): строка «всплывает», когда учитель
    * переставил итог. unreadCount — отдельным count по всей ленте человека,
    * не по одной странице лимита (бейдж колокольчика не должен занижать
-   * счётчик). */
+   * счётчик). Оба запроса фильтруют `dismissedAt: null` — убранное (dismiss,
+   * отзыв владельца 2026-09-22) не показывается в ленте и не считается
+   * бейджем колокольчика: иначе цифра висела бы над тем, чего в ленте нет. */
   async list(userId: string, query: ListInboxQuery): Promise<InboxPageDto> {
     const [docs, unreadCount] = await Promise.all([
       this.model
-        .find({ userId })
+        .find({ userId, dismissedAt: null })
         .sort({ updatedAt: -1 })
         .limit(query.limit ?? LIST_LIMIT_DEFAULT)
         .lean<RawLeanNotification[]>(),
-      this.model.countDocuments({ userId, readAt: null }),
+      this.model.countDocuments({ userId, readAt: null, dismissedAt: null }),
     ]);
     return { items: docs.map(toNotificationDto), unreadCount };
   }
@@ -53,6 +55,26 @@ export class InboxService {
       .findOneAndUpdate(
         { _id: id, userId },
         { $set: { readAt: now.toJSDate() } },
+        { returnDocument: 'after' },
+      )
+      .lean<RawLeanNotification | null>();
+    if (!doc) throw new NotFoundError(INBOX_ITEM_NOT_FOUND_MESSAGE);
+    return toNotificationDto(doc);
+  }
+
+  /** Убрать строку из ленты (отзыв владельца 2026-09-22: «уведомление нельзя
+   * смахнуть, удалить») — мягко, полем `dismissedAt`, не удалением документа
+   * (причина — комментарий у поля в notification.schema.ts). Тот же приём
+   * владения, что markRead: чужой или несуществующий `id` — `NotFoundError`,
+   * не 403 (не подтверждаем существование чужой строки). Повторный вызов —
+   * не ошибка: время убирания просто перезаписывается, идемпотентно по
+   * наблюдаемому результату («убрано»). */
+  async dismiss(userId: string, id: string, now: DateTime): Promise<NotificationDto> {
+    assertObjectId(id, INBOX_ITEM_NOT_FOUND_MESSAGE);
+    const doc = await this.model
+      .findOneAndUpdate(
+        { _id: id, userId },
+        { $set: { dismissedAt: now.toJSDate() } },
         { returnDocument: 'after' },
       )
       .lean<RawLeanNotification | null>();
