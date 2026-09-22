@@ -3,8 +3,13 @@
 // которые ТЗ требует показать человеку по-своему, собраны здесь и проверяются
 // без компонента и без usePushSubscription.ts (CLAUDE.md, ревью «тестируется
 // без DOM?»).
+import { ApiError } from '../api/http';
+import { withTimeout, TimeoutError } from '../lib/withTimeout';
 import { waitServiceWorkerReady } from '../pwa/serviceWorkerReady';
-import { PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE } from './pushNotificationsCopy';
+import {
+  PUSH_ACTION_TIMEOUT_MESSAGE,
+  PUSH_SERVICE_WORKER_UNAVAILABLE_MESSAGE,
+} from './pushNotificationsCopy';
 import { iosNeedsHomeScreenInstall, isPushBrowserSupported } from './webPushEnvironment';
 
 export type PushSectionState =
@@ -26,7 +31,7 @@ export type PushSectionState =
 /**
  * Регистрация service worker с таймаутом вместо голого `ready`, который не
  * резолвится никогда, если регистрация не прошла — registerServiceWorker.ts
- * глотает ошибку молча (сеть моргнула на `/sw.js`, приватный режим,
+ * мог не поднять worker (сеть моргнула на `/sw.js`, приватный режим,
  * блокировка), аудит 2026-09-21 HIGH. Общее место для этого файла и
  * usePushSubscription.ts (enable/disable), один текст и один довод, не три
  * копии комментария: простой повтор клика не поможет, регистрация
@@ -54,6 +59,32 @@ export async function waitRegistrationOrReportError(
   }
 }
 
+// subscribe()/getSubscription()/unsubscribe() браузера — тоже промисы,
+// которые нечем отменить (баг с прода 2026-09-22: «Включить уведомления»
+// крутилась вечно именно на subscribe()). Отдельный предел от
+// SW_READY_TIMEOUT_MS: тот ждёт готовности уже поднятого worker'а
+// (миллисекунды в норме), а эти три идут дальше — в push-сервис браузера
+// (FCM/Mozilla autopush) поверх готовой регистрации. Живая подписка
+// укладывается в пару секунд; 15 секунд заметно больше нормы, но не держит
+// человека перед крутящейся кнопкой дольше разумного.
+export const PUSH_ACTION_TIMEOUT_MS = 15_000;
+
+/** Один `withTimeout` на все три вызова из usePushSubscription.ts вместо
+ * трёх копий предела и текста (CLAUDE.md «Одна механика — один компонент»). */
+export function withPushActionTimeout<T>(promise: Promise<T>): Promise<T> {
+  return withTimeout(promise, PUSH_ACTION_TIMEOUT_MS, PUSH_ACTION_TIMEOUT_MESSAGE);
+}
+
+/** Текст под кнопкой enable()/disable() по перехваченному исключению —
+ * предел ожидания говорит сам за себя (`err.message` уже готовый текст),
+ * дальше порядок как был до этого бага: текст ApiError или запасной текст
+ * конкретного действия (enable/disable — разные `fallbackMessage`). */
+export function pushActionErrorMessage(err: unknown, fallbackMessage: string): string {
+  if (err instanceof TimeoutError) return err.message;
+  if (err instanceof ApiError) return err.message;
+  return fallbackMessage;
+}
+
 /**
  * `publicKey` — ответ `GET /push/public-key` (`null` — push выключен на
  * сервере). Порядок проверок дальше важен: iOS без установки проверяем
@@ -78,6 +109,12 @@ export async function resolvePushSectionState(
   // как loadError, с кнопкой «Повторить» — отдельное состояние раздела не
   // нужно, оно уже есть.
   const registration = await requirePushRegistration();
-  const subscription = await registration.pushManager.getSubscription();
+  // Тот же предел, что у enable()/disable(): без него зависший
+  // getSubscription() оставил бы раздел в скелетоне навсегда — тот же тихий
+  // отказ, ради которого затевалась правка, только на шаг раньше и потому
+  // менее заметный (баг с прода 2026-09-22).
+  const subscription = await withPushActionTimeout(
+    registration.pushManager.getSubscription(),
+  );
   return { kind: subscription ? 'subscribed' : 'not-subscribed' };
 }

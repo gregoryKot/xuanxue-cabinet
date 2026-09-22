@@ -6,6 +6,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
+import { PUSH_ACTION_TIMEOUT_MS } from './pushSectionState';
 import { arrayBufferToBase64Url } from './pushSubscriptionCodec';
 import { usePushSubscription } from './usePushSubscription';
 
@@ -215,9 +216,9 @@ describe('usePushSubscription — enable() из default', () => {
   });
 
   it('service worker не зарегистрировался — ready не резолвится, кнопка выходит из pending с честной ошибкой (аудит 2026-09-21)', async () => {
-    // registerServiceWorker.ts мог проглотить ошибку регистрации — ready
-    // тогда не резолвится никогда. Раньше кнопка «Включить уведомления»
-    // висела бы в pending вечно; SW_READY_TIMEOUT_MS должен это оборвать.
+    // registerServiceWorker.ts мог не зарегистрировать worker — ready тогда
+    // не резолвится никогда. Раньше кнопка «Включить уведомления» висела бы
+    // в pending вечно; SW_READY_TIMEOUT_MS должен это оборвать.
     vi.stubGlobal('navigator', {
       userAgent: DESKTOP_UA,
       serviceWorker: { ready: new Promise(() => {}) },
@@ -273,6 +274,105 @@ describe('usePushSubscription — enable() из default', () => {
     expect(result.current.actionError).toBe(
       'Не удалось включить уведомления. Попробуйте ещё раз.',
     );
+    expect(result.current.state).toEqual({ kind: 'default' });
+  });
+
+  it('предел subscribe() сработал — сообщение под кнопкой, pending снят, состояние не ломается (баг с прода 2026-09-22)', async () => {
+    // subscribe() зарегистрированного worker'а сам никогда не отвечает —
+    // ровно то, что нашёл владелец на проде: ready и getSubscription() уже
+    // отработали (состояние определилось как default), а именно subscribe()
+    // висит.
+    const subscribe = vi.fn(() => new Promise(() => {}));
+    vi.stubGlobal('navigator', {
+      userAgent: DESKTOP_UA,
+      serviceWorker: {
+        ready: Promise.resolve({
+          pushManager: { subscribe, getSubscription: () => Promise.resolve(null) },
+        }),
+      },
+    });
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false }));
+    vi.stubGlobal('PushManager', {});
+    vi.stubGlobal('Notification', {
+      permission: 'default',
+      requestPermission: vi.fn(() => Promise.resolve('granted')),
+    });
+
+    mockedApiFetch.mockResolvedValueOnce({ publicKey: PUBLIC_KEY });
+    const { result } = renderHook(() => usePushSubscription());
+    await waitFor(() => expect(result.current.state).toEqual({ kind: 'default' }));
+
+    vi.useFakeTimers();
+    await act(async () => {
+      const enablePromise = result.current.enable();
+      await vi.advanceTimersByTimeAsync(PUSH_ACTION_TIMEOUT_MS);
+      await enablePromise;
+    });
+    vi.useRealTimers();
+
+    expect(subscribe).toHaveBeenCalled();
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа, POST не ушёл
+    expect(result.current.actionError).toBe(
+      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
+    );
+    expect(result.current.pending).toBe(false);
+    expect(result.current.state).toEqual({ kind: 'default' });
+  });
+
+  it('поздний ответ subscribe() после сработавшего предела ничего не перезаписывает (баг с прода 2026-09-22)', async () => {
+    const sub = fakeSubscription('https://push.example/late');
+    let resolveSubscribe: (value: unknown) => void = () => {};
+    const subscribe = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveSubscribe = resolve;
+        }),
+    );
+    vi.stubGlobal('navigator', {
+      userAgent: DESKTOP_UA,
+      serviceWorker: {
+        ready: Promise.resolve({
+          pushManager: { subscribe, getSubscription: () => Promise.resolve(null) },
+        }),
+      },
+    });
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false }));
+    vi.stubGlobal('PushManager', {});
+    vi.stubGlobal('Notification', {
+      permission: 'default',
+      requestPermission: vi.fn(() => Promise.resolve('granted')),
+    });
+
+    mockedApiFetch.mockResolvedValueOnce({ publicKey: PUBLIC_KEY });
+    const { result } = renderHook(() => usePushSubscription());
+    await waitFor(() => expect(result.current.state).toEqual({ kind: 'default' }));
+
+    vi.useFakeTimers();
+    await act(async () => {
+      const enablePromise = result.current.enable();
+      await vi.advanceTimersByTimeAsync(PUSH_ACTION_TIMEOUT_MS);
+      await enablePromise;
+    });
+
+    expect(result.current.actionError).toBe(
+      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
+    );
+
+    // Браузер наконец отвечает — уже после того, как кнопка показала ошибку
+    // и вышла из pending. subscribe() отменить нечем (withTimeout.ts), но
+    // ответ обязан остаться без последствий: не новый POST, не смена
+    // actionError/state, не повторный setPending.
+    await act(async () => {
+      resolveSubscribe(sub);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    vi.useRealTimers();
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1); // POST так и не ушёл
+    expect(result.current.actionError).toBe(
+      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
+    );
+    expect(result.current.pending).toBe(false);
     expect(result.current.state).toEqual({ kind: 'default' });
   });
 });
@@ -490,5 +590,67 @@ describe('usePushSubscription — disable()', () => {
     expect(sub.unsubscribe).not.toHaveBeenCalled();
     expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа
     expect(result.current.state).toEqual({ kind: 'not-subscribed' });
+  });
+
+  it('предел getSubscription() сработал — сообщение под кнопкой, состояние остаётся subscribed (баг с прода 2026-09-22)', async () => {
+    stubBrowser({
+      permission: 'granted',
+      getSubscriptionResult: { endpoint: 'https://push.example/j' },
+    });
+
+    mockedApiFetch.mockResolvedValueOnce({ publicKey: PUBLIC_KEY });
+    const { result } = renderHook(() => usePushSubscription());
+    await waitFor(() => expect(result.current.state).toEqual({ kind: 'subscribed' }));
+
+    // К моменту клика «Выключить» getSubscription() самого disable() уже не
+    // отвечает — тот же приём, что и в тесте про subscribe() из enable().
+    const getSubscription = vi.fn(() => new Promise(() => {}));
+    vi.stubGlobal('navigator', {
+      userAgent: DESKTOP_UA,
+      serviceWorker: { ready: Promise.resolve({ pushManager: { getSubscription } }) },
+    });
+
+    vi.useFakeTimers();
+    await act(async () => {
+      const disablePromise = result.current.disable();
+      await vi.advanceTimersByTimeAsync(PUSH_ACTION_TIMEOUT_MS);
+      await disablePromise;
+    });
+    vi.useRealTimers();
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа, DELETE не ушёл
+    expect(result.current.actionError).toBe(
+      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
+    );
+    expect(result.current.pending).toBe(false);
+    expect(result.current.state).toEqual({ kind: 'subscribed' });
+  });
+
+  it('предел unsubscribe() сработал — DELETE не уходит, состояние остаётся subscribed (баг с прода 2026-09-22)', async () => {
+    const sub = {
+      endpoint: 'https://push.example/k',
+      unsubscribe: vi.fn(() => new Promise(() => {})),
+    };
+    stubBrowser({ permission: 'granted', getSubscriptionResult: sub });
+
+    mockedApiFetch.mockResolvedValueOnce({ publicKey: PUBLIC_KEY });
+    const { result } = renderHook(() => usePushSubscription());
+    await waitFor(() => expect(result.current.state).toEqual({ kind: 'subscribed' }));
+
+    vi.useFakeTimers();
+    await act(async () => {
+      const disablePromise = result.current.disable();
+      await vi.advanceTimersByTimeAsync(PUSH_ACTION_TIMEOUT_MS);
+      await disablePromise;
+    });
+    vi.useRealTimers();
+
+    expect(sub.unsubscribe).toHaveBeenCalled();
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа, DELETE не ушёл
+    expect(result.current.actionError).toBe(
+      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
+    );
+    expect(result.current.pending).toBe(false);
+    expect(result.current.state).toEqual({ kind: 'subscribed' });
   });
 });

@@ -4,9 +4,10 @@
 // см. exams/ExamsScreen.tsx, broadcasts/BroadcastsScreen.tsx).
 //
 // Список приехал из StudentExamsSection.tsx (файл удалён вместе с тестом —
-// второй копии не осталось): та же карточка (StudentExamCard.tsx) и та же
-// логика старта попытки (useMyExams.startAttempt — идемпотентный POST,
-// дальше сразу переход на экран сдачи).
+// второй копии не осталось): та же карточка (StudentExamCard.tsx). Куда
+// ведёт нажатие и что делает старт — useTaskStart.ts (ADR-0119, оба замка:
+// «Продолжить» открывает уже известную попытку по id без запроса, успешный
+// старт правит список ответом записи, без второго GET).
 //
 // useMyExams — из MyExamsProvider.tsx (ADR-0063): список общий на всё
 // приложение, этот экран и центр уведомлений (счётчик у колокольчика) читают
@@ -17,10 +18,8 @@
 // позади; деление — splitTasksToDo.ts, чистая функция с тестом (CLAUDE.md
 // «Логика вне компонентов»). Рубрика стоит и над одинокой группой: она
 // отвечает на главный вопрос экрана — ждут меня или нет.
-import { useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import type { CSSProperties } from 'react';
 import type { MyExamDto } from '@xuanxue/shared';
-import { ApiError } from '../api/http';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { cardListStyle } from '../components/listCardStyles';
 import { screenSectionStyle } from '../components/screenLayout';
@@ -29,6 +28,7 @@ import { SkeletonList } from '../components/Skeleton';
 import { useMyExams } from './MyExamsProvider';
 import { splitTasksToDo } from './splitTasksToDo';
 import { StudentExamCard } from './StudentExamCard';
+import { useTaskStart } from './useTaskStart';
 
 const TITLE = 'Задания';
 // Объяснение говорит, что делать и что узнать до первого нажатия, — про
@@ -44,31 +44,14 @@ const EXPLANATION =
 const EMPTY_MESSAGE = 'Заданий пока нет.';
 const TO_DO_RUBRIC = 'Сдавать сейчас';
 const DONE_RUBRIC = 'Уже позади';
-const START_ERROR_MESSAGE = 'Не удалось начать попытку. Попробуйте ещё раз.';
 
 const groupStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 // У `<h2>` свои отступы от браузера — расстояние держит `gap` колонки.
 const headingStyle: CSSProperties = { margin: 0 };
 
 export default function TasksScreen() {
-  const { data: exams, loading, error, reload, startAttempt } = useMyExams();
-  const navigate = useNavigate();
-  const [pendingExamId, setPendingExamId] = useState<string | null>(null);
-  const [startErrors, setStartErrors] = useState<Record<string, string>>({});
-
-  async function handleStart(examId: string) {
-    setPendingExamId(examId);
-    setStartErrors((prev) => ({ ...prev, [examId]: '' }));
-    try {
-      const attempt = await startAttempt(examId);
-      void navigate(`/attempts/${attempt.id}`);
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : START_ERROR_MESSAGE;
-      setStartErrors((prev) => ({ ...prev, [examId]: message }));
-    } finally {
-      setPendingExamId(null);
-    }
-  }
+  const { data: exams, loading, error, reload } = useMyExams();
+  const { pendingExamId, errors: startErrors, start } = useTaskStart();
 
   function renderCard(exam: MyExamDto) {
     return (
@@ -77,7 +60,7 @@ export default function TasksScreen() {
         exam={exam}
         pending={pendingExamId === exam.id}
         error={startErrors[exam.id] || null}
-        onStart={() => void handleStart(exam.id)}
+        onStart={() => start(exam)}
       />
     );
   }
