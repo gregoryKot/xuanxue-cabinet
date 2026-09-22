@@ -21,10 +21,12 @@ export interface UseSettingsTextFieldResult {
 }
 
 export interface UseSettingsTextFieldOptions {
-  /** Достаёт сохранённое значение из настроек — уже с дефолтом, если поле
-   * в SettingsDto опциональное (schoolSiteUrl) или сервер сам его
-   * подставляет (newcomerContact). */
-  read: (settings: SettingsDto) => string;
+  /** Достаёт сохранённое значение из настроек. Возвращать `undefined`
+   * можно и нужно: поле бывает опциональным в SettingsDto (schoolSiteUrl),
+   * а обязательное поле может не прийти от старого сервера, который его ещё
+   * не отдаёт. Приводит к строке сам хук (readOr ниже) — одно место, а не
+   * `?? ''` в каждом вызывающем. */
+  read: (settings: SettingsDto) => string | undefined;
   /** Собирает тело PATCH из обрезанного значения поля. Решение «пустое —
    * это null (сброс) или пустая строка недопустима» — за вызывающим полем,
    * не за этим хуком. */
@@ -46,15 +48,27 @@ export function useSettingsTextField(
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
 
+  // Нет настроек или нет самого поля — пустая строка, не `undefined`.
+  // Без этого приведения отсутствующее поле кладётся в состояние как есть, и
+  // `value.trim()` ниже роняет TypeError'ом весь экран «Шаблоны», а не только
+  // своё поле: ErrorBoundary съедает экран целиком (CI PR #391, падение
+  // App.test.tsx на маршруте /templates — ответ сервера в моке не нёс
+  // newcomerContact). Данных нет — показываем пусто (CLAUDE.md «Нет данных —
+  // пусто, скелетон, „—“»), а не падаем.
+  function readOr(from: SettingsDto | null): string {
+    if (!from) return '';
+    return read(from) ?? '';
+  }
+
   // Синхронизация с сохранённым — по `updatedAt`, как texts в
   // TemplatesScreen.tsx: сработает на первой загрузке и заново после
   // успешного «Сохранить», но не перезатирает то, что учитель ещё печатает.
   useEffect(() => {
-    setValue(settings ? read(settings) : '');
+    setValue(readOr(settings));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- нужен именно updatedAt, не весь объект settings
   }, [settings?.updatedAt]);
 
-  const saved = settings ? read(settings) : '';
+  const saved = readOr(settings);
   const trimmed = value.trim();
   const hasChanges = trimmed !== saved && isValid(trimmed);
 

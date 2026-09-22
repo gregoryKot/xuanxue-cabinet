@@ -485,6 +485,13 @@ describe('TemplatesScreen — контакт для новичков', () => {
     const field = await screen.findByLabelText(LABEL);
     await user.clear(field);
     await user.type(field, 'Ире @irina_school');
+    // Поле предзаполнено дефолтом школы — в отличие от «Адреса сайта», где
+    // набирают в пустое. Под нагрузкой CI очистка и набор успевают разъехаться,
+    // и в PATCH уходило «Диме @Dmitry_DeitchИре @irina_school»: userEvent
+    // считает новое значение по DOM, а контролируемый input к этому моменту
+    // ещё не получил пустую строку. Ждём значение явно, а не надеемся на
+    // порядок обновлений.
+    expect(field).toHaveValue('Ире @irina_school');
 
     mockByPath({
       '/settings': makeSettings({

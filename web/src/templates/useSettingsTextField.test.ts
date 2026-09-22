@@ -167,3 +167,53 @@ describe('useSettingsTextField — синхронизация с сохранё�
     expect(result.current.value).toBe('Ире @irina_school');
   });
 });
+
+// Регрессия на падение CI PR #391: ответ сервера без этого поля приходил в
+// состояние как `undefined`, и следующий же рендер падал на `value.trim()` —
+// ErrorBoundary съедал весь экран «Шаблоны», а не одно поле. Ловилось это
+// нестабильно: App.test.tsx на маршруте /templates то успевал найти заголовок
+// до эффекта, то нет. Обязательное поле DTO может не прийти от сервера, где
+// его ещё нет (деплой идёт по одному инстансу за раз), — хук обязан это
+// переживать.
+describe('useSettingsTextField — поля нет в ответе сервера', () => {
+  // Ключ убран, а не выставлен в undefined: так выглядит ответ сервера,
+  // который поля ещё не отдаёт. Тип SettingsDto его требует, поэтому
+  // приведение здесь намеренное — оно и есть предмет теста (совместимость
+  // деплоя, CLAUDE.md «expand → contract»).
+  const { newcomerContact: _absent, ...rest } = SETTINGS;
+  const withoutField = rest as unknown as SettingsDto;
+
+  it('поле отсутствует — пустая строка, а не undefined в состоянии', () => {
+    const { result } = renderHook(() =>
+      useSettingsTextField(withoutField, vi.fn(), { read, write, saveError: SAVE_ERROR }),
+    );
+
+    expect(result.current.value).toBe('');
+  });
+
+  it('поле отсутствует — hasChanges считается без падения, ввод работает', () => {
+    const { result } = renderHook(() =>
+      useSettingsTextField(withoutField, vi.fn(), { read, write, saveError: SAVE_ERROR }),
+    );
+
+    expect(result.current.hasChanges).toBe(false);
+
+    act(() => result.current.setValue('Диме @Dmitry_Deitch'));
+
+    expect(result.current.hasChanges).toBe(true);
+  });
+
+  it('поле отсутствует — «Сохранить» шлёт введённое значение', async () => {
+    const update = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useSettingsTextField(withoutField, update, { read, write, saveError: SAVE_ERROR }),
+    );
+
+    act(() => result.current.setValue('  Маше @masha_teacher  '));
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(update).toHaveBeenCalledWith({ newcomerContact: 'Маше @masha_teacher' });
+  });
+});

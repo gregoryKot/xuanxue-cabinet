@@ -18,7 +18,7 @@ export function useSchoolSiteField(
   update: (input: UpdateSettingsInput) => Promise<void>,
 ): UseSchoolSiteFieldResult {
   return useSettingsTextField(settings, update, {
-    read: (s) => s.schoolSiteUrl ?? '',
+    read: (s) => s.schoolSiteUrl,
     // Пустое поле — явный сброс (null, NULLABLE_SETTINGS_FIELDS в
     // shared/src/settings.ts): «сайта нет», не «оставить как было».
     write: (trimmed) => ({ schoolSiteUrl: trimmed || null }),
