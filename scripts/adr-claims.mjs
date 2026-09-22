@@ -86,6 +86,31 @@ export function findCrossBranchCollisions({ mine, main, branches }) {
   return collisions;
 }
 
+/** Мой номер уже занят в `main` другим файлом — я всегда переношу: то, что
+ * слито, не двигается.
+ *
+ * Дыра, которую это закрывает (2026-09-22, третий случай коллизии подряд):
+ * `findCrossBranchCollisions` сравнивает только заявки, которых ещё НЕТ в
+ * main (`isNew`), — и номер, приехавший в main из чужого PR уже после того,
+ * как я отвёл ветку, этим же условием вычёркивался из сравнения. Гейт
+ * оставался зелёным ровно на том случае, ради которого его завели
+ * (ADR-0107): у меня ADR-0111 про уведомления, в main — ADR-0111 про
+ * мониторинг (#387), разница в минутах отвода ветки. Ветки проверялись,
+ * main — нет. */
+export function findMainCollisions({ mine, main }) {
+  const mainByNumber = new Map(main.map((a) => [a.number, a.file]));
+  return mine
+    .filter((my) => {
+      const inMain = mainByNumber.get(my.number);
+      return inMain !== undefined && inMain !== my.file;
+    })
+    .map((my) => ({
+      number: my.number,
+      myFile: my.file,
+      mainFile: mainByNumber.get(my.number),
+    }));
+}
+
 /** Первый номер вида `0108`, не занятый ни в одном из перечисленных. */
 export function firstFreeNumber(allNumbers) {
   const taken = new Set(allNumbers);
@@ -104,6 +129,12 @@ export function reportCrossBranch(cross, problems) {
     .flat()
     .map((a) => a.number);
   const free = firstFreeNumber(numbers);
+  for (const c of findMainCollisions(cross)) {
+    problems.push(
+      `номер ${c.number} уже занят в main: docs/adr/${c.mainFile} — перенумеруй свой ` +
+        `docs/adr/${c.myFile}, свободен ${free} (слитое не двигается)`,
+    );
+  }
   for (const c of findCrossBranchCollisions(cross)) {
     const msg = `номер ${c.number} занят и в ветке ${c.branch}: docs/adr/${c.myFile} (у меня), docs/adr/${c.theirFile} (там) — свободен ${free}`;
     if (c.iClaimedLater) problems.push(`${msg}, я заявил позже`);
