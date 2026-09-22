@@ -8,14 +8,24 @@
 // Свой компонент, а не часть AttemptInProgress.tsx: там живут дедлайн и
 // автосохранение, и подтверждение отправки к ним отношения не имеет
 // (CLAUDE.md «Файлы»).
+//
+// Вопросы без ответа (просьба владельца 2026-09-22): когда что-то осталось
+// незаполненным, подтверждение спрашивает об этом прямо и зовёт обратно в
+// форму — сами вопросы к этому моменту уже подсвечены (QuestionRow.tsx).
+// Отправить всё равно можно: ученик вправе пропустить вопрос, наше дело —
+// спросить один раз (CLAUDE.md «Ноль нагрузки на ученика»).
 import { useState, type CSSProperties } from 'react';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormServerError, type FormError } from '../components/FormServerError';
 import { primaryActionStyle } from '../components/screenLayout';
+import { formatUnansweredConfirm } from './attemptUnanswered';
 
 const SUBMIT_LABEL = 'Отправить';
 const SUBMIT_CONFIRM_TITLE = 'Отправить экзамен?';
+const UNANSWERED_CONFIRM_TITLE = 'Отправить без ответов?';
+const UNANSWERED_SUBMIT_LABEL = 'Всё равно отправить';
+const UNANSWERED_CANCEL_LABEL = 'Вернуться к вопросам';
 // «Пришлёт результат» обещало письмо-резерв (ADR-0039); письма нет (ADR-0061),
 // и у ученика без бота отправлять результат некому — обещаем то, что верно для
 // каждого, теми же словами, что экран «Отправлено» (AttemptSubmitted.tsx).
@@ -45,6 +55,12 @@ interface AttemptSubmitBarProps {
   onSubmit: () => Promise<void>;
   submitting: boolean;
   submitError: FormError | null;
+  /** Сколько вопросов осталось без ответа прямо сейчас
+   * (attemptUnanswered.ts) — ноль означает обычное подтверждение отправки. */
+  unansweredCount: number;
+  /** Ученик нажал «Отправить» — экран подсвечивает вопросы без ответа, пока
+   * открыто подтверждение и после отказа от него (AttemptInProgress.tsx). */
+  onCheck: () => void;
 }
 
 export function AttemptSubmitBar({
@@ -52,8 +68,11 @@ export function AttemptSubmitBar({
   onSubmit,
   submitting,
   submitError,
+  unansweredCount,
+  onCheck,
 }: AttemptSubmitBarProps) {
   const [confirming, setConfirming] = useState(false);
+  const hasUnanswered = unansweredCount > 0;
 
   return (
     <div style={barStyle}>
@@ -67,7 +86,10 @@ export function AttemptSubmitBar({
         <Button
           type="button"
           style={primaryActionStyle}
-          onClick={() => setConfirming(true)}
+          onClick={() => {
+            onCheck();
+            setConfirming(true);
+          }}
         >
           {SUBMIT_LABEL}
         </Button>
@@ -76,9 +98,14 @@ export function AttemptSubmitBar({
 
       {confirming && (
         <ConfirmDialog
-          title={SUBMIT_CONFIRM_TITLE}
-          message={SUBMIT_CONFIRM_MESSAGE}
-          confirmLabel={SUBMIT_LABEL}
+          title={hasUnanswered ? UNANSWERED_CONFIRM_TITLE : SUBMIT_CONFIRM_TITLE}
+          message={
+            hasUnanswered
+              ? formatUnansweredConfirm(unansweredCount)
+              : SUBMIT_CONFIRM_MESSAGE
+          }
+          confirmLabel={hasUnanswered ? UNANSWERED_SUBMIT_LABEL : SUBMIT_LABEL}
+          cancelLabel={hasUnanswered ? UNANSWERED_CANCEL_LABEL : undefined}
           confirmVariant="primary"
           pending={submitting}
           onConfirm={onSubmit}

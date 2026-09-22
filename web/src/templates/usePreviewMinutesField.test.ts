@@ -1,6 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_PREVIEW_MINUTES, type SettingsDto } from '@xuanxue/shared';
+import {
+  DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PREVIEW_MINUTES,
+  type SettingsDto,
+} from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { usePreviewMinutesField } from './usePreviewMinutesField';
 
@@ -8,6 +12,7 @@ const SETTINGS_DEFAULT: SettingsDto = {
   templates: { lesson_link: '', recording: '' },
   tz: 'Asia/Jerusalem',
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
+  newcomerContact: DEFAULT_NEWCOMER_CONTACT,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 
@@ -15,6 +20,7 @@ const SETTINGS_CUSTOM: SettingsDto = {
   templates: { lesson_link: '', recording: '' },
   tz: 'Asia/Jerusalem',
   previewMinutes: 15,
+  newcomerContact: DEFAULT_NEWCOMER_CONTACT,
   // Другой updatedAt, чем у SETTINGS_DEFAULT — синхронизация в хуке идёт по
   // нему (как texts в TemplatesScreen.tsx), одинаковый updatedAt у обоих
   // фикстур не запустил бы эффект заново.

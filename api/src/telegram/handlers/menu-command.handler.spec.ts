@@ -129,14 +129,14 @@ describe('MenuCommandHandler', () => {
   // только штат, и всем остальным, включая незнакомца, хендлер молча
   // выходил. Теперь незнакомец получает тот же вежливый отказ, что и /start.
   it('незнакомец — вежливый отказ, как у /start, а не тишина', async () => {
-    await settingsService.update({ schoolSiteUrl: 'https://xuanxue.su' });
+    await settingsService.update({ newcomerContact: 'Диме @Dmitry_Deitch' });
     const { ctx, replies } = fakeCtx(999);
 
     await handler.showMenu(ctx, NOW);
 
     expect(replies).toHaveLength(1);
     expect(replies[0]?.text).toContain('Сюань-Сюэ');
-    expect(replies[0]?.text).toContain('https://xuanxue.su');
+    expect(replies[0]?.text).toContain('Напишите Диме @Dmitry_Deitch');
     expect(replies[0]?.buttons).toBeUndefined();
   });
 

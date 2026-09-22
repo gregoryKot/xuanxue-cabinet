@@ -10,6 +10,9 @@
 // schoolSiteUrl — адрес сайта школы (В6 аудита, ADR-0009-доп.): единственное
 // nullable-поле формы, `null` снимает настройку (NULLABLE_SETTINGS_FIELDS,
 // settings.service.ts).
+// newcomerContact — кому писать незнакомцу (ADR-0115): не nullable, пустая
+// строка не проходит (`\S`) — иначе бот оборвал бы фразу «Напишите …» на
+// полуслове.
 import {
   IsInt,
   IsOptional,
@@ -72,4 +75,10 @@ export class UpdateSettingsDto implements UpdateSettingsInput {
   @Min(SETTINGS_LIMITS.previewMinutesMin)
   @Max(SETTINGS_LIMITS.previewMinutesMax)
   previewMinutes?: number;
+
+  @OptionalNotNull()
+  @IsString()
+  @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
+  @MaxLength(SETTINGS_LIMITS.newcomerContactMaxLength)
+  newcomerContact?: string;
 }

@@ -19,20 +19,22 @@ function fakeCtx(): { ctx: Context; replies: string[] } {
   return { ctx, replies };
 }
 
-function fakeSettings(schoolSiteUrl?: string): SettingsService {
-  return { get: () => Promise.resolve({ schoolSiteUrl }) } as unknown as SettingsService;
+function fakeSettings(newcomerContact?: string): SettingsService {
+  return {
+    get: () => Promise.resolve({ newcomerContact }),
+  } as unknown as SettingsService;
 }
 
 describe('replyStranger', () => {
-  it('адрес сайта заполнен — тот же текст, что строит buildStrangerMessage для /start', async () => {
+  it('контакт новичка задан — тот же текст, что строит buildStrangerMessage для /start', async () => {
     const { ctx, replies } = fakeCtx();
 
-    await replyStranger(ctx, fakeSettings('https://xuanxue.su'));
+    await replyStranger(ctx, fakeSettings('Диме @Dmitry_Deitch'));
 
-    expect(replies).toEqual([buildStrangerMessage('https://xuanxue.su')]);
+    expect(replies).toEqual([buildStrangerMessage('Диме @Dmitry_Deitch')]);
   });
 
-  it('адрес сайта не заполнен — базовый текст без ссылки', async () => {
+  it('контакт новичка не задан — базовый текст, без «Напишите» в пустоту', async () => {
     const { ctx, replies } = fakeCtx();
 
     await replyStranger(ctx, fakeSettings());

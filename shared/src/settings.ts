@@ -16,6 +16,10 @@ export interface SettingsDto {
    * константа (CLAUDE.md «Кабинет учителя: всё настраивается в интерфейсе»);
    * старая база без поля отдаёт `DEFAULT_PREVIEW_MINUTES` (domain.ts). */
   previewMinutes: number;
+  /** Кому писать новичку — этот контакт бот называет незнакомцу
+   * (ADR-0115). Старая база без поля отдаёт `DEFAULT_NEWCOMER_CONTACT`
+   * (domain.ts), тем же приёмом, что `previewMinutes`. */
+  newcomerContact: string;
   updatedAt: string; // ISO UTC с Z
 }
 
@@ -33,6 +37,11 @@ export interface UpdateSettingsInput {
    * входит в NULLABLE_SETTINGS_FIELDS: сбросить в «нет значения» нельзя,
    * только заменить другим числом. */
   previewMinutes?: number;
+  /** Не в NULLABLE_SETTINGS_FIELDS, по той же причине, что `previewMinutes`:
+   * «сбросить в ничто» смысла не имеет — контакт можно только заменить
+   * другим. Пустая строка не проходит валидацию, иначе бот оборвал бы фразу
+   * «Напишите …» на полуслове. */
+  newcomerContact?: string;
 }
 
 /** Единственное nullable-поле UpdateSettingsInput — источник правды для DTO
@@ -60,6 +69,7 @@ export interface PreviewTemplateResult {
 export const SETTINGS_LIMITS = {
   templateMaxLength: 2000,
   schoolSiteUrlMaxLength: 500,
+  newcomerContactMaxLength: 200,
   previewMinutesMin: 1,
   previewMinutesMax: 1440,
 } as const;

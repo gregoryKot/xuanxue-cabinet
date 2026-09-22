@@ -5,7 +5,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { ATTEMPT_EXPIRED_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
+import {
+  ATTEMPT_EXPIRED_MESSAGE,
+  type ExamAttemptDto,
+  type ExamMediaDto,
+} from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch, ApiError } from '../api/http';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
@@ -82,6 +86,32 @@ function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
     expired: false,
     ...overrides,
   };
+}
+
+// Отвечено всё: вариант, текст и присланное видео (attemptUnanswered.ts) —
+// тогда подтверждение отправки обычное, без разговора о пропусках. Фикстура
+// нужна именно отвеченная там, где проверяют саму отправку: иначе форма
+// сначала спросит про вопросы без ответа, и тест проверял бы другой путь.
+const ALL_ANSWERED: Partial<ExamAttemptDto> = {
+  answers: [
+    { itemId: 'q1', optionIds: ['o1'] },
+    { itemId: 'q2', text: 'Ровно и глубоко' },
+  ],
+};
+const VIDEO_RECEIVED: ExamMediaDto[] = [
+  {
+    id: 'm1',
+    attemptId: 'a1',
+    itemId: 'q3',
+    kind: 'telegram',
+    receivedAt: '2026-09-12T16:30:00.000Z',
+  },
+];
+
+function renderAnswered(overrides: Partial<ExamAttemptDto> = {}) {
+  return renderAttempt(makeAttempt({ ...ALL_ANSWERED, ...overrides }), {
+    video: makeVideo({ media: VIDEO_RECEIVED }),
+  });
 }
 
 function renderAttempt(
@@ -344,7 +374,7 @@ describe('AttemptInProgress', () => {
 
   it('отправка — требует подтверждения и зовёт onSubmit', async () => {
     const user = userEvent.setup();
-    const { onSubmit } = renderAttempt(makeAttempt());
+    const { onSubmit } = renderAnswered();
 
     await user.click(screen.getByRole('button', { name: 'Отправить' }));
     const dialog = screen.getByRole('dialog', { name: 'Отправить экзамен?' });
@@ -388,21 +418,93 @@ describe('AttemptInProgress', () => {
 
   it('часы телефона спешат — сервер ещё не закрыл попытку: экзамен остаётся рабочим, не запертым навсегда', async () => {
     const user = userEvent.setup();
-    const { onSubmit } = renderAttempt(
-      // Дедлайн уже в прошлом по местным часам, но сервер прислал именно эту
-      // попытку через GET /attempts со статусом in_progress — расхождение
-      // часов клиента и сервера, ровно то, что нельзя запирать.
-      makeAttempt({
-        deadlineAt: new Date(Date.now() - 1000).toISOString(),
-        status: 'in_progress',
-      }),
-    );
+    // Дедлайн уже в прошлом по местным часам, но сервер прислал именно эту
+    // попытку через GET /attempts со статусом in_progress — расхождение
+    // часов клиента и сервера, ровно то, что нельзя запирать.
+    const { onSubmit } = renderAnswered({
+      deadlineAt: new Date(Date.now() - 1000).toISOString(),
+      status: 'in_progress',
+    });
 
     await user.click(screen.getByRole('button', { name: 'Отправить' }));
     const dialog = screen.getByRole('dialog', { name: 'Отправить экзамен?' });
     await user.click(within(dialog).getByRole('button', { name: 'Отправить' }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Вопросы без ответа перед отправкой (просьба владельца 2026-09-22):
+// подсветка строк и подтверждение, которое называет число и зовёт обратно в
+// форму. Правило «что считается ответом» проверяется без DOM —
+// attemptUnanswered.test.ts, здесь только поведение экрана.
+describe('AttemptInProgress — вопросы без ответа', () => {
+  it('форму ещё заполняют — ни одной отметки «Без ответа»', () => {
+    renderAttempt(makeAttempt());
+
+    expect(screen.queryByText('Без ответа')).not.toBeInTheDocument();
+  });
+
+  it('«Отправить» при пустой форме — подтверждение с числом, отметки у вопросов, отправки нет', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderAttempt(makeAttempt());
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Отправить без ответов?' });
+    expect(
+      within(dialog).getByText(/Без ответа 3 вопроса\. Они отмечены в форме\./),
+    ).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Вернуться к вопросам' }),
+    );
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getAllByText('Без ответа')).toHaveLength(3);
+  });
+
+  it('ответили после возврата — отметка этого вопроса уходит сама', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderAttempt(makeAttempt());
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Вернуться к вопросам',
+      }),
+    );
+
+    await user.click(screen.getByRole('radio', { name: 'Пять' }));
+
+    expect(screen.getAllByText('Без ответа')).toHaveLength(2);
+  });
+
+  // CLAUDE.md «Ноль нагрузки на ученика»: пропустить вопрос — его право,
+  // подтверждение спрашивает один раз и не запирает отправку.
+  it('«Всё равно отправить» — работа уходит учителю как есть', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderAttempt(makeAttempt());
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Всё равно отправить',
+      }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('видео прислано, а варианты и текст отвечены — обычное подтверждение без отметок', async () => {
+    const user = userEvent.setup();
+    renderAnswered();
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Отправить экзамен?' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Без ответа')).not.toBeInTheDocument();
   });
 });
 

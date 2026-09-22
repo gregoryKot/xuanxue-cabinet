@@ -23,11 +23,14 @@ const titleStyle: CSSProperties = { display: 'block', paddingBottom: 6 };
 
 interface AttemptBlockProps {
   block: AttemptBlockDto;
+  /** itemId вопросов, подсвеченных как оставшиеся без ответа — пусто, пока
+   * ученик не нажал «Отправить» (AttemptInProgress.tsx). */
+  unanswered: ReadonlySet<string>;
   autosave: UseAttemptAutosaveResult;
   video: AttemptVideoControls;
 }
 
-export function AttemptBlock({ block, autosave, video }: AttemptBlockProps) {
+export function AttemptBlock({ block, unanswered, autosave, video }: AttemptBlockProps) {
   return (
     <section>
       {block.title && (
@@ -41,6 +44,7 @@ export function AttemptBlock({ block, autosave, video }: AttemptBlockProps) {
             key={question.itemId}
             index={index}
             question={question}
+            unanswered={unanswered.has(question.itemId)}
             autosave={autosave}
             video={video}
           />

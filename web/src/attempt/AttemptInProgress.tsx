@@ -33,6 +33,7 @@ import { AttemptDeadlineTimer } from './AttemptDeadlineTimer';
 import { AttemptSubmitBar } from './AttemptSubmitBar';
 import { ATTEMPT_EYEBROW, attemptHeaderStyle, attemptPageStyle } from './attemptLayout';
 import { formatSaveStatus } from './attemptSaveStatusLabel';
+import { useUnansweredMarks } from './useUnansweredMarks';
 import { useAttemptAutosave } from './useAttemptAutosave';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
@@ -68,6 +69,9 @@ export function AttemptInProgress({
   const autosave = useAttemptAutosave(attempt.id, attempt.answers, () => void reload());
   const [flushError, setFlushError] = useState<FormError | null>(null);
   const [flushing, setFlushing] = useState(false);
+  // Вопросы без ответа: подсветка строк и число для подтверждения отправки
+  // (useUnansweredMarks.ts, просьба владельца 2026-09-22).
+  const marks = useUnansweredMarks(attempt.blocks, autosave.getAnswer, video.media);
 
   // Отправка ждёт flush() (см. константу выше): PATCH и POST раньше летели
   // не дожидаясь друг друга — теперь submit() зовётся, только когда все
@@ -112,7 +116,13 @@ export function AttemptInProgress({
 
       <div style={blockCardStyle}>
         {attempt.blocks.map((block) => (
-          <AttemptBlock key={block.id} block={block} autosave={autosave} video={video} />
+          <AttemptBlock
+            key={block.id}
+            block={block}
+            unanswered={marks.marked}
+            autosave={autosave}
+            video={video}
+          />
         ))}
       </div>
 
@@ -121,6 +131,8 @@ export function AttemptInProgress({
         onSubmit={handleSubmit}
         submitting={flushing || submitting}
         submitError={flushError ?? submitError}
+        unansweredCount={marks.count}
+        onCheck={marks.check}
       />
     </section>
   );

@@ -29,6 +29,7 @@ export {
   DEFAULT_LEAD_MINUTES,
   PLANNING_HORIZON_WEEKS,
   DEFAULT_PREVIEW_MINUTES,
+  DEFAULT_NEWCOMER_CONTACT,
 } from './domain';
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {
