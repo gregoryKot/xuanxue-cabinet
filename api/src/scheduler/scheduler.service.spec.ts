@@ -13,6 +13,7 @@ import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner
 import type { RecordingPromptService } from '../lessons/recording-prompt.service';
 import type { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import type { StorageOrphansService } from '../storage/storage-orphans.service';
+import type { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { SchedulerService } from './scheduler.service';
 
 function buildService(overrides: {
@@ -34,6 +35,10 @@ function buildService(overrides: {
   // eslint (@typescript-eslint/unbound-method) ругается на вызов метода в
   // отрыве от объекта в expect() ниже.
   notifySchedulerFailed: jest.Mock;
+  // Тот же приём для heartbeat — noteTickStarted/noteTickFinished (аудит
+  // 2026-09-21, MED): без отдельных ссылок unbound-method ругался бы и здесь.
+  noteTickStarted: jest.Mock;
+  noteTickFinished: jest.Mock;
 } {
   const plan = overrides.plan ?? jest.fn().mockResolvedValue({ created: 0, removed: 0 });
   const planBroadcasts =
@@ -64,6 +69,12 @@ function buildService(overrides: {
     notifySchedulerFailed,
     notifyBroadcastCancelled: jest.fn().mockResolvedValue(undefined),
   };
+  const noteTickStarted = jest.fn();
+  const noteTickFinished = jest.fn();
+  const heartbeat = {
+    noteTickStarted,
+    noteTickFinished,
+  } as unknown as SchedulerHeartbeat;
   const service = new SchedulerService(
     { plan } as unknown as LessonPlannerService,
     { plan: planBroadcasts } as unknown as BroadcastPlannerService,
@@ -79,8 +90,14 @@ function buildService(overrides: {
     } as unknown as PaymentScreenshotSweepService,
     { sweep: sweepStorageOrphans } as unknown as StorageOrphansService,
     notifier,
+    heartbeat,
   );
-  return { service, notifySchedulerFailed: notifySchedulerFailed as jest.Mock };
+  return {
+    service,
+    notifySchedulerFailed: notifySchedulerFailed as jest.Mock,
+    noteTickStarted,
+    noteTickFinished,
+  };
 }
 
 describe('SchedulerService.tick', () => {
@@ -283,6 +300,44 @@ describe('SchedulerService.tick', () => {
     await service.tick();
 
     expect(notifySchedulerFailed).not.toHaveBeenCalled();
+  });
+
+  // Аудит 2026-09-21 (MED, RUNBOOK §8 п.4): heartbeat — единственный сигнал
+  // /api/health о том, что тик жив, а не завис без таймаута.
+  it('успешный тик отмечает и начало, и конец heartbeat', async () => {
+    const { service, noteTickStarted, noteTickFinished } = buildService({});
+
+    await service.tick();
+
+    expect(noteTickStarted).toHaveBeenCalledTimes(1);
+    expect(noteTickFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it('упавший внутри шаг всё равно доходит до noteTickFinished', async () => {
+    const runDeliveries = jest.fn().mockRejectedValue(new Error('канал упал'));
+    const { service, noteTickStarted, noteTickFinished } = buildService({
+      runDeliveries,
+    });
+
+    await service.tick();
+
+    expect(noteTickStarted).toHaveBeenCalledTimes(1);
+    expect(noteTickFinished).toHaveBeenCalledTimes(1);
+  });
+
+  // Каждый шаг ловит свою ошибку сам (this.step) — runTick() в норме не
+  // бросает. Этот тест бьёт по самому finally в tick(): даже исключение мимо
+  // this.step() обязано дойти до noteTickFinished, не оставив heartbeat с
+  // тиком навечно «в полёте».
+  it('исключение мимо this.step() всё равно доходит до noteTickFinished (finally)', async () => {
+    const { service, noteTickStarted, noteTickFinished } = buildService({});
+    const withRunTick = service as unknown as { runTick(): Promise<void> };
+    jest.spyOn(withRunTick, 'runTick').mockRejectedValue(new Error('сбой мимо step()'));
+
+    await expect(service.tick()).rejects.toThrow('сбой мимо step()');
+
+    expect(noteTickStarted).toHaveBeenCalledTimes(1);
+    expect(noteTickFinished).toHaveBeenCalledTimes(1);
   });
 
   it('onApplicationShutdown ждёт тик в полёте (SIGTERM: тик завершается, не обрывается)', async () => {

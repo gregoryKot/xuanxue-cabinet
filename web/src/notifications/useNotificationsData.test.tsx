@@ -16,7 +16,7 @@ import {
   notificationReadPath,
 } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
-import { ApiError } from '../api/http';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import {
   mockApiByPath,
@@ -218,6 +218,92 @@ describe('useNotificationsData — markRead/markAllRead (ответ записи
     expect(feedCallCount()).toBe(1);
     await waitFor(() => expect(result.current.unreadCount).toBe(0));
     expect(result.current.items).toEqual(afterAllRead.items);
+  });
+});
+
+// Аудит 2026-09-21 (MED): у markRead/markAllRead не было try/catch, а
+// NotificationsScreen.tsx звал их `void markRead(...)` без `.catch` — отказ
+// на плохой связи был необработанным promise rejection, и «Прочитать все»/
+// клик по строке молча ничего не делали.
+describe('useNotificationsData — actionError (аудит 2026-09-21, MED)', () => {
+  it('markRead упал — actionError выставлен, счётчик и лента не тронуты', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
+    });
+    const { result } = renderNotificationsData(STUDENT_ME);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockApiByPath({
+      [notificationReadPath(UNREAD.id)]: new ApiError(
+        'Сервис недоступен',
+        503,
+        'unknown',
+      ),
+    });
+    await act(() => result.current.markRead(UNREAD.id));
+
+    expect(result.current.actionError).toBe('Сервис недоступен');
+    expect(result.current.unreadCount).toBe(1);
+    expect(result.current.items).toEqual([UNREAD]);
+  });
+
+  it('markAllRead упал — actionError выставлен, счётчик не изменился', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
+    });
+    const { result } = renderNotificationsData(STUDENT_ME);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockApiByPath({
+      [NOTIFICATIONS_READ_ALL_PATH]: new ApiError('Сервис недоступен', 503, 'unknown'),
+    });
+    await act(() => result.current.markAllRead());
+
+    expect(result.current.actionError).toBe('Сервис недоступен');
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  // Ветка «не ApiError» (сеть оборвалась до ответа, не дошла до конверта
+  // ошибки бэкенда) — покрывает fallback NETWORK_ERROR_MESSAGE в
+  // useNotificationsActions.ts, а не только текст сервера из ApiError.
+  it('markRead упал не-ApiError ошибкой — общий текст NETWORK_ERROR_MESSAGE', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
+    });
+    const { result } = renderNotificationsData(STUDENT_ME);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockApiByPath({ [notificationReadPath(UNREAD.id)]: new Error('boom') });
+    await act(() => result.current.markRead(UNREAD.id));
+
+    expect(result.current.actionError).toBe(NETWORK_ERROR_MESSAGE);
+  });
+
+  it('reload() гасит actionError — баннер не висит после удачного повтора', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [],
+      [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1),
+    });
+    const { result } = renderNotificationsData(STUDENT_ME);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockApiByPath({
+      [notificationReadPath(UNREAD.id)]: new ApiError(
+        'Сервис недоступен',
+        503,
+        'unknown',
+      ),
+    });
+    await act(() => result.current.markRead(UNREAD.id));
+    expect(result.current.actionError).toBe('Сервис недоступен');
+
+    mockApiByPath({ [MY_EXAMS_PATH]: [], [NOTIFICATIONS_FEED_PATH]: page([UNREAD], 1) });
+    await act(() => result.current.reload());
+
+    expect(result.current.actionError).toBeNull();
   });
 });
 

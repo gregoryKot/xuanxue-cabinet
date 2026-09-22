@@ -231,10 +231,15 @@ describe('TemplateEditor — выбор занятия и предпросмот
     );
 
     expect(await screen.findByLabelText('Предпросмотр на занятии')).toHaveValue('l1');
-    expect(mockedApiFetch).toHaveBeenCalledWith('/settings/preview', {
-      method: 'POST',
-      body: { kind: 'lesson_link', lessonId: 'l1' },
-    });
+    // objectContaining — вызов несёт ещё и signal (usePreview.ts, requestId +
+    // AbortController, аудит 2026-09-21), сверять его отдельным значением незачем.
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/settings/preview',
+      expect.objectContaining({
+        method: 'POST',
+        body: { kind: 'lesson_link', lessonId: 'l1' },
+      }),
+    );
     expect(
       await screen.findByText('Через 30 минут занятие', { selector: 'pre' }),
     ).toBeInTheDocument();
@@ -328,11 +333,16 @@ describe('TemplateEditor — выбор занятия и предпросмот
 
     await user.selectOptions(screen.getByRole('combobox'), 'l2');
 
+    // objectContaining — вызов несёт ещё и signal (usePreview.ts, requestId +
+    // AbortController, аудит 2026-09-21), сверять его отдельным значением незачем.
     await waitFor(() =>
-      expect(mockedApiFetch).toHaveBeenLastCalledWith('/settings/preview', {
-        method: 'POST',
-        body: { kind: 'lesson_link', lessonId: 'l2' },
-      }),
+      expect(mockedApiFetch).toHaveBeenLastCalledWith(
+        '/settings/preview',
+        expect.objectContaining({
+          method: 'POST',
+          body: { kind: 'lesson_link', lessonId: 'l2' },
+        }),
+      ),
     );
   });
 
