@@ -93,7 +93,6 @@ export function AttemptQuestionChoice({
           <Toggle
             key={option.id}
             label={label}
-            labelHidden={labelHidden}
             checked={checked}
             disabled={disabled}
             name={name}

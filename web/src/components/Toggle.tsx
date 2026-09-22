@@ -20,6 +20,11 @@
 // относится к чужому фото сверху (жалоба владельца со снимком). Toggle
 // остался строкой «галочка + подпись» для вариантов без картинок и для
 // остальных переключателей кабинета.
+//
+// Вместе с картинкой ушёл и проп `labelHidden` (спрятать подпись визуально,
+// оставив её доступным именем): он существовал ровно ради варианта-картинки
+// без своего текста, а тот теперь плитка и прячет «Вариант N» сам. У строки
+// без картинки прятать нечего — подпись и есть всё, что видно.
 import type { CSSProperties } from 'react';
 
 const inputStyle: CSSProperties = {
@@ -51,25 +56,10 @@ interface ToggleProps {
   disabled?: boolean;
   /** Передано — это радио из группы с таким именем, а не самостоятельная галочка. */
   name?: string;
-  /** Спрятать подпись визуально, оставив её доступным именем контрола. Нужно
-   * варианту-картинке без своего текста: `formatOptionLabel` даёт ему
-   * «Вариант N» (ADR-0035) — боту эта строка нужна (Telegram отклоняет кнопку
-   * с пустым текстом), скринридеру тоже, а на экране она стоит прямо над
-   * самой картинкой и не добавляет ничего (отзыв владельца 2026-09-19:
-   * «зачем писать вариант 1 вариант два?»). */
-  labelHidden?: boolean;
   onChange: (checked: boolean) => void;
 }
 
-export function Toggle({
-  label,
-  hint,
-  checked,
-  disabled,
-  name,
-  labelHidden,
-  onChange,
-}: ToggleProps) {
+export function Toggle({ label, hint, checked, disabled, name, onChange }: ToggleProps) {
   const labelStyle: CSSProperties = {
     ...rowStyle,
     cursor: disabled ? 'default' : 'pointer',
@@ -85,7 +75,7 @@ export function Toggle({
         onChange={(event) => onChange(event.target.checked)}
         style={inputStyle}
       />
-      <span className={labelHidden ? 'xuanxue-sr-only' : undefined}>{label}</span>
+      <span>{label}</span>
     </label>
   );
 
