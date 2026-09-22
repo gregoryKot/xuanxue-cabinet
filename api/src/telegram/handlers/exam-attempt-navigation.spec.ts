@@ -14,6 +14,7 @@ import type { UserLean } from '../../users/users.service';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
 import { GENERIC_ERROR } from './callback-actions';
+import { CONTINUE_QUESTION_INDEX } from './exam-callback-ids';
 import { handleExamQuestion, handleExamStart } from './exam-attempt-navigation';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
@@ -100,6 +101,33 @@ describe('handleExamStart', () => {
 
     expect(port.startAttempt).toHaveBeenCalledWith('e1', USER, NOW);
     expect(edits[0]).toContain('Вопрос 1 из 1');
+  });
+
+  // Регрессия (отзыв владельца 2026-09-22, ADR-0119): `start()` возвращает
+  // незакрытую попытку как есть (ExamAttemptsService.start, ТЗ 4.4 п.1) —
+  // она уже может нести ответы, индекс 0 показывал бы пустой первый вопрос.
+  it('startAttempt вернул уже начатую попытку с ответом — экран второго вопроса, не первого', async () => {
+    const twoQuestions = attempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Теория',
+          questions: [
+            { itemId: 'i1', version: 1, kind: 'single', prompt: 'Вопрос 1', options: [] },
+            { itemId: 'i2', version: 1, kind: 'single', prompt: 'Вопрос 2', options: [] },
+          ],
+        },
+      ],
+      answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+    });
+    const port = fakeExamBotPort({
+      startAttempt: jest.fn().mockResolvedValue(twoQuestions),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamStart(ctx, port, fakeBotSessionService(), USER, CHAT_ID, 'e1', NOW);
+
+    expect(edits[0]).toContain('Вопрос 2 из 2');
   });
 
   it('форма не опубликована — текст сервиса, не общий', async () => {
@@ -216,6 +244,77 @@ describe('handleExamQuestion', () => {
     );
 
     expect(port.loadOwnAttempt).toHaveBeenCalledWith(ATTEMPT_ID, USER, NOW);
+    expect(edits[0]).toContain('Вопрос 2 из 2');
+  });
+
+  // «Продолжить» из списка экзаменов (exam-list-screen.ts) шлёт этот
+  // сентинел вместо номера — список не знает, какой вопрос открыть (отзыв
+  // владельца 2026-09-22, ADR-0119).
+  it('CONTINUE_QUESTION_INDEX — открывает первый вопрос без ответа', async () => {
+    const threeQuestions = attempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Теория',
+          questions: [
+            { itemId: 'i1', version: 1, kind: 'single', prompt: 'Вопрос 1', options: [] },
+            { itemId: 'i2', version: 1, kind: 'single', prompt: 'Вопрос 2', options: [] },
+            { itemId: 'i3', version: 1, kind: 'single', prompt: 'Вопрос 3', options: [] },
+          ],
+        },
+      ],
+      answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+    });
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(threeQuestions),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamQuestion(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, index: CONTINUE_QUESTION_INDEX },
+      NOW,
+    );
+
+    expect(edits[0]).toContain('Вопрос 2 из 3');
+  });
+
+  it('CONTINUE_QUESTION_INDEX, все вопросы отвечены — открывает последний, не падает', async () => {
+    const twoQuestions = attempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Теория',
+          questions: [
+            { itemId: 'i1', version: 1, kind: 'single', prompt: 'Вопрос 1', options: [] },
+            { itemId: 'i2', version: 1, kind: 'single', prompt: 'Вопрос 2', options: [] },
+          ],
+        },
+      ],
+      answers: [
+        { itemId: 'i1', optionIds: ['o1'] },
+        { itemId: 'i2', optionIds: ['o1'] },
+      ],
+    });
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(twoQuestions),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamQuestion(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, index: CONTINUE_QUESTION_INDEX },
+      NOW,
+    );
+
     expect(edits[0]).toContain('Вопрос 2 из 2');
   });
 

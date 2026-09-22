@@ -3,7 +3,7 @@
 // лимит размера (CLAUDE.md «Храповики»); здесь только взгляд ученика на свои
 // попытки — форма и снимок живут в exams.ts, итог проверки — в
 // exam-grading.ts.
-import type { ExamAttemptStatus } from './exams';
+import type { AttemptAnswerDto, ExamAttemptDto, ExamAttemptStatus } from './exams';
 import type { GradingOutcome } from './exam-grading';
 
 // Экран ученика (`/me/exams`, docs/PLAN.md §11 слой 4.1 API) — опубликованные
@@ -97,4 +97,41 @@ export function getMyExamAction(exam: MyExamDto): MyExamAction {
   if (exam.lastAttempt.status === 'graded') return 'retry';
   if (exam.lastAttempt.status === 'submitted' && exam.lastAttempt.expired) return 'retry';
   return null;
+}
+
+function hasTextOrOptionAnswer(answer: AttemptAnswerDto | undefined): boolean {
+  if (!answer) return false;
+  return (answer.optionIds?.length ?? 0) > 0 || Boolean(answer.text?.trim());
+}
+
+/** Первый вопрос попытки, на который ещё нет ответа — куда боту открывать
+ * «Продолжить» (отзыв владельца 2026-09-22, ADR-0119: кабинет показывает всю
+ * форму на одной странице, а бот — по вопросу на экран, поэтому ему нужно
+ * знать, с какого начать). Все отвечены — последний, а не первый: нечего
+ * листать заново. Пустой снимок — вырожденный случай (0), сюда попадать не
+ * должен.
+ *
+ * Правило «отвечен ли вопрос» — то же, что у сервера (answered в
+ * api/src/exams/exam-attempt-review.ts) и у кабинета
+ * (web/src/attempt/attemptUnanswered.ts): выбран вариант или в тексте есть
+ * не только пробелы; видео-вопрос отвечает записью в `media`, а не строкой
+ * в `answers` (ADR-0037). Третьей реализации этого правила не заводим — она
+ * здесь, рядом с getMyExamAction (CLAUDE.md «Одна механика — один
+ * компонент», прецедент ADR-0091: кабинет и бот однажды уже разъехались,
+ * посчитав каждый по-своему). */
+export function firstUnansweredQuestionIndex(
+  attempt: Pick<ExamAttemptDto, 'blocks' | 'answers' | 'media'>,
+): number {
+  const questions = attempt.blocks.flatMap((block) => block.questions);
+  if (questions.length === 0) return 0;
+  const answerByItemId = new Map(
+    attempt.answers.map((answer) => [answer.itemId, answer]),
+  );
+  const media = attempt.media ?? [];
+  const index = questions.findIndex((question) =>
+    question.kind === 'video'
+      ? !media.some((item) => item.itemId === question.itemId)
+      : !hasTextOrOptionAnswer(answerByItemId.get(question.itemId)),
+  );
+  return index === -1 ? questions.length - 1 : index;
 }

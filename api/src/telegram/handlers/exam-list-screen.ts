@@ -20,6 +20,7 @@ import {
 import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 import { backToMenuButton, type BotMenu } from './bot-menu';
+import { buildQuestionId, CONTINUE_QUESTION_INDEX } from './exam-callback-ids';
 
 const TITLE = 'Экзамены:';
 const EMPTY_TEXT = 'Пока нечего сдавать.';
@@ -33,7 +34,7 @@ const ACTION_LABELS: Record<Exclude<MyExamAction, null>, string> = {
 };
 
 interface ExamRowStatus {
-  actionLabel?: string;
+  action?: Exclude<MyExamAction, null>;
   reason?: string;
 }
 
@@ -43,11 +44,36 @@ interface ExamRowStatus {
  * того же правила. */
 function examRowStatus(exam: MyExamDto): ExamRowStatus {
   const action = getMyExamAction(exam);
-  if (action) return { actionLabel: ACTION_LABELS[action] };
+  if (action) return { action };
   if (exam.lastAttempt?.status === 'submitted') return { reason: SUBMITTED_TEXT };
   return {
     reason: `Использованы все попытки — ${exam.attemptsUsed} из ${exam.attemptsAllowed}.`,
   };
+}
+
+/** «Продолжить» ведёт прямо на существующую попытку по её id (`eq` →
+ * handleExamQuestion), не через `exam:<examId>` (ExamAttemptsService.start):
+ * тот же вызов для уже отправленной работы вместо повтора заводит новую
+ * пустую попытку и молча списывает её из лимита — сообщение со старыми
+ * кнопками в чате висит вечно, обновить его нечем (отзыв владельца
+ * 2026-09-22, ADR-0119). Номер вопроса список не знает — снимок попытки
+ * сюда не едет (MyExamDto, my-exams.ts) — CONTINUE_QUESTION_INDEX просит
+ * handleExamQuestion найти первый вопрос без ответа самому. «Начать» и
+ * «Начать ещё раз» заводят попытку по-прежнему — там она и должна
+ * появиться. */
+function buildActionButton(
+  exam: MyExamDto,
+  action: Exclude<MyExamAction, null>,
+): InlineKeyboardButton {
+  const text = `${ACTION_LABELS[action]}: ${truncateForButton(exam.title)}`;
+  if (action === 'continue' && exam.lastAttempt) {
+    return inlineButton(
+      text,
+      'eq',
+      buildQuestionId(exam.lastAttempt.id, CONTINUE_QUESTION_INDEX),
+    );
+  }
+  return inlineButton(text, 'exam', exam.id);
 }
 
 function truncateForButton(title: string): string {
@@ -76,15 +102,7 @@ function buildExamRow(exam: MyExamDto, nowMs: number): ExamRow {
     (line): line is string => line !== null && line !== undefined,
   );
   const line = lines.join('\n');
-  const button = status.actionLabel
-    ? [
-        inlineButton(
-          `${status.actionLabel}: ${truncateForButton(exam.title)}`,
-          'exam',
-          exam.id,
-        ),
-      ]
-    : undefined;
+  const button = status.action ? [buildActionButton(exam, status.action)] : undefined;
   return { line, button };
 }
 

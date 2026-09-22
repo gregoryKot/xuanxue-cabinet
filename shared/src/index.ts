@@ -211,7 +211,11 @@ export {
 } from './material-files';
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamDto, ListMyExamsQuery, MyExamAction } from './my-exams';
-export { myExamAttemptsLeft, getMyExamAction } from './my-exams';
+export {
+  myExamAttemptsLeft,
+  getMyExamAction,
+  firstUnansweredQuestionIndex,
+} from './my-exams';
 export { describeExamTime } from './exam-time';
 export type {
   AttemptOptionCheckDto,
