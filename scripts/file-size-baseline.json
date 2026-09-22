@@ -471,7 +471,7 @@
   "api/src/telegram/handlers/exam-media-forward.ts": 82,
   "api/src/telegram/handlers/exam-media-message.handler.ts": 136,
   "api/src/telegram/handlers/exam-media-respond.ts": 65,
-  "api/src/telegram/handlers/exam-question-album-send.ts": 169,
+  "api/src/telegram/handlers/exam-question-album-send.ts": 151,
   "api/src/telegram/handlers/exam-question-album.ts": 50,
   "api/src/telegram/handlers/exam-question-render.ts": 98,
   "api/src/telegram/handlers/exam-question-screen.ts": 150,
