@@ -16,6 +16,13 @@
 // «Выйти» — в боковой колонке/подвале AppShell.tsx, общих для учителя и
 // ученика: своя кнопка здесь дублировала бы её (AppShell.test.tsx,
 // LogoutButton.test.tsx).
+//
+// Карточки-переходы «Записи занятий» и «Библиотека» — отзыв владельца
+// 2026-09-22: из подвала экрана, под списком будущих занятий, их не видно —
+// длинный список сносит их вниз. Переехали в `afterNextLesson` у
+// StudentLessonsScreen.tsx, сразу под ближайшим занятием и до «Дальше».
+// Вход в оба подэкрана остаётся карточкой раздела, не пунктом меню
+// (ADR-0025) — у списка навигации и так предел в пять пунктов.
 import type { CSSProperties } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
@@ -36,10 +43,12 @@ const TITLE = 'Ближайшее занятие';
 const TIME_HINT = 'Время — по вашим часам.';
 const SCHOOL_SITE_TEXT = 'Ещё расписание и запись — на сайте школы:';
 const ARCHIVE_LINK_TITLE = 'Записи занятий';
-// Не пересказывает заголовок карточки, а добавляет то, чего в нём нет: не у
-// каждого прошедшего занятия есть запись (ТЗ docs/PLAN.md §14) — это стоит
-// сказать до перехода, а не после.
-const ARCHIVE_LINK_HINT = 'Прошедшие занятия — с записями, если они есть.';
+// «Если они есть» отсюда убрано вместе со старым поведением экрана: раздел
+// больше не показывает занятия без записи (ADR-0114) — оговорка была бы
+// неправдой. Не пересказывает объяснение самого /archive (ArchiveScreen.tsx)
+// дословно — здесь короче и про повод открыть карточку, не про то, как
+// экран устроен.
+const ARCHIVE_LINK_HINT = 'Пропустили занятие — запись здесь.';
 const LIBRARY_LINK_TITLE = 'Библиотека';
 // Другая форма, чем у ARCHIVE_LINK_HINT (VOICE.md: соседние тексты одного
 // списка не строятся по одному скелету) — не «X — с Y», а простое
@@ -70,6 +79,14 @@ const schoolSiteStyle: CSSProperties = {
   paddingTop: 20,
   borderTop: '1px solid var(--line)',
 };
+// Своя колонка для двух карточек-переходов — `gap` держит промежуток между
+// ними, а не отступ самой карточки (тот же приём, что у laterStyle в
+// StudentLessonsScreen.tsx).
+const sectionLinksStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+};
 
 /** Имени ещё нет (сессия перечитывается) — здороваемся без него, а не
  * подставляем прочерк: «Здравствуйте, —» читается как сбой. */
@@ -88,9 +105,22 @@ export default function LessonsScreen() {
         <h1 style={titleStyle}>{TITLE}</h1>
         <p style={timeHintStyle}>{TIME_HINT}</p>
       </div>
-      <StudentLessonsScreen />
-      <SectionLink to="/archive" title={ARCHIVE_LINK_TITLE} hint={ARCHIVE_LINK_HINT} />
-      <SectionLink to="/library" title={LIBRARY_LINK_TITLE} hint={LIBRARY_LINK_HINT} />
+      <StudentLessonsScreen
+        afterNextLesson={
+          <div style={sectionLinksStyle}>
+            <SectionLink
+              to="/archive"
+              title={ARCHIVE_LINK_TITLE}
+              hint={ARCHIVE_LINK_HINT}
+            />
+            <SectionLink
+              to="/library"
+              title={LIBRARY_LINK_TITLE}
+              hint={LIBRARY_LINK_HINT}
+            />
+          </div>
+        }
+      />
       {config?.schoolSiteUrl && (
         <p style={schoolSiteStyle}>
           {SCHOOL_SITE_TEXT}{' '}

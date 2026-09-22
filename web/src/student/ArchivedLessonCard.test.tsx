@@ -56,9 +56,13 @@ describe('ArchivedLessonCard — название, дата, тема', () => {
 });
 
 describe('ArchivedLessonCard — записи', () => {
-  it('без записей — честная строка «Записи нет», без ссылок', () => {
+  // Сервер такие занятия не отдаёт (`GET /me/lessons/archive` фильтрует их,
+  // ADR-0114) — если пустой список всё же придёт, карточка не должна
+  // рисовать фантомный текст или ссылку вместо него.
+  it('пустой список записей — ни строки, ни ссылки, только шапка занятия', () => {
     renderCard({ recordings: [] });
-    expect(screen.getByText('Записи нет')).toBeInTheDocument();
+    expect(screen.getByText('Тайцзицюань')).toBeInTheDocument();
+    expect(screen.queryByText('Записи нет')).not.toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 

@@ -15,6 +15,9 @@ import { LessonRecord } from '../src/lessons/lesson.schema';
 import { MaterialRecord } from '../src/materials/material.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
+import { postRecording } from './e2e-support/lessons-fixtures';
+
+const REC_URL = 'https://cloud.example/archive-material-rec';
 
 describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR-0058)', () => {
   let testApp: TestApp;
@@ -73,7 +76,12 @@ describe('/me/lessons/archive — материалы даты (e2e, ADR-0056/ADR
       topic: 'Форма 24',
     });
     expect(res.status).toBe(201);
-    return (res.body as { id: string }).id;
+    const lessonId = (res.body as { id: string }).id;
+    // Запись обязательна (ADR-0114): без неё дата в архив не попадёт, и тест
+    // про материал даты проверял бы уже несуществующую дату.
+    const rec = await postRecording(server(), teacherCookie, lessonId, REC_URL);
+    expect(rec.status).toBe(201);
+    return lessonId;
   }
 
   it('учитель заводит занятие и материал с lessonIds — ученик видит материал у своей даты', async () => {

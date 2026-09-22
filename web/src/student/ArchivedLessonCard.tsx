@@ -11,6 +11,13 @@
 // действием, а не вместо него: кнопка всегда говорит, что будет, если
 // нажать («Открыть запись», глагол в начале, docs/VOICE.md), а название —
 // это какая именно это запись, если их несколько (решение агента).
+//
+// Пустого списка записей у карточки не бывает: решение владельца 2026-09-22
+// (ADR-0114, docs/adr/0114-archive-shows-only-lessons-with-a-recording.md) —
+// `GET /me/lessons/archive` теперь отдаёт только занятия, у которых есть
+// хотя бы одна запись, отбор идёт на сервере. Ветку «Записи нет» убрали
+// вместе с ним (CLAUDE.md «Отказались от механики — удаляем с концами»):
+// держать в компоненте случай, которого не бывает, — жить с фантомным кодом.
 import type { CSSProperties } from 'react';
 import type { ArchivedRecordingDto, MyArchivedLessonDto } from '@xuanxue/shared';
 import { dividedListStyle } from '../components/listCardStyles';
@@ -19,7 +26,6 @@ import { textLinkHitAreaStyle, textLinkLineStyle } from '../components/screenLay
 import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
 import { StudentMaterialCard } from './StudentMaterialCard';
 
-const NO_RECORDING_TEXT = 'Записи нет';
 const OPEN_RECORDING_TEXT = 'Открыть запись';
 const TELEGRAM_ONLY_TEXT = 'Запись ушла в канал школы — ищите её там под датой занятия.';
 // ADR-0056 «Ученик видит привязку там, где ищет»: материалы, привязанные к
@@ -117,16 +123,12 @@ export function ArchivedLessonCard({
         timeZone={timeZone}
       />
       <div style={recordingsStyle}>
-        {lesson.recordings.length === 0 ? (
-          <p style={plainTextStyle}>{NO_RECORDING_TEXT}</p>
-        ) : (
-          lesson.recordings.map((recording, index) => (
-            // У ArchivedRecordingDto нет своего id (shared/src/my-lessons-
-            // archive.ts) — список записей одного занятия статичен на время
-            // жизни карточки, индекс как ключ безопасен.
-            <ArchivedRecordingRow key={index} recording={recording} />
-          ))
-        )}
+        {lesson.recordings.map((recording, index) => (
+          // У ArchivedRecordingDto нет своего id (shared/src/my-lessons-
+          // archive.ts) — список записей одного занятия статичен на время
+          // жизни карточки, индекс как ключ безопасен.
+          <ArchivedRecordingRow key={index} recording={recording} />
+        ))}
       </div>
       {lesson.materials.length > 0 && (
         <>

@@ -683,7 +683,7 @@
   "api/test/lessons-broadcast-status.e2e-spec.ts": 69,
   "api/test/lessons-recording-summary.e2e-spec.ts": 72,
   "api/test/lessons-send-now.e2e-spec.ts": 145,
-  "api/test/lessons-tags.e2e-spec.ts": 192,
+  "api/test/lessons-tags.e2e-spec.ts": 200,
   "api/test/lessons.e2e-spec.ts": 262,
   "api/test/material-files.e2e-spec.ts": 294,
   "api/test/materials-staff-access.e2e-spec.ts": 138,

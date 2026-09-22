@@ -6,6 +6,11 @@
 // join и правило доступа проверяет его собственный спек
 // (lesson-materials.service.spec.ts), здесь — что архив зовёт его с id
 // именно своего списка дат.
+//
+// Решение владельца 2026-09-22 (ADR-0114): занятие без записи в архив не
+// попадает — фикстура `createLesson` кладёт запись по умолчанию, чтобы это
+// не пришлось повторять в каждом тесте, кроме тех, что именно это правило и
+// проверяют.
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
@@ -78,6 +83,10 @@ describe('MyLessonsArchiveService', () => {
       startsAt: NOW.minus({ hours: 1 }).toJSDate(),
       durationMin: 60,
       topic: 'Форма 24',
+      // По умолчанию — с записью (ADR-0114): большинству тестов ниже
+      // правило «нет записи — нет в архиве» проверять не нужно, `overrides`
+      // подменяет `recordings` там, где важно именно его отсутствие.
+      recordings: [{ title: 'Запись занятия', url: 'https://cloud.example/default-rec' }],
       ...overrides,
     });
     return lesson._id.toString();
@@ -143,11 +152,14 @@ describe('MyLessonsArchiveService', () => {
   });
 
   it('класс занятия не найден (рассинхрон данных) — дата молча пропущена, не падает', async () => {
+    // Запись есть — проверяем именно пропуск сироты без класса, не то, что
+    // её и так вырежет фильтр «нет записи» (ADR-0114).
     await lessonModel.create({
       classId: new Types.ObjectId(),
       startsAt: NOW.minus({ hours: 1 }).toJSDate(),
       durationMin: 60,
       topic: 'Сирота',
+      recordings: [{ title: 'Запись', url: 'https://cloud.example/orphan-rec' }],
     });
 
     const list = await service.list({}, NOW, false);
@@ -180,6 +192,51 @@ describe('MyLessonsArchiveService', () => {
       { title: 'Занятие целиком', url: 'https://cloud.example/rec-1' },
       { title: 'В канале', inTelegramOnly: true },
     ]);
+  });
+
+  // Решение владельца 2026-09-22 (ADR-0114) — основной сценарий.
+  it('прошедшее занятие без записей в архив не приходит', async () => {
+    const classId = await createClass();
+    const withoutRecording = await createLesson(classId, { recordings: [] });
+    const withRecording = await createLesson(classId);
+
+    const list = await service.list({}, NOW, false);
+
+    expect(list.map((l) => l.id)).toEqual([withRecording]);
+    expect(list.map((l) => l.id)).not.toContain(withoutRecording);
+  });
+
+  // Схема допускает запись без url и без telegramFileId (assertHasRecordingSource
+  // проверяет это только на входе POST /lessons/:id/recording, не в схеме) —
+  // такая запись не должна давать карточку без единой ссылки.
+  it('единственная запись без url и без telegramFileId — занятие в архив не приходит вовсе', async () => {
+    const classId = await createClass();
+    const brokenId = await createLesson(classId, {
+      recordings: [{ title: 'Запись без источника' }],
+    });
+
+    const list = await service.list({}, NOW, false);
+
+    expect(list.map((l) => l.id)).not.toContain(brokenId);
+  });
+
+  it('занятие без записей не съедает лимит — при лимите 2 приходят оба занятия с записями', async () => {
+    const classId = await createClass();
+    const firstId = await createLesson(classId, {
+      startsAt: NOW.minus({ hours: 3 }).toJSDate(),
+    });
+    const middleWithoutRecording = await createLesson(classId, {
+      startsAt: NOW.minus({ hours: 2 }).toJSDate(),
+      recordings: [],
+    });
+    const thirdId = await createLesson(classId, {
+      startsAt: NOW.minus({ hours: 1 }).toJSDate(),
+    });
+
+    const list = await service.list({ limit: 2 }, NOW, false);
+
+    expect(list.map((l) => l.id)).toEqual([thirdId, firstId]);
+    expect(list.map((l) => l.id)).not.toContain(middleWithoutRecording);
   });
 
   // CLAUDE.md «Время»: переход летнего времени Asia/Jerusalem обязателен для
@@ -244,5 +301,26 @@ describe('MyLessonsArchiveService', () => {
     const other = list.find((l) => l.id === otherLessonId);
     expect(own?.materials.map((m) => m.title)).toEqual(['Материал своей даты']);
     expect(other?.materials.map((m) => m.title)).toEqual(['Материал соседней даты']);
+  });
+
+  // Осознанное следствие ADR-0114: материал остаётся в библиотеке
+  // (`/me/materials`), но дату занятия без записи в архиве не видно — вместе
+  // с ней пропадает и привязанный к ней материал.
+  it('дата с материалом, но без записи, в архив не попадает вместе со своим материалом', async () => {
+    const classId = await createClass();
+    const lessonId = await createLesson(classId, { recordings: [] });
+    await materialsService.create(
+      {
+        title: 'Материал даты без записи',
+        url: 'https://example.com/no-recording',
+        kind: 'document',
+        lessonIds: [lessonId],
+      },
+      AUTHOR_ID,
+    );
+
+    const list = await service.list({}, NOW, false);
+
+    expect(list.find((l) => l.id === lessonId)).toBeUndefined();
   });
 });

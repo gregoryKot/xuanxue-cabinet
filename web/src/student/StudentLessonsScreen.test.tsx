@@ -79,3 +79,24 @@ describe('StudentLessonsScreen — есть занятия', () => {
     expect(screen.getByText(/Цигун/)).toBeInTheDocument();
   });
 });
+
+// Отзыв владельца 2026-09-22: карточки-переходы «Записи занятий»/«Библиотека»
+// живут в этом слоте (LessonsScreen.tsx передаёт их через `afterNextLesson`).
+// Слот не про занятия — он не должен ни мигать во время загрузки, ни
+// пропадать на пустой базе.
+describe('StudentLessonsScreen — afterNextLesson', () => {
+  it('рисуется, пока список занятий ещё грузится', () => {
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    render(<StudentLessonsScreen afterNextLesson={<p>Слот раздела</p>} />);
+
+    expect(screen.getByText('Слот раздела')).toBeInTheDocument();
+  });
+
+  it('рисуется, когда занятий нет вовсе', async () => {
+    mockedApiFetch.mockResolvedValueOnce([]);
+    render(<StudentLessonsScreen afterNextLesson={<p>Слот раздела</p>} />);
+
+    await screen.findByText('Ближайших занятий пока нет.');
+    expect(screen.getByText('Слот раздела')).toBeInTheDocument();
+  });
+});

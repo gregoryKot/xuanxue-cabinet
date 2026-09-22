@@ -7,10 +7,11 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { MeDto } from '@xuanxue/shared';
+import type { MeDto, MyLessonDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
 import { mockApiByPath, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import LessonsScreen from './LessonsScreen';
 
 vi.mock('../api/http', async () => {
@@ -19,6 +20,7 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+stubViewerTimeZone();
 
 const STUDENT: MeDto = {
   id: 's1',
@@ -32,11 +34,31 @@ const STUDENT: MeDto = {
   needsProfile: false,
 };
 
-function renderScreen(config: Record<string, unknown>, me: MeDto | Error = STUDENT) {
+function makeLesson(overrides: Partial<MyLessonDto> = {}): MyLessonDto {
+  return {
+    id: 'l1',
+    startsAt: '2026-09-08T16:00:00.000Z',
+    durationMin: 60,
+    classTitle: 'Тайцзицюань',
+    groupLabel: 'Средняя группа',
+    format: 'online',
+    zoomLink: 'https://zoom.us/j/123',
+    topic: '',
+    status: 'scheduled',
+    tags: [],
+    ...overrides,
+  };
+}
+
+function renderScreen(
+  config: Record<string, unknown>,
+  me: MeDto | Error = STUDENT,
+  lessons: MyLessonDto[] = [],
+) {
   mockApiByPath({
     '/auth/me': me,
     '/auth/config': config,
-    '/me/lessons': [],
+    '/me/lessons': lessons,
   });
   return render(
     <MemoryRouter>
@@ -91,8 +113,8 @@ describe('LessonsScreen', () => {
     expect(screen.queryByText('Экзаменов пока нет.')).not.toBeInTheDocument();
   });
 
-  // Слой 3.3 (docs/PLAN.md §14) — карточка входа в архив под списком
-  // ближайших занятий, не пункт меню (ADR-0025).
+  // Слой 3.3 (docs/PLAN.md §14) — карточка входа в архив, не пункт меню
+  // (ADR-0025).
   it('карточка «Записи занятий» ведёт на /archive', async () => {
     renderScreen({});
 
@@ -113,5 +135,24 @@ describe('LessonsScreen', () => {
       'href',
       '/library',
     );
+  });
+
+  // Отзыв владельца 2026-09-22: карточки стояли в подвале, под списком
+  // будущих занятий, — длинный список сносил их вниз экрана, и ученик их не
+  // видел. Теперь они в `afterNextLesson` (StudentLessonsScreen.tsx), сразу
+  // под ближайшим занятием и выше «Дальше» — проверяем порядок в DOM, а не
+  // просто присутствие обеих карточек.
+  it('карточка «Записи занятий» стоит в DOM выше блока «Дальше»', async () => {
+    renderScreen({}, STUDENT, [
+      makeLesson({ id: 'l1', startsAt: '2026-09-08T16:00:00.000Z' }),
+      makeLesson({ id: 'l2', startsAt: '2026-09-15T16:00:00.000Z' }),
+    ]);
+
+    const archiveLink = await screen.findByRole('link', { name: /Записи занятий/ });
+    const laterHeading = screen.getByRole('heading', { level: 2, name: 'Дальше' });
+
+    // DOCUMENT_POSITION_FOLLOWING — laterHeading идёт в DOM после archiveLink.
+    const position = archiveLink.compareDocumentPosition(laterHeading);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
