@@ -18,13 +18,21 @@
 // позади; деление — splitTasksToDo.ts, чистая функция с тестом (CLAUDE.md
 // «Логика вне компонентов»). Рубрика стоит и над одинокой группой: она
 // отвечает на главный вопрос экрана — ждут меня или нет.
+//
+// Подтверждение перед стартом попытки с лимитом времени (отзыв владельца
+// 2026-09-22, ADR-0121): та же механика, что у отправки работы
+// (attempt/AttemptSubmitBar.tsx) — ConfirmDialog, `confirmVariant="primary"`,
+// старт экзамена не разрушителен. Тексты и решение, спрашивать ли вообще, —
+// examStartConfirm.ts; сам POST и переход после закрытия диалога — useTaskStart.ts.
 import type { CSSProperties } from 'react';
 import type { MyExamDto } from '@xuanxue/shared';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { cardListStyle } from '../components/listCardStyles';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
+import { getExamStartConfirm } from './examStartConfirm';
 import { useMyExams } from './MyExamsProvider';
 import { splitTasksToDo } from './splitTasksToDo';
 import { StudentExamCard } from './StudentExamCard';
@@ -51,7 +59,15 @@ const headingStyle: CSSProperties = { margin: 0 };
 
 export default function TasksScreen() {
   const { data: exams, loading, error, reload } = useMyExams();
-  const { pendingExamId, errors: startErrors, start } = useTaskStart();
+  const {
+    pendingExamId,
+    errors: startErrors,
+    confirmExam,
+    start,
+    confirmStart,
+    cancelConfirm,
+  } = useTaskStart();
+  const confirm = confirmExam ? getExamStartConfirm(confirmExam) : null;
 
   function renderCard(exam: MyExamDto) {
     return (
@@ -98,6 +114,19 @@ export default function TasksScreen() {
 
       {ready && renderGroup(TO_DO_RUBRIC, toDo)}
       {ready && renderGroup(DONE_RUBRIC, done)}
+
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel}
+          cancelLabel={confirm.cancelLabel}
+          confirmVariant="primary"
+          pending={pendingExamId === confirmExam?.id}
+          onConfirm={confirmStart}
+          onCancel={cancelConfirm}
+        />
+      )}
     </section>
   );
 }

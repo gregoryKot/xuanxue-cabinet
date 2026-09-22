@@ -22,8 +22,16 @@
 // незапущенной «На попытку даётся 40 минут» — цена нажатия, и она стоит у
 // кнопки рядом с остатком попыток. Текст обеим строкам считает shared, один
 // на кабинет и бота.
+//
+// «Идёт экзамен» видно без захода внутрь (отзыв владельца 2026-09-22,
+// ADR-0121: «индикацию ИДЁТ ЭКЗАМЕН я бы сделал поярче»): у карточки с
+// идущей попыткой рубрика меняется на EXAM_IN_PROGRESS_LABEL (общий текст с
+// ботом, shared/src/exam-time-notice.ts) и слева встаёт полоса акцентного
+// цвета — тот же приём, что у непроверенного вопроса разбора
+// (.xuanxue-question-row--unanswered, index.css). Правило «один акцент на
+// экран» (ADR-0043) не тронуто: заливки нет, кнопка остаётся `secondary`.
 import type { CSSProperties } from 'react';
-import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
+import { EXAM_IN_PROGRESS_LABEL, getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeExamState, formatAttemptsLeft } from './examAttemptState';
@@ -39,6 +47,12 @@ const cardStyle: CSSProperties = {
   borderRadius: 'var(--radius-block)',
   background: 'var(--panel-warm)',
 };
+// Полоса слева у идущей попытки — только цвет состояния, не вторая заливка
+// (ADR-0043).
+const runningCardStyle: CSSProperties = {
+  ...cardStyle,
+  borderLeft: '4px solid var(--terracotta)',
+};
 // #55584e, не --ink-soft: тот же прецедент, что у тёплой плашки «Ждут
 // отправки вручную» и сводки «Экзаменов» — на --panel-warm --ink-soft держит
 // только ~4.06:1, ниже AA 4.5 для этого кегля; #55584e даёт 5.74:1
@@ -49,6 +63,10 @@ const rubricStyle: CSSProperties = {
   textTransform: 'uppercase',
   color: '#55584e',
 };
+// #9d4e31, не --terracotta-text: тот же прецедент, что у #55584e выше —
+// --terracotta-text на --panel-warm держит только 4.21:1, ниже AA 4.5 для
+// этого кегля; #9d4e31 даёт 4.65:1.
+const runningRubricStyle: CSSProperties = { ...rubricStyle, color: '#9d4e31' };
 const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 22 };
 const metaStyle: CSSProperties = { fontSize: 14, color: '#55584e' };
 const descriptionStyle: CSSProperties = { margin: 0, fontSize: 14, color: '#55584e' };
@@ -88,8 +106,10 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
 
   return (
     <li>
-      <div style={cardStyle}>
-        <span style={rubricStyle}>{RUBRIC}</span>
+      <div style={running ? runningCardStyle : cardStyle}>
+        <span style={running ? runningRubricStyle : rubricStyle}>
+          {running ? EXAM_IN_PROGRESS_LABEL : RUBRIC}
+        </span>
         <span style={titleStyle}>{exam.title}</span>
 
         {/* Настоящее — первой строкой под названием. Для проверенной работы

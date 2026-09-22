@@ -212,9 +212,8 @@ export {
 export type { ExamItemStatsDto, ExamItemStatsSummaryDto } from './exam-item-stats';
 export type { MyExamDto, ListMyExamsQuery, MyExamAction } from './my-exams';
 export { myExamAttemptsLeft, getMyExamAction } from './my-exams';
-export { describeExamTime } from './exam-time';
+export { describeExamTime, describeAttemptDeadline } from './exam-time';
 export {
-  EXAM_IN_PROGRESS_LABEL,
   EXAM_START_CONFIRM_TITLE,
   EXAM_START_CONFIRM_LABEL,
   EXAM_START_CANCEL_LABEL,
