@@ -15,6 +15,7 @@ import { UserRecord } from '../../users/user.schema';
 import { UsersService } from '../../users/users.service';
 import { BotUserAccessService } from '../bot-user-access.service';
 import { STAFF_BOT_COMMANDS } from '../bot-commands';
+import { buildStrangerMessage } from './bot-menu';
 import { StartHandler } from './start.handler';
 import {
   buildStartHandler,
@@ -102,7 +103,7 @@ describe('StartHandler', () => {
     expect(channel?.broadcastEligible).toBe(false);
     expect(replies).toHaveLength(1);
     expect(replies[0]).toContain('Экзамены можно сдать');
-    expect(replies[0]).not.toContain('Этот бот для учителя');
+    expect(replies[0]).not.toBe(buildStrangerMessage());
   });
 
   it('ученик — /start НЕ подключает его ко всем активным классам (в отличие от штата)', async () => {
@@ -170,7 +171,7 @@ describe('StartHandler', () => {
 
     await handler.handle(ctx, NOW);
 
-    expect(replies[0]).toBe('Этот бот для учителя школы Сюань-Сюэ.');
+    expect(replies[0]).toBe(buildStrangerMessage());
     expect(replies[0]).not.toContain('на сайте');
   });
 
