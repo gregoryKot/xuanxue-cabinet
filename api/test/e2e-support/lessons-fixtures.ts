@@ -19,6 +19,21 @@ export const FROM = '2026-09-01T00:00:00Z';
 export const TO = '2026-09-08T00:00:00Z';
 export const STARTS_AT = '2026-09-03T16:00:00Z';
 
+/** Запись у даты занятия. С ADR-0114 занятие без записи не попадает в архив
+ * ученика, и спекам архива приходится заводить её каждой дате — блок был бы
+ * одинаковым в двух файлах, поэтому живёт здесь (CLAUDE.md «Одна механика —
+ * один компонент»). Статус проверяет вызывающий: у него есть `expect`. */
+export function postRecording(
+  server: ReturnType<TestApp['app']['getHttpServer']>,
+  cookie: string,
+  lessonId: string,
+  url: string,
+): request.Test {
+  return withCsrf(request(server).post(`/api/lessons/${lessonId}/recording`))
+    .set('Cookie', cookie)
+    .send({ title: 'Запись занятия', url });
+}
+
 /** `getApp` — геттер, не значение: как в channels-fixtures.ts — вызывается
  * лениво из `it()`, когда `beforeAll` уже присвоил testApp. */
 export function createLessonTestHelpers(getApp: () => TestApp) {
