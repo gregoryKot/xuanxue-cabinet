@@ -112,6 +112,21 @@ describe('InboxService', () => {
       expect(page.unreadCount).toBe(0);
       expect(page.items[0]?.readAt).toBe(NOW.toUTC().toISO());
     });
+
+    it('убранное (dismissedAt) не попадает в ленту и не считается в unreadCount', async () => {
+      await model.create({
+        userId: 'u1',
+        kind: 'exam_result',
+        attemptId: 'a1',
+        outcome: 'passed',
+        readAt: null,
+        dismissedAt: NOW.toJSDate(),
+      });
+
+      const page = await service.list('u1', {});
+      expect(page.items).toEqual([]);
+      expect(page.unreadCount).toBe(0);
+    });
   });
 
   describe('markRead', () => {
@@ -177,6 +192,91 @@ describe('InboxService', () => {
       );
 
       expect(second.readAt).toBe(NOW.plus({ minutes: 5 }).toUTC().toISO());
+    });
+  });
+
+  describe('dismiss', () => {
+    it('read-after-write — убрал: в следующей выдаче строки нет', async () => {
+      const doc = await model.create({
+        userId: 'u1',
+        kind: 'exam_result',
+        attemptId: 'a1',
+        outcome: 'passed',
+        readAt: null,
+      });
+
+      await service.dismiss('u1', doc._id.toString(), NOW);
+
+      const page = await service.list('u1', {});
+      expect(page.items).toEqual([]);
+      const stored = await model.findById(doc._id).lean();
+      expect(stored?.dismissedAt).toEqual(NOW.toJSDate());
+    });
+
+    it('убрали непрочитанное — unreadCount уменьшается', async () => {
+      const doc = await model.create({
+        userId: 'u1',
+        kind: 'exam_result',
+        attemptId: 'a1',
+        outcome: 'passed',
+        readAt: null,
+      });
+      await model.create({
+        userId: 'u1',
+        kind: 'attempt_submitted',
+        attemptId: 'a2',
+        readAt: null,
+      });
+
+      await service.dismiss('u1', doc._id.toString(), NOW);
+
+      const page = await service.list('u1', {});
+      expect(page.unreadCount).toBe(1);
+    });
+
+    it('чужая строка — NotFoundError, ничего не меняет у владельца', async () => {
+      const doc = await model.create({
+        userId: 'u2',
+        kind: 'exam_result',
+        attemptId: 'a1',
+        outcome: 'passed',
+        readAt: null,
+      });
+
+      await expect(service.dismiss('u1', doc._id.toString(), NOW)).rejects.toThrow(
+        'Уведомление не найдено',
+      );
+      const stored = await model.findById(doc._id).lean();
+      expect(stored?.dismissedAt).toBeUndefined();
+    });
+
+    it('несуществующий id — NotFoundError, не 500', async () => {
+      await expect(
+        service.dismiss('u1', '507f1f77bcf86cd799439099', NOW),
+      ).rejects.toThrow('Уведомление не найдено');
+    });
+
+    it('id не похож на ObjectId — тот же NotFoundError, без похода в Mongo', async () => {
+      await expect(service.dismiss('u1', 'not-an-id', NOW)).rejects.toThrow(
+        'Уведомление не найдено',
+      );
+    });
+
+    it('повторный вызов — не ошибка, время убирания просто перезаписывается', async () => {
+      const doc = await model.create({
+        userId: 'u1',
+        kind: 'exam_result',
+        attemptId: 'a1',
+        outcome: 'passed',
+        readAt: null,
+      });
+
+      await service.dismiss('u1', doc._id.toString(), NOW);
+      await expect(
+        service.dismiss('u1', doc._id.toString(), NOW.plus({ minutes: 5 })),
+      ).resolves.toBeDefined();
+      const stored = await model.findById(doc._id).lean();
+      expect(stored?.dismissedAt).toEqual(NOW.plus({ minutes: 5 }).toJSDate());
     });
   });
 

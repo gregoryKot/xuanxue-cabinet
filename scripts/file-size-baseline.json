@@ -676,7 +676,7 @@
   "api/test/exams.e2e-spec.ts": 295,
   "api/test/grading-presets.e2e-spec.ts": 131,
   "api/test/health.e2e-spec.ts": 99,
-  "api/test/inbox-ownership.e2e-spec.ts": 191,
+  "api/test/inbox-ownership.e2e-spec.ts": 249,
   "api/test/invite-link.e2e-spec.ts": 114,
   "api/test/jest.global-setup.ts": 40,
   "api/test/jest.setup.ts": 22,

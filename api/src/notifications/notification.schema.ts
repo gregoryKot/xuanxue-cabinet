@@ -71,6 +71,19 @@ export class NotificationRecord {
   // в bot-session.schema.ts.
   @Prop({ type: Date, required: false })
   readAt?: Date | null;
+
+  // Отзыв владельца 2026-09-22: «уведомление нельзя смахнуть, удалить» —
+  // убирание из ленты мягкое, полем, а не удалением документа. Причина:
+  // у ленты уникальный частичный индекс по (userId, kind, attemptId)
+  // (см. ниже), и повторная доставка того же уведомления (ретрай
+  // InAppExamNotifier, переоценка работы) с удалением документа воскресила
+  // бы убранную запись — findOneAndUpdate с upsert снова создал бы её.
+  // Коллекция и так самоочищается TTL-индексом (см. шапку файла,
+  // retention: 90 дней) — второй механизм очистки не нужен. Дату не
+  // шифруем (CLAUDE.md, чеклист коллекции п.3 — id, userId, даты,
+  // перечисления не шифруются).
+  @Prop({ type: Date, required: false })
+  dismissedAt?: Date | null;
 }
 
 export const NotificationSchema = SchemaFactory.createForClass(NotificationRecord);

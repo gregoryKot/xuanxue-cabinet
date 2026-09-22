@@ -1,6 +1,10 @@
 // Строка ленты уведомлений — кнопка у непрочитанной без адреса, обычная
 // строка у прочитанной без адреса, ссылка на свой предмет у вида с адресом
-// (ADR-0070), итог экзамена нефритом только при «сдал» (ADR-0063).
+// (ADR-0070), итог экзамена нефритом только при «сдал» (ADR-0063). Строка
+// всегда обёрнута в SwipeRow (просьба владельца 2026-09-22) — под ней
+// всегда есть кнопка «Убрать», отдельно от собственной кнопки/ссылки
+// строки; SwipeRow.test.tsx проверяет саму механику смахивания и жест,
+// здесь — только что строка её носит и не путает роли между собой.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -12,6 +16,11 @@ import { NotificationRow } from './NotificationRow';
 stubViewerTimeZone();
 
 const NOW = '2026-09-20T10:00:00.000Z'; // 13:00 в Москве (зритель теста)
+// Собственная кнопка строки (mark-as-read) отличается от «Убрать» под ней по
+// имени: у неё всегда звучит «Не прочитано» первым словом (unreadLabel), у
+// «Убрать» имя начинается с самого этого слова — `getByRole('button')` без
+// имени после SwipeRow находит обе и падает с «нашлось больше одного».
+const UNREAD_BUTTON_NAME = /^Не прочитано/;
 
 function makeItem(overrides: Partial<NotificationDto> = {}): NotificationDto {
   return {
@@ -25,14 +34,26 @@ function makeItem(overrides: Partial<NotificationDto> = {}): NotificationDto {
 
 // `<Link>` работает только под `<Router>` — остальным веткам (кнопка, `<div>`)
 // он не нужен, но обёртка общая, чтобы случаи не расходились по окружению.
+// onDismiss по умолчанию — пустышка: своя механика проверяется в
+// SwipeRow.test.tsx, здесь только та строка, что и раньше.
 function renderRow(
   item: NotificationDto,
-  { isLast, onRead }: { isLast: boolean; onRead: () => void },
+  {
+    isLast,
+    onRead,
+    onDismiss = vi.fn(),
+  }: { isLast: boolean; onRead: () => void; onDismiss?: () => void },
 ) {
   return render(
     <MemoryRouter>
       <ul>
-        <NotificationRow item={item} nowIso={NOW} isLast={isLast} onRead={onRead} />
+        <NotificationRow
+          item={item}
+          nowIso={NOW}
+          isLast={isLast}
+          onRead={onRead}
+          onDismiss={onDismiss}
+        />
       </ul>
     </MemoryRouter>,
   );
@@ -44,7 +65,7 @@ describe('NotificationRow — непрочитанная', () => {
     const user = userEvent.setup();
     renderRow(makeItem(), { isLast: false, onRead });
 
-    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole('button', { name: UNREAD_BUTTON_NAME }));
 
     expect(onRead).toHaveBeenCalledTimes(1);
   });
@@ -59,10 +80,13 @@ describe('NotificationRow — непрочитанная', () => {
 describe('NotificationRow — прочитанная', () => {
   const READ = makeItem({ readAt: '2026-09-20T09:05:00.000Z' });
 
-  it('кнопки нет', () => {
+  it('собственной кнопки нет, «Убрать» осталась', () => {
     renderRow(READ, { isLast: false, onRead: vi.fn() });
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: UNREAD_BUTTON_NAME }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Убрать/ })).toBeInTheDocument();
   });
 
   it('«Не прочитано» не звучит', () => {
@@ -104,14 +128,14 @@ describe('NotificationRow — isLast', () => {
   it('последняя строка своей карточки — без линии снизу', () => {
     renderRow(makeItem(), { isLast: true, onRead: vi.fn() });
 
-    const li = screen.getByRole('button').closest('li');
+    const li = screen.getByRole('button', { name: UNREAD_BUTTON_NAME }).closest('li');
     expect(li?.style.borderBottom).toBe('');
   });
 
   it('не последняя — волосяная линия снизу', () => {
     renderRow(makeItem(), { isLast: false, onRead: vi.fn() });
 
-    const li = screen.getByRole('button').closest('li');
+    const li = screen.getByRole('button', { name: UNREAD_BUTTON_NAME }).closest('li');
     expect(li?.style.borderBottom).toBe('1px solid var(--line)');
   });
 });
@@ -129,7 +153,7 @@ describe('NotificationRow — ссылка на предмет (ADR-0070)', () =
     expect(onRead).toHaveBeenCalledTimes(1);
   });
 
-  it('exam_result прочитанная — ссылка есть, onRead не зовётся (кнопки нет)', async () => {
+  it('exam_result прочитанная — ссылка есть, onRead не зовётся, своей кнопки нет', async () => {
     const onRead = vi.fn();
     const user = userEvent.setup();
     renderRow(makeItem({ kind: 'exam_result', readAt: '2026-09-20T09:05:00.000Z' }), {
@@ -140,7 +164,9 @@ describe('NotificationRow — ссылка на предмет (ADR-0070)', () =
     await user.click(screen.getByRole('link'));
 
     expect(onRead).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: UNREAD_BUTTON_NAME }),
+    ).not.toBeInTheDocument();
   });
 
   it('attempt_submitted с attemptId «a1» — ссылка на «/grading/a1»', () => {
@@ -152,14 +178,14 @@ describe('NotificationRow — ссылка на предмет (ADR-0070)', () =
     expect(screen.getByRole('link')).toHaveAttribute('href', '/grading/a1');
   });
 
-  it('attempt_submitted без attemptId — ссылки нет, осталась кнопка', () => {
+  it('attempt_submitted без attemptId — ссылки нет, осталась кнопка строки', () => {
     renderRow(makeItem({ kind: 'attempt_submitted' }), {
       isLast: false,
       onRead: vi.fn(),
     });
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: UNREAD_BUTTON_NAME })).toBeInTheDocument();
   });
 
   it('вид без своего экрана (payments) — ссылки нет', () => {

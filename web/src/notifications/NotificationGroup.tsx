@@ -17,6 +17,8 @@ interface NotificationGroupProps {
   items: NotificationDto[];
   nowIso: string;
   onRead: (id: string) => void;
+  /** Убрать строку из ленты (SwipeRow.tsx, просьба владельца 2026-09-22). */
+  onDismiss: (id: string) => void;
 }
 
 /** Рисуется, только когда в группе есть строки — решает вызывающий
@@ -26,6 +28,7 @@ export function NotificationGroup({
   items,
   nowIso,
   onRead,
+  onDismiss,
 }: NotificationGroupProps) {
   return (
     <div style={groupStyle}>
@@ -40,6 +43,7 @@ export function NotificationGroup({
             nowIso={nowIso}
             isLast={index === items.length - 1}
             onRead={() => onRead(item.id)}
+            onDismiss={() => onDismiss(item.id)}
           />
         ))}
       </ul>

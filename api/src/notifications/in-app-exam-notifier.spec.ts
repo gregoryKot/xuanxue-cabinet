@@ -15,6 +15,7 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
 import { toNotificationDto, type RawLeanNotification } from './notification.mapper';
 import { InAppExamNotifier } from './in-app-exam-notifier';
 import { InAppVideoLinkNotifier } from './in-app-video-link-notifier';
+import { InboxService } from './inbox.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
@@ -256,6 +257,44 @@ describe('InAppExamNotifier', () => {
       const stored = await notificationModel.findOne({ userId: studentId }).lean();
       expect(stored?.outcome).toBe('passed');
       expect(stored?.readAt).toBeNull();
+    });
+
+    // Регресс (находка при ревью «уведомление нельзя смахнуть, удалить»,
+    // отзыв владельца 2026-09-22): апсерт writeNotificationRow гасит readAt
+    // в null при каждой записи, но раньше не трогал dismissedAt — убранная
+    // строка молча оставалась вне ленты при переоценке того же (userId,
+    // kind, attemptId), и ученик не узнавал о новом результате. Новое
+    // событие обязано вернуть строку в ленту: «убрано» относится к
+    // прошлому событию, не к строке навсегда.
+    it('убрали уведомление, потом переоценка той же попытки — строка снова в ленте и непрочитана', async () => {
+      const studentId = await createUser('Ученик', []);
+      await notifier.notifyExamGraded(
+        {
+          ...ATTEMPT_CONTEXT,
+          userId: studentId,
+          outcome: 'needs_work',
+          comment: undefined,
+        },
+        NOW,
+      );
+      const inbox = new InboxService(notificationModel);
+      const before = await notificationModel.findOne({ userId: studentId }).lean();
+      if (!before) throw new Error('запись не легла — проверять нечего');
+      await inbox.dismiss(studentId, before._id.toString(), NOW);
+      await expect(inbox.list(studentId, {})).resolves.toEqual({
+        items: [],
+        unreadCount: 0,
+      });
+
+      await notifier.notifyExamGraded(
+        { ...ATTEMPT_CONTEXT, userId: studentId, outcome: 'passed', comment: undefined },
+        NOW,
+      );
+
+      const page = await inbox.list(studentId, {});
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0]?.outcome).toBe('passed');
+      expect(page.unreadCount).toBe(1);
     });
 
     it('сбой резолва (Mongo упала) — не бросает, warn-лог, не error', async () => {

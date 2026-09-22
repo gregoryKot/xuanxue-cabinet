@@ -58,6 +58,14 @@ export async function writeNotificationRow(
       examId: input.examId,
       examTitle: input.examTitle,
       readAt: null,
+      // Новое событие по той же попытке (переоценка, присланная позже
+      // ссылка на видео) возвращает строку в ленту, даже если её убирали:
+      // «убрано» относится к прошлому событию, а не к строке навсегда.
+      // Без этого $set убранная строка молча остаётся вне ленты при новой
+      // записи по тому же (userId, kind, attemptId) — человек не узнает о
+      // новом результате (найдено при ревью dismiss, отзыв владельца
+      // 2026-09-22).
+      dismissedAt: null,
       ...(input.outcome !== undefined ? { outcome: input.outcome } : {}),
     },
     NOTIFICATION_ENCRYPT_SCHEMA,

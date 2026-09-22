@@ -4,7 +4,11 @@
 // же, как правило без гейта (ADR-0106, ADR-0107).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findCrossBranchCollisions, firstFreeNumber } from './adr-claims.mjs';
+import {
+  findCrossBranchCollisions,
+  findMainCollisions,
+  firstFreeNumber,
+} from './adr-claims.mjs';
 
 test('findCrossBranchCollisions: одинаковый номер, разные файлы, я заявил позже — падение', () => {
   const mine = [{ number: '0107', file: '0107-my-decision.md', claimedAt: 200 }];
@@ -87,6 +91,38 @@ test('findCrossBranchCollisions: несколько чужих веток — к
   ];
   const collisions = findCrossBranchCollisions({ mine, main, branches });
   assert.deepEqual(collisions.map((c) => c.branch).sort(), ['branch-a', 'branch-c']);
+});
+
+// Инцидент 2026-09-22 (третья коллизия подряд): чужой ADR-0111 приехал в main
+// уже после того, как я отвёл ветку со своим 0111. Кросс-веточная проверка
+// такую пару не видела вовсе — она сравнивает только заявки, которых ещё нет
+// в main, и номер, уже занятый там, из сравнения выпадал. Ветки гейт
+// проверял, main — нет.
+test('findMainCollisions: мой номер занят в main другим файлом — падение', () => {
+  const mine = [{ number: '0111', file: '0111-my-decision.md', claimedAt: 200 }];
+  const main = [{ number: '0111', file: '0111-merged-decision.md', claimedAt: 100 }];
+
+  assert.deepEqual(findMainCollisions({ mine, main }), [
+    {
+      number: '0111',
+      myFile: '0111-my-decision.md',
+      mainFile: '0111-merged-decision.md',
+    },
+  ]);
+});
+
+test('findMainCollisions: тот же номер и тот же файл — это решение из main, не коллизия', () => {
+  const mine = [{ number: '0111', file: '0111-merged-decision.md', claimedAt: 200 }];
+  const main = [{ number: '0111', file: '0111-merged-decision.md', claimedAt: 100 }];
+
+  assert.deepEqual(findMainCollisions({ mine, main }), []);
+});
+
+test('findMainCollisions: номера нет в main — заявка свободна', () => {
+  const mine = [{ number: '0113', file: '0113-my-decision.md', claimedAt: 200 }];
+  const main = [{ number: '0111', file: '0111-merged-decision.md', claimedAt: 100 }];
+
+  assert.deepEqual(findMainCollisions({ mine, main }), []);
 });
 
 test('firstFreeNumber: с дырой в нумерации — берёт дыру', () => {

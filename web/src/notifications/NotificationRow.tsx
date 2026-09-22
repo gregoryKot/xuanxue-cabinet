@@ -1,14 +1,16 @@
-// Строка одной записи в центре уведомлений (ADR-0063). У вида с адресом
+// Строка одной записи в центре уведомлений (ADR-0063), обёрнута в SwipeRow —
+// смахнуть/кнопка «Убрать» (просьба владельца 2026-09-22). У вида с адресом
 // (notificationTarget.ts, ADR-0070) строка — ссылка на свой предмет: у
 // непрочитанной клик метит её прочитанной и переходит (onClick зовёт onRead,
 // переход делает сам `<Link>`), у прочитанной — просто ссылка. У вида без
 // адреса всё как раньше: непрочитанная — кнопка на всю ширину, прочитанная —
-// обычный `<div>` без кнопки — нажимать уже не на что, а `<button>` или
-// ссылка, которые никуда не ведут, обманывают и палец, и клавиатуру (CLAUDE.md
+// обычный `<div>` без кнопки — нажимать уже не на что, а `<button>`/ссылка,
+// которые никуда не ведут, обманывают и палец, и клавиатуру (CLAUDE.md
 // «Доступность»).
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { NotificationDto } from '@xuanxue/shared';
+import { SwipeRow } from '../components/SwipeRow';
 import { describeOutcome } from '../student/examAttemptState';
 import { isUnread, notificationTimeText } from './notificationFeed';
 import { notificationTarget } from './notificationTarget';
@@ -19,6 +21,7 @@ interface NotificationRowProps {
   /** Последняя в своей карточке — не красит линию снизу. */
   isLast: boolean;
   onRead: () => void;
+  onDismiss: () => void;
 }
 
 const rowStyle: CSSProperties = {
@@ -76,7 +79,13 @@ function unreadLabel(unread: boolean): ReactNode {
   return unread ? <span className="xuanxue-sr-only">Не прочитано</span> : null;
 }
 
-export function NotificationRow({ item, nowIso, isLast, onRead }: NotificationRowProps) {
+export function NotificationRow({
+  item,
+  nowIso,
+  isLast,
+  onRead,
+  onDismiss,
+}: NotificationRowProps) {
   const unread = isUnread(item);
   const target = notificationTarget(item);
 
@@ -121,8 +130,12 @@ export function NotificationRow({ item, nowIso, isLast, onRead }: NotificationRo
   }
 
   return (
-    <li style={{ borderBottom: isLast ? undefined : '1px solid var(--line)' }}>
+    <SwipeRow
+      isLast={isLast}
+      onDismiss={onDismiss}
+      dismissLabel={`Убрать уведомление: ${item.text}`}
+    >
       {content}
-    </li>
+    </SwipeRow>
   );
 }

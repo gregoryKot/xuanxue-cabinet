@@ -8,6 +8,7 @@
 // настройками, лента живёт на своём префиксе.
 import {
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -58,6 +59,23 @@ export class InboxController {
   @HttpCode(HttpStatus.OK)
   async markAllRead(@CurrentUser() user: UserLean): Promise<InboxPageDto> {
     await this.inboxService.markAllRead(user.id, DateTime.utc());
+    return this.inboxService.list(user.id, {});
+  }
+
+  // DELETE, не POST — снаружи это «убрать/удалить» с точки зрения клиента
+  // (отзыв владельца 2026-09-22), хотя внутри мягко, полем dismissedAt
+  // (причина — комментарий у поля в notification.schema.ts). Отдаёт
+  // InboxPageDto, не 204 — тем же приёмом, что markRead/markAllRead выше:
+  // клиент показывает результат жеста (убранного больше нет в списке,
+  // unreadCount пересчитан), а не досчитывает его сам второй копией правила
+  // (ADR-0087).
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async dismiss(
+    @Param('id') id: string,
+    @CurrentUser() user: UserLean,
+  ): Promise<InboxPageDto> {
+    await this.inboxService.dismiss(user.id, id, DateTime.utc());
     return this.inboxService.list(user.id, {});
   }
 }

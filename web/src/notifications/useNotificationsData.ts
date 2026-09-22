@@ -71,7 +71,7 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
     (signal) => apiFetch<InboxPageDto>(NOTIFICATIONS_FEED_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
-  const { actionError, reload, markRead, markAllRead } = useNotificationsActions(
+  const { actionError, reload, markRead, markAllRead, dismiss } = useNotificationsActions(
     applyData,
     reloadFeed,
   );
@@ -133,5 +133,6 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
     reload,
     markRead,
     markAllRead,
+    dismiss,
   };
 }

@@ -1,10 +1,7 @@
 // Пути GET-запросов, общие для хука данных экрана и таблицы предзагрузки
-// (routeModules.ts, prefetchFirstScreen.ts): путь строится одной функцией, а
-// не двумя похожими литералами в разных файлах. Два литерала разъехались бы
-// на первой же правке лимита или фильтра — и prefetchCache.ts никогда не
-// отдал бы готовый промис хуку, потому что ключ там — сам путь (apiFetch
-// сравнивает строки, не структуру запроса). Путь, нужный только своему хуку
-// (мутация, адрес, которого нет на первом экране) — остаётся в хуке.
+// (routeModules.ts, prefetchFirstScreen.ts) — одна функция вместо двух
+// литералов: разъехавшись, они сломали бы ключ кэша prefetchCache.ts (apiFetch
+// сравнивает строки пути). Путь только для своего хука — остаётся в хуке.
 import {
   LIST_LIMIT_DEFAULT,
   LIST_LIMIT_MAX,
@@ -117,13 +114,11 @@ export function materialsListPath(kind: MaterialKind | '', tag: string = ''): st
 }
 
 /** Файл материала в R2 (ADR-0057, слой 3.10) — один адрес у скачивания,
- * замены и удаления (`GET`/`POST`/`DELETE /materials/:id/file`). Путь
- * относительный, для `apiFetch` (та сама добавляет `/api`) — годится для
- * замены/удаления. Прямая ссылка на скачивание (`<a href>`,
- * MaterialFileField.tsx) собирает `/api` вручную поверх него: сервер
- * отвечает 302 на подписанный адрес в другом домене, и это не запрос через
- * apiFetch, а адрес, который переходом открывает сам браузер — тот же приём,
- * что у examImageSrc выше. */
+ * замены и удаления (`GET`/`POST`/`DELETE /materials/:id/file`), путь
+ * относительный для `apiFetch`. Прямая ссылка на скачивание (`<a href>`,
+ * MaterialFileField.tsx) собирает `/api` вручную: сервер отвечает 302 на
+ * подписанный адрес в другом домене, открывает его переходом сам браузер —
+ * тот же приём, что у examImageSrc выше. */
 export function materialFilePath(materialId: string): string {
   return `${MATERIALS_PATH}/${materialId}/file`;
 }
@@ -155,6 +150,11 @@ export const NOTIFICATIONS_READ_ALL_PATH = '/me/inbox/read-all';
 
 export function notificationReadPath(id: string): string {
   return `/me/inbox/${id}/read`;
+}
+
+/** Одна запись ленты — `DELETE` убирает её (SwipeRow.tsx, 2026-09-22). */
+export function notificationItemPath(id: string): string {
+  return `/me/inbox/${id}`;
 }
 
 const USERS_PATH = '/users';

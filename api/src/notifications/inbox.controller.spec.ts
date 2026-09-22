@@ -69,4 +69,15 @@ describe('InboxController', () => {
     expect(markAllRead).toHaveBeenCalledWith(USER.id, expect.any(DateTime));
     expect(list).toHaveBeenCalledWith(USER.id, {});
   });
+
+  it('dismiss() убирает строку, затем отдаёт ленту целиком (страница по умолчанию, не 204)', async () => {
+    const dismiss = jest.fn().mockResolvedValue(NOTIFICATION_DTO);
+    const list = jest.fn().mockResolvedValue(PAGE_DTO);
+    const controller = await buildController({ dismiss, list });
+
+    await expect(controller.dismiss('n1', USER)).resolves.toEqual(PAGE_DTO);
+
+    expect(dismiss).toHaveBeenCalledWith(USER.id, 'n1', expect.any(DateTime));
+    expect(list).toHaveBeenCalledWith(USER.id, {});
+  });
 });
