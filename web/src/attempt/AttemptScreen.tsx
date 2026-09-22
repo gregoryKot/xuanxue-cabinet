@@ -26,6 +26,7 @@ import { useAuthConfig } from '../auth/useAuthConfig';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { NoticeDialog } from '../components/NoticeDialog';
 import { SkeletonLines } from '../components/Skeleton';
+import { useMyExamsApplyAttempt } from '../student/MyExamsProvider';
 import { showsTelegramLinkOffer } from '../telegram/acceptsTelegramOffer';
 import { AttemptInProgress } from './AttemptInProgress';
 import { AttemptSubmitted } from './AttemptSubmitted';
@@ -41,8 +42,14 @@ const EXPIRY_NOTICE_MESSAGE =
 
 export default function AttemptScreen() {
   const { id } = useParams<{ id: string }>();
+  // Список «Заданий» правится тем же ответом отправки, без второго GET
+  // (ADR-0119) — useMyExamsApplyAttempt() тихо ничего не делает, если этот
+  // экран отрендерен без MyExamsProvider (так рендерит только его
+  // изолированный тест, AttemptScreen.test.tsx; в проде провайдер есть
+  // всегда, AppShell.tsx).
+  const applyExamAttempt = useMyExamsApplyAttempt();
   const { attempt, loading, error, reload, refresh, submit, submitting, submitError } =
-    useAttempt(id ?? '');
+    useAttempt(id ?? '', { onSubmitted: applyExamAttempt });
   const { config } = useAuthConfig();
   // Кнопку «Отправить видео боту» показываем только тем, кого бот узнает
   // (ADR-0037, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.

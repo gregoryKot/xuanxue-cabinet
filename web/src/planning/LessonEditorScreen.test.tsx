@@ -90,9 +90,11 @@ function callsWithMethod(method: string) {
 }
 
 /** Форма появляется раньше, чем уйдёт запрос учителей (эффект после
- * коммита): отказ, поставленный в очередь сразу после формы, достался бы не
- * сохранению. Ждём имя учителя в списке — значит, все запросы монтирования
- * уже ушли. */
+ * коммита). Ждём имя учителя в списке — сигнал, что запросы монтирования
+ * ушли, но ответ на действие ниже всё равно ставится вторым вызовом
+ * `mockApiByPath`, не `…Once`: подсказка тегов (useTagOptions.ts) уходит
+ * своим GET /tags тем же приёмом, и «следующий вызов» иногда доставался бы
+ * ей (тот же флейк, что уже был у AttemptReviewScreen.test.tsx). */
 async function waitForMounted() {
   await screen.findByRole('option', { name: 'Дмитрий' });
 }
@@ -310,9 +312,13 @@ describe('LessonEditorScreen — сохранение', () => {
 
     renderAt('/planning/l1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Проверьте поля.', 400, 'invalid_input'),
-    );
+    // Второй вызов mockApiByPath, не mockRejectedValueOnce: подсказка тегов
+    // (useTagOptions.ts) уходит своим GET /tags в тот же миг монтирования, и
+    // очередь `…Once` иногда доставалась бы ей, а не сохранению (тот же
+    // флейк, что уже был у AttemptReviewScreen.test.tsx, apiFetchMock.ts).
+    mockApiByPath({
+      '/lessons/l1': new ApiError('Проверьте поля.', 400, 'invalid_input'),
+    });
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     expect(await screen.findByText('Проверьте поля.')).toBeInTheDocument();
@@ -369,9 +375,9 @@ describe('LessonEditorScreen — отмена и возврат в распис�
 
     renderAt('/planning/l1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Занятие уже отменено.', 409, 'conflict'),
-    );
+    mockApiByPath({
+      '/lessons/l1': new ApiError('Занятие уже отменено.', 409, 'conflict'),
+    });
     await user.click(screen.getByRole('button', { name: 'Отменить занятие' }));
     await user.click(
       screen.getAllByRole('button', { name: 'Отменить занятие' })[1] as HTMLElement,
@@ -409,9 +415,7 @@ describe('LessonEditorScreen — отмена и возврат в распис�
 
     renderAt('/planning/l1');
     await waitForMounted();
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Занятие уже идёт.', 409, 'conflict'),
-    );
+    mockApiByPath({ '/lessons/l1': new ApiError('Занятие уже идёт.', 409, 'conflict') });
     await user.click(screen.getByRole('button', { name: 'Вернуть в расписание' }));
 
     expect(await screen.findByText('Занятие уже идёт.')).toBeInTheDocument();

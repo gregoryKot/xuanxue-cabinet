@@ -54,6 +54,13 @@ export interface TagSummaryDto {
   tag: string;
   lessonCount: number;
   materialCount: number;
+  /** Каналы (ADR-0108) и вопросы экзамена тоже считаются — иначе тег, набранный
+   * первым у канала, не предложился бы в расписании, и написание разъехалось бы
+   * ровно там, где его цена выше всего: тег канала решает, куда уйдёт пост
+   * (ADR-0116). Экран тега эти два числа не показывает — он про занятия и
+   * материалы (ADR-0075) и тег без них в списке не рисует. */
+  channelCount: number;
+  examItemCount: number;
 }
 
 export interface ListTagsQuery {

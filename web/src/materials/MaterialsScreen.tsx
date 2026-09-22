@@ -24,12 +24,12 @@ import { oneCardListStyle } from '../components/listCardStyles';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SectionLink } from '../components/SectionLink';
+import { useTagOptions } from '../hooks/useTagOptions';
 import { tagsScreenPath } from '../lib/tagsScreenPath';
 import { useClasses } from '../schedule/useClasses';
 import { MaterialCard } from './MaterialCard';
 import { MaterialTagFilter } from './MaterialTagFilter';
 import { useMaterials } from './useMaterials';
-import { useMaterialTagOptions } from './useMaterialTagOptions';
 
 const TITLE = 'Материалы';
 const EXPLANATION =
@@ -47,7 +47,8 @@ export default function MaterialsScreen() {
   const [kind, setKind] = useState<MaterialKind | ''>('');
   const [tag, setTag] = useState('');
   const { materials, loading, error, reload } = useMaterials(kind, tag);
-  const tagOptions = useMaterialTagOptions();
+  // Только теги с материалами — тег без них дал бы пустую библиотеку.
+  const tagOptions = useTagOptions({ withMaterialsOnly: true });
   const classesState = useClasses();
   const navigate = useNavigate();
   const isFiltered = kind !== '' || tag !== '';
@@ -81,9 +82,9 @@ export default function MaterialsScreen() {
         onChange={setKind}
       />
 
-      {/* Набор пилюль — из полного списка школы (useMaterialTagOptions.ts),
-          не из уже отфильтрованного ответа: иначе выбор одной пилюли сразу
-          убирал бы соседние из-под пальца. */}
+      {/* Набор пилюль — из сводки тегов школы (useTagOptions.ts), не из уже
+          отфильтрованного ответа: иначе выбор одной пилюли сразу убирал бы
+          соседние из-под пальца. */}
       <MaterialTagFilter tags={tagOptions} value={tag} onChange={setTag} />
 
       <ListScreenBody

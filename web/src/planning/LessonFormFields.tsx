@@ -1,7 +1,6 @@
 // Поля занятия — вынесены из LessonEditorForm.tsx (CLAUDE.md «Файлы»).
 // `classId` — только при создании (docs/PLAN.md §6 п.3); теги, заметка и
 // ссылка/пароль Zoom на один раз (LessonZoomFields.tsx) — только при правке.
-import { Link } from 'react-router-dom';
 import {
   CLASS_LIMITS,
   TAG_LIMITS,
@@ -13,10 +12,11 @@ import { LeaderField } from '../components/LeaderField';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { Select } from '../components/Select';
 import { TagsField } from '../components/TagsField';
+import { useTagOptions } from '../hooks/useTagOptions';
 import { inheritedZoomHint } from './inheritedZoom';
+import { LessonNoClassesNotice } from './LessonNoClassesNotice';
 import { LessonZoomFields } from './LessonZoomFields';
 import type { LessonFormState } from './lessonFormInput';
-import { textLinkStyle } from '../components/screenLayout';
 
 // ADR-0075: тег — что было в этот вечер, его видит ученик; постоянный тег
 // курса форма даты не показывает и не переписывает (ADR-0072).
@@ -45,18 +45,13 @@ export function LessonFormFields({
   teachersError,
   onRetryTeachers,
 }: LessonFormFieldsProps) {
-  // Разовое занятие привязывается к классу расписания — без единого класса
-  // форме нечего показывать (ревью п.9): вместо тупика с пустым селектом —
-  // объяснение и путь к решению.
+  // До ранней развилки ниже — правило хуков: TagsField рисуется только при
+  // правке, а хук всё равно должен вызываться на каждый рендер в одном и том
+  // же порядке. Сбой useTagOptions.ts просто оставляет список пустым.
+  const tagOptions = useTagOptions();
+
   if (isCreate && classes.length === 0) {
-    return (
-      <p style={{ margin: 0 }}>
-        Сначала добавьте занятие в расписании.{' '}
-        <Link to="/schedule" style={textLinkStyle}>
-          Перейти в «Расписание»
-        </Link>
-      </p>
-    );
+    return <LessonNoClassesNotice />;
   }
 
   return (
@@ -88,6 +83,7 @@ export function LessonFormFields({
           value={state.tagsText}
           onChange={(value) => setField('tagsText', value)}
           hint={TAG_HINT}
+          options={tagOptions}
         />
       )}
 

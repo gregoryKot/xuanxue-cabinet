@@ -6,7 +6,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { MaterialDto } from '@xuanxue/shared';
+import type { MaterialDto, TagSummaryDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import {
@@ -40,6 +40,17 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
     createdBy: 'u1',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function makeTagSummary(overrides: Partial<TagSummaryDto> = {}): TagSummaryDto {
+  return {
+    tag: 'старшая',
+    lessonCount: 0,
+    materialCount: 0,
+    channelCount: 0,
+    examItemCount: 0,
     ...overrides,
   };
 }
@@ -190,11 +201,12 @@ describe('MaterialsScreen — список материалов', () => {
   });
 });
 
-describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
+describe('MaterialsScreen — пилюли тегов (ADR-0058, useTagOptions.ts)', () => {
   it('тегов у школы нет — строки пилюль нет вовсе', async () => {
     mockApiByPath({
       '/materials': [makeMaterial({ tags: [] })],
       '/classes': [makeClass()],
+      '/tags': [],
     });
 
     renderScreen();
@@ -203,16 +215,37 @@ describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
     expect(screen.queryByRole('group', { name: 'Теги' })).not.toBeInTheDocument();
   });
 
-  it('пилюля тега собрана из полного списка школы, клик уходит в запрос с tag=', async () => {
+  // Тег без материалов дал бы клику пустую библиотеку — сводка школы
+  // (GET /api/tags) знает про все пять мест, пилюли фильтра берут только
+  // те, у которых materialCount > 0 (useTagOptions.ts, withMaterialsOnly).
+  it('пилюля только на тег с материалами — тег без материалов в фильтр не попадает', async () => {
     mockApiByPath({
       '/materials': [makeMaterial({ tags: ['старшая'] })],
       '/classes': [makeClass()],
+      '/tags': [
+        makeTagSummary({ tag: 'старшая', materialCount: 1 }),
+        makeTagSummary({ tag: 'дракон', materialCount: 0, lessonCount: 3 }),
+      ],
+    });
+
+    renderScreen();
+    await screen.findByText('Ван Пэйшэн — форма 24');
+
+    expect(await screen.findByRole('button', { name: 'старшая' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'дракон' })).not.toBeInTheDocument();
+  });
+
+  it('клик по пилюле тега уходит в запрос материалов с tag=', async () => {
+    mockApiByPath({
+      '/materials': [makeMaterial({ tags: ['старшая'] })],
+      '/classes': [makeClass()],
+      '/tags': [makeTagSummary({ tag: 'старшая', materialCount: 1 })],
     });
 
     renderScreen();
     await screen.findByText('Ван Пэйшэн — форма 24');
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'старшая' }));
+    await user.click(await screen.findByRole('button', { name: 'старшая' }));
 
     await waitFor(() =>
       expect(mockedApiFetch).toHaveBeenCalledWith(
@@ -226,14 +259,19 @@ describe('MaterialsScreen — пилюли тегов (ADR-0058)', () => {
     mockApiByPath({
       '/materials': [makeMaterial({ tags: ['старшая'] })],
       '/classes': [makeClass()],
+      '/tags': [makeTagSummary({ tag: 'старшая', materialCount: 1 })],
     });
 
     renderScreen();
     await screen.findByText('Ван Пэйшэн — форма 24');
 
-    mockApiByPath({ '/materials': [], '/classes': [makeClass()] });
+    mockApiByPath({
+      '/materials': [],
+      '/classes': [makeClass()],
+      '/tags': [makeTagSummary({ tag: 'старшая', materialCount: 1 })],
+    });
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'старшая' }));
+    await user.click(await screen.findByRole('button', { name: 'старшая' }));
 
     expect(
       await screen.findByText('С таким фильтром материалов нет.'),

@@ -16,6 +16,17 @@ import { clearAttemptDraft } from './attemptLocalDraft';
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить попытку. Обновите страницу.';
 const SUBMIT_ERROR_MESSAGE = 'Не удалось отправить экзамен. Попробуйте ещё раз.';
 
+export interface UseAttemptOptions {
+  /** Зовётся с уже свежим DTO после успешной отправки — правка списка
+   * `/me/exams` (MyExamsProvider.applyAttempt, ADR-0119): без неё карточка
+   * на «Заданиях» ещё держит `lastAttempt.status: 'in_progress'», и
+   * устаревшее «Продолжить» завело бы вторую, пустую попытку (отзыв
+   * тестировщика 2026-09-22). Необязательный параметр, не импорт
+   * MyExamsProvider отсюда — attempt/ не знает о student/, вызывающий
+   * (AttemptScreen.tsx) сам решает, куда результат передать. */
+  onSubmitted?: (attempt: ExamAttemptDto) => void;
+}
+
 export interface UseAttemptResult {
   attempt: ExamAttemptDto | null;
   /** Список загрузился, но такой попытки в нём нет — не путать с `error`
@@ -35,7 +46,11 @@ export interface UseAttemptResult {
   submitError: FormError | null;
 }
 
-export function useAttempt(attemptId: string): UseAttemptResult {
+export function useAttempt(
+  attemptId: string,
+  options: UseAttemptOptions = {},
+): UseAttemptResult {
+  const { onSubmitted } = options;
   const { data, loading, error, reload, refresh, applyData } = useAbortableFetch(
     (signal) => apiFetch<ExamAttemptDto[]>(ATTEMPTS_LIST_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
@@ -69,6 +84,10 @@ export function useAttempt(attemptId: string): UseAttemptResult {
         method: 'POST',
       });
       applyData((prev) => replacedById(prev, next));
+      // Тот же ответ правит и список «Заданий» — без него он ещё долю
+      // секунды думает, что попытка in_progress (ADR-0119, комментарий
+      // у UseAttemptOptions.onSubmitted выше).
+      onSubmitted?.(next);
       // Отправлено — редактировать больше нечего, локальный черновик ответов
       // убирается целиком (attemptLocalDraft.ts, аудит 2026-09-21).
       clearAttemptDraft(attemptId);
@@ -77,7 +96,7 @@ export function useAttempt(attemptId: string): UseAttemptResult {
     } finally {
       setSubmitting(false);
     }
-  }, [attemptId, applyData]);
+  }, [attemptId, applyData, onSubmitted]);
 
   return {
     attempt,
