@@ -32,7 +32,9 @@ export function buildChannelCreatePayload(
  * нормализованный массив вместо «поле не трогать» (тот же приём, что у
  * ClassesService.update). `target` при смене `config` добавляет сам сервис:
  * ему для этого нужен текущий `type` канала из базы (typeOf()). */
-export function buildChannelUpdateSet(input: UpdateChannelInput): Record<string, unknown> {
+export function buildChannelUpdateSet(
+  input: UpdateChannelInput,
+): Record<string, unknown> {
   const $set: Record<string, unknown> = { ...input };
   if (input.tags !== undefined) $set.tags = normalizeTags(input.tags);
   return $set;

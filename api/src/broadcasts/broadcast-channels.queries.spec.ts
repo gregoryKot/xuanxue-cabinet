@@ -39,11 +39,7 @@ describe('findChannelsForLesson', () => {
   it('канал без тегов — активный и подходит под любой тег занятия', async () => {
     const channel = await createChannel();
 
-    const result = await findChannelsForLesson(
-      channelModel,
-      [channel._id],
-      ['новички'],
-    );
+    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
 
     expect(result.activeChannelIds.map(String)).toEqual([channel._id.toString()]);
     expect(result.matchingChannelIds.map(String)).toEqual([channel._id.toString()]);
@@ -52,11 +48,7 @@ describe('findChannelsForLesson', () => {
   it('канал с общим тегом занятия — активный и подходит', async () => {
     const channel = await createChannel({ tags: ['новички'] });
 
-    const result = await findChannelsForLesson(
-      channelModel,
-      [channel._id],
-      ['новички'],
-    );
+    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
 
     expect(result.matchingChannelIds.map(String)).toEqual([channel._id.toString()]);
   });
@@ -64,11 +56,7 @@ describe('findChannelsForLesson', () => {
   it('канал с чужим тегом — активный, но не подходит', async () => {
     const channel = await createChannel({ tags: ['средние'] });
 
-    const result = await findChannelsForLesson(
-      channelModel,
-      [channel._id],
-      ['новички'],
-    );
+    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
 
     expect(result.activeChannelIds.map(String)).toEqual([channel._id.toString()]);
     expect(result.matchingChannelIds).toEqual([]);
@@ -77,11 +65,7 @@ describe('findChannelsForLesson', () => {
   it('выключенный канал — ни активным, ни подходящим, даже с общим тегом', async () => {
     const channel = await createChannel({ active: false, tags: ['новички'] });
 
-    const result = await findChannelsForLesson(
-      channelModel,
-      [channel._id],
-      ['новички'],
-    );
+    const result = await findChannelsForLesson(channelModel, [channel._id], ['новички']);
 
     expect(result.activeChannelIds).toEqual([]);
     expect(result.matchingChannelIds).toEqual([]);

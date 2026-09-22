@@ -192,9 +192,14 @@ describe('BroadcastPlannerService.plan', () => {
   it('ни один канал не подписан на тег даты — cancelled-плейсхолдер с новой причиной, DM-действие есть', async () => {
     const intermediateChannel = await createChannel(ctx, { tags: ['средние'] });
     const cls = await createClass(ctx, { channelIds: [intermediateChannel._id] });
-    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate(), {
-      tags: ['новички'],
-    });
+    const lesson = await createLesson(
+      ctx,
+      cls._id,
+      NOW.plus({ minutes: 10 }).toJSDate(),
+      {
+        tags: ['новички'],
+      },
+    );
 
     const result = await ctx.service.plan(NOW);
 

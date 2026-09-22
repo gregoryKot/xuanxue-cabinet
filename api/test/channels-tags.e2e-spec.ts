@@ -87,7 +87,9 @@ describe('Теги канала (e2e, ADR-0106)', () => {
     expect((patched.body as ChannelDto).tags).toEqual([]);
     expect(patched.body as Record<string, unknown>).not.toHaveProperty('config');
 
-    const got = await request(server()).get(`/api/channels/${dto.id}`).set('Cookie', cookie);
+    const got = await request(server())
+      .get(`/api/channels/${dto.id}`)
+      .set('Cookie', cookie);
     expect((got.body as ChannelDto).tags).toEqual([]);
   });
 

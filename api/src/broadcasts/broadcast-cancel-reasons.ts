@@ -27,11 +27,7 @@ export const TOO_LATE_REASON = `тик опоздал: занятие начал
 /** Действие, которое нужно DM учителю по причине отмены (docs/PLAN.md §6
  * «Планировщик»). Не enum — union строк (CLAUDE.md «Код»). */
 export type BroadcastCancelAction =
-  | 'no_channels'
-  | 'channels_disabled'
-  | 'no_link'
-  | 'too_late'
-  | 'no_channels_for_tags';
+  'no_channels' | 'channels_disabled' | 'no_link' | 'too_late' | 'no_channels_for_tags';
 
 const ACTION_BY_REASON: ReadonlyMap<string, BroadcastCancelAction> = new Map([
   [CANCEL_REASON.noChannels, 'no_channels'],

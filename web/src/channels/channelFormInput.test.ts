@@ -36,9 +36,7 @@ describe('initialChannelFormState', () => {
   });
 
   it('правка канала с тегами — tagsText собран через запятую с пробелом', () => {
-    const state = initialChannelFormState(
-      makeChannel({ tags: ['новички', 'средние'] }),
-    );
+    const state = initialChannelFormState(makeChannel({ tags: ['новички', 'средние'] }));
     expect(state.tagsText).toBe('новички, средние');
   });
 
