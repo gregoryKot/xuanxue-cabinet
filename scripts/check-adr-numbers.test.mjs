@@ -4,6 +4,11 @@
 //
 // Случаи взяты с инцидента 2026-09-20 (номер 0059 у двух решений сразу,
 // решение без строки в оглавлении, ссылка на переименованный файл).
+//
+// Тесты на кросс-веточную часть (findCrossBranchCollisions, firstFreeNumber,
+// инцидент 2026-09-22 с ADR-0106) — в adr-claims.test.mjs, рядом с функциями:
+// эти функции живут там же, не здесь (check-adr-numbers.mjs — на потолке в
+// 150 строк, CLAUDE.md, «Храповики»).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
