@@ -15,7 +15,8 @@ import { LESSON_ENCRYPT_SCHEMA } from '../lessons/lesson.schema';
 import { LESSON_NOT_FOUND, assertLessonId } from '../lessons/lessons.queries';
 import { SettingsService } from '../settings/settings.service';
 import { UsersService } from '../users/users.service';
-import { findActiveChannelIds, findClassForRecording } from './broadcast-planner.queries';
+import { findChannelsForLesson } from './broadcast-channels.queries';
+import { findClassForRecording } from './broadcast-planner.queries';
 import { buildLessonLinkText } from './broadcast-planner.render';
 import { BroadcastModels } from './broadcast-models.provider';
 import { BroadcastsService } from './broadcasts.service';
@@ -32,6 +33,11 @@ const NO_LINK_MESSAGE =
   'У занятия нет ссылки — добавьте её в занятии или в слоте расписания.';
 const NO_CHANNELS_MESSAGE =
   'У занятия нет подключённых каналов — включите канал на экране «Каналы».';
+// Отбор по тегу (ADR-0106): активные каналы есть, но ни один не подписан на
+// тег занятия — другое действие, чем «включите канал», поэтому свой текст.
+const NO_CHANNELS_FOR_TAGS_MESSAGE =
+  'Ни один канал не подписан на теги занятия — проверьте теги канала в «Каналах» ' +
+  'и теги занятия в «Расписании».';
 const LESSON_CANCELLED_MESSAGE =
   'Занятие отменено, слать ссылку некуда. Верните занятие в расписание, если это ошибка.';
 
@@ -58,11 +64,16 @@ export class SendNowService {
     const link = lesson.zoomLinkOverride ?? cls?.zoomLink;
     if (!cls || !link) throw new InvalidInputError(NO_LINK_MESSAGE);
 
-    const activeChannelIds = await findActiveChannelIds(
+    const lessonTags = [...(lesson.tags ?? []), ...(cls.tags ?? [])];
+    const { activeChannelIds, matchingChannelIds } = await findChannelsForLesson(
       this.models.channelModel,
       cls.channelIds,
+      lessonTags,
     );
     if (activeChannelIds.length === 0) throw new InvalidInputError(NO_CHANNELS_MESSAGE);
+    if (matchingChannelIds.length === 0) {
+      throw new InvalidInputError(NO_CHANNELS_FOR_TAGS_MESSAGE);
+    }
 
     const settings = await this.settingsService.get();
     const text = await buildLessonLinkText(
@@ -82,7 +93,7 @@ export class SendNowService {
           this.models.broadcastModel,
           this.models.deliveryModel,
           existing,
-          activeChannelIds,
+          matchingChannelIds,
           text,
           now,
         )
@@ -90,7 +101,7 @@ export class SendNowService {
           this.models.broadcastModel,
           this.models.deliveryModel,
           lesson._id,
-          activeChannelIds,
+          matchingChannelIds,
           text,
           now,
         );

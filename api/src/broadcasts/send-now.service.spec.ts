@@ -69,6 +69,18 @@ describe('SendNowService.sendNow', () => {
     });
   });
 
+  it('канал активен, но не подписан на тег занятия (ADR-0106) — InvalidInputError, другой текст', async () => {
+    const channel = await createChannel(ctx, { tags: ['средние'] });
+    const cls = await createClass(ctx, { channelIds: [channel._id] });
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate(), {
+      tags: ['новички'],
+    });
+
+    await expect(ctx.service.sendNow(lesson._id.toString(), NOW)).rejects.toMatchObject({
+      message: expect.stringContaining('не подписан на теги') as unknown,
+    });
+  });
+
   it('рассылки ещё не было — создаёт scheduled-рассылку и доставки на активные каналы', async () => {
     const cls = await createClass(ctx);
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());

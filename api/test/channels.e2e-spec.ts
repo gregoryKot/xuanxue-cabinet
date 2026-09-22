@@ -73,6 +73,44 @@ describe('Channels (e2e)', () => {
       expect((res.body as ChannelDto).target).toBe('');
     });
 
+    it('POST без tags → 201, tags — пустой массив (ADR-0106)', async () => {
+      const cookie = await sessionFor(['teacher']);
+      const res = await postChannel(cookie, MANUAL_BODY);
+
+      expect((res.body as ChannelDto).tags).toEqual([]);
+    });
+
+    it('POST с tags → 201, tags нормализованы и в ответе, config наружу не утекает', async () => {
+      const cookie = await sessionFor(['teacher']);
+      const res = await postChannel(cookie, {
+        ...MANUAL_BODY,
+        tags: [' Новички ', 'новички'],
+      });
+
+      expect(res.status).toBe(201);
+      expect((res.body as ChannelDto).tags).toEqual(['Новички']);
+      expect(res.body as Record<string, unknown>).not.toHaveProperty('config');
+    });
+
+    it('PATCH tags — сохранил → нашёл (read-after-write), config наружу не утекает', async () => {
+      const cookie = await sessionFor(['teacher']);
+      const created = await postChannel(cookie, MANUAL_BODY);
+      const dto = created.body as ChannelDto;
+
+      const patched = await withCsrf(request(server()).patch(`/api/channels/${dto.id}`))
+        .set('Cookie', cookie)
+        .send({ tags: ['средние'] });
+
+      expect(patched.status).toBe(200);
+      expect((patched.body as ChannelDto).tags).toEqual(['средние']);
+      expect(patched.body as Record<string, unknown>).not.toHaveProperty('config');
+
+      const got = await request(server())
+        .get(`/api/channels/${dto.id}`)
+        .set('Cookie', cookie);
+      expect((got.body as ChannelDto).tags).toEqual(['средние']);
+    });
+
     it('POST telegram → 201, target из chatId, config в сырой Mongo зашифрован', async () => {
       const cookie = await sessionFor(['teacher']);
       const body = telegramBody('@school-raw');

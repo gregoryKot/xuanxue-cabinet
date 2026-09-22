@@ -1,6 +1,7 @@
-// Запросы планировщика рассылок на чтение — классы, занятия «в окне», активные
-// каналы класса. Запись (insert рассылки/доставок, cancelled-плейсхолдер) —
-// broadcast-planner.inserts.ts: разделено ради лимита файла (CLAUDE.md
+// Запросы планировщика рассылок на чтение — классы, занятия «в окне».
+// Запись (insert рассылки/доставок, cancelled-плейсхолдер) —
+// broadcast-planner.inserts.ts; отбор каналов по активности и тегу —
+// broadcast-channels.queries.ts: разделено ради лимита файла (CLAUDE.md
 // «Храповики», 150 строк).
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
@@ -10,12 +11,14 @@ import {
   type ClassFormat,
   type LessonStatus,
 } from '@xuanxue/shared';
-import type { ChannelRecord } from '../channels/channel.schema';
 import { CLASS_ENCRYPT_SCHEMA, type ClassRecord } from '../classes/class.schema';
 import { LESSON_ENCRYPT_SCHEMA, type LessonRecord } from '../lessons/lesson.schema';
 import { decryptRecord } from '../utils/encryption';
 
 // type, не interface: decryptRecord требует индексную сигнатуру (как LeanLesson).
+// `tags` — честно опционален: у класса, заведённого до ADR-0072, поля в
+// документе нет, `.lean()` не подставляет default при чтении (тот же приём,
+// что у LeanClass/class.mapper.ts).
 export type PlannerClass = {
   _id: Types.ObjectId;
   title: string;
@@ -28,6 +31,7 @@ export type PlannerClass = {
   leadMinutes: number;
   active: boolean;
   leaderId?: Types.ObjectId;
+  tags?: string[];
 };
 
 const CLASS_PROJECTION = {
@@ -41,8 +45,10 @@ const CLASS_PROJECTION = {
   leadMinutes: 1,
   active: 1,
   leaderId: 1,
+  tags: 1,
 } as const;
 
+// `tags` — та же оговорка, что у PlannerClass выше (запись до ADR-0075).
 export type PlannerLesson = {
   _id: Types.ObjectId;
   classId: Types.ObjectId;
@@ -53,6 +59,7 @@ export type PlannerLesson = {
   zoomLinkOverride?: string;
   zoomPasswordOverride?: string;
   leaderId?: Types.ObjectId;
+  tags?: string[];
 };
 
 const LESSON_PROJECTION = {
@@ -64,6 +71,7 @@ const LESSON_PROJECTION = {
   zoomLinkOverride: 1,
   zoomPasswordOverride: 1,
   leaderId: 1,
+  tags: 1,
 } as const;
 
 // Ссылка и пароль класса лежат шифротекстом (CLASS_FIELD_POLICY): без
@@ -143,17 +151,4 @@ export async function findClassForRecording(
     .findById(classId, CLASS_PROJECTION)
     .lean<PlannerClass | null>();
   return doc === null ? null : decryptRecord(doc, CLASS_ENCRYPT_SCHEMA);
-}
-
-/** Активные каналы класса на момент отправки (CLAUDE.md «Только активные
- * каналы»): пустой результат — сигнал сервису для cancelled-плейсхолдера, не
- * ошибка. */
-export function findActiveChannelIds(
-  channelModel: Model<ChannelRecord>,
-  channelIds: readonly Types.ObjectId[],
-): Promise<Types.ObjectId[]> {
-  return channelModel
-    .find({ _id: { $in: channelIds }, active: true }, { _id: 1 })
-    .lean<{ _id: Types.ObjectId }[]>()
-    .then((docs) => docs.map((doc) => doc._id));
 }

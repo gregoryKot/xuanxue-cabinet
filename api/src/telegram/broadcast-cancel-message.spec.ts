@@ -20,6 +20,15 @@ describe('cancelledBroadcastMessage', () => {
     expect(text).toContain('«Каналах»');
   });
 
+  it('ни один канал не подписан на теги — куда идти за тегами канала и занятия', () => {
+    const text = cancelledBroadcastMessage(CANCEL_REASON.noChannelsForTags, NAME);
+
+    expect(text).toContain(`«${NAME}»`);
+    expect(text).toContain('не подписан');
+    expect(text).toContain('«Каналах»');
+    expect(text).toContain('«Расписании»');
+  });
+
   it('нет ссылки — действие «Расписание»', () => {
     const text = cancelledBroadcastMessage(CANCEL_REASON.noLink, NAME);
 
