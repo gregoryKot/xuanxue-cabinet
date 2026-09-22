@@ -394,6 +394,53 @@ input[type='radio'] {
   }
 }
 
+/* Сетка плиток-вариантов с картинками (экран сдачи и предпросмотр «глазами
+   ученика», attempt/AttemptOptionTile.tsx, docs/adr/0105): картинка внутри
+   своей карточки, отметка и подпись под ней в той же карточке — раньше
+   контрол стоял отдельной строкой над картинкой, и на экране казалось, что
+   он относится к чужому фото сверху (жалоба владельца со снимком).
+   `auto-fit`/`minmax` — своя колонка на телефоне, две-три на мониторе без
+   отдельного класса под ширину экрана. `min-width: 0` обязателен: сетка —
+   flex-ребёнок колонки вопроса (attempt/AttemptQuestion.tsx), а
+   `minmax(132px, 1fr)` без него меряет минимальную ширину по самому
+   широкому содержимому колонки — фото с телефона в 600–1280px, — и сетка
+   вылезает за правый край экрана (проверено в браузере). Класс, не
+   инлайн-стиль: `CSSProperties` не умеет медиа-запрос и `:focus-within`. */
+.xuanxue-option-tiles {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+@media (min-width: 560px) {
+  .xuanxue-option-tiles {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+.xuanxue-option-tile-media {
+  height: 160px;
+}
+@media (min-width: 560px) {
+  .xuanxue-option-tile-media {
+    height: 200px;
+  }
+}
+/* Плитка — `<label>`, не `<button>`, а настоящий `<input>` внутри спрятан
+   визуально (`xuanxue-sr-only`): фокус с клавиатуры достаётся ему, рамку
+   рисуем на плитке через `:focus-within` — тот же приём, что у
+   `.xuanxue-file-label` выше. */
+.xuanxue-option-tile:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+/* Плитка не `<button>` и не `<a>`, поэтому глобальное правило отклика на
+   нажатие (docs/adr/0089) её не ловит — те же числа здесь, точечно. */
+.xuanxue-option-tile:active {
+  transform: scale(0.97);
+  filter: brightness(0.93);
+}
+
 /* Два поля в ряд на экране пошире (лимит времени и число попыток в редакторе
    экзамена, макет Form.dc.html) — одно под другим на телефоне. Класс, не
    инлайн-стиль: `CSSProperties` не умеет медиа-запрос. */
