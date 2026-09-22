@@ -13,6 +13,10 @@ export const CANCEL_REASON = {
   offline: 'офлайн-занятие, ссылка не рассылается',
   noLink: 'нет ссылки на занятие',
   allChannelsDisabled: 'все каналы класса выключены',
+  // Активные каналы есть, но ни один не подписан на тег даты занятия или
+  // занятия в расписании (ADR-0108) — отдельная причина от allChannelsDisabled:
+  // учителю нужно разное действие (тег, не «включите канал»).
+  noChannelsForTags: 'ни один канал не подписан на теги занятия',
 } as const;
 
 /** Тик опоздал непоправимо (broadcast-planner.service.ts, level: 'error') —
@@ -23,13 +27,14 @@ export const TOO_LATE_REASON = `тик опоздал: занятие начал
 /** Действие, которое нужно DM учителю по причине отмены (docs/PLAN.md §6
  * «Планировщик»). Не enum — union строк (CLAUDE.md «Код»). */
 export type BroadcastCancelAction =
-  'no_channels' | 'channels_disabled' | 'no_link' | 'too_late';
+  'no_channels' | 'channels_disabled' | 'no_link' | 'too_late' | 'no_channels_for_tags';
 
 const ACTION_BY_REASON: ReadonlyMap<string, BroadcastCancelAction> = new Map([
   [CANCEL_REASON.noChannels, 'no_channels'],
   [CANCEL_REASON.allChannelsDisabled, 'channels_disabled'],
   [CANCEL_REASON.noLink, 'no_link'],
   [TOO_LATE_REASON, 'too_late'],
+  [CANCEL_REASON.noChannelsForTags, 'no_channels_for_tags'],
 ]);
 
 /**

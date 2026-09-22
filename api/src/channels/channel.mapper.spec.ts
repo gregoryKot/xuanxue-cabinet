@@ -44,6 +44,7 @@ describe('toChannelDto', () => {
       title: 'Основной канал',
       active: true,
       target: '@school',
+      tags: [],
       createdAt: '2026-09-01T00:00:00.000Z',
       updatedAt: '2026-09-01T00:00:00.000Z',
     });
@@ -53,5 +54,15 @@ describe('toChannelDto', () => {
   it('target отсутствует в документе (запись до поля target) — пустая строка, не undefined', () => {
     const doc = lean({ target: undefined as unknown as string });
     expect(toChannelDto(doc).target).toBe('');
+  });
+
+  it('tags отсутствуют в документе (канал создан до ADR-0108) — пустой массив, не undefined', () => {
+    const doc = lean({ tags: undefined });
+    expect(toChannelDto(doc).tags).toEqual([]);
+  });
+
+  it('tags переданы — попадают в DTO как есть', () => {
+    const doc = lean({ tags: ['новички'] });
+    expect(toChannelDto(doc).tags).toEqual(['новички']);
   });
 });

@@ -9,13 +9,15 @@
 // лежат в одном зашифрованном `config` (SECURITY §3) — PATCH заменяет его
 // целиком, поэтому поменять только ID беседы без токена нельзя технически;
 // форма ловит это понятной ошибкой раньше сервера (ревью п.2), а не 400.
-import type {
-  ChannelConfig,
-  ChannelDto,
-  ChannelType,
-  CreateChannelInput,
-  UpdateChannelInput,
+import {
+  parseTagsText,
+  type ChannelConfig,
+  type ChannelDto,
+  type ChannelType,
+  type CreateChannelInput,
+  type UpdateChannelInput,
 } from '@xuanxue/shared';
+import { longTagError } from '../lib/longTagError';
 
 export interface ChannelFormState {
   type: ChannelType;
@@ -29,6 +31,11 @@ export interface ChannelFormState {
   chatId: string;
   token: string;
   peerIdText: string;
+  /** Отбор по тегу (ADR-0108): пусто — канал получает все рассылки своих
+   * занятий, как раньше; строкой через запятую, тот же приём и тот же
+   * `parseTagsText`, что у schedule/classFormInput.ts — второй разбор не
+   * заводим. */
+  tagsText: string;
 }
 
 /** `null` — форма валидна; иначе поле с ошибкой (ChannelFormFields рисует её
@@ -46,6 +53,7 @@ export function initialChannelFormState(channelDto: ChannelDto | null): ChannelF
     chatId: channelDto?.type === 'telegram' ? channelDto.target : '',
     token: '',
     peerIdText: channelDto?.type === 'vk' ? channelDto.target : '',
+    tagsText: channelDto?.tags.join(', ') ?? '',
   };
 }
 
@@ -91,6 +99,10 @@ export function validateChannelForm(
       return { field: 'peerIdText', message: 'ID беседы ВК — целое число.' };
     }
   }
+  // Длину тега проверяем на клиенте общей функцией — шапка lib/longTagError.ts,
+  // тот же приём, что у schedule/classFormInput.ts.
+  const tagError = longTagError(state.tagsText);
+  if (tagError) return { field: 'tagsText', message: tagError };
   return null;
 }
 
@@ -108,6 +120,7 @@ export function toCreateInput(state: ChannelFormState): CreateChannelInput {
     type: state.type,
     title: state.title.trim(),
     config: configFor(state, state.type),
+    tags: parseTagsText(state.tagsText),
   };
 }
 
@@ -118,7 +131,11 @@ export function toUpdateInput(
   state: ChannelFormState,
   existingType: ChannelType,
 ): UpdateChannelInput {
-  const input: UpdateChannelInput = { title: state.title.trim(), active: state.active };
+  const input: UpdateChannelInput = {
+    title: state.title.trim(),
+    active: state.active,
+    tags: parseTagsText(state.tagsText),
+  };
   if (existingType === 'telegram') {
     input.config = { chatId: state.chatId.trim() };
   } else if (existingType === 'vk' && state.token.trim()) {

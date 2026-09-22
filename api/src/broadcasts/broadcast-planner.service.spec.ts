@@ -6,6 +6,7 @@
 import mongoose from 'mongoose';
 import { decrypt } from '../utils/encryption';
 import { SettingsRecord } from '../settings/settings.schema';
+import { classifyCancelReason } from './broadcast-cancel-reasons';
 import {
   clearPlannerTest,
   createChannel,
@@ -141,6 +142,92 @@ describe('BroadcastPlannerService.plan', () => {
     const deliveries = await ctx.deliveryModel.find({}).lean();
     expect(deliveries).toHaveLength(1);
     expect(deliveries[0]?.channelId.toString()).toBe(active._id.toString());
+  });
+
+  it('владелец: два канала по тегам («новички»/«средние») — дата уходит только в свой (ADR-0108)', async () => {
+    const noviceChannel = await createChannel(ctx, { tags: ['новички'] });
+    const intermediateChannel = await createChannel(ctx, { tags: ['средние'] });
+    const cls = await createClass(ctx, {
+      channelIds: [noviceChannel._id, intermediateChannel._id],
+    });
+    await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate(), {
+      tags: ['новички'],
+    });
+
+    const result = await ctx.service.plan(NOW);
+
+    expect(result).toEqual({ broadcasts: 1 });
+    const deliveries = await ctx.deliveryModel.find({}).lean();
+    expect(deliveries).toHaveLength(1);
+    expect(deliveries[0]?.channelId.toString()).toBe(noviceChannel._id.toString());
+  });
+
+  it('канал без тегов получает всё — и дату с тегом, и дату без тега', async () => {
+    const openChannel = await createChannel(ctx);
+    const cls = await createClass(ctx, { channelIds: [openChannel._id] });
+    await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate(), {
+      tags: ['новички'],
+    });
+
+    const result = await ctx.service.plan(NOW);
+
+    expect(result).toEqual({ broadcasts: 1 });
+    const deliveries = await ctx.deliveryModel.find({}).lean();
+    expect(deliveries[0]?.channelId.toString()).toBe(openChannel._id.toString());
+  });
+
+  it('тег занятия в расписании (не свой тег даты) тоже совпадает (ADR-0072)', async () => {
+    const noviceChannel = await createChannel(ctx, { tags: ['новички'] });
+    const cls = await createClass(ctx, {
+      channelIds: [noviceChannel._id],
+      tags: ['новички'],
+    });
+    await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
+
+    const result = await ctx.service.plan(NOW);
+
+    expect(result).toEqual({ broadcasts: 1 });
+  });
+
+  it('ни один канал не подписан на тег даты — cancelled-плейсхолдер с новой причиной, DM-действие есть', async () => {
+    const intermediateChannel = await createChannel(ctx, { tags: ['средние'] });
+    const cls = await createClass(ctx, { channelIds: [intermediateChannel._id] });
+    const lesson = await createLesson(
+      ctx,
+      cls._id,
+      NOW.plus({ minutes: 10 }).toJSDate(),
+      {
+        tags: ['новички'],
+      },
+    );
+
+    const result = await ctx.service.plan(NOW);
+
+    expect(result).toEqual({ broadcasts: 0 });
+    const broadcast = await ctx.broadcastModel.findOne({ lessonId: lesson._id }).lean();
+    expect(broadcast?.status).toBe('cancelled');
+    expect(decrypt(broadcast?.text)).toBe('ни один канал не подписан на теги занятия');
+    expect(classifyCancelReason(decrypt(broadcast?.text) ?? '')).toBe(
+      'no_channels_for_tags',
+    );
+    await expect(ctx.deliveryModel.countDocuments({})).resolves.toBe(0);
+  });
+
+  it('у даты и у занятия в расписании совсем нет поля tags (запись до ADR-0075/0072) — не падает, уходит как без тегов', async () => {
+    const openChannel = await createChannel(ctx);
+    const cls = await createClass(ctx, { channelIds: [openChannel._id] });
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 10 }).toJSDate());
+    // default: [] подставляет Mongoose только при создании — симулируем
+    // документы, заведённые до появления поля tags: в базе его нет вовсе.
+    await ctx.classModel.collection.updateOne({ _id: cls._id }, { $unset: { tags: '' } });
+    await ctx.lessonModel.collection.updateOne(
+      { _id: lesson._id },
+      { $unset: { tags: '' } },
+    );
+
+    const result = await ctx.service.plan(NOW);
+
+    expect(result).toEqual({ broadcasts: 1 });
   });
 
   it('занятие ещё не в окне — ничего не создаётся', async () => {

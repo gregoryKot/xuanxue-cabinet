@@ -210,6 +210,75 @@ describe('RecordingBroadcastService.ensureForRecording', () => {
     await expect(deliveryModel.countDocuments({})).resolves.toBe(0);
   });
 
+  it('запись занятия «новичков» не уезжает в канал «средних» (ADR-0108) — cancelled с новой причиной', async () => {
+    const intermediateChannel = await channelModel.create({
+      type: 'telegram',
+      title: 'Средние',
+      config: '{}',
+      target: '',
+      active: true,
+      tags: ['средние'],
+    });
+    const cls = await createClass({ channelIds: [intermediateChannel._id] });
+    const lesson = await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.minus({ hours: 1 }).toJSDate(),
+      durationMin: 60,
+      status: 'scheduled',
+      topic: 'Пятое занятие',
+      tags: ['новички'],
+    });
+
+    await service.ensureForRecording(lesson._id, RECORDING, NOW);
+
+    const broadcast = await broadcastModel.findOne({ lessonId: lesson._id }).lean();
+    expect(broadcast?.status).toBe('cancelled');
+    expect(decrypt(broadcast?.text)).toBe('ни один канал не подписан на теги занятия');
+    await expect(deliveryModel.countDocuments({})).resolves.toBe(0);
+  });
+
+  it('запись занятия «новичков» уезжает в канал с тем же тегом (ADR-0108)', async () => {
+    const noviceChannel = await channelModel.create({
+      type: 'telegram',
+      title: 'Новички',
+      config: '{}',
+      target: '',
+      active: true,
+      tags: ['новички'],
+    });
+    const cls = await createClass({ channelIds: [noviceChannel._id] });
+    const lesson = await lessonModel.create({
+      classId: cls._id,
+      startsAt: NOW.minus({ hours: 1 }).toJSDate(),
+      durationMin: 60,
+      status: 'scheduled',
+      topic: 'Пятое занятие',
+      tags: ['новички'],
+    });
+
+    await service.ensureForRecording(lesson._id, RECORDING, NOW);
+
+    const broadcast = await broadcastModel.findOne({ lessonId: lesson._id }).lean();
+    expect(broadcast?.status).toBe('scheduled');
+    const deliveries = await deliveryModel.find({ broadcastId: broadcast?._id }).lean();
+    expect(deliveries).toHaveLength(1);
+    expect(deliveries[0]?.channelId.toString()).toBe(noviceChannel._id.toString());
+  });
+
+  it('у даты и у класса совсем нет поля tags (запись до ADR-0075/0072) — не падает, запись уходит', async () => {
+    const cls = await createClass();
+    const lesson = await createLesson(cls._id);
+    // default: [] подставляет Mongoose только при создании — симулируем
+    // документы, заведённые до появления поля tags: в базе его нет вовсе.
+    await classModel.collection.updateOne({ _id: cls._id }, { $unset: { tags: '' } });
+    await lessonModel.collection.updateOne({ _id: lesson._id }, { $unset: { tags: '' } });
+
+    await service.ensureForRecording(lesson._id, RECORDING, NOW);
+
+    const broadcast = await broadcastModel.findOne({ lessonId: lesson._id }).lean();
+    expect(broadcast?.status).toBe('scheduled');
+  });
+
   it('класс выключен — cancelled-плейсхолдер с причиной', async () => {
     const cls = await createClass({ active: false });
     const lesson = await createLesson(cls._id);

@@ -18,6 +18,9 @@ const MESSAGE_BY_ACTION: Record<BroadcastCancelAction, (name: string) => string>
   too_late: (name) =>
     `Ссылка на «${name}» не ушла: занятие уже началось, когда сервис проснулся. ` +
     'Отправьте вручную в «Рассылках».',
+  no_channels_for_tags: (name) =>
+    `Ссылка на «${name}» не уйдёт: ни один канал не подписан на её теги. ` +
+    'Проверьте теги канала в «Каналах» и теги занятия в «Расписании».',
 };
 
 /** `name` — «{класс} {время}» (тот же формат, что у notifyDeliveryFailed). */

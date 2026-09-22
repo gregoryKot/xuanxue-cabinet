@@ -127,6 +127,57 @@ describe('ChannelsService', () => {
     expect(found).toEqual(created);
   });
 
+  it('create: tags не прислали — пустой массив (канал получает всё, ADR-0108)', async () => {
+    const created = await service.create({
+      type: 'manual',
+      title: 'Facebook',
+      config: {},
+    });
+
+    expect(created.tags).toEqual([]);
+  });
+
+  it('create: tags нормализуются — обрезка и дедуп без учёта регистра', async () => {
+    const created = await service.create({
+      type: 'manual',
+      title: 'Новички',
+      config: {},
+      tags: [' Новички ', 'новички'],
+    });
+
+    expect(created.tags).toEqual(['Новички']);
+  });
+
+  it('update: tags не прислали — PATCH их не трогает (read-after-write)', async () => {
+    const created = await service.create({
+      type: 'manual',
+      title: 'Facebook',
+      config: {},
+      tags: ['новички'],
+    });
+
+    const updated = await service.update(created.id, { title: 'Новое название' });
+
+    expect(updated.tags).toEqual(['новички']);
+    const found = await service.getById(created.id);
+    expect(found.tags).toEqual(['новички']);
+  });
+
+  it('update: tags прислали пустым массивом — сбрасывает (read-after-write)', async () => {
+    const created = await service.create({
+      type: 'manual',
+      title: 'Facebook',
+      config: {},
+      tags: ['новички'],
+    });
+
+    const updated = await service.update(created.id, { tags: [] });
+
+    expect(updated.tags).toEqual([]);
+    const found = await service.getById(created.id);
+    expect(found.tags).toEqual([]);
+  });
+
   it('create: config зашифрован в сырой Mongo, не JSON и не открытый текст', async () => {
     const created = await service.create({
       type: 'vk',

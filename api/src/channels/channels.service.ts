@@ -24,6 +24,7 @@ import { assertConfigForType } from './assert-channel-config';
 import { ChannelAdapterRegistry } from './channel-adapter.registry';
 import { ChannelConfigService } from './channel-config.service';
 import { scrubChannelSecrets } from './channel-secrets';
+import { buildChannelCreatePayload, buildChannelUpdateSet } from './channel-write';
 import { CHANNEL_FIELD_POLICY, ChannelRecord } from './channel.schema';
 import { targetOf, toChannelDto, type LeanChannel } from './channel.mapper';
 
@@ -72,14 +73,7 @@ export class ChannelsService {
   async create(input: CreateChannelInput): Promise<ChannelDto> {
     assertConfigForType(input.type, input.config);
     const target = targetOf(input.type, input.config);
-    // Record<string, unknown> явно: тело уже проверено ValidationPipe.
-    const payload: Record<string, unknown> = {
-      type: input.type,
-      title: input.title,
-      config: input.config,
-      target,
-      active: true,
-    };
+    const payload = buildChannelCreatePayload(input, target);
     const created = await this.withDuplicateGuard(() =>
       this.model.create(encryptRecord(payload, ENCRYPT_SCHEMA)),
     );
@@ -88,7 +82,7 @@ export class ChannelsService {
 
   async update(id: string, input: UpdateChannelInput): Promise<ChannelDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const $set: Record<string, unknown> = { ...input };
+    const $set = buildChannelUpdateSet(input);
     if (input.config !== undefined) {
       const type = await this.typeOf(id);
       assertConfigForType(type, input.config);

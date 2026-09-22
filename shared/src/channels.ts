@@ -44,6 +44,11 @@ export interface ChannelDto {
   /** Что показать учителю без секрета: `chatId`/`peerId`/`''` — `config`
    * целиком в DTO не входит никогда (SECURITY §3). */
   target: string;
+  /** Отбор рассылок по тегу (ADR-0108): пусто — канал получает всё, что уходит
+   * по занятиям, к которым он привязан (поведение до тегов); один тег и больше
+   * — только те занятия, у которых этот тег есть у даты (ADR-0075) или у самого
+   * занятия в расписании (ADR-0072). Лимиты и нормализация общие с материалами (shared/src/tags.ts). */
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +57,8 @@ export interface CreateChannelInput {
   type: ChannelType;
   title: string;
   config: ChannelConfig;
+  /** Не прислали — канал получает все рассылки своих занятий (ADR-0108). */
+  tags?: string[];
 }
 
 /** `config` заменяется целиком, частичный патч секрета не предусмотрен
@@ -62,6 +69,9 @@ export interface UpdateChannelInput {
   title?: string;
   active?: boolean;
   config?: ChannelConfig;
+  /** Не прислали — теги не трогаем; сброс к «каналу уходит всё» — пустым
+   * массивом, не `null` (тот же приём, что у UpdateLessonInput.tags). */
+  tags?: string[];
 }
 
 export interface ChannelTestResult {

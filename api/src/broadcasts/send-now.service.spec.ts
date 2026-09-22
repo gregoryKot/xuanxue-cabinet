@@ -69,6 +69,39 @@ describe('SendNowService.sendNow', () => {
     });
   });
 
+  it('канал активен, но не подписан на тег занятия (ADR-0108) — InvalidInputError, другой текст', async () => {
+    const channel = await createChannel(ctx, { tags: ['средние'] });
+    const cls = await createClass(ctx, { channelIds: [channel._id] });
+    const lesson = await createLesson(
+      ctx,
+      cls._id,
+      NOW.plus({ minutes: 10 }).toJSDate(),
+      {
+        tags: ['новички'],
+      },
+    );
+
+    await expect(ctx.service.sendNow(lesson._id.toString(), NOW)).rejects.toMatchObject({
+      message: expect.stringContaining('не подписан на теги') as unknown,
+    });
+  });
+
+  it('у даты и у занятия в расписании совсем нет поля tags (запись до ADR-0075/0072) — не падает, ссылка уходит', async () => {
+    const cls = await createClass(ctx);
+    const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());
+    // default: [] подставляет Mongoose только при создании — симулируем
+    // документы, заведённые до появления поля tags: в базе его нет вовсе.
+    await ctx.classModel.collection.updateOne({ _id: cls._id }, { $unset: { tags: '' } });
+    await ctx.lessonModel.collection.updateOne(
+      { _id: lesson._id },
+      { $unset: { tags: '' } },
+    );
+
+    const dto = await ctx.service.sendNow(lesson._id.toString(), NOW);
+
+    expect(dto.status).toBe('scheduled');
+  });
+
   it('рассылки ещё не было — создаёт scheduled-рассылку и доставки на активные каналы', async () => {
     const cls = await createClass(ctx);
     const lesson = await createLesson(ctx, cls._id, NOW.plus({ minutes: 40 }).toJSDate());

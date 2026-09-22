@@ -16,6 +16,12 @@ describe('classifyCancelReason', () => {
     );
   });
 
+  it('ни один канал не подписан на теги занятия — no_channels_for_tags', () => {
+    expect(classifyCancelReason(CANCEL_REASON.noChannelsForTags)).toBe(
+      'no_channels_for_tags',
+    );
+  });
+
   it('нет ссылки на занятие — no_link', () => {
     expect(classifyCancelReason(CANCEL_REASON.noLink)).toBe('no_link');
   });
