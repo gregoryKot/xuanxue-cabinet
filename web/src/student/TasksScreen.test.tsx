@@ -2,6 +2,7 @@
 // переход на экран сдачи (решение владельца: экзамены — отдельный экран,
 // первый после входа). Навигацию проверяем через настоящий react-router
 // (MemoryRouter + Routes), как раньше StudentExamsSection.test.tsx.
+import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -205,6 +206,25 @@ describe('TasksScreen — старт попытки', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Этот экзамен ещё не открыт для сдачи.',
+    );
+    expect(screen.queryByText('Экран сдачи')).not.toBeInTheDocument();
+    await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  // Сеть оборвалась посреди запроса — до ApiError дело не доходит вовсе
+  // (apiFetch бросает TypeError браузера). Ученику всё равно нужна строка с
+  // действием, а не пустая карточка: до этого теста ветка запасного текста
+  // не исполнялась ни разу (покрытие web, храповик).
+  it('старт упал не ответом сервера, а сетью — общий текст с действием', async () => {
+    mockedApiFetch.mockResolvedValueOnce([makeExam()]);
+    mockedApiFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    renderScreen();
+
+    const button = await screen.findByRole('button', { name: 'Начать' });
+    button.click();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось начать попытку. Попробуйте ещё раз.',
     );
     expect(screen.queryByText('Экран сдачи')).not.toBeInTheDocument();
     await waitFor(() => expect(button).toBeEnabled());
@@ -455,10 +475,16 @@ describe('TasksScreen — подтверждение перед стартом �
       [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })],
       '/exams/e1/attempts': { id: 'attempt-1', examId: 'e1' },
     });
+    const user = userEvent.setup();
     renderScreen();
 
-    (await screen.findByRole('button', { name: 'Начать' })).click();
-    (await screen.findByRole('button', { name: 'Начать экзамен' })).click();
+    // userEvent, не сырой .click(): подтверждение тянет за собой цепочку из
+    // нескольких тактов (POST → applyAttempt → goBack() диалога → popstate →
+    // onClose → эффект с navigate). Сырой клик не проходит через act(), и
+    // тест то успевал, то нет — мигал (CLAUDE.md «Детерминизм»: мигающий
+    // тест чинится в тот же день, retry запрещён).
+    await user.click(await screen.findByRole('button', { name: 'Начать' }));
+    await user.click(await screen.findByRole('button', { name: 'Начать экзамен' }));
 
     expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith('/exams/e1/attempts', { method: 'POST' });
@@ -469,10 +495,13 @@ describe('TasksScreen — подтверждение перед стартом �
 
   it('«Не сейчас» — POST не уходит, список экрана остаётся на месте', async () => {
     mockApiByPath({ [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })] });
+    const user = userEvent.setup();
     renderScreen();
 
-    (await screen.findByRole('button', { name: 'Начать' })).click();
-    (await screen.findByRole('button', { name: 'Не сейчас' })).click();
+    // Тот же приём, что у теста подтверждения выше: закрытие диалога идёт
+    // через goBack() и popstate, сырой клик мимо act() делает тест мигающим.
+    await user.click(await screen.findByRole('button', { name: 'Начать' }));
+    await user.click(await screen.findByRole('button', { name: 'Не сейчас' }));
 
     await waitFor(() =>
       expect(

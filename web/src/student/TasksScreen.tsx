@@ -32,7 +32,6 @@ import { cardListStyle } from '../components/listCardStyles';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
-import { getExamStartConfirm } from './examStartConfirm';
 import { useMyExams } from './MyExamsProvider';
 import { splitTasksToDo } from './splitTasksToDo';
 import { StudentExamCard } from './StudentExamCard';
@@ -62,12 +61,11 @@ export default function TasksScreen() {
   const {
     pendingExamId,
     errors: startErrors,
-    confirmExam,
+    confirm,
     start,
     confirmStart,
     cancelConfirm,
   } = useTaskStart();
-  const confirm = confirmExam ? getExamStartConfirm(confirmExam) : null;
 
   function renderCard(exam: MyExamDto) {
     return (
@@ -117,13 +115,13 @@ export default function TasksScreen() {
 
       {confirm && (
         <ConfirmDialog
-          title={confirm.title}
-          message={confirm.message}
-          confirmLabel={confirm.confirmLabel}
-          cancelLabel={confirm.cancelLabel}
+          title={confirm.copy.title}
+          message={confirm.copy.message}
+          confirmLabel={confirm.copy.confirmLabel}
+          cancelLabel={confirm.copy.cancelLabel}
           confirmVariant="primary"
-          pending={pendingExamId === confirmExam?.id}
-          onConfirm={confirmStart}
+          pending={pendingExamId === confirm.exam.id}
+          onConfirm={() => confirmStart(confirm.exam)}
           onCancel={cancelConfirm}
         />
       )}

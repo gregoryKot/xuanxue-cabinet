@@ -18,21 +18,27 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
-import { getExamStartConfirm } from './examStartConfirm';
+import { getExamStartConfirm, type ExamStartConfirm } from './examStartConfirm';
 import { useMyExams } from './MyExamsProvider';
 import { resolveTaskStartTarget } from './resolveTaskStartTarget';
 
 const START_ERROR_MESSAGE = 'Не удалось начать попытку. Попробуйте ещё раз.';
 
+/** Открытый вопрос «Вы начинаете экзамен»: чей он и какими словами задан. */
+export interface ExamStartConfirmState {
+  exam: MyExamDto;
+  copy: ExamStartConfirm;
+}
+
 export interface UseTaskStartResult {
   pendingExamId: string | null;
   errors: Record<string, string>;
-  /** Экзамен, для которого открыт вопрос «Вы начинаете экзамен» — `null`,
-   * когда диалог закрыт (TasksScreen рисует ConfirmDialog, пока не null). */
-  confirmExam: MyExamDto | null;
+  /** `null`, когда диалог закрыт (TasksScreen рисует ConfirmDialog, пока не
+   * null) — тексты уже посчитаны, экран берёт их готовыми. */
+  confirm: ExamStartConfirmState | null;
   start: (exam: MyExamDto) => void;
   /** Кнопка «Начать экзамен» в диалоге — сюда переехал реальный POST. */
-  confirmStart: () => Promise<void>;
+  confirmStart: (exam: MyExamDto) => Promise<void>;
   /** «Не сейчас» — и то же закрытие диалога после успешного старта (см.
    * комментарий вверху файла: обе причины закрывают диалог одинаково). */
   cancelConfirm: () => void;
@@ -43,15 +49,19 @@ export function useTaskStart(): UseTaskStartResult {
   const navigate = useNavigate();
   const [pendingExamId, setPendingExamId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [confirmExam, setConfirmExam] = useState<MyExamDto | null>(null);
+  // В состоянии и сам экзамен, и уже готовые тексты вопроса: `start` ниже всё
+  // равно зовёт getExamStartConfirm, чтобы решить, спрашивать ли, — экран,
+  // считая их второй раз у себя, повторял бы ту же работу и держал бы ветку
+  // «экзамен есть, а текстов нет», недостижимую по построению.
+  const [confirm, setConfirm] = useState<ExamStartConfirmState | null>(null);
   const [startedAttempt, setStartedAttempt] = useState<ExamAttemptDto | null>(null);
 
   useEffect(() => {
-    if (startedAttempt && !confirmExam) {
+    if (startedAttempt && !confirm) {
       void navigate(`/attempts/${startedAttempt.id}`);
       setStartedAttempt(null);
     }
-  }, [startedAttempt, confirmExam, navigate]);
+  }, [startedAttempt, confirm, navigate]);
 
   const runStart = useCallback(
     async (exam: MyExamDto) => {
@@ -88,8 +98,9 @@ export function useTaskStart(): UseTaskStartResult {
 
       // Лимит времени и реальный старт («start»/«retry») — сперва вопрос;
       // POST уходит только из confirmStart().
-      if (getExamStartConfirm(exam)) {
-        setConfirmExam(exam);
+      const copy = getExamStartConfirm(exam);
+      if (copy) {
+        setConfirm({ exam, copy });
         return;
       }
 
@@ -98,18 +109,19 @@ export function useTaskStart(): UseTaskStartResult {
     [navigate, runStart],
   );
 
-  const confirmStart = useCallback(async () => {
-    if (confirmExam) await runStart(confirmExam);
-  }, [confirmExam, runStart]);
-
-  const cancelConfirm = useCallback(() => setConfirmExam(null), []);
+  const cancelConfirm = useCallback(() => setConfirm(null), []);
 
   return {
     pendingExamId,
     errors,
-    confirmExam,
+    confirm,
     start,
-    confirmStart,
+    // Экзамен приходит параметром, а не читается из состояния: диалог
+    // рисуется только при непустом `confirm`, и проверка «а есть ли что
+    // стартовать» внутри была бы веткой, до которой не добраться ни одним
+    // тестом (CLAUDE.md, правило 1д: лучше убрать саму возможность ошибки,
+    // чем сторожить её недостижимым `if`).
+    confirmStart: runStart,
     cancelConfirm,
   };
 }
