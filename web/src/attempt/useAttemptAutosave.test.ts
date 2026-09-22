@@ -202,6 +202,44 @@ describe('useAttemptAutosave — сеть вернулась и параллел
     });
   });
 
+  // Гейт: check-vitest-coverage-ratchet.mjs (functions) — ветка
+  // «уже летит чужой PATCH» в useAttemptSaveRunner.ts ждёт его исход через
+  // `.catch(() => undefined)`, а не падает вместе с ним: этот тест — на
+  // случай, когда тот чужой (фоновый) PATCH сам проваливается.
+  it('flush() застаёт чужой фоновый PATCH в полёте, тот проваливается — flush() пробует сама и добивается успеха', async () => {
+    let rejectFirst: ((err: Error) => void) | undefined;
+    mockedApiFetch.mockImplementationOnce(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectFirst = reject;
+        }),
+    );
+    mockedApiFetch.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+
+    // Пока фоновый (дебаунс-триггерный) PATCH висит без ответа, ученик жмёт
+    // «Отправить» — flush() не открывает второй запрос поверх первого, а
+    // дожидается его исхода (useAttemptSaveRunner.ts).
+    act(() => void result.current.flush());
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rejectFirst?.(new Error('сеть недоступна'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Провал чужой (фоновой) попытки — не повод для flush() молчать: ответ
+    // так и остался несохранённым, она пробует сама вторым PATCH.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe('saved');
+  });
+
   it('вернулась сеть — несохранённое уходит сразу, не дожидаясь таймера повтора', async () => {
     mockedApiFetch.mockRejectedValueOnce(new Error('сеть недоступна'));
     mockedApiFetch.mockResolvedValueOnce(undefined);
@@ -362,6 +400,23 @@ describe('useAttemptAutosave — закрытие вкладки', () => {
     expect(mockedApiFetch).toHaveBeenCalledTimes(1);
   });
 
+  // Гейт: check-vitest-coverage-ratchet.mjs (functions) — `run()` в
+  // useAttemptAutosaveLifecycle.ts сам ловит провал flush() (`.catch(() => {})`);
+  // выше PATCH на pagehide всегда успешен, здесь — нарочно нет.
+  it('pagehide с ожидающей правкой, PATCH падает — сбой тихий, вкладка не падает', async () => {
+    mockedApiFetch.mockRejectedValue(new Error('сеть недоступна'));
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe('error');
+  });
+
   it('visibilitychange в hidden с ожидающей правкой — PATCH сразу', async () => {
     mockedApiFetch.mockResolvedValue(undefined);
     const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
@@ -463,6 +518,34 @@ describe('useAttemptAutosave — локальный черновик (аудит
       method: 'PATCH',
       body: { answers: [{ itemId: 'item-1', text: 'ответ' }] },
     });
+  });
+
+  // Гейт: check-vitest-coverage-ratchet.mjs (functions) — эффект
+  // монтирования в useAttemptAutosave.ts сам ловит провал flush()
+  // (`.catch(() => {})`); в тесте выше повторная отправка при монтировании
+  // успешна, здесь — нарочно нет (сеть по-прежнему недоступна).
+  it('черновик восстановлен, но повторная отправка при монтировании тоже падает — сбой тихий, черновик остаётся', async () => {
+    mockedApiFetch.mockRejectedValueOnce(new Error('сеть недоступна'));
+    const { result, unmount } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'ответ'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    unmount();
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).not.toBeNull();
+
+    mockedApiFetch.mockRejectedValueOnce(new Error('сеть недоступна'));
+    let remounted: { current: ReturnType<typeof useAttemptAutosave> } | undefined;
+    await act(async () => {
+      remounted = renderHook(() => useAttemptAutosave(ATTEMPT_ID, [])).result;
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(remounted?.current.status).toBe('error');
+    // Ничего не потеряно — просто ещё не долетело.
+    expect(localStorage.getItem(DRAFT_STORAGE_KEY)).not.toBeNull();
   });
 
   it('успешное сохранение снимает локальную копию из localStorage', async () => {
