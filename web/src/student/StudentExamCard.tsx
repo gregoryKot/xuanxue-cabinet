@@ -22,42 +22,34 @@
 // незапущенной «На попытку даётся 40 минут» — цена нажатия, и она стоит у
 // кнопки рядом с остатком попыток. Текст обеим строкам считает shared, один
 // на кабинет и бота.
-import type { CSSProperties } from 'react';
+//
+// «Идёт экзамен» видно без захода внутрь (отзыв владельца 2026-09-22,
+// ADR-0121: «индикацию ИДЁТ ЭКЗАМЕН я бы сделал поярче»): у карточки с
+// идущей попыткой рубрика меняется на EXAM_IN_PROGRESS_LABEL (общий текст с
+// ботом, shared/src/exam-time-notice.ts) и слева встаёт полоса акцентного
+// цвета — тот же приём, что у непроверенного вопроса разбора
+// (.xuanxue-question-row--unanswered, index.css). Правило «один акцент на
+// экран» (ADR-0043) не тронуто: заливки нет, кнопка остаётся `secondary`.
 import { Link } from 'react-router-dom';
-import { getMyExamAction, type MyExamDto } from '@xuanxue/shared';
+import { EXAM_IN_PROGRESS_LABEL, getMyExamAction, type MyExamDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { textLinkStyle } from '../components/screenLayout';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeExamState, formatAttemptsLeft } from './examAttemptState';
+import {
+  actionRowStyle,
+  attemptsLeftStyle,
+  cardStyle,
+  descriptionStyle,
+  metaStyle,
+  rubricStyle,
+  runningCardStyle,
+  runningRubricStyle,
+  titleStyle,
+} from './studentExamCardStyles';
 import { useExamTimeLine } from './useExamTimeLine';
 
 const RUBRIC = 'Экзамен';
-
-const cardStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  padding: '18px 20px',
-  borderRadius: 'var(--radius-block)',
-  background: 'var(--panel-warm)',
-};
-// #55584e, не --ink-soft: тот же прецедент, что у тёплой плашки «Ждут
-// отправки вручную» и сводки «Экзаменов» — на --panel-warm --ink-soft держит
-// только ~4.06:1, ниже AA 4.5 для этого кегля; #55584e даёт 5.74:1
-// (broadcasts/ManualDeliveriesSection.tsx, exams/ExamsSectionStats.tsx).
-const rubricStyle: CSSProperties = {
-  fontSize: 12,
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase',
-  color: '#55584e',
-};
-const titleStyle: CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 22 };
-const metaStyle: CSSProperties = { fontSize: 14, color: '#55584e' };
-const descriptionStyle: CSSProperties = { margin: 0, fontSize: 14, color: '#55584e' };
-const actionRowStyle: CSSProperties = { marginTop: 4 };
-// Остаток попыток стоит вплотную к кнопке: он объясняет именно её, а не
-// карточку целиком.
-const attemptsLeftStyle: CSSProperties = { ...metaStyle, margin: '0 0 6px' };
 
 const ACTION_LABEL = {
   continue: 'Продолжить',
@@ -95,8 +87,10 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
 
   return (
     <li>
-      <div style={cardStyle}>
-        <span style={rubricStyle}>{RUBRIC}</span>
+      <div style={running ? runningCardStyle : cardStyle}>
+        <span style={running ? runningRubricStyle : rubricStyle}>
+          {running ? EXAM_IN_PROGRESS_LABEL : RUBRIC}
+        </span>
         <span style={titleStyle}>{exam.title}</span>
 
         {/* Настоящее — первой строкой под названием. Для проверенной работы

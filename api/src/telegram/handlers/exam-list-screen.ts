@@ -10,6 +10,11 @@
 // кнопки и текст причины, когда кнопки нет. До этого решения бот считал
 // правило сам и пускал на «Начать ещё раз» любую сданную работу, даже ещё не
 // проверенную, — сюда это больше не возвращается.
+//
+// Кнопка формы с лимитом времени у «Начать»/«Начать ещё раз» ведёт на `exc`
+// — вопрос «Вы начинаете экзамен» перед стартом (ADR-0121, отзыв владельца
+// 2026-09-22), а не сразу на `exam`. «Продолжить» — часы уже тикают, вопрос
+// запоздал бы; форма без лимита — тоже сразу на `exam`, спрашивать нечего.
 import {
   describeExamTime,
   getMyExamAction,
@@ -58,9 +63,12 @@ function examRowStatus(exam: MyExamDto): ExamRowStatus {
  * кнопками в чате висит вечно, обновить его нечем (отзыв владельца
  * 2026-09-22, ADR-0119). Номер вопроса список не знает — снимок попытки
  * сюда не едет (MyExamDto, my-exams.ts) — CONTINUE_QUESTION_INDEX просит
- * handleExamQuestion найти первый вопрос без ответа самому. «Начать» и
- * «Начать ещё раз» заводят попытку по-прежнему — там она и должна
- * появиться. */
+ * handleExamQuestion найти первый вопрос без ответа самому.
+ *
+ * «Начать» и «Начать ещё раз» у формы с лимитом времени ведут на `exc` —
+ * вопрос перед стартом (ADR-0121): часы пойдут сразу, и ученик вправе
+ * узнать об этом до нажатия, а не после. Без лимита спрашивать нечего, и
+ * кнопка заводит попытку сразу, как раньше. */
 function buildActionButton(
   exam: MyExamDto,
   action: Exclude<MyExamAction, null>,
@@ -73,7 +81,7 @@ function buildActionButton(
       buildQuestionId(exam.lastAttempt.id, CONTINUE_QUESTION_INDEX),
     );
   }
-  return inlineButton(text, 'exam', exam.id);
+  return inlineButton(text, exam.timeLimitMin ? 'exc' : 'exam', exam.id);
 }
 
 function truncateForButton(title: string): string {

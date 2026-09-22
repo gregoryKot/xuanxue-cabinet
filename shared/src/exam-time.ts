@@ -94,6 +94,29 @@ function formatDeadline(
   return `${day} в ${clock}`;
 }
 
+/** Остаток одной попытки по её дедлайну — без данных формы (`timeLimitMin`
+ * тут не при чём: попытка уже идёт, а не только предстоит). Своя функция, а
+ * не внутренность describeExamTime, — потому что на экране вопроса в боте
+ * (exam-question-render.ts, отзыв владельца 2026-09-22: «на экране вопроса
+ * про время не сказано») на руках `ExamAttemptDto`, не `MyExamDto`, и
+ * лимита формы там нет вовсе; собирать чужой DTO ради одного поля хуже, чем
+ * вынести саму арифметику. `null` — дедлайн в ответе нечитаемый (защита в
+ * глубину, тот же случай, что ниже в describeExamTime): молчание надёжнее
+ * неправды «время вышло». */
+export function describeAttemptDeadline(
+  deadlineAt: string,
+  options: ExamTimeOptions,
+): string | null {
+  const deadlineMs = Date.parse(deadlineAt);
+  const remainingMs = deadlineMs - options.nowMs;
+  if (Number.isNaN(remainingMs)) return null;
+  if (remainingMs <= 0) return TIME_IS_UP;
+
+  const when = formatDeadline(deadlineMs, options.nowMs, options.timeZone);
+  const note = options.zoneNote ? ` ${options.zoneNote}` : '';
+  return `${LEFT_PREFIX} ${formatTimeLeft(remainingMs)}, ${CLOSES_AT} ${when}${note}`;
+}
+
 /** Строка про время одной формы для карточки кабинета и строки бота.
  * `null` — у формы нет лимита времени, и говорить нечего: строки не будет
  * вовсе, а не «без ограничения» пустым местом.
@@ -112,14 +135,7 @@ export function describeExamTime(
   const deadlineAt = attempt?.status === 'in_progress' ? attempt.deadlineAt : undefined;
   if (!deadlineAt) return limitLine;
 
-  const remainingMs = Date.parse(deadlineAt) - options.nowMs;
-  // Дедлайна нет в понятном виде — показываем продолжительность, а не «NaN».
-  // Попытка старше самого поля `deadlineAt` сюда не попадёт (у неё нет
-  // значения вовсе), но ответ API — не то место, где стоит верить на слово.
-  if (Number.isNaN(remainingMs)) return limitLine;
-  if (remainingMs <= 0) return TIME_IS_UP;
-
-  const when = formatDeadline(Date.parse(deadlineAt), options.nowMs, options.timeZone);
-  const note = options.zoneNote ? ` ${options.zoneNote}` : '';
-  return `${LEFT_PREFIX} ${formatTimeLeft(remainingMs)}, ${CLOSES_AT} ${when}${note}`;
+  // NaN (дедлайн в ответе нечитаемый) тоже возвращает null здесь — фолбэк тот
+  // же, что раньше: продолжительность вместо «NaN мин».
+  return describeAttemptDeadline(deadlineAt, options) ?? limitLine;
 }

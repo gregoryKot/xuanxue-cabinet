@@ -21,7 +21,7 @@
 // рядом с новой).
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import { describeAttemptDeadline, SCHOOL_TZ, type ExamAttemptDto } from '@xuanxue/shared';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
 import type { UserLean } from '../../users/users.service';
@@ -38,6 +38,22 @@ import {
  * если хоть у одного есть imageId (ADR-0037). Пусто у финального экрана и у
  * вопроса без картинок — тот же текст/кнопки, что раньше. */
 export type AttemptScreenView = BotMenu & { album: OptionAlbumEntry[] };
+
+/** Остаток времени первой строкой над «Вопрос N из M» — только у попытки с
+ * дедлайном (отзыв владельца 2026-09-22: «на экране вопроса про время не
+ * сказано», ADR-0121). Текст — describeAttemptDeadline (shared/src/exam-time.ts,
+ * ADR-0122), общий со списком экзаменов бота (exam-list-screen.ts): бот не
+ * знает часов зрителя (в отличие от кабинета, ADR-0060) и подписывает пояс
+ * школы всегда, тем же приёмом. */
+function withTimeLine(text: string, attempt: ExamAttemptDto, now: DateTime): string {
+  if (!attempt.deadlineAt) return text;
+  const timeLine = describeAttemptDeadline(attempt.deadlineAt, {
+    nowMs: now.toMillis(),
+    timeZone: SCHOOL_TZ,
+    zoneNote: `(${SCHOOL_TZ})`,
+  });
+  return timeLine ? `${timeLine}\n\n${text}` : text;
+}
 
 export async function renderAttemptScreen(
   botSessions: BotSessionService,
@@ -62,7 +78,8 @@ export async function renderAttemptScreen(
     await botSessions.clear(chatId);
   }
   const album = question ? buildOptionAlbum(question, index) : [];
-  return { ...buildQuestionScreen(attempt, index), album };
+  const screen = buildQuestionScreen(attempt, index);
+  return { ...screen, text: withTimeLine(screen.text, attempt, now), album };
 }
 
 /** `withAlbum: false` — тот же вопрос перерисовывается после переключения

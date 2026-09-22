@@ -216,7 +216,14 @@ export {
   getMyExamAction,
   firstUnansweredQuestionIndex,
 } from './my-exams';
-export { describeExamTime } from './exam-time';
+export { describeExamTime, describeAttemptDeadline } from './exam-time';
+export {
+  EXAM_IN_PROGRESS_LABEL,
+  EXAM_START_CONFIRM_TITLE,
+  EXAM_START_CONFIRM_LABEL,
+  EXAM_START_CANCEL_LABEL,
+  buildExamStartWarning,
+} from './exam-time-notice';
 export type {
   AttemptOptionCheckDto,
   AttemptReviewOptionDto,

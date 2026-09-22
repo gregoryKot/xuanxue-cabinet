@@ -1,9 +1,9 @@
 // Фейковый ExamBotPort и фейковый BotUserAccessService, без Mongo и без сети
-// (CLAUDE.md «Тесты»): маршрутизация exam/eq/eo/es к нужному хендлеру,
+// (CLAUDE.md «Тесты»): маршрутизация exam/exc/eq/eo/es к нужному хендлеру,
 // незнакомец — тихо игнорируется, blocked — отказ (SECURITY §9).
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
-import { ACCESS_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
+import { ACCESS_MESSAGE, type ExamAttemptDto, type MyExamDto } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
 import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test-support';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
@@ -48,6 +48,18 @@ function attempt(): ExamAttemptDto {
   };
 }
 
+function exam(overrides: Partial<MyExamDto> = {}): MyExamDto {
+  return {
+    id: 'e1',
+    title: 'Форма',
+    description: '',
+    level: '',
+    attemptsAllowed: 1,
+    attemptsUsed: 0,
+    ...overrides,
+  };
+}
+
 function fakeCtx(): { ctx: Context; edits: string[] } {
   const edits: string[] = [];
   const ctx = {
@@ -57,8 +69,9 @@ function fakeCtx(): { ctx: Context; edits: string[] } {
 }
 
 describe('isExamCallbackAction', () => {
-  it('exam/eq/eo/es — да, прочие — нет', () => {
+  it('exam/exc/eq/eo/es — да, прочие — нет', () => {
     expect(isExamCallbackAction('exam')).toBe(true);
+    expect(isExamCallbackAction('exc')).toBe(true);
     expect(isExamCallbackAction('eq')).toBe(true);
     expect(isExamCallbackAction('eo')).toBe(true);
     expect(isExamCallbackAction('es')).toBe(true);
@@ -106,6 +119,29 @@ describe('routeExamCallback', () => {
 
     expect(port.startAttempt).toHaveBeenCalledWith('e1', USER, NOW);
     expect(edits[0]).toContain('Вопрос 1 из 1');
+  });
+
+  // ADR-0121, отзыв владельца 2026-09-22.
+  it('exc — зовёт handleExamStartConfirm через порт', async () => {
+    const port = fakeExamBotPort({
+      listMyExams: jest.fn().mockResolvedValue([exam({ timeLimitMin: 45 })]),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await routeExamCallback(
+      ctx,
+      'exc',
+      'e1',
+      111,
+      fakeBotUserAccess(activeAccess(USER)),
+      port,
+      fakeBotSessionService(),
+      NOW,
+    );
+
+    expect(port.listMyExams).toHaveBeenCalledWith(USER, NOW);
+    expect(port.startAttempt).not.toHaveBeenCalled();
+    expect(edits[0]).toContain('Вы начинаете экзамен');
   });
 
   it('es — зовёт handleExamSubmit через порт', async () => {

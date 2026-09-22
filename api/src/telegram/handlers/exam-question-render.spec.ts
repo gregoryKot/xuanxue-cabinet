@@ -150,6 +150,71 @@ describe('renderAttemptScreen', () => {
   });
 });
 
+// Отзыв владельца 2026-09-22 (ADR-0121): на экране вопроса ничего не
+// говорит про время. Текст — describeAttemptDeadline (shared/src/exam-time.ts,
+// ADR-0122), тот же, что у списка экзаменов бота (exam-list-screen.ts).
+describe('renderAttemptScreen — строка про время (ADR-0121)', () => {
+  it('дедлайн есть — остаток первой строкой над «Вопрос N из M»', async () => {
+    const botSessions = fakeBotSessionService();
+    const view = await renderAttemptScreen(
+      botSessions,
+      CHAT_ID,
+      attempt([question()], { deadlineAt: '2026-09-12T10:25:00.000Z' }),
+      0,
+      NOW,
+    );
+
+    expect(view.text.split('\n\n')[0]).toBe(
+      'Осталось 25 мин, попытка закроется в 13:25 (Asia/Jerusalem)',
+    );
+    expect(view.text).toContain('Вопрос 1 из 1');
+  });
+
+  it('дедлайна нет — строки про время нет вовсе', async () => {
+    const botSessions = fakeBotSessionService();
+    const view = await renderAttemptScreen(
+      botSessions,
+      CHAT_ID,
+      attempt([question()]),
+      0,
+      NOW,
+    );
+
+    expect(view.text).not.toContain('Осталось');
+    expect(view.text.startsWith('Вопрос 1 из 1')).toBe(true);
+  });
+
+  it('дедлайн уже прошёл — «Время попытки вышло» первой строкой', async () => {
+    const botSessions = fakeBotSessionService();
+    const view = await renderAttemptScreen(
+      botSessions,
+      CHAT_ID,
+      attempt([question()], { deadlineAt: '2026-09-12T09:00:00.000Z' }),
+      0,
+      NOW,
+    );
+
+    expect(view.text.split('\n\n')[0]).toBe('Время попытки вышло');
+  });
+
+  it('попытка не в работе — время в финальном экране не считаем (у него дедлайна уже нет смысла)', async () => {
+    const botSessions = fakeBotSessionService();
+    const view = await renderAttemptScreen(
+      botSessions,
+      CHAT_ID,
+      attempt([question()], {
+        status: 'submitted',
+        deadlineAt: '2026-09-12T10:25:00.000Z',
+      }),
+      0,
+      NOW,
+      true,
+    );
+
+    expect(view.text).not.toContain('Осталось');
+  });
+});
+
 function fakeCtx(): {
   ctx: Context;
   edits: string[];

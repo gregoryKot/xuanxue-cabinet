@@ -3,7 +3,7 @@
 // тест не зависит ни от часов машины, ни от её пояса (CLAUDE.md
 // «Детерминизм»): CI гоняет vitest под UTC и Australia/Sydney.
 import { describe, expect, it } from 'vitest';
-import { describeExamTime } from './exam-time';
+import { describeAttemptDeadline, describeExamTime } from './exam-time';
 import type { MyExamDto } from './my-exams';
 
 const SCHOOL_TZ = 'Asia/Jerusalem';
@@ -210,5 +210,37 @@ describe('describeExamTime — переход времени Asia/Jerusalem', ()
         timeZone: SCHOOL_TZ,
       }),
     ).toBe('Осталось 2 ч, попытка закроется в 04:30');
+  });
+});
+
+// Отдельная функция для боте на экране вопроса (exam-question-render.ts,
+// отзыв владельца 2026-09-22): на руках только ExamAttemptDto.deadlineAt,
+// без лимита формы. describeExamTime выше делегирует ей же — совпадение
+// формулировок проверяют тесты describeExamTime, здесь — сама функция и её
+// собственный случай (нечитаемый дедлайн), которого у describeExamTime не
+// увидеть напрямую (там он тонет в фолбэке на limitLine).
+describe('describeAttemptDeadline', () => {
+  it('остаток и час закрытия — как в describeExamTime', () => {
+    expect(
+      describeAttemptDeadline('2026-09-22T16:40:00Z', {
+        nowMs: ms('2026-09-22T16:15:00Z'),
+        timeZone: SCHOOL_TZ,
+        zoneNote: `(${SCHOOL_TZ})`,
+      }),
+    ).toBe('Осталось 25 мин, попытка закроется в 19:40 (Asia/Jerusalem)');
+  });
+
+  it('дедлайн прошёл — «время вышло»', () => {
+    expect(
+      describeAttemptDeadline('2026-09-22T16:40:00Z', {
+        nowMs: ms('2026-09-22T16:40:00Z'),
+      }),
+    ).toBe('Время попытки вышло');
+  });
+
+  it('дедлайн нечитаемый — null, не «время вышло» и не NaN', () => {
+    expect(
+      describeAttemptDeadline('не дата', { nowMs: ms('2026-09-22T16:15:00Z') }),
+    ).toBeNull();
   });
 });
