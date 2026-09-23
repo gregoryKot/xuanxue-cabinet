@@ -743,6 +743,48 @@ describe('ExamAttemptsService', () => {
     expect(asStudent).toHaveLength(1);
     expect(asStudent[0]?.userId).toBe(USER_A);
   });
+
+  // ADR-0126: экран сдачи читает одну попытку своим адресом, не весь список.
+  describe('getOwn', () => {
+    it('своя попытка — отдаётся как DTO', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId] });
+      const started = await ctx.service.start(examId, USER_A, NOW);
+
+      const own = await ctx.service.getOwn(started.id, USER_A, NOW);
+
+      expect(own.id).toBe(started.id);
+      expect(own.status).toBe('in_progress');
+    });
+
+    it('чужая попытка — NotFoundError, не 403', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId] });
+      const started = await ctx.service.start(examId, USER_A, NOW);
+
+      await expect(ctx.service.getOwn(started.id, USER_B, NOW)).rejects.toThrow(
+        'Попытка не найдена',
+      );
+    });
+
+    it('просроченная in_progress закрывается лениво: submitted, expired true', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId] });
+      const started = await ctx.service.start(examId, USER_A, NOW);
+      // Экзамен из createPublishedExam без лимита времени не закроется сам —
+      // ставим дедлайн вручную, сырой Mongo (снимок зашифрован целиком, но
+      // deadlineAt — открытое поле, EXAM_ATTEMPT_ENCRYPT_SCHEMA).
+      await ctx.attemptModel.updateOne(
+        { _id: started.id },
+        { $set: { deadlineAt: NOW.plus({ minutes: 30 }).toJSDate() } },
+      );
+
+      const own = await ctx.service.getOwn(started.id, USER_A, NOW.plus({ minutes: 45 }));
+
+      expect(own.status).toBe('submitted');
+      expect(own.expired).toBe(true);
+    });
+  });
 });
 
 /** `UserLean` для `list()` — сервис читает только `id`/`roles` (ExamAttemptsService.list). */

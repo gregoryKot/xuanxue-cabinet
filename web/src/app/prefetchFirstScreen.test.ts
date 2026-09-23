@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import {
-  ATTEMPTS_LIST_PATH,
   CLASSES_LIST_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_PATH,
   NOTIFICATIONS_FEED_PATH,
+  attemptPath,
   lessonsListPath,
 } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
@@ -73,9 +73,9 @@ describe('firstScreenPaths', () => {
     ]);
   });
 
-  it('ученик на /attempts/:id — общий для всех ролей маршрут сдачи (ТЗ student-exams.md)', () => {
+  it('ученик на /attempts/:id — общий для всех ролей маршрут сдачи (ADR-0126)', () => {
     expect(firstScreenPaths('/attempts/1', makeMe({ roles: [] }))).toEqual([
-      ATTEMPTS_LIST_PATH,
+      attemptPath('1'),
     ]);
   });
 

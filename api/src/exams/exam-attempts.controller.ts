@@ -119,6 +119,18 @@ export class ExamAttemptsController {
     return withAttemptsMedia(this.mediaAssetsService, attempts);
   }
 
+  // Экран сдачи читает одну свою попытку своим адресом, не весь список
+  // (ADR-0126) — список выше остаётся очередью учителя. Без @Roles: владение
+  // по сессии, как у остальных хендлеров попытки (шапка файла).
+  @Get('attempts/:id')
+  async getOwn(
+    @Param('id') id: string,
+    @CurrentUser() user: UserLean,
+  ): Promise<ExamAttemptDto> {
+    const attempt = await this.examAttemptsService.getOwn(id, user.id, DateTime.utc());
+    return withAttemptMedia(this.mediaAssetsService, attempt);
+  }
+
   // Слой 4.6: карточка проверки и оценка — закрыты ученику: на классе ролей
   // нет, @Roles стоит на самих хендлерах.
   @Get('attempts/:id/review')

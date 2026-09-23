@@ -17,7 +17,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
-  ATTEMPT_NOT_FOUND_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
   isStaffRole,
   LIST_LIMIT_DEFAULT,
@@ -25,13 +24,13 @@ import {
   type ListAttemptsQuery,
   type SaveAttemptAnswersInput,
 } from '@xuanxue/shared';
-import { InvalidInputError, NotFoundError } from '../common/errors';
-import { assertObjectId } from '../common/object-id';
+import { InvalidInputError } from '../common/errors';
 import { UserNamesService } from '../users/user-names.service';
 import type { UserLean } from '../users/users.service';
 import { attemptsExceededMessage } from './attempts-exceeded-message';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { createAttempt } from './exam-attempt-start';
+import { loadOwnAttempt } from './exam-attempt-load-own';
 import { ExamItemsService } from './exam-items.service';
 import {
   assertOpenForChange,
@@ -197,25 +196,26 @@ export class ExamAttemptsService {
     );
   }
 
-  /** Владелец из сессии, не из пути (SECURITY §3) — чужой `id` получает
-   * `ATTEMPT_NOT_FOUND_MESSAGE`, не 403: не подтверждаем даже факт
-   * существования чужой попытки. Лениво закрывает попытку по дедлайну —
-   * «любой запрос после дедлайна» (ТЗ 4.4, п.7), не только явный тик. */
   private async loadOwn(
     attemptId: string,
     userId: string,
     now: DateTime,
   ): Promise<LeanExamAttempt> {
-    assertObjectId(attemptId, ATTEMPT_NOT_FOUND_MESSAGE);
-    const doc = await this.model
-      .findOne({ _id: attemptId, userId })
-      .lean<RawLeanExamAttempt>();
-    if (!doc) throw new NotFoundError(ATTEMPT_NOT_FOUND_MESSAGE);
-    return closeIfExpiredAttempt(
-      this.model,
-      decryptAttempt(doc),
+    return loadOwnAttempt({
+      model: this.model,
+      attemptId,
+      userId,
       now,
-      attemptSubmittedCallback(this.examNotifier, now),
-    );
+      onClose: attemptSubmittedCallback(this.examNotifier, now),
+    });
+  }
+
+  /** ADR-0126: своя попытка своим адресом, не список (было ?limit=200 на каждый тик). */
+  async getOwn(
+    attemptId: string,
+    userId: string,
+    now: DateTime,
+  ): Promise<ExamAttemptDto> {
+    return toAttemptDto(await this.loadOwn(attemptId, userId, now));
   }
 }
