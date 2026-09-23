@@ -18,7 +18,9 @@ import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
   ATTEMPT_NOT_FOUND_MESSAGE,
+  EXAM_DUE_PASSED_MESSAGE,
   EXAM_NOT_PUBLISHED_MESSAGE,
+  isExamDuePassed,
   isStaffRole,
   LIST_LIMIT_DEFAULT,
   type ExamAttemptDto,
@@ -69,7 +71,16 @@ export class ExamAttemptsService {
 
   /** ТЗ 4.4, п.1–3: экзамен должен быть опубликован; незаконченная попытка
    * возвращается, а не заводится новая; больше `attemptsAllowed` попыток не
-   * заводится — атомарно, через уникальный индекс, не «посчитали и вставили». */
+   * заводится — атомарно, через уникальный индекс, не «посчитали и вставили».
+   *
+   * Срок сдачи (`dueAt`, ADR-0124) закрывает только этот путь — «завести
+   * НОВУЮ попытку», после возврата уже идущей (ветка `existing` ниже) и
+   * прежде него не проверяется НИКОГДА: решение владельца 2026-09-22—
+   * идущую попытку срок не прерывает, она доживает свой лимит минут как
+   * обычно. Сама проверка встаёт до подсчёта `attemptsUsed`, а не после:
+   * прошедший срок — то же самое «нет» при любом числе использованных
+   * попыток, и называть ученику причину точнее (срок, а не будто бы
+   * кончившиеся попытки), к тому же без лишнего запроса в базу. */
   async start(examId: string, userId: string, now: DateTime): Promise<ExamAttemptDto> {
     const exam = await this.examsService.getById(examId);
     if (exam.status !== 'published') {
@@ -85,6 +96,10 @@ export class ExamAttemptsService {
         attemptSubmittedCallback(this.examNotifier, now),
       );
       return toAttemptDto(closed);
+    }
+
+    if (isExamDuePassed(exam.dueAt, now.toMillis())) {
+      throw new InvalidInputError(EXAM_DUE_PASSED_MESSAGE);
     }
 
     const attemptsUsed = await this.model.countDocuments({ examId, userId });

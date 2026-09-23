@@ -2,7 +2,15 @@
 // декораторов наследуются по прототипу — причина у ExamItemFieldsDto,
 // exam-item-fields.dto.ts, та же). `status` сюда не входит — новая форма
 // всегда создаётся черновиком (схема, ExamRecord.status default).
-import { IsInt, IsNotEmpty, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsISO8601,
+  IsNotEmpty,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { EXAM_LIMITS, type CreateExamInput } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ExamFieldsDto } from './exam-fields.dto';
@@ -31,4 +39,10 @@ export class CreateExamDto extends ExamFieldsDto implements CreateExamInput {
   @Min(MIN_TIME_LIMIT_MIN)
   @Max(EXAM_LIMITS.timeLimitMinMax)
   timeLimitMin?: number;
+
+  // Формат и смещение проверяет parseUtcIso при сохранении (ExamsService) —
+  // тот же приём, что у startsAt /lessons; здесь только «это вообще ISO 8601».
+  @OptionalNotNull()
+  @IsISO8601({ strict: true })
+  dueAt?: string;
 }

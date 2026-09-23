@@ -50,6 +50,13 @@ export interface ExamDto {
   blocks: ExamBlockDto[];
   shuffleOptions: boolean; // перемешивать варианты ответа у сдающего (ADR-0033)
   timeLimitMin?: number; // нет — без ограничения
+  /** Срок сдачи — «начать попытку можно до этого момента», ISO UTC с Z.
+   * Второе, независимое от timeLimitMin ограничение (ADR-0124): лимит
+   * времени — длина одной попытки, срок — до какого числа её вообще можно
+   * начать. Нет поля — срока нет. Прошедший срок закрывает только НОВЫЕ
+   * попытки (isExamDuePassed, exam-time.ts) — уже идущую он не трогает,
+   * она доживает свой лимит минут как обычно (решение владельца 2026-09-22). */
+  dueAt?: string;
   attemptsAllowed: number; // по умолчанию 1 (PLAN §11: «по умолчанию попытка одна»)
   status: ExamStatus;
   createdBy?: string;
@@ -64,6 +71,7 @@ export interface CreateExamInput {
   blocks?: ExamBlockInput[];
   shuffleOptions?: boolean;
   timeLimitMin?: number;
+  dueAt?: string;
   attemptsAllowed?: number;
 }
 
@@ -80,10 +88,16 @@ export interface UpdateExamInput {
   blocks?: ExamBlockInput[];
   shuffleOptions?: boolean;
   timeLimitMin?: number | null;
+  dueAt?: string | null;
   attemptsAllowed?: number;
   status?: ExamStatus;
 }
-export const NULLABLE_EXAM_FIELDS = ['description', 'level', 'timeLimitMin'] as const;
+export const NULLABLE_EXAM_FIELDS = [
+  'description',
+  'level',
+  'timeLimitMin',
+  'dueAt',
+] as const;
 
 export interface ListExamsQuery {
   status?: ExamStatus;
@@ -107,6 +121,11 @@ export const EXAM_LIMITS = {
 } as const;
 
 export const EXAM_NOT_FOUND_MESSAGE = 'Экзамен не найден. Обновите список.';
+// VOICE.md: что случилось и что сделать. Отказ ставится только на создании
+// НОВОЙ попытки (ExamAttemptsService.start) — уже идущую срок не трогает
+// (решение владельца 2026-09-22, ADR-0124).
+export const EXAM_DUE_PASSED_MESSAGE =
+  'Срок сдачи прошёл. Начать новую попытку нельзя — обратитесь к учителю.';
 
 // Вопрос экзамена — DTO, лимиты и сообщения — живёт в exam-items.ts
 // (`/exam-items`, слой 4.2). Попытка сдачи экзамена — статусы, DTO снимка,

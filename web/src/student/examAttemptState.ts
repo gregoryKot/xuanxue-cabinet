@@ -17,6 +17,7 @@ import {
   type GradingOutcome,
   type MyExamDto,
 } from '@xuanxue/shared';
+import { formatDateTime } from '../lib/formatDate';
 import { tzBadge } from '../schedule/timezoneLabel';
 
 const ATTEMPT_FORMS = {
@@ -97,4 +98,15 @@ export function describeExamState(exam: MyExamDto): string | null {
 export function examTimeZoneNote(browserTimeZone?: string): string | null {
   const schoolTz = tzBadge(SCHOOL_TZ, browserTimeZone);
   return schoolTz ? `по вашим часам (школа живёт по ${schoolTz})` : null;
+}
+
+/** «Сдать до 30 сентября, 23:59» — рядом с кнопкой «Начать»/«Пройти ещё раз»
+ * (StudentExamCard.tsx): ученик видит срок ДО того, как решит отложить
+ * экзамен (ADR-0124). `null` — у формы нет срока, строки не будет вовсе.
+ * Часы браузерные, без бейджа пояса школы (в отличие от examTimeZoneNote
+ * выше): это дата на календаре, не отсчёт идущей попытки — тот же приём,
+ * что у дат занятий (LessonSummaryHeader.tsx). `timeZone` — только тестам
+ * нужен фиксированный (lib/formatDate.ts). */
+export function dueAtLine(dueAt: string | undefined, timeZone?: string): string | null {
+  return dueAt ? `Сдать до ${formatDateTime(dueAt, timeZone)}` : null;
 }
