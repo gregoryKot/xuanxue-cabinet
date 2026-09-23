@@ -82,12 +82,20 @@ describe('collectUnansweredIds', () => {
 describe('formatUnansweredConfirm', () => {
   it('один вопрос — единственное число', () => {
     expect(formatUnansweredConfirm(1)).toBe(
-      'Без ответа 1 вопрос. После отправки менять ответы будет нельзя.',
+      'Без ответа **1 вопрос**. После отправки менять ответы будет нельзя.',
     );
   });
 
   it('несколько вопросов — склонение', () => {
-    expect(formatUnansweredConfirm(3)).toContain('3 вопроса.');
-    expect(formatUnansweredConfirm(5)).toContain('5 вопросов.');
+    expect(formatUnansweredConfirm(3)).toContain('3 вопроса');
+    expect(formatUnansweredConfirm(5)).toContain('5 вопросов');
+  });
+
+  // ADR-0124: число выделено акцентом — RichText превращает `**…**` в
+  // <strong>, проверка на голой строке ловит только сам маркер.
+  it('число обёрнуто маркером акцента', () => {
+    expect(formatUnansweredConfirm(3)).toBe(
+      'Без ответа **3 вопроса**. После отправки менять ответы будет нельзя.',
+    );
   });
 });

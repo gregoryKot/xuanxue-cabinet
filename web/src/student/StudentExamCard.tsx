@@ -21,7 +21,9 @@
 // правилу: у идущей попытки остаток — настоящее, он под названием; у
 // незапущенной «На попытку даётся 40 минут» — цена нажатия, и она стоит у
 // кнопки рядом с остатком попыток. Текст обеим строкам считает shared, один
-// на кабинет и бота.
+// на кабинет и бота. Вес у них разный (ADR-0124, отзыв владельца 2026-09-23
+// «всё сплошняком»): остаток идущей попытки — тушью и 600, описание учителя
+// — 13px и через RichText, где работает и его `**жирным**`.
 //
 // «Идёт экзамен» видно без захода внутрь (отзыв владельца 2026-09-22,
 // ADR-0121: «индикацию ИДЁТ ЭКЗАМЕН я бы сделал поярче»): у карточки с
@@ -32,6 +34,7 @@
 // экран» (ADR-0043) не тронуто: заливки нет, кнопка остаётся `secondary`.
 import { Link } from 'react-router-dom';
 import { EXAM_IN_PROGRESS_LABEL, getMyExamAction, type MyExamDto } from '@xuanxue/shared';
+import { RichText } from '../components/RichText';
 import { textLinkStyle } from '../components/screenLayout';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
 import { describeExamState } from './examAttemptState';
@@ -43,6 +46,7 @@ import {
   rubricStyle,
   runningCardStyle,
   runningRubricStyle,
+  runningTimeStyle,
   titleStyle,
 } from './studentExamCardStyles';
 import { StudentExamCardAction } from './StudentExamCardAction';
@@ -92,12 +96,16 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
             вовсе — честное отсутствие вместо пустых строк (CLAUDE.md «число
             в своём разделе»). */}
         {state && <span style={metaStyle}>{state}</span>}
-        {running && timeLine && <span style={metaStyle}>{timeLine}</span>}
+        {running && timeLine && <span style={runningTimeStyle}>{timeLine}</span>}
         {showOutcome && attempt?.outcome && (
           <ExamAttemptOutcome outcome={attempt.outcome} comment={attempt.comment} />
         )}
 
-        {exam.description && <p style={descriptionStyle}>{exam.description}</p>}
+        {exam.description && (
+          <p style={descriptionStyle}>
+            <RichText text={exam.description} />
+          </p>
+        )}
 
         {/* Кнопка — если есть что нажать; над ней остаток попыток и срок
             сдачи, чтобы ученик знал цену нажатия до него, а не после. Срок

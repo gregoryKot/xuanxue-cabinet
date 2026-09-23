@@ -16,6 +16,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Button } from './Button';
 import { editorActionsRowStyle } from './editorLayout';
 import { EditorStatusRow } from './EditorStatusRow';
+import { RichText } from './RichText';
 import type { DraftPublishedArchivedStatus } from '../lib/statusTransitions';
 
 const noteStyle: CSSProperties = { margin: '14px 0 0', color: 'var(--ink-soft)' };
@@ -83,7 +84,10 @@ export function EditorFooter({
               {removeLabel}
             </Button>
           ) : (
-            <p style={noteStyle}>{noRemoveNotes[status]}</p>
+            // Через RichText (ADR-0124) — акцент в объяснении «почему нельзя удалить».
+            <p style={noteStyle}>
+              <RichText text={noRemoveNotes[status]} />
+            </p>
           )}
         </>
       )}

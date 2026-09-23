@@ -312,6 +312,41 @@ describe('StudentExamCard — время попытки', () => {
     vi.useRealTimers();
   });
 
+  // ADR-0124: четыре строки одного кегля, цвета и веса — «всё сплошняком»
+  // (снимок владельца 2026-09-23). Остаток времени идущей попытки — главный
+  // факт карточки, и он обязан отличаться от соседних строк весом.
+  it('остаток времени идущей попытки стоит весом 600, а не как соседние строки', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-22T16:15:00Z'));
+    const exam = makeExam({
+      timeLimitMin: 40,
+      lastAttempt: {
+        id: 'a1',
+        status: 'in_progress',
+        expired: false,
+        deadlineAt: '2026-09-22T16:40:00Z',
+      },
+    });
+
+    renderCard({ exam });
+
+    const line = screen.getByText(/Осталось 25 мин/);
+    expect(line.style.fontWeight).toBe('600');
+    expect(screen.getByText('Попытка не закончена').style.fontWeight).toBe('');
+    vi.useRealTimers();
+  });
+
+  // Описание пишет учитель, и оно идёт через RichText: выделить слово в
+  // задании он может сам, без разработчика (ADR-0124).
+  it('звёздочки в описании учителя становятся полужирным', () => {
+    const exam = makeExam({ description: 'Стоять **45 минут** без опоры.' });
+
+    renderCard({ exam });
+
+    const accent = screen.getByText('45 минут');
+    expect(accent.tagName).toBe('STRONG');
+  });
+
   it('форма без лимита времени — строки про время нет вовсе', () => {
     renderCard({ exam: makeExam() });
 

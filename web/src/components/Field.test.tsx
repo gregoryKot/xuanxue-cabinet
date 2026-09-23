@@ -35,6 +35,18 @@ describe('Field', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  // Проводка через RichText (ADR-0124) — образец теста из RichText.test.tsx.
+  it('звёздочки в подсказке становятся <strong>', () => {
+    render(
+      <Field label="Название" hint="До **19:00** сегодня">
+        <input />
+      </Field>,
+    );
+
+    const strong = screen.getByText('19:00');
+    expect(strong.tagName).toBe('STRONG');
+  });
+
   // Направление «тихо и благородно» поменяло рамку и радиус поля — цель
   // нажатия ≥44px (CLAUDE.md «Доступность») должна остаться на месте.
   it('inputStyle держит высоту цели нажатия ≥44px', () => {

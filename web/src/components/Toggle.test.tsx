@@ -32,6 +32,21 @@ describe('Toggle', () => {
     expect(screen.getByLabelText('Перемешивать вопросы')).not.toBeChecked();
   });
 
+  // Проводка через RichText (ADR-0124) — образец теста из RichText.test.tsx.
+  it('звёздочки в подсказке становятся <strong>', () => {
+    render(
+      <Toggle
+        label="Перемешивать вопросы"
+        hint="Действует **сразу** для новых попыток"
+        checked={false}
+        onChange={vi.fn()}
+      />,
+    );
+
+    const strong = screen.getByText('сразу');
+    expect(strong.tagName).toBe('STRONG');
+  });
+
   it('disabled — переключатель недоступен, клик не вызывает onChange', async () => {
     const onChange = vi.fn();
     render(<Toggle label="Включён" checked={false} disabled onChange={onChange} />);

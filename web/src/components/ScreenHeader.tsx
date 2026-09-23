@@ -6,7 +6,13 @@
 // Объяснение — часть шапки, а не спрятанное «О разделе»: CLAUDE.md «Каждая
 // фича объясняет откуда это и зачем до первого действия». Приписка (`hint`)
 // — для того, что читают один раз: часовой пояс школы под «Занятиями».
+//
+// `explanation` и `hint` идут через RichText.tsx: это общая шапка всех
+// разделов, и акцент `**жирным**` в объяснении должен доставаться каждому
+// экрану сам, через этот один файл, а не копией в каждом — CLAUDE.md «Одна
+// механика — один компонент».
 import type { CSSProperties, ReactNode } from 'react';
+import { RichText } from './RichText';
 import {
   screenExplanationStyle,
   screenHintStyle,
@@ -68,8 +74,16 @@ export function ScreenHeader({
     <div style={rowStyle}>
       <div style={{ ...titleColumnStyle, maxWidth: titleMaxWidth }}>
         <h1 style={screenTitleStyle}>{title}</h1>
-        {explanation && <p style={screenExplanationStyle}>{explanation}</p>}
-        {hint && <p style={screenHintStyle}>{hint}</p>}
+        {explanation && (
+          <p style={screenExplanationStyle}>
+            <RichText text={explanation} />
+          </p>
+        )}
+        {hint && (
+          <p style={screenHintStyle}>
+            <RichText text={hint} />
+          </p>
+        )}
       </div>
       {action}
     </div>

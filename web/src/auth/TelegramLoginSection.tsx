@@ -6,6 +6,7 @@ import { useState, type CSSProperties, type ReactNode } from 'react';
 import type { AuthConfigDto } from '@xuanxue/shared';
 import { NETWORK_ERROR_MESSAGE } from '../api/http';
 import { Button } from '../components/Button';
+import { RichText } from '../components/RichText';
 import { SkeletonLines } from '../components/Skeleton';
 import { screenExplanationStyle, screenHintStyle } from '../components/screenLayout';
 import { useAuth } from './AuthProvider';
@@ -127,7 +128,7 @@ export function TelegramLoginSection({
             Войти через Telegram
           </Button>
           <p style={screenHintStyle}>
-            Откроется Telegram в этой же вкладке и вернёт вас обратно.
+            <RichText text="Откроется Telegram **в этой же вкладке** и вернёт вас обратно." />
           </p>
         </>
       )}

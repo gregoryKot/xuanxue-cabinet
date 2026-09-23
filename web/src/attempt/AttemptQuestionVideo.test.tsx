@@ -82,9 +82,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
 
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Свяжите Telegram — и видео можно будет прислать боту одним сообщением/,
-      ),
+      screen.getByText(/Свяжите Telegram — и видео можно будет прислать боту/),
     ).toBeInTheDocument();
   });
 
@@ -98,9 +96,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
       screen.queryByRole('button', { name: 'Связать Telegram' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText(
-        /Свяжите Telegram — и видео можно будет прислать боту одним сообщением/,
-      ),
+      screen.queryByText(/Свяжите Telegram — и видео можно будет прислать боту/),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
   });
@@ -119,9 +115,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     renderVideo(makeVideo());
 
     expect(
-      screen.getByText(
-        'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и вставьте сюда ссылку.',
-      ),
+      screen.getByText(/Выложите запись на YouTube, во ВКонтакте/),
     ).toBeInTheDocument();
   });
 

@@ -37,11 +37,14 @@ describe('LibraryScreen — заголовок и объяснение', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Библиотека' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Книги, статьи и видео, которыми делится школа. Открывается в новой вкладке.',
-      ),
-    ).toBeInTheDocument();
+    // ADR-0124: что произойдёт при открытии — выделено акцентом, RichText
+    // рисует его отдельным <strong>, полный текст проверяем через
+    // textContent абзаца.
+    const explanation = screen.getByText(/Книги, статьи и видео, которыми делится школа/);
+    expect(explanation).toHaveTextContent(
+      'Книги, статьи и видео, которыми делится школа. Открывается в новой вкладке.',
+    );
+    expect(screen.getByText('Открывается в новой вкладке').tagName).toBe('STRONG');
   });
 });
 

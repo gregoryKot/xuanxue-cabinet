@@ -104,9 +104,13 @@ describe('ArchivedLessonCard — записи', () => {
 
   it('запись inTelegramOnly — не кнопка, а объяснение, мёртвой ссылки нет', () => {
     renderCard({ recordings: [{ title: 'В канале', inTelegramOnly: true }] });
-    expect(
-      screen.getByText('Запись ушла в канал школы — ищите её там под датой занятия.'),
-    ).toBeInTheDocument();
+    // ADR-0124: куда ушла запись — выделено акцентом, RichText рисует его
+    // отдельным <strong>, полный текст проверяем через textContent абзаца.
+    const explanation = screen.getByText(/Запись ушла/);
+    expect(explanation).toHaveTextContent(
+      'Запись ушла в канал школы — ищите её там под датой занятия.',
+    );
+    expect(screen.getByText('в канал школы').tagName).toBe('STRONG');
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
@@ -121,9 +125,9 @@ describe('ArchivedLessonCard — записи', () => {
       'href',
       'https://cloud.example/rec-1',
     );
-    expect(
-      screen.getByText('Запись ушла в канал школы — ищите её там под датой занятия.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Запись ушла/)).toHaveTextContent(
+      'Запись ушла в канал школы — ищите её там под датой занятия.',
+    );
   });
 });
 

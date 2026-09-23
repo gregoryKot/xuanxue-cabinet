@@ -34,7 +34,7 @@ export function scheduleTzNote(
 ): string | null {
   const foreign = foreignTimezones(classTzs, browserTimeZone);
   if (foreign.length === 0) return null;
-  return `Время в сетке — по часам школы (${foreign.join(', ')}).`;
+  return `Время в сетке — по часам школы (**${foreign.join(', ')}**).`;
 }
 
 /** Подпись под заголовком «Занятий»: там время конкретной даты, показанное в
@@ -45,5 +45,5 @@ export function planningTzNote(
 ): string | null {
   const foreign = foreignTimezones(classTzs, browserTimeZone);
   if (foreign.length === 0) return null;
-  return `Время — по вашим часам. Школа живёт по ${foreign.join(', ')}.`;
+  return `Время — по вашим часам. Школа живёт по **${foreign.join(', ')}**.`;
 }

@@ -128,7 +128,17 @@ describe('PeopleScreen — пустой список', () => {
     expect(
       await screen.findByText(/Пока никто, кроме вас, не входил/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/ссылку-приглашение из карточки выше/)).toBeInTheDocument();
+    // Акцент «ссылку-приглашение» рисует RichText через <strong> — сверяем
+    // по полному textContent абзаца, а не по прямым текстовым узлам
+    // (ADR-0124): getByText со строкой/регэкспом такую строку не найдёт.
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          el.textContent ===
+            'Пока никто, кроме вас, не входил. Отправьте ссылку-приглашение из карточки выше.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

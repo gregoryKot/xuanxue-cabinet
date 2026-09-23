@@ -7,6 +7,7 @@
 // `ref` — на сам `fieldset` (`tabIndex={-1}`): форма рассылки фокусирует его
 // при ошибке «выберите канал» (pr-k3-fixes.md п.6, broadcastFormInput.ts).
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
+import { RichText } from './RichText';
 import { Toggle } from './Toggle';
 
 const fieldsetStyle: CSSProperties = {
@@ -62,9 +63,11 @@ export const CheckboxListField = forwardRef<HTMLFieldSetElement, CheckboxListFie
             />
           ))
         )}
+        {/* Через RichText (ADR-0124); hint/emptyMessage — ReactNode, их рисует
+         * вызывающая сторона сама. */}
         {error && (
           <p role="alert" style={errorStyle}>
-            {error}
+            <RichText text={error} />
           </p>
         )}
       </fieldset>

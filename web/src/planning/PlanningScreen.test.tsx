@@ -305,8 +305,14 @@ describe('PlanningScreen — подписи (отзыв владельца 2026-
 
     renderScreen();
 
+    // Пояс выделен акцентом — RichText рисует его через <strong>, полный
+    // текст строки сверяем по textContent абзаца (ADR-0124).
     expect(
-      await screen.findByText('Время — по вашим часам. Школа живёт по Asia/Jerusalem.'),
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          el.textContent === 'Время — по вашим часам. Школа живёт по Asia/Jerusalem.',
+      ),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/Asia\/Jerusalem/)).toHaveLength(1);
   });

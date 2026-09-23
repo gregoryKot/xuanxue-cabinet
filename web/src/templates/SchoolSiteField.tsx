@@ -19,16 +19,17 @@ import {
 import { Button } from '../components/Button';
 import { Field, inputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
+import { RichText } from '../components/RichText';
 import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
 import { editorSectionStyle } from '../components/editorLayout';
 import { usePreviewMinutesField } from './usePreviewMinutesField';
 import { useSchoolSiteField } from './useSchoolSiteField';
 
 const SITE_EXPLANATION =
-  'Эту ссылку видят ученики и незнакомцы, которые попали в кабинет или написали боту.';
+  'Эту ссылку видят **ученики и незнакомцы**, которые попали в кабинет или написали боту.';
 
 const PREVIEW_EXPLANATION =
-  'Бот присылает черновик поста заранее — успеваете поправить или отменить рассылку.';
+  'Бот присылает черновик поста заранее — успеваете поправить или **отменить рассылку**.';
 
 // Раздел страницы — волосяная линия сверху, как у шаблонов рядом
 // (TemplateEditor.tsx). Кнопки здесь вторичные: заливка терракотой на экране
@@ -55,7 +56,9 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
         Школа
       </h2>
 
-      <p style={screenExplanationStyle}>{SITE_EXPLANATION}</p>
+      <p style={screenExplanationStyle}>
+        <RichText text={SITE_EXPLANATION} />
+      </p>
       <Field label="Адрес сайта школы">
         <input
           type="url"
@@ -79,7 +82,9 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
         Сохранить адрес
       </Button>
 
-      <p style={screenExplanationStyle}>{PREVIEW_EXPLANATION}</p>
+      <p style={screenExplanationStyle}>
+        <RichText text={PREVIEW_EXPLANATION} />
+      </p>
       <Field
         label="За сколько минут показывать черновик"
         hint={`Число от ${SETTINGS_LIMITS.previewMinutesMin} до ${SETTINGS_LIMITS.previewMinutesMax}`}

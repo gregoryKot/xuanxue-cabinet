@@ -21,7 +21,6 @@
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
 import {
-  ATTEMPTS_LIST_PATH,
   CHANNELS_PATH,
   CLASSES_LIST_PATH,
   CLASSES_PATH,
@@ -42,6 +41,7 @@ import {
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
+  attemptPath,
   attemptReviewPath,
   channelsListPath,
   entityPath,
@@ -370,9 +370,9 @@ export const ROUTE_MODULES = {
     path: '/attempts/:id',
     load: () => import('../attempt/AttemptScreen'),
     warm: true,
-    // Своего GET /attempts/:id у API нет — экран ищет попытку в списке своих
-    // (attempt/useAttempt.ts).
-    prefetch: () => [ATTEMPTS_LIST_PATH],
+    // Своя попытка своим адресом (ADR-0126, attempt/useAttempt.ts) — тем же
+    // приёмом, что у редакторов записей выше (entityPath(..., lastSegment)).
+    prefetch: (pathname) => [attemptPath(lastSegment(pathname))],
   },
   people: {
     path: '/people',

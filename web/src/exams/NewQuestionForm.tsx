@@ -8,6 +8,7 @@
 import type { CSSProperties } from 'react';
 import { FormServerError } from '../components/FormServerError';
 import { InlineFormFooter } from '../components/InlineFormFooter';
+import { RichText } from '../components/RichText';
 import { noteStyle } from '../components/screenLayout';
 import { ExamItemFormFields } from '../exam-items/ExamItemFormFields';
 import { ExamItemKindField } from '../exam-items/ExamItemKindField';
@@ -20,7 +21,7 @@ import { useNewQuestionForm } from './useNewQuestionForm';
 // встаёт в список формы, а в экзамене закрепляется следующим сохранением
 // (2026-09-21: учитель не нашёл добавленный вопрос «глазами ученика»).
 const EXPLANATION =
-  'Вопрос сохранится в «Вопросах» и встанет в список ниже. ' +
+  'Вопрос сохранится в «Вопросах» и **встанет в список ниже**. ' +
   'В экзамене он закрепится, когда вы нажмёте «Сохранить».';
 const SAVE_LABEL = 'Сохранить вопрос';
 
@@ -48,7 +49,9 @@ export function NewQuestionForm({ onCreated, onCancel }: NewQuestionFormProps) {
 
   return (
     <div style={wrapStyle}>
-      <p style={noteStyle}>{EXPLANATION}</p>
+      <p style={noteStyle}>
+        <RichText text={EXPLANATION} />
+      </p>
 
       <ExamItemKindField
         kind={form.state.kind}

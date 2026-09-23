@@ -53,6 +53,22 @@ describe('NoticeDialog', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
+  // Проводка через RichText (ADR-0124) — образец теста из RichText.test.tsx.
+  it('звёздочки в тексте попапа становятся <strong>', () => {
+    render(
+      <MemoryRouter initialEntries={['/hub', '/target']} initialIndex={1}>
+        <NoticeDialog
+          title="Время вышло"
+          message="Попытка закрыта через **60 минут**."
+          onClose={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const strong = screen.getByText('60 минут');
+    expect(strong.tagName).toBe('STRONG');
+  });
+
   it('Esc закрывает диалог тем же путём', async () => {
     const user = userEvent.setup();
     const { onClose } = renderNotice();

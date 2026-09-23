@@ -13,12 +13,13 @@
 // обоих местах — иначе jscpd ловит дубль, а облик расходится (CLAUDE.md
 // «Одна механика — один компонент»).
 //
-// Формулировка и подсказка идут через PromptText.tsx (ADR-0093): учитель
+// Формулировка и подсказка идут через RichText.tsx (ADR-0093): учитель
 // вставляет ссылку на видео прямо в текст вопроса, а не в отдельное поле,
 // и здесь она становится кликабельной — сразу и на форме сдачи, и в
-// предпросмотре «глазами ученика».
+// предпросмотре «глазами ученика». Тем же компонентом работает акцент
+// `**жирным**` — своей правки под него здесь не нужно.
 import type { CSSProperties, ReactNode } from 'react';
-import { PromptText } from './PromptText';
+import { RichText } from './RichText';
 
 // Номер вопроса — текстовым шрифтом, не антиквой: у Cormorant цифры
 // старостильные, и единица в них — голый штрих, неотличимый от римской «I»
@@ -78,11 +79,11 @@ export function QuestionRow({
       <span style={numberStyle}>{index + 1}</span>
       <div style={bodyStyle}>
         <span id={promptId} style={promptStyle}>
-          <PromptText text={prompt} />
+          <RichText text={prompt} />
         </span>
         {hint && (
           <span style={hintStyle}>
-            <PromptText text={hint} />
+            <RichText text={hint} />
           </span>
         )}
         {unanswered && (

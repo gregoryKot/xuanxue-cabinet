@@ -3,6 +3,7 @@
 // экране со своим хуком данных (Занятия, Расписание, Рассылки, Каналы,
 // Шаблоны, Экзамены), jscpd иначе ловит дубль на втором экране.
 import { Button } from './Button';
+import { RichText } from './RichText';
 
 interface LoadErrorBannerProps {
   message: string;
@@ -19,7 +20,10 @@ export function LoadErrorBanner({
 }: LoadErrorBannerProps) {
   return (
     <div role="alert" style={{ color: 'var(--danger)' }}>
-      <p style={{ margin: '0 0 8px' }}>{message}</p>
+      {/* Через RichText (ADR-0124) — акцент в тексте ошибки загрузки. */}
+      <p style={{ margin: '0 0 8px' }}>
+        <RichText text={message} />
+      </p>
       <Button variant="secondary" onClick={onRetry}>
         {retryLabel}
       </Button>

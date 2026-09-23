@@ -17,14 +17,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { EMAIL_CONFIRM_TOKEN_RE } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
+import { RichText } from '../components/RichText';
 import { SkeletonLines } from '../components/Skeleton';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { useEmailConfirm } from './useEmailConfirm';
 
 const INCOMPLETE_LINK_MESSAGE =
-  'Ссылка неполная. Откройте «Профиль» в кабинете и пришлите её ещё раз.';
+  'Ссылка неполная. Откройте **«Профиль»** в кабинете и пришлите её ещё раз.';
 const SUCCESS_EXPLANATION =
-  'Теперь можно входить в кабинет и по почте — не только через Telegram.';
+  'Теперь можно входить в кабинет **и по почте** — не только через Telegram.';
 const OPEN_CABINET_LABEL = 'Открыть кабинет';
 
 const errorTextStyle = { margin: 0, color: 'var(--danger)' };
@@ -46,7 +47,7 @@ export default function EmailConfirmScreen() {
       <EntryColumn>
         <h1 style={screenTitleStyle}>Ссылка не подошла</h1>
         <p role="alert" style={screenExplanationStyle}>
-          {INCOMPLETE_LINK_MESSAGE}
+          <RichText text={INCOMPLETE_LINK_MESSAGE} />
         </p>
         {/* Контур, не заливка терракотой: человек сюда не шёл целенаправленно,
             это тупик с одним выходом, а не главное действие экрана (docs/adr/0031). */}
@@ -61,7 +62,9 @@ export default function EmailConfirmScreen() {
     return (
       <EntryColumn>
         <h1 style={screenTitleStyle}>Адрес подтверждён</h1>
-        <p style={screenExplanationStyle}>{SUCCESS_EXPLANATION}</p>
+        <p style={screenExplanationStyle}>
+          <RichText text={SUCCESS_EXPLANATION} />
+        </p>
         <Button onClick={openCabinet} style={fullWidthStyle}>
           {OPEN_CABINET_LABEL}
         </Button>

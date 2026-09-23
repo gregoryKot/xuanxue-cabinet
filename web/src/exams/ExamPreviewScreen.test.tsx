@@ -206,9 +206,13 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    expect(
-      await screen.findByText(/Порядок вопросов и вариантов ответа будет другим/),
-    ).toBeInTheDocument();
+    // Акцент «другим у каждого сдающего» рисует RichText через <strong>
+    // (ADR-0124) — ищем по неразрывному началу фразы, полный текст сверяем
+    // через textContent родителя.
+    const note = await screen.findByText(/Порядок вопросов и вариантов ответа будет/);
+    expect(note.closest('p')).toHaveTextContent(
+      'Порядок вопросов и вариантов ответа будет другим у каждого сдающего — здесь показан один из вариантов.',
+    );
   });
 
   it('перемешаны только вопросы — заметка только про вопросы', async () => {
@@ -218,11 +222,10 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    expect(
-      await screen.findByText(
-        'Порядок вопросов будет другим у каждого сдающего — здесь показан один из вариантов.',
-      ),
-    ).toBeInTheDocument();
+    const note = await screen.findByText(/Порядок вопросов будет/);
+    expect(note.closest('p')).toHaveTextContent(
+      'Порядок вопросов будет другим у каждого сдающего — здесь показан один из вариантов.',
+    );
   });
 
   it('перемешаны только варианты ответа — заметка только про варианты', async () => {
@@ -235,11 +238,10 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    expect(
-      await screen.findByText(
-        'Порядок вариантов ответа будет другим у каждого сдающего.',
-      ),
-    ).toBeInTheDocument();
+    const note = await screen.findByText(/Порядок вариантов ответа будет/);
+    expect(note.closest('p')).toHaveTextContent(
+      'Порядок вариантов ответа будет другим у каждого сдающего.',
+    );
   });
 
   it('без перемешивания — заметок нет', async () => {
@@ -270,11 +272,13 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    expect(
-      await screen.findByText(
-        'Ученику достанутся 1 из 2 вопроса, случайно — здесь показан весь список.',
-      ),
-    ).toBeInTheDocument();
+    // Акцент «1 из 2 вопроса» рисует RichText через <strong> (ADR-0124) —
+    // ищем по неразрывному началу фразы, полный текст сверяем через
+    // textContent родителя.
+    const note = await screen.findByText(/Ученику достанутся/);
+    expect(note.closest('p')).toHaveTextContent(
+      'Ученику достанутся 1 из 2 вопроса, случайно — здесь показан весь список.',
+    );
   });
 
   it('обязательный вопрос (ADR-0082, дополнение) — заметка называет число, строка помечена', async () => {
@@ -295,12 +299,11 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    expect(
-      await screen.findByText(
-        'Ученику достанутся 1 из 2 вопроса, случайно; 1 обязательный попадёт ' +
-          'каждому — здесь показан весь список.',
-      ),
-    ).toBeInTheDocument();
+    const note = await screen.findByText(/Ученику достанутся/);
+    expect(note.closest('p')).toHaveTextContent(
+      'Ученику достанутся 1 из 2 вопроса, случайно; 1 обязательный попадёт ' +
+        'каждому — здесь показан весь список.',
+    );
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0] as HTMLElement).getByText('Обязательный')).toBeInTheDocument();
     expect(

@@ -18,7 +18,7 @@ import { ChannelVkFields } from './ChannelVkFields';
 const TAGS_HINT =
   `Пусто — в канал уходит всё по его занятиям. Впишите теги через запятую — ` +
   `останутся только занятия с этими тегами: своими или тегами занятия в ` +
-  `расписании. До ${TAG_LIMITS.perRecord}.`;
+  `расписании. До **${TAG_LIMITS.perRecord}**.`;
 
 interface ChannelFormFieldsProps {
   state: ChannelFormState;

@@ -26,6 +26,7 @@
 // без своего текста, а тот теперь плитка и прячет «Вариант N» сам. У строки
 // без картинки прятать нечего — подпись и есть всё, что видно.
 import type { CSSProperties } from 'react';
+import { RichText } from './RichText';
 
 const inputStyle: CSSProperties = {
   width: 22,
@@ -83,7 +84,10 @@ export function Toggle({ label, hint, checked, disabled, name, onChange }: Toggl
   return (
     <div style={columnStyle}>
       {row}
-      <span style={hintStyle}>{hint}</span>
+      {/* Через RichText (ADR-0124) — акцент в подсказке под переключателем. */}
+      <span style={hintStyle}>
+        <RichText text={hint} />
+      </span>
     </div>
   );
 }

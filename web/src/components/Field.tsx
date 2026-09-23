@@ -4,6 +4,7 @@
 // стиль инпутов/селектов для всех форм кабинета, высота ≥44px (CLAUDE.md
 // «Доступность»).
 import type { CSSProperties, ReactNode } from 'react';
+import { RichText } from './RichText';
 
 // Экспортирован: EmailField.tsx (CLAUDE.md «Одна механика — один компонент»)
 // принимает тот же размер пропом и не имеет права держать свою копию union.
@@ -80,12 +81,16 @@ export function Field({ label, hint, error, children }: FieldProps) {
         <span style={labelTextStyle}>{label}</span>
         {children}
       </label>
+      {/* Через RichText (ADR-0124) — акцент `**жирным**` в подсказке и ошибке
+       * поля достаётся всем формам кабинета сразу, без правки на каждой. */}
       {error ? (
         <span style={errorStyle} role="alert">
-          {error}
+          <RichText text={error} />
         </span>
       ) : hint ? (
-        <span style={hintStyle}>{hint}</span>
+        <span style={hintStyle}>
+          <RichText text={hint} />
+        </span>
       ) : null}
     </div>
   );

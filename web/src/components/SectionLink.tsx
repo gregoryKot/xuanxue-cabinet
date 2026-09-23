@@ -23,6 +23,7 @@
 // своей карточки-перехода, а не рядом с ней (exams/ExamsSectionStats.tsx).
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { RichText } from './RichText';
 
 const cardStyle: CSSProperties = {
   display: 'flex',
@@ -63,7 +64,10 @@ export function SectionLink({ to, title, headline, hint }: SectionLinkProps) {
     <Link to={to} style={cardStyle}>
       <span style={titleStyle}>{title}</span>
       {headline && <p style={headlineStyle}>{headline}</p>}
-      <p style={hintStyle}>{hint}</p>
+      {/* Через RichText (ADR-0124) — акцент в приписке карточки-перехода. */}
+      <p style={hintStyle}>
+        <RichText text={hint} />
+      </p>
     </Link>
   );
 }

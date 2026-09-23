@@ -7,6 +7,7 @@ import type { CSSProperties } from 'react';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
+import { RichText } from '../components/RichText';
 import { SkeletonList } from '../components/Skeleton';
 import {
   PUSH_BLOCK_WARNING,
@@ -57,15 +58,23 @@ export function PushNotificationsSection() {
       </h2>
 
       {state.kind === 'ios-install' && (
-        <p style={screenExplanationStyle}>{PUSH_EXPLANATION_IOS_INSTALL}</p>
+        <p style={screenExplanationStyle}>
+          <RichText text={PUSH_EXPLANATION_IOS_INSTALL} />
+        </p>
       )}
       {state.kind === 'denied' && (
-        <p style={screenExplanationStyle}>{PUSH_EXPLANATION_DENIED}</p>
+        <p style={screenExplanationStyle}>
+          <RichText text={PUSH_EXPLANATION_DENIED} />
+        </p>
       )}
       {state.kind === 'default' && (
         <>
-          <p style={screenExplanationStyle}>{PUSH_EXPLANATION_DEFAULT}</p>
-          <p style={screenExplanationStyle}>{PUSH_BLOCK_WARNING}</p>
+          <p style={screenExplanationStyle}>
+            <RichText text={PUSH_EXPLANATION_DEFAULT} />
+          </p>
+          <p style={screenExplanationStyle}>
+            <RichText text={PUSH_BLOCK_WARNING} />
+          </p>
         </>
       )}
       {state.kind === 'subscribed' && (
@@ -94,7 +103,7 @@ export function PushNotificationsSection() {
 
       {actionError && (
         <p role="alert" style={alertStyle}>
-          {actionError}
+          <RichText text={actionError} />
         </p>
       )}
     </section>

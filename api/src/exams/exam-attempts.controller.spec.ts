@@ -101,6 +101,24 @@ describe('ExamAttemptsController', () => {
     expect(submit).toHaveBeenCalledWith('a1', USER.id, expect.anything());
   });
 
+  it('getOwn() передаёт id попытки из пути и id пользователя из сессии в сервис, media подмешивается', async () => {
+    const withMedia = { ...ATTEMPT_DTO, media: [] };
+    const getOwn = jest.fn().mockResolvedValue(withMedia);
+    const listForAttempt = jest.fn().mockResolvedValue([]);
+    const controller = await buildController(
+      { getOwn },
+      {},
+      {
+        listForAttempt,
+        listForAttempts: jest.fn().mockResolvedValue(new Map()),
+      },
+    );
+
+    await expect(controller.getOwn('a1', USER)).resolves.toEqual(withMedia);
+    expect(getOwn).toHaveBeenCalledWith('a1', USER.id, expect.anything());
+    expect(listForAttempt).toHaveBeenCalledWith('a1');
+  });
+
   it('list() передаёт query и пользователя из сессии в сервис', async () => {
     const list = jest.fn().mockResolvedValue([ATTEMPT_DTO]);
     const controller = await buildController({ list });

@@ -34,7 +34,7 @@ import { scheduleTzNote } from './timezoneLabel';
 import { useClasses } from './useClasses';
 
 const TITLE = 'Расписание';
-const EXPLANATION = `Постоянные занятия недели. Впишите ссылку Zoom в занятие, и ученики получат её за ${DEFAULT_LEAD_MINUTES} минут до начала сами.`;
+const EXPLANATION = `Постоянные занятия недели. Впишите ссылку Zoom в занятие, и ученики получат её за **${DEFAULT_LEAD_MINUTES} минут** до начала сами.`;
 const SCHEDULE_PATH = '/schedule';
 
 export default function ScheduleScreen() {

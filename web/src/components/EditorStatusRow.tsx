@@ -6,6 +6,7 @@
 // (CLAUDE.md «Одна механика — один компонент»); место задаёт `placement`.
 import type { CSSProperties } from 'react';
 import { Button } from './Button';
+import { RichText } from './RichText';
 import {
   DRAFT_PUBLISHED_ARCHIVED_LABELS_RU,
   draftPublishedArchivedTransitions,
@@ -65,7 +66,8 @@ export function EditorStatusRow({
         <span className="xuanxue-status-label" style={{ color: 'var(--ink)' }}>
           {DRAFT_PUBLISHED_ARCHIVED_LABELS_RU[status]}
         </span>{' '}
-        · {explanations[status]}
+        {/* Через RichText (ADR-0124) — акцент в объяснении статуса. */}
+        · <RichText text={explanations[status]} />
       </span>
       <span style={actionsStyle}>
         {statusActions(status).map((action) => (

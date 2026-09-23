@@ -150,7 +150,14 @@ describe('App', () => {
 
     renderAt('/planning');
 
-    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
+    // «4 недели» — акцент через RichText (<strong>, ADR-0124): сверяем по
+    // textContent абзаца, а не по прямым текстовым узлам.
+    expect(
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'P' && !!el.textContent?.includes('Занятия на 4 недели вперёд'),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('учитель на /planning/new — маршрут страницы разового занятия (ADR-0033)', async () => {
@@ -286,7 +293,14 @@ describe('App', () => {
 
     renderAt('/');
 
-    expect(await screen.findByText(/Занятия на 4 недели вперёд/)).toBeInTheDocument();
+    // «4 недели» — акцент через RichText (<strong>, ADR-0124): сверяем по
+    // textContent абзаца, а не по прямым текстовым узлам.
+    expect(
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'P' && !!el.textContent?.includes('Занятия на 4 недели вперёд'),
+      ),
+    ).toBeInTheDocument();
   });
 
   // Решение владельца: экзамены — отдельный экран и первый после входа
@@ -403,20 +417,19 @@ describe('App', () => {
       hasEmail: true,
       needsProfile: false,
     };
+    // Своя попытка своим адресом, не список (ADR-0126).
     mockRoute(student, {
-      '/attempts': [
-        {
-          id: 'a1',
-          examId: 'e1',
-          examTitle: 'Форма первого уровня',
-          userId: 's1',
-          status: 'in_progress',
-          blocks: [],
-          answers: [],
-          startedAt: '2026-09-01T00:00:00Z',
-          expired: false,
-        },
-      ],
+      '/attempts/a1': {
+        id: 'a1',
+        examId: 'e1',
+        examTitle: 'Форма первого уровня',
+        userId: 's1',
+        status: 'in_progress',
+        blocks: [],
+        answers: [],
+        startedAt: '2026-09-01T00:00:00Z',
+        expired: false,
+      },
     });
 
     renderAt('/attempts/a1');

@@ -179,6 +179,16 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Акцент внутри текста (RichText.tsx, маркер `**жирным**`) — 600, не браузерные
+   700 по умолчанию у `<strong>`. У Golos Text подключены начертания 400/500/600
+   (web/src/fonts.ts); 700 в файлах нет, и браузер синтезировал бы его сам
+   (faux bold, механически утолщённый контур) — рисунок шрифта поплыл бы. 600 — то же
+   начертание, что уже стоит в макете как «редкие акцентные строки»
+   (комментарий у golos-text/600 в fonts.ts, ADR-0043). */
+strong {
+  font-weight: 600;
+}
+
 /* Текст кнопки — цветом окружения, не системным `ButtonText`. Строки списков
    кабинета (exams/ExamCard.tsx, exam-items/ExamItemCard.tsx,
    channels/ChannelCard.tsx, materials/MaterialCard.tsx, grading/

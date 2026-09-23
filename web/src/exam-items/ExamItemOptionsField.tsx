@@ -8,6 +8,7 @@
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
 import { noteStyle } from '../components/screenLayout';
+import { RichText } from '../components/RichText';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { ExamItemOptionRow } from './ExamItemOptionRow';
 import type { ExamItemOptionDraft } from './examItemFormInput';
@@ -30,7 +31,14 @@ const hintTextStyle: CSSProperties = {
 const RADIO_GROUP_NAME = 'exam-item-correct-option';
 const NEW_OPTION: ExamItemOptionDraft = { text: '', correct: false };
 const HELP_TEXT =
-  'Вариант — текст, картинка или и то и другое. Фото ужимается до 1280 px перед отправкой.';
+  'Вариант — текст, картинка или и то и другое. Фото ужимается до **1280 px** перед отправкой.';
+
+/** Подсказка о минимуме вариантов — число берётся из общего лимита
+ * (EXAM_ITEM_LIMITS), поэтому строится функцией, а не хранится константой
+ * со звёздочками текстом (RichText разбирает готовую строку). */
+function minOptionsHint(min: number): string {
+  return `Добавьте минимум **${min}** варианта — без них вопрос не сохранить.`;
+}
 
 interface ExamItemOptionsFieldProps {
   kind: ExamItemKind;
@@ -94,11 +102,12 @@ export function ExamItemOptionsField({
       )}
       {options.length < EXAM_ITEM_LIMITS.optionsMin && (
         <p style={hintTextStyle}>
-          Добавьте минимум {EXAM_ITEM_LIMITS.optionsMin} варианта — без них вопрос не
-          сохранить.
+          <RichText text={minOptionsHint(EXAM_ITEM_LIMITS.optionsMin)} />
         </p>
       )}
-      <p style={noteStyle}>{HELP_TEXT}</p>
+      <p style={noteStyle}>
+        <RichText text={HELP_TEXT} />
+      </p>
     </fieldset>
   );
 }

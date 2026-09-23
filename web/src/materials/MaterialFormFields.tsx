@@ -13,7 +13,7 @@ import type { MaterialFormError, MaterialFormState } from './materialFormInput';
 
 // ADR-0058: теги — рубрикация, не служебная пометка, и их видит ученик —
 // значит, ни имени, ни телефона в тексте тега быть не должно.
-const TAG_HINT = `Через запятую: «для старшей», «24 формы» — до ${TAG_LIMITS.perRecord}. Их видит ученик: без имени и телефона.`;
+const TAG_HINT = `Через запятую: «для старшей», «24 формы» — до **${TAG_LIMITS.perRecord}**. Их видит ученик: **без имени и телефона**.`;
 
 interface MaterialFormFieldsProps {
   state: MaterialFormState;

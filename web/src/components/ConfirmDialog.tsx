@@ -8,6 +8,7 @@
 // подтверждения.
 import { Button, type ButtonVariant } from './Button';
 import { DialogShell } from './DialogShell';
+import { RichText } from './RichText';
 
 interface ConfirmDialogProps {
   title: string;
@@ -64,7 +65,10 @@ export function ConfirmDialog({
         </>
       )}
     >
-      <p style={{ margin: 0 }}>{message}</p>
+      {/* Через RichText (ADR-0124) — акцент `**жирным**` в тексте подтверждения. */}
+      <p style={{ margin: 0 }}>
+        <RichText text={message} />
+      </p>
     </DialogShell>
   );
 }
