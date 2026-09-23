@@ -500,6 +500,44 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     expect(screen.getByText('Пусто — без ограничения.')).toBeInTheDocument();
   });
 
+  it('срок сдачи (ADR-0125) — своё поле с честной подсказкой, независимое от лимита времени', async () => {
+    mockExamAndBank(makeExam({ dueAt: '2026-09-30T20:59:00Z' }));
+
+    renderAt('/exams/x1');
+
+    const dueAtField = await screen.findByLabelText<HTMLInputElement>('Сдать до');
+    expect(dueAtField.value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(screen.getByText('Пусто — без срока.')).toBeInTheDocument();
+  });
+
+  it('правка срока сдачи уходит в тело сохранения ISO UTC', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await user.type(await screen.findByLabelText('Сдать до'), '2026-09-30T23:59');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
+    const body = lastCallWithMethod('PATCH')[0]?.[1] as { body: { dueAt?: string } };
+    expect(body.body.dueAt).toMatch(/Z$/);
+  });
+
+  it('очищенный срок сдачи уходит в тело сохранения null (явный сброс)', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam({ dueAt: '2026-09-30T20:59:00Z' }));
+
+    renderAt('/exams/x1');
+    await user.clear(await screen.findByLabelText('Сдать до'));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
+    const body = lastCallWithMethod('PATCH')[0]?.[1] as {
+      body: { dueAt?: string | null };
+    };
+    expect(body.body.dueAt).toBeNull();
+  });
+
   it('«Вопросов ученику» (ADR-0082) — поле с подсказкой по числу вопросов списка', async () => {
     mockExamAndBank(makeExam());
 

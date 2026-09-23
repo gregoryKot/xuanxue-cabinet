@@ -17,6 +17,7 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
     blocks: [{ id: 'b1', title: 'Теория', itemIds: ['i1'], shuffle: true }],
     shuffleOptions: true,
     timeLimitMin: 40,
+    dueAt: '2026-09-30T20:59:00Z',
     attemptsAllowed: 2,
     status: 'draft',
     createdAt: '2026-01-01T00:00:00Z',
@@ -32,6 +33,7 @@ function baseState(overrides: Partial<ExamFormState> = {}): ExamFormState {
     level: '',
     timeLimitMinText: '',
     attemptsAllowedText: '1',
+    dueAtLocal: '',
     questionIds: [],
     requiredIds: [],
     shuffleQuestions: false,
@@ -111,6 +113,16 @@ describe('initialExamFormState', () => {
   it('у блока нет requiredItemIds — пустой список', () => {
     expect(initialExamFormState(makeExam()).requiredIds).toEqual([]);
   });
+
+  it('есть срок сдачи — переносится значением datetime-local', () => {
+    expect(initialExamFormState(makeExam()).dueAtLocal).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
+    );
+  });
+
+  it('нет срока сдачи — пустая строка, не «undefined»', () => {
+    expect(initialExamFormState(makeExam({ dueAt: undefined })).dueAtLocal).toBe('');
+  });
 });
 
 describe('validateExamForm', () => {
@@ -146,6 +158,14 @@ describe('validateExamForm', () => {
     expect(
       validateExamForm(baseState({ timeLimitMinText: '30', attemptsAllowedText: '3' })),
     ).toBeNull();
+  });
+
+  it('пустой срок сдачи — валидно (без срока)', () => {
+    expect(validateExamForm(baseState({ dueAtLocal: '' }))).toBeNull();
+  });
+
+  it('нераспознаваемый срок сдачи — ошибка', () => {
+    expect(validateExamForm(baseState({ dueAtLocal: 'не дата' }))).toMatch(/Срок сдачи/);
   });
 
   it('пустое «Вопросов ученику» — валидно (все вопросы списка)', () => {
@@ -258,6 +278,28 @@ describe('toCreateInput / toUpdateInput', () => {
   it('правка: заполненный лимит времени — число', () => {
     const input = toUpdateInput(baseState({ timeLimitMinText: '20' }), makeExam());
     expect(input.timeLimitMin).toBe(20);
+  });
+
+  it('создание: пустой срок сдачи — undefined (поле не отправляется)', () => {
+    expect(toCreateInput(baseState()).dueAt).toBeUndefined();
+  });
+
+  it('создание: заполненный срок сдачи — ISO UTC с Z', () => {
+    const input = toCreateInput(baseState({ dueAtLocal: '2026-09-30T23:59' }));
+    expect(input.dueAt).toMatch(/Z$/);
+  });
+
+  it('правка: пустой срок сдачи — null (явный сброс)', () => {
+    const input = toUpdateInput(baseState({ dueAtLocal: '' }), makeExam());
+    expect(input.dueAt).toBeNull();
+  });
+
+  it('правка: заполненный срок сдачи — ISO UTC с Z', () => {
+    const input = toUpdateInput(
+      baseState({ dueAtLocal: '2026-09-30T23:59' }),
+      makeExam(),
+    );
+    expect(input.dueAt).toMatch(/Z$/);
   });
 
   it('создание: вопросы уходят одним блоком без id — сервер заведёт его сам', () => {

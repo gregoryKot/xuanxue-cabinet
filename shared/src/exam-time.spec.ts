@@ -3,7 +3,7 @@
 // тест не зависит ни от часов машины, ни от её пояса (CLAUDE.md
 // «Детерминизм»): CI гоняет vitest под UTC и Australia/Sydney.
 import { describe, expect, it } from 'vitest';
-import { describeAttemptDeadline, describeExamTime } from './exam-time';
+import { describeAttemptDeadline, describeExamTime, isExamDuePassed } from './exam-time';
 import type { MyExamDto } from './my-exams';
 
 const SCHOOL_TZ = 'Asia/Jerusalem';
@@ -242,5 +242,48 @@ describe('describeAttemptDeadline', () => {
     expect(
       describeAttemptDeadline('не дата', { nowMs: ms('2026-09-22T16:15:00Z') }),
     ).toBeNull();
+  });
+});
+
+// ADR-0125: срок сдачи — второе, независимое от лимита минут ограничение.
+// Сравнение абсолютных моментов (Date.parse), пояс тут ни при чём — но
+// CLAUDE.md «Время» требует тест на переход Asia/Jerusalem для любого кода,
+// который решает «когда» (тест ниже), хотя бы чтобы зафиксировать, что
+// сравнение UTC-моментов ни на минуту не сдвигается переводом стрелок.
+describe('isExamDuePassed', () => {
+  it('нет срока — не прошёл', () => {
+    expect(isExamDuePassed(undefined, ms('2026-09-22T10:00:00Z'))).toBe(false);
+  });
+
+  it('срок ещё впереди — не прошёл', () => {
+    expect(isExamDuePassed('2026-09-30T20:59:00Z', ms('2026-09-22T10:00:00Z'))).toBe(
+      false,
+    );
+  });
+
+  it('срок уже наступил — прошёл', () => {
+    expect(isExamDuePassed('2026-09-30T20:59:00Z', ms('2026-09-30T20:59:00Z'))).toBe(
+      true,
+    );
+  });
+
+  it('срок в прошлом — прошёл', () => {
+    expect(isExamDuePassed('2026-09-30T20:59:00Z', ms('2026-10-01T00:00:00Z'))).toBe(
+      true,
+    );
+  });
+
+  it('дедлайн нечитаемый — не прошёл (защита в глубину, не ложный отказ)', () => {
+    expect(isExamDuePassed('не дата', ms('2026-09-22T10:00:00Z'))).toBe(false);
+  });
+
+  // Переход на зимнее время Asia/Jerusalem (последнее воскресенье октября,
+  // 2026-10-25): срок сдачи — момент незадолго до перехода по UTC. Минута
+  // до него ещё «не прошёл», минута после — уже «прошёл», ровно так же, как
+  // если бы перехода не было вовсе: сравнение UTC-моментов его не видит.
+  it('переход на зимнее время Asia/Jerusalem — граница не сдвигается', () => {
+    const dueAt = '2026-10-24T21:00:00Z';
+    expect(isExamDuePassed(dueAt, ms('2026-10-24T20:59:00Z'))).toBe(false);
+    expect(isExamDuePassed(dueAt, ms('2026-10-24T21:01:00Z'))).toBe(true);
   });
 });

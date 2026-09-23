@@ -77,6 +77,11 @@ export class ExamRecord {
   @Prop({ type: Number, required: false })
   timeLimitMin?: number;
 
+  // Срок сдачи — второе, независимое от timeLimitMin ограничение (ADR-0125):
+  // до какого момента можно начать НОВУЮ попытку, а не сколько она длится.
+  @Prop({ type: Date, required: false })
+  dueAt?: Date;
+
   @Prop({ type: Number, default: DEFAULT_ATTEMPTS_ALLOWED })
   attemptsAllowed!: number;
 

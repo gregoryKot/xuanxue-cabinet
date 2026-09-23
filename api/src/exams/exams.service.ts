@@ -19,6 +19,7 @@ import {
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
+import { parseUtcIso } from '../lessons/lesson-dates';
 import { encryptRecord } from '../utils/encryption';
 import { ExamAttemptRecord } from './exam-attempt.schema';
 import { assertBlocksConsistent, hasAnyQuestion, mapBlocks } from './exam-blocks';
@@ -69,13 +70,15 @@ export class ExamsService {
   // форму без вошедшего в систему человека; схема поля не требует
   // (ExamRecord.createdBy, required: false).
   async create(input: CreateExamInput, createdBy?: string): Promise<ExamDto> {
-    const { blocks, ...rest } = input;
+    const { blocks, dueAt, ...rest } = input;
     const mappedBlocks = mapBlocks(blocks);
     if (mappedBlocks !== undefined) await this.assertBlocksSavable(mappedBlocks);
 
     const payload: Record<string, unknown> = {
       ...rest,
       ...(createdBy !== undefined ? { createdBy } : {}),
+      // Поле схемы — Date, не строка (тот же приём, что startsAt /lessons).
+      ...(dueAt !== undefined ? { dueAt: parseUtcIso(dueAt, 'dueAt').toJSDate() } : {}),
     };
     if (mappedBlocks !== undefined) payload.blocks = mappedBlocks;
 
@@ -91,6 +94,10 @@ export class ExamsService {
 
     const { blocks, status, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_FIELDS);
+    // splitUpdate не знает о типах — dueAt иначе уйдёт строкой мимо Date.
+    if (typeof $set.dueAt === 'string') {
+      $set.dueAt = parseUtcIso($set.dueAt, 'dueAt').toJSDate();
+    }
 
     const nextBlocks = mapBlocks(blocks);
     if (nextBlocks !== undefined) {

@@ -155,6 +155,7 @@ export {
   NULLABLE_EXAM_FIELDS,
   EXAM_LIMITS,
   EXAM_NOT_FOUND_MESSAGE,
+  EXAM_DUE_PASSED_MESSAGE,
 } from './exams';
 export type {
   ExamAttemptStatus,
@@ -223,7 +224,7 @@ export {
   getMyExamAction,
   firstUnansweredQuestionIndex,
 } from './my-exams';
-export { describeExamTime, describeAttemptDeadline } from './exam-time';
+export { describeExamTime, describeAttemptDeadline, isExamDuePassed } from './exam-time';
 export {
   EXAM_IN_PROGRESS_LABEL,
   EXAM_START_CONFIRM_TITLE,

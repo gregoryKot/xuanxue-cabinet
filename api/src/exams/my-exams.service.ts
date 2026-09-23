@@ -36,7 +36,7 @@ import {
 // `T extends Record<string, unknown>` у decryptRecord.
 type RawLeanMyExam = Pick<
   ExamRecord,
-  'title' | 'description' | 'level' | 'attemptsAllowed' | 'timeLimitMin'
+  'title' | 'description' | 'level' | 'attemptsAllowed' | 'timeLimitMin' | 'dueAt'
 > & { _id: Types.ObjectId };
 
 interface AttemptSummary {

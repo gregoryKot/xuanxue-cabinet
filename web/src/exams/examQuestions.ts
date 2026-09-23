@@ -1,7 +1,6 @@
 // Чистая логика списка вопросов экзамена — порядок, добавление, удаление и
-// поиск. Для учителя экзамен теперь один список, блок остался
-// устройством хранилища (docs/adr/0033-exam-as-question-list.md). Вынесена из
-// компонентов, чтобы проверять без React (CLAUDE.md «Тесты»).
+// поиск. Для учителя экзамен теперь один список (docs/adr/0033), блок остался
+// устройством хранилища. Вынесена из компонентов, чтобы проверять без React.
 import type { ExamBlockInput, ExamDto, ExamItemDto } from '@xuanxue/shared';
 import { matchesSearch } from '../lib/textSearch';
 
@@ -143,4 +142,10 @@ export function mergeCreatedItems(
 ): ExamItemDto[] {
   const known = new Set(items.map((item) => item.id));
   return [...items, ...created.filter((item) => !known.has(item.id))];
+}
+
+/** Целое число в границах поля — вынесена из examFormInput.ts (лимит размера). */
+export function isValidInt(text: string, min: number, max: number): boolean {
+  const value = Number(text);
+  return text.trim() !== '' && Number.isInteger(value) && value >= min && value <= max;
 }

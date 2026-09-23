@@ -3,7 +3,7 @@
 // блока, перемешивание вариантов — у самого экзамена (ADR-0033); учителю про
 // это знать незачем, поэтому на экране они стоят рядом.
 import type { CSSProperties } from 'react';
-import { Field, numericInputStyle } from '../components/Field';
+import { Field, inputStyle, numericInputStyle } from '../components/Field';
 import { Toggle } from '../components/Toggle';
 import { questionsPerAttemptHint } from './questionsPerAttempt';
 import type { ExamFormState } from './examFormInput';
@@ -13,6 +13,11 @@ const SHUFFLE_QUESTIONS_HINT = 'У каждого ученика свой пор
 const SHUFFLE_OPTIONS_LABEL = 'Перемешивать варианты ответов';
 const SHUFFLE_OPTIONS_HINT = 'Верный вариант не стоит на одном и том же месте';
 const TIME_LIMIT_HINT = 'Пусто — без ограничения.';
+// ADR-0125: срок сдачи — не лимит времени попытки, а «до какого числа её
+// вообще можно начать». Идущую попытку срок не прерывает, что бы с ним ни
+// случилось дальше, — только новую.
+const DUE_AT_LABEL = 'Сдать до';
+const DUE_AT_HINT = 'Пусто — без срока.';
 const QUESTIONS_PER_ATTEMPT_LABEL = 'Вопросов ученику';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
@@ -57,6 +62,18 @@ export function ExamFlowFields({ state, setField }: ExamFlowFieldsProps) {
           />
         </Field>
       </div>
+
+      {/* Тот же контрол и формат, что «Дата и время начала» у занятия
+          (planning/LessonFormFields.tsx) — второе, независимое от лимита
+          времени ограничение (ADR-0125), поэтому не в сетке выше. */}
+      <Field label={DUE_AT_LABEL} hint={DUE_AT_HINT}>
+        <input
+          type="datetime-local"
+          style={inputStyle}
+          value={state.dueAtLocal}
+          onChange={(e) => setField('dueAtLocal', e.target.value)}
+        />
+      </Field>
 
       {/* Отдельным полем под сеткой, не третьей колонкой xuanxue-form-columns:
           у той сетки два столбца, третье поле просто съедет вниз и оставит
