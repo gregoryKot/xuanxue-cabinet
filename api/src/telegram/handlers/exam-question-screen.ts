@@ -136,7 +136,7 @@ export function buildQuestionScreen(attempt: ExamAttemptDto, index: number): Bot
 /** Экран попытки, которая больше не «в работе»: сдана вручную только что
  * (`justSubmitted`), сдана раньше или закрыта по дедлайну — тексты те же, что уже
  * показывает кабинет (ATTEMPT_EXPIRED_MESSAGE/ATTEMPT_NOT_IN_PROGRESS_MESSAGE,
- * shared/src/exams.ts), не второй текст той же мысли. */
+ * shared/src/exam-attempts.ts), не второй текст той же мысли. */
 export function buildFinishedScreen(
   attempt: ExamAttemptDto,
   justSubmitted: boolean,

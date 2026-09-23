@@ -29,7 +29,7 @@ function buildCaption(questionIndex: number, optionIndex: number, text: string):
 }
 
 /** Только у single/multiple бывают варианты с картинкой. Количество отдельно
- * не ограничиваем — optionsMax (EXAM_ITEM_LIMITS, shared/src/exams.ts) уже
+ * не ограничиваем — optionsMax (EXAM_ITEM_LIMITS, shared/src/exam-items.ts) уже
  * держит вопрос в пределах 10 вариантов, ровно потолка Telegram на альбом. */
 export function buildOptionAlbum(
   question: AttemptQuestionDto,

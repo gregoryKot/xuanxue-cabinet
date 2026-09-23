@@ -120,7 +120,7 @@ export function toCreateInput(state: ExamItemFormState): CreateExamItemInput {
 }
 
 /** Пустые hint/criteria — явный сброс (`null`, NULLABLE_EXAM_ITEM_FIELDS в
- * shared/src/exams.ts), не «оставить как было» — тот же приём, что у
+ * shared/src/exam-items.ts), не «оставить как было» — тот же приём, что у
  * zoomLink/zoomPassword в classFormInput.ts. */
 export function toUpdateInput(state: ExamItemFormState): UpdateExamItemInput {
   return {

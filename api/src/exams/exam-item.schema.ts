@@ -47,7 +47,7 @@ export interface ExamItemVersionRecord {
 
 @Schema({ timestamps: true, collection: 'exam_items' })
 export class ExamItemRecord {
-  // Тип не входит в PATCH (UpdateExamItemInput, shared/src/exams.ts) — смена
+  // Тип не входит в PATCH (UpdateExamItemInput, shared/src/exam-items.ts) — смена
   // типа значит завести новый вопрос, ТЗ 4.2 п.1.
   @Prop({ type: String, enum: EXAM_ITEM_KINDS, required: true })
   kind!: ExamItemKind;
