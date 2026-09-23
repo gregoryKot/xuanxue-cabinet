@@ -69,6 +69,24 @@ describe('ConfirmDialog', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  // Проводка через RichText (ADR-0124) — образец теста из RichText.test.tsx.
+  it('звёздочки в тексте подтверждения становятся <strong>', () => {
+    render(
+      <MemoryRouter initialEntries={['/hub', '/target']} initialIndex={1}>
+        <ConfirmDialog
+          title="Отменить занятие?"
+          message="Ссылка **на занятие** перестанет работать."
+          confirmLabel="Отменить занятие"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const strong = screen.getByText('на занятие');
+    expect(strong.tagName).toBe('STRONG');
+  });
+
   it('pending — кнопка подтверждения занята', () => {
     render(
       <MemoryRouter initialEntries={['/hub', '/target']} initialIndex={1}>

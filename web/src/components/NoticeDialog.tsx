@@ -5,6 +5,7 @@
 // оба берут общую DialogShell.tsx (CLAUDE.md «Одна механика — один компонент»).
 import { Button } from './Button';
 import { DialogShell } from './DialogShell';
+import { RichText } from './RichText';
 
 // «Закрыть», а не «Понятно»: короткий текст интерфейса начинается с глагола
 // (docs/VOICE.md), и кнопка называет ровно то, что делает.
@@ -34,7 +35,10 @@ export function NoticeDialog({
         </Button>
       )}
     >
-      <p style={{ margin: 0 }}>{message}</p>
+      {/* Через RichText (ADR-0124) — акцент в тексте попапа. */}
+      <p style={{ margin: 0 }}>
+        <RichText text={message} />
+      </p>
     </DialogShell>
   );
 }
