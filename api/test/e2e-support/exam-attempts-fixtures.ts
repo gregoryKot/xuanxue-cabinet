@@ -19,7 +19,12 @@ export function createExamAttemptsTestHelpers(getApp: () => TestApp) {
   // что попытка стартует на реальной опубликованной форме.
   async function createPublishedExam(
     teacherCookie: string,
-    options: { attemptsAllowed?: number; shuffleOptions?: boolean } = {},
+    options: {
+      attemptsAllowed?: number;
+      shuffleOptions?: boolean;
+      /** Срок сдачи (ADR-0125), ISO UTC с Z. */
+      dueAt?: string;
+    } = {},
   ): Promise<{ examId: string; itemId: string; optionIds: string[] }> {
     const item = await withCsrf(request(server()).post('/api/exam-items'))
       .set('Cookie', teacherCookie)
@@ -50,6 +55,7 @@ export function createExamAttemptsTestHelpers(getApp: () => TestApp) {
         blocks: [{ title: 'Форма', itemIds: [itemId] }],
         attemptsAllowed: options.attemptsAllowed,
         shuffleOptions: options.shuffleOptions,
+        dueAt: options.dueAt,
       });
     const examId = (exam.body as ExamDto).id;
     await withCsrf(request(server()).patch(`/api/exams/${examId}`))

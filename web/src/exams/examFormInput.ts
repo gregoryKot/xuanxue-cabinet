@@ -1,27 +1,26 @@
-// Чистая логика формы экзамена — состояние, валидация и сборка тела запроса
-// (порядок вопросов и поиск — examQuestions.ts), вынесена из useExamForm.ts,
-// чтобы проверять без React (CLAUDE.md «Тесты»). timeLimitMin/attemptsAllowed
-// хранятся в форме строкой — пустое поле иначе мгновенно становится 0/NaN,
-// и пользователь не может стереть цифру, чтобы напечатать новую (тот же
-// приём, что durationMinText в schedule/classFormInput.ts).
+// Чистая логика формы экзамена — состояние, валидация, сборка тела запроса
+// (вопросы — examQuestions.ts, срок сдачи — examDueInput.ts). timeLimitMin/
+// attemptsAllowed хранятся строкой — пустое поле иначе мгновенно становится
+// 0/NaN (тот же приём, что durationMinText в schedule/classFormInput.ts).
 import {
   EXAM_LIMITS,
   type CreateExamInput,
   type ExamDto,
   type UpdateExamInput,
 } from '@xuanxue/shared';
+import { dueAtToIso, initialDueAtLocal, validateDueAtText } from './examDueInput';
 import { validateQuestionsPerAttemptText } from './questionsPerAttempt';
 import {
   initialQuestionIds,
   initialQuestionsPerAttempt,
   initialRequiredIds,
   initialShuffleQuestions,
+  isValidInt,
   pruneRequiredIds,
   toBlockInputs,
 } from './examQuestions';
 
-// Минимумы не вынесены в EXAM_LIMITS (shared) — там только верхние границы;
-// то же значение 1 продублировано константой на сервере (api/src/exams/dto/*.ts).
+// Минимумы не в EXAM_LIMITS (там только верхние границы) — та же 1 продублирована в api/src/exams/dto/*.ts.
 const MIN_TIME_LIMIT_MIN = 1;
 const MIN_ATTEMPTS_ALLOWED = 1;
 const DEFAULT_ATTEMPTS_ALLOWED = 1;
@@ -33,6 +32,7 @@ export interface ExamFormState {
   level: string;
   timeLimitMinText: string;
   attemptsAllowedText: string;
+  dueAtLocal: string;
   /** Один список вопросов на весь экзамен (ADR-0033). */
   questionIds: string[];
   /** Отметки ★ «обязательный» (ADR-0082, дополнение) — подмножество `questionIds`. */
@@ -52,6 +52,7 @@ export function initialExamFormState(exam: ExamDto | null): ExamFormState {
     level: exam?.level ?? '',
     timeLimitMinText: exam?.timeLimitMin ? String(exam.timeLimitMin) : '',
     attemptsAllowedText: String(exam?.attemptsAllowed ?? DEFAULT_ATTEMPTS_ALLOWED),
+    dueAtLocal: initialDueAtLocal(exam?.dueAt),
     questionIds: initialQuestionIds(exam),
     requiredIds: initialRequiredIds(exam),
     shuffleQuestions: initialShuffleQuestions(exam),
@@ -59,11 +60,6 @@ export function initialExamFormState(exam: ExamDto | null): ExamFormState {
     questionsPerAttemptText:
       questionsPerAttempt !== undefined ? String(questionsPerAttempt) : '',
   };
-}
-
-function isValidInt(text: string, min: number, max: number): boolean {
-  const value = Number(text);
-  return text.trim() !== '' && Number.isInteger(value) && value >= min && value <= max;
 }
 
 /** `null` — форма валидна, иначе текст первой найденной ошибки. Правила
@@ -86,6 +82,8 @@ export function validateExamForm(state: ExamFormState): string | null {
   ) {
     return `Число попыток — целое число от ${MIN_ATTEMPTS_ALLOWED} до ${EXAM_LIMITS.attemptsMax}.`;
   }
+  const dueAtError = validateDueAtText(state.dueAtLocal);
+  if (dueAtError) return dueAtError;
   if (state.questionsPerAttemptText.trim() !== '') {
     const error = validateQuestionsPerAttemptText(
       state.questionsPerAttemptText,
@@ -117,11 +115,12 @@ export function toCreateInput(state: ExamFormState): CreateExamInput {
     timeLimitMin: state.timeLimitMinText.trim()
       ? Number(state.timeLimitMinText)
       : undefined,
+    dueAt: dueAtToIso(state.dueAtLocal),
     attemptsAllowed: Number(state.attemptsAllowedText),
   };
 }
 
-/** Пустые description/level/timeLimitMin — явный сброс (`null`,
+/** Пустые description/level/timeLimitMin/dueAt — явный сброс (`null`,
  * NULLABLE_EXAM_FIELDS в shared/src/exams.ts), не «оставить как было» — тот же
  * приём, что у hint/criteria в exam-items/examItemFormInput.ts. `exam` нужен
  * ради `id` первого блока: без него сервер завёл бы блок заново при каждом
@@ -145,6 +144,7 @@ export function toUpdateInput(
     }),
     shuffleOptions: state.shuffleOptions,
     timeLimitMin: state.timeLimitMinText.trim() ? Number(state.timeLimitMinText) : null,
+    dueAt: dueAtToIso(state.dueAtLocal) ?? null,
     attemptsAllowed: Number(state.attemptsAllowedText),
   };
 }

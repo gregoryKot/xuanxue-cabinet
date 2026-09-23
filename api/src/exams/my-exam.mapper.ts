@@ -16,6 +16,8 @@ export interface MyExamInput {
   attemptsAllowed: number;
   // Нет поля — у формы не было лимита времени (ADR-0122, describeExamTime).
   timeLimitMin?: number;
+  // Нет поля — у формы нет срока сдачи (ADR-0125, isExamDuePassed).
+  dueAt?: Date;
 }
 
 /** Оценка последней попытки, если она уже выставлена (слой 4.6) — итог и
@@ -53,6 +55,7 @@ export function toMyExamDto(
     // Прямое присваивание, как у lastAttempt выше: undefined-ключ Mongoose/
     // JSON.stringify не отдаёт — второго приёма ради одного поля не заводим.
     timeLimitMin: exam.timeLimitMin,
+    ...(exam.dueAt !== undefined ? { dueAt: toIsoUtc(exam.dueAt) } : {}),
     lastAttempt,
   };
 }

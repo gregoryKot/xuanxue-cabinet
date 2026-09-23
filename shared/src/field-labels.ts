@@ -99,6 +99,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   requiredItemIds: 'Обязательные вопросы',
   shuffleOptions: 'Перемешивание вариантов ответа',
   timeLimitMin: 'Лимит времени',
+  dueAt: 'Срок сдачи',
   attemptsAllowed: 'Число попыток',
 
   // me/notifications — настройка уведомлений (ТЗ notifications-api.md).

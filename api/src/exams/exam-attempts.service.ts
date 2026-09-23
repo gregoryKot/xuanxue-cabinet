@@ -3,21 +3,18 @@
 // (SECURITY §3) — `userId` в фильтре, а не сравнение после чтения. Снимок
 // формы и перемешивание — один раз при старте (exam-attempt-snapshot.ts);
 // время считает сервер, Luxon (closeIfExpiredAttempt), не часы клиента
-// (ТЗ 4.4, п.7) — сама проверка дедлайна и поиск попытки «в работе» — в
-// exam-attempt-lifecycle.ts, чтобы этот файл оставался диспетчером правил, а
-// не Mongo-запросов (CLAUDE.md «Файлы», лимит размера).
+// (ТЗ 4.4, п.7).
 //
-// Вопросы блоков читаются через `ExamsService`/`ExamItemsService`, а не
-// напрямую через их модели: там уже есть проверка published-статуса формы,
-// шифрование и декрипт содержимого вопроса (prompt/hint/criteria/options) —
-// дублировать эту расшифровку здесь было бы вторым местом одной механики
-// (CLAUDE.md «Одна механика — один компонент»).
+// Этот файл — диспетчер правил, не Mongo-запросов: дедлайн и поиск попытки
+// «в работе» живут в exam-attempt-lifecycle.ts, срок сдачи — в
+// exam-due-guard.ts, а вопросы блоков читаются через `ExamsService`/
+// `ExamItemsService` (там уже и проверка published, и декрипт содержимого —
+// второе место той же механики заводить незачем).
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
-  EXAM_NOT_PUBLISHED_MESSAGE,
   isStaffRole,
   LIST_LIMIT_DEFAULT,
   type ExamAttemptDto,
@@ -37,6 +34,7 @@ import {
   closeIfExpiredAttempt,
   findInProgressAttempt,
 } from './exam-attempt-lifecycle';
+import { assertExamNotPastDue, assertExamPublished } from './exam-start-guards';
 import { saveAttemptAnswers } from './exam-attempt-save';
 import { resolveSubmitConflict } from './exam-attempt-submit-outcome';
 import {
@@ -66,14 +64,14 @@ export class ExamAttemptsService {
     @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
   ) {}
 
-  /** ТЗ 4.4, п.1–3: экзамен должен быть опубликован; незаконченная попытка
-   * возвращается, а не заводится новая; больше `attemptsAllowed` попыток не
-   * заводится — атомарно, через уникальный индекс, не «посчитали и вставили». */
+  /** ТЗ 4.4, п.1–3: незаконченная попытка возвращается, а не заводится
+   * новая; больше `attemptsAllowed` не заводится — атомарно, через уникальный
+   * индекс, не «посчитали и вставили». Два отказа на входе (форма не
+   * опубликована, срок сдачи прошёл) и порядок их проверок — в
+   * exam-start-guards.ts. */
   async start(examId: string, userId: string, now: DateTime): Promise<ExamAttemptDto> {
     const exam = await this.examsService.getById(examId);
-    if (exam.status !== 'published') {
-      throw new InvalidInputError(EXAM_NOT_PUBLISHED_MESSAGE);
-    }
+    assertExamPublished(exam.status);
 
     const existing = await findInProgressAttempt(this.model, examId, userId);
     if (existing) {
@@ -85,6 +83,8 @@ export class ExamAttemptsService {
       );
       return toAttemptDto(closed);
     }
+
+    assertExamNotPastDue(exam.dueAt, now);
 
     const attemptsUsed = await this.model.countDocuments({ examId, userId });
     if (attemptsUsed >= exam.attemptsAllowed) {

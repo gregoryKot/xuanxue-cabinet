@@ -5,6 +5,7 @@
 import {
   IsIn,
   IsInt,
+  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -46,6 +47,12 @@ export class UpdateExamDto extends ExamFieldsDto implements UpdateExamInput {
   @Min(MIN_TIME_LIMIT_MIN)
   @Max(EXAM_LIMITS.timeLimitMinMax)
   timeLimitMin?: number | null;
+
+  // `null` — сброс (dueAt входит в NULLABLE_EXAM_FIELDS, shared/src/exams.ts),
+  // тот же приём, что у timeLimitMin выше.
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  dueAt?: string | null;
 
   @OptionalNotNull()
   @IsIn(EXAM_STATUSES)

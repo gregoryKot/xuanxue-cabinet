@@ -48,6 +48,7 @@ describe('ExamAttemptsService', () => {
     attemptsAllowed?: number;
     questionsPerAttempt?: number;
     requiredItemIds?: string[];
+    dueAt?: string;
   }) {
     const created = await ctx.examsService.create(
       {
@@ -62,6 +63,7 @@ describe('ExamAttemptsService', () => {
           },
         ],
         attemptsAllowed: options.attemptsAllowed,
+        dueAt: options.dueAt,
       },
       AUTHOR_ID,
     );
@@ -196,6 +198,76 @@ describe('ExamAttemptsService', () => {
     await expect(
       ctx.attemptModel.countDocuments({ examId, userId: USER_A }),
     ).resolves.toBe(1);
+  });
+
+  // ADR-0125: срок сдачи закрывает только НОВУЮ попытку. Три ветки ниже —
+  // до срока разрешено как обычно, после срока новую попытку не завести, а
+  // уже идущую срок не трогает никогда (предупреждение владельца: иначе
+  // сдающий прямо сейчас получил бы отказ на «Продолжить» при перезагрузке).
+  it('срок сдачи ещё не наступил — старт как обычно', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({
+      itemIds: [itemId],
+      dueAt: '2026-09-13T00:00:00Z',
+    });
+
+    const started = await ctx.service.start(examId, USER_A, NOW);
+
+    expect(started.status).toBe('in_progress');
+  });
+
+  it('срок сдачи прошёл, попытки не было — отказ, попытка не создаётся', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({
+      itemIds: [itemId],
+      dueAt: '2026-09-11T00:00:00Z',
+    });
+
+    await expect(ctx.service.start(examId, USER_A, NOW)).rejects.toThrow(
+      'Срок сдачи прошёл',
+    );
+    await expect(
+      ctx.attemptModel.countDocuments({ examId, userId: USER_A }),
+    ).resolves.toBe(0);
+  });
+
+  // Самое важное следствие правила: перезагрузка страницы посреди сдачи
+  // (start() при незаконченной попытке отдаёт её же) не должна упереться в
+  // прошедший срок — отказ ставится только на пути «создать новую» (см.
+  // комментарий у start() в exam-attempts.service.ts).
+  it('срок сдачи прошёл, попытка уже идёт — start() всё равно отдаёт её, не отказ', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({
+      itemIds: [itemId],
+      dueAt: '2026-09-13T00:00:00Z',
+    });
+    const started = await ctx.service.start(examId, USER_A, NOW);
+
+    const afterDeadline = await ctx.service.start(examId, USER_A, NOW.plus({ days: 2 }));
+
+    expect(afterDeadline.id).toBe(started.id);
+    expect(afterDeadline.status).toBe('in_progress');
+  });
+
+  it('срок сдачи прошёл, попытку закрыло время — «Пройти ещё раз» отказом, не второй попыткой', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({
+      itemIds: [itemId],
+      attemptsAllowed: 2,
+      dueAt: '2026-09-13T00:00:00Z',
+    });
+    await ctx.service.start(examId, USER_A, NOW);
+
+    // Тик планировщика/ленивое закрытие уже перевело попытку в submitted —
+    // start() больше не находит её как in_progress, попадает на путь «новая».
+    await ctx.attemptModel.updateMany(
+      { examId, userId: USER_A },
+      { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+    );
+
+    await expect(
+      ctx.service.start(examId, USER_A, NOW.plus({ days: 2 })),
+    ).rejects.toThrow('Срок сдачи прошёл');
   });
 
   it('превышение числа попыток — отказ с понятным текстом', async () => {

@@ -82,6 +82,8 @@ export function toExamDto(doc: LeanExam): ExamDto {
     // description/level выше).
     shuffleOptions: doc.shuffleOptions ?? false,
     timeLimitMin: doc.timeLimitMin,
+    // Ключа нет, если значения нет — тот же приём, что у timeLimitMin выше.
+    ...(doc.dueAt !== undefined ? { dueAt: toIsoUtc(doc.dueAt) } : {}),
     attemptsAllowed: doc.attemptsAllowed,
     status: doc.status,
     createdBy: doc.createdBy?.toString(),
