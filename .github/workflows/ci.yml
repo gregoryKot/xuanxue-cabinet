@@ -137,6 +137,12 @@ jobs:
         run: node scripts/check-ownership-e2e.mjs
       - name: тесты что-то проверяют — без .only, .skip и пустых тел (ADR-0106)
         run: node scripts/check-test-assertions.mjs
+      # Гейт завели 2026-09-22 (#392) против мигающих тестов на очереди
+      # `…Once`, но в CI не внесли — он жил только в локальном `npm run check`,
+      # и `main` успел разъехаться с бейслайном дважды (#399 пересчитал, #403
+      # снова добавил две заглушки). Гейт, которого нет в CI, не гейт.
+      - name: заглушки apiFetch не растут очередью `…Once`
+        run: node scripts/check-once-mock-ratchet.mjs
       - name: вызовы в сеть с таймаутом (ADR-0106)
         run: node scripts/check-outbound-timeout.mjs
       - name: нумерация ADR — один номер, одно решение

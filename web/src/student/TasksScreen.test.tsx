@@ -216,8 +216,10 @@ describe('TasksScreen — старт попытки', () => {
   // действием, а не пустая карточка: до этого теста ветка запасного текста
   // не исполнялась ни разу (покрытие web, храповик).
   it('старт упал не ответом сервера, а сетью — общий текст с действием', async () => {
-    mockedApiFetch.mockResolvedValueOnce([makeExam()]);
-    mockedApiFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [makeExam()],
+      '/exams/e1/attempts': new TypeError('Failed to fetch'),
+    });
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Начать' });
