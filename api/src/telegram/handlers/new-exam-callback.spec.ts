@@ -26,7 +26,6 @@ function fakeItem(id: string): ExamItemDto {
     kind: 'text',
     prompt: `Вопрос ${id}`,
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],

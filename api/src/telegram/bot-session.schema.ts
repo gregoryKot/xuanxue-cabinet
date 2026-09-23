@@ -31,14 +31,9 @@ export type { BotSessionKind };
 // кнопкой ДО первой записи в bot_sessions (new-exam-item-screens.ts), сессия
 // заводится только с шага 'prompt'. 'options'/'correct' пропускаются у
 // text/video (у них вариантов не бывает, exam-item-options.ts) — сразу
-// 'prompt' → 'criteria'.
-const NEW_EXAM_ITEM_STEPS = [
-  'prompt',
-  'options',
-  'correct',
-  'criteria',
-  'confirm',
-] as const;
+// 'prompt' → 'confirm'. Шаг 'criteria' убран вместе с самим полем вопроса
+// (ADR-0128).
+const NEW_EXAM_ITEM_STEPS = ['prompt', 'options', 'correct', 'confirm'] as const;
 export type NewExamItemStep = (typeof NEW_EXAM_ITEM_STEPS)[number];
 
 // Шаг диалога сборки экзамена (ТЗ 4б.4) — 'pick' заводится сразу командой
@@ -113,10 +108,6 @@ export class BotSessionRecord {
   @Prop({ type: String, required: false })
   draftPrompt?: string;
 
-  // Критерии проверки (шаг необязательный) — шифруются тем же приёмом.
-  @Prop({ type: String, required: false })
-  draftCriteria?: string;
-
   // Варианты ответа, накопленные на шаге 'options' — JSON-строка целиком
   // (encJson), как options у самого вопроса (exam-item.schema.ts):
   // вложенное enc/encJson не сработает молча (encryption-coverage.spec.ts).
@@ -183,7 +174,6 @@ export const BOT_SESSION_FIELD_POLICY: FieldPolicy = {
   // chatId — Number, тоже вне охвата String/Mixed; причина здесь для чеклиста
   // CLAUDE.md «Новая коллекция»: id чата Telegram — не секрет и не текст.
   draftPrompt: enc,
-  draftCriteria: enc,
   draftOptions: encJson,
   buildTitle: enc,
   month: plain(

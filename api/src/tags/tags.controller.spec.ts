@@ -7,7 +7,7 @@ import { TagsController } from './tags.controller';
 import { TagsService } from './tags.service';
 
 const TAGS: TagSummaryDto[] = [
-  { tag: 'дракон', lessonCount: 3, materialCount: 1, channelCount: 0, examItemCount: 0 },
+  { tag: 'дракон', lessonCount: 3, materialCount: 1, channelCount: 0 },
 ];
 
 async function buildController(

@@ -35,7 +35,6 @@ export interface BotSessionLean {
   draftStep?: NewExamItemStep;
   draftKind?: ExamItemKind;
   draftPrompt?: string;
-  draftCriteria?: string;
   draftOptions?: NewExamItemDraftOption[];
   draftSavedItemId?: Types.ObjectId;
   /** Черновик сборки экзамена (ТЗ 4б.4) — есть только у 'examBuildDraft',
@@ -54,15 +53,14 @@ export interface BotSessionLean {
   outcome?: GradingOutcome;
 }
 
-/** `BotSessionLean` до расшифровки — `draftPrompt`/`draftCriteria`/
- * `draftOptions` ещё шифротекст/JSON-строка (тот же приём, что
- * RawLeanExamItem/LeanExamItem у самого банка вопросов, exam-item.mapper.ts). */
+/** `BotSessionLean` до расшифровки — `draftPrompt`/`draftOptions` ещё
+ * шифротекст/JSON-строка (тот же приём, что RawLeanExamItem/LeanExamItem у
+ * самого банка вопросов, exam-item.mapper.ts). */
 export type RawBotSessionLean = Omit<
   BotSessionLean,
-  'draftPrompt' | 'draftCriteria' | 'draftOptions' | 'buildTitle'
+  'draftPrompt' | 'draftOptions' | 'buildTitle'
 > & {
   draftPrompt?: string;
-  draftCriteria?: string;
   draftOptions?: string;
   buildTitle?: string;
 };
@@ -80,7 +78,6 @@ export const BOT_SESSION_LEAN_PROJECTION = {
   draftStep: 1,
   draftKind: 1,
   draftPrompt: 1,
-  draftCriteria: 1,
   draftOptions: 1,
   draftSavedItemId: 1,
   buildStep: 1,
@@ -101,7 +98,6 @@ export function toBotSessionLean(doc: RawBotSessionLean): BotSessionLean {
   return {
     ...doc,
     draftPrompt: decrypted.draftPrompt,
-    draftCriteria: decrypted.draftCriteria,
     draftOptions:
       (decrypted.draftOptions as unknown as NewExamItemDraftOption[] | undefined) ?? [],
     buildTitle: decrypted.buildTitle,

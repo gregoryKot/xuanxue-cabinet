@@ -58,7 +58,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'single',
     prompt: 'Зачем придумали тайцзи?',
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],
@@ -69,9 +68,9 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
 }
 
 const BANK = [
-  makeItem({ id: 'i1', prompt: 'Зачем придумали тайцзи?', tags: ['история'] }),
-  makeItem({ id: 'i2', prompt: 'Жить здорово?', kind: 'text', tags: ['дыхание'] }),
-  makeItem({ id: 'i3', prompt: 'Что такое «пустая» нога?', tags: ['стойки'] }),
+  makeItem({ id: 'i1', prompt: 'Зачем придумали тайцзи?' }),
+  makeItem({ id: 'i2', prompt: 'Жить здорово?', kind: 'text' }),
+  makeItem({ id: 'i3', prompt: 'Что такое «пустая» нога?' }),
 ];
 
 function renderAt(path: string) {
@@ -200,14 +199,14 @@ describe('ExamEditorScreen — поля «О чём экзамен»', () => {
 });
 
 describe('ExamEditorScreen — список вопросов', () => {
-  it('вопросы пронумерованы, под каждым тип и теги', async () => {
+  it('вопросы пронумерованы, под каждым тип', async () => {
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
 
     expect(await screen.findByText('Вопросы · 2')).toBeInTheDocument();
-    // Ждём вопросы: формулировки и строку «тип · теги» подставляет запрос.
-    await screen.findByText('Один правильный вариант · история');
+    // Ждём вопросы: формулировки и строку с типом подставляет запрос.
+    await screen.findAllByText('Один правильный вариант');
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0] as HTMLElement).getByText('1')).toBeInTheDocument();
     expect(
@@ -340,9 +339,7 @@ describe('ExamEditorScreen — поиск по вопросам', () => {
 
     renderAt('/exams/x1');
 
-    expect(
-      await screen.findByLabelText('Найти вопрос — по тексту или тегу'),
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText('Найти вопрос — по тексту')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Скрыть список вопросов/ }),
     ).not.toBeInTheDocument();
@@ -357,25 +354,13 @@ describe('ExamEditorScreen — поиск по вопросам', () => {
     expect(screen.getAllByRole('button', { name: 'Добавить' })).toHaveLength(1);
   });
 
-  it('поиск по тегу оставляет подходящие вопросы', async () => {
-    const user = userEvent.setup();
-    mockExamAndBank(makeExam({ blocks: [] }));
-
-    renderAt('/exams/x1');
-    await screen.findByText('Что такое «пустая» нога?');
-    await user.type(screen.getByLabelText('Найти вопрос — по тексту или тегу'), 'стойки');
-
-    expect(screen.getAllByRole('button', { name: 'Добавить' })).toHaveLength(1);
-    expect(screen.getByText('Что такое «пустая» нога?')).toBeInTheDocument();
-  });
-
   it('по запросу ничего не нашлось — честный текст', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam({ blocks: [] }));
 
     renderAt('/exams/x1');
     await screen.findByText('Что такое «пустая» нога?');
-    await user.type(screen.getByLabelText('Найти вопрос — по тексту или тегу'), 'веник');
+    await user.type(screen.getByLabelText('Найти вопрос — по тексту'), 'веник');
 
     expect(screen.getByText('По этому запросу ничего не нашлось.')).toBeInTheDocument();
   });
@@ -908,7 +893,6 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
       id: 'new1',
       kind: 'text',
       prompt: 'Как дышать в стойке?',
-      tags: [],
     });
     mockedApiFetch.mockImplementation((path: string, init?: { method?: string }) => {
       if (path === '/exams/x1') return Promise.resolve(exam);
@@ -928,9 +912,7 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     expect(await screen.findByText('Как дышать в стойке?')).toBeInTheDocument();
     expect(screen.getByText('Вопросы · 1')).toBeInTheDocument();
     // Форма создания закрылась сама — поиск вопросов снова на месте.
-    expect(
-      screen.getByLabelText('Найти вопрос — по тексту или тегу'),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Найти вопрос — по тексту')).toBeInTheDocument();
   });
 
   it('«Отменить» закрывает форму без запроса — поиск вопросов снова на месте', async () => {
@@ -943,9 +925,7 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     await user.click(screen.getByRole('button', { name: 'Отменить' }));
 
     expect(lastCallWithMethod('POST')).toHaveLength(0);
-    expect(
-      screen.getByLabelText('Найти вопрос — по тексту или тегу'),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Найти вопрос — по тексту')).toBeInTheDocument();
   });
 
   it('честно объясняет: вопрос закрепится в экзамене только после «Сохранить»', async () => {

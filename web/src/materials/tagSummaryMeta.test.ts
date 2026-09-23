@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { TagSummaryDto } from '@xuanxue/shared';
 import { formatTagSummaryMeta } from './tagSummaryMeta';
 
-// channelCount/examItemCount функции не нужны — она их не смотрит, но тип
-// TagSummaryDto требует все поля (ADR-0075 не показывает эти два числа тут).
+// channelCount функции не нужен — она его не смотрит, но тип TagSummaryDto
+// требует все поля (ADR-0075 не показывает это число тут).
 function makeSummary(lessonCount: number, materialCount: number): TagSummaryDto {
   return {
     tag: 'дракон',
     lessonCount,
     materialCount,
     channelCount: 0,
-    examItemCount: 0,
   };
 }
 

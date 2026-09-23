@@ -67,7 +67,6 @@ function makeReview(overrides: Partial<AttemptReviewDto> = {}): AttemptReviewDto
             itemId: 'q1',
             kind: 'text',
             prompt: 'Опишите дыхание',
-            criteria: 'Дыхание ровное, без задержек',
             answerText: 'Дышу животом, ровно',
             options: [],
             answered: true,
@@ -173,14 +172,11 @@ describe('AttemptReviewScreen — нет данных без ошибки сет
 });
 
 describe('AttemptReviewScreen — карточка', () => {
-  it('видны критерии проверки вопроса и ответ ученика', async () => {
+  it('видны формулировка вопроса и ответ ученика', async () => {
     renderAt('a1', { '/attempts': makeReview() });
 
     expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
     expect(screen.getByText('Иван Иванов')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Критерии проверки: Дыхание ровное, без задержек/),
-    ).toBeInTheDocument();
     expect(screen.getByText('Дышу животом, ровно')).toBeInTheDocument();
   });
 

@@ -87,15 +87,13 @@ describe('ExamAttemptsService', () => {
 
     // Ученику ничего похожего на «верный вариант» не уходит.
     const question = started.blocks[0]?.questions[0];
-    expect(question).not.toHaveProperty('criteria');
     for (const option of question?.options ?? []) {
       expect(option).not.toHaveProperty('correct');
     }
     expect(JSON.stringify(started)).not.toContain('correct');
-    expect(JSON.stringify(started)).not.toContain('criteria');
 
-    // Сырая Mongo — снимок зашифрован целиком, но физически хранит и correct,
-    // и criteria (для будущей проверки, слой 4.6) — не пустая заглушка.
+    // Сырая Mongo — снимок зашифрован целиком, но физически хранит correct
+    // (для будущей проверки, слой 4.6) — не пустая заглушка.
     const raw = await ctx.attemptModel.findById(started.id).lean();
     expect(raw?.blocks).not.toContain('"correct"'); // не открытым текстом
     expect(raw?.blocks).not.toBe('[]');

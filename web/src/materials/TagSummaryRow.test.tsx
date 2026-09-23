@@ -12,7 +12,6 @@ function makeSummary(overrides: Partial<TagSummaryDto> = {}): TagSummaryDto {
     lessonCount: 3,
     materialCount: 2,
     channelCount: 0,
-    examItemCount: 0,
     ...overrides,
   };
 }

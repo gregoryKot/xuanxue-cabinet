@@ -135,22 +135,6 @@ describe('routeNewExamItemCallback', () => {
     expect(edits).toEqual(['Вопрос не заведён. Черновик отменён.']);
   });
 
-  it('nqf:skip — зовёт handleNewExamItemSkipCriteria (get вызван)', async () => {
-    const botSessions = fakeBotSessionService();
-    await routeNewExamItemCallback(
-      fakeCtx(),
-      'nqf',
-      'skip',
-      CHAT_ID,
-      botSessions,
-      fakeExamBotPort(),
-      { findByTelegramId: jest.fn() } as never,
-      undefined,
-      NOW,
-    );
-    expect(botSessions.get).toHaveBeenCalledWith(CHAT_ID, NOW);
-  });
-
   it('nqf:save — доходит до handleNewExamItemSave (get вызван для черновика)', async () => {
     const botSessions = fakeBotSessionService();
     const users = { findByTelegramId: jest.fn().mockResolvedValue(null) };

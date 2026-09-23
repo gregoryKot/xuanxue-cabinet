@@ -30,9 +30,17 @@ export interface ExamSeedFile {
 
 /** Один вопрос файла после валидации: `item` — готовый DTO (с плейсхолдером
  * вместо imageId), `optionImagePaths[i]` — путь к картинке варианта `i`
- * (относительно каталога файла сида), если она была указана. */
+ * (относительно каталога файла сида), если она была указана. `rawItem` —
+ * исходный объект вопроса ДО валидации (и до `whitelist: true`, который
+ * молча срезает с `item` поля вне контракта DTO): нужен только исторической
+ * миграции 0013-exam-form-1 — она заводит вопросы прежней формы, где ещё
+ * были hint/criteria/tags (ADR-0128, до этой правки), и должна писать в базу
+ * ровно то же самое, что уже написала в проде при первом заезде, а не то,
+ * что теперь умеет CreateExamItemDto. Новый импорт (SeedExamService) эти
+ * поля больше не видит — читает только `item`, как и раньше. */
 export interface ExamSeedQuestion {
   item: CreateExamItemDto;
+  rawItem: Record<string, unknown>;
   optionImagePaths: (string | undefined)[];
 }
 
@@ -217,7 +225,7 @@ export function validateExamSeed(seed: ExamSeedFile): ExamSeedValidationResult {
       }
     }
 
-    questions.push({ item: instance, optionImagePaths });
+    questions.push({ item: instance, rawItem: record, optionImagePaths });
   });
 
   return { errors, exam: examInstance, questions };

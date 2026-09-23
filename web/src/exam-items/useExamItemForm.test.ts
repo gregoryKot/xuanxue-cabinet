@@ -22,7 +22,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'text',
     prompt: 'Вопрос',
     options: [],
-    tags: [],
     status: 'draft',
     version: 1,
     history: [],

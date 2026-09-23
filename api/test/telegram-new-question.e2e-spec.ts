@@ -155,9 +155,6 @@ describe('Telegram webhook (e2e) — «Новый вопрос» в боте (Т
     expect(lastScreen(TEACHER_CHAT)).toContain('Какой вариант верный?');
 
     await press(TEACHER_CHAT, 'nqo:1');
-    expect(lastScreen(TEACHER_CHAT)).toContain('критерии проверки');
-
-    await press(TEACHER_CHAT, 'nqf:skip');
     expect(lastScreen(TEACHER_CHAT)).toContain('Всё верно?');
 
     await press(TEACHER_CHAT, 'nqf:save');

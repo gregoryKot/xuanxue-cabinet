@@ -43,7 +43,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
       { id: 'o1', text: '24', correct: true },
       { id: 'o2', text: '108', correct: false },
     ],
-    tags: ['ян'],
     status: 'draft',
     version: 1,
     history: [],
@@ -83,9 +82,8 @@ function mockItemAndStats(item: ExamItemDto) {
 /** Форма появляется раньше, чем уйдёт запрос статистики (эффект после
  * коммита). Ждём строку статистики — сигнал, что оба запроса монтирования
  * ушли, но ответ на действие ниже всё равно ставится вторым вызовом
- * `mockApiByPath`, не `…Once`: подсказка тегов (useTagOptions.ts) уходит
- * своим GET /tags тем же приёмом, и «следующий вызов» иногда доставался бы
- * ей (тот же флейк, что уже был у AttemptReviewScreen.test.tsx). */
+ * `mockApiByPath`, не `…Once` (тот же флейк, что уже был у
+ * AttemptReviewScreen.test.tsx). */
 async function waitForMounted() {
   await screen.findByText('Этот вопрос ещё никому не задавали.');
 }
@@ -132,8 +130,7 @@ describe('ExamItemEditorScreen — загрузка', () => {
     expect(
       await screen.findByRole('heading', { name: 'Новый вопрос' }),
     ).toBeInTheDocument();
-    // Подсказка тегов (useTagOptions.ts) всё равно уходит в сеть — не должно
-    // быть только запроса за конкретным (несуществующим) вопросом.
+    // Не должно быть запроса за конкретным (несуществующим) вопросом.
     expect(
       mockedApiFetch.mock.calls.some(([path]) =>
         /^\/exam-items\/[^?]/.test(String(path)),
@@ -212,16 +209,13 @@ describe('ExamItemEditorScreen — тип ответа', () => {
 
 describe('ExamItemEditorScreen — поля', () => {
   it('поля заполнены из ответа сервера', async () => {
-    mockItemAndStats(makeItem({ hint: 'Смотрите в стойку', criteria: 'Названо число' }));
+    mockItemAndStats(makeItem());
 
     renderAt('/exam-items/e1');
 
     expect(await screen.findByLabelText('Формулировка')).toHaveValue(
       'Сколько форм в стиле Ян?',
     );
-    expect(screen.getByLabelText('Подсказка')).toHaveValue('Смотрите в стойку');
-    expect(screen.getByLabelText('Критерии проверки')).toHaveValue('Названо число');
-    expect(screen.getByLabelText('Теги')).toHaveValue('ян');
     expect(screen.getByLabelText('Текст варианта 1')).toHaveValue('24');
   });
 
@@ -232,20 +226,13 @@ describe('ExamItemEditorScreen — поля', () => {
     renderAt('/exam-items/e1');
     await user.clear(await screen.findByLabelText('Формулировка'));
     await user.type(screen.getByLabelText('Формулировка'), 'Новая формулировка');
-    await user.type(screen.getByLabelText('Подсказка'), 'Смотрите в стойку');
-    await user.type(screen.getByLabelText('Критерии проверки'), 'Названо число');
-    await user.clear(screen.getByLabelText('Теги'));
-    await user.type(screen.getByLabelText('Теги'), 'ян, база');
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
     const body = callsWithMethod('PATCH')[0]?.[1] as {
-      body: { prompt: string; hint: string; criteria: string; tags: string[] };
+      body: { prompt: string };
     };
     expect(body.body.prompt).toBe('Новая формулировка');
-    expect(body.body.hint).toBe('Смотрите в стойку');
-    expect(body.body.criteria).toBe('Названо число');
-    expect(body.body.tags).toEqual(['ян', 'база']);
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
   });
 

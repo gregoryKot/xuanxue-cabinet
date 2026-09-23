@@ -25,7 +25,6 @@ const ITEM_DTO: ExamItemDto = {
   kind: 'text',
   prompt: 'Формулировка',
   options: [],
-  tags: [],
   status: 'draft',
   version: 1,
   history: [],

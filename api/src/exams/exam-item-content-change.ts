@@ -11,9 +11,9 @@
 import type { UpdateExamItemInput } from '@xuanxue/shared';
 import type { ExamItemOptionRecord, ExamItemVersionRecord } from './exam-item.schema';
 
-/** Поля, ради которых версия и заводится: формулировка, подсказка, критерии,
- * варианты. Теги и статус — не содержание вопроса. */
-type ContentSnapshot = Pick<ExamItemVersionRecord, 'prompt' | 'hint' | 'criteria'>;
+/** Поля, ради которых версия и заводится: формулировка, варианты. Статус —
+ * не содержание вопроса. */
+type ContentSnapshot = Pick<ExamItemVersionRecord, 'prompt'>;
 
 /** `null` (явный сброс) и `undefined` (поля нет в запросе) — разные вещи:
  * первое меняет пустое значение на пустое только если оно и было пустым. */
@@ -40,8 +40,6 @@ export function hasContentChanged(
 ): boolean {
   return (
     textChanged(input.prompt, current.prompt) ||
-    textChanged(input.hint, current.hint) ||
-    textChanged(input.criteria, current.criteria) ||
     optionsChanged(nextOptions, current.options)
   );
 }
@@ -57,8 +55,6 @@ export function buildHistoryEntry(
   return {
     version: current.version,
     prompt: current.prompt,
-    hint: current.hint,
-    criteria: current.criteria,
     options: current.options,
     replacedAt,
   };

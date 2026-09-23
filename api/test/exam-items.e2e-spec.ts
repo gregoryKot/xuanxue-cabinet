@@ -105,7 +105,7 @@ describe('Exam items (e2e)', () => {
     const postRes = await postItem(cookie, VALID_BODY);
     expect(postRes.status).toBe(403);
 
-    const patchRes = await patchItem(cookie, itemId, { tags: ['своё'] });
+    const patchRes = await patchItem(cookie, itemId, { prompt: 'Другая формулировка' });
     expect(patchRes.status).toBe(403);
 
     const deleteRes = await withCsrf(
@@ -118,7 +118,7 @@ describe('Exam items (e2e)', () => {
       .get(`/api/exam-items/${itemId}`)
       .set('Cookie', teacherCookie);
     expect(stillThere.status).toBe(200);
-    expect((stillThere.body as ExamItemDto).tags).toEqual([]);
+    expect((stillThere.body as ExamItemDto).prompt).toBe(VALID_BODY.prompt);
   });
 
   describe('учитель', () => {
@@ -141,9 +141,11 @@ describe('Exam items (e2e)', () => {
       expect(got.status).toBe(200);
       expect((got.body as ExamItemDto).id).toBe(dto.id);
 
-      const patched = await patchItem(cookie, dto.id, { tags: ['теория'] });
+      const patched = await patchItem(cookie, dto.id, {
+        prompt: 'Обновили формулировку',
+      });
       expect(patched.status).toBe(200);
-      expect((patched.body as ExamItemDto).tags).toEqual(['теория']);
+      expect((patched.body as ExamItemDto).prompt).toBe('Обновили формулировку');
 
       const list = await request(server()).get('/api/exam-items').set('Cookie', cookie);
       expect(list.status).toBe(200);
@@ -203,17 +205,7 @@ describe('Exam items (e2e)', () => {
       expect(dto.options.every((o) => typeof o.id === 'string')).toBe(true);
     });
 
-    it('PATCH { criteria: null } — 200, поля нет в ответе', async () => {
-      const cookie = await sessionFor(['teacher']);
-      const created = await postItem(cookie, { ...VALID_BODY, criteria: 'критерий' });
-      const dto = created.body as ExamItemDto;
-
-      const patched = await patchItem(cookie, dto.id, { criteria: null });
-      expect(patched.status).toBe(200);
-      expect(patched.body as Record<string, unknown>).not.toHaveProperty('criteria');
-    });
-
-    it('PATCH { prompt: null } — 400 (prompt не входит в NULLABLE_EXAM_ITEM_FIELDS)', async () => {
+    it('PATCH { prompt: null } — 400 (у вопроса больше нет ни одного nullable-поля)', async () => {
       const cookie = await sessionFor(['teacher']);
       const created = await postItem(cookie, VALID_BODY);
       const dto = created.body as ExamItemDto;

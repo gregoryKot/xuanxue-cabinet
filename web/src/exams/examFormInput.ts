@@ -121,8 +121,7 @@ export function toCreateInput(state: ExamFormState): CreateExamInput {
 }
 
 /** Пустые description/level/timeLimitMin/dueAt — явный сброс (`null`,
- * NULLABLE_EXAM_FIELDS в shared/src/exams.ts), не «оставить как было» — тот же
- * приём, что у hint/criteria в exam-items/examItemFormInput.ts. `exam` нужен
+ * NULLABLE_EXAM_FIELDS в shared/src/exams.ts), не «оставить как было». `exam` нужен
  * ради `id` первого блока: без него сервер завёл бы блок заново при каждом
  * сохранении. */
 export function toUpdateInput(

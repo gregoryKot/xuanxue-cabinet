@@ -56,7 +56,6 @@ describe('sessionToNewExamItemDraft', () => {
       draftStep: 'confirm',
       draftKind: 'single',
       draftPrompt: 'Вопрос?',
-      draftCriteria: 'Критерий',
       draftOptions: [{ text: 'A', correct: true }],
       draftSavedItemId: itemId,
     } as unknown as BotSessionLean & { draftKind: 'single' };
@@ -65,7 +64,6 @@ describe('sessionToNewExamItemDraft', () => {
       step: 'confirm',
       kind: 'single',
       prompt: 'Вопрос?',
-      criteria: 'Критерий',
       options: [{ text: 'A', correct: true }],
       savedItemId: itemId.toString(),
     });
@@ -81,7 +79,6 @@ describe('sessionToNewExamItemDraft', () => {
       step: 'prompt',
       kind: 'text',
       prompt: undefined,
-      criteria: undefined,
       options: [],
       savedItemId: undefined,
     });

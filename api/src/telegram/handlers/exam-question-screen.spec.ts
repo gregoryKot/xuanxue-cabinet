@@ -62,12 +62,11 @@ describe('flattenAttemptQuestions', () => {
 });
 
 describe('buildQuestionScreen', () => {
-  it('заголовок «Вопрос N из M», формулировка и подсказка', () => {
-    const q = question({ hint: 'Подумайте про блоки' });
+  it('заголовок «Вопрос N из M» и формулировка', () => {
+    const q = question();
     const view = buildQuestionScreen(attempt([q, question({ itemId: 'i2' })]), 0);
     expect(view.text).toContain('Вопрос 1 из 2');
     expect(view.text).toContain('Сколько форм в третьем уровне?');
-    expect(view.text).toContain('Подумайте про блоки');
   });
 
   it('single — по кнопке на вариант, без отметки, если ещё не отвечено', () => {

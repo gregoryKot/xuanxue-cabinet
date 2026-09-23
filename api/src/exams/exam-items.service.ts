@@ -1,6 +1,6 @@
 // CRUD банка вопросов (данные школы, ADR-0010: доступ по роли, не по
-// владельцу). Инкапсулирует шифрование содержательных полей (prompt/hint/
-// criteria/options/history, CLAUDE.md «Данные», чеклист коллекции) и версии
+// владельцу). Инкапсулирует шифрование содержательных полей (prompt/
+// options/history, CLAUDE.md «Данные», чеклист коллекции) и версии
 // опубликованных вопросов (ТЗ 4.2, п.3) — контроллер только валидирует тело
 // и зовёт.
 import { Injectable } from '@nestjs/common';
@@ -13,11 +13,7 @@ import type {
   ListExamItemsQuery,
   UpdateExamItemInput,
 } from '@xuanxue/shared';
-import {
-  EXAM_ITEM_NOT_FOUND_MESSAGE,
-  LIST_LIMIT_DEFAULT,
-  NULLABLE_EXAM_ITEM_FIELDS,
-} from '@xuanxue/shared';
+import { EXAM_ITEM_NOT_FOUND_MESSAGE, LIST_LIMIT_DEFAULT } from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
 import { toIsoUtc } from '../common/iso-date';
 import { assertObjectId } from '../common/object-id';
@@ -54,7 +50,6 @@ export class ExamItemsService {
     const filter: Record<string, unknown> = {};
     if (query.status !== undefined) filter.status = query.status;
     if (query.kind !== undefined) filter.kind = query.kind;
-    if (query.tag !== undefined) filter.tags = query.tag;
     const docs = await this.model
       .find(filter)
       .sort({ updatedAt: -1 })
@@ -79,10 +74,7 @@ export class ExamItemsService {
     const payload: Record<string, unknown> = {
       kind: input.kind,
       prompt: input.prompt,
-      hint: input.hint,
-      criteria: input.criteria,
       options,
-      tags: input.tags ?? [],
       ...(authorId !== undefined ? { authorId } : {}),
       imageIds: collectImageIds(options, []),
     };
@@ -110,7 +102,11 @@ export class ExamItemsService {
     }
 
     const { options, ...rest } = input;
-    const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_ITEM_FIELDS);
+    // У вопроса больше нет ни одного nullable-поля (hint/criteria убраны,
+    // ADR-0128) — список пуст, но splitUpdate остаётся общей формой
+    // PATCH (CLAUDE.md «Одна механика — один компонент»), не переписываем её
+    // здесь под частный случай.
+    const { $set, $unset } = splitUpdate(rest, []);
     const nextOptions =
       options === undefined
         ? undefined

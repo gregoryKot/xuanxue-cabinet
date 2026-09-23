@@ -3,7 +3,6 @@
 import type { NewExamItemDraft } from '../new-exam-item-draft-wait';
 import {
   confirmScreen,
-  criteriaWaitScreen,
   kindSelectScreen,
   promptWaitScreen,
   withValidationErrors,
@@ -30,20 +29,11 @@ describe('kindSelectScreen', () => {
   });
 });
 
-describe('promptWaitScreen/criteriaWaitScreen', () => {
+describe('promptWaitScreen', () => {
   it('просят формулировку, с «Отмена»', () => {
     const screen = promptWaitScreen();
     expect(screen.text).toContain('формулировку');
     expect(screen.buttons).toEqual([[{ text: 'Отмена', callback_data: 'nqf:cancel' }]]);
-  });
-
-  it('критерии — необязательный шаг, «Пропустить» и «Отмена»', () => {
-    const screen = criteriaWaitScreen();
-    expect(screen.text).toContain('критерии');
-    expect(screen.buttons).toEqual([
-      [{ text: 'Пропустить', callback_data: 'nqf:skip' }],
-      [{ text: 'Отмена', callback_data: 'nqf:cancel' }],
-    ]);
   });
 });
 
@@ -68,7 +58,6 @@ describe('confirmScreen', () => {
       { text: 'Три', correct: true },
       { text: 'Пять', correct: false },
     ],
-    criteria: undefined,
   };
 
   it('тип, формулировку и варианты с отметкой верного', () => {
@@ -78,16 +67,10 @@ describe('confirmScreen', () => {
     expect(screen.text).toContain('1. Три — верно');
     expect(screen.text).toContain('2. Пять');
     expect(screen.text).not.toContain('2. Пять — верно');
-    expect(screen.text).not.toContain('Критерии проверки');
     expect(screen.buttons).toEqual([
       [{ text: 'Сохранить', callback_data: 'nqf:save' }],
       [{ text: 'Отмена', callback_data: 'nqf:cancel' }],
     ]);
-  });
-
-  it('критерии показаны, если заданы', () => {
-    const screen = confirmScreen({ ...base, criteria: 'Смотрим стойку' });
-    expect(screen.text).toContain('Критерии проверки: Смотрим стойку');
   });
 
   it('text/video — без строки «Варианты»', () => {

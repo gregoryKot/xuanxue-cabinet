@@ -22,7 +22,7 @@
 // штат (как topic/notif, не как exam/eq/eo/es): nqk — тип вопроса (id —
 // ExamItemKind); nqo — переключить вариант верным (id — номер варианта);
 // nqd — «Готово» промежуточного шага (id — 'options'|'correct'); nqf —
-// управление диалогом (id — 'skip'|'save'|'cancel'). Разбор — тем же приёмом,
+// управление диалогом (id — 'save'|'cancel'). Разбор — тем же приёмом,
 // что isNotificationKind/isMenuScreenAction — в new-exam-item-types.ts и
 // самих хендлерах, не здесь.
 //

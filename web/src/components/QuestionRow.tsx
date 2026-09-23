@@ -13,11 +13,12 @@
 // обоих местах — иначе jscpd ловит дубль, а облик расходится (CLAUDE.md
 // «Одна механика — один компонент»).
 //
-// Формулировка и подсказка идут через RichText.tsx (ADR-0093): учитель
-// вставляет ссылку на видео прямо в текст вопроса, а не в отдельное поле,
-// и здесь она становится кликабельной — сразу и на форме сдачи, и в
-// предпросмотре «глазами ученика». Тем же компонентом работает акцент
-// `**жирным**` — своей правки под него здесь не нужно.
+// Формулировка идёт через RichText.tsx (ADR-0093): учитель вставляет ссылку
+// на видео прямо в текст вопроса, а не в отдельное поле, и здесь она
+// становится кликабельной — сразу и на форме сдачи, и в предпросмотре
+// «глазами ученика». Тем же компонентом работает акцент `**жирным**» — своей
+// правки под него здесь не нужно. Подсказка ученику убрана из вопроса
+// вместе с полем (ADR-0128).
 import type { CSSProperties, ReactNode } from 'react';
 import { RichText } from './RichText';
 
@@ -35,11 +36,6 @@ const numberStyle: CSSProperties = {
 };
 const bodyStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 const promptStyle: CSSProperties = { fontSize: 17, lineHeight: 1.5 };
-const hintStyle: CSSProperties = {
-  fontSize: 13,
-  color: 'var(--ink-soft)',
-  marginTop: -6,
-};
 // Отметка «без ответа» перед отправкой (attempt/attemptUnanswered.ts).
 // Терракота здесь текстом (--terracotta-text), а заливка на экране остаётся
 // одна — кнопка «Отправить» (правило акцента, docs/adr/0031).
@@ -51,7 +47,6 @@ interface QuestionRowProps {
   /** Идентификатор формулировки — подпись поля ответа снизу (`aria-labelledby`). */
   promptId: string;
   prompt: string;
-  hint?: string;
   /** Вопрос подсвечен как оставшийся без ответа — ученик нажал «Отправить»,
    * и подтверждение отправило его искать пропуски (attempt/
    * AttemptInProgress.tsx). Пока не нажал, не подсвечиваем ничего: ругать
@@ -64,7 +59,6 @@ export function QuestionRow({
   index,
   promptId,
   prompt,
-  hint,
   unanswered,
   children,
 }: QuestionRowProps) {
@@ -81,11 +75,6 @@ export function QuestionRow({
         <span id={promptId} style={promptStyle}>
           <RichText text={prompt} />
         </span>
-        {hint && (
-          <span style={hintStyle}>
-            <RichText text={hint} />
-          </span>
-        )}
         {unanswered && (
           <span className="xuanxue-status-label" style={unansweredStyle}>
             {UNANSWERED_LABEL}
