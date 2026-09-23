@@ -147,9 +147,16 @@ jobs:
         run: node scripts/check-outbound-timeout.mjs
       - name: нумерация ADR — один номер, одно решение
         run: node scripts/check-adr-numbers.mjs
+      - run: npm ci
+      # Тесты храповиков стоят ПОСЛЕ `npm ci`: разбор текста для
+      # check-text-accents.mjs идёт компилятором TypeScript (scripts/
+      # text-accents-scan.mjs), и без установленных зависимостей его тест
+      # падает на `Cannot find package 'typescript'` — так и вышло в первом
+      # прогоне этого PR. Шагу, которому нужен пакет, место после установки;
+      # остальные проверки выше зависимостей не требуют и остаются там,
+      # чтобы падать на первых секундах.
       - name: тесты скриптов-храповиков (node:test)
         run: node --test scripts/*.test.mjs
-      - run: npm ci
       - name: prettier — формат всего репозитория
         run: npm run format:check
       - name: мёртвые экспорты shared/src/index.ts
