@@ -176,7 +176,7 @@ export class ExamAttemptsService {
     );
     // Имя ученика и оценка — только сотруднику школы и одним запросом на
     // весь список, не по документу (ExamAttemptDto.userName/outcome/gradedAt,
-    // shared/src/exams.ts).
+    // shared/src/exam-attempts.ts).
     const names = isStaff
       ? await this.userNamesService.namesByIds(
           attempts.map((attempt) => attempt.userId.toString()),

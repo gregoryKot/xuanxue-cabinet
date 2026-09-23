@@ -11,8 +11,8 @@
 // сообщение не показывает.
 
 import type { GradingOutcome } from './exam-grading';
+import type { ExamItemKind } from './exam-items';
 import type { ExamMediaDto } from './exam-media';
-import type { ExamItemKind } from './exams';
 
 // Попытка сдачи экзамена (`/exams/:id/attempts`, `/attempts`, слой 4.4,
 // docs/PLAN.md §11, ADR-0022 + дополнение 2026-09-12). В момент старта

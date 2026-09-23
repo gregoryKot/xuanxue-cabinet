@@ -132,6 +132,16 @@ export type {
   CreateExamItemInput,
   UpdateExamItemInput,
   ListExamItemsQuery,
+} from './exam-items';
+export {
+  EXAM_ITEM_KINDS,
+  EXAM_ITEM_STATUSES,
+  NULLABLE_EXAM_ITEM_FIELDS,
+  EXAM_ITEM_LIMITS,
+  EXAM_ITEM_NOT_FOUND_MESSAGE,
+  OPTION_TEXT_OR_IMAGE_MESSAGE,
+} from './exam-items';
+export type {
   ExamStatus,
   ExamBlockDto,
   ExamBlockInput,
@@ -142,12 +152,6 @@ export type {
 } from './exams';
 export { formatOptionLabel } from './exam-option-label';
 export {
-  EXAM_ITEM_KINDS,
-  EXAM_ITEM_STATUSES,
-  NULLABLE_EXAM_ITEM_FIELDS,
-  EXAM_ITEM_LIMITS,
-  EXAM_ITEM_NOT_FOUND_MESSAGE,
-  OPTION_TEXT_OR_IMAGE_MESSAGE,
   EXAM_STATUSES,
   NULLABLE_EXAM_FIELDS,
   EXAM_LIMITS,
