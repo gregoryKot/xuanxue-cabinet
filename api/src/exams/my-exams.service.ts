@@ -19,11 +19,8 @@ import {
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { closeIfExpiredAttempt } from './exam-attempt-lifecycle';
 import { attemptSubmittedCallback } from './notify-attempt-submitted';
-import {
-  decryptAttempt,
-  type LeanExamAttempt,
-  type RawLeanExamAttempt,
-} from './exam-attempt.mapper';
+import { decryptAttempt } from './exam-attempt.mapper';
+import { aggregateAttemptSummaries } from './my-exam-attempt-summaries';
 import { ExamAttemptRecord } from './exam-attempt.schema';
 import { decryptGrading, type RawLeanExamGrading } from './exam-grading.mapper';
 import { ExamGradingRecord } from './exam-grading.schema';
@@ -84,43 +81,35 @@ export class MyExamsService {
     });
   }
 
-  /** Одним запросом на весь список форм (не N+1, тот же приём, что
-   * `findLinkBroadcastStatusByLessonId` у /lessons): сколько попыток ученик
-   * начал по каждой форме и что со свежей из них (наибольший `attemptNo`). */
+  /** Сколько попыток ученик начал по каждой форме и что со свежей из них
+   * (наибольший `attemptNo`) — через агрегацию в базе, не вычитывая все
+   * попытки (my-exam-attempt-summaries.ts, там же «почему»). Расшифровывает
+   * только саму последнюю попытку на форму, не весь список. */
   private async loadAttemptSummaries(
     examIds: string[],
     userId: string,
     now: DateTime,
   ): Promise<Map<string, AttemptSummary>> {
-    if (examIds.length === 0) return new Map();
-    // Сортировка по attemptNo убыванием на самой базе — первый попавшийся
-    // документ на форму и есть последняя попытка; порядок не зависит от
-    // «естественного» порядка Mongo (детерминизм, CLAUDE.md «Тесты»).
-    const docs = await this.attemptModel
-      .find({ examId: { $in: examIds }, userId })
-      .sort({ attemptNo: -1 })
-      .lean<RawLeanExamAttempt[]>();
-    const latestByExamId = new Map<string, LeanExamAttempt>();
-    const attemptsUsedByExamId = new Map<string, number>();
-    for (const doc of docs) {
-      const attempt = decryptAttempt(doc);
-      const key = attempt.examId.toString();
-      attemptsUsedByExamId.set(key, (attemptsUsedByExamId.get(key) ?? 0) + 1);
-      if (!latestByExamId.has(key)) latestByExamId.set(key, attempt);
-    }
+    const aggregated = await aggregateAttemptSummaries({
+      attemptModel: this.attemptModel,
+      examIds,
+      userId,
+    });
+    if (aggregated.size === 0) return new Map();
 
     const gradingByAttemptId = await this.loadGradings(
-      [...latestByExamId.values()].map((attempt) => attempt._id.toString()),
+      [...aggregated.values()].map((summary) => summary.latest._id.toString()),
     );
     const result = new Map<string, AttemptSummary>();
     const notify = attemptSubmittedCallback(this.examNotifier, now);
-    for (const [key, attempt] of latestByExamId) {
+    for (const [key, summary] of aggregated) {
+      const attempt = decryptAttempt(summary.latest);
       // Дедлайн мог истечь — та же лениво-закрывающая проверка и
       // уведомление учителю, что у /attempts (ExamAttemptsService.list).
       const closed = await closeIfExpiredAttempt(this.attemptModel, attempt, now, notify);
       const grading = gradingByAttemptId.get(closed._id.toString());
       result.set(key, {
-        attemptsUsed: attemptsUsedByExamId.get(key) ?? 0,
+        attemptsUsed: summary.attemptsUsed,
         lastAttempt: toMyExamLastAttemptInput(closed, grading),
       });
     }
