@@ -22,7 +22,7 @@
 //
 // Формулировка здесь рендерится своим кодом, не через QuestionRow.tsx
 // (у карточки проверки свой макет строки — номер и статус в одной шапке),
-// поэтому ссылку в ней делает кликабельной PromptText.tsx напрямую
+// поэтому ссылку и акцент `**жирным**` в ней делает RichText.tsx напрямую
 // (ADR-0093), тем же приёмом.
 import type { CSSProperties } from 'react';
 import {
@@ -30,7 +30,7 @@ import {
   type AttemptReviewQuestionDto,
   type ExamMediaDto,
 } from '@xuanxue/shared';
-import { PromptText } from '../components/PromptText';
+import { RichText } from '../components/RichText';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { AttemptReviewQuestionOptions } from './AttemptReviewQuestionOptions';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
@@ -101,7 +101,7 @@ export function AttemptReviewQuestion({
     <div style={rowStyle}>
       <div style={headStyle}>
         <span style={promptStyle}>
-          {index + 1}. <PromptText text={question.prompt} />
+          {index + 1}. <RichText text={question.prompt} />
         </span>
         {status && (
           <span
@@ -117,7 +117,7 @@ export function AttemptReviewQuestion({
           должен открыть ровно то же, а не переписывать адрес руками. */}
       {question.hint && (
         <p style={metaStyle}>
-          Подсказка ученику: <PromptText text={question.hint} />
+          Подсказка ученику: <RichText text={question.hint} />
         </p>
       )}
       {question.criteria && (

@@ -154,6 +154,8 @@ jobs:
         run: npm run format:check
       - name: мёртвые экспорты shared/src/index.ts
         run: node scripts/check-shared-exports.mjs
+      - name: типографские акценты в тексте пользователя
+        run: node scripts/check-text-accents.mjs
       - name: knip — мёртвый код и неиспользуемые зависимости
         run: npx knip
       - name: gitleaks — секреты в диффе/истории

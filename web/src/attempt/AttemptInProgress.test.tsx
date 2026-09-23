@@ -221,7 +221,7 @@ describe('AttemptInProgress — подсказка и оставшееся вр�
 
 // ADR-0093: учитель вставляет ссылку на видео прямо в текст вопроса вместо
 // отдельного поля — кабинет находит её сам и показывает кликабельной, тем же
-// PromptText.tsx, что и в предпросмотре (exams/ExamPreviewQuestion.test.tsx).
+// RichText.tsx, что и в предпросмотре (exams/ExamPreviewQuestion.test.tsx).
 describe('AttemptInProgress — ссылка в формулировке (ADR-0093)', () => {
   it('ссылка на видео в тексте вопроса кликабельна на экране сдачи', () => {
     const attempt = makeAttempt();
