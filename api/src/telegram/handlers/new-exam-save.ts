@@ -12,6 +12,7 @@ export function buildCreateExamInput(draft: NewExamDraft): CreateExamInput {
     title: draft.title ?? '',
     blocks: [{ itemIds: draft.itemIds }],
     timeLimitMin: draft.timeLimitMin,
+    dueAt: draft.dueAt,
     attemptsAllowed: draft.attemptsAllowed,
   };
 }

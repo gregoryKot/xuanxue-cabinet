@@ -49,6 +49,8 @@ export interface BotSessionLean {
   buildTitle?: string;
   buildTimeLimitMin?: number;
   buildAttemptsAllowed?: number;
+  /** Срок сдачи (ADR-0125) — ISO UTC с Z, отсутствие поля значит «без срока». */
+  buildDueAt?: string;
   buildSavedExamId?: Types.ObjectId;
   /** Итог проверки (ТЗ 4б.5) — есть только у 'gradeComment'. */
   outcome?: GradingOutcome;
@@ -89,6 +91,7 @@ export const BOT_SESSION_LEAN_PROJECTION = {
   buildTitle: 1,
   buildTimeLimitMin: 1,
   buildAttemptsAllowed: 1,
+  buildDueAt: 1,
   buildSavedExamId: 1,
   outcome: 1,
 } as const;

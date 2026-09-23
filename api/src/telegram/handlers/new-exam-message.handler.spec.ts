@@ -39,14 +39,17 @@ describe('NewExamMessageHandler', () => {
     expect(botSessions.setNewExamDraft).not.toHaveBeenCalled();
   });
 
-  it('шаг «pick»/«attempts»/«confirm» — текст мимо ожидания, просит нажать кнопку', async () => {
-    const { handler } = buildHandler();
-    const { ctx, replies } = fakeFlowCtx({ text: 'что угодно' });
+  it.each(['pick', 'attempts', 'dueAt', 'confirm'] as const)(
+    'шаг «%s» — текст мимо ожидания, просит нажать кнопку',
+    async (buildStep) => {
+      const { handler } = buildHandler();
+      const { ctx, replies } = fakeFlowCtx({ text: 'что угодно' });
 
-    await handler.handle(ctx, CHAT_ID, draftSession({ buildStep: 'attempts' }), NOW);
+      await handler.handle(ctx, CHAT_ID, draftSession({ buildStep }), NOW);
 
-    expect(replies).toEqual(['Нажмите одну из кнопок или пришлите текст.']);
-  });
+      expect(replies).toEqual(['Нажмите одну из кнопок или пришлите текст.']);
+    },
+  );
 
   it('название не проходит DTO-лимит — ошибка, шаг не меняется', async () => {
     const port = fakeExamBotPort({

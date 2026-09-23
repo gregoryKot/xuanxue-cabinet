@@ -9,9 +9,15 @@ import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { BotSessionService } from '../bot-session.service';
 import type { ExamBotPort } from '../exam-bot.port';
+import { resolveNewExamDueAt } from './new-exam-due';
 import { editScreen } from './new-exam-item-callback';
 import { clampPage, pickScreen } from './new-exam-pick-screen';
-import { attemptsScreen, confirmScreen, titleWaitScreen } from './new-exam-screens';
+import {
+  attemptsScreen,
+  confirmScreen,
+  dueAtScreen,
+  titleWaitScreen,
+} from './new-exam-screens';
 import { isActiveNewExamDraft, sessionToNewExamDraft } from './new-exam-types';
 
 function currentItemIds(session: { buildItemIds?: { toString(): string }[] }): string[] {
@@ -113,7 +119,28 @@ export async function handleNewExamAttempts(
   if (!isActiveNewExamDraft(session) || session.buildStep !== 'attempts') return;
   await botSessions.setNewExamDraft(
     chatId,
-    { step: 'confirm', attemptsAllowed: Number(id) },
+    { step: 'dueAt', attemptsAllowed: Number(id) },
+    now,
+  );
+  await editScreen(ctx, dueAtScreen());
+}
+
+/** Срок сдачи (ADR-0125, ADR-0127) — последний шаг перед подтверждением,
+ * пресет кнопкой (new-exam-due.ts), не сообщение: экран сразу переходит в
+ * 'confirm', как и timeLimit/attempts выше. */
+export async function handleNewExamDueAt(
+  ctx: Context,
+  botSessions: BotSessionService,
+  chatId: number,
+  id: string,
+  now: DateTime,
+): Promise<void> {
+  const session = await botSessions.get(chatId, now);
+  if (!isActiveNewExamDraft(session) || session.buildStep !== 'dueAt') return;
+  const dueAt = resolveNewExamDueAt(id, now);
+  await botSessions.setNewExamDraft(
+    chatId,
+    { step: 'confirm', ...(dueAt !== undefined ? { dueAt } : {}) },
     now,
   );
   const updated = await botSessions.get(chatId, now);

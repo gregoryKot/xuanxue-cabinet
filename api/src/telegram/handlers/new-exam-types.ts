@@ -36,6 +36,7 @@ export function sessionToNewExamDraft(
     title: session.buildTitle,
     timeLimitMin: session.buildTimeLimitMin,
     attemptsAllowed: session.buildAttemptsAllowed,
+    dueAt: session.buildDueAt,
     savedExamId: session.buildSavedExamId?.toString(),
   };
 }

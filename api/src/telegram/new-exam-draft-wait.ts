@@ -20,6 +20,8 @@ export interface NewExamDraft {
   title?: string;
   timeLimitMin?: number;
   attemptsAllowed?: number;
+  /** Срок сдачи (ADR-0125) — ISO UTC с Z, отсутствие значит «без срока». */
+  dueAt?: string;
   savedExamId?: string;
 }
 
@@ -43,6 +45,7 @@ export function startNewExamDraftUpdate(now: DateTime): {
       buildTitle: '',
       buildTimeLimitMin: '',
       buildAttemptsAllowed: '',
+      buildDueAt: '',
       buildSavedExamId: '',
       lessonId: '',
       attemptId: '',
@@ -65,6 +68,7 @@ export interface NewExamDraftPatch {
   title?: string;
   timeLimitMin?: number;
   attemptsAllowed?: number;
+  dueAt?: string;
   savedExamId?: string;
 }
 
@@ -90,6 +94,7 @@ export function newExamDraftUpdate(
   if (patch.timeLimitMin !== undefined) set.buildTimeLimitMin = patch.timeLimitMin;
   if (patch.attemptsAllowed !== undefined)
     set.buildAttemptsAllowed = patch.attemptsAllowed;
+  if (patch.dueAt !== undefined) set.buildDueAt = patch.dueAt;
   if (patch.savedExamId !== undefined) {
     set.buildSavedExamId = new Types.ObjectId(patch.savedExamId);
   }
