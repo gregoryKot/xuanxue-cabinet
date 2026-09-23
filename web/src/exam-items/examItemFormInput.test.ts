@@ -14,13 +14,10 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     id: 'e1',
     kind: 'single',
     prompt: 'Сколько форм в стиле Ян?',
-    hint: 'Считайте по разделам',
-    criteria: 'Точное число',
     options: [
       { id: 'o1', text: '24', correct: true },
       { id: 'o2', text: '108', correct: false },
     ],
-    tags: ['ян', 'база'],
     status: 'draft',
     version: 1,
     history: [],
@@ -34,10 +31,7 @@ function baseState(overrides: Partial<ExamItemFormState> = {}): ExamItemFormStat
   return {
     kind: 'text',
     prompt: 'Формулировка',
-    hint: '',
-    criteria: '',
     options: [],
-    tagsText: '',
     ...overrides,
   };
 }
@@ -57,28 +51,16 @@ describe('initialExamItemFormState', () => {
     expect(state.kind).toBe('text');
     expect(state.prompt).toBe('');
     expect(state.options).toEqual([]);
-    expect(state.tagsText).toBe('');
   });
 
-  it('существующий вопрос — поля и теги переносятся, options с id', () => {
+  it('существующий вопрос — поля переносятся, options с id', () => {
     const state = initialExamItemFormState(makeItem());
     expect(state.kind).toBe('single');
     expect(state.prompt).toBe('Сколько форм в стиле Ян?');
-    expect(state.hint).toBe('Считайте по разделам');
-    expect(state.tagsText).toBe('ян, база');
     expect(state.options).toEqual([
       { id: 'o1', text: '24', correct: true },
       { id: 'o2', text: '108', correct: false },
     ]);
-  });
-
-  it('вопрос без hint/criteria/тегов — пустые строки, не undefined', () => {
-    const state = initialExamItemFormState(
-      makeItem({ hint: undefined, criteria: undefined, tags: [] }),
-    );
-    expect(state.hint).toBe('');
-    expect(state.criteria).toBe('');
-    expect(state.tagsText).toBe('');
   });
 });
 
@@ -247,18 +229,6 @@ describe('toCreateInput / toUpdateInput', () => {
     expect(input.options).toEqual([{ id: undefined, text: '24', correct: true }]);
   });
 
-  it('создание: пустые hint/criteria — undefined (не отправляем поле)', () => {
-    const input = toCreateInput(baseState({ hint: '  ', criteria: '' }));
-    expect(input.hint).toBeUndefined();
-    expect(input.criteria).toBeUndefined();
-  });
-
-  it('правка: пустые hint/criteria — null (явный сброс, ревью п.8 у занятий)', () => {
-    const input = toUpdateInput(baseState({ hint: '  ', criteria: '' }));
-    expect(input.hint).toBeNull();
-    expect(input.criteria).toBeNull();
-  });
-
   it('правка, тип multiple — options уходит массивом', () => {
     const input = toUpdateInput(
       baseState({
@@ -278,26 +248,5 @@ describe('toCreateInput / toUpdateInput', () => {
   it('правка, тип text — options не отправляется вовсе', () => {
     const input = toUpdateInput(baseState({ kind: 'text' }));
     expect(input.options).toBeUndefined();
-  });
-
-  it('теги — строка через запятую превращается в массив на выходе', () => {
-    expect(toCreateInput(baseState({ tagsText: 'ян, база' })).tags).toEqual([
-      'ян',
-      'база',
-    ]);
-    expect(toUpdateInput(baseState({ tagsText: 'ян, база' })).tags).toEqual([
-      'ян',
-      'база',
-    ]);
-  });
-
-  // Разбор перешёл на общий parseTagsText (shared/src/tags.ts, ADR-0058) —
-  // дедуп без учёта регистра и схлопывание внутренних пробелов вопросы
-  // получили заодно с формой материала, своей копии разбора раньше не было.
-  it('дедуп без учёта регистра и схлопывание пробелов — улучшение от общего разбора', () => {
-    expect(toCreateInput(baseState({ tagsText: 'Ян, ян, база   форм' })).tags).toEqual([
-      'Ян',
-      'база форм',
-    ]);
   });
 });

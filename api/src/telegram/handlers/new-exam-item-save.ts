@@ -12,7 +12,6 @@ export function buildCreateExamItemInput(draft: NewExamItemDraft): CreateExamIte
   return {
     kind,
     prompt: draft.prompt ?? '',
-    criteria: draft.criteria,
     options: hasOptionsStep(kind)
       ? draft.options.map((option) => ({ text: option.text, correct: option.correct }))
       : undefined,

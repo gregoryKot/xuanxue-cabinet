@@ -64,7 +64,7 @@ describe('NewExamItemMessageHandler', () => {
     expect(botSessions.setNewExamItemDraft).not.toHaveBeenCalled();
   });
 
-  it('формулировка валидна, text-вопрос — сразу шаг критериев (вариантов не бывает)', async () => {
+  it('формулировка валидна, text-вопрос — сразу к итогу (вариантов не бывает)', async () => {
     const { handler, botSessions } = buildHandler();
     const { ctx, replies } = fakeFlowCtx({ text: 'Опишите форму' });
 
@@ -77,10 +77,10 @@ describe('NewExamItemMessageHandler', () => {
 
     expect(botSessions.setNewExamItemDraft).toHaveBeenCalledWith(
       CHAT_ID,
-      { step: 'criteria', prompt: 'Опишите форму' },
+      { step: 'confirm', prompt: 'Опишите форму' },
       NOW,
     );
-    expect(replies[0]).toContain('критерии');
+    expect(replies[0]).toContain('Проверьте вопрос');
   });
 
   it('вариант не проходит DTO-лимит (слишком много вариантов) — ошибка, вариант не добавлен', async () => {
@@ -100,21 +100,6 @@ describe('NewExamItemMessageHandler', () => {
     );
 
     expect(replies).toEqual(['Варианты ответа: не больше 10 элементов.']);
-    expect(botSessions.setNewExamItemDraft).not.toHaveBeenCalled();
-  });
-
-  it('критерии не проходят DTO-лимит — ошибка, черновик остаётся на шаге критериев', async () => {
-    const port = fakeExamBotPort({
-      validateExamItemDraft: jest
-        .fn()
-        .mockResolvedValue(['Критерии проверки: не длиннее 1000 символов.']),
-    });
-    const { handler, botSessions } = buildHandler(port);
-    const { ctx, replies } = fakeFlowCtx({ text: 'а'.repeat(1001) });
-
-    await handler.handle(ctx, CHAT_ID, draftSession({ draftStep: 'criteria' }), NOW);
-
-    expect(replies).toEqual(['Критерии проверки: не длиннее 1000 символов.']);
     expect(botSessions.setNewExamItemDraft).not.toHaveBeenCalled();
   });
 

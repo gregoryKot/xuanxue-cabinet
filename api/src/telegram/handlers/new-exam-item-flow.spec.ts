@@ -15,7 +15,6 @@ import {
   handleNewExamItemDone,
   handleNewExamItemKind,
   handleNewExamItemOptionToggle,
-  handleNewExamItemSkipCriteria,
 } from './new-exam-item-callback';
 import {
   CHAT_ID,
@@ -120,16 +119,12 @@ describe('учитель заводит вопрос в боте (интегра
     await handleNewExamItemDone(doneOptionsCtx.ctx, botSessions, CHAT_ID, 'options', NOW);
     expect(doneOptionsCtx.edits[0]).toContain('верный');
 
-    // Шаг «отметка верного» — single: один тап сразу отмечает и продолжает.
+    // Шаг «отметка верного» — single: один тап сразу отмечает и продолжает
+    // прямо к итогу (шаг «критерии» убран, ADR-0128).
     const markCorrectCtx = fakeFlowCtx();
     await handleNewExamItemOptionToggle(markCorrectCtx.ctx, botSessions, CHAT_ID, 0, NOW);
-    expect(markCorrectCtx.edits[0]).toContain('критерии');
-
-    // Шаг 4 — критерии, необязательный: «Пропустить».
-    const skipCtx = fakeFlowCtx();
-    await handleNewExamItemSkipCriteria(skipCtx.ctx, botSessions, CHAT_ID, NOW);
-    expect(skipCtx.edits[0]).toContain('Проверьте вопрос');
-    expect(skipCtx.edits[0]).toContain('Три — верно');
+    expect(markCorrectCtx.edits[0]).toContain('Проверьте вопрос');
+    expect(markCorrectCtx.edits[0]).toContain('Три — верно');
 
     // Итог — «Сохранить».
     const saveCtx = await save();
@@ -158,7 +153,7 @@ describe('учитель заводит вопрос в боте (интегра
     expect(await attemptsCtx.examItemsService.list({})).toHaveLength(1);
   });
 
-  it('text-вопрос — без шага вариантов, критерии текстом (не «Пропустить»)', async () => {
+  it('text-вопрос — без шага вариантов, формулировка сразу ведёт к итогу', async () => {
     await seedNewExamItemTeacher(flowCtx);
     const { botSessions, ctx: attemptsCtx } = flowCtx.flow;
 
@@ -170,23 +165,15 @@ describe('учитель заводит вопрос в боте (интегра
       await activeSession(botSessions),
       NOW,
     );
-    // Тип 'text' — вариантов не бывает: следующий шаг сразу критерии.
-    expect(promptMsg.replies[0]).toContain('критерии');
-
-    const criteriaMsg = textMessage('Смотрим стойку и дыхание');
-    await flowCtx.messageHandler.handle(
-      criteriaMsg.ctx,
-      CHAT_ID,
-      await activeSession(botSessions),
-      NOW,
-    );
-    expect(criteriaMsg.replies[0]).toContain('Смотрим стойку и дыхание');
-    expect(criteriaMsg.replies[0]).not.toContain('Варианты');
+    // Тип 'text' — вариантов не бывает: следующий шаг сразу итог (шаг
+    // «критерии» убран, ADR-0128).
+    expect(promptMsg.replies[0]).toContain('Проверьте вопрос');
+    expect(promptMsg.replies[0]).not.toContain('Варианты');
 
     const saveCtx = await save();
     expect(saveCtx.edits[0]).toContain('Вопрос сохранён');
     const items = await attemptsCtx.examItemsService.list({});
-    expect(items[0]?.criteria).toBe('Смотрим стойку и дыхание');
+    expect(items[0]?.prompt).toBe('Опишите форму словами');
     expect(items[0]?.options).toEqual([]);
   });
 
@@ -224,9 +211,8 @@ describe('учитель заводит вопрос в боте (интегра
     await handleNewExamItemOptionToggle(fakeFlowCtx().ctx, botSessions, CHAT_ID, 1, NOW);
     const doneCtx = fakeFlowCtx();
     await handleNewExamItemDone(doneCtx.ctx, botSessions, CHAT_ID, 'correct', NOW);
-    expect(doneCtx.edits[0]).toContain('критерии');
+    expect(doneCtx.edits[0]).toContain('Проверьте вопрос');
 
-    await handleNewExamItemSkipCriteria(fakeFlowCtx().ctx, botSessions, CHAT_ID, NOW);
     await save();
 
     const items = await attemptsCtx.examItemsService.list({});

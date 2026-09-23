@@ -116,8 +116,9 @@ export function addQuestion(itemIds: string[], itemId: string): string[] {
 }
 
 /** Кандидаты поиска: только опубликованные вопросы, без уже добавленных, по
- * подстроке формулировки или тега без регистра. Фильтр локальный — список
- * вопросов загружен целиком, отдельный запрос на каждую букву не нужен. */
+ * подстроке формулировки без регистра (тег вопроса убран из продукта,
+ * ADR-0128). Фильтр локальный — список вопросов загружен целиком, отдельный
+ * запрос на каждую букву не нужен. */
 export function filterQuestionCandidates(
   items: ExamItemDto[],
   query: string,
@@ -128,7 +129,7 @@ export function filterQuestionCandidates(
     (item) =>
       item.status === 'published' &&
       !chosen.has(item.id) &&
-      matchesSearch([item.prompt, ...item.tags], query),
+      matchesSearch([item.prompt], query),
   );
 }
 

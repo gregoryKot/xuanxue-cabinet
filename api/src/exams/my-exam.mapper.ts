@@ -20,8 +20,7 @@ export interface MyExamInput {
 
 /** Оценка последней попытки, если она уже выставлена (слой 4.6) — итог и
  * комментарий учителя можно показать ученику как есть (его собственная
- * работа), критерии проверки вопроса сюда не попадают: это другая сущность
- * (`ExamItemDto.criteria`), MyExamsService её не читает. */
+ * работа). */
 export interface MyExamLastAttemptInput {
   id: string;
   status: ExamAttemptStatus;

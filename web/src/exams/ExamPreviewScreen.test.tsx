@@ -41,7 +41,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'text',
     prompt: 'Опишите принцип песчинки',
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],
@@ -403,17 +402,6 @@ describe('ExamPreviewScreen — вопросы', () => {
     renderAt('/exams/x1/preview');
 
     expect(await screen.findByText(/Ответ на этот вопрос — видео/)).toBeInTheDocument();
-  });
-
-  it('вопрос с подсказкой — подсказка видна', async () => {
-    mockExamAndBank(
-      makeExam({ blocks: [{ id: 'b1', title: '', itemIds: ['i1'], shuffle: false }] }),
-      [makeItem({ id: 'i1', hint: 'Смотрите в стойку' })],
-    );
-
-    renderAt('/exams/x1/preview');
-
-    expect(await screen.findByText('Смотрите в стойку')).toBeInTheDocument();
   });
 
   it('вопрос не из списка — «Вопрос недоступен»', async () => {

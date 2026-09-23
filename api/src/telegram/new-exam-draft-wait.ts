@@ -51,7 +51,6 @@ export function startNewExamDraftUpdate(now: DateTime): {
       draftStep: '',
       draftKind: '',
       draftPrompt: '',
-      draftCriteria: '',
       draftOptions: '',
       draftSavedItemId: '',
     },

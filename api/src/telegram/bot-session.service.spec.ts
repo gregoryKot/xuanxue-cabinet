@@ -267,8 +267,8 @@ describe('BotSessionService', () => {
     ).resolves.toBe('examMedia');
   });
 
-  // ТЗ 4б.3 (docs/PLAN.md §12) — черновик вопроса: draftPrompt/draftCriteria/
-  // draftOptions шифруются (SECURITY §5), get() отдаёт их уже расшифрованными.
+  // ТЗ 4б.3 (docs/PLAN.md §12) — черновик вопроса: draftPrompt/draftOptions
+  // шифруются (SECURITY §5), get() отдаёт их уже расшифрованными.
   describe('черновик вопроса (examItemDraft)', () => {
     it('startNewExamItemDraft → get отдаёт kind/draftStep/draftKind, options пуст', async () => {
       await service.startNewExamItemDraft(777, 'single', NOW);
@@ -281,14 +281,13 @@ describe('BotSessionService', () => {
       expect(session?.draftOptions).toEqual([]);
     });
 
-    it('setNewExamItemDraft шифрует prompt/criteria/options — get отдаёт исходный текст', async () => {
+    it('setNewExamItemDraft шифрует prompt/options — get отдаёт исходный текст', async () => {
       await service.startNewExamItemDraft(777, 'single', NOW);
       await service.setNewExamItemDraft(
         777,
         {
           step: 'confirm',
           prompt: 'Сколько форм в третьем уровне?',
-          criteria: 'Смотрим стойку',
           options: [{ text: 'Три', correct: true }],
         },
         NOW,
@@ -300,7 +299,6 @@ describe('BotSessionService', () => {
       const session = await service.get(777, NOW);
       expect(session?.draftStep).toBe('confirm');
       expect(session?.draftPrompt).toBe('Сколько форм в третьем уровне?');
-      expect(session?.draftCriteria).toBe('Смотрим стойку');
       expect(session?.draftOptions).toEqual([{ text: 'Три', correct: true }]);
     });
 
@@ -310,7 +308,7 @@ describe('BotSessionService', () => {
         777,
         {
           step: 'confirm',
-          criteria: 'Старые критерии',
+          prompt: 'Старая формулировка',
           savedItemId: new Types.ObjectId().toString(),
         },
         NOW,
@@ -320,7 +318,7 @@ describe('BotSessionService', () => {
 
       const session = await service.get(777, NOW);
       expect(session?.draftKind).toBe('text');
-      expect(session?.draftCriteria).toBeUndefined();
+      expect(session?.draftPrompt).toBeUndefined();
       expect(session?.draftSavedItemId).toBeUndefined();
       await expect(model.countDocuments({ chatId: 777 })).resolves.toBe(1);
     });

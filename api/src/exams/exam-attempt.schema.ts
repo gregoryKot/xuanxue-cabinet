@@ -32,16 +32,14 @@ export interface AttemptOptionRecord {
 }
 
 /** Вопрос в снимке — редакция вопроса банка на момент старта (`version`
- * закрепляет попытка, не форма — дополнение к ADR-0022). `criteria` — только
- * для будущей проверки учителем, ученику не уходит (см. комментарий в
- * начале файла). */
+ * закрепляет попытка, не форма — дополнение к ADR-0022). Снимки, заведённые
+ * до ADR-0128, могут хранить внутри JSON ещё и `hint`/`criteria` — тип их не
+ * описывает и никто их больше не читает (expand → contract). */
 export interface AttemptQuestionRecord {
   itemId: string;
   version: number;
   kind: ExamItemKind;
   prompt: string;
-  hint?: string;
-  criteria?: string;
   options: AttemptOptionRecord[];
 }
 

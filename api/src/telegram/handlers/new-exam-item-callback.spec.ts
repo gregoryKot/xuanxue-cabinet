@@ -8,7 +8,6 @@ import { fakeFlowCtx } from './exam-attempt-flow.test-support';
 import {
   handleNewExamItemDone,
   handleNewExamItemOptionToggle,
-  handleNewExamItemSkipCriteria,
 } from './new-exam-item-callback';
 
 const NOW = DateTime.utc(2026, 9, 17, 10, 0, 0);
@@ -28,7 +27,7 @@ describe('handleNewExamItemDone — защита от устаревшей кн�
     const session: BotSessionLean = {
       kind: 'examItemDraft',
       draftKind: 'single',
-      draftStep: 'criteria',
+      draftStep: 'confirm',
       draftOptions: [],
     };
     const botSessions = fakeBotSessionService({
@@ -77,25 +76,5 @@ describe('handleNewExamItemOptionToggle — защита от устаревше
     await handleNewExamItemOptionToggle(ctx, botSessions, CHAT_ID, 0, NOW);
 
     expect(edits).toEqual([]);
-  });
-});
-
-describe('handleNewExamItemSkipCriteria — защита от устаревшей кнопки', () => {
-  it('не на шаге критериев — игнорируется', async () => {
-    const session: BotSessionLean = {
-      kind: 'examItemDraft',
-      draftKind: 'text',
-      draftStep: 'prompt',
-      draftOptions: [],
-    };
-    const botSessions = fakeBotSessionService({
-      get: jest.fn().mockResolvedValue(session),
-    });
-    const { ctx, edits } = fakeFlowCtx();
-
-    await handleNewExamItemSkipCriteria(ctx, botSessions, CHAT_ID, NOW);
-
-    expect(edits).toEqual([]);
-    expect(botSessions.setNewExamItemDraft).not.toHaveBeenCalled();
   });
 });

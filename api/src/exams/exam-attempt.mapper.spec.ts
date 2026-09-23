@@ -1,8 +1,7 @@
 // Чистая логика — юнит-тест без Mongo и без DI (CLAUDE.md «Тесты»): маппер
-// снимка попытки в ExamAttemptDto, обязательный инвариант ТЗ 4.4 (correct/
-// criteria не покидают файл) проверен e2e (exam-attempts.e2e-spec.ts); здесь —
-// то, что юнит-тесту не нужна база — картинка варианта (ADR-0035) доезжает
-// до DTO.
+// снимка попытки в ExamAttemptDto, обязательный инвариант ТЗ 4.4 (correct не
+// покидает файл) проверен e2e (exam-attempts.e2e-spec.ts); здесь — то, что
+// юнит-тесту не нужна база — картинка варианта (ADR-0035) доезжает до DTO.
 import { Types } from 'mongoose';
 import type { AttemptGradingSummary } from './exam-grading-list';
 import { toAttemptDto, type LeanExamAttempt } from './exam-attempt.mapper';

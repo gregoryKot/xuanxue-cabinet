@@ -24,7 +24,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'text',
     prompt: 'Опишите принцип песчинки',
     options: [],
-    tags: [],
     status: 'draft',
     version: 1,
     history: [],
@@ -132,26 +131,10 @@ describe('ExamItemsScreen — фильтры', () => {
     renderScreen();
     await screen.findByText('Опишите принцип песчинки');
 
-    await user.type(screen.getByLabelText('Поиск по вопросу и тегу'), 'тайцзи');
+    await user.type(screen.getByLabelText('Поиск по вопросу'), 'тайцзи');
 
     expect(screen.getByText('Зачем придумали тайцзи?')).toBeInTheDocument();
     expect(screen.queryByText('Опишите принцип песчинки')).not.toBeInTheDocument();
-  });
-
-  it('поиск по тегу тоже находит', async () => {
-    const user = userEvent.setup();
-    mockedApiFetch.mockResolvedValue([
-      makeItem({ id: 'e1', prompt: 'Опишите принцип песчинки', tags: ['дыхание'] }),
-      makeItem({ id: 'e2', prompt: 'Зачем придумали тайцзи?', tags: ['история'] }),
-    ]);
-
-    renderScreen();
-    await screen.findByText('Опишите принцип песчинки');
-
-    await user.type(screen.getByLabelText('Поиск по вопросу и тегу'), 'дыхание');
-
-    expect(screen.getByText('Опишите принцип песчинки')).toBeInTheDocument();
-    expect(screen.queryByText('Зачем придумали тайцзи?')).not.toBeInTheDocument();
   });
 
   it('по запросу ничего не нашлось — текст про фильтры, не про пустой список', async () => {
@@ -161,7 +144,7 @@ describe('ExamItemsScreen — фильтры', () => {
     renderScreen();
     await screen.findByText('Опишите принцип песчинки');
 
-    await user.type(screen.getByLabelText('Поиск по вопросу и тегу'), 'веник');
+    await user.type(screen.getByLabelText('Поиск по вопросу'), 'веник');
 
     expect(screen.getByText('С такими фильтрами вопросов нет.')).toBeInTheDocument();
   });

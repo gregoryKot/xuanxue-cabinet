@@ -1,6 +1,6 @@
-// Один вопрос на экране сдачи (ТЗ п.2) — формулировка, подсказка (она для
-// ученика и написана — критерии проверки сюда не попадают, их в снимке
-// вовсе нет, AttemptQuestionDto без `criteria`), поле ответа по типу.
+// Один вопрос на экране сдачи (ТЗ п.2) — формулировка и поле ответа по типу.
+// Подсказка ученику и критерии проверки убраны из вопроса вместе с полями
+// (ADR-0128).
 //
 // Строка вопроса — общий components/QuestionRow.tsx (его же комментарий-шапка:
 // та же строка нужна предпросмотру «глазами ученика», exams/ExamPreviewQuestion.tsx).
@@ -46,7 +46,6 @@ export function AttemptQuestion({
       index={index}
       promptId={promptId}
       prompt={question.prompt}
-      hint={question.hint}
       unanswered={unanswered}
     >
       {question.kind === 'text' && (

@@ -77,9 +77,9 @@ export const FIELD_LABELS_RU: Record<string, string> = {
 
   // exam-items — /exam-items (вопросы экзамена). kind — общая подпись
   // «Тип» выше (broadcasts.kind), здесь свой тип вопроса — тот же смысл.
+  // hint/criteria/tags вопроса убраны из продукта (ADR-0128) — подписи ниже
+  // теперь только про материалы (tags/tag, ADR-0058).
   prompt: 'Формулировка',
-  hint: 'Подсказка',
-  criteria: 'Критерии проверки',
   options: 'Варианты ответа',
   correct: 'Правильный вариант',
   imageId: 'Картинка варианта',

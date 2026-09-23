@@ -4,9 +4,7 @@
 // запросе).
 //
 // Итог и комментарий учителя (слой 4.6, `exam_gradings`) — можно: это
-// разбор собственной работы ученика (PLAN §11 «Границы»). Критерии
-// проверки вопроса (`ExamItemDto.criteria`) сюда не попадают в принципе —
-// этот сервис их не читает вовсе.
+// разбор собственной работы ученика (PLAN §11 «Границы»).
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';

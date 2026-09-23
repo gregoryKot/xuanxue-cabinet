@@ -23,8 +23,6 @@ import {
   createExamFlowHelpers,
   FLOW_EXAM_DESCRIPTION,
   FLOW_EXAM_TITLE,
-  FLOW_SINGLE_CRITERIA,
-  FLOW_TEXT_CRITERIA,
 } from './e2e-support/exam-flow-fixtures';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 
@@ -134,7 +132,6 @@ describe('Экзамен целиком через кабинет (e2e, крит
     ]);
     expect(questions[1]?.options[0]?.imageId).toBe(built.imageId);
     expect(JSON.stringify(started.body)).not.toContain('correct');
-    expect(JSON.stringify(started.body)).not.toContain('criteria');
 
     // Картинка варианта из снимка — видна, картинка не из снимка — нет.
     const ownImage = await request(server())
@@ -212,12 +209,10 @@ describe('Экзамен целиком через кабинет (e2e, крит
     const reviewed = review.blocks.flatMap((block) => block.questions);
     expect(reviewed[0]).toMatchObject({
       itemId: built.textItemId,
-      criteria: FLOW_TEXT_CRITERIA,
       answerText: TEXT_ANSWER,
     });
     expect(reviewed[1]).toMatchObject({
       itemId: built.singleItemId,
-      criteria: FLOW_SINGLE_CRITERIA,
       optionsCheck: {
         correctSelectedCount: 1,
         correctTotalCount: 1,
@@ -251,7 +246,6 @@ describe('Экзамен целиком через кабинет (e2e, крит
       outcome: 'passed',
       comment: TEACHER_COMMENT,
     });
-    expect(JSON.stringify(afterGrading)).not.toContain(FLOW_TEXT_CRITERIA);
     expect(JSON.stringify(afterGrading)).not.toContain('correct');
     expect(notifier.notifyExamGraded).toHaveBeenCalledTimes(1);
     expect(notifier.notifyExamGraded.mock.calls[0]?.[0]).toMatchObject({

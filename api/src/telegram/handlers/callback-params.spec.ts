@@ -70,10 +70,10 @@ describe('isValidCallbackParam', () => {
     expect(isValidCallbackParam('nqd', 'нет-такого-шага')).toBe(false);
   });
 
-  it('nqf — только «skip»/«save»/«cancel»', () => {
-    expect(isValidCallbackParam('nqf', 'skip')).toBe(true);
+  it('nqf — только «save»/«cancel»', () => {
     expect(isValidCallbackParam('nqf', 'save')).toBe(true);
     expect(isValidCallbackParam('nqf', 'cancel')).toBe(true);
+    expect(isValidCallbackParam('nqf', 'skip')).toBe(false);
     expect(isValidCallbackParam('nqf', 'нет-такого-действия')).toBe(false);
   });
 

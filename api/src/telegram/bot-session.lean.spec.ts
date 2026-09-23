@@ -2,15 +2,15 @@
 // «чистая логика» — без Mongo и без DI): расшифровка draft*/build*-полей
 // (ТЗ 4б.3/4б.4) и дефолт draftOptions: [] когда вариантов пока нет — тот же
 // набор случаев, что раньше проверялся только через bot-session.service.spec.ts
-// (там и остался, read-after-write через настоящую Mongo).
+// (там и остался, read-after-write через настоящую Mongo). draftCriteria убран
+// вместе с шагом «критерии» диалога (ADR-0128).
 import { Types } from 'mongoose';
 import { encrypt, encryptJson } from '../utils/encryption';
 import { toBotSessionLean, type RawBotSessionLean } from './bot-session.lean';
 
 describe('toBotSessionLean', () => {
-  it('расшифровывает draftPrompt/draftCriteria/draftOptions черновика вопроса', () => {
+  it('расшифровывает draftPrompt/draftOptions черновика вопроса', () => {
     const draftPrompt = encrypt('Сколько форм в третьем уровне?') ?? undefined;
-    const draftCriteria = encrypt('Смотрим стойку') ?? undefined;
     const draftOptions = encryptJson([{ text: 'Три', correct: true }]) ?? undefined;
     // Шифротекст не совпадает с исходным текстом — иначе тест ничего не
     // проверял бы (encrypt мог бы тихо не сработать).
@@ -20,14 +20,12 @@ describe('toBotSessionLean', () => {
       draftStep: 'confirm',
       draftKind: 'single',
       draftPrompt,
-      draftCriteria,
       draftOptions,
     };
 
     const session = toBotSessionLean(raw);
 
     expect(session.draftPrompt).toBe('Сколько форм в третьем уровне?');
-    expect(session.draftCriteria).toBe('Смотрим стойку');
     expect(session.draftOptions).toEqual([{ text: 'Три', correct: true }]);
   });
 

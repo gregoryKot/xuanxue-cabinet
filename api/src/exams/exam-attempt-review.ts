@@ -1,8 +1,8 @@
 // Чистые функции карточки проверки (ТЗ 4.6, п.3) — без похода в базу, юнит-
 // тест без Mongo (CLAUDE.md «Тесты»). Источник — снимок попытки
 // (AttemptQuestionRecord/AttemptOptionRecord, exam-attempt.schema.ts): он уже
-// хранит и `correct`, и `criteria` вопроса, брать их заново из банка нельзя —
-// вопрос могли переписать (ADR-0022). Автопроверка вариантов честна только
+// хранит `correct` варианта, брать его заново из банка нельзя — вопрос могли
+// переписать (ADR-0022). Автопроверка вариантов честна только
 // там, где сдающий выбирает готовый вариант — вопрос без вариантов (текст,
 // видео) эта функция не зовёт.
 import type {
@@ -69,8 +69,6 @@ function buildReviewQuestion(
     itemId: question.itemId,
     kind: question.kind,
     prompt: question.prompt,
-    hint: question.hint,
-    criteria: question.criteria,
     answerText: answer?.text,
     options: question.options.map((option) => toReviewOption(option, selected)),
     // Считать «сколько верных выбрано» нечему, если выбора не было вовсе —

@@ -15,8 +15,6 @@ import { freshIp, telegramLoginBody } from './telegram-widget-fixtures';
 
 export const FLOW_EXAM_TITLE = 'Первый уровень';
 export const FLOW_EXAM_DESCRIPTION = 'Три вопроса: слова, картинка и видео формы.';
-export const FLOW_TEXT_CRITERIA = 'Смотреть на колено и центр тяжести';
-export const FLOW_SINGLE_CRITERIA = 'Верный вариант — фотография стойки';
 
 export interface BuiltExam {
   examId: string;
@@ -83,12 +81,10 @@ export function createExamFlowHelpers(getApp: () => TestApp) {
     const textItem = await createItem(teacherCookie, {
       kind: 'text',
       prompt: 'Опишите форму «пэнбу» словами',
-      criteria: FLOW_TEXT_CRITERIA,
     });
     const singleItem = await createItem(teacherCookie, {
       kind: 'single',
       prompt: 'Какая стойка на фото?',
-      criteria: FLOW_SINGLE_CRITERIA,
       options: [
         { imageId, correct: true },
         { text: 'Другая стойка', correct: false },

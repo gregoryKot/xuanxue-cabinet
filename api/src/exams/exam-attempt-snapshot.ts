@@ -39,8 +39,6 @@ function toAttemptQuestion(
     version: item.version,
     kind: item.kind,
     prompt: item.prompt,
-    hint: item.hint,
-    criteria: item.criteria,
     options: shuffleOptions ? shuffleOnce(options, random) : options,
   };
 }

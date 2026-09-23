@@ -1,10 +1,9 @@
 // Единственный маппер ExamAttemptRecord (lean, уже расшифрованный) →
 // ExamAttemptDto (CLAUDE.md, раздел «API»: документ Mongoose наружу не
 // возвращается). Обязательный по ТЗ 4.4 инвариант живёт здесь: снимок хранит
-// `correct` у варианта и `criteria` у вопроса (AttemptOptionRecord/
-// AttemptQuestionRecord, exam-attempt.schema.ts), но `toAttemptDto` их не
-// копирует — за пределы этого файла они не выходят (e2e-тест на старт
-// попытки проверяет именно это).
+// `correct` у варианта (AttemptOptionRecord, exam-attempt.schema.ts), но
+// `toAttemptDto` его не копирует — за пределы этого файла он не выходит
+// (e2e-тест на старт попытки проверяет именно это).
 import type { Types } from 'mongoose';
 import type {
   AttemptAnswerDto,
@@ -58,7 +57,6 @@ function toStudentQuestion(question: AttemptQuestionRecord): AttemptQuestionDto 
     version: question.version,
     kind: question.kind,
     prompt: question.prompt,
-    hint: question.hint,
     options: question.options.map(toStudentOption),
   };
 }

@@ -9,7 +9,7 @@
 //
 // Вопросы блоков читаются через `ExamsService`/`ExamItemsService`, а не
 // напрямую через их модели: там уже есть проверка published-статуса формы,
-// шифрование и декрипт содержимого вопроса (prompt/hint/criteria/options) —
+// шифрование и декрипт содержимого вопроса (prompt/options) —
 // дублировать эту расшифровку здесь было бы вторым местом одной механики
 // (CLAUDE.md «Одна механика — один компонент»).
 import { Inject, Injectable } from '@nestjs/common';
@@ -210,7 +210,7 @@ export class ExamAttemptsService {
     });
   }
 
-  /** ADR-0126: своя попытка своим адресом, не список (было ?limit=200 на каждый тик). */
+  /** ADR-0128: своя попытка своим адресом, не список (было ?limit=200 на каждый тик). */
   async getOwn(
     attemptId: string,
     userId: string,

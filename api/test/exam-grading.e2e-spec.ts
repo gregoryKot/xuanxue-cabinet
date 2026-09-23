@@ -34,7 +34,6 @@ describe('Проверка работ (e2e)', () => {
       .send({
         kind: 'text',
         prompt: 'Опишите форму «пэнбу»',
-        criteria: 'Смотреть на колено и центр тяжести',
       });
     const itemId = (item.body as ExamItemDto).id;
     await withCsrf(request(server()).patch(`/api/exam-items/${itemId}`))
@@ -131,7 +130,7 @@ describe('Проверка работ (e2e)', () => {
     // владельца 2026-09-21).
     expect(reviewBody.notifiesUserInTelegram).toBe(false);
     const question = reviewBody.blocks[0]?.questions[0];
-    expect(question?.criteria).toBe('Смотреть на колено и центр тяжести');
+    expect(question?.prompt).toBe('Опишите форму «пэнбу»');
 
     const graded = await withCsrf(
       request(server()).put(`/api/attempts/${attempt.id}/grading`),

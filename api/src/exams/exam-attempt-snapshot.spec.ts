@@ -19,7 +19,6 @@ function item(overrides: Partial<ExamItemDto> & { id: string }): ExamItemDto {
     kind: 'text',
     prompt: `вопрос ${overrides.id}`,
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],
@@ -89,14 +88,13 @@ describe('buildAttemptBlocks', () => {
     expect(snapshot[0]?.questions.map((q) => q.itemId)).toEqual(['i2', 'i3', 'i1']);
   });
 
-  it('снимок несёт correct у варианта и criteria вопроса — обязательный инвариант ТЗ 4.4', () => {
+  it('снимок несёт correct у варианта — обязательный инвариант ТЗ 4.4', () => {
     const itemsById = new Map([
       [
         'i1',
         item({
           id: 'i1',
           kind: 'single',
-          criteria: 'колено уходит внутрь — незачёт',
           options: [
             { id: 'o1', text: 'верно', correct: true },
             { id: 'o2', text: 'неверно', correct: false },
@@ -109,7 +107,6 @@ describe('buildAttemptBlocks', () => {
     const snapshot = build(blocks, itemsById, () => 0);
 
     const question = snapshot[0]?.questions[0];
-    expect(question?.criteria).toBe('колено уходит внутрь — незачёт');
     expect(question?.options).toEqual([
       { id: 'o1', text: 'верно', correct: true },
       { id: 'o2', text: 'неверно', correct: false },

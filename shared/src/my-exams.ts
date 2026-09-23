@@ -20,8 +20,7 @@ import type { GradingOutcome } from './exam-grading';
  * открыть её (`id`), понять, что с ней (`status`), и увидеть итог с
  * комментарием учителя, если оценка уже выставлена (слой 4.6). `outcome`/
  * `comment` — только из своей оценки: ученик не видит ни оценок другого
- * ученика, ни критериев проверки вопроса (`ExamItemDto.criteria`) — итог
- * качественный, без баллов (PLAN §11 «Границы»). */
+ * ученика — итог качественный, без баллов (PLAN §11 «Границы»). */
 interface MyExamAttemptSummaryDto {
   id: string;
   status: ExamAttemptStatus;
