@@ -1,9 +1,13 @@
 // Кабинет ученика: что он видит про свои экзамены (`GET /me/exams`, слой 4.1
 // API, docs/PLAN.md §11). Отдельным файлом, потому что exams.ts упёрся в
 // лимит размера (CLAUDE.md «Храповики»); здесь только взгляд ученика на свои
-// попытки — форма и снимок живут в exams.ts, итог проверки — в
-// exam-grading.ts.
-import type { AttemptAnswerDto, ExamAttemptDto, ExamAttemptStatus } from './exams';
+// попытки — форма живёт в exams.ts, снимок попытки — в exam-attempts.ts,
+// итог проверки — в exam-grading.ts.
+import type {
+  AttemptAnswerDto,
+  ExamAttemptDto,
+  ExamAttemptStatus,
+} from './exam-attempts';
 import type { GradingOutcome } from './exam-grading';
 
 // Экран ученика (`/me/exams`, docs/PLAN.md §11 слой 4.1 API) — опубликованные

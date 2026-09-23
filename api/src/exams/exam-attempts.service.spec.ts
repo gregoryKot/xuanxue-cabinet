@@ -300,7 +300,7 @@ describe('ExamAttemptsService', () => {
 
   // Гонка, которая не расходится сама (сломанный клиент шлёт одно и то же
   // без остановки) — потолок попыток даёт понятный отказ вместо зависшего
-  // запроса или тихой потери ответа (ATTEMPT_SAVE_CONFLICT_MESSAGE, shared/src/exams.ts).
+  // запроса или тихой потери ответа (ATTEMPT_SAVE_CONFLICT_MESSAGE, shared/src/exam-attempts.ts).
   it('автосохранение: CAS проигрывает не переставая — отказ после потолка попыток, не тихая потеря', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam({ itemIds: [itemId] });
@@ -676,7 +676,7 @@ describe('ExamAttemptsService', () => {
 
   // Раздел «Проверенные» (docs/PLAN.md §4.6): сотрудник видит итог и когда
   // проверено, у ждущей проверки попытки этих полей нет вовсе — тот же
-  // приём, что userName выше (shared/src/exams.ts).
+  // приём, что userName выше (shared/src/exam-attempts.ts).
   it('сотрудник видит outcome/gradedAt у проверенной попытки, у ждущей — нет', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam({ itemIds: [itemId] });

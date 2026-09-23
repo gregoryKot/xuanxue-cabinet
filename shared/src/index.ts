@@ -132,6 +132,16 @@ export type {
   CreateExamItemInput,
   UpdateExamItemInput,
   ListExamItemsQuery,
+} from './exam-items';
+export {
+  EXAM_ITEM_KINDS,
+  EXAM_ITEM_STATUSES,
+  NULLABLE_EXAM_ITEM_FIELDS,
+  EXAM_ITEM_LIMITS,
+  EXAM_ITEM_NOT_FOUND_MESSAGE,
+  OPTION_TEXT_OR_IMAGE_MESSAGE,
+} from './exam-items';
+export type {
   ExamStatus,
   ExamBlockDto,
   ExamBlockInput,
@@ -139,6 +149,15 @@ export type {
   CreateExamInput,
   UpdateExamInput,
   ListExamsQuery,
+} from './exams';
+export { formatOptionLabel } from './exam-option-label';
+export {
+  EXAM_STATUSES,
+  NULLABLE_EXAM_FIELDS,
+  EXAM_LIMITS,
+  EXAM_NOT_FOUND_MESSAGE,
+} from './exams';
+export type {
   ExamAttemptStatus,
   AttemptOptionDto,
   AttemptQuestionDto,
@@ -148,19 +167,8 @@ export type {
   ExamAttemptCountDto,
   SaveAttemptAnswersInput,
   ListAttemptsQuery,
-} from './exams';
-export { formatOptionLabel } from './exam-option-label';
+} from './exam-attempts';
 export {
-  EXAM_ITEM_KINDS,
-  EXAM_ITEM_STATUSES,
-  NULLABLE_EXAM_ITEM_FIELDS,
-  EXAM_ITEM_LIMITS,
-  EXAM_ITEM_NOT_FOUND_MESSAGE,
-  OPTION_TEXT_OR_IMAGE_MESSAGE,
-  EXAM_STATUSES,
-  NULLABLE_EXAM_FIELDS,
-  EXAM_LIMITS,
-  EXAM_NOT_FOUND_MESSAGE,
   EXAM_ATTEMPT_STATUSES,
   ATTEMPT_LIMITS,
   ATTEMPT_NOT_FOUND_MESSAGE,
@@ -169,7 +177,7 @@ export {
   ATTEMPT_EXPIRED_MESSAGE,
   ATTEMPT_UNKNOWN_ITEM_MESSAGE,
   ATTEMPT_SAVE_CONFLICT_MESSAGE,
-} from './exams';
+} from './exam-attempts';
 export {
   type ExamMediaKind,
   type ExamMediaDto,

@@ -3,8 +3,9 @@
 // exams.ts (CLAUDE.md «Храповики»: файл-лимит размера) — своя, достаточно
 // большая подсистема поверх типов формы/попытки, а не продолжение самого
 // экзамена.
+import type { ExamAttemptStatus } from './exam-attempts';
+import type { ExamItemKind } from './exam-items';
 import type { ExamMediaDto } from './exam-media';
-import type { ExamAttemptStatus, ExamItemKind } from './exams';
 
 // Итог проверки — качественный: зачёт, незачёт или «доработать», без баллов
 // (PLAN §11 «Границы»).

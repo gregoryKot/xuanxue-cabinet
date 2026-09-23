@@ -1,7 +1,7 @@
 // Тело PATCH /exam-items/:id. `kind` сюда не входит — смена типа значит
 // завести новый вопрос (ТЗ 4.2, п.1). hint/criteria — единственные поля, где
 // `null` значит «сбросить»: splitUpdate (exam-items.service.ts) превращает
-// его в `$unset` для NULLABLE_EXAM_ITEM_FIELDS (shared/src/exams.ts).
+// его в `$unset` для NULLABLE_EXAM_ITEM_FIELDS (shared/src/exam-items.ts).
 import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   EXAM_ITEM_LIMITS,
