@@ -17,6 +17,9 @@ const DUE_CLOCK_FORMAT: Intl.DateTimeFormatOptions = {
   hourCycle: 'h23',
 };
 
+// Не в барабане shared/src/index.ts: снаружи тип никто не называет — зовут
+// саму formatExamDueAt, а параметры передают литералом. Барабан не возит
+// имён, которых никто не импортирует (check-shared-exports.mjs).
 export interface ExamDueOptions {
   /** Пояс, в котором показать дату — бот всегда передаёт пояс школы (своих
    * часов зрителя бот не знает, ровно как у describeExamTime). */
