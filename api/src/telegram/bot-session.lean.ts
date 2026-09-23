@@ -10,8 +10,8 @@ import {
   BOT_SESSION_ENCRYPT_SCHEMA,
   type BotSessionKind,
   type NewExamItemStep,
-  type NewExamStep,
 } from './bot-session.schema';
+import type { NewExamStep } from './new-exam-steps';
 import type { NewExamItemDraftOption } from './new-exam-item-draft-wait';
 
 export interface BotSessionLean {

@@ -9,6 +9,7 @@
 // CLAUDE.md «Новая коллекция»): ключ — chatId Telegram, живёт минуты-часы,
 // персональных данных не содержит.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { NEW_EXAM_STEPS, type NewExamStep } from './new-exam-steps';
 import { SchemaTypes, Types } from 'mongoose';
 import {
   EXAM_ITEM_KINDS,
@@ -40,20 +41,6 @@ const NEW_EXAM_ITEM_STEPS = [
   'confirm',
 ] as const;
 export type NewExamItemStep = (typeof NEW_EXAM_ITEM_STEPS)[number];
-
-// Шаг диалога сборки экзамена (ТЗ 4б.4) — 'pick' заводится сразу командой
-// /экзамен (в отличие от examItemDraft, где до первой записи есть безсессионный
-// screen 1): отметки копятся в bot_sessions с первого сообщения, второй
-// инстанс при деплое должен их видеть.
-const NEW_EXAM_STEPS = [
-  'pick',
-  'title',
-  'timeLimit',
-  'attempts',
-  'dueAt',
-  'confirm',
-] as const;
-export type NewExamStep = (typeof NEW_EXAM_STEPS)[number];
 
 @Schema({ timestamps: true, collection: 'bot_sessions' })
 export class BotSessionRecord {
@@ -164,11 +151,8 @@ export class BotSessionRecord {
   @Prop({ type: Number, required: false })
   buildAttemptsAllowed?: number;
 
-  // Срок сдачи (ADR-0125) — отсутствие поля к шагу 'confirm' и позже значит
-  // «без срока», тем же приёмом, что buildTimeLimitMin выше. ISO UTC с Z
-  // (как CreateExamInput.dueAt, shared/src/exams.ts) — дата, не свободный
-  // текст, решения по шифрованию не требует (CLAUDE.md «Не шифровать: id,
-  // userId, даты, перечисления»).
+  // Срок сдачи (ADR-0125): нет поля — «без срока», как у buildTimeLimitMin
+  // выше. ISO UTC с Z; дата, а не свободный текст, — не шифруется.
   @Prop({ type: String, required: false })
   buildDueAt?: string;
 
@@ -201,9 +185,7 @@ export const BOT_SESSION_FIELD_POLICY: FieldPolicy = {
   draftCriteria: enc,
   draftOptions: encJson,
   buildTitle: enc,
-  buildDueAt: plain(
-    'срок сдачи черновика — дата, не свободный текст (CLAUDE.md «Не шифровать: id, userId, даты, перечисления»)',
-  ),
+  buildDueAt: plain('срок сдачи черновика — дата (CLAUDE.md «Не шифровать … даты»)'),
   month: plain(
     'месяц скриншота оплаты — ключ формата YYYY-MM (ADR-0050), не свободный текст, как month у payments (SECURITY §5)',
   ),

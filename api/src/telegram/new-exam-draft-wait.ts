@@ -5,7 +5,7 @@
 // записать, юнит-тест без Mongo.
 import type { DateTime } from 'luxon';
 import { Types } from 'mongoose';
-import type { NewExamStep } from './bot-session.schema';
+import type { NewExamStep } from './new-exam-steps';
 
 // Отметки и шаги растянуты дольше одного сообщения, но короче суток — та же
 // величина, что у черновика вопроса (new-exam-item-draft-wait.ts).
