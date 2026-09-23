@@ -22,7 +22,7 @@ import type { ExamMediaDto } from './exam-media';
 // проверке (слой 4.6), а взять их потом из вопроса нельзя — его могли
 // переписать. Но ученику они не уходят — DTO ниже устроены соответственно:
 // `AttemptOptionDto`/`AttemptQuestionDto` не несут ни `correct`, ни
-// `criteria`, в отличие от `ExamItemOptionDto`/`ExamItemDto` выше.
+// `criteria`, в отличие от `ExamItemOptionDto`/`ExamItemDto` (exam-items.ts).
 
 export const EXAM_ATTEMPT_STATUSES = ['in_progress', 'submitted', 'graded'] as const;
 export type ExamAttemptStatus = (typeof EXAM_ATTEMPT_STATUSES)[number];

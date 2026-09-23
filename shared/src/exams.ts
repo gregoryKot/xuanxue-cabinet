@@ -31,7 +31,7 @@ export interface ExamBlockDto {
 
 /** `id` есть у существующего блока (сервис сохраняет его как есть — `mapBlocks`,
  * `exam-blocks.ts`); без `id` — новый блок, `id` создаёт сервис. Тот же приём, что
- * у `ExamItemOptionInput` выше и у `ScheduleRuleInput` (shared/src/classes.ts). */
+ * у `ExamItemOptionInput` (exam-items.ts) и `ScheduleRuleInput` (classes.ts). */
 export interface ExamBlockInput {
   id?: string;
   title?: string;

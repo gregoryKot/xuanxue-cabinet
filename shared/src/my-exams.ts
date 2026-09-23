@@ -3,7 +3,11 @@
 // лимит размера (CLAUDE.md «Храповики»); здесь только взгляд ученика на свои
 // попытки — форма живёт в exams.ts, снимок попытки — в exam-attempts.ts,
 // итог проверки — в exam-grading.ts.
-import type { AttemptAnswerDto, ExamAttemptDto, ExamAttemptStatus } from './exam-attempts';
+import type {
+  AttemptAnswerDto,
+  ExamAttemptDto,
+  ExamAttemptStatus,
+} from './exam-attempts';
 import type { GradingOutcome } from './exam-grading';
 
 // Экран ученика (`/me/exams`, docs/PLAN.md §11 слой 4.1 API) — опубликованные
