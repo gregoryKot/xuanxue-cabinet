@@ -6,6 +6,7 @@ import type { MyExamDto } from '@xuanxue/shared';
 import {
   describeExamState,
   describeOutcome,
+  dueAtLine,
   examTimeZoneNote,
   formatAttemptsLeft,
 } from './examAttemptState';
@@ -133,5 +134,17 @@ describe('examTimeZoneNote', () => {
 
   it('зритель живёт по часам школы — приписки нет', () => {
     expect(examTimeZoneNote('Asia/Jerusalem')).toBeNull();
+  });
+});
+
+describe('dueAtLine', () => {
+  it('нет срока — строки нет вовсе', () => {
+    expect(dueAtLine(undefined)).toBeNull();
+  });
+
+  it('есть срок — дата и час, с фиксированным поясом', () => {
+    expect(dueAtLine('2026-09-30T20:59:00Z', 'Asia/Jerusalem')).toBe(
+      'Сдать до Ср, 30 сентября, 23:59',
+    );
   });
 });

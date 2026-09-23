@@ -225,11 +225,7 @@ export {
   getMyExamAction,
   firstUnansweredQuestionIndex,
 } from './my-exams';
-export {
-  describeExamTime,
-  describeAttemptDeadline,
-  isExamDuePassed,
-} from './exam-time';
+export { describeExamTime, describeAttemptDeadline, isExamDuePassed } from './exam-time';
 export {
   EXAM_IN_PROGRESS_LABEL,
   EXAM_START_CONFIRM_TITLE,

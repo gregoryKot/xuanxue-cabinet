@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { StudentExamCard } from './StudentExamCard';
@@ -316,5 +316,88 @@ describe('StudentExamCard — время попытки', () => {
     renderCard({ exam: makeExam() });
 
     expect(screen.queryByText(/попытку даётся|Осталось \d+ мин/)).not.toBeInTheDocument();
+  });
+});
+
+// ADR-0125: срок сдачи — второе, независимое от лимита времени ограничение.
+// Прошедший срок закрывает только НОВУЮ попытку; уже идущую он не трогает
+// никогда — решение владельца 2026-09-22, самая важная ветка этого набора.
+describe('StudentExamCard — срок сдачи', () => {
+  stubViewerTimeZone();
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('срок ещё не прошёл — дата видна до старта, кнопка на месте', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-20T00:00:00Z'));
+    renderCard({ exam: makeExam({ dueAt: '2026-09-30T20:59:00Z' }) });
+
+    expect(screen.getByText(/^Сдать до /)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Начать' })).toBeInTheDocument();
+  });
+
+  it('срок прошёл, попытки не было — честная строка вместо кнопки «Начать»', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'));
+    renderCard({ exam: makeExam({ dueAt: '2026-09-30T20:59:00Z' }) });
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Срок сдачи прошёл. Начать новую попытку нельзя — обратитесь к учителю.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // Самое важное следствие правила (предупреждение владельца): ученик,
+  // сдающий прямо сейчас, не должен получить отказ при перезагрузке
+  // страницы после дедлайна. Кнопка «Продолжить» остаётся кнопкой.
+  it('срок прошёл, попытка идёт — «Продолжить» остаётся кнопкой, без честной строки', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'));
+    const exam = makeExam({
+      dueAt: '2026-09-30T20:59:00Z',
+      lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+    });
+    renderCard({ exam });
+
+    expect(screen.getByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Срок сдачи прошёл. Начать новую попытку нельзя — обратитесь к учителю.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  // Пара к тесту выше — та же честная строка встаёт и на месте «Пройти ещё
+  // раз»: срок закрывает любую НОВУЮ попытку, не только самую первую.
+  it('срок прошёл, есть право на «Пройти ещё раз» — честная строка вместо неё', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'));
+    const exam = makeExam({
+      dueAt: '2026-09-30T20:59:00Z',
+      attemptsAllowed: 2,
+      attemptsUsed: 1,
+      lastAttempt: { id: 'a1', status: 'graded', expired: false, outcome: 'needs_work' },
+    });
+    renderCard({ exam });
+
+    expect(
+      screen.queryByRole('button', { name: 'Пройти ещё раз' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Срок сдачи прошёл. Начать новую попытку нельзя — обратитесь к учителю.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('без срока — ни строки про дату, ни честного отказа', () => {
+    renderCard({ exam: makeExam() });
+
+    expect(screen.queryByText(/^Сдать до /)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Срок сдачи прошёл/)).not.toBeInTheDocument();
   });
 });

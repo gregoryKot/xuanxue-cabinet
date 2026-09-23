@@ -56,7 +56,7 @@ export interface MyExamDto {
    * ниже, отдельным полем. */
   timeLimitMin?: number;
   /** Срок сдачи — начать НОВУЮ попытку можно только до этого момента
-   * (ADR-0124, isExamDuePassed в exam-time.ts). Нет поля — срока нет. Уже
+   * (ADR-0125, isExamDuePassed в exam-time.ts). Нет поля — срока нет. Уже
    * идущую попытку срок не закрывает — у неё свой дедлайн, deadlineAt. */
   dueAt?: string;
   /** Отсутствует, если ученик ещё не начинал попытку по этой форме. */

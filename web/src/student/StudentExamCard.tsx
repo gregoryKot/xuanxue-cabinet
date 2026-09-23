@@ -32,13 +32,11 @@
 // экран» (ADR-0043) не тронуто: заливки нет, кнопка остаётся `secondary`.
 import { Link } from 'react-router-dom';
 import { EXAM_IN_PROGRESS_LABEL, getMyExamAction, type MyExamDto } from '@xuanxue/shared';
-import { Button } from '../components/Button';
 import { textLinkStyle } from '../components/screenLayout';
 import { ExamAttemptOutcome } from './ExamAttemptOutcome';
-import { describeExamState, formatAttemptsLeft } from './examAttemptState';
+import { describeExamState } from './examAttemptState';
 import {
   actionRowStyle,
-  attemptsLeftStyle,
   cardStyle,
   descriptionStyle,
   metaStyle,
@@ -47,15 +45,11 @@ import {
   runningRubricStyle,
   titleStyle,
 } from './studentExamCardStyles';
+import { StudentExamCardAction } from './StudentExamCardAction';
+import { useExamDuePassed } from './useExamDuePassed';
 import { useExamTimeLine } from './useExamTimeLine';
 
 const RUBRIC = 'Экзамен';
-
-const ACTION_LABEL = {
-  continue: 'Продолжить',
-  start: 'Начать',
-  retry: 'Пройти ещё раз',
-} as const;
 
 const REVIEW_LINK_TEXT = 'Посмотреть свою работу';
 
@@ -78,9 +72,9 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
   // Итог учителя уже говорит, что с экзаменом сейчас, — вторая строка об
   // одном и том же читается как сбой.
   const state = showOutcome ? null : describeExamState(exam);
-  // Попытку правда можно начать только этими двумя кнопками: «Продолжить»
-  // открывает начатую, и остаток попыток к ней отношения не имеет.
-  const showAttemptsLeft = action === 'start' || action === 'retry';
+  // Срок сдачи (ADR-0125) — StudentExamCardAction сам решает, кого он
+  // касается («Начать»/«Пройти ещё раз»), «Продолжить» его не видит.
+  const duePassed = useExamDuePassed(exam);
   // Попытка в работе уже открывается кнопкой «Продолжить» — ссылка нужна
   // ровно там, где кнопки на вход нет: сдал сам или закрыло время.
   const showReviewLink = attempt !== undefined && attempt.status !== 'in_progress';
@@ -105,18 +99,20 @@ export function StudentExamCard({ exam, pending, error, onStart }: StudentExamCa
 
         {exam.description && <p style={descriptionStyle}>{exam.description}</p>}
 
-        {/* Кнопка — если есть что нажать; над ней остаток попыток, чтобы
-            ученик знал цену нажатия до него, а не после. */}
+        {/* Кнопка — если есть что нажать; над ней остаток попыток и срок
+            сдачи, чтобы ученик знал цену нажатия до него, а не после. Срок
+            прошёл для «Начать»/«Пройти ещё раз» — StudentExamCardAction
+            сам рисует вместо кнопки честную строку (ADR-0125). */}
         {action && (
-          <div style={actionRowStyle}>
-            {showAttemptsLeft && (
-              <p style={attemptsLeftStyle}>{formatAttemptsLeft(exam)}</p>
-            )}
-            {!running && timeLine && <p style={attemptsLeftStyle}>{timeLine}</p>}
-            <Button type="button" variant="secondary" pending={pending} onClick={onStart}>
-              {ACTION_LABEL[action]}
-            </Button>
-          </div>
+          <StudentExamCardAction
+            exam={exam}
+            action={action}
+            running={running}
+            timeLine={timeLine}
+            duePassed={duePassed}
+            pending={pending}
+            onStart={onStart}
+          />
         )}
 
         {/* Ссылка, не вторая кнопка: главное действие на карточке одно

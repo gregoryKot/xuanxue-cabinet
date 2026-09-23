@@ -77,8 +77,7 @@ export class ExamsService {
     const payload: Record<string, unknown> = {
       ...rest,
       ...(createdBy !== undefined ? { createdBy } : {}),
-      // Поле схемы — Date, а не строка (тот же приём, что startsAt у
-      // buildCreatePayload /lessons): парсит и проверяет смещение parseUtcIso.
+      // Поле схемы — Date, не строка (тот же приём, что startsAt /lessons).
       ...(dueAt !== undefined ? { dueAt: parseUtcIso(dueAt, 'dueAt').toJSDate() } : {}),
     };
     if (mappedBlocks !== undefined) payload.blocks = mappedBlocks;
@@ -95,8 +94,7 @@ export class ExamsService {
 
     const { blocks, status, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_FIELDS);
-    // `splitUpdate` не знает о типах полей — dueAt приехал бы строкой ISO
-    // мимо схемы, где поле Date (та же оговорка, что в create() выше).
+    // splitUpdate не знает о типах — dueAt иначе уйдёт строкой мимо Date.
     if (typeof $set.dueAt === 'string') {
       $set.dueAt = parseUtcIso($set.dueAt, 'dueAt').toJSDate();
     }

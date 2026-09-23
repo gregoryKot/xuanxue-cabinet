@@ -16,7 +16,7 @@ export interface MyExamInput {
   attemptsAllowed: number;
   // Нет поля — у формы не было лимита времени (ADR-0122, describeExamTime).
   timeLimitMin?: number;
-  // Нет поля — у формы нет срока сдачи (ADR-0124, isExamDuePassed).
+  // Нет поля — у формы нет срока сдачи (ADR-0125, isExamDuePassed).
   dueAt?: Date;
 }
 
