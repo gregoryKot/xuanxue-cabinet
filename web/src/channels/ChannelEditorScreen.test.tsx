@@ -2,7 +2,7 @@
 // канала (ADR-0033). Мок сети — по префиксу пути (test-support/apiFetchMock.ts);
 // `/channels/ch1/test` стоит раньше `/channels/ch1`, mockApiByPath матчит
 // первым подходящим префиксом.
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -324,7 +324,13 @@ describe('ChannelEditorScreen — удаление', () => {
     renderAt('/channels/ch1');
     await user.click(await screen.findByRole('button', { name: 'Удалить канал' }));
 
-    expect(screen.getByRole('dialog', { name: 'Удалить канал?' })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Удалить канал?' });
+    expect(dialog).toBeInTheDocument();
+    // Акцент-последствие необратимого действия (ADR-0124) — RichText рисует
+    // его через <strong>, не просто текстом в строке.
+    expect(within(dialog).getByText('канал придётся подключить заново').tagName).toBe(
+      'STRONG',
+    );
     expect(callsWithMethod('DELETE')).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: 'Отмена' }));

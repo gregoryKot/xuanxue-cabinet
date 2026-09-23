@@ -16,9 +16,11 @@ describe('scheduleTzNote', () => {
     expect(scheduleTzNote(['Asia/Jerusalem'], 'Asia/Jerusalem')).toBeNull();
   });
 
+  // Пояс — акцент `**жирным**` (ADR-0124): строку рисует RichText в
+  // ScreenHeader.hint, здесь сверяем сырой текст формиттера с маркером.
   it('пояс школы другой — одна строка про часы школы', () => {
     expect(scheduleTzNote(['Asia/Jerusalem'], 'Europe/Moscow')).toBe(
-      'Время в сетке — по часам школы (Asia/Jerusalem).',
+      'Время в сетке — по часам школы (**Asia/Jerusalem**).',
     );
   });
 
@@ -26,7 +28,7 @@ describe('scheduleTzNote', () => {
     const tzs = Array.from({ length: 11 }, () => 'Asia/Jerusalem');
 
     expect(scheduleTzNote(tzs, 'Europe/Moscow')).toBe(
-      'Время в сетке — по часам школы (Asia/Jerusalem).',
+      'Время в сетке — по часам школы (**Asia/Jerusalem**).',
     );
   });
 
@@ -36,7 +38,7 @@ describe('scheduleTzNote', () => {
 
   it('два разных чужих пояса — оба в строке', () => {
     expect(scheduleTzNote(['Asia/Jerusalem', 'Europe/Moscow'], 'Europe/Lisbon')).toBe(
-      'Время в сетке — по часам школы (Asia/Jerusalem, Europe/Moscow).',
+      'Время в сетке — по часам школы (**Asia/Jerusalem, Europe/Moscow**).',
     );
   });
 });
@@ -46,9 +48,10 @@ describe('planningTzNote', () => {
     expect(planningTzNote(['Asia/Jerusalem'], 'Asia/Jerusalem')).toBeNull();
   });
 
+  // Пояс — акцент `**жирным**` (ADR-0124), см. комментарий у scheduleTzNote выше.
   it('зритель в другом поясе — время по его часам, школа названа отдельно', () => {
     expect(planningTzNote(['Asia/Jerusalem'], 'Europe/Moscow')).toBe(
-      'Время — по вашим часам. Школа живёт по Asia/Jerusalem.',
+      'Время — по вашим часам. Школа живёт по **Asia/Jerusalem**.',
     );
   });
 });

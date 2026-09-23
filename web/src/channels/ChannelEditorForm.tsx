@@ -19,7 +19,7 @@ const BACK_TEXT = 'К списку каналов';
 const NEW_CHANNEL_TITLE = 'Новый канал';
 const REMOVE_LABEL = 'Удалить канал';
 const REMOVE_MESSAGE =
-  'Рассылки перестанут уходить в этот канал. Отменить нельзя — канал придётся подключить заново.';
+  'Рассылки перестанут уходить в этот канал. Отменить нельзя — **канал придётся подключить заново**.';
 
 interface ChannelEditorFormProps {
   channel: ChannelDto | null;

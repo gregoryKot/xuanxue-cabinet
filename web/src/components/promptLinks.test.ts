@@ -79,4 +79,21 @@ describe('splitPromptLinks', () => {
       { text: 'https://ya.ru', href: 'https://ya.ru' },
     ]);
   });
+
+  // Ошибка валидации «должна начинаться с https://.» — схема стоит словом, и
+  // ссылкой она не становится: кликать не на что (ADR-0124, ошибки формы
+  // поехали через RichText).
+  it('голая схема без хоста остаётся текстом', () => {
+    expect(splitPromptLinks('Ссылка должна начинаться с https://.')).toEqual([
+      { text: 'Ссылка должна начинаться с https://.' },
+    ]);
+  });
+
+  it('после голой схемы настоящий адрес всё равно находится', () => {
+    const parts = splitPromptLinks('Не http:// а https://ya.ru');
+    expect(parts).toEqual([
+      { text: 'Не http:// а ' },
+      { text: 'https://ya.ru', href: 'https://ya.ru' },
+    ]);
+  });
 });

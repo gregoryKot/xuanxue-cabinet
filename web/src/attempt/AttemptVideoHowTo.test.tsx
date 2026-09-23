@@ -38,6 +38,9 @@ describe('AttemptVideoHowTo', () => {
     expect(
       screen.getByText(/Проверьте ссылку в окне, где вы не вошли в свой аккаунт/),
     ).toBeInTheDocument();
+    // ADR-0124: нужная настройка доступа выделена акцентом — RichText рисует
+    // её отдельным <strong>.
+    expect(screen.getByText('«Доступ по ссылке»').tagName).toBe('STRONG');
   });
 
   it('повторное нажатие закрывает блок', async () => {

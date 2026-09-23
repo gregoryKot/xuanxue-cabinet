@@ -15,6 +15,7 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { Button, type ButtonVariant } from '../components/Button';
+import { RichText } from '../components/RichText';
 import { useTelegramLinkCode } from './useTelegramLinkCode';
 
 const BUTTON_LABEL = 'Связать Telegram';
@@ -69,7 +70,14 @@ export function TelegramLinkButton({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {explanation && <p style={{ margin: 0 }}>{explanation}</p>}
+      {/* Через RichText (ADR-0124): причина связки — абзац, который читают
+          перед нажатием, и акцент `**жирным**` в нём обязан доезжать до
+          экрана, а не показываться звёздочками. */}
+      {explanation && (
+        <p style={{ margin: 0 }}>
+          <RichText text={explanation} />
+        </p>
+      )}
       {error && (
         <p role="alert" style={{ margin: 0, color: 'var(--danger)' }}>
           {error}

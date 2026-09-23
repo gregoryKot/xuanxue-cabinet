@@ -105,10 +105,11 @@ describe('ProfileScreen — список уведомлений по роли', 
     );
 
     expect(
-      await screen.findByText(
-        'То же самое можно переключить в боте — командой /notifications.',
-      ),
+      await screen.findByText(/То же самое можно переключить в боте/),
     ).toBeInTheDocument();
+    // ADR-0124: команда бота выделена акцентом — RichText рисует её
+    // отдельным <strong>.
+    expect(screen.getByText('/notifications').tagName).toBe('STRONG');
   });
 
   it('нет личного чата с ботом — подсказки про команду /notifications нет', async () => {
@@ -170,11 +171,13 @@ describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
     renderScreen(STUDENT, { enabled: [] });
 
     expect(await screen.findByText('Второй способ входа')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Сейчас в кабинет пускает только почта. Свяжите Telegram — если потеряете доступ к ящику, войдёте через него.',
-      ),
-    ).toBeInTheDocument();
+    // ADR-0124: что даст связка — выделено акцентом, RichText рисует его
+    // отдельным <strong>, полный текст проверяем через textContent абзаца.
+    const explanation = screen.getByText(/Сейчас в кабинет пускает только почта/);
+    expect(explanation).toHaveTextContent(
+      'Сейчас в кабинет пускает только почта. Свяжите Telegram — если потеряете ' +
+        'доступ к ящику, войдёте через него.',
+    );
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
   });
 });

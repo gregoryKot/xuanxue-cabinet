@@ -16,6 +16,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { hasRole } from '../auth/hasRole';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { RichText } from '../components/RichText';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
@@ -31,14 +32,14 @@ const EXPLANATION = 'Здесь те, кто зарегистрировался 
 // Что дают роли — приписка под объяснением: читают её один раз, а место в
 // шапке дорогое (ScreenHeader.hint, тот же приём, что пояс школы у «Занятий»).
 const ROLES_HINT =
-  'Отметьте, кто ведёт занятия: учитель видит расписание и рассылки, администратор ещё и назначает роли.';
+  'Отметьте, кто ведёт занятия: учитель видит расписание и рассылки, администратор ещё и **назначает роли**.';
 const TEACHER_EXPLANATION =
-  'Список учеников и назначение ролей видит только администратор — вам здесь доступна ссылка-приглашение школы.';
+  'Список учеников и назначение ролей видит **только администратор** — вам здесь доступна ссылка-приглашение школы.';
 // После ADR-0036 вход без ссылки-приглашения получает 403 — текст ведёт к
 // карточке «Ссылка-приглашение» выше на этом же экране, а не к «дайте ссылку
 // на кабинет» (кабинет по прямой ссылке больше не пускает).
 const EMPTY_MESSAGE =
-  'Пока никто, кроме вас, не входил. Отправьте ссылку-приглашение из карточки выше.';
+  'Пока никто, кроме вас, не входил. Отправьте **ссылку-приглашение** из карточки выше.';
 
 const countStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 
@@ -77,7 +78,9 @@ export default function PeopleScreen() {
       )}
 
       {isAdmin && !error && people && others.length === 0 && (
-        <p style={{ margin: 0 }}>{EMPTY_MESSAGE}</p>
+        <p style={{ margin: 0 }}>
+          <RichText text={EMPTY_MESSAGE} />
+        </p>
       )}
 
       {isAdmin && !error && people && others.length > 0 && (

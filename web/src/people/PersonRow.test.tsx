@@ -221,6 +221,9 @@ describe('PersonRow — удаление данных', () => {
     const dialog = screen.getByRole('dialog', { name: 'Удалить данные?' });
     expect(dialog).toBeInTheDocument();
     expect(screen.getByText(/Аккаунт и вход в кабинет пропадут/)).toBeInTheDocument();
+    // Акцент «Отменить нельзя» — факт необратимого действия, ADR-0124:
+    // выделен полужирным через RichText, не просто текстом.
+    expect(within(dialog).getByText('Отменить нельзя').tagName).toBe('STRONG');
 
     await user.click(within(dialog).getByRole('button', { name: 'Удалить данные' }));
 

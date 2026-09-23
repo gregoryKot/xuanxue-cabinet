@@ -10,7 +10,7 @@ import { FormServerError } from '../components/FormServerError';
 import { useSendNow, SEND_NOW_SUCCESS } from './useSendNow';
 
 const CONFIRM_MESSAGE =
-  'Ссылка на занятие уйдёт во все подключённые каналы прямо сейчас, не дожидаясь обычного времени рассылки.';
+  'Ссылка на занятие уйдёт во все подключённые каналы **прямо сейчас**, не дожидаясь обычного времени рассылки.';
 
 interface SendNowButtonProps {
   lessonId: string;

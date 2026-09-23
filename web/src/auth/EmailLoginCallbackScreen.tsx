@@ -16,6 +16,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { INVITE_QUERY_PARAM } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
+import { RichText } from '../components/RichText';
 import { SkeletonLines } from '../components/Skeleton';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { hasSession, useAuth } from './AuthProvider';
@@ -30,7 +31,7 @@ const INCOMPLETE_LINK_MESSAGE = 'Ссылка неполная. Запросит
 // другом случае, «Запросить новую» вернула бы в ту же петлю. Приписка вместо
 // кнопки — конкретное действие (docs/VOICE.md): где взять ссылку.
 const INVITE_HINT_MESSAGE =
-  'Ссылку-приглашение вам даст учитель школы. Откройте её и войдите ещё раз.';
+  'Ссылку-приглашение вам даст **учитель школы**. Откройте её и войдите ещё раз.';
 const FORBIDDEN_STATUS = 403;
 
 const errorTextStyle: CSSProperties = { margin: 0, color: 'var(--danger)' };
@@ -93,7 +94,9 @@ export default function EmailLoginCallbackScreen() {
             {error}
           </p>
           {errorStatus === FORBIDDEN_STATUS ? (
-            <p style={screenExplanationStyle}>{INVITE_HINT_MESSAGE}</p>
+            <p style={screenExplanationStyle}>
+              <RichText text={INVITE_HINT_MESSAGE} />
+            </p>
           ) : (
             <Button variant="secondary" onClick={goToLogin} style={fullWidthStyle}>
               Запросить новую

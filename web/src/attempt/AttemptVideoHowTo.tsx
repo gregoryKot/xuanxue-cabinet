@@ -8,15 +8,19 @@
 // путь ответа на видео-вопрос (ADR-0084, уточняет ADR-0023), поэтому
 // инструкция стоит рядом с формой ссылки, не с кнопкой бота.
 import { useState, type CSSProperties } from 'react';
+import { RichText } from '../components/RichText';
 import { TextLinkButton } from '../components/TextLinkButton';
 
 const TOGGLE = 'Как выложить видео, чтобы учитель его открыл';
 const YOUTUBE =
-  'YouTube. В настройках доступа выберите «Доступ по ссылке» — «Ограниченный доступ» учитель не откроет. Ссылку возьмите в «Поделиться».';
+  'YouTube. В настройках доступа выберите **«Доступ по ссылке»** — «Ограниченный ' +
+  'доступ» учитель не откроет. Ссылку возьмите в «Поделиться».';
 const VK =
-  'ВКонтакте. Загрузите видео в «Мои видео», в приватности поставьте «Доступ по ссылке» или «Все пользователи», скопируйте ссылку.';
+  'ВКонтакте. Загрузите видео в «Мои видео», в приватности поставьте ' +
+  '**«Доступ по ссылке» или «Все пользователи»**, скопируйте ссылку.';
 const OTHER =
-  'Rutube, Яндекс.Диск, Облако Mail.ru годятся так же: видео открывается по ссылке, без входа в чужой аккаунт.';
+  'Rutube, Яндекс.Диск, Облако Mail.ru годятся так же: видео открывается по ' +
+  'ссылке, **без входа в чужой аккаунт**.';
 const MISTAKE = 'Проверьте ссылку в окне, где вы не вошли в свой аккаунт.';
 
 const containerStyle: CSSProperties = {
@@ -50,9 +54,15 @@ export function AttemptVideoHowTo() {
       {open && (
         <div style={containerStyle}>
           <ul style={listStyle}>
-            <li>{YOUTUBE}</li>
-            <li>{VK}</li>
-            <li>{OTHER}</li>
+            <li>
+              <RichText text={YOUTUBE} />
+            </li>
+            <li>
+              <RichText text={VK} />
+            </li>
+            <li>
+              <RichText text={OTHER} />
+            </li>
           </ul>
           <p style={mistakeStyle}>{MISTAKE}</p>
         </div>

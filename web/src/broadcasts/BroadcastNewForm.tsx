@@ -26,7 +26,7 @@ const BROADCASTS_PATH = '/broadcasts';
 const BACK_TEXT = 'К журналу рассылок';
 const TITLE = 'Новая рассылка';
 const EXPLANATION =
-  'Текст уйдёт в выбранные каналы как есть: подстановки шаблонов к разовой рассылке не применяются.';
+  'Текст уйдёт в выбранные каналы как есть: подстановки шаблонов к разовой рассылке **не применяются**.';
 
 interface BroadcastNewFormProps {
   channels: ChannelDto[];

@@ -10,6 +10,7 @@ import type { LessonDto, TemplateKind } from '@xuanxue/shared';
 import { Field } from '../components/Field';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { PostPreview } from '../components/PostPreview';
+import { RichText } from '../components/RichText';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
 import { Select } from '../components/Select';
 import { TextLinkButton } from '../components/TextLinkButton';
@@ -17,7 +18,7 @@ import { formatDateTime } from '../lib/formatDate';
 import { useAutoPreview } from './useAutoPreview';
 
 const DIRTY_NOTE =
-  'Сначала сохраните — предпросмотр показывает сохранённый текст, не то, что напечатано выше.';
+  '**Сначала сохраните** — предпросмотр показывает сохранённый текст, не то, что напечатано выше.';
 const STAND_IN_NOTE = 'Записи у занятия ещё нет — показали, как будет выглядеть пост.';
 
 interface TemplatePreviewSectionProps {
@@ -67,7 +68,11 @@ export function TemplatePreviewSection({
         </Field>
       )}
 
-      {dirty && <p style={noteStyle}>{DIRTY_NOTE}</p>}
+      {dirty && (
+        <p style={noteStyle}>
+          <RichText text={DIRTY_NOTE} />
+        </p>
+      )}
 
       <TextLinkButton
         disabled={!lessonId || dirty || !!lessonsError || preview.pending}

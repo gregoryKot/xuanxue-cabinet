@@ -23,6 +23,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { blockCardStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { RichText } from '../components/RichText';
 import {
   screenColumnTitleStyle,
   screenExplanationStyle,
@@ -127,7 +128,7 @@ export default function AttemptReviewScreen() {
             Проверка
           </h2>
           <p style={{ ...screenHintStyle, margin: '6px 0 0' }}>
-            {gradingDeliveryHint(review.notifiesUserInTelegram)}
+            <RichText text={gradingDeliveryHint(review.notifiesUserInTelegram)} />
           </p>
           <GradingForm
             key={review.attemptId}

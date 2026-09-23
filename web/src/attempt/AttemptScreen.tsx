@@ -38,7 +38,7 @@ import { useExpiryNotice } from './useExpiryNotice';
 
 const EXPIRY_NOTICE_TITLE = 'Время вышло';
 const EXPIRY_NOTICE_MESSAGE =
-  'Попытка закрыта и ушла учителю на проверку. Успевшие ответы сохранены.';
+  'Попытка закрыта и **ушла учителю на проверку**. Успевшие ответы сохранены.';
 
 export default function AttemptScreen() {
   const { id } = useParams<{ id: string }>();

@@ -243,11 +243,13 @@ describe('EmailLoginCallbackScreen — join (ADR-0030/0036)', () => {
         'Чтобы попасть в кабинет, откройте ссылку-приглашение от учителя школы.',
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Ссылку-приглашение вам даст учитель школы. Откройте её и войдите ещё раз.',
-      ),
-    ).toBeInTheDocument();
+    // ADR-0124: кто даёт ссылку — выделено акцентом, RichText рисует его
+    // отдельным <strong>, полный текст проверяем через textContent абзаца.
+    const hint = screen.getByText(/Ссылку-приглашение вам даст/);
+    expect(hint).toHaveTextContent(
+      'Ссылку-приглашение вам даст учитель школы. Откройте её и войдите ещё раз.',
+    );
+    expect(screen.getByText('учитель школы').tagName).toBe('STRONG');
     expect(
       screen.queryByRole('button', { name: 'Запросить новую' }),
     ).not.toBeInTheDocument();

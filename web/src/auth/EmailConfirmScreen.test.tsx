@@ -45,11 +45,10 @@ describe('EmailConfirmScreen — неполная ссылка (запрос н�
     renderScreen('');
 
     expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Ссылка неполная. Откройте «Профиль» в кабинете и пришлите её ещё раз.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Ссылка неполная\. Откройте/)).toBeInTheDocument();
+    // ADR-0124: название раздела выделено акцентом — RichText рисует его
+    // отдельным <strong>.
+    expect(screen.getByText('«Профиль»').tagName).toBe('STRONG');
     expect(confirmCalls()).toHaveLength(0);
 
     await user.click(screen.getByRole('button', { name: 'Открыть кабинет' }));
@@ -92,9 +91,12 @@ describe('EmailConfirmScreen — валидный токен, подтвержд
     renderScreen(`?token=${VALID_TOKEN}`);
 
     expect(await screen.findByText('Адрес подтверждён')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Теперь можно входить в кабинет и по почте/),
-    ).toBeInTheDocument();
+    // ADR-0124: новый способ выделен акцентом — RichText рисует его отдельным
+    // <strong>, полный текст проверяем через textContent абзаца.
+    const explanation = screen.getByText(/Теперь можно входить в кабинет/);
+    expect(explanation).toHaveTextContent(
+      'Теперь можно входить в кабинет и по почте — не только через Telegram.',
+    );
     expect(confirmCalls()).toHaveLength(1);
     expect(confirmCalls()[0]?.[1]).toEqual({
       method: 'POST',

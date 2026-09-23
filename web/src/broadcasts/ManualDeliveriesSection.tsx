@@ -12,6 +12,7 @@ import { useRef, type CSSProperties } from 'react';
 import type { ChannelDto, DeliveryDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { RichText } from '../components/RichText';
 import { SkeletonList } from '../components/Skeleton';
 import { DeliveryCard } from './DeliveryCard';
 
@@ -19,7 +20,7 @@ import { DeliveryCard } from './DeliveryCard';
 // быть несколько сразу) — общая причина одна для любого ручного канала:
 // у бота там нет своего доступа для отправки (docs/PLAN.md §6 «Доставка»).
 const MANUAL_HINT =
-  'Бот не пишет в такие каналы сам — скопируйте текст и отправьте от своего имени.';
+  'Бот не пишет в такие каналы сам — скопируйте текст и отправьте **от своего имени**.';
 
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12 };
 const panelStyle: CSSProperties = {
@@ -77,7 +78,9 @@ export function ManualDeliveriesSection({
       <div style={panelStyle}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={panelTitleStyle}>Ждут отправки вручную · {deliveries.length}</h2>
-          <p style={panelHintStyle}>{MANUAL_HINT}</p>
+          <p style={panelHintStyle}>
+            <RichText text={MANUAL_HINT} />
+          </p>
         </div>
         <Button
           variant="secondary"

@@ -9,22 +9,23 @@ import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { blockCardStyle, dividedListStyle } from '../components/listCardStyles';
 import { noteStyle } from '../components/screenLayout';
+import { RichText } from '../components/RichText';
 import { questionsPerAttemptNote } from './questionsPerAttempt';
 import { ExamPreviewQuestion } from './ExamPreviewQuestion';
 
-const EMPTY_NOTE = 'В экзамене пока нет вопросов — сдающий увидит пустой экран.';
+const EMPTY_NOTE = 'В экзамене пока нет вопросов — сдающий увидит **пустой экран**.';
 
 /** Оба перемешивания — про одно и то же (порядок у каждого сдающего свой),
  * поэтому один абзац на оба случая, а не два подряд об одной мысли (VOICE). */
 function shuffleNote(shuffleQuestions: boolean, shuffleOptions: boolean): string | null {
   if (shuffleQuestions && shuffleOptions) {
-    return 'Порядок вопросов и вариантов ответа будет другим у каждого сдающего — здесь показан один из вариантов.';
+    return 'Порядок вопросов и вариантов ответа будет **другим у каждого сдающего** — здесь показан один из вариантов.';
   }
   if (shuffleQuestions) {
-    return 'Порядок вопросов будет другим у каждого сдающего — здесь показан один из вариантов.';
+    return 'Порядок вопросов будет **другим у каждого сдающего** — здесь показан один из вариантов.';
   }
   if (shuffleOptions) {
-    return 'Порядок вариантов ответа будет другим у каждого сдающего.';
+    return 'Порядок вариантов ответа будет **другим у каждого сдающего**.';
   }
   return null;
 }
@@ -60,15 +61,25 @@ export function ExamPreviewQuestions({
     <section style={sectionStyle}>
       {questionsPerAttempt !== undefined && (
         <p style={noteStyle}>
-          {questionsPerAttemptNote(
-            questionsPerAttempt,
-            itemIds.length,
-            requiredIds.length,
-          )}
+          <RichText
+            text={questionsPerAttemptNote(
+              questionsPerAttempt,
+              itemIds.length,
+              requiredIds.length,
+            )}
+          />
         </p>
       )}
-      {shuffle && <p style={noteStyle}>{shuffle}</p>}
-      {itemIds.length === 0 && <p style={noteStyle}>{EMPTY_NOTE}</p>}
+      {shuffle && (
+        <p style={noteStyle}>
+          <RichText text={shuffle} />
+        </p>
+      )}
+      {itemIds.length === 0 && (
+        <p style={noteStyle}>
+          <RichText text={EMPTY_NOTE} />
+        </p>
+      )}
       {itemIds.length > 0 && (
         <div style={blockCardStyle}>
           <ol style={dividedListStyle}>

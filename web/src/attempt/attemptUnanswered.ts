@@ -54,5 +54,5 @@ function hasAnswer(answer: AttemptAnswerDto | undefined): boolean {
  * и так видно на форме — повторять незачем. */
 export function formatUnansweredConfirm(count: number): string {
   const questions = `${count} ${pluralRu(count, QUESTION_FORMS)}`;
-  return `Без ответа ${questions}. После отправки менять ответы будет нельзя.`;
+  return `Без ответа **${questions}**. После отправки менять ответы будет нельзя.`;
 }

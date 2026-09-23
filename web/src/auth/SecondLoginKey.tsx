@@ -17,6 +17,7 @@
 // вопрос у них буквально один (attempt/AttemptQuestionVideo.tsx).
 import { useCallback, useState } from 'react';
 import type { MeDto } from '@xuanxue/shared';
+import { RichText } from '../components/RichText';
 import { screenExplanationStyle } from '../components/screenLayout';
 import { showsTelegramLinkOffer } from '../telegram/acceptsTelegramOffer';
 import { NoTelegramSwitch } from '../telegram/NoTelegramSwitch';
@@ -32,9 +33,11 @@ const TITLE = 'Второй способ входа';
 // приходит уже с одним ключом (тем, через который вошли впервые), блок
 // предлагает завести второй. Оба потерянными сразу быть не могут.
 const MISSING_TELEGRAM_EXPLANATION =
-  'Сейчас в кабинет пускает только почта. Свяжите Telegram — если потеряете доступ к ящику, войдёте через него.';
+  'Сейчас в кабинет пускает только почта. Свяжите Telegram — если потеряете доступ ' +
+  'к ящику, **войдёте через него**.';
 const MISSING_EMAIL_EXPLANATION =
-  'Сейчас в кабинет пускает только Telegram. Добавьте почту — если потеряете к нему доступ, войдёте по ссылке из письма.';
+  'Сейчас в кабинет пускает только Telegram. Добавьте почту — если потеряете к нему ' +
+  'доступ, **войдёте по ссылке из письма**.';
 
 const sectionStyle = { display: 'flex', flexDirection: 'column' as const, gap: 10 };
 const headingStyle = { margin: 0 };
@@ -89,10 +92,14 @@ export function SecondLoginKey({ me, onBeforeLink }: SecondLoginKeyProps) {
           подходит ни один (needsTelegram и showEmail оба ложны), и тогда не
           рисуется ни один из них. */}
       {needsTelegram && (
-        <p style={screenExplanationStyle}>{MISSING_TELEGRAM_EXPLANATION}</p>
+        <p style={screenExplanationStyle}>
+          <RichText text={MISSING_TELEGRAM_EXPLANATION} />
+        </p>
       )}
       {!needsTelegram && showEmail && (
-        <p style={screenExplanationStyle}>{MISSING_EMAIL_EXPLANATION}</p>
+        <p style={screenExplanationStyle}>
+          <RichText text={MISSING_EMAIL_EXPLANATION} />
+        </p>
       )}
       {needsTelegram && <TelegramLinkButton onBeforeLink={onBeforeLink} />}
       {showEmail &&

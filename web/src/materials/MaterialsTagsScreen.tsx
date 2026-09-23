@@ -23,7 +23,7 @@ import { useTagsSummary } from './useTagsSummary';
 
 const TITLE = 'Теги';
 const EXPLANATION =
-  'Тег ставится на дате занятия или в материале. Выберите тег — увидите все его даты и материалы.';
+  'Тег ставится на дате занятия или в материале. Выберите тег — увидите **все его даты и материалы**.';
 const EMPTY_MESSAGE = 'У школы пока нет тегов.';
 const TAG_QUERY_KEY = 'tag';
 

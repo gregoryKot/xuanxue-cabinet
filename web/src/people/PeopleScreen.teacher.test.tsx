@@ -48,8 +48,16 @@ describe('PeopleScreen — учитель', () => {
     expect(await screen.findByText('Ссылка-приглашение')).toBeInTheDocument();
     // Приписка про роли — админская: учителю назначать некого.
     expect(screen.queryByText(/Отметьте, кто ведёт занятия/)).not.toBeInTheDocument();
+    // Акцент «только администратор» рисует RichText через <strong> —
+    // getByText по всей строке ищет по textContent родителя, не по прямым
+    // текстовым узлам (docs/adr/0124).
     expect(
-      screen.getByText(/Список учеников и назначение ролей видит только администратор/),
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          el.textContent ===
+            'Список учеников и назначение ролей видит только администратор — вам здесь доступна ссылка-приглашение школы.',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByText('Пока никто, кроме вас, не входил.', { exact: false }),

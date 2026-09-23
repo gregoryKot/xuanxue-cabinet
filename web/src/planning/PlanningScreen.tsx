@@ -14,6 +14,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatRecordingSummary, PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { RichText } from '../components/RichText';
 import { screenHintStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
@@ -28,7 +29,7 @@ import { useLessons } from './useLessons';
 import { useLessonRecordingSummary } from './useLessonRecordingSummary';
 
 const TITLE = 'Занятия';
-const EXPLANATION = `Занятия на ${PLANNING_HORIZON_WEEKS} недели вперёд. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
+const EXPLANATION = `Занятия на **${PLANNING_HORIZON_WEEKS} недели** вперёд. Впишите тему заранее и добавьте запись после занятия — рассылка уйдёт сама.`;
 // Блок текста шапки уже макета (1c-planning.html, docs/adr/0043) — рядом
 // теперь пара действий, «Расписание» и «Разовое занятие»
 // (PlanningActions.tsx, отзыв владельца 2026-09-18): на 880px общей ширины
@@ -39,7 +40,7 @@ const TITLE_MAX_WIDTH_PX = 540;
 // Кнопка называется «Разовое занятие», и по названию непонятно, чем оно
 // отличается от строчки расписания (отзыв владельца 2026-09-12).
 const ONE_OFF_HINT =
-  'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него не меняется.';
+  'Разовое занятие — то, чего нет в расписании: семинар, перенос, замена. Расписание от него **не меняется**.';
 // Тихие строки шапки — приписка к кнопке и число раздела (ТЗ §14, слой 3.5;
 // строкой, не StatNumber: крупный кегль спорил бы с блоком «сегодня»). Мера
 // как у текста шапки, иначе строка тянется на все 880 и спорит с колонкой
@@ -52,6 +53,8 @@ const headerNoteStyle = {
 };
 const LESSON_PATH = '/planning';
 const SCHEDULE_PATH = '/schedule';
+const EMPTY_GROUPS_MESSAGE =
+  'Пока ничего не запланировано. Добавьте правило в «Расписании» или создайте **разовое занятие**.';
 
 export default function PlanningScreen() {
   const lessonsState = useLessons();
@@ -110,7 +113,11 @@ export default function PlanningScreen() {
           )
         }
       />
-      {!lessonsState.loading && <p style={headerNoteStyle}>{ONE_OFF_HINT}</p>}
+      {!lessonsState.loading && (
+        <p style={headerNoteStyle}>
+          <RichText text={ONE_OFF_HINT} />
+        </p>
+      )}
       {recordingLine && <p style={headerNoteStyle}>{recordingLine}</p>}
       {/* Сбой списка занятий — один баннер ниже, не два (TodaySection.tsx). */}
       {!lessonsError && (
@@ -125,8 +132,7 @@ export default function PlanningScreen() {
 
       {!lessonsState.loading && !lessonsError && groups.length === 0 && (
         <p style={{ margin: 0 }}>
-          Пока ничего не запланировано. Добавьте правило в «Расписании» или создайте
-          разовое занятие.
+          <RichText text={EMPTY_GROUPS_MESSAGE} />
         </p>
       )}
 

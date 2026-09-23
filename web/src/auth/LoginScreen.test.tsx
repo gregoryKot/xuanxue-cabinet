@@ -123,9 +123,14 @@ describe('LoginScreen — конфигурация', () => {
     expect(
       await screen.findByRole('button', { name: 'Войти через Telegram' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText('Откроется Telegram в этой же вкладке и вернёт вас обратно.'),
-    ).toBeInTheDocument();
+    // ADR-0124: где останется человек — выделено акцентом, RichText рисует
+    // его отдельным <strong>, полный текст проверяем через textContent
+    // абзаца.
+    const hint = screen.getByText(/Откроется Telegram/);
+    expect(hint).toHaveTextContent(
+      'Откроется Telegram в этой же вкладке и вернёт вас обратно.',
+    );
+    expect(screen.getByText('в этой же вкладке').tagName).toBe('STRONG');
   });
 
   // Отзыв владельца (ADR-0044) — приписка стоит НАД кнопкой входа и видна
