@@ -64,6 +64,21 @@ describe('Exam attempts — владение (e2e)', () => {
     ).set('Cookie', cookieA);
     const attemptId = (startedA.body as ExamAttemptDto).id;
 
+    // А читает свою попытку своим адресом (ADR-0124) — 200.
+    const getByA = await request(server())
+      .get(`/api/attempts/${attemptId}`)
+      .set('Cookie', cookieA);
+    expect(getByA.status).toBe(200);
+    expect((getByA.body as ExamAttemptDto).id).toBe(attemptId);
+
+    // Б читает попытку А тем же адресом — не найдена, не 403 (SECURITY §3):
+    // не подтверждаем даже факт её существования.
+    const getByB = await request(server())
+      .get(`/api/attempts/${attemptId}`)
+      .set('Cookie', cookieB);
+    expect(getByB.status).toBe(404);
+    expect((getByB.body as ApiErrorBody).code).toBe('not_found');
+
     // Б пробует сохранить ответ в попытке А — не найдена, не 200.
     const saveByB = await withCsrf(
       request(server()).patch(`/api/attempts/${attemptId}/answers`),

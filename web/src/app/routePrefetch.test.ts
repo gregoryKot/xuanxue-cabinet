@@ -3,7 +3,6 @@
 // здесь важно не какой чанк выбран, а какие пути строятся для него.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ATTEMPTS_LIST_PATH,
   CLASSES_LIST_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
   GRADED_ATTEMPTS_PATH,
@@ -18,6 +17,7 @@ import {
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
+  attemptPath,
   channelsListPath,
   examItemsListPath,
   examsListPath,
@@ -214,9 +214,9 @@ describe('RouteModule.prefetch — редактор существующей з�
     expect(prefetchAt('/grading/abc')).toEqual(['/attempts/abc/review']);
   });
 
-  it('/attempts/:id — список попыток целиком (экран ищет свою в нём)', () => {
+  it('/attempts/:id — своя попытка своим адресом (ADR-0126)', () => {
     expect(prefetchAt('/attempts/652f00000000000000000001')).toEqual([
-      ATTEMPTS_LIST_PATH,
+      attemptPath('652f00000000000000000001'),
     ]);
   });
 });

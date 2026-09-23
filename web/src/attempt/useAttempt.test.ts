@@ -1,14 +1,18 @@
-// Отправка попытки: успех правит список ответом самого POST (ADR-0094, без
+// Отправка попытки: успех правит попытку ответом самого POST (ADR-0094, без
 // второго GET) — статус на экране приходит с сервера, а не рисуется по факту
 // нажатия; сбой оставляет ошибку видимой на экране сдачи, потому что диалог
 // подтверждения к этому моменту уже закрылся (useAttempt.ts, комментарий к
 // `submit`).
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import { ATTEMPT_NOT_FOUND_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
-import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import {
+  mockApiByPath,
+  mockedApiFetch,
+  resetApiFetchBetweenTests,
+} from '../test-support/apiFetchMock';
 import { writeAttemptAnswerDraft } from './attemptLocalDraft';
 import { useAttempt } from './useAttempt';
 
@@ -32,9 +36,9 @@ const ATTEMPT: ExamAttemptDto = {
 };
 
 describe('useAttempt — отправка', () => {
-  it('успех: ровно один запрос на submit(), список правится его ответом', async () => {
+  it('успех: ровно один запрос на submit(), попытка правится его ответом', async () => {
     const submitted: ExamAttemptDto = { ...ATTEMPT, status: 'submitted' };
-    mockedApiFetch.mockResolvedValueOnce([ATTEMPT]).mockResolvedValueOnce(submitted);
+    mockedApiFetch.mockResolvedValueOnce(ATTEMPT).mockResolvedValueOnce(submitted);
     const { result } = renderHook(() => useAttempt('a1'));
     await waitFor(() => expect(result.current.attempt).not.toBeNull());
 
@@ -42,10 +46,11 @@ describe('useAttempt — отправка', () => {
       await result.current.submit();
     });
 
+    expect(mockedApiFetch).toHaveBeenNthCalledWith(1, '/attempts/a1', expect.anything());
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/submit', {
       method: 'POST',
     });
-    // Загрузка списка + submit(), ни одного похода в сеть сверх этого
+    // Загрузка своей попытки + submit(), ни одного похода в сеть сверх этого
     // (нет reload()).
     expect(mockedApiFetch).toHaveBeenCalledTimes(2);
     expect(result.current.attempt).toEqual(submitted);
@@ -55,7 +60,7 @@ describe('useAttempt — отправка', () => {
 
   it('сбой: ошибка видна на экране, попытка осталась в работе', async () => {
     mockedApiFetch
-      .mockResolvedValueOnce([ATTEMPT])
+      .mockResolvedValueOnce(ATTEMPT)
       .mockRejectedValueOnce(new ApiError('Нет связи с сервером.', 0, 'network'));
     const { result } = renderHook(() => useAttempt('a1'));
     await waitFor(() => expect(result.current.attempt).not.toBeNull());
@@ -74,7 +79,7 @@ describe('useAttempt — отправка', () => {
     // должен пережить submit().
     writeAttemptAnswerDraft('a1', { itemId: 'q1', text: 'недосохранённое' });
     const submitted: ExamAttemptDto = { ...ATTEMPT, status: 'submitted' };
-    mockedApiFetch.mockResolvedValueOnce([ATTEMPT]).mockResolvedValueOnce(submitted);
+    mockedApiFetch.mockResolvedValueOnce(ATTEMPT).mockResolvedValueOnce(submitted);
     const { result } = renderHook(() => useAttempt('a1'));
     await waitFor(() => expect(result.current.attempt).not.toBeNull());
 
@@ -83,5 +88,23 @@ describe('useAttempt — отправка', () => {
     });
 
     expect(localStorage.getItem('xuanxue.draft.attempt:a1')).toBeNull();
+  });
+});
+
+describe('useAttempt — загрузка своей попытки', () => {
+  it('404 «попытка не найдена» — текст ошибки с сервера, попытки нет', async () => {
+    // Ответ по пути, а не очередь `…Once` (ADR-0116, apiFetchMock.ts).
+    mockApiByPath({
+      '/attempts/': new ApiError(ATTEMPT_NOT_FOUND_MESSAGE, 404, 'not_found'),
+    });
+
+    const { result } = renderHook(() => useAttempt('чужая-или-неизвестная'));
+
+    await waitFor(() => expect(result.current.error).toBe(ATTEMPT_NOT_FOUND_MESSAGE));
+    expect(result.current.attempt).toBeNull();
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      '/attempts/чужая-или-неизвестная',
+      expect.anything(),
+    );
   });
 });

@@ -1,15 +1,15 @@
-// Данные экрана сдачи — сама попытка и её отправка (ТЗ п.2). Своего
-// `GET /attempts/:id` у API нет (только список — `GET /attempts`,
-// exam-attempts.controller.ts), поэтому берём список своих попыток и находим
-// нужную по `id`: он уже применяет закрытие по дедлайну на сервере
-// (closeIfExpiredAttempt) для каждой попытки списка, значит статус в ответе —
-// правда на момент запроса, а не то, что было при старте.
+// Данные экрана сдачи — сама попытка и её отправка (ТЗ п.2). Своя попытка —
+// своим адресом (`GET /attempts/:id`, ADR-0126), не список всех попыток:
+// список читал и расшифровывал на сервере до 200 чужих снимков ради одной
+// нужной строки — на показ экрана и на каждый тик фонового опроса
+// (useAttemptVideoPoll.ts, раз в 15 с). Сервер применяет закрытие по
+// дедлайну (closeIfExpiredAttempt) и на этом пути тоже, значит статус в
+// ответе — правда на момент запроса, а не то, что было при старте.
 import { useCallback, useState } from 'react';
-import { ATTEMPT_NOT_FOUND_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
-import { ATTEMPTS_LIST_PATH } from '../api/apiPaths';
+import type { ExamAttemptDto } from '@xuanxue/shared';
+import { attemptPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
-import { replacedById } from '../lib/listPatch';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import { clearAttemptDraft } from './attemptLocalDraft';
 
@@ -29,11 +29,9 @@ export interface UseAttemptOptions {
 
 export interface UseAttemptResult {
   attempt: ExamAttemptDto | null;
-  /** Список загрузился, но такой попытки в нём нет — не путать с `error`
-   * (сетевым сбоем): своя чужая или несуществующая попытка тоже даёт эту
-   * ветку, текст один и тот же, что у API (ATTEMPT_NOT_FOUND_MESSAGE). */
-  notFound: boolean;
   loading: boolean;
+  /** Чужая, несуществующая или сетевая ошибка — один и тот же текст с
+   * сервера (ATTEMPT_NOT_FOUND_MESSAGE, ApiError.message для 404). */
   error: string | null;
   reload: () => Promise<void>;
   /** Тихое перечитывание без скелетона и баннера ошибки (useAbortableFetch.ts,
@@ -52,11 +50,10 @@ export function useAttempt(
 ): UseAttemptResult {
   const { onSubmitted } = options;
   const { data, loading, error, reload, refresh, applyData } = useAbortableFetch(
-    (signal) => apiFetch<ExamAttemptDto[]>(ATTEMPTS_LIST_PATH, { signal }),
+    (signal) => apiFetch<ExamAttemptDto>(attemptPath(attemptId), { signal }),
     LOAD_ERROR_MESSAGE,
   );
-  const attempt = data?.find((item) => item.id === attemptId) ?? null;
-  const notFound = data !== null && attempt === null;
+  const attempt = data;
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<FormError | null>(null);
@@ -65,17 +62,9 @@ export function useAttempt(
   // независимо от исхода (components/ConfirmDialog.tsx), сбой должен остаться
   // виден на самом экране сдачи, а не пропасть вместе с диалогом.
   //
-  // Правка списка из ответа записи, не отдельный reload() (ADR-0094):
-  // `POST /attempts/:id/submit` уже возвращает свежий ExamAttemptDto
-  // (exam-attempts.controller.ts), второй `GET` того же списка не нужен.
-  // Приём годится именно для ATTEMPTS_LIST_PATH — проверено чтением
-  // ExamAttemptsService.list (exam-attempts.service.ts), полный разбор
-  // условия — web/src/lib/listPatch.ts: путь не передаёт `status` в query, а
-  // фильтр по статусу сервис применяет, только если он пришёл (`if
-  // (query.status !== undefined) filter.status = ...`) — сдача экзамена
-  // элемент из выборки не выкидывает; сортировка — `startedAt: -1`, а
-  // submit() меняет `status`/`submittedAt`, не `startedAt` — место строки в
-  // уже показанном списке не сдвигается.
+  // Правка попытки из ответа записи, не отдельный reload() (ADR-0087,
+  // ADR-0094): `POST /attempts/:id/submit` уже возвращает свежий
+  // ExamAttemptDto (exam-attempts.controller.ts), второй `GET` не нужен.
   const submit = useCallback(async () => {
     setSubmitting(true);
     setSubmitError(null);
@@ -83,7 +72,7 @@ export function useAttempt(
       const next = await apiFetch<ExamAttemptDto>(`/attempts/${attemptId}/submit`, {
         method: 'POST',
       });
-      applyData((prev) => replacedById(prev, next));
+      applyData(next);
       // Тот же ответ правит и список «Заданий» — без него он ещё долю
       // секунды думает, что попытка in_progress (ADR-0119, комментарий
       // у UseAttemptOptions.onSubmitted выше).
@@ -100,9 +89,8 @@ export function useAttempt(
 
   return {
     attempt,
-    notFound,
     loading,
-    error: error ?? (notFound ? ATTEMPT_NOT_FOUND_MESSAGE : null),
+    error,
     reload,
     refresh,
     submit,

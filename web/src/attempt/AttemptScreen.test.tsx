@@ -1,13 +1,13 @@
-// Сборка экрана /attempts/:id — выбор состояния по ответу GET /attempts
-// (своего GET /attempts/:id у API нет, useAttempt.ts берёт список и находит
-// по id). Форма ответа и «Отправлено» — свои тесты в AttemptInProgress.test.tsx
-// и AttemptSubmitted.test.tsx, здесь только маршрутизация между ними.
+// Сборка экрана /attempts/:id — выбор состояния по ответу GET /attempts/:id
+// (ADR-0126, useAttempt.ts). Форма ответа и «Отправлено» — свои тесты в
+// AttemptInProgress.test.tsx и AttemptSubmitted.test.tsx, здесь только
+// маршрутизация между ними.
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, ExamMediaDto, MeDto } from '@xuanxue/shared';
-import { ATTEMPTS_LIST_PATH } from '../api/apiPaths';
+import { attemptPath } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
@@ -36,18 +36,18 @@ const STUDENT_WITH_TELEGRAM: MeDto = {
   needsProfile: false,
 };
 
-/** Экран параллельно зовёт /attempts, /auth/me и /auth/config, поэтому мок —
- * по пути, а не очередью `mockResolvedValueOnce`: очередь отдала бы ответ
- * тому, кто успел первым, и тест держался бы на порядке эффектов. */
-function mockPaths(attempts: unknown, me: MeDto = STUDENT_WITH_TELEGRAM) {
+/** Экран параллельно зовёт /attempts/:id, /auth/me и /auth/config, поэтому
+ * мок — по пути, а не очередью `mockResolvedValueOnce`: очередь отдала бы
+ * ответ тому, кто успел первым, и тест держался бы на порядке эффектов. */
+function mockPaths(attempt: unknown, me: MeDto = STUDENT_WITH_TELEGRAM) {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config')
       return Promise.resolve({ telegramBotUsername: 'xx_bot' });
     if (path.startsWith('/attempts')) {
-      return attempts instanceof Error
-        ? Promise.reject(attempts)
-        : Promise.resolve(attempts);
+      return attempt instanceof Error
+        ? Promise.reject(attempt)
+        : Promise.resolve(attempt);
     }
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
@@ -65,11 +65,12 @@ function renderAt(attemptId: string) {
   );
 }
 
-/** Сколько раз апи звали ровно по адресу списка попыток — не по `/submit`
- * или `/media/link`, у них свои пути. Считает случившиеся загрузки попытки:
- * монтирование, reload() и фоновый refresh() опроса (useAttemptVideoPoll.ts). */
+/** Сколько раз апи звали ровно по адресу своей попытки `a1` — не по
+ * `/submit` или `/media/link`, у них свои пути. Считает случившиеся загрузки
+ * попытки: монтирование, reload() и фоновый refresh() опроса
+ * (useAttemptVideoPoll.ts). */
 function attemptsListCallCount(): number {
-  return mockedApiFetch.mock.calls.filter(([path]) => path === ATTEMPTS_LIST_PATH).length;
+  return mockedApiFetch.mock.calls.filter(([path]) => path === attemptPath('a1')).length;
 }
 
 // Блок с одним видео-вопросом — ADR-0037: у экрана есть кнопка бота и на
@@ -103,7 +104,7 @@ const IN_PROGRESS: ExamAttemptDto = {
 
 describe('AttemptScreen', () => {
   it('в работе — рисует форму сдачи с названием экзамена', async () => {
-    mockPaths([IN_PROGRESS]);
+    mockPaths(IN_PROGRESS);
     renderAt('a1');
 
     expect(await screen.findByText('Форма первого уровня')).toBeInTheDocument();
@@ -111,7 +112,7 @@ describe('AttemptScreen', () => {
   });
 
   it('в работе — у видео-вопроса есть кнопка бота с deep link на вопрос', async () => {
-    mockPaths([IN_PROGRESS]);
+    mockPaths(IN_PROGRESS);
     renderAt('a1');
 
     expect(
@@ -120,7 +121,7 @@ describe('AttemptScreen', () => {
   });
 
   it('уже отправлена — экран «Отправлено», без формы', async () => {
-    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }]);
+    mockPaths({ ...IN_PROGRESS, status: 'submitted' });
     renderAt('a1');
 
     // ADR-0124: место результата выделено акцентом — RichText рисует его
@@ -138,9 +139,10 @@ describe('AttemptScreen', () => {
   // остаётся; часы, что отстают (локально «ещё есть время», сервер уже закрыл
   // попытку), — «Отправлено» без ожидания местного отсчёта.
   it('дедлайн прошёл по часам телефона, но сервер говорит in_progress — форма сдачи, не «Отправлено»', async () => {
-    mockPaths([
-      { ...IN_PROGRESS, deadlineAt: new Date(Date.now() - 60_000).toISOString() },
-    ]);
+    mockPaths({
+      ...IN_PROGRESS,
+      deadlineAt: new Date(Date.now() - 60_000).toISOString(),
+    });
     renderAt('a1');
 
     expect(await screen.findByRole('button', { name: 'Отправить' })).toBeInTheDocument();
@@ -150,14 +152,12 @@ describe('AttemptScreen', () => {
   });
 
   it('по часам телефона время ещё есть, но сервер уже закрыл попытку — «время вышло», без формы', async () => {
-    mockPaths([
-      {
-        ...IN_PROGRESS,
-        status: 'submitted',
-        expired: true,
-        deadlineAt: new Date(Date.now() + 60 * 60_000).toISOString(),
-      },
-    ]);
+    mockPaths({
+      ...IN_PROGRESS,
+      status: 'submitted',
+      expired: true,
+      deadlineAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+    });
     renderAt('a1');
 
     expect(
@@ -173,11 +173,14 @@ describe('AttemptScreen', () => {
   // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедший по почте видел кнопку
   // «Отправить видео боту», шёл по ней и получал от бота отказ.
   it('Telegram не привязан — на «Отправлено» кнопки бота нет, есть форма ссылки', async () => {
-    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }], {
-      ...STUDENT_WITH_TELEGRAM,
-      telegramLinked: false,
-      botChatActive: false,
-    });
+    mockPaths(
+      { ...IN_PROGRESS, status: 'submitted' },
+      {
+        ...STUDENT_WITH_TELEGRAM,
+        telegramLinked: false,
+        botChatActive: false,
+      },
+    );
     renderAt('a1');
 
     expect(await screen.findByLabelText('Ссылка на видео')).toBeInTheDocument();
@@ -191,12 +194,15 @@ describe('AttemptScreen', () => {
   // звал отметившегося в Telegram: условие показа было своё
   // (`!telegramLinked`), мимо общего предиката.
   it('отметка «у меня нет Telegram» — связку не предлагаем, форма ссылки остаётся', async () => {
-    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }], {
-      ...STUDENT_WITH_TELEGRAM,
-      telegramLinked: false,
-      botChatActive: false,
-      noTelegram: true,
-    });
+    mockPaths(
+      { ...IN_PROGRESS, status: 'submitted' },
+      {
+        ...STUDENT_WITH_TELEGRAM,
+        telegramLinked: false,
+        botChatActive: false,
+        noTelegram: true,
+      },
+    );
     renderAt('a1');
 
     expect(await screen.findByLabelText('Ссылка на видео')).toBeInTheDocument();
@@ -206,7 +212,7 @@ describe('AttemptScreen', () => {
   });
 
   it('Telegram привязан — на «Отправлено» есть кнопка бота с deep link на вопрос', async () => {
-    mockPaths([{ ...IN_PROGRESS, status: 'submitted' }]);
+    mockPaths({ ...IN_PROGRESS, status: 'submitted' });
     renderAt('a1');
 
     expect(
@@ -236,7 +242,7 @@ describe('AttemptScreen', () => {
           submittedAttempt = { ...IN_PROGRESS, status: 'submitted', media: [media] };
           return Promise.resolve(undefined);
         }
-        if (path.startsWith('/attempts')) return Promise.resolve([submittedAttempt]);
+        if (path.startsWith('/attempts')) return Promise.resolve(submittedAttempt);
         return Promise.reject(new Error(`неожиданный путь: ${path}`));
       },
     );
@@ -267,7 +273,7 @@ describe('AttemptScreen', () => {
         attemptsCallCount += 1;
         return attemptsCallCount === 1
           ? Promise.reject(new ApiError('Нет связи с сервером.', 0, 'network'))
-          : Promise.resolve([IN_PROGRESS]);
+          : Promise.resolve(IN_PROGRESS);
       }
       return Promise.resolve({});
     });
@@ -282,7 +288,7 @@ describe('AttemptScreen', () => {
   // Маршрут без :id руками не собрать, но React Router может отдать undefined —
   // экран не должен падать, а должен честно сказать, что попытки нет.
   it('без идентификатора в адресе — «попытка не найдена», без падения', async () => {
-    mockPaths([IN_PROGRESS]);
+    mockPaths(new ApiError('Попытка не найдена. Обновите страницу.', 404, 'not_found'));
     render(
       <MemoryRouter initialEntries={['/attempts']}>
         <AuthProvider>
@@ -298,8 +304,10 @@ describe('AttemptScreen', () => {
     );
   });
 
-  it('такой попытки нет в списке своих — текст «попытка не найдена»', async () => {
-    mockPaths([]);
+  // Сервер отвечает 404 и на чужую, и на несуществующую попытку — один и тот
+  // же текст, кабинет их не различает (ADR-0126, SECURITY §3).
+  it('чужая или несуществующая попытка — сервер отвечает 404, текст «попытка не найдена»', async () => {
+    mockPaths(new ApiError('Попытка не найдена. Обновите страницу.', 404, 'not_found'));
     renderAt('чужая-или-неизвестная');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -374,7 +382,7 @@ describe('AttemptScreen — отправка ждёт сохранения (ау
         calls.push('POST');
         return Promise.resolve({ ...CHOICE_ATTEMPT, status: 'submitted' });
       }
-      if (path.startsWith('/attempts')) return Promise.resolve([CHOICE_ATTEMPT]);
+      if (path.startsWith('/attempts')) return Promise.resolve(CHOICE_ATTEMPT);
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
     renderAt('a1');
@@ -406,7 +414,7 @@ describe('AttemptScreen — отправка ждёт сохранения (ау
         submitCalled = true;
         return Promise.resolve({ ...CHOICE_ATTEMPT, status: 'submitted' });
       }
-      if (path.startsWith('/attempts')) return Promise.resolve([CHOICE_ATTEMPT]);
+      if (path.startsWith('/attempts')) return Promise.resolve(CHOICE_ATTEMPT);
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
     renderAt('a1');
@@ -447,11 +455,11 @@ describe('AttemptScreen — попап «Время вышло»', () => {
         // Первый ответ — попытка ещё в работе, но с дедлайном в прошлом:
         // AttemptDeadlineTimer.tsx это застаёт сразу при монтировании и сам
         // просит попытку перечитать (её же комментарий-шапка).
-        return Promise.resolve([
+        return Promise.resolve(
           attemptsCallCount === 1
             ? { ...IN_PROGRESS, deadlineAt: new Date(Date.now() - 1000).toISOString() }
             : { ...IN_PROGRESS, status: 'submitted', expired: true },
-        ]);
+        );
       }
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
@@ -483,11 +491,11 @@ describe('AttemptScreen — попап «Время вышло»', () => {
         return Promise.resolve({ telegramBotUsername: 'xx_bot' });
       if (path.startsWith('/attempts')) {
         attemptsCallCount += 1;
-        return Promise.resolve([
+        return Promise.resolve(
           attemptsCallCount === 1
             ? { ...IN_PROGRESS, deadlineAt: new Date(Date.now() - 1000).toISOString() }
             : { ...IN_PROGRESS, status: 'submitted', expired: true },
-        ]);
+        );
       }
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
@@ -533,7 +541,7 @@ describe('AttemptScreen — опрос видео из Telegram', () => {
       if (path === '/auth/me') return Promise.resolve(STUDENT_WITH_TELEGRAM);
       if (path === '/auth/config')
         return Promise.resolve({ telegramBotUsername: 'xx_bot' });
-      if (path.startsWith('/attempts')) return Promise.resolve([currentAttempt]);
+      if (path.startsWith('/attempts')) return Promise.resolve(currentAttempt);
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
 
@@ -559,7 +567,7 @@ describe('AttemptScreen — опрос видео из Telegram', () => {
     ['видео уже получено', { ...IN_PROGRESS, media: [RECEIVED_MEDIA] }],
     ['у попытки нет видео-вопросов', { ...IN_PROGRESS, blocks: [] }],
   ])('%s — тик не делает лишних запросов к /attempts', async (_label, attempt) => {
-    mockPaths([attempt]);
+    mockPaths(attempt);
     renderAt('a1');
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
