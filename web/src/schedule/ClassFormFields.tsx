@@ -23,7 +23,7 @@ import { CLASS_FORMAT_LABELS_RU } from './classFormatLabels';
 // «медитация»), не пометка конкретного вечера (та живёт у формы даты,
 // planning/lessonFormInput.ts) — два поля рядом не заведёшь, подсказка
 // объясняет это словом «курса».
-const TAG_HINT = `Постоянный признак курса: «начинающие», «медитация» — через запятую, до ${TAG_LIMITS.perRecord}`;
+const TAG_HINT = `Постоянный признак курса: «начинающие», «медитация» — через запятую, до **${TAG_LIMITS.perRecord}**`;
 
 interface ClassFormFieldsProps {
   state: ClassFormState;

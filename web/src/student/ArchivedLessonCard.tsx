@@ -4,14 +4,12 @@
 // паддинг и волосяную линию снизу (проп `isLast`); дата/название/тема и
 // пометка отмены — общий LessonSummaryHeader.tsx (CLAUDE.md «Одна механика —
 // один компонент», jscpd поймал дубль на первой версии этого файла).
-//
 // Записей у занятия может быть несколько (учитель отдал файл и добавил
 // ссылку отдельно) — каждая своей строкой. Запись со своим `title` (учитель
 // назвал её, например, «Занятие целиком») показывает название рядом с
 // действием, а не вместо него: кнопка всегда говорит, что будет, если
 // нажать («Открыть запись», глагол в начале, docs/VOICE.md), а название —
 // это какая именно это запись, если их несколько (решение агента).
-//
 // Пустого списка записей у карточки не бывает: решение владельца 2026-09-22
 // (ADR-0114, docs/adr/0114-archive-shows-only-lessons-with-a-recording.md) —
 // `GET /me/lessons/archive` теперь отдаёт только занятия, у которых есть
@@ -21,13 +19,15 @@
 import type { CSSProperties } from 'react';
 import type { ArchivedRecordingDto, MyArchivedLessonDto } from '@xuanxue/shared';
 import { dividedListStyle } from '../components/listCardStyles';
+import { RichText } from '../components/RichText';
 import { VideoEmbed } from '../components/VideoEmbed';
 import { textLinkHitAreaStyle, textLinkLineStyle } from '../components/screenLayout';
 import { LessonSummaryHeader, lessonRowStyle } from './LessonSummaryHeader';
 import { StudentMaterialCard } from './StudentMaterialCard';
 
 const OPEN_RECORDING_TEXT = 'Открыть запись';
-const TELEGRAM_ONLY_TEXT = 'Запись ушла в канал школы — ищите её там под датой занятия.';
+const TELEGRAM_ONLY_TEXT =
+  'Запись ушла **в канал школы** — ищите её там под датой занятия.';
 // ADR-0056 «Ученик видит привязку там, где ищет»: материалы, привязанные к
 // дате занятия, — рубрикой под записями, тем же StudentMaterialCard, что и в
 // библиотеке (CLAUDE.md «Одна механика — один компонент»). Пустой список —
@@ -89,7 +89,11 @@ function ArchivedRecordingRow({ recording }: { recording: ArchivedRecordingDto }
   // Telegram (inTelegramOnly), либо мапер вообще не отдал бы её сюда
   // (my-archived-lesson.mapper.ts отбрасывает записи без url и без
   // telegramFileId) — третьего случая у DTO не бывает.
-  return <p style={plainTextStyle}>{TELEGRAM_ONLY_TEXT}</p>;
+  return (
+    <p style={plainTextStyle}>
+      <RichText text={TELEGRAM_ONLY_TEXT} />
+    </p>
+  );
 }
 
 interface ArchivedLessonCardProps {

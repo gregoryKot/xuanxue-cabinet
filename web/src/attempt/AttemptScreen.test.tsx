@@ -123,11 +123,12 @@ describe('AttemptScreen', () => {
     mockPaths([{ ...IN_PROGRESS, status: 'submitted' }]);
     renderAt('a1');
 
-    expect(
-      await screen.findByText(
-        'Отправлено. Учитель проверит — результат будет на карточке экзамена в кабинете.',
-      ),
-    ).toBeInTheDocument();
+    // ADR-0124: место результата выделено акцентом — RichText рисует его
+    // отдельным <strong>, полный текст проверяем через textContent абзаца.
+    const status = await screen.findByText(/Отправлено\. Учитель проверит/);
+    expect(status).toHaveTextContent(
+      'Отправлено. Учитель проверит — результат будет на карточке экзамена в кабинете.',
+    );
     expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument();
   });
 
@@ -459,11 +460,14 @@ describe('AttemptScreen — попап «Время вышло»', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Время вышло' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Попытка закрыта и ушла учителю на проверку. Успевшие ответы сохранены.',
-      ),
-    ).toBeInTheDocument();
+    // ADR-0124: что произошло с попыткой — выделено акцентом, RichText в
+    // NoticeDialog рисует его отдельным <strong>, полный текст проверяем
+    // через textContent абзаца.
+    const expiryMessage = screen.getByText(/Попытка закрыта и/);
+    expect(expiryMessage).toHaveTextContent(
+      'Попытка закрыта и ушла учителю на проверку. Успевшие ответы сохранены.',
+    );
+    expect(screen.getByText('ушла учителю на проверку').tagName).toBe('STRONG');
     // Попап — поверх экрана «Отправлено», не вместо него (AttemptScreen.tsx:
     // сервер уже переключил статус, попап — лишь одноразовое уведомление).
     expect(

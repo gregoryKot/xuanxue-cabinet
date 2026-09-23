@@ -25,6 +25,7 @@ import { Link } from 'react-router-dom';
 import type { CSSProperties } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
+import { RichText } from '../components/RichText';
 import {
   screenExplanationStyle,
   screenTitleStyle,
@@ -43,7 +44,7 @@ const BACK_TEXT = 'Вернуться к экзаменам';
 // ADR-0034): здесь речь про результат проверки, а не про отправку видео.
 const TELEGRAM_OFFER_EXPLANATION =
   'Свяжите Telegram — бот напишет, как только учитель поставит итог, ' +
-  'и заходить за результатом не придётся.';
+  'и **заходить за результатом не придётся**.';
 
 const backStyle: CSSProperties = {
   margin: 0,
@@ -58,7 +59,7 @@ const backStyle: CSSProperties = {
 function describeSubmitted(attempt: ExamAttemptDto): string {
   if (attempt.status === 'graded') return 'Экзамен проверен.';
   if (attempt.expired) return 'Время вышло, попытка закрыта и отправлена на проверку.';
-  return 'Отправлено. Учитель проверит — результат будет на карточке экзамена в кабинете.';
+  return 'Отправлено. Учитель проверит — результат будет **на карточке экзамена в кабинете**.';
 }
 
 interface AttemptSubmittedProps {
@@ -83,7 +84,9 @@ export function AttemptSubmitted({ attempt, video }: AttemptSubmittedProps) {
       <div style={attemptHeaderStyle}>
         <span className="xuanxue-eyebrow">{ATTEMPT_EYEBROW}</span>
         <h1 style={screenTitleStyle}>{attempt.examTitle}</h1>
-        <p style={screenExplanationStyle}>{describeSubmitted(attempt)}</p>
+        <p style={screenExplanationStyle}>
+          <RichText text={describeSubmitted(attempt)} />
+        </p>
       </div>
 
       {offersTelegram && <TelegramLinkButton explanation={TELEGRAM_OFFER_EXPLANATION} />}

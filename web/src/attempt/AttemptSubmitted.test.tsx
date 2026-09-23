@@ -19,8 +19,7 @@ vi.mock('../api/http', async () => {
 resetApiFetchBetweenTests();
 
 const OFFER_EXPLANATION = /бот напишет, как только учитель поставит итог/;
-const VIDEO_EXPLANATION =
-  /Свяжите Telegram — и видео можно будет прислать боту одним сообщением/;
+const VIDEO_EXPLANATION = /Свяжите Telegram — и видео можно будет прислать боту/;
 const LINK_BUTTON_NAME = 'Связать Telegram';
 
 /** Ученик без личного чата с ботом — тот, ради кого предложение и стоит. */
@@ -109,11 +108,10 @@ describe('AttemptSubmitted', () => {
   it('отправлено самим учеником — результат ждёт в кабинете, отправку не обещаем', async () => {
     await renderSubmitted(makeAttempt());
 
-    expect(
-      screen.getByText(
-        'Отправлено. Учитель проверит — результат будет на карточке экзамена в кабинете.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Отправлено\. Учитель проверит/)).toBeInTheDocument();
+    // ADR-0124: место результата выделено акцентом — RichText рисует его
+    // отдельным <strong>.
+    expect(screen.getByText('на карточке экзамена в кабинете').tagName).toBe('STRONG');
   });
 
   it('закрыто временем — отдельная честная строка', async () => {

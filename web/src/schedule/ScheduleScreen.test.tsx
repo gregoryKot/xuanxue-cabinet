@@ -177,10 +177,18 @@ describe('ScheduleScreen — пояс и ссылки (отзыв владель
 
     renderScreen();
 
+    // Пояс выделен акцентом — RichText рисует его через <strong>, полный
+    // текст строки сверяем по textContent абзаца (ADR-0124).
     expect(
-      await screen.findByText('Время в сетке — по часам школы (Asia/Jerusalem).'),
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          el.textContent === 'Время в сетке — по часам школы (Asia/Jerusalem).',
+      ),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Asia\/Jerusalem/)).toHaveLength(1);
+    const zoneMatches = screen.getAllByText(/Asia\/Jerusalem/);
+    expect(zoneMatches).toHaveLength(1);
+    expect(zoneMatches[0]?.tagName).toBe('STRONG');
   });
 
   it('онлайн-занятие без ссылки Zoom — «без ссылки» на карточке слота', async () => {

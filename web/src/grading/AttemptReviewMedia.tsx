@@ -18,6 +18,7 @@ import type { CSSProperties } from 'react';
 import type { ExamMediaDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import { FormServerError, type FormError } from '../components/FormServerError';
+import { RichText } from '../components/RichText';
 import { AttemptReviewMediaItem } from './AttemptReviewMediaItem';
 import type { SendMediaState } from './useAttemptReviewMedia';
 
@@ -80,7 +81,11 @@ export function AttemptReviewMedia({
   return (
     <section>
       {heading && <h3 style={titleStyle}>{heading}</h3>}
-      {description && <p style={descriptionStyle}>{description}</p>}
+      {description && (
+        <p style={descriptionStyle}>
+          <RichText text={description} />
+        </p>
+      )}
 
       {media.length === 0 ? (
         <>

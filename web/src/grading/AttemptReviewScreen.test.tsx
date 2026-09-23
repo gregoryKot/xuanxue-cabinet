@@ -248,11 +248,13 @@ describe('AttemptReviewScreen — куда уйдёт итог (отзыв вл�
       '/attempts': makeReview({ notifiesUserInTelegram: true }),
     });
 
-    expect(
-      await screen.findByText(
-        'Итог и комментарий уйдут ученику в Telegram сразу после отправки.',
-      ),
-    ).toBeInTheDocument();
+    // «Telegram» выделено через RichText (<strong>, ADR-0124) — ищем по
+    // хвосту фразы вне маркера, полный текст сверяем через textContent
+    // родителя.
+    const hint = await screen.findByText(/сразу после отправки/);
+    expect(hint.closest('p')).toHaveTextContent(
+      'Итог и комментарий уйдут ученику в Telegram сразу после отправки.',
+    );
   });
 
   it('у ученика нет Telegram — видна строка про «Задания», строки про Telegram нет', async () => {
@@ -260,16 +262,11 @@ describe('AttemptReviewScreen — куда уйдёт итог (отзыв вл�
       '/attempts': makeReview({ notifiesUserInTelegram: false }),
     });
 
-    expect(
-      await screen.findByText(
-        'Итог и комментарий в Telegram не уйдут — ученик увидит их в кабинете, на «Заданиях».',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        'Итог и комментарий уйдут ученику в Telegram сразу после отправки.',
-      ),
-    ).not.toBeInTheDocument();
+    const hint = await screen.findByText(/не уйдут/);
+    expect(hint.closest('p')).toHaveTextContent(
+      'Итог и комментарий в Telegram не уйдут — ученик увидит их в кабинете, на «Заданиях».',
+    );
+    expect(screen.queryByText(/сразу после отправки/)).not.toBeInTheDocument();
   });
 });
 

@@ -1,5 +1,5 @@
 // Разбор строки формулировки на текст и ссылки (ADR-0093) — чистая функция
-// без DOM: PromptText.tsx только раскладывает результат по <a> и тексту, а
+// без DOM: RichText.tsx только раскладывает результат по <a> и тексту, а
 // сам разбор проверяют юниты, без рендера (CLAUDE.md «Тесты»).
 //
 // Ссылкой признаём только http:// и https://: формулировку пишет учитель, а
@@ -54,6 +54,16 @@ export interface PromptTextPart {
   href?: string;
 }
 
+// Схема без хоста — не ссылка, а слово в тексте: «адрес должен начинаться с
+// https://.» — тут кликать не на что, и `<a href="https://">` вёл бы в
+// никуда. Раньше такой текст до разбора не доходил вовсе, а с ADR-0124
+// ошибки формы поехали через RichText, и ошибка валидации сайта школы
+// («должна начинаться с https://.», templates/SchoolSiteField.tsx) стала
+// наполовину ссылкой (найдено 2026-09-23, тест ниже).
+function hasHost(url: string): boolean {
+  return url.slice(url.indexOf('//') + 2).length > 0;
+}
+
 /** Делит строку формулировки на куски текста и ссылок по порядку строки;
  * склейка полей `text` всех кусков даёт исходную строку обратно. */
 export function splitPromptLinks(input: string): PromptTextPart[] {
@@ -64,6 +74,12 @@ export function splitPromptLinks(input: string): PromptTextPart[] {
   while ((match = URL_RE.exec(input)) !== null) {
     const start = match.index;
     const url = trimTrailingPunctuation(input.slice(start, URL_RE.lastIndex));
+    if (!hasHost(url)) {
+      // Дальше ищем сразу за голой схемой: длина у неё всегда больше нуля,
+      // поэтому цикл двигается и не зацикливается.
+      URL_RE.lastIndex = start + url.length;
+      continue;
+    }
     if (start > cursor) parts.push({ text: input.slice(cursor, start) });
     parts.push({ text: url, href: url });
     cursor = start + url.length;

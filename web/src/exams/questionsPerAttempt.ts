@@ -9,8 +9,8 @@ import { QUESTION_FORMS } from './examCounts';
  * русское согласование числа с глаголом, отдельная форма только для 1. */
 function requiredNote(requiredCount: number): string {
   return requiredCount === 1
-    ? '1 обязательный попадёт каждому'
-    : `${requiredCount} обязательных попадут каждому`;
+    ? '**1 обязательный** попадёт каждому'
+    : `**${requiredCount} обязательных** попадут каждому`;
 }
 
 /** Заметка предпросмотра «глазами ученика»: список показывает весь пул, а
@@ -25,10 +25,10 @@ export function questionsPerAttemptNote(
 ): string {
   const questionsLabel = `${perAttempt} из ${total} ${pluralRu(total, QUESTION_FORMS)}`;
   if (requiredCount === 0) {
-    return `Ученику достанутся ${questionsLabel}, случайно — здесь показан весь список.`;
+    return `Ученику достанутся **${questionsLabel}**, случайно — здесь показан весь список.`;
   }
   return (
-    `Ученику достанутся ${questionsLabel}, случайно; ${requiredNote(requiredCount)} — ` +
+    `Ученику достанутся **${questionsLabel}**, случайно; ${requiredNote(requiredCount)} — ` +
     'здесь показан весь список.'
   );
 }
@@ -38,8 +38,8 @@ export function questionsPerAttemptNote(
  * ним словами. */
 function tooManyQuestionsPerAttemptMessage(perAttempt: number, total: number): string {
   return (
-    `В списке ${total} ${pluralRu(total, QUESTION_FORMS)}, а ученику вы хотите ` +
-    `показать ${perAttempt}. Уменьшите число или добавьте вопросы.`
+    `В списке **${total}** ${pluralRu(total, QUESTION_FORMS)}, а ученику вы хотите ` +
+    `показать **${perAttempt}**. Уменьшите число или добавьте вопросы.`
   );
 }
 
@@ -47,7 +47,7 @@ function tooManyQuestionsPerAttemptMessage(perAttempt: number, total: number): s
  * часть отмеченных ★ не попала бы ни одному сдающему (ADR-0082, дополнение). */
 function tooManyRequiredMessage(requiredCount: number, perAttempt: number): string {
   return (
-    `Обязательных вопросов ${requiredCount}, а ученику вы показываете ${perAttempt}. ` +
+    `Обязательных вопросов **${requiredCount}**, а ученику вы показываете **${perAttempt}**. ` +
     'Уменьшите число обязательных или увеличьте «Вопросов ученику».'
   );
 }
@@ -67,7 +67,7 @@ export function validateQuestionsPerAttemptText(
   const value = Number(text);
   if (!Number.isInteger(value) || value < min || value > max) {
     return (
-      `Вопросов ученику — целое число от ${min} до ${max}, ` +
+      `Вопросов ученику — целое число от **${min}** до **${max}**, ` +
       'либо оставьте пустым: тогда достанутся все.'
     );
   }
@@ -85,11 +85,11 @@ export function validateQuestionsPerAttemptText(
  * «все N» с N = 0 не на что сослаться, вопросы ещё не добавлены. */
 export function questionsPerAttemptHint(questionCount: number): string {
   if (questionCount === 0) {
-    return 'Пусто — ученик отвечает на все вопросы списка. Впишите число — и каждому достанется случайная часть. Вопросы добавляются ниже.';
+    return 'Пусто — ученик отвечает на все вопросы списка. Впишите число — и каждому достанется **случайная часть**. Вопросы добавляются ниже.';
   }
   return (
-    `Пусто — ученик отвечает на все ${questionCount} ` +
+    `Пусто — ученик отвечает на все **${questionCount}** ` +
     `${pluralRu(questionCount, QUESTION_FORMS)} списка. Впишите число — и каждому ` +
-    `достанется случайная часть из ${questionCount}. ★ — обязательные, попадут всем.`
+    `достанется **случайная часть** из ${questionCount}. ★ — обязательные, попадут всем.`
   );
 }

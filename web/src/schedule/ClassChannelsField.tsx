@@ -12,10 +12,11 @@
 import { Link } from 'react-router-dom';
 import type { ChannelDto } from '@xuanxue/shared';
 import { ChannelPicker } from '../channels/ChannelPicker';
+import { RichText } from '../components/RichText';
 import { textLinkStyle } from '../components/screenLayout';
 
 const EXPLANATION =
-  'Сюда уйдут ссылка на занятие и запись. Telegram-группы с ботом подключаются к новым занятиям сами.';
+  'Сюда уйдут ссылка на занятие и запись. Telegram-группы с ботом подключаются к **новым занятиям** сами.';
 
 interface ClassChannelsFieldProps {
   channels: ChannelDto[];
@@ -35,7 +36,9 @@ export function ClassChannelsField({
       selectedIds={selectedIds}
       onChange={onChange}
       hint={
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>{EXPLANATION}</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
+          <RichText text={EXPLANATION} />
+        </p>
       }
       emptyMessage={
         <>

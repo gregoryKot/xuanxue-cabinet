@@ -6,6 +6,7 @@
 // «Отправить ещё раз» в EmailLoginForm.tsx).
 import type { MeDto } from '@xuanxue/shared';
 import { FormServerError } from '../components/FormServerError';
+import { RichText } from '../components/RichText';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { useEmailLink } from './useEmailLink';
 
@@ -31,8 +32,9 @@ export function PendingEmailNotice({
   return (
     <div style={wrapStyle}>
       <p style={textStyle}>
-        Мы отправили ссылку на {email}. Откройте её — пока это не сделано, войти по почте
-        нельзя.
+        <RichText
+          text={`Мы отправили ссылку на ${email}. Откройте её — пока это не сделано, **войти по почте нельзя**.`}
+        />
       </p>
       <FormServerError error={error ? { message: error } : null} />
       <TextLinkButton disabled={status === 'pending'} onClick={() => void link(email)}>

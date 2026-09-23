@@ -3,6 +3,7 @@
 // в формах занятия и занятия расписания, jscpd поймал дубль. `errorFrom` — тоже
 // общий кусок: useClassForm.ts и useLessonForm.ts собирали его одинаково.
 import { ApiError } from '../api/http';
+import { RichText } from './RichText';
 
 export interface FormError {
   message: string;
@@ -19,11 +20,16 @@ export function FormServerError({ error }: { error: FormError | null }) {
   if (!error) return null;
   return (
     <div role="alert" style={{ color: 'var(--danger)' }}>
-      <p style={{ margin: 0 }}>{error.message}</p>
+      {/* Через RichText (ADR-0124) — текст ошибки сервера доходит с акцентом. */}
+      <p style={{ margin: 0 }}>
+        <RichText text={error.message} />
+      </p>
       {error.details && (
         <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
           {error.details.map((detail) => (
-            <li key={detail}>{detail}</li>
+            <li key={detail}>
+              <RichText text={detail} />
+            </li>
           ))}
         </ul>
       )}

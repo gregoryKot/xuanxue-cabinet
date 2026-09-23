@@ -521,12 +521,14 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     renderAt('/exams/x1');
 
     expect(await screen.findByLabelText('Вопросов ученику')).toHaveValue('');
-    expect(
-      screen.getByText(
-        'Пусто — ученик отвечает на все 2 вопроса списка. Впишите число — и каждому ' +
-          'достанется случайная часть из 2. ★ — обязательные, попадут всем.',
-      ),
-    ).toBeInTheDocument();
+    // Акценты «2» и «случайная часть» рисует RichText через <strong>
+    // (ADR-0124) — ищем по неразрывному началу подсказки, полный текст
+    // сверяем через textContent родителя.
+    const hint = screen.getByText(/Пусто — ученик отвечает на все/);
+    expect(hint.closest('span')).toHaveTextContent(
+      'Пусто — ученик отвечает на все 2 вопроса списка. Впишите число — и каждому ' +
+        'достанется случайная часть из 2. ★ — обязательные, попадут всем.',
+    );
   });
 
   it('заполненное «Вопросов ученику» уходит в тело сохранения', async () => {
@@ -740,7 +742,8 @@ describe('ExamEditorScreen — подвал', () => {
 
     expect(await screen.findByText('В архиве')).toBeInTheDocument();
     expect(screen.getByText(/сданные работы остаются/)).toBeInTheDocument();
-    expect(screen.getByText(/могли остаться ссылки в попытках/)).toBeInTheDocument();
+    // «ссылки в попытках» выделено через RichText (<strong>, ADR-0124).
+    expect(screen.getByText(/могли остаться/)).toBeInTheDocument();
   });
 
   it('новый экзамен — ни статуса, ни удаления', async () => {

@@ -41,12 +41,15 @@ describe('ArchiveScreen — заголовок и объяснение', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Записи занятий' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Прошедшие занятия, у которых есть запись. Пока учитель не выложил её, ' +
-          'занятия в списке нет.',
-      ),
-    ).toBeInTheDocument();
+    // ADR-0124: условие показа занятия выделено акцентом — RichText рисует
+    // его отдельным <strong>, полный текст проверяем через textContent
+    // абзаца.
+    const explanation = screen.getByText(/Прошедшие занятия,/);
+    expect(explanation).toHaveTextContent(
+      'Прошедшие занятия, у которых есть запись. Пока учитель не выложил её, ' +
+        'занятия в списке нет.',
+    );
+    expect(screen.getByText('у которых есть запись').tagName).toBe('STRONG');
   });
 });
 
@@ -75,9 +78,7 @@ describe('ArchiveScreen — сбой загрузки', () => {
     await user.click(retry);
 
     expect(
-      await screen.findByText(
-        'Записей пока нет. Появятся, когда учитель выложит первую.',
-      ),
+      await screen.findByText(/Записей пока нет\. Появятся, когда учитель/),
     ).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -92,10 +93,11 @@ describe('ArchiveScreen — пустой список', () => {
     render(<ArchiveScreen />);
 
     expect(
-      await screen.findByText(
-        'Записей пока нет. Появятся, когда учитель выложит первую.',
-      ),
+      await screen.findByText(/Записей пока нет\. Появятся, когда учитель/),
     ).toBeInTheDocument();
+    // ADR-0124: что случится — выделено акцентом, RichText рисует его
+    // отдельным <strong>.
+    expect(screen.getByText('выложит первую').tagName).toBe('STRONG');
   });
 });
 

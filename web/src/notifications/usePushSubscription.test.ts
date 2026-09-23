@@ -6,6 +6,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
 import { ApiError, apiFetch } from '../api/http';
+import { PUSH_ACTION_TIMEOUT_MESSAGE } from './pushNotificationsCopy';
 import { PUSH_ACTION_TIMEOUT_MS } from './pushSectionState';
 import { arrayBufferToBase64Url } from './pushSubscriptionCodec';
 import { usePushSubscription } from './usePushSubscription';
@@ -312,9 +313,7 @@ describe('usePushSubscription — enable() из default', () => {
 
     expect(subscribe).toHaveBeenCalled();
     expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа, POST не ушёл
-    expect(result.current.actionError).toBe(
-      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
-    );
+    expect(result.current.actionError).toBe(PUSH_ACTION_TIMEOUT_MESSAGE);
     expect(result.current.pending).toBe(false);
     expect(result.current.state).toEqual({ kind: 'default' });
   });
@@ -354,9 +353,7 @@ describe('usePushSubscription — enable() из default', () => {
       await enablePromise;
     });
 
-    expect(result.current.actionError).toBe(
-      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
-    );
+    expect(result.current.actionError).toBe(PUSH_ACTION_TIMEOUT_MESSAGE);
 
     // Браузер наконец отвечает — уже после того, как кнопка показала ошибку
     // и вышла из pending. subscribe() отменить нечем (withTimeout.ts), но
@@ -369,9 +366,7 @@ describe('usePushSubscription — enable() из default', () => {
     vi.useRealTimers();
 
     expect(mockedApiFetch).toHaveBeenCalledTimes(1); // POST так и не ушёл
-    expect(result.current.actionError).toBe(
-      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
-    );
+    expect(result.current.actionError).toBe(PUSH_ACTION_TIMEOUT_MESSAGE);
     expect(result.current.pending).toBe(false);
     expect(result.current.state).toEqual({ kind: 'default' });
   });
@@ -619,9 +614,7 @@ describe('usePushSubscription — disable()', () => {
     vi.useRealTimers();
 
     expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа, DELETE не ушёл
-    expect(result.current.actionError).toBe(
-      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
-    );
+    expect(result.current.actionError).toBe(PUSH_ACTION_TIMEOUT_MESSAGE);
     expect(result.current.pending).toBe(false);
     expect(result.current.state).toEqual({ kind: 'subscribed' });
   });
@@ -647,9 +640,7 @@ describe('usePushSubscription — disable()', () => {
 
     expect(sub.unsubscribe).toHaveBeenCalled();
     expect(mockedApiFetch).toHaveBeenCalledTimes(1); // только начальный GET ключа, DELETE не ушёл
-    expect(result.current.actionError).toBe(
-      'Браузер не ответил на запрос подписки. Попробуйте ещё раз, а если это повторится — перезагрузите страницу.',
-    );
+    expect(result.current.actionError).toBe(PUSH_ACTION_TIMEOUT_MESSAGE);
     expect(result.current.pending).toBe(false);
     expect(result.current.state).toEqual({ kind: 'subscribed' });
   });

@@ -15,6 +15,7 @@ import { useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { EmailField } from '../components/EmailField';
 import { FormServerError } from '../components/FormServerError';
+import { RichText } from '../components/RichText';
 import { screenExplanationStyle } from '../components/screenLayout';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { EmailCodeForm } from './EmailCodeForm';
@@ -63,8 +64,9 @@ export function EmailLoginForm({ inviteCode }: EmailLoginFormProps) {
     return (
       <div style={formStyle}>
         <p style={sentTextStyle}>
-          Письмо ушло на {email}. Введите код из него — он работает 15 минут. Не пришло —
-          проверьте «Спам».
+          <RichText
+            text={`Письмо ушло на ${email}. Введите код из него — он работает **15 минут**. Не пришло — проверьте «Спам».`}
+          />
         </p>
         <FormServerError error={error ? { message: error } : null} />
         <EmailCodeForm email={email} inviteCode={inviteCode} />

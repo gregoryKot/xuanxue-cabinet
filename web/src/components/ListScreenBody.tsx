@@ -8,6 +8,7 @@
 // фильтрами ничего нет» — разные новости для человека.
 import type { CSSProperties, ReactNode } from 'react';
 import { LoadErrorBanner } from './LoadErrorBanner';
+import { RichText } from './RichText';
 import { SkeletonList } from './Skeleton';
 
 const SKELETON_ROWS = 5;
@@ -60,7 +61,13 @@ export function ListScreenBody<TItem>({
     return <LoadErrorBanner message={error} onRetry={onRetry} retryLabel={retryLabel} />;
   }
   if (loading) return <SkeletonList rows={skeletonRows} h={skeletonHeight} />;
-  if (!items || items.length === 0) return <p style={{ margin: 0 }}>{emptyMessage}</p>;
+  // Через RichText (ADR-0124) — акцент в тексте пустого состояния списка.
+  if (!items || items.length === 0)
+    return (
+      <p style={{ margin: 0 }}>
+        <RichText text={emptyMessage} />
+      </p>
+    );
 
   return <ul style={listStyle}>{items.map(renderItem)}</ul>;
 }

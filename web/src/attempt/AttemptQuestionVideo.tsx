@@ -27,6 +27,7 @@
 // AttemptVideoAnswered.tsx (ADR-0086): форма ссылки там не прячется, потому
 // что заменить ошибочную ссылку больше нечем, а у проверенной работы нет ни
 // формы, ни бота — бэкенд ответа уже не примет.
+import { RichText } from '../components/RichText';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
 import { AttemptVideoAnswered } from './AttemptVideoAnswered';
@@ -45,12 +46,13 @@ const VIDEO_ANSWER_EXPLANATION = 'Ответ на этот вопрос — ви
 // Ссылка — основной путь (ADR-0084): подсказка стоит перед формой у всех, а
 // не только у тех, кому не досталось бота.
 const LINK_HINT =
-  'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и вставьте сюда ссылку.';
+  'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и ' +
+  '**вставьте сюда ссылку**.';
 // Telegram к кабинету не привязан: объясняем, почему кнопки бота нет, и тут
 // же даём связку (ADR-0034) — у человека остаётся способ короче ссылки, а не
 // вопрос без ответа (docs/VOICE.md).
 const TELEGRAM_NOT_LINKED_EXPLANATION =
-  'Свяжите Telegram — и видео можно будет прислать боту одним сообщением.';
+  'Свяжите Telegram — и видео можно будет прислать боту **одним сообщением**.';
 
 /** Объяснение видео-вопроса без кнопок и формы — для предпросмотра учителя
  * (exams/ExamPreviewQuestion.tsx): там отвечать нельзя, но зачем нужно
@@ -76,7 +78,9 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
   return (
     <>
       <AttemptQuestionVideoNote />
-      <p style={attemptVideoHintStyle}>{LINK_HINT}</p>
+      <p style={attemptVideoHintStyle}>
+        <RichText text={LINK_HINT} />
+      </p>
       <AttemptVideoHowTo />
       <AttemptMediaLinkForm
         onSubmit={(url) => video.addMediaLink(itemId, url)}

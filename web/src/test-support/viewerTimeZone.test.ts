@@ -16,7 +16,9 @@ describe('stubViewerTimeZone', () => {
 
   it('подпись про пояс школы считает зрителя по заданному поясу', () => {
     expect(planningTzNote(['Asia/Jerusalem'])).toBe(
-      'Время — по вашим часам. Школа живёт по Asia/Jerusalem.',
+      // Пояс школы — название, то есть факт: он идёт акцентом (ADR-0124),
+      // а рисует его RichText в приписке ScreenHeader.
+      'Время — по вашим часам. Школа живёт по **Asia/Jerusalem**.',
     );
   });
 

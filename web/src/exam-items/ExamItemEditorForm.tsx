@@ -12,6 +12,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EditorFooter } from '../components/EditorFooter';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
+import { RichText } from '../components/RichText';
 import { screenTitleStyle } from '../components/screenLayout';
 import {
   backLinkStyle,
@@ -33,12 +34,12 @@ const ITEMS_PATH = '/exam-items';
 const BACK_TEXT = 'К вопросам';
 const REMOVE_LABEL = 'Удалить вопрос';
 const REMOVE_MESSAGE =
-  'Черновик вопроса исчезнет вместе с формулировкой и вариантами ответа. Отменить нельзя.';
+  'Черновик вопроса исчезнет вместе с **формулировкой и вариантами ответа**. Отменить нельзя.';
 // Предупредить одной строкой до сохранения, без модального окна: правка
 // содержательного поля опубликованного вопроса поднимает версию на сервере
 // (ExamItemsService.update).
 const VERSION_WARNING =
-  'Правка обновит версию вопроса — прежняя формулировка останется в истории для уже сданных работ.';
+  'Правка обновит версию вопроса — **прежняя формулировка останется в истории** для уже сданных работ.';
 const STATUS_EXPLANATIONS: Record<ExamItemStatus, string> = {
   draft: 'в экзамен его не поставить',
   published: 'его можно ставить в экзамены',
@@ -46,9 +47,9 @@ const STATUS_EXPLANATIONS: Record<ExamItemStatus, string> = {
 };
 const NO_REMOVE_NOTES: Record<'published' | 'archived', string> = {
   published:
-    'Удалить нельзя — на опубликованный вопрос могут ссылаться сданные работы. Отправьте его в архив.',
+    'Удалить нельзя — на опубликованный вопрос могут ссылаться **сданные работы**. Отправьте его в архив.',
   archived:
-    'Удалить нельзя — на вопрос в архиве могли остаться ссылки в сданных работах.',
+    'Удалить нельзя — на вопрос в архиве могли остаться **ссылки в сданных работах**.',
 };
 
 interface ExamItemEditorFormProps {
@@ -77,7 +78,7 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
           <h1 style={screenTitleStyle}>{examItemEditorTitle(item?.prompt ?? null)}</h1>
           {item?.status === 'published' && (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-soft)' }}>
-              {VERSION_WARNING}
+              <RichText text={VERSION_WARNING} />
             </p>
           )}
         </div>

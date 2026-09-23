@@ -32,7 +32,7 @@ const PLANNING_PATH = '/planning';
 const BACK_TEXT = 'К занятиям';
 const EYEBROW = 'Занятие';
 const NEW_LESSON_TITLE = 'Разовое занятие';
-const CANCEL_MESSAGE = 'Ученики не получат ссылку на это занятие, рассылка не уйдёт.';
+const CANCEL_MESSAGE = 'Ученики не получат ссылку на это занятие, **рассылка не уйдёт**.';
 
 interface LessonEditorFormProps {
   /** `null` — `/planning/new`, разовое занятие, которого ещё нет. */
