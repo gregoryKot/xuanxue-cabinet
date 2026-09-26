@@ -50,7 +50,7 @@ jobs:
       # снаружи node_modules, поэтому порядок наоборот не обязателен, но кеш
       # ставим первым, чтобы бинарь уже был на месте к моменту постинсталла.
       - name: кеш бинаря mongod
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
           key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
