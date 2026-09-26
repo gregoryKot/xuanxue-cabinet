@@ -25,9 +25,9 @@
     "check": "node scripts/check.mjs"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "concurrently": "^10.0.5",
-    "eslint": "^9.39.5",
+    "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import-x": "^4.17.1",
@@ -40,7 +40,7 @@
     "mongodb": "~7.6",
     "prettier": "^3.9.7",
     "sharp": "^0.35.4",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.70.0"
   }
 }
