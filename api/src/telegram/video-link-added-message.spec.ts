@@ -15,6 +15,7 @@ function build(
       studentName: 'Мария',
       examTitle: EXAM_TITLE,
       questionPrompt: 'Повторите форму Ци-ши',
+      source: 'link',
       url: URL,
       attemptId: ATTEMPT_ID,
       ...overrides,
@@ -65,6 +66,7 @@ describe('videoLinkAddedMessage', () => {
         studentName: 'Мария',
         examTitle: EXAM_TITLE,
         questionPrompt: 'Повторите форму Ци-ши',
+        source: 'link',
         url: URL,
         attemptId: ATTEMPT_ID,
       },
@@ -78,5 +80,15 @@ describe('videoLinkAddedMessage', () => {
 
   it('не спрягает глагол по полу ученика — родовой формы в тексте нет', () => {
     expect(build({ studentName: 'Пётр' })).not.toMatch(/прислал|прислала/);
+  });
+
+  // ADR-0137: файл в R2 не даёт публичной ссылки — сообщение не должно её
+  // изобретать, только сказать, что видео уже в кабинете.
+  it('source: file — без ссылки на видео, с карточкой проверки', () => {
+    const text = build({ source: 'file', url: undefined });
+
+    expect(text).toContain('в кабинете');
+    expect(text).not.toContain(URL);
+    expect(text).toContain(`${PUBLIC_URL}/grading/${ATTEMPT_ID}`);
   });
 });

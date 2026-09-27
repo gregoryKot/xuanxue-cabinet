@@ -8,6 +8,7 @@ import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DateTime } from 'luxon';
 import { errorMessage, errorStack } from '../common/error-info';
+import { AnswerVideoSweepService } from '../answer-videos/answer-video-sweep.service';
 import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import { PreviewService } from '../broadcasts/preview.service';
@@ -23,6 +24,7 @@ import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
+import { runSweepSteps } from './scheduler-sweep-steps';
 
 @Injectable()
 export class SchedulerService implements OnApplicationShutdown {
@@ -45,6 +47,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly examVideoSweepService: ExamVideoSweepService,
     private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
     private readonly storageOrphansService: StorageOrphansService,
+    private readonly answerVideoSweepService: AnswerVideoSweepService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
     private readonly heartbeat: SchedulerHeartbeat,
   ) {}
@@ -98,30 +101,23 @@ export class SchedulerService implements OnApplicationShutdown {
       now,
       (n) => this.examDeadlineCloseService.closeDue(n),
     )) ?? { closed: 0 };
-    // ADR-0035, «Последствия»: картинка варианта живёт, пока на неё ссылается
-    // вопрос банка или снимок попытки — сирота старше суток убирается сама.
-    const { removed: imagesRemoved } = (await this.step('картинки-сироты', now, (n) =>
-      this.examImageSweepService.removeOrphans(n),
-    )) ?? { removed: 0 };
-    // ADR-0133: видео вопроса/варианта живёт, пока на него ссылается вопрос
-    // банка или снимок попытки — сирота старше суток убирается сама, тем же
-    // приёмом, что картинка выше.
-    const { removed: videosRemoved } = (await this.step('видео-сироты', now, (n) =>
-      this.examVideoSweepService.removeOrphans(n),
-    )) ?? { removed: 0 };
-    // ADR-0050: снимок перевода живёт 30 дней после подтверждения и 90 дней
-    // без него — сама оплата остаётся, уходит только картинка.
-    const { removed: screenshotsRemoved, orphans: screenshotOrphans } = (await this.step(
-      'скриншоты оплат',
-      now,
-      (n) => this.paymentScreenshotSweepService.removeExpired(n),
-    )) ?? { removed: 0, orphans: 0 };
-
-    // ADR-0079: объект в R2, на который не сослался материал (упала запись,
-    // не удалилось при замене), уходит суткой позже — журнал storage_orphans.
-    const { removed: filesRemoved } = (await this.step('файлы-сироты', now, (n) =>
-      this.storageOrphansService.sweep(n),
-    )) ?? { removed: 0 };
+    // Пять шагов уборки байтов — scheduler-sweep-steps.ts (файл-храповик:
+    // этот файл уже был на потолке, «может только уменьшаться»).
+    const {
+      imagesRemoved,
+      videosRemoved,
+      screenshotsRemoved,
+      screenshotOrphans,
+      filesRemoved,
+      answerVideosRemoved,
+    } = await runSweepSteps((name, n, run) => this.step(name, n, run), now, {
+      removeImageOrphans: (n) => this.examImageSweepService.removeOrphans(n),
+      removeVideoOrphans: (n) => this.examVideoSweepService.removeOrphans(n),
+      removeExpiredScreenshots: (n) =>
+        this.paymentScreenshotSweepService.removeExpired(n),
+      sweepStorageOrphans: (n) => this.storageOrphansService.sweep(n),
+      removeExpiredAnswerVideos: (n) => this.answerVideoSweepService.removeExpired(n),
+    });
 
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
@@ -130,7 +126,8 @@ export class SchedulerService implements OnApplicationShutdown {
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
         `imagesRemoved=${imagesRemoved} videosRemoved=${videosRemoved} ` +
         `paymentScreenshotsRemoved=${screenshotsRemoved} ` +
-        `paymentScreenshotOrphans=${screenshotOrphans} filesRemoved=${filesRemoved}`,
+        `paymentScreenshotOrphans=${screenshotOrphans} filesRemoved=${filesRemoved} ` +
+        `answerVideosRemoved=${answerVideosRemoved}`,
     );
   }
 

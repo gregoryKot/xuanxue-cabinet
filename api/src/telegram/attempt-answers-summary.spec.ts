@@ -159,6 +159,24 @@ describe('attemptAnswersSummary', () => {
     expect(text).toContain('https://example.com/video.mp4');
   });
 
+  // ADR-0137: файл в R2 — ссылки на него в боте нет, только факт «в кабинете».
+  it('видео файлом (ADR-0137) — «видео в кабинете», не «отмечено вручную»', () => {
+    const media: ExamMediaDto[] = [
+      {
+        id: 'm1',
+        attemptId: 'a1',
+        itemId: 'i1',
+        kind: 'file',
+        answerVideoId: 'v1',
+        receivedAt: '2026-09-17T00:00:00Z',
+      },
+    ];
+    const text = attemptAnswersSummary(blocks([question({ kind: 'video' })]), media);
+
+    expect(text).toContain('в кабинете');
+    expect(text).not.toContain('Отмечено вручную');
+  });
+
   it('видео не получено — честный текст, не тишина', () => {
     const text = attemptAnswersSummary(blocks([question({ kind: 'video' })]), []);
 

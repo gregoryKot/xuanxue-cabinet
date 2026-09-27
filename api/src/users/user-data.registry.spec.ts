@@ -7,6 +7,7 @@ import {
   USER_MODEL_NAME,
   USER_OWNED_CASCADES,
   USER_OWNED_COLLECTIONS,
+  USER_OWNED_STORAGE_CASCADES,
   USER_REFERENCE_PATHS,
 } from './user-data.registry';
 
@@ -56,6 +57,36 @@ describe('USER_OWNED_CASCADES', () => {
       const def = MODEL_DEFINITIONS.find((d) => d.name === from);
       expect(Object.keys(def?.schema.paths ?? {})).toContain(path);
     }
+  });
+});
+
+describe('USER_OWNED_STORAGE_CASCADES', () => {
+  it('модель во владении (USER_OWNED_COLLECTIONS) — иначе удаление аккаунта не дошло бы до неё', () => {
+    for (const { model } of USER_OWNED_STORAGE_CASCADES) {
+      expect((USER_OWNED_COLLECTIONS as readonly string[]).includes(model)).toBe(true);
+    }
+  });
+
+  it('keyPath существует в схеме модели — иначе каскад читает несуществующее поле', () => {
+    for (const { model, keyPath } of USER_OWNED_STORAGE_CASCADES) {
+      const def = MODEL_DEFINITIONS.find((d) => d.name === model);
+      expect(Object.keys(def?.schema.paths ?? {})).toContain(keyPath);
+    }
+  });
+
+  // ADR-0137: любая модель во владении с путём `key` в схеме обязана стоять
+  // здесь — иначе байты в стороннем хранилище пережили бы удалённый аккаунт
+  // молча (тот же довод, что у payment_screenshots, USER_OWNED_CASCADES).
+  it('каждая модель во владении с путём key в схеме — в этом списке', () => {
+    const withKey = MODEL_DEFINITIONS.filter(
+      (def) =>
+        (USER_OWNED_COLLECTIONS as readonly string[]).includes(def.name) &&
+        Object.keys(def.schema.paths).includes('key'),
+    ).map((def) => def.name);
+
+    expect(withKey.sort()).toEqual(
+      [...USER_OWNED_STORAGE_CASCADES.map((c) => c.model)].sort(),
+    );
   });
 });
 

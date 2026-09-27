@@ -76,24 +76,31 @@ export function presignGetUrl({
 export type SignedRequestHeaders = Record<string, string> & { authorization: string };
 
 export interface SignedRequestInput {
-  method: 'PUT' | 'DELETE';
+  method: 'PUT' | 'DELETE' | 'POST';
   url: string;
   /** Заголовки запроса без `host`, `x-amz-date` и `x-amz-content-sha256` —
    * их подставляет и подписывает сама функция. */
   headers: Record<string, string>;
   body: Buffer;
+  /** Параметры query операций multipart (`uploads`, `partNumber`,
+   * `uploadId`) — сырые значения, канонизирует сама функция
+   * (`canonicalQuery`, sigv4-canonical.ts). Пустая строка у `uploads` —
+   * S3-совместимый multipart ждёт `?uploads` без значения. */
+  query?: Record<string, string>;
   now: DateTime;
   credentials: SigV4Credentials;
 }
 
-/** Заголовки для запроса с телом (загрузка) или без него (удаление). Хеш
- * тела подписывается явно, а не через UNSIGNED-PAYLOAD: при загрузке есть
- * что защищать от подмены по дороге. */
+/** Заголовки для запроса с телом (загрузка) или без него (удаление,
+ * multipart-операции без байтов части). Хеш тела подписывается явно, а не
+ * через UNSIGNED-PAYLOAD: при загрузке есть что защищать от подмены по
+ * дороге. */
 export function signRequestHeaders({
   method,
   url,
   headers,
   body,
+  query,
   now,
   credentials,
 }: SignedRequestInput): SignedRequestHeaders {
@@ -105,10 +112,11 @@ export function signRequestHeaders({
     [AMZ_DATE_HEADER]: amzDate,
     [AMZ_CONTENT_SHA256_HEADER]: payloadHash,
   };
+  const canonQuery = query ? canonicalQuery(query) : '';
   const { scope, signedHeaders, signature } = signCanonicalRequest({
     method,
     url: target,
-    query: '',
+    query: canonQuery,
     headers: { ...signed, [HOST_HEADER]: target.host },
     payloadHash,
     now,

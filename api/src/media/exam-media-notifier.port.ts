@@ -25,7 +25,11 @@ export interface VideoLinkAddedContext {
   // `null` — вопрос не определён (ссылка не привязана к конкретному вопросу)
   // или не найден в снимке.
   questionPrompt: string | null;
-  url: string;
+  // `'link'` — прежний путь (ADR-0084), `url` обязателен. `'file'` — файл в
+  // R2 (ADR-0137): ссылки на него в тексте нет, только факт «видео в
+  // кабинете» — сам файл открывается через сессию, не публичной ссылкой.
+  source: 'link' | 'file';
+  url?: string;
 }
 
 export interface ExamMediaNotifier {

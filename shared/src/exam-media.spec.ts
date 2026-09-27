@@ -12,8 +12,8 @@ import {
 } from './exam-media';
 
 describe('EXAM_MEDIA_KINDS', () => {
-  it('три пути привязки, ровно как в ADR-0023', () => {
-    expect(EXAM_MEDIA_KINDS).toEqual(['telegram', 'link', 'manual']);
+  it('четыре пути привязки (ADR-0023 + файл, ADR-0137)', () => {
+    expect(EXAM_MEDIA_KINDS).toEqual(['telegram', 'link', 'manual', 'file']);
   });
 });
 

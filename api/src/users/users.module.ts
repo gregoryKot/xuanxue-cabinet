@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ChannelModelModule } from '../channels/channel-model.module';
+import { StorageModule } from '../storage/storage.module';
 import { BotIdentityModule } from '../telegram/bot-identity.module';
 import { UserRecord, UserSchema } from './user.schema';
 import { InviteLinkRecord, InviteLinkSchema } from './invite-link.schema';
@@ -49,6 +50,11 @@ import { UsersService } from './users.service';
     ]),
     BotIdentityModule,
     ChannelModelModule,
+    // ADR-0137 — StorageOrphansService/MultipartStoreService: удаление
+    // аккаунта дотягивается до байтов видео-ответа в R2
+    // (USER_OWNED_STORAGE_CASCADES, user-deletion.service.ts). StorageModule
+    // про UsersModule не знает — цикла нет.
+    StorageModule,
   ],
   controllers: [UsersController, MyProfileController, MyNoTelegramController],
   providers: [

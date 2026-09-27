@@ -1,6 +1,7 @@
 // Юнит-тест на фейках шагов (CLAUDE.md «Тесты»: детерминизм — без
 // setTimeout-ожиданий, свой resolve() вместо реальных часов).
 import { DateTime } from 'luxon';
+import type { AnswerVideoSweepService } from '../answer-videos/answer-video-sweep.service';
 import type { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import type { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import type { PreviewService } from '../broadcasts/preview.service';
@@ -32,6 +33,7 @@ function buildService(overrides: {
   removeVideoOrphans?: ExamVideoSweepService['removeOrphans'];
   removeExpiredScreenshots?: PaymentScreenshotSweepService['removeExpired'];
   sweepStorageOrphans?: StorageOrphansService['sweep'];
+  removeExpiredAnswerVideos?: AnswerVideoSweepService['removeExpired'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
 }): {
   service: SchedulerService;
@@ -70,6 +72,8 @@ function buildService(overrides: {
     jest.fn().mockResolvedValue({ removed: 0, orphans: 0 });
   const sweepStorageOrphans =
     overrides.sweepStorageOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
+  const removeExpiredAnswerVideos =
+    overrides.removeExpiredAnswerVideos ?? jest.fn().mockResolvedValue({ removed: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -99,6 +103,7 @@ function buildService(overrides: {
       removeExpired: removeExpiredScreenshots,
     } as unknown as PaymentScreenshotSweepService,
     { sweep: sweepStorageOrphans } as unknown as StorageOrphansService,
+    { removeExpired: removeExpiredAnswerVideos } as unknown as AnswerVideoSweepService,
     notifier,
     heartbeat,
   );
@@ -290,6 +295,30 @@ describe('SchedulerService.tick', () => {
   it('ошибка шага «скриншоты оплат» не мешает итоговому логу', async () => {
     const removeExpiredScreenshots = jest.fn().mockRejectedValue(new Error('mongo упал'));
     const { service } = buildService({ removeExpiredScreenshots });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  it('ошибка шага «видео-сироты» не мешает итоговому логу', async () => {
+    const removeVideoOrphans = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const { service } = buildService({ removeVideoOrphans });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  it('ошибка шага «файлы-сироты» не мешает итоговому логу', async () => {
+    const sweepStorageOrphans = jest.fn().mockRejectedValue(new Error('R2 недоступен'));
+    const { service } = buildService({ sweepStorageOrphans });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  // ADR-0137: шаг видео-ответа падает как любой другой, не должен уронить тик.
+  it('ошибка шага «видео-ответы» не мешает итоговому логу', async () => {
+    const removeExpiredAnswerVideos = jest
+      .fn()
+      .mockRejectedValue(new Error('mongo упал'));
+    const { service } = buildService({ removeExpiredAnswerVideos });
 
     await expect(service.tick()).resolves.toBeUndefined();
   });
