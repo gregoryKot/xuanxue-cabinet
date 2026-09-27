@@ -222,7 +222,7 @@ describe('AttemptInProgress', () => {
   it('видео-вопрос — кнопка бота и форма ссылки, без поля загрузки файла', () => {
     renderAttempt(makeAttempt());
 
-    const link = screen.getByRole('link', { name: 'Отправить видео боту в Telegram' });
+    const link = screen.getByRole('link', { name: 'Открыть чат с ботом' });
     expect(link).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q3');
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /файл/i })).not.toBeInTheDocument();
@@ -267,7 +267,7 @@ describe('AttemptInProgress', () => {
     ).toBeInTheDocument();
 
     const links = screen.getAllByRole('link', {
-      name: 'Отправить видео боту в Telegram',
+      name: 'Открыть чат с ботом',
     });
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q4');
@@ -288,7 +288,7 @@ describe('AttemptInProgress', () => {
     renderAttempt(makeAttempt(), { video: makeVideo({ addMediaLink }) });
 
     await user.type(screen.getByLabelText('Ссылка на видео'), 'https://example.com/v');
-    await user.click(screen.getByRole('button', { name: 'Сохранить ссылку' }));
+    await user.tab();
 
     expect(addMediaLink).toHaveBeenCalledWith('q3', 'https://example.com/v');
   });
