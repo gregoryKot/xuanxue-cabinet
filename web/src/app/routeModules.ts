@@ -26,6 +26,7 @@ import {
   CLASSES_LIST_PATH,
   CLASSES_PATH,
   EXAMS_PATH,
+  EXAM_EDITOR_ITEMS_PATH,
   EXAM_ITEMS_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
   GRADED_ATTEMPTS_PATH,
@@ -282,9 +283,8 @@ export const ROUTE_MODULES = {
     path: '/exams/new',
     load: loadExamEditor,
     warm: true,
-    // Вопросы грузятся на монтировании и у нового экзамена
-    // (ExamEditorForm.tsx — без фильтра, поиск по ним локальный).
-    prefetch: () => [examItemsListPath('')],
+    // Вопросы грузятся и у нового экзамена — с удалёнными (ExamEditorForm.tsx).
+    prefetch: () => [EXAM_EDITOR_ITEMS_PATH],
   },
   examEditor: {
     path: '/exams/:examId',
@@ -292,7 +292,7 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [
       entityPath(EXAMS_PATH, lastSegment(pathname)),
-      examItemsListPath(''),
+      EXAM_EDITOR_ITEMS_PATH,
     ],
   },
   // Предпросмотр «глазами ученика» — страница, а не слой поверх редактора
@@ -303,7 +303,7 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [
       entityPath(EXAMS_PATH, segmentBeforeLast(pathname)),
-      examItemsListPath(''),
+      EXAM_EDITOR_ITEMS_PATH,
     ],
   },
   grading: {

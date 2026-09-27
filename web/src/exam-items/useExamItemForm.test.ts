@@ -158,10 +158,10 @@ describe('useExamItemForm — правка, удаление, смена ста�
     expect(onRemove).toHaveBeenCalledWith('e1');
   });
 
-  it('409 при удалении (не черновик) — serverError с текстом от сервера', async () => {
+  it('сбой сервера при удалении — serverError с текстом от сервера', async () => {
     const onRemove = vi
       .fn()
-      .mockRejectedValue(new ApiError('Удалить можно только черновик.', 409, 'conflict'));
+      .mockRejectedValue(new ApiError('Сервис недоступен.', 503, 'unknown'));
     const item = makeItem();
     const { result } = renderHook(() =>
       useExamItemForm(item, vi.fn(), vi.fn(), onRemove),
@@ -171,7 +171,7 @@ describe('useExamItemForm — правка, удаление, смена ста�
       await result.current.remove();
     });
 
-    expect(result.current.serverError?.message).toBe('Удалить можно только черновик.');
+    expect(result.current.serverError?.message).toBe('Сервис недоступен.');
   });
 
   it('неизвестная ошибка при удалении — общий текст', async () => {

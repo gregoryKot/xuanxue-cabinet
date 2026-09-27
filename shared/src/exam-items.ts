@@ -79,6 +79,7 @@ export interface ExamItemDto {
   authorId?: string;
   createdAt: string;
   updatedAt: string; // ISO UTC с Z
+  deletedAt?: string; // ISO UTC; удалён из списка, но стоит в экзаменах (ADR-0140)
 }
 
 export interface CreateExamItemInput {
@@ -113,6 +114,7 @@ export interface ListExamItemsQuery {
   status?: ExamItemStatus;
   kind?: ExamItemKind;
   limit?: number;
+  includeDeleted?: boolean; // с удалёнными — редактору экзамена (ADR-0140)
 }
 
 export const EXAM_ITEM_LIMITS = {
@@ -120,10 +122,8 @@ export const EXAM_ITEM_LIMITS = {
   optionText: 300,
   optionsMax: 10,
   optionsMin: 2,
-  /** Длина https-ссылки на видео (ADR-0133) — та же величина, что
-   * EXAM_VIDEO_LIMITS.videoUrl (exam-videos.ts): здесь не импортируется,
-   * чтобы у вопросов не завелась зависимость от домена видео ради одного
-   * числа, но лимит держится тем же. */
+  /** Как EXAM_VIDEO_LIMITS.videoUrl (exam-videos.ts, ADR-0133); не импортом —
+   * у вопросов нет зависимости от домена видео ради одного числа. */
   videoUrl: 500,
 } as const;
 

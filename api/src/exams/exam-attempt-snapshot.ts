@@ -60,11 +60,11 @@ interface BuildAttemptBlocksInput {
 
 /**
  * `itemsById` — уже загруженные и расшифрованные вопросы банка (сервис зовёт
- * `ExamItemsService.getById` на каждый id блоков перед вызовом). Вопрос,
+ * `ExamItemsService.getById(id, true)` на каждый id блоков перед вызовом —
+ * `includeDeleted`, ADR-0140, находит и мягко удалённый вопрос). Вопрос,
  * которого нет среди загруженных, — программная ошибка вызывающего кода
  * (эксплуатационно невозможна: форма ссылается только на вопросы банка,
- * ExamsService.assertItemsEligible, а опубликованный вопрос не удаляется,
- * removeIfDraft), поэтому падаем явно, а не молча теряем блок.
+ * ExamsService.assertItemsEligible), поэтому падаем явно, а не молча теряем блок.
  */
 export function buildAttemptBlocks({
   blocks,

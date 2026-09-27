@@ -75,6 +75,6 @@ export class ExamItemsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
-    return this.examItemsService.remove(id);
+    return this.examItemsService.remove(id, DateTime.utc());
   }
 }

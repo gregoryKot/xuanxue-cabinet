@@ -1,6 +1,6 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): шифрование содержательных полей, версии опубликованных вопросов
-// (ТЗ 4.2, п.3), запрет удаления не-черновика.
+// (ТЗ 4.2, п.3), мягкое удаление в любом статусе (ADR-0140).
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
 import {
@@ -50,9 +50,9 @@ describe('ExamItemsService', () => {
       fakeExamVideosService(),
     );
     // Только чтобы завести реальный неархивированный экзамен, ссылающийся на
-    // вопрос (защита от удаления/архивации, exam-item-references.ts) — без
-    // отдельного мока формы, тем же приёмом, что exam-item-stats.service.spec.ts.
-    examsService = new ExamsService(examModel, model, attemptModel);
+    // вопрос (защита от архивации, exam-item-references.ts) — без отдельного
+    // мока формы, тем же приёмом, что exam-item-stats.service.spec.ts.
+    examsService = new ExamsService(examModel, model);
   }, 60_000);
 
   afterAll(async () => {
@@ -617,76 +617,43 @@ describe('ExamItemsService', () => {
     });
   });
 
-  describe('удаление — только черновик (ТЗ 4.2, п.4)', () => {
-    it('черновик удаляется', async () => {
+  // Мягкое удаление в любом статусе (ADR-0140) — новую машинерию отказов
+  // покрывает exam-soft-delete.spec.ts, здесь только базовый переход этого
+  // сервиса: удалить можно черновик/опубликованный/архивный, повторно — 404.
+  describe('удаление (ADR-0140)', () => {
+    it.each(['draft', 'published', 'archived'] as const)(
+      'вопрос в статусе %s удаляется — пропадает из getById',
+      async (status) => {
+        const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+        if (status !== 'draft') await service.update(created.id, { status }, NOW);
+
+        await service.remove(created.id, NOW);
+
+        await expect(service.getById(created.id)).rejects.toThrow('Вопрос не найден');
+      },
+    );
+
+    it('повторное удаление — NotFoundError', async () => {
       const created = await service.create(
         { kind: 'text', prompt: 'p', status: 'draft' },
         AUTHOR_ID,
       );
+      await service.remove(created.id, NOW);
 
-      await service.remove(created.id);
-
-      await expect(service.getById(created.id)).rejects.toThrow('Вопрос не найден');
-    });
-
-    it('опубликованный — ConflictError, вопрос остаётся', async () => {
-      const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
-      await service.update(created.id, { status: 'published' }, NOW);
-
-      await expect(service.remove(created.id)).rejects.toThrow(
-        'Удалить можно только черновик',
-      );
-      await expect(service.getById(created.id)).resolves.toMatchObject({
-        status: 'published',
-      });
-    });
-
-    it('архивный — ConflictError', async () => {
-      const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
-      await service.update(created.id, { status: 'published' }, NOW);
-      await service.update(created.id, { status: 'archived' }, NOW);
-
-      await expect(service.remove(created.id)).rejects.toThrow(
-        'Удалить можно только черновик',
-      );
+      await expect(service.remove(created.id, NOW)).rejects.toThrow('Вопрос не найден');
     });
 
     it('несуществующий id — NotFoundError', async () => {
-      await expect(service.remove('507f1f77bcf86cd799439011')).rejects.toThrow(
+      await expect(service.remove('507f1f77bcf86cd799439011', NOW)).rejects.toThrow(
         'Вопрос не найден',
       );
     });
   });
 
-  // Блокеры аудита 2026-09-15 №1 и №2: removeIfDraft/архивация проверяли
-  // только статус самого вопроса, не ссылки из exams.blocks[].itemIds —
-  // удаление или архивация вопроса, стоящего в неархивированном экзамене,
-  // ломали форму для всех сдающих молча.
-  describe('используется в экзамене (блокеры аудита 2026-09-15 №1 и №2)', () => {
-    async function referencedDraftItem(): Promise<{
-      itemId: string;
-      examId: string;
-      examTitle: string;
-    }> {
-      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
-      await service.update(item.id, { status: 'published' }, NOW);
-      const exam = await examsService.create(
-        { title: 'Итоговый экзамен', blocks: [{ itemIds: [item.id] }] },
-        AUTHOR_ID,
-      );
-      // Учитель откатил вопрос назад в черновик, не убрав его из формы —
-      // ровно случай, который старая removeIfDraft пропускала (блокер №1).
-      await service.update(item.id, { status: 'draft' }, NOW);
-      return { itemId: item.id, examId: exam.id, examTitle: exam.title };
-    }
-
-    it('черновик, стоящий в форме экзамена, — ConflictError с названием формы, вопрос остаётся', async () => {
-      const { itemId, examTitle } = await referencedDraftItem();
-
-      await expect(service.remove(itemId)).rejects.toThrow(`«${examTitle}»`);
-      await expect(service.getById(itemId)).resolves.toMatchObject({ status: 'draft' });
-    });
-
+  // Блокер аудита 2026-09-15 №2 остаётся: архивация всё ещё рвёт ссылку,
+  // если вопрос стоит в неархивированной и неудалённой форме (ADR-0140
+  // снимает такую же защиту только у удаления, не у архивации).
+  describe('используется в экзамене — архивация', () => {
     it('опубликованный, стоящий в форме экзамена, — архивировать нельзя, названа форма', async () => {
       const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
       const published = await service.update(item.id, { status: 'published' }, NOW);
@@ -703,24 +670,38 @@ describe('ExamItemsService', () => {
       });
     });
 
-    it('вопрос, который нигде не стоит, — удаляется как раньше', async () => {
-      const item = await service.create(
-        { kind: 'text', prompt: 'p', status: 'draft' },
+    it('форма удалена (ADR-0140) — архивация вопроса больше не заблокирована', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+      const exam = await examsService.create(
+        { title: 'Форма для удаления', blocks: [{ itemIds: [published.id] }] },
         AUTHOR_ID,
       );
+      await examsService.remove(exam.id, NOW);
 
-      await service.remove(item.id);
-
-      await expect(service.getById(item.id)).rejects.toThrow('Вопрос не найден');
+      await expect(
+        service.update(published.id, { status: 'archived' }, NOW),
+      ).resolves.toMatchObject({ status: 'archived' });
     });
 
-    it('вопрос из архивированного экзамена — удаляется: архивная форма не в счёте', async () => {
-      const { itemId, examId } = await referencedDraftItem();
-      await examsService.update(examId, { status: 'archived' });
+    it('вопрос удалён, но стоит в опубликованной форме — форму можно сохранить дальше', async () => {
+      const item = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const published = await service.update(item.id, { status: 'published' }, NOW);
+      const exam = await examsService.create(
+        { title: 'Живая форма', blocks: [{ itemIds: [published.id] }] },
+        AUTHOR_ID,
+      );
+      await examsService.update(exam.id, { status: 'published' });
 
-      await service.remove(itemId);
+      await service.remove(published.id, NOW);
 
-      await expect(service.getById(itemId)).rejects.toThrow('Вопрос не найден');
+      await expect(
+        examsService.update(exam.id, { level: 'начальный' }),
+      ).resolves.toMatchObject({ level: 'начальный' });
+      // includeDeleted — тем же приёмом, что exam-attempt-start.ts.
+      await expect(service.getById(published.id, true)).resolves.toMatchObject({
+        id: published.id,
+      });
     });
   });
 
@@ -752,6 +733,20 @@ describe('ExamItemsService', () => {
 
       const list = await service.list({ limit: 1 });
       expect(list).toHaveLength(1);
+    });
+
+    it('удалённый вопрос по умолчанию отсутствует, с includeDeleted — виден с deletedAt', async () => {
+      const live = await service.create({ kind: 'text', prompt: 'Живой' }, AUTHOR_ID);
+      const removed = await service.create({ kind: 'text', prompt: 'Удалён' }, AUTHOR_ID);
+      await service.remove(removed.id, NOW);
+
+      const plain = await service.list({});
+      expect(plain.map((i) => i.id)).toEqual([live.id]);
+
+      const withDeleted = await service.list({ includeDeleted: true });
+      expect(withDeleted.map((i) => i.id).sort()).toEqual([live.id, removed.id].sort());
+      const deletedDto = withDeleted.find((i) => i.id === removed.id);
+      expect(deletedDto?.deletedAt).toBe(NOW.toUTC().toISO());
     });
   });
 });

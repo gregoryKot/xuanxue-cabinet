@@ -1,6 +1,7 @@
 // Query GET /exam-items. Лимит по умолчанию LIST_LIMIT_DEFAULT, максимум
 // LIST_LIMIT_MAX — «дай всё» запрещён (CLAUDE.md, раздел «API»).
-import { IsIn, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsIn, IsOptional } from 'class-validator';
 import {
   EXAM_ITEM_KINDS,
   EXAM_ITEM_STATUSES,
@@ -8,6 +9,7 @@ import {
   type ExamItemStatus,
   type ListExamItemsQuery,
 } from '@xuanxue/shared';
+import { booleanFromQuery } from '../../common/query-transforms';
 import { ListLimit } from '../../common/validation';
 
 export class ListExamItemsDto implements ListExamItemsQuery {
@@ -21,4 +23,10 @@ export class ListExamItemsDto implements ListExamItemsQuery {
 
   @ListLimit()
   limit?: number;
+
+  // Мягко удалённые вопросы (ADR-0140) — редактору формы, не экрану банка.
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => booleanFromQuery(value))
+  @IsBoolean()
+  includeDeleted?: boolean;
 }

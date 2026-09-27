@@ -79,6 +79,17 @@ describe('MyExamsService', () => {
     expect(list.map((e) => e.id)).toEqual([publishedId]);
   });
 
+  it('удалённая форма (ADR-0140) не отдаётся ученику', async () => {
+    const itemId = await createPublishedItem();
+    const visibleId = await createExam({ itemId });
+    const deletedId = await createExam({ itemId });
+    await ctx.examsService.remove(deletedId, NOW);
+
+    const list = await service.list({}, USER_A, NOW);
+
+    expect(list.map((e) => e.id)).toEqual([visibleId]);
+  });
+
   it('ученик ещё не начинал — attemptsUsed 0, lastAttempt отсутствует', async () => {
     const itemId = await createPublishedItem();
     await createExam({ itemId });
@@ -336,5 +347,12 @@ describe('MyExamsService — markSeen (ADR-0129)', () => {
 
   it('неизвестный id формы — 404, не падает молча', async () => {
     await expect(service.markSeen('507f1f77bcf86cd799439099', USER_A)).rejects.toThrow();
+  });
+
+  it('удалённая форма (ADR-0140) — 404, тем же путём, что старт попытки', async () => {
+    const examId = await createPublishedExam();
+    await ctx.examsService.remove(examId, NOW);
+
+    await expect(service.markSeen(examId, USER_A)).rejects.toThrow();
   });
 });

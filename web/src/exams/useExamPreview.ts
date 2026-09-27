@@ -23,7 +23,9 @@ export interface UseExamPreviewResult {
 
 export function useExamPreview(examId: string | undefined): UseExamPreviewResult {
   const exam = useExamEditor(examId);
-  const bank = useExamItems(NO_STATUS_FILTER);
+  // Как и у редактора (ExamEditorForm.tsx) — удалённый из банка вопрос
+  // остаётся виден в самом экзамене (ADR-0140).
+  const bank = useExamItems(NO_STATUS_FILTER, { includeDeleted: true });
 
   async function reload(): Promise<void> {
     await Promise.all([exam.reload(), bank.reload()]);

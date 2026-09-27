@@ -6,27 +6,22 @@
 //
 // Один подвал на форму экзамена и вопрос — оба живут по
 // draft/published/archived (CLAUDE.md «Одна механика — один компонент»).
-// Домен приносит только тексты: что статус значит для ученика, как
-// называется удаление и почему его нет. Строка статуса — EditorStatusRow.tsx:
+// Домен приносит только тексты: что статус значит для ученика и как
+// называется удаление. Строка статуса — EditorStatusRow.tsx:
 // у вопроса она здесь, в подвале (`statusRow` с текстами и обработчиком), у
 // экзамена — под названием страницы (`statusRow="elsewhere"`).
 //
-// Удаление черновика у вопроса — здесь же, кнопкой; у экзамена кнопка «Удалить
-// экзамен» переехала наверх страницы, в строку с «К списку экзаменов»
-// (ExamEditorForm.tsx, ADR-0139: владелец не находил её в конце длинного
-// списка вопросов) — `removeLabel`/`onRemove` тогда не переданы, и блок
-// удаления в подвале не рисуется вовсе. `noRemoveNotes` — частичный: экзамен
-// оставляет здесь только объяснение для опубликованного (ExamEditorFooter.tsx),
-// у архивного статус выше уже сказал «сданные работы остаются» — второй раз
-// объяснять нечего.
-import type { CSSProperties, ReactNode } from 'react';
+// Удаление у вопроса — здесь же, кнопкой, в любом статусе (мягкое удаление,
+// ADR-0140; раньше только черновику, остальным статусам подвал объяснял
+// «почему нельзя»). У экзамена кнопка «Удалить экзамен» переехала наверх
+// страницы, в строку с «К списку экзаменов» (ExamEditorHeader.tsx: владелец
+// не находил её в конце длинного списка вопросов) — `removeLabel`/`onRemove`
+// тогда не переданы, и блок удаления в подвале не рисуется вовсе.
+import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { editorActionsRowStyle } from './editorLayout';
 import { EditorStatusRow } from './EditorStatusRow';
-import { RichText } from './RichText';
 import type { DraftPublishedArchivedStatus } from '../lib/statusTransitions';
-
-const noteStyle: CSSProperties = { margin: '14px 0 0', color: 'var(--ink-soft)' };
 
 interface EditorFooterProps {
   /** `null` — записи ещё нет на сервере. */
@@ -35,12 +30,8 @@ interface EditorFooterProps {
    * рисует её сама (экзамен — под названием). */
   statusRow: EditorFooterStatusRow | 'elsewhere';
   /** Подпись кнопки удаления: «Удалить вопрос». Не передано — кнопки в
-   * подвале нет: удаление либо недоступно статусу, либо стоит на странице
-   * отдельно (экзамен). */
+   * подвале нет: удаление стоит на странице отдельно (экзамен). */
   removeLabel?: string;
-  /** Почему кнопки удаления нет у конкретного неудаляемого статуса — не
-   * задано для статуса, значит подвал молчит про удаление вовсе. */
-  noRemoveNotes?: Partial<Record<'published' | 'archived', string>>;
   pending: boolean;
   onRemove?: () => void;
   /** Второе действие рядом с «Сохранить» — текстом, не кнопкой. */
@@ -57,12 +48,10 @@ export function EditorFooter({
   status,
   statusRow,
   removeLabel,
-  noRemoveNotes,
   pending,
   onRemove,
   extraAction,
 }: EditorFooterProps) {
-  const noRemoveNote = status && status !== 'draft' ? noRemoveNotes?.[status] : undefined;
   return (
     <div>
       <div style={editorActionsRowStyle}>
@@ -84,7 +73,7 @@ export function EditorFooter({
             />
           )}
 
-          {status === 'draft' && removeLabel && onRemove ? (
+          {removeLabel && onRemove && (
             <Button
               type="button"
               variant="danger"
@@ -94,13 +83,6 @@ export function EditorFooter({
             >
               {removeLabel}
             </Button>
-          ) : (
-            noRemoveNote && (
-              // Через RichText (ADR-0124) — акцент в объяснении «почему нельзя удалить».
-              <p style={noteStyle}>
-                <RichText text={noRemoveNote} />
-              </p>
-            )
           )}
         </>
       )}

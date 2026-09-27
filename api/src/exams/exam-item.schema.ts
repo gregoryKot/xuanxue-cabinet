@@ -113,6 +113,13 @@ export class ExamItemRecord {
   // ссылка. См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   authorId?: Types.ObjectId;
+
+  // Мягкое удаление (ADR-0140) — вопрос пропадает из банка и с экранов
+  // /exam-items, но остаётся в форме, где он уже стоял (exam-items-eligible.ts,
+  // exam-attempt-start.ts не фильтруют по этому полю нарочно). Не String —
+  // encryption-coverage.spec.ts решения не требует.
+  @Prop({ type: Date, required: false })
+  deletedAt?: Date;
 }
 
 export const ExamItemSchema = SchemaFactory.createForClass(ExamItemRecord);
@@ -122,6 +129,9 @@ ExamItemSchema.index({ status: 1, updatedAt: -1 });
 ExamItemSchema.index({ imageIds: 1 });
 // Уборщик видео-сирот (ADR-0133) — какие видео ещё используются вопросами.
 ExamItemSchema.index({ videoIds: 1 });
+// Список банка (по умолчанию без удалённых, ADR-0140) — тот же составной
+// приём, что у status+updatedAt выше.
+ExamItemSchema.index({ deletedAt: 1, updatedAt: -1 });
 
 export const EXAM_ITEM_FIELD_POLICY: FieldPolicy = {
   prompt: enc,

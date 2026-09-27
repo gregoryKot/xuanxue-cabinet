@@ -22,7 +22,14 @@ export const EXAM_ITEM_STATUS_LABELS_RU = DRAFT_PUBLISHED_ARCHIVED_LABELS_RU;
  * Form.dc.html). Тег вопроса убран из продукта (ADR-0128) — строка теперь
  * несёт только тип; один форматтер на список вопросов и поиск рядом с ним,
  * чтобы не разойтись при первой правке (CLAUDE.md «Одна механика — один
- * компонент»). */
-export function formatExamItemMeta(item: Pick<ExamItemDto, 'kind'>): string {
-  return EXAM_ITEM_KIND_LABELS_RU[item.kind];
+ * компонент»). Вопрос, удалённый из банка (ADR-0140), но ещё стоящий в
+ * экзамене (ExamQuestionList.tsx), несёт суффикс — поиск (ExamQuestionSearch.tsx)
+ * такой вопрос не показывает вовсе, поэтому там суффикс никогда не появится. */
+const DELETED_FROM_BANK_SUFFIX = ' · удалён из списка вопросов';
+
+export function formatExamItemMeta(
+  item: Pick<ExamItemDto, 'kind' | 'deletedAt'>,
+): string {
+  const kind = EXAM_ITEM_KIND_LABELS_RU[item.kind];
+  return item.deletedAt ? `${kind}${DELETED_FROM_BANK_SUFFIX}` : kind;
 }

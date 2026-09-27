@@ -9,10 +9,9 @@
 // Строки статуса («Опубликовать», «В архив») и удаления в подвале нет —
 // обе стоят наверху страницы (ExamEditorForm.tsx, ADR-0139): владелец искал
 // «Опубликовать» и «Удалить» наверху, а не в конце длинного списка вопросов,
-// и не мог понять, куда делись эти кнопки, пока не долистает форму. Здесь
-// остаётся только короткое объяснение, почему опубликованный экзамен не
-// удалить — у архивного та же мысль уже сказана строкой статуса наверху
-// («сданные работы остаются»), повторять незачем.
+// и не мог понять, куда делись эти кнопки, пока не долистает форму.
+// Объяснения «почему опубликованный не удалить» больше нет: удаляется любой
+// (мягкое удаление, ADR-0140).
 import type { ExamStatus } from '@xuanxue/shared';
 import { EditorFooter } from '../components/EditorFooter';
 import { TextLinkButton } from '../components/TextLinkButton';
@@ -23,9 +22,6 @@ export const EXAM_STATUS_EXPLANATIONS: Record<ExamStatus, string> = {
   draft: 'ученики его не видят',
   published: 'ученики видят его в списке',
   archived: 'ученики его не видят, сданные работы остаются',
-};
-const NO_REMOVE_NOTES: Partial<Record<'published' | 'archived', string>> = {
-  published: 'Опубликованный экзамен не удалить — его можно отправить в архив.',
 };
 
 interface ExamPreviewAction {
@@ -47,7 +43,6 @@ export function ExamEditorFooter({ status, pending, preview }: ExamEditorFooterP
     <EditorFooter
       status={status}
       statusRow="elsewhere"
-      noRemoveNotes={NO_REMOVE_NOTES}
       pending={pending}
       extraAction={
         preview ? (

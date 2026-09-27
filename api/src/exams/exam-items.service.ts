@@ -22,14 +22,11 @@ import { NotFoundError } from '../common/errors';
 import { toIsoUtc } from '../common/iso-date';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
-import { removeIfDraft } from '../common/remove-if-draft';
+import { NOT_DELETED, softDelete } from '../common/soft-delete';
 import { encryptRecord } from '../utils/encryption';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { ExamVideosService } from '../exam-videos/exam-videos.service';
-import {
-  assertItemNotUsedForArchive,
-  assertItemNotUsedForRemove,
-} from './exam-item-references';
+import { assertItemNotUsedForArchive } from './exam-item-references';
 import { buildHistoryEntry, hasContentChanged } from './exam-item-content-change';
 import { assertOptionsForKind, collectImageIds, mapOptions } from './exam-item-options';
 import { assertOneVideoSource, collectItemVideoIds } from './exam-item-video';
@@ -38,11 +35,6 @@ import { decryptExamItem, toExamItemDto, type RawLeanExamItem } from './exam-ite
 import { ExamRecord } from './exam.schema';
 
 const NOT_FOUND_MESSAGE = EXAM_ITEM_NOT_FOUND_MESSAGE;
-// VOICE.md: что случилось и что сделать. Вопрос без записей всё равно можно
-// удалить (черновик) — сообщение адресует только заблокированный случай.
-const NOT_DRAFT_MESSAGE =
-  'Удалить можно только черновик — на опубликованный или архивный вопрос могут ' +
-  'ссылаться сданные работы. Опубликованный переведите в архив вместо удаления.';
 
 @Injectable()
 export class ExamItemsService {
@@ -53,8 +45,11 @@ export class ExamItemsService {
     private readonly examVideosService: ExamVideosService,
   ) {}
 
+  // includeDeleted (ADR-0140) — редактору формы нужна формулировка вопроса,
+  // которого уже нет в банке, но который стоит в блоке.
   async list(query: ListExamItemsQuery): Promise<ExamItemDto[]> {
     const filter: Record<string, unknown> = {};
+    if (!query.includeDeleted) Object.assign(filter, NOT_DELETED);
     if (query.status !== undefined) filter.status = query.status;
     if (query.kind !== undefined) filter.kind = query.kind;
     const docs = await this.model
@@ -65,9 +60,12 @@ export class ExamItemsService {
     return docs.map((doc) => toExamItemDto(decryptExamItem(doc)));
   }
 
-  async getById(id: string): Promise<ExamItemDto> {
+  // includeDeleted — createAttempt (exam-attempt-start.ts) читает через этот
+  // же метод удалённый, но ещё стоящий в форме вопрос (ADR-0140).
+  async getById(id: string, includeDeleted = false): Promise<ExamItemDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const doc = await this.model.findById(id).lean<RawLeanExamItem>();
+    const filter = includeDeleted ? { _id: id } : { _id: id, ...NOT_DELETED };
+    const doc = await this.model.findOne(filter).lean<RawLeanExamItem>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     return toExamItemDto(decryptExamItem(doc));
   }
@@ -106,11 +104,13 @@ export class ExamItemsService {
     now: DateTime,
   ): Promise<ExamItemDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const doc = await this.model.findById(id).lean<RawLeanExamItem>();
+    const filter = { _id: id, ...NOT_DELETED };
+    const doc = await this.model.findOne(filter).lean<RawLeanExamItem>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExamItem(doc);
 
-    // Архивация рвёт ссылку так же, как удаление (exam-item-references.ts).
+    // Архивация рвёт ссылку (exam-item-references.ts) — удаление её больше
+    // не требует (ADR-0140).
     if (input.status === 'archived') {
       await assertItemNotUsedForArchive(this.examModel, id);
     }
@@ -169,11 +169,10 @@ export class ExamItemsService {
     return toExamItemDto(decryptExamItem(updated));
   }
 
-  async remove(id: string): Promise<void> {
+  // Вопрос удаляется в любом статусе, даже если стоит в форме — форма
+  // продолжает получать его снимком (ADR-0140, exam-items-eligible.ts).
+  async remove(id: string, now: DateTime): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    // Ссылка на форму — раньше и конкретнее «не черновика» ниже (называет
-    // форму, а не просто велит архивировать); без ссылки идём в removeIfDraft.
-    await assertItemNotUsedForRemove(this.examModel, id);
-    await removeIfDraft(this.model, id, NOT_FOUND_MESSAGE, NOT_DRAFT_MESSAGE);
+    await softDelete(this.model, id, now, NOT_FOUND_MESSAGE);
   }
 }

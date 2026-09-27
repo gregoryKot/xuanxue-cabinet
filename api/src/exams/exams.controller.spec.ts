@@ -2,6 +2,7 @@
 // без HTTP, без Mongo. Роли/CSRF/404 проверяет e2e (exams.e2e-spec.ts) на
 // настоящем гварде — здесь только «контроллер зовёт сервис и возвращает его ответ».
 import { Test } from '@nestjs/testing';
+import { DateTime } from 'luxon';
 import type { ExamDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { ExamsController } from './exams.controller';
@@ -74,11 +75,11 @@ describe('ExamsController', () => {
     expect(update).toHaveBeenCalledWith('e1', body);
   });
 
-  it('remove() передаёт id в сервис', async () => {
+  it('remove() передаёт id и «сейчас» в сервис', async () => {
     const remove = jest.fn().mockResolvedValue(undefined);
     const controller = await buildController({ remove });
 
     await controller.remove('e1');
-    expect(remove).toHaveBeenCalledWith('e1');
+    expect(remove).toHaveBeenCalledWith('e1', expect.any(DateTime));
   });
 });

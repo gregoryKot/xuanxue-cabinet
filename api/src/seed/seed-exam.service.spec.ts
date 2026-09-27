@@ -77,7 +77,7 @@ describe('SeedExamService', () => {
       examImagesService,
       fakeExamVideosService(),
     );
-    examsService = new ExamsService(examModel, itemModel, attemptModel);
+    examsService = new ExamsService(examModel, itemModel);
     seedExamService = new SeedExamService(
       examModel,
       itemModel,

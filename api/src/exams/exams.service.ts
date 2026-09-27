@@ -6,6 +6,7 @@
 // тело и зовёт.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import type { DateTime } from 'luxon';
 import { Model } from 'mongoose';
 import {
   EXAM_NOT_FOUND_MESSAGE,
@@ -19,22 +20,17 @@ import {
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { splitUpdate, type UpdateCommand } from '../common/patch-update';
+import { NOT_DELETED, softDelete } from '../common/soft-delete';
 import { parseUtcIso } from '../lessons/lesson-dates';
 import { encryptRecord } from '../utils/encryption';
-import { ExamAttemptRecord } from './exam-attempt.schema';
 import { assertBlocksConsistent, hasAnyQuestion, mapBlocks } from './exam-blocks';
+import { deletedExamIds } from './deleted-exam-ids';
 import { assertItemsEligible } from './exam-items-eligible';
-import { removeExamIfNotAttempted } from './exam-attempt-references';
 import { ExamItemRecord } from './exam-item.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord, type ExamBlockRecord } from './exam.schema';
 import { decryptExam, toExamDto, type RawLeanExam } from './exam.mapper';
 
 const NOT_FOUND_MESSAGE = EXAM_NOT_FOUND_MESSAGE;
-// VOICE.md: что случилось и что сделать. Тот же приём, что у NOT_DRAFT_MESSAGE
-// в exam-items.service.ts (ТЗ 4.3, п.5), свой текст: на форму, а не на вопрос.
-const NOT_DRAFT_MESSAGE =
-  'Удалить можно только черновик формы — на опубликованную или архивную могут ' +
-  'ссылаться попытки учеников. Опубликованную переведите в архив вместо удаления.';
 const EMPTY_EXAM_MESSAGE =
   'В форме нет ни одного вопроса. Добавьте хотя бы один блок с вопросом, потом публикуйте.';
 
@@ -43,12 +39,10 @@ export class ExamsService {
   constructor(
     @InjectModel(ExamRecord.name) private readonly model: Model<ExamRecord>,
     @InjectModel(ExamItemRecord.name) private readonly itemModel: Model<ExamItemRecord>,
-    @InjectModel(ExamAttemptRecord.name)
-    private readonly attemptModel: Model<ExamAttemptRecord>,
   ) {}
 
   async list(query: ListExamsQuery): Promise<ExamDto[]> {
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = { ...NOT_DELETED };
     if (query.status !== undefined) filter.status = query.status;
     if (query.level !== undefined) filter.level = query.level;
     const docs = await this.model
@@ -61,9 +55,14 @@ export class ExamsService {
 
   async getById(id: string): Promise<ExamDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const doc = await this.model.findById(id).lean<RawLeanExam>();
+    const doc = await this.model.findOne({ _id: id, ...NOT_DELETED }).lean<RawLeanExam>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     return toExamDto(decryptExam(doc));
+  }
+
+  // ADR-0140 — ExamAttemptsService.list вычитает попытки удалённых форм отсюда.
+  deletedIds(): Promise<string[]> {
+    return deletedExamIds(this.model);
   }
 
   // createdBy необязателен — CLI-импорт сида (seed-exam.service.ts) создаёт
@@ -88,7 +87,7 @@ export class ExamsService {
 
   async update(id: string, input: UpdateExamInput): Promise<ExamDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    const doc = await this.model.findById(id).lean<RawLeanExam>();
+    const doc = await this.model.findOne({ _id: id, ...NOT_DELETED }).lean<RawLeanExam>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExam(doc);
 
@@ -132,9 +131,10 @@ export class ExamsService {
     return this.update(created.id, { status: 'published' });
   }
 
-  async remove(id: string): Promise<void> {
+  // Удаляется в любом статусе, без отказа (ADR-0140) — попытки/оценки/медиа остаются.
+  async remove(id: string, now: DateTime): Promise<void> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    await removeExamIfNotAttempted(this.model, this.attemptModel, id, NOT_DRAFT_MESSAGE);
+    await softDelete(this.model, id, now, NOT_FOUND_MESSAGE);
   }
 
   /** ТЗ 4.3, п.2–4: вопрос не повторяется по всей форме и ссылается только на

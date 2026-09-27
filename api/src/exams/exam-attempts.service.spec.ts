@@ -706,6 +706,53 @@ describe('ExamAttemptsService', () => {
     expect(submittedOnly.map((a) => a.id)).toEqual([started.id]);
   });
 
+  // ADR-0140: удалённая форма исчезает из /attempts и штату, и ученику —
+  // сама попытка остаётся в базе (read-after-write: список, не документ).
+  it('GET /attempts: попытка удалённой формы пропадает у штата и у ученика', async () => {
+    const itemId = await createPublishedItem();
+    const visibleExamId = await createPublishedExam({ itemIds: [itemId] });
+    const deletedExamId = await createPublishedExam({ itemIds: [itemId] });
+    const visible = await ctx.service.start(visibleExamId, USER_A, NOW);
+    const hidden = await ctx.service.start(deletedExamId, USER_A, NOW);
+    await ctx.examsService.remove(deletedExamId, NOW);
+
+    const asStaff = await ctx.service.list(
+      {},
+      staffUser(true, '507f1f77bcf86cd799439014'),
+      NOW,
+    );
+    const asStudent = await ctx.service.list({}, staffUser(false, USER_A), NOW);
+
+    expect(asStaff.map((a) => a.id)).toEqual([visible.id]);
+    expect(asStudent.map((a) => a.id)).toEqual([visible.id]);
+    await expect(ctx.attemptModel.findById(hidden.id)).resolves.not.toBeNull();
+  });
+
+  it('GET /attempts?examId=<удалённая форма> — пустой список, а не отказ', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    await ctx.service.start(examId, USER_A, NOW);
+    await ctx.examsService.remove(examId, NOW);
+
+    const asStaff = await ctx.service.list(
+      { examId },
+      staffUser(true, '507f1f77bcf86cd799439014'),
+      NOW,
+    );
+
+    expect(asStaff).toEqual([]);
+  });
+
+  it('старт попытки на удалённой форме (ADR-0140) — NotFoundError', async () => {
+    const itemId = await createPublishedItem();
+    const examId = await createPublishedExam({ itemIds: [itemId] });
+    await ctx.examsService.remove(examId, NOW);
+
+    await expect(ctx.service.start(examId, USER_A, NOW)).rejects.toThrow(
+      'Экзамен не найден',
+    );
+  });
+
   it('старт на неопубликованной форме — отказ, попытка не создаётся', async () => {
     const itemId = await createPublishedItem();
     const created = await ctx.examsService.create(
