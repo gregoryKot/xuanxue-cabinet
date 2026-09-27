@@ -2,6 +2,15 @@
 // (возврат к списку, рубрика, подвал «Сохранить»/«Удалить») — общий
 // components/SimpleEditorForm.tsx (тот же приём, что у канала,
 // ChannelEditorForm.tsx): здесь только поля материала.
+//
+// Файл выбирается прямо здесь и уходит в хранилище сразу после того, как
+// материал создан (ADR-0134): «Сохранить» у нового материала — это
+// create() (useMaterialEditor.ts) и следом upload() (useNewMaterialFile.ts)
+// одним действием. Если второй шаг не долетел, материал уже существует —
+// `effectiveMaterial` берёт его из `newFile.createdMaterial`, и страница
+// становится страницей этого материала: заголовок, «Удалить материал» и
+// настоящее поле файла (MaterialFileField, не NewMaterialFileField) — второе
+// «Сохранить» его правит, не плодит дубль.
 import type { ClassDto, MaterialDto } from '@xuanxue/shared';
 import { MATERIALS_PATH } from '../api/apiPaths';
 import { useAuthConfig } from '../auth/useAuthConfig';
@@ -9,7 +18,9 @@ import { FormDraftNote } from '../components/FormDraftNote';
 import { SimpleEditorForm } from '../components/SimpleEditorForm';
 import { MaterialFileField } from './MaterialFileField';
 import { MaterialFormFields } from './MaterialFormFields';
+import { NewMaterialFileField } from './NewMaterialFileField';
 import { useMaterialForm } from './useMaterialForm';
+import { useNewMaterialFile } from './useNewMaterialFile';
 import type { UseMaterialEditorResult } from './useMaterialEditor';
 
 const BACK_TEXT = 'К материалам';
@@ -28,24 +39,45 @@ export function MaterialEditorForm({
   classes,
   editor,
 }: MaterialEditorFormProps) {
-  const form = useMaterialForm(material, editor.create, editor.update, editor.remove);
-  // Нет ключей R2 (ADR-0057) — поля загрузки нет вовсе, а не кнопка, которая
+  // Нет ключей R2 (ADR-0057) — поля файла нет вовсе, а не кнопка, которая
   // ответит 503. Хук уже используется вне экрана входа (AttemptScreen.tsx).
   const authConfig = useAuthConfig();
-  const showFileField =
-    material !== null && authConfig.config?.fileStorageEnabled === true;
+  const fileStorageEnabled = authConfig.config?.fileStorageEnabled === true;
+
+  const newFile = useNewMaterialFile(editor.create);
+  const effectiveMaterial = material ?? newFile.createdMaterial;
+
+  const form = useMaterialForm({
+    material: effectiveMaterial,
+    file: {
+      hasFile: Boolean(effectiveMaterial?.file) || newFile.file !== null,
+      fileSupported: fileStorageEnabled,
+    },
+    onCreate: newFile.create,
+    onUpdate: editor.update,
+    onRemove: editor.remove,
+  });
+
+  function handleFileChanged(updated: MaterialDto): void {
+    // Материал по маршруту — экран перечитывает его после действия с файлом
+    // (editor.reload()). Восстановленный после сбоя загрузки материал
+    // маршрута с id не имеет (страница осталась на /materials/new) — ему
+    // неоткуда взять свежие данные отдельным GET, источник — ответ записи.
+    if (material) void editor.reload();
+    else newFile.setCreatedMaterial(updated);
+  }
 
   return (
     <SimpleEditorForm
       backPath={MATERIALS_PATH}
       backText={BACK_TEXT}
       eyebrow="Материал"
-      title={material ? material.title : NEW_MATERIAL_TITLE}
+      title={effectiveMaterial ? effectiveMaterial.title : NEW_MATERIAL_TITLE}
       serverError={form.serverError}
       pending={form.pending}
       onSubmit={form.submit}
       remove={
-        material
+        effectiveMaterial
           ? {
               label: REMOVE_LABEL,
               confirmTitle: 'Удалить материал?',
@@ -64,12 +96,21 @@ export function MaterialEditorForm({
         setField={form.setField}
         error={form.validationError}
         classes={classes}
+        urlOptional={fileStorageEnabled}
       />
-      {showFileField && material && (
+      {fileStorageEnabled && effectiveMaterial && (
         <MaterialFileField
-          materialId={material.id}
-          file={material.file}
-          onChanged={() => void editor.reload()}
+          materialId={effectiveMaterial.id}
+          file={effectiveMaterial.file}
+          onChanged={handleFileChanged}
+        />
+      )}
+      {fileStorageEnabled && !effectiveMaterial && (
+        <NewMaterialFileField
+          file={newFile.file}
+          error={newFile.fileError}
+          onSelect={newFile.selectFile}
+          onRemove={newFile.removeFile}
         />
       )}
     </SimpleEditorForm>

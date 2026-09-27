@@ -1,11 +1,16 @@
 // Оркестрация страницы материала — по образцу channels/useChannelForm.test.ts.
 // Механика submit/remove/ошибки — общий hooks/useValidatedEntityForm.ts,
-// здесь проверяется только конфигурация под домен материала.
+// здесь проверяется только конфигурация под домен материала. Контекст файла
+// (ADR-0134) в этих тестах — «файла нет», подробности про необязательную
+// ссылку и созданный при сбое материал — в useNewMaterialFile.test.ts и
+// materialFormInput.file.test.ts.
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MaterialDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
-import { useMaterialForm } from './useMaterialForm';
+import { useMaterialForm, type UseMaterialFormArgs } from './useMaterialForm';
+
+const NO_FILE = { hasFile: false, fileSupported: false };
 
 function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   return {
@@ -24,12 +29,21 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   };
 }
 
+function makeArgs(overrides: Partial<UseMaterialFormArgs> = {}): UseMaterialFormArgs {
+  return {
+    material: null,
+    file: NO_FILE,
+    onCreate: vi.fn(),
+    onUpdate: vi.fn(),
+    onRemove: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe('useMaterialForm — submit()', () => {
   it('невалидная форма — validationError, onCreate не зовётся', async () => {
     const onCreate = vi.fn();
-    const { result } = renderHook(() =>
-      useMaterialForm(null, onCreate, vi.fn(), vi.fn()),
-    );
+    const { result } = renderHook(() => useMaterialForm(makeArgs({ onCreate })));
 
     let ok = true;
     await act(async () => {
@@ -42,10 +56,8 @@ describe('useMaterialForm — submit()', () => {
   });
 
   it('создание — валидная форма зовёт onCreate с собранным телом', async () => {
-    const onCreate = vi.fn().mockResolvedValue(undefined);
-    const { result } = renderHook(() =>
-      useMaterialForm(null, onCreate, vi.fn(), vi.fn()),
-    );
+    const onCreate = vi.fn().mockResolvedValue(makeMaterial());
+    const { result } = renderHook(() => useMaterialForm(makeArgs({ onCreate })));
 
     act(() => {
       result.current.setField('title', 'Ван Пэйшэн — форма 24');
@@ -71,7 +83,7 @@ describe('useMaterialForm — submit()', () => {
   it('правка — onUpdate по id материала', async () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useMaterialForm(makeMaterial(), vi.fn(), onUpdate, vi.fn()),
+      useMaterialForm(makeArgs({ material: makeMaterial(), onUpdate })),
     );
 
     await act(async () => {
@@ -92,9 +104,7 @@ describe('useMaterialForm — submit()', () => {
     const onCreate = vi
       .fn()
       .mockRejectedValue(new ApiError('Проверьте поля.', 400, 'invalid_input'));
-    const { result } = renderHook(() =>
-      useMaterialForm(null, onCreate, vi.fn(), vi.fn()),
-    );
+    const { result } = renderHook(() => useMaterialForm(makeArgs({ onCreate })));
 
     act(() => {
       result.current.setField('title', 'Название');
@@ -112,9 +122,7 @@ describe('useMaterialForm — submit()', () => {
 describe('useMaterialForm — remove()', () => {
   it('без выбранного материала — false, onRemove не вызывается', async () => {
     const onRemove = vi.fn();
-    const { result } = renderHook(() =>
-      useMaterialForm(null, vi.fn(), vi.fn(), onRemove),
-    );
+    const { result } = renderHook(() => useMaterialForm(makeArgs({ onRemove })));
 
     let ok = true;
     await act(async () => {
@@ -128,7 +136,7 @@ describe('useMaterialForm — remove()', () => {
   it('успешно удаляет материал по id', async () => {
     const onRemove = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useMaterialForm(makeMaterial(), vi.fn(), vi.fn(), onRemove),
+      useMaterialForm(makeArgs({ material: makeMaterial(), onRemove })),
     );
 
     let ok = false;
@@ -143,7 +151,7 @@ describe('useMaterialForm — remove()', () => {
   it('сбой удаления — общий текст ошибки', async () => {
     const onRemove = vi.fn().mockRejectedValue(new Error('boom'));
     const { result } = renderHook(() =>
-      useMaterialForm(makeMaterial(), vi.fn(), vi.fn(), onRemove),
+      useMaterialForm(makeArgs({ material: makeMaterial(), onRemove })),
     );
 
     await act(async () => {
@@ -153,5 +161,29 @@ describe('useMaterialForm — remove()', () => {
     expect(result.current.serverError?.message).toBe(
       'Не удалось удалить. Попробуйте ещё раз.',
     );
+  });
+});
+
+describe('useMaterialForm — контекст файла (ADR-0134)', () => {
+  it('hasFile: true — пустая ссылка не мешает создать материал', async () => {
+    const onCreate = vi.fn().mockResolvedValue(makeMaterial());
+    const { result } = renderHook(() =>
+      useMaterialForm(
+        makeArgs({ file: { hasFile: true, fileSupported: true }, onCreate }),
+      ),
+    );
+
+    act(() => {
+      result.current.setField('title', 'Методичка');
+    });
+
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.submit();
+    });
+
+    expect(ok).toBe(true);
+    const body = onCreate.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect('url' in body).toBe(false);
   });
 });

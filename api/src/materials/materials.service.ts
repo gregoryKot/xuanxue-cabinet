@@ -3,8 +3,9 @@
 // проверяет MaterialsController. `listForStudent` — тот же список глазами
 // ученика (MyMaterialsController), без фильтра по классу или виду: у
 // ученика групп нет, фильтровать вход в библиотеку нечем (ADR-0047).
-// `access: 'staff'` (ADR-0058) не отбрасывается постфактум, а вырезается
-// фильтром запроса — иначе служебные материалы съедали бы лимит списка;
+// `access: 'staff'` (ADR-0058) и материалы, которые нечем открыть
+// (`STUDENT_OPENABLE_FILTER`, ADR-0134), не отбрасываются постфактум, а
+// вырезаются фильтром запроса — иначе съедали бы лимит списка;
 // `isMaterialHiddenFromStudent` после расшифровки — тот же отбор ещё раз, на
 // случай потерянного фильтра (ADR-0096, отменяет ADR-0048: доступа по
 // оплате больше нет, настройки школы здесь не нужны).
@@ -38,7 +39,8 @@ import {
   type RawLeanMaterial,
 } from './material.mapper';
 import { MATERIAL_ENCRYPT_SCHEMA, MaterialRecord } from './material.schema';
-import { buildMaterialsFilter } from './materials.queries';
+import { buildMaterialsFilter, STUDENT_OPENABLE_FILTER } from './materials.queries';
+import { buildMaterialUpdateCommand } from './materials.update';
 
 const NOT_FOUND_MESSAGE = MATERIAL_NOT_FOUND_MESSAGE;
 
@@ -66,7 +68,9 @@ export class MaterialsService {
     const payload = encryptRecord(
       {
         title: input.title,
-        url: input.url,
+        // ADR-0134: ключа `url` в документе нет вовсе, если ссылку не
+        // прислали — не пустая строка. У материала может быть только файл.
+        ...(input.url !== undefined ? { url: input.url } : {}),
         kind: input.kind,
         classIds: input.classIds ?? [],
         lessonIds: input.lessonIds ?? [],
@@ -84,17 +88,10 @@ export class MaterialsService {
 
   async update(id: string, input: UpdateMaterialInput): Promise<MaterialDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
-    // `tags` нормализуется, только если его прислали — иначе PATCH без
-    // тегов случайно записал бы пустой нормализованный массив вместо
-    // «поле не трогать» (splitUpdate/OptionalNotNull — тот же принцип).
-    const patch =
-      input.tags === undefined ? input : { ...input, tags: normalizeTags(input.tags) };
     const doc = await this.model
-      .findOneAndUpdate(
-        { _id: id },
-        { $set: encryptRecord({ ...patch }, MATERIAL_ENCRYPT_SCHEMA) },
-        { returnDocument: 'after' },
-      )
+      .findOneAndUpdate({ _id: id }, buildMaterialUpdateCommand(input), {
+        returnDocument: 'after',
+      })
       .lean<RawLeanMaterial>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     return toMaterialDto(decryptMaterial(doc));
@@ -114,19 +111,22 @@ export class MaterialsService {
    * (MyMaterialsController): сервис не должен решать по объекту пользователя
    * целиком, только по признаку роли.
    *
-   * `staff`-материал ученику не приходит вовсе — фильтр запроса Mongo
-   * (`access: { $ne: 'staff' }`), а не отбрасывание после выборки: иначе
-   * служебные материалы съедали бы лимит списка (ADR-0058). После
-   * расшифровки — тот же отбор ещё раз через `isMaterialHiddenFromStudent`:
-   * страховка на случай потерянного фильтра (ADR-0096 «Решение»), не
-   * пометка «закрыто» — материал, которому не повезло дважды пройти мимо
-   * фильтра, просто не попадает в список. Штат видит всё, фильтра для него
-   * нет. */
+   * `staff`-материал и материал, который нечем открыть (ни ссылки, ни файла
+   * — `STUDENT_OPENABLE_FILTER`, ADR-0134), ученику не приходят вовсе —
+   * фильтр запроса Mongo, а не отбрасывание после выборки: иначе съедали бы
+   * лимит списка (ADR-0058). После расшифровки — тот же отбор доступа ещё
+   * раз через `isMaterialHiddenFromStudent`: страховка на случай потерянного
+   * фильтра (ADR-0096 «Решение»), не пометка «закрыто» — материал, которому
+   * не повезло дважды пройти мимо фильтра, просто не попадает в список.
+   * Штат видит всё, включая материал без файла и без ссылки — например,
+   * только что созданный, которому файл ещё не долетел. */
   async listForStudent(
     query: ListMyMaterialsQuery,
     isStaff: boolean,
   ): Promise<MyMaterialDto[]> {
-    const filter: Record<string, unknown> = isStaff ? {} : { access: { $ne: 'staff' } };
+    const filter: Record<string, unknown> = isStaff
+      ? {}
+      : { access: { $ne: 'staff' }, ...STUDENT_OPENABLE_FILTER };
     const docs = await this.model
       .find(filter)
       .sort({ createdAt: -1 })

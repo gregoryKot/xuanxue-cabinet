@@ -19,10 +19,14 @@ const KIND_RADIO_GROUP_NAME = 'material-kind';
 // Подсказка под полем ссылки. Прежняя обещала обратное — «файлы кабинет не
 // хранит», — и осталась от времени, когда так и было: файл материала приехал
 // слоем 3.10 (ADR-0057), а строку не поправили. Учитель читал её на том же
-// экране, где стоит «Добавить файл». Новый текст ничего не обещает про файлы:
-// компонент стоит и на странице материала, где поле файла есть, и в короткой
-// форме на странице даты занятия, где его нет (ADR-0056).
+// экране, где стоит «Добавить файл» (PR #427).
 const URL_HINT = 'Адрес книги, статьи или видео в интернете';
+// А где файл прикладывают (`urlOptional`, ADR-0134), подсказка говорит прямо,
+// что ссылка перестала быть единственным способом открыть материал: человек
+// должен узнать это раньше, чем решит, что поле обязательно. Компонент стоит
+// и в короткой форме на странице даты занятия, где поля файла нет вовсе
+// (ADR-0056) — там остаётся обычный текст, ничего про файлы не обещающий.
+const URL_OPTIONAL_HINT = 'Необязательна, если приложите файл ниже';
 
 const fieldsetStyle: CSSProperties = {
   border: 'none',
@@ -48,12 +52,19 @@ interface MaterialBasicFieldsProps {
     value: MaterialFormState[K],
   ) => void;
   error: MaterialFormError | null;
+  /** Экран умеет прикладывать файл (хранилище подключено, ADR-0134) — только
+   * это меняет подсказку под полем ссылки; сама валидация решается отдельно
+   * (materialFormInput.ts, MaterialFormFileContext). По умолчанию `false` —
+   * короткая форма «Добавить ссылку» (ADR-0056) поля файла не имеет вовсе и
+   * этот проп не передаёт. */
+  urlOptional?: boolean;
 }
 
 export function MaterialBasicFields({
   state,
   setField,
   error,
+  urlOptional = false,
 }: MaterialBasicFieldsProps) {
   return (
     <>
@@ -66,7 +77,11 @@ export function MaterialBasicFields({
         />
       </Field>
 
-      <Field label="Ссылка" hint={URL_HINT} error={errorFor(error, 'url')}>
+      <Field
+        label="Ссылка"
+        hint={urlOptional ? URL_OPTIONAL_HINT : URL_HINT}
+        error={errorFor(error, 'url')}
+      >
         <input
           type="url"
           style={inputStyle}
