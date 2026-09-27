@@ -96,7 +96,7 @@ describe('AttemptSubmittedVideos', () => {
     expect(screen.getByText('Покажите толчок')).toBeInTheDocument();
 
     const links = screen.getAllByRole('link', {
-      name: 'Отправить видео боту в Telegram',
+      name: 'Открыть чат с ботом',
     });
     expect(links).toHaveLength(2);
     expect(links.map((link) => link.getAttribute('href'))).toEqual([

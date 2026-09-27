@@ -26,9 +26,10 @@ export const attemptVideoReceivedListStyle: CSSProperties = {
 // переход по внешней ссылке (t.me), не действие в кабинете: <a>, не
 // <button> (тот же приём, что StudentLessonMeeting.tsx: zoomLinkStyle).
 // Раньше кнопка держала единственную заливку терракотой экрана (правило
-// акцента, docs/adr/0031); ADR-0084 сделал основным путём ссылку — заливка
-// переехала на «Сохранить ссылку» (AttemptMediaLinkForm.tsx), а бот остался
-// вторым путём с силуэтом контура, не заливки.
+// акцента, docs/adr/0031); ADR-0084 сделал основным путём ссылку, а
+// ADR-0136 убрал заливку с экрана видео-вопроса совсем: форма ссылки теперь
+// сохраняет себя сама, кнопки под неё нет. Бот остаётся вторым путём с
+// силуэтом контура, не заливки.
 export const attemptVideoTelegramLinkStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
