@@ -45,6 +45,14 @@ export interface AttemptVideoControls {
   acceptsAnswers: boolean;
   addMediaLink: (itemId: string, url: string) => Promise<boolean>;
   linkStateFor: (itemId: string) => AttemptMediaLinkState;
+  /** Подключено ли файловое хранилище R2 (useFileStorageEnabled, ADR-0057) —
+   * без него загрузка файлом недоступна вовсе, экран видео-вопроса остаётся
+   * прежним (ADR-0137). */
+  fileUploadEnabled: boolean;
+  /** Кладёт видео-ответ из ответа `POST .../complete` в попытку без второго
+   * GET (useAttempt.ts, ADR-0087/ADR-0137) — useAnswerVideoUpload.ts зовёт
+   * его на завершение загрузки. */
+  applyMedia: (media: ExamMediaDto) => void;
 }
 
 export interface UseAttemptMediaResult {

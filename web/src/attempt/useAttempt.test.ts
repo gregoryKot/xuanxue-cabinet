@@ -5,7 +5,11 @@
 // `submit`).
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ATTEMPT_NOT_FOUND_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
+import {
+  ATTEMPT_NOT_FOUND_MESSAGE,
+  type ExamAttemptDto,
+  type ExamMediaDto,
+} from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import {
@@ -88,6 +92,47 @@ describe('useAttempt — отправка', () => {
     });
 
     expect(localStorage.getItem('xuanxue.draft.attempt:a1')).toBeNull();
+  });
+});
+
+describe('useAttempt — applyMedia (ADR-0137, без второго GET)', () => {
+  it('кладёт видео-ответ из ответа complete() в media попытки', async () => {
+    mockApiByPath({ '/attempts/': ATTEMPT });
+    const { result } = renderHook(() => useAttempt('a1'));
+    await waitFor(() => expect(result.current.attempt).not.toBeNull());
+
+    const media: ExamMediaDto = {
+      id: 'm1',
+      attemptId: 'a1',
+      itemId: 'q1',
+      kind: 'file',
+      answerVideoId: 'v1',
+      receivedAt: '2026-09-27T10:00:00Z',
+    };
+    act(() => {
+      result.current.applyMedia(media);
+    });
+
+    expect(result.current.attempt?.media).toEqual([media]);
+    // Ни одного похода в сеть сверх начальной загрузки.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('до загрузки попытки (attempt ещё null) — не падает, ничего не подставляет', () => {
+    mockApiByPath({ '/attempts/': new Promise(() => {}) });
+    const { result } = renderHook(() => useAttempt('a1'));
+
+    act(() => {
+      result.current.applyMedia({
+        id: 'm1',
+        attemptId: 'a1',
+        itemId: 'q1',
+        kind: 'file',
+        receivedAt: '2026-09-27T10:00:00Z',
+      });
+    });
+
+    expect(result.current.attempt).toBeNull();
   });
 });
 

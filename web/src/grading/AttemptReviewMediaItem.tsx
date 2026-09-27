@@ -25,8 +25,9 @@
 // useAttemptReview.ts). Ошибка — FormServerError под кнопкой, тот же приём,
 // что у ручной отметки в AttemptReviewMedia.tsx.
 import type { CSSProperties } from 'react';
-import type { ExamMediaDto } from '@xuanxue/shared';
+import { ANSWER_VIDEO_RETENTION, type ExamMediaDto } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { ExamVideoPlayer } from '../components/ExamVideoPlayer';
 import { FormServerError, type FormError } from '../components/FormServerError';
 import { textLinkStyle } from '../components/screenLayout';
 import { VideoEmbed } from '../components/VideoEmbed';
@@ -65,6 +66,9 @@ const SEND_SUCCESS_TEXT = 'Видео в чате с ботом — открой
 // Чата нет — кнопки нет (эндпоинт ответил бы 409): объясняем, откуда
 // возьмётся видео, вместо тупика.
 const NO_CHAT_EXPLANATION = 'Бот пришлёт видео, когда у вас будет открыт чат с ним.';
+// Уборщик снял файл по сроку хранения или после проверки (ADR-0137) — факт
+// получения остаётся в попытке, честно называем, куда делся файл.
+const EXPIRED_FILE_TEXT = `Видео удалено: мы храним его ${ANSWER_VIDEO_RETENTION.afterGradedDays} дней после проверки.`;
 
 interface AttemptReviewMediaItemProps {
   item: ExamMediaDto;
@@ -98,8 +102,7 @@ export function AttemptReviewMediaItem({
           {item.url}
         </a>
       )}
-      {/* Плеер под ссылкой (ADR-0100) — смотреть, не уходя с карточки
-          проверки; ссылка остаётся, см. комментарий там же. */}
+      {/* Плеер под ссылкой (ADR-0100) — не уходя с карточки, см. выше. */}
       {item.kind === 'link' && item.url && (
         <VideoEmbed url={item.url} title="Запись ученика" />
       )}
@@ -134,6 +137,16 @@ export function AttemptReviewMediaItem({
       )}
       {item.kind === 'manual' && (
         <p style={sourceTextStyle}>{describeMediaSource(item)}</p>
+      )}
+      {item.kind === 'file' && (
+        <>
+          <p style={sourceTextStyle}>{describeMediaSource(item)}</p>
+          {item.answerVideoId ? (
+            <ExamVideoPlayer answerVideoId={item.answerVideoId} title="Запись ученика" />
+          ) : (
+            <p style={sourceTextStyle}>{EXPIRED_FILE_TEXT}</p>
+          )}
+        </>
       )}
     </li>
   );

@@ -18,6 +18,11 @@ export class ApiError extends Error {
   code: ApiErrorCode;
   details?: string[];
   requestId?: string;
+  /** Заголовок `Retry-After` ответа (секунды) — сейчас его ставит только
+   * потолок одновременных сырых загрузок (raw-upload-concurrency.ts, 503,
+   * ADR-0137): подсказка, через сколько повторить, честнее собственного
+   * расписания повторов. `undefined`, если заголовка не было. */
+  retryAfterSec?: number;
 
   constructor(
     message: string,
@@ -25,6 +30,7 @@ export class ApiError extends Error {
     code: ApiErrorCode,
     details?: string[],
     requestId?: string,
+    retryAfterSec?: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -32,6 +38,7 @@ export class ApiError extends Error {
     this.code = code;
     this.details = details;
     this.requestId = requestId;
+    this.retryAfterSec = retryAfterSec;
   }
 }
 
@@ -164,12 +171,17 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     }
     const status = envelope.statusCode ?? response.status;
     if (status === UNAUTHORIZED_STATUS) unauthorizedListener?.();
+    const retryAfterHeader = response.headers.get('Retry-After');
+    const retryAfterSec = retryAfterHeader ? Number(retryAfterHeader) : undefined;
     throw new ApiError(
       envelope.message ?? UNKNOWN_ERROR_MESSAGE,
       status,
       envelope.code ?? 'unknown',
       envelope.details,
       envelope.requestId,
+      retryAfterSec !== undefined && Number.isFinite(retryAfterSec)
+        ? retryAfterSec
+        : undefined,
     );
   }
 

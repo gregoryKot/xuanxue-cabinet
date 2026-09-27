@@ -23,6 +23,7 @@
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
+import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { NoticeDialog } from '../components/NoticeDialog';
 import { SkeletonLines } from '../components/Skeleton';
@@ -48,9 +49,21 @@ export default function AttemptScreen() {
   // изолированный тест, AttemptScreen.test.tsx; в проде провайдер есть
   // всегда, AppShell.tsx).
   const applyExamAttempt = useMyExamsApplyAttempt();
-  const { attempt, loading, error, reload, refresh, submit, submitting, submitError } =
-    useAttempt(id ?? '', { onSubmitted: applyExamAttempt });
+  const {
+    attempt,
+    loading,
+    error,
+    reload,
+    refresh,
+    submit,
+    submitting,
+    submitError,
+    applyMedia,
+  } = useAttempt(id ?? '', { onSubmitted: applyExamAttempt });
   const { config } = useAuthConfig();
+  // Загрузка файлом — первый путь ответа только там, где подключён R2
+  // (ADR-0137); без него экран видео-вопроса остаётся прежним.
+  const fileUploadEnabled = useFileStorageEnabled();
   // Кнопку «Отправить видео боту» показываем только тем, кого бот узнает
   // (ADR-0037, RUNBOOK §8.17) — сессия уже загружена, экран под RequireAuth.
   const { me } = useAuth();
@@ -89,6 +102,8 @@ export default function AttemptScreen() {
     acceptsAnswers: attempt.status !== 'graded',
     addMediaLink: media.addMediaLink,
     linkStateFor: media.linkStateFor,
+    fileUploadEnabled,
+    applyMedia,
   };
 
   if (attempt.status !== 'in_progress') {

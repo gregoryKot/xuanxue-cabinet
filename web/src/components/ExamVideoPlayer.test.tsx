@@ -15,6 +15,27 @@ describe('ExamVideoPlayer — файл (videoId)', () => {
   });
 });
 
+describe('ExamVideoPlayer — видео-ответ (answerVideoId, ADR-0137)', () => {
+  it('нативный video с src на /api/answer-videos/:id', () => {
+    const { container } = render(
+      <ExamVideoPlayer answerVideoId="av1" title="Ваш ответ" />,
+    );
+
+    const video = container.querySelector('video');
+    expect(video).toHaveAttribute('src', '/api/answer-videos/av1');
+    expect(video).toHaveAttribute('controls');
+  });
+
+  it('videoId побеждает answerVideoId, если заданы оба', () => {
+    const { container } = render(<ExamVideoPlayer videoId="vid1" answerVideoId="av1" />);
+
+    expect(container.querySelector('video')).toHaveAttribute(
+      'src',
+      '/api/exam-videos/vid1',
+    );
+  });
+});
+
 describe('ExamVideoPlayer — ссылка (videoUrl)', () => {
   it('рендерит VideoEmbed — кнопка «Смотреть здесь» до открытия', () => {
     render(<ExamVideoPlayer videoUrl="https://youtu.be/dQw4w9WgXcQ" title="Вопрос" />);
