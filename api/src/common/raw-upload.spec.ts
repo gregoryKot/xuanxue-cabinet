@@ -4,12 +4,20 @@
 import { InvalidInputError } from './errors';
 import {
   isDocxContainer,
+  isEpubContainer,
   isPdfSignature,
+  isRtfSignature,
   parseRawUpload,
   sniffImageSignature,
   sniffVideoSignature,
 } from './raw-upload';
-import { DOCX_BYTES, PLAIN_ZIP_BYTES, XLSX_BYTES } from './zip-fixture.test-support';
+import {
+  DOCX_BYTES,
+  EPUB_BYTES,
+  EPUB_MISSING_CONTAINER_BYTES,
+  PLAIN_ZIP_BYTES,
+  XLSX_BYTES,
+} from './zip-fixture.test-support';
 
 /** EOCD без комментария — фиксированные последние 22 байта ZIP (см.
  * zip-entries.ts): по этому смещению тест портит каталог у настоящего
@@ -117,6 +125,59 @@ describe('isPdfSignature', () => {
 
   it('пустой буфер — false, не падает', () => {
     expect(isPdfSignature(Buffer.alloc(0))).toBe(false);
+  });
+});
+
+describe('isRtfSignature', () => {
+  it('распознаёт настоящее начало {\\rtf1', () => {
+    expect(isRtfSignature(Buffer.from('{\\rtf1\\ansi методичка}', 'ascii'))).toBe(true);
+  });
+
+  it('обрезок короче сигнатуры — false, не бросает', () => {
+    expect(() => isRtfSignature(Buffer.from('{\\rt', 'ascii'))).not.toThrow();
+    expect(isRtfSignature(Buffer.from('{\\rt', 'ascii'))).toBe(false);
+  });
+
+  it('мусор — false', () => {
+    expect(isRtfSignature(GARBAGE)).toBe(false);
+  });
+
+  it('пустой буфер — false, не бросает', () => {
+    expect(() => isRtfSignature(Buffer.alloc(0))).not.toThrow();
+    expect(isRtfSignature(Buffer.alloc(0))).toBe(false);
+  });
+});
+
+describe('isEpubContainer', () => {
+  it('собранный EPUB с mimetype и META-INF/container.xml — true', () => {
+    expect(isEpubContainer(EPUB_BYTES)).toBe(true);
+  });
+
+  it('ZIP без META-INF/container.xml — false', () => {
+    expect(isEpubContainer(EPUB_MISSING_CONTAINER_BYTES)).toBe(false);
+  });
+
+  it('.docx — false', () => {
+    expect(isEpubContainer(DOCX_BYTES)).toBe(false);
+  });
+
+  it('.xlsx — false', () => {
+    expect(isEpubContainer(XLSX_BYTES)).toBe(false);
+  });
+
+  it('обычный архив без нужных записей — false', () => {
+    expect(isEpubContainer(PLAIN_ZIP_BYTES)).toBe(false);
+  });
+
+  it('обрезанный буфер — false, не исключение', () => {
+    const truncated = EPUB_BYTES.subarray(0, EPUB_BYTES.length - 10);
+    expect(() => isEpubContainer(truncated)).not.toThrow();
+    expect(isEpubContainer(truncated)).toBe(false);
+  });
+
+  it('мусорный буфер — false, не исключение', () => {
+    expect(() => isEpubContainer(GARBAGE)).not.toThrow();
+    expect(isEpubContainer(GARBAGE)).toBe(false);
   });
 });
 

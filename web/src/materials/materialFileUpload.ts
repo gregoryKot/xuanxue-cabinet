@@ -6,24 +6,29 @@
 // materialId для загрузки файла, выбранного до создания записи. Сеть — только
 // apiFetch (CLAUDE.md).
 import {
-  MATERIAL_FILE_CONTENT_TYPES,
   MATERIAL_FILE_EMPTY_MESSAGE,
   MATERIAL_FILE_LIMITS,
   MATERIAL_FILE_TOO_LARGE_MESSAGE,
   MATERIAL_FILE_UNSUPPORTED_MESSAGE,
+  MATERIAL_FILE_UPLOAD_CONTENT_TYPES,
   type MaterialDto,
-  type MaterialFileContentType,
 } from '@xuanxue/shared';
 import { materialFileUploadPath } from '../api/apiPaths';
 import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
 
 // Самое длинное расширение среди принимаемых форматов (application/pdf →
-// «.pdf», image/jpeg → «.jpeg», Word → «.docx») плюс запас — точка дальше в
-// имени файла уже не расширение, а часть названия, обрезать по ней не нужно.
+// «.pdf», image/jpeg → «.jpeg», Word и EPUB → «.docx»/«.epub») плюс запас —
+// точка дальше в имени файла уже не расширение, а часть названия, обрезать по
+// ней не нужно.
 const MAX_EXTENSION_LENGTH = 6;
 
-function isSupportedContentType(type: string): type is MaterialFileContentType {
-  return (MATERIAL_FILE_CONTENT_TYPES as readonly string[]).includes(type);
+/** Против MATERIAL_FILE_UPLOAD_CONTENT_TYPES, а не MATERIAL_FILE_CONTENT_TYPES:
+ * шире на альтернативный `text/rtf` (macOS отдаёт его для RTF вместо
+ * `application/rtf`). Здесь только гейт «отправлять ли на сервер» — сам тип
+ * файла в ответе решают байты (server, material-file-upload.ts), поэтому
+ * узкий тип `MaterialFileContentType` этой функции не нужен. */
+function isAcceptedContentType(type: string): boolean {
+  return (MATERIAL_FILE_UPLOAD_CONTENT_TYPES as readonly string[]).includes(type);
 }
 
 /** `null` — файл подходит; иначе готовый текст ошибки (VOICE.md). Формат и
@@ -31,7 +36,7 @@ function isSupportedContentType(type: string): type is MaterialFileContentType {
  * разбор сырого тела (браузер ставит его из файла), и человек увидел бы
  * невнятную ошибку вместо понятной. */
 export function checkMaterialFile(file: File): string | null {
-  if (!isSupportedContentType(file.type)) return MATERIAL_FILE_UNSUPPORTED_MESSAGE;
+  if (!isAcceptedContentType(file.type)) return MATERIAL_FILE_UNSUPPORTED_MESSAGE;
   if (file.size > MATERIAL_FILE_LIMITS.maxBytes) return MATERIAL_FILE_TOO_LARGE_MESSAGE;
   if (file.size === 0) return MATERIAL_FILE_EMPTY_MESSAGE;
   return null;

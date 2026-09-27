@@ -7,14 +7,16 @@
 // тридцати мегабайтах это заметная работа на каждый чужой запрос.
 //
 // Заявленному типу мы всё равно не верим: формат решает сигнатура байтов
-// (material-file-upload.ts). Здесь он только включает парсер.
+// (material-file-upload.ts). Здесь он только включает парсер — список шире
+// MATERIAL_FILE_CONTENT_TYPES на альтернативный `text/rtf` (macOS отдаёт его
+// для RTF вместо `application/rtf`, shared/src/material-files.ts).
 //
 // Последняя проверка — подписанная сессия (SECURITY §4, ADR-0083, мера 1):
 // предиката без неё было достаточно, чтобы буферизовать 30 МБ в память ДО
 // AuthGuard. hasSignedSession дешёвой HMAC-проверкой ставится последней —
 // метод/путь/тип отсекают мусор дешевле, чем HMAC.
 import { DateTime } from 'luxon';
-import { MATERIAL_FILE_CONTENT_TYPES } from '@xuanxue/shared';
+import { MATERIAL_FILE_UPLOAD_CONTENT_TYPES } from '@xuanxue/shared';
 import { hasSignedSession } from '../common/raw-body-session';
 import { mediaType, routePath, type IncomingRequestLike } from '../common/raw-body-route';
 
@@ -32,7 +34,8 @@ export function makeIsMaterialFileUpload(
     if ((req.method ?? '').toUpperCase() !== 'POST') return false;
     if (!UPLOAD_PATH_RE.test(routePath(req.url))) return false;
     const type = mediaType(req.headers['content-type']);
-    if (!(MATERIAL_FILE_CONTENT_TYPES as readonly string[]).includes(type)) return false;
+    if (!(MATERIAL_FILE_UPLOAD_CONTENT_TYPES as readonly string[]).includes(type))
+      return false;
     return hasSignedSession(req, secret, DateTime.utc());
   };
 }

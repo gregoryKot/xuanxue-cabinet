@@ -6,6 +6,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
   MATERIAL_FILE_DOCX_CONTENT_TYPE,
+  MATERIAL_FILE_EPUB_CONTENT_TYPE,
+  MATERIAL_FILE_RTF_ALT_CONTENT_TYPE,
+  MATERIAL_FILE_RTF_CONTENT_TYPE,
   MATERIAL_FILE_UNSUPPORTED_MESSAGE,
   type MaterialDto,
   type MaterialFileDto,
@@ -64,10 +67,12 @@ describe('MaterialFileField — файла нет', () => {
     expect(screen.getByText('Добавить файл')).toBeInTheDocument();
     expect(screen.getByText(/PDF/)).toHaveTextContent('30 МБ');
     expect(screen.getByText(/PDF/)).toHaveTextContent('.docx');
+    expect(screen.getByText(/PDF/)).toHaveTextContent('EPUB');
+    expect(screen.getByText(/PDF/)).toHaveTextContent('RTF');
     expect(screen.queryByRole('link', { name: 'Скачать' })).not.toBeInTheDocument();
   });
 
-  it('accept у поля выбора включает формат Word (.docx)', () => {
+  it('accept у поля выбора включает Word (.docx), EPUB и оба типа RTF', () => {
     stubUpload();
     render(<MaterialFileField materialId={MATERIAL_ID} onChanged={vi.fn()} />);
 
@@ -75,6 +80,18 @@ describe('MaterialFileField — файла нет', () => {
     expect(input).toHaveAttribute(
       'accept',
       expect.stringContaining(MATERIAL_FILE_DOCX_CONTENT_TYPE),
+    );
+    expect(input).toHaveAttribute(
+      'accept',
+      expect.stringContaining(MATERIAL_FILE_EPUB_CONTENT_TYPE),
+    );
+    expect(input).toHaveAttribute(
+      'accept',
+      expect.stringContaining(MATERIAL_FILE_RTF_CONTENT_TYPE),
+    );
+    expect(input).toHaveAttribute(
+      'accept',
+      expect.stringContaining(MATERIAL_FILE_RTF_ALT_CONTENT_TYPE),
     );
   });
 

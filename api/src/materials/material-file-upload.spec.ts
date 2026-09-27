@@ -5,16 +5,23 @@
 import {
   MATERIAL_FILE_DOCX_CONTENT_TYPE,
   MATERIAL_FILE_EMPTY_MESSAGE,
+  MATERIAL_FILE_EPUB_CONTENT_TYPE,
   MATERIAL_FILE_LIMITS,
+  MATERIAL_FILE_RTF_CONTENT_TYPE,
   MATERIAL_FILE_TOO_LARGE_MESSAGE,
   MATERIAL_FILE_UNSUPPORTED_MESSAGE,
 } from '@xuanxue/shared';
 import { InvalidInputError } from '../common/errors';
-import { DOCX_BYTES, PLAIN_ZIP_BYTES } from '../common/zip-fixture.test-support';
+import {
+  DOCX_BYTES,
+  EPUB_BYTES,
+  PLAIN_ZIP_BYTES,
+} from '../common/zip-fixture.test-support';
 import { parseMaterialFileUpload } from './material-file-upload';
 
 const PDF_SIGNATURE = Buffer.from('%PDF-1.7\nметодичка', 'utf8');
 const JPEG_SIGNATURE = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2]);
+const RTF_SIGNATURE = Buffer.from('{\\rtf1\\ansi методичка}', 'ascii');
 const GARBAGE = Buffer.from('это просто текст, не файл материала', 'utf8');
 
 /** Буфер нужного размера с валидной сигнатурой PDF в начале — через
@@ -48,7 +55,21 @@ describe('parseMaterialFileUpload', () => {
     });
   });
 
-  it('обычный ZIP без word/document.xml — MATERIAL_FILE_UNSUPPORTED_MESSAGE', () => {
+  it('RTF-байты — bytes и application/rtf, независимо от заголовка', () => {
+    expect(parseMaterialFileUpload(RTF_SIGNATURE)).toEqual({
+      bytes: RTF_SIGNATURE,
+      contentType: MATERIAL_FILE_RTF_CONTENT_TYPE,
+    });
+  });
+
+  it('настоящий EPUB (mimetype + META-INF/container.xml) — application/epub+zip', () => {
+    expect(parseMaterialFileUpload(EPUB_BYTES)).toEqual({
+      bytes: EPUB_BYTES,
+      contentType: MATERIAL_FILE_EPUB_CONTENT_TYPE,
+    });
+  });
+
+  it('обычный ZIP без нужных записей (ни .docx, ни EPUB) — MATERIAL_FILE_UNSUPPORTED_MESSAGE', () => {
     expect(() => parseMaterialFileUpload(PLAIN_ZIP_BYTES)).toThrow(
       MATERIAL_FILE_UNSUPPORTED_MESSAGE,
     );

@@ -4,7 +4,7 @@
 import type request from 'supertest';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { MaterialDto } from '@xuanxue/shared';
-import { DOCX_BYTES } from '../../src/common/zip-fixture.test-support';
+import { DOCX_BYTES, EPUB_BYTES } from '../../src/common/zip-fixture.test-support';
 import { withCsrf } from './http';
 
 /** Настоящая сигнатура PDF: формат сервер определяет по байтам, не по
@@ -21,6 +21,15 @@ export const FILE_NAME = 'Методичка по ба-гуа.pdf';
  * заглушки (ADR-0080). */
 export { DOCX_BYTES };
 export const DOCX_FILE_NAME = 'Методичка по ба-гуа.docx';
+
+/** EPUB — второй ZIP-контейнер (ADR-0080, дополнение 2026-09-27), собран тем
+ * же сборщиком, что и `.docx` — своей заглушки не заводим. */
+export { EPUB_BYTES };
+export const EPUB_FILE_NAME = 'Книга по толканию руками.epub';
+
+/** RTF узнаётся по сигнатуре первых байт, как PDF, — ZIP тут ни при чём. */
+export const RTF_BYTES = Buffer.from('{\\rtf1\\ansi Методичка}', 'ascii');
+export const RTF_FILE_NAME = 'Заметки.rtf';
 
 export const OPEN_MATERIAL = {
   title: 'Разбор формы',

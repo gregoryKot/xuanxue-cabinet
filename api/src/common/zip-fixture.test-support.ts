@@ -94,3 +94,22 @@ export const XLSX_BYTES = buildZip([
 export const PLAIN_ZIP_BYTES = buildZip([
   { name: 'заметки.txt', content: 'просто архив' },
 ]);
+
+const EPUB_MIMETYPE_ENTRY: ZipEntry = {
+  name: 'mimetype',
+  content: 'application/epub+zip',
+};
+const EPUB_CONTAINER_ENTRY: ZipEntry = {
+  name: 'META-INF/container.xml',
+  content:
+    '<?xml version="1.0"?><container><rootfiles>' +
+    '<rootfile full-path="content.opf"/></rootfiles></container>',
+};
+
+/** Минимальный EPUB: обе записи, по которым его узнают (ADR-0080, дополнение
+ * 2026-09-27) — `mimetype` и `META-INF/container.xml`. */
+export const EPUB_BYTES = buildZip([EPUB_MIMETYPE_ENTRY, EPUB_CONTAINER_ENTRY]);
+
+/** Только `mimetype`, без каталога `META-INF/container.xml` — на нём
+ * проверяется, что одной записи мало, тот же приём, что у `.xlsx` для `.docx`. */
+export const EPUB_MISSING_CONTAINER_BYTES = buildZip([EPUB_MIMETYPE_ENTRY]);

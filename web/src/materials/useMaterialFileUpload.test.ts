@@ -5,14 +5,21 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   MATERIAL_FILE_DOCX_CONTENT_TYPE,
   MATERIAL_FILE_EMPTY_MESSAGE,
+  MATERIAL_FILE_EPUB_CONTENT_TYPE,
   MATERIAL_FILE_LIMITS,
+  MATERIAL_FILE_RTF_ALT_CONTENT_TYPE,
+  MATERIAL_FILE_RTF_CONTENT_TYPE,
   MATERIAL_FILE_TOO_LARGE_MESSAGE,
   MATERIAL_FILE_UNSUPPORTED_MESSAGE,
   type MaterialDto,
 } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError, UPLOAD_TIMEOUT_MS } from '../api/http';
-import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
+import {
+  mockApiByPath,
+  mockedApiFetch,
+  resetApiFetchBetweenTests,
+} from '../test-support/apiFetchMock';
 import { useMaterialFileUpload } from './useMaterialFileUpload';
 
 vi.mock('../api/http', async () => {
@@ -128,6 +135,46 @@ describe('useMaterialFileUpload — загрузка', () => {
     expect(dto).toEqual(material);
     expect(result.current.error).toBeNull();
     expect(mockedApiFetch).toHaveBeenCalled();
+  });
+
+  it('.epub — поддерживаемый тип, проходит проверку и уходит на сервер', async () => {
+    const material = makeMaterial();
+    mockApiByPath({ [`/materials/${MATERIAL_ID}/file`]: material });
+    const file = makeFile(10, 'книга.epub', MATERIAL_FILE_EPUB_CONTENT_TYPE);
+
+    const { result } = renderHook(() => useMaterialFileUpload(MATERIAL_ID));
+    let dto: MaterialDto | null = null;
+    await act(async () => {
+      dto = await result.current.upload(file);
+    });
+
+    expect(dto).toEqual(material);
+    expect(result.current.error).toBeNull();
+    expect(mockedApiFetch).toHaveBeenCalled();
+  });
+
+  // Один и тот же путь отвечает на оба варианта Content-Type: RTF узнаётся
+  // по байтам на сервере, фронт лишь решает, отправлять ли запрос вообще
+  // (checkMaterialFile) — macOS отдаёт для RTF `text/rtf` (системный UTI
+  // `public.rtf`), не зарегистрированный в IANA `application/rtf`, и фронт
+  // обязан принять оба, иначе загрузка на маке падала бы ещё до сети
+  // (shared/src/material-files.ts).
+  it.each([
+    ['application/rtf', MATERIAL_FILE_RTF_CONTENT_TYPE],
+    ['альтернативный text/rtf (macOS)', MATERIAL_FILE_RTF_ALT_CONTENT_TYPE],
+  ])('.rtf с типом %s — проходит проверку и уходит на сервер', async (_label, type) => {
+    const material = makeMaterial();
+    mockApiByPath({ [`/materials/${MATERIAL_ID}/file`]: material });
+    const file = makeFile(10, 'заметки.rtf', type);
+
+    const { result } = renderHook(() => useMaterialFileUpload(MATERIAL_ID));
+    let dto: MaterialDto | null = null;
+    await act(async () => {
+      dto = await result.current.upload(file);
+    });
+
+    expect(dto).toEqual(material);
+    expect(result.current.error).toBeNull();
   });
 
   it('длинное имя обрезается до лимита, расширение сохраняется', async () => {
