@@ -22,7 +22,7 @@ import {
 import { createPortal } from 'react-dom';
 import { RichText } from './RichText';
 
-const ICON_SIZE_PX = 18;
+const ICON_SIZE_PX = 14;
 const HIT_TARGET_PX = 44;
 // Зона нажатия 44×44 невидима; слева узкая, чтобы не наезжать на подпись.
 const HIT_PAD_Y_PX = (HIT_TARGET_PX - ICON_SIZE_PX) / 2;
@@ -48,7 +48,7 @@ const buttonStyle: CSSProperties = {
   boxSizing: 'content-box',
   border: 'none',
   background: 'transparent',
-  color: 'var(--ink-soft)',
+  color: 'var(--ink-faint)',
   cursor: 'pointer',
   flexShrink: 0,
   lineHeight: 0,
