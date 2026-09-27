@@ -15,11 +15,10 @@ import type { ExamItemOptionRecord, ExamItemVersionRecord } from './exam-item.sc
  * не содержание вопроса. */
 type ContentSnapshot = Pick<ExamItemVersionRecord, 'prompt'>;
 
-/** `null` (явный сброс) и `undefined` (поля нет в запросе) — разные вещи:
- * первое меняет пустое значение на пустое только если оно и было пустым. */
-function textChanged(next: string | null | undefined, current: string | undefined) {
-  if (next === undefined) return false;
-  return (next ?? undefined) !== (current || undefined);
+/** Формулировка обязательна и не сбрасывается (`null` отсекает DTO), поэтому
+ * сравниваем прямо: поля нет в запросе — правки нет. */
+function promptChanged(next: string | undefined, current: string): boolean {
+  return next !== undefined && next !== current;
 }
 
 /** Варианты сравниваются уже нормализованными (`mapOptions`): id
@@ -39,7 +38,7 @@ export function hasContentChanged(
   current: ContentSnapshot & { options: ExamItemOptionRecord[] },
 ): boolean {
   return (
-    textChanged(input.prompt, current.prompt) ||
+    promptChanged(input.prompt, current.prompt) ||
     optionsChanged(nextOptions, current.options)
   );
 }

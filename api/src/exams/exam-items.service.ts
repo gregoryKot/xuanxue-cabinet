@@ -102,11 +102,10 @@ export class ExamItemsService {
     }
 
     const { options, ...rest } = input;
-    // У вопроса больше нет ни одного nullable-поля (hint/criteria убраны,
-    // ADR-0128) — список пуст, но splitUpdate остаётся общей формой
-    // PATCH (CLAUDE.md «Одна механика — один компонент»), не переписываем её
-    // здесь под частный случай.
-    const { $set, $unset } = splitUpdate(rest, []);
+    // Nullable-полей у вопроса нет (hint/criteria убраны, ADR-0128): splitUpdate
+    // здесь только отсекает `undefined` и отказывает на `null`, `$unset` у
+    // него всегда пуст — поэтому в команду он и не попадает.
+    const { $set } = splitUpdate(rest, []);
     const nextOptions =
       options === undefined
         ? undefined
@@ -130,8 +129,6 @@ export class ExamItemsService {
     $set.imageIds = collectImageIds(nextOptions ?? current.options, nextHistory);
 
     const update: UpdateCommand = { $set: encryptRecord($set, EXAM_ITEM_ENCRYPT_SCHEMA) };
-    if (Object.keys($unset).length > 0) update.$unset = $unset;
-
     const updated = await this.model
       .findOneAndUpdate({ _id: id }, update, { returnDocument: 'after' })
       .lean<RawLeanExamItem>();
