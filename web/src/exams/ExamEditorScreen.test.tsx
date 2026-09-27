@@ -789,14 +789,25 @@ describe('ExamEditorScreen — подвал', () => {
     renderAt('/exams/x1');
     const publish = await screen.findByRole('button', { name: 'Опубликовать' });
     const questions = screen.getByText(/Вопросы ·/);
-    const save = saveButton();
+    const [topSave, footerSave] = screen.getAllByRole('button', { name: 'Сохранить' });
 
     expect(
       publish.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      publish.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING,
+      publish.compareDocumentPosition(footerSave as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    // Верхняя «Сохранить» — в полосе с «К списку экзаменов», до заголовка
+    // и статуса (снимок владельца 2026-09-27: отдельным рядом под заголовком
+    // она стояла «непонятно где»).
+    expect(
+      (topSave as Node).compareDocumentPosition(publish) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'К списку экзаменов' }).parentElement).toBe(
+      (topSave as HTMLElement).parentElement?.parentElement,
+    );
   });
 
   // Список вопросов длинный (у владельца — 50 вопросов), настройки под ним
@@ -1269,7 +1280,7 @@ describe('ExamEditorScreen — заметка про несохранённые 
     await screen.findByLabelText('Название');
 
     expect(
-      screen.getByText('Пока не сохранили, набранное хранится на этом устройстве.'),
+      screen.getByText('Не сохранено — набранное хранится на этом устройстве.'),
     ).toBeInTheDocument();
   });
 
@@ -1280,7 +1291,7 @@ describe('ExamEditorScreen — заметка про несохранённые 
     await screen.findByLabelText('Название');
 
     expect(
-      screen.queryByText('Пока не сохранили, набранное хранится на этом устройстве.'),
+      screen.queryByText('Не сохранено — набранное хранится на этом устройстве.'),
     ).not.toBeInTheDocument();
   });
 
@@ -1292,7 +1303,7 @@ describe('ExamEditorScreen — заметка про несохранённые 
     await user.type(await screen.findByLabelText('Название'), '!');
 
     expect(
-      screen.getByText('Пока не сохранили, набранное хранится на этом устройстве.'),
+      screen.getByText('Не сохранено — набранное хранится на этом устройстве.'),
     ).toBeInTheDocument();
   });
 });

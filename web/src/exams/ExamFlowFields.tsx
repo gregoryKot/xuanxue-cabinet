@@ -26,7 +26,15 @@ const DUE_DATE_TIP = 'Пусто — без срока. Включает вес�
 const QUESTIONS_PER_ATTEMPT_LABEL = 'Вопросов ученику';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12 };
-const toggleRowStyle: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 16 };
+// Переключатели при переносе на 360 px идут вплотную (у строки и так 44 px
+// высоты под палец), между ними в ряд — 16 px.
+const toggleRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '0 16px',
+};
+// Дата — узким полем, как числа рядом: во всю ширину она читалась как поле для текста.
+const dateInputStyle: CSSProperties = { ...inputStyle, width: 200 };
 const numericRowStyle: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 16 };
 
 interface ExamFlowFieldsProps {
@@ -92,7 +100,7 @@ export function ExamFlowFields({ state, setField }: ExamFlowFieldsProps) {
       <Field label={DUE_DATE_LABEL} tip={DUE_DATE_TIP}>
         <input
           type="date"
-          style={inputStyle}
+          style={dateInputStyle}
           value={state.dueDateText}
           onChange={(e) => setField('dueDateText', e.target.value)}
         />

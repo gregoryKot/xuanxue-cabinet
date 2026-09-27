@@ -13,7 +13,7 @@ import { Field, inputStyle } from '../components/Field';
 import type { ExamFormState } from './examFormInput';
 
 const LEVEL_TIP = 'Ученик увидит его в скобках после названия.';
-const LEVEL_PLACEHOLDER = 'Например: первый год';
+const LEVEL_PLACEHOLDER = 'первый год';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 12 };
 const textareaStyle: CSSProperties = { ...inputStyle, minHeight: 90, resize: 'vertical' };
