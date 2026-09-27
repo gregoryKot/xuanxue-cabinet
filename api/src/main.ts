@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import { errorMessage, errorStack } from './common/error-info';
 import { installProcessGuards } from './common/process-guards';
+import { RENAMED_RESERVED_LOG_KEY } from './logging/logging.module';
 
 async function bootstrap(): Promise<void> {
   // ExpressAdapter передаётся явно, а не автоопределяется NestFactory: в этом
@@ -41,15 +42,15 @@ async function bootstrap(): Promise<void> {
 // NestFactory.create/configureApp) — писать через Logger в этот момент
 // некуда. `void bootstrap()` эту ошибку раньше глотал молча (аудит
 // 2026-09-21, HIGH) — теперь .catch() пишет JSON-строку уровня error
-// (`level: 50`) напрямую в stderr, как ждёт фильтр логов Railway (RUNBOOK
-// §4), и завершает процесс: `console.*` в api/src запрещён eslint, а
+// напрямую в stderr в том же виде, что и логгер (уровень словом, текст
+// ошибки не в зарезервированном `message` — logging.module.ts), и завершает процесс: `console.*` в api/src запрещён eslint, а
 // process.exitCode = 1 (приём seed-скриптов) тут не годится — без
 // прослушанного порта процесс всё равно не живой, нужен настоящий exit.
 bootstrap().catch((error: unknown) => {
   const line = {
-    level: 50,
+    level: 'error',
     msg: 'bootstrap failed',
-    message: errorMessage(error),
+    [RENAMED_RESERVED_LOG_KEY]: errorMessage(error),
     stack: errorStack(error),
   };
   process.stderr.write(`${JSON.stringify(line)}\n`);
