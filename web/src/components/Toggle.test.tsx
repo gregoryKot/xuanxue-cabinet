@@ -47,6 +47,29 @@ describe('Toggle', () => {
     expect(strong.tagName).toBe('STRONG');
   });
 
+  // InfoTip (ADR-0138) — кнопка стоит рядом с <label>, не внутри: клик по ней
+  // не должен переключать чекбокс (Toggle.tsx, комментарий у wrapperStyle).
+  it('tip — кнопка подсказки не переключает чекбокс', async () => {
+    const onChange = vi.fn();
+    render(
+      <Toggle
+        label="Перемешивать вопросы"
+        tip="У каждого ученика свой порядок"
+        checked={false}
+        onChange={onChange}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Подсказка: Перемешивать вопросы' }),
+    );
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'У каждого ученика свой порядок',
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('disabled — переключатель недоступен, клик не вызывает onChange', async () => {
     const onChange = vi.fn();
     render(<Toggle label="Включён" checked={false} disabled onChange={onChange} />);

@@ -9,6 +9,10 @@
 // макет Form.dc.html). Стоит вне <label>, как у Field.tsx: внутри он склеился
 // бы с подписью в доступное имя поля («Перемешивать вопросыУ каждого…»), и
 // ни скринридер, ни getByLabelText больше не находят контрол по одной подписи.
+// `tip` — то же объяснение, но во всплывающей подсказке рядом с подписью
+// (components/InfoTip.tsx, ADR-0138) вместо всегда видимой строки — форма
+// экзамена короче на две строки, `hint` при этом никуда не делся: он остаётся
+// для переключателей, которым короткая подпись мало что объясняет без строки.
 //
 // `name` переводит переключатель в радио: выбор одного из нескольких (тип
 // ответа вопроса, ExamItemKindField.tsx) — та же строка «галочка, подпись,
@@ -26,6 +30,7 @@
 // без своего текста, а тот теперь плитка и прячет «Вариант N» сам. У строки
 // без картинки прятать нечего — подпись и есть всё, что видно.
 import type { CSSProperties } from 'react';
+import { InfoTip } from './InfoTip';
 import { RichText } from './RichText';
 
 const inputStyle: CSSProperties = {
@@ -40,6 +45,15 @@ const rowStyle: CSSProperties = {
   gap: 10,
   minHeight: 44,
 };
+// Обёртка label + InfoTip: кнопка подсказки стоит СНАРУЖИ <label> — щелчок по
+// вложенному <button> внутри <label> для чекбокса в браузере всё равно
+// переключает сам чекбокс (клик всплывает до label и она дублирует
+// активацию), а не только открывает подсказку.
+const wrapperStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+};
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column' };
 // Отступ слева ровно под подписью: ширина галочки плюс зазор между ней и
 // текстом — объяснение читается продолжением подписи, а не новым абзацем.
@@ -53,6 +67,9 @@ const hintStyle: CSSProperties = {
 interface ToggleProps {
   label: string;
   hint?: string;
+  /** Короткое объяснение во всплывающей подсказке рядом с подписью
+   * (components/InfoTip.tsx, ADR-0138) — вместо строки под переключателем. */
+  tip?: string;
   checked: boolean;
   disabled?: boolean;
   /** Передано — это радио из группы с таким именем, а не самостоятельная галочка. */
@@ -60,24 +77,35 @@ interface ToggleProps {
   onChange: (checked: boolean) => void;
 }
 
-export function Toggle({ label, hint, checked, disabled, name, onChange }: ToggleProps) {
+export function Toggle({
+  label,
+  hint,
+  tip,
+  checked,
+  disabled,
+  name,
+  onChange,
+}: ToggleProps) {
   const labelStyle: CSSProperties = {
     ...rowStyle,
     cursor: disabled ? 'default' : 'pointer',
     opacity: disabled ? 0.6 : 1,
   };
   const row = (
-    <label style={labelStyle}>
-      <input
-        type={name ? 'radio' : 'checkbox'}
-        name={name}
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-        style={inputStyle}
-      />
-      <span>{label}</span>
-    </label>
+    <span style={wrapperStyle}>
+      <label style={labelStyle}>
+        <input
+          type={name ? 'radio' : 'checkbox'}
+          name={name}
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.checked)}
+          style={inputStyle}
+        />
+        <span>{label}</span>
+      </label>
+      {tip && <InfoTip label={label} text={tip} />}
+    </span>
   );
 
   if (!hint) return row;

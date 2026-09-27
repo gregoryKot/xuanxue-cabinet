@@ -428,7 +428,7 @@ describe('ExamItemEditorScreen — «Как отвечают»', () => {
 });
 
 describe('ExamItemEditorScreen — черновик (ADR-0052)', () => {
-  const DRAFT_NOTE_TEXT = 'Здесь то, что вы набрали в прошлый раз.';
+  const DRAFT_NOTE_TEXT = 'Вернули то, что вы не сохранили в прошлый раз.';
 
   it('ушли со страницы с набранным и вернулись — черновик на месте', async () => {
     const user = userEvent.setup();

@@ -4,6 +4,7 @@
 // стиль инпутов/селектов для всех форм кабинета, высота ≥44px (CLAUDE.md
 // «Доступность»).
 import type { CSSProperties, ReactNode } from 'react';
+import { InfoTip } from './InfoTip';
 import { RichText } from './RichText';
 
 // Экспортирован: EmailField.tsx (CLAUDE.md «Одна механика — один компонент»)
@@ -59,6 +60,15 @@ export const inputStyle: CSSProperties = getInputStyle();
 export const numericInputStyle: CSSProperties = { ...inputStyle, width: 112 };
 
 const fieldStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
+// Кнопка InfoTip стоит СНАРУЖИ <label> (см. комментарий у Field ниже) —
+// внешняя обёртка ставит её рядом с подписью визуально, `alignItems:
+// 'flex-start'` прижимает её к верхней строке текста, а не к середине всего
+// блока (внутри <label> ниже ещё и сам контрол).
+const labelRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: 6,
+};
 const labelTextStyle: CSSProperties = { fontSize: 14, fontWeight: 600 };
 const hintStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
 const errorStyle: CSSProperties = { fontSize: 13, color: 'var(--danger)' };
@@ -66,21 +76,47 @@ const errorStyle: CSSProperties = { fontSize: 13, color: 'var(--danger)' };
 interface FieldProps {
   label: string;
   hint?: string;
+  /** Короткое объяснение во всплывающей подсказке рядом с подписью
+   * (components/InfoTip.tsx, ADR-0138) — для того, что не проговаривается
+   * подстрочником у каждого поля. Не заменяет `hint`: тот остаётся для
+   * форм, которым короткая подпись мало что объясняет без строки под полем. */
+  tip?: string;
   error?: string;
   children: ReactNode;
 }
 
-export function Field({ label, hint, error, children }: FieldProps) {
+export function Field({ label, hint, tip, error, children }: FieldProps) {
   // hint/error — вне <label>: текст подсказки внутри label иначе склеивается
   // в доступное имя поля («Подпись группыНапример…»), и getByLabelText
   // (точный текст) в тестах и скринридерах перестаёт находить поле по одной
-  // подписи.
+  // подписи. Кнопка InfoTip — тоже вне <label>, хоть у неё и нет своего
+  // видимого текста: <label> без `for` неявно связывается с ПЕРВЫМ
+  // «подписываемым» потомком в DOM-порядке (input, select, button — общий
+  // список у браузера и testing-library), и окажись кнопка внутри и раньше
+  // контрола, связалась бы с ней, а не с полем — getByLabelText нашёл бы
+  // кнопку вместо инпута.
+  //
+  // Обёртка `<span style={labelRowStyle}>` вокруг `<label>` рисуется, только
+  // когда есть `tip`: без неё `<label>` — прямой потомок внешнего `div`, как
+  // было до InfoTip, и формы, которые сами находят поле через
+  // `closest('label')?.parentElement` (RecordingSection.test.tsx и, вероятно,
+  // не только он), продолжают видеть в родителе то же, что и error/hint ниже.
+  const labelNode = (
+    <label style={fieldStyle}>
+      <span style={labelTextStyle}>{label}</span>
+      {children}
+    </label>
+  );
   return (
     <div style={fieldStyle}>
-      <label style={fieldStyle}>
-        <span style={labelTextStyle}>{label}</span>
-        {children}
-      </label>
+      {tip ? (
+        <span style={labelRowStyle}>
+          {labelNode}
+          <InfoTip label={label} text={tip} />
+        </span>
+      ) : (
+        labelNode
+      )}
       {/* Через RichText (ADR-0124) — акцент `**жирным**` в подсказке и ошибке
        * поля достаётся всем формам кабинета сразу, без правки на каждой. */}
       {error ? (
