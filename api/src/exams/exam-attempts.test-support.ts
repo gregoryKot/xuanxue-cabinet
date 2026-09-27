@@ -20,6 +20,7 @@ import { UserRecord, UserSchema } from '../users/user.schema';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import {
   buildAttemptsServices,
+  type AttemptsTestModels,
   type AttemptsTestServices,
 } from './exam-attempts-services.test-support';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
@@ -32,26 +33,8 @@ export const USER_A = '507f1f77bcf86cd799439012';
 export const USER_B = '507f1f77bcf86cd799439013';
 export const GRADER_ID = '507f1f77bcf86cd799439014';
 
-export interface AttemptsTestContext extends AttemptsTestServices {
+export interface AttemptsTestContext extends AttemptsTestServices, AttemptsTestModels {
   memory: MemoryMongo;
-  attemptModel: Model<ExamAttemptRecord>;
-  examModel: Model<ExamRecord>;
-  itemModel: Model<ExamItemRecord>;
-  gradingModel: Model<ExamGradingRecord>;
-  userModel: Model<UserRecord>;
-  mediaModel: Model<MediaAssetRecord>;
-  // Слой 4.2 (ADR-0035) — ExamItemsService проверяет через него существование
-  // картинки варианта; спекам, которым нужна картинка в снимке попытки, тоже
-  // не поднимать модель второй раз.
-  imageModel: Model<ExamImageRecord>;
-  // ADR-0102: PersonalChats внутри gradingsService читает их, чтобы решить
-  // notifiesUserInTelegram — спекам, которым нужен настоящий Telegram-канал
-  // ученика или выключенный вид уведомления, тоже не поднимать модели второй раз.
-  channelModel: Model<ChannelRecord>;
-  notificationPrefsModel: Model<NotificationPrefsRecord>;
-  // Лента кабинета (ADR-0061) — нужна ADR-0131: повтор после просроченной
-  // попытки затирает и её строки в inbox учителя (ExamAttemptRetryCleanupService).
-  notificationModel: Model<NotificationRecord>;
   // ADR-0129 — отметка «ученик открыл задание»; MyExamsService.spec.ts тоже
   // поднимает контекст отсюда, второй раз модель не заводит.
   seenMarkModel: Model<ExamSeenMarkRecord>;

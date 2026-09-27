@@ -37,9 +37,17 @@ export interface AttemptsTestModels {
   gradingModel: Model<ExamGradingRecord>;
   userModel: Model<UserRecord>;
   mediaModel: Model<MediaAssetRecord>;
+  // Слой 4.2 (ADR-0035) — ExamItemsService проверяет через него существование
+  // картинки варианта; спекам, которым нужна картинка в снимке попытки, тоже
+  // не поднимать модель второй раз.
   imageModel: Model<ExamImageRecord>;
+  // ADR-0102: PersonalChats внутри gradingsService читает их, чтобы решить
+  // notifiesUserInTelegram — спекам, которым нужен настоящий Telegram-канал
+  // ученика или выключенный вид уведомления, тоже не поднимать модели второй раз.
   channelModel: Model<ChannelRecord>;
   notificationPrefsModel: Model<NotificationPrefsRecord>;
+  // Лента кабинета (ADR-0061) — нужна ADR-0131: повтор после просроченной
+  // попытки затирает и её строки в inbox учителя (ExamAttemptRetryCleanupService).
   notificationModel: Model<NotificationRecord>;
 }
 
