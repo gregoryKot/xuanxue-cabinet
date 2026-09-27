@@ -94,4 +94,21 @@ describe('Field', () => {
       screen.getByRole('button', { name: 'Подсказка: Уровень' }),
     ).toBeInTheDocument();
   });
+
+  // Снимок владельца 2026-09-27: при <label> вокруг поля кнопка «?» вставала
+  // справа от всего блока, у края инпута, а не рядом со словом подписи.
+  it('tip — кнопка стоит в одной строке с подписью, поле — отдельно под ней', () => {
+    render(
+      <Field label="Уровень" tip="Ученик увидит его в скобках после названия.">
+        <input defaultValue="первый год" />
+      </Field>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Подсказка: Уровень' });
+    const labelText = screen.getByText('Уровень');
+    const input = screen.getByLabelText('Уровень');
+
+    expect(button.parentElement).toBe(labelText.parentElement);
+    expect(button.parentElement?.contains(input)).toBe(false);
+  });
 });

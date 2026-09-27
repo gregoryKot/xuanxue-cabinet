@@ -52,7 +52,10 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
   const preview = useSaveAndPreview(exam, form, formRef);
-  const showDraftSafetyNote = !exam || hasUnsavedChanges(form.state, exam);
+  // Черновик вернули — о нём уже говорит FormDraftNote ниже; второй строки
+  // про «хранится на устройстве» подряд не нужно (снимок владельца 2026-09-27).
+  const showDraftSafetyNote =
+    !form.draftRestored && (!exam || hasUnsavedChanges(form.state, exam));
 
   // Вопрос убрали из списка — отметка «обязательный» уходит вместе с ним
   // (ADR-0082, дополнение); на добавлении и перестановке — просто нет эффекта.

@@ -152,6 +152,19 @@ describe('InfoTip', () => {
     expect(screen.getByRole('tooltip')).toBeInTheDocument();
   });
 
+  // Снимок владельца 2026-09-27: рамка и фон кнопки рисовались вокруг всей
+  // зоны нажатия 44×44 — кругом поверх подписи. Видимой должна быть только
+  // иконка; у самой кнопки ни рамки, ни фона.
+  it('у кнопки нет своей рамки и фона — зона нажатия невидима', () => {
+    render(<InfoTip label="Уровень" text="Текст подсказки" />);
+    const button = screen.getByRole('button', { name: 'Подсказка: Уровень' });
+
+    expect(button.style.borderStyle === '' || button.style.borderStyle === 'none').toBe(
+      true,
+    );
+    expect(button.style.background).toBe('transparent');
+  });
+
   // Field.tsx держит кнопку InfoTip внутри <label> (только SVG, без текста) —
   // текст подсказки не должен попасть в accessible name поля ни закрытым, ни
   // открытым (createPortal выносит его из дерева label целиком).
