@@ -9,7 +9,8 @@
 // istanbul-lib-coverage — CommonJS без proper ESM named exports (иначе
 // "Named export 'createCoverageMap' not found" под node:test).
 import istanbulLibCoverage from 'istanbul-lib-coverage';
-import { readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname } from 'path';
 import { pathToFileURL } from 'url';
 
 const { createCoverageMap } = istanbulLibCoverage;
@@ -73,6 +74,8 @@ function main() {
     process.exit(1);
   }
 
+  // В джобе склейки тесты не запускались — каталога coverage/ ещё нет.
+  mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, JSON.stringify(summary, null, 2) + '\n');
   console.log(
     `✓ склеено ${inputPaths.length} файлов покрытия → ${outPath} (total lines ${summary.total.lines.pct}%)`,

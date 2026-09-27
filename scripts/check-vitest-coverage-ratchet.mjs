@@ -9,8 +9,8 @@
 // было вовсе (там же, находка M5). Этот скрипт не трогает конфиг: бейслайн —
 // отдельный JSON, поднимается только явным `--update`.
 //
-// Запускает vitest сам (с --coverage) в каталоге воркспейса — отдельный
-// `npx vitest` в CI не нужен, этот скрипт его заменяет.
+// Запускает vitest сам (с --coverage) в каталоге воркспейса. С --summary=<путь>
+// берёт готовую сводку: в CI это склейка шардов (merge-coverage.mjs).
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';

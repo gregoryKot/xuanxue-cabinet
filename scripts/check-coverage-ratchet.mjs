@@ -4,8 +4,8 @@
 // следит, чтобы суммарное покрытие (lines/branches) api не падало, и держит
 // жёсткий пол на критичных зонах (напр. api/src/utils — шифрование).
 //
-// Запускает jest сам (с --coverage) в api/ — отдельный `npx jest` в CI не
-// нужен, этот скрипт его заменяет.
+// Запускает jest сам (с --coverage) в api/. С --summary=<путь> берёт готовую
+// сводку: в CI это склейка шардов (merge-coverage.mjs), шард видит часть набора.
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -14,11 +14,7 @@ const ROOT = join(import.meta.dirname, '..');
 const API_ROOT = join(ROOT, 'api');
 const BASELINE_PATH = join(ROOT, 'scripts', 'coverage-baseline.json');
 const UPDATE = process.argv.includes('--update');
-// --summary=<path> — CI-шардинг (api-coverage matrix): покрытие уже склеено
-// merge-coverage.mjs из артефактов всех шардов, второй прогон jest здесь не
-// нужен и не может быть верным — один шард видит только свою часть набора.
-// Абсолютные пути в склеенной сводке — из того же раннера, что и склейка,
-// поэтому relPath ниже сравнивает их с API_ROOT так же, как обычный прогон.
+// Пути в склеенной сводке абсолютные с того же раннера — relPath ниже их узнаёт.
 const SUMMARY_ARG = process.argv.find((a) => a.startsWith('--summary='));
 const SUMMARY_PATH = SUMMARY_ARG
   ? SUMMARY_ARG.slice('--summary='.length)
