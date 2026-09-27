@@ -47,6 +47,10 @@ describe('dueDateToIso', () => {
     expect(dueDateToIso('')).toBeUndefined();
   });
 
+  it('кривая дата — undefined, а не мусорный ISO', () => {
+    expect(dueDateToIso('2026-04-31')).toBeUndefined();
+  });
+
   it('заполнено — ISO UTC конца дня (23:59:59.999) в поясе зрителя', () => {
     // Обычный день вне перехода: Asia/Jerusalem зимой — UTC+2.
     expect(dueDateToIso('2026-01-15')).toBe('2026-01-15T21:59:59.999Z');

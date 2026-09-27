@@ -90,6 +90,68 @@ describe('InfoTip', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
+  it('matchMedia бросает — наведения нет, мышь подсказку не открывает', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => {
+        throw new Error('нет matchMedia');
+      }),
+    );
+    render(<InfoTip label="Уровень" text="Текст подсказки" />);
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Подсказка: Уровень' }));
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('кнопка у нижнего края экрана — подсказка встаёт над ней, у правого — прижата к краю', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('innerWidth', 360);
+    vi.stubGlobal('innerHeight', 640);
+    render(<InfoTip label="Уровень" text="Текст подсказки" />);
+    const button = screen.getByRole('button', { name: 'Подсказка: Уровень' });
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({
+      top: 600,
+      bottom: 620,
+      left: 340,
+      right: 358,
+      width: 18,
+      height: 20,
+      x: 340,
+      y: 600,
+      toJSON: () => ({}),
+    });
+
+    await user.click(button);
+
+    const tooltip = await screen.findByRole('tooltip');
+    // Над кнопкой: top меньше верхнего края кнопки; слева — не дальше, чем
+    // позволяет ширина экрана минус ширина поповера.
+    expect(parseFloat(tooltip.style.top)).toBeLessThan(600);
+    expect(parseFloat(tooltip.style.left)).toBeLessThan(340);
+  });
+
+  it('другая клавиша (не Escape) подсказку не закрывает', () => {
+    render(<InfoTip label="Уровень" text="Текст подсказки" />);
+    const button = screen.getByRole('button', { name: 'Подсказка: Уровень' });
+
+    fireEvent.focus(button);
+    fireEvent.keyDown(button, { key: 'a' });
+
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+  });
+
+  it('нажатие по самой кнопке не считается «кликом мимо»', () => {
+    render(<InfoTip label="Уровень" text="Текст подсказки" />);
+    const button = screen.getByRole('button', { name: 'Подсказка: Уровень' });
+
+    fireEvent.focus(button);
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+
+    fireEvent.pointerDown(button);
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+  });
+
   // Field.tsx держит кнопку InfoTip внутри <label> (только SVG, без текста) —
   // текст подсказки не должен попасть в accessible name поля ни закрытым, ни
   // открытым (createPortal выносит его из дерева label целиком).
