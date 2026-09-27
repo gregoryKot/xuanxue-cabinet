@@ -14,10 +14,15 @@
 // один запрос GET /me/exams через контекст, а не заводят каждый свой.
 //
 // Рубрики — отзыв владельца 2026-09-22 (ADR-0120): живое и законченное
-// лежали вперемешку. Теперь наверху то, что ждёт ученика, ниже — то, что уже
+// лежали вперемешку. Наверху то, что ждёт ученика, ниже — то, что уже
 // позади; деление — splitTasksToDo.ts, чистая функция с тестом (CLAUDE.md
 // «Логика вне компонентов»). Рубрика стоит и над одинокой группой: она
 // отвечает на главный вопрос экрана — ждут меня или нет.
+//
+// Третья рубрика «На проверке» — между ними (отзыв тестировщицы 2026-09-23,
+// ADR-0130): сданная, но не проверенная попытка — не то, что нажимать
+// («Сдавать сейчас»), и не то, что закончено («Уже позади», учитель её ещё
+// не смотрел).
 //
 // Подтверждение перед стартом попытки с лимитом времени (отзыв владельца
 // 2026-09-22, ADR-0121): та же механика, что у отправки работы
@@ -50,6 +55,7 @@ const EXPLANATION =
   '**уходит учителю такой, какая есть**.';
 const EMPTY_MESSAGE = 'Заданий пока нет.';
 const TO_DO_RUBRIC = 'Сдавать сейчас';
+const REVIEW_RUBRIC = 'На проверке';
 const DONE_RUBRIC = 'Уже позади';
 
 const groupStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
@@ -92,7 +98,9 @@ export default function TasksScreen() {
   }
 
   const ready = !loading && !error && exams !== null;
-  const { toDo, done } = ready ? splitTasksToDo(exams) : { toDo: [], done: [] };
+  const { toDo, review, done } = ready
+    ? splitTasksToDo(exams)
+    : { toDo: [], review: [], done: [] };
 
   return (
     <section style={screenSectionStyle}>
@@ -111,6 +119,7 @@ export default function TasksScreen() {
       {ready && exams.length === 0 && <p style={{ margin: 0 }}>{EMPTY_MESSAGE}</p>}
 
       {ready && renderGroup(TO_DO_RUBRIC, toDo)}
+      {ready && renderGroup(REVIEW_RUBRIC, review)}
       {ready && renderGroup(DONE_RUBRIC, done)}
 
       {confirm && (

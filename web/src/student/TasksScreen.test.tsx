@@ -84,19 +84,20 @@ describe('TasksScreen — пусто', () => {
   });
 });
 
-describe('TasksScreen — рубрики «Сдавать сейчас» и «Уже позади»', () => {
-  it('ждёт действия — под рубрикой «Сдавать сейчас», «Уже позади» нет', async () => {
+describe('TasksScreen — рубрики «Сдавать сейчас», «На проверке» и «Уже позади»', () => {
+  it('ждёт действия — под рубрикой «Сдавать сейчас», остальных рубрик нет', async () => {
     mockApiByPath({ [MY_EXAMS_PATH]: [makeExam({ id: 'e1' })] });
     renderScreen();
 
     expect(await screen.findByText('Сдавать сейчас')).toBeInTheDocument();
+    expect(screen.queryByText('На проверке')).not.toBeInTheDocument();
     expect(screen.queryByText('Уже позади')).not.toBeInTheDocument();
   });
 
   // Рубрика стоит и над одинокой группой: она отвечает на главный вопрос
   // экрана — ждут меня или нет (ADR-0120). Раньше единственная группа шла
   // без заголовка, и сданное молча смешивалось с несданным.
-  it('делать нечего — одинокая группа всё равно подписана «Уже позади»', async () => {
+  it('сдано, учитель ещё не смотрел — одинокая группа подписана «На проверке» (ADR-0130)', async () => {
     mockApiByPath({
       [MY_EXAMS_PATH]: [
         makeExam({
@@ -108,11 +109,23 @@ describe('TasksScreen — рубрики «Сдавать сейчас» и «У
     });
     renderScreen();
 
-    expect(await screen.findByText('Уже позади')).toBeInTheDocument();
+    expect(await screen.findByText('На проверке')).toBeInTheDocument();
     expect(screen.queryByText('Сдавать сейчас')).not.toBeInTheDocument();
+    expect(screen.queryByText('Уже позади')).not.toBeInTheDocument();
   });
 
-  it('и то и другое — «Сдавать сейчас» сверху, «Уже позади» ниже', async () => {
+  it('делать нечего — одинокая группа всё равно подписана «Уже позади»', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [makeExam({ id: 'e1', attemptsAllowed: 1, attemptsUsed: 1 })],
+    });
+    renderScreen();
+
+    expect(await screen.findByText('Уже позади')).toBeInTheDocument();
+    expect(screen.queryByText('Сдавать сейчас')).not.toBeInTheDocument();
+    expect(screen.queryByText('На проверке')).not.toBeInTheDocument();
+  });
+
+  it('все три сразу — «Сдавать сейчас» сверху, «На проверке» посередине, «Уже позади» снизу', async () => {
     mockApiByPath({
       [MY_EXAMS_PATH]: [
         makeExam({
@@ -122,18 +135,24 @@ describe('TasksScreen — рубрики «Сдавать сейчас» и «У
           lastAttempt: { id: 'a1', status: 'submitted', expired: false },
         }),
         makeExam({ id: 'e2', title: 'Ещё не начинал' }),
+        makeExam({ id: 'e3', title: 'Все попытки кончились', attemptsUsed: 1 }),
       ],
     });
     renderScreen();
 
     await screen.findByText('Сдавать сейчас');
     const headings = screen.getAllByRole('heading', { level: 2 });
-    expect(headings.map((h) => h.textContent)).toEqual(['Сдавать сейчас', 'Уже позади']);
+    expect(headings.map((h) => h.textContent)).toEqual([
+      'Сдавать сейчас',
+      'На проверке',
+      'Уже позади',
+    ]);
     // Карточка едет за своей рубрикой, а не остаётся в порядке ответа.
     const cards = screen.getAllByRole('listitem');
     expect(cards.map((card) => card.textContent)).toEqual([
       expect.stringContaining('Ещё не начинал'),
       expect.stringContaining('Уже отправил'),
+      expect.stringContaining('Все попытки кончились'),
     ]);
   });
 
@@ -153,6 +172,28 @@ describe('TasksScreen — рубрики «Сдавать сейчас» и «У
 
     expect(await screen.findByText('Уже позади')).toBeInTheDocument();
     expect(screen.queryByText('Сдавать сейчас')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Пройти ещё раз' })).toBeInTheDocument();
+  });
+
+  // Отзыв тестировщицы 2026-09-23: попытка, закрытая по времени, давала
+  // кнопку «Пройти ещё раз» и лежала среди живых заданий, хотя работа уже
+  // ушла учителю. Теперь рубрика — «На проверке», кнопка (про СЛЕДУЮЩУЮ
+  // попытку) остаётся как есть (ADR-0130).
+  it('время закрыло попытку — карточка в «На проверке», кнопка «Пройти ещё раз» остаётся', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [
+        makeExam({
+          id: 'e1',
+          attemptsAllowed: 2,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+        }),
+      ],
+    });
+    renderScreen();
+
+    expect(await screen.findByText('На проверке')).toBeInTheDocument();
+    expect(screen.queryByText('Сдавать сейчас')).not.toBeInTheDocument();
+    expect(screen.queryByText('Уже позади')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Пройти ещё раз' })).toBeInTheDocument();
   });
 });
