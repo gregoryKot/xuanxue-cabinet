@@ -124,6 +124,22 @@ describe('BroadcastCard', () => {
     expect(onCancel).toHaveBeenCalledWith('b1');
   });
 
+  // «Отмена» в диалоге — свой обработчик в BroadcastCardActions; раньше его
+  // задевал только поздний onClose после успешной отмены, и под нагрузкой
+  // покрытие функций то было, то нет (храповик web мигал, 2026-09-27).
+  it('«Отмена» в диалоге закрывает его, onCancel не зовётся', async () => {
+    const user = userEvent.setup();
+    const { onCancel } = renderCard();
+
+    await user.click(screen.getByRole('button', { name: 'Отменить' }));
+    await user.click(screen.getByRole('button', { name: 'Отмена' }));
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Отменить рассылку?' }),
+    ).not.toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   it('сбой отмены — текст ошибки на карточке', async () => {
     const user = userEvent.setup();
     const onCancel = vi
