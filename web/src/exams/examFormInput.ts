@@ -8,7 +8,7 @@ import {
   type ExamDto,
   type UpdateExamInput,
 } from '@xuanxue/shared';
-import { dueAtToIso, initialDueAtLocal, validateDueAtText } from './examDueInput';
+import { dueDateToIso, initialDueDate, validateDueDateText } from './examDueInput';
 import { validateQuestionsPerAttemptText } from './questionsPerAttempt';
 import {
   initialQuestionIds,
@@ -32,7 +32,7 @@ export interface ExamFormState {
   level: string;
   timeLimitMinText: string;
   attemptsAllowedText: string;
-  dueAtLocal: string;
+  dueDateText: string;
   /** Один список вопросов на весь экзамен (ADR-0033). */
   questionIds: string[];
   /** Отметки ★ «обязательный» (ADR-0082, дополнение) — подмножество `questionIds`. */
@@ -52,7 +52,7 @@ export function initialExamFormState(exam: ExamDto | null): ExamFormState {
     level: exam?.level ?? '',
     timeLimitMinText: exam?.timeLimitMin ? String(exam.timeLimitMin) : '',
     attemptsAllowedText: String(exam?.attemptsAllowed ?? DEFAULT_ATTEMPTS_ALLOWED),
-    dueAtLocal: initialDueAtLocal(exam?.dueAt),
+    dueDateText: initialDueDate(exam?.dueAt),
     questionIds: initialQuestionIds(exam),
     requiredIds: initialRequiredIds(exam),
     shuffleQuestions: initialShuffleQuestions(exam),
@@ -82,7 +82,7 @@ export function validateExamForm(state: ExamFormState): string | null {
   ) {
     return `Число попыток — целое число от ${MIN_ATTEMPTS_ALLOWED} до ${EXAM_LIMITS.attemptsMax}.`;
   }
-  const dueAtError = validateDueAtText(state.dueAtLocal);
+  const dueAtError = validateDueDateText(state.dueDateText);
   if (dueAtError) return dueAtError;
   if (state.questionsPerAttemptText.trim() !== '') {
     const error = validateQuestionsPerAttemptText(
@@ -115,7 +115,7 @@ export function toCreateInput(state: ExamFormState): CreateExamInput {
     timeLimitMin: state.timeLimitMinText.trim()
       ? Number(state.timeLimitMinText)
       : undefined,
-    dueAt: dueAtToIso(state.dueAtLocal),
+    dueAt: dueDateToIso(state.dueDateText),
     attemptsAllowed: Number(state.attemptsAllowedText),
   };
 }
@@ -143,7 +143,7 @@ export function toUpdateInput(
     }),
     shuffleOptions: state.shuffleOptions,
     timeLimitMin: state.timeLimitMinText.trim() ? Number(state.timeLimitMinText) : null,
-    dueAt: dueAtToIso(state.dueAtLocal) ?? null,
+    dueAt: dueDateToIso(state.dueDateText) ?? null,
     attemptsAllowed: Number(state.attemptsAllowedText),
   };
 }

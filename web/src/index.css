@@ -513,6 +513,22 @@ input[type='radio'] {
   }
 }
 
+/* «Название» и «Уровень» редактора экзамена (ExamAboutFields.tsx, ADR-0139) —
+   одной строкой на экране пошире, уровень узкой колонкой (короткое слово, не
+   абзац), друг под другом на 360px (отзыв владельца 2026-09-27). Порог и
+   промежуток — те же, что у .xuanxue-form-columns выше. */
+.xuanxue-title-level-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+@media (min-width: 560px) {
+  .xuanxue-title-level-row {
+    grid-template-columns: minmax(0, 1fr) 160px;
+    gap: 16px;
+  }
+}
+
 /* Отступы пилюли-переключателя (components/pillStyles.ts, класс PILL_CLASS):
    остальной стиль пилюли инлайновый, сюда вынесен только паддинг — он разный
    по ширине экрана, а `CSSProperties` не умеет медиа-запрос. На мониторе

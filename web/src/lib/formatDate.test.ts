@@ -4,10 +4,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   dateKey,
+  endOfDayIsoFromDateValue,
   formatDateTime,
   formatDayHeading,
   formatTime,
   fromDatetimeLocalValue,
+  toDateInputValue,
   toDatetimeLocalValue,
 } from './formatDate';
 
@@ -58,5 +60,29 @@ describe('toDatetimeLocalValue / fromDatetimeLocalValue — круговой о�
   it('пустая строка и мусор — null, а не Invalid Date', () => {
     expect(fromDatetimeLocalValue('')).toBeNull();
     expect(fromDatetimeLocalValue('не дата')).toBeNull();
+  });
+});
+
+describe('toDateInputValue', () => {
+  it('формат ровно как ждёт <input type="date">: YYYY-MM-DD', () => {
+    expect(toDateInputValue('2026-09-07T16:30:00.000Z')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('endOfDayIsoFromDateValue — круговой обход', () => {
+  it('дата → ISO конца дня → та же дата обратно', () => {
+    const iso = endOfDayIsoFromDateValue('2026-09-07');
+    expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.999Z$/);
+    expect(toDateInputValue(iso as string)).toBe('2026-09-07');
+  });
+
+  it('пустая строка и мусор — null', () => {
+    expect(endOfDayIsoFromDateValue('')).toBeNull();
+    expect(endOfDayIsoFromDateValue('не дата')).toBeNull();
+  });
+
+  it('календарно невозможная дата — null, а не перенос на соседний месяц', () => {
+    expect(endOfDayIsoFromDateValue('2026-02-30')).toBeNull();
+    expect(endOfDayIsoFromDateValue('2026-13-01')).toBeNull();
   });
 });

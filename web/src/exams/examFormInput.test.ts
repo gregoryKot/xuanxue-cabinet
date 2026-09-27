@@ -33,7 +33,7 @@ function baseState(overrides: Partial<ExamFormState> = {}): ExamFormState {
     level: '',
     timeLimitMinText: '',
     attemptsAllowedText: '1',
-    dueAtLocal: '',
+    dueDateText: '',
     questionIds: [],
     requiredIds: [],
     shuffleQuestions: false,
@@ -114,14 +114,12 @@ describe('initialExamFormState', () => {
     expect(initialExamFormState(makeExam()).requiredIds).toEqual([]);
   });
 
-  it('есть срок сдачи — переносится значением datetime-local', () => {
-    expect(initialExamFormState(makeExam()).dueAtLocal).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
-    );
+  it('есть срок сдачи — переносится датой без времени', () => {
+    expect(initialExamFormState(makeExam()).dueDateText).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('нет срока сдачи — пустая строка, не «undefined»', () => {
-    expect(initialExamFormState(makeExam({ dueAt: undefined })).dueAtLocal).toBe('');
+    expect(initialExamFormState(makeExam({ dueAt: undefined })).dueDateText).toBe('');
   });
 });
 
@@ -161,11 +159,11 @@ describe('validateExamForm', () => {
   });
 
   it('пустой срок сдачи — валидно (без срока)', () => {
-    expect(validateExamForm(baseState({ dueAtLocal: '' }))).toBeNull();
+    expect(validateExamForm(baseState({ dueDateText: '' }))).toBeNull();
   });
 
   it('нераспознаваемый срок сдачи — ошибка', () => {
-    expect(validateExamForm(baseState({ dueAtLocal: 'не дата' }))).toMatch(/Срок сдачи/);
+    expect(validateExamForm(baseState({ dueDateText: 'не дата' }))).toMatch(/Срок сдачи/);
   });
 
   it('пустое «Вопросов ученику» — валидно (все вопросы списка)', () => {
@@ -285,20 +283,17 @@ describe('toCreateInput / toUpdateInput', () => {
   });
 
   it('создание: заполненный срок сдачи — ISO UTC с Z', () => {
-    const input = toCreateInput(baseState({ dueAtLocal: '2026-09-30T23:59' }));
+    const input = toCreateInput(baseState({ dueDateText: '2026-09-30' }));
     expect(input.dueAt).toMatch(/Z$/);
   });
 
   it('правка: пустой срок сдачи — null (явный сброс)', () => {
-    const input = toUpdateInput(baseState({ dueAtLocal: '' }), makeExam());
+    const input = toUpdateInput(baseState({ dueDateText: '' }), makeExam());
     expect(input.dueAt).toBeNull();
   });
 
   it('правка: заполненный срок сдачи — ISO UTC с Z', () => {
-    const input = toUpdateInput(
-      baseState({ dueAtLocal: '2026-09-30T23:59' }),
-      makeExam(),
-    );
+    const input = toUpdateInput(baseState({ dueDateText: '2026-09-30' }), makeExam());
     expect(input.dueAt).toMatch(/Z$/);
   });
 
