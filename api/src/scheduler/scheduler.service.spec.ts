@@ -299,6 +299,30 @@ describe('SchedulerService.tick', () => {
     await expect(service.tick()).resolves.toBeUndefined();
   });
 
+  it('ошибка шага «видео-сироты» не мешает итоговому логу', async () => {
+    const removeVideoOrphans = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const { service } = buildService({ removeVideoOrphans });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  it('ошибка шага «файлы-сироты» не мешает итоговому логу', async () => {
+    const sweepStorageOrphans = jest.fn().mockRejectedValue(new Error('R2 недоступен'));
+    const { service } = buildService({ sweepStorageOrphans });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  // ADR-0137: шаг видео-ответа падает как любой другой, не должен уронить тик.
+  it('ошибка шага «видео-ответы» не мешает итоговому логу', async () => {
+    const removeExpiredAnswerVideos = jest
+      .fn()
+      .mockRejectedValue(new Error('mongo упал'));
+    const { service } = buildService({ removeExpiredAnswerVideos });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+  });
+
   it('упавший шаг зовёт notifySchedulerFailed с именем шага и текстом ошибки', async () => {
     const runDeliveries = jest.fn().mockRejectedValue(new Error('канал упал'));
     const { service, notifySchedulerFailed } = buildService({ runDeliveries });

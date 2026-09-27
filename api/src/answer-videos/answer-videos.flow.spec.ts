@@ -162,6 +162,10 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       mediaModel.deleteMany({}),
     ]);
     jest.clearAllMocks();
+    // restoreAllMocks — сеть безопасности для jest.spyOn(videoModel, …) в
+    // отдельных тестах ниже: не задевает multipart (обычные jest.fn(), не
+    // spyOn) и их mockResolvedValue из beforeAll.
+    jest.restoreAllMocks();
     fileStoreEnabled.value = true;
     multipart.isEnabled = true;
   });
@@ -285,6 +289,48 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       );
       expect(await videoModel.countDocuments({})).toBe(1);
     });
+
+    it('отмена прежней multipart-загрузки не удалась — best-effort, новая загрузка всё равно начинается', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const first = await startService.start(
+        attemptId,
+        USER_A,
+        { itemId: VIDEO_ITEM_ID, sizeBytes: 5000, fingerprint: '5000:1' },
+        NOW,
+      );
+      await videoModel.updateOne(
+        { _id: first.id },
+        { $set: { uploadId: 'stale-upload' } },
+      );
+      multipart.abortMultipartUpload.mockRejectedValueOnce(new Error('R2 недоступен'));
+
+      const second = await startService.start(
+        attemptId,
+        USER_A,
+        { itemId: VIDEO_ITEM_ID, sizeBytes: 6000, fingerprint: '6000:1' },
+        NOW,
+      );
+
+      expect(second.id).not.toBe(first.id);
+      expect(await videoModel.countDocuments({})).toBe(1);
+    });
+
+    it('запись не найдена сразу после создания — Error (защита в глубину)', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const spy = jest
+        .spyOn(videoModel, 'findById')
+        .mockReturnValueOnce({ lean: () => Promise.resolve(null) } as never);
+
+      await expect(
+        startService.start(
+          attemptId,
+          USER_A,
+          { itemId: VIDEO_ITEM_ID, sizeBytes: 10, fingerprint: 'x' },
+          NOW,
+        ),
+      ).rejects.toThrow('запись не найдена сразу после создания');
+      spy.mockRestore();
+    });
   });
 
   describe('uploadPart', () => {
@@ -352,6 +398,75 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       await partService.uploadPart(upload.id, USER_A, 1, mp4Bytes(20), NOW);
       const again = await partService.uploadPart(upload.id, USER_A, 1, mp4Bytes(20), NOW);
       expect(again.receivedParts).toEqual([1]);
+    });
+
+    it('уже завершено (status: ready) — ConflictError', async () => {
+      const { upload } = await startUpload(20);
+      await partService.uploadPart(upload.id, USER_A, 1, mp4Bytes(20), NOW);
+      await videoModel.updateOne({ _id: upload.id }, { $set: { status: 'ready' } });
+
+      await expect(
+        partService.uploadPart(upload.id, USER_A, 1, mp4Bytes(20), NOW),
+      ).rejects.toBeInstanceOf(ConflictError);
+    });
+
+    it('тело не Buffer — InvalidInputError (EXAM_VIDEO_EMPTY_MESSAGE)', async () => {
+      const { upload } = await startUpload(20);
+      await expect(
+        partService.uploadPart(upload.id, USER_A, 1, 'не буфер', NOW),
+      ).rejects.toBeInstanceOf(InvalidInputError);
+    });
+
+    it('проиграл гонку открытия multipart — прерывает свой, берёт uploadId победителя', async () => {
+      const { upload } = await startUpload(20);
+      // Побеждающий запрос ставит uploadId в БД ровно в момент, когда наш
+      // createMultipartUpload возвращается — реальный условный findOneAndUpdate
+      // (`uploadId: { $exists: false }`) естественно не находит документ и
+      // возвращает null, ветка гонки срабатывает без подмены самого запроса.
+      multipart.createMultipartUpload.mockImplementationOnce(async () => {
+        await videoModel.updateOne(
+          { _id: upload.id },
+          { $set: { uploadId: 'upload-winner' } },
+        );
+        return 'upload-loser';
+      });
+
+      const result = await partService.uploadPart(
+        upload.id,
+        USER_A,
+        1,
+        mp4Bytes(20),
+        NOW,
+      );
+
+      expect(multipart.abortMultipartUpload).toHaveBeenCalledWith(
+        expect.any(String),
+        'upload-loser',
+        NOW,
+      );
+      expect(result.receivedParts).toEqual([1]);
+    });
+
+    it('запись пропала между записью части и повторным чтением — Error (защита в глубину)', async () => {
+      const { upload } = await startUpload(20);
+      // Первый findById (в начале метода) считает исходный документ, второй
+      // (после записи части) подменяем на null — программно невозможный
+      // случай, тот же приём, что у media-assets.service.spec.ts «запись не
+      // найдена сразу после создания».
+      let calls = 0;
+      const originalFindById = videoModel.findById.bind(videoModel);
+      const spy = jest
+        .spyOn(videoModel, 'findById')
+        .mockImplementation((...args: Parameters<typeof originalFindById>) => {
+          calls += 1;
+          if (calls === 1) return originalFindById(...args);
+          return { lean: () => Promise.resolve(null) } as never;
+        });
+
+      await expect(
+        partService.uploadPart(upload.id, USER_A, 1, mp4Bytes(20), NOW),
+      ).rejects.toThrow('запись пропала во время загрузки');
+      spy.mockRestore();
     });
   });
 
@@ -452,6 +567,58 @@ describe('AnswerVideo start/part/complete (юнит на настоящей Mong
       await expect(completeService.complete(id, USER_A, NOW)).resolves.toMatchObject({
         kind: 'file',
       });
+    });
+
+    it('уже завершено (status: ready) — повторный complete ConflictError', async () => {
+      const { id } = await readyForComplete();
+      await completeService.complete(id, USER_A, NOW);
+
+      await expect(completeService.complete(id, USER_A, NOW)).rejects.toBeInstanceOf(
+        ConflictError,
+      );
+    });
+
+    it('попытка исчезла между загрузкой и complete — NotFoundError', async () => {
+      const { id, attemptId } = await readyForComplete();
+      await attemptModel.deleteOne({ _id: attemptId });
+
+      await expect(completeService.complete(id, USER_A, NOW)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('попытку проверили между загрузкой и complete — ConflictError', async () => {
+      const { id, attemptId } = await readyForComplete();
+      await attemptModel.updateOne({ _id: attemptId }, { $set: { status: 'graded' } });
+
+      await expect(completeService.complete(id, USER_A, NOW)).rejects.toBeInstanceOf(
+        ConflictError,
+      );
+    });
+
+    it('несколько частей — CompleteMultipartUpload получает их по возрастанию номера', async () => {
+      const attemptId = await seedAttempt(USER_A);
+      const upload = await startService.start(
+        attemptId,
+        USER_A,
+        {
+          itemId: VIDEO_ITEM_ID,
+          sizeBytes: ANSWER_VIDEO_TWO_PART_TOTAL,
+          fingerprint: 'x',
+        },
+        NOW,
+      );
+      await partService.uploadPart(upload.id, USER_A, 1, mp4Bytes(8 * 1024 * 1024), NOW);
+      await partService.uploadPart(upload.id, USER_A, 2, Buffer.alloc(1000), NOW);
+      multipart.completeMultipartUpload.mockClear();
+
+      await completeService.complete(upload.id, USER_A, NOW);
+
+      const calls = multipart.completeMultipartUpload.mock.calls as [
+        { parts: { partNumber: number }[] },
+      ][];
+      const call = calls[0]?.[0];
+      expect(call?.parts.map((p) => p.partNumber)).toEqual([1, 2]);
     });
   });
 });

@@ -148,6 +148,20 @@ describe('AnswerVideoSweepService', () => {
     expect(await videoModel.countDocuments({})).toBe(0);
   });
 
+  it('отмена брошенной multipart-загрузки не удалась — best-effort, документ всё равно уходит', async () => {
+    multipart.abortMultipartUpload.mockRejectedValueOnce(new Error('R2 недоступен'));
+    await makeVideo({
+      status: 'uploading',
+      uploadId: 'upload-y',
+      updatedAtOverride: NOW.minus({ days: 8 }).toJSDate(),
+    });
+
+    const result = await service.removeExpired(NOW);
+
+    expect(result.removed).toBe(1);
+    expect(await videoModel.countDocuments({})).toBe(0);
+  });
+
   it('готовый файл без ссылки в media_assets старше суток — удаляется', async () => {
     await makeVideo({ status: 'ready', completedAt: NOW.minus({ days: 2 }).toJSDate() });
 

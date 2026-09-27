@@ -549,4 +549,29 @@ describe('UserDeletionService', () => {
     );
     expect(await answerVideoModel.countDocuments({ userId: student.id })).toBe(0);
   });
+
+  it('прервать multipart-загрузку не удалось — best-effort, удаление аккаунта всё равно завершается', async () => {
+    const student = await users.createFromTelegram({
+      telegramId: 5024,
+      name: 'Ученик с недоступным R2',
+      roles: [],
+      status: 'active',
+    });
+    await answerVideoModel.create({
+      userId: new Types.ObjectId(student.id),
+      attemptId: new Types.ObjectId(),
+      itemId: new Types.ObjectId(),
+      key: 'answer-videos/недоступная',
+      uploadId: 'upload-def',
+      sizeBytes: 100,
+      fingerprint: '100:1',
+      status: 'uploading',
+    });
+    abortMultipartUpload.mockRejectedValueOnce(new Error('R2 недоступен'));
+
+    await deletion.deleteAllUserData(student.id, 'кто-то-другой');
+
+    expect(await users.findById(student.id)).toBeNull();
+    expect(await answerVideoModel.countDocuments({ userId: student.id })).toBe(0);
+  });
 });

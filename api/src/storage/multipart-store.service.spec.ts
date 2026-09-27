@@ -99,6 +99,19 @@ describe('MultipartStoreService', () => {
     ).rejects.toBeInstanceOf(NotAvailableError);
   });
 
+  it('uploadPart — сеть упала, NotAvailableError', async () => {
+    jest.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNRESET'));
+    await expect(
+      service().uploadPart({
+        key: KEY,
+        uploadId: 'abc-123',
+        partNumber: 1,
+        bytes: Buffer.from('x'),
+        now: NOW,
+      }),
+    ).rejects.toBeInstanceOf(NotAvailableError);
+  });
+
   it('completeMultipartUpload шлёт список частей и принимает успешный ответ', async () => {
     const fetchSpy = jest
       .spyOn(globalThis, 'fetch')
