@@ -13,11 +13,14 @@
 // раньше она была подана как способ получать уведомления, теперь это про то,
 // чтобы вход не зависел от одного приложения.
 import type { CSSProperties } from 'react';
+import { APP_ERRORS_SCREEN_PATH } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
+import { hasRole } from '../auth/hasRole';
 import { LogoutButton } from '../auth/LogoutButton';
 import { SecondLoginKey } from '../auth/SecondLoginKey';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { screenSectionStyle } from '../components/screenLayout';
+import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
 import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
@@ -25,9 +28,13 @@ import { ProfileNameSection } from './ProfileNameSection';
 
 const TITLE = 'Профиль';
 const EXPLANATION = 'Ниже — что присылать и куда.';
+const DEV_ERRORS_TITLE = 'Сбои';
+const DEV_ERRORS_HINT =
+  'Тексты ошибок из браузера и сервера — те же коды, что приходят в Telegram.';
 
-// «Выйти» — отдельно от остального волосяной линией (перенесено оттуда же).
-const logoutRowStyle: CSSProperties = {
+// «Выйти» и (у admin) «Сбои» — отдельные блоки, отбитые волосяной линией:
+// раздел разработчика и выход из аккаунта, не настройки уведомлений над ними.
+const dividerRowStyle: CSSProperties = {
   paddingTop: 20,
   borderTop: '1px solid var(--line)',
 };
@@ -55,7 +62,19 @@ export default function ProfileScreen() {
           предложить (или не рисует ничего, если оба ключа уже на месте). */}
       {me === null ? <SkeletonList rows={1} h={44} /> : <SecondLoginKey me={me} />}
 
-      <div style={logoutRowStyle}>
+      {/* Журнал сбоев (ADR-0132) — вход карточкой, не пункт меню (ADR-0025),
+          видна только admin: маршрут за тем же RequireDevErrorsAccess.tsx. */}
+      {hasRole(me, 'admin') && (
+        <div style={dividerRowStyle}>
+          <SectionLink
+            to={APP_ERRORS_SCREEN_PATH}
+            title={DEV_ERRORS_TITLE}
+            hint={DEV_ERRORS_HINT}
+          />
+        </div>
+      )}
+
+      <div style={dividerRowStyle}>
         <LogoutButton />
       </div>
     </section>

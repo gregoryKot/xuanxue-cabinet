@@ -8,6 +8,7 @@
 // сервера (ADR-0053) и сбой в браузере (ADR-0071) делят и то и другое: телефон
 // у админа один, и два независимых счётчика дали бы вдвое больший будильник.
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import type {
   AppErrorAlertContext,
@@ -43,12 +44,13 @@ export class TelegramAppErrorAlerts implements AppErrorAlerts {
   constructor(
     private readonly personalChats: PersonalChats,
     private readonly bot: TelegramBotService,
+    private readonly config: ConfigService,
   ) {}
 
   async notifyServerError(context: AppErrorAlertContext, now: DateTime): Promise<void> {
     await this.send(
       `${context.method} ${context.path}`,
-      appErrorAlertMessage(context),
+      appErrorAlertMessage(context, this.config.get<string>('PUBLIC_URL')),
       now,
     );
   }
@@ -62,7 +64,7 @@ export class TelegramAppErrorAlerts implements AppErrorAlerts {
   ): Promise<void> {
     await this.send(
       `${context.kind} ${context.path}`,
-      clientErrorAlertMessage(context),
+      clientErrorAlertMessage(context, this.config.get<string>('PUBLIC_URL')),
       now,
     );
   }

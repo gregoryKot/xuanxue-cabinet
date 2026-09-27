@@ -51,6 +51,25 @@ describe('appErrorAlertMessage', () => {
     expect(text).not.toContain('undefined');
     expect(text).toContain('логах Railway');
   });
+
+  // ADR-0132: с PUBLIC_URL хвост — ссылка на карточку журнала по коду
+  // обращения, не «смотрите логи».
+  it('есть PUBLIC_URL и код обращения — хвост становится ссылкой на журнал', () => {
+    const text = appErrorAlertMessage(fakeContext(), 'https://cabinet.example');
+
+    expect(text).toContain('https://cabinet.example/dev/errors?requestId=req-42');
+    expect(text).not.toContain('логах Railway');
+  });
+
+  it('PUBLIC_URL есть, но requestId нет — прежний текст про логи, без ссылки', () => {
+    const text = appErrorAlertMessage(
+      fakeContext({ requestId: undefined }),
+      'https://cabinet.example',
+    );
+
+    expect(text).not.toContain('cabinet.example');
+    expect(text).toContain('логах Railway');
+  });
 });
 
 describe('clientErrorAlertMessage', () => {
@@ -85,5 +104,12 @@ describe('clientErrorAlertMessage', () => {
 
     expect(text).not.toContain('undefined');
     expect(text).toContain('логах Railway');
+  });
+
+  it('есть PUBLIC_URL — хвост становится ссылкой на журнал по коду обращения', () => {
+    const text = clientErrorAlertMessage(fakeClientContext(), 'https://cabinet.example');
+
+    expect(text).toContain('https://cabinet.example/dev/errors?requestId=req-7');
+    expect(text).not.toContain('логах Railway');
   });
 });
