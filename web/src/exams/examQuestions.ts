@@ -132,16 +132,16 @@ export function filterQuestionCandidates(
   );
 }
 
-/** Вопрос, заведённый прямо в редакторе экзамена (ADR-0040), добавляется в
- * список для отображения сразу — без второго запроса за списком вопросов,
- * который его пока не знает. Дубли по `id` не образуются: если список уже
- * содержит вопрос (например, страницу перезагрузили), запись не повторяется. */
+/** Вопрос, заведённый или изменённый в редакторе (ADR-0040, доп. 2026-09-27),
+ * добавляется сразу: `created` по `id` ЗАМЕНЯЕТ запись `items`, иначе правка терялась бы за старым списком. */
 export function mergeCreatedItems(
   items: ExamItemDto[],
   created: ExamItemDto[],
 ): ExamItemDto[] {
-  const known = new Set(items.map((item) => item.id));
-  return [...items, ...created.filter((item) => !known.has(item.id))];
+  const createdById = new Map(created.map((item) => [item.id, item]));
+  const knownIds = new Set(items.map((item) => item.id));
+  const merged = items.map((item) => createdById.get(item.id) ?? item);
+  return [...merged, ...created.filter((item) => !knownIds.has(item.id))];
 }
 
 /** Целое число в границах поля — вынесена из examFormInput.ts (лимит размера). */

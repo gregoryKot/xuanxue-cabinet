@@ -12,8 +12,7 @@ import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { dividedListStyle } from '../components/listCardStyles';
 import { SearchField } from '../components/SearchField';
 import { textLinkStyle } from '../components/screenLayout';
-import { TextLinkButton } from '../components/TextLinkButton';
-import { formatExamItemMeta } from '../exam-items/examItemLabels';
+import { ExamQuestionSearchRow } from './ExamQuestionSearchRow';
 import { filterQuestionCandidates } from './examQuestions';
 
 const SEARCH_LABEL = 'Найти вопрос — по тексту';
@@ -28,22 +27,6 @@ const ALL_CHOSEN_TEXT = 'Все вопросы уже в экзамене.';
 const LIMIT_TEXT = `Больше ${EXAM_LIMITS.itemsPerBlockMax} вопросов в один экзамен не поместится.`;
 
 const wrapStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
-const rowStyle: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 12,
-  padding: '10px 0',
-  borderBottom: '1px solid var(--line)',
-};
-// Колонка формулировки в flex-строке: без `minWidth: 0` потомок не сжимается
-// уже своего содержимого, и длинный вопрос раздвигал бы строку, а с ней и
-// всю страницу редактора в горизонтальный скролл (CLAUDE.md «Мобильный
-// экран первым»). `anywhere` — чтобы колонка могла стать уже самого длинного
-// слова: глобальный `break-word` (index.css) рвёт строку, но min-content
-// колонки не трогает.
-const promptColumnStyle: CSSProperties = { minWidth: 0, overflowWrap: 'anywhere' };
-const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
 const noteStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
 
 interface ExamQuestionSearchProps {
@@ -95,13 +78,11 @@ export function ExamQuestionSearch({
       {!atLimit && candidates.length > 0 && (
         <ul style={dividedListStyle}>
           {candidates.map((item) => (
-            <li key={item.id} style={rowStyle}>
-              <div style={promptColumnStyle}>
-                <div>{item.prompt}</div>
-                <div style={metaStyle}>{formatExamItemMeta(item)}</div>
-              </div>
-              <TextLinkButton onClick={() => onAdd(item.id)}>Добавить</TextLinkButton>
-            </li>
+            <ExamQuestionSearchRow
+              key={item.id}
+              item={item}
+              onAdd={() => onAdd(item.id)}
+            />
           ))}
         </ul>
       )}
