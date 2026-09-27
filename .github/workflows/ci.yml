@@ -14,6 +14,13 @@ env:
   # видит, и кеш продолжает отдавать старую версию мимо факта, что
   # скачивалась бы уже новая.
   MONGOMS_VERSION: '8.2.6'
+  # Число шардов для матриц api-*/web-* — одно место, не магическое число в
+  # каждой команде `--shard=N/…`. Меняешь дробление — правишь тут и в
+  # соответствующем `matrix.shard` (GitHub Actions не даёт сгенерировать
+  # список матрицы из env без отдельного шага, поэтому сам список остаётся
+  # литералом `[1, 2]`/`[1, 2, 3]` в job, а знаменатель — отсюда).
+  API_SHARDS: '2'
+  WEB_SHARDS: '3'
 
 # Один прогон на пуш/ветку — новый пуш отменяет предыдущий CI той же ветки.
 concurrency:
@@ -81,11 +88,20 @@ jobs:
   # Пояса гоняются в разных джобах одновременно (api-coverage — UTC с
   # покрытием, api-tz — Sydney) — это те же два прогона jest, что правило 1
   # CLAUDE.md требует, просто не друг за другом, а параллельно.
+  # Шардинг (CLAUDE.md, критический путь CI): api-coverage/api-tz/api-e2e
+  # были самыми долгими джобами — matrix режет каждую на N параллельных
+  # раннеров вместо одного долгого прогона. Набор проверок тот же — jest
+  # сам решает, какая часть тестов достаётся какому шарду (`--shard=k/N`),
+  # ни один тест не пропускается и не дублируется.
   api-coverage:
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -93,19 +109,57 @@ jobs:
           mongo: 'true'
           mongoms-version: ${{ env.MONGOMS_VERSION }}
       - name: typecheck (shared + api)
+        if: matrix.shard == 1
         run: |
           npm run typecheck --workspace=shared
           npm run typecheck --workspace=api
       - name: shared vitest с покрытием
+        if: matrix.shard == 1
         run: node scripts/check-vitest-coverage-ratchet.mjs shared
-      - name: coverage ratchet (runs jest --coverage)
-        run: node scripts/check-coverage-ratchet.mjs
+      - name: jest --coverage (сырое покрытие шарда — порог считает api-coverage-ratchet)
+        working-directory: api
+        run: npx jest --coverage --silent --coverageReporters=json --shard=${{ matrix.shard }}/${{ env.API_SHARDS }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage-${{ matrix.shard }}
+          path: api/coverage/coverage-final.json
+          retention-days: 1
+          # Шард без файла покрытия — сбой, а не предупреждение: иначе порог
+          # посчитался бы по части набора.
+          if-no-files-found: error
+
+  # Порог покрытия — по склеенному покрытию ВСЕГО набора (merge-coverage.mjs),
+  # не по одному шарду: шард видит только свою часть, а храповик из CLAUDE.md
+  # сравнивает целое с бейслайном.
+  api-coverage-ratchet:
+    needs: [changes, api-coverage]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          build-shared: 'false'
+      - name: скачать сырое покрытие всех шардов
+        uses: actions/download-artifact@v4
+        with:
+          pattern: api-coverage-*
+          path: coverage-parts
+      - name: склеить покрытие шардов в summary
+        run: node scripts/merge-coverage.mjs api/coverage/coverage-summary.json coverage-parts/*/coverage-final.json
+      - name: coverage ratchet (по склеенному покрытию)
+        run: node scripts/check-coverage-ratchet.mjs --summary=api/coverage/coverage-summary.json
 
   api-tz:
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -113,13 +167,17 @@ jobs:
           mongo: 'true'
           mongoms-version: ${{ env.MONGOMS_VERSION }}
       - name: jest под TZ=Australia/Sydney (тест перехода летнего времени)
-        run: TZ=Australia/Sydney npm test --workspace=api
+        run: TZ=Australia/Sydney npm test --workspace=api -- --shard=${{ matrix.shard }}/${{ env.API_SHARDS }}
 
   api-e2e:
     needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -127,31 +185,75 @@ jobs:
           mongo: 'true'
           mongoms-version: ${{ env.MONGOMS_VERSION }}
       - name: e2e (реальный AppModule, ownership-смок)
-        run: npm run test:e2e --workspace=api
+        run: npm run test:e2e --workspace=api -- --shard=${{ matrix.shard }}/${{ env.API_SHARDS }}
 
+  # Шардинг web-coverage/web-tz — тот же приём, что у api* выше: matrix
+  # режет самую долгую джобу web (4:21) на параллельные раннеры.
   web-coverage:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: typecheck
+        if: matrix.shard == 1
         run: npm run typecheck --workspace=web
-      - name: vitest с покрытием
-        run: node scripts/check-vitest-coverage-ratchet.mjs web
+      - name: vitest --coverage (сырое покрытие шарда — порог считает web-coverage-ratchet)
+        working-directory: web
+        # coverage.include в vite.config.ts уже задан, поэтому файлы без
+        # тестов попадают в отчёт КАЖДОГО шарда (не только того, чей тест их
+        # исполнил) — склейка равна покрытию полного прогона, а не отличается
+        # на файлы без единого теста.
+        run: npx vitest run --coverage --coverage.reporter=json --shard=${{ matrix.shard }}/${{ env.WEB_SHARDS }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage-${{ matrix.shard }}
+          path: web/coverage/coverage-final.json
+          retention-days: 1
+          # Шард без файла покрытия — сбой, а не предупреждение: иначе порог
+          # посчитался бы по части набора.
+          if-no-files-found: error
+
+  web-coverage-ratchet:
+    needs: [changes, web-coverage]
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          build-shared: 'false'
+      - name: скачать сырое покрытие всех шардов
+        uses: actions/download-artifact@v4
+        with:
+          pattern: web-coverage-*
+          path: coverage-parts
+      - name: склеить покрытие шардов в summary
+        run: node scripts/merge-coverage.mjs web/coverage/coverage-summary.json coverage-parts/*/coverage-final.json
+      - name: coverage ratchet (по склеенному покрытию)
+        run: node scripts/check-vitest-coverage-ratchet.mjs web --summary=web/coverage/coverage-summary.json
 
   web-tz:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: vitest под TZ=Australia/Sydney (тест перехода летнего времени)
-        run: TZ=Australia/Sydney npm run test --workspace=web
+        run: TZ=Australia/Sydney npm run test --workspace=web -- --shard=${{ matrix.shard }}/${{ env.WEB_SHARDS }}
 
   web-build:
     needs: changes

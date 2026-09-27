@@ -13,8 +13,16 @@ import { join } from 'path';
 const ROOT = join(import.meta.dirname, '..');
 const API_ROOT = join(ROOT, 'api');
 const BASELINE_PATH = join(ROOT, 'scripts', 'coverage-baseline.json');
-const SUMMARY_PATH = join(API_ROOT, 'coverage', 'coverage-summary.json');
 const UPDATE = process.argv.includes('--update');
+// --summary=<path> — CI-шардинг (api-coverage matrix): покрытие уже склеено
+// merge-coverage.mjs из артефактов всех шардов, второй прогон jest здесь не
+// нужен и не может быть верным — один шард видит только свою часть набора.
+// Абсолютные пути в склеенной сводке — из того же раннера, что и склейка,
+// поэтому relPath ниже сравнивает их с API_ROOT так же, как обычный прогон.
+const SUMMARY_ARG = process.argv.find((a) => a.startsWith('--summary='));
+const SUMMARY_PATH = SUMMARY_ARG
+  ? SUMMARY_ARG.slice('--summary='.length)
+  : join(API_ROOT, 'coverage', 'coverage-summary.json');
 
 const EPSILON = 0.1;
 // Дефолтная критичная зона для жёсткого пола — используется только при
@@ -22,26 +30,28 @@ const EPSILON = 0.1;
 // бейслайне (scripts/coverage-baseline.json → floors).
 const DEFAULT_FLOOR_DIRS = ['src/utils'];
 
-const jestArgs = ['jest', '--coverage', '--silent', '--coverageReporters=json-summary'];
-if (process.env.JEST_CACHE_DIR) {
-  jestArgs.push(`--cacheDirectory=${process.env.JEST_CACHE_DIR}`);
-}
-const res = spawnSync('npx', jestArgs, {
-  cwd: API_ROOT,
-  encoding: 'utf8',
-  maxBuffer: 512 * 1024 * 1024,
-});
-if (res.stdout) process.stdout.write(res.stdout);
-if (res.stderr) process.stderr.write(res.stderr);
+if (!SUMMARY_ARG) {
+  const jestArgs = ['jest', '--coverage', '--silent', '--coverageReporters=json-summary'];
+  if (process.env.JEST_CACHE_DIR) {
+    jestArgs.push(`--cacheDirectory=${process.env.JEST_CACHE_DIR}`);
+  }
+  const res = spawnSync('npx', jestArgs, {
+    cwd: API_ROOT,
+    encoding: 'utf8',
+    maxBuffer: 512 * 1024 * 1024,
+  });
+  if (res.stdout) process.stdout.write(res.stdout);
+  if (res.stderr) process.stderr.write(res.stderr);
 
-if (res.error) {
-  console.error('❌ не удалось запустить jest: ' + res.error.message);
-  process.exit(1);
-}
-if (res.status !== 0) {
-  // status/signal в логе: иначе SIGKILL по памяти не отличить от упавшего теста.
-  console.error(`❌ jest упал: status=${res.status} signal=${res.signal}`);
-  process.exit(res.status ?? 1);
+  if (res.error) {
+    console.error('❌ не удалось запустить jest: ' + res.error.message);
+    process.exit(1);
+  }
+  if (res.status !== 0) {
+    // status/signal в логе: иначе SIGKILL по памяти не отличить от упавшего теста.
+    console.error(`❌ jest упал: status=${res.status} signal=${res.signal}`);
+    process.exit(res.status ?? 1);
+  }
 }
 
 let summary;
