@@ -17,6 +17,16 @@ export type AppErrorSource = (typeof APP_ERROR_SOURCES)[number];
 export const APP_ERROR_KINDS = ['render', 'unhandled', 'chunk', 'server'] as const;
 export type AppErrorKind = (typeof APP_ERROR_KINDS)[number];
 
+/** Вид сбоя одной фразой для владельца, со строчной — встаёт в середину
+ * фразы алёрта Telegram; экран «Сбои» поднимает первую букву сам. Без слов
+ * «исключение» и «промис» (docs/VOICE.md). */
+export const APP_ERROR_KIND_LABELS: Record<AppErrorKind, string> = {
+  render: 'экран не нарисовался',
+  unhandled: 'ошибка вне рендера',
+  chunk: 'не догрузился код экрана',
+  server: 'ошибка сервера',
+};
+
 export const APP_ERROR_LIMITS = {
   /** Столько знаков текста ошибки хранит журнал — как в логе (ADR-0071). */
   text: 300,
@@ -36,6 +46,9 @@ export const APP_ERROR_LIMITS = {
   defaultLimit: 50,
   maxLimit: 200,
 } as const;
+
+/** Адрес экрана журнала — и маршрут web, и ссылка из алёрта Telegram. */
+export const APP_ERRORS_SCREEN_PATH = '/dev/errors';
 
 /** Query `GET /api/dev/errors`. */
 export interface ListAppErrorsQuery {

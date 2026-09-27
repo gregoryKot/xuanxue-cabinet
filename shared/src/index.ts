@@ -427,4 +427,10 @@ export type {
   AppErrorDto,
   AppErrorListDto,
 } from './app-errors';
-export { APP_ERROR_SOURCES, APP_ERROR_KINDS, APP_ERROR_LIMITS } from './app-errors';
+export {
+  APP_ERROR_SOURCES,
+  APP_ERROR_KINDS,
+  APP_ERROR_KIND_LABELS,
+  APP_ERROR_LIMITS,
+  APP_ERRORS_SCREEN_PATH,
+} from './app-errors';

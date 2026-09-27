@@ -3,6 +3,7 @@
 // сообщения — app-error-alert-message.spec.ts, здесь только дедуп, потолок
 // и адресация.
 import { Logger } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
 import type { NotificationKind } from '@xuanxue/shared';
 import type {
@@ -36,6 +37,13 @@ function fakeBot(): {
   };
 }
 
+// PUBLIC_URL не задан по умолчанию — тексты сообщений тестируются отдельно
+// (app-error-alert-message.spec.ts); здесь важны только дедуп, потолок и
+// адресация.
+function fakeConfig(publicUrl?: string): ConfigService {
+  return { get: () => publicUrl } as unknown as ConfigService;
+}
+
 function buildAlerts(
   personalChats = fakePersonalChats(),
   bot = fakeBot(),
@@ -47,6 +55,7 @@ function buildAlerts(
   const alerts = new TelegramAppErrorAlerts(
     personalChats as never,
     bot as unknown as TelegramBotService,
+    fakeConfig(),
   );
   return { alerts, personalChats, bot };
 }
