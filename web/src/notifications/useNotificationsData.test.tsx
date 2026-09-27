@@ -139,6 +139,20 @@ describe('useNotificationsData — счётчик', () => {
     expect(result.current.newTasks).toEqual([NEW_EXAM]);
   });
 
+  // ADR-0129 (отзыв тестировщицы 2026-09-23): открытая карточка гаснет из
+  // счётчика раньше старта попытки — `seen: true` при том же action 'start'.
+  it('задание уже открыто (seen: true) — в newTasks не попадает', async () => {
+    mockApiByPath({
+      [MY_EXAMS_PATH]: [{ ...NEW_EXAM, seen: true }],
+      [NOTIFICATIONS_FEED_PATH]: page([], 0),
+    });
+    const { result } = renderNotificationsData(STUDENT_ME);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.newTasks).toEqual([]);
+    expect(result.current.count).toBe(0);
+  });
+
   it('непрочитанных больше страницы — берём число сервера, не длину списка', async () => {
     // Лимит страницы 50, непрочитанных 60: счёт по загруженным строкам
     // показал бы 50 и занизил бы пилюлю у значка (shared/src/inbox.ts).

@@ -125,7 +125,9 @@ export async function setupFlowTest(): Promise<FlowTestContext> {
     ctx.examModel,
     ctx.attemptModel,
     ctx.gradingModel,
+    ctx.seenMarkModel,
     ctx.examNotifier,
+    ctx.examsService,
   );
   const registry = new ExamBotPortRegistry();
   const examBot = new ExamBotService(

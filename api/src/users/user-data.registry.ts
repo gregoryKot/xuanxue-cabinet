@@ -80,6 +80,11 @@
 // аккаунт, тем же путём, что NotificationPrefsRecord выше; удаление аккаунта
 // обязано унести и её — иначе push продолжал бы падать на устройство
 // удалённого человека молча.
+//
+// ADR-0129 (отзыв тестировщицы 2026-09-23) — exam_seen_marks: отметка
+// «ученик открыл карточку задания», отдельно от попытки (её может не быть
+// вовсе). Данные человека, `userId` — чья отметка; живёт, пока жив аккаунт,
+// тем же путём, что NotificationPrefsRecord.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
@@ -90,6 +95,7 @@ export const USER_OWNED_COLLECTIONS = [
   'EmailLinkTokenRecord',
   'NotificationRecord',
   'PushSubscriptionRecord',
+  'ExamSeenMarkRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с

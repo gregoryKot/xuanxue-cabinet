@@ -42,6 +42,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
 import { useMyExams } from './MyExamsProvider';
 import { splitTasksToDo } from './splitTasksToDo';
+import { useStartFromLink } from './useStartFromLink';
 import { StudentExamCard } from './StudentExamCard';
 import { useTaskStart } from './useTaskStart';
 
@@ -76,6 +77,12 @@ export default function TasksScreen() {
     cancelConfirm,
   } = useTaskStart();
 
+  const ready = !loading && !error && exams !== null;
+  // Глубокая ссылка из уведомления `/tasks?start=<examId>` (ADR-0129) — ждёт
+  // загруженного списка (`ready ? exams : null`), иначе экзамен ещё не
+  // найти. Тот же `start`, что у кнопки «Начать» на карточке ниже.
+  useStartFromLink(ready ? exams : null, start);
+
   function renderCard(exam: MyExamDto) {
     return (
       <StudentExamCard
@@ -100,7 +107,6 @@ export default function TasksScreen() {
     );
   }
 
-  const ready = !loading && !error && exams !== null;
   const { toDo, review, done } = ready
     ? splitTasksToDo(exams)
     : { toDo: [], review: [], done: [] };

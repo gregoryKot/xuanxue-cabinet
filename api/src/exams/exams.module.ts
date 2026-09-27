@@ -92,6 +92,7 @@ import { ExamItemStatsService } from './exam-item-stats.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsController } from './exam-items.controller';
 import { ExamItemsService } from './exam-items.service';
+import { ExamSeenMarkRecord, ExamSeenMarkSchema } from './exam-seen-mark.schema';
 import { ExamRecord, ExamSchema } from './exam.schema';
 import { ExamsController } from './exams.controller';
 import { ExamsService } from './exams.service';
@@ -111,6 +112,7 @@ import { MyExamsService } from './my-exams.service';
       { name: ExamRecord.name, schema: ExamSchema },
       { name: ExamAttemptRecord.name, schema: ExamAttemptSchema },
       { name: ExamGradingRecord.name, schema: ExamGradingSchema },
+      { name: ExamSeenMarkRecord.name, schema: ExamSeenMarkSchema },
     ]),
   ],
   controllers: [

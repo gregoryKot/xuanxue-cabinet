@@ -25,7 +25,9 @@ describe('MyExamsService', () => {
       ctx.examModel,
       ctx.attemptModel,
       ctx.gradingModel,
+      ctx.seenMarkModel,
       ctx.examNotifier,
+      ctx.examsService,
     );
   }, 60_000);
 
@@ -250,5 +252,89 @@ describe('MyExamsService', () => {
       status: 'in_progress',
       expired: false,
     });
+  });
+});
+
+// ADR-0129 (отзыв тестировщицы 2026-09-23): счётчик уведомлений гаснет по
+// нажатию на карточку, не по старту попытки — markSeen() и поле seen в
+// list() проверяются отдельно от остального положения ученика.
+describe('MyExamsService — markSeen (ADR-0129)', () => {
+  let ctx: AttemptsTestContext;
+  let service: MyExamsService;
+
+  beforeAll(async () => {
+    ctx = await setupAttemptsTest();
+    service = new MyExamsService(
+      ctx.examModel,
+      ctx.attemptModel,
+      ctx.gradingModel,
+      ctx.seenMarkModel,
+      ctx.examNotifier,
+      ctx.examsService,
+    );
+  }, 60_000);
+
+  afterAll(async () => {
+    await ctx.memory.stop();
+  });
+
+  afterEach(async () => {
+    await clearAttemptsTest(ctx);
+  });
+
+  async function createPublishedExam(): Promise<string> {
+    const item = await ctx.examItemsService.create(
+      { kind: 'text', prompt: 'Опишите форму' },
+      AUTHOR_ID,
+    );
+    await ctx.examItemsService.update(item.id, { status: 'published' }, NOW);
+    const exam = await ctx.examsService.create(
+      { title: 'Экзамен', blocks: [{ itemIds: [item.id] }] },
+      AUTHOR_ID,
+    );
+    await ctx.examsService.update(exam.id, { status: 'published' });
+    return exam.id;
+  }
+
+  it('до отметки — seen: false; после markSeen — seen: true (read-after-write)', async () => {
+    const examId = await createPublishedExam();
+    expect((await service.list({}, USER_A, NOW))[0]?.seen).toBe(false);
+
+    await service.markSeen(examId, USER_A);
+
+    expect((await service.list({}, USER_A, NOW))[0]?.seen).toBe(true);
+  });
+
+  it('отметка одного ученика не трогает положение другого', async () => {
+    const examId = await createPublishedExam();
+    await service.markSeen(examId, USER_A);
+
+    expect((await service.list({}, USER_B, NOW))[0]?.seen).toBe(false);
+  });
+
+  it('повторная отметка той же формы — идемпотентна, не падает', async () => {
+    const examId = await createPublishedExam();
+    await service.markSeen(examId, USER_A);
+
+    await expect(service.markSeen(examId, USER_A)).resolves.toBeUndefined();
+  });
+
+  it('черновик формы — отказ, отметка не появляется', async () => {
+    const item = await ctx.examItemsService.create(
+      { kind: 'text', prompt: 'Опишите форму' },
+      AUTHOR_ID,
+    );
+    await ctx.examItemsService.update(item.id, { status: 'published' }, NOW);
+    const draft = await ctx.examsService.create(
+      { title: 'Черновик', blocks: [{ itemIds: [item.id] }] },
+      AUTHOR_ID,
+    );
+
+    await expect(service.markSeen(draft.id, USER_A)).rejects.toThrow();
+    expect(await ctx.seenMarkModel.countDocuments({})).toBe(0);
+  });
+
+  it('неизвестный id формы — 404, не падает молча', async () => {
+    await expect(service.markSeen('507f1f77bcf86cd799439099', USER_A)).rejects.toThrow();
   });
 });

@@ -290,7 +290,7 @@ describe('NotificationsScreen — новые задания', () => {
     expect(await screen.findByText('Новое задание')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Форма 1/ })).toHaveAttribute(
       'href',
-      '/tasks',
+      '/tasks?start=e1',
     );
   });
 });

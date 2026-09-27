@@ -46,6 +46,11 @@ import {
   ExamGradingSchema,
   EXAM_GRADING_FIELD_POLICY,
 } from '../exams/exam-grading.schema';
+import {
+  ExamSeenMarkRecord,
+  ExamSeenMarkSchema,
+  EXAM_SEEN_MARK_FIELD_POLICY,
+} from '../exams/exam-seen-mark.schema';
 import { UserRecord, UserSchema, USER_FIELD_POLICY } from '../users/user.schema';
 import {
   InviteLinkRecord,
@@ -159,6 +164,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: ExamGradingRecord.name,
     schema: ExamGradingSchema,
     fieldPolicy: EXAM_GRADING_FIELD_POLICY,
+  },
+  {
+    name: ExamSeenMarkRecord.name,
+    schema: ExamSeenMarkSchema,
+    fieldPolicy: EXAM_SEEN_MARK_FIELD_POLICY,
   },
   { name: UserRecord.name, schema: UserSchema, fieldPolicy: USER_FIELD_POLICY },
   {

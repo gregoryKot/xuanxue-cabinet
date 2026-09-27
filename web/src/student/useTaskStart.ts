@@ -16,7 +16,7 @@
 // useConfirmedRemove.ts, комментарий там же).
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { ExamAttemptDto, MyExamDto } from '@xuanxue/shared';
+import { getMyExamAction, type ExamAttemptDto, type MyExamDto } from '@xuanxue/shared';
 import { ApiError } from '../api/http';
 import { getExamStartConfirm, type ExamStartConfirm } from './examStartConfirm';
 import { useMyExams } from './MyExamsProvider';
@@ -45,7 +45,7 @@ export interface UseTaskStartResult {
 }
 
 export function useTaskStart(): UseTaskStartResult {
-  const { startAttempt, applyAttempt } = useMyExams();
+  const { startAttempt, applyAttempt, markSeen } = useMyExams();
   const navigate = useNavigate();
   const [pendingExamId, setPendingExamId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -86,6 +86,14 @@ export function useTaskStart(): UseTaskStartResult {
 
   const start = useCallback(
     (exam: MyExamDto) => {
+      // Отзыв тестировщицы 2026-09-23 (ADR-0129): пилюля у колокольчика
+      // гаснет в момент нажатия «Начать», а не когда попытка реально
+      // стартует — до неё у формы с лимитом времени ещё стоит диалог
+      // подтверждения (ADR-0121). Только 'start': 'retry' — уже не «новое
+      // задание» (попытка была), 'continue' — часы уже идут, экран просто
+      // открывает её напрямую ниже.
+      if (getMyExamAction(exam) === 'start') markSeen(exam.id);
+
       // «Продолжить» — попытка уже есть, её id известен из списка: открываем
       // прямо её, без похода на сервер (замок 1). Устаревший список (попытку
       // уже отправили, а карточка ещё думает «в работе») в худшем случае
@@ -106,7 +114,7 @@ export function useTaskStart(): UseTaskStartResult {
 
       void runStart(exam);
     },
-    [navigate, runStart],
+    [navigate, runStart, markSeen],
   );
 
   const cancelConfirm = useCallback(() => setConfirm(null), []);
