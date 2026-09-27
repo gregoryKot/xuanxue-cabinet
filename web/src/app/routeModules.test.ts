@@ -134,9 +134,12 @@ describe('matchRoute', () => {
 
   // Роль ушла в rootPathFor (screenAccess.ts, screenAccess.test.ts) — этот
   // резолвер по-прежнему без роли, «/» (сегментов нет) сопоставляется с
-  // «Занятиями» как единственный опорный путь для чанка/prefetch.
-  it('корень (сегментов нет) — чанк «Занятий»', () => {
-    expect(loaderAt('/')).toBe(ROUTE_MODULES.planning.load);
+  // STAFF_ROOT_PATH как единственным опорным путём для чанка/prefetch —
+  // с 2026-09-27 это «Экзамены», не «Занятия» (ADR-0138). Гейт от повторного
+  // расхождения EMPTY_PATH_FALLBACK (routeMatch.ts) и STAFF_ROOT_PATH
+  // (screenAccess.ts).
+  it('корень (сегментов нет) — чанк «Экзаменов»', () => {
+    expect(loaderAt('/')).toBe(ROUTE_MODULES.exams.load);
   });
 
   it('хвостовой слеш не мешает', () => {

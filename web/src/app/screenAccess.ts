@@ -15,7 +15,9 @@
 import type { MeDto } from '@xuanxue/shared';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
-const STAFF_ROOT_PATH = '/planning';
+// Экспортирован — routeMatch.ts строит из него EMPTY_PATH_FALLBACK, чтобы
+// адрес корня и опорный путь для «/» не могли разъехаться (ADR-0138).
+export const STAFF_ROOT_PATH = '/exams';
 const STUDENT_TASKS_PATH = '/tasks';
 const STUDENT_LESSONS_PATH = '/lessons';
 // Подэкран «Занятий» (слой 3.3, docs/PLAN.md §14) — вход карточкой на
@@ -41,7 +43,8 @@ export function isTeacher(me: MeDto | null): boolean {
 
 /** Куда вести сразу после входа и при отказе в чужом маршруте (AppShell.tsx,
  * cabinetRoutes.tsx). Решение владельца: у ученика первый экран — «Задания»
- * (экзамены), «Занятия» — второй; у штата по-прежнему «Занятия»/планирование. */
+ * (экзамены), «Занятия» — второй; у штата с 2026-09-27 первый экран —
+ * «Экзамены», «Занятия» ушли на второй пункт меню (ADR-0138). */
 export function rootPathFor(me: MeDto | null): string {
   return isTeacher(me) ? STAFF_ROOT_PATH : STUDENT_TASKS_PATH;
 }

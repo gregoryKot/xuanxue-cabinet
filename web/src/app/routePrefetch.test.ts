@@ -47,14 +47,12 @@ afterEach(() => {
 });
 
 describe('RouteModule.prefetch — маршруты без параметра', () => {
-  it('/planning (и /) — занятия на окно, классы и число раздела (слой 3.5)', () => {
-    const expected = [
+  it('/planning — занятия на окно, классы и число раздела (слой 3.5)', () => {
+    expect(prefetchAt('/planning')).toEqual([
       lessonsListPath(),
       CLASSES_LIST_PATH,
       LESSON_RECORDING_SUMMARY_PATH,
-    ];
-    expect(prefetchAt('/planning')).toEqual(expected);
-    expect(prefetchAt('/')).toEqual(expected);
+    ]);
   });
 
   it('/schedule — классы и активные каналы (оба грузит ScheduleScreen.tsx)', () => {
@@ -85,12 +83,17 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/exam-items')).toEqual([examItemsListPath('')]);
   });
 
-  it('/exams — список без фильтра, очередь проверки, статистика вопросов', () => {
-    expect(prefetchAt('/exams')).toEqual([
+  // «/» тоже сюда: STAFF_ROOT_PATH (screenAccess.ts) и EMPTY_PATH_FALLBACK
+  // (routeMatch.ts) — одна константа с 2026-09-27 (ADR-0138), гейт от
+  // повторного расхождения.
+  it('/exams (и /) — список без фильтра, очередь проверки, статистика вопросов', () => {
+    const expected = [
       examsListPath({ status: '' }),
       GRADING_QUEUE_PATH,
       EXAM_ITEM_STATS_SUMMARY_PATH,
-    ]);
+    ];
+    expect(prefetchAt('/exams')).toEqual(expected);
+    expect(prefetchAt('/')).toEqual(expected);
   });
 
   it('/grading — оба раздела: очередь и проверенные', () => {
