@@ -13,6 +13,11 @@
 // показать пункт при роли, не исключить всех, у кого её нет. Решение
 // владельца: у ученика два своих экрана — «Задания» первым, «Занятия»
 // вторым, — не подмножество меню штата.
+//
+// Первый пункт списка штата — первый экран после входа, та же механика, что
+// у ученика: отзыв владельца 2026-09-27 «сделай экзамены основным экраном при
+// входе» — «Экзамены» встали первым пунктом STAFF_NAV_ITEMS, «Занятия» ушли
+// вторым (ADR-0138, STAFF_ROOT_PATH в screenAccess.ts).
 import type { MeDto, UserRole } from '@xuanxue/shared';
 import { isTeacher } from './screenAccess';
 
@@ -37,18 +42,18 @@ export interface NavItem {
 }
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
+  {
+    to: '/exams',
+    label: 'Экзамены',
+    childPaths: ['/exam-items', '/grading'],
+    icon: 'exams',
+  },
   { to: '/planning', label: 'Занятия', childPaths: ['/schedule'], icon: 'lessons' },
   {
     to: '/broadcasts',
     label: 'Рассылки',
     childPaths: ['/channels', '/templates'],
     icon: 'broadcasts',
-  },
-  {
-    to: '/exams',
-    label: 'Экзамены',
-    childPaths: ['/exam-items', '/grading'],
-    icon: 'exams',
   },
   {
     to: '/people',

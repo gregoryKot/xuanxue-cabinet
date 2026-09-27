@@ -34,10 +34,12 @@ describe('isTeacher', () => {
 });
 
 describe('rootPathFor', () => {
-  it('штат — «Занятия» (планирование)', () => {
-    expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/planning');
-    expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/planning');
-    expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/planning');
+  // Решение владельца 2026-09-27 (ADR-0138): «Экзамены» — основной экран
+  // штата при входе, было «Занятия»/планирование.
+  it('штат — «Экзамены»', () => {
+    expect(rootPathFor(makeMe({ roles: ['teacher'] }))).toBe('/exams');
+    expect(rootPathFor(makeMe({ roles: ['assistant'] }))).toBe('/exams');
+    expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/exams');
   });
 
   it('ученик — «Задания» (решение владельца: экзамены — первый экран)', () => {
