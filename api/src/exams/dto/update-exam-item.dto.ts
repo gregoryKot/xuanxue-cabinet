@@ -1,6 +1,18 @@
 // Тело PATCH /exam-items/:id. `kind` сюда не входит — смена типа значит
-// завести новый вопрос (ТЗ 4.2, п.1).
-import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+// завести новый вопрос (ТЗ 4.2, п.1). `videoId`/`videoUrl` — единственные
+// nullable-поля вопроса (NULLABLE_EXAM_ITEM_FIELDS, ADR-0133): `@IsOptional()`
+// пропускает и `undefined`, и `null` — на `null` `@IsMongoId()`/`@IsUrl()`
+// ниже уже не запускаются (тот же приём, что zoomLink у занятий,
+// classes/dto/update-class.dto.ts).
+import {
+  IsIn,
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+} from 'class-validator';
 import {
   EXAM_ITEM_LIMITS,
   EXAM_ITEM_STATUSES,
@@ -17,6 +29,15 @@ export class UpdateExamItemDto extends ExamItemFieldsDto implements UpdateExamIt
   @IsNotEmpty()
   @MaxLength(EXAM_ITEM_LIMITS.prompt)
   prompt?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  videoId?: string | null;
+
+  @IsOptional()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(EXAM_ITEM_LIMITS.videoUrl)
+  videoUrl?: string | null;
 
   @OptionalNotNull()
   @IsIn(EXAM_ITEM_STATUSES)

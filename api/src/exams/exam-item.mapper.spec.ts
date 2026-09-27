@@ -24,10 +24,11 @@ function fullItem(): LeanExamItem {
         replacedAt: '2026-08-20T09:00:00.000Z',
       },
     ],
-    // imageIds — плоская копия для уборщика сирот (ADR-0035), в ExamItemDto
-    // не отдаётся (toExamItemDto ниже маппит поля явно) — здесь только ради
-    // типа LeanExamItem.
+    // imageIds/videoIds — плоские копии для уборщиков сирот (ADR-0035,
+    // ADR-0133), в ExamItemDto не отдаются (toExamItemDto ниже маппит поля
+    // явно) — здесь только ради типа LeanExamItem.
     imageIds: [],
+    videoIds: [],
     authorId: AUTHOR_ID,
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT,

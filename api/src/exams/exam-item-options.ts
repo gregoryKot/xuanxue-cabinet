@@ -3,7 +3,8 @@
 // options (ТЗ 4.2, п.2) — про сочетание полей, поэтому в сервисе, не в DTO.
 import {
   EXAM_ITEM_LIMITS,
-  OPTION_TEXT_OR_IMAGE_MESSAGE,
+  OPTION_CONTENT_REQUIRED_MESSAGE,
+  OPTION_ONE_MEDIA_MESSAGE,
   type ExamItemKind,
   type ExamItemOptionInput,
 } from '@xuanxue/shared';
@@ -43,10 +44,28 @@ export function assertOptionsForKind(
       `Укажите от ${EXAM_ITEM_LIMITS.optionsMin} до ${EXAM_ITEM_LIMITS.optionsMax} вариантов ответа.`,
     );
   }
-  // До подсчёта верных — пустой вариант (ни текста, ни картинки) отказывает
-  // сразу самим собой, а не путается с «не тот вариант отмечен» (ADR-0035).
-  if (list.some((option) => !option.text?.trim() && !option.imageId)) {
-    throw new InvalidInputError(OPTION_TEXT_OR_IMAGE_MESSAGE);
+  // До подсчёта верных — пустой вариант (ни текста, ни картинки, ни видео)
+  // отказывает сразу самим собой, а не путается с «не тот вариант отмечен»
+  // (ADR-0035, дополнено ADR-0133).
+  if (
+    list.some(
+      (option) =>
+        !option.text?.trim() && !option.imageId && !option.videoId && !option.videoUrl,
+    )
+  ) {
+    throw new InvalidInputError(OPTION_CONTENT_REQUIRED_MESSAGE);
+  }
+  // Одно медиа на вариант — картинка или видео (файл R2 или ссылка), не оба
+  // (ADR-0133): порядок показа «что первым» иначе решался бы молча на экране.
+  if (
+    list.some(
+      (option) => Boolean(option.imageId) && Boolean(option.videoId || option.videoUrl),
+    )
+  ) {
+    throw new InvalidInputError(OPTION_ONE_MEDIA_MESSAGE);
+  }
+  if (list.some((option) => option.videoId && option.videoUrl)) {
+    throw new InvalidInputError(OPTION_ONE_MEDIA_MESSAGE);
   }
   const correctCount = list.filter((option) => option.correct === true).length;
   if (kind === 'single' && correctCount !== 1) {
@@ -68,10 +87,12 @@ export function mapOptions(options: ExamItemOptionInput[]): ExamItemOptionRecord
     id: keepOrGenerateId(option.id),
     text: option.text?.trim() ?? '',
     correct: option.correct ?? false,
-    // Ключа нет вовсе, если картинки не было — не `imageId: undefined`:
+    // Ключа нет вовсе, если медиа не было — не `imageId: undefined`:
     // сравнение версий в exam-item-content-change.ts идёт по JSON.stringify
     // нормализованных записей, лишний ключ добавил бы нестабильности.
     ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
+    ...(option.videoId !== undefined ? { videoId: option.videoId } : {}),
+    ...(option.videoUrl !== undefined ? { videoUrl: option.videoUrl } : {}),
   }));
 }
 
@@ -91,6 +112,27 @@ export function collectImageIds(
   for (const version of history) {
     for (const option of version.options) {
       if (option.imageId) ids.add(option.imageId);
+    }
+  }
+  return [...ids];
+}
+
+/** Уникальные `videoId` вариантов текущей редакции и истории, тем же приёмом
+ * и ради той же причины, что `collectImageIds` выше (ADR-0133): уборщик
+ * видео-сирот (exam-video-sweep.service.ts) находит по этому полю, какие
+ * видео ещё используются вопросом. Видео вопроса (top-level `videoId`)
+ * собирает вызывающий сервис — этот файл знает только про варианты. */
+export function collectOptionVideoIds(
+  options: readonly ExamItemOptionRecord[],
+  history: readonly ExamItemVersionRecord[],
+): string[] {
+  const ids = new Set<string>();
+  for (const option of options) {
+    if (option.videoId) ids.add(option.videoId);
+  }
+  for (const version of history) {
+    for (const option of version.options) {
+      if (option.videoId) ids.add(option.videoId);
     }
   }
   return [...ids];

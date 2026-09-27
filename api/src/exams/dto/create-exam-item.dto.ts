@@ -1,7 +1,15 @@
 // Тело POST /exam-items. kind/prompt обязательны и не входят в
 // ExamItemFieldsDto (метаданные декораторов наследуются по прототипу —
 // причина у ClassFieldsDto, classes/dto/class-fields.dto.ts, та же).
-import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+} from 'class-validator';
 import {
   EXAM_ITEM_KINDS,
   EXAM_ITEM_LIMITS,
@@ -22,6 +30,20 @@ export class CreateExamItemDto extends ExamItemFieldsDto implements CreateExamIt
   @IsNotEmpty()
   @MaxLength(EXAM_ITEM_LIMITS.prompt)
   prompt!: string;
+
+  // Видео к формулировке вопроса (ADR-0133) — ссылка на уже загруженную
+  // запись exam_videos (`POST /exam-videos`), не сами байты. Сочетание с
+  // videoUrl — сервис (ExamItemsService.assertOneVideoSource).
+  @IsOptional()
+  @IsMongoId()
+  videoId?: string;
+
+  // https-ссылка на видео вопроса (YouTube и т.п., без R2) — тот же
+  // валидатор, что у ссылки записи/материала.
+  @IsOptional()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(EXAM_ITEM_LIMITS.videoUrl)
+  videoUrl?: string;
 
   // Не прислали — схема ставит `published` (ADR-0033). Явный `draft` —
   // «завожу вопрос, но пока прячу».

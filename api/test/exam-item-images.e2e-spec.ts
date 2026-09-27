@@ -20,7 +20,7 @@ import type {
 } from '@xuanxue/shared';
 import {
   EXAM_IMAGE_NOT_FOUND_MESSAGE,
-  OPTION_TEXT_OR_IMAGE_MESSAGE,
+  OPTION_CONTENT_REQUIRED_MESSAGE,
 } from '@xuanxue/shared';
 import { ExamItemRecord } from '../src/exams/exam-item.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -115,7 +115,7 @@ describe('Картинки вариантов ответа — весь путь
     expect((res.body as ApiErrorBody).message).toBe(EXAM_IMAGE_NOT_FOUND_MESSAGE);
   });
 
-  it('POST вариант из пробелов без картинки — 400, OPTION_TEXT_OR_IMAGE_MESSAGE', async () => {
+  it('POST вариант из пробелов без картинки — 400, OPTION_CONTENT_REQUIRED_MESSAGE', async () => {
     const cookie = await sessionFor(['teacher']);
 
     const res = await postItem(cookie, {
@@ -128,7 +128,7 @@ describe('Картинки вариантов ответа — весь путь
     });
 
     expect(res.status).toBe(400);
-    expect((res.body as ApiErrorBody).message).toBe(OPTION_TEXT_OR_IMAGE_MESSAGE);
+    expect((res.body as ApiErrorBody).message).toBe(OPTION_CONTENT_REQUIRED_MESSAGE);
   });
 
   it('вопрос с вариантом-картинкой без текста — 201, options[i].imageId, text пуст', async () => {

@@ -26,4 +26,14 @@ describe('CSP_DIRECTIVES', () => {
     expect(CSP_DIRECTIVES.objectSrc).toEqual(["'none'"]);
     expect(CSP_DIRECTIVES.frameAncestors).toEqual(["'none'"]);
   });
+
+  // <video> вопроса/варианта грузит `/api/exam-videos/:id`, который
+  // редиректит на подписанную ссылку R2 (ADR-0133) — без mediaSrc браузер
+  // отказал бы уже на редиректе.
+  it('mediaSrc — self и R2, ровно один сторонний домен', () => {
+    expect(CSP_DIRECTIVES.mediaSrc).toEqual([
+      "'self'",
+      'https://*.r2.cloudflarestorage.com',
+    ]);
+  });
 });

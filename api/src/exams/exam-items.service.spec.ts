@@ -3,7 +3,11 @@
 // (ТЗ 4.2, п.3), запрет удаления не-черновика.
 import { DateTime } from 'luxon';
 import { Types, type Connection, type Model } from 'mongoose';
-import { EXAM_IMAGE_NOT_FOUND_MESSAGE } from '@xuanxue/shared';
+import {
+  EXAM_IMAGE_NOT_FOUND_MESSAGE,
+  EXAM_VIDEO_NOT_FOUND_MESSAGE,
+} from '@xuanxue/shared';
+import { InvalidInputError } from '../common/errors';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
@@ -12,6 +16,7 @@ import { ExamItemsService } from './exam-items.service';
 import { ExamRecord, ExamSchema } from './exam.schema';
 import { ExamsService } from './exams.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
+import { fakeExamVideosService } from '../test-support/fake-exam-videos-service';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const AUTHOR_ID = '507f1f77bcf86cd799439011';
@@ -38,7 +43,12 @@ describe('ExamItemsService', () => {
     );
     imageModel = connection.model<ExamImageRecord>(ExamImageRecord.name, ExamImageSchema);
     examImagesService = new ExamImagesService(imageModel, attemptModel);
-    service = new ExamItemsService(model, examModel, examImagesService);
+    service = new ExamItemsService(
+      model,
+      examModel,
+      examImagesService,
+      fakeExamVideosService(),
+    );
     // Только чтобы завести реальный неархивированный экзамен, ссылающийся на
     // вопрос (защита от удаления/архивации, exam-item-references.ts) — без
     // отдельного мока формы, тем же приёмом, что exam-item-stats.service.spec.ts.
@@ -246,6 +256,126 @@ describe('ExamItemsService', () => {
       await service.update(created.id, { prompt: 'Уточнённая формулировка' }, NOW);
 
       await expect(rawImageIds(created.id)).resolves.toEqual([imageId]);
+    });
+  });
+
+  describe('видео вопроса и варианта (ADR-0133)', () => {
+    it('create с videoId вопроса — попадает в DTO', async () => {
+      const videoId = new Types.ObjectId().toString();
+
+      const created = await service.create(
+        { kind: 'text', prompt: 'Что не так на видео?', videoId },
+        AUTHOR_ID,
+      );
+
+      expect(created.videoId).toBe(videoId);
+    });
+
+    it('create с videoUrl вопроса — попадает в DTO', async () => {
+      const created = await service.create(
+        {
+          kind: 'text',
+          prompt: 'Что не так на видео?',
+          videoUrl: 'https://youtu.be/dQw4w9WgXcQ',
+        },
+        AUTHOR_ID,
+      );
+
+      expect(created.videoUrl).toBe('https://youtu.be/dQw4w9WgXcQ');
+    });
+
+    it('create с videoId и videoUrl разом — InvalidInputError, вопрос не создаётся', async () => {
+      await expect(
+        service.create(
+          {
+            kind: 'text',
+            prompt: 'p',
+            videoId: new Types.ObjectId().toString(),
+            videoUrl: 'https://youtu.be/dQw4w9WgXcQ',
+          },
+          AUTHOR_ID,
+        ),
+      ).rejects.toThrow('один источник видео');
+      await expect(model.countDocuments({})).resolves.toBe(0);
+    });
+
+    it('update — добавили videoId вопросу без видео', async () => {
+      const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+      const videoId = new Types.ObjectId().toString();
+
+      const updated = await service.update(created.id, { videoId }, NOW);
+
+      expect(updated.videoId).toBe(videoId);
+    });
+
+    it('update без videoId в теле — видео вопроса не меняется', async () => {
+      const videoId = new Types.ObjectId().toString();
+      const created = await service.create(
+        { kind: 'text', prompt: 'p', videoId },
+        AUTHOR_ID,
+      );
+
+      const updated = await service.update(created.id, { prompt: 'p2' }, NOW);
+
+      expect(updated.videoId).toBe(videoId);
+    });
+
+    it('update с videoId: null — снимает видео вопроса', async () => {
+      const videoId = new Types.ObjectId().toString();
+      const created = await service.create(
+        { kind: 'text', prompt: 'p', videoId },
+        AUTHOR_ID,
+      );
+
+      const updated = await service.update(created.id, { videoId: null }, NOW);
+
+      expect(updated.videoId).toBeUndefined();
+    });
+
+    it('update с videoUrl: null — снимает видео-ссылку вопроса', async () => {
+      const created = await service.create(
+        { kind: 'text', prompt: 'p', videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
+        AUTHOR_ID,
+      );
+
+      const updated = await service.update(created.id, { videoUrl: null }, NOW);
+
+      expect(updated.videoUrl).toBeUndefined();
+    });
+
+    it('update, добавивший videoUrl поверх пустого videoId, — OK; поставить оба разом — InvalidInputError', async () => {
+      const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+
+      const updated = await service.update(
+        created.id,
+        { videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
+        NOW,
+      );
+      expect(updated.videoUrl).toBe('https://youtu.be/dQw4w9WgXcQ');
+
+      await expect(
+        service.update(created.id, { videoId: new Types.ObjectId().toString() }, NOW),
+      ).rejects.toThrow('один источник видео');
+    });
+
+    it('create с videoId несуществующего видео — InvalidInputError (assertExist сервиса видео)', async () => {
+      const failingVideos = fakeExamVideosService();
+      (failingVideos.assertExist as jest.Mock).mockRejectedValue(
+        new InvalidInputError(EXAM_VIDEO_NOT_FOUND_MESSAGE),
+      );
+      const withFailingVideos = new ExamItemsService(
+        model,
+        examModel,
+        examImagesService,
+        failingVideos,
+      );
+
+      await expect(
+        withFailingVideos.create(
+          { kind: 'text', prompt: 'p', videoId: new Types.ObjectId().toString() },
+          AUTHOR_ID,
+        ),
+      ).rejects.toThrow(EXAM_VIDEO_NOT_FOUND_MESSAGE);
     });
   });
 

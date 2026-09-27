@@ -15,6 +15,7 @@ import { DeliveryRunnerService } from '../deliveries/delivery-runner.service';
 import { ManualPromptService } from '../deliveries/manual-prompt.service';
 import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-notifier';
 import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
+import { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
@@ -40,6 +41,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly examImageSweepService: ExamImageSweepService,
+    private readonly examVideoSweepService: ExamVideoSweepService,
     private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
     private readonly storageOrphansService: StorageOrphansService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
@@ -102,6 +104,12 @@ export class SchedulerService implements OnApplicationShutdown {
     const { removed: imagesRemoved } = (await this.step('картинки-сироты', now, (n) =>
       this.examImageSweepService.removeOrphans(n),
     )) ?? { removed: 0 };
+    // ADR-0133: видео вопроса/варианта живёт, пока на него ссылается вопрос
+    // банка или снимок попытки — сирота старше суток убирается сама, тем же
+    // приёмом, что картинка выше.
+    const { removed: videosRemoved } = (await this.step('видео-сироты', now, (n) =>
+      this.examVideoSweepService.removeOrphans(n),
+    )) ?? { removed: 0 };
     // ADR-0050: снимок перевода живёт 30 дней после подтверждения и 90 дней
     // без него — сама оплата остаётся, уходит только картинка.
     const { removed: screenshotsRemoved, orphans: screenshotOrphans } = (await this.step(
@@ -121,7 +129,8 @@ export class SchedulerService implements OnApplicationShutdown {
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
         `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
-        `imagesRemoved=${imagesRemoved} paymentScreenshotsRemoved=${screenshotsRemoved} ` +
+        `imagesRemoved=${imagesRemoved} videosRemoved=${videosRemoved} ` +
+        `paymentScreenshotsRemoved=${screenshotsRemoved} ` +
         `paymentScreenshotOrphans=${screenshotOrphans} filesRemoved=${filesRemoved}`,
     );
   }

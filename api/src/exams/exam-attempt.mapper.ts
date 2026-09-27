@@ -45,9 +45,12 @@ function toStudentOption(option: AttemptOptionRecord): AttemptOptionDto {
   return {
     id: option.id,
     text: option.text,
-    // Ключа нет вовсе, если картинки не было (ADR-0035) — тот же приём, что
-    // у остальных мапперов снимка (toAttemptOption, exam-attempt-snapshot.ts).
+    // Ключа нет вовсе, если медиа не было (ADR-0035, ADR-0133) — тот же
+    // приём, что у остальных мапперов снимка (toAttemptOption,
+    // exam-attempt-snapshot.ts).
     ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
+    ...(option.videoId !== undefined ? { videoId: option.videoId } : {}),
+    ...(option.videoUrl !== undefined ? { videoUrl: option.videoUrl } : {}),
   };
 }
 
@@ -57,6 +60,8 @@ function toStudentQuestion(question: AttemptQuestionRecord): AttemptQuestionDto 
     version: question.version,
     kind: question.kind,
     prompt: question.prompt,
+    ...(question.videoId !== undefined ? { videoId: question.videoId } : {}),
+    ...(question.videoUrl !== undefined ? { videoUrl: question.videoUrl } : {}),
     options: question.options.map(toStudentOption),
   };
 }

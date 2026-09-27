@@ -51,9 +51,33 @@ function optionMark(kind: AttemptQuestionDto['kind'], selected: boolean): string
   return kind === 'multiple' ? '☑ ' : '✓ ';
 }
 
-// Подпись фото ученику видна в ленте, сетка альбома — нет (ADR-0118): номер
-// на кнопке — единственная связь фото с кнопкой, когда у варианта есть текст
-// (он в подписи фото ещё и обрезан до 100 знаков).
+// Ссылочное видео вопроса/варианта (ADR-0133) — не путать с ответом
+// video-вопроса (VIDEO_QUESTION_PROMPT/VIDEO_RECEIVED_NOTE ниже, ADR-0023):
+// то видео присылает сам ученик, это — учитель прикладывает к формулировке
+// или варианту как материал для сравнения («что не так на этом видео»,
+// «который из двух верный»). Файл в R2 бот не грузит и не проигрывает
+// (ADR-0133, «Порядок работ» — экран бота не показывает вопрос-конструктор
+// с видео): достаточно сказать, что оно есть, и где искать.
+const ITEM_VIDEO_IN_CABINET_NOTE = 'К вопросу есть видео — оно в кабинете.';
+
+function hasReferenceVideo(entity: { videoId?: string; videoUrl?: string }): boolean {
+  return Boolean(entity.videoId || entity.videoUrl);
+}
+
+/** Строка про видео формулировки — ссылку показываем прямо в тексте (ученику
+ * не нужно никуда переходить, кроме самой ссылки), про файл R2 — только
+ * отметка (бот не проигрывает видео сам, ADR-0133). */
+function questionVideoLine(question: AttemptQuestionDto): string | null {
+  if (question.videoUrl) return `Видео: ${question.videoUrl}`;
+  if (question.videoId) return ITEM_VIDEO_IN_CABINET_NOTE;
+  return null;
+}
+
+// Подпись фото/видео ученику видна в ленте, сетка альбома — нет (ADR-0118):
+// номер на кнопке — единственная связь медиа с кнопкой, когда у варианта
+// есть текст (он в подписи фото ещё и обрезан до 100 знаков). Видео-вариант
+// (ADR-0133) сюда же — фото бот шлёт альбомом, видео нет, но кнопка со своим
+// номером нужна ученику ровно по той же причине.
 function optionButtons(
   attemptId: string,
   index: number,
@@ -61,7 +85,9 @@ function optionButtons(
   answer: AttemptAnswerDto | undefined,
 ): InlineKeyboardButton[][] {
   const selectedIds = new Set(answer?.optionIds ?? []);
-  const numbered = question.options.some((option) => option.imageId);
+  const numbered = question.options.some(
+    (option) => option.imageId || hasReferenceVideo(option),
+  );
   return question.options.map((option, optionIndex) => [
     inlineButton(
       `${optionMark(question.kind, selectedIds.has(option.id))}${numbered ? `${optionIndex + 1}. ` : ''}${formatOptionLabel(option.text, optionIndex)}`,
@@ -120,7 +146,9 @@ export function buildQuestionScreen(attempt: ExamAttemptDto, index: number): Bot
   // попытки»: два video-вопроса в одной форме теперь различимы.
   const hasVideo = (attempt.media ?? []).some((m) => m.itemId === question.itemId);
   const note = questionNote(question, answer, hasVideo);
-  const text = [headerLine, question.prompt, note].filter(Boolean).join('\n\n');
+  const text = [headerLine, question.prompt, questionVideoLine(question), note]
+    .filter(Boolean)
+    .join('\n\n');
 
   const optionRows =
     question.kind === 'single' || question.kind === 'multiple'

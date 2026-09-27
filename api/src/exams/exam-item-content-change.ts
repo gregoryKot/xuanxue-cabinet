@@ -11,14 +11,21 @@
 import type { UpdateExamItemInput } from '@xuanxue/shared';
 import type { ExamItemOptionRecord, ExamItemVersionRecord } from './exam-item.schema';
 
-/** Поля, ради которых версия и заводится: формулировка, варианты. Статус —
- * не содержание вопроса. */
-type ContentSnapshot = Pick<ExamItemVersionRecord, 'prompt'>;
+/** Поля, ради которых версия и заводится: формулировка, её видео, варианты.
+ * Статус — не содержание вопроса. */
+type ContentSnapshot = Pick<ExamItemVersionRecord, 'prompt' | 'videoId' | 'videoUrl'>;
 
 /** Формулировка обязательна и не сбрасывается (`null` отсекает DTO), поэтому
  * сравниваем прямо: поля нет в запросе — правки нет. */
 function promptChanged(next: string | undefined, current: string): boolean {
   return next !== undefined && next !== current;
+}
+
+/** Видео вопроса сбрасывается явно: `null` (сброс) и `undefined` (поля нет в
+ * запросе) — разные вещи, пустое на пустое правкой не считается. */
+function textChanged(next: string | null | undefined, current: string | undefined) {
+  if (next === undefined) return false;
+  return (next ?? undefined) !== (current || undefined);
 }
 
 /** Варианты сравниваются уже нормализованными (`mapOptions`): id
@@ -39,6 +46,8 @@ export function hasContentChanged(
 ): boolean {
   return (
     promptChanged(input.prompt, current.prompt) ||
+    textChanged(input.videoId, current.videoId) ||
+    textChanged(input.videoUrl, current.videoUrl) ||
     optionsChanged(nextOptions, current.options)
   );
 }
@@ -54,6 +63,8 @@ export function buildHistoryEntry(
   return {
     version: current.version,
     prompt: current.prompt,
+    ...(current.videoId !== undefined ? { videoId: current.videoId } : {}),
+    ...(current.videoUrl !== undefined ? { videoUrl: current.videoUrl } : {}),
     options: current.options,
     replacedAt,
   };

@@ -137,6 +137,52 @@ describe('buildQuestionScreen', () => {
     expect(view.buttons.slice(0, 2).map((row) => row[0]?.text)).toEqual(['Три', 'Пять']);
   });
 
+  // ADR-0133: ссылку на видео вопроса бот показывает прямо в тексте.
+  it('videoUrl вопроса — ссылка в тексте экрана', () => {
+    const q = question({ videoUrl: 'https://youtu.be/dQw4w9WgXcQ' });
+    const view = buildQuestionScreen(attempt([q]), 0);
+    expect(view.text).toContain('https://youtu.be/dQw4w9WgXcQ');
+  });
+
+  // Файл R2 бот не проигрывает (ADR-0133) — достаточно отметки, что видео
+  // есть и где искать.
+  it('videoId вопроса (файл R2) — отметка «видео в кабинете», без утечки id', () => {
+    const q = question({ videoId: 'vid1' });
+    const view = buildQuestionScreen(attempt([q]), 0);
+    expect(view.text).toContain('оно в кабинете');
+    expect(view.text).not.toContain('vid1');
+  });
+
+  it('без видео у вопроса — ни ссылки, ни отметки', () => {
+    const view = buildQuestionScreen(attempt([question()]), 0);
+    expect(view.text).not.toContain('в кабинете');
+  });
+
+  // Видео варианта (ADR-0133) — та же нумерация, что у картинки (ADR-0118):
+  // бот не отправляет видео вариантов, только подписывает кнопку номером.
+  it('видео хотя бы у одного варианта — кнопки с номерами, как у картинки', () => {
+    const q = question({
+      options: [
+        { id: 'o1', text: 'Три', videoId: 'opt-vid' },
+        { id: 'o2', text: 'Пять' },
+      ],
+    });
+    const view = buildQuestionScreen(attempt([q]), 0);
+    expect(view.buttons[0]?.[0]?.text).toBe('1. Три');
+    expect(view.buttons[1]?.[0]?.text).toBe('2. Пять');
+  });
+
+  it('videoUrl хотя бы у одного варианта — тоже нумерует кнопки', () => {
+    const q = question({
+      options: [
+        { id: 'o1', text: 'Три', videoUrl: 'https://youtu.be/x' },
+        { id: 'o2', text: 'Пять' },
+      ],
+    });
+    const view = buildQuestionScreen(attempt([q]), 0);
+    expect(view.buttons[0]?.[0]?.text).toBe('1. Три');
+  });
+
   it('single — выбранный вариант отмечен галочкой', () => {
     const view = buildQuestionScreen(
       attempt([question()], { answers: [{ itemId: 'i1', optionIds: ['o2'] }] }),
