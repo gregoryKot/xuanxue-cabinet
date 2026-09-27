@@ -79,7 +79,7 @@ describe('Field', () => {
     expect(large.fontSize).toBeUndefined();
   });
 
-  // InfoTip (ADR-0138) — кнопка стоит внутри <label>, но getByLabelText не
+  // InfoTip (ADR-0139) — кнопка стоит внутри <label>, но getByLabelText не
   // должен цеплять ни её aria-label, ни текст подсказки (components/InfoTip.test.tsx
   // проверяет то же для открытого состояния).
   it('tip — кнопка подсказки рядом с подписью, поле по-прежнему находится точным текстом', () => {

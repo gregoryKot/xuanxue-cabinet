@@ -47,7 +47,7 @@ describe('Toggle', () => {
     expect(strong.tagName).toBe('STRONG');
   });
 
-  // InfoTip (ADR-0138) — кнопка стоит рядом с <label>, не внутри: клик по ней
+  // InfoTip (ADR-0139) — кнопка стоит рядом с <label>, не внутри: клик по ней
   // не должен переключать чекбокс (Toggle.tsx, комментарий у wrapperStyle).
   it('tip — кнопка подсказки не переключает чекбокс', async () => {
     const onChange = vi.fn();
