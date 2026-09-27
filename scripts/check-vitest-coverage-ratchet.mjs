@@ -9,8 +9,8 @@
 // было вовсе (там же, находка M5). Этот скрипт не трогает конфиг: бейслайн —
 // отдельный JSON, поднимается только явным `--update`.
 //
-// Запускает vitest сам (с --coverage) в каталоге воркспейса — отдельный
-// `npx vitest` в CI не нужен, этот скрипт его заменяет.
+// Запускает vitest сам (с --coverage) в каталоге воркспейса. С --summary=<путь>
+// берёт готовую сводку: в CI это склейка шардов (merge-coverage.mjs).
 import { spawnSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -32,28 +32,36 @@ if (!KNOWN_WORKSPACES.includes(WORKSPACE)) {
 }
 
 const WORKSPACE_ROOT = join(ROOT, WORKSPACE);
-const SUMMARY_PATH = join(WORKSPACE_ROOT, 'coverage', 'coverage-summary.json');
+// --summary=<path> — CI-шардинг (web-coverage matrix): покрытие уже склеено
+// merge-coverage.mjs из артефактов всех шардов, второй прогон vitest здесь
+// не нужен и не может быть верным — один шард видит только свою часть набора.
+const SUMMARY_ARG = process.argv.find((a) => a.startsWith('--summary='));
+const SUMMARY_PATH = SUMMARY_ARG
+  ? SUMMARY_ARG.slice('--summary='.length)
+  : join(WORKSPACE_ROOT, 'coverage', 'coverage-summary.json');
 
-const res = spawnSync(
-  'npx',
-  ['vitest', 'run', '--coverage', '--coverage.reporter=json-summary'],
-  {
-    cwd: WORKSPACE_ROOT,
-    encoding: 'utf8',
-    maxBuffer: 512 * 1024 * 1024,
-  },
-);
-if (res.stdout) process.stdout.write(res.stdout);
-if (res.stderr) process.stderr.write(res.stderr);
+if (!SUMMARY_ARG) {
+  const res = spawnSync(
+    'npx',
+    ['vitest', 'run', '--coverage', '--coverage.reporter=json-summary'],
+    {
+      cwd: WORKSPACE_ROOT,
+      encoding: 'utf8',
+      maxBuffer: 512 * 1024 * 1024,
+    },
+  );
+  if (res.stdout) process.stdout.write(res.stdout);
+  if (res.stderr) process.stderr.write(res.stderr);
 
-if (res.error) {
-  console.error('❌ не удалось запустить vitest: ' + res.error.message);
-  process.exit(1);
-}
-if (res.status !== 0) {
-  // status/signal в логе: иначе SIGKILL по памяти не отличить от упавшего теста.
-  console.error(`❌ vitest упал: status=${res.status} signal=${res.signal}`);
-  process.exit(res.status ?? 1);
+  if (res.error) {
+    console.error('❌ не удалось запустить vitest: ' + res.error.message);
+    process.exit(1);
+  }
+  if (res.status !== 0) {
+    // status/signal в логе: иначе SIGKILL по памяти не отличить от упавшего теста.
+    console.error(`❌ vitest упал: status=${res.status} signal=${res.signal}`);
+    process.exit(res.status ?? 1);
+  }
 }
 
 let summary;
