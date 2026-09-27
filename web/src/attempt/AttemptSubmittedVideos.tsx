@@ -11,6 +11,7 @@
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import { blockCardStyle, dividedListStyle } from '../components/listCardStyles';
 import { QuestionRow } from '../components/QuestionRow';
+import { RichText } from '../components/RichText';
 import { formatExamMediaReceivedAt } from '../lib/examMedia';
 import { AttemptQuestionVideo } from './AttemptQuestionVideo';
 import { attemptSectionHeadingStyle, attemptSectionStyle } from './attemptLayout';
@@ -27,6 +28,22 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 // отдельной строкой с честной пометкой, а не молчим о полученном видео.
 const ORPHAN_MEDIA_HEADING = 'Видео без вопроса';
 
+// Отзыв тестировщицы 2026-09-23: сдала попытку, дослала ссылку внутри неё и
+// не поняла, съест ли досылка вторую попытку. Одна фраза на весь раздел, не
+// своя на «дослать вопросу без видео» и «заменить вопросу с видео»: у
+// попытки бывает несколько видео-вопросов сразу в обоих состояниях (см. тест
+// «видео получено у одного вопроса» ниже), вопрос у ученика один и тот же
+// для обоих случаев — отдельная функция-разбор здесь только дублировала бы
+// уже готовое условие видимости раздела. Показываем, пока работу можно ещё
+// дополнить (video.acceptsAnswers): у проверенной попытки другая
+// правда — EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE (AttemptVideoAnswered.tsx). Тот
+// же факт для бота — EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE
+// (exam-media-respond.ts), без акцента: маркер `**` в Telegram ушёл бы
+// звёздочками.
+const VIDEO_SECTION_EXPLANATION =
+  'Видео к сданной работе можно дослать или заменить, пока учитель её не ' +
+  'проверил — **попытку это не тратит**, ссылка ляжет к этой же попытке.';
+
 interface AttemptSubmittedVideosProps {
   attempt: ExamAttemptDto;
   video: AttemptVideoControls;
@@ -41,6 +58,11 @@ export function AttemptSubmittedVideos({ attempt, video }: AttemptSubmittedVideo
   return (
     <section style={attemptSectionStyle}>
       <h2 style={attemptSectionHeadingStyle}>Видео</h2>
+      {videoQuestions.length > 0 && video.acceptsAnswers && (
+        <p style={attemptVideoHintStyle}>
+          <RichText text={VIDEO_SECTION_EXPLANATION} />
+        </p>
+      )}
       {videoQuestions.length > 0 && (
         <div style={blockCardStyle}>
           <ol style={dividedListStyle}>

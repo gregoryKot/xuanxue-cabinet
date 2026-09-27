@@ -77,6 +77,15 @@ export const EXAM_MEDIA_INVALID_URL_MESSAGE =
 export const EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE =
   'Эту работу учитель уже проверил — новую ссылку он не увидит. Напишите ему, если нужно что-то поправить.';
 
+// Отзыв тестировщицы 2026-09-23: сдала попытку, потом дослала ссылку на видео
+// внутри неё и не поняла, не съест ли это вторую попытку — не съедает,
+// ссылка и в боте, и в кабинете ложится к той же сданной работе. Общая
+// строка для web (AttemptSubmittedVideos.tsx, с акцентом) и бота
+// (exam-media-respond.ts, простым текстом): без `**` — маркер в Telegram
+// ушёл бы звёздочками (check-text-accents.mjs).
+export const EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE =
+  'Видео можно прислать ещё раз или заменить, пока учитель не проверил работу, — попытку оно не тратит.';
+
 // ADR-0086: гонка двух параллельных upsert на один (attemptId, itemId) —
 // редкая, но возможная (media-asset-insert.ts, upsertLinkMediaAsset). VOICE:
 // что случилось и что сделать, не «конфликт записи».
