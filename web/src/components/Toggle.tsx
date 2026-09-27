@@ -33,12 +33,16 @@ import type { CSSProperties } from 'react';
 import { InfoTip } from './InfoTip';
 import { RichText } from './RichText';
 
-const inputStyle: CSSProperties = {
+// Экспортирован: components/SelectableListRow.tsx (отметка строки списка,
+// ADR-0141) берёт тот же вид галочки — CLAUDE.md «Одна механика — один
+// компонент», второй литерал 22×22/var(--accent) jscpd поймал бы как дубль.
+export const toggleInputStyle: CSSProperties = {
   width: 22,
   height: 22,
   accentColor: 'var(--accent)',
   flexShrink: 0,
 };
+const inputStyle = toggleInputStyle;
 const rowStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',

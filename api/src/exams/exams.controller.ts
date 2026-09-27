@@ -14,9 +14,11 @@ import {
   Query,
 } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { ExamDto } from '@xuanxue/shared';
+import type { BulkDeleteResult, ExamDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { UserLean } from '../users/users.service';
+import { BulkDeleteDto } from '../common/bulk-delete.dto';
+import { bulkRemove } from '../common/bulk-remove';
 import { ExamsService } from './exams.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { ListExamsDto } from './dto/list-exams.dto';
@@ -52,5 +54,17 @@ export class ExamsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.examsService.remove(id, DateTime.utc());
+  }
+
+  // Логика массового удаления — в bulkRemove (common/bulk-remove.ts, тесты
+  // там же без Mongo и без HTTP): ExamsService уже на потолке файлового
+  // храповика (CLAUDE.md «Храповики»), а тут и добавлять нечего — контроллер
+  // просто зовёт тот же remove(), что и одиночный DELETE.
+  @Post('bulk-delete')
+  @HttpCode(HttpStatus.OK)
+  removeMany(@Body() body: BulkDeleteDto): Promise<BulkDeleteResult> {
+    // Одно «сейчас» на весь запрос — у всех записей выборки одна отметка deletedAt.
+    const now = DateTime.utc();
+    return bulkRemove(body.ids, (id) => this.examsService.remove(id, now));
   }
 }

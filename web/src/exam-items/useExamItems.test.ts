@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -120,5 +120,20 @@ describe('useExamItems — загрузка', () => {
         'Не удалось загрузить вопросы. Попробуйте ещё раз.',
       ),
     );
+  });
+});
+
+describe('useExamItems — removeFromList (ADR-0141)', () => {
+  it('патчит уже загруженный список локально, без второго запроса', async () => {
+    mockedApiFetch.mockResolvedValue([makeItem({ id: 'e1' }), makeItem({ id: 'e2' })]);
+    const { result } = renderHook(() => useExamItems(''));
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
+    const callsBefore = mockedApiFetch.mock.calls.length;
+
+    act(() => result.current.removeFromList(['e1']));
+
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.items?.[0]?.id).toBe('e2');
+    expect(mockedApiFetch).toHaveBeenCalledTimes(callsBefore);
   });
 });

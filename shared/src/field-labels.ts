@@ -140,4 +140,7 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   endpoint: 'Адрес подписки браузера',
   p256dh: 'Ключ шифрования подписки',
   auth: 'Секрет подписки',
+
+  // Массовое удаление — POST /<коллекция>/bulk-delete (ADR-0141).
+  ids: 'Выбранные записи',
 };

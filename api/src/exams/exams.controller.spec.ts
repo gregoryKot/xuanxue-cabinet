@@ -82,4 +82,19 @@ describe('ExamsController', () => {
     await controller.remove('e1');
     expect(remove).toHaveBeenCalledWith('e1', expect.any(DateTime));
   });
+
+  it('removeMany() зовёт remove() сервиса для каждого id и возвращает bulkRemove', async () => {
+    const remove = jest
+      .fn<Promise<void>, [string, DateTime]>()
+      .mockResolvedValue(undefined);
+    const controller = await buildController({ remove });
+
+    const result = await controller.removeMany({ ids: ['e1', 'e2'] });
+
+    expect(remove).toHaveBeenNthCalledWith(1, 'e1', expect.any(DateTime));
+    expect(remove).toHaveBeenNthCalledWith(2, 'e2', expect.any(DateTime));
+    // Одно «сейчас» на весь запрос — одна отметка deletedAt у всей выборки.
+    expect(new Set(remove.mock.calls.map(([, now]) => now)).size).toBe(1);
+    expect(result).toEqual({ deletedIds: ['e1', 'e2'], failed: [] });
+  });
 });
