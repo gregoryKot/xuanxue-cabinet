@@ -8,8 +8,8 @@
 // внутри с заголовком `image/svg+xml` так и остался бы исполняемым SVG, а
 // произвольный файл под видом PDF уехал бы в бакет и раздавался как PDF.
 //
-// `.docx` — тоже не про первые байты (ADR-0080): это ZIP, а у ZIP имена
-// записей лежат в центральном каталоге БЕЗ СЖАТИЯ — их можно прочитать
+// `.docx` и `.epub` — тоже не про первые байты (ADR-0080): оба ZIP, а у ZIP
+// имена записей лежат в центральном каталоге БЕЗ СЖАТИЯ — их можно прочитать
 // напрямую, не распаковывая файлы. Значит проверка содержимого контейнера —
 // это разбор настоящей структуры архива, а не «поверить заголовку» под
 // другим именем.
@@ -92,6 +92,14 @@ export function sniffVideoSignature(bytes: Buffer): VideoSignatureType | null {
   return null;
 }
 
+/** RTF начинается управляющим словом `\rtf1` внутри группы — сигнатура
+ * простая, как у PDF, ZIP тут ни при чём (ADR-0080, дополнение 2026-09-27). */
+const RTF_SIGNATURE = '{\\rtf1';
+
+export function isRtfSignature(bytes: Buffer): boolean {
+  return bytes.subarray(0, RTF_SIGNATURE.length).toString('ascii') === RTF_SIGNATURE;
+}
+
 const DOCX_CONTENT_TYPES_ENTRY = '[Content_Types].xml';
 const DOCX_DOCUMENT_ENTRY = 'word/document.xml';
 
@@ -104,6 +112,20 @@ const DOCX_DOCUMENT_ENTRY = 'word/document.xml';
 export function isDocxContainer(bytes: Buffer): boolean {
   const names = readZipEntryNames(bytes);
   return names.includes(DOCX_CONTENT_TYPES_ENTRY) && names.includes(DOCX_DOCUMENT_ENTRY);
+}
+
+const EPUB_CONTAINER_ENTRY = 'META-INF/container.xml';
+/** Имя зарезервировано спецификацией EPUB за первым файлом архива — второе
+ * обязательное имя, тот же приём избыточности, что у `.docx`. */
+const EPUB_MIMETYPE_ENTRY = 'mimetype';
+
+/** EPUB — тоже ZIP (ADR-0080, дополнение 2026-09-27): `META-INF/container.xml`
+ * обязателен по спецификации W3C EPUB 3.3 для любой публикации, `mimetype` —
+ * зарезервированное имя корневой записи. Оба имени сразу — как и у `.docx`,
+ * одного было бы мало против случайного совпадения в чужом архиве. */
+export function isEpubContainer(bytes: Buffer): boolean {
+  const names = readZipEntryNames(bytes);
+  return names.includes(EPUB_CONTAINER_ENTRY) && names.includes(EPUB_MIMETYPE_ENTRY);
 }
 
 export interface RawUploadRules<T extends string> {

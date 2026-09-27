@@ -4,7 +4,10 @@
 // разъезжались по двум копиям (CLAUDE.md «Одна механика — один компонент»,
 // jscpd: без общего каркаса блоки «файла нет»/ошибки совпадали дословно).
 import type { CSSProperties, ReactNode } from 'react';
-import { MATERIAL_FILE_CONTENT_TYPES, MATERIAL_FILE_LIMITS } from '@xuanxue/shared';
+import {
+  MATERIAL_FILE_LIMITS,
+  MATERIAL_FILE_UPLOAD_CONTENT_TYPES,
+} from '@xuanxue/shared';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
 
 // Подпись поля, подсказка про форматы и стили каркаса наружу не выходят:
@@ -14,13 +17,17 @@ export const MATERIAL_FILE_ADD_LABEL = 'Добавить файл';
 export const MATERIAL_FILE_REPLACE_LABEL = 'Заменить файл';
 export const MATERIAL_FILE_REMOVE_LABEL = 'Убрать файл';
 
-export const MATERIAL_FILE_ACCEPT = MATERIAL_FILE_CONTENT_TYPES.join(',');
+// Список для `accept` шире контракта ответа на альтернативный тип RTF
+// (`MATERIAL_FILE_UPLOAD_CONTENT_TYPES`, macOS отдаёт `text/rtf`) — то же
+// значение, что проверяет `checkMaterialFile`, иначе браузер разрешит выбрать
+// файл, который сам же потом отклонит.
+export const MATERIAL_FILE_ACCEPT = MATERIAL_FILE_UPLOAD_CONTENT_TYPES.join(',');
 
 const MAX_MB = MATERIAL_FILE_LIMITS.maxBytes / (1024 * 1024);
 // Подсказка стоит там, где файла ещё нет: формат и потолок нужно знать ДО
 // выбора файла на телефоне — если он не подойдёт, человек узнает это раньше,
 // чем закончит загрузку.
-const MATERIAL_FILE_FORMATS_HINT = `PDF, документ Word (.docx) или картинка — JPG, PNG, WebP, до ${MAX_MB} МБ.`;
+const MATERIAL_FILE_FORMATS_HINT = `PDF, документ Word (.docx), EPUB, RTF или картинка — JPG, PNG, WebP, до ${MAX_MB} МБ.`;
 
 const materialFileSectionStyle: CSSProperties = {
   display: 'flex',
