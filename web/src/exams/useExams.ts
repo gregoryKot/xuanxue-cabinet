@@ -1,11 +1,14 @@
-// Данные экрана «Экзамены» — только список с фильтрами: создание, правка и
-// удаление уехали на страницу редактора (useExamEditor.ts, ADR-0033), и после
-// них экран возвращается сюда, перечитывая список с нуля.
+// Данные экрана «Экзамены» — список с фильтрами: создание и правка уехали на
+// страницу редактора (useExamEditor.ts, ADR-0033), и после них экран
+// возвращается сюда, перечитывая список с нуля. Массовое удаление (ADR-0141)
+// правит список прямо здесь: `removeFromList` патчит уже загруженные данные
+// из ответа `POST /exams/bulk-delete`, второй `GET` не нужен (ADR-0087).
 import { useEffect, useRef } from 'react';
 import type { ExamDto } from '@xuanxue/shared';
 import { examsListPath, type ExamListFilters } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
+import { withoutIds } from '../lib/listPatch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить экзамены. Попробуйте ещё раз.';
 
@@ -14,10 +17,11 @@ export interface UseExamsResult {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  removeFromList: (ids: string[]) => void;
 }
 
 export function useExams(filters: ExamListFilters): UseExamsResult {
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiFetch<ExamDto[]>(examsListPath(filters), { signal }),
     LOAD_ERROR_MESSAGE,
   );
@@ -33,5 +37,11 @@ export function useExams(filters: ExamListFilters): UseExamsResult {
     void reload();
   }, [filters.status, reload]);
 
-  return { exams: data, loading, error, reload };
+  return {
+    exams: data,
+    loading,
+    error,
+    reload,
+    removeFromList: (ids) => applyData((prev) => withoutIds(prev, ids)),
+  };
 }

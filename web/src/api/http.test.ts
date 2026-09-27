@@ -216,6 +216,52 @@ describe('apiFetch — ошибки бэкенда', () => {
     expect(error.message).toBe('Занятие не найдено');
     expect(error.details).toEqual(['id: 1']);
     expect(error.requestId).toBe('req-1');
+    expect(error.retryAfterSec).toBeUndefined();
+  });
+
+  it('на 503 с заголовком Retry-After кладёт секунды в ApiError (ADR-0137)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            503,
+            { statusCode: 503, code: 'not_available', message: 'Занято' },
+            { 'Retry-After': '10' },
+          ),
+        ),
+    );
+
+    const error = await expectApiError(apiFetch('/answer-videos/1/parts/1'));
+
+    expect(error.retryAfterSec).toBe(10);
+  });
+
+  it('конверт без statusCode/code/message (прокси/CDN) — запасные значения из ответа', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, {})));
+
+    const error = await expectApiError(apiFetch('/lessons'));
+
+    expect(error.status).toBe(500);
+    expect(error.code).toBe('unknown');
+    expect(error.message).toBe('Сервер не ответил. Попробуйте ещё раз.');
+    expect(error.retryAfterSec).toBeUndefined();
+  });
+
+  it('заголовок Retry-After не число — retryAfterSec не выставляется', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(503, { statusCode: 503 }, { 'Retry-After': 'скоро' }),
+        ),
+    );
+
+    const error = await expectApiError(apiFetch('/answer-videos/1/parts/1'));
+
+    expect(error.retryAfterSec).toBeUndefined();
   });
 
   it('на не-JSON тело ошибки бросает ApiError с кодом unknown', async () => {

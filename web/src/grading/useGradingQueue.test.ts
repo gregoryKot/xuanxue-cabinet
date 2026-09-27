@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -81,5 +81,23 @@ describe('useGradingQueue — загрузка', () => {
     await result.current.reload();
 
     expect(mockedApiFetch.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+});
+
+describe('useGradingQueue — removeAttemptsOfExams (ADR-0141)', () => {
+  it('выкидывает работы удалённых экзаменов из загруженной очереди, без нового запроса', async () => {
+    mockedApiFetch.mockResolvedValue([
+      makeAttempt({ id: 'a1', examId: 'e1' }),
+      makeAttempt({ id: 'a2', examId: 'e2' }),
+      makeAttempt({ id: 'a3', examId: 'e3' }),
+    ]);
+    const { result } = renderHook(() => useGradingQueue());
+    await waitFor(() => expect(result.current.attempts).toHaveLength(3));
+    const callsBefore = mockedApiFetch.mock.calls.length;
+
+    act(() => result.current.removeAttemptsOfExams(['e1', 'e3']));
+
+    expect(result.current.attempts?.map((attempt) => attempt.id)).toEqual(['a2']);
+    expect(mockedApiFetch.mock.calls.length).toBe(callsBefore);
   });
 });

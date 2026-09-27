@@ -250,7 +250,7 @@ describe('Exams (e2e)', () => {
       expect((stillDraft.body as ExamDto).status).toBe('draft');
     });
 
-    it('публикация формы с блоком на опубликованный вопрос — 200, удалить уже нельзя', async () => {
+    it('публикация формы с блоком на опубликованный вопрос — 200, DELETE — 204 (ADR-0140)', async () => {
       const cookie = await sessionFor(['teacher']);
       const itemId = await createPublishedItem();
       const created = await postExam(cookie, {
@@ -265,15 +265,15 @@ describe('Exams (e2e)', () => {
       expect(published.status).toBe(200);
       expect((published.body as ExamDto).status).toBe('published');
 
-      // ТЗ 4.3, п.5: удалить можно только черновик — форма остаётся.
+      // ADR-0140: удаляется без отказа (детали — exam-soft-delete.e2e-spec.ts).
       const deleteRes = await withCsrf(
         request(server()).delete(`/api/exams/${dto.id}`),
       ).set('Cookie', cookie);
-      expect(deleteRes.status).toBe(409);
-      const stillThere = await request(server())
+      expect(deleteRes.status).toBe(204);
+      const gone = await request(server())
         .get(`/api/exams/${dto.id}`)
         .set('Cookie', cookie);
-      expect(stillThere.status).toBe(200);
+      expect(gone.status).toBe(404);
     });
 
     it('title зашифрован в сырой Mongo — расшифровка только через сервис', async () => {

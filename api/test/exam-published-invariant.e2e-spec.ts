@@ -1,7 +1,9 @@
-// e2e на реальный HTTP-путь двух блокеров аудита 2026-09-15: опубликованную
-// форму нельзя сохранить пустой (№3), а форму, по которой уже сдавали, —
-// удалить (№4). Отдельный файл, не exams.e2e-spec.ts — тот уже у потолка
-// file-size-ratchet (CLAUDE.md «Храповики»), новый смысл — новый файл.
+// e2e на реальный HTTP-путь блокера аудита 2026-09-15 №3: опубликованную
+// форму нельзя сохранить пустой. Блокер №4 (удаление формы с попытками)
+// владелец снял по ADR-0140 — второй тест ниже проверяет новое поведение:
+// удаляется без отказа, попытка остаётся в базе. Отдельный файл, не
+// exams.e2e-spec.ts — тот уже у потолка file-size-ratchet (CLAUDE.md
+// «Храповики»).
 import type { ApiErrorBody, ExamDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -40,7 +42,7 @@ describe('Инвариант опубликованной формы (e2e)', () 
     expect((stillThere.body as ExamDto).blocks[0]?.itemIds).toEqual([itemId]);
   });
 
-  it('DELETE формы, по которой уже стартовали попытку, — 409, форма остаётся', async () => {
+  it('DELETE формы, по которой уже стартовали попытку, — 204 (ADR-0140), форма пропадает', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId } = await createPublishedExam(teacherCookie);
     const studentCookie = await sessionFor([]);
@@ -48,23 +50,16 @@ describe('Инвариант опубликованной формы (e2e)', () 
       'Cookie',
       studentCookie,
     );
-    // Учитель откатывает форму в черновик — раньше это открывало removeIfDraft
-    // дорогу к удалению формы с чужими попытками (блокер №4).
-    await withCsrf(request(server()).patch(`/api/exams/${examId}`))
-      .set('Cookie', teacherCookie)
-      .send({ status: 'draft' });
 
     const res = await withCsrf(request(server()).delete(`/api/exams/${examId}`)).set(
       'Cookie',
       teacherCookie,
     );
+    expect(res.status).toBe(204);
 
-    expect(res.status).toBe(409);
-    expect((res.body as ApiErrorBody).message).toContain('попытки учеников');
-
-    const stillThere = await request(server())
+    const gone = await request(server())
       .get(`/api/exams/${examId}`)
       .set('Cookie', teacherCookie);
-    expect(stillThere.status).toBe(200);
+    expect(gone.status).toBe(404);
   });
 });

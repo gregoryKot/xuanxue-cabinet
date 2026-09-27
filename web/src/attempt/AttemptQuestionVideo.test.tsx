@@ -18,6 +18,25 @@ vi.mock('../api/http', async () => {
   return { ...actual, apiFetch: vi.fn() };
 });
 
+// Загрузка файлом (ADR-0137) — своя state machine, покрыта отдельно
+// (useAnswerVideoUpload.test.ts, AttemptVideoUpload.test.tsx); здесь важен
+// только порядок блоков на экране видео-вопроса.
+vi.mock('./useAnswerVideoUpload', () => ({
+  useAnswerVideoUpload: () => ({
+    state: {
+      phase: 'idle',
+      sentParts: 0,
+      partCount: 0,
+      totalBytes: 0,
+      partBytes: 0,
+      error: null,
+    },
+    selectFile: vi.fn(),
+    cancel: vi.fn(),
+    resumeNow: vi.fn(),
+  }),
+}));
+
 resetApiFetchBetweenTests();
 stubViewerTimeZone();
 
@@ -31,6 +50,8 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     acceptsAnswers: true,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
+    fileUploadEnabled: false,
+    applyMedia: vi.fn(),
     ...overrides,
   };
 }
@@ -159,6 +180,29 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
   });
 });
 
+// ADR-0137: где подключён R2, загрузка файлом — первый путь, ссылка — второй.
+describe('AttemptQuestionVideo — файловое хранилище подключено', () => {
+  it('кнопка загрузки файла стоит раньше формы ссылки, подсказка ссылки — «второй путь»', () => {
+    renderVideo(makeVideo({ fileUploadEnabled: true }));
+
+    const uploadButton = screen.getByLabelText('Загрузить видео');
+    const linkField = screen.getByLabelText('Ссылка на видео');
+    expect(
+      uploadButton.compareDocumentPosition(linkField) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByText(/Запись уже выложена/)).toBeInTheDocument();
+  });
+
+  it('без файлового хранилища — кнопки загрузки нет, подсказка ссылки прежняя', () => {
+    renderVideo(makeVideo({ fileUploadEnabled: false }));
+
+    expect(screen.queryByLabelText('Загрузить видео')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Выложите запись на YouTube, во ВКонтакте/),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('AttemptQuestionVideo — видео уже получено', () => {
   const RECEIVED: ExamMediaDto = {
     id: 'm1',
@@ -249,6 +293,18 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     await user.tab();
 
     expect(addMediaLink).toHaveBeenCalledWith('q3', 'https://example.com/fixed');
+  });
+
+  // ADR-0137: рядом с заменой ссылки — тихий тумблер загрузки файлом, когда
+  // подключён R2; оба тумблера независимы.
+  it('файловое хранилище подключено — рядом тумблер «Загрузить другое видео»', async () => {
+    const user = userEvent.setup();
+    renderVideo(makeVideo({ media: [RECEIVED], fileUploadEnabled: true }));
+
+    expect(screen.queryByLabelText('Загрузить видео')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Загрузить другое видео' }));
+
+    expect(screen.getByLabelText('Загрузить видео')).toBeInTheDocument();
   });
 
   it('запись относится к другому вопросу — у этого форма остаётся', () => {

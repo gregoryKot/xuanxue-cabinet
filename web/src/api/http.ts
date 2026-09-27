@@ -130,7 +130,11 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     }
     // 401-слушатель и сборка ApiError — общий хвост с uploadWithProgress.ts
     // (apiError.ts, аудит 2026-09-27).
-    throw errorFromEnvelope(envelope, response.status);
+    throw errorFromEnvelope(
+      envelope,
+      response.status,
+      response.headers.get('Retry-After'),
+    );
   }
 
   return (await response.json()) as T;

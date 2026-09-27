@@ -44,10 +44,18 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
 const NO_STRUGGLING = { '/exam-items/stats-summary': { strugglingCount: 0 } };
 const NO_IMAGES = { '/exam-images/stats-summary': { count: 0, totalBytes: 0 } };
 const NO_VIDEOS = { '/exam-videos/stats-summary': { count: 0, totalBytes: 0 } };
-// Большинство тестов экрана не проверяют картинки/видео/спотыкающиеся
-// вопросы — все три хука экрана всё равно шлют запрос, и без ответа
-// mockApiByPath бросает «неожиданный путь» (test-support/apiFetchMock.ts).
-const DEFAULT_SUMMARIES = { ...NO_STRUGGLING, ...NO_IMAGES, ...NO_VIDEOS };
+// /answer-videos/stats-summary — ключ раньше общего /answer-videos ниже не
+// нужен: у экрана нет других запросов на этот префикс.
+const NO_ANSWER_VIDEOS = { '/answer-videos/stats-summary': { count: 0, totalBytes: 0 } };
+// Большинство тестов экрана не проверяют картинки/видео/видео-ответы/
+// спотыкающиеся вопросы — все хуки экрана всё равно шлют запрос, и без
+// ответа mockApiByPath бросает «неожиданный путь» (test-support/apiFetchMock.ts).
+const DEFAULT_SUMMARIES = {
+  ...NO_STRUGGLING,
+  ...NO_IMAGES,
+  ...NO_VIDEOS,
+  ...NO_ANSWER_VIDEOS,
+};
 
 /** Куда ушёл экран: путь редактора рисуется текстом, и тест читает его
  * глазами пользователя, а не через мок useNavigate. */
@@ -220,6 +228,7 @@ describe('ExamsScreen — вход в вопросы', () => {
       '/exam-items/stats-summary': { strugglingCount: 2 },
       ...NO_IMAGES,
       ...NO_VIDEOS,
+      ...NO_ANSWER_VIDEOS,
       '/exams': [],
       '/attempts': [],
     });
@@ -247,6 +256,7 @@ describe('ExamsScreen — вход в картинки вариантов отв
       ...NO_STRUGGLING,
       '/exam-images/stats-summary': { count: 12, totalBytes: 3_600_000 },
       ...NO_VIDEOS,
+      ...NO_ANSWER_VIDEOS,
       '/exams': [],
       '/attempts': [],
     });
@@ -263,6 +273,7 @@ describe('ExamsScreen — вход в картинки вариантов отв
       ...NO_STRUGGLING,
       ...NO_IMAGES,
       '/exam-videos/stats-summary': { count: 2, totalBytes: 90_000_000 },
+      ...NO_ANSWER_VIDEOS,
       '/exams': [],
       '/attempts': [],
     });
@@ -270,6 +281,27 @@ describe('ExamsScreen — вход в картинки вариантов отв
     renderScreen();
 
     expect(await screen.findByText(/Видео к вопросам: 2 — 85,8 МБ/)).toBeInTheDocument();
+  });
+});
+
+// ADR-0137: видео-ответы учеников — та же приписка, но у карточки «Проверка»,
+// не «Вопросы» (это то, что прислали ученики, а не то, что загрузил учитель).
+describe('ExamsScreen — видео-ответы учеников в карточке «Проверка»', () => {
+  it('есть видео-ответы — строка с числом и объёмом рядом с заготовками', async () => {
+    mockApiByPath({
+      ...NO_STRUGGLING,
+      ...NO_IMAGES,
+      ...NO_VIDEOS,
+      '/answer-videos/stats-summary': { count: 3, totalBytes: 90_000_000 },
+      '/exams': [],
+      '/attempts': [],
+    });
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(/Видео-ответов от учеников: 3 — 85,8 МБ/),
+    ).toBeInTheDocument();
   });
 });
 

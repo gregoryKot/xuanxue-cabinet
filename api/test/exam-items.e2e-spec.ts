@@ -229,7 +229,7 @@ describe('Exam items (e2e)', () => {
       expect(updated.history[0]?.prompt).toBe(VALID_BODY.prompt);
     });
 
-    it('DELETE опубликованного вопроса — 409, вопрос остаётся', async () => {
+    it('DELETE опубликованного вопроса — 204, пропадает из GET (ADR-0140)', async () => {
       const cookie = await sessionFor(['teacher']);
       const created = await postItem(cookie, VALID_BODY);
       const dto = created.body as ExamItemDto;
@@ -238,12 +238,12 @@ describe('Exam items (e2e)', () => {
       const res = await withCsrf(
         request(server()).delete(`/api/exam-items/${dto.id}`),
       ).set('Cookie', cookie);
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(204);
 
-      const stillThere = await request(server())
+      const gone = await request(server())
         .get(`/api/exam-items/${dto.id}`)
         .set('Cookie', cookie);
-      expect(stillThere.status).toBe(200);
+      expect(gone.status).toBe(404);
     });
 
     it('GET /exam-items?limit=1 при двух вопросах — 1 в ответе', async () => {

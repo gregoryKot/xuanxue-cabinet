@@ -83,12 +83,27 @@ describe('ExamItemsController', () => {
     expect(update).toHaveBeenCalledWith('i1', body, expect.any(DateTime));
   });
 
-  it('remove() передаёт id в сервис', async () => {
+  it('remove() передаёт id и «сейчас» в сервис', async () => {
     const remove = jest.fn().mockResolvedValue(undefined);
     const controller = await buildController({ remove });
 
     await controller.remove('i1');
-    expect(remove).toHaveBeenCalledWith('i1');
+    expect(remove).toHaveBeenCalledWith('i1', expect.any(DateTime));
+  });
+
+  it('removeMany() зовёт remove() сервиса для каждого id и возвращает bulkRemove', async () => {
+    const remove = jest
+      .fn<Promise<void>, [string, DateTime]>()
+      .mockResolvedValue(undefined);
+    const controller = await buildController({ remove });
+
+    const result = await controller.removeMany({ ids: ['i1', 'i2'] });
+
+    expect(remove).toHaveBeenNthCalledWith(1, 'i1', expect.any(DateTime));
+    expect(remove).toHaveBeenNthCalledWith(2, 'i2', expect.any(DateTime));
+    // Одно «сейчас» на весь запрос — одна отметка deletedAt у всей выборки.
+    expect(new Set(remove.mock.calls.map(([, now]) => now)).size).toBe(1);
+    expect(result).toEqual({ deletedIds: ['i1', 'i2'], failed: [] });
   });
 
   it('getStats() передаёт id в ExamItemStatsService', async () => {

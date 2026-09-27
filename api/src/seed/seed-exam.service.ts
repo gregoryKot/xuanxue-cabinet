@@ -3,14 +3,14 @@
 // точному `title`; оба поля зашифрованы (encJson/enc, exam-item.schema.ts,
 // exam.schema.ts), поэтому Mongo не умеет сравнить их сам — только полное
 // чтение коллекции и decrypt на стороне сервиса (тот же приём, что дубль
-// (title, groupLabel) в SeedService, только ключ здесь — расшифрованный
-// текст, не индексируемая пара строк).
+// (title, groupLabel) в SeedService, ключ здесь — расшифрованный текст).
 import { readFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { InvalidInputError } from '../common/errors';
+import { NOT_DELETED } from '../common/soft-delete';
 import { isEncryptionConfigured } from '../utils/encryption';
 import type { CreateExamDto } from '../exams/dto/create-exam.dto';
 import { ExamImagesService } from '../exam-images/exam-images.service';
@@ -234,15 +234,15 @@ export class SeedExamService {
     return { itemIds, createdQuestions, skippedQuestions, uploadedImages };
   }
 
-  /** Нет формы с таким `title` — новая создаётся черновиком с одним блоком
-   * (ADR-0033). Есть — состав единственного блока сливается (mergeItemIds),
-   * поля самой формы (title/description/…) не трогаем: их мог поправить
-   * учитель в кабинете, повторный импорт не должен затирать его правку. */
+  /** Нет формы с таким `title`, не удалённой (ADR-0140) — создаётся
+   * черновиком с одним блоком (ADR-0033). Есть — состав единственного блока
+   * сливается (mergeItemIds), поля самой формы (title/description/…) не
+   * трогаем: их мог поправить учитель, импорт не должен затирать правку. */
   private async upsertExam(
     exam: CreateExamDto,
     itemIds: readonly string[],
   ): Promise<boolean> {
-    const existingExams = await this.examModel.find().lean<RawLeanExam[]>();
+    const existingExams = await this.examModel.find(NOT_DELETED).lean<RawLeanExam[]>();
     const match = existingExams
       .map((doc) => ({ id: doc._id.toString(), decrypted: decryptExam(doc) }))
       .find(({ decrypted }) => decrypted.title === exam.title);

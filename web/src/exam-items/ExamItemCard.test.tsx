@@ -91,4 +91,27 @@ describe('ExamItemCard', () => {
 
     expect(screen.getByRole('button').style.background).toBe('transparent');
   });
+
+  // Режим массового выбора (ADR-0141) — components/SelectableListRow.tsx
+  // подменяет кнопку чекбоксом; сама механика проверена в его тестах, здесь
+  // только то, что вопрос передаёт `selection` дальше.
+  it('selection задан — чекбокс вместо кнопки, клик отмечает, не открывает', async () => {
+    const onSelect = vi.fn();
+    const onToggle = vi.fn();
+    render(
+      <ExamItemCard
+        item={makeItem()}
+        onSelect={onSelect}
+        selection={{ isSelected: false, onToggle }}
+      />,
+    );
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('checkbox', { name: /Опишите принцип песчинки/ }),
+    );
+
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });

@@ -32,6 +32,7 @@ import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
 import { AttemptVideoAnswered } from './AttemptVideoAnswered';
 import { AttemptVideoHowTo } from './AttemptVideoHowTo';
+import { AttemptVideoUpload } from './AttemptVideoUpload';
 import {
   attemptVideoHintStyle,
   attemptVideoTelegramLinkStyle,
@@ -43,12 +44,18 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 // куда именно слать, говорят кнопка и подсказка ниже — они зависят от того,
 // есть ли бот и привязан ли Telegram, а сама фраза от этого не меняется.
 const VIDEO_ANSWER_EXPLANATION = 'Ответ на этот вопрос — видео.';
-// Ссылка — основной путь (ADR-0084): подсказка стоит перед формой у всех, а
-// не только у тех, кому не досталось бота. С ADR-0136 добавлено, что
-// нажимать после вставки уже нечего — ссылка сохраняется сама.
-const LINK_HINT =
+// Ссылка — основной путь там, где нет своей загрузки файлом (ADR-0084):
+// подсказка стоит перед формой у всех, а не только у тех, кому не досталось
+// бота. С ADR-0136 добавлено, что нажимать после вставки уже нечего — ссылка
+// сохраняется сама.
+const LINK_HINT_PRIMARY =
   'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и ' +
   '**вставьте сюда ссылку** — она сохранится сама.';
+// Загрузка файлом стала первым путём (ADR-0137) — ссылка становится вторым,
+// для уже выложенной где-то записи, а не единственным способом ответить.
+const LINK_HINT_SECONDARY =
+  'Запись уже выложена на YouTube, во ВКонтакте или ещё где-то? ' +
+  '**Вставьте сюда ссылку** — она сохранится сама.';
 // Кнопка бота вела в чат, но не объясняла, что там будет: отзыв
 // тестера 2026-09-27, «не очень понятно, что такое „Отправить видео
 // боту в Telegram“» (ADR-0136). Текст правдив: бот на этой ссылке
@@ -87,8 +94,15 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
   return (
     <>
       <AttemptQuestionVideoNote />
+
+      {/* Загрузка файлом — первый путь там, где подключён R2 (ADR-0137);
+          без него экран остаётся прежним (ссылка → инструкция → бот). */}
+      {video.fileUploadEnabled && <AttemptVideoUpload itemId={itemId} video={video} />}
+
       <p style={attemptVideoHintStyle}>
-        <RichText text={LINK_HINT} />
+        <RichText
+          text={video.fileUploadEnabled ? LINK_HINT_SECONDARY : LINK_HINT_PRIMARY}
+        />
       </p>
       <AttemptVideoHowTo />
       <AttemptMediaLinkForm

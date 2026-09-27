@@ -59,6 +59,10 @@ interface ExamsSectionStatsProps {
    * загрузки и при сбое, честное «пока нет» на чистой базе
    * (formatGradingPresetsHint). */
   presetsCount: number | null;
+  /** Готовая строка `formatAnswerVideosSummary` (ADR-0137) — тем же приёмом,
+   * что `videosSummary`, но в карточку «Проверка»: видео-ответ — это то, что
+   * прислали ученики, а не то, что загрузил учитель к вопросу. */
+  answerVideosSummary: string | null;
 }
 
 const blockStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
@@ -70,12 +74,16 @@ export function ExamsSectionStats({
   imagesSummary,
   videosSummary,
   presetsCount,
+  answerVideosSummary,
 }: ExamsSectionStatsProps) {
   const questionsHint = [
     formatExamItemsLinkHint(strugglingCount),
     imagesSummary,
     videosSummary,
   ]
+    .filter(Boolean)
+    .join(' ');
+  const gradingHint = [formatGradingPresetsHint(presetsCount), answerVideosSummary]
     .filter(Boolean)
     .join(' ');
 
@@ -89,7 +97,7 @@ export function ExamsSectionStats({
           to="/grading"
           title="Проверка"
           headline={formatGradingQueueHint(queueCount)}
-          hint={formatGradingPresetsHint(presetsCount)}
+          hint={gradingHint}
         />
         <SectionLink to="/exam-items" title="Вопросы" hint={questionsHint} />
       </div>

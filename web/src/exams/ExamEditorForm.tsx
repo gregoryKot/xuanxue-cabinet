@@ -35,7 +35,9 @@ import { hasUnsavedChanges, useSaveAndPreview } from './useSaveAndPreview';
 import type { UseExamEditorResult } from './useExamEditor';
 
 const NO_STATUS_FILTER = '' as const;
-const REMOVE_MESSAGE = 'Экзамен исчезнет вместе с набором вопросов. Отменить нельзя.';
+// Мягкое удаление (ADR-0140): у учеников экзамен пропадает, работы остаются.
+const REMOVE_MESSAGE =
+  'Экзамен пропадёт **и у вас, и у учеников**. Уже сданные работы останутся в базе.';
 
 interface ExamEditorFormProps {
   exam: ExamDto | null;
@@ -48,7 +50,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   // места ждут обычную функцию без результата.
   const goToList = () => void navigate(EXAMS_PATH);
   const form = useExamForm(exam, editor.create, editor.update, editor.remove);
-  const bank = useExamItems(NO_STATUS_FILTER);
+  const bank = useExamItems(NO_STATUS_FILTER, { includeDeleted: true });
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
   const preview = useSaveAndPreview(exam, form, formRef);

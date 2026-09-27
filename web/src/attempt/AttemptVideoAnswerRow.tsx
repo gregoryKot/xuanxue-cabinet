@@ -12,9 +12,15 @@
 // в кабинете значит «сдал/верно» (CLAUDE.md «Правило акцента») — видео ещё
 // не смотрели.
 import type { CSSProperties } from 'react';
-import type { ExamMediaDto, ExamMediaKind } from '@xuanxue/shared';
+import {
+  ANSWER_VIDEO_RETENTION,
+  type ExamMediaDto,
+  type ExamMediaKind,
+} from '@xuanxue/shared';
+import { ExamVideoPlayer } from '../components/ExamVideoPlayer';
 import { VideoEmbed } from '../components/VideoEmbed';
 import { formatExamMediaWhen } from '../lib/examMedia';
+import { formatFileSize } from '../lib/formatFileSize';
 
 // Что пришло — по способу привязки (ADR-0023). Тексты ученику, не учителю:
 // у карточки проверки свои («Видео смотрите там же» — grading/
@@ -23,10 +29,13 @@ const ANSWER_LABELS: Record<ExamMediaKind, string> = {
   link: 'Вы прислали ссылку',
   telegram: 'Вы прислали видео боту в Telegram',
   manual: 'Учитель отметил, что видео принято',
-  // Файл в кабинете (ADR-0137) — плеер у строки приезжает следующим PR
-  // вместе с экраном загрузки; до тех пор строка честно называет факт.
   file: 'Вы загрузили видео в кабинет',
 };
+
+// Уборщик снял файл — по сроку хранения или после проверки (ADR-0137): факт
+// получения остаётся в попытке, честно называем, куда делся сам файл, не
+// молчим и не показываем сломанный плеер.
+const EXPIRED_FILE_TEXT = `Видео удалено: мы храним его ${ANSWER_VIDEO_RETENTION.afterGradedDays} дней после проверки.`;
 
 const rowStyle: CSSProperties = {
   display: 'flex',
@@ -61,8 +70,19 @@ export function AttemptVideoAnswerRow({ media }: { media: ExamMediaDto }) {
           ссылка остаётся путём открыть видео снаружи. Хостинг не
           встраивается — компонент не рендерит ничего. */}
       {media.url && <VideoEmbed url={media.url} title="Ваша запись" />}
+      {media.kind === 'file' && media.answerVideoId && (
+        <ExamVideoPlayer answerVideoId={media.answerVideoId} title="Ваша запись" />
+      )}
+      {media.kind === 'file' && !media.answerVideoId && (
+        <span style={metaStyle}>{EXPIRED_FILE_TEXT}</span>
+      )}
       {media.note && <span style={metaStyle}>{media.note}</span>}
-      <span style={metaStyle}>Получено {formatExamMediaWhen(media)}</span>
+      <span style={metaStyle}>
+        Получено {formatExamMediaWhen(media)}
+        {media.kind === 'file' && media.sizeBytes !== undefined
+          ? `, ${formatFileSize(media.sizeBytes)}`
+          : ''}
+      </span>
     </li>
   );
 }

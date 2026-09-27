@@ -41,4 +41,18 @@ describe('describeMediaSource', () => {
       describeMediaSource(makeMedia({ kind: 'link', url: 'https://example.com/v' })),
     ).toBe('');
   });
+
+  it('file с размером — факт и размер (ADR-0137)', () => {
+    expect(
+      describeMediaSource(
+        makeMedia({ kind: 'file', answerVideoId: 'v1', sizeBytes: 2 * 1024 * 1024 }),
+      ),
+    ).toBe('Загружено в кабинет, 2,0 МБ.');
+  });
+
+  it('file без размера — честный текст без числа', () => {
+    expect(describeMediaSource(makeMedia({ kind: 'file', answerVideoId: 'v1' }))).toBe(
+      'Загружено в кабинет.',
+    );
+  });
 });

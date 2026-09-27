@@ -12,6 +12,11 @@ export class ApiError extends Error {
   code: ApiErrorCode;
   details?: string[];
   requestId?: string;
+  /** Заголовок `Retry-After` ответа (секунды) — сейчас его ставит только
+   * потолок одновременных сырых загрузок (raw-upload-concurrency.ts, 503,
+   * ADR-0137): подсказка, через сколько повторить, честнее собственного
+   * расписания повторов. `undefined`, если заголовка не было. */
+  retryAfterSec?: number;
 
   constructor(
     message: string,
@@ -19,6 +24,7 @@ export class ApiError extends Error {
     code: ApiErrorCode,
     details?: string[],
     requestId?: string,
+    retryAfterSec?: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -26,7 +32,15 @@ export class ApiError extends Error {
     this.code = code;
     this.details = details;
     this.requestId = requestId;
+    this.retryAfterSec = retryAfterSec;
   }
+}
+
+/** Секунды из `Retry-After`; не число или нет заголовка — `undefined`. */
+function parseRetryAfter(header: string | null): number | undefined {
+  if (!header) return undefined;
+  const seconds = Number(header);
+  return Number.isFinite(seconds) ? seconds : undefined;
 }
 
 /** Конверт ошибки бэкенда (тип общий с api через shared); поля могут отсутствовать у прокси/CDN. */
@@ -62,6 +76,7 @@ export function parseErrorEnvelope(raw: string): ErrorEnvelope | null {
 export function errorFromEnvelope(
   envelope: ErrorEnvelope,
   responseStatus: number,
+  retryAfterHeader: string | null = null,
 ): ApiError {
   const status = envelope.statusCode ?? responseStatus;
   if (status === UNAUTHORIZED_STATUS) unauthorizedListener?.();
@@ -71,5 +86,6 @@ export function errorFromEnvelope(
     envelope.code ?? 'unknown',
     envelope.details,
     envelope.requestId,
+    parseRetryAfter(retryAfterHeader),
   );
 }

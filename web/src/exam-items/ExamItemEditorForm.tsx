@@ -3,9 +3,10 @@
 // содержательные поля, варианты ответа у выборочных типов, подвал с
 // сохранением и статусом, под ним — «Как отвечают» (ТЗ 4.8).
 //
-// Удаление разрешено только черновику (ExamItemsService.remove): на
-// опубликованный или архивный вопрос могут ссылаться сданные работы — вместо
-// кнопки объяснение, почему её нет.
+// Удаление разрешено в любом статусе (мягкое удаление, ADR-0140,
+// ExamItemsService.remove): вопрос пропадает из банка и из поиска (ADR-0128 →
+// ADR-0140), но остаётся в уже собранных экзаменах и в сданных работах.
+// Раньше опубликованный и архивный вопрос удалить было нельзя.
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamItemDto, ExamItemKind, ExamItemStatus } from '@xuanxue/shared';
 import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
@@ -35,8 +36,11 @@ import type { UseExamItemEditorResult } from './useExamItemEditor';
 const ITEMS_PATH = '/exam-items';
 const BACK_TEXT = 'К вопросам';
 const REMOVE_LABEL = 'Удалить вопрос';
+// Вопрос уходит из списка «Вопросы», но остаётся в экзаменах, где уже стоит
+// (ADR-0140) — текст явно называет оба места, чтобы учитель не искал его
+// потом «пропавшим». Без слова «банк» — язык разработчика, не экрана (ADR-0040).
 const REMOVE_MESSAGE =
-  'Черновик вопроса исчезнет вместе с **формулировкой и вариантами ответа**. Отменить нельзя.';
+  'Вопрос пропадёт из списка вопросов. В экзаменах, где он уже стоит, **останется** — уберите его оттуда, если нужно.';
 // Предупредить одной строкой до сохранения, без модального окна: правка
 // содержательного поля опубликованного вопроса поднимает версию на сервере
 // (ExamItemsService.update).
@@ -46,12 +50,6 @@ const STATUS_EXPLANATIONS: Record<ExamItemStatus, string> = {
   draft: 'в экзамен его не поставить',
   published: 'его можно ставить в экзамены',
   archived: 'в новые экзамены он не пойдёт, сданные работы остаются',
-};
-const NO_REMOVE_NOTES: Record<'published' | 'archived', string> = {
-  published:
-    'Удалить нельзя — на опубликованный вопрос могут ссылаться **сданные работы**. Отправьте его в архив.',
-  archived:
-    'Удалить нельзя — на вопрос в архиве могли остаться **ссылки в сданных работах**.',
 };
 
 interface ExamItemEditorFormProps {
@@ -121,7 +119,6 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
               onChangeStatus: (status) => void handleChangeStatus(status),
             }}
             removeLabel={REMOVE_LABEL}
-            noRemoveNotes={NO_REMOVE_NOTES}
             pending={form.pending}
             onRemove={removeConfirm.requestRemove}
           />

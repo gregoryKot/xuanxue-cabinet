@@ -9,10 +9,15 @@
 // Уровень остаётся полем формы (ExamAboutFields.tsx) и параметром API
 // (`/exams?level=`), но не фильтром строки: нужный случай («все формы одного
 // уровня») закрывают поиск по названию и переключатели статуса.
+//
+// Массовое удаление (ADR-0141) — общий BulkDeleteBar/useBulkDelete: «Выбрать»
+// переключает строки списка в режим отметки (ExamCard.tsx получает
+// `selection`), список правится локально из ответа записи (useExams.ts).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EXAM_STATUSES } from '@xuanxue/shared';
 import { type ExamListFilters } from '../api/apiPaths';
+import { BulkDeleteBar } from '../components/BulkDeleteBar';
 import { Button } from '../components/Button';
 import { ListFilters } from '../components/ListFilters';
 import { oneCardListStyle } from '../components/listCardStyles';
@@ -24,11 +29,15 @@ import { formatExamVideosSummary } from '../exam-items/examVideosSummaryText';
 import { useExamImageStats } from '../exam-items/useExamImageStats';
 import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
 import { useExamVideoStats } from '../exam-items/useExamVideoStats';
+import { formatAnswerVideosSummary } from '../grading/answerVideosSummaryText';
+import { useAnswerVideoStats } from '../grading/useAnswerVideoStats';
 import { useGradingPresets } from '../grading/useGradingPresets';
 import { useGradingQueue } from '../grading/useGradingQueue';
+import { useBulkDelete } from '../hooks/useBulkDelete';
 import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
 import { matchesSearch } from '../lib/textSearch';
 import { ExamCard } from './ExamCard';
+import { EXAM_BULK_DELETE_MESSAGE, EXAM_NOUN_FORMS } from './examCounts';
 import { ExamsSectionStats } from './ExamsSectionStats';
 import { useExams } from './useExams';
 
@@ -43,17 +52,26 @@ const EMPTY_FILTERS: ExamListFilters = { status: '' };
 export default function ExamsScreen() {
   const [filters, setFilters] = useState<ExamListFilters>(EMPTY_FILTERS);
   const [search, setSearch] = useState('');
-  const { exams, loading, error, reload } = useExams(filters);
+  const { exams, loading, error, reload, removeFromList } = useExams(filters);
   const gradingQueue = useGradingQueue();
   const gradingPresets = useGradingPresets();
   const itemStatsSummary = useExamItemStatsSummary();
   const imageStats = useExamImageStats();
   const videoStats = useExamVideoStats();
+  const answerVideoStats = useAnswerVideoStats();
   const navigate = useNavigate();
 
   const visibleExams =
     exams?.filter((exam) => matchesSearch([exam.title], search)) ?? null;
   const isFiltered = filters.status !== '' || search.trim() !== '';
+  const bulk = useBulkDelete({
+    collectionPath: EXAMS_PATH,
+    visibleIds: visibleExams?.map((exam) => exam.id) ?? [],
+    onDeleted: (ids) => {
+      removeFromList(ids);
+      gradingQueue.removeAttemptsOfExams(ids);
+    },
+  });
 
   return (
     <section style={screenSectionStyle}>
@@ -79,6 +97,13 @@ export default function ExamsScreen() {
         search={{ label: SEARCH_LABEL, value: search, onChange: setSearch }}
       />
 
+      <BulkDeleteBar
+        bulk={bulk}
+        forms={EXAM_NOUN_FORMS}
+        hasItems={(visibleExams?.length ?? 0) > 0}
+        confirmMessage={EXAM_BULK_DELETE_MESSAGE}
+      />
+
       <ListScreenBody
         items={visibleExams}
         loading={loading}
@@ -92,6 +117,14 @@ export default function ExamsScreen() {
             exam={exam}
             onSelect={() => void navigate(`${EXAMS_PATH}/${exam.id}`)}
             isLast={index === all.length - 1}
+            selection={
+              bulk.isSelecting
+                ? {
+                    isSelected: bulk.isSelected(exam.id),
+                    onToggle: () => bulk.toggle(exam.id),
+                  }
+                : undefined
+            }
           />
         )}
       />
@@ -102,6 +135,7 @@ export default function ExamsScreen() {
         imagesSummary={formatExamImagesSummary(imageStats.stats)}
         videosSummary={formatExamVideosSummary(videoStats.stats)}
         presetsCount={gradingPresets.presets?.length ?? null}
+        answerVideosSummary={formatAnswerVideosSummary(answerVideoStats.stats)}
       />
     </section>
   );

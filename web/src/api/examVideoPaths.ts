@@ -9,3 +9,13 @@ export const EXAM_VIDEO_STATS_PATH = `${EXAM_VIDEOS_PATH}/stats-summary`;
 export function examVideoSrc(videoId: string): string {
   return `/api${EXAM_VIDEOS_PATH}/${videoId}`;
 }
+
+/** Адрес видео-ответа ученика (ADR-0137), тем же приёмом — `<video src>`,
+ * сервер отвечает 302 на подписанную ссылку R2. Пути самой загрузки (старт,
+ * части, complete, stats) — в web/src/api/answerVideoPaths.ts: другой домен,
+ * другой протокол; здесь остаётся только адрес готового плеера, раз
+ * ExamVideoPlayer.tsx уже импортирует отсюда examVideoSrc для соседнего
+ * случая. */
+export function answerVideoSrc(answerVideoId: string): string {
+  return `/api/answer-videos/${answerVideoId}`;
+}

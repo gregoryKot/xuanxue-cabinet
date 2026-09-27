@@ -838,34 +838,30 @@ describe('ExamEditorScreen — подвал', () => {
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 
-  it('опубликованный — удалить нельзя (кнопки нет ни наверху, ни внизу), короткое объяснение в подвале', async () => {
+  // Мягкое удаление (ADR-0140) — «Удалить экзамен» в любом статусе, не
+  // только у черновика, и подтверждение реально шлёт DELETE.
+  it('опубликованный — «Удалить экзамен» доступна, подтверждение шлёт DELETE', async () => {
+    const user = userEvent.setup();
     mockExamAndBank(makeExam({ status: 'published' }));
 
     renderAt('/exams/x1');
-
     expect(await screen.findByText('Опубликован')).toBeInTheDocument();
-    expect(screen.getByText(/ученики видят его в списке/)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Удалить экзамен' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText(/можно отправить в архив/)).toBeInTheDocument();
+    expect(screen.queryByText(/не удалить/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Удалить экзамен' }));
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+
+    await waitFor(() => expect(lastCallWithMethod('DELETE')).toHaveLength(1));
+    expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
   });
 
-  // Архивному отдельного объяснения больше нет (ADR-0139, отзыв владельца
-  // 2026-09-27) — строка статуса выше уже сказала «сданные работы остаются»,
-  // повторять то же самое другими словами незачем.
-  it('архивный — свой текст статуса, без отдельного объяснения про удаление', async () => {
+  it('архивный — свой текст статуса, «Удалить экзамен» тоже доступна', async () => {
     mockExamAndBank(makeExam({ status: 'archived' }));
 
     renderAt('/exams/x1');
 
     expect(await screen.findByText('В архиве')).toBeInTheDocument();
     expect(screen.getByText(/сданные работы остаются/)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Удалить экзамен' }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(/могли остаться/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/не удалить/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Удалить экзамен' })).toBeInTheDocument();
   });
 
   // Удаление стоит наверху (ADR-0139) — в строке с «К списку экзаменов»,
@@ -905,9 +901,8 @@ describe('ExamEditorScreen — подвал', () => {
     renderAt('/exams/x1');
     await user.click(await screen.findByRole('button', { name: 'Удалить экзамен' }));
 
-    expect(
-      screen.getByText('Экзамен исчезнет вместе с набором вопросов. Отменить нельзя.'),
-    ).toBeInTheDocument();
+    // Акцент через RichText (<strong>, ADR-0124) — сверяем по началу фразы.
+    expect(screen.getByText(/Экзамен пропадёт/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
 

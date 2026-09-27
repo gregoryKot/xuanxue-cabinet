@@ -64,9 +64,8 @@ describe('Вопрос из банка → конструктор экзамен
     expect((exam.body as ExamDto).blocks[0]?.itemIds).toEqual([itemId]);
   });
 
-  // Блокеры аудита 2026-09-15 №1 и №2: вопрос, стоящий в неархивированной
-  // форме, нельзя ни удалить, ни отправить в архив — реальный HTTP-путь
-  // учителя, не вызов сервиса напрямую.
+  // Блокер аудита 2026-09-15 №2 (архивация) и его снятое по ADR-0140
+  // удаление ниже — реальный HTTP-путь учителя, не вызов сервиса напрямую.
   async function createItemInExam(
     server: () => ReturnType<TestApp['app']['getHttpServer']>,
     cookie: string,
@@ -87,7 +86,7 @@ describe('Вопрос из банка → конструктор экзамен
     return { itemId, examTitle };
   }
 
-  it('DELETE вопроса, стоящего в форме, — 409 с названием формы, вопрос остаётся', async () => {
+  it('DELETE вопроса, стоящего в форме, — 204: пропадает из банка, форма его не теряет (ADR-0140)', async () => {
     const cookie = await sessionCookieFor(testApp.app, ['teacher']);
     const { itemId, examTitle } = await createItemInExam(server, cookie);
 
@@ -95,14 +94,25 @@ describe('Вопрос из банка → конструктор экзамен
       'Cookie',
       cookie,
     );
+    expect(res.status).toBe(204);
 
-    expect(res.status).toBe(409);
-    expect((res.body as ApiErrorBody).message).toContain(`«${examTitle}»`);
-
-    const stillThere = await request(server())
+    const gone = await request(server())
       .get(`/api/exam-items/${itemId}`)
       .set('Cookie', cookie);
-    expect(stillThere.status).toBe(200);
+    expect(gone.status).toBe(404);
+
+    // includeDeleted — редактор формы всё ещё видит формулировку.
+    const withDeleted = await request(server())
+      .get('/api/exam-items')
+      .query({ includeDeleted: true })
+      .set('Cookie', cookie);
+    const deletedDto = (withDeleted.body as ExamItemDto[]).find((i) => i.id === itemId);
+    expect(deletedDto?.deletedAt).toBeDefined();
+
+    // Форма продолжает ссылаться на удалённый вопрос — учитель её не терял.
+    const examList = await request(server()).get('/api/exams').set('Cookie', cookie);
+    const exam = (examList.body as ExamDto[]).find((e) => e.title === examTitle);
+    expect(exam?.blocks[0]?.itemIds).toEqual([itemId]);
   });
 
   it('архивация вопроса, стоящего в форме, — 409 с названием формы, статус не меняется', async () => {

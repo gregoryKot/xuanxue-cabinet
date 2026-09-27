@@ -135,7 +135,9 @@ export function uploadWithProgress<T>(
         reject(new ApiError(UNKNOWN_ERROR_MESSAGE, xhr.status, 'unknown'));
         return;
       }
-      reject(errorFromEnvelope(envelope, xhr.status));
+      reject(
+        errorFromEnvelope(envelope, xhr.status, xhr.getResponseHeader('Retry-After')),
+      );
     };
 
     xhr.send(body);

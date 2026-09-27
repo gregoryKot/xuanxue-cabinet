@@ -2,35 +2,28 @@
 // ним, статус справа (ТЗ 4.3 «Список», макет 2b-exams.html, docs/adr/0043).
 // Список экзаменов теперь одна карточка (обёртка — ExamsScreen.tsx), поэтому
 // строка не несёт свой фон, радиус и тень: только паддинг и волосяная линия
-// снизу; у последней строки линии нет — тот же приём, что у журнала рассылок
-// (broadcasts/BroadcastCard.tsx) и всех остальных списков кабинета:
-// exam-items/ExamItemCard.tsx, channels/ChannelCard.tsx,
-// grading/GradingQueueCard.tsx. components/listCardStyles.ts (listCardStyle)
-// сюда больше не подходит — своя карточка на строку осталась только у
-// schedule/SlotCard.tsx, где строка стоит в сетке недели, а не в общем списке,
-// и собственный `gap` колонки дня швов не даёт.
+// снизу (components/SelectableListRow.tsx); у последней строки линии нет —
+// тот же приём, что у журнала рассылок (broadcasts/BroadcastCard.tsx) и всех
+// остальных списков кабинета: exam-items/ExamItemCard.tsx,
+// channels/ChannelCard.tsx, grading/GradingQueueCard.tsx.
+// components/listCardStyles.ts (listCardStyle) сюда больше не подходит — своя
+// карточка на строку осталась только у schedule/SlotCard.tsx, где строка
+// стоит в сетке недели, а не в общем списке, и собственный `gap` колонки дня
+// швов не даёт.
+// `selection` — режим массового удаления (ADR-0141): строка отмечается, а не
+// открывает экзамен; ряд рисует общая механика SelectableListRow.
 import type { CSSProperties } from 'react';
 import type { ExamDto } from '@xuanxue/shared';
+import {
+  SelectableListRow,
+  type SelectableListRowSelection,
+} from '../components/SelectableListRow';
 import {
   DRAFT_PUBLISHED_ARCHIVED_LABELS_RU,
   DRAFT_PUBLISHED_ARCHIVED_STATUS_COLOR,
 } from '../lib/statusTransitions';
 import { formatExamListMeta } from './examCounts';
 
-// `<button>` приносит свою рамку и фон — без явного сброса строка выглядела
-// бы обведённой поверх общей карточки списка (тот же баг, что и до ADR-0031,
-// снимок редактора 2026-09-15, components/listCardStyles.ts).
-const rowButtonStyle: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  minHeight: 44,
-  padding: '16px 20px',
-  border: 'none',
-  background: 'transparent',
-  font: 'inherit',
-  textAlign: 'left',
-  cursor: 'pointer',
-};
 const rowContentStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'flex-start',
@@ -49,27 +42,27 @@ interface ExamCardProps {
    * (ExamsScreen.tsx, docs/adr/0043): иначе под линией остаётся голая
    * полоска фона (тот же приём, что у BroadcastCard.tsx). */
   isLast?: boolean;
+  /** Задан — строка в режиме массового выбора (ADR-0141, BulkDeleteBar.tsx). */
+  selection?: SelectableListRowSelection;
 }
 
-export function ExamCard({ exam, onSelect, isLast = false }: ExamCardProps) {
+export function ExamCard({ exam, onSelect, isLast = false, selection }: ExamCardProps) {
   return (
-    <li style={{ borderBottom: isLast ? 'none' : '1px solid var(--panel)' }}>
-      <button type="button" style={rowButtonStyle} onClick={onSelect}>
-        <div style={rowContentStyle}>
-          <div style={infoStyle}>
-            <div style={titleStyle}>{exam.title}</div>
-            <div style={metaStyle}>{formatExamListMeta(exam)}</div>
-          </div>
-          <span
-            style={{
-              ...statusStyle,
-              color: DRAFT_PUBLISHED_ARCHIVED_STATUS_COLOR[exam.status],
-            }}
-          >
-            {DRAFT_PUBLISHED_ARCHIVED_LABELS_RU[exam.status]}
-          </span>
+    <SelectableListRow onOpen={onSelect} isLast={isLast} selection={selection}>
+      <div style={rowContentStyle}>
+        <div style={infoStyle}>
+          <div style={titleStyle}>{exam.title}</div>
+          <div style={metaStyle}>{formatExamListMeta(exam)}</div>
         </div>
-      </button>
-    </li>
+        <span
+          style={{
+            ...statusStyle,
+            color: DRAFT_PUBLISHED_ARCHIVED_STATUS_COLOR[exam.status],
+          }}
+        >
+          {DRAFT_PUBLISHED_ARCHIVED_LABELS_RU[exam.status]}
+        </span>
+      </div>
+    </SelectableListRow>
   );
 }

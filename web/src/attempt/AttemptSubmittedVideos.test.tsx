@@ -47,6 +47,8 @@ function makeVideo(overrides: Partial<AttemptVideoControls> = {}): AttemptVideoC
     acceptsAnswers: true,
     addMediaLink: vi.fn().mockResolvedValue(true),
     linkStateFor: () => ({ pending: false, error: null }),
+    fileUploadEnabled: false,
+    applyMedia: vi.fn(),
     ...overrides,
   };
 }

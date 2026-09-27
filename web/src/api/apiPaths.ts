@@ -67,11 +67,10 @@ export function examImageSrc(imageId: string): string {
 
 /** Пустой статус — «Все» (тот же приём, что раньше жил в useExamItems.ts). */
 export function examItemsListPath(status: ExamItemStatus | ''): string {
-  const limit = `limit=${LIST_LIMIT_MAX}`;
-  return status
-    ? `${EXAM_ITEMS_PATH}?${limit}&status=${status}`
-    : `${EXAM_ITEMS_PATH}?${limit}`;
+  return `${EXAM_ITEMS_PATH}?limit=${LIST_LIMIT_MAX}${status ? `&status=${status}` : ''}`;
 }
+/** Редактор и предпросмотр экзамена — с удалёнными из списка вопросов (ADR-0140). */
+export const EXAM_EDITOR_ITEMS_PATH = `${examItemsListPath('')}&includeDeleted=true`;
 
 const ATTEMPTS_PATH = '/attempts';
 export const GRADING_QUEUE_PATH = `${ATTEMPTS_PATH}?status=submitted&limit=${LIST_LIMIT_MAX}`;
