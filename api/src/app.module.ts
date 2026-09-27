@@ -17,6 +17,7 @@ import { ClassesModule } from './classes/classes.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
+import { AppErrorsModule } from './app-errors/app-errors.module';
 import { ClientErrorsModule } from './client-errors/client-errors.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
@@ -81,6 +82,9 @@ import { staticAssetsOptions } from './static/static-cache-control';
     DeliveriesModule,
     ExamsModule,
     ExamImagesModule,
+    // Раньше ClientErrorsModule — журнал сбоев (APP_ERROR_JOURNAL) нужен и
+    // ему, и DomainExceptionFilter ниже (providers этого модуля).
+    AppErrorsModule,
     ClientErrorsModule,
     GradingPresetsModule,
     MaterialsModule,

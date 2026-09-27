@@ -152,7 +152,11 @@ describe('matchRoute', () => {
 describe('ROUTE_MODULES', () => {
   it('экраны входа не греются в фоне — вошедшему они не нужны', () => {
     const notWarmed = routes.filter((route) => !route.warm).map((route) => route.path);
+    // «/dev/errors» — тоже не греется, но по другой причине (комментарий в
+    // routeModules.ts): чужая роль сюда не заходит вовсе, прогревать чанк
+    // для каждого штата незачем.
     expect(notWarmed.sort()).toEqual([
+      '/dev/errors',
       '/email/confirm',
       '/join/:code',
       '/login',
