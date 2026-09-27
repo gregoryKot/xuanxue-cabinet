@@ -22,7 +22,7 @@ const rowStyle: CSSProperties = {
 // горизонтальный скролл (CLAUDE.md «Мобильный экран первым»).
 const titleColumnStyle: CSSProperties = { minWidth: 0, overflowWrap: 'anywhere' };
 const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
-// Материал без ссылки (ADR-0133: библиотека держит материалы с файлом и без
+// Материал без ссылки (ADR-0134: библиотека держит материалы с файлом и без
 // адреса) — название остаётся обычным текстом, цвет тот же, что у ссылки,
 // линии снизу нет: у неё нет цели, «Скачать файл» в этой строке решает
 // другой, уже открытый PR.
@@ -56,7 +56,7 @@ export function LessonMaterialRow({
         <div style={metaStyle}>{meta}</div>
         {/* Плеер у материала-видео (ADR-0100) — решает адрес, не вид;
             комментарий в student/StudentMaterialCardActions.tsx. Без ссылки
-            (ADR-0133) встраивать нечего — не рендерим вовсе. */}
+            (ADR-0134) встраивать нечего — не рендерим вовсе. */}
         {material.url && <VideoEmbed url={material.url} title={material.title} />}
       </div>
       <TextLinkButton onClick={onAction}>{actionLabel}</TextLinkButton>

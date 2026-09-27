@@ -1,4 +1,4 @@
-// Проверки StudentMaterialCardActions на материал без ссылки (ADR-0133) —
+// Проверки StudentMaterialCardActions на материал без ссылки (ADR-0134) —
 // отдельным файлом, не в StudentMaterialCard.test.tsx: тот уже 192 строки,
 // а check-file-size-ratchet.mjs выше 150 не даёт файлу расти дальше
 // (CLAUDE.md «файл до 150 строк растёт свободно; выше — только уменьшается»).
@@ -19,7 +19,7 @@ function makeMaterial(overrides: Partial<MyMaterialDto> = {}): MyMaterialDto {
   };
 }
 
-describe('StudentMaterialCardActions — материал без ссылки (ADR-0133)', () => {
+describe('StudentMaterialCardActions — материал без ссылки (ADR-0134)', () => {
   it('только файл — «Открыть» нет, «Скачать файл» есть, плеера нет', () => {
     render(
       <StudentMaterialCardActions

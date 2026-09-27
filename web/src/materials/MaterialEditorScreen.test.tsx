@@ -367,10 +367,10 @@ describe('MaterialEditorScreen — удаление', () => {
   });
 });
 
-// Слой 3.10 (ADR-0057/ADR-0133): поле файла рисуется, когда хранилище
+// Слой 3.10 (ADR-0057/ADR-0134): поле файла рисуется, когда хранилище
 // подключено (fileStorageEnabled) — у сохранённого материала это
 // MaterialFileField (грузит сразу), у нового NewMaterialFileField (файл
-// уходит вместе с созданием, ADR-0133; свой экранный тест —
+// уходит вместе с созданием, ADR-0134; свой экранный тест —
 // MaterialEditorScreen.newFile.test.tsx). Нет ключей R2 — поля нет вовсе, а
 // не кнопка, которая ответит 503.
 describe('MaterialEditorScreen — поле файла (ADR-0057)', () => {
@@ -441,7 +441,7 @@ describe('MaterialEditorScreen — поле файла (ADR-0057)', () => {
     expect(screen.getByText('2,0 МБ')).toBeInTheDocument();
   });
 
-  // ADR-0133: у нового материала поле файла есть тоже, но без сети — файл
+  // ADR-0134: у нового материала поле файла есть тоже, но без сети — файл
   // уходит вместе с созданием («Сохранить»), не отдельным запросом отсюда;
   // сценарий создания с файлом — MaterialEditorScreen.newFile.test.tsx.
   it('fileStorageEnabled: true, новый материал (/materials/new) — поле файла без «Скачать»', async () => {

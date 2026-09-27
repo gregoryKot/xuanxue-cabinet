@@ -1,4 +1,4 @@
-// Создание материала одним файлом, без ссылки (ADR-0133) — отдельным файлом
+// Создание материала одним файлом, без ссылки (ADR-0134) — отдельным файлом
 // от MaterialEditorScreen.test.tsx (454 строк, храповик размера файл больше
 // не растит). Два запроса одним «Сохранить»: POST /materials без `url`,
 // затем POST /materials/:id/file по id из ответа.
@@ -74,7 +74,7 @@ async function fillTitleAndFile(file: File) {
   await userEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 }
 
-describe('MaterialEditorScreen — создание одним файлом, без ссылки (ADR-0133)', () => {
+describe('MaterialEditorScreen — создание одним файлом, без ссылки (ADR-0134)', () => {
   it('POST без url, затем загрузка файла по id материала, возврат к списку', async () => {
     const created = makeMaterial();
     mockApiByPath({
@@ -139,7 +139,7 @@ describe('MaterialEditorScreen — создание одним файлом, б�
     );
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
     // Страница стала страницей созданного материала — есть чем его удалить,
-    // второе «Сохранить» его правит, а не заводит дубль (ADR-0133). POST'а
+    // второе «Сохранить» его правит, а не заводит дубль (ADR-0134). POST'а
     // ровно два: создание материала и неудавшаяся попытка загрузить файл —
     // второго вызова «создать материал» нет.
     expect(screen.getByRole('button', { name: 'Удалить материал' })).toBeInTheDocument();
@@ -172,7 +172,7 @@ describe('MaterialEditorScreen — создание одним файлом, б�
     await userEvent.upload(screen.getByLabelText('Добавить файл'), pdf);
 
     // Страница осталась на /materials/new — перечитать материал по маршруту
-    // нечем, свежее состояние приходит ответом записи (ADR-0133).
+    // нечем, свежее состояние приходит ответом записи (ADR-0134).
     expect(await screen.findByText('Методичка.pdf')).toBeInTheDocument();
     expect(callsWithMethod('GET')).toHaveLength(0);
   });

@@ -5,7 +5,7 @@
 // сборки тела запроса — в materialFormInput.ts (тестируется без React).
 //
 // Объект-аргумент, не четыре позиционных параметра (CLAUDE.md «параметров
-// больше трёх — объект»): `file` — контекст для валидации ссылки (ADR-0133,
+// больше трёх — объект»): `file` — контекст для валидации ссылки (ADR-0134,
 // materialFormInput.ts).
 import type {
   CreateMaterialInput,
@@ -37,9 +37,9 @@ export interface UseMaterialFormArgs {
   material: MaterialDto | null;
   /** Есть ли у материала файл (или выбран в форме) и умеет ли экран его
    * прикладывать — решает, обязательна ли ссылка, и как об этом сказать
-   * (materialFormInput.ts, ADR-0133). */
+   * (materialFormInput.ts, ADR-0134). */
   file: MaterialFormFileContext;
-  /** Возвращает созданный материал (`useEntityEditor.create`, ADR-0133) — у
+  /** Возвращает созданный материал (`useEntityEditor.create`, ADR-0134) — у
    * материала это `useNewMaterialFile.ts`, который следом отправляет файл по
    * id из ответа; `useEntityForm` результат не читает. */
   onCreate: (input: CreateMaterialInput) => Promise<MaterialDto>;

@@ -1,5 +1,5 @@
 // LessonMaterialsService.findByLessonIds — тот же отбор «есть чем открыть»
-// (STUDENT_OPENABLE_FILTER, ADR-0133), что у MaterialsService.listForStudent,
+// (STUDENT_OPENABLE_FILTER, ADR-0134), что у MaterialsService.listForStudent,
 // применённый в архиве занятий ученика. Отдельный файл, не
 // lesson-materials.service.spec.ts: новый класс поведения новым файлом, тот
 // же приём, что у materials-without-url.service.spec.ts рядом. Материалы
@@ -16,7 +16,7 @@ import { MaterialsService } from './materials.service';
 
 const AUTHOR_ID = new Types.ObjectId().toString();
 
-describe('LessonMaterialsService: материал без url (ADR-0133)', () => {
+describe('LessonMaterialsService: материал без url (ADR-0134)', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let model: Model<MaterialRecord>;

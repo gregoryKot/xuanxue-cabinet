@@ -29,7 +29,7 @@ export function decryptMaterial(doc: RawLeanMaterial): RawLeanMaterial {
  * объекта (`fileKey`) наружу не уходит: по нему файл и скачивается, а право
  * на скачивание проверяем мы. `undefined`, пока файла нет — тогда ключа
  * `file` в JSON не будет вовсе, как у `url`, когда у материала нет ссылки
- * (ADR-0133). */
+ * (ADR-0134). */
 function toMaterialFileDto(doc: RawLeanMaterial): MaterialFileDto | undefined {
   const { fileKey, fileName, fileContentType, fileSizeBytes, fileUploadedAt } = doc;
   if (!fileKey || !fileName || !fileContentType || !fileUploadedAt) return undefined;
@@ -48,7 +48,7 @@ function fileEntry(doc: RawLeanMaterial): { file?: MaterialFileDto } {
   return file ? { file } : {};
 }
 
-/** Ссылки может не быть (ADR-0133): у документа без `url` в базе нет и
+/** Ссылки может не быть (ADR-0134): у документа без `url` в базе нет и
  * этого поля вовсе (material.schema.ts). Здесь та же мысль в ответе — не
  * `url: undefined` (JSON.stringify всё равно съел бы ключ, но
  * `expect(dto).not.toHaveProperty('url')` должен быть верен буквально, не
@@ -80,7 +80,7 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
  * `access`, ни служебных дат. Вызывающая сторона (MaterialsService,
  * LessonMaterialsService) уже отсекла материалы, скрытые от ученика
  * (`isMaterialHiddenFromStudent`, ADR-0058) и материалы, которые нечем
- * открыть (`STUDENT_OPENABLE_FILTER`, materials.queries.ts, ADR-0133) — этот
+ * открыть (`STUDENT_OPENABLE_FILTER`, materials.queries.ts, ADR-0134) — этот
  * маппер зовут только для материала, у которого есть хотя бы ссылка или
  * файл, но не обязательно оба сразу (ADR-0096, отменяет ADR-0048: признака
  * `locked` в контракте больше нет).

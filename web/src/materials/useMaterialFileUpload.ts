@@ -1,7 +1,7 @@
 // Загрузка/замена/удаление файла УЖЕ СОЗДАННОГО материала (ADR-0057, слой
 // 3.10) — хук держит только состояние (pending, error); сама проверка файла
 // и запрос загрузки — общие с useNewMaterialFile.ts функции
-// materialFileUpload.ts (ADR-0133: там файл проверяют и отправляют для
+// materialFileUpload.ts (ADR-0134: там файл проверяют и отправляют для
 // материала, у которого до этого id ещё не было).
 import { useState } from 'react';
 import type { MaterialDto } from '@xuanxue/shared';

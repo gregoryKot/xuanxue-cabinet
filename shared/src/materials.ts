@@ -7,7 +7,7 @@
 // отменяет ADR-0048): материалы открыты тому, кто в школе, кроме служебных —
 // они видны только штату (ADR-0058).
 //
-// Ссылка необязательна, если у материала есть файл (ADR-0133, уточняет
+// Ссылка необязательна, если у материала есть файл (ADR-0134, уточняет
 // ADR-0057 и ADR-0047): учитель с одним PDF больше не придумывает адрес.
 // Открыть есть чем всегда — ученику едет только материал со ссылкой или с
 // файлом (`STUDENT_OPENABLE_FILTER`, MaterialsService.listForStudent).
@@ -47,7 +47,7 @@ export const MATERIAL_ACCESS_LABELS: Record<MaterialAccess, string> = {
 export interface MaterialDto {
   id: string;
   title: string;
-  /** Нет ключа — ссылки нет вовсе, открывают файлом (ADR-0133). */
+  /** Нет ключа — ссылки нет вовсе, открывают файлом (ADR-0134). */
   url?: string;
   kind: MaterialKind;
   classIds: string[];
@@ -67,7 +67,7 @@ export interface MaterialDto {
 
 export interface CreateMaterialInput {
   title: string;
-  /** Необязательна (ADR-0133): материал заводят и с одним файлом; пустую
+  /** Необязательна (ADR-0134): материал заводят и с одним файлом; пустую
    * строку не кладут — поля просто нет. */
   url?: string;
   kind: MaterialKind;
@@ -79,7 +79,7 @@ export interface CreateMaterialInput {
 
 export interface UpdateMaterialInput {
   title?: string;
-  /** `null` — «убрать ссылку» (ADR-0133), приёмом nullable-полей занятия, а
+  /** `null` — «убрать ссылку» (ADR-0134), приёмом nullable-полей занятия, а
    * не пустой строкой: та доехала бы до базы значением и в ответе выглядела
    * бы ссылкой, которой нет. Поля нет — «не трогать». */
   url?: string | null;
@@ -109,7 +109,7 @@ export interface ListMaterialsQuery {
  * `access`, ни служебных дат: не его данные, ему нужно только то, что можно
  * открыть (CLAUDE.md «API»). Служебный материал ему не приходит вовсе
  * (ADR-0058), признака `locked` в контракте нет (ADR-0096). Открыть есть чем
- * всегда: ссылка, файл или и то и другое (ADR-0133) — материал без того и
+ * всегда: ссылка, файл или и то и другое (ADR-0134) — материал без того и
  * другого отсекает запрос (listForStudent), а не карточка. */
 export interface MyMaterialDto {
   id: string;
@@ -122,7 +122,7 @@ export interface MyMaterialDto {
   /** Теги видит и ученик (ADR-0058) — рубрикация нужна прежде всего тому,
    * кто ищет своё, прятать её от него незачем. */
   tags: string[];
-  /** Ссылка, если она есть (ADR-0133) — иначе у материала есть файл. */
+  /** Ссылка, если она есть (ADR-0134) — иначе у материала есть файл. */
   url?: string;
   /** Файл в хранилище (ADR-0057) — тем же смыслом, что `MaterialDto.file`. */
   file?: MaterialFileDto;

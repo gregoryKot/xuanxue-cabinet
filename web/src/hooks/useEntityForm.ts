@@ -38,7 +38,7 @@ export interface UseEntityFormConfig<
    * вовсе — общий спред пришлось бы приводить типом. Нет поля — нет и смены
    * статуса (`TStatus` тогда `never`, и `changeStatus` недостижим). */
   toStatusInput?: (state: TFormState, status: TStatus) => TUpdateInput;
-  onCreate: (input: TCreateInput) => Promise<unknown>; // ADR-0133: материалу нужна созданная запись
+  onCreate: (input: TCreateInput) => Promise<unknown>; // ADR-0134: материалу нужна созданная запись
   onUpdate: (id: string, input: TUpdateInput) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
   saveErrorMessage: string;

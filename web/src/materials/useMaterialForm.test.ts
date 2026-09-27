@@ -1,7 +1,7 @@
 // Оркестрация страницы материала — по образцу channels/useChannelForm.test.ts.
 // Механика submit/remove/ошибки — общий hooks/useValidatedEntityForm.ts,
 // здесь проверяется только конфигурация под домен материала. Контекст файла
-// (ADR-0133) в этих тестах — «файла нет», подробности про необязательную
+// (ADR-0134) в этих тестах — «файла нет», подробности про необязательную
 // ссылку и созданный при сбое материал — в useNewMaterialFile.test.ts и
 // materialFormInput.file.test.ts.
 import { act, renderHook } from '@testing-library/react';
@@ -164,7 +164,7 @@ describe('useMaterialForm — remove()', () => {
   });
 });
 
-describe('useMaterialForm — контекст файла (ADR-0133)', () => {
+describe('useMaterialForm — контекст файла (ADR-0134)', () => {
   it('hasFile: true — пустая ссылка не мешает создать материал', async () => {
     const onCreate = vi.fn().mockResolvedValue(makeMaterial());
     const { result } = renderHook(() =>

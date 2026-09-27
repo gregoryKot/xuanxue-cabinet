@@ -1,6 +1,6 @@
 // Юнит-тест buildMaterialUpdateCommand — чистая логика без Mongo и без DI
 // (CLAUDE.md «Тесты»). Отдельный файл, не materials.service.spec.ts: логика
-// вынесена в свой модуль (materials.update.ts) вместе с изменениями ADR-0133,
+// вынесена в свой модуль (materials.update.ts) вместе с изменениями ADR-0134,
 // а materials.service.spec.ts (623 строки) храповик размера файла запрещает
 // пополнять — новый файл его не растит. `title`/`url` в `$set` — шифротекст
 // (MATERIAL_ENCRYPT_SCHEMA, ENCRYPTION_KEY из test/jest.setup.ts), поэтому
@@ -21,7 +21,7 @@ describe('buildMaterialUpdateCommand', () => {
     expect(command.$unset).toBeUndefined();
   });
 
-  // ADR-0133: `url: null` — явный сброс ссылки, материал остаётся с файлом.
+  // ADR-0134: `url: null` — явный сброс ссылки, материал остаётся с файлом.
   it('url: null — уходит в $unset, а не в $set', () => {
     const command = buildMaterialUpdateCommand({ url: null });
 

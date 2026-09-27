@@ -5,7 +5,7 @@
 // стоит у картинки варианта ответа (ADR-0035), и двух реализаций одного
 // ввода в разных файлах быть не должно (CLAUDE.md «Одна механика — один
 // компонент»). Подписи, стили и каркас — общие с полем ещё не созданного
-// материала (NewMaterialFileField.tsx, ADR-0133) в materialFileFieldParts.tsx.
+// материала (NewMaterialFileField.tsx, ADR-0134) в materialFileFieldParts.tsx.
 import type { MaterialDto, MaterialFileDto } from '@xuanxue/shared';
 import { FilePickerButton } from '../components/FilePickerButton';
 import { TextLinkButton } from '../components/TextLinkButton';
@@ -32,7 +32,7 @@ interface MaterialFileFieldProps {
    * получает свежий MaterialDto из ответа записи (CLAUDE.md «API»: свежее
    * состояние из ответа, не отдельным GET), а не просто сигнал «перечитай».
    * Нужно и странице материала по маршруту, и восстановленной после сбоя
-   * загрузки странице нового материала (MaterialEditorForm.tsx, ADR-0133) —
+   * загрузки странице нового материала (MaterialEditorForm.tsx, ADR-0134) —
    * у неё маршрута с id нет, перечитать по нему нечем. */
   onChanged: (updated: MaterialDto) => void;
 }

@@ -23,7 +23,7 @@ interface MaterialFormFieldsProps {
   ) => void;
   error: MaterialFormError | null;
   classes: ClassDto[];
-  /** Прокинуто в MaterialBasicFields.tsx как есть (ADR-0133) — знание «когда
+  /** Прокинуто в MaterialBasicFields.tsx как есть (ADR-0134) — знание «когда
    * ссылка необязательна, скажи об этом» держит один файл, не двоится. */
   urlOptional?: boolean;
 }

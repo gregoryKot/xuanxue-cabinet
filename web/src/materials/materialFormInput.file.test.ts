@@ -1,4 +1,4 @@
-// Ссылка необязательна, если у материала есть файл (ADR-0133) — отдельным
+// Ссылка необязательна, если у материала есть файл (ADR-0134) — отдельным
 // файлом, не в materialFormInput.test.ts: тот уже 170 строк, а
 // check-file-size-ratchet.mjs выше 150 строк файл только уменьшает.
 import { describe, expect, it } from 'vitest';
@@ -22,7 +22,7 @@ function makeState(overrides: Partial<MaterialFormState> = {}): MaterialFormStat
   };
 }
 
-describe('validateMaterialForm — контекст файла (ADR-0133)', () => {
+describe('validateMaterialForm — контекст файла (ADR-0134)', () => {
   it('без второго аргумента — прежнее поведение: пустая ссылка не проходит', () => {
     expect(validateMaterialForm(makeState())).toEqual({
       field: 'url',
@@ -72,7 +72,7 @@ describe('validateMaterialForm — контекст файла (ADR-0133)', () =
   });
 });
 
-describe('initialMaterialFormState — материал без ссылки (ADR-0133)', () => {
+describe('initialMaterialFormState — материал без ссылки (ADR-0134)', () => {
   it('нет ключа url — состояние формы получает пустую строку', () => {
     const state = initialMaterialFormState({
       id: 'm1',
@@ -90,7 +90,7 @@ describe('initialMaterialFormState — материал без ссылки (ADR
   });
 });
 
-describe('toCreateInput / toUpdateInput — ссылка (ADR-0133)', () => {
+describe('toCreateInput / toUpdateInput — ссылка (ADR-0134)', () => {
   it('пустое поле ссылки — ключа url в теле создания нет вовсе', () => {
     const input = toCreateInput(makeState({ url: '  ' }));
     expect('url' in input).toBe(false);

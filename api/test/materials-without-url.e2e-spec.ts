@@ -1,4 +1,4 @@
-// e2e: материал без ссылки (ADR-0133, уточняет ADR-0057 и ADR-0047) —
+// e2e: материал без ссылки (ADR-0134, уточняет ADR-0057 и ADR-0047) —
 // отдельный файл от materials.e2e-spec.ts (184 строки, храповик размера
 // файла запрещает пополнять уже отслеживаемый файл), тот же приём, что у
 // materials-tags.e2e-spec.ts рядом. Настоящий AppModule на MongoMemoryServer.
@@ -17,7 +17,7 @@ const BODY_WITH_URL = {
   kind: 'book',
 };
 
-describe('Материал без ссылки (e2e, ADR-0133)', () => {
+describe('Материал без ссылки (e2e, ADR-0134)', () => {
   let testApp: TestApp;
 
   beforeAll(async () => {

@@ -14,7 +14,7 @@ import { MATERIAL_ENCRYPT_SCHEMA } from './material.schema';
 /** `$set`/`$unset` и шифрование секретов из тела PATCH. `tags` нормализуется
  * отдельно от `splitUpdate`, только если поле прислали — иначе PATCH без
  * тегов затёр бы прежние пустым массивом (тот же принцип, что у
- * lessons.update.ts). `url: null` (ADR-0133) — единственное значение
+ * lessons.update.ts). `url: null` (ADR-0134) — единственное значение
  * `NULLABLE_MATERIAL_FIELDS`, уходит в `$unset`: материал остаётся с файлом,
  * если он у него есть. */
 export function buildMaterialUpdateCommand(input: UpdateMaterialInput): UpdateCommand {

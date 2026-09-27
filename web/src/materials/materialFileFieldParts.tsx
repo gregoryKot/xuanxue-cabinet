@@ -1,6 +1,6 @@
 // Общие подписи, `accept`, стили и каркас двух полей файла материала —
 // сохранённого (MaterialFileField.tsx) и ещё не созданного
-// (NewMaterialFileField.tsx, ADR-0133) — чтобы порядок действий и вид не
+// (NewMaterialFileField.tsx, ADR-0134) — чтобы порядок действий и вид не
 // разъезжались по двум копиям (CLAUDE.md «Одна механика — один компонент»,
 // jscpd: без общего каркаса блоки «файла нет»/ошибки совпадали дословно).
 import type { CSSProperties, ReactNode } from 'react';

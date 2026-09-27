@@ -1,4 +1,4 @@
-// Проверки LessonMaterialRow на материал без ссылки (ADR-0133) — отдельным
+// Проверки LessonMaterialRow на материал без ссылки (ADR-0134) — отдельным
 // файлом, не в LessonMaterialsSection.test.tsx: тот уже 357 строк, а
 // check-file-size-ratchet.mjs выше 150 не даёт файлу расти дальше
 // (CLAUDE.md «файл до 150 строк растёт свободно; выше — только уменьшается»).
@@ -23,7 +23,7 @@ function makeMaterial(overrides: Partial<MaterialDto> = {}): MaterialDto {
   };
 }
 
-describe('LessonMaterialRow — материал без ссылки (ADR-0133)', () => {
+describe('LessonMaterialRow — материал без ссылки (ADR-0134)', () => {
   it('название — обычный текст, не ссылка; подпись и кнопка действия на месте', () => {
     render(
       <LessonMaterialRow

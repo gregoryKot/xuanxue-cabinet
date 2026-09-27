@@ -1,4 +1,4 @@
-// Файл ещё не созданного материала (ADR-0133) — сети здесь нет вовсе, все
+// Файл ещё не созданного материала (ADR-0134) — сети здесь нет вовсе, все
 // обработчики стоят снаружи (useNewMaterialFile.ts), проверяем только вид.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

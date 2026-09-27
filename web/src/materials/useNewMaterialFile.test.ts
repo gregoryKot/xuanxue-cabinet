@@ -1,4 +1,4 @@
-// Файл у ещё не созданного материала (ADR-0133) — `uploadMaterialFile`
+// Файл у ещё не созданного материала (ADR-0134) — `uploadMaterialFile`
 // мокается (сеть), `checkMaterialFile` остаётся настоящим: негодный формат
 // должен ловиться той же логикой, что видит пользователь.
 import { act, renderHook } from '@testing-library/react';

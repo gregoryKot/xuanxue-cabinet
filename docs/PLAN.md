@@ -2048,7 +2048,7 @@ DTO с `class-validator`, типы в `shared/src/materials.ts`, маппер `t
 ученика нет ни `createdBy`, ни `access`, ни служебных дат.
 
 **Ссылка необязательна, если у материала есть файл** — изменено 2026-09-27,
-[ADR-0133](adr/0133-material-exists-without-a-link-if-it-has-a-file.md), уточняет
+[ADR-0134](adr/0134-material-exists-without-a-link-if-it-has-a-file.md), уточняет
 ADR-0057 и ADR-0047. Пока материал по определению был ссылкой, `url` был обязателен
 везде, и учитель с одной методичкой PDF придумывал адрес при том, что файл уже лежал в
 хранилище. Теперь ключа `url` в ответе нет вовсе, когда ссылки нет; `PATCH` с
@@ -2418,7 +2418,7 @@ vitest на хук (пустая сводка, сбой запроса, поря
   `web/src/student/StudentLessonsScreen.test.tsx`.
 - Материал своей даты приехал в архив, материал соседней — нет; материал, привязанный к
   двум датам, виден у обеих; `staff`-материал ученику не приходит вовсе, как и материал,
-  у которого нет ни ссылки, ни файла (ADR-0133). —
+  у которого нет ни ссылки, ни файла (ADR-0134). —
   `api/src/materials/lesson-materials.service.spec.ts`,
   `api/src/lessons/my-lessons-archive.service.spec.ts`,
   `api/src/lessons/my-archived-lesson.mapper.spec.ts`,

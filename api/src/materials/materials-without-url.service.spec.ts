@@ -1,4 +1,4 @@
-// Материал без ссылки, но с файлом (ADR-0133, уточняет ADR-0057 и ADR-0047) —
+// Материал без ссылки, но с файлом (ADR-0134, уточняет ADR-0057 и ADR-0047) —
 // против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»). Отдельный файл, не materials.service.spec.ts: тот файл (623
 // строки) храповик размера запрещает пополнять — новый класс поведения едет
@@ -13,7 +13,7 @@ import { ClassRecord, ClassSchema } from '../classes/class.schema';
 
 const AUTHOR_ID = new Types.ObjectId().toString();
 
-describe('MaterialsService: материал без url (ADR-0133)', () => {
+describe('MaterialsService: материал без url (ADR-0134)', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let model: Model<MaterialRecord>;
