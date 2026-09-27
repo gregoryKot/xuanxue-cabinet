@@ -18,6 +18,7 @@ import type {
   ExamGradingDto,
   ExamImageContentType,
   ExamItemDto,
+  ExamVideoContentType,
   MyExamDto,
   PutGradingInput,
 } from '@xuanxue/shared';
@@ -29,6 +30,15 @@ import type { UserLean } from '../users/users.service';
 export interface BotOptionImage {
   bytes: Buffer;
   contentType: ExamImageContentType;
+  telegramFileId?: string;
+}
+
+/** Видео вопроса/варианта для отправки в бот (2026-09-27, «Уточнено»
+ * ADR-0133) — тот же смысл, что BotOptionImage, `telegramFileId` кэширует
+ * повторную отправку. */
+export interface BotOptionVideo {
+  bytes: Buffer;
+  contentType: ExamVideoContentType;
   telegramFileId?: string;
 }
 
@@ -61,6 +71,18 @@ export interface ExamBotPort {
   /** Кэш `file_id` после удачной отправки (см. BotOptionImage) — следующий
    * показ вопроса шлёт файл строкой, не байтами. */
   rememberTelegramFileId(imageId: string, fileId: string): Promise<void>;
+  /** `null` — видео нет, оно не из снимка ЭТОЙ попытки, R2 выключен или
+   * объект пропал (SECURITY §3 и деградация показа, тот же приём, что
+   * loadOptionImage: экран вопроса выходит в любом случае, ADR-0133
+   * «Уточнено» 2026-09-27). */
+  loadOptionVideo(
+    videoId: string,
+    user: UserLean,
+    now: DateTime,
+  ): Promise<BotOptionVideo | null>;
+  /** Кэш `file_id` видео — тот же смысл, что rememberTelegramFileId у
+   * картинки. */
+  rememberVideoFileId(videoId: string, fileId: string): Promise<void>;
   /** Учитель заводит вопрос в боте (ТЗ 4б.3, ADR-0024) — тот же
    * ExamItemsService.create(), что и кабинет; валидация формулировки,
    * вариантов и верного ответа — целиком в нём, бот своей не добавляет.

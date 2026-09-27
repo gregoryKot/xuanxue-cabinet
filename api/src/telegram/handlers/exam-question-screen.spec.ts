@@ -137,19 +137,22 @@ describe('buildQuestionScreen', () => {
     expect(view.buttons.slice(0, 2).map((row) => row[0]?.text)).toEqual(['Три', 'Пять']);
   });
 
-  // ADR-0133: ссылку на видео вопроса бот показывает прямо в тексте.
-  it('videoUrl вопроса — ссылка в тексте экрана', () => {
+  // 2026-09-27, «Уточнено» ADR-0133: бот сам присылает ролик/ссылку отдельным
+  // сообщением (exam-question-video-send.ts) перед этим экраном — текст
+  // вопроса больше не повторяет ссылку и не пишет заранее «видео в
+  // кабинете» (это была бы та же мысль дважды). Отметку добавляет
+  // presentAttemptScreen (exam-question-render.ts), только когда показать
+  // клип не удалось.
+  it('videoUrl вопроса — в тексте экрана ссылки нет (её шлёт отдельное сообщение)', () => {
     const q = question({ videoUrl: 'https://youtu.be/dQw4w9WgXcQ' });
     const view = buildQuestionScreen(attempt([q]), 0);
-    expect(view.text).toContain('https://youtu.be/dQw4w9WgXcQ');
+    expect(view.text).not.toContain('https://youtu.be/dQw4w9WgXcQ');
   });
 
-  // Файл R2 бот не проигрывает (ADR-0133) — достаточно отметки, что видео
-  // есть и где искать.
-  it('videoId вопроса (файл R2) — отметка «видео в кабинете», без утечки id', () => {
+  it('videoId вопроса (файл R2) — в тексте экрана отметки нет (её ставит показ, не сборка)', () => {
     const q = question({ videoId: 'vid1' });
     const view = buildQuestionScreen(attempt([q]), 0);
-    expect(view.text).toContain('оно в кабинете');
+    expect(view.text).not.toContain('оно в кабинете');
     expect(view.text).not.toContain('vid1');
   });
 

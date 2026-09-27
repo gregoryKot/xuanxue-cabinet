@@ -18,13 +18,15 @@ export function requireR2Config(config: ConfigService): R2Config {
   return found;
 }
 
-export async function sendR2Request(
+/** Запрос к R2 и проверка статуса; ответ отдаётся целиком — бинарное тело
+ * (видео для бота, `FileStoreService.get`) строкой читать нельзя. */
+export async function fetchR2(
   logger: Logger,
   method: string,
   url: string,
   init: { headers: Record<string, string>; body?: Buffer },
   timeoutMs: number,
-): Promise<string> {
+): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(url, {
@@ -37,10 +39,21 @@ export async function sendR2Request(
     logger.error(`R2 ${method} не удался: ${errorMessage(err)}`);
     throw new NotAvailableError(FILE_STORAGE_FAILED_MESSAGE);
   }
-  const body = await res.text().catch(() => '');
   if (!res.ok) {
+    await res.text().catch(() => '');
     logger.error(`R2 ответил ${res.status} на ${method}`);
     throw new NotAvailableError(FILE_STORAGE_FAILED_MESSAGE);
   }
-  return body;
+  return res;
+}
+
+export async function sendR2Request(
+  logger: Logger,
+  method: string,
+  url: string,
+  init: { headers: Record<string, string>; body?: Buffer },
+  timeoutMs: number,
+): Promise<string> {
+  const res = await fetchR2(logger, method, url, init, timeoutMs);
+  return res.text().catch(() => '');
 }

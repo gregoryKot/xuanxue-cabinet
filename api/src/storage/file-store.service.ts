@@ -10,14 +10,15 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import { objectUrl, readR2Config, type R2Config } from './r2.config';
-import { requireR2Config, sendR2Request } from './r2-request';
+import { fetchR2, requireR2Config, sendR2Request } from './r2-request';
 import { encodeRfc3986 } from './sigv4-canonical';
 import { presignGetUrl, signRequestHeaders } from './sigv4';
 
-// Загрузка идёт с нашего инстанса и ограничена потолком размера файла,
-// который ставит вызывающий домен. Десяти секунд, как у почты
+// Загрузка и скачивание идут через наш инстанс и ограничены тем же потолком
+// размера файла, который ставит вызывающий домен. Десяти секунд, как у почты
 // (mail.service.ts), тут мало: десятки мегабайт по плохому каналу.
 const UPLOAD_TIMEOUT_MS = 60_000;
+const DOWNLOAD_TIMEOUT_MS = 60_000;
 const DELETE_TIMEOUT_MS = 10_000;
 
 export interface PutObjectInput {
@@ -84,6 +85,24 @@ export class FileStoreService {
       credentials: config.credentials,
     });
     await this.send('DELETE', url, { headers }, DELETE_TIMEOUT_MS);
+  }
+
+  /** Байты объекта на наш инстанс — видео экзамена бот шлёт в Telegram сам,
+   * подписанная ссылка ученику тут не нужна (exam-videos.service.ts). Та же
+   * подпись, что у put/remove, метод GET без тела. */
+  async get(key: string, now: DateTime): Promise<Buffer> {
+    const config = this.requireConfig();
+    const url = objectUrl(config, key);
+    const headers = signRequestHeaders({
+      method: 'GET',
+      url,
+      headers: {},
+      body: Buffer.alloc(0),
+      now,
+      credentials: config.credentials,
+    });
+    const res = await fetchR2(this.logger, 'GET', url, { headers }, DOWNLOAD_TIMEOUT_MS);
+    return Buffer.from(await res.arrayBuffer());
   }
 
   /** Ссылка живёт минуты: право проверено до её выдачи, и переслать её

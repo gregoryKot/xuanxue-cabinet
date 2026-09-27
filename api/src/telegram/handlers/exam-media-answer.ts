@@ -42,5 +42,6 @@ export async function renderExamMediaAnswer(
     { examBot, user, chatId: telegramId, attemptId },
     view,
     { via: 'reply', withAlbum: true },
+    now,
   );
 }

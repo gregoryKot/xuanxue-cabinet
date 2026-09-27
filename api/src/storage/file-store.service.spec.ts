@@ -10,8 +10,13 @@ function fakeConfig(values: Record<string, string | undefined>): ConfigService {
   return { get: (key: string) => values[key] } as unknown as ConfigService;
 }
 
-function response(ok: boolean, status = 200): Response {
-  return { ok, status, text: () => Promise.resolve('') } as unknown as Response;
+function response(ok: boolean, status = 200, bytes?: Buffer): Response {
+  return {
+    ok,
+    status,
+    text: () => Promise.resolve(''),
+    arrayBuffer: () => Promise.resolve(bytes ?? Buffer.alloc(0)),
+  } as unknown as Response;
 }
 
 const CONFIGURED = {
@@ -48,6 +53,12 @@ describe('FileStoreService без ключей R2', () => {
 
   it('signedGetUrl бросает NotAvailableError, а не отдаёт неподписанный адрес', () => {
     expect(() => service().signedGetUrl(KEY, 600, NOW)).toThrow(NotAvailableError);
+  });
+
+  it('get не ходит в сеть и бросает NotAvailableError', async () => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    await expect(service().get(KEY, NOW)).rejects.toBeInstanceOf(NotAvailableError);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -104,6 +115,35 @@ describe('FileStoreService с ключами R2', () => {
   it('ответ не 2xx — NotAvailableError, а не молчаливый успех', async () => {
     jest.spyOn(globalThis, 'fetch').mockResolvedValue(response(false, 403));
     await expect(service().remove(KEY, NOW)).rejects.toBeInstanceOf(NotAvailableError);
+  });
+
+  it('get шлёт GET без тела и отдаёт байты ответа', async () => {
+    const bytes = Buffer.from('video bytes');
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(response(true, 200, bytes));
+
+    await expect(service().get(KEY, NOW)).resolves.toEqual(bytes);
+
+    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(url).toBe(OBJECT_URL);
+    expect(init?.method).toBe('GET');
+    expect(init?.body).toBeUndefined();
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    const headers = init?.headers as Record<string, string>;
+    expect(headers.authorization).toContain(
+      `Credential=${CONFIGURED.R2_ACCESS_KEY_ID}/20260920/auto/s3/aws4_request`,
+    );
+  });
+
+  it('get: файла нет (404) — NotAvailableError, не пустые байты', async () => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(response(false, 404));
+    await expect(service().get(KEY, NOW)).rejects.toBeInstanceOf(NotAvailableError);
+  });
+
+  it('get: сеть упала — NotAvailableError', async () => {
+    jest.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNRESET'));
+    await expect(service().get(KEY, NOW)).rejects.toBeInstanceOf(NotAvailableError);
   });
 
   it('сеть упала — NotAvailableError', async () => {

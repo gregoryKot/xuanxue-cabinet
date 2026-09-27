@@ -9,7 +9,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { EXAM_VIDEO_CONTENT_TYPES } from '@xuanxue/shared';
 import type { ExamVideoContentType } from '@xuanxue/shared';
-import { plain, type FieldPolicy } from '../common/field-policy';
+import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 
 @Schema({ timestamps: true, collection: 'exam_videos' })
@@ -31,6 +31,12 @@ export class ExamVideoRecord {
   // ссылка. См. USER_REFERENCE_PATHS (user-data.registry.ts).
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
+
+  // Кэш file_id Telegram (2026-09-27, «Уточнено» ADR-0133) — после первой
+  // отправки этого видео в бот, тем же приёмом, что exam_images.telegramFileId
+  // (ADR-0035): следующий показ вопроса шлёт файл строкой, не байтами.
+  @Prop({ type: String, required: false })
+  telegramFileId?: string;
 }
 
 export const ExamVideoSchema = SchemaFactory.createForClass(ExamVideoRecord);
@@ -41,9 +47,16 @@ ExamVideoSchema.index({ createdAt: 1 });
 // `key`/`contentType` — свободного текста с персональными данными в них нет
 // (см. комментарий у `key` выше и `contentType` — перечисление); explicit
 // `plain` — решение encryption-coverage.spec.ts требует для каждого поля,
-// не только для String со свободным текстом.
+// не только для String со свободным текстом. `telegramFileId` — решение у
+// самого поля выше, шифруется тем же приёмом, что exam_images.
 export const EXAM_VIDEO_FIELD_POLICY: FieldPolicy = {
   key: plain(
     'случайный ключ объекта R2, не персональные данные — без подписанной ссылки не открыть',
   ),
+  telegramFileId: enc,
 };
+
+/** Схема шифрования — та же роль, что EXAM_IMAGE_ENCRYPT_SCHEMA
+ * (exam-image.schema.ts): читающий telegramFileId мимо неё получит
+ * шифротекст вместо file_id. */
+export const EXAM_VIDEO_ENCRYPT_SCHEMA = encryptSchemaFrom(EXAM_VIDEO_FIELD_POLICY);

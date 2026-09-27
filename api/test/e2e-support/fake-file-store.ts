@@ -41,6 +41,16 @@ export class FakeFileStore {
     return Promise.resolve();
   }
 
+  // Бот скачивает видео этим методом (2026-09-27, «Уточнено» ADR-0133) — HTTP
+  // e2e его не зовёт (раздача видео там — signedGetUrl), но фейк держит
+  // полный интерфейс FileStoreService, чтобы typecheck не разъезжался молча.
+  get(key: string, _now: DateTime): Promise<Buffer> {
+    this.require();
+    const object = this.objects.get(key);
+    if (!object) return Promise.reject(new NotAvailableError(FILE_STORAGE_OFF_MESSAGE));
+    return Promise.resolve(object.bytes);
+  }
+
   signedGetUrl(
     key: string,
     expiresInSeconds: number,

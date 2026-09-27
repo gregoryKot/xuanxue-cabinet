@@ -25,14 +25,20 @@ import {
   type MyExamDto,
   type PutGradingInput,
 } from '@xuanxue/shared';
-import { NotFoundError } from '../common/errors';
 import { ExamImagesService } from '../exam-images/exam-images.service';
+import { ExamVideosService } from '../exam-videos/exam-videos.service';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { withAttemptMedia, withReviewMedia } from './exam-attempt-media';
+import { degradeNotFound } from './exam-bot-degrade';
+import { loadOptionImageForBot, loadOptionVideoForBot } from './exam-bot-media';
 import { validateExamDraftInput } from './exam-draft-validate';
 import { validateExamItemDraftInput } from './exam-item-draft-validate';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
-import type { BotOptionImage, ExamBotPort } from '../telegram/exam-bot.port';
+import type {
+  BotOptionImage,
+  BotOptionVideo,
+  ExamBotPort,
+} from '../telegram/exam-bot.port';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamGradingsService } from './exam-gradings.service';
@@ -48,6 +54,7 @@ export class ExamBotService implements ExamBotPort {
     private readonly examGradingsService: ExamGradingsService,
     private readonly mediaAssetsService: MediaAssetsService,
     private readonly examImagesService: ExamImagesService,
+    private readonly examVideosService: ExamVideosService,
     private readonly examItemsService: ExamItemsService,
     private readonly examsService: ExamsService,
     registry: ExamBotPortRegistry,
@@ -113,21 +120,23 @@ export class ExamBotService implements ExamBotPort {
     return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 
-  /** ExamImagesService.load бросает NotFoundError и штату (не своя
-   * картинка не бывает — доступ по роли), и ученику (не в снимке его
-   * попытки) — здесь это `null`, комментарий у ExamBotPort.loadOptionImage. */
-  async loadOptionImage(imageId: string, user: UserLean): Promise<BotOptionImage | null> {
-    try {
-      return await this.examImagesService.load(imageId, user);
-    } catch (err) {
-      if (err instanceof NotFoundError) return null;
-      throw err;
-    }
-  }
+  // NotFoundError → `null`: логика в exam-bot-media.ts (файл-лимит, комментарий там же).
+  loadOptionImage = (imageId: string, user: UserLean): Promise<BotOptionImage | null> =>
+    loadOptionImageForBot(this.examImagesService, imageId, user);
 
-  rememberTelegramFileId(imageId: string, fileId: string): Promise<void> {
-    return this.examImagesService.rememberTelegramFileId(imageId, fileId);
-  }
+  rememberTelegramFileId = (imageId: string, fileId: string): Promise<void> =>
+    this.examImagesService.rememberTelegramFileId(imageId, fileId);
+
+  // NotFoundError/NotAvailableError → `null`: exam-bot-media.ts (ADR-0133, файл-лимит).
+  loadOptionVideo = (
+    videoId: string,
+    user: UserLean,
+    now: DateTime,
+  ): Promise<BotOptionVideo | null> =>
+    loadOptionVideoForBot(this.examVideosService, videoId, user, now);
+
+  rememberVideoFileId = (videoId: string, fileId: string): Promise<void> =>
+    this.examVideosService.rememberTelegramFileId(videoId, fileId);
 
   /** ТЗ 4б.3 — тот же сервис, что и POST /exam-items кабинета, валидация
    * (формулировка, варианты, верный ответ) целиком в нём. */
@@ -156,33 +165,24 @@ export class ExamBotService implements ExamBotPort {
     return validateExamDraftInput(input);
   }
 
-  /** `null` — попытка не найдена (чужой/битый attemptId, SECURITY §3), тем
-   * же приёмом, что loadOptionImage выше: NotFoundError сервиса — деградация
-   * для бота, не проброс исключения (проверяющий уже штат, дальше решать
-   * вызывающему хендлеру, что сказать). */
-  async loadAttemptReview(attemptId: string): Promise<AttemptReviewDto | null> {
-    try {
+  // NotFoundError → `null` через degradeNotFound (exam-bot-degrade.ts, файл-лимит);
+  // проверяющий уже штат, дальше решать вызывающему хендлеру, что сказать.
+  loadAttemptReview(attemptId: string): Promise<AttemptReviewDto | null> {
+    return degradeNotFound(async () => {
       const review = await this.examGradingsService.getReview(attemptId);
-      return await withReviewMedia(this.mediaAssetsService, review);
-    } catch (err) {
-      if (err instanceof NotFoundError) return null;
-      throw err;
-    }
+      return withReviewMedia(this.mediaAssetsService, review);
+    });
   }
 
-  async gradeAttempt(
+  gradeAttempt = (
     attemptId: string,
     graderId: string,
     input: PutGradingInput,
     now: DateTime,
-  ): Promise<ExamGradingDto | null> {
-    try {
-      return await this.examGradingsService.grade(attemptId, graderId, input, now);
-    } catch (err) {
-      if (err instanceof NotFoundError) return null;
-      throw err;
-    }
-  }
+  ): Promise<ExamGradingDto | null> =>
+    degradeNotFound(() =>
+      this.examGradingsService.grade(attemptId, graderId, input, now),
+    );
 
   listSubmittedAttempts(user: UserLean, now: DateTime): Promise<ExamAttemptDto[]> {
     return this.examAttemptsService.list({ status: 'submitted' }, user, now);

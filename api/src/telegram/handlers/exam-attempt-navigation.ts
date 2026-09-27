@@ -48,6 +48,7 @@ export async function handleExamStart(
         via: 'edit',
         withAlbum: true,
       },
+      now,
     );
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
@@ -130,6 +131,7 @@ export async function handleExamQuestion(
       { examBot, user, chatId, attemptId: ids.attemptId },
       view,
       { via: 'edit', withAlbum: true },
+      now,
     );
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);

@@ -17,7 +17,7 @@ import type {
   PutGradingInput,
 } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
-import type { BotOptionImage, ExamBotPort } from './exam-bot.port';
+import type { BotOptionImage, BotOptionVideo, ExamBotPort } from './exam-bot.port';
 
 export interface FakeExamBotPort extends ExamBotPort {
   listMyExams: jest.Mock<Promise<MyExamDto[]>, [UserLean, DateTime]>;
@@ -30,6 +30,11 @@ export interface FakeExamBotPort extends ExamBotPort {
   submitAttempt: jest.Mock<Promise<ExamAttemptDto>, [string, UserLean, DateTime]>;
   loadOptionImage: jest.Mock<Promise<BotOptionImage | null>, [string, UserLean]>;
   rememberTelegramFileId: jest.Mock<Promise<void>, [string, string]>;
+  loadOptionVideo: jest.Mock<
+    Promise<BotOptionVideo | null>,
+    [string, UserLean, DateTime]
+  >;
+  rememberVideoFileId: jest.Mock<Promise<void>, [string, string]>;
   createExamItem: jest.Mock<Promise<ExamItemDto>, [CreateExamItemInput, string]>;
   validateExamItemDraft: jest.Mock<
     Promise<string[] | null>,
@@ -69,6 +74,13 @@ export function fakeExamBotPort(
       .fn<Promise<BotOptionImage | null>, [string, UserLean]>()
       .mockResolvedValue(null),
     rememberTelegramFileId: jest
+      .fn<Promise<void>, [string, string]>()
+      .mockResolvedValue(undefined),
+    // По умолчанию видео нет — тот же приём, что loadOptionImage выше.
+    loadOptionVideo: jest
+      .fn<Promise<BotOptionVideo | null>, [string, UserLean, DateTime]>()
+      .mockResolvedValue(null),
+    rememberVideoFileId: jest
       .fn<Promise<void>, [string, string]>()
       .mockResolvedValue(undefined),
     createExamItem: jest.fn<Promise<ExamItemDto>, [CreateExamItemInput, string]>(),
