@@ -459,6 +459,20 @@ describe('AppShell — прокрутка внутри оболочки, а не
     expect(contentColumn.style.overscrollBehavior).toBe('contain');
   });
 
+  // Регрессия 2026-09-23 (снимок владельца: выбор варианта-картинки уносил на
+  // пустой «подвал»). Без `position: relative` скрытый `position: absolute`
+  // инпут (`xuanxue-sr-only`) отсчитывался от окна, а не от колонки: он
+  // растягивал документ за пределы оболочки, и фокус на нём прокручивал
+  // страницу в пустоту. Держит это одно свойство колонки для всех экранов.
+  it('колонка содержимого — точка отсчёта для абсолютных потомков', async () => {
+    stubMobileViewport();
+    renderShell(TEACHER);
+    const main = (await screen.findByText('Содержимое расписания')).closest('main');
+    const contentColumn = main?.parentElement as HTMLElement;
+
+    expect(contentColumn.style.position).toBe('relative');
+  });
+
   // Колонка разделов на мониторе больше не может рассчитывать на прокрутку
   // страницы: на низком окне блок человека «Профиль · Выйти» оказался бы
   // недостижим (sideNavStyles.ts, sideStyle).
