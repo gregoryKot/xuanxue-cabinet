@@ -5,7 +5,7 @@
 // варианты ответа.
 import {
   EXAM_ITEM_LIMITS,
-  OPTION_TEXT_OR_IMAGE_MESSAGE,
+  OPTION_CONTENT_REQUIRED_MESSAGE,
   type CreateExamItemInput,
   type ExamItemDto,
   type ExamItemKind,
@@ -70,9 +70,9 @@ export function validateExamItemForm(state: ExamItemFormState): string | null {
   ) {
     return `Укажите от ${EXAM_ITEM_LIMITS.optionsMin} до ${EXAM_ITEM_LIMITS.optionsMax} вариантов ответа.`;
   }
-  // Текст или картинка — то же правило, что у сервиса (OPTION_TEXT_OR_IMAGE_MESSAGE).
+  // Текст или картинка — то же правило, что у сервиса (OPTION_CONTENT_REQUIRED_MESSAGE).
   if (state.options.some((option) => !option.text.trim() && !option.imageId)) {
-    return OPTION_TEXT_OR_IMAGE_MESSAGE;
+    return OPTION_CONTENT_REQUIRED_MESSAGE;
   }
   const correctCount = state.options.filter((option) => option.correct).length;
   if (state.kind === 'single' && correctCount !== 1) {

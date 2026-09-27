@@ -136,6 +136,7 @@ function leanAttempt(overrides: Partial<LeanExamAttempt> = {}): LeanExamAttempt 
     blocks: [],
     answers: [],
     imageIds: [],
+    videoIds: [],
     startedAt: new Date('2026-09-22T16:00:00.000Z'),
     expired: false,
     createdAt: new Date('2026-09-22T16:00:00.000Z'),

@@ -50,6 +50,26 @@ describe('hasContentChanged', () => {
 
     expect(hasContentChanged({}, changed, CURRENT)).toBe(true);
   });
+
+  // ADR-0133: видео вопроса — тоже содержание, как и формулировка.
+  it('добавили videoId вопроса — правка', () => {
+    expect(hasContentChanged({ videoId: 'vid1' }, undefined, CURRENT)).toBe(true);
+  });
+
+  it('videoId не пришёл в теле — не правка (не трогаем то, что не прислали)', () => {
+    expect(hasContentChanged({ prompt: CURRENT.prompt }, undefined, CURRENT)).toBe(false);
+  });
+
+  it('сняли videoId (null) у вопроса, у которого он был — правка', () => {
+    const current = { ...CURRENT, videoId: 'vid1' };
+    expect(hasContentChanged({ videoId: null }, undefined, current)).toBe(true);
+  });
+
+  it('добавили videoUrl вопроса — правка', () => {
+    expect(
+      hasContentChanged({ videoUrl: 'https://youtu.be/x' }, undefined, CURRENT),
+    ).toBe(true);
+  });
 });
 
 describe('buildHistoryEntry', () => {
@@ -65,5 +85,33 @@ describe('buildHistoryEntry', () => {
       options: OPTIONS,
       replacedAt: '2026-09-12T10:00:00.000Z',
     });
+  });
+
+  it('видео вопроса не было — ключей videoId/videoUrl в записи нет вовсе', () => {
+    const entry = buildHistoryEntry(
+      { ...CURRENT, version: 1 },
+      '2026-09-12T10:00:00.000Z',
+    );
+
+    expect(entry).not.toHaveProperty('videoId');
+    expect(entry).not.toHaveProperty('videoUrl');
+  });
+
+  it('видео вопроса было — попадает в снимок', () => {
+    const entry = buildHistoryEntry(
+      { ...CURRENT, videoId: 'vid1', version: 1 },
+      '2026-09-12T10:00:00.000Z',
+    );
+
+    expect(entry.videoId).toBe('vid1');
+  });
+
+  it('видео-ссылка вопроса была — попадает в снимок', () => {
+    const entry = buildHistoryEntry(
+      { ...CURRENT, videoUrl: 'https://youtu.be/x', version: 1 },
+      '2026-09-12T10:00:00.000Z',
+    );
+
+    expect(entry.videoUrl).toBe('https://youtu.be/x');
   });
 });

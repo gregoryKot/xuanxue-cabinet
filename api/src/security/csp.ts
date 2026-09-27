@@ -30,6 +30,13 @@ export const CSP_DIRECTIVES = {
   // сюда не входит — своих фреймов у кабинета нет, а неиспользуемая
   // поверхность CSP — тот же риск, что лишняя env-переменная (SECURITY §6).
   frameSrc: ['https://www.youtube-nocookie.com', 'https://rutube.ru'],
+  // <video> вопроса/варианта запрашивает `/api/exam-videos/:id`, который
+  // отвечает 302 на подписанную ссылку R2 (ADR-0133) — браузер проверяет
+  // CSP по адресу, на который редирект в итоге ведёт, не по адресу самого
+  // запроса. Домен R2 у каждого аккаунта свой (`<accountId>.r2.
+  // cloudflarestorage.com`, r2.config.ts), поэтому маска по поддомену, не
+  // точный хост.
+  mediaSrc: ["'self'", 'https://*.r2.cloudflarestorage.com'],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],
   frameAncestors: ["'none'"],

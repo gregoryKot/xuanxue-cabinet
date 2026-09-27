@@ -1,7 +1,11 @@
 // Чистая логика — юнит-тест без Mongo и без DI (CLAUDE.md «Тесты»).
 import type { ExamBlockDto, ExamItemDto } from '@xuanxue/shared';
 import { checkOptionAnswer } from './exam-attempt-review';
-import { buildAttemptBlocks, collectAttemptImageIds } from './exam-attempt-snapshot';
+import {
+  buildAttemptBlocks,
+  collectAttemptImageIds,
+  collectAttemptVideoIds,
+} from './exam-attempt-snapshot';
 import type { AttemptBlockRecord } from './exam-attempt.schema';
 
 function fixedSequence(values: number[]): () => number {
@@ -198,6 +202,45 @@ describe('buildAttemptBlocks', () => {
     const withImage = snapshot[0]?.questions[0]?.options.find((o) => o.id === 'o2');
     expect(withImage?.imageId).toBe('img2');
   });
+
+  // ADR-0133: видео вопроса и видео варианта — часть снимка, тем же приёмом,
+  // что imageId.
+  it('видео вопроса и видео варианта доезжают до снимка', () => {
+    const itemsById = new Map([
+      [
+        'i1',
+        item({
+          id: 'i1',
+          kind: 'single',
+          videoId: 'item-vid',
+          videoUrl: 'https://youtu.be/item',
+          options: [
+            { id: 'o1', text: '', correct: true, videoId: 'opt-vid' },
+            { id: 'o2', text: '', correct: false, videoUrl: 'https://youtu.be/x' },
+          ],
+        }),
+      ],
+    ]);
+    const blocks = [block({ itemIds: ['i1'] })];
+
+    const snapshot = build(blocks, itemsById, () => 0);
+
+    const question = snapshot[0]?.questions[0];
+    expect(question?.videoId).toBe('item-vid');
+    expect(question?.videoUrl).toBe('https://youtu.be/item');
+    expect(question?.options[0]?.videoId).toBe('opt-vid');
+    expect(question?.options[1]?.videoUrl).toBe('https://youtu.be/x');
+  });
+
+  it('видео вопроса не было — ключей videoId/videoUrl в снимке нет вовсе', () => {
+    const blocks = [block({ itemIds: ['i1'] })];
+
+    const snapshot = build(blocks, singleChoiceItem(), () => 0);
+
+    const question = snapshot[0]?.questions[0];
+    expect(question).not.toHaveProperty('videoId');
+    expect(question).not.toHaveProperty('videoUrl');
+  });
 });
 
 describe('collectAttemptImageIds', () => {
@@ -235,5 +278,50 @@ describe('collectAttemptImageIds', () => {
     ];
 
     expect(collectAttemptImageIds(blocks)).toEqual(['img1', 'img2']);
+  });
+});
+
+describe('collectAttemptVideoIds', () => {
+  function blockWithVideo(
+    itemVideoId: string | undefined,
+    optionVideoId: string | undefined,
+  ): AttemptBlockRecord {
+    return {
+      id: 'b1',
+      title: 'Блок',
+      questions: [
+        {
+          itemId: 'i1',
+          version: 1,
+          kind: 'single',
+          prompt: 'p',
+          ...(itemVideoId !== undefined ? { videoId: itemVideoId } : {}),
+          options: [
+            {
+              id: 'o1',
+              text: 'вариант',
+              correct: true,
+              ...(optionVideoId !== undefined ? { videoId: optionVideoId } : {}),
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('без видео нигде — пустой список', () => {
+    expect(collectAttemptVideoIds([blockWithVideo(undefined, undefined)])).toEqual([]);
+  });
+
+  it('видео вопроса и видео варианта — оба в списке', () => {
+    expect(collectAttemptVideoIds([blockWithVideo('item-vid', 'opt-vid')])).toEqual(
+      expect.arrayContaining(['item-vid', 'opt-vid']),
+    );
+  });
+
+  it('одно и то же видео в нескольких вопросах — без повторов', () => {
+    const blocks = [blockWithVideo('vid1', undefined), blockWithVideo('vid1', 'vid2')];
+
+    expect(collectAttemptVideoIds(blocks)).toEqual(['vid1', 'vid2']);
   });
 });

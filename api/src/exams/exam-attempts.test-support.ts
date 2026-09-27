@@ -35,6 +35,7 @@ import { ExamItemsService } from './exam-items.service';
 import { ExamSeenMarkRecord, ExamSeenMarkSchema } from './exam-seen-mark.schema';
 import { ExamRecord, ExamSchema } from './exam.schema';
 import { ExamsService } from './exams.service';
+import { fakeExamVideosService } from '../test-support/fake-exam-videos-service';
 
 export const AUTHOR_ID = '507f1f77bcf86cd799439011';
 export const USER_A = '507f1f77bcf86cd799439012';
@@ -113,7 +114,12 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   );
   const examsService = new ExamsService(examModel, itemModel, attemptModel);
   const examImagesService = new ExamImagesService(imageModel, attemptModel);
-  const examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
+  const examItemsService = new ExamItemsService(
+    itemModel,
+    examModel,
+    examImagesService,
+    fakeExamVideosService(),
+  );
   const userNamesService = new UserNamesService(userModel);
   const examNotifier = fakeExamNotifier();
   // Один инстанс UsersService на MediaAssetsService и PersonalChats — тот же

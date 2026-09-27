@@ -32,6 +32,11 @@
 // владения (см. USER_REFERENCE_PATHS ниже) — при удалении аккаунта поле
 // обнуляется, сама картинка остаётся у вопроса банка.
 //
+// Этап 4, слой 4.2 (exam_videos, ADR-0133) — видео вопроса/варианта в R2,
+// тем же смыслом и тем же решением, что exam_images выше: `createdBy` — кто
+// загрузил, не признак владения, при удалении аккаунта поле обнуляется, само
+// видео остаётся у вопроса банка.
+//
 // Этап 4, слой 4.6 (grading_comment_presets, ADR-0041) — заготовки частых
 // комментариев при проверке. Данные школы, не ученика: `createdBy` — кто
 // завёл заготовку, не признак владения (см. USER_REFERENCE_PATHS ниже) —
@@ -128,6 +133,7 @@ export const USER_REFERENCE_PATHS = [
   { model: 'ExamRecord', path: 'createdBy' },
   { model: 'ExamGradingRecord', path: 'graderId' },
   { model: 'ExamImageRecord', path: 'createdBy' },
+  { model: 'ExamVideoRecord', path: 'createdBy' },
   { model: 'GradingCommentPresetRecord', path: 'createdBy' },
   { model: 'MaterialRecord', path: 'createdBy' },
   { model: 'PaymentRecord', path: 'confirmedBy' },

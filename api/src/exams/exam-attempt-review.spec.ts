@@ -173,4 +173,59 @@ describe('buildReviewBlocks', () => {
     expect(review?.questions[0]?.options[0]?.imageId).toBe('img1');
     expect(review?.questions[0]?.options[1]).not.toHaveProperty('imageId');
   });
+
+  // ADR-0133: видео вопроса и видео варианта — тем же приёмом, что imageId.
+  it('видео вопроса и видео варианта доезжают до карточки проверки', () => {
+    const blocks: AttemptBlockRecord[] = [
+      {
+        id: 'b1',
+        title: 'Форма',
+        questions: [
+          {
+            itemId: 'i1',
+            version: 1,
+            kind: 'single',
+            prompt: 'Что не так на видео?',
+            videoUrl: 'https://youtu.be/x',
+            options: [
+              { id: 'o1', text: '', correct: true, videoId: 'opt-vid' },
+              { id: 'o2', text: 'без видео', correct: false },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const [review] = buildReviewBlocks(blocks, [{ itemId: 'i1', optionIds: ['o1'] }]);
+
+    expect(review?.questions[0]?.videoUrl).toBe('https://youtu.be/x');
+    expect(review?.questions[0]?.options[0]?.videoId).toBe('opt-vid');
+    expect(review?.questions[0]?.options[1]).not.toHaveProperty('videoId');
+  });
+
+  it('videoId вопроса и videoUrl варианта — тоже доезжают (второй источник каждого)', () => {
+    const blocks: AttemptBlockRecord[] = [
+      {
+        id: 'b1',
+        title: 'Форма',
+        questions: [
+          {
+            itemId: 'i1',
+            version: 1,
+            kind: 'single',
+            prompt: 'Что не так на видео?',
+            videoId: 'item-vid',
+            options: [
+              { id: 'o1', text: '', correct: true, videoUrl: 'https://youtu.be/x' },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const [review] = buildReviewBlocks(blocks, [{ itemId: 'i1', optionIds: ['o1'] }]);
+
+    expect(review?.questions[0]?.videoId).toBe('item-vid');
+    expect(review?.questions[0]?.options[0]?.videoUrl).toBe('https://youtu.be/x');
+  });
 });

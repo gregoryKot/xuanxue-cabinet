@@ -17,6 +17,7 @@ function leanAttempt(overrides: Partial<LeanExamAttempt> = {}): LeanExamAttempt 
     blocks: [],
     answers: [],
     imageIds: [],
+    videoIds: [],
     startedAt: new Date('2026-09-12T10:00:00.000Z'),
     expired: false,
     createdAt: new Date('2026-09-12T10:00:00.000Z'),
@@ -53,6 +54,38 @@ describe('toAttemptDto', () => {
     const options = dto.blocks[0]?.questions[0]?.options ?? [];
     expect(options[0]?.imageId).toBe('img1');
     expect(options[1]).not.toHaveProperty('imageId');
+  });
+
+  // ADR-0133: видео вопроса и видео варианта доезжают до DTO тем же приёмом.
+  it('видео вопроса и видео варианта доезжают до DTO', () => {
+    const doc = leanAttempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Форма',
+          questions: [
+            {
+              itemId: 'i1',
+              version: 1,
+              kind: 'single',
+              prompt: 'Что не так на видео?',
+              videoUrl: 'https://youtu.be/x',
+              options: [
+                { id: 'o1', text: '', correct: true, videoId: 'opt-vid' },
+                { id: 'o2', text: 'без видео', correct: false },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const dto = toAttemptDto(doc);
+
+    const question = dto.blocks[0]?.questions[0];
+    expect(question?.videoUrl).toBe('https://youtu.be/x');
+    expect(question?.options[0]?.videoId).toBe('opt-vid');
+    expect(question?.options[1]).not.toHaveProperty('videoId');
   });
 
   // Раздел «Проверенные» (PR #351, docs/PLAN.md §4.6): третий параметр

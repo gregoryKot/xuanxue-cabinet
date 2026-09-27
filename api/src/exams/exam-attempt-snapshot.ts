@@ -18,9 +18,11 @@ function toAttemptOption(option: ExamItemOptionDto): AttemptOptionRecord {
     id: option.id,
     text: option.text,
     correct: option.correct,
-    // Ключа нет вовсе, если картинки не было — снимок сравнивается и хранится
+    // Ключа нет вовсе, если медиа не было — снимок сравнивается и хранится
     // тем же приёмом, что options вопроса (mapOptions, exam-item-options.ts).
     ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
+    ...(option.videoId !== undefined ? { videoId: option.videoId } : {}),
+    ...(option.videoUrl !== undefined ? { videoUrl: option.videoUrl } : {}),
   };
 }
 
@@ -39,6 +41,8 @@ function toAttemptQuestion(
     version: item.version,
     kind: item.kind,
     prompt: item.prompt,
+    ...(item.videoId !== undefined ? { videoId: item.videoId } : {}),
+    ...(item.videoUrl !== undefined ? { videoUrl: item.videoUrl } : {}),
     options: shuffleOptions ? shuffleOnce(options, random) : options,
   };
 }
@@ -97,6 +101,24 @@ export function collectAttemptImageIds(blocks: readonly AttemptBlockRecord[]): s
     for (const question of block.questions) {
       for (const option of question.options) {
         if (option.imageId) ids.add(option.imageId);
+      }
+    }
+  }
+  return [...ids];
+}
+
+/** Уникальные `videoId` по всем вопросам снимка (вопрос и варианты, порядок
+ * появления, Set) — тем же приёмом и ради той же причины, что
+ * `collectAttemptImageIds` выше (ADR-0133): плоская копия для
+ * `exam_attempts.videoIds` (createAttempt, exam-attempt-start.ts),
+ * ExamVideosService.signedUrl решает по этому полю, можно ли ученику видео. */
+export function collectAttemptVideoIds(blocks: readonly AttemptBlockRecord[]): string[] {
+  const ids = new Set<string>();
+  for (const block of blocks) {
+    for (const question of block.questions) {
+      if (question.videoId) ids.add(question.videoId);
+      for (const option of question.options) {
+        if (option.videoId) ids.add(option.videoId);
       }
     }
   }

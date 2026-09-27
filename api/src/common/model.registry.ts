@@ -103,6 +103,11 @@ import {
   EXAM_IMAGE_FIELD_POLICY,
 } from '../exam-images/exam-image.schema';
 import {
+  ExamVideoRecord,
+  ExamVideoSchema,
+  EXAM_VIDEO_FIELD_POLICY,
+} from '../exam-videos/exam-video.schema';
+import {
   GradingCommentPresetRecord,
   GradingCommentPresetSchema,
   GRADING_COMMENT_PRESET_FIELD_POLICY,
@@ -220,6 +225,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: ExamImageRecord.name,
     schema: ExamImageSchema,
     fieldPolicy: EXAM_IMAGE_FIELD_POLICY,
+  },
+  {
+    name: ExamVideoRecord.name,
+    schema: ExamVideoSchema,
+    fieldPolicy: EXAM_VIDEO_FIELD_POLICY,
   },
   {
     name: GradingCommentPresetRecord.name,

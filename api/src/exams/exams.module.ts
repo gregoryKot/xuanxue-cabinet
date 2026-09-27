@@ -64,9 +64,16 @@
 // ADR-0092) — тем же приёмом, что NotificationsModule выше: PushExamNotifier
 // физически живёт в api/src/push, но собирается здесь, провайдером
 // ExamsModule. Цикла нет — PushModule про exams/ не знает.
+//
+// Импортирует ExamVideosModule ради ExamVideosService (слой 4.2, ADR-0133) —
+// тем же приёмом и по той же причине, что ExamImagesModule выше:
+// ExamItemsService проверяет через него существование видео у вопроса/
+// варианта перед записью. Цикла нет — ExamVideosModule импортирует только
+// ExamAttemptModelModule и StorageModule, про ExamsModule он не знает.
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
+import { ExamVideosModule } from '../exam-videos/exam-videos.module';
 import { MediaModule } from '../media/media.module';
 import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -105,6 +112,7 @@ import { MyExamsService } from './my-exams.service';
     TelegramModule,
     MediaModule,
     ExamImagesModule,
+    ExamVideosModule,
     NotificationsModule,
     PushModule,
     MongooseModule.forFeature([

@@ -7,6 +7,7 @@ import {
   isPdfSignature,
   parseRawUpload,
   sniffImageSignature,
+  sniffVideoSignature,
 } from './raw-upload';
 import { DOCX_BYTES, PLAIN_ZIP_BYTES, XLSX_BYTES } from './zip-fixture.test-support';
 
@@ -59,6 +60,49 @@ describe('sniffImageSignature', () => {
 
   it('обрезанная сигнатура (короче эталона) — null, не падает', () => {
     expect(sniffImageSignature(Buffer.from([0xff, 0xd8]))).toBeNull();
+  });
+});
+
+/** ISO-BMFF: 4 байта размера бокса (не важно тесту) + `ftyp` + бренд из 4
+ * символов (ADR-0133). */
+function isoBmff(brand: string): Buffer {
+  return Buffer.concat([
+    Buffer.from([0, 0, 0, 0x20]),
+    Buffer.from('ftyp', 'ascii'),
+    Buffer.from(brand, 'ascii'),
+    Buffer.alloc(4),
+  ]);
+}
+
+const MP4 = isoBmff('isom');
+const MOV = isoBmff('qt  ');
+const WEBM = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3, 4]);
+
+describe('sniffVideoSignature', () => {
+  it.each([
+    ['MP4 (isom)', MP4, 'video/mp4'],
+    ['QuickTime (.mov)', MOV, 'video/quicktime'],
+    ['WebM/Matroska', WEBM, 'video/webm'],
+  ] as const)('сигнатура %s → свой тип', (_label, bytes, expected) => {
+    expect(sniffVideoSignature(bytes)).toBe(expected);
+  });
+
+  it('мусор — null', () => {
+    expect(sniffVideoSignature(GARBAGE)).toBeNull();
+  });
+
+  it('картинка видео не считается', () => {
+    expect(sniffVideoSignature(JPEG)).toBeNull();
+  });
+
+  it('обрезанный ISO-BMFF (короче бренда) — null, не падает', () => {
+    expect(
+      sniffVideoSignature(Buffer.from([0, 0, 0, 0x20, ...Buffer.from('ftyp')])),
+    ).toBeNull();
+  });
+
+  it('другой бренд ISO-BMFF (не qt) — video/mp4, не quicktime', () => {
+    expect(sniffVideoSignature(isoBmff('mp42'))).toBe('video/mp4');
   });
 });
 

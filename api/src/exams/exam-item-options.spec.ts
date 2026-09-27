@@ -1,6 +1,14 @@
 // Чистая логика — без Mongo (CLAUDE.md «Тесты»): сочетание kind+options.
-import { OPTION_TEXT_OR_IMAGE_MESSAGE } from '@xuanxue/shared';
-import { assertOptionsForKind, collectImageIds, mapOptions } from './exam-item-options';
+import {
+  OPTION_CONTENT_REQUIRED_MESSAGE,
+  OPTION_ONE_MEDIA_MESSAGE,
+} from '@xuanxue/shared';
+import {
+  assertOptionsForKind,
+  collectImageIds,
+  collectOptionVideoIds,
+  mapOptions,
+} from './exam-item-options';
 import type { ExamItemOptionRecord, ExamItemVersionRecord } from './exam-item.schema';
 
 describe('assertOptionsForKind', () => {
@@ -79,7 +87,7 @@ describe('assertOptionsForKind', () => {
   it('single — вариант без текста и без imageId — InvalidInputError', () => {
     expect(() =>
       assertOptionsForKind('single', [{ correct: true }, { text: 'B', correct: false }]),
-    ).toThrow(OPTION_TEXT_OR_IMAGE_MESSAGE);
+    ).toThrow(OPTION_CONTENT_REQUIRED_MESSAGE);
   });
 
   it('single — текст из одних пробелов и без imageId — InvalidInputError', () => {
@@ -88,7 +96,50 @@ describe('assertOptionsForKind', () => {
         { text: '   ', correct: true },
         { text: 'B', correct: false },
       ]),
-    ).toThrow(OPTION_TEXT_OR_IMAGE_MESSAGE);
+    ).toThrow(OPTION_CONTENT_REQUIRED_MESSAGE);
+  });
+
+  // ADR-0133: вариант — текст, картинка или видео (файл R2 или ссылка).
+  it('single — вариант без текста, но с videoId — проходит', () => {
+    const options = [
+      { videoId: '507f1f77bcf86cd799439011', correct: true },
+      { text: 'B', correct: false },
+    ];
+    expect(assertOptionsForKind('single', options)).toEqual(options);
+  });
+
+  it('single — вариант без текста, но с videoUrl — проходит', () => {
+    const options = [
+      { videoUrl: 'https://youtu.be/dQw4w9WgXcQ', correct: true },
+      { text: 'B', correct: false },
+    ];
+    expect(assertOptionsForKind('single', options)).toEqual(options);
+  });
+
+  it('single — вариант с imageId и videoId разом — OPTION_ONE_MEDIA_MESSAGE', () => {
+    expect(() =>
+      assertOptionsForKind('single', [
+        {
+          imageId: '507f1f77bcf86cd799439011',
+          videoId: '507f1f77bcf86cd799439012',
+          correct: true,
+        },
+        { text: 'B', correct: false },
+      ]),
+    ).toThrow(OPTION_ONE_MEDIA_MESSAGE);
+  });
+
+  it('single — вариант с videoId и videoUrl разом — OPTION_ONE_MEDIA_MESSAGE', () => {
+    expect(() =>
+      assertOptionsForKind('single', [
+        {
+          videoId: '507f1f77bcf86cd799439011',
+          videoUrl: 'https://youtu.be/dQw4w9WgXcQ',
+          correct: true,
+        },
+        { text: 'B', correct: false },
+      ]),
+    ).toThrow(OPTION_ONE_MEDIA_MESSAGE);
   });
 });
 
@@ -133,6 +184,78 @@ describe('mapOptions', () => {
   it('imageId передан — копируется', () => {
     const [mapped] = mapOptions([{ text: 'A', imageId: '507f1f77bcf86cd799439011' }]);
     expect(mapped?.imageId).toBe('507f1f77bcf86cd799439011');
+  });
+
+  it('videoId/videoUrl не переданы — ключей нет вовсе', () => {
+    const [mapped] = mapOptions([{ text: 'A' }]);
+    expect(mapped).not.toHaveProperty('videoId');
+    expect(mapped).not.toHaveProperty('videoUrl');
+  });
+
+  it('videoId передан — копируется', () => {
+    const [mapped] = mapOptions([{ text: 'A', videoId: '507f1f77bcf86cd799439011' }]);
+    expect(mapped?.videoId).toBe('507f1f77bcf86cd799439011');
+  });
+
+  it('videoUrl передан — копируется', () => {
+    const [mapped] = mapOptions([
+      { text: 'A', videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
+    ]);
+    expect(mapped?.videoUrl).toBe('https://youtu.be/dQw4w9WgXcQ');
+  });
+});
+
+describe('collectOptionVideoIds', () => {
+  const historyEntry = (options: ExamItemOptionRecord[]): ExamItemVersionRecord => ({
+    version: 1,
+    prompt: 'p',
+    options,
+    replacedAt: '2026-09-12T10:00:00.000Z',
+  });
+
+  it('без видео нигде — пустой список', () => {
+    const options: ExamItemOptionRecord[] = [{ id: 'o1', text: 'A', correct: true }];
+    expect(collectOptionVideoIds(options, [])).toEqual([]);
+  });
+
+  it('видео только в текущих вариантах — попадает в список', () => {
+    const options: ExamItemOptionRecord[] = [
+      { id: 'o1', text: '', correct: true, videoId: 'vid1' },
+    ];
+    expect(collectOptionVideoIds(options, [])).toEqual(['vid1']);
+  });
+
+  it('одно и то же видео у нескольких вариантов и в истории — без повторов', () => {
+    const options: ExamItemOptionRecord[] = [
+      { id: 'o1', text: '', correct: true, videoId: 'vid1' },
+      { id: 'o2', text: '', correct: false, videoId: 'vid1' },
+    ];
+    const history = [
+      historyEntry([{ id: 'o1', text: '', correct: true, videoId: 'vid1' }]),
+    ];
+
+    expect(collectOptionVideoIds(options, history)).toEqual(['vid1']);
+  });
+
+  it('видео есть только в истории (заменили на новое в текущей версии) — тоже в списке', () => {
+    const options: ExamItemOptionRecord[] = [
+      { id: 'o1', text: '', correct: true, videoId: 'vid-new' },
+    ];
+    const history = [
+      historyEntry([{ id: 'o1', text: '', correct: true, videoId: 'vid-old' }]),
+    ];
+
+    expect(collectOptionVideoIds(options, history)).toEqual(
+      expect.arrayContaining(['vid-new', 'vid-old']),
+    );
+    expect(collectOptionVideoIds(options, history)).toHaveLength(2);
+  });
+
+  it('вариант в истории без видео — не попадает в список', () => {
+    const options: ExamItemOptionRecord[] = [];
+    const history = [historyEntry([{ id: 'o1', text: 'без видео', correct: true }])];
+
+    expect(collectOptionVideoIds(options, history)).toEqual([]);
   });
 });
 

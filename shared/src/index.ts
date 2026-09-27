@@ -138,7 +138,10 @@ export {
   EXAM_ITEM_STATUSES,
   EXAM_ITEM_LIMITS,
   EXAM_ITEM_NOT_FOUND_MESSAGE,
-  OPTION_TEXT_OR_IMAGE_MESSAGE,
+  NULLABLE_EXAM_ITEM_FIELDS,
+  OPTION_CONTENT_REQUIRED_MESSAGE,
+  OPTION_ONE_MEDIA_MESSAGE,
+  ITEM_ONE_VIDEO_SOURCE_MESSAGE,
 } from './exam-items';
 export type {
   ExamStatus,
@@ -207,6 +210,19 @@ export {
   EXAM_IMAGE_TOO_LARGE_MESSAGE,
   EXAM_IMAGE_NOT_FOUND_MESSAGE,
 } from './exam-images';
+export type {
+  ExamVideoContentType,
+  ExamVideoDto,
+  ExamVideoStatsDto,
+} from './exam-videos';
+export {
+  EXAM_VIDEO_CONTENT_TYPES,
+  EXAM_VIDEO_LIMITS,
+  EXAM_VIDEO_EMPTY_MESSAGE,
+  EXAM_VIDEO_UNSUPPORTED_MESSAGE,
+  EXAM_VIDEO_TOO_LARGE_MESSAGE,
+  EXAM_VIDEO_NOT_FOUND_MESSAGE,
+} from './exam-videos';
 export { FILE_STORAGE_OFF_MESSAGE, FILE_STORAGE_FAILED_MESSAGE } from './file-store';
 export type { MaterialFileContentType, MaterialFileDto } from './material-files';
 export {
