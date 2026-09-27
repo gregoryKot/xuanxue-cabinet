@@ -14,7 +14,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { ExamDto, ExamItemDto } from '@xuanxue/shared';
 import { attemptHeaderStyle, attemptPageStyle } from '../attempt/attemptLayout';
-import { noteStyle, screenTitleStyle } from '../components/screenLayout';
+import { screenTitleStyle } from '../components/screenLayout';
 import { backLinkStyle } from '../components/editorLayout';
 import {
   initialQuestionIds,
@@ -28,7 +28,6 @@ import { ExamPreviewQuestions } from './ExamPreviewQuestions';
 const EXAMS_PATH = '/exams';
 const BACK_TEXT = 'К экзамену';
 const EYEBROW = 'Глазами ученика';
-const PREVIEW_NOTE = 'Поля выключены — здесь ничего не сохраняется.';
 
 const descriptionStyle: CSSProperties = {
   margin: 0,
@@ -64,8 +63,6 @@ export function ExamPreview({ exam, bankItems }: ExamPreviewProps) {
         <h1 style={screenTitleStyle}>{exam.title}</h1>
         {exam.description && <p style={descriptionStyle}>{exam.description}</p>}
       </div>
-
-      <p style={noteStyle}>{PREVIEW_NOTE}</p>
 
       <ExamPreviewQuestions
         itemIds={itemIds}

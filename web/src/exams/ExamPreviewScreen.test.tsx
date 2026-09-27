@@ -135,12 +135,12 @@ describe('ExamPreviewScreen — облик', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('текст «ничего не сохраняется» есть, кнопок сохранения и диалога нет', async () => {
+  it('кнопок сохранения и диалога нет — страница только смотрят', async () => {
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1/preview');
+    await screen.findByRole('heading', { name: 'Итоговый экзамен' });
 
-    expect(await screen.findByText(/здесь ничего не сохраняется/)).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Сохранить|Отправить|Закрыть/ }),
     ).not.toBeInTheDocument();
@@ -205,12 +205,12 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    // Акцент «другим у каждого сдающего» рисует RichText через <strong>
-    // (ADR-0124) — ищем по неразрывному началу фразы, полный текст сверяем
-    // через textContent родителя.
-    const note = await screen.findByText(/Порядок вопросов и вариантов ответа будет/);
+    // Акцент «в своём порядке» рисует RichText через <strong> (ADR-0124) —
+    // ищем по неразрывному началу фразы, полный текст сверяем через
+    // textContent родителя.
+    const note = await screen.findByText(/Порядок вопросов/);
     expect(note.closest('p')).toHaveTextContent(
-      'Порядок вопросов и вариантов ответа будет другим у каждого сдающего — здесь показан один из вариантов.',
+      'Порядок вопросов — вопросы и варианты — в своём порядке.',
     );
   });
 
@@ -221,10 +221,8 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    const note = await screen.findByText(/Порядок вопросов будет/);
-    expect(note.closest('p')).toHaveTextContent(
-      'Порядок вопросов будет другим у каждого сдающего — здесь показан один из вариантов.',
-    );
+    const note = await screen.findByText(/Порядок вопросов/);
+    expect(note.closest('p')).toHaveTextContent('Порядок вопросов — в своём порядке.');
   });
 
   it('перемешаны только варианты ответа — заметка только про варианты', async () => {
@@ -237,9 +235,9 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    const note = await screen.findByText(/Порядок вариантов ответа будет/);
+    const note = await screen.findByText(/Порядок вопросов/);
     expect(note.closest('p')).toHaveTextContent(
-      'Порядок вариантов ответа будет другим у каждого сдающего.',
+      'Порядок вопросов — варианты ответа — в своём порядке.',
     );
   });
 
@@ -249,9 +247,7 @@ describe('ExamPreviewScreen — вопросы', () => {
     renderAt('/exams/x1/preview');
 
     await screen.findByRole('heading', { name: 'Итоговый экзамен' });
-    expect(
-      screen.queryByText(/другом порядке|будет другим|встанут/),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/в своём порядке/)).not.toBeInTheDocument();
   });
 
   it('задан questionsPerAttempt — заметка о случайной выборке (ADR-0082)', async () => {
@@ -274,10 +270,8 @@ describe('ExamPreviewScreen — вопросы', () => {
     // Акцент «1 из 2 вопроса» рисует RichText через <strong> (ADR-0124) —
     // ищем по неразрывному началу фразы, полный текст сверяем через
     // textContent родителя.
-    const note = await screen.findByText(/Ученику достанутся/);
-    expect(note.closest('p')).toHaveTextContent(
-      'Ученику достанутся 1 из 2 вопроса, случайно — здесь показан весь список.',
-    );
+    const note = await screen.findByText(/Ученику достанется/);
+    expect(note.closest('p')).toHaveTextContent('Ученику достанется 1 из 2 вопроса.');
   });
 
   it('обязательный вопрос (ADR-0082, дополнение) — заметка называет число, строка помечена', async () => {
@@ -298,10 +292,9 @@ describe('ExamPreviewScreen — вопросы', () => {
 
     renderAt('/exams/x1/preview');
 
-    const note = await screen.findByText(/Ученику достанутся/);
+    const note = await screen.findByText(/Ученику достанется/);
     expect(note.closest('p')).toHaveTextContent(
-      'Ученику достанутся 1 из 2 вопроса, случайно; 1 обязательный попадёт ' +
-        'каждому — здесь показан весь список.',
+      'Ученику достанется 1 из 2 вопроса; 1 обязательный попадёт каждому.',
     );
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0] as HTMLElement).getByText('Обязательный')).toBeInTheDocument();

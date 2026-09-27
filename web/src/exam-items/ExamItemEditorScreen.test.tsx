@@ -156,16 +156,13 @@ describe('ExamItemEditorScreen — загрузка', () => {
 });
 
 describe('ExamItemEditorScreen — тип ответа', () => {
-  it('новый вопрос — переключатели с объяснением, по умолчанию свободный ответ', async () => {
+  it('новый вопрос — переключатели типа, по умолчанию свободный ответ', async () => {
     mockApiByPath({ '/exam-items': makeItem() });
 
     renderAt('/exam-items/new');
 
     expect(await screen.findByLabelText('Свободный ответ')).toBeChecked();
     expect(screen.getByLabelText('Один правильный вариант')).not.toBeChecked();
-    expect(
-      screen.getByText('Один вариант из списка. Сверяется сам.'),
-    ).toBeInTheDocument();
     expect(screen.queryByText('Варианты ответа')).not.toBeInTheDocument();
   });
 
@@ -493,9 +490,11 @@ describe('ExamItemEditorScreen — черновик (ADR-0052)', () => {
   });
 });
 
-// Видео вопроса (ADR-0133) — без R2 (`fileStorageEnabled: false`): поле
-// ссылки, не кнопка файла. `/auth/config` не подключён к mockItemAndStats
-// (та мокает только `/exam-items*`) — здесь свой набор путей на каждый тест.
+// Видео вопроса (ADR-0133) — без R2 (`fileStorageEnabled: false`): скрепка
+// сразу открывает поле ссылки (без меню — у вопроса только видео,
+// AttachButton.tsx), не кнопку файла. `/auth/config` не подключён к
+// mockItemAndStats (та мокает только `/exam-items*`) — здесь свой набор
+// путей на каждый тест.
 describe('ExamItemEditorScreen — видео вопроса (ADR-0133)', () => {
   it('без R2 — ввод ссылки уходит в PATCH как videoUrl, videoId — null', async () => {
     const user = userEvent.setup();
@@ -506,7 +505,10 @@ describe('ExamItemEditorScreen — видео вопроса (ADR-0133)', () => 
     });
 
     renderAt('/exam-items/e1');
-    const urlField = await screen.findByLabelText('Видео вопроса');
+    await user.click(await screen.findByRole('button', { name: 'Видео вопроса' }));
+    // Скрепка и поле ссылки делят доступное имя «Видео вопроса» — сужаем до
+    // input, иначе getByLabelText находит и кнопку тоже.
+    const urlField = screen.getByLabelText('Видео вопроса', { selector: 'input' });
     await user.type(urlField, 'https://youtu.be/dQw4w9WgXcQ');
     urlField.blur();
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
