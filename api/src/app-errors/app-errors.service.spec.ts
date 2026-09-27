@@ -2,6 +2,7 @@
 // «Тесты»): read-after-write, шифрование text, обрезка полей, потолок числа
 // записей, фильтры списка, last24h, пустая база, TTL-индекс. ENCRYPTION_KEY —
 // из test/jest.setup.ts (общий для всех спеков).
+import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { APP_ERROR_LIMITS } from '@xuanxue/shared';
@@ -197,6 +198,128 @@ describe('AppErrorsService', () => {
   it('пустая база — items: [], last24h: 0', async () => {
     const result = await service.list({}, NOW);
     expect(result).toEqual({ items: [], last24h: 0 });
+  });
+
+  it('необязательные поля (requestId/method/userAgent) отсутствуют — в записи их нет', async () => {
+    await service.record(
+      { source: 'browser', kind: 'render', path: '/exams', text: 'x' },
+      NOW,
+    );
+
+    const { items } = await service.list({}, NOW);
+    expect(items[0]?.requestId).toBeUndefined();
+    expect(items[0]?.method).toBeUndefined();
+    expect(items[0]?.userAgent).toBeUndefined();
+  });
+
+  it('необязательные поля заданы (requestId/method/userAgent) — в записи есть, обрезаны по лимиту', async () => {
+    await service.record(
+      {
+        requestId: 'req-full',
+        source: 'server',
+        kind: 'server',
+        method: 'POST',
+        path: '/api/x',
+        text: 'x',
+        userAgent: 'Mozilla/5.0',
+      },
+      NOW,
+    );
+
+    const { items } = await service.list({}, NOW);
+    expect(items[0]).toMatchObject({
+      requestId: 'req-full',
+      method: 'POST',
+      userAgent: 'Mozilla/5.0',
+    });
+  });
+
+  it('число записей не выше потолка — trimOverCap ничего не удаляет', async () => {
+    await service.record(
+      { source: 'server', kind: 'server', path: '/a', text: 'x' },
+      NOW,
+    );
+    await service.record(
+      { source: 'server', kind: 'server', path: '/b', text: 'y' },
+      NOW,
+    );
+
+    const total = await model.countDocuments({});
+    expect(total).toBe(2);
+  });
+
+  // CLAUDE.md «Ошибки»: record() не имеет права уронить вызывающий код —
+  // второй сбой не должен родиться из попытки записать первый (комментарий
+  // над record() в app-errors.service.ts).
+  it('отказ модели при записи не бросает исключение и пишет error-лог', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const createSpy = jest
+      .spyOn(model, 'create')
+      .mockRejectedValueOnce(new Error('mongo недоступна'));
+
+    await expect(
+      service.record(
+        {
+          requestId: 'req-fail',
+          source: 'server',
+          kind: 'server',
+          path: '/a',
+          text: 'x',
+        },
+        NOW,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(String(error.mock.calls[0]?.[0])).toContain('req-fail');
+    expect(await model.countDocuments({})).toBe(0);
+
+    createSpy.mockRestore();
+    error.mockRestore();
+  });
+
+  it('отказ модели без кода обращения — в логе прочерк, не «undefined»', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const createSpy = jest
+      .spyOn(model, 'create')
+      .mockRejectedValueOnce(new Error('mongo недоступна'));
+
+    await service.record(
+      { source: 'server', kind: 'server', path: '/a', text: 'x' },
+      NOW,
+    );
+
+    expect(String(error.mock.calls[0]?.[0])).toContain('requestId=-');
+
+    createSpy.mockRestore();
+    error.mockRestore();
+  });
+
+  // Гонка: между вычислением `over` и выборкой самых старых записей другой
+  // инстанс (второй тик планировщика/деплой) мог уже их удалить —
+  // trimOverCap не должен упасть на пустом результате.
+  it('гонка при обрезке: другой инстанс уже удалил лишнее — trimOverCap не падает', async () => {
+    const estimatedSpy = jest
+      .spyOn(model, 'estimatedDocumentCount')
+      .mockResolvedValueOnce(APP_ERROR_LIMITS.maxRecords + 1);
+    const findSpy = jest.spyOn(model, 'find').mockReturnValueOnce({
+      sort: () => ({
+        limit: () => ({
+          lean: () => Promise.resolve([]),
+        }),
+      }),
+    } as unknown as ReturnType<Model<AppErrorRecord>['find']>);
+
+    await expect(
+      service.record({ source: 'server', kind: 'server', path: '/a', text: 'x' }, NOW),
+    ).resolves.toBeUndefined();
+
+    estimatedSpy.mockRestore();
+    findSpy.mockRestore();
   });
 
   it('TTL-индекс на occurredAt существует с APP_ERROR_LIMITS.retentionDays', async () => {

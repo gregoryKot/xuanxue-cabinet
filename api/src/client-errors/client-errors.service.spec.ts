@@ -246,6 +246,26 @@ describe('ClientErrorsService.report — журнал сбоев (AppErrorJourna
     error.mockRestore();
   });
 
+  // Тот же отказ, но без кода обращения: в строке лога должен стоять прочерк
+  // (requestIdOf/requestId ?? '-'), не слово «undefined».
+  it('журнал отверг промис без кода обращения — в логе прочерк', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { alerts } = fakeAlerts();
+    const { journal } = fakeJournal(new Error('mongo недоступна'));
+    const service = new ClientErrorsService(alerts, journal);
+
+    service.report(input(), undefined);
+    await Promise.resolve();
+
+    const journalCall = error.mock.calls.find((call) =>
+      String(call[0]).includes('app_error journal'),
+    );
+    expect(String(journalCall?.[0])).toContain('requestId=-');
+    error.mockRestore();
+  });
+
   it('журнала нет (@Optional() ничего не внедрил) — не падает', () => {
     const error = jest
       .spyOn(Logger.prototype, 'error')

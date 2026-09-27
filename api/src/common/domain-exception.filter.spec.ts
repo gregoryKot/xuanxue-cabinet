@@ -254,6 +254,23 @@ describe('DomainExceptionFilter', () => {
     expect(warnCalls).toHaveLength(1);
   });
 
+  // Тот же warn, но без кода обращения (requestIdOf вернул undefined) — в
+  // строке лога должен стоять прочерк, не слово «undefined».
+  it('битый JSON без кода обращения — в warn-логе прочерк', () => {
+    const { logger, warnCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host } = buildHost();
+
+    const bodyParserError = Object.assign(new Error('Unexpected token } in JSON'), {
+      status: 400,
+      expose: true,
+      type: 'entity.parse.failed',
+    });
+    filter.catch(bodyParserError, host);
+
+    expect(warnCalls[0]).toContain('requestId=-');
+  });
+
   it('неподдерживаемый charset (body-parser charset.unsupported, 415) → bad_request её же статусом', () => {
     const { logger, errorCalls } = buildLogger();
     const filter = new DomainExceptionFilter(logger);
