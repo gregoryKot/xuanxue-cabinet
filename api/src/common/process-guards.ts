@@ -24,7 +24,7 @@ export interface ErrorLogger {
 }
 
 // Префикс сообщения — по нему ищут строку в логах Railway (RUNBOOK §4,
-// фильтр `level:50`), тот же приём, что `push.send: …` в push-sender.service.ts.
+// фильтр `@level:error`), тот же приём, что `push.send: …` в push-sender.service.ts.
 const UNHANDLED_REJECTION_TAG = 'process.unhandledRejection';
 const UNCAUGHT_EXCEPTION_TAG = 'process.uncaughtException';
 

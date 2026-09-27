@@ -47,7 +47,9 @@ export class ClientErrorsService {
     );
     const message = clampClientErrorText(input.message, CLIENT_ERROR_LIMITS.message);
 
-    this.logger.error({ requestId, kind, path, message }, 'Сбой в браузере');
+    // errorText, а не message: `message` в строке лога Railway занимает сам
+    // и наше поле затирает (logging.module.ts, RESERVED_LOG_KEY).
+    this.logger.error({ requestId, kind, path, errorText: message }, 'Сбой в браузере');
 
     if (SILENT_KINDS.includes(kind)) return;
 

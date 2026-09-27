@@ -29,6 +29,28 @@ function genReqId(req: IncomingMessage, res: ServerResponse): string {
   return id;
 }
 
+// Railway разбирает JSON-строку лога сам (docs/RUNBOOK.md): текст строки
+// берёт из `msg` и кладёт в своё поле `message`, уровень — только строкой.
+// Поле `message` из наших атрибутов при этом пропадает молча, а числовой
+// `level: 50` читается как info — так 23–26.09.2026 четыре алёрта «Сбой в
+// браузере» (5addec59…, ed7b3bac…, 9e47b860…, 9a5ef539…) пришли без текста
+// ошибки, и искать его было негде. Поэтому уровень пишем словом, а
+// зарезервированный ключ переименовываем, кто бы его ни передал.
+export const RESERVED_LOG_KEY = 'message';
+export const RENAMED_RESERVED_LOG_KEY = 'detail';
+
+export function formatLogLevel(label: string): { level: string } {
+  return { level: label };
+}
+
+export function renameReservedLogKeys(
+  obj: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!(RESERVED_LOG_KEY in obj)) return obj;
+  const { [RESERVED_LOG_KEY]: value, ...rest } = obj;
+  return { ...rest, [RENAMED_RESERVED_LOG_KEY]: value };
+}
+
 // Вынесено из useFactory как чистая функция — только чтобы её можно было
 // протестировать напрямую (правило CLAUDE.md: ветвление — логика, логика
 // приезжает с тестом). pino-pretty поднимает воркер-поток форматирования;
@@ -48,6 +70,7 @@ export function buildPinoHttpOptions(nodeEnv: string, logLevel: string): PinoHtt
     // а уже сериализованный объект и потерял бы remoteAddress/remotePort.
     wrapSerializers: false,
     autoLogging: { ignore: isHealthCheck },
+    formatters: { level: formatLogLevel, log: renameReservedLogKeys },
     transport:
       nodeEnv === 'development'
         ? { target: 'pino-pretty', options: { colorize: true, singleLine: false } }

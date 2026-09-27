@@ -61,7 +61,24 @@ describe('ClientErrorsService.report', () => {
     expect(calls[0]?.path).toHaveLength(CLIENT_ERROR_LIMITS.path);
     const [fields] = error.mock.calls[0] as [Record<string, unknown>, string];
     expect(fields.path).toHaveLength(CLIENT_ERROR_LIMITS.path);
-    expect(fields.message).toHaveLength(CLIENT_ERROR_LIMITS.message);
+    expect(fields.errorText).toHaveLength(CLIENT_ERROR_LIMITS.message);
+    error.mockRestore();
+  });
+
+  // Регрессия 23–26.09.2026 (requestId 5addec59…, ed7b3bac…, 9e47b860…,
+  // 9a5ef539…): текст ошибки лежал в `message`, и Railway его затёр —
+  // алёрт приходил, а причину найти было негде (logging.module.ts).
+  it('текст ошибки в логе — в errorText, не в зарезервированном message', () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const service = new ClientErrorsService(fakeAlerts().alerts);
+
+    service.report(input({ message: 'TypeError: x is undefined' }), 'req-5');
+
+    const [fields] = error.mock.calls[0] as [Record<string, unknown>, string];
+    expect(fields.errorText).toBe('TypeError: x is undefined');
+    expect(fields).not.toHaveProperty('message');
     error.mockRestore();
   });
 
