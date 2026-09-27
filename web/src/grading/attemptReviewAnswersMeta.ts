@@ -1,55 +1,52 @@
-// Строка-счётчик под заголовком «Ответы» (Review.dc.html) — сколько всего
-// вопросов, сколько из них без ответа (отзыв владельца 2026-09-21: учитель
-// должен видеть это по факту, не вычислять из карточек ниже) и сколько из
-// отвеченных машина проверила сама (вопрос с вариантами), а сколько смотрит
-// учитель (текст, видео — без автопроверки). Все числа — из уже загруженного
-// снимка попытки, не новый запрос. Пустая попытка — честный текст, не
-// «0 вопросов» (CLAUDE.md «Продуктовая фича = число в своём разделе»).
-import {
-  pluralRu,
-  type AttemptReviewBlockDto,
-  type AttemptReviewQuestionDto,
-} from '@xuanxue/shared';
-
-const QUESTION_FORMS = {
-  one: 'вопрос',
-  few: 'вопроса',
-  many: 'вопросов',
-  other: 'вопроса',
-};
+// Строка-счётчик под заголовком «Ответы» (Review.dc.html) и порядок вопросов
+// под ней. Отзыв владельца 2026-09-27: «16 вопросов · 15 проверила машина,
+// 1 — вы» ничего не говорит учителю. Ему нужны два факта — сколько верных
+// среди вопросов с вариантами (правильный ответ задан заранее) и сколько
+// осталось проверить самому, — а ручные вопросы стоят первыми: ради них он и
+// открыл попытку. Все числа — из уже загруженного снимка, не новый запрос.
+// Пустая попытка — честный текст, не «0 вопросов» (CLAUDE.md «Продуктовая
+// фича = число в своём разделе»).
+import type { AttemptReviewBlockDto, AttemptReviewQuestionDto } from '@xuanxue/shared';
+import { isFullyCorrect } from './attemptReviewQuestionStatus';
 
 const NO_QUESTIONS_TEXT = 'В этой попытке пока нет вопросов.';
-// Без склонений (ТЗ) — «без ответа» звучит одинаково при любом числе.
-const NO_ANSWER_SUFFIX = 'без ответа';
 
-/** Честно только там, где ответ вообще мог лежать в `answers` попытки — у
- * видео-вопроса `answered` ничего не знает про присланную запись (ADR-0037,
- * ответ там — media, не answers), поэтому видео в счёт не идёт. */
-function countUnanswered(questions: AttemptReviewQuestionDto[]): number {
-  return questions.filter((question) => question.kind !== 'video' && !question.answered)
-    .length;
+/** Вопрос без вариантов (текст, видео) машина не проверяет — смотрит учитель. */
+function isManual(question: AttemptReviewQuestionDto): boolean {
+  return question.options.length === 0;
 }
 
-function gradingSegment(autoCount: number, manualCount: number): string {
-  if (autoCount === 0) return 'все проверяете вы';
-  if (manualCount === 0) return 'все проверила машина';
-  return `${autoCount} проверила машина, ${manualCount} — вы`;
+/** Не отвеченный вопрос с вариантами — не верный: `optionsCheck` у него нет. */
+function isCorrect(question: AttemptReviewQuestionDto): boolean {
+  return question.optionsCheck !== undefined && isFullyCorrect(question.optionsCheck);
 }
 
 export function formatAttemptAnswersSummary(blocks: AttemptReviewBlockDto[]): string {
   const questions = blocks.flatMap((block) => block.questions);
-  const total = questions.length;
-  if (total === 0) return NO_QUESTIONS_TEXT;
+  if (questions.length === 0) return NO_QUESTIONS_TEXT;
 
-  const totalLabel = `${total} ${pluralRu(total, QUESTION_FORMS)}`;
-  const autoCount = questions.filter((question) => question.options.length > 0).length;
-  const manualCount = total - autoCount;
-  const unansweredCount = countUnanswered(questions);
+  const auto = questions.filter((question) => !isManual(question));
+  const manualCount = questions.length - auto.length;
+  const correctCount = auto.filter(isCorrect).length;
 
-  const segments = [
-    totalLabel,
-    unansweredCount > 0 ? `${unansweredCount} ${NO_ANSWER_SUFFIX}` : '',
-    gradingSegment(autoCount, manualCount),
-  ].filter(Boolean);
-  return segments.join(' · ');
+  if (auto.length === 0) return `Проверить ${manualCount}`;
+  const correct = `Верно ${correctCount} из ${auto.length}`;
+  return manualCount > 0 ? `${correct} · проверить ${manualCount}` : correct;
+}
+
+function manualFirst(questions: AttemptReviewQuestionDto[]): AttemptReviewQuestionDto[] {
+  return [...questions.filter(isManual), ...questions.filter((q) => !isManual(q))];
+}
+
+/** Ручные вопросы — в начало: внутри блока и сами блоки с ними — раньше блоков
+ * без них. Порядок внутри каждой группы — как в снимке попытки. */
+export function orderManualFirst(
+  blocks: AttemptReviewBlockDto[],
+): AttemptReviewBlockDto[] {
+  const ordered = blocks.map((block) => ({
+    ...block,
+    questions: manualFirst(block.questions),
+  }));
+  const hasManual = (block: AttemptReviewBlockDto) => block.questions.some(isManual);
+  return [...ordered.filter(hasManual), ...ordered.filter((block) => !hasManual(block))];
 }

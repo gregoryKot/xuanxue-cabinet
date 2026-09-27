@@ -14,7 +14,7 @@
 // заливка терракотой уже занята кнопкой отправки оценки, второе красное пятно
 // на экране запрещено, поэтому не 2 из 3 в такой же тревожный оттенок, а тушь
 // той же силы, что у служебного текста.
-import type { AttemptReviewQuestionDto } from '@xuanxue/shared';
+import type { AttemptOptionCheckDto, AttemptReviewQuestionDto } from '@xuanxue/shared';
 
 // Не экспортируется — снаружи модуля тон читают только через
 // `AttemptReviewQuestionStatus.tone`, отдельно тип никому не нужен (иначе
@@ -57,11 +57,18 @@ export function attemptReviewQuestionStatus(
   }
   if (!question.optionsCheck) return null;
 
-  const { correctSelectedCount, correctTotalCount, incorrectSelectedCount } =
-    question.optionsCheck;
-  const isFullyCorrect =
-    correctSelectedCount === correctTotalCount && incorrectSelectedCount === 0;
-  if (isFullyCorrect) return { label: FULLY_CORRECT_LABEL, tone: 'jade' };
-
+  if (isFullyCorrect(question.optionsCheck)) {
+    return { label: FULLY_CORRECT_LABEL, tone: 'jade' };
+  }
+  const { correctSelectedCount, correctTotalCount } = question.optionsCheck;
   return { label: `${correctSelectedCount} из ${correctTotalCount}`, tone: 'neutral' };
+}
+
+/** Полное совпадение вариантов — одно определение «верно» и для метки
+ * вопроса, и для счётчика над списком (attemptReviewAnswersMeta.ts). */
+export function isFullyCorrect(check: AttemptOptionCheckDto): boolean {
+  return (
+    check.correctSelectedCount === check.correctTotalCount &&
+    check.incorrectSelectedCount === 0
+  );
 }
