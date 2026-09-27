@@ -5,7 +5,7 @@
 // для single имя группы (`name`) отдаёт браузеру взаимное исключение самому,
 // для multiple — обычные чекбоксы (CLAUDE.md «Доступность» — работает с
 // клавиатуры без единого атрибута ARIA).
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
 import { noteStyle } from '../components/screenLayout';
 import { RichText } from '../components/RichText';
@@ -57,10 +57,19 @@ export function ExamItemOptionsField({
   fileStorageEnabled,
   onChange,
 }: ExamItemOptionsFieldProps) {
+  // Загрузка фото/видео заканчивается асинхронно: замыкание обработчика
+  // видит список вариантов на момент нажатия, и второй ролик, загруженный
+  // параллельно, записывал своё поверх этого старого списка — первый ролик
+  // пропадал (отзыв владельца с телефона 2026-09-27). Правки строятся от
+  // списка последнего рендера, а не от захваченного в замыкании.
+  const latest = useRef(options);
+  latest.current = options;
   const canAddMore = options.length < EXAM_ITEM_LIMITS.optionsMax;
 
   function updateText(index: number, text: string) {
-    onChange(options.map((option, i) => (i === index ? { ...option, text } : option)));
+    onChange(
+      latest.current.map((option, i) => (i === index ? { ...option, text } : option)),
+    );
   }
 
   // Картинка и видео — взаимоисключающие (ADR-0133): новая картинка снимает
@@ -68,7 +77,7 @@ export function ExamItemOptionsField({
   // кадром до следующего PATCH.
   function updateImage(index: number, imageId: string | undefined) {
     onChange(
-      options.map((option, i) =>
+      latest.current.map((option, i) =>
         i === index
           ? { ...option, imageId, videoId: undefined, videoUrl: undefined }
           : option,
@@ -78,7 +87,7 @@ export function ExamItemOptionsField({
 
   function updateVideo(index: number, video: ExamVideoValue) {
     onChange(
-      options.map((option, i) =>
+      latest.current.map((option, i) =>
         i === index ? { ...option, imageId: undefined, ...video } : option,
       ),
     );
@@ -89,18 +98,18 @@ export function ExamItemOptionsField({
     // а не только ставит текущий (радио сделал бы то же в DOM, но React
     // держит состояние здесь — синхронизируем явно).
     if (kind === 'single') {
-      onChange(options.map((option, i) => ({ ...option, correct: i === index })));
+      onChange(latest.current.map((option, i) => ({ ...option, correct: i === index })));
       return;
     }
     onChange(
-      options.map((option, i) =>
+      latest.current.map((option, i) =>
         i === index ? { ...option, correct: checked } : option,
       ),
     );
   }
 
   function removeOption(index: number) {
-    onChange(options.filter((_, i) => i !== index));
+    onChange(latest.current.filter((_, i) => i !== index));
   }
 
   return (
