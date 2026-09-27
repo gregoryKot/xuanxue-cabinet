@@ -19,6 +19,9 @@ export interface NotificationDto {
    * attempt_submitted/exam_result, оба всегда со ссылками на форму. */
   examId?: string;
   attemptId?: string;
+  /** Есть только у `lesson_soon` (ADR-0135) — ссылка на занятие, к которому
+   * относится напоминание. */
+  lessonId?: string;
   /** Только у exam_result — итог проверки (без баллов, PLAN §11 «Границы»). */
   outcome?: GradingOutcome;
   /** Нет — непрочитано. Есть — когда отметили (POST .../read). */

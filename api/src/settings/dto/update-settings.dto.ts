@@ -76,6 +76,14 @@ export class UpdateSettingsDto implements UpdateSettingsInput {
   @Max(SETTINGS_LIMITS.previewMinutesMax)
   previewMinutes?: number;
 
+  // Не в NULLABLE_SETTINGS_FIELDS — та же причина, что у previewMinutes
+  // выше: «сбросить в ничто» смысла не имеет, только заменить другим числом.
+  @OptionalNotNull()
+  @IsInt()
+  @Min(SETTINGS_LIMITS.lessonReminderMinutesMin)
+  @Max(SETTINGS_LIMITS.lessonReminderMinutesMax)
+  lessonReminderMinutes?: number;
+
   @OptionalNotNull()
   @IsString()
   @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })

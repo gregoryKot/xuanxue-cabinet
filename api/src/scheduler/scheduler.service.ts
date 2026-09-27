@@ -17,6 +17,7 @@ import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-no
 import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
+import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
@@ -25,9 +26,8 @@ import { SchedulerHeartbeat } from './scheduler-heartbeat';
 @Injectable()
 export class SchedulerService implements OnApplicationShutdown {
   private readonly logger = new Logger(SchedulerService.name);
-  // Тик в полёте — SIGTERM (onApplicationShutdown) ждёт именно его, а не
-  // обрывает (CLAUDE.md «Деплой»: «тик планировщика завершается, не
-  // обрывается»).
+  // Тик в полёте — SIGTERM (onApplicationShutdown) ждёт его, не обрывает
+  // (CLAUDE.md «Деплой»).
   private inFlight: Promise<void> | null = null;
 
   constructor(
@@ -37,6 +37,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly deliveryRunner: DeliveryRunnerService,
     private readonly previewService: PreviewService,
     private readonly recordingPromptService: RecordingPromptService,
+    private readonly lessonReminderService: LessonReminderService,
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
     private readonly examImageSweepService: ExamImageSweepService,
@@ -46,12 +47,9 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly heartbeat: SchedulerHeartbeat,
   ) {}
 
-  // waitForCompletion: если предыдущий тик ещё не завершился, cron пропускает
-  // текущий запуск целиком — наш код в этот момент не вызывается вовсе,
-  // поэтому свой warn о пропуске здесь не нужен и не может быть точным.
-  // heartbeat — аудит 2026-09-21 (MED): без него зависший тик молчал бы
-  // вечно, а /api/health отвечал бы ok (RUNBOOK §8 п.4). Начало — до
-  // runTick(), конец — в finally, чтобы отметиться и при падении шага.
+  // waitForCompletion: пропущенный запуск не вызывает код вовсе, свой warn
+  // не нужен. heartbeat (аудит 2026-09-21, MED, RUNBOOK §8 п.4) — начало до
+  // runTick(), конец в finally, чтобы отметиться и при падении шага.
   @Cron(CronExpression.EVERY_MINUTE, { waitForCompletion: true })
   async tick(): Promise<void> {
     this.heartbeat.noteTickStarted(DateTime.utc());
@@ -85,13 +83,14 @@ export class SchedulerService implements OnApplicationShutdown {
     const { prompted: recordingsPrompted } = (await this.step('запись', now, (n) =>
       this.recordingPromptService.prompt(n),
     )) ?? { prompted: 0 };
+    const { reminded } = (await this.step('напоминание', now, (n) =>
+      this.lessonReminderService.remind(n),
+    )) ?? { reminded: 0 };
     const { prompted: manualPrompted } = (await this.step('ручные каналы', now, (n) =>
       this.manualPromptService.prompt(n),
     )) ?? { prompted: 0 };
-    // Блокер аудита 2026-09-15 (ТЗ 4.4, п.7): без этого шага просроченная
-    // попытка закрывалась только тогда, когда кто-то трогал именно её, и
-    // могла остаться незакрытой навсегда, если ученик не вернулся —
-    // exam-deadline-close.service.ts, её комментарий-шапка.
+    // Блокер аудита 2026-09-15 (ТЗ 4.4, п.7): без шага просроченная попытка
+    // не закрывалась бы, если ученик не вернулся (exam-deadline-close.service.ts).
     const { closed: examAttemptsClosed } = (await this.step(
       'дедлайны экзаменов',
       now,
@@ -119,7 +118,7 @@ export class SchedulerService implements OnApplicationShutdown {
     this.logger.log(
       `scheduler.tick created=${created} removed=${removed} broadcasts=${broadcasts} ` +
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
-        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} ` +
+        `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
         `imagesRemoved=${imagesRemoved} paymentScreenshotsRemoved=${screenshotsRemoved} ` +
         `paymentScreenshotOrphans=${screenshotOrphans} filesRemoved=${filesRemoved}`,

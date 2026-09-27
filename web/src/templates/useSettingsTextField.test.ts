@@ -13,6 +13,7 @@ const SETTINGS: SettingsDto = {
   templates: { lesson_link: '', recording: '' },
   tz: 'Asia/Jerusalem',
   previewMinutes: 5,
+  lessonReminderMinutes: 60,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };

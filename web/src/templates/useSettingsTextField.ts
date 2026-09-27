@@ -4,9 +4,10 @@
 // оба поля читают значение из SettingsDto, следят за изменениями, шлют
 // PATCH через ту же UseSettingsResult.update (useSettings.ts) и показывают
 // ошибку сервера одинаково, различается только то, какое поле читать/писать
-// и валидно ли пустое значение. usePreviewMinutesField.ts сюда не переведён:
-// там значение хранится строкой ради парсинга числа и своя валидация
-// диапазона — не тот же случай (см. комментарий в файле).
+// и валидно ли пустое значение. Поля минут (usePreviewMinutesField.ts,
+// useLessonReminderMinutesField.ts) сюда не переведены: там значение
+// хранится строкой ради парсинга числа и своя валидация диапазона — не тот
+// же случай, у них общая механика вынесена отдельно (useMinutesField.ts).
 import { useEffect, useState } from 'react';
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
 import { errorFrom, type FormError } from '../components/FormServerError';

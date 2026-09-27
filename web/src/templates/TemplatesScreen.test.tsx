@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_PREVIEW_MINUTES,
   type SettingsDto,
 } from '@xuanxue/shared';
@@ -28,6 +29,7 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
     templates: { lesson_link: 'Анонс {название}', recording: 'Запись {название}' },
     tz: 'Asia/Jerusalem',
     previewMinutes: DEFAULT_PREVIEW_MINUTES,
+    lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
     newcomerContact: DEFAULT_NEWCOMER_CONTACT,
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -440,6 +442,80 @@ describe('TemplatesScreen — время предпросмотра', () => {
 
     expect(
       screen.getByRole('button', { name: 'Сохранить время предпросмотра' }),
+    ).toBeDisabled();
+  });
+});
+
+// Поле «За сколько минут напомнить ученикам о занятии» (ADR-0135) — та же
+// механика, что у времени предпросмотра выше, обобщённая в useMinutesField.ts.
+describe('TemplatesScreen — напоминание ученикам о занятии', () => {
+  const LABEL = 'За сколько минут напомнить ученикам о занятии';
+
+  it('дефолт школы без документа настроек — поле показывает 60', async () => {
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(await screen.findByLabelText(LABEL)).toHaveValue('60');
+  });
+
+  it('сохранённое значение показано в поле', async () => {
+    mockByPath({
+      '/settings': makeSettings({ lessonReminderMinutes: 30 }),
+      '/lessons': [],
+    });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(await screen.findByDisplayValue('30')).toHaveAccessibleName(LABEL);
+  });
+
+  it('«Сохранить напоминание о занятии» — PATCH /settings с { lessonReminderMinutes }', async () => {
+    const user = userEvent.setup();
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    const field = await screen.findByLabelText(LABEL);
+    await user.clear(field);
+    await user.type(field, '45');
+
+    mockByPath({
+      '/settings': makeSettings({
+        lessonReminderMinutes: 45,
+        updatedAt: '2026-01-02T00:00:00Z',
+      }),
+      '/lessons': [],
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Сохранить напоминание о занятии' }),
+    );
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/settings',
+        expect.objectContaining({ method: 'PATCH', body: { lessonReminderMinutes: 45 } }),
+      ),
+    );
+  });
+
+  it('вне диапазона (1441) — кнопка неактивна, PATCH не уходит', async () => {
+    const user = userEvent.setup();
+    mockByPath({ '/settings': makeSettings(), '/lessons': [] });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    const field = await screen.findByLabelText(LABEL);
+    await user.clear(field);
+    await user.type(field, '1441');
+
+    expect(
+      screen.getByRole('button', { name: 'Сохранить напоминание о занятии' }),
     ).toBeDisabled();
   });
 });

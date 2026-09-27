@@ -39,9 +39,9 @@ describe('NotificationPrefsService', () => {
     });
   });
 
-  it('гость (без ролей) — дефолт как у ученика', async () => {
+  it('гость (без ролей) — дефолт как у ученика (ADR-0135 — экзамен и занятие)', async () => {
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['exam_result'],
+      enabled: ['exam_result', 'lesson_soon'],
     });
   });
 
@@ -49,7 +49,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'exam_result', false);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: [],
+      enabled: ['lesson_soon'],
     });
   });
 
@@ -57,7 +57,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'payments', true);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['exam_result', 'payments'],
+      enabled: ['exam_result', 'lesson_soon', 'payments'],
     });
   });
 
@@ -66,7 +66,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'exam_result', false);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: [],
+      enabled: ['lesson_soon'],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
   });
@@ -76,7 +76,7 @@ describe('NotificationPrefsService', () => {
     await service.set('u1', 'exam_result', true);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: ['exam_result'],
+      enabled: ['exam_result', 'lesson_soon'],
     });
     expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
   });
@@ -86,10 +86,10 @@ describe('NotificationPrefsService', () => {
     await service.set('u2', 'payments', true);
 
     expect(await service.get('u1', [])).toEqual({
-      enabled: [],
+      enabled: ['lesson_soon'],
     });
     expect(await service.get('u2', [])).toEqual({
-      enabled: ['exam_result', 'payments'],
+      enabled: ['exam_result', 'lesson_soon', 'payments'],
     });
   });
 

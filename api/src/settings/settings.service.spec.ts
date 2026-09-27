@@ -5,6 +5,7 @@
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import {
+  DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
   DEFAULT_PREVIEW_MINUTES,
   DEFAULT_TEMPLATES,
@@ -83,6 +84,19 @@ describe('SettingsService', () => {
       expect(settings.previewMinutes).toBe(DEFAULT_PREVIEW_MINUTES);
     });
 
+    it('документ без поля lessonReminderMinutes (старая база) — дефолт, не undefined/NaN', async () => {
+      // Тот же приём, что и у previewMinutes выше.
+      await model.create({
+        _id: 'school',
+        templates: { lessonLink: DEFAULT_TEMPLATES.lesson_link, recording: 'x' },
+        tz: 'Asia/Jerusalem',
+      });
+
+      const settings = await service.get();
+
+      expect(settings.lessonReminderMinutes).toBe(DEFAULT_LESSON_REMINDER_MINUTES);
+    });
+
     it('документ без поля newcomerContact (старая база) — дефолт, не undefined', async () => {
       // Тот же приём, что и у previewMinutes выше: поля нет вовсе, не пустая
       // строка — create() без него не отличить от документа, который
@@ -159,6 +173,13 @@ describe('SettingsService', () => {
 
       const settings = await service.get();
       expect(settings.previewMinutes).toBe(10);
+    });
+
+    it('lessonReminderMinutes — сохраняется, get видит его после (read-after-write)', async () => {
+      await service.update({ lessonReminderMinutes: 45 });
+
+      const settings = await service.get();
+      expect(settings.lessonReminderMinutes).toBe(45);
     });
 
     it('newcomerContact — сохраняется, get видит его после (read-after-write)', async () => {
@@ -301,6 +322,7 @@ describe('SettingsService.get — гонка E11000 (фейк модели)', ()
       templates: { lesson_link: 'шаблон', recording: 'запись' },
       tz: 'Asia/Jerusalem',
       previewMinutes: DEFAULT_PREVIEW_MINUTES, // фейковый doc без поля — дефолт
+      lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES, // фейковый doc без поля — дефолт
       newcomerContact: DEFAULT_NEWCOMER_CONTACT, // фейковый doc без поля — дефолт
       updatedAt: '2026-09-06T18:00:00.000Z',
     });

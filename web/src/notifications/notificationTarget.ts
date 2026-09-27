@@ -12,12 +12,17 @@ import type { NotificationDto } from '@xuanxue/shared';
 const TASKS_PATH = '/tasks';
 // Проверка одной работы — ROUTE_MODULES.attemptReview (web/src/app/routeModules.ts).
 const GRADING_PATH = '/grading';
+// Ближайшие занятия ученика — student/LessonsScreen.tsx (ADR-0135): то же
+// место, куда ведёт пункт меню «Занятия», отдельного экрана под одно
+// напоминание не заводим.
+const LESSONS_PATH = '/lessons';
 
 /** Адрес предмета строки; `undefined` — вести пока некуда. Вид без своего
  * экрана остаётся строкой без ссылки: ссылка в никуда обманывает и палец, и
  * клавиатуру (CLAUDE.md «Доступность»). */
 export function notificationTarget(item: NotificationDto): string | undefined {
   if (item.kind === 'exam_result') return TASKS_PATH;
+  if (item.kind === 'lesson_soon') return LESSONS_PATH;
   if (item.kind === 'attempt_submitted' && item.attemptId) {
     return `${GRADING_PATH}/${item.attemptId}`;
   }

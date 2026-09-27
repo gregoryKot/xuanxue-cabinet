@@ -45,6 +45,13 @@ export class SettingsRecord {
   previewMinutes?: number;
 
   // Не required и без default по той же причине, что и previewMinutes:
+  // старая база до этой настройки (ADR-0135) не имеет поля вовсе —
+  // settings.service.ts подставляет DEFAULT_LESSON_REMINDER_MINUTES явно при
+  // чтении (toSettingsDto).
+  @Prop({ type: Number })
+  lessonReminderMinutes?: number;
+
+  // Не required и без default по той же причине, что и previewMinutes:
   // старая база без этой настройки не имеет поля вовсе — дефолт
   // (DEFAULT_NEWCOMER_CONTACT) подставляется явно при чтении (toSettingsDto).
   @Prop({ type: String })

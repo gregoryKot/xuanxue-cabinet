@@ -36,13 +36,13 @@ const TEACHER: MeDto = {
 };
 
 describe('useNotificationPrefs — виды по роли', () => {
-  it('ученику доступен один вид — результат экзамена (ADR-0062)', async () => {
-    mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
+  it('ученику доступны два вида — результат экзамена и напоминание о занятии (ADR-0135)', async () => {
+    mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result', 'lesson_soon'] });
     const { result } = renderHook(() => useNotificationPrefs(STUDENT));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual(['exam_result']);
-    expect(result.current.enabled).toEqual(['exam_result']);
+    expect(result.current.kinds).toEqual(['exam_result', 'lesson_soon']);
+    expect(result.current.enabled).toEqual(['exam_result', 'lesson_soon']);
   });
 
   it('учителю доступны его виды, не ученические', async () => {
@@ -63,7 +63,7 @@ describe('useNotificationPrefs — виды по роли', () => {
     const { result } = renderHook(() => useNotificationPrefs(null));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.kinds).toEqual(['exam_result']);
+    expect(result.current.kinds).toEqual(['exam_result', 'lesson_soon']);
   });
 });
 

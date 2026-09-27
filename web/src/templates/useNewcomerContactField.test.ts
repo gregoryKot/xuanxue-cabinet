@@ -8,6 +8,7 @@ const SETTINGS_DEFAULT: SettingsDto = {
   templates: { lesson_link: '', recording: '' },
   tz: 'Asia/Jerusalem',
   previewMinutes: 5,
+  lessonReminderMinutes: 60,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
@@ -16,6 +17,7 @@ const SETTINGS_CUSTOM: SettingsDto = {
   templates: { lesson_link: '', recording: '' },
   tz: 'Asia/Jerusalem',
   previewMinutes: 5,
+  lessonReminderMinutes: 60,
   newcomerContact: 'Ире @irina_school',
   // Другой updatedAt, чем у SETTINGS_DEFAULT — синхронизация в хуке идёт по
   // нему (как в useSchoolSiteField.test.ts), одинаковый updatedAt у обоих

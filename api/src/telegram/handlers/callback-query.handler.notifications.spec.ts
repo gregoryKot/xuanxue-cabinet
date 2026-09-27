@@ -93,7 +93,7 @@ describe('CallbackQueryHandler — notif (Уведомления)', () => {
     expect(editCalls).toEqual([]);
   });
 
-  it('ученик без ролей (ADR-0065) выключает свой единственный вид', async () => {
+  it('ученик без ролей (ADR-0065) выключает один из своих видов (ADR-0135 — их два)', async () => {
     const student = await ctx.userModel.create({
       name: 'Ваня',
       telegramId: 111,

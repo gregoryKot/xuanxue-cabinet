@@ -57,6 +57,7 @@ import { ExamItemModelModule } from '../exams/exam-item-model.module';
 import { CompositeExamNotifier } from '../exams/exam-notifier.composite';
 import { EXAM_NOTIFIER } from '../exams/exam-notifier';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
+import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { LessonsModule } from '../lessons/lessons.module';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
@@ -72,6 +73,7 @@ import { StorageModule } from '../storage/storage.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { TelegramExamNotifier } from '../telegram/telegram-exam-notifier';
 import { TelegramTeacherNotifier } from '../telegram/telegram-teacher-notifier';
+import { UserModelModule } from '../users/user-model.module';
 import { UsersModule } from '../users/users.module';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { SchedulerService } from './scheduler.service';
@@ -97,6 +99,9 @@ import { SchedulerService } from './scheduler.service';
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
     // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
     UsersModule,
+    // LessonReminderService (ADR-0135) читает UserRecord напрямую
+    // (listActiveStudents) — модель, не весь UsersModule ещё раз.
+    UserModelModule,
     TelegramModule,
   ],
   providers: [
@@ -106,6 +111,11 @@ import { SchedulerService } from './scheduler.service';
     DeliveryRunnerService,
     PreviewService,
     RecordingPromptService,
+    // ADR-0135: напоминание ученикам о занятии — NotificationsModule
+    // (NotificationRecord/NotificationPrefsService), PushModule
+    // (PushSenderService) и SettingsModule уже импортированы выше ради
+    // других шагов, второй раз не заводим.
+    LessonReminderService,
     ManualPromptService,
     ExamDeadlineCloseService,
     ExamImageSweepService,

@@ -74,7 +74,7 @@ describe('NotificationsCommandHandler', () => {
     expect(replies[0]).toContain('Черновик поста — включено');
   });
 
-  it('ученик (без ролей, ADR-0065) — получает меню со своим единственным видом', async () => {
+  it('ученик (без ролей, ADR-0065) — получает меню со своими видами', async () => {
     const prefs = fakePrefs(['exam_result']);
     const handler = new NotificationsCommandHandler(
       fakeBotUserAccess(activeAccess(STUDENT)),

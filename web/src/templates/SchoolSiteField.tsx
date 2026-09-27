@@ -9,7 +9,9 @@
 //   ссылку на сам кабинет, как раньше;
 // - за сколько минут бот показывает учителю черновик поста перед отправкой
 //   (ТЗ preview-minutes.md) — учитель успевает поправить тему или отменить
-//   рассылку.
+//   рассылку;
+// - за сколько минут ученику приходит напоминание о занятии — лента кабинета
+//   и push (ADR-0135).
 import type { CSSProperties } from 'react';
 import {
   SETTINGS_LIMITS,
@@ -22,6 +24,7 @@ import { FormServerError } from '../components/FormServerError';
 import { RichText } from '../components/RichText';
 import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
 import { editorSectionStyle } from '../components/editorLayout';
+import { useLessonReminderMinutesField } from './useLessonReminderMinutesField';
 import { usePreviewMinutesField } from './usePreviewMinutesField';
 import { useSchoolSiteField } from './useSchoolSiteField';
 
@@ -30,6 +33,9 @@ const SITE_EXPLANATION =
 
 const PREVIEW_EXPLANATION =
   'Бот присылает черновик поста заранее — успеваете поправить или **отменить рассылку**.';
+
+const REMINDER_EXPLANATION =
+  'Ученик получает напоминание о занятии в кабинет и **push-уведомлением на телефон**.';
 
 // Раздел страницы — волосяная линия сверху, как у шаблонов рядом
 // (TemplateEditor.tsx). Кнопки здесь вторичные: заливка терракотой на экране
@@ -49,6 +55,7 @@ interface SchoolSiteFieldProps {
 export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
   const site = useSchoolSiteField(settings, update);
   const preview = usePreviewMinutesField(settings, update);
+  const reminder = useLessonReminderMinutesField(settings, update);
 
   return (
     <section style={sectionStyle}>
@@ -106,6 +113,32 @@ export function SchoolSiteField({ settings, update }: SchoolSiteFieldProps) {
         disabled={!preview.hasChanges}
       >
         Сохранить время предпросмотра
+      </Button>
+
+      <p style={screenExplanationStyle}>
+        <RichText text={REMINDER_EXPLANATION} />
+      </p>
+      <Field
+        label="За сколько минут напомнить ученикам о занятии"
+        hint={`Число от ${SETTINGS_LIMITS.lessonReminderMinutesMin} до ${SETTINGS_LIMITS.lessonReminderMinutesMax}`}
+      >
+        <input
+          type="text"
+          inputMode="numeric"
+          style={inputStyle}
+          value={reminder.text}
+          onChange={(event) => reminder.setText(event.target.value)}
+        />
+      </Field>
+      <FormServerError error={reminder.error} />
+      <Button
+        variant="secondary"
+        style={primaryActionStyle}
+        onClick={() => void reminder.save()}
+        pending={reminder.pending}
+        disabled={!reminder.hasChanges}
+      >
+        Сохранить напоминание о занятии
       </Button>
     </section>
   );

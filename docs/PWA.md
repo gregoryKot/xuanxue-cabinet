@@ -96,9 +96,13 @@ worker умеет показать push, сервер умеет принять 
   лишь «в карман» (RUNBOOK §6.5 — как проверить и что делать при массовых
   отказах). Плечо-нотификатор — `PushExamNotifier`
   (`api/src/push/push-exam-notifier.ts`), третье рядом с `InAppExamNotifier` и
-  `TelegramExamNotifier` (`CompositeExamNotifier`, PLAN §11): пока это
-  «работу сдали» учителю/помощнику и «работу проверили» ученику — те же два
-  вида, что уже идут в Telegram и в ленту.
+  `TelegramExamNotifier` (`CompositeExamNotifier`, PLAN §11): «работу сдали»
+  учителю/помощнику и «работу проверили» ученику — те же два вида, что уже
+  идут в Telegram и в ленту. Напоминание о занятии (`lesson_soon`, ADR-0135)
+  добавляет второе плечо-отправителя, `LessonReminderService`
+  (`api/src/lessons/lesson-reminder.service.ts`) — шаг тика планировщика, не
+  часть `CompositeExamNotifier`: у него нет своего Telegram-плеча (лента и
+  push, без личного чата с ботом, CLAUDE.md «Ноль нагрузки на ученика»).
 - На iPhone push работает только у кабинета, поставленного на экран «Домой»
   (Safari 16.4+ — иначе разрешение не спросить вовсе): раздел «Профиля»
   определяет это по отсутствию standalone-режима
