@@ -106,9 +106,7 @@ import { SchedulerService } from './scheduler.service';
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
     // нет: UsersModule ни о SchedulerModule, ни о доменах школы не знает.
     UsersModule,
-    // LessonReminderService (ADR-0135) читает UserRecord напрямую
-    // (listActiveStudents) — модель, не весь UsersModule ещё раз.
-    UserModelModule,
+    UserModelModule, // UserRecord для LessonReminderService (ADR-0135)
     TelegramModule,
   ],
   providers: [
@@ -118,11 +116,7 @@ import { SchedulerService } from './scheduler.service';
     DeliveryRunnerService,
     PreviewService,
     RecordingPromptService,
-    // ADR-0135: напоминание ученикам о занятии — NotificationsModule
-    // (NotificationRecord/NotificationPrefsService), PushModule
-    // (PushSenderService) и SettingsModule уже импортированы выше ради
-    // других шагов, второй раз не заводим.
-    LessonReminderService,
+    LessonReminderService, // напоминание ученикам о занятии (ADR-0135)
     ManualPromptService,
     ExamDeadlineCloseService,
     ExamImageSweepService,
