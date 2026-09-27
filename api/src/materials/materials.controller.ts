@@ -35,6 +35,17 @@ export class MaterialsController {
     return this.materialsService.list(query);
   }
 
+  // Инцидент 2026-09-27: страница-редактор материала (useMaterialEditor.ts)
+  // открывалась по прямой ссылке /materials/:id, а маршрута на чтение одной
+  // записи у контроллера не было (был только у соседних коллекций — classes,
+  // channels, exams, exam-items, lessons) — Nest отвечал «Cannot GET
+  // /api/materials/:id». Веб-тесты мокают apiFetch и дыру не видели;
+  // check-editor-routes.mjs теперь сверяет это на CI.
+  @Get(':id')
+  getById(@Param('id') id: string): Promise<MaterialDto> {
+    return this.materialsService.getById(id);
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(

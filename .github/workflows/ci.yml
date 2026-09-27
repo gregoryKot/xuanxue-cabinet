@@ -289,6 +289,8 @@ jobs:
           cache: npm
       - name: route collisions
         run: node scripts/check-route-collisions.mjs
+      - name: у каждого useEntityEditor есть GET <коллекция>/:id (2026-09-27)
+        run: node scripts/check-editor-routes.mjs
       - name: списки карточек — промежуток между строками задан
         run: node scripts/check-card-list-gap.mjs
       - name: запись + перечитывание — новых мест сверх аллоу-листа нет (ADR-0087)
