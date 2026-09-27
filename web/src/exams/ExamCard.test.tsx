@@ -77,4 +77,28 @@ describe('ExamCard', () => {
 
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
+
+  // Режим массового выбора (ADR-0141) — components/SelectableListRow.tsx
+  // подменяет кнопку чекбоксом; сама механика проверена в его тестах, здесь
+  // только то, что экзамен передаёт `selection` дальше.
+  it('selection задан — чекбокс вместо кнопки, клик отмечает, не открывает', async () => {
+    const onSelect = vi.fn();
+    const onToggle = vi.fn();
+    render(
+      <ExamCard
+        exam={makeExam()}
+        onSelect={onSelect}
+        selection={{ isSelected: true, onToggle }}
+      />,
+    );
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    const checkbox = screen.getByRole('checkbox', { name: /Итоговый экзамен/ });
+    expect(checkbox).toBeChecked();
+
+    await userEvent.click(checkbox);
+
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });

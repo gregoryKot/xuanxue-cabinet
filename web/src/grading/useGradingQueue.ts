@@ -2,6 +2,13 @@
 // exams/useExams.ts. Владение и роль проверяет сервер
 // (ExamAttemptsController, @Roles('teacher', 'assistant', 'admin')) — здесь
 // только чтение готового списка.
+//
+// `removeAttemptsOfExams` — после массового удаления экзаменов (ADR-0141)
+// экран «Экзамены» выкидывает их работы из уже загруженной очереди: сервер
+// делает то же самое (ADR-0140, попытки удалённой формы не приходят в
+// списке), а без этого число «ждут проверки» на том же экране оставалось бы
+// старым до следующего захода. Второй GET не нужен (ADR-0087).
+import { useCallback } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
 import { GRADING_QUEUE_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
@@ -14,12 +21,20 @@ export interface UseGradingQueueResult {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  removeAttemptsOfExams: (examIds: readonly string[]) => void;
 }
 
 export function useGradingQueue(): UseGradingQueueResult {
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiFetch<ExamAttemptDto[]>(GRADING_QUEUE_PATH, { signal }),
     LOAD_ERROR_MESSAGE,
   );
-  return { attempts: data, loading, error, reload };
+  const removeAttemptsOfExams = useCallback(
+    (examIds: readonly string[]) =>
+      applyData(
+        (prev) => prev?.filter((attempt) => !examIds.includes(attempt.examId)) ?? null,
+      ),
+    [applyData],
+  );
+  return { attempts: data, loading, error, reload, removeAttemptsOfExams };
 }

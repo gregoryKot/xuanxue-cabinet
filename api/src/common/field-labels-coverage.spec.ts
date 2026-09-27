@@ -49,6 +49,7 @@ import { ListUsersDto } from '../users/dto/list-users.dto';
 import { SetNoTelegramDto } from '../users/dto/set-no-telegram.dto';
 import { UpdateMyProfileDto } from '../users/dto/update-my-profile.dto';
 import { UpdateUserRolesDto } from '../users/dto/update-user-roles.dto';
+import { BulkDeleteDto } from './bulk-delete.dto';
 
 type DtoConstructor = new (...args: never[]) => object;
 
@@ -98,6 +99,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   SetNoTelegramDto,
   UpdateMyProfileDto,
   UpdateUserRolesDto,
+  BulkDeleteDto,
 ];
 
 function fieldsOf(dtoClass: DtoConstructor): string[] {

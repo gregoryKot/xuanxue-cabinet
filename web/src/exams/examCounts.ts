@@ -9,7 +9,12 @@
 // строке. pluralRu — общий
 // примитив склонения (shared/src/plural-ru.ts), по образцу
 // schedule/channelCountLabel.ts.
-import { formatDurationRu, pluralRu, type ExamDto } from '@xuanxue/shared';
+import {
+  formatDurationRu,
+  pluralRu,
+  type ExamDto,
+  type PluralForms,
+} from '@xuanxue/shared';
 
 // Экспортирован: examFormInput.ts (валидация «Вопросов ученику») использует
 // то же склонение, дублировать формы — jscpd-храповик (CLAUDE.md «Дубли»).
@@ -25,6 +30,22 @@ const ATTEMPT_FORMS = {
   many: 'попыток',
   other: 'попытки',
 };
+
+/** Склонение самого экзамена (не вопросов внутри него) — массовое удаление
+ * (lib/bulkDeleteText.ts, ADR-0141): «Удалить 3 экзамена?». */
+export const EXAM_NOUN_FORMS: PluralForms = {
+  one: 'экзамен',
+  few: 'экзамена',
+  many: 'экзаменов',
+  other: 'экзамена',
+};
+
+/** Текст подтверждения массового удаления (ExamsScreen.tsx,
+ * BulkDeleteBar.tsx) — экзамен мягко удаляется (ADR-0140): пропадает и у
+ * учителя, и у учеников, но уже сданные работы остаются в базе, не пропадают
+ * вместе с ним. */
+export const EXAM_BULK_DELETE_MESSAGE =
+  'Экзамены пропадут **и у вас, и у учеников**. Уже сданные работы останутся в базе.';
 
 const NO_QUESTIONS_TEXT = 'Пока без вопросов';
 const NO_TIME_LIMIT_TEXT = 'без ограничения';

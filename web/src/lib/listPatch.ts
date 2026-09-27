@@ -68,3 +68,17 @@ export function appended<T>(list: T[] | null, item: T): T[] | null {
   if (list === null) return null;
   return [...list, item];
 }
+
+/** Выкинуть несколько элементов по id — массовое удаление (ADR-0141,
+ * hooks/useBulkDelete.ts). Удаление безопасно править локально даже у
+ * отфильтрованного списка: удалённая запись уходит из ЛЮБОГО фильтра, в
+ * отличие от `replacedById`/`appended` выше, где новое значение поля могло
+ * бы отфильтрованный список показать неверно. */
+export function withoutIds<T extends { id: string }>(
+  list: T[] | null,
+  ids: readonly string[],
+): T[] | null {
+  if (list === null) return null;
+  const removed = new Set(ids);
+  return list.filter((existing) => !removed.has(existing.id));
+}

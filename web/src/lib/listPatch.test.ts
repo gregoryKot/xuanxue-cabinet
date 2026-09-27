@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appended, replacedById, withoutId } from './listPatch';
+import { appended, replacedById, withoutId, withoutIds } from './listPatch';
 
 interface Item {
   id: string;
@@ -66,6 +66,34 @@ describe('withoutId', () => {
 
   it('возвращает новый массив, а не тот же объект', () => {
     expect(withoutId(list, 'z')).not.toBe(list);
+  });
+});
+
+describe('withoutIds', () => {
+  it('null на входе — null на выходе', () => {
+    expect(withoutIds(null, ['a'])).toBeNull();
+  });
+
+  it('выкидывает несколько элементов по id', () => {
+    expect(withoutIds(list, ['a', 'c'])).toEqual([{ id: 'b', name: 'Боря' }]);
+  });
+
+  it('пустой список id — список возвращается без изменений', () => {
+    expect(withoutIds(list, [])).toEqual(list);
+  });
+
+  it('id не найдены — список возвращается без изменений', () => {
+    expect(withoutIds(list, ['z', 'y'])).toEqual(list);
+  });
+
+  it('не мутирует входной массив', () => {
+    const before = list.map((item) => ({ ...item }));
+    withoutIds(list, ['a']);
+    expect(list).toEqual(before);
+  });
+
+  it('возвращает новый массив, а не тот же объект', () => {
+    expect(withoutIds(list, ['z'])).not.toBe(list);
   });
 });
 

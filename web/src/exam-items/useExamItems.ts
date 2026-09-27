@@ -1,14 +1,17 @@
 // Список вопросов — чтение с фильтром по статусу. Правка и создание
-// живут на своей странице со своим хуком (useExamItemEditor.ts, ADR-0033),
-// поэтому мутаций здесь больше нет: список читается заново при возврате на
-// экран. Поиск по формулировке и тегу — локальный (lib/textSearch.ts).
-// Фильтр меняется с экрана, а не переоткрытием — перечитываем список при его
-// смене, тот же приём, что у broadcasts/useBroadcasts.ts.
+// живут на своей странице со своим хуком (useExamItemEditor.ts, ADR-0033) —
+// список читается заново при возврате на экран. Массовое удаление (ADR-0141)
+// правит список прямо здесь: `removeFromList` патчит уже загруженные данные
+// из ответа `POST /exam-items/bulk-delete`, второй `GET` не нужен (ADR-0087).
+// Поиск по формулировке и тегу — локальный (lib/textSearch.ts). Фильтр
+// меняется с экрана, а не переоткрытием — перечитываем список при его смене,
+// тот же приём, что у broadcasts/useBroadcasts.ts.
 import { useEffect, useRef } from 'react';
 import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
 import { EXAM_EDITOR_ITEMS_PATH, examItemsListPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
+import { withoutIds } from '../lib/listPatch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить вопросы. Попробуйте ещё раз.';
 
@@ -17,6 +20,7 @@ export interface UseExamItemsResult {
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
+  removeFromList: (ids: string[]) => void;
 }
 
 export function useExamItems(
@@ -28,7 +32,7 @@ export function useExamItems(
   const path = options.includeDeleted
     ? EXAM_EDITOR_ITEMS_PATH
     : examItemsListPath(status);
-  const { data, loading, error, reload } = useAbortableFetch(
+  const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) => apiFetch<ExamItemDto[]>(path, { signal }),
     LOAD_ERROR_MESSAGE,
   );
@@ -45,5 +49,11 @@ export function useExamItems(
     void reload();
   }, [status, reload]);
 
-  return { items: data, loading, error, reload };
+  return {
+    items: data,
+    loading,
+    error,
+    reload,
+    removeFromList: (ids) => applyData((prev) => withoutIds(prev, ids)),
+  };
 }
