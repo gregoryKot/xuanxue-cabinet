@@ -8,9 +8,9 @@ import { Types } from 'mongoose';
 import type { ExamItemKind } from '@xuanxue/shared';
 import type { NewExamItemStep } from './bot-session.schema';
 
-// Составление вопроса — несколько сообщений подряд (формулировка, варианты,
-// критерии), дольше, чем «Изменить тему» (10 минут), но не весь день — та же
-// величина, что у ответа на экзамен (exam-answer-wait.ts).
+// Составление вопроса — несколько сообщений подряд (формулировка, варианты),
+// дольше, чем «Изменить тему» (10 минут), но не весь день — та же величина,
+// что у ответа на экзамен (exam-answer-wait.ts).
 const NEW_EXAM_ITEM_WAIT_MINUTES = 60;
 
 export interface NewExamItemDraftOption {
@@ -24,15 +24,15 @@ export interface NewExamItemDraft {
   step: NewExamItemStep;
   kind?: ExamItemKind;
   prompt?: string;
-  criteria?: string;
   options: NewExamItemDraftOption[];
   savedItemId?: string;
 }
 
 /** Новый черновик (кнопка выбора типа, screen 1) — `$unset` чистит и
- * draft*-поля прошлого ЗАБРОШЕННОГО черновика этого же чата (иначе критерии
- * или сохранённый id пережили бы новый /вопрос, ADR-0024: «одно активное
- * ожидание на чат»), и поля прошлого вида ожидания (lessonId/attemptId/…) —
+ * draft*-поля прошлого ЗАБРОШЕННОГО черновика этого же чата (иначе
+ * формулировка или сохранённый id пережили бы новый /вопрос, ADR-0024: «одно
+ * активное ожидание на чат»), и поля прошлого вида ожидания
+ * (lessonId/attemptId/…) —
  * тот же случай, что у examMedia/examText, комментарий в bot-session.
  * schema.ts у kind. */
 export function startNewExamItemDraftUpdate(
@@ -49,7 +49,6 @@ export function startNewExamItemDraftUpdate(
     },
     $unset: {
       draftPrompt: '',
-      draftCriteria: '',
       draftSavedItemId: '',
       lessonId: '',
       attemptId: '',
@@ -71,7 +70,6 @@ export function startNewExamItemDraftUpdate(
 export interface NewExamItemDraftPatch {
   step: NewExamItemStep;
   prompt?: string;
-  criteria?: string;
   options?: NewExamItemDraftOption[];
   savedItemId?: string;
 }
@@ -90,7 +88,6 @@ export function newExamItemDraftUpdate(
     expiresAt: now.plus({ minutes: NEW_EXAM_ITEM_WAIT_MINUTES }).toJSDate(),
   };
   if (patch.prompt !== undefined) set.draftPrompt = patch.prompt;
-  if (patch.criteria !== undefined) set.draftCriteria = patch.criteria;
   if (patch.options !== undefined) set.draftOptions = patch.options;
   if (patch.savedItemId !== undefined) {
     set.draftSavedItemId = new Types.ObjectId(patch.savedItemId);

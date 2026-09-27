@@ -9,8 +9,6 @@ const OPTIONS: ExamItemOptionRecord[] = [
 
 const CURRENT = {
   prompt: 'Что делает поясница в стойке?',
-  hint: 'Одно предложение',
-  criteria: 'Назвал расслабление',
   options: OPTIONS,
 };
 
@@ -20,27 +18,13 @@ describe('hasContentChanged', () => {
   });
 
   it('те же значения, что в вопросе — не правка: экран шлёт поля всегда', () => {
-    const input = {
-      prompt: CURRENT.prompt,
-      hint: CURRENT.hint,
-      criteria: CURRENT.criteria,
-    };
+    const input = { prompt: CURRENT.prompt };
 
     expect(hasContentChanged(input, OPTIONS, CURRENT)).toBe(false);
   });
 
   it('другая формулировка — правка', () => {
     expect(hasContentChanged({ prompt: 'Другой вопрос' }, undefined, CURRENT)).toBe(true);
-  });
-
-  it('подсказку стёрли (null при заполненной) — правка', () => {
-    expect(hasContentChanged({ hint: null }, undefined, CURRENT)).toBe(true);
-  });
-
-  it('подсказки не было и не появилось (null при пустой) — не правка', () => {
-    const withoutHint = { ...CURRENT, hint: undefined };
-
-    expect(hasContentChanged({ hint: null }, undefined, withoutHint)).toBe(false);
   });
 
   it('текст варианта поменяли — правка', () => {
@@ -78,8 +62,6 @@ describe('buildHistoryEntry', () => {
     expect(entry).toEqual({
       version: 3,
       prompt: CURRENT.prompt,
-      hint: CURRENT.hint,
-      criteria: CURRENT.criteria,
       options: OPTIONS,
       replacedAt: '2026-09-12T10:00:00.000Z',
     });

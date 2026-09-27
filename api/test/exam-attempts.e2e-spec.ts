@@ -56,7 +56,7 @@ describe('Exam attempts (e2e)', () => {
     expect((list.body as ExamAttemptDto[]).map((a) => a.id)).toEqual([mine]);
   });
 
-  it('ученик: старт → ответ на старт не содержит correct и criteria', async () => {
+  it('ученик: старт → ответ на старт не содержит correct', async () => {
     const teacherCookie = await sessionFor(['teacher']);
     const { examId } = await createPublishedExam(teacherCookie);
     const studentCookie = await sessionFor([]);
@@ -71,10 +71,9 @@ describe('Exam attempts (e2e)', () => {
     expect(dto.examId).toBe(examId);
     expect(dto.blocks[0]?.questions).toHaveLength(1);
 
-    // Обязательный тест ТЗ 4.4: ни одного «correct», ни одного «criteria».
+    // Обязательный тест ТЗ 4.4: ни одного «correct».
     const raw = JSON.stringify(started.body);
     expect(raw).not.toContain('correct');
-    expect(raw).not.toContain('criteria');
   });
 
   it('ученик: повторный старт при незаконченной попытке — та же попытка', async () => {

@@ -14,7 +14,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'text',
     prompt: 'Опишите принцип песчинки',
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],

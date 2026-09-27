@@ -17,12 +17,12 @@ import type { ExamMediaDto } from './exam-media';
 // Попытка сдачи экзамена (`/exams/:id/attempts`, `/attempts`, слой 4.4,
 // docs/PLAN.md §11, ADR-0022 + дополнение 2026-09-12). В момент старта
 // попытка сохраняет снимок формы — блоки, вопросы в редакции и порядке на
-// момент старта — и дальше живёт им, не бланком. Снимок хранит и правильные
-// ответы («correct» у вариантов), и критерии проверки: они понадобятся при
-// проверке (слой 4.6), а взять их потом из вопроса нельзя — его могли
-// переписать. Но ученику они не уходят — DTO ниже устроены соответственно:
-// `AttemptOptionDto`/`AttemptQuestionDto` не несут ни `correct`, ни
-// `criteria`, в отличие от `ExamItemOptionDto`/`ExamItemDto` (exam-items.ts).
+// момент старта — и дальше живёт им, не бланком. Снимок хранит правильные
+// ответы («correct» у вариантов) — они понадобятся при проверке (слой 4.6), а
+// взять их потом из вопроса нельзя — его могли переписать. Но ученику они не
+// уходят — DTO ниже устроены соответственно: `AttemptOptionDto`/
+// `AttemptQuestionDto` не несут `correct`, в отличие от
+// `ExamItemOptionDto`/`ExamItemDto` (exam-items.ts).
 
 export const EXAM_ATTEMPT_STATUSES = ['in_progress', 'submitted', 'graded'] as const;
 export type ExamAttemptStatus = (typeof EXAM_ATTEMPT_STATUSES)[number];
@@ -41,7 +41,6 @@ export interface AttemptQuestionDto {
   version: number;
   kind: ExamItemKind;
   prompt: string;
-  hint?: string;
   options: AttemptOptionDto[];
 }
 

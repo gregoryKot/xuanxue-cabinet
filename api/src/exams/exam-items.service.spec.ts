@@ -243,7 +243,7 @@ describe('ExamItemsService', () => {
         AUTHOR_ID,
       );
 
-      await service.update(created.id, { tags: ['теория'] }, NOW);
+      await service.update(created.id, { prompt: 'Уточнённая формулировка' }, NOW);
 
       await expect(rawImageIds(created.id)).resolves.toEqual([imageId]);
     });
@@ -291,7 +291,6 @@ describe('ExamItemsService', () => {
         {
           kind: 'single',
           prompt: 'Что делает поясница?',
-          hint: 'Коротко',
           options: [
             { text: 'Расслабляется', correct: true },
             { text: 'Напрягается', correct: false },
@@ -305,8 +304,6 @@ describe('ExamItemsService', () => {
         created.id,
         {
           prompt: published.prompt,
-          hint: published.hint,
-          criteria: null,
           options: published.options.map((option) => ({
             id: option.id,
             text: option.text,
@@ -367,41 +364,15 @@ describe('ExamItemsService', () => {
       expect(updated.history[1]).toMatchObject({ version: 1, prompt: 'v1' });
     });
 
-    it('правка hint зашифрованного поля у опубликованного — тоже поднимает версию', async () => {
-      const created = await service.create(
-        { kind: 'text', prompt: 'p', hint: 'старая' },
-        AUTHOR_ID,
-      );
-      await service.update(created.id, { status: 'published' }, NOW);
-
-      const updated = await service.update(created.id, { hint: 'новая' }, NOW);
-
-      expect(updated.version).toBe(2);
-      expect(updated.hint).toBe('новая');
-      expect(updated.history[0]).toMatchObject({ version: 1, hint: 'старая' });
-    });
-
-    it('смена только tags/status у опубликованного — version не растёт', async () => {
+    it('смена только status у опубликованного — version не растёт', async () => {
       const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
-      await service.update(created.id, { status: 'published' }, NOW);
+      const published = await service.update(created.id, { status: 'published' }, NOW);
 
-      const updated = await service.update(created.id, { tags: ['теория'] }, NOW);
+      const updated = await service.update(created.id, { status: 'archived' }, NOW);
 
       expect(updated.version).toBe(1);
       expect(updated.history).toEqual([]);
-      expect(updated.tags).toEqual(['теория']);
-    });
-
-    it('PATCH hint: null у черновика — поле исчезает из ответа', async () => {
-      const created = await service.create(
-        { kind: 'text', prompt: 'p', hint: 'h', status: 'draft' },
-        AUTHOR_ID,
-      );
-
-      const updated = await service.update(created.id, { hint: null }, NOW);
-
-      expect(updated.hint).toBeUndefined();
-      expect(JSON.stringify(updated)).not.toContain('"hint"');
+      expect(updated.prompt).toBe(published.prompt);
     });
 
     it('правка options у опубликованного single — старые options в history с их id', async () => {
@@ -643,18 +614,6 @@ describe('ExamItemsService', () => {
       const list = await service.list({ kind: 'video' });
 
       expect(list.map((i) => i.id)).toEqual([video.id]);
-    });
-
-    it('фильтр по tag', async () => {
-      await service.create({ kind: 'text', prompt: 'Без тега' }, AUTHOR_ID);
-      const tagged = await service.create(
-        { kind: 'text', prompt: 'С тегом', tags: ['теория'] },
-        AUTHOR_ID,
-      );
-
-      const list = await service.list({ tag: 'теория' });
-
-      expect(list.map((i) => i.id)).toEqual([tagged.id]);
     });
 
     it('лимит ограничивает количество результатов', async () => {

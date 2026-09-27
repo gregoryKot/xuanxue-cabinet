@@ -11,7 +11,7 @@ import { parseGradeButtonId } from './grade-callback-id';
 import { isExamItemKind } from './new-exam-item-types';
 
 const NEW_EXAM_ITEM_DONE_TARGETS = ['options', 'correct'] as const;
-const NEW_EXAM_ITEM_FLOW_ACTIONS = ['skip', 'save', 'cancel'] as const;
+const NEW_EXAM_ITEM_FLOW_ACTIONS = ['save', 'cancel'] as const;
 // Диалог «Собрать экзамен» (nep/nel/nen/nef, ТЗ 4б.4) — тем же приёмом, что
 // новый вопрос выше; net без явной проверки — id всегда ObjectId вопроса,
 // падает в default-ветку isValidCallbackParam.
@@ -33,10 +33,11 @@ function isOptionIndex(id: string): boolean {
  * NotificationKind (кнопка «Уведомления»); menu — экран меню; eq/eo —
  * составной параметр «попытка:номер[:номер]» (exam-callback-ids.ts); nqk —
  * ExamItemKind; nqo — номер варианта; nqd — какой шаг завершают; nqf —
- * что делает диалог дальше; grade — составной параметр «attemptId:outcome»
- * (grade-callback-id.ts); gradesk/gradecl/gradeq — id всегда ObjectId (сам
- * attemptId, итог уже в bot_sessions). Битый/чужой параметр — тихо
- * игнорируется вызывающим кодом, не ошибка. */
+ * что делает диалог дальше ('save'/'cancel' — «Пропустить критерии» убран
+ * вместе с самим полем, ADR-0128); grade — составной параметр
+ * «attemptId:outcome» (grade-callback-id.ts); gradesk/gradecl/gradeq — id
+ * всегда ObjectId (сам attemptId, итог уже в bot_sessions). Битый/чужой
+ * параметр — тихо игнорируется вызывающим кодом, не ошибка. */
 export function isValidCallbackParam(action: CallbackAction, id: string): boolean {
   if (action === 'notif') return isNotificationKind(id);
   if (action === 'menu') return isMenuScreenAction(id);

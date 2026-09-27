@@ -10,7 +10,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'text',
     prompt: 'Опишите принцип песчинки',
     options: [],
-    tags: [],
     status: 'draft',
     version: 1,
     history: [],
@@ -26,18 +25,6 @@ describe('ExamItemCard', () => {
 
     expect(screen.getByText('Опишите принцип песчинки')).toBeInTheDocument();
     expect(screen.getByText(/Свободный ответ · Черновик/)).toBeInTheDocument();
-  });
-
-  it('без тегов — раздела с тегами нет', () => {
-    render(<ExamItemCard item={makeItem({ tags: [] })} onSelect={vi.fn()} />);
-
-    expect(screen.queryByText(/·.*·.*·/)).not.toBeInTheDocument();
-  });
-
-  it('с тегами — они перечислены через запятую', () => {
-    render(<ExamItemCard item={makeItem({ tags: ['ян', 'база'] })} onSelect={vi.fn()} />);
-
-    expect(screen.getByText(/ян, база/)).toBeInTheDocument();
   });
 
   it('version 1 — номер версии не показан', () => {

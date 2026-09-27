@@ -9,9 +9,8 @@
 // выключенное) — тот же облик, что видел ученик при сдаче, без второй
 // реализации того же вопроса (CLAUDE.md «Одна механика — один компонент»).
 //
-// Критериев проверки здесь нет и быть не может: их не отдают ученику вовсе —
-// AttemptQuestionDto (shared/src/exam-attempts.ts) не несёт поля `criteria` в
-// отличие от ExamItemDto, и попытка получить его с сервера уходит ни с чем.
+// Подсказка ученику и критерии проверки убраны из вопроса вместе с полями
+// (ADR-0128) — их здесь никогда и не было.
 //
 // Видео-вопрос сюда не попадает — см. комментарий-шапку
 // attemptSubmittedBlocks.ts; его место — блок «Видео» ниже
@@ -57,7 +56,6 @@ export function AttemptSubmittedAnswers({ attempt }: AttemptSubmittedAnswersProp
                   index={index}
                   promptId={`attempt-answer-${question.itemId}`}
                   prompt={question.prompt}
-                  hint={question.hint}
                 >
                   <AttemptAnswerFields
                     labelledBy={`attempt-answer-${question.itemId}`}

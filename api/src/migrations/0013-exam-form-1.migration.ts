@@ -230,10 +230,14 @@ export const seedExamForm1 = {
     const itemIds: string[] = [];
     for (const question of questions) {
       const mappedOptions = mapOptions(withRealImageIds(question, imageIdByPath));
+      // hint/criteria — из rawItem, не item: CreateExamItemDto больше их не
+      // несёт (ADR-0128), а эта миграция — история, воспроизводящая ровно то,
+      // что уже легло в прод при первом заезде (см. комментарий у ExamSeedQuestion,
+      // seed-exam-file.ts).
       const itemPayload: Record<string, unknown> = {
         prompt: question.item.prompt,
-        hint: question.item.hint,
-        criteria: question.item.criteria,
+        hint: question.rawItem.hint,
+        criteria: question.rawItem.criteria,
         options: mappedOptions,
         history: [],
       };
@@ -254,7 +258,7 @@ export const seedExamForm1 = {
           ? { criteria: encryptedItem.criteria }
           : {}),
         options: encryptedItem.options,
-        tags: question.item.tags ?? [],
+        tags: question.rawItem.tags ?? [],
         status: 'published',
         version: 1,
         history: encryptedItem.history,

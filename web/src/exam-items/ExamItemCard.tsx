@@ -1,5 +1,5 @@
 // Строка вопроса в списке — формулировка (обрезанная CSS-клампом, если
-// длинная), под ней тип, статус, теги и номер версии, если он больше 1.
+// длинная), под ней тип, статус и номер версии, если он больше 1.
 // Список вопросов теперь одна карточка (обёртка — ExamItemsScreen.tsx):
 // пять карточек вплотную давали зазубренные углы и швы между ними (отзыв
 // владельца по снимку «Вопросов», docs/adr/0043) — строка больше не несёт
@@ -54,7 +54,6 @@ export function ExamItemCard({ item, onSelect, isLast = false }: ExamItemCardPro
         <div style={listCardMetaStyle}>
           {EXAM_ITEM_KIND_LABELS_RU[item.kind]} ·{' '}
           {EXAM_ITEM_STATUS_LABELS_RU[item.status]}
-          {item.tags.length > 0 && ` · ${item.tags.join(', ')}`}
           {item.version > 1 && ` · версия ${item.version}`}
         </div>
       </button>

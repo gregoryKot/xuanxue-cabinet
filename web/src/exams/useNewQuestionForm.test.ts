@@ -27,7 +27,6 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'text',
     prompt: 'Как дышать в стойке?',
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],
@@ -71,10 +70,7 @@ describe('useNewQuestionForm — создание', () => {
       body: {
         kind: 'text',
         prompt: 'Как дышать в стойке?',
-        hint: undefined,
-        criteria: undefined,
         options: undefined,
-        tags: [],
       },
     });
   });

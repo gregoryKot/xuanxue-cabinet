@@ -45,7 +45,6 @@ function item(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
     kind: 'single',
     prompt: 'Зачем придумали тайцзи?',
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],
@@ -297,8 +296,8 @@ describe('добавление и удаление', () => {
 
 describe('filterQuestionCandidates', () => {
   const items = [
-    item({ id: 'i1', prompt: 'Зачем придумали тайцзи?', tags: ['история'] }),
-    item({ id: 'i2', prompt: 'Что такое «пустая» нога?', tags: ['стойки'] }),
+    item({ id: 'i1', prompt: 'Зачем придумали тайцзи?' }),
+    item({ id: 'i2', prompt: 'Что такое «пустая» нога?' }),
     item({ id: 'i3', prompt: 'Черновик', status: 'draft' }),
     item({ id: 'i4', prompt: 'В архиве', status: 'archived' }),
   ];
@@ -316,17 +315,11 @@ describe('filterQuestionCandidates', () => {
     ]);
   });
 
-  it('поиск по тегу без регистра', () => {
-    expect(filterQuestionCandidates(items, ' Стойки ', []).map((i) => i.id)).toEqual([
-      'i2',
-    ]);
-  });
-
   it('уже добавленные вопросы не показываются', () => {
     expect(filterQuestionCandidates(items, '', ['i1']).map((i) => i.id)).toEqual(['i2']);
   });
 
-  it('ни текст, ни теги не совпали — пусто', () => {
+  it('текст не совпал — пусто', () => {
     expect(filterQuestionCandidates(items, 'дыхание', [])).toEqual([]);
   });
 });

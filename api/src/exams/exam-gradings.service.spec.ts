@@ -48,15 +48,14 @@ describe('ExamGradingsService', () => {
     return created.id;
   }
 
-  it('карточка проверки до оценки: есть критерии вопроса, grading отсутствует', async () => {
-    const itemId = await createPublishedItem({ criteria: 'смотреть на осанку' });
+  it('карточка проверки до оценки: grading отсутствует', async () => {
+    const itemId = await createPublishedItem();
     const examId = await createPublishedExam(itemId);
     const started = await ctx.service.start(examId, USER_A, NOW);
 
     const review = await ctx.gradingsService.getReview(started.id);
 
     expect(review.grading).toBeUndefined();
-    expect(review.blocks[0]?.questions[0]?.criteria).toBe('смотреть на осанку');
   });
 
   // Регрессия отзыва владельца 2026-09-21: владелец открыл попытку в

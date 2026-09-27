@@ -52,7 +52,6 @@ describe('buildReviewBlocks', () => {
             version: 1,
             kind: 'single',
             prompt: 'Сколько форм?',
-            criteria: 'принимается любой близкий к программе ответ',
             options: OPTIONS,
           },
         ],
@@ -72,7 +71,6 @@ describe('buildReviewBlocks', () => {
             version: 1,
             kind: 'text',
             prompt: 'Опишите форму словами',
-            criteria: 'засчитывается любое связное описание',
             options: [],
           },
         ],
@@ -84,7 +82,6 @@ describe('buildReviewBlocks', () => {
     expect(review?.questions[0]?.options).toEqual([]);
     expect(review?.questions[0]?.optionsCheck).toBeUndefined();
     expect(review?.questions[0]?.answerText).toBe('мой ответ');
-    expect(review?.questions[0]?.criteria).toBe('засчитывается любое связное описание');
   });
 
   it('вопрос с вариантами — отмечает correct и selected на каждом, считает optionsCheck', () => {

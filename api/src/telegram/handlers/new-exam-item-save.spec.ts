@@ -8,12 +8,11 @@ import {
 } from './new-exam-item-save';
 
 describe('buildCreateExamItemInput', () => {
-  it('single — options попадают во вход, hint не заводим', () => {
+  it('single — options попадают во вход', () => {
     const draft: NewExamItemDraft = {
       step: 'confirm',
       kind: 'single',
       prompt: 'Вопрос?',
-      criteria: 'Критерий',
       options: [
         { text: 'A', correct: true },
         { text: 'B', correct: false },
@@ -22,7 +21,6 @@ describe('buildCreateExamItemInput', () => {
     expect(buildCreateExamItemInput(draft)).toEqual({
       kind: 'single',
       prompt: 'Вопрос?',
-      criteria: 'Критерий',
       options: [
         { text: 'A', correct: true },
         { text: 'B', correct: false },

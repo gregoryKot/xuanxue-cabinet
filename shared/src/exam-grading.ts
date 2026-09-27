@@ -46,10 +46,6 @@ export interface AttemptReviewQuestionDto {
   itemId: string;
   kind: ExamItemKind;
   prompt: string;
-  hint?: string;
-  /** Критерии проверки вопроса — только для учителя (ТЗ 4.6, п.3); ученику
-   * их не видно ни на одном маршруте (см. `AttemptQuestionDto`, exams.ts). */
-  criteria?: string;
   answerText?: string;
   /** Пусто у вопроса без вариантов (текст, видео). */
   options: AttemptReviewOptionDto[];

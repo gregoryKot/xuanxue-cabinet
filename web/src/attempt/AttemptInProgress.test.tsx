@@ -154,31 +154,7 @@ describe('AttemptInProgress — шапка', () => {
   });
 });
 
-describe('AttemptInProgress — подсказка и оставшееся время', () => {
-  it('у вопроса есть подсказка — она видна ученику (она для него и написана)', () => {
-    const attempt = makeAttempt();
-    const block = attempt.blocks[0];
-    if (!block) throw new Error('в фикстуре должен быть блок');
-    const question = block.questions[0];
-    if (!question) throw new Error('в фикстуре должен быть вопрос');
-    question.hint = 'Считайте по схеме из методички.';
-
-    render(
-      <MemoryRouter>
-        <AttemptInProgress
-          attempt={attempt}
-          reload={() => Promise.resolve()}
-          onSubmit={() => Promise.resolve()}
-          submitting={false}
-          submitError={null}
-          video={makeVideo()}
-        />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText('Считайте по схеме из методички.')).toBeInTheDocument();
-  });
-
+describe('AttemptInProgress — оставшееся время', () => {
   it('лимит времени ещё не вышел — на экране видно, сколько осталось', () => {
     render(
       <MemoryRouter>

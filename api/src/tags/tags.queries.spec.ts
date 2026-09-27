@@ -5,25 +5,18 @@
 // buildMaterialsFilter в materials.queries.spec.ts).
 import { Types, type Connection, type Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
-import { ExamItemRecord, ExamItemSchema } from '../exams/exam-item.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
-import {
-  countChannelsByTag,
-  countExamItemsByTag,
-  mergeTagSummaries,
-} from './tags.queries';
+import { countChannelsByTag, mergeTagSummaries } from './tags.queries';
 
-describe('countChannelsByTag / countExamItemsByTag', () => {
+describe('countChannelsByTag', () => {
   let memory: MemoryMongo;
   let connection: Connection;
   let channelModel: Model<ChannelRecord>;
-  let examItemModel: Model<ExamItemRecord>;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
     connection = memory.connection;
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    examItemModel = connection.model<ExamItemRecord>(ExamItemRecord.name, ExamItemSchema);
   }, 60_000);
 
   afterAll(async () => {
@@ -31,7 +24,7 @@ describe('countChannelsByTag / countExamItemsByTag', () => {
   });
 
   afterEach(async () => {
-    await Promise.all([channelModel.deleteMany({}), examItemModel.deleteMany({})]);
+    await channelModel.deleteMany({});
   });
 
   function createChannel(overrides: Partial<ChannelRecord> = {}) {
@@ -45,13 +38,8 @@ describe('countChannelsByTag / countExamItemsByTag', () => {
     });
   }
 
-  function createExamItem(tags: string[]) {
-    return examItemModel.create({ kind: 'text', prompt: 'Вопрос', tags });
-  }
-
   it('пусто — пустая карта', async () => {
     await expect(countChannelsByTag(channelModel)).resolves.toEqual(new Map());
-    await expect(countExamItemsByTag(examItemModel)).resolves.toEqual(new Map());
   });
 
   it('тег канала школы считается', async () => {
@@ -71,36 +59,18 @@ describe('countChannelsByTag / countExamItemsByTag', () => {
 
     expect(result).toEqual(new Map());
   });
-
-  it('тег вопроса экзамена считается', async () => {
-    await createExamItem(['начинающие']);
-
-    const result = await countExamItemsByTag(examItemModel);
-
-    expect(result).toEqual(new Map([['начинающие', 1]]));
-  });
-
-  it('два вопроса с одним тегом — сумма, не два ключа', async () => {
-    await createExamItem(['дракон']);
-    await createExamItem(['дракон']);
-
-    const result = await countExamItemsByTag(examItemModel);
-
-    expect(result).toEqual(new Map([['дракон', 2]]));
-  });
 });
 
 describe('mergeTagSummaries', () => {
   it('пусто — пустой список', () => {
-    expect(mergeTagSummaries(new Map(), new Map(), new Map(), new Map())).toEqual([]);
+    expect(mergeTagSummaries(new Map(), new Map(), new Map())).toEqual([]);
   });
 
-  it('тег встречается во всех четырёх источниках — каждый посчитан своим числом', () => {
+  it('тег встречается во всех трёх источниках — каждый посчитан своим числом', () => {
     const result = mergeTagSummaries(
       new Map([['дракон', 1]]),
       new Map([['дракон', 2]]),
       new Map([['дракон', 3]]),
-      new Map([['дракон', 4]]),
     );
 
     expect(result).toEqual([
@@ -109,7 +79,6 @@ describe('mergeTagSummaries', () => {
         lessonCount: 1,
         materialCount: 2,
         channelCount: 3,
-        examItemCount: 4,
       },
     ]);
   });
@@ -117,7 +86,6 @@ describe('mergeTagSummaries', () => {
   it('сортировка по суммарной использованности по убыванию, не по алфавиту', () => {
     const result = mergeTagSummaries(
       new Map([['а-редкий', 1]]),
-      new Map(),
       new Map(),
       new Map([['я-частый', 5]]),
     );
@@ -131,7 +99,6 @@ describe('mergeTagSummaries', () => {
         ['я', 1],
         ['а', 1],
       ]),
-      new Map(),
       new Map(),
       new Map(),
     );

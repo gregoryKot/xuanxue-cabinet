@@ -50,7 +50,6 @@ export function AttemptSubmittedVideos({ attempt, video }: AttemptSubmittedVideo
                 index={index}
                 promptId={`attempt-prompt-${question.itemId}`}
                 prompt={question.prompt}
-                hint={question.hint}
               >
                 <AttemptQuestionVideo itemId={question.itemId} video={video} />
               </QuestionRow>

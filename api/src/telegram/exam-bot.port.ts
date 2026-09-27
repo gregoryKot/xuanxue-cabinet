@@ -67,7 +67,7 @@ export interface ExamBotPort {
    * `authorId` — userId учителя (не chatId), сопоставленный ботом заранее. */
   createExamItem(input: CreateExamItemInput, authorId: string): Promise<ExamItemDto>;
   /** Правила, которые у POST /exam-items живут только в class-validator DTO
-   * (длина формулировки/критериев/варианта, число вариантов) — вызов
+   * (длина формулировки/варианта, число вариантов) — вызов
    * ExamItemsService.create() их не проверяет вовсе: ValidationPipe стоит
    * только перед HTTP-контроллером, бот его не проходит. Бот прогоняет тот
    * же CreateExamItemDto, не пишет вторую проверку (ТЗ 4б.3, «не дублируй»).

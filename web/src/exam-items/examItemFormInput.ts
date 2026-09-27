@@ -1,16 +1,11 @@
 // Чистая логика формы вопроса — состояние, валидация и сборка тела запроса,
 // вынесены из useExamItemForm.ts, чтобы проверять без React (CLAUDE.md
-// «Тесты»), по образцу schedule/classFormInput.ts. Теги хранятся в форме
-// строкой через запятую (tagsText), не массивом — иначе набранная запятая
-// или пробел в конце мгновенно теряются при разборе на каждое нажатие
-// клавиши (тот же приём, что durationMinText/leadMinutesText в classFormInput.ts).
-// Разбор строки — общий `parseTagsText` (shared/src/tags.ts, ADR-0058): своей
-// копии для вопросов больше нет, форма материала (materialFormInput.ts)
-// пользуется тем же самым.
+// «Тесты»), по образцу schedule/classFormInput.ts. hint/criteria/tags убраны
+// из вопроса вместе с полем (ADR-0128) — форма несёт только формулировку и
+// варианты ответа.
 import {
   EXAM_ITEM_LIMITS,
   OPTION_TEXT_OR_IMAGE_MESSAGE,
-  parseTagsText,
   type CreateExamItemInput,
   type ExamItemDto,
   type ExamItemKind,
@@ -34,10 +29,7 @@ export interface ExamItemFormState {
    * рисует его текстом, не select'ом; ТЗ 4.2, п.1). */
   kind: ExamItemKind;
   prompt: string;
-  hint: string;
-  criteria: string;
   options: ExamItemOptionDraft[];
-  tagsText: string;
 }
 
 const DEFAULT_KIND: ExamItemKind = 'text';
@@ -54,8 +46,6 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
   return {
     kind: item?.kind ?? DEFAULT_KIND,
     prompt: item?.prompt ?? '',
-    hint: item?.hint ?? '',
-    criteria: item?.criteria ?? '',
     options:
       item?.options.map((option) => ({
         id: option.id,
@@ -63,7 +53,6 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
         correct: option.correct,
         imageId: option.imageId,
       })) ?? [],
-    tagsText: item?.tags.join(', ') ?? '',
   };
 }
 
@@ -112,22 +101,13 @@ export function toCreateInput(state: ExamItemFormState): CreateExamItemInput {
   return {
     kind: state.kind,
     prompt: state.prompt.trim(),
-    hint: state.hint.trim() || undefined,
-    criteria: state.criteria.trim() || undefined,
     options: toOptionsInput(state),
-    tags: parseTagsText(state.tagsText, EXAM_ITEM_LIMITS.tagsMax),
   };
 }
 
-/** Пустые hint/criteria — явный сброс (`null`, NULLABLE_EXAM_ITEM_FIELDS в
- * shared/src/exam-items.ts), не «оставить как было» — тот же приём, что у
- * zoomLink/zoomPassword в classFormInput.ts. */
 export function toUpdateInput(state: ExamItemFormState): UpdateExamItemInput {
   return {
     prompt: state.prompt.trim(),
-    hint: state.hint.trim() || null,
-    criteria: state.criteria.trim() || null,
     options: toOptionsInput(state),
-    tags: parseTagsText(state.tagsText, EXAM_ITEM_LIMITS.tagsMax),
   };
 }

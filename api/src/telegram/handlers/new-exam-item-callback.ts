@@ -1,18 +1,14 @@
 // Кнопки диалога «Новый вопрос» (ТЗ 4б.3, docs/PLAN.md §12), кроме
 // сохранения (new-exam-item-save-callback.ts, файл-лимит 150 строк) — тип,
-// переход «Готово» между шагами, отметка верного варианта, «Пропустить»
-// критерии и «Отмена». Личность отправителя (штат с активным чатом) уже
-// проверена в CallbackQueryHandler.handle до вызова.
+// переход «Готово» между шагами, отметка верного варианта и «Отмена».
+// Личность отправителя (штат с активным чатом) уже проверена в
+// CallbackQueryHandler.handle до вызова.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
 import type { BotSessionService } from '../bot-session.service';
 import type { BotMenu } from './bot-menu';
-import {
-  confirmScreen,
-  criteriaWaitScreen,
-  promptWaitScreen,
-} from './new-exam-item-screens';
+import { confirmScreen, promptWaitScreen } from './new-exam-item-screens';
 import { correctWaitScreen } from './new-exam-item-options-screen';
 import {
   correctCount,
@@ -61,8 +57,8 @@ export async function handleNewExamItemDone(
     return;
   }
   if (correctCount(options) < 1) return; // «Готово» скрыто до первой отметки — защита в глубину
-  await botSessions.setNewExamItemDraft(chatId, { step: 'criteria' }, now);
-  await editScreen(ctx, criteriaWaitScreen());
+  await botSessions.setNewExamItemDraft(chatId, { step: 'confirm' }, now);
+  await editScreen(ctx, confirmScreen(sessionToNewExamItemDraft(session)));
 }
 
 /** Отметка верного варианта (nqo) — `single` сразу переходит дальше (та же
@@ -84,10 +80,13 @@ export async function handleNewExamItemOptionToggle(
     const marked = markOnlyOptionCorrect(options, optionIndex);
     await botSessions.setNewExamItemDraft(
       chatId,
-      { step: 'criteria', options: marked },
+      { step: 'confirm', options: marked },
       now,
     );
-    await editScreen(ctx, criteriaWaitScreen());
+    await editScreen(
+      ctx,
+      confirmScreen({ ...sessionToNewExamItemDraft(session), options: marked }),
+    );
     return;
   }
   const toggled = toggleOptionCorrect(options, optionIndex);
@@ -97,18 +96,6 @@ export async function handleNewExamItemOptionToggle(
     now,
   );
   await editScreen(ctx, correctWaitScreen(session.draftKind, toggled));
-}
-
-export async function handleNewExamItemSkipCriteria(
-  ctx: Context,
-  botSessions: BotSessionService,
-  chatId: number,
-  now: DateTime,
-): Promise<void> {
-  const session = await botSessions.get(chatId, now);
-  if (!isActiveExamItemDraft(session) || session.draftStep !== 'criteria') return;
-  await botSessions.setNewExamItemDraft(chatId, { step: 'confirm' }, now);
-  await editScreen(ctx, confirmScreen(sessionToNewExamItemDraft(session)));
 }
 
 export async function handleNewExamItemCancel(

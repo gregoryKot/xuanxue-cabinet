@@ -14,7 +14,6 @@ import {
   handleNewExamItemDone,
   handleNewExamItemKind,
   handleNewExamItemOptionToggle,
-  handleNewExamItemSkipCriteria,
 } from './new-exam-item-callback';
 import { handleNewExamItemSave } from './new-exam-item-save-callback';
 import { isExamItemKind } from './new-exam-item-types';
@@ -53,10 +52,6 @@ export async function routeNewExamItemCallback(
   if (action !== 'nqf') return;
   if (id === 'cancel') {
     await handleNewExamItemCancel(ctx, botSessions, chatId);
-    return;
-  }
-  if (id === 'skip') {
-    await handleNewExamItemSkipCriteria(ctx, botSessions, chatId, now);
     return;
   }
   if (id === 'save') {

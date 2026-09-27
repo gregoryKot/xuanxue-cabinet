@@ -1,12 +1,11 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): агрегация в MongoDB — не JS-код, мок пропустил бы ошибку в самом
 // `$lookup`/`$setUnion`/`$match`. Read-after-write: пишем в lessons/classes/
-// materials/channels/exam_items напрямую, считаем сводкой (тот же приём, что
+// materials/channels напрямую, считаем сводкой (тот же приём, что
 // summary.service.spec.ts).
 import { Types, type Connection, type Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
 import { ClassRecord, ClassSchema } from '../classes/class.schema';
-import { ExamItemRecord, ExamItemSchema } from '../exams/exam-item.schema';
 import { LessonRecord, LessonSchema } from '../lessons/lesson.schema';
 import { MaterialRecord, MaterialSchema } from '../materials/material.schema';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -19,7 +18,6 @@ describe('TagsService.list', () => {
   let classModel: Model<ClassRecord>;
   let materialModel: Model<MaterialRecord>;
   let channelModel: Model<ChannelRecord>;
-  let examItemModel: Model<ExamItemRecord>;
   let service: TagsService;
 
   beforeAll(async () => {
@@ -29,14 +27,7 @@ describe('TagsService.list', () => {
     classModel = connection.model<ClassRecord>(ClassRecord.name, ClassSchema);
     materialModel = connection.model<MaterialRecord>(MaterialRecord.name, MaterialSchema);
     channelModel = connection.model<ChannelRecord>(ChannelRecord.name, ChannelSchema);
-    examItemModel = connection.model<ExamItemRecord>(ExamItemRecord.name, ExamItemSchema);
-    service = new TagsService(
-      lessonModel,
-      classModel,
-      materialModel,
-      channelModel,
-      examItemModel,
-    );
+    service = new TagsService(lessonModel, classModel, materialModel, channelModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -49,7 +40,6 @@ describe('TagsService.list', () => {
       classModel.deleteMany({}),
       materialModel.deleteMany({}),
       channelModel.deleteMany({}),
-      examItemModel.deleteMany({}),
     ]);
   });
 
@@ -92,10 +82,6 @@ describe('TagsService.list', () => {
     });
   }
 
-  function createExamItem(tags: string[]) {
-    return examItemModel.create({ kind: 'text', prompt: 'Вопрос', tags });
-  }
-
   it('пустая база — пустой список, не ошибка и не мусор', async () => {
     await expect(service.list({})).resolves.toEqual([]);
   });
@@ -106,13 +92,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'дракон',
-        lessonCount: 0,
-        materialCount: 1,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'дракон', lessonCount: 0, materialCount: 1, channelCount: 0 },
     ]);
   });
 
@@ -123,13 +103,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'начинающие',
-        lessonCount: 1,
-        materialCount: 0,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'начинающие', lessonCount: 1, materialCount: 0, channelCount: 0 },
     ]);
   });
 
@@ -142,13 +116,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'дракон',
-        lessonCount: 0,
-        materialCount: 0,
-        channelCount: 1,
-        examItemCount: 0,
-      },
+      { tag: 'дракон', lessonCount: 0, materialCount: 0, channelCount: 1 },
     ]);
   });
 
@@ -163,39 +131,16 @@ describe('TagsService.list', () => {
     expect(result).toEqual([]);
   });
 
-  it('тег только у вопроса экзамена — у остальных источников нули', async () => {
-    await createExamItem(['начинающие']);
-
-    const result = await service.list({});
-
-    expect(result).toEqual([
-      {
-        tag: 'начинающие',
-        lessonCount: 0,
-        materialCount: 0,
-        channelCount: 0,
-        examItemCount: 1,
-      },
-    ]);
-  });
-
   it('тег встречается во всех источниках — каждый посчитан отдельно', async () => {
     const classId = await createClass();
     await createLesson(classId, ['дракон']);
     await createMaterial(['дракон']);
     await createChannel(['дракон']);
-    await createExamItem(['дракон']);
 
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'дракон',
-        lessonCount: 1,
-        materialCount: 1,
-        channelCount: 1,
-        examItemCount: 1,
-      },
+      { tag: 'дракон', lessonCount: 1, materialCount: 1, channelCount: 1 },
     ]);
   });
 
@@ -207,13 +152,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'дракон',
-        lessonCount: 1,
-        materialCount: 1,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'дракон', lessonCount: 1, materialCount: 1, channelCount: 0 },
     ]);
   });
 
@@ -227,13 +166,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'начинающие',
-        lessonCount: 1,
-        materialCount: 0,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'начинающие', lessonCount: 1, materialCount: 0, channelCount: 0 },
     ]);
   });
 
@@ -246,13 +179,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'дракон',
-        lessonCount: 1,
-        materialCount: 0,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'дракон', lessonCount: 1, materialCount: 0, channelCount: 0 },
     ]);
   });
 
@@ -264,13 +191,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'дракон',
-        lessonCount: 2,
-        materialCount: 0,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'дракон', lessonCount: 2, materialCount: 0, channelCount: 0 },
     ]);
   });
 
@@ -282,20 +203,8 @@ describe('TagsService.list', () => {
 
     expect(result).toEqual(
       expect.arrayContaining([
-        {
-          tag: 'начинающие',
-          lessonCount: 1,
-          materialCount: 0,
-          channelCount: 0,
-          examItemCount: 0,
-        },
-        {
-          tag: 'дракон',
-          lessonCount: 1,
-          materialCount: 0,
-          channelCount: 0,
-          examItemCount: 0,
-        },
+        { tag: 'начинающие', lessonCount: 1, materialCount: 0, channelCount: 0 },
+        { tag: 'дракон', lessonCount: 1, materialCount: 0, channelCount: 0 },
       ]),
     );
     expect(result).toHaveLength(2);
@@ -308,13 +217,7 @@ describe('TagsService.list', () => {
     const result = await service.list({});
 
     expect(result).toEqual([
-      {
-        tag: 'Дракон',
-        lessonCount: 0,
-        materialCount: 2,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'Дракон', lessonCount: 0, materialCount: 2, channelCount: 0 },
     ]);
   });
 
@@ -327,23 +230,16 @@ describe('TagsService.list', () => {
     const result = await service.list({ limit: 1 });
 
     expect(result).toEqual([
-      {
-        tag: 'частый',
-        lessonCount: 0,
-        materialCount: 3,
-        channelCount: 0,
-        examItemCount: 0,
-      },
+      { tag: 'частый', lessonCount: 0, materialCount: 3, channelCount: 0 },
     ]);
   });
 
-  // Сортировка по суммарной использованности (все четыре источника), не по
-  // одному из них: тег с одним материалом и одним вопросом экзамена (сумма
-  // 2) обгоняет тег с одним материалом (сумма 1).
-  it('сортировка учитывает сумму по всем четырём источникам', async () => {
+  // Сортировка по суммарной использованности (все три источника), не по
+  // одному из них: тег с двумя материалами (сумма 2) обгоняет тег с одним.
+  it('сортировка учитывает сумму по всем трём источникам', async () => {
     await createMaterial(['редкий']);
     await createMaterial(['частый']);
-    await createExamItem(['частый']);
+    await createMaterial(['частый']);
 
     const result = await service.list({});
 

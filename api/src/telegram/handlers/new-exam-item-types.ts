@@ -66,7 +66,6 @@ export function sessionToNewExamItemDraft(
     step: session.draftStep ?? 'prompt',
     kind: session.draftKind,
     prompt: session.draftPrompt,
-    criteria: session.draftCriteria,
     options: session.draftOptions ?? [],
     savedItemId: session.draftSavedItemId?.toString(),
   };

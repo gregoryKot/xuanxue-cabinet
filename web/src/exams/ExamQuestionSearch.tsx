@@ -16,7 +16,7 @@ import { TextLinkButton } from '../components/TextLinkButton';
 import { formatExamItemMeta } from '../exam-items/examItemLabels';
 import { filterQuestionCandidates } from './examQuestions';
 
-const SEARCH_LABEL = 'Найти вопрос — по тексту или тегу';
+const SEARCH_LABEL = 'Найти вопрос — по тексту';
 // Список ещё грузится: он пуст независимо от того, есть ли вопросы, и это не
 // повод заявлять «вопросов нет» (баг с прода — учитель завёл вопросы и не
 // нашёл их здесь, CLAUDE.md «Загрузка»).

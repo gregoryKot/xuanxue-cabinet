@@ -27,12 +27,11 @@ export const EXAM_ITEM_KIND_HINTS_RU: Record<ExamItemKind, string> = {
 
 export const EXAM_ITEM_STATUS_LABELS_RU = DRAFT_PUBLISHED_ARCHIVED_LABELS_RU;
 
-/** Служебная строка под формулировкой вопроса — тип и теги через « · »
- * (макет Form.dc.html). Один форматтер на список вопросов, список вопросов
- * экзамена и поиск рядом с ним: три строки одного вида в соседних
- * файлах разошлись бы при первой правке (CLAUDE.md «Одна механика — один
+/** Служебная строка под формулировкой вопроса — тип вопроса (макет
+ * Form.dc.html). Тег вопроса убран из продукта (ADR-0128) — строка теперь
+ * несёт только тип; один форматтер на список вопросов и поиск рядом с ним,
+ * чтобы не разойтись при первой правке (CLAUDE.md «Одна механика — один
  * компонент»). */
-export function formatExamItemMeta(item: Pick<ExamItemDto, 'kind' | 'tags'>): string {
-  const kind = EXAM_ITEM_KIND_LABELS_RU[item.kind];
-  return item.tags.length > 0 ? `${kind} · ${item.tags.join(', ')}` : kind;
+export function formatExamItemMeta(item: Pick<ExamItemDto, 'kind'>): string {
+  return EXAM_ITEM_KIND_LABELS_RU[item.kind];
 }

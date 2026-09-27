@@ -131,8 +131,11 @@ describe('Миграция 0013-exam-form-1', () => {
     );
     // Подсказки нет — поля нет вовсе, а не `null`: драйвер Mongo кладёт
     // `undefined` как `null`, и документы миграции разъехались бы по форме
-    // с теми, что пишет ExamItemsService.
-    const withoutHint = itemDocs.find((doc) => doc.hint === undefined);
+    // с теми, что пишет ExamItemsService. `hint` — историческое поле схемы
+    // (ADR-0128 убрал его из RawLeanExamItem), но сырой документ Mongo его
+    // ещё несёт — читаем как Record, не как типизированный маппер.
+    const rawDocs = itemDocs as unknown as Record<string, unknown>[];
+    const withoutHint = rawDocs.find((doc) => doc.hint === undefined);
     expect(withoutHint && 'hint' in withoutHint).toBe(false);
     const idByPrompt = new Map(items.map((item) => [item.prompt, item._id.toString()]));
 
@@ -289,6 +292,7 @@ describe('Миграция 0013-exam-form-1', () => {
         prompt: 'Вопрос для юнит-теста withRealImageIds',
         options: [{ text: 'А' }, { text: 'Б', correct: true }],
       }),
+      rawItem: {},
       optionImagePaths: ['путь-без-загрузки.jpg', undefined],
     };
 

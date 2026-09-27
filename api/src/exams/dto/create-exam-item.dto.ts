@@ -23,16 +23,6 @@ export class CreateExamItemDto extends ExamItemFieldsDto implements CreateExamIt
   @MaxLength(EXAM_ITEM_LIMITS.prompt)
   prompt!: string;
 
-  @OptionalNotNull()
-  @IsString()
-  @MaxLength(EXAM_ITEM_LIMITS.hint)
-  hint?: string;
-
-  @OptionalNotNull()
-  @IsString()
-  @MaxLength(EXAM_ITEM_LIMITS.criteria)
-  criteria?: string;
-
   // Не прислали — схема ставит `published` (ADR-0033). Явный `draft` —
   // «завожу вопрос, но пока прячу».
   @OptionalNotNull()

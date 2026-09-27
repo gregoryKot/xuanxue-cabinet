@@ -9,7 +9,6 @@ function fakeItem(id: string, prompt: string): ExamItemDto {
     kind: 'text',
     prompt,
     options: [],
-    tags: [],
     status: 'published',
     version: 1,
     history: [],

@@ -1,5 +1,5 @@
 // Экраны диалога «Новый вопрос» (ТЗ 4б.3, docs/PLAN.md §12) — без вариантов
-// ответа: screen 1 (тип), формулировка, критерии, итог. Экраны с вариантами
+// ответа: screen 1 (тип), формулировка, итог. Экраны с вариантами
 // (шаги 'options'/'correct') — new-exam-item-options-screen.ts (файл-лимит
 // 150 строк). Чистая логика без Mongo и без Telegram — юнит-тест как у
 // exam-question-screen.ts.
@@ -41,17 +41,6 @@ export function promptWaitScreen(): BotMenu {
   };
 }
 
-const SKIP_LABEL = 'Пропустить';
-
-export function criteriaWaitScreen(): BotMenu {
-  return {
-    text:
-      'Есть критерии проверки? Пришлите их одним сообщением или нажмите ' +
-      '«Пропустить» — критерии видит только учитель.',
-    buttons: [[inlineButton(SKIP_LABEL, 'nqf', 'skip')], newExamItemCancelButton()],
-  };
-}
-
 /** Ошибка DTO-валидации (validateExamItemDraft) на любом шаге — тот же
  * экран, что и был, плюс список того, что поправить, сверху (CLAUDE.md
  * «Ошибки»: что случилось и что сделать). */
@@ -74,7 +63,6 @@ export function confirmScreen(draft: NewExamItemDraft): BotMenu {
     summaryLine('Формулировка', draft.prompt ?? ''),
   ];
   if (hasOptionsStep(kind)) lines.push(formatOptionsSummary(draft.options));
-  if (draft.criteria) lines.push(summaryLine('Критерии проверки', draft.criteria));
   lines.push(CONFIRM_QUESTION);
   return {
     text: lines.join('\n\n'),

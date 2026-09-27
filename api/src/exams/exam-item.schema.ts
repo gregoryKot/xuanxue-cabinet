@@ -35,12 +35,13 @@ export interface ExamItemOptionRecord {
 /** Прошлая редакция — снимок содержательных полей на момент правки
  * опубликованного вопроса (ТЗ 4.2, п.3). `replacedAt` — строка ISO, не
  * `Date`: весь объект — часть JSON внутри зашифрованного `history`
- * (encryptJson/decryptJson, utils/encryption.ts), не своя ветка схемы. */
+ * (encryptJson/decryptJson, utils/encryption.ts), не своя ветка схемы.
+ * Записи, заведённые до ADR-0128, могут хранить внутри JSON ещё и
+ * `hint`/`criteria` — тип их не описывает, и это ничего не портит: JSON.parse
+ * их просто прочитает как лишние поля, которые никто не читает. */
 export interface ExamItemVersionRecord {
   version: number;
   prompt: string;
-  hint?: string;
-  criteria?: string;
   options: ExamItemOptionRecord[];
   replacedAt: string;
 }
@@ -55,18 +56,9 @@ export class ExamItemRecord {
   @Prop({ type: String, required: true })
   prompt!: string;
 
-  @Prop({ type: String, required: false })
-  hint?: string;
-
-  @Prop({ type: String, required: false })
-  criteria?: string;
-
   // Хранится строкой целиком (encJson) — см. комментарий в начале файла.
   @Prop({ type: String, default: '[]' })
   options!: string;
-
-  @Prop({ type: [String], default: [] })
-  tags!: string[];
 
   // По умолчанию вопрос сразу годен к сборке формы (ADR-0033): владелец
   // создал вопросы и не нашёл их в конструкторе — шаг «опубликовать» был
@@ -99,18 +91,13 @@ export class ExamItemRecord {
 export const ExamItemSchema = SchemaFactory.createForClass(ExamItemRecord);
 // Список экрана «Вопросы»: фильтр по статусу, сортировка по недавней правке.
 ExamItemSchema.index({ status: 1, updatedAt: -1 });
-// Фильтр по тегу (раздел программы, уровень).
-ExamItemSchema.index({ tags: 1 });
 // Уборщик сирот (ADR-0035) — какие картинки ещё используются вопросами.
 ExamItemSchema.index({ imageIds: 1 });
 
 export const EXAM_ITEM_FIELD_POLICY: FieldPolicy = {
   prompt: enc,
-  hint: enc,
-  criteria: enc,
   options: encJson,
   history: encJson,
-  tags: plain('раздел программы, фильтр в списке; не персональные данные'),
   kind: plain('перечисление, нужно для выборок'),
   status: plain('перечисление, нужно для выборок'),
 };

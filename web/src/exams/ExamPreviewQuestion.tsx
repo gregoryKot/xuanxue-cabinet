@@ -39,7 +39,7 @@ export function ExamPreviewQuestion({ index, item, required }: ExamPreviewQuesti
   const promptId = `preview-prompt-${item.id}`;
 
   return (
-    <QuestionRow index={index} promptId={promptId} prompt={item.prompt} hint={item.hint}>
+    <QuestionRow index={index} promptId={promptId} prompt={item.prompt}>
       {required && <span style={requiredStyle}>{REQUIRED_TEXT}</span>}
       {item.kind !== 'video' && (
         <AttemptAnswerFields

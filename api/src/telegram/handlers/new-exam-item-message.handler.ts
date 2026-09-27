@@ -1,9 +1,9 @@
 // Свободный текст диалога «Новый вопрос» (ТЗ 4б.3, docs/PLAN.md §12) —
 // MessageHandler зовёт после сессии kind: 'examItemDraft' (bot-session.
 // service.ts), тем же приёмом, что ExamTextAnswerHandler для 'examText'.
-// Три текстовых шага: формулировка, варианты (по одному сообщению), критерии
-// (необязательный) — переход между ними НОВЫМ сообщением (ctx.reply), не
-// editMessageText: у входящего текста нет message_id экрана бота.
+// Два текстовых шага: формулировка, варианты (по одному сообщению) —
+// переход между ними НОВЫМ сообщением (ctx.reply), не editMessageText: у
+// входящего текста нет message_id экрана бота.
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
@@ -12,7 +12,7 @@ import type { BotSessionLean } from '../bot-session.lean';
 import { BotSessionService } from '../bot-session.service';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
 import { GENERIC_ERROR } from './callback-actions';
-import { confirmScreen, criteriaWaitScreen } from './new-exam-item-screens';
+import { confirmScreen } from './new-exam-item-screens';
 import { optionsWaitScreen } from './new-exam-item-options-screen';
 import {
   hasOptionsStep,
@@ -58,10 +58,6 @@ export class NewExamItemMessageHandler {
         await this.handleOption(ctx, chatId, session, text, now);
         return;
       }
-      if (session.draftStep === 'criteria') {
-        await this.handleCriteria(ctx, chatId, session, text, now);
-        return;
-      }
       await ctx.reply(NOT_TEXT_MESSAGE).catch(() => null); // 'correct'/'confirm' ждут кнопку, не текст
     } catch (err) {
       this.logger.error(`telegram.newExamItem: ${errorMessage(err)}`, errorStack(err));
@@ -83,13 +79,16 @@ export class NewExamItemMessageHandler {
       await ctx.reply(errors.join('\n')).catch(() => null);
       return;
     }
-    const nextStep = hasOptionsStep(session.draftKind) ? 'options' : 'criteria';
+    const nextStep = hasOptionsStep(session.draftKind) ? 'options' : 'confirm';
     await this.botSessions.setNewExamItemDraft(
       chatId,
       { step: nextStep, prompt: text },
       now,
     );
-    const screen = nextStep === 'options' ? optionsWaitScreen([]) : criteriaWaitScreen();
+    const screen =
+      nextStep === 'options'
+        ? optionsWaitScreen([])
+        : confirmScreen({ ...sessionToNewExamItemDraft(session), prompt: text });
     await ctx
       .reply(screen.text, { reply_markup: { inline_keyboard: screen.buttons } })
       .catch(() => null);
@@ -119,37 +118,6 @@ export class NewExamItemMessageHandler {
       now,
     );
     const screen = optionsWaitScreen(next);
-    await ctx
-      .reply(screen.text, { reply_markup: { inline_keyboard: screen.buttons } })
-      .catch(() => null);
-  }
-
-  private async handleCriteria(
-    ctx: Context,
-    chatId: number,
-    session: BotSessionLean & { draftKind: NonNullable<BotSessionLean['draftKind']> },
-    text: string,
-    now: DateTime,
-  ): Promise<void> {
-    const errors = await this.examBotPorts.get().validateExamItemDraft({
-      kind: session.draftKind,
-      prompt: session.draftPrompt,
-      options: session.draftOptions,
-      criteria: text,
-    });
-    if (errors) {
-      await ctx.reply(errors.join('\n')).catch(() => null);
-      return;
-    }
-    await this.botSessions.setNewExamItemDraft(
-      chatId,
-      { step: 'confirm', criteria: text },
-      now,
-    );
-    const screen = confirmScreen({
-      ...sessionToNewExamItemDraft(session),
-      criteria: text,
-    });
     await ctx
       .reply(screen.text, { reply_markup: { inline_keyboard: screen.buttons } })
       .catch(() => null);

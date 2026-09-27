@@ -13,18 +13,13 @@ function fullItem(): LeanExamItem {
     _id: ITEM_ID,
     kind: 'single',
     prompt: 'Что означает «сюань»?',
-    hint: 'Подсказка про глубину',
-    criteria: 'Ответ засчитан, если названо верное значение',
     options: [{ id: OPTION_ID, text: 'Таинственный', correct: true }],
-    tags: ['теория'],
     status: 'published',
     version: 2,
     history: [
       {
         version: 1,
         prompt: 'Старая формулировка',
-        hint: 'Старая подсказка',
-        criteria: 'Старые критерии',
         options: [{ id: HISTORY_OPTION_ID, text: 'Старый вариант', correct: false }],
         replacedAt: '2026-08-20T09:00:00.000Z',
       },
@@ -45,18 +40,13 @@ describe('toExamItemDto', () => {
       id: ITEM_ID.toString(),
       kind: 'single',
       prompt: 'Что означает «сюань»?',
-      hint: 'Подсказка про глубину',
-      criteria: 'Ответ засчитан, если названо верное значение',
       options: [{ id: OPTION_ID, text: 'Таинственный', correct: true }],
-      tags: ['теория'],
       status: 'published',
       version: 2,
       history: [
         {
           version: 1,
           prompt: 'Старая формулировка',
-          hint: 'Старая подсказка',
-          criteria: 'Старые критерии',
           options: [{ id: HISTORY_OPTION_ID, text: 'Старый вариант', correct: false }],
           replacedAt: '2026-08-20T09:00:00.000Z',
         },
@@ -67,30 +57,23 @@ describe('toExamItemDto', () => {
     });
   });
 
-  it('отсутствующие optional-поля — undefined, не null', () => {
+  it('отсутствующее optional-поле authorId — undefined, не null', () => {
     const doc = fullItem();
-    doc.hint = undefined;
-    doc.criteria = undefined;
     doc.authorId = undefined;
 
     const dto = toExamItemDto(doc);
 
-    expect(dto.hint).toBeUndefined();
-    expect(dto.criteria).toBeUndefined();
     expect(dto.authorId).toBeUndefined();
-    expect('hint' in dto).toBe(true); // ключ есть, просто пуст — не удалён
   });
 
-  it('пустые варианты, теги и история — пустые массивы', () => {
+  it('пустые варианты и история — пустые массивы', () => {
     const doc = fullItem();
     doc.options = [];
-    doc.tags = [];
     doc.history = [];
 
     const dto = toExamItemDto(doc);
 
     expect(dto.options).toEqual([]);
-    expect(dto.tags).toEqual([]);
     expect(dto.history).toEqual([]);
   });
 });

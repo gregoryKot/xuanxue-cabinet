@@ -38,26 +38,6 @@ function makeVideo(
 }
 
 describe('AttemptReviewQuestion — текстовый вопрос', () => {
-  it('есть подсказка ученику — видна учителю', () => {
-    render(
-      <AttemptReviewQuestion
-        index={0}
-        video={makeVideo()}
-        question={makeQuestion({ hint: 'Считайте по схеме' })}
-      />,
-    );
-
-    expect(screen.getByText(/Подсказка ученику: Считайте по схеме/)).toBeInTheDocument();
-  });
-
-  it('без подсказки — строка не рисуется', () => {
-    render(
-      <AttemptReviewQuestion index={0} video={makeVideo()} question={makeQuestion()} />,
-    );
-
-    expect(screen.queryByText(/Подсказка ученику/)).not.toBeInTheDocument();
-  });
-
   it('есть ответ — виден как есть', () => {
     render(
       <AttemptReviewQuestion

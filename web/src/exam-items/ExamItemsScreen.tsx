@@ -7,8 +7,9 @@
 // с волосяной линией между строками (ExamItemCard.tsx).
 //
 // Тип вопроса фильтром не стоит: он виден в служебной строке каждой строки
-// списка, а поиск по формулировке и тегу закрывает нужный случай («все
-// вопросы про дыхание») лучше, чем ещё один ряд переключателей на 360 px.
+// списка, а поиск по формулировке закрывает нужный случай лучше, чем ещё
+// один ряд переключателей на 360 px. Тег вопроса убран из продукта
+// (ADR-0128) — поиск теперь только по тексту вопроса.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EXAM_ITEM_STATUSES, type ExamItemStatus } from '@xuanxue/shared';
@@ -26,7 +27,7 @@ import { useExamItems } from './useExamItems';
 const TITLE = 'Вопросы';
 const EMPTY_MESSAGE = 'Вопросов пока нет. Добавьте первый — из них соберётся экзамен.';
 const EMPTY_FILTERED_MESSAGE = 'С такими фильтрами вопросов нет.';
-const SEARCH_LABEL = 'Поиск по вопросу и тегу';
+const SEARCH_LABEL = 'Поиск по вопросу';
 const ITEMS_PATH = '/exam-items';
 
 export default function ExamItemsScreen() {
@@ -36,7 +37,7 @@ export default function ExamItemsScreen() {
   const navigate = useNavigate();
 
   const visibleItems =
-    items?.filter((item) => matchesSearch([item.prompt, ...item.tags], search)) ?? null;
+    items?.filter((item) => matchesSearch([item.prompt], search)) ?? null;
   const isFiltered = status !== '' || search.trim() !== '';
 
   return (
