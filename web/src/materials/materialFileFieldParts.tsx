@@ -7,7 +7,9 @@ import type { CSSProperties, ReactNode } from 'react';
 import { MATERIAL_FILE_CONTENT_TYPES, MATERIAL_FILE_LIMITS } from '@xuanxue/shared';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
 
-export const MATERIAL_FILE_FIELD_LABEL = 'Файл материала';
+// Подпись поля, подсказка про форматы и стили каркаса наружу не выходят:
+// их рисует `MaterialFileFieldShell` ниже, и экспорт был бы мёртвым (knip).
+const MATERIAL_FILE_FIELD_LABEL = 'Файл материала';
 export const MATERIAL_FILE_ADD_LABEL = 'Добавить файл';
 export const MATERIAL_FILE_REPLACE_LABEL = 'Заменить файл';
 export const MATERIAL_FILE_REMOVE_LABEL = 'Убрать файл';
@@ -18,14 +20,14 @@ const MAX_MB = MATERIAL_FILE_LIMITS.maxBytes / (1024 * 1024);
 // Подсказка стоит там, где файла ещё нет: формат и потолок нужно знать ДО
 // выбора файла на телефоне — если он не подойдёт, человек узнает это раньше,
 // чем закончит загрузку.
-export const MATERIAL_FILE_FORMATS_HINT = `PDF, документ Word (.docx) или картинка — JPG, PNG, WebP, до ${MAX_MB} МБ.`;
+const MATERIAL_FILE_FORMATS_HINT = `PDF, документ Word (.docx) или картинка — JPG, PNG, WebP, до ${MAX_MB} МБ.`;
 
-export const materialFileSectionStyle: CSSProperties = {
+const materialFileSectionStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
 };
-export const materialFileLabelTextStyle: CSSProperties = {
+const materialFileLabelTextStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
 };
