@@ -1,14 +1,13 @@
-// Оркестрация хука быстрого создания вопроса (ADR-0040): валидация — та же
-// чистая логика, что у страницы вопроса (exam-items/examItemFormInput.test.ts),
-// здесь проверяется только submit — шлёт POST /exam-items и возвращает
-// созданный вопрос или `null` при отказе, по образцу
-// exam-items/useExamItemForm.test.ts.
+// Оркестрация хука формы вопроса на месте (ADR-0040, дополнение 2026-09-27):
+// валидация — та же чистая логика, что у страницы вопроса
+// (exam-items/examItemFormInput.test.ts), здесь проверяется только submit —
+// создание (POST) и правка (PATCH) по образцу exam-items/useExamItemForm.test.ts.
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { apiFetch, ApiError } from '../api/http';
-import { useNewQuestionForm } from './useNewQuestionForm';
+import { useQuestionInlineForm } from './useQuestionInlineForm';
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -36,9 +35,9 @@ function makeItem(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
   };
 }
 
-describe('useNewQuestionForm — создание', () => {
+describe('useQuestionInlineForm — создание (item: null)', () => {
   it('пустая формулировка — submit не уходит в сеть, есть validationError', async () => {
-    const { result } = renderHook(() => useNewQuestionForm());
+    const { result } = renderHook(() => useQuestionInlineForm(null));
 
     let created: ExamItemDto | null = makeItem();
     await act(async () => {
@@ -53,7 +52,7 @@ describe('useNewQuestionForm — создание', () => {
   it('успешный submit — POST /exam-items с телом из состояния, возвращает созданный вопрос', async () => {
     const item = makeItem();
     mockedApiFetch.mockResolvedValue(item);
-    const { result } = renderHook(() => useNewQuestionForm());
+    const { result } = renderHook(() => useQuestionInlineForm(null));
 
     act(() => {
       result.current.setField('prompt', '  Как дышать в стойке?  ');
@@ -79,7 +78,7 @@ describe('useNewQuestionForm — создание', () => {
     mockedApiFetch.mockRejectedValue(
       new ApiError('Конфликт', 409, 'conflict', ['подробность']),
     );
-    const { result } = renderHook(() => useNewQuestionForm());
+    const { result } = renderHook(() => useQuestionInlineForm(null));
 
     act(() => {
       result.current.setField('prompt', 'Вопрос');
@@ -95,5 +94,50 @@ describe('useNewQuestionForm — создание', () => {
       message: 'Конфликт',
       details: ['подробность'],
     });
+  });
+});
+
+describe('useQuestionInlineForm — правка (item задан)', () => {
+  it('состояние заполнено из вопроса, submit — PATCH /exam-items/:id', async () => {
+    const item = makeItem({ id: 'i7', prompt: 'Старая формулировка' });
+    const updated = { ...item, prompt: 'Новая формулировка' };
+    mockedApiFetch.mockResolvedValue(updated);
+    const { result } = renderHook(() => useQuestionInlineForm(item));
+
+    expect(result.current.state.prompt).toBe('Старая формулировка');
+
+    act(() => {
+      result.current.setField('prompt', 'Новая формулировка');
+    });
+
+    let saved: ExamItemDto | null = null;
+    await act(async () => {
+      saved = await result.current.submit();
+    });
+
+    expect(saved).toEqual(updated);
+    expect(mockedApiFetch).toHaveBeenCalledWith('/exam-items/i7', {
+      method: 'PATCH',
+      body: {
+        prompt: 'Новая формулировка',
+        videoId: null,
+        videoUrl: null,
+        options: undefined,
+      },
+    });
+  });
+
+  it('ApiError от сервера при правке — serverError, submit возвращает null', async () => {
+    const item = makeItem({ id: 'i7' });
+    mockedApiFetch.mockRejectedValue(new ApiError('Отказ', 400, 'invalid_input'));
+    const { result } = renderHook(() => useQuestionInlineForm(item));
+
+    let saved: ExamItemDto | null = makeItem();
+    await act(async () => {
+      saved = await result.current.submit();
+    });
+
+    expect(saved).toBeNull();
+    expect(result.current.serverError?.message).toBe('Отказ');
   });
 });

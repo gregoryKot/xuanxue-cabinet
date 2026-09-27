@@ -1,8 +1,13 @@
 // Редактор экзамена — страница с адресом, а не лист поверх списка (макет
-// Form.dc.html, ADR-0033). Сверху вниз: название со строкой статуса
-// («Опубликовать» / «В архив» — под заголовком, не в подвале: у экзамена
-// на 50 вопросов подвал далеко), «О чём экзамен», «Как проходит экзамен»,
-// «Вопросы · N» с поиском и «Новый вопрос» (ADR-0040), подвал с сохранением.
+// Form.dc.html, ADR-0033). Сверху вниз: верх страницы (ссылка «назад»,
+// удаление, заголовок со статусом, «Сохранить» — ExamEditorHeader.tsx,
+// вынесен из-за храповика размера, ADR-0139), «О чём экзамен», «Как проходит
+// экзамен», «Вопросы · N» с поиском и «Новый вопрос» (ADR-0040), подвал с
+// «Сохранить» ещё раз и предпросмотром. «Сохранить» и «Удалить» стоят и
+// наверху, и (первое —) внизу: без верхней пары их не находили сразу — на
+// экзамене с полсотни вопросов до подвала нужно долистать, а в первый раз
+// новый экзамен выглядел пустым, и было страшно уйти со страницы (ADR-0139,
+// отзыв владельца 2026-09-27).
 // Настройки — перед списком вопросов, а не после: список длинный (у
 // владельца — 50 вопросов), и настройки под ним читались бы «подвалом»,
 // который не долистывают (отзыв владельца 2026-09-21). Вопросы грузятся
@@ -11,34 +16,25 @@
 // один запрос обслуживает и список для добавления, и подстановку
 // формулировок в выбранных вопросах. Предпросмотр глазами ученика — своя
 // страница со своим запросом (ExamPreviewScreen.tsx).
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { ExamDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { EditorStatusRow } from '../components/EditorStatusRow';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
-import { screenTitleStyle } from '../components/screenLayout';
-import {
-  backLinkStyle,
-  editorHeadingStyle,
-  editorPageStyle,
-  editorSectionStyle,
-} from '../components/editorLayout';
+import { editorPageStyle, editorSectionStyle } from '../components/editorLayout';
 import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { useExamItems } from '../exam-items/useExamItems';
 import { ExamAboutFields } from './ExamAboutFields';
-import { EXAM_STATUS_EXPLANATIONS, ExamEditorFooter } from './ExamEditorFooter';
+import { ExamEditorFooter } from './ExamEditorFooter';
+import { EXAMS_PATH, ExamEditorHeader } from './ExamEditorHeader';
 import { ExamFlowFields } from './ExamFlowFields';
 import { ExamQuestionsSection } from './ExamQuestionsSection';
 import { pruneRequiredIds, toggleRequired } from './examQuestions';
 import { useExamForm } from './useExamForm';
-import { useSaveAndPreview } from './useSaveAndPreview';
+import { hasUnsavedChanges, useSaveAndPreview } from './useSaveAndPreview';
 import type { UseExamEditorResult } from './useExamEditor';
 
 const NO_STATUS_FILTER = '' as const;
-const EXAMS_PATH = '/exams';
-const BACK_TEXT = 'К списку экзаменов';
-const NEW_EXAM_TITLE = 'Новый экзамен';
 const REMOVE_MESSAGE = 'Экзамен исчезнет вместе с набором вопросов. Отменить нельзя.';
 
 interface ExamEditorFormProps {
@@ -56,6 +52,10 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
   const preview = useSaveAndPreview(exam, form, formRef);
+  // Черновик вернули — о нём уже говорит FormDraftNote ниже; второй строки
+  // про «хранится на устройстве» подряд не нужно (снимок владельца 2026-09-27).
+  const showDraftSafetyNote =
+    !form.draftRestored && (!exam || hasUnsavedChanges(form.state, exam));
 
   // Вопрос убрали из списка — отметка «обязательный» уходит вместе с ним
   // (ADR-0082, дополнение); на добавлении и перестановке — просто нет эффекта.
@@ -67,23 +67,13 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   return (
     <>
       <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
-        <Link to={EXAMS_PATH} style={backLinkStyle}>
-          {BACK_TEXT}
-        </Link>
-
-        <div style={editorHeadingStyle}>
-          <span className="xuanxue-eyebrow">Экзамен</span>
-          <h1 style={screenTitleStyle}>{exam ? exam.title : NEW_EXAM_TITLE}</h1>
-          {exam && (
-            <EditorStatusRow
-              status={exam.status}
-              explanations={EXAM_STATUS_EXPLANATIONS}
-              placement="heading"
-              pending={form.pending}
-              onChangeStatus={(status) => void handleChangeStatus(status)}
-            />
-          )}
-        </div>
+        <ExamEditorHeader
+          exam={exam}
+          pending={form.pending}
+          showDraftSafetyNote={showDraftSafetyNote}
+          onChangeStatus={(status) => void handleChangeStatus(status)}
+          onRequestRemove={removeConfirm.requestRemove}
+        />
 
         <FormDraftNote restored={form.draftRestored} onDiscard={form.discardDraft} />
 
@@ -122,7 +112,6 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
             status={exam ? exam.status : null}
             pending={form.pending}
             preview={exam ? preview : null}
-            onRemove={removeConfirm.requestRemove}
           />
         </div>
       </form>

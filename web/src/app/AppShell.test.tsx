@@ -201,7 +201,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
+    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
   });
 
   it('нижняя навигация — у админа тоже «Ученики»', async () => {
@@ -213,7 +213,7 @@ describe('AppShell — учитель', () => {
       .getAllByRole('link')
       .map((link) => link.textContent)
       .filter((label) => label !== 'Профиль');
-    expect(labels).toEqual(['Занятия', 'Рассылки', 'Экзамены', 'Ученики', 'Материалы']);
+    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
   });
 
   // Ровно то, чего боялся владелец при переносе подвала в колонку (ADR-0043):

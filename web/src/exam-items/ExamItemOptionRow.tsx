@@ -1,5 +1,6 @@
-// Одна строка варианта ответа в редакторе вопроса: отметка «верный»,
-// [текст + картинка] одной колонкой, тихая «×» справа. Вынесена из
+// Одна строка варианта ответа в редакторе вопроса: отметка «верный», текст,
+// тихая скрепка медиа, тихая «×» справа — одна строка вместо размазанной по
+// вертикали (отзыв владельца 2026-09-27). Вынесена из
 // ExamItemOptionsField.tsx — тот упёрся в 150 строк файлового храповика
 // (CLAUDE.md «Храповики»), а строка и так самостоятельна: поле над ней
 // держит только список и правила его изменения.
@@ -11,7 +12,12 @@
 // вокруг него: тот же приём, что у нижней панели вкладок и пилюль ролей, и
 // именно <label>, а не <span>, чтобы нажатие по полю вокруг отметки её
 // переключало.
-import type { CSSProperties } from 'react';
+//
+// Текст, скрепка и превью медиа — один flex-ряд с переносом: скрепка
+// держится рядом с текстом, а превью (`flexBasis: 100%` в
+// useImageAttach/useVideoAttach) само уходит на свою строку под ними, без
+// отдельной колонки для этого в разметке.
+import type { CSSProperties, KeyboardEvent, Ref } from 'react';
 import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { inputStyle } from '../components/Field';
 import { rowControlStyle } from '../components/listCardStyles';
@@ -33,12 +39,13 @@ const markStyle: CSSProperties = {
   margin: 0,
   accentColor: 'var(--accent)',
 };
-const textColumnStyle: CSSProperties = {
+const contentRowStyle: CSSProperties = {
   display: 'flex',
-  flexDirection: 'column',
+  flexWrap: 'wrap',
+  alignItems: 'center',
   gap: 6,
 };
-const textStyle: CSSProperties = { ...inputStyle, marginTop: 2 };
+const textStyle: CSSProperties = { ...inputStyle, flex: '1 1 140px', minWidth: 0 };
 
 interface ExamItemOptionRowProps {
   option: ExamItemOptionDraft;
@@ -46,13 +53,21 @@ interface ExamItemOptionRowProps {
   /** `single` — отметка радио с общим именем группы: взаимное исключение
    * браузер делает сам. `multiple` — обычный чекбокс. */
   radioGroupName?: string;
-  /** Загрузка в R2 подключена — решает, что рисует поле видео (ADR-0133). */
+  /** Загрузка в R2 подключена — решает, что рисует скрепка видео (ADR-0133). */
   fileStorageEnabled: boolean;
+  /** Фокус текстового поля этой строки после добавления варианта (отзыв
+   * владельца 2026-09-27 — печатать не кликая ещё раз) — только у только что
+   * добавленной строки, у остальных `undefined`. */
+  textInputRef?: Ref<HTMLInputElement>;
   onTextChange: (text: string) => void;
   onImageChange: (imageId: string | undefined) => void;
   onVideoChange: (video: ExamVideoValue) => void;
   onCorrectChange: (correct: boolean) => void;
   onRemove: () => void;
+  /** Enter в текстовом поле — последний вариант добавляет следующий и
+   * переводит туда фокус, остальные переводят фокус на следующий вариант
+   * (ExamItemOptionsField.tsx). Сама строка не знает, какая она по счёту. */
+  onEnter: () => void;
 }
 
 export function ExamItemOptionRow({
@@ -60,12 +75,23 @@ export function ExamItemOptionRow({
   index,
   radioGroupName,
   fileStorageEnabled,
+  textInputRef,
   onTextChange,
   onImageChange,
   onVideoChange,
   onCorrectChange,
   onRemove,
+  onEnter,
 }: ExamItemOptionRowProps) {
+  // preventDefault всегда: поле стоит внутри формы вопроса/экзамена, и Enter
+  // без него отправил бы её раньше, чем учитель допечатал варианты (отзыв
+  // владельца 2026-09-27).
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    onEnter();
+  }
+
   return (
     <div className="xuanxue-question-row xuanxue-option-row">
       <label style={markTargetStyle}>
@@ -78,14 +104,16 @@ export function ExamItemOptionRow({
           onChange={(e) => onCorrectChange(e.target.checked)}
         />
       </label>
-      <div style={textColumnStyle}>
+      <div style={contentRowStyle}>
         <input
+          ref={textInputRef}
           type="text"
           aria-label={`Текст варианта ${index + 1}`}
           style={textStyle}
           maxLength={EXAM_ITEM_LIMITS.optionText}
           value={option.text}
           onChange={(e) => onTextChange(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
         <ExamItemOptionMedia
           index={index}

@@ -1,17 +1,24 @@
 // Подвал страницы-редактора (макет Form.dc.html): «Сохранить» — единственная
 // заливка терракотой на экране, рядом текстом необязательное второе
-// действие. Под волосяной линией — строка статуса с переходами и удаление. У
-// новой записи (`status === null`) ни строки статуса, ни удаления нет: статус
-// появляется вместе с записью.
+// действие. Под волосяной линией — строка статуса с переходами и (не у
+// экзамена — см. ниже) удаление. У новой записи (`status === null`) ни
+// строки статуса, ни удаления нет: статус появляется вместе с записью.
 //
 // Один подвал на форму экзамена и вопрос — оба живут по
-// draft/published/archived и оба разрешают удаление только черновику
-// (CLAUDE.md «Одна механика — один компонент»). Домен приносит только тексты:
-// что статус значит для ученика, как называется удаление и почему его нет.
-// Строка статуса — EditorStatusRow.tsx: у вопроса она здесь, в подвале
-// (`statusRow` с текстами и обработчиком), у экзамена — под названием
-// страницы (`statusRow="elsewhere"`), а удаление и объяснение «почему удалить
-// нельзя» остаются в подвале у обоих.
+// draft/published/archived (CLAUDE.md «Одна механика — один компонент»).
+// Домен приносит только тексты: что статус значит для ученика, как
+// называется удаление и почему его нет. Строка статуса — EditorStatusRow.tsx:
+// у вопроса она здесь, в подвале (`statusRow` с текстами и обработчиком), у
+// экзамена — под названием страницы (`statusRow="elsewhere"`).
+//
+// Удаление черновика у вопроса — здесь же, кнопкой; у экзамена кнопка «Удалить
+// экзамен» переехала наверх страницы, в строку с «К списку экзаменов»
+// (ExamEditorForm.tsx, ADR-0139: владелец не находил её в конце длинного
+// списка вопросов) — `removeLabel`/`onRemove` тогда не переданы, и блок
+// удаления в подвале не рисуется вовсе. `noRemoveNotes` — частичный: экзамен
+// оставляет здесь только объяснение для опубликованного (ExamEditorFooter.tsx),
+// у архивного статус выше уже сказал «сданные работы остаются» — второй раз
+// объяснять нечего.
 import type { CSSProperties, ReactNode } from 'react';
 import { Button } from './Button';
 import { editorActionsRowStyle } from './editorLayout';
@@ -27,12 +34,15 @@ interface EditorFooterProps {
   /** Строка статуса с переходами в подвале — или `'elsewhere'`, если страница
    * рисует её сама (экзамен — под названием). */
   statusRow: EditorFooterStatusRow | 'elsewhere';
-  /** Подпись кнопки удаления: «Удалить экзамен», «Удалить вопрос». */
-  removeLabel: string;
-  /** Почему кнопки удаления нет у неудаляемых статусов. */
-  noRemoveNotes: Record<'published' | 'archived', string>;
+  /** Подпись кнопки удаления: «Удалить вопрос». Не передано — кнопки в
+   * подвале нет: удаление либо недоступно статусу, либо стоит на странице
+   * отдельно (экзамен). */
+  removeLabel?: string;
+  /** Почему кнопки удаления нет у конкретного неудаляемого статуса — не
+   * задано для статуса, значит подвал молчит про удаление вовсе. */
+  noRemoveNotes?: Partial<Record<'published' | 'archived', string>>;
   pending: boolean;
-  onRemove: () => void;
+  onRemove?: () => void;
   /** Второе действие рядом с «Сохранить» — текстом, не кнопкой. */
   extraAction?: ReactNode;
 }
@@ -52,6 +62,7 @@ export function EditorFooter({
   onRemove,
   extraAction,
 }: EditorFooterProps) {
+  const noRemoveNote = status && status !== 'draft' ? noRemoveNotes?.[status] : undefined;
   return (
     <div>
       <div style={editorActionsRowStyle}>
@@ -73,7 +84,7 @@ export function EditorFooter({
             />
           )}
 
-          {status === 'draft' ? (
+          {status === 'draft' && removeLabel && onRemove ? (
             <Button
               type="button"
               variant="danger"
@@ -84,10 +95,12 @@ export function EditorFooter({
               {removeLabel}
             </Button>
           ) : (
-            // Через RichText (ADR-0124) — акцент в объяснении «почему нельзя удалить».
-            <p style={noteStyle}>
-              <RichText text={noRemoveNotes[status]} />
-            </p>
+            noRemoveNote && (
+              // Через RichText (ADR-0124) — акцент в объяснении «почему нельзя удалить».
+              <p style={noteStyle}>
+                <RichText text={noRemoveNote} />
+              </p>
+            )
           )}
         </>
       )}

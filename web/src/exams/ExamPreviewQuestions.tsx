@@ -1,37 +1,23 @@
 // Список вопросов в предпросмотре «глазами ученика» — по порядку снимка
-// формы. Перемешивание показано словами, а не выдуманной перестановкой: у
-// каждого сдающего порядок свой, здесь виден один из вариантов. Список лежит
-// в карточке, как на экране сдачи (attempt/AttemptInProgress.tsx, направление
-// «Тёплая школа», docs/adr/0043) — вопросы внутри карточки по-прежнему
-// разделены волосяными линиями строк (.xuanxue-question-row,
-// components/QuestionRow.tsx), а не рамкой.
+// формы. Список лежит в карточке, как на экране сдачи
+// (attempt/AttemptInProgress.tsx, направление «Тёплая школа», docs/adr/0043)
+// — вопросы внутри карточки по-прежнему разделены волосяными линиями строк
+// (.xuanxue-question-row, components/QuestionRow.tsx), а не рамкой.
+//
+// Заметка над списком — одна строка (previewNote.ts, отзыв владельца
+// 2026-09-27): раньше здесь были две подряд («сколько вопросов достанется» и
+// «перемешивается ли порядок») об одном и том же — у каждого сдающего свой
+// набор и свой порядок.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { blockCardStyle, dividedListStyle } from '../components/listCardStyles';
 import { noteStyle } from '../components/screenLayout';
 import { RichText } from '../components/RichText';
-import { questionsPerAttemptNote } from './questionsPerAttempt';
+import { previewNote } from './previewNote';
 import { ExamPreviewQuestion } from './ExamPreviewQuestion';
 
 const EMPTY_NOTE = 'В экзамене пока нет вопросов — сдающий увидит **пустой экран**.';
 
-/** Оба перемешивания — про одно и то же (порядок у каждого сдающего свой),
- * поэтому один абзац на оба случая, а не два подряд об одной мысли (VOICE). */
-function shuffleNote(shuffleQuestions: boolean, shuffleOptions: boolean): string | null {
-  if (shuffleQuestions && shuffleOptions) {
-    return 'Порядок вопросов и вариантов ответа будет **другим у каждого сдающего** — здесь показан один из вариантов.';
-  }
-  if (shuffleQuestions) {
-    return 'Порядок вопросов будет **другим у каждого сдающего** — здесь показан один из вариантов.';
-  }
-  if (shuffleOptions) {
-    return 'Порядок вариантов ответа будет **другим у каждого сдающего**.';
-  }
-  return null;
-}
-
-// Заметки о перемешивании и сам список — колонкой с зазором: у общего
-// noteStyle отступов нет, и две заметки подряд слипались бы в один абзац.
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 
 interface ExamPreviewQuestionsProps {
@@ -55,24 +41,19 @@ export function ExamPreviewQuestions({
   requiredIds,
   bankItems,
 }: ExamPreviewQuestionsProps) {
-  const shuffle = shuffleNote(shuffleQuestions, shuffleOptions);
+  const note = previewNote({
+    itemCount: itemIds.length,
+    questionsPerAttempt,
+    requiredCount: requiredIds.length,
+    shuffleQuestions,
+    shuffleOptions,
+  });
 
   return (
     <section style={sectionStyle}>
-      {questionsPerAttempt !== undefined && (
+      {note && (
         <p style={noteStyle}>
-          <RichText
-            text={questionsPerAttemptNote(
-              questionsPerAttempt,
-              itemIds.length,
-              requiredIds.length,
-            )}
-          />
-        </p>
-      )}
-      {shuffle && (
-        <p style={noteStyle}>
-          <RichText text={shuffle} />
+          <RichText text={note} />
         </p>
       )}
       {itemIds.length === 0 && (

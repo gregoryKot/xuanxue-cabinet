@@ -3,7 +3,14 @@
 // (не ломается при копипасте формы) и меньше кода. getInputStyle — общий
 // стиль инпутов/селектов для всех форм кабинета, высота ≥44px (CLAUDE.md
 // «Доступность»).
-import type { CSSProperties, ReactNode } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  useId,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
+import { InfoTip } from './InfoTip';
 import { RichText } from './RichText';
 
 // Экспортирован: EmailField.tsx (CLAUDE.md «Одна механика — один компонент»)
@@ -59,6 +66,13 @@ export const inputStyle: CSSProperties = getInputStyle();
 export const numericInputStyle: CSSProperties = { ...inputStyle, width: 112 };
 
 const fieldStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
+// Строка «подпись + кнопка InfoTip» над полем (только когда есть `tip`,
+// см. комментарий у Field ниже): кнопка — сразу за словом подписи.
+const labelRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+};
 const labelTextStyle: CSSProperties = { fontSize: 14, fontWeight: 600 };
 const hintStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)' };
 const errorStyle: CSSProperties = { fontSize: 13, color: 'var(--danger)' };
@@ -66,21 +80,55 @@ const errorStyle: CSSProperties = { fontSize: 13, color: 'var(--danger)' };
 interface FieldProps {
   label: string;
   hint?: string;
+  /** Короткое объяснение во всплывающей подсказке рядом с подписью
+   * (components/InfoTip.tsx, ADR-0139) — для того, что не проговаривается
+   * подстрочником у каждого поля. Не заменяет `hint`: тот остаётся для
+   * форм, которым короткая подпись мало что объясняет без строки под полем. */
+  tip?: string;
   error?: string;
   children: ReactNode;
 }
 
-export function Field({ label, hint, error, children }: FieldProps) {
+export function Field({ label, hint, tip, error, children }: FieldProps) {
   // hint/error — вне <label>: текст подсказки внутри label иначе склеивается
   // в доступное имя поля («Подпись группыНапример…»), и getByLabelText
   // (точный текст) в тестах и скринридерах перестаёт находить поле по одной
-  // подписи.
+  // подписи. Кнопка InfoTip — тоже вне <label>, хоть у неё и нет своего
+  // видимого текста: <label> без `for` неявно связывается с ПЕРВЫМ
+  // «подписываемым» потомком в DOM-порядке (input, select, button — общий
+  // список у браузера и testing-library), и окажись кнопка внутри и раньше
+  // контрола, связалась бы с ней, а не с полем — getByLabelText нашёл бы
+  // кнопку вместо инпута.
+  //
+  //
+  // С `tip` подпись и поле связаны явно (`htmlFor` + `id`), а <label> держит
+  // только текст подписи: иначе кнопка «?» вставала справа от всего блока
+  // «подпись + поле», у правого края инпута, а не рядом со словом (снимок
+  // владельца 2026-09-27). Без `tip` разметка прежняя — <label> вокруг
+  // контрола: формы, которые находят поле через
+  // `closest('label')?.parentElement` (RecordingSection.test.tsx), её видят.
+  const tipControlId = useId();
+  const labelNode = tip ? (
+    <>
+      <span style={labelRowStyle}>
+        <label htmlFor={tipControlId} style={labelTextStyle}>
+          {label}
+        </label>
+        <InfoTip label={label} text={tip} />
+      </span>
+      {isValidElement<{ id?: string }>(children)
+        ? cloneElement(children, { id: children.props.id ?? tipControlId })
+        : children}
+    </>
+  ) : (
+    <label style={fieldStyle}>
+      <span style={labelTextStyle}>{label}</span>
+      {children}
+    </label>
+  );
   return (
     <div style={fieldStyle}>
-      <label style={fieldStyle}>
-        <span style={labelTextStyle}>{label}</span>
-        {children}
-      </label>
+      {labelNode}
       {/* Через RichText (ADR-0124) — акцент `**жирным**` в подсказке и ошибке
        * поля достаётся всем формам кабинета сразу, без правки на каждой. */}
       {error ? (

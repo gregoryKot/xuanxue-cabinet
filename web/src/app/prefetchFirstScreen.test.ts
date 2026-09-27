@@ -2,11 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import {
   CLASSES_LIST_PATH,
+  EXAM_ITEM_STATS_SUMMARY_PATH,
+  GRADING_QUEUE_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_PATH,
   NOTIFICATIONS_FEED_PATH,
   attemptPath,
+  examsListPath,
   lessonsListPath,
 } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
@@ -45,6 +48,17 @@ describe('firstScreenPaths', () => {
       lessonsListPath(),
       CLASSES_LIST_PATH,
       LESSON_RECORDING_SUMMARY_PATH,
+    ]);
+  });
+
+  // Решение владельца 2026-09-27 (ADR-0138): «/» у штата ведёт на «Экзамены»
+  // (STAFF_ROOT_PATH), не на «Занятия» — гейт от повторного расхождения
+  // EMPTY_PATH_FALLBACK (routeMatch.ts) и STAFF_ROOT_PATH (screenAccess.ts).
+  it('учитель на «/» — данные «Экзаменов», не «Занятий»', () => {
+    expect(firstScreenPaths('/', makeMe())).toEqual([
+      examsListPath({ status: '' }),
+      GRADING_QUEUE_PATH,
+      EXAM_ITEM_STATS_SUMMARY_PATH,
     ]);
   });
 

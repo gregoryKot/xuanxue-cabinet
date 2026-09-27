@@ -1,7 +1,8 @@
 // Смоук-тест маршрутов (CLAUDE.md «Тесты»: ветвление есть — гость на /login,
-// «/» уводит на /planning, docs/adr/0025-navigation-by-domain.md) — сами
-// экраны и их логика проверены отдельными тестами (LoginScreen, RequireAuth,
-// ScheduleScreen, PlanningScreen).
+// «/» уводит по роли: штат на /exams (ADR-0138, было /planning), ученик на
+// /tasks (ADR-0046), docs/adr/0025-navigation-by-domain.md) — сами экраны и
+// их логика проверены отдельными тестами (LoginScreen, RequireAuth,
+// ScheduleScreen, PlanningScreen, ExamsScreen).
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -335,19 +336,15 @@ describe('App', () => {
     expect(screen.queryByText('Сбои')).not.toBeInTheDocument();
   });
 
-  it('учитель на «/» — уводит на «Занятия»', async () => {
-    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
+  // Решение владельца 2026-09-27 (ADR-0138): «Экзамены» — основной экран
+  // штата при входе, было «Занятия» (PlanningScreen) — смоук на /exams
+  // отдельно выше, здесь только то, что «/» ведёт туда же.
+  it('учитель на «/» — уводит на «Экзамены»', async () => {
+    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
 
     renderAt('/');
 
-    // «4 недели» — акцент через RichText (<strong>, ADR-0124): сверяем по
-    // textContent абзаца, а не по прямым текстовым узлам.
-    expect(
-      await screen.findByText(
-        (_, el) =>
-          el?.tagName === 'P' && !!el.textContent?.includes('Занятия на 4 недели вперёд'),
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Экзамены' })).toBeInTheDocument();
   });
 
   // Решение владельца: экзамены — отдельный экран и первый после входа

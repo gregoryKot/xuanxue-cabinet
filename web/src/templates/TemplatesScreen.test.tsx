@@ -457,7 +457,10 @@ describe('TemplatesScreen — напоминание ученикам о зан�
     renderScreen();
     await screen.findByRole('heading', { name: 'Анонс занятия' });
 
-    expect(await screen.findByLabelText(LABEL)).toHaveValue('60');
+    // Поле стоит на экране раньше ответа /settings и до него пустое
+    // (useSettingsTextField: useState('')); findByLabelText находит его сразу
+    // и проверяет пустоту. Ждём значение, а не поле.
+    await waitFor(() => expect(screen.getByLabelText(LABEL)).toHaveValue('60'));
   });
 
   it('сохранённое значение показано в поле', async () => {
@@ -534,7 +537,11 @@ describe('TemplatesScreen — контакт для новичков', () => {
     renderScreen();
     await screen.findByRole('heading', { name: 'Анонс занятия' });
 
-    expect(await screen.findByLabelText(LABEL)).toHaveValue(DEFAULT_NEWCOMER_CONTACT);
+    // Та же гонка, что у «напоминания» выше: под нагрузкой CI ответ /settings
+    // приезжал позже, чем находилось поле (web-coverage, PR #442, 2026-09-27).
+    await waitFor(() =>
+      expect(screen.getByLabelText(LABEL)).toHaveValue(DEFAULT_NEWCOMER_CONTACT),
+    );
   });
 
   it('сохранённый контакт показан в поле', async () => {
