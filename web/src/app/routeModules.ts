@@ -20,7 +20,6 @@
 // prefetchFirstScreen.ts кладёт их в prefetchCache.ts, а apiFetch хука
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
-import { APP_ERRORS_SCREEN_PATH } from '@xuanxue/shared';
 import {
   CHANNELS_PATH,
   CLASSES_LIST_PATH,
@@ -383,14 +382,5 @@ export const ROUTE_MODULES = {
     // ответит 403 (people/usePeople.ts) — не греем. Ссылка-приглашение
     // грузится независимо от роли (InviteLinkCard.tsx/useInviteLink.ts).
     prefetch: () => [INVITE_LINK_PATH],
-  },
-  // Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx), вход
-  // карточкой SectionLink на «Профиле» (ADR-0025), не пункт меню. Чужая роль
-  // сюда не заходит вовсе — прогревать чанк для каждого штата незачем
-  // (warm: false), в отличие от «Людей» выше, открытых и teacher.
-  devErrors: {
-    path: APP_ERRORS_SCREEN_PATH,
-    load: () => import('../dev-errors/DevErrorsScreen'),
-    warm: false,
   },
 } satisfies Record<string, RouteModule>;

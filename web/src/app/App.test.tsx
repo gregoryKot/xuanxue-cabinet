@@ -288,53 +288,6 @@ describe('App', () => {
     expect(screen.queryByText('Ученики')).not.toBeInTheDocument();
   });
 
-  // Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx),
-  // вход карточкой на «Профиле», не пункт меню (ADR-0025).
-  it('admin на /dev/errors — маршрут «Сбои» открывает DevErrorsScreen', async () => {
-    mockRoute(ADMIN, { '/dev/errors': { items: [], last24h: 0 } });
-
-    renderAt('/dev/errors');
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Сбои' }),
-    ).toBeInTheDocument();
-  });
-
-  it('учитель на /dev/errors — уводит редиректом на «Занятия» (RequireDevErrorsAccess)', async () => {
-    mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
-
-    renderAt('/dev/errors');
-
-    // «4 недели» — тот же смоук, что у /planning выше (PlanningScreen.tsx).
-    expect(
-      await screen.findByText(
-        (_, el) =>
-          el?.tagName === 'P' && !!el.textContent?.includes('Занятия на 4 недели вперёд'),
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('Сбои')).not.toBeInTheDocument();
-  });
-
-  it('ученик без роли на /dev/errors — уводит редиректом на «Задания» (маршрут штата ему не открыт)', async () => {
-    const student: MeDto = {
-      id: 's2',
-      name: 'Оля',
-      roles: [],
-      status: 'active',
-      telegramLinked: false,
-      botChatActive: false,
-      noTelegram: false,
-      hasEmail: true,
-      needsProfile: false,
-    };
-    mockRoute(student, { '/me/exams': [] });
-
-    renderAt('/dev/errors');
-
-    expect(await screen.findByText('Заданий пока нет.')).toBeInTheDocument();
-    expect(screen.queryByText('Сбои')).not.toBeInTheDocument();
-  });
-
   it('учитель на «/» — уводит на «Занятия»', async () => {
     mockRoute(TEACHER, { '/lessons': [], '/classes': [] });
 

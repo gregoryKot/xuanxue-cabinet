@@ -12,7 +12,6 @@
 // бы разбор.
 import { Navigate, Route } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
-import { RequireDevErrorsAccess } from '../auth/RequireDevErrorsAccess';
 import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
 import { lazyRoute } from './lazyRoute';
 import { ROUTE_MODULES } from './routeModules';
@@ -45,7 +44,6 @@ const TasksScreen = lazyRoute(ROUTE_MODULES.tasks.load);
 const LessonsScreen = lazyRoute(ROUTE_MODULES.studentLessons.load);
 const ArchiveScreen = lazyRoute(ROUTE_MODULES.archive.load);
 const LibraryScreen = lazyRoute(ROUTE_MODULES.library.load);
-const DevErrorsScreen = lazyRoute(ROUTE_MODULES.devErrors.load);
 
 /** «/» — первый экран уже известной роли (решение владельца: у ученика это
  * «Задания», у штата — «Занятия»/планирование). Роль решает rootPathFor
@@ -144,11 +142,6 @@ export const cabinetRoutes = (
         удаление данных внутри экрана остаются только у admin (SECURITY §3). */}
     <Route element={<RequirePeopleAccess />}>
       <Route path={ROUTE_MODULES.people.path} element={<PeopleScreen />} />
-    </Route>
-    {/* Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx),
-        вход карточкой SectionLink на «Профиле», не пункт меню (ADR-0025). */}
-    <Route element={<RequireDevErrorsAccess />}>
-      <Route path={ROUTE_MODULES.devErrors.path} element={<DevErrorsScreen />} />
     </Route>
     <Route path="/" element={<RootRedirect />} />
   </>

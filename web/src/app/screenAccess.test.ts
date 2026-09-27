@@ -61,18 +61,6 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/channels')).toBe(false);
   });
 
-  // Журнал сбоев (ADR-0132) — не в списке путей, открытых ученику: этот
-  // гвард (canSeeRoute) блокирует его как любой другой маршрут штата, а
-  // тонкую разницу teacher/admin держит уже RequireDevErrorsAccess.tsx
-  // (RequireDevErrorsAccess.test.tsx), не эта функция.
-  it('ученик на «/dev/errors» — false, тот же маршрут штата', () => {
-    expect(canSeeRoute(makeMe({ roles: [] }), '/dev/errors')).toBe(false);
-  });
-
-  it('admin на «/dev/errors» — true, маршрут штата открыт любому его члену', () => {
-    expect(canSeeRoute(makeMe({ roles: ['admin'] }), '/dev/errors')).toBe(true);
-  });
-
   // ADR-0075 «Ученику экран тега пока не даётся»: /materials/tags не назван
   // в списке открытых ученику путей — как и /materials сам по себе.
   it('ученик на «/materials/tags» — false, экран тега пока только штату', () => {

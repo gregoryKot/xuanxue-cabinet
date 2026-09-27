@@ -3,7 +3,6 @@
 // литералов: разъехавшись, они сломали бы ключ кэша prefetchCache.ts (apiFetch
 // сравнивает строки пути). Путь только для своего хука — остаётся в хуке.
 import {
-  APP_ERRORS_SCREEN_PATH,
   LIST_LIMIT_DEFAULT,
   LIST_LIMIT_MAX,
   type ExamItemStatus,
@@ -185,14 +184,4 @@ export const MY_MATERIALS_PATH = '/me/materials';
  * сохраняет и удаляет по нему; редакторы приносят свой `collectionPath`. */
 export function entityPath(collectionPath: string, id: string): string {
   return `${collectionPath}/${id}`;
-}
-
-/** Журнал сбоев (`/dev/errors`, ADR-0132) — тот же путь и у API-ресурса, и у
- * маршрута web (`APP_ERRORS_SCREEN_PATH`, shared/src/app-errors.ts): один
- * литерал вместо двух. Фильтр «скрыть недогруженный код экрана» — на
- * клиенте (DevErrorsScreen.tsx), поэтому в query идёт только код обращения. */
-export function devErrorsListPath(requestId: string): string {
-  return requestId
-    ? `${APP_ERRORS_SCREEN_PATH}?requestId=${encodeURIComponent(requestId)}`
-    : APP_ERRORS_SCREEN_PATH;
 }
