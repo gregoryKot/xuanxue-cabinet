@@ -32,11 +32,13 @@ import {
   buildFinishedScreen,
   buildQuestionScreen,
   flattenAttemptQuestions,
+  ITEM_VIDEO_IN_CABINET_NOTE,
 } from './exam-question-screen';
 
-/** Экран вопроса плюс то, что нужно ПОКАЗАТЬ перед ним — картинки вариантов,
- * если хоть у одного есть imageId (ADR-0037). Пусто у финального экрана и у
- * вопроса без картинок — тот же текст/кнопки, что раньше. */
+/** Экран вопроса плюс то, что нужно ПОКАЗАТЬ перед ним — картинки и видео
+ * вопроса/вариантов, если хоть у одного есть медиа (ADR-0037, ADR-0133).
+ * Пусто у финального экрана и у вопроса без медиа — тот же текст/кнопки, что
+ * раньше. */
 export type AttemptScreenView = BotMenu & { album: OptionAlbumEntry[] };
 
 /** Остаток времени первой строкой над «Вопрос N из M» — только у попытки с
@@ -90,6 +92,7 @@ export async function presentAttemptScreen(
   deps: { examBot: ExamBotPort; user: UserLean; chatId: number; attemptId: string },
   view: AttemptScreenView,
   options: { via: 'edit' | 'reply'; withAlbum: boolean },
+  now: DateTime,
 ): Promise<void> {
   const extra = { reply_markup: { inline_keyboard: view.buttons } };
   if (view.album.length === 0 || !options.withAlbum) {
@@ -103,13 +106,20 @@ export async function presentAttemptScreen(
   // editMessageText) — у ответа текстом/видео (via: 'reply') сообщения-
   // экрана, которое можно было бы отредактировать, не было вовсе.
   if (options.via === 'edit') await ctx.deleteMessage().catch(() => null);
-  await sendOptionAlbum(
+  const { questionVideoFailed } = await sendOptionAlbum(
     ctx,
     deps.examBot,
     deps.user,
     deps.chatId,
     view.album,
     deps.attemptId,
+    now,
   );
-  await ctx.reply(view.text, extra).catch(() => null);
+  // Отметка «видео в кабинете» — только когда клип R2 самого вопроса не
+  // удалось показать (R2 выключен, объект пропал): при удаче ученик уже
+  // увидел его выше, вторая строка про то же самое не нужна.
+  const text = questionVideoFailed
+    ? `${view.text}\n\n${ITEM_VIDEO_IN_CABINET_NOTE}`
+    : view.text;
+  await ctx.reply(text, extra).catch(() => null);
 }

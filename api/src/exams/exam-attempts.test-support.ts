@@ -21,6 +21,7 @@ import { PersonalChats } from '../telegram/personal-chats';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
 import { ExamImagesService } from '../exam-images/exam-images.service';
+import type { ExamVideosService } from '../exam-videos/exam-videos.service';
 import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
@@ -68,6 +69,10 @@ export interface AttemptsTestContext {
   examsService: ExamsService;
   examItemsService: ExamItemsService;
   examImagesService: ExamImagesService;
+  // Слой 4.2 (ADR-0133) — фейк (assertExist), настоящий сервис проверен
+  // отдельно (exam-videos.service.spec.ts). ExamBotService нужен ради типа
+  // конструктора, поведение видео в боте — юнит-тесты на fakeExamBotPort.
+  examVideosService: ExamVideosService;
   userNamesService: UserNamesService;
   examNotifier: FakeExamNotifier;
   service: ExamAttemptsService;
@@ -114,11 +119,12 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   );
   const examsService = new ExamsService(examModel, itemModel);
   const examImagesService = new ExamImagesService(imageModel, attemptModel);
+  const examVideosService = fakeExamVideosService();
   const examItemsService = new ExamItemsService(
     itemModel,
     examModel,
     examImagesService,
-    fakeExamVideosService(),
+    examVideosService,
   );
   const userNamesService = new UserNamesService(userModel);
   const examNotifier = fakeExamNotifier();
@@ -179,6 +185,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     examsService,
     examItemsService,
     examImagesService,
+    examVideosService,
     userNamesService,
     examNotifier,
     service,

@@ -60,6 +60,13 @@ function fakeFileStore(): {
       objects.delete(key);
       return Promise.resolve();
     },
+    get: (key: string) => {
+      if (!enabled.value) return Promise.reject(new NotAvailableError('выключено'));
+      const bytes = objects.get(key);
+      return bytes
+        ? Promise.resolve(bytes)
+        : Promise.reject(new NotAvailableError('404'));
+    },
     signedGetUrl: (key: string) => `https://fake-r2.example/${key}?X-Amz-Signature=ab`,
   } as unknown as FileStoreService;
   return { fileStore, objects, enabled };
@@ -217,6 +224,76 @@ describe('ExamVideosService', () => {
           NOW,
         ),
       ).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  // 2026-09-27, «Уточнено» ADR-0133 — бот скачивает байты сам, доступ тот же,
+  // что у signedUrl (loadAccessibleDoc), вторую проверку не пишем.
+  describe('loadForBot', () => {
+    it('штат — байты и тип, telegramFileId не задан у нового видео', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      const loaded = await service.loadForBot(
+        dto.id,
+        userLean({ roles: ['teacher'] }),
+        NOW,
+      );
+      expect(loaded.bytes).toEqual(MP4);
+      expect(loaded.contentType).toBe('video/mp4');
+      expect(loaded.telegramFileId).toBeUndefined();
+    });
+
+    it('ученик без своей попытки — 404, тот же отказ, что у signedUrl', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      await expect(
+        service.loadForBot(dto.id, userLean({ roles: [] }), NOW),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('ученик со своей попыткой — байты отдаются', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      const user = userLean({ roles: [] });
+      await seedAttempt(user.id, [dto.id]);
+
+      const loaded = await service.loadForBot(dto.id, user, NOW);
+      expect(loaded.bytes).toEqual(MP4);
+    });
+
+    it('R2 выключен — NotAvailableError (бот показывает деградацию, не отказ)', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      store.enabled.value = false;
+
+      await expect(
+        service.loadForBot(dto.id, userLean({ roles: ['teacher'] }), NOW),
+      ).rejects.toBeInstanceOf(NotAvailableError);
+    });
+
+    it('запомненный telegramFileId возвращается расшифрованным', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      await service.rememberTelegramFileId(dto.id, 'tg-file-1');
+
+      const loaded = await service.loadForBot(
+        dto.id,
+        userLean({ roles: ['teacher'] }),
+        NOW,
+      );
+      expect(loaded.telegramFileId).toBe('tg-file-1');
+    });
+  });
+
+  describe('rememberTelegramFileId', () => {
+    it('пишет file_id зашифрованным полем (не читается напрямую из базы)', async () => {
+      const dto = await service.upload(MP4, undefined, NOW);
+      await service.rememberTelegramFileId(dto.id, 'tg-file-2');
+
+      const raw = await videoModel.findById(dto.id).lean();
+      expect(raw?.telegramFileId).toBeDefined();
+      expect(raw?.telegramFileId).not.toBe('tg-file-2');
+    });
+
+    it('невалидный id — молча пропускает, не бросает', async () => {
+      await expect(
+        service.rememberTelegramFileId('not-an-id', 'tg-file-3'),
+      ).resolves.toBeUndefined();
     });
   });
 });

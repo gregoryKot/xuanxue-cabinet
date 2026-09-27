@@ -15,22 +15,37 @@ import { Model, Types } from 'mongoose';
 import {
   EXAM_VIDEO_NOT_FOUND_MESSAGE,
   isStaffRole,
+  type ExamVideoContentType,
   type ExamVideoDto,
 } from '@xuanxue/shared';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
+import { encryptRecord } from '../utils/encryption';
 import { FileStoreService } from '../storage/file-store.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import type { UserLean } from '../users/users.service';
 import { parseExamVideoUpload } from './exam-video-upload';
-import { toExamVideoDto, type RawLeanExamVideo } from './exam-video.mapper';
-import { ExamVideoRecord } from './exam-video.schema';
+import {
+  decryptExamVideo,
+  toExamVideoDto,
+  type RawLeanExamVideo,
+} from './exam-video.mapper';
+import { EXAM_VIDEO_ENCRYPT_SCHEMA, ExamVideoRecord } from './exam-video.schema';
 
 // Ссылка живёт час — дольше, чем у файла материала (десять минут, ADR-0057):
 // файл скачивают один раз, а ролик плеер докачивает range-запросами по тому
 // же подписанному адресу всё время, пока его смотрят и перематывают.
 const SIGNED_URL_TTL_SECONDS = 3600;
+
+/** Видео для бота (2026-09-27, «Уточнено» ADR-0133) — байты, чтобы отправить
+ * в Telegram напрямую, и кэш `telegramFileId`, тем же приёмом, что
+ * LoadedExamImage (exam-images.service.ts). */
+export interface LoadedExamVideo {
+  bytes: Buffer;
+  contentType: ExamVideoContentType;
+  telegramFileId?: string;
+}
 
 @Injectable()
 export class ExamVideosService {
@@ -85,8 +100,10 @@ export class ExamVideosService {
 
   /** Штат — по роли (данные школы, ADR-0010). Ученик — только если видео
    * стоит в снимке ЕГО попытки: тот же 404, что у несуществующего id — не
-   * подтверждаем даже факт существования чужого видео (SECURITY §3). */
-  async signedUrl(id: string, user: UserLean, now: DateTime): Promise<string> {
+   * подтверждаем даже факт существования чужого видео (SECURITY §3). Общая
+   * проверка для HTTP (signedUrl) и бота (loadForBot) — вторую проверку не
+   * пишем, доступ у обоих один и тот же. */
+  private async loadAccessibleDoc(id: string, user: UserLean): Promise<RawLeanExamVideo> {
     assertObjectId(id, EXAM_VIDEO_NOT_FOUND_MESSAGE);
     if (!isStaffRole(user.roles)) {
       const owns = await this.attemptModel.exists({ userId: user.id, videoIds: id });
@@ -94,6 +111,34 @@ export class ExamVideosService {
     }
     const doc = await this.model.findById(id).lean<RawLeanExamVideo | null>();
     if (!doc) throw new NotFoundError(EXAM_VIDEO_NOT_FOUND_MESSAGE);
+    return doc;
+  }
+
+  async signedUrl(id: string, user: UserLean, now: DateTime): Promise<string> {
+    const doc = await this.loadAccessibleDoc(id, user);
     return this.fileStore.signedGetUrl(doc.key, SIGNED_URL_TTL_SECONDS, now);
+  }
+
+  /** Бот скачивает байты сам и шлёт их в Telegram, не редиректом на
+   * подписанную ссылку (2026-09-27, «Уточнено» ADR-0133: владелец сообщил,
+   * что видео в боте не видно вовсе). `NotAvailableError` — R2 выключен или
+   * объект пропал (FileStoreService.get) — вызывающий слой (ExamBotService)
+   * это деградация показа, не отказ всего экрана. */
+  async loadForBot(id: string, user: UserLean, now: DateTime): Promise<LoadedExamVideo> {
+    const doc = await this.loadAccessibleDoc(id, user);
+    const { telegramFileId } = decryptExamVideo(doc);
+    const bytes = await this.fileStore.get(doc.key, now);
+    return { bytes, contentType: doc.contentType, telegramFileId };
+  }
+
+  /** Кэш file_id после удачной отправки в бот — тот же приём, что
+   * ExamImagesService.rememberTelegramFileId: невалидный id молча
+   * пропускаем, вызывающий код уже прошёл loadForBot с тем же id. */
+  async rememberTelegramFileId(id: string, fileId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) return;
+    await this.model.updateOne(
+      { _id: id },
+      { $set: encryptRecord({ telegramFileId: fileId }, EXAM_VIDEO_ENCRYPT_SCHEMA) },
+    );
   }
 }

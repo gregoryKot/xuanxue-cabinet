@@ -92,7 +92,12 @@ describe('renderAttemptScreen', () => {
     );
 
     expect(view.album).toEqual([
-      { imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1: Стойка А' },
+      {
+        kind: 'image',
+        imageId: 'img-1',
+        optionIndex: 0,
+        caption: 'Вопрос 1 — вариант 1: Стойка А',
+      },
     ]);
   });
 
@@ -239,12 +244,21 @@ function fakeCtx(): {
     },
     telegram: {
       sendPhoto: () => Promise.resolve({ message_id: 1, photo: [{ file_id: 'f' }] }),
+      sendVideo: () => Promise.resolve({ message_id: 1, video: { file_id: 'v' } }),
+      sendMessage: () => Promise.resolve({ message_id: 1 }),
     },
   } as unknown as Context;
   return { ctx, edits, replies, deletes };
 }
 
-const ALBUM = [{ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }];
+const ALBUM = [
+  {
+    kind: 'image' as const,
+    imageId: 'img-1',
+    optionIndex: 0,
+    caption: 'Вопрос 1 — вариант 1',
+  },
+];
 const VIEW_WITH_ALBUM = { text: 'Текст', buttons: [], album: ALBUM };
 const VIEW_NO_ALBUM = { text: 'Текст', buttons: [], album: [] };
 
@@ -261,10 +275,13 @@ describe('presentAttemptScreen', () => {
   it('без альбома (view.album пуст) — просто editMessageText, ничего не удаляет', async () => {
     const { ctx, edits, deletes, replies } = fakeCtx();
 
-    await presentAttemptScreen(ctx, deps(), VIEW_NO_ALBUM, {
-      via: 'edit',
-      withAlbum: true,
-    });
+    await presentAttemptScreen(
+      ctx,
+      deps(),
+      VIEW_NO_ALBUM,
+      { via: 'edit', withAlbum: true },
+      NOW,
+    );
 
     expect(edits).toEqual(['Текст']);
     expect(deletes).toHaveLength(0);
@@ -275,10 +292,13 @@ describe('presentAttemptScreen', () => {
     const { ctx, edits, deletes } = fakeCtx();
     const port = fakeExamBotPort();
 
-    await presentAttemptScreen(ctx, { ...deps(), examBot: port }, VIEW_WITH_ALBUM, {
-      via: 'edit',
-      withAlbum: false,
-    });
+    await presentAttemptScreen(
+      ctx,
+      { ...deps(), examBot: port },
+      VIEW_WITH_ALBUM,
+      { via: 'edit', withAlbum: false },
+      NOW,
+    );
 
     expect(edits).toEqual(['Текст']);
     expect(deletes).toHaveLength(0);
@@ -288,10 +308,13 @@ describe('presentAttemptScreen', () => {
   it('via: edit, альбом есть — старое сообщение удаляется, экран уходит reply, не edit', async () => {
     const { ctx, edits, deletes, replies } = fakeCtx();
 
-    await presentAttemptScreen(ctx, deps(), VIEW_WITH_ALBUM, {
-      via: 'edit',
-      withAlbum: true,
-    });
+    await presentAttemptScreen(
+      ctx,
+      deps(),
+      VIEW_WITH_ALBUM,
+      { via: 'edit', withAlbum: true },
+      NOW,
+    );
 
     expect(deletes).toHaveLength(1);
     expect(edits).toHaveLength(0);
@@ -301,12 +324,62 @@ describe('presentAttemptScreen', () => {
   it('via: reply, альбом есть — экран уходит reply, ничего не удаляется', async () => {
     const { ctx, deletes, replies } = fakeCtx();
 
-    await presentAttemptScreen(ctx, deps(), VIEW_WITH_ALBUM, {
-      via: 'reply',
-      withAlbum: true,
-    });
+    await presentAttemptScreen(
+      ctx,
+      deps(),
+      VIEW_WITH_ALBUM,
+      { via: 'reply', withAlbum: true },
+      NOW,
+    );
 
     expect(deletes).toHaveLength(0);
+    expect(replies).toEqual(['Текст']);
+  });
+
+  // ADR-0133 «Уточнено» 2026-09-27 — отметка «видео в кабинете» появляется
+  // только когда клип самого вопроса не удалось показать.
+  it('видео вопроса не удалось показать — отметка добавляется к тексту экрана', async () => {
+    const { ctx, replies } = fakeCtx();
+    const port = fakeExamBotPort({ loadOptionVideo: jest.fn().mockResolvedValue(null) });
+    const view = {
+      text: 'Текст',
+      buttons: [],
+      album: [{ kind: 'video' as const, videoId: 'own-1' }],
+    };
+
+    await presentAttemptScreen(
+      ctx,
+      { ...deps(), examBot: port },
+      view,
+      { via: 'reply', withAlbum: true },
+      NOW,
+    );
+
+    expect(replies).toEqual(['Текст\n\nК вопросу есть видео — оно в кабинете.']);
+  });
+
+  it('видео вопроса показано успешно — без отметки в тексте', async () => {
+    const { ctx, replies } = fakeCtx();
+    const port = fakeExamBotPort({
+      loadOptionVideo: jest.fn().mockResolvedValue({
+        bytes: Buffer.from([1]),
+        contentType: 'video/mp4',
+      }),
+    });
+    const view = {
+      text: 'Текст',
+      buttons: [],
+      album: [{ kind: 'video' as const, videoId: 'own-1' }],
+    };
+
+    await presentAttemptScreen(
+      ctx,
+      { ...deps(), examBot: port },
+      view,
+      { via: 'reply', withAlbum: true },
+      NOW,
+    );
+
     expect(replies).toEqual(['Текст']);
   });
 });

@@ -25,14 +25,19 @@ import {
   type MyExamDto,
   type PutGradingInput,
 } from '@xuanxue/shared';
-import { NotFoundError } from '../common/errors';
+import { NotAvailableError, NotFoundError } from '../common/errors';
 import { ExamImagesService } from '../exam-images/exam-images.service';
+import { ExamVideosService } from '../exam-videos/exam-videos.service';
 import { MediaAssetsService } from '../media/media-assets.service';
 import { withAttemptMedia, withReviewMedia } from './exam-attempt-media';
 import { validateExamDraftInput } from './exam-draft-validate';
 import { validateExamItemDraftInput } from './exam-item-draft-validate';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
-import type { BotOptionImage, ExamBotPort } from '../telegram/exam-bot.port';
+import type {
+  BotOptionImage,
+  BotOptionVideo,
+  ExamBotPort,
+} from '../telegram/exam-bot.port';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamGradingsService } from './exam-gradings.service';
@@ -48,6 +53,7 @@ export class ExamBotService implements ExamBotPort {
     private readonly examGradingsService: ExamGradingsService,
     private readonly mediaAssetsService: MediaAssetsService,
     private readonly examImagesService: ExamImagesService,
+    private readonly examVideosService: ExamVideosService,
     private readonly examItemsService: ExamItemsService,
     private readonly examsService: ExamsService,
     registry: ExamBotPortRegistry,
@@ -127,6 +133,26 @@ export class ExamBotService implements ExamBotPort {
 
   rememberTelegramFileId(imageId: string, fileId: string): Promise<void> {
     return this.examImagesService.rememberTelegramFileId(imageId, fileId);
+  }
+
+  /** `null` — то же самое, что у loadOptionImage, плюс NotAvailableError:
+   * R2 выключен или объект пропал (FileStoreService.get) — деградация
+   * показа, не отказ (ADR-0133 «Уточнено» 2026-09-27). */
+  async loadOptionVideo(
+    videoId: string,
+    user: UserLean,
+    now: DateTime,
+  ): Promise<BotOptionVideo | null> {
+    try {
+      return await this.examVideosService.loadForBot(videoId, user, now);
+    } catch (err) {
+      if (err instanceof NotFoundError || err instanceof NotAvailableError) return null;
+      throw err;
+    }
+  }
+
+  rememberVideoFileId(videoId: string, fileId: string): Promise<void> {
+    return this.examVideosService.rememberTelegramFileId(videoId, fileId);
   }
 
   /** ТЗ 4б.3 — тот же сервис, что и POST /exam-items кабинета, валидация

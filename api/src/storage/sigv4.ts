@@ -76,7 +76,7 @@ export function presignGetUrl({
 export type SignedRequestHeaders = Record<string, string> & { authorization: string };
 
 export interface SignedRequestInput {
-  method: 'PUT' | 'DELETE' | 'POST';
+  method: 'PUT' | 'DELETE' | 'POST' | 'GET';
   url: string;
   /** Заголовки запроса без `host`, `x-amz-date` и `x-amz-content-sha256` —
    * их подставляет и подписывает сама функция. */
@@ -91,10 +91,12 @@ export interface SignedRequestInput {
   credentials: SigV4Credentials;
 }
 
-/** Заголовки для запроса с телом (загрузка) или без него (удаление,
- * multipart-операции без байтов части). Хеш тела подписывается явно, а не
- * через UNSIGNED-PAYLOAD: при загрузке есть что защищать от подмены по
- * дороге. */
+/** Заголовки для запроса с телом (загрузка), без него (удаление,
+ * multipart-операции без байтов части) или на чтение (`GET` — видео экзамена бот скачивает этим же способом, не
+ * подписанной ссылкой: байты сразу уходят в Telegram, ссылке наружу
+ * незачем существовать, exam-videos.service.ts). Хеш тела подписывается
+ * явно, а не через UNSIGNED-PAYLOAD: при загрузке есть что защищать от
+ * подмены по дороге. */
 export function signRequestHeaders({
   method,
   url,

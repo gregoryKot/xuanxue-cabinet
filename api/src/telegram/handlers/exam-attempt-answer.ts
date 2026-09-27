@@ -49,6 +49,7 @@ export async function handleExamOption(
         { examBot, user, chatId, attemptId: ids.attemptId },
         { ...buildFinishedScreen(attempt, false), album: [] },
         { via: 'edit', withAlbum: false },
+        now,
       );
       return;
     }
@@ -92,6 +93,7 @@ export async function handleExamOption(
       { examBot, user, chatId, attemptId: ids.attemptId },
       view,
       { via: 'edit', withAlbum: nextIndex !== ids.questionIndex },
+      now,
     );
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
@@ -112,10 +114,13 @@ export async function handleExamSubmit(
     const view = await renderAttemptScreen(botSessions, chatId, attempt, 0, now, true);
     // Финальный экран — без альбома (renderAttemptScreen отдаёт пустой,
     // попытка уже не in_progress), withAlbum не важен.
-    await presentAttemptScreen(ctx, { examBot, user, chatId, attemptId }, view, {
-      via: 'edit',
-      withAlbum: true,
-    });
+    await presentAttemptScreen(
+      ctx,
+      { examBot, user, chatId, attemptId },
+      view,
+      { via: 'edit', withAlbum: true },
+      now,
+    );
   } catch (err) {
     await ctx.editMessageText(examUserFacingError(err)).catch(() => null);
   }

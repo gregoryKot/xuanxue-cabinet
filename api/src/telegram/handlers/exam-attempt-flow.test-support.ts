@@ -136,6 +136,7 @@ export async function setupFlowTest(): Promise<FlowTestContext> {
     ctx.gradingsService,
     ctx.mediaAssetsService,
     ctx.examImagesService,
+    ctx.examVideosService,
     ctx.examItemsService,
     ctx.examsService,
     registry,

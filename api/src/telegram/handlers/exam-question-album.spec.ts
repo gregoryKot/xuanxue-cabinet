@@ -1,18 +1,22 @@
-// Чистая сборка альбома (без Mongo/Telegram) + отправка с фейковыми ctx и
+// Чистая сборка медиа (без Mongo/Telegram) + отправка с фейковыми ctx и
 // ExamBotPort (CLAUDE.md «Тесты») — сборка и порядок совпадают с тем, что
 // видно на экране вопроса (headerLine/formatOptionLabel, exam-question-screen.ts);
-// отправка — каждая картинка своим sendPhoto со своей подписью (ADR-0118),
-// кэш file_id, деградация при сбое (ADR-0035, PLAN.md §12 слой 4б.2).
+// отправка картинок — каждая своим sendPhoto со своей подписью (ADR-0118),
+// кэш file_id, деградация при сбое (ADR-0035, PLAN.md §12 слой 4б.2). Видео —
+// exam-question-video-send.spec.ts (файл-лимит CLAUDE.md), здесь — только
+// его место в общем порядке и итог questionVideoFailed.
 import { Logger } from '@nestjs/common';
+import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { AttemptQuestionDto } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
 import { fakeExamBotPort } from '../exam-bot.port.test-support';
-import { buildOptionAlbum } from './exam-question-album';
+import { buildOptionAlbum, type ImageAlbumEntry } from './exam-question-album';
 import { sendOptionAlbum } from './exam-question-album-send';
 
 const ATTEMPT_ID = '507f1f77bcf86cd799439011';
 const CHAT_ID = 111;
+const NOW = DateTime.utc(2026, 9, 27, 10, 0, 0);
 const USER: UserLean = {
   id: 'u1',
   name: 'Ученик',
@@ -20,6 +24,7 @@ const USER: UserLean = {
   status: 'active',
 };
 const IMAGE = { bytes: Buffer.from([1, 2, 3]), contentType: 'image/jpeg' as const };
+const VIDEO = { bytes: Buffer.from([9, 9]), contentType: 'video/mp4' as const };
 
 function question(overrides: Partial<AttemptQuestionDto> = {}): AttemptQuestionDto {
   return {
@@ -32,26 +37,39 @@ function question(overrides: Partial<AttemptQuestionDto> = {}): AttemptQuestionD
   };
 }
 
+function imageEntry(overrides: Partial<ImageAlbumEntry> = {}): ImageAlbumEntry {
+  return { kind: 'image', imageId: 'img-1', optionIndex: 0, caption: 'C1', ...overrides };
+}
+
 function photoSize(fileId: string) {
   return { file_id: fileId, file_unique_id: `u-${fileId}`, width: 10, height: 10 };
 }
 
-function fakeCtx(): { ctx: Context; sendPhoto: jest.Mock } {
+function fakeCtx(): {
+  ctx: Context;
+  sendPhoto: jest.Mock;
+  sendVideo: jest.Mock;
+  sendMessage: jest.Mock;
+} {
   const sendPhoto = jest.fn().mockResolvedValue({
     message_id: 1,
     photo: [photoSize('f-small'), photoSize('f-big')],
   });
-  const ctx = { telegram: { sendPhoto } } as unknown as Context;
-  return { ctx, sendPhoto };
+  const sendVideo = jest
+    .fn()
+    .mockResolvedValue({ message_id: 1, video: { file_id: 'v-1' } });
+  const sendMessage = jest.fn().mockResolvedValue({});
+  const ctx = { telegram: { sendPhoto, sendVideo, sendMessage } } as unknown as Context;
+  return { ctx, sendPhoto, sendVideo, sendMessage };
 }
 
 describe('buildOptionAlbum', () => {
-  it('вопрос text/video — пустой альбом', () => {
+  it('вопрос без медиа — пустой список', () => {
     expect(buildOptionAlbum(question({ kind: 'text' }), 0)).toEqual([]);
     expect(buildOptionAlbum(question({ kind: 'video' }), 0)).toEqual([]);
   });
 
-  it('вариант без imageId в альбом не попадает, подпись — с номерами вопроса и варианта', () => {
+  it('вариант без imageId в список не попадает, подпись — с номерами вопроса и варианта', () => {
     const q = question({
       options: [
         { id: 'o1', text: 'Без картинки' },
@@ -59,14 +77,24 @@ describe('buildOptionAlbum', () => {
       ],
     });
     expect(buildOptionAlbum(q, 2)).toEqual([
-      { imageId: 'img-2', optionIndex: 1, caption: 'Вопрос 3 — вариант 2: С картинкой' },
+      {
+        kind: 'image',
+        imageId: 'img-2',
+        optionIndex: 1,
+        caption: 'Вопрос 3 — вариант 2: С картинкой',
+      },
     ]);
   });
 
   it('подпись без текста варианта — только номера', () => {
     const q = question({ options: [{ id: 'o1', text: '', imageId: 'img-1' }] });
     expect(buildOptionAlbum(q, 0)).toEqual([
-      { imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' },
+      {
+        kind: 'image',
+        imageId: 'img-1',
+        optionIndex: 0,
+        caption: 'Вопрос 1 — вариант 1',
+      },
     ]);
   });
 
@@ -77,7 +105,7 @@ describe('buildOptionAlbum', () => {
     expect(entry?.caption).toBe(`Вопрос 1 — вариант 1: ${'а'.repeat(99)}…`);
   });
 
-  it('порядок записей — как у вариантов в вопросе', () => {
+  it('порядок картинок — как у вариантов в вопросе', () => {
     const q = question({
       options: [
         { id: 'o1', text: 'A', imageId: 'img-a' },
@@ -85,7 +113,79 @@ describe('buildOptionAlbum', () => {
         { id: 'o3', text: 'C', imageId: 'img-c' },
       ],
     });
-    expect(buildOptionAlbum(q, 0).map((e) => e.imageId)).toEqual(['img-a', 'img-c']);
+    const entries = buildOptionAlbum(q, 0).filter(
+      (e): e is ImageAlbumEntry => e.kind === 'image',
+    );
+    expect(entries.map((e) => e.imageId)).toEqual(['img-a', 'img-c']);
+  });
+
+  // ADR-0133 «Уточнено» 2026-09-27 — видео варианта получает подпись кнопки
+  // (formatOptionLabel/ADR-0118), не «Вопрос N — вариант M», как картинка.
+  it('videoId варианта — кнопочная подпись «Вариант N» (или текст варианта)', () => {
+    const q = question({
+      options: [
+        { id: 'o1', text: '', videoId: 'vid-1' },
+        { id: 'o2', text: 'Стойка Б', videoId: 'vid-2' },
+      ],
+    });
+    expect(buildOptionAlbum(q, 0)).toEqual([
+      { kind: 'video', videoId: 'vid-1', optionIndex: 0, caption: 'Вариант 1' },
+      { kind: 'video', videoId: 'vid-2', optionIndex: 1, caption: 'Стойка Б' },
+    ]);
+  });
+
+  it('videoUrl варианта — подпись «Вариант N» без текста, ссылку шлёт отправитель', () => {
+    const q = question({
+      options: [{ id: 'o1', text: 'Текст варианта', videoUrl: 'https://youtu.be/x' }],
+    });
+    expect(buildOptionAlbum(q, 0)).toEqual([
+      {
+        kind: 'videoLink',
+        url: 'https://youtu.be/x',
+        optionIndex: 0,
+        caption: 'Вариант 1',
+      },
+    ]);
+  });
+
+  it('видео формулировки вопроса — первым в списке, без caption/optionIndex', () => {
+    const q = question({
+      videoId: 'own-video',
+      options: [{ id: 'o1', text: 'A', imageId: 'img-a' }],
+    });
+    expect(buildOptionAlbum(q, 0)).toEqual([
+      { kind: 'video', videoId: 'own-video' },
+      {
+        kind: 'image',
+        imageId: 'img-a',
+        optionIndex: 0,
+        caption: 'Вопрос 1 — вариант 1: A',
+      },
+    ]);
+  });
+
+  it('videoUrl формулировки вопроса — тоже первым, videoId и videoUrl не бывают вместе', () => {
+    const q = question({ videoUrl: 'https://youtu.be/own' });
+    expect(buildOptionAlbum(q, 0)).toEqual([
+      { kind: 'videoLink', url: 'https://youtu.be/own' },
+    ]);
+  });
+
+  it('видео вопроса — доступно у text/video вопроса, не только single/multiple', () => {
+    const q = question({ kind: 'text', videoId: 'own-video', options: [] });
+    expect(buildOptionAlbum(q, 0)).toEqual([{ kind: 'video', videoId: 'own-video' }]);
+  });
+
+  // Мутуальная исключённость imageId/videoId/videoUrl держится DTO (shared/
+  // src/exam-items.ts) — здесь только порядок при их чередовании по вариантам.
+  it('картинка и видео вперемешку по вариантам — порядок как у вариантов, не по типу', () => {
+    const q = question({
+      options: [
+        { id: 'o1', text: 'A', videoId: 'vid-a' },
+        { id: 'o2', text: 'B', imageId: 'img-b' },
+      ],
+    });
+    expect(buildOptionAlbum(q, 0).map((e) => e.kind)).toEqual(['video', 'image']);
   });
 });
 
@@ -94,7 +194,9 @@ describe('sendOptionAlbum', () => {
     const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort();
 
-    await sendOptionAlbum(ctx, port, USER, CHAT_ID, [], ATTEMPT_ID);
+    await expect(
+      sendOptionAlbum(ctx, port, USER, CHAT_ID, [], ATTEMPT_ID, NOW),
+    ).resolves.toEqual({ questionVideoFailed: false });
 
     expect(sendPhoto).not.toHaveBeenCalled();
     expect(port.loadOptionImage).not.toHaveBeenCalled();
@@ -103,9 +205,9 @@ describe('sendOptionAlbum', () => {
   it('одна картинка — sendPhoto байтами, file_id (самого большого размера) сохраняется через порт', async () => {
     const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort({ loadOptionImage: jest.fn().mockResolvedValue(IMAGE) });
-    const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }];
+    const album = [imageEntry({ caption: 'Вопрос 1 — вариант 1' })];
 
-    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
+    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
 
     expect(sendPhoto).toHaveBeenCalledTimes(1);
     const [, media, extra] = sendPhoto.mock.calls[0] as [
@@ -129,11 +231,11 @@ describe('sendOptionAlbum', () => {
       .mockResolvedValueOnce({ message_id: 2, photo: [photoSize('f-2')] });
     const port = fakeExamBotPort({ loadOptionImage: jest.fn().mockResolvedValue(IMAGE) });
     const album = [
-      { imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' },
-      { imageId: 'img-2', optionIndex: 2, caption: 'Вопрос 1 — вариант 3' },
+      imageEntry({ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }),
+      imageEntry({ imageId: 'img-2', optionIndex: 2, caption: 'Вопрос 1 — вариант 3' }),
     ];
 
-    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
+    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
 
     expect(sendPhoto).toHaveBeenCalledTimes(2);
     const [, firstMedia, firstExtra] = sendPhoto.mock.calls[0] as [
@@ -162,11 +264,11 @@ describe('sendOptionAlbum', () => {
       .mockResolvedValueOnce({ message_id: 2, photo: [photoSize('f-2')] });
     const port = fakeExamBotPort({ loadOptionImage: jest.fn().mockResolvedValue(IMAGE) });
     const album = [
-      { imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' },
-      { imageId: 'img-2', optionIndex: 1, caption: 'Вопрос 1 — вариант 2' },
+      imageEntry({ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }),
+      imageEntry({ imageId: 'img-2', optionIndex: 1, caption: 'Вопрос 1 — вариант 2' }),
     ];
 
-    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
+    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
 
     expect(sendPhoto).toHaveBeenCalledTimes(2);
     expect(warn).toHaveBeenCalledTimes(1);
@@ -188,9 +290,9 @@ describe('sendOptionAlbum', () => {
         .fn()
         .mockResolvedValue({ ...IMAGE, telegramFileId: 'known-id' }),
     });
-    const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }];
+    const album = [imageEntry({ caption: 'Вопрос 1 — вариант 1' })];
 
-    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
+    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
 
     const [, media] = sendPhoto.mock.calls[0] as [number, string, unknown];
     expect(media).toBe('known-id');
@@ -207,9 +309,9 @@ describe('sendOptionAlbum', () => {
         .fn()
         .mockResolvedValue({ ...IMAGE, telegramFileId: 'stale-id' }),
     });
-    const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }];
+    const album = [imageEntry({ caption: 'Вопрос 1 — вариант 1' })];
 
-    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
+    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
 
     expect(sendPhoto).toHaveBeenCalledTimes(2);
     const [, secondMedia] = sendPhoto.mock.calls[1] as [
@@ -226,11 +328,11 @@ describe('sendOptionAlbum', () => {
     const { ctx, sendPhoto } = fakeCtx();
     sendPhoto.mockRejectedValue(new Error('сеть недоступна'));
     const port = fakeExamBotPort({ loadOptionImage: jest.fn().mockResolvedValue(IMAGE) });
-    const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }];
+    const album = [imageEntry({ caption: 'Вопрос 1 — вариант 1' })];
 
     await expect(
-      sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID),
-    ).resolves.toBeUndefined();
+      sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW),
+    ).resolves.toEqual({ questionVideoFailed: false });
 
     expect(sendPhoto).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalled();
@@ -244,11 +346,11 @@ describe('sendOptionAlbum', () => {
     const port = fakeExamBotPort({
       loadOptionImage: jest.fn().mockRejectedValue(new Error('mongo упал')),
     });
-    const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'Вопрос 1 — вариант 1' }];
+    const album = [imageEntry({ caption: 'Вопрос 1 — вариант 1' })];
 
     await expect(
-      sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID),
-    ).resolves.toBeUndefined();
+      sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW),
+    ).resolves.toEqual({ questionVideoFailed: false });
 
     expect(sendPhoto).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalled();
@@ -261,11 +363,11 @@ describe('sendOptionAlbum', () => {
       loadOptionImage: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(IMAGE),
     });
     const album = [
-      { imageId: 'img-1', optionIndex: 0, caption: 'C1' },
-      { imageId: 'img-2', optionIndex: 1, caption: 'C2' },
+      imageEntry({ imageId: 'img-1', optionIndex: 0, caption: 'C1' }),
+      imageEntry({ imageId: 'img-2', optionIndex: 1, caption: 'C2' }),
     ];
 
-    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID);
+    await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
 
     expect(sendPhoto).toHaveBeenCalledTimes(1); // осталась одна картинка из двух
     const [, , extra] = sendPhoto.mock.calls[0] as [number, unknown, { caption: string }];
@@ -275,11 +377,112 @@ describe('sendOptionAlbum', () => {
   it('ни одна картинка не нашлась — ничего не отправляет, без исключения', async () => {
     const { ctx, sendPhoto } = fakeCtx();
     const port = fakeExamBotPort();
-    const album = [{ imageId: 'img-1', optionIndex: 0, caption: 'C1' }];
+    const album = [imageEntry({ caption: 'C1' })];
 
     await expect(
-      sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID),
-    ).resolves.toBeUndefined();
+      sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW),
+    ).resolves.toEqual({ questionVideoFailed: false });
     expect(sendPhoto).not.toHaveBeenCalled();
+  });
+
+  // ADR-0133 «Уточнено» 2026-09-27 — видео и картинки в одном общем порядке.
+  describe('видео и ссылки — общий порядок с картинками', () => {
+    it('видео вопроса уходит первым sendVideo, затем картинка варианта', async () => {
+      const { ctx, sendPhoto, sendVideo } = fakeCtx();
+      const port = fakeExamBotPort({
+        loadOptionImage: jest.fn().mockResolvedValue(IMAGE),
+        loadOptionVideo: jest.fn().mockResolvedValue(VIDEO),
+      });
+      const album = [
+        { kind: 'video' as const, videoId: 'own-1' },
+        imageEntry({ imageId: 'img-1', optionIndex: 0, caption: 'C1' }),
+      ];
+
+      const calls: string[] = [];
+      sendVideo.mockImplementation(() => {
+        calls.push('video');
+        return Promise.resolve({ message_id: 1, video: { file_id: 'v-1' } });
+      });
+      sendPhoto.mockImplementation(() => {
+        calls.push('photo');
+        return Promise.resolve({ message_id: 2, photo: [photoSize('f-1')] });
+      });
+
+      const result = await sendOptionAlbum(
+        ctx,
+        port,
+        USER,
+        CHAT_ID,
+        album,
+        ATTEMPT_ID,
+        NOW,
+      );
+
+      expect(calls).toEqual(['video', 'photo']);
+      expect(result).toEqual({ questionVideoFailed: false });
+      expect(port.rememberVideoFileId).toHaveBeenCalledWith('own-1', 'v-1');
+    });
+
+    it('видео вопроса недоступно (R2 выключен/пропало) — questionVideoFailed: true', async () => {
+      const { ctx } = fakeCtx();
+      const port = fakeExamBotPort({
+        loadOptionVideo: jest.fn().mockResolvedValue(null),
+      });
+      const album = [{ kind: 'video' as const, videoId: 'own-1' }];
+
+      await expect(
+        sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW),
+      ).resolves.toEqual({ questionVideoFailed: true });
+    });
+
+    it('видео варианта недоступно — questionVideoFailed остаётся false (молчаливый пропуск)', async () => {
+      const { ctx } = fakeCtx();
+      const port = fakeExamBotPort({
+        loadOptionVideo: jest.fn().mockResolvedValue(null),
+      });
+      const album = [
+        {
+          kind: 'video' as const,
+          videoId: 'opt-1',
+          optionIndex: 0,
+          caption: 'Вариант 1',
+        },
+      ];
+
+      await expect(
+        sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW),
+      ).resolves.toEqual({ questionVideoFailed: false });
+    });
+
+    it('ссылка варианта — sendMessage с превью и префиксом «Вариант N»', async () => {
+      const { ctx, sendMessage } = fakeCtx();
+      const port = fakeExamBotPort();
+      const album = [
+        {
+          kind: 'videoLink' as const,
+          url: 'https://youtu.be/x',
+          optionIndex: 0,
+          caption: 'Вариант 1',
+        },
+      ];
+
+      await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
+
+      expect(sendMessage).toHaveBeenCalledWith(CHAT_ID, 'Вариант 1: https://youtu.be/x', {
+        link_preview_options: { is_disabled: false, url: 'https://youtu.be/x' },
+      });
+    });
+
+    it('ссылка вопроса — sendMessage голой ссылкой, без префикса', async () => {
+      const { ctx, sendMessage } = fakeCtx();
+      const port = fakeExamBotPort();
+      const album = [{ kind: 'videoLink' as const, url: 'https://youtu.be/own' }];
+
+      await sendOptionAlbum(ctx, port, USER, CHAT_ID, album, ATTEMPT_ID, NOW);
+
+      expect(sendMessage).toHaveBeenCalledWith(CHAT_ID, 'https://youtu.be/own', {
+        link_preview_options: { is_disabled: false, url: 'https://youtu.be/own' },
+      });
+    });
   });
 });

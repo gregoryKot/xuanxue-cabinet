@@ -106,6 +106,7 @@ export class ExamTextAnswerHandler {
         { examBot, user, chatId: telegramId, attemptId },
         view,
         { via: 'reply', withAlbum: true },
+        now,
       );
       return;
     }
@@ -135,6 +136,7 @@ export class ExamTextAnswerHandler {
       { examBot, user, chatId: telegramId, attemptId },
       view,
       { via: 'reply', withAlbum: true },
+      now,
     );
   }
 }

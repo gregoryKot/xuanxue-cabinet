@@ -55,22 +55,18 @@ function optionMark(kind: AttemptQuestionDto['kind'], selected: boolean): string
 // video-вопроса (VIDEO_QUESTION_PROMPT/VIDEO_RECEIVED_NOTE ниже, ADR-0023):
 // то видео присылает сам ученик, это — учитель прикладывает к формулировке
 // или варианту как материал для сравнения («что не так на этом видео»,
-// «который из двух верный»). Файл в R2 бот не грузит и не проигрывает
-// (ADR-0133, «Порядок работ» — экран бота не показывает вопрос-конструктор
-// с видео): достаточно сказать, что оно есть, и где искать.
-const ITEM_VIDEO_IN_CABINET_NOTE = 'К вопросу есть видео — оно в кабинете.';
+// «который из двух верный»). 2026-09-27, «Уточнено» ADR-0133: бот теперь
+// присылает сам ролик (файл — отдельным sendVideo, ссылка — отдельным
+// сообщением с превью, exam-question-video-send.ts) прямо перед этим
+// экраном, текст вопроса больше не повторяет ссылку и не пишет заранее, что
+// видео «есть в кабинете» — это было бы то же самое дважды. Отметка нужна
+// только когда клип R2 показать не удалось (R2 выключен, объект пропал) —
+// её ставит presentAttemptScreen (exam-question-render.ts) по результату
+// отправки, не эта чистая функция.
+export const ITEM_VIDEO_IN_CABINET_NOTE = 'К вопросу есть видео — оно в кабинете.';
 
 function hasReferenceVideo(entity: { videoId?: string; videoUrl?: string }): boolean {
   return Boolean(entity.videoId || entity.videoUrl);
-}
-
-/** Строка про видео формулировки — ссылку показываем прямо в тексте (ученику
- * не нужно никуда переходить, кроме самой ссылки), про файл R2 — только
- * отметка (бот не проигрывает видео сам, ADR-0133). */
-function questionVideoLine(question: AttemptQuestionDto): string | null {
-  if (question.videoUrl) return `Видео: ${question.videoUrl}`;
-  if (question.videoId) return ITEM_VIDEO_IN_CABINET_NOTE;
-  return null;
 }
 
 // Подпись фото/видео ученику видна в ленте, сетка альбома — нет (ADR-0118):
@@ -146,9 +142,7 @@ export function buildQuestionScreen(attempt: ExamAttemptDto, index: number): Bot
   // попытки»: два video-вопроса в одной форме теперь различимы.
   const hasVideo = (attempt.media ?? []).some((m) => m.itemId === question.itemId);
   const note = questionNote(question, answer, hasVideo);
-  const text = [headerLine, question.prompt, questionVideoLine(question), note]
-    .filter(Boolean)
-    .join('\n\n');
+  const text = [headerLine, question.prompt, note].filter(Boolean).join('\n\n');
 
   const optionRows =
     question.kind === 'single' || question.kind === 'multiple'
