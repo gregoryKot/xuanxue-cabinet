@@ -1,49 +1,44 @@
 // Выбранные вопросы экзамена — нумерованный список строками (макет
-// Form.dc.html): номер, формулировка, служебная строка «тип · теги» и три
-// тихие кнопки порядка справа. Номер набран текстовым шрифтом, а не антиквой
-// с макета — причина у numberStyle ниже. Порядок меняется кнопками, не
-// перетаскиванием: drag-n-drop на телефоне и с клавиатуры — отдельная боль.
+// Form.dc.html). Строку можно раскрыть — под ней содержимое вопроса и
+// «Изменить» (ExamQuestionRow.tsx, отзыв владельца 2026-09-27). Здесь —
+// только сетка списка и подсказка про ★, сама строка вынесена по файловому
+// храповику.
 import type { CSSProperties } from 'react';
 import type { ExamItemDto } from '@xuanxue/shared';
-import { dividedListStyle, rowControlStyle } from '../components/listCardStyles';
-import { formatExamItemMeta } from '../exam-items/examItemLabels';
+import { dividedListStyle } from '../components/listCardStyles';
+import { RichText } from '../components/RichText';
+import { ExamQuestionRow } from './ExamQuestionRow';
 
 const EMPTY_TEXT = 'Вопросов пока нет — найдите их или заведите новый ниже.';
-const LOADING_TEXT = 'Загружаем вопросы…';
-const MISSING_TEXT = 'Вопрос недоступен — его удалили или спрятали в черновик.';
-
-// Номер вопроса — текстовым шрифтом, не антиквой: у Cormorant цифры
-// старостильные, и единица в них — голый штрих, неотличимый от римской «I»
-// (ровно та причина, по которой ADR-0043 завёл components/StatNumber.tsx).
-// `tabular-nums` держит номера в столбик ровной колонкой.
-const numberStyle: CSSProperties = {
-  fontSize: 22,
-  fontWeight: 500,
-  lineHeight: 1,
-  color: 'var(--ink-faint)',
-  fontVariantNumeric: 'tabular-nums',
-  paddingTop: 2,
-};
-const promptStyle: CSSProperties = { fontSize: 16 };
-const metaStyle: CSSProperties = { fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 };
 const emptyStyle: CSSProperties = { margin: 0, color: 'var(--ink-soft)' };
+const hintStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 
-const REQUIRED_SUFFIX = ' · обязательный';
-const REQUIRED_LABEL = 'Обязательный';
+// ★ видна и нажимается всегда (отзыв владельца 2026-09-27: «не нашёл способа
+// сделать вопрос обязательным») — но действует, только пока заполнено
+// «Вопросов ученику» (ADR-0082, дополнение): без выборки обязательных нет.
+// Отмеченные ★ при этом честно объясняются, а не просто ничего не делают.
+const REQUIRED_HINT =
+  '★ сработает, когда часть вопросов достаётся по жребию — впишите число в ' +
+  '**«Вопросов ученику»**.';
 
 interface ExamQuestionListProps {
   itemIds: string[];
   bankItems: ExamItemDto[];
   bankLoading: boolean;
   requiredIds: string[];
-  /** ★ видна и меняет отметку, только пока заполнено «Вопросов ученику»
-   * (ADR-0082, дополнение): без него отметка ни на что не влияет, показывать
-   * её нечестно. Сами отметки при этом в состоянии формы остаются. */
   requiredEnabled: boolean;
   onToggleRequired: (itemId: string) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   onRemove: (itemId: string) => void;
+  /** Строка на правке — `null`, если ни одна не открыта. */
+  editingId: string | null;
+  /** Открыта форма создания или правки другого вопроса — своя «Изменить»
+   * прячется (одновременно видна только одна форма). */
+  formsOpen: boolean;
+  onStartEdit: (itemId: string) => void;
+  onCancelEdit: () => void;
+  onSaved: (item: ExamItemDto) => void;
 }
 
 export function ExamQuestionList({
@@ -56,73 +51,49 @@ export function ExamQuestionList({
   onMoveUp,
   onMoveDown,
   onRemove,
+  editingId,
+  formsOpen,
+  onStartEdit,
+  onCancelEdit,
+  onSaved,
 }: ExamQuestionListProps) {
   if (itemIds.length === 0) return <p style={emptyStyle}>{EMPTY_TEXT}</p>;
 
+  const anyRequiredMarked = requiredIds.some((id) => itemIds.includes(id));
+  const showRequiredHint = !requiredEnabled && anyRequiredMarked;
+
   return (
-    <ol style={dividedListStyle}>
-      {itemIds.map((itemId, index) => {
-        const item = bankItems.find((candidate) => candidate.id === itemId);
-        const isRequired = requiredEnabled && requiredIds.includes(itemId);
-        return (
-          <li key={itemId} className="xuanxue-question-row">
-            <span style={numberStyle}>{index + 1}</span>
-            <div>
-              <div style={promptStyle}>
-                {item ? item.prompt : bankLoading ? LOADING_TEXT : MISSING_TEXT}
-              </div>
-              {item && (
-                <div style={metaStyle}>
-                  {formatExamItemMeta(item)}
-                  {isRequired && REQUIRED_SUFFIX}
-                </div>
-              )}
-            </div>
-            <div className="xuanxue-question-controls">
-              {requiredEnabled && (
-                <button
-                  type="button"
-                  style={{
-                    ...rowControlStyle,
-                    color: isRequired ? 'var(--terracotta-text)' : 'var(--ink-soft)',
-                  }}
-                  aria-label={REQUIRED_LABEL}
-                  aria-pressed={isRequired}
-                  onClick={() => onToggleRequired(itemId)}
-                >
-                  {isRequired ? '★' : '☆'}
-                </button>
-              )}
-              <button
-                type="button"
-                style={rowControlStyle}
-                aria-label="Выше"
-                disabled={index === 0}
-                onClick={() => onMoveUp(index)}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                style={rowControlStyle}
-                aria-label="Ниже"
-                disabled={index === itemIds.length - 1}
-                onClick={() => onMoveDown(index)}
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                style={rowControlStyle}
-                aria-label="Убрать из экзамена"
-                onClick={() => onRemove(itemId)}
-              >
-                ×
-              </button>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <>
+      <ol style={dividedListStyle}>
+        {itemIds.map((itemId, index) => {
+          const editing = editingId === itemId;
+          return (
+            <ExamQuestionRow
+              key={itemId}
+              index={index}
+              atFirst={index === 0}
+              atLast={index === itemIds.length - 1}
+              item={bankItems.find((candidate) => candidate.id === itemId)}
+              bankLoading={bankLoading}
+              isRequired={requiredIds.includes(itemId)}
+              editing={editing}
+              editDisabled={formsOpen && !editing}
+              onToggleRequired={() => onToggleRequired(itemId)}
+              onMoveUp={() => onMoveUp(index)}
+              onMoveDown={() => onMoveDown(index)}
+              onRemove={() => onRemove(itemId)}
+              onStartEdit={() => onStartEdit(itemId)}
+              onCancelEdit={onCancelEdit}
+              onSaved={onSaved}
+            />
+          );
+        })}
+      </ol>
+      {showRequiredHint && (
+        <p style={hintStyle}>
+          <RichText text={REQUIRED_HINT} />
+        </p>
+      )}
+    </>
   );
 }

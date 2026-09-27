@@ -332,12 +332,22 @@ describe('mergeCreatedItems', () => {
     expect(mergeCreatedItems(known, created).map((i) => i.id)).toEqual(['i1', 'i2']);
   });
 
-  it('вопрос, который список уже содержит, не повторяется', () => {
+  it('вопрос, который список уже содержит, не повторяется, а заменяется новой правкой', () => {
     const known = [item({ id: 'i1', prompt: 'Старая формулировка' })];
-    const created = [item({ id: 'i1', prompt: 'Другая формулировка' })];
+    const created = [item({ id: 'i1', prompt: 'Новая формулировка' })];
 
     const merged = mergeCreatedItems(known, created);
     expect(merged).toHaveLength(1);
-    expect(merged[0]?.prompt).toBe('Старая формулировка');
+    expect(merged[0]?.prompt).toBe('Новая формулировка');
+  });
+
+  it('замена по id держит место записи в списке (не переносит в конец)', () => {
+    const known = [item({ id: 'i1' }), item({ id: 'i2', prompt: 'Второй' })];
+    const created = [item({ id: 'i1', prompt: 'Правленый первый' })];
+
+    expect(mergeCreatedItems(known, created).map((i) => i.prompt)).toEqual([
+      'Правленый первый',
+      'Второй',
+    ]);
   });
 });
