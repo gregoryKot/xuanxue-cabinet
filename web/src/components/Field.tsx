@@ -3,7 +3,13 @@
 // (не ломается при копипасте формы) и меньше кода. getInputStyle — общий
 // стиль инпутов/селектов для всех форм кабинета, высота ≥44px (CLAUDE.md
 // «Доступность»).
-import type { CSSProperties, ReactNode } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  useId,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { InfoTip } from './InfoTip';
 import { RichText } from './RichText';
 
@@ -60,13 +66,11 @@ export const inputStyle: CSSProperties = getInputStyle();
 export const numericInputStyle: CSSProperties = { ...inputStyle, width: 112 };
 
 const fieldStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
-// Кнопка InfoTip стоит СНАРУЖИ <label> (см. комментарий у Field ниже) —
-// внешняя обёртка ставит её рядом с подписью визуально, `alignItems:
-// 'flex-start'` прижимает её к верхней строке текста, а не к середине всего
-// блока (внутри <label> ниже ещё и сам контрол).
+// Строка «подпись + кнопка InfoTip» над полем (только когда есть `tip`,
+// см. комментарий у Field ниже): кнопка — сразу за словом подписи.
 const labelRowStyle: CSSProperties = {
   display: 'flex',
-  alignItems: 'flex-start',
+  alignItems: 'center',
   gap: 6,
 };
 const labelTextStyle: CSSProperties = { fontSize: 14, fontWeight: 600 };
@@ -96,12 +100,27 @@ export function Field({ label, hint, tip, error, children }: FieldProps) {
   // контрола, связалась бы с ней, а не с полем — getByLabelText нашёл бы
   // кнопку вместо инпута.
   //
-  // Обёртка `<span style={labelRowStyle}>` вокруг `<label>` рисуется, только
-  // когда есть `tip`: без неё `<label>` — прямой потомок внешнего `div`, как
-  // было до InfoTip, и формы, которые сами находят поле через
-  // `closest('label')?.parentElement` (RecordingSection.test.tsx и, вероятно,
-  // не только он), продолжают видеть в родителе то же, что и error/hint ниже.
-  const labelNode = (
+  //
+  // С `tip` подпись и поле связаны явно (`htmlFor` + `id`), а <label> держит
+  // только текст подписи: иначе кнопка «?» вставала справа от всего блока
+  // «подпись + поле», у правого края инпута, а не рядом со словом (снимок
+  // владельца 2026-09-27). Без `tip` разметка прежняя — <label> вокруг
+  // контрола: формы, которые находят поле через
+  // `closest('label')?.parentElement` (RecordingSection.test.tsx), её видят.
+  const tipControlId = useId();
+  const labelNode = tip ? (
+    <>
+      <span style={labelRowStyle}>
+        <label htmlFor={tipControlId} style={labelTextStyle}>
+          {label}
+        </label>
+        <InfoTip label={label} text={tip} />
+      </span>
+      {isValidElement<{ id?: string }>(children)
+        ? cloneElement(children, { id: children.props.id ?? tipControlId })
+        : children}
+    </>
+  ) : (
     <label style={fieldStyle}>
       <span style={labelTextStyle}>{label}</span>
       {children}
@@ -109,14 +128,7 @@ export function Field({ label, hint, tip, error, children }: FieldProps) {
   );
   return (
     <div style={fieldStyle}>
-      {tip ? (
-        <span style={labelRowStyle}>
-          {labelNode}
-          <InfoTip label={label} text={tip} />
-        </span>
-      ) : (
-        labelNode
-      )}
+      {labelNode}
       {/* Через RichText (ADR-0124) — акцент `**жирным**` в подсказке и ошибке
        * поля достаётся всем формам кабинета сразу, без правки на каждой. */}
       {error ? (

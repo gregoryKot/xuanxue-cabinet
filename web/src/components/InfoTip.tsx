@@ -4,11 +4,8 @@
 // (CLAUDE.md «Доступность») через паддинг и компенсирующий отрицательный
 // margin — строка с подписью от этого не раздувается.
 //
-// Текст поповера рендерится через createPortal в document.body, а не рядом с
-// кнопкой в дереве: Field.tsx держит эту кнопку внутри <label>, и попади
-// текст подсказки туда же, он склеился бы в доступное имя поля — тот же
-// повод, что увёл `hint` из <label> в Field/Toggle. Портал полностью выносит
-// текст из-под <label>, независимо от того, открыта подсказка или нет.
+// Текст поповера — через createPortal в document.body: рядом с <label> он
+// склеился бы в доступное имя поля (тот же повод, что увёл `hint` из <label>).
 //
 // Наведение мыши подключено только когда у устройства есть настоящее
 // наведение (`(hover: hover)`) — на тачскрине то же событие иначе приходит
@@ -25,9 +22,12 @@ import {
 import { createPortal } from 'react-dom';
 import { RichText } from './RichText';
 
-const ICON_SIZE_PX = 18;
+const ICON_SIZE_PX = 14;
 const HIT_TARGET_PX = 44;
-const HIT_PADDING_PX = (HIT_TARGET_PX - ICON_SIZE_PX) / 2;
+// Зона нажатия 44×44 невидима; слева узкая, чтобы не наезжать на подпись.
+const HIT_PAD_Y_PX = (HIT_TARGET_PX - ICON_SIZE_PX) / 2;
+const HIT_PAD_LEFT_PX = 4;
+const HIT_PAD_RIGHT_PX = HIT_TARGET_PX - ICON_SIZE_PX - HIT_PAD_LEFT_PX;
 const POPOVER_MAX_WIDTH_PX = 260;
 const VIEWPORT_MARGIN_PX = 16;
 const POPOVER_GAP_PX = 6;
@@ -41,15 +41,14 @@ const buttonStyle: CSSProperties = {
   justifyContent: 'center',
   width: ICON_SIZE_PX,
   height: ICON_SIZE_PX,
-  padding: HIT_PADDING_PX,
-  margin: -HIT_PADDING_PX,
-  // Глобальный сброс (index.css) ставит всем border-box — здесь явно
-  // content-box, иначе паддинг съел бы всю видимую иконку (see width/height).
+  padding: `${HIT_PAD_Y_PX}px ${HIT_PAD_RIGHT_PX}px ${HIT_PAD_Y_PX}px ${HIT_PAD_LEFT_PX}px`,
+  margin: `${-HIT_PAD_Y_PX}px ${-HIT_PAD_RIGHT_PX}px ${-HIT_PAD_Y_PX}px ${-HIT_PAD_LEFT_PX}px`,
+  // content-box — иначе паддинг съел бы иконку. Без рамки и фона: они
+  // рисовались кругом 44px поверх подписи (снимок владельца 2026-09-27).
   boxSizing: 'content-box',
-  borderRadius: '50%',
-  border: '1px solid var(--control-border)',
-  background: 'var(--card)',
-  color: 'var(--ink-soft)',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--ink-faint)',
   cursor: 'pointer',
   flexShrink: 0,
   lineHeight: 0,
@@ -173,8 +172,8 @@ export function InfoTip({ label, text }: InfoTipProps) {
         onBlur={() => setOpen(false)}
       >
         <svg
-          width={12}
-          height={12}
+          width={ICON_SIZE_PX}
+          height={ICON_SIZE_PX}
           viewBox="0 0 12 12"
           fill="none"
           stroke="currentColor"
