@@ -10,7 +10,7 @@
 // ADR-0100): свой встроенный плеер сюда не пишем, чтобы не завести вторую
 // реализацию одного и того же.
 import type { CSSProperties } from 'react';
-import { examVideoSrc } from '../api/examVideoPaths';
+import { answerVideoSrc, examVideoSrc } from '../api/examVideoPaths';
 import { VideoEmbed } from './VideoEmbed';
 
 type ExamVideoPlayerSize = 'thumb' | 'tile' | 'full';
@@ -37,6 +37,11 @@ const baseStyle: CSSProperties = {
 
 interface ExamVideoPlayerProps {
   videoId?: string;
+  /** Видео-ответ ученика, файл в R2 (ADR-0137) — та же вёрстка `<video>`,
+   * что у `videoId`, только адрес и подпись другие: две записи не бывают
+   * заданы разом (kind у ExamMediaDto один), но проверка ниже на всякий
+   * случай отдаёт приоритет видео вопроса. */
+  answerVideoId?: string;
   videoUrl?: string;
   /** Доступное имя видео — формулировка вопроса или подпись варианта. */
   title?: string;
@@ -45,20 +50,27 @@ interface ExamVideoPlayerProps {
 
 export function ExamVideoPlayer({
   videoId,
+  answerVideoId,
   videoUrl,
   title,
   size = 'full',
 }: ExamVideoPlayerProps) {
-  if (videoId) {
+  const src = videoId
+    ? examVideoSrc(videoId)
+    : answerVideoId
+      ? answerVideoSrc(answerVideoId)
+      : null;
+  if (src) {
     return (
-      // Субтитров нет: это короткий клип движения без речи (ADR-0133,
-      // «Контекст» — «референс учителя»), а не запись занятия с голосом.
+      // Субтитров нет: у видео вопроса это короткий клип движения без речи
+      // (ADR-0133, «Контекст» — «референс учителя»), у видео-ответа —
+      // снятая учеником форма, тоже без слов (ADR-0137), не запись занятия.
       // eslint-disable-next-line jsx-a11y/media-has-caption
       <video
         controls
         preload="metadata"
         playsInline
-        src={examVideoSrc(videoId)}
+        src={src}
         aria-label={title}
         style={{
           ...baseStyle,

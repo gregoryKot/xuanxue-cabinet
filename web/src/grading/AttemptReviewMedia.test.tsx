@@ -184,6 +184,31 @@ describe('AttemptReviewMedia — каждый вид получения', () => 
     ).not.toBeInTheDocument();
   });
 
+  // ADR-0137: файл в кабинете — плеер и размер, кнопки «Прислать мне» нет.
+  it('kind: file с answerVideoId — плеер и размер, без кнопки Telegram', () => {
+    renderMedia({
+      media: [
+        makeMedia({ kind: 'file', answerVideoId: 'v1', sizeBytes: 2 * 1024 * 1024 }),
+      ],
+    });
+
+    expect(document.querySelector('video')).toHaveAttribute(
+      'src',
+      '/api/answer-videos/v1',
+    );
+    expect(screen.getByText(/2,0 МБ/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Прислать мне в Telegram' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('kind: file без answerVideoId — уборщик снял файл, честная строка вместо плеера', () => {
+    renderMedia({ media: [makeMedia({ kind: 'file' })] });
+
+    expect(document.querySelector('video')).toBeNull();
+    expect(screen.getByText(/дней после проверки/)).toBeInTheDocument();
+  });
+
   it('несколько записей — кнопка «Отметить вручную» не нужна и не видна', () => {
     renderMedia({ media: [makeMedia(), makeMedia({ id: 'm2' })] });
 

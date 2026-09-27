@@ -11,6 +11,7 @@
 // (AttemptReviewMedia.tsx), а не пересказывается текстом — открыть её самим
 // быстрее, чем прочитать абзац о том, что она есть.
 import type { ExamMediaDto } from '@xuanxue/shared';
+import { formatFileSize } from '../lib/formatFileSize';
 
 export function describeMediaSource(media: ExamMediaDto): string {
   if (media.kind === 'telegram') {
@@ -20,6 +21,13 @@ export function describeMediaSource(media: ExamMediaDto): string {
     return media.note
       ? `Отмечено вручную: ${media.note}`
       : 'Отмечено вручную, без подписи.';
+  }
+  // Файл в кабинете (ADR-0137) — плеер под этой строкой (AttemptReviewMediaItem.tsx)
+  // уже показывает само видео, здесь только факт способа и размер.
+  if (media.kind === 'file') {
+    return media.sizeBytes !== undefined
+      ? `Загружено в кабинет, ${formatFileSize(media.sizeBytes)}.`
+      : 'Загружено в кабинет.';
   }
   return '';
 }

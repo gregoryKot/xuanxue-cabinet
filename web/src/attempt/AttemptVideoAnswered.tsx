@@ -19,6 +19,7 @@ import { cardListStyle } from '../components/listCardStyles';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { AttemptMediaLinkForm } from './AttemptMediaLinkForm';
 import { AttemptVideoAnswerRow } from './AttemptVideoAnswerRow';
+import { AttemptVideoUpload } from './AttemptVideoUpload';
 import { attemptVideoHintStyle } from './attemptVideoStyles';
 import type { AttemptVideoControls } from './useAttemptMedia';
 
@@ -29,6 +30,9 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 // принадлежит главному действию, а замена ошибочной ссылки — действие
 // второго плана.
 const REPLACE_TOGGLE = 'Прислать другую ссылку';
+// Второй тихий тумблер (ADR-0137) — рядом с заменой ссылки, тот же приём:
+// действие второго плана, не раскрыто по умолчанию.
+const REPLACE_FILE_TOGGLE = 'Загрузить другое видео';
 
 interface AttemptVideoAnsweredProps {
   itemId: string;
@@ -45,6 +49,7 @@ export function AttemptVideoAnswered({
 }: AttemptVideoAnsweredProps) {
   const { pending, error } = video.linkStateFor(itemId);
   const [replacing, setReplacing] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   return (
     <>
@@ -70,6 +75,17 @@ export function AttemptVideoAnswered({
               pending={pending}
               error={error}
             />
+          )}
+          {video.fileUploadEnabled && (
+            <>
+              <TextLinkButton
+                onClick={() => setUploadingFile((open) => !open)}
+                aria-expanded={uploadingFile}
+              >
+                {REPLACE_FILE_TOGGLE}
+              </TextLinkButton>
+              {uploadingFile && <AttemptVideoUpload itemId={itemId} video={video} />}
+            </>
           )}
         </>
       ) : (

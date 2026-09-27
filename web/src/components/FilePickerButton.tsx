@@ -32,6 +32,28 @@ const labelStyle: CSSProperties = {
   ...textLinkHitAreaStyle,
   position: 'relative',
 };
+// Загрузка видео-ответа (ADR-0137) — первое и единственное главное действие
+// экрана видео-вопроса: силуэт как у Button variant="primary"
+// (components/Button.tsx), но кнопки нет DOM-элементом `<button>` внутри
+// `<label>` не бывает (вложенный интерактивный элемент запрещён HTML) —
+// повторяем те же стили на самом `<label>`, не заводя вторую реализацию
+// выбора файла (CLAUDE.md «Одна механика — один компонент»).
+const primaryLabelStyle: CSSProperties = {
+  position: 'relative',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 44,
+  minWidth: 44,
+  padding: '10px 18px',
+  borderRadius: 'var(--radius-control)',
+  border: '1px solid transparent',
+  fontWeight: 500,
+  cursor: 'pointer',
+  background: 'var(--terracotta)',
+  color: 'var(--terracotta-contrast)',
+  alignSelf: 'flex-start',
+};
 // Замена кнопки на время загрузки — не кнопка со спиннером (CLAUDE.md
 // «Загрузка»: спиннер только на кнопке действия, а здесь на секунду нет и
 // самой кнопки, только текст со статусом).
@@ -57,6 +79,10 @@ interface FilePickerButtonProps {
    * картинки варианта подпись общая («Добавить картинку»), а полей на экране
    * несколько — различает их только это имя. */
   inputLabel?: string;
+  /** `'primary'` — заливка терракотой (правило акцента, docs/adr/0031): для
+   * экрана, где выбор файла — единственное главное действие (видео-ответ,
+   * ADR-0137). По умолчанию `'text'` — прежний вид, действие второго плана. */
+  variant?: 'text' | 'primary';
 }
 
 export function FilePickerButton({
@@ -65,6 +91,7 @@ export function FilePickerButton({
   pending,
   onFile,
   inputLabel,
+  variant = 'text',
 }: FilePickerButtonProps) {
   function handleChange(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0];
@@ -77,6 +104,21 @@ export function FilePickerButton({
       <span aria-busy="true" style={pendingStyle}>
         {PENDING_TEXT}
       </span>
+    );
+  }
+
+  if (variant === 'primary') {
+    return (
+      <label className="xuanxue-file-label" style={primaryLabelStyle}>
+        {label}
+        <input
+          type="file"
+          accept={accept}
+          aria-label={inputLabel ?? label}
+          style={hiddenInputStyle}
+          onChange={handleChange}
+        />
+      </label>
     );
   }
 

@@ -9,6 +9,7 @@ function renderStats(
   imagesSummary: string | null = null,
   presetsCount: number | null = null,
   videosSummary: string | null = null,
+  answerVideosSummary: string | null = null,
 ) {
   return render(
     <MemoryRouter>
@@ -18,6 +19,7 @@ function renderStats(
         imagesSummary={imagesSummary}
         videosSummary={videosSummary}
         presetsCount={presetsCount}
+        answerVideosSummary={answerVideosSummary}
       />
     </MemoryRouter>,
   );
@@ -75,6 +77,25 @@ describe('ExamsSectionStats — карточка «Проверка»: прип�
 
     const link = screen.getByText('Проверка').closest('a');
     expect(link).toHaveTextContent('4 заготовки для комментария.');
+  });
+
+  // ADR-0137: видео-ответов от учеников — та же приписка, дописана второй
+  // фразой, тем же приёмом, что imagesSummary/videosSummary у «Вопросов».
+  it('answerVideosSummary — null — только приписка про заготовки', () => {
+    renderStats(null, null, null, 4, null, null);
+
+    const link = screen.getByText('Проверка').closest('a');
+    expect(link).toHaveTextContent('4 заготовки для комментария.');
+    expect(link).not.toHaveTextContent('Видео-ответов');
+  });
+
+  it('answerVideosSummary есть — дописан второй фразой в приписку карточки «Проверка»', () => {
+    renderStats(null, null, null, 4, null, 'Видео-ответов от учеников: 3 — 90,0 МБ');
+
+    const link = screen.getByText('Проверка').closest('a');
+    expect(link).toHaveTextContent(
+      '4 заготовки для комментария. Видео-ответов от учеников: 3 — 90,0 МБ',
+    );
   });
 });
 

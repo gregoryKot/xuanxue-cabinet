@@ -24,6 +24,8 @@ import { formatExamVideosSummary } from '../exam-items/examVideosSummaryText';
 import { useExamImageStats } from '../exam-items/useExamImageStats';
 import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
 import { useExamVideoStats } from '../exam-items/useExamVideoStats';
+import { formatAnswerVideosSummary } from '../grading/answerVideosSummaryText';
+import { useAnswerVideoStats } from '../grading/useAnswerVideoStats';
 import { useGradingPresets } from '../grading/useGradingPresets';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
@@ -49,6 +51,7 @@ export default function ExamsScreen() {
   const itemStatsSummary = useExamItemStatsSummary();
   const imageStats = useExamImageStats();
   const videoStats = useExamVideoStats();
+  const answerVideoStats = useAnswerVideoStats();
   const navigate = useNavigate();
 
   const visibleExams =
@@ -102,6 +105,7 @@ export default function ExamsScreen() {
         imagesSummary={formatExamImagesSummary(imageStats.stats)}
         videosSummary={formatExamVideosSummary(videoStats.stats)}
         presetsCount={gradingPresets.presets?.length ?? null}
+        answerVideosSummary={formatAnswerVideosSummary(answerVideoStats.stats)}
       />
     </section>
   );

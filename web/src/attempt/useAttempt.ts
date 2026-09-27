@@ -6,11 +6,12 @@
 // дедлайну (closeIfExpiredAttempt) и на этом пути тоже, значит статус в
 // ответе — правда на момент запроса, а не то, что было при старте.
 import { useCallback, useState } from 'react';
-import type { ExamAttemptDto } from '@xuanxue/shared';
+import type { ExamAttemptDto, ExamMediaDto } from '@xuanxue/shared';
 import { attemptPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { errorFrom, type FormError } from '../components/FormServerError';
+import { mergeAnswerVideoMedia } from './attemptMediaMerge';
 import { clearAttemptDraft } from './attemptLocalDraft';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить попытку. Обновите страницу.';
@@ -42,6 +43,11 @@ export interface UseAttemptResult {
   submit: () => Promise<void>;
   submitting: boolean;
   submitError: FormError | null;
+  /** Кладёт видео-ответ из ответа `POST .../complete` (ADR-0137) в `media`
+   * попытки без второго `GET` (ADR-0087, `applyData` — useAbortableFetch.ts):
+   * заменяет прежний файл того же вопроса, остальное не трогает
+   * (mergeAnswerVideoMedia). */
+  applyMedia: (media: ExamMediaDto) => void;
 }
 
 export function useAttempt(
@@ -49,10 +55,11 @@ export function useAttempt(
   options: UseAttemptOptions = {},
 ): UseAttemptResult {
   const { onSubmitted } = options;
-  const { data, loading, error, reload, refresh, applyData } = useAbortableFetch(
-    (signal) => apiFetch<ExamAttemptDto>(attemptPath(attemptId), { signal }),
-    LOAD_ERROR_MESSAGE,
-  );
+  const { data, loading, error, reload, refresh, applyData } =
+    useAbortableFetch<ExamAttemptDto>(
+      (signal) => apiFetch<ExamAttemptDto>(attemptPath(attemptId), { signal }),
+      LOAD_ERROR_MESSAGE,
+    );
   const attempt = data;
 
   const [submitting, setSubmitting] = useState(false);
@@ -87,6 +94,15 @@ export function useAttempt(
     }
   }, [attemptId, applyData, onSubmitted]);
 
+  const applyMedia = useCallback(
+    (media: ExamMediaDto) => {
+      applyData((prev) =>
+        prev ? { ...prev, media: mergeAnswerVideoMedia(prev.media ?? [], media) } : prev,
+      );
+    },
+    [applyData],
+  );
+
   return {
     attempt,
     loading,
@@ -96,5 +112,6 @@ export function useAttempt(
     submit,
     submitting,
     submitError,
+    applyMedia,
   };
 }

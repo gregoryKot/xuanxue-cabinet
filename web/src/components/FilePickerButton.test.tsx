@@ -111,4 +111,20 @@ describe('FilePickerButton', () => {
     expect(screen.getByText('Загружаем…')).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByLabelText('Добавить файл')).not.toBeInTheDocument();
   });
+
+  it('variant primary — заливка терракотой, поле выбора остаётся тем же (ADR-0137)', () => {
+    render(
+      <FilePickerButton
+        label="Загрузить видео"
+        accept="video/*"
+        pending={false}
+        onFile={vi.fn()}
+        variant="primary"
+      />,
+    );
+
+    const label = screen.getByText('Загрузить видео').closest('label');
+    expect(label).toHaveStyle({ background: 'var(--terracotta)' });
+    expect(screen.getByLabelText('Загрузить видео')).toHaveAttribute('accept', 'video/*');
+  });
 });
