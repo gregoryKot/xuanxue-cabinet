@@ -116,7 +116,7 @@ describe('AttemptScreen', () => {
     renderAt('a1');
 
     expect(
-      await screen.findByRole('link', { name: 'Отправить видео боту в Telegram' }),
+      await screen.findByRole('link', { name: 'Открыть чат с ботом' }),
     ).toHaveAttribute('href', 'https://t.me/xx_bot?start=exam_a1_q3');
   });
 
@@ -171,7 +171,7 @@ describe('AttemptScreen', () => {
   });
 
   // Инцидент 2026-09-16 (RUNBOOK §8.17): вошедший по почте видел кнопку
-  // «Отправить видео боту», шёл по ней и получал от бота отказ.
+  // «Открыть чат с ботом», шёл по ней и получал от бота отказ.
   it('Telegram не привязан — на «Отправлено» кнопки бота нет, есть форма ссылки', async () => {
     mockPaths(
       { ...IN_PROGRESS, status: 'submitted' },
@@ -185,7 +185,7 @@ describe('AttemptScreen', () => {
 
     expect(await screen.findByLabelText('Ссылка на видео')).toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+      screen.queryByRole('link', { name: /Открыть чат с ботом/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -216,7 +216,7 @@ describe('AttemptScreen', () => {
     renderAt('a1');
 
     expect(
-      await screen.findByRole('link', { name: 'Отправить видео боту в Telegram' }),
+      await screen.findByRole('link', { name: 'Открыть чат с ботом' }),
     ).toHaveAttribute('href', 'https://t.me/xx_bot?start=exam_a1_q3');
   });
 
@@ -250,7 +250,7 @@ describe('AttemptScreen', () => {
     const user = userEvent.setup();
 
     await user.type(await screen.findByLabelText('Ссылка на видео'), url);
-    await user.click(screen.getByRole('button', { name: 'Сохранить ссылку' }));
+    await user.tab();
 
     expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/media/link', {
       method: 'POST',

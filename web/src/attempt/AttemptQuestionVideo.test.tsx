@@ -51,14 +51,14 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     expect(screen.getByText(/Ответ на этот вопрос — видео/)).toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+      screen.queryByRole('link', { name: /Открыть чат с ботом/ }),
     ).not.toBeInTheDocument();
   });
 
   it('имя бота есть — кнопка-ссылка на чат с deep link на этот вопрос', () => {
     renderVideo(makeVideo());
 
-    const link = screen.getByRole('link', { name: 'Отправить видео боту в Telegram' });
+    const link = screen.getByRole('link', { name: 'Открыть чат с ботом' });
     expect(link).toHaveAttribute('href', 'https://t.me/xuanxue_bot?start=exam_a1_q3');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
@@ -71,7 +71,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     renderVideo(makeVideo({ telegramLinked: false, offersTelegramLink: true }));
 
     expect(
-      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+      screen.queryByRole('link', { name: /Открыть чат с ботом/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Ссылка на видео')).toBeInTheDocument();
   });
@@ -119,15 +119,30 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     ).toBeInTheDocument();
   });
 
-  it('отправка ссылки зовёт addMediaLink с itemId этого вопроса', async () => {
+  it('уход с поля зовёт addMediaLink с itemId этого вопроса', async () => {
     const addMediaLink = vi.fn().mockResolvedValue(true);
     const user = userEvent.setup();
     renderVideo(makeVideo({ addMediaLink }));
 
     await user.type(screen.getByLabelText('Ссылка на видео'), 'https://example.com/v');
-    await user.click(screen.getByRole('button', { name: 'Сохранить ссылку' }));
+    await user.tab();
 
     expect(addMediaLink).toHaveBeenCalledWith('q3', 'https://example.com/v');
+  });
+
+  // Отзыв тестера 2026-09-27 (ADR-0136): пояснение живёт рядом с
+  // кнопкой, чтобы «Открыть чат с ботом» не читалось загадкой.
+  it('пояснение к кнопке бота говорит, что произойдёт после перехода', () => {
+    renderVideo(makeVideo());
+
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName === 'P' &&
+          /пришлите его боту школы/.test(element.textContent ?? '') &&
+          /в Telegram/.test(element.textContent ?? ''),
+      ),
+    ).toBeInTheDocument();
   });
 
   // ADR-0084: ссылка — основной путь ответа, бот остаётся вторым; кнопка
@@ -136,7 +151,7 @@ describe('AttemptQuestionVideo — видео ещё не получено', () 
     renderVideo(makeVideo());
 
     const form = screen.getByLabelText('Ссылка на видео');
-    const botLink = screen.getByRole('link', { name: 'Отправить видео боту в Telegram' });
+    const botLink = screen.getByRole('link', { name: 'Открыть чат с ботом' });
 
     expect(
       form.compareDocumentPosition(botLink) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -214,7 +229,7 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
     renderVideo(makeVideo({ media: [RECEIVED], telegramLinked: true }));
 
     expect(
-      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+      screen.queryByRole('link', { name: /Открыть чат с ботом/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Связать Telegram' }),
@@ -231,7 +246,7 @@ describe('AttemptQuestionVideo — видео уже получено', () => {
       screen.getByLabelText('Ссылка на видео'),
       'https://example.com/fixed',
     );
-    await user.click(screen.getByRole('button', { name: 'Сохранить ссылку' }));
+    await user.tab();
 
     expect(addMediaLink).toHaveBeenCalledWith('q3', 'https://example.com/fixed');
   });
@@ -272,7 +287,7 @@ describe('AttemptQuestionVideo — работу уже проверили', () =
     renderVideo(graded());
 
     expect(
-      screen.queryByRole('link', { name: /Отправить видео боту/ }),
+      screen.queryByRole('link', { name: /Открыть чат с ботом/ }),
     ).not.toBeInTheDocument();
   });
 
