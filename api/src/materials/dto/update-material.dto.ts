@@ -1,13 +1,20 @@
-// Тело PATCH /materials/:id (слой 3.1). `null` не имеет смысла ни у одного
-// поля (сбрасывать название или ссылку частично незачем) — поэтому
-// `OptionalNotNull()`, а не обычный `@IsOptional()`, тот же приём, что у
-// UpdateGradingCommentPresetDto.
+// Тело PATCH /materials/:id (слой 3.1). Большинству полей `null` не имеет
+// смысла (сбрасывать название или вид частично незачем) — у них
+// `OptionalNotNull()`, тот же приём, что у UpdateGradingCommentPresetDto.
+// `url` — единственное исключение (ADR-0133): `null` значит «убрать
+// ссылку», материал остаётся с файлом. У него обычный `@IsOptional()` —
+// он пропускает и `undefined`, и `null`, декораторы ниже (`@IsUrl` и
+// `@MaxLength`) на `null` уже не запускаются, `splitUpdate`
+// (api/src/common/patch-update.ts, `NULLABLE_MATERIAL_FIELDS`) превращает
+// `null` в `$unset` — тот же приём, что у nullable-полей занятия
+// (update-lesson.dto.ts).
 import {
   ArrayMaxSize,
   IsArray,
   IsIn,
   IsMongoId,
   IsNotEmpty,
+  IsOptional,
   IsString,
   IsUrl,
   MaxLength,
@@ -33,10 +40,10 @@ export class UpdateMaterialDto implements UpdateMaterialInput {
   @MaxLength(MATERIAL_LIMITS.title)
   title?: string;
 
-  @OptionalNotNull()
+  @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   @MaxLength(MATERIAL_LIMITS.url)
-  url?: string;
+  url?: string | null;
 
   @OptionalNotNull()
   @IsIn(MATERIAL_KINDS)

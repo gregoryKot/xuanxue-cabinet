@@ -1,5 +1,15 @@
 // Тело POST /materials (слой 3.1, docs/PLAN.md §14, ADR-0047). `createdBy` —
 // из сессии (@CurrentUser), не из тела запроса.
+//
+// `url` необязателен (ADR-0133, уточняет ADR-0057 и ADR-0047): материал
+// существует и с одним файлом, ссылку заводят отдельным слоем (3.10).
+// `@OptionalNotNull()`, не `@IsOptional()`: `null` для этого поля — не «поля
+// нет», а ошибка формы (в create-запросе взять ссылку неоткуда, кроме тела
+// запроса, значит `null` — не то, что мог прислать нормальный клиент), и
+// `@IsUrl` ниже должен её поймать, а не молча пропустить, как `@IsOptional()`
+// пропустил бы и `undefined`, и `null`. Пустая строка тоже не проходит —
+// «нет ссылки» в этом контракте значит «поля `url` нет вовсе», а не «есть
+// пустая строка» (CreateMaterialInput, shared/src/materials.ts).
 import {
   ArrayMaxSize,
   IsArray,
@@ -22,7 +32,7 @@ import {
   type MaterialAccess,
   type MaterialKind,
 } from '@xuanxue/shared';
-import { TrimString } from '../../common/validation';
+import { OptionalNotNull, TrimString } from '../../common/validation';
 
 export class CreateMaterialDto implements CreateMaterialInput {
   @TrimString()
@@ -31,9 +41,10 @@ export class CreateMaterialDto implements CreateMaterialInput {
   @MaxLength(MATERIAL_LIMITS.title)
   title!: string;
 
+  @OptionalNotNull()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   @MaxLength(MATERIAL_LIMITS.url)
-  url!: string;
+  url?: string;
 
   @IsIn(MATERIAL_KINDS)
   kind!: MaterialKind;

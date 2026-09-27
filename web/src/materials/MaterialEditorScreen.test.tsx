@@ -367,10 +367,12 @@ describe('MaterialEditorScreen — удаление', () => {
   });
 });
 
-// Слой 3.10 (ADR-0057): поле файла рисуется только когда есть куда класть
-// файл (материал уже сохранён, у /materials/new ещё нет id) и хранилище
-// подключено (fileStorageEnabled). Нет ключей R2 — поля нет вовсе, а не
-// кнопка, которая ответит 503.
+// Слой 3.10 (ADR-0057/ADR-0133): поле файла рисуется, когда хранилище
+// подключено (fileStorageEnabled) — у сохранённого материала это
+// MaterialFileField (грузит сразу), у нового NewMaterialFileField (файл
+// уходит вместе с созданием, ADR-0133; свой экранный тест —
+// MaterialEditorScreen.newFile.test.tsx). Нет ключей R2 — поля нет вовсе, а
+// не кнопка, которая ответит 503.
 describe('MaterialEditorScreen — поле файла (ADR-0057)', () => {
   it('fileStorageEnabled: false — поля загрузки нет', async () => {
     mockApiByPath({
@@ -439,7 +441,10 @@ describe('MaterialEditorScreen — поле файла (ADR-0057)', () => {
     expect(screen.getByText('2,0 МБ')).toBeInTheDocument();
   });
 
-  it('fileStorageEnabled: true, новый материал (/materials/new) — поля всё равно нет', async () => {
+  // ADR-0133: у нового материала поле файла есть тоже, но без сети — файл
+  // уходит вместе с созданием («Сохранить»), не отдельным запросом отсюда;
+  // сценарий создания с файлом — MaterialEditorScreen.newFile.test.tsx.
+  it('fileStorageEnabled: true, новый материал (/materials/new) — поле файла без «Скачать»', async () => {
     mockApiByPath({
       '/materials': [],
       '/classes': [makeClass()],
@@ -449,6 +454,8 @@ describe('MaterialEditorScreen — поле файла (ADR-0057)', () => {
     renderAt('/materials/new');
     await screen.findByLabelText('Название');
 
-    expect(screen.queryByText('Файл материала')).not.toBeInTheDocument();
+    expect(await screen.findByText('Файл материала')).toBeInTheDocument();
+    expect(screen.getByText('Добавить файл')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Скачать' })).not.toBeInTheDocument();
   });
 });

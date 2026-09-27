@@ -3,6 +3,10 @@
 // channels/useChannelForm.ts, и у формы экзамена/вопроса — материал без
 // статуса, `never` вторым параметром результата). Логика поля/валидации/
 // сборки тела запроса — в materialFormInput.ts (тестируется без React).
+//
+// Объект-аргумент, не четыре позиционных параметра (CLAUDE.md «параметров
+// больше трёх — объект»): `file` — контекст для валидации ссылки (ADR-0133,
+// materialFormInput.ts).
 import type {
   CreateMaterialInput,
   MaterialDto,
@@ -15,6 +19,7 @@ import {
   toUpdateInput,
   validateMaterialForm,
   type MaterialFormError,
+  type MaterialFormFileContext,
   type MaterialFormState,
 } from './materialFormInput';
 
@@ -28,17 +33,32 @@ export type UseMaterialFormResult = UseEntityFormResult<
   MaterialFormError
 >;
 
-export function useMaterialForm(
-  materialDto: MaterialDto | null,
-  onCreate: (input: CreateMaterialInput) => Promise<void>,
-  onUpdate: (id: string, input: UpdateMaterialInput) => Promise<void>,
-  onRemove: (id: string) => Promise<void>,
-): UseMaterialFormResult {
+export interface UseMaterialFormArgs {
+  material: MaterialDto | null;
+  /** Есть ли у материала файл (или выбран в форме) и умеет ли экран его
+   * прикладывать — решает, обязательна ли ссылка, и как об этом сказать
+   * (materialFormInput.ts, ADR-0133). */
+  file: MaterialFormFileContext;
+  /** Возвращает созданный материал (`useEntityEditor.create`, ADR-0133) — у
+   * материала это `useNewMaterialFile.ts`, который следом отправляет файл по
+   * id из ответа; `useEntityForm` результат не читает. */
+  onCreate: (input: CreateMaterialInput) => Promise<MaterialDto>;
+  onUpdate: (id: string, input: UpdateMaterialInput) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}
+
+export function useMaterialForm({
+  material,
+  file,
+  onCreate,
+  onUpdate,
+  onRemove,
+}: UseMaterialFormArgs): UseMaterialFormResult {
   return useEntityForm({
-    entity: materialDto,
-    getId: (material) => material.id,
+    entity: material,
+    getId: (m) => m.id,
     initialState: initialMaterialFormState,
-    validate: validateMaterialForm,
+    validate: (state) => validateMaterialForm(state, file),
     toCreateInput,
     toUpdateInput,
     onCreate,
@@ -49,6 +69,6 @@ export function useMaterialForm(
     // Черновик у формы есть (ADR-0052): длинную ссылку набирают с телефона,
     // а за ней часто уходят в другую вкладку — скопировать адрес книги.
     // Секретов здесь нет, в отличие от формы канала (useChannelForm.ts).
-    draftKey: `${DRAFT_DOMAIN}:${materialDto?.id ?? 'new'}`,
+    draftKey: `${DRAFT_DOMAIN}:${material?.id ?? 'new'}`,
   });
 }

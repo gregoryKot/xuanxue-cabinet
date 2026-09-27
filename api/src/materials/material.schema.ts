@@ -5,6 +5,12 @@
 // (enc, SECURITY §5); `createdBy` — ссылка на автора (USER_REFERENCE_PATHS,
 // user-data.registry.ts), не признак владения: удаление аккаунта автора не
 // уносит материал школы.
+//
+// `url` не обязателен (ADR-0133, уточняет ADR-0057 и ADR-0047): материал
+// может существовать одним файлом (слой 3.10, ниже — `fileKey` и соседи).
+// У документа без ссылки поля `url` в базе нет вовсе — не пустая строка:
+// открыть материал есть чем всегда, ссылкой или файлом, а «нет ключа» и
+// «пустая строка» в контракте это разные вещи (shared/src/materials.ts).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import {
@@ -23,8 +29,8 @@ export class MaterialRecord {
   @Prop({ type: String, required: true })
   title!: string;
 
-  @Prop({ type: String, required: true })
-  url!: string;
+  @Prop({ type: String })
+  url?: string;
 
   @Prop({ type: String, required: true, enum: MATERIAL_KINDS })
   kind!: MaterialKind;

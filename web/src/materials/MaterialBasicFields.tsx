@@ -16,7 +16,12 @@ import type { MaterialFormError, MaterialFormState } from './materialFormInput';
 
 const KIND_LEGEND = 'Вид материала';
 const KIND_RADIO_GROUP_NAME = 'material-kind';
-const URL_HINT = 'Адрес книги, статьи, видео или документа — файлы кабинет не хранит';
+const URL_HINT = 'Адрес книги, статьи или видео в интернете';
+// Показывается вместо обычной подсказки, когда `urlOptional` (ADR-0133):
+// экран умеет прикладывать файл, и ссылка перестаёт быть единственным
+// способом открыть материал — человек должен узнать об этом раньше, чем
+// решит, что поле обязательно.
+const URL_OPTIONAL_HINT = 'Необязательна, если приложите файл ниже';
 
 const fieldsetStyle: CSSProperties = {
   border: 'none',
@@ -42,12 +47,19 @@ interface MaterialBasicFieldsProps {
     value: MaterialFormState[K],
   ) => void;
   error: MaterialFormError | null;
+  /** Экран умеет прикладывать файл (хранилище подключено, ADR-0133) — только
+   * это меняет подсказку под полем ссылки; сама валидация решается отдельно
+   * (materialFormInput.ts, MaterialFormFileContext). По умолчанию `false` —
+   * короткая форма «Добавить ссылку» (ADR-0056) поля файла не имеет вовсе и
+   * этот проп не передаёт. */
+  urlOptional?: boolean;
 }
 
 export function MaterialBasicFields({
   state,
   setField,
   error,
+  urlOptional = false,
 }: MaterialBasicFieldsProps) {
   return (
     <>
@@ -60,7 +72,11 @@ export function MaterialBasicFields({
         />
       </Field>
 
-      <Field label="Ссылка" hint={URL_HINT} error={errorFor(error, 'url')}>
+      <Field
+        label="Ссылка"
+        hint={urlOptional ? URL_OPTIONAL_HINT : URL_HINT}
+        error={errorFor(error, 'url')}
+      >
         <input
           type="url"
           style={inputStyle}

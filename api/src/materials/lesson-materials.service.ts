@@ -2,9 +2,10 @@
 // ADR-0056, раздел «Ученик видит привязку там, где ищет») — один запрос на
 // весь список архива, не по одному на дату (N+1 здесь означал бы N запросов
 // к Mongo на каждое открытие архива). Вырезание `access: 'staff'` (ADR-0058)
+// и материалов, которые нечем открыть (`STUDENT_OPENABLE_FILTER`, ADR-0133),
 // работает тем же приёмом и на тех же функциях, что и
-// MaterialsService.listForStudent — иначе служебный материал утекал бы
-// ученику через архив, а не через библиотеку (ADR-0096, отменяет ADR-0048).
+// MaterialsService.listForStudent — иначе такой материал утекал бы ученику
+// через архив, а не через библиотеку (ADR-0096, отменяет ADR-0048).
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -18,6 +19,7 @@ import {
   type RawLeanMaterial,
 } from './material.mapper';
 import { MaterialRecord } from './material.schema';
+import { STUDENT_OPENABLE_FILTER } from './materials.queries';
 
 /** Потолок join'а «материалы → все даты архива за один запрос» (CLAUDE.md
  * «API»: списки — всегда с лимитом, «дай всё» запрещён). Это не лимит на
@@ -44,12 +46,17 @@ export class LessonMaterialsService {
   ): Promise<Map<string, MyMaterialDto[]>> {
     if (lessonIds.length === 0) return new Map();
 
-    // Тот же фильтр запроса, что в listForStudent (ADR-0058): служебный
-    // материал вырезается ещё в Mongo, не после выборки — иначе он съедал бы
-    // место в LESSON_MATERIALS_JOIN_LIMIT вместо материалов ученика.
+    // Тот же фильтр запроса, что в listForStudent (ADR-0058, ADR-0133):
+    // служебный материал и материал без ссылки и файла вырезаются ещё в
+    // Mongo, не после выборки — иначе съедали бы место в
+    // LESSON_MATERIALS_JOIN_LIMIT вместо материалов ученика.
     const filter: Record<string, unknown> = isStaff
       ? { lessonIds: { $in: lessonIds } }
-      : { lessonIds: { $in: lessonIds }, access: { $ne: 'staff' } };
+      : {
+          lessonIds: { $in: lessonIds },
+          access: { $ne: 'staff' },
+          ...STUDENT_OPENABLE_FILTER,
+        };
 
     const docs = await this.model
       .find(filter)

@@ -28,7 +28,8 @@ export function decryptMaterial(doc: RawLeanMaterial): RawLeanMaterial {
 /** Пять полей документа (ADR-0057) → одно описание файла в ответе. Ключ
  * объекта (`fileKey`) наружу не уходит: по нему файл и скачивается, а право
  * на скачивание проверяем мы. `undefined`, пока файла нет — тогда ключа
- * `file` в JSON не будет вовсе, как у `url` закрытого материала. */
+ * `file` в JSON не будет вовсе, как у `url`, когда у материала нет ссылки
+ * (ADR-0133). */
 function toMaterialFileDto(doc: RawLeanMaterial): MaterialFileDto | undefined {
   const { fileKey, fileName, fileContentType, fileSizeBytes, fileUploadedAt } = doc;
   if (!fileKey || !fileName || !fileContentType || !fileUploadedAt) return undefined;
@@ -47,16 +48,27 @@ function fileEntry(doc: RawLeanMaterial): { file?: MaterialFileDto } {
   return file ? { file } : {};
 }
 
+/** Ссылки может не быть (ADR-0133): у документа без `url` в базе нет и
+ * этого поля вовсе (material.schema.ts). Здесь та же мысль в ответе — не
+ * `url: undefined` (JSON.stringify всё равно съел бы ключ, но
+ * `expect(dto).not.toHaveProperty('url')` должен быть верен буквально, не
+ * по случайности сериализации), а отсутствие ключа в объекте. Одно место
+ * для этого решения — и у штата (toMaterialDto), и у ученика
+ * (toMyMaterialDto), тот же приём, что у `fileEntry` выше. */
+function urlEntry(doc: RawLeanMaterial): { url?: string } {
+  return doc.url !== undefined ? { url: doc.url } : {};
+}
+
 export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
   return {
     id: doc._id.toString(),
     title: doc.title,
-    url: doc.url,
     kind: doc.kind,
     classIds: doc.classIds.map((id) => id.toString()),
     lessonIds: doc.lessonIds.map((id) => id.toString()),
     access: doc.access,
     tags: doc.tags ?? [],
+    ...urlEntry(doc),
     ...fileEntry(doc),
     createdBy: doc.createdBy.toString(),
     createdAt: toIsoUtc(doc.createdAt),
@@ -67,9 +79,10 @@ export function toMaterialDto(doc: RawLeanMaterial): MaterialDto {
 /** Библиотека глазами ученика (docs/PLAN.md §14) — ни `createdBy`, ни
  * `access`, ни служебных дат. Вызывающая сторона (MaterialsService,
  * LessonMaterialsService) уже отсекла материалы, скрытые от ученика
- * (`isMaterialHiddenFromStudent`, ADR-0058) — этот маппер зовут только для
- * материала, который ученику действительно едет, поэтому `url` и файл (если
- * он загружен) в ответе всегда (ADR-0096, отменяет ADR-0048: признака
+ * (`isMaterialHiddenFromStudent`, ADR-0058) и материалы, которые нечем
+ * открыть (`STUDENT_OPENABLE_FILTER`, materials.queries.ts, ADR-0133) — этот
+ * маппер зовут только для материала, у которого есть хотя бы ссылка или
+ * файл, но не обязательно оба сразу (ADR-0096, отменяет ADR-0048: признака
  * `locked` в контракте больше нет).
  *
  * Занятия приезжают названиями, а не id: `GET /classes` закрыт ролью, и
@@ -88,7 +101,7 @@ export function toMyMaterialDto(
       .map((id) => classTitleById.get(id.toString()))
       .filter((title): title is string => title !== undefined),
     tags: doc.tags ?? [],
-    url: doc.url,
+    ...urlEntry(doc),
     ...fileEntry(doc),
   };
 }
