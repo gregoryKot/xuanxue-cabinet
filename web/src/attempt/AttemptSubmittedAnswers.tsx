@@ -56,6 +56,8 @@ export function AttemptSubmittedAnswers({ attempt }: AttemptSubmittedAnswersProp
                   index={index}
                   promptId={`attempt-answer-${question.itemId}`}
                   prompt={question.prompt}
+                  videoId={question.videoId}
+                  videoUrl={question.videoUrl}
                 >
                   <AttemptAnswerFields
                     labelledBy={`attempt-answer-${question.itemId}`}

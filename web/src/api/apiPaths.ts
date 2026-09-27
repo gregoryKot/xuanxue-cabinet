@@ -57,6 +57,16 @@ export const EXAM_ITEM_STATS_SUMMARY_PATH = `${EXAM_ITEMS_PATH}/stats-summary`;
 export const EXAM_IMAGES_PATH = '/exam-images';
 export const EXAM_IMAGE_STATS_PATH = `${EXAM_IMAGES_PATH}/stats-summary`;
 
+export const EXAM_VIDEOS_PATH = '/exam-videos';
+export const EXAM_VIDEO_STATS_PATH = `${EXAM_VIDEOS_PATH}/stats-summary`;
+
+/** Адрес видео вопроса/варианта (ADR-0133) для `<video src>` — сервер
+ * отвечает 302 на подписанную ссылку R2, открывает её сам браузер (тот же
+ * приём, что materialFilePath ниже), не apiFetch. */
+export function examVideoSrc(videoId: string): string {
+  return `/api${EXAM_VIDEOS_PATH}/${videoId}`;
+}
+
 /** Адрес картинки варианта для `<img src>` (ADR-0035) — единственное место
  * вне http.ts, где вручную собирается `/api`: это не запрос через apiFetch
  * (JSON, конверт ошибок), а адрес ресурса, который сам загружает браузер, и

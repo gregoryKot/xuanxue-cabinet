@@ -13,6 +13,7 @@ import {
   examImageSrc,
   examItemsListPath,
   examsListPath,
+  examVideoSrc,
   lessonsListPath,
 } from './apiPaths';
 
@@ -99,6 +100,14 @@ describe('examImageSrc', () => {
   it('собирает адрес картинки с префиксом /api для <img src>', () => {
     expect(examImageSrc('652f00000000000000000001')).toBe(
       '/api/exam-images/652f00000000000000000001',
+    );
+  });
+});
+
+describe('examVideoSrc', () => {
+  it('собирает адрес видео с префиксом /api для <video src> (ADR-0133)', () => {
+    expect(examVideoSrc('652f00000000000000000002')).toBe(
+      '/api/exam-videos/652f00000000000000000002',
     );
   });
 });

@@ -46,6 +46,8 @@ export function AttemptQuestion({
       index={index}
       promptId={promptId}
       prompt={question.prompt}
+      videoId={question.videoId}
+      videoUrl={question.videoUrl}
       unanswered={unanswered}
     >
       {question.kind === 'text' && (

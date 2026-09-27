@@ -15,7 +15,8 @@ import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { inputStyle } from '../components/Field';
 import { rowControlStyle } from '../components/listCardStyles';
-import { ExamItemOptionImage } from './ExamItemOptionImage';
+import { ExamItemOptionMedia } from './ExamItemOptionMedia';
+import type { ExamVideoValue } from './examVideoFormInput';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 
 const markTargetStyle: CSSProperties = {
@@ -45,8 +46,11 @@ interface ExamItemOptionRowProps {
   /** `single` — отметка радио с общим именем группы: взаимное исключение
    * браузер делает сам. `multiple` — обычный чекбокс. */
   radioGroupName?: string;
+  /** Загрузка в R2 подключена — решает, что рисует поле видео (ADR-0133). */
+  fileStorageEnabled: boolean;
   onTextChange: (text: string) => void;
   onImageChange: (imageId: string | undefined) => void;
+  onVideoChange: (video: ExamVideoValue) => void;
   onCorrectChange: (correct: boolean) => void;
   onRemove: () => void;
 }
@@ -55,8 +59,10 @@ export function ExamItemOptionRow({
   option,
   index,
   radioGroupName,
+  fileStorageEnabled,
   onTextChange,
   onImageChange,
+  onVideoChange,
   onCorrectChange,
   onRemove,
 }: ExamItemOptionRowProps) {
@@ -81,10 +87,14 @@ export function ExamItemOptionRow({
           value={option.text}
           onChange={(e) => onTextChange(e.target.value)}
         />
-        <ExamItemOptionImage
+        <ExamItemOptionMedia
           index={index}
           imageId={option.imageId}
-          onChange={onImageChange}
+          videoId={option.videoId}
+          videoUrl={option.videoUrl}
+          fileStorageEnabled={fileStorageEnabled}
+          onImageChange={onImageChange}
+          onVideoChange={onVideoChange}
         />
       </div>
       <div className="xuanxue-question-controls">

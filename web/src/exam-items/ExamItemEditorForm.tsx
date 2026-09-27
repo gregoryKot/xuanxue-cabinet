@@ -8,6 +8,7 @@
 // кнопки объяснение, почему её нет.
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
+import { useAuthConfig } from '../auth/useAuthConfig';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EditorFooter } from '../components/EditorFooter';
 import { FormDraftNote } from '../components/FormDraftNote';
@@ -65,6 +66,12 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
   const form = useExamItemForm(item, editor.create, editor.update, editor.remove);
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
+  // Загрузка в R2 (ADR-0057/ADR-0133) — та же проверка, что
+  // materials/MaterialEditorForm.tsx: пока конфигурация не пришла,
+  // ExamVideoField по умолчанию рисует поле ссылки, не кнопку файла — так
+  // безопаснее, чем кнопка, которая ответит 503 до первого ответа сервера.
+  const authConfig = useAuthConfig();
+  const fileStorageEnabled = authConfig.config?.fileStorageEnabled === true;
 
   return (
     <>
@@ -94,12 +101,14 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
           state={form.state}
           setField={form.setField}
           error={form.validationError}
+          fileStorageEnabled={fileStorageEnabled}
         />
 
         {hasOptions(form.state.kind) && (
           <ExamItemOptionsField
             kind={form.state.kind}
             options={form.state.options}
+            fileStorageEnabled={fileStorageEnabled}
             onChange={(options) => form.setField('options', options)}
           />
         )}

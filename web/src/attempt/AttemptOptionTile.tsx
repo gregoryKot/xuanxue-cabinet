@@ -22,6 +22,7 @@
 // повторить работу браузера и рано или поздно разойтись с ней.
 import type { CSSProperties } from 'react';
 import { OptionImage } from '../components/OptionImage';
+import { AttemptOptionTileVideo } from './AttemptOptionTileVideo';
 
 const TILE_GAP_PX = 6;
 const TILE_PADDING_PX = 8;
@@ -87,6 +88,11 @@ interface AttemptOptionTileProps {
    * прячется визуально, остаётся доступным именем. */
   labelHidden: boolean;
   imageId?: string;
+  /** Видео варианта (ADR-0133) тем же смыслом, что `imageId`: не больше
+   * одного медиа на вариант, показывает ExamVideoPlayer. У видео своя
+   * структура плитки — см. комментарий у `hasVideo` ниже. */
+  videoId?: string;
+  videoUrl?: string;
   checked: boolean;
   disabled?: boolean;
   /** Задано — радио из группы с таким именем, нет — самостоятельный чекбокс
@@ -99,11 +105,14 @@ export function AttemptOptionTile({
   label,
   labelHidden,
   imageId,
+  videoId,
+  videoUrl,
   checked,
   disabled,
   name,
   onChange,
 }: AttemptOptionTileProps) {
+  const hasVideo = Boolean(videoId || videoUrl);
   const tileStyle: CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
@@ -133,8 +142,8 @@ export function AttemptOptionTile({
     borderRadius: name ? 'var(--radius-pill)' : CHECKBOX_MARK_RADIUS_PX,
   };
 
-  return (
-    <label className="xuanxue-option-tile" style={tileStyle}>
+  const control = (
+    <>
       <input
         type={name ? 'radio' : 'checkbox'}
         name={name}
@@ -143,22 +152,40 @@ export function AttemptOptionTile({
         onChange={(event) => onChange(event.target.checked)}
         className="xuanxue-sr-only"
       />
+      <span style={markStyle} aria-hidden="true">
+        {checked && <CheckMark />}
+      </span>
+      <span className={labelHidden ? 'xuanxue-sr-only' : undefined} style={captionStyle}>
+        {label}
+      </span>
+    </>
+  );
+
+  // Видео — своя структура плитки (AttemptOptionTileVideo.tsx): плеер вне
+  // `<label>`, цель выбора — отдельная строка под ним.
+  if (hasVideo) {
+    return (
+      <AttemptOptionTileVideo
+        tileStyle={tileStyle}
+        mediaStyle={mediaStyle}
+        footStyle={footStyle}
+        videoId={videoId}
+        videoUrl={videoUrl}
+        label={label}
+        disabled={disabled}
+        control={control}
+      />
+    );
+  }
+
+  return (
+    <label className="xuanxue-option-tile" style={tileStyle}>
       {imageId && (
         <span className="xuanxue-option-tile-media" style={mediaStyle} aria-hidden="true">
           <OptionImage imageId={imageId} size="tile" alt={label} />
         </span>
       )}
-      <span style={footStyle}>
-        <span style={markStyle} aria-hidden="true">
-          {checked && <CheckMark />}
-        </span>
-        <span
-          className={labelHidden ? 'xuanxue-sr-only' : undefined}
-          style={captionStyle}
-        >
-          {label}
-        </span>
-      </span>
+      <span style={footStyle}>{control}</span>
     </label>
   );
 }

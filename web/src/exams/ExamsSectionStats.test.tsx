@@ -8,6 +8,7 @@ function renderStats(
   strugglingCount: number | null,
   imagesSummary: string | null = null,
   presetsCount: number | null = null,
+  videosSummary: string | null = null,
 ) {
   return render(
     <MemoryRouter>
@@ -15,6 +16,7 @@ function renderStats(
         queueCount={queueCount}
         strugglingCount={strugglingCount}
         imagesSummary={imagesSummary}
+        videosSummary={videosSummary}
         presetsCount={presetsCount}
       />
     </MemoryRouter>,
@@ -117,6 +119,29 @@ describe('ExamsSectionStats — карточка «Вопросы»', () => {
       screen.getByText(
         'Из них собирается экзамен — один вопрос можно поставить в несколько экзаменов. ' +
           'Картинок к вопросам: 12 — 3,4 МБ',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('videosSummary — null — строки нет', () => {
+    renderStats(null, 0, null, null, null);
+
+    expect(screen.queryByText(/Видео к вопросам/)).not.toBeInTheDocument();
+  });
+
+  it('videosSummary есть — дописан третьей фразой в ту же приписку', () => {
+    renderStats(
+      null,
+      0,
+      'Картинок к вопросам: 12 — 3,4 МБ',
+      null,
+      'Видео к вопросам: 2 — 85,8 МБ',
+    );
+
+    expect(
+      screen.getByText(
+        'Из них собирается экзамен — один вопрос можно поставить в несколько экзаменов. ' +
+          'Картинок к вопросам: 12 — 3,4 МБ Видео к вопросам: 2 — 85,8 МБ',
       ),
     ).toBeInTheDocument();
   });

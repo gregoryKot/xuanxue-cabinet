@@ -189,3 +189,55 @@ describe('AttemptQuestionChoice — плитки вместо строк (docs/a
     );
   });
 });
+
+describe('AttemptQuestionChoice — видео варианта (ADR-0133), стек вместо сетки', () => {
+  it('есть видео хоть у одного варианта — оба становятся плитками, но без класса сетки', () => {
+    const options: AttemptOptionDto[] = [
+      { id: 'o1', text: '', videoUrl: 'https://youtu.be/dQw4w9WgXcQ' },
+      { id: 'o2', text: 'Влево' },
+    ];
+    render(
+      <>
+        <span id={PROMPT_ID}>Куда уходит вес?</span>
+        <AttemptQuestionChoice
+          labelledBy={PROMPT_ID}
+          itemId="i1"
+          kind="single"
+          options={options}
+          selected={[]}
+          onChange={vi.fn()}
+        />
+      </>,
+    );
+
+    const group = screen.getByRole('radiogroup', { name: 'Куда уходит вес?' });
+    expect(group).not.toHaveClass('xuanxue-option-tiles');
+    expect(screen.getByRole('radio', { name: 'Вариант 1' })).toBeInTheDocument();
+    expect(document.querySelector('video, iframe, button')).not.toBeNull();
+  });
+
+  it('выбор плитки с видео отдаёт id этого варианта', async () => {
+    const options: AttemptOptionDto[] = [
+      { id: 'o1', text: '', videoId: 'vid1' },
+      { id: 'o2', text: '', videoId: 'vid2' },
+    ];
+    const onChange = vi.fn();
+    render(
+      <>
+        <span id={PROMPT_ID}>Куда уходит вес?</span>
+        <AttemptQuestionChoice
+          labelledBy={PROMPT_ID}
+          itemId="i1"
+          kind="single"
+          options={options}
+          selected={[]}
+          onChange={onChange}
+        />
+      </>,
+    );
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Вариант 2' }));
+
+    expect(onChange).toHaveBeenCalledWith(['o2']);
+  });
+});

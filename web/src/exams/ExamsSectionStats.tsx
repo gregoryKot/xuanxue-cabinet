@@ -52,6 +52,9 @@ interface ExamsSectionStatsProps {
    * базе, во время загрузки и при сбое: приписка тогда просто её не
    * показывает. */
   imagesSummary: string | null;
+  /** Готовая строка `formatExamVideosSummary` (ADR-0133) — тем же приёмом,
+   * что `imagesSummary`: третьей фразой в ту же приписку. */
+  videosSummary: string | null;
   /** Число заготовок частых комментариев (ADR-0041) — `null` во время
    * загрузки и при сбое, честное «пока нет» на чистой базе
    * (formatGradingPresetsHint). */
@@ -65,11 +68,16 @@ export function ExamsSectionStats({
   queueCount,
   strugglingCount,
   imagesSummary,
+  videosSummary,
   presetsCount,
 }: ExamsSectionStatsProps) {
-  const questionsHint = imagesSummary
-    ? `${formatExamItemsLinkHint(strugglingCount)} ${imagesSummary}`
-    : formatExamItemsLinkHint(strugglingCount);
+  const questionsHint = [
+    formatExamItemsLinkHint(strugglingCount),
+    imagesSummary,
+    videosSummary,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <section style={blockStyle}>

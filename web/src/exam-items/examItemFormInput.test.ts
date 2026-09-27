@@ -213,6 +213,56 @@ describe('validateExamItemForm — single/multiple', () => {
   });
 });
 
+describe('validateExamItemForm — видео (ADR-0133)', () => {
+  it('videoId и videoUrl вопроса разом — ошибка «один источник»', () => {
+    expect(
+      validateExamItemForm(baseState({ videoId: 'v1', videoUrl: 'https://youtu.be/x' })),
+    ).toMatch(/один источник/);
+  });
+
+  it('вариант с картинкой и видео разом — ошибка «одно медиа»', () => {
+    expect(
+      validateExamItemForm(
+        baseState({
+          kind: 'single',
+          options: [
+            { text: '', correct: true, imageId: 'img1', videoId: 'vid1' },
+            { text: 'B', correct: false },
+          ],
+        }),
+      ),
+    ).toMatch(/только одно медиа/);
+  });
+
+  it('вариант с videoId и videoUrl разом — та же ошибка «одно медиа»', () => {
+    expect(
+      validateExamItemForm(
+        baseState({
+          kind: 'single',
+          options: [
+            { text: '', correct: true, videoId: 'vid1', videoUrl: 'https://youtu.be/x' },
+            { text: 'B', correct: false },
+          ],
+        }),
+      ),
+    ).toMatch(/только одно медиа/);
+  });
+
+  it('вариант только с видео, без текста и картинки — валиден', () => {
+    expect(
+      validateExamItemForm(
+        baseState({
+          kind: 'single',
+          options: [
+            { text: '', correct: true, videoUrl: 'https://youtu.be/x' },
+            { text: 'B', correct: false },
+          ],
+        }),
+      ),
+    ).toBeNull();
+  });
+});
+
 describe('toCreateInput / toUpdateInput', () => {
   it('создание, тип text — options не отправляется вовсе', () => {
     const input = toCreateInput(baseState());
@@ -248,5 +298,29 @@ describe('toCreateInput / toUpdateInput', () => {
   it('правка, тип text — options не отправляется вовсе', () => {
     const input = toUpdateInput(baseState({ kind: 'text' }));
     expect(input.options).toBeUndefined();
+  });
+
+  it('создание с видео вопроса — videoId/videoUrl уходят как есть', () => {
+    const input = toCreateInput(baseState({ videoId: 'vid1' }));
+    expect(input.videoId).toBe('vid1');
+    expect(input.videoUrl).toBeUndefined();
+  });
+
+  it('создание без видео — videoId/videoUrl не отправляются вовсе', () => {
+    const input = toCreateInput(baseState());
+    expect(input.videoId).toBeUndefined();
+    expect(input.videoUrl).toBeUndefined();
+  });
+
+  it('правка — видео снято, в PATCH уходит явный null, не пропуск поля', () => {
+    const input = toUpdateInput(baseState());
+    expect(input.videoId).toBeNull();
+    expect(input.videoUrl).toBeNull();
+  });
+
+  it('правка — видео задано, уходит как есть', () => {
+    const input = toUpdateInput(baseState({ videoUrl: 'https://youtu.be/x' }));
+    expect(input.videoUrl).toBe('https://youtu.be/x');
+    expect(input.videoId).toBeNull();
   });
 });
