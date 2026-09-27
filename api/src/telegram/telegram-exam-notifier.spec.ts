@@ -458,6 +458,7 @@ describe('TelegramExamNotifier', () => {
       ...ATTEMPT_CONTEXT,
       userId: 'u1',
       questionPrompt: 'Повторите форму Ци-ши',
+      source: 'link' as const,
       url: 'https://vk.com/video-1',
     };
 

@@ -9,10 +9,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
-import { FILE_STORAGE_FAILED_MESSAGE, FILE_STORAGE_OFF_MESSAGE } from '@xuanxue/shared';
-import { errorMessage } from '../common/error-info';
-import { NotAvailableError } from '../common/errors';
 import { objectUrl, readR2Config, type R2Config } from './r2.config';
+import { requireR2Config, sendR2Request } from './r2-request';
 import { encodeRfc3986 } from './sigv4-canonical';
 import { presignGetUrl, signRequestHeaders } from './sigv4';
 
@@ -108,35 +106,17 @@ export class FileStoreService {
   }
 
   private requireConfig(): R2Config {
-    const config = readR2Config(this.config);
-    if (!config) throw new NotAvailableError(FILE_STORAGE_OFF_MESSAGE);
-    return config;
+    return requireR2Config(this.config);
   }
 
-  /** Один разбор ответа на оба меняющих запроса. Тело ответа R2 в лог не
-   * идёт: в нём повторяется ключ объекта, а рядом с ним в строке лога уже
-   * стоит всё, что нужно для поиска. */
+  /** Общий сетевой запрос — r2-request.ts (доля с MultipartStoreService,
+   * ADR-0137, jscpd-храповик). Тело ответа этому адаптеру не нужно. */
   private async send(
     method: string,
     url: string,
     init: { headers: Record<string, string>; body?: Buffer },
     timeoutMs: number,
   ): Promise<void> {
-    let res: Response;
-    try {
-      res = await fetch(url, {
-        method,
-        headers: init.headers,
-        body: init.body,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch (err) {
-      this.logger.error(`R2 ${method} не удался: ${errorMessage(err)}`);
-      throw new NotAvailableError(FILE_STORAGE_FAILED_MESSAGE);
-    }
-    if (!res.ok) {
-      this.logger.error(`R2 ответил ${res.status} на ${method}`);
-      throw new NotAvailableError(FILE_STORAGE_FAILED_MESSAGE);
-    }
+    await sendR2Request(this.logger, method, url, init, timeoutMs);
   }
 }

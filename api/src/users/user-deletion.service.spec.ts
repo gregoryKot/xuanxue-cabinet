@@ -3,6 +3,17 @@
 // мок модели пропустил бы саму механику $unset и фильтров.
 import { Types } from 'mongoose';
 import type { Model } from 'mongoose';
+import type { FileStoreService } from '../storage/file-store.service';
+import type { MultipartStoreService } from '../storage/multipart-store.service';
+import {
+  StorageOrphanRecord,
+  StorageOrphanSchema,
+} from '../storage/storage-orphan.schema';
+import { StorageOrphansService } from '../storage/storage-orphans.service';
+import {
+  AnswerVideoRecord,
+  AnswerVideoSchema,
+} from '../answer-videos/answer-video.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ChannelRecord } from '../channels/channel.schema';
 import { ClassRecord } from '../classes/class.schema';
@@ -22,11 +33,25 @@ function openService(memory: MemoryMongo): {
   users: UsersService;
   deletion: UserDeletionService;
   userModel: Model<UserRecord>;
+  abortMultipartUpload: jest.Mock;
+  removeFromR2: jest.Mock;
 } {
   const userModel = memory.connection.model<UserRecord>(UserRecord.name);
   const users = new UsersService(userModel);
-  const deletion = new UserDeletionService(memory.connection, users);
-  return { users, deletion, userModel };
+  const removeFromR2 = jest.fn().mockResolvedValue(undefined);
+  const fileStore = {
+    isEnabled: true,
+    remove: removeFromR2,
+  } as unknown as FileStoreService;
+  const orphanModel = memory.connection.model<StorageOrphanRecord>(
+    StorageOrphanRecord.name,
+    StorageOrphanSchema,
+  );
+  const orphans = new StorageOrphansService(orphanModel, fileStore);
+  const abortMultipartUpload = jest.fn().mockResolvedValue(undefined);
+  const multipart = { abortMultipartUpload } as unknown as MultipartStoreService;
+  const deletion = new UserDeletionService(memory.connection, users, multipart, orphans);
+  return { users, deletion, userModel, abortMultipartUpload, removeFromR2 };
 }
 
 describe('UserDeletionService', () => {
@@ -44,10 +69,18 @@ describe('UserDeletionService', () => {
   let notificationPrefsModel: Model<NotificationPrefsRecord>;
   let paymentModel: Model<PaymentRecord>;
   let screenshotModel: Model<PaymentScreenshotRecord>;
+  let answerVideoModel: Model<AnswerVideoRecord>;
+  let abortMultipartUpload: jest.Mock;
+  let removeFromR2: jest.Mock;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
-    ({ users, deletion, userModel } = openService(memory));
+    ({ users, deletion, userModel, abortMultipartUpload, removeFromR2 } =
+      openService(memory));
+    answerVideoModel = memory.connection.model<AnswerVideoRecord>(
+      AnswerVideoRecord.name,
+      AnswerVideoSchema,
+    );
     classModel = memory.connection.model<ClassRecord>(ClassRecord.name);
     lessonModel = memory.connection.model<LessonRecord>(LessonRecord.name);
     channelModel = memory.connection.model<ChannelRecord>(ChannelRecord.name);
@@ -81,7 +114,10 @@ describe('UserDeletionService', () => {
       notificationPrefsModel.deleteMany({}),
       paymentModel.deleteMany({}),
       screenshotModel.deleteMany({}),
+      answerVideoModel.deleteMany({}),
     ]);
+    abortMultipartUpload.mockClear();
+    removeFromR2.mockClear();
   });
 
   it('несуществующий id — NotFoundError', async () => {
@@ -455,5 +491,62 @@ describe('UserDeletionService', () => {
     await deletion.deleteAllUserData(teacher.id, 'админ');
 
     expect(await botSessionModel.findOne({ chatId: 5009 })).toBeNull();
+  });
+
+  // ADR-0137: answer_videos не в USER_OWNED_CASCADES (у него самого userId —
+  // прямое владение, USER_OWNED_COLLECTIONS), а в USER_OWNED_STORAGE_CASCADES:
+  // объект в R2 не документ Mongo, deleteMany до него не достаёт.
+  it('готовое видео-ответ ученика — байты уходят в R2 (fileStore.remove), документ удалён', async () => {
+    const student = await users.createFromTelegram({
+      telegramId: 5022,
+      name: 'Ученик с видео-ответом',
+      roles: [],
+      status: 'active',
+    });
+    await answerVideoModel.create({
+      userId: new Types.ObjectId(student.id),
+      attemptId: new Types.ObjectId(),
+      itemId: new Types.ObjectId(),
+      key: 'answer-videos/удаляемый',
+      sizeBytes: 100,
+      fingerprint: '100:1',
+      status: 'ready',
+    });
+
+    await deletion.deleteAllUserData(student.id, 'кто-то-другой');
+
+    expect(removeFromR2).toHaveBeenCalledWith(
+      'answer-videos/удаляемый',
+      expect.anything(),
+    );
+    expect(await answerVideoModel.countDocuments({ userId: student.id })).toBe(0);
+  });
+
+  it('незаконченная загрузка (uploadId есть) — abortMultipartUpload позван до удаления', async () => {
+    const student = await users.createFromTelegram({
+      telegramId: 5023,
+      name: 'Ученик с незаконченной загрузкой',
+      roles: [],
+      status: 'active',
+    });
+    await answerVideoModel.create({
+      userId: new Types.ObjectId(student.id),
+      attemptId: new Types.ObjectId(),
+      itemId: new Types.ObjectId(),
+      key: 'answer-videos/незаконченная',
+      uploadId: 'upload-abc',
+      sizeBytes: 100,
+      fingerprint: '100:1',
+      status: 'uploading',
+    });
+
+    await deletion.deleteAllUserData(student.id, 'кто-то-другой');
+
+    expect(abortMultipartUpload).toHaveBeenCalledWith(
+      'answer-videos/незаконченная',
+      'upload-abc',
+      expect.anything(),
+    );
+    expect(await answerVideoModel.countDocuments({ userId: student.id })).toBe(0);
   });
 });

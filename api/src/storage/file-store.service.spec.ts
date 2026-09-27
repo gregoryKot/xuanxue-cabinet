@@ -11,7 +11,7 @@ function fakeConfig(values: Record<string, string | undefined>): ConfigService {
 }
 
 function response(ok: boolean, status = 200): Response {
-  return { ok, status } as Response;
+  return { ok, status, text: () => Promise.resolve('') } as unknown as Response;
 }
 
 const CONFIGURED = {

@@ -21,6 +21,7 @@
 // подключается без правки конструктора этого сервиса.
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
+import { DateTime } from 'luxon';
 import type { Connection } from 'mongoose';
 import {
   LAST_ADMIN_MESSAGE,
@@ -29,6 +30,8 @@ import {
 } from '@xuanxue/shared';
 import { ForbiddenError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
+import { MultipartStoreService } from '../storage/multipart-store.service';
+import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { isLastAdmin, rollbackIfNoAdminLeft } from './last-admin';
 import {
@@ -37,6 +40,7 @@ import {
   USER_OWNED_COLLECTIONS,
   USER_REFERENCE_PATHS,
 } from './user-data.registry';
+import { removeUserOwnedStorage } from './user-deletion-storage-cascade';
 import type { UserRecord } from './user.schema';
 import { UsersService } from './users.service';
 
@@ -52,6 +56,8 @@ export class UserDeletionService {
   constructor(
     @InjectConnection() private readonly connection: Connection,
     private readonly usersService: UsersService,
+    private readonly multipart: MultipartStoreService,
+    private readonly orphans: StorageOrphansService,
   ) {}
 
   async deleteAllUserData(userId: string, currentUserId: string): Promise<void> {
@@ -86,6 +92,17 @@ export class UserDeletionService {
     // Счётчики по каждой части реестра — в лог идёт только userId и числа
     // (CLAUDE.md «Логи»: PII туда не попадает, ни имя, ни email, ни telegramId).
     const removed: Record<string, number> = {};
+
+    // Байты в R2 (ADR-0137) — ДО удаления документов владения: ключ и
+    // uploadId незаконченной загрузки читаются из документа, который вот-вот
+    // удалит USER_OWNED_COLLECTIONS ниже.
+    await removeUserOwnedStorage(
+      this.connection,
+      this.multipart,
+      this.orphans,
+      userId,
+      DateTime.utc(),
+    );
 
     // Каскады — ДО удаления самих документов владения: ссылки на байты
     // живут в них (`payments.screenshotImageId`, ADR-0050), и после

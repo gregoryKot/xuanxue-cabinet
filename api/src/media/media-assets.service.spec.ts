@@ -509,6 +509,7 @@ describe('MediaAssetsService', () => {
             // (карточка проверки, сводка бота, форма сдачи) —
             // комментарий в media-item-lookup.ts.
             questionPrompt: 'И ещё одну',
+            source: 'link',
             url: 'https://vk.com/video-1',
           },
           NOW,

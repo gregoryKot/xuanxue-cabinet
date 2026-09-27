@@ -39,6 +39,8 @@ export interface MediaAssetInsert {
   durationSec?: number;
   sizeBytes?: number;
   note?: string;
+  /** Только `kind: 'file'` (ADR-0137) — id записи `answer_videos`. */
+  answerVideoId?: string;
   receivedAt: DateTime;
 }
 
@@ -75,6 +77,9 @@ export async function insertMediaAsset(
       durationSec: data.durationSec,
       sizeBytes: data.sizeBytes,
       note: data.note,
+      answerVideoId: data.answerVideoId
+        ? new Types.ObjectId(data.answerVideoId)
+        : undefined,
       receivedAt: data.receivedAt.toJSDate(),
     },
     MEDIA_ASSET_ENCRYPT_SCHEMA,

@@ -108,6 +108,11 @@ import {
   EXAM_VIDEO_FIELD_POLICY,
 } from '../exam-videos/exam-video.schema';
 import {
+  AnswerVideoRecord,
+  AnswerVideoSchema,
+  ANSWER_VIDEO_FIELD_POLICY,
+} from '../answer-videos/answer-video.schema';
+import {
   GradingCommentPresetRecord,
   GradingCommentPresetSchema,
   GRADING_COMMENT_PRESET_FIELD_POLICY,
@@ -235,6 +240,11 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: ExamVideoRecord.name,
     schema: ExamVideoSchema,
     fieldPolicy: EXAM_VIDEO_FIELD_POLICY,
+  },
+  {
+    name: AnswerVideoRecord.name,
+    schema: AnswerVideoSchema,
+    fieldPolicy: ANSWER_VIDEO_FIELD_POLICY,
   },
   {
     name: GradingCommentPresetRecord.name,

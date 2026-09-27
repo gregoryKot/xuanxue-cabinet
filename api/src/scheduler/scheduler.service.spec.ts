@@ -1,6 +1,7 @@
 // Юнит-тест на фейках шагов (CLAUDE.md «Тесты»: детерминизм — без
 // setTimeout-ожиданий, свой resolve() вместо реальных часов).
 import { DateTime } from 'luxon';
+import type { AnswerVideoSweepService } from '../answer-videos/answer-video-sweep.service';
 import type { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import type { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
 import type { PreviewService } from '../broadcasts/preview.service';
@@ -32,6 +33,7 @@ function buildService(overrides: {
   removeVideoOrphans?: ExamVideoSweepService['removeOrphans'];
   removeExpiredScreenshots?: PaymentScreenshotSweepService['removeExpired'];
   sweepStorageOrphans?: StorageOrphansService['sweep'];
+  removeExpiredAnswerVideos?: AnswerVideoSweepService['removeExpired'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
 }): {
   service: SchedulerService;
@@ -70,6 +72,8 @@ function buildService(overrides: {
     jest.fn().mockResolvedValue({ removed: 0, orphans: 0 });
   const sweepStorageOrphans =
     overrides.sweepStorageOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
+  const removeExpiredAnswerVideos =
+    overrides.removeExpiredAnswerVideos ?? jest.fn().mockResolvedValue({ removed: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -99,6 +103,7 @@ function buildService(overrides: {
       removeExpired: removeExpiredScreenshots,
     } as unknown as PaymentScreenshotSweepService,
     { sweep: sweepStorageOrphans } as unknown as StorageOrphansService,
+    { removeExpired: removeExpiredAnswerVideos } as unknown as AnswerVideoSweepService,
     notifier,
     heartbeat,
   );
