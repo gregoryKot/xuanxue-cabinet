@@ -21,6 +21,7 @@ function stubField(overrides: Partial<ReturnType<typeof useExamVideoField>> = {}
   const setUrlDraft = vi.fn();
   mockedUseField.mockReturnValue({
     uploadPending: false,
+    uploadProgress: null,
     error: null,
     urlDraft: '',
     setUrlDraft,
@@ -125,6 +126,14 @@ describe('useVideoAttach — пусто, R2 подключён', () => {
     render(<Harness value={{}} fileStorageEnabled onChange={vi.fn()} />);
 
     expect(screen.getByLabelText('Видео вопроса')).toBeInTheDocument();
+  });
+
+  it('идёт загрузка — процент и просьба не закрывать страницу', () => {
+    stubField({ uploadPending: true, uploadProgress: 0.42 });
+    render(<Harness value={{}} fileStorageEnabled onChange={vi.fn()} />);
+
+    expect(screen.getByText('Загружаем… 42 %')).toBeInTheDocument();
+    expect(screen.getByText(/Не закрывайте страницу/)).toBeInTheDocument();
   });
 
   it('error загрузки — текст сбоя виден', () => {

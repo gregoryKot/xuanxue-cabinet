@@ -9,6 +9,7 @@
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
 import { Button } from '../components/Button';
+import { useLatest } from '../hooks/useLatest';
 import { RichText } from '../components/RichText';
 import { ExamItemOptionRow } from './ExamItemOptionRow';
 import { useOptionInputFocus } from './useOptionInputFocus';
@@ -56,6 +57,8 @@ export function ExamItemOptionsField({
   fileStorageEnabled,
   onChange,
 }: ExamItemOptionsFieldProps) {
+  // Загрузка медиа кончается позже, чем начата, — пишем в свежий список.
+  const live = useLatest(options);
   const canAddMore = options.length < EXAM_ITEM_LIMITS.optionsMax;
   const { registerInput, markFocusNext, focusIndex } = useOptionInputFocus(
     options.length,
@@ -84,7 +87,7 @@ export function ExamItemOptionsField({
   // Картинка снимает видео варианта — взаимоисключение (ADR-0133).
   function updateImage(index: number, imageId: string | undefined) {
     onChange(
-      options.map((option, i) =>
+      live.current.map((option, i) =>
         i === index
           ? { ...option, imageId, videoId: undefined, videoUrl: undefined }
           : option,
@@ -93,9 +96,8 @@ export function ExamItemOptionsField({
   }
 
   function updateVideo(index: number, video: ExamVideoValue) {
-    onChange(
-      options.map((o, i) => (i === index ? { ...o, imageId: undefined, ...video } : o)),
-    );
+    const next = { imageId: undefined, ...video };
+    onChange(live.current.map((o, i) => (i === index ? { ...o, ...next } : o)));
   }
 
   // single — отметка любого варианта снимает остальные (React держит

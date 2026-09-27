@@ -13,6 +13,7 @@ import { InlineFormFooter } from '../components/InlineFormFooter';
 import { noteStyle } from '../components/screenLayout';
 import { ExamItemFormFields } from '../exam-items/ExamItemFormFields';
 import { ExamItemKindField } from '../exam-items/ExamItemKindField';
+import { changeExamItemKind } from '../exam-items/examItemKindChange';
 import { ExamItemOptionsField } from '../exam-items/ExamItemOptionsField';
 import { hasOptions } from '../exam-items/examItemFormInput';
 import { useQuestionInlineForm } from './useQuestionInlineForm';
@@ -65,7 +66,9 @@ export function QuestionInlineForm({ item, onSaved, onCancel }: QuestionInlineFo
 
       <ExamItemKindField
         kind={form.state.kind}
-        onChange={item ? undefined : (kind) => form.setField('kind', kind)}
+        onChange={
+          item ? undefined : (kind) => changeExamItemKind(kind, form.state, form.setField)
+        }
       />
 
       <ExamItemFormFields

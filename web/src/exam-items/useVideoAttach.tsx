@@ -15,6 +15,7 @@ import type { AttachMenuItem } from '../components/AttachButton';
 import { ExamVideoPlayer } from '../components/ExamVideoPlayer';
 import { Field, inputStyle } from '../components/Field';
 import { TextLinkButton } from '../components/TextLinkButton';
+import { UploadProgress } from '../components/UploadProgress';
 import { dangerNoteStyle } from '../components/screenLayout';
 import { useExamVideoField } from './useExamVideoField';
 import type { ExamVideoValue } from './examVideoFormInput';
@@ -103,7 +104,9 @@ export function useVideoAttach(
   ) : null;
 
   let preview: ReactNode = null;
-  if (hasVideo) {
+  if (field.uploadPending) {
+    preview = <UploadProgress progress={field.uploadProgress} />;
+  } else if (hasVideo) {
     preview = (
       <div style={previewWrapStyle}>
         <ExamVideoPlayer

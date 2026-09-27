@@ -1029,6 +1029,18 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     expect(screen.getByLabelText('Найти вопрос — по тексту')).toBeInTheDocument();
   });
 
+  it('пустая формулировка — «Добавить в экзамен» не уходит на сервер, форма остаётся', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam({ blocks: [] }));
+
+    renderAt('/exams/x1');
+    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+    await user.click(await screen.findByRole('button', { name: 'Добавить в экзамен' }));
+
+    expect(lastCallWithMethod('POST')).toHaveLength(0);
+    expect(screen.getByLabelText('Формулировка')).toBeInTheDocument();
+  });
+
   it('«Отменить» закрывает форму без запроса — поиск вопросов снова на месте', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam({ blocks: [] }));
@@ -1059,8 +1071,8 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
     await user.click(await screen.findByLabelText('Один правильный вариант'));
     await user.type(screen.getByLabelText('Формулировка'), 'Сколько форм?');
-    await user.click(screen.getByRole('button', { name: 'Добавить вариант' }));
-    await user.click(screen.getByRole('button', { name: 'Добавить вариант' }));
+    // Переключатель типа сразу заводит EXAM_ITEM_LIMITS.optionsMin пустых
+    // вариантов (отзыв владельца с телефона) — «Добавить вариант» тут не нужен.
     await user.type(screen.getByLabelText('Текст варианта 1'), '24');
     await user.type(screen.getByLabelText('Текст варианта 2'), '108');
     await user.click(screen.getByLabelText('Верный вариант 1'));

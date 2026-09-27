@@ -432,4 +432,30 @@ describe('NotificationsScreen — «Убрать» (SwipeRow, DELETE /me/inbox/:
     ).length;
     expect(feedCallsAfter).toBe(feedCallsBefore);
   });
+
+  // Рубрики — два разных вызова NotificationGroup со своими обработчиками:
+  // «Убрать» у строки из «Раньше» проверяется отдельно (без этого теста
+  // обработчик второй рубрики оставался непокрытым, храповик функций web).
+  it('«Убрать» у строки из «Раньше» тоже шлёт DELETE по её адресу', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: {
+        items: [makeNotification({ id: 'n9', createdAt: '2026-09-10T09:00:00.000Z' })],
+        unreadCount: 1,
+      },
+    });
+
+    const dismissButton = await screen.findByRole('button', { name: /^Убрать/ });
+    mockApiByPath({
+      [notificationItemPath('n9')]: { items: [], unreadCount: 0 },
+    });
+    await user.click(dismissButton);
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        notificationItemPath('n9'),
+        expect.objectContaining({ method: 'DELETE' }),
+      ),
+    );
+  });
 });

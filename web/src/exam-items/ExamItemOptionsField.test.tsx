@@ -25,6 +25,7 @@ vi.mock('./useExamVideoField');
 const mockedUseVideoField = vi.mocked(useExamVideoField);
 mockedUseVideoField.mockImplementation(() => ({
   uploadPending: false,
+  uploadProgress: null,
   error: null,
   urlDraft: '',
   setUrlDraft: vi.fn(),

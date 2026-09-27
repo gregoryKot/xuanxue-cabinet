@@ -9,7 +9,7 @@ import {
 import { isHttpsUrl } from '../lib/httpsUrl';
 
 /** Видео вопроса/варианта — файл в R2 (`videoId`) или ссылка (`videoUrl`),
- * не оба разом (ADR-0133); ни одного — пусто. Общий тип для ExamVideoField
+ * не оба разом (ADR-0133); ни одного — пусто. Общий тип для useVideoAttach
  * (CLAUDE.md «Одна механика — один компонент»): и вопрос, и вариант несут
  * одну и ту же пару полей. */
 export interface ExamVideoValue {
