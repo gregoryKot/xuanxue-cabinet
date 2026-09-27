@@ -15,15 +15,16 @@ import {
   Inject,
   Optional,
 } from '@nestjs/common';
-import { DateTime } from 'luxon';
 import { Logger } from 'nestjs-pino';
 import type { ApiErrorBody } from '@xuanxue/shared';
 import { APP_ERROR_ALERTS, type AppErrorAlerts } from './app-error-alerts';
+import { APP_ERROR_JOURNAL, type AppErrorJournal } from './app-error-journal';
+import { reportUnknownError } from './unknown-error-report';
 import { fromBodyParserError, isBodyParserError } from './body-parser-error.mapper';
 import { errorMessage, errorStack } from './error-info';
 import { DomainError } from './errors';
 import { fromHttpException } from './http-exception.mapper';
-import { pathWithoutQuery, requestIdOf, type RequestLike } from './request-info';
+import { requestIdOf, type RequestLike } from './request-info';
 
 const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз через минуту.';
 
@@ -46,6 +47,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
     @Optional()
     @Inject(APP_ERROR_ALERTS)
     private readonly appErrorAlerts?: AppErrorAlerts,
+    // @Optional(): та же причина, что у appErrorAlerts выше — без
+    // AppErrorsModule (юнит-тесты фильтра) поведение не меняется.
+    @Optional()
+    @Inject(APP_ERROR_JOURNAL)
+    private readonly appErrorJournal?: AppErrorJournal,
   ) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -59,7 +65,14 @@ export class DomainExceptionFilter implements ExceptionFilter {
     // распознать ошибку (не DomainError, не HttpException, не entity.too.large)
     // — остальные коды сюда не приходят, отдельного флага не нужно.
     if (body.code === 'internal_error') {
-      this.notifyAppError(request, requestId, exception);
+      reportUnknownError(
+        {
+          logger: this.logger,
+          alerts: this.appErrorAlerts,
+          journal: this.appErrorJournal,
+        },
+        { request, requestId, exception },
+      );
     }
     response.status(body.statusCode).json(body);
   }
@@ -100,27 +113,5 @@ export class DomainExceptionFilter implements ExceptionFilter {
       message: GENERIC_MESSAGE,
       requestId,
     };
-  }
-
-  /** Не должна задерживать или ломать ответ пользователю (CLAUDE.md
-   * «Ошибки»): зовём без await ответа клиенту, отказ порта ловим сами и
-   * пишем в лог, не бросаем дальше. */
-  private notifyAppError(
-    request: RequestLike,
-    requestId: string | undefined,
-    exception: unknown,
-  ): void {
-    if (!this.appErrorAlerts) return;
-    const method = typeof request.method === 'string' ? request.method : '-';
-    const url = typeof request.url === 'string' ? request.url : undefined;
-    const path = url === undefined ? '-' : pathWithoutQuery(url);
-    const context = { requestId, method, path, message: errorMessage(exception) };
-    this.appErrorAlerts
-      .notifyServerError(context, DateTime.utc())
-      .catch((err: unknown) => {
-        this.logger.error(
-          `app_error alert: не удалось уведомить админа (requestId=${requestId ?? '-'}): ${errorMessage(err)}`,
-        );
-      });
   }
 }

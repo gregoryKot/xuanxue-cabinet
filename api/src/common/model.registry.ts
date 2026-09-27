@@ -127,6 +127,11 @@ import {
   PushSubscriptionSchema,
   PUSH_SUBSCRIPTION_FIELD_POLICY,
 } from '../push/push-subscription.schema';
+import {
+  AppErrorRecord,
+  AppErrorSchema,
+  APP_ERROR_FIELD_POLICY,
+} from '../app-errors/app-error.schema';
 import type { FieldPolicy } from './field-policy';
 
 interface ModelDefinition {
@@ -250,5 +255,10 @@ export const MODEL_DEFINITIONS: readonly ModelDefinition[] = [
     name: PushSubscriptionRecord.name,
     schema: PushSubscriptionSchema,
     fieldPolicy: PUSH_SUBSCRIPTION_FIELD_POLICY,
+  },
+  {
+    name: AppErrorRecord.name,
+    schema: AppErrorSchema,
+    fieldPolicy: APP_ERROR_FIELD_POLICY,
   },
 ];

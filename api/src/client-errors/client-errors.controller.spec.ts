@@ -8,9 +8,15 @@ import type { ClientErrorsService } from './client-errors.service';
 
 function buildController(): {
   controller: ClientErrorsController;
-  report: jest.Mock<void, [ReportClientErrorInput, string | undefined]>;
+  report: jest.Mock<
+    void,
+    [ReportClientErrorInput, string | undefined, string | undefined]
+  >;
 } {
-  const report = jest.fn<void, [ReportClientErrorInput, string | undefined]>();
+  const report = jest.fn<
+    void,
+    [ReportClientErrorInput, string | undefined, string | undefined]
+  >();
   const controller = new ClientErrorsController({
     report,
   } as unknown as ClientErrorsService);
@@ -24,22 +30,22 @@ const BODY: ReportClientErrorInput = {
 };
 
 describe('ClientErrorsController', () => {
-  it('отдаёт тело сервису вместе с кодом обращения из запроса', () => {
+  it('отдаёт тело сервису вместе с кодом обращения и User-Agent из запроса', () => {
     const { controller, report } = buildController();
 
-    controller.report(BODY, { id: 'req-1' });
+    controller.report(BODY, { id: 'req-1', headers: { 'user-agent': 'Mozilla/5.0' } });
 
-    expect(report).toHaveBeenCalledWith(BODY, 'req-1');
+    expect(report).toHaveBeenCalledWith(BODY, 'req-1', 'Mozilla/5.0');
   });
 
   // Код обращения пишет pino-http (logging.module.ts) и он есть всегда, но
   // контроллер не имеет права выдумать строку «undefined» вместо него, если
   // однажды не будет: по такому «коду» в логах Railway ничего не найдётся.
-  it('нет кода обращения — сервис получает undefined, не строку', () => {
+  it('нет кода обращения и User-Agent — сервис получает undefined, не строку', () => {
     const { controller, report } = buildController();
 
     controller.report(BODY, {});
 
-    expect(report).toHaveBeenCalledWith(BODY, undefined);
+    expect(report).toHaveBeenCalledWith(BODY, undefined, undefined);
   });
 });
