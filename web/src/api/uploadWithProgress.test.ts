@@ -149,6 +149,56 @@ describe('uploadWithProgress — ошибки бэкенда (общий раз�
     expect(error.message).toBe('Видео больше 50 МБ.');
   });
 
+  it('конверт без полей — запасные текст, статус ответа и код unknown', async () => {
+    const latest = stubXhr();
+
+    const errorPromise = expectApiError(
+      uploadWithProgress('/exam-videos', { body: new Blob([]) }),
+    );
+    latest().respond(502, {});
+    const error = await errorPromise;
+
+    expect(error.status).toBe(502);
+    expect(error.code).toBe('unknown');
+    expect(error.message).toBeTruthy();
+  });
+
+  it('2xx с телом не-JSON — ApiError с кодом unknown, а не падение разбора', async () => {
+    const latest = stubXhr();
+
+    const errorPromise = expectApiError(
+      uploadWithProgress('/exam-videos', { body: new Blob([]) }),
+    );
+    latest().respond(200, '<html>');
+    const error = await errorPromise;
+
+    expect(error.code).toBe('unknown');
+  });
+
+  it('тип файла уходит в content-type как есть', () => {
+    const latest = stubXhr();
+
+    void uploadWithProgress('/exam-videos', {
+      body: new Blob(['x'], { type: 'video/mp4' }),
+    });
+
+    expect(latest().headers['content-type']).toBe('video/mp4');
+  });
+
+  it('событие без известного размера — сбрасывает таймер, но долю не сообщает', () => {
+    const latest = stubXhr();
+    const onProgress = vi.fn();
+
+    void uploadWithProgress('/exam-videos', { body: new Blob([]), onProgress });
+    latest().upload.onprogress?.({
+      lengthComputable: false,
+      loaded: 5,
+      total: 0,
+    } as ProgressEvent);
+
+    expect(onProgress).not.toHaveBeenCalled();
+  });
+
   it('401 будит unauthorizedListener — тот же слушатель, что у apiFetch', async () => {
     const latest = stubXhr();
     const listener = vi.fn();

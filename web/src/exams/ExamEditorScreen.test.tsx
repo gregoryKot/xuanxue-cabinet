@@ -915,6 +915,18 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     expect(screen.getByLabelText('Найти вопрос — по тексту')).toBeInTheDocument();
   });
 
+  it('пустая формулировка — «Сохранить вопрос» не уходит на сервер, форма остаётся', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam({ blocks: [] }));
+
+    renderAt('/exams/x1');
+    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+    await user.click(await screen.findByRole('button', { name: 'Сохранить вопрос' }));
+
+    expect(lastCallWithMethod('POST')).toHaveLength(0);
+    expect(screen.getByLabelText('Формулировка')).toBeInTheDocument();
+  });
+
   it('«Отменить» закрывает форму без запроса — поиск вопросов снова на месте', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam({ blocks: [] }));
