@@ -11,7 +11,10 @@ import type { ApiErrorBody, MaterialDto, MyMaterialDto } from '@xuanxue/shared';
 import {
   MATERIAL_FILE_DOCX_CONTENT_TYPE,
   MATERIAL_FILE_EMPTY_MESSAGE,
+  MATERIAL_FILE_EPUB_CONTENT_TYPE,
   MATERIAL_FILE_NOT_FOUND_MESSAGE,
+  MATERIAL_FILE_RTF_ALT_CONTENT_TYPE,
+  MATERIAL_FILE_RTF_CONTENT_TYPE,
   MATERIAL_FILE_UNSUPPORTED_MESSAGE,
 } from '@xuanxue/shared';
 import { PLAIN_ZIP_BYTES } from '../src/common/zip-fixture.test-support';
@@ -23,10 +26,14 @@ import {
   createMaterialFileRequests,
   DOCX_BYTES,
   DOCX_FILE_NAME,
+  EPUB_BYTES,
+  EPUB_FILE_NAME,
   FILE_NAME,
   OPEN_MATERIAL,
   STAFF_MATERIAL,
   PDF_BYTES,
+  RTF_BYTES,
+  RTF_FILE_NAME,
   type MaterialFileRequests,
 } from './e2e-support/material-files-fixtures';
 
@@ -207,6 +214,92 @@ describe('Файлы материалов (e2e, ADR-0057)', () => {
       expect(res.status).toBe(400);
       expect((res.body as ApiErrorBody).message).toBe(MATERIAL_FILE_UNSUPPORTED_MESSAGE);
       expect(store.objects.size).toBe(0);
+    });
+
+    // EPUB — второй формат, у которого сигнатуры первых байт мало: тоже ZIP,
+    // проверка живёт в записях `mimetype` и `META-INF/container.xml`
+    // (ADR-0080, дополнение 2026-09-27).
+    it('.epub загружается — формат узнан по записям ZIP-контейнера', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const created = await api.postMaterial(cookie, OPEN_MATERIAL);
+      const id = (created.body as MaterialDto).id;
+
+      const res = await api.uploadFile(
+        cookie,
+        id,
+        EPUB_BYTES,
+        MATERIAL_FILE_EPUB_CONTENT_TYPE,
+        EPUB_FILE_NAME,
+      );
+
+      expect(res.status).toBe(200);
+      expect((res.body as MaterialDto).file).toMatchObject({
+        name: EPUB_FILE_NAME,
+        contentType: MATERIAL_FILE_EPUB_CONTENT_TYPE,
+        sizeBytes: EPUB_BYTES.length,
+      });
+      expect(store.objects.size).toBe(1);
+    });
+
+    it('ZIP под видом EPUB — отказ: заголовку не верим, решает содержимое', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const created = await api.postMaterial(cookie, OPEN_MATERIAL);
+      const id = (created.body as MaterialDto).id;
+
+      const res = await api.uploadFile(
+        cookie,
+        id,
+        PLAIN_ZIP_BYTES,
+        MATERIAL_FILE_EPUB_CONTENT_TYPE,
+        EPUB_FILE_NAME,
+      );
+
+      expect(res.status).toBe(400);
+      expect((res.body as ApiErrorBody).message).toBe(MATERIAL_FILE_UNSUPPORTED_MESSAGE);
+      expect(store.objects.size).toBe(0);
+    });
+
+    it('.rtf загружается — формат узнан по сигнатуре {\\rtf1', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const created = await api.postMaterial(cookie, OPEN_MATERIAL);
+      const id = (created.body as MaterialDto).id;
+
+      const res = await api.uploadFile(
+        cookie,
+        id,
+        RTF_BYTES,
+        MATERIAL_FILE_RTF_CONTENT_TYPE,
+        RTF_FILE_NAME,
+      );
+
+      expect(res.status).toBe(200);
+      expect((res.body as MaterialDto).file).toMatchObject({
+        name: RTF_FILE_NAME,
+        contentType: MATERIAL_FILE_RTF_CONTENT_TYPE,
+        sizeBytes: RTF_BYTES.length,
+      });
+    });
+
+    // macOS отдаёт RTF с заголовком `text/rtf`, не зарегистрированным в IANA
+    // `application/rtf`, — оба заголовка включают загрузку, но в базе всегда
+    // только один канонический тип (shared/src/material-files.ts).
+    it('.rtf с заголовком text/rtf (macOS) — тоже загружается, тип в ответе один', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const created = await api.postMaterial(cookie, OPEN_MATERIAL);
+      const id = (created.body as MaterialDto).id;
+
+      const res = await api.uploadFile(
+        cookie,
+        id,
+        RTF_BYTES,
+        MATERIAL_FILE_RTF_ALT_CONTENT_TYPE,
+        RTF_FILE_NAME,
+      );
+
+      expect(res.status).toBe(200);
+      expect((res.body as MaterialDto).file?.contentType).toBe(
+        MATERIAL_FILE_RTF_CONTENT_TYPE,
+      );
     });
 
     it('пустое тело — 400 про пустой файл', async () => {
