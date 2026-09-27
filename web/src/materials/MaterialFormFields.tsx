@@ -23,6 +23,9 @@ interface MaterialFormFieldsProps {
   ) => void;
   error: MaterialFormError | null;
   classes: ClassDto[];
+  /** Прокинуто в MaterialBasicFields.tsx как есть (ADR-0134) — знание «когда
+   * ссылка необязательна, скажи об этом» держит один файл, не двоится. */
+  urlOptional?: boolean;
 }
 
 export function MaterialFormFields({
@@ -30,6 +33,7 @@ export function MaterialFormFields({
   setField,
   error,
   classes,
+  urlOptional,
 }: MaterialFormFieldsProps) {
   // Сбой useTagOptions.ts просто оставляет список пустым — без подсказок,
   // но поле работает как обычный текстовый ввод.
@@ -37,7 +41,12 @@ export function MaterialFormFields({
 
   return (
     <>
-      <MaterialBasicFields state={state} setField={setField} error={error} />
+      <MaterialBasicFields
+        state={state}
+        setField={setField}
+        error={error}
+        urlOptional={urlOptional}
+      />
 
       <MaterialClassesField
         classes={classes}

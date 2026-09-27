@@ -12,22 +12,34 @@ import { entityPath } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from './useAbortableFetch';
 
-export interface UseEntityEditorResult<TDto, TCreateInput, TUpdateInput> {
+export interface UseEntityEditorResult<
+  TDto,
+  TCreateInput,
+  TUpdateInput,
+  // `void` по умолчанию — у существующих потребителей (канал, экзамен,
+  // вопрос, занятие расписания, занятие) create() результат не читает, и его
+  // тип менять незачем. Материалу (ADR-0134) нужна созданная запись сразу —
+  // её id строит ключ объекта в R2 для следующего запроса (файл), — поэтому
+  // useMaterialEditor.ts единственный передаёт четвёртым параметром `TDto`.
+  // Домен без явного четвёртого параметра не заметит этой возможности вовсе:
+  // тип и рантайм-поведение create() у него не меняются.
+  TCreateResult = void,
+> {
   /** `null` — новая запись, её ещё нет на сервере. */
   entity: TDto | null;
   loading: boolean;
   error: string | null;
   reload: () => Promise<void>;
-  create: (input: TCreateInput) => Promise<void>;
+  create: (input: TCreateInput) => Promise<TCreateResult>;
   update: (id: string, input: TUpdateInput) => Promise<void>;
   remove: (id: string) => Promise<void>;
 }
 
-export function useEntityEditor<TDto, TCreateInput, TUpdateInput>(
+export function useEntityEditor<TDto, TCreateInput, TUpdateInput, TCreateResult = void>(
   collectionPath: string,
   id: string | undefined,
   loadErrorMessage: string,
-): UseEntityEditorResult<TDto, TCreateInput, TUpdateInput> {
+): UseEntityEditorResult<TDto, TCreateInput, TUpdateInput, TCreateResult> {
   // Путь считаем в рендере, а не внутри колбэка: у новой записи колбэк не
   // вызывается вовсе, и ветка «идентификатора нет» осталась бы непроверенной.
   const path = id === undefined ? '' : entityPath(collectionPath, id);
@@ -37,12 +49,13 @@ export function useEntityEditor<TDto, TCreateInput, TUpdateInput>(
     { enabled: id !== undefined },
   );
 
-  // Перечитывать запись после сохранения незачем: страница уходит на список,
-  // и свежий ответ придёт туда — здесь его некому показать.
+  // Перечитывать запись после сохранения отдельным GET незачем: страница
+  // уходит на список, а домену, которому свежая запись нужна тут же
+  // (материал, ADR-0134, `TCreateResult` явно задан `TDto`), её приносит сам
+  // ответ POST — `apiFetch<TCreateResult>`, не отдельный `reload()`.
   const create = useCallback(
-    async (input: TCreateInput) => {
-      await apiFetch(collectionPath, { method: 'POST', body: input });
-    },
+    (input: TCreateInput) =>
+      apiFetch<TCreateResult>(collectionPath, { method: 'POST', body: input }),
     [collectionPath],
   );
 
