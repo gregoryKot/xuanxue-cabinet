@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { AttemptReviewBlockDto } from '@xuanxue/shared';
-import { formatAttemptAnswersSummary } from './attemptReviewAnswersMeta';
+import {
+  formatAttemptAnswersSummary,
+  orderManualFirst,
+} from './attemptReviewAnswersMeta';
 
 function block(overrides: Partial<AttemptReviewBlockDto> = {}): AttemptReviewBlockDto {
   return { id: 'b1', title: '', questions: [], ...overrides };
@@ -13,25 +16,35 @@ const TEXT_QUESTION = {
   options: [],
   answered: true,
 };
-const OPTIONS_QUESTION = {
+const CORRECT_QUESTION = {
   itemId: 'q2',
   kind: 'single' as const,
   prompt: 'Сколько стоек в форме?',
   options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+  optionsCheck: {
+    correctSelectedCount: 1,
+    correctTotalCount: 1,
+    incorrectSelectedCount: 0,
+  },
   answered: true,
 };
-const UNANSWERED_TEXT_QUESTION = {
-  ...TEXT_QUESTION,
+const WRONG_QUESTION = {
+  ...CORRECT_QUESTION,
   itemId: 'q3',
-  answered: false,
+  optionsCheck: {
+    correctSelectedCount: 1,
+    correctTotalCount: 1,
+    incorrectSelectedCount: 1,
+  },
 };
 const UNANSWERED_OPTIONS_QUESTION = {
-  ...OPTIONS_QUESTION,
   itemId: 'q4',
+  kind: 'single' as const,
+  prompt: 'Сколько стоек в форме?',
   options: [{ id: 'o1', text: 'Три', correct: true, selected: false }],
   answered: false,
 };
-const UNANSWERED_VIDEO_QUESTION = {
+const VIDEO_QUESTION = {
   itemId: 'q5',
   kind: 'video' as const,
   prompt: 'Снимите стойку',
@@ -51,67 +64,46 @@ describe('formatAttemptAnswersSummary — пустая попытка', () => {
   });
 });
 
-describe('formatAttemptAnswersSummary — смешанные вопросы', () => {
-  it('и автопроверка, и ручная — оба числа в строке', () => {
+// Отзыв владельца 2026-09-27: вместо «15 проверила машина, 1 — вы» — сколько
+// верных среди вопросов с вариантами и сколько проверить учителю.
+describe('formatAttemptAnswersSummary — верные и ручные', () => {
+  it('смешанная попытка — верные из вопросов с вариантами и сколько проверить', () => {
     const blocks = [
-      block({ questions: [TEXT_QUESTION, OPTIONS_QUESTION, OPTIONS_QUESTION] }),
+      block({ questions: [TEXT_QUESTION, CORRECT_QUESTION, WRONG_QUESTION] }),
+      block({ id: 'b2', questions: [VIDEO_QUESTION, CORRECT_QUESTION] }),
     ];
-    expect(formatAttemptAnswersSummary(blocks)).toBe(
-      '3 вопроса · 2 проверила машина, 1 — вы',
-    );
+    expect(formatAttemptAnswersSummary(blocks)).toBe('Верно 2 из 3 · проверить 2');
   });
 
-  it('вопросы из разных блоков считаются вместе', () => {
+  it('вопрос с вариантами без ответа — не верный, но в знаменателе', () => {
     const blocks = [
-      block({ id: 'b1', questions: [TEXT_QUESTION] }),
-      block({ id: 'b2', questions: [OPTIONS_QUESTION] }),
+      block({ questions: [CORRECT_QUESTION, UNANSWERED_OPTIONS_QUESTION] }),
     ];
-    expect(formatAttemptAnswersSummary(blocks)).toBe(
-      '2 вопроса · 1 проверила машина, 1 — вы',
-    );
+    expect(formatAttemptAnswersSummary(blocks)).toBe('Верно 1 из 2');
   });
 
-  it('все вопросы только с автопроверкой', () => {
-    const blocks = [block({ questions: [OPTIONS_QUESTION, OPTIONS_QUESTION] })];
-    expect(formatAttemptAnswersSummary(blocks)).toBe('2 вопроса · все проверила машина');
-  });
-
-  it('все вопросы только ручные', () => {
-    const blocks = [block({ questions: [TEXT_QUESTION, TEXT_QUESTION, TEXT_QUESTION] })];
-    expect(formatAttemptAnswersSummary(blocks)).toBe('3 вопроса · все проверяете вы');
+  it('только ручные вопросы — одно число «проверить»', () => {
+    const blocks = [block({ questions: [TEXT_QUESTION, VIDEO_QUESTION] })];
+    expect(formatAttemptAnswersSummary(blocks)).toBe('Проверить 2');
   });
 });
 
-// Отзыв владельца 2026-09-21: учитель должен видеть по факту, сколько не
-// отвечено, не вычислять это из карточек вопросов ниже.
-describe('formatAttemptAnswersSummary — без ответа', () => {
-  it('есть неотвеченные — сегмент вторым по счёту, перед «кто проверяет»', () => {
+describe('orderManualFirst', () => {
+  it('внутри блока ручные вопросы первыми, порядок групп как в снимке', () => {
     const blocks = [
       block({
-        questions: [
-          OPTIONS_QUESTION,
-          UNANSWERED_OPTIONS_QUESTION,
-          UNANSWERED_TEXT_QUESTION,
-        ],
+        questions: [CORRECT_QUESTION, TEXT_QUESTION, WRONG_QUESTION, VIDEO_QUESTION],
       }),
     ];
-
-    expect(formatAttemptAnswersSummary(blocks)).toBe(
-      '3 вопроса · 2 без ответа · 2 проверила машина, 1 — вы',
-    );
+    const ids = orderManualFirst(blocks)[0]?.questions.map((q) => q.itemId);
+    expect(ids).toEqual(['q1', 'q5', 'q2', 'q3']);
   });
 
-  it('все вопросы отвечены — сегмента «без ответа» нет вовсе, строка как раньше', () => {
-    const blocks = [block({ questions: [TEXT_QUESTION, OPTIONS_QUESTION] })];
-
-    expect(formatAttemptAnswersSummary(blocks)).toBe(
-      '2 вопроса · 1 проверила машина, 1 — вы',
-    );
-  });
-
-  it('неотвеченный вопрос — только видео — сегмента нет: answered видео ничего не значит (ADR-0037)', () => {
-    const blocks = [block({ questions: [TEXT_QUESTION, UNANSWERED_VIDEO_QUESTION] })];
-
-    expect(formatAttemptAnswersSummary(blocks)).toBe('2 вопроса · все проверяете вы');
+  it('блок с ручными вопросами встаёт раньше блока без них', () => {
+    const blocks = [
+      block({ id: 'auto', questions: [CORRECT_QUESTION] }),
+      block({ id: 'manual', questions: [TEXT_QUESTION] }),
+    ];
+    expect(orderManualFirst(blocks).map((b) => b.id)).toEqual(['manual', 'auto']);
   });
 });

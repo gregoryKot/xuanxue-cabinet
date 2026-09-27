@@ -42,9 +42,7 @@ describe('AttemptReviewAnswers', () => {
     expect(screen.getByRole('heading', { name: 'Ответы' })).toBeInTheDocument();
     // Вопрос фикстуры без ответа — счётчик честно говорит об этом
     // (отзыв владельца 2026-09-21).
-    expect(
-      screen.getByText('1 вопрос · 1 без ответа · все проверяете вы'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Проверить 1')).toBeInTheDocument();
     expect(screen.getByText(/Опишите дыхание/)).toBeInTheDocument();
     // Блок без видео-вопросов и без «бесхозного» видео — блока «Видео» нет
     // вовсе (он переехал внутрь карточки видео-вопроса, ADR-0037).

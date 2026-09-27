@@ -1,6 +1,6 @@
 // Левая колонка разбора попытки (Review.dc.html) — заголовок «Ответы» со
-// счётчиком вопросов (attemptReviewAnswersMeta.ts) и блоки вопросов по
-// порядку снимка попытки; видео каждого видео-вопроса теперь у самого
+// счётчиком вопросов (attemptReviewAnswersMeta.ts) и блоки вопросов —
+// ручные первыми (там же); видео каждого видео-вопроса теперь у самого
 // вопроса (AttemptReviewQuestion.tsx, ADR-0037), общего блока на попытку
 // здесь больше нет — иначе на карточке была бы одна запись дважды. Вынесена
 // из AttemptReviewScreen.tsx, чтобы экран не разросся выше файлового лимита
@@ -15,7 +15,10 @@ import type { AttemptReviewBlockDto } from '@xuanxue/shared';
 import { screenColumnTitleStyle } from '../components/screenLayout';
 import { AttemptReviewBlock } from './AttemptReviewBlock';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
-import { formatAttemptAnswersSummary } from './attemptReviewAnswersMeta';
+import {
+  formatAttemptAnswersSummary,
+  orderManualFirst,
+} from './attemptReviewAnswersMeta';
 import { attemptReviewMediaByQuestion } from './attemptReviewMediaByQuestion';
 import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
 
@@ -65,7 +68,7 @@ export function AttemptReviewAnswers({ blocks, video }: AttemptReviewAnswersProp
       )}
 
       <div style={listStyle}>
-        {blocks.map((block) => (
+        {orderManualFirst(blocks).map((block) => (
           <AttemptReviewBlock
             key={block.id}
             block={block}
