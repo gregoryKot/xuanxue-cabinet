@@ -1,10 +1,11 @@
-// Юнит без Mongo и без DI (CLAUDE.md «Тесты»): порт — простая типизированная
-// заглушка, не jest.fn() (тот же приём, что buildAppErrorAlerts в
+// Юнит без Mongo и без DI (CLAUDE.md «Тесты»): порты — простые типизированные
+// заглушки, не jest.fn() (тот же приём, что buildAppErrorAlerts в
 // domain-exception.filter.spec.ts); Logger.prototype.error — jest.spyOn
 // (тот же приём, что telegram-app-error-alerts.spec.ts).
 import { Logger } from '@nestjs/common';
 import { CLIENT_ERROR_LIMITS, type ReportClientErrorInput } from '@xuanxue/shared';
 import type { AppErrorAlerts, ClientErrorAlertContext } from '../common/app-error-alerts';
+import type { AppErrorJournal, AppErrorJournalEntry } from '../common/app-error-journal';
 import { ClientErrorsService } from './client-errors.service';
 
 function fakeAlerts(rejectWith?: Error): {
@@ -20,6 +21,18 @@ function fakeAlerts(rejectWith?: Error): {
   // только чтобы удовлетворить интерфейс AppErrorAlerts целиком.
   const notifyServerError = (): Promise<void> => Promise.resolve();
   return { alerts: { notifyServerError, notifyClientError }, calls };
+}
+
+function fakeJournal(rejectWith?: Error): {
+  journal: AppErrorJournal;
+  calls: AppErrorJournalEntry[];
+} {
+  const calls: AppErrorJournalEntry[] = [];
+  const record = (entry: AppErrorJournalEntry): Promise<void> => {
+    calls.push(entry);
+    return rejectWith ? Promise.reject(rejectWith) : Promise.resolve();
+  };
+  return { journal: { record }, calls };
 }
 
 function input(overrides: Partial<ReportClientErrorInput> = {}): ReportClientErrorInput {
@@ -171,6 +184,76 @@ describe('ClientErrorsService.report', () => {
 
     expect(String(error.mock.calls[1]?.[0])).toContain('requestId=-');
     expect(String(error.mock.calls[1]?.[0])).not.toContain('undefined');
+    error.mockRestore();
+  });
+});
+
+// Журнал сбоев (ADR-0132) — пишет ВСЕ виды, включая 'chunk' (в отличие от
+// алёрта в Telegram, который на 'chunk' молчит, SILENT_KINDS выше).
+describe('ClientErrorsService.report — журнал сбоев (AppErrorJournal)', () => {
+  it("kind: 'chunk' — тоже пишется в журнал, хотя алёрт в Telegram на него не уходит", () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { alerts, calls: alertCalls } = fakeAlerts();
+    const { journal, calls } = fakeJournal();
+    const service = new ClientErrorsService(alerts, journal);
+
+    service.report(input({ kind: 'chunk' }), 'req-9', 'Mozilla/5.0');
+
+    expect(alertCalls).toHaveLength(0);
+    expect(calls).toEqual([
+      {
+        requestId: 'req-9',
+        source: 'browser',
+        kind: 'chunk',
+        path: '/exams',
+        text: 'TypeError: x is undefined',
+        userAgent: 'Mozilla/5.0',
+      },
+    ]);
+    error.mockRestore();
+  });
+
+  it('query из path вырезан в журнале, тем же путём, что в логе и в алёрте', () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { alerts } = fakeAlerts();
+    const { journal, calls } = fakeJournal();
+    const service = new ClientErrorsService(alerts, journal);
+
+    service.report(input({ path: '/exams?token=secret' }), 'req-10');
+
+    expect(calls[0]?.path).toBe('/exams');
+    error.mockRestore();
+  });
+
+  it('журнал отверг промис — исключение не улетает наружу, в логе есть строка об этом', async () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { alerts } = fakeAlerts();
+    const { journal } = fakeJournal(new Error('mongo недоступна'));
+    const service = new ClientErrorsService(alerts, journal);
+
+    expect(() => service.report(input(), 'req-11')).not.toThrow();
+    await Promise.resolve();
+
+    expect(
+      error.mock.calls.some((call) => String(call[0]).includes('app_error journal')),
+    ).toBe(true);
+    error.mockRestore();
+  });
+
+  it('журнала нет (@Optional() ничего не внедрил) — не падает', () => {
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const { alerts } = fakeAlerts();
+    const service = new ClientErrorsService(alerts);
+
+    expect(() => service.report(input(), 'req-12')).not.toThrow();
     error.mockRestore();
   });
 });
