@@ -16,6 +16,13 @@ import { API_TIMEOUT_MS, NETWORK_ERROR_MESSAGE, TIMEOUT_ERROR_MESSAGE } from './
 
 type UploadMethod = 'POST' | 'PUT';
 
+// Байты ушли — дальше сервер сам кладёт файл в R2, и событий прогресса в это
+// время нет вовсе. Своя запись в R2 у сервера ограничена минутой
+// (UPLOAD_TIMEOUT_MS в api/src/storage/file-store.service.ts); ждём ответа
+// с запасом сверх неё, иначе таймер бездействия обрывал бы уже целиком
+// отправленный ролик на 50 МБ, пока сервер его сохраняет.
+export const RESPONSE_WAIT_MS = 90_000;
+
 interface UploadWithProgressInit {
   method?: UploadMethod;
   body: Blob;
@@ -59,12 +66,15 @@ export function uploadWithProgress<T>(
 
     let timedOut = false;
     let timer: ReturnType<typeof setTimeout>;
-    function resetInactivityTimer(): void {
+    function armTimer(ms: number): void {
       clearTimeout(timer);
       timer = setTimeout(() => {
         timedOut = true;
         xhr.abort();
-      }, inactivityTimeoutMs);
+      }, ms);
+    }
+    function resetInactivityTimer(): void {
+      armTimer(inactivityTimeoutMs);
     }
     resetInactivityTimer();
 
@@ -81,6 +91,9 @@ export function uploadWithProgress<T>(
     xhr.upload.onprogress = (event) => {
       resetInactivityTimer();
       if (event.lengthComputable) onProgress?.(event.loaded / event.total);
+    };
+    xhr.upload.onload = () => {
+      armTimer(RESPONSE_WAIT_MS);
     };
 
     // `xhr.abort()` — и наш таймер бездействия, и отмена вызывающим (тот же

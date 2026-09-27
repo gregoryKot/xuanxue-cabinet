@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CSRF_HEADER } from '@xuanxue/shared';
 import { setUnauthorizedListener, type ApiError } from './apiError';
 import { API_TIMEOUT_MS, NETWORK_ERROR_MESSAGE, TIMEOUT_ERROR_MESSAGE } from './http';
-import { uploadWithProgress } from './uploadWithProgress';
+import { RESPONSE_WAIT_MS, uploadWithProgress } from './uploadWithProgress';
 
 /** Минимальный двойник XMLHttpRequest — то, чем реально пользуется
  * uploadWithProgress.ts, плюс тестовые хелперы `respond`/`fail`/`emitProgress`
@@ -23,7 +23,10 @@ class FakeXhr {
   aborted = false;
   sentBody: unknown;
   private responseHeaders: Record<string, string> = {};
-  upload: { onprogress: ((event: ProgressEvent) => void) | null } = { onprogress: null };
+  upload: {
+    onprogress: ((event: ProgressEvent) => void) | null;
+    onload: (() => void) | null;
+  } = { onprogress: null, onload: null };
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
   onabort: (() => void) | null = null;
@@ -50,6 +53,9 @@ class FakeXhr {
   }
   emitProgress(loaded: number, total: number): void {
     this.upload.onprogress?.({ lengthComputable: true, loaded, total } as ProgressEvent);
+  }
+  finishSending(): void {
+    this.upload.onload?.();
   }
   respond(status: number, body: unknown, headers: Record<string, string> = {}): void {
     this.status = status;
@@ -208,6 +214,37 @@ describe('uploadWithProgress — сеть, таймаут бездействия
     xhr.respond(200, { ok: true });
 
     await expect(promise).resolves.toEqual({ ok: true });
+  });
+
+  it('байты ушли — ждёт, пока сервер сохранит файл, дольше таймаута бездействия', async () => {
+    vi.useFakeTimers();
+    const latest = stubXhr();
+
+    const promise = uploadWithProgress<{ ok: boolean }>('/exam-videos', {
+      body: new Blob([]),
+    });
+    const xhr = latest();
+    xhr.emitProgress(10, 10);
+    xhr.finishSending();
+    // Сервер пишет файл в R2 — событий прогресса нет, но обрывать рано.
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS + 1_000);
+    xhr.respond(200, { ok: true });
+
+    await expect(promise).resolves.toEqual({ ok: true });
+  });
+
+  it('байты ушли, а ответа нет дольше RESPONSE_WAIT_MS — TIMEOUT_ERROR_MESSAGE', async () => {
+    vi.useFakeTimers();
+    const latest = stubXhr();
+
+    const errorPromise = expectApiError(
+      uploadWithProgress('/exam-videos', { body: new Blob([]) }),
+    );
+    latest().finishSending();
+    await vi.advanceTimersByTimeAsync(RESPONSE_WAIT_MS);
+    const error = await errorPromise;
+
+    expect(error.message).toBe(TIMEOUT_ERROR_MESSAGE);
   });
 
   it('отмену вызывающим (signal) от таймаута отличает — NETWORK_ERROR_MESSAGE, не TIMEOUT', async () => {
