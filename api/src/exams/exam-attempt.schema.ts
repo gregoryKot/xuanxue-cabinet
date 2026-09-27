@@ -32,6 +32,9 @@ export interface AttemptOptionRecord {
   text: string;
   correct: boolean;
   imageId?: string;
+  /** Видео варианта (ADR-0133) тем же смыслом, что imageId. */
+  videoId?: string;
+  videoUrl?: string;
 }
 
 /** Вопрос в снимке — редакция вопроса банка на момент старта (`version`
@@ -43,6 +46,9 @@ export interface AttemptQuestionRecord {
   version: number;
   kind: ExamItemKind;
   prompt: string;
+  /** Видео формулировки вопроса (ADR-0133) тем же смыслом, что у варианта. */
+  videoId?: string;
+  videoUrl?: string;
   options: AttemptOptionRecord[];
 }
 
@@ -106,6 +112,13 @@ export class ExamAttemptRecord {
   @Prop({ type: [SchemaTypes.ObjectId], default: [] })
   imageIds!: Types.ObjectId[];
 
+  // Плоская копия videoId вопросов/вариантов снимка — тем же приёмом и ради
+  // той же причины, что imageIds выше (ADR-0133): ExamVideosService.signedUrl
+  // решает по этому полю, можно ли ученику видео (SECURITY §3). Пишет
+  // createAttempt (exam-attempt-start.ts, collectAttemptVideoIds).
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  videoIds!: Types.ObjectId[];
+
   @Prop({ type: Date, required: true })
   startedAt!: Date;
 
@@ -133,6 +146,8 @@ ExamAttemptSchema.index({ userId: 1, status: 1 });
 ExamAttemptSchema.index({ status: 1, submittedAt: -1 });
 // Доступ ученика к картинке варианта — по снимку его попытки (ADR-0035).
 ExamAttemptSchema.index({ userId: 1, imageIds: 1 });
+// Доступ ученика к видео вопроса/варианта — тем же приёмом (ADR-0133).
+ExamAttemptSchema.index({ userId: 1, videoIds: 1 });
 
 export const EXAM_ATTEMPT_FIELD_POLICY: FieldPolicy = {
   examTitle: enc,

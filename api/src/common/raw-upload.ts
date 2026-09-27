@@ -53,6 +53,45 @@ export function isPdfSignature(bytes: Buffer): boolean {
   return bytes.subarray(0, PDF_SIGNATURE.length).toString('ascii') === PDF_SIGNATURE;
 }
 
+/** Типы видео, распознаваемые по сигнатуре (ADR-0133). */
+export type VideoSignatureType = 'video/mp4' | 'video/quicktime' | 'video/webm';
+
+// ISO-BMFF (MP4/MOV): смещение 4–7 — код бокса `ftyp`, 8–11 — «бренд»
+// контейнера. `qt  ` (с двумя пробелами) — QuickTime (.mov), остальные
+// известные бренды (`isom`, `mp42`, `M4V ` и т.п.) читаем как MP4 —
+// исчерпывающий список брендов MP4 не нужен: важно отличить QuickTime, не
+// перечислить всех.
+const FTYP_BOX = 'ftyp';
+const FTYP_OFFSET = 4;
+const QUICKTIME_BRAND = 'qt  ';
+const BRAND_OFFSET = 8;
+const BRAND_LENGTH = 4;
+
+// WebM/Matroska — контейнер EBML, сигнатура — фиксированный ID корневого
+// элемента.
+const EBML_SIGNATURE = [0x1a, 0x45, 0xdf, 0xa3];
+
+function sniffIsoBmff(bytes: Buffer): 'video/mp4' | 'video/quicktime' | null {
+  if (bytes.length < BRAND_OFFSET + BRAND_LENGTH) return null;
+  if (
+    bytes.subarray(FTYP_OFFSET, FTYP_OFFSET + FTYP_BOX.length).toString('ascii') !==
+    FTYP_BOX
+  ) {
+    return null;
+  }
+  const brand = bytes
+    .subarray(BRAND_OFFSET, BRAND_OFFSET + BRAND_LENGTH)
+    .toString('ascii');
+  return brand === QUICKTIME_BRAND ? 'video/quicktime' : 'video/mp4';
+}
+
+export function sniffVideoSignature(bytes: Buffer): VideoSignatureType | null {
+  const isoBmff = sniffIsoBmff(bytes);
+  if (isoBmff) return isoBmff;
+  if (hasSignature(bytes, EBML_SIGNATURE)) return 'video/webm';
+  return null;
+}
+
 const DOCX_CONTENT_TYPES_ENTRY = '[Content_Types].xml';
 const DOCX_DOCUMENT_ENTRY = 'word/document.xml';
 

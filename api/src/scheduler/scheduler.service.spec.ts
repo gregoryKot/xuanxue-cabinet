@@ -8,6 +8,7 @@ import type { DeliveryRunnerService } from '../deliveries/delivery-runner.servic
 import type { ManualPromptService } from '../deliveries/manual-prompt.service';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
 import type { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
+import type { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
 import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
 import type { LessonReminderService } from '../lessons/lesson-reminder.service';
@@ -28,6 +29,7 @@ function buildService(overrides: {
   promptManual?: ManualPromptService['prompt'];
   closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
   removeImageOrphans?: ExamImageSweepService['removeOrphans'];
+  removeVideoOrphans?: ExamVideoSweepService['removeOrphans'];
   removeExpiredScreenshots?: PaymentScreenshotSweepService['removeExpired'];
   sweepStorageOrphans?: StorageOrphansService['sweep'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
@@ -61,6 +63,8 @@ function buildService(overrides: {
     overrides.closeExamDeadlines ?? jest.fn().mockResolvedValue({ closed: 0 });
   const removeImageOrphans =
     overrides.removeImageOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
+  const removeVideoOrphans =
+    overrides.removeVideoOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
   const removeExpiredScreenshots =
     overrides.removeExpiredScreenshots ??
     jest.fn().mockResolvedValue({ removed: 0, orphans: 0 });
@@ -90,6 +94,7 @@ function buildService(overrides: {
     { prompt: promptManual } as unknown as ManualPromptService,
     { closeDue: closeExamDeadlines } as unknown as ExamDeadlineCloseService,
     { removeOrphans: removeImageOrphans } as unknown as ExamImageSweepService,
+    { removeOrphans: removeVideoOrphans } as unknown as ExamVideoSweepService,
     {
       removeExpired: removeExpiredScreenshots,
     } as unknown as PaymentScreenshotSweepService,

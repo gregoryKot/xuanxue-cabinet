@@ -19,6 +19,7 @@ import { ExamRecord, ExamSchema } from '../exams/exam.schema';
 import { ExamsService } from '../exams/exams.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { SeedExamService } from './seed-exam.service';
+import { fakeExamVideosService } from '../test-support/fake-exam-videos-service';
 
 // Изолированный require после jest.resetModules() — тот же приём, что
 // seed.service.spec.ts/encryption.spec.ts: encryption.ts читает
@@ -70,7 +71,12 @@ describe('SeedExamService', () => {
       ExamAttemptSchema,
     );
     examImagesService = new ExamImagesService(imageModel, attemptModel);
-    examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
+    examItemsService = new ExamItemsService(
+      itemModel,
+      examModel,
+      examImagesService,
+      fakeExamVideosService(),
+    );
     examsService = new ExamsService(examModel, itemModel, attemptModel);
     seedExamService = new SeedExamService(
       examModel,

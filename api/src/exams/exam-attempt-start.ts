@@ -12,7 +12,11 @@ import { isDuplicateKeyError } from '../common/mongo-error-codes';
 import { encryptRecord } from '../utils/encryption';
 import type { ExamItemsService } from './exam-items.service';
 import { findInProgressAttempt } from './exam-attempt-lifecycle';
-import { buildAttemptBlocks, collectAttemptImageIds } from './exam-attempt-snapshot';
+import {
+  buildAttemptBlocks,
+  collectAttemptImageIds,
+  collectAttemptVideoIds,
+} from './exam-attempt-snapshot';
 import { EXAM_ATTEMPT_ENCRYPT_SCHEMA, ExamAttemptRecord } from './exam-attempt.schema';
 import {
   decryptAttempt,
@@ -52,6 +56,9 @@ export async function createAttempt(
     // Плоская копия для ExamImagesService.load (SECURITY §3, ADR-0035) —
     // blocks зашифрован целиком, Mongo внутрь не видит.
     imageIds: collectAttemptImageIds(blocks),
+    // Плоская копия для ExamVideosService.signedUrl (SECURITY §3, ADR-0133) —
+    // тем же приёмом, что imageIds выше.
+    videoIds: collectAttemptVideoIds(blocks),
     startedAt: now.toJSDate(),
     deadlineAt: deadlineAt?.toJSDate(),
   };

@@ -29,18 +29,26 @@ export type ExamAttemptStatus = (typeof EXAM_ATTEMPT_STATUSES)[number];
 
 /** Вариант в снимке — как его видит ученик: без отметки «верный».
  * `imageId` — картинка варианта (ADR-0035): ученику она доступна по
- * `GET /exam-images/:id` ровно потому, что стоит в снимке его попытки. */
+ * `GET /exam-images/:id` ровно потому, что стоит в снимке его попытки.
+ * `videoId`/`videoUrl` — видео варианта тем же смыслом (ADR-0133):
+ * `videoId` доступно по `GET /exam-videos/:id`, `videoUrl` — прямая ссылка. */
 export interface AttemptOptionDto {
   id: string;
   text: string;
   imageId?: string;
+  videoId?: string;
+  videoUrl?: string;
 }
 
+/** `videoId`/`videoUrl` — видео формулировки вопроса (ADR-0133), тем же
+ * смыслом, что у варианта. */
 export interface AttemptQuestionDto {
   itemId: string;
   version: number;
   kind: ExamItemKind;
   prompt: string;
+  videoId?: string;
+  videoUrl?: string;
   options: AttemptOptionDto[];
 }
 

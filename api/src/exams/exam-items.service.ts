@@ -13,7 +13,11 @@ import type {
   ListExamItemsQuery,
   UpdateExamItemInput,
 } from '@xuanxue/shared';
-import { EXAM_ITEM_NOT_FOUND_MESSAGE, LIST_LIMIT_DEFAULT } from '@xuanxue/shared';
+import {
+  EXAM_ITEM_NOT_FOUND_MESSAGE,
+  LIST_LIMIT_DEFAULT,
+  NULLABLE_EXAM_ITEM_FIELDS,
+} from '@xuanxue/shared';
 import { NotFoundError } from '../common/errors';
 import { toIsoUtc } from '../common/iso-date';
 import { assertObjectId } from '../common/object-id';
@@ -21,12 +25,14 @@ import { splitUpdate, type UpdateCommand } from '../common/patch-update';
 import { removeIfDraft } from '../common/remove-if-draft';
 import { encryptRecord } from '../utils/encryption';
 import { ExamImagesService } from '../exam-images/exam-images.service';
+import { ExamVideosService } from '../exam-videos/exam-videos.service';
 import {
   assertItemNotUsedForArchive,
   assertItemNotUsedForRemove,
 } from './exam-item-references';
 import { buildHistoryEntry, hasContentChanged } from './exam-item-content-change';
 import { assertOptionsForKind, collectImageIds, mapOptions } from './exam-item-options';
+import { assertOneVideoSource, collectItemVideoIds } from './exam-item-video';
 import { EXAM_ITEM_ENCRYPT_SCHEMA, ExamItemRecord } from './exam-item.schema';
 import { decryptExamItem, toExamItemDto, type RawLeanExamItem } from './exam-item.mapper';
 import { ExamRecord } from './exam.schema';
@@ -44,6 +50,7 @@ export class ExamItemsService {
     @InjectModel(ExamItemRecord.name) private readonly model: Model<ExamItemRecord>,
     @InjectModel(ExamRecord.name) private readonly examModel: Model<ExamRecord>,
     private readonly examImagesService: ExamImagesService,
+    private readonly examVideosService: ExamVideosService,
   ) {}
 
   async list(query: ListExamItemsQuery): Promise<ExamItemDto[]> {
@@ -69,14 +76,21 @@ export class ExamItemsService {
   // вопросы без вошедшего в систему человека; схема поля не требует
   // (ExamItemRecord.authorId, required: false).
   async create(input: CreateExamItemInput, authorId?: string): Promise<ExamItemDto> {
+    assertOneVideoSource(input.videoId, input.videoUrl);
     const options = mapOptions(assertOptionsForKind(input.kind, input.options));
     await this.examImagesService.assertExist(collectImageIds(options, []));
+    await this.examVideosService.assertExist(
+      collectItemVideoIds(input.videoId, options, []),
+    );
     const payload: Record<string, unknown> = {
       kind: input.kind,
       prompt: input.prompt,
       options,
       ...(authorId !== undefined ? { authorId } : {}),
+      ...(input.videoId !== undefined ? { videoId: input.videoId } : {}),
+      ...(input.videoUrl !== undefined ? { videoUrl: input.videoUrl } : {}),
       imageIds: collectImageIds(options, []),
+      videoIds: collectItemVideoIds(input.videoId, options, []),
     };
     // Не прислали — схемный default (`published`, ADR-0033); лишнего ключа не надо.
     if (input.status !== undefined) payload.status = input.status;
@@ -102,15 +116,27 @@ export class ExamItemsService {
     }
 
     const { options, ...rest } = input;
-    // Nullable-полей у вопроса нет (hint/criteria убраны, ADR-0128): splitUpdate
-    // здесь только отсекает `undefined` и отказывает на `null`, `$unset` у
-    // него всегда пуст — поэтому в команду он и не попадает.
-    const { $set } = splitUpdate(rest, []);
+    // videoId/videoUrl — единственные nullable-поля вопроса (ADR-0133,
+    // hint/criteria убраны ADR-0128) — splitUpdate остаётся общей формой
+    // PATCH (CLAUDE.md «Одна механика — один компонент»).
+    const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_ITEM_FIELDS);
     const nextOptions =
       options === undefined
         ? undefined
         : mapOptions(assertOptionsForKind(current.kind, options));
     await this.examImagesService.assertExist(collectImageIds(nextOptions ?? [], []));
+
+    // Итоговое значение поля после этого PATCH — не пришло (undefined) значит
+    // «оставить как было», null (у nullable-поля) — «снять» (та же логика,
+    // что уже кодирует splitUpdate, но здесь нужно ЗНАЧЕНИЕ, не команду Mongo).
+    const nextVideoId =
+      input.videoId === undefined ? current.videoId : (input.videoId ?? undefined);
+    const nextVideoUrl =
+      input.videoUrl === undefined ? current.videoUrl : (input.videoUrl ?? undefined);
+    assertOneVideoSource(nextVideoId, nextVideoUrl);
+    await this.examVideosService.assertExist(
+      collectItemVideoIds(nextVideoId, nextOptions ?? current.options, current.history),
+    );
     if (nextOptions !== undefined) $set.options = nextOptions;
 
     // Версия поднимается по сути правки, а не по факту присланного поля
@@ -127,8 +153,15 @@ export class ExamItemsService {
     }
     // Пересчитываем всегда — поле выравнивается и у документов без него (ADR-0035).
     $set.imageIds = collectImageIds(nextOptions ?? current.options, nextHistory);
+    $set.videoIds = collectItemVideoIds(
+      nextVideoId,
+      nextOptions ?? current.options,
+      nextHistory,
+    );
 
     const update: UpdateCommand = { $set: encryptRecord($set, EXAM_ITEM_ENCRYPT_SCHEMA) };
+    if (Object.keys($unset).length > 0) update.$unset = $unset;
+
     const updated = await this.model
       .findOneAndUpdate({ _id: id }, update, { returnDocument: 'after' })
       .lean<RawLeanExamItem>();

@@ -139,7 +139,7 @@ describe('validateExamItemForm — single/multiple', () => {
           ],
         }),
       ),
-    ).toMatch(/текст или картинка/);
+    ).toMatch(/текст, картинка или видео/);
   });
 
   it('single без отмеченного верного — ошибка «ровно один»', () => {

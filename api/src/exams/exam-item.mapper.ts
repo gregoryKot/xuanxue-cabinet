@@ -26,8 +26,14 @@ export type RawLeanExamItem = Pick<ExamItemRecord, keyof ExamItemRecord> & {
 
 /** То же самое после `decryptRecord` и разбора JSON (см.
  * `ExamItemsService.decrypt`) — `options`/`history` уже настоящие массивы,
- * форма совпадает с `ExamItemOptionDto`/`ExamItemVersionDto` из shared. */
-export type LeanExamItem = Omit<RawLeanExamItem, 'options' | 'history'> & {
+ * форма совпадает с `ExamItemOptionDto`/`ExamItemVersionDto` из shared.
+ * `videoId` — строка, не `Types.ObjectId`: бизнес-логика (exam-item-content-
+ * change.ts, exam-items.service.ts) сравнивает его с `UpdateExamItemInput.videoId`
+ * (строка от клиента) и кладёт в `ExamItemVersionRecord.videoId` (тоже
+ * строка) — держать оба представления вперемешку по коду было бы источником
+ * ошибок сравнения. */
+export type LeanExamItem = Omit<RawLeanExamItem, 'options' | 'history' | 'videoId'> & {
+  videoId?: string;
   options: ExamItemOptionRecord[];
   history: ExamItemVersionRecord[];
 };
@@ -44,6 +50,7 @@ export function decryptExamItem(doc: RawLeanExamItem): LeanExamItem {
   const decrypted = decryptRecord(doc, EXAM_ITEM_ENCRYPT_SCHEMA);
   return {
     ...decrypted,
+    videoId: decrypted.videoId?.toString(),
     options: decrypted.options as unknown as ExamItemOptionRecord[],
     history: decrypted.history as unknown as ExamItemVersionRecord[],
   };
@@ -54,6 +61,8 @@ export function toExamItemDto(doc: LeanExamItem): ExamItemDto {
     id: doc._id.toString(),
     kind: doc.kind,
     prompt: doc.prompt,
+    videoId: doc.videoId,
+    videoUrl: doc.videoUrl,
     options: doc.options,
     status: doc.status,
     version: doc.version,

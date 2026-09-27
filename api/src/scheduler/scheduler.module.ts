@@ -24,7 +24,11 @@
 // вместе с ExamAttemptModelModule, чтобы узнать, на какие картинки ещё
 // ссылаются вопрос и попытка. ExamImagesModule — модель самой картинки
 // (`exam_images`) и
-// ExamImagesService (провайдер не отсюда, модуль его уже даёт). TelegramModule
+// ExamImagesService (провайдер не отсюда, модуль его уже даёт). ExamVideosModule
+// — тем же приёмом для видео (`exam_videos`, ADR-0133): ExamVideoSweepService
+// нужны ExamItemModelModule/ExamAttemptModelModule (какие видео ещё
+// используются) и сам ExamVideosModule (модель видео, StorageOrphansService
+// уже внутри него). TelegramModule
 // — TelegramBotService/PersonalChats/BotSessionService для проактивной
 // отправки (предпросмотр, «Запись?», ручные каналы, уведомления об ошибках);
 // ни TelegramModule, ни его собственные импорты про SchedulerModule не знают.
@@ -51,6 +55,8 @@ import { DeliveriesModule } from '../deliveries/deliveries.module';
 import { ManualPromptService } from '../deliveries/manual-prompt.service';
 import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamImagesModule } from '../exam-images/exam-images.module';
+import { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
+import { ExamVideosModule } from '../exam-videos/exam-videos.module';
 import { ExamAttemptModelModule } from '../exams/exam-attempt-model.module';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { ExamItemModelModule } from '../exams/exam-item-model.module';
@@ -89,6 +95,7 @@ import { SchedulerService } from './scheduler.service';
     ExamAttemptModelModule,
     ExamItemModelModule,
     ExamImagesModule,
+    ExamVideosModule,
     NotificationsModule,
     PushModule,
     // Модели оплат и снимков (`payments`, `payment_screenshots`) для шага
@@ -119,6 +126,7 @@ import { SchedulerService } from './scheduler.service';
     ManualPromptService,
     ExamDeadlineCloseService,
     ExamImageSweepService,
+    ExamVideoSweepService,
     PaymentScreenshotSweepService,
     // Только по токену — второй провайдер класса без токена (было раньше)
     // создавал второй экземпляр TelegramTeacherNotifier с собственным

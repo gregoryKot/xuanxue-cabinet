@@ -84,6 +84,11 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   options: 'Варианты ответа',
   correct: 'Правильный вариант',
   imageId: 'Картинка варианта',
+  // videoId/videoUrl — общие для вопроса и варианта (ADR-0133): поле одно и
+  // то же по смыслу что у ExamItemFieldsDto, что у ExamItemOptionDto, второй
+  // подписи не требуется.
+  videoId: 'Видео',
+  videoUrl: 'Ссылка на видео',
   tags: 'Теги',
   tag: 'Тег',
 

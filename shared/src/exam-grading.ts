@@ -30,6 +30,9 @@ export interface AttemptReviewOptionDto {
   /** Картинка варианта (ADR-0035) — учитель видит её в карточке проверки
    * той же редакции, что видел сдающий: берётся из снимка попытки. */
   imageId?: string;
+  /** Видео варианта (ADR-0133) тем же смыслом. */
+  videoId?: string;
+  videoUrl?: string;
 }
 
 /** Автопроверка вариантов (ТЗ 4.6, п.3: честна только там, где сдающий
@@ -46,6 +49,9 @@ export interface AttemptReviewQuestionDto {
   itemId: string;
   kind: ExamItemKind;
   prompt: string;
+  /** Видео формулировки вопроса (ADR-0133) тем же смыслом, что у варианта. */
+  videoId?: string;
+  videoUrl?: string;
   answerText?: string;
   /** Пусто у вопроса без вариантов (текст, видео). */
   options: AttemptReviewOptionDto[];

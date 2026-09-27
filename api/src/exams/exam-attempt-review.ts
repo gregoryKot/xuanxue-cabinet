@@ -48,9 +48,11 @@ function toReviewOption(
     text: option.text,
     correct: option.correct,
     selected: selected.has(option.id),
-    // Ключа нет вовсе, если картинки не было (ADR-0035), как у остальных
-    // мапперов снимка.
+    // Ключа нет вовсе, если медиа не было (ADR-0035, ADR-0133), как у
+    // остальных мапперов снимка.
     ...(option.imageId !== undefined ? { imageId: option.imageId } : {}),
+    ...(option.videoId !== undefined ? { videoId: option.videoId } : {}),
+    ...(option.videoUrl !== undefined ? { videoUrl: option.videoUrl } : {}),
   };
 }
 
@@ -69,6 +71,8 @@ function buildReviewQuestion(
     itemId: question.itemId,
     kind: question.kind,
     prompt: question.prompt,
+    ...(question.videoId !== undefined ? { videoId: question.videoId } : {}),
+    ...(question.videoUrl !== undefined ? { videoUrl: question.videoUrl } : {}),
     answerText: answer?.text,
     options: question.options.map((option) => toReviewOption(option, selected)),
     // Считать «сколько верных выбрано» нечему, если выбора не было вовсе —

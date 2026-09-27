@@ -27,6 +27,7 @@ import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
 import { ExamRecord, ExamSchema } from './exam.schema';
 import { ExamsService } from './exams.service';
+import { fakeExamVideosService } from '../test-support/fake-exam-videos-service';
 
 const NOW = DateTime.utc(2026, 9, 14, 9, 0, 0);
 const AUTHOR_ID = '507f1f77bcf86cd799439011';
@@ -72,7 +73,12 @@ describe('ExamItemStatsService', () => {
       NotificationSchema,
     );
     const examImagesService = new ExamImagesService(imageModel, attemptModel);
-    examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
+    examItemsService = new ExamItemsService(
+      itemModel,
+      examModel,
+      examImagesService,
+      fakeExamVideosService(),
+    );
     examsService = new ExamsService(examModel, itemModel, attemptModel);
     attemptsService = new ExamAttemptsService(
       attemptModel,

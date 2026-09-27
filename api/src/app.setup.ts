@@ -7,7 +7,11 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
-import { EXAM_IMAGE_LIMITS, MATERIAL_FILE_LIMITS } from '@xuanxue/shared';
+import {
+  EXAM_IMAGE_LIMITS,
+  EXAM_VIDEO_LIMITS,
+  MATERIAL_FILE_LIMITS,
+} from '@xuanxue/shared';
 import { SESSION_SECRET } from './auth/session-token';
 import { CSP_DIRECTIVES } from './security/csp';
 import { makeAppVersionHeader } from './common/app-version-header';
@@ -16,6 +20,7 @@ import { makeRawUploadConcurrencyLimit } from './common/raw-upload-concurrency';
 import { formatValidationErrors } from './common/validation-messages';
 import { shortCommitSha } from './health/health-commit';
 import { makeIsRawImageUpload } from './exam-images/exam-image-body';
+import { makeIsExamVideoUpload } from './exam-videos/exam-video-body';
 import { makeIsMaterialFileUpload } from './materials/material-file-body';
 
 export function configureApp(app: NestExpressApplication): void {
@@ -55,33 +60,44 @@ export function configureApp(app: NestExpressApplication): void {
   const sessionSecret = app.get<string>(SESSION_SECRET);
   const isRawImageUpload = makeIsRawImageUpload(sessionSecret);
   const isMaterialFileUpload = makeIsMaterialFileUpload(sessionSecret);
+  const isExamVideoUpload = makeIsExamVideoUpload(sessionSecret);
 
   // Мера 2 (SECURITY §4, ADR-0083) — потолок на число сырых загрузок
-  // «в полёте» одновременно, ДО обоих парсеров ниже: иначе тело уже легло
-  // бы в память к моменту отказа. Один счётчик на оба маршрута — общий
-  // бюджет памяти инстанса, не по маршруту.
+  // «в полёте» одновременно, ДО всех трёх парсеров ниже: иначе тело уже
+  // легло бы в память к моменту отказа. Один счётчик на все три маршрута —
+  // общий бюджет памяти инстанса, не по маршруту. 4 × 50 МБ (видео,
+  // ADR-0133, крупнее файла материала) = 200 МБ худший случай
+  // (raw-upload-concurrency.ts, RAW_UPLOAD_CONCURRENCY_LIMIT).
   app.use(
     makeRawUploadConcurrencyLimit(
-      (req) => isRawImageUpload(req) || isMaterialFileUpload(req),
+      (req) =>
+        isRawImageUpload(req) || isMaterialFileUpload(req) || isExamVideoUpload(req),
     ),
   );
-  // Сырое тело — исключение из «файлы мимо API» (SECURITY §4) ровно на два
-  // маршрута: картинки вариантов ответа (ADR-0035) и снимок перевода
-  // (ADR-0050). Оба — картинки до 1 МБ. Включается по предикату маршрута,
-  // заявленного типа и подписанной сессии (exam-image-body.ts, там же
-  // список маршрутов), а не по image/* глобально — иначе такое тело в любом
-  // другом запросе стало бы Buffer, и ValidationPipe
+  // Сырое тело — исключение из «файлы мимо API» (SECURITY §4) ровно на три
+  // маршрута: картинки вариантов ответа (ADR-0035), снимок перевода
+  // (ADR-0050) и видео вопроса/варианта (ADR-0133). Включается по предикату
+  // маршрута, заявленного типа и подписанной сессии (exam-image-body.ts, там
+  // же список маршрутов картинок), а не по image/* глобально — иначе такое
+  // тело в любом другом запросе стало бы Buffer, и ValidationPipe
   // (whitelist/forbidNonWhitelisted) перебирал бы его как «лишние поля».
   app.useBodyParser('raw', {
     type: isRawImageUpload,
     limit: EXAM_IMAGE_LIMITS.maxBytes,
   });
-  // Второй и последний раз (ADR-0057): файл материала — свой маршрут, свой
-  // список типов и свой потолок, втрое больше картинки варианта. Один
-  // парсер с общим лимитом пустил бы тридцатимегабайтную картинку в Mongo.
+  // Файл материала — свой маршрут, свой список типов и свой потолок, втрое
+  // больше картинки варианта (ADR-0057). Один парсер с общим лимитом пустил
+  // бы тридцатимегабайтную картинку в Mongo.
   app.useBodyParser('raw', {
     type: isMaterialFileUpload,
     limit: MATERIAL_FILE_LIMITS.maxBytes,
+  });
+  // Третий и последний раз (ADR-0133): видео вопроса/варианта — свой
+  // маршрут, свой список типов и самый большой потолок из трёх — байты идут
+  // в R2, не в Mongo, но всё равно проходят через память инстанса на загрузке.
+  app.useBodyParser('raw', {
+    type: isExamVideoUpload,
+    limit: EXAM_VIDEO_LIMITS.maxBytes,
   });
 
   app.setGlobalPrefix('api');
