@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE,
+  EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE,
   EXAM_MEDIA_INVALID_URL_MESSAGE,
   EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
   EXAM_MEDIA_KINDS,
@@ -28,6 +29,7 @@ describe('тексты ошибок', () => {
     for (const message of [
       EXAM_MEDIA_INVALID_URL_MESSAGE,
       EXAM_MEDIA_ATTEMPT_GRADED_MESSAGE,
+      EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE,
       EXAM_MEDIA_ITEM_NOT_FOUND_MESSAGE,
       EXAM_MEDIA_LINK_RACE_MESSAGE,
     ]) {
@@ -35,5 +37,11 @@ describe('тексты ошибок', () => {
       expect(message).not.toContain('является');
       expect(message).not.toContain('осуществляется');
     }
+  });
+
+  // Отзыв тестировщицы 2026-09-23: без `**` — строка уходит в Telegram
+  // простым текстом, звёздочки читались бы буквально.
+  it('EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE — без маркера акцента', () => {
+    expect(EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE).not.toContain('**');
   });
 });

@@ -4,6 +4,7 @@
 // что exam-media-forward.ts.
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
+import { EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE } from '@xuanxue/shared';
 import type { AttachedTelegramMedia } from '../../media/media-asset-insert';
 import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
@@ -17,7 +18,14 @@ import { forwardExamVideoToTeachers } from './exam-media-forward';
 // посмотреть» обещало то, чего могло не случиться. Кнопка на карточке
 // проверки достаёт то же видео заново в любой момент, поэтому это по-прежнему
 // честно и без «уже».
-const RECEIVED_MESSAGE = 'Видео дошло. Учитель его увидит.';
+//
+// Эта ветка (questionIndex == null) — единственная, где путаница из отзыва
+// тестировщицы 2026-09-23 реальна: сюда попадает и досылка видео в уже
+// сданную попытку (deep link «Отправить видео боту» с экрана «Отправлено»).
+// Внутри потока вопросов бота (questionIndex задан) видео — просто ответ на
+// текущий вопрос, экран сам идёт дальше, и вопроса «съест ли это попытку» не
+// возникает — там строку не добавляем.
+const RECEIVED_MESSAGE = `Видео дошло. Учитель его увидит. ${EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE}`;
 
 export interface RespondToAttachedMediaDeps {
   personalChats: PersonalChats;

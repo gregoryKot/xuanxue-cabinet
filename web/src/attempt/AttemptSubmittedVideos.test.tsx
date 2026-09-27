@@ -127,6 +127,37 @@ describe('AttemptSubmittedVideos', () => {
     ).toBeInTheDocument();
   });
 
+  // Отзыв тестировщицы 2026-09-23: объяснение «не тратит попытку» должно
+  // стоять над разделом ровно там, где вопрос и мог возникнуть, и молчать,
+  // где его быть не может.
+  it('есть видео-вопрос, работа не проверена — объяснение видно', () => {
+    renderVideos(makeAttempt(TWO_VIDEO_QUESTIONS), makeVideo());
+
+    expect(screen.getByText(/попытку это не тратит/)).toBeInTheDocument();
+  });
+
+  it('видео-вопросов нет — объяснения нет, даже если есть запись без itemId', () => {
+    const orphan: ExamMediaDto = {
+      id: 'm2',
+      attemptId: 'a1',
+      kind: 'link',
+      url: 'https://example.com/v',
+      receivedAt: '2026-09-12T16:30:00.000Z',
+    };
+    renderVideos(makeAttempt([makeBlock()]), makeVideo({ media: [orphan] }));
+
+    expect(screen.queryByText(/попытку это не тратит/)).not.toBeInTheDocument();
+  });
+
+  it('работу уже проверили — объяснения нет: правда другая, досылка запрещена', () => {
+    renderVideos(
+      { ...makeAttempt(TWO_VIDEO_QUESTIONS), status: 'graded' },
+      makeVideo({ acceptsAnswers: false }),
+    );
+
+    expect(screen.queryByText(/попытку это не тратит/)).not.toBeInTheDocument();
+  });
+
   it('запись без itemId — строка «видео без вопроса»', () => {
     const orphan: ExamMediaDto = {
       id: 'm2',

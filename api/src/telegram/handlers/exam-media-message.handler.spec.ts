@@ -7,7 +7,11 @@ import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { Types } from 'mongoose';
 import type { Context } from 'telegraf';
-import { ACCESS_MESSAGE, type ExamAttemptDto } from '@xuanxue/shared';
+import {
+  ACCESS_MESSAGE,
+  EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE,
+  type ExamAttemptDto,
+} from '@xuanxue/shared';
 import type { BotSessionLean } from '../bot-session.lean';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
 import { ExamBotPortRegistry } from '../exam-bot-port.registry';
@@ -22,6 +26,9 @@ import { ExamMediaMessageHandler } from './exam-media-message.handler';
 
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const ATTEMPT_ID = new Types.ObjectId().toString();
+// Отзыв тестировщицы 2026-09-23 (exam-media-respond.ts) — та же строка,
+// собранная тем же способом, чтобы тест не дублировал форматирование.
+const RECEIVED_MESSAGE = `Видео дошло. Учитель его увидит. ${EXAM_MEDIA_ATTEMPT_NOT_CONSUMED_MESSAGE}`;
 
 function fakeCtx(overrides: {
   video?: boolean;
@@ -185,7 +192,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
-    expect(replies).toEqual(['Видео дошло. Учитель его увидит.']);
+    expect(replies).toEqual([RECEIVED_MESSAGE]);
     expect(clear).toHaveBeenCalledWith(111);
     expect(sentMessages).toEqual([
       { chatId: '201', text: 'Видео от Ученик Иванов — экзамен «Форма первого уровня».' },
@@ -269,7 +276,7 @@ describe('ExamMediaMessageHandler', () => {
     const { ctx, replies } = fakeCtx({ video: true });
 
     await expect(handler.handle(ctx, 111, SESSION, NOW)).resolves.toBeUndefined();
-    expect(replies).toEqual(['Видео дошло. Учитель его увидит.']);
+    expect(replies).toEqual([RECEIVED_MESSAGE]);
   });
 
   it('пересылка одному учителю упала (заблокировал бота) — остальные всё равно получают видео', async () => {
@@ -401,7 +408,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await handler.handle(ctxWithoutChat, 111, SESSION, NOW);
 
-    expect(replies).toContain('Видео дошло. Учитель его увидит.');
+    expect(replies).toContain(RECEIVED_MESSAGE);
     expect(copiedTo).toEqual([]);
   });
 
@@ -453,7 +460,7 @@ describe('ExamMediaMessageHandler', () => {
 
     await handler.handle(ctx, 111, IN_FLOW_SESSION, NOW);
 
-    expect(replies).not.toContain('Видео дошло. Учитель его увидит.');
+    expect(replies).not.toContain(RECEIVED_MESSAGE);
     expect(replies.some((r) => r.includes('Видео получено.'))).toBe(true);
   });
 
