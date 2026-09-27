@@ -690,7 +690,7 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     await user.click(
       within(rows[0] as HTMLElement).getByRole('button', { name: 'Обязательный' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
