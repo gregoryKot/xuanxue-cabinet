@@ -13,6 +13,10 @@ import {
   NotificationPrefsSchema,
 } from '../notifications/notification-prefs.schema';
 import { NotificationPrefsService } from '../notifications/notification-prefs.service';
+import {
+  NotificationRecord,
+  NotificationSchema,
+} from '../notifications/notification.schema';
 import { PersonalChats } from '../telegram/personal-chats';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
@@ -22,6 +26,7 @@ import { UserRecord, UserSchema } from '../users/user.schema';
 import { UsersService } from '../users/users.service';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
+import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import { fakeExamNotifier, type FakeExamNotifier } from './exam-notifier.test-support';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
 import { ExamGradingsService } from './exam-gradings.service';
@@ -52,6 +57,9 @@ export interface AttemptsTestContext {
   // ученика или выключенный вид уведомления, тоже не поднимать модели второй раз.
   channelModel: Model<ChannelRecord>;
   notificationPrefsModel: Model<NotificationPrefsRecord>;
+  // Лента кабинета (ADR-0061) — нужна ADR-0131: повтор после просроченной
+  // попытки затирает и её строки в inbox учителя (ExamAttemptRetryCleanupService).
+  notificationModel: Model<NotificationRecord>;
   examsService: ExamsService;
   examItemsService: ExamItemsService;
   examImagesService: ExamImagesService;
@@ -91,6 +99,10 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     NotificationPrefsRecord.name,
     NotificationPrefsSchema,
   );
+  const notificationModel = connection.model<NotificationRecord>(
+    NotificationRecord.name,
+    NotificationSchema,
+  );
   const examsService = new ExamsService(examModel, itemModel, attemptModel);
   const examImagesService = new ExamImagesService(imageModel, attemptModel);
   const examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
@@ -106,6 +118,11 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     channelModel,
     notificationPrefsService,
   );
+  const retryCleanup = new ExamAttemptRetryCleanupService(
+    attemptModel,
+    mediaModel,
+    notificationModel,
+  );
   const service = new ExamAttemptsService(
     attemptModel,
     gradingModel,
@@ -113,6 +130,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     examItemsService,
     userNamesService,
     examNotifier,
+    retryCleanup,
   );
   const gradingsService = new ExamGradingsService(
     attemptModel,
@@ -142,6 +160,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     imageModel,
     channelModel,
     notificationPrefsModel,
+    notificationModel,
     examsService,
     examItemsService,
     examImagesService,
@@ -163,6 +182,7 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.mediaModel.deleteMany({});
   await ctx.channelModel.deleteMany({});
   await ctx.notificationPrefsModel.deleteMany({});
+  await ctx.notificationModel.deleteMany({});
   // Иначе вызовы ExamNotifier из одного теста утекают в счётчик следующего —
   // общий ctx на файл (afterEach), не свой инстанс на тест.
   ctx.examNotifier.notifyAttemptSubmitted.mockClear();

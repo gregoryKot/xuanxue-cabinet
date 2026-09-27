@@ -20,6 +20,7 @@ import {
   getMyExamAction,
   isExamDuePassed,
   SCHOOL_TZ,
+  willRetryDeletePreviousAttempt,
   type MyExamAction,
   type MyExamDto,
 } from '@xuanxue/shared';
@@ -76,7 +77,10 @@ function examRowStatus(exam: MyExamDto, nowMs: number): ExamRowStatus {
  * «Начать» и «Начать ещё раз» у формы с лимитом времени ведут на `exc` —
  * вопрос перед стартом (ADR-0121): часы пойдут сразу, и ученик вправе
  * узнать об этом до нажатия, а не после. Без лимита спрашивать нечего, и
- * кнопка заводит попытку сразу, как раньше. */
+ * кнопка заводит попытку сразу, как раньше, — кроме повтора, затирающего
+ * прошлую просроченную попытку (отзыв тестировщицы 2026-09-23, п.4,
+ * ADR-0131): у него тот же `exc` и без лимита, удаление необратимо само по
+ * себе. */
 function buildActionButton(
   exam: MyExamDto,
   action: Exclude<MyExamAction, null>,
@@ -89,7 +93,9 @@ function buildActionButton(
       buildQuestionId(exam.lastAttempt.id, CONTINUE_QUESTION_INDEX),
     );
   }
-  return inlineButton(text, exam.timeLimitMin ? 'exc' : 'exam', exam.id);
+  const deletesPrevious = action === 'retry' && willRetryDeletePreviousAttempt(exam);
+  const needsConfirm = Boolean(exam.timeLimitMin) || deletesPrevious;
+  return inlineButton(text, needsConfirm ? 'exc' : 'exam', exam.id);
 }
 
 function truncateForButton(title: string): string {

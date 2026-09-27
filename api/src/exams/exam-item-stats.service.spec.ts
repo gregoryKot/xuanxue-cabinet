@@ -12,7 +12,13 @@ import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.sche
 import { ExamImagesService } from '../exam-images/exam-images.service';
 import { UserNamesService } from '../users/user-names.service';
 import { UserRecord, UserSchema } from '../users/user.schema';
+import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
+import {
+  NotificationRecord,
+  NotificationSchema,
+} from '../notifications/notification.schema';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
+import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { fakeExamNotifier } from './exam-notifier.test-support';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
@@ -57,6 +63,14 @@ describe('ExamItemStatsService', () => {
       ExamGradingRecord.name,
       ExamGradingSchema,
     );
+    const mediaModel = memory.connection.model<MediaAssetRecord>(
+      MediaAssetRecord.name,
+      MediaAssetSchema,
+    );
+    const notificationModel = memory.connection.model<NotificationRecord>(
+      NotificationRecord.name,
+      NotificationSchema,
+    );
     const examImagesService = new ExamImagesService(imageModel, attemptModel);
     examItemsService = new ExamItemsService(itemModel, examModel, examImagesService);
     examsService = new ExamsService(examModel, itemModel, attemptModel);
@@ -67,6 +81,7 @@ describe('ExamItemStatsService', () => {
       examItemsService,
       new UserNamesService(userModel),
       fakeExamNotifier(),
+      new ExamAttemptRetryCleanupService(attemptModel, mediaModel, notificationModel),
     );
     statsService = new ExamItemStatsService(
       attemptModel,

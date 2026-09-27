@@ -67,7 +67,11 @@ export async function aggregateAttemptSummaries(
     {
       $group: {
         _id: '$examId',
-        attemptsUsed: { $sum: 1 },
+        // Номер последней попытки, не число документов (ADR-0131): повтор
+        // после просроченной затирает старую (ExamAttemptRetryCleanupService)
+        // — `$sum: 1` после такого удаления откатил бы счётчик назад и вернул
+        // ученику попытку, которую он уже использовал.
+        attemptsUsed: { $max: '$attemptNo' },
         latest: { $first: '$$ROOT' },
       },
     },

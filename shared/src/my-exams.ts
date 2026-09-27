@@ -106,6 +106,18 @@ export function getMyExamAction(exam: MyExamDto): MyExamAction {
   return null;
 }
 
+/** Затрёт ли новая попытка старую (отзыв тестировщицы 2026-09-23, п.4;
+ * решение владельца — ADR-0131): только `submitted` с `expired: true` —
+ * прошлую не успели сдать вовремя, и она никому не показана как итог.
+ * `graded` — учитель её уже посмотрел, история оценки остаётся, второй старт
+ * добавляет попытку, а не заменяет прежнюю. Кабинет и бот спрашивают
+ * подтверждение именно по этому признаку, не по одному `retry` — экран
+ * серверу ничего не разрешает (тот же ADR-0091, что у getMyExamAction),
+ * только решает, каким вопросом предупредить. */
+export function willRetryDeletePreviousAttempt(exam: MyExamDto): boolean {
+  return exam.lastAttempt?.status === 'submitted' && exam.lastAttempt.expired === true;
+}
+
 function hasTextOrOptionAnswer(answer: AttemptAnswerDto | undefined): boolean {
   if (!answer) return false;
   return (answer.optionIds?.length ?? 0) > 0 || Boolean(answer.text?.trim());

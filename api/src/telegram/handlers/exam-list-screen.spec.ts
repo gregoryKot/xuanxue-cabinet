@@ -84,7 +84,11 @@ describe('buildExamListScreen', () => {
     expect(menu.buttons).toHaveLength(1); // только «В меню»
   });
 
-  it('попытку закрыло время, есть ещё попытки — «Начать ещё раз», id экзамена, не попытки', () => {
+  // ADR-0131 (отзыв тестировщицы 2026-09-23, п.4): повтор после просроченной
+  // непроверенной попытки затирает её, поэтому кнопка ведёт на `exc` —
+  // вопрос подтверждения — даже без лимита времени у формы, id экзамена,
+  // не попытки (новая попытка ещё не существует).
+  it('попытку закрыло время, есть ещё попытки — «Начать ещё раз», exc с id экзамена', () => {
     const menu = buildExamListScreen(
       [
         exam({
@@ -92,6 +96,27 @@ describe('buildExamListScreen', () => {
           attemptsAllowed: 2,
           attemptsUsed: 1,
           lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+        }),
+      ],
+      NOW_MS,
+    );
+    expect(menu.buttons[0]?.[0]).toEqual({
+      text: 'Начать ещё раз: Форма третьего уровня',
+      callback_data: 'exc:e1',
+    });
+  });
+
+  // Проверенную (`graded`) попытку правило не трогает (ADR-0131) — ничего не
+  // удаляется, вопрос про лимит времени не встаёт, кнопка ведёт сразу на
+  // `exam`, как раньше.
+  it('повтор после проверенной попытки, лимита времени нет — кнопка сразу на exam, ничего не удаляется', () => {
+    const menu = buildExamListScreen(
+      [
+        exam({
+          id: 'e1',
+          attemptsAllowed: 2,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'graded', expired: false, outcome: 'passed' },
         }),
       ],
       NOW_MS,
