@@ -1,49 +1,38 @@
 // Общий подъём ExamAttemptsService против настоящей Mongo — делят
 // exam-attempts.service.spec.ts и exam-attempts.time.spec.ts (файл-лимит
 // спеков, тот же приём, что у telegram-teacher-notifier.test-support.ts,
-// CLAUDE.md «Файлы»/«Храповики», jscpd).
+// CLAUDE.md «Файлы»/«Храповики», jscpd). Сборка сервисов поверх моделей —
+// exam-attempts-services.test-support.ts (тот же файл-лимит).
 import type { Connection, Model } from 'mongoose';
 import { ChannelRecord, ChannelSchema } from '../channels/channel.schema';
-import { ExamMediaNotifierRegistry } from '../media/exam-media-notifier.registry';
-import { ExamVideoDeliveryRegistry } from '../media/exam-video-delivery.registry';
-import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
-import { MediaAssetsService } from '../media/media-assets.service';
 import {
   NotificationPrefsRecord,
   NotificationPrefsSchema,
 } from '../notifications/notification-prefs.schema';
-import { NotificationPrefsService } from '../notifications/notification-prefs.service';
 import {
   NotificationRecord,
   NotificationSchema,
 } from '../notifications/notification.schema';
-import { PersonalChats } from '../telegram/personal-chats';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { ExamImageRecord, ExamImageSchema } from '../exam-images/exam-image.schema';
-import { ExamImagesService } from '../exam-images/exam-images.service';
-import type { ExamVideosService } from '../exam-videos/exam-videos.service';
-import { UserNamesService } from '../users/user-names.service';
+import { MediaAssetRecord, MediaAssetSchema } from '../media/media-asset.schema';
 import { UserRecord, UserSchema } from '../users/user.schema';
-import { UsersService } from '../users/users.service';
-import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
-import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
-import { fakeExamNotifier, type FakeExamNotifier } from './exam-notifier.test-support';
+import {
+  buildAttemptsServices,
+  type AttemptsTestServices,
+} from './exam-attempts-services.test-support';
 import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
-import { ExamGradingsService } from './exam-gradings.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
-import { ExamItemsService } from './exam-items.service';
 import { ExamSeenMarkRecord, ExamSeenMarkSchema } from './exam-seen-mark.schema';
 import { ExamRecord, ExamSchema } from './exam.schema';
-import { ExamsService } from './exams.service';
-import { fakeExamVideosService } from '../test-support/fake-exam-videos-service';
 
 export const AUTHOR_ID = '507f1f77bcf86cd799439011';
 export const USER_A = '507f1f77bcf86cd799439012';
 export const USER_B = '507f1f77bcf86cd799439013';
 export const GRADER_ID = '507f1f77bcf86cd799439014';
 
-export interface AttemptsTestContext {
+export interface AttemptsTestContext extends AttemptsTestServices {
   memory: MemoryMongo;
   attemptModel: Model<ExamAttemptRecord>;
   examModel: Model<ExamRecord>;
@@ -66,20 +55,6 @@ export interface AttemptsTestContext {
   // ADR-0129 — отметка «ученик открыл задание»; MyExamsService.spec.ts тоже
   // поднимает контекст отсюда, второй раз модель не заводит.
   seenMarkModel: Model<ExamSeenMarkRecord>;
-  examsService: ExamsService;
-  examItemsService: ExamItemsService;
-  examImagesService: ExamImagesService;
-  // Слой 4.2 (ADR-0133) — фейк (assertExist), настоящий сервис проверен
-  // отдельно (exam-videos.service.spec.ts). ExamBotService нужен ради типа
-  // конструктора, поведение видео в боте — юнит-тесты на fakeExamBotPort.
-  examVideosService: ExamVideosService;
-  userNamesService: UserNamesService;
-  examNotifier: FakeExamNotifier;
-  service: ExamAttemptsService;
-  gradingsService: ExamGradingsService;
-  // Слой 4.5 (ADR-0023) — нужен спекам про видео вопроса внутри потока
-  // вопросов бота (exam-attempt-flow.spec.ts, ТЗ 4б.2 часть 2).
-  mediaAssetsService: MediaAssetsService;
 }
 
 export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
@@ -117,58 +92,18 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     ExamSeenMarkRecord.name,
     ExamSeenMarkSchema,
   );
-  const examsService = new ExamsService(examModel, itemModel);
-  const examImagesService = new ExamImagesService(imageModel, attemptModel);
-  const examVideosService = fakeExamVideosService();
-  const examItemsService = new ExamItemsService(
-    itemModel,
+  const services = buildAttemptsServices({
+    attemptModel,
     examModel,
-    examImagesService,
-    examVideosService,
-  );
-  const userNamesService = new UserNamesService(userModel);
-  const examNotifier = fakeExamNotifier();
-  // Один инстанс UsersService на MediaAssetsService и PersonalChats — тот же
-  // userModel, не два разных подключения к одному и тому же (CLAUDE.md
-  // «Дубли»).
-  const usersService = new UsersService(userModel);
-  const notificationPrefsService = new NotificationPrefsService(notificationPrefsModel);
-  const personalChats = new PersonalChats(
-    usersService,
+    itemModel,
+    gradingModel,
+    userModel,
+    mediaModel,
+    imageModel,
     channelModel,
-    notificationPrefsService,
-  );
-  const retryCleanup = new ExamAttemptRetryCleanupService(
-    attemptModel,
-    mediaModel,
+    notificationPrefsModel,
     notificationModel,
-  );
-  const service = new ExamAttemptsService(
-    attemptModel,
-    gradingModel,
-    examsService,
-    examItemsService,
-    userNamesService,
-    examNotifier,
-    retryCleanup,
-  );
-  const gradingsService = new ExamGradingsService(
-    attemptModel,
-    gradingModel,
-    userNamesService,
-    personalChats,
-    examNotifier,
-  );
-  // Реестр нотификатора ссылок (ADR-0084) — не собран в этих спеках
-  // (ExamsModule здесь не поднимается): getOrNull() вернёт null, addLink()
-  // это переживает молча (ExamMediaNotifierRegistry, комментарий там же).
-  const mediaAssetsService = new MediaAssetsService(
-    mediaModel,
-    attemptModel,
-    usersService,
-    new ExamMediaNotifierRegistry(),
-    new ExamVideoDeliveryRegistry(),
-  );
+  });
   return {
     memory,
     attemptModel,
@@ -182,15 +117,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     notificationPrefsModel,
     notificationModel,
     seenMarkModel,
-    examsService,
-    examItemsService,
-    examImagesService,
-    examVideosService,
-    userNamesService,
-    examNotifier,
-    service,
-    gradingsService,
-    mediaAssetsService,
+    ...services,
   };
 }
 

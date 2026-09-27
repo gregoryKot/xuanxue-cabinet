@@ -2,11 +2,12 @@
 // ExamBotService уже покрыты интеграционными спеками бота
 // (exam-attempt-flow.spec.ts и соседи, поверх настоящих сервисов); видео
 // (2026-09-27, «Уточнено» ADR-0133) не проходит через них ни разу — тот же
-// разрыв, что закрыла бы такая же интеграция, но точечный юнит-тест дешевле:
-// зависимости — заглушки, интересует только делегирование и перевод
-// NotFoundError/NotAvailableError в `null` (деградация показа для бота).
+// разрыв, что закрыла бы такая же интеграция, но точечный юнит-тест дешевле.
+// Перевод NotFoundError/NotAvailableError в `null` живёт в exam-bot-media.ts
+// (файл-лимит CLAUDE.md «Храповики») и проверен там же (exam-bot-media.spec.ts) —
+// здесь только то, что сервис зовёт ExamVideosService через этот хелпер и
+// отдаёт результат наружу как есть.
 import { DateTime } from 'luxon';
-import { NotAvailableError, NotFoundError } from '../common/errors';
 import { ExamBotPortRegistry } from '../telegram/exam-bot-port.registry';
 import type { UserLean } from '../users/users.service';
 import { ExamBotService } from './exam-bot.service';
@@ -42,27 +43,6 @@ describe('ExamBotService.loadOptionVideo', () => {
 
     await expect(bot.loadOptionVideo('vid-1', USER, NOW)).resolves.toEqual(VIDEO);
     expect(loadForBot).toHaveBeenCalledWith('vid-1', USER, NOW);
-  });
-
-  it('NotFoundError (чужое видео/не в снимке попытки) — null, не проброс', async () => {
-    const loadForBot = jest.fn().mockRejectedValue(new NotFoundError('нет'));
-    const bot = service({ loadForBot });
-
-    await expect(bot.loadOptionVideo('vid-1', USER, NOW)).resolves.toBeNull();
-  });
-
-  it('NotAvailableError (R2 выключен или объект пропал) — null, не проброс', async () => {
-    const loadForBot = jest.fn().mockRejectedValue(new NotAvailableError('выключено'));
-    const bot = service({ loadForBot });
-
-    await expect(bot.loadOptionVideo('vid-1', USER, NOW)).resolves.toBeNull();
-  });
-
-  it('прочая ошибка (например, Mongo упал) — пробрасывается, не деградация', async () => {
-    const loadForBot = jest.fn().mockRejectedValue(new Error('mongo упал'));
-    const bot = service({ loadForBot });
-
-    await expect(bot.loadOptionVideo('vid-1', USER, NOW)).rejects.toThrow('mongo упал');
   });
 });
 
