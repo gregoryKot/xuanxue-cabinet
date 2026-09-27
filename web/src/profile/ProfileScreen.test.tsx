@@ -250,6 +250,31 @@ describe('ProfileScreen — «Выйти»', () => {
   });
 });
 
+// Карточка входа в журнал сбоев (ADR-0132) — только admin, не пункт меню
+// (ADR-0025): учитель и ученик её не видят вовсе.
+describe('ProfileScreen — карточка «Сбои» (ADR-0132)', () => {
+  it('admin — карточка на месте, ведёт на /dev/errors', async () => {
+    renderScreen({ ...STUDENT, id: 'a1', roles: ['admin'] });
+
+    const link = await screen.findByRole('link', { name: /Сбои/ });
+    expect(link).toHaveAttribute('href', '/dev/errors');
+  });
+
+  it('учитель — карточки нет', async () => {
+    renderScreen({ ...STUDENT, id: 't1', roles: ['teacher'] });
+
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
+    expect(screen.queryByRole('link', { name: /Сбои/ })).not.toBeInTheDocument();
+  });
+
+  it('ученик без роли — карточки нет', async () => {
+    renderScreen(STUDENT);
+
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
+    expect(screen.queryByRole('link', { name: /Сбои/ })).not.toBeInTheDocument();
+  });
+});
+
 describe('ProfileScreen — ошибка загрузки уведомлений', () => {
   it('баннер с кнопкой повтора вместо списка, повтор перечитывает список', async () => {
     mockedApiFetch.mockImplementation((path: string) => {

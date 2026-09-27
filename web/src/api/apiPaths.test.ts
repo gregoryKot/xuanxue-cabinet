@@ -7,6 +7,7 @@ import { planningWindow } from '../planning/planningWindow';
 import {
   attemptPath,
   channelsListPath,
+  devErrorsListPath,
   entityPath,
   examAttemptCountPath,
   examImageSrc,
@@ -23,6 +24,16 @@ describe('lessonsListPath', () => {
     expect(lessonsListPath(now)).toBe(
       `/lessons?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=${LIST_LIMIT_MAX}`,
     );
+  });
+});
+
+describe('devErrorsListPath', () => {
+  it('пустой код обращения — без query', () => {
+    expect(devErrorsListPath('')).toBe('/dev/errors');
+  });
+
+  it('код задан — в query, экранирован', () => {
+    expect(devErrorsListPath('req 1')).toBe('/dev/errors?requestId=req%201');
   });
 });
 
