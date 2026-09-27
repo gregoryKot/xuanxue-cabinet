@@ -25,10 +25,13 @@
 // не смотрел).
 //
 // Подтверждение перед стартом попытки с лимитом времени (отзыв владельца
-// 2026-09-22, ADR-0121): та же механика, что у отправки работы
-// (attempt/AttemptSubmitBar.tsx) — ConfirmDialog, `confirmVariant="primary"`,
-// старт экзамена не разрушителен. Тексты и решение, спрашивать ли вообще, —
-// examStartConfirm.ts; сам POST и переход после закрытия диалога — useTaskStart.ts.
+// 2026-09-22, ADR-0121) или перед повтором, затирающим прошлую просроченную
+// попытку (отзыв тестировщицы 2026-09-23, п.4, ADR-0131) — та же механика,
+// что у отправки работы (attempt/AttemptSubmitBar.tsx): ConfirmDialog, вариант
+// кнопки решает `confirm.copy.confirmVariant` (обычный старт — `primary`,
+// затирающий повтор — `danger`, он необратим). Тексты и решение, спрашивать
+// ли вообще и какой вариант, — examStartConfirm.ts; сам POST и переход после
+// закрытия диалога — useTaskStart.ts.
 import type { CSSProperties } from 'react';
 import type { MyExamDto } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -128,7 +131,7 @@ export default function TasksScreen() {
           message={confirm.copy.message}
           confirmLabel={confirm.copy.confirmLabel}
           cancelLabel={confirm.copy.cancelLabel}
-          confirmVariant="primary"
+          confirmVariant={confirm.copy.confirmVariant}
           pending={pendingExamId === confirm.exam.id}
           onConfirm={() => confirmStart(confirm.exam)}
           onCancel={cancelConfirm}

@@ -27,6 +27,7 @@ import type { UserLean } from '../users/users.service';
 import { attemptsExceededMessage } from './attempts-exceeded-message';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { createAttempt } from './exam-attempt-start';
+import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import { loadOwnAttempt } from './exam-attempt-load-own';
 import { ExamItemsService } from './exam-items.service';
 import {
@@ -62,13 +63,16 @@ export class ExamAttemptsService {
     private readonly examItemsService: ExamItemsService,
     private readonly userNamesService: UserNamesService,
     @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
+    private readonly retryCleanup: ExamAttemptRetryCleanupService,
   ) {}
 
   /** ТЗ 4.4, п.1–3: незаконченная попытка возвращается, а не заводится
    * новая; больше `attemptsAllowed` не заводится — атомарно, через уникальный
    * индекс, не «посчитали и вставили». Два отказа на входе (форма не
    * опубликована, срок сдачи прошёл) и порядок их проверок — в
-   * exam-start-guards.ts. */
+   * exam-start-guards.ts. `attemptsUsed` — номер последней попытки, не число
+   * документов (ADR-0131): затирание просроченной ниже не должно откатывать
+   * лимит назад. */
   async start(examId: string, userId: string, now: DateTime): Promise<ExamAttemptDto> {
     const exam = await this.examsService.getById(examId);
     assertExamPublished(exam.status);
@@ -86,12 +90,13 @@ export class ExamAttemptsService {
 
     assertExamNotPastDue(exam.dueAt, now);
 
-    const attemptsUsed = await this.model.countDocuments({ examId, userId });
+    const lastAttempt = await this.retryCleanup.findLastAttempt(examId, userId);
+    const attemptsUsed = lastAttempt?.attemptNo ?? 0;
     if (attemptsUsed >= exam.attemptsAllowed) {
       throw new InvalidInputError(attemptsExceededMessage(attemptsUsed));
     }
 
-    return createAttempt(
+    const created = await createAttempt(
       this.model,
       this.examItemsService,
       exam,
@@ -99,6 +104,10 @@ export class ExamAttemptsService {
       attemptsUsed,
       now,
     );
+    // Старую попытку — только после того, как новая точно создана: гонка
+    // двойного старта не должна снести свежую (retryCleanup, шапка файла).
+    if (lastAttempt) await this.retryCleanup.deleteIfExpiredUngraded(lastAttempt);
+    return created;
   }
 
   /** ТЗ 4.4, п.4–5: только владелец, только `in_progress`, только до

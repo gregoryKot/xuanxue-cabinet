@@ -280,6 +280,136 @@ describe('ExamAttemptsService', () => {
     );
   });
 
+  // ADR-0131, отзыв тестировщицы 2026-09-23 п.4: «сначала учитель должен
+  // проверить, а потом давать ещё раз, иначе люди понатыкают десять раз».
+  describe('повтор после просроченной непроверенной попытки затирает её', () => {
+    it('старая попытка удаляется, новая занимает следующий attemptNo', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 2 });
+      const first = await ctx.service.start(examId, USER_A, NOW);
+      await ctx.attemptModel.updateOne(
+        { _id: first.id },
+        { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+      );
+
+      const second = await ctx.service.start(examId, USER_A, NOW.plus({ minutes: 1 }));
+
+      expect(second.id).not.toBe(first.id);
+      await expect(ctx.attemptModel.findById(first.id)).resolves.toBeNull();
+      const secondDoc = await ctx.attemptModel.findById(second.id).lean();
+      expect(secondDoc?.attemptNo).toBe(2);
+    });
+
+    it('проверенную (graded) попытку не трогает — вторая попытка добавляется, а не заменяет', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 2 });
+      const first = await ctx.service.start(examId, USER_A, NOW);
+      await ctx.service.submit(first.id, USER_A, NOW);
+      await ctx.gradingsService.grade(first.id, GRADER_ID, { outcome: 'passed' }, NOW);
+
+      const second = await ctx.service.start(examId, USER_A, NOW);
+
+      expect(second.id).not.toBe(first.id);
+      await expect(ctx.attemptModel.findById(first.id)).resolves.not.toBeNull();
+      await expect(
+        ctx.attemptModel.countDocuments({ examId, userId: USER_A }),
+      ).resolves.toBe(2);
+    });
+
+    it('лимит попыток не откатывается удалением — третьей попытки не завести при лимите 2', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 2 });
+      const first = await ctx.service.start(examId, USER_A, NOW);
+      await ctx.attemptModel.updateOne(
+        { _id: first.id },
+        { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+      );
+      // Затирает первую — в базе остаётся один документ, но лимит уже занят
+      // дважды (ADR-0131: attemptsUsed = attemptNo, не count).
+      const second = await ctx.service.start(examId, USER_A, NOW.plus({ minutes: 1 }));
+      await ctx.attemptModel.updateOne(
+        { _id: second.id },
+        { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+      );
+
+      await expect(
+        ctx.service.start(examId, USER_A, NOW.plus({ minutes: 2 })),
+      ).rejects.toThrow('Вы использовали 2 попытки из разрешённых на этот экзамен');
+    });
+
+    it('видео и уведомление учителя об удалённой попытке уходят вместе с ней', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 2 });
+      const first = await ctx.service.start(examId, USER_A, NOW);
+      await ctx.mediaModel.create({
+        attemptId: new Types.ObjectId(first.id),
+        userId: new Types.ObjectId(USER_A),
+        kind: 'manual',
+        receivedAt: NOW.toJSDate(),
+      });
+      await ctx.notificationModel.create({
+        userId: AUTHOR_ID,
+        kind: 'attempt_submitted',
+        attemptId: first.id,
+        readAt: null,
+        dismissedAt: null,
+      });
+      await ctx.attemptModel.updateOne(
+        { _id: first.id },
+        { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+      );
+
+      await ctx.service.start(examId, USER_A, NOW.plus({ minutes: 1 }));
+
+      await expect(
+        ctx.mediaModel.countDocuments({ attemptId: new Types.ObjectId(first.id) }),
+      ).resolves.toBe(0);
+      await expect(
+        ctx.notificationModel.countDocuments({ attemptId: first.id }),
+      ).resolves.toBe(0);
+    });
+
+    // Двойной старт (двойной клик на телефоне) не должен снести только что
+    // созданную попытку: удаление целится в id старой попытки, захваченный
+    // ДО createAttempt, не в «последнюю просроченную», найденную заново.
+    // Гонка воспроизведена тем же приёмом, что «гонка двух стартов подряд»
+    // выше — мок `create()` даёт конкуренту вставить свою попытку первым.
+    it('двойной старт подряд — конкурент уже вставил новую попытку, наша ветка её не сносит', async () => {
+      const itemId = await createPublishedItem();
+      const examId = await createPublishedExam({ itemIds: [itemId], attemptsAllowed: 3 });
+      const first = await ctx.service.start(examId, USER_A, NOW);
+      await ctx.attemptModel.updateOne(
+        { _id: first.id },
+        { $set: { status: 'submitted', expired: true, submittedAt: NOW.toJSDate() } },
+      );
+
+      const originalCreate = ctx.attemptModel.create.bind(ctx.attemptModel);
+      let winnerId = '';
+      jest.spyOn(ctx.attemptModel, 'create').mockImplementationOnce(async () => {
+        const winner = await originalCreate({
+          examId,
+          examTitle: 'т',
+          userId: USER_A,
+          attemptNo: 2,
+          status: 'in_progress',
+          blocks: '[]',
+          answers: '[]',
+          startedAt: NOW.toJSDate(),
+        });
+        winnerId = winner._id.toString();
+        const duplicateKeyError: Error & { code?: number } = new Error('E11000');
+        duplicateKeyError.code = 11000;
+        throw duplicateKeyError;
+      });
+
+      const second = await ctx.service.start(examId, USER_A, NOW.plus({ minutes: 1 }));
+
+      expect(second.id).toBe(winnerId);
+      await expect(ctx.attemptModel.findById(winnerId)).resolves.not.toBeNull();
+      await expect(ctx.attemptModel.findById(first.id)).resolves.toBeNull();
+    });
+  });
+
   it('гонка двух стартов подряд: E11000 при вставке — отдаёт попытку конкурента, не бросает и не плодит вторую', async () => {
     const itemId = await createPublishedItem();
     const examId = await createPublishedExam({ itemIds: [itemId] });

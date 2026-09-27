@@ -223,6 +223,7 @@ export type { MyExamDto, ListMyExamsQuery, MyExamAction } from './my-exams';
 export {
   myExamAttemptsLeft,
   getMyExamAction,
+  willRetryDeletePreviousAttempt,
   firstUnansweredQuestionIndex,
 } from './my-exams';
 export { describeExamTime, describeAttemptDeadline, isExamDuePassed } from './exam-time';
@@ -232,7 +233,11 @@ export {
   EXAM_START_CONFIRM_TITLE,
   EXAM_START_CONFIRM_LABEL,
   EXAM_START_CANCEL_LABEL,
+  EXAM_RETRY_DELETE_CONFIRM_TITLE,
+  EXAM_RETRY_DELETE_CONFIRM_LABEL,
+  EXAM_RETRY_DELETE_FACT,
   buildExamStartWarning,
+  buildExamRetryDeleteWarning,
 } from './exam-time-notice';
 export type {
   AttemptOptionCheckDto,

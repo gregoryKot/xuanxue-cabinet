@@ -8,6 +8,7 @@ import {
   firstUnansweredQuestionIndex,
   getMyExamAction,
   myExamAttemptsLeft,
+  willRetryDeletePreviousAttempt,
   type MyExamDto,
 } from './my-exams';
 
@@ -92,6 +93,42 @@ describe('getMyExamAction', () => {
       lastAttempt: { id: 'a1', status: 'submitted', expired: false },
     });
     expect(getMyExamAction(exam)).toBeNull();
+  });
+});
+
+// Отзыв тестировщицы 2026-09-23, п.4; решение владельца — ADR-0131: повтор
+// после просроченной непроверенной попытки затирает её, повтор после
+// проверенной — нет.
+describe('willRetryDeletePreviousAttempt', () => {
+  it('попытку закрыло время, не проверена — да, удалится', () => {
+    const exam = makeExam({
+      attemptsAllowed: 2,
+      attemptsUsed: 1,
+      lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+    });
+    expect(willRetryDeletePreviousAttempt(exam)).toBe(true);
+  });
+
+  it('учитель уже проверил (graded) — нет, история оценки остаётся', () => {
+    const exam = makeExam({
+      attemptsAllowed: 2,
+      attemptsUsed: 1,
+      lastAttempt: { id: 'a1', status: 'graded', expired: false, outcome: 'passed' },
+    });
+    expect(willRetryDeletePreviousAttempt(exam)).toBe(false);
+  });
+
+  it('сдал сам, не просрочена (ждёт проверки) — нет', () => {
+    const exam = makeExam({
+      attemptsAllowed: 2,
+      attemptsUsed: 1,
+      lastAttempt: { id: 'a1', status: 'submitted', expired: false },
+    });
+    expect(willRetryDeletePreviousAttempt(exam)).toBe(false);
+  });
+
+  it('попытки не было вовсе — нет', () => {
+    expect(willRetryDeletePreviousAttempt(makeExam())).toBe(false);
   });
 });
 

@@ -340,6 +340,63 @@ describe('handleExamStartConfirm', () => {
     ).resolves.toBeUndefined();
     expect(edits).toEqual([GENERIC_ERROR]);
   });
+
+  // ADR-0131, отзыв тестировщицы 2026-09-23 п.4: повтор после просроченной
+  // непроверенной попытки затирает её — экран спрашивает, даже когда у
+  // формы вовсе нет лимита времени.
+  it('повтор после просроченной попытки, лимита времени нет — всё равно экран подтверждения', async () => {
+    const port = fakeExamBotPort({
+      listMyExams: jest.fn().mockResolvedValue([
+        exam({
+          attemptsAllowed: 2,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'submitted', expired: true },
+        }),
+      ]),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamStartConfirm(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      'e1',
+      NOW,
+    );
+
+    expect(port.startAttempt).not.toHaveBeenCalled();
+    expect(edits[0]).toContain('Начать заново?');
+    expect(edits[0]).toContain('прошлая попытка удалится');
+  });
+
+  it('повтор после проверенной попытки, лимита времени нет — защита в глубину, сразу старт (ничего не удаляется)', async () => {
+    const port = fakeExamBotPort({
+      listMyExams: jest.fn().mockResolvedValue([
+        exam({
+          attemptsAllowed: 2,
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'graded', expired: false },
+        }),
+      ]),
+      startAttempt: jest.fn().mockResolvedValue(attempt()),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamStartConfirm(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      'e1',
+      NOW,
+    );
+
+    expect(port.startAttempt).toHaveBeenCalledWith('e1', USER, NOW);
+    expect(edits[0]).toContain('Вопрос 1 из 1');
+  });
 });
 
 describe('handleExamQuestion', () => {

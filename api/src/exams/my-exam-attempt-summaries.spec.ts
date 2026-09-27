@@ -114,6 +114,41 @@ describe('aggregateAttemptSummaries', () => {
     expect(summaries.get(examWithOne)?.latest._id.toString()).toBe(solo.id);
   });
 
+  // ADR-0131: повтор после просроченной непроверенной попытки удаляет её
+  // документ (ExamAttemptRetryCleanupService) — attemptsUsed обязан остаться
+  // номером последней попытки, а не количеством оставшихся документов,
+  // иначе удаление откатывало бы лимит попыток назад.
+  it('одна из попыток удалена — attemptsUsed остаётся максимальным attemptNo, не числом документов', async () => {
+    const examId = await createExam(3);
+    const first = await ctx.service.start(examId, USER_A, NOW);
+    // Вторую попытку заводим в обход ExamAttemptsService.start() — та сама
+    // умеет удалять первую (ADR-0131), а здесь важен только $max в
+    // агрегации, не механизм удаления (он проверен в
+    // exam-attempts.service.spec.ts и exam-attempt-retry-cleanup.service.spec.ts).
+    const second = await ctx.attemptModel.create({
+      examId,
+      examTitle: 'т',
+      userId: USER_A,
+      attemptNo: 2,
+      status: 'submitted',
+      expired: true,
+      blocks: '[]',
+      answers: '[]',
+      startedAt: NOW.toJSDate(),
+    });
+    await ctx.attemptModel.deleteOne({ _id: first.id });
+
+    const summaries = await aggregateAttemptSummaries({
+      attemptModel: ctx.attemptModel,
+      examIds: [examId],
+      userId: USER_A,
+    });
+
+    // Один документ в базе (second, attemptNo 2), но attemptsUsed — 2, не 1.
+    expect(summaries.get(examId)?.attemptsUsed).toBe(2);
+    expect(summaries.get(examId)?.latest._id.toString()).toBe(second._id.toString());
+  });
+
   it('попытки другого ученика на ту же форму в выборку не попадают', async () => {
     const examId = await createExam(1);
     await ctx.service.start(examId, USER_B, NOW);

@@ -13,6 +13,7 @@ import {
   EXAM_NOT_FOUND_MESSAGE,
   firstUnansweredQuestionIndex,
   getMyExamAction,
+  willRetryDeletePreviousAttempt,
 } from '@xuanxue/shared';
 import type { UserLean } from '../../users/users.service';
 import type { BotSessionService } from '../bot-session.service';
@@ -77,15 +78,21 @@ export async function handleExamStartConfirm(
     }
 
     const action = getMyExamAction(exam);
-    // Защита в глубину: без лимита времени или «Продолжить» (часы уже
-    // тикают, вопрос запоздал бы) — сразу старт, та же граница, что у
-    // getExamStartConfirm в кабинете (web/src/student/examStartConfirm.ts).
-    if (!exam.timeLimitMin || (action !== 'start' && action !== 'retry')) {
+    const deletesPrevious = action === 'retry' && willRetryDeletePreviousAttempt(exam);
+    // Защита в глубину: не start/retry — сразу старт (нечего спрашивать);
+    // start/retry без лимита времени и без удаления прежней попытки — тоже
+    // сразу старт, часы никого не поджимают. Та же граница, что у
+    // getExamStartConfirm в кабинете (web/src/student/examStartConfirm.ts,
+    // ADR-0131 добавил ветку `deletesPrevious`).
+    if (
+      (action !== 'start' && action !== 'retry') ||
+      (!exam.timeLimitMin && !deletesPrevious)
+    ) {
       await handleExamStart(ctx, examBot, botSessions, user, chatId, examId, now);
       return;
     }
 
-    const menu = buildExamStartConfirmScreen(examId, exam.timeLimitMin);
+    const menu = buildExamStartConfirmScreen(examId, exam.timeLimitMin, deletesPrevious);
     await ctx
       .editMessageText(menu.text, { reply_markup: { inline_keyboard: menu.buttons } })
       .catch(() => null);

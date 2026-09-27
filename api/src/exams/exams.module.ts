@@ -79,6 +79,7 @@ import { TelegramVideoLinkNotifier } from '../telegram/telegram-video-link-notif
 import { UsersModule } from '../users/users.module';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamAttemptCountService } from './exam-attempt-count.service';
+import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
 import { ExamAttemptsController } from './exam-attempts.controller';
 import { ExamAttemptsService } from './exam-attempts.service';
 import { ExamBotService } from './exam-bot.service';
@@ -124,6 +125,10 @@ import { MyExamsService } from './my-exams.service';
     ExamsService,
     ExamAttemptsService,
     ExamAttemptCountService,
+    // Каскад удаления просроченной непроверенной попытки при повторе
+    // (ADR-0131) — модель media_assets/notifications доступна уже
+    // импортированными MediaModule/NotificationsModule (комментарии выше).
+    ExamAttemptRetryCleanupService,
     ExamGradingsService,
     MyExamsService,
     // Кабинет, Telegram и push — по отдельному провайдеру, EXAM_NOTIFIER
