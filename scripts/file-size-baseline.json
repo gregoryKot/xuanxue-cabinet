@@ -757,7 +757,7 @@
   "scripts/check-conflict-markers.test.mjs": 45,
   "scripts/check-control-font-size.mjs": 298,
   "scripts/check-control-font-size.test.mjs": 269,
-  "scripts/check-coverage-ratchet.mjs": 174,
+  "scripts/check-coverage-ratchet.mjs": 180,
   "scripts/check-env-example.mjs": 82,
   "scripts/check-eslint-ratchet.mjs": 97,
   "scripts/check-file-size-ratchet.mjs": 147,
