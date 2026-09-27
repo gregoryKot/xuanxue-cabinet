@@ -11,6 +11,7 @@ import {
   entityPath,
   examAttemptCountPath,
   examImageSrc,
+  EXAM_EDITOR_ITEMS_PATH,
   examItemsListPath,
   examsListPath,
   lessonsListPath,
@@ -57,6 +58,18 @@ describe('examItemsListPath', () => {
   it('статус задан — добавлен параметром', () => {
     expect(examItemsListPath('published')).toBe(
       `/exam-items?limit=${LIST_LIMIT_MAX}&status=published`,
+    );
+  });
+
+  // Удалённые из банка вопросы (ADR-0140) — только для редактора и
+  // предпросмотра экзамена, по умолчанию их в списке нет.
+  it('список вопросов — без удалённых', () => {
+    expect(examItemsListPath('')).not.toContain('includeDeleted');
+  });
+
+  it('EXAM_EDITOR_ITEMS_PATH — все статусы и удалённые', () => {
+    expect(EXAM_EDITOR_ITEMS_PATH).toBe(
+      `/exam-items?limit=${LIST_LIMIT_MAX}&includeDeleted=true`,
     );
   });
 });

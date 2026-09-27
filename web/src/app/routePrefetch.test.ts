@@ -19,6 +19,7 @@ import {
   TEACHERS_PATH,
   attemptPath,
   channelsListPath,
+  EXAM_EDITOR_ITEMS_PATH,
   examItemsListPath,
   examsListPath,
   lessonsListPath,
@@ -143,8 +144,9 @@ describe('RouteModule.prefetch — «новая запись»: своего id 
     expect(prefetchAt('/planning/new')).toEqual([CLASSES_LIST_PATH, TEACHERS_PATH]);
   });
 
-  it('/exams/new — вопросы без фильтра', () => {
-    expect(prefetchAt('/exams/new')).toEqual([examItemsListPath('')]);
+  // Вместе с удалёнными из банка (ADR-0140): экран запросит тот же путь.
+  it('/exams/new — вопросы без фильтра, вместе с удалёнными из банка', () => {
+    expect(prefetchAt('/exams/new')).toEqual([EXAM_EDITOR_ITEMS_PATH]);
   });
 
   it('/channels/new и /exam-items/new — форма не ждёт ничего кроме себя, prefetch не задан', () => {
@@ -193,17 +195,17 @@ describe('RouteModule.prefetch — редактор существующей з�
     ]);
   });
 
-  it('/exams/:id — карточка экзамена и вопросы без фильтра', () => {
+  it('/exams/:id — карточка экзамена и вопросы, вместе с удалёнными из банка (ADR-0140)', () => {
     expect(prefetchAt('/exams/652f00000000000000000006')).toEqual([
       '/exams/652f00000000000000000006',
-      examItemsListPath(''),
+      EXAM_EDITOR_ITEMS_PATH,
     ]);
   });
 
   it('/exams/:id/preview — те же карточка экзамена и вопросы, id берётся перед хвостом', () => {
     expect(prefetchAt('/exams/652f00000000000000000006/preview')).toEqual([
       '/exams/652f00000000000000000006',
-      examItemsListPath(''),
+      EXAM_EDITOR_ITEMS_PATH,
     ]);
   });
 

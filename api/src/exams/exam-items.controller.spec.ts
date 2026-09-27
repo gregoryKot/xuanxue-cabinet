@@ -83,12 +83,12 @@ describe('ExamItemsController', () => {
     expect(update).toHaveBeenCalledWith('i1', body, expect.any(DateTime));
   });
 
-  it('remove() передаёт id в сервис', async () => {
+  it('remove() передаёт id и «сейчас» в сервис', async () => {
     const remove = jest.fn().mockResolvedValue(undefined);
     const controller = await buildController({ remove });
 
     await controller.remove('i1');
-    expect(remove).toHaveBeenCalledWith('i1');
+    expect(remove).toHaveBeenCalledWith('i1', expect.any(DateTime));
   });
 
   it('getStats() передаёт id в ExamItemStatsService', async () => {

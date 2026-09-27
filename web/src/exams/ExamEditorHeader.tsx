@@ -78,8 +78,9 @@ export function ExamEditorHeader({
           {BACK_TEXT}
         </Link>
         <div style={barActionsStyle}>
-          {/* Удаление разрешено только черновику (ExamsService.remove). */}
-          {exam && exam.status === 'draft' && (
+          {/* Удаление — в любом статусе (мягкое, ADR-0140): экзамен пропадает
+              и у учителя, и у учеников, сданные работы остаются в базе. */}
+          {exam && (
             <TextLinkButton onClick={onRequestRemove} disabled={pending} danger>
               {REMOVE_LABEL}
             </TextLinkButton>

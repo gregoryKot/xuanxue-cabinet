@@ -14,6 +14,7 @@ import {
   type ListMyExamsQuery,
   type MyExamDto,
 } from '@xuanxue/shared';
+import { NOT_DELETED } from '../common/soft-delete';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { assertExamPublished } from './exam-start-guards';
 import { closeIfExpiredAttempt } from './exam-attempt-lifecycle';
@@ -68,7 +69,7 @@ export class MyExamsService {
     now: DateTime,
   ): Promise<MyExamDto[]> {
     const examDocs = await this.examModel
-      .find({ status: 'published' })
+      .find({ status: 'published', ...NOT_DELETED })
       .sort({ updatedAt: -1 })
       .limit(query.limit ?? LIST_LIMIT_DEFAULT)
       .lean<RawLeanMyExam[]>();
@@ -88,11 +89,10 @@ export class MyExamsService {
   /** Отзыв тестировщицы 2026-09-23 (ADR-0129): счётчик уведомлений гаснет,
    * как только ученик нажал на карточку задания, а не когда он реально начал
    * попытку — форма обязана быть опубликована и доступна ученику тем же
-   * путём, что старт попытки (ExamAttemptsService.start,
-   * exam-attempts.service.ts): getById бросает 404 на неизвестном/чужом id,
-   * assertExamPublished — 400 на черновике/архиве. Идемпотентно (upsert,
-   * exam-seen-mark.write.ts) — второй клик или повтор на плохой связи не
-   * падает и не плодит вторую строку. */
+   * путём, что старт попытки (ExamAttemptsService.start): getById бросает
+   * 404 на неизвестном/чужом/удалённом id, assertExamPublished — 400 на
+   * черновике/архиве. Идемпотентно (upsert, exam-seen-mark.write.ts) —
+   * второй клик или повтор на плохой связи не падает и не плодит вторую строку. */
   async markSeen(examId: string, userId: string): Promise<void> {
     const exam = await this.examsService.getById(examId);
     assertExamPublished(exam.status);

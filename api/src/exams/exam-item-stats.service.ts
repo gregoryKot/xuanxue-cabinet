@@ -17,6 +17,7 @@ import type {
   ExamItemStatsDto,
   ExamItemStatsSummaryDto,
 } from '@xuanxue/shared';
+import { NOT_DELETED } from '../common/soft-delete';
 import { decryptAttempt, type RawLeanExamAttempt } from './exam-attempt.mapper';
 import { ExamAttemptRecord } from './exam-attempt.schema';
 import { findExamsReferencingItem } from './exam-item-references';
@@ -65,7 +66,7 @@ export class ExamItemStatsService {
   async getSummary(): Promise<ExamItemStatsSummaryDto> {
     const accByItem = await this.loadAccumulators();
     const docs = await this.itemModel
-      .find({ kind: { $in: OPTION_KINDS } })
+      .find({ kind: { $in: OPTION_KINDS }, ...NOT_DELETED })
       .lean<RawLeanExamItem[]>();
     const items = docs.map((doc) => {
       const decrypted = decryptExamItem(doc);

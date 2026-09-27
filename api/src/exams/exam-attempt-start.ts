@@ -33,7 +33,12 @@ export async function createAttempt(
   now: DateTime,
 ): Promise<ExamAttemptDto> {
   const itemIds = [...new Set(exam.blocks.flatMap((block) => block.itemIds))];
-  const items = await Promise.all(itemIds.map((id) => examItemsService.getById(id)));
+  // includeDeleted (ADR-0140) — блок формы может ссылаться на вопрос, уже
+  // удалённый из банка: форма продолжает получать его снимком, пока учитель
+  // сам не убрал вопрос из блока (exam-items-eligible.ts, тот же принцип).
+  const items = await Promise.all(
+    itemIds.map((id) => examItemsService.getById(id, true)),
+  );
   const itemsById = new Map(items.map((item) => [item.id, item]));
   const blocks = buildAttemptBlocks({
     blocks: exam.blocks,

@@ -112,7 +112,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     ExamSeenMarkRecord.name,
     ExamSeenMarkSchema,
   );
-  const examsService = new ExamsService(examModel, itemModel, attemptModel);
+  const examsService = new ExamsService(examModel, itemModel);
   const examImagesService = new ExamImagesService(imageModel, attemptModel);
   const examItemsService = new ExamItemsService(
     itemModel,

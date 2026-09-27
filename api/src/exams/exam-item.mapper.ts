@@ -70,5 +70,9 @@ export function toExamItemDto(doc: LeanExamItem): ExamItemDto {
     authorId: doc.authorId?.toString(),
     createdAt: toIsoUtc(doc.createdAt),
     updatedAt: toIsoUtc(doc.updatedAt),
+    // Ключа нет вовсе, если вопрос не удалён — тем же приёмом, что dueAt
+    // формы (exam.mapper.ts): includeDeleted (ListExamItemsDto) отдаёт поле
+    // только удалённым записям (ADR-0140).
+    ...(doc.deletedAt !== undefined ? { deletedAt: toIsoUtc(doc.deletedAt) } : {}),
   };
 }

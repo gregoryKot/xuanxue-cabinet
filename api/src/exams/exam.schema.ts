@@ -92,6 +92,12 @@ export class ExamRecord {
   // ссылка, при правке не меняется. См. USER_REFERENCE_PATHS.
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   createdBy?: Types.ObjectId;
+
+  // Мягкое удаление (ADR-0140) — форма пропадает для учителя и ученика вместе
+  // со своими попытками в списках; сами попытки/оценки/медиа остаются в базе.
+  // Не String — encryption-coverage.spec.ts решения не требует.
+  @Prop({ type: Date, required: false })
+  deletedAt?: Date;
 }
 
 export const ExamSchema = SchemaFactory.createForClass(ExamRecord);
@@ -99,6 +105,9 @@ export const ExamSchema = SchemaFactory.createForClass(ExamRecord);
 ExamSchema.index({ status: 1, updatedAt: -1 });
 // Фильтр по уровню.
 ExamSchema.index({ level: 1 });
+// distinct по удалённым формам (deleted-exam-ids.ts) — список попыток
+// вычитает их без полного скана коллекции.
+ExamSchema.index({ deletedAt: 1 });
 
 export const EXAM_FIELD_POLICY: FieldPolicy = {
   title: enc,

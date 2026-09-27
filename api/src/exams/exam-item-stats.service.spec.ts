@@ -79,7 +79,7 @@ describe('ExamItemStatsService', () => {
       examImagesService,
       fakeExamVideosService(),
     );
-    examsService = new ExamsService(examModel, itemModel, attemptModel);
+    examsService = new ExamsService(examModel, itemModel);
     attemptsService = new ExamAttemptsService(
       attemptModel,
       gradingModel,
@@ -245,5 +245,20 @@ describe('ExamItemStatsService', () => {
 
     const summary = await statsService.getSummary();
     expect(summary.strugglingCount).toBe(1);
+  });
+
+  it('getSummary — удалённый вопрос (ADR-0140) не в счёте, даже если ему чаще отвечают неверно', async () => {
+    const strugglingItem = await createPublishedSingleChoiceItem();
+    const strugglingExamId = await createPublishedExam(strugglingItem.itemId);
+    await submitAnswer(strugglingExamId, USER_A, strugglingItem.itemId, [
+      strugglingItem.wrongOptionId,
+    ]);
+    await submitAnswer(strugglingExamId, USER_B, strugglingItem.itemId, [
+      strugglingItem.wrongOptionId,
+    ]);
+    await examItemsService.remove(strugglingItem.itemId, NOW);
+
+    const summary = await statsService.getSummary();
+    expect(summary.strugglingCount).toBe(0);
   });
 });

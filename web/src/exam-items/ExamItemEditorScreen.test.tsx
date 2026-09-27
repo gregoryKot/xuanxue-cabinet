@@ -307,30 +307,32 @@ describe('ExamItemEditorScreen — подвал', () => {
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
   });
 
-  it('опубликованный — переходы в черновик и архив, удаления нет', async () => {
+  // Мягкое удаление (ADR-0140) — «Удалить» доступна в любом статусе, не
+  // только у черновика, и реально шлёт DELETE.
+  it('опубликованный — переходы в черновик и архив, «Удалить» доступна и шлёт DELETE (ADR-0140)', async () => {
+    const user = userEvent.setup();
     mockItemAndStats(makeItem({ status: 'published' }));
 
     renderAt('/exam-items/e1');
-
     expect(await screen.findByText('Опубликован')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Вернуть в черновик' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'В архив' })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Удалить вопрос' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText(/Отправьте его в архив/)).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: 'Удалить вопрос' }));
+    await user.click(screen.getByRole('button', { name: 'Удалить' }));
+    await waitFor(() => expect(callsWithMethod('DELETE')).toHaveLength(1));
   });
 
-  it('архивный — свой текст статуса и своё объяснение вместо удаления', async () => {
+  it('архивный — свой текст статуса, «Удалить вопрос» тоже доступна', async () => {
     mockItemAndStats(makeItem({ status: 'archived' }));
 
     renderAt('/exam-items/e1');
 
     expect(await screen.findByText('В архиве')).toBeInTheDocument();
     expect(screen.getByText(/сданные работы остаются/)).toBeInTheDocument();
-    expect(screen.getByText(/ссылки в сданных работах/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Удалить вопрос' })).toBeInTheDocument();
   });
 
   it('новый вопрос — ни статуса, ни удаления, ни статистики', async () => {
@@ -364,7 +366,7 @@ describe('ExamItemEditorScreen — подвал', () => {
   });
 });
 
-describe('ExamItemEditorScreen — удаление черновика', () => {
+describe('ExamItemEditorScreen — удаление', () => {
   it('«Удалить вопрос» спрашивает подтверждение, отмена ничего не удаляет', async () => {
     const user = userEvent.setup();
     mockItemAndStats(makeItem());
@@ -393,7 +395,7 @@ describe('ExamItemEditorScreen — удаление черновика', () => {
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
   });
 
-  it('409 при удалении — текст сервера остаётся на странице', async () => {
+  it('сбой сервера при удалении — текст сервера остаётся на странице', async () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../api/http');
     mockItemAndStats(makeItem());
@@ -401,12 +403,12 @@ describe('ExamItemEditorScreen — удаление черновика', () => {
     renderAt('/exam-items/e1');
     await waitForMounted();
     mockApiByPath({
-      '/exam-items/e1': new ApiError('Удалить можно только черновик.', 409, 'conflict'),
+      '/exam-items/e1': new ApiError('Сервис недоступен.', 503, 'unknown'),
     });
     await user.click(screen.getByRole('button', { name: 'Удалить вопрос' }));
     await user.click(screen.getByRole('button', { name: 'Удалить' }));
 
-    expect(await screen.findByText('Удалить можно только черновик.')).toBeInTheDocument();
+    expect(await screen.findByText('Сервис недоступен.')).toBeInTheDocument();
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 });

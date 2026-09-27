@@ -85,6 +85,22 @@ describe('useExamItems — загрузка', () => {
     expect(lastCall).toContain('status=archived');
   });
 
+  // Редактор и предпросмотр экзамена просят удалённые из банка вопросы
+  // (ADR-0140) — по умолчанию хук их не запрашивает.
+  it('includeDeleted — параметр в пути запроса', async () => {
+    // Не …Once (check-once-mock-ratchet.mjs): очередь одного вызова зависит
+    // от порядка, а этот хук сам делает только один запрос за раз.
+    mockedApiFetch.mockResolvedValue([]);
+    const { result } = renderHook(() => useExamItems('', { includeDeleted: true }));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      expect.stringContaining('includeDeleted=true'),
+      expect.anything(),
+    );
+  });
+
   it('ApiError — текст сервера в error', async () => {
     mockedApiFetch.mockRejectedValueOnce(
       new ApiError('Сервис недоступен', 503, 'unknown'),

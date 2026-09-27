@@ -1,6 +1,8 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок модели — CLAUDE.md
 // «Тесты»): шифрование содержательных полей, правила блоков ТЗ 4.3 (п.1–5),
-// фильтры и лимит списка, id блока сохраняется при правке.
+// фильтры и лимит списка, id блока сохраняется при правке, мягкое удаление
+// в любом статусе (ADR-0140).
+import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { ExamAttemptRecord, ExamAttemptSchema } from './exam-attempt.schema';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
@@ -9,6 +11,7 @@ import { ExamsService } from './exams.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 
 const CREATED_BY = '507f1f77bcf86cd799439011';
+const NOW = DateTime.utc(2026, 9, 27, 12, 0, 0);
 
 describe('ExamsService', () => {
   let memory: MemoryMongo;
@@ -27,7 +30,7 @@ describe('ExamsService', () => {
       ExamAttemptRecord.name,
       ExamAttemptSchema,
     );
-    service = new ExamsService(model, itemModel, attemptModel);
+    service = new ExamsService(model, itemModel);
   }, 60_000);
 
   afterAll(async () => {
@@ -223,15 +226,17 @@ describe('ExamsService', () => {
     expect(updated.blocks).toEqual([]);
   });
 
-  it('удаление черновика — проходит', async () => {
+  it('удаление черновика — помечает deletedAt, документ остаётся в базе (ADR-0140)', async () => {
     const created = await service.create({ title: 'Экзамен' }, CREATED_BY);
 
-    await service.remove(created.id);
+    await service.remove(created.id, NOW);
 
-    await expect(model.findById(created.id)).resolves.toBeNull();
+    await expect(service.getById(created.id)).rejects.toThrow('не найден');
+    const raw = await model.findById(created.id).lean();
+    expect(raw?.deletedAt?.toISOString()).toBe(NOW.toJSDate().toISOString());
   });
 
-  it('удаление опубликованной формы — ConflictError, форма остаётся', async () => {
+  it('удаление опубликованной формы — без отказа, форма пропадает из getById (ADR-0140)', async () => {
     const itemId = await createItem('published');
     const created = await service.create(
       { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
@@ -239,36 +244,33 @@ describe('ExamsService', () => {
     );
     await service.update(created.id, { status: 'published' });
 
-    await expect(service.remove(created.id)).rejects.toThrow(
-      'Удалить можно только черновик',
-    );
-    await expect(model.findById(created.id)).resolves.not.toBeNull();
+    await service.remove(created.id, NOW);
+
+    await expect(service.getById(created.id)).rejects.toThrow('не найден');
   });
 
-  // Пункт 4 аудита 2026-09-15: та же дыра, что у вопроса банка, но для самой
-  // формы — переход published → draft ничем не ограничен (в отличие от
-  // published-инварианта выше), и форму, по которой уже сдавали, можно было
-  // откатить в черновик и удалить, осиротив exam_attempts.
-  it('форма с попыткой ученика — не удаляется, даже откатившись в черновик', async () => {
+  // До ADR-0140 удаление формы с попыткой ученика было ConflictError — тот
+  // отказ снят по решению владельца («надо всё удалять»): попытка остаётся
+  // в базе нетронутой, список попыток её больше не показывает (attempts).
+  it('форма с попыткой ученика — удаляется без отказа, попытка остаётся в базе', async () => {
     const itemId = await createItem('published');
     const created = await service.create(
       { title: 'Экзамен', blocks: [{ itemIds: [itemId] }] },
       CREATED_BY,
     );
     await service.update(created.id, { status: 'published' });
-    await attemptModel.create({
+    const attempt = await attemptModel.create({
       examId: created.id,
       examTitle: created.title,
       userId: CREATED_BY,
       attemptNo: 1,
       startedAt: new Date(),
     });
-    // Учитель откатил форму назад в черновик — старый removeIfDraft этого
-    // не видел и дал бы удалить (блокер №4).
-    await service.update(created.id, { status: 'draft', blocks: [] });
 
-    await expect(service.remove(created.id)).rejects.toThrow('уже есть попытки учеников');
-    await expect(model.findById(created.id)).resolves.not.toBeNull();
+    await service.remove(created.id, NOW);
+
+    await expect(service.getById(created.id)).rejects.toThrow('не найден');
+    await expect(attemptModel.findById(attempt._id)).resolves.not.toBeNull();
   });
 
   it('id блока сохраняется при правке, у нового блока — новый id', async () => {

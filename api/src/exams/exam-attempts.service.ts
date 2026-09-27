@@ -25,6 +25,7 @@ import { InvalidInputError } from '../common/errors';
 import { UserNamesService } from '../users/user-names.service';
 import type { UserLean } from '../users/users.service';
 import { attemptsExceededMessage } from './attempts-exceeded-message';
+import { buildAttemptListFilter } from './deleted-exam-ids';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
 import { createAttempt } from './exam-attempt-start';
 import { ExamAttemptRetryCleanupService } from './exam-attempt-retry-cleanup.service';
@@ -166,10 +167,9 @@ export class ExamAttemptsService {
   ): Promise<ExamAttemptDto[]> {
     // Помощник учителя правами равен учителю (STAFF_ROLES, shared/auth.ts).
     const isStaff = isStaffRole(user.roles);
-    const filter: Record<string, unknown> = {};
-    if (!isStaff) filter.userId = user.id;
-    if (query.examId !== undefined) filter.examId = query.examId;
-    if (query.status !== undefined) filter.status = query.status;
+    // Попытки удалённых форм (ADR-0140) не всплывают в списке ни у кого.
+    const deletedIds = await this.examsService.deletedIds();
+    const filter = buildAttemptListFilter(deletedIds, query, isStaff, user.id);
 
     const docs = await this.model
       .find(filter)

@@ -91,6 +91,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   videoUrl: 'Ссылка на видео',
   tags: 'Теги',
   tag: 'Тег',
+  // ListExamItemsDto.includeDeleted (ADR-0140) — редактору формы, не экрану банка.
+  includeDeleted: 'Показывать удалённые',
 
   // exams — /exams (конструктор экзамена, ТЗ 4.3). title/status — общие
   // подписи выше (classes.title, lessons.status), здесь тот же смысл:
