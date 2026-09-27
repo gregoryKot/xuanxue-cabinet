@@ -3,7 +3,7 @@
 // «Новый вопрос»: api не импортирует web (CLAUDE.md «Слои»), кнопка Telegram
 // объясняет себя сама, отдельной подписи из кабинета слово в слово не нужно.
 import type { InlineKeyboardButton } from 'telegraf/types';
-import type { NewExamStep } from '../bot-session.schema';
+import type { NewExamStep } from '../new-exam-steps';
 import type { BotSessionLean } from '../bot-session.lean';
 import { inlineButton } from '../callback-data';
 import type { NewExamDraft } from '../new-exam-draft-wait';
@@ -36,6 +36,7 @@ export function sessionToNewExamDraft(
     title: session.buildTitle,
     timeLimitMin: session.buildTimeLimitMin,
     attemptsAllowed: session.buildAttemptsAllowed,
+    dueAt: session.buildDueAt,
     savedExamId: session.buildSavedExamId?.toString(),
   };
 }

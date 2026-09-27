@@ -13,13 +13,14 @@ import {
   handleNewExamAssemble,
   handleNewExamAttempts,
   handleNewExamCancel,
+  handleNewExamDueAt,
   handleNewExamPage,
   handleNewExamTimeLimit,
   handleNewExamToggleItem,
 } from './new-exam-callback';
 import { handleNewExamPublish } from './new-exam-save-callback';
 
-const NEW_EXAM_ACTIONS = ['net', 'nep', 'nea', 'nel', 'nen', 'nef'] as const;
+const NEW_EXAM_ACTIONS = ['net', 'nep', 'nea', 'nel', 'nen', 'ned', 'nef'] as const;
 
 export function isNewExamCallbackAction(
   action: CallbackAction,
@@ -56,6 +57,10 @@ export async function routeNewExamCallback(
   }
   if (action === 'nen' && (id === '1' || id === '2' || id === '3')) {
     await handleNewExamAttempts(ctx, botSessions, chatId, id, now);
+    return;
+  }
+  if (action === 'ned') {
+    await handleNewExamDueAt(ctx, botSessions, chatId, id, now);
     return;
   }
   if (action !== 'nef') return;

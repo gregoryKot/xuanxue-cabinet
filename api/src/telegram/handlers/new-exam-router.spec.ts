@@ -16,12 +16,13 @@ function fakeCtx() {
 }
 
 describe('isNewExamCallbackAction', () => {
-  it('net/nep/nea/nel/nen/nef — да, остальные действия — нет', () => {
+  it('net/nep/nea/nel/nen/ned/nef — да, остальные действия — нет', () => {
     expect(isNewExamCallbackAction('net')).toBe(true);
     expect(isNewExamCallbackAction('nep')).toBe(true);
     expect(isNewExamCallbackAction('nea')).toBe(true);
     expect(isNewExamCallbackAction('nel')).toBe(true);
     expect(isNewExamCallbackAction('nen')).toBe(true);
+    expect(isNewExamCallbackAction('ned')).toBe(true);
     expect(isNewExamCallbackAction('nef')).toBe(true);
     expect(isNewExamCallbackAction('nqf')).toBe(false);
     expect(isNewExamCallbackAction('exam')).toBe(false);
@@ -142,6 +143,22 @@ describe('routeNewExamCallback', () => {
       NOW,
     );
     expect(botSessions.get).not.toHaveBeenCalled();
+  });
+
+  it('ned — доходит до handleNewExamDueAt (get вызван)', async () => {
+    const botSessions = fakeBotSessionService();
+    await routeNewExamCallback(
+      fakeCtx(),
+      'ned',
+      '1w',
+      CHAT_ID,
+      botSessions,
+      fakeExamBotPort(),
+      { findByTelegramId: jest.fn() } as never,
+      undefined,
+      NOW,
+    );
+    expect(botSessions.get).toHaveBeenCalledWith(CHAT_ID, NOW);
   });
 
   it('nef:cancel — clear и понятное сообщение', async () => {

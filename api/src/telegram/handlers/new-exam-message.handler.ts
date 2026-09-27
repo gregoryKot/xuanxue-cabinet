@@ -56,7 +56,7 @@ export class NewExamMessageHandler {
         await this.handleTimeLimit(ctx, chatId, text, now);
         return;
       }
-      await ctx.reply(NOT_TEXT_MESSAGE).catch(() => null); // 'pick'/'attempts'/'confirm' ждут кнопку
+      await ctx.reply(NOT_TEXT_MESSAGE).catch(() => null); // 'pick'/'attempts'/'dueAt'/'confirm' ждут кнопку
     } catch (err) {
       this.logger.error(`telegram.newExam: ${errorMessage(err)}`, errorStack(err));
       await ctx.reply(GENERIC_ERROR).catch(() => null);

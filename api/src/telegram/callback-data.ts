@@ -26,11 +26,12 @@
 // что isNotificationKind/isMenuScreenAction — в new-exam-item-types.ts и
 // самих хендлерах, не здесь.
 //
-// net/nep/nea/nel/nen/nef — диалог «Собрать экзамен» (ТЗ 4б.4, PLAN.md §12),
-// только штат: net — отметить/снять вопрос (id — ObjectId вопроса, разбор
-// падает в default-ветку isValidCallbackParam); nep — страница списка (id —
-// 'prev'|'next'); nea — «Собрать (k)» (id — 'go'); nel — лимит времени (id —
-// 'none'|'15'|'30'|'60'); nen — число попыток (id — '1'|'2'|'3'); nef —
+// net/nep/nea/nel/nen/ned/nef — диалог «Собрать экзамен» (ТЗ 4б.4, PLAN.md
+// §12), только штат: net — отметить/снять вопрос (id — ObjectId вопроса,
+// разбор падает в default-ветку isValidCallbackParam); nep — страница списка
+// (id — 'prev'|'next'); nea — «Собрать (k)» (id — 'go'); nel — лимит времени
+// (id — 'none'|'15'|'30'|'60'); nen — число попыток (id — '1'|'2'|'3');
+// ned — срок сдачи (id — 'none'|'1w'|'2w'|'1m', ADR-0125/ADR-0127); nef —
 // управление диалогом (id — 'cancel'|'publish').
 //
 // grade/gradesk/gradecl/gradeq — проверка сданной работы (ТЗ 4б.5, PLAN §12),
@@ -61,6 +62,7 @@ const CALLBACK_ACTIONS = [
   'nea',
   'nel',
   'nen',
+  'ned',
   'nef',
   'grade',
   'gradesk',

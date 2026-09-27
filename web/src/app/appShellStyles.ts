@@ -54,6 +54,12 @@ export const contentColumnStyle: CSSProperties = {
   // вернулась бы ровно та картина, из-за которой панель и уезжала.
   overflowY: 'auto',
   overscrollBehavior: 'contain',
+  // Точка отсчёта для `position: absolute` внутри экранов (скрытые инпуты
+  // `xuanxue-sr-only`, FilePickerButton). Без неё такой элемент отсчитывался
+  // от окна, мимо `overflow` колонки и оболочки: растягивал документ ниже
+  // экрана, и фокус на нём уносил страницу в пустоту под оболочкой (снимок
+  // владельца 2026-09-23 — выбор варианта-картинки на экране сдачи).
+  position: 'relative',
 };
 
 // Поле по бокам — то же, что у экрана (components/screenLayout.ts): значок

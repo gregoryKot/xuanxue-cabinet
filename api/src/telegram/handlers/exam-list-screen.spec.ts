@@ -198,6 +198,46 @@ describe('buildExamListScreen', () => {
   });
 });
 
+// ADR-0125: срок сдачи виден до старта, а после срока закрывает только НОВУЮ
+// попытку — идущую («Продолжить») он не трогает никогда. Формулировки —
+// isExamDuePassed/EXAM_DUE_PASSED_MESSAGE/formatExamDueAt из shared, не своя
+// копия (тот же приём, что у StudentExamCardAction.tsx в кабинете).
+describe('buildExamListScreen — срок сдачи (ADR-0125)', () => {
+  it('срок впереди, попытки не было — виден до кнопки «Начать»', () => {
+    const menu = buildExamListScreen([exam({ dueAt: '2026-09-30T20:59:00Z' })], NOW_MS);
+    expect(menu.text).toContain('Сдать до 30 сентября, 23:59 (Asia/Jerusalem)');
+    expect(menu.buttons[0]?.[0]?.text).toBe('Начать: Форма третьего уровня');
+  });
+
+  it('срок прошёл, попытки не было — вместо кнопки честная строка, дата остаётся', () => {
+    const menu = buildExamListScreen([exam({ dueAt: '2026-09-20T00:00:00Z' })], NOW_MS);
+    expect(menu.text).toContain('Сдать до 20 сентября, 03:00 (Asia/Jerusalem)');
+    expect(menu.text).toContain('Срок сдачи прошёл. Начать новую попытку нельзя');
+    expect(menu.buttons).toHaveLength(1); // только «В меню»
+  });
+
+  it('срок прошёл, но попытка ещё идёт — «Продолжить» без строки про срок', () => {
+    const menu = buildExamListScreen(
+      [
+        exam({
+          dueAt: '2026-09-20T00:00:00Z',
+          attemptsUsed: 1,
+          lastAttempt: { id: 'a1', status: 'in_progress', expired: false },
+        }),
+      ],
+      NOW_MS,
+    );
+    expect(menu.text).not.toContain('Сдать до');
+    expect(menu.text).not.toContain('Срок сдачи прошёл');
+    expect(menu.buttons[0]?.[0]?.text).toBe('Продолжить: Форма третьего уровня');
+  });
+
+  it('нет срока — строки про срок нет вовсе', () => {
+    const menu = buildExamListScreen([exam()], NOW_MS);
+    expect(menu.text).not.toContain('Сдать до');
+  });
+});
+
 // Отзыв владельца 2026-09-22 (ADR-0121): кнопка формы с лимитом времени
 // сперва задаёт вопрос, не стартует попытку сразу.
 describe('buildExamListScreen — кнопка «exc» перед стартом с лимитом (ADR-0121)', () => {
