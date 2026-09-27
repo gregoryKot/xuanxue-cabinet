@@ -43,10 +43,11 @@ function makeExam(overrides: Partial<ExamDto> = {}): ExamDto {
 
 const NO_STRUGGLING = { '/exam-items/stats-summary': { strugglingCount: 0 } };
 const NO_IMAGES = { '/exam-images/stats-summary': { count: 0, totalBytes: 0 } };
-// Большинство тестов экрана не проверяют картинки/спотыкающиеся вопросы —
-// оба хука экрана всё равно шлют запрос, и без ответа mockApiByPath бросает
-// «неожиданный путь» (test-support/apiFetchMock.ts).
-const DEFAULT_SUMMARIES = { ...NO_STRUGGLING, ...NO_IMAGES };
+const NO_VIDEOS = { '/exam-videos/stats-summary': { count: 0, totalBytes: 0 } };
+// Большинство тестов экрана не проверяют картинки/видео/спотыкающиеся
+// вопросы — все три хука экрана всё равно шлют запрос, и без ответа
+// mockApiByPath бросает «неожиданный путь» (test-support/apiFetchMock.ts).
+const DEFAULT_SUMMARIES = { ...NO_STRUGGLING, ...NO_IMAGES, ...NO_VIDEOS };
 
 /** Куда ушёл экран: путь редактора рисуется текстом, и тест читает его
  * глазами пользователя, а не через мок useNavigate. */
@@ -218,6 +219,7 @@ describe('ExamsScreen — вход в вопросы', () => {
     mockApiByPath({
       '/exam-items/stats-summary': { strugglingCount: 2 },
       ...NO_IMAGES,
+      ...NO_VIDEOS,
       '/exams': [],
       '/attempts': [],
     });
@@ -244,6 +246,7 @@ describe('ExamsScreen — вход в картинки вариантов отв
     mockApiByPath({
       ...NO_STRUGGLING,
       '/exam-images/stats-summary': { count: 12, totalBytes: 3_600_000 },
+      ...NO_VIDEOS,
       '/exams': [],
       '/attempts': [],
     });
@@ -253,6 +256,20 @@ describe('ExamsScreen — вход в картинки вариантов отв
     expect(
       await screen.findByText(/Картинок к вопросам: 12 — 3,4 МБ/),
     ).toBeInTheDocument();
+  });
+
+  it('есть видео — строка с числом и объёмом под объяснением вопросов', async () => {
+    mockApiByPath({
+      ...NO_STRUGGLING,
+      ...NO_IMAGES,
+      '/exam-videos/stats-summary': { count: 2, totalBytes: 90_000_000 },
+      '/exams': [],
+      '/attempts': [],
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText(/Видео к вопросам: 2 — 85,8 МБ/)).toBeInTheDocument();
   });
 });
 

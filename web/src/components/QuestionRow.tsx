@@ -20,6 +20,7 @@
 // правки под него здесь не нужно. Подсказка ученику убрана из вопроса
 // вместе с полем (ADR-0128).
 import type { CSSProperties, ReactNode } from 'react';
+import { ExamVideoPlayer } from './ExamVideoPlayer';
 import { RichText } from './RichText';
 
 // Номер вопроса — текстовым шрифтом, не антиквой: у Cormorant цифры
@@ -47,6 +48,10 @@ interface QuestionRowProps {
   /** Идентификатор формулировки — подпись поля ответа снизу (`aria-labelledby`). */
   promptId: string;
   prompt: string;
+  /** Видео формулировки (ADR-0133) — под текстом вопроса, до поля ответа:
+   * общий плеер (ExamVideoPlayer.tsx), файл или ссылка решает сам компонент. */
+  videoId?: string;
+  videoUrl?: string;
   /** Вопрос подсвечен как оставшийся без ответа — ученик нажал «Отправить»,
    * и подтверждение отправило его искать пропуски (attempt/
    * AttemptInProgress.tsx). Пока не нажал, не подсвечиваем ничего: ругать
@@ -59,6 +64,8 @@ export function QuestionRow({
   index,
   promptId,
   prompt,
+  videoId,
+  videoUrl,
   unanswered,
   children,
 }: QuestionRowProps) {
@@ -75,6 +82,9 @@ export function QuestionRow({
         <span id={promptId} style={promptStyle}>
           <RichText text={prompt} />
         </span>
+        {(videoId || videoUrl) && (
+          <ExamVideoPlayer videoId={videoId} videoUrl={videoUrl} title={prompt} />
+        )}
         {unanswered && (
           <span className="xuanxue-status-label" style={unansweredStyle}>
             {UNANSWERED_LABEL}

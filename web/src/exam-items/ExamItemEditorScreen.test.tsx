@@ -492,3 +492,50 @@ describe('ExamItemEditorScreen — черновик (ADR-0052)', () => {
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
   });
 });
+
+// Видео вопроса (ADR-0133) — без R2 (`fileStorageEnabled: false`): поле
+// ссылки, не кнопка файла. `/auth/config` не подключён к mockItemAndStats
+// (та мокает только `/exam-items*`) — здесь свой набор путей на каждый тест.
+describe('ExamItemEditorScreen — видео вопроса (ADR-0133)', () => {
+  it('без R2 — ввод ссылки уходит в PATCH как videoUrl, videoId — null', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/exam-items/e1/stats': EMPTY_STATS,
+      '/exam-items/e1': makeItem(),
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: false },
+    });
+
+    renderAt('/exam-items/e1');
+    const urlField = await screen.findByLabelText('Видео вопроса');
+    await user.type(urlField, 'https://youtu.be/dQw4w9WgXcQ');
+    urlField.blur();
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const body = callsWithMethod('PATCH')[0]?.[1] as {
+      body: { videoId: string | null; videoUrl: string | null };
+    };
+    expect(body.body.videoUrl).toBe('https://youtu.be/dQw4w9WgXcQ');
+    expect(body.body.videoId).toBeNull();
+  });
+
+  it('«Убрать видео» на существующей ссылке уходит в PATCH как явный null', async () => {
+    const user = userEvent.setup();
+    mockApiByPath({
+      '/exam-items/e1/stats': EMPTY_STATS,
+      '/exam-items/e1': makeItem({ videoUrl: 'https://youtu.be/dQw4w9WgXcQ' }),
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: false },
+    });
+
+    renderAt('/exam-items/e1');
+    await user.click(await screen.findByRole('button', { name: 'Убрать видео' }));
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const body = callsWithMethod('PATCH')[0]?.[1] as {
+      body: { videoId: string | null; videoUrl: string | null };
+    };
+    expect(body.body.videoUrl).toBeNull();
+    expect(body.body.videoId).toBeNull();
+  });
+});

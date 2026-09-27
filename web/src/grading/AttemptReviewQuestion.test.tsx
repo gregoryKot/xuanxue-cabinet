@@ -136,6 +136,27 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
     expect(image).toHaveAttribute('src', '/api/exam-images/img1');
   });
 
+  it('вариант с видео (ADR-0133) — миниатюра плеера перед подписью', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({
+          kind: 'single',
+          answered: true,
+          options: [
+            { id: 'o1', text: '', correct: true, selected: true, videoId: 'vid1' },
+          ],
+        })}
+      />,
+    );
+
+    expect(document.querySelector('video')).toHaveAttribute(
+      'src',
+      '/api/exam-videos/vid1',
+    );
+  });
+
   it('вариант без картинки — миниатюра не рендерится', () => {
     render(
       <AttemptReviewQuestion
@@ -271,5 +292,40 @@ describe('AttemptReviewQuestion — видео-вопрос (ADR-0037, свой 
     );
 
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+  });
+});
+
+describe('AttemptReviewQuestion — видео формулировки (ADR-0133)', () => {
+  it('videoUrl вопроса — плеер ссылки виден рядом с вариантами', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({
+          kind: 'single',
+          videoUrl: 'https://youtu.be/dQw4w9WgXcQ',
+          options: [{ id: 'o1', text: 'A', correct: true, selected: false }],
+        })}
+        video={makeVideo()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Смотреть здесь' })).toBeInTheDocument();
+  });
+
+  it('без видео у вопроса — плеера нет', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        question={makeQuestion({
+          kind: 'single',
+          options: [{ id: 'o1', text: 'A', correct: true, selected: false }],
+        })}
+        video={makeVideo()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Смотреть здесь' }),
+    ).not.toBeInTheDocument();
   });
 });

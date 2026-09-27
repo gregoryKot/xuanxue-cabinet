@@ -6,6 +6,7 @@
 // ссылки на статистику здесь нет — они появляются, когда вопрос уже
 // существует (ExamItemEditorForm.tsx), а этот вопрос только создаётся.
 import type { CSSProperties } from 'react';
+import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
 import { FormServerError } from '../components/FormServerError';
 import { InlineFormFooter } from '../components/InlineFormFooter';
 import { RichText } from '../components/RichText';
@@ -41,6 +42,7 @@ interface NewQuestionFormProps {
 
 export function NewQuestionForm({ onCreated, onCancel }: NewQuestionFormProps) {
   const form = useNewQuestionForm();
+  const fileStorageEnabled = useFileStorageEnabled();
 
   async function handleSave() {
     const created = await form.submit();
@@ -62,12 +64,14 @@ export function NewQuestionForm({ onCreated, onCancel }: NewQuestionFormProps) {
         state={form.state}
         setField={form.setField}
         error={form.validationError}
+        fileStorageEnabled={fileStorageEnabled}
       />
 
       {hasOptions(form.state.kind) && (
         <ExamItemOptionsField
           kind={form.state.kind}
           options={form.state.options}
+          fileStorageEnabled={fileStorageEnabled}
           onChange={(options) => form.setField('options', options)}
         />
       )}

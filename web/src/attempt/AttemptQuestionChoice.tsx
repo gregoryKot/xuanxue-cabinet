@@ -22,6 +22,16 @@ import { Toggle } from '../components/Toggle';
 import { AttemptOptionTile } from './AttemptOptionTile';
 
 const groupStyle: CSSProperties = { display: 'flex', flexDirection: 'column' };
+// Видео варианта — плитки в столбец, не в сетку `.xuanxue-option-tiles`
+// (ADR-0133): видео нужна ширина строки, чтобы плеер был читаемым, а не
+// миниатюра 132px в несколько колонок — «выбрать верный из двух» должно
+// естественно читаться на экране 360px (CLAUDE.md «Мобильный экран первым»).
+const stackedTilesStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  minWidth: 0,
+};
 
 interface AttemptQuestionChoiceProps {
   /** Идентификатор формулировки вопроса — она же подпись группы вариантов
@@ -60,6 +70,10 @@ export function AttemptQuestionChoice({
   }
 
   const hasImages = options.some((option) => option.imageId != null);
+  const hasVideo = options.some(
+    (option) => option.videoId != null || option.videoUrl != null,
+  );
+  const hasTiles = hasImages || hasVideo;
   // Имя группы переводит контрол в радио: взаимное исключение внутри вопроса
   // браузер делает сам (комментарий в самом Toggle.tsx).
   const name = kind === 'single' ? `attempt-${itemId}` : undefined;
@@ -68,22 +82,26 @@ export function AttemptQuestionChoice({
     <div
       role={kind === 'single' ? 'radiogroup' : 'group'}
       aria-labelledby={labelledBy}
-      className={hasImages ? 'xuanxue-option-tiles' : undefined}
-      style={hasImages ? undefined : groupStyle}
+      className={!hasVideo && hasImages ? 'xuanxue-option-tiles' : undefined}
+      style={hasVideo ? stackedTilesStyle : hasImages ? undefined : groupStyle}
     >
       {options.map((option, index) => {
         const label = formatOptionLabel(option.text, index);
-        // Своего текста нет, а картинка есть — «Вариант N» видно не будет:
-        // подпись остаётся доступным именем и `alt` картинки (Toggle.tsx,
+        // Своего текста нет, а картинка или видео есть — «Вариант N» видно не
+        // будет: подпись остаётся доступным именем (Toggle.tsx,
         // AttemptOptionTile.tsx).
-        const labelHidden = !option.text && option.imageId != null;
+        const labelHidden =
+          !option.text &&
+          (option.imageId != null || option.videoId != null || option.videoUrl != null);
         const checked = selected.includes(option.id);
-        return hasImages ? (
+        return hasTiles ? (
           <AttemptOptionTile
             key={option.id}
             label={label}
             labelHidden={labelHidden}
             imageId={option.imageId}
+            videoId={option.videoId}
+            videoUrl={option.videoUrl}
             checked={checked}
             disabled={disabled}
             name={name}

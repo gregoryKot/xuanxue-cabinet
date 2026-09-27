@@ -8,6 +8,7 @@
 // кнопки объяснение, почему её нет.
 import { Link, useNavigate } from 'react-router-dom';
 import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
+import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EditorFooter } from '../components/EditorFooter';
 import { FormDraftNote } from '../components/FormDraftNote';
@@ -65,6 +66,7 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
   const form = useExamItemForm(item, editor.create, editor.update, editor.remove);
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
+  const fileStorageEnabled = useFileStorageEnabled();
 
   return (
     <>
@@ -94,12 +96,14 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
           state={form.state}
           setField={form.setField}
           error={form.validationError}
+          fileStorageEnabled={fileStorageEnabled}
         />
 
         {hasOptions(form.state.kind) && (
           <ExamItemOptionsField
             kind={form.state.kind}
             options={form.state.options}
+            fileStorageEnabled={fileStorageEnabled}
             onChange={(options) => form.setField('options', options)}
           />
         )}

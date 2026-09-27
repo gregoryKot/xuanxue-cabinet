@@ -13,6 +13,7 @@
 // подпись без текста — formatOptionLabel, тот же приём, что на сдаче.
 import type { CSSProperties } from 'react';
 import { formatOptionLabel, type AttemptReviewOptionDto } from '@xuanxue/shared';
+import { ExamVideoPlayer } from '../components/ExamVideoPlayer';
 import { OptionImage } from '../components/OptionImage';
 
 const listStyle: CSSProperties = {
@@ -41,6 +42,14 @@ export function AttemptReviewQuestionOptions({
               imageId={option.imageId}
               size="thumb"
               alt={formatOptionLabel(option.text, index)}
+            />
+          )}
+          {(option.videoId || option.videoUrl) && (
+            <ExamVideoPlayer
+              videoId={option.videoId}
+              videoUrl={option.videoUrl}
+              title={formatOptionLabel(option.text, index)}
+              size="thumb"
             />
           )}
           <span>

@@ -1,8 +1,8 @@
 // Чистая логика формы вопроса — состояние, валидация и сборка тела запроса,
 // вынесены из useExamItemForm.ts, чтобы проверять без React (CLAUDE.md
 // «Тесты»), по образцу schedule/classFormInput.ts. hint/criteria/tags убраны
-// из вопроса вместе с полем (ADR-0128) — форма несёт только формулировку и
-// варианты ответа.
+// из вопроса вместе с полем (ADR-0128) — форма несёт только формулировку,
+// видео и варианты ответа.
 import {
   EXAM_ITEM_LIMITS,
   OPTION_CONTENT_REQUIRED_MESSAGE,
@@ -12,15 +12,20 @@ import {
   type ExamItemOptionInput,
   type UpdateExamItemInput,
 } from '@xuanxue/shared';
+import { validateExamVideoMedia } from './examVideoFormInput';
 
-/** `imageId` — картинка варианта (ADR-0035): форма несёт его сквозь правку
- * как есть, иначе «открыл, поправил текст, сохранил» молча снимало бы
- * картинку с варианта — options в PATCH заменяют набор целиком. */
+/** `imageId`/`videoId`/`videoUrl` — медиа варианта (ADR-0035/ADR-0133): форма
+ * несёт их сквозь правку как есть, иначе «открыл, поправил текст, сохранил»
+ * молча снимало бы медиа с варианта — options в PATCH заменяют набор целиком.
+ * Не больше одного вида медиа разом — проверяет validateExamVideoMedia
+ * (examVideoFormInput.ts) тем же правилом, что assertOptionsForKind. */
 export interface ExamItemOptionDraft {
   id?: string;
   text: string;
   correct: boolean;
   imageId?: string;
+  videoId?: string;
+  videoUrl?: string;
 }
 
 export interface ExamItemFormState {
@@ -29,6 +34,9 @@ export interface ExamItemFormState {
    * рисует его текстом, не select'ом; ТЗ 4.2, п.1). */
   kind: ExamItemKind;
   prompt: string;
+  /** Видео формулировки (ADR-0133) — файл (R2) или ссылка, не оба разом. */
+  videoId?: string;
+  videoUrl?: string;
   options: ExamItemOptionDraft[];
 }
 
@@ -46,12 +54,16 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
   return {
     kind: item?.kind ?? DEFAULT_KIND,
     prompt: item?.prompt ?? '',
+    videoId: item?.videoId,
+    videoUrl: item?.videoUrl,
     options:
       item?.options.map((option) => ({
         id: option.id,
         text: option.text,
         correct: option.correct,
         imageId: option.imageId,
+        videoId: option.videoId,
+        videoUrl: option.videoUrl,
       })) ?? [],
   };
 }
@@ -62,6 +74,8 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
  * отклонит, вместо круга «сохранить → 400 → понять почему». */
 export function validateExamItemForm(state: ExamItemFormState): string | null {
   if (!state.prompt.trim()) return 'Впишите формулировку вопроса.';
+  const mediaError = validateExamVideoMedia(state);
+  if (mediaError) return mediaError;
   if (!hasOptions(state.kind)) return null;
 
   if (
@@ -70,8 +84,14 @@ export function validateExamItemForm(state: ExamItemFormState): string | null {
   ) {
     return `Укажите от ${EXAM_ITEM_LIMITS.optionsMin} до ${EXAM_ITEM_LIMITS.optionsMax} вариантов ответа.`;
   }
-  // Текст или картинка — то же правило, что у сервиса (OPTION_CONTENT_REQUIRED_MESSAGE).
-  if (state.options.some((option) => !option.text.trim() && !option.imageId)) {
+  // Текст, картинка или видео — то же правило, что у сервиса
+  // (OPTION_CONTENT_REQUIRED_MESSAGE).
+  if (
+    state.options.some(
+      (option) =>
+        !option.text.trim() && !option.imageId && !option.videoId && !option.videoUrl,
+    )
+  ) {
     return OPTION_CONTENT_REQUIRED_MESSAGE;
   }
   const correctCount = state.options.filter((option) => option.correct).length;
@@ -94,6 +114,8 @@ function toOptionsInput(state: ExamItemFormState): ExamItemOptionInput[] | undef
     text: option.text.trim(),
     correct: option.correct,
     imageId: option.imageId,
+    videoId: option.videoId,
+    videoUrl: option.videoUrl,
   }));
 }
 
@@ -101,6 +123,8 @@ export function toCreateInput(state: ExamItemFormState): CreateExamItemInput {
   return {
     kind: state.kind,
     prompt: state.prompt.trim(),
+    videoId: state.videoId || undefined,
+    videoUrl: state.videoUrl || undefined,
     options: toOptionsInput(state),
   };
 }
@@ -108,6 +132,11 @@ export function toCreateInput(state: ExamItemFormState): CreateExamItemInput {
 export function toUpdateInput(state: ExamItemFormState): UpdateExamItemInput {
   return {
     prompt: state.prompt.trim(),
+    // Пусто — явный сброс (null, videoId/videoUrl входят в
+    // NULLABLE_EXAM_ITEM_FIELDS), не «оставить как было» (тот же приём, что
+    // zoomLink/leaderId в schedule/classFormInput.ts).
+    videoId: state.videoId || null,
+    videoUrl: state.videoUrl || null,
     options: toOptionsInput(state),
   };
 }

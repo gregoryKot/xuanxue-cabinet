@@ -133,3 +133,69 @@ describe('AttemptOptionTile', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 });
+
+describe('AttemptOptionTile — видео варианта (ADR-0133)', () => {
+  it('videoId — плеер файла виден, контрол по-прежнему находится по имени', () => {
+    render(
+      <AttemptOptionTile
+        label="Вариант 1"
+        labelHidden
+        videoId="vid1"
+        checked={false}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('video')).toHaveAttribute(
+      'src',
+      '/api/exam-videos/vid1',
+    );
+    expect(screen.getByRole('checkbox', { name: 'Вариант 1' })).toBeInTheDocument();
+  });
+
+  it('клик по подписи (не по плееру) переключает контрол', async () => {
+    const onChange = vi.fn();
+    render(
+      <AttemptOptionTile
+        label="Вариант 1"
+        labelHidden={false}
+        videoId="vid1"
+        checked={false}
+        onChange={onChange}
+      />,
+    );
+
+    await userEvent.click(screen.getByText('Вариант 1'));
+
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it('disabled — контрол выключен и на плитке с видео', () => {
+    render(
+      <AttemptOptionTile
+        label="Вариант 1"
+        labelHidden={false}
+        videoId="vid1"
+        checked={false}
+        disabled
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('checkbox', { name: 'Вариант 1' })).toBeDisabled();
+  });
+
+  it('videoUrl — плеер ссылки виден (VideoEmbed)', () => {
+    render(
+      <AttemptOptionTile
+        label="Вариант 2"
+        labelHidden={false}
+        videoUrl="https://youtu.be/dQw4w9WgXcQ"
+        checked={false}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Смотреть здесь' })).toBeInTheDocument();
+  });
+});

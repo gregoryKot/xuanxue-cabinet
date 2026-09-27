@@ -3,7 +3,27 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ExamItemOptionsField } from './ExamItemOptionsField';
 import type { ExamItemOptionDraft } from './examItemFormInput';
+import type { ExamVideoValue } from './examVideoFormInput';
 import { useExamImageUpload } from './useExamImageUpload';
+import { useExamVideoField } from './useExamVideoField';
+
+// Само поле видео — своя логика и свои тесты в ExamVideoField.test.tsx;
+// здесь заглушка вместо него, чтобы проверить только то, что updateVideo
+// пишет видео нужному варианту по индексу и снимает картинку — то, что не
+// тестируется на уровне самого поля.
+vi.mock('./ExamVideoField', () => ({
+  ExamVideoField: ({
+    inputLabel,
+    onChange,
+  }: {
+    inputLabel: string;
+    onChange: (video: ExamVideoValue) => void;
+  }) => (
+    <button type="button" onClick={() => onChange({ videoUrl: 'https://youtu.be/x' })}>
+      {inputLabel}
+    </button>
+  ),
+}));
 
 // Загрузка картинки — своя логика с полным покрытием в
 // ExamItemOptionImage.test.tsx; здесь мокаем хук и проверяем только, что
@@ -15,6 +35,19 @@ const mockedUseUpload = vi.mocked(useExamImageUpload);
 // деструктуризация в ExamItemOptionImage упала бы на auto-mock (undefined).
 mockedUseUpload.mockReturnValue({ upload: vi.fn(), pending: false, error: null });
 
+// Видео варианта — та же логика, своё покрытие в ExamVideoField.test.tsx.
+vi.mock('./useExamVideoField');
+const mockedUseVideoField = vi.mocked(useExamVideoField);
+mockedUseVideoField.mockReturnValue({
+  uploadPending: false,
+  error: null,
+  urlDraft: '',
+  setUrlDraft: vi.fn(),
+  uploadFile: vi.fn(),
+  commitUrl: vi.fn(),
+  clear: vi.fn(),
+});
+
 describe('ExamItemOptionsField — single (радио)', () => {
   it('отметка одного варианта снимает отметку другого', async () => {
     const user = userEvent.setup();
@@ -23,7 +56,14 @@ describe('ExamItemOptionsField — single (радио)', () => {
       { text: 'B', correct: false },
     ];
     const onChange = vi.fn();
-    render(<ExamItemOptionsField kind="single" options={options} onChange={onChange} />);
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={options}
+        fileStorageEnabled={false}
+        onChange={onChange}
+      />,
+    );
 
     await user.click(screen.getByLabelText('Верный вариант 2'));
 
@@ -41,6 +81,7 @@ describe('ExamItemOptionsField — single (радио)', () => {
           { text: 'A', correct: true },
           { text: 'B', correct: false },
         ]}
+        fileStorageEnabled={false}
         onChange={vi.fn()}
       />,
     );
@@ -58,7 +99,12 @@ describe('ExamItemOptionsField — multiple (чекбоксы)', () => {
     ];
     const onChange = vi.fn();
     render(
-      <ExamItemOptionsField kind="multiple" options={options} onChange={onChange} />,
+      <ExamItemOptionsField
+        kind="multiple"
+        options={options}
+        fileStorageEnabled={false}
+        onChange={onChange}
+      />,
     );
 
     await user.click(screen.getByLabelText('Верный вариант 2'));
@@ -74,6 +120,7 @@ describe('ExamItemOptionsField — multiple (чекбоксы)', () => {
       <ExamItemOptionsField
         kind="multiple"
         options={[{ text: 'A', correct: false }]}
+        fileStorageEnabled={false}
         onChange={vi.fn()}
       />,
     );
@@ -86,7 +133,14 @@ describe('ExamItemOptionsField — добавление и удаление', ()
   it('«Добавить вариант» добавляет пустую строку', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<ExamItemOptionsField kind="single" options={[]} onChange={onChange} />);
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={[]}
+        fileStorageEnabled={false}
+        onChange={onChange}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: 'Добавить вариант' }));
 
@@ -94,7 +148,14 @@ describe('ExamItemOptionsField — добавление и удаление', ()
   });
 
   it('меньше минимума — подсказка про минимум видна', () => {
-    render(<ExamItemOptionsField kind="single" options={[]} onChange={vi.fn()} />);
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={[]}
+        fileStorageEnabled={false}
+        onChange={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText(/Добавьте минимум/)).toBeInTheDocument();
   });
@@ -109,6 +170,7 @@ describe('ExamItemOptionsField — добавление и удаление', ()
           { text: 'A', correct: true },
           { text: 'B', correct: false },
         ]}
+        fileStorageEnabled={false}
         onChange={onChange}
       />,
     );
@@ -125,6 +187,7 @@ describe('ExamItemOptionsField — добавление и удаление', ()
       <ExamItemOptionsField
         kind="single"
         options={[{ text: '', correct: false }]}
+        fileStorageEnabled={false}
         onChange={onChange}
       />,
     );
@@ -139,7 +202,14 @@ describe('ExamItemOptionsField — добавление и удаление', ()
       text: `Вариант ${i}`,
       correct: i === 0,
     }));
-    render(<ExamItemOptionsField kind="single" options={options} onChange={vi.fn()} />);
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={options}
+        fileStorageEnabled={false}
+        onChange={vi.fn()}
+      />,
+    );
 
     expect(
       screen.queryByRole('button', { name: 'Добавить вариант' }),
@@ -156,7 +226,14 @@ describe('ExamItemOptionsField — картинка варианта (ADR-0035)'
       { text: 'A', correct: true },
       { text: 'B', correct: false },
     ];
-    render(<ExamItemOptionsField kind="single" options={options} onChange={onChange} />);
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={options}
+        fileStorageEnabled={false}
+        onChange={onChange}
+      />,
+    );
     const file = new File(['фото'], 'photo.jpg', { type: 'image/jpeg' });
 
     await userEvent.upload(screen.getByLabelText('Картинка варианта 2'), file);
@@ -165,6 +242,50 @@ describe('ExamItemOptionsField — картинка варианта (ADR-0035)'
     expect(onChange).toHaveBeenCalledWith([
       { text: 'A', correct: true },
       { text: 'B', correct: false, imageId: 'img9' },
+    ]);
+  });
+});
+
+describe('ExamItemOptionsField — видео варианта (ADR-0133)', () => {
+  it('видео у одного варианта пишет его только по своему индексу, соседний не трогает', async () => {
+    const onChange = vi.fn();
+    const options: ExamItemOptionDraft[] = [
+      { text: 'A', correct: true },
+      { text: 'B', correct: false },
+    ];
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={options}
+        fileStorageEnabled={false}
+        onChange={onChange}
+      />,
+    );
+
+    await userEvent.click(screen.getByText('Видео варианта 2'));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { text: 'A', correct: true },
+      { text: 'B', correct: false, videoUrl: 'https://youtu.be/x' },
+    ]);
+  });
+
+  it('вариант без медиа — видео уходит без картинки рядом', async () => {
+    const onChange = vi.fn();
+    const options: ExamItemOptionDraft[] = [{ text: 'A', correct: true }];
+    render(
+      <ExamItemOptionsField
+        kind="single"
+        options={options}
+        fileStorageEnabled={false}
+        onChange={onChange}
+      />,
+    );
+
+    await userEvent.click(screen.getByText('Видео варианта 1'));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { text: 'A', correct: true, imageId: undefined, videoUrl: 'https://youtu.be/x' },
     ]);
   });
 });
@@ -182,6 +303,7 @@ describe('ExamItemOptionsField — цель нажатия отметки «ве
       <ExamItemOptionsField
         kind="single"
         options={[{ text: 'Вправо', correct: false }]}
+        fileStorageEnabled={false}
         onChange={onChange}
       />,
     );
@@ -201,6 +323,7 @@ describe('ExamItemOptionsField — цель нажатия отметки «ве
       <ExamItemOptionsField
         kind="single"
         options={[{ text: 'Вправо', correct: false }]}
+        fileStorageEnabled={false}
         onChange={vi.fn()}
       />,
     );

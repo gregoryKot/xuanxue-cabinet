@@ -20,8 +20,10 @@ import { ListScreenBody } from '../components/ListScreenBody';
 import { primaryActionStyle, screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { formatExamImagesSummary } from '../exam-items/examImagesSummaryText';
+import { formatExamVideosSummary } from '../exam-items/examVideosSummaryText';
 import { useExamImageStats } from '../exam-items/useExamImageStats';
 import { useExamItemStatsSummary } from '../exam-items/useExamItemStatsSummary';
+import { useExamVideoStats } from '../exam-items/useExamVideoStats';
 import { useGradingPresets } from '../grading/useGradingPresets';
 import { useGradingQueue } from '../grading/useGradingQueue';
 import { DRAFT_PUBLISHED_ARCHIVED_LABELS_RU } from '../lib/statusTransitions';
@@ -46,6 +48,7 @@ export default function ExamsScreen() {
   const gradingPresets = useGradingPresets();
   const itemStatsSummary = useExamItemStatsSummary();
   const imageStats = useExamImageStats();
+  const videoStats = useExamVideoStats();
   const navigate = useNavigate();
 
   const visibleExams =
@@ -97,6 +100,7 @@ export default function ExamsScreen() {
         queueCount={gradingQueue.attempts?.length ?? null}
         strugglingCount={itemStatsSummary.summary?.strugglingCount ?? null}
         imagesSummary={formatExamImagesSummary(imageStats.stats)}
+        videosSummary={formatExamVideosSummary(videoStats.stats)}
         presetsCount={gradingPresets.presets?.length ?? null}
       />
     </section>

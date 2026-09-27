@@ -30,6 +30,7 @@ import {
   type AttemptReviewQuestionDto,
   type ExamMediaDto,
 } from '@xuanxue/shared';
+import { ExamVideoPlayer } from '../components/ExamVideoPlayer';
 import { RichText } from '../components/RichText';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { AttemptReviewQuestionOptions } from './AttemptReviewQuestionOptions';
@@ -112,6 +113,13 @@ export function AttemptReviewQuestion({
           </span>
         )}
       </div>
+      {(question.videoId || question.videoUrl) && (
+        <ExamVideoPlayer
+          videoId={question.videoId}
+          videoUrl={question.videoUrl}
+          title={question.prompt}
+        />
+      )}
       {hasOptions ? (
         <AttemptReviewQuestionOptions options={question.options} />
       ) : isVideo ? (
