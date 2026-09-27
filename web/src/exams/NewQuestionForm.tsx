@@ -14,6 +14,7 @@ import { noteStyle } from '../components/screenLayout';
 import { ExamItemFormFields } from '../exam-items/ExamItemFormFields';
 import { ExamItemKindField } from '../exam-items/ExamItemKindField';
 import { ExamItemOptionsField } from '../exam-items/ExamItemOptionsField';
+import { changeExamItemKind } from '../exam-items/examItemKindChange';
 import { hasOptions } from '../exam-items/examItemFormInput';
 import type { ExamItemDto } from '@xuanxue/shared';
 import { useNewQuestionForm } from './useNewQuestionForm';
@@ -57,7 +58,7 @@ export function NewQuestionForm({ onCreated, onCancel }: NewQuestionFormProps) {
 
       <ExamItemKindField
         kind={form.state.kind}
-        onChange={(kind) => form.setField('kind', kind)}
+        onChange={(kind) => changeExamItemKind(kind, form.state, form.setField)}
       />
 
       <ExamItemFormFields

@@ -18,6 +18,7 @@ import { FilePickerButton } from '../components/FilePickerButton';
 import { RichText } from '../components/RichText';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { dangerNoteStyle, noteStyle } from '../components/screenLayout';
+import { useWarnBeforeUnload } from '../hooks/useWarnBeforeUnload';
 import { useExamVideoField } from './useExamVideoField';
 import type { ExamVideoValue } from './examVideoFormInput';
 
@@ -25,6 +26,12 @@ const VIDEO_ACCEPT = EXAM_VIDEO_CONTENT_TYPES.join(',');
 const URL_LABEL = 'Ссылка на видео (YouTube)';
 const REMOVE_LABEL = 'Убрать видео';
 const UPLOAD_LABEL = 'Загрузить видео';
+// Отзыв владельца с телефона: уйти со страницы во время загрузки роняет её
+// без предупреждения браузера — useWarnBeforeUnload включает стандартный
+// диалог «покинуть сайт?», эта строка объясняет, что произойдёт молча иначе.
+const STAY_ON_PAGE_HINT =
+  'Не закрывайте страницу, пока видео **грузится**, — иначе загрузка ' +
+  'оборвётся и придётся начать заново.';
 
 const withVideoStyle: CSSProperties = {
   display: 'flex',
@@ -62,6 +69,7 @@ export function ExamVideoField({
   onChange,
 }: ExamVideoFieldProps) {
   const field = useExamVideoField(onChange);
+  useWarnBeforeUnload(field.uploadPending);
 
   if (value.videoId || value.videoUrl) {
     return (
@@ -88,8 +96,14 @@ export function ExamVideoField({
             inputLabel={inputLabel}
             accept={VIDEO_ACCEPT}
             pending={field.uploadPending}
+            progress={field.uploadProgress}
             onFile={(file) => void field.uploadFile(file)}
           />
+          {field.uploadPending && (
+            <p style={noteStyle}>
+              <RichText text={STAY_ON_PAGE_HINT} />
+            </p>
+          )}
           {field.error && <p style={dangerNoteStyle}>{field.error}</p>}
         </>
       ) : (

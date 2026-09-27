@@ -18,6 +18,7 @@ function stubField(overrides: Partial<ReturnType<typeof useExamVideoField>> = {}
   const setUrlDraft = vi.fn();
   mockedUseField.mockReturnValue({
     uploadPending: false,
+    uploadProgress: null,
     error: null,
     urlDraft: '',
     setUrlDraft,
@@ -122,7 +123,7 @@ describe('ExamVideoField — пусто, R2 подключён', () => {
     expect(uploadFile).toHaveBeenCalledWith(file);
   });
 
-  it('pending — «Загружаем…» вместо кнопки', () => {
+  it('pending — «Загружаем…» вместо кнопки и предупреждение не уходить со страницы', () => {
     stubField({ uploadPending: true });
     render(
       <ExamVideoField
@@ -136,6 +137,37 @@ describe('ExamVideoField — пусто, R2 подключён', () => {
 
     expect(screen.getByText('Загружаем…')).toBeInTheDocument();
     expect(screen.queryByText('Загрузить видео')).not.toBeInTheDocument();
+    expect(screen.getByText(/не закрывайте страницу/i)).toBeInTheDocument();
+  });
+
+  it('pending с прогрессом — процент в подписи', () => {
+    stubField({ uploadPending: true, uploadProgress: 0.37 });
+    render(
+      <ExamVideoField
+        inputLabel="Видео вопроса"
+        hint={HINT}
+        value={{}}
+        fileStorageEnabled
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Загружаем… 37 %')).toBeInTheDocument();
+  });
+
+  it('не pending — предупреждения об уходе со страницы нет', () => {
+    stubField();
+    render(
+      <ExamVideoField
+        inputLabel="Видео вопроса"
+        hint={HINT}
+        value={{}}
+        fileStorageEnabled
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/не закрывайте страницу/i)).not.toBeInTheDocument();
   });
 
   it('error — текст сбоя виден', () => {

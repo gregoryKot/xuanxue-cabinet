@@ -7,7 +7,7 @@ import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { ExamVideoField } from './ExamVideoField';
 import type { ExamVideoValue } from './examVideoFormInput';
-import type { ExamItemFormState } from './examItemFormInput';
+import { hasOptions, type ExamItemFormState } from './examItemFormInput';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16 };
 const textareaStyle: CSSProperties = { ...inputStyle, minHeight: 90, resize: 'vertical' };
@@ -16,6 +16,17 @@ const textareaStyle: CSSProperties = { ...inputStyle, minHeight: 90, resize: 've
 // зачем»). Пример из отзыва владельца 2026-09-23 (ADR-0133): формулировка
 // «что не так в этом движении».
 const VIDEO_HINT = 'Покажите движение — ученик ответит, что в нём не так';
+// У single/multiple видео вопроса — необязательное общее видео формулировки,
+// а второй ролик (для сравнения вариантов) живёт у каждого варианта своим
+// полем (ExamItemOptionsField.tsx) — общая подсказка про «что не так»
+// уводила бы туда, где второго видео просто нет (отзыв владельца с телефона:
+// «как прикрепить второй ролик?»).
+const CHOICE_VIDEO_HINT =
+  'Ролики для выбора добавьте к вариантам ниже — у каждого варианта своё видео.';
+
+function videoHint(kind: ExamItemFormState['kind']): string {
+  return hasOptions(kind) ? CHOICE_VIDEO_HINT : VIDEO_HINT;
+}
 
 interface ExamItemFormFieldsProps {
   state: ExamItemFormState;
@@ -54,7 +65,7 @@ export function ExamItemFormFields({
       </Field>
       <ExamVideoField
         inputLabel="Видео вопроса"
-        hint={VIDEO_HINT}
+        hint={videoHint(state.kind)}
         value={{ videoId: state.videoId, videoUrl: state.videoUrl }}
         fileStorageEnabled={fileStorageEnabled}
         onChange={handleVideoChange}

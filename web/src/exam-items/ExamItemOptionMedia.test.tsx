@@ -17,6 +17,7 @@ vi.mocked(useExamImageUpload).mockReturnValue({
 });
 vi.mocked(useExamVideoField).mockReturnValue({
   uploadPending: false,
+  uploadProgress: null,
   error: null,
   urlDraft: '',
   setUrlDraft: vi.fn(),

@@ -12,6 +12,15 @@ import { noteStyle, textLinkHitAreaStyle, textLinkLineStyle } from './screenLayo
 
 const PENDING_TEXT = 'Загружаем…';
 
+/** Подпись во время загрузки — с процентом, когда он известен (событие
+ * прогресса XHR уже пришло), иначе просто «Загружаем…»: доля не всегда
+ * посчитана сразу (`useExamVideoField`, `uploadWithProgress.ts` —
+ * `lengthComputable` может быть false). */
+export function pendingLabel(progress: number | null | undefined): string {
+  if (progress == null) return PENDING_TEXT;
+  return `${PENDING_TEXT} ${Math.round(progress * 100)} %`;
+}
+
 const hiddenInputStyle: CSSProperties = {
   position: 'absolute',
   opacity: 0,
@@ -37,7 +46,9 @@ const pendingStyle: CSSProperties = {
   minHeight: 44,
   display: 'flex',
   alignItems: 'center',
+  gap: 8,
 };
+const progressStyle: CSSProperties = { width: 60, height: 8 };
 
 interface FilePickerButtonProps {
   /** Подпись видимой кнопки. */
@@ -46,6 +57,10 @@ interface FilePickerButtonProps {
   accept: string;
   /** Идёт загрузка: вместо кнопки — строка со статусом. */
   pending: boolean;
+  /** Доля отправленного файла (0..1) — рисует процент в подписи и
+   * `<progress>` под ней. `null`/не передан — просто «Загружаем…» без числа
+   * (картинка и материал прогресс не считают, только видео вопроса). */
+  progress?: number | null;
   /** Выбранный файл. Значение input сбрасывается до вызова: тот же файл
    * можно выбрать повторно после сбоя — браузер не шлёт `change` на
    * повторный выбор того же значения, если input его не забыл. */
@@ -60,6 +75,7 @@ export function FilePickerButton({
   label,
   accept,
   pending,
+  progress,
   onFile,
   inputLabel,
 }: FilePickerButtonProps) {
@@ -72,7 +88,13 @@ export function FilePickerButton({
   if (pending) {
     return (
       <span aria-busy="true" style={pendingStyle}>
-        {PENDING_TEXT}
+        {pendingLabel(progress)}
+        {progress != null && (
+          // Нативный <progress> — роль progressbar и aria-valuenow браузер
+          // ставит сам по value/max (CLAUDE.md «Доступность»), свой ARIA не
+          // нужен.
+          <progress value={progress} max={1} style={progressStyle} />
+        )}
       </span>
     );
   }

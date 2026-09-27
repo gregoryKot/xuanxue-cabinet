@@ -1,32 +1,23 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type * as HttpModule from '../api/http';
-import { ApiError, UPLOAD_TIMEOUT_MS } from '../api/http';
-import {
-  mockApiByPath,
-  mockedApiFetch,
-  resetApiFetchBetweenTests,
-} from '../test-support/apiFetchMock';
+import { ApiError } from '../api/apiError';
+import { uploadWithProgress } from '../api/uploadWithProgress';
 import { useExamVideoField } from './useExamVideoField';
 
-vi.mock('../api/http', async () => {
-  const actual = await vi.importActual<typeof HttpModule>('../api/http');
-  return { ...actual, apiFetch: vi.fn() };
-});
-
-resetApiFetchBetweenTests();
+// Мок отдельного модуля, не apiFetch: mockApiByPath (test-support) заточен
+// под сеть apiFetch, а видео грузится через отдельную функцию с прогрессом.
+vi.mock('../api/uploadWithProgress', () => ({ uploadWithProgress: vi.fn() }));
+const mockedUploadWithProgress = vi.mocked(uploadWithProgress);
 
 const FILE = new File([new Uint8Array(4)], 'clip.mp4', { type: 'video/mp4' });
 
 describe('useExamVideoField — загрузка файла', () => {
   it('успех — POST на /exam-videos, onChange получает videoId', async () => {
-    mockApiByPath({
-      '/exam-videos': {
-        id: 'vid1',
-        contentType: 'video/mp4',
-        sizeBytes: 4,
-        createdAt: '2026-09-27T10:00:00.000Z',
-      },
+    mockedUploadWithProgress.mockResolvedValue({
+      id: 'vid1',
+      contentType: 'video/mp4',
+      sizeBytes: 4,
+      createdAt: '2026-09-27T10:00:00.000Z',
     });
     const onChange = vi.fn();
     const { result } = renderHook(() => useExamVideoField(onChange));
@@ -35,21 +26,22 @@ describe('useExamVideoField — загрузка файла', () => {
       await result.current.uploadFile(FILE);
     });
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/exam-videos', {
-      method: 'POST',
-      body: FILE,
-      timeoutMs: UPLOAD_TIMEOUT_MS,
-    });
+    expect(mockedUploadWithProgress).toHaveBeenCalledWith(
+      '/exam-videos',
+      expect.objectContaining({ method: 'POST', body: FILE }),
+    );
     expect(onChange).toHaveBeenCalledWith({ videoId: 'vid1' });
     expect(result.current.error).toBeNull();
     expect(result.current.uploadPending).toBe(false);
   });
 
-  it('pending — true во время запроса, false после', async () => {
-    let resolveFetch: (value: unknown) => void = () => undefined;
-    mockedApiFetch.mockImplementation(
-      () => new Promise((resolve) => (resolveFetch = resolve)),
-    );
+  it('pending — true во время запроса, false после; прогресс доходит в uploadProgress', async () => {
+    let onProgress: ((fraction: number) => void) | undefined;
+    let resolveUpload: (value: unknown) => void = () => undefined;
+    mockedUploadWithProgress.mockImplementation((_path, init) => {
+      onProgress = init.onProgress;
+      return new Promise((resolve) => (resolveUpload = resolve));
+    });
     const { result } = renderHook(() => useExamVideoField(vi.fn()));
 
     let uploadPromise!: Promise<void>;
@@ -57,9 +49,13 @@ describe('useExamVideoField — загрузка файла', () => {
       uploadPromise = result.current.uploadFile(FILE);
     });
     await waitFor(() => expect(result.current.uploadPending).toBe(true));
+    expect(result.current.uploadProgress).toBeNull();
+
+    act(() => onProgress?.(0.42));
+    expect(result.current.uploadProgress).toBe(0.42);
 
     await act(async () => {
-      resolveFetch({
+      resolveUpload({
         id: 'vid1',
         contentType: 'video/mp4',
         sizeBytes: 4,
@@ -69,12 +65,14 @@ describe('useExamVideoField — загрузка файла', () => {
     });
 
     expect(result.current.uploadPending).toBe(false);
+    // Сброшен после завершения — следующая загрузка не наследует чужой процент.
+    expect(result.current.uploadProgress).toBeNull();
   });
 
   it('503 — R2 не подключён, текст сервера в error, onChange не зовётся', async () => {
-    mockApiByPath({
-      '/exam-videos': new ApiError('Загрузка файлов не подключена.', 503, 'unknown'),
-    });
+    mockedUploadWithProgress.mockRejectedValue(
+      new ApiError('Загрузка файлов не подключена.', 503, 'unknown'),
+    );
     const onChange = vi.fn();
     const { result } = renderHook(() => useExamVideoField(onChange));
 
@@ -88,7 +86,7 @@ describe('useExamVideoField — загрузка файла', () => {
 
   it('брошено не-Error значение — запасной текст, не «undefined»', async () => {
     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- нарочно не-Error: тест бьёт по ветке `err instanceof Error === false`.
-    mockedApiFetch.mockImplementation(() => Promise.reject('не Error'));
+    mockedUploadWithProgress.mockImplementation(() => Promise.reject('не Error'));
     const { result } = renderHook(() => useExamVideoField(vi.fn()));
 
     await act(async () => {

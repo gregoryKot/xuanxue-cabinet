@@ -7,7 +7,7 @@
 // опубликованный или архивный вопрос могут ссылаться сданные работы — вместо
 // кнопки объяснение, почему её нет.
 import { Link, useNavigate } from 'react-router-dom';
-import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
+import type { ExamItemDto, ExamItemKind, ExamItemStatus } from '@xuanxue/shared';
 import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EditorFooter } from '../components/EditorFooter';
@@ -27,6 +27,7 @@ import { ExamItemKindField } from './ExamItemKindField';
 import { ExamItemOptionsField } from './ExamItemOptionsField';
 import { ExamItemStats } from './ExamItemStats';
 import { examItemEditorTitle } from './examItemEditorTitle';
+import { changeExamItemKind } from './examItemKindChange';
 import { hasOptions } from './examItemFormInput';
 import { useExamItemForm } from './useExamItemForm';
 import type { UseExamItemEditorResult } from './useExamItemEditor';
@@ -67,6 +68,8 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
     useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
   const fileStorageEnabled = useFileStorageEnabled();
+  const handleKindChange = (kind: ExamItemKind) =>
+    changeExamItemKind(kind, form.state, form.setField);
 
   return (
     <>
@@ -89,7 +92,7 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
 
         <ExamItemKindField
           kind={form.state.kind}
-          onChange={item ? undefined : (kind) => form.setField('kind', kind)}
+          onChange={item ? undefined : handleKindChange}
         />
 
         <ExamItemFormFields

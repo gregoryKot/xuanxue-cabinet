@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import type { ExamVideoDto } from '@xuanxue/shared';
 import { EXAM_VIDEOS_PATH } from '../api/examVideoPaths';
-import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
+import { uploadWithProgress } from '../api/uploadWithProgress';
 import { validateExamVideoUrl, type ExamVideoValue } from './examVideoFormInput';
 
 // И сетевой ApiError (413 «Видео больше 50 МБ», 503 «R2 не подключён» и
@@ -18,6 +18,9 @@ const UPLOAD_ERROR_MESSAGE = 'Не удалось загрузить видео.
 export interface UseExamVideoFieldResult {
   /** Идёт загрузка файла в R2. */
   uploadPending: boolean;
+  /** Доля отправленного файла (0..1) — `null`, пока событий прогресса ещё не
+   * было (запрос завязывается) или загрузка не идёт вовсе. */
+  uploadProgress: number | null;
   /** Ошибка загрузки файла или сохранения ссылки — виден только один способ
    * разом, поэтому один общий слот, не два. */
   error: string | null;
@@ -38,11 +41,13 @@ export function useExamVideoField(
   onChange: (next: ExamVideoValue) => void,
 ): UseExamVideoFieldResult {
   const [uploadPending, setUploadPending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [urlDraft, setUrlDraft] = useState('');
 
   async function uploadFile(file: File): Promise<void> {
     setUploadPending(true);
+    setUploadProgress(null);
     setError(null);
     try {
       // Файл уходит как есть, без лишнего прохода через canvas (в отличие от
@@ -50,16 +55,20 @@ export function useExamVideoField(
       // сервер и так примет только до 50 МБ (EXAM_VIDEO_LIMITS.maxBytes),
       // сжимать видео в браузере — отдельная задача, которую этот PR не
       // берёт (ADR-0133 не просит переупаковку, только приём байтов).
-      const dto = await apiFetch<ExamVideoDto>(EXAM_VIDEOS_PATH, {
+      // uploadWithProgress, не apiFetch: только XHR отдаёт прогресс отправки
+      // тела, и таймаут здесь — по бездействию, не общий потолок на весь
+      // запрос (клип на медленном мобильном аплинке грузится минутами).
+      const dto = await uploadWithProgress<ExamVideoDto>(EXAM_VIDEOS_PATH, {
         method: 'POST',
         body: file,
-        timeoutMs: UPLOAD_TIMEOUT_MS,
+        onProgress: setUploadProgress,
       });
       onChange({ videoId: dto.id });
     } catch (err) {
       setError(err instanceof Error ? err.message : UPLOAD_ERROR_MESSAGE);
     } finally {
       setUploadPending(false);
+      setUploadProgress(null);
     }
   }
 
@@ -81,5 +90,14 @@ export function useExamVideoField(
     onChange({});
   }
 
-  return { uploadPending, error, urlDraft, setUrlDraft, uploadFile, commitUrl, clear };
+  return {
+    uploadPending,
+    uploadProgress,
+    error,
+    urlDraft,
+    setUrlDraft,
+    uploadFile,
+    commitUrl,
+    clear,
+  };
 }

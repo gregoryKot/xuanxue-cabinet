@@ -1,42 +1,23 @@
 // Единственная точка сетевых запросов (CLAUDE.md, «одна механика — один
 // компонент»): eslint запрещает глобальный fetch вне web/src/api/**, чтобы
 // формат ошибок и credentials не разъезжались по компонентам.
-import {
-  APP_VERSION_HEADER,
-  CSRF_HEADER,
-  isMutatingMethod,
-  type ApiErrorBody,
-  type ApiErrorCode,
-} from '@xuanxue/shared';
+import { APP_VERSION_HEADER, CSRF_HEADER, isMutatingMethod } from '@xuanxue/shared';
 import { combineAbortSignals } from './abortSignals';
+// ApiError и setUnauthorizedListener живут в apiError.ts (общие с
+// uploadWithProgress.ts) — реэкспортированы отсюда, чтобы весь остальной
+// код кабинета по-прежнему брал их одной строкой из http.ts, единственной
+// точки сети (CLAUDE.md «Одна механика — один компонент»).
+import {
+  ApiError,
+  errorFromEnvelope,
+  setUnauthorizedListener,
+  UNKNOWN_ERROR_MESSAGE,
+  type ErrorEnvelope,
+} from './apiError';
 import { noteAppVersion } from './appVersion';
 import { takePrefetched } from './prefetchCache';
 
-/** Ошибка похода в API — статус, код бэкенда и (если есть) детали/requestId. */
-export class ApiError extends Error {
-  status: number;
-  code: ApiErrorCode;
-  details?: string[];
-  requestId?: string;
-
-  constructor(
-    message: string,
-    status: number,
-    code: ApiErrorCode,
-    details?: string[],
-    requestId?: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-    this.details = details;
-    this.requestId = requestId;
-  }
-}
-
-/** Конверт ошибки бэкенда (тип общий с api через shared); поля могут отсутствовать у прокси/CDN. */
-type ErrorEnvelope = Partial<ApiErrorBody>;
+export { ApiError, setUnauthorizedListener };
 
 type ApiMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
@@ -73,21 +54,6 @@ export const TIMEOUT_ERROR_MESSAGE =
 // модуль вместо третьего литерала (CLAUDE.md «Без магических чисел и строк»).
 export const NETWORK_ERROR_MESSAGE =
   'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.';
-const UNKNOWN_ERROR_MESSAGE = 'Сервер не ответил. Попробуйте ещё раз.';
-const UNAUTHORIZED_STATUS = 401;
-
-// Сессия протухла/отозвана посреди работы (не только при первой загрузке) —
-// AuthProvider подписывается сюда, чтобы сбросить себя и увести на /login
-// из любого запроса, а не только из своего собственного /auth/me (CLAUDE.md
-// «Продукт»/ревью п.12). Модульная переменная, не React-контекст: apiFetch —
-// обычная функция вне дерева компонентов.
-type UnauthorizedListener = () => void;
-let unauthorizedListener: UnauthorizedListener | null = null;
-
-export function setUnauthorizedListener(listener: UnauthorizedListener | null): void {
-  unauthorizedListener = listener;
-}
-
 /**
  * Запрос к API с префиксом `/api`. Бросает `ApiError` на сетевой сбой,
  * на не-2xx ответ (парсит конверт бэкенда) и на 204 возвращает `undefined`.
@@ -162,15 +128,9 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     } catch {
       throw new ApiError(UNKNOWN_ERROR_MESSAGE, response.status, 'unknown');
     }
-    const status = envelope.statusCode ?? response.status;
-    if (status === UNAUTHORIZED_STATUS) unauthorizedListener?.();
-    throw new ApiError(
-      envelope.message ?? UNKNOWN_ERROR_MESSAGE,
-      status,
-      envelope.code ?? 'unknown',
-      envelope.details,
-      envelope.requestId,
-    );
+    // 401-слушатель и сборка ApiError — общий хвост с uploadWithProgress.ts
+    // (apiError.ts, аудит 2026-09-27).
+    throw errorFromEnvelope(envelope, response.status);
   }
 
   return (await response.json()) as T;
