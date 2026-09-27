@@ -141,7 +141,7 @@ export class MaterialsService {
     );
   }
 
-  private async getById(id: string): Promise<MaterialDto> {
+  async getById(id: string): Promise<MaterialDto> {
     assertObjectId(id, NOT_FOUND_MESSAGE);
     const doc = await this.model.findById(id).lean<RawLeanMaterial>();
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);

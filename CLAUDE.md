@@ -156,6 +156,9 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-coverage-ratchet.mjs` — покрытие api не падает, жёсткий пол на `api/src/utils`.
 - `check-robot-phrases.mjs` — канцелярит и «это не X, это Y» в user-facing тексте.
 - `check-route-collisions.mjs` — один маршрут, один контроллер.
+- `check-editor-routes.mjs` — у каждой коллекции, которую открывает страница-редактор
+  (`useEntityEditor`), в api есть `GET /коллекция/:id`: тесты web мокают `apiFetch` и
+  дыру не видят (2026-09-27, «Cannot GET /api/materials/:id»).
 - `check-card-list-gap.mjs` — список карточек объявляет промежуток между строками
   (`gap` или обёртка «одной карточкой»), иначе плашки слипаются (ADR-0088).
 - `check-write-then-reload.mjs` — новых мест, где `apiFetch` с мутирующим методом

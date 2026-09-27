@@ -51,6 +51,21 @@ describe('Материалы (e2e)', () => {
     expect(postRes.status).toBe(403);
   });
 
+  it('ученик и аноним: GET /materials/:id — 403 и 401', async () => {
+    const teacherCookie = await sessionCookieFor(testApp.app, ['teacher']);
+    const created = await postMaterial(teacherCookie, VALID_BODY);
+    const id = (created.body as MaterialDto).id;
+
+    const studentCookie = await sessionCookieFor(testApp.app, []);
+    const studentRes = await request(server())
+      .get(`/api/materials/${id}`)
+      .set('Cookie', studentCookie);
+    expect(studentRes.status).toBe(403);
+
+    const anonRes = await request(server()).get(`/api/materials/${id}`);
+    expect(anonRes.status).toBe(401);
+  });
+
   describe('учитель', () => {
     it('CRUD целиком: create → list → patch → delete → 404', async () => {
       const cookie = await sessionCookieFor(testApp.app, ['teacher']);
@@ -69,6 +84,17 @@ describe('Материалы (e2e)', () => {
       const list = await request(server()).get('/api/materials').set('Cookie', cookie);
       expect(list.status).toBe(200);
       expect((list.body as MaterialDto[]).some((m) => m.id === dto.id)).toBe(true);
+
+      // Read-after-write: страница-редактора (useMaterialEditor.ts) читает
+      // запись по своему адресу, не из уже загруженного списка (инцидент
+      // 2026-09-27, «Cannot GET /api/materials/:id»).
+      const got = await request(server())
+        .get(`/api/materials/${dto.id}`)
+        .set('Cookie', cookie);
+      expect(got.status).toBe(200);
+      expect((got.body as MaterialDto).title).toBe(dto.title);
+      expect((got.body as MaterialDto).url).toBe(dto.url);
+      expect((got.body as MaterialDto).kind).toBe(dto.kind);
 
       const patched = await withCsrf(request(server()).patch(`/api/materials/${dto.id}`))
         .set('Cookie', cookie)
@@ -96,6 +122,22 @@ describe('Материалы (e2e)', () => {
       )
         .set('Cookie', cookie)
         .send({ title: 'x' });
+      expect(res.status).toBe(404);
+    });
+
+    it('GET несуществующего, но валидного id — 404', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const res = await request(server())
+        .get('/api/materials/000000000000000000000000')
+        .set('Cookie', cookie);
+      expect(res.status).toBe(404);
+    });
+
+    it('GET заведомо кривого id — 404, не 500 (assertObjectId)', async () => {
+      const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+      const res = await request(server())
+        .get('/api/materials/not-an-object-id')
+        .set('Cookie', cookie);
       expect(res.status).toBe(404);
     });
 
