@@ -3,20 +3,7 @@
 // потребителя (ExamItemOptionImage.tsx, MaterialFileField.tsx).
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { FilePickerButton, pendingLabel } from './FilePickerButton';
-
-describe('pendingLabel', () => {
-  it('без прогресса — просто «Загружаем…»', () => {
-    expect(pendingLabel(null)).toBe('Загружаем…');
-    expect(pendingLabel(undefined)).toBe('Загружаем…');
-  });
-
-  it('с прогрессом — процент округлён и приписан через пробел', () => {
-    expect(pendingLabel(0.365)).toBe('Загружаем… 37 %');
-    expect(pendingLabel(0)).toBe('Загружаем… 0 %');
-    expect(pendingLabel(1)).toBe('Загружаем… 100 %');
-  });
-});
+import { FilePickerButton } from './FilePickerButton';
 
 function pdf(name = 'Методичка.pdf'): File {
   return new File(['%PDF-1.7'], name, { type: 'application/pdf' });
@@ -123,36 +110,5 @@ describe('FilePickerButton', () => {
 
     expect(screen.getByText('Загружаем…')).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByLabelText('Добавить файл')).not.toBeInTheDocument();
-  });
-
-  it('progress известен — процент в подписи и <progress> с тем же значением', () => {
-    render(
-      <FilePickerButton
-        label="Добавить файл"
-        accept="application/pdf"
-        pending
-        progress={0.37}
-        onFile={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText('Загружаем… 37 %')).toBeInTheDocument();
-    const progressEl = document.querySelector('progress');
-    expect(progressEl).toHaveAttribute('value', '0.37');
-    expect(progressEl).toHaveAttribute('max', '1');
-  });
-
-  it('progress не передан — просто «Загружаем…», без <progress>', () => {
-    render(
-      <FilePickerButton
-        label="Добавить файл"
-        accept="application/pdf"
-        pending
-        onFile={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText('Загружаем…')).toBeInTheDocument();
-    expect(document.querySelector('progress')).not.toBeInTheDocument();
   });
 });

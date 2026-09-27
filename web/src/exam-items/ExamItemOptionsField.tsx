@@ -1,16 +1,18 @@
 // Варианты ответа — только для single/multiple: добавить, убрать, отметить
-// верный, дать текст и/или картинку (ADR-0035). Сама строка со всей вёрсткой
-// живёт в ExamItemOptionRow.tsx (вынесена по файловому храповику), здесь —
-// список и правила его изменения. Отметка «верно» — нативный radio/checkbox:
-// для single имя группы (`name`) отдаёт браузеру взаимное исключение самому,
-// для multiple — обычные чекбоксы (CLAUDE.md «Доступность» — работает с
-// клавиатуры без единого атрибута ARIA).
-import { useRef, type CSSProperties } from 'react';
+// верный, дать текст и/или картинку (ADR-0035). Строка со всей вёрсткой —
+// ExamItemOptionRow.tsx, фокус после добавления (отзыв владельца
+// 2026-09-27) — useOptionInputFocus.ts; оба вынесены по файловому
+// храповику (CLAUDE.md «Храповики»), здесь — только список и правила его
+// изменения. Отметка «верно» — нативный radio/checkbox: для single имя
+// группы (`name`) отдаёт браузеру взаимное исключение самому, для multiple —
+// обычные чекбоксы (CLAUDE.md «Доступность»).
+import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS, type ExamItemKind } from '@xuanxue/shared';
-import { noteStyle } from '../components/screenLayout';
+import { Button } from '../components/Button';
+import { useLatest } from '../hooks/useLatest';
 import { RichText } from '../components/RichText';
-import { TextLinkButton } from '../components/TextLinkButton';
 import { ExamItemOptionRow } from './ExamItemOptionRow';
+import { useOptionInputFocus } from './useOptionInputFocus';
 import type { ExamVideoValue } from './examVideoFormInput';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 
@@ -28,16 +30,14 @@ const hintTextStyle: CSSProperties = {
   fontSize: 13,
   color: 'var(--ink-soft)',
 };
+const addButtonStyle: CSSProperties = { alignSelf: 'flex-start' };
 
 const RADIO_GROUP_NAME = 'exam-item-correct-option';
 const NEW_OPTION: ExamItemOptionDraft = { text: '', correct: false };
-const HELP_TEXT =
-  'Вариант — текст, картинка или видео, не больше одного медиа разом. ' +
-  'Фото ужимается до **1280 px** перед отправкой.';
+const ADD_LABEL = 'Добавить вариант';
 
-/** Подсказка о минимуме вариантов — число берётся из общего лимита
- * (EXAM_ITEM_LIMITS), поэтому строится функцией, а не хранится константой
- * со звёздочками текстом (RichText разбирает готовую строку). */
+// Число — из EXAM_ITEM_LIMITS, поэтому строится функцией, не хранится
+// готовой строкой.
 function minOptionsHint(min: number): string {
   return `Добавьте минимум **${min}** варианта — без них вопрос не сохранить.`;
 }
@@ -57,27 +57,37 @@ export function ExamItemOptionsField({
   fileStorageEnabled,
   onChange,
 }: ExamItemOptionsFieldProps) {
-  // Загрузка фото/видео заканчивается асинхронно: замыкание обработчика
-  // видит список вариантов на момент нажатия, и второй ролик, загруженный
-  // параллельно, записывал своё поверх этого старого списка — первый ролик
-  // пропадал (отзыв владельца с телефона 2026-09-27). Правки строятся от
-  // списка последнего рендера, а не от захваченного в замыкании.
-  const latest = useRef(options);
-  latest.current = options;
+  // Загрузка медиа кончается позже, чем начата, — пишем в свежий список.
+  const live = useLatest(options);
   const canAddMore = options.length < EXAM_ITEM_LIMITS.optionsMax;
+  const { registerInput, markFocusNext, focusIndex } = useOptionInputFocus(
+    options.length,
+  );
 
-  function updateText(index: number, text: string) {
-    onChange(
-      latest.current.map((option, i) => (i === index ? { ...option, text } : option)),
-    );
+  function addOption() {
+    if (!canAddMore) return;
+    markFocusNext();
+    onChange([...options, { ...NEW_OPTION }]);
   }
 
-  // Картинка и видео — взаимоисключающие (ADR-0133): новая картинка снимает
-  // видео варианта, которое уже могло стоять, а не остаётся молча висеть за
-  // кадром до следующего PATCH.
+  // Enter в последнем варианте — как кнопка «Добавить вариант»; в остальных
+  // переводит фокус на соседний (preventDefault — в ExamItemOptionRow.tsx).
+  function handleEnter(index: number) {
+    if (index === options.length - 1) {
+      addOption();
+      return;
+    }
+    focusIndex(index + 1);
+  }
+
+  function updateText(index: number, text: string) {
+    onChange(options.map((option, i) => (i === index ? { ...option, text } : option)));
+  }
+
+  // Картинка снимает видео варианта — взаимоисключение (ADR-0133).
   function updateImage(index: number, imageId: string | undefined) {
     onChange(
-      latest.current.map((option, i) =>
+      live.current.map((option, i) =>
         i === index
           ? { ...option, imageId, videoId: undefined, videoUrl: undefined }
           : option,
@@ -86,30 +96,22 @@ export function ExamItemOptionsField({
   }
 
   function updateVideo(index: number, video: ExamVideoValue) {
-    onChange(
-      latest.current.map((option, i) =>
-        i === index ? { ...option, imageId: undefined, ...video } : option,
-      ),
-    );
+    const next = { imageId: undefined, ...video };
+    onChange(live.current.map((o, i) => (i === index ? { ...o, ...next } : o)));
   }
 
+  // single — отметка любого варианта снимает остальные (React держит
+  // состояние сам, радио в DOM тут не решает).
   function markCorrect(index: number, checked: boolean) {
-    // single — ровно один верный: отметка любого варианта снимает остальные,
-    // а не только ставит текущий (радио сделал бы то же в DOM, но React
-    // держит состояние здесь — синхронизируем явно).
     if (kind === 'single') {
-      onChange(latest.current.map((option, i) => ({ ...option, correct: i === index })));
+      onChange(options.map((o, i) => ({ ...o, correct: i === index })));
       return;
     }
-    onChange(
-      latest.current.map((option, i) =>
-        i === index ? { ...option, correct: checked } : option,
-      ),
-    );
+    onChange(options.map((o, i) => (i === index ? { ...o, correct: checked } : o)));
   }
 
   function removeOption(index: number) {
-    onChange(latest.current.filter((_, i) => i !== index));
+    onChange(options.filter((_, i) => i !== index));
   }
 
   return (
@@ -122,26 +124,25 @@ export function ExamItemOptionsField({
           index={index}
           radioGroupName={kind === 'single' ? RADIO_GROUP_NAME : undefined}
           fileStorageEnabled={fileStorageEnabled}
+          textInputRef={registerInput(index)}
           onTextChange={(text) => updateText(index, text)}
           onImageChange={(imageId) => updateImage(index, imageId)}
           onVideoChange={(video) => updateVideo(index, video)}
           onCorrectChange={(checked) => markCorrect(index, checked)}
           onRemove={() => removeOption(index)}
+          onEnter={() => handleEnter(index)}
         />
       ))}
       {canAddMore && (
-        <TextLinkButton onClick={() => onChange([...options, { ...NEW_OPTION }])}>
-          Добавить вариант
-        </TextLinkButton>
+        <Button variant="secondary" style={addButtonStyle} onClick={addOption}>
+          {ADD_LABEL}
+        </Button>
       )}
       {options.length < EXAM_ITEM_LIMITS.optionsMin && (
         <p style={hintTextStyle}>
           <RichText text={minOptionsHint(EXAM_ITEM_LIMITS.optionsMin)} />
         </p>
       )}
-      <p style={noteStyle}>
-        <RichText text={HELP_TEXT} />
-      </p>
     </fieldset>
   );
 }

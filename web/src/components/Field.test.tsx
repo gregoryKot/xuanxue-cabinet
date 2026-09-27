@@ -78,4 +78,20 @@ describe('Field', () => {
     expect(large.font).toBeUndefined();
     expect(large.fontSize).toBeUndefined();
   });
+
+  // InfoTip (ADR-0139) — кнопка стоит внутри <label>, но getByLabelText не
+  // должен цеплять ни её aria-label, ни текст подсказки (components/InfoTip.test.tsx
+  // проверяет то же для открытого состояния).
+  it('tip — кнопка подсказки рядом с подписью, поле по-прежнему находится точным текстом', () => {
+    render(
+      <Field label="Уровень" tip="Ученик увидит его в скобках после названия.">
+        <input defaultValue="первый год" />
+      </Field>,
+    );
+
+    expect(screen.getByLabelText('Уровень')).toHaveValue('первый год');
+    expect(
+      screen.getByRole('button', { name: 'Подсказка: Уровень' }),
+    ).toBeInTheDocument();
+  });
 });

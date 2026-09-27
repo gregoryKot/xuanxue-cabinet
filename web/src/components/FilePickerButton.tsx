@@ -1,7 +1,10 @@
-// Выбор файла кнопкой — один контрол на весь кабинет (CLAUDE.md «Одна
-// механика — один компонент»). Двое потребителей: картинка варианта ответа
-// (exam-items/ExamItemOptionImage.tsx, ADR-0035) и файл материала
-// (materials/MaterialFileField.tsx, ADR-0057).
+// Выбор файла видимой кнопкой — один контрол на весь кабинет (CLAUDE.md
+// «Одна механика — один компонент»), потребитель — файл материала
+// (materials/MaterialFileField.tsx, ADR-0057). Картинка и видео варианта
+// ответа с 2026-09-27 выбираются иначе — скрепкой без подписи
+// (exam-items/useImageAttach.tsx, useVideoAttach.tsx,
+// components/AttachButton.tsx): свой скрытый `<input type="file">`, не
+// через этот компонент, потому что видимой кнопки-подписи там уже нет.
 //
 // Скрытый `<input type="file">` внутри `<label>`: видимая кнопка — сам
 // label. `display: none` нельзя — он убрал бы input из таб-порядка
@@ -11,15 +14,6 @@ import type { ChangeEvent, CSSProperties } from 'react';
 import { noteStyle, textLinkHitAreaStyle, textLinkLineStyle } from './screenLayout';
 
 const PENDING_TEXT = 'Загружаем…';
-
-/** Подпись во время загрузки — с процентом, когда он известен (событие
- * прогресса XHR уже пришло), иначе просто «Загружаем…»: доля не всегда
- * посчитана сразу (`useExamVideoField`, `uploadWithProgress.ts` —
- * `lengthComputable` может быть false). */
-export function pendingLabel(progress: number | null | undefined): string {
-  if (progress == null) return PENDING_TEXT;
-  return `${PENDING_TEXT} ${Math.round(progress * 100)} %`;
-}
 
 const hiddenInputStyle: CSSProperties = {
   position: 'absolute',
@@ -46,9 +40,7 @@ const pendingStyle: CSSProperties = {
   minHeight: 44,
   display: 'flex',
   alignItems: 'center',
-  gap: 8,
 };
-const progressStyle: CSSProperties = { width: 60, height: 8 };
 
 interface FilePickerButtonProps {
   /** Подпись видимой кнопки. */
@@ -57,10 +49,6 @@ interface FilePickerButtonProps {
   accept: string;
   /** Идёт загрузка: вместо кнопки — строка со статусом. */
   pending: boolean;
-  /** Доля отправленного файла (0..1) — рисует процент в подписи и
-   * `<progress>` под ней. `null`/не передан — просто «Загружаем…» без числа
-   * (картинка и материал прогресс не считают, только видео вопроса). */
-  progress?: number | null;
   /** Выбранный файл. Значение input сбрасывается до вызова: тот же файл
    * можно выбрать повторно после сбоя — браузер не шлёт `change` на
    * повторный выбор того же значения, если input его не забыл. */
@@ -75,7 +63,6 @@ export function FilePickerButton({
   label,
   accept,
   pending,
-  progress,
   onFile,
   inputLabel,
 }: FilePickerButtonProps) {
@@ -88,13 +75,7 @@ export function FilePickerButton({
   if (pending) {
     return (
       <span aria-busy="true" style={pendingStyle}>
-        {pendingLabel(progress)}
-        {progress != null && (
-          // Нативный <progress> — роль progressbar и aria-valuenow браузер
-          // ставит сам по value/max (CLAUDE.md «Доступность»), свой ARIA не
-          // нужен.
-          <progress value={progress} max={1} style={progressStyle} />
-        )}
+        {PENDING_TEXT}
       </span>
     );
   }

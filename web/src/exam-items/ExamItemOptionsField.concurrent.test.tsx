@@ -10,22 +10,22 @@ import { ExamItemOptionsField } from './ExamItemOptionsField';
 import type { ExamItemOptionDraft } from './examItemFormInput';
 import type { ExamVideoValue } from './examVideoFormInput';
 
-const startedUploads = new Map<string, (video: ExamVideoValue) => void>();
+const startedUploads = new Map<number, (video: ExamVideoValue) => void>();
 
-vi.mock('./ExamVideoField', () => ({
-  ExamVideoField: ({
-    inputLabel,
-    onChange,
+// Медиа варианта заглушкой: запоминаем только первый колбэк каждого варианта —
+// тот, что загрузка захватила при старте.
+vi.mock('./ExamItemOptionMedia', () => ({
+  ExamItemOptionMedia: ({
+    index,
+    onVideoChange,
   }: {
-    inputLabel: string;
-    onChange: (video: ExamVideoValue) => void;
+    index: number;
+    onVideoChange: (video: ExamVideoValue) => void;
   }) => {
-    // Запоминаем только первый колбэк — тот, что загрузка захватила при старте.
-    if (!startedUploads.has(inputLabel)) startedUploads.set(inputLabel, onChange);
+    if (!startedUploads.has(index)) startedUploads.set(index, onVideoChange);
     return null;
   },
 }));
-vi.mock('./ExamItemOptionImage', () => ({ ExamItemOptionImage: () => null }));
 
 function Harness({ onState }: { onState: (options: ExamItemOptionDraft[]) => void }) {
   const [options, setOptions] = useState<ExamItemOptionDraft[]>([
@@ -49,8 +49,8 @@ describe('ExamItemOptionsField — две загрузки видео разом
     let current: ExamItemOptionDraft[] = [];
     render(<Harness onState={(options) => (current = options)} />);
 
-    const finishFirst = startedUploads.get('Видео варианта 1');
-    const finishSecond = startedUploads.get('Видео варианта 2');
+    const finishFirst = startedUploads.get(0);
+    const finishSecond = startedUploads.get(1);
     act(() => finishSecond?.({ videoId: 'v2' }));
     act(() => finishFirst?.({ videoId: 'v1' }));
 

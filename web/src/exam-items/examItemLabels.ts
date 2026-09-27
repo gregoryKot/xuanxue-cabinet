@@ -16,15 +16,6 @@ export const EXAM_ITEM_KIND_LABELS_RU: Record<ExamItemKind, string> = {
   video: 'Видео',
 };
 
-/** Что значит тип — одной строкой под переключателями: выбирают его один раз
- * и навсегда, а по названию не всегда понятно, кто проверяет ответ. */
-export const EXAM_ITEM_KIND_HINTS_RU: Record<ExamItemKind, string> = {
-  text: 'Ответ своими словами — читаете и оцениваете вы.',
-  single: 'Один вариант из списка. Сверяется сам.',
-  multiple: 'Несколько верных вариантов сразу, сверяются автоматически.',
-  video: 'Видеозапись задания — вы смотрите её и ставите оценку.',
-};
-
 export const EXAM_ITEM_STATUS_LABELS_RU = DRAFT_PUBLISHED_ARCHIVED_LABELS_RU;
 
 /** Служебная строка под формулировкой вопроса — тип вопроса (макет

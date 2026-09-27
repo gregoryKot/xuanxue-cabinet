@@ -4,7 +4,7 @@
 // `beforeunload` — стандартный способ вызвать диалог браузера; текст диалога
 // браузер решает сам (`returnValue` — устаревшее API, но других механизмов
 // нет), поэтому строка со смыслом того же самого рисуется отдельно на экране
-// (ExamVideoField.tsx), не полагается на текст этого диалога.
+// (components/UploadProgress.tsx), не полагается на текст этого диалога.
 import { useEffect } from 'react';
 
 function handleBeforeUnload(event: BeforeUnloadEvent): void {

@@ -109,6 +109,23 @@ function lastCallWithMethod(method: string) {
   );
 }
 
+// «Сохранить» стоит на странице дважды — наверху рядом с заголовком и в
+// подвале под списком вопросов (ADR-0139): оба submit одной формы, для клика
+// в тесте годится любой — берём первый.
+function saveButton(): HTMLElement {
+  return screen.getAllByRole('button', { name: 'Сохранить' })[0] as HTMLElement;
+}
+
+async function findSaveButton(): Promise<HTMLElement> {
+  return (await screen.findAllByRole('button', { name: 'Сохранить' }))[0] as HTMLElement;
+}
+
+// Текст всплывающей подсказки (components/InfoTip.tsx) рендерится только
+// открытым — тап по кнопке «Подсказка: …» перед проверкой текста.
+async function openTip(user: ReturnType<typeof userEvent.setup>, fieldLabel: string) {
+  await user.click(screen.getByRole('button', { name: `Подсказка: ${fieldLabel}` }));
+}
+
 describe('ExamEditorScreen — загрузка', () => {
   it('экзамен ещё грузится — скелетон, а не пустой экран', () => {
     mockApiByPath({ '/exams/x1': new Promise(() => {}), '/exam-items': BANK });
@@ -152,7 +169,8 @@ describe('ExamEditorScreen — загрузка', () => {
 });
 
 describe('ExamEditorScreen — поля «О чём экзамен»', () => {
-  it('поля заполнены из ответа сервера, подпись уровня честно объяснена', async () => {
+  it('поля заполнены из ответа сервера, подсказка уровня — во всплывающей подсказке', async () => {
+    const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
@@ -161,9 +179,12 @@ describe('ExamEditorScreen — поля «О чём экзамен»', () => {
     expect(screen.getByLabelText('Описание для ученика')).toHaveValue(
       'Что вы умеете после первого года',
     );
-    expect(screen.getByLabelText('Подпись уровня')).toHaveValue('первый уровень');
-    expect(screen.getByText(/Ни на что больше не влияет/)).toBeInTheDocument();
-    expect(screen.queryByText(/доступна всем уровням/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Уровень')).toHaveValue('первый уровень');
+
+    await openTip(user, 'Уровень');
+    expect(
+      screen.getByText('Ученик увидит его в скобках после названия.'),
+    ).toBeInTheDocument();
   });
 
   it('правки полей уходят в тело сохранения', async () => {
@@ -173,9 +194,9 @@ describe('ExamEditorScreen — поля «О чём экзамен»', () => {
     renderAt('/exams/x1');
     await user.clear(await screen.findByLabelText('Описание для ученика'));
     await user.type(screen.getByLabelText('Описание для ученика'), 'Новое описание');
-    await user.clear(screen.getByLabelText('Подпись уровня'));
-    await user.type(screen.getByLabelText('Подпись уровня'), 'второй уровень');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.clear(screen.getByLabelText('Уровень'));
+    await user.type(screen.getByLabelText('Уровень'), 'второй уровень');
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
@@ -191,7 +212,7 @@ describe('ExamEditorScreen — поля «О чём экзамен»', () => {
 
     renderAt('/exams/x1');
     await screen.findByLabelText('Название');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Впишите название');
     expect(lastCallWithMethod('PATCH')).toHaveLength(0);
@@ -223,7 +244,7 @@ describe('ExamEditorScreen — список вопросов', () => {
     await screen.findByText('Зачем придумали тайцзи?');
     const firstRow = screen.getAllByRole('listitem')[0] as HTMLElement;
     await user.click(within(firstRow).getByRole('button', { name: 'Ниже' }));
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as { body: { blocks: unknown[] } };
@@ -302,7 +323,7 @@ describe('ExamEditorScreen — список вопросов', () => {
     expect(await screen.findByText('Вопросы · 2')).toBeInTheDocument();
     expect(screen.queryByText(/Теория/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as { body: { blocks: unknown[] } };
@@ -445,7 +466,7 @@ describe('ExamEditorScreen — поиск по вопросам', () => {
 });
 
 describe('ExamEditorScreen — как проходит экзамен', () => {
-  it('переключатели объяснены и уходят в тело сохранения', async () => {
+  it('переключатели объяснены во всплывающей подсказке и уходят в тело сохранения', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
@@ -456,12 +477,14 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     await user.click(
       screen.getByRole('checkbox', { name: 'Перемешивать варианты ответов' }),
     );
-    expect(screen.getByText('У каждого ученика свой порядок')).toBeInTheDocument();
+    await openTip(user, 'Перемешивать вопросы');
+    expect(screen.getByText('У каждого ученика свой порядок.')).toBeInTheDocument();
+    await openTip(user, 'Перемешивать варианты ответов');
     expect(
-      screen.getByText('Верный вариант не стоит на одном и том же месте'),
+      screen.getByText('Верный вариант не стоит на одном и том же месте.'),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
@@ -476,11 +499,11 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     mockExamAndBank(makeExam({ timeLimitMin: 40 }));
 
     renderAt('/exams/x1');
-    await user.clear(await screen.findByLabelText('Лимит времени, минут'));
-    await user.type(screen.getByLabelText('Лимит времени, минут'), '25');
-    await user.clear(screen.getByLabelText('Попыток у ученика'));
-    await user.type(screen.getByLabelText('Попыток у ученика'), '3');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.clear(await screen.findByLabelText('Время, мин'));
+    await user.type(screen.getByLabelText('Время, мин'), '25');
+    await user.clear(screen.getByLabelText('Попыток'));
+    await user.type(screen.getByLabelText('Попыток'), '3');
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
@@ -490,37 +513,48 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     expect(body.body.attemptsAllowed).toBe(3);
   });
 
-  it('лимит времени и попытки — поля с честной подсказкой', async () => {
+  it('лимит времени и попытки — поля есть, подсказка лимита — во всплывающей подсказке', async () => {
+    const user = userEvent.setup();
     mockExamAndBank(makeExam({ timeLimitMin: 40 }));
 
     renderAt('/exams/x1');
 
-    expect(await screen.findByLabelText('Лимит времени, минут')).toHaveValue('40');
-    expect(screen.getByLabelText('Попыток у ученика')).toHaveValue('2');
+    expect(await screen.findByLabelText('Время, мин')).toHaveValue('40');
+    expect(screen.getByLabelText('Попыток')).toHaveValue('2');
+
+    await openTip(user, 'Время, мин');
     expect(screen.getByText('Пусто — без ограничения.')).toBeInTheDocument();
   });
 
-  it('срок сдачи (ADR-0125) — своё поле с честной подсказкой, независимое от лимита времени', async () => {
+  it('срок сдачи (ADR-0125, ADR-0139) — поле только даты, подсказка во всплывающей подсказке', async () => {
+    const user = userEvent.setup();
     mockExamAndBank(makeExam({ dueAt: '2026-09-30T20:59:00Z' }));
 
     renderAt('/exams/x1');
 
-    const dueAtField = await screen.findByLabelText<HTMLInputElement>('Сдать до');
-    expect(dueAtField.value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-    expect(screen.getByText('Пусто — без срока.')).toBeInTheDocument();
+    const dueDateField = await screen.findByLabelText<HTMLInputElement>('Сдать до');
+    expect(dueDateField.type).toBe('date');
+    expect(dueDateField.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    await openTip(user, 'Сдать до');
+    expect(
+      screen.getByText('Пусто — без срока. Включает весь выбранный день.'),
+    ).toBeInTheDocument();
   });
 
-  it('правка срока сдачи уходит в тело сохранения ISO UTC', async () => {
+  it('правка срока сдачи уходит в тело сохранения ISO UTC — конец выбранного дня', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
-    await user.type(await screen.findByLabelText('Сдать до'), '2026-09-30T23:59');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.type(await screen.findByLabelText('Сдать до'), '2026-09-30');
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as { body: { dueAt?: string } };
-    expect(body.body.dueAt).toMatch(/Z$/);
+    // 23:59:59.999 выбранного дня, не полночь — час в поле не задан, срок
+    // действует до конца дня включительно (ADR-0139).
+    expect(body.body.dueAt).toMatch(/^2026-09-30T\d{2}:59:59\.999Z$/);
   });
 
   it('очищенный срок сдачи уходит в тело сохранения null (явный сброс)', async () => {
@@ -529,7 +563,7 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
 
     renderAt('/exams/x1');
     await user.clear(await screen.findByLabelText('Сдать до'));
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
@@ -538,19 +572,21 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     expect(body.body.dueAt).toBeNull();
   });
 
-  it('«Вопросов ученику» (ADR-0082) — поле с подсказкой по числу вопросов списка', async () => {
+  it('«Вопросов ученику» (ADR-0082) — подсказка по числу вопросов списка, во всплывающей подсказке', async () => {
+    const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
 
     expect(await screen.findByLabelText('Вопросов ученику')).toHaveValue('');
+    await openTip(user, 'Вопросов ученику');
     // Акценты «2» и «случайная часть» рисует RichText через <strong>
     // (ADR-0124) — ищем по неразрывному началу подсказки, полный текст
     // сверяем через textContent родителя.
-    const hint = screen.getByText(/Пусто — ученик отвечает на все/);
-    expect(hint.closest('span')).toHaveTextContent(
-      'Пусто — ученик отвечает на все 2 вопроса списка. Впишите число — и каждому ' +
-        'достанется случайная часть из 2. ★ — обязательные, попадут всем.',
+    const tip = screen.getByText(/Пусто — ученику достанутся все/);
+    expect(tip.closest('div')).toHaveTextContent(
+      'Пусто — ученику достанутся все 2 вопроса. Число — и каждому ' +
+        'случайная часть из 2. ★ — обязательные, попадут всем.',
     );
   });
 
@@ -560,7 +596,7 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
 
     renderAt('/exams/x1');
     await user.type(await screen.findByLabelText('Вопросов ученику'), '1');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
@@ -632,7 +668,7 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
       within(rows[0] as HTMLElement).getByText(/· обязательный/),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
@@ -654,7 +690,7 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     await user.click(
       within(rows[0] as HTMLElement).getByRole('button', { name: 'Обязательный' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
     const body = lastCallWithMethod('PATCH')[0]?.[1] as {
@@ -670,7 +706,7 @@ describe('ExamEditorScreen — подвал', () => {
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
-    await user.click(await screen.findByRole('button', { name: 'Сохранить' }));
+    await user.click(await findSaveButton());
 
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith(
@@ -685,7 +721,7 @@ describe('ExamEditorScreen — подвал', () => {
 
     renderAt('/exams/new');
     await user.type(await screen.findByLabelText('Название'), 'Толкающие руки');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     expect(await screen.findByText(LIST_MARKER)).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith(
@@ -710,7 +746,7 @@ describe('ExamEditorScreen — подвал', () => {
     mockedApiFetch.mockRejectedValueOnce(
       new ApiError('В экзамене нет ни одного вопроса.', 400, 'invalid_input'),
     );
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     expect(
       await screen.findByText('В экзамене нет ни одного вопроса.'),
@@ -753,7 +789,7 @@ describe('ExamEditorScreen — подвал', () => {
     renderAt('/exams/x1');
     const publish = await screen.findByRole('button', { name: 'Опубликовать' });
     const questions = screen.getByText(/Вопросы ·/);
-    const save = screen.getByRole('button', { name: 'Сохранить' });
+    const save = saveButton();
 
     expect(
       publish.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -791,7 +827,7 @@ describe('ExamEditorScreen — подвал', () => {
     expect(screen.queryByText(LIST_MARKER)).not.toBeInTheDocument();
   });
 
-  it('опубликованный — удалить нельзя, вместо кнопки объяснение', async () => {
+  it('опубликованный — удалить нельзя (кнопки нет ни наверху, ни внизу), короткое объяснение в подвале', async () => {
     mockExamAndBank(makeExam({ status: 'published' }));
 
     renderAt('/exams/x1');
@@ -801,18 +837,42 @@ describe('ExamEditorScreen — подвал', () => {
     expect(
       screen.queryByRole('button', { name: 'Удалить экзамен' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/Отправьте его в архив/)).toBeInTheDocument();
+    expect(screen.getByText(/можно отправить в архив/)).toBeInTheDocument();
   });
 
-  it('архивный — свой текст статуса и своё объяснение вместо удаления', async () => {
+  // Архивному отдельного объяснения больше нет (ADR-0139, отзыв владельца
+  // 2026-09-27) — строка статуса выше уже сказала «сданные работы остаются»,
+  // повторять то же самое другими словами незачем.
+  it('архивный — свой текст статуса, без отдельного объяснения про удаление', async () => {
     mockExamAndBank(makeExam({ status: 'archived' }));
 
     renderAt('/exams/x1');
 
     expect(await screen.findByText('В архиве')).toBeInTheDocument();
     expect(screen.getByText(/сданные работы остаются/)).toBeInTheDocument();
-    // «ссылки в попытках» выделено через RichText (<strong>, ADR-0124).
-    expect(screen.getByText(/могли остаться/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Удалить экзамен' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/могли остаться/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/не удалить/)).not.toBeInTheDocument();
+  });
+
+  // Удаление стоит наверху (ADR-0139) — в строке с «К списку экзаменов»,
+  // раньше списка вопросов: владелец не находил кнопку в конце длинной формы.
+  it('черновик — «Удалить экзамен» стоит наверху, в строке с «К списку экзаменов»', async () => {
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    const back = await screen.findByRole('link', { name: 'К списку экзаменов' });
+    const remove = screen.getByRole('button', { name: 'Удалить экзамен' });
+    const questions = screen.getByText(/Вопросы ·/);
+
+    expect(
+      back.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      remove.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('новый экзамен — ни статуса, ни удаления', async () => {
@@ -1190,7 +1250,7 @@ describe('ExamEditorScreen — черновик (ADR-0052)', () => {
       'Набранное, но не сохранённое',
     );
     expect(
-      screen.getByText('Здесь то, что вы набрали в прошлый раз.'),
+      screen.getByText('Вернули то, что вы не сохранили в прошлый раз.'),
     ).toBeInTheDocument();
   });
 
@@ -1202,10 +1262,49 @@ describe('ExamEditorScreen — черновик (ADR-0052)', () => {
 
     renderAt('/exams/x1');
     await screen.findByLabelText('Название');
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await user.click(saveButton());
 
     // Прокрутка отложена на микротакт (scrollToFirstAlertSoon) — ждём её,
     // а не проверяем сразу же после клика.
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+  });
+});
+
+// Заметка «пока не сохранили» (ADR-0139, отзыв владельца 2026-09-27):
+// новый экзамен выглядел пустым и было страшно уйти со страницы, не зная,
+// что набранное уже сохраняется черновиком в этом браузере.
+describe('ExamEditorScreen — заметка про несохранённые правки', () => {
+  it('новый экзамен — заметка видна сразу, до первой правки', async () => {
+    mockApiByPath({ '/exam-items': BANK, '/exams': makeExam() });
+
+    renderAt('/exams/new');
+    await screen.findByLabelText('Название');
+
+    expect(
+      screen.getByText('Пока не сохранили, набранное хранится на этом устройстве.'),
+    ).toBeInTheDocument();
+  });
+
+  it('существующий экзамен без правок — заметки нет', async () => {
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await screen.findByLabelText('Название');
+
+    expect(
+      screen.queryByText('Пока не сохранили, набранное хранится на этом устройстве.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('правка существующего экзамена — заметка появляется', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await user.type(await screen.findByLabelText('Название'), '!');
+
+    expect(
+      screen.getByText('Пока не сохранили, набранное хранится на этом устройстве.'),
+    ).toBeInTheDocument();
   });
 });

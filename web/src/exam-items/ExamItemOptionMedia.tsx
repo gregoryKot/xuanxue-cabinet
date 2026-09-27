@@ -1,25 +1,13 @@
-// Медиа одного варианта ответа — картинка или видео, взаимоисключающе
-// (ADR-0035/ADR-0133): пока ни одного не выбрано, «Добавить картинку» и поле
-// видео стоят рядом как два равных способа; выбранный способ — своя
-// подпись + «Убрать», второй пропадает, пока это медиа не снимут. Свой файл,
-// не инлайн в ExamItemOptionRow.tsx: строка и так держит текст, отметку
-// «верный» и кнопку удаления, добавлять сюда ещё две ветки вывело бы файл за
-// файловый храповик (CLAUDE.md «Храповики»).
-import type { CSSProperties } from 'react';
-import { ExamItemOptionImage } from './ExamItemOptionImage';
-import { ExamVideoField } from './ExamVideoField';
+// Скрепка и медиа одного варианта ответа — картинка или видео,
+// взаимоисключающе (ADR-0035/ADR-0133): выбор одного снимает другой
+// (ExamItemOptionsField.updateImage/updateVideo). Сама механика загрузки —
+// в useImageAttach/useVideoAttach, здесь только их сборка в одну скрепку с
+// меню из двух пунктов (components/AttachButton.tsx, отзыв владельца
+// 2026-09-27 — «добавить картинку или видео одной кнопкой сбоку от поля»).
+import { AttachButton } from '../components/AttachButton';
 import type { ExamVideoValue } from './examVideoFormInput';
-
-// VOICE: до первого действия (CLAUDE.md) — зачем видео варианту, пример из
-// отзыва владельца 2026-09-23 (ADR-0133): «выбрать правильный из двух».
-const VIDEO_HINT = 'Два ролика — ученик выберет, где сделано верно';
-
-const pickRowStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-  alignItems: 'flex-start',
-};
+import { useImageAttach } from './useImageAttach';
+import { useVideoAttach } from './useVideoAttach';
 
 interface ExamItemOptionMediaProps {
   index: number;
@@ -40,32 +28,27 @@ export function ExamItemOptionMedia({
   onImageChange,
   onVideoChange,
 }: ExamItemOptionMediaProps) {
-  if (imageId) {
-    return (
-      <ExamItemOptionImage index={index} imageId={imageId} onChange={onImageChange} />
-    );
-  }
-  if (videoId || videoUrl) {
-    return (
-      <ExamVideoField
-        inputLabel={`Видео варианта ${index + 1}`}
-        hint={VIDEO_HINT}
-        value={{ videoId, videoUrl }}
-        fileStorageEnabled={fileStorageEnabled}
-        onChange={onVideoChange}
-      />
-    );
-  }
+  const image = useImageAttach(index, imageId, onImageChange);
+  const video = useVideoAttach(
+    `Видео варианта ${index + 1}`,
+    { videoId, videoUrl },
+    fileStorageEnabled,
+    onVideoChange,
+  );
+
   return (
-    <div style={pickRowStyle}>
-      <ExamItemOptionImage index={index} onChange={onImageChange} />
-      <ExamVideoField
-        inputLabel={`Видео варианта ${index + 1}`}
-        hint={VIDEO_HINT}
-        value={{}}
-        fileStorageEnabled={fileStorageEnabled}
-        onChange={onVideoChange}
+    <>
+      <AttachButton
+        ariaLabel={`Картинка или видео к варианту ${index + 1}`}
+        items={[image.menuItem, video.menuItem]}
       />
-    </div>
+      {image.hiddenInput}
+      {video.hiddenInput}
+      {/* Картинка и видео взаимоисключающи в данных
+       * (ADR-0035/ADR-0133) — превью показывает то, что сейчас стоит у
+       * варианта; своё превью картинки — и на время её загрузки, пока
+       * `imageId` ещё не пришёл. */}
+      {image.preview ?? video.preview}
+    </>
   );
 }

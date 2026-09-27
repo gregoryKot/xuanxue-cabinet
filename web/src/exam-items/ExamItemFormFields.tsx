@@ -2,31 +2,41 @@
 // ответа стоит выше отдельным блоком переключателей (ExamItemKindField.tsx):
 // он выбирается один раз и потом не меняется. Подсказка ученику, критерии
 // проверки и теги убраны из вопроса вместе с полями (ADR-0128).
+//
+// Скрепка видео стоит сбоку от textarea, а не отдельной строкой под ней
+// (отзыв владельца 2026-09-27) — вопросу доступно только видео, поэтому
+// нажатие на неё сразу запускает выбор файла/поле ссылки, без меню
+// (AttachButton — components/AttachButton.tsx).
 import type { CSSProperties } from 'react';
 import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
+import { AttachButton } from '../components/AttachButton';
 import { Field, inputStyle } from '../components/Field';
-import { ExamVideoField } from './ExamVideoField';
+import { useVideoAttach } from './useVideoAttach';
 import type { ExamVideoValue } from './examVideoFormInput';
-import { hasOptions, type ExamItemFormState } from './examItemFormInput';
+import type { ExamItemFormState } from './examItemFormInput';
 
 const columnStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 16 };
-const textareaStyle: CSSProperties = { ...inputStyle, minHeight: 90, resize: 'vertical' };
-
-// VOICE: до первого действия — зачем видео вопросу (CLAUDE.md «откуда это и
-// зачем»). Пример из отзыва владельца 2026-09-23 (ADR-0133): формулировка
-// «что не так в этом движении».
-const VIDEO_HINT = 'Покажите движение — ученик ответит, что в нём не так';
-// У single/multiple видео вопроса — необязательное общее видео формулировки,
-// а второй ролик (для сравнения вариантов) живёт у каждого варианта своим
-// полем (ExamItemOptionsField.tsx) — общая подсказка про «что не так»
-// уводила бы туда, где второго видео просто нет (отзыв владельца с телефона:
-// «как прикрепить второй ролик?»).
-const CHOICE_VIDEO_HINT =
-  'Ролики для выбора добавьте к вариантам ниже — у каждого варианта своё видео.';
-
-function videoHint(kind: ExamItemFormState['kind']): string {
-  return hasOptions(kind) ? CHOICE_VIDEO_HINT : VIDEO_HINT;
-}
+// Скрепка — flex-сосед `<Field>`, не его ребёнок: `<label>` внутри Field
+// неявно связывает подпись с первым полем внутри себя (HTML «labelable
+// element»), и `<button>` скрепки тоже под это подходит — окажись он внутри
+// того же `<label>`, getByLabelText('Формулировка') в тестах, как и
+// скринридер, не знал бы, какой из двух controls подписан. alignItems:
+// flex-end — скрепка держится у нижнего края поля, как кнопка отправки
+// рядом с растущим полем ввода в мессенджерах, а не съезжает к подписи
+// сверху.
+const promptRowStyle: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'flex-end',
+  gap: 6,
+};
+const promptFieldStyle: CSSProperties = { flex: '1 1 200px', minWidth: 0 };
+const textareaStyle: CSSProperties = {
+  ...inputStyle,
+  minHeight: 90,
+  resize: 'vertical',
+};
+const VIDEO_LABEL = 'Видео вопроса';
 
 interface ExamItemFormFieldsProps {
   state: ExamItemFormState;
@@ -37,8 +47,8 @@ interface ExamItemFormFieldsProps {
   /** Общая ошибка формы — как в ExamAboutFields.tsx, показывается под первым
    * содержательным полем (формулировка), не под каждым отдельно. */
   error: string | null;
-  /** Загрузка в R2 подключена — решает, что рисует ExamVideoField: кнопку
-   * файла или поле ссылки (ADR-0133). */
+  /** Загрузка в R2 подключена — решает, что делает скрепка видео: открывает
+   * выбор файла или показывает поле ссылки (ADR-0133, useVideoAttach.tsx). */
   fileStorageEnabled: boolean;
 }
 
@@ -53,23 +63,30 @@ export function ExamItemFormFields({
     setField('videoUrl', next.videoUrl);
   }
 
+  const video = useVideoAttach(
+    VIDEO_LABEL,
+    { videoId: state.videoId, videoUrl: state.videoUrl },
+    fileStorageEnabled,
+    handleVideoChange,
+  );
+
   return (
     <div style={columnStyle}>
-      <Field label="Формулировка" error={error ?? undefined}>
-        <textarea
-          style={textareaStyle}
-          maxLength={EXAM_ITEM_LIMITS.prompt}
-          value={state.prompt}
-          onChange={(e) => setField('prompt', e.target.value)}
-        />
-      </Field>
-      <ExamVideoField
-        inputLabel="Видео вопроса"
-        hint={videoHint(state.kind)}
-        value={{ videoId: state.videoId, videoUrl: state.videoUrl }}
-        fileStorageEnabled={fileStorageEnabled}
-        onChange={handleVideoChange}
-      />
+      <div style={promptRowStyle}>
+        <div style={promptFieldStyle}>
+          <Field label="Формулировка" error={error ?? undefined}>
+            <textarea
+              style={textareaStyle}
+              maxLength={EXAM_ITEM_LIMITS.prompt}
+              value={state.prompt}
+              onChange={(e) => setField('prompt', e.target.value)}
+            />
+          </Field>
+        </div>
+        <AttachButton ariaLabel={VIDEO_LABEL} items={[video.menuItem]} />
+      </div>
+      {video.hiddenInput}
+      {video.preview}
     </div>
   );
 }

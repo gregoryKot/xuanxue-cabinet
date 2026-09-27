@@ -1,44 +1,29 @@
+import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { EXAM_ITEM_LIMITS } from '@xuanxue/shared';
 import { ExamItemOptionsField } from './ExamItemOptionsField';
 import type { ExamItemOptionDraft } from './examItemFormInput';
-import type { ExamVideoValue } from './examVideoFormInput';
 import { useExamImageUpload } from './useExamImageUpload';
 import { useExamVideoField } from './useExamVideoField';
 
-// Само поле видео — своя логика и свои тесты в ExamVideoField.test.tsx;
-// здесь заглушка вместо него, чтобы проверить только то, что updateVideo
-// пишет видео нужному варианту по индексу и снимает картинку — то, что не
-// тестируется на уровне самого поля.
-vi.mock('./ExamVideoField', () => ({
-  ExamVideoField: ({
-    inputLabel,
-    onChange,
-  }: {
-    inputLabel: string;
-    onChange: (video: ExamVideoValue) => void;
-  }) => (
-    <button type="button" onClick={() => onChange({ videoUrl: 'https://youtu.be/x' })}>
-      {inputLabel}
-    </button>
-  ),
-}));
-
 // Загрузка картинки — своя логика с полным покрытием в
-// ExamItemOptionImage.test.tsx; здесь мокаем хук и проверяем только, что
+// useImageAttach.test.tsx; здесь мокаем хук и проверяем только, что
 // результат доходит до onChange поля по правильному индексу варианта
 // (updateImage) — то, что не тестируется на уровне самой картинки.
 vi.mock('./useExamImageUpload');
 const mockedUseUpload = vi.mocked(useExamImageUpload);
-// Дефолт для тестов, которым загрузка картинки не важна — без него
-// деструктуризация в ExamItemOptionImage упала бы на auto-mock (undefined).
 mockedUseUpload.mockReturnValue({ upload: vi.fn(), pending: false, error: null });
 
-// Видео варианта — та же логика, своё покрытие в ExamVideoField.test.tsx.
+// Видео варианта — та же логика, своё покрытие в useVideoAttach.test.tsx;
+// здесь мокаем хук и ловим onChange, который каждая строка передаёт ему
+// своим индексом (useVideoAttach вызывается для каждой строки — она строит
+// пункт меню «Видео» даже без видео), чтобы проверить updateVideo напрямую,
+// не гоняя настоящую загрузку/ссылку через клавиатуру.
 vi.mock('./useExamVideoField');
 const mockedUseVideoField = vi.mocked(useExamVideoField);
-mockedUseVideoField.mockReturnValue({
+mockedUseVideoField.mockImplementation(() => ({
   uploadPending: false,
   uploadProgress: null,
   error: null,
@@ -47,7 +32,42 @@ mockedUseVideoField.mockReturnValue({
   uploadFile: vi.fn(),
   commitUrl: vi.fn(),
   clear: vi.fn(),
-});
+}));
+
+/** Строка с состоянием — onChange поля должен реально перерисовать список
+ * (новая строка добавилась/пропала), иначе фокус после добавления некуда
+ * ставить: эффект в ExamItemOptionsField фокусирует поле уже отрисованной
+ * строки. */
+function ControlledOptionsField({
+  initial,
+  kind = 'single',
+  onSubmit,
+}: {
+  initial: ExamItemOptionDraft[];
+  kind?: 'single' | 'multiple';
+  onSubmit?: () => void;
+}) {
+  const [options, setOptions] = useState(initial);
+  const field = (
+    <ExamItemOptionsField
+      kind={kind}
+      options={options}
+      fileStorageEnabled={false}
+      onChange={setOptions}
+    />
+  );
+  if (!onSubmit) return field;
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
+      {field}
+    </form>
+  );
+}
 
 describe('ExamItemOptionsField — single (радио)', () => {
   it('отметка одного варианта снимает отметку другого', async () => {
@@ -218,6 +238,83 @@ describe('ExamItemOptionsField — добавление и удаление', ()
   });
 });
 
+// Отзыв владельца 2026-09-27: добавляет вопросы подряд, фокус должен сразу
+// попадать в поле нового варианта, чтобы печатать не кликая ещё раз.
+describe('ExamItemOptionsField — фокус после добавления', () => {
+  it('«Добавить вариант» — фокус в текстовом поле новой строки', async () => {
+    const user = userEvent.setup();
+    render(<ControlledOptionsField initial={[]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Добавить вариант' }));
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Текст варианта 1'));
+  });
+
+  it('второй клик «Добавить вариант» — фокус во втором варианте', async () => {
+    const user = userEvent.setup();
+    render(<ControlledOptionsField initial={[{ text: 'A', correct: false }]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Добавить вариант' }));
+
+    expect(document.activeElement).toBe(screen.getByLabelText('Текст варианта 2'));
+  });
+
+  it('Enter в тексте последнего варианта — добавляет и фокусирует новый, форма не отправляется', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(
+      <ControlledOptionsField
+        initial={[{ text: 'A', correct: false }]}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.click(screen.getByLabelText('Текст варианта 1'));
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByLabelText('Текст варианта 2')).toBeInTheDocument();
+    expect(document.activeElement).toBe(screen.getByLabelText('Текст варианта 2'));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('Enter в тексте не последнего варианта — переводит фокус на следующий, не добавляет', async () => {
+    const user = userEvent.setup();
+    render(
+      <ControlledOptionsField
+        initial={[
+          { text: 'A', correct: false },
+          { text: 'B', correct: false },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByLabelText('Текст варианта 1'));
+    await user.keyboard('{Enter}');
+
+    expect(screen.queryByLabelText('Текст варианта 3')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(screen.getByLabelText('Текст варианта 2'));
+  });
+
+  it('optionsMax достигнут — Enter в последнем варианте ничего не добавляет', async () => {
+    const user = userEvent.setup();
+    const initial = Array.from({ length: EXAM_ITEM_LIMITS.optionsMax }, (_, i) => ({
+      text: `Вариант ${i}`,
+      correct: i === 0,
+    }));
+    render(<ControlledOptionsField initial={initial} />);
+    const lastInput = screen.getByLabelText(
+      `Текст варианта ${EXAM_ITEM_LIMITS.optionsMax}`,
+    );
+
+    await user.click(lastInput);
+    await user.keyboard('{Enter}');
+
+    expect(
+      screen.queryByLabelText(`Текст варианта ${EXAM_ITEM_LIMITS.optionsMax + 1}`),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('ExamItemOptionsField — картинка варианта (ADR-0035)', () => {
   it('выбор файла у одного варианта пишет imageId только ему, соседний не трогает', async () => {
     const upload = vi.fn().mockResolvedValue('img9');
@@ -248,7 +345,10 @@ describe('ExamItemOptionsField — картинка варианта (ADR-0035)'
 });
 
 describe('ExamItemOptionsField — видео варианта (ADR-0133)', () => {
-  it('видео у одного варианта пишет его только по своему индексу, соседний не трогает', async () => {
+  it('видео у одного варианта пишет его только по своему индексу, соседний не трогает', () => {
+    // Мок не сбрасывается между тестами глобально — своя очистка перед
+    // рендером, иначе индекс попадёт на чужой вызов из предыдущего теста.
+    mockedUseVideoField.mockClear();
     const onChange = vi.fn();
     const options: ExamItemOptionDraft[] = [
       { text: 'A', correct: true },
@@ -262,8 +362,11 @@ describe('ExamItemOptionsField — видео варианта (ADR-0133)', () =
         onChange={onChange}
       />,
     );
+    // useVideoAttach зовёт useExamVideoField для каждой строки в порядке
+    // рендера — второй вызов принадлежит варианту 2 (индекс 1).
+    const onVideoChangeForRow2 = mockedUseVideoField.mock.calls[1]?.[0];
 
-    await userEvent.click(screen.getByText('Видео варианта 2'));
+    onVideoChangeForRow2?.({ videoUrl: 'https://youtu.be/x' });
 
     expect(onChange).toHaveBeenCalledWith([
       { text: 'A', correct: true },
@@ -271,7 +374,8 @@ describe('ExamItemOptionsField — видео варианта (ADR-0133)', () =
     ]);
   });
 
-  it('вариант без медиа — видео уходит без картинки рядом', async () => {
+  it('вариант без медиа — видео уходит без картинки рядом', () => {
+    mockedUseVideoField.mockClear();
     const onChange = vi.fn();
     const options: ExamItemOptionDraft[] = [{ text: 'A', correct: true }];
     render(
@@ -282,8 +386,9 @@ describe('ExamItemOptionsField — видео варианта (ADR-0133)', () =
         onChange={onChange}
       />,
     );
+    const onVideoChangeForRow1 = mockedUseVideoField.mock.calls[0]?.[0];
 
-    await userEvent.click(screen.getByText('Видео варианта 1'));
+    onVideoChangeForRow1?.({ videoUrl: 'https://youtu.be/x' });
 
     expect(onChange).toHaveBeenCalledWith([
       { text: 'A', correct: true, imageId: undefined, videoUrl: 'https://youtu.be/x' },
