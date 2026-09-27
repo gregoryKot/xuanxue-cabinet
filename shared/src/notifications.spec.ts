@@ -66,9 +66,9 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
 });
 
 describe('defaultNotifications', () => {
-  it('ученик (без ролей) — только результат экзамена (ADR-0062)', () => {
+  it('ученик (без ролей) — результат экзамена и напоминание о занятии (ADR-0135)', () => {
     expect(defaultNotifications([])).toEqual(STUDENT_NOTIFICATIONS);
-    expect(STUDENT_NOTIFICATIONS).toEqual(['exam_result']);
+    expect(STUDENT_NOTIFICATIONS).toEqual(['exam_result', 'lesson_soon']);
   });
 
   // ADR-0069: вид без доставки — переключатель, который врёт. Проверяем не

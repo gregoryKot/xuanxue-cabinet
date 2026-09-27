@@ -38,17 +38,20 @@ describe('Настройки уведомлений — владение (e2e)',
       .set('Cookie', cookieA)
       .send({ kind: 'exam_result', enabled: false });
     expect(patchA.status).toBe(200);
-    expect((patchA.body as NotificationPrefsDto).enabled).toEqual([]);
+    expect((patchA.body as NotificationPrefsDto).enabled).toEqual(['lesson_soon']);
 
     const getA = await request(server())
       .get('/api/me/notifications')
       .set('Cookie', cookieA);
-    expect((getA.body as NotificationPrefsDto).enabled).toEqual([]);
+    expect((getA.body as NotificationPrefsDto).enabled).toEqual(['lesson_soon']);
 
     const getB = await request(server())
       .get('/api/me/notifications')
       .set('Cookie', cookieB);
-    expect((getB.body as NotificationPrefsDto).enabled).toEqual(['exam_result']);
+    expect((getB.body as NotificationPrefsDto).enabled).toEqual([
+      'exam_result',
+      'lesson_soon',
+    ]);
   });
 
   // Экран уведомлений кладёт тело ответа PATCH прямо на себя, без GET следом
@@ -93,7 +96,10 @@ describe('Настройки уведомлений — владение (e2e)',
     const getB = await request(server())
       .get('/api/me/notifications')
       .set('Cookie', cookieB);
-    expect((getB.body as NotificationPrefsDto).enabled).toEqual(['exam_result']);
+    expect((getB.body as NotificationPrefsDto).enabled).toEqual([
+      'exam_result',
+      'lesson_soon',
+    ]);
   });
 
   it('гость без единой роли — доступ есть, дефолт как у ученика', async () => {
@@ -107,7 +113,10 @@ describe('Настройки уведомлений — владение (e2e)',
       .set('Cookie', cookie);
 
     expect(res.status).toBe(200);
-    expect((res.body as NotificationPrefsDto).enabled).toEqual(['exam_result']);
+    expect((res.body as NotificationPrefsDto).enabled).toEqual([
+      'exam_result',
+      'lesson_soon',
+    ]);
   });
 
   it('без сессии — 401 на обоих маршрутах', async () => {

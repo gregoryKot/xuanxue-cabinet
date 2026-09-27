@@ -2,6 +2,7 @@
 // раздел «API»: документ Mongoose наружу не возвращается) — вынесен из
 // settings.service.ts ради лимита файла (CLAUDE.md «Храповики», 150 строк).
 import {
+  DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
   DEFAULT_PREVIEW_MINUTES,
   type SettingsDto,
@@ -11,7 +12,12 @@ import type { SettingsRecord } from './settings.schema';
 
 export type LeanSettings = Pick<
   SettingsRecord,
-  'templates' | 'tz' | 'schoolSiteUrl' | 'previewMinutes' | 'newcomerContact'
+  | 'templates'
+  | 'tz'
+  | 'schoolSiteUrl'
+  | 'previewMinutes'
+  | 'lessonReminderMinutes'
+  | 'newcomerContact'
 > & {
   updatedAt: Date;
 };
@@ -29,6 +35,9 @@ export function toSettingsDto(doc: LeanSettings): SettingsDto {
     // интерфейсе» — значение живёт в БД, но пустая база не должна ломать
     // поведение, которое раньше держала константа).
     previewMinutes: doc.previewMinutes ?? DEFAULT_PREVIEW_MINUTES,
+    // Та же причина, что у previewMinutes выше: старая база без поля —
+    // дефолт (DEFAULT_LESSON_REMINDER_MINUTES, domain.ts), не undefined.
+    lessonReminderMinutes: doc.lessonReminderMinutes ?? DEFAULT_LESSON_REMINDER_MINUTES,
     // Та же причина, что у previewMinutes выше: старая база без поля —
     // дефолт (DEFAULT_NEWCOMER_CONTACT, domain.ts), не undefined.
     newcomerContact: doc.newcomerContact ?? DEFAULT_NEWCOMER_CONTACT,

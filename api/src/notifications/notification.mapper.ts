@@ -4,10 +4,11 @@
 // для показа — клиент получает `text` готовым и своих формулировок не держит
 // (notification-text.ts, причина — шапка notification.schema.ts).
 //
-// Само название формы наружу не уходит отдельным полем: оно нужно ровно для
-// того, чтобы собрать `text`, а второе поле с тем же содержимым соблазняло бы
-// клиент собрать строку заново — вторая формулировка в другом файле разъехалась
-// бы с этой на первой же правке (CLAUDE.md «Одна механика — один компонент»).
+// Само название формы/класса наружу не уходит отдельным полем: оно нужно
+// ровно для того, чтобы собрать `text`, а второе поле с тем же содержимым
+// соблазняло бы клиент собрать строку заново — вторая формулировка в другом
+// файле разъехалась бы с этой на первой же правке (CLAUDE.md «Одна механика
+// — один компонент»).
 import type { Types } from 'mongoose';
 import type { NotificationDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
@@ -31,9 +32,10 @@ export function toNotificationDto(raw: RawLeanNotification): NotificationDto {
   return {
     id: doc._id.toString(),
     kind: doc.kind,
-    text: notificationText({ kind: doc.kind, examTitle: doc.examTitle }),
+    text: notificationText({ kind: doc.kind, title: doc.examTitle ?? doc.lessonTitle }),
     examId: doc.examId,
     attemptId: doc.attemptId,
+    lessonId: doc.lessonId,
     outcome: doc.outcome,
     readAt: doc.readAt ? toIsoUtc(doc.readAt) : undefined,
     createdAt: toIsoUtc(doc.createdAt),

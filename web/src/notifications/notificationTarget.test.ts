@@ -29,6 +29,12 @@ describe('notificationTarget', () => {
     expect(notificationTarget(item({ kind: 'attempt_submitted' }))).toBeUndefined();
   });
 
+  it('lesson_soon — ближайшие занятия ученика (ADR-0135)', () => {
+    expect(notificationTarget(item({ kind: 'lesson_soon', lessonId: 'l1' }))).toBe(
+      '/lessons',
+    );
+  });
+
   it('вид без своего экрана (payments) — вести некуда', () => {
     expect(notificationTarget(item({ kind: 'payments' }))).toBeUndefined();
   });

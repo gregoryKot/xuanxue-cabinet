@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_PREVIEW_MINUTES,
   type SettingsDto,
 } from '@xuanxue/shared';
@@ -13,6 +14,7 @@ const SETTINGS_WITH_SITE: SettingsDto = {
   tz: 'Asia/Jerusalem',
   schoolSiteUrl: 'https://xuanxue.su',
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
+  lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
   // Другой updatedAt, чем у SETTINGS_WITHOUT_SITE — синхронизация в хуке
   // идёт по нему (как texts в TemplatesScreen.tsx), одинаковый updatedAt у
@@ -24,6 +26,7 @@ const SETTINGS_WITHOUT_SITE: SettingsDto = {
   templates: { lesson_link: '', recording: '' },
   tz: 'Asia/Jerusalem',
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
+  lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };

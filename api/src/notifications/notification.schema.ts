@@ -61,6 +61,17 @@ export class NotificationRecord {
   @Prop({ type: String, required: false })
   examTitle?: string;
 
+  // Занятие напоминания `lesson_soon` (ADR-0135) — строкой, та же причина,
+  // что examId выше. Только у lesson_soon; уникальный индекс ниже —
+  // идемпотентность повторной отправки (второй тик, второй инстанс).
+  @Prop({ type: String, required: false })
+  lessonId?: string;
+
+  // Снимок названия класса — та же причина, что examTitle выше. Название
+  // пишет учитель руками, поэтому `enc` (CLAUDE.md «Безопасность»).
+  @Prop({ type: String, required: false })
+  lessonTitle?: string;
+
   @Prop({ type: String, enum: GRADING_OUTCOMES, required: false })
   outcome?: GradingOutcome;
 
@@ -98,6 +109,14 @@ NotificationSchema.index(
   { userId: 1, kind: 1, attemptId: 1 },
   { unique: true, partialFilterExpression: { attemptId: { $exists: true } } },
 );
+// Идемпотентность напоминания о занятии (ADR-0135, LessonReminderService) —
+// тот же приём, что у индекса выше: одна строка на (человек, вид, занятие).
+// Частичный — attemptId и lessonId никогда не приходят вместе (разные виды),
+// частичные индексы по разным полям не мешают друг другу копиться.
+NotificationSchema.index(
+  { userId: 1, kind: 1, lessonId: 1 },
+  { unique: true, partialFilterExpression: { lessonId: { $exists: true } } },
+);
 // Лента (`GET /me/inbox`) — свои записи, переоценённые (updatedAt) сверху:
 // строка «всплывает» при переставленном итоге, не тонет на прежнем месте.
 NotificationSchema.index({ userId: 1, updatedAt: -1 });
@@ -116,6 +135,8 @@ export const NOTIFICATION_FIELD_POLICY: FieldPolicy = {
   examId: plain('id формы — ссылка для клиента, не свободный текст'),
   attemptId: plain('id попытки — ссылка для клиента, не свободный текст'),
   examTitle: enc,
+  lessonId: plain('id занятия — ссылка для клиента, не свободный текст'),
+  lessonTitle: enc,
 };
 
 /** Схема шифрования записи ленты — одна на запись и на чтение

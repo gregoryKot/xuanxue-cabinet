@@ -16,6 +16,11 @@ export interface SettingsDto {
    * константа (CLAUDE.md «Кабинет учителя: всё настраивается в интерфейсе»);
    * старая база без поля отдаёт `DEFAULT_PREVIEW_MINUTES` (domain.ts). */
   previewMinutes: number;
+  /** За сколько минут до начала занятия ученику приходит напоминание — лента
+   * кабинета и push (`LessonReminderService`, ADR-0135) — настройка школы,
+   * тем же приёмом, что `previewMinutes` выше: старая база без поля отдаёт
+   * `DEFAULT_LESSON_REMINDER_MINUTES` (domain.ts). */
+  lessonReminderMinutes: number;
   /** Кому писать новичку — этот контакт бот называет незнакомцу
    * (ADR-0115). Старая база без поля отдаёт `DEFAULT_NEWCOMER_CONTACT`
    * (domain.ts), тем же приёмом, что `previewMinutes`. */
@@ -37,6 +42,10 @@ export interface UpdateSettingsInput {
    * входит в NULLABLE_SETTINGS_FIELDS: сбросить в «нет значения» нельзя,
    * только заменить другим числом. */
   previewMinutes?: number;
+  /** Целое число минут (`SETTINGS_LIMITS.lessonReminderMinutesMin`…`Max`) —
+   * та же причина, что `previewMinutes`: сбросить в «нет значения» нельзя,
+   * только заменить другим числом. */
+  lessonReminderMinutes?: number;
   /** Не в NULLABLE_SETTINGS_FIELDS, по той же причине, что `previewMinutes`:
    * «сбросить в ничто» смысла не имеет — контакт можно только заменить
    * другим. Пустая строка не проходит валидацию, иначе бот оборвал бы фразу
@@ -72,4 +81,6 @@ export const SETTINGS_LIMITS = {
   newcomerContactMaxLength: 200,
   previewMinutesMin: 1,
   previewMinutesMax: 1440,
+  lessonReminderMinutesMin: 5,
+  lessonReminderMinutesMax: 1440,
 } as const;

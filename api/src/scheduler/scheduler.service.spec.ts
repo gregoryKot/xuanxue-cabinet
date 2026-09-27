@@ -11,6 +11,7 @@ import type { ExamImageSweepService } from '../exam-images/exam-image-sweep.serv
 import type { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
 import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
+import type { LessonReminderService } from '../lessons/lesson-reminder.service';
 import type { RecordingPromptService } from '../lessons/recording-prompt.service';
 import type { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import type { StorageOrphansService } from '../storage/storage-orphans.service';
@@ -24,6 +25,7 @@ function buildService(overrides: {
   runDeliveries?: DeliveryRunnerService['run'];
   sendPreviews?: PreviewService['sendPending'];
   promptRecordings?: RecordingPromptService['prompt'];
+  remindStudents?: LessonReminderService['remind'];
   promptManual?: ManualPromptService['prompt'];
   closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
   removeImageOrphans?: ExamImageSweepService['removeOrphans'];
@@ -53,6 +55,8 @@ function buildService(overrides: {
     overrides.sendPreviews ?? jest.fn().mockResolvedValue({ claimed: 0 });
   const promptRecordings =
     overrides.promptRecordings ?? jest.fn().mockResolvedValue({ prompted: 0 });
+  const remindStudents =
+    overrides.remindStudents ?? jest.fn().mockResolvedValue({ reminded: 0 });
   const promptManual =
     overrides.promptManual ?? jest.fn().mockResolvedValue({ prompted: 0 });
   const closeExamDeadlines =
@@ -86,6 +90,7 @@ function buildService(overrides: {
     { run: runDeliveries } as unknown as DeliveryRunnerService,
     { sendPending: sendPreviews } as unknown as PreviewService,
     { prompt: promptRecordings } as unknown as RecordingPromptService,
+    { remind: remindStudents } as unknown as LessonReminderService,
     { prompt: promptManual } as unknown as ManualPromptService,
     { closeDue: closeExamDeadlines } as unknown as ExamDeadlineCloseService,
     { removeOrphans: removeImageOrphans } as unknown as ExamImageSweepService,
@@ -130,6 +135,10 @@ describe('SchedulerService.tick', () => {
       (_now: DateTime): ReturnType<RecordingPromptService['prompt']> =>
         Promise.resolve({ prompted: 1 }),
     );
+    const remindStudents = jest.fn(
+      (_now: DateTime): ReturnType<LessonReminderService['remind']> =>
+        Promise.resolve({ reminded: 1 }),
+    );
     const promptManual = jest.fn(
       (_now: DateTime): ReturnType<ManualPromptService['prompt']> =>
         Promise.resolve({ prompted: 1 }),
@@ -153,6 +162,7 @@ describe('SchedulerService.tick', () => {
       runDeliveries,
       sendPreviews,
       promptRecordings,
+      remindStudents,
       promptManual,
       closeExamDeadlines,
       removeImageOrphans,
@@ -167,6 +177,7 @@ describe('SchedulerService.tick', () => {
     expect(runDeliveries).toHaveBeenCalledTimes(1);
     expect(sendPreviews).toHaveBeenCalledTimes(1);
     expect(promptRecordings).toHaveBeenCalledTimes(1);
+    expect(remindStudents).toHaveBeenCalledTimes(1);
     expect(promptManual).toHaveBeenCalledTimes(1);
     expect(closeExamDeadlines).toHaveBeenCalledTimes(1);
     expect(removeImageOrphans).toHaveBeenCalledTimes(1);
@@ -180,10 +191,20 @@ describe('SchedulerService.tick', () => {
     expect(runDeliveries.mock.calls[0]?.[0]).toBe(calledWith);
     expect(sendPreviews.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptRecordings.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(remindStudents.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptManual.mock.calls[0]?.[0]).toBe(calledWith);
     expect(closeExamDeadlines.mock.calls[0]?.[0]).toBe(calledWith);
     expect(removeImageOrphans.mock.calls[0]?.[0]).toBe(calledWith);
     expect(removeExpiredScreenshots.mock.calls[0]?.[0]).toBe(calledWith);
+  });
+
+  it('ошибка шага «напоминание ученикам» не останавливает шаг ручных каналов', async () => {
+    const remindStudents = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const promptManual = jest.fn().mockResolvedValue({ prompted: 0 });
+    const { service } = buildService({ remindStudents, promptManual });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+    expect(promptManual).toHaveBeenCalledTimes(1);
   });
 
   it('ошибка шага отмен не останавливает шаг доставок', async () => {

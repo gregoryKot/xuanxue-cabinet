@@ -17,22 +17,28 @@ import { NOTIFICATION_LABELS, type NotificationKind } from '@xuanxue/shared';
 const EVENT_TEXT: Partial<Record<NotificationKind, string>> = {
   exam_result: 'Работу проверили',
   attempt_submitted: 'Работу прислали на проверку',
+  lesson_soon: 'Скоро занятие',
 };
 
 const TITLE_SEPARATOR = ' — ';
 
 interface NotificationTextInput {
   kind: NotificationKind;
-  examTitle?: string;
+  /** Название формы (exam_result/attempt_submitted) или класса (lesson_soon)
+   * — ровно одно из двух приходит на вид, но склеивание со строкой ниже
+   * одинаково для обоих: второй заголовок в отдельном поле развёл бы
+   * логику показа на два похожих места (CLAUDE.md «Одна механика — один
+   * компонент»). */
+  title?: string;
 }
 
-/** Без названия формы строка остаётся осмысленной: форму могли удалить, а
- * будущие виды уведомления к форме и не привязаны. Пустое название (пробелы)
- * — то же самое, что его отсутствие: разделитель без второй половины выглядел
- * бы обрывом. */
-export function notificationText({ kind, examTitle }: NotificationTextInput): string {
+/** Без названия строка остаётся осмысленной: форму или занятие могли
+ * удалить, а будущие виды уведомления вовсе не привязаны к названию. Пустое
+ * название (пробелы) — то же самое, что его отсутствие: разделитель без
+ * второй половины выглядел бы обрывом. */
+export function notificationText({ kind, title }: NotificationTextInput): string {
   const event = EVENT_TEXT[kind] ?? NOTIFICATION_LABELS[kind];
-  const title = examTitle?.trim();
-  if (!title) return event;
-  return `${event}${TITLE_SEPARATOR}${title}`;
+  const trimmed = title?.trim();
+  if (!trimmed) return event;
+  return `${event}${TITLE_SEPARATOR}${trimmed}`;
 }
