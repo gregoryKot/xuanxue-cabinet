@@ -12,6 +12,7 @@ import {
   handleNewExamAssemble,
   handleNewExamAttempts,
   handleNewExamCancel,
+  handleNewExamDueAt,
   handleNewExamPage,
   handleNewExamTimeLimit,
   handleNewExamToggleItem,
@@ -285,14 +286,88 @@ describe('handleNewExamAttempts — защита от устаревшей кн�
     expect(botSessions.setNewExamDraft).not.toHaveBeenCalled();
   });
 
-  it('TTL истёк между записью и перечитыванием — не рисует экран поверх пропавшего черновика', async () => {
+  it('«2» — переходит на шаг «срок сдачи», не сразу в подтверждение', async () => {
     const session: BotSessionLean = { kind: 'examBuildDraft', buildStep: 'attempts' };
+    const botSessions = fakeBotSessionService({
+      get: jest.fn().mockResolvedValue(session),
+    });
+    const { ctx, edits } = fakeFlowCtx();
+
+    await handleNewExamAttempts(ctx, botSessions, CHAT_ID, '2', NOW);
+
+    expect(botSessions.setNewExamDraft).toHaveBeenCalledWith(
+      CHAT_ID,
+      { step: 'dueAt', attemptsAllowed: 2 },
+      NOW,
+    );
+    expect(edits[0]).toContain('До какого числа');
+  });
+});
+
+describe('handleNewExamDueAt — защита от устаревшей кнопки', () => {
+  it('шаг уже не «dueAt» — игнорируется', async () => {
+    const session: BotSessionLean = { kind: 'examBuildDraft', buildStep: 'attempts' };
+    const botSessions = fakeBotSessionService({
+      get: jest.fn().mockResolvedValue(session),
+    });
+    const { ctx, edits } = fakeFlowCtx();
+
+    await handleNewExamDueAt(ctx, botSessions, CHAT_ID, '1w', NOW);
+
+    expect(edits).toEqual([]);
+    expect(botSessions.setNewExamDraft).not.toHaveBeenCalled();
+  });
+
+  it('«none» — переходит дальше без dueAt в патче', async () => {
+    const session: BotSessionLean = { kind: 'examBuildDraft', buildStep: 'dueAt' };
+    const botSessions = fakeBotSessionService({
+      get: jest.fn().mockResolvedValue(session),
+    });
+    const { ctx, edits } = fakeFlowCtx();
+
+    await handleNewExamDueAt(ctx, botSessions, CHAT_ID, 'none', NOW);
+
+    expect(botSessions.setNewExamDraft).toHaveBeenCalledWith(
+      CHAT_ID,
+      { step: 'confirm' },
+      NOW,
+    );
+    expect(edits[0]).toContain('без срока');
+  });
+
+  it('«1w» — переходит дальше с dueAt в патче, конец дня через неделю по часам школы', async () => {
+    const session: BotSessionLean = { kind: 'examBuildDraft', buildStep: 'dueAt' };
+    // get() читается дважды (запись → перечитывание, как у handleNewExamAttempts
+    // раньше): второй ответ несёт уже записанный dueAt, тем же приёмом, что
+    // настоящий BotSessionService в интеграционном new-exam-flow.spec.ts.
+    const updated: BotSessionLean = {
+      kind: 'examBuildDraft',
+      buildStep: 'confirm',
+      buildDueAt: '2026-09-24T20:59:59.999Z',
+    };
+    const botSessions = fakeBotSessionService({
+      get: jest.fn().mockResolvedValueOnce(session).mockResolvedValueOnce(updated),
+    });
+    const { ctx, edits } = fakeFlowCtx();
+
+    await handleNewExamDueAt(ctx, botSessions, CHAT_ID, '1w', NOW);
+
+    expect(botSessions.setNewExamDraft).toHaveBeenCalledWith(
+      CHAT_ID,
+      { step: 'confirm', dueAt: '2026-09-24T20:59:59.999Z' },
+      NOW,
+    );
+    expect(edits[0]).toContain('Срок сдачи: 24 сентября');
+  });
+
+  it('TTL истёк между записью и перечитыванием — не рисует экран поверх пропавшего черновика', async () => {
+    const session: BotSessionLean = { kind: 'examBuildDraft', buildStep: 'dueAt' };
     const botSessions = fakeBotSessionService({
       get: jest.fn().mockResolvedValueOnce(session).mockResolvedValueOnce(null),
     });
     const { ctx, edits } = fakeFlowCtx();
 
-    await handleNewExamAttempts(ctx, botSessions, CHAT_ID, '2', NOW);
+    await handleNewExamDueAt(ctx, botSessions, CHAT_ID, 'none', NOW);
 
     expect(botSessions.setNewExamDraft).toHaveBeenCalled();
     expect(edits).toEqual([]);

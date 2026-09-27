@@ -1,7 +1,8 @@
 // Против настоящей Mongo (mongodb-memory-server, не мок — CLAUDE.md «Тесты»):
 // учитель собирает экзамен в боте (ТЗ 4б.4, docs/PLAN.md §12) — отметка →
-// название → лимит времени → число попыток → подтверждение → публикация,
-// через тот же ExamsService.createAndPublishExam, что и кабинет (ADR-0024).
+// название → лимит времени → число попыток → срок сдачи → подтверждение →
+// публикация, через тот же ExamsService.createAndPublishExam, что и кабинет
+// (ADR-0024).
 // Read-after-write — ExamsService.getById() и список ученика через
 // ExamBotPort.listMyExams (MyExamsService, тот же путь, что у /me/exams);
 // идемпотентность — повторный клик «Опубликовать» не плодит вторую форму;
@@ -16,6 +17,7 @@ import {
   handleNewExamAssemble,
   handleNewExamAttempts,
   handleNewExamCancel,
+  handleNewExamDueAt,
   handleNewExamTimeLimit,
   handleNewExamToggleItem,
 } from './new-exam-callback';
@@ -134,10 +136,16 @@ describe('учитель собирает экзамен в боте (интег
     // Число попыток — кнопка «2».
     const attemptsCtx = fakeFlowCtx();
     await handleNewExamAttempts(attemptsCtx.ctx, botSessions, CHAT_ID, '2', NOW);
-    expect(attemptsCtx.edits[0]).toContain('Проверьте экзамен');
-    expect(attemptsCtx.edits[0]).toContain('Вопросов: 2');
-    expect(attemptsCtx.edits[0]).toContain('без лимита');
-    expect(attemptsCtx.edits[0]).toContain('Попыток: 2');
+    expect(attemptsCtx.edits[0]).toContain('До какого числа');
+
+    // Срок сдачи — кнопка «Через неделю».
+    const dueAtCtx = fakeFlowCtx();
+    await handleNewExamDueAt(dueAtCtx.ctx, botSessions, CHAT_ID, '1w', NOW);
+    expect(dueAtCtx.edits[0]).toContain('Проверьте экзамен');
+    expect(dueAtCtx.edits[0]).toContain('Вопросов: 2');
+    expect(dueAtCtx.edits[0]).toContain('без лимита');
+    expect(dueAtCtx.edits[0]).toContain('Срок сдачи: 24 сентября');
+    expect(dueAtCtx.edits[0]).toContain('Попыток: 2');
 
     // «Опубликовать».
     const publishCtx = await publish();
@@ -151,6 +159,7 @@ describe('учитель собирает экзамен в боте (интег
     expect(exams[0]?.title).toBe('Экзамен по третьему уровню');
     expect(exams[0]?.attemptsAllowed).toBe(2);
     expect(exams[0]?.timeLimitMin).toBeUndefined();
+    expect(exams[0]?.dueAt).toBe('2026-09-24T20:59:59.999Z');
     expect(exams[0]?.blocks[0]?.itemIds.sort()).toEqual([itemAId, itemBId].sort());
     const savedId = exams[0]?.id;
     if (!savedId) throw new Error('экзамен не сохранился');

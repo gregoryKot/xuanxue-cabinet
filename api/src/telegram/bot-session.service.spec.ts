@@ -380,11 +380,33 @@ describe('BotSessionService', () => {
       expect(session?.buildTimeLimitMin).toBeUndefined();
     });
 
+    // ADR-0125/ADR-0127 — срок сдачи хранится открытой строкой (дата, не
+    // свободный текст, CLAUDE.md «Не шифровать»), в отличие от buildTitle.
+    it('setNewExamDraft с dueAt — хранится открыто, get отдаёт ту же строку', async () => {
+      await service.startNewExamDraft(777, NOW);
+      await service.setNewExamDraft(
+        777,
+        { step: 'confirm', dueAt: '2026-09-24T20:59:59.999Z' },
+        NOW,
+      );
+
+      const raw = await model.findOne({ chatId: 777 }).lean();
+      expect(raw?.buildDueAt).toBe('2026-09-24T20:59:59.999Z');
+
+      const session = await service.get(777, NOW);
+      expect(session?.buildDueAt).toBe('2026-09-24T20:59:59.999Z');
+    });
+
     it('новая сборка того же чата чистит поля прошлой заброшенной сборки', async () => {
       await service.startNewExamDraft(777, NOW);
       await service.setNewExamDraft(
         777,
-        { step: 'confirm', title: 'Старое название', timeLimitMin: 30 },
+        {
+          step: 'confirm',
+          title: 'Старое название',
+          timeLimitMin: 30,
+          dueAt: '2026-09-24T20:59:59.999Z',
+        },
         NOW,
       );
 
@@ -394,6 +416,7 @@ describe('BotSessionService', () => {
       expect(session?.buildStep).toBe('pick');
       expect(session?.buildTitle).toBeUndefined();
       expect(session?.buildTimeLimitMin).toBeUndefined();
+      expect(session?.buildDueAt).toBeUndefined();
       await expect(model.countDocuments({ chatId: 777 })).resolves.toBe(1);
     });
 
