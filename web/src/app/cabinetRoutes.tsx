@@ -48,9 +48,9 @@ const LibraryScreen = lazyRoute(ROUTE_MODULES.library.load);
 const DevErrorsScreen = lazyRoute(ROUTE_MODULES.devErrors.load);
 
 /** «/» — первый экран уже известной роли (решение владельца: у ученика это
- * «Задания», у штата — «Занятия»/планирование). Роль решает rootPathFor
- * (screenAccess.ts) — общая функция с AppShell.tsx, чтобы адрес корня не
- * разъехался с адресом редиректа при отказе в чужом маршруте. */
+ * «Задания», у штата с 2026-09-27 — «Экзамены», ADR-0138). Роль решает
+ * rootPathFor (screenAccess.ts) — общая функция с AppShell.tsx, чтобы адрес
+ * корня не разъехался с адресом редиректа при отказе в чужом маршруте. */
 function RootRedirect() {
   const { me } = useAuth();
   return <Navigate to={rootPathFor(me)} replace />;

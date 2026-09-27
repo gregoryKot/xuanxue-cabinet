@@ -5,12 +5,15 @@
 // (import-x/no-cycle) — саму таблицу должно быть можно прочитать, не завозя
 // резолвер.
 import { ROUTE_MODULES, segmentsOf, type RouteModule } from './routeModules';
+import { STAFF_ROOT_PATH } from './screenAccess';
 
 // Роль ушла из ROOT_REDIRECT_PATH в rootPathFor (screenAccess.ts) — этот
 // резолвер по-прежнему без роли, ему нужен только один опорный путь для
-// «/» (сегментов нет): planning решает и сам за себя, и как fallback для
-// пустого пути — тот же адрес, что был раньше единственным для всех.
-const EMPTY_PATH_FALLBACK = '/planning';
+// «/» (сегментов нет). Импорт STAFF_ROOT_PATH, а не второй литерал: свой
+// литерал здесь и в screenAccess.ts разъехались бы при следующей правке
+// корня штата, и prefetchFirstScreen.ts (matchRoute('/') — canSeeRoute(штат,
+// '/') истинна) грел бы данные не того экрана (ADR-0138).
+const EMPTY_PATH_FALLBACK = STAFF_ROOT_PATH;
 
 function matchesPattern(pattern: string, pathname: string): boolean {
   const patternSegments = segmentsOf(pattern);
