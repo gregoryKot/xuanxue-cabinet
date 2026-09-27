@@ -9,9 +9,9 @@
 // основным путём ответа, бот остаётся вторым. Объяснение → подсказка про
 // ссылку → раскрывающаяся инструкция «Как выложить видео» (AttemptVideoHowTo)
 // → форма ссылки → кнопка бота тем, у кого Telegram привязан → «Связать
-// Telegram» тем, кому есть что связывать. Заливка терракотой (правило
-// акцента, docs/adr/0031) переехала с кнопки бота на «Сохранить ссылку»
-// (AttemptMediaLinkForm.tsx) — одна на экран, просто у другого действия.
+// Telegram» тем, кому есть что связывать. У видео-вопроса больше нет ни одной
+// заливки терракотой (правило акцента, docs/adr/0031): ADR-0136 убрал кнопку
+// «Сохранить ссылку» вместе с ней — ссылка сохраняет себя сама.
 //
 // Кнопка бота — только тем, у кого Telegram привязан (`telegramLinked`):
 // бот привязывает видео по совпадению telegramId, и вошедшего по почте он
@@ -44,10 +44,19 @@ import type { AttemptVideoControls } from './useAttemptMedia';
 // есть ли бот и привязан ли Telegram, а сама фраза от этого не меняется.
 const VIDEO_ANSWER_EXPLANATION = 'Ответ на этот вопрос — видео.';
 // Ссылка — основной путь (ADR-0084): подсказка стоит перед формой у всех, а
-// не только у тех, кому не досталось бота.
+// не только у тех, кому не досталось бота. С ADR-0136 добавлено, что
+// нажимать после вставки уже нечего — ссылка сохраняется сама.
 const LINK_HINT =
   'Выложите запись на YouTube, во ВКонтакте, на Rutube или Яндекс.Диск и ' +
-  '**вставьте сюда ссылку**.';
+  '**вставьте сюда ссылку** — она сохранится сама.';
+// Кнопка бота вела в чат, но не объясняла, что там будет: отзыв
+// тестера 2026-09-27, «не очень понятно, что такое „Отправить видео
+// боту в Telegram“» (ADR-0136). Текст правдив: бот на этой ссылке
+// (exam-question-screen.ts, VIDEO_QUESTION_PROMPT) действительно просит
+// прислать видео следующим сообщением и сам прикладывает его к вопросу.
+const BOT_BUTTON_EXPLANATION =
+  'Видео уже в телефоне? Можно никуда не выкладывать: **пришлите его боту ' +
+  'школы** в Telegram — оно само прикрепится к этому вопросу.';
 // Telegram к кабинету не привязан: объясняем, почему кнопки бота нет, и тут
 // же даём связку (ADR-0034) — у человека остаётся способ короче ссылки, а не
 // вопрос без ответа (docs/VOICE.md).
@@ -89,14 +98,23 @@ export function AttemptQuestionVideo({ itemId, video }: AttemptQuestionVideoProp
       />
 
       {telegramBotUsername && video.telegramLinked && (
-        <a
-          href={buildExamMediaTelegramLink(telegramBotUsername, video.attemptId, itemId)}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={attemptVideoTelegramLinkStyle}
-        >
-          Отправить видео боту в Telegram
-        </a>
+        <>
+          <p style={attemptVideoHintStyle}>
+            <RichText text={BOT_BUTTON_EXPLANATION} />
+          </p>
+          <a
+            href={buildExamMediaTelegramLink(
+              telegramBotUsername,
+              video.attemptId,
+              itemId,
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={attemptVideoTelegramLinkStyle}
+          >
+            Открыть чат с ботом
+          </a>
+        </>
       )}
 
       {telegramBotUsername && video.offersTelegramLink && (
