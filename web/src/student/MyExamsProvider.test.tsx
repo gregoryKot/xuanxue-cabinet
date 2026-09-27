@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, MeDto, MyExamDto, UserRole } from '@xuanxue/shared';
-import { MY_EXAMS_PATH } from '../api/apiPaths';
+import { examSeenPath, MY_EXAMS_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,
@@ -190,6 +190,62 @@ describe('MyExamsProvider — applyAttempt', () => {
       expired: false,
     });
     expect(examsCallCount()).toBe(1);
+  });
+});
+
+// ADR-0129 (отзыв тестировщицы 2026-09-23): пилюля у колокольчика гаснет по
+// нажатию на карточку, не по старту попытки — markSeen() ставит флаг у себя
+// сразу, без второго GET, а список из ответа POST на экран не кладёт: он
+// собран сервером до параллельного старта попытки и затёр бы её.
+describe('MyExamsProvider — markSeen', () => {
+  it('флаг ставится сразу, POST уходит, ответ POST экран не перетирает, второго GET нет', async () => {
+    // examSeenPath — раньше MY_EXAMS_PATH: он длиннее и начинается с того же
+    // префикса, mockApiByPath отдаёт первое совпадение по порядку записи
+    // (test-support/apiFetchMock.ts).
+    mockApiByPath({
+      [examSeenPath('e1')]: [{ ...EXAM, title: 'Старый снимок', seen: true }],
+      [MY_EXAMS_PATH]: [EXAM],
+    });
+
+    const { result } = renderHook(() => useMyExams(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <MemoryRouter>
+          <MyExamsProvider me={STUDENT}>{children}</MyExamsProvider>
+        </MemoryRouter>
+      ),
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    result.current.markSeen('e1');
+
+    await waitFor(() => expect(result.current.data?.[0]?.seen).toBe(true));
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      examSeenPath('e1'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(result.current.data?.[0]?.title).toBe(EXAM.title);
+    expect(examsCallCount()).toBe(1); // только начальная загрузка, без reload()
+  });
+
+  it('сбой отметки глотается — не бросает (сбой не должен мешать старту)', async () => {
+    mockApiByPath({ [MY_EXAMS_PATH]: [EXAM] });
+    const { result } = renderHook(() => useMyExams(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <MemoryRouter>
+          <MyExamsProvider me={STUDENT}>{children}</MyExamsProvider>
+        </MemoryRouter>
+      ),
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    mockApiByPath({
+      [examSeenPath('e1')]: new Error('boom'),
+      [MY_EXAMS_PATH]: [EXAM],
+    });
+
+    expect(() => result.current.markSeen('e1')).not.toThrow();
+    await waitFor(() => expect(result.current.data?.[0]?.seen).toBe(true));
+    expect(result.current.error).toBeNull();
   });
 });
 

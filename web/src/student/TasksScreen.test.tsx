@@ -7,7 +7,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, MeDto, MyExamDto } from '@xuanxue/shared';
-import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
+import { examSeenPath, MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { NotificationBell } from '../notifications/NotificationBell';
@@ -222,10 +222,15 @@ describe('TasksScreen — карточки заданий не стоят впл
 });
 
 describe('TasksScreen — старт попытки', () => {
-  it('«Начать» — стартует попытку и уводит на экран сдачи', async () => {
-    mockedApiFetch.mockResolvedValueOnce([makeExam()]);
+  it('«Начать» — стартует попытку и уводит на экран сдачи, попутно отмечает задание открытым', async () => {
     const attempt: Partial<ExamAttemptDto> = { id: 'attempt-1' };
-    mockedApiFetch.mockResolvedValueOnce(attempt);
+    // examSeenPath — раньше MY_EXAMS_PATH: он длиннее и начинается с того же
+    // префикса (mockApiByPath отдаёт первое совпадение по порядку записи).
+    mockApiByPath({
+      [examSeenPath('e1')]: [makeExam({ seen: true })],
+      [MY_EXAMS_PATH]: [makeExam()],
+      '/exams/e1/attempts': attempt,
+    });
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Начать' });
@@ -233,13 +238,23 @@ describe('TasksScreen — старт попытки', () => {
 
     expect(await screen.findByText('Экран сдачи')).toBeInTheDocument();
     expect(mockedApiFetch).toHaveBeenCalledWith('/exams/e1/attempts', { method: 'POST' });
+    // ADR-0129: та же кнопка ставит отметку «открыто» — оба POST независимы.
+    expect(mockedApiFetch).toHaveBeenCalledWith(
+      examSeenPath('e1'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   it('сбой старта попытки — ошибка у своей карточки, экран сдачи не открывается', async () => {
-    mockedApiFetch.mockResolvedValueOnce([makeExam()]);
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError('Этот экзамен ещё не открыт для сдачи.', 400, 'invalid_input'),
-    );
+    mockApiByPath({
+      [examSeenPath('e1')]: [makeExam({ seen: true })],
+      [MY_EXAMS_PATH]: [makeExam()],
+      '/exams/e1/attempts': new ApiError(
+        'Этот экзамен ещё не открыт для сдачи.',
+        400,
+        'invalid_input',
+      ),
+    });
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Начать' });
@@ -493,8 +508,11 @@ describe('TasksScreen — штат школы на «/tasks»: список ви
 // молча». Форма с лимитом времени сперва спрашивает, реальный POST уходит
 // только из подтверждения (useTaskStart.ts, examStartConfirm.ts).
 describe('TasksScreen — подтверждение перед стартом с лимитом времени (ADR-0121)', () => {
-  it('форма с лимитом — «Начать» открывает вопрос, POST ещё не уходит', async () => {
-    mockApiByPath({ [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })] });
+  it('форма с лимитом — «Начать» открывает вопрос, POST старта ещё не уходит', async () => {
+    mockApiByPath({
+      [examSeenPath('e1')]: [makeExam({ timeLimitMin: 40, seen: true })],
+      [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })],
+    });
     renderScreen();
 
     const button = await screen.findByRole('button', { name: 'Начать' });
@@ -504,8 +522,13 @@ describe('TasksScreen — подтверждение перед стартом �
       await screen.findByRole('heading', { name: 'Вы начинаете экзамен' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/На экзамен — 40 минут/)).toBeInTheDocument();
-    // Ровно один вызов апи за весь тест — сам список; POST старта не ушёл.
-    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    // ADR-0129: «Начать» ставит отметку «открыто» уже здесь, до вопроса —
+    // список плюс markSeen, POST самого старта попытки ещё не уходил.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(
+      '/exams/e1/attempts',
+      expect.anything(),
+    );
   });
 
   // Регрессия, пойманная на прошлой реализации: ConfirmDialog сам закрывает
@@ -515,6 +538,7 @@ describe('TasksScreen — подтверждение перед стартом �
   // confirmExam вернулся в null, то есть диалог действительно закрылся.
   it('подтверждение — стартует попытку, диалог закрывается и виден экран сдачи', async () => {
     mockApiByPath({
+      [examSeenPath('e1')]: [makeExam({ timeLimitMin: 40, seen: true })],
       [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })],
       '/exams/e1/attempts': { id: 'attempt-1', examId: 'e1' },
     });
@@ -536,8 +560,11 @@ describe('TasksScreen — подтверждение перед стартом �
     ).not.toBeInTheDocument();
   });
 
-  it('«Не сейчас» — POST не уходит, список экрана остаётся на месте', async () => {
-    mockApiByPath({ [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })] });
+  it('«Не сейчас» — POST старта не уходит, список экрана остаётся на месте', async () => {
+    mockApiByPath({
+      [examSeenPath('e1')]: [makeExam({ timeLimitMin: 40, seen: true })],
+      [MY_EXAMS_PATH]: [makeExam({ timeLimitMin: 40 })],
+    });
     const user = userEvent.setup();
     renderScreen();
 
@@ -552,7 +579,13 @@ describe('TasksScreen — подтверждение перед стартом �
       ).not.toBeInTheDocument(),
     );
     expect(screen.getByRole('button', { name: 'Начать' })).toBeInTheDocument();
-    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    // ADR-0129: список плюс markSeen от «Начать» — POST старта («Отменить»
+    // отменил только диалог) не уходил.
+    expect(mockedApiFetch).toHaveBeenCalledTimes(2);
+    expect(mockedApiFetch).not.toHaveBeenCalledWith(
+      '/exams/e1/attempts',
+      expect.anything(),
+    );
   });
 
   // «Продолжить» — часы уже тикают, вопрос запоздал бы (examStartConfirm.ts).

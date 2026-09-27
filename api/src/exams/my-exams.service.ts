@@ -15,6 +15,7 @@ import {
   type MyExamDto,
 } from '@xuanxue/shared';
 import { EXAM_NOTIFIER, type ExamNotifier } from './exam-notifier';
+import { assertExamPublished } from './exam-start-guards';
 import { closeIfExpiredAttempt } from './exam-attempt-lifecycle';
 import { attemptSubmittedCallback } from './notify-attempt-submitted';
 import { decryptAttempt } from './exam-attempt.mapper';
@@ -22,7 +23,10 @@ import { aggregateAttemptSummaries } from './my-exam-attempt-summaries';
 import { ExamAttemptRecord } from './exam-attempt.schema';
 import { decryptGrading, type RawLeanExamGrading } from './exam-grading.mapper';
 import { ExamGradingRecord } from './exam-grading.schema';
+import { markExamSeen } from './exam-seen-mark.write';
+import { ExamSeenMarkRecord } from './exam-seen-mark.schema';
 import { EXAM_ENCRYPT_SCHEMA, ExamRecord } from './exam.schema';
+import { ExamsService } from './exams.service';
 import { decryptRecord } from '../utils/encryption';
 import {
   toMyExamDto,
@@ -52,7 +56,10 @@ export class MyExamsService {
     private readonly attemptModel: Model<ExamAttemptRecord>,
     @InjectModel(ExamGradingRecord.name)
     private readonly gradingModel: Model<ExamGradingRecord>,
+    @InjectModel(ExamSeenMarkRecord.name)
+    private readonly seenMarkModel: Model<ExamSeenMarkRecord>,
     @Inject(EXAM_NOTIFIER) private readonly examNotifier: ExamNotifier,
+    private readonly examsService: ExamsService,
   ) {}
 
   async list(
@@ -65,18 +72,41 @@ export class MyExamsService {
       .sort({ updatedAt: -1 })
       .limit(query.limit ?? LIST_LIMIT_DEFAULT)
       .lean<RawLeanMyExam[]>();
+    const examIds = examDocs.map((doc) => doc._id.toString());
 
-    const summaryByExamId = await this.loadAttemptSummaries(
-      examDocs.map((doc) => doc._id.toString()),
-      userId,
-      now,
-    );
+    const summaryByExamId = await this.loadAttemptSummaries(examIds, userId, now);
+    const seenExamIds = await this.loadSeenExamIds(examIds, userId);
 
     return examDocs.map((doc) => {
       const exam: MyExamInput = decryptRecord(doc, EXAM_ENCRYPT_SCHEMA);
       const summary = summaryByExamId.get(doc._id.toString());
-      return toMyExamDto(exam, summary?.attemptsUsed ?? 0, summary?.lastAttempt);
+      const seen = seenExamIds.has(doc._id.toString());
+      return toMyExamDto(exam, summary?.attemptsUsed ?? 0, summary?.lastAttempt, seen);
     });
+  }
+
+  /** Отзыв тестировщицы 2026-09-23 (ADR-0129): счётчик уведомлений гаснет,
+   * как только ученик нажал на карточку задания, а не когда он реально начал
+   * попытку — форма обязана быть опубликована и доступна ученику тем же
+   * путём, что старт попытки (ExamAttemptsService.start,
+   * exam-attempts.service.ts): getById бросает 404 на неизвестном/чужом id,
+   * assertExamPublished — 400 на черновике/архиве. Идемпотентно (upsert,
+   * exam-seen-mark.write.ts) — второй клик или повтор на плохой связи не
+   * падает и не плодит вторую строку. */
+  async markSeen(examId: string, userId: string): Promise<void> {
+    const exam = await this.examsService.getById(examId);
+    assertExamPublished(exam.status);
+    await markExamSeen(this.seenMarkModel, userId, examId);
+  }
+
+  /** Какие из этих форм ученик уже открывал — одним запросом на всю
+   * страницу (тот же приём, что loadGradings ниже: не N+1). */
+  private async loadSeenExamIds(examIds: string[], userId: string): Promise<Set<string>> {
+    if (examIds.length === 0) return new Set();
+    const docs = await this.seenMarkModel
+      .find({ userId, examId: { $in: examIds } })
+      .lean<{ examId: string }[]>();
+    return new Set(docs.map((doc) => doc.examId));
   }
 
   /** Сколько попыток ученик начал по каждой форме и что со свежей из них

@@ -41,6 +41,7 @@ export function toMyExamDto(
   exam: MyExamInput,
   attemptsUsed: number,
   lastAttempt: MyExamLastAttemptInput | undefined,
+  seen: boolean,
 ): MyExamDto {
   return {
     id: exam._id.toString(),
@@ -56,6 +57,10 @@ export function toMyExamDto(
     timeLimitMin: exam.timeLimitMin,
     ...(exam.dueAt !== undefined ? { dueAt: toIsoUtc(exam.dueAt) } : {}),
     lastAttempt,
+    // Отзыв тестировщицы 2026-09-23 (ADR-0129): открывал ли ученик карточку
+    // этого задания — по отдельной коллекции exam_seen_marks, не по
+    // attemptsUsed/lastAttempt (попытки может не быть вовсе).
+    seen,
   };
 }
 

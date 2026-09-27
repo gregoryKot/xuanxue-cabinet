@@ -14,6 +14,7 @@ import { LessonRecord } from '../lessons/lesson.schema';
 import { BroadcastRecord } from '../broadcasts/broadcast.schema';
 import { ExamAttemptRecord } from '../exams/exam-attempt.schema';
 import { ExamGradingRecord } from '../exams/exam-grading.schema';
+import { ExamSeenMarkRecord } from '../exams/exam-seen-mark.schema';
 import { NotificationRecord } from '../notifications/notification.schema';
 import { BotSessionRecord } from '../telegram/bot-session.schema';
 import { MediaAssetRecord } from '../media/media-asset.schema';
@@ -345,6 +346,18 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
         auth: 'auth-3',
       }),
     ).resolves.toBeDefined();
+  });
+
+  it('exam_seen_marks: второй insert с той же парой (userId, examId) падает, другой examId — нет (ADR-0129)', async () => {
+    const ExamSeenMark = connection.model<ExamSeenMarkRecord>(ExamSeenMarkRecord.name);
+    const userId = 'u1';
+    const examId = 'e1';
+    await ExamSeenMark.create({ userId, examId });
+    await expect(ExamSeenMark.create({ userId, examId })).rejects.toMatchObject({
+      code: MONGO_DUPLICATE_KEY_CODE,
+    });
+    // Другая форма того же ученика — отдельная отметка, не дубль.
+    await expect(ExamSeenMark.create({ userId, examId: 'e2' })).resolves.toBeDefined();
   });
 
   it('encryptRecord/decryptRecord по CLASS_FIELD_POLICY: zoomLink шифруется и читается', () => {

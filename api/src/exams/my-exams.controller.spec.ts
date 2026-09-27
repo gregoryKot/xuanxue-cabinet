@@ -46,4 +46,16 @@ describe('MyExamsController', () => {
     await expect(controller.list(query, USER)).resolves.toEqual(EXAMS);
     expect(list).toHaveBeenCalledWith(query, USER.id, expect.anything());
   });
+
+  // ADR-0129: markSeen() отдаёт список целиком (ответ list()), не 204 —
+  // клиент кладёт его на экран без второго GET (ADR-0087).
+  it('markSeen() зовёт сервис с userId из сессии и examId из пути, отдаёт свежий список', async () => {
+    const markSeen = jest.fn().mockResolvedValue(undefined);
+    const list = jest.fn().mockResolvedValue(EXAMS);
+    const controller = await buildController({ markSeen, list });
+
+    await expect(controller.markSeen('exam-1', USER)).resolves.toEqual(EXAMS);
+    expect(markSeen).toHaveBeenCalledWith('exam-1', USER.id);
+    expect(list).toHaveBeenCalledWith({}, USER.id, expect.anything());
+  });
 });

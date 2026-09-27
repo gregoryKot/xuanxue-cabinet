@@ -17,7 +17,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ExamAttemptDto, MeDto, MyExamDto } from '@xuanxue/shared';
-import { MY_EXAMS_PATH } from '../api/apiPaths';
+import { examSeenPath, MY_EXAMS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
 import { isTeacher } from '../app/screenAccess';
 import {
@@ -39,6 +39,13 @@ export interface UseMyExamsResult extends UseAbortableFetchResult<MyExamDto[]> {
    * второго `GET /me/exams` после старта или отправки попытки: правит
    * `lastAttempt` нужного экзамена и, если это новая попытка, `attemptsUsed`. */
   applyAttempt: (attempt: ExamAttemptDto) => void;
+  /** Отметить задание открытым (ADR-0129) — флаг `seen` ставится в списке
+   * сразу, `POST /me/exams/:id/seen` уходит следом, без второго `GET`.
+   * Fire-and-forget: сбой отметки не должен мешать самому старту
+   * попытки, поэтому вызывающий код (useTaskStart.ts, NewTaskCard.tsx) не
+   * ждёт промис и не показывает его ошибку — хуже всего, что пилюля погаснет
+   * на минуту позже, на следующем тике опроса (useNotificationsData.ts). */
+  markSeen: (examId: string) => void;
 }
 
 const MyExamsContext = createContext<UseMyExamsResult | null>(null);
@@ -84,7 +91,29 @@ function useMyExamsData(me: MeDto | null): UseMyExamsResult {
     [applyData],
   );
 
-  return { ...result, startAttempt, applyAttempt };
+  // См. комментарий у markSeen в UseMyExamsResult: сбой глотается нарочно,
+  // без него отказ сети на второстепенном действии ломал бы главное —
+  // нажатие «Начать»/переход на «Задания».
+  //
+  // Флаг ставится у себя сразу, а список из ответа не кладётся на экран:
+  // «Начать» у формы без лимита времени шлёт POST попытки в тот же миг, и
+  // ответ отметки, собранный сервером раньше старта, затёр бы свежую
+  // `lastAttempt` из applyAttempt — карточка снова звала бы «Начать».
+  const markSeen = useCallback(
+    (examId: string) => {
+      applyData((prev) =>
+        prev
+          ? prev.map((exam) => (exam.id === examId ? { ...exam, seen: true } : exam))
+          : prev,
+      );
+      void apiFetch<MyExamDto[]>(examSeenPath(examId), { method: 'POST' }).catch(
+        () => {},
+      );
+    },
+    [applyData],
+  );
+
+  return { ...result, startAttempt, applyAttempt, markSeen };
 }
 
 export function MyExamsProvider({
@@ -94,15 +123,24 @@ export function MyExamsProvider({
   me: MeDto | null;
   children: ReactNode;
 }) {
-  const { data, loading, error, reload, refresh, startAttempt, applyAttempt } =
+  const { data, loading, error, reload, refresh, startAttempt, applyAttempt, markSeen } =
     useMyExamsData(me);
 
   // Разложено по полям, а не `[data]`/по объекту целиком: сам объект хук
   // пересобирает каждым рендером, и мемо по ссылке на него не экономило бы
   // ничего (тот же приём, что в NotificationsProvider.tsx).
   const value = useMemo(
-    () => ({ data, loading, error, reload, refresh, startAttempt, applyAttempt }),
-    [data, loading, error, reload, refresh, startAttempt, applyAttempt],
+    () => ({
+      data,
+      loading,
+      error,
+      reload,
+      refresh,
+      startAttempt,
+      applyAttempt,
+      markSeen,
+    }),
+    [data, loading, error, reload, refresh, startAttempt, applyAttempt, markSeen],
   );
 
   return <MyExamsContext.Provider value={value}>{children}</MyExamsContext.Provider>;

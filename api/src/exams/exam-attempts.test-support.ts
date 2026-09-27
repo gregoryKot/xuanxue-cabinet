@@ -32,6 +32,7 @@ import { ExamGradingRecord, ExamGradingSchema } from './exam-grading.schema';
 import { ExamGradingsService } from './exam-gradings.service';
 import { ExamItemRecord, ExamItemSchema } from './exam-item.schema';
 import { ExamItemsService } from './exam-items.service';
+import { ExamSeenMarkRecord, ExamSeenMarkSchema } from './exam-seen-mark.schema';
 import { ExamRecord, ExamSchema } from './exam.schema';
 import { ExamsService } from './exams.service';
 
@@ -60,6 +61,9 @@ export interface AttemptsTestContext {
   // Лента кабинета (ADR-0061) — нужна ADR-0131: повтор после просроченной
   // попытки затирает и её строки в inbox учителя (ExamAttemptRetryCleanupService).
   notificationModel: Model<NotificationRecord>;
+  // ADR-0129 — отметка «ученик открыл задание»; MyExamsService.spec.ts тоже
+  // поднимает контекст отсюда, второй раз модель не заводит.
+  seenMarkModel: Model<ExamSeenMarkRecord>;
   examsService: ExamsService;
   examItemsService: ExamItemsService;
   examImagesService: ExamImagesService;
@@ -102,6 +106,10 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
   const notificationModel = connection.model<NotificationRecord>(
     NotificationRecord.name,
     NotificationSchema,
+  );
+  const seenMarkModel = connection.model<ExamSeenMarkRecord>(
+    ExamSeenMarkRecord.name,
+    ExamSeenMarkSchema,
   );
   const examsService = new ExamsService(examModel, itemModel, attemptModel);
   const examImagesService = new ExamImagesService(imageModel, attemptModel);
@@ -161,6 +169,7 @@ export async function setupAttemptsTest(): Promise<AttemptsTestContext> {
     channelModel,
     notificationPrefsModel,
     notificationModel,
+    seenMarkModel,
     examsService,
     examItemsService,
     examImagesService,
@@ -183,6 +192,7 @@ export async function clearAttemptsTest(ctx: AttemptsTestContext): Promise<void>
   await ctx.channelModel.deleteMany({});
   await ctx.notificationPrefsModel.deleteMany({});
   await ctx.notificationModel.deleteMany({});
+  await ctx.seenMarkModel.deleteMany({});
   // Иначе вызовы ExamNotifier из одного теста утекают в счётчик следующего —
   // общий ctx на файл (afterEach), не свой инстанс на тест.
   ctx.examNotifier.notifyAttemptSubmitted.mockClear();

@@ -20,17 +20,18 @@ function exam(overrides: Partial<MyExamInput> = {}): MyExamInput {
 
 describe('toMyExamDto', () => {
   it('ученик ещё не начинал — attemptsUsed: 0, lastAttempt отсутствует', () => {
-    const dto = toMyExamDto(exam(), 0, undefined);
+    const dto = toMyExamDto(exam(), 0, undefined, false);
     expect(dto.attemptsUsed).toBe(0);
     expect(dto.lastAttempt).toBeUndefined();
   });
 
   it('есть попытка — attemptsUsed и lastAttempt переданы как есть', () => {
-    const dto = toMyExamDto(exam(), 1, {
-      id: 'attempt-1',
-      status: 'submitted',
-      expired: true,
-    });
+    const dto = toMyExamDto(
+      exam(),
+      1,
+      { id: 'attempt-1', status: 'submitted', expired: true },
+      false,
+    );
     expect(dto.attemptsUsed).toBe(1);
     expect(dto.lastAttempt).toEqual({
       id: 'attempt-1',
@@ -40,13 +41,18 @@ describe('toMyExamDto', () => {
   });
 
   it('оценка выставлена — outcome/comment переданы как есть (слой 4.6)', () => {
-    const dto = toMyExamDto(exam(), 1, {
-      id: 'attempt-1',
-      status: 'graded',
-      expired: false,
-      outcome: 'passed',
-      comment: 'Хорошая работа',
-    });
+    const dto = toMyExamDto(
+      exam(),
+      1,
+      {
+        id: 'attempt-1',
+        status: 'graded',
+        expired: false,
+        outcome: 'passed',
+        comment: 'Хорошая работа',
+      },
+      false,
+    );
 
     expect(dto.lastAttempt).toEqual({
       id: 'attempt-1',
@@ -58,22 +64,27 @@ describe('toMyExamDto', () => {
   });
 
   it('у формы есть лимит времени — timeLimitMin передан как есть', () => {
-    const dto = toMyExamDto(exam({ timeLimitMin: 40 }), 0, undefined);
+    const dto = toMyExamDto(exam({ timeLimitMin: 40 }), 0, undefined, false);
     expect(dto.timeLimitMin).toBe(40);
   });
 
   it('у формы нет лимита времени — timeLimitMin отсутствует', () => {
-    const dto = toMyExamDto(exam(), 0, undefined);
+    const dto = toMyExamDto(exam(), 0, undefined, false);
     expect(dto.timeLimitMin).toBeUndefined();
   });
 
   it('у попытки есть дедлайн — deadlineAt передан в lastAttempt как есть', () => {
-    const dto = toMyExamDto(exam({ timeLimitMin: 40 }), 1, {
-      id: 'attempt-1',
-      status: 'in_progress',
-      expired: false,
-      deadlineAt: '2026-09-22T16:40:00.000Z',
-    });
+    const dto = toMyExamDto(
+      exam({ timeLimitMin: 40 }),
+      1,
+      {
+        id: 'attempt-1',
+        status: 'in_progress',
+        expired: false,
+        deadlineAt: '2026-09-22T16:40:00.000Z',
+      },
+      false,
+    );
     expect(dto.lastAttempt).toEqual({
       id: 'attempt-1',
       status: 'in_progress',
@@ -83,11 +94,12 @@ describe('toMyExamDto', () => {
   });
 
   it('у попытки нет дедлайна — deadlineAt в lastAttempt отсутствует', () => {
-    const dto = toMyExamDto(exam(), 1, {
-      id: 'attempt-1',
-      status: 'in_progress',
-      expired: false,
-    });
+    const dto = toMyExamDto(
+      exam(),
+      1,
+      { id: 'attempt-1', status: 'in_progress', expired: false },
+      false,
+    );
     expect(dto.lastAttempt?.deadlineAt).toBeUndefined();
   });
 
@@ -99,9 +111,15 @@ describe('toMyExamDto', () => {
       }),
       0,
       undefined,
+      false,
     );
     expect(dto.description).toBe('');
     expect(dto.level).toBe('');
+  });
+
+  it('seen — передан как есть (ADR-0129)', () => {
+    expect(toMyExamDto(exam(), 0, undefined, true).seen).toBe(true);
+    expect(toMyExamDto(exam(), 0, undefined, false).seen).toBe(false);
   });
 });
 
