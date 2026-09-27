@@ -5,14 +5,17 @@
 // общий модуль (CLAUDE.md «Одна механика — один компонент»). Пара к
 // error-info.ts рядом.
 import { randomUUID } from 'crypto';
+import { asSingleHeader } from './http-headers';
 
 // Минимальный интерфейс вместо @types/express (его нет в зависимостях api/):
 // `req.id` пишет pino-http (logging.module.ts), `req.method`/`req.url` —
-// сам Node.
+// сам Node. `headers` — опционально: часть потребителей (buildHost в
+// domain-exception.filter.spec.ts) собирает запрос без них.
 export interface RequestLike {
   id?: unknown;
   method?: unknown;
   url?: unknown;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 /** Заголовок сквозной трассировки запроса (CLAUDE.md «Логи»). Третий
@@ -47,4 +50,12 @@ export function requestIdOf(request: RequestLike): string | undefined {
 export function pathWithoutQuery(url: string): string {
   const cut = url.search(/[?#]/);
   return cut === -1 ? url : url.slice(0, cut);
+}
+
+/** User-Agent запроса — для журнала сбоев (ADR-0132): по нему видно браузер
+ * и телефон человека, у которого что-то упало. `undefined`, не строка
+ * «undefined», тем же приёмом, что requestIdOf выше — заголовка может не
+ * быть вовсе (запрос без браузера, синтетический вызов теста). */
+export function userAgentOf(request: RequestLike): string | undefined {
+  return asSingleHeader(request.headers?.['user-agent']);
 }

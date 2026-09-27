@@ -421,3 +421,11 @@ export {
   PUSH_NOT_AVAILABLE_MESSAGE,
 } from './push';
 export { videoEmbedUrl } from './video-embed';
+export type {
+  AppErrorSource,
+  AppErrorKind,
+  ListAppErrorsQuery,
+  AppErrorDto,
+  AppErrorListDto,
+} from './app-errors';
+export { APP_ERROR_SOURCES, APP_ERROR_KINDS, APP_ERROR_LIMITS } from './app-errors';

@@ -53,6 +53,15 @@ function renderNew() {
   );
 }
 
+function makeFileDto() {
+  return {
+    name: 'Методичка.pdf',
+    contentType: 'application/pdf' as const,
+    sizeBytes: 2048,
+    uploadedAt: '2026-01-01T00:00:00Z',
+  };
+}
+
 function callsWithMethod(method: string) {
   return mockedApiFetch.mock.calls.filter(
     (call) => (call[1] as { method?: string } | undefined)?.method === method,
@@ -136,5 +145,35 @@ describe('MaterialEditorScreen — создание одним файлом, б�
     expect(screen.getByRole('button', { name: 'Удалить материал' })).toBeInTheDocument();
     expect(callsWithMethod('POST')).toHaveLength(2);
     expect(callsWithMethod('POST')[0]?.[0]).toBe('/materials');
+  });
+
+  it('после сбоя файл прикладывается тем же полем — имя видно из ответа, без GET', async () => {
+    const created = makeMaterial();
+    mockApiByPath({
+      '/materials/m1/file': new Error('нет сети'),
+      '/materials': created,
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+
+    renderNew();
+    const pdf = new File(['%PDF-1.7'], 'Методичка.pdf', { type: 'application/pdf' });
+    await fillTitleAndFile(pdf);
+    await screen.findByRole('alert');
+
+    // Второй заход: тот же путь отвечает уже материалом с файлом (приём
+    // mockApiByPath — второй вызов с новыми телами, не очередь `…Once`).
+    mockApiByPath({
+      '/materials/m1/file': { ...created, file: makeFileDto() },
+      '/materials': created,
+      '/classes': [makeClass()],
+      '/auth/config': { emailLoginEnabled: false, fileStorageEnabled: true },
+    });
+    await userEvent.upload(screen.getByLabelText('Добавить файл'), pdf);
+
+    // Страница осталась на /materials/new — перечитать материал по маршруту
+    // нечем, свежее состояние приходит ответом записи (ADR-0133).
+    expect(await screen.findByText('Методичка.pdf')).toBeInTheDocument();
+    expect(callsWithMethod('GET')).toHaveLength(0);
   });
 });

@@ -121,12 +121,18 @@ describe('useNewMaterialFile — сбой загрузки', () => {
 });
 
 describe('useNewMaterialFile — негодный файл при выборе', () => {
-  it('неподдерживаемый формат — ошибка сразу, файл не запоминается', () => {
+  it('неподдерживаемый формат — ошибка сразу, файл не запоминается, «Убрать файл» гасит её', () => {
     const { result } = renderHook(() => useNewMaterialFile(vi.fn()));
 
     act(() => result.current.selectFile(makeFile('application/zip')));
 
     expect(result.current.fileError).toBe(MATERIAL_FILE_UNSUPPORTED_MESSAGE);
+    expect(result.current.file).toBeNull();
+
+    // «Убрать файл» снимает и выбор, и ошибку: иначе отказ висел бы на экране
+    // после того, как человек передумал прикладывать файл вовсе.
+    act(() => result.current.removeFile());
+    expect(result.current.fileError).toBeNull();
     expect(result.current.file).toBeNull();
   });
 

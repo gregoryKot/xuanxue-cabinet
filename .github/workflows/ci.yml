@@ -8,6 +8,19 @@ on:
 
 env:
   NODE_VERSION: '22'
+  # Версия бинаря mongod для mongodb-memory-server — зафиксирована явно, а
+  # не оставлена на дефолт библиотеки: иначе апдейт mongodb-memory-server
+  # тихо меняет версию бинаря, ключ кеша в .github/actions/setup её не
+  # видит, и кеш продолжает отдавать старую версию мимо факта, что
+  # скачивалась бы уже новая.
+  MONGOMS_VERSION: '8.2.6'
+  # Число шардов для матриц api-*/web-* — одно место, не магическое число в
+  # каждой команде `--shard=N/…`. Меняешь дробление — правишь тут и в
+  # соответствующем `matrix.shard` (GitHub Actions не даёт сгенерировать
+  # список матрицы из env без отдельного шага, поэтому сам список остаётся
+  # литералом `[1, 2]`/`[1, 2, 3]` в job, а знаменатель — отсюда).
+  API_SHARDS: '2'
+  WEB_SHARDS: '3'
 
 # Один прогон на пуш/ветку — новый пуш отменяет предыдущий CI той же ветки.
 concurrency:
@@ -20,89 +33,236 @@ permissions:
   contents: read
 
 jobs:
-  api:
+  # Разносит долгие джобы api/web по фильтру путей: PR только в web/ (или
+  # только в api/) не должен ждать тесты другой стороны. api и web друг о
+  # друге не знают (CLAUDE.md, «Структура и слои» — держит eslint
+  # no-restricted-imports), поэтому это безопасно. shared/, scripts/,
+  # корневые конфиги, lock-файл и .github/ — общие, запускают обе стороны.
+  # docs/*.md не запускает ни одну: у них нет своих проверок в api-*/web-*.
+  # Общерепозиторные храповики (checks) и docker идут не по этому фильтру —
+  # они смотрят весь репозиторий и должны падать при любом изменении.
+  changes:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      # Версия бинаря mongod для mongodb-memory-server — зафиксирована явно, а
-      # не оставлена на дефолт библиотеки: иначе апдейт mongodb-memory-server
-      # тихо меняет версию бинаря, ключ кеша ниже её не видит, и кеш продолжает
-      # отдавать старую версию мимо факта, что скачивалась бы уже новая.
-      MONGOMS_VERSION: '8.2.6'
+    timeout-minutes: 5
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      # Наблюдение 2026-09-21: fastdl.mongodb.org ответил 503 на скачивании
-      # бинаря mongod (122 МБ) — джоба падала ДО тестов на чужом CDN. Библиотека
-      # сама выбирает каталог загрузки по INIT_CWD/cwd процесса, который плывёт
-      # между `npm ci` (корень), `npm test --workspace=api` (корень) и `npx jest`
-      # из scripts/check-coverage-ratchet.mjs (cwd=api/) — см. заголовок
-      # api/test/jest.global-setup.ts. `MONGOMS_DOWNLOAD_DIR` перебивает этот
-      # подбор одним и тем же путём во всех трёх местах, поэтому кешировать
-      # можно ровно его — без выбора «угадать, куда легла библиотека».
-      - name: каталог загрузки бинаря mongod — один и тот же для npm ci и всех jest
-        run: echo "MONGOMS_DOWNLOAD_DIR=$HOME/.cache/mongodb-binaries" >> "$GITHUB_ENV"
-      # До `npm ci`: она полностью пересоздаёт node_modules, так что кеш внутри
-      # node_modules/.cache не пережил бы её — каталог из MONGOMS_DOWNLOAD_DIR
-      # снаружи node_modules, поэтому порядок наоборот не обязателен, но кеш
-      # ставим первым, чтобы бинарь уже был на месте к моменту постинсталла.
-      - name: кеш бинаря mongod
-        uses: actions/cache@v4
+          # На PR github.sha — это merge-коммит с базовой веткой, и
+          # fetch-depth: 2 достаточно, чтобы получить его первого родителя
+          # (HEAD^1 = актуальная голова базовой ветки): `git diff HEAD^1 HEAD`
+          # покажет ровно то, что меняет сам PR относительно свежего main.
+          fetch-depth: 2
+      - name: какие файлы поменялись — решаем, какие джобы нужны
+        id: filter
+        shell: bash
+        run: |
+          # Push в main и ручной запуск — не PR, сравнивать не с чем: это и
+          # есть то, что уедет в прод, гоняем обе стороны целиком.
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "не pull_request (${{ github.event_name }}) — гоняем api и web целиком"
+            echo "api=true" >> "$GITHUB_OUTPUT"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files=$(git diff --name-only HEAD^1 HEAD)
+          echo "изменённые файлы PR:"
+          echo "$files"
+
+          api=false
+          web=false
+          if echo "$files" | grep -vE '^web/|^docs/|\.md$' | grep -q .; then
+            api=true
+          fi
+          if echo "$files" | grep -vE '^api/|^docs/|\.md$' | grep -q .; then
+            web=true
+          fi
+
+          echo "итог: api=$api web=$web"
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+
+  # Пояса гоняются в разных джобах одновременно (api-coverage — UTC с
+  # покрытием, api-tz — Sydney) — это те же два прогона jest, что правило 1
+  # CLAUDE.md требует, просто не друг за другом, а параллельно.
+  # Шардинг (CLAUDE.md, критический путь CI): api-coverage/api-tz/api-e2e
+  # были самыми долгими джобами — matrix режет каждую на N параллельных
+  # раннеров вместо одного долгого прогона. Набор проверок тот же — jest
+  # сам решает, какая часть тестов достаётся какому шарду (`--shard=k/N`),
+  # ни один тест не пропускается и не дублируется.
+  api-coverage:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
         with:
-          path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
-          key: mongodb-binaries-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
-      - run: npm ci
-      - name: сборка shared (api и web резолвят @xuanxue/shared из shared/dist)
-        run: npm run build --workspace=shared
+          mongo: 'true'
+          mongoms-version: ${{ env.MONGOMS_VERSION }}
       - name: typecheck (shared + api)
+        if: matrix.shard == 1
         run: |
           npm run typecheck --workspace=shared
           npm run typecheck --workspace=api
       - name: shared vitest с покрытием
+        if: matrix.shard == 1
         run: node scripts/check-vitest-coverage-ratchet.mjs shared
-      - name: coverage ratchet (runs jest --coverage)
-        run: node scripts/check-coverage-ratchet.mjs
-      - name: jest под TZ=Australia/Sydney (тест перехода летнего времени)
-        run: TZ=Australia/Sydney npm test --workspace=api
-      - name: e2e (реальный AppModule, ownership-смок)
-        run: npm run test:e2e --workspace=api
-      - name: сверка .env.example со всеми env, которые реально читает api
-        run: node scripts/check-env-example.mjs
-      - name: eslint ratchet
-        run: node scripts/check-eslint-ratchet.mjs
-      - name: jscpd ratchet
-        run: node scripts/check-jscpd-ratchet.mjs
-      - name: file-size ratchet
-        run: node scripts/check-file-size-ratchet.mjs
-      - name: robot-phrases ratchet
-        run: node scripts/check-robot-phrases.mjs
-      # Не голый `npm audit`: у уязвимости бывает нет исправленной версии, и
-      # тогда красным становится каждый PR. Гейт умеет исключения с причиной и
-      # сроком пересмотра — scripts/audit-allowlist.json.
-      - name: npm audit (prod deps, high+)
-        run: node scripts/check-npm-audit.mjs
+      - name: jest --coverage (сырое покрытие шарда — порог считает api-coverage-ratchet)
+        working-directory: api
+        run: npx jest --coverage --silent --coverageReporters=json --shard=${{ matrix.shard }}/${{ env.API_SHARDS }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-coverage-${{ matrix.shard }}
+          path: api/coverage/coverage-final.json
+          retention-days: 1
+          # Шард без файла покрытия — сбой, а не предупреждение: иначе порог
+          # посчитался бы по части набора.
+          if-no-files-found: error
 
-  web:
+  # Порог покрытия — по склеенному покрытию ВСЕГО набора (merge-coverage.mjs),
+  # не по одному шарду: шард видит только свою часть, а храповик из CLAUDE.md
+  # сравнивает целое с бейслайном.
+  api-coverage-ratchet:
+    needs: [changes, api-coverage]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          build-shared: 'false'
+      - name: скачать сырое покрытие всех шардов
+        uses: actions/download-artifact@v4
+        with:
+          pattern: api-coverage-*
+          path: coverage-parts
+      - name: склеить покрытие шардов в summary
+        run: node scripts/merge-coverage.mjs api/coverage/coverage-summary.json coverage-parts/*/coverage-final.json
+      - name: coverage ratchet (по склеенному покрытию)
+        run: node scripts/check-coverage-ratchet.mjs --summary=api/coverage/coverage-summary.json
+
+  api-tz:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          mongo: 'true'
+          mongoms-version: ${{ env.MONGOMS_VERSION }}
+      - name: jest под TZ=Australia/Sydney (тест перехода летнего времени)
+        run: TZ=Australia/Sydney npm test --workspace=api -- --shard=${{ matrix.shard }}/${{ env.API_SHARDS }}
+
+  api-e2e:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          mongo: 'true'
+          mongoms-version: ${{ env.MONGOMS_VERSION }}
+      - name: e2e (реальный AppModule, ownership-смок)
+        run: npm run test:e2e --workspace=api -- --shard=${{ matrix.shard }}/${{ env.API_SHARDS }}
+
+  # Шардинг web-coverage/web-tz — тот же приём, что у api* выше: matrix
+  # режет самую долгую джобу web (4:21) на параллельные раннеры.
+  web-coverage:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: typecheck
+        if: matrix.shard == 1
+        run: npm run typecheck --workspace=web
+      - name: vitest --coverage (сырое покрытие шарда — порог считает web-coverage-ratchet)
+        working-directory: web
+        # coverage.include в vite.config.ts уже задан, поэтому файлы без
+        # тестов попадают в отчёт КАЖДОГО шарда (не только того, чей тест их
+        # исполнил) — склейка равна покрытию полного прогона, а не отличается
+        # на файлы без единого теста.
+        run: npx vitest run --coverage --coverage.reporter=json --shard=${{ matrix.shard }}/${{ env.WEB_SHARDS }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage-${{ matrix.shard }}
+          path: web/coverage/coverage-final.json
+          retention-days: 1
+          # Шард без файла покрытия — сбой, а не предупреждение: иначе порог
+          # посчитался бы по части набора.
+          if-no-files-found: error
+
+  web-coverage-ratchet:
+    needs: [changes, web-coverage]
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          build-shared: 'false'
+      - name: скачать сырое покрытие всех шардов
+        uses: actions/download-artifact@v4
+        with:
+          pattern: web-coverage-*
+          path: coverage-parts
+      - name: склеить покрытие шардов в summary
+        run: node scripts/merge-coverage.mjs web/coverage/coverage-summary.json coverage-parts/*/coverage-final.json
+      - name: coverage ratchet (по склеенному покрытию)
+        run: node scripts/check-vitest-coverage-ratchet.mjs web --summary=web/coverage/coverage-summary.json
+
+  web-tz:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - name: vitest под TZ=Australia/Sydney (тест перехода летнего времени)
+        run: TZ=Australia/Sydney npm run test --workspace=web -- --shard=${{ matrix.shard }}/${{ env.WEB_SHARDS }}
+
+  web-build:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - name: сборка shared (web резолвит @xuanxue/shared из shared/dist)
-        run: npm run build --workspace=shared
-      - name: typecheck
-        run: npm run typecheck --workspace=web
-      - name: vitest с покрытием
-        run: node scripts/check-vitest-coverage-ratchet.mjs web
-      - name: vitest под TZ=Australia/Sydney (тест перехода летнего времени)
-        run: TZ=Australia/Sydney npm run test --workspace=web
+      - uses: ./.github/actions/setup
       - name: vite build
         run: npm run build --workspace=web
       - name: pwa-гейт (манифест, иконки, заглушка service worker)
@@ -112,7 +272,7 @@ jobs:
 
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     # gitleaks-action читает список коммитов PR через API — при глобальном
     # `contents: read` получает 403 «Resource not accessible by integration».
     permissions:
@@ -151,7 +311,15 @@ jobs:
       # переформатировал их в таблицу и цитату, и ни один гейт их не увидел.
       - name: маркеров конфликта слияния нет
         run: node scripts/check-conflict-markers.mjs
-      - run: npm ci
+      - uses: ./.github/actions/setup
+        with:
+          # setup-node уже стоит отдельным шагом выше — ранним шагам без
+          # npm ci он тоже был нужен (они запускаются `node`), но повторно
+          # ставить Node.js тут незачем.
+          setup-node: 'false'
+          mongo: 'false'
+          # typed eslint и knip резолвят @xuanxue/shared из shared/dist.
+          build-shared: 'true'
       # Тесты храповиков стоят ПОСЛЕ `npm ci`: разбор текста для
       # check-text-accents.mjs идёт компилятором TypeScript (scripts/
       # text-accents-scan.mjs), и без установленных зависимостей его тест
@@ -161,6 +329,21 @@ jobs:
       # чтобы падать на первых секундах.
       - name: тесты скриптов-храповиков (node:test)
         run: node --test scripts/*.test.mjs
+      - name: сверка .env.example со всеми env, которые реально читает api
+        run: node scripts/check-env-example.mjs
+      - name: eslint ratchet
+        run: node scripts/check-eslint-ratchet.mjs
+      - name: jscpd ratchet
+        run: node scripts/check-jscpd-ratchet.mjs
+      - name: file-size ratchet
+        run: node scripts/check-file-size-ratchet.mjs
+      - name: robot-phrases ratchet
+        run: node scripts/check-robot-phrases.mjs
+      # Не голый `npm audit`: у уязвимости бывает нет исправленной версии, и
+      # тогда красным становится каждый PR. Гейт умеет исключения с причиной и
+      # сроком пересмотра — scripts/audit-allowlist.json.
+      - name: npm audit (prod deps, high+)
+        run: node scripts/check-npm-audit.mjs
       - name: prettier — формат всего репозитория
         run: npm run format:check
       - name: мёртвые экспорты shared/src/index.ts
@@ -177,7 +360,10 @@ jobs:
   docker:
     # Аналог джобы migrations из telegram-bot-2: Dockerfile и его env-контракт
     # (ValidationPipe/validateEnv, health-check) должны падать здесь, а не при
-    # автодеплое на Railway.
+    # автодеплое на Railway. Образ собирает и api, и web (Nest раздаёт
+    # web/dist) — гоняем, если задета любая сторона.
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -263,7 +449,8 @@ jobs:
     # Проверка scripts/backup-mongo.sh + scripts/restore-mongo.sh на каждом PR,
     # а не «раз в квартал по памяти» (CLAUDE.md, «Данные (MongoDB)»; RUNBOOK §7):
     # засеваем документы, бэкапим, восстанавливаем во вторую базу того же mongod,
-    # сравниваем содержимое.
+    # сравниваем содержимое. Идёт всегда — данные и бэкапы не завязаны на
+    # фильтр путей api/web.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -279,11 +466,9 @@ jobs:
       TARGET_URI: mongodb://127.0.0.1:27017/backuptest-restored
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/setup
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
+          build-shared: 'false'
       - name: mongodb-database-tools (mongodump/mongorestore)
         run: |
           VER=100.9.4

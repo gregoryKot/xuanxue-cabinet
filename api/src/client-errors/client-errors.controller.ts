@@ -4,7 +4,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/auth.decorators';
-import { requestIdOf, type RequestLike } from '../common/request-info';
+import { requestIdOf, userAgentOf, type RequestLike } from '../common/request-info';
 import { ClientErrorsService } from './client-errors.service';
 import { ReportClientErrorDto } from './report-client-error.dto';
 
@@ -24,6 +24,6 @@ export class ClientErrorsController {
   @Post()
   @HttpCode(HttpStatus.NO_CONTENT)
   report(@Body() body: ReportClientErrorDto, @Req() request: RequestLike): void {
-    this.clientErrorsService.report(body, requestIdOf(request));
+    this.clientErrorsService.report(body, requestIdOf(request), userAgentOf(request));
   }
 }

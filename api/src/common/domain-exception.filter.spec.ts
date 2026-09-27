@@ -4,6 +4,7 @@ import { ThrottlerException } from '@nestjs/throttler';
 import type { Logger } from 'nestjs-pino';
 import type { ApiErrorBody } from '@xuanxue/shared';
 import type { AppErrorAlertContext, AppErrorAlerts } from './app-error-alerts';
+import type { AppErrorJournal, AppErrorJournalEntry } from './app-error-journal';
 import { DomainExceptionFilter } from './domain-exception.filter';
 import { ConflictError, NotAvailableError, NotFoundError } from './errors';
 
@@ -14,7 +15,11 @@ import { ConflictError, NotAvailableError, NotFoundError } from './errors';
 // тесты его не передают, фильтру они не нужны.
 function buildHost(
   requestId?: string,
-  request: { method?: string; url?: string } = {},
+  request: {
+    method?: string;
+    url?: string;
+    headers?: Record<string, string | string[] | undefined>;
+  } = {},
 ): {
   host: ArgumentsHost;
   getStatusCode: () => number | undefined;
@@ -76,6 +81,19 @@ function buildAppErrorAlerts(rejectWith?: Error): {
   // этот фильтр, отдельный тест — client-errors.service.spec.ts).
   const notifyClientError = (): Promise<void> => Promise.resolve();
   return { appErrorAlerts: { notifyServerError, notifyClientError }, calls };
+}
+
+// Фейк AppErrorJournal — тем же приёмом, что buildAppErrorAlerts выше.
+function buildAppErrorJournal(rejectWith?: Error): {
+  appErrorJournal: AppErrorJournal;
+  calls: AppErrorJournalEntry[];
+} {
+  const calls: AppErrorJournalEntry[] = [];
+  const record = (entry: AppErrorJournalEntry): Promise<void> => {
+    calls.push(entry);
+    return rejectWith ? Promise.reject(rejectWith) : Promise.resolve();
+  };
+  return { appErrorJournal: { record }, calls };
 }
 
 describe('DomainExceptionFilter', () => {
@@ -234,6 +252,23 @@ describe('DomainExceptionFilter', () => {
     });
     expect(errorCalls).toHaveLength(0);
     expect(warnCalls).toHaveLength(1);
+  });
+
+  // Тот же warn, но без кода обращения (requestIdOf вернул undefined) — в
+  // строке лога должен стоять прочерк, не слово «undefined».
+  it('битый JSON без кода обращения — в warn-логе прочерк', () => {
+    const { logger, warnCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host } = buildHost();
+
+    const bodyParserError = Object.assign(new Error('Unexpected token } in JSON'), {
+      status: 400,
+      expose: true,
+      type: 'entity.parse.failed',
+    });
+    filter.catch(bodyParserError, host);
+
+    expect(warnCalls[0]).toContain('requestId=-');
   });
 
   it('неподдерживаемый charset (body-parser charset.unsupported, 415) → bad_request её же статусом', () => {
@@ -405,6 +440,79 @@ describe('DomainExceptionFilter — алёрт админу (AppErrorAlerts)', (
     const { logger, errorCalls } = buildLogger();
     const filter = new DomainExceptionFilter(logger);
     const { host, getStatusCode, getJsonBody } = buildHost('req-12', {
+      method: 'GET',
+      url: '/api/x',
+    });
+
+    expect(() => filter.catch(new Error('boom'), host)).not.toThrow();
+
+    expect(getStatusCode()).toBe(500);
+    expect(getJsonBody()).toMatchObject({ code: 'internal_error' });
+    expect(errorCalls).toHaveLength(1);
+  });
+});
+
+// Журнал сбоев (ADR-0132) — тот же контракт, что у алёрта в Telegram выше,
+// но текст исключения теперь идёт дальше, чем лог Railway: в базу, для
+// экрана «Сбои» (admin). `@Optional()` без реализации — фильтр не меняет
+// поведение, тем же приёмом, что у AppErrorAlerts.
+describe('DomainExceptionFilter — журнал сбоев (AppErrorJournal)', () => {
+  it('неизвестная ошибка → пишет в журнал source: server, kind: server, путь без query, текст исключения и User-Agent', () => {
+    const { logger } = buildLogger();
+    const { appErrorJournal, calls } = buildAppErrorJournal();
+    const filter = new DomainExceptionFilter(logger, undefined, appErrorJournal);
+    const { host, getStatusCode } = buildHost('req-20', {
+      method: 'POST',
+      url: '/api/lessons/1/recording?token=secret',
+      headers: { 'user-agent': 'Mozilla/5.0' },
+    });
+
+    filter.catch(new Error('TypeError: x is undefined'), host);
+
+    expect(getStatusCode()).toBe(500);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({
+      requestId: 'req-20',
+      source: 'server',
+      kind: 'server',
+      method: 'POST',
+      path: '/api/lessons/1/recording',
+      text: 'TypeError: x is undefined',
+      userAgent: 'Mozilla/5.0',
+    });
+  });
+
+  it('доменная ошибка — не пишет в журнал, это не сбой сервера', () => {
+    const { logger } = buildLogger();
+    const { appErrorJournal, calls } = buildAppErrorJournal();
+    const filter = new DomainExceptionFilter(logger, undefined, appErrorJournal);
+    const { host } = buildHost('req-21', { method: 'GET', url: '/api/x' });
+
+    filter.catch(new NotFoundError('Занятие не найдено'), host);
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it('журнал отказал (Promise.reject) — ответ 500 всё равно уходит, отказ — в лог', async () => {
+    const { logger, errorCalls } = buildLogger();
+    const { appErrorJournal } = buildAppErrorJournal(new Error('mongo недоступна'));
+    const filter = new DomainExceptionFilter(logger, undefined, appErrorJournal);
+    const { host, getStatusCode } = buildHost('req-22', {
+      method: 'GET',
+      url: '/api/x',
+    });
+
+    expect(() => filter.catch(new Error('boom'), host)).not.toThrow();
+    await Promise.resolve();
+
+    expect(getStatusCode()).toBe(500);
+    expect(errorCalls.some((c) => c.message.includes('app_error journal'))).toBe(true);
+  });
+
+  it('без AppErrorJournal (@Optional() ничего не внедрил) — фильтр работает как раньше', () => {
+    const { logger, errorCalls } = buildLogger();
+    const filter = new DomainExceptionFilter(logger);
+    const { host, getStatusCode, getJsonBody } = buildHost('req-23', {
       method: 'GET',
       url: '/api/x',
     });
