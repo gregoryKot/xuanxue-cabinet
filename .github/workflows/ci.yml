@@ -147,6 +147,10 @@ jobs:
         run: node scripts/check-outbound-timeout.mjs
       - name: нумерация ADR — один номер, одно решение
         run: node scripts/check-adr-numbers.mjs
+      # 2026-09-27 маркеры конфликта уехали в main в оглавлении ADR: prettier
+      # переформатировал их в таблицу и цитату, и ни один гейт их не увидел.
+      - name: маркеров конфликта слияния нет
+        run: node scripts/check-conflict-markers.mjs
       - run: npm ci
       # Тесты храповиков стоят ПОСЛЕ `npm ci`: разбор текста для
       # check-text-accents.mjs идёт компилятором TypeScript (scripts/
