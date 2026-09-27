@@ -2,7 +2,7 @@
 // «Продуктовая фича = число в своём разделе», ADR-0133) — по образцу
 // useExamImageStats.ts.
 import type { ExamVideoStatsDto } from '@xuanxue/shared';
-import { EXAM_VIDEO_STATS_PATH } from '../api/apiPaths';
+import { EXAM_VIDEO_STATS_PATH } from '../api/examVideoPaths';
 import { apiFetch } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 

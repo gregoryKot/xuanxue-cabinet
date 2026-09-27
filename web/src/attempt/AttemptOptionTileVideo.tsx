@@ -8,11 +8,10 @@
 // тайл остаётся одной целью (см. основной файл).
 import type { CSSProperties, ReactNode } from 'react';
 import { ExamVideoPlayer } from '../components/ExamVideoPlayer';
+import { footStyle, mediaStyle } from './attemptOptionTileStyles';
 
 interface AttemptOptionTileVideoProps {
   tileStyle: CSSProperties;
-  mediaStyle: CSSProperties;
-  footStyle: CSSProperties;
   videoId?: string;
   videoUrl?: string;
   label: string;
@@ -24,8 +23,6 @@ interface AttemptOptionTileVideoProps {
 
 export function AttemptOptionTileVideo({
   tileStyle,
-  mediaStyle,
-  footStyle,
   videoId,
   videoUrl,
   label,

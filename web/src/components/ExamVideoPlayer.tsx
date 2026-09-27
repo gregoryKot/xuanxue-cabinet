@@ -10,7 +10,7 @@
 // ADR-0100): свой встроенный плеер сюда не пишем, чтобы не завести вторую
 // реализацию одного и того же.
 import type { CSSProperties } from 'react';
-import { examVideoSrc } from '../api/apiPaths';
+import { examVideoSrc } from '../api/examVideoPaths';
 import { VideoEmbed } from './VideoEmbed';
 
 type ExamVideoPlayerSize = 'thumb' | 'tile' | 'full';

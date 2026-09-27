@@ -13,7 +13,7 @@
 // «Сохранить» его правит, не плодит дубль.
 import type { ClassDto, MaterialDto } from '@xuanxue/shared';
 import { MATERIALS_PATH } from '../api/apiPaths';
-import { useAuthConfig } from '../auth/useAuthConfig';
+import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { SimpleEditorForm } from '../components/SimpleEditorForm';
 import { MaterialFileField } from './MaterialFileField';
@@ -40,9 +40,8 @@ export function MaterialEditorForm({
   editor,
 }: MaterialEditorFormProps) {
   // Нет ключей R2 (ADR-0057) — поля файла нет вовсе, а не кнопка, которая
-  // ответит 503. Хук уже используется вне экрана входа (AttemptScreen.tsx).
-  const authConfig = useAuthConfig();
-  const fileStorageEnabled = authConfig.config?.fileStorageEnabled === true;
+  // ответит 503.
+  const fileStorageEnabled = useFileStorageEnabled();
 
   const newFile = useNewMaterialFile(editor.create);
   const effectiveMaterial = material ?? newFile.createdMaterial;

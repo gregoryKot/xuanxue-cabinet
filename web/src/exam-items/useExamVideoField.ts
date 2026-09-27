@@ -6,7 +6,7 @@
 // бы состояние, которое экран никогда не покажет вместе с первым.
 import { useState } from 'react';
 import type { ExamVideoDto } from '@xuanxue/shared';
-import { EXAM_VIDEOS_PATH } from '../api/apiPaths';
+import { EXAM_VIDEOS_PATH } from '../api/examVideoPaths';
 import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
 import { validateExamVideoUrl, type ExamVideoValue } from './examVideoFormInput';
 

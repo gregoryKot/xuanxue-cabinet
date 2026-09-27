@@ -6,7 +6,7 @@
 // ссылки на статистику здесь нет — они появляются, когда вопрос уже
 // существует (ExamItemEditorForm.tsx), а этот вопрос только создаётся.
 import type { CSSProperties } from 'react';
-import { useAuthConfig } from '../auth/useAuthConfig';
+import { useFileStorageEnabled } from '../auth/useFileStorageEnabled';
 import { FormServerError } from '../components/FormServerError';
 import { InlineFormFooter } from '../components/InlineFormFooter';
 import { RichText } from '../components/RichText';
@@ -42,9 +42,7 @@ interface NewQuestionFormProps {
 
 export function NewQuestionForm({ onCreated, onCancel }: NewQuestionFormProps) {
   const form = useNewQuestionForm();
-  // Загрузка в R2 (ADR-0133) — тем же приёмом, что ExamItemEditorForm.tsx.
-  const authConfig = useAuthConfig();
-  const fileStorageEnabled = authConfig.config?.fileStorageEnabled === true;
+  const fileStorageEnabled = useFileStorageEnabled();
 
   async function handleSave() {
     const created = await form.submit();

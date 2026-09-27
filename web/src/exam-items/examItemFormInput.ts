@@ -5,21 +5,20 @@
 // видео и варианты ответа.
 import {
   EXAM_ITEM_LIMITS,
-  ITEM_ONE_VIDEO_SOURCE_MESSAGE,
   OPTION_CONTENT_REQUIRED_MESSAGE,
-  OPTION_ONE_MEDIA_MESSAGE,
   type CreateExamItemInput,
   type ExamItemDto,
   type ExamItemKind,
   type ExamItemOptionInput,
   type UpdateExamItemInput,
 } from '@xuanxue/shared';
+import { validateExamVideoMedia } from './examVideoFormInput';
 
 /** `imageId`/`videoId`/`videoUrl` — медиа варианта (ADR-0035/ADR-0133): форма
  * несёт их сквозь правку как есть, иначе «открыл, поправил текст, сохранил»
  * молча снимало бы медиа с варианта — options в PATCH заменяют набор целиком.
- * Не больше одного вида медиа разом — проверяет validateExamItemForm ниже,
- * тем же правилом, что assertOptionsForKind на бэкенде. */
+ * Не больше одного вида медиа разом — проверяет validateExamVideoMedia
+ * (examVideoFormInput.ts) тем же правилом, что assertOptionsForKind. */
 export interface ExamItemOptionDraft {
   id?: string;
   text: string;
@@ -75,7 +74,8 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
  * отклонит, вместо круга «сохранить → 400 → понять почему». */
 export function validateExamItemForm(state: ExamItemFormState): string | null {
   if (!state.prompt.trim()) return 'Впишите формулировку вопроса.';
-  if (state.videoId && state.videoUrl) return ITEM_ONE_VIDEO_SOURCE_MESSAGE;
+  const mediaError = validateExamVideoMedia(state);
+  if (mediaError) return mediaError;
   if (!hasOptions(state.kind)) return null;
 
   if (
@@ -93,18 +93,6 @@ export function validateExamItemForm(state: ExamItemFormState): string | null {
     )
   ) {
     return OPTION_CONTENT_REQUIRED_MESSAGE;
-  }
-  // Одно медиа на вариант — картинка или видео (файл или ссылка), не оба
-  // разом (ADR-0133), тем же правилом, что assertOptionsForKind.
-  if (
-    state.options.some(
-      (option) => Boolean(option.imageId) && Boolean(option.videoId || option.videoUrl),
-    )
-  ) {
-    return OPTION_ONE_MEDIA_MESSAGE;
-  }
-  if (state.options.some((option) => option.videoId && option.videoUrl)) {
-    return OPTION_ONE_MEDIA_MESSAGE;
   }
   const correctCount = state.options.filter((option) => option.correct).length;
   if (state.kind === 'single' && correctCount !== 1) {
