@@ -32,7 +32,7 @@ export function optionsAfterKindChange(
 }
 
 /** Обработчик смены типа для ExamItemKindField (общий для страницы вопроса и
- * NewQuestionForm — CLAUDE.md «Одна механика — один компонент», иначе оба
+ * QuestionInlineForm — CLAUDE.md «Одна механика — один компонент», иначе оба
  * места повторяли бы одни и те же два вызова `setField`). */
 export function changeExamItemKind(
   kind: ExamItemKind,

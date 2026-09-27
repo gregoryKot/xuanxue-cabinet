@@ -100,6 +100,12 @@
 // духу данными (userAgent, путь запроса) выпала из чеклиста CLAUDE.md
 // «Новая коллекция» — она проходит его пунктом 1 честным «нет userId», не
 // молчаливым пропуском.
+// ADR-0137 (answer_videos) — загрузка видео-ответа частями: данные ученика,
+// `userId` — чья загрузка, срок хранения — ANSWER_VIDEO_RETENTION (90 дней
+// после проверки, год без неё), убирает AnswerVideoSweepService. Объект в R2
+// — не документ Mongo, до него не достать `deleteMany` по владению, поэтому
+// модель есть и здесь (сверка user-data.registry.spec.ts требует явного
+// решения для КАЖДОЙ модели с userId), и в USER_OWNED_STORAGE_CASCADES ниже.
 export const USER_OWNED_COLLECTIONS = [
   'ExamAttemptRecord',
   'NotificationPrefsRecord',
@@ -111,6 +117,7 @@ export const USER_OWNED_COLLECTIONS = [
   'NotificationRecord',
   'PushSubscriptionRecord',
   'ExamSeenMarkRecord',
+  'AnswerVideoRecord',
 ] as const;
 
 // Имя модели пользователей по конвенции *Record этого проекта — совпадает с
@@ -129,6 +136,19 @@ export type UserOwnedCollection = (typeof USER_OWNED_COLLECTIONS)[number];
 // (сверка — user-data.registry.spec.ts).
 export const USER_OWNED_CASCADES = [
   { from: 'PaymentRecord', path: 'screenshotImageId', model: 'PaymentScreenshotRecord' },
+] as const;
+
+// Данные во владении (USER_OWNED_COLLECTIONS), у которых есть путь `key` —
+// адрес объекта в стороннем хранилище (R2), а не документ Mongo (ADR-0137):
+// `deleteAllUserData` не достаёт до байтов простым `deleteMany`. Для каждой
+// такой модели — своя запись здесь: ключ отдаётся журналу сирот
+// (`StorageOrphansService.removeNow`) ДО удаления документа, `uploadIdPath`
+// (если есть) — незаконченную multipart-загрузку раньше прерывает
+// `abortMultipartUpload`. Сверка (user-data.registry.spec.ts): модель во
+// владении с путём `key` в схеме обязана стоять здесь — иначе байты ученика
+// пережили бы удалённый аккаунт молча.
+export const USER_OWNED_STORAGE_CASCADES = [
+  { model: 'AnswerVideoRecord', keyPath: 'key', uploadIdPath: 'uploadId' },
 ] as const;
 
 // Ссылки на пользователя в данных школы: слияние аккаунтов переписывает их на

@@ -90,6 +90,13 @@ export class MediaAssetRecord {
   @Prop({ type: String, required: false })
   note?: string;
 
+  // Только `kind: 'file'` (ADR-0137) — id записи `answer_videos`, чьи байты
+  // лежат в R2. Не `ref` — та коллекция не в MediaModule, тем же приёмом,
+  // что itemId выше. Снимается ($unset) уборщиком (AnswerVideoSweepService)
+  // вместе с самим файлом — факт получения остаётся, ссылка на байты нет.
+  @Prop({ type: SchemaTypes.ObjectId, required: false })
+  answerVideoId?: Types.ObjectId;
+
   @Prop({ type: Date, required: true })
   receivedAt!: Date;
 }
@@ -109,6 +116,13 @@ MediaAssetSchema.index({ userId: 1 });
 MediaAssetSchema.index(
   { attemptId: 1, itemId: 1 },
   { unique: true, partialFilterExpression: { kind: 'link' } },
+);
+// Уборщик видео-ответов (ADR-0137, AnswerVideoSweepService) снимает
+// answerVideoId у media_assets при удалении файла — частичный индекс: только
+// записи kind: 'file', им одним это поле нужно.
+MediaAssetSchema.index(
+  { answerVideoId: 1 },
+  { partialFilterExpression: { kind: 'file' } },
 );
 
 export const MEDIA_ASSET_FIELD_POLICY: FieldPolicy = {

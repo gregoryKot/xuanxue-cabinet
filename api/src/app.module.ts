@@ -21,6 +21,7 @@ import { AppErrorsModule } from './app-errors/app-errors.module';
 import { ClientErrorsModule } from './client-errors/client-errors.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
 import { DeliveriesModule } from './deliveries/deliveries.module';
+import { AnswerVideosModule } from './answer-videos/answer-videos.module';
 import { ExamImagesModule } from './exam-images/exam-images.module';
 import { ExamsModule } from './exams/exams.module';
 import { GradingPresetsModule } from './grading-presets/grading-presets.module';
@@ -82,6 +83,10 @@ import { staticAssetsOptions } from './static/static-cache-control';
     DeliveriesModule,
     ExamsModule,
     ExamImagesModule,
+    // ADR-0137 — видео-ответ ученика частями. Импортирует MediaModule сам
+    // (media-asset-insert.ts, ExamMediaNotifierRegistry) — регистрируется
+    // здесь же, отдельно от ExamsModule, чтобы не тянуть его цикл ради этого.
+    AnswerVideosModule,
     // Раньше ClientErrorsModule — журнал сбоев (APP_ERROR_JOURNAL) нужен и
     // ему, и DomainExceptionFilter ниже (providers этого модуля).
     AppErrorsModule,

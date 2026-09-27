@@ -30,7 +30,10 @@ export function toExamMediaDto(doc: RawLeanMediaAsset): ExamMediaDto {
     kind: doc.kind,
     url: doc.kind === 'link' ? doc.url : undefined,
     durationSec: doc.kind === 'telegram' ? doc.durationSec : undefined,
-    sizeBytes: doc.kind === 'telegram' ? doc.sizeBytes : undefined,
+    // 'telegram' — из самого сообщения; 'file' (ADR-0137) — заявленный
+    // размер файла в R2.
+    sizeBytes: doc.kind === 'telegram' || doc.kind === 'file' ? doc.sizeBytes : undefined,
+    answerVideoId: doc.kind === 'file' ? doc.answerVideoId?.toString() : undefined,
     receivedAt: toIsoUtc(doc.receivedAt),
     note: doc.note,
   };

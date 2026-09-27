@@ -42,6 +42,7 @@
 // (PushExamNotifier, ADR-0092): человек, чья попытка закрылась по дедлайну,
 // должен получить push так же, как и при явном submit.
 import { Module } from '@nestjs/common';
+import { AnswerVideosModule } from '../answer-videos/answer-videos.module';
 import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import { SCHEDULER_HEARTBEAT } from '../common/scheduler-heartbeat';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
@@ -96,6 +97,11 @@ import { SchedulerService } from './scheduler.service';
     ExamItemModelModule,
     ExamImagesModule,
     ExamVideosModule,
+    // AnswerVideosModule — AnswerVideoSweepService (ADR-0137) уже провайдер
+    // этого модуля (модели answer_videos/media_assets/exam_gradings и
+    // MultipartStoreService/StorageOrphansService собраны там же), сюда его
+    // импортирует SchedulerModule, а не наоборот — цикла нет.
+    AnswerVideosModule,
     NotificationsModule,
     PushModule,
     // Модели оплат и снимков (`payments`, `payment_screenshots`) для шага

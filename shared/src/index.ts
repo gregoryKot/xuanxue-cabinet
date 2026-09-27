@@ -224,6 +224,20 @@ export {
   EXAM_VIDEO_TOO_LARGE_MESSAGE,
   EXAM_VIDEO_NOT_FOUND_MESSAGE,
 } from './exam-videos';
+export type {
+  StartAnswerVideoInput,
+  AnswerVideoUploadDto,
+  AnswerVideoStatsDto,
+} from './answer-videos';
+export {
+  ANSWER_VIDEO_LIMITS,
+  ANSWER_VIDEO_RETENTION,
+  ANSWER_VIDEO_TOO_LARGE_MESSAGE,
+  ANSWER_VIDEO_PART_INVALID_MESSAGE,
+  ANSWER_VIDEO_PARTS_MISSING_MESSAGE,
+  ANSWER_VIDEO_NOT_FOUND_MESSAGE,
+  ANSWER_VIDEO_FIRST_PART_REQUIRED_MESSAGE,
+} from './answer-videos';
 export { FILE_STORAGE_OFF_MESSAGE, FILE_STORAGE_FAILED_MESSAGE } from './file-store';
 export type { MaterialFileContentType, MaterialFileDto } from './material-files';
 export {

@@ -4,6 +4,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { FileStoreService } from './file-store.service';
+import { MultipartStoreService } from './multipart-store.service';
 import { StorageOrphanRecord, StorageOrphanSchema } from './storage-orphan.schema';
 import { StorageOrphansService } from './storage-orphans.service';
 
@@ -13,7 +14,10 @@ import { StorageOrphansService } from './storage-orphans.service';
       { name: StorageOrphanRecord.name, schema: StorageOrphanSchema },
     ]),
   ],
-  providers: [FileStoreService, StorageOrphansService],
-  exports: [FileStoreService, StorageOrphansService],
+  // MultipartStoreService (ADR-0137) — второй адаптер объектного хранилища,
+  // рядом с FileStoreService: multipart-загрузка видео-ответа, не обычный
+  // PUT/DELETE/подписанная ссылка.
+  providers: [FileStoreService, MultipartStoreService, StorageOrphansService],
+  exports: [FileStoreService, MultipartStoreService, StorageOrphansService],
 })
 export class StorageModule {}

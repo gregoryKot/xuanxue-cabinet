@@ -47,6 +47,9 @@ function summarizeVideo(media: readonly ExamMediaDto[]): string {
   // точно в этом чате; кнопка на карточке проверки достаёт его заново.
   if (last.kind === 'telegram') return 'Видео получено.';
   if (last.kind === 'link') return `Видео по ссылке: ${last.url}`;
+  // ADR-0137: файл в R2 — открывается только в кабинете (ссылки в боте нет,
+  // сессия ученика туда не долетает).
+  if (last.kind === 'file') return 'Видео-файл — в кабинете.';
   return last.note
     ? `Отмечено вручную: ${last.note}`
     : 'Отмечено вручную, без комментария.';

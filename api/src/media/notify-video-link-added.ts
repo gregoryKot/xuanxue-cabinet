@@ -26,6 +26,23 @@ export function notifyVideoLinkAdded(
   url: string,
   now: DateTime,
 ): void {
+  notifyVideoAdded(registry, attemptId, owner, userId, itemId, now, 'link', url);
+}
+
+/** Общая часть с notifyVideoLinkAdded — ADR-0137 добавляет второй источник
+ * (файл в R2, answer-videos/answer-video-complete.ts), тот же best-effort
+ * вызов реестра, другой `source`/`url`. Не дублируем catch/лог отдельным
+ * файлом ради jscpd-храповика (CLAUDE.md «Храповики»). */
+export function notifyVideoAdded(
+  registry: ExamMediaNotifierRegistry,
+  attemptId: string,
+  owner: AttemptOwnerInfo,
+  userId: string,
+  itemId: string | undefined,
+  now: DateTime,
+  source: 'link' | 'file',
+  url?: string,
+): void {
   const notifier = registry.getOrNull();
   if (!notifier) return;
   notifier
@@ -36,6 +53,7 @@ export function notifyVideoLinkAdded(
         examTitle: owner.examTitle,
         userId,
         questionPrompt: videoQuestionPromptInSnapshot(owner.blocks, itemId),
+        source,
         url,
       },
       now,

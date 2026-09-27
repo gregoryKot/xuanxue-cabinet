@@ -9,7 +9,7 @@
 // подписи уже негде, кроме вывода ключа. Остальные векторы сняты с botocore
 // (эталонная реализация AWS) для адресов формы R2.
 import { DateTime } from 'luxon';
-import { encodeRfc3986, sha256Hex } from './sigv4-canonical';
+import { canonicalQuery, encodeRfc3986, sha256Hex } from './sigv4-canonical';
 import { presignGetUrl, signRequestHeaders } from './sigv4';
 
 // Тот же момент времени, что в примере AWS, — «Fri, 24 May 2013 00:00:00 GMT».
@@ -224,5 +224,26 @@ describe('signRequestHeaders', () => {
         credentials: R2_CREDENTIALS,
       }).authorization;
     expect(sign(body)).not.toBe(sign(Buffer.from('%PDF-1.4 hellp')));
+  });
+
+  // Multipart (createMultipartUpload/uploadPart/completeMultipartUpload,
+  // multipart-store.service.ts) подписывает POST/PUT с query — подмена
+  // значения обязана менять подпись, иначе query не участвовал бы в ней.
+  it('query участвует в подписи POST — другой uploadId даёт другую подпись', () => {
+    const sign = (uploadId: string): string =>
+      signRequestHeaders({
+        method: 'POST',
+        url: R2_OBJECT_URL,
+        headers: {},
+        body: Buffer.alloc(0),
+        query: { uploadId },
+        now: NOW,
+        credentials: R2_CREDENTIALS,
+      }).authorization;
+    expect(sign('abc')).not.toBe(sign('def'));
+  });
+
+  it('ключ без значения (`uploads`) канонизируется как `uploads=`', () => {
+    expect(canonicalQuery({ uploads: '' })).toBe('uploads=');
   });
 });

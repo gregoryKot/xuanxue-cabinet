@@ -569,25 +569,49 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
     expect(body.body.blocks[0]?.questionsPerAttempt).toBe(1);
   });
 
-  it('«Вопросов ученику» пусто — кнопок ★/☆ нет (ADR-0082, дополнение)', async () => {
+  // Отзыв владельца 2026-09-27: «не нашёл способа сделать вопрос
+  // обязательным, хотя в объяснении это указано» — ★ теперь видна и без
+  // «Вопросов ученику», иначе он не нашёл бы её тем же способом снова.
+  it('«Вопросов ученику» пусто — кнопки ★/☆ всё равно видны', async () => {
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
     await screen.findByText('Зачем придумали тайцзи?');
 
-    expect(
-      screen.queryByRole('button', { name: 'Обязательный' }),
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Обязательный' })).toHaveLength(2);
   });
 
-  it('«Вопросов ученику» заполнено — кнопки ★/☆ появляются', async () => {
+  it('★ отмечена при пустом «Вопросов ученику» — короткая подсказка под списком', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam());
 
     renderAt('/exams/x1');
-    await user.type(await screen.findByLabelText('Вопросов ученику'), '1');
+    await screen.findByText('Зачем придумали тайцзи?');
+    const rows = screen.getAllByRole('listitem');
+    const star = within(rows[0] as HTMLElement).getByRole('button', {
+      name: 'Обязательный',
+    });
+    expect(star).toHaveAttribute('aria-pressed', 'false');
 
-    expect(screen.getAllByRole('button', { name: 'Обязательный' })).toHaveLength(2);
+    await user.click(star);
+
+    expect(star).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/сработает, когда часть вопросов/)).toBeInTheDocument();
+  });
+
+  it('«Вопросов ученику» заполнено — подсказки про ★ нет', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await screen.findByText('Зачем придумали тайцзи?');
+    const rows = screen.getAllByRole('listitem');
+    await user.click(
+      within(rows[0] as HTMLElement).getByRole('button', { name: 'Обязательный' }),
+    );
+    await user.type(screen.getByLabelText('Вопросов ученику'), '1');
+
+    expect(screen.queryByText(/сработает, когда часть вопросов/)).not.toBeInTheDocument();
   });
 
   it('клик по ☆ отмечает вопрос обязательным — уходит в PATCH requiredItemIds', async () => {
@@ -608,6 +632,28 @@ describe('ExamEditorScreen — как проходит экзамен', () => {
       within(rows[0] as HTMLElement).getByText(/· обязательный/),
     ).toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
+    const body = lastCallWithMethod('PATCH')[0]?.[1] as {
+      body: { blocks: { requiredItemIds?: string[] }[] };
+    };
+    expect(body.body.blocks[0]?.requiredItemIds).toEqual(['i1']);
+  });
+
+  // requiredIds с пустым questionsPerAttempt сервер принимает и без эффекта
+  // (api/src/exams/exam-blocks.ts, assertRequiredFitsPick — проверка только
+  // при заданном лимите) — форма не обязана прятать их перед отправкой.
+  it('★ отмечена без заполненного «Вопросов ученику» — сохранение не ломается', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam());
+
+    renderAt('/exams/x1');
+    await screen.findByText('Зачем придумали тайцзи?');
+    const rows = screen.getAllByRole('listitem');
+    await user.click(
+      within(rows[0] as HTMLElement).getByRole('button', { name: 'Обязательный' }),
+    );
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
@@ -905,8 +951,10 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
 
     renderAt('/exams/x1');
     await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+    // Фокус сразу в формулировке — без лишнего клика (отзыв владельца 2026-09-27).
+    expect(screen.getByLabelText('Формулировка')).toHaveFocus();
     await user.type(screen.getByLabelText('Формулировка'), 'Как дышать в стойке?');
-    await user.click(screen.getByRole('button', { name: 'Сохранить вопрос' }));
+    await user.click(screen.getByRole('button', { name: 'Добавить в экзамен' }));
 
     await waitFor(() => expect(lastCallWithMethod('POST')).toHaveLength(1));
     expect(await screen.findByText('Как дышать в стойке?')).toBeInTheDocument();
@@ -915,13 +963,13 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     expect(screen.getByLabelText('Найти вопрос — по тексту')).toBeInTheDocument();
   });
 
-  it('пустая формулировка — «Сохранить вопрос» не уходит на сервер, форма остаётся', async () => {
+  it('пустая формулировка — «Добавить в экзамен» не уходит на сервер, форма остаётся', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam({ blocks: [] }));
 
     renderAt('/exams/x1');
     await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
-    await user.click(await screen.findByRole('button', { name: 'Сохранить вопрос' }));
+    await user.click(await screen.findByRole('button', { name: 'Добавить в экзамен' }));
 
     expect(lastCallWithMethod('POST')).toHaveLength(0);
     expect(screen.getByLabelText('Формулировка')).toBeInTheDocument();
@@ -938,16 +986,6 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
 
     expect(lastCallWithMethod('POST')).toHaveLength(0);
     expect(screen.getByLabelText('Найти вопрос — по тексту')).toBeInTheDocument();
-  });
-
-  it('честно объясняет: вопрос закрепится в экзамене только после «Сохранить»', async () => {
-    const user = userEvent.setup();
-    mockExamAndBank(makeExam({ blocks: [] }));
-
-    renderAt('/exams/x1');
-    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
-
-    expect(screen.getByText(/В экзамене он закрепится/)).toBeInTheDocument();
   });
 
   it('тип с вариантами — вопрос уходит с текстом и вариантами, верный отмечен', async () => {
@@ -972,7 +1010,7 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
     await user.type(screen.getByLabelText('Текст варианта 1'), '24');
     await user.type(screen.getByLabelText('Текст варианта 2'), '108');
     await user.click(screen.getByLabelText('Верный вариант 1'));
-    await user.click(screen.getByRole('button', { name: 'Сохранить вопрос' }));
+    await user.click(screen.getByRole('button', { name: 'Добавить в экзамен' }));
 
     await waitFor(() => expect(lastCallWithMethod('POST')).toHaveLength(1));
     const body = lastCallWithMethod('POST')[0]?.[1] as {
@@ -983,6 +1021,153 @@ describe('ExamEditorScreen — новый вопрос (ADR-0040)', () => {
       { id: undefined, text: '108', correct: false, imageId: undefined },
     ]);
     expect(await screen.findByText('Сколько форм?')).toBeInTheDocument();
+  });
+});
+
+// Отзыв владельца 2026-09-27: «нельзя отредактировать вопрос после
+// добавления, особенно важно когда выбираешь существующий — нельзя даже
+// посмотреть, какие там варианты».
+describe('ExamEditorScreen — раскрыть и изменить вопрос', () => {
+  function itemWithOptions(overrides: Partial<ExamItemDto> = {}): ExamItemDto {
+    return makeItem({
+      id: 'i1',
+      kind: 'single',
+      prompt: 'Зачем придумали тайцзи?',
+      options: [
+        { id: 'o1', text: '24 формы', correct: true },
+        { id: 'o2', text: '108 форм', correct: false },
+      ],
+      ...overrides,
+    });
+  }
+
+  it('раскрыл строку выбранного вопроса — видно варианты и отметку верного', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam(), [itemWithOptions(), BANK[1] as ExamItemDto]);
+
+    renderAt('/exams/x1');
+    const prompt = await screen.findByRole('button', {
+      name: 'Зачем придумали тайцзи?',
+    });
+    expect(prompt).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(prompt);
+
+    expect(prompt).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('24 формы')).toBeInTheDocument();
+    expect(screen.getByText('108 форм')).toBeInTheDocument();
+  });
+
+  it('раскрыл строку кандидата в поиске — видно варианты до «Добавить»', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam({ blocks: [] }), [itemWithOptions()]);
+
+    renderAt('/exams/x1');
+    const prompt = await screen.findByRole('button', {
+      name: 'Зачем придумали тайцзи?',
+    });
+    await user.click(prompt);
+
+    expect(screen.getByText('24 формы')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Изменить' })).not.toBeInTheDocument();
+  });
+
+  it('«Изменить» открывает заполненную форму; PATCH — read-after-write без перезапроса', async () => {
+    const user = userEvent.setup();
+    const original = itemWithOptions();
+    const updated = { ...original, prompt: 'Зачем нужна форма?' };
+    mockedApiFetch.mockImplementation((path: string, init?: { method?: string }) => {
+      if (path === '/exams/x1') return Promise.resolve(makeExam());
+      if (path === '/exam-items/i1' && init?.method === 'PATCH') {
+        return Promise.resolve(updated);
+      }
+      if (path.startsWith('/exam-items')) {
+        return Promise.resolve([original, BANK[1] as ExamItemDto]);
+      }
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderAt('/exams/x1');
+    await user.click(
+      await screen.findByRole('button', { name: 'Зачем придумали тайцзи?' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Изменить' }));
+
+    const promptField = screen.getByLabelText('Формулировка');
+    expect(promptField).toHaveValue('Зачем придумали тайцзи?');
+    expect(promptField).toHaveFocus();
+    expect(
+      screen.getByText('Изменения попадут во все экзамены с этим вопросом.'),
+    ).toBeInTheDocument();
+    // Тип ответа при правке не меняется — переключателей нет, только строка.
+    expect(
+      screen.queryByRole('radio', { name: 'Один правильный вариант' }),
+    ).not.toBeInTheDocument();
+
+    await user.clear(promptField);
+    await user.type(promptField, 'Зачем нужна форма?');
+    await user.click(screen.getByRole('button', { name: 'Сохранить вопрос' }));
+
+    await waitFor(() => expect(lastCallWithMethod('PATCH')).toHaveLength(1));
+    expect(lastCallWithMethod('PATCH')[0]?.[0]).toBe('/exam-items/i1');
+    const body = lastCallWithMethod('PATCH')[0]?.[1] as { body: { prompt: string } };
+    expect(body.body.prompt).toBe('Зачем нужна форма?');
+
+    // Строка сразу показывает новую формулировку, старой не осталось.
+    expect(await screen.findByText('Зачем нужна форма?')).toBeInTheDocument();
+    expect(screen.queryByText('Зачем придумали тайцзи?')).not.toBeInTheDocument();
+    // Раскрытие по-прежнему показывает варианты — уже у обновлённой записи.
+    const newPrompt = screen.getByRole('button', { name: 'Зачем нужна форма?' });
+    expect(newPrompt).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('24 формы')).toBeInTheDocument();
+  });
+
+  it('«Отменить» в правке закрывает форму и возвращает «Новый вопрос»', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam(), [itemWithOptions(), BANK[1] as ExamItemDto]);
+
+    renderAt('/exams/x1');
+    await user.click(
+      await screen.findByRole('button', { name: 'Зачем придумали тайцзи?' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Изменить' }));
+    expect(
+      screen.queryByRole('button', { name: 'Новый вопрос' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Отменить' }));
+
+    expect(screen.queryByLabelText('Формулировка')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Новый вопрос' })).toBeInTheDocument();
+  });
+
+  it('открыт «Новый вопрос» — «Изменить» у строк не видно (одна форма разом)', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam(), [itemWithOptions(), BANK[1] as ExamItemDto]);
+
+    renderAt('/exams/x1');
+    await user.click(await screen.findByRole('button', { name: 'Новый вопрос' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Зачем придумали тайцзи?' }),
+    );
+
+    expect(screen.queryByRole('button', { name: 'Изменить' })).not.toBeInTheDocument();
+  });
+
+  it('открыта правка строки — «Новый вопрос» и поиск скрыты', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam(), [itemWithOptions(), BANK[1] as ExamItemDto]);
+
+    renderAt('/exams/x1');
+    await user.click(
+      await screen.findByRole('button', { name: 'Зачем придумали тайцзи?' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Изменить' }));
+
+    expect(
+      screen.queryByRole('button', { name: 'Новый вопрос' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Найти вопрос — по тексту')).not.toBeInTheDocument();
   });
 });
 

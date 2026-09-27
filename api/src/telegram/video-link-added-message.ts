@@ -22,7 +22,11 @@ export interface VideoLinkAddedMessageInput {
   /** `null` — вопрос не определён: строку про вопрос тогда не пишем вовсе,
    * а не оставляем пустой хвост «Вопрос: ». */
   questionPrompt: string | null;
-  url: string;
+  /** `'link'` — сама ссылка второй строкой. `'file'` (ADR-0137) — видео
+   * файлом лежит в кабинете, публичной ссылки на него нет: открывается
+   * только через сессию (карточка проверки ниже). */
+  source: 'link' | 'file';
+  url?: string;
   attemptId: string;
 }
 
@@ -34,14 +38,18 @@ export function videoLinkAddedMessage(
   input: VideoLinkAddedMessageInput,
   publicUrl: string | undefined,
 ): string {
-  const header = `Ссылка на видео от ${input.studentName} по «${input.examTitle}».`;
+  const header =
+    input.source === 'file'
+      ? `Видео-файл от ${input.studentName} по «${input.examTitle}» — уже в кабинете.`
+      : `Ссылка на видео от ${input.studentName} по «${input.examTitle}».`;
   const question = input.questionPrompt
     ? `Вопрос: «${shorten(input.questionPrompt)}»`
     : undefined;
   const card = publicUrl
     ? `Оценить в кабинете: ${publicUrl}/grading/${input.attemptId}`
     : undefined;
-  return [header, question, input.url, card]
+  const videoLine = input.source === 'link' ? input.url : undefined;
+  return [header, question, videoLine, card]
     .filter((part): part is string => Boolean(part))
     .join('\n\n');
 }
