@@ -15,21 +15,16 @@ import {
   Inject,
   Optional,
 } from '@nestjs/common';
-import { DateTime } from 'luxon';
 import { Logger } from 'nestjs-pino';
 import type { ApiErrorBody } from '@xuanxue/shared';
 import { APP_ERROR_ALERTS, type AppErrorAlerts } from './app-error-alerts';
 import { APP_ERROR_JOURNAL, type AppErrorJournal } from './app-error-journal';
+import { reportUnknownError } from './unknown-error-report';
 import { fromBodyParserError, isBodyParserError } from './body-parser-error.mapper';
 import { errorMessage, errorStack } from './error-info';
 import { DomainError } from './errors';
 import { fromHttpException } from './http-exception.mapper';
-import {
-  pathWithoutQuery,
-  requestIdOf,
-  userAgentOf,
-  type RequestLike,
-} from './request-info';
+import { requestIdOf, type RequestLike } from './request-info';
 
 const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз через минуту.';
 
@@ -70,8 +65,14 @@ export class DomainExceptionFilter implements ExceptionFilter {
     // распознать ошибку (не DomainError, не HttpException, не entity.too.large)
     // — остальные коды сюда не приходят, отдельного флага не нужно.
     if (body.code === 'internal_error') {
-      this.notifyAppError(request, requestId, exception);
-      this.recordAppError(request, requestId, exception);
+      reportUnknownError(
+        {
+          logger: this.logger,
+          alerts: this.appErrorAlerts,
+          journal: this.appErrorJournal,
+        },
+        { request, requestId, exception },
+      );
     }
     response.status(body.statusCode).json(body);
   }
@@ -112,63 +113,5 @@ export class DomainExceptionFilter implements ExceptionFilter {
       message: GENERIC_MESSAGE,
       requestId,
     };
-  }
-
-  /** method/path запроса, которым бросили — общие для алёрта и журнала
-   * (CLAUDE.md «Одна механика — один компонент»), не дублируем разбор в
-   * обоих местах. `'-'` вместо `undefined`, если запрос синтетический
-   * (программная ошибка настройки, не HTTP). */
-  private requestContext(request: RequestLike): { method: string; path: string } {
-    const method = typeof request.method === 'string' ? request.method : '-';
-    const url = typeof request.url === 'string' ? request.url : undefined;
-    return { method, path: url === undefined ? '-' : pathWithoutQuery(url) };
-  }
-
-  /** Не должна задерживать или ломать ответ пользователю (CLAUDE.md
-   * «Ошибки»): зовём без await ответа клиенту, отказ порта ловим сами и
-   * пишем в лог, не бросаем дальше. */
-  private notifyAppError(
-    request: RequestLike,
-    requestId: string | undefined,
-    exception: unknown,
-  ): void {
-    if (!this.appErrorAlerts) return;
-    const context = { requestId, ...this.requestContext(request), message: errorMessage(exception) };
-    this.appErrorAlerts
-      .notifyServerError(context, DateTime.utc())
-      .catch((err: unknown) => {
-        this.logger.error(
-          `app_error alert: не удалось уведомить админа (requestId=${requestId ?? '-'}): ${errorMessage(err)}`,
-        );
-      });
-  }
-
-  /** Журнал сбоев (ADR-0132) — тот же приём, что notifyAppError выше: не
-   * задерживает ответ пользователю и не роняет фильтр отказом записи
-   * (AppErrorsService.record сама ловит свои ошибки, но и здесь есть
-   * `.catch()` — на случай отказа самого промиса до записи). */
-  private recordAppError(
-    request: RequestLike,
-    requestId: string | undefined,
-    exception: unknown,
-  ): void {
-    if (!this.appErrorJournal) return;
-    this.appErrorJournal
-      .record(
-        {
-          requestId,
-          source: 'server',
-          kind: 'server',
-          ...this.requestContext(request),
-          text: errorMessage(exception),
-          userAgent: userAgentOf(request),
-        },
-        DateTime.utc(),
-      )
-      .catch((err: unknown) => {
-        this.logger.error(
-          `app_error journal: не удалось записать сбой (requestId=${requestId ?? '-'}): ${errorMessage(err)}`,
-        );
-      });
   }
 }
