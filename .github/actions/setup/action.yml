@@ -1,0 +1,74 @@
+name: Подготовка джобы CI
+description: >
+  Общие шаги, повторявшиеся в каждой джобе ci.yml: setup-node, кеш бинаря
+  mongod для mongodb-memory-server (по требованию), npm ci и сборка shared.
+  Один файл вместо копипасты — правка кеша или порядка шагов не разъезжается
+  по джобам.
+
+inputs:
+  node-version:
+    description: Версия Node.js для actions/setup-node.
+    required: false
+    default: '22'
+  setup-node:
+    description: >
+      Ставить ли Node.js этим шагом. 'false' — когда в джобе Node.js уже
+      поставлен отдельным шагом раньше (checks: ранние шаги без npm ci
+      запускаются `node` до того, как этот action вызывается перед `npm ci`).
+    required: false
+    default: 'true'
+  mongo:
+    description: >
+      'true' — закешировать бинарь mongod для mongodb-memory-server
+      (джобам с jest/mongodb-memory-server). 'false' — пропустить.
+    required: false
+    default: 'false'
+  mongoms-version:
+    description: >
+      Версия бинаря mongod (MONGOMS_VERSION из ci.yml) — часть ключа кеша.
+      Обязателен, если mongo: 'true'.
+    required: false
+    default: ''
+  build-shared:
+    description: >
+      Собрать shared сразу после npm ci (api и web резолвят @xuanxue/shared
+      из shared/dist). 'false' — когда джобе shared не нужен вовсе.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - if: inputs.setup-node == 'true'
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+    # Наблюдение 2026-09-21: fastdl.mongodb.org ответил 503 на скачивании
+    # бинаря mongod (122 МБ) — джоба падала ДО тестов на чужом CDN. Библиотека
+    # сама выбирает каталог загрузки по INIT_CWD/cwd процесса, который плывёт
+    # между `npm ci` (корень), `npm test --workspace=api` (корень) и `npx jest`
+    # из scripts/check-coverage-ratchet.mjs (cwd=api/) — см. заголовок
+    # api/test/jest.global-setup.ts. `MONGOMS_DOWNLOAD_DIR` перебивает этот
+    # подбор одним и тем же путём во всех трёх местах, поэтому кешировать
+    # можно ровно его — без выбора «угадать, куда легла библиотека».
+    - if: inputs.mongo == 'true'
+      name: каталог загрузки бинаря mongod — один и тот же для npm ci и всех jest
+      shell: bash
+      run: echo "MONGOMS_DOWNLOAD_DIR=$HOME/.cache/mongodb-binaries" >> "$GITHUB_ENV"
+    # До `npm ci`: она полностью пересоздаёт node_modules, так что кеш внутри
+    # node_modules/.cache не пережил бы её — каталог из MONGOMS_DOWNLOAD_DIR
+    # снаружи node_modules, поэтому порядок наоборот не обязателен, но кеш
+    # ставим первым, чтобы бинарь уже был на месте к моменту постинсталла.
+    - if: inputs.mongo == 'true'
+      name: кеш бинаря mongod
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
+        key: mongodb-binaries-${{ runner.os }}-${{ inputs.mongoms-version }}
+    - shell: bash
+      run: npm ci
+    - if: inputs.build-shared == 'true'
+      name: сборка shared (api и web резолвят @xuanxue/shared из shared/dist)
+      shell: bash
+      run: npm run build --workspace=shared
