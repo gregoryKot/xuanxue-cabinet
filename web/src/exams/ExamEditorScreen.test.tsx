@@ -1110,6 +1110,25 @@ describe('ExamEditorScreen — раскрыть и изменить вопрос
     expect(screen.getByText('24 формы')).toBeInTheDocument();
   });
 
+  it('«Отменить» в правке закрывает форму и возвращает «Новый вопрос»', async () => {
+    const user = userEvent.setup();
+    mockExamAndBank(makeExam(), [itemWithOptions(), BANK[1] as ExamItemDto]);
+
+    renderAt('/exams/x1');
+    await user.click(
+      await screen.findByRole('button', { name: 'Зачем придумали тайцзи?' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Изменить' }));
+    expect(
+      screen.queryByRole('button', { name: 'Новый вопрос' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Отменить' }));
+
+    expect(screen.queryByLabelText('Формулировка')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Новый вопрос' })).toBeInTheDocument();
+  });
+
   it('открыт «Новый вопрос» — «Изменить» у строк не видно (одна форма разом)', async () => {
     const user = userEvent.setup();
     mockExamAndBank(makeExam(), [itemWithOptions(), BANK[1] as ExamItemDto]);

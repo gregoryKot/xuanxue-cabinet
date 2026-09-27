@@ -3,6 +3,7 @@
 // правке, и фокус сразу в формулировку при открытии (отзыв владельца:
 // «фокус сразу в поле, без лишнего клика»).
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ExamItemDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -62,5 +63,17 @@ describe('QuestionInlineForm', () => {
       screen.getByText('Изменения попадут во все экзамены с этим вопросом.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Сохранить вопрос' })).toBeInTheDocument();
+  });
+
+  it('форма не прошла проверку — onSaved не зовётся, форма остаётся открытой', async () => {
+    const user = userEvent.setup();
+    mockedApiFetch.mockRejectedValue(new Error('нет сети'));
+    const onSaved = vi.fn();
+
+    render(<QuestionInlineForm item={null} onSaved={onSaved} onCancel={() => {}} />);
+    await user.click(screen.getByRole('button', { name: 'Добавить в экзамен' }));
+
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Формулировка')).toBeInTheDocument();
   });
 });
