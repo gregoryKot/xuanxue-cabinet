@@ -1,17 +1,14 @@
 name: Release (выкат на прод)
 
-# ADR-0142: main → Railway staging (деплой при каждом мерже), прод слушает
-# ветку release. Эта джоба раз в сутки берёт со стейджинга отстоявшийся
-# зелёный коммит main и катит его на прод — или откатывает release по
-# ручному запуску. 23:41 UTC = 02:41 Israel (лето) / 01:41 (зима) — тихие
-# часы, минута смещена от ровного часа тем же приёмом, что в backup.yml.
+# ADR-0144 (решение владельца 2026-09-28, частично заменяет ADR-0142):
+# main → Railway staging (деплой при каждом мерже), прод слушает ветку
+# release, но её двигает только ручной запуск этой джобы — cron убран,
+# прод выкатывается по команде владельца, не сам по расписанию.
 on:
-  schedule:
-    - cron: '41 23 * * *'
   workflow_dispatch:
     inputs:
       mode:
-        description: 'promote — обычный ночной выкат, rollback — откат прода'
+        description: 'promote — выкат на прод, rollback — откат прода'
         type: choice
         options: [promote, rollback]
         default: promote
@@ -75,7 +72,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CANDIDATE_SHA: ${{ github.event.inputs.sha }}
-          EVENT_NAME: ${{ github.event_name }}
           STAGING_HEALTH_URL: https://staging.xuanxue.su/api/health
         run: node scripts/release-candidate.mjs pick
 
@@ -86,7 +82,7 @@ jobs:
           REASON: ${{ steps.candidate.outputs.reason }}
         run: |
           {
-            echo "### Ночной выкат: нечего катить"
+            echo "### Выкат: нечего катить"
             echo "$REASON"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -151,7 +147,7 @@ jobs:
           REASON: ${{ steps.candidate.outputs.reason }}
         run: |
           {
-            echo "Ночной выкат на прод упал."
+            echo "Выкат на прод упал."
             echo "$REASON"
             echo
             echo "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
@@ -199,20 +195,20 @@ jobs:
           git push origin "$TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: пауза ночного выката — issue release-hold
+      - name: пауза выката — issue release-hold
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           gh label create release-hold --color B60205 \
-            --description "Ночной выкат на паузе после отката" --force
+            --description "Выкат на прод заблокирован после отката" --force
           gh issue create \
             --title "Выкат на паузе после отката" \
             --label release-hold \
             --body "Откатили release на ${{ steps.target.outputs.sha }} (тег ${{ steps.rollback_push.outputs.tag }}).
 
-          Ночной выкат не возобновится, пока открыт этот issue: причину отката нужно сначала починить в main. Закройте issue, когда фикс в main — ночной выкат продолжится."
+          Выкат заблокирован, пока открыт этот issue: причину отката нужно сначала починить в main. Закройте issue, когда фикс в main, и выкатывайте снова ручным запуском."
 
       - name: ждём раскатку прода (scripts/release-candidate.mjs wait)
         shell: bash

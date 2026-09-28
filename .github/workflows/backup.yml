@@ -8,8 +8,9 @@ on:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
-  # release.yml зовёт этот workflow перед каждым ночным выкатом (ADR-0142) —
-  # свежий бэкап до промоута release, не вместо суточного расписания.
+  # release.yml зовёт этот workflow перед каждым промоутом (ADR-0142,
+  # ADR-0144) — свежий бэкап до сдвига release, не вместо суточного
+  # расписания выше.
   workflow_call:
     secrets:
       BACKUP_MONGODB_URI:

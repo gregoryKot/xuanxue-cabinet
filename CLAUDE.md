@@ -35,9 +35,10 @@ DTO в `api` объявляется как `class CreateClassDto implements Crea
 
 Один сервис на Railway: Nest раздаёт `web/dist`, API под `/api`, вебхук Telegram под
 `/api/telegram/webhook`. База — MongoDB Atlas. Merge в `main` = деплой на **стейджинг**
-(`staging.xuanxue.su`); прод собирается из ветки `release`, её ночью двигает
-`release.yml` на проверенный коммит после бэкапа (ADR-0142, RUNBOOK §2). Руками
-`release` не трогают; срочный фикс и откат — ручной запуск того же workflow.
+(`staging.xuanxue.su`); прод собирается из ветки `release`, её двигает только ручной
+запуск `release.yml` по команде владельца — на проверенный коммит после бэкапа
+(ADR-0142, ADR-0144, RUNBOOK §2). Руками `release` не трогают; нет команды —
+нет выката.
 
 ## Процесс
 
@@ -473,11 +474,12 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 
 ## Деплой и эксплуатация
 
-- `main` → стейджинг автоматически; `release` → прод ночью через `release.yml`
-  (выдержка 2 часа на стейджинге, зелёный CI, свежий бэкап). Откат — запуск
-  `release.yml` в режиме `rollback`: прод встаёт на прошлый тег `prod-…`, выкаты
-  ставятся на паузу issue `release-hold`, фикс идёт обычным PR в `main`
-  (RUNBOOK §3). Кнопка Rollback в Railway — только при пожаре, если Actions лежит.
+- `main` → стейджинг автоматически; `release` → прод только по ручному запуску
+  `release.yml` владельцем (ADR-0144) — выдержка 2 часа на стейджинге, зелёный
+  CI, свежий бэкап. Откат — запуск `release.yml` в режиме `rollback`: прод
+  встаёт на прошлый тег `prod-…`, выкаты ставятся на паузу issue `release-hold`,
+  фикс идёт обычным PR в `main` (RUNBOOK §3). Кнопка Rollback в Railway —
+  только при пожаре, если Actions лежит.
 - `GET /api/health` — версия, Mongo, uptime. SIGTERM обрабатывается
   (`enableShutdownHooks`): тик планировщика завершается, не обрывается.
 - Схема данных меняется совместимо (expand → contract): при деплое и откате старый и
