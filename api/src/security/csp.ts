@@ -12,14 +12,23 @@
 // подгрузка ресурса или встраивание в iframe, поэтому CSP (scriptSrc,
 // connectSrc) его не ограничивает: ни `form-action`, ни `navigate-to` в этом
 // списке не заданы.
+import { POSTHOG_HOST } from '@xuanxue/shared';
+
 export const CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
+  // PostHog (ADR-0143) сюда не входит: браузер шлёт события прямо на
+  // POSTHOG_HOST, скрипт самого posthog-js в scriptSrc не нужен — recorder
+  // бандлится импортом (posthogClient.ts), а не грузится с чужого домена
+  // (`disable_external_dependency_loading: true`, posthogOptions.ts).
   scriptSrc: ["'self'"],
   // accounts.google.com сюда не входит: вход через Google ещё не реализован
   // (ADR-0005 — принято архитектурно, но код появится отдельным PR, PLAN.md
   // §5 «Вход»), а неиспользуемая поверхность CSP — тот же риск, что лишняя
   // env-переменная (SECURITY §6). Добавить обратно вместе с самим OAuth-потоком.
-  connectSrc: ["'self'"],
+  // POSTHOG_HOST — единственное исключение из 'self' (ADR-0143): без
+  // прокси через /api, чтобы не открывать публичный маршрут без CSRF и не
+  // грузить единственный инстанс записью сессий (альтернативы — в самом ADR).
+  connectSrc: ["'self'", POSTHOG_HOST],
   imgSrc: ["'self'", 'data:', 'https:'],
   styleSrc: ["'self'"],
   // Встроенный плеер записи (ADR-0100) — единственная причина, по которой

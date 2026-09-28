@@ -410,3 +410,42 @@ describe('validateEnv: VAPID (ADR-0092)', () => {
     ).toThrow(new RegExp(key));
   });
 });
+
+// PostHog (ADR-0143). Главное — первый тест: без ключа кабинет поднимается
+// как прежде, аналитика просто выключена (CLAUDE.md «Рискованная фича —
+// за флагом»).
+describe('validateEnv: POSTHOG_KEY (ADR-0143)', () => {
+  it('без POSTHOG_KEY конфигурация валидна — аналитика выключена', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' });
+    expect(env.POSTHOG_KEY).toBeUndefined();
+  });
+
+  it('production без POSTHOG_KEY тоже поднимается', () => {
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
+
+  it('пустая строка считается отсутствием', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      POSTHOG_KEY: '',
+    });
+    expect(env.POSTHOG_KEY).toBeUndefined();
+  });
+
+  it('валидный ключ (phc_…) проходит', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      POSTHOG_KEY: 'phc_example',
+    });
+    expect(env.POSTHOG_KEY).toBe('phc_example');
+  });
+
+  it('ключ без префикса phc_ роняет старт', () => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        POSTHOG_KEY: 'abcDEF123',
+      }),
+    ).toThrow(/POSTHOG_KEY/);
+  });
+});

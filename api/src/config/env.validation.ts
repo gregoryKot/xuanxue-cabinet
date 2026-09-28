@@ -34,6 +34,8 @@ import {
   NODE_ENVS,
   NO_TRAILING_SLASH_RE,
   PORT_MESSAGE,
+  POSTHOG_KEY_MESSAGE,
+  POSTHOG_KEY_RE,
   PUBLIC_URL_MESSAGE,
   PUBLIC_URL_TRAILING_SLASH_MESSAGE,
   R2_ACCESS_KEY_ID_MESSAGE,
@@ -163,4 +165,10 @@ export class EnvSchema {
   @IsOptional()
   @Matches(VAPID_SUBJECT_RE, { message: VAPID_SUBJECT_MESSAGE })
   VAPID_SUBJECT?: string;
+
+  // PostHog (ADR-0143) — без ключа аналитика выключена целиком, риск за
+  // флагом. Публичный ключ проекта, не секрет — уходит в браузер как есть.
+  @IsOptional()
+  @Matches(POSTHOG_KEY_RE, { message: POSTHOG_KEY_MESSAGE })
+  POSTHOG_KEY?: string;
 }

@@ -17,6 +17,7 @@ import { ClassesModule } from './classes/classes.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { ChannelsModule } from './channels/channels.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AppErrorsModule } from './app-errors/app-errors.module';
 import { ClientErrorsModule } from './client-errors/client-errors.module';
 import { BroadcastsModule } from './broadcasts/broadcasts.module';
@@ -87,6 +88,8 @@ import { staticAssetsOptions } from './static/static-cache-control';
     // (media-asset-insert.ts, ExamMediaNotifierRegistry) — регистрируется
     // здесь же, отдельно от ExamsModule, чтобы не тянуть его цикл ради этого.
     AnswerVideosModule,
+    // PostHog (ADR-0143) — GET /analytics/config, до сессии, как auth/config.
+    AnalyticsModule,
     // Раньше ClientErrorsModule — журнал сбоев (APP_ERROR_JOURNAL) нужен и
     // ему, и DomainExceptionFilter ниже (providers этого модуля).
     AppErrorsModule,

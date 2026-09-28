@@ -476,3 +476,5 @@ export {
   APP_ERROR_LIMITS,
   APP_ERRORS_SCREEN_PATH,
 } from './app-errors';
+export type { AnalyticsConfigDto } from './analytics';
+export { POSTHOG_HOST } from './analytics';

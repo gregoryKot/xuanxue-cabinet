@@ -178,4 +178,5 @@
 | [0140](0140-exam-and-question-delete-softly-in-any-status.md)    | Экзамен и вопрос удаляются мягко, в любом статусе, без отказа                                           |
 | [0141](0141-bulk-delete-is-one-post-with-partial-success.md)     | Массовое удаление: один POST, частичный успех, тот же remove()                                          |
 | [0142](0142-staging-and-nightly-release.md)                      | ~~Стейджинг из `main`, прод из ветки `release`, выкат ночью после бэкапа~~ — частично заменено ADR-0144 |
+| [0143](0143-posthog-session-replay.md)                           | PostHog (EU cloud) — записи сессий и просмотры экранов, только для вошедших, всё маскируется            |
 | [0144](0144-release-by-owner-command.md)                         | Выкат на прод — только по ручной команде владельца, cron убран                                          |
