@@ -100,18 +100,6 @@ async function checkStaging(sha) {
 export async function runPick() {
   const soakHours = Number(process.env.SOAK_HOURS ?? DEFAULT_SOAK_HOURS);
 
-  // Ночной прогон до настройки (RUNBOOK §2.4): release заводит первый ручной
-  // запуск, до него прод ещё собирается из main — молча ждём, без алерта.
-  const releaseExists = runGit(['rev-parse', '--verify', 'origin/release']) !== null;
-  if (process.env.EVENT_NAME === 'schedule' && !releaseExists) {
-    writeOutput('sha', '');
-    writeOutput(
-      'reason',
-      'ветки release ещё нет — настройка по RUNBOOK §2.4 не закончена',
-    );
-    return;
-  }
-
   const hold = await holdReason();
   if (hold) {
     writeOutput('sha', '');
