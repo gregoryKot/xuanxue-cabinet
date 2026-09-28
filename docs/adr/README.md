@@ -178,3 +178,4 @@
 | [0140](0140-exam-and-question-delete-softly-in-any-status.md)    | Экзамен и вопрос удаляются мягко, в любом статусе, без отказа                                   |
 | [0141](0141-bulk-delete-is-one-post-with-partial-success.md)     | Массовое удаление: один POST, частичный успех, тот же remove()                                  |
 | [0142](0142-staging-and-nightly-release.md)                      | Стейджинг из `main`, прод из ветки `release`, выкат ночью после бэкапа                          |
+| [0145](0145-google-login-and-linking-by-email.md)                | Вход через Google: code + PKCE, ключ `sub`, связка по почте, за которую ручается Google         |

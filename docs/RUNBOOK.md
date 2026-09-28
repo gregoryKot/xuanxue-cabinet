@@ -473,6 +473,47 @@ Telegram работает и без них.
    ссылка из приватного окна больше не пускает (`/auth/join/check` отвечает
    `valid: false`).
 
+Вход через Google: как подключить (ADR-0145). Без `GOOGLE_CLIENT_ID` и
+`GOOGLE_CLIENT_SECRET` кнопки «Войти через Google» на экране входа нет, а
+`GET /api/auth/google/start` отвечает 503. Переменные задаются парой: одна без
+другой — приложение не поднимется.
+
+1. [console.cloud.google.com](https://console.cloud.google.com) → проект
+   школы (или новый) → **APIs & Services → OAuth consent screen**: тип
+   **External**, название «Кабинет Сюань-Сюэ», адрес поддержки, домен
+   `xuanxue.su` в Authorized domains. Scopes — только `openid`, `email`,
+   `profile`: они не «чувствительные», проверка приложения Google не нужна.
+   Логотип не загружать — с ним Google потребует проверку бренда.
+2. **Publishing status → Publish app** («In production»). В статусе «Testing»
+   войти смогут только люди из списка тестовых пользователей — остальные
+   увидят «Access blocked».
+3. **Credentials → Create credentials → OAuth client ID**, тип **Web
+   application**. Authorized redirect URIs — адрес страницы возврата
+   **буква в букву**, для каждого окружения своя строка:
+   `https://xuanxue.su/login/google`, `https://staging.xuanxue.su/login/google`,
+   для разработки — `${PUBLIC_URL}/login/google` из своего `.env`. Authorized
+   JavaScript origins не нужны.
+4. Client ID → `GOOGLE_CLIENT_ID`, Client secret → `GOOGLE_CLIENT_SECRET` в
+   Railway → Variables (и прод, и стейджинг; клиент может быть один на оба).
+   Секрет — как `BOT_TOKEN`: в репозиторий и в чаты не кладут.
+5. Проверить: `curl -sI https://xuanxue.su/api/auth/google/start` → `302`,
+   `location: https://accounts.google.com/o/oauth2/v2/auth?…` и
+   `set-cookie: google_oauth=…`. `503` — переменные не подхватились
+   (перезапуск после Variables, §2).
+6. Руками, в Safari или Chrome (не во встроенном браузере Telegram — там
+   Google отвечает `403 disallowed_useragent`, ADR-0145): `/login` → «Войти
+   через Google» → выбрать аккаунт с Gmail, который уже есть в кабинете по
+   почте → попадаете в свой кабинет, не на `/welcome`. Выйти, войти снова —
+   тот же аккаунт. Аккаунт с не-Gmail адресом, который уже есть в кабинете, —
+   «Этот адрес почты уже есть в кабинете. Войдите по почте, как раньше».
+   Отдельно проверить с iPhone, из приложения на экране «Домой».
+
+Симптомы: `redirect_uri_mismatch` на экране Google — адрес в п.3 не совпал с
+`${PUBLIC_URL}/login/google` (слэш на конце, `www`, http/https); «Не
+получилось войти через Google» сразу после выбора аккаунта — в логах строка
+`GoogleTokenClient` со статусом ответа Google: `401 invalid_client` — неверный
+секрет, `400 invalid_grant` — код уже потрачен или прошло больше 10 минут.
+
 ## 6. Ротация секретов
 
 ### 6.1 `ENCRYPTION_KEY` — только с ре-шифрованием

@@ -65,6 +65,17 @@ export {
   EMAIL_LOGIN_CODE_RE,
   EMAIL_LOGIN_CODE_INVALID_MESSAGE,
 } from './email-login-code';
+export type { GoogleLoginInput } from './google-login';
+export {
+  GOOGLE_LOGIN_START_PATH,
+  GOOGLE_LOGIN_CALLBACK_PATH,
+  GOOGLE_OAUTH_STATE_RE,
+  GOOGLE_OAUTH_CODE_RE,
+  GOOGLE_LOGIN_NOT_AVAILABLE_MESSAGE,
+  GOOGLE_LOGIN_FAILED_MESSAGE,
+  GOOGLE_EMAIL_NEEDS_EMAIL_LOGIN_MESSAGE,
+  GOOGLE_OTHER_ACCOUNT_MESSAGE,
+} from './google-login';
 export type { LinkEmailInput, ConfirmEmailInput } from './email-link';
 export {
   EMAIL_CONFIRM_TOKEN_RE,
