@@ -155,27 +155,41 @@ function committedAtSec(commit) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** Последний коммит (от HEAD назад), менявший CODE_PATHS — `null`, если git
- * не смог ответить (мелкий fetch-depth, например) или такого коммита нет. */
-function lastCodeCommit() {
-  return runGit(['rev-list', '-1', 'HEAD', '--', ...CODE_PATHS]);
+// Прод раскатывает не HEAD, а COMMIT_REF (ADR-0142: с ветки release, не
+// main) — uptime.yml задаёт `COMMIT_REF: origin/release`. По умолчанию
+// 'HEAD' — сверка не ломает вызовы этого скрипта без раскатки release.
+const COMMIT_REF = process.env.COMMIT_REF?.trim() || 'HEAD';
+
+/** `COMMIT_REF` не резолвится (ветки нет, мелкий чекаут без её fetch) —
+ * сверку тихо пропускаем, а не роняем гейт на отсутствующей ссылке. */
+function commitRefResolves() {
+  return runGit(['rev-parse', '--verify', COMMIT_REF]) !== null;
 }
 
-/** codeSha и каждый коммит после него до HEAD — все они по определению не
- * трогали CODE_PATHS (иначе codeSha был бы не последним), поэтому прод на
- * любом из них — не расхождение. */
+/** Последний коммит (от COMMIT_REF назад), менявший CODE_PATHS — `null`,
+ * если git не смог ответить (мелкий fetch-depth, например) или такого
+ * коммита нет. */
+function lastCodeCommit() {
+  return runGit(['rev-list', '-1', COMMIT_REF, '--', ...CODE_PATHS]);
+}
+
+/** codeSha и каждый коммит после него до COMMIT_REF — все они по
+ * определению не трогали CODE_PATHS (иначе codeSha был бы не последним),
+ * поэтому прод на любом из них — не расхождение. */
 function allowedShasSince(codeSha) {
-  const rest = runGit(['rev-list', `${codeSha}..HEAD`]);
+  const rest = runGit(['rev-list', `${codeSha}..${COMMIT_REF}`]);
   const later = rest ? rest.split('\n').filter(Boolean) : [];
   return [codeSha, ...later];
 }
 
 /** `{ allowedShas, codeAgeMin }` для сверки commit — оба пустые/undefined,
- * если сверка выключена (`CHECK_COMMIT` не задан), история недоступна
- * (мелкий чекаут) или код смержен недавно (шанс не доехать ещё есть). */
+ * если сверка выключена (`CHECK_COMMIT` не задан), COMMIT_REF не резолвится,
+ * история недоступна (мелкий чекаут) или код смержен недавно (шанс не
+ * доехать ещё есть). */
 function resolveCommitCheck() {
   const skip = { allowedShas: [], codeAgeMin: undefined };
   if (!process.env.CHECK_COMMIT) return skip;
+  if (!commitRefResolves()) return skip;
 
   const codeSha = lastCodeCommit();
   if (!codeSha) return skip; // истории нет или код никогда не менялся — тихо пропускаем

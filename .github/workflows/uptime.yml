@@ -42,6 +42,16 @@ jobs:
         with:
           node-version: '22'
 
+      # actions/checkout с fetch-depth: 0 тянет полную историю ЗАПУСТИВШЕЙ
+      # ветки, но не origin/release отдельно (это не она) — без явного
+      # fetch check-prod-health.mjs не найдёт COMMIT_REF ниже и сверку
+      # commit тихо пропустит (ADR-0142: прод теперь раскатывает release,
+      # не main). `|| true` — на случай, если release ещё не заведена
+      # (первая раскатка), гейт не должен падать на этом шаге.
+      - name: подтянуть origin/release
+        shell: bash
+        run: git fetch origin release || true
+
       # shell: bash — явно, ради pipefail: без него на Linux run: идёт как
       # `bash -e {0}`, БЕЗ pipefail, и статус шага = статус `tee` (почти
       # всегда 0), даже если check-prod-health.mjs слева упал с exit 1 —
@@ -54,6 +64,9 @@ jobs:
         env:
           HEALTH_URL: ${{ inputs.url || 'https://xuanxue.su/api/health' }}
           CHECK_COMMIT: 'true'
+          # ADR-0142: прод раскатывает ветку release, не main (HEAD) — если
+          # её нет (fetch выше не нашёл), commit-сверка тихо выключается.
+          COMMIT_REF: origin/release
         run: node scripts/check-prod-health.mjs | tee health-output.txt
 
       # shell: bash — тот же пайп, хоть здесь и не критично: notify-telegram.mjs
