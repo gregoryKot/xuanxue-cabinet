@@ -10,7 +10,11 @@ import { UsersService } from '../users/users.service';
 import { IS_PUBLIC_KEY, ROLES_KEY, SKIP_CSRF_KEY } from './auth.decorators';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
-import type { RequestLike, ResponseLike } from '../common/http-headers';
+import {
+  asSingleHeader,
+  type RequestLike,
+  type ResponseLike,
+} from '../common/http-headers';
 import { signSession, verifySession } from './session-token';
 
 const SECRET = 'a'.repeat(32);
@@ -210,7 +214,7 @@ describe('AuthGuard — rolling-перевыпуск', () => {
     );
     const guard = buildGuard(reflector, fakeUsersService(activeUser()));
     await guard.canActivate(context);
-    const setCookie = res.headers['Set-Cookie'];
+    const setCookie = asSingleHeader(res.headers['Set-Cookie']);
     expect(setCookie).not.toContain('Max-Age=0');
     const newToken = (setCookie?.split(';')[0] ?? '').split('=')[1] ?? '';
     expect(verifySession(newToken, SECRET, NOW)?.sub).toBe('u1');

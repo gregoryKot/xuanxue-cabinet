@@ -19,9 +19,11 @@ export interface RequestLike {
 }
 
 export interface ResponseLike {
-  // Только замена заголовка, не append — Set-Cookie здесь всегда один
-  // (сессия или её очистка), второй одноимённый заголовок не нужен.
-  setHeader(name: string, value: string): unknown;
+  // Замена заголовка, не append. Значение — обычно один Set-Cookie (сессия
+  // или её очистка); массив нужен только там, где один ответ ставит две
+  // cookie разом (POST /auth/google — очистка google_oauth + новая сессия,
+  // GoogleAuthController) — Node пишет каждый элемент отдельным заголовком.
+  setHeader(name: string, value: string | string[]): unknown;
 }
 
 // Node склеивает дублирующиеся заголовки одной строкой через запятую (кроме

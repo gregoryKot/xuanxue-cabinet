@@ -35,4 +35,8 @@ export const EMPTY_AS_ABSENT_KEYS = [
   'VAPID_PUBLIC_KEY',
   'VAPID_PRIVATE_KEY',
   'VAPID_SUBJECT',
+  // Вход через Google (ADR-0145) — та же логика: две пустые строки в .env
+  // значат «выключено», а не «половина набора» для env.google-group.ts.
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
 ] as const;

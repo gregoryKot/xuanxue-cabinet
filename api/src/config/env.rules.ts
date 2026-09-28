@@ -37,6 +37,9 @@ export const GIT_SHA_RE = /^[0-9a-f]{7,40}$/i;
 // Не строгий RFC 5322 — тот же уровень, что у остальных регэкспов файла,
 // формат проверяет реальная отправка через Resend, а не эта строка.
 export const MAIL_FROM_RE = /^(?:[^<>]+\s)?<?[^\s<>]+@[^\s<>]+\.[^\s<>]+>?$/;
+// Идентификатор OAuth-клиента Google — формат Google Cloud Console
+// (Credentials → OAuth client ID → «Web application»), суффикс фиксирован.
+export const GOOGLE_CLIENT_ID_RE = /^[\w.-]+\.apps\.googleusercontent\.com$/;
 
 export const NODE_ENV_MESSAGE =
   'NODE_ENV должен быть одним из: development, test, production';
@@ -71,6 +74,10 @@ export const RAILWAY_GIT_COMMIT_SHA_MESSAGE =
   'RAILWAY_GIT_COMMIT_SHA должен быть SHA коммита (7-40 hex-символов)';
 export const MAIL_FROM_MESSAGE =
   'MAIL_FROM должен быть адресом (name@domain) или видом «Имя <адрес@домен>»';
+export const GOOGLE_CLIENT_ID_MESSAGE =
+  'GOOGLE_CLIENT_ID должен заканчиваться на .apps.googleusercontent.com';
+export const GOOGLE_CLIENT_SECRET_MESSAGE =
+  'GOOGLE_CLIENT_SECRET должен быть не короче 16 символов';
 
 // Четыре переменные Cloudflare R2 (ADR-0057). Значения попадают в адрес
 // запроса: R2_ACCOUNT_ID — в имя хоста, R2_BUCKET — в путь. Поэтому регэкспы

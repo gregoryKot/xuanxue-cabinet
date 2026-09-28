@@ -410,3 +410,61 @@ describe('validateEnv: VAPID (ADR-0092)', () => {
     ).toThrow(new RegExp(key));
   });
 });
+
+// Вход через Google (ADR-0145). Главное — первый тест: без ключей кабинет
+// поднимается как прежде, кнопка на экране входа просто не показывается.
+describe('validateEnv: Google (ADR-0145)', () => {
+  const GOOGLE_SET = {
+    GOOGLE_CLIENT_ID: '123-abc.apps.googleusercontent.com',
+    GOOGLE_CLIENT_SECRET: 'x'.repeat(24),
+  };
+
+  it('без единой переменной Google конфигурация валидна — вход просто выключен', () => {
+    const env = validateEnv({ MONGODB_URI: 'mongodb://localhost:27017/x' });
+    expect(env.GOOGLE_CLIENT_ID).toBeUndefined();
+    expect(env.GOOGLE_CLIENT_SECRET).toBeUndefined();
+  });
+
+  it('production без переменных Google тоже поднимается — вход не обязателен нигде', () => {
+    expect(() => validateEnv(VALID_PROD)).not.toThrow();
+  });
+
+  it('две пустые строки в .env считаются отсутствием, а не половиной набора', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '',
+    });
+    expect(env.GOOGLE_CLIENT_ID).toBeUndefined();
+  });
+
+  it('полный набор проходит', () => {
+    const env = validateEnv({
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      ...GOOGLE_SET,
+    });
+    expect(env.GOOGLE_CLIENT_ID).toBe(GOOGLE_SET.GOOGLE_CLIENT_ID);
+  });
+
+  it.each(Object.keys(GOOGLE_SET))('без %s набор неполон — старт падает', (missing) => {
+    const partial: Record<string, unknown> = {
+      MONGODB_URI: 'mongodb://localhost:27017/x',
+      ...GOOGLE_SET,
+    };
+    delete partial[missing];
+    expect(() => validateEnv(partial)).toThrow(new RegExp(missing));
+  });
+
+  it.each([
+    ['GOOGLE_CLIENT_ID', 'не-похоже-на-клиент'],
+    ['GOOGLE_CLIENT_SECRET', 'коротко'],
+  ])('%s кривого вида роняет старт', (key, value) => {
+    expect(() =>
+      validateEnv({
+        MONGODB_URI: 'mongodb://localhost:27017/x',
+        ...GOOGLE_SET,
+        [key]: value,
+      }),
+    ).toThrow(new RegExp(key));
+  });
+});

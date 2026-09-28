@@ -2,9 +2,8 @@
 // /auth/logout и /auth/telegram помечены @Public(): выход обязан чистить
 // cookie даже без валидной сессии, вход — способ её получить. CSRF-проверка
 // (x-requested-with) при этом всё равно действует, см. auth.guard.ts.
-// POST /auth/join/check (ADR-0036) — в JoinController рядом: отдельного
-// POST /auth/join («войти, затем присоединиться») больше нет, но и один
-// оставшийся эндпоинт не влез бы в этот файл до 150 строк (file-size-ratchet).
+// Google/join/telegram-link/email-link/email-code — отдельными файлами
+// рядом (тот же приём): этот файл у потолка 150 строк (file-size-ratchet).
 import {
   Body,
   Controller,
@@ -30,6 +29,7 @@ import { CurrentUser, Public } from './auth.decorators';
 import { AuthService } from './auth.service';
 import type { RequestLike, ResponseLike } from '../common/http-headers';
 import { EmailAuthService } from './email-auth.service';
+import { GoogleAuthService } from './google-auth.service';
 import { EMAIL_LOGIN_THROTTLE, TELEGRAM_LOGIN_THROTTLE } from './login-throttle';
 import { parseTelegramLoginBody } from './parse-telegram-login-body';
 import { RequestEmailLoginDto } from './request-email-login.dto';
@@ -43,6 +43,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly telegramAuthService: TelegramAuthService,
     private readonly emailAuthService: EmailAuthService,
+    private readonly googleAuthService: GoogleAuthService,
     private readonly configService: ConfigService,
     private readonly fileStore: FileStoreService,
     private readonly settingsService: SettingsService,
@@ -50,15 +51,11 @@ export class AuthController {
     private readonly personalChats: PersonalChats,
   ) {}
 
-  // Без сессии: экран входа и StudentScreen спрашивают конфигурацию до
-  // того, как появится роль. telegramBotId — числовой префикс BOT_TOKEN
-  // (валидатор гарантирует формат), нужен фронту, чтобы собрать адрес
-  // перехода на Telegram (ADR-0028) — без него кнопка входа не показывается.
-  // schoolSiteUrl — адрес сайта школы из настроек (не `PUBLIC_URL`: это
-  // адрес самого кабинета, В6 аудита, ADR-0009-доп.) для гостя без роли и
-  // незнакомца в боте. emailLoginEnabled — та же проверка, что перед
-  // отправкой письма (EmailAuthService.isEnabled(), ADR-0029), один метод на
-  // оба места, не дублируем список из трёх переменных (CLAUDE.md «Дубли»).
+  // Без сессии: экран входа спрашивает конфигурацию до того, как появится
+  // роль. Поля — см. тсдок AuthConfigDto (shared/src/auth.ts); *Enabled —
+  // те же проверки, что перед самим действием (EmailAuthService.isEnabled(),
+  // GoogleAuthService.isEnabled(), FileStoreService.isEnabled), один метод
+  // на оба места (CLAUDE.md «Дубли»).
   @Public()
   @Get('config')
   async getConfig(): Promise<AuthConfigDto> {
@@ -68,8 +65,7 @@ export class AuthController {
       telegramBotUsername: this.telegramBotService.botUsername(),
       schoolSiteUrl: settings.schoolSiteUrl,
       emailLoginEnabled: this.emailAuthService.isEnabled(),
-      // Тот же признак, что решает «показывать ли поле загрузки» на странице
-      // материала (ADR-0057): проверяет наличие ключей R2, в сеть не ходит.
+      googleLoginEnabled: this.googleAuthService.isEnabled(),
       fileStorageEnabled: this.fileStore.isEnabled,
     };
   }

@@ -19,6 +19,9 @@ import {
   ENCRYPTION_KEY_MESSAGE,
   ENCRYPTION_KEY_OLD_MESSAGE,
   GIT_SHA_RE,
+  GOOGLE_CLIENT_ID_MESSAGE,
+  GOOGLE_CLIENT_ID_RE,
+  GOOGLE_CLIENT_SECRET_MESSAGE,
   HEARTBEAT_PING_URL_MESSAGE,
   HEX64_LIST_RE,
   HEX64_RE,
@@ -128,6 +131,16 @@ export class EnvSchema {
   @IsOptional()
   @Matches(MAIL_FROM_RE, { message: MAIL_FROM_MESSAGE })
   MAIL_FROM?: string;
+
+  // Вход через Google (ADR-0145) — обе или ни одной (env.google-group.ts),
+  // как у R2/VAPID выше; без них кнопка на экране входа не показывается.
+  @IsOptional()
+  @Matches(GOOGLE_CLIENT_ID_RE, { message: GOOGLE_CLIENT_ID_MESSAGE })
+  GOOGLE_CLIENT_ID?: string;
+
+  @IsOptional()
+  @MinLength(16, { message: GOOGLE_CLIENT_SECRET_MESSAGE })
+  GOOGLE_CLIENT_SECRET?: string;
 
   // Файлы материалов в Cloudflare R2 (ADR-0057) — все четыре или ни одной
   // (env.r2-group.ts). Без них загрузка выключена, кабинет поднимается как

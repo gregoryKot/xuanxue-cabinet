@@ -15,10 +15,11 @@
 export const CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
   scriptSrc: ["'self'"],
-  // accounts.google.com сюда не входит: вход через Google ещё не реализован
-  // (ADR-0005 — принято архитектурно, но код появится отдельным PR, PLAN.md
-  // §5 «Вход»), а неиспользуемая поверхность CSP — тот же риск, что лишняя
-  // env-переменная (SECURITY §6). Добавить обратно вместе с самим OAuth-потоком.
+  // accounts.google.com сюда не входит и не нужен (ADR-0145): вход —
+  // переход вкладки на 302 (`GET /api/auth/google/start`), не подгрузка
+  // ресурса и не встраивание в iframe — CSP навигацию не ограничивает;
+  // обмен code→id_token идёт сервером (GoogleTokenClient), браузер его не
+  // видит вовсе. Тот же довод, что у Telegram-входа абзацем выше.
   connectSrc: ["'self'"],
   imgSrc: ["'self'", 'data:', 'https:'],
   styleSrc: ["'self'"],

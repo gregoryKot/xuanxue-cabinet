@@ -5,14 +5,17 @@
 // валидной ссылкой-приглашением, сразу `active` — статуса «ждёт
 // подтверждения» больше нет (инцидент 2026-09-15, владелец: «удаляем с
 // концами»). Исключение — BOOTSTRAP_ADMIN_TELEGRAM_ID, тот заводится без
-// ссылки, подтверждать его некому (ADR-0005).
+// ссылки, подтверждать его некому (ADR-0005). Проверка кода и отметка
+// «вошёл по приглашению» — require-valid-invite.ts/mark-user-joined.ts:
+// тот же код нужен GoogleLoginIdentityService (ADR-0145, CLAUDE.md «Дубли»).
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
-import { NO_INVITE_LINK_MESSAGE, type UserRole } from '@xuanxue/shared';
-import { ForbiddenError } from '../common/errors';
+import type { UserRole } from '@xuanxue/shared';
 import { EmailLoginUserService } from './email-login-user.service';
 import { InviteLinkService } from './invite-link.service';
+import { markUserJoined } from './mark-user-joined';
+import { requireValidInvite } from './require-valid-invite';
 import { UsersService, type UserLean } from './users.service';
 
 @Injectable()
@@ -45,14 +48,14 @@ export class LoginIdentityService {
       });
     }
 
-    await this.requireValidInvite(inviteCode);
+    await requireValidInvite(this.inviteLinkService, inviteCode);
     const user = await this.usersService.createFromTelegram({
       telegramId,
       name,
       roles: [] as UserRole[],
       status: 'active',
     });
-    return this.markJoined(user, now);
+    return markUserJoined(this.usersService, user, now);
   }
 
   async resolveEmailUser(
@@ -63,20 +66,8 @@ export class LoginIdentityService {
     const existing = await this.emailLoginUserService.findByEmail(email);
     if (existing) return existing;
 
-    await this.requireValidInvite(inviteCode);
+    await requireValidInvite(this.inviteLinkService, inviteCode);
     const user = await this.emailLoginUserService.createFromEmail(email);
-    return this.markJoined(user, now);
-  }
-
-  /** Код нужен только для нового человека — известного пропускаем мимо этой
-   * проверки выше (существующий вход игнорирует код, ADR-0036). */
-  private async requireValidInvite(inviteCode: string | undefined): Promise<void> {
-    const isValid = inviteCode ? await this.inviteLinkService.isValid(inviteCode) : false;
-    if (!isValid) throw new ForbiddenError(NO_INVITE_LINK_MESSAGE);
-  }
-
-  private async markJoined(user: UserLean, now: DateTime): Promise<UserLean> {
-    await this.usersService.markJoinedViaInvite(user.id, now);
-    return { ...user, joinedViaInviteAt: now.toJSDate() };
+    return markUserJoined(this.usersService, user, now);
   }
 }
