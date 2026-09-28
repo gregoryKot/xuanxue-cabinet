@@ -43,10 +43,7 @@ test('pickCandidate: самый новый отстоявшийся зелёны
 });
 
 test('pickCandidate: красный CI у отстоявшегося — пропускаем и берём следующий зелёный', () => {
-  const commits = [
-    commit('red', 3, 'failure'),
-    commit('green', 5, 'success'),
-  ];
+  const commits = [commit('red', 3, 'failure'), commit('green', 5, 'success')];
   const result = pickCandidate({ commits, nowSec: NOW, soakHours: 2 });
   assert.deepEqual(result, { sha: 'green', reason: null });
 });
@@ -159,7 +156,12 @@ test('summaryMessage: promote со списком коммитов', () => {
 
 test('summaryMessage: длинный список — «и ещё N»', () => {
   const subjects = Array.from({ length: 20 }, (_, i) => `коммит ${i}`);
-  const msg = summaryMessage({ mode: 'promote', sha: 'abc', subjectLines: subjects, tag: 't' });
+  const msg = summaryMessage({
+    mode: 'promote',
+    sha: 'abc',
+    subjectLines: subjects,
+    tag: 't',
+  });
   assert.match(msg, /и ещё 5/);
 });
 

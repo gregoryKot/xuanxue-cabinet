@@ -73,9 +73,7 @@ export async function runWait() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   runWait().catch((err) => {
-    console.error(
-      `❌ release-wait: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    console.error(`❌ release-wait: ${err instanceof Error ? err.message : String(err)}`);
     process.exitCode = 1;
   });
 }

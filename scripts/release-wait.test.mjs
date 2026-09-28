@@ -5,7 +5,12 @@ import assert from 'node:assert/strict';
 import { waitForTarget } from './release-wait.mjs';
 
 const TARGET = 'abc1234567890abc1234567890abc1234567890';
-const OK_BODY = { status: 'ok', mongo: 'up', scheduler: { stale: false }, commit: 'abc1234' };
+const OK_BODY = {
+  status: 'ok',
+  mongo: 'up',
+  scheduler: { stale: false },
+  commit: 'abc1234',
+};
 
 test('waitForTarget: первый же ответ уже на цели — сразу успех, без сна', async () => {
   let sleepCalls = 0;

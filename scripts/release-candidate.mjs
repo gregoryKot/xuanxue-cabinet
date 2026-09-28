@@ -141,7 +141,10 @@ export function summaryMessage({ mode, sha, subjectLines, tag }) {
 // поведение проверяется прогоном .github/workflows/release.yml.
 
 function runGit(args) {
-  const result = spawnSync('git', args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  const result = spawnSync('git', args, {
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  });
   if (result.status !== 0) return null;
   return result.stdout.trim();
 }
@@ -219,9 +222,7 @@ async function resolveCandidate({ soakHours }) {
   }
 
   const releaseExists = runGit(['rev-parse', '--verify', 'origin/release']) !== null;
-  const range = releaseExists
-    ? 'origin/release..origin/main'
-    : '-30 origin/main'; // первая раскатка: нет release — берём хвост main
+  const range = releaseExists ? 'origin/release..origin/main' : '-30 origin/main'; // первая раскатка: нет release — берём хвост main
   const commits = await candidatesWithCi(range);
   const nowSec = Math.floor(Date.now() / 1000);
   return pickCandidate({ commits, nowSec, soakHours });
