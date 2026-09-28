@@ -13,6 +13,7 @@ import {
   DEFAULT_SOAK_HOURS,
   DEFAULT_STAGING_HEALTH_URL,
 } from './release-candidate.mjs';
+import { ciStatusFor, holdReason } from './release-github.mjs';
 
 function runGit(args) {
   const result = spawnSync('git', args, {
@@ -27,40 +28,6 @@ function writeOutput(name, value) {
   const file = process.env.GITHUB_OUTPUT;
   console.log(`${name}=${value}`);
   if (file) appendFileSync(file, `${name}=${value}\n`);
-}
-
-async function githubJson(path) {
-  const repo = process.env.GITHUB_REPOSITORY;
-  const token = process.env.GITHUB_TOKEN;
-  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!res.ok) throw new Error(`GitHub API ${path}: HTTP ${res.status}`);
-  return res.json();
-}
-
-/** conclusion последнего прогона CI по коммиту → 'success'|'failure'|
- * 'cancelled'|'pending'|'none' (прогона ещё не было). */
-async function ciStatusFor(sha) {
-  const data = await githubJson(
-    `/actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&per_page=1`,
-  );
-  const run = data.workflow_runs?.[0];
-  if (!run) return 'none';
-  if (run.status !== 'completed') return 'pending';
-  if (run.conclusion === 'success') return 'success';
-  if (run.conclusion === 'cancelled') return 'cancelled';
-  return 'failure';
-}
-
-async function holdReason() {
-  const issues = await githubJson('/issues?labels=release-hold&state=open');
-  if (!issues || issues.length === 0) return null;
-  return `выкат на паузе: открыт issue #${issues[0].number}`;
 }
 
 // `logArgs` — аргументы `git log` ДО `--format` как массив (не одна строка):
@@ -91,6 +58,11 @@ async function resolveCandidate({ soakHours }) {
   const explicitSha = process.env.CANDIDATE_SHA?.trim();
   if (explicitSha) {
     const full = runGit(['rev-parse', explicitSha]) ?? explicitSha;
+    // На прод — только то, что уже в main (прошло PR и стейджинг): коммит из
+    // чужой ветки ручным запуском в release не протащить (ADR-0142).
+    if (runGit(['merge-base', '--is-ancestor', full, 'origin/main']) === null) {
+      return { sha: null, reason: `хотфикс ${full.slice(0, 7)}: коммита нет в main` };
+    }
     const ci = await ciStatusFor(full);
     if (ci !== 'success') {
       return { sha: null, reason: `хотфикс ${full.slice(0, 7)}: CI не зелёный (${ci})` };
@@ -127,6 +99,18 @@ async function checkStaging(sha) {
 
 export async function runPick() {
   const soakHours = Number(process.env.SOAK_HOURS ?? DEFAULT_SOAK_HOURS);
+
+  // Ночной прогон до настройки (RUNBOOK §2.4): release заводит первый ручной
+  // запуск, до него прод ещё собирается из main — молча ждём, без алерта.
+  const releaseExists = runGit(['rev-parse', '--verify', 'origin/release']) !== null;
+  if (process.env.EVENT_NAME === 'schedule' && !releaseExists) {
+    writeOutput('sha', '');
+    writeOutput(
+      'reason',
+      'ветки release ещё нет — настройка по RUNBOOK §2.4 не закончена',
+    );
+    return;
+  }
 
   const hold = await holdReason();
   if (hold) {

@@ -75,16 +75,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CANDIDATE_SHA: ${{ github.event.inputs.sha }}
+          EVENT_NAME: ${{ github.event_name }}
           STAGING_HEALTH_URL: https://staging.xuanxue.su/api/health
         run: node scripts/release-candidate.mjs pick
 
       - name: нечего катить — зелёный итог с причиной
         if: steps.candidate.outputs.sha == '' && success()
         shell: bash
+        env:
+          REASON: ${{ steps.candidate.outputs.reason }}
         run: |
           {
             echo "### Ночной выкат: нечего катить"
-            echo "${{ steps.candidate.outputs.reason }}"
+            echo "$REASON"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: тег и fast-forward push origin/release
@@ -143,10 +146,13 @@ jobs:
         env:
           TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
           TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          # Через env, не подстановкой в скрипт: текст причины не должен
+          # исполняться как bash.
+          REASON: ${{ steps.candidate.outputs.reason }}
         run: |
           {
             echo "Ночной выкат на прод упал."
-            echo "${{ steps.candidate.outputs.reason }}"
+            echo "$REASON"
             echo
             echo "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           } | node scripts/notify-telegram.mjs
