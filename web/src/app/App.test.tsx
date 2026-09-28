@@ -102,6 +102,27 @@ describe('App', () => {
     expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
   });
 
+  it('гость на /privacy — маршрут открывает PrivacyScreen, без входа', async () => {
+    mockRoute(null);
+
+    renderAt('/privacy');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Политика конфиденциальности' }),
+    ).toBeInTheDocument();
+  });
+
+  it('вошедший на /privacy — маршрут тоже открывает PrivacyScreen, без редиректа', async () => {
+    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+
+    renderAt('/privacy');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Политика конфиденциальности' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Экзамены' })).not.toBeInTheDocument();
+  });
+
   it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
     mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
 

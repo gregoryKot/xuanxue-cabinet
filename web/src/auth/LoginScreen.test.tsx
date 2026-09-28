@@ -503,6 +503,18 @@ describe('LoginScreen — кнопка Google (googleLoginEnabled)', () => {
   });
 });
 
+describe('LoginScreen — ссылка на политику конфиденциальности (ADR-0145)', () => {
+  it('ссылка «Политика конфиденциальности» ведёт на /privacy', async () => {
+    mockRoutes(() => Promise.resolve({}));
+    renderScreen();
+
+    const link = await screen.findByRole('link', {
+      name: 'Политика конфиденциальности',
+    });
+    expect(link).toHaveAttribute('href', '/privacy');
+  });
+});
+
 describe('LoginScreen — уже вошедшего уводит на сохранённый адрес или домашний (аудит L2)', () => {
   function mockAlreadyLoggedIn() {
     mockedApiFetch.mockImplementation((path: string) => {

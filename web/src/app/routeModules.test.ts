@@ -165,6 +165,7 @@ describe('ROUTE_MODULES', () => {
       '/login',
       '/login/email',
       '/login/google',
+      '/privacy',
       '/welcome',
     ]);
   });

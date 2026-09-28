@@ -116,6 +116,13 @@ export const ROUTE_MODULES = {
     warm: false,
   },
   join: { path: '/join/:code', load: () => import('../join/JoinScreen'), warm: false },
+  // Политика конфиденциальности (ADR-0145) — публичный маршрут, открыт и
+  // гостю, и вошедшему (без редиректа), вошедшему чанк не нужен заранее.
+  privacy: {
+    path: '/privacy',
+    load: () => import('../privacy/PrivacyScreen'),
+    warm: false,
+  },
   // Подтверждение почты вторым ключом входа (ADR-0059) — публичный маршрут,
   // как login/emailLogin/join: не требует сессии и не выдаёт её (комментарий
   // в EmailConfirmScreen.tsx), вошедшему чанк не нужен, греть в фоне нечего.

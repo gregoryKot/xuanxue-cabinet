@@ -54,7 +54,9 @@ function cookieHeader(payload: Record<string, unknown>, extra?: string): string 
  * без мока, той же функцией, что и продовый AuthGuard. */
 function realSessionCookie(userId: string): string {
   const token = signSession({ userId, issuedAt: NOW }, SESSION_SECRET);
-  return buildSessionCookie(token, { secure: false, maxAgeSec: 3600 }).split(';')[0] as string;
+  return buildSessionCookie(token, { secure: false, maxAgeSec: 3600 }).split(
+    ';',
+  )[0] as string;
 }
 
 const USER: UserLean = { id: 'u1', name: 'Анна', roles: [], status: 'active' };
@@ -90,7 +92,9 @@ function build(options: BuildOptions = {}) {
     resolveGoogleUser: options.resolveGoogleUser ?? (() => Promise.resolve(USER)),
   } as unknown as GoogleLoginIdentityService;
   const linkService = {
-    link: options.link ?? ((user: UserLean) => Promise.resolve({ ...user, googleId: 'linked' })),
+    link:
+      options.link ??
+      ((user: UserLean) => Promise.resolve({ ...user, googleId: 'linked' })),
   } as unknown as GoogleLinkService;
 
   return new GoogleAuthService(
@@ -165,7 +169,9 @@ describe('GoogleAuthService.start — intent=link', () => {
   });
 
   it('пользователь заблокирован — то же no-session, что без сессии', async () => {
-    const service = build({ findById: () => Promise.resolve({ ...USER, status: 'blocked' }) });
+    const service = build({
+      findById: () => Promise.resolve({ ...USER, status: 'blocked' }),
+    });
     const cookie = realSessionCookie(USER.id);
 
     const result = await service.start({ intent: 'link' }, cookie, NOW);
@@ -322,7 +328,13 @@ describe('GoogleAuthService.login — обычный вход', () => {
 describe('GoogleAuthService.login — intent=link', () => {
   function linkGoogleCookie(userId: string, sessionCookie: string): string {
     return cookieHeader(
-      { state: 'a'.repeat(43), verifier: 'v', nonce: 'the-nonce', intent: 'link', userId },
+      {
+        state: 'a'.repeat(43),
+        verifier: 'v',
+        nonce: 'the-nonce',
+        intent: 'link',
+        userId,
+      },
       sessionCookie,
     );
   }

@@ -84,12 +84,5 @@ export function readGoogleOAuthCookie(
   if (userId !== undefined && (typeof userId !== 'string' || userId === '')) return null;
   // Привязка обязана нести id сессии — без него POST не с кем сверить.
   if (intent === GOOGLE_LINK_INTENT && userId === undefined) return null;
-  return {
-    state,
-    verifier,
-    nonce,
-    join,
-    intent: intent as typeof GOOGLE_LINK_INTENT | undefined,
-    userId: userId as string | undefined,
-  };
+  return { state, verifier, nonce, join, intent, userId };
 }

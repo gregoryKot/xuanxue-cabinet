@@ -19,6 +19,7 @@ const LoginScreen = lazyRoute(ROUTE_MODULES.login.load);
 const EmailLoginCallbackScreen = lazyRoute(ROUTE_MODULES.emailLogin.load);
 const GoogleLoginCallbackScreen = lazyRoute(ROUTE_MODULES.googleLogin.load);
 const JoinScreen = lazyRoute(ROUTE_MODULES.join.load);
+const PrivacyScreen = lazyRoute(ROUTE_MODULES.privacy.load);
 const WelcomeScreen = lazyRoute(ROUTE_MODULES.welcome.load);
 const EmailConfirmScreen = lazyRoute(ROUTE_MODULES.emailConfirm.load);
 
@@ -55,6 +56,11 @@ export default function App() {
                 входа проверяет код сама (useJoinByInvite.ts), внутрь
                 RequireAuth не идёт — гостю ещё нечего показывать из кабинета. */}
             <Route path={ROUTE_MODULES.join.path} element={<JoinScreen />} />
+            {/* Политика конфиденциальности (ADR-0145) — публичный маршрут,
+                вне RequireAuth: доступна и без сессии (Google её проверяет,
+                ссылка внизу экрана входа), и вошедшему, без редиректа в обе
+                стороны. */}
+            <Route path={ROUTE_MODULES.privacy.path} element={<PrivacyScreen />} />
             {/* Подтверждение почты (ADR-0059) — публичный маршрут, вне
                 RequireAuth: экран не требует сессии и не выдаёт её, письмо
                 открывают не обязательно там, где вошли в кабинет. */}

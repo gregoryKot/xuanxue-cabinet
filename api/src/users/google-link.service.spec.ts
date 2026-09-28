@@ -63,7 +63,13 @@ describe('GoogleLinkService', () => {
     });
 
     const result = await service.link(
-      { id: doc._id.toString(), name: 'Анна', googleId: 'sub-2', roles: [], status: 'active' },
+      {
+        id: doc._id.toString(),
+        name: 'Анна',
+        googleId: 'sub-2',
+        roles: [],
+        status: 'active',
+      },
       identity('sub-2'),
     );
 
@@ -96,7 +102,12 @@ describe('GoogleLinkService', () => {
   });
 
   it('этот Google уже принадлежит другому аккаунту — конфликт, ничего не меняется', async () => {
-    await model.create({ name: 'Пётр', googleId: 'sub-taken', roles: [], status: 'active' });
+    await model.create({
+      name: 'Пётр',
+      googleId: 'sub-taken',
+      roles: [],
+      status: 'active',
+    });
     const mine = await model.create({ name: 'Анна', roles: [], status: 'active' });
 
     await expect(

@@ -56,8 +56,7 @@ export interface GoogleAuthStartParams {
  * валидной сессии: вкладка вместо Google идёт на `${PUBLIC_URL}/login`,
  * cookie `google_oauth` не ставится вовсе (нечего запоминать). */
 export type GoogleAuthStartResult =
-  | { kind: 'oauth'; cookie: string; url: string }
-  | { kind: 'no-session'; url: string };
+  { kind: 'oauth'; cookie: string; url: string } | { kind: 'no-session'; url: string };
 
 export interface GoogleLoginResult {
   user: UserLean;
