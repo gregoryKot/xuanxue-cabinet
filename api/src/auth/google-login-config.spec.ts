@@ -19,6 +19,7 @@ describe('googleOAuthConfig', () => {
       clientId: 'id.apps.googleusercontent.com',
       clientSecret: 'secret',
       redirectUri: 'https://cabinet.example/login/google',
+      publicUrl: 'https://cabinet.example',
     });
   });
 

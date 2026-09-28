@@ -33,6 +33,7 @@ const STUDENT: MeDto = {
   hasEmail: true,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 
 function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] }) {

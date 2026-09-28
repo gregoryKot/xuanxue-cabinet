@@ -39,6 +39,7 @@ function meNeedingProfile(name: string): MeDto {
     hasEmail: !cameFromTelegram,
     noTelegram: false,
     needsProfile: true,
+    googleLinked: false,
   };
 }
 

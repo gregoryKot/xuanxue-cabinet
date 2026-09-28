@@ -7,6 +7,7 @@ const CONFIG: GoogleOAuthConfig = {
   clientId: 'client.apps.googleusercontent.com',
   clientSecret: 'secret',
   redirectUri: 'https://cabinet.example/login/google',
+  publicUrl: 'https://cabinet.example',
 };
 
 function fakeFetch(impl: (input: string | URL, init?: RequestInit) => Promise<Response>) {

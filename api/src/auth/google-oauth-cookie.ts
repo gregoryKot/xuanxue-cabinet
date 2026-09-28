@@ -4,6 +4,7 @@
 // Path=/api/auth/google — cookie видна только двум эндпоинтам самого потока
 // (start/POST), не всему API. Max-Age=600 (10 минут) — с запасом на то, чтобы
 // человек успел выбрать аккаунт Google, но короче TTL заявки email-входа.
+import { GOOGLE_LINK_INTENT } from '@xuanxue/shared';
 import { readCookie } from './session-cookie';
 
 export const GOOGLE_OAUTH_COOKIE = 'google_oauth';
@@ -16,8 +17,15 @@ export interface GoogleOAuthCookiePayload {
   nonce: string;
   /** Код ссылки-приглашения, если он был в query `?join=` у `start` и прошёл
    * формат (проверяется в google-auth.service.ts — cookie сама формат не
-   * знает); повторная проверка валидности — уже в GoogleLoginIdentityService. */
+   * знает); повторная проверка валидности — уже в GoogleLoginIdentityService.
+   * Не пишется вместе с `intent`/`userId` ниже — привязка код не спрашивает. */
   join?: string;
+  /** `GOOGLE_LINK_INTENT` — вкладка ведёт не ко входу, а к привязке Google
+   * уже вошедшего человека («Профиль», ADR-0145): `start?intent=link`
+   * положил сюда id сессии, `POST /auth/google` сверяет его с сессией самого
+   * запроса, а не берёт userId из тела — тело клиент не подписывает. */
+  intent?: typeof GOOGLE_LINK_INTENT;
+  userId?: string;
 }
 
 export function buildGoogleOAuthCookie(
@@ -65,9 +73,23 @@ export function readGoogleOAuthCookie(
     return null;
   }
   if (typeof parsed !== 'object' || parsed === null) return null;
-  const { state, verifier, nonce, join } = parsed as Record<string, unknown>;
+  const { state, verifier, nonce, join, intent, userId } = parsed as Record<
+    string,
+    unknown
+  >;
   if (typeof state !== 'string' || typeof verifier !== 'string') return null;
   if (typeof nonce !== 'string') return null;
   if (join !== undefined && typeof join !== 'string') return null;
-  return { state, verifier, nonce, join };
+  if (intent !== undefined && intent !== GOOGLE_LINK_INTENT) return null;
+  if (userId !== undefined && (typeof userId !== 'string' || userId === '')) return null;
+  // Привязка обязана нести id сессии — без него POST не с кем сверить.
+  if (intent === GOOGLE_LINK_INTENT && userId === undefined) return null;
+  return {
+    state,
+    verifier,
+    nonce,
+    join,
+    intent: intent as typeof GOOGLE_LINK_INTENT | undefined,
+    userId: userId as string | undefined,
+  };
 }

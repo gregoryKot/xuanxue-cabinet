@@ -10,6 +10,11 @@ export interface GoogleOAuthConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
+  /** Адрес самого кабинета — отдельно от `redirectUri` (не просто префикс:
+   * читать его обратно из строки с хвостом было бы хрупко), нужен
+   * GoogleAuthService.start() для `intent=link` без сессии — отправить
+   * вкладку на `${publicUrl}/login`, не на Google вовсе. */
+  publicUrl: string;
 }
 
 /** `null`, если хоть одной из трёх переменных нет — вызывающий код сам решает,
@@ -24,5 +29,6 @@ export function googleOAuthConfig(config: ConfigService): GoogleOAuthConfig | nu
     clientId,
     clientSecret,
     redirectUri: `${publicUrl}${GOOGLE_LOGIN_CALLBACK_PATH}`,
+    publicUrl,
   };
 }

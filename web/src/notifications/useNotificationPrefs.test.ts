@@ -22,6 +22,7 @@ const STUDENT: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 const TEACHER: MeDto = {
   id: 'u2',
@@ -33,6 +34,7 @@ const TEACHER: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 describe('useNotificationPrefs — виды по роли', () => {

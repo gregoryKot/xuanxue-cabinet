@@ -21,6 +21,7 @@ const TEACHER: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -32,6 +33,7 @@ const ADMIN: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 function renderNav(

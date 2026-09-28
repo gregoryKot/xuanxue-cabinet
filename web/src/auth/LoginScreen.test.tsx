@@ -199,6 +199,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -257,6 +258,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     });
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
   });
@@ -280,6 +282,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });

@@ -28,6 +28,7 @@ const TEACHER: MeDto = {
   hasEmail: true,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -39,6 +40,7 @@ const ADMIN: MeDto = {
   hasEmail: true,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 
 function makeAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {

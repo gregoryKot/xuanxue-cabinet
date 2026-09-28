@@ -32,6 +32,7 @@ const BASE: MeDto = {
   hasEmail: true,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 
 function renderKey(me: MeDto, config: unknown = { emailLoginEnabled: true }) {

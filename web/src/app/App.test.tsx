@@ -32,6 +32,7 @@ const TEACHER: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -43,6 +44,7 @@ const ADMIN: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -288,6 +290,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -335,6 +338,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -368,6 +372,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -387,6 +392,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -409,6 +415,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/lessons': [] });
 
@@ -444,6 +451,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, {
       '/me/notifications': { enabled: [] },
@@ -468,6 +476,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     // Своя попытка своим адресом, не список (ADR-0126).
     mockRoute(student, {

@@ -89,6 +89,7 @@ const TEACHER: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -100,6 +101,7 @@ const ADMIN: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 const STUDENT: MeDto = {
   id: 'u2',
@@ -111,6 +113,7 @@ const STUDENT: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 const ASSISTANT: MeDto = {
   id: 'u3',
@@ -122,6 +125,7 @@ const ASSISTANT: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 describe('AppShell — навигация по ширине экрана', () => {

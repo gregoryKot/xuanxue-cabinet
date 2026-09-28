@@ -34,6 +34,7 @@ const ME_AFTER_TOGGLE: MeDto = {
   hasEmail: true,
   noTelegram: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 function renderSwitch(noTelegram: boolean) {

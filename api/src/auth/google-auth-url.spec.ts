@@ -6,6 +6,7 @@ const CONFIG: GoogleOAuthConfig = {
   clientId: 'abc.apps.googleusercontent.com',
   clientSecret: 'secret',
   redirectUri: 'https://cabinet.example/login/google',
+  publicUrl: 'https://cabinet.example',
 };
 
 describe('buildGoogleAuthUrl', () => {

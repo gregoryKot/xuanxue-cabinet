@@ -13,6 +13,7 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     hasEmail: false,
     noTelegram: false,
     needsProfile: false,
+    googleLinked: false,
     ...overrides,
   };
 }

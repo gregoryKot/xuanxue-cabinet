@@ -38,6 +38,7 @@ describe('AuthProvider — статусы', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -88,6 +89,7 @@ describe('AuthProvider — статусы', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
     const { result } = renderAuth();
@@ -119,6 +121,7 @@ describe('AuthProvider — applyMe (ADR-0087)', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
 
     act(() => {
@@ -146,6 +149,7 @@ describe('AuthProvider — applyMe (ADR-0087)', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     let resolveRefresh: ((value: MeDto) => void) | undefined;
     mockedApiFetch.mockResolvedValueOnce(mounted).mockImplementationOnce(

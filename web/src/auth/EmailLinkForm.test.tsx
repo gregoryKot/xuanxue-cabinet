@@ -27,6 +27,7 @@ const ME: MeDto = {
   pendingEmail: 'a@example.com',
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 
 afterEach(() => {
