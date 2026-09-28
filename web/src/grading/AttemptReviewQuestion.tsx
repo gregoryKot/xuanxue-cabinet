@@ -34,6 +34,7 @@ import { ExamVideoPlayer } from '../components/ExamVideoPlayer';
 import { RichText } from '../components/RichText';
 import { AttemptReviewMedia } from './AttemptReviewMedia';
 import { AttemptReviewQuestionOptions } from './AttemptReviewQuestionOptions';
+import { AttemptReviewQuestionReason } from './AttemptReviewQuestionReason';
 import { attemptReviewQuestionStatus } from './attemptReviewQuestionStatus';
 import { formatOptionsCheckSummary } from './optionsCheckSummary';
 import type { AttemptReviewVideoControls } from './useAttemptReviewMedia';
@@ -139,6 +140,7 @@ export function AttemptReviewQuestion({
         </p>
       )}
 
+      {hasOptions && <AttemptReviewQuestionReason question={question} />}
       {question.optionsCheck && (
         <p style={metaStyle}>{formatOptionsCheckSummary(question.optionsCheck)}</p>
       )}

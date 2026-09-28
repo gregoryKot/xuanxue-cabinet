@@ -149,6 +149,38 @@ describe('ExamItemStats — карточка с числами', () => {
     ).toBeInTheDocument();
   });
 
+  // ADR-0146.
+  it('вопрос с askReason — строка «Объяснили выбор: N из M»', async () => {
+    mockApiByPath({
+      '/exam-items': {
+        itemId: 'i1',
+        kind: 'single',
+        askedCount: 5,
+        usedInExamsCount: 0,
+        correctCount: 3,
+        correctRate: 0.6,
+        reasonCount: 2,
+        reasonAnsweredCount: 4,
+        options: [{ id: 'o1', text: 'пять', correct: true, chosenCount: 4 }],
+      },
+    });
+
+    render(<ExamItemStats itemId="i1" />);
+
+    expect(await screen.findByText('Объяснили выбор: 2 из 4.')).toBeInTheDocument();
+  });
+
+  it('вопрос без askReason — строки про объяснение нет', async () => {
+    mockApiByPath({
+      '/exam-items': { itemId: 'i1', kind: 'single', askedCount: 2, usedInExamsCount: 0 },
+    });
+
+    render(<ExamItemStats itemId="i1" />);
+
+    await screen.findByText('Задавали 2 раза.');
+    expect(screen.queryByText(/Объяснили выбор/)).not.toBeInTheDocument();
+  });
+
   it('вопрос нигде не используется — предупреждения нет', async () => {
     mockApiByPath({
       '/exam-items': { itemId: 'i1', kind: 'text', askedCount: 0, usedInExamsCount: 0 },

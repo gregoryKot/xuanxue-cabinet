@@ -489,6 +489,145 @@ describe('AttemptInProgress — вопросы без ответа', () => {
   });
 });
 
+// ADR-0146: вопрос с вариантами может просить объяснение — правило «чего не
+// хватает» проверяется без DOM (attemptReasonGuard.test.ts), здесь —
+// поведение экрана: подтверждение не открывается, пока объяснения нет.
+describe('AttemptInProgress — объяснение выбора (ADR-0146)', () => {
+  function makeReasonAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
+    return makeAttempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Теория',
+          questions: [
+            {
+              itemId: 'q1',
+              version: 1,
+              kind: 'single',
+              prompt: 'Сколько стоек в форме?',
+              options: [
+                { id: 'o1', text: 'Три' },
+                { id: 'o2', text: 'Пять' },
+              ],
+              askReason: true,
+            },
+          ],
+        },
+      ],
+      ...overrides,
+    });
+  }
+
+  it('вариант выбран, объяснения нет — «Отправить» не открывает подтверждение, показывает отказ', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderAttempt(
+      makeReasonAttempt({ answers: [{ itemId: 'q1', optionIds: ['o1'] }] }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Объясните свой ответ в вопросе 1 — без объяснения работу не отправить.',
+      ),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('вариант выбран, объяснения нет — поле объяснения подсвечено aria-invalid', async () => {
+    const user = userEvent.setup();
+    renderAttempt(makeReasonAttempt({ answers: [{ itemId: 'q1', optionIds: ['o1'] }] }));
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+
+    expect(screen.getByRole('textbox', { name: 'Объясните свой ответ' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+
+  it('дописали объяснение после отказа — отметка и текст уходят сами', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderAttempt(makeReasonAttempt({ answers: [{ itemId: 'q1', optionIds: ['o1'] }] }));
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+    const textarea = screen.getByRole('textbox', { name: 'Объясните свой ответ' });
+    await user.type(textarea, 'Потому что так короче');
+
+    expect(textarea).not.toHaveAttribute('aria-invalid');
+    expect(
+      screen.queryByText(/без объяснения работу не отправить/),
+    ).not.toBeInTheDocument();
+  });
+
+  // Гейт: check-vitest-coverage-ratchet.mjs (functions) — onBlur поля объяснения.
+  it('уход с поля объяснения (blur) сохраняет оба поля ответа разом — вариант не стирается', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderAttempt(makeReasonAttempt({ answers: [{ itemId: 'q1', optionIds: ['o1'] }] }));
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Объясните свой ответ' }),
+      'Так короче',
+    );
+    await user.tab();
+
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/a1/answers', {
+        method: 'PATCH',
+        body: { answers: [{ itemId: 'q1', optionIds: ['o1'], text: 'Так короче' }] },
+      }),
+    );
+  });
+
+  it('объяснение уже написано — «Отправить» открывает обычное подтверждение и зовёт onSubmit', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderAttempt(
+      makeReasonAttempt({
+        answers: [{ itemId: 'q1', optionIds: ['o1'], text: 'Потому что так' }],
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+    const dialog = screen.getByRole('dialog', { name: 'Отправить экзамен?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Отправить' }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('вопрос пропущен целиком (вариант не выбран) — объяснение не требуется, обычное «без ответов»', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderAttempt(makeReasonAttempt());
+
+    await user.click(screen.getByRole('button', { name: 'Отправить' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Отправить без ответов?' }),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  // Сервер отказывает тем же правилом (400, exam-attempt-submit-reason.ts) —
+  // AttemptScreen.tsx уже кладёт ApiError.message в submitError через
+  // errorFrom (useAttempt.ts), этот компонент только показывает его тем же
+  // слотом, что и здесь.
+  it('сервер отклонил отправку без объяснения (400) — текст виден тем же слотом ошибки', () => {
+    renderAttempt(makeReasonAttempt({ answers: [{ itemId: 'q1', optionIds: ['o1'] }] }), {
+      submitError: {
+        message: 'Объясните свой ответ в вопросе 1 — без объяснения работу не отправить.',
+      },
+    });
+
+    expect(
+      screen.getByText(
+        'Объясните свой ответ в вопросе 1 — без объяснения работу не отправить.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
 // Переезд на «Тёплую школу» (ADR-0043, владелец согласовал 2026-09-20): вопросы
 // экрана сдачи легли в карточку, как разбор попытки у учителя
 // (grading/AttemptReviewScreen.test.tsx). jsdom не вычисляет `var(--…)` —

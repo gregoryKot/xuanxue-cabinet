@@ -45,4 +45,8 @@ export function changeExamItemKind(
   setField('kind', kind);
   const nextOptions = optionsAfterKindChange(kind, state.options);
   if (nextOptions !== state.options) setField('options', nextOptions);
+  // ADR-0146: объяснять нечего у вопроса без вариантов — сервер отказал бы
+  // сам (ASK_REASON_KIND_MESSAGE), но включённый флаг не должен пережить
+  // смену типа молча, до первого сохранения.
+  if (!hasOptions(kind) && state.askReason) setField('askReason', false);
 }

@@ -204,6 +204,38 @@ describe('ExamItemEditorScreen — тип ответа', () => {
   });
 });
 
+// ADR-0146: правило «виден только у single/multiple» и сборка тела запроса
+// (askReason) уже покрыты юнит-тестами (ExamItemReasonField.test.tsx,
+// examItemFormInput.test.ts); здесь — что переключатель и правда стоит на
+// странице вопроса и его включение уходит в тело сохранения.
+describe('ExamItemEditorScreen — просит объяснение (ADR-0146)', () => {
+  it('вопрос с вариантами — переключатель виден, включение уходит в PATCH', async () => {
+    const user = userEvent.setup();
+    mockItemAndStats(makeItem());
+
+    renderAt('/exam-items/e1');
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Попросить объяснить ответ' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => expect(callsWithMethod('PATCH')).toHaveLength(1));
+    const body = callsWithMethod('PATCH')[0]?.[1] as { body: { askReason: boolean } };
+    expect(body.body.askReason).toBe(true);
+  });
+
+  it('вопрос без вариантов (text) — переключателя нет вовсе', async () => {
+    mockItemAndStats(makeItem({ kind: 'text', options: [] }));
+
+    renderAt('/exam-items/e1');
+
+    await screen.findByLabelText('Формулировка');
+    expect(
+      screen.queryByRole('checkbox', { name: 'Попросить объяснить ответ' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('ExamItemEditorScreen — поля', () => {
   it('поля заполнены из ответа сервера', async () => {
     mockItemAndStats(makeItem());
