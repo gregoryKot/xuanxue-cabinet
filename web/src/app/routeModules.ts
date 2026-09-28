@@ -54,6 +54,7 @@ import {
   nextLessonsPath,
 } from '../api/apiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
+import { INSTALL_SCREEN_PATH } from '../install/installPath';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 export type RouteLoader = () => Promise<{ default: ComponentType }>;
@@ -324,6 +325,14 @@ export const ROUTE_MODULES = {
     load: () => import('../profile/ProfileScreen'),
     warm: true,
     prefetch: () => [NOTIFICATION_PREFS_PATH],
+  },
+  // Как поставить кабинет на телефон (docs/PWA.md) — личное место, как
+  // «/profile» выше: вход карточкой в оболочке (install/InstallAppCard.tsx) и
+  // с «Профиля», не пункт меню. Данных с сервера нет — prefetch не нужен.
+  install: {
+    path: INSTALL_SCREEN_PATH,
+    load: () => import('../install/InstallAppScreen'),
+    warm: true,
   },
   // Личное место человека, не раздел домена — как «/profile» выше, вход не из
   // навигации разделов, а значком в оболочке (ADR-0025, ADR-0063). Открыт

@@ -9,21 +9,11 @@
 import type { CSSProperties } from 'react';
 import { useSyncExternalStore } from 'react';
 import { Button } from '../components/Button';
+import { shellBannerStyle } from '../components/shellBannerStyle';
 import { hasNewAppVersion, subscribeToAppVersion } from '../api/appVersion';
 
 const MESSAGE = 'Кабинет обновился — у вас открыта прежняя версия.';
 const RELOAD_LABEL = 'Обновить страницу';
-
-const bannerStyle: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 12,
-  padding: '12px 16px',
-  background: 'var(--panel-warm)',
-  color: 'var(--ink)',
-};
 
 const messageStyle: CSSProperties = { margin: 0 };
 
@@ -40,7 +30,7 @@ export function NewVersionBanner() {
   if (!hasNewVersion) return null;
 
   return (
-    <div role="status" style={bannerStyle}>
+    <div role="status" style={shellBannerStyle}>
       <p style={messageStyle}>{MESSAGE}</p>
       <Button variant="secondary" onClick={reloadPage}>
         {RELOAD_LABEL}
