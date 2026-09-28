@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { postLoginPath } from './returnTo';
 
-export type CallbackLoginStatus = 'pending' | 'error';
+type CallbackLoginStatus = 'pending' | 'error';
 
 export interface CallbackLoginRequest {
   path: string;
