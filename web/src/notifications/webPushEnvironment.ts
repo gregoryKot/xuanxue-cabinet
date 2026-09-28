@@ -2,6 +2,11 @@
 // побочных эффектов, отдельно от usePushSubscription.ts: тесты подменяют
 // глобальные navigator/window через vi.stubGlobal и не трогают ни хук, ни
 // сеть (CLAUDE.md «тестируется без DOM?»).
+//
+// `isIPhone`/`isStandalone` — из pwa/installEnvironment.ts: тот же признак
+// нужен подсказке установки на телефон (pwa/InstallAppScreen.tsx), второй
+// литерал ловит jscpd (CLAUDE.md «Одна механика — один компонент»).
+import { isIPhone, isStandalone } from '../pwa/installEnvironment';
 
 /**
  * `serviceWorker` и `PushManager` — минимум, без которого push невозможен.
@@ -14,28 +19,6 @@ export function isPushBrowserSupported(): boolean {
     'serviceWorker' in navigator &&
     'PushManager' in window &&
     typeof Notification !== 'undefined'
-  );
-}
-
-/** Только userAgent — другого способа узнать iPhone у браузера нет
- * (комментарий-причина по прямой просьбе ТЗ ПР №5: способ выглядит хрупко,
- * но заменить нечем). Без iPad: docs/PWA.md и RUNBOOK §6.5 говорят об
- * iPhone — на iPad Safari с 2019 года по умолчанию выдаёт себя за
- * настольный (свой userAgent просит редко и непредсказуемо), надёжно
- * отличить его от Mac всё равно нельзя, а установленный кабинет на iPad не
- * обещан отдельно ни одним документом проекта. */
-function isIPhone(): boolean {
-  return /iPhone|iPod/.test(navigator.userAgent);
-}
-
-/** display-mode: standalone — современный признак установленного PWA;
- * navigator.standalone — то же самое у Safari старых версий, свойство вне
- * стандарта DOM, поэтому в лоб типами TypeScript его не знает. */
-function isStandalone(): boolean {
-  const legacySafariNavigator = navigator as Navigator & { standalone?: boolean };
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    legacySafariNavigator.standalone === true
   );
 }
 

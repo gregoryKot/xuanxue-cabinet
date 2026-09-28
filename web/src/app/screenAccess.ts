@@ -13,6 +13,7 @@
 // штат, либо ученик — по статусу здесь ничего не ветвится, `blocked` до
 // этого кода не доходит (RequireAuth показывает отказ).
 import type { MeDto } from '@xuanxue/shared';
+import { INSTALL_SCREEN_PATH } from '../install/installPath';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 // Экспортирован — routeMatch.ts строит из него EMPTY_PATH_FALLBACK, чтобы
@@ -50,8 +51,9 @@ export function rootPathFor(me: MeDto | null): string {
 }
 
 /** «/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
- * (личный экран, ADR-0045), «/notifications» (лента событий, ADR-0063) и
- * «/attempts/:id» (экран сдачи) — открыты любой роли; остальные маршруты
+ * (личный экран, ADR-0045), «/install» (инструкция установки, docs/PWA.md),
+ * «/notifications» (лента событий, ADR-0063) и «/attempts/:id» (экран сдачи)
+ * — открыты любой роли; остальные маршруты
  * кабинета — только teacher/assistant/admin, иначе AppShell уводит
  * редиректом на rootPathFor(me) (ADR-0025, ТЗ student-exams.md). */
 export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
@@ -62,6 +64,7 @@ export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
     pathname === STUDENT_ARCHIVE_PATH ||
     pathname === STUDENT_LIBRARY_PATH ||
     pathname === PROFILE_PATH ||
+    pathname === INSTALL_SCREEN_PATH ||
     pathname === NOTIFICATIONS_PATH ||
     pathname.startsWith(ATTEMPT_PATH_PREFIX)
   );

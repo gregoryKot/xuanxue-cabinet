@@ -40,6 +40,7 @@ const GradingQueueScreen = lazyRoute(ROUTE_MODULES.grading.load);
 const AttemptReviewScreen = lazyRoute(ROUTE_MODULES.attemptReview.load);
 const AttemptScreen = lazyRoute(ROUTE_MODULES.attempt.load);
 const ProfileScreen = lazyRoute(ROUTE_MODULES.profile.load);
+const InstallAppScreen = lazyRoute(ROUTE_MODULES.install.load);
 const NotificationsScreen = lazyRoute(ROUTE_MODULES.notifications.load);
 const TasksScreen = lazyRoute(ROUTE_MODULES.tasks.load);
 const LessonsScreen = lazyRoute(ROUTE_MODULES.studentLessons.load);
@@ -111,6 +112,11 @@ export const cabinetRoutes = (
         не из навигации разделов (docs/adr/0025). Доступен любой роли:
         canSeeRoute (screenAccess.ts) не ограничивает его по роли. */}
     <Route path={ROUTE_MODULES.profile.path} element={<ProfileScreen />} />
+    {/* Инструкция «как поставить кабинет на телефон» (docs/PWA.md) — личное
+        место человека, как «/profile» выше, вход карточкой в оболочке или
+        ссылкой на «Профиле», не пункт меню. Доступен любой роли: canSeeRoute
+        (screenAccess.ts) не ограничивает его. */}
+    <Route path={ROUTE_MODULES.install.path} element={<InstallAppScreen />} />
     {/* Лента событий и новых заданий (ADR-0063) — личное место человека, как
         «/profile» выше, вход значком в оболочке, не из навигации разделов
         (ADR-0025). Доступен любой роли: canSeeRoute (screenAccess.ts) не

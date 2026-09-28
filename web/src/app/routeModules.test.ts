@@ -27,6 +27,7 @@ describe('matchRoute', () => {
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
     expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
     expect(loaderAt('/notifications')).toBe(ROUTE_MODULES.notifications.load);
+    expect(loaderAt('/install')).toBe(ROUTE_MODULES.install.load);
     expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
     expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
     expect(loaderAt('/archive')).toBe(ROUTE_MODULES.archive.load);
@@ -65,6 +66,13 @@ describe('matchRoute', () => {
   it('экран «Уведомления» — свой чанк, греется в фоне (ADR-0063)', async () => {
     expect(ROUTE_MODULES.notifications.warm).toBe(true);
     await expect(ROUTE_MODULES.notifications.load()).resolves.toHaveProperty('default');
+  });
+
+  // Инструкция установки (docs/PWA.md) — свой чанк, греется в фоне, как
+  // «Профиль»/«Уведомления» выше.
+  it('экран «Приложение на телефоне» — свой чанк, греется в фоне', async () => {
+    expect(ROUTE_MODULES.install.warm).toBe(true);
+    await expect(ROUTE_MODULES.install.load()).resolves.toHaveProperty('default');
   });
 
   it('страница материала — один чанк на «новый» и на правку (ADR-0033)', async () => {
