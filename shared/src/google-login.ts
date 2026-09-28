@@ -10,6 +10,13 @@
  * едет query-параметром `join` (`INVITE_QUERY_PARAM`), как у Telegram. */
 export const GOOGLE_LOGIN_START_PATH = '/api/auth/google/start';
 
+/** Query-параметр начала потока: `intent=link` — привязать Google к уже
+ * вошедшему человеку («Профиль»), а не войти. Намерение сервер кладёт в ту же
+ * cookie, что `state`, вместе с id сессии: страница возврата одна на оба
+ * случая, а решает сервер, не адрес. */
+export const GOOGLE_INTENT_QUERY_PARAM = 'intent';
+export const GOOGLE_LINK_INTENT = 'link';
+
 /** Путь страницы, на которую Google возвращает вкладку, — он же хвост
  * `redirect_uri` (`${PUBLIC_URL}${GOOGLE_LOGIN_CALLBACK_PATH}`). Одна строка на
  * api и web: разойдись они, Google ответил бы `redirect_uri_mismatch`. */
@@ -43,9 +50,22 @@ export const GOOGLE_LOGIN_FAILED_MESSAGE =
  * можем, иначе чужой ящик, когда-то подтверждённый в Google, открыл бы
  * аккаунт. Человек входит по почте — как входил и раньше. */
 export const GOOGLE_EMAIL_NEEDS_EMAIL_LOGIN_MESSAGE =
-  'Этот адрес почты уже есть в кабинете. Войдите по почте, как раньше.';
+  'Этот адрес уже есть в кабинете. Войдите по почте и привяжите Google в профиле.';
 
 /** К аккаунту с этим адресом уже привязан другой Google. Перезаписать ключ
  * входа молча нельзя — тот же довод, что у занятого Telegram (ADR-0034). */
 export const GOOGLE_OTHER_ACCOUNT_MESSAGE =
   'К этому аккаунту уже привязан другой Google. Войдите через него или по почте.';
+
+/** Привязка: этот Google — уже ключ входа другого аккаунта. Не слияние
+ * (ADR-0034): записи объединяет админ. */
+export const GOOGLE_LINK_TAKEN_MESSAGE =
+  'Этот Google уже привязан к другому аккаунту кабинета. Напишите учителю школы.';
+
+/** Привязка: к вашему аккаунту уже привязан другой Google. */
+export const GOOGLE_LINK_OTHER_MESSAGE =
+  'К вашему аккаунту уже привязан другой Google. Напишите учителю школы.';
+
+/** Привязка начата из одной сессии, а вернулась в другую (или сессии нет). */
+export const GOOGLE_LINK_SESSION_MESSAGE =
+  'Сессия закончилась. Войдите и нажмите «Привязать Google» ещё раз.';

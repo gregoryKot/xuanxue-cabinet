@@ -45,6 +45,9 @@ export interface MeDto {
    * `LoginIdentityService.resolveEmailUser`: неподтверждённый адрес входом
    * не работает (SECURITY §2). */
   hasEmail: boolean;
+  /** Google — ключ входа этого аккаунта (`users.googleId` есть, ADR-0145):
+   * «Профиль» показывает «привязан» вместо кнопки «Привязать Google». */
+  googleLinked: boolean;
   /** Адрес назван, но ссылку из письма ещё не открыли (`users.pendingEmail`,
    * ADR-0059). Входом не работает; кабинет показывает его на «Профиле» и
    * предлагает прислать ссылку ещё раз. Пусто — ждать нечего. */
