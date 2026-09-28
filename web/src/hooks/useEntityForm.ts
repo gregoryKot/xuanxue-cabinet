@@ -58,9 +58,11 @@ export interface UseEntityFormResult<
   validationError: TError | null;
   serverError: FormError | null;
   pending: boolean;
-  submit: () => Promise<boolean>;
+  /** `next` — состояние, собранное в том же обработчике до отрисовки своего
+   * `setField` (экзамен + только что сохранённый вопрос, usePendingQuestion). */
+  submit: (next?: TFormState) => Promise<boolean>;
   remove: () => Promise<boolean>;
-  changeStatus: (status: TStatus) => Promise<boolean>;
+  changeStatus: (status: TStatus, next?: TFormState) => Promise<boolean>;
   draftRestored: boolean;
   discardDraft: () => void;
 }
@@ -93,17 +95,16 @@ export function useEntityForm<
     setState((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function submit(): Promise<boolean> {
-    const invalid = config.validate(state);
+  async function submit(next: TFormState = state): Promise<boolean> {
+    const invalid = config.validate(next);
     setValidationError(invalid);
     if (invalid) return false;
 
     setServerError(null);
     setPending(true);
     try {
-      if (entity)
-        await config.onUpdate(config.getId(entity), config.toUpdateInput(state));
-      else await config.onCreate(config.toCreateInput(state));
+      if (entity) await config.onUpdate(config.getId(entity), config.toUpdateInput(next));
+      else await config.onCreate(config.toCreateInput(next));
       draft.forgetDraft();
       return true;
     } catch (err) {
@@ -130,31 +131,28 @@ export function useEntityForm<
     }
   }
 
-  async function changeStatus(status: TStatus): Promise<boolean> {
+  async function changeStatus(
+    status: TStatus,
+    next: TFormState = state,
+  ): Promise<boolean> {
     if (!entity || !config.toStatusInput) return false;
 
-    // Кнопка статуса («Опубликовать»/«В архив»/«Вернуть в черновик») обещает
-    // одно действие, не «сохраните сами, а потом ещё раз нажмите сюда»:
-    // раньше сюда уходил только `{ status }`, и лист закрывался как после
-    // сохранения, молча выбрасывая всё, что учитель успел наменять в форме
-    // (аудит 2026-09-15, блокер №1 — заново собранный экзамен публиковался с
-    // прежними блоками, исправленный вопрос — с прежней формулировкой).
-    // Теперь смена статуса — то же тело, что у «Сохранить» (toUpdateInput),
-    // плюс новый статус поверх; валидация та же, что у «Сохранить» — незачем
-    // публиковать заведомо невалидную форму отдельным запросом.
-    const invalid = config.validate(state);
+    // Кнопка статуса обещает одно действие, не «сохраните, потом нажмите
+    // сюда»: раньше уходил только `{ status }`, и правки формы молча
+    // пропадали (аудит 2026-09-15, блокер №1). Теперь — то же тело и та же
+    // валидация, что у «Сохранить» (toUpdateInput), плюс статус поверх.
+    const invalid = config.validate(next);
     setValidationError(invalid);
     if (invalid) return false;
 
     setServerError(null);
     setPending(true);
     try {
-      await config.onUpdate(config.getId(entity), config.toStatusInput(state, status));
+      await config.onUpdate(config.getId(entity), config.toStatusInput(next, status));
       draft.forgetDraft();
       return true;
     } catch (err) {
-      // Статуса у сущности может не быть вовсе — тогда сюда не попадают, и
-      // текст ошибки сохранения остаётся общим (`?? saveErrorMessage`).
+      // Статуса у сущности может не быть — тогда сюда не попадают (`??`).
       setServerError(
         errorFrom(err, config.statusErrorMessage ?? config.saveErrorMessage),
       );

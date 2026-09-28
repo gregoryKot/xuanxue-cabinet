@@ -17,7 +17,7 @@
 // формулировок в выбранных вопросах. Предпросмотр глазами ученика — своя
 // страница со своим запросом (ExamPreviewScreen.tsx).
 import { useNavigate } from 'react-router-dom';
-import type { ExamDto } from '@xuanxue/shared';
+import type { ExamDto, ExamStatus } from '@xuanxue/shared';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { FormDraftNote } from '../components/FormDraftNote';
 import { FormServerError } from '../components/FormServerError';
@@ -31,6 +31,7 @@ import { ExamFlowFields } from './ExamFlowFields';
 import { ExamQuestionsSection } from './ExamQuestionsSection';
 import { pruneRequiredIds, toggleRequired } from './examQuestions';
 import { useExamForm } from './useExamForm';
+import { PendingQuestionContext, usePendingQuestion } from './usePendingQuestion';
 import { hasUnsavedChanges, useSaveAndPreview } from './useSaveAndPreview';
 import type { UseExamEditorResult } from './useExamEditor';
 
@@ -51,9 +52,18 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   const goToList = () => void navigate(EXAMS_PATH);
   const form = useExamForm(exam, editor.create, editor.update, editor.remove);
   const bank = useExamItems(NO_STATUS_FILTER, { includeDeleted: true });
+  // Раскрытая форма вопроса сохраняется первой (usePendingQuestion.ts).
+  const pendingQuestion = usePendingQuestion(form.state);
+  const submit = () => pendingQuestion.saveWith(form.submit);
   const { formRef, handleSubmit, handleChangeStatus, removeConfirm } =
-    useEditorFormActions(form.submit, form.changeStatus, form.remove, goToList);
-  const preview = useSaveAndPreview(exam, form, formRef);
+    useEditorFormActions(
+      submit,
+      (status: ExamStatus) =>
+        pendingQuestion.saveWith((next) => form.changeStatus(status, next)),
+      form.remove,
+      goToList,
+    );
+  const preview = useSaveAndPreview(exam, { state: form.state, submit }, formRef);
   // Черновик вернули — о нём уже говорит FormDraftNote ниже; второй строки
   // про «хранится на устройстве» подряд не нужно (снимок владельца 2026-09-27).
   const showDraftSafetyNote =
@@ -67,7 +77,7 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
   }
 
   return (
-    <>
+    <PendingQuestionContext.Provider value={pendingQuestion.slot}>
       <form ref={formRef} style={editorPageStyle} onSubmit={(e) => void handleSubmit(e)}>
         <ExamEditorHeader
           exam={exam}
@@ -128,6 +138,6 @@ export function ExamEditorForm({ exam, editor }: ExamEditorFormProps) {
           onCancel={removeConfirm.cancelRemove}
         />
       )}
-    </>
+    </PendingQuestionContext.Provider>
   );
 }

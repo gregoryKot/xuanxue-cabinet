@@ -45,7 +45,10 @@ const contentRowStyle: CSSProperties = {
   alignItems: 'center',
   gap: 6,
 };
-const textStyle: CSSProperties = { ...inputStyle, flex: '1 1 140px', minWidth: 0 };
+// Основа 100px, не больше: на 360 px колонке текста остаётся ~185 — поле,
+// зазор и скрепка 44 обязаны влезть в одну строку, иначе скрепка падала под
+// поле (снимок владельца 2026-09-28).
+const textStyle: CSSProperties = { ...inputStyle, flex: '1 1 100px', minWidth: 0 };
 
 interface ExamItemOptionRowProps {
   option: ExamItemOptionDraft;
