@@ -11,9 +11,13 @@
 import type { UpdateExamItemInput } from '@xuanxue/shared';
 import type { ExamItemOptionRecord, ExamItemVersionRecord } from './exam-item.schema';
 
-/** Поля, ради которых версия и заводится: формулировка, её видео, варианты.
+/** Поля, ради которых версия и заводится: формулировка, её видео, варианты,
+ * требование объяснения (ADR-0146 — правка того, что видел сдающий).
  * Статус — не содержание вопроса. */
-type ContentSnapshot = Pick<ExamItemVersionRecord, 'prompt' | 'videoId' | 'videoUrl'>;
+type ContentSnapshot = Pick<
+  ExamItemVersionRecord,
+  'prompt' | 'videoId' | 'videoUrl' | 'askReason'
+>;
 
 /** Формулировка обязательна и не сбрасывается (`null` отсекает DTO), поэтому
  * сравниваем прямо: поля нет в запросе — правки нет. */
@@ -48,7 +52,8 @@ export function hasContentChanged(
     promptChanged(input.prompt, current.prompt) ||
     textChanged(input.videoId, current.videoId) ||
     textChanged(input.videoUrl, current.videoUrl) ||
-    optionsChanged(nextOptions, current.options)
+    optionsChanged(nextOptions, current.options) ||
+    (input.askReason !== undefined && input.askReason !== Boolean(current.askReason))
   );
 }
 
@@ -66,6 +71,7 @@ export function buildHistoryEntry(
     ...(current.videoId !== undefined ? { videoId: current.videoId } : {}),
     ...(current.videoUrl !== undefined ? { videoUrl: current.videoUrl } : {}),
     options: current.options,
+    ...(current.askReason ? { askReason: true } : {}),
     replacedAt,
   };
 }

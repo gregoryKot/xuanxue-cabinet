@@ -43,6 +43,7 @@ function toAttemptQuestion(
     prompt: item.prompt,
     ...(item.videoId !== undefined ? { videoId: item.videoId } : {}),
     ...(item.videoUrl !== undefined ? { videoUrl: item.videoUrl } : {}),
+    ...(item.askReason ? { askReason: true } : {}),
     options: shuffleOptions ? shuffleOnce(options, random) : options,
   };
 }

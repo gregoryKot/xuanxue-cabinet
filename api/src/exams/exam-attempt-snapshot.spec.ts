@@ -325,3 +325,35 @@ describe('collectAttemptVideoIds', () => {
     expect(collectAttemptVideoIds(blocks)).toEqual(['vid1', 'vid2']);
   });
 });
+
+// ADR-0146: снимок хранит требование объяснения так, как оно стояло на
+// момент старта попытки.
+describe('buildAttemptBlocks — askReason (ADR-0146)', () => {
+  it('askReason стоял у вопроса — попадает в снимок', () => {
+    const itemsById = new Map([
+      [
+        'i1',
+        item({
+          id: 'i1',
+          kind: 'single',
+          askReason: true,
+          options: [{ id: 'o1', text: 'вариант', correct: true }],
+        }),
+      ],
+    ]);
+    const blocks = [block({ itemIds: ['i1'] })];
+
+    const snapshot = build(blocks, itemsById, () => 0);
+
+    expect(snapshot[0]?.questions[0]?.askReason).toBe(true);
+  });
+
+  it('askReason не стоял — ключа в снимке нет', () => {
+    const itemsById = new Map([['i1', item({ id: 'i1' })]]);
+    const blocks = [block({ itemIds: ['i1'] })];
+
+    const snapshot = build(blocks, itemsById, () => 0);
+
+    expect(snapshot[0]?.questions[0]).not.toHaveProperty('askReason');
+  });
+});

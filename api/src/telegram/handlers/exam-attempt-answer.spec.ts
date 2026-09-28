@@ -437,6 +437,67 @@ describe('handleExamOption', () => {
       ),
     ).resolves.toBeUndefined();
   });
+
+  // ADR-0146: существующее объяснение (text) не должно стираться заменой
+  // выбранного варианта — mergeAnswers заменяет ответ по itemId целиком.
+  it('уже было объяснение — выбор варианта сохраняет его вместе с новым optionIds', async () => {
+    const current = attempt([SINGLE_Q], {
+      answers: [{ itemId: 'i1', optionIds: ['o2'], text: 'моё объяснение' }],
+    });
+    const saved = attempt([SINGLE_Q], {
+      answers: [{ itemId: 'i1', optionIds: ['o1'], text: 'моё объяснение' }],
+    });
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(current),
+      saveAnswer: jest.fn().mockResolvedValue(saved),
+    });
+    const { ctx } = fakeCtx();
+
+    await handleExamOption(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
+      NOW,
+    );
+
+    expect(port.saveAnswer).toHaveBeenCalledWith(
+      ATTEMPT_ID,
+      USER,
+      { itemId: 'i1', optionIds: ['o1'], text: 'моё объяснение' },
+      NOW,
+    );
+  });
+
+  // ADR-0146: single с askReason не переходит дальше сам по себе — ждём
+  // объяснение сообщением, даже когда следующий вопрос есть.
+  it('single с askReason — выбор варианта не переходит к следующему вопросу', async () => {
+    const askReasonQ: AttemptQuestionDto = { ...SINGLE_Q, askReason: true };
+    const q2: AttemptQuestionDto = { ...SINGLE_Q, itemId: 'i2', prompt: 'Вопрос 2' };
+    const current = attempt([askReasonQ, q2]);
+    const saved = attempt([askReasonQ, q2], {
+      answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+    });
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(current),
+      saveAnswer: jest.fn().mockResolvedValue(saved),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamOption(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      { attemptId: ATTEMPT_ID, questionIndex: 0, optionIndex: 0 },
+      NOW,
+    );
+
+    expect(edits[0]).toContain('Вопрос 1 из 2');
+  });
 });
 
 describe('handleExamSubmit', () => {
@@ -445,6 +506,63 @@ describe('handleExamSubmit', () => {
       submitAttempt: jest
         .fn()
         .mockResolvedValue(attempt([SINGLE_Q], { status: 'submitted' })),
+    });
+    const { ctx, edits } = fakeCtx();
+
+    await handleExamSubmit(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      ATTEMPT_ID,
+      NOW,
+    );
+
+    expect(port.submitAttempt).toHaveBeenCalledWith(ATTEMPT_ID, USER, NOW);
+    expect(edits).toEqual(['Работа отправлена. Учитель проверит и пришлёт результат.']);
+  });
+
+  it('объяснение не написано — показывает этот вопрос с отказом, не отправляет (ADR-0146)', async () => {
+    const reasonQ: AttemptQuestionDto = { ...SINGLE_Q, askReason: true };
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest
+        .fn()
+        .mockResolvedValue(
+          attempt([reasonQ], { answers: [{ itemId: 'i1', optionIds: ['o1'] }] }),
+        ),
+    });
+    const { ctx, edits, buttonTexts } = fakeCtx();
+
+    await handleExamSubmit(
+      ctx,
+      port,
+      fakeBotSessionService(),
+      USER,
+      CHAT_ID,
+      ATTEMPT_ID,
+      NOW,
+    );
+
+    expect(port.submitAttempt).not.toHaveBeenCalled();
+    expect(edits).toHaveLength(1);
+    expect(edits[0]).toMatch(/^Объясните свой ответ в вопросе 1 — /);
+    expect(edits[0]).toContain('Вопрос 1 из 1');
+    // Кнопки на месте — ученику есть чем ответить и сдать снова.
+    expect(buttonTexts.flat()).toContain('Сдать');
+  });
+
+  it('объяснение написано — отправляет как обычно', async () => {
+    const reasonQ: AttemptQuestionDto = { ...SINGLE_Q, askReason: true };
+    const port = fakeExamBotPort({
+      loadOwnAttempt: jest.fn().mockResolvedValue(
+        attempt([reasonQ], {
+          answers: [{ itemId: 'i1', optionIds: ['o1'], text: 'Потому что' }],
+        }),
+      ),
+      submitAttempt: jest
+        .fn()
+        .mockResolvedValue(attempt([reasonQ], { status: 'submitted' })),
     });
     const { ctx, edits } = fakeCtx();
 

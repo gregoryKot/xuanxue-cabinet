@@ -77,4 +77,15 @@ describe('toExamItemDto', () => {
     expect(dto.options).toEqual([]);
     expect(dto.history).toEqual([]);
   });
+
+  // ADR-0146: ключа нет вовсе, если askReason выключен — тем же приёмом, что deletedAt.
+  it('askReason: true — переносится в DTO', () => {
+    const doc = { ...fullItem(), askReason: true };
+
+    expect(toExamItemDto(doc).askReason).toBe(true);
+  });
+
+  it('askReason не стоял (undefined) — ключа в DTO нет', () => {
+    expect(toExamItemDto(fullItem())).not.toHaveProperty('askReason');
+  });
 });

@@ -88,6 +88,57 @@ describe('toAttemptDto', () => {
     expect(question?.options[1]).not.toHaveProperty('videoId');
   });
 
+  // ADR-0146: снимок хранит требование объяснения так, как оно стояло на
+  // момент старта попытки — маппер переносит его в DTO ученика.
+  it('askReason снимка доезжает до DTO', () => {
+    const doc = leanAttempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Форма',
+          questions: [
+            {
+              itemId: 'i1',
+              version: 1,
+              kind: 'single',
+              prompt: 'Какая стойка?',
+              askReason: true,
+              options: [{ id: 'o1', text: 'верно', correct: true }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const dto = toAttemptDto(doc);
+
+    expect(dto.blocks[0]?.questions[0]?.askReason).toBe(true);
+  });
+
+  it('askReason не стоял — ключа в DTO нет', () => {
+    const doc = leanAttempt({
+      blocks: [
+        {
+          id: 'b1',
+          title: 'Форма',
+          questions: [
+            {
+              itemId: 'i1',
+              version: 1,
+              kind: 'text',
+              prompt: 'Опишите форму',
+              options: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    const dto = toAttemptDto(doc);
+
+    expect(dto.blocks[0]?.questions[0]).not.toHaveProperty('askReason');
+  });
+
   // Раздел «Проверенные» (PR #351, docs/PLAN.md §4.6): третий параметр
   // grading — тем же приёмом, что userName. Read-after-write и то, что оба
   // поля физически отсутствуют в ответе, проверено e2e

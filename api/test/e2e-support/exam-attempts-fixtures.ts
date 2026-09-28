@@ -24,6 +24,8 @@ export function createExamAttemptsTestHelpers(getApp: () => TestApp) {
       shuffleOptions?: boolean;
       /** Срок сдачи (ADR-0125), ISO UTC с Z. */
       dueAt?: string;
+      /** Просить объяснение выбранного варианта (ADR-0146). */
+      askReason?: boolean;
     } = {},
   ): Promise<{ examId: string; itemId: string; optionIds: string[] }> {
     const item = await withCsrf(request(server()).post('/api/exam-items'))
@@ -31,6 +33,7 @@ export function createExamAttemptsTestHelpers(getApp: () => TestApp) {
       .send({
         kind: 'single',
         prompt: 'Сколько форм в базовом комплексе?',
+        askReason: options.askReason,
         // Четыре варианта, а не два: на двух перемешивание совпадает с
         // исходным порядком слишком часто, и тест про него был бы мигающим
         // (CLAUDE.md «Детерминизм»).

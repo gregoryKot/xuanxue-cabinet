@@ -4,7 +4,7 @@
 // наследуются по прототипу — тот же приём, что у ClassFieldsDto в
 // classes/dto/class-fields.dto.ts).
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, IsArray, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, ValidateNested } from 'class-validator';
 import { EXAM_ITEM_LIMITS, type ExamItemOptionInput } from '@xuanxue/shared';
 import { OptionalNotNull } from '../../common/validation';
 import { ExamItemOptionDto } from './exam-item-option.dto';
@@ -19,4 +19,10 @@ export class ExamItemFieldsDto {
   @ValidateNested({ each: true })
   @Type(() => ExamItemOptionDto)
   options?: ExamItemOptionInput[];
+
+  // Сочетание с kind (только single/multiple) — тоже в сервисе, тем же
+  // приёмом, что options выше (ADR-0146, assertReasonAllowedForKind).
+  @OptionalNotNull()
+  @IsBoolean()
+  askReason?: boolean;
 }

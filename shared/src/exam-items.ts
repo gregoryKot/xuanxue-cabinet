@@ -1,13 +1,9 @@
-// Вопрос экзамена: DTO и константы API вопроса (`/exam-items`, слой 4.2).
-// Отдельным файлом, потому что exams.ts упёрся в лимит размера (CLAUDE.md
-// «Храповики») — не потому что так красивее: форма экзамена (блоки, лимиты
-// формы) осталась в exams.ts, здесь только вопрос и его варианты ответа.
-
-// DTO и константы API вопросов экзамена (`/exam-items`, слой 4.2,
-// docs/PLAN.md §11, docs/adr/0022-exam-model-item-bank-and-snapshot.md).
-// Общий контракт api и web (CLAUDE.md, раздел «Слои»): DTO в api объявляется
-// как `implements` этих типов, расхождение ловит tsc. Веб-экран — следующий
-// слой, здесь только контракт бэкенда.
+// DTO и константы API вопросов экзамена (`/exam-items`, слой 4.2, docs/PLAN.md
+// §11, docs/adr/0022-exam-model-item-bank-and-snapshot.md). Отдельным файлом,
+// потому что exams.ts упёрся в лимит размера (CLAUDE.md «Храповики») — форма
+// экзамена осталась там, здесь только вопрос и его варианты ответа. Общий
+// контракт api и web: DTO в api объявляется как `implements` этих типов,
+// расхождение ловит tsc.
 
 export const EXAM_ITEM_KINDS = ['text', 'single', 'multiple', 'video'] as const;
 export type ExamItemKind = (typeof EXAM_ITEM_KINDS)[number];
@@ -16,12 +12,9 @@ export const EXAM_ITEM_STATUSES = ['draft', 'published', 'archived'] as const;
 export type ExamItemStatus = (typeof EXAM_ITEM_STATUSES)[number];
 
 /** `imageId` — картинка варианта (ADR-0035, `GET /exam-images/:id`);
- * `videoId`/`videoUrl` — видео варианта тем же смыслом (ADR-0133,
- * `GET /exam-videos/:id`, файл в R2, либо https-ссылка без R2): вариант
- * может быть текстом, картинкой или видео, но не двумя видами медиа разом —
- * не более одного из `imageId`/`videoId`/`videoUrl` (OPTION_ONE_MEDIA_MESSAGE
- * ниже). `text` при медиа без подписи — пустая строка, не отсутствие поля:
- * форма и снимок попытки всегда видят строку. */
+ * `videoId`/`videoUrl` — видео варианта тем же смыслом (ADR-0133): не более
+ * одного медиа разом (OPTION_ONE_MEDIA_MESSAGE ниже). `text` при медиа без
+ * подписи — пустая строка, не отсутствие поля. */
 export interface ExamItemOptionDto {
   id: string;
   text: string;
@@ -31,13 +24,10 @@ export interface ExamItemOptionDto {
   videoUrl?: string;
 }
 
-/** `id` есть у существующего варианта (сервис сохраняет его как есть при
- * правке — см. `mapOptions`, `exam-item-options.ts`); без `id` — новый
- * вариант, сервис создаёт `id` сам. Тот же приём, что у `ScheduleRuleInput`
- * (shared/src/classes.ts) — с `id` или без него, правка сохраняет или
- * заводит идентификатор одинаково. `text` необязателен: у варианта-медиа
- * подписи может не быть, но хотя бы одно из трёх — текст, `imageId` или
- * видео — сервис требует (OPTION_CONTENT_REQUIRED_MESSAGE ниже). */
+/** `id` есть у существующего варианта (сохраняется как есть, `mapOptions`);
+ * без `id` — новый, сервис заводит его сам. `text` необязателен: у
+ * варианта-медиа подписи может не быть, но хотя бы одно из трёх — текст,
+ * `imageId` или видео — сервис требует (OPTION_CONTENT_REQUIRED_MESSAGE). */
 export interface ExamItemOptionInput {
   id?: string;
   text?: string;
@@ -48,24 +38,23 @@ export interface ExamItemOptionInput {
 }
 
 /** Прошлая редакция опубликованного вопроса — правка содержательного поля
- * (prompt/options) кладёт сюда снимок ДО правки, а `version`
- * поднимается на 1 (ADR-0022: сданные работы ссылаются на конкретную
- * редакцию, правка вопроса не должна менять смысл уже сданного). Старые
- * записи истории (до ADR-0128) могут хранить и `hint`/`criteria` внутри
- * зашифрованного JSON — маппер их не читает, историю ради этого не
- * переписываем. */
+ * кладёт сюда снимок ДО правки, `version` поднимается на 1 (ADR-0022: сданные
+ * работы ссылаются на конкретную редакцию). Старые записи (до ADR-0128) могут
+ * хранить и `hint`/`criteria` внутри — маппер их не читает. */
 interface ExamItemVersionDto {
   version: number;
   prompt: string;
   videoId?: string;
   videoUrl?: string;
   options: ExamItemOptionDto[];
+  /** Стояло ли требование объяснения в этой редакции (ADR-0146) — история
+   * хранит именно то, что видел сдающий, а не сегодняшнюю настройку вопроса. */
+  askReason?: boolean;
   replacedAt: string; // ISO UTC
 }
 
-/** Видео к формулировке вопроса (ADR-0133) — например, «что не так в этом
- * движении» у текстового вопроса. Не более одного из `videoId`/`videoUrl`:
- * файл в R2 или https-ссылка, а не оба разом. */
+/** Видео к формулировке вопроса (ADR-0133) — не более одного из
+ * `videoId`/`videoUrl`: файл в R2 или https-ссылка, а не оба разом. */
 export interface ExamItemDto {
   id: string;
   kind: ExamItemKind;
@@ -73,6 +62,10 @@ export interface ExamItemDto {
   videoId?: string;
   videoUrl?: string;
   options: ExamItemOptionDto[];
+  /** Учитель просит ученика объяснить выбранный вариант (ADR-0146) — только
+   * у single/multiple, проверяет сервис (assertReasonAllowedForKind). Ключа
+   * нет, если выключено — тем же приёмом, что deletedAt ниже. */
+  askReason?: boolean;
   status: ExamItemStatus;
   version: number;
   history: ExamItemVersionDto[];
@@ -89,6 +82,7 @@ export interface CreateExamItemInput {
   videoUrl?: string;
   options?: ExamItemOptionInput[];
   status?: ExamItemStatus; // не прислали — сразу `published` (ADR-0033)
+  askReason?: boolean;
 }
 
 /**
@@ -102,6 +96,7 @@ export interface UpdateExamItemInput {
   videoUrl?: string | null;
   options?: ExamItemOptionInput[];
   status?: ExamItemStatus;
+  askReason?: boolean;
 }
 
 /** Единственные поля UpdateExamItemInput, где `null` — не ошибка формы, а
@@ -148,3 +143,8 @@ export const OPTION_ONE_MEDIA_MESSAGE =
 // вопрос, не вариант.
 export const ITEM_ONE_VIDEO_SOURCE_MESSAGE =
   'У вопроса может быть только один источник видео — файл или ссылка, не оба сразу. Уберите лишнее.';
+
+// ADR-0146: объяснение просит подтвердить выбор варианта — у вопроса без
+// вариантов (текст, видео) просить нечего объяснять.
+export const ASK_REASON_KIND_MESSAGE =
+  'Просить объяснение можно только у вопроса с выбором варианта. Уберите этот флаг или смените тип вопроса.';

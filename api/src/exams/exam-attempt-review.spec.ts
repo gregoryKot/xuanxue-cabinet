@@ -229,3 +229,48 @@ describe('buildReviewBlocks', () => {
     expect(review?.questions[0]?.options[0]?.videoUrl).toBe('https://youtu.be/x');
   });
 });
+
+// ADR-0146: у вопроса с вариантами text теперь объяснение выбора, не сам
+// ответ — «отвечено» больше не значит «написал текст», значит «выбрал».
+describe('answered у вопроса с вариантами (ADR-0146)', () => {
+  function blocks(): AttemptBlockRecord[] {
+    return [
+      {
+        id: 'b1',
+        title: 'Форма',
+        questions: [
+          {
+            itemId: 'i1',
+            version: 1,
+            kind: 'single',
+            prompt: 'Сколько форм?',
+            askReason: true,
+            options: [
+              { id: 'o1', text: 'верно', correct: true },
+              { id: 'o2', text: 'неверно', correct: false },
+            ],
+          },
+        ],
+      },
+    ];
+  }
+
+  it('написан только текст (объяснение) без выбора варианта — answered: false', () => {
+    const [review] = buildReviewBlocks(blocks(), [
+      { itemId: 'i1', text: 'потому что так' },
+    ]);
+
+    expect(review?.questions[0]?.answered).toBe(false);
+    expect(review?.questions[0]?.optionsCheck).toBeUndefined();
+  });
+
+  it('выбран вариант и написано объяснение — answered: true, askReason виден на карточке', () => {
+    const [review] = buildReviewBlocks(blocks(), [
+      { itemId: 'i1', optionIds: ['o1'], text: 'потому что так' },
+    ]);
+
+    expect(review?.questions[0]?.answered).toBe(true);
+    expect(review?.questions[0]?.answerText).toBe('потому что так');
+    expect(review?.questions[0]?.askReason).toBe(true);
+  });
+});

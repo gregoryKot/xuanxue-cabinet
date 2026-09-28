@@ -14,14 +14,12 @@ import type { InlineKeyboardButton } from 'telegraf/types';
 import { inlineButton } from '../callback-data';
 import { backToMenuButton, type BotMenu } from './bot-menu';
 import { buildOptionId, buildQuestionId } from './exam-callback-ids';
+import { buildReasonNote } from './exam-question-reason-note';
 
-// Вопросы text/video отвечаются прямо здесь (ТЗ 4б.2 часть 2): подсказка на экране — вся
-// инструкция, кнопки не нужно, ждём просто следующее сообщение в чат. Ожидание ответа
-// ставит exam-question-render.ts при каждом показе этого экрана (bot-session.service.ts,
-// kind 'examText'/'examMedia' с номером вопроса) — сам экран, как и раньше, чистая
-// функция без Mongo. Кабинет остаётся запасным путём (ADR-0024): у видео там же
-// добавляется ссылка или ручная отметка учителя (ADR-0023) — это не первое, что видит
-// ученик, но никуда не делось.
+// Вопросы text/video (и объяснение у askReason, ADR-0146) отвечаются прямо здесь (ТЗ
+// 4б.2 часть 2): подсказка на экране — вся инструкция, ждём следующее сообщение в чат.
+// Ожидание ставит exam-question-render.ts при каждом показе экрана (kind
+// 'examText'/'examMedia', bot-session.service.ts). Кабинет — запасной путь (ADR-0024).
 const TEXT_QUESTION_PROMPT = 'Напишите ответ сообщением — обычным текстом, прямо сюда.';
 // Экспортирован — exam-media-deep-link.ts зовёт тем же текстом (CLAUDE.md «Дубли»).
 export const VIDEO_QUESTION_PROMPT =
@@ -125,6 +123,7 @@ function questionNote(
   }
   if (question.kind === 'video')
     return hasVideo ? VIDEO_RECEIVED_NOTE : VIDEO_QUESTION_PROMPT;
+  if (question.askReason) return buildReasonNote(answer);
   return null;
 }
 

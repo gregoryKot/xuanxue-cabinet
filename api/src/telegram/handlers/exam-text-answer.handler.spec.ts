@@ -208,4 +208,92 @@ describe('ExamTextAnswerHandler', () => {
     expect(botSessions.clear).toHaveBeenCalledWith(111);
     expect(port.saveAnswer).not.toHaveBeenCalled();
   });
+
+  // ADR-0146: объяснение выбора — text у вопроса с вариантами, optionIds
+  // уже выбранного варианта не должны стираться заменой ответа текстом.
+  describe('askReason (ADR-0146)', () => {
+    const ASK_REASON_Q: AttemptQuestionDto = {
+      itemId: 'i1',
+      version: 1,
+      kind: 'single',
+      prompt: 'Что не так в стойке?',
+      askReason: true,
+      options: [
+        { id: 'o1', text: 'Верно' },
+        { id: 'o2', text: 'Неверно' },
+      ],
+    };
+
+    function askReasonAttempt(overrides: Partial<ExamAttemptDto> = {}): ExamAttemptDto {
+      return {
+        ...attempt(overrides),
+        blocks: [{ id: 'b1', title: '', questions: [ASK_REASON_Q] }],
+      };
+    }
+
+    it('вариант уже выбран — объяснение текстом сохраняет optionIds вместе с text', async () => {
+      const current = askReasonAttempt({
+        answers: [{ itemId: 'i1', optionIds: ['o1'] }],
+      });
+      const saved = askReasonAttempt({
+        answers: [{ itemId: 'i1', optionIds: ['o1'], text: 'потому что так' }],
+      });
+      const { handler, port } = buildHandler({
+        userId: 'u1',
+        loadOwnAttempt: current,
+        saveAnswer: saved,
+      });
+      const { ctx } = fakeCtx('потому что так');
+
+      await handler.handle(ctx, 111, SESSION, NOW);
+
+      expect(port.saveAnswer).toHaveBeenCalledWith(
+        ATTEMPT_ID,
+        { id: 'u1', name: 'Ученик', roles: [], status: 'active' },
+        { itemId: 'i1', text: 'потому что так', optionIds: ['o1'] },
+        NOW,
+      );
+    });
+
+    it('вариант уже выбран — после объяснения переход к следующему вопросу', async () => {
+      const q2: AttemptQuestionDto = { ...ASK_REASON_Q, itemId: 'i2', askReason: false };
+      const current: ExamAttemptDto = {
+        ...askReasonAttempt({ answers: [{ itemId: 'i1', optionIds: ['o1'] }] }),
+        blocks: [{ id: 'b1', title: '', questions: [ASK_REASON_Q, q2] }],
+      };
+      const saved = {
+        ...current,
+        answers: [{ itemId: 'i1', optionIds: ['o1'], text: 'потому что так' }],
+      };
+      const { handler } = buildHandler({
+        userId: 'u1',
+        loadOwnAttempt: current,
+        saveAnswer: saved,
+      });
+      const { ctx, replies } = fakeCtx('потому что так');
+
+      await handler.handle(ctx, 111, SESSION, NOW);
+
+      expect(replies[0]).toContain('Вопрос 2 из 2');
+    });
+
+    it('вариант ещё не выбран — сообщение сохраняется, но экран остаётся на том же вопросе', async () => {
+      const q2: AttemptQuestionDto = { ...ASK_REASON_Q, itemId: 'i2', askReason: false };
+      const current: ExamAttemptDto = {
+        ...askReasonAttempt(),
+        blocks: [{ id: 'b1', title: '', questions: [ASK_REASON_Q, q2] }],
+      };
+      const saved = { ...current, answers: [{ itemId: 'i1', text: 'ранняя мысль' }] };
+      const { handler } = buildHandler({
+        userId: 'u1',
+        loadOwnAttempt: current,
+        saveAnswer: saved,
+      });
+      const { ctx, replies } = fakeCtx('ранняя мысль');
+
+      await handler.handle(ctx, 111, SESSION, NOW);
+
+      expect(replies[0]).toContain('Вопрос 1 из 2');
+    });
+  });
 });

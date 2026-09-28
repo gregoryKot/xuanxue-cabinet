@@ -1,8 +1,6 @@
 // CRUD банка вопросов (данные школы, ADR-0010: доступ по роли, не по
-// владельцу). Инкапсулирует шифрование содержательных полей (prompt/
-// options/history, CLAUDE.md «Данные», чеклист коллекции) и версии
-// опубликованных вопросов (ТЗ 4.2, п.3) — контроллер только валидирует тело
-// и зовёт.
+// владельцу). Инкапсулирует шифрование содержательных полей и версии
+// опубликованных вопросов (ТЗ 4.2, п.3) — контроллер только валидирует и зовёт.
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -28,7 +26,12 @@ import { ExamImagesService } from '../exam-images/exam-images.service';
 import { ExamVideosService } from '../exam-videos/exam-videos.service';
 import { assertItemNotUsedForArchive } from './exam-item-references';
 import { buildHistoryEntry, hasContentChanged } from './exam-item-content-change';
-import { assertOptionsForKind, collectImageIds, mapOptions } from './exam-item-options';
+import {
+  assertOptionsForKind,
+  assertReasonAllowedForKind,
+  collectImageIds,
+  mapOptions,
+} from './exam-item-options';
 import { assertOneVideoSource, collectItemVideoIds } from './exam-item-video';
 import { EXAM_ITEM_ENCRYPT_SCHEMA, ExamItemRecord } from './exam-item.schema';
 import { decryptExamItem, toExamItemDto, type RawLeanExamItem } from './exam-item.mapper';
@@ -70,11 +73,11 @@ export class ExamItemsService {
     return toExamItemDto(decryptExamItem(doc));
   }
 
-  // authorId необязателен — CLI-импорт сида (seed-exam.service.ts) заводит
-  // вопросы без вошедшего в систему человека; схема поля не требует
-  // (ExamItemRecord.authorId, required: false).
+  // authorId необязателен — CLI-импорт сида заводит вопросы без вошедшего
+  // в систему человека (ExamItemRecord.authorId, required: false).
   async create(input: CreateExamItemInput, authorId?: string): Promise<ExamItemDto> {
     assertOneVideoSource(input.videoId, input.videoUrl);
+    assertReasonAllowedForKind(input.kind, input.askReason ?? false);
     const options = mapOptions(assertOptionsForKind(input.kind, input.options));
     await this.examImagesService.assertExist(collectImageIds(options, []));
     await this.examVideosService.assertExist(
@@ -87,6 +90,7 @@ export class ExamItemsService {
       ...(authorId !== undefined ? { authorId } : {}),
       ...(input.videoId !== undefined ? { videoId: input.videoId } : {}),
       ...(input.videoUrl !== undefined ? { videoUrl: input.videoUrl } : {}),
+      ...(input.askReason ? { askReason: true } : {}),
       imageIds: collectImageIds(options, []),
       videoIds: collectItemVideoIds(input.videoId, options, []),
     };
@@ -109,16 +113,13 @@ export class ExamItemsService {
     if (!doc) throw new NotFoundError(NOT_FOUND_MESSAGE);
     const current = decryptExamItem(doc);
 
-    // Архивация рвёт ссылку (exam-item-references.ts) — удаление её больше
-    // не требует (ADR-0140).
+    // Архивация рвёт ссылку (exam-item-references.ts, ADR-0140).
     if (input.status === 'archived') {
       await assertItemNotUsedForArchive(this.examModel, id);
     }
 
     const { options, ...rest } = input;
-    // videoId/videoUrl — единственные nullable-поля вопроса (ADR-0133,
-    // hint/criteria убраны ADR-0128) — splitUpdate остаётся общей формой
-    // PATCH (CLAUDE.md «Одна механика — один компонент»).
+    // videoId/videoUrl — единственные nullable-поля вопроса (ADR-0133).
     const { $set, $unset } = splitUpdate(rest, NULLABLE_EXAM_ITEM_FIELDS);
     const nextOptions =
       options === undefined
@@ -126,9 +127,7 @@ export class ExamItemsService {
         : mapOptions(assertOptionsForKind(current.kind, options));
     await this.examImagesService.assertExist(collectImageIds(nextOptions ?? [], []));
 
-    // Итоговое значение поля после этого PATCH — не пришло (undefined) значит
-    // «оставить как было», null (у nullable-поля) — «снять» (та же логика,
-    // что уже кодирует splitUpdate, но здесь нужно ЗНАЧЕНИЕ, не команду Mongo).
+    // Не пришло (undefined) — «оставить как было», null (nullable-поле) — «снять».
     const nextVideoId =
       input.videoId === undefined ? current.videoId : (input.videoId ?? undefined);
     const nextVideoUrl =
@@ -137,11 +136,12 @@ export class ExamItemsService {
     await this.examVideosService.assertExist(
       collectItemVideoIds(nextVideoId, nextOptions ?? current.options, current.history),
     );
+    const nextAskReason = input.askReason ?? current.askReason ?? false;
+    assertReasonAllowedForKind(current.kind, nextAskReason);
     if (nextOptions !== undefined) $set.options = nextOptions;
 
-    // Версия поднимается по сути правки, а не по факту присланного поля
-    // (exam-item-content-change.ts): экран шлёт все содержательные поля
-    // разом, и сохранение без единой правки не должно засорять историю.
+    // Версия поднимается по сути правки, не по факту присланного поля
+    // (exam-item-content-change.ts) — сохранение без правки не засоряет историю.
     const contentChanged = hasContentChanged(input, nextOptions, current);
     const nextHistory =
       contentChanged && current.status === 'published'

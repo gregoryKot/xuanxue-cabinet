@@ -1032,6 +1032,67 @@ describe('ExamAttemptsService', () => {
       expect(own.expired).toBe(true);
     });
   });
+
+  // ADR-0146: объяснение обязательно, только если вопрос его просит и
+  // выбран вариант — вопрос без ответа по-прежнему можно пропустить.
+  describe('askReason — отказ submit при пропущенном объяснении', () => {
+    async function startAskReasonAttempt() {
+      const itemId = await createPublishedItem({
+        kind: 'single',
+        askReason: true,
+        options: [
+          { text: 'верно', correct: true },
+          { text: 'неверно', correct: false },
+        ],
+      });
+      const examId = await createPublishedExam({ itemIds: [itemId] });
+      const started = await ctx.service.start(examId, USER_A, NOW);
+      return { itemId, started };
+    }
+
+    it('выбран вариант, объяснение не написано — submit отказывает, попытка не сдаётся', async () => {
+      const { itemId, started } = await startAskReasonAttempt();
+      const question = started.blocks[0]?.questions[0];
+      const optionId = question?.options[0]?.id ?? '';
+      await ctx.service.saveAnswers(
+        started.id,
+        USER_A,
+        { answers: [{ itemId, optionIds: [optionId] }] },
+        NOW,
+      );
+
+      await expect(ctx.service.submit(started.id, USER_A, NOW)).rejects.toThrow(
+        'Объясните свой ответ',
+      );
+      await expect(ctx.service.getOwn(started.id, USER_A, NOW)).resolves.toMatchObject({
+        status: 'in_progress',
+      });
+    });
+
+    it('выбран вариант и написано объяснение — submit проходит', async () => {
+      const { itemId, started } = await startAskReasonAttempt();
+      const question = started.blocks[0]?.questions[0];
+      const optionId = question?.options[0]?.id ?? '';
+      await ctx.service.saveAnswers(
+        started.id,
+        USER_A,
+        { answers: [{ itemId, optionIds: [optionId], text: 'потому что так' }] },
+        NOW,
+      );
+
+      const result = await ctx.service.submit(started.id, USER_A, NOW);
+
+      expect(result.status).toBe('submitted');
+    });
+
+    it('вопрос пропущен целиком (без ответа) — submit проходит, пропуск остаётся правом ученика', async () => {
+      const { started } = await startAskReasonAttempt();
+
+      const result = await ctx.service.submit(started.id, USER_A, NOW);
+
+      expect(result.status).toBe('submitted');
+    });
+  });
 });
 
 /** `UserLean` для `list()` — сервис читает только `id`/`roles` (ExamAttemptsService.list). */
