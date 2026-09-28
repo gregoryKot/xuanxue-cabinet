@@ -26,7 +26,11 @@ describe('GET /auth/config (e2e), без BOT_TOKEN', () => {
     const body = res.body as AuthConfigDto;
     expect(body.telegramBotId).toBeUndefined();
     expect(body.schoolSiteUrl).toBeUndefined();
-    expect(Object.keys(body)).toEqual(['emailLoginEnabled', 'fileStorageEnabled']);
+    expect(Object.keys(body)).toEqual([
+      'emailLoginEnabled',
+      'googleLoginEnabled',
+      'fileStorageEnabled',
+    ]);
   });
 
   // Без RESEND_API_KEY/MAIL_FROM (createTestApp по умолчанию их не ставит,
