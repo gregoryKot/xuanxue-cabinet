@@ -471,6 +471,35 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
   });
 });
 
+describe('LoginScreen — кнопка Google (googleLoginEnabled)', () => {
+  it('googleLoginEnabled: false — кнопки Google нет', async () => {
+    mockRoutes(() =>
+      Promise.resolve({ telegramBotId: 123456, googleLoginEnabled: false }),
+    );
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'Войти через Telegram' });
+    expect(
+      screen.queryByRole('button', { name: 'Войти через Google' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('googleLoginEnabled: true — кнопка Google видна, выше разделителя «или по почте»', async () => {
+    mockRoutes(() =>
+      Promise.resolve({
+        telegramBotId: 123456,
+        googleLoginEnabled: true,
+        emailLoginEnabled: true,
+      }),
+    );
+    const { container } = renderScreen();
+
+    await screen.findByRole('button', { name: 'Войти через Google' });
+    const text = container.textContent ?? '';
+    expect(text.indexOf('Войти через Google')).toBeLessThan(text.indexOf('или по почте'));
+  });
+});
+
 describe('LoginScreen — уже вошедшего уводит на сохранённый адрес или домашний (аудит L2)', () => {
   function mockAlreadyLoggedIn() {
     mockedApiFetch.mockImplementation((path: string) => {

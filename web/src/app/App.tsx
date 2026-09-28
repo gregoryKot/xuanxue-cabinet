@@ -17,6 +17,7 @@ import { ROUTE_MODULES } from './routeModules';
 
 const LoginScreen = lazyRoute(ROUTE_MODULES.login.load);
 const EmailLoginCallbackScreen = lazyRoute(ROUTE_MODULES.emailLogin.load);
+const GoogleLoginCallbackScreen = lazyRoute(ROUTE_MODULES.googleLogin.load);
 const JoinScreen = lazyRoute(ROUTE_MODULES.join.load);
 const WelcomeScreen = lazyRoute(ROUTE_MODULES.welcome.load);
 const EmailConfirmScreen = lazyRoute(ROUTE_MODULES.emailConfirm.load);
@@ -43,6 +44,12 @@ export default function App() {
             <Route
               path={ROUTE_MODULES.emailLogin.path}
               element={<EmailLoginCallbackScreen />}
+            />
+            {/* Возврат из Google (ADR-0145) — как /login/email выше:
+                страница сама решает по code/state/error, что показать. */}
+            <Route
+              path={ROUTE_MODULES.googleLogin.path}
+              element={<GoogleLoginCallbackScreen />}
             />
             {/* Ссылка-приглашение школы (ADR-0030) — публичный маршрут: до
                 входа проверяет код сама (useJoinByInvite.ts), внутрь

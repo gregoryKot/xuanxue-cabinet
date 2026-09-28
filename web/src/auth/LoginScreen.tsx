@@ -8,9 +8,8 @@
 // /schedule, мимо экрана, с которого человек пришёл).
 import { Navigate } from 'react-router-dom';
 import { EntryColumn } from '../components/EntryColumn';
-import { LabeledDivider } from '../components/LabeledDivider';
 import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
-import { EmailLoginForm } from './EmailLoginForm';
+import { OtherLoginMethods } from './OtherLoginMethods';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
@@ -49,15 +48,9 @@ export default function LoginScreen() {
       <p style={noteStyle}>{INVITE_REQUIRED_MESSAGE}</p>
 
       <TelegramLoginSection config={config} configStatus={configStatus} onReload={reload}>
-        {/* Нет Telegram — email-путь (ADR-0029), выключен по умолчанию, пока
-            школа не подключит Resend (SECURITY §2): без этого условия форма
-            звала бы 503 на каждый ввод. */}
-        {configStatus === 'ok' && config?.emailLoginEnabled && (
-          <>
-            <LabeledDivider label="или по почте" />
-            <EmailLoginForm />
-          </>
-        )}
+        {/* Google и почта — оба за своим флагом конфигурации (ADR-0145,
+            ADR-0029): без него кнопка/форма звала бы 503 на каждый вход. */}
+        <OtherLoginMethods config={config} configStatus={configStatus} />
       </TelegramLoginSection>
     </EntryColumn>
   );

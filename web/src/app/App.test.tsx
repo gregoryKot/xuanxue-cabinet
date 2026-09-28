@@ -92,6 +92,14 @@ describe('App', () => {
     ).toBeInTheDocument();
   });
 
+  it('гость на /login/google без code/state — маршрут открывает GoogleLoginCallbackScreen (ADR-0145)', async () => {
+    mockRoute(null);
+
+    renderAt('/login/google');
+
+    expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
+  });
+
   it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
     mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
 

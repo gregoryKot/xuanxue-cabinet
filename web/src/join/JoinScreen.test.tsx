@@ -122,6 +122,48 @@ describe('JoinScreen — ссылка действует, гость', () => {
   });
 });
 
+describe('JoinScreen — кнопка Google (googleLoginEnabled), код приглашения в редиректе', () => {
+  it('googleLoginEnabled: true — кнопка Google видна, клик уводит с join в query', async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn();
+    vi.stubGlobal('location', { assign, origin: 'https://xuanxue.su' });
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotId: 123456, googleLoginEnabled: true });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderScreen();
+
+    const button = await screen.findByRole('button', { name: 'Войти через Google' });
+    await user.click(button);
+
+    expect(assign).toHaveBeenCalledWith(`/api/auth/google/start?join=${CODE}`);
+    vi.unstubAllGlobals();
+  });
+
+  it('googleLoginEnabled: false — кнопки Google нет', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
+      if (path === '/auth/config')
+        return Promise.resolve({ telegramBotId: 123456, googleLoginEnabled: false });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderScreen();
+
+    await screen.findByText('Вас пригласили в школу');
+    expect(
+      screen.queryByRole('button', { name: 'Войти через Google' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 // Регресс на инцидент 2026-09-15: владелец на мгновение увидел
 // «Вы вошли, осталось дождаться подтверждения…» между возвратом с Telegram
 // на /join/<code> и попаданием в кабинет — вход оставался двухшаговым даже

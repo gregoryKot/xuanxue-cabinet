@@ -1,0 +1,70 @@
+// Общий механизм экранов возврата (email-ссылка, Google): POST уходит сам,
+// из JS, сразу при открытии страницы, ровно один раз (React 19 StrictMode
+// вызывает эффект дважды — startedRef тот же приём, что у
+// useTelegramAuthResultLogin.ts) → refresh() сессии → сохранённый адрес или
+// домашний экран (postLoginPath, аудит L2). Раньше это был отдельный код
+// useEmailLoginVerify.ts — вынесено сюда, чтобы Google-вход не повторял его
+// целиком (CLAUDE.md «Одна механика — один компонент», jscpd);
+// useEmailLoginVerify.ts остаётся тонкой обёрткой над этим хуком.
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { postLoginPath } from './returnTo';
+
+export type CallbackLoginStatus = 'pending' | 'error';
+
+export interface CallbackLoginRequest {
+  path: string;
+  body: object;
+}
+
+export interface UseCallbackLoginResult {
+  status: CallbackLoginStatus;
+  error: string | null;
+  /** Статус ApiError неудачного запроса — экран отличает 403 (нет валидной
+   * ссылки-приглашения или blocked) от остальных ошибок. `null` — успех или
+   * сбой без статуса (сеть). */
+  errorStatus: number | null;
+}
+
+/**
+ * `request: null` — сигнал не запускать запрос вовсе (ссылка неполная,
+ * отменённый вход, уже есть сессия — экран решает это сам, дожидаясь ответа
+ * AuthProvider, чтобы не отправить запрос тем же тиком, что и проверку
+ * существующей сессии). Как только `request` становится непустым, эффект
+ * запускает `POST request.path`.
+ */
+export function useCallbackLogin(
+  refresh: () => Promise<void>,
+  request: CallbackLoginRequest | null,
+): UseCallbackLoginResult {
+  const navigate = useNavigate();
+  // Начальный статус — pending, не idle: страница с самого начала уже входит.
+  const [status, setStatus] = useState<CallbackLoginStatus>('pending');
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    if (request === null) return;
+    startedRef.current = true;
+
+    apiFetch<void>(request.path, { method: 'POST', body: request.body })
+      .then(() => refresh())
+      .then(() => {
+        void navigate(postLoginPath(), { replace: true });
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
+        setErrorStatus(err instanceof ApiError ? err.status : null);
+        setStatus('error');
+      });
+    // request — новый объект на каждый рендер (вызывающий экран строит его из
+    // query-параметров) — эффект перезапускается без пользы, но startedRef
+    // уже не даёт второй запрос, поэтому это безвредно и не требует
+    // отключения exhaustive-deps.
+  }, [request, refresh, navigate]);
+
+  return { status, error, errorStatus };
+}
