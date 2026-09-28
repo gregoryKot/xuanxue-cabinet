@@ -4,9 +4,15 @@
 // её список («то же, что отмечено в списке выше»). Логика — usePushSubscription.ts
 // (CLAUDE.md «Логика вне компонентов»), здесь только рендер по состоянию.
 import type { CSSProperties } from 'react';
+import { INSTALL_SCREEN_PATH } from '../install/installPath';
+import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
-import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
+import {
+  primaryActionStyle,
+  screenExplanationStyle,
+  textLinkHitAreaStyle,
+} from '../components/screenLayout';
 import { RichText } from '../components/RichText';
 import { SkeletonList } from '../components/Skeleton';
 import {
@@ -20,6 +26,8 @@ import {
   PUSH_SUBSCRIBED_STATUS,
 } from './pushNotificationsCopy';
 import { usePushSubscription } from './usePushSubscription';
+
+const INSTALL_LINK_LABEL = 'Как добавить';
 
 const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
 const headingStyle: CSSProperties = { margin: 0 };
@@ -58,9 +66,14 @@ export function PushNotificationsSection() {
       </h2>
 
       {state.kind === 'ios-install' && (
-        <p style={screenExplanationStyle}>
-          <RichText text={PUSH_EXPLANATION_IOS_INSTALL} />
-        </p>
+        <>
+          <p style={screenExplanationStyle}>
+            <RichText text={PUSH_EXPLANATION_IOS_INSTALL} />
+          </p>
+          <Link to={INSTALL_SCREEN_PATH} style={textLinkHitAreaStyle}>
+            {INSTALL_LINK_LABEL}
+          </Link>
+        </>
       )}
       {state.kind === 'denied' && (
         <p style={screenExplanationStyle}>

@@ -12,15 +12,24 @@
 // подгрузка ресурса или встраивание в iframe, поэтому CSP (scriptSrc,
 // connectSrc) его не ограничивает: ни `form-action`, ни `navigate-to` в этом
 // списке не заданы.
+import { POSTHOG_HOST } from '@xuanxue/shared';
+
 export const CSP_DIRECTIVES = {
   defaultSrc: ["'self'"],
+  // PostHog (ADR-0143) сюда не входит: браузер шлёт события прямо на
+  // POSTHOG_HOST, скрипт самого posthog-js в scriptSrc не нужен — recorder
+  // бандлится импортом (posthogClient.ts), а не грузится с чужого домена
+  // (`disable_external_dependency_loading: true`, posthogOptions.ts).
   scriptSrc: ["'self'"],
   // accounts.google.com сюда не входит и не нужен (ADR-0145): вход —
   // переход вкладки на 302 (`GET /api/auth/google/start`), не подгрузка
   // ресурса и не встраивание в iframe — CSP навигацию не ограничивает;
   // обмен code→id_token идёт сервером (GoogleTokenClient), браузер его не
   // видит вовсе. Тот же довод, что у Telegram-входа абзацем выше.
-  connectSrc: ["'self'"],
+  // POSTHOG_HOST — единственное исключение из 'self' (ADR-0143): без
+  // прокси через /api, чтобы не открывать публичный маршрут без CSRF и не
+  // грузить единственный инстанс записью сессий (альтернативы — в самом ADR).
+  connectSrc: ["'self'", POSTHOG_HOST],
   imgSrc: ["'self'", 'data:', 'https:'],
   styleSrc: ["'self'"],
   // Встроенный плеер записи (ADR-0100) — единственная причина, по которой

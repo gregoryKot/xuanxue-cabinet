@@ -25,10 +25,14 @@ import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
 import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
+import { isStandalone } from '../pwa/installEnvironment';
+import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { ProfileNameSection } from './ProfileNameSection';
 
 const TITLE = 'Профиль';
 const EXPLANATION = 'Ниже — что присылать и куда.';
+const INSTALL_TITLE = 'Приложение на телефоне';
+const INSTALL_HINT = 'Как поставить кабинет на рабочий стол телефона';
 const DEV_ERRORS_TITLE = 'Сбои';
 const DEV_ERRORS_HINT =
   'Тексты ошибок из браузера и сервера — те же коды, что приходят в Telegram.';
@@ -58,6 +62,12 @@ export default function ProfileScreen() {
 
       <NotificationPrefsSection />
       <PushNotificationsSection />
+
+      {/* Инструкция установки (docs/PWA.md) — только пока кабинет не стоит
+          на этом телефоне уже: standalone-режиму ставить больше некуда. */}
+      {!isStandalone() && (
+        <SectionLink to={INSTALL_SCREEN_PATH} title={INSTALL_TITLE} hint={INSTALL_HINT} />
+      )}
 
       {/* Второй способ входа (ADR-0059) — SecondLoginKey сам решает, что
           предложить (или не рисует ничего, если оба ключа уже на месте). */}

@@ -39,4 +39,7 @@ export const EMPTY_AS_ABSENT_KEYS = [
   // значат «выключено», а не «половина набора» для env.google-group.ts.
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
+  // PostHog (ADR-0143) — та же логика: пустая строка в .env значит
+  // «аналитика выключена», а не кривой формат ключа.
+  'POSTHOG_KEY',
 ] as const;

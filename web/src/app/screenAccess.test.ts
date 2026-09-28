@@ -94,6 +94,10 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/profile')).toBe(true);
   });
 
+  it('ученик на «/install» — true, инструкция установки доступна всем (docs/PWA.md)', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/install')).toBe(true);
+  });
+
   it('ученик на «/notifications» — true, лента событий доступна всем (ADR-0063)', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/notifications')).toBe(true);
   });

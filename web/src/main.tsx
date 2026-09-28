@@ -8,10 +8,17 @@ import './fonts';
 import './pwa/standalone.css';
 import './index.css';
 import { registerServiceWorker } from './pwa/registerServiceWorker';
+import { captureInstallPrompt } from './pwa/installPromptCapture';
 
 // До первой же строчки остального кода (ADR-0071) — даже сбой прогрева
 // чанка чуть ниже должен долететь до сервера.
 installGlobalErrorReporting();
+
+// Перехват `beforeinstallprompt` (pwa/installPromptCapture.ts, docs/PWA.md) —
+// как можно раньше: Chrome Android может прислать событие до того, как
+// смонтируется хоть один компонент, который его ждёт (InstallAppCard,
+// InstallAppScreen).
+captureInstallPrompt();
 
 // Чанк текущего экрана — до первого рендера, а не после ответа про сессию.
 // Измерено на проде 2026-09-15: TTFB 0.5–1.1 с, первый экран ждал пяти

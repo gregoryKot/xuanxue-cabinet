@@ -3,6 +3,7 @@
 // (usePushSubscription.test.ts), здесь — заголовок, текст объяснения и какая
 // кнопка есть или её нет.
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
@@ -62,10 +63,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// Ссылка «Как добавить» у состояния ios-install (InstallAppScreen, /install)
+// зовёт react-router-dom — раздел рендерится не только на «Профиле», но и в
+// изоляции здесь, поэтому обёртка своя, не из ProfileScreen.test.tsx.
+function renderSection() {
+  return render(
+    <MemoryRouter>
+      <PushNotificationsSection />
+    </MemoryRouter>,
+  );
+}
+
 describe('PushNotificationsSection — раздела нет вовсе', () => {
   it('push выключен на сервере (publicKey: null) — ничего не рендерит', async () => {
     mockApiByPath({ '/push/public-key': { publicKey: null } });
-    const { container } = render(<PushNotificationsSection />);
+    const { container } = renderSection();
 
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
@@ -77,7 +89,7 @@ describe('PushNotificationsSection — раздела нет вовсе', () => 
     stubMatchMedia(false);
     mockApiByPath({ '/push/public-key': { publicKey: PUBLIC_KEY } });
 
-    const { container } = render(<PushNotificationsSection />);
+    const { container } = renderSection();
 
     await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
@@ -90,7 +102,7 @@ describe('PushNotificationsSection — загрузка', () => {
     mockedApiFetch.mockReturnValueOnce(
       new Promise((resolve) => (resolveFetch = resolve)),
     );
-    const { container } = render(<PushNotificationsSection />);
+    const { container } = renderSection();
 
     expect(screen.queryByText('Push-уведомления')).not.toBeInTheDocument();
     expect(container.querySelector('[aria-hidden="true"]')).not.toBeNull();
@@ -106,13 +118,19 @@ describe('PushNotificationsSection — iPhone без установки на «�
     stubMatchMedia(false);
     mockApiByPath({ '/push/public-key': { publicKey: PUBLIC_KEY } });
 
-    render(<PushNotificationsSection />);
+    renderSection();
 
     expect(await screen.findByText('Push-уведомления')).toBeInTheDocument();
     expect(
       screen.getByText(/На iPhone уведомления работают только у кабинета/),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    // Ссылка на инструкцию установки (docs/PWA.md) — «добавить» из подсказки
+    // выше ведёт куда-то конкретно, не остаётся голым текстом.
+    expect(screen.getByRole('link', { name: 'Как добавить' })).toHaveAttribute(
+      'href',
+      '/install',
+    );
   });
 });
 
@@ -134,7 +152,7 @@ describe('PushNotificationsSection — разрешение не спрашив�
       '/me/push-subscriptions': { id: '1', endpoint: subscription.endpoint },
     });
 
-    render(<PushNotificationsSection />);
+    renderSection();
 
     expect(await screen.findByText('Push-уведомления')).toBeInTheDocument();
     expect(
@@ -165,7 +183,7 @@ describe('PushNotificationsSection — запрещено', () => {
     stubSupportedBrowser({ permission: 'denied' });
     mockApiByPath({ '/push/public-key': { publicKey: PUBLIC_KEY } });
 
-    render(<PushNotificationsSection />);
+    renderSection();
 
     expect(
       await screen.findByText(/Браузер заблокировал уведомления для кабинета/),
@@ -186,7 +204,7 @@ describe('PushNotificationsSection — разрешено и подписан', 
       '/me/push-subscriptions': undefined,
     });
 
-    render(<PushNotificationsSection />);
+    renderSection();
 
     expect(
       await screen.findByText('Уведомления на этом устройстве включены.'),
@@ -214,7 +232,7 @@ describe('PushNotificationsSection — разрешено, подписки не
     vi.stubGlobal('Notification', { permission: 'granted', requestPermission });
     mockApiByPath({ '/push/public-key': { publicKey: PUBLIC_KEY } });
 
-    render(<PushNotificationsSection />);
+    renderSection();
 
     expect(
       await screen.findByRole('button', { name: 'Включить уведомления' }),
@@ -226,7 +244,7 @@ describe('PushNotificationsSection — ошибка загрузки', () => {
   it('баннер с повтором вместо тишины, повтор перечитывает и рисует настоящий раздел', async () => {
     mockedApiFetch.mockRejectedValueOnce(new Error('сеть недоступна'));
 
-    render(<PushNotificationsSection />);
+    renderSection();
 
     expect(await screen.findByText('Push-уведомления')).toBeInTheDocument();
     const alert = await screen.findByRole('alert');
@@ -254,7 +272,7 @@ describe('PushNotificationsSection — отказ в разрешении и с�
     });
     mockApiByPath({ '/push/public-key': { publicKey: PUBLIC_KEY } });
 
-    render(<PushNotificationsSection />);
+    renderSection();
     const button = await screen.findByRole('button', { name: 'Включить уведомления' });
     const callsBeforeClick = mockedApiFetch.mock.calls.length;
     button.click();
@@ -279,7 +297,7 @@ describe('PushNotificationsSection — отказ в разрешении и с�
     });
     mockedApiFetch.mockResolvedValueOnce({ publicKey: PUBLIC_KEY });
 
-    render(<PushNotificationsSection />);
+    renderSection();
     const button = await screen.findByRole('button', { name: 'Включить уведомления' });
 
     mockedApiFetch.mockRejectedValueOnce(

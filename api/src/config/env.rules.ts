@@ -41,6 +41,12 @@ export const MAIL_FROM_RE = /^(?:[^<>]+\s)?<?[^\s<>]+@[^\s<>]+\.[^\s<>]+>?$/;
 // (Credentials → OAuth client ID → «Web application»), суффикс фиксирован.
 export const GOOGLE_CLIENT_ID_RE = /^[\w.-]+\.apps\.googleusercontent\.com$/;
 
+// Project API key PostHog (ADR-0143) — публичный формат ключа проекта,
+// начинается с `phc_`, дальше буквы и цифры. Не секрет уровня BOT_TOKEN
+// (ключ уходит в браузер), но формат проверяем, чтобы опечатка не тихо
+// отправляла события в никуда.
+export const POSTHOG_KEY_RE = /^phc_[A-Za-z0-9]+$/;
+
 export const NODE_ENV_MESSAGE =
   'NODE_ENV должен быть одним из: development, test, production';
 export const PORT_MESSAGE = 'PORT должен быть числом от 1 до 65535';
@@ -112,3 +118,5 @@ export const VAPID_PRIVATE_KEY_MESSAGE =
   'VAPID_PRIVATE_KEY должен быть 43 символами base64url — сгенерируйте node scripts/generate-vapid-keys.mjs';
 export const VAPID_SUBJECT_MESSAGE =
   'VAPID_SUBJECT должен быть адресом вида mailto:you@example.com или https://адрес';
+
+export const POSTHOG_KEY_MESSAGE = 'POSTHOG_KEY должен начинаться с phc_';
