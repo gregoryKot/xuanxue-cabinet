@@ -8,6 +8,18 @@ on:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
+  # release.yml зовёт этот workflow перед каждым ночным выкатом (ADR-0142) —
+  # свежий бэкап до промоута release, не вместо суточного расписания.
+  workflow_call:
+    secrets:
+      BACKUP_MONGODB_URI:
+        required: true
+      BACKUP_PASSPHRASE:
+        required: true
+      TELEGRAM_ALERT_BOT_TOKEN:
+        required: true
+      TELEGRAM_ALERT_CHAT_ID:
+        required: true
 
 env:
   # Версия mongodb-database-tools закреплена явно — «латест» ломается без
