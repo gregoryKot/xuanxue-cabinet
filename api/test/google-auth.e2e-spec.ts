@@ -13,6 +13,7 @@ import { GoogleTokenClient } from '../src/auth/google-token-client';
 import { readGoogleOAuthCookie } from '../src/auth/google-oauth-cookie';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
+import { createUserWithSession } from './e2e-support/session';
 
 const GOOGLE_CLIENT_ID = 'e2e-client.apps.googleusercontent.com';
 

@@ -1,11 +1,13 @@
-// Вход через Google (ADR-0145) — отдельный контроллер, не методы в
-// AuthController: тот уже у потолка 150 строк (file-size-ratchet), тот же
-// приём, что у EmailCodeController/TelegramLinkController. `start` —
-// навигация целой вкладкой (302 на Google), не `apiFetch`: CSP её не
-// ограничивает (см. security/csp.ts). `POST auth/google` — CSRF действует
-// как у любого мутирующего маршрута (`@Public()` не освобождает от
-// `x-requested-with`, AuthGuard §(a)); тело шлёт страница `/login/google`
-// (web) тем же `apiFetch`, что остальные входы.
+// Вход через Google и привязка из профиля (ADR-0145) — отдельный
+// контроллер, не методы в AuthController: тот уже у потолка 150 строк
+// (file-size-ratchet), тот же приём, что у EmailCodeController/
+// TelegramLinkController. `start` — навигация целой вкладкой (302 на Google
+// или, при `intent=link` без сессии, на `/login`), не `apiFetch`: CSP её не
+// ограничивает (см. security/csp.ts). `POST auth/google` — один эндпоинт на
+// оба намерения: странице `/login/google` неоткуда узнать заранее, вход это
+// или привязка — намерение лежит в httpOnly cookie google_oauth, не в
+// адресе. CSRF действует как у любого мутирующего маршрута (`@Public()` не
+// освобождает от `x-requested-with`, AuthGuard §(a)).
 import {
   Body,
   Controller,
@@ -19,7 +21,7 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
-import { INVITE_QUERY_PARAM, type MeDto } from '@xuanxue/shared';
+import { GOOGLE_INTENT_QUERY_PARAM, INVITE_QUERY_PARAM, type MeDto } from '@xuanxue/shared';
 import { PersonalChats } from '../telegram/personal-chats';
 import {
   asSingleHeader,
@@ -44,18 +46,28 @@ export class GoogleAuthController {
   ) {}
 
   // `join` — код ссылки-приглашения (INVITE_QUERY_PARAM), как у Telegram-
-  // входа: query, не тело — тела у GET нет вовсе. Формат проверяется внутри
+  // входа, только при обычном входе; `intent=link` его игнорирует (ADR-0145:
+  // привязка не заводит нового человека). Формат `join` проверяется внутри
   // GoogleAuthService.start(), невалидный молча не сохраняется в cookie.
+  // Без @CurrentUser(): маршрут @Public — привязке нужна сессия, но гвард её
+  // не требует на публичных путях, поэтому сервис читает cookie сам
+  // (findSessionUser) и решает по факту, не по декоратору.
   @Public()
   @Throttle(GOOGLE_LOGIN_THROTTLE)
   @Get('start')
-  start(
+  async start(
     @Query(INVITE_QUERY_PARAM) joinCode: string | undefined,
+    @Query(GOOGLE_INTENT_QUERY_PARAM) intent: string | undefined,
+    @Req() req: RequestLike,
     @Res({ passthrough: true }) res: RedirectResponseLike,
-  ): void {
-    const { cookie, url } = this.googleAuthService.start(joinCode);
-    res.setHeader('Set-Cookie', cookie);
-    res.setHeader(LOCATION_HEADER, url);
+  ): Promise<void> {
+    const result = await this.googleAuthService.start(
+      { joinCode, intent },
+      asSingleHeader(req.headers.cookie),
+      DateTime.utc(),
+    );
+    if (result.kind === 'oauth') res.setHeader('Set-Cookie', result.cookie);
+    res.setHeader(LOCATION_HEADER, result.url);
     res.status(HttpStatus.FOUND);
   }
 
@@ -72,12 +84,19 @@ export class GoogleAuthController {
     // может бросить (SECURITY §2): вторая попытка тем же телом не найдёт в
     // cookie ничего, даже если первая упала на середине.
     res.setHeader('Set-Cookie', clearGoogleOAuthCookie());
+    const cookieHeader = asSingleHeader(req.headers.cookie);
     const { user, cookie } = await this.googleAuthService.login(
       body,
-      asSingleHeader(req.headers.cookie),
+      cookieHeader,
       DateTime.utc(),
     );
-    res.setHeader('Set-Cookie', [clearGoogleOAuthCookie(), cookie]);
+    // `cookie` — только у входа (GoogleAuthService.login): привязка не
+    // выпускает новую сессию (ADR-0059, тот же принцип у EmailLinkService),
+    // клиент уже вошёл тем токеном, что принёс с собой.
+    res.setHeader(
+      'Set-Cookie',
+      cookie ? [clearGoogleOAuthCookie(), cookie] : clearGoogleOAuthCookie(),
+    );
     return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 }

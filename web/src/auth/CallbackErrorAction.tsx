@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { RichText } from '../components/RichText';
 import { screenExplanationStyle } from '../components/screenLayout';
 import { INVITE_HINT_MESSAGE } from './inviteHintMessage';
+import { postLoginPath } from './returnTo';
 
 const FORBIDDEN_STATUS = 403;
 const fullWidthStyle = { width: '100%' };
@@ -15,14 +16,18 @@ const fullWidthStyle = { width: '100%' };
 interface CallbackErrorActionProps {
   errorStatus: number | null;
   /** Подпись кнопки для не-403 ошибок: «Запросить новую» (email — новая
-   * ссылка решает и устаревший токен) или «На страницу входа» (Google —
-   * повтор начинается заново кнопкой на экране входа). */
+   * ссылка решает и устаревший токен), «На страницу входа» (Google-вход) или
+   * «Вернуться» (Google-привязка уже вошедшего, `hasSession` ниже). */
   buttonLabel: string;
+  /** См. TitledDeadEnd.tsx — тот же приём: привязка Google уже вошедшим
+   * человеком ведёт кнопку назад в кабинет, не на страницу входа. */
+  hasSession?: boolean;
 }
 
 export function CallbackErrorAction({
   errorStatus,
   buttonLabel,
+  hasSession = false,
 }: CallbackErrorActionProps) {
   const navigate = useNavigate();
 
@@ -34,12 +39,12 @@ export function CallbackErrorAction({
     );
   }
 
+  function handleClick(): void {
+    void navigate(hasSession ? postLoginPath() : '/login');
+  }
+
   return (
-    <Button
-      variant="secondary"
-      onClick={() => void navigate('/login')}
-      style={fullWidthStyle}
-    >
+    <Button variant="secondary" onClick={handleClick} style={fullWidthStyle}>
       {buttonLabel}
     </Button>
   );

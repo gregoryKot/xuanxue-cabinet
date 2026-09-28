@@ -15,12 +15,15 @@ interface CallbackInProgressProps {
   errorStatus: number | null;
   /** Подпись кнопки не-403 ошибки — см. CallbackErrorAction.tsx. */
   buttonLabel: string;
+  /** См. TitledDeadEnd.tsx/CallbackErrorAction.tsx. */
+  hasSession?: boolean;
 }
 
 export function CallbackInProgress({
   error,
   errorStatus,
   buttonLabel,
+  hasSession = false,
 }: CallbackInProgressProps) {
   return (
     <EntryColumn>
@@ -30,7 +33,11 @@ export function CallbackInProgress({
           <p role="alert" style={errorTextStyle}>
             {error}
           </p>
-          <CallbackErrorAction errorStatus={errorStatus} buttonLabel={buttonLabel} />
+          <CallbackErrorAction
+            errorStatus={errorStatus}
+            buttonLabel={buttonLabel}
+            hasSession={hasSession}
+          />
         </>
       ) : (
         <SkeletonLines widths={['70%', '40%']} />

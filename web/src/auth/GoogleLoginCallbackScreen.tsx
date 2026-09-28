@@ -1,16 +1,24 @@
-// Страница возврата из Google (`GOOGLE_LOGIN_CALLBACK_PATH`, ADR-0145) — тот
-// же приём, что EmailLoginCallbackScreen.tsx: запрос уходит сам, из JS, сразу
-// при открытии страницы (useCallbackLogin.ts, общий механизм). Отменённый
-// человеком вход Google возвращает `?error=access_denied` (возможны и другие
-// значения `error`) — сервер тогда вообще не звался, отменённое нечем
-// проверять. Уже вошедшего (открыл ссылку снова при активной сессии) уводит
-// на сохранённый адрес или домашний экран, ничего не отправляя — тот же
-// приём, что у email-экрана (`canPost` ниже, гонка с AuthProvider).
-import { Navigate, useSearchParams } from 'react-router-dom';
+// Страница возврата из Google (`GOOGLE_LOGIN_CALLBACK_PATH`, ADR-0145) — одна
+// на два случая, вход и привязка (`intent=link`, googleAuthRedirect.ts):
+// сервер решает, что это было, по своей cookie состояния, страница всегда
+// просто шлёт {code, state}. Запрос уходит сам, из JS, сразу при открытии
+// страницы (useCallbackLogin.ts, общий механизм, тот же, что у
+// EmailLoginCallbackScreen.tsx). Отменённый человеком выбор аккаунта
+// возвращает `?error=access_denied` (возможны и другие значения `error`) —
+// сервер тогда вообще не звался, отменённое нечем проверять.
+//
+// Сессия у пришедшего сюда есть ровно при привязке (человек уже вошёл,
+// «Профиль» → «Привязать Google», GoogleLinkSection.tsx) — POST шлётся
+// независимо от того, есть сессия или нет: сервер сам разберёт, ссылка
+// свежая или это давний обратный переход с уже использованным code
+// (тогда ответит 401, GOOGLE_LOGIN_FAILED_MESSAGE). Кнопка на тупике и на
+// ошибке ведёт вошедшего назад в кабинет (сохранённый путь или домашний
+// экран — тот же «Профиль», см. `redirectToGoogleLink`), а не на страницу
+// входа, где вошедшему нечего делать.
+import { useSearchParams } from 'react-router-dom';
 import { GOOGLE_OAUTH_CODE_RE, GOOGLE_OAUTH_STATE_RE } from '@xuanxue/shared';
 import { hasSession, useAuth } from './AuthProvider';
 import { CallbackInProgress } from './CallbackInProgress';
-import { postLoginPath } from './returnTo';
 import { TitledDeadEnd } from './TitledDeadEnd';
 import { useCallbackLogin } from './useCallbackLogin';
 
@@ -18,6 +26,8 @@ const INCOMPLETE_LINK_MESSAGE = 'Ссылка не подошла. Начнит�
 const CANCELLED_TITLE = 'Вход не завершён';
 const CANCELLED_MESSAGE =
   'Вы вернулись из Google, не выбрав аккаунт. Попробуйте ещё раз.';
+const RETURN_LABEL = 'Вернуться';
+const LOGIN_LABEL = 'На страницу входа';
 
 export default function GoogleLoginCallbackScreen() {
   const { status: authStatus, refresh } = useAuth();
@@ -34,28 +44,45 @@ export default function GoogleLoginCallbackScreen() {
     GOOGLE_OAUTH_CODE_RE.test(code) &&
     GOOGLE_OAUTH_STATE_RE.test(state);
   // authStatus === 'loading' — та же гонка с AuthProvider, что у
-  // EmailLoginCallbackScreen.tsx (canVerify там же).
-  const canPost = hasValidParams && authStatus !== 'loading' && !hasSession(authStatus);
+  // EmailLoginCallbackScreen.tsx (canVerify там же): не звать сервер раньше,
+  // чем выяснится состояние сессии (оно решает только подпись кнопки ниже,
+  // не сам факт запроса — привязка идёт как раз с сессией).
+  const canPost = hasValidParams && authStatus !== 'loading';
   const { error, errorStatus } = useCallbackLogin(
     refresh,
     canPost && !cancelled ? { path: '/auth/google', body: { code, state } } : null,
   );
-
-  if (hasSession(authStatus)) return <Navigate to={postLoginPath()} replace />;
+  const sessionActive = hasSession(authStatus);
+  const returnLabel = sessionActive ? RETURN_LABEL : LOGIN_LABEL;
 
   if (cancelled) {
-    return <TitledDeadEnd title={CANCELLED_TITLE} message={CANCELLED_MESSAGE} />;
+    return (
+      <TitledDeadEnd
+        title={CANCELLED_TITLE}
+        message={CANCELLED_MESSAGE}
+        buttonLabel={returnLabel}
+        hasSession={sessionActive}
+      />
+    );
   }
 
   if (!hasValidParams) {
-    return <TitledDeadEnd title="Ссылка не подошла" message={INCOMPLETE_LINK_MESSAGE} />;
+    return (
+      <TitledDeadEnd
+        title="Ссылка не подошла"
+        message={INCOMPLETE_LINK_MESSAGE}
+        buttonLabel={returnLabel}
+        hasSession={sessionActive}
+      />
+    );
   }
 
   return (
     <CallbackInProgress
       error={error}
       errorStatus={errorStatus}
-      buttonLabel="На страницу входа"
+      buttonLabel={returnLabel}
+      hasSession={sessionActive}
     />
   );
 }

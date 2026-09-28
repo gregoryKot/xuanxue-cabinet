@@ -12,6 +12,7 @@ import {
 import { EmailLinkTokenRecord, EmailLinkTokenSchema } from './email-link-token.schema';
 import { EmailLinkTokenService } from './email-link-token.service';
 import { EmailLoginUserService } from './email-login-user.service';
+import { GoogleLinkService } from './google-link.service';
 import { GoogleLoginIdentityService } from './google-login-identity.service';
 import { GoogleLoginUserService } from './google-login-user.service';
 import { InviteLinkService } from './invite-link.service';
@@ -73,6 +74,7 @@ import { UsersService } from './users.service';
     EmailLoginUserService,
     GoogleLoginUserService,
     GoogleLoginIdentityService,
+    GoogleLinkService,
     InviteLinkService,
     LoginIdentityService,
     TelegramLinkCodeService,
@@ -93,13 +95,15 @@ import { UsersService } from './users.service';
   // (/start link_<code>, потребление кода) оба берут их отсюда, второй раз не
   // заводим. UserEmailService/EmailLinkTokenService — той же причиной наружу
   // (ADR-0059): EmailLinkService (auth/) собирает привязку почты из них
-  // обоих, второй раз не заводим.
+  // обоих, второй раз не заводим. GoogleLinkService — той же причиной
+  // наружу: GoogleAuthService (auth/) зовёт его для `intent=link`.
   exports: [
     UsersService,
     UserNamesService,
     InviteLinkService,
     LoginIdentityService,
     GoogleLoginIdentityService,
+    GoogleLinkService,
     TelegramLinkCodeService,
     TelegramLinkService,
     UserEmailService,

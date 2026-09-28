@@ -1,14 +1,19 @@
-// Вход через Google (ADR-0145, authorization code + PKCE, SECURITY §2).
-// GoogleTokenClient — обмен code→id_token; google-id-token.ts — проверка
-// claims без проверки подписи (см. комментарий там же, почему это
+// Вход через Google (ADR-0145, authorization code + PKCE, SECURITY §2) и
+// привязка Google к уже вошедшему человеку из профиля (`intent=link`,
+// ADR-0145). GoogleTokenClient — обмен code→id_token; google-id-token.ts —
+// проверка claims без проверки подписи (см. комментарий там же, почему это
 // безопасно); GoogleLoginIdentityService (users/) — поиск/связка/создание
-// человека по правилам ADR-0145. AuthService.issueSession — тот же узел
-// выпуска cookie сессии, что у Telegram/email-входа (ADR-0012).
+// человека при входе; GoogleLinkService (users/) — привязка из профиля, не
+// слияние (ADR-0034). AuthService.issueSession — тот же узел выпуска cookie
+// сессии, что у Telegram/email-входа (ADR-0012); при привязке новую сессию
+// не выпускаем вовсе — тот же принцип, что у EmailLinkService (ADR-0059).
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DateTime } from 'luxon';
 import {
   ACCESS_MESSAGE,
+  GOOGLE_LINK_INTENT,
+  GOOGLE_LINK_SESSION_MESSAGE,
   GOOGLE_LOGIN_FAILED_MESSAGE,
   GOOGLE_LOGIN_NOT_AVAILABLE_MESSAGE,
   INVITE_CODE_RE,
@@ -17,6 +22,8 @@ import {
 import type { NodeEnv } from '../config/env.validation';
 import { errorMessage } from '../common/error-info';
 import { ForbiddenError, NotAvailableError, UnauthorizedError } from '../common/errors';
+import { GoogleLinkService } from '../users/google-link.service';
+import type { GoogleIdentity } from '../users/google-login-identity.service';
 import { GoogleLoginIdentityService } from '../users/google-login-identity.service';
 import { UsersService, type UserLean } from '../users/users.service';
 import { AuthService } from './auth.service';
@@ -34,20 +41,38 @@ import {
   timingSafeEqualStrings,
 } from './google-oauth-pkce';
 import { GoogleTokenClient } from './google-token-client';
+import { findSessionUser } from './session-user';
 
-export interface GoogleAuthStart {
-  cookie: string;
-  url: string;
+export interface GoogleAuthStartParams {
+  /** Query `?join=<code>` — игнорируется при `intent: 'link'` (ADR-0145: код
+   * приглашения нужен только новому человеку, у привязки его нет вовсе). */
+  joinCode?: string;
+  /** Query `?intent=link` (`GOOGLE_INTENT_QUERY_PARAM`) — начать не вход, а
+   * привязку Google к уже открытой сессии («Профиль»). */
+  intent?: string;
 }
+
+/** `oauth` — обычный переход на Google; `no-session` — `intent=link` без
+ * валидной сессии: вкладка вместо Google идёт на `${PUBLIC_URL}/login`,
+ * cookie `google_oauth` не ставится вовсе (нечего запоминать). */
+export type GoogleAuthStartResult =
+  | { kind: 'oauth'; cookie: string; url: string }
+  | { kind: 'no-session'; url: string };
 
 export interface GoogleLoginResult {
   user: UserLean;
-  cookie: string;
+  /** Новая cookie сессии — только для входа. Привязка (`intent=link`) её не
+   * выпускает: пользователь и так вошёл, тем самым токеном (ADR-0059). */
+  cookie?: string;
 }
 
 const VERIFIER_BYTES = 32;
 const STATE_BYTES = 32;
 const NONCE_BYTES = 16;
+// Страница входа кабинета (web/src/app/routeModules.ts) — сюда уходит
+// вкладка, если `intent=link` начали без сессии (протухла между открытием
+// «Профиля» и переходом на Google).
+const LOGIN_PATH = '/login';
 
 @Injectable()
 export class GoogleAuthService {
@@ -59,33 +84,44 @@ export class GoogleAuthService {
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
     private readonly identityService: GoogleLoginIdentityService,
+    private readonly linkService: GoogleLinkService,
   ) {}
 
   isEnabled(): boolean {
     return googleOAuthConfig(this.config) !== null;
   }
 
-  /** `joinCode` — query `?join=<code>` у `GET /auth/google/start`
-   * (INVITE_QUERY_PARAM, как у Telegram): формат проверяется здесь, сама
-   * валидность (существует ли такая ссылка) — позже, в GoogleLoginIdentityService,
-   * когда известно, что человек новый (ADR-0036: код нужен только новому). */
-  start(joinCode: string | undefined): GoogleAuthStart {
+  async start(
+    params: GoogleAuthStartParams,
+    sessionCookieHeader: string | undefined,
+    now: DateTime,
+  ): Promise<GoogleAuthStartResult> {
     const oauthConfig = this.requireConfig();
-    const state = randomUrlSafe(STATE_BYTES);
-    const verifier = randomUrlSafe(VERIFIER_BYTES);
-    const nonce = randomUrlSafe(NONCE_BYTES);
-    const join = joinCode && INVITE_CODE_RE.test(joinCode) ? joinCode : undefined;
 
-    const cookie = buildGoogleOAuthCookie(
-      { state, verifier, nonce, join },
-      { secure: this.isSecure() },
-    );
-    const url = buildGoogleAuthUrl(oauthConfig, {
-      state,
-      nonce,
-      challenge: codeChallenge(verifier),
-    });
-    return { cookie, url };
+    if (params.intent === GOOGLE_LINK_INTENT) {
+      const sessionUser = await findSessionUser(
+        sessionCookieHeader,
+        this.authService,
+        this.usersService,
+        now,
+      );
+      if (!sessionUser || sessionUser.status === 'blocked') {
+        return { kind: 'no-session', url: `${oauthConfig.publicUrl}${LOGIN_PATH}` };
+      }
+      return {
+        kind: 'oauth',
+        ...this.buildStart(oauthConfig, {
+          intent: GOOGLE_LINK_INTENT,
+          userId: sessionUser.id,
+        }),
+      };
+    }
+
+    const join =
+      params.joinCode && INVITE_CODE_RE.test(params.joinCode)
+        ? params.joinCode
+        : undefined;
+    return { kind: 'oauth', ...this.buildStart(oauthConfig, { join }) };
   }
 
   async login(
@@ -108,6 +144,11 @@ export class GoogleAuthService {
     if (!idToken) throw new UnauthorizedError(GOOGLE_LOGIN_FAILED_MESSAGE);
 
     const identity = this.parseIdentity(idToken, oauthConfig, stored, now);
+
+    if (stored.intent === GOOGLE_LINK_INTENT) {
+      return this.completeLink(identity, stored, cookieHeader, now);
+    }
+
     const user = await this.identityService.resolveGoogleUser(identity, stored.join, now);
     if (user.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
 
@@ -116,12 +157,57 @@ export class GoogleAuthService {
     return { user, cookie };
   }
 
+  /** `intent=link`: сверяем сессию САМОГО этого запроса (не тело — тело не
+   * подписано) с userId, который `start()` положил в cookie google_oauth
+   * (ADR-0145). Не совпало или сессии нет вовсе — 401, отдельным текстом от
+   * обычного отказа входа: причина другая, действие другое («войдите ещё
+   * раз»), SECURITY §2. */
+  private async completeLink(
+    identity: GoogleIdentity,
+    stored: GoogleOAuthCookiePayload,
+    cookieHeader: string | undefined,
+    now: DateTime,
+  ): Promise<GoogleLoginResult> {
+    const sessionUser = await findSessionUser(
+      cookieHeader,
+      this.authService,
+      this.usersService,
+      now,
+    );
+    if (!sessionUser || sessionUser.id !== stored.userId) {
+      throw new UnauthorizedError(GOOGLE_LINK_SESSION_MESSAGE);
+    }
+    if (sessionUser.status === 'blocked') throw new ForbiddenError(ACCESS_MESSAGE);
+
+    const user = await this.linkService.link(sessionUser, identity);
+    return { user };
+  }
+
+  private buildStart(
+    oauthConfig: GoogleOAuthConfig,
+    extra: Pick<GoogleOAuthCookiePayload, 'join' | 'intent' | 'userId'>,
+  ): { cookie: string; url: string } {
+    const state = randomUrlSafe(STATE_BYTES);
+    const verifier = randomUrlSafe(VERIFIER_BYTES);
+    const nonce = randomUrlSafe(NONCE_BYTES);
+    const cookie = buildGoogleOAuthCookie(
+      { state, verifier, nonce, ...extra },
+      { secure: this.isSecure() },
+    );
+    const url = buildGoogleAuthUrl(oauthConfig, {
+      state,
+      nonce,
+      challenge: codeChallenge(verifier),
+    });
+    return { cookie, url };
+  }
+
   private parseIdentity(
     idToken: string,
     oauthConfig: GoogleOAuthConfig,
     stored: GoogleOAuthCookiePayload,
     now: DateTime,
-  ) {
+  ): GoogleIdentity {
     try {
       return parseGoogleIdToken(idToken, {
         clientId: oauthConfig.clientId,

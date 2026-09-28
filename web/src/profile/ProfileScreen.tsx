@@ -15,6 +15,7 @@
 import type { CSSProperties } from 'react';
 import { APP_ERRORS_SCREEN_PATH } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
+import { GoogleLinkSection } from '../auth/GoogleLinkSection';
 import { hasRole } from '../auth/hasRole';
 import { LogoutButton } from '../auth/LogoutButton';
 import { SecondLoginKey } from '../auth/SecondLoginKey';
@@ -61,6 +62,12 @@ export default function ProfileScreen() {
       {/* Второй способ входа (ADR-0059) — SecondLoginKey сам решает, что
           предложить (или не рисует ничего, если оба ключа уже на месте). */}
       {me === null ? <SkeletonList rows={1} h={44} /> : <SecondLoginKey me={me} />}
+
+      {/* Google (ADR-0145) — рядом, но отдельно: третий путь входа, не
+          замена Telegram/почты, поэтому не внутри SecondLoginKey. Сам решает,
+          показываться ли (config.googleLoginEnabled) и что сказать
+          (привязан/нет). */}
+      {me === null ? <SkeletonList rows={1} h={44} /> : <GoogleLinkSection me={me} />}
 
       {/* Журнал сбоев (ADR-0132) — вход карточкой, не пункт меню (ADR-0025),
           видна только admin: маршрут за тем же RequireDevErrorsAccess.tsx. */}

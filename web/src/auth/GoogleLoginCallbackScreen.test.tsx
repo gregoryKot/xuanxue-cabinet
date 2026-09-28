@@ -74,6 +74,7 @@ function renderScreen(search: string) {
           <Route path="/login" element={<p>Экран входа</p>} />
           <Route path="/" element={<p>Занятия</p>} />
           <Route path="/exams" element={<p>Экзамены</p>} />
+          <Route path="/profile" element={<p>Профиль</p>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -282,39 +283,131 @@ describe('GoogleLoginCallbackScreen — валидные code/state, вход с
   });
 });
 
-describe('GoogleLoginCallbackScreen — уже вошедшего уводит на сохранённый адрес или домашний, POST не уходит вовсе', () => {
-  it('authStatus ok, нет returnTo — редирект на домашний экран', async () => {
-    mockMe('ok');
+// Привязка Google (ADR-0145): человек открывает эту же страницу уже
+// вошедшим (GoogleLinkSection.tsx → redirectToGoogleLink → сервер по своей
+// cookie состояния понимает «это привязка», вернувшись, POST уходит как
+// обычно — сервер сам решит, вход это или привязка. Раньше сессия сразу
+// уводила Navigate-ом, не звоня серверу вовсе — это и был баг, который эта
+// привязка чинит.
+describe('GoogleLoginCallbackScreen — сессия уже есть (привязка), POST уходит как обычно', () => {
+  it('успех — POST уходит с {code, state}, после успеха переход на сохранённый returnTo (/profile)', async () => {
+    saveReturnTo('/profile');
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(ME);
+      if (path === '/auth/google') return Promise.resolve({ ...ME, googleLinked: true });
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
     renderScreen(`?code=${VALID_CODE}&state=${VALID_STATE}`);
 
-    expect(await screen.findByText('Занятия')).toBeInTheDocument();
-    expect(screen.queryByText('Входим в кабинет')).not.toBeInTheDocument();
-    expect(googleCalls()).toHaveLength(0);
+    await waitFor(() => expect(screen.getByText('Профиль')).toBeInTheDocument());
+
+    expect(googleCalls()).toHaveLength(1);
+    expect(googleCalls()[0]?.[1]).toEqual(
+      expect.objectContaining({
+        method: 'POST',
+        body: { code: VALID_CODE, state: VALID_STATE },
+      }),
+    );
   });
 
-  it('authStatus ok, есть returnTo /exams — редирект туда, POST не уходит', async () => {
-    saveReturnTo('/exams');
-    mockMe('ok');
+  it('успех, нет сохранённого returnTo — переход на домашний экран', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(ME);
+      if (path === '/auth/google') return Promise.resolve({ ...ME, googleLinked: true });
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
     renderScreen(`?code=${VALID_CODE}&state=${VALID_STATE}`);
 
-    expect(await screen.findByText('Экзамены')).toBeInTheDocument();
-    expect(googleCalls()).toHaveLength(0);
+    await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
+    expect(googleCalls()).toHaveLength(1);
   });
 
-  it('пока /auth/me ещё не ответил — POST ждёт; как только выясняется «гость», уходит', async () => {
-    let rejectMe: (err: unknown) => void = () => {};
+  it('409 (Google уже привязан к другому аккаунту) — текст сервера, кнопка «Вернуться» ведёт в /profile', async () => {
+    const user = userEvent.setup();
+    saveReturnTo('/profile');
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(ME);
+      if (path === '/auth/google')
+        return Promise.reject(
+          new ApiError(
+            'Этот Google уже привязан к другому аккаунту кабинета. Напишите учителю школы.',
+            409,
+            'conflict',
+          ),
+        );
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen(`?code=${VALID_CODE}&state=${VALID_STATE}`);
+
+    expect(
+      await screen.findByText(
+        'Этот Google уже привязан к другому аккаунту кабинета. Напишите учителю школы.',
+      ),
+    ).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Вернуться' });
+    expect(
+      screen.queryByRole('button', { name: 'На страницу входа' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(button);
+    await waitFor(() => expect(screen.getByText('Профиль')).toBeInTheDocument());
+  });
+
+  it('401 (сессия закончилась между началом и возвратом) — текст сервера, кнопка «Вернуться»', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me') return Promise.resolve(ME);
+      if (path === '/auth/google')
+        return Promise.reject(
+          new ApiError(
+            'Сессия закончилась. Войдите и нажмите «Привязать Google» ещё раз.',
+            401,
+            'unauthorized',
+          ),
+        );
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+    renderScreen(`?code=${VALID_CODE}&state=${VALID_STATE}`);
+
+    expect(
+      await screen.findByText(
+        'Сессия закончилась. Войдите и нажмите «Привязать Google» ещё раз.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Вернуться' })).toBeInTheDocument();
+  });
+
+  it('отменённый выбор аккаунта во время привязки — «Вход не завершён», кнопка «Вернуться», POST не уходит', async () => {
+    const user = userEvent.setup();
+    saveReturnTo('/profile');
+    mockMe('ok');
+    renderScreen('?error=access_denied');
+
+    expect(await screen.findByText('Вход не завершён')).toBeInTheDocument();
+    expect(googleCalls()).toHaveLength(0);
+    const button = screen.getByRole('button', { name: 'Вернуться' });
+
+    await user.click(button);
+    await waitFor(() => expect(screen.getByText('Профиль')).toBeInTheDocument());
+  });
+
+  it('пока /auth/me ещё не ответил — POST ждёт; как только сессия выяснена (есть), уходит', async () => {
+    let resolveFirstMe: (me: MeDto) => void = () => {};
     let meCallCount = 0;
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/me') {
         meCallCount += 1;
+        // Только первый вызов управляется тестом (проверка сессии при
+        // монтировании) — refresh() после успешного POST зовёт /auth/me ещё
+        // раз, и этот повторный вызов не должен виснуть навечно (тот же
+        // приём, что EmailLoginCallbackScreen.test.tsx).
         if (meCallCount === 1) {
-          return new Promise((_resolve, reject) => {
-            rejectMe = reject;
+          return new Promise((resolve) => {
+            resolveFirstMe = resolve;
           });
         }
-        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+        return Promise.resolve(ME);
       }
-      if (path === '/auth/google') return Promise.resolve(undefined);
+      if (path === '/auth/google') return Promise.resolve({ ...ME, googleLinked: true });
       return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
     });
     renderScreen(`?code=${VALID_CODE}&state=${VALID_STATE}`);
@@ -322,7 +415,7 @@ describe('GoogleLoginCallbackScreen — уже вошедшего уводит �
     expect(await screen.findByText('Входим в кабинет')).toBeInTheDocument();
     expect(googleCalls()).toHaveLength(0);
 
-    rejectMe(new ApiError('Войдите', 401, 'unauthorized'));
+    resolveFirstMe(ME);
 
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
     expect(googleCalls()).toHaveLength(1);
