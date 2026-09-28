@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Ночной выкат main → release (ADR-0142): прод раскатывает не каждый мерж,
-// а коммит main, который отстоялся на стейджинге SOAK_HOURS и прошёл CI.
-// Ядро ниже — чистые функции без сети/git (тестируются в
-// release-candidate.test.mjs), CLI внизу подключает их к реальному git,
-// GitHub REST и /api/health (.github/workflows/release.yml).
+// Выкат main → release (ADR-0142, ADR-0144): прод раскатывает не каждый
+// мерж и не сам по расписанию, а коммит main по ручной команде владельца —
+// тот, что отстоялся на стейджинге SOAK_HOURS и прошёл CI. Ядро ниже —
+// чистые функции без сети/git (тестируются в release-candidate.test.mjs),
+// CLI внизу подключает их к реальному git, GitHub REST и /api/health
+// (.github/workflows/release.yml).
 import { healthProblems } from './check-prod-health.mjs';
 
 export const DEFAULT_SOAK_HOURS = 2;
