@@ -86,4 +86,5 @@ npm run check             # tsc, eslint, prettier, тесты (jest api дваж
 явным `--update` (аудит 2026-09-12, H2 и M5).
 
 Заголовок PR — по Conventional Commits (`feat:`, `fix:`, `chore:` …): после squash он
-становится сообщением коммита в `main`. Merge в `main` = деплой на Railway.
+становится сообщением коммита в `main`. Merge в `main` = деплой на стейджинг; прод обновляется ночью из ветки `release`
+(ADR-0142, docs/RUNBOOK.md §2).
