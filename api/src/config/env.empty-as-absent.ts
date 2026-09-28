@@ -35,4 +35,7 @@ export const EMPTY_AS_ABSENT_KEYS = [
   'VAPID_PUBLIC_KEY',
   'VAPID_PRIVATE_KEY',
   'VAPID_SUBJECT',
+  // PostHog (ADR-0143) — та же логика: пустая строка в .env значит
+  // «аналитика выключена», а не кривой формат ключа.
+  'POSTHOG_KEY',
 ] as const;

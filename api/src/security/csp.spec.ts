@@ -17,9 +17,14 @@ describe('CSP_DIRECTIVES', () => {
     ]);
   });
 
-  it('scriptSrc и connectSrc не пускают произвольные домены — только self', () => {
+  it('scriptSrc не пускает произвольные домены — только self', () => {
     expect(CSP_DIRECTIVES.scriptSrc).toEqual(["'self'"]);
-    expect(CSP_DIRECTIVES.connectSrc).toEqual(["'self'"]);
+  });
+
+  // PostHog (ADR-0143) — без прокси, браузер шлёт события прямо на
+  // eu.i.posthog.com; единственное исключение из 'self' в connectSrc.
+  it('connectSrc — self и PostHog EU, ровно один сторонний домен', () => {
+    expect(CSP_DIRECTIVES.connectSrc).toEqual(["'self'", 'https://eu.i.posthog.com']);
   });
 
   it('objectSrc и frameAncestors закрыты полностью', () => {

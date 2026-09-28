@@ -5,6 +5,7 @@
 // — здесь, а не в main.tsx: main.tsx остаётся тонкой точкой входа).
 import { Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { AnalyticsTracker } from '../analytics/AnalyticsTracker';
 import { AuthProvider } from '../auth/AuthProvider';
 import { RequireAuth } from '../auth/RequireAuth';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -35,6 +36,7 @@ export default function App() {
             FirstScreenPrefetch.tsx): под Suspense эффекты не запускаются, пока
             чанк экрана не пришёл — то есть ровно после него, а не параллельно. */}
         <FirstScreenPrefetch />
+        <AnalyticsTracker />
         <Suspense fallback={routeFallback}>
           <Routes>
             <Route path={ROUTE_MODULES.login.path} element={<LoginScreen />} />
