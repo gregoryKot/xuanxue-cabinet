@@ -1,0 +1,240 @@
+name: Release (выкат на прод)
+
+# ADR-0142: main → Railway staging (деплой при каждом мерже), прод слушает
+# ветку release. Эта джоба раз в сутки берёт со стейджинга отстоявшийся
+# зелёный коммит main и катит его на прод — или откатывает release по
+# ручному запуску. 23:41 UTC = 02:41 Israel (лето) / 01:41 (зима) — тихие
+# часы, минута смещена от ровного часа тем же приёмом, что в backup.yml.
+on:
+  schedule:
+    - cron: '41 23 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'promote — обычный ночной выкат, rollback — откат прода'
+        type: choice
+        options: [promote, rollback]
+        default: promote
+      sha:
+        description: >-
+          promote: явный коммит (хотфикс, без отстоя на стейджинге).
+          rollback: цель отката (коммит или тег); пусто — предыдущий prod-тег.
+        required: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# Дефолт джоб — минимум; каждая джоба сама расширяет то, что ей нужно.
+permissions:
+  contents: read
+
+jobs:
+  # Свежий бэкап перед КАЖДЫМ промоутом (не вместо суточного расписания
+  # backup.yml — оно остаётся и на случай, если promote ни разу не наступит).
+  backup:
+    if: github.event.inputs.mode != 'rollback'
+    uses: ./.github/workflows/backup.yml
+    secrets: inherit
+
+  promote:
+    needs: backup
+    # backup «skipped» (mode=rollback) по умолчанию пропускает и эту джобу —
+    # explicit success здесь только чтобы падение backup тоже не катило прод.
+    if: needs.backup.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      issues: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # actions/checkout тянет полную историю только ветки, что запустила
+      # workflow (main) — origin/release нужен отдельно для сравнения
+      # диапазона и fast-forward push.
+      - name: подтянуть origin/release
+        shell: bash
+        run: git fetch origin release || true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: перед push — что сейчас на release (для списка коммитов)
+        id: before
+        shell: bash
+        run: echo "sha=$(git rev-parse origin/release 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
+
+      - name: выбор кандидата (scripts/release-candidate.mjs pick)
+        id: candidate
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CANDIDATE_SHA: ${{ github.event.inputs.sha }}
+          STAGING_HEALTH_URL: https://staging.xuanxue.su/api/health
+        run: node scripts/release-candidate.mjs pick
+
+      - name: нечего катить — зелёный итог с причиной
+        if: steps.candidate.outputs.sha == '' && success()
+        shell: bash
+        run: |
+          {
+            echo "### Ночной выкат: нечего катить"
+            echo "${{ steps.candidate.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: тег и fast-forward push origin/release
+        if: steps.candidate.outputs.sha != ''
+        id: push
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="${{ steps.candidate.outputs.sha }}"
+          TAG=$(node scripts/release-candidate.mjs tag-name)
+          # Обычный push (без --force) — если release кто-то подвинул рукой
+          # мимо этой джобы, push не идёт fast-forward и падает громко,
+          # вместо того чтобы молча переписать чужой коммит (CLAUDE.md,
+          # «Ошибка чинится вместе с причиной»).
+          git push origin "$SHA:refs/heads/release"
+          git tag "$TAG" "$SHA"
+          git push origin "$TAG"
+          {
+            echo "tag=$TAG"
+            echo "sha=$SHA"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: ждём раскатку прода (scripts/release-candidate.mjs wait)
+        if: steps.push.outputs.sha != ''
+        shell: bash
+        env:
+          TARGET_SHA: ${{ steps.push.outputs.sha }}
+        run: node scripts/release-candidate.mjs wait
+
+      - name: уведомление в Telegram — прод обновлён
+        if: steps.push.outputs.sha != '' && success()
+        shell: bash
+        env:
+          MODE: promote
+          SHA: ${{ steps.push.outputs.sha }}
+          TAG: ${{ steps.push.outputs.tag }}
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          BEFORE="${{ steps.before.outputs.sha }}"
+          # Первая раскатка (release только что заведена) — BEFORE пуст,
+          # берём хвост истории до кандидата вместо диапазона.
+          if [ -n "$BEFORE" ]; then
+            RANGE="$BEFORE..$SHA"
+          else
+            RANGE="-30 $SHA"
+          fi
+          git log --format=%s $RANGE \
+            | node scripts/release-candidate.mjs summary \
+            | node scripts/notify-telegram.mjs
+
+      - name: алерт в Telegram — выкат упал
+        if: failure()
+        shell: bash
+        env:
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          {
+            echo "Ночной выкат на прод упал."
+            echo "${{ steps.candidate.outputs.reason }}"
+            echo
+            echo "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } | node scripts/notify-telegram.mjs
+
+  rollback:
+    if: github.event.inputs.mode == 'rollback'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: подтянуть origin/release и теги
+        shell: bash
+        run: git fetch origin release --tags || true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: цель отката (scripts/release-candidate.mjs rollback-target)
+        id: target
+        shell: bash
+        env:
+          ROLLBACK_SHA: ${{ github.event.inputs.sha }}
+        run: node scripts/release-candidate.mjs rollback-target
+
+      - name: force-push release на цель отката
+        id: rollback_push
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="${{ steps.target.outputs.sha }}"
+          TAG=$(node scripts/release-candidate.mjs tag-name -rollback)
+          # Откат — единственное место, где force оправдан: возвращаем
+          # release на более старый коммит, fast-forward тут в принципе
+          # невозможен (CLAUDE.md, «Деплой и эксплуатация» — Rollback только
+          # при пожаре, и потом revert-PR, чтобы main совпадал с продом).
+          git push --force origin "$SHA:refs/heads/release"
+          git tag "$TAG" "$SHA"
+          git push origin "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: пауза ночного выката — issue release-hold
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh label create release-hold --color B60205 \
+            --description "Ночной выкат на паузе после отката" --force
+          gh issue create \
+            --title "Выкат на паузе после отката" \
+            --label release-hold \
+            --body "Откатили release на ${{ steps.target.outputs.sha }} (тег ${{ steps.rollback_push.outputs.tag }}).
+
+          Ночной выкат не возобновится, пока открыт этот issue: причину отката нужно сначала починить в main. Закройте issue, когда фикс в main — ночной выкат продолжится."
+
+      - name: ждём раскатку прода (scripts/release-candidate.mjs wait)
+        shell: bash
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: node scripts/release-candidate.mjs wait
+
+      - name: уведомление в Telegram — откат выполнен
+        if: success()
+        shell: bash
+        env:
+          MODE: rollback
+          SHA: ${{ steps.target.outputs.sha }}
+          TAG: ${{ steps.rollback_push.outputs.tag }}
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          echo "" | node scripts/release-candidate.mjs summary | node scripts/notify-telegram.mjs
+
+      - name: алерт в Telegram — откат упал
+        if: failure()
+        shell: bash
+        env:
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+        run: |
+          {
+            echo "Откат прода упал."
+            echo
+            echo "Прогон: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } | node scripts/notify-telegram.mjs

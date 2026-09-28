@@ -5,7 +5,7 @@
 // докатиться сам (Railway слушает ветку) — этот шаг ждёт и алертит, если
 // раскатка зависла, вместо того чтобы workflow молча посчитал выкат успешным
 // сразу после git push.
-import { targetReachedProblem } from './release-candidate.mjs';
+import { targetReachedProblem, DEFAULT_PROD_HEALTH_URL } from './release-candidate.mjs';
 
 const POLL_INTERVAL_MS = 20_000;
 const MAX_WAIT_MS = 15 * 60 * 1000;
@@ -47,7 +47,7 @@ async function fetchHealth(url) {
 }
 
 export async function runWait() {
-  const url = process.env.PROD_HEALTH_URL?.trim() || 'https://xuanxue.su/api/health';
+  const url = process.env.PROD_HEALTH_URL?.trim() || DEFAULT_PROD_HEALTH_URL;
   const targetSha = process.env.TARGET_SHA?.trim();
   if (!targetSha) {
     console.error('❌ release-wait: TARGET_SHA не задан');

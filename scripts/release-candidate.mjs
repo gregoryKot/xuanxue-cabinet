@@ -134,23 +134,31 @@ export function summaryMessage({ mode, sha, subjectLines, tag }) {
 }
 
 // ------------------------------------------------------- CLI-диспетчер ----
-// Сама сеть/git — в release-pick.mjs (`pick`) и release-wait.mjs (`wait`):
-// этот файл не разросся бы за потолок нового файла, держи ядро и CLI
-// раздельно (CLAUDE.md, «Храповики», check-file-size-ratchet.mjs).
+// Сама сеть/git — в release-pick.mjs (`pick`), release-wait.mjs (`wait`) и
+// release-ops.mjs (остальное): этот файл не разросся бы за потолок нового
+// файла, держи ядро и CLI раздельно (CLAUDE.md, «Храповики»,
+// check-file-size-ratchet.mjs).
+const SUBCOMMAND_MODULES = {
+  pick: ['./release-pick.mjs', 'runPick'],
+  wait: ['./release-wait.mjs', 'runWait'],
+  'tag-name': ['./release-ops.mjs', 'runTagName'],
+  'rollback-target': ['./release-ops.mjs', 'runRollbackTarget'],
+  summary: ['./release-ops.mjs', 'runSummary'],
+};
+
 async function main() {
   const [, , subcommand] = process.argv;
-  if (subcommand === 'pick') {
-    const { runPick } = await import('./release-pick.mjs');
-    await runPick();
+  const entry = SUBCOMMAND_MODULES[subcommand];
+  if (!entry) {
+    console.error(
+      `Использование: node scripts/release-candidate.mjs ${Object.keys(SUBCOMMAND_MODULES).join('|')}`,
+    );
+    process.exitCode = 1;
     return;
   }
-  if (subcommand === 'wait') {
-    const { runWait } = await import('./release-wait.mjs');
-    await runWait();
-    return;
-  }
-  console.error('Использование: node scripts/release-candidate.mjs pick|wait');
-  process.exitCode = 1;
+  const [modulePath, exportName] = entry;
+  const mod = await import(modulePath);
+  await mod[exportName]();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
