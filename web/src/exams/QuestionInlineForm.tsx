@@ -16,6 +16,7 @@ import { ExamItemKindField } from '../exam-items/ExamItemKindField';
 import { changeExamItemKind } from '../exam-items/examItemKindChange';
 import { ExamItemOptionsField } from '../exam-items/ExamItemOptionsField';
 import { hasOptions } from '../exam-items/examItemFormInput';
+import { usePendingQuestionSlot } from './usePendingQuestion';
 import { useQuestionInlineForm } from './useQuestionInlineForm';
 
 // Вопрос — общая запись, не копия под конкретный экзамен (ADR-0022): правка
@@ -46,6 +47,8 @@ export function QuestionInlineForm({ item, onSaved, onCancel }: QuestionInlineFo
   const form = useQuestionInlineForm(item);
   const fileStorageEnabled = useFileStorageEnabled();
   const wrapRef = useRef<HTMLDivElement>(null);
+  // «Сохранить» экзамена сохраняет и эту форму — вопрос не теряется молча.
+  usePendingQuestionSlot(form, item, onSaved);
 
   // Фокус сразу в формулировку при открытии формы — без этого учитель делал
   // лишний клик по полю, которое и так очевидно первое (отзыв владельца
