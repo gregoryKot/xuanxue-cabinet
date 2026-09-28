@@ -197,6 +197,7 @@ describe('AuthController.me', () => {
       telegramLinked: false,
       botChatActive: false,
       hasEmail: true,
+      googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });
@@ -302,6 +303,7 @@ describe('AuthController.verifyEmailLogin', () => {
       telegramLinked: false,
       botChatActive: false,
       hasEmail: true,
+      googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });
@@ -350,6 +352,7 @@ describe('AuthController.loginWithTelegram', () => {
       telegramLinked: false,
       botChatActive: false,
       hasEmail: true,
+      googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });

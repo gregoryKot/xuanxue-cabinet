@@ -75,6 +75,7 @@ describe('MyProfileController.update', () => {
       telegramLinked: false,
       botChatActive: true,
       hasEmail: false,
+      googleLinked: false,
       pendingEmail: undefined,
       noTelegram: false,
       needsProfile: false,

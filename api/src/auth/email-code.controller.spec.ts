@@ -121,6 +121,7 @@ describe('EmailCodeController.verifyEmailCode', () => {
       // Признак «ключ есть», а не сам адрес: чужие адреса наружу не ходят,
       // свой человеку и так известен (SECURITY §2, ADR-0059).
       hasEmail: true,
+      googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });
