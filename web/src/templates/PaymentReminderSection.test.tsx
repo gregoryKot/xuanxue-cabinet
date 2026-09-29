@@ -64,7 +64,7 @@ describe('PaymentReminderSection', () => {
     render(<Harness />);
 
     expect(await screen.findByRole('heading', { name: 'Оплаты' })).toBeInTheDocument();
-    expect(screen.getByText(/ещё не отмечен оплаченным/)).toBeInTheDocument();
+    expect(screen.getByText(/об оплате за месяц/)).toBeInTheDocument();
     expect(screen.getByText(/в последний день месяца/)).toBeInTheDocument();
   });
 

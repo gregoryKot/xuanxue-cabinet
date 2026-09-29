@@ -13,6 +13,7 @@ import { ApiError } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
 import type * as GoogleAuthRedirectModule from '../auth/googleAuthRedirect';
+import type * as MyPaymentsVisibilityModule from '../student/myPaymentsVisibility';
 import { redirectToGoogleLink } from '../auth/googleAuthRedirect';
 import ProfileScreen from './ProfileScreen';
 
@@ -23,6 +24,19 @@ vi.mock('../auth/googleAuthRedirect', async () => {
   return { ...actual, redirectToGoogleLink: vi.fn() };
 });
 const redirectToGoogleLinkSpy = vi.mocked(redirectToGoogleLink);
+
+// Флаг секции «Абонемент» (ADR-0157) — подменяем только его, правило «кому
+// показывать» остаётся настоящим.
+const paymentsFlag = vi.hoisted(() => ({ visible: false }));
+vi.mock('../student/myPaymentsVisibility', async () => {
+  const actual = await vi.importActual<typeof MyPaymentsVisibilityModule>(
+    '../student/myPaymentsVisibility',
+  );
+  return {
+    isMyPaymentsVisible: (me: MeDto | null) =>
+      actual.isMyPaymentsVisible(me, paymentsFlag.visible),
+  };
+});
 afterEach(() => {
   redirectToGoogleLinkSpy.mockClear();
 });
@@ -264,12 +278,29 @@ describe('ProfileScreen — переключение уведомлений (rea
 
 // «Выйти» держится на этом экране, доступна любой роли (было на прежнем
 // экране «Уведомления», отзыв владельца 2026-09-12/18).
-describe('ProfileScreen — абонемент (PLAN §15, слой 2.4)', () => {
-  it('у ученика без ролей блок «Абонемент» есть и запрашивает свои оплаты', async () => {
+// Секция «Абонемент» спрятана флагом (ADR-0157, myPaymentsVisibility.ts):
+// бухгалтер не ведёт оплаты в кабинете. Тест с включённым флагом держит
+// обещание «вернуть — одной строкой»: секция и её запрос живы.
+describe('ProfileScreen — секция «Абонемент» спрятана (ADR-0157)', () => {
+  afterEach(() => {
+    paymentsFlag.visible = false;
+  });
+
+  it('флаг включён — у ученика без ролей блок «Абонемент» есть и запрашивает свои оплаты', async () => {
+    paymentsFlag.visible = true;
     renderScreen(STUDENT);
 
     expect(await screen.findByRole('heading', { name: 'Абонемент' })).toBeInTheDocument();
     expect(await screen.findByText('Оплаты за сентябрь нет')).toBeInTheDocument();
+  });
+
+  it('у ученика без ролей блока «Абонемент» нет и запроса за оплатами тоже нет', async () => {
+    renderScreen(STUDENT);
+
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
+    await screen.findByText('Второй способ входа').catch(() => null);
+    expect(screen.queryByRole('heading', { name: 'Абонемент' })).not.toBeInTheDocument();
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/me/payments', expect.anything());
   });
 
   it('у учителя блока нет и запроса за оплатами тоже нет', async () => {

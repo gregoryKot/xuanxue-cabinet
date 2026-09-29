@@ -13,6 +13,7 @@ import { notificationPrefsLessonSoonRemoved } from './0012-notification-prefs-le
 import { seedExamForm1 } from './0013-exam-form-1.migration';
 import { materialsWithoutPaidAccess } from './0014-materials-without-paid-access.migration';
 import { examItemsWithoutHintCriteriaTags } from './0015-exam-items-without-hint-criteria-tags.migration';
+import { paymentReminderTemplateWithoutSubscription } from './0016-payment-reminder-template-without-subscription.migration';
 
 // `mongo` — реэкспорт того же драйвера, что использует mongoose внутри
 // (mongoose.mongo === require('mongodb')), поэтому тип `Db` совпадает
@@ -50,4 +51,5 @@ export const MIGRATIONS: Migration[] = [
   seedExamForm1,
   materialsWithoutPaidAccess,
   examItemsWithoutHintCriteriaTags,
+  paymentReminderTemplateWithoutSubscription,
 ];
