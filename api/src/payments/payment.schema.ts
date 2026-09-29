@@ -11,17 +11,10 @@
 // заранее, чтобы схема не менялась ещё раз.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
-import { PAYMENT_STATUSES } from '@xuanxue/shared';
-import type { PaymentStatus } from '@xuanxue/shared';
+import { PAYMENT_SCREENSHOT_KINDS, PAYMENT_STATUSES } from '@xuanxue/shared';
+import type { PaymentScreenshotKind, PaymentStatus } from '@xuanxue/shared';
 import { USER_MODEL_NAME } from '../users/user-data.registry';
 import { enc, plain, encryptSchemaFrom, type FieldPolicy } from '../common/field-policy';
-
-// Источник скриншота (ADR-0050) — бот (file_id Telegram) или загрузка в
-// кабинете (payment_screenshots, следующий PR). Список закрыт здесь же, не в
-// shared: наружу (DTO) поле не идёт ни в одном эндпоинте — снаружи видно
-// только `hasScreenshot`.
-const PAYMENT_SCREENSHOT_KINDS = ['telegram', 'upload'] as const;
-type PaymentScreenshotKind = (typeof PAYMENT_SCREENSHOT_KINDS)[number];
 
 /** Источник скриншота из бота (payments.write.ts, attachTelegramScreenshot) —
  * та же форма, что `PaymentScreenshotSource` в telegram/handlers/
@@ -63,7 +56,9 @@ export class PaymentRecord {
   @Prop({ type: Date, required: false })
   confirmedAt?: Date;
 
-  // Источник скриншота (ADR-0050) — бот или загрузка, см. перечисление выше.
+  // Источник скриншота (ADR-0050) — бот или загрузка. Список живёт в shared:
+  // экрану «Оплаты» нужно знать, где снимок (PaymentDto.screenshotKind,
+  // ADR-0148). Сам `screenshotKind` наружу идёт, `file_id` и байты — нет.
   @Prop({ type: String, enum: PAYMENT_SCREENSHOT_KINDS, required: false })
   screenshotKind?: PaymentScreenshotKind;
 

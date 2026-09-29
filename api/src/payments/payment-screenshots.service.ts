@@ -10,14 +10,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import type { DateTime } from 'luxon';
-import type { MyPaymentDto } from '@xuanxue/shared';
+import {
+  PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE,
+  PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+  type ExamImageContentType,
+  type MyPaymentDto,
+} from '@xuanxue/shared';
 // Разбор сырого тела — тот же, что у картинок вариантов ответа
 // (CLAUDE.md «Одна механика — один компонент»): формат по сигнатуре байтов,
 // не по заголовку, и тот же потолок в 1 МБ (SECURITY §4).
+import { binaryToBuffer } from '../exam-images/exam-image.mapper';
 import { parseExamImageUpload } from '../exam-images/exam-image-upload';
-import { InvalidInputError } from '../common/errors';
+import { InvalidInputError, NotFoundError } from '../common/errors';
+import { assertObjectId } from '../common/object-id';
 import { SettingsService } from '../settings/settings.service';
-import { encryptBytes } from '../utils/encryption-bytes';
+import { decryptBytes, encryptBytes } from '../utils/encryption-bytes';
 import { assertMonthKey } from './payment-month';
 import {
   isPaymentMonthInWindow,
@@ -27,6 +34,11 @@ import { attachUploadedScreenshot } from './payment-screenshot.write';
 import { PaymentScreenshotRecord } from './payment-screenshot.schema';
 import { toMyPaymentDto } from './payment.mapper';
 import { PaymentRecord } from './payment.schema';
+
+export interface LoadedPaymentScreenshot {
+  bytes: Buffer;
+  contentType: ExamImageContentType;
+}
 
 @Injectable()
 export class PaymentScreenshotsService {
@@ -78,5 +90,31 @@ export class PaymentScreenshotsService {
       await this.model.deleteOne({ _id: created._id });
       throw err;
     }
+  }
+
+  /** Снимок, загруженный в кабинете, для бухгалтера и админа (ADR-0148).
+   * Байты расшифровываются на лету. Снимок бота отдать нечем — у нас только
+   * file_id (ADR-0050): отвечаем 404 с текстом, где он лежит. Осиротевшая
+   * ссылка (байты убрал уборщик) — тот же 404, что «снимка нет». */
+  async load(userId: string, month: string): Promise<LoadedPaymentScreenshot> {
+    assertMonthKey(month);
+    assertObjectId(userId, PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE);
+    const payment = await this.paymentModel
+      .findOne({ userId, month })
+      .lean<Pick<PaymentRecord, 'screenshotKind' | 'screenshotImageId'> | null>();
+    if (!payment?.screenshotKind) {
+      throw new NotFoundError(PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE);
+    }
+    if (payment.screenshotKind === 'telegram') {
+      throw new NotFoundError(PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE);
+    }
+    const doc = payment.screenshotImageId
+      ? await this.model.findById(payment.screenshotImageId).lean()
+      : null;
+    if (!doc) throw new NotFoundError(PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE);
+    return {
+      bytes: decryptBytes(binaryToBuffer(doc.bytes)),
+      contentType: doc.contentType,
+    };
   }
 }

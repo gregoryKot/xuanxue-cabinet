@@ -23,21 +23,18 @@ describe('buildPaymentRows', () => {
         userName: 'Аня',
         month: '2026-09',
         status: 'unpaid',
-        hasScreenshot: false,
       },
       {
         userId: 'u2',
         userName: 'Борис',
         month: '2026-09',
         status: 'unpaid',
-        hasScreenshot: false,
       },
       {
         userId: 'u3',
         userName: 'Вера',
         month: '2026-09',
         status: 'unpaid',
-        hasScreenshot: false,
       },
     ]);
   });
@@ -50,7 +47,7 @@ describe('buildPaymentRows', () => {
           status: 'paid',
           amountMinor: 25000,
           confirmedAt: '2026-09-05T10:00:00.000Z',
-          hasScreenshot: false,
+          screenshotKind: 'upload',
         },
       ],
     ]);
@@ -64,15 +61,13 @@ describe('buildPaymentRows', () => {
       status: 'paid',
       amountMinor: 25000,
       confirmedAt: '2026-09-05T10:00:00.000Z',
-      hasScreenshot: false,
+      screenshotKind: 'upload',
       reminderSentAt: undefined,
     });
   });
 
   it('фильтр по статусу — применяется к уже собранным строкам', () => {
-    const payments = new Map<string, PaymentRowData>([
-      ['u1', { status: 'paid', hasScreenshot: false }],
-    ]);
+    const payments = new Map<string, PaymentRowData>([['u1', { status: 'paid' }]]);
 
     const rows = buildPaymentRows(STUDENTS, payments, '2026-09', 'unpaid', 50);
 
@@ -97,7 +92,6 @@ describe('unpaidDto', () => {
       userName: 'Аня',
       month: '2026-09',
       status: 'unpaid',
-      hasScreenshot: false,
     });
   });
 });

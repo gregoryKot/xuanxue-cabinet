@@ -16,7 +16,7 @@ const BASE = {
 } as RawLeanPayment;
 
 describe('toPaymentDto', () => {
-  it('confirmedAt и reminderSentAt заданы — оба в ISO UTC с Z, скриншот есть', () => {
+  it('confirmedAt и reminderSentAt заданы — оба в ISO UTC с Z, снимок бота — kind telegram', () => {
     const doc: RawLeanPayment = {
       ...BASE,
       confirmedAt: new Date('2026-09-05T10:00:00Z'),
@@ -31,7 +31,7 @@ describe('toPaymentDto', () => {
       status: 'paid',
       amountMinor: undefined,
       confirmedAt: '2026-09-05T10:00:00.000Z',
-      hasScreenshot: true,
+      screenshotKind: 'telegram',
       reminderSentAt: '2026-09-10T08:00:00.000Z',
     });
   });
@@ -44,9 +44,25 @@ describe('toPaymentDto', () => {
       status: 'paid',
       amountMinor: undefined,
       confirmedAt: undefined,
-      hasScreenshot: false,
+      screenshotKind: undefined,
       reminderSentAt: undefined,
     });
+  });
+});
+
+describe('toPaymentDto: источник снимка', () => {
+  it('снимок из кабинета — screenshotKind upload, id байтов в ответ не идёт', () => {
+    const doc: RawLeanPayment = {
+      ...BASE,
+      screenshotKind: 'upload',
+      screenshotImageId: 'i1' as unknown as Types.ObjectId,
+    };
+
+    const dto = toPaymentDto(doc, 'Ученик');
+
+    expect(dto.screenshotKind).toBe('upload');
+    expect(dto).not.toHaveProperty('screenshotImageId');
+    expect(dto).not.toHaveProperty('hasScreenshot');
   });
 });
 

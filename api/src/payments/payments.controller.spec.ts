@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 import { DateTime } from 'luxon';
 import type { PaymentDto, PaymentsPageDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
+import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 
@@ -21,22 +22,49 @@ const PAYMENT_DTO: PaymentDto = {
   userName: 'Ученик',
   month: '2026-09',
   status: 'paid',
-  hasScreenshot: false,
 };
 
 const PAGE_DTO: PaymentsPageDto = { month: '2026-09', rows: [PAYMENT_DTO] };
 
 async function buildController(
   service: Partial<PaymentsService> = {},
+  screenshots: Partial<PaymentScreenshotsService> = {},
 ): Promise<PaymentsController> {
   const module = await Test.createTestingModule({
     controllers: [PaymentsController],
-    providers: [{ provide: PaymentsService, useValue: service }],
+    providers: [
+      { provide: PaymentsService, useValue: service },
+      { provide: PaymentScreenshotsService, useValue: screenshots },
+    ],
   }).compile();
   return module.get(PaymentsController);
 }
 
 describe('PaymentsController', () => {
+  it('screenshot() отдаёт байты с типом и no-store; заголовок ставит после удачного чтения', async () => {
+    const bytes = Buffer.from([0xff, 0xd8, 0xff]);
+    const load = jest.fn().mockResolvedValue({ bytes, contentType: 'image/jpeg' });
+    const controller = await buildController({}, { load });
+    const setHeader = jest.fn();
+
+    const file = await controller.screenshot('s1', '2026-09', { setHeader });
+
+    expect(load).toHaveBeenCalledWith('s1', '2026-09');
+    expect(setHeader).toHaveBeenCalledWith('Cache-Control', 'private, no-store');
+    expect(file.getHeaders()).toMatchObject({ type: 'image/jpeg', length: 3 });
+  });
+
+  it('screenshot(): сервис отказал — no-store не ставится, ошибка идёт наверх', async () => {
+    const load = jest.fn().mockRejectedValue(new Error('нет снимка'));
+    const controller = await buildController({}, { load });
+    const setHeader = jest.fn();
+
+    await expect(controller.screenshot('s1', '2026-09', { setHeader })).rejects.toThrow(
+      'нет снимка',
+    );
+    expect(setHeader).not.toHaveBeenCalled();
+  });
+
   it('list() передаёт query и now в сервис', async () => {
     const listMonth = jest.fn().mockResolvedValue(PAGE_DTO);
     const controller = await buildController({ listMonth });

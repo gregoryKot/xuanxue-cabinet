@@ -2,6 +2,8 @@
 // статуса, деньги целым числом агорот. Чистый модуль: без Luxon (CLAUDE.md
 // «Слои» — shared не знает ни о Nest, ни о React) — перевод DateTime → месяц
 // живёт в api/src/payments/payment-month.ts, здесь только строка и её формат.
+import type { PaymentScreenshotKind } from './payment-screenshot';
+
 export const PAYMENT_STATUSES = ['unpaid', 'awaiting', 'paid'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
@@ -87,8 +89,9 @@ export function formatAmountIls(amountMinor: number): string {
 
 /** Строка `GET /payments` — один активный ученик школы, даже без документа
  * (ADR-0049: «не оплачен» — такой же ответ, как «оплачен», Маша должна
- * видеть молчащих). Байты и `file_id` скриншота наружу не идут никогда —
- * только `hasScreenshot`. */
+ * видеть молчащих). Байты и `file_id` скриншота в список не идут никогда —
+ * только `screenshotKind`; байты кабинета — `GET /payments/:userId/:month/
+ * screenshot` (ADR-0148). */
 export interface PaymentDto {
   userId: string;
   userName: string;
@@ -96,7 +99,9 @@ export interface PaymentDto {
   status: PaymentStatus;
   amountMinor?: number;
   confirmedAt?: string; // ISO UTC с Z
-  hasScreenshot: boolean;
+  /** Где снимок, а не только «есть ли»: `upload` — байты в кабинете, открываются
+   * по нажатию; `telegram` — у бухгалтера в чате с ботом (ADR-0148). */
+  screenshotKind?: PaymentScreenshotKind;
   reminderSentAt?: string; // ISO UTC с Z
 }
 
