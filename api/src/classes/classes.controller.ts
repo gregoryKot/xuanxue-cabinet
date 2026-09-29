@@ -27,6 +27,7 @@ export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
   @Get()
+  @ApiRoute('GET /classes')
   list(@Query() query: ListClassesDto): Promise<ClassDto[]> {
     return this.classesService.list(query);
   }

@@ -17,6 +17,8 @@ import {
   type ExamAttemptsRoutes,
 } from './exam-attempts-routes';
 import { EXAM_ITEMS_ROUTE_KEYS, type ExamItemsRoutes } from './exam-items-routes';
+import { EXAM_IMAGES_ROUTE_KEYS, type ExamImagesRoutes } from './exam-images-routes';
+import { EXAM_VIDEOS_ROUTE_KEYS, type ExamVideosRoutes } from './exam-videos-routes';
 import { EXAMS_ROUTE_KEYS, type ExamsRoutes } from './exams-routes';
 import { GRADING_ROUTE_KEYS, type GradingRoutes } from './grading-routes';
 import { INBOX_ROUTE_KEYS, type InboxRoutes } from './inbox-routes';
@@ -40,7 +42,9 @@ export type ApiRouteMap = AnalyticsRoutes &
   ChannelsRoutes &
   ClassesRoutes &
   ExamAttemptsRoutes &
+  ExamImagesRoutes &
   ExamItemsRoutes &
+  ExamVideosRoutes &
   ExamsRoutes &
   GradingRoutes &
   InboxRoutes &
@@ -62,7 +66,9 @@ export const API_ROUTE_KEY_SET: Record<keyof ApiRouteMap, true> = {
   ...CHANNELS_ROUTE_KEYS,
   ...CLASSES_ROUTE_KEYS,
   ...EXAM_ATTEMPTS_ROUTE_KEYS,
+  ...EXAM_IMAGES_ROUTE_KEYS,
   ...EXAM_ITEMS_ROUTE_KEYS,
+  ...EXAM_VIDEOS_ROUTE_KEYS,
   ...EXAMS_ROUTE_KEYS,
   ...GRADING_ROUTE_KEYS,
   ...INBOX_ROUTE_KEYS,

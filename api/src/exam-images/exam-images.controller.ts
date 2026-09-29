@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import type { ExamImageDto, ExamImageStatsDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { ResponseLike } from '../common/http-headers';
 import type { UserLean } from '../users/users.service';
 import { ExamImageStatsService } from './exam-image-stats.service';
@@ -54,6 +55,7 @@ export class ExamImagesController {
   ) {}
 
   @Post()
+  @ApiRoute('POST /exam-images')
   @HttpCode(HttpStatus.CREATED)
   @Roles('teacher', 'assistant', 'admin')
   upload(
@@ -67,6 +69,7 @@ export class ExamImagesController {
   // getStatsSummary, exam-items.controller.ts) — иначе Nest отдаст запрос
   // `GET /exam-images/stats-summary` хендлеру `get` с `id='stats-summary'`.
   @Get('stats-summary')
+  @ApiRoute('GET /exam-images/stats-summary')
   @Roles('teacher', 'assistant', 'admin')
   getStatsSummary(): Promise<ExamImageStatsDto> {
     return this.statsService.getSummary();

@@ -31,6 +31,7 @@ export class ExamsController {
   constructor(private readonly examsService: ExamsService) {}
 
   @Get()
+  @ApiRoute('GET /exams')
   list(@Query() query: ListExamsDto): Promise<ExamDto[]> {
     return this.examsService.list(query);
   }

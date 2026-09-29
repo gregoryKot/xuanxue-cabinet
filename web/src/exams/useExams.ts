@@ -5,8 +5,8 @@
 // из ответа `POST /exams/bulk-delete`, второй `GET` не нужен (ADR-0087).
 import { useEffect, useRef } from 'react';
 import type { ExamDto } from '@xuanxue/shared';
-import { examsListPath, type ExamListFilters } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { examsListQuery, type ExamListFilters } from '../api/listQueries';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { withoutIds } from '../lib/listPatch';
 
@@ -22,7 +22,7 @@ export interface UseExamsResult {
 
 export function useExams(filters: ExamListFilters): UseExamsResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<ExamDto[]>(examsListPath(filters), { signal }),
+    (signal) => apiRoute('GET /exams', { query: examsListQuery(filters), signal }),
     LOAD_ERROR_MESSAGE,
   );
 

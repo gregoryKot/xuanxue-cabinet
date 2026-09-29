@@ -8,8 +8,8 @@
 // тот же приём, что у broadcasts/useBroadcasts.ts.
 import { useEffect, useRef } from 'react';
 import type { ExamItemDto, ExamItemStatus } from '@xuanxue/shared';
-import { EXAM_EDITOR_ITEMS_PATH, examItemsListPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { EXAM_EDITOR_ITEMS_QUERY, examItemsListQuery } from '../api/listQueries';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { withoutIds } from '../lib/listPatch';
 
@@ -29,11 +29,11 @@ export function useExamItems(
 ): UseExamItemsResult {
   // С удалёнными — только редактору и предпросмотру экзамена (ADR-0140), им
   // фильтр статуса не нужен: вопрос ищется по id из формы.
-  const path = options.includeDeleted
-    ? EXAM_EDITOR_ITEMS_PATH
-    : examItemsListPath(status);
+  const query = options.includeDeleted
+    ? EXAM_EDITOR_ITEMS_QUERY
+    : examItemsListQuery(status);
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<ExamItemDto[]>(path, { signal }),
+    (signal) => apiRoute('GET /exam-items', { query, signal }),
     LOAD_ERROR_MESSAGE,
   );
 

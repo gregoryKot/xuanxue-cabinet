@@ -2,11 +2,11 @@
 // LIST_LIMIT_MAX — «дай всё» запрещён (CLAUDE.md, раздел «API»).
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
-import { TAG_LIMITS, type ListClassesQuery } from '@xuanxue/shared';
+import { TAG_LIMITS, type ApiRouteQuery } from '@xuanxue/shared';
 import { booleanFromQuery } from '../../common/query-transforms';
 import { ListLimit } from '../../common/validation';
 
-export class ListClassesDto implements ListClassesQuery {
+export class ListClassesDto implements ApiRouteQuery<'GET /classes'> {
   @IsOptional()
   @Transform(({ value }: { value: unknown }) => booleanFromQuery(value))
   @IsBoolean()
