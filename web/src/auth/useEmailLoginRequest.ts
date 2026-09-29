@@ -5,7 +5,8 @@
 // от сети или 503 «Email-вход не подключён» (гонка с конфигурацией, редкий
 // случай — LoginScreen.tsx уже прячет форму, пока `emailLoginEnabled` false).
 import { useCallback, useRef, useState } from 'react';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 
 type EmailLoginRequestStatus = 'idle' | 'pending' | 'sent' | 'error';
 
@@ -32,8 +33,7 @@ export function useEmailLoginRequest(inviteCode?: string): UseEmailLoginRequestR
       setStatus('pending');
       setError(null);
       try {
-        await apiFetch<void>('/auth/email/request', {
-          method: 'POST',
+        await apiRoute('POST /auth/email/request', {
           body: inviteCode ? { email, inviteCode } : { email },
         });
         sentOnceRef.current = true;

@@ -5,6 +5,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
 import type { MeDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import { PersonalChats } from '../telegram/personal-chats';
 import type { UserLean } from '../users/users.service';
 import { CurrentUser, Public } from './auth.decorators';
@@ -40,6 +41,7 @@ export class EmailLinkController {
   // иначе один человек мог бы привязать почту к чужому аккаунту, просто
   // отправив его id.
   @Throttle(EMAIL_LINK_THROTTLE)
+  @ApiRoute('POST /auth/email/link')
   @Post('email/link')
   @HttpCode(HttpStatus.OK)
   async link(@Body() body: LinkEmailDto, @CurrentUser() user: UserLean): Promise<MeDto> {
@@ -53,6 +55,7 @@ export class EmailLinkController {
   // cookie не ставит (EmailLinkService.confirm).
   @Public()
   @Throttle(EMAIL_LINK_THROTTLE)
+  @ApiRoute('POST /auth/email/confirm')
   @Post('email/confirm')
   @HttpCode(HttpStatus.NO_CONTENT)
   async confirm(@Body() body: ConfirmEmailDto): Promise<void> {

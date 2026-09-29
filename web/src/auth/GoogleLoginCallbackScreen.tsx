@@ -50,7 +50,7 @@ export default function GoogleLoginCallbackScreen() {
   const canPost = hasValidParams && authStatus !== 'loading';
   const { error, errorStatus } = useCallbackLogin(
     refresh,
-    canPost && !cancelled ? { path: '/auth/google', body: { code, state } } : null,
+    canPost && !cancelled ? { key: 'POST /auth/google', body: { code, state } } : null,
   );
   const sessionActive = hasSession(authStatus);
   const returnLabel = sessionActive ? RETURN_LABEL : LOGIN_LABEL;

@@ -1,9 +1,7 @@
-// /auth/me, /auth/logout и /auth/telegram — под глобальным AuthGuard.
-// /auth/logout и /auth/telegram помечены @Public(): выход обязан чистить
-// cookie даже без валидной сессии, вход — способ её получить. CSRF-проверка
-// (x-requested-with) при этом всё равно действует, см. auth.guard.ts.
-// Google/join/telegram-link/email-link/email-code — отдельными файлами
-// рядом (тот же приём): этот файл у потолка 150 строк (file-size-ratchet).
+// /auth/me — под глобальным AuthGuard; /auth/logout и /auth/telegram — @Public():
+// выход обязан чистить cookie даже без сессии, вход — способ её получить (CSRF
+// по x-requested-with действует и тут, auth.guard.ts). Google/join/link/code —
+// отдельными файлами рядом: этот у потолка 150 строк (file-size-ratchet).
 import {
   Body,
   Controller,
@@ -19,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
 import { INVITE_QUERY_PARAM, type AuthConfigDto, type MeDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { SettingsService } from '../settings/settings.service';
 import { FileStoreService } from '../storage/file-store.service';
@@ -51,12 +50,11 @@ export class AuthController {
     private readonly personalChats: PersonalChats,
   ) {}
 
-  // Без сессии: экран входа спрашивает конфигурацию до того, как появится
-  // роль. Поля — см. тсдок AuthConfigDto (shared/src/auth.ts); *Enabled —
-  // те же проверки, что перед самим действием (EmailAuthService.isEnabled(),
-  // GoogleAuthService.isEnabled(), FileStoreService.isEnabled), один метод
-  // на оба места (CLAUDE.md «Дубли»).
+  // Без сессии: экран входа спрашивает конфигурацию до появления роли. Поля —
+  // тсдок AuthConfigDto (shared/src/auth.ts); *Enabled — те же проверки, что
+  // перед самим действием (isEnabled() сервисов), один метод на оба места.
   @Public()
+  @ApiRoute('GET /auth/config')
   @Get('config')
   async getConfig(): Promise<AuthConfigDto> {
     const settings = await this.settingsService.get();
@@ -72,6 +70,7 @@ export class AuthController {
     };
   }
 
+  @ApiRoute('GET /auth/me')
   @Get('me')
   async me(@CurrentUser() user: UserLean): Promise<MeDto> {
     // AuthGuard уже сходил в UsersService.findById перед тем, как пропустить
@@ -81,6 +80,7 @@ export class AuthController {
 
   @Public()
   @Throttle(TELEGRAM_LOGIN_THROTTLE)
+  @ApiRoute('POST /auth/telegram')
   @Post('telegram')
   @HttpCode(HttpStatus.OK)
   async loginWithTelegram(
@@ -110,13 +110,12 @@ export class AuthController {
     return toMeDto(user, await this.personalChats.hasActiveChatFor(user));
   }
 
-  // Ответ всегда 204, независимо от того, найден email в базе или нет и
-  // ушло ли письмо из-за cooldown (EmailAuthService.requestLink) — на
-  // «неизвестном» email нельзя отвечать иначе, это раскрывало бы, кто уже
-  // зарегистрирован (SECURITY §2). Исключение — сама фича выключена
-  // конфигурацией: тогда NotAvailableError (503), 204 не изображаем.
+  // Всегда 204: найден ли email и ушло ли письмо (cooldown), не раскрываем —
+  // иначе видно, кто зарегистрирован (SECURITY §2). Исключение — фича выключена
+  // конфигурацией: NotAvailableError (503), 204 не изображаем.
   @Public()
   @Throttle(EMAIL_LOGIN_THROTTLE)
+  @ApiRoute('POST /auth/email/request')
   @Post('email/request')
   @HttpCode(HttpStatus.NO_CONTENT)
   async requestEmailLogin(@Body() body: RequestEmailLoginDto): Promise<void> {
@@ -125,6 +124,7 @@ export class AuthController {
 
   @Public()
   @Throttle(EMAIL_LOGIN_THROTTLE)
+  @ApiRoute('POST /auth/email/verify')
   @Post('email/verify')
   @HttpCode(HttpStatus.OK)
   async verifyEmailLogin(
@@ -141,6 +141,7 @@ export class AuthController {
   }
 
   @Public()
+  @ApiRoute('POST /auth/logout')
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) res: ResponseLike): void {

@@ -2,7 +2,8 @@
 // учителя и ученика (CLAUDE.md «Одна механика — один компонент»).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ApiError, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 import { clearAllDrafts } from '../lib/formDraft';
 import { useAuth } from './AuthProvider';
 
@@ -25,7 +26,7 @@ export function useLogout(): UseLogoutResult {
     setPending(true);
     setError(null);
     try {
-      await apiFetch('/auth/logout', { method: 'POST' });
+      await apiRoute('POST /auth/logout');
       // Черновики форм редактора (ADR-0052) — только явный выход: на 401
       // (setUnauthorizedListener в AuthProvider) их не трогаем, человек
       // войдёт заново и должен увидеть набранное.

@@ -4,7 +4,7 @@
 // не «бот не настроен» (эти два случая нельзя путать — ревью п.4).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthConfigDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 
 type AuthConfigStatus = 'loading' | 'ok' | 'offline';
 
@@ -27,7 +27,7 @@ export function useAuthConfig(enabled = true): UseAuthConfigResult {
     const thisRequest = (requestId.current += 1);
     setStatus('loading');
     try {
-      const dto = await apiFetch<AuthConfigDto>('/auth/config');
+      const dto = await apiRoute('GET /auth/config');
       if (requestId.current !== thisRequest) return;
       setConfig(dto);
       setStatus('ok');

@@ -27,7 +27,7 @@ export function useEmailLoginVerify(
     token === null
       ? null
       : {
-          path: '/auth/email/verify',
+          key: 'POST /auth/email/verify',
           body: joinCode ? { token, inviteCode: joinCode } : { token },
         };
   return useCallbackLogin(refresh, request);

@@ -4,8 +4,8 @@
 // telegramUrl с сервера (shared/src/telegram-link.ts) — хранить его в
 // localStorage незачем и запрещено (CLAUDE.md «Безопасность»).
 import { useCallback, useState } from 'react';
-import type { TelegramLinkCodeDto } from '@xuanxue/shared';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { redirectCurrentTab } from '../auth/telegramAuthRedirect';
 
 export interface UseTelegramLinkCodeResult {
@@ -27,10 +27,7 @@ export function useTelegramLinkCode(): UseTelegramLinkCodeResult {
     setPending(true);
     setError(null);
     try {
-      const { telegramUrl } = await apiFetch<TelegramLinkCodeDto>(
-        '/auth/telegram/link-code',
-        { method: 'POST' },
-      );
+      const { telegramUrl } = await apiRoute('POST /auth/telegram/link-code');
       // Успех — вкладка уже переходит в Telegram, pending нарочно не
       // сбрасываем: кнопка остаётся «занятой» до того, как страница уйдёт.
       redirectCurrentTab(telegramUrl);

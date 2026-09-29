@@ -7,8 +7,9 @@
 // «присоединиться после входа» больше нет, JoinScreen сам уходит на
 // «Расписание», как только authStatus становится 'ok'.
 import { useEffect, useState } from 'react';
-import { INVITE_CODE_RE, type CheckInviteResultDto } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { INVITE_CODE_RE } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 
 type CheckStatus = 'loading' | 'valid' | 'invalid' | 'offline';
 
@@ -42,7 +43,7 @@ export function useJoinByInvite(code: string, enabled = true): UseJoinByInviteRe
     }
     let cancelled = false;
     setCheckStatus('loading');
-    apiFetch<CheckInviteResultDto>('/auth/join/check', { method: 'POST', body: { code } })
+    apiRoute('POST /auth/join/check', { body: { code } })
       .then((res) => {
         if (!cancelled) setCheckStatus(res.valid ? 'valid' : 'invalid');
       })

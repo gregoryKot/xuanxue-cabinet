@@ -1,15 +1,6 @@
 {
-  "total": 54,
+  "total": 41,
   "byFile": {
-    "web/src/auth/AuthProvider.tsx": 1,
-    "web/src/auth/useAuthConfig.ts": 1,
-    "web/src/auth/useCallbackLogin.ts": 1,
-    "web/src/auth/useEmailCodeLogin.ts": 1,
-    "web/src/auth/useEmailConfirm.ts": 1,
-    "web/src/auth/useEmailLink.ts": 1,
-    "web/src/auth/useEmailLoginRequest.ts": 1,
-    "web/src/auth/useLogout.ts": 1,
-    "web/src/auth/useTelegramAuthResultLogin.ts": 1,
     "web/src/broadcasts/useBroadcastCreate.ts": 1,
     "web/src/broadcasts/useBroadcastDeliveries.ts": 1,
     "web/src/broadcasts/useBroadcasts.ts": 2,
@@ -28,7 +19,6 @@
     "web/src/exams/useExamAttemptCount.ts": 1,
     "web/src/exams/useExams.ts": 1,
     "web/src/exams/useQuestionInlineForm.ts": 2,
-    "web/src/join/useJoinByInvite.ts": 1,
     "web/src/materials/materialFileUpload.ts": 1,
     "web/src/materials/useLessonsByTag.ts": 1,
     "web/src/materials/useMaterialFileUpload.ts": 1,
@@ -43,11 +33,8 @@
     "web/src/student/useMyArchive.ts": 1,
     "web/src/student/useMyLessons.ts": 1,
     "web/src/student/useMyMaterials.ts": 1,
-    "web/src/telegram/useNoTelegram.ts": 1,
-    "web/src/telegram/useTelegramLinkCode.ts": 1,
     "web/src/templates/useNextLessons.ts": 1,
     "web/src/templates/usePreview.ts": 1,
-    "web/src/templates/useSettings.ts": 2,
-    "web/src/welcome/useProfileSetup.ts": 1
+    "web/src/templates/useSettings.ts": 2
   }
 }

@@ -7,9 +7,9 @@
 // `forbidNonWhitelisted: true` в app.setup.ts — подмена владельца видна в
 // ответе, а не проходит незамеченной (me-no-telegram.e2e-spec.ts).
 import { IsBoolean } from 'class-validator';
-import type { SetNoTelegramInput } from '@xuanxue/shared';
+import type { ApiRouteBody } from '@xuanxue/shared';
 
-export class SetNoTelegramDto implements SetNoTelegramInput {
+export class SetNoTelegramDto implements ApiRouteBody<'PUT /me/no-telegram'> {
   @IsBoolean()
   noTelegram!: boolean;
 }

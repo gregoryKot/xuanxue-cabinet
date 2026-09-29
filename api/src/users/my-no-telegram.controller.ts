@@ -6,6 +6,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Put } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { MeDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import { CurrentUser } from '../auth/auth.decorators';
 import { toMeDto } from '../auth/user.mapper';
 import type { UserLean } from './users.service';
@@ -28,6 +29,7 @@ export class MyNoTelegramController {
   // — иначе один человек мог бы поставить отметку другому, просто отправив
   // чужой id. PUT, а не POST: отметка — идемпотентная установка значения,
   // повтор ничего не ломает (CLAUDE.md «API»).
+  @ApiRoute('PUT /me/no-telegram')
   @Put()
   @HttpCode(HttpStatus.OK)
   async update(

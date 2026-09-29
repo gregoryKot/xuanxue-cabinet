@@ -19,12 +19,12 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
-import type { TelegramLoginInput } from '@xuanxue/shared';
+import type { ApiRouteBody } from '@xuanxue/shared';
 import { TELEGRAM_HASH_RE } from './telegram-login';
 
 const NAME_MAX_LENGTH = 64;
 
-export class TelegramLoginDto implements TelegramLoginInput {
+export class TelegramLoginDto implements ApiRouteBody<'POST /auth/telegram'> {
   @IsInt()
   @IsPositive()
   id!: number;

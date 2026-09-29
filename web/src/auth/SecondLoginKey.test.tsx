@@ -124,7 +124,12 @@ describe('SecondLoginKey — почта выключена конфигурац�
     );
 
     await screen.findByRole('button', { name: 'Связать Telegram' });
-    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith('/auth/config'));
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/auth/config',
+        expect.objectContaining({ method: 'GET' }),
+      ),
+    );
 
     expect(
       screen.queryByRole('button', { name: 'Привязать почту' }),

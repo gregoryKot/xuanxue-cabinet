@@ -10,7 +10,8 @@
 // рендера.
 import { useCallback, useState } from 'react';
 import { splitPersonName, type MeDto, type UpdateMyProfileInput } from '@xuanxue/shared';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 
 type ProfileSetupStatus = 'idle' | 'pending' | 'error';
 
@@ -66,7 +67,7 @@ export function useProfileSetup(
       ? { firstName: trimmedFirstName, lastName: trimmedLastName }
       : { firstName: trimmedFirstName };
     try {
-      const next = await apiFetch<MeDto>('/me/profile', { method: 'PATCH', body });
+      const next = await apiRoute('PATCH /me/profile', { body });
       applyMe(next);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);

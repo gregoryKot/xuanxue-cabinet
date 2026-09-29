@@ -8,14 +8,29 @@
 // useEmailLoginVerify.ts остаётся тонкой обёрткой над этим хуком.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import type { ApiRouteBody } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { postLoginPath } from './returnTo';
 
 type CallbackLoginStatus = 'pending' | 'error';
 
-export interface CallbackLoginRequest {
-  path: string;
-  body: object;
+/** Запрос возврата — ключ карты и тело к нему: сегодня письмо и Google, оба
+ * отвечают `MeDto`, но экран возврата его не читает — сессию перечитывает
+ * `refresh()`. */
+export type CallbackLoginRequest =
+  | { key: 'POST /auth/email/verify'; body: ApiRouteBody<'POST /auth/email/verify'> }
+  | { key: 'POST /auth/google'; body: ApiRouteBody<'POST /auth/google'> };
+
+// switch, а не `apiRoute(request.key, …)`: TS не сужает обобщённый ключ по
+// дискриминанту, и тело сверялось бы с объединением обоих.
+function callbackLoginCall(request: CallbackLoginRequest): Promise<unknown> {
+  switch (request.key) {
+    case 'POST /auth/email/verify':
+      return apiRoute(request.key, { body: request.body });
+    case 'POST /auth/google':
+      return apiRoute(request.key, { body: request.body });
+  }
 }
 
 export interface UseCallbackLoginResult {
@@ -32,7 +47,7 @@ export interface UseCallbackLoginResult {
  * отменённый вход, уже есть сессия — экран решает это сам, дожидаясь ответа
  * AuthProvider, чтобы не отправить запрос тем же тиком, что и проверку
  * существующей сессии). Как только `request` становится непустым, эффект
- * запускает `POST request.path`.
+ * запускает `POST` по ключу запроса.
  */
 export function useCallbackLogin(
   refresh: () => Promise<void>,
@@ -50,7 +65,7 @@ export function useCallbackLogin(
     if (request === null) return;
     startedRef.current = true;
 
-    apiFetch<void>(request.path, { method: 'POST', body: request.body })
+    callbackLoginCall(request)
       .then(() => refresh())
       .then(() => {
         void navigate(postLoginPath(), { replace: true });
