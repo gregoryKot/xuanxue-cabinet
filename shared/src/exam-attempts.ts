@@ -115,6 +115,10 @@ export interface ExamAttemptCountDto {
 
 export const ATTEMPT_LIMITS = { answerText: 5000, optionsPerAnswer: 10 } as const;
 
+/** Срок хранения попытки, лет после результата (PLAN §11, ADR-0153). В shared, а
+ * не в api: тот же срок политика конфиденциальности называет ученику. */
+export const EXAM_ATTEMPT_RETENTION_YEARS = 3;
+
 export const ATTEMPT_NOT_FOUND_MESSAGE = 'Попытка не найдена. Обновите страницу.';
 
 // Правило ТЗ 4.4, п.1: старт попытки на неопубликованной форме — отказ.
