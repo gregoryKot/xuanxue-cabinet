@@ -26,17 +26,12 @@ import { screenSectionStyle } from '../components/screenLayout';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { MyPaymentsSection } from '../student/MyPaymentsSection';
+import { isMyPaymentsVisible } from '../student/myPaymentsVisibility';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
 import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
 import { isStandalone } from '../pwa/installEnvironment';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { ProfileNameSection } from './ProfileNameSection';
-
-// Секция «Абонемент» спрятана (ADR-0157): бухгалтер не ведёт оплаты в
-// кабинете — остаются ежемесячное напоминание и снимок перевода, который бот
-// пересылает бухгалтеру в Telegram. Компонент и его запросы оставлены нетронутыми:
-// вернуть секцию — поставить `true`.
-const SHOW_MY_PAYMENTS = false;
 
 const TITLE = 'Профиль';
 const EXPLANATION = 'Ниже — что присылать и куда.';
@@ -75,9 +70,8 @@ export default function ProfileScreen() {
           рядом с занятием читалась бы условием попасть на него, а неоплата
           ничего не закрывает (ADR-0049, CLAUDE.md «Ноль нагрузки на
           ученика»). */}
-      {SHOW_MY_PAYMENTS && me !== null && me.roles.length === 0 && (
-        <MyPaymentsSection me={me} />
-      )}
+      {/* Спрятана флагом (ADR-0157, myPaymentsVisibility.ts). */}
+      {isMyPaymentsVisible(me) && <MyPaymentsSection me={me} />}
 
       <NotificationPrefsSection />
       <PushNotificationsSection />
