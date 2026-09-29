@@ -3,12 +3,12 @@
 import { IsIn, IsOptional } from 'class-validator';
 import {
   DELIVERY_STATUSES,
+  type ApiRouteQuery,
   type DeliveryStatus,
-  type ListDeliveriesQuery,
 } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
-export class ListDeliveriesDto implements ListDeliveriesQuery {
+export class ListDeliveriesDto implements ApiRouteQuery<'GET /deliveries'> {
   @IsOptional()
   @IsIn(DELIVERY_STATUSES)
   status?: DeliveryStatus;

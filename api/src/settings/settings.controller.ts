@@ -4,6 +4,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestj
 import { DateTime } from 'luxon';
 import type { PreviewTemplateResult, SettingsDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { PreviewSettingsDto } from './dto/preview-settings.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SettingsService } from './settings.service';
@@ -14,17 +15,20 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
+  @ApiRoute('GET /settings')
   get(): Promise<SettingsDto> {
     return this.settingsService.get();
   }
 
   @Patch()
+  @ApiRoute('PATCH /settings')
   update(@Body() body: UpdateSettingsDto): Promise<SettingsDto> {
     return this.settingsService.update(body);
   }
 
   @Post('preview')
   @HttpCode(HttpStatus.OK)
+  @ApiRoute('POST /settings/preview')
   preview(@Body() body: PreviewSettingsDto): Promise<PreviewTemplateResult> {
     return this.settingsService.preview(body, DateTime.utc());
   }

@@ -5,8 +5,8 @@
 // Догружаем один раз, при первом раскрытии карточки или клике
 // «Скопировать» — DeliveryCard.tsx зовёт `ensureLoaded()` из обоих мест.
 import { useRef, useState } from 'react';
-import type { DeliveryDto } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить текст доставки. Попробуйте ещё раз.';
 
@@ -30,7 +30,7 @@ export function useDeliveryText(deliveryId: string): UseDeliveryTextResult {
     setLoading(true);
     setError(null);
     try {
-      const dto = await apiFetch<DeliveryDto>(`/deliveries/${deliveryId}`);
+      const dto = await apiRoute('GET /deliveries/:id', { params: { id: deliveryId } });
       loadedRef.current = true;
       setText(dto.text);
       return dto.text;

@@ -4,7 +4,7 @@
 // (useBroadcastCreate.ts), журналу его незачем знать. Гонка запросов — в общем hooks/useAbortableFetch.ts.
 import { useCallback, useEffect, useRef } from 'react';
 import { LIST_LIMIT_MAX, type BroadcastDto, type BroadcastStatus } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { journalWindow, type JournalRangeWeeks } from './broadcastWindow';
 
@@ -24,11 +24,10 @@ export function useBroadcasts(
 ): UseBroadcastsResult {
   const { data, loading, error, reload } = useAbortableFetch((signal) => {
     const { from, to } = journalWindow(rangeWeeks);
-    const statusParam = status ? `&status=${status}` : '';
-    return apiFetch<BroadcastDto[]>(
-      `/broadcasts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${statusParam}&limit=${LIST_LIMIT_MAX}`,
-      { signal },
-    );
+    return apiRoute('GET /broadcasts', {
+      query: { from, to, status: status || undefined, limit: LIST_LIMIT_MAX },
+      signal,
+    });
   }, LOAD_ERROR_MESSAGE);
 
   // Период и статус меняются с экрана — перечитываем список при их смене
@@ -48,7 +47,7 @@ export function useBroadcasts(
 
   const cancel = useCallback(
     async (id: string) => {
-      await apiFetch(`/broadcasts/${id}/cancel`, { method: 'POST' });
+      await apiRoute('POST /broadcasts/:id/cancel', { params: { id } });
       await reload();
     },
     [reload],

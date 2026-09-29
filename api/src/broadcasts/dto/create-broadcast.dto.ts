@@ -17,11 +17,11 @@ import {
   BROADCAST_LIMITS,
   IDEMPOTENCY_KEY_LIMITS,
   IDEMPOTENCY_KEY_RE,
-  type CreateBroadcastInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class CreateBroadcastDto implements CreateBroadcastInput {
+export class CreateBroadcastDto implements ApiRouteBody<'POST /broadcasts'> {
   @TrimString()
   @IsString()
   @IsNotEmpty()

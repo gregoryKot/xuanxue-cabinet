@@ -18,13 +18,13 @@ import { DateTime } from 'luxon';
 import type { BroadcastDto, LessonDto, LessonRecordingSummaryDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
 import { SendNowService } from '../broadcasts/send-now.service';
+import { ApiRoute } from '../common/api-route.decorator';
 import { AddRecordingDto } from './dto/add-recording.dto';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { ListLessonsDto } from './dto/list-lessons.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsService } from './lessons.service';
-import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('lessons')
 @Roles('teacher', 'assistant', 'admin')
@@ -36,6 +36,7 @@ export class LessonsController {
   ) {}
 
   @Get()
+  @ApiRoute('GET /lessons')
   list(@Query() query: ListLessonsDto): Promise<LessonDto[]> {
     return this.lessonsService.list(query);
   }

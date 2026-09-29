@@ -2,7 +2,7 @@
 // (BroadcastCard монтирует этот хук по клику, не заранее). Гонка запросов и
 // разбор ошибки — в общем hooks/useAbortableFetch.ts.
 import type { DeliveryDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить доставки. Попробуйте ещё раз.';
@@ -19,7 +19,7 @@ export function useBroadcastDeliveries(
 ): UseBroadcastDeliveriesResult {
   const { data, loading, error, reload } = useAbortableFetch(
     (signal) =>
-      apiFetch<DeliveryDto[]>(`/broadcasts/${broadcastId}/deliveries`, { signal }),
+      apiRoute('GET /broadcasts/:id/deliveries', { params: { id: broadcastId }, signal }),
     LOAD_ERROR_MESSAGE,
   );
   return { deliveries: data, loading, error, reload };
