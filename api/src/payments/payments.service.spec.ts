@@ -253,7 +253,7 @@ describe('PaymentsService', () => {
   it('attachScreenshot: новый скриншот заводит документ awaiting', async () => {
     const userId = await createStudent();
 
-    const status = await service.attachScreenshot(
+    const { status, replaced } = await service.attachScreenshot(
       userId,
       '2026-09',
       { fileId: 'f1', fileUniqueId: 'u1' },
@@ -261,6 +261,7 @@ describe('PaymentsService', () => {
     );
 
     expect(status).toBe('awaiting');
+    expect(replaced).toBe(false);
     const mine = (await service.listMine(userId, NOW)).rows;
     expect(mine.find((p) => p.month === '2026-09')).toMatchObject({
       status: 'awaiting',
@@ -277,12 +278,15 @@ describe('PaymentsService', () => {
       NOW,
     );
 
-    await service.attachScreenshot(
+    const second = await service.attachScreenshot(
       userId,
       '2026-09',
       { fileId: 'f2', fileUniqueId: 'u2' },
       NOW.plus({ minutes: 5 }),
     );
+
+    // Подпись бухгалтеру скажет «взамен прежнего» (ADR-0156).
+    expect(second.replaced).toBe(true);
 
     expect(await paymentModel.countDocuments({ userId, month: '2026-09' })).toBe(1);
     const raw = await paymentModel
@@ -299,7 +303,7 @@ describe('PaymentsService', () => {
     const accountantId = await createAccountant();
     await service.confirm(userId, '2026-09', {}, accountantId, NOW);
 
-    const status = await service.attachScreenshot(
+    const { status, replaced } = await service.attachScreenshot(
       userId,
       '2026-09',
       { fileId: 'f1', fileUniqueId: 'u1' },
@@ -307,6 +311,7 @@ describe('PaymentsService', () => {
     );
 
     expect(status).toBe('paid');
+    expect(replaced).toBe(false);
     const mine = (await service.listMine(userId, NOW)).rows;
     expect(mine.find((p) => p.month === '2026-09')).toMatchObject({
       status: 'paid',

@@ -46,6 +46,6 @@ export class MyPaymentsController {
     @Req() req: RawBodyRequest,
     @CurrentUser() user: UserLean,
   ): Promise<MyPaymentDto> {
-    return this.screenshotsService.upload(req.body, user.id, month, DateTime.utc());
+    return this.screenshotsService.upload(req.body, user, month, DateTime.utc());
   }
 }

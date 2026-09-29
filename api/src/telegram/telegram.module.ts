@@ -18,7 +18,9 @@
 // то же видео ещё раз, не только в момент пересылки
 // (exam-video-delivery.port.ts объясняет инверсию). PaymentsModule —
 // PaymentsService (PaymentScreenshotMessageHandler, слой 2.2, ADR-0050): бот
-// тем же приёмом привязывает скриншот оплаты. Ни один из них не
+// тем же приёмом привязывает скриншот оплаты; сюда же кладёт себя
+// TelegramPaymentScreenshotDelivery — снимок из кабинета уходит бухгалтеру
+// (ADR-0156, payments/payment-screenshot-delivery.port.ts). Ни один из них не
 // импортирует TelegramModule обратно — цикла нет (ADR-0013). MediaModule в
 // частности берёт модель ExamAttemptRecord через ExamAttemptModelModule
 // (api/src/exams/), не через ExamsModule — тот сам импортирует TelegramModule
@@ -66,11 +68,13 @@ import { RecordingWaitHandler } from './handlers/recording-wait.handler';
 import { StartHandler } from './handlers/start.handler';
 import { TopicCommandHandler } from './handlers/topic-command.handler';
 import { TopicWaitHandler } from './handlers/topic-wait.handler';
+import { PaymentScreenshotToAccountant } from './payment-screenshot-to-accountant';
 import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, createTelegraf } from './telegraf-instance';
 import { TelegramAppErrorAlerts } from './telegram-app-error-alerts';
 import { TelegramBotService } from './telegram-bot.service';
 import { TelegramExamVideoDelivery } from './telegram-exam-video-delivery';
+import { TelegramPaymentScreenshotDelivery } from './telegram-payment-screenshot-delivery';
 import { TelegramController } from './telegram.controller';
 import { TelegramWebhookGuard } from './telegram-webhook.guard';
 
@@ -116,6 +120,8 @@ import { TelegramWebhookGuard } from './telegram-webhook.guard';
     GradeQueueHandler,
     ExamBotPortRegistry,
     TelegramExamVideoDelivery,
+    PaymentScreenshotToAccountant,
+    TelegramPaymentScreenshotDelivery,
     PersonalChats,
     BotSessionService,
     BotUserAccessService,

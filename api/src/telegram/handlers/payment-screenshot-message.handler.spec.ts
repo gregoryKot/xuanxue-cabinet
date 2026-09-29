@@ -1,7 +1,8 @@
 // Чистая логика с фейками коллабораторов, без Mongo и без сети (CLAUDE.md
 // «Тесты», образец — exam-media-message.handler.spec.ts): маршрутизация к
-// PaymentsService и пересылка бухгалтеру — не сама привязка (та проверена
-// против настоящей Mongo в payments.service.spec.ts).
+// PaymentsService и вызов доставки бухгалтеру — не сама привязка (та проверена
+// против настоящей Mongo в payments.service.spec.ts) и не сама доставка (та —
+// в payment-screenshot-to-accountant.spec.ts).
 import { Logger } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
@@ -11,7 +12,7 @@ import { activeAccess, fakeBotUserAccess } from '../bot-user-access.service.test
 import type { BotUserAccessService } from '../bot-user-access.service';
 import type { BotSessionLean } from '../bot-session.lean';
 import { fakeBotSessionService } from '../bot-session.service.test-support';
-import type { PersonalChats } from '../personal-chats';
+import type { PaymentScreenshotToAccountant } from '../payment-screenshot-to-accountant';
 import type { PaymentsService } from '../../payments/payments.service';
 import { PAYMENT_TELEGRAM_NOT_LINKED_MESSAGE } from './payment-screenshot-deep-link';
 import { PaymentScreenshotMessageHandler } from './payment-screenshot-message.handler';
@@ -19,15 +20,13 @@ import { PaymentScreenshotMessageHandler } from './payment-screenshot-message.ha
 const NOW = DateTime.utc(2026, 9, 12, 10, 0, 0);
 const SESSION: BotSessionLean = { kind: 'payment', month: '2026-09' };
 
-function fakeCtx(overrides: { photo?: boolean; failForwardToChatId?: string }): {
+function fakeCtx(overrides: { photo?: boolean }): {
   ctx: Context;
   replies: string[];
-  sentMessages: { chatId: string; text: string }[];
-  copiedTo: string[];
+  telegram: object;
 } {
   const replies: string[] = [];
-  const sentMessages: { chatId: string; text: string }[] = [];
-  const copiedTo: string[] = [];
+  const telegram = {};
   const ctx = {
     chat: { id: 111, type: 'private' },
     message: overrides.photo
@@ -37,36 +36,21 @@ function fakeCtx(overrides: { photo?: boolean; failForwardToChatId?: string }): 
       replies.push(text);
       return Promise.resolve();
     },
-    telegram: {
-      sendMessage: (toChatId: string, text: string) => {
-        if (toChatId === overrides.failForwardToChatId) {
-          return Promise.reject(new Error('бот заблокирован'));
-        }
-        sentMessages.push({ chatId: toChatId, text });
-        return Promise.resolve();
-      },
-      copyMessage: (toChatId: string) => {
-        if (toChatId === overrides.failForwardToChatId) {
-          return Promise.reject(new Error('бот заблокирован'));
-        }
-        copiedTo.push(toChatId);
-        return Promise.resolve();
-      },
-    },
+    telegram,
   } as unknown as Context;
-  return { ctx, replies, sentMessages, copiedTo };
+  return { ctx, replies, telegram };
 }
 
 function buildHandler(overrides: {
   userId?: string;
   attachStatus?: PaymentStatus | Error;
-  accountantChats?: { chatId: string; userId: string; name: string }[];
+  replaced?: boolean;
   botAccess?: BotUserAccessService;
 }): {
   handler: PaymentScreenshotMessageHandler;
   clear: jest.Mock;
   attachScreenshot: jest.Mock;
-  personalChats: { listFor: jest.Mock };
+  deliver: jest.Mock;
 } {
   const botSessions = fakeBotSessionService();
   const clear = botSessions.clear;
@@ -74,7 +58,10 @@ function buildHandler(overrides: {
     if (overrides.attachStatus instanceof Error) {
       return Promise.reject(overrides.attachStatus);
     }
-    return Promise.resolve(overrides.attachStatus ?? 'awaiting');
+    return Promise.resolve({
+      status: overrides.attachStatus ?? 'awaiting',
+      replaced: overrides.replaced ?? false,
+    });
   });
   const paymentsService = { attachScreenshot } as unknown as PaymentsService;
   const botAccess =
@@ -89,19 +76,17 @@ function buildHandler(overrides: {
           })
         : { kind: 'unknown' },
     );
-  const personalChats = {
-    listFor: jest.fn().mockResolvedValue(overrides.accountantChats ?? []),
-  };
+  const deliver = jest.fn().mockResolvedValue(undefined);
   return {
     handler: new PaymentScreenshotMessageHandler(
       botSessions,
       paymentsService,
       botAccess,
-      personalChats as unknown as PersonalChats,
+      { deliver } as unknown as PaymentScreenshotToAccountant,
     ),
     clear,
     attachScreenshot,
-    personalChats,
+    deliver,
   };
 }
 
@@ -139,13 +124,12 @@ describe('PaymentScreenshotMessageHandler', () => {
     expect(clear).toHaveBeenCalledWith(111);
   });
 
-  it('успех — привязка, пересылка бухгалтеру, ожидание закрыто, ответ называет месяц', async () => {
-    const { handler, clear, attachScreenshot, personalChats } = buildHandler({
+  it('успех — привязка, доставка бухгалтеру, ожидание закрыто, ответ называет месяц', async () => {
+    const { handler, clear, attachScreenshot, deliver } = buildHandler({
       userId: 'u1',
       attachStatus: 'awaiting',
-      accountantChats: [{ chatId: '301', userId: 'a1', name: 'Маша' }],
     });
-    const { ctx, replies, sentMessages, copiedTo } = fakeCtx({ photo: true });
+    const { ctx, replies, telegram } = fakeCtx({ photo: true });
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
@@ -156,12 +140,33 @@ describe('PaymentScreenshotMessageHandler', () => {
       NOW,
     );
     expect(clear).toHaveBeenCalledWith(111);
-    expect(copiedTo).toEqual(['301']);
-    expect(sentMessages).toEqual([
-      { chatId: '301', text: 'Скриншот от Ученик Иванов — оплата за сентябрь 2026.' },
-    ]);
-    expect(personalChats.listFor).toHaveBeenCalledWith('payments', NOW);
+    expect(deliver).toHaveBeenCalledTimes(1);
+    const [passedTelegram, input] = deliver.mock.calls[0] as [
+      unknown,
+      Record<string, unknown>,
+    ];
+    expect(passedTelegram).toBe(telegram);
+    expect(input).toMatchObject({
+      studentUserId: 'u1',
+      studentName: 'Ученик Иванов',
+      month: '2026-09',
+      replaced: false,
+      now: NOW,
+    });
+    expect(typeof input.sendAttachment).toBe('function');
     expect(replies[0]).toContain('сентябрь 2026');
+  });
+
+  it('снимок за месяц уже был — доставка получает replaced: true', async () => {
+    const { handler, deliver } = buildHandler({ userId: 'u1', replaced: true });
+    const { ctx } = fakeCtx({ photo: true });
+
+    await handler.handle(ctx, 111, SESSION, NOW);
+
+    expect(deliver).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ replaced: true }),
+    );
   });
 
   it('месяц уже paid — ответ честно говорит про статус, скриншот всё равно принят', async () => {
@@ -177,14 +182,12 @@ describe('PaymentScreenshotMessageHandler', () => {
     expect(replies[0]).toContain('уже отмечено «Оплачено»');
   });
 
-  it('бухгалтера нет — ученик всё равно получает ответ (доставка не его забота)', async () => {
+  it('доставка бухгалтеру ничего не меняет для ученика — ответ уходит как обычно', async () => {
     const { handler } = buildHandler({ userId: 'u1', attachStatus: 'awaiting' });
-    const { ctx, replies, sentMessages, copiedTo } = fakeCtx({ photo: true });
+    const { ctx, replies } = fakeCtx({ photo: true });
 
     await handler.handle(ctx, 111, SESSION, NOW);
 
-    expect(copiedTo).toEqual([]);
-    expect(sentMessages).toEqual([]);
     expect(replies[0]).toContain('получили');
   });
 

@@ -62,19 +62,16 @@ function fakeCtx(overrides: {
       replies.push(text);
       return Promise.resolve();
     },
+    // Отправка идёт через callApi (с таймаутом, attachment-with-caption.ts).
     telegram: {
-      sendMessage: (toChatId: string, text: string) => {
-        if (toChatId === overrides.failForwardToChatId) {
+      callApi: (method: string, payload: { chat_id: string; text?: string }) => {
+        if (payload.chat_id === overrides.failForwardToChatId) {
           return Promise.reject(new Error('бот заблокирован'));
         }
-        sentMessages.push({ chatId: toChatId, text });
-        return Promise.resolve();
-      },
-      copyMessage: (toChatId: string) => {
-        if (toChatId === overrides.failForwardToChatId) {
-          return Promise.reject(new Error('бот заблокирован'));
+        if (method === 'sendMessage') {
+          sentMessages.push({ chatId: payload.chat_id, text: payload.text ?? '' });
         }
-        copiedTo.push(toChatId);
+        if (method === 'copyMessage') copiedTo.push(payload.chat_id);
         return Promise.resolve();
       },
     },
@@ -319,12 +316,14 @@ describe('ExamMediaMessageHandler', () => {
       },
       reply: () => Promise.resolve(),
       telegram: {
-        sendMessage: (toChatId: string, text: string) => {
-          sentMessages.push({ chatId: toChatId, text });
+        callApi: (method: string, payload: { chat_id: string; text?: string }) => {
+          // Видео не проходит по формату/размеру — copyMessage падает первым.
+          if (method === 'copyMessage') {
+            return Promise.reject(new Error('видео слишком большое'));
+          }
+          sentMessages.push({ chatId: payload.chat_id, text: payload.text ?? '' });
           return Promise.resolve();
         },
-        // Видео не проходит по формату/размеру — copyMessage падает первым.
-        copyMessage: () => Promise.reject(new Error('видео слишком большое')),
       },
     } as unknown as Context;
     // Единственный адресат — сбой видео здесь эскалируется своим error
@@ -360,9 +359,9 @@ describe('ExamMediaMessageHandler', () => {
       },
       reply: () => Promise.resolve(),
       telegram: {
-        sendMessage: () => Promise.reject(new Error('рейт-лимит')),
-        copyMessage: (toChatId: string) => {
-          copiedTo.push(toChatId);
+        callApi: (method: string, payload: { chat_id: string }) => {
+          if (method === 'sendMessage') return Promise.reject(new Error('рейт-лимит'));
+          copiedTo.push(payload.chat_id);
           return Promise.resolve();
         },
       },

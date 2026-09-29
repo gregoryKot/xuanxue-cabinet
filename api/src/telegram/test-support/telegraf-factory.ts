@@ -9,6 +9,12 @@
 import { Telegraf } from 'telegraf';
 import type { UserFromGetMe } from 'telegraf/types';
 import type { TelegrafFactory } from '../telegraf-instance';
+import {
+  createMediaCalls,
+  recordMediaCall,
+  type MediaCalls,
+  type MediaFailures,
+} from './fake-media-calls';
 
 const FAKE_BOT_INFO: UserFromGetMe = {
   id: 1,
@@ -32,12 +38,7 @@ interface SendMessageCall {
   replyMarkup?: unknown;
 }
 
-interface SendVideoCall {
-  chatId: string;
-  video: string;
-}
-
-export interface FakeTelegraf {
+export interface FakeTelegraf extends MediaCalls {
   factory: TelegrafFactory;
   webhookCalls: WebhookCall[];
   sendMessageCalls: SendMessageCall[];
@@ -53,18 +54,15 @@ export interface FakeTelegraf {
   }[];
   /** Scope, с которого список команд сняли (deleteMyCommands, bot-commands.ts). */
   commandDeletes: unknown[];
-  /** Видео экзамена по file_id (ADR-0095, bot-send-video.ts) — только
-   * `sendVideo`: `sendVideoNote`/`sendDocument` покрыты своим юнитом
-   * (bot-send-video.spec.ts), здесь нужен только факт «дошло/не дошло». */
-  sendVideoCalls: SendVideoCall[];
 }
 
 /** `failSendMessage` — проактивная отправка (PreviewService и т. п.) должна
  * пережить сбой сети, не уронить тик планировщика: спеки проверяют это без
- * настоящего обрыва соединения. `failSendVideo` — тот же довод для
- * TelegramBotService.sendExamVideo (ADR-0095). */
+ * настоящего обрыва соединения. `failSendVideo`/`failSendPhoto` — тот же довод
+ * для видео экзамена (ADR-0095) и снимка оплаты бухгалтеру (ADR-0156);
+ * вложения — fake-media-calls.ts. */
 export function createFakeTelegrafFactory(
-  options: { failSendMessage?: boolean; failSendVideo?: boolean } = {},
+  options: { failSendMessage?: boolean } & MediaFailures = {},
 ): FakeTelegraf {
   const webhookCalls: WebhookCall[] = [];
   const sendMessageCalls: SendMessageCall[] = [];
@@ -74,7 +72,7 @@ export function createFakeTelegrafFactory(
     scope: unknown;
   }[] = [];
   const commandDeletes: unknown[] = [];
-  const sendVideoCalls: SendVideoCall[] = [];
+  const media = createMediaCalls();
   const factory: TelegrafFactory = (token) => {
     const bot = new Telegraf(token);
     const fakeCallApi = ((method: string, payload?: Record<string, unknown>) => {
@@ -119,15 +117,9 @@ export function createFakeTelegrafFactory(
         });
         return Promise.resolve(true);
       }
-      if (method === 'sendVideo') {
-        if (options.failSendVideo) return Promise.reject(new Error('сеть недоступна'));
-        sendVideoCalls.push({
-          chatId: String((payload?.chat_id as string | number | undefined) ?? ''),
-          video: (payload?.video as string | undefined) ?? '',
-        });
-        return Promise.resolve(true);
-      }
-      return Promise.resolve(undefined);
+      return (
+        recordMediaCall(method, payload, media, options) ?? Promise.resolve(undefined)
+      );
     }) as unknown as Telegraf['telegram']['callApi'];
     bot.telegram.callApi = fakeCallApi;
     // Telegraf.handleUpdate() создаёт на каждый апдейт СВОЙ Telegram-инстанс
@@ -148,6 +140,6 @@ export function createFakeTelegrafFactory(
     editMessageCalls,
     commandCalls,
     commandDeletes,
-    sendVideoCalls,
+    ...media,
   };
 }

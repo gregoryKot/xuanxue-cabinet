@@ -88,4 +88,45 @@ describe('createFakeTelegrafFactory', () => {
       bot.telegram.callApi('getChat', { chat_id: '1' }),
     ).resolves.toBeUndefined();
   });
+
+  it('sendPhoto — записывает чат, имя файла и то, что уехали байты (ADR-0156)', async () => {
+    const fake = createFakeTelegrafFactory();
+    const bot = fake.factory('123456:token');
+
+    await bot.telegram.callApi('sendPhoto', {
+      chat_id: '301',
+      photo: { source: Buffer.from([1, 2, 3]), filename: 'screenshot-2026-09.jpg' },
+    });
+    await bot.telegram.callApi('sendPhoto', { chat_id: '302', photo: 'file_id_1' });
+
+    expect(fake.sendPhotoCalls).toEqual([
+      { chatId: '301', filename: 'screenshot-2026-09.jpg', hasBytes: true },
+      { chatId: '302', hasBytes: false },
+    ]);
+  });
+
+  it('sendPhoto с failSendPhoto — отклоняется и не записывается', async () => {
+    const fake = createFakeTelegrafFactory({ failSendPhoto: true });
+    const bot = fake.factory('123456:token');
+
+    await expect(
+      bot.telegram.callApi('sendPhoto', { chat_id: '301', photo: 'file_id_1' }),
+    ).rejects.toThrow('сеть недоступна');
+    expect(fake.sendPhotoCalls).toEqual([]);
+  });
+
+  it('copyMessage — записывает адресата, источник и номер сообщения', async () => {
+    const fake = createFakeTelegrafFactory();
+    const bot = fake.factory('123456:token');
+
+    await bot.telegram.callApi('copyMessage', {
+      chat_id: '301',
+      from_chat_id: 111,
+      message_id: 42,
+    });
+
+    expect(fake.copyMessageCalls).toEqual([
+      { chatId: '301', fromChatId: '111', messageId: 42 },
+    ]);
+  });
 });

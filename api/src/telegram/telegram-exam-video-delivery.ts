@@ -55,7 +55,7 @@ export class TelegramExamVideoDelivery implements ExamVideoDeliveryPort, OnModul
       : await this.sendByAnyType(input.chatId, input.fileId);
     if (!sent) return false;
     // Подпись — отдельным сообщением (video_note подписи не поддерживает,
-    // forward-photo-with-caption.ts): сама отправка уже удалась, сбой подписи
+    // attachment-with-caption.ts): сама отправка уже удалась, сбой подписи
     // не откатывает успех — тот же приём, что там.
     await this.telegramBotService.sendMessage(input.chatId, input.caption);
     return true;

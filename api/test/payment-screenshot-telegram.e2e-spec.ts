@@ -37,7 +37,7 @@ describe('Скриншот оплаты из бота — read-after-write, бе
     });
 
     const paymentsService = testApp.app.get(PaymentsService, { strict: false });
-    const status = await paymentsService.attachScreenshot(
+    const { status } = await paymentsService.attachScreenshot(
       userId,
       '2026-09',
       { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
@@ -74,7 +74,7 @@ describe('Скриншот оплаты из бота — read-after-write, бе
       DateTime.utc(),
     );
 
-    const status = await paymentsService.attachScreenshot(
+    const { status } = await paymentsService.attachScreenshot(
       userId,
       '2026-09',
       { fileId: FILE_ID, fileUniqueId: FILE_UNIQUE_ID },
