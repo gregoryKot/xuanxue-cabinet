@@ -18,14 +18,15 @@ const EVENT_TEXT: Partial<Record<NotificationKind, string>> = {
   exam_result: 'Работу проверили',
   attempt_submitted: 'Работу прислали на проверку',
   lesson_soon: 'Скоро занятие',
+  payment_due: 'Абонемент пока не отмечен оплаченным',
 };
 
 const TITLE_SEPARATOR = ' — ';
 
 interface NotificationTextInput {
   kind: NotificationKind;
-  /** Название формы (exam_result/attempt_submitted) или класса (lesson_soon)
-   * — ровно одно из двух приходит на вид, но склеивание со строкой ниже
+  /** Название формы (exam_result/attempt_submitted), класса (lesson_soon) или
+   * месяца (payment_due) — ровно одно из трёх приходит на вид, но склеивание со строкой ниже
    * одинаково для обоих: второй заголовок в отдельном поле развёл бы
    * логику показа на два похожих места (CLAUDE.md «Одна механика — один
    * компонент»). */

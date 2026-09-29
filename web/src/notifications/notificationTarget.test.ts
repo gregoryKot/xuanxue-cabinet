@@ -35,6 +35,12 @@ describe('notificationTarget', () => {
     );
   });
 
+  it('payment_due — экрана оплаты у ученика ещё нет (слой 2.4), ссылки нет', () => {
+    expect(
+      notificationTarget(item({ kind: 'payment_due', text: 'Абонемент' })),
+    ).toBeUndefined();
+  });
+
   it('вид без своего экрана (payments) — вести некуда', () => {
     expect(notificationTarget(item({ kind: 'payments' }))).toBeUndefined();
   });

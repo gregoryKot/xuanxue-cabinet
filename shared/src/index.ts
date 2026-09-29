@@ -485,6 +485,7 @@ export {
   MONTH_KEY_RE,
   isMonthKey,
   PAYMENT_TELEGRAM_START_PREFIX,
+  formatAmountIls,
   formatMonthRu,
   shiftMonth,
   formatAmountIls,

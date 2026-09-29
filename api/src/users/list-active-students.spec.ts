@@ -27,7 +27,7 @@ describe('listActiveStudents', () => {
 
     const result = await listActiveStudents(model);
 
-    expect(result).toEqual([{ id: student._id.toString() }]);
+    expect(result).toEqual([{ id: student._id.toString(), name: 'Ваня' }]);
   });
 
   it('человек с ролью (учитель) — не ученик, в список не попадает', async () => {
