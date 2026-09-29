@@ -25,7 +25,7 @@ const APP_ERRORS = formatDaysRu(APP_ERROR_LIMITS.retentionDays);
 const BACKUPS = formatDaysRu(BACKUP_RETENTION_DAYS);
 
 export const PRIVACY_RETENTION_PARAGRAPHS: readonly string[] = [
-  'Профиль и статус абонемента — **пока существует аккаунт**.',
+  'Профиль и статус оплаты — **пока существует аккаунт**.',
   `Ответы на экзамены и оценки — **${EXAM_ATTEMPT}** после результата: ` +
     'после проверки работы или, если её не проверили, после сдачи.',
   `Брошенную попытку экзамена, которую так и не сдали, удаляем через **${EXAM_ATTEMPT}** ` +

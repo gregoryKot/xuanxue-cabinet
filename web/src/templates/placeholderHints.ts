@@ -26,7 +26,7 @@ export const PLACEHOLDER_HINTS: Record<TemplatePlaceholder, string> = {
 // у поста и у личного сообщения ученику общих имён нет. Источники значений —
 // api/src/payments/payment-reminder-text.ts; покрытие — placeholderHints.test.ts.
 export const PAYMENT_REMINDER_HINTS: Record<PaymentReminderPlaceholder, string> = {
-  месяц: 'Месяц абонемента, например «сентябрь 2026».',
+  месяц: 'Месяц оплаты, например «сентябрь 2026».',
   сумма: 'Сумма, если её указал бухгалтер. Нет суммы — исчезает кусок в скобках.',
   имя: 'Имя ученика, как оно записано в кабинете.',
   ссылка: 'Ссылка на бота: по нажатию бот ждёт скриншот перевода за этот месяц.',

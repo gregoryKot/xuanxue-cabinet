@@ -32,6 +32,12 @@ import { isStandalone } from '../pwa/installEnvironment';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 import { ProfileNameSection } from './ProfileNameSection';
 
+// Секция «Абонемент» спрятана (ADR-0157): бухгалтер не ведёт оплаты в
+// кабинете — остаются ежемесячное напоминание и снимок перевода, который бот
+// пересылает бухгалтеру в Telegram. Компонент и его запросы оставлены нетронутыми:
+// вернуть секцию — поставить `true`.
+const SHOW_MY_PAYMENTS = false;
+
 const TITLE = 'Профиль';
 const EXPLANATION = 'Ниже — что присылать и куда.';
 const INSTALL_TITLE = 'Приложение на телефоне';
@@ -69,7 +75,9 @@ export default function ProfileScreen() {
           рядом с занятием читалась бы условием попасть на него, а неоплата
           ничего не закрывает (ADR-0049, CLAUDE.md «Ноль нагрузки на
           ученика»). */}
-      {me !== null && me.roles.length === 0 && <MyPaymentsSection me={me} />}
+      {SHOW_MY_PAYMENTS && me !== null && me.roles.length === 0 && (
+        <MyPaymentsSection me={me} />
+      )}
 
       <NotificationPrefsSection />
       <PushNotificationsSection />

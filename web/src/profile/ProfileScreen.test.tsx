@@ -264,12 +264,16 @@ describe('ProfileScreen — переключение уведомлений (rea
 
 // «Выйти» держится на этом экране, доступна любой роли (было на прежнем
 // экране «Уведомления», отзыв владельца 2026-09-12/18).
-describe('ProfileScreen — абонемент (PLAN §15, слой 2.4)', () => {
-  it('у ученика без ролей блок «Абонемент» есть и запрашивает свои оплаты', async () => {
+// Секция «Абонемент» спрятана флагом SHOW_MY_PAYMENTS (ADR-0157): бухгалтер
+// не ведёт оплаты в кабинете. Вернёте флаг — верните и тест «ученик видит».
+describe('ProfileScreen — секция «Абонемент» спрятана (ADR-0157)', () => {
+  it('у ученика без ролей блока «Абонемент» нет и запроса за оплатами тоже нет', async () => {
     renderScreen(STUDENT);
 
-    expect(await screen.findByRole('heading', { name: 'Абонемент' })).toBeInTheDocument();
-    expect(await screen.findByText('Оплаты за сентябрь нет')).toBeInTheDocument();
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
+    await screen.findByText('Второй способ входа').catch(() => null);
+    expect(screen.queryByRole('heading', { name: 'Абонемент' })).not.toBeInTheDocument();
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/me/payments', expect.anything());
   });
 
   it('у учителя блока нет и запроса за оплатами тоже нет', async () => {

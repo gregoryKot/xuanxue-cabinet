@@ -11,14 +11,14 @@ describe('buildPaymentReminderText', () => {
   it('подставляет имя и месяц, ссылка — deep link pay_<месяц>', () => {
     const text = buildPaymentReminderText({ ...BASE, botUsername: 'xuanxue_bot' });
 
-    expect(text).toContain('Ваня, абонемент за сентябрь 2026 пока не отмечен');
+    expect(text).toContain('Ваня, напоминаем об оплате за сентябрь 2026.');
     expect(text.endsWith(' https://t.me/xuanxue_bot?start=pay_2026-09')).toBe(true);
   });
 
   it('нет имени бота — ссылка исчезает вместе с пробелом перед ней', () => {
     const text = buildPaymentReminderText(BASE);
 
-    expect(text.endsWith('и мы отметим.')).toBe(true);
+    expect(text.endsWith('пришлите скриншот боту.')).toBe(true);
     expect(text).not.toContain('t.me');
   });
 
