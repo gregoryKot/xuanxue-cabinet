@@ -22,17 +22,11 @@
 import type { ComponentType } from 'react';
 import { APP_ERRORS_SCREEN_PATH, GOOGLE_LOGIN_CALLBACK_PATH } from '@xuanxue/shared';
 import {
-  CHANNELS_PATH,
   CLASSES_LIST_PATH,
-  CLASSES_PATH,
-  EXAMS_PATH,
   EXAM_EDITOR_ITEMS_PATH,
-  EXAM_ITEMS_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
   INVITE_LINK_PATH,
-  LESSONS_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
-  MATERIALS_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_ARCHIVE_PATH,
   MY_LESSONS_PATH,
@@ -42,13 +36,13 @@ import {
   SETTINGS_PATH,
   TEACHERS_PATH,
   channelsListPath,
-  entityPath,
   examItemsListPath,
   examsListPath,
   lessonsListPath,
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { apiRoutePath } from '../api/apiRoute';
 import {
   GRADED_ATTEMPTS_PATH,
   GRADING_QUEUE_PATH,
@@ -93,6 +87,12 @@ function lastSegment(pathname: string): string {
 function segmentBeforeLast(pathname: string): string {
   return segmentsOf(pathname).slice(-2, -1).join('');
 }
+
+/** Параметры записи редактора для `apiRoutePath('GET /коллекция/:id', …)`:
+ * `:id` — последний сегмент адреса, если не указан другой. */
+const recordOf = (pathname: string, pick = lastSegment) => ({
+  params: { id: pick(pathname) },
+});
 
 // Редактор — одна пара адресов на экран: `/x/new` и `/x/:id`, один загрузчик
 // на оба (ADR-0033). `/x/new` всегда объявлен раньше `/x/:id`: matchRoute
@@ -166,7 +166,7 @@ export const ROUTE_MODULES = {
     load: loadClassEditor,
     warm: true,
     prefetch: (pathname) => [
-      entityPath(CLASSES_PATH, lastSegment(pathname)),
+      apiRoutePath('GET /classes/:id', recordOf(pathname)),
       channelsListPath(true),
       TEACHERS_PATH,
     ],
@@ -194,7 +194,7 @@ export const ROUTE_MODULES = {
     load: loadLessonEditor,
     warm: true,
     prefetch: (pathname) => [
-      entityPath(LESSONS_PATH, lastSegment(pathname)),
+      apiRoutePath('GET /lessons/:id', recordOf(pathname)),
       CLASSES_LIST_PATH,
       TEACHERS_PATH,
     ],
@@ -212,7 +212,7 @@ export const ROUTE_MODULES = {
     path: '/channels/:channelId',
     load: loadChannelEditor,
     warm: true,
-    prefetch: (pathname) => [entityPath(CHANNELS_PATH, lastSegment(pathname))],
+    prefetch: (pathname) => [apiRoutePath('GET /channels/:id', recordOf(pathname))],
   },
   // «Материалы» — раздел меню штата, пятый пункт навигации (ADR-0055), не
   // подэкран «Занятий» и не кнопка в шапке (так было раньше). Занятия
@@ -247,7 +247,7 @@ export const ROUTE_MODULES = {
     load: loadMaterialEditor,
     warm: true,
     prefetch: (pathname) => [
-      entityPath(MATERIALS_PATH, lastSegment(pathname)),
+      apiRoutePath('GET /materials/:id', recordOf(pathname)),
       CLASSES_LIST_PATH,
     ],
   },
@@ -284,7 +284,7 @@ export const ROUTE_MODULES = {
     path: '/exam-items/:itemId',
     load: loadExamItemEditor,
     warm: true,
-    prefetch: (pathname) => [entityPath(EXAM_ITEMS_PATH, lastSegment(pathname))],
+    prefetch: (pathname) => [apiRoutePath('GET /exam-items/:id', recordOf(pathname))],
   },
   exams: {
     path: '/exams',
@@ -308,7 +308,7 @@ export const ROUTE_MODULES = {
     load: loadExamEditor,
     warm: true,
     prefetch: (pathname) => [
-      entityPath(EXAMS_PATH, lastSegment(pathname)),
+      apiRoutePath('GET /exams/:id', recordOf(pathname)),
       EXAM_EDITOR_ITEMS_PATH,
     ],
   },
@@ -319,7 +319,7 @@ export const ROUTE_MODULES = {
     load: () => import('../exams/ExamPreviewScreen'),
     warm: true,
     prefetch: (pathname) => [
-      entityPath(EXAMS_PATH, segmentBeforeLast(pathname)),
+      apiRoutePath('GET /exams/:id', recordOf(pathname, segmentBeforeLast)),
       EXAM_EDITOR_ITEMS_PATH,
     ],
   },

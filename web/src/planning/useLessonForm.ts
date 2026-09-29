@@ -45,7 +45,7 @@ export interface UseLessonFormResult {
 export function useLessonForm(
   lessonDto: LessonDto | null,
   classes: ClassDto[],
-  onCreate: (input: CreateLessonInput) => Promise<void>,
+  onCreate: (input: CreateLessonInput) => Promise<unknown>,
   onUpdate: (id: string, input: UpdateLessonInput) => Promise<void>,
 ): UseLessonFormResult {
   const draftKey = `${DRAFT_DOMAIN}:${lessonDto?.id ?? 'new'}`;

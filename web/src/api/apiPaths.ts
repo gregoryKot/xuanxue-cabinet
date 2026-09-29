@@ -156,8 +156,8 @@ export function examSeenPath(examId: string): string {
  * приём, что у MY_LESSONS_ARCHIVE_PATH. */
 export const MY_MATERIALS_PATH = '/me/materials';
 
-/** Путь одной записи коллекции — `hooks/useEntityEditor.ts` читает,
- * сохраняет и удаляет по нему; редакторы приносят свой `collectionPath`. */
+/** Путь одной записи коллекции — для мест, которых ещё нет в карте маршрутов
+ * (PLAN §17.1): редакторы `hooks/useEntityEditor.ts` ходят по ключам карты. */
 export function entityPath(collectionPath: string, id: string): string {
   return `${collectionPath}/${id}`;
 }

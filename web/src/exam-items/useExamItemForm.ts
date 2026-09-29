@@ -31,7 +31,7 @@ export type UseExamItemFormResult = UseEntityFormResult<
 
 export function useExamItemForm(
   item: ExamItemDto | null,
-  onCreate: (input: CreateExamItemInput) => Promise<void>,
+  onCreate: (input: CreateExamItemInput) => Promise<unknown>,
   onUpdate: (id: string, input: UpdateExamItemInput) => Promise<void>,
   onRemove: (id: string) => Promise<void>,
 ): UseExamItemFormResult {

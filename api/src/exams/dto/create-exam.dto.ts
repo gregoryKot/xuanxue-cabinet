@@ -11,13 +11,13 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { EXAM_LIMITS, type CreateExamInput } from '@xuanxue/shared';
+import { EXAM_LIMITS, type ApiRouteBody } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ExamFieldsDto } from './exam-fields.dto';
 
 const MIN_TIME_LIMIT_MIN = 1;
 
-export class CreateExamDto extends ExamFieldsDto implements CreateExamInput {
+export class CreateExamDto extends ExamFieldsDto implements ApiRouteBody<'POST /exams'> {
   @TrimString()
   @IsString()
   @IsNotEmpty()

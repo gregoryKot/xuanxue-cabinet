@@ -65,7 +65,7 @@ export default function ExamsScreen() {
     exams?.filter((exam) => matchesSearch([exam.title], search)) ?? null;
   const isFiltered = filters.status !== '' || search.trim() !== '';
   const bulk = useBulkDelete({
-    collectionPath: EXAMS_PATH,
+    collection: EXAMS_PATH,
     visibleIds: visibleExams?.map((exam) => exam.id) ?? [],
     onDeleted: (ids) => {
       removeFromList(ids);

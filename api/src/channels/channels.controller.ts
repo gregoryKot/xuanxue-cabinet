@@ -19,6 +19,7 @@ import { ChannelsService } from './channels.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
 import { ListChannelsDto } from './dto/list-channels.dto';
 import { UpdateChannelDto } from './dto/update-channel.dto';
+import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('channels')
 @Roles('teacher', 'assistant', 'admin')
@@ -31,22 +32,26 @@ export class ChannelsController {
   }
 
   @Get(':id')
+  @ApiRoute('GET /channels/:id')
   getById(@Param('id') id: string): Promise<ChannelDto> {
     return this.channelsService.getById(id);
   }
 
   @Post()
+  @ApiRoute('POST /channels')
   @HttpCode(HttpStatus.CREATED)
   create(@Body() body: CreateChannelDto): Promise<ChannelDto> {
     return this.channelsService.create(body);
   }
 
   @Patch(':id')
+  @ApiRoute('PATCH /channels/:id')
   update(@Param('id') id: string, @Body() body: UpdateChannelDto): Promise<ChannelDto> {
     return this.channelsService.update(id, body);
   }
 
   @Delete(':id')
+  @ApiRoute('DELETE /channels/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.channelsService.remove(id);

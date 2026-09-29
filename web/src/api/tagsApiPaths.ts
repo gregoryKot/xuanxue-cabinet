@@ -7,13 +7,14 @@
 // дальше»).
 import { LIST_LIMIT_MAX } from '@xuanxue/shared';
 import { LESSONS_PATH } from './apiPaths';
+import { apiRoutePath } from './apiRoute';
 
-// Не экспортирован — снаружи нужен только TAGS_LIST_PATH целиком (knip иначе
-// ловит TAGS_PATH как неиспользуемый экспорт).
-const TAGS_PATH = '/tags';
 /** Сводка тегов школы (экран тега) — весь список, не первая страница
  * фильтра: тот же приём, что у CLASSES_LIST_PATH (apiPaths.ts). */
-export const TAGS_LIST_PATH = `${TAGS_PATH}?limit=${LIST_LIMIT_MAX}`;
+export const TAGS_LIST_QUERY = { limit: LIST_LIMIT_MAX };
+/** Строка пути — для таблицы предзагрузки и хука экрана тега: ключ кэша
+ * prefetchCache.ts должен совпасть с тем, что соберёт `apiRoute` (PLAN §17.1). */
+export const TAGS_LIST_PATH = apiRoutePath('GET /tags', { query: TAGS_LIST_QUERY });
 
 /**
  * Даты занятий с тегом — без окна `from`/`to`: выдача по тегу не ограничена

@@ -14,14 +14,17 @@ import {
   EXAM_ITEM_KINDS,
   EXAM_ITEM_LIMITS,
   EXAM_ITEM_STATUSES,
-  type CreateExamItemInput,
+  type ApiRouteBody,
   type ExamItemKind,
   type ExamItemStatus,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ExamItemFieldsDto } from './exam-item-fields.dto';
 
-export class CreateExamItemDto extends ExamItemFieldsDto implements CreateExamItemInput {
+export class CreateExamItemDto
+  extends ExamItemFieldsDto
+  implements ApiRouteBody<'POST /exam-items'>
+{
   @IsIn(EXAM_ITEM_KINDS)
   kind!: ExamItemKind;
 

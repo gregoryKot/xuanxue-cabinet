@@ -6,6 +6,7 @@ import type { TagSummaryDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
 import { ListTagsDto } from './dto/list-tags.dto';
 import { TagsService } from './tags.service';
+import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('tags')
 @Roles('teacher', 'assistant', 'admin')
@@ -13,6 +14,7 @@ export class TagsController {
   constructor(private readonly tagsService: TagsService) {}
 
   @Get()
+  @ApiRoute('GET /tags')
   list(@Query() query: ListTagsDto): Promise<TagSummaryDto[]> {
     return this.tagsService.list(query);
   }

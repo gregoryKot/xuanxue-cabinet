@@ -19,6 +19,7 @@ import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import { ListClassesDto } from './dto/list-classes.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
+import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('classes')
 @Roles('teacher', 'assistant', 'admin')
@@ -31,22 +32,26 @@ export class ClassesController {
   }
 
   @Get(':id')
+  @ApiRoute('GET /classes/:id')
   getById(@Param('id') id: string): Promise<ClassDto> {
     return this.classesService.getById(id);
   }
 
   @Post()
+  @ApiRoute('POST /classes')
   @HttpCode(HttpStatus.CREATED)
   create(@Body() body: CreateClassDto): Promise<ClassDto> {
     return this.classesService.create(body);
   }
 
   @Patch(':id')
+  @ApiRoute('PATCH /classes/:id')
   update(@Param('id') id: string, @Body() body: UpdateClassDto): Promise<ClassDto> {
     return this.classesService.update(id, body);
   }
 
   @Delete(':id')
+  @ApiRoute('DELETE /classes/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.classesService.remove(id);

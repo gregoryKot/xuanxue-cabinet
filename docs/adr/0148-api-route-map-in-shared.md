@@ -46,4 +46,6 @@ ApiRouteBody<ключ>`/`ApiRouteQuery<ключ>`. e2e на настоящем A
 - Путь для таблицы предзагрузки собирает `apiRoutePath` — тот же, что уйдёт
   в сеть, иначе ключ кэша `prefetchCache.ts` разойдётся.
 - Перенос остальных доменов — PLAN §17.1, шаг 2; последний PR удаляет
-  строковый `apiFetch`, храповик, `check-editor-routes.mjs` и `apiPaths.ts`.
+  строковый `apiFetch`, храповик и `apiPaths.ts`. `check-editor-routes.mjs`
+  удалён вместе с переносом редактора: коллекцию без `GET /коллекция/:id` в
+  карте не пропускает тип `EditorCollection` (`web/src/hooks/useEntityEditor.ts`).

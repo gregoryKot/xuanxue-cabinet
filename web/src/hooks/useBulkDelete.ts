@@ -14,23 +14,33 @@
 // hooks/useConfirmedRemove.ts), поэтому `confirmDelete` не трогает
 // `confirming` — это исключительно дело requestDelete()/cancelDelete().
 import { useState } from 'react';
-import type { BulkDeleteResult } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import type {
+  ApiRouteBody,
+  ApiRouteKey,
+  ApiRouteResponse,
+  BulkDeleteInput,
+  BulkDeleteResult,
+} from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
 import { errorFrom } from '../components/FormServerError';
 import { useListSelection, type UseListSelectionResult } from './useListSelection';
-
-// Здесь, а не в api/apiPaths.ts: единственный потребитель, а apiPaths.ts
-// уже выше потолка храповика размера и расти не может.
-function bulkDeletePath(collectionPath: string): string {
-  return `${collectionPath}/bulk-delete`;
-}
 
 const FALLBACK_ERROR_MESSAGE =
   'Не удалось удалить. Проверьте связь и попробуйте ещё раз.';
 
+/** Коллекции, у которых в карте маршрутов есть `POST /коллекция/bulk-delete`
+ * с телом и ответом массового удаления (ADR-0141): другую `tsc` не пропустит. */
+type BulkDeleteCollection = {
+  [K in ApiRouteKey]: K extends `POST ${infer C}/bulk-delete`
+    ? [ApiRouteBody<K>, ApiRouteResponse<K>] extends [BulkDeleteInput, BulkDeleteResult]
+      ? C
+      : never
+    : never;
+}[ApiRouteKey];
+
 export interface UseBulkDeleteConfig {
-  /** Путь коллекции без `/bulk-delete` — `api/apiPaths.ts#EXAM_ITEMS_PATH`/`EXAMS_PATH`. */
-  collectionPath: string;
+  /** Коллекция без `/bulk-delete` — `'/exams'` или `'/exam-items'`. */
+  collection: BulkDeleteCollection;
   visibleIds: readonly string[];
   onDeleted: (deletedIds: string[]) => void;
 }
@@ -65,10 +75,9 @@ export function useBulkDelete(config: UseBulkDeleteConfig): UseBulkDeleteResult 
     setError(null);
     setPending(true);
     try {
-      const response = await apiFetch<BulkDeleteResult>(
-        bulkDeletePath(config.collectionPath),
-        { method: 'POST', body: { ids: selection.selectedVisibleIds } },
-      );
+      const response = await apiRoute(`POST ${config.collection}/bulk-delete` as const, {
+        body: { ids: selection.selectedVisibleIds },
+      });
       setResult(response);
       config.onDeleted(response.deletedIds);
       // Отказавшие остаются отмечены — видно, какие именно не удалились;

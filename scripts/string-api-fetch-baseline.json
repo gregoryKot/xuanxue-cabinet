@@ -1,5 +1,5 @@
 {
-  "total": 62,
+  "total": 54,
   "byFile": {
     "web/src/auth/AuthProvider.tsx": 1,
     "web/src/auth/useAuthConfig.ts": 1,
@@ -28,16 +28,12 @@
     "web/src/exams/useExamAttemptCount.ts": 1,
     "web/src/exams/useExams.ts": 1,
     "web/src/exams/useQuestionInlineForm.ts": 2,
-    "web/src/hooks/useBulkDelete.ts": 1,
-    "web/src/hooks/useEntityEditor.ts": 4,
-    "web/src/hooks/useTagOptions.ts": 1,
     "web/src/join/useJoinByInvite.ts": 1,
     "web/src/materials/materialFileUpload.ts": 1,
     "web/src/materials/useLessonsByTag.ts": 1,
     "web/src/materials/useMaterialFileUpload.ts": 1,
     "web/src/materials/useMaterials.ts": 1,
     "web/src/materials/useTagsSummary.ts": 1,
-    "web/src/planning/useLessonEditor.ts": 2,
     "web/src/planning/useLessonMaterials.ts": 2,
     "web/src/planning/useLessonRecordingSummary.ts": 1,
     "web/src/planning/useLessons.ts": 1,

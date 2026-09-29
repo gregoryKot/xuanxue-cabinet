@@ -174,6 +174,11 @@ describe('MaterialEditorScreen — создание одним файлом, б�
     // Страница осталась на /materials/new — перечитать материал по маршруту
     // нечем, свежее состояние приходит ответом записи (ADR-0134).
     expect(await screen.findByText('Методичка.pdf')).toBeInTheDocument();
-    expect(callsWithMethod('GET')).toHaveLength(0);
+    // Метод у GET теперь проставляет apiRoute — подсказка тегов тоже виден в
+    // списке вызовов, поэтому смотрим только на чтение самого материала.
+    const materialReads = callsWithMethod('GET').filter((call) =>
+      String(call[0]).startsWith('/materials'),
+    );
+    expect(materialReads).toHaveLength(0);
   });
 });

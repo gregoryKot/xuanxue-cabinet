@@ -19,12 +19,15 @@ import {
   CLASS_FORMATS,
   CLASS_LIMITS,
   type ClassFormat,
-  type UpdateClassInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ClassFieldsDto } from './class-fields.dto';
 
-export class UpdateClassDto extends ClassFieldsDto implements UpdateClassInput {
+export class UpdateClassDto
+  extends ClassFieldsDto
+  implements ApiRouteBody<'PATCH /classes/:id'>
+{
   @OptionalNotNull()
   @TrimString()
   @IsString()

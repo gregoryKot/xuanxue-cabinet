@@ -20,11 +20,11 @@ import {
   TAG_LIMITS,
   type ChannelConfig,
   type ChannelType,
-  type CreateChannelInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { TrimString } from '../../common/validation';
 
-export class CreateChannelDto implements CreateChannelInput {
+export class CreateChannelDto implements ApiRouteBody<'POST /channels'> {
   @IsIn(CHANNEL_TYPES)
   type!: ChannelType;
 

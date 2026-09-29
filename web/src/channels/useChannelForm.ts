@@ -26,7 +26,7 @@ export type UseChannelFormResult = UseEntityFormResult<
 
 export function useChannelForm(
   channelDto: ChannelDto | null,
-  onCreate: (input: CreateChannelInput) => Promise<void>,
+  onCreate: (input: CreateChannelInput) => Promise<unknown>,
   onUpdate: (id: string, input: UpdateChannelInput) => Promise<void>,
   onRemove: (id: string) => Promise<void>,
 ): UseChannelFormResult {

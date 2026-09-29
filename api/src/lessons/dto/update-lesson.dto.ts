@@ -26,11 +26,11 @@ import {
   LESSON_STATUSES,
   TAG_LIMITS,
   type LessonStatus,
-  type UpdateLessonInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class UpdateLessonDto implements UpdateLessonInput {
+export class UpdateLessonDto implements ApiRouteBody<'PATCH /lessons/:id'> {
   @OptionalNotNull()
   @TrimString()
   @IsString()

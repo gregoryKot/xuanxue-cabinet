@@ -23,6 +23,7 @@ import { ExamsService } from './exams.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { ListExamsDto } from './dto/list-exams.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
+import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('exams')
 @Roles('teacher', 'assistant', 'admin')
@@ -35,22 +36,26 @@ export class ExamsController {
   }
 
   @Get(':id')
+  @ApiRoute('GET /exams/:id')
   getById(@Param('id') id: string): Promise<ExamDto> {
     return this.examsService.getById(id);
   }
 
   @Post()
+  @ApiRoute('POST /exams')
   @HttpCode(HttpStatus.CREATED)
   create(@Body() body: CreateExamDto, @CurrentUser() user: UserLean): Promise<ExamDto> {
     return this.examsService.create(body, user.id);
   }
 
   @Patch(':id')
+  @ApiRoute('PATCH /exams/:id')
   update(@Param('id') id: string, @Body() body: UpdateExamDto): Promise<ExamDto> {
     return this.examsService.update(id, body);
   }
 
   @Delete(':id')
+  @ApiRoute('DELETE /exams/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.examsService.remove(id, DateTime.utc());
@@ -61,6 +66,7 @@ export class ExamsController {
   // храповика (CLAUDE.md «Храповики»), а тут и добавлять нечего — контроллер
   // просто зовёт тот же remove(), что и одиночный DELETE.
   @Post('bulk-delete')
+  @ApiRoute('POST /exams/bulk-delete')
   @HttpCode(HttpStatus.OK)
   removeMany(@Body() body: BulkDeleteDto): Promise<BulkDeleteResult> {
     // Одно «сейчас» на весь запрос — у всех записей выборки одна отметка deletedAt.

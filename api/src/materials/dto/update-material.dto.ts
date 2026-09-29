@@ -28,11 +28,11 @@ import {
   MATERIAL_MAX_LESSON_IDS,
   type MaterialAccess,
   type MaterialKind,
-  type UpdateMaterialInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class UpdateMaterialDto implements UpdateMaterialInput {
+export class UpdateMaterialDto implements ApiRouteBody<'PATCH /materials/:id'> {
   @OptionalNotNull()
   @TrimString()
   @IsString()
