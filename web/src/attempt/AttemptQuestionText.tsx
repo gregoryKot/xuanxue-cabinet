@@ -18,6 +18,10 @@ interface AttemptQuestionTextProps {
   /** Предпросмотр глазами ученика (exams/ExamPreviewQuestion.tsx): та же
    * строка, но ответить нельзя. */
   disabled?: boolean;
+  /** Обязательное объяснение выбора не написано, а ученик уже нажал
+   * «Отправить» (ADR-0146, attemptReasonGuard.ts) — рамка и `aria-invalid`,
+   * тем же приёмом, что ошибка поля формы (components/Field.tsx). */
+  invalid?: boolean;
   onChange: (text: string) => void;
   onBlur: () => void;
 }
@@ -26,13 +30,20 @@ export function AttemptQuestionText({
   labelledBy,
   value,
   disabled,
+  invalid,
   onChange,
   onBlur,
 }: AttemptQuestionTextProps) {
   return (
     <textarea
       aria-labelledby={labelledBy}
-      style={textareaStyle}
+      aria-invalid={invalid || undefined}
+      // `border` целиком, не `borderColor` поверх шорткода `inputStyle.border`
+      // (Field.tsx) — React ругается на смешение шорткода и его части при
+      // переключении invalid туда-обратно (предупреждение в dev).
+      style={
+        invalid ? { ...textareaStyle, border: '1px solid var(--danger)' } : textareaStyle
+      }
       maxLength={ATTEMPT_LIMITS.answerText}
       value={value}
       disabled={disabled}

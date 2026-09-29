@@ -59,7 +59,11 @@ export function useAttemptAutosave(
 
   const setAnswer = useCallback(
     (itemId: string, patch: Omit<AttemptAnswerDto, 'itemId'>) => {
-      const answer = { itemId, ...patch };
+      // Слить с уже сохранённым ответом, не заменить целиком (ADR-0146):
+      // у вопроса с объяснением setText и setOptions правят только половину
+      // ответа — setOptions после setText стирал бы написанное объяснение,
+      // и наоборот.
+      const answer = { ...answers.current.get(itemId), itemId, ...patch };
       answers.current.set(itemId, answer);
       dirty.current.add(itemId);
       writeAttemptAnswerDraft(attemptId, answer);

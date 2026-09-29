@@ -124,6 +124,76 @@ describe('computeExamItemStats', () => {
   });
 });
 
+// ADR-0146: объяснение выбора — reasonCount/reasonAnsweredCount, только у
+// вопроса с askReason (5-й параметр computeExamItemStats).
+describe('computeExamItemStats — объяснение выбора (ADR-0146)', () => {
+  it('askReason включён: часть выбравших вариант написала объяснение — числитель и знаменатель честные', () => {
+    const attempts = [
+      attempt('i1', SINGLE_OPTIONS, [
+        { itemId: 'i1', optionIds: ['o1'], text: 'Потому что так' },
+      ]),
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o2'] }]),
+      attempt('i1', SINGLE_OPTIONS, []), // вопрос пропущен целиком
+    ];
+    const acc = accumulateAttemptStats(attempts);
+
+    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, true);
+
+    expect(stats.askedCount).toBe(3);
+    expect(stats.reasonAnsweredCount).toBe(2);
+    expect(stats.reasonCount).toBe(1);
+  });
+
+  it('askReason выключен (или не передан) — оба поля не выдуманы, undefined', () => {
+    const attempts = [
+      attempt('i1', SINGLE_OPTIONS, [
+        { itemId: 'i1', optionIds: ['o1'], text: 'Потому что так' },
+      ]),
+    ];
+    const acc = accumulateAttemptStats(attempts);
+
+    expect(
+      computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc).reasonCount,
+    ).toBeUndefined();
+    expect(
+      computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, false)
+        .reasonAnsweredCount,
+    ).toBeUndefined();
+  });
+
+  it('askReason включён, но вариант ни разу не выбирали — 0 из 0, не мусор', () => {
+    const acc = accumulateAttemptStats([]);
+
+    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, true);
+
+    expect(stats.reasonAnsweredCount).toBe(0);
+    expect(stats.reasonCount).toBe(0);
+  });
+
+  it('объяснение из пробелов — не считается написанным', () => {
+    const attempts = [
+      attempt('i1', SINGLE_OPTIONS, [{ itemId: 'i1', optionIds: ['o1'], text: '   ' }]),
+    ];
+    const acc = accumulateAttemptStats(attempts);
+
+    const stats = computeExamItemStats('i1', 'single', SINGLE_OPTIONS, acc, true);
+
+    expect(stats.reasonAnsweredCount).toBe(1);
+    expect(stats.reasonCount).toBe(0);
+  });
+
+  it('вопрос без вариантов — reasonCount/reasonAnsweredCount не выдуманы, даже если askReason: true', () => {
+    const acc = accumulateAttemptStats([
+      attempt('i1', [], [{ itemId: 'i1', text: 'X' }]),
+    ]);
+
+    const stats = computeExamItemStats('i1', 'text', [], acc, true);
+
+    expect(stats.reasonCount).toBeUndefined();
+    expect(stats.reasonAnsweredCount).toBeUndefined();
+  });
+});
+
 describe('computeStrugglingCount', () => {
   it('чаще половины ошибаются — считается', () => {
     const attempts = [

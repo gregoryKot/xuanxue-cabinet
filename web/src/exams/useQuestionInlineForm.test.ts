@@ -123,6 +123,7 @@ describe('useQuestionInlineForm — правка (item задан)', () => {
         videoId: null,
         videoUrl: null,
         options: undefined,
+        askReason: false,
       },
     });
   });
