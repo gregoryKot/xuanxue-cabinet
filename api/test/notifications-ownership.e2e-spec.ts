@@ -38,12 +38,18 @@ describe('Настройки уведомлений — владение (e2e)',
       .set('Cookie', cookieA)
       .send({ kind: 'exam_result', enabled: false });
     expect(patchA.status).toBe(200);
-    expect((patchA.body as NotificationPrefsDto).enabled).toEqual(['lesson_soon']);
+    expect((patchA.body as NotificationPrefsDto).enabled).toEqual([
+      'lesson_soon',
+      'payment_due',
+    ]);
 
     const getA = await request(server())
       .get('/api/me/notifications')
       .set('Cookie', cookieA);
-    expect((getA.body as NotificationPrefsDto).enabled).toEqual(['lesson_soon']);
+    expect((getA.body as NotificationPrefsDto).enabled).toEqual([
+      'lesson_soon',
+      'payment_due',
+    ]);
 
     const getB = await request(server())
       .get('/api/me/notifications')
@@ -51,6 +57,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect((getB.body as NotificationPrefsDto).enabled).toEqual([
       'exam_result',
       'lesson_soon',
+      'payment_due',
     ]);
   });
 
@@ -99,6 +106,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect((getB.body as NotificationPrefsDto).enabled).toEqual([
       'exam_result',
       'lesson_soon',
+      'payment_due',
     ]);
   });
 
@@ -116,6 +124,7 @@ describe('Настройки уведомлений — владение (e2e)',
     expect((res.body as NotificationPrefsDto).enabled).toEqual([
       'exam_result',
       'lesson_soon',
+      'payment_due',
     ]);
   });
 

@@ -17,30 +17,29 @@
 // бы весь его граф (контроллеры, MediaModule) ради одного сервиса.
 // BroadcastsModule/DeliveriesModule/ChannelsModule/SettingsModule — модельные
 // модули (только forFeature), сама логика тика собирается на этом уровне;
-// ExamAttemptModelModule — тот же приём для модели попытки (её уже
-// использует MediaModule ровно по этой причине, комментарий в
-// exam-attempt-model.module.ts). ExamItemModelModule — тот же приём для
-// модели вопроса банка: ExamImageSweepService (слой 4.2, ADR-0035) нужна она
-// вместе с ExamAttemptModelModule, чтобы узнать, на какие картинки ещё
-// ссылаются вопрос и попытка. ExamImagesModule — модель самой картинки
-// (`exam_images`) и
-// ExamImagesService (провайдер не отсюда, модуль его уже даёт). ExamVideosModule
-// — тем же приёмом для видео (`exam_videos`, ADR-0133): ExamVideoSweepService
-// нужны ExamItemModelModule/ExamAttemptModelModule (какие видео ещё
-// используются) и сам ExamVideosModule (модель видео, StorageOrphansService
-// уже внутри него). TelegramModule
-// — TelegramBotService/PersonalChats/BotSessionService для проактивной
-// отправки (предпросмотр, «Запись?», ручные каналы, уведомления об ошибках);
-// ни TelegramModule, ни его собственные импорты про SchedulerModule не знают.
-// NotificationsModule — ради InAppExamNotifier (слой in-app уведомлений,
-// ADR-0061, тот же приём, что в exams.module.ts): у ExamDeadlineCloseService
-// свой экземпляр EXAM_NOTIFIER (ленивое закрытие по дедлайну — путь к тому
-// же уведомлению attempt_submitted, что и в кабинете), и строка в ленте
-// кабинета не должна зависеть от того, каким путём попытка закрылась (явным
-// submit или ленивым дедлайном) — второе плечо нужно и здесь, не только
-// через ExamAttemptsService. PushModule — тем же доводом, третье плечо
-// (PushExamNotifier, ADR-0092): человек, чья попытка закрылась по дедлайну,
-// должен получить push так же, как и при явном submit.
+// ExamAttemptModelModule — тот же приём для модели попытки (её уже использует
+// MediaModule ровно по этой причине, комментарий в exam-attempt-model.module.ts).
+// ExamItemModelModule — тот же приём для модели вопроса банка:
+// ExamImageSweepService (слой 4.2, ADR-0035) нужна она вместе с
+// ExamAttemptModelModule, чтобы узнать, на какие картинки ещё ссылаются вопрос и
+// попытка. ExamImagesModule — модель самой картинки (`exam_images`) и
+// ExamImagesService (провайдер не отсюда, модуль его уже даёт). ExamVideosModule —
+// тем же приёмом для видео (`exam_videos`, ADR-0133): ExamVideoSweepService нужны
+// ExamItemModelModule/ExamAttemptModelModule (какие видео ещё используются) и сам
+// ExamVideosModule (модель видео, StorageOrphansService уже внутри него).
+// TelegramModule — TelegramBotService/PersonalChats/BotSessionService для
+// проактивной отправки (предпросмотр, «Запись?», ручные каналы, уведомления об
+// ошибках); ни TelegramModule, ни его собственные импорты про SchedulerModule не
+// знают.
+// NotificationsModule — ради InAppExamNotifier (слой in-app уведомлений, ADR-0061,
+// тот же приём, что в exams.module.ts): у ExamDeadlineCloseService свой экземпляр
+// EXAM_NOTIFIER (ленивое закрытие по дедлайну — путь к тому же уведомлению
+// attempt_submitted, что и в кабинете), и строка в ленте кабинета не должна
+// зависеть от того, каким путём попытка закрылась (явным submit или ленивым
+// дедлайном) — второе плечо нужно и здесь, не только через ExamAttemptsService.
+// PushModule — тем же доводом, третье плечо (PushExamNotifier, ADR-0092): человек,
+// чья попытка закрылась по дедлайну, должен получить push так же, как и при явном
+// submit.
 import { Module } from '@nestjs/common';
 import { AnswerVideosModule } from '../answer-videos/answer-videos.module';
 import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
@@ -69,6 +68,7 @@ import { LessonsModule } from '../lessons/lessons.module';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
 import { InAppExamNotifier } from '../notifications/in-app-exam-notifier';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PaymentReminderService } from '../payments/payment-reminder.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { PaymentsModule } from '../payments/payments.module';
 import { PushExamNotifier } from '../push/push-exam-notifier';
@@ -104,9 +104,8 @@ import { SchedulerService } from './scheduler.service';
     AnswerVideosModule,
     NotificationsModule,
     PushModule,
-    // Модели оплат и снимков (`payments`, `payment_screenshots`) для шага
-    // «скриншоты оплат» (ADR-0050) — PaymentsModule экспортирует обе;
-    // провайдер самого шага ниже, как у ExamImageSweepService.
+    // Модели `payments`/`payment_screenshots` — шаги «скриншоты оплат»
+    // (ADR-0050) и «напоминания об оплате» (ADR-0150); провайдеры ниже.
     PaymentsModule,
     StorageModule,
     // BroadcastPlannerService резолвит {ведущий} через UsersService — цикла
@@ -125,6 +124,7 @@ import { SchedulerService } from './scheduler.service';
     LessonReminderService, // напоминание ученикам о занятии (ADR-0135)
     ManualPromptService,
     ExamDeadlineCloseService,
+    PaymentReminderService, // напоминание ученикам об оплате (ADR-0150)
     ExamImageSweepService,
     ExamVideoSweepService,
     PaymentScreenshotSweepService,
