@@ -1,4 +1,6 @@
-// Подстановки как кнопки — allow-list из shared/src/templates.ts, клик
+// Подстановки как кнопки — allow-list из shared/src/templates.ts (у постов
+// TEMPLATE_PLACEHOLDERS, у напоминания об оплате PAYMENT_REMINDER_PLACEHOLDERS:
+// список имён и пояснения приходят пропсами, кнопок один компонент), клик
 // вставляет `{имя}` в текст (docs/PLAN.md §6 «Шаблоны»; отзыв владельца
 // 2026-09-08 — учитель перепечатывал имена руками вместе со скобками).
 // Пояснения — раскрывающимся списком, а не подсказкой по наведению: на
@@ -8,8 +10,6 @@
 // клавиатуры (CLAUDE.md «Мобильный экран первым», «Доступность»); `title`
 // оставлен для десктопной мыши как быстрая подсказка.
 import type { CSSProperties } from 'react';
-import { TEMPLATE_PLACEHOLDERS, type TemplatePlaceholder } from '@xuanxue/shared';
-import { PLACEHOLDER_HINTS } from './placeholderHints';
 
 const rowStyle: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 6 };
 const chipStyle: CSSProperties = {
@@ -47,20 +47,31 @@ const listStyle: CSSProperties = {
   fontSize: 13,
 };
 
-interface PlaceholderChipsProps {
-  onInsert: (name: TemplatePlaceholder) => void;
+interface PlaceholderChipsProps<Name extends string> {
+  /** Допустимые подстановки — allow-list того шаблона, который правят. */
+  names: readonly Name[];
+  /** Пояснение к каждой подстановке (placeholderHints.ts). */
+  hints: Record<Name, string>;
+  /** Заголовок раскрывающегося списка: «Что подставится в пост». */
+  summary: string;
+  onInsert: (name: Name) => void;
 }
 
-export function PlaceholderChips({ onInsert }: PlaceholderChipsProps) {
+export function PlaceholderChips<Name extends string>({
+  names,
+  hints,
+  summary,
+  onInsert,
+}: PlaceholderChipsProps<Name>) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={rowStyle}>
-        {TEMPLATE_PLACEHOLDERS.map((name) => (
+        {names.map((name) => (
           <button
             key={name}
             type="button"
             style={chipStyle}
-            title={PLACEHOLDER_HINTS[name]}
+            title={hints[name]}
             onClick={() => onInsert(name)}
           >
             {`{${name}}`}
@@ -69,14 +80,12 @@ export function PlaceholderChips({ onInsert }: PlaceholderChipsProps) {
       </div>
 
       <details>
-        <summary style={summaryStyle}>Что подставится в пост</summary>
+        <summary style={summaryStyle}>{summary}</summary>
         <dl style={listStyle}>
-          {TEMPLATE_PLACEHOLDERS.map((name) => (
+          {names.map((name) => (
             <div key={name}>
               <dt style={{ fontWeight: 600 }}>{`{${name}}`}</dt>
-              <dd style={{ margin: 0, color: 'var(--ink-soft)' }}>
-                {PLACEHOLDER_HINTS[name]}
-              </dd>
+              <dd style={{ margin: 0, color: 'var(--ink-soft)' }}>{hints[name]}</dd>
             </div>
           ))}
         </dl>

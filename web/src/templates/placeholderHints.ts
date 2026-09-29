@@ -5,7 +5,9 @@
 // анонса и для поста с записью, поэтому в тексте — оба случая. Показывается
 // раскрывающимся списком в PlaceholderChips.tsx. Покрытие — placeholderHints.test.ts,
 // образец сверки — api/src/common/field-labels-coverage.spec.ts.
-import type { TemplatePlaceholder } from '@xuanxue/shared';
+import type { PAYMENT_REMINDER_PLACEHOLDERS, TemplatePlaceholder } from '@xuanxue/shared';
+
+type PaymentReminderPlaceholder = (typeof PAYMENT_REMINDER_PLACEHOLDERS)[number];
 
 export const PLACEHOLDER_HINTS: Record<TemplatePlaceholder, string> = {
   название:
@@ -18,4 +20,14 @@ export const PLACEHOLDER_HINTS: Record<TemplatePlaceholder, string> = {
   минут: 'Сколько минут осталось до начала — считается в момент отправки.',
   ведущий: 'Кто ведёт занятие, если ведущий назначен.',
   длительность: 'Сколько идёт занятие.',
+};
+
+// Подстановки напоминания об оплате (ADR-0051) — свой набор, свой словарь:
+// у поста и у личного сообщения ученику общих имён нет. Источники значений —
+// api/src/payments/payment-reminder-text.ts; покрытие — placeholderHints.test.ts.
+export const PAYMENT_REMINDER_HINTS: Record<PaymentReminderPlaceholder, string> = {
+  месяц: 'Месяц абонемента, например «сентябрь 2026».',
+  сумма: 'Сумма, если её указал бухгалтер. Нет суммы — исчезает кусок в скобках.',
+  имя: 'Имя ученика, как оно записано в кабинете.',
+  ссылка: 'Ссылка на бота: нажал — и бот ждёт скриншот перевода за этот месяц.',
 };

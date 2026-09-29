@@ -4,13 +4,19 @@
 // (анонс/запись) — CLAUDE.md «Одна механика — один компонент»: сама механика
 // «текст + плейсхолдеры + предпросмотр» одна, разный только `kind`.
 import type { CSSProperties } from 'react';
-import { DEFAULT_TEMPLATES, type LessonDto, type TemplateKind } from '@xuanxue/shared';
+import {
+  DEFAULT_TEMPLATES,
+  TEMPLATE_PLACEHOLDERS,
+  type LessonDto,
+  type TemplateKind,
+} from '@xuanxue/shared';
 import { Field, inputStyle } from '../components/Field';
 import { dangerNoteStyle } from '../components/screenLayout';
 import { editorSectionStyle } from '../components/editorLayout';
 import { tzBadge } from '../schedule/timezoneLabel';
 import { TextLinkButton } from '../components/TextLinkButton';
 import { PlaceholderChips } from './PlaceholderChips';
+import { PLACEHOLDER_HINTS } from './placeholderHints';
 import { TEMPLATE_KIND_LABELS_RU } from './templateKindLabels';
 import { TemplatePreviewSection } from './TemplatePreviewSection';
 import { useInsertAtCursor } from './useInsertAtCursor';
@@ -79,7 +85,12 @@ export function TemplateEditor({
           {serverError}
         </p>
       )}
-      <PlaceholderChips onInsert={insertAtCursor} />
+      <PlaceholderChips
+        names={TEMPLATE_PLACEHOLDERS}
+        hints={PLACEHOLDER_HINTS}
+        summary="Что подставится в пост"
+        onInsert={insertAtCursor}
+      />
       <TextLinkButton onClick={() => onChange(DEFAULT_TEMPLATES[kind])}>
         Сбросить к тексту по умолчанию
       </TextLinkButton>

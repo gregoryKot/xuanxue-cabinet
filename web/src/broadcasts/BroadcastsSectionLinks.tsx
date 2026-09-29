@@ -1,4 +1,4 @@
-// Переходы в подэкраны «Рассылок» — «Каналы» и «Шаблоны постов». Вынесены из
+// Переходы в подэкраны «Рассылок» — «Каналы» и «Шаблоны». Вынесены из
 // BroadcastsScreen.tsx: тот упёрся в 150 строк храповика размера, а правило
 // прямо просит дробить файл, а не пухнуть дальше (CLAUDE.md «Храповики»).
 // Заодно тексты подсказок уехали туда же, где ими пользуются.
@@ -9,13 +9,13 @@
 import { SectionLink } from '../components/SectionLink';
 
 const CHANNELS_LINK_HINT = 'Куда уходят посты.';
-const TEMPLATES_LINK_HINT = 'Тексты, которыми бот пишет в канал, и адрес сайта школы.';
+const TEMPLATES_LINK_HINT = 'Тексты постов, напоминание об оплате и адрес сайта школы.';
 
 export function BroadcastsSectionLinks() {
   return (
     <div className="xuanxue-block-grid">
       <SectionLink to="/channels" title="Каналы" hint={CHANNELS_LINK_HINT} />
-      <SectionLink to="/templates" title="Шаблоны постов" hint={TEMPLATES_LINK_HINT} />
+      <SectionLink to="/templates" title="Шаблоны" hint={TEMPLATES_LINK_HINT} />
     </div>
   );
 }
