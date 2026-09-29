@@ -12,6 +12,7 @@ import {
 } from '@xuanxue/shared';
 import { planningWindow } from '../planning/planningWindow';
 import { nextLessonsWindow } from '../templates/nextLessonsWindow';
+import { apiRoutePath } from './apiRoute';
 
 /** Фильтры списка экзаменов — общая форма для useExams.ts (хук) и
  * examsListPath (предзагрузка); ExamsScreen.tsx использует то же имя. */
@@ -149,17 +150,13 @@ export const NOTIFICATION_PREFS_PATH = '/me/notifications';
 
 /** Лента центра уведомлений (ADR-0063) — своё имя ресурса: `/me/notifications`
  * выше занят настройкой «что присылать», и лента под ним читалась бы её частью. */
-export const NOTIFICATIONS_FEED_PATH = `/me/inbox?limit=${LIST_LIMIT_DEFAULT}`;
-export const NOTIFICATIONS_READ_ALL_PATH = '/me/inbox/read-all';
-
-export function notificationReadPath(id: string): string {
-  return `/me/inbox/${id}/read`;
-}
-
-/** Одна запись ленты — `DELETE` убирает её (SwipeRow.tsx, 2026-09-22). */
-export function notificationItemPath(id: string): string {
-  return `/me/inbox/${id}`;
-}
+export const NOTIFICATIONS_FEED_QUERY = { limit: LIST_LIMIT_DEFAULT };
+/** Строка пути — только для таблицы предзагрузки: ключ кэша prefetchCache.ts
+ * должен совпасть с тем, что соберёт `apiRoute` хука ленты. Сам запрос идёт
+ * по карте (useNotificationsData.ts, PLAN §17.1). */
+export const NOTIFICATIONS_FEED_PATH = apiRoutePath('GET /me/inbox', {
+  query: NOTIFICATIONS_FEED_QUERY,
+});
 
 const USERS_PATH = '/users';
 export const TEACHERS_PATH = `${USERS_PATH}/teachers`;

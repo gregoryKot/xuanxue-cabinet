@@ -9,12 +9,8 @@ import type {
   NotificationDto,
   UserRole,
 } from '@xuanxue/shared';
-import {
-  MY_EXAMS_PATH,
-  NOTIFICATIONS_FEED_PATH,
-  NOTIFICATIONS_READ_ALL_PATH,
-  notificationReadPath,
-} from '../api/apiPaths';
+import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
+import { apiRoutePath } from '../api/apiRoute';
 import type * as HttpModule from '../api/http';
 import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { MyExamsProvider } from '../student/MyExamsProvider';
@@ -27,6 +23,12 @@ import {
   NOTIFICATIONS_POLL_INTERVAL_MS,
   useNotificationsData,
 } from './useNotificationsData';
+
+// Пути действий ленты — из карты маршрутов (PLAN §17.1), тем же
+// apiRoutePath, что собирает путь в apiRoute хука.
+const NOTIFICATIONS_READ_ALL_PATH = apiRoutePath('POST /me/inbox/read-all');
+const notificationReadPath = (id: string): string =>
+  apiRoutePath('POST /me/inbox/:id/read', { params: { id } });
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');

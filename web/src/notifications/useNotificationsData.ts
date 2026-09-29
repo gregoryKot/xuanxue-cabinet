@@ -17,13 +17,12 @@
 import { useCallback, useMemo } from 'react';
 import {
   getMyExamAction,
-  type InboxPageDto,
   type MeDto,
   type MyExamDto,
   type NotificationDto,
 } from '@xuanxue/shared';
-import { NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { NOTIFICATIONS_FEED_QUERY } from '../api/apiPaths';
+import { apiRoute } from '../api/apiRoute';
 import { isTeacher } from '../app/screenAccess';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { usePollWhileVisible } from '../hooks/usePollWhileVisible';
@@ -68,7 +67,7 @@ export function useNotificationsData(me: MeDto | null): NotificationsData {
     refresh: refreshFeed,
     applyData,
   } = useAbortableFetch(
-    (signal) => apiFetch<InboxPageDto>(NOTIFICATIONS_FEED_PATH, { signal }),
+    (signal) => apiRoute('GET /me/inbox', { query: NOTIFICATIONS_FEED_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
   const { actionError, reload, markRead, markAllRead, dismiss } = useNotificationsActions(

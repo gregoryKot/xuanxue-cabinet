@@ -11,17 +11,8 @@
 // «Прочитать все»/клик по строке молча ничего не делали.
 import { useCallback, useState } from 'react';
 import type { InboxPageDto } from '@xuanxue/shared';
-import {
-  NOTIFICATIONS_READ_ALL_PATH,
-  notificationItemPath,
-  notificationReadPath,
-} from '../api/apiPaths';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
-
-// Только эти два метода зовёт этот файл — свой узкий тип вместо импорта
-// внутреннего ApiMethod из http.ts (там он не экспортирован нарочно, наружу
-// торчит только apiFetch).
-type WriteMethod = 'POST' | 'DELETE';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 
 export interface NotificationsActions {
   /** Сбой markRead/markAllRead/dismiss, отдельно от `error` (сбоя первой
@@ -46,14 +37,14 @@ export function useNotificationsActions(
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Общий обработчик — иначе try/catch и текст ошибки дублировались бы трижды
-  // (jscpd, CLAUDE.md «Дубли и мёртвый код»). Метод — параметром: markRead/
-  // markAllRead шлют POST, dismiss — DELETE, конверт ответа и ошибки у всех
-  // общий (InboxPageDto целиком).
+  // (jscpd, CLAUDE.md «Дубли и мёртвый код»). Запрос — параметром: путь,
+  // метод и тип ответа каждого действия берутся из карты маршрутов (PLAN
+  // §17.1), конверт ответа и ошибки у всех общий (InboxPageDto целиком).
   const writeAndApply = useCallback(
-    async (path: string, method: WriteMethod = 'POST') => {
+    async (write: () => Promise<InboxPageDto>) => {
       setActionError(null);
       try {
-        applyData(await apiFetch<InboxPageDto>(path, { method }));
+        applyData(await write());
       } catch (err) {
         setActionError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);
       }
@@ -61,15 +52,17 @@ export function useNotificationsActions(
     [applyData],
   );
   const markRead = useCallback(
-    (id: string) => writeAndApply(notificationReadPath(id)),
+    (id: string) =>
+      writeAndApply(() => apiRoute('POST /me/inbox/:id/read', { params: { id } })),
     [writeAndApply],
   );
   const markAllRead = useCallback(
-    () => writeAndApply(NOTIFICATIONS_READ_ALL_PATH),
+    () => writeAndApply(() => apiRoute('POST /me/inbox/read-all')),
     [writeAndApply],
   );
   const dismiss = useCallback(
-    (id: string) => writeAndApply(notificationItemPath(id), 'DELETE'),
+    (id: string) =>
+      writeAndApply(() => apiRoute('DELETE /me/inbox/:id', { params: { id } })),
     [writeAndApply],
   );
 

@@ -426,6 +426,19 @@ export {
 export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';
 export { INBOX_ITEM_NOT_FOUND_MESSAGE } from './inbox';
 export type {
+  ApiRouteKey,
+  ApiRouteParams,
+  ApiRouteQuery,
+  ApiRouteBody,
+  ApiRouteResponse,
+} from './api-routes';
+export {
+  API_ROUTE_METHODS,
+  API_ROUTE_KEYS,
+  splitApiRouteKey,
+  fillApiRoutePath,
+} from './api-routes';
+export type {
   GradingCommentPresetDto,
   CreateGradingCommentPresetInput,
   UpdateGradingCommentPresetInput,

@@ -305,6 +305,8 @@ jobs:
       # снова добавил две заглушки). Гейт, которого нет в CI, не гейт.
       - name: заглушки apiFetch не растут очередью `…Once`
         run: node scripts/check-once-mock-ratchet.mjs
+      - name: строковых вызовов apiFetch не прибавляется (PLAN §17.1)
+        run: node scripts/check-string-api-fetch-ratchet.mjs
       - name: вызовы в сеть с таймаутом (ADR-0106)
         run: node scripts/check-outbound-timeout.mjs
       - name: нумерация ADR — один номер, одно решение
