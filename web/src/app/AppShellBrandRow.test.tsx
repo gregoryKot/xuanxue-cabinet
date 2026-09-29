@@ -35,6 +35,7 @@ const TEACHER: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 function renderRow(isMobile: boolean, me: MeDto | null = null) {

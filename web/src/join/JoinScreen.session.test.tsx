@@ -48,6 +48,7 @@ const ACTIVE_ME: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 describe('JoinScreen — сессия уже есть (ADR-0036: вход уже создал/подтвердил человека)', () => {

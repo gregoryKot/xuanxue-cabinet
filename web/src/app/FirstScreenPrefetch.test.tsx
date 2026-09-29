@@ -31,6 +31,7 @@ const TEACHER: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 /** Даёт тесту доступ к `refresh()` контекста — без своего экрана незачем

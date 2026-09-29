@@ -121,7 +121,8 @@ xuanxue-cabinet/
 
 - **Email-ссылка** без пароля (основной для учеников без Telegram и для админа).
 - **Telegram**: виджет входа на сайте и `/start` в боте.
-- **Google**: OAuth, для тех, кому так удобнее.
+- **Google**: OAuth, для тех, кому так удобнее. Узнаёт человека по почте, если
+  Google за неё ручается (Gmail, Google Workspace, ADR-0145).
 
 Пароли не храним. Регистрация — только по ссылке-приглашению школы
 (`${PUBLIC_URL}/join/<code>`, ADR-0030/0036): учитель или админ публикует её сам, кто
@@ -315,7 +316,8 @@ api: валидация env, логи с requestId и редакцией, кон
    ссылке (SECURITY §2, ADR-0044 — сканеры почты открывают ссылки, но скрипт
    страницы не выполняют)
    (`EmailLoginCallbackScreen.tsx`, `useEmailLoginVerify.ts`). Google —
-   следующий PR. Ссылка-приглашение школы (ADR-0030, п.8 ниже) добавляет
+   кнопка «Войти через Google» при заданных `GOOGLE_CLIENT_ID`/`SECRET`,
+   страница возврата `/login/google` (ADR-0145, RUNBOOK §5). Ссылка-приглашение школы (ADR-0030, п.8 ниже) добавляет
    вход через `/join/<code>` — тот же Telegram/email, но с автоматическим
    переходом в `active` после входа.
 2. **Расписание.** Недельная сетка с воскресенья по субботу, как на сайте школы: слот =
@@ -965,7 +967,7 @@ classes.leaderId`, одно чтение `UsersService.findById()` на заня
 | GET                   | `/auth/me`                                                          | с сессией      |
 | POST                  | `/auth/logout`                                                      | с сессией      |
 | POST                  | `/auth/email/request`, `/auth/email/verify` (реализовано, ADR-0029) | все            |
-| POST                  | `/auth/telegram` (реализовано), `/auth/google`                      | все            |
+| POST                  | `/auth/telegram`, `/auth/google` (реализовано)                      | все            |
 | POST                  | `/auth/telegram/link-code` (реализовано, ADR-0034)                  | с сессией      |
 | GET/POST/PATCH/DELETE | `/classes` (реализовано)                                            | учитель        |
 | GET/POST/PATCH/DELETE | `/lessons`, `/lessons/:id` (реализовано)                            | учитель        |

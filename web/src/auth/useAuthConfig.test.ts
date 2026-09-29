@@ -31,6 +31,7 @@ describe('useAuthConfig', () => {
       schoolSiteUrl: 'https://xuanxue.su',
       emailLoginEnabled: false,
       fileStorageEnabled: false,
+      googleLoginEnabled: false,
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -46,6 +47,7 @@ describe('useAuthConfig', () => {
       schoolSiteUrl: 'https://x.example',
       emailLoginEnabled: false,
       fileStorageEnabled: false,
+      googleLoginEnabled: false,
     };
     mockedApiFetch.mockResolvedValue(config);
 
@@ -71,6 +73,7 @@ describe('useAuthConfig', () => {
       schoolSiteUrl: 'https://x.example',
       emailLoginEnabled: false,
       fileStorageEnabled: false,
+      googleLoginEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(config);
 
@@ -98,6 +101,7 @@ describe('useAuthConfig', () => {
       schoolSiteUrl: 'https://fresh.example',
       emailLoginEnabled: false,
       fileStorageEnabled: false,
+      googleLoginEnabled: false,
     };
     mockedApiFetch.mockResolvedValueOnce(fresh);
 
@@ -112,6 +116,7 @@ describe('useAuthConfig', () => {
         schoolSiteUrl: 'https://stale.example',
         emailLoginEnabled: false,
         fileStorageEnabled: false,
+        googleLoginEnabled: false,
       });
     });
 

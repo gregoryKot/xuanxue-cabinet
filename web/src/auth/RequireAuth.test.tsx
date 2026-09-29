@@ -53,6 +53,7 @@ function meWithNeedsProfile(needsProfile: boolean): MeDto {
     noTelegram: false,
     hasEmail: true,
     needsProfile,
+    googleLinked: false,
   };
 }
 
@@ -85,6 +86,7 @@ describe('RequireAuth', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -107,6 +109,7 @@ describe('RequireAuth', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(student);
 
@@ -152,6 +155,7 @@ describe('RequireAuth', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -173,6 +177,7 @@ describe('RequireAuth', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValueOnce(me);
 

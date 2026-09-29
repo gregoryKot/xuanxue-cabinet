@@ -32,6 +32,7 @@ const TEACHER: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 const ADMIN: MeDto = {
   id: 'a1',
@@ -43,6 +44,7 @@ const ADMIN: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 /** Заглушка сети для одного маршрута: сессия и конфигурация входа одинаковы во
@@ -90,6 +92,35 @@ describe('App', () => {
     expect(
       await screen.findByText('Ссылка неполная. Запросите новую на странице входа.'),
     ).toBeInTheDocument();
+  });
+
+  it('гость на /login/google без code/state — маршрут открывает GoogleLoginCallbackScreen (ADR-0145)', async () => {
+    mockRoute(null);
+
+    renderAt('/login/google');
+
+    expect(await screen.findByText('Ссылка не подошла')).toBeInTheDocument();
+  });
+
+  it('гость на /privacy — маршрут открывает PrivacyScreen, без входа', async () => {
+    mockRoute(null);
+
+    renderAt('/privacy');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Политика конфиденциальности' }),
+    ).toBeInTheDocument();
+  });
+
+  it('вошедший на /privacy — маршрут тоже открывает PrivacyScreen, без редиректа', async () => {
+    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+
+    renderAt('/privacy');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Политика конфиденциальности' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Экзамены' })).not.toBeInTheDocument();
   });
 
   it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
@@ -280,6 +311,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -327,6 +359,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -360,6 +393,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -379,6 +413,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/exams': [] });
 
@@ -401,6 +436,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, { '/me/lessons': [] });
 
@@ -436,6 +472,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockRoute(student, {
       '/me/notifications': { enabled: [] },
@@ -460,6 +497,7 @@ describe('App', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     // Своя попытка своим адресом, не список (ADR-0126).
     mockRoute(student, {

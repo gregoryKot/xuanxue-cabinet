@@ -44,6 +44,17 @@ describe('redactQueryValues', () => {
   });
 });
 
+describe('redactQueryValues — вход через Google (ADR-0145)', () => {
+  it('code и state из /login/google?code=…&state=… редактируются', () => {
+    const code = 'g'.repeat(20);
+    const state = 'h'.repeat(43);
+    const url = `/login/google?code=${code}&state=${state}`;
+    expect(redactQueryValues(url, ['code', 'state'])).toBe(
+      `/login/google?code=${REDACTED_VALUE}&state=${REDACTED_VALUE}`,
+    );
+  });
+});
+
 describe('redactRequestSerializer', () => {
   function buildIncomingMessage(url: string): IncomingMessage {
     const req = new IncomingMessage(new Socket());

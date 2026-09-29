@@ -7,3 +7,5 @@
 // AuthController один и тот же лимит.
 export const TELEGRAM_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 export const EMAIL_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
+// Вход через Google (ADR-0145) — тот же профиль, обе ветки (start и сам вход).
+export const GOOGLE_LOGIN_THROTTLE = { default: { limit: 10, ttl: 60_000 } };

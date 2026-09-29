@@ -29,6 +29,7 @@ const ME: MeDto = {
   hasEmail: false,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 
 afterEach(() => {

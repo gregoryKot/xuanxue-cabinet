@@ -172,6 +172,8 @@ describe('ROUTE_MODULES', () => {
       '/join/:code',
       '/login',
       '/login/email',
+      '/login/google',
+      '/privacy',
       '/welcome',
     ]);
   });

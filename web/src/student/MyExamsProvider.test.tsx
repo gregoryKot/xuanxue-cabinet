@@ -44,6 +44,7 @@ const STUDENT: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 /** teacher/assistant/admin — тот же список, что TEACHER_ROLES в

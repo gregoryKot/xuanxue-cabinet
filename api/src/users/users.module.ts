@@ -12,6 +12,9 @@ import {
 import { EmailLinkTokenRecord, EmailLinkTokenSchema } from './email-link-token.schema';
 import { EmailLinkTokenService } from './email-link-token.service';
 import { EmailLoginUserService } from './email-login-user.service';
+import { GoogleLinkService } from './google-link.service';
+import { GoogleLoginIdentityService } from './google-login-identity.service';
+import { GoogleLoginUserService } from './google-login-user.service';
 import { InviteLinkService } from './invite-link.service';
 import { LoginIdentityService } from './login-identity.service';
 import { MyNoTelegramController } from './my-no-telegram.controller';
@@ -69,6 +72,9 @@ import { UsersService } from './users.service';
     UserBotChatStatusService,
     UserEmailService,
     EmailLoginUserService,
+    GoogleLoginUserService,
+    GoogleLoginIdentityService,
+    GoogleLinkService,
     InviteLinkService,
     LoginIdentityService,
     TelegramLinkCodeService,
@@ -77,10 +83,11 @@ import { UsersService } from './users.service';
   ],
   // InviteLinkService — наружу для AuthModule (LoginIdentityService,
   // EmailAuthService — inviteCode в письме входа, ADR-0030) и JoinController
-  // (`/auth/join/check`). LoginIdentityService — наружу для AuthModule
-  // (TelegramAuthService, EmailAuthService, ADR-0030/0036) и TelegramModule
-  // (/start join_<code>): единая точка «найти или завести человека при входе»
-  // живёт в users/, а не в auth/, по тем же причинам, что и раньше (ADR-0013 —
+  // (`/auth/join/check`). LoginIdentityService/GoogleLoginIdentityService —
+  // наружу для AuthModule (TelegramAuthService/EmailAuthService/
+  // GoogleAuthService, ADR-0030/0036/0145) и TelegramModule (/start
+  // join_<code>): единая точка «найти или завести человека при входе» живёт
+  // в users/, а не в auth/, по тем же причинам, что и раньше (ADR-0013 —
   // обратный импорт AuthModule → TelegramModule → UsersModule закольцевал бы
   // граф, если бы сервис жил в auth/). TelegramLinkCodeService/
   // TelegramLinkService — той же причиной наружу (ADR-0034):
@@ -88,12 +95,15 @@ import { UsersService } from './users.service';
   // (/start link_<code>, потребление кода) оба берут их отсюда, второй раз не
   // заводим. UserEmailService/EmailLinkTokenService — той же причиной наружу
   // (ADR-0059): EmailLinkService (auth/) собирает привязку почты из них
-  // обоих, второй раз не заводим.
+  // обоих, второй раз не заводим. GoogleLinkService — той же причиной
+  // наружу: GoogleAuthService (auth/) зовёт его для `intent=link`.
   exports: [
     UsersService,
     UserNamesService,
     InviteLinkService,
     LoginIdentityService,
+    GoogleLoginIdentityService,
+    GoogleLinkService,
     TelegramLinkCodeService,
     TelegramLinkService,
     UserEmailService,

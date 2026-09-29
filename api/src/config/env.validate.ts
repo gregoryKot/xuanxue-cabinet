@@ -9,6 +9,7 @@
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { EMPTY_AS_ABSENT_KEYS } from './env.empty-as-absent';
+import { googleGroupMessages } from './env.google-group';
 import { productionRequiredMessages } from './env.production-required';
 import { r2GroupMessages } from './env.r2-group';
 import { vapidGroupMessages } from './env.vapid-group';
@@ -33,6 +34,8 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
   // Та же логика для VAPID (ADR-0092) — push не обязателен нигде, включая
   // production, но половина набора не проходит ни там, ни здесь.
   messages.push(...vapidGroupMessages(instance));
+  // И для Google-входа (ADR-0145) — та же причина.
+  messages.push(...googleGroupMessages(instance));
 
   if (messages.length > 0) {
     throw new Error(

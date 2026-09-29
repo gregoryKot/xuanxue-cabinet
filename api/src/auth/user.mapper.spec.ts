@@ -24,6 +24,7 @@ describe('toMeDto', () => {
       telegramLinked: true,
       botChatActive: true,
       hasEmail: true,
+      googleLinked: true,
       pendingEmail: undefined,
       noTelegram: false,
       needsProfile: true,
@@ -87,6 +88,7 @@ describe('toMeDto', () => {
     expect(dto.hasEmail).toBe(true);
     expect(Object.keys(dto).sort()).toEqual([
       'botChatActive',
+      'googleLinked',
       'hasEmail',
       'id',
       'name',
@@ -97,6 +99,15 @@ describe('toMeDto', () => {
       'status',
       'telegramLinked',
     ]);
+  });
+
+  // ADR-0145: та же пара, что telegramLinked — сам googleId наружу не идёт
+  // (проверено строкой выше), только факт «есть ли».
+  it('googleLinked: true при заполненном googleId, false — без него', () => {
+    expect(toMeDto(fullUser(), true).googleLinked).toBe(true);
+
+    const noGoogle: UserLean = { ...fullUser(), googleId: undefined };
+    expect(toMeDto(noGoogle, true).googleLinked).toBe(false);
   });
 
   // ADR-0059: свой подтверждённый адрес — единственное исключение из
