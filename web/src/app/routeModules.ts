@@ -20,7 +20,7 @@
 // prefetchFirstScreen.ts кладёт их в prefetchCache.ts, а apiFetch хука
 // экрана заберёт готовый промис при монтировании.
 import type { ComponentType } from 'react';
-import { APP_ERRORS_SCREEN_PATH } from '@xuanxue/shared';
+import { APP_ERRORS_SCREEN_PATH, GOOGLE_LOGIN_CALLBACK_PATH } from '@xuanxue/shared';
 import {
   CHANNELS_PATH,
   CLASSES_LIST_PATH,
@@ -109,7 +109,21 @@ export const ROUTE_MODULES = {
     load: () => import('../auth/EmailLoginCallbackScreen'),
     warm: false,
   },
+  // Возврат из Google (ADR-0145) — публичный маршрут, как login/emailLogin
+  // выше: не требует сессии, вошедшему чанк не нужен.
+  googleLogin: {
+    path: GOOGLE_LOGIN_CALLBACK_PATH,
+    load: () => import('../auth/GoogleLoginCallbackScreen'),
+    warm: false,
+  },
   join: { path: '/join/:code', load: () => import('../join/JoinScreen'), warm: false },
+  // Политика конфиденциальности (ADR-0145) — публичный маршрут, открыт и
+  // гостю, и вошедшему (без редиректа), вошедшему чанк не нужен заранее.
+  privacy: {
+    path: '/privacy',
+    load: () => import('../privacy/PrivacyScreen'),
+    warm: false,
+  },
   // Подтверждение почты вторым ключом входа (ADR-0059) — публичный маршрут,
   // как login/emailLogin/join: не требует сессии и не выдаёт её (комментарий
   // в EmailConfirmScreen.tsx), вошедшему чанк не нужен, греть в фоне нечего.

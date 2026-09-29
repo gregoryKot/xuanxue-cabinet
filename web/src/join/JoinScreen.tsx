@@ -12,12 +12,11 @@ import { INVITE_LINK_INVALID_MESSAGE } from '@xuanxue/shared';
 import { NETWORK_ERROR_MESSAGE } from '../api/http';
 import { Button } from '../components/Button';
 import { EntryColumn } from '../components/EntryColumn';
-import { LabeledDivider } from '../components/LabeledDivider';
 import { screenExplanationStyle, screenTitleStyle } from '../components/screenLayout';
 import { SkeletonLines } from '../components/Skeleton';
 import { hasSession, useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
-import { EmailLoginForm } from '../auth/EmailLoginForm';
+import { OtherLoginMethods } from '../auth/OtherLoginMethods';
 import { TelegramLoginSection } from '../auth/TelegramLoginSection';
 import { useJoinByInvite } from './useJoinByInvite';
 
@@ -96,12 +95,11 @@ export default function JoinScreen() {
         navigateAfterLogin={false}
         inviteCode={code}
       >
-        {configStatus === 'ok' && config?.emailLoginEnabled && (
-          <>
-            <LabeledDivider label="или по почте" />
-            <EmailLoginForm inviteCode={code} />
-          </>
-        )}
+        <OtherLoginMethods
+          config={config}
+          configStatus={configStatus}
+          inviteCode={code}
+        />
       </TelegramLoginSection>
     </EntryColumn>
   );

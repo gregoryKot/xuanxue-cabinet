@@ -477,6 +477,7 @@ describe('TasksScreen — штат школы на «/tasks»: список ви
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockApiByPath({
       [MY_EXAMS_PATH]: [makeExam()],

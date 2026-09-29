@@ -12,6 +12,7 @@ const me: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 describe('hasRole', () => {

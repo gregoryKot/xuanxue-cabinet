@@ -53,6 +53,7 @@ function makeMe(overrides: Partial<MeDto> = {}): MeDto {
     botChatActive: false,
     noTelegram: false,
     hasEmail: true,
+    googleLinked: false,
     needsProfile: false,
     ...overrides,
   };

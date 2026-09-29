@@ -131,4 +131,6 @@ export interface AuthConfigDto {
    * ответит 503. Ученику оно ничего не меняет: файл ему виден по самому
    * `MyMaterialDto.file`. */
   fileStorageEnabled: boolean;
+  /** Заданы `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` и `PUBLIC_URL` (ADR-0145). */
+  googleLoginEnabled: boolean;
 }

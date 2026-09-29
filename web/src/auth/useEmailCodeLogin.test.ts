@@ -34,6 +34,7 @@ const ME: MeDto = {
   botChatActive: false,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
   hasEmail: true,
 };
 

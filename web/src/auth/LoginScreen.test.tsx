@@ -199,6 +199,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -257,6 +258,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     });
     await waitFor(() => expect(screen.getByText('Занятия')).toBeInTheDocument());
   });
@@ -280,6 +282,7 @@ describe('LoginScreen — мобильный вход через #tgAuthResult= 
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
@@ -468,6 +471,47 @@ describe('LoginScreen — блок email (emailLoginEnabled)', () => {
     await user.click(screen.getByRole('button', { name: 'Прислать код' }));
 
     expect(await screen.findByText(/Нет связи с сервером/)).toBeInTheDocument();
+  });
+});
+
+describe('LoginScreen — кнопка Google (googleLoginEnabled)', () => {
+  it('googleLoginEnabled: false — кнопки Google нет', async () => {
+    mockRoutes(() =>
+      Promise.resolve({ telegramBotId: 123456, googleLoginEnabled: false }),
+    );
+    renderScreen();
+
+    await screen.findByRole('button', { name: 'Войти через Telegram' });
+    expect(
+      screen.queryByRole('button', { name: 'Войти через Google' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('googleLoginEnabled: true — кнопка Google видна, выше разделителя «или по почте»', async () => {
+    mockRoutes(() =>
+      Promise.resolve({
+        telegramBotId: 123456,
+        googleLoginEnabled: true,
+        emailLoginEnabled: true,
+      }),
+    );
+    const { container } = renderScreen();
+
+    await screen.findByRole('button', { name: 'Войти через Google' });
+    const text = container.textContent ?? '';
+    expect(text.indexOf('Войти через Google')).toBeLessThan(text.indexOf('или по почте'));
+  });
+});
+
+describe('LoginScreen — ссылка на политику конфиденциальности (ADR-0145)', () => {
+  it('ссылка «Политика конфиденциальности» ведёт на /privacy', async () => {
+    mockRoutes(() => Promise.resolve({}));
+    renderScreen();
+
+    const link = await screen.findByRole('link', {
+      name: 'Политика конфиденциальности',
+    });
+    expect(link).toHaveAttribute('href', '/privacy');
   });
 });
 

@@ -55,6 +55,7 @@ const ME_LINKED: MeDto = {
   hasEmail: false,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 const ME_NOT_LINKED: MeDto = {
   ...ME_LINKED,

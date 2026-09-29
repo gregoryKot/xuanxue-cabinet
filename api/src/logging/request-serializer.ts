@@ -15,6 +15,12 @@ import { INVITE_QUERY_PARAM } from '@xuanxue/shared';
 // ?token=, просто читает её фронт, не API) — редактировать задним числом,
 // когда утечка уже в логах Railway, поздно.
 const LOGIN_TOKEN_QUERY_PARAM = 'token';
+// Вход через Google (ADR-0145): Nest сам отдаёт страницу
+// /login/google?code=…&state=… (SPA), и её адрес — GET-запрос, который
+// логируется как любой другой; code/state в теле POST /auth/google
+// редактирует REDACT_PATHS.
+const GOOGLE_CODE_QUERY_PARAM = 'code';
+const GOOGLE_STATE_QUERY_PARAM = 'state';
 
 // Тот же текст, что censor в buildPinoHttpOptions (redact.censor) — единый
 // маркер «здесь был секрет» для обоих механизмов редакции.
@@ -23,6 +29,8 @@ export const REDACTED_VALUE = '[Redacted]';
 const SENSITIVE_QUERY_PARAMS: readonly string[] = [
   INVITE_QUERY_PARAM,
   LOGIN_TOKEN_QUERY_PARAM,
+  GOOGLE_CODE_QUERY_PARAM,
+  GOOGLE_STATE_QUERY_PARAM,
 ];
 
 // Чистая функция — вырезает значения перечисленных query-параметров из url,

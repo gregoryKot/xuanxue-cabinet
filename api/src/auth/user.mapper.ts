@@ -24,6 +24,9 @@
 // отдельно наличие личного чата с ботом (`PersonalChats.chatFor()` без чата
 // и так отдаёт `null`, слать некуда) — строить на этом поле логику
 // отправки нельзя, оно отвечает только на вопрос интерфейса.
+// `googleLinked` — та же пара, что `telegramLinked` (ADR-0145): `id`
+// пользователя не отдаём, только факт «есть googleId» — «Профиль» показывает
+// «привязан» вместо кнопки «Привязать Google».
 import type { MeDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 
@@ -36,6 +39,7 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     telegramLinked: user.telegramId != null,
     botChatActive,
     hasEmail: user.email != null,
+    googleLinked: user.googleId != null,
     pendingEmail: user.pendingEmail,
     noTelegram: user.noTelegramAt != null,
     needsProfile: user.profileNamedAt == null,

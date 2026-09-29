@@ -52,6 +52,7 @@ describe('RequirePeopleAccess', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -71,6 +72,7 @@ describe('RequirePeopleAccess', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -110,6 +112,7 @@ describe('RequirePeopleAccess', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 
@@ -129,6 +132,7 @@ describe('RequirePeopleAccess', () => {
       noTelegram: false,
       hasEmail: true,
       needsProfile: false,
+      googleLinked: false,
     };
     mockedApiFetch.mockResolvedValue(me);
 

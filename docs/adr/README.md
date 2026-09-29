@@ -180,3 +180,4 @@
 | [0142](0142-staging-and-nightly-release.md)                      | ~~Стейджинг из `main`, прод из ветки `release`, выкат ночью после бэкапа~~ — частично заменено ADR-0144 |
 | [0143](0143-posthog-session-replay.md)                           | PostHog (EU cloud) — записи сессий и просмотры экранов, только для вошедших, всё маскируется            |
 | [0144](0144-release-by-owner-command.md)                         | Выкат на прод — только по ручной команде владельца, cron убран                                          |
+| [0145](0145-google-login-and-linking-by-email.md)                | Вход через Google: code + PKCE, ключ `sub`, связка по почте, за которую ручается Google                 |

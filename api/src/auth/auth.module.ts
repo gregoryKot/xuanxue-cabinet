@@ -23,6 +23,9 @@ import { EmailLinkController } from './email-link.controller';
 import { EmailLinkService } from './email-link.service';
 import { EmailLoginTokenRecord, EmailLoginTokenSchema } from './email-login-token.schema';
 import { EmailLoginTokenService } from './email-login-token.service';
+import { GoogleAuthController } from './google-auth.controller';
+import { GoogleAuthService } from './google-auth.service';
+import { GoogleTokenClient } from './google-token-client';
 import { JoinController } from './join.controller';
 import { SESSION_SECRET } from './session-token';
 import { TelegramAuthService } from './telegram-auth.service';
@@ -55,6 +58,7 @@ import { TelegramLinkController } from './telegram-link.controller';
     TelegramLinkController,
     EmailLinkController,
     EmailCodeController,
+    GoogleAuthController,
   ],
   providers: [
     AuthService,
@@ -62,6 +66,11 @@ import { TelegramLinkController } from './telegram-link.controller';
     EmailAuthService,
     EmailLoginTokenService,
     EmailLinkService,
+    // Вход через Google (ADR-0145): GoogleAuthService/GoogleTokenClient —
+    // сюда, GoogleLoginIdentityService приходит как экспорт UsersModule
+    // (импортирован выше), тем же путём, что LoginIdentityService.
+    GoogleAuthService,
+    GoogleTokenClient,
     // Ссылка-приглашение школы (ADR-0030/0036): InviteLinkService и
     // LoginIdentityService приходят как экспорт UsersModule (импортирован
     // выше, второй провайдер здесь не заводим).

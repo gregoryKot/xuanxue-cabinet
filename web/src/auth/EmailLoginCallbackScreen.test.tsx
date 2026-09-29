@@ -31,6 +31,7 @@ const ME: MeDto = {
   noTelegram: false,
   hasEmail: true,
   needsProfile: false,
+  googleLinked: false,
 };
 
 function mockMe(result: 'guest' | 'ok' = 'guest') {

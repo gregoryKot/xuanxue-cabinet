@@ -20,6 +20,11 @@ export const REDACT_PATHS: string[] = [
   // же уровень секретности, что email/hash.
   'req.body.code',
   'req.body.inviteCode',
+  // Вход через Google (ADR-0145): страница /login/google шлёт code/state
+  // POST-ом (req.body), но сама страница отдаётся Nest по адресу
+  // /login/google?code=…&state=… — тот же GET, что логируется по пути;
+  // req.query покрывает этот случай, req.url — redactRequestSerializer ниже.
+  'req.body.state',
   // Query-параметры: код приглашения (?join=, POST /auth/telegram, ADR-0030)
   // и токен входа по email (?token=, если его когда-нибудь передадут GET'ом —
   // сейчас он в теле, см. req.body.hash ниже). pino-std-serializers кладёт
@@ -28,6 +33,10 @@ export const REDACT_PATHS: string[] = [
   // разобранные параметры.
   'req.query.join',
   'req.query.token',
+  // Google (ADR-0145): код авторизации и state со страницы
+  // /login/google?code=…&state=…, тот же уровень секретности.
+  'req.query.code',
+  'req.query.state',
   // Тело апдейта Telegram-вебхука (POST /api/telegram/webhook) — тот же код
   // ссылки-приглашения приходит текстом `/start join_<code>` (ADR-0030
   // «Бот»), а не полем `code`/`inviteCode`; `*.text` (ниже) редактирует

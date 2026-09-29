@@ -85,6 +85,7 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
     expect(Object.keys(body).sort()).toEqual(
       [
         'botChatActive',
+        'googleLinked',
         'hasEmail',
         'id',
         'name',

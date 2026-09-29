@@ -23,13 +23,20 @@ function logSample(): Record<string, unknown> {
           cookie: 'sid=1',
           'x-telegram-bot-api-secret-token': 'webhook-secret',
         },
-        query: { join: 'e'.repeat(32), token: 'f'.repeat(64), limit: '50' },
+        query: {
+          join: 'e'.repeat(32),
+          token: 'f'.repeat(64),
+          limit: '50',
+          code: 'g'.repeat(20),
+          state: 'h'.repeat(43),
+        },
         body: {
           email: 'user@example.com',
           name: 'Мария',
           hash: 'a'.repeat(64),
           code: 'b'.repeat(32),
           inviteCode: 'c'.repeat(32),
+          state: 'i'.repeat(43),
           message: { text: '/start join_' + 'd'.repeat(32), chat: { id: 1 } },
         },
       },
@@ -100,10 +107,13 @@ describe('REDACT_PATHS', () => {
     expect(headers['x-telegram-bot-api-secret-token']).toBe('[Redacted]');
     expect(query.join).toBe('[Redacted]');
     expect(query.token).toBe('[Redacted]');
+    expect(query.code).toBe('[Redacted]');
+    expect(query.state).toBe('[Redacted]');
     expect(body.email).toBe('[Redacted]');
     expect(body.hash).toBe('[Redacted]');
     expect(body.code).toBe('[Redacted]');
     expect(body.inviteCode).toBe('[Redacted]');
+    expect(body.state).toBe('[Redacted]');
     expect((body.message as Record<string, unknown>).text).toBe('[Redacted]');
     expect(resHeaders['set-cookie']).toBe('[Redacted]');
     expect(user.token).toBe('[Redacted]');

@@ -85,6 +85,7 @@ describe('EmailLinkController.link', () => {
       telegramLinked: false,
       botChatActive: true,
       hasEmail: false,
+      googleLinked: false,
       pendingEmail: 'maria@example.com',
       noTelegram: false,
       needsProfile: true,

@@ -6,15 +6,31 @@
 // JoinScreen.tsx, ADR-0030). Уже вошедшего уводит на сохранённый адрес или
 // домашний экран, не показывая эту форму (аудит L2 — раньше жёстко на
 // /schedule, мимо экрана, с которого человек пришёл).
-import { Navigate } from 'react-router-dom';
+import type { CSSProperties } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { EntryColumn } from '../components/EntryColumn';
-import { LabeledDivider } from '../components/LabeledDivider';
-import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
-import { EmailLoginForm } from './EmailLoginForm';
+import {
+  noteStyle,
+  screenExplanationStyle,
+  textLinkLineStyle,
+} from '../components/screenLayout';
+import { OtherLoginMethods } from './OtherLoginMethods';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
 import { postLoginPath } from './returnTo';
+
+// Тише самого входа (noteStyle) — юридическая ссылка внизу, не второе
+// действие экрана (docs/adr/0031, «одно очевидное главное действие»); линия
+// снизу — та же примета кликабельности, что у остальных текстовых ссылок
+// кабинета (textLinkLineStyle, ADR-0098), только некрупная.
+const privacyLinkStyle: CSSProperties = {
+  ...noteStyle,
+  ...textLinkLineStyle,
+  alignSelf: 'flex-start',
+  color: 'inherit',
+  textDecoration: 'none',
+};
 
 // Единственное место, где кабинет вообще упоминает ссылку-приглашение
 // (ADR-0030) до входа: и Telegram, и почта всё равно упрутся в неё дальше
@@ -49,16 +65,17 @@ export default function LoginScreen() {
       <p style={noteStyle}>{INVITE_REQUIRED_MESSAGE}</p>
 
       <TelegramLoginSection config={config} configStatus={configStatus} onReload={reload}>
-        {/* Нет Telegram — email-путь (ADR-0029), выключен по умолчанию, пока
-            школа не подключит Resend (SECURITY §2): без этого условия форма
-            звала бы 503 на каждый ввод. */}
-        {configStatus === 'ok' && config?.emailLoginEnabled && (
-          <>
-            <LabeledDivider label="или по почте" />
-            <EmailLoginForm />
-          </>
-        )}
+        {/* Google и почта — оба за своим флагом конфигурации (ADR-0145,
+            ADR-0029): без него кнопка/форма звала бы 503 на каждый вход. */}
+        <OtherLoginMethods config={config} configStatus={configStatus} />
       </TelegramLoginSection>
+
+      {/* Обязательное поле консоли Google Cloud для OAuth-приложения не в
+          режиме тестирования (ADR-0145) — публичная ссылка на политику
+          конфиденциальности, доступная без входа. */}
+      <Link to="/privacy" style={privacyLinkStyle}>
+        Политика конфиденциальности
+      </Link>
     </EntryColumn>
   );
 }

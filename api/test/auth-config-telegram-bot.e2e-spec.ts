@@ -53,6 +53,7 @@ describe('GET /auth/config (e2e), с BOT_TOKEN', () => {
     expect(Object.keys(body)).toEqual([
       'telegramBotId',
       'emailLoginEnabled',
+      'googleLoginEnabled',
       'fileStorageEnabled',
     ]);
   });

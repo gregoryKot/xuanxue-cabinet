@@ -33,6 +33,7 @@ const STUDENT: MeDto = {
   hasEmail: true,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 
 const VIDEO_BLOCKS: AttemptBlockDto[] = [

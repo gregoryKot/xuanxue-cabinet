@@ -17,6 +17,7 @@ import type { UserLean } from '../users/users.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EmailAuthService } from './email-auth.service';
+import { GoogleAuthService } from './google-auth.service';
 import { PersonalChats } from '../telegram/personal-chats';
 import { TelegramBotService } from '../telegram/telegram-bot.service';
 import type { RequestLike } from '../common/http-headers';
@@ -58,6 +59,8 @@ async function buildController(
   // контроллер только пересказывает `FileStoreService.isEnabled`, в сеть не
   // ходит ни он, ни фейк.
   fileStorageEnabled = false,
+  // Вход через Google (ADR-0145) — та же логика, что у emailLoginEnabled.
+  googleLoginEnabled = false,
 ): Promise<AuthController> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
@@ -72,6 +75,7 @@ async function buildController(
           isEnabled: () => emailLoginEnabled,
         },
       },
+      { provide: GoogleAuthService, useValue: { isEnabled: () => googleLoginEnabled } },
       { provide: ConfigService, useValue: { get: (name: string) => env[name] } },
       { provide: SettingsService, useValue: { get: () => Promise.resolve(settings) } },
       { provide: TelegramBotService, useValue: { botUsername: () => botUsername } },
@@ -90,6 +94,7 @@ describe('AuthController.getConfig', () => {
       telegramBotUsername: undefined,
       schoolSiteUrl: undefined,
       emailLoginEnabled: false,
+      googleLoginEnabled: false,
       fileStorageEnabled: false,
     });
   });
@@ -105,6 +110,7 @@ describe('AuthController.getConfig', () => {
       telegramBotUsername: undefined,
       schoolSiteUrl: 'https://xuanxue.su',
       emailLoginEnabled: false,
+      googleLoginEnabled: false,
       fileStorageEnabled: false,
     });
   });
@@ -162,6 +168,22 @@ describe('AuthController.getConfig', () => {
       emailLoginEnabled: true,
     });
   });
+
+  it('GoogleAuthService.isEnabled() true — googleLoginEnabled true в ответе', async () => {
+    const controller = await buildController(
+      undefined,
+      {},
+      SETTINGS_WITHOUT_SITE,
+      undefined,
+      false,
+      undefined,
+      false,
+      true,
+    );
+    await expect(controller.getConfig()).resolves.toMatchObject({
+      googleLoginEnabled: true,
+    });
+  });
 });
 
 describe('AuthController.me', () => {
@@ -175,6 +197,7 @@ describe('AuthController.me', () => {
       telegramLinked: false,
       botChatActive: false,
       hasEmail: true,
+      googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });
@@ -223,6 +246,7 @@ describe('AuthController.requestEmailLogin', () => {
             },
           },
         },
+        { provide: GoogleAuthService, useValue: {} },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: SettingsService, useValue: {} },
         { provide: TelegramBotService, useValue: {} },
@@ -254,6 +278,7 @@ describe('AuthController.verifyEmailLogin', () => {
             verify: () => Promise.resolve({ user: USER, cookie: 'session=email-tok' }),
           },
         },
+        { provide: GoogleAuthService, useValue: {} },
         { provide: ConfigService, useValue: { get: () => undefined } },
         { provide: SettingsService, useValue: {} },
         { provide: TelegramBotService, useValue: {} },
@@ -278,6 +303,7 @@ describe('AuthController.verifyEmailLogin', () => {
       telegramLinked: false,
       botChatActive: false,
       hasEmail: true,
+      googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });
@@ -326,6 +352,7 @@ describe('AuthController.loginWithTelegram', () => {
       telegramLinked: false,
       botChatActive: false,
       hasEmail: true,
+      googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });

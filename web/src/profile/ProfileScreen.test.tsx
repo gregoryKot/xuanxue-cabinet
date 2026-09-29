@@ -4,14 +4,28 @@
 // удаляем с концами»); форма имени в изоляции — ProfileNameSection.test.tsx,
 // здесь только то, что она открывается уже с разобранным me.name.
 import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
+import type * as GoogleAuthRedirectModule from '../auth/googleAuthRedirect';
+import { redirectToGoogleLink } from '../auth/googleAuthRedirect';
 import ProfileScreen from './ProfileScreen';
+
+vi.mock('../auth/googleAuthRedirect', async () => {
+  const actual = await vi.importActual<typeof GoogleAuthRedirectModule>(
+    '../auth/googleAuthRedirect',
+  );
+  return { ...actual, redirectToGoogleLink: vi.fn() };
+});
+const redirectToGoogleLinkSpy = vi.mocked(redirectToGoogleLink);
+afterEach(() => {
+  redirectToGoogleLinkSpy.mockClear();
+});
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');
@@ -33,12 +47,17 @@ const STUDENT: MeDto = {
   hasEmail: true,
   noTelegram: false,
   needsProfile: false,
+  googleLinked: false,
 };
 
-function renderScreen(me: MeDto, notificationsResponse: unknown = { enabled: [] }) {
+function renderScreen(
+  me: MeDto,
+  notificationsResponse: unknown = { enabled: [] },
+  authConfig: unknown = {},
+) {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === '/auth/me') return Promise.resolve(me);
-    if (path === '/auth/config') return Promise.resolve({});
+    if (path === '/auth/config') return Promise.resolve(authConfig);
     if (path === '/me/notifications') {
       return notificationsResponse instanceof Error
         ? Promise.reject(notificationsResponse)
@@ -272,6 +291,60 @@ describe('ProfileScreen — карточка «Сбои» (ADR-0132)', () => {
 
     await screen.findByRole('heading', { level: 1, name: 'Профиль' });
     expect(screen.queryByRole('link', { name: /Сбои/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('ProfileScreen — привязка Google (ADR-0145)', () => {
+  it('googleLoginEnabled: false — блока нет вовсе', async () => {
+    renderScreen(STUDENT, { enabled: [] }, { googleLoginEnabled: false });
+
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
+    expect(
+      screen.queryByText('Google привязан — можно входить через него.'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Привязать Google' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('googleLoginEnabled: true, googleLinked: false — объяснение и кнопка «Привязать Google»', async () => {
+    renderScreen(STUDENT, { enabled: [] }, { googleLoginEnabled: true });
+
+    expect(
+      await screen.findByRole('button', { name: 'Привязать Google' }),
+    ).toBeInTheDocument();
+    const explanation = screen.getByText(/Второй путь входа/);
+    expect(explanation).toHaveTextContent(
+      'Второй путь входа на случай, если потеряете доступ к Telegram или почте — ' +
+        'можно будет войти через Google.',
+    );
+    expect(screen.getByText('можно будет войти через Google').tagName).toBe('STRONG');
+  });
+
+  it('googleLoginEnabled: true, googleLinked: true — спокойная строка, кнопки нет', async () => {
+    renderScreen(
+      { ...STUDENT, googleLinked: true },
+      { enabled: [] },
+      { googleLoginEnabled: true },
+    );
+
+    expect(
+      await screen.findByText('Google привязан — можно входить через него.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Привязать Google' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('клик по кнопке уводит вкладку (redirectToGoogleLink) и оставляет кнопку занятой', async () => {
+    const user = userEvent.setup();
+    renderScreen(STUDENT, { enabled: [] }, { googleLoginEnabled: true });
+
+    const button = await screen.findByRole('button', { name: 'Привязать Google' });
+    await user.click(button);
+
+    expect(redirectToGoogleLinkSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(button).toBeDisabled());
   });
 });
 
