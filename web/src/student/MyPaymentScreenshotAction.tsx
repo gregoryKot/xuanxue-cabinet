@@ -40,7 +40,7 @@ const RETENTION_NOTE =
 const BOT_NOTE =
   'Откроется чат с ботом — пришлите туда фото перевода. ' +
   `${RETENTION_NOTE} ` +
-  'Сообщение с фото останется в вашем чате Telegram: удалить его можете только вы.';
+  'Сообщение с фото останется в вашем чате Telegram: удалить его можете **только вы**.';
 
 const actionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2 };
 
