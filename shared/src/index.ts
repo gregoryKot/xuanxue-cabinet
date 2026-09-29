@@ -31,6 +31,7 @@ export {
   DEFAULT_PREVIEW_MINUTES,
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
 } from './domain';
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {

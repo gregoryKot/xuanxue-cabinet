@@ -33,6 +33,7 @@ const TZ = 'Asia/Jerusalem';
 // 5 сентября 2026, 10:00 в Израиле (UTC+3).
 const NOW = DateTime.fromISO('2026-09-05T07:00:00Z', { zone: 'utc' });
 const BOT_NAME = 'xuanxue_bot';
+const PAYMENT_CONTACT = 'Маше @marievyazova';
 
 function utc(iso: string): DateTime {
   return DateTime.fromISO(iso, { zone: 'utc' });
@@ -95,7 +96,12 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
   function build(options: BuildOptions = {}): Harness {
     const reminder = { ...DEFAULT_PAYMENT_REMINDER, enabled: true, ...options.reminder };
     const settings = {
-      get: () => Promise.resolve({ tz: TZ, paymentReminder: reminder } as SettingsDto),
+      get: () =>
+        Promise.resolve({
+          tz: TZ,
+          paymentReminder: reminder,
+          paymentContact: PAYMENT_CONTACT,
+        } as SettingsDto),
     } as unknown as SettingsService;
     const chats = options.chats ?? new Map<string, string>();
     const chatFor = jest.fn((userId: string) =>
@@ -143,7 +149,9 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
     const [chatId, text] = sendMessage.mock.calls[0] as [string, string];
     expect(chatId).toBe(`chat-${id}`);
     expect(text).toContain('Ваня, напоминаем об оплате за сентябрь 2026');
-    expect(text).toContain(`https://t.me/${BOT_NAME}?start=pay_2026-09`);
+    // Дефолт ведёт к бухгалтеру напрямую, не к боту (ADR-0159).
+    expect(text).toContain(`пришлите ${PAYMENT_CONTACT} в Telegram.`);
+    expect(text).not.toContain('t.me');
     const doc = await paymentModel.findOne({ userId: id, month: '2026-09' }).lean();
     expect(doc?.status).toBe('unpaid');
     expect(doc?.reminderSentAt).toBeInstanceOf(Date);
@@ -292,15 +300,34 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
     expect(await notificationModel.countDocuments({ userId: id })).toBe(1);
   });
 
+  it('свой шаблон со {ссылка} — deep link на бота, контакт тоже подставлен', async () => {
+    const { chats } = await withChat();
+    const { service, sendMessage } = build({
+      chats,
+      reminder: { template: 'Присылайте {контакт} или сюда:[ {ссылка}]' },
+    });
+
+    await service.remind(NOW);
+
+    const text = (sendMessage.mock.calls[0] as [string, string])[1];
+    expect(text).toBe(
+      `Присылайте ${PAYMENT_CONTACT} или сюда: https://t.me/${BOT_NAME}?start=pay_2026-09`,
+    );
+  });
+
   it('нет имени бота — ссылка исчезает вместе с пробелом, конец текста без хвоста', async () => {
     const { chats } = await withChat();
-    const { service, sendMessage } = build({ chats, botUsername: undefined });
+    const { service, sendMessage } = build({
+      chats,
+      botUsername: undefined,
+      reminder: { template: 'Присылайте {контакт}.[ {ссылка}]' },
+    });
 
     await service.remind(NOW);
 
     const text = (sendMessage.mock.calls[0] as [string, string])[1];
     expect(text).not.toContain('t.me');
-    expect(text.endsWith('пришлите скриншот боту.')).toBe(true);
+    expect(text.endsWith(`Присылайте ${PAYMENT_CONTACT}.`)).toBe(true);
   });
 
   it('{сумма} подставляется из amountMinor документа оплаты', async () => {

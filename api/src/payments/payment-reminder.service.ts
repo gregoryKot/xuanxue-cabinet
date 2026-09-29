@@ -111,6 +111,7 @@ export class PaymentReminderService {
       month,
       amountMinor: doc.amountMinor,
       botUsername: this.bot.botUsername(),
+      contact: settings.paymentContact,
     });
     return claimAndRun(
       this.paymentModel,

@@ -28,8 +28,16 @@ export type TemplatePlaceholder = (typeof TEMPLATE_PLACEHOLDERS)[number];
 
 /** Допустимые имена подстановок в напоминании об оплате (ADR-0051): личное
  * сообщение ученику, поэтому `{ведущий}`/`{пароль}` из поста здесь
- * бессмысленны, а `{месяц}`/`{сумма}`/`{имя}` в посте — наоборот. */
-export const PAYMENT_REMINDER_PLACEHOLDERS = ['месяц', 'сумма', 'имя', 'ссылка'] as const;
+ * бессмысленны, а `{месяц}`/`{сумма}`/`{имя}` в посте — наоборот. `{контакт}` —
+ * кому присылать скриншот перевода (настройка школы `paymentContact`,
+ * ADR-0159). */
+export const PAYMENT_REMINDER_PLACEHOLDERS = [
+  'месяц',
+  'сумма',
+  'имя',
+  'ссылка',
+  'контакт',
+] as const;
 
 type PlaceholderValue = string | number | null | undefined;
 

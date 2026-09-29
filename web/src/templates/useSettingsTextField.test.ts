@@ -7,6 +7,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
   type SettingsDto,
 } from '@xuanxue/shared';
@@ -19,6 +20,7 @@ const SETTINGS: SettingsDto = {
   previewMinutes: 5,
   lessonReminderMinutes: 60,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentContact: DEFAULT_PAYMENT_CONTACT,
   paymentReminder: DEFAULT_PAYMENT_REMINDER,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
@@ -160,6 +162,7 @@ describe('useSettingsTextField — синхронизация с сохранё�
     const changed: SettingsDto = {
       ...SETTINGS,
       newcomerContact: 'Ире @irina_school',
+      paymentContact: DEFAULT_PAYMENT_CONTACT,
       updatedAt: '2026-09-06T18:05:00.000Z',
     };
     const { result, rerender } = renderHook(

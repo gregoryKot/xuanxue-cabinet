@@ -19,6 +19,8 @@ export interface PaymentReminderTextInput {
   amountMinor?: number;
   /** `undefined` — бот ещё не прогрет и имя неизвестно: ссылки не будет. */
   botUsername?: string;
+  /** Кому присылать скриншот — `settings.paymentContact` (ADR-0159). */
+  contact: string;
 }
 
 export function buildPaymentReminderText(input: PaymentReminderTextInput): string {
@@ -37,6 +39,7 @@ export function buildPaymentReminderText(input: PaymentReminderTextInput): strin
             `${PAYMENT_TELEGRAM_START_PREFIX}${input.month}`,
           )
         : '',
+      контакт: input.contact,
     },
     PAYMENT_REMINDER_PLACEHOLDERS,
   );

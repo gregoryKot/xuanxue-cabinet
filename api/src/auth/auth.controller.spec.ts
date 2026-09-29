@@ -5,6 +5,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_PREVIEW_MINUTES,
@@ -30,6 +31,7 @@ const SETTINGS_WITHOUT_SITE: SettingsDto = {
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
   lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentContact: DEFAULT_PAYMENT_CONTACT,
   paymentReminder: DEFAULT_PAYMENT_REMINDER,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };

@@ -10,7 +10,7 @@ import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { prepareExamImage } from '../lib/examImageFile';
 import { applyUploadedPayment } from './applyUploadedPayment';
 
-const LOAD_ERROR_MESSAGE = 'Не удалось загрузить абонемент. Попробуйте ещё раз.';
+const LOAD_ERROR_MESSAGE = 'Не удалось загрузить данные об оплате. Попробуйте ещё раз.';
 // ApiError и Error из prepareExamImage (файл слишком большой, формат не
 // читается) несут готовый текст по VOICE — этот запасной только на
 // ошибку без текста: пустая строка под кнопкой читалась бы как «ничего не случилось».

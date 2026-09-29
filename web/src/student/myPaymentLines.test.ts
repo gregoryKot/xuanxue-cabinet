@@ -62,7 +62,11 @@ describe('paymentStatusText — пояс зрителя UTC', () => {
 
 describe('myPaymentLines', () => {
   it('current без строки — «Оплаты за месяц нет», скриншот можно прислать', () => {
-    const { current, others } = myPaymentLines({ month: '2026-09', rows: [] });
+    const { current, others } = myPaymentLines({
+      month: '2026-09',
+      rows: [],
+      contact: 'Маше @marievyazova',
+    });
 
     expect(current).toEqual({
       month: '2026-09',
@@ -75,14 +79,22 @@ describe('myPaymentLines', () => {
   });
 
   it('оплаченный месяц — действия нет', () => {
-    const { current } = myPaymentLines({ month: '2026-09', rows: [PAID] });
+    const { current } = myPaymentLines({
+      month: '2026-09',
+      rows: [PAID],
+      contact: 'Маше @marievyazova',
+    });
 
     expect(current.status).toBe('paid');
     expect(current.canSendScreenshot).toBe(false);
   });
 
   it('ждёт подтверждения — скриншот можно прислать ещё раз', () => {
-    const { current } = myPaymentLines({ month: '2026-09', rows: [AWAITING] });
+    const { current } = myPaymentLines({
+      month: '2026-09',
+      rows: [AWAITING],
+      contact: 'Маше @marievyazova',
+    });
 
     expect(current.text).toBe('Ждём подтверждения');
     expect(current.canSendScreenshot).toBe(true);
@@ -91,6 +103,7 @@ describe('myPaymentLines', () => {
   it('остальные месяцы — в порядке сервера, без текущего', () => {
     const page: MyPaymentsPageDto = {
       month: '2026-09',
+      contact: 'Маше @marievyazova',
       rows: [
         AWAITING,
         { ...PAID, month: '2026-08', confirmedAt: '2026-08-04T09:00:00.000Z' },
@@ -112,7 +125,11 @@ describe('myPaymentLines', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-09-30T15:30:00.000Z'));
     try {
-      const { current } = myPaymentLines({ month: '2026-09', rows: [] });
+      const { current } = myPaymentLines({
+        month: '2026-09',
+        rows: [],
+        contact: 'Маше @marievyazova',
+      });
       expect(current.month).toBe('2026-09');
       expect(current.title).toBe('Сентябрь 2026');
     } finally {

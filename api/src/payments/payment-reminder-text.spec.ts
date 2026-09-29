@@ -5,20 +5,31 @@ const BASE = {
   template: DEFAULT_PAYMENT_REMINDER.template,
   name: 'Ваня',
   month: '2026-09',
+  contact: 'Маше @marievyazova',
 };
 
 describe('buildPaymentReminderText', () => {
-  it('подставляет имя и месяц, ссылка — deep link pay_<месяц>', () => {
+  it('по умолчанию — имя, месяц и контакт бухгалтера, без ссылки на бота (ADR-0159)', () => {
     const text = buildPaymentReminderText({ ...BASE, botUsername: 'xuanxue_bot' });
 
-    expect(text).toContain('Ваня, напоминаем об оплате за сентябрь 2026.');
-    expect(text.endsWith(' https://t.me/xuanxue_bot?start=pay_2026-09')).toBe(true);
+    expect(text).toBe(
+      'Ваня, напоминаем об оплате за сентябрь 2026.\nСкриншот перевода пришлите Маше @marievyazova в Telegram.',
+    );
+  });
+
+  it('{ссылка} в своём шаблоне — deep link pay_<месяц>', () => {
+    const template = 'Пришлите боту:[ {ссылка}]';
+
+    expect(
+      buildPaymentReminderText({ ...BASE, template, botUsername: 'xuanxue_bot' }),
+    ).toBe('Пришлите боту: https://t.me/xuanxue_bot?start=pay_2026-09');
   });
 
   it('нет имени бота — ссылка исчезает вместе с пробелом перед ней', () => {
-    const text = buildPaymentReminderText(BASE);
+    const template = 'Пришлите {контакт}.[ {ссылка}]';
+    const text = buildPaymentReminderText({ ...BASE, template });
 
-    expect(text.endsWith('пришлите скриншот боту.')).toBe(true);
+    expect(text).toBe('Пришлите Маше @marievyazova.');
     expect(text).not.toContain('t.me');
   });
 

@@ -33,6 +33,7 @@ vi.mock('../student/myPaymentsVisibility', async () => {
     '../student/myPaymentsVisibility',
   );
   return {
+    ...actual,
     isMyPaymentsVisible: (me: MeDto | null) =>
       actual.isMyPaymentsVisible(me, paymentsFlag.visible),
   };
@@ -47,6 +48,9 @@ vi.mock('../api/http', async () => {
 });
 
 resetApiFetchBetweenTests();
+
+// Контакт бухгалтера приезжает ученику в его же /me/payments (ADR-0159).
+const MY_PAYMENTS_PAGE = { month: '2026-09', rows: [], contact: 'Маше @marievyazova' };
 
 // hasEmail: true — почта уже подтверждена (тот же ключ, которым вошли),
 // Telegram не связан: ровно один ключ есть, SecondLoginKey (ADR-0059)
@@ -84,7 +88,7 @@ function renderScreen(
     if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
     // Абонемент есть только у ученика (PLAN §15, слой 2.4); сам блок —
     // student/MyPaymentsSection.test.tsx, здесь лишь его присутствие.
-    if (path === '/me/payments') return Promise.resolve({ month: '2026-09', rows: [] });
+    if (path === '/me/payments') return Promise.resolve(MY_PAYMENTS_PAGE);
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 
@@ -310,21 +314,25 @@ describe('ProfileScreen — секция «Абонемент» спрятана
     expect(await screen.findByText('Оплаты за сентябрь нет')).toBeInTheDocument();
   });
 
-  it('у ученика без ролей блока «Абонемент» нет и запроса за оплатами тоже нет', async () => {
+  it('у ученика без ролей блока «Абонемент» нет, но есть «Оплата» с контактом бухгалтера', async () => {
     renderScreen(STUDENT);
 
-    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
-    await screen.findByText('Второй способ входа').catch(() => null);
+    expect(await screen.findByRole('heading', { name: 'Оплата' })).toBeInTheDocument();
+    const note = await screen.findByText(/Скриншот перевода присылайте/);
+    expect(note).toHaveTextContent(
+      'Скриншот перевода присылайте Маше @marievyazova в Telegram.',
+    );
+    expect(within(note).getByText('Маше @marievyazova').tagName).toBe('STRONG');
     expect(screen.queryByRole('heading', { name: 'Абонемент' })).not.toBeInTheDocument();
-    expect(mockedApiFetch).not.toHaveBeenCalledWith('/me/payments', expect.anything());
   });
 
-  it('у учителя блока нет и запроса за оплатами тоже нет', async () => {
+  it('у учителя нет ни «Абонемента», ни «Оплаты», и запроса за оплатами тоже нет', async () => {
     renderScreen({ ...STUDENT, id: 't1', roles: ['teacher'] });
 
     await screen.findByRole('heading', { level: 1, name: 'Профиль' });
     await screen.findByText('Второй способ входа').catch(() => null);
     expect(screen.queryByRole('heading', { name: 'Абонемент' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Оплата' })).not.toBeInTheDocument();
     expect(mockedApiFetch).not.toHaveBeenCalledWith('/me/payments', expect.anything());
   });
 });
@@ -432,7 +440,7 @@ describe('ProfileScreen — ошибка загрузки уведомлений
       if (path === '/me/notifications')
         return Promise.reject(new Error('сеть недоступна'));
       if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
-      if (path === '/me/payments') return Promise.resolve({ month: '2026-09', rows: [] });
+      if (path === '/me/payments') return Promise.resolve(MY_PAYMENTS_PAGE);
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
     render(

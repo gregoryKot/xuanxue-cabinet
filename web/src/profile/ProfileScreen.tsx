@@ -27,7 +27,11 @@ import { screenSectionStyle } from '../components/screenLayout';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { MyPaymentsSection } from '../student/MyPaymentsSection';
-import { isMyPaymentsVisible } from '../student/myPaymentsVisibility';
+import { PaymentContactNote } from '../student/PaymentContactNote';
+import {
+  isMyPaymentsVisible,
+  isPaymentContactVisible,
+} from '../student/myPaymentsVisibility';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
 import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
 import { isStandalone } from '../pwa/installEnvironment';
@@ -73,6 +77,10 @@ export default function ProfileScreen() {
           ученика»). */}
       {/* Спрятана флагом (ADR-0157, myPaymentsVisibility.ts). */}
       {isMyPaymentsVisible(me) && <MyPaymentsSection me={me} />}
+
+      {/* Вместо секции выше ученику называют, кому присылать скриншот
+          перевода (ADR-0159): контакт бухгалтера из настроек школы. */}
+      {isPaymentContactVisible(me) && <PaymentContactNote />}
 
       <NotificationPrefsSection />
       <PushNotificationsSection />

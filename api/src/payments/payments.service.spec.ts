@@ -3,6 +3,7 @@
 // ветки revoke, read-after-write «подтвердил → listMine видит paid».
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
+import { DEFAULT_PAYMENT_CONTACT } from '@xuanxue/shared';
 import { MONGO_DUPLICATE_KEY_CODE } from '../common/mongo-error-codes';
 import { ClassRecord } from '../classes/class.schema';
 import { LessonRecord } from '../lessons/lesson.schema';
@@ -157,7 +158,11 @@ describe('PaymentsService', () => {
     const page = await service.listMine(userId, beforeMidnightUtc);
 
     expect(monthKeyOf(beforeMidnightUtc, 'UTC')).toBe('2026-08');
-    expect(page).toEqual({ month: '2026-09', rows: [] });
+    expect(page).toEqual({
+      month: '2026-09',
+      rows: [],
+      contact: DEFAULT_PAYMENT_CONTACT,
+    });
   });
 
   it('listMonth: активный ученик без документа — unpaid, не пропуск строки', async () => {

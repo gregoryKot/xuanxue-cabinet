@@ -128,6 +128,7 @@ export class PaymentsService {
     return {
       month: monthKeyOf(now, settings.tz),
       rows: docs.map((doc) => toMyPaymentDto(decryptPayment(doc))),
+      contact: settings.paymentContact,
     };
   }
 }

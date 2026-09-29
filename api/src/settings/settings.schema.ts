@@ -80,6 +80,12 @@ export class SettingsRecord {
   @Prop({ type: String })
   newcomerContact?: string;
 
+  // Не required и без default, как newcomerContact: старая база без поля —
+  // дефолт (DEFAULT_PAYMENT_CONTACT) подставляется явно при чтении
+  // (toSettingsDto, ADR-0159).
+  @Prop({ type: String })
+  paymentContact?: string;
+
   // Не required и без default: пока школа не назвала ответственного, полей
   // просто нет, и страница /privacy честно отправляет к учителю, а не
   // показывает пустое имя (GET /auth/config отдаёт их только когда они есть).
@@ -107,6 +113,9 @@ export const SETTINGS_FIELD_POLICY: FieldPolicy = {
   ),
   newcomerContact: plain(
     'текст публичный — бот называет этот контакт незнакомцу (ADR-0115)',
+  ),
+  paymentContact: plain(
+    'текст публичный для учеников — контакт бухгалтера, куда присылают скриншот перевода (ADR-0159)',
   ),
   dataControllerName: plain(
     'публичный текст — школа сама называет, кто отвечает за данные; отдаётся всем через GET /auth/config',
