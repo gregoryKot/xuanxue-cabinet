@@ -8,7 +8,7 @@ import {
   GOOGLE_EMAIL_NEEDS_EMAIL_LOGIN_MESSAGE,
   GOOGLE_OTHER_ACCOUNT_MESSAGE,
   NEW_PERSON_NAME,
-  NO_INVITE_LINK_MESSAGE,
+  GOOGLE_NOT_LINKED_MESSAGE,
 } from '@xuanxue/shared';
 import { DateTime } from 'luxon';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
@@ -188,7 +188,7 @@ describe('GoogleLoginIdentityService', () => {
           undefined,
           NOW,
         ),
-      ).rejects.toThrow(NO_INVITE_LINK_MESSAGE);
+      ).rejects.toThrow(GOOGLE_NOT_LINKED_MESSAGE);
     });
 
     it('invite игнорируется для существующего человека', async () => {
@@ -236,7 +236,7 @@ describe('GoogleLoginIdentityService', () => {
           undefined,
           NOW,
         ),
-      ).rejects.toThrow(NO_INVITE_LINK_MESSAGE);
+      ).rejects.toThrow(GOOGLE_NOT_LINKED_MESSAGE);
 
       await expect(model.exists({ googleId: 'sub-7' })).resolves.toBeNull();
     });

@@ -80,6 +80,7 @@ export {
   GOOGLE_LINK_TAKEN_MESSAGE,
   GOOGLE_LINK_OTHER_MESSAGE,
   GOOGLE_LINK_SESSION_MESSAGE,
+  GOOGLE_NOT_LINKED_MESSAGE,
 } from './google-login';
 export type { LinkEmailInput, ConfirmEmailInput } from './email-link';
 export {
