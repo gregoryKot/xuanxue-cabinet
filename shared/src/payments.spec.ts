@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatAmountIls,
+  formatMonthNameRu,
   formatMonthRu,
   isMonthKey,
   MONTH_KEY_RE,
@@ -29,6 +30,16 @@ describe('isMonthKey', () => {
     expect(isMonthKey('2026-09')).toBe(true);
     expect(MONTH_KEY_RE.test('2026-01')).toBe(true);
     expect(MONTH_KEY_RE.test('2026-12')).toBe(true);
+  });
+});
+
+describe('formatMonthNameRu', () => {
+  it('сентябрь без года — для «Оплаты за сентябрь нет»', () => {
+    expect(formatMonthNameRu('2026-09')).toBe('сентябрь');
+  });
+
+  it('декабрь — последний индекс таблицы', () => {
+    expect(formatMonthNameRu('2026-12')).toBe('декабрь');
   });
 });
 

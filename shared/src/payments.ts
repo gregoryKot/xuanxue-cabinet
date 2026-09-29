@@ -49,9 +49,15 @@ const MONTH_NAMES_RU = [
  * следующий PR). Вход — уже проверенный `MONTH_KEY_RE` месяц (DTO или
  * `monthKeyOf`), повторной проверки здесь нет. */
 export function formatMonthRu(month: string): string {
+  return `${formatMonthNameRu(month)} ${month.slice(0, 4)}`;
+}
+
+/** '2026-09' → 'сентябрь' — месяц без года, для строки кабинета ученика
+ * «Оплаты за сентябрь нет» (PLAN §15, слой 2.4): год там стоит в названии
+ * строки рядом, второй раз он лишний. */
+export function formatMonthNameRu(month: string): string {
   const monthIndex = Number(month.slice(5, 7)) - 1;
-  const year = month.slice(0, 4);
-  return `${MONTH_NAMES_RU[monthIndex]} ${year}`;
+  return MONTH_NAMES_RU[monthIndex] ?? month;
 }
 
 /** '2026-01' + (-1) → '2025-12' — чистая арифметика по строке, без Date
@@ -108,6 +114,24 @@ export interface MyPaymentDto {
   confirmedAt?: string; // ISO UTC с Z
   hasScreenshot: boolean;
 }
+
+/** Ответ `GET /me/payments` (слой 2.4) — пара, как у `PaymentsPageDto`:
+ * `month` — текущий месяц в поясе школы, его считает сервер (`monthKeyOf`
+ * по `settings.tz`). Кабинет пояса школы не знает, а месяц по часам зрителя
+ * 1-го числа в Сиднее уже октябрь, пока в Израиле сентябрь (ADR-0049).
+ * `rows` — только месяцы, о которых что-то известно: нет документа — нет
+ * строки, и кабинет рисует текущий месяц «не оплачен» сам. */
+export interface MyPaymentsPageDto {
+  month: string;
+  rows: MyPaymentDto[];
+}
+
+/** Сколько дней живёт снимок перевода (ADR-0050): после подтверждения и без
+ * него. Одно место на уборщика (payment-screenshot-sweep.service.ts) и на
+ * текст кабинета рядом с кнопкой «Отправить скриншот» — поменяли срок, и
+ * обещание ученику поменялось вместе с ним. */
+export const PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS = 30;
+export const PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS = 90;
 
 export interface PaymentsPageDto {
   month: string;
