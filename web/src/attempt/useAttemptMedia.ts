@@ -3,7 +3,7 @@
 // Вынесено из useAttempt.ts: там осталась только сама попытка и её отправка.
 import { useCallback, useState } from 'react';
 import type { ExamMediaDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { errorFrom, type FormError } from '../components/FormServerError';
 
 const ADD_MEDIA_LINK_ERROR_MESSAGE = 'Не удалось сохранить ссылку. Попробуйте ещё раз.';
@@ -83,8 +83,8 @@ export function useAttemptMedia(
     async (itemId: string, url: string): Promise<boolean> => {
       setLinkState({ itemId, pending: true, error: null });
       try {
-        await apiFetch(`/attempts/${attemptId}/media/link`, {
-          method: 'POST',
+        await apiRoute('POST /attempts/:id/media/link', {
+          params: { id: attemptId },
           body: { url, itemId },
         });
         await reload();

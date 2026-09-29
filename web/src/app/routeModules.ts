@@ -29,8 +29,6 @@ import {
   EXAM_EDITOR_ITEMS_PATH,
   EXAM_ITEMS_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
-  GRADED_ATTEMPTS_PATH,
-  GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   LESSONS_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
@@ -43,8 +41,6 @@ import {
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
-  attemptPath,
-  attemptReviewPath,
   channelsListPath,
   entityPath,
   examItemsListPath,
@@ -53,6 +49,12 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import {
+  GRADED_ATTEMPTS_PATH,
+  GRADING_QUEUE_PATH,
+  attemptPath,
+  attemptReviewPath,
+} from '../api/gradingPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
 
@@ -325,8 +327,7 @@ export const ROUTE_MODULES = {
     path: '/grading',
     load: () => import('../grading/GradingQueueScreen'),
     warm: true,
-    // Экран — два раздела (ждут проверки/проверенные), греем оба пути.
-    prefetch: () => [GRADING_QUEUE_PATH, GRADED_ATTEMPTS_PATH],
+    prefetch: () => [GRADING_QUEUE_PATH, GRADED_ATTEMPTS_PATH], // два раздела экрана
   },
   attemptReview: {
     path: '/grading/:attemptId',
@@ -394,8 +395,7 @@ export const ROUTE_MODULES = {
     path: '/attempts/:id',
     load: () => import('../attempt/AttemptScreen'),
     warm: true,
-    // Своя попытка своим адресом (ADR-0126, attempt/useAttempt.ts) — тем же
-    // приёмом, что у редакторов записей выше (entityPath(..., lastSegment)).
+    // Своя попытка своим адресом (ADR-0126), как у редакторов записей выше.
     prefetch: (pathname) => [attemptPath(lastSegment(pathname))],
   },
   people: {

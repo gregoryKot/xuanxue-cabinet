@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import type { GradingCommentPresetDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { CreateGradingCommentPresetDto } from './dto/create-grading-comment-preset.dto';
 import { ListGradingCommentPresetsDto } from './dto/list-grading-comment-presets.dto';
@@ -30,11 +31,13 @@ export class GradingPresetsController {
   constructor(private readonly gradingPresetsService: GradingPresetsService) {}
 
   @Get()
+  @ApiRoute('GET /grading-presets')
   list(@Query() query: ListGradingCommentPresetsDto): Promise<GradingCommentPresetDto[]> {
     return this.gradingPresetsService.list(query);
   }
 
   @Post()
+  @ApiRoute('POST /grading-presets')
   @HttpCode(HttpStatus.CREATED)
   create(
     @Body() body: CreateGradingCommentPresetDto,
@@ -44,6 +47,7 @@ export class GradingPresetsController {
   }
 
   @Patch(':id')
+  @ApiRoute('PATCH /grading-presets/:id')
   update(
     @Param('id') id: string,
     @Body() body: UpdateGradingCommentPresetDto,
@@ -52,6 +56,7 @@ export class GradingPresetsController {
   }
 
   @Delete(':id')
+  @ApiRoute('DELETE /grading-presets/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.gradingPresetsService.remove(id);

@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, ExamMediaDto, MeDto } from '@xuanxue/shared';
-import { attemptPath } from '../api/apiPaths';
+import { attemptPath } from '../api/gradingPaths';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';

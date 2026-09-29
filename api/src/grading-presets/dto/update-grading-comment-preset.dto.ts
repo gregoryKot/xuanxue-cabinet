@@ -3,13 +3,10 @@
 // поэтому `OptionalNotNull()`, а не обычный `@IsOptional()`, тот же приём,
 // что у channels (UpdateChannelDto).
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import {
-  GRADING_COMMENT_PRESET_LIMITS,
-  type UpdateGradingCommentPresetInput,
-} from '@xuanxue/shared';
+import { GRADING_COMMENT_PRESET_LIMITS, type ApiRouteBody } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class UpdateGradingCommentPresetDto implements UpdateGradingCommentPresetInput {
+export class UpdateGradingCommentPresetDto implements ApiRouteBody<'PATCH /grading-presets/:id'> {
   @OptionalNotNull()
   @TrimString()
   @IsString()

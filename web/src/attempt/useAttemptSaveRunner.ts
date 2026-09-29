@@ -12,7 +12,8 @@
 // повтора — AttemptInProgress.tsx ждёт этот промис перед submit().
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ATTEMPT_EXPIRED_MESSAGE, type AttemptAnswerDto } from '@xuanxue/shared';
-import { apiFetch, ApiError } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 import { clearAttemptDraft, forgetSavedAnswers } from './attemptLocalDraft';
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -65,8 +66,8 @@ export function useAttemptSaveRunner(
       };
       saving.current = true;
       setStatus('saving');
-      const attempt = apiFetch(`/attempts/${attemptId}/answers`, {
-        method: 'PATCH',
+      const attempt = apiRoute('PATCH /attempts/:id/answers', {
+        params: { id: attemptId },
         body,
       })
         .then(() => {

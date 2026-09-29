@@ -6,6 +6,7 @@ import { Body, Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/com
 import { DateTime } from 'luxon';
 import type { AnswerVideoUploadDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { AnswerVideoStartService } from './answer-video-start';
 import { StartAnswerVideoDto } from './dto/start-answer-video.dto';
@@ -15,6 +16,7 @@ export class AnswerVideoStartController {
   constructor(private readonly service: AnswerVideoStartService) {}
 
   @Post(':id/answer-video')
+  @ApiRoute('POST /attempts/:id/answer-video')
   @HttpCode(HttpStatus.CREATED)
   start(
     @Param('id') id: string,

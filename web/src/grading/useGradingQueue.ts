@@ -10,8 +10,8 @@
 // старым до следующего захода. Второй GET не нужен (ADR-0087).
 import { useCallback } from 'react';
 import type { ExamAttemptDto } from '@xuanxue/shared';
-import { GRADING_QUEUE_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { GRADING_QUEUE_QUERY } from '../api/gradingPaths';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить очередь проверки. Попробуйте ещё раз.';
@@ -26,7 +26,7 @@ export interface UseGradingQueueResult {
 
 export function useGradingQueue(): UseGradingQueueResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<ExamAttemptDto[]>(GRADING_QUEUE_PATH, { signal }),
+    (signal) => apiRoute('GET /attempts', { query: GRADING_QUEUE_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
   const removeAttemptsOfExams = useCallback(

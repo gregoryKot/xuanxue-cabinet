@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest';
 import { LIST_LIMIT_MAX } from '@xuanxue/shared';
 import { planningWindow } from '../planning/planningWindow';
 import {
-  attemptPath,
   channelsListPath,
   entityPath,
   examAttemptCountPath,
@@ -77,14 +76,6 @@ describe('entityPath', () => {
   it('собирает путь записи из пути коллекции и id', () => {
     expect(entityPath('/classes', '652f00000000000000000001')).toBe(
       '/classes/652f00000000000000000001',
-    );
-  });
-});
-
-describe('attemptPath', () => {
-  it('собирает путь своей попытки по id (ADR-0126)', () => {
-    expect(attemptPath('652f00000000000000000001')).toBe(
-      '/attempts/652f00000000000000000001',
     );
   });
 });

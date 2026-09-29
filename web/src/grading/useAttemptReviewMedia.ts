@@ -6,7 +6,7 @@
 // состав полей, что раньше, — AttemptReviewScreen.tsx не меняется.
 import { useCallback, useState } from 'react';
 import type { ExamMediaDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { errorFrom, type FormError } from '../components/FormServerError';
 
 const MARK_MEDIA_ERROR_MESSAGE = 'Не удалось отметить видео. Попробуйте ещё раз.';
@@ -94,8 +94,8 @@ export function useAttemptReviewMedia(
     async (itemId: string): Promise<boolean> => {
       setMarkState({ itemId, pending: true, error: null });
       try {
-        await apiFetch(`/attempts/${attemptId}/media/manual`, {
-          method: 'POST',
+        await apiRoute('POST /attempts/:id/media/manual', {
+          params: { id: attemptId },
           body: { itemId },
         });
         await reload();
@@ -135,8 +135,8 @@ export function useAttemptReviewMedia(
     async (mediaId: string): Promise<boolean> => {
       setSendState({ mediaId, pending: true, error: null, sent: false });
       try {
-        await apiFetch(`/attempts/${attemptId}/media/${mediaId}/send-to-me`, {
-          method: 'POST',
+        await apiRoute('POST /attempts/:id/media/:mediaId/send-to-me', {
+          params: { id: attemptId, mediaId },
         });
         setSendState({ mediaId, pending: false, error: null, sent: true });
         return true;

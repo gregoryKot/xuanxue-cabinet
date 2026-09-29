@@ -16,13 +16,8 @@
 // Read-after-write (CLAUDE.md «Тесты») соблюдён: на экране остаётся то, что
 // сервер вернул после записи, — из ответа самой записи.
 import { useCallback } from 'react';
-import type { GradingCommentPresetDto } from '@xuanxue/shared';
-import {
-  entityPath,
-  GRADING_PRESETS_LIST_PATH,
-  GRADING_PRESETS_PATH,
-} from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { LIST_LIMIT_MAX, type GradingCommentPresetDto } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { appended, withoutId } from '../lib/listPatch';
 
@@ -40,16 +35,13 @@ export interface UseGradingPresetsResult {
 export function useGradingPresets(): UseGradingPresetsResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
     (signal) =>
-      apiFetch<GradingCommentPresetDto[]>(GRADING_PRESETS_LIST_PATH, { signal }),
+      apiRoute('GET /grading-presets', { query: { limit: LIST_LIMIT_MAX }, signal }),
     LOAD_ERROR_MESSAGE,
   );
 
   const create = useCallback(
     async (text: string) => {
-      const next = await apiFetch<GradingCommentPresetDto>(GRADING_PRESETS_PATH, {
-        method: 'POST',
-        body: { text },
-      });
+      const next = await apiRoute('POST /grading-presets', { body: { text } });
       applyData((prev) => appended(prev, next));
     },
     [applyData],
@@ -57,7 +49,7 @@ export function useGradingPresets(): UseGradingPresetsResult {
 
   const remove = useCallback(
     async (id: string) => {
-      await apiFetch(entityPath(GRADING_PRESETS_PATH, id), { method: 'DELETE' });
+      await apiRoute('DELETE /grading-presets/:id', { params: { id } });
       applyData((prev) => withoutId(prev, id));
     },
     [applyData],

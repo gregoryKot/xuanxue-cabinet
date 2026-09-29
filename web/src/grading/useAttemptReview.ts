@@ -9,8 +9,7 @@
 // что раньше, поэтому AttemptReviewScreen.tsx в этой части не меняется.
 import { useCallback, useState } from 'react';
 import { type AttemptReviewDto, type PutGradingInput } from '@xuanxue/shared';
-import { attemptReviewPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import {
@@ -33,7 +32,8 @@ export interface UseAttemptReviewResult extends UseAttemptReviewMediaResult {
 
 export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<AttemptReviewDto>(attemptReviewPath(attemptId), { signal }),
+    (signal) =>
+      apiRoute('GET /attempts/:id/review', { params: { id: attemptId }, signal }),
     LOAD_ERROR_MESSAGE,
   );
   const [saving, setSaving] = useState(false);
@@ -44,8 +44,8 @@ export function useAttemptReview(attemptId: string): UseAttemptReviewResult {
       setSaving(true);
       setSaveError(null);
       try {
-        const next = await apiFetch<AttemptReviewDto>(`/attempts/${attemptId}/grading`, {
-          method: 'PUT',
+        const next = await apiRoute('PUT /attempts/:id/grading', {
+          params: { id: attemptId },
           body: input,
         });
         applyData(next);

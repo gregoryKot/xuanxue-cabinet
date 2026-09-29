@@ -1,8 +1,8 @@
 // Тело POST /attempts/:id/answer-video (ADR-0137).
 import { IsInt, IsMongoId, IsString, Max, MaxLength, Min } from 'class-validator';
-import { ANSWER_VIDEO_LIMITS, type StartAnswerVideoInput } from '@xuanxue/shared';
+import { ANSWER_VIDEO_LIMITS, type ApiRouteBody } from '@xuanxue/shared';
 
-export class StartAnswerVideoDto implements StartAnswerVideoInput {
+export class StartAnswerVideoDto implements ApiRouteBody<'POST /attempts/:id/answer-video'> {
   @IsMongoId()
   itemId!: string;
 

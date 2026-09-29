@@ -5,6 +5,7 @@ import { Body, Controller, HttpCode, HttpStatus, Param, Post } from '@nestjs/com
 import { DateTime } from 'luxon';
 import type { ExamMediaDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { AddExamMediaLinkDto } from './dto/add-exam-media-link.dto';
 import { AddExamMediaManualDto } from './dto/add-exam-media-manual.dto';
@@ -17,6 +18,7 @@ export class ExamMediaController {
   constructor(private readonly mediaAssetsService: MediaAssetsService) {}
 
   @Post(':id/media/link')
+  @ApiRoute('POST /attempts/:id/media/link')
   @HttpCode(HttpStatus.CREATED)
   addLink(
     @Param('id') id: string,
@@ -45,6 +47,7 @@ export class ExamMediaController {
   // (exam-media-notifier.port.ts/registry.ts) — тем же приёмом инверсии,
   // только для чтения, а не уведомления, с реализацией в exams/.
   @Post(':id/media/manual')
+  @ApiRoute('POST /attempts/:id/media/manual')
   @HttpCode(HttpStatus.CREATED)
   @Roles(...STAFF_ONLY_ROLES)
   addManual(
@@ -58,6 +61,7 @@ export class ExamMediaController {
   // кнопка достаёт то же видео заново. Чат — из сессии вызывающего
   // (SECURITY §3), не из тела запроса, поэтому тела у маршрута нет.
   @Post(':id/media/:mediaId/send-to-me')
+  @ApiRoute('POST /attempts/:id/media/:mediaId/send-to-me')
   @HttpCode(HttpStatus.NO_CONTENT)
   @Roles(...STAFF_ONLY_ROLES)
   sendToMe(

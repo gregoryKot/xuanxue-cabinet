@@ -11,13 +11,11 @@
 // хендлере — учитель видит чужую работу по сути своей роли, не как
 // исключение из владения.
 //
-// Два разных корня маршрутов (`exams/:examId/attempts`, `attempts/...`) —
-// `@Controller()` без общего префикса, полный путь у каждого хендлера:
-// `ExamsController` уже занял `exams` под форму, заводить свой `@Controller`
-// с тем же префиксом ради одного вложенного POST избыточно (CLAUDE.md
-// «Файлы»), а `@Controller('attempts')` для остальных оставил бы старт не
-// под ним — один файл, один сервис на попытку плюс сервис проверки
-// (слой 4.6 — своя коллекция, ExamGradingsService), явные пути.
+// Два корня маршрутов (`exams/:examId/attempts`, `attempts/...`) —
+// `@Controller()` без префикса, полный путь у каждого хендлера:
+// `ExamsController` уже занял `exams`, свой `@Controller` с тем же
+// префиксом ради одного вложенного POST избыточен (CLAUDE.md «Файлы»).
+// Ответы хендлеров — по карте маршрутов (`@ApiRoute`, ADR-0148).
 import {
   Body,
   Controller,
@@ -37,6 +35,7 @@ import type {
   ExamAttemptDto,
 } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { MediaAssetsService } from '../media/media-assets.service';
 import type { UserLean } from '../users/users.service';
 import { ExamAttemptCountService } from './exam-attempt-count.service';
@@ -62,11 +61,10 @@ export class ExamAttemptsController {
     private readonly examAttemptCountService: ExamAttemptCountService,
   ) {}
 
-  // Не всегда создаёт новую попытку (идемпотентный старт — ТЗ 4.4, п.3), но
-  // и первый вызов, и повторный возвращают ресурс попытки — 201 как у
-  // обычного POST-создания (ExamsController.create), а не 200: разбирать
-  // здесь на «создал/вернул старую» ради статуса не стоит.
+  // Старт идемпотентен (ТЗ 4.4, п.3): и первый, и повторный вызов отдают
+  // попытку с 201, как обычное POST-создание — разбирать ради статуса не стоит.
   @Post('exams/:examId/attempts')
+  @ApiRoute('POST /exams/:examId/attempts')
   @HttpCode(HttpStatus.CREATED)
   async start(
     @Param('examId') examId: string,
@@ -76,16 +74,17 @@ export class ExamAttemptsController {
     return withAttemptMedia(this.mediaAssetsService, attempt);
   }
 
-  // Редактору формы — сколько попыток затронет правка вопроса (ADR-0022):
-  // попытка живёт снимком формы на момент старта, редактор должен видеть
-  // охват до сохранения. Штат школы — как review ниже, ученику не нужно.
+  // Редактору формы — сколько попыток затронет правка вопроса: попытка живёт
+  // снимком на момент старта (ADR-0022). Штат школы, ученику не нужно.
   @Get('exams/:examId/attempt-count')
+  @ApiRoute('GET /exams/:examId/attempt-count')
   @Roles(...STAFF_ONLY_ROLES)
   countByExam(@Param('examId') examId: string): Promise<ExamAttemptCountDto> {
     return this.examAttemptCountService.countByExam(examId);
   }
 
   @Patch('attempts/:id/answers')
+  @ApiRoute('PATCH /attempts/:id/answers')
   async saveAnswers(
     @Param('id') id: string,
     @Body() body: SaveAttemptAnswersDto,
@@ -101,6 +100,7 @@ export class ExamAttemptsController {
   }
 
   @Post('attempts/:id/submit')
+  @ApiRoute('POST /attempts/:id/submit')
   @HttpCode(HttpStatus.OK)
   async submit(
     @Param('id') id: string,
@@ -111,6 +111,7 @@ export class ExamAttemptsController {
   }
 
   @Get('attempts')
+  @ApiRoute('GET /attempts')
   async list(
     @Query() query: ListAttemptsDto,
     @CurrentUser() user: UserLean,
@@ -119,10 +120,10 @@ export class ExamAttemptsController {
     return withAttemptsMedia(this.mediaAssetsService, attempts);
   }
 
-  // Экран сдачи читает одну свою попытку своим адресом, не весь список
-  // (ADR-0126) — список выше остаётся очередью учителя. Без @Roles: владение
-  // по сессии, как у остальных хендлеров попытки (шапка файла).
+  // Своя попытка своим адресом, не весь список (ADR-0126). Без @Roles:
+  // владение по сессии (шапка файла).
   @Get('attempts/:id')
+  @ApiRoute('GET /attempts/:id')
   async getOwn(
     @Param('id') id: string,
     @CurrentUser() user: UserLean,
@@ -134,20 +135,19 @@ export class ExamAttemptsController {
   // Слой 4.6: карточка проверки и оценка — закрыты ученику: на классе ролей
   // нет, @Roles стоит на самих хендлерах.
   @Get('attempts/:id/review')
+  @ApiRoute('GET /attempts/:id/review')
   @Roles(...STAFF_ONLY_ROLES)
   async review(@Param('id') id: string): Promise<AttemptReviewDto> {
     const review = await this.examGradingsService.getReview(id);
     return withReviewMedia(this.mediaAssetsService, review);
   }
 
-  // Отдаёт карточку проверки целиком (AttemptReviewDto), не голую оценку
-  // (ExamGradingDto) — экран проверки кладёт этот ответ прямо на себя вместо
-  // повторного GET /attempts/:id/review (ADR-0087, «Последствия»), тем же
-  // ExamGradingsService.getReview()/withReviewMedia(), что и review() выше.
-  // ExamGradingsService.grade() при этом как был, так и остаётся —
-  // ExamGradingDto, что он возвращает, нужен боту (ExamBotPort.gradeAttempt,
-  // api/src/telegram/handlers/grade-comment-save.ts), трогать его нельзя.
+  // Карточка целиком (AttemptReviewDto), не голая оценка: экран проверки
+  // кладёт ответ на себя без второго GET (ADR-0087, #345). Возврат
+  // ExamGradingsService.grade() трогать нельзя — он нужен боту
+  // (ExamBotPort.gradeAttempt).
   @Put('attempts/:id/grading')
+  @ApiRoute('PUT /attempts/:id/grading')
   @Roles(...STAFF_ONLY_ROLES)
   async grade(
     @Param('id') id: string,

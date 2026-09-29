@@ -3,13 +3,9 @@
 // остановкой на отказе сервера. Не React — вынесено из useAnswerVideoUpload.ts
 // (файловый лимит, CLAUDE.md «Храповики»), переиспользуется хуком через
 // колбэки, тестируется без DOM.
-import type { AnswerVideoUploadDto, ExamMediaDto } from '@xuanxue/shared';
-import {
-  answerVideoCompletePath,
-  answerVideoPartPath,
-  attemptAnswerVideoStartPath,
-} from '../api/answerVideoPaths';
-import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
+import type { ExamMediaDto } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
+import { UPLOAD_TIMEOUT_MS } from '../api/http';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import {
   answerVideoRetryDelaySeconds,
@@ -62,8 +58,8 @@ export async function runAnswerVideoUpload(
     withRetry(step, { isCancelled, waitForResume, onFailed });
 
   const upload = await retry(() =>
-    apiFetch<AnswerVideoUploadDto>(attemptAnswerVideoStartPath(attemptId), {
-      method: 'POST',
+    apiRoute('POST /attempts/:id/answer-video', {
+      params: { id: attemptId },
       body: { itemId, sizeBytes: file.size, fingerprint },
       signal,
     }),
@@ -82,8 +78,8 @@ export async function runAnswerVideoUpload(
     const partNumber = next;
     const blob = sliceAnswerVideoPart(file, partNumber, current.partBytes);
     const updated = await retry(() =>
-      apiFetch<AnswerVideoUploadDto>(answerVideoPartPath(current.id, partNumber), {
-        method: 'PUT',
+      apiRoute('PUT /answer-videos/:id/parts/:n', {
+        params: { id: current.id, n: String(partNumber) },
         body: blob,
         signal,
         timeoutMs: UPLOAD_TIMEOUT_MS,
@@ -100,8 +96,8 @@ export async function runAnswerVideoUpload(
   }
 
   const media = await retry(() =>
-    apiFetch<ExamMediaDto>(answerVideoCompletePath(current.id), {
-      method: 'POST',
+    apiRoute('POST /answer-videos/:id/complete', {
+      params: { id: current.id },
       signal,
     }),
   );
