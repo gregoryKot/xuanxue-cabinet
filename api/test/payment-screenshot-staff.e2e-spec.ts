@@ -7,12 +7,7 @@
 import { getModelToken } from '@nestjs/mongoose';
 import { DateTime } from 'luxon';
 import type { Model } from 'mongoose';
-import type {
-  ApiErrorBody,
-  MyPaymentDto,
-  PaymentDto,
-  PaymentsPageDto,
-} from '@xuanxue/shared';
+import type { ApiErrorBody, PaymentDto, PaymentsPageDto } from '@xuanxue/shared';
 import {
   PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE,
   PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
@@ -22,6 +17,7 @@ import { PaymentRecord } from '../src/payments/payment.schema';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { jpegBytes } from './e2e-support/exam-images-fixtures';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
+import { myPaymentRowsFor } from './e2e-support/my-payments';
 import { createUserWithSession } from './e2e-support/session';
 
 const ZERO_ID = '000000000000000000000000';
@@ -219,10 +215,7 @@ describe('Снимок перевода — штат открывает загр
     expect(confirmed.status).toBe(200);
     expect((confirmed.body as PaymentDto).status).toBe('paid');
 
-    const mine = await request(server())
-      .get('/api/me/payments')
-      .set('Cookie', studentCookie);
-    const row = (mine.body as MyPaymentDto[]).find((r) => r.month === month);
+    const [row] = await myPaymentRowsFor(testApp.app, studentCookie, month);
     expect(row?.status).toBe('paid');
     // После подтверждения снимок живёт ещё 30 дней (ADR-0050) и открывается.
     const after = await getScreenshot(userId, accountantCookie);

@@ -13,60 +13,13 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 // (CLAUDE.md «Дубли и мёртвый код»). Появится вторая валюта — появится и
 // поле, но это будет другое решение и другой ADR.
 
-/** Месяц — `YYYY-MM`, без сокращений: `2026-9` и `26-09` не проходят
- * (ADR-0049 — месяц приходит с клиента строкой и проверяется DTO, не
- * собирается из чисел). */
-export const MONTH_KEY_RE = /^\d{4}-(?:0[1-9]|1[0-2])$/;
-
-export function isMonthKey(value: string): boolean {
-  return MONTH_KEY_RE.test(value);
-}
-
 /** Префикс payload `/start` бота для скриншота оплаты (ADR-0050, слой
  * 2.2) — `t.me/<бот>?start=pay_<YYYY-MM>`, тем же приёмом, что
  * `INVITE_TELEGRAM_START_PREFIX`/`TELEGRAM_LINK_START_PREFIX`
  * (invite-link.ts/telegram-link.ts). Месяц после префикса сверяется тем же
- * `MONTH_KEY_RE`, что и DTO оплат — второго regexp'а формата месяца в
+ * `MONTH_KEY_RE` (month-key.ts), что и DTO оплат — второго regexp'а формата месяца в
  * проекте нет. */
 export const PAYMENT_TELEGRAM_START_PREFIX = 'pay_';
-
-const MONTH_NAMES_RU = [
-  'январь',
-  'февраль',
-  'март',
-  'апрель',
-  'май',
-  'июнь',
-  'июль',
-  'август',
-  'сентябрь',
-  'октябрь',
-  'ноябрь',
-  'декабрь',
-] as const;
-
-/** '2026-09' → 'сентябрь 2026' — для бота, принимающего скриншот (ADR-0050,
- * payment-screenshot-deep-link.ts/payment-screenshot-message.handler.ts), для
- * экрана «Оплаты» и напоминания бота (docs/PLAN.md §15, ADR-0051 «{месяц}»,
- * следующий PR). Вход — уже проверенный `MONTH_KEY_RE` месяц (DTO или
- * `monthKeyOf`), повторной проверки здесь нет. */
-export function formatMonthRu(month: string): string {
-  const monthIndex = Number(month.slice(5, 7)) - 1;
-  const year = month.slice(0, 4);
-  return `${MONTH_NAMES_RU[monthIndex]} ${year}`;
-}
-
-/** '2026-01' + (-1) → '2025-12' — чистая арифметика по строке, без Date
- * (CLAUDE.md «Время»): считает окно допустимых месяцев скриншота
- * (payment-screenshot-month-window.ts, ADR-0050) и пригодится кнопкам
- * «следующий/предыдущий месяц» на экране «Оплаты» (следующий PR). */
-export function shiftMonth(month: string, delta: number): string {
-  const year = Number(month.slice(0, 4));
-  const monthIndex0 = Number(month.slice(5, 7)) - 1 + delta;
-  const shiftedYear = year + Math.floor(monthIndex0 / 12);
-  const shiftedMonthIndex0 = ((monthIndex0 % 12) + 12) % 12;
-  return `${shiftedYear}-${String(shiftedMonthIndex0 + 1).padStart(2, '0')}`;
-}
 
 export const PAYMENT_LIMITS = {
   /** 100 000 ₪ в агорах — щедрый потолок формы, не тариф школы. */
@@ -113,6 +66,24 @@ export interface MyPaymentDto {
   confirmedAt?: string; // ISO UTC с Z
   hasScreenshot: boolean;
 }
+
+/** Ответ `GET /me/payments` (слой 2.4) — пара, как у `PaymentsPageDto`:
+ * `month` — текущий месяц в поясе школы, его считает сервер (`monthKeyOf`
+ * по `settings.tz`). Кабинет пояса школы не знает, а месяц по часам зрителя
+ * 1-го числа в Сиднее уже октябрь, пока в Израиле сентябрь (ADR-0049).
+ * `rows` — только месяцы, о которых что-то известно: нет документа — нет
+ * строки, и кабинет рисует текущий месяц «не оплачен» сам. */
+export interface MyPaymentsPageDto {
+  month: string;
+  rows: MyPaymentDto[];
+}
+
+/** Сколько дней живёт снимок перевода (ADR-0050): после подтверждения и без
+ * него. Одно место на уборщика (payment-screenshot-sweep.service.ts) и на
+ * текст кабинета рядом с кнопкой «Отправить скриншот» — поменяли срок, и
+ * обещание ученику поменялось вместе с ним. */
+export const PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS = 30;
+export const PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS = 90;
 
 export interface PaymentsPageDto {
   month: string;

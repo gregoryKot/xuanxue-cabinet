@@ -3,16 +3,12 @@
 // учителя — 403, ключевая проверка ADR-0049: деньги ученика не «данные
 // школы» наравне с расписанием); `/me/payments` — владение по сессии, не по
 // параметру пути. Образец и инструкция — api/test/e2e-support/README.md.
-import type {
-  ApiErrorBody,
-  MyPaymentDto,
-  PaymentDto,
-  PaymentsPageDto,
-} from '@xuanxue/shared';
+import type { ApiErrorBody, PaymentDto, PaymentsPageDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { createUserWithSession } from './e2e-support/session';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
+import { myPaymentRowsFor } from './e2e-support/my-payments';
 
 const ZERO_ID = '000000000000000000000000';
 
@@ -120,22 +116,11 @@ describe('Оплаты — доступ по роли и владение (e2e)'
       }
 
       // Read-after-write: ученик А видит «оплачено» у себя.
-      const myA = await request(server())
-        .get('/api/me/payments')
-        .set('Cookie', studentACookie);
-      expect(myA.status).toBe(200);
-      expect(
-        (myA.body as MyPaymentDto[]).find((row) => row.month === '2026-09')?.status,
-      ).toBe('paid');
+      const [rowA] = await myPaymentRowsFor(testApp.app, studentACookie, '2026-09');
+      expect(rowA?.status).toBe('paid');
 
       // Ученик Б не видит месяц ученика А (владение по сессии).
-      const myB = await request(server())
-        .get('/api/me/payments')
-        .set('Cookie', studentBCookie);
-      expect(myB.status).toBe(200);
-      expect(
-        (myB.body as MyPaymentDto[]).find((row) => row.month === '2026-09'),
-      ).toBeUndefined();
+      expect(await myPaymentRowsFor(testApp.app, studentBCookie, '2026-09')).toEqual([]);
 
       // Список бухгалтера — та же строка, без секретных полей.
       const list = await request(server())

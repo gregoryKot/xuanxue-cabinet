@@ -18,6 +18,7 @@
 // сразу записью здесь.
 
 import type { InboxPageDto, ListInboxQuery } from './inbox';
+import type { MyPaymentDto, MyPaymentsPageDto } from './payments';
 
 export const API_ROUTE_METHODS = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'] as const;
 type ApiRouteMethod = (typeof API_ROUTE_METHODS)[number];
@@ -46,6 +47,22 @@ interface ApiRouteMap {
     response: InboxPageDto;
   };
   'DELETE /me/inbox/:id': { query: undefined; body: undefined; response: InboxPageDto };
+  // Абонемент ученика (PLAN §15, слой 2.4). Снимок уходит сырым телом
+  // картинки (ADR-0050), ответ — строка месяца: кабинет вписывает её без
+  // второго GET (ADR-0087).
+  'GET /me/payments': { query: undefined; body: undefined; response: MyPaymentsPageDto };
+  'POST /me/payments/:month/screenshot': {
+    query: undefined;
+    body: RawImageBody;
+    response: MyPaymentDto;
+  };
+}
+
+/** Сырое тело картинки — `Blob` браузера. Своим описанием, а не `Blob`:
+ * `shared` собирается без DOM-типов, а структурно `Blob` сюда подходит. */
+interface RawImageBody {
+  readonly size: number;
+  readonly type: string;
 }
 
 /** Проверка формы карты на уровне типов: ключ начинается с метода и `/`,
@@ -82,6 +99,8 @@ const API_ROUTE_KEY_SET: Record<ApiRouteKey, true> = {
   'POST /me/inbox/:id/read': true,
   'POST /me/inbox/read-all': true,
   'DELETE /me/inbox/:id': true,
+  'GET /me/payments': true,
+  'POST /me/payments/:month/screenshot': true,
 };
 
 // Каст — Object.keys типизирован string[]; множество ключей выше

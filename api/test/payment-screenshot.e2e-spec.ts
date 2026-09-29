@@ -9,6 +9,7 @@ import {
   EXAM_IMAGE_EMPTY_MESSAGE,
   EXAM_IMAGE_LIMITS,
   EXAM_IMAGE_UNSUPPORTED_MESSAGE,
+  MONTH_KEY_RE,
   PAYMENT_MONTH_INVALID_MESSAGE,
 } from '@xuanxue/shared';
 import request from 'supertest';
@@ -17,6 +18,7 @@ import { createTestApp, type TestApp } from './e2e-support/create-app';
 import { sessionCookieFor, withCsrf } from './e2e-support/http';
 import { createUserWithSession } from './e2e-support/session';
 import { jpegBytes } from './e2e-support/exam-images-fixtures';
+import { myPaymentRowsFor, myPaymentsPage } from './e2e-support/my-payments';
 
 // Поля, которых в ответе быть не должно ни при каких обстоятельствах —
 // ни в MyPaymentDto ученика, ни в строке бухгалтера (SECURITY §4, ADR-0050
@@ -95,11 +97,10 @@ describe('Снимок перевода — загрузка в кабинете
       expect(uploaded.status).toBe(201);
 
       // Ученик Б тем же месяцем в пути чужую оплату не видит вовсе.
-      const myBBefore = await request(server())
-        .get('/api/me/payments')
-        .set('Cookie', studentBCookie);
-      expect(myBBefore.status).toBe(200);
-      expect((myBBefore.body as MyPaymentDto[]).length).toBe(0);
+      // Страница без документов — текущий месяц школы и пустые строки (слой 2.4).
+      const pageBBefore = await myPaymentsPage(testApp.app, studentBCookie);
+      expect(pageBBefore.month).toMatch(MONTH_KEY_RE);
+      expect(pageBBefore.rows).toEqual([]);
 
       // Своя загрузка Б за тот же месяц — отдельный документ, не запись А.
       const uploadedB = await upload(
@@ -109,20 +110,11 @@ describe('Снимок перевода — загрузка в кабинете
         'image/jpeg',
       );
       expect(uploadedB.status).toBe(201);
-      const myBAfter = await request(server())
-        .get('/api/me/payments')
-        .set('Cookie', studentBCookie);
-      const rowB = (myBAfter.body as MyPaymentDto[]).find(
-        (row) => row.month === '2026-09',
-      );
+      const [rowB] = await myPaymentRowsFor(testApp.app, studentBCookie, '2026-09');
       expect(rowB?.hasScreenshot).toBe(true);
 
       // Read-after-write у самого А: тот же месяц, «ждёт подтверждения».
-      const myA = await request(server())
-        .get('/api/me/payments')
-        .set('Cookie', studentACookie);
-      expect(myA.status).toBe(200);
-      const rowA = (myA.body as MyPaymentDto[]).find((row) => row.month === '2026-09');
+      const [rowA] = await myPaymentRowsFor(testApp.app, studentACookie, '2026-09');
       expect(rowA?.status).toBe('awaiting');
       expect(rowA?.hasScreenshot).toBe(true);
     },
@@ -231,9 +223,7 @@ describe('Снимок перевода — загрузка в кабинете
     const second = await upload(cookie, '2026-10', jpegBytes(), 'image/jpeg');
     expect(second.status).toBe(201);
 
-    const list = await request(server()).get('/api/me/payments').set('Cookie', cookie);
-    expect(list.status).toBe(200);
-    const rows = (list.body as MyPaymentDto[]).filter((row) => row.month === '2026-10');
+    const rows = await myPaymentRowsFor(testApp.app, cookie, '2026-10');
     expect(rows.length).toBe(1);
     expect(rows[0]?.hasScreenshot).toBe(true);
   });

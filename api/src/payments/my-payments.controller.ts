@@ -1,14 +1,18 @@
 // GET /me/payments — свои месяцы (ADR-0049): владение по сессии, не по
 // роли и не по параметру пути (SECURITY §3), доступно любой роли, включая
 // ученика и гостя без единой роли. Образец — notification-prefs.controller.ts.
+// Вместе со строками отдаёт `month` — текущий месяц в поясе школы: его считает
+// сервер, потому что кабинет пояса школы не знает, а 1-го числа в Сиднее уже
+// октябрь, пока в Израиле сентябрь (ADR-0049).
 //
 // POST /me/payments/:month/screenshot — снимок перевода сырым телом
 // (ADR-0050, слой 2.2): запасной путь тому, чей Telegram с кабинетом не
 // связан. Владение — та же сессия, месяц в пути говорит только «за какой».
 import { Controller, Get, HttpCode, HttpStatus, Param, Post, Req } from '@nestjs/common';
 import { DateTime } from 'luxon';
-import type { MyPaymentDto } from '@xuanxue/shared';
+import type { MyPaymentDto, MyPaymentsPageDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentsService } from './payments.service';
@@ -29,12 +33,14 @@ export class MyPaymentsController {
   ) {}
 
   @Get()
-  list(@CurrentUser() user: UserLean): Promise<MyPaymentDto[]> {
-    return this.paymentsService.listMine(user.id);
+  @ApiRoute('GET /me/payments')
+  list(@CurrentUser() user: UserLean): Promise<MyPaymentsPageDto> {
+    return this.paymentsService.listMine(user.id, DateTime.utc());
   }
 
   @Post(':month/screenshot')
   @HttpCode(HttpStatus.CREATED)
+  @ApiRoute('POST /me/payments/:month/screenshot')
   uploadScreenshot(
     @Param('month') month: string,
     @Req() req: RawBodyRequest,

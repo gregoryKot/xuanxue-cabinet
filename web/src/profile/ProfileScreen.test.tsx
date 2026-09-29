@@ -68,6 +68,9 @@ function renderScreen(
     // PushNotificationsSection.tsx не рисует ничего, экран остаётся тем же,
     // что и до неё. Сами состояния раздела — PushNotificationsSection.test.tsx.
     if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
+    // Абонемент есть только у ученика (PLAN §15, слой 2.4); сам блок —
+    // student/MyPaymentsSection.test.tsx, здесь лишь его присутствие.
+    if (path === '/me/payments') return Promise.resolve({ month: '2026-09', rows: [] });
     return Promise.reject(new Error(`неожиданный путь: ${path}`));
   });
 
@@ -261,6 +264,24 @@ describe('ProfileScreen — переключение уведомлений (rea
 
 // «Выйти» держится на этом экране, доступна любой роли (было на прежнем
 // экране «Уведомления», отзыв владельца 2026-09-12/18).
+describe('ProfileScreen — абонемент (PLAN §15, слой 2.4)', () => {
+  it('у ученика без ролей блок «Абонемент» есть и запрашивает свои оплаты', async () => {
+    renderScreen(STUDENT);
+
+    expect(await screen.findByRole('heading', { name: 'Абонемент' })).toBeInTheDocument();
+    expect(await screen.findByText('Оплаты за сентябрь нет')).toBeInTheDocument();
+  });
+
+  it('у учителя блока нет и запроса за оплатами тоже нет', async () => {
+    renderScreen({ ...STUDENT, id: 't1', roles: ['teacher'] });
+
+    await screen.findByRole('heading', { level: 1, name: 'Профиль' });
+    await screen.findByText('Второй способ входа').catch(() => null);
+    expect(screen.queryByRole('heading', { name: 'Абонемент' })).not.toBeInTheDocument();
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/me/payments', expect.anything());
+  });
+});
+
 describe('ProfileScreen — «Выйти»', () => {
   it('кнопка «Выйти» есть в конце экрана', async () => {
     renderScreen(STUDENT);
@@ -364,6 +385,7 @@ describe('ProfileScreen — ошибка загрузки уведомлений
       if (path === '/me/notifications')
         return Promise.reject(new Error('сеть недоступна'));
       if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
+      if (path === '/me/payments') return Promise.resolve({ month: '2026-09', rows: [] });
       return Promise.reject(new Error(`неожиданный путь: ${path}`));
     });
     render(

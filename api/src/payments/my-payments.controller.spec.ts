@@ -2,8 +2,9 @@
 // без HTTP, без Mongo. Владение по сессии (не по query/пути) проверяет e2e
 // (payments-ownership.e2e-spec.ts) на настоящем гварде — здесь только
 // «контроллер берёт userId из @CurrentUser(), а не откуда-то ещё».
+import { DateTime } from 'luxon';
 import { Test } from '@nestjs/testing';
-import type { MyPaymentDto } from '@xuanxue/shared';
+import type { MyPaymentDto, MyPaymentsPageDto } from '@xuanxue/shared';
 import type { UserLean } from '../users/users.service';
 import { MyPaymentsController } from './my-payments.controller';
 import { PaymentScreenshotsService } from './payment-screenshots.service';
@@ -19,6 +20,7 @@ const STUDENT: UserLean = {
 const MY_PAYMENTS: MyPaymentDto[] = [
   { month: '2026-09', status: 'paid', hasScreenshot: false },
 ];
+const MY_PAGE: MyPaymentsPageDto = { month: '2026-09', rows: MY_PAYMENTS };
 
 async function buildController(
   service: Partial<PaymentsService> = {},
@@ -36,11 +38,13 @@ async function buildController(
 
 describe('MyPaymentsController', () => {
   it('list() зовёт сервис с userId из сессии, не из query', async () => {
-    const listMine = jest.fn().mockResolvedValue(MY_PAYMENTS);
+    const listMine = jest.fn().mockResolvedValue(MY_PAGE);
     const controller = await buildController({ listMine });
 
-    await expect(controller.list(STUDENT)).resolves.toEqual(MY_PAYMENTS);
-    expect(listMine).toHaveBeenCalledWith(STUDENT.id);
+    await expect(controller.list(STUDENT)).resolves.toEqual(MY_PAGE);
+    const [passedUserId, passedNow] = listMine.mock.calls[0] as unknown[];
+    expect(passedUserId).toBe(STUDENT.id);
+    expect(DateTime.isDateTime(passedNow)).toBe(true);
   });
 
   it('uploadScreenshot() берёт владельца из сессии, а тело — сырым из запроса', async () => {

@@ -145,9 +145,19 @@ describe('PaymentsService', () => {
     const accountantId = await createAccountant();
     await service.confirm(userId, '2026-09', { amountMinor: 25000 }, accountantId, NOW);
 
-    const mine = await service.listMine(userId);
+    const mine = (await service.listMine(userId, NOW)).rows;
 
     expect(mine.find((p) => p.month === '2026-09')?.status).toBe('paid');
+  });
+
+  it('listMine: month — в поясе школы на переходе суток (в UTC ещё август, в Иерусалиме сентябрь)', async () => {
+    const userId = await createStudent();
+    const beforeMidnightUtc = DateTime.fromISO('2026-08-31T21:30:00Z', { zone: 'utc' });
+
+    const page = await service.listMine(userId, beforeMidnightUtc);
+
+    expect(monthKeyOf(beforeMidnightUtc, 'UTC')).toBe('2026-08');
+    expect(page).toEqual({ month: '2026-09', rows: [] });
   });
 
   it('listMonth: активный ученик без документа — unpaid, не пропуск строки', async () => {
@@ -251,7 +261,7 @@ describe('PaymentsService', () => {
     );
 
     expect(status).toBe('awaiting');
-    const mine = await service.listMine(userId);
+    const mine = (await service.listMine(userId, NOW)).rows;
     expect(mine.find((p) => p.month === '2026-09')).toMatchObject({
       status: 'awaiting',
       hasScreenshot: true,
@@ -297,7 +307,7 @@ describe('PaymentsService', () => {
     );
 
     expect(status).toBe('paid');
-    const mine = await service.listMine(userId);
+    const mine = (await service.listMine(userId, NOW)).rows;
     expect(mine.find((p) => p.month === '2026-09')).toMatchObject({
       status: 'paid',
       hasScreenshot: true,
