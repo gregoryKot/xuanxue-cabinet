@@ -107,7 +107,9 @@ describe('ExamItemStatsService', () => {
     await examModel.deleteMany({});
   });
 
-  async function createPublishedSingleChoiceItem(): Promise<{
+  // askReason (ADR-0146) по умолчанию выключен — большинство тестов файла его
+  // не касаются; тесты reasonCount/reasonAnsweredCount передают true явно.
+  async function createPublishedSingleChoiceItem(askReason = false): Promise<{
     itemId: string;
     correctOptionId: string;
     wrongOptionId: string;
@@ -120,6 +122,7 @@ describe('ExamItemStatsService', () => {
           { text: 'пять', correct: true },
           { text: 'три', correct: false },
         ],
+        askReason,
       },
       AUTHOR_ID,
     );
@@ -144,12 +147,15 @@ describe('ExamItemStatsService', () => {
     userId: string,
     itemId: string,
     optionIds: string[],
+    // Объяснение выбора (ADR-0146) — необязательно, большинство вызовов его
+    // не касаются.
+    text?: string,
   ): Promise<ExamAttemptDto> {
     const started = await attemptsService.start(examId, userId, NOW);
     await attemptsService.saveAnswers(
       started.id,
       userId,
-      { answers: [{ itemId, optionIds }] },
+      { answers: [{ itemId, optionIds, text }] },
       NOW,
     );
     return attemptsService.submit(started.id, userId, NOW);
@@ -221,6 +227,53 @@ describe('ExamItemStatsService', () => {
     await attemptsService.submit(started.id, USER_A, NOW);
     const afterSubmit = await statsService.getStats(itemId);
     expect(afterSubmit.askedCount).toBe(1);
+  });
+
+  // ADR-0146: askReason включили не с первой попытки (реалистичный порядок —
+  // учитель обычно замечает угадывания уже по ходу дела) — вариант без
+  // объяснения из времени ДО включения флага всё равно входит в знаменатель
+  // (вариант выбран), но не в числитель (объяснения не писали, поля ещё не
+  // было). Явный отказ submit() при включённом askReason проверен в
+  // exam-attempt-ask-reason.e2e-spec.ts — здесь только счёт по готовым данным.
+  it('reasonCount/reasonAnsweredCount — часть попыток без объяснения (askReason включили позже)', async () => {
+    const { itemId, correctOptionId, wrongOptionId } =
+      await createPublishedSingleChoiceItem();
+    const examId = await createPublishedExam(itemId);
+
+    await submitAnswer(examId, USER_A, itemId, [wrongOptionId]);
+    await examItemsService.update(itemId, { askReason: true }, NOW);
+    await submitAnswer(
+      examId,
+      USER_B,
+      itemId,
+      [correctOptionId],
+      'Потому что пять — правильный счёт',
+    );
+
+    const stats = await statsService.getStats(itemId);
+
+    expect(stats.reasonAnsweredCount).toBe(2);
+    expect(stats.reasonCount).toBe(1);
+  });
+
+  it('askReason выключен — reasonCount/reasonAnsweredCount не выдуманы', async () => {
+    const { itemId, correctOptionId } = await createPublishedSingleChoiceItem();
+    const examId = await createPublishedExam(itemId);
+    await submitAnswer(examId, USER_A, itemId, [correctOptionId]);
+
+    const stats = await statsService.getStats(itemId);
+
+    expect(stats.reasonCount).toBeUndefined();
+    expect(stats.reasonAnsweredCount).toBeUndefined();
+  });
+
+  it('askReason включён, вариант ни разу не выбирали — 0 из 0, не мусор', async () => {
+    const { itemId } = await createPublishedSingleChoiceItem(true);
+
+    const stats = await statsService.getStats(itemId);
+
+    expect(stats.reasonAnsweredCount).toBe(0);
+    expect(stats.reasonCount).toBe(0);
   });
 
   it('getSummary на пустой базе — 0, не мусор', async () => {

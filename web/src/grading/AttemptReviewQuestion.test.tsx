@@ -218,6 +218,111 @@ describe('AttemptReviewQuestion — вопрос с вариантами', () =>
   });
 });
 
+// ADR-0146: у вопроса с askReason answerText — объяснение выбора, не
+// альтернативный ответ (в отличие от текстового вопроса выше).
+describe('AttemptReviewQuestion — объяснение выбора (ADR-0146)', () => {
+  it('askReason, вариант выбран, объяснение написано — подпись и текст под вариантами', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({
+          kind: 'single',
+          askReason: true,
+          answered: true,
+          answerText: 'Потому что так короче',
+          options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Объяснение ученика')).toBeInTheDocument();
+    expect(screen.getByText('Потому что так короче')).toBeInTheDocument();
+  });
+
+  it('askReason, вариант выбран, объяснения нет (дедлайн) — «Объяснения нет.»', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({
+          kind: 'single',
+          askReason: true,
+          answered: true,
+          options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Объяснения нет.')).toBeInTheDocument();
+  });
+
+  it('askReason, вопрос вообще без ответа — «Объяснения нет.» не дублирует «Ответа нет.»', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({
+          kind: 'single',
+          askReason: true,
+          answered: false,
+          options: [{ id: 'o1', text: 'Три', correct: true, selected: false }],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Ответа нет.')).toBeInTheDocument();
+    expect(screen.queryByText('Объяснения нет.')).not.toBeInTheDocument();
+  });
+
+  it('askReason выключен, объяснения не писали — ни подписи, ни «Объяснения нет»', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({
+          kind: 'single',
+          answered: true,
+          options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+        })}
+      />,
+    );
+
+    expect(screen.queryByText('Объяснение ученика')).not.toBeInTheDocument();
+    expect(screen.queryByText('Объяснения нет.')).not.toBeInTheDocument();
+  });
+
+  it('askReason выключен, но текст в ответе есть — всё равно показан как объяснение', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({
+          kind: 'single',
+          answered: true,
+          answerText: 'Старая попытка до включения флага',
+          options: [{ id: 'o1', text: 'Три', correct: true, selected: true }],
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Объяснение ученика')).toBeInTheDocument();
+    expect(screen.getByText('Старая попытка до включения флага')).toBeInTheDocument();
+  });
+
+  it('вопрос без вариантов — объяснение не рендерится (нечего объяснять, текст уже сам ответ)', () => {
+    render(
+      <AttemptReviewQuestion
+        index={0}
+        video={makeVideo()}
+        question={makeQuestion({ answerText: 'Дышу животом', answered: true })}
+      />,
+    );
+
+    expect(screen.queryByText('Объяснение ученика')).not.toBeInTheDocument();
+  });
+});
+
 describe('AttemptReviewQuestion — вопрос без вариантов', () => {
   it('метка «Смотрите вы» — машина текст не проверяет', () => {
     render(

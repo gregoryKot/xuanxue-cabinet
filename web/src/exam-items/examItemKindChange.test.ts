@@ -4,7 +4,13 @@ import { changeExamItemKind, optionsAfterKindChange } from './examItemKindChange
 import type { ExamItemFormState, ExamItemOptionDraft } from './examItemFormInput';
 
 function baseState(overrides: Partial<ExamItemFormState> = {}): ExamItemFormState {
-  return { kind: 'text', prompt: 'Формулировка', options: [], ...overrides };
+  return {
+    kind: 'text',
+    prompt: 'Формулировка',
+    options: [],
+    askReason: false,
+    ...overrides,
+  };
 }
 
 describe('optionsAfterKindChange', () => {
@@ -64,5 +70,31 @@ describe('changeExamItemKind', () => {
 
     expect(setField).toHaveBeenCalledWith('kind', 'multiple');
     expect(setField).not.toHaveBeenCalledWith('options', expect.anything());
+  });
+
+  // ADR-0146: объяснять нечего у вопроса без вариантов.
+  it('переход на text/video с включённым askReason — сбрасывает его в false', () => {
+    const setField = vi.fn();
+    changeExamItemKind('video', baseState({ kind: 'single', askReason: true }), setField);
+
+    expect(setField).toHaveBeenCalledWith('askReason', false);
+  });
+
+  it('переход на text/video без включённого askReason — не зовёт setField для него', () => {
+    const setField = vi.fn();
+    changeExamItemKind('text', baseState({ kind: 'single', askReason: false }), setField);
+
+    expect(setField).not.toHaveBeenCalledWith('askReason', expect.anything());
+  });
+
+  it('переход между single и multiple — askReason не трогает, даже если включён', () => {
+    const setField = vi.fn();
+    changeExamItemKind(
+      'multiple',
+      baseState({ kind: 'single', askReason: true }),
+      setField,
+    );
+
+    expect(setField).not.toHaveBeenCalledWith('askReason', expect.anything());
   });
 });

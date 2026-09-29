@@ -10,6 +10,11 @@
 import type { AttemptAnswerDto, ExamItemKind, ExamItemStatsDto } from '@xuanxue/shared';
 import { checkOptionAnswer } from './exam-attempt-review';
 import type { AttemptBlockRecord } from './exam-attempt.schema';
+import {
+  accumulateReasonStats,
+  emptyReasonAccumulator,
+  type ReasonStatsAccumulator,
+} from './exam-item-reason-stats';
 import type { ExamItemOptionRecord } from './exam-item.schema';
 
 // Не отдельный именованный экспорт из shared/src/index.ts (единственный
@@ -26,15 +31,22 @@ export interface AttemptStatsInput {
   answers: readonly AttemptAnswerDto[];
 }
 
-/** Накопитель по одному вопросу за один проход по попыткам. */
+/** Накопитель по одному вопросу за один проход. `reason` — объяснение выбора
+ * (ADR-0146, exam-item-reason-stats.ts); показывать ли его — решает computeExamItemStats. */
 export interface ItemStatsAccumulator {
   askedCount: number;
   correctCount: number;
   chosenById: Map<string, number>;
+  reason: ReasonStatsAccumulator;
 }
 
 function emptyAccumulator(): ItemStatsAccumulator {
-  return { askedCount: 0, correctCount: 0, chosenById: new Map() };
+  return {
+    askedCount: 0,
+    correctCount: 0,
+    chosenById: new Map(),
+    reason: emptyReasonAccumulator(),
+  };
 }
 
 /** Ответ «полностью верный» — то же правило, что у автопроверки в карточке
@@ -53,8 +65,7 @@ function isFullyCorrect(
 }
 
 /** Один проход по всем сданным попыткам — накопитель на каждый `itemId`,
- * встретившийся хоть в одном блоке. Вызывающий уже отобрал только
- * `submitted`/`graded` попытки (ТЗ 4.8) — здесь фильтра по статусу нет. */
+ * встретившийся в блоке. Статус (`submitted`/`graded`, ТЗ 4.8) уже отобрал вызывающий. */
 export function accumulateAttemptStats(
   attempts: readonly AttemptStatsInput[],
 ): Map<string, ItemStatsAccumulator> {
@@ -66,11 +77,13 @@ export function accumulateAttemptStats(
         const acc = byItem.get(question.itemId) ?? emptyAccumulator();
         acc.askedCount += 1;
         if (question.options.length > 0) {
-          const selectedIds = answerByItemId.get(question.itemId)?.optionIds ?? [];
+          const answer = answerByItemId.get(question.itemId);
+          const selectedIds = answer?.optionIds ?? [];
           for (const id of selectedIds) {
             acc.chosenById.set(id, (acc.chosenById.get(id) ?? 0) + 1);
           }
           if (isFullyCorrect(question.options, selectedIds)) acc.correctCount += 1;
+          accumulateReasonStats(acc.reason, answer, selectedIds);
         }
         byItem.set(question.itemId, acc);
       }
@@ -80,18 +93,20 @@ export function accumulateAttemptStats(
 }
 
 /** Статистика одного вопроса — `currentOptions` берётся из сегодняшнего
- * вопроса банка (не из снимков попыток, см. комментарий в начале файла).
- * Без `usedInExamsCount`: это чистая функция по попыткам, а «в скольких
- * экзаменах используется» — отдельный запрос к базе (exam-item-references.ts,
- * ExamItemStatsService.getStats добавляет поле сама). */
+ * вопроса банка (не из снимков попыток, см. комментарий в начале файла). Без
+ * `usedInExamsCount`: отдельный запрос к базе добавляет его сам вызывающий
+ * (exam-item-references.ts, ExamItemStatsService.getStats). */
 export function computeExamItemStats(
   itemId: string,
   kind: ExamItemKind,
   currentOptions: readonly ExamItemOptionRecord[],
   accByItem: ReadonlyMap<string, ItemStatsAccumulator>,
+  // ADR-0146: сегодняшний флаг вопроса, не запись из снимка попытки.
+  askReason = false,
 ): Omit<ExamItemStatsDto, 'usedInExamsCount'> {
   const acc = accByItem.get(itemId) ?? emptyAccumulator();
   const hasOptions = currentOptions.length > 0;
+  const showReason = hasOptions && askReason;
   const options: ExamItemOptionStatsDto[] | undefined = hasOptions
     ? currentOptions.map((option) => ({
         id: option.id,
@@ -112,13 +127,14 @@ export function computeExamItemStats(
     correctRate:
       hasOptions && acc.askedCount > 0 ? acc.correctCount / acc.askedCount : undefined,
     options,
+    reasonCount: showReason ? acc.reason.reasonGivenCount : undefined,
+    reasonAnsweredCount: showReason ? acc.reason.optionChosenCount : undefined,
   };
 }
 
-/** Сколько вопросов с вариантами, которые хоть раз задавали, отвечают верно
- * реже, чем в половине случаев (строго меньше 0.5 — ровно половина ещё не
- * повод переписывать формулировку). Число для карточки-ссылки «Вопросы»
- * (shared/src/exam-item-stats.ts, комментарий у `ExamItemStatsSummaryDto`). */
+/** Сколько заданных вопросов с вариантами отвечают верно реже половины
+ * случаев (строго меньше 0.5). Число для карточки-ссылки «Вопросы»
+ * (shared/src/exam-item-stats.ts, `ExamItemStatsSummaryDto`). */
 export function computeStrugglingCount(
   items: readonly { id: string; options: readonly ExamItemOptionRecord[] }[],
   accByItem: ReadonlyMap<string, ItemStatsAccumulator>,

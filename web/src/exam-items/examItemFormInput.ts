@@ -38,6 +38,8 @@ export interface ExamItemFormState {
   videoId?: string;
   videoUrl?: string;
   options: ExamItemOptionDraft[];
+  /** Просить объяснить выбор (ADR-0146) — сброс при смене типа, examItemKindChange.ts. */
+  askReason: boolean;
 }
 
 const DEFAULT_KIND: ExamItemKind = 'text';
@@ -56,6 +58,7 @@ export function initialExamItemFormState(item: ExamItemDto | null): ExamItemForm
     prompt: item?.prompt ?? '',
     videoId: item?.videoId,
     videoUrl: item?.videoUrl,
+    askReason: item?.askReason ?? false,
     options:
       item?.options.map((option) => ({
         id: option.id,
@@ -126,6 +129,8 @@ export function toCreateInput(state: ExamItemFormState): CreateExamItemInput {
     videoId: state.videoId || undefined,
     videoUrl: state.videoUrl || undefined,
     options: toOptionsInput(state),
+    // Ключа нет, если выключено — тот же приём, что у ExamItemDto.askReason.
+    askReason: state.askReason ? true : undefined,
   };
 }
 
@@ -138,5 +143,8 @@ export function toUpdateInput(state: ExamItemFormState): UpdateExamItemInput {
     videoId: state.videoId || null,
     videoUrl: state.videoUrl || null,
     options: toOptionsInput(state),
+    // Явным булевым всегда — сервер сравнивает с текущим сам
+    // (hasContentChanged), иначе выключение флага до него не дойдёт.
+    askReason: state.askReason,
   };
 }

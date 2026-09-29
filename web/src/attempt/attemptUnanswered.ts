@@ -6,15 +6,19 @@
 // наше дело — предупредить один раз.
 //
 // Считаем ровно по тому правилу, по которому ответ засчитывает сервер
-// (`answered` в exam-attempt-review.ts): выбран хотя бы один вариант или в
-// тексте есть что-то кроме пробелов. Видео-вопрос отвечает присланной
-// записью, а не строкой в `answers` (ADR-0037), поэтому у него свой признак
-// — та же проверка по `itemId`, что и у фонового опроса
+// (`answered` в exam-attempt-review.ts, ADR-0146): у вопроса с вариантами
+// (single/multiple) ответ — выбранный вариант; текст там, если вопрос просит
+// объяснение, — объяснение выбора, а не второй способ ответить, и сам по
+// себе вопрос без выбранного варианта не закрывает. У вопроса без вариантов
+// (текст) ответ — то, что в тексте есть что-то кроме пробелов. Видео-вопрос
+// отвечает присланной записью, а не строкой в `answers` (ADR-0037), поэтому у
+// него свой признак — та же проверка по `itemId`, что и у фонового опроса
 // (attemptVideoQuestions.ts).
 import {
   pluralRu,
   type AttemptAnswerDto,
   type AttemptBlockDto,
+  type AttemptQuestionDto,
   type ExamMediaDto,
 } from '@xuanxue/shared';
 
@@ -38,15 +42,21 @@ export function collectUnansweredIds(
       .filter((question) =>
         question.kind === 'video'
           ? !media.some((item) => item.itemId === question.itemId)
-          : !hasAnswer(getAnswer(question.itemId)),
+          : !hasAnswer(question, getAnswer(question.itemId)),
       )
       .map((question) => question.itemId),
   );
 }
 
-function hasAnswer(answer: AttemptAnswerDto | undefined): boolean {
+function hasAnswer(
+  question: Pick<AttemptQuestionDto, 'kind'>,
+  answer: AttemptAnswerDto | undefined,
+): boolean {
   if (!answer) return false;
-  return (answer.optionIds?.length ?? 0) > 0 || Boolean(answer.text?.trim());
+  if (question.kind === 'single' || question.kind === 'multiple') {
+    return (answer.optionIds?.length ?? 0) > 0;
+  }
+  return Boolean(answer.text?.trim());
 }
 
 /** Текст подтверждения, когда что-то осталось без ответа. Число — в тексте

@@ -26,11 +26,20 @@ interface AttemptBlockProps {
   /** itemId вопросов, подсвеченных как оставшиеся без ответа — пусто, пока
    * ученик не нажал «Отправить» (AttemptInProgress.tsx). */
   unanswered: ReadonlySet<string>;
+  /** Ученик хотя бы раз нажал «Отправить» — поля объяснения без текста
+   * подсвечены (ADR-0146, AttemptQuestion.tsx). */
+  reasonChecked: boolean;
   autosave: UseAttemptAutosaveResult;
   video: AttemptVideoControls;
 }
 
-export function AttemptBlock({ block, unanswered, autosave, video }: AttemptBlockProps) {
+export function AttemptBlock({
+  block,
+  unanswered,
+  reasonChecked,
+  autosave,
+  video,
+}: AttemptBlockProps) {
   return (
     <section>
       {block.title && (
@@ -45,6 +54,7 @@ export function AttemptBlock({ block, unanswered, autosave, video }: AttemptBloc
             index={index}
             question={question}
             unanswered={unanswered.has(question.itemId)}
+            reasonChecked={reasonChecked}
             autosave={autosave}
             video={video}
           />
