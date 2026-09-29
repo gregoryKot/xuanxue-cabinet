@@ -4,7 +4,9 @@
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_REMINDER,
   DEFAULT_PREVIEW_MINUTES,
+  type PaymentReminderSettings,
   type SettingsDto,
 } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
@@ -18,9 +20,24 @@ export type LeanSettings = Pick<
   | 'previewMinutes'
   | 'lessonReminderMinutes'
   | 'newcomerContact'
+  | 'paymentReminder'
 > & {
   updatedAt: Date;
 };
+
+/** Поле за полем, а не «подобъект целиком или дефолт»: `$set` по точечному
+ * пути в старой базе создаёт подобъект с одним полем, остальные должны прийти
+ * из дефолта, не undefined (ADR-0051). */
+function toPaymentReminder(
+  doc: LeanSettings['paymentReminder'],
+): PaymentReminderSettings {
+  return {
+    enabled: doc?.enabled ?? DEFAULT_PAYMENT_REMINDER.enabled,
+    dayOfMonth: doc?.dayOfMonth ?? DEFAULT_PAYMENT_REMINDER.dayOfMonth,
+    time: doc?.time ?? DEFAULT_PAYMENT_REMINDER.time,
+    template: doc?.template ?? DEFAULT_PAYMENT_REMINDER.template,
+  };
+}
 
 export function toSettingsDto(doc: LeanSettings): SettingsDto {
   return {
@@ -41,6 +58,7 @@ export function toSettingsDto(doc: LeanSettings): SettingsDto {
     // Та же причина, что у previewMinutes выше: старая база без поля —
     // дефолт (DEFAULT_NEWCOMER_CONTACT, domain.ts), не undefined.
     newcomerContact: doc.newcomerContact ?? DEFAULT_NEWCOMER_CONTACT,
+    paymentReminder: toPaymentReminder(doc.paymentReminder),
     updatedAt: toIsoUtc(doc.updatedAt),
   };
 }

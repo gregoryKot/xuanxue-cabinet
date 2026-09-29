@@ -14,6 +14,7 @@
 // не вызывается.
 import type { AttemptOptionDto, ExamItemKind } from '@xuanxue/shared';
 import { AttemptQuestionChoice } from './AttemptQuestionChoice';
+import { AttemptQuestionReason } from './AttemptQuestionReason';
 import { AttemptQuestionText } from './AttemptQuestionText';
 
 const IGNORE_INPUT = () => undefined;
@@ -25,6 +26,9 @@ interface AttemptAnswerFieldsProps {
   options: AttemptOptionDto[];
   text?: string;
   selected?: string[];
+  /** Вопрос просит объяснить выбор (ADR-0146) — поле объяснения показывается
+   * выключенным, тем же текстом, что видел или писал ученик. */
+  askReason?: boolean;
 }
 
 export function AttemptAnswerFields({
@@ -34,6 +38,7 @@ export function AttemptAnswerFields({
   options,
   text,
   selected,
+  askReason,
 }: AttemptAnswerFieldsProps) {
   return (
     <>
@@ -55,6 +60,15 @@ export function AttemptAnswerFields({
           selected={selected ?? []}
           disabled
           onChange={IGNORE_INPUT}
+        />
+      )}
+      {askReason && (kind === 'single' || kind === 'multiple') && (
+        <AttemptQuestionReason
+          itemId={itemId}
+          value={text ?? ''}
+          disabled
+          onChange={IGNORE_INPUT}
+          onBlur={IGNORE_INPUT}
         />
       )}
     </>

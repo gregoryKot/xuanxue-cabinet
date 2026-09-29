@@ -52,6 +52,7 @@ export function ExamItemCard({
       <div style={listCardMetaStyle}>
         {EXAM_ITEM_KIND_LABELS_RU[item.kind]} · {EXAM_ITEM_STATUS_LABELS_RU[item.status]}
         {item.version > 1 && ` · версия ${item.version}`}
+        {item.askReason && ' · просит объяснение'}
       </div>
     </SelectableListRow>
   );

@@ -35,6 +35,7 @@ export {
 export type { TemplatePlaceholder, TemplateValues } from './templates';
 export {
   TEMPLATE_PLACEHOLDERS,
+  PAYMENT_REMINDER_PLACEHOLDERS,
   renderTemplate,
   findUnknownPlaceholders,
 } from './templates';
@@ -357,12 +358,17 @@ export {
   IDEMPOTENCY_KEY_RE,
 } from './broadcasts';
 export type {
+  PaymentReminderSettings,
   SettingsDto,
   UpdateSettingsInput,
   PreviewTemplateInput,
   PreviewTemplateResult,
 } from './settings';
-export { SETTINGS_LIMITS, NULLABLE_SETTINGS_FIELDS } from './settings';
+export {
+  SETTINGS_LIMITS,
+  NULLABLE_SETTINGS_FIELDS,
+  DEFAULT_PAYMENT_REMINDER,
+} from './settings';
 export type { SummaryDto } from './summary';
 export { SUMMARY_PERIOD_DAYS } from './summary';
 export type { LessonRecordingSummaryDto } from './lesson-recording-summary';
@@ -480,6 +486,12 @@ export {
   PAYMENT_STAFF_NOT_ELIGIBLE_MESSAGE,
   PAYMENT_NOTHING_TO_REVOKE_MESSAGE,
 } from './payments';
+export type { PaymentScreenshotKind } from './payment-screenshot';
+export {
+  PAYMENT_SCREENSHOT_KINDS,
+  PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+  PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE,
+} from './payment-screenshot';
 export type {
   SubscribePushInput,
   UnsubscribePushInput,

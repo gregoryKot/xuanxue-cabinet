@@ -66,6 +66,7 @@ export function AttemptSubmittedAnswers({ attempt }: AttemptSubmittedAnswersProp
                     options={question.options}
                     text={answer?.text}
                     selected={answer?.optionIds}
+                    askReason={question.askReason}
                   />
                 </QuestionRow>
               ))}

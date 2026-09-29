@@ -10,6 +10,7 @@ import { SkeletonLines } from '../components/Skeleton';
 import {
   formatAskedSummary,
   formatOptionLine,
+  formatReasonSummary,
   formatUsageSummary,
 } from './examItemStatsText';
 import { useExamItemStats } from './useExamItemStats';
@@ -28,10 +29,12 @@ export function ExamItemStats({ itemId }: ExamItemStatsProps) {
   if (!stats) return null;
 
   const usageSummary = formatUsageSummary(stats);
+  const reasonSummary = formatReasonSummary(stats);
 
   return (
     <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
       <p style={{ margin: 0 }}>{formatAskedSummary(stats)}</p>
+      {reasonSummary && <p style={{ margin: '4px 0 0' }}>{reasonSummary}</p>}
       {usageSummary && <p style={{ margin: '4px 0 0' }}>{usageSummary}</p>}
       {stats.options && stats.askedCount > 0 && (
         <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>

@@ -60,6 +60,11 @@ interface AttemptSubmitBarProps {
   /** Ученик нажал «Отправить» — экран подсвечивает вопросы без ответа, пока
    * открыто подтверждение и после отказа от него (AttemptInProgress.tsx). */
   onCheck: () => void;
+  /** Объяснение выбора не написано (ADR-0146, useReasonGuard.ts) — вызывается
+   * первым, до подтверждения «без ответов»: `false` останавливает нажатие
+   * совсем, подтверждение не открывается, ошибка и подсветка уже показаны
+   * вызывающим. */
+  onBeforeSubmit: () => boolean;
 }
 
 export function AttemptSubmitBar({
@@ -69,6 +74,7 @@ export function AttemptSubmitBar({
   submitError,
   unansweredCount,
   onCheck,
+  onBeforeSubmit,
 }: AttemptSubmitBarProps) {
   const [confirming, setConfirming] = useState(false);
   const hasUnanswered = unansweredCount > 0;
@@ -86,6 +92,7 @@ export function AttemptSubmitBar({
           type="button"
           style={primaryActionStyle}
           onClick={() => {
+            if (!onBeforeSubmit()) return;
             onCheck();
             setConfirming(true);
           }}

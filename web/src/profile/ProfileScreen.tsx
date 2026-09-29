@@ -11,12 +11,14 @@
 // уведомления», добавка к тем же видам, не отдельный список. Связка Telegram
 // живёт в SecondLoginKey.tsx (ADR-0059, общий с welcome/WelcomeScreen.tsx) —
 // раньше она была подана как способ получать уведомления, теперь это про то,
-// чтобы вход не зависел от одного приложения.
+// чтобы вход не зависел от одного приложения. Над ней — сводка «Способы
+// входа» (LoginKeysSummary.tsx): какая почта привязана и какие ключи есть.
 import type { CSSProperties } from 'react';
 import { APP_ERRORS_SCREEN_PATH } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { GoogleLinkSection } from '../auth/GoogleLinkSection';
 import { hasRole } from '../auth/hasRole';
+import { LoginKeysSummary } from '../auth/LoginKeysSummary';
 import { LogoutButton } from '../auth/LogoutButton';
 import { SecondLoginKey } from '../auth/SecondLoginKey';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -77,6 +79,9 @@ export default function ProfileScreen() {
       {!isStandalone() && (
         <SectionLink to={INSTALL_SCREEN_PATH} title={INSTALL_TITLE} hint={INSTALL_HINT} />
       )}
+
+      {/* Сводка ключей входа: показывает, что привязано; предлагают ниже. */}
+      {me === null ? <SkeletonList rows={3} h={24} /> : <LoginKeysSummary me={me} />}
 
       {/* Второй способ входа (ADR-0059) — SecondLoginKey сам решает, что
           предложить (или не рисует ничего, если оба ключа уже на месте). */}

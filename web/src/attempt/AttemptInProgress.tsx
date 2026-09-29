@@ -36,6 +36,7 @@ import { formatSaveStatus } from './attemptSaveStatusLabel';
 import { useUnansweredMarks } from './useUnansweredMarks';
 import { useAttemptAutosave } from './useAttemptAutosave';
 import type { AttemptVideoControls } from './useAttemptMedia';
+import { useReasonGuard } from './useReasonGuard';
 
 // Отправка ждёт сохранения (аудит 2026-09-21, HIGH «потеря последнего ответа
 // ученика», docs/PLAN.md §11): раньше submit() (useAttempt.ts) слал POST не
@@ -72,6 +73,9 @@ export function AttemptInProgress({
   // Вопросы без ответа: подсветка строк и число для подтверждения отправки
   // (useUnansweredMarks.ts, просьба владельца 2026-09-22).
   const marks = useUnansweredMarks(attempt.blocks, autosave.getAnswer, video.media);
+  // Объяснение выбора (ADR-0146) — жёсткий отказ раньше сетевого запроса,
+  // тем же правилом, что и сервер (useReasonGuard.ts).
+  const reasonGuard = useReasonGuard(attempt.blocks, autosave.getAnswer);
 
   // Отправка ждёт flush() (см. константу выше): PATCH и POST раньше летели
   // не дожидаясь друг друга — теперь submit() зовётся, только когда все
@@ -120,6 +124,7 @@ export function AttemptInProgress({
             key={block.id}
             block={block}
             unanswered={marks.marked}
+            reasonChecked={reasonGuard.checked}
             autosave={autosave}
             video={video}
           />
@@ -130,9 +135,10 @@ export function AttemptInProgress({
         saveLabel={formatSaveStatus(autosave.status)}
         onSubmit={handleSubmit}
         submitting={flushing || submitting}
-        submitError={flushError ?? submitError}
+        submitError={flushError ?? reasonGuard.error ?? submitError}
         unansweredCount={marks.count}
         onCheck={marks.check}
+        onBeforeSubmit={reasonGuard.check}
       />
     </section>
   );

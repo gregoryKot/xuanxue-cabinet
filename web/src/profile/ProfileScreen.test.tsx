@@ -44,6 +44,7 @@ const STUDENT: MeDto = {
   status: 'active',
   telegramLinked: false,
   botChatActive: false,
+  email: 'maria@example.com',
   hasEmail: true,
   noTelegram: false,
   needsProfile: false,
@@ -315,14 +316,22 @@ describe('ProfileScreen — карточка «Сбои» (ADR-0132)', () => {
   });
 });
 
+// Баг владельца 2026-09-29: адрес почты нигде не был назван.
+describe('ProfileScreen — сводка «Способы входа»', () => {
+  it('виден адрес подтверждённой почты, Telegram — «нет»', async () => {
+    renderScreen(STUDENT);
+
+    expect(await screen.findByText('maria@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Telegram').nextElementSibling).toHaveTextContent('нет');
+  });
+});
+
 describe('ProfileScreen — привязка Google (ADR-0145)', () => {
   it('googleLoginEnabled: false — блока нет вовсе', async () => {
     renderScreen(STUDENT, { enabled: [] }, { googleLoginEnabled: false });
 
     await screen.findByRole('heading', { level: 1, name: 'Профиль' });
-    expect(
-      screen.queryByText('Google привязан — можно входить через него.'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Второй путь входа/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Привязать Google' }),
     ).not.toBeInTheDocument();
@@ -342,16 +351,15 @@ describe('ProfileScreen — привязка Google (ADR-0145)', () => {
     expect(screen.getByText('можно будет войти через Google').tagName).toBe('STRONG');
   });
 
-  it('googleLoginEnabled: true, googleLinked: true — спокойная строка, кнопки нет', async () => {
+  it('googleLoginEnabled: true, googleLinked: true — в сводке «привязан», кнопки нет', async () => {
     renderScreen(
       { ...STUDENT, googleLinked: true },
       { enabled: [] },
       { googleLoginEnabled: true },
     );
 
-    expect(
-      await screen.findByText('Google привязан — можно входить через него.'),
-    ).toBeInTheDocument();
+    const label = await screen.findByText('Google');
+    expect(label.nextElementSibling).toHaveTextContent('привязан');
     expect(
       screen.queryByRole('button', { name: 'Привязать Google' }),
     ).not.toBeInTheDocument();

@@ -50,7 +50,7 @@ export async function findPaymentsForMonth(
         status: doc.status,
         amountMinor: doc.amountMinor,
         confirmedAt: doc.confirmedAt ? toIsoUtc(doc.confirmedAt) : undefined,
-        hasScreenshot: doc.screenshotKind != null,
+        screenshotKind: doc.screenshotKind,
         reminderSentAt: doc.reminderSentAt ? toIsoUtc(doc.reminderSentAt) : undefined,
       };
       return [doc.userId.toString(), data];

@@ -13,7 +13,10 @@
 // newcomerContact — кому писать незнакомцу (ADR-0115): не nullable, пустая
 // строка не проходит (`\S`) — иначе бот оборвал бы фразу «Напишите …» на
 // полуслове.
+// paymentReminder — напоминание ученику об оплате (ADR-0051): вложенный
+// объект, PATCH меняет только переданные поля (settings-payment-reminder.ts).
 import {
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -25,7 +28,12 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SETTINGS_LIMITS, type UpdateSettingsInput } from '@xuanxue/shared';
+import {
+  RULE_TIME_RE,
+  SETTINGS_LIMITS,
+  type PaymentReminderSettings,
+  type UpdateSettingsInput,
+} from '@xuanxue/shared';
 import { OptionalNotNull } from '../../common/validation';
 
 // Продолжение фразы «Шаблон «…»: …» (validation-messages.ts) — без повтора
@@ -49,6 +57,33 @@ export class UpdateTemplatesDto {
   @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
   @MaxLength(SETTINGS_LIMITS.templateMaxLength)
   recording?: string;
+}
+
+// export: та же причина, что у UpdateTemplatesDto выше. Ни одно поле не
+// nullable: «сбросить в ничто» у включателя, дня, времени и текста смысла не
+// имеет, только заменить другим значением.
+export class UpdatePaymentReminderDto implements Partial<PaymentReminderSettings> {
+  @OptionalNotNull()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @OptionalNotNull()
+  @IsInt()
+  @Min(SETTINGS_LIMITS.paymentReminderDayMin)
+  @Max(SETTINGS_LIMITS.paymentReminderDayMax)
+  dayOfMonth?: number;
+
+  // Продолжение фразы «Время: …» (validation-messages.ts), как в
+  // schedule-rule.dto.ts.
+  @OptionalNotNull()
+  @Matches(RULE_TIME_RE, { message: 'в формате ЧЧ:ММ, например 10:00.' })
+  time?: string;
+
+  @OptionalNotNull()
+  @IsString()
+  @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
+  @MaxLength(SETTINGS_LIMITS.templateMaxLength)
+  template?: string;
 }
 
 export class UpdateSettingsDto implements UpdateSettingsInput {
@@ -89,4 +124,9 @@ export class UpdateSettingsDto implements UpdateSettingsInput {
   @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
   @MaxLength(SETTINGS_LIMITS.newcomerContactMaxLength)
   newcomerContact?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdatePaymentReminderDto)
+  paymentReminder?: UpdatePaymentReminderDto;
 }

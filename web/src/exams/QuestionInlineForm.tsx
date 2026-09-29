@@ -15,6 +15,7 @@ import { ExamItemFormFields } from '../exam-items/ExamItemFormFields';
 import { ExamItemKindField } from '../exam-items/ExamItemKindField';
 import { changeExamItemKind } from '../exam-items/examItemKindChange';
 import { ExamItemOptionsField } from '../exam-items/ExamItemOptionsField';
+import { ExamItemReasonField } from '../exam-items/ExamItemReasonField';
 import { hasOptions } from '../exam-items/examItemFormInput';
 import { usePendingQuestionSlot } from './usePendingQuestion';
 import { useQuestionInlineForm } from './useQuestionInlineForm';
@@ -89,6 +90,8 @@ export function QuestionInlineForm({ item, onSaved, onCancel }: QuestionInlineFo
           onChange={(options) => form.setField('options', options)}
         />
       )}
+
+      <ExamItemReasonField state={form.state} setField={form.setField} />
 
       <FormServerError error={form.serverError} />
 

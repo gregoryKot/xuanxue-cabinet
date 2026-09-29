@@ -31,6 +31,8 @@ export async function createUserWithSession(
     status?: UserStatus;
     issuedAt?: DateTime;
     telegramId?: number;
+    /** Подтверждённый адрес — для сценариев `/auth/me` с `MeDto.email`. */
+    email?: string;
   },
 ): Promise<UserWithSession> {
   const model = app.get<Model<UserRecord>>(getModelToken(USER_MODEL_NAME), {
@@ -41,6 +43,7 @@ export async function createUserWithSession(
     roles: options.roles,
     status: options.status ?? 'active',
     telegramId: options.telegramId,
+    email: options.email,
   });
   const userId = created._id.toString();
 

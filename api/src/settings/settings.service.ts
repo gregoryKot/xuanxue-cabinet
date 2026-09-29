@@ -26,6 +26,10 @@ import { UsersService } from '../users/users.service';
 import { previewTemplate } from './settings-preview';
 import { toSettingsDto, type LeanSettings } from './settings.mapper';
 import { SettingsRecord, SETTINGS_SCHOOL_ID } from './settings.schema';
+import {
+  assertKnownReminderPlaceholders,
+  paymentReminderSetFrom,
+} from './settings-payment-reminder';
 import { assertKnownPlaceholders, templatesSetFrom } from './settings-templates';
 
 const SETTINGS_NOT_FOUND = 'Настройки школы не найдены. Повторите запрос.';
@@ -77,7 +81,7 @@ export class SettingsService {
     }
   }
 
-  /** PATCH `templates`/`schoolSiteUrl` (docs/PLAN.md §6 «Шаблоны», В6
+  /** PATCH `templates`/`paymentReminder`/`schoolSiteUrl` (docs/PLAN.md §6 «Шаблоны», В6
    * аудита) — плейсхолдеры проверены ещё до записи (assertKnownPlaceholders),
    * `get()` до апдейта гарантирует, что документ школы уже существует (тот
    * же upsert, что и у обычного чтения) — $set по несуществующему `_id` в
@@ -87,9 +91,11 @@ export class SettingsService {
    * classes/lessons (common/patch-update.ts). */
   async update(input: UpdateSettingsInput): Promise<SettingsDto> {
     if (input.templates) assertKnownPlaceholders(input.templates);
-    const { templates, ...rest } = input;
+    assertKnownReminderPlaceholders(input.paymentReminder?.template);
+    const { templates, paymentReminder, ...rest } = input;
     const { $set, $unset } = splitUpdate(rest, NULLABLE_SETTINGS_FIELDS);
     if (templates) Object.assign($set, templatesSetFrom(templates));
+    if (paymentReminder) Object.assign($set, paymentReminderSetFrom(paymentReminder));
     // Пустой `$set` и `$unset` разом (тело `{}`, оба шаблона опциональны,
     // или объект, где всё значения undefined — class-transformer
     // материализует поля DTO даже для пустого тела) — писать нечего: MongoDB

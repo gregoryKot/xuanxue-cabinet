@@ -577,6 +577,51 @@ describe('useAttemptAutosave — локальный черновик (аудит
   });
 });
 
+// ADR-0146: вопрос с вариантами может просить объяснение — setText/setOptions
+// правят один и тот же ответ по частям, слияние проверяет useAttemptAutosave.ts
+// (setAnswer), а не только тело PATCH здесь.
+describe('useAttemptAutosave — объяснение не стирает вариант и наоборот (ADR-0146)', () => {
+  it('выбрали вариант, затем написали объяснение — обе части в одном PATCH', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setOptions('item-1', ['opt-a']));
+    act(() => result.current.setText('item-1', 'Потому что так короче'));
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/attempt-1/answers', {
+      method: 'PATCH',
+      body: {
+        answers: [
+          { itemId: 'item-1', optionIds: ['opt-a'], text: 'Потому что так короче' },
+        ],
+      },
+    });
+  });
+
+  it('написали объяснение раньше выбора варианта — тот же результат в обратном порядке', async () => {
+    mockedApiFetch.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAttemptAutosave(ATTEMPT_ID, []));
+
+    act(() => result.current.setText('item-1', 'Потому что так короче'));
+    act(() => result.current.setOptions('item-1', ['opt-a']));
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(mockedApiFetch).toHaveBeenCalledWith('/attempts/attempt-1/answers', {
+      method: 'PATCH',
+      body: {
+        answers: [
+          { itemId: 'item-1', optionIds: ['opt-a'], text: 'Потому что так короче' },
+        ],
+      },
+    });
+  });
+});
+
 describe('useAttemptAutosave — брошенная попытка', () => {
   it('открывается с уже сохранёнными ответами, и дозапись шлёт только изменённый', async () => {
     mockedApiFetch.mockResolvedValue(undefined);

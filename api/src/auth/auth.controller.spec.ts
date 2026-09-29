@@ -5,6 +5,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_REMINDER,
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_PREVIEW_MINUTES,
   type SettingsDto,
@@ -29,6 +30,7 @@ const SETTINGS_WITHOUT_SITE: SettingsDto = {
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
   lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentReminder: DEFAULT_PAYMENT_REMINDER,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 
@@ -196,6 +198,7 @@ describe('AuthController.me', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      email: 'maria@example.com',
       hasEmail: true,
       googleLinked: false,
       noTelegram: false,
@@ -302,6 +305,7 @@ describe('AuthController.verifyEmailLogin', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      email: 'maria@example.com',
       hasEmail: true,
       googleLinked: false,
       noTelegram: false,
@@ -351,6 +355,7 @@ describe('AuthController.loginWithTelegram', () => {
       status: 'active',
       telegramLinked: false,
       botChatActive: false,
+      email: 'maria@example.com',
       hasEmail: true,
       googleLinked: false,
       noTelegram: false,

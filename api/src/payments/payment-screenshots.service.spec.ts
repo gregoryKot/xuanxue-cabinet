@@ -7,8 +7,12 @@
 import { DateTime } from 'luxon';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
-import { PAYMENT_MONTH_INVALID_MESSAGE } from '@xuanxue/shared';
-import { InvalidInputError } from '../common/errors';
+import {
+  PAYMENT_MONTH_INVALID_MESSAGE,
+  PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE,
+  PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+} from '@xuanxue/shared';
+import { InvalidInputError, NotFoundError } from '../common/errors';
 import { binaryToBuffer } from '../exam-images/exam-image.mapper';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import type { SettingsService } from '../settings/settings.service';
@@ -227,5 +231,107 @@ describe('PaymentScreenshotsService', () => {
 
     await expect(screenshotModel.countDocuments({})).resolves.toBe(0);
     await expect(paymentModel.countDocuments({})).resolves.toBe(0);
+  });
+
+  describe('load (штат открывает снимок из кабинета, ADR-0149)', () => {
+    it('upload → load: исходные байты и тип, не шифротекст', async () => {
+      const userId = newUserId();
+      await service.upload(PNG_BYTES, userId, '2026-09', NOW);
+
+      const loaded = await service.load(userId, '2026-09');
+
+      expect(loaded.bytes.equals(PNG_BYTES)).toBe(true);
+      expect(loaded.contentType).toBe('image/png');
+    });
+
+    it('повторная загрузка заменила снимок — load отдаёт новый, не старый', async () => {
+      const userId = newUserId();
+      await service.upload(JPEG_BYTES, userId, '2026-09', NOW);
+      await service.upload(PNG_BYTES, userId, '2026-09', NOW.plus({ minutes: 5 }));
+
+      const loaded = await service.load(userId, '2026-09');
+
+      expect(loaded.contentType).toBe('image/png');
+      expect(loaded.bytes.equals(PNG_BYTES)).toBe(true);
+    });
+
+    it('снимок бота — NotFoundError с текстом про Telegram: байтов у нас нет (ADR-0050)', async () => {
+      const userId = newUserId();
+      await paymentModel.create({
+        userId,
+        month: '2026-09',
+        status: 'awaiting',
+        screenshotKind: 'telegram',
+        screenshotFileId: 'f1',
+        screenshotFileUniqueId: 'u1',
+      });
+
+      const err = await service.load(userId, '2026-09').catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(NotFoundError);
+      expect((err as NotFoundError).message).toBe(PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE);
+    });
+
+    it('нет оплаты за месяц — NotFoundError', async () => {
+      await expect(service.load(newUserId(), '2026-09')).rejects.toMatchObject({
+        message: PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+        status: 404,
+      });
+    });
+
+    it('оплата есть, снимка нет — NotFoundError', async () => {
+      const userId = newUserId();
+      await paymentModel.create({ userId, month: '2026-09', status: 'paid' });
+
+      await expect(service.load(userId, '2026-09')).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('снимок другого месяца не подсовывается: месяц в пути — часть ключа', async () => {
+      const userId = newUserId();
+      await service.upload(JPEG_BYTES, userId, '2026-09', NOW);
+
+      await expect(service.load(userId, '2026-08')).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('кривой userId — NotFoundError, не CastError (500)', async () => {
+      await expect(service.load('не-id', '2026-09')).rejects.toMatchObject({
+        message: PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+        status: 404,
+      });
+    });
+
+    it('кривой месяц — InvalidInputError с текстом про формат', async () => {
+      await expect(service.load(newUserId(), '2026-9')).rejects.toMatchObject({
+        message: PAYMENT_MONTH_INVALID_MESSAGE,
+      });
+    });
+
+    it('байты-сироты: ссылка ведёт в никуда — NotFoundError', async () => {
+      const userId = newUserId();
+      await paymentModel.create({
+        userId,
+        month: '2026-09',
+        status: 'awaiting',
+        screenshotKind: 'upload',
+        screenshotImageId: new Types.ObjectId(),
+      });
+
+      await expect(service.load(userId, '2026-09')).rejects.toMatchObject({
+        message: PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+        status: 404,
+      });
+    });
+
+    it('upload без screenshotImageId (битая запись) — NotFoundError, не падение', async () => {
+      const userId = newUserId();
+      await paymentModel.create({
+        userId,
+        month: '2026-09',
+        status: 'awaiting',
+        screenshotKind: 'upload',
+      });
+
+      await expect(service.load(userId, '2026-09')).rejects.toBeInstanceOf(NotFoundError);
+    });
   });
 });
