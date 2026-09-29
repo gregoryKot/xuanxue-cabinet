@@ -18,7 +18,7 @@ function toLuxonWeekday(weekday: Weekday): number {
 // его же при записи — это защита в глубину); минуты берём срезом по
 // фиксированной позиции, а не `split(':')[1]` — под `noUncheckedIndexedAccess`
 // результат индексации массива был бы `string | undefined`.
-function parseRuleTime(time: string): { hour: number; minute: number } {
+export function parseRuleTime(time: string): { hour: number; minute: number } {
   const match = RULE_TIME_RE.exec(time);
   const hourGroup = match?.[1];
   if (hourGroup === undefined) {

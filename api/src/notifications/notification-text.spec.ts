@@ -27,6 +27,15 @@ describe('notificationText', () => {
     expect(notificationText({ kind: 'lesson_soon' })).toBe('Скоро занятие');
   });
 
+  it('payment_due — «Абонемент пока не отмечен оплаченным» с названием месяца (ADR-0150)', () => {
+    expect(notificationText({ kind: 'payment_due', title: 'сентябрь 2026' })).toBe(
+      'Абонемент пока не отмечен оплаченным — сентябрь 2026',
+    );
+    expect(notificationText({ kind: 'payment_due' })).toBe(
+      'Абонемент пока не отмечен оплаченным',
+    );
+  });
+
   // Виды, которые в ленту пока не пишутся (post_draft и прочие штатные),
   // своей формулировки не имеют — лучше сухое название вида, чем пустая
   // строка.

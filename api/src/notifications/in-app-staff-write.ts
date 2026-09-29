@@ -1,7 +1,8 @@
-// Запись строки ленты кабинета и выбор её получателей — общая часть четырёх
+// Запись строки ленты кабинета и выбор её получателей — общая часть пяти
 // уведомлений: «работу сдали», «работу проверили» (in-app-exam-notifier.ts),
-// «прислали ссылку на видео» (in-app-video-link-notifier.ts, ADR-0084) и
-// «занятие скоро» (lesson-reminder.service.ts, ADR-0135). Отдельным модулем,
+// «прислали ссылку на видео» (in-app-video-link-notifier.ts, ADR-0084),
+// «занятие скоро» (lesson-reminder.service.ts, ADR-0135) и «абонемент не
+// оплачен» (payment-reminder.service.ts, ADR-0150). Отдельным модулем,
 // а не приватными методами нотификатора: файл-лимит CLAUDE.md («Храповики»)
 // у него уже выбран, а повтор резолва получателей/записи строки в нескольких
 // классах поймал бы jscpd.
@@ -19,13 +20,13 @@ import { encryptRecord } from '../utils/encryption';
 import type { NotificationPrefsService } from './notification-prefs.service';
 import { NOTIFICATION_ENCRYPT_SCHEMA, NotificationRecord } from './notification.schema';
 
-/** Ровно одна пара «идентичность события» заполнена на вызов — та, что
- * совпадает с partial-индексом схемы (`(userId, kind, attemptId)` или
- * `(userId, kind, lessonId)`, notification.schema.ts): по экзаменным видам —
- * examId/examTitle/attemptId, по `lesson_soon` — lessonId/lessonTitle. Оба
- * набора необязательны в одном интерфейсе, а не два разных типа: строка
- * пишется одной и той же функцией для всех видов (см. шапку файла), а второй
- * тип развёл бы её на два похожих места. */
+/** Ровно одна «идентичность события» заполнена на вызов — та, что совпадает с
+ * partial-индексом схемы (`(userId, kind, attemptId | lessonId | paymentMonth)`,
+ * notification.schema.ts): по экзаменным видам — examId/examTitle/attemptId, по
+ * `lesson_soon` — lessonId/lessonTitle, по `payment_due` — paymentMonth. Все
+ * наборы необязательны в одном интерфейсе, а не три разных типа: строка
+ * пишется одной и той же функцией для всех видов (см. шапку файла), а
+ * отдельные типы развели бы её на похожие места. */
 export interface WriteInput {
   userId: string;
   kind: NotificationKind;
@@ -34,6 +35,7 @@ export interface WriteInput {
   attemptId?: string;
   lessonId?: string;
   lessonTitle?: string;
+  paymentMonth?: string;
   outcome?: GradingOutcome;
 }
 
@@ -51,10 +53,23 @@ export function staffWriteDeps(
   return { usersService, notificationPrefsService, model };
 }
 
-/** Одна строка ленты на связку (userId, kind, attemptId) либо
- * (userId, kind, lessonId) — какой из двух уникальных индексов схемы
- * работает, решает то, что заполнено в `input` (см. комментарий у
- * `WriteInput`). Название формы/класса шифруется той же схемой, какой
+// Идентичность строки: lessonId у lesson_soon, paymentMonth у payment_due,
+// иначе attemptId (экзаменные виды всегда его несут). Они никогда не приходят
+// вместе — один вызывающий код пишет ровно одно из трёх (in-app-exam-notifier.ts,
+// lesson-reminder.service.ts, payment-reminder.service.ts).
+function identityFilter(input: WriteInput): Record<string, string | undefined> {
+  const base = { userId: input.userId, kind: input.kind };
+  if (input.lessonId !== undefined) return { ...base, lessonId: input.lessonId };
+  if (input.paymentMonth !== undefined) {
+    return { ...base, paymentMonth: input.paymentMonth };
+  }
+  return { ...base, attemptId: input.attemptId };
+}
+
+/** Одна строка ленты на связку (userId, kind, attemptId), (userId, kind,
+ * lessonId) либо (userId, kind, paymentMonth) — какой из трёх уникальных
+ * индексов схемы работает, решает то, что заполнено в `input` (см. комментарий
+ * у `WriteInput`). Название формы/класса шифруется той же схемой, какой
  * маппер его расшифровывает (NOTIFICATION_ENCRYPT_SCHEMA) — записать мимо
  * неё значило бы отдать клиенту шифротекст вместо названия. Повторная
  * запись перезаписывает снимок свежим названием и снова поднимает строку
@@ -65,20 +80,14 @@ export async function writeNotificationRow(
   model: Model<NotificationRecord>,
   input: WriteInput,
 ): Promise<void> {
-  // lessonId — идентичность lesson_soon (частичный индекс без attemptId);
-  // остальные виды всегда несут attemptId. Оба никогда не приходят вместе —
-  // один вызывающий код пишет ровно одно из двух (in-app-exam-notifier.ts /
-  // lesson-reminder.service.ts).
-  const filter =
-    input.lessonId !== undefined
-      ? { userId: input.userId, kind: input.kind, lessonId: input.lessonId }
-      : { userId: input.userId, kind: input.kind, attemptId: input.attemptId };
+  const filter = identityFilter(input);
   const payload = encryptRecord(
     {
       ...(input.examId !== undefined ? { examId: input.examId } : {}),
       ...(input.examTitle !== undefined ? { examTitle: input.examTitle } : {}),
       ...(input.lessonId !== undefined ? { lessonId: input.lessonId } : {}),
       ...(input.lessonTitle !== undefined ? { lessonTitle: input.lessonTitle } : {}),
+      ...(input.paymentMonth !== undefined ? { paymentMonth: input.paymentMonth } : {}),
       readAt: null,
       // Новое событие по той же попытке/занятию (переоценка, присланная
       // позже ссылка на видео, следующее напоминание) возвращает строку в

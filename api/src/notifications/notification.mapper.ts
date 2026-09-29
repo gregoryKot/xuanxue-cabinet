@@ -10,7 +10,7 @@
 // файле разъехалась бы с этой на первой же правке (CLAUDE.md «Одна механика
 // — один компонент»).
 import type { Types } from 'mongoose';
-import type { NotificationDto } from '@xuanxue/shared';
+import { formatMonthRu, type NotificationDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
 import { decryptRecord } from '../utils/encryption';
 import { notificationText } from './notification-text';
@@ -27,12 +27,22 @@ export type RawLeanNotification = Pick<NotificationRecord, keyof NotificationRec
   createdAt: Date;
 };
 
+// Третий «заголовок» строки — месяц оплаты: хранится ключом 'YYYY-MM', а
+// «сентябрь 2026» собирается здесь, на чтении (ADR-0150, тот же довод, что у
+// самого текста — шапка notification.schema.ts).
+function titleOf(
+  doc: Pick<NotificationRecord, 'examTitle' | 'lessonTitle' | 'paymentMonth'>,
+) {
+  if (doc.paymentMonth !== undefined) return formatMonthRu(doc.paymentMonth);
+  return doc.examTitle ?? doc.lessonTitle;
+}
+
 export function toNotificationDto(raw: RawLeanNotification): NotificationDto {
   const doc = decryptRecord(raw, NOTIFICATION_ENCRYPT_SCHEMA);
   return {
     id: doc._id.toString(),
     kind: doc.kind,
-    text: notificationText({ kind: doc.kind, title: doc.examTitle ?? doc.lessonTitle }),
+    text: notificationText({ kind: doc.kind, title: titleOf(doc) }),
     examId: doc.examId,
     attemptId: doc.attemptId,
     lessonId: doc.lessonId,

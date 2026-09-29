@@ -293,6 +293,18 @@ describe('MODEL_DEFINITIONS против Mongo', () => {
     ).resolves.toBeDefined();
   });
 
+  it('notifications: второй insert с той же тройкой (userId, kind, paymentMonth) падает, другой месяц — нет (ADR-0150)', async () => {
+    const Notification = connection.model<NotificationRecord>(NotificationRecord.name);
+    const base = { userId: 'u1', kind: 'payment_due' as const, paymentMonth: '2026-09' };
+    await Notification.create(base);
+    await expect(Notification.create(base)).rejects.toMatchObject({
+      code: MONGO_DUPLICATE_KEY_CODE,
+    });
+    await expect(
+      Notification.create({ ...base, paymentMonth: '2026-10' }),
+    ).resolves.toBeDefined();
+  });
+
   it('notifications: без attemptId индекс частичный — копится сколько угодно раз', async () => {
     const Notification = connection.model<NotificationRecord>(NotificationRecord.name);
     const base = { userId: 'u1', kind: 'post_draft' as const };

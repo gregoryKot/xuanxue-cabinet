@@ -66,15 +66,15 @@ describe('DEFAULT_NOTIFICATIONS_BY_ROLE', () => {
 });
 
 describe('defaultNotifications', () => {
-  it('ученик (без ролей) — результат экзамена и напоминание о занятии (ADR-0135)', () => {
+  it('ученик (без ролей) — результат экзамена, напоминания о занятии и об оплате (ADR-0135, ADR-0150)', () => {
     expect(defaultNotifications([])).toEqual(STUDENT_NOTIFICATIONS);
-    expect(STUDENT_NOTIFICATIONS).toEqual(['exam_result', 'lesson_soon']);
+    expect(STUDENT_NOTIFICATIONS).toEqual(['exam_result', 'lesson_soon', 'payment_due']);
   });
 
   // ADR-0069: вид без доставки — переключатель, который врёт. Проверяем не
   // «нет строки lesson_soon» (такой тест не переживёт следующего удаления), а
   // само условие входа в список: у каждого вида есть либо получатель по роли,
-  // либо он ученический — а ученический сейчас ровно один.
+  // либо он ученический.
   it('у каждого вида есть получатель: роль по умолчанию или ученик', () => {
     for (const kind of NOTIFICATION_KINDS) {
       const hasRole = rolesWithNotification(kind).length > 0;
@@ -129,6 +129,11 @@ describe('defaultNotifications', () => {
 describe('rolesWithNotification', () => {
   it('payments — только бухгалтер (регрессия: раньше PersonalChats.listFor не искал его вовсе)', () => {
     expect(rolesWithNotification('payments')).toEqual(['accountant']);
+  });
+
+  it('payment_due — ученический вид: ни одной роли, получатель — человек без ролей', () => {
+    expect(rolesWithNotification('payment_due')).toEqual([]);
+    expect(STUDENT_NOTIFICATIONS).toContain('payment_due');
   });
 
   it('post_draft — админ, учитель, помощник в каноническом порядке USER_ROLES', () => {

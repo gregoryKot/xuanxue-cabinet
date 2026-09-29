@@ -33,13 +33,17 @@ describe('buildNotificationsMenu', () => {
     ]);
   });
 
-  it('ученик видит только свои виды, не учительские (ADR-0135 — экзамен и занятие)', () => {
-    const menu = buildNotificationsMenu([], ['exam_result', 'lesson_soon']);
+  it('ученик видит только свои виды, не учительские (экзамен, занятие, оплата)', () => {
+    const menu = buildNotificationsMenu(
+      [],
+      ['exam_result', 'lesson_soon', 'payment_due'],
+    );
 
     expect(menu.text).not.toContain('Черновик поста');
     expect(menu.buttons).toEqual([
       [{ text: 'Выключить', callback_data: 'notif:exam_result' }],
       [{ text: 'Выключить', callback_data: 'notif:lesson_soon' }],
+      [{ text: 'Выключить', callback_data: 'notif:payment_due' }],
     ]);
   });
 
@@ -56,18 +60,21 @@ describe('buildNotificationsMenu', () => {
     ]);
   });
 
-  it('без ролей (гость) — дефолт ученика, два вида', () => {
-    const menu = buildNotificationsMenu([], ['exam_result', 'lesson_soon']);
+  it('без ролей (гость) — дефолт ученика, три вида', () => {
+    const menu = buildNotificationsMenu(
+      [],
+      ['exam_result', 'lesson_soon', 'payment_due'],
+    );
 
-    expect(menu.buttons).toHaveLength(2);
+    expect(menu.buttons).toHaveLength(3);
   });
 
   it('ученик с одним включённым видом — меню не разваливается на пустых строках вокруг подсказки', () => {
     const menu = buildNotificationsMenu([], ['exam_result']);
 
-    // Один вид в тексте (у ученика их доступно два, но сюда передан один
-    // включённый — buildNotificationsMenu всё равно рисует оба, второй
-    // выключенным) — блоки разделены ровно одним пустым переносом, без
+    // Один вид в тексте (у ученика их доступно три, но сюда передан один
+    // включённый — buildNotificationsMenu всё равно рисует все, остальные
+    // выключенными) — блоки разделены ровно одним пустым переносом, без
     // утроенных, и без хвоста про кабинет (ADR-0065: бот и «Профиль»
     // переключают одно и то же, повторять это на экране незачем).
     expect(menu.text).toBe(
@@ -75,7 +82,9 @@ describe('buildNotificationsMenu', () => {
         'Результат экзамена — включено\n' +
         'Придёт, когда учитель проверит вашу работу и выставит результат.\n\n' +
         'Занятие скоро — выключено\n' +
-        'Придёт перед началом занятия — в кабинет и push-уведомлением на телефон.',
+        'Придёт перед началом занятия — в кабинет и push-уведомлением на телефон.\n\n' +
+        'Напоминание об оплате — выключено\n' +
+        'Придёт в день оплаты, если абонемент за месяц ещё не отмечен оплаченным.',
     );
   });
 });

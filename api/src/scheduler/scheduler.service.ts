@@ -7,7 +7,6 @@
 import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DateTime } from 'luxon';
-import { errorMessage, errorStack } from '../common/error-info';
 import { AnswerVideoSweepService } from '../answer-videos/answer-video-sweep.service';
 import { BroadcastCancelNotifyService } from '../broadcasts/broadcast-cancel-notify.service';
 import { BroadcastPlannerService } from '../broadcasts/broadcast-planner.service';
@@ -22,8 +21,10 @@ import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonReminderService } from '../lessons/lesson-reminder.service';
 import { StorageOrphansService } from '../storage/storage-orphans.service';
 import { RecordingPromptService } from '../lessons/recording-prompt.service';
+import { PaymentReminderService } from '../payments/payment-reminder.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
+import { runStep } from './scheduler-step';
 import { runSweepSteps } from './scheduler-sweep-steps';
 
 @Injectable()
@@ -43,6 +44,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly lessonReminderService: LessonReminderService,
     private readonly manualPromptService: ManualPromptService,
     private readonly examDeadlineCloseService: ExamDeadlineCloseService,
+    private readonly paymentReminderService: PaymentReminderService,
     private readonly examImageSweepService: ExamImageSweepService,
     private readonly examVideoSweepService: ExamVideoSweepService,
     private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
@@ -101,6 +103,14 @@ export class SchedulerService implements OnApplicationShutdown {
       now,
       (n) => this.examDeadlineCloseService.closeDue(n),
     )) ?? { closed: 0 };
+    // ADR-0150: вне окна суток после назначенного школой момента шаг ничего
+    // не делает; внутри — личное сообщение или строка ленты каждому, у кого
+    // месяц не оплачен.
+    const { reminded: paymentReminders } = (await this.step(
+      'напоминания об оплате',
+      now,
+      (n) => this.paymentReminderService.remind(n),
+    )) ?? { reminded: 0 };
     // Пять шагов уборки байтов — scheduler-sweep-steps.ts (файл-храповик:
     // этот файл уже был на потолке, «может только уменьшаться»).
     const {
@@ -124,6 +134,7 @@ export class SchedulerService implements OnApplicationShutdown {
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
         `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
+        `paymentReminders=${paymentReminders} ` +
         `imagesRemoved=${imagesRemoved} videosRemoved=${videosRemoved} ` +
         `paymentScreenshotsRemoved=${screenshotsRemoved} ` +
         `paymentScreenshotOrphans=${screenshotOrphans} filesRemoved=${filesRemoved} ` +
@@ -131,32 +142,14 @@ export class SchedulerService implements OnApplicationShutdown {
     );
   }
 
-  /** Уведомление учителю/админу в Telegram про сбой шага (CLAUDE.md «Логи»:
-   * тихий отказ — самая дорогая ошибка в продукте про рассылки) — дедуп
-   * «не чаще раза в 10 минут на шаг» живёт в самом notifier'е (TeacherNotifier
-   * — singleton, notifySchedulerFailed сам решает, писать ли на этот раз).
-   * Сбой самого уведомления — только в лог, не должен уронить тик. */
-  private async step<T>(
+  // Тело шага (try/catch, лог, уведомление о сбое) — scheduler-step.ts: файл
+  // на потолке храповика, а тик растёт шагами.
+  private step<T>(
     name: string,
     now: DateTime,
     run: (now: DateTime) => Promise<T>,
   ): Promise<T | undefined> {
-    try {
-      return await run(now);
-    } catch (err) {
-      const message = errorMessage(err);
-      this.logger.error(
-        `scheduler.tick: шаг «${name}» упал: ${message}`,
-        errorStack(err),
-      );
-      await this.notifier.notifySchedulerFailed(name, message, now).catch((notifyErr) => {
-        this.logger.error(
-          `scheduler.tick: уведомление о сбое шага «${name}» не отправлено: ` +
-            errorMessage(notifyErr),
-        );
-      });
-      return undefined;
-    }
+    return runStep({ logger: this.logger, notifier: this.notifier }, name, now, run);
   }
 
   async onApplicationShutdown(): Promise<void> {

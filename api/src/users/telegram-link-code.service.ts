@@ -16,6 +16,7 @@ import {
 } from '@xuanxue/shared';
 import { NotAvailableError } from '../common/errors';
 import { BotIdentityService } from '../telegram/bot-identity.service';
+import { telegramStartUrl } from '../telegram/telegram-start-url';
 import { TelegramLinkCodeRecord } from './telegram-link-code.schema';
 
 // Не cooldown, как у письма (EMAIL_LOGIN_RESEND_COOLDOWN_MIN): письмо шлётся
@@ -54,7 +55,7 @@ export class TelegramLinkCodeService {
     });
 
     return {
-      telegramUrl: `https://t.me/${botUsername}?start=${TELEGRAM_LINK_START_PREFIX}${code}`,
+      telegramUrl: telegramStartUrl(botUsername, `${TELEGRAM_LINK_START_PREFIX}${code}`),
     };
   }
 
