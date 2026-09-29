@@ -4,7 +4,10 @@
 // признак «есть ли»). Email — исключение (ADR-0059, ср. комментарий в
 // shared/src/me.ts): `GET /auth/me` отвечает только про владельца сессии
 // (@CurrentUser()), и свой адрес уходит тому, у кого он и так в почтовом
-// ящике — раскрывать здесь некому. Чужие адреса по-прежнему закрыты: UserDto
+// ящике — раскрывать здесь некому. Отдаётся и сам подтверждённый адрес
+// (`email`), а не только признак `hasEmail`: без него «Профиль» не мог назвать
+// привязанный адрес, и владелец не понял, почему Google его не узнал (баг
+// 2026-09-29). Чужие адреса по-прежнему закрыты: UserDto
 // на «Людях» email не отдаёт ни одной роли (SECURITY §1). `status` —
 // `active`/`blocked` (ADR-0026, ADR-0036), ждать больше нечего.
 // `telegramLinked` — не сам id, а булев признак «есть ли telegramId»: по
@@ -38,6 +41,7 @@ export function toMeDto(user: UserLean, botChatActive: boolean): MeDto {
     status: user.status,
     telegramLinked: user.telegramId != null,
     botChatActive,
+    email: user.email,
     hasEmail: user.email != null,
     googleLinked: user.googleId != null,
     pendingEmail: user.pendingEmail,

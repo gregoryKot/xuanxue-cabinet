@@ -23,6 +23,7 @@ describe('toMeDto', () => {
       status: 'active',
       telegramLinked: true,
       botChatActive: true,
+      email: 'maria@example.com',
       hasEmail: true,
       googleLinked: true,
       pendingEmail: undefined,
@@ -78,16 +79,17 @@ describe('toMeDto', () => {
   });
 
   // `status` наружу идёт (ADR-0026, ADR-0036: active/blocked, ждать больше
-  // нечего); telegramId/googleId по-прежнему закрыты, свой email — только
-  // признаком hasEmail (ADR-0059).
-  it('email отдаётся только признаком hasEmail — telegramId и googleId не выходят', () => {
+  // нечего); telegramId/googleId по-прежнему закрыты, свой email выходит
+  // значением (ADR-0059, баг владельца 2026-09-29).
+  it('свой email выходит значением — telegramId и googleId не выходят', () => {
     const dto = toMeDto(fullUser(), true) as unknown as Record<string, unknown>;
-    expect(dto.email).toBeUndefined();
+    expect(dto.email).toBe('maria@example.com');
     expect(dto.telegramId).toBeUndefined();
     expect(dto.googleId).toBeUndefined();
     expect(dto.hasEmail).toBe(true);
     expect(Object.keys(dto).sort()).toEqual([
       'botChatActive',
+      'email',
       'googleLinked',
       'hasEmail',
       'id',
@@ -110,19 +112,37 @@ describe('toMeDto', () => {
     expect(toMeDto(noGoogle, true).googleLinked).toBe(false);
   });
 
-  // ADR-0059: свой подтверждённый адрес — единственное исключение из
-  // «ключи входа наружу не идут», и то только признаком, не значением.
-  it('hasEmail: true при заполненном email, false — без него', () => {
-    expect(toMeDto(fullUser(), true).hasEmail).toBe(true);
+  // Баг владельца 2026-09-29: «Профиль» не называл привязанный адрес, потому
+  // что в MeDto был только признак. Три состояния почты и согласованность
+  // hasEmail с email — оба поля идут из одного users.email.
+  describe('почта в MeDto', () => {
+    it('адрес есть — email отдаётся, hasEmail true, pendingEmail пуст', () => {
+      const dto = toMeDto(fullUser(), true);
 
-    const noEmail: UserLean = { ...fullUser(), email: undefined };
-    expect(toMeDto(noEmail, true).hasEmail).toBe(false);
-  });
+      expect(dto.email).toBe('maria@example.com');
+      expect(dto.hasEmail).toBe(true);
+      expect(dto.pendingEmail).toBeUndefined();
+      expect(dto.hasEmail).toBe(dto.email !== undefined);
+    });
 
-  it('pendingEmail переносится как есть — пусто, если адрес не назван или уже подтверждён', () => {
-    expect(toMeDto(fullUser(), true).pendingEmail).toBeUndefined();
+    it('адреса нет — email пуст, hasEmail false', () => {
+      const dto = toMeDto({ ...fullUser(), email: undefined }, true);
 
-    const pending: UserLean = { ...fullUser(), pendingEmail: 'ждёт@example.com' };
-    expect(toMeDto(pending, true).pendingEmail).toBe('ждёт@example.com');
+      expect(dto.email).toBeUndefined();
+      expect(dto.hasEmail).toBe(false);
+      expect(dto.hasEmail).toBe(dto.email !== undefined);
+    });
+
+    it('только pendingEmail — email пуст, hasEmail false, ждущий адрес отдан как есть', () => {
+      const dto = toMeDto(
+        { ...fullUser(), email: undefined, pendingEmail: 'ждёт@example.com' },
+        true,
+      );
+
+      expect(dto.email).toBeUndefined();
+      expect(dto.hasEmail).toBe(false);
+      expect(dto.pendingEmail).toBe('ждёт@example.com');
+      expect(dto.hasEmail).toBe(dto.email !== undefined);
+    });
   });
 });

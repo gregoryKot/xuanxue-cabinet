@@ -77,14 +77,16 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
     expect(body.telegramLinked).toBe(false); // инцидент 2026-09-16, RUNBOOK §8.17
     // Новый email — без telegramId, боту тем более некуда писать (ADR-0042).
     expect(body.botChatActive).toBe(false);
-    // Только поля MeDto — самого адреса и tokenHash в ответе нет (SECURITY §2,
-    // CLAUDE.md «API»). `hasEmail` — признак «ключ есть», не адрес (ADR-0059);
+    // Только поля MeDto — tokenHash и чужих адресов в ответе нет (SECURITY §2,
+    // CLAUDE.md «API»). `email` — свой подтверждённый адрес владельцу сессии
+    // (ADR-0059, баг владельца 2026-09-29), `hasEmail` — признак при нём;
     // `pendingEmail` тут отсутствует, потому что этот человек вошёл по уже
     // подтверждённому адресу и ждать ему нечего — необязательное поле в JSON
     // не появляется вовсе.
     expect(Object.keys(body).sort()).toEqual(
       [
         'botChatActive',
+        'email',
         'googleLinked',
         'hasEmail',
         'id',
@@ -97,7 +99,7 @@ describe('POST /auth/email/verify (e2e), Resend подключён', () => {
       ].sort(),
     );
     expect(body.hasEmail).toBe(true);
-    expect(body).not.toHaveProperty('email');
+    expect(body.email).toBe('verify-flow@example.com');
     // Новый по почте зовётся заглушкой, не своим адресом (SECURITY §1,
     // ADR-0044) — и ещё не называл себя сам.
     expect(body.name).toBe(NEW_PERSON_NAME);

@@ -58,7 +58,7 @@ describe('Привязка почты к аккаунту (e2e)', () => {
     const linked = await helpers.postLink(cookie, 'student-1@example.com');
     expect(linked.status).toBe(200);
     const body = linked.body as MeDto;
-    expect(body.hasEmail).toBe(false);
+    expect([body.hasEmail, body.email]).toEqual([false, undefined]);
     expect(body.pendingEmail).toBe('student-1@example.com');
 
     const me = await helpers.getMe(cookie); // тело равно GET сразу после (ADR-0087)
@@ -105,7 +105,7 @@ describe('Привязка почты к аккаунту (e2e)', () => {
 
     const me = await helpers.getMe(cookie);
     const meBody = me.body as MeDto;
-    expect(meBody.hasEmail).toBe(true);
+    expect([meBody.hasEmail, meBody.email]).toEqual([true, 'confirm-me@example.com']);
     expect(meBody.pendingEmail).toBeUndefined();
 
     // Read-after-write через отдельный путь входа — тот же аккаунт, не второй.
