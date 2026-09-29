@@ -8,6 +8,7 @@ import {
   skipGenerics,
   findStringApiFetchCalls,
 } from './check-string-api-fetch-ratchet.mjs';
+import { isBridgeFile } from './string-api-fetch-bridges.mjs';
 
 const lines = (src) => findStringApiFetchCalls('f.ts', src).map((f) => f.line);
 
@@ -63,4 +64,10 @@ test('ссылка на apiFetch без вызова не считается', (
 
 test('несколько вызовов в файле — по строке на каждый', () => {
   assert.deepEqual(lines("apiFetch('/a');\n\napiFetch<T>('/b');"), [1, 3]);
+});
+
+test('мосты: apiRoute.ts и prefetchFirstScreen.ts не считаются, остальные файлы — да', () => {
+  assert.equal(isBridgeFile('web/src/api/apiRoute.ts'), true);
+  assert.equal(isBridgeFile('web/src/app/prefetchFirstScreen.ts'), true);
+  assert.equal(isBridgeFile('web/src/people/usePeople.ts'), false);
 });

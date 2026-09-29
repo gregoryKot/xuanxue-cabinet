@@ -6,6 +6,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { AppErrorListDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { AppErrorsService } from './app-errors.service';
 import { ListAppErrorsQueryDto } from './dto/list-app-errors.dto';
 
@@ -15,6 +16,7 @@ export class DevErrorsController {
   constructor(private readonly appErrorsService: AppErrorsService) {}
 
   @Get()
+  @ApiRoute('GET /dev/errors')
   async list(@Query() query: ListAppErrorsQueryDto): Promise<AppErrorListDto> {
     return this.appErrorsService.list(query, DateTime.utc());
   }

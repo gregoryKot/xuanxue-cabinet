@@ -6,6 +6,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { PushPublicKeyDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import { readVapidConfig } from './vapid.config';
 
 @Controller('push')
@@ -13,7 +14,10 @@ export class PushKeyController {
   constructor(private readonly config: ConfigService) {}
 
   @Get('public-key')
-  getPublicKey(): PushPublicKeyDto {
-    return { publicKey: readVapidConfig(this.config)?.publicKey ?? null };
+  @ApiRoute('GET /push/public-key')
+  getPublicKey(): Promise<PushPublicKeyDto> {
+    return Promise.resolve({
+      publicKey: readVapidConfig(this.config)?.publicKey ?? null,
+    });
   }
 }

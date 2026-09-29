@@ -14,11 +14,8 @@ import {
   type ClientErrorKind,
   type ReportClientErrorInput,
 } from '@xuanxue/shared';
-import { apiFetch, ApiError } from '../api/http';
-
-// Не в apiPaths.ts: там только GET-пути первого экрана для предзагрузки
-// (см. шапку apiPaths.ts) — это POST, предзагружать нечего.
-const CLIENT_ERROR_PATH = '/client-errors';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 
 /** Потолок отчётов за одну загрузку страницы — сломанный экран, который
  * дёргает отчёт на каждый ре-рендер, не должен превратиться в очередь из
@@ -95,8 +92,7 @@ export async function reportClientError(
   reportInFlight = true;
   try {
     const input: ReportClientErrorInput = { kind, message, path };
-    await apiFetch<void>(CLIENT_ERROR_PATH, {
-      method: 'POST',
+    await apiRoute('POST /client-errors', {
       body: input,
       // Вкладку закрывают сразу после сбоя чаще, чем дочитывают ошибку, а
       // обычный fetch браузер обрывает вместе с документом — владелец о самом

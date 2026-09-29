@@ -6,12 +6,12 @@ import {
   APP_ERROR_LIMITS,
   APP_ERROR_SOURCES,
   type AppErrorKind,
+  type ApiRouteQuery,
   type AppErrorSource,
-  type ListAppErrorsQuery,
 } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
-export class ListAppErrorsQueryDto implements ListAppErrorsQuery {
+export class ListAppErrorsQueryDto implements ApiRouteQuery<'GET /dev/errors'> {
   @IsOptional()
   @IsString()
   @MaxLength(APP_ERROR_LIMITS.requestId)

@@ -5,10 +5,10 @@ import { IsString, IsUrl, Matches, MaxLength } from 'class-validator';
 import {
   PUSH_SUBSCRIPTION_KEY_RE,
   PUSH_SUBSCRIPTION_LIMITS,
-  type SubscribePushInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 
-export class SubscribePushDto implements SubscribePushInput {
+export class SubscribePushDto implements ApiRouteBody<'POST /me/push-subscriptions'> {
   @IsUrl({ protocols: ['https'], require_protocol: true })
   @MaxLength(PUSH_SUBSCRIPTION_LIMITS.endpoint)
   endpoint!: string;

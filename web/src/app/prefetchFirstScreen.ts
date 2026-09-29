@@ -32,7 +32,10 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
   return [...new Set(needed)];
 }
 
-/** Кладёт промис каждого пути в prefetchCache.ts — экран заберёт его при
+/** Мост храповика строковых `apiFetch` (scripts/string-api-fetch-bridges.mjs):
+ * пути пришли строками из таблицы routeModules.ts — их собрал `apiRoutePath`
+ * (или ещё не перенесённый помощник apiPaths.ts), — `apiRoute` тут не подходит:
+ * ключ карты по строке не вернуть, а кэш ждёт ровно её. Кладёт промис каждого пути в prefetchCache.ts — экран заберёт его при
  * монтировании (useAbortableFetch → apiFetch → takePrefetched). */
 export function prefetchFirstScreen(pathname: string, me: MeDto): void {
   for (const path of firstScreenPaths(pathname, me)) {

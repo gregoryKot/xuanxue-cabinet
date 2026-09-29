@@ -4,8 +4,7 @@
 // InviteLinkService.rotate() на сервере).
 import { useCallback, useState } from 'react';
 import type { InviteLinkDto } from '@xuanxue/shared';
-import { INVITE_LINK_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить ссылку-приглашение. Попробуйте ещё раз.';
@@ -25,7 +24,7 @@ export interface UseInviteLinkResult {
 
 export function useInviteLink(): UseInviteLinkResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<InviteLinkDto>(INVITE_LINK_PATH, { signal }),
+    (signal) => apiRoute('GET /users/invite-link', { signal }),
     LOAD_ERROR_MESSAGE,
   );
   const [rotating, setRotating] = useState(false);
@@ -36,9 +35,7 @@ export function useInviteLink(): UseInviteLinkResult {
     setRotating(true);
     setRotateError(null);
     try {
-      const next = await apiFetch<InviteLinkDto>(INVITE_LINK_PATH, {
-        method: 'POST',
-      });
+      const next = await apiRoute('POST /users/invite-link');
       setRotated(next);
     } catch {
       setRotateError(ROTATE_ERROR_MESSAGE);

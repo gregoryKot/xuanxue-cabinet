@@ -5,8 +5,7 @@
 // код экрана» — на клиенте, из ответа сервера ничего не убирается.
 import { useEffect, useRef } from 'react';
 import type { AppErrorListDto } from '@xuanxue/shared';
-import { devErrorsListPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить журнал сбоев. Попробуйте ещё раз.';
@@ -20,7 +19,13 @@ export interface UseDevErrorsResult {
 
 export function useDevErrors(requestId: string): UseDevErrorsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<AppErrorListDto>(devErrorsListPath(requestId), { signal }),
+    (signal) =>
+      apiRoute('GET /dev/errors', {
+        // Пустой код — без query вовсе, как и раньше: `requestId=` сервер
+        // принял бы за фильтр по пустой строке.
+        query: { requestId: requestId || undefined },
+        signal,
+      }),
     LOAD_ERROR_MESSAGE,
   );
 

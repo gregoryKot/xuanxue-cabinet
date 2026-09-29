@@ -9,11 +9,11 @@ import {
   CLIENT_ERROR_KINDS,
   CLIENT_ERROR_LIMITS,
   CLIENT_ERROR_PATH_RE,
+  type ApiRouteBody,
   type ClientErrorKind,
-  type ReportClientErrorInput,
 } from '@xuanxue/shared';
 
-export class ReportClientErrorDto implements ReportClientErrorInput {
+export class ReportClientErrorDto implements ApiRouteBody<'POST /client-errors'> {
   @IsIn(CLIENT_ERROR_KINDS)
   kind!: ClientErrorKind;
 

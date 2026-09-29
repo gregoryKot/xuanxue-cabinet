@@ -3,7 +3,6 @@
 // литералов: разъехавшись, они сломали бы ключ кэша prefetchCache.ts (apiFetch
 // сравнивает строки пути). Путь только для своего хука — остаётся в хуке.
 import {
-  APP_ERRORS_SCREEN_PATH,
   LIST_LIMIT_DEFAULT,
   LIST_LIMIT_MAX,
   type ExamItemStatus,
@@ -146,7 +145,9 @@ export function nextLessonsPath(): string {
   return `${LESSONS_PATH}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=${NEXT_LESSONS_LIMIT}`;
 }
 
-export const NOTIFICATION_PREFS_PATH = '/me/notifications';
+/** Строка пути — только для таблицы предзагрузки, как NOTIFICATIONS_FEED_PATH
+ * ниже: хук зовёт `apiRoute` по ключу (PLAN §17.1). */
+export const NOTIFICATION_PREFS_PATH = apiRoutePath('GET /me/notifications');
 
 /** Лента центра уведомлений (ADR-0063) — своё имя ресурса: `/me/notifications`
  * выше занят настройкой «что присылать», и лента под ним читалась бы её частью. */
@@ -158,9 +159,8 @@ export const NOTIFICATIONS_FEED_PATH = apiRoutePath('GET /me/inbox', {
   query: NOTIFICATIONS_FEED_QUERY,
 });
 
-const USERS_PATH = '/users';
-export const TEACHERS_PATH = `${USERS_PATH}/teachers`;
-export const INVITE_LINK_PATH = `${USERS_PATH}/invite-link`;
+export const TEACHERS_PATH = apiRoutePath('GET /users/teachers');
+export const INVITE_LINK_PATH = apiRoutePath('GET /users/invite-link');
 
 export const MY_LESSONS_PATH = '/me/lessons';
 /** Архив прошедших занятий ученика (docs/PLAN.md §14 слой 3.3) — тот же
@@ -181,14 +181,4 @@ export const MY_MATERIALS_PATH = '/me/materials';
  * сохраняет и удаляет по нему; редакторы приносят свой `collectionPath`. */
 export function entityPath(collectionPath: string, id: string): string {
   return `${collectionPath}/${id}`;
-}
-
-/** Журнал сбоев (`/dev/errors`, ADR-0132) — тот же путь и у API-ресурса, и у
- * маршрута web (`APP_ERRORS_SCREEN_PATH`, shared/src/app-errors.ts): один
- * литерал вместо двух. Фильтр «скрыть недогруженный код экрана» — на
- * клиенте (DevErrorsScreen.tsx), поэтому в query идёт только код обращения. */
-export function devErrorsListPath(requestId: string): string {
-  return requestId
-    ? `${APP_ERRORS_SCREEN_PATH}?requestId=${encodeURIComponent(requestId)}`
-    : APP_ERRORS_SCREEN_PATH;
 }

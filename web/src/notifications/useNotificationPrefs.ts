@@ -8,14 +8,8 @@
 // ответа PATCH, а не отдельный GET следом (отзыв владельца 2026-09-21:
 // переключатель ждал оба запроса подряд и стоял серым 1–2 секунды).
 import { useCallback } from 'react';
-import {
-  defaultNotifications,
-  type MeDto,
-  type NotificationKind,
-  type NotificationPrefsDto,
-} from '@xuanxue/shared';
-import { NOTIFICATION_PREFS_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { defaultNotifications, type MeDto, type NotificationKind } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE =
@@ -33,14 +27,13 @@ export interface UseNotificationPrefsResult {
 
 export function useNotificationPrefs(me: MeDto | null): UseNotificationPrefsResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<NotificationPrefsDto>(NOTIFICATION_PREFS_PATH, { signal }),
+    (signal) => apiRoute('GET /me/notifications', { signal }),
     LOAD_ERROR_MESSAGE,
   );
 
   const setEnabled = useCallback(
     async (kind: NotificationKind, enabled: boolean) => {
-      const next = await apiFetch<NotificationPrefsDto>(NOTIFICATION_PREFS_PATH, {
-        method: 'PATCH',
+      const next = await apiRoute('PATCH /me/notifications', {
         body: { kind, enabled },
       });
       applyData(next);

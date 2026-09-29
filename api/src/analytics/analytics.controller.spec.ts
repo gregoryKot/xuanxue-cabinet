@@ -6,13 +6,15 @@ function fakeConfig(posthogKey?: string): ConfigService {
 }
 
 describe('AnalyticsController.getConfig', () => {
-  it('без POSTHOG_KEY — posthogKey: null', () => {
+  it('без POSTHOG_KEY — posthogKey: null', async () => {
     const controller = new AnalyticsController(fakeConfig(undefined));
-    expect(controller.getConfig()).toEqual({ posthogKey: null });
+    await expect(controller.getConfig()).resolves.toEqual({ posthogKey: null });
   });
 
-  it('с POSTHOG_KEY — отдаёт его как есть', () => {
+  it('с POSTHOG_KEY — отдаёт его как есть', async () => {
     const controller = new AnalyticsController(fakeConfig('phc_example'));
-    expect(controller.getConfig()).toEqual({ posthogKey: 'phc_example' });
+    await expect(controller.getConfig()).resolves.toEqual({
+      posthogKey: 'phc_example',
+    });
   });
 });

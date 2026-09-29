@@ -34,6 +34,7 @@ import { join, relative } from 'path';
 import { stripLiterals } from './source-text.mjs';
 // Сравнение с бейслайном по файлам — то же, что у храповика заглушек, одна
 // функция на оба гейта (jscpd, CLAUDE.md «Дубли и мёртвый код»).
+import { isBridgeFile } from './string-api-fetch-bridges.mjs';
 import { diffByFile } from './check-once-mock-ratchet.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -41,10 +42,6 @@ const WEB_SRC = join(ROOT, 'web', 'src');
 const BASELINE_PATH = join(ROOT, 'scripts', 'string-api-fetch-baseline.json');
 const UPDATE = process.argv.includes('--update');
 
-// apiRoute.ts — единственный мост: типизированная обёртка над картой
-// маршрутов, которой позволено звать apiFetch (PLAN §17.1). Иначе каждая
-// миграция вызова на карту оставляла бы счётчик на месте.
-const BRIDGE_FILE = 'web/src/api/apiRoute.ts';
 // Мок-обвязка тестов не боевой код: apiFetch в ней подменяют, а не зовут.
 const TEST_SUPPORT_DIR = 'web/src/test-support/';
 
@@ -110,7 +107,7 @@ function* walk(dir) {
     }
     const label = relative(ROOT, p).split('\\').join('/');
     if (!/\.tsx?$/.test(p) || /\.test\.tsx?$/.test(p)) continue;
-    if (label === BRIDGE_FILE || label.startsWith(TEST_SUPPORT_DIR)) continue;
+    if (isBridgeFile(label) || label.startsWith(TEST_SUPPORT_DIR)) continue;
     yield p;
   }
 }

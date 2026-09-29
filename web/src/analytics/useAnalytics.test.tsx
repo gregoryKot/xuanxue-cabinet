@@ -87,7 +87,9 @@ describe('useAnalytics', () => {
 
     renderHook(() => useAnalytics(), { wrapper: wrapperAt('/exams') });
 
-    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith('/analytics/config'));
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith('/analytics/config', { method: 'GET' }),
+    );
     expect(startAnalytics).not.toHaveBeenCalled();
   });
 

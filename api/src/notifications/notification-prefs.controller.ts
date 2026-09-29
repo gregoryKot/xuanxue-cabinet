@@ -5,6 +5,7 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import type { NotificationPrefsDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { UpdateNotificationPrefsDto } from './dto/update-notification-prefs.dto';
 import { NotificationPrefsService } from './notification-prefs.service';
@@ -14,6 +15,7 @@ export class NotificationPrefsController {
   constructor(private readonly notificationPrefsService: NotificationPrefsService) {}
 
   @Get()
+  @ApiRoute('GET /me/notifications')
   get(@CurrentUser() user: UserLean): Promise<NotificationPrefsDto> {
     return this.notificationPrefsService.get(user.id, user.roles);
   }
@@ -22,6 +24,7 @@ export class NotificationPrefsController {
   // (тот же приём, что SettingsController.update): бот и кабинет обновляют
   // экран настроек одним ответом, без отдельного GET следом.
   @Patch()
+  @ApiRoute('PATCH /me/notifications')
   async update(
     @Body() body: UpdateNotificationPrefsDto,
     @CurrentUser() user: UserLean,
