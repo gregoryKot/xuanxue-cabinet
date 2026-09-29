@@ -148,7 +148,7 @@ describe('Снимок перевода — загрузка в кабинете
     const row = (list.body as PaymentsPageDto).rows.find(
       (r) => r.userName === 'Ученик со снимком для бухгалтера',
     );
-    expect(row?.hasScreenshot).toBe(true);
+    expect(row?.screenshotKind).toBe('upload');
     expect(row?.status).toBe('awaiting');
     for (const field of FORBIDDEN_FIELDS) {
       expect(row).not.toHaveProperty(field);

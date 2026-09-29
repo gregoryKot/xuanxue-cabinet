@@ -183,3 +183,4 @@
 | [0145](0145-google-login-and-linking-by-email.md)                | Вход через Google: code + PKCE, ключ `sub`, связка по почте, за которую ручается Google                 |
 | [0146](0146-choice-question-asks-for-reason.md)                  | Вопрос с выбором варианта может требовать объяснение выбора, хранится в answer.text                     |
 | [0147](0147-agent-merges-green-pr.md)                            | Агент мержит свой зелёный PR сам; прод — по-прежнему по команде владельца                               |
+| [0149](0149-staff-sees-payment-screenshot.md)                    | Штат открывает снимок перевода из кабинета отдельным запросом; в `PaymentDto` — `screenshotKind`        |

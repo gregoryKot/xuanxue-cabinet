@@ -3,7 +3,7 @@
 // ответ, как «оплачен», Маша должна видеть молчащих). Чистая функция без
 // Mongo (CLAUDE.md «Тесты»): запросы — payments.queries.ts, сборка — здесь,
 // юнит-тест — payments.rows.spec.ts.
-import type { PaymentDto, PaymentStatus } from '@xuanxue/shared';
+import type { PaymentDto, PaymentScreenshotKind, PaymentStatus } from '@xuanxue/shared';
 
 export interface ActiveStudent {
   id: string;
@@ -17,7 +17,7 @@ export interface PaymentRowData {
   status: PaymentStatus;
   amountMinor?: number;
   confirmedAt?: string;
-  hasScreenshot: boolean;
+  screenshotKind?: PaymentScreenshotKind;
   reminderSentAt?: string;
 }
 
@@ -30,7 +30,6 @@ export function unpaidDto(student: ActiveStudent, month: string): PaymentDto {
     userName: student.name,
     month,
     status: 'unpaid',
-    hasScreenshot: false,
   };
 }
 
@@ -58,7 +57,7 @@ export function buildPaymentRows(
       status: data.status,
       amountMinor: data.amountMinor,
       confirmedAt: data.confirmedAt,
-      hasScreenshot: data.hasScreenshot,
+      screenshotKind: data.screenshotKind,
       reminderSentAt: data.reminderSentAt,
     };
   });
