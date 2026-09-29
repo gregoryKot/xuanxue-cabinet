@@ -1,10 +1,8 @@
-// Русские подписи полей DTO для текста ошибок валидации (CLAUDE.md, раздел
-// «Ошибки»): `api/src/common/validation-messages.ts` подставляет их перед
-// сообщением об ограничении («Название: заполните поле»), не голое имя поля
-// camelCase/snake_case. Ключ — имя поля как оно приходит в теле/query
-// запроса, один на все DTO, где оно встречается (одна механика — одно
-// место). Полноту проверяет api/src/common/field-labels-coverage.spec.ts —
-// он перебирает все DTO через class-validator и падает на поле без подписи.
+// Русские подписи полей DTO для текста ошибок валидации (CLAUDE.md, «Ошибки»):
+// `api/src/common/validation-messages.ts` подставляет их перед сообщением об
+// ограничении («Название: заполните поле»), не голое имя поля. Ключ — имя поля
+// как оно приходит в теле/query, один на все DTO, где оно встречается. Полноту
+// держит api/src/common/field-labels-coverage.spec.ts.
 export const FIELD_LABELS_RU: Record<string, string> = {
   // auth/telegram-login.dto.ts — поля виджета входа Telegram, snake_case
   // (контракт виджета, не наш API).
@@ -72,6 +70,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   previewMinutes: 'За сколько минут показывать черновик поста',
   lessonReminderMinutes: 'За сколько минут напомнить ученикам о занятии',
   newcomerContact: 'Кому писать, если человек ещё не в школе',
+  dataControllerName: 'Кто отвечает за данные учеников',
+  dataControllerContact: 'Как связаться с ответственным за данные',
   paymentReminder: 'Напоминание об оплате',
   dayOfMonth: 'День месяца для напоминания об оплате',
   template: 'Текст напоминания об оплате',

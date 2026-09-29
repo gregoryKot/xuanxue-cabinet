@@ -7,12 +7,14 @@
 // фрагмента, за которым явный `\n`) — обрезка молча испортила бы вёрстку
 // поста. «Не пустой» проверяем отдельно — `\S` где-то в строке, не сам факт
 // непустой длины (иначе шаблон из одних пробелов/переводов строк прошёл бы).
-// schoolSiteUrl — адрес сайта школы (В6 аудита, ADR-0009-доп.): единственное
-// nullable-поле формы, `null` снимает настройку (NULLABLE_SETTINGS_FIELDS,
-// settings.service.ts).
+// schoolSiteUrl — адрес сайта школы (В6 аудита, ADR-0009-доп.): nullable-поле,
+// `null` снимает настройку (NULLABLE_SETTINGS_FIELDS, settings.service.ts).
 // newcomerContact — кому писать незнакомцу (ADR-0115): не nullable, пустая
 // строка не проходит (`\S`) — иначе бот оборвал бы фразу «Напишите …» на
 // полуслове.
+// dataControllerName/Contact — кто отвечает за данные учеников (страница
+// /privacy): nullable, `null` снимает поле; пустота и одни пробелы не проходят
+// (`\S` после обрезки) — иначе на странице вместо «спросите учителя» пусто.
 // paymentReminder — напоминание ученику об оплате (ADR-0051): вложенный
 // объект, PATCH меняет только переданные поля (settings-payment-reminder.ts).
 import {
@@ -34,7 +36,7 @@ import {
   type PaymentReminderSettings,
   type UpdateSettingsInput,
 } from '@xuanxue/shared';
-import { OptionalNotNull } from '../../common/validation';
+import { OptionalNotNull, TrimString } from '../../common/validation';
 
 // Продолжение фразы «Шаблон «…»: …» (validation-messages.ts) — без повтора
 // слова «Шаблон», дефолтное сообщение matches ничего не сказало бы про
@@ -124,6 +126,20 @@ export class UpdateSettingsDto implements UpdateSettingsInput {
   @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
   @MaxLength(SETTINGS_LIMITS.newcomerContactMaxLength)
   newcomerContact?: string;
+
+  @IsOptional()
+  @TrimString()
+  @IsString()
+  @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
+  @MaxLength(SETTINGS_LIMITS.dataControllerNameMaxLength)
+  dataControllerName?: string | null;
+
+  @IsOptional()
+  @TrimString()
+  @IsString()
+  @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
+  @MaxLength(SETTINGS_LIMITS.dataControllerContactMaxLength)
+  dataControllerContact?: string | null;
 
   @IsOptional()
   @ValidateNested()

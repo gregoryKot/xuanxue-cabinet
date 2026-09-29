@@ -58,6 +58,16 @@ export interface SettingsDto {
    * (ADR-0115). Старая база без поля отдаёт `DEFAULT_NEWCOMER_CONTACT`
    * (domain.ts), тем же приёмом, что `previewMinutes`. */
   newcomerContact: string;
+  /** Кто отвечает за данные учеников — имя человека или название школы
+   * (статья 11 Закона о защите частной жизни Израиля: просить данные можно,
+   * только назвав, кто ими владеет). Публичный текст: отдаётся всем через
+   * `GET /auth/config` и стоит на странице `/privacy` (ADR-0145). Поля нет,
+   * пока школа не заполнила экран «Шаблоны»: страница тогда честно
+   * отправляет к учителю, а не выдумывает имя. */
+  dataControllerName?: string;
+  /** Как связаться с ответственным по вопросам о данных (почта, телефон,
+   * Telegram) — читается вместе с `dataControllerName`, тем же приёмом. */
+  dataControllerContact?: string;
   /** Старая база без поля отдаёт `DEFAULT_PAYMENT_REMINDER` целиком, а база
    * с частично заполненным подобъектом — недостающие поля из него же. */
   paymentReminder: PaymentReminderSettings;
@@ -87,15 +97,23 @@ export interface UpdateSettingsInput {
    * другим. Пустая строка не проходит валидацию, иначе бот оборвал бы фразу
    * «Напишите …» на полуслове. */
   newcomerContact?: string;
+  /** `null` — явный сброс (NULLABLE_SETTINGS_FIELDS): пустое поле формы
+   * значит «не указано», страница `/privacy` тогда отправляет к учителю. */
+  dataControllerName?: string | null;
+  dataControllerContact?: string | null;
   /** PATCH меняет только переданные поля подобъекта, остальные не трогает
    * (как `templates` выше). Не nullable: «сбросить в ничто» смысла не имеет. */
   paymentReminder?: Partial<PaymentReminderSettings>;
 }
 
-/** Единственное nullable-поле UpdateSettingsInput — источник правды для DTO
+/** Nullable-поля UpdateSettingsInput — источник правды для DTO
  * (`@IsOptional()` вместо `OptionalNotNull()`) и для `splitUpdate`, тот же
  * приём, что у NULLABLE_CLASS_FIELDS/NULLABLE_LESSON_FIELDS. */
-export const NULLABLE_SETTINGS_FIELDS = ['schoolSiteUrl'] as const;
+export const NULLABLE_SETTINGS_FIELDS = [
+  'schoolSiteUrl',
+  'dataControllerName',
+  'dataControllerContact',
+] as const;
 
 /** Тело `POST /settings/preview` — рендер сохранённого шаблона (из базы, не
  * то, что учитель напечатал в форме и ещё не нажал «Сохранить») на реальном
@@ -118,6 +136,8 @@ export const SETTINGS_LIMITS = {
   templateMaxLength: 2000,
   schoolSiteUrlMaxLength: 500,
   newcomerContactMaxLength: 200,
+  dataControllerNameMaxLength: 200,
+  dataControllerContactMaxLength: 300,
   previewMinutesMin: 1,
   previewMinutesMax: 1440,
   lessonReminderMinutesMin: 5,

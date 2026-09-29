@@ -64,6 +64,8 @@ export class AuthController {
       telegramBotId: botIdFromToken(this.configService.get<string>('BOT_TOKEN')),
       telegramBotUsername: this.telegramBotService.botUsername(),
       schoolSiteUrl: settings.schoolSiteUrl,
+      dataControllerName: settings.dataControllerName,
+      dataControllerContact: settings.dataControllerContact,
       emailLoginEnabled: this.emailAuthService.isEnabled(),
       googleLoginEnabled: this.googleAuthService.isEnabled(),
       fileStorageEnabled: this.fileStore.isEnabled,
