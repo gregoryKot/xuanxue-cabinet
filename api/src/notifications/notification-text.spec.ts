@@ -27,13 +27,11 @@ describe('notificationText', () => {
     expect(notificationText({ kind: 'lesson_soon' })).toBe('Скоро занятие');
   });
 
-  it('payment_due — «Абонемент пока не отмечен оплаченным» с названием месяца (ADR-0150)', () => {
+  it('payment_due — «Напоминание об оплате» с названием месяца (ADR-0150)', () => {
     expect(notificationText({ kind: 'payment_due', title: 'сентябрь 2026' })).toBe(
-      'Абонемент пока не отмечен оплаченным — сентябрь 2026',
+      'Напоминание об оплате — сентябрь 2026',
     );
-    expect(notificationText({ kind: 'payment_due' })).toBe(
-      'Абонемент пока не отмечен оплаченным',
-    );
+    expect(notificationText({ kind: 'payment_due' })).toBe('Напоминание об оплате');
   });
 
   it('payments — «Снимок перевода ждёт подтверждения» с названием месяца (ADR-0156)', () => {

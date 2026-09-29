@@ -11,7 +11,7 @@ import type { UserRecord } from './user.schema';
 
 export interface ActiveStudent {
   id: string;
-  // Имя нужно напоминанию об оплате («{имя}, абонемент за …», ADR-0150);
+  // Имя нужно напоминанию об оплате («{имя}, напоминаем об оплате за …», ADR-0150);
   // поле открытое (user.schema.ts, plain), расшифровывать нечего.
   name: string;
 }

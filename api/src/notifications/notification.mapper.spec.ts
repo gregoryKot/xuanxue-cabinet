@@ -20,12 +20,12 @@ describe('toNotificationDto', () => {
   it('payment_due — событие и месяц по-русски, месяц отдельным полем наружу не идёт', () => {
     const dto = toNotificationDto(raw({ paymentMonth: '2026-09' }));
 
-    expect(dto.text).toBe('Абонемент пока не отмечен оплаченным — сентябрь 2026');
+    expect(dto.text).toBe('Напоминание об оплате — сентябрь 2026');
     expect(dto).not.toHaveProperty('paymentMonth');
     expect(dto.createdAt).toBe('2026-09-05T07:00:00.000Z');
   });
 
   it('payment_due без месяца — одно событие, без разделителя', () => {
-    expect(toNotificationDto(raw({})).text).toBe('Абонемент пока не отмечен оплаченным');
+    expect(toNotificationDto(raw({})).text).toBe('Напоминание об оплате');
   });
 });

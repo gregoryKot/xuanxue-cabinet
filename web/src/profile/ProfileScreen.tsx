@@ -27,6 +27,7 @@ import { screenSectionStyle } from '../components/screenLayout';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
 import { MyPaymentsSection } from '../student/MyPaymentsSection';
+import { isMyPaymentsVisible } from '../student/myPaymentsVisibility';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
 import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
 import { isStandalone } from '../pwa/installEnvironment';
@@ -70,7 +71,8 @@ export default function ProfileScreen() {
           рядом с занятием читалась бы условием попасть на него, а неоплата
           ничего не закрывает (ADR-0049, CLAUDE.md «Ноль нагрузки на
           ученика»). */}
-      {me !== null && me.roles.length === 0 && <MyPaymentsSection me={me} />}
+      {/* Спрятана флагом (ADR-0157, myPaymentsVisibility.ts). */}
+      {isMyPaymentsVisible(me) && <MyPaymentsSection me={me} />}
 
       <NotificationPrefsSection />
       <PushNotificationsSection />

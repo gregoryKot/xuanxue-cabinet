@@ -6,7 +6,7 @@ import {
   type TemplateKind,
 } from './default-templates';
 
-/** Напоминание ученику об оплате абонемента (ADR-0051, PLAN §15 п. 2.5) —
+/** Напоминание ученику об ежемесячной оплате (ADR-0051, PLAN §15 п. 2.5) —
  * настройка школы, живёт в БД и на экране «Шаблоны» (CLAUDE.md «Кабинет
  * учителя: всё настраивается в интерфейсе»). */
 export interface PaymentReminderSettings {

@@ -96,9 +96,7 @@ describe('Напоминание об оплате — запись и чтен�
     expect(inboxA.unreadCount).toBe(1);
     expect(inboxA.items).toHaveLength(1);
     expect(inboxA.items[0]?.kind).toBe('payment_due');
-    expect(inboxA.items[0]?.text).toBe(
-      'Абонемент пока не отмечен оплаченным — сентябрь 2026',
-    );
+    expect(inboxA.items[0]?.text).toBe('Напоминание об оплате — сентябрь 2026');
     expect(await inboxOf(cookieB)).toEqual({ items: [], unreadCount: 0 });
   });
 

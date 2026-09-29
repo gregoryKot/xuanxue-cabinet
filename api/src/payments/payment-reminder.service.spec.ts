@@ -142,7 +142,7 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
     expect(sendMessage).toHaveBeenCalledTimes(1);
     const [chatId, text] = sendMessage.mock.calls[0] as [string, string];
     expect(chatId).toBe(`chat-${id}`);
-    expect(text).toContain('Ваня, абонемент за сентябрь 2026');
+    expect(text).toContain('Ваня, напоминаем об оплате за сентябрь 2026');
     expect(text).toContain(`https://t.me/${BOT_NAME}?start=pay_2026-09`);
     const doc = await paymentModel.findOne({ userId: id, month: '2026-09' }).lean();
     expect(doc?.status).toBe('unpaid');
@@ -300,7 +300,7 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
 
     const text = (sendMessage.mock.calls[0] as [string, string])[1];
     expect(text).not.toContain('t.me');
-    expect(text.endsWith('и мы отметим.')).toBe(true);
+    expect(text.endsWith('пришлите скриншот боту.')).toBe(true);
   });
 
   it('{сумма} подставляется из amountMinor документа оплаты', async () => {
