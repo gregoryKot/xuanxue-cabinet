@@ -12,8 +12,9 @@
 // image/*, тот же приём, что exam-video-source.ts). Байты не трогаем —
 // getFile не зовём вовсе, пересылка — copyMessage по file_id (ADR-0050).
 //
-// Пересылка бухгалтеру — payment-screenshot-forward.ts
-// (personalChats.listFor('payments', now), PR #233).
+// Пересылка бухгалтеру — payment-screenshot-to-accountant.ts (ADR-0156):
+// тот же класс, что доставляет и снимок из кабинета, вложение — копия
+// сообщения ученика (copyMessage).
 //
 // Свой try/catch (находка аудита PR #175, тот же приём, что у
 // ExamMediaMessageHandler) — без него сбой уходил бы в общий catch
@@ -30,10 +31,10 @@ import { PaymentsService } from '../../payments/payments.service';
 import type { BotSessionLean } from '../bot-session.lean';
 import { BotSessionService } from '../bot-session.service';
 import { BotUserAccessService } from '../bot-user-access.service';
-import { PersonalChats } from '../personal-chats';
+import { PaymentScreenshotToAccountant } from '../payment-screenshot-to-accountant';
+import { copyMessageSender } from './attachment-with-caption';
 import { examUserFacingError } from './exam-attempt-error';
 import { PAYMENT_TELEGRAM_NOT_LINKED_MESSAGE } from './payment-screenshot-deep-link';
-import { forwardPaymentScreenshotToAccountant } from './payment-screenshot-forward';
 import { extractPaymentScreenshotSource } from './payment-screenshot-source';
 import { resolveActiveBotUser } from './resolve-active-bot-user';
 
@@ -54,7 +55,7 @@ export class PaymentScreenshotMessageHandler {
     private readonly botSessions: BotSessionService,
     private readonly paymentsService: PaymentsService,
     private readonly botAccess: BotUserAccessService,
-    private readonly personalChats: PersonalChats,
+    private readonly toAccountant: PaymentScreenshotToAccountant,
   ) {}
 
   async handle(
@@ -85,7 +86,7 @@ export class PaymentScreenshotMessageHandler {
       );
       if (!user) return;
 
-      const status = await this.paymentsService.attachScreenshot(
+      const { status, replaced } = await this.paymentsService.attachScreenshot(
         user.id,
         month,
         source,
@@ -93,14 +94,16 @@ export class PaymentScreenshotMessageHandler {
       );
       await this.botSessions.clear(telegramId);
 
-      await forwardPaymentScreenshotToAccountant(
-        ctx,
-        this.personalChats,
-        user.name,
-        user.id,
-        month,
-        now,
-      );
+      if (ctx.chat && ctx.message) {
+        await this.toAccountant.deliver(ctx.telegram, {
+          studentUserId: user.id,
+          studentName: user.name,
+          month,
+          replaced,
+          sendAttachment: copyMessageSender(ctx.chat.id, ctx.message.message_id),
+          now,
+        });
+      }
 
       await ctx.reply(receivedMessage(month, status)).catch(() => null);
     } catch (err) {

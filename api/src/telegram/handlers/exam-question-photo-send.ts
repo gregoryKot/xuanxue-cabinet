@@ -15,7 +15,8 @@ import type { ImageAlbumEntry } from './exam-question-album';
 
 const logger = new Logger('examOptionPhoto');
 
-const CONTENT_TYPE_EXTENSION: Record<ExamImageContentType, string> = {
+// Экспорт — для файла снимка перевода, уходящего бухгалтеру (telegram-payment-screenshot-delivery.ts).
+export const CONTENT_TYPE_EXTENSION: Record<ExamImageContentType, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',

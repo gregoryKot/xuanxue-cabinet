@@ -2630,7 +2630,7 @@ type="file">`, `prepareExamImage` ужимает до 1280 px, `POST
 `payment-screenshot-message.handler.ts` (диспетчер в `message.handler.ts`, до
 гейта `personalChats`), источник — `payment-screenshot-source.ts`; привязка —
 `PaymentsService.attachScreenshot()` → `attachTelegramScreenshot()`
-(`payments.write.ts`); пересылка бухгалтеру — `payment-screenshot-forward.ts`
+(`payments.write.ts`); пересылка бухгалтеру — `payment-screenshot-to-accountant.ts`
 (`personalChats.listFor('payments', …)`, механика «фото первым, подпись
 вторым» общая с видео экзамена). Кнопка в кабинете — слой 2.4.
 

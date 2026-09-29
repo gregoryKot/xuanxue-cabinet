@@ -88,17 +88,24 @@ export class PaymentsService {
    * из payload ссылки (SECURITY §3); `month` из ссылки — параметр, не
    * идентичность. Штату абонемент не заводим — та же assertActiveStudent,
    * что у confirm/revoke (ADR-0026). Возвращает итоговый статус: `paid` —
-   * скриншот сохранили, но статус не тронули (ADR-0049), иначе — `awaiting`. */
+   * скриншот сохранили, но статус не тронули (ADR-0049), иначе — `awaiting`.
+   * `replaced` — снимок за месяц уже был (подпись бухгалтеру, ADR-0156). */
   async attachScreenshot(
     userId: string,
     month: string,
     source: TelegramScreenshotSource,
     now: DateTime,
-  ): Promise<PaymentStatus> {
+  ): Promise<{ status: PaymentStatus; replaced: boolean }> {
     assertMonthKey(month);
     await assertActiveStudent(this.userModel, userId);
-    const doc = await attachTelegramScreenshot(this.model, userId, month, source, now);
-    return doc.status;
+    const { payment, replaced } = await attachTelegramScreenshot(
+      this.model,
+      userId,
+      month,
+      source,
+      now,
+    );
+    return { status: payment.status, replaced };
   }
 
   /** Свои месяцы, свежие сверху — владение по `userId` из сессии

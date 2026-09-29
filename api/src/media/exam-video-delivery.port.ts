@@ -18,7 +18,7 @@ export interface SendExamVideoInput {
   telegramType?: ExamVideoTelegramType;
   /** Кто, какой экзамен — уходит отдельным сообщением: у video_note подписи
    * не бывает вовсе (единый приём для всех видов вложения, довод — в
-   * forward-photo-with-caption.ts). */
+   * attachment-with-caption.ts). */
   caption: string;
 }
 

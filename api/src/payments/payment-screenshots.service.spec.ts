@@ -18,6 +18,7 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 import type { SettingsService } from '../settings/settings.service';
 import { decryptBytes } from '../utils/encryption-bytes';
 import { PAYMENT_MONTH_OUT_OF_WINDOW_MESSAGE } from './payment-month-window';
+import { PaymentScreenshotDeliveryRegistry } from './payment-screenshot-delivery.registry';
 import { PaymentScreenshotRecord } from './payment-screenshot.schema';
 import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentRecord } from './payment.schema';
@@ -58,6 +59,7 @@ describe('PaymentScreenshotsService', () => {
       screenshotModel,
       paymentModel,
       settingsService,
+      new PaymentScreenshotDeliveryRegistry(),
     );
   }, 60_000);
 
@@ -74,10 +76,15 @@ describe('PaymentScreenshotsService', () => {
     return new Types.ObjectId().toString();
   }
 
+  // Контроллер передаёт id и имя из сессии (имя — для подписи бухгалтеру, ADR-0156).
+  function asStudent(userId: string): { id: string; name: string } {
+    return { id: userId, name: 'Ученик' };
+  }
+
   it('загрузка в месяц без документа оплаты: awaiting, kind upload, ответ без байтов и id', async () => {
     const userId = newUserId();
 
-    const dto = await service.upload(JPEG_BYTES, userId, '2026-09', NOW);
+    const dto = await service.upload(JPEG_BYTES, asStudent(userId), '2026-09', NOW);
 
     expect(dto.status).toBe('awaiting');
     expect(dto.hasScreenshot).toBe(true);
@@ -100,7 +107,7 @@ describe('PaymentScreenshotsService', () => {
   it('байты в payment_screenshots лежат зашифрованными — decryptBytes возвращает исходные', async () => {
     const userId = newUserId();
 
-    await service.upload(JPEG_BYTES, userId, '2026-09', NOW);
+    await service.upload(JPEG_BYTES, asStudent(userId), '2026-09', NOW);
 
     const payment = await paymentModel.findOne({ userId, month: '2026-09' }).lean();
     const raw = await screenshotModel.findById(payment?.screenshotImageId).lean();
@@ -112,11 +119,16 @@ describe('PaymentScreenshotsService', () => {
 
   it('повторная загрузка за тот же месяц: второй абонемент не заводится, старая запись снимка удалена', async () => {
     const userId = newUserId();
-    await service.upload(JPEG_BYTES, userId, '2026-09', NOW);
+    await service.upload(JPEG_BYTES, asStudent(userId), '2026-09', NOW);
     const firstPayment = await paymentModel.findOne({ userId, month: '2026-09' }).lean();
     const firstImageId = firstPayment?.screenshotImageId;
 
-    await service.upload(PNG_BYTES, userId, '2026-09', NOW.plus({ minutes: 5 }));
+    await service.upload(
+      PNG_BYTES,
+      asStudent(userId),
+      '2026-09',
+      NOW.plus({ minutes: 5 }),
+    );
 
     await expect(paymentModel.countDocuments({ userId, month: '2026-09' })).resolves.toBe(
       1,
@@ -146,7 +158,7 @@ describe('PaymentScreenshotsService', () => {
 
     const dto = await service.upload(
       JPEG_BYTES,
-      userId,
+      asStudent(userId),
       '2026-09',
       NOW.plus({ days: 1 }),
     );
@@ -168,7 +180,7 @@ describe('PaymentScreenshotsService', () => {
       const userId = newUserId();
 
       const err = await service
-        .upload(JPEG_BYTES, userId, month, NOW)
+        .upload(JPEG_BYTES, asStudent(userId), month, NOW)
         .catch((e: unknown) => e);
 
       expect(err).toBeInstanceOf(InvalidInputError);
@@ -183,7 +195,7 @@ describe('PaymentScreenshotsService', () => {
     const userId = newUserId();
 
     const err = await service
-      .upload(JPEG_BYTES, userId, '2099-12', NOW)
+      .upload(JPEG_BYTES, asStudent(userId), '2099-12', NOW)
       .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(InvalidInputError);
@@ -196,7 +208,7 @@ describe('PaymentScreenshotsService', () => {
     const userId = newUserId();
 
     const err = await service
-      .upload(Buffer.from('это не картинка'), userId, '2026-09', NOW)
+      .upload(Buffer.from('это не картинка'), asStudent(userId), '2026-09', NOW)
       .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(InvalidInputError);
@@ -208,7 +220,7 @@ describe('PaymentScreenshotsService', () => {
     const userId = newUserId();
 
     const err = await service
-      .upload(Buffer.alloc(0), userId, '2026-09', NOW)
+      .upload(Buffer.alloc(0), asStudent(userId), '2026-09', NOW)
       .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(InvalidInputError);
@@ -225,9 +237,9 @@ describe('PaymentScreenshotsService', () => {
       throw dbError;
     });
 
-    await expect(service.upload(JPEG_BYTES, userId, '2026-09', NOW)).rejects.toBe(
-      dbError,
-    );
+    await expect(
+      service.upload(JPEG_BYTES, asStudent(userId), '2026-09', NOW),
+    ).rejects.toBe(dbError);
 
     await expect(screenshotModel.countDocuments({})).resolves.toBe(0);
     await expect(paymentModel.countDocuments({})).resolves.toBe(0);
@@ -236,7 +248,7 @@ describe('PaymentScreenshotsService', () => {
   describe('load (штат открывает снимок из кабинета, ADR-0149)', () => {
     it('upload → load: исходные байты и тип, не шифротекст', async () => {
       const userId = newUserId();
-      await service.upload(PNG_BYTES, userId, '2026-09', NOW);
+      await service.upload(PNG_BYTES, asStudent(userId), '2026-09', NOW);
 
       const loaded = await service.load(userId, '2026-09');
 
@@ -246,8 +258,13 @@ describe('PaymentScreenshotsService', () => {
 
     it('повторная загрузка заменила снимок — load отдаёт новый, не старый', async () => {
       const userId = newUserId();
-      await service.upload(JPEG_BYTES, userId, '2026-09', NOW);
-      await service.upload(PNG_BYTES, userId, '2026-09', NOW.plus({ minutes: 5 }));
+      await service.upload(JPEG_BYTES, asStudent(userId), '2026-09', NOW);
+      await service.upload(
+        PNG_BYTES,
+        asStudent(userId),
+        '2026-09',
+        NOW.plus({ minutes: 5 }),
+      );
 
       const loaded = await service.load(userId, '2026-09');
 
@@ -288,7 +305,7 @@ describe('PaymentScreenshotsService', () => {
 
     it('снимок другого месяца не подсовывается: месяц в пути — часть ключа', async () => {
       const userId = newUserId();
-      await service.upload(JPEG_BYTES, userId, '2026-09', NOW);
+      await service.upload(JPEG_BYTES, asStudent(userId), '2026-09', NOW);
 
       await expect(service.load(userId, '2026-08')).rejects.toBeInstanceOf(NotFoundError);
     });

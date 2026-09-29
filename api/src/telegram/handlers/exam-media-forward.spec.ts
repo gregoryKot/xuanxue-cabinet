@@ -34,13 +34,13 @@ function fakeCtx(): {
       message_id: 42,
       video: { file_id: 'f1', file_unique_id: 'u1', duration: 30 },
     },
+    // Отправка идёт через callApi (с таймаутом, attachment-with-caption.ts).
     telegram: {
-      sendMessage: (toChatId: string, text: string) => {
-        sentMessages.push({ chatId: toChatId, text });
-        return Promise.resolve();
-      },
-      copyMessage: (toChatId: string) => {
-        copiedTo.push(toChatId);
+      callApi: (method: string, payload: { chat_id: string; text?: string }) => {
+        if (method === 'sendMessage') {
+          sentMessages.push({ chatId: payload.chat_id, text: payload.text ?? '' });
+        }
+        if (method === 'copyMessage') copiedTo.push(payload.chat_id);
         return Promise.resolve();
       },
     },

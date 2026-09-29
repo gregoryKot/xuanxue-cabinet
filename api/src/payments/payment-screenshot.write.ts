@@ -16,6 +16,9 @@ export interface AttachedScreenshot {
   /** Снимок, который этот заменил, — его байты уходят следом: у оплаты один
    * снимок, а не история попыток показать чек. Пусто — заменять нечего. */
   previousImageId?: Types.ObjectId;
+  /** У оплаты уже был снимок (любого вида) — этот новый взамен прежнего,
+   * бухгалтеру подпись скажет об этом (ADR-0156). */
+  replaced: boolean;
 }
 
 /**
@@ -52,6 +55,7 @@ export async function attachUploadedScreenshot(
 
   return {
     payment: doc,
+    replaced: Boolean(existing?.screenshotKind),
     ...(existing?.screenshotImageId
       ? { previousImageId: existing.screenshotImageId }
       : {}),

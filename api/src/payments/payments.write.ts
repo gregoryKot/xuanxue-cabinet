@@ -84,14 +84,15 @@ export async function confirmPayment(
 }
 
 /** Скриншот из бота (ADR-0050, слой 2.2) — upsert как у confirmPayment; `paid`
- * не трогаем (ADR-0049), иначе идём в `awaiting`. */
+ * не трогаем (ADR-0049), иначе идём в `awaiting`. `replaced` — у оплаты уже
+ * был снимок любого вида (подпись бухгалтеру, ADR-0156). */
 export async function attachTelegramScreenshot(
   model: Model<PaymentRecord>,
   userId: string,
   month: string,
   source: TelegramScreenshotSource,
   now: DateTime,
-): Promise<RawLeanPayment> {
+): Promise<{ payment: RawLeanPayment; replaced: boolean }> {
   const existing = await model.findOne({ userId, month }).lean<RawLeanPayment | null>();
   const payload = encryptRecord(
     {
@@ -105,7 +106,8 @@ export async function attachTelegramScreenshot(
   );
 
   const filter = { userId: new Types.ObjectId(userId), month };
-  return upsertPaymentByFilter(model, filter, { $set: payload });
+  const payment = await upsertPaymentByFilter(model, filter, { $set: payload });
+  return { payment, replaced: Boolean(existing?.screenshotKind) };
 }
 
 /**

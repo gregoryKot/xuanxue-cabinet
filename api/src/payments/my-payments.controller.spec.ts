@@ -56,9 +56,10 @@ describe('MyPaymentsController', () => {
       controller.uploadScreenshot('2026-09', { body: bytes }, STUDENT),
     ).resolves.toEqual(MY_PAYMENTS[0]);
 
-    const [passedBody, passedUserId, passedMonth] = upload.mock.calls[0] as unknown[];
+    const [passedBody, passedUser, passedMonth] = upload.mock.calls[0] as unknown[];
     expect(passedBody).toBe(bytes);
-    expect(passedUserId).toBe(STUDENT.id);
+    // Имя нужно для подписи бухгалтеру (ADR-0156), id — для владения.
+    expect(passedUser).toBe(STUDENT);
     expect(passedMonth).toBe('2026-09');
   });
 });

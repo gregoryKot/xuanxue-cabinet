@@ -6,7 +6,7 @@
 // Байты и `file_id` наружу не идут ни одним полем: ответ — тот же
 // `MyPaymentDto`, что у `GET /me/payments` (CLAUDE.md «API»: документ
 // Mongoose наружу не возвращается).
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import type { DateTime } from 'luxon';
@@ -24,13 +24,19 @@ import { parseExamImageUpload } from '../exam-images/exam-image-upload';
 import { InvalidInputError, NotFoundError } from '../common/errors';
 import { assertObjectId } from '../common/object-id';
 import { SettingsService } from '../settings/settings.service';
+import type { UserLean } from '../users/users.service';
 import { decryptBytes, encryptBytes } from '../utils/encryption-bytes';
+import { deliverUploadedScreenshot } from './deliver-uploaded-screenshot';
 import { assertMonthKey } from './payment-month';
 import {
   isPaymentMonthInWindow,
   PAYMENT_MONTH_OUT_OF_WINDOW_MESSAGE,
 } from './payment-month-window';
-import { attachUploadedScreenshot } from './payment-screenshot.write';
+import { PaymentScreenshotDeliveryRegistry } from './payment-screenshot-delivery.registry';
+import {
+  attachUploadedScreenshot,
+  type AttachedScreenshot,
+} from './payment-screenshot.write';
 import { PaymentScreenshotRecord } from './payment-screenshot.schema';
 import { toMyPaymentDto } from './payment.mapper';
 import { PaymentRecord } from './payment.schema';
@@ -42,17 +48,23 @@ export interface LoadedPaymentScreenshot {
 
 @Injectable()
 export class PaymentScreenshotsService {
+  private readonly logger = new Logger(PaymentScreenshotsService.name);
+
   constructor(
     @InjectModel(PaymentScreenshotRecord.name)
     private readonly model: Model<PaymentScreenshotRecord>,
     @InjectModel(PaymentRecord.name)
     private readonly paymentModel: Model<PaymentRecord>,
     private readonly settingsService: SettingsService,
+    private readonly deliveryRegistry: PaymentScreenshotDeliveryRegistry,
   ) {}
 
+  /** После привязки снимок уходит бухгалтеру в Telegram (ADR-0156) — уже
+   * после того, как запись оплаты и байты на месте: доставка не может ни
+   * откатить загрузку, ни уронить ответ (deliver-uploaded-screenshot.ts). */
   async upload(
     body: unknown,
-    userId: string,
+    user: Pick<UserLean, 'id' | 'name'>,
     month: string,
     now: DateTime,
   ): Promise<MyPaymentDto> {
@@ -73,16 +85,18 @@ export class PaymentScreenshotsService {
       sizeBytes: bytes.length,
     });
 
+    let attached: AttachedScreenshot;
     try {
-      const { payment, previousImageId } = await attachUploadedScreenshot(
+      attached = await attachUploadedScreenshot(
         this.paymentModel,
-        userId,
+        user.id,
         month,
         created._id,
         now,
       );
-      if (previousImageId) await this.model.deleteOne({ _id: previousImageId });
-      return toMyPaymentDto(payment);
+      if (attached.previousImageId) {
+        await this.model.deleteOne({ _id: attached.previousImageId });
+      }
     } catch (err) {
       // Оплата не обновилась — байты остались бы без ссылки на себя, а
       // уборщик ходит ОТ записи оплаты (ADR-0050) и такую сироту не нашёл бы
@@ -90,6 +104,16 @@ export class PaymentScreenshotsService {
       await this.model.deleteOne({ _id: created._id });
       throw err;
     }
+    await deliverUploadedScreenshot(this.deliveryRegistry, this.logger, {
+      studentUserId: user.id,
+      studentName: user.name,
+      month,
+      replaced: attached.replaced,
+      bytes,
+      contentType,
+      now,
+    });
+    return toMyPaymentDto(attached.payment);
   }
 
   /** Снимок, загруженный в кабинете, для бухгалтера и админа (ADR-0149).
