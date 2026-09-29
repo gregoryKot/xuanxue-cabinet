@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_PREVIEW_MINUTES,
@@ -32,6 +33,7 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
     previewMinutes: DEFAULT_PREVIEW_MINUTES,
     lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
     newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+    paymentContact: DEFAULT_PAYMENT_CONTACT,
     paymentReminder: DEFAULT_PAYMENT_REMINDER,
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -578,6 +580,7 @@ describe('TemplatesScreen — контакт для новичков', () => {
     mockByPath({
       '/settings': makeSettings({
         newcomerContact: 'Ире @irina_school',
+        paymentContact: DEFAULT_PAYMENT_CONTACT,
         updatedAt: '2026-01-02T00:00:00Z',
       }),
       '/lessons': [],
@@ -635,5 +638,24 @@ describe('TemplatesScreen — контакт для новичков', () => {
     expect(
       await screen.findByText('Контакт для новичков: заполните поле.'),
     ).toBeInTheDocument();
+  });
+});
+
+// Поле «Кому присылать скриншот перевода» (ADR-0159) — сам компонент и его
+// сохранение проверены в PaymentContactField.test.tsx; здесь только то, что
+// экран «Шаблоны» его рисует и кладёт в него контакт из /settings.
+describe('TemplatesScreen — контакт для оплаты', () => {
+  it('поле показывает сохранённый контакт бухгалтера', async () => {
+    mockByPath({
+      '/settings': makeSettings({ paymentContact: 'Кате @katya_books' }),
+      '/lessons': [],
+    });
+
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Анонс занятия' });
+
+    expect(await screen.findByDisplayValue('Кате @katya_books')).toHaveAccessibleName(
+      'Кому присылать скриншот перевода',
+    );
   });
 });

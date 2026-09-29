@@ -20,7 +20,11 @@ const STUDENT: UserLean = {
 const MY_PAYMENTS: MyPaymentDto[] = [
   { month: '2026-09', status: 'paid', hasScreenshot: false },
 ];
-const MY_PAGE: MyPaymentsPageDto = { month: '2026-09', rows: MY_PAYMENTS };
+const MY_PAGE: MyPaymentsPageDto = {
+  month: '2026-09',
+  rows: MY_PAYMENTS,
+  contact: 'Маше @marievyazova',
+};
 
 async function buildController(
   service: Partial<PaymentsService> = {},

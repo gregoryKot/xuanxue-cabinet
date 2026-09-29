@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
   DEFAULT_PREVIEW_MINUTES,
   SETTINGS_LIMITS,
@@ -16,6 +17,7 @@ const SETTINGS_DEFAULT: SettingsDto = {
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
   lessonReminderMinutes: 60,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentContact: DEFAULT_PAYMENT_CONTACT,
   paymentReminder: DEFAULT_PAYMENT_REMINDER,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
@@ -26,6 +28,7 @@ const SETTINGS_CUSTOM: SettingsDto = {
   previewMinutes: 15,
   lessonReminderMinutes: 60,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentContact: DEFAULT_PAYMENT_CONTACT,
   paymentReminder: DEFAULT_PAYMENT_REMINDER,
   // Другой updatedAt, чем у SETTINGS_DEFAULT — сверка с сохранённым в хуке
   // идёт по нему (useSavedDraft.ts), одинаковый updatedAt у обеих фикстур не

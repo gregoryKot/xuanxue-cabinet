@@ -4,6 +4,7 @@
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
   DEFAULT_PREVIEW_MINUTES,
   type PaymentReminderSettings,
@@ -20,6 +21,7 @@ export type LeanSettings = Pick<
   | 'previewMinutes'
   | 'lessonReminderMinutes'
   | 'newcomerContact'
+  | 'paymentContact'
   | 'dataControllerName'
   | 'dataControllerContact'
   | 'paymentReminder'
@@ -60,6 +62,8 @@ export function toSettingsDto(doc: LeanSettings): SettingsDto {
     // Та же причина, что у previewMinutes выше: старая база без поля —
     // дефолт (DEFAULT_NEWCOMER_CONTACT, domain.ts), не undefined.
     newcomerContact: doc.newcomerContact ?? DEFAULT_NEWCOMER_CONTACT,
+    // Та же причина: старая база без поля — DEFAULT_PAYMENT_CONTACT (domain.ts).
+    paymentContact: doc.paymentContact ?? DEFAULT_PAYMENT_CONTACT,
     // Без дефолта: выдуманное имя ответственного хуже пустого (страница
     // /privacy честно отправляет к учителю, пока поля нет).
     dataControllerName: doc.dataControllerName,

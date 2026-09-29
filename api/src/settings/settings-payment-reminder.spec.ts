@@ -58,7 +58,7 @@ describe('assertKnownReminderPlaceholders', () => {
       InvalidInputError,
     );
     expect(() => assertKnownReminderPlaceholders('{название}')).toThrow(
-      /\{название\}.*Доступные: \{месяц\}, \{сумма\}, \{имя\}, \{ссылка\}\./,
+      /\{название\}.*Доступные: \{месяц\}, \{сумма\}, \{имя\}, \{ссылка\}, \{контакт\}\./,
     );
   });
 });

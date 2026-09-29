@@ -7,6 +7,7 @@ import type { Connection, Model } from 'mongoose';
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
   DEFAULT_PREVIEW_MINUTES,
   DEFAULT_TEMPLATES,
@@ -113,6 +114,18 @@ describe('SettingsService', () => {
       expect(settings.newcomerContact).toBe(DEFAULT_NEWCOMER_CONTACT);
     });
 
+    it('документ без поля paymentContact (старая база) — дефолт, не undefined', async () => {
+      await model.create({
+        _id: 'school',
+        templates: { lessonLink: DEFAULT_TEMPLATES.lesson_link, recording: 'x' },
+        tz: 'Asia/Jerusalem',
+      });
+
+      const settings = await service.get();
+
+      expect(settings.paymentContact).toBe(DEFAULT_PAYMENT_CONTACT);
+    });
+
     it('второй вызов не создаёт второй документ и отдаёт тот же результат', async () => {
       const first = await service.get();
       const second = await service.get();
@@ -188,6 +201,15 @@ describe('SettingsService', () => {
 
       const settings = await service.get();
       expect(settings.newcomerContact).toBe('Маше @masha_teacher');
+    });
+
+    it('paymentContact — сохраняется, get видит его после (read-after-write)', async () => {
+      await service.update({ paymentContact: 'Кате @katya_books' });
+
+      const settings = await service.get();
+      expect(settings.paymentContact).toBe('Кате @katya_books');
+      // Соседний контакт не задет: у них разные поля.
+      expect(settings.newcomerContact).toBe(DEFAULT_NEWCOMER_CONTACT);
     });
 
     it('ответственный за данные — сохраняется, get видит его после (read-after-write)', async () => {
@@ -351,6 +373,7 @@ describe('SettingsService.get — гонка E11000 (фейк модели)', ()
       previewMinutes: DEFAULT_PREVIEW_MINUTES, // фейковый doc без поля — дефолт
       lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES, // фейковый doc без поля — дефолт
       newcomerContact: DEFAULT_NEWCOMER_CONTACT, // фейковый doc без поля — дефолт
+      paymentContact: DEFAULT_PAYMENT_CONTACT, // фейковый doc без поля — дефолт
       paymentReminder: DEFAULT_PAYMENT_REMINDER, // фейковый doc без поля — дефолт
       updatedAt: '2026-09-06T18:00:00.000Z',
     });

@@ -8,11 +8,17 @@ import type { MeDto } from '@xuanxue/shared';
 
 const MY_PAYMENTS_VISIBLE = false;
 
-/** Секция — только у человека без ролей (ученик, ADR-0026): у штата
- * абонемента нет, как и у сервера (`assertActiveStudent`). */
+/** Только у человека без ролей (ученик, ADR-0026): у штата оплат ученика
+ * нет, как и у сервера (`assertActiveStudent`). Тот же признак решает, кому
+ * показать контакт бухгалтера в «Профиле» (PaymentContactNote.tsx, ADR-0159). */
+export function isPaymentContactVisible(me: MeDto | null): me is MeDto {
+  return me !== null && me.roles.length === 0;
+}
+
+/** Секция «Абонемент» — за флагом и только ученику. */
 export function isMyPaymentsVisible(
   me: MeDto | null,
   visible: boolean = MY_PAYMENTS_VISIBLE,
 ): me is MeDto {
-  return visible && me !== null && me.roles.length === 0;
+  return visible && isPaymentContactVisible(me);
 }

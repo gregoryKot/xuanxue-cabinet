@@ -25,6 +25,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
 import { DataControllerField } from './DataControllerField';
 import { NewcomerContactField } from './NewcomerContactField';
+import { PaymentContactField } from './PaymentContactField';
 import { PaymentReminderSection } from './PaymentReminderSection';
 import { SchoolSiteField } from './SchoolSiteField';
 import { useNextLessons } from './useNextLessons';
@@ -109,6 +110,7 @@ export default function TemplatesScreen() {
           {/* «Оплаты» — до шаблонов постов: у неё своя кнопка сохранения, а
               терракотовое «Сохранить» внизу закрывает именно шаблоны постов. */}
           <PaymentReminderSection settings={settings} update={settingsState.update} />
+          <PaymentContactField settings={settings} update={settingsState.update} />
 
           {TEMPLATE_KINDS.map((kind) => (
             <TemplateEditor

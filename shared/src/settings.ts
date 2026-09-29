@@ -58,6 +58,11 @@ export interface SettingsDto {
    * (ADR-0115). Старая база без поля отдаёт `DEFAULT_NEWCOMER_CONTACT`
    * (domain.ts), тем же приёмом, что `previewMinutes`. */
   newcomerContact: string;
+  /** Кому ученик присылает скриншот перевода (ADR-0159): его видят в
+   * «Профиле» и в напоминании об оплате (подстановка `{контакт}`). Старая база
+   * без поля отдаёт `DEFAULT_PAYMENT_CONTACT` (domain.ts), тем же приёмом, что
+   * `newcomerContact`. */
+  paymentContact: string;
   /** Кто отвечает за данные учеников — имя человека или название школы
    * (статья 11 Закона о защите частной жизни Израиля: просить данные можно,
    * только назвав, кто ими владеет). Публичный текст: отдаётся всем через
@@ -99,6 +104,9 @@ export interface UpdateSettingsInput {
    * другим. Пустая строка не проходит валидацию, иначе бот оборвал бы фразу
    * «Напишите …» на полуслове. */
   newcomerContact?: string;
+  /** Не в NULLABLE_SETTINGS_FIELDS, по той же причине, что `newcomerContact`:
+   * пустой контакт оборвал бы фразу «пришлите … в Telegram» на полуслове. */
+  paymentContact?: string;
   /** `null` — явный сброс (NULLABLE_SETTINGS_FIELDS): пустое поле формы
    * значит «не указано», страница `/privacy` тогда отправляет к учителю. */
   dataControllerName?: string | null;
@@ -138,6 +146,7 @@ export const SETTINGS_LIMITS = {
   templateMaxLength: 2000,
   schoolSiteUrlMaxLength: 500,
   newcomerContactMaxLength: 200,
+  paymentContactMaxLength: 200,
   dataControllerNameMaxLength: 200,
   dataControllerContactMaxLength: 300,
   previewMinutesMin: 1,

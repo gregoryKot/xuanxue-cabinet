@@ -188,24 +188,29 @@ describe('напоминание об оплате — свой allow-list (ADR-
           месяц: 'октябрь',
           сумма: '4 000 ₽',
           ссылка: 'https://t.me/xuanxue_bot',
+          контакт: 'Маше @marievyazova',
         },
         PAYMENT_REMINDER_PLACEHOLDERS,
       ),
     ).toBe(
-      'Анна, напоминаем об оплате за октябрь.\nКогда переведёте — пришлите скриншот боту. https://t.me/xuanxue_bot',
+      'Анна, напоминаем об оплате за октябрь.\nСкриншот перевода пришлите Маше @marievyazova в Telegram.',
     );
   });
 
-  it('шаблон по умолчанию без ссылки — без висячего пробела в конце', () => {
+  it('своя подстановка {ссылка} остаётся доступной, пустая — без висячего пробела', () => {
+    const template = 'Скриншот — {контакт}.[ Или боту: {ссылка}]';
+    const values = { контакт: 'Маше @marievyazova' };
+
+    expect(renderTemplate(template, values, PAYMENT_REMINDER_PLACEHOLDERS)).toBe(
+      'Скриншот — Маше @marievyazova.',
+    );
     expect(
       renderTemplate(
-        DEFAULT_PAYMENT_REMINDER_TEMPLATE,
-        { имя: 'Анна', месяц: 'октябрь', ссылка: null },
+        template,
+        { ...values, ссылка: 'https://t.me/xuanxue_bot' },
         PAYMENT_REMINDER_PLACEHOLDERS,
       ),
-    ).toBe(
-      'Анна, напоминаем об оплате за октябрь.\nКогда переведёте — пришлите скриншот боту.',
-    );
+    ).toBe('Скриншот — Маше @marievyazova. Или боту: https://t.me/xuanxue_bot');
   });
 
   it('шаблон по умолчанию не содержит неизвестных подстановок', () => {

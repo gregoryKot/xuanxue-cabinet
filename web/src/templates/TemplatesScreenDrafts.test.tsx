@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
   DEFAULT_PREVIEW_MINUTES,
   type SettingsDto,
@@ -39,6 +40,7 @@ function makeSettings(overrides: Partial<SettingsDto> = {}): SettingsDto {
     previewMinutes: DEFAULT_PREVIEW_MINUTES,
     lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
     newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+    paymentContact: DEFAULT_PAYMENT_CONTACT,
     paymentReminder: DEFAULT_PAYMENT_REMINDER,
     updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,

@@ -127,6 +127,14 @@ export class UpdateSettingsDto implements ApiRouteBody<'PATCH /settings'> {
   @MaxLength(SETTINGS_LIMITS.newcomerContactMaxLength)
   newcomerContact?: string;
 
+  // Кому присылать скриншот перевода (ADR-0159): те же правила, что у
+  // newcomerContact, — пустая строка оборвала бы фразу в напоминании.
+  @OptionalNotNull()
+  @IsString()
+  @Matches(/\S/, { message: NOT_EMPTY_MESSAGE })
+  @MaxLength(SETTINGS_LIMITS.paymentContactMaxLength)
+  paymentContact?: string;
+
   @IsOptional()
   @TrimString()
   @IsString()

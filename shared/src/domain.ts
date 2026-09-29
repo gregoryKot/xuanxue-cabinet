@@ -109,6 +109,12 @@ export const DEFAULT_LESSON_REMINDER_MINUTES = 60;
  * может не Дима, и «Напишите Маше @…» не должно требовать правки кода. */
 export const DEFAULT_NEWCOMER_CONTACT = 'Диме @Dmitry_Deitch';
 
+/** Кому ученик присылает скриншот перевода: бухгалтер школы, напрямую в
+ * Telegram, не через бот (ADR-0159). Тот же приём, что `DEFAULT_NEWCOMER_CONTACT`
+ * выше: дефолт для базы без поля, значение живёт в БД и на экране «Шаблоны» —
+ * бухгалтер может смениться, и это не должно требовать разработчика. */
+export const DEFAULT_PAYMENT_CONTACT = 'Маше @marievyazova';
+
 /** Запись занятия: ссылка (Drive, облако Zoom) или файл в Telegram по file_id. */
 export interface Recording {
   title: string;

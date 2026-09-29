@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_CONTACT,
   DEFAULT_PAYMENT_REMINDER,
 } from '@xuanxue/shared';
 import type { SettingsDto } from '@xuanxue/shared';
@@ -17,6 +18,7 @@ const SETTINGS: SettingsDto = {
   previewMinutes: 5,
   lessonReminderMinutes: 30,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentContact: DEFAULT_PAYMENT_CONTACT,
   paymentReminder: DEFAULT_PAYMENT_REMINDER,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };

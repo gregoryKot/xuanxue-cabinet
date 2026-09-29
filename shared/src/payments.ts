@@ -76,6 +76,10 @@ export interface MyPaymentDto {
 export interface MyPaymentsPageDto {
   month: string;
   rows: MyPaymentDto[];
+  /** Кому присылать скриншот перевода — `settings.paymentContact` (ADR-0159).
+   * Ученику вне роли штата `GET /settings` недоступен, поэтому контакт едет в
+   * его же ответе, а не отдельным запросом. */
+  contact: string;
 }
 
 /** Сколько дней живёт снимок перевода (ADR-0050): после подтверждения и без
