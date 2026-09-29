@@ -98,6 +98,8 @@ describe('MyPaymentsSection — куда вести за скриншотом', 
     expect(document.querySelector('a[href*="t.me"]')).toBeNull();
     expect(screen.getByText('30 дней')).toBeInTheDocument();
     expect(screen.getByText('90 дней')).toBeInTheDocument();
+    // ADR-0156: снимок из кабинета тоже уходит бухгалтеру, обещание срока — с оговоркой.
+    expect(screen.getByText(/Копия уйдёт бухгалтеру в Telegram/)).toBeInTheDocument();
   });
 
   it('Telegram связан и бот известен — ссылка на бота с месяцем, файла нет', async () => {
