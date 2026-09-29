@@ -4,8 +4,8 @@
 // путь и своя загрузка, не второй запрос внутри хука очереди: разделы
 // экрана грузятся и перезагружаются независимо друг от друга.
 import type { ExamAttemptDto } from '@xuanxue/shared';
-import { GRADED_ATTEMPTS_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { GRADED_ATTEMPTS_QUERY } from '../api/gradingPaths';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить проверенные работы. Попробуйте ещё раз.';
@@ -19,7 +19,7 @@ export interface UseGradedAttemptsResult {
 
 export function useGradedAttempts(): UseGradedAttemptsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ExamAttemptDto[]>(GRADED_ATTEMPTS_PATH, { signal }),
+    (signal) => apiRoute('GET /attempts', { query: GRADED_ATTEMPTS_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
   return { attempts: data, loading, error, reload };

@@ -3,15 +3,14 @@ import type { MeDto } from '@xuanxue/shared';
 import {
   CLASSES_LIST_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
-  GRADING_QUEUE_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
   MY_LESSONS_PATH,
   NOTIFICATIONS_FEED_PATH,
-  attemptPath,
   examsListPath,
   lessonsListPath,
 } from '../api/apiPaths';
+import { GRADING_QUEUE_PATH, attemptPath } from '../api/gradingPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';

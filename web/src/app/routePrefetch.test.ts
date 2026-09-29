@@ -5,8 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CLASSES_LIST_PATH,
   EXAM_ITEM_STATS_SUMMARY_PATH,
-  GRADED_ATTEMPTS_PATH,
-  GRADING_QUEUE_PATH,
   INVITE_LINK_PATH,
   LESSON_RECORDING_SUMMARY_PATH,
   MY_EXAMS_PATH,
@@ -17,7 +15,6 @@ import {
   NOTIFICATION_PREFS_PATH,
   SETTINGS_PATH,
   TEACHERS_PATH,
-  attemptPath,
   channelsListPath,
   EXAM_EDITOR_ITEMS_PATH,
   examItemsListPath,
@@ -26,6 +23,11 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import {
+  GRADED_ATTEMPTS_PATH,
+  GRADING_QUEUE_PATH,
+  attemptPath,
+} from '../api/gradingPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 

@@ -7,8 +7,7 @@
 // ответе — правда на момент запроса, а не то, что было при старте.
 import { useCallback, useState } from 'react';
 import type { ExamAttemptDto, ExamMediaDto } from '@xuanxue/shared';
-import { attemptPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import { mergeAnswerVideoMedia } from './attemptMediaMerge';
@@ -57,7 +56,7 @@ export function useAttempt(
   const { onSubmitted } = options;
   const { data, loading, error, reload, refresh, applyData } =
     useAbortableFetch<ExamAttemptDto>(
-      (signal) => apiFetch<ExamAttemptDto>(attemptPath(attemptId), { signal }),
+      (signal) => apiRoute('GET /attempts/:id', { params: { id: attemptId }, signal }),
       LOAD_ERROR_MESSAGE,
     );
   const attempt = data;
@@ -76,8 +75,8 @@ export function useAttempt(
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const next = await apiFetch<ExamAttemptDto>(`/attempts/${attemptId}/submit`, {
-        method: 'POST',
+      const next = await apiRoute('POST /attempts/:id/submit', {
+        params: { id: attemptId },
       });
       applyData(next);
       // Тот же ответ правит и список «Заданий» — без него он ещё долю

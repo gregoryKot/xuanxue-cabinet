@@ -2,13 +2,10 @@
 // необязательный заголовок. `createdBy` — из сессии (@CurrentUser), не из
 // тела запроса.
 import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-import {
-  GRADING_COMMENT_PRESET_LIMITS,
-  type CreateGradingCommentPresetInput,
-} from '@xuanxue/shared';
+import { GRADING_COMMENT_PRESET_LIMITS, type ApiRouteBody } from '@xuanxue/shared';
 import { TrimString } from '../../common/validation';
 
-export class CreateGradingCommentPresetDto implements CreateGradingCommentPresetInput {
+export class CreateGradingCommentPresetDto implements ApiRouteBody<'POST /grading-presets'> {
   @TrimString()
   @IsString()
   @IsNotEmpty()

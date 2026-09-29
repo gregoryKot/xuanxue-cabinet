@@ -147,8 +147,9 @@ describe('useAttempt — загрузка своей попытки', () => {
 
     await waitFor(() => expect(result.current.error).toBe(ATTEMPT_NOT_FOUND_MESSAGE));
     expect(result.current.attempt).toBeNull();
+    // `apiRoute` экранирует параметр пути: id из данных не меняет маршрут.
     expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/attempts/чужая-или-неизвестная',
+      `/attempts/${encodeURIComponent('чужая-или-неизвестная')}`,
       expect.anything(),
     );
   });

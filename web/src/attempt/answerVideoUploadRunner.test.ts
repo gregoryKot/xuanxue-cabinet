@@ -4,11 +4,7 @@
 // отмена ровно в момент сбоя запроса и отмена, случившаяся во время паузы.
 import { describe, expect, it, vi } from 'vitest';
 import type { AnswerVideoUploadDto, ExamMediaDto } from '@xuanxue/shared';
-import {
-  answerVideoCompletePath,
-  answerVideoPartPath,
-  attemptAnswerVideoStartPath,
-} from '../api/answerVideoPaths';
+import { apiRoutePath } from '../api/apiRoute';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
@@ -23,7 +19,19 @@ resetApiFetchBetweenTests();
 
 const ATTEMPT_ID = 'a1';
 const ITEM_ID = 'q1';
-const START_PATH = attemptAnswerVideoStartPath(ATTEMPT_ID);
+const START_PATH = apiRoutePath('POST /attempts/:id/answer-video', {
+  params: { id: ATTEMPT_ID },
+});
+
+function answerVideoPartPath(uploadId: string, partNumber: number): string {
+  return apiRoutePath('PUT /answer-videos/:id/parts/:n', {
+    params: { id: uploadId, n: String(partNumber) },
+  });
+}
+
+function answerVideoCompletePath(uploadId: string): string {
+  return apiRoutePath('POST /answer-videos/:id/complete', { params: { id: uploadId } });
+}
 
 function makeFile(bytes = 20): File {
   return new File([new Uint8Array(bytes)], 'form.mp4', { type: 'video/mp4' });

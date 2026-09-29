@@ -4,11 +4,11 @@ import { IsIn, IsMongoId, IsOptional } from 'class-validator';
 import {
   EXAM_ATTEMPT_STATUSES,
   type ExamAttemptStatus,
-  type ListAttemptsQuery,
+  type ApiRouteQuery,
 } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
-export class ListAttemptsDto implements ListAttemptsQuery {
+export class ListAttemptsDto implements ApiRouteQuery<'GET /attempts'> {
   @IsOptional()
   @IsMongoId()
   examId?: string;

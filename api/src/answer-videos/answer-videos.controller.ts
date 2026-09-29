@@ -22,6 +22,7 @@ import type {
   ExamMediaDto,
 } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { VideoRedirectController } from '../common/video-redirect';
 import type { UserLean } from '../users/users.service';
 import { AnswerVideoCompleteService } from './answer-video-complete';
@@ -49,6 +50,7 @@ export class AnswerVideosController extends VideoRedirectController<UserLean> {
   }
 
   @Put(':id/parts/:n')
+  @ApiRoute('PUT /answer-videos/:id/parts/:n')
   uploadPart(
     @Param('id') id: string,
     @Param('n', ParseIntPipe) n: number,
@@ -59,6 +61,7 @@ export class AnswerVideosController extends VideoRedirectController<UserLean> {
   }
 
   @Post(':id/complete')
+  @ApiRoute('POST /answer-videos/:id/complete')
   @HttpCode(HttpStatus.CREATED)
   complete(
     @Param('id') id: string,
@@ -70,6 +73,7 @@ export class AnswerVideosController extends VideoRedirectController<UserLean> {
   // Литеральный путь ДО `:id` — иначе Nest отдаст его хендлеру `get` с
   // `id='stats-summary'` (тот же приём, что ExamVideosController).
   @Get('stats-summary')
+  @ApiRoute('GET /answer-videos/stats-summary')
   @Roles('teacher', 'assistant', 'admin')
   getStatsSummary(): Promise<AnswerVideoStatsDto> {
     return this.statsService.getSummary();

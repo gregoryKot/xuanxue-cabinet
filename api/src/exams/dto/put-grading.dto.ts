@@ -9,10 +9,10 @@ import {
   GRADING_LIMITS,
   GRADING_OUTCOMES,
   type GradingOutcome,
-  type PutGradingInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 
-export class PutGradingDto implements PutGradingInput {
+export class PutGradingDto implements ApiRouteBody<'PUT /attempts/:id/grading'> {
   @IsOptional()
   @IsString()
   @MaxLength(GRADING_LIMITS.comment)

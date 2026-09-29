@@ -8,10 +8,10 @@ import { IsMongoId, IsOptional, IsUrl, MaxLength } from 'class-validator';
 import {
   EXAM_MEDIA_INVALID_URL_MESSAGE,
   EXAM_MEDIA_LIMITS,
-  type AddExamMediaLinkInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 
-export class AddExamMediaLinkDto implements AddExamMediaLinkInput {
+export class AddExamMediaLinkDto implements ApiRouteBody<'POST /attempts/:id/media/link'> {
   @IsUrl(
     { protocols: ['http', 'https'], require_protocol: true },
     { message: EXAM_MEDIA_INVALID_URL_MESSAGE },
