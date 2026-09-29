@@ -61,9 +61,8 @@ export class NotificationRecord {
   @Prop({ type: String, required: false })
   examTitle?: string;
 
-  // Занятие напоминания `lesson_soon` (ADR-0135) — строкой, та же причина,
-  // что examId выше. Только у lesson_soon; уникальный индекс ниже —
-  // идемпотентность повторной отправки (второй тик, второй инстанс).
+  // Занятие `lesson_soon` (ADR-0135) — строкой, как examId; уникальный индекс
+  // ниже — идемпотентность повторной отправки (второй тик, второй инстанс).
   @Prop({ type: String, required: false })
   lessonId?: string;
 
@@ -72,27 +71,25 @@ export class NotificationRecord {
   @Prop({ type: String, required: false })
   lessonTitle?: string;
 
+  // Месяц `payment_due` (ADR-0150), 'YYYY-MM' в поясе школы, строкой.
+  @Prop({ type: String, required: false })
+  paymentMonth?: string;
+
   @Prop({ type: String, enum: GRADING_OUTCOMES, required: false })
   outcome?: GradingOutcome;
 
   // `null`, не просто отсутствие поля — InAppExamNotifier.write() всегда
-  // $set-ит явное значение (Date при чтении, null при первой записи и при
-  // переоценке): «непрочитано» и «никогда не трогали» — одно и то же
-  // состояние, не два неразличимых. Тот же приём, что questionIndex/itemId
+  // $set-ит явное значение (Date при чтении, null при записи и переоценке):
+  // «непрочитано» и «не трогали» — одно состояние. Приём как у questionIndex
   // в bot-session.schema.ts.
   @Prop({ type: Date, required: false })
   readAt?: Date | null;
 
-  // Отзыв владельца 2026-09-22: «уведомление нельзя смахнуть, удалить» —
-  // убирание из ленты мягкое, полем, а не удалением документа. Причина:
-  // у ленты уникальный частичный индекс по (userId, kind, attemptId)
-  // (см. ниже), и повторная доставка того же уведомления (ретрай
-  // InAppExamNotifier, переоценка работы) с удалением документа воскресила
-  // бы убранную запись — findOneAndUpdate с upsert снова создал бы её.
-  // Коллекция и так самоочищается TTL-индексом (см. шапку файла,
-  // retention: 90 дней) — второй механизм очистки не нужен. Дату не
-  // шифруем (CLAUDE.md, чеклист коллекции п.3 — id, userId, даты,
-  // перечисления не шифруются).
+  // Отзыв владельца 2026-09-22: «уведомление нельзя смахнуть» — убирание
+  // мягкое, полем, а не удалением документа: иначе повторная доставка того же
+  // события (ретрай, переоценка) снова создала бы убранную запись upsert-ом
+  // по уникальному индексу ниже. Чистит коллекцию TTL (шапка файла). Дату не
+  // шифруем (CLAUDE.md, чеклист коллекции п.3).
   @Prop({ type: Date, required: false })
   dismissedAt?: Date | null;
 }
@@ -117,6 +114,12 @@ NotificationSchema.index(
   { userId: 1, kind: 1, lessonId: 1 },
   { unique: true, partialFilterExpression: { lessonId: { $exists: true } } },
 );
+// Идемпотентность напоминания об оплате (ADR-0150): (человек, вид, месяц),
+// частичный по тем же причинам, что индексы выше.
+NotificationSchema.index(
+  { userId: 1, kind: 1, paymentMonth: 1 },
+  { unique: true, partialFilterExpression: { paymentMonth: { $exists: true } } },
+);
 // Лента (`GET /me/inbox`) — свои записи, переоценённые (updatedAt) сверху:
 // строка «всплывает» при переставленном итоге, не тонет на прежнем месте.
 NotificationSchema.index({ userId: 1, updatedAt: -1 });
@@ -137,6 +140,7 @@ export const NOTIFICATION_FIELD_POLICY: FieldPolicy = {
   examTitle: enc,
   lessonId: plain('id занятия — ссылка для клиента, не свободный текст'),
   lessonTitle: enc,
+  paymentMonth: plain('месяц YYYY-MM — ключ идемпотентности, не свободный текст'),
 };
 
 /** Схема шифрования записи ленты — одна на запись и на чтение

@@ -14,6 +14,7 @@ import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.serv
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
 import type { LessonReminderService } from '../lessons/lesson-reminder.service';
 import type { RecordingPromptService } from '../lessons/recording-prompt.service';
+import type { PaymentReminderService } from '../payments/payment-reminder.service';
 import type { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import type { StorageOrphansService } from '../storage/storage-orphans.service';
 import type { SchedulerHeartbeat } from './scheduler-heartbeat';
@@ -29,6 +30,7 @@ function buildService(overrides: {
   remindStudents?: LessonReminderService['remind'];
   promptManual?: ManualPromptService['prompt'];
   closeExamDeadlines?: ExamDeadlineCloseService['closeDue'];
+  remindPayments?: PaymentReminderService['remind'];
   removeImageOrphans?: ExamImageSweepService['removeOrphans'];
   removeVideoOrphans?: ExamVideoSweepService['removeOrphans'];
   removeExpiredScreenshots?: PaymentScreenshotSweepService['removeExpired'];
@@ -63,6 +65,8 @@ function buildService(overrides: {
     overrides.promptManual ?? jest.fn().mockResolvedValue({ prompted: 0 });
   const closeExamDeadlines =
     overrides.closeExamDeadlines ?? jest.fn().mockResolvedValue({ closed: 0 });
+  const remindPayments =
+    overrides.remindPayments ?? jest.fn().mockResolvedValue({ reminded: 0 });
   const removeImageOrphans =
     overrides.removeImageOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
   const removeVideoOrphans =
@@ -97,6 +101,7 @@ function buildService(overrides: {
     { remind: remindStudents } as unknown as LessonReminderService,
     { prompt: promptManual } as unknown as ManualPromptService,
     { closeDue: closeExamDeadlines } as unknown as ExamDeadlineCloseService,
+    { remind: remindPayments } as unknown as PaymentReminderService,
     { removeOrphans: removeImageOrphans } as unknown as ExamImageSweepService,
     { removeOrphans: removeVideoOrphans } as unknown as ExamVideoSweepService,
     {
@@ -152,6 +157,10 @@ describe('SchedulerService.tick', () => {
       (_now: DateTime): ReturnType<ExamDeadlineCloseService['closeDue']> =>
         Promise.resolve({ closed: 1 }),
     );
+    const remindPayments = jest.fn(
+      (_now: DateTime): ReturnType<PaymentReminderService['remind']> =>
+        Promise.resolve({ reminded: 2 }),
+    );
     const removeImageOrphans = jest.fn(
       (_now: DateTime): ReturnType<ExamImageSweepService['removeOrphans']> =>
         Promise.resolve({ removed: 1 }),
@@ -170,6 +179,7 @@ describe('SchedulerService.tick', () => {
       remindStudents,
       promptManual,
       closeExamDeadlines,
+      remindPayments,
       removeImageOrphans,
       removeExpiredScreenshots,
     });
@@ -185,6 +195,7 @@ describe('SchedulerService.tick', () => {
     expect(remindStudents).toHaveBeenCalledTimes(1);
     expect(promptManual).toHaveBeenCalledTimes(1);
     expect(closeExamDeadlines).toHaveBeenCalledTimes(1);
+    expect(remindPayments).toHaveBeenCalledTimes(1);
     expect(removeImageOrphans).toHaveBeenCalledTimes(1);
     expect(removeExpiredScreenshots).toHaveBeenCalledTimes(1);
     const [calledWith] = plan.mock.calls[0] ?? [];
@@ -199,6 +210,7 @@ describe('SchedulerService.tick', () => {
     expect(remindStudents.mock.calls[0]?.[0]).toBe(calledWith);
     expect(promptManual.mock.calls[0]?.[0]).toBe(calledWith);
     expect(closeExamDeadlines.mock.calls[0]?.[0]).toBe(calledWith);
+    expect(remindPayments.mock.calls[0]?.[0]).toBe(calledWith);
     expect(removeImageOrphans.mock.calls[0]?.[0]).toBe(calledWith);
     expect(removeExpiredScreenshots.mock.calls[0]?.[0]).toBe(calledWith);
   });
@@ -210,6 +222,37 @@ describe('SchedulerService.tick', () => {
 
     await expect(service.tick()).resolves.toBeUndefined();
     expect(promptManual).toHaveBeenCalledTimes(1);
+  });
+
+  it('ошибка шага «напоминания об оплате» не блокирует соседей и сообщает о себе', async () => {
+    const remindPayments = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const closeExamDeadlines = jest.fn().mockResolvedValue({ closed: 0 });
+    const removeImageOrphans = jest.fn().mockResolvedValue({ removed: 0 });
+    const { service, notifySchedulerFailed } = buildService({
+      remindPayments,
+      closeExamDeadlines,
+      removeImageOrphans,
+    });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+
+    expect(closeExamDeadlines).toHaveBeenCalledTimes(1);
+    expect(removeImageOrphans).toHaveBeenCalledTimes(1);
+    expect(notifySchedulerFailed).toHaveBeenCalledWith(
+      'напоминания об оплате',
+      'mongo упал',
+      expect.any(DateTime),
+    );
+  });
+
+  it('шаги до «напоминаний об оплате» падают — он всё равно идёт', async () => {
+    const closeExamDeadlines = jest.fn().mockRejectedValue(new Error('mongo упал'));
+    const remindPayments = jest.fn().mockResolvedValue({ reminded: 0 });
+    const { service } = buildService({ closeExamDeadlines, remindPayments });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+
+    expect(remindPayments).toHaveBeenCalledTimes(1);
   });
 
   it('ошибка шага отмен не останавливает шаг доставок', async () => {

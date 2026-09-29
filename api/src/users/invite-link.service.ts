@@ -17,6 +17,7 @@ import {
 import { NotAvailableError } from '../common/errors';
 import { decryptRecord, encryptRecord } from '../utils/encryption';
 import { BotIdentityService } from '../telegram/bot-identity.service';
+import { telegramStartUrl } from '../telegram/telegram-start-url';
 import { INVITE_LINK_ENCRYPT_SCHEMA, InviteLinkRecord } from './invite-link.schema';
 
 function hashCode(code: string): string {
@@ -66,7 +67,7 @@ export class InviteLinkService {
     return {
       url: `${publicUrl}/join/${code}`,
       telegramUrl: botUsername
-        ? `https://t.me/${botUsername}?start=${INVITE_TELEGRAM_START_PREFIX}${code}`
+        ? telegramStartUrl(botUsername, `${INVITE_TELEGRAM_START_PREFIX}${code}`)
         : null,
     };
   }
