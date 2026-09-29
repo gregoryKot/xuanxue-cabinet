@@ -8,13 +8,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto, MyExamDto, NotificationDto } from '@xuanxue/shared';
-import {
-  MY_EXAMS_PATH,
-  NOTIFICATIONS_FEED_PATH,
-  NOTIFICATIONS_READ_ALL_PATH,
-  notificationItemPath,
-  notificationReadPath,
-} from '../api/apiPaths';
+import { MY_EXAMS_PATH, NOTIFICATIONS_FEED_PATH } from '../api/apiPaths';
+import { apiRoutePath } from '../api/apiRoute';
 import type * as HttpModule from '../api/http';
 import { ApiError } from '../api/http';
 import { AuthProvider } from '../auth/AuthProvider';
@@ -27,6 +22,14 @@ import {
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { NotificationsProvider } from './NotificationsProvider';
 import NotificationsScreen from './NotificationsScreen';
+
+// Пути действий ленты — из карты маршрутов (PLAN §17.1), тем же
+// apiRoutePath, что собирает путь в apiRoute хука.
+const NOTIFICATIONS_READ_ALL_PATH = apiRoutePath('POST /me/inbox/read-all');
+const notificationItemPath = (id: string): string =>
+  apiRoutePath('DELETE /me/inbox/:id', { params: { id } });
+const notificationReadPath = (id: string): string =>
+  apiRoutePath('POST /me/inbox/:id/read', { params: { id } });
 
 vi.mock('../api/http', async () => {
   const actual = await vi.importActual<typeof HttpModule>('../api/http');

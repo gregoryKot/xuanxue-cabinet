@@ -2835,11 +2835,26 @@ spec, который сверяет карту с маршрутами, заре
 
 Как делать:
 
-1. ADR с решением (CLAUDE.md 1в) и сама карта в `shared/src/api-routes.ts`
-   с типизированным `apiFetch` рядом со старым — отдельным PR, без переноса вызовов.
-2. Перенос по доменам, по PR на домен (материалы, экзамены, занятия, …): вызовы
-   web — на ключи карты, контроллеры — на типы записей. Старый строковый `apiFetch`
-   живёт, пока есть вызовы; храповик на их число только уменьшается.
+1. **Сделано 2026-09-29 (ADR-0148).** Карта `shared/src/api-routes.ts`,
+   `apiRoute` рядом со старым `apiFetch` (`web/src/api/apiRoute.ts`),
+   `@ApiRoute` у обработчика (`api/src/common/api-route.decorator.ts`), e2e-сверка
+   карты с Nest (`api/test/api-routes.e2e-spec.ts`), храповик
+   `check-string-api-fetch-ratchet.mjs` (95 вызовов на старте). Образцом перенесён
+   один домен целиком — лента уведомлений `/me/inbox`.
+2. Перенос по доменам, по PR на домен: вызовы web — на ключи карты, контроллеры —
+   на `@ApiRoute`, DTO — на `implements ApiRouteBody/ApiRouteQuery<ключ>`. Старый
+   строковый `apiFetch` живёт, пока есть вызовы; храповик на их число только
+   уменьшается. Домены — по каталогам web, в скобках строковых вызовов на
+   2026-09-29: материалы (`materials`, 5, плюс `useMaterialEditor` через общий
+   редактор), общие хуки редактора и списков (`hooks`, 6 — `useEntityEditor`,
+   после него уходит `check-editor-routes.mjs`), экзамены (`exams` 4, `exam-items`
+   6), попытки и проверка (`attempt` 7, `grading` 10), занятия и расписание
+   (`planning` 7, `schedule` 1, `student` 6), рассылки (`broadcasts` 8,
+   `templates` 4), каналы и Telegram (`channels` 2, `telegram` 2), люди и профиль
+   (`people` 7, `welcome` 1, `join` 1), вход (`auth` 9), настройки уведомлений и
+   push (`notifications` 5), служебное (`analytics`, `app`, `dev-errors`, `errors`
+   — по 1). Первыми — маршруты из #345 (`POST /auth/email/link`,
+   `PUT /me/no-telegram`, `PATCH /me/profile`, `PUT /attempts/:id/grading`).
 3. Последний PR удаляет строковый `apiFetch`, храповик и `check-editor-routes.mjs`,
    `web/src/api/apiPaths.ts` — вместе с ним.
 

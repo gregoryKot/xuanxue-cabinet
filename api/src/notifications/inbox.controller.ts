@@ -19,6 +19,7 @@ import {
 import { DateTime } from 'luxon';
 import type { InboxPageDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { ListInboxDto } from './dto/list-inbox.dto';
 import { InboxService } from './inbox.service';
@@ -28,6 +29,7 @@ export class InboxController {
   constructor(private readonly inboxService: InboxService) {}
 
   @Get()
+  @ApiRoute('GET /me/inbox')
   list(
     @Query() query: ListInboxDto,
     @CurrentUser() user: UserLean,
@@ -43,6 +45,7 @@ export class InboxController {
   // с лимитом по умолчанию (ListInboxQuery без параметров), не «дай всё».
   @Post(':id/read')
   @HttpCode(HttpStatus.OK)
+  @ApiRoute('POST /me/inbox/:id/read')
   async markRead(
     @Param('id') id: string,
     @CurrentUser() user: UserLean,
@@ -57,6 +60,7 @@ export class InboxController {
   // выше — вместо 204 и отдельного GET следом (ADR-0087, «Последствия»).
   @Post('read-all')
   @HttpCode(HttpStatus.OK)
+  @ApiRoute('POST /me/inbox/read-all')
   async markAllRead(@CurrentUser() user: UserLean): Promise<InboxPageDto> {
     await this.inboxService.markAllRead(user.id, DateTime.utc());
     return this.inboxService.list(user.id, {});
@@ -71,6 +75,7 @@ export class InboxController {
   // (ADR-0087).
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @ApiRoute('DELETE /me/inbox/:id')
   async dismiss(
     @Param('id') id: string,
     @CurrentUser() user: UserLean,
