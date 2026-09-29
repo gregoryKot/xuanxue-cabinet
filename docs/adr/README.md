@@ -185,3 +185,4 @@
 | [0147](0147-agent-merges-green-pr.md)                            | Агент мержит свой зелёный PR сам; прод — по-прежнему по команде владельца                               |
 | [0148](0148-api-route-map-in-shared.md)                          | Карта маршрутов в `shared/` — контракт кабинета и API, сверка с Nest в e2e                              |
 | [0149](0149-staff-sees-payment-screenshot.md)                    | Штат открывает снимок перевода из кабинета отдельным запросом; в `PaymentDto` — `screenshotKind`        |
+| [0150](0150-payments-nav-accountant-and-people-subscreen.md)     | «Оплаты»: у бухгалтера один пункт меню, у админа — подэкран «Учеников»; предел пять в силе              |

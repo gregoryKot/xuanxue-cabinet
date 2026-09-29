@@ -29,15 +29,17 @@ export function formatTime(iso: string, timeZone?: string): string {
   );
 }
 
+/** «7 сентября» — день без недели и года («Оплачено 15 сентября»). */
+export function formatDayMonth(iso: string, timeZone?: string): string {
+  return new Intl.DateTimeFormat('ru', { ...DAY_MONTH_FORMAT, timeZone }).format(
+    new Date(iso),
+  );
+}
+
 /** «Вс, 7 сентября» — заголовок группы дня в «Планировании». */
 export function formatDayHeading(iso: string, timeZone?: string): string {
-  const date = new Date(iso);
-  const weekday = WEEKDAY_LABELS_RU[weekdayIndex(date, timeZone)];
-  const dayMonth = new Intl.DateTimeFormat('ru', {
-    ...DAY_MONTH_FORMAT,
-    timeZone,
-  }).format(date);
-  return `${weekday}, ${dayMonth}`;
+  const weekday = WEEKDAY_LABELS_RU[weekdayIndex(new Date(iso), timeZone)];
+  return `${weekday}, ${formatDayMonth(iso, timeZone)}`;
 }
 
 /** «Вс, 7 сентября, 19:00» — дата и время одной строкой (карточка «Сводки»). */

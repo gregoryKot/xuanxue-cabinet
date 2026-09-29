@@ -3,7 +3,9 @@
 // ними перестаёт ждать сети (на проде TTFB 0.5–1.1 с, измерение 2026-09-15).
 // У ученика греются его два экрана («Задания», «Занятия»), у штата —
 // разделы штата: греть чужой роли экраны — трафик мимо того, что человек
-// вообще может открыть (решение владельца, docs/PLAN.md §11).
+// вообще может открыть (решение владельца, docs/PLAN.md §11). Бухгалтер
+// греет один экран — «Оплаты» (ADR-0150); учитель без права на оплаты
+// чанк оплат не греет, админ — греет вместе с экранами штата.
 //
 // По одному чанку за раз и только в простое браузера (`requestIdleCallback`,
 // в Safari его нет — фолбэк на `setTimeout`): прогрев не должен отнимать
@@ -11,7 +13,7 @@
 import { useEffect } from 'react';
 import type { MeDto } from '@xuanxue/shared';
 import { ROUTE_MODULES, type RouteModule } from './routeModules';
-import { isTeacher } from './screenAccess';
+import { canSeePayments, isAccountant, isTeacher } from './screenAccess';
 
 /** Safari без requestIdleCallback: пауза, за которую первый экран успевает ожить. */
 const IDLE_FALLBACK_DELAY_MS = 300;
@@ -21,6 +23,10 @@ const IDLE_FALLBACK_DELAY_MS = 300;
 // (слои 3.2/3.3), но у каждого свой чанк и свой prefetch, греть их нужно
 // отдельно от studentLessons.
 const STUDENT_ROUTE_KEYS = new Set(['tasks', 'studentLessons', 'archive', 'library']);
+
+// Ключ «Оплат» в ROUTE_MODULES: их греет тот, кто видит оплаты, а не «штат
+// или ученик».
+const PAYMENTS_ROUTE_KEY = 'payments';
 
 type Cancel = () => void;
 
@@ -33,13 +39,18 @@ function scheduleWhenIdle(task: () => void): Cancel {
   return () => window.clearTimeout(id);
 }
 
+function isWarmedFor(me: MeDto, key: string): boolean {
+  if (key === PAYMENTS_ROUTE_KEY) return canSeePayments(me);
+  if (isAccountant(me)) return false;
+  return STUDENT_ROUTE_KEYS.has(key) !== isTeacher(me);
+}
+
 /** Экраны, которые стоит прогреть для этой роли — свои, не чужие (см. шапку
  * файла). Сессия ещё не известна (`me === null`) — греть нечего. */
 function routesToWarm(me: MeDto | null): RouteModule[] {
   if (!me) return [];
-  const staff = isTeacher(me);
   return Object.entries(ROUTE_MODULES)
-    .filter(([key, route]) => route.warm && STUDENT_ROUTE_KEYS.has(key) !== staff)
+    .filter(([key, route]) => route.warm && isWarmedFor(me, key))
     .map(([, route]) => route);
 }
 

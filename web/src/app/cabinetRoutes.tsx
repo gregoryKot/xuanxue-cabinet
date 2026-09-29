@@ -13,6 +13,7 @@
 import { Navigate, Route } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { RequireDevErrorsAccess } from '../auth/RequireDevErrorsAccess';
+import { RequirePaymentsAccess } from '../auth/RequirePaymentsAccess';
 import { RequirePeopleAccess } from '../auth/RequirePeopleAccess';
 import { lazyRoute } from './lazyRoute';
 import { ROUTE_MODULES } from './routeModules';
@@ -31,6 +32,7 @@ const BroadcastsScreen = lazyRoute(ROUTE_MODULES.broadcasts.load);
 const BroadcastNewScreen = lazyRoute(ROUTE_MODULES.broadcastNew.load);
 const TemplatesScreen = lazyRoute(ROUTE_MODULES.templates.load);
 const PeopleScreen = lazyRoute(ROUTE_MODULES.people.load);
+const PaymentsScreen = lazyRoute(ROUTE_MODULES.payments.load);
 const ExamItemsScreen = lazyRoute(ROUTE_MODULES.examItems.load);
 const ExamItemEditorScreen = lazyRoute(ROUTE_MODULES.examItemEditor.load);
 const ExamsScreen = lazyRoute(ROUTE_MODULES.exams.load);
@@ -73,18 +75,12 @@ export const cabinetRoutes = (
     <Route path={ROUTE_MODULES.channels.path} element={<ChannelsScreen />} />
     <Route path={ROUTE_MODULES.channelNew.path} element={<ChannelEditorScreen />} />
     <Route path={ROUTE_MODULES.channelEditor.path} element={<ChannelEditorScreen />} />
-    {/* «Библиотека» (слой 3.2) — подэкран «Занятий», вход кнопкой в шапке
-        PlanningActions.tsx, не пункт меню (ADR-0025). Роль на маршруте не
-        нужна: AppShell.tsx уже отдаёт Outlet только штату школы, ученик сюда
-        не попадёт (как /exam-items), а API дополнительно закрыт ролью на
-        контроллере (MaterialsController). */}
+    {/* «Материалы» — пятый пункт меню штата (ADR-0055). Роли на маршруте
+        нет: Outlet штата отдаёт AppShell.tsx, API закрыт ролью контроллера. */}
     <Route path={ROUTE_MODULES.materials.path} element={<MaterialsScreen />} />
     <Route path={ROUTE_MODULES.materialNew.path} element={<MaterialEditorScreen />} />
-    {/* Подэкран «Материалов» — общая выдача по тегу (ADR-0075/0078), вход
-        карточкой на MaterialsScreen.tsx и пилюлей тега на карточке
-        материала/занятия (ADR-0025: не пункт меню). Раньше
-        /materials/:materialId — та же причина, что у /materials/new выше:
-        статический сегмент должен выигрывать у параметра. */}
+    {/* Выдача по тегу (ADR-0075/0078) — подэкран «Материалов»; раньше
+        /materials/:materialId: статический сегмент выигрывает у параметра. */}
     <Route path={ROUTE_MODULES.materialsTags.path} element={<MaterialsTagsScreen />} />
     <Route path={ROUTE_MODULES.materialEditor.path} element={<MaterialEditorScreen />} />
     <Route path={ROUTE_MODULES.broadcasts.path} element={<BroadcastsScreen />} />
@@ -150,6 +146,10 @@ export const cabinetRoutes = (
         удаление данных внутри экрана остаются только у admin (SECURITY §3). */}
     <Route element={<RequirePeopleAccess />}>
       <Route path={ROUTE_MODULES.people.path} element={<PeopleScreen />} />
+    </Route>
+    {/* «Оплаты» (ADR-0150): учителя гвард уводит на его корень, не на 403. */}
+    <Route element={<RequirePaymentsAccess />}>
+      <Route path={ROUTE_MODULES.payments.path} element={<PaymentsScreen />} />
     </Route>
     {/* Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx),
         вход карточкой SectionLink на «Профиле», не пункт меню (ADR-0025). */}

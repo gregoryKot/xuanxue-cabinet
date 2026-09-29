@@ -7,6 +7,7 @@ import {
   endOfDayIsoFromDateValue,
   formatDateTime,
   formatDayHeading,
+  formatDayMonth,
   formatTime,
   fromDatetimeLocalValue,
   toDateInputValue,
@@ -19,6 +20,18 @@ describe('formatTime', () => {
   it('часы:минуты в заданном поясе, 24-часовой формат', () => {
     expect(formatTime(MONDAY_EVENING, 'Europe/Moscow')).toBe('19:30');
     expect(formatTime(MONDAY_EVENING, 'UTC')).toBe('16:30');
+  });
+});
+
+describe('formatDayMonth', () => {
+  it('день и месяц словом в заданном поясе, без недели и года', () => {
+    expect(formatDayMonth(MONDAY_EVENING, 'Europe/Moscow')).toBe('7 сентября');
+  });
+
+  it('вечер по UTC в поясе впереди — уже следующий день', () => {
+    expect(formatDayMonth('2026-09-07T22:30:00.000Z', 'Asia/Jerusalem')).toBe(
+      '8 сентября',
+    );
   });
 });
 

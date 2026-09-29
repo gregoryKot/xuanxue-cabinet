@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import {
+  ACCOUNTANT_NAV_ITEMS,
   activeSectionPath,
   navItemsFor,
   STAFF_NAV_ITEMS,
@@ -32,6 +33,14 @@ describe('navItemsFor', () => {
 
   it('ученик (нет роли штата) — STUDENT_NAV_ITEMS', () => {
     expect(navItemsFor(makeMe({ roles: [] }))).toBe(STUDENT_NAV_ITEMS);
+  });
+
+  it('бухгалтер без ролей штата — ACCOUNTANT_NAV_ITEMS (ADR-0150)', () => {
+    expect(navItemsFor(makeMe({ roles: ['accountant'] }))).toBe(ACCOUNTANT_NAV_ITEMS);
+  });
+
+  it('бухгалтер с ролью штата — список штата', () => {
+    expect(navItemsFor(makeMe({ roles: ['accountant', 'admin'] }))).toBe(STAFF_NAV_ITEMS);
   });
 
   it('сессия ещё не известна (null) — тот же список, что у ученика', () => {
@@ -69,6 +78,12 @@ describe('activeSectionPath — список штата', () => {
     expect(activeSectionPath('/materials/tags', STAFF_NAV_ITEMS)).toBe('/materials');
   });
 
+  // ADR-0150: шестой пункт не помещается на 360 px (ADR-0055) — «Оплаты»
+  // подсвечивают «Учеников».
+  it('/payments — подэкран «Учеников»', () => {
+    expect(activeSectionPath('/payments', STAFF_NAV_ITEMS)).toBe('/people');
+  });
+
   it('путь вне навигации — null', () => {
     expect(activeSectionPath('/login', STAFF_NAV_ITEMS)).toBeNull();
   });
@@ -78,8 +93,12 @@ describe('activeSectionPath — список штата', () => {
 // опциональное украшение, и в пределах одного списка значки не повторяются
 // (иначе на телефоне два раздела выглядели бы одинаково).
 describe('NavItem.icon (ADR-0097)', () => {
-  it('у каждого пункта обоих списков есть значок', () => {
-    for (const item of [...STAFF_NAV_ITEMS, ...STUDENT_NAV_ITEMS]) {
+  it('у каждого пункта всех трёх списков есть значок', () => {
+    for (const item of [
+      ...STAFF_NAV_ITEMS,
+      ...STUDENT_NAV_ITEMS,
+      ...ACCOUNTANT_NAV_ITEMS,
+    ]) {
       expect(item.icon).toBeTruthy();
     }
   });
@@ -92,6 +111,16 @@ describe('NavItem.icon (ADR-0097)', () => {
   it('внутри списка ученика значки не повторяются', () => {
     const icons = STUDENT_NAV_ITEMS.map((item) => item.icon);
     expect(new Set(icons).size).toBe(icons.length);
+  });
+});
+
+describe('activeSectionPath — список бухгалтера', () => {
+  it('«Оплаты» подсвечивают себя', () => {
+    expect(activeSectionPath('/payments', ACCOUNTANT_NAV_ITEMS)).toBe('/payments');
+  });
+
+  it('маршрут штата — вне списка бухгалтера, null', () => {
+    expect(activeSectionPath('/people', ACCOUNTANT_NAV_ITEMS)).toBeNull();
   });
 });
 

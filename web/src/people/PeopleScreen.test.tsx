@@ -5,7 +5,7 @@
 // общей на все пути, эти два запроса перехватывали бы чужие ответы.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { UserDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
@@ -87,6 +87,26 @@ describe('PeopleScreen — шапка', () => {
       screen.getByText(/Здесь те, кто зарегистрировался по ссылке-приглашению/),
     ).toBeInTheDocument();
     expect(screen.getByText(/Отметьте, кто ведёт занятия/)).toBeInTheDocument();
+  });
+});
+
+// ADR-0150: «Оплаты» — подэкран «Учеников», вход вторичной кнопкой в шапке.
+describe('PeopleScreen — вход в «Оплаты»', () => {
+  it('админ нажимает «Оплаты» — открывается экран оплат', async () => {
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([makePerson()]);
+
+    render(
+      <MemoryRouter initialEntries={['/people']}>
+        <Routes>
+          <Route path="/people" element={<PeopleScreen />} />
+          <Route path="/payments" element={<p>Экран оплат</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Оплаты' }));
+
+    expect(await screen.findByText('Экран оплат')).toBeInTheDocument();
   });
 });
 

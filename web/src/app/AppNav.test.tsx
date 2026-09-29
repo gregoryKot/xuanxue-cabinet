@@ -36,6 +36,8 @@ const ADMIN: MeDto = {
   googleLinked: false,
 };
 
+const ACCOUNTANT: MeDto = { ...TEACHER, id: 'b1', name: 'Оля', roles: ['accountant'] };
+
 function renderNav(
   isMobile: boolean,
   me: MeDto | null = TEACHER,
@@ -106,6 +108,39 @@ describe('AppNav — пункты и роль (отзыв владельца 202
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent);
     expect(labels).toEqual(['Задания', 'Занятия']);
+  });
+
+  // ADR-0150: бухгалтеру без ролей штата — панель из одного пункта, не
+  // «Задания»/«Занятия» ученика.
+  it('бухгалтер — один пункт «Оплаты», ни ученических, ни штатных', () => {
+    renderNav(true, ACCOUNTANT, '/payments');
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(labels).toEqual(['Оплаты']);
+    expect(screen.getByRole('link', { name: 'Оплаты' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  // ADR-0150: у админа «Оплаты» — подэкран «Учеников», не шестой пункт.
+  it('админ на «/payments» — подсвечены «Ученики», пункта «Оплаты» нет', () => {
+    renderNav(true, ADMIN, '/payments');
+
+    expect(screen.getByRole('link', { name: /Ученики/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.queryByRole('link', { name: /Оплаты/ })).not.toBeInTheDocument();
+  });
+
+  // Бухгалтер, он же учитель, — штат: меню штата, «Оплаты» только через «Учеников»
+  // у админа (учителю экран закрыт).
+  it('бухгалтер и учитель одновременно — меню штата', () => {
+    renderNav(true, { ...TEACHER, roles: ['accountant', 'teacher'] });
+
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(labels).toEqual(['Экзамены', 'Занятия', 'Рассылки', 'Ученики', 'Материалы']);
   });
 
   // Решение владельца 2026-09-27 (ADR-0138): «Экзамены» первым пунктом —
@@ -236,6 +271,15 @@ describe('AppNav — знак школы (ADR-0043)', () => {
     expect(screen.getByRole('link', { name: 'Школа Сюань-Сюэ' })).toHaveAttribute(
       'href',
       rootPathFor(TEACHER),
+    );
+  });
+
+  it('у бухгалтера знак ведёт на «Оплаты»', () => {
+    renderNav(false, ACCOUNTANT);
+
+    expect(screen.getByRole('link', { name: 'Школа Сюань-Сюэ' })).toHaveAttribute(
+      'href',
+      '/payments',
     );
   });
 

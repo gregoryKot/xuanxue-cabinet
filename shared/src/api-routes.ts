@@ -18,6 +18,12 @@
 // сразу записью здесь.
 
 import type { InboxPageDto, ListInboxQuery } from './inbox';
+import type {
+  ConfirmPaymentInput,
+  ListPaymentsQuery,
+  PaymentDto,
+  PaymentsPageDto,
+} from './payments';
 
 export const API_ROUTE_METHODS = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'] as const;
 type ApiRouteMethod = (typeof API_ROUTE_METHODS)[number];
@@ -46,6 +52,25 @@ interface ApiRouteMap {
     response: InboxPageDto;
   };
   'DELETE /me/inbox/:id': { query: undefined; body: undefined; response: InboxPageDto };
+  // «Оплаты» (слой 2.3, ADR-0049): подтверждение и снятие отдают свежую
+  // строку, а не 204 — экран кладёт её в список без второго GET (ADR-0087).
+  // Снимок (`…/screenshot`) в карте нет: это байты картинки для <img src>,
+  // не JSON через apiFetch.
+  'GET /payments': {
+    query: ListPaymentsQuery;
+    body: undefined;
+    response: PaymentsPageDto;
+  };
+  'POST /payments/:userId/:month/confirm': {
+    query: undefined;
+    body: ConfirmPaymentInput;
+    response: PaymentDto;
+  };
+  'POST /payments/:userId/:month/revoke': {
+    query: undefined;
+    body: undefined;
+    response: PaymentDto;
+  };
 }
 
 /** Проверка формы карты на уровне типов: ключ начинается с метода и `/`,
@@ -82,6 +107,9 @@ const API_ROUTE_KEY_SET: Record<ApiRouteKey, true> = {
   'POST /me/inbox/:id/read': true,
   'POST /me/inbox/read-all': true,
   'DELETE /me/inbox/:id': true,
+  'GET /payments': true,
+  'POST /payments/:userId/:month/confirm': true,
+  'POST /payments/:userId/:month/revoke': true,
 };
 
 // Каст — Object.keys типизирован string[]; множество ключей выше

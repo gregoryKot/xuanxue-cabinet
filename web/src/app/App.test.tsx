@@ -34,6 +34,18 @@ const TEACHER: MeDto = {
   needsProfile: false,
   googleLinked: false,
 };
+const ACCOUNTANT: MeDto = {
+  id: 'b1',
+  name: 'Оля',
+  roles: ['accountant'],
+  status: 'active',
+  telegramLinked: false,
+  botChatActive: false,
+  noTelegram: false,
+  hasEmail: true,
+  needsProfile: false,
+  googleLinked: false,
+};
 const ADMIN: MeDto = {
   id: 'a1',
   name: 'Маша',
@@ -295,6 +307,32 @@ describe('App', () => {
     renderAt('/people');
 
     expect(await screen.findByText('Ссылка-приглашение')).toBeInTheDocument();
+  });
+
+  // ADR-0150: бухгалтер без ролей штата входит сразу в «Оплаты».
+  it('бухгалтер на «/» — попадает на «Оплаты» (корень бухгалтера)', async () => {
+    mockRoute(ACCOUNTANT, { '/payments': { month: '2026-09', rows: [] } });
+
+    renderAt('/');
+
+    expect(await screen.findByRole('heading', { name: 'Оплаты' })).toBeInTheDocument();
+  });
+
+  it('admin на /payments — маршрут открывает PaymentsScreen', async () => {
+    mockRoute(ADMIN, { '/payments': { month: '2026-09', rows: [] } });
+
+    renderAt('/payments');
+
+    expect(await screen.findByRole('heading', { name: 'Оплаты' })).toBeInTheDocument();
+  });
+
+  it('учитель на /payments — уходит на свой корень «Экзамены», а не получает отказ API', async () => {
+    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+
+    renderAt('/payments');
+
+    expect(await screen.findByRole('heading', { name: 'Экзамены' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Оплаты' })).not.toBeInTheDocument();
   });
 
   it('ученик без роли на /people — уводит редиректом на «Задания» (маршрут штата ему не открыт)', async () => {

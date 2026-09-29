@@ -53,8 +53,10 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { paymentsListPath } from '../api/paymentsApiPaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
+import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 
 /** Загрузка чанка экрана — динамический `import()` его модуля. */
 export type RouteLoader = () => Promise<{ default: ComponentType }>;
@@ -146,9 +148,6 @@ export const ROUTE_MODULES = {
     // ScheduleScreen.tsx грузит и классы, и активные каналы сразу на монтировании.
     prefetch: () => [CLASSES_LIST_PATH, channelsListPath(true)],
   },
-  // `/schedule/new` раньше `/schedule/:classId`: matchRoute берёт первое
-  // совпадение, а статический сегмент должен выигрывать у параметра.
-  // Один загрузчик на оба адреса — это один и тот же экран (ADR-0033).
   classNew: {
     path: '/schedule/new',
     load: loadClassEditor,
@@ -178,7 +177,6 @@ export const ROUTE_MODULES = {
     // запрос экрана, который можно погреть параллельно с чанком.
     prefetch: () => [lessonsListPath(), CLASSES_LIST_PATH, LESSON_RECORDING_SUMMARY_PATH],
   },
-  // `/planning/new` раньше `/planning/:lessonId` — по той же причине.
   // Учителя — как у classNew: LessonEditorForm.tsx спрашивает их после
   // классов и самой записи.
   lessonNew: {
@@ -212,27 +210,22 @@ export const ROUTE_MODULES = {
     warm: true,
     prefetch: (pathname) => [entityPath(CHANNELS_PATH, lastSegment(pathname))],
   },
-  // «Материалы» — раздел меню штата, пятый пункт навигации (ADR-0055), не
-  // подэкран «Занятий» и не кнопка в шапке (так было раньше). Занятия
-  // расписания нужны и списку (рубрикация строки, MaterialCard.tsx), и
-  // форме (привязка галочками, MaterialClassesField.tsx) — греем их вместе
-  // с самим ресурсом.
+  // «Материалы» — пятый пункт меню штата (ADR-0055). Занятия расписания
+  // нужны и списку (MaterialCard.tsx), и форме (MaterialClassesField.tsx) —
+  // греем их вместе с самим ресурсом.
   materials: {
     path: '/materials',
     load: () => import('../materials/MaterialsScreen'),
     warm: true,
     prefetch: () => [materialsListPath(''), CLASSES_LIST_PATH],
   },
-  // `/materials/new` раньше `/materials/:materialId` — та же причина, что у
-  // classNew/lessonNew выше (ADR-0033).
   materialNew: {
     path: '/materials/new',
     load: loadMaterialEditor,
     warm: true,
     prefetch: () => [CLASSES_LIST_PATH],
   },
-  // Подэкран «Материалов»: общая выдача по тегу (ADR-0075/0078). Тоже
-  // раньше materialEditor — та же причина, что у materialNew выше.
+  // Выдача по тегу (ADR-0075/0078) — раньше materialEditor, как любое `/x/new`.
   materialsTags: {
     path: '/materials/tags',
     load: () => import('../materials/MaterialsTagsScreen'),
@@ -406,6 +399,13 @@ export const ROUTE_MODULES = {
     // ответит 403 (people/usePeople.ts) — не греем. Ссылка-приглашение
     // грузится независимо от роли (InviteLinkCard.tsx/useInviteLink.ts).
     prefetch: () => [INVITE_LINK_PATH],
+  },
+  payments: {
+    path: PAYMENTS_SCREEN_PATH,
+    load: () => import('../payments/PaymentsScreen'),
+    warm: true,
+    // Первый запрос usePayments (ADR-0150): месяц выбирает сервер.
+    prefetch: () => [paymentsListPath(null)],
   },
   // Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx), вход
   // карточкой SectionLink на «Профиле» (ADR-0025), не пункт меню. Чужая роль

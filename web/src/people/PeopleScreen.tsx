@@ -10,16 +10,20 @@
 // ссылки-приглашения (InviteLinkCard.tsx) и список одной карточкой, как у
 // «Рассылок»/«Экзаменов» (#199, #200). Главной кнопки в шапке нет — действия
 // экрана живут в карточке приглашения, подтверждать на «Людях» больше
-// некого (ADR-0036).
+// некого (ADR-0036); есть одна вторичная — «Оплаты» у админа (ADR-0150).
 import type { CSSProperties } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { canSeePayments } from '../app/screenAccess';
 import { useAuth } from '../auth/AuthProvider';
 import { hasRole } from '../auth/hasRole';
+import { Button } from '../components/Button';
 import { oneCardListStyle } from '../components/listCardStyles';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
 import { RichText } from '../components/RichText';
 import { screenSectionStyle } from '../components/screenLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonList } from '../components/Skeleton';
+import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
 import { formatJoinedViaInviteCount } from './formatJoinedViaInviteCount';
 import { InviteLinkCard } from './InviteLinkCard';
 import { PersonRow } from './PersonRow';
@@ -45,6 +49,7 @@ const countStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-s
 
 export default function PeopleScreen() {
   const { me } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = hasRole(me, 'admin');
   const { people, loading, error, reload, updateRoles, updateStatus, remove } =
     usePeople(isAdmin);
@@ -58,6 +63,19 @@ export default function PeopleScreen() {
         title={TITLE}
         explanation={isAdmin ? EXPLANATION : TEACHER_EXPLANATION}
         hint={isAdmin ? ROLES_HINT : null}
+        action={
+          // «Оплаты» — подэкран этого раздела (ADR-0150): шестой пункт меню
+          // упирается в предел ADR-0055, поэтому вход отсюда, вторичной
+          // кнопкой — главное действие экрана остаётся ссылкой-приглашением.
+          canSeePayments(me) && (
+            <Button
+              variant="secondary"
+              onClick={() => void navigate(PAYMENTS_SCREEN_PATH)}
+            >
+              Оплаты
+            </Button>
+          )
+        }
       />
 
       <InviteLinkCard />

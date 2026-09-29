@@ -67,4 +67,17 @@ describe('PeopleScreen — учитель', () => {
       expect.anything(),
     );
   });
+
+  // ADR-0150: оплаты видят бухгалтер и админ — учителю входа в них нет.
+  it('кнопки «Оплаты» нет: учителю этот экран закрыт', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/users/invite-link') return Promise.resolve({ url: null });
+      return Promise.reject(new Error(`неожиданный путь в тесте: ${path}`));
+    });
+
+    renderScreen();
+    await screen.findByText('Ссылка-приглашение');
+
+    expect(screen.queryByRole('button', { name: 'Оплаты' })).not.toBeInTheDocument();
+  });
 });

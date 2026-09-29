@@ -25,6 +25,7 @@ describe('matchRoute', () => {
       ROUTE_MODULES.examItemEditor.load,
     );
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
+    expect(loaderAt('/payments')).toBe(ROUTE_MODULES.payments.load);
     expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
     expect(loaderAt('/notifications')).toBe(ROUTE_MODULES.notifications.load);
     expect(loaderAt('/install')).toBe(ROUTE_MODULES.install.load);

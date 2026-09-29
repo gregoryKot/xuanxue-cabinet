@@ -63,6 +63,13 @@ const SHAPES: Record<NavIconName, ReactNode> = {
       <path d="M9.5 5.5h7.5M9.5 13.5h7.5" />
     </>
   ),
+  // Купюра — «Оплаты».
+  payments: (
+    <>
+      <rect x="2.5" y="5" width="15" height="10" rx="2" />
+      <circle cx="10" cy="10" r="2.25" />
+    </>
+  ),
 };
 
 /** Декоративный: раздел называет подпись под значком (AppNav.tsx). */

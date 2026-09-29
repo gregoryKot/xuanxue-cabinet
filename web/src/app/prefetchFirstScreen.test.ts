@@ -12,6 +12,7 @@ import {
   examsListPath,
   lessonsListPath,
 } from '../api/apiPaths';
+import { paymentsListPath } from '../api/paymentsApiPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
 import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';
@@ -61,6 +62,28 @@ describe('firstScreenPaths', () => {
       GRADING_QUEUE_PATH,
       EXAM_ITEM_STATS_SUMMARY_PATH,
     ]);
+  });
+
+  // ADR-0150: корень бухгалтера — «Оплаты», греем их список без месяца (тот
+  // же путь запросит usePayments при монтировании).
+  it('бухгалтер на «/» — данные «Оплат»', () => {
+    expect(firstScreenPaths('/', makeMe({ roles: ['accountant'] }))).toEqual([
+      paymentsListPath(null),
+    ]);
+  });
+
+  it('админ на /payments — данные «Оплат»', () => {
+    expect(firstScreenPaths('/payments', makeMe({ roles: ['admin'] }))).toEqual([
+      paymentsListPath(null),
+    ]);
+  });
+
+  // Учителю оплаты закрыты (canSeeRoute) — греем экран, куда его уведёт
+  // редирект, а не запрос, который сервер отклонит.
+  it('учитель на /payments — данные «Экзаменов», куда его уведёт редирект', () => {
+    expect(firstScreenPaths('/payments', makeMe())).toEqual(
+      firstScreenPaths('/exams', makeMe()),
+    );
   });
 
   it('учитель на /login — не маршрут кабинета, греть нечего', () => {

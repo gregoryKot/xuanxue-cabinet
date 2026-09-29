@@ -19,12 +19,13 @@
 // входе» — «Экзамены» встали первым пунктом STAFF_NAV_ITEMS, «Занятия» ушли
 // вторым (ADR-0138, STAFF_ROOT_PATH в screenAccess.ts).
 import type { MeDto, UserRole } from '@xuanxue/shared';
-import { isTeacher } from './screenAccess';
+import { PAYMENTS_SCREEN_PATH } from '../payments/paymentsPath';
+import { isAccountant, isTeacher } from './screenAccess';
 
 /** Имя значка нижней панели телефона (NavIcon.tsx, ADR-0097). Union строк,
  * не `enum` (CLAUDE.md «TypeScript строгий»). */
 export type NavIconName =
-  'lessons' | 'broadcasts' | 'exams' | 'people' | 'materials' | 'tasks';
+  'lessons' | 'broadcasts' | 'exams' | 'people' | 'materials' | 'tasks' | 'payments';
 
 export interface NavItem {
   to: string;
@@ -59,7 +60,9 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     to: '/people',
     label: 'Ученики',
     roles: ['admin', 'teacher'],
-    childPaths: [],
+    // «Оплаты» — подэкран «Учеников» для админа (ADR-0150); для учителя
+    // маршрут закрыт гвардом, подсвечивать ему нечего.
+    childPaths: [PAYMENTS_SCREEN_PATH],
     icon: 'people',
   },
   // Пятый пункт, добавленный ADR-0055 — единственное названное исключение
@@ -92,9 +95,15 @@ export const STUDENT_NAV_ITEMS: NavItem[] = [
   },
 ];
 
+/** Панель бухгалтера — один пункт (ADR-0150). */
+export const ACCOUNTANT_NAV_ITEMS: NavItem[] = [
+  { to: PAYMENTS_SCREEN_PATH, label: 'Оплаты', childPaths: [], icon: 'payments' },
+];
+
 /** Пункты навигации для роли этого человека (AppNav.tsx). */
 export function navItemsFor(me: MeDto | null): NavItem[] {
-  return isTeacher(me) ? STAFF_NAV_ITEMS : STUDENT_NAV_ITEMS;
+  if (isTeacher(me)) return STAFF_NAV_ITEMS;
+  return isAccountant(me) ? ACCOUNTANT_NAV_ITEMS : STUDENT_NAV_ITEMS;
 }
 
 /** Какой пункт меню подсветить для текущего пути — сам раздел или один из
