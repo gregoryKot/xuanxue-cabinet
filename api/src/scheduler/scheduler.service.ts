@@ -16,6 +16,7 @@ import { ManualPromptService } from '../deliveries/manual-prompt.service';
 import { TEACHER_NOTIFIER, type TeacherNotifier } from '../deliveries/teacher-notifier';
 import { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
+import { ExamAttemptRetentionSweepService } from '../exams/exam-attempt-retention-sweep.service';
 import { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import { LessonPlannerService } from '../lessons/lesson-planner.service';
 import { LessonReminderService } from '../lessons/lesson-reminder.service';
@@ -25,7 +26,7 @@ import { PaymentReminderService } from '../payments/payment-reminder.service';
 import { PaymentScreenshotSweepService } from '../payments/payment-screenshot-sweep.service';
 import { SchedulerHeartbeat } from './scheduler-heartbeat';
 import { runStep } from './scheduler-step';
-import { runSweepSteps } from './scheduler-sweep-steps';
+import { formatSweepResults, runSweepSteps } from './scheduler-sweep-steps';
 
 @Injectable()
 export class SchedulerService implements OnApplicationShutdown {
@@ -50,6 +51,7 @@ export class SchedulerService implements OnApplicationShutdown {
     private readonly paymentScreenshotSweepService: PaymentScreenshotSweepService,
     private readonly storageOrphansService: StorageOrphansService,
     private readonly answerVideoSweepService: AnswerVideoSweepService,
+    private readonly examAttemptRetentionSweep: ExamAttemptRetentionSweepService,
     @Inject(TEACHER_NOTIFIER) private readonly notifier: TeacherNotifier,
     private readonly heartbeat: SchedulerHeartbeat,
   ) {}
@@ -111,22 +113,16 @@ export class SchedulerService implements OnApplicationShutdown {
       now,
       (n) => this.paymentReminderService.remind(n),
     )) ?? { reminded: 0 };
-    // Пять шагов уборки байтов — scheduler-sweep-steps.ts (файл-храповик:
-    // этот файл уже был на потолке, «может только уменьшаться»).
-    const {
-      imagesRemoved,
-      videosRemoved,
-      screenshotsRemoved,
-      screenshotOrphans,
-      filesRemoved,
-      answerVideosRemoved,
-    } = await runSweepSteps((name, n, run) => this.step(name, n, run), now, {
+    // Шесть шагов уборки байтов и данных по сроку — scheduler-sweep-steps.ts
+    // (файл-храповик: этот файл уже был на потолке, «может только уменьшаться»).
+    const sweep = await runSweepSteps((name, n, run) => this.step(name, n, run), now, {
       removeImageOrphans: (n) => this.examImageSweepService.removeOrphans(n),
       removeVideoOrphans: (n) => this.examVideoSweepService.removeOrphans(n),
       removeExpiredScreenshots: (n) =>
         this.paymentScreenshotSweepService.removeExpired(n),
       sweepStorageOrphans: (n) => this.storageOrphansService.sweep(n),
       removeExpiredAnswerVideos: (n) => this.answerVideoSweepService.removeExpired(n),
+      removeExpiredExamAttempts: (n) => this.examAttemptRetentionSweep.removeExpired(n),
     });
 
     this.logger.log(
@@ -134,11 +130,7 @@ export class SchedulerService implements OnApplicationShutdown {
         `cancelNotified=${cancelNotified} sent=${sent} failed=${failed} ` +
         `previews=${previewsClaimed} recordingPrompts=${recordingsPrompted} reminded=${reminded} ` +
         `manualPrompts=${manualPrompted} examAttemptsClosed=${examAttemptsClosed} ` +
-        `paymentReminders=${paymentReminders} ` +
-        `imagesRemoved=${imagesRemoved} videosRemoved=${videosRemoved} ` +
-        `paymentScreenshotsRemoved=${screenshotsRemoved} ` +
-        `paymentScreenshotOrphans=${screenshotOrphans} filesRemoved=${filesRemoved} ` +
-        `answerVideosRemoved=${answerVideosRemoved}`,
+        `paymentReminders=${paymentReminders} ${formatSweepResults(sweep)}`,
     );
   }
 

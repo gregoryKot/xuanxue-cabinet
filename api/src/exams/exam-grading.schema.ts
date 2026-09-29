@@ -2,8 +2,9 @@
 // ученика: `userId` — кого проверили, владение (чеклист CLAUDE.md «Новая
 // коллекция с полем userId», п.1) — USER_OWNED_COLLECTIONS, удаление
 // аккаунта уносит и оценку; срок хранения — вместе с попыткой (PLAN §11
-// «Данные»). Хранит только итог (`outcome`) и общий комментарий учителя —
-// баллы по критериям рубрики удалены с концами вместе с самой рубрикой
+// «Данные», ExamAttemptRetentionSweepService, ADR-0153). Хранит только итог
+// (`outcome`) и общий комментарий учителя — баллы по критериям рубрики
+// удалены с концами вместе с самой рубрикой
 // (решение владельца 2026-09-17, миграция 0008-grading-without-rubric):
 // критерии по умолчанию нельзя было переписать под себя в интерфейсе
 // (CLAUDE.md «Кабинет учителя: всё настраивается в интерфейсе»). `comment` —
@@ -57,6 +58,11 @@ ExamGradingSchema.index({ attemptId: 1 }, { unique: true });
 ExamGradingSchema.index({ examId: 1, gradedAt: -1 });
 // Экран ученика (`/me/exams`) — оценки по своим попыткам одним запросом.
 ExamGradingSchema.index({ userId: 1 });
+// Срок хранения: шаг тика раз в минуту ищет оценки старше срока
+// (ExamAttemptRetentionSweepService, ADR-0153) и уборщик видео-ответов —
+// старше 90 дней (AnswerVideoSweepService); без индекса оба читали бы всю
+// коллекцию каждую минуту.
+ExamGradingSchema.index({ gradedAt: 1 });
 
 export const EXAM_GRADING_FIELD_POLICY: FieldPolicy = {
   comment: enc,

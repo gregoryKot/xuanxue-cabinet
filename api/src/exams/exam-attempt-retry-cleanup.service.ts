@@ -18,7 +18,12 @@ import { Model, Types } from 'mongoose';
 import type { ExamAttemptStatus } from '@xuanxue/shared';
 import { MediaAssetRecord } from '../media/media-asset.schema';
 import { NotificationRecord } from '../notifications/notification.schema';
+import {
+  deleteAttemptWithDependents,
+  type AttemptCascadeModels,
+} from './exam-attempt-cascade';
 import { ExamAttemptRecord } from './exam-attempt.schema';
+import { ExamGradingRecord } from './exam-grading.schema';
 
 /** Всё, что нужно знать о последней попытке ученика по форме, чтобы решить
  * лимит и удаление — не полный снимок: расшифровывать блоки/ответы прежней
@@ -39,7 +44,18 @@ export class ExamAttemptRetryCleanupService {
     private readonly mediaModel: Model<MediaAssetRecord>,
     @InjectModel(NotificationRecord.name)
     private readonly notificationModel: Model<NotificationRecord>,
+    @InjectModel(ExamGradingRecord.name)
+    private readonly gradingModel: Model<ExamGradingRecord>,
   ) {}
+
+  private get cascadeModels(): AttemptCascadeModels {
+    return {
+      attemptModel: this.attemptModel,
+      gradingModel: this.gradingModel,
+      mediaModel: this.mediaModel,
+      notificationModel: this.notificationModel,
+    };
+  }
 
   /** Последняя попытка ученика по форме (наибольший `attemptNo`) — `null`,
    * если попыток ещё не было. Число попыток (`attemptsUsed`, лимит в
@@ -65,38 +81,17 @@ export class ExamAttemptRetryCleanupService {
    * целится в id, захваченный ДО создания, не в «последнюю просроченную»,
    * найденную заново.
    *
-   * Условие в `deleteOne` — не просто «удалить по id»: если учитель успел
-   * проверить работу ровно в этот момент (`status` стал `graded`) или другой
-   * конкурентный вызов уже удалил её, фильтр не совпадёт, `deletedCount`
-   * будет 0 — тогда каскад ниже не трогаем, историю оценки не рвём.
-   *
-   * Что уносит каскад и что нет (ADR-0131 «Последствия»):
-   * - `media_assets` (видео, ADR-0023) — байтов там нет, только file_id/
-   *   ссылка, поэтому просто `deleteMany`, стороннего хранилища чистить
-   *   незачем;
-   * - уведомления учителя об этой попытке (`notifications`, ADR-0113) —
-   *   удаляются, а не гасятся `dismissedAt`: та мягкая пометка защищает от
-   *   воскрешения повторной доставкой ТОГО ЖЕ события, а здесь событие
-   *   ссылается на документ, которого больше нет вовсе — ссылка `/grading/
-   *   :id` в непочищенной строке вела бы в 404;
-   * - `exam_images` (картинки вариантов) — НЕ трогаем: они не персональные
-   *   данные ученика (ADR-0035), а сироту без единой ссылки убирает штатный
-   *   `ExamImageSweepService` сам в течение суток, второй механизм той же
-   *   уборки заводить незачем;
-   * - `exam_gradings` — попытка сюда просто не доходит: у неё нет оценки
-   *   (`status !== 'graded'` в условии удаления), значит и оценивать
-   *   нечего. */
+   * Условие в удалении — `status: 'submitted', expired: true`, а не просто id:
+   * если учитель успел проверить работу ровно в этот момент (`status` стал
+   * `graded`), фильтр не совпадёт и историю оценки каскад не тронет. Что
+   * уносит каскад и что нет (ADR-0131 «Последствия») — в
+   * exam-attempt-cascade.ts: тот же путь, которым попытку убирает срок
+   * хранения (ADR-0153). */
   async deleteIfExpiredUngraded(attempt: LastAttemptSummary): Promise<void> {
     if (attempt.status !== 'submitted' || !attempt.expired) return;
-    const { deletedCount } = await this.attemptModel.deleteOne({
-      _id: attempt._id,
+    await deleteAttemptWithDependents(this.cascadeModels, attempt._id, {
       status: 'submitted',
       expired: true,
     });
-    if (deletedCount === 0) return;
-    await Promise.all([
-      this.mediaModel.deleteMany({ attemptId: attempt._id }),
-      this.notificationModel.deleteMany({ attemptId: attempt._id.toString() }),
-    ]);
   }
 }

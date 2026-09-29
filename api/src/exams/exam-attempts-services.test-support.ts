@@ -96,6 +96,7 @@ export function buildAttemptsServices(models: AttemptsTestModels): AttemptsTestS
     models.attemptModel,
     models.mediaModel,
     models.notificationModel,
+    models.gradingModel,
   );
   const service = new ExamAttemptsService(
     models.attemptModel,

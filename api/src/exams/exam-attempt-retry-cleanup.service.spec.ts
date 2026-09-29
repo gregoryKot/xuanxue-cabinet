@@ -26,6 +26,7 @@ describe('ExamAttemptRetryCleanupService', () => {
       ctx.attemptModel,
       ctx.mediaModel,
       ctx.notificationModel,
+      ctx.gradingModel,
     );
   }, 60_000);
 

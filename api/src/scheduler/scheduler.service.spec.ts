@@ -10,6 +10,7 @@ import type { ManualPromptService } from '../deliveries/manual-prompt.service';
 import type { TeacherNotifier } from '../deliveries/teacher-notifier';
 import type { ExamImageSweepService } from '../exam-images/exam-image-sweep.service';
 import type { ExamVideoSweepService } from '../exam-videos/exam-video-sweep.service';
+import type { ExamAttemptRetentionSweepService } from '../exams/exam-attempt-retention-sweep.service';
 import type { ExamDeadlineCloseService } from '../exams/exam-deadline-close.service';
 import type { LessonPlannerService, PlanResult } from '../lessons/lesson-planner.service';
 import type { LessonReminderService } from '../lessons/lesson-reminder.service';
@@ -36,6 +37,7 @@ function buildService(overrides: {
   removeExpiredScreenshots?: PaymentScreenshotSweepService['removeExpired'];
   sweepStorageOrphans?: StorageOrphansService['sweep'];
   removeExpiredAnswerVideos?: AnswerVideoSweepService['removeExpired'];
+  removeExpiredExamAttempts?: ExamAttemptRetentionSweepService['removeExpired'];
   notifySchedulerFailed?: TeacherNotifier['notifySchedulerFailed'];
 }): {
   service: SchedulerService;
@@ -78,6 +80,8 @@ function buildService(overrides: {
     overrides.sweepStorageOrphans ?? jest.fn().mockResolvedValue({ removed: 0 });
   const removeExpiredAnswerVideos =
     overrides.removeExpiredAnswerVideos ?? jest.fn().mockResolvedValue({ removed: 0 });
+  const removeExpiredExamAttempts =
+    overrides.removeExpiredExamAttempts ?? jest.fn().mockResolvedValue({ removed: 0 });
   const notifySchedulerFailed =
     overrides.notifySchedulerFailed ?? jest.fn().mockResolvedValue(undefined);
   const notifier: TeacherNotifier = {
@@ -109,6 +113,9 @@ function buildService(overrides: {
     } as unknown as PaymentScreenshotSweepService,
     { sweep: sweepStorageOrphans } as unknown as StorageOrphansService,
     { removeExpired: removeExpiredAnswerVideos } as unknown as AnswerVideoSweepService,
+    {
+      removeExpired: removeExpiredExamAttempts,
+    } as unknown as ExamAttemptRetentionSweepService,
     notifier,
     heartbeat,
   );
@@ -169,6 +176,10 @@ describe('SchedulerService.tick', () => {
       (_now: DateTime): ReturnType<PaymentScreenshotSweepService['removeExpired']> =>
         Promise.resolve({ removed: 1, orphans: 0 }),
     );
+    const removeExpiredExamAttempts = jest.fn(
+      (_now: DateTime): ReturnType<ExamAttemptRetentionSweepService['removeExpired']> =>
+        Promise.resolve({ removed: 2 }),
+    );
     const { service } = buildService({
       plan,
       planBroadcasts,
@@ -182,6 +193,7 @@ describe('SchedulerService.tick', () => {
       remindPayments,
       removeImageOrphans,
       removeExpiredScreenshots,
+      removeExpiredExamAttempts,
     });
 
     await expect(service.tick()).resolves.toBeUndefined();
@@ -198,6 +210,7 @@ describe('SchedulerService.tick', () => {
     expect(remindPayments).toHaveBeenCalledTimes(1);
     expect(removeImageOrphans).toHaveBeenCalledTimes(1);
     expect(removeExpiredScreenshots).toHaveBeenCalledTimes(1);
+    expect(removeExpiredExamAttempts).toHaveBeenCalledTimes(1);
     const [calledWith] = plan.mock.calls[0] ?? [];
     expect(calledWith).toBeInstanceOf(DateTime);
     // Все шаги делят один now — рассылка не может считать «позже», чем видел
@@ -364,6 +377,25 @@ describe('SchedulerService.tick', () => {
     const { service } = buildService({ removeExpiredAnswerVideos });
 
     await expect(service.tick()).resolves.toBeUndefined();
+  });
+
+  // ADR-0153: шаг срока хранения падает как любой другой — тик не рвётся, а
+  // админ узнаёт по имени шага, что попытки не убираются (тихий отказ дороже всего).
+  it('ошибка шага «срок хранения попыток» не мешает тику и доходит до уведомления', async () => {
+    const removeExpiredExamAttempts = jest
+      .fn()
+      .mockRejectedValue(new Error('mongo упал'));
+    const { service, notifySchedulerFailed } = buildService({
+      removeExpiredExamAttempts,
+    });
+
+    await expect(service.tick()).resolves.toBeUndefined();
+
+    expect(notifySchedulerFailed).toHaveBeenCalledWith(
+      'срок хранения попыток',
+      'mongo упал',
+      expect.any(DateTime),
+    );
   });
 
   it('упавший шаг зовёт notifySchedulerFailed с именем шага и текстом ошибки', async () => {
