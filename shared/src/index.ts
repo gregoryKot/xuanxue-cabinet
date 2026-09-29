@@ -488,7 +488,6 @@ export {
   formatAmountIls,
   formatMonthRu,
   shiftMonth,
-  formatAmountIls,
   PAYMENT_LIMITS,
   PAYMENT_MONTH_INVALID_MESSAGE,
   PAYMENT_STUDENT_NOT_FOUND_MESSAGE,
