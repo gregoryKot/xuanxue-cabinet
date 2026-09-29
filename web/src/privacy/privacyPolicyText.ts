@@ -19,12 +19,8 @@ import {
   PRIVACY_RECIPIENTS,
   formatDaysRu,
 } from '@xuanxue/shared';
+import type { LegalSection } from '../legal/LegalPage';
 import { PRIVACY_RETENTION_PARAGRAPHS } from './privacyRetentionText';
-
-export interface PrivacySection {
-  title: string;
-  paragraphs: readonly string[];
-}
 
 export const PRIVACY_TITLE = 'Политика конфиденциальности';
 
@@ -41,7 +37,7 @@ const RECIPIENT_PARAGRAPHS = PRIVACY_RECIPIENTS.map(
 );
 
 /** Разделы после «Кто отвечает за данные» (тот собирается из настроек школы). */
-export const PRIVACY_SECTIONS: readonly PrivacySection[] = [
+export const PRIVACY_SECTIONS: readonly LegalSection[] = [
   {
     title: 'Какие данные мы храним',
     paragraphs: [

@@ -42,6 +42,7 @@ import {
   materialsListPath,
   nextLessonsPath,
 } from '../api/apiPaths';
+import { ACCESSIBILITY_PATH } from '../accessibility/accessibilityPath';
 import { apiRoutePath } from '../api/apiRoute';
 import {
   GRADED_ATTEMPTS_PATH,
@@ -124,6 +125,12 @@ export const ROUTE_MODULES = {
   privacy: {
     path: '/privacy',
     load: () => import('../privacy/PrivacyScreen'),
+    warm: false,
+  },
+  // Заявление о доступности (ADR-0158) — публичный маршрут, как privacy выше.
+  accessibility: {
+    path: ACCESSIBILITY_PATH,
+    load: () => import('../accessibility/AccessibilityScreen'),
     warm: false,
   },
   // Подтверждение почты вторым ключом входа (ADR-0059) — публичный маршрут,

@@ -114,6 +114,20 @@ describe('PrivacyScreen', () => {
     ).toBeInTheDocument();
   });
 
+  // Заявление о доступности (ADR-0158) — вторая юридическая страница; с
+  // политики на неё есть ход, иначе человек, пришедший за политикой, о ней не
+  // узнает.
+  it('внизу — ссылка на страницу «Доступность»', async () => {
+    mockApiByPath({ '/auth/config': BASE_CONFIG });
+    renderScreen();
+    await screen.findByText(/ещё не указала/);
+
+    expect(screen.getByRole('link', { name: 'Доступность' })).toHaveAttribute(
+      'href',
+      '/accessibility',
+    );
+  });
+
   // ADR-0124: акценты `**…**` из текста доезжают до экрана как <strong>, не
   // звёздочками.
   it('акценты текста рисуются через RichText, не звёздочками', async () => {

@@ -21,6 +21,7 @@ import { hasRole } from '../auth/hasRole';
 import { LoginKeysSummary } from '../auth/LoginKeysSummary';
 import { LogoutButton } from '../auth/LogoutButton';
 import { SecondLoginKey } from '../auth/SecondLoginKey';
+import { LegalLinks } from '../legal/LegalLink';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { screenSectionStyle } from '../components/screenLayout';
 import { SectionLink } from '../components/SectionLink';
@@ -110,6 +111,12 @@ export default function ProfileScreen() {
       <div style={dividerRowStyle}>
         <LogoutButton />
       </div>
+
+      {/* Тихая строка в самом низу: политика и «Доступность» открываются и
+          вошедшему (маршруты вне RequireAuth, ADR-0158). Куда написать о
+          проблеме с кабинетом, человек ищет в личном разделе, а не на
+          странице входа, которую уже прошёл. */}
+      <LegalLinks />
     </section>
   );
 }

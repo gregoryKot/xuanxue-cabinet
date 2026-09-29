@@ -8,13 +8,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as shared from '@xuanxue/shared';
 import { PRIVACY_RECIPIENTS } from '@xuanxue/shared';
-import {
-  PRIVACY_INTRO,
-  PRIVACY_SECTIONS,
-  type PrivacySection,
-} from './privacyPolicyText';
+import type { LegalSection } from '../legal/LegalPage';
+import { PRIVACY_INTRO, PRIVACY_SECTIONS } from './privacyPolicyText';
 
-function textOf(sections: readonly PrivacySection[]): string {
+function textOf(sections: readonly LegalSection[]): string {
   return sections.flatMap((section) => [section.title, ...section.paragraphs]).join('\n');
 }
 

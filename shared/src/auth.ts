@@ -126,7 +126,9 @@ export interface AuthConfigDto {
   schoolSiteUrl?: string;
   /** Кто отвечает за данные учеников и как с ним связаться — из настроек
    * школы, для публичной страницы `/privacy` (статья 11 Закона о защите
-   * частной жизни Израиля). Полей нет, пока школа их не заполнила. */
+   * частной жизни Израиля) и адреса на странице `/accessibility`, куда писать
+   * о проблемах с доступностью (ADR-0158). Полей нет, пока школа их не
+   * заполнила. */
   dataControllerName?: string;
   dataControllerContact?: string;
   emailLoginEnabled: boolean;

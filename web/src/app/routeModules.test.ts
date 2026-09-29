@@ -167,6 +167,7 @@ describe('ROUTE_MODULES', () => {
     // routeModules.ts): чужая роль сюда не заходит вовсе, прогревать чанк
     // для каждого штата незачем.
     expect(notWarmed.sort()).toEqual([
+      '/accessibility',
       '/dev/errors',
       '/email/confirm',
       '/join/:code',

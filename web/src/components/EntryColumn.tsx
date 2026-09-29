@@ -11,6 +11,7 @@
 // медиа-запрос.
 import type { CSSProperties, ReactNode } from 'react';
 import { SchoolWordmark } from './SchoolWordmark';
+import { SkipLink, mainLandmarkProps } from './SkipLink';
 
 // 400 — ширина, на которой строка объяснения ложится в две-три строки, а
 // поле почты не выглядит полем во всю стену монитора.
@@ -26,18 +27,21 @@ const columnStyle: CSSProperties = {
 
 export function EntryColumn({ children }: { children: ReactNode }) {
   return (
-    <main className="xuanxue-entry-page">
-      <div style={columnStyle}>
-        {/* Знак здесь НЕ ссылка (в отличие от AppNav.tsx/AppShellBrandRow.tsx,
-            SchoolBrandLink.tsx) — до входа у кабинета ещё нет своей главной:
-            «/» лежит за RequireAuth и без сессии гвард уводит с него обратно
-            на «/login» (cabinetRoutes.tsx, RequireAuth.tsx), а сами экраны
-            этой колонки и есть «/login»/приглашение — ссылка вела бы сама в
-            себя. Поэтому здесь SchoolWordmark без обёртки-ссылки, как в
-            SchoolBrandLink.tsx. */}
-        <SchoolWordmark />
-        {children}
-      </div>
-    </main>
+    <>
+      <SkipLink />
+      <main className="xuanxue-entry-page" {...mainLandmarkProps}>
+        <div style={columnStyle}>
+          {/* Знак здесь НЕ ссылка (в отличие от AppNav.tsx/AppShellBrandRow.tsx,
+              SchoolBrandLink.tsx) — до входа у кабинета ещё нет своей главной:
+              «/» лежит за RequireAuth и без сессии гвард уводит с него обратно
+              на «/login» (cabinetRoutes.tsx, RequireAuth.tsx), а сами экраны
+              этой колонки и есть «/login»/приглашение — ссылка вела бы сама в
+              себя. Поэтому здесь SchoolWordmark без обёртки-ссылки, как в
+              SchoolBrandLink.tsx. */}
+          <SchoolWordmark />
+          {children}
+        </div>
+      </main>
+    </>
   );
 }
