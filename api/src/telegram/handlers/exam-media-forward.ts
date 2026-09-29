@@ -11,8 +11,8 @@
 //    2026-09-12: «он не проверяет работы»), видео не приходит вовсе.
 //
 // 2 (находка 2, часть «сирота»). Видео первым, подпись вторым — механика
-//    самой пересылки общая с payment-screenshot-forward.ts (скриншот
-//    оплаты, ADR-0050) и вынесена в forward-photo-with-caption.ts (комментарий
+//    самой пересылки общая с payment-screenshot-to-accountant.ts (снимок
+//    перевода, ADR-0050) и вынесена в attachment-with-caption.ts (комментарий
 //    там же объясняет порядок и почему сбой подписи — не авария). Если видео
 //    не дошло НИКОМУ из адресатов — это и есть тихий отказ, который CLAUDE.md
 //    требует не терять: `error` с ключом для поиска (attemptId), без PII
@@ -29,7 +29,7 @@ import { Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { PersonalChat, PersonalChats } from '../personal-chats';
-import { forwardPhotoWithCaption } from './forward-photo-with-caption';
+import { copyMessageSender, sendAttachmentWithCaption } from './attachment-with-caption';
 
 const logger = new Logger('examMediaForward');
 
@@ -61,16 +61,16 @@ export async function forwardExamVideoToTeachers(
   }
 
   const caption = `Видео от ${studentName} — экзамен «${examTitle}».`;
+  const sendAttachment = copyMessageSender(chat.id, message.message_id);
   const delivered = await Promise.all(
     chats.map((teacherChat: PersonalChat) =>
-      forwardPhotoWithCaption(
-        ctx,
-        teacherChat.chatId,
-        chat.id,
-        message.message_id,
+      sendAttachmentWithCaption({
+        telegram: ctx.telegram,
+        toChatId: teacherChat.chatId,
+        sendAttachment,
         caption,
-        'telegram.examMedia.forward',
-      ),
+        logLabel: 'telegram.examMedia.forward',
+      }),
     ),
   );
   if (delivered.every((ok) => !ok)) {

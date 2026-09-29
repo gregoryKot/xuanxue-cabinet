@@ -33,9 +33,14 @@ const UNCONFIRMED = formatDaysRu(PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS);
 const RETENTION_NOTE =
   `Снимок храним **${AFTER_CONFIRM}** после подтверждения ` +
   `и **${UNCONFIRMED}**, если подтверждения не было.`;
+// Копия снимка уходит бухгалтеру в бот с любого пути (ADR-0156) и переживает
+// нашу уборку — обещание срока честно только вместе с этой оговоркой.
+const ACCOUNTANT_COPY_NOTE =
+  'Копия уйдёт бухгалтеру в Telegram и останется в его чате, пока он её не удалит.';
+const UPLOAD_NOTE = `${RETENTION_NOTE} ${ACCOUNTANT_COPY_NOTE}`;
 const BOT_NOTE =
   'Откроется чат с ботом — пришлите туда фото перевода. ' +
-  `${RETENTION_NOTE} ` +
+  `${UPLOAD_NOTE} ` +
   'Сообщение с фото останется в вашем чате Telegram: удалить его можете **только вы**.';
 
 const actionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2 };
@@ -79,7 +84,7 @@ export function MyPaymentScreenshotAction({
         />
       )}
       <p style={noteStyle}>
-        <RichText text={route.kind === 'bot' ? BOT_NOTE : RETENTION_NOTE} />
+        <RichText text={route.kind === 'bot' ? BOT_NOTE : UPLOAD_NOTE} />
       </p>
       {uploadError && (
         <p role="alert" style={dangerNoteStyle}>

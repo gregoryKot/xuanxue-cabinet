@@ -32,3 +32,11 @@ type CallApiOptions = NonNullable<Parameters<TelegramApiClient['callApi']>[2]>;
 export function withTelegramSignal(signal: AbortSignal): CallApiOptions {
   return { signal } as unknown as CallApiOptions;
 }
+
+/** Опции очередного вызова Bot API с таймаутом — вызов, у которого нет
+ * `signal`, при молчащей сети держит запрос до таймаута платформы
+ * (scripts/check-outbound-timeout.mjs). Свежий сигнал на каждый вызов: он
+ * стартует в момент создания и общим на несколько вызовов не бывает. */
+export function telegramCallOptions(): CallApiOptions {
+  return withTelegramSignal(AbortSignal.timeout(TELEGRAM_CALL_TIMEOUT_MS));
+}

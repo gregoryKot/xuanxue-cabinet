@@ -6,7 +6,10 @@
 // SettingsModule — пояс школы для месяца по умолчанию (SettingsService.get().tz).
 // `payment_screenshots` (байты снимка, ADR-0050) живёт здесь же, а не своим
 // модулем: другой домен к ней не ходит, а уборщику (SchedulerModule) хватает
-// экспорта MongooseModule.
+// экспорта MongooseModule. PaymentScreenshotDeliveryRegistry — наружу:
+// TelegramModule кладёт в него доставку снимка бухгалтеру (ADR-0156),
+// импортировать telegram/ отсюда нельзя (цикл, комментарий в
+// payment-screenshot-delivery.port.ts).
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SettingsModule } from '../settings/settings.module';
@@ -16,6 +19,7 @@ import {
   PaymentScreenshotRecord,
   PaymentScreenshotSchema,
 } from './payment-screenshot.schema';
+import { PaymentScreenshotDeliveryRegistry } from './payment-screenshot-delivery.registry';
 import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentRecord, PaymentSchema } from './payment.schema';
 import { PaymentsController } from './payments.controller';
@@ -31,7 +35,11 @@ import { PaymentsService } from './payments.service';
     SettingsModule,
   ],
   controllers: [PaymentsController, MyPaymentsController],
-  providers: [PaymentsService, PaymentScreenshotsService],
-  exports: [MongooseModule, PaymentsService],
+  providers: [
+    PaymentsService,
+    PaymentScreenshotsService,
+    PaymentScreenshotDeliveryRegistry,
+  ],
+  exports: [MongooseModule, PaymentsService, PaymentScreenshotDeliveryRegistry],
 })
 export class PaymentsModule {}

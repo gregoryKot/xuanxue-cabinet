@@ -1,10 +1,9 @@
-// Единственная точка сборки бота: Telegraf-инстанс через фабрику, хендлеры
-// (ADR-0015), вебхук и меню команд при старте. Контроллер зовёт только
-// handleUpdate() — разбор апдейта остаётся здесь, не в контроллере.
+// Единственная точка сборки бота: Telegraf через фабрику, хендлеры (ADR-0015),
+// вебхук и меню команд при старте. Контроллер зовёт только handleUpdate().
 import { Inject, Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DateTime } from 'luxon';
-import type { Telegraf } from 'telegraf';
+import type { Telegraf, Telegram } from 'telegraf';
 import type { InlineKeyboardButton, Update } from 'telegraf/types';
 import type { ExamVideoTelegramType } from '../media/media-asset.schema';
 import { errorMessage, errorStack } from '../common/error-info';
@@ -29,7 +28,7 @@ import { syncBotCommands } from './bot-commands';
 import { PersonalChats } from './personal-chats';
 import { TELEGRAF_FACTORY, type TelegrafFactory } from './telegraf-instance';
 
-// Реэкспорт для потребителей (контроллер, тесты) — путь объявлен в bot-startup.ts.
+// Реэкспорт для контроллера и тестов — путь объявлен в bot-startup.ts.
 export { TELEGRAM_WEBHOOK_PATH } from './bot-startup';
 
 @Injectable()
@@ -63,9 +62,8 @@ export class TelegramBotService implements OnApplicationBootstrap {
       return;
     }
     const bot = this.telegrafFactory(token);
-    // Свой обработчик ошибок вместо встроенного в telegraf: тот печатает
-    // апдейт целиком через console.error (PII мимо редакции pino) и ставит
-    // process.exitCode = 1 — процесс завершался бы кодом ошибки.
+    // Не встроенный обработчик telegraf: он пишет апдейт целиком в console.error
+    // (PII мимо редакции pino) и ставит process.exitCode = 1.
     bot.catch((err) => {
       this.logger.error(`telegram.update: ${errorMessage(err)}`, errorStack(err));
     });
@@ -84,8 +82,8 @@ export class TelegramBotService implements OnApplicationBootstrap {
     });
     this.bot = bot;
 
-    // Сетевые вызовы старта — не await, ошибки в лог, не должны задерживать
-    // подъём приложения (пустое меню команд читается как «бот ничего не умеет»).
+    // Сетевые вызовы старта — не await: не задерживают подъём приложения
+    // (пустое меню команд читается как «бот ничего не умеет»).
     void ensureBotInfo(bot)
       .then(() => this.syncBotIdentity())
       .catch((err) => {
@@ -97,8 +95,8 @@ export class TelegramBotService implements OnApplicationBootstrap {
     void syncBotCommands(bot.telegram, this.personalChats, DateTime.utc());
   }
 
-  /** Ответ 200 всегда — Telegram ретраит апдейт при не-200 (дубли доставки),
-   * поэтому любая ошибка обработки уходит в error-лог, а не наружу. */
+  /** Ответ 200 всегда — Telegram ретраит апдейт при не-200 (дубли), поэтому
+   * ошибка обработки уходит в error-лог, а не наружу. */
   async handleUpdate(update: Update): Promise<void> {
     if (!this.bot) return;
     try {
@@ -110,9 +108,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     }
   }
 
-  /** Проактивная отправка сообщения — обёртка bot-send-safely.ts (полный
-   * комментарий там: почему `true`/`false`, а не `void`, и что от этого не
-   * меняется). */
+  /** Проактивная отправка — обёртка bot-send-safely.ts (там же: почему `true`/`false`). */
   async sendMessage(
     chatId: string,
     text: string,
@@ -123,8 +119,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
     );
   }
 
-  /** Видео экзамена по file_id, без перезаливки (ADR-0023, ADR-0095) — та же
-   * обёртка, что sendMessage. */
+  /** Видео экзамена по file_id (ADR-0023, ADR-0095) — та же обёртка. */
   async sendExamVideo(
     chatId: string,
     fileId: string,
@@ -135,18 +130,20 @@ export class TelegramBotService implements OnApplicationBootstrap {
     );
   }
 
-  /** Имя бота в Telegram (`@имя`) — нужно кабинету, чтобы собрать deep link
-   * «Отправить видео» (`t.me/<имя>?start=exam_<id>`, ADR-0023). Берём из
-   * уже прогретого `botInfo`, не зовём getMe на каждый запрос конфигурации;
-   * бота нет или прогрев не удался — `undefined`, и кнопка просто не
-   * показывается (кабинет не обещает того, чего не может). */
+  /** Имя бота (`@имя`) для deep link «Отправить видео» (ADR-0023): из уже
+   * прогретого `botInfo`; нет бота или прогрев не удался — `undefined`, и
+   * кнопка не показывается. */
   botUsername(): string | undefined {
     return this.bot?.botInfo?.username;
   }
 
-  /** Зеркалит имя бота в BotIdentityService — единственный способ узнать
-   * его за пределами TelegramModule (InviteLinkService, ADR-0030). Вызывать
-   * после каждой точки, где `bot.botInfo` мог обновиться. */
+  /** Клиент Bot API для отправок с пути HTTP (ADR-0156); `null` — бота нет. */
+  telegramClient(): Telegram | null {
+    return this.bot?.telegram ?? null;
+  }
+
+  /** Зеркалит имя бота в BotIdentityService (InviteLinkService, ADR-0030) —
+   * вызывать там, где `bot.botInfo` мог обновиться. */
   private syncBotIdentity(): void {
     this.botIdentity.set(this.bot?.botInfo?.username);
   }
