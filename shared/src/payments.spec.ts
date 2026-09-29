@@ -41,6 +41,10 @@ describe('formatMonthNameRu', () => {
   it('декабрь — последний индекс таблицы', () => {
     expect(formatMonthNameRu('2026-12')).toBe('декабрь');
   });
+
+  it('непроверенный месяц вне таблицы — строка как есть, а не «undefined»', () => {
+    expect(formatMonthNameRu('2026-13')).toBe('2026-13');
+  });
 });
 
 describe('formatMonthRu', () => {
