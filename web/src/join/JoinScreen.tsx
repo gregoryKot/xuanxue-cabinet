@@ -16,6 +16,7 @@ import { screenExplanationStyle, screenTitleStyle } from '../components/screenLa
 import { SkeletonLines } from '../components/Skeleton';
 import { hasSession, useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
+import { PrivacyLink } from '../privacy/PrivacyLink';
 import { OtherLoginMethods } from '../auth/OtherLoginMethods';
 import { TelegramLoginSection } from '../auth/TelegramLoginSection';
 import { useJoinByInvite } from './useJoinByInvite';
@@ -88,6 +89,10 @@ export default function JoinScreen() {
     <EntryColumn>
       <h1 style={screenTitleStyle}>Вас пригласили в школу</h1>
       <p style={screenExplanationStyle}>Войдите через Telegram или почту.</p>
+      {/* Здесь у человека впервые просят имя и способ входа — статья 11
+          Закона о защите частной жизни требует показать политику до этого
+          (ADR-0155), не только на экране входа. */}
+      <PrivacyLink>Как мы храним данные</PrivacyLink>
       <TelegramLoginSection
         config={config}
         configStatus={configStatus}

@@ -42,7 +42,7 @@ export {
 export type { TemplateKind } from './default-templates';
 export { TEMPLATE_KINDS, DEFAULT_TEMPLATES } from './default-templates';
 export { formatDurationRu } from './format-duration';
-export { type PluralForms, pluralRu } from './plural-ru';
+export { type PluralForms, formatDaysRu, formatYearsRu, pluralRu } from './plural-ru';
 export {
   type BulkDeleteFailure,
   type BulkDeleteInput,
@@ -410,6 +410,14 @@ export {
   TELEGRAM_LINK_TAKEN_MESSAGE,
   TELEGRAM_LINK_OTHER_TELEGRAM_MESSAGE,
 } from './telegram-link';
+export {
+  type PrivacyRecipientId,
+  BACKUP_RETENTION_DAYS,
+  NOTIFICATION_RETENTION_DAYS,
+  PRIVACY_ACCESS_REPLY_DAYS,
+  PRIVACY_PATH,
+  PRIVACY_RECIPIENTS,
+} from './privacy';
 export { FIELD_LABELS_RU } from './field-labels';
 export type {
   NotificationKind,
