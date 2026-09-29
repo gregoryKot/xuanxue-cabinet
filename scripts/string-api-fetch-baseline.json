@@ -1,13 +1,6 @@
 {
-  "total": 41,
+  "total": 29,
   "byFile": {
-    "web/src/broadcasts/useBroadcastCreate.ts": 1,
-    "web/src/broadcasts/useBroadcastDeliveries.ts": 1,
-    "web/src/broadcasts/useBroadcasts.ts": 2,
-    "web/src/broadcasts/useDeliveryText.ts": 1,
-    "web/src/broadcasts/useManualDeliveries.ts": 1,
-    "web/src/broadcasts/useMarkSent.ts": 1,
-    "web/src/broadcasts/useSummary.ts": 1,
     "web/src/channels/useChannelTest.ts": 1,
     "web/src/channels/useChannels.ts": 1,
     "web/src/exam-items/useExamImageStats.ts": 1,
@@ -32,9 +25,6 @@
     "web/src/student/MyExamsProvider.tsx": 3,
     "web/src/student/useMyArchive.ts": 1,
     "web/src/student/useMyLessons.ts": 1,
-    "web/src/student/useMyMaterials.ts": 1,
-    "web/src/templates/useNextLessons.ts": 1,
-    "web/src/templates/usePreview.ts": 1,
-    "web/src/templates/useSettings.ts": 2
+    "web/src/student/useMyMaterials.ts": 1
   }
 }

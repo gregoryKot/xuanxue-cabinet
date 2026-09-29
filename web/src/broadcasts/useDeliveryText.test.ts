@@ -32,7 +32,7 @@ describe('useDeliveryText', () => {
       loaded = await result.current.ensureLoaded();
     });
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/deliveries/d1');
+    expect(mockedApiFetch).toHaveBeenCalledWith('/deliveries/d1', { method: 'GET' });
     expect(loaded).toBe('Через 30 минут занятие');
     expect(result.current.text).toBe('Через 30 минут занятие');
   });

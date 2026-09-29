@@ -33,8 +33,8 @@ import { Type } from 'class-transformer';
 import {
   RULE_TIME_RE,
   SETTINGS_LIMITS,
+  type ApiRouteBody,
   type PaymentReminderSettings,
-  type UpdateSettingsInput,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
@@ -88,7 +88,7 @@ export class UpdatePaymentReminderDto implements Partial<PaymentReminderSettings
   template?: string;
 }
 
-export class UpdateSettingsDto implements UpdateSettingsInput {
+export class UpdateSettingsDto implements ApiRouteBody<'PATCH /settings'> {
   @IsOptional()
   @ValidateNested()
   @Type(() => UpdateTemplatesDto)

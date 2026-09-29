@@ -111,7 +111,7 @@ describe('DeliveryCard — ручной канал (channelType === manual)', ()
     expect(screen.queryByText('Через 30 минут занятие')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Показать текст' }));
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/deliveries/d1');
+    expect(mockedApiFetch).toHaveBeenCalledWith('/deliveries/d1', { method: 'GET' });
     expect(await screen.findByText('Через 30 минут занятие')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Скрыть текст' })).toHaveAttribute(
       'aria-expanded',
@@ -138,7 +138,7 @@ describe('DeliveryCard — ручной канал (channelType === manual)', ()
 
     await user.click(screen.getByRole('button', { name: 'Скопировать' }));
 
-    expect(mockedApiFetch).toHaveBeenCalledWith('/deliveries/d1');
+    expect(mockedApiFetch).toHaveBeenCalledWith('/deliveries/d1', { method: 'GET' });
     expect(writeText).toHaveBeenCalledWith('Через 30 минут занятие');
     expect(
       await screen.findByRole('button', { name: 'Скопировано' }),

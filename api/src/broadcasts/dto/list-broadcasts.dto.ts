@@ -7,13 +7,13 @@ import { IsIn, IsISO8601, IsOptional } from 'class-validator';
 import {
   BROADCAST_KINDS,
   BROADCAST_STATUSES,
+  type ApiRouteQuery,
   type BroadcastKind,
   type BroadcastStatus,
-  type ListBroadcastsQuery,
 } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
-export class ListBroadcastsDto implements ListBroadcastsQuery {
+export class ListBroadcastsDto implements ApiRouteQuery<'GET /broadcasts'> {
   @IsISO8601({ strict: true })
   from!: string;
 

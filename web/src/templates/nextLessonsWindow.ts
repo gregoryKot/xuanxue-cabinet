@@ -24,3 +24,18 @@ export function nextLessonsWindow(now: Date = new Date()): NextLessonsWindow {
   const to = shiftByWeeks(from, PLANNING_HORIZON_WEEKS);
   return { from: from.toISOString(), to: to.toISOString() };
 }
+
+const NEXT_LESSONS_LIMIT = 5;
+
+/** Query `GET /lessons` для выбора занятия в предпросмотре: окно выше и
+ * первые NEXT_LESSONS_LIMIT. Одно место и для хука (useNextLessons.ts), и
+ * для строки пути предзагрузки (apiPaths.ts, nextLessonsPath) — порядок полей
+ * задаёт строку, а строка — ключ кэша. */
+export function nextLessonsQuery(now?: Date): {
+  from: string;
+  to: string;
+  limit: number;
+} {
+  const { from, to } = nextLessonsWindow(now);
+  return { from, to, limit: NEXT_LESSONS_LIMIT };
+}

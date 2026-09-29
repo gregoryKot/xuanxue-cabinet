@@ -11,7 +11,8 @@
 // ответил раньше первого) переписал бы уже показанный результат нового.
 import { useRef, useState } from 'react';
 import type { PreviewTemplateResult, TemplateKind } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 
 const PREVIEW_ERROR = 'Не удалось показать предпросмотр. Попробуйте ещё раз.';
 
@@ -40,8 +41,7 @@ export function usePreview(): UsePreviewResult {
     setPending(true);
     setError(null);
     try {
-      const res = await apiFetch<PreviewTemplateResult>('/settings/preview', {
-        method: 'POST',
+      const res = await apiRoute('POST /settings/preview', {
         body: { kind, lessonId },
         signal: controller.signal,
       });

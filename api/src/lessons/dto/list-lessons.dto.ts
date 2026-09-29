@@ -6,10 +6,10 @@
 // class-validator видит только формат ISO у каждого поля порознь, не
 // зависимость между ними.
 import { IsISO8601, IsMongoId, IsOptional, IsString, MaxLength } from 'class-validator';
-import { TAG_LIMITS, type ListLessonsQuery } from '@xuanxue/shared';
+import { TAG_LIMITS, type ApiRouteQuery } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
-export class ListLessonsDto implements ListLessonsQuery {
+export class ListLessonsDto implements ApiRouteQuery<'GET /lessons'> {
   @IsOptional()
   @IsISO8601({ strict: true })
   from?: string;

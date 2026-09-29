@@ -5,6 +5,7 @@ import { Controller, Get } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { SummaryDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { SummaryService } from './summary.service';
 
 @Controller('summary')
@@ -13,6 +14,7 @@ export class SummaryController {
   constructor(private readonly summaryService: SummaryService) {}
 
   @Get()
+  @ApiRoute('GET /summary')
   get(): Promise<SummaryDto> {
     return this.summaryService.get(DateTime.utc());
   }

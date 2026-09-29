@@ -10,7 +10,7 @@ import {
   type MaterialKind,
 } from '@xuanxue/shared';
 import { planningWindow } from '../planning/planningWindow';
-import { nextLessonsWindow } from '../templates/nextLessonsWindow';
+import { nextLessonsQuery } from '../templates/nextLessonsWindow';
 import { apiRoutePath } from './apiRoute';
 
 /** Фильтры списка экзаменов — общая форма для useExams.ts (хук) и
@@ -112,16 +112,16 @@ export function materialFileUploadPath(materialId: string, name: string): string
   return `${materialFilePath(materialId)}?name=${encodeURIComponent(name)}`;
 }
 
-export const SETTINGS_PATH = '/settings';
+/** Строка пути — для таблицы предзагрузки: ключ кэша prefetchCache.ts должен
+ * совпасть с тем, что соберёт `apiRoute` в useSettings.ts (PLAN §17.1). */
+export const SETTINGS_PATH = apiRoutePath('GET /settings');
 
-const NEXT_LESSONS_LIMIT = 5;
-
-/** Ближайшие занятия для выбора в предпросмотре шаблона (docs/PLAN.md §6
- * «Шаблоны») — окно от текущего момента, а не от начала недели
- * (nextLessonsWindow.ts), поэтому своя функция, не lessonsListPath(). */
+/** Ближайшие занятия для предпросмотра шаблона (docs/PLAN.md §6) — окно от
+ * текущего момента, а не от начала недели, поэтому не lessonsListPath().
+ * Строка пути — для предзагрузки; сам запрос идёт по карте (useNextLessons.ts)
+ * с тем же nextLessonsQuery: порядок полей в нём и есть ключ кэша. */
 export function nextLessonsPath(): string {
-  const { from, to } = nextLessonsWindow();
-  return `${LESSONS_PATH}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=${NEXT_LESSONS_LIMIT}`;
+  return apiRoutePath('GET /lessons', { query: nextLessonsQuery() });
 }
 
 /** Строка пути — только для таблицы предзагрузки, как NOTIFICATIONS_FEED_PATH

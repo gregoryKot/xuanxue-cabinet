@@ -12,6 +12,7 @@ import {
 import { DateTime } from 'luxon';
 import type { DeliveryDto } from '@xuanxue/shared';
 import { Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { DeliveriesService } from './deliveries.service';
 import { ListDeliveriesDto } from './dto/list-deliveries.dto';
 
@@ -21,17 +22,20 @@ export class DeliveriesController {
   constructor(private readonly deliveriesService: DeliveriesService) {}
 
   @Get()
+  @ApiRoute('GET /deliveries')
   list(@Query() query: ListDeliveriesDto): Promise<DeliveryDto[]> {
     return this.deliveriesService.list(query);
   }
 
   @Get(':id')
+  @ApiRoute('GET /deliveries/:id')
   getById(@Param('id') id: string): Promise<DeliveryDto> {
     return this.deliveriesService.getById(id);
   }
 
   @Post(':id/mark-sent')
   @HttpCode(HttpStatus.OK)
+  @ApiRoute('POST /deliveries/:id/mark-sent')
   markSent(@Param('id') id: string): Promise<DeliveryDto> {
     return this.deliveriesService.markSent(id, DateTime.utc());
   }

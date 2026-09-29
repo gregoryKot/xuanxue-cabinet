@@ -3,7 +3,7 @@
 // текущие проблемы (см. ListDeliveriesQuery в shared). Гонка запросов и
 // разбор ошибки — в общем hooks/useAbortableFetch.ts.
 import { LIST_LIMIT_DEFAULT, type DeliveryDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE =
@@ -19,7 +19,8 @@ export interface UseManualDeliveriesResult {
 export function useManualDeliveries(): UseManualDeliveriesResult {
   const { data, loading, error, reload } = useAbortableFetch(
     (signal) =>
-      apiFetch<DeliveryDto[]>(`/deliveries?status=manual&limit=${LIST_LIMIT_DEFAULT}`, {
+      apiRoute('GET /deliveries', {
+        query: { status: 'manual', limit: LIST_LIMIT_DEFAULT },
         signal,
       }),
     LOAD_ERROR_MESSAGE,

@@ -3,7 +3,8 @@
 // (переданный `onSent` — read-after-write, вызывающий код сам решает, что
 // перечитать: журнал рассылки или список «Ждут отправки вручную»).
 import { useState } from 'react';
-import { ApiError, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 
 const MARK_SENT_ERROR = 'Не удалось отметить отправленным. Попробуйте ещё раз.';
 
@@ -21,7 +22,7 @@ export function useMarkSent(onSent: () => Promise<void>): UseMarkSentResult {
     setPending(true);
     setError(null);
     try {
-      await apiFetch(`/deliveries/${deliveryId}/mark-sent`, { method: 'POST' });
+      await apiRoute('POST /deliveries/:id/mark-sent', { params: { id: deliveryId } });
       await onSent();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : MARK_SENT_ERROR);

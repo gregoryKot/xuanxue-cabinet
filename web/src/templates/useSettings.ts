@@ -10,8 +10,7 @@
 // useSchoolSiteField.ts, usePreviewMinutesField.ts).
 import { useCallback } from 'react';
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
-import { SETTINGS_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить настройки. Попробуйте ещё раз.';
@@ -26,16 +25,13 @@ export interface UseSettingsResult {
 
 export function useSettings(): UseSettingsResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<SettingsDto>(SETTINGS_PATH, { signal }),
+    (signal) => apiRoute('GET /settings', { signal }),
     LOAD_ERROR_MESSAGE,
   );
 
   const update = useCallback(
     async (input: UpdateSettingsInput) => {
-      const next = await apiFetch<SettingsDto>(SETTINGS_PATH, {
-        method: 'PATCH',
-        body: input,
-      });
+      const next = await apiRoute('PATCH /settings', { body: input });
       applyData(next);
     },
     [applyData],
