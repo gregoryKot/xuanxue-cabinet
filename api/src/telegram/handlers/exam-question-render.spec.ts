@@ -131,6 +131,28 @@ describe('renderAttemptScreen', () => {
     expect(botSessions.startExamMediaWait).not.toHaveBeenCalled();
   });
 
+  // ADR-0146: вопрос с askReason тоже ждёт свободный текст — объяснение
+  // выбора, тем же ожиданием 'examText', что у текстового вопроса.
+  it('вопрос single с askReason — ставит examText-ожидание, как у text', async () => {
+    const botSessions = fakeBotSessionService();
+    await renderAttemptScreen(
+      botSessions,
+      CHAT_ID,
+      attempt([question({ askReason: true })]),
+      0,
+      NOW,
+    );
+
+    expect(botSessions.startExamTextWait).toHaveBeenCalledWith(
+      CHAT_ID,
+      ATTEMPT_ID,
+      0,
+      NOW,
+    );
+    expect(botSessions.startExamMediaWait).not.toHaveBeenCalled();
+    expect(botSessions.clear).not.toHaveBeenCalled();
+  });
+
   it('попытка не в работе — финальный экран, ожидание закрывается', async () => {
     const botSessions = fakeBotSessionService();
     const view = await renderAttemptScreen(

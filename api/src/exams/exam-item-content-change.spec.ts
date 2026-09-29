@@ -115,3 +115,39 @@ describe('buildHistoryEntry', () => {
     expect(entry.videoUrl).toBe('https://youtu.be/x');
   });
 });
+
+describe('hasContentChanged — askReason (ADR-0146)', () => {
+  it('askReason не пришёл в теле — не правка', () => {
+    expect(hasContentChanged({ prompt: CURRENT.prompt }, undefined, CURRENT)).toBe(false);
+  });
+
+  it('askReason включили — правка', () => {
+    expect(hasContentChanged({ askReason: true }, undefined, CURRENT)).toBe(true);
+  });
+
+  it('askReason прислали тем же значением, что уже стоит — не правка', () => {
+    expect(
+      hasContentChanged({ askReason: true }, undefined, { ...CURRENT, askReason: true }),
+    ).toBe(false);
+  });
+});
+
+describe('buildHistoryEntry — askReason (ADR-0146)', () => {
+  it('askReason стоял — попадает в снимок истории', () => {
+    const entry = buildHistoryEntry(
+      { ...CURRENT, askReason: true, version: 1 },
+      '2026-09-12T10:00:00.000Z',
+    );
+
+    expect(entry.askReason).toBe(true);
+  });
+
+  it('askReason не стоял — ключа в снимке нет', () => {
+    const entry = buildHistoryEntry(
+      { ...CURRENT, version: 1 },
+      '2026-09-12T10:00:00.000Z',
+    );
+
+    expect(entry.askReason).toBeUndefined();
+  });
+});

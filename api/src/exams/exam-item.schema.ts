@@ -52,6 +52,8 @@ export interface ExamItemVersionRecord {
   videoId?: string;
   videoUrl?: string;
   options: ExamItemOptionRecord[];
+  /** Стояло ли требование объяснения в этой редакции (ADR-0146). */
+  askReason?: boolean;
   replacedAt: string;
 }
 
@@ -65,20 +67,24 @@ export class ExamItemRecord {
   @Prop({ type: String, required: true })
   prompt!: string;
 
-  // Видео к формулировке вопроса (ADR-0133) — ссылка на запись в
-  // exam_videos (файл R2), plain: id не персональные данные, сверку решает
-  // ExamVideosService.assertExist так же, как imageId у варианта.
+  // Видео к формулировке (ADR-0133) — ссылка на exam_videos (файл R2).
   @Prop({ type: SchemaTypes.ObjectId, required: false })
   videoId?: Types.ObjectId;
 
-  // https-ссылка на видео вопроса (YouTube и т.п., без R2, ADR-0133) —
-  // свободный текст, шифруется (см. EXAM_ITEM_FIELD_POLICY ниже).
+  // https-ссылка на видео вопроса (без R2, ADR-0133), шифруется (см. ниже).
   @Prop({ type: String, required: false })
   videoUrl?: string;
 
   // Хранится строкой целиком (encJson) — см. комментарий в начале файла.
   @Prop({ type: String, default: '[]' })
   options!: string;
+
+  // Просить ученика объяснить выбранный вариант (ADR-0146) — только у
+  // single/multiple, проверяет ExamItemsService (assertReasonAllowedForKind).
+  // Необязательное — у старых документов и фикстур поля нет, Mongo и код
+  // читают отсутствие как false (тем же приёмом, что imageIds/videoIds выше).
+  @Prop({ type: Boolean, required: false })
+  askReason?: boolean;
 
   // По умолчанию вопрос сразу годен к сборке формы (ADR-0033): владелец
   // создал вопросы и не нашёл их в конструкторе — шаг «опубликовать» был
@@ -95,17 +101,14 @@ export class ExamItemRecord {
   history!: string;
 
   // Плоская копия imageId вариантов (текущих и из history) — options/history
-  // зашифрованы целиком и Mongo внутрь не видит; по этому полю уборщик сирот
-  // (exam-image-sweep.service.ts) поймёт, на какие картинки ссылается вопрос
-  // (ADR-0035). Пишет ExamItemsService (create/update, collectImageIds) — у
-  // старых документов поля нет, Mongo трактует отсутствие как пустой массив.
+  // зашифрованы целиком, Mongo внутрь не видит; уборщик сирот
+  // (exam-image-sweep.service.ts, ADR-0035) находит по этому полю картинки
+  // вопроса. Пишет ExamItemsService (create/update, collectImageIds).
   @Prop({ type: [SchemaTypes.ObjectId], default: [] })
   imageIds!: Types.ObjectId[];
 
-  // Плоская копия videoId вопроса и вариантов (текущих и из history) — тем
-  // же приёмом и ради той же причины, что imageIds выше (ADR-0133): уборщик
-  // сирот (exam-video-sweep.service.ts) находит по этому полю, какие видео
-  // ещё используются вопросом. Пишет ExamItemsService (create/update).
+  // Плоская копия videoId вопроса и вариантов, тем же приёмом (ADR-0133):
+  // уборщик видео-сирот (exam-video-sweep.service.ts).
   @Prop({ type: [SchemaTypes.ObjectId], default: [] })
   videoIds!: Types.ObjectId[];
 
@@ -114,10 +117,8 @@ export class ExamItemRecord {
   @Prop({ type: SchemaTypes.ObjectId, ref: USER_MODEL_NAME, required: false })
   authorId?: Types.ObjectId;
 
-  // Мягкое удаление (ADR-0140) — вопрос пропадает из банка и с экранов
-  // /exam-items, но остаётся в форме, где он уже стоял (exam-items-eligible.ts,
-  // exam-attempt-start.ts не фильтруют по этому полю нарочно). Не String —
-  // encryption-coverage.spec.ts решения не требует.
+  // Мягкое удаление (ADR-0140) — пропадает из банка, но остаётся в форме,
+  // где уже стоял. Не String — encryption-coverage.spec.ts решения не требует.
   @Prop({ type: Date, required: false })
   deletedAt?: Date;
 }

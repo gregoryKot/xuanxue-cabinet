@@ -63,10 +63,12 @@ function buildReviewQuestion(
   const selectedIds = answer?.optionIds ?? [];
   const selected = new Set(selectedIds);
   const hasOptions = question.options.length > 0;
-  // Отвечено — выбрал вариант или написал непустой текст. Отдельно от
-  // optionsCheck ниже: «не отвечено» и «отвечено неверно» неразличимы для
-  // проверяющего, если оба дают «0 из 3» (отзыв владельца 2026-09-21).
-  const answered = selectedIds.length > 0 || Boolean(answer?.text?.trim());
+  // Отвечено — у вопроса с вариантами (ADR-0146: text у такого вопроса
+  // теперь объяснение выбора, не сам ответ) выбор варианта и есть ответ;
+  // у вопроса без вариантов (текст) ответ — непустой текст, как раньше.
+  // Отдельно от optionsCheck ниже: «не отвечено» и «отвечено неверно»
+  // неразличимы для проверяющего, если оба дают «0 из 3» (2026-09-21).
+  const answered = hasOptions ? selectedIds.length > 0 : Boolean(answer?.text?.trim());
   return {
     itemId: question.itemId,
     kind: question.kind,
@@ -79,9 +81,10 @@ function buildReviewQuestion(
     // без этого условия неотвеченный вопрос с вариантами показывал «0 из N»,
     // неотличимо от честно неверного ответа.
     optionsCheck:
-      hasOptions && answered
+      hasOptions && selectedIds.length > 0
         ? checkOptionAnswer(question.options, selectedIds)
         : undefined,
+    ...(question.askReason ? { askReason: true } : {}),
     answered,
   };
 }

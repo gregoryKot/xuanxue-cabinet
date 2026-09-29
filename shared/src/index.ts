@@ -166,6 +166,7 @@ export {
   OPTION_CONTENT_REQUIRED_MESSAGE,
   OPTION_ONE_MEDIA_MESSAGE,
   ITEM_ONE_VIDEO_SOURCE_MESSAGE,
+  ASK_REASON_KIND_MESSAGE,
 } from './exam-items';
 export type {
   ExamStatus,
@@ -205,6 +206,12 @@ export {
   ATTEMPT_UNKNOWN_ITEM_MESSAGE,
   ATTEMPT_SAVE_CONFLICT_MESSAGE,
 } from './exam-attempts';
+export {
+  ATTEMPT_REASON_LABEL,
+  isReasonMissing,
+  findMissingReasonNumbers,
+  formatMissingReasonMessage,
+} from './exam-attempt-reason';
 export {
   type ExamMediaKind,
   type ExamMediaDto,

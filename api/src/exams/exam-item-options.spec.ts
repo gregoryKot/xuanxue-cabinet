@@ -1,10 +1,12 @@
 // Чистая логика — без Mongo (CLAUDE.md «Тесты»): сочетание kind+options.
 import {
+  ASK_REASON_KIND_MESSAGE,
   OPTION_CONTENT_REQUIRED_MESSAGE,
   OPTION_ONE_MEDIA_MESSAGE,
 } from '@xuanxue/shared';
 import {
   assertOptionsForKind,
+  assertReasonAllowedForKind,
   collectImageIds,
   collectOptionVideoIds,
   mapOptions,
@@ -303,5 +305,27 @@ describe('collectImageIds', () => {
       expect.arrayContaining(['img-new', 'img-old']),
     );
     expect(collectImageIds(options, history)).toHaveLength(2);
+  });
+});
+
+// ADR-0146: объяснение просят только у вопроса с выбором варианта.
+describe('assertReasonAllowedForKind', () => {
+  it('askReason выключен — проходит у любого типа', () => {
+    expect(() => assertReasonAllowedForKind('text', false)).not.toThrow();
+    expect(() => assertReasonAllowedForKind('video', false)).not.toThrow();
+  });
+
+  it('askReason включён у single/multiple — проходит', () => {
+    expect(() => assertReasonAllowedForKind('single', true)).not.toThrow();
+    expect(() => assertReasonAllowedForKind('multiple', true)).not.toThrow();
+  });
+
+  it('askReason включён у text/video — InvalidInputError', () => {
+    expect(() => assertReasonAllowedForKind('text', true)).toThrow(
+      ASK_REASON_KIND_MESSAGE,
+    );
+    expect(() => assertReasonAllowedForKind('video', true)).toThrow(
+      ASK_REASON_KIND_MESSAGE,
+    );
   });
 });

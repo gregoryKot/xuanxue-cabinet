@@ -64,6 +64,8 @@ export function toExamItemDto(doc: LeanExamItem): ExamItemDto {
     videoId: doc.videoId,
     videoUrl: doc.videoUrl,
     options: doc.options,
+    // Ключа нет вовсе, если выключено (ADR-0146) — тем же приёмом, что deletedAt ниже.
+    ...(doc.askReason ? { askReason: true } : {}),
     status: doc.status,
     version: doc.version,
     history: doc.history,

@@ -62,6 +62,7 @@ function toStudentQuestion(question: AttemptQuestionRecord): AttemptQuestionDto 
     prompt: question.prompt,
     ...(question.videoId !== undefined ? { videoId: question.videoId } : {}),
     ...(question.videoUrl !== undefined ? { videoUrl: question.videoUrl } : {}),
+    ...(question.askReason ? { askReason: true } : {}),
     options: question.options.map(toStudentOption),
   };
 }

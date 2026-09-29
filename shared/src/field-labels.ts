@@ -89,6 +89,8 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   // подписи не требуется.
   videoId: 'Видео',
   videoUrl: 'Ссылка на видео',
+  // ADR-0146: требование объяснить выбранный вариант.
+  askReason: 'Просить объяснение',
   tags: 'Теги',
   tag: 'Тег',
   // ListExamItemsDto.includeDeleted (ADR-0140) — редактору формы, не экрану банка.

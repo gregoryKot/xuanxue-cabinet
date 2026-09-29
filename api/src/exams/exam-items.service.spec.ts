@@ -749,4 +749,68 @@ describe('ExamItemsService', () => {
       expect(deletedDto?.deletedAt).toBe(NOW.toUTC().toISO());
     });
   });
+
+  // ADR-0146: объяснение просят только у вопроса с выбором варианта.
+  describe('askReason', () => {
+    it('create с askReason у single — read-after-write: getById отдаёт askReason: true', async () => {
+      const created = await service.create(
+        {
+          kind: 'single',
+          prompt: 'p',
+          askReason: true,
+          options: [
+            { text: 'A', correct: true },
+            { text: 'B', correct: false },
+          ],
+        },
+        AUTHOR_ID,
+      );
+
+      expect(created.askReason).toBe(true);
+      await expect(service.getById(created.id)).resolves.toMatchObject({
+        askReason: true,
+      });
+    });
+
+    it('create без askReason — ключа в ответе нет', async () => {
+      const created = await service.create({ kind: 'text', prompt: 'p' }, AUTHOR_ID);
+
+      expect(created).not.toHaveProperty('askReason');
+    });
+
+    it('create с askReason у text — InvalidInputError, вопрос не создаётся', async () => {
+      await expect(
+        service.create({ kind: 'text', prompt: 'p', askReason: true }, AUTHOR_ID),
+      ).rejects.toThrow('только у вопроса с выбором варианта');
+      await expect(model.countDocuments({})).resolves.toBe(0);
+    });
+
+    it('update включает askReason у single — сохраняется, version растёт (содержательная правка)', async () => {
+      const created = await service.create(
+        {
+          kind: 'single',
+          prompt: 'p',
+          options: [
+            { text: 'A', correct: true },
+            { text: 'B', correct: false },
+          ],
+        },
+        AUTHOR_ID,
+      );
+
+      const updated = await service.update(created.id, { askReason: true }, NOW);
+
+      expect(updated.askReason).toBe(true);
+      expect(updated.version).toBe(2);
+    });
+
+    it('update включает askReason у video — InvalidInputError, документ не меняется', async () => {
+      const created = await service.create({ kind: 'video', prompt: 'p' }, AUTHOR_ID);
+
+      await expect(service.update(created.id, { askReason: true }, NOW)).rejects.toThrow(
+        'только у вопроса с выбором варианта',
+      );
+      await expect(service.getById(created.id)).resolves.not.toHaveProperty('askReason');
+    });
+  });
 });

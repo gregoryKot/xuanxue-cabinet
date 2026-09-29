@@ -50,6 +50,9 @@ export interface AttemptQuestionDto {
   videoId?: string;
   videoUrl?: string;
   options: AttemptOptionDto[];
+  /** Нужно объяснить выбранный вариант (ADR-0146) — снимок хранит то, что
+   * стояло на момент старта попытки, не сегодняшнюю настройку вопроса. */
+  askReason?: boolean;
 }
 
 export interface AttemptBlockDto {

@@ -7,9 +7,7 @@
 //
 // Этот файл — диспетчер правил, не Mongo-запросов: дедлайн и поиск попытки
 // «в работе» живут в exam-attempt-lifecycle.ts, срок сдачи — в
-// exam-due-guard.ts, а вопросы блоков читаются через `ExamsService`/
-// `ExamItemsService` (там уже и проверка published, и декрипт содержимого —
-// второе место той же механики заводить незачем).
+// exam-due-guard.ts, вопросы блоков — через `ExamsService`/`ExamItemsService`.
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
@@ -38,6 +36,7 @@ import {
 } from './exam-attempt-lifecycle';
 import { assertExamNotPastDue, assertExamPublished } from './exam-start-guards';
 import { saveAttemptAnswers } from './exam-attempt-save';
+import { assertReasonsGiven } from './exam-attempt-submit-reason';
 import { resolveSubmitConflict } from './exam-attempt-submit-outcome';
 import {
   attemptSubmittedCallback,
@@ -141,6 +140,7 @@ export class ExamAttemptsService {
   ): Promise<ExamAttemptDto> {
     const attempt = await this.loadOwn(attemptId, userId, now);
     assertOpenForChange(attempt);
+    assertReasonsGiven(attempt);
 
     const updated = await this.model
       .findOneAndUpdate(

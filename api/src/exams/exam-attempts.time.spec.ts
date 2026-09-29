@@ -190,4 +190,40 @@ describe('ExamAttemptsService — дедлайн', () => {
       ctx.service.submit(started.id, USER_A, deadlineAt.minus({ minutes: 1 })),
     ).resolves.toMatchObject({ status: 'submitted', expired: false });
   });
+
+  // ADR-0146: отказ за пропущенное объяснение стоит только на явном
+  // submit() — дедлайн обязан закрыть попытку сам, без него.
+  it('дедлайн закрывает попытку с askReason и выбранным без объяснения вариантом — не падает', async () => {
+    const item = await ctx.examItemsService.create(
+      {
+        kind: 'single',
+        prompt: 'x',
+        askReason: true,
+        options: [
+          { text: 'верно', correct: true },
+          { text: 'неверно', correct: false },
+        ],
+      },
+      AUTHOR_ID,
+    );
+    await ctx.examItemsService.update(item.id, { status: 'published' }, NOW);
+    const exam = await ctx.examsService.create(
+      { title: 'Экзамен с лимитом', blocks: [{ itemIds: [item.id] }], timeLimitMin: 30 },
+      AUTHOR_ID,
+    );
+    await ctx.examsService.update(exam.id, { status: 'published' });
+    const started = await ctx.service.start(exam.id, USER_A, NOW);
+    const optionId = started.blocks[0]?.questions[0]?.options[0]?.id ?? '';
+    await ctx.service.saveAnswers(
+      started.id,
+      USER_A,
+      { answers: [{ itemId: item.id, optionIds: [optionId] }] },
+      NOW,
+    );
+
+    const own = await ctx.service.getOwn(started.id, USER_A, NOW.plus({ minutes: 45 }));
+
+    expect(own.status).toBe('submitted');
+    expect(own.expired).toBe(true);
+  });
 });

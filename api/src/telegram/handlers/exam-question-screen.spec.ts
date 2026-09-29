@@ -225,6 +225,25 @@ describe('buildQuestionScreen', () => {
     expect(view.text).not.toContain('Напишите ответ сообщением');
   });
 
+  // ADR-0146: вопрос с askReason просит объяснение под строкой выбора.
+  it('single с askReason, объяснения ещё нет — подсказка «Объясните свой ответ»', () => {
+    const q = question({ askReason: true });
+    const view = buildQuestionScreen(attempt([q]), 0);
+    expect(view.text).toContain('Объясните свой ответ');
+  });
+
+  it('single с askReason, объяснение уже написано — эхо сохранённого текста', () => {
+    const q = question({ askReason: true });
+    const view = buildQuestionScreen(
+      attempt([q], {
+        answers: [{ itemId: 'i1', optionIds: ['o1'], text: 'потому что' }],
+      }),
+      0,
+    );
+    expect(view.text).toContain('Ваше объяснение: «потому что»');
+    expect(view.text).not.toContain('Объясните свой ответ —');
+  });
+
   it('video — просит прислать видео, без кнопок-вариантов', () => {
     const q = question({ kind: 'video', options: [] });
     const view = buildQuestionScreen(attempt([q]), 0);

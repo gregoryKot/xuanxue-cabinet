@@ -1,16 +1,12 @@
-// Свободный текст ответа на вопрос экзамена (ТЗ 4б.2 часть 2, ADR-0024) —
-// MessageHandler зовёт после сессии kind: 'examText' (bot-session.service.ts),
-// тот же приём, что ExamMediaMessageHandler для 'examMedia': диспетчер по
-// виду ожидания — в message.handler.ts, сама механика — здесь. Сохраняет тем
-// же ExamBotPort.saveAnswer, что и вариант ответа (exam-attempt-answer.ts).
-// Следующий экран — НОВЫМ сообщением (presentAttemptScreen, via: 'reply'),
-// не editMessageText: пришло не нажатие кнопки, у входящего текстового
+// Свободный текст ответа на вопрос экзамена (ТЗ 4б.2 часть 2, ADR-0024;
+// объяснение выбора варианта — ADR-0146) — MessageHandler зовёт после
+// сессии kind: 'examText' (bot-session.service.ts). Сохраняет тем же
+// ExamBotPort.saveAnswer, что и вариант ответа (exam-attempt-answer.ts).
+// Следующий экран — НОВЫМ сообщением (via: 'reply'): у входящего текстового
 // сообщения нет message_id экрана бота, который редактировать.
 //
 // Личность — через BotUserAccessService.resolve(), не напрямую
-// UsersService: blocked получает отказ и сессия закрывается — иначе
-// заблокированный продолжал бы отвечать на вопросы открытой попытки
-// (SECURITY §9).
+// UsersService: blocked получает отказ и сессия закрывается (SECURITY §9).
 import { Injectable, Logger } from '@nestjs/common';
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
@@ -112,18 +108,26 @@ export class ExamTextAnswerHandler {
     }
 
     const answerText = text.slice(0, ATTEMPT_LIMITS.answerText);
+    // Существующие optionIds сохраняются как есть (ADR-0146): у askReason
+    // этот текст — объяснение выбора, не замена ответа.
+    const existingOptionIds = attempt.answers.find(
+      (a) => a.itemId === question.itemId,
+    )?.optionIds;
     const updated = await examBot.saveAnswer(
       attemptId,
       user,
-      { itemId: question.itemId, text: answerText },
+      {
+        itemId: question.itemId,
+        text: answerText,
+        ...(existingOptionIds !== undefined ? { optionIds: existingOptionIds } : {}),
+      },
       now,
     );
-    // Свободный текст — одно атомарное действие, как выбор в single
-    // (exam-attempt-answer.ts): отправил сообщение — вопрос закрыт, экран
-    // сам переходит к следующему, на последнем остаётся на месте («Сдать»
-    // уже виден).
+    // Отправил сообщение — вопрос закрыт, экран переходит к следующему; у
+    // askReason (ADR-0146) — только если вариант уже выбран, иначе стоим.
+    const canAdvance = !question.askReason || (existingOptionIds?.length ?? 0) > 0;
     const total = flattenAttemptQuestions(updated).length;
-    const nextIndex = Math.min(questionIndex + 1, total - 1);
+    const nextIndex = canAdvance ? Math.min(questionIndex + 1, total - 1) : questionIndex;
     const view = await renderAttemptScreen(
       this.botSessions,
       telegramId,

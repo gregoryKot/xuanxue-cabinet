@@ -71,7 +71,10 @@ export async function renderAttemptScreen(
   }
 
   const question = flattenAttemptQuestions(attempt)[index];
-  if (question?.kind === 'text') {
+  // Вопрос с askReason (ADR-0146) тоже ждёт свободный текст следующим
+  // сообщением — это объяснение выбора, не сам ответ, но экран бота отвечает
+  // на него тем же ожиданием 'examText', что и текстовый вопрос.
+  if (question?.kind === 'text' || (question?.askReason && question.kind !== 'video')) {
     await botSessions.startExamTextWait(chatId, attempt.id, index, now);
   } else if (question?.kind === 'video') {
     // itemId — из самого вопроса (ADR-0037), не пересчитывается по index.

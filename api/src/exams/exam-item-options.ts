@@ -2,6 +2,7 @@
 // юнит-тест без Mongo (CLAUDE.md, раздел «Тесты»). Правило combines type+
 // options (ТЗ 4.2, п.2) — про сочетание полей, поэтому в сервисе, не в DTO.
 import {
+  ASK_REASON_KIND_MESSAGE,
   EXAM_ITEM_LIMITS,
   OPTION_CONTENT_REQUIRED_MESSAGE,
   OPTION_ONE_MEDIA_MESSAGE,
@@ -14,6 +15,14 @@ import { keepOrGenerateId } from './sub-id';
 
 const NO_OPTIONS_KINDS: readonly ExamItemKind[] = ['text', 'video'];
 const HAS_OPTIONS_KINDS: readonly ExamItemKind[] = ['single', 'multiple'];
+
+/** ADR-0146: просить объяснение можно только у вопроса с выбором варианта —
+ * у text/video объяснять нечего (там ответ и так свободный текст/видео). */
+export function assertReasonAllowedForKind(kind: ExamItemKind, askReason: boolean): void {
+  if (askReason && !HAS_OPTIONS_KINDS.includes(kind)) {
+    throw new InvalidInputError(ASK_REASON_KIND_MESSAGE);
+  }
+}
 
 /**
  * Проверяет варианты против типа вопроса и возвращает нормализованный

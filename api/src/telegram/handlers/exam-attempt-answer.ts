@@ -13,6 +13,7 @@ import { examUserFacingError } from './exam-attempt-error';
 import type { OptionId } from './exam-callback-ids';
 import { buildFinishedScreen, flattenAttemptQuestions } from './exam-question-screen';
 import { presentAttemptScreen, renderAttemptScreen } from './exam-question-render';
+import { presentMissingReason } from './exam-submit-reason-screen';
 
 /** `single` — выбор варианта отвечает на вопрос целиком, поэтому сразу
  * заменяет прошлый выбор; `multiple` — кнопка-переключатель, добавляет или
@@ -66,22 +67,33 @@ export async function handleExamOption(
       return;
     }
 
-    const current =
-      attempt.answers.find((a) => a.itemId === question.itemId)?.optionIds ?? [];
+    const existingAnswer = attempt.answers.find((a) => a.itemId === question.itemId);
+    const current = existingAnswer?.optionIds ?? [];
     const optionIds = nextOptionIds(current, option.id, question.kind === 'multiple');
+    // Существующий text сохраняется как есть (ADR-0146) — это объяснение
+    // выбора у вопроса с askReason, замена ответа вариантом не должна его
+    // стирать (mergeAnswers заменяет ответ по itemId целиком).
     const updated = await examBot.saveAnswer(
       ids.attemptId,
       user,
-      { itemId: question.itemId, optionIds },
+      {
+        itemId: question.itemId,
+        optionIds,
+        ...(existingAnswer?.text !== undefined ? { text: existingAnswer.text } : {}),
+      },
       now,
     );
 
     // `single` — выбор одного варианта завершает вопрос, экран сам
     // переходит к следующему; на последнем вопросе остаёмся на месте —
     // «Сдать» в навигации уже виден, отдельного авто-перехода в отправку нет
-    // (ТЗ: «Сдать» — явное действие, не последствие ответа).
+    // (ТЗ: «Сдать» — явное действие, не последствие ответа). Вопрос с
+    // askReason (ADR-0146) не переходит даже так: ответ не закончен, пока не
+    // написано объяснение — экран остаётся на месте и ждёт текст сообщением.
     const nextIndex =
-      question.kind === 'single' && ids.questionIndex < questions.length - 1
+      question.kind === 'single' &&
+      !question.askReason &&
+      ids.questionIndex < questions.length - 1
         ? ids.questionIndex + 1
         : ids.questionIndex;
     const view = await renderAttemptScreen(botSessions, chatId, updated, nextIndex, now);
@@ -110,6 +122,8 @@ export async function handleExamSubmit(
   now: DateTime,
 ): Promise<void> {
   try {
+    const deps = { examBot, botSessions, user, chatId, attemptId };
+    if (await presentMissingReason(ctx, deps, now)) return;
     const attempt = await examBot.submitAttempt(attemptId, user, now);
     const view = await renderAttemptScreen(botSessions, chatId, attempt, 0, now, true);
     // Финальный экран — без альбома (renderAttemptScreen отдаёт пустой,
