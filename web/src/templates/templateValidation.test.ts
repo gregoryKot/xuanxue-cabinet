@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SETTINGS_LIMITS } from '@xuanxue/shared';
+import { PAYMENT_REMINDER_PLACEHOLDERS, SETTINGS_LIMITS } from '@xuanxue/shared';
 import { validateTemplateText } from './templateValidation';
 
 describe('validateTemplateText', () => {
@@ -18,5 +18,18 @@ describe('validateTemplateText', () => {
 
   it('известные плейсхолдеры — валидно', () => {
     expect(validateTemplateText('Через {минут} минут {название}')).toBeNull();
+  });
+
+  it('свой allow-list: подстановка поста неизвестна напоминанию, и наоборот', () => {
+    expect(
+      validateTemplateText('Пароль {пароль}', PAYMENT_REMINDER_PLACEHOLDERS),
+    ).toMatch(/\{пароль\}/);
+    expect(
+      validateTemplateText(
+        '{имя}, за {месяц} {сумма} {ссылка}',
+        PAYMENT_REMINDER_PLACEHOLDERS,
+      ),
+    ).toBeNull();
+    expect(validateTemplateText('Здравствуйте, {имя}')).toMatch(/\{имя\}/);
   });
 });

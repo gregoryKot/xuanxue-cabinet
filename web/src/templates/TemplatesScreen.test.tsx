@@ -97,11 +97,9 @@ describe('TemplatesScreen — шапка раздела', () => {
     renderScreen();
 
     expect(
-      await screen.findByRole('heading', { name: 'Шаблоны постов', level: 1 }),
+      await screen.findByRole('heading', { name: 'Шаблоны', level: 1 }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Рассылка собирает пост из двух шаблонов/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/посты в канал и напоминание об оплате/)).toBeInTheDocument();
   });
 });
 

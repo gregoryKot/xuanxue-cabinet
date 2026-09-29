@@ -1,5 +1,6 @@
-// «Шаблоны» — тексты постов, которые рассылка собирает из плейсхолдеров
-// (docs/PLAN.md §6 «Шаблоны»). Облик — направление «тихо и благородно»
+// «Шаблоны» — тексты, которыми бот пишет от имени школы: посты, которые
+// рассылка собирает из плейсхолдеров (docs/PLAN.md §6 «Шаблоны»), и
+// напоминание ученику об оплате (§15 п. 2.5). Облик — направление «тихо и благородно»
 // (docs/adr/0031, макет Form.dc.html): заголовок раздела антиквой, колонка
 // страницы-редактора, разделы под волосяной линией, заливка терракотой одна —
 // у «Сохранить» внизу (остальные кнопки экрана вторичные).
@@ -23,6 +24,7 @@ import { editorPageStyle, editorSectionStyle } from '../components/editorLayout'
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
 import { NewcomerContactField } from './NewcomerContactField';
+import { PaymentReminderSection } from './PaymentReminderSection';
 import { SchoolSiteField } from './SchoolSiteField';
 import { useNextLessons } from './useNextLessons';
 import { TemplateEditor } from './TemplateEditor';
@@ -33,9 +35,9 @@ import { useSettings } from './useSettings';
 // VOICE.md «Начинать с сути, а не с определения темы» — не «Здесь тексты...»
 // (pr-k3-fixes.md п.19).
 const EXPLANATION =
-  'Рассылка собирает пост из двух шаблонов ниже — анонса занятия и записи.';
+  'Что бот пишет от имени школы: посты в канал и напоминание об оплате.';
 
-const TITLE = 'Шаблоны постов';
+const TITLE = 'Шаблоны';
 const SAVE_ERROR = 'Не удалось сохранить шаблоны. Попробуйте ещё раз.';
 
 function changedTemplates(
@@ -104,6 +106,9 @@ export default function TemplatesScreen() {
         <>
           <SchoolSiteField settings={settings} update={settingsState.update} />
           <NewcomerContactField settings={settings} update={settingsState.update} />
+          {/* «Оплаты» — до шаблонов постов: у неё своя кнопка сохранения, а
+              терракотовое «Сохранить» внизу закрывает именно шаблоны постов. */}
+          <PaymentReminderSection settings={settings} update={settingsState.update} />
 
           {TEMPLATE_KINDS.map((kind) => (
             <TemplateEditor
