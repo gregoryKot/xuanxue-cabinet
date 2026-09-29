@@ -3,9 +3,9 @@
 // Ответ POST — уже готовая строка месяца: applyData кладёт её в страницу без
 // перечитывания списка (ADR-0087, check-write-then-reload).
 import { useCallback, useState } from 'react';
-import type { MyPaymentDto, MyPaymentsPageDto } from '@xuanxue/shared';
-import { MY_PAYMENTS_PATH, myPaymentScreenshotPath } from '../api/paymentPaths';
-import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
+import type { MyPaymentsPageDto } from '@xuanxue/shared';
+import { UPLOAD_TIMEOUT_MS } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { prepareExamImage } from '../lib/examImageFile';
 import { applyUploadedPayment } from './applyUploadedPayment';
@@ -28,7 +28,7 @@ export interface UseMyPaymentsResult {
 
 export function useMyPayments(): UseMyPaymentsResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<MyPaymentsPageDto>(MY_PAYMENTS_PATH, { signal }),
+    (signal) => apiRoute('GET /me/payments', { signal }),
     LOAD_ERROR_MESSAGE,
   );
   const [uploading, setUploading] = useState(false);
@@ -40,8 +40,8 @@ export function useMyPayments(): UseMyPaymentsResult {
       setUploadError(null);
       try {
         const blob = await prepareExamImage(file);
-        const dto = await apiFetch<MyPaymentDto>(myPaymentScreenshotPath(month), {
-          method: 'POST',
+        const dto = await apiRoute('POST /me/payments/:month/screenshot', {
+          params: { month },
           body: blob,
           timeoutMs: UPLOAD_TIMEOUT_MS,
         });

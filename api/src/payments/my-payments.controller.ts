@@ -12,6 +12,7 @@ import { Controller, Get, HttpCode, HttpStatus, Param, Post, Req } from '@nestjs
 import { DateTime } from 'luxon';
 import type { MyPaymentDto, MyPaymentsPageDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { PaymentScreenshotsService } from './payment-screenshots.service';
 import { PaymentsService } from './payments.service';
@@ -32,12 +33,14 @@ export class MyPaymentsController {
   ) {}
 
   @Get()
+  @ApiRoute('GET /me/payments')
   list(@CurrentUser() user: UserLean): Promise<MyPaymentsPageDto> {
     return this.paymentsService.listMine(user.id, DateTime.utc());
   }
 
   @Post(':month/screenshot')
   @HttpCode(HttpStatus.CREATED)
+  @ApiRoute('POST /me/payments/:month/screenshot')
   uploadScreenshot(
     @Param('month') month: string,
     @Req() req: RawBodyRequest,
