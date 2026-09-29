@@ -2,7 +2,8 @@
 // второй путь входа наравне с Telegram/почтой (SecondLoginKey.tsx рядом),
 // но отдельным блоком: Google не встаёт на их место (можно войти и через
 // Telegram, и через почту, и через Google сразу), не заменяет один из двух.
-// Показывается только когда сервер разрешает Google (`config.googleLoginEnabled`,
+// Показывается только пока Google не привязан (привязанный — строка в
+// LoginKeysSummary.tsx) и когда сервер разрешает Google (`config.googleLoginEnabled`,
 // та же оговорка, что у GoogleLoginButton.tsx на экране входа) — без него
 // кнопка звала бы 503. Клик сразу уводит вкладку (`redirectToGoogleLink`),
 // как GoogleLoginButton.tsx: Google не выдаёт код на связку заранее, в
@@ -17,7 +18,6 @@ import { screenExplanationStyle } from '../components/screenLayout';
 import { useAuthConfig } from './useAuthConfig';
 import { redirectToGoogleLink } from './googleAuthRedirect';
 
-const LINKED_MESSAGE = 'Google привязан — можно входить через него.';
 // ≥80 знаков — акцент по правилу (docs/VOICE.md, ADR-0124): факт, ради
 // которого блок вообще существует.
 const EXPLANATION =
@@ -35,15 +35,12 @@ export function GoogleLinkSection({ me }: GoogleLinkSectionProps) {
   const [pending, setPending] = useState(false);
   const { config, status: configStatus } = useAuthConfig();
 
-  // Не только «нечего предложить, пока не привязан»: даже привязанному Google
-  // текст «можно входить через него» не показываем, если школа выключила
-  // вход через Google конфигурацией — кнопка входа тогда тоже не покажется,
-  // упоминание было бы враньём про то, что доступно прямо сейчас.
+  // Привязанному Google предлагать нечего: «привязан» теперь говорит сводка
+  // LoginKeysSummary.tsx, вторая строка про то же была бы дублем. Не
+  // предлагаем и когда школа выключила вход через Google конфигурацией — без
+  // него кнопка звала бы 503.
+  if (me.googleLinked) return null;
   if (configStatus !== 'ok' || !config?.googleLoginEnabled) return null;
-
-  if (me.googleLinked) {
-    return <p style={screenExplanationStyle}>{LINKED_MESSAGE}</p>;
-  }
 
   function handleClick(): void {
     setPending(true);

@@ -67,6 +67,9 @@ describe('Users (e2e)', () => {
     const body = JSON.stringify(res.body);
     expect(body).not.toContain('telegramId');
     expect(body).not.toContain('email');
+    // `/auth/me` теперь отдаёт свой адрес, а «Люди» чужие — нет (баг владельца
+    // 2026-09-29, SECURITY §2): проверяем и само значение, не только ключ.
+    expect(body).not.toContain('a@b.co');
     expect(body).not.toContain('googleId');
     const list = res.body as UserDto[];
     expect(list.find((u) => u.name === 'Ученик с Telegram')?.hasTelegram).toBe(true);
