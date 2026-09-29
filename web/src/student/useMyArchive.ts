@@ -3,8 +3,7 @@
 // передаём, сервис сам берёт MY_ARCHIVE_LIMIT_DEFAULT, когда query пуст
 // (ListMyArchivedLessonsDto).
 import type { MyArchivedLessonDto } from '@xuanxue/shared';
-import { MY_LESSONS_ARCHIVE_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import {
   useAbortableFetch,
   type UseAbortableFetchResult,
@@ -14,7 +13,7 @@ const LOAD_ERROR_MESSAGE = 'Не удалось загрузить записи 
 
 export function useMyArchive(): UseAbortableFetchResult<MyArchivedLessonDto[]> {
   return useAbortableFetch(
-    (signal) => apiFetch<MyArchivedLessonDto[]>(MY_LESSONS_ARCHIVE_PATH, { signal }),
+    (signal) => apiRoute('GET /me/lessons/archive', { signal }),
     LOAD_ERROR_MESSAGE,
   );
 }

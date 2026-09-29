@@ -1,18 +1,4 @@
 {
-  "total": 16,
-  "byFile": {
-    "web/src/materials/materialFileUpload.ts": 1,
-    "web/src/materials/useLessonsByTag.ts": 1,
-    "web/src/materials/useMaterialFileUpload.ts": 1,
-    "web/src/materials/useMaterials.ts": 1,
-    "web/src/materials/useTagsSummary.ts": 1,
-    "web/src/planning/useLessonMaterials.ts": 2,
-    "web/src/planning/useLessonRecordingSummary.ts": 1,
-    "web/src/planning/useLessons.ts": 1,
-    "web/src/planning/useNewLessonMaterialForm.ts": 1,
-    "web/src/student/MyExamsProvider.tsx": 3,
-    "web/src/student/useMyArchive.ts": 1,
-    "web/src/student/useMyLessons.ts": 1,
-    "web/src/student/useMyMaterials.ts": 1
-  }
+  "total": 0,
+  "byFile": {}
 }

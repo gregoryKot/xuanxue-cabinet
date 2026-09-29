@@ -3,7 +3,11 @@
 // вперёд — ровно тот же горизонт, что держит планировщик занятий заполненным
 // (api/src/lessons/lesson-planner.service.ts), запрашивать шире незачем, а
 // `assertListWindow` на сервере запрещает окно у́же и шире 4 недель.
-import { PLANNING_HORIZON_WEEKS } from '@xuanxue/shared';
+import {
+  LIST_LIMIT_MAX,
+  PLANNING_HORIZON_WEEKS,
+  type ListLessonsQuery,
+} from '@xuanxue/shared';
 import { shiftByWeeks } from '../lib/dateWindow';
 
 export interface PlanningWindow {
@@ -25,4 +29,11 @@ export function planningWindow(now: Date = new Date()): PlanningWindow {
   // отвечал бы 400, и «Планирование» не открывалось бы в неделю перехода.
   const end = shiftByWeeks(start, PLANNING_HORIZON_WEEKS);
   return { from: start.toISOString(), to: end.toISOString() };
+}
+
+/** Query списка «Планирования»: порядок полей — ключ кэша предзагрузки
+ * (apiPaths.ts, lessonsListPath), хук экрана и таблица зовут один builder. */
+export function planningLessonsQuery(now?: Date): ListLessonsQuery {
+  const { from, to } = planningWindow(now);
+  return { from, to, limit: LIST_LIMIT_MAX };
 }

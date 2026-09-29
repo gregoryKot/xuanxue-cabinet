@@ -45,6 +45,7 @@ export class LessonsController {
   // ДО `:id` — как `GET /exam-items/stats-summary`
   // (exam-items.controller.ts): иначе Nest примет `recording-summary` за id.
   @Get('recording-summary')
+  @ApiRoute('GET /lessons/recording-summary')
   getRecordingSummary(): Promise<LessonRecordingSummaryDto> {
     return this.recordingSummaryService.get(DateTime.utc());
   }

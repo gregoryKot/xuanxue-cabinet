@@ -6,8 +6,8 @@
 // переоткрытием — перечитываем список при смене любого из двух.
 import { useEffect, useRef } from 'react';
 import type { MaterialDto, MaterialKind } from '@xuanxue/shared';
-import { materialsListPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { materialsListQuery } from '../api/apiPaths';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить материалы. Попробуйте ещё раз.';
@@ -21,7 +21,8 @@ export interface UseMaterialsResult {
 
 export function useMaterials(kind: MaterialKind | '', tag: string): UseMaterialsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<MaterialDto[]>(materialsListPath(kind, tag), { signal }),
+    (signal) =>
+      apiRoute('GET /materials', { query: materialsListQuery(kind, tag), signal }),
     LOAD_ERROR_MESSAGE,
   );
 

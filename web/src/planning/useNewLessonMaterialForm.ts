@@ -7,9 +7,8 @@
 // (materials/materialFormInput.ts): полей в форме меньше, но те, что есть,
 // проверяются теми же правилами (CLAUDE.md «Одна механика — один компонент»).
 import { useCallback, useState } from 'react';
-import type { CreateMaterialInput, MaterialDto } from '@xuanxue/shared';
-import { MATERIALS_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import type { CreateMaterialInput } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import {
   initialMaterialFormState,
@@ -64,7 +63,7 @@ export function useNewLessonMaterialForm(
         ...toCreateInput(state),
         lessonIds: [lessonId],
       };
-      await apiFetch<MaterialDto>(MATERIALS_PATH, { method: 'POST', body: input });
+      await apiRoute('POST /materials', { body: input });
       return true;
     } catch (err) {
       setServerError(errorFrom(err, SAVE_ERROR_MESSAGE));

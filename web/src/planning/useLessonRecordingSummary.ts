@@ -4,16 +4,14 @@
 // загрузки этого числа не должен ломать экран баннером — PlanningScreen.tsx
 // просто не показывает строку, когда summary ещё null (см. комментарий там).
 import type { LessonRecordingSummaryDto } from '@xuanxue/shared';
-import { LESSON_RECORDING_SUMMARY_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить число занятий с записью.';
 
 export function useLessonRecordingSummary(): LessonRecordingSummaryDto | null {
   const { data } = useAbortableFetch(
-    (signal) =>
-      apiFetch<LessonRecordingSummaryDto>(LESSON_RECORDING_SUMMARY_PATH, { signal }),
+    (signal) => apiRoute('GET /lessons/recording-summary', { signal }),
     LOAD_ERROR_MESSAGE,
   );
   return data;

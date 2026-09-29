@@ -4,7 +4,8 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { MyExamDto } from '@xuanxue/shared';
-import { MY_EXAMS_PATH, examSeenPath } from '../api/apiPaths';
+import { MY_EXAMS_PATH } from '../api/apiPaths';
+import { examSeenPath } from '../test-support/examSeenPath';
 import type * as HttpModule from '../api/http';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import {

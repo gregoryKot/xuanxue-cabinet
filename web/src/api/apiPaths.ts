@@ -6,9 +6,10 @@ import {
   LIST_LIMIT_DEFAULT,
   LIST_LIMIT_MAX,
   type ExamItemStatus,
+  type ListMaterialsQuery,
   type MaterialKind,
 } from '@xuanxue/shared';
-import { planningWindow } from '../planning/planningWindow';
+import { planningLessonsQuery } from '../planning/planningWindow';
 import { nextLessonsQuery } from '../templates/nextLessonsWindow';
 import { apiRoutePath } from './apiRoute';
 import {
@@ -28,19 +29,21 @@ export const CLASSES_LIST_PATH = apiRoutePath('GET /classes', {
 });
 
 export const LESSONS_PATH = '/lessons';
-/** Число раздела «Занятия» (docs/PLAN.md §14, слой 3.5) — по образцу
- * EXAM_ITEM_STATS_SUMMARY_PATH. */
-export const LESSON_RECORDING_SUMMARY_PATH = `${LESSONS_PATH}/recording-summary`;
+/** Число раздела «Занятия» (docs/PLAN.md §14, слой 3.5) — строка пути для
+ * предзагрузки, хук зовёт `apiRoute` по ключу (PLAN §17.1). */
+export const LESSON_RECORDING_SUMMARY_PATH = apiRoutePath(
+  'GET /lessons/recording-summary',
+);
 
 /** Окно «Планирования» — от начала текущей недели (planningWindow.ts).
- * Предзагрузка и хук экрана (useLessons.ts) вызывают её с разницей в секунды
+ * Предзагрузка и хук экрана (useLessons.ts, тот же planningLessonsQuery)
+ * вызывают её с разницей в секунды
  * и почти всегда получают одну и ту же строку; разойтись они могут только в
  * момент перехода недели (полночь воскресенья по браузеру) — тогда хук
  * просто не находит готовый промис в кэше (ключ не совпал) и сам идёт в
  * сеть, как без предзагрузки. */
 export function lessonsListPath(now?: Date): string {
-  const { from, to } = planningWindow(now);
-  return `${LESSONS_PATH}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=${LIST_LIMIT_MAX}`;
+  return apiRoutePath('GET /lessons', { query: planningLessonsQuery(now) });
 }
 
 export const EXAMS_PATH = '/exams';
@@ -82,30 +85,29 @@ export function channelsListPath(activeOnly: boolean): string {
 
 export const MATERIALS_PATH = '/materials';
 
-/** Пустой вид или тег — «Все» (тот же приём, что у examItemsListPath). Без
- * аргумента тега — тот же путь, что даёт список для подсказки тегов
- * (useTagOptions.ts): рубрикация школы не зависит от фильтра экрана. */
-export function materialsListPath(kind: MaterialKind | '', tag: string = ''): string {
-  const params = [`limit=${LIST_LIMIT_MAX}`];
-  if (kind) params.push(`kind=${kind}`);
-  if (tag) params.push(`tag=${encodeURIComponent(tag)}`);
-  return `${MATERIALS_PATH}?${params.join('&')}`;
+/** Пустой вид или тег — «Все» (тот же приём, что у examItemsListPath); пустое
+ * поле в query не попадает. Порядок полей — ключ кэша предзагрузки. Без тега —
+ * тот же список, что берёт подсказка тегов (useTagOptions.ts): рубрикация
+ * школы не зависит от фильтра экрана. */
+export function materialsListQuery(
+  kind: MaterialKind | '',
+  tag: string,
+): ListMaterialsQuery {
+  return { limit: LIST_LIMIT_MAX, kind: kind || undefined, tag: tag || undefined };
 }
 
-/** Файл материала в R2 (ADR-0057, слой 3.10) — один адрес у скачивания,
- * замены и удаления (`GET`/`POST`/`DELETE /materials/:id/file`), путь
- * относительный для `apiFetch`. Прямая ссылка на скачивание (`<a href>`,
- * MaterialFileField.tsx) собирает `/api` вручную: сервер отвечает 302 на
- * подписанный адрес в другом домене, открывает его переходом сам браузер —
- * тот же приём, что у examImageSrc выше. */
+export function materialsListPath(kind: MaterialKind | '', tag: string = ''): string {
+  return apiRoutePath('GET /materials', { query: materialsListQuery(kind, tag) });
+}
+
+/** Файл материала в R2 (ADR-0057, слой 3.10) — адрес для `<a href>`
+ * (MaterialFileField.tsx, StudentMaterialCardActions.tsx), `/api` браузеру
+ * добавляют вручную: сервер отвечает 302 на подписанный адрес в другом
+ * домене, открывает его переходом сам браузер — тот же приём, что у
+ * examImageSrc выше. Загрузка и удаление идут по карте (`POST`/`DELETE
+ * /materials/:id/file`). */
 export function materialFilePath(materialId: string): string {
   return `${MATERIALS_PATH}/${materialId}/file`;
-}
-
-/** Адрес загрузки/замены файла — имя в query, сервер берёт его оттуда, не
- * из тела: тело POST — сырые байты файла, без обёртки JSON (ADR-0057). */
-export function materialFileUploadPath(materialId: string, name: string): string {
-  return `${materialFilePath(materialId)}?name=${encodeURIComponent(name)}`;
 }
 
 /** Строка пути — для таблицы предзагрузки: ключ кэша prefetchCache.ts должен
@@ -137,23 +139,13 @@ export const NOTIFICATIONS_FEED_PATH = apiRoutePath('GET /me/inbox', {
 export const TEACHERS_PATH = apiRoutePath('GET /users/teachers');
 export const INVITE_LINK_PATH = apiRoutePath('GET /users/invite-link');
 
-export const MY_LESSONS_PATH = '/me/lessons';
-/** Архив прошедших занятий ученика (docs/PLAN.md §14 слой 3.3) — тот же
- * ресурс назад по времени, отдельный путь с суффиксом `archive`. */
-export const MY_LESSONS_ARCHIVE_PATH = `${MY_LESSONS_PATH}/archive`;
-export const MY_EXAMS_PATH = '/me/exams';
-/** Отметка «ученик открыл карточку задания» (ADR-0129) — гасит пилюлю у
- * колокольчика раньше старта попытки. */
-export function examSeenPath(examId: string): string {
-  return `${MY_EXAMS_PATH}/${examId}/seen`;
-}
-/** Библиотека материалов глазами ученика (docs/PLAN.md §14 слой 3.2) —
- * без своего лимита: сервер сам берёт MY_MATERIALS_LIMIT_DEFAULT, тот же
- * приём, что у MY_LESSONS_ARCHIVE_PATH. */
-export const MY_MATERIALS_PATH = '/me/materials';
-
-/** Путь одной записи коллекции — для мест, которых ещё нет в карте маршрутов
- * (PLAN §17.1): редакторы `hooks/useEntityEditor.ts` ходят по ключам карты. */
-export function entityPath(collectionPath: string, id: string): string {
-  return `${collectionPath}/${id}`;
-}
+// Экраны ученика: строки путей — для таблицы предзагрузки, хуки зовут
+// `apiRoute` по ключу (PLAN §17.1). Лимит не передаётся — сервер сам берёт
+// свой MY_*_LIMIT_DEFAULT.
+export const MY_LESSONS_PATH = apiRoutePath('GET /me/lessons');
+/** Архив прошедших занятий (docs/PLAN.md §14 слой 3.3) — тот же ресурс назад
+ * по времени. */
+export const MY_LESSONS_ARCHIVE_PATH = apiRoutePath('GET /me/lessons/archive');
+export const MY_EXAMS_PATH = apiRoutePath('GET /me/exams');
+/** Библиотека материалов глазами ученика (docs/PLAN.md §14 слой 3.2). */
+export const MY_MATERIALS_PATH = apiRoutePath('GET /me/materials');

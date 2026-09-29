@@ -16,8 +16,8 @@ import {
   EXAM_ATTEMPTS_ROUTE_KEYS,
   type ExamAttemptsRoutes,
 } from './exam-attempts-routes';
-import { EXAM_ITEMS_ROUTE_KEYS, type ExamItemsRoutes } from './exam-items-routes';
 import { EXAM_IMAGES_ROUTE_KEYS, type ExamImagesRoutes } from './exam-images-routes';
+import { EXAM_ITEMS_ROUTE_KEYS, type ExamItemsRoutes } from './exam-items-routes';
 import { EXAM_VIDEOS_ROUTE_KEYS, type ExamVideosRoutes } from './exam-videos-routes';
 import { EXAMS_ROUTE_KEYS, type ExamsRoutes } from './exams-routes';
 import { GRADING_ROUTE_KEYS, type GradingRoutes } from './grading-routes';
@@ -25,6 +25,8 @@ import { INBOX_ROUTE_KEYS, type InboxRoutes } from './inbox-routes';
 import { LESSONS_ROUTE_KEYS, type LessonsRoutes } from './lessons-routes';
 import { MATERIALS_ROUTE_KEYS, type MaterialsRoutes } from './materials-routes';
 import { ME_ROUTE_KEYS, type MeRoutes } from './me-routes';
+import { MY_EXAMS_ROUTE_KEYS, type MyExamsRoutes } from './my-exams-routes';
+import { MY_LESSONS_ROUTE_KEYS, type MyLessonsRoutes } from './my-lessons-routes';
 import {
   NOTIFICATIONS_ROUTE_KEYS,
   type NotificationsRoutes,
@@ -51,6 +53,8 @@ export type ApiRouteMap = AnalyticsRoutes &
   LessonsRoutes &
   MaterialsRoutes &
   MeRoutes &
+  MyExamsRoutes &
+  MyLessonsRoutes &
   NotificationsRoutes &
   PaymentsRoutes &
   SettingsRoutes &
@@ -75,6 +79,8 @@ export const API_ROUTE_KEY_SET: Record<keyof ApiRouteMap, true> = {
   ...LESSONS_ROUTE_KEYS,
   ...MATERIALS_ROUTE_KEYS,
   ...ME_ROUTE_KEYS,
+  ...MY_EXAMS_ROUTE_KEYS,
+  ...MY_LESSONS_ROUTE_KEYS,
   ...NOTIFICATIONS_ROUTE_KEYS,
   ...PAYMENTS_ROUTE_KEYS,
   ...SETTINGS_ROUTE_KEYS,

@@ -5,8 +5,8 @@
 // «Одна механика — один компонент»); тест этой гонки —
 // hooks/useAbortableFetch.test.ts, здесь незачем повторять.
 import type { TagSummaryDto } from '@xuanxue/shared';
-import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
-import { apiFetch } from '../api/http';
+import { TAGS_LIST_QUERY } from '../api/tagsApiPaths';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить теги. Попробуйте ещё раз.';
@@ -20,7 +20,7 @@ export interface UseTagsSummaryResult {
 
 export function useTagsSummary(): UseTagsSummaryResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<TagSummaryDto[]>(TAGS_LIST_PATH, { signal }),
+    (signal) => apiRoute('GET /tags', { query: TAGS_LIST_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
 
