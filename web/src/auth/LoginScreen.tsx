@@ -6,31 +6,15 @@
 // JoinScreen.tsx, ADR-0030). Уже вошедшего уводит на сохранённый адрес или
 // домашний экран, не показывая эту форму (аудит L2 — раньше жёстко на
 // /schedule, мимо экрана, с которого человек пришёл).
-import type { CSSProperties } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { EntryColumn } from '../components/EntryColumn';
-import {
-  noteStyle,
-  screenExplanationStyle,
-  textLinkLineStyle,
-} from '../components/screenLayout';
+import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
+import { PrivacyLink } from '../privacy/PrivacyLink';
 import { OtherLoginMethods } from './OtherLoginMethods';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
 import { useAuthConfig } from './useAuthConfig';
 import { postLoginPath } from './returnTo';
-
-// Тише самого входа (noteStyle) — юридическая ссылка внизу, не второе
-// действие экрана (docs/adr/0031, «одно очевидное главное действие»); линия
-// снизу — та же примета кликабельности, что у остальных текстовых ссылок
-// кабинета (textLinkLineStyle, ADR-0098), только некрупная.
-const privacyLinkStyle: CSSProperties = {
-  ...noteStyle,
-  ...textLinkLineStyle,
-  alignSelf: 'flex-start',
-  color: 'inherit',
-  textDecoration: 'none',
-};
 
 // Единственное место, где кабинет вообще упоминает ссылку-приглашение
 // (ADR-0030) до входа: и Telegram, и почта всё равно упрутся в неё дальше
@@ -73,9 +57,7 @@ export default function LoginScreen() {
       {/* Обязательное поле консоли Google Cloud для OAuth-приложения не в
           режиме тестирования (ADR-0145) — публичная ссылка на политику
           конфиденциальности, доступная без входа. */}
-      <Link to="/privacy" style={privacyLinkStyle}>
-        Политика конфиденциальности
-      </Link>
+      <PrivacyLink>Политика конфиденциальности</PrivacyLink>
     </EntryColumn>
   );
 }

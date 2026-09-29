@@ -21,7 +21,11 @@
 import type { DateTime } from 'luxon';
 import type { Context } from 'telegraf';
 import type { User } from 'telegraf/types';
-import { ACCESS_MESSAGE, INVITE_LINK_INVALID_MESSAGE } from '@xuanxue/shared';
+import {
+  ACCESS_MESSAGE,
+  INVITE_LINK_INVALID_MESSAGE,
+  PRIVACY_PATH,
+} from '@xuanxue/shared';
 import { fullName } from '../../auth/telegram-auth.service';
 import type { ChannelConfigService } from '../../channels/channel-config.service';
 import { ForbiddenError } from '../../common/errors';
@@ -29,13 +33,18 @@ import type { LoginIdentityService } from '../../users/login-identity.service';
 import type { UserLean } from '../../users/users.service';
 import { welcomeConnectedUser } from './start-welcome';
 
-// Ссылка на кабинет — часть одного приветственного сообщения
-// (welcomeConnectedUser), не отдельная реплика перед ним (отзыв владельца
-// 2026-09-22: несколько сообщений подряд об одном событии — шум).
+// Ссылка на кабинет и на политику конфиденциальности — часть одного
+// приветственного сообщения (welcomeConnectedUser), не отдельные реплики перед
+// ним (отзыв владельца 2026-09-22: несколько сообщений подряд об одном
+// событии — шум). Политика — здесь, потому что бот первым просит у человека
+// данные (имя из Telegram) при присоединении по ссылке: статья 11 Закона о
+// защите частной жизни требует показать её сразу (ADR-0155).
 function joinSuccessIntro(publicUrl: string | undefined): string {
-  return publicUrl
-    ? `Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: ${publicUrl}`
-    : 'Вы в кабинете школы Сюань-Сюэ.';
+  if (!publicUrl) return 'Вы в кабинете школы Сюань-Сюэ.';
+  return [
+    `Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: ${publicUrl}`,
+    `Какие данные мы храним и как их удалить: ${publicUrl}${PRIVACY_PATH}`,
+  ].join('\n');
 }
 
 export interface JoinDeepLinkDeps {

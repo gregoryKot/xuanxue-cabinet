@@ -93,6 +93,9 @@ describe('Telegram webhook (e2e) — личный чат по ссылке-пр�
     expect(toStudent).toHaveLength(1);
     expect(toStudent[0]?.text).toMatch(/^Вы в кабинете школы Сюань-Сюэ/);
     expect(toStudent[0]?.text).toContain('Экзамены можно сдать');
+    // Политика конфиденциальности — в том же приветствии (статья 11 Закона о
+    // защите частной жизни, ADR-0155): бот первым просит данные у нового человека.
+    expect(toStudent[0]?.text).toContain('http://localhost:3000/privacy');
     expect(toStudent[0]?.replyMarkup).toBeDefined();
   });
 

@@ -505,7 +505,10 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   экрана маскируются (`mask_all_text`, `session_recording.maskAllInputs`,
   `maskTextSelector: '*'`), картинки/видео/iframe не записываются вовсе
   (`blockSelector`) — скриншоты оплат и видео ответов ученика PostHog не видит.
-  Выключается снятием `POSTHOG_KEY` в Railway.
+  Выключается снятием `POSTHOG_KEY` в Railway. Каждого такого подрядчика называет
+  страница `/privacy` (ADR-0155): список `PRIVACY_RECIPIENTS`, гейт
+  `privacy-recipients.spec.ts` требует решения для каждой переменной из
+  `.env.example` и каждого внешнего источника CSP.
 
 ## 8. Анти-паттерны — так делать нельзя
 
@@ -552,6 +555,9 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
 - [ ] Новая коллекция — чеклист из CLAUDE.md (реестр владения и каскады,
       шифрование, срок хранения, индексы).
 - [ ] Новый внешний источник — в `csp.ts` с объяснением.
+- [ ] Новая служба, куда уходят данные людей (переменная окружения, источник CSP,
+      шаг workflow), — строка в `PRIVACY_RECIPIENTS` (`shared/src/privacy.ts`) и
+      правка текста `/privacy`; гейт `privacy-recipients.spec.ts` (ADR-0155).
 - [ ] Ничего секретного в диффе и в логах.
 - [ ] `npm audit` чистый (или уязвимость внесена в `scripts/audit-allowlist.json`
       с причиной и сроком), gitleaks зелёный.
