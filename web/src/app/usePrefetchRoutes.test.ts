@@ -92,7 +92,7 @@ describe('usePrefetchRoutes', () => {
     expect(loadStudentLessons).not.toHaveBeenCalled();
   });
 
-  // ADR-0150: учителю оплаты закрыты — чанк, который он не откроет, не греем.
+  // ADR-0151: учителю оплаты закрыты — чанк, который он не откроет, не греем.
   it('учитель без права на оплаты — чанк «Оплат» не греет', async () => {
     stubIdleCallback();
 

@@ -51,7 +51,7 @@ function renderGuarded(me: MeDto) {
   );
 }
 
-describe('RequirePaymentsAccess (ADR-0150)', () => {
+describe('RequirePaymentsAccess (ADR-0151)', () => {
   it('бухгалтер — рендерит вложенный маршрут', async () => {
     renderGuarded(makeMe(['accountant']));
 

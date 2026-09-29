@@ -404,7 +404,7 @@ export const ROUTE_MODULES = {
     path: PAYMENTS_SCREEN_PATH,
     load: () => import('../payments/PaymentsScreen'),
     warm: true,
-    // Первый запрос usePayments (ADR-0150): месяц выбирает сервер.
+    // Первый запрос usePayments (ADR-0151): месяц выбирает сервер.
     prefetch: () => [paymentsListPath(null)],
   },
   // Журнал сбоев (ADR-0132) — только admin (RequireDevErrorsAccess.tsx), вход

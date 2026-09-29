@@ -9,7 +9,7 @@
 // подмены StudentScreen. Чужой маршрут (штата) ведёт на свой корень
 // редиректом, не подменой содержимого.
 //
-// Бухгалтер (роль accountant без ролей штата, ADR-0150) — третья роль по
+// Бухгалтер (роль accountant без ролей штата, ADR-0151) — третья роль по
 // экранам: у него один свой маршрут «Оплаты» и он же корень после входа.
 // Админ видит «Оплаты» подэкраном «Учеников», учитель их не видит вовсе.
 //
@@ -48,7 +48,7 @@ export function isTeacher(me: MeDto | null): boolean {
   return me.roles.some((role) => TEACHER_ROLES.has(role));
 }
 
-/** Оплаты видят бухгалтер и админ (ADR-0149/0150); учитель — нет: сервер
+/** Оплаты видят бухгалтер и админ (ADR-0149/0151); учитель — нет: сервер
  * ответил бы ему 403 (SECURITY §3), а гвард RequirePaymentsAccess уводит его
  * на свой корень раньше. */
 export function canSeePayments(me: MeDto | null): boolean {
@@ -57,7 +57,7 @@ export function canSeePayments(me: MeDto | null): boolean {
 
 /** Бухгалтер без ролей штата: ему панель из одного пункта «Оплаты», а не
  * «Задания»/«Занятия» ученика. Бухгалтер, он же учитель или админ, — штат:
- * у него меню штата, «Оплаты» админа лежат внутри «Учеников» (ADR-0150). */
+ * у него меню штата, «Оплаты» админа лежат внутри «Учеников» (ADR-0151). */
 export function isAccountant(me: MeDto | null): boolean {
   return hasRole(me, 'accountant') && !isTeacher(me);
 }
@@ -66,7 +66,7 @@ export function isAccountant(me: MeDto | null): boolean {
  * cabinetRoutes.tsx). Решение владельца: у ученика первый экран — «Задания»
  * (экзамены), «Занятия» — второй; у штата с 2026-09-27 первый экран —
  * «Экзамены», «Занятия» ушли на второй пункт меню (ADR-0138); у бухгалтера —
- * «Оплаты», единственный его экран (ADR-0150). */
+ * «Оплаты», единственный его экран (ADR-0151). */
 export function rootPathFor(me: MeDto | null): string {
   if (isTeacher(me)) return STAFF_ROOT_PATH;
   return isAccountant(me) ? PAYMENTS_SCREEN_PATH : STUDENT_TASKS_PATH;
@@ -81,7 +81,7 @@ export function rootPathFor(me: MeDto | null): string {
  * редиректом на rootPathFor(me) (ADR-0025, ТЗ student-exams.md). */
 export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
   // «Оплаты» решает роль оплат, а не «штат или нет»: учитель штата их не
-  // видит, бухгалтер без ролей штата — видит (ADR-0150).
+  // видит, бухгалтер без ролей штата — видит (ADR-0151).
   if (pathname === PAYMENTS_SCREEN_PATH) return canSeePayments(me);
   return (
     isTeacher(me) ||

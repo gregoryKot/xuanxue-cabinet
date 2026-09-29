@@ -60,7 +60,7 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     to: '/people',
     label: 'Ученики',
     roles: ['admin', 'teacher'],
-    // «Оплаты» — подэкран «Учеников» для админа (ADR-0150); для учителя
+    // «Оплаты» — подэкран «Учеников» для админа (ADR-0151); для учителя
     // маршрут закрыт гвардом, подсвечивать ему нечего.
     childPaths: [PAYMENTS_SCREEN_PATH],
     icon: 'people',
@@ -95,7 +95,7 @@ export const STUDENT_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/** Панель бухгалтера — один пункт (ADR-0150). */
+/** Панель бухгалтера — один пункт (ADR-0151). */
 export const ACCOUNTANT_NAV_ITEMS: NavItem[] = [
   { to: PAYMENTS_SCREEN_PATH, label: 'Оплаты', childPaths: [], icon: 'payments' },
 ];

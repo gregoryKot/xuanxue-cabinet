@@ -147,7 +147,7 @@ export const cabinetRoutes = (
     <Route element={<RequirePeopleAccess />}>
       <Route path={ROUTE_MODULES.people.path} element={<PeopleScreen />} />
     </Route>
-    {/* «Оплаты» (ADR-0150): учителя гвард уводит на его корень, не на 403. */}
+    {/* «Оплаты» (ADR-0151): учителя гвард уводит на его корень, не на 403. */}
     <Route element={<RequirePaymentsAccess />}>
       <Route path={ROUTE_MODULES.payments.path} element={<PaymentsScreen />} />
     </Route>

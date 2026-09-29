@@ -68,7 +68,7 @@ describe('PeopleScreen — учитель', () => {
     );
   });
 
-  // ADR-0150: оплаты видят бухгалтер и админ — учителю входа в них нет.
+  // ADR-0151: оплаты видят бухгалтер и админ — учителю входа в них нет.
   it('кнопки «Оплаты» нет: учителю этот экран закрыт', async () => {
     mockedApiFetch.mockImplementation((path: string) => {
       if (path === '/users/invite-link') return Promise.resolve({ url: null });

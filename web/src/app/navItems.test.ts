@@ -35,7 +35,7 @@ describe('navItemsFor', () => {
     expect(navItemsFor(makeMe({ roles: [] }))).toBe(STUDENT_NAV_ITEMS);
   });
 
-  it('бухгалтер без ролей штата — ACCOUNTANT_NAV_ITEMS (ADR-0150)', () => {
+  it('бухгалтер без ролей штата — ACCOUNTANT_NAV_ITEMS (ADR-0151)', () => {
     expect(navItemsFor(makeMe({ roles: ['accountant'] }))).toBe(ACCOUNTANT_NAV_ITEMS);
   });
 
@@ -78,7 +78,7 @@ describe('activeSectionPath — список штата', () => {
     expect(activeSectionPath('/materials/tags', STAFF_NAV_ITEMS)).toBe('/materials');
   });
 
-  // ADR-0150: шестой пункт не помещается на 360 px (ADR-0055) — «Оплаты»
+  // ADR-0151: шестой пункт не помещается на 360 px (ADR-0055) — «Оплаты»
   // подсвечивают «Учеников».
   it('/payments — подэкран «Учеников»', () => {
     expect(activeSectionPath('/payments', STAFF_NAV_ITEMS)).toBe('/people');

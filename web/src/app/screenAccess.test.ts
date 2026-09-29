@@ -79,7 +79,7 @@ describe('rootPathFor', () => {
     expect(rootPathFor(makeMe({ roles: ['admin'] }))).toBe('/exams');
   });
 
-  it('бухгалтер без ролей штата — «Оплаты» (ADR-0150)', () => {
+  it('бухгалтер без ролей штата — «Оплаты» (ADR-0151)', () => {
     expect(rootPathFor(makeMe({ roles: ['accountant'] }))).toBe('/payments');
   });
 
@@ -102,7 +102,7 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe(), '/exams')).toBe(true);
   });
 
-  // ADR-0150: «Оплаты» открыты тем, кто их видит; учитель штата — нет, хотя
+  // ADR-0151: «Оплаты» открыты тем, кто их видит; учитель штата — нет, хотя
   // остальные маршруты штата ему открыты.
   it('«/payments» — бухгалтеру и админу true, учителю и ученику false', () => {
     expect(canSeeRoute(makeMe({ roles: ['accountant'] }), '/payments')).toBe(true);
