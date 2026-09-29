@@ -19,7 +19,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
-import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
+import { stubViewerTimeZone, TEST_VIEWER_TZ } from '../test-support/viewerTimeZone';
 import { PaymentReminderSection } from './PaymentReminderSection';
 import TemplatesScreen from './TemplatesScreen';
 import { useSettings } from './useSettings';
@@ -204,6 +204,49 @@ describe('PaymentReminderSection', () => {
 
     // stubViewerTimeZone задаёт Europe/Moscow: пояс школы другой.
     expect(await screen.findByText('Asia/Jerusalem')).toBeInTheDocument();
+  });
+
+  it('настройки ещё не пришли — форма стоит на значениях по умолчанию, сохранять нечего', () => {
+    render(<PaymentReminderSection settings={null} update={vi.fn()} />);
+
+    expect(screen.getByLabelText('Напоминать об оплате')).not.toBeChecked();
+    expect(screen.getByLabelText('День месяца')).toHaveValue(
+      String(DEFAULT_PAYMENT_REMINDER.dayOfMonth),
+    );
+    expect(screen.queryByText(/По часам школы/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Сохранить напоминание' })).toBeDisabled();
+  });
+
+  it('пояс школы совпадает с часами зрителя — подписи с поясом нет', async () => {
+    mockApiByPath({
+      '/settings': makeSettings({}, '2026-01-01T00:00:00Z', TEST_VIEWER_TZ),
+    });
+    render(<Harness />);
+
+    await screen.findByRole('heading', { name: 'Оплаты' });
+    expect(screen.queryByText(/По часам школы/)).not.toBeInTheDocument();
+  });
+
+  it('новое время включает «Сохранить напоминание» и уходит в PATCH', async () => {
+    mockApiByPath({ '/settings': makeSettings() });
+    render(<Harness />);
+
+    fireEvent.change(await screen.findByLabelText('Время'), {
+      target: { value: '09:30' },
+    });
+    const save = screen.getByRole('button', { name: 'Сохранить напоминание' });
+    expect(save).toBeEnabled();
+
+    mockApiByPath({
+      '/settings': makeSettings({ time: '09:30' }, '2026-01-02T00:00:00Z'),
+    });
+    fireEvent.click(save);
+
+    await waitFor(() => expect(patchCalls()).toHaveLength(1));
+    expect(patchCalls()[0]).toEqual([
+      '/settings',
+      expect.objectContaining({ body: { paymentReminder: { time: '09:30' } } }),
+    ]);
   });
 });
 
