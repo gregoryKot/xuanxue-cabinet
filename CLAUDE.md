@@ -171,13 +171,6 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-coverage-ratchet.mjs` — покрытие api не падает, жёсткий пол на `api/src/utils`.
 - `check-robot-phrases.mjs` — канцелярит и «это не X, это Y» в user-facing тексте.
 - `check-route-collisions.mjs` — один маршрут, один контроллер.
-- `check-string-api-fetch-ratchet.mjs` — вызовов строкового `apiFetch` в web не
-  прибавляется: новый код зовёт `apiRoute(ключ)` по карте `shared/src/api-routes.ts`,
-  контроллер ставит `@ApiRoute(ключ)`, сверку карты с Nest держит
-  `api/test/api-routes.e2e-spec.ts` (PLAN §17.1, ADR-0148). Коллекцию страницы-редактора
-  (`useEntityEditor`) пропускает только тип `EditorCollection`: в карте нужны `GET /:id`,
-  `POST`, `PATCH`, `DELETE`, а обработчик под каждый требует e2e-сверка (2026-09-27,
-  «Cannot GET /api/materials/:id»).
 - `check-card-list-gap.mjs` — список карточек объявляет промежуток между строками
   (`gap` или обёртка «одной карточкой»), иначе плашки слипаются (ADR-0088).
 - `check-write-then-reload.mjs` — новых мест, где `apiFetch` с мутирующим методом
@@ -350,7 +343,11 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 
 ## Фронтенд
 
-- **Сеть** — только `web/src/api/http.ts`. **Ошибки рендера** — `ErrorBoundary` в
+- **Сеть** — только `web/src/api/http.ts`; запрос к API — `apiRoute(ключ)` по карте
+  маршрутов `shared/src/*-routes.ts`, контроллер ставит `@ApiRoute(ключ)` (ADR-0148).
+  Строковый `apiFetch` прикладному коду запрещён eslint `no-restricted-imports`, сверку
+  карты с Nest держит `api/test/api-routes.e2e-spec.ts`, коллекцию страницы-редактора
+  пропускает только тип `EditorCollection` (2026-09-27, «Cannot GET /api/materials/:id»). **Ошибки рендера** — `ErrorBoundary` в
   корне. **Любой `position: fixed; inset: 0`** (лист, оверлей, экран упражнения) —
   через `useHistorySheet(onClose)`, все кнопки «Назад/Закрыть» вызывают `goBack()`:
   иначе «Назад» браузера уводит из приложения. `history.pushState` напрямую запрещён.
