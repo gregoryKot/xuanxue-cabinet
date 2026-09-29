@@ -7,6 +7,7 @@ import type { Connection, Model } from 'mongoose';
 import {
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_REMINDER,
   DEFAULT_PREVIEW_MINUTES,
   DEFAULT_TEMPLATES,
 } from '@xuanxue/shared';
@@ -324,6 +325,7 @@ describe('SettingsService.get — гонка E11000 (фейк модели)', ()
       previewMinutes: DEFAULT_PREVIEW_MINUTES, // фейковый doc без поля — дефолт
       lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES, // фейковый doc без поля — дефолт
       newcomerContact: DEFAULT_NEWCOMER_CONTACT, // фейковый doc без поля — дефолт
+      paymentReminder: DEFAULT_PAYMENT_REMINDER, // фейковый doc без поля — дефолт
       updatedAt: '2026-09-06T18:00:00.000Z',
     });
     expect(findByIdCalls).toBe(2);

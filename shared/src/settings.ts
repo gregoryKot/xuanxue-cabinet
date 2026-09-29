@@ -1,7 +1,40 @@
 // DTO и константы API настроек школы (`/settings`) — шаблоны постов
 // (docs/PLAN.md §6 «Шаблоны», ADR-0011). Общий контракт api и web
 // (CLAUDE.md, раздел «Слои»).
-import type { TemplateKind } from './default-templates';
+import {
+  DEFAULT_PAYMENT_REMINDER_TEMPLATE,
+  type TemplateKind,
+} from './default-templates';
+
+/** Напоминание ученику об оплате абонемента (ADR-0051, PLAN §15 п. 2.5) —
+ * настройка школы, живёт в БД и на экране «Шаблоны» (CLAUDE.md «Кабинет
+ * учителя: всё настраивается в интерфейсе»). */
+export interface PaymentReminderSettings {
+  enabled: boolean;
+  /** 1–31; в месяце, где такого дня нет, — последний день месяца (ADR-0051). */
+  dayOfMonth: number;
+  /** 'HH:mm' в поясе школы (settings.tz), формат RULE_TIME_RE из domain.ts. */
+  time: string;
+  /** Шаблон с подстановками `PAYMENT_REMINDER_PLACEHOLDERS` (templates.ts). */
+  template: string;
+}
+
+/** Значения напоминания для базы без поля `paymentReminder` (старый документ
+ * школы) — не источник правды, тот же приём, что у `DEFAULT_PREVIEW_MINUTES`
+ * (domain.ts). Лежит здесь, а не рядом с ними: значению нужны тип выше и
+ * шаблон из default-templates.ts, который сам импортирует domain.ts, — в
+ * domain.ts получился бы цикл импортов. */
+export const DEFAULT_PAYMENT_REMINDER: PaymentReminderSettings = {
+  // Выключено, пока экраны «Оплаты» (слой 2.3) и ученика (2.4) не сделаны:
+  // отметить оплату бухгалтеру негде, и включённое по умолчанию напоминание
+  // в первый же день месяца ушло бы всем ученикам школы. Включает школа сама
+  // на экране «Шаблоны», выбрав день и время.
+  enabled: false,
+  // 5-е число и 10:00 — стартовое значение формы, школа меняет.
+  dayOfMonth: 5,
+  time: '10:00',
+  template: DEFAULT_PAYMENT_REMINDER_TEMPLATE,
+};
 
 export interface SettingsDto {
   templates: Record<TemplateKind, string>;
@@ -25,6 +58,9 @@ export interface SettingsDto {
    * (ADR-0115). Старая база без поля отдаёт `DEFAULT_NEWCOMER_CONTACT`
    * (domain.ts), тем же приёмом, что `previewMinutes`. */
   newcomerContact: string;
+  /** Старая база без поля отдаёт `DEFAULT_PAYMENT_REMINDER` целиком, а база
+   * с частично заполненным подобъектом — недостающие поля из него же. */
+  paymentReminder: PaymentReminderSettings;
   updatedAt: string; // ISO UTC с Z
 }
 
@@ -51,6 +87,9 @@ export interface UpdateSettingsInput {
    * другим. Пустая строка не проходит валидацию, иначе бот оборвал бы фразу
    * «Напишите …» на полуслове. */
   newcomerContact?: string;
+  /** PATCH меняет только переданные поля подобъекта, остальные не трогает
+   * (как `templates` выше). Не nullable: «сбросить в ничто» смысла не имеет. */
+  paymentReminder?: Partial<PaymentReminderSettings>;
 }
 
 /** Единственное nullable-поле UpdateSettingsInput — источник правды для DTO
@@ -83,4 +122,6 @@ export const SETTINGS_LIMITS = {
   previewMinutesMax: 1440,
   lessonReminderMinutesMin: 5,
   lessonReminderMinutesMax: 1440,
+  paymentReminderDayMin: 1,
+  paymentReminderDayMax: 31,
 } as const;

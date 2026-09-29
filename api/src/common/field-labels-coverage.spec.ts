@@ -42,6 +42,7 @@ import { SubscribePushDto } from '../push/dto/subscribe-push.dto';
 import { UnsubscribePushDto } from '../push/dto/unsubscribe-push.dto';
 import { PreviewSettingsDto } from '../settings/dto/preview-settings.dto';
 import {
+  UpdatePaymentReminderDto,
   UpdateSettingsDto,
   UpdateTemplatesDto,
 } from '../settings/dto/update-settings.dto';
@@ -53,7 +54,7 @@ import { BulkDeleteDto } from './bulk-delete.dto';
 
 type DtoConstructor = new (...args: never[]) => object;
 
-// ScheduleRuleDto и UpdateTemplatesDto — не тела запросов сами по себе, а
+// ScheduleRuleDto, UpdateTemplatesDto и UpdatePaymentReminderDto — не тела запросов сами по себе, а
 // вложенные классы (`@ValidateNested() @Type(() => …)`): у class-validator
 // их метаданные лежат под собственным классом, наследование (как у
 // CreateClassDto/UpdateClassDto от ClassFieldsDto) их не подтягивает —
@@ -95,6 +96,7 @@ const DTO_CLASSES: DtoConstructor[] = [
   PreviewSettingsDto,
   UpdateSettingsDto,
   UpdateTemplatesDto,
+  UpdatePaymentReminderDto,
   ListUsersDto,
   SetNoTelegramDto,
   UpdateMyProfileDto,

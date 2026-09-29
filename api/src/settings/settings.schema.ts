@@ -20,6 +20,29 @@ class SettingsTemplatesSubdoc {
 }
 const SettingsTemplatesSchema = SchemaFactory.createForClass(SettingsTemplatesSubdoc);
 
+// Напоминание об оплате (ADR-0051). Подсхема, не Mixed: набор полей
+// постоянный. У полей нет ни `required`, ни `default`: старая база не имеет
+// подобъекта вовсе, а `$set` по точечному пути `paymentReminder.enabled`
+// создаёт его только с одним полем — недостающее подставляет маппер
+// (toSettingsDto) из DEFAULT_PAYMENT_REMINDER, а не Mongoose.
+@Schema({ _id: false })
+class SettingsPaymentReminderSubdoc {
+  @Prop({ type: Boolean })
+  enabled?: boolean;
+
+  @Prop({ type: Number })
+  dayOfMonth?: number;
+
+  @Prop({ type: String })
+  time?: string;
+
+  @Prop({ type: String })
+  template?: string;
+}
+const SettingsPaymentReminderSchema = SchemaFactory.createForClass(
+  SettingsPaymentReminderSubdoc,
+);
+
 @Schema({ timestamps: true, collection: 'settings', _id: false })
 export class SettingsRecord {
   @Prop({ type: String, required: true, default: SETTINGS_SCHOOL_ID })
@@ -56,6 +79,12 @@ export class SettingsRecord {
   // (DEFAULT_NEWCOMER_CONTACT) подставляется явно при чтении (toSettingsDto).
   @Prop({ type: String })
   newcomerContact?: string;
+
+  // Не required и без default по той же причине, что и previewMinutes:
+  // старая база без настройки не имеет подобъекта — дефолт
+  // (DEFAULT_PAYMENT_REMINDER) подставляется при чтении (toSettingsDto).
+  @Prop({ type: SettingsPaymentReminderSchema })
+  paymentReminder?: SettingsPaymentReminderSubdoc;
 }
 
 export const SettingsSchema = SchemaFactory.createForClass(SettingsRecord);
@@ -70,4 +99,8 @@ export const SETTINGS_FIELD_POLICY: FieldPolicy = {
   newcomerContact: plain(
     'текст публичный — бот называет этот контакт незнакомцу (ADR-0115)',
   ),
+  'paymentReminder.template': plain(
+    'текст пишет учитель, уходит ученику как есть — данных ученика в нём нет, они подставляются при отправке (ADR-0051)',
+  ),
+  'paymentReminder.time': plain('время суток «HH:mm» в поясе школы, нужно планировщику'),
 };
