@@ -91,7 +91,7 @@ export function formatAmountIls(amountMinor: number): string {
  * (ADR-0049: «не оплачен» — такой же ответ, как «оплачен», Маша должна
  * видеть молчащих). Байты и `file_id` скриншота в список не идут никогда —
  * только `screenshotKind`; байты кабинета — `GET /payments/:userId/:month/
- * screenshot` (ADR-0148). */
+ * screenshot` (ADR-0149). */
 export interface PaymentDto {
   userId: string;
   userName: string;
@@ -100,7 +100,7 @@ export interface PaymentDto {
   amountMinor?: number;
   confirmedAt?: string; // ISO UTC с Z
   /** Где снимок, а не только «есть ли»: `upload` — байты в кабинете, открываются
-   * по нажатию; `telegram` — у бухгалтера в чате с ботом (ADR-0148). */
+   * по нажатию; `telegram` — у бухгалтера в чате с ботом (ADR-0149). */
   screenshotKind?: PaymentScreenshotKind;
   reminderSentAt?: string; // ISO UTC с Z
 }

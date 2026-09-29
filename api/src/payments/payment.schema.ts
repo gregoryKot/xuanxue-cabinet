@@ -58,7 +58,7 @@ export class PaymentRecord {
 
   // Источник скриншота (ADR-0050) — бот или загрузка. Список живёт в shared:
   // экрану «Оплаты» нужно знать, где снимок (PaymentDto.screenshotKind,
-  // ADR-0148). Сам `screenshotKind` наружу идёт, `file_id` и байты — нет.
+  // ADR-0149). Сам `screenshotKind` наружу идёт, `file_id` и байты — нет.
   @Prop({ type: String, enum: PAYMENT_SCREENSHOT_KINDS, required: false })
   screenshotKind?: PaymentScreenshotKind;
 

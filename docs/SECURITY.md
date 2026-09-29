@@ -408,7 +408,7 @@ transform: true })`. Массивы — с `@ArrayMaxSize`. Строки — с 
   обычно человек) и `payment_screenshots.bytes` (снимок перевода — имя, счёт,
   сумма; расшифровывает на лету только маршрут снимка для бухгалтера и
   админа — `GET /api/payments/:userId/:month/screenshot`, ответ
-  `private, no-store`, ADR-0148). Два последних — двоичные поля, свои примитивы
+  `private, no-store`, ADR-0149). Два последних — двоичные поля, свои примитивы
   `encryptBytes`/`decryptBytes` в `utils/encryption-bytes.ts`, тем же ключом;
   гейт `encryption-coverage.spec.ts` их не видит (он смотрит `String`/`Mixed`),
   поэтому каждое такое поле перечислено в RUNBOOK §6.1 отдельной строкой.

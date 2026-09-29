@@ -43,7 +43,7 @@ export class PaymentsController {
     return this.paymentsService.listMonth(query, DateTime.utc());
   }
 
-  // Снимок из кабинета (ADR-0148); снимок бота здесь 404 с текстом «лежит в
+  // Снимок из кабинета (ADR-0149); снимок бота здесь 404 с текстом «лежит в
   // Telegram» — байтов у нас нет (ADR-0050).
   @Get(':userId/:month/screenshot')
   async screenshot(

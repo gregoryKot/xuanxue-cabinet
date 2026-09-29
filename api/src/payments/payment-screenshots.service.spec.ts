@@ -233,7 +233,7 @@ describe('PaymentScreenshotsService', () => {
     await expect(paymentModel.countDocuments({})).resolves.toBe(0);
   });
 
-  describe('load (штат открывает снимок из кабинета, ADR-0148)', () => {
+  describe('load (штат открывает снимок из кабинета, ADR-0149)', () => {
     it('upload → load: исходные байты и тип, не шифротекст', async () => {
       const userId = newUserId();
       await service.upload(PNG_BYTES, userId, '2026-09', NOW);
