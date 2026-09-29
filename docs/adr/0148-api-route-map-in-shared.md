@@ -41,11 +41,11 @@ ApiRouteBody<ключ>`/`ApiRouteQuery<ключ>`. e2e на настоящем A
 
 - Новый маршрут, который зовёт кабинет, приезжает записью в карте, вызовом
   `apiRoute` и `@ApiRoute` в контроллере.
-- Строковый `apiFetch` живёт, пока есть вызовы; их число держит храповик
-  `check-string-api-fetch-ratchet.mjs` — только вниз.
+- Строковый `apiFetch` прикладному коду запрещён eslint (`no-restricted-imports`);
+  на время переноса его держал храповик `check-string-api-fetch-ratchet.mjs`
+  (95 → 0, удалён с последним PR шага 3).
 - Путь для таблицы предзагрузки собирает `apiRoutePath` — тот же, что уйдёт
   в сеть, иначе ключ кэша `prefetchCache.ts` разойдётся.
-- Перенос остальных доменов — PLAN §17.1, шаг 2; последний PR удаляет
-  строковый `apiFetch`, храповик и `apiPaths.ts`. `check-editor-routes.mjs`
+- Перенос всех доменов сделан (PLAN §17.1, шаги 2–3). `check-editor-routes.mjs`
   удалён вместе с переносом редактора: коллекцию без `GET /коллекция/:id` в
   карте не пропускает тип `EditorCollection` (`web/src/hooks/useEntityEditor.ts`).

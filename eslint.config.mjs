@@ -56,6 +56,32 @@ const layerPattern = (group, message) => ({ group, message: `${message} — ${LA
 // оболочки ниже добавляет к ним свой: eslint не сливает правило из разных
 // блоков, последний подходящий перезаписывает его целиком — без этой
 // константы запреты слоёв в web/src/app/** молча перестали бы действовать.
+// Запрос к API — только `apiRoute(ключ)` по карте маршрутов (PLAN §17.1,
+// ADR-0148): путь, метод и типы берутся из записи, опечатку ловит tsc. Строка
+// пути в `apiFetch` не сверялась ни с чем — так кабинет ждал DTO, а приходил 204
+// (#345), и так открывалась страница на несуществующий маршрут (2026-09-27).
+// `apiFetch` остаётся транспортом под `apiRoute` и открыт только мостам ниже.
+const STRING_API_FETCH_PATTERN = {
+  group: ['**/api/http'],
+  importNames: ['apiFetch'],
+  message:
+    'Запрос к API — apiRoute(ключ) из web/src/api/apiRoute.ts: путь и типы из карты маршрутов (ADR-0148).',
+};
+// Кому строковый apiFetch можно: предзагрузка первого экрана кладёт промис в
+// кэш по готовой строке пути (её собрал apiRoutePath), тесты подменяют apiFetch
+// моком. Сам web/src/api импортирует './http' — шаблон его не задевает.
+const STRING_API_FETCH_BRIDGES = [
+  'web/src/app/prefetchFirstScreen.ts',
+  'web/src/test-support/**/*.ts',
+  'web/src/**/*.test.{ts,tsx}',
+];
+function withoutStringApiFetch(restricted) {
+  return {
+    ...restricted,
+    patterns: restricted.patterns.filter((p) => p !== STRING_API_FETCH_PATTERN),
+  };
+}
+
 const WEB_RESTRICTED_IMPORTS = {
   paths: [
     ...DATE_LIBRARY_PATHS,
@@ -67,6 +93,7 @@ const WEB_RESTRICTED_IMPORTS = {
       ['@nestjs/*', '**/api/src/*', '**/api/src/**'],
       'web не импортирует api/src и @nestjs/* — общий код живёт в shared/',
     ),
+    STRING_API_FETCH_PATTERN,
   ],
 };
 
@@ -256,6 +283,20 @@ export default tseslint.config(
     // перезаписывает правило целиком, а не дополняет.
     files: SHELL_GLOBS,
     rules: { 'no-restricted-imports': ['error', SHELL_RESTRICTED_IMPORTS] },
+  },
+  {
+    // Мосты строкового apiFetch (см. STRING_API_FETCH_BRIDGES); у оболочки —
+    // её собственный набор запретов без этого одного.
+    files: STRING_API_FETCH_BRIDGES,
+    rules: {
+      'no-restricted-imports': ['error', withoutStringApiFetch(WEB_RESTRICTED_IMPORTS)],
+    },
+  },
+  {
+    files: ['web/src/app/prefetchFirstScreen.ts', 'web/src/app/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', withoutStringApiFetch(SHELL_RESTRICTED_IMPORTS)],
+    },
   },
   {
     // web/src/api/** — сама реализация http-клиента, ей можно вызывать fetch.
