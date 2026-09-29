@@ -20,6 +20,7 @@ import type { DateTime } from 'luxon';
 import {
   ACCESS_MESSAGE,
   GOOGLE_EMAIL_NEEDS_EMAIL_LOGIN_MESSAGE,
+  GOOGLE_NOT_LINKED_MESSAGE,
   GOOGLE_OTHER_ACCOUNT_MESSAGE,
   joinPersonName,
   NEW_PERSON_NAME,
@@ -69,7 +70,11 @@ export class GoogleLoginIdentityService {
       if (byEmail) return this.linkExisting(byEmail, identity);
     }
 
-    await requireValidInvite(this.inviteLinkService, inviteCode);
+    await requireValidInvite(
+      this.inviteLinkService,
+      inviteCode,
+      GOOGLE_NOT_LINKED_MESSAGE,
+    );
     const created = await this.googleLoginUserService.createFromGoogle({
       sub: identity.sub,
       name: displayName(identity),
