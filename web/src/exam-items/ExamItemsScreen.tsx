@@ -51,7 +51,7 @@ export default function ExamItemsScreen() {
   const isFiltered = status !== '' || search.trim() !== '';
   const visibleIds = visibleItems?.map((item) => item.id) ?? [];
   const bulk = useBulkDelete({
-    collectionPath: ITEMS_PATH,
+    collection: ITEMS_PATH,
     visibleIds,
     onDeleted: removeFromList,
   });

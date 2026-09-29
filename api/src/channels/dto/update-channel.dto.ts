@@ -15,11 +15,11 @@ import {
   CHANNEL_LIMITS,
   TAG_LIMITS,
   type ChannelConfig,
-  type UpdateChannelInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class UpdateChannelDto implements UpdateChannelInput {
+export class UpdateChannelDto implements ApiRouteBody<'PATCH /channels/:id'> {
   @OptionalNotNull()
   @TrimString()
   @IsString()

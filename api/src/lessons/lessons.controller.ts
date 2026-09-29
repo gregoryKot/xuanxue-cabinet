@@ -24,6 +24,7 @@ import { ListLessonsDto } from './dto/list-lessons.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
 import { LessonRecordingSummaryService } from './lesson-recording-summary.service';
 import { LessonsService } from './lessons.service';
+import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('lessons')
 @Roles('teacher', 'assistant', 'admin')
@@ -48,28 +49,33 @@ export class LessonsController {
   }
 
   @Get(':id')
+  @ApiRoute('GET /lessons/:id')
   getById(@Param('id') id: string): Promise<LessonDto> {
     return this.lessonsService.getById(id);
   }
 
   @Post()
+  @ApiRoute('POST /lessons')
   @HttpCode(HttpStatus.CREATED)
   create(@Body() body: CreateLessonDto): Promise<LessonDto> {
     return this.lessonsService.create(body);
   }
 
   @Patch(':id')
+  @ApiRoute('PATCH /lessons/:id')
   update(@Param('id') id: string, @Body() body: UpdateLessonDto): Promise<LessonDto> {
     return this.lessonsService.update(id, body, DateTime.utc());
   }
 
   @Delete(':id')
+  @ApiRoute('DELETE /lessons/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.lessonsService.remove(id);
   }
 
   @Post(':id/recording')
+  @ApiRoute('POST /lessons/:id/recording')
   @HttpCode(HttpStatus.CREATED)
   addRecording(
     @Param('id') id: string,
@@ -81,6 +87,7 @@ export class LessonsController {
   // Аудит В12: PLAN §6 обещал POST /classes/:id/send-now, действие относится
   // к дате занятия, не к слоту — маршрут на /lessons (docs/PLAN.md §6 «API»).
   @Post(':id/send-now')
+  @ApiRoute('POST /lessons/:id/send-now')
   @HttpCode(HttpStatus.OK)
   sendNow(@Param('id') id: string): Promise<BroadcastDto> {
     return this.sendNowService.sendNow(id, DateTime.utc());

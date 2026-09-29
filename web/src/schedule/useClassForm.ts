@@ -30,7 +30,7 @@ export type UseClassFormResult = UseEntityFormResult<ClassFormState>;
 export function useClassForm(
   classDto: ClassDto | null,
   channels: ChannelDto[],
-  onCreate: (input: CreateClassInput) => Promise<void>,
+  onCreate: (input: CreateClassInput) => Promise<unknown>,
   onUpdate: (id: string, input: UpdateClassInput) => Promise<void>,
   onRemove: (id: string) => Promise<void>,
 ): UseClassFormResult {

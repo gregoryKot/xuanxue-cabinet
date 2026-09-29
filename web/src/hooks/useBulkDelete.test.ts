@@ -22,7 +22,7 @@ afterEach(() => {
 function setup(visibleIds: string[] = ['a', 'b']) {
   const onDeleted = vi.fn();
   const view = renderHook(() =>
-    useBulkDelete({ collectionPath: '/exam-items', visibleIds, onDeleted }),
+    useBulkDelete({ collection: '/exam-items', visibleIds, onDeleted }),
   );
   return { ...view, onDeleted };
 }

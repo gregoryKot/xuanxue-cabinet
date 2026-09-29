@@ -2,10 +2,10 @@
 // проверка в сервисе: class-validator валидирует каждое поле по отдельности,
 // не связку двух необязательных полей.
 import { IsString, IsUrl, MaxLength } from 'class-validator';
-import { LESSON_LIMITS, type AddRecordingInput } from '@xuanxue/shared';
+import { LESSON_LIMITS, type ApiRouteBody } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class AddRecordingDto implements AddRecordingInput {
+export class AddRecordingDto implements ApiRouteBody<'POST /lessons/:id/recording'> {
   @OptionalNotNull()
   @TrimString()
   @IsString()

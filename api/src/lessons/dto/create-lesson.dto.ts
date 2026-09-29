@@ -17,11 +17,11 @@ import {
   CLASS_LIMITS,
   LESSON_LIMITS,
   TAG_LIMITS,
-  type CreateLessonInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class CreateLessonDto implements CreateLessonInput {
+export class CreateLessonDto implements ApiRouteBody<'POST /lessons'> {
   @IsMongoId()
   classId!: string;
 

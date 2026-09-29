@@ -29,6 +29,7 @@ import { ExamItemsService } from './exam-items.service';
 import { CreateExamItemDto } from './dto/create-exam-item.dto';
 import { ListExamItemsDto } from './dto/list-exam-items.dto';
 import { UpdateExamItemDto } from './dto/update-exam-item.dto';
+import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('exam-items')
 @Roles('teacher', 'assistant', 'admin')
@@ -52,6 +53,7 @@ export class ExamItemsController {
   }
 
   @Get(':id')
+  @ApiRoute('GET /exam-items/:id')
   getById(@Param('id') id: string): Promise<ExamItemDto> {
     return this.examItemsService.getById(id);
   }
@@ -62,6 +64,7 @@ export class ExamItemsController {
   }
 
   @Post()
+  @ApiRoute('POST /exam-items')
   @HttpCode(HttpStatus.CREATED)
   create(
     @Body() body: CreateExamItemDto,
@@ -71,11 +74,13 @@ export class ExamItemsController {
   }
 
   @Patch(':id')
+  @ApiRoute('PATCH /exam-items/:id')
   update(@Param('id') id: string, @Body() body: UpdateExamItemDto): Promise<ExamItemDto> {
     return this.examItemsService.update(id, body, DateTime.utc());
   }
 
   @Delete(':id')
+  @ApiRoute('DELETE /exam-items/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string): Promise<void> {
     return this.examItemsService.remove(id, DateTime.utc());
@@ -86,6 +91,7 @@ export class ExamItemsController {
   // файлового храповика (CLAUDE.md «Храповики»), а тут и добавлять нечего —
   // контроллер просто зовёт тот же remove(), что и одиночный DELETE.
   @Post('bulk-delete')
+  @ApiRoute('POST /exam-items/bulk-delete')
   @HttpCode(HttpStatus.OK)
   removeMany(@Body() body: BulkDeleteDto): Promise<BulkDeleteResult> {
     // Одно «сейчас» на весь запрос — у всех записей выборки одна отметка deletedAt.

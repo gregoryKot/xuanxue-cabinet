@@ -28,13 +28,13 @@ import {
   MATERIAL_MAX_CLASS_IDS,
   TAG_LIMITS,
   MATERIAL_MAX_LESSON_IDS,
-  type CreateMaterialInput,
+  type ApiRouteBody,
   type MaterialAccess,
   type MaterialKind,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class CreateMaterialDto implements CreateMaterialInput {
+export class CreateMaterialDto implements ApiRouteBody<'POST /materials'> {
   @TrimString()
   @IsString()
   @IsNotEmpty()

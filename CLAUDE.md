@@ -174,10 +174,10 @@ Railway идёт `x-forwarded-for`). Глобальный `ThrottlerGuard` ст�
 - `check-string-api-fetch-ratchet.mjs` — вызовов строкового `apiFetch` в web не
   прибавляется: новый код зовёт `apiRoute(ключ)` по карте `shared/src/api-routes.ts`,
   контроллер ставит `@ApiRoute(ключ)`, сверку карты с Nest держит
-  `api/test/api-routes.e2e-spec.ts` (PLAN §17.1, ADR-0148).
-- `check-editor-routes.mjs` — у каждой коллекции, которую открывает страница-редактор
-  (`useEntityEditor`), в api есть `GET /коллекция/:id`: тесты web мокают `apiFetch` и
-  дыру не видят (2026-09-27, «Cannot GET /api/materials/:id»).
+  `api/test/api-routes.e2e-spec.ts` (PLAN §17.1, ADR-0148). Коллекцию страницы-редактора
+  (`useEntityEditor`) пропускает только тип `EditorCollection`: в карте нужны `GET /:id`,
+  `POST`, `PATCH`, `DELETE`, а обработчик под каждый требует e2e-сверка (2026-09-27,
+  «Cannot GET /api/materials/:id»).
 - `check-card-list-gap.mjs` — список карточек объявляет промежуток между строками
   (`gap` или обёртка «одной карточкой»), иначе плашки слипаются (ADR-0088).
 - `check-write-then-reload.mjs` — новых мест, где `apiFetch` с мутирующим методом

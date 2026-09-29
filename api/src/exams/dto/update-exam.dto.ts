@@ -17,14 +17,17 @@ import {
   EXAM_LIMITS,
   EXAM_STATUSES,
   type ExamStatus,
-  type UpdateExamInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ExamFieldsDto } from './exam-fields.dto';
 
 const MIN_TIME_LIMIT_MIN = 1;
 
-export class UpdateExamDto extends ExamFieldsDto implements UpdateExamInput {
+export class UpdateExamDto
+  extends ExamFieldsDto
+  implements ApiRouteBody<'PATCH /exams/:id'>
+{
   @OptionalNotNull()
   @TrimString()
   @IsString()

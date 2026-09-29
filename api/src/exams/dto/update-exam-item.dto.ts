@@ -17,12 +17,15 @@ import {
   EXAM_ITEM_LIMITS,
   EXAM_ITEM_STATUSES,
   type ExamItemStatus,
-  type UpdateExamItemInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ExamItemFieldsDto } from './exam-item-fields.dto';
 
-export class UpdateExamItemDto extends ExamItemFieldsDto implements UpdateExamItemInput {
+export class UpdateExamItemDto
+  extends ExamItemFieldsDto
+  implements ApiRouteBody<'PATCH /exam-items/:id'>
+{
   @OptionalNotNull()
   @TrimString()
   @IsString()

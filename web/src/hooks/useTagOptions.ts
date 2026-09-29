@@ -10,9 +10,8 @@
 // LoadErrorBanner, ошибку просто не показываем: не появится подсказок, но
 // сохранить запись или посмотреть библиотеку можно и без них.
 import { useMemo } from 'react';
-import type { TagSummaryDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
-import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
+import { apiRoute } from '../api/apiRoute';
+import { TAGS_LIST_QUERY } from '../api/tagsApiPaths';
 import { useAbortableFetch } from './useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить список тегов.';
@@ -26,8 +25,8 @@ export interface UseTagOptionsFilter {
 
 export function useTagOptions(filter: UseTagOptionsFilter = {}): string[] {
   const { withMaterialsOnly = false } = filter;
-  const { data } = useAbortableFetch<TagSummaryDto[]>(
-    (signal) => apiFetch<TagSummaryDto[]>(TAGS_LIST_PATH, { signal }),
+  const { data } = useAbortableFetch(
+    (signal) => apiRoute('GET /tags', { query: TAGS_LIST_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
 

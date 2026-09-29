@@ -8,12 +8,15 @@ import {
   CLASS_FORMATS,
   CLASS_LIMITS,
   type ClassFormat,
-  type CreateClassInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 import { ClassFieldsDto } from './class-fields.dto';
 
-export class CreateClassDto extends ClassFieldsDto implements CreateClassInput {
+export class CreateClassDto
+  extends ClassFieldsDto
+  implements ApiRouteBody<'POST /classes'>
+{
   @TrimString()
   @IsString()
   @IsNotEmpty()
