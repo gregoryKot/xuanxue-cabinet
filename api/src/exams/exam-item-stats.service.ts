@@ -55,7 +55,13 @@ export class ExamItemStatsService {
   async getStats(itemId: string): Promise<ExamItemStatsDto> {
     const item = await this.examItemsService.getById(itemId);
     const accByItem = await this.loadAccumulators();
-    const stats = computeExamItemStats(item.id, item.kind, item.options, accByItem);
+    const stats = computeExamItemStats(
+      item.id,
+      item.kind,
+      item.options,
+      accByItem,
+      item.askReason,
+    );
     const { titles } = await findExamsReferencingItem(this.examModel, itemId);
     return { ...stats, usedInExamsCount: titles.length };
   }

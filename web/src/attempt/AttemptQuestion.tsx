@@ -4,11 +4,12 @@
 //
 // Строка вопроса — общий components/QuestionRow.tsx (его же комментарий-шапка:
 // та же строка нужна предпросмотру «глазами ученика», exams/ExamPreviewQuestion.tsx).
-import type { AttemptQuestionDto } from '@xuanxue/shared';
+import { isReasonMissing, type AttemptQuestionDto } from '@xuanxue/shared';
 import { QuestionRow } from '../components/QuestionRow';
 import type { AttemptVideoControls } from './useAttemptMedia';
 import type { UseAttemptAutosaveResult } from './useAttemptAutosave';
 import { AttemptQuestionChoice } from './AttemptQuestionChoice';
+import { AttemptQuestionReason } from './AttemptQuestionReason';
 import { AttemptQuestionText } from './AttemptQuestionText';
 import { AttemptQuestionVideo } from './AttemptQuestionVideo';
 
@@ -18,6 +19,9 @@ interface AttemptQuestionProps {
   /** Вопрос остался без ответа, а ученик уже нажал «Отправить»
    * (attemptUnanswered.ts): строка подсвечена, пока ответа нет. */
   unanswered: boolean;
+  /** Ученик хотя бы раз нажал «Отправить» (attemptReasonGuard.ts) — с этой
+   * минуты поле объяснения без текста подсвечено как обязательное. */
+  reasonChecked: boolean;
   autosave: UseAttemptAutosaveResult;
   video: AttemptVideoControls;
 }
@@ -26,6 +30,7 @@ export function AttemptQuestion({
   index,
   question,
   unanswered,
+  reasonChecked,
   autosave,
   video,
 }: AttemptQuestionProps) {
@@ -70,6 +75,18 @@ export function AttemptQuestion({
           onChange={changeOptions}
         />
       )}
+      {question.askReason &&
+        (question.kind === 'single' || question.kind === 'multiple') && (
+          <AttemptQuestionReason
+            itemId={question.itemId}
+            value={answer?.text ?? ''}
+            invalid={reasonChecked && isReasonMissing(question, answer)}
+            onChange={(text) => autosave.setText(question.itemId, text)}
+            onBlur={() => {
+              autosave.flush().catch(() => {});
+            }}
+          />
+        )}
       {question.kind === 'video' && (
         <AttemptQuestionVideo itemId={question.itemId} video={video} />
       )}

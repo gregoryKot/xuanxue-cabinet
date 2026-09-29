@@ -32,6 +32,7 @@ function baseState(overrides: Partial<ExamItemFormState> = {}): ExamItemFormStat
     kind: 'text',
     prompt: 'Формулировка',
     options: [],
+    askReason: false,
     ...overrides,
   };
 }
@@ -61,6 +62,19 @@ describe('initialExamItemFormState', () => {
       { id: 'o1', text: '24', correct: true },
       { id: 'o2', text: '108', correct: false },
     ]);
+  });
+
+  // ADR-0146.
+  it('null (создание) — askReason выключен', () => {
+    expect(initialExamItemFormState(null).askReason).toBe(false);
+  });
+
+  it('существующий вопрос без askReason — выключен, не undefined', () => {
+    expect(initialExamItemFormState(makeItem()).askReason).toBe(false);
+  });
+
+  it('существующий вопрос с askReason — включён', () => {
+    expect(initialExamItemFormState(makeItem({ askReason: true })).askReason).toBe(true);
   });
 });
 
@@ -322,5 +336,29 @@ describe('toCreateInput / toUpdateInput', () => {
     const input = toUpdateInput(baseState({ videoUrl: 'https://youtu.be/x' }));
     expect(input.videoUrl).toBe('https://youtu.be/x');
     expect(input.videoId).toBeNull();
+  });
+});
+
+// ADR-0146: создание шлёт askReason только при true («ключа нет, если
+// выключено» — тот же приём, что у ExamItemDto), а правка — всегда булевым,
+// чтобы сервер видел и выключение уже включённого флага
+// (hasContentChanged, exam-item-content-change.ts).
+describe('toCreateInput / toUpdateInput — askReason (ADR-0146)', () => {
+  it('создание, askReason включён — уходит true', () => {
+    expect(toCreateInput(baseState({ kind: 'single', askReason: true })).askReason).toBe(
+      true,
+    );
+  });
+
+  it('создание, askReason выключен — поле не отправляется вовсе', () => {
+    expect(toCreateInput(baseState({ askReason: false })).askReason).toBeUndefined();
+  });
+
+  it('правка, askReason включён — уходит true', () => {
+    expect(toUpdateInput(baseState({ askReason: true })).askReason).toBe(true);
+  });
+
+  it('правка, askReason выключен — уходит явный false, не пропуск поля', () => {
+    expect(toUpdateInput(baseState({ askReason: false })).askReason).toBe(false);
   });
 });

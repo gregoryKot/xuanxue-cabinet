@@ -39,6 +39,19 @@ describe('ExamItemCard', () => {
     expect(screen.getByText(/версия 2/)).toBeInTheDocument();
   });
 
+  // ADR-0146.
+  it('askReason включён — метка «просит объяснение» в строке метаданных', () => {
+    render(<ExamItemCard item={makeItem({ askReason: true })} onSelect={vi.fn()} />);
+
+    expect(screen.getByText(/просит объяснение/)).toBeInTheDocument();
+  });
+
+  it('askReason выключен — метки нет', () => {
+    render(<ExamItemCard item={makeItem()} onSelect={vi.fn()} />);
+
+    expect(screen.queryByText(/просит объяснение/)).not.toBeInTheDocument();
+  });
+
   it('клик по формулировке вызывает onSelect', async () => {
     const onSelect = vi.fn();
     render(<ExamItemCard item={makeItem()} onSelect={onSelect} />);

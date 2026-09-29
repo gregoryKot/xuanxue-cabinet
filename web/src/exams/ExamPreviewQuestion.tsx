@@ -53,6 +53,7 @@ export function ExamPreviewQuestion({ index, item, required }: ExamPreviewQuesti
           itemId={item.id}
           kind={item.kind}
           options={item.options}
+          askReason={item.askReason}
         />
       )}
       {item.kind === 'video' && <AttemptQuestionVideoNote />}

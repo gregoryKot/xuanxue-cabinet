@@ -15,6 +15,8 @@ const IMAGE_LABEL = 'картинка';
 const VIDEO_LABEL = 'видео';
 const QUESTION_VIDEO_TEXT = 'У вопроса есть видео.';
 const EMPTY_OPTION_TEXT = '—';
+// ADR-0146.
+const ASK_REASON_TEXT = 'Просит объяснение выбора.';
 
 const wrapStyle: CSSProperties = {
   display: 'flex',
@@ -54,6 +56,7 @@ export function ExamQuestionDetails({ item }: ExamQuestionDetailsProps) {
   return (
     <div style={wrapStyle}>
       {hasQuestionVideo && <p style={noteStyle}>{QUESTION_VIDEO_TEXT}</p>}
+      {item.askReason && <p style={noteStyle}>{ASK_REASON_TEXT}</p>}
       {hasOptions(item.kind) ? (
         <ul style={optionListStyle}>
           {item.options.map((option) => {

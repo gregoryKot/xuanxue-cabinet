@@ -3,8 +3,10 @@ import type { ExamItemStatsDto } from '@xuanxue/shared';
 import {
   formatAskedSummary,
   formatOptionLine,
+  formatReasonSummary,
   formatUsageSummary,
   NEVER_ASKED_MESSAGE,
+  REASON_NOT_ANSWERED_MESSAGE,
 } from './examItemStatsText';
 
 type ExamItemOptionStatsDto = NonNullable<ExamItemStatsDto['options']>[number];
@@ -87,5 +89,36 @@ describe('formatUsageSummary', () => {
     expect(formatUsageSummary(makeStats({ usedInExamsCount: 3 }))).toBe(
       'Стоит в 3 экзаменах — нельзя удалить или заархивировать, не убрав его оттуда.',
     );
+  });
+});
+
+// ADR-0146.
+describe('formatReasonSummary', () => {
+  it('askReason не включён (поля нет в DTO) — null, нечего показывать', () => {
+    expect(formatReasonSummary(makeStats())).toBeNull();
+  });
+
+  it('askReason включён, вариант ни разу не выбирали — честный текст, не «0 из 0»', () => {
+    expect(
+      formatReasonSummary(makeStats({ reasonCount: 0, reasonAnsweredCount: 0 })),
+    ).toBe(REASON_NOT_ANSWERED_MESSAGE);
+  });
+
+  it('часть выбравших вариант объяснила выбор — число и знаменатель', () => {
+    expect(
+      formatReasonSummary(makeStats({ reasonCount: 12, reasonAnsweredCount: 15 })),
+    ).toBe('Объяснили выбор: 12 из 15.');
+  });
+
+  it('никто не объяснил, хотя вариант выбирали — «0 из N»', () => {
+    expect(
+      formatReasonSummary(makeStats({ reasonCount: 0, reasonAnsweredCount: 4 })),
+    ).toBe('Объяснили выбор: 0 из 4.');
+  });
+
+  it('все объяснили выбор — «N из N»', () => {
+    expect(
+      formatReasonSummary(makeStats({ reasonCount: 5, reasonAnsweredCount: 5 })),
+    ).toBe('Объяснили выбор: 5 из 5.');
   });
 });

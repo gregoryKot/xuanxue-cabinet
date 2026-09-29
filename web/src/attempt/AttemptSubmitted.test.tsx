@@ -203,6 +203,38 @@ describe('AttemptSubmitted — свои ответы', () => {
     expect(screen.getByRole('radio', { name: '108' })).not.toBeChecked();
   });
 
+  it('вопрос с объяснением — выбор и текст объяснения видны, оба выключены', async () => {
+    await renderSubmitted(
+      makeAttempt({
+        blocks: [
+          {
+            id: 'b1',
+            title: '',
+            questions: [
+              {
+                itemId: 'q1',
+                version: 1,
+                kind: 'single',
+                prompt: 'Сколько стоек в форме?',
+                options: [
+                  { id: 'o1', text: 'Три' },
+                  { id: 'o2', text: 'Пять' },
+                ],
+                askReason: true,
+              },
+            ],
+          },
+        ],
+        answers: [{ itemId: 'q1', optionIds: ['o1'], text: 'Так короче' }],
+      }),
+    );
+
+    expect(screen.getByRole('radio', { name: 'Три' })).toBeChecked();
+    const reason = screen.getByRole('textbox', { name: 'Объясните свой ответ' });
+    expect(reason).toBeDisabled();
+    expect(reason).toHaveValue('Так короче');
+  });
+
   it('попытка без вопросов — раздела «Ваши ответы» нет', async () => {
     await renderSubmitted(makeAttempt({ blocks: [] }));
 

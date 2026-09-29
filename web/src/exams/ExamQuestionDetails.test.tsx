@@ -55,4 +55,17 @@ describe('ExamQuestionDetails', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
     expect(screen.queryByText('У вопроса есть видео.')).not.toBeInTheDocument();
   });
+
+  // ADR-0146.
+  it('askReason включён — строка «Просит объяснение выбора»', () => {
+    render(<ExamQuestionDetails item={makeItem({ askReason: true })} />);
+
+    expect(screen.getByText('Просит объяснение выбора.')).toBeInTheDocument();
+  });
+
+  it('askReason выключен — строки нет', () => {
+    render(<ExamQuestionDetails item={makeItem()} />);
+
+    expect(screen.queryByText(/Просит объяснение/)).not.toBeInTheDocument();
+  });
 });

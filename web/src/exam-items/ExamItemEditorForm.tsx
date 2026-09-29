@@ -26,6 +26,7 @@ import { useEditorFormActions } from '../hooks/useEditorFormActions';
 import { ExamItemFormFields } from './ExamItemFormFields';
 import { ExamItemKindField } from './ExamItemKindField';
 import { ExamItemOptionsField } from './ExamItemOptionsField';
+import { ExamItemReasonField } from './ExamItemReasonField';
 import { ExamItemStats } from './ExamItemStats';
 import { examItemEditorTitle } from './examItemEditorTitle';
 import { changeExamItemKind } from './examItemKindChange';
@@ -108,6 +109,8 @@ export function ExamItemEditorForm({ item, editor }: ExamItemEditorFormProps) {
             onChange={(options) => form.setField('options', options)}
           />
         )}
+
+        <ExamItemReasonField state={form.state} setField={form.setField} />
 
         <FormServerError error={form.serverError} />
 

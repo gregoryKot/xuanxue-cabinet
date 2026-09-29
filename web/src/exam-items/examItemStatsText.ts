@@ -51,3 +51,22 @@ export function formatUsageSummary(stats: ExamItemStatsDto): string | null {
   const noun = stats.usedInExamsCount === 1 ? EXAM_NOUN.one : EXAM_NOUN.many;
   return `Стоит в ${stats.usedInExamsCount} ${noun} — нельзя удалить или заархивировать, не убрав его оттуда.`;
 }
+
+// ADR-0146: вариант ни разу не выбирали — знаменатель 0, честный текст, не
+// «0 из 0» (CLAUDE.md «Продукт»: пустая база — «пока нечего показать»).
+export const REASON_NOT_ANSWERED_MESSAGE =
+  'Объяснений пока нет: вариант ещё никто не выбирал.';
+
+/**
+ * «Объяснили выбор: 12 из 15» — только у вопроса с askReason: `reasonCount`/
+ * `reasonAnsweredCount` в DTO присутствуют ровно тогда (shared/src/
+ * exam-item-stats.ts). Знаменатель — сколько раз вообще выбрали вариант, не
+ * `askedCount`: пропустивший вопрос целиком объяснять ничего не был должен.
+ */
+export function formatReasonSummary(stats: ExamItemStatsDto): string | null {
+  if (stats.reasonCount === undefined || stats.reasonAnsweredCount === undefined) {
+    return null;
+  }
+  if (stats.reasonAnsweredCount === 0) return REASON_NOT_ANSWERED_MESSAGE;
+  return `Объяснили выбор: ${stats.reasonCount} из ${stats.reasonAnsweredCount}.`;
+}

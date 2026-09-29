@@ -69,6 +69,22 @@ describe('collectUnansweredIds', () => {
     expect(collectUnansweredIds(blocks, getAnswer, [])).toEqual(['q1', 'q2', 'q3']);
   });
 
+  // ADR-0146: у вопроса с вариантами текст — объяснение выбора, не второй
+  // способ ответить; без выбранного варианта объяснение вопрос не закрывает,
+  // а выбранный вариант закрывает его и без объяснения (это проверяет
+  // отдельно attemptReasonGuard.ts перед отправкой).
+  it('вопрос с вариантами: текст без выбранного варианта — вопрос без ответа', () => {
+    const getAnswer = answersOf({ itemId: 'q1', text: 'Потому что так' });
+
+    expect(collectUnansweredIds(blocks, getAnswer, [])).toContain('q1');
+  });
+
+  it('вопрос с вариантами: выбранный вариант без текста — вопрос с ответом', () => {
+    const getAnswer = answersOf({ itemId: 'q1', optionIds: ['o1'] });
+
+    expect(collectUnansweredIds(blocks, getAnswer, [])).not.toContain('q1');
+  });
+
   it('видео закрывает свой вопрос, а не чужой', () => {
     expect(collectUnansweredIds(blocks, answersOf(), mediaOf('q9'))).toContain('q3');
     expect(collectUnansweredIds(blocks, answersOf(), mediaOf('q3'))).not.toContain('q3');
