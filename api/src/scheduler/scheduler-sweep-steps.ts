@@ -1,4 +1,4 @@
-// Пять шагов уборки байтов-сирот и файлов по сроку хранения — вынесены из
+// Шесть шагов уборки байтов-сирот и данных по сроку хранения — вынесены из
 // SchedulerService.runTick (файл-храповик CLAUDE.md «Храповики»: файл уже
 // был на потолке в 168 строк, «может только уменьшаться»). Каждый шаг
 // оборачивается тем же `step()` (лог сбоя + notifySchedulerFailed), что и
@@ -22,6 +22,9 @@ export interface SweepStepRunners {
   // ADR-0137 — видео-ответ ученика: брошенные загрузки, файлы без ссылки и
   // файлы по сроку хранения, одним шагом (AnswerVideoSweepService).
   removeExpiredAnswerVideos: (now: DateTime) => Promise<{ removed: number }>;
+  // ADR-0153 — попытка экзамена по сроку хранения (3 года после результата)
+  // вместе с оценкой, видео и уведомлениями (ExamAttemptRetentionSweepService).
+  removeExpiredExamAttempts: (now: DateTime) => Promise<{ removed: number }>;
 }
 
 export interface SweepStepResults {
@@ -31,6 +34,18 @@ export interface SweepStepResults {
   screenshotOrphans: number;
   filesRemoved: number;
   answerVideosRemoved: number;
+  examAttemptsPurged: number;
+}
+
+/** Хвост строки `scheduler.tick` с итогами уборки — здесь, а не в
+ * SchedulerService: файл тика на потолке храповика, а шагов становится больше. */
+export function formatSweepResults(r: SweepStepResults): string {
+  return (
+    `imagesRemoved=${r.imagesRemoved} videosRemoved=${r.videosRemoved} ` +
+    `paymentScreenshotsRemoved=${r.screenshotsRemoved} ` +
+    `paymentScreenshotOrphans=${r.screenshotOrphans} filesRemoved=${r.filesRemoved} ` +
+    `answerVideosRemoved=${r.answerVideosRemoved} examAttemptsPurged=${r.examAttemptsPurged}`
+  );
 }
 
 export async function runSweepSteps(
@@ -76,6 +91,12 @@ export async function runSweepSteps(
     now,
     runners.removeExpiredAnswerVideos,
   )) ?? { removed: 0 };
+  // ADR-0153: попытка, чей результат старше EXAM_ATTEMPT_RETENTION_YEARS (3 лет).
+  const { removed: examAttemptsPurged } = (await step(
+    'срок хранения попыток',
+    now,
+    runners.removeExpiredExamAttempts,
+  )) ?? { removed: 0 };
 
   return {
     imagesRemoved,
@@ -84,5 +105,6 @@ export async function runSweepSteps(
     screenshotOrphans,
     filesRemoved,
     answerVideosRemoved,
+    examAttemptsPurged,
   };
 }

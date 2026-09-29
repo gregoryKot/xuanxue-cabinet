@@ -190,6 +190,32 @@ describe('SettingsService', () => {
       expect(settings.newcomerContact).toBe('Маше @masha_teacher');
     });
 
+    it('ответственный за данные — сохраняется, get видит его после (read-after-write)', async () => {
+      await service.update({
+        dataControllerName: 'Дмитрий Дейч',
+        dataControllerContact: 'privacy@xuanxue.su',
+      });
+
+      const settings = await service.get();
+      expect(settings.dataControllerName).toBe('Дмитрий Дейч');
+      expect(settings.dataControllerContact).toBe('privacy@xuanxue.su');
+    });
+
+    it('ответственный за данные: null — снимает поля, остальные настройки на месте', async () => {
+      await service.update({
+        newcomerContact: 'Маше @masha_teacher',
+        dataControllerName: 'Дмитрий Дейч',
+        dataControllerContact: 'privacy@xuanxue.su',
+      });
+
+      await service.update({ dataControllerName: null, dataControllerContact: null });
+
+      const settings = await service.get();
+      expect(settings.dataControllerName).toBeUndefined();
+      expect(settings.dataControllerContact).toBeUndefined();
+      expect(settings.newcomerContact).toBe('Маше @masha_teacher');
+    });
+
     it('schoolSiteUrl: null — снимает адрес (поля нет), не сохраняет литерал null', async () => {
       await service.update({ schoolSiteUrl: 'https://xuanxue.su' });
 

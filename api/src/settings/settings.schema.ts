@@ -80,6 +80,15 @@ export class SettingsRecord {
   @Prop({ type: String })
   newcomerContact?: string;
 
+  // Не required и без default: пока школа не назвала ответственного, полей
+  // просто нет, и страница /privacy честно отправляет к учителю, а не
+  // показывает пустое имя (GET /auth/config отдаёт их только когда они есть).
+  @Prop({ type: String })
+  dataControllerName?: string;
+
+  @Prop({ type: String })
+  dataControllerContact?: string;
+
   // Не required и без default по той же причине, что и previewMinutes:
   // старая база без настройки не имеет подобъекта — дефолт
   // (DEFAULT_PAYMENT_REMINDER) подставляется при чтении (toSettingsDto).
@@ -98,6 +107,12 @@ export const SETTINGS_FIELD_POLICY: FieldPolicy = {
   ),
   newcomerContact: plain(
     'текст публичный — бот называет этот контакт незнакомцу (ADR-0115)',
+  ),
+  dataControllerName: plain(
+    'публичный текст — школа сама называет, кто отвечает за данные; отдаётся всем через GET /auth/config',
+  ),
+  dataControllerContact: plain(
+    'публичный текст — контакт для запросов о данных; отдаётся всем через GET /auth/config',
   ),
   'paymentReminder.template': plain(
     'текст пишет учитель, уходит ученику как есть — данных ученика в нём нет, они подставляются при отправке (ADR-0051)',

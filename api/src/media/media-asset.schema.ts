@@ -13,8 +13,10 @@
 // прежнюю запись (upsertLinkMediaAsset, media-asset-insert.ts), а индекс
 // страхует только гонку двух параллельных POST /media/link.
 //
-// Срок хранения (PLAN §11 «Данные»): вместе с попыткой — запись уходит той
-// же выборкой USER_OWNED_COLLECTIONS, что exam_attempts/exam_gradings.
+// Срок хранения (PLAN §11 «Данные»): вместе с попыткой — запись уходит с ней
+// каскадом (ExamAttemptRetentionSweepService, ADR-0153; exam-attempt-cascade.ts)
+// и выборкой USER_OWNED_COLLECTIONS при удалении аккаунта, как
+// exam_attempts/exam_gradings.
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
 import { EXAM_MEDIA_KINDS } from '@xuanxue/shared';

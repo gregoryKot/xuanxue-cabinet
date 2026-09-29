@@ -23,14 +23,15 @@
 // зашифрованный там (exam-grading.schema.ts): второй копии персональных
 // данных в проекте не заводим.
 //
-// retention: TTL-индекс на createdAt, 90 дней (см. ниже) — лента не архив,
-// то, что старше, не нужно ни ученику, ни учителю; коллекция чистит себя сама.
+// retention: TTL-индекс на createdAt, NOTIFICATION_RETENTION_DAYS (shared/, его называет /privacy).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { GRADING_OUTCOMES, NOTIFICATION_KINDS } from '@xuanxue/shared';
+import {
+  GRADING_OUTCOMES,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_RETENTION_DAYS,
+} from '@xuanxue/shared';
 import type { GradingOutcome, NotificationKind } from '@xuanxue/shared';
 import { enc, encryptSchemaFrom, plain, type FieldPolicy } from '../common/field-policy';
-
-const NOTIFICATION_RETENTION_DAYS = 90;
 
 @Schema({ timestamps: true, collection: 'notifications' })
 export class NotificationRecord {
@@ -126,8 +127,7 @@ NotificationSchema.index({ userId: 1, updatedAt: -1 });
 // unreadCount (`GET /me/inbox`) — count по (userId, readAt) без сканирования
 // всей ленты человека.
 NotificationSchema.index({ userId: 1, readAt: 1 });
-// retention (см. шапку файла) — 90 дней от создания; TTL-монитор Mongo
-// проверяет раз в минуту (та же оговорка, что у email_login_tokens).
+// retention (см. шапку файла) — от создания; TTL-монитор Mongo проверяет раз в минуту.
 NotificationSchema.index(
   { createdAt: 1 },
   { expireAfterSeconds: NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 },

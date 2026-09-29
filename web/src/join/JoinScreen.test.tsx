@@ -122,6 +122,44 @@ describe('JoinScreen — ссылка действует, гость', () => {
   });
 });
 
+// Статья 11 Закона о защите частной жизни (ADR-0155): политика должна быть
+// перед первым запросом данных, а здесь человеку впервые предлагают войти,
+// оставив имя. Ссылка есть на валидной странице приглашения и не мешает
+// главному действию — кнопкам входа.
+describe('JoinScreen — ссылка на политику конфиденциальности', () => {
+  it('ссылка действует — «Как мы храним данные» ведёт на /privacy, кнопка Telegram рядом', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: true });
+      if (path === '/auth/config') return Promise.resolve({ telegramBotId: 123456 });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderScreen();
+
+    const link = await screen.findByRole('link', { name: 'Как мы храним данные' });
+    expect(link).toHaveAttribute('href', '/privacy');
+    expect(
+      screen.getByRole('button', { name: 'Войти через Telegram' }),
+    ).toBeInTheDocument();
+  });
+
+  it('ссылка не подошла — данных никто не просит, ссылки на политику нет', async () => {
+    mockedApiFetch.mockImplementation((path: string) => {
+      if (path === '/auth/me')
+        return Promise.reject(new ApiError('Войдите', 401, 'unauthorized'));
+      if (path === '/auth/join/check') return Promise.resolve({ valid: false });
+      return Promise.reject(new Error(`неожиданный путь: ${path}`));
+    });
+
+    renderScreen();
+
+    await screen.findByText('Ссылка не подошла');
+    expect(screen.queryByRole('link', { name: 'Как мы храним данные' })).toBeNull();
+  });
+});
+
 describe('JoinScreen — кнопка Google (googleLoginEnabled), код приглашения в редиректе', () => {
   it('googleLoginEnabled: true — кнопка Google видна, клик уводит с join в query', async () => {
     const user = userEvent.setup();

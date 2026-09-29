@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react';
 import {
   PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS,
   PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS,
-  pluralRu,
+  formatDaysRu,
   type AuthConfigDto,
   type MeDto,
 } from '@xuanxue/shared';
@@ -23,14 +23,10 @@ import { paymentScreenshotRoute } from './paymentScreenshotRoute';
 const ACTION_LABEL = 'Отправить скриншот';
 const IMAGE_ACCEPT = 'image/*';
 
-/** «30 дней» — срок из общей константы shared, чтобы обещание ученику
- * менялось вместе со сроком, который держит уборщик на сервере. */
-function daysText(days: number): string {
-  return `${days} ${pluralRu(days, { one: 'день', few: 'дня', many: 'дней', other: 'дня' })}`;
-}
-
-const AFTER_CONFIRM = daysText(PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS);
-const UNCONFIRMED = daysText(PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS);
+// Срок — из общей константы shared, чтобы обещание ученику менялось вместе со
+// сроком, который держит уборщик на сервере.
+const AFTER_CONFIRM = formatDaysRu(PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS);
+const UNCONFIRMED = formatDaysRu(PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS);
 
 // Один срок на оба пути: file_id из бота уборщик снимает по тем же двум датам,
 // что и байты загрузки (payment-screenshot-sweep.service.ts).

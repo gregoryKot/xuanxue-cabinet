@@ -117,6 +117,31 @@ describe('AuthController.getConfig', () => {
     });
   });
 
+  // Ответственный за данные — публичный текст для страницы /privacy: что
+  // школа заполнила в настройках, то и уходит гостю, без правок по дороге.
+  it('ответственный за данные заполнен — имя и контакт в ответе', async () => {
+    const controller = await buildController(
+      undefined,
+      {},
+      {
+        ...SETTINGS_WITHOUT_SITE,
+        dataControllerName: 'Дмитрий Дейч',
+        dataControllerContact: 'privacy@xuanxue.su',
+      },
+    );
+    await expect(controller.getConfig()).resolves.toMatchObject({
+      dataControllerName: 'Дмитрий Дейч',
+      dataControllerContact: 'privacy@xuanxue.su',
+    });
+  });
+
+  it('ответственный не указан — полей в ответе нет', async () => {
+    const controller = await buildController();
+    const config = await controller.getConfig();
+    expect(config.dataControllerName).toBeUndefined();
+    expect(config.dataControllerContact).toBeUndefined();
+  });
+
   // Имя бота нужно кабинету для ссылки «Отправить видео» (ADR-0023): бот
   // ответил при старте — имя есть; не ответил — поля нет, и кнопки не будет.
   it('бот прогрет — имя бота в ответе', async () => {

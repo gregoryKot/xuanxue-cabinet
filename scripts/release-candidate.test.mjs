@@ -48,7 +48,7 @@ test('pickCandidate: красный CI у отстоявшегося — про�
   assert.deepEqual(result, { sha: 'green', reason: null });
 });
 
-test('pickCandidate: cancelled — обычное дело (cancel-in-progress), пропускаем без паники', () => {
+test('pickCandidate: cancelled (ручная отмена, ADR-0154) — вердикта нет, пропускаем без паники', () => {
   const commits = [commit('cancelled', 3, 'cancelled'), commit('green', 5, 'success')];
   const result = pickCandidate({ commits, nowSec: NOW, soakHours: 2 });
   assert.deepEqual(result, { sha: 'green', reason: null });

@@ -38,6 +38,8 @@ const ACTIVE_USER: UserLean = {
 // кабинет — вступление к welcomeConnectedUser, не отдельная реплика.
 const JOIN_SUCCESS_INTRO_WITH_URL =
   'Вы в кабинете школы Сюань-Сюэ. Расписание и ссылки на занятия — здесь: https://xuanxue.su';
+const PRIVACY_LINE_WITH_URL =
+  'Какие данные мы храним и как их удалить: https://xuanxue.su/privacy';
 
 function fakeCtx(): { ctx: Context; replies: string[] } {
   const replies: string[] = [];
@@ -95,6 +97,9 @@ describe('handleInviteDeepLink', () => {
     // Одно сообщение (2026-09-22), не два: ссылка на кабинет и меню вместе.
     expect(replies).toHaveLength(1);
     expect(replies[0]).toContain(JOIN_SUCCESS_INTRO_WITH_URL);
+    // Бот первым просит данные при присоединении по ссылке — статья 11 Закона о
+    // защите частной жизни: политика в том же сообщении, не отдельной репликой.
+    expect(replies[0]).toContain(PRIVACY_LINE_WITH_URL);
     expect(replies[0]).toContain('Экзамены можно сдать');
     expect(upsertPersonalTelegramChat).toHaveBeenCalledWith({
       chatId: '1',
@@ -117,6 +122,7 @@ describe('handleInviteDeepLink', () => {
 
     expect(replies[0]).toContain('Вы в кабинете школы Сюань-Сюэ.');
     expect(replies[0]).not.toContain('здесь: ');
+    expect(replies[0]).not.toContain('/privacy');
   });
 
   // Штат (учитель/помощник/админ) по ссылке — тот же путь, что и обычный

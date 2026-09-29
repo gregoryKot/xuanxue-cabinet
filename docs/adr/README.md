@@ -52,7 +52,7 @@
 | [0014](0014-delivery-lease-at-least-once.md)                     | Доставка — at-least-once через лизинг захвата, не exactly-once                                          |
 | [0015](0015-telegram-chats-self-register-as-channels.md)         | Каналы Telegram регистрирует бот, не админ                                                              |
 | [0016](0016-shared-cjs-and-vite.md)                              | `shared` остаётся CommonJS, web подключает его через `commonjsOptions`                                  |
-| [0017](0017-mongo-backups.md)                                    | Бэкап Mongo: `mongodump`+`openssl`, артефакты GitHub Actions                                            |
+| [0017](0017-mongo-backups.md)                                    | Бэкап Mongo: `mongodump`+`openssl`, ~~артефакты GitHub Actions~~ — хранение заменено ADR-0152           |
 | [0018](0018-istanbul-coverage-for-web.md)                        | Покрытие web через istanbul, не v8 — детерминированные пороги                                           |
 | [0019](0019-school-schedule-seeded-by-migration.md)              | Расписание школы приносит миграция, ссылки Zoom — экран «Занятия»                                       |
 | [0020](0020-telegram-login-redirect-on-touch.md)                 | Вход через Telegram с телефона — переходом вкладки, не попапом                                          |
@@ -186,3 +186,7 @@
 | [0148](0148-api-route-map-in-shared.md)                          | Карта маршрутов в `shared/` — контракт кабинета и API, сверка с Nest в e2e                              |
 | [0149](0149-staff-sees-payment-screenshot.md)                    | Штат открывает снимок перевода из кабинета отдельным запросом; в `PaymentDto` — `screenshotKind`        |
 | [0150](0150-payment-reminder-delivery.md)                        | Напоминание об оплате: лента вместо почты, окно суток, выключено по умолчанию                           |
+| [0152](0152-backups-in-private-r2.md)                            | Бэкапы Mongo — в приватный R2 (EU), не в артефакты публичного репозитория                               |
+| [0153](0153-exam-attempt-retention.md)                           | Попытки экзаменов удаляются через 3 года после результата шагом тика, тем же каскадом, что повтор       |
+| [0154](0154-ci-on-main-runs-every-commit.md)                     | CI на `main` не отменяется: у каждого коммита свой прогон до конца                                      |
+| [0155](0155-privacy-notice-section-11.md)                        | Политика по статье 11: ответственный — настройка, сроки — из констант, подрядчики — под гейтом          |
