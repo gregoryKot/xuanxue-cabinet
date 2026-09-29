@@ -22,10 +22,15 @@ env:
   API_SHARDS: '2'
   WEB_SHARDS: '3'
 
-# Один прогон на пуш/ветку — новый пуш отменяет предыдущий CI той же ветки.
+# PR: новый пуш отменяет прошлый прогон той же ветки — раннеры не жгутся на
+# устаревший код. main: у каждого коммита своя группа (sha) и свой прогон до
+# конца — отменённый CI Railway «Wait for CI» пропускает на стейджинг, если на
+# том же коммите прошёл любой другой workflow (release.yml, uptime.yml,
+# backup.yml), а выкат на прод не может взять коммит без вердикта CI
+# (ADR-0154, инцидент 2026-09-29).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'latest' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # По умолчанию Actions выдаёт GITHUB_TOKEN с правами на запись — джобам ниже
 # он не нужен шире, чем на чтение репозитория.
