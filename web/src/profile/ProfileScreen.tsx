@@ -23,6 +23,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { screenSectionStyle } from '../components/screenLayout';
 import { SectionLink } from '../components/SectionLink';
 import { SkeletonList } from '../components/Skeleton';
+import { MyPaymentsSection } from '../student/MyPaymentsSection';
 import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
 import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
 import { isStandalone } from '../pwa/installEnvironment';
@@ -59,6 +60,14 @@ export default function ProfileScreen() {
       ) : (
         <ProfileNameSection initialName={me.name} applyMe={applyMe} />
       )}
+
+      {/* Абонемент (PLAN §15, слой 2.4) — личное, как имя и уведомления, и
+          есть только у человека без ролей штата (тот же признак, что у
+          сервера, assertActiveStudent). Не на экране «Занятия»: строка
+          рядом с занятием читалась бы условием попасть на него, а неоплата
+          ничего не закрывает (ADR-0049, CLAUDE.md «Ноль нагрузки на
+          ученика»). */}
+      {me !== null && me.roles.length === 0 && <MyPaymentsSection me={me} />}
 
       <NotificationPrefsSection />
       <PushNotificationsSection />
