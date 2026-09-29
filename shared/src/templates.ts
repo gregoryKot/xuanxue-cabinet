@@ -7,7 +7,9 @@
 // значения вставляются как есть и повторно не сканируются. Если разбирать
 // после подстановки (или одной последовательной заменой), значение со
 // скобками или фигурными скобками («Комплекс [24 формы]», текст с
-// `{пароль}`) исказило бы разметку — см. templates.spec.ts.
+// `{пароль}`) исказило бы разметку — см. templates.spec.ts. Разбор на
+// сегменты вынесен в template-segments.ts (файл-лимит 150 строк).
+import { parseSegments } from './template-segments';
 
 /** Допустимые имена подстановок в шаблоне поста (PLAN.md §6). */
 export const TEMPLATE_PLACEHOLDERS = [
@@ -24,12 +26,19 @@ export const TEMPLATE_PLACEHOLDERS = [
 
 export type TemplatePlaceholder = (typeof TEMPLATE_PLACEHOLDERS)[number];
 
-/** Значения для подстановки; отсутствующий ключ — плейсхолдер пуст. */
-export type TemplateValues = Partial<
-  Record<TemplatePlaceholder, string | number | null | undefined>
->;
+/** Допустимые имена подстановок в напоминании об оплате (ADR-0051): личное
+ * сообщение ученику, поэтому `{ведущий}`/`{пароль}` из поста здесь
+ * бессмысленны, а `{месяц}`/`{сумма}`/`{имя}` в посте — наоборот. */
+export const PAYMENT_REMINDER_PLACEHOLDERS = ['месяц', 'сумма', 'имя', 'ссылка'] as const;
 
-const PLACEHOLDER_ALLOW_LIST = new Set<string>(TEMPLATE_PLACEHOLDERS);
+type PlaceholderValue = string | number | null | undefined;
+
+/** Значения для подстановки; отсутствующий ключ — плейсхолдер пуст. Имена
+ * ключей — из allow-list шаблона (по умолчанию — поста): у напоминания об
+ * оплате свой набор, тип подстановки тот же. */
+export type TemplateValues<Name extends string = TemplatePlaceholder> = Partial<
+  Record<Name, PlaceholderValue>
+>;
 
 // Рендер знает только строгое имя: без пробелов и без вложенных `{`/`}`.
 const PLACEHOLDER_RE = /\{([^{}\s]+)\}/g;
@@ -38,27 +47,31 @@ const PLACEHOLDER_RE = /\{([^{}\s]+)\}/g;
 // учитель должен увидеть это в форме, а не в канале.
 const ANY_BRACES_RE = /\{([^{}]+)\}/g;
 
-function isKnownPlaceholder(name: string): name is TemplatePlaceholder {
-  return PLACEHOLDER_ALLOW_LIST.has(name);
+function isKnownPlaceholder(name: string, allowList: readonly string[]): boolean {
+  return allowList.includes(name);
 }
 
 /** Значение в текст: число — строкой, пустая/пробельная строка, null и
  * undefined — пустая строка. */
-function toDisplayValue(value: string | number | null | undefined): string {
+function toDisplayValue(value: PlaceholderValue): string {
   if (typeof value === 'number') return String(value);
   if (value === null || value === undefined || value.trim() === '') return '';
   return value;
 }
 
-function isValueEmpty(value: string | number | null | undefined): boolean {
+function isValueEmpty(value: PlaceholderValue): boolean {
   return toDisplayValue(value) === '';
 }
 
 /** Подставляет известные плейсхолдеры в кусок текста; неизвестный остаётся
  * буквально — его проверяет findUnknownPlaceholders, не рендер. */
-function substitutePlaceholders(text: string, values: TemplateValues): string {
+function substitutePlaceholders(
+  text: string,
+  values: Partial<Record<string, PlaceholderValue>>,
+  allowList: readonly string[],
+): string {
   return text.replace(PLACEHOLDER_RE, (match: string, name: string): string => {
-    if (!isKnownPlaceholder(name)) return match;
+    if (!isKnownPlaceholder(name, allowList)) return match;
     return toDisplayValue(values[name]);
   });
 }
@@ -67,80 +80,60 @@ function substitutePlaceholders(text: string, values: TemplateValues): string {
  * известные плейсхолдеры с пустым значением. Неизвестный плейсхолдер
  * значения не имеет, но остаётся текстом — поэтому сам по себе делает
  * фрагмент непустым (см. тест `'[{дата}]'`). */
-function isFragmentEmpty(inner: string, values: TemplateValues): boolean {
+function isFragmentEmpty(
+  inner: string,
+  values: Partial<Record<string, PlaceholderValue>>,
+  allowList: readonly string[],
+): boolean {
   const matches = [...inner.matchAll(PLACEHOLDER_RE)];
   if (matches.length === 0) return true;
   return matches.every((match) => {
     const name = match[1] ?? '';
-    return isKnownPlaceholder(name) && isValueEmpty(values[name]);
+    return isKnownPlaceholder(name, allowList) && isValueEmpty(values[name]);
   });
 }
 
-type Segment =
-  | { readonly kind: 'text'; readonly value: string }
-  | { readonly kind: 'fragment'; readonly inner: string };
-
-/** Разбивает шаблон на литералы и необязательные фрагменты `[ … ]` по
- * исходному тексту шаблона. Вложенные скобки не поддерживаются: `[` берёт
- * себе ближайшую следующую `]`, а более ранняя внутренняя `[` остаётся
- * обычным символом внутри фрагмента; `[` без `]` до конца строки — тоже
- * обычный символ (см. тест «вложенная скобка»).
- *
- * Если `]` для очередной `[` не нашлась — её нет и дальше по строке (только
- * что просканированный `indexOf` уже сузил остаток), поэтому весь хвост
- * шаблона отдаётся одним `text`-сегментом без изменения поведения. Раньше
- * цикл продолжал идти по символам и на каждой следующей `[` пересканировал
- * тот же хвост заново — O(n²) на `'['.repeat(n)` (аудит 2026-09-12, M9:
- * 100k символов — 56 мс, 400k — 882 мс). */
-function parseSegments(template: string): Segment[] {
-  const segments: Segment[] = [];
-  let textStart = 0;
-  let i = 0;
-  while (i < template.length) {
-    if (template[i] === '[') {
-      const closeIndex = template.indexOf(']', i + 1);
-      if (closeIndex !== -1) {
-        if (i > textStart)
-          segments.push({ kind: 'text', value: template.slice(textStart, i) });
-        segments.push({ kind: 'fragment', inner: template.slice(i + 1, closeIndex) });
-        i = closeIndex + 1;
-        textStart = i;
-        continue;
-      }
-      break;
-    }
-    i += 1;
-  }
-  if (textStart < template.length)
-    segments.push({ kind: 'text', value: template.slice(textStart) });
-  return segments;
-}
-
 /**
- * Рендер поста по шаблону: `{имя}` из allow-list `TEMPLATE_PLACEHOLDERS` и
- * необязательные фрагменты `[ … ]` — фрагмент без единого `{…}` пуст по
- * определению и исчезает вместе со скобками; фрагмент с плейсхолдером,
- * который остался пустым, тоже исчезает. Возвращает plain text без
- * экранирования: адаптер канала шлёт его без parse_mode (docs/PLAN.md §6,
- * п. 6 «Шаблоны»).
+ * Рендер по шаблону: `{имя}` из allow-list (по умолчанию — поста,
+ * `TEMPLATE_PLACEHOLDERS`; у напоминания об оплате — свой,
+ * `PAYMENT_REMINDER_PLACEHOLDERS`, ADR-0051) и необязательные фрагменты
+ * `[ … ]` — фрагмент без единого `{…}` пуст по определению и исчезает вместе
+ * со скобками; фрагмент с плейсхолдером, который остался пустым, тоже
+ * исчезает. Возвращает plain text без экранирования: адаптер канала шлёт его
+ * без parse_mode (docs/PLAN.md §6, п. 6 «Шаблоны»).
  */
-export function renderTemplate(template: string, values: TemplateValues): string {
+export function renderTemplate(template: string, values: TemplateValues): string;
+export function renderTemplate<Name extends string>(
+  template: string,
+  values: TemplateValues<Name>,
+  allowList: readonly Name[],
+): string;
+export function renderTemplate(
+  template: string,
+  values: TemplateValues<string>,
+  allowList: readonly string[] = TEMPLATE_PLACEHOLDERS,
+): string {
   return parseSegments(template)
     .map((segment) => {
-      if (segment.kind === 'text') return substitutePlaceholders(segment.value, values);
-      if (isFragmentEmpty(segment.inner, values)) return '';
-      return substitutePlaceholders(segment.inner, values);
+      if (segment.kind === 'text') {
+        return substitutePlaceholders(segment.value, values, allowList);
+      }
+      if (isFragmentEmpty(segment.inner, values, allowList)) return '';
+      return substitutePlaceholders(segment.inner, values, allowList);
     })
     .join('');
 }
 
-/** Имена `{…}`, которых нет в allow-list, без дублей, в порядке появления —
- * для сообщения формы «{дата} не поддерживается». */
-export function findUnknownPlaceholders(template: string): string[] {
+/** Имена `{…}`, которых нет в allow-list (по умолчанию — поста), без дублей,
+ * в порядке появления — для сообщения формы «{дата} не поддерживается». */
+export function findUnknownPlaceholders(
+  template: string,
+  allowList: readonly string[] = TEMPLATE_PLACEHOLDERS,
+): string[] {
   const found: string[] = [];
   for (const match of template.matchAll(ANY_BRACES_RE)) {
     const name = match[1] ?? '';
-    if (!isKnownPlaceholder(name) && !found.includes(name)) {
+    if (!isKnownPlaceholder(name, allowList) && !found.includes(name)) {
       found.push(name);
     }
   }

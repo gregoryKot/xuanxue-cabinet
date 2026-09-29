@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_NEWCOMER_CONTACT,
+  DEFAULT_PAYMENT_REMINDER,
   DEFAULT_LESSON_REMINDER_MINUTES,
   DEFAULT_PREVIEW_MINUTES,
   type SettingsDto,
@@ -16,6 +17,7 @@ const SETTINGS_WITH_SITE: SettingsDto = {
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
   lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentReminder: DEFAULT_PAYMENT_REMINDER,
   // Другой updatedAt, чем у SETTINGS_WITHOUT_SITE — синхронизация в хуке
   // идёт по нему (как texts в TemplatesScreen.tsx), одинаковый updatedAt у
   // обоих фикстур не запустил бы эффект заново.
@@ -28,6 +30,7 @@ const SETTINGS_WITHOUT_SITE: SettingsDto = {
   previewMinutes: DEFAULT_PREVIEW_MINUTES,
   lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
+  paymentReminder: DEFAULT_PAYMENT_REMINDER,
   updatedAt: '2026-09-06T18:00:00.000Z',
 };
 

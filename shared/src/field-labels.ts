@@ -72,6 +72,9 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   previewMinutes: 'За сколько минут показывать черновик поста',
   lessonReminderMinutes: 'За сколько минут напомнить ученикам о занятии',
   newcomerContact: 'Кому писать, если человек ещё не в школе',
+  paymentReminder: 'Напоминание об оплате',
+  dayOfMonth: 'День месяца для напоминания об оплате',
+  template: 'Текст напоминания об оплате',
 
   // users — /users (экран «Люди»).
   roles: 'Роли',
@@ -125,10 +128,9 @@ export const FIELD_LABELS_RU: Record<string, string> = {
   month: 'Месяц',
   amountMinor: 'Сумма',
 
-  // users/dto/set-no-telegram.dto.ts — отметка «у меня нет Telegram»
-  // (ADR-0067). Подпись называет саму отметку: в форму поле не выводится, но
-  // текст ошибки человек всё равно читает, и голое `noTelegram` ему ни о чём
-  // не говорит.
+  // users/dto/set-no-telegram.dto.ts — отметка «у меня нет Telegram» (ADR-0067).
+  // Поле в форму не выводится, но текст ошибки человек читает, и голое
+  // `noTelegram` ему ни о чём не говорит.
   noTelegram: 'Отметка «у меня нет Telegram»',
 
   // client-errors — POST /client-errors (ADR-0071, отчёт браузера о сбое).

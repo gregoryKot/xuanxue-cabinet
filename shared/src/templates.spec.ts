@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TEMPLATES } from './default-templates';
+import {
+  DEFAULT_PAYMENT_REMINDER_TEMPLATE,
+  DEFAULT_TEMPLATES,
+} from './default-templates';
 import { formatDurationRu } from './format-duration';
-import { findUnknownPlaceholders, renderTemplate } from './templates';
+import {
+  PAYMENT_REMINDER_PLACEHOLDERS,
+  findUnknownPlaceholders,
+  renderTemplate,
+} from './templates';
 
 describe('renderTemplate — реальные посты (PLAN.md §1)', () => {
   it('анонс с паролем, без группы и темы', () => {
@@ -152,5 +159,61 @@ describe('findUnknownPlaceholders', () => {
   it('имя с пробелами — неизвестное: рендер его не подставит', () => {
     expect(findUnknownPlaceholders('{ название } и {тема}')).toEqual([' название ']);
     expect(renderTemplate('{ название }', { название: 'A' })).toBe('{ название }');
+  });
+});
+
+describe('напоминание об оплате — свой allow-list (ADR-0051)', () => {
+  it('`{название}` для напоминания неизвестна, `{месяц}` — известна', () => {
+    expect(
+      findUnknownPlaceholders('{название} за {месяц}', PAYMENT_REMINDER_PLACEHOLDERS),
+    ).toEqual(['название']);
+  });
+
+  it('`{месяц}` для поста неизвестна, `{название}` — известна', () => {
+    expect(findUnknownPlaceholders('{название} за {месяц}')).toEqual(['месяц']);
+  });
+
+  it('плейсхолдер поста в напоминании не подставляется, остаётся текстом', () => {
+    expect(
+      renderTemplate('{ведущий}, {имя}', { имя: 'Анна' }, PAYMENT_REMINDER_PLACEHOLDERS),
+    ).toBe('{ведущий}, Анна');
+  });
+
+  it('шаблон по умолчанию со всеми значениями', () => {
+    expect(
+      renderTemplate(
+        DEFAULT_PAYMENT_REMINDER_TEMPLATE,
+        {
+          имя: 'Анна',
+          месяц: 'октябрь',
+          сумма: '4 000 ₽',
+          ссылка: 'https://t.me/xuanxue_bot',
+        },
+        PAYMENT_REMINDER_PLACEHOLDERS,
+      ),
+    ).toBe(
+      'Анна, абонемент за октябрь пока не отмечен оплаченным.\nЕсли вы уже перевели — пришлите скриншот сюда, и мы отметим. https://t.me/xuanxue_bot',
+    );
+  });
+
+  it('шаблон по умолчанию без ссылки — без висячего пробела в конце', () => {
+    expect(
+      renderTemplate(
+        DEFAULT_PAYMENT_REMINDER_TEMPLATE,
+        { имя: 'Анна', месяц: 'октябрь', ссылка: null },
+        PAYMENT_REMINDER_PLACEHOLDERS,
+      ),
+    ).toBe(
+      'Анна, абонемент за октябрь пока не отмечен оплаченным.\nЕсли вы уже перевели — пришлите скриншот сюда, и мы отметим.',
+    );
+  });
+
+  it('шаблон по умолчанию не содержит неизвестных подстановок', () => {
+    expect(
+      findUnknownPlaceholders(
+        DEFAULT_PAYMENT_REMINDER_TEMPLATE,
+        PAYMENT_REMINDER_PLACEHOLDERS,
+      ),
+    ).toEqual([]);
   });
 });
