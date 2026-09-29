@@ -17,6 +17,16 @@ import { reportClientError } from './reportClientError';
 vi.mock('./reportClientError', () => ({ reportClientError: vi.fn() }));
 const reportClientErrorMock = vi.mocked(reportClientError);
 
+// Ошибка «нашего» кода детерминированно: у настоящего `new Error().stack` в
+// vitest кадры из file:///…/node_modules/@vitest/…, а origin jsdom —
+// http://localhost:3000, и без явного стека фильтр чужого кода (errorSource.ts)
+// принял бы каждую тестовую ошибку за чужую.
+function ownError(message: string): Error {
+  const error = new Error(message);
+  error.stack = `Error: ${message}\n    at run (${window.location.origin}/assets/index-abc.js:1:2)`;
+  return error;
+}
+
 beforeEach(() => {
   reportClientErrorMock.mockClear();
 });
@@ -24,7 +34,7 @@ beforeEach(() => {
 describe('installGlobalErrorReporting', () => {
   it('ловит необработанную ошибку и шлёт отчёт kind: unhandled', () => {
     installGlobalErrorReporting();
-    const error = new Error('кабум');
+    const error = ownError('кабум');
 
     window.dispatchEvent(new ErrorEvent('error', { error, message: error.message }));
 
@@ -32,7 +42,9 @@ describe('installGlobalErrorReporting', () => {
   });
 
   // Часть браузеров/ситуаций отдаёт error пустым, но с осмысленным message —
-  // тогда в отчёт идёт он (event.error ?? event.message в handleError).
+  // тогда в отчёт идёт он (event.error ?? event.message в handleError). Ни
+  // filename, ни стека нет — источник не определить, а неопознанное уходит
+  // отчётом (errorSource.ts): лишний отчёт дешевле потерянного.
   it('без объекта error, но с осмысленным message — шлёт текст сообщения', () => {
     installGlobalErrorReporting();
 
@@ -43,7 +55,7 @@ describe('installGlobalErrorReporting', () => {
 
   it('ловит отклонённый промис без .catch и шлёт отчёт kind: unhandled', () => {
     installGlobalErrorReporting();
-    const reason = new Error('не поймали');
+    const reason = ownError('не поймали');
     // PromiseRejectionEvent не сконструировать напрямую (нет promise) —
     // обработчику нужен только reason, дописываем его на обычный Event.
     const event = new Event('unhandledrejection');
@@ -57,7 +69,7 @@ describe('installGlobalErrorReporting', () => {
   it('повторная установка не вешает второй слушатель', () => {
     installGlobalErrorReporting();
     installGlobalErrorReporting();
-    const error = new Error('кабум');
+    const error = ownError('кабум');
 
     window.dispatchEvent(new ErrorEvent('error', { error, message: error.message }));
 
@@ -85,5 +97,52 @@ describe('installGlobalErrorReporting', () => {
     window.dispatchEvent(new ErrorEvent('error', { message: 'Script error.' }));
 
     expect(reportClientErrorMock).not.toHaveBeenCalled();
+  });
+
+  // Инцидент 2026-09-29: `Can't find variable: EmptyRanges` из Safari на
+  // /exams/:id. Бросило расширение; Safari отдал текст целиком, а адрес его
+  // скрипта спрятал под webkit-masked-url://hidden/ — фильтр "Script error."
+  // такое не видел, и владельца разбудили сбоем, который в кабинете не починить.
+  it('ошибка расширения Safari (filename webkit-masked-url://hidden/) не уходит', () => {
+    installGlobalErrorReporting();
+    const message = "Can't find variable: EmptyRanges";
+
+    window.dispatchEvent(
+      new ErrorEvent('error', {
+        error: new ReferenceError(message),
+        message,
+        filename: 'webkit-masked-url://hidden/',
+      }),
+    );
+
+    expect(reportClientErrorMock).not.toHaveBeenCalled();
+  });
+
+  // Тот же инцидент, путь через промис: у unhandledrejection нет filename,
+  // место броска видно только по кадру стека.
+  it('отклонённый промис из расширения Safari (стек webkit-masked-url://hidden/) не уходит', () => {
+    installGlobalErrorReporting();
+    const reason = { message: 'x', stack: 'f@webkit-masked-url://hidden/:1:2' };
+    const event = new Event('unhandledrejection');
+    Object.defineProperty(event, 'reason', { value: reason });
+
+    window.dispatchEvent(event);
+
+    expect(reportClientErrorMock).not.toHaveBeenCalled();
+  });
+
+  it('ошибка из файла нашего origin (filename) уходит', () => {
+    installGlobalErrorReporting();
+    const error = ownError('кабум');
+
+    window.dispatchEvent(
+      new ErrorEvent('error', {
+        error,
+        message: error.message,
+        filename: `${window.location.origin}/assets/index-abc.js`,
+      }),
+    );
+
+    expect(reportClientErrorMock).toHaveBeenCalledWith('unhandled', error);
   });
 });

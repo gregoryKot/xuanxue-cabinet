@@ -7,13 +7,16 @@
 // раз, но StrictMode в разработке вызывает эффекты дважды, а тесты
 // перезапускают модуль — без флага второй вызов повесил бы второй слушатель,
 // и один и тот же сбой ушёл бы на сервер отчётом дважды.
+import { isForeignScriptError } from './errorSource';
 import { reportClientError } from './reportClientError';
 
-// 'Script error.' без файла, строки и стека — типичный признак чужого origin
-// (скрипт CDN без crossorigin, расширение браузера): браузер прячет
+// Чужой код (расширение браузера, скрипт с другого домена) приходит двумя
+// видами. 'Script error.' без файла, строки и стека — браузер прячет
 // подробности по CORS, показать в отчёте нечего, а таких сообщений даже у
 // здорового кабинета набегает много — без фильтра они съели бы весь потолок
-// в 3 отчёта (reportClientError.ts) впустую.
+// в 3 отчёта (reportClientError.ts) впустую. Второй вид — с текстом, но с
+// чужим адресом скрипта (Safari отдаёт текст расширения целиком, прячет только
+// адрес): его отсекает errorSource.ts.
 const SCRIPT_ERROR_MESSAGE = 'Script error.';
 
 /** Настоящая ошибка выполнения JS, а не шум. Событие неудачной загрузки
@@ -26,6 +29,14 @@ const SCRIPT_ERROR_MESSAGE = 'Script error.';
  * событий, которые сам jsdom выставил на window. */
 function isReportableErrorEvent(event: ErrorEvent): boolean {
   if (!(event.target instanceof Window)) return false;
+  if (
+    isForeignScriptError(
+      { filename: event.filename, error: event.error },
+      window.location.origin,
+    )
+  ) {
+    return false;
+  }
   if (event.error) return true;
   return Boolean(event.message) && event.message !== SCRIPT_ERROR_MESSAGE;
 }
@@ -36,6 +47,7 @@ function handleError(event: ErrorEvent): void {
 }
 
 function handleUnhandledRejection(event: PromiseRejectionEvent): void {
+  if (isForeignScriptError({ error: event.reason }, window.location.origin)) return;
   void reportClientError('unhandled', event.reason);
 }
 
