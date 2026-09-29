@@ -4,6 +4,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { requestIdOf, userAgentOf, type RequestLike } from '../common/request-info';
 import { ClientErrorsService } from './client-errors.service';
 import { ReportClientErrorDto } from './report-client-error.dto';
@@ -22,8 +23,11 @@ export class ClientErrorsController {
   @Public()
   @Throttle(CLIENT_ERROR_THROTTLE)
   @Post()
+  @ApiRoute('POST /client-errors')
   @HttpCode(HttpStatus.NO_CONTENT)
-  report(@Body() body: ReportClientErrorDto, @Req() request: RequestLike): void {
+  report(@Body() body: ReportClientErrorDto, @Req() request: RequestLike): Promise<void> {
     this.clientErrorsService.report(body, requestIdOf(request), userAgentOf(request));
+    // Сервис синхронный, а @ApiRoute требует Promise (api-route.decorator.ts).
+    return Promise.resolve();
   }
 }

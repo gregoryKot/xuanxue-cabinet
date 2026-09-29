@@ -9,7 +9,7 @@ function fakeConfig(values: Record<string, string | undefined>): ConfigService {
 }
 
 describe('PushKeyController', () => {
-  it('VAPID настроен — отдаёт публичный ключ', () => {
+  it('VAPID настроен — отдаёт публичный ключ', async () => {
     const controller = new PushKeyController(
       fakeConfig({
         VAPID_PUBLIC_KEY: 'A'.repeat(87),
@@ -18,12 +18,14 @@ describe('PushKeyController', () => {
       }),
     );
 
-    expect(controller.getPublicKey()).toEqual({ publicKey: 'A'.repeat(87) });
+    await expect(controller.getPublicKey()).resolves.toEqual({
+      publicKey: 'A'.repeat(87),
+    });
   });
 
-  it('push выключен — null, не ошибка', () => {
+  it('push выключен — null, не ошибка', async () => {
     const controller = new PushKeyController(fakeConfig({}));
 
-    expect(controller.getPublicKey()).toEqual({ publicKey: null });
+    await expect(controller.getPublicKey()).resolves.toEqual({ publicKey: null });
   });
 });

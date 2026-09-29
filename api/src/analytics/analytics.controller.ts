@@ -5,6 +5,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AnalyticsConfigDto } from '@xuanxue/shared';
 import { Public } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -14,7 +15,10 @@ export class AnalyticsController {
   // «Рискованная фича — за флагом»): фронт даже не импортирует posthog-js.
   @Public()
   @Get('config')
-  getConfig(): AnalyticsConfigDto {
-    return { posthogKey: this.configService.get<string>('POSTHOG_KEY') ?? null };
+  @ApiRoute('GET /analytics/config')
+  getConfig(): Promise<AnalyticsConfigDto> {
+    return Promise.resolve({
+      posthogKey: this.configService.get<string>('POSTHOG_KEY') ?? null,
+    });
   }
 }

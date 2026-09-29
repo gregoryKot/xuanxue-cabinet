@@ -16,7 +16,7 @@ import {
   type UserDto,
   type UserStatus,
 } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { replacedById, withoutId } from '../lib/listPatch';
 
@@ -38,17 +38,14 @@ export interface UsePeopleResult {
  * сервер всё равно ответит 403. */
 export function usePeople(enabled = true): UsePeopleResult {
   const { data, loading, error, reload, applyData } = useAbortableFetch(
-    (signal) => apiFetch<UserDto[]>(`/users?limit=${LIST_LIMIT_MAX}`, { signal }),
+    (signal) => apiRoute('GET /users', { query: { limit: LIST_LIMIT_MAX }, signal }),
     LOAD_ERROR_MESSAGE,
     { enabled },
   );
 
   const updateRoles = useCallback(
     async (id: string, input: UpdateUserRolesInput) => {
-      const next = await apiFetch<UserDto>(`/users/${id}`, {
-        method: 'PATCH',
-        body: input,
-      });
+      const next = await apiRoute('PATCH /users/:id', { params: { id }, body: input });
       applyData((prev) => replacedById(prev, next));
     },
     [applyData],
@@ -58,8 +55,8 @@ export function usePeople(enabled = true): UsePeopleResult {
   // §8.15); read-after-write тем же приёмом, что updateRoles.
   const updateStatus = useCallback(
     async (id: string, status: UserStatus) => {
-      const next = await apiFetch<UserDto>(`/users/${id}/status`, {
-        method: 'PATCH',
+      const next = await apiRoute('PATCH /users/:id/status', {
+        params: { id },
         body: { status },
       });
       applyData((prev) => replacedById(prev, next));
@@ -72,7 +69,7 @@ export function usePeople(enabled = true): UsePeopleResult {
   // единственный источник правды об удалении — id, который мы уже отправили.
   const remove = useCallback(
     async (id: string) => {
-      await apiFetch(`/users/${id}`, { method: 'DELETE' });
+      await apiRoute('DELETE /users/:id', { params: { id } });
       applyData((prev) => withoutId(prev, id));
     },
     [applyData],

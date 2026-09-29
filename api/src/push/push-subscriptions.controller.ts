@@ -5,6 +5,7 @@
 import { Body, Controller, Delete, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import type { PushSubscriptionDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { SubscribePushDto } from './dto/subscribe-push.dto';
 import { UnsubscribePushDto } from './dto/unsubscribe-push.dto';
@@ -15,6 +16,7 @@ export class PushSubscriptionsController {
   constructor(private readonly pushSubscriptionsService: PushSubscriptionsService) {}
 
   @Post()
+  @ApiRoute('POST /me/push-subscriptions')
   subscribe(
     @Body() body: SubscribePushDto,
     @CurrentUser() user: UserLean,
@@ -25,6 +27,7 @@ export class PushSubscriptionsController {
   // 204: клиент уже знает endpoint, который отписывал, — тем же приёмом, что
   // MyNoTelegramController.update (204, не обновлённый DTO).
   @Delete()
+  @ApiRoute('DELETE /me/push-subscriptions')
   @HttpCode(HttpStatus.NO_CONTENT)
   async unsubscribe(
     @Body() body: UnsubscribePushDto,

@@ -6,11 +6,11 @@
 import { IsBoolean, IsIn } from 'class-validator';
 import {
   NOTIFICATION_KINDS,
+  type ApiRouteBody,
   type NotificationKind,
-  type UpdateNotificationPrefsInput,
 } from '@xuanxue/shared';
 
-export class UpdateNotificationPrefsDto implements UpdateNotificationPrefsInput {
+export class UpdateNotificationPrefsDto implements ApiRouteBody<'PATCH /me/notifications'> {
   @IsIn(NOTIFICATION_KINDS)
   kind!: NotificationKind;
 

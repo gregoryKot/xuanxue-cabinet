@@ -4,9 +4,9 @@
 // оттуда, а не пишется отдельной константой (CLAUDE.md «Валидация входа»:
 // массивы — с ограничением размера).
 import { ArrayMaxSize, ArrayUnique, IsArray, IsIn } from 'class-validator';
-import { USER_ROLES, type UpdateUserRolesInput, type UserRole } from '@xuanxue/shared';
+import { USER_ROLES, type ApiRouteBody, type UserRole } from '@xuanxue/shared';
 
-export class UpdateUserRolesDto implements UpdateUserRolesInput {
+export class UpdateUserRolesDto implements ApiRouteBody<'PATCH /users/:id'> {
   @IsArray()
   @ArrayUnique()
   @ArrayMaxSize(USER_ROLES.length)

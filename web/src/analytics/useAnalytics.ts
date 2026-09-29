@@ -4,8 +4,8 @@
 // в синхронизации с путём и статусом сессии.
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import type { AnalyticsConfigDto, MeDto } from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import type { MeDto } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
 import { useAuth } from '../auth/AuthProvider';
 import type * as PosthogClientModule from './posthogClient';
 
@@ -40,7 +40,7 @@ export function useAnalytics(): void {
     let cancelled = false;
     void (async () => {
       try {
-        const config = await apiFetch<AnalyticsConfigDto>('/analytics/config');
+        const config = await apiRoute('GET /analytics/config');
         if (cancelled || !config.posthogKey) return;
         const client = await import('./posthogClient');
         if (cancelled) return;

@@ -3,12 +3,8 @@
 // своего хука — не в api/apiPaths.ts: там только GET, общие с предзагрузкой
 // экрана, тем же приёмом, что NO_TELEGRAM_PATH в telegram/useNoTelegram.ts.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type {
-  PushPublicKeyDto,
-  PushSubscriptionDto,
-  SubscribePushInput,
-} from '@xuanxue/shared';
-import { apiFetch } from '../api/http';
+import type { SubscribePushInput } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
 import {
   PUSH_DISABLE_ERROR_MESSAGE,
   PUSH_ENABLE_ERROR_MESSAGE,
@@ -22,9 +18,6 @@ import {
   withPushActionTimeout,
   type PushSectionState,
 } from './pushSectionState';
-
-const PUSH_PUBLIC_KEY_PATH = '/push/public-key';
-const PUSH_SUBSCRIPTIONS_PATH = '/me/push-subscriptions';
 
 export interface UsePushSubscriptionResult {
   /** Идёт первичное определение состояния (ключ сервера + окружение браузера). */
@@ -57,7 +50,7 @@ export function usePushSubscription(): UsePushSubscriptionResult {
     setLoading(true);
     setLoadError(null);
     try {
-      const { publicKey } = await apiFetch<PushPublicKeyDto>(PUSH_PUBLIC_KEY_PATH);
+      const { publicKey } = await apiRoute('GET /push/public-key');
       if (publicKey !== null) publicKeyRef.current = publicKey;
       setState(await resolvePushSectionState(publicKey));
     } catch (err) {
@@ -110,10 +103,7 @@ export function usePushSubscription(): UsePushSubscriptionResult {
         p256dh: arrayBufferToBase64Url(p256dhKey),
         auth: arrayBufferToBase64Url(authKey),
       };
-      await apiFetch<PushSubscriptionDto>(PUSH_SUBSCRIPTIONS_PATH, {
-        method: 'POST',
-        body,
-      });
+      await apiRoute('POST /me/push-subscriptions', { body });
       setState({ kind: 'subscribed' });
     } catch (err) {
       setActionError(pushActionErrorMessage(err, PUSH_ENABLE_ERROR_MESSAGE));
@@ -140,10 +130,7 @@ export function usePushSubscription(): UsePushSubscriptionResult {
       if (subscription) {
         const endpoint = subscription.endpoint;
         await withPushActionTimeout(subscription.unsubscribe());
-        await apiFetch<void>(PUSH_SUBSCRIPTIONS_PATH, {
-          method: 'DELETE',
-          body: { endpoint },
-        });
+        await apiRoute('DELETE /me/push-subscriptions', { body: { endpoint } });
       }
       setState({ kind: 'not-subscribed' });
     } catch (err) {

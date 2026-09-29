@@ -24,6 +24,7 @@ import {
 } from '@nestjs/common';
 import type { InviteLinkDto, TeacherOptionDto, UserDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from './users.service';
 import { InviteLinkService } from './invite-link.service';
 import { TeachersService } from './teachers.service';
@@ -47,6 +48,7 @@ export class UsersController {
   ) {}
 
   @Get('teachers')
+  @ApiRoute('GET /users/teachers')
   @Roles('teacher', 'admin')
   async listTeachers(): Promise<TeacherOptionDto[]> {
     return this.teachersService.listTeachers();
@@ -59,12 +61,14 @@ export class UsersController {
   // `listTeachers()` выше; помощник учителя и бухгалтер сюда не входят —
   // список ролей называет владелец явно, не общее «учитель = помощник».
   @Get('invite-link')
+  @ApiRoute('GET /users/invite-link')
   @Roles('teacher', 'admin')
   async getInviteLink(): Promise<InviteLinkDto> {
     return this.inviteLinkService.getCurrent();
   }
 
   @Post('invite-link')
+  @ApiRoute('POST /users/invite-link')
   @Roles('teacher', 'admin')
   @HttpCode(200)
   async rotateInviteLink(@CurrentUser() currentUser: UserLean): Promise<InviteLinkDto> {
@@ -72,12 +76,14 @@ export class UsersController {
   }
 
   @Get()
+  @ApiRoute('GET /users')
   async list(@Query() query: ListUsersDto): Promise<UserDto[]> {
     const users = await this.userRolesService.list(query);
     return users.map(toUserDto);
   }
 
   @Patch(':id/status')
+  @ApiRoute('PATCH /users/:id/status')
   async updateStatus(
     @Param('id') id: string,
     @Body() body: UpdateUserStatusDto,
@@ -92,6 +98,7 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @ApiRoute('PATCH /users/:id')
   async updateRoles(
     @Param('id') id: string,
     @Body() body: UpdateUserRolesDto,
@@ -102,6 +109,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @ApiRoute('DELETE /users/:id')
   @HttpCode(204)
   async remove(
     @Param('id') id: string,

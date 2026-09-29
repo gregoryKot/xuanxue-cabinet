@@ -2,12 +2,28 @@
 // строки: его `…Routes` в пересечение и `…_ROUTE_KEYS` в множество ключей.
 // Форму записей и ключей проверяет api-routes.ts (CheckedRouteMap), полноту
 // множества — `Record` ниже: забытый в нём домен не компилируется.
+import { ANALYTICS_ROUTE_KEYS, type AnalyticsRoutes } from './analytics-routes';
+import { APP_ERRORS_ROUTE_KEYS, type AppErrorsRoutes } from './app-errors-routes';
 import { INBOX_ROUTE_KEYS, type InboxRoutes } from './inbox-routes';
+import {
+  NOTIFICATIONS_ROUTE_KEYS,
+  type NotificationsRoutes,
+} from './notifications-routes';
 import { PAYMENTS_ROUTE_KEYS, type PaymentsRoutes } from './payments-routes';
+import { USERS_ROUTE_KEYS, type UsersRoutes } from './users-routes';
 
-export type ApiRouteMap = InboxRoutes & PaymentsRoutes;
+export type ApiRouteMap = AnalyticsRoutes &
+  AppErrorsRoutes &
+  InboxRoutes &
+  NotificationsRoutes &
+  PaymentsRoutes &
+  UsersRoutes;
 
 export const API_ROUTE_KEY_SET: Record<keyof ApiRouteMap, true> = {
+  ...ANALYTICS_ROUTE_KEYS,
+  ...APP_ERRORS_ROUTE_KEYS,
   ...INBOX_ROUTE_KEYS,
+  ...NOTIFICATIONS_ROUTE_KEYS,
   ...PAYMENTS_ROUTE_KEYS,
+  ...USERS_ROUTE_KEYS,
 };
