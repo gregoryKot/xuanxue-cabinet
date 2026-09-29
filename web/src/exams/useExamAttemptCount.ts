@@ -4,9 +4,7 @@
 // доедет. По образцу grading/useGradingQueue.ts; `enabled` — тот же приём,
 // что у hooks/useEntityEditor.ts: у нового экзамена (`/exams/new`) id ещё
 // нет, запрос не нужен.
-import type { ExamAttemptCountDto } from '@xuanxue/shared';
-import { examAttemptCountPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить число попыток.';
@@ -23,11 +21,14 @@ export interface UseExamAttemptCountResult {
 export function useExamAttemptCount(
   examId: string | undefined,
 ): UseExamAttemptCountResult {
-  // Путь считаем и для undefined — при enabled: false колбэк ни разу не
-  // вызовется, но типам нужна строка, а не undefined (как в useEntityEditor.ts).
-  const path = examId === undefined ? '' : examAttemptCountPath(examId);
+  // Без id колбэк не вызывается вовсе (enabled: false) — каст только для
+  // типов, запрос с пустым id уйти не может (как в useEntityEditor.ts).
   const { data, loading, error } = useAbortableFetch(
-    (signal) => apiFetch<ExamAttemptCountDto>(path, { signal }),
+    (signal) =>
+      apiRoute('GET /exams/:examId/attempt-count', {
+        params: { examId: examId as string },
+        signal,
+      }),
     LOAD_ERROR_MESSAGE,
     { enabled: examId !== undefined },
   );

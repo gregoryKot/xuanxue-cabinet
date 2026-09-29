@@ -4,8 +4,8 @@
 // (ADR-0033) — списку осталось только чтение. Гонка запросов и разбор ошибки —
 // в общем hooks/useAbortableFetch.ts.
 import type { ChannelDto } from '@xuanxue/shared';
-import { channelsListPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { channelsListQuery } from '../api/listQueries';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить каналы. Попробуйте ещё раз.';
@@ -22,7 +22,8 @@ export interface UseChannelsResult {
  * docs/PLAN.md §6 п.1) — тот же хук, без второй реализации списка. */
 export function useChannels(activeOnly = false): UseChannelsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ChannelDto[]>(channelsListPath(activeOnly), { signal }),
+    (signal) =>
+      apiRoute('GET /channels', { query: channelsListQuery(activeOnly), signal }),
     LOAD_ERROR_MESSAGE,
   );
 

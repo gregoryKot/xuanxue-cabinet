@@ -13,8 +13,7 @@ import type {
   ExamItemDto,
   UpdateExamItemInput,
 } from '@xuanxue/shared';
-import { EXAM_ITEMS_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import {
   initialExamItemFormState,
@@ -70,16 +69,13 @@ export function useQuestionInlineForm(
     try {
       if (item) {
         const input: UpdateExamItemInput = toUpdateInput(state);
-        return await apiFetch<ExamItemDto>(`${EXAM_ITEMS_PATH}/${item.id}`, {
-          method: 'PATCH',
+        return await apiRoute('PATCH /exam-items/:id', {
+          params: { id: item.id },
           body: input,
         });
       }
       const input: CreateExamItemInput = toCreateInput(state);
-      return await apiFetch<ExamItemDto>(EXAM_ITEMS_PATH, {
-        method: 'POST',
-        body: input,
-      });
+      return await apiRoute('POST /exam-items', { body: input });
     } catch (err) {
       setServerError(errorFrom(err, SAVE_ERROR_MESSAGE));
       return null;

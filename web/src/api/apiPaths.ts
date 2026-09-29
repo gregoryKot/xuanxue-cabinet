@@ -6,21 +6,26 @@ import {
   LIST_LIMIT_DEFAULT,
   LIST_LIMIT_MAX,
   type ExamItemStatus,
-  type ExamStatus,
   type MaterialKind,
 } from '@xuanxue/shared';
 import { planningWindow } from '../planning/planningWindow';
 import { nextLessonsQuery } from '../templates/nextLessonsWindow';
 import { apiRoutePath } from './apiRoute';
-
-/** Фильтры списка экзаменов — общая форма для useExams.ts (хук) и
- * examsListPath (предзагрузка); ExamsScreen.tsx использует то же имя. */
-export interface ExamListFilters {
-  status: ExamStatus | '';
-}
+import {
+  CLASSES_LIST_QUERY,
+  EXAM_EDITOR_ITEMS_QUERY,
+  channelsListQuery,
+  examItemsListQuery,
+  examsListQuery,
+  type ExamListFilters,
+} from './listQueries';
 
 export const CLASSES_PATH = '/classes';
-export const CLASSES_LIST_PATH = `${CLASSES_PATH}?limit=${LIST_LIMIT_MAX}`;
+/** Строка пути — для таблицы предзагрузки: ключ кэша prefetchCache.ts должен
+ * совпасть с тем, что соберёт `apiRoute` в useClasses.ts (query — listQueries.ts). */
+export const CLASSES_LIST_PATH = apiRoutePath('GET /classes', {
+  query: CLASSES_LIST_QUERY,
+});
 
 export const LESSONS_PATH = '/lessons';
 /** Число раздела «Занятия» (docs/PLAN.md §14, слой 3.5) — по образцу
@@ -41,21 +46,13 @@ export function lessonsListPath(now?: Date): string {
 export const EXAMS_PATH = '/exams';
 
 export function examsListPath(filters: ExamListFilters): string {
-  const params = [`limit=${LIST_LIMIT_MAX}`];
-  if (filters.status) params.push(`status=${filters.status}`);
-  return `${EXAMS_PATH}?${params.join('&')}`;
-}
-
-/** Число прошлых попыток экзамена — заметка учителю (ExamAttemptsNote.tsx, ADR-0022). */
-export function examAttemptCountPath(examId: string): string {
-  return `${EXAMS_PATH}/${examId}/attempt-count`;
+  return apiRoutePath('GET /exams', { query: examsListQuery(filters) });
 }
 
 export const EXAM_ITEMS_PATH = '/exam-items';
-export const EXAM_ITEM_STATS_SUMMARY_PATH = `${EXAM_ITEMS_PATH}/stats-summary`;
+export const EXAM_ITEM_STATS_SUMMARY_PATH = apiRoutePath('GET /exam-items/stats-summary');
 
-export const EXAM_IMAGES_PATH = '/exam-images';
-export const EXAM_IMAGE_STATS_PATH = `${EXAM_IMAGES_PATH}/stats-summary`;
+const EXAM_IMAGES_PATH = '/exam-images';
 
 /** Адрес картинки варианта для `<img src>` (ADR-0035) — единственное место
  * вне http.ts, где вручную собирается `/api`: это не запрос через apiFetch
@@ -67,10 +64,12 @@ export function examImageSrc(imageId: string): string {
 
 /** Пустой статус — «Все» (тот же приём, что раньше жил в useExamItems.ts). */
 export function examItemsListPath(status: ExamItemStatus | ''): string {
-  return `${EXAM_ITEMS_PATH}?limit=${LIST_LIMIT_MAX}${status ? `&status=${status}` : ''}`;
+  return apiRoutePath('GET /exam-items', { query: examItemsListQuery(status) });
 }
 /** Редактор и предпросмотр экзамена — с удалёнными из списка вопросов (ADR-0140). */
-export const EXAM_EDITOR_ITEMS_PATH = `${examItemsListPath('')}&includeDeleted=true`;
+export const EXAM_EDITOR_ITEMS_PATH = apiRoutePath('GET /exam-items', {
+  query: EXAM_EDITOR_ITEMS_QUERY,
+});
 
 export const CHANNELS_PATH = '/channels';
 
@@ -78,10 +77,7 @@ export const CHANNELS_PATH = '/channels';
  * страница занятия расписания выбирают только активные Telegram-каналы для
  * рассылки (docs/PLAN.md §6 п.1). */
 export function channelsListPath(activeOnly: boolean): string {
-  const limit = `limit=${LIST_LIMIT_MAX}`;
-  return activeOnly
-    ? `${CHANNELS_PATH}?active=true&${limit}`
-    : `${CHANNELS_PATH}?${limit}`;
+  return apiRoutePath('GET /channels', { query: channelsListQuery(activeOnly) });
 }
 
 export const MATERIALS_PATH = '/materials';

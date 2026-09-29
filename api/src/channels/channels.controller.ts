@@ -27,6 +27,7 @@ export class ChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}
 
   @Get()
+  @ApiRoute('GET /channels')
   list(@Query() query: ListChannelsDto): Promise<ChannelDto[]> {
     return this.channelsService.list(query);
   }
@@ -58,6 +59,7 @@ export class ChannelsController {
   }
 
   @Post(':id/test')
+  @ApiRoute('POST /channels/:id/test')
   @HttpCode(HttpStatus.OK)
   test(@Param('id') id: string): Promise<ChannelTestResult> {
     return this.channelsService.test(id);

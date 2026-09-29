@@ -5,7 +5,8 @@
 // (новый config мог всё изменить), а не остаётся висеть под старым (ревью п.16).
 import { useEffect, useState } from 'react';
 import type { ChannelTestResult } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 
 const TEST_ERROR_MESSAGE = 'Не удалось проверить канал. Попробуйте ещё раз.';
 
@@ -33,8 +34,8 @@ export function useChannelTest(
     setPending(true);
     setError(null);
     try {
-      const res = await apiFetch<ChannelTestResult>(`/channels/${channelId}/test`, {
-        method: 'POST',
+      const res = await apiRoute('POST /channels/:id/test', {
+        params: { id: channelId },
       });
       setResult(res);
     } catch (err) {

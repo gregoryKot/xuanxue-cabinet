@@ -40,6 +40,7 @@ export class ExamItemsController {
   ) {}
 
   @Get()
+  @ApiRoute('GET /exam-items')
   list(@Query() query: ListExamItemsDto): Promise<ExamItemDto[]> {
     return this.examItemsService.list(query);
   }
@@ -48,6 +49,7 @@ export class ExamItemsController {
   // `GET /exam-items/stats-summary` хендлеру `getById` с `id='stats-summary'`
   // (сегменты пути совпадают числом, порядок регистрации маршрутов решает).
   @Get('stats-summary')
+  @ApiRoute('GET /exam-items/stats-summary')
   getStatsSummary(): Promise<ExamItemStatsSummaryDto> {
     return this.examItemStatsService.getSummary();
   }
@@ -59,6 +61,7 @@ export class ExamItemsController {
   }
 
   @Get(':id/stats')
+  @ApiRoute('GET /exam-items/:id/stats')
   getStats(@Param('id') id: string): Promise<ExamItemStatsDto> {
     return this.examItemStatsService.getStats(id);
   }

@@ -10,6 +10,7 @@ import { Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common
 import { DateTime } from 'luxon';
 import type { ExamVideoDto, ExamVideoStatsDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import { VideoRedirectController } from '../common/video-redirect';
 import type { UserLean } from '../users/users.service';
 import { ExamVideoStatsService } from './exam-video-stats.service';
@@ -46,6 +47,7 @@ export class ExamVideosController extends VideoRedirectController<UserLean> {
   // иначе Nest отдаст `GET /exam-videos/stats-summary` хендлеру `get` с
   // `id='stats-summary'`.
   @Get('stats-summary')
+  @ApiRoute('GET /exam-videos/stats-summary')
   @Roles('teacher', 'assistant', 'admin')
   getStatsSummary(): Promise<ExamVideoStatsDto> {
     return this.statsService.getSummary();

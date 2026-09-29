@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EXAM_STATUSES } from '@xuanxue/shared';
-import { type ExamListFilters } from '../api/apiPaths';
+import { type ExamListFilters } from '../api/listQueries';
 import { BulkDeleteBar } from '../components/BulkDeleteBar';
 import { Button } from '../components/Button';
 import { ListFilters } from '../components/ListFilters';

@@ -4,13 +4,15 @@
 import { describe, expect, it } from 'vitest';
 import { LIST_LIMIT_MAX } from '@xuanxue/shared';
 import { planningWindow } from '../planning/planningWindow';
+import { apiRoutePath } from './apiRoute';
 import {
   channelsListPath,
+  CLASSES_LIST_PATH,
   entityPath,
-  examAttemptCountPath,
   examImageSrc,
   EXAM_EDITOR_ITEMS_PATH,
   examItemsListPath,
+  EXAM_ITEM_STATS_SUMMARY_PATH,
   examsListPath,
   lessonsListPath,
 } from './apiPaths';
@@ -80,11 +82,20 @@ describe('entityPath', () => {
   });
 });
 
-describe('examAttemptCountPath', () => {
-  it('собирает путь счётчика попыток по id экзамена', () => {
-    expect(examAttemptCountPath('652f00000000000000000001')).toBe(
-      '/exams/652f00000000000000000001/attempt-count',
-    );
+// Строка пути — ключ кэша предзагрузки: apiRoute собирает её по карте, и она
+// обязана совпасть с прежним литералом символ в символ.
+describe('пути предзагрузки по карте маршрутов', () => {
+  it('список занятий и сводка вопросов', () => {
+    expect(CLASSES_LIST_PATH).toBe(`/classes?limit=${LIST_LIMIT_MAX}`);
+    expect(EXAM_ITEM_STATS_SUMMARY_PATH).toBe('/exam-items/stats-summary');
+  });
+
+  it('счётчик попыток экзамена — по id из пути', () => {
+    expect(
+      apiRoutePath('GET /exams/:examId/attempt-count', {
+        params: { examId: '652f00000000000000000001' },
+      }),
+    ).toBe('/exams/652f00000000000000000001/attempt-count');
   });
 });
 

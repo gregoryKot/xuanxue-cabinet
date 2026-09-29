@@ -3,9 +3,8 @@
 // POST /exam-images — хук, не сам компонент (CLAUDE.md «Логика вне
 // контроллеров и компонентов»: тестируется без DOM).
 import { useState } from 'react';
-import type { ExamImageDto } from '@xuanxue/shared';
-import { EXAM_IMAGES_PATH } from '../api/apiPaths';
-import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { UPLOAD_TIMEOUT_MS } from '../api/http';
 import { prepareExamImage } from '../lib/examImageFile';
 
 // И сетевой ApiError, и Error из prepareExamImage (файл слишком большой,
@@ -31,8 +30,7 @@ export function useExamImageUpload(): UseExamImageUploadResult {
       const blob = await prepareExamImage(file);
       // Дефолтных 30 секунд (API_TIMEOUT_MS) картинке на плохой связи
       // ученика может не хватить — свой запас на загрузку (аудит 2026-09-21).
-      const dto = await apiFetch<ExamImageDto>(EXAM_IMAGES_PATH, {
-        method: 'POST',
+      const dto = await apiRoute('POST /exam-images', {
         body: blob,
         timeoutMs: UPLOAD_TIMEOUT_MS,
       });

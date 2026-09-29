@@ -4,12 +4,12 @@ import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   EXAM_LIMITS,
   EXAM_STATUSES,
+  type ApiRouteQuery,
   type ExamStatus,
-  type ListExamsQuery,
 } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
-export class ListExamsDto implements ListExamsQuery {
+export class ListExamsDto implements ApiRouteQuery<'GET /exams'> {
   @IsOptional()
   @IsIn(EXAM_STATUSES)
   status?: ExamStatus;

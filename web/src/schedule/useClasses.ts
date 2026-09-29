@@ -5,8 +5,8 @@
 // useAbortableFetch (используется также useLessons/useSummary — иначе jscpd
 // ловит дубль AbortController + сверки id запроса).
 import type { ClassDto } from '@xuanxue/shared';
-import { CLASSES_LIST_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { CLASSES_LIST_QUERY } from '../api/listQueries';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить расписание. Попробуйте ещё раз.';
@@ -20,7 +20,7 @@ export interface UseClassesResult {
 
 export function useClasses(): UseClassesResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<ClassDto[]>(CLASSES_LIST_PATH, { signal }),
+    (signal) => apiRoute('GET /classes', { query: CLASSES_LIST_QUERY, signal }),
     LOAD_ERROR_MESSAGE,
   );
 

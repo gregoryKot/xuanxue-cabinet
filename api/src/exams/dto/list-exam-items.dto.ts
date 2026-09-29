@@ -6,13 +6,13 @@ import {
   EXAM_ITEM_KINDS,
   EXAM_ITEM_STATUSES,
   type ExamItemKind,
+  type ApiRouteQuery,
   type ExamItemStatus,
-  type ListExamItemsQuery,
 } from '@xuanxue/shared';
 import { booleanFromQuery } from '../../common/query-transforms';
 import { ListLimit } from '../../common/validation';
 
-export class ListExamItemsDto implements ListExamItemsQuery {
+export class ListExamItemsDto implements ApiRouteQuery<'GET /exam-items'> {
   @IsOptional()
   @IsIn(EXAM_ITEM_STATUSES)
   status?: ExamItemStatus;
