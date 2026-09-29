@@ -183,3 +183,4 @@
 | [0145](0145-google-login-and-linking-by-email.md)                | Вход через Google: code + PKCE, ключ `sub`, связка по почте, за которую ручается Google                 |
 | [0146](0146-choice-question-asks-for-reason.md)                  | Вопрос с выбором варианта может требовать объяснение выбора, хранится в answer.text                     |
 | [0147](0147-agent-merges-green-pr.md)                            | Агент мержит свой зелёный PR сам; прод — по-прежнему по команде владельца                               |
+| [0148](0148-api-route-map-in-shared.md)                          | Карта маршрутов в `shared/` — контракт кабинета и API, сверка с Nest в e2e                              |
