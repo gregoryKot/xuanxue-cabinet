@@ -52,6 +52,7 @@ import { LogoutButton } from '../auth/LogoutButton';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { NotificationsProvider } from '../notifications/NotificationsProvider';
+import { SkipLink, mainLandmarkProps } from '../components/SkipLink';
 import { MyExamsProvider } from '../student/MyExamsProvider';
 import { AppNav } from './AppNav';
 import {
@@ -94,6 +95,9 @@ export function AppShell() {
     <MyExamsProvider me={me}>
       <NotificationsProvider me={me}>
         <div style={shellStyle}>
+          {/* Первая остановка Tab: без неё клавиатура проходит меню и шапку
+              на каждом экране заново (WCAG 2.4.1, components/SkipLink.tsx). */}
+          <SkipLink />
           <div style={shellRowStyle}>
             {hasSideNav && (
               <AppNav
@@ -122,7 +126,7 @@ export function AppShell() {
               )}
               <NewVersionBanner />
               <InstallAppCard />
-              <main>
+              <main {...mainLandmarkProps}>
                 {canSee ? <Outlet /> : <Navigate to={rootPathFor(me)} replace />}
               </main>
             </div>

@@ -9,7 +9,8 @@
 import { Navigate } from 'react-router-dom';
 import { EntryColumn } from '../components/EntryColumn';
 import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
-import { PrivacyLink } from '../privacy/PrivacyLink';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { LegalLinks } from '../legal/LegalLink';
 import { OtherLoginMethods } from './OtherLoginMethods';
 import { TelegramLoginSection } from './TelegramLoginSection';
 import { hasSession, useAuth } from './AuthProvider';
@@ -27,8 +28,10 @@ import { postLoginPath } from './returnTo';
 // подпись в одну строку и тише его (noteStyle): свои читают её один раз,
 // незнакомец видит, что дверь не для него, и никто не уходит в Telegram зря.
 const INVITE_REQUIRED_MESSAGE = 'Первый вход — только по ссылке от учителя.';
+const PAGE_TITLE = 'Вход';
 
 export default function LoginScreen() {
+  useDocumentTitle(PAGE_TITLE);
   const { status: authStatus } = useAuth();
   const { config, status: configStatus, reload } = useAuthConfig();
 
@@ -54,10 +57,11 @@ export default function LoginScreen() {
         <OtherLoginMethods config={config} configStatus={configStatus} />
       </TelegramLoginSection>
 
-      {/* Обязательное поле консоли Google Cloud для OAuth-приложения не в
-          режиме тестирования (ADR-0145) — публичная ссылка на политику
-          конфиденциальности, доступная без входа. */}
-      <PrivacyLink>Политика конфиденциальности</PrivacyLink>
+      {/* Политика конфиденциальности — обязательное поле консоли Google Cloud
+          для OAuth-приложения не в режиме тестирования (ADR-0145); рядом
+          «Доступность» — заявление, которое правила доступности требуют
+          держать на виду у всех, не только у вошедших (ADR-0158). */}
+      <LegalLinks />
     </EntryColumn>
   );
 }

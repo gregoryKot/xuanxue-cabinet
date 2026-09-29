@@ -140,6 +140,11 @@ describe('JoinScreen — ссылка на политику конфиденци
 
     const link = await screen.findByRole('link', { name: 'Как мы храним данные' });
     expect(link).toHaveAttribute('href', '/privacy');
+    // Заявление о доступности (ADR-0158) — рядом с политикой, на той же странице.
+    expect(screen.getByRole('link', { name: 'Доступность' })).toHaveAttribute(
+      'href',
+      '/accessibility',
+    );
     expect(
       screen.getByRole('button', { name: 'Войти через Telegram' }),
     ).toBeInTheDocument();

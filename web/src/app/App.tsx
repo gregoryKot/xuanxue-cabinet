@@ -21,6 +21,7 @@ const EmailLoginCallbackScreen = lazyRoute(ROUTE_MODULES.emailLogin.load);
 const GoogleLoginCallbackScreen = lazyRoute(ROUTE_MODULES.googleLogin.load);
 const JoinScreen = lazyRoute(ROUTE_MODULES.join.load);
 const PrivacyScreen = lazyRoute(ROUTE_MODULES.privacy.load);
+const AccessibilityScreen = lazyRoute(ROUTE_MODULES.accessibility.load);
 const WelcomeScreen = lazyRoute(ROUTE_MODULES.welcome.load);
 const EmailConfirmScreen = lazyRoute(ROUTE_MODULES.emailConfirm.load);
 
@@ -63,6 +64,13 @@ export default function App() {
                 ссылка внизу экрана входа), и вошедшему, без редиректа в обе
                 стороны. */}
             <Route path={ROUTE_MODULES.privacy.path} element={<PrivacyScreen />} />
+            {/* Заявление о доступности (ADR-0158) — там же и по той же
+                причине: правила требуют держать его в заметном месте сайта
+                для всех, не только для вошедших. */}
+            <Route
+              path={ROUTE_MODULES.accessibility.path}
+              element={<AccessibilityScreen />}
+            />
             {/* Подтверждение почты (ADR-0059) — публичный маршрут, вне
                 RequireAuth: экран не требует сессии и не выдаёт её, письмо
                 открывают не обязательно там, где вошли в кабинет. */}

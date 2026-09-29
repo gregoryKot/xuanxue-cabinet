@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
@@ -127,6 +128,38 @@ const ASSISTANT: MeDto = {
   needsProfile: false,
   googleLinked: false,
 };
+
+// WCAG 2.4.1 (ADR-0158): с клавиатуры не нужно проходить меню и шапку на
+// каждом экране заново. Первый Tab — на ссылке, Enter — в <main>.
+describe('AppShell — пропуск к содержимому', () => {
+  async function pressTabAndEnterOnSkipLink() {
+    const user = userEvent.setup();
+    await screen.findByRole('navigation', { name: 'Разделы кабинета' });
+    await user.tab();
+    const skipLink = screen.getByRole('link', { name: 'Перейти к содержимому' });
+    expect(skipLink).toHaveFocus();
+    await user.keyboard('{Enter}');
+  }
+
+  it('на широком экране первый Tab — «Перейти к содержимому», Enter уводит фокус в <main>', async () => {
+    renderShell(TEACHER);
+
+    await pressTabAndEnterOnSkipLink();
+
+    const main = screen.getByRole('main');
+    expect(main).toHaveFocus();
+    expect(within(main).getByText('Содержимое расписания')).toBeInTheDocument();
+  });
+
+  it('на телефоне то же: ссылка первой, до шапки с колокольчиком и профилем', async () => {
+    stubMobileViewport();
+    renderShell(STUDENT, '/tasks');
+
+    await pressTabAndEnterOnSkipLink();
+
+    expect(screen.getByRole('main')).toHaveFocus();
+  });
+});
 
 describe('AppShell — навигация по ширине экрана', () => {
   // Ветка «телефон»: по умолчанию matchMedia в setupTests отвечает «широкий

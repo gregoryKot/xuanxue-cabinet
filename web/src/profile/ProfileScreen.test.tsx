@@ -94,6 +94,22 @@ describe('ProfileScreen — шапка', () => {
   });
 });
 
+// Политика и «Доступность» открываются и вошедшему (маршруты вне RequireAuth,
+// ADR-0158): в личном разделе — тихая строка внизу, не карточка и не кнопка.
+describe('ProfileScreen — юридические ссылки', () => {
+  it('внизу — ссылки на политику конфиденциальности и «Доступность»', async () => {
+    renderScreen(STUDENT);
+
+    expect(await screen.findByRole('link', { name: 'Доступность' })).toHaveAttribute(
+      'href',
+      '/accessibility',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Политика конфиденциальности' }),
+    ).toHaveAttribute('href', '/privacy');
+  });
+});
+
 describe('ProfileScreen — имя', () => {
   it('поля заполнены разобранным me.name', async () => {
     renderScreen(STUDENT);

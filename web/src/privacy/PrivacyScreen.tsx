@@ -3,8 +3,8 @@
 // «In production» (обязательное поле консоли Google Cloud), а статья 11
 // Закона о защите частной жизни требует показать её там, где просят данные
 // (ADR-0155). Текст — privacyPolicyText.ts, юридический и меняется вместе с
-// набором данных, которые кабинет хранит; этот файл только раскладывает его
-// по DOM (тот же приём, что RichText.tsx — данные отдельно от разметки).
+// набором данных, которые кабинет хранит; каркас страницы общий с
+// `/accessibility` (legal/LegalPage.tsx).
 // Публичный маршрут вне RequireAuth: открыт и гостю, и вошедшему, без
 // редиректа — ссылка на политику не должна выкидывать из кабинета того, кто
 // уже вошёл.
@@ -13,17 +13,9 @@
 // контакт школа вводит сама (GET /auth/config). Пока они грузятся, на его
 // месте скелетон, а остальной текст уже читается; не загрузились — страница
 // отправляет к учителю (buildControllerParagraphs).
-import type { ReactNode } from 'react';
-import { EntryColumn } from '../components/EntryColumn';
-import { RichText } from '../components/RichText';
-import {
-  noteStyle,
-  screenColumnTitleStyle,
-  screenExplanationStyle,
-  screenTitleStyle,
-} from '../components/screenLayout';
-import { SkeletonLines } from '../components/Skeleton';
-import { useAuthConfig } from '../auth/useAuthConfig';
+import { LegalLink } from '../legal/LegalLink';
+import { LegalPage, LegalSections } from '../legal/LegalPage';
+import { SchoolContactSection } from '../legal/SchoolContactSection';
 import {
   PRIVACY_CONTROLLER_TITLE,
   buildControllerParagraphs,
@@ -33,62 +25,17 @@ import {
   PRIVACY_SECTIONS,
   PRIVACY_TITLE,
   PRIVACY_UPDATED_AT,
-  type PrivacySection,
 } from './privacyPolicyText';
-
-function PrivacyBlock({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section>
-      <h2 style={screenColumnTitleStyle}>{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function PrivacyParagraphs({ paragraphs }: Pick<PrivacySection, 'paragraphs'>) {
-  return (
-    <>
-      {paragraphs.map((paragraph) => (
-        <p key={paragraph} style={screenExplanationStyle}>
-          <RichText text={paragraph} />
-        </p>
-      ))}
-    </>
-  );
-}
-
-// Заголовок один и тот же в обоих состояниях: под ним меняется только тело
-// (скелетон → абзацы), иначе при загрузке настроек заголовок пересоздавался бы.
-function ControllerSection() {
-  const { config, status } = useAuthConfig();
-
-  return (
-    <PrivacyBlock title={PRIVACY_CONTROLLER_TITLE}>
-      {status === 'loading' ? (
-        <SkeletonLines widths={['80%', '55%']} />
-      ) : (
-        <PrivacyParagraphs
-          paragraphs={buildControllerParagraphs(status === 'ok' ? config : null)}
-        />
-      )}
-    </PrivacyBlock>
-  );
-}
 
 export default function PrivacyScreen() {
   return (
-    <EntryColumn>
-      <h1 style={screenTitleStyle}>{PRIVACY_TITLE}</h1>
-      <p style={noteStyle}>{PRIVACY_UPDATED_AT}</p>
-      <p style={screenExplanationStyle}>
-        <RichText text={PRIVACY_INTRO} />
-      </p>
-      <ControllerSection />
-      {PRIVACY_SECTIONS.map(({ title, paragraphs }) => (
-        <PrivacyBlock key={title} title={title}>
-          <PrivacyParagraphs paragraphs={paragraphs} />
-        </PrivacyBlock>
-      ))}
-    </EntryColumn>
+    <LegalPage title={PRIVACY_TITLE} updatedAt={PRIVACY_UPDATED_AT} intro={PRIVACY_INTRO}>
+      <SchoolContactSection
+        title={PRIVACY_CONTROLLER_TITLE}
+        buildParagraphs={buildControllerParagraphs}
+      />
+      <LegalSections sections={PRIVACY_SECTIONS} />
+      <LegalLink page="accessibility" />
+    </LegalPage>
   );
 }

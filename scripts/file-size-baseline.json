@@ -1035,7 +1035,7 @@
   "web/src/app/navItems.ts": 108,
   "web/src/app/prefetchFirstScreen.ts": 44,
   "web/src/app/routeMatch.ts": 39,
-  "web/src/app/routeModules.ts": 419,
+  "web/src/app/routeModules.ts": 426,
   "web/src/app/screenAccess.ts": 71,
   "web/src/app/sideNavStyles.ts": 128,
   "web/src/app/usePrefetchRoutes.ts": 74,

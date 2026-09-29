@@ -16,14 +16,18 @@ import { screenExplanationStyle, screenTitleStyle } from '../components/screenLa
 import { SkeletonLines } from '../components/Skeleton';
 import { hasSession, useAuth } from '../auth/AuthProvider';
 import { useAuthConfig } from '../auth/useAuthConfig';
-import { PrivacyLink } from '../privacy/PrivacyLink';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { LegalLinks } from '../legal/LegalLink';
 import { OtherLoginMethods } from '../auth/OtherLoginMethods';
 import { TelegramLoginSection } from '../auth/TelegramLoginSection';
 import { useJoinByInvite } from './useJoinByInvite';
 
 const fullWidthStyle: CSSProperties = { width: '100%' };
+const PAGE_TITLE = 'Приглашение';
+const PRIVACY_LINK_LABEL = 'Как мы храним данные';
 
 export default function JoinScreen() {
+  useDocumentTitle(PAGE_TITLE);
   const { code = '' } = useParams();
   const navigate = useNavigate();
   const { status: authStatus } = useAuth();
@@ -92,7 +96,7 @@ export default function JoinScreen() {
       {/* Здесь у человека впервые просят имя и способ входа — статья 11
           Закона о защите частной жизни требует показать политику до этого
           (ADR-0155), не только на экране входа. */}
-      <PrivacyLink>Как мы храним данные</PrivacyLink>
+      <LegalLinks privacyLabel={PRIVACY_LINK_LABEL} />
       <TelegramLoginSection
         config={config}
         configStatus={configStatus}

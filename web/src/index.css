@@ -290,6 +290,37 @@ input[type='radio'] {
   outline-offset: 2px;
 }
 
+/* Ссылка «Перейти к содержимому» (components/SkipLink.tsx, WCAG 2.4.1) — за
+   краем экрана, пока на ней нет фокуса клавиатуры; мышь и палец её не
+   замечают. `fixed`, а не `absolute`: человек нажимает Tab посреди длинной
+   страницы, и ссылка должна появиться там, где он смотрит, а не откинуть его
+   наверх документа. Прячем сдвигом, а не `display: none`: скрытая так ссылка
+   не попадала бы в порядок Tab вовсе. Тёмная плашка светлым текстом — 13.68:1,
+   поверх любой страницы читается без подложки. z-index выше всплывающей
+   подсказки (components/InfoTip.tsx, 1000). `:focus`, а не `:focus-visible`:
+   скрытая ссылка получает фокус только с Tab, кликнуть по ней мышью нельзя. */
+.xuanxue-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 16px;
+  z-index: 1100;
+  padding: 12px 16px;
+  border-radius: var(--radius-control);
+  background: var(--ink);
+  color: var(--ink-contrast);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+.xuanxue-skip-link:focus {
+  transform: none;
+}
+
+/* <main> получает фокус программой после «Перейти к содержимому» — не
+   интерактивный элемент, рамка вокруг всей страницы ничего не сообщила бы. */
+main[tabindex='-1']:focus {
+  outline: none;
+}
+
 /* «Добавить картинку» в редакторе вопроса (exam-items/ExamItemOptionImage.tsx)
    — это <label> над визуально скрытым <input type="file">: фокус с клавиатуры
    получает невидимый input, поэтому рамку рисуем на самом label по

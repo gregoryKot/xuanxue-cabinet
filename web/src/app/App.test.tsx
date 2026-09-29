@@ -123,6 +123,30 @@ describe('App', () => {
     expect(screen.queryByRole('heading', { name: 'Экзамены' })).not.toBeInTheDocument();
   });
 
+  // Заявление о доступности (ADR-0158) — публичное, как политика: правила
+  // требуют держать его на виду у всех, а не только у вошедших.
+  it('гость на /accessibility — маршрут открывает AccessibilityScreen, без входа', async () => {
+    mockRoute(null);
+
+    renderAt('/accessibility');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Доступность' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Кабинет школы')).not.toBeInTheDocument();
+  });
+
+  it('вошедший на /accessibility — маршрут тоже открывает AccessibilityScreen, без редиректа', async () => {
+    mockRoute(TEACHER, { '/exams': [], '/attempts': [] });
+
+    renderAt('/accessibility');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Доступность' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Экзамены' })).not.toBeInTheDocument();
+  });
+
   it('учитель на /schedule — маршрут «Расписание» открывает ScheduleScreen', async () => {
     mockRoute(TEACHER, { '/classes': [], '/channels': [], '/users/teachers': [] });
 

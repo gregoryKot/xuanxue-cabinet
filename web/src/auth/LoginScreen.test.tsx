@@ -513,6 +513,24 @@ describe('LoginScreen — ссылка на политику конфиденц�
     });
     expect(link).toHaveAttribute('href', '/privacy');
   });
+
+  // Правила доступности (пункт 35ה, ADR-0158): заявление — на входе, где его
+  // видит и гость.
+  it('рядом — ссылка «Доступность», ведёт на /accessibility', async () => {
+    mockRoutes(() => Promise.resolve({}));
+    renderScreen();
+
+    const link = await screen.findByRole('link', { name: 'Доступность' });
+    expect(link).toHaveAttribute('href', '/accessibility');
+  });
+
+  it('вкладка называется «Вход — Сюань-Сюэ», а не общим названием сайта', async () => {
+    mockRoutes(() => Promise.resolve({}));
+    renderScreen();
+
+    await screen.findByRole('link', { name: 'Доступность' });
+    expect(document.title).toBe('Вход — Сюань-Сюэ');
+  });
 });
 
 describe('LoginScreen — уже вошедшего уводит на сохранённый адрес или домашний (аудит L2)', () => {
