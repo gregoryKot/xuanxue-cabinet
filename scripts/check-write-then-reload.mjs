@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Храповик «запись + сразу перечитывание» (ADR-0087, docs/adr/0087-fresh-state-comes-from-the-write-response.md):
-// хук делает apiFetch(..., { method: 'POST'|'PATCH'|'PUT'|'DELETE' }) и тут же
+// хук делает apiFetch(..., { method: 'POST'|'PATCH'|'PUT'|'DELETE' }) или
+// apiRoute('POST /…') по карте маршрутов (ADR-0148) и тут же
 // `await reload()`/`await refresh()` — второй round-trip за тем же самым,
 // хотя ответ записи (или сам эндпоинт, если бы отдавал DTO) уже мог принести
 // свежее состояние. На проде TTFB 0.5–1.1 с (замер web/index.html) — значит
@@ -34,21 +35,14 @@ const UPDATE = process.argv.includes('--update');
 
 const MUTATING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
 
-// Сколько строк вперёд от найденного apiFetch(...) с мутирующим методом
-// смотрим в поисках await reload()/await refresh(). Сам вызов в этом
-// кабинете — 1–4 строки (путь, method, body, закрывающая скобка со `);`),
-// плюс иногда пара строк сброса локального состояния формы (setError(null)
-// и т.п.) перед перечитыванием — реальные находки репозитория укладываются
-// в 1–4 строки разрыва. 12 — с запасом на реформатирование и лишний
-// промежуточный вызов, но не настолько много, чтобы поймать несвязанный
-// reload() в хвосте длинной функции.
+// Сколько строк вперёд от записи ищем await reload()/await refresh(): вызов —
+// 1–4 строки, плюс пара строк сброса состояния формы; 12 — с запасом на
+// реформатирование, но не ловит несвязанный reload() в хвосте функции.
 export const LOOKAHEAD_LINES = 12;
 
 // Сколько символов после `apiFetch(`/`apiFetch<T>(` просматриваем в поисках
-// `method: '...'`: путь (иногда длинный шаблонный литерал) и объект опций в
-// этом кабинете умещаются в одну-три строки, 200 символов берёт это с
-// запасом, но не дотягивается до следующего, не связанного вызова apiFetch
-// чуть дальше по файлу (тот же приём, что CONST_NAME_WINDOW в
+// `method: '...'`: путь и опции умещаются в одну-три строки; 200 символов —
+// с запасом, но без захода на следующий вызов (как CONST_NAME_WINDOW в
 // check-card-list-gap.mjs).
 const METHOD_WINDOW_CHARS = 200;
 
@@ -57,6 +51,12 @@ const METHOD_WINDOW_CHARS = 200;
 const WRITE_CALL_RE = /apiFetch(?:<[^>]*>)?\(/g;
 const MUTATING_METHOD_RE = new RegExp(
   `method\\s*:\\s*['"](?:${MUTATING_METHODS.join('|')})['"]`,
+);
+// `apiRoute('POST /…')` — метод в самом ключе карты. Без этого гейт слеп на
+// каждом перенесённом на карту вызове (PLAN §17.1, находка 2026-09-29).
+const ROUTE_WRITE_RE = new RegExp(
+  `apiRoute\\(\\s*['"\`](?:${MUTATING_METHODS.join('|')}) /`,
+  'g',
 );
 const RELOAD_RE = /\bawait\s+(?:reload|refresh)\s*\(\s*\)/;
 
@@ -69,17 +69,17 @@ function lineAt(src, index) {
   return line;
 }
 
-/** Номера строк (1-based), на которых начинается вызов `apiFetch(...)` с
- * мутирующим методом (`method: 'POST'|'PATCH'|'PUT'|'DELETE'`) где-то в
- * ближайших METHOD_WINDOW_CHARS символах после начала вызова. GET-вызовы
- * (метод не указан или `method: 'GET'`) сюда не попадают. */
+/** Номера строк (1-based), где начинается запись: `apiFetch(...)` с
+ * мутирующим `method` в ближайших METHOD_WINDOW_CHARS символах или
+ * `apiRoute('POST|PATCH|PUT|DELETE /…')`. GET-вызовы сюда не попадают. */
 export function findMutatingWriteLines(src) {
   const lines = [];
   for (const match of src.matchAll(WRITE_CALL_RE)) {
     const window = src.slice(match.index, match.index + METHOD_WINDOW_CHARS);
     if (MUTATING_METHOD_RE.test(window)) lines.push(lineAt(src, match.index));
   }
-  return lines;
+  for (const match of src.matchAll(ROUTE_WRITE_RE)) lines.push(lineAt(src, match.index));
+  return lines.sort((a, b) => a - b);
 }
 
 /** Есть ли `await reload()`/`await refresh()` среди LOOKAHEAD_LINES строк,
