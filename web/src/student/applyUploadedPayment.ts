@@ -5,9 +5,12 @@
 import type { MyPaymentDto, MyPaymentsPageDto } from '@xuanxue/shared';
 
 export function applyUploadedPayment(
-  page: MyPaymentsPageDto,
+  page: MyPaymentsPageDto | null,
   dto: MyPaymentDto,
-): MyPaymentsPageDto {
+): MyPaymentsPageDto | null {
+  // Страницы ещё нет — ответ класть некуда: кнопка появляется только вместе
+  // со страницей, так что это гонка с перечитыванием, а не обычный путь.
+  if (!page) return page;
   const exists = page.rows.some((row) => row.month === dto.month);
   return {
     ...page,

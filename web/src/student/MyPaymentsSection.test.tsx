@@ -11,6 +11,7 @@ import {
   mockedApiFetch,
   resetApiFetchBetweenTests,
 } from '../test-support/apiFetchMock';
+import { prepareExamImage } from '../lib/examImageFile';
 import { stubViewerTimeZone } from '../test-support/viewerTimeZone';
 import { MyPaymentsSection } from './MyPaymentsSection';
 
@@ -79,9 +80,10 @@ describe('MyPaymentsSection — объяснение и месяц', () => {
     renderSection(ME_NO_TELEGRAM, new ApiError('Сервер занят.', 500, 'unknown'));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Сервер занят.');
-    expect(
-      screen.getByRole('button', { name: 'Попробовать ещё раз' }),
-    ).toBeInTheDocument();
+    mockApiByPath({ '/auth/config': {}, [PAGES_PATH]: EMPTY_PAGE });
+    await userEvent.click(screen.getByRole('button', { name: 'Попробовать ещё раз' }));
+
+    expect(await screen.findByText('Оплаты за сентябрь нет')).toBeInTheDocument();
   });
 });
 
@@ -162,6 +164,26 @@ describe('MyPaymentsSection — загрузка скриншота', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Файл больше 1 МБ.');
     expect(screen.getByLabelText('Отправить скриншот')).toBeInTheDocument();
     expect(screen.getByText('Оплаты за сентябрь нет')).toBeInTheDocument();
+  });
+
+  it('непредвиденный сбой без текста — общий текст «попробуйте ещё раз»', async () => {
+    renderSection(ME_NO_TELEGRAM);
+    const input = await screen.findByLabelText('Отправить скриншот');
+    // Ошибка без текста: сообщение на экране обязано быть и тогда (запасной
+    // UPLOAD_ERROR_MESSAGE в useMyPayments.ts), а не пустая строка.
+    vi.mocked(prepareExamImage).mockImplementation(() => Promise.reject(new Error('')));
+
+    await userEvent.upload(
+      input,
+      new File(['png'], 'perevod.png', { type: 'image/png' }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось отправить скриншот. Попробуйте ещё раз.',
+    );
+    vi.mocked(prepareExamImage).mockImplementation(() =>
+      Promise.resolve(new Blob(['x'], { type: 'image/jpeg' })),
+    );
   });
 });
 

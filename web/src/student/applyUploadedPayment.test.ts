@@ -36,7 +36,7 @@ describe('applyUploadedPayment', () => {
     };
     const page: MyPaymentsPageDto = { month: '2026-09', rows: [unpaid, august] };
 
-    expect(applyUploadedPayment(page, awaiting).rows).toEqual([awaiting, august]);
+    expect(applyUploadedPayment(page, awaiting)?.rows).toEqual([awaiting, august]);
   });
 
   it('исходная страница не мутируется', () => {
@@ -45,5 +45,9 @@ describe('applyUploadedPayment', () => {
     applyUploadedPayment(page, awaiting);
 
     expect(page.rows).toEqual([]);
+  });
+
+  it('страницы ещё нет — остаётся null, строку класть некуда', () => {
+    expect(applyUploadedPayment(null, awaiting)).toBeNull();
   });
 });

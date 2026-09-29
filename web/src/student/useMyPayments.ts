@@ -13,7 +13,7 @@ import { applyUploadedPayment } from './applyUploadedPayment';
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить абонемент. Попробуйте ещё раз.';
 // ApiError и Error из prepareExamImage (файл слишком большой, формат не
 // читается) несут готовый текст по VOICE — этот запасной только на
-// непредвиденное исключение.
+// ошибку без текста: пустая строка под кнопкой читалась бы как «ничего не случилось».
 const UPLOAD_ERROR_MESSAGE = 'Не удалось отправить скриншот. Попробуйте ещё раз.';
 
 export interface UseMyPaymentsResult {
@@ -45,11 +45,11 @@ export function useMyPayments(): UseMyPaymentsResult {
           body: blob,
           timeoutMs: UPLOAD_TIMEOUT_MS,
         });
-        // Страница уже загружена (кнопка есть только у неё); если её ещё нет,
-        // ответ класть некуда — оставляем как есть.
-        applyData((prev) => (prev ? applyUploadedPayment(prev, dto) : prev));
+        applyData((prev) => applyUploadedPayment(prev, dto));
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : UPLOAD_ERROR_MESSAGE);
+        setUploadError(
+          err instanceof Error && err.message ? err.message : UPLOAD_ERROR_MESSAGE,
+        );
       } finally {
         setUploading(false);
       }
