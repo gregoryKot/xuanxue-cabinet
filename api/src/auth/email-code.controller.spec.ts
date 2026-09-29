@@ -101,7 +101,7 @@ describe('EmailCodeController.verifyEmailCode', () => {
     ]);
   });
 
-  it('cookie сессии уходит заголовком, ответ — MeDto без самого адреса', async () => {
+  it('cookie сессии уходит заголовком, ответ — MeDto со своим адресом', async () => {
     const { controller } = await buildController();
     const { res, headers } = fakeResponse();
 
@@ -118,13 +118,13 @@ describe('EmailCodeController.verifyEmailCode', () => {
       status: USER.status,
       telegramLinked: false,
       botChatActive: false,
-      // Признак «ключ есть», а не сам адрес: чужие адреса наружу не ходят,
-      // свой человеку и так известен (SECURITY §2, ADR-0059).
+      // Свой адрес владельцу сессии отдаётся (ADR-0059, баг владельца
+      // 2026-09-29); чужие наружу не ходят (SECURITY §2).
+      email: 'maria@example.com',
       hasEmail: true,
       googleLinked: false,
       noTelegram: false,
       needsProfile: true,
     });
-    expect(result).not.toHaveProperty('email');
   });
 });

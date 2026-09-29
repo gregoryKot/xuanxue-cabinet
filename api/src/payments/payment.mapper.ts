@@ -1,7 +1,8 @@
 // Единственный маппер PaymentRecord (lean, уже расшифрованный) → PaymentDto/
 // MyPaymentDto (CLAUDE.md «API»): документ Mongoose наружу не идёт —
 // `screenshotFileId`/`screenshotFileUniqueId`/`note`/`_id`/`__v` в DTO вообще
-// не попадают, только производное `hasScreenshot`.
+// не попадают: список несёт `screenshotKind` (PaymentDto) или производное
+// `hasScreenshot` (MyPaymentDto).
 import type { Types } from 'mongoose';
 import type { MyPaymentDto, PaymentDto } from '@xuanxue/shared';
 import { toIsoUtc } from '../common/iso-date';
@@ -28,7 +29,7 @@ export function toPaymentDto(doc: RawLeanPayment, userName: string): PaymentDto 
     status: doc.status,
     amountMinor: doc.amountMinor,
     confirmedAt: doc.confirmedAt ? toIsoUtc(doc.confirmedAt) : undefined,
-    hasScreenshot: doc.screenshotKind != null,
+    screenshotKind: doc.screenshotKind,
     reminderSentAt: doc.reminderSentAt ? toIsoUtc(doc.reminderSentAt) : undefined,
   };
 }

@@ -235,7 +235,7 @@ describe('PaymentsService', () => {
       status: 'paid',
       amountMinor: 25050,
       confirmedAt: NOW.toUTC().toISO(),
-      hasScreenshot: true,
+      screenshotKind: 'telegram',
       reminderSentAt: NOW.minus({ days: 3 }).toUTC().toISO(),
     });
   });
@@ -332,7 +332,7 @@ describe('PaymentsService', () => {
       status: 'awaiting',
       amountMinor: undefined,
       confirmedAt: undefined,
-      hasScreenshot: false,
+      screenshotKind: undefined,
       reminderSentAt: undefined,
     });
   });

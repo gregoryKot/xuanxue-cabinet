@@ -487,6 +487,12 @@ export {
   PAYMENT_STAFF_NOT_ELIGIBLE_MESSAGE,
   PAYMENT_NOTHING_TO_REVOKE_MESSAGE,
 } from './payments';
+export type { PaymentScreenshotKind } from './payment-screenshot';
+export {
+  PAYMENT_SCREENSHOT_KINDS,
+  PAYMENT_SCREENSHOT_NOT_FOUND_MESSAGE,
+  PAYMENT_SCREENSHOT_IN_TELEGRAM_MESSAGE,
+} from './payment-screenshot';
 export type {
   SubscribePushInput,
   UnsubscribePushInput,
