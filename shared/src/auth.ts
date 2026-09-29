@@ -124,6 +124,11 @@ export interface AuthConfigDto {
    * ответил при старте — поля нет, кнопки не будет. */
   telegramBotUsername?: string;
   schoolSiteUrl?: string;
+  /** Кто отвечает за данные учеников и как с ним связаться — из настроек
+   * школы, для публичной страницы `/privacy` (статья 11 Закона о защите
+   * частной жизни Израиля). Полей нет, пока школа их не заполнила. */
+  dataControllerName?: string;
+  dataControllerContact?: string;
   emailLoginEnabled: boolean;
   /** Хранилище файлов подключено (четыре переменные R2, ADR-0057) — не
    * опционально, ровно как `emailLoginEnabled` рядом: `false` значит, что

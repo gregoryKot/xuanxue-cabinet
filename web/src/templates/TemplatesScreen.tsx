@@ -23,6 +23,7 @@ import { primaryActionStyle } from '../components/screenLayout';
 import { editorPageStyle, editorSectionStyle } from '../components/editorLayout';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SkeletonLines } from '../components/Skeleton';
+import { DataControllerField } from './DataControllerField';
 import { NewcomerContactField } from './NewcomerContactField';
 import { PaymentReminderSection } from './PaymentReminderSection';
 import { SchoolSiteField } from './SchoolSiteField';
@@ -106,6 +107,7 @@ export default function TemplatesScreen() {
         <>
           <SchoolSiteField settings={settings} update={settingsState.update} />
           <NewcomerContactField settings={settings} update={settingsState.update} />
+          <DataControllerField settings={settings} update={settingsState.update} />
           {/* «Оплаты» — до шаблонов постов: у неё своя кнопка сохранения, а
               терракотовое «Сохранить» внизу закрывает именно шаблоны постов. */}
           <PaymentReminderSection settings={settings} update={settingsState.update} />

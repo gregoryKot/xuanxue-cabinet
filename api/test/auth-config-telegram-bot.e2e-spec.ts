@@ -70,6 +70,52 @@ describe('GET /auth/config (e2e), с BOT_TOKEN', () => {
     expect((res.body as AuthConfigDto).schoolSiteUrl).toBe('https://xuanxue.su');
   });
 
+  // Страница /privacy (статья 11 Закона о защите частной жизни) берёт
+  // ответственного отсюда: гость без cookie видит ровно то, что школа
+  // сохранила, и ничего лишнего из остальных настроек.
+  it('read-after-write: ответственный за данные из /settings виден гостю в /auth/config', async () => {
+    const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+    const patched = await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({
+        dataControllerName: 'Дмитрий Дейч',
+        dataControllerContact: 'privacy@xuanxue.su',
+        newcomerContact: 'Маше @masha_teacher',
+      });
+    expect(patched.status).toBe(200);
+
+    const res = await request(server()).get('/api/auth/config');
+
+    const body = res.body as AuthConfigDto;
+    expect(body.dataControllerName).toBe('Дмитрий Дейч');
+    expect(body.dataControllerContact).toBe('privacy@xuanxue.su');
+    expect(Object.keys(body)).toEqual([
+      'telegramBotId',
+      'dataControllerName',
+      'dataControllerContact',
+      'emailLoginEnabled',
+      'googleLoginEnabled',
+      'fileStorageEnabled',
+    ]);
+    expect(JSON.stringify(body)).not.toContain('Маше');
+  });
+
+  it('ответственный снят (null) — из /auth/config поля пропадают', async () => {
+    const cookie = await sessionCookieFor(testApp.app, ['teacher']);
+    await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({ dataControllerName: 'Дмитрий Дейч', dataControllerContact: '@dmitry' });
+
+    await withCsrf(request(server()).patch('/api/settings'))
+      .set('Cookie', cookie)
+      .send({ dataControllerName: null, dataControllerContact: null });
+
+    const res = await request(server()).get('/api/auth/config');
+    const body = res.body as AuthConfigDto;
+    expect(body.dataControllerName).toBeUndefined();
+    expect(body.dataControllerContact).toBeUndefined();
+  });
+
   it('PATCH /settings с http:// — 400 по-русски, ничего не сохранилось', async () => {
     const cookie = await sessionCookieFor(testApp.app, ['teacher']);
 
