@@ -6,9 +6,10 @@
 // Значение хранится в форме строкой, не числом — иначе пустое поле мгновенно
 // становится 0 при Number(''), и учитель не может стереть цифру, чтобы
 // напечатать новую (тот же приём, что у leadMinutesText в classFormInput.ts).
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
 import { errorFrom, type FormError } from '../components/FormServerError';
+import { useSavedDraft } from './useSavedDraft';
 
 export interface UseMinutesFieldResult {
   text: string;
@@ -43,20 +44,14 @@ export function useMinutesField(
   update: (input: UpdateSettingsInput) => Promise<void>,
   { read, write, defaultValue, min, max, saveError }: UseMinutesFieldOptions,
 ): UseMinutesFieldResult {
-  const [text, setText] = useState(String(defaultValue));
+  const saved = settings ? read(settings) : defaultValue;
+  // Сверка с сохранённым по `updatedAt` — на первой загрузке и после
+  // успешного «Сохранить»; то, что учитель набрал и ещё не сохранил, она не
+  // перезатирает (useSavedDraft.ts).
+  const [text, setText, submit] = useSavedDraft(String(saved), settings?.updatedAt);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
 
-  // Синхронизация с сохранённым — по `updatedAt`, как texts в
-  // TemplatesScreen.tsx: сработает на первой загрузке и заново после
-  // успешного «Сохранить», но не перезатирает то, что учитель ещё печатает
-  // между сохранениями.
-  useEffect(() => {
-    setText(String(settings ? read(settings) : defaultValue));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- нужен именно updatedAt, не весь объект settings
-  }, [settings?.updatedAt]);
-
-  const saved = settings ? read(settings) : defaultValue;
   const isValid = isValidMinutes(text, min, max);
   const hasChanges = isValid && Number(text) !== saved;
 
@@ -65,7 +60,7 @@ export function useMinutesField(
     setPending(true);
     setError(null);
     try {
-      await update(write(Number(text)));
+      await submit(text, () => update(write(Number(text))));
     } catch (err) {
       setError(errorFrom(err, saveError));
     } finally {

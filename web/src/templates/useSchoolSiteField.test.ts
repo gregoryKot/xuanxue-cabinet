@@ -18,9 +18,9 @@ const SETTINGS_WITH_SITE: SettingsDto = {
   lessonReminderMinutes: DEFAULT_LESSON_REMINDER_MINUTES,
   newcomerContact: DEFAULT_NEWCOMER_CONTACT,
   paymentReminder: DEFAULT_PAYMENT_REMINDER,
-  // Другой updatedAt, чем у SETTINGS_WITHOUT_SITE — синхронизация в хуке
-  // идёт по нему (как texts в TemplatesScreen.tsx), одинаковый updatedAt у
-  // обоих фикстур не запустил бы эффект заново.
+  // Другой updatedAt, чем у SETTINGS_WITHOUT_SITE — сверка с сохранённым в
+  // хуке идёт по нему (useSavedDraft.ts), одинаковый updatedAt у обеих
+  // фикстур не запустил бы её заново.
   updatedAt: '2026-09-06T18:05:00.000Z',
 };
 
