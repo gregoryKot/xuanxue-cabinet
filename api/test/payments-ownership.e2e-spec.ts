@@ -3,11 +3,12 @@
 // учителя — 403, ключевая проверка ADR-0049: деньги ученика не «данные
 // школы» наравне с расписанием); `/me/payments` — владение по сессии, не по
 // параметру пути. Образец и инструкция — api/test/e2e-support/README.md.
-import type {
-  ApiErrorBody,
-  MyPaymentDto,
-  PaymentDto,
-  PaymentsPageDto,
+import {
+  MONTH_KEY_RE,
+  type ApiErrorBody,
+  type MyPaymentsPageDto,
+  type PaymentDto,
+  type PaymentsPageDto,
 } from '@xuanxue/shared';
 import request from 'supertest';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -30,6 +31,20 @@ describe('Оплаты — доступ по роли и владение (e2e)'
   function server(): ReturnType<TestApp['app']['getHttpServer']> {
     return testApp.app.getHttpServer();
   }
+
+  it('ученик без документов: /me/payments отдаёт текущий месяц школы и пустые строки', async () => {
+    const { cookie } = await createUserWithSession(testApp.app, {
+      name: 'Ученик без оплат',
+      roles: [],
+    });
+
+    const res = await request(server()).get('/api/me/payments').set('Cookie', cookie);
+
+    expect(res.status).toBe(200);
+    const page = res.body as MyPaymentsPageDto;
+    expect(page.month).toMatch(MONTH_KEY_RE);
+    expect(page.rows).toEqual([]);
+  });
 
   it('без сессии — 401 на всех маршрутах', async () => {
     expect((await request(server()).get('/api/payments')).status).toBe(401);
@@ -125,7 +140,8 @@ describe('Оплаты — доступ по роли и владение (e2e)'
         .set('Cookie', studentACookie);
       expect(myA.status).toBe(200);
       expect(
-        (myA.body as MyPaymentDto[]).find((row) => row.month === '2026-09')?.status,
+        (myA.body as MyPaymentsPageDto).rows.find((row) => row.month === '2026-09')
+          ?.status,
       ).toBe('paid');
 
       // Ученик Б не видит месяц ученика А (владение по сессии).
@@ -134,7 +150,7 @@ describe('Оплаты — доступ по роли и владение (e2e)'
         .set('Cookie', studentBCookie);
       expect(myB.status).toBe(200);
       expect(
-        (myB.body as MyPaymentDto[]).find((row) => row.month === '2026-09'),
+        (myB.body as MyPaymentsPageDto).rows.find((row) => row.month === '2026-09'),
       ).toBeUndefined();
 
       // Список бухгалтера — та же строка, без секретных полей.

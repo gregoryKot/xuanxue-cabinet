@@ -17,11 +17,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { DateTime } from 'luxon';
 import type { Model, Types } from 'mongoose';
+import {
+  PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS,
+  PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS,
+} from '@xuanxue/shared';
 import { PaymentScreenshotRecord } from './payment-screenshot.schema';
 import { PaymentRecord } from './payment.schema';
 
-export const PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS = 30;
-export const PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS = 90;
+// Сроки (30 и 90 дней) живут в shared/: тот же срок кабинет называет ученику
+// рядом с кнопкой «Отправить скриншот», и обещание не должно разойтись с уборкой.
 // Ссылка на снимок появляется в том же запросе, что и сами байты
 // (PaymentScreenshotsService.upload), поэтому сутки — с запасом: всё, что
 // старше и ни одной оплатой не названо, ссылки уже не дождётся.

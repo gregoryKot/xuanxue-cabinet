@@ -10,7 +10,7 @@ import {
   PAYMENT_LIMITS,
   type ConfirmPaymentInput,
   type ListPaymentsQuery,
-  type MyPaymentDto,
+  type MyPaymentsPageDto,
   type PaymentDto,
   type PaymentsPageDto,
   type PaymentStatus,
@@ -102,13 +102,25 @@ export class PaymentsService {
   }
 
   /** Свои месяцы, свежие сверху — владение по `userId` из сессии
-   * (SECURITY §3), не по параметру пути. */
-  async listMine(userId: string, limit?: number): Promise<MyPaymentDto[]> {
+   * (SECURITY §3), не по параметру пути. `month` — текущий месяц в поясе
+   * школы: кабинет пояса школы не знает, а по его часам 1-го числа в Сиднее
+   * уже октябрь, пока в Израиле сентябрь (ADR-0049). Считает сервер, тем же
+   * `monthKeyOf`, что и `listMonth`, — у ученика и у бухгалтера «текущий»
+   * месяц один и тот же. */
+  async listMine(
+    userId: string,
+    now: DateTime,
+    limit?: number,
+  ): Promise<MyPaymentsPageDto> {
+    const settings = await this.settingsService.get();
     const docs = await this.model
       .find({ userId })
       .sort({ month: -1 })
       .limit(limit ?? PAYMENT_LIMITS.listLimitDefault)
       .lean<RawLeanPayment[]>();
-    return docs.map((doc) => toMyPaymentDto(decryptPayment(doc)));
+    return {
+      month: monthKeyOf(now, settings.tz),
+      rows: docs.map((doc) => toMyPaymentDto(decryptPayment(doc))),
+    };
   }
 }

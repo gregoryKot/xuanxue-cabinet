@@ -4,7 +4,12 @@
 // вариантов ответа (exam-images.e2e-spec.ts), поэтому и проверки формата/
 // размера повторяют его образец. Байты и file_id наружу не идут ни одним
 // полем ответа — ни в MyPaymentDto ученика, ни в строке бухгалтера.
-import type { ApiErrorBody, MyPaymentDto, PaymentsPageDto } from '@xuanxue/shared';
+import type {
+  ApiErrorBody,
+  MyPaymentDto,
+  MyPaymentsPageDto,
+  PaymentsPageDto,
+} from '@xuanxue/shared';
 import {
   EXAM_IMAGE_EMPTY_MESSAGE,
   EXAM_IMAGE_LIMITS,
@@ -99,7 +104,7 @@ describe('Снимок перевода — загрузка в кабинете
         .get('/api/me/payments')
         .set('Cookie', studentBCookie);
       expect(myBBefore.status).toBe(200);
-      expect((myBBefore.body as MyPaymentDto[]).length).toBe(0);
+      expect((myBBefore.body as MyPaymentsPageDto).rows.length).toBe(0);
 
       // Своя загрузка Б за тот же месяц — отдельный документ, не запись А.
       const uploadedB = await upload(
@@ -112,7 +117,7 @@ describe('Снимок перевода — загрузка в кабинете
       const myBAfter = await request(server())
         .get('/api/me/payments')
         .set('Cookie', studentBCookie);
-      const rowB = (myBAfter.body as MyPaymentDto[]).find(
+      const rowB = (myBAfter.body as MyPaymentsPageDto).rows.find(
         (row) => row.month === '2026-09',
       );
       expect(rowB?.hasScreenshot).toBe(true);
@@ -122,7 +127,9 @@ describe('Снимок перевода — загрузка в кабинете
         .get('/api/me/payments')
         .set('Cookie', studentACookie);
       expect(myA.status).toBe(200);
-      const rowA = (myA.body as MyPaymentDto[]).find((row) => row.month === '2026-09');
+      const rowA = (myA.body as MyPaymentsPageDto).rows.find(
+        (row) => row.month === '2026-09',
+      );
       expect(rowA?.status).toBe('awaiting');
       expect(rowA?.hasScreenshot).toBe(true);
     },
@@ -233,7 +240,9 @@ describe('Снимок перевода — загрузка в кабинете
 
     const list = await request(server()).get('/api/me/payments').set('Cookie', cookie);
     expect(list.status).toBe(200);
-    const rows = (list.body as MyPaymentDto[]).filter((row) => row.month === '2026-10');
+    const rows = (list.body as MyPaymentsPageDto).rows.filter(
+      (row) => row.month === '2026-10',
+    );
     expect(rows.length).toBe(1);
     expect(rows[0]?.hasScreenshot).toBe(true);
   });

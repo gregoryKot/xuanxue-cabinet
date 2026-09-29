@@ -6,7 +6,7 @@
 // PaymentScreenshotMessageHandler; дальше — настоящий маршрут кабинета.
 // Настоящий AppModule на MongoMemoryServer.
 import { DateTime } from 'luxon';
-import type { MyPaymentDto } from '@xuanxue/shared';
+import type { MyPaymentsPageDto } from '@xuanxue/shared';
 import request from 'supertest';
 import { PaymentsService } from '../src/payments/payments.service';
 import { createTestApp, type TestApp } from './e2e-support/create-app';
@@ -48,7 +48,7 @@ describe('Скриншот оплаты из бота — read-after-write, бе
     const mine = await request(server()).get('/api/me/payments').set('Cookie', cookie);
 
     expect(mine.status).toBe(200);
-    const row = (mine.body as MyPaymentDto[]).find((p) => p.month === '2026-09');
+    const row = (mine.body as MyPaymentsPageDto).rows.find((p) => p.month === '2026-09');
     expect(row).toMatchObject({ status: 'awaiting', hasScreenshot: true });
     const raw = JSON.stringify(mine.body);
     expect(raw).not.toContain(FILE_ID);
@@ -83,7 +83,7 @@ describe('Скриншот оплаты из бота — read-after-write, бе
     expect(status).toBe('paid');
 
     const mine = await request(server()).get('/api/me/payments').set('Cookie', cookie);
-    const row = (mine.body as MyPaymentDto[]).find((p) => p.month === '2026-09');
+    const row = (mine.body as MyPaymentsPageDto).rows.find((p) => p.month === '2026-09');
     expect(row).toMatchObject({ status: 'paid', hasScreenshot: true });
   });
 });

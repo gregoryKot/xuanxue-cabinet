@@ -10,8 +10,8 @@ import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory'
 import {
   PAYMENT_SCREENSHOT_TTL_AFTER_CONFIRM_DAYS,
   PAYMENT_SCREENSHOT_TTL_UNCONFIRMED_DAYS,
-  PaymentScreenshotSweepService,
-} from './payment-screenshot-sweep.service';
+} from '@xuanxue/shared';
+import { PaymentScreenshotSweepService } from './payment-screenshot-sweep.service';
 import { PaymentScreenshotRecord } from './payment-screenshot.schema';
 import { PaymentRecord } from './payment.schema';
 
