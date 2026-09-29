@@ -8,13 +8,13 @@ import { apiRoutePath } from './apiRoute';
 import {
   channelsListPath,
   CLASSES_LIST_PATH,
-  entityPath,
   examImageSrc,
   EXAM_EDITOR_ITEMS_PATH,
   examItemsListPath,
   EXAM_ITEM_STATS_SUMMARY_PATH,
   examsListPath,
   lessonsListPath,
+  materialsListPath,
 } from './apiPaths';
 
 describe('lessonsListPath', () => {
@@ -74,10 +74,14 @@ describe('channelsListPath', () => {
   });
 });
 
-describe('entityPath', () => {
-  it('собирает путь записи из пути коллекции и id', () => {
-    expect(entityPath('/classes', '652f00000000000000000001')).toBe(
-      '/classes/652f00000000000000000001',
+describe('materialsListPath', () => {
+  it('без фильтров — только лимит', () => {
+    expect(materialsListPath('')).toBe(`/materials?limit=${LIST_LIMIT_MAX}`);
+  });
+
+  it('вид и тег — после лимита, тег кодируется, чтобы слэш не резал путь', () => {
+    expect(materialsListPath('book', 'ушу/тайцзи')).toBe(
+      `/materials?limit=${LIST_LIMIT_MAX}&kind=book&tag=${encodeURIComponent('ушу/тайцзи')}`,
     );
   });
 });

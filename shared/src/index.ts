@@ -271,7 +271,11 @@ export {
   ANSWER_VIDEO_FIRST_PART_REQUIRED_MESSAGE,
 } from './answer-videos';
 export { FILE_STORAGE_OFF_MESSAGE, FILE_STORAGE_FAILED_MESSAGE } from './file-store';
-export type { MaterialFileContentType, MaterialFileDto } from './material-files';
+export type {
+  MaterialFileContentType,
+  MaterialFileDto,
+  UploadMaterialFileQuery,
+} from './material-files';
 export {
   MATERIAL_FILE_CONTENT_TYPES,
   MATERIAL_FILE_UPLOAD_CONTENT_TYPES,

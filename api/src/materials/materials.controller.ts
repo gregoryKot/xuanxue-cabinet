@@ -32,6 +32,7 @@ export class MaterialsController {
   constructor(private readonly materialsService: MaterialsService) {}
 
   @Get()
+  @ApiRoute('GET /materials')
   list(@Query() query: ListMaterialsDto): Promise<MaterialDto[]> {
     return this.materialsService.list(query);
   }

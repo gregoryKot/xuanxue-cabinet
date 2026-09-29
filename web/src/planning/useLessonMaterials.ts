@@ -9,19 +9,13 @@
 // у формы своё состояние и свои ошибки под полями.
 import { useCallback, useState } from 'react';
 import { LIST_LIMIT_MAX, type MaterialDto } from '@xuanxue/shared';
-import { entityPath, MATERIALS_PATH } from '../api/apiPaths';
-import { ApiError, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 import { attachLesson, detachLesson } from './lessonMaterials';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить материалы занятия. Попробуйте ещё раз.';
 const LINK_ERROR_MESSAGE = 'Не удалось изменить список. Попробуйте ещё раз.';
-
-/** Путь живёт здесь, а не в apiPaths.ts: его зовёт только этот хук, первый
- * экран его не предзагружает (apiPaths.ts, шапка файла). */
-function lessonMaterialsPath(lessonId: string): string {
-  return `${MATERIALS_PATH}?lessonId=${encodeURIComponent(lessonId)}&limit=${LIST_LIMIT_MAX}`;
-}
 
 export interface UseLessonMaterialsResult {
   materials: MaterialDto[] | null;
@@ -37,7 +31,11 @@ export interface UseLessonMaterialsResult {
 
 export function useLessonMaterials(lessonId: string): UseLessonMaterialsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<MaterialDto[]>(lessonMaterialsPath(lessonId), { signal }),
+    (signal) =>
+      apiRoute('GET /materials', {
+        query: { lessonId, limit: LIST_LIMIT_MAX },
+        signal,
+      }),
     LOAD_ERROR_MESSAGE,
   );
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -46,8 +44,8 @@ export function useLessonMaterials(lessonId: string): UseLessonMaterialsResult {
     async (material: MaterialDto, lessonIds: string[]) => {
       setLinkError(null);
       try {
-        await apiFetch(entityPath(MATERIALS_PATH, material.id), {
-          method: 'PATCH',
+        await apiRoute('PATCH /materials/:id', {
+          params: { id: material.id },
           body: { lessonIds },
         });
         await reload();

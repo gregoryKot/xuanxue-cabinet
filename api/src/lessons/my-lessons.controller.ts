@@ -12,6 +12,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { isStaffRole, type MyArchivedLessonDto, type MyLessonDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { ListMyArchivedLessonsDto } from './dto/list-my-archived-lessons.dto';
 import { ListMyLessonsDto } from './dto/list-my-lessons.dto';
@@ -26,11 +27,13 @@ export class MyLessonsController {
   ) {}
 
   @Get()
+  @ApiRoute('GET /me/lessons')
   list(@Query() query: ListMyLessonsDto): Promise<MyLessonDto[]> {
     return this.myLessonsService.list(query, DateTime.utc());
   }
 
   @Get('archive')
+  @ApiRoute('GET /me/lessons/archive')
   listArchive(
     @Query() query: ListMyArchivedLessonsDto,
     @CurrentUser() user: UserLean,

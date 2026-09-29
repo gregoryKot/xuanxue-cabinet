@@ -91,6 +91,12 @@ export interface MaterialFileDto {
   uploadedAt: string; // ISO UTC с Z
 }
 
+/** Query POST /materials/:id/file: тело — сырые байты файла (ADR-0057), имя, под
+ * которым его сохранит браузер, приезжает отдельно — в байтах его нет. */
+export interface UploadMaterialFileQuery {
+  name: string;
+}
+
 // VOICE.md: что случилось и что делать дальше.
 export const MATERIAL_FILE_EMPTY_MESSAGE =
   'Файл не пришёл. Выберите его и загрузите ещё раз.';

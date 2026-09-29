@@ -9,7 +9,8 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExamAttemptDto, MeDto, MyExamDto, UserRole } from '@xuanxue/shared';
-import { examSeenPath, MY_EXAMS_PATH } from '../api/apiPaths';
+import { MY_EXAMS_PATH } from '../api/apiPaths';
+import { examSeenPath } from '../test-support/examSeenPath';
 import type * as HttpModule from '../api/http';
 import {
   mockApiByPath,

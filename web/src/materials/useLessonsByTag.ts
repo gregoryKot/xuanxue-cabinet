@@ -6,8 +6,7 @@
 // фильтра на месте (в отличие от materials/useMaterials.ts, где фильтры
 // живут на одном и том же смонтированном экране).
 import type { LessonDto } from '@xuanxue/shared';
-import { lessonsByTagPath } from '../api/tagsApiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
 
 const LOAD_ERROR_MESSAGE =
@@ -22,7 +21,7 @@ export interface UseLessonsByTagResult {
 
 export function useLessonsByTag(tag: string): UseLessonsByTagResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<LessonDto[]>(lessonsByTagPath(tag), { signal }),
+    (signal) => apiRoute('GET /lessons', { query: { tag }, signal }),
     LOAD_ERROR_MESSAGE,
   );
 

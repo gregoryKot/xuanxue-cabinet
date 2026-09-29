@@ -6,12 +6,12 @@ import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   MATERIAL_KINDS,
   TAG_LIMITS,
-  type ListMaterialsQuery,
+  type ApiRouteQuery,
   type MaterialKind,
 } from '@xuanxue/shared';
 import { ListLimit } from '../../common/validation';
 
-export class ListMaterialsDto implements ListMaterialsQuery {
+export class ListMaterialsDto implements ApiRouteQuery<'GET /materials'> {
   @IsOptional()
   @IsString()
   classId?: string;

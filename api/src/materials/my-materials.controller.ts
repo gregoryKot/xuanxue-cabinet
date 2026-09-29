@@ -8,6 +8,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { isStaffRole, type MyMaterialDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { ListMyMaterialsDto } from './dto/list-my-materials.dto';
 import { MaterialsService } from './materials.service';
@@ -17,6 +18,7 @@ export class MyMaterialsController {
   constructor(private readonly materialsService: MaterialsService) {}
 
   @Get()
+  @ApiRoute('GET /me/materials')
   list(
     @Query() query: ListMyMaterialsDto,
     @CurrentUser() user: UserLean,

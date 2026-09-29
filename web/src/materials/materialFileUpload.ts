@@ -4,7 +4,7 @@
 // нет), а отправляют сразу после того, как материал создан. Раньше хук
 // useMaterialFileUpload держал обе функции сам, но ему негде было взять
 // materialId для загрузки файла, выбранного до создания записи. Сеть — только
-// apiFetch (CLAUDE.md).
+// apiFetch (CLAUDE.md), через карту маршрутов.
 import {
   MATERIAL_FILE_EMPTY_MESSAGE,
   MATERIAL_FILE_LIMITS,
@@ -13,8 +13,8 @@ import {
   MATERIAL_FILE_UPLOAD_CONTENT_TYPES,
   type MaterialDto,
 } from '@xuanxue/shared';
-import { materialFileUploadPath } from '../api/apiPaths';
-import { UPLOAD_TIMEOUT_MS, apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { UPLOAD_TIMEOUT_MS } from '../api/http';
 
 // Самое длинное расширение среди принимаемых форматов (application/pdf →
 // «.pdf», image/jpeg → «.jpeg», Word и EPUB → «.docx»/«.epub») плюс запас —
@@ -57,11 +57,12 @@ function truncateFileName(name: string): string {
 
 /** Файл уже проверен `checkMaterialFile` — здесь только сам запрос. */
 export function uploadMaterialFile(materialId: string, file: File): Promise<MaterialDto> {
-  const path = materialFileUploadPath(materialId, truncateFileName(file.name));
-  // Дефолтных 30 секунд (API_TIMEOUT_MS) файлу на плохой связи ученика
-  // может не хватить — свой запас на загрузку (аудит 2026-09-21).
-  return apiFetch<MaterialDto>(path, {
-    method: 'POST',
+  // Тело — сырые байты файла, имя едет в query: сервер берёт его оттуда
+  // (ADR-0057). Дефолтных 30 секунд (API_TIMEOUT_MS) файлу на плохой связи
+  // ученика может не хватить — свой запас на загрузку (аудит 2026-09-21).
+  return apiRoute('POST /materials/:id/file', {
+    params: { id: materialId },
+    query: { name: truncateFileName(file.name) },
     body: file,
     timeoutMs: UPLOAD_TIMEOUT_MS,
   });

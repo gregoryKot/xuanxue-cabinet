@@ -3,8 +3,7 @@
 // useMyArchive.ts: лимит не передаём, сервис сам берёт
 // MY_MATERIALS_LIMIT_DEFAULT, когда query пуст (ListMyMaterialsDto).
 import type { MyMaterialDto } from '@xuanxue/shared';
-import { MY_MATERIALS_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import {
   useAbortableFetch,
   type UseAbortableFetchResult,
@@ -14,7 +13,7 @@ const LOAD_ERROR_MESSAGE = 'Не удалось загрузить библио�
 
 export function useMyMaterials(): UseAbortableFetchResult<MyMaterialDto[]> {
   return useAbortableFetch(
-    (signal) => apiFetch<MyMaterialDto[]>(MY_MATERIALS_PATH, { signal }),
+    (signal) => apiRoute('GET /me/materials', { signal }),
     LOAD_ERROR_MESSAGE,
   );
 }

@@ -17,8 +17,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ExamAttemptDto, MeDto, MyExamDto } from '@xuanxue/shared';
-import { examSeenPath, MY_EXAMS_PATH } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { isTeacher } from '../app/screenAccess';
 import {
   useAbortableFetch,
@@ -62,7 +61,7 @@ function useMyExamsData(me: MeDto | null): UseMyExamsResult {
   const { pathname } = useLocation();
   const enabled = !isTeacher(me) || pathname === TASKS_PATH;
   const { applyData, ...result } = useAbortableFetch(
-    (signal) => apiFetch<MyExamDto[]>(MY_EXAMS_PATH, { signal }),
+    (signal) => apiRoute('GET /me/exams', { signal }),
     LOAD_ERROR_MESSAGE,
     { enabled },
   );
@@ -81,7 +80,7 @@ function useMyExamsData(me: MeDto | null): UseMyExamsResult {
     // открывает уже известную попытку по id напрямую (TasksScreen.tsx,
     // resolveTaskStartTarget.ts, ADR-0119); этот POST остаётся только у
     // «Начать» и «Пройти ещё раз», где новая попытка — правда то, что нужно.
-    return apiFetch<ExamAttemptDto>(`/exams/${examId}/attempts`, { method: 'POST' });
+    return apiRoute('POST /exams/:examId/attempts', { params: { examId } });
   }, []);
 
   const applyAttempt = useCallback(
@@ -106,7 +105,7 @@ function useMyExamsData(me: MeDto | null): UseMyExamsResult {
           ? prev.map((exam) => (exam.id === examId ? { ...exam, seen: true } : exam))
           : prev,
       );
-      void apiFetch<MyExamDto[]>(examSeenPath(examId), { method: 'POST' }).catch(
+      void apiRoute('POST /me/exams/:examId/seen', { params: { examId } }).catch(
         () => {},
       );
     },

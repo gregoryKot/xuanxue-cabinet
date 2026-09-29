@@ -15,6 +15,7 @@ import {
 import { DateTime } from 'luxon';
 import type { MyExamDto } from '@xuanxue/shared';
 import { CurrentUser } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { ListMyExamsDto } from './dto/list-my-exams.dto';
 import { MyExamsService } from './my-exams.service';
@@ -24,6 +25,7 @@ export class MyExamsController {
   constructor(private readonly myExamsService: MyExamsService) {}
 
   @Get()
+  @ApiRoute('GET /me/exams')
   list(
     @Query() query: ListMyExamsDto,
     @CurrentUser() user: UserLean,
@@ -36,6 +38,7 @@ export class MyExamsController {
   // GET /me/exams следом за POST. Кабинет сам флаг ставит сразу и ответ на
   // экран не кладёт — почему, в MyExamsProvider.tsx (гонка со стартом).
   @Post(':examId/seen')
+  @ApiRoute('POST /me/exams/:examId/seen')
   @HttpCode(HttpStatus.OK)
   async markSeen(
     @Param('examId') examId: string,

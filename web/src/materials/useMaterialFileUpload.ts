@@ -5,8 +5,7 @@
 // материала, у которого до этого id ещё не было).
 import { useState } from 'react';
 import type { MaterialDto } from '@xuanxue/shared';
-import { materialFilePath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { checkMaterialFile, uploadMaterialFile } from './materialFileUpload';
 
 // И сетевой ApiError, и собственная проверка ниже несут готовый текст по
@@ -48,8 +47,8 @@ export function useMaterialFileUpload(materialId: string): UseMaterialFileUpload
     setError(null);
     setPending(true);
     try {
-      return await apiFetch<MaterialDto>(materialFilePath(materialId), {
-        method: 'DELETE',
+      return await apiRoute('DELETE /materials/:id/file', {
+        params: { id: materialId },
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : UPLOAD_ERROR_MESSAGE);

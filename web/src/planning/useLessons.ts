@@ -5,9 +5,9 @@
 // (CLAUDE.md «Одна механика — один компонент», иначе дубль с useClasses/
 // useSummary ловит jscpd).
 import type { LessonDto } from '@xuanxue/shared';
-import { lessonsListPath } from '../api/apiPaths';
-import { apiFetch } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
+import { planningLessonsQuery } from './planningWindow';
 
 const LOAD_ERROR_MESSAGE = 'Не удалось загрузить занятия. Попробуйте ещё раз.';
 
@@ -20,7 +20,7 @@ export interface UseLessonsResult {
 
 export function useLessons(): UseLessonsResult {
   const { data, loading, error, reload } = useAbortableFetch(
-    (signal) => apiFetch<LessonDto[]>(lessonsListPath(), { signal }),
+    (signal) => apiRoute('GET /lessons', { query: planningLessonsQuery(), signal }),
     LOAD_ERROR_MESSAGE,
   );
 

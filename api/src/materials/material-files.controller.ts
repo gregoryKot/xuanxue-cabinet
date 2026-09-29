@@ -17,6 +17,7 @@ import {
 import { DateTime } from 'luxon';
 import { isStaffRole, type MaterialDto } from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { UploadMaterialFileDto } from './dto/upload-material-file.dto';
 import { MaterialFilesService } from './material-files.service';
@@ -49,6 +50,7 @@ export class MaterialFilesController {
   constructor(private readonly service: MaterialFilesService) {}
 
   @Post(':id/file')
+  @ApiRoute('POST /materials/:id/file')
   @HttpCode(HttpStatus.OK)
   @Roles(...STAFF_ONLY_ROLES)
   upload(
@@ -60,6 +62,7 @@ export class MaterialFilesController {
   }
 
   @Delete(':id/file')
+  @ApiRoute('DELETE /materials/:id/file')
   @Roles(...STAFF_ONLY_ROLES)
   detach(@Param('id') id: string): Promise<MaterialDto> {
     return this.service.detach(id, DateTime.utc());
