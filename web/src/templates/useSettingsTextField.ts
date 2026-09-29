@@ -8,9 +8,10 @@
 // useLessonReminderMinutesField.ts) сюда не переведены: там значение
 // хранится строкой ради парсинга числа и своя валидация диапазона — не тот
 // же случай, у них общая механика вынесена отдельно (useMinutesField.ts).
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { SettingsDto, UpdateSettingsInput } from '@xuanxue/shared';
 import { errorFrom, type FormError } from '../components/FormServerError';
+import { useSavedDraft } from './useSavedDraft';
 
 export interface UseSettingsTextFieldResult {
   value: string;
@@ -45,10 +46,6 @@ export function useSettingsTextField(
   update: (input: UpdateSettingsInput) => Promise<void>,
   { read, write, saveError, isValid = () => true }: UseSettingsTextFieldOptions,
 ): UseSettingsTextFieldResult {
-  const [value, setValue] = useState('');
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<FormError | null>(null);
-
   // Нет настроек или нет самого поля — пустая строка, не `undefined`.
   // Без этого приведения отсутствующее поле кладётся в состояние как есть, и
   // `value.trim()` ниже роняет TypeError'ом весь экран «Шаблоны», а не только
@@ -61,15 +58,14 @@ export function useSettingsTextField(
     return read(from) ?? '';
   }
 
-  // Синхронизация с сохранённым — по `updatedAt`, как texts в
-  // TemplatesScreen.tsx: сработает на первой загрузке и заново после
-  // успешного «Сохранить», но не перезатирает то, что учитель ещё печатает.
-  useEffect(() => {
-    setValue(readOr(settings));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- нужен именно updatedAt, не весь объект settings
-  }, [settings?.updatedAt]);
-
   const saved = readOr(settings);
+  // Сверка с сохранённым по `updatedAt` — на первой загрузке и после
+  // успешного «Сохранить»; то, что учитель набрал и ещё не сохранил, она не
+  // перезатирает (useSavedDraft.ts).
+  const [value, setValue, submit] = useSavedDraft(saved, settings?.updatedAt);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<FormError | null>(null);
+
   const trimmed = value.trim();
   const hasChanges = trimmed !== saved && isValid(trimmed);
 
@@ -78,7 +74,7 @@ export function useSettingsTextField(
     setPending(true);
     setError(null);
     try {
-      await update(write(trimmed));
+      await submit(value, () => update(write(trimmed)));
     } catch (err) {
       setError(errorFrom(err, saveError));
     } finally {

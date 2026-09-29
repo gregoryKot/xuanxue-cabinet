@@ -25,9 +25,9 @@ const SETTINGS_CUSTOM: SettingsDto = {
   lessonReminderMinutes: 60,
   newcomerContact: 'Ире @irina_school',
   paymentReminder: DEFAULT_PAYMENT_REMINDER,
-  // Другой updatedAt, чем у SETTINGS_DEFAULT — синхронизация в хуке идёт по
-  // нему (как в useSchoolSiteField.test.ts), одинаковый updatedAt у обоих
-  // фикстур не запустил бы эффект заново.
+  // Другой updatedAt, чем у SETTINGS_DEFAULT — сверка с сохранённым в хуке
+  // идёт по нему (useSavedDraft.ts), одинаковый updatedAt у обеих фикстур не
+  // запустил бы её заново.
   updatedAt: '2026-09-06T18:05:00.000Z',
 };
 

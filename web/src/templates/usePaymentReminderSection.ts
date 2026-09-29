@@ -4,11 +4,12 @@
 // остальное — здесь (CLAUDE.md «Логика вне компонентов»).
 //
 // Механика та же, что у полей рядом (useMinutesField.ts, useSettingsTextField.ts):
-// синхронизация с сохранённым по `settings.updatedAt`, PATCH только с
-// изменёнными полями, ошибка сервера через FormError. День хранится в форме
-// строкой — иначе пустое поле мгновенно становится нулём и число нельзя
-// стереть, чтобы напечатать новое (тот же приём, что у useMinutesField.ts).
-import { useEffect, useState } from 'react';
+// черновик и его сверка с сохранённым по `settings.updatedAt` (useSavedDraft.ts),
+// PATCH только с изменёнными полями, ошибка сервера через FormError. День
+// хранится в форме строкой — иначе пустое поле мгновенно становится нулём и
+// число нельзя стереть, чтобы напечатать новое (тот же приём, что у
+// useMinutesField.ts).
+import { useState } from 'react';
 import {
   DEFAULT_PAYMENT_REMINDER,
   PAYMENT_REMINDER_PLACEHOLDERS,
@@ -20,18 +21,21 @@ import {
 } from '@xuanxue/shared';
 import { errorFrom, type FormError } from '../components/FormServerError';
 import { useInsertAtCursor } from './useInsertAtCursor';
+import { useSavedDraft } from './useSavedDraft';
 import { validateTemplateText } from './templateValidation';
 
 const SAVE_ERROR = 'Не удалось сохранить напоминание. Попробуйте ещё раз.';
 const DAY_ERROR = `День — число от ${SETTINGS_LIMITS.paymentReminderDayMin} до ${SETTINGS_LIMITS.paymentReminderDayMax}.`;
 const TIME_ERROR = 'Время — часы и минуты, например 10:00.';
 
-interface FormState {
+// `type`, не `interface`: useSavedDraft.ts принимает плоскую запись, а у
+// интерфейса нет неявной индексной сигнатуры.
+type FormState = {
   enabled: boolean;
   dayText: string;
   time: string;
   template: string;
-}
+};
 
 // Старая база без подобъекта отдаёт его поле за полем (settings.ts, PLAN §4):
 // ответ сервера и мок теста без `paymentReminder` не должны ронять экран.
@@ -77,18 +81,12 @@ export function usePaymentReminderSection(
   update: (input: UpdateSettingsInput) => Promise<void>,
 ) {
   const saved = savedReminder(settings);
-  const [form, setForm] = useState<FormState>(() => toForm(saved));
+  // Сверка с сохранённым по `updatedAt` — на первой загрузке и после
+  // сохранения (ответ PATCH несёт свежий updatedAt); набранное и ещё не
+  // сохранённое поле она не трогает (useSavedDraft.ts).
+  const [form, setForm, submit] = useSavedDraft(toForm(saved), settings?.updatedAt);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
-
-  // Синхронизация с сохранённым — по `updatedAt`, как texts в
-  // TemplatesScreen.tsx: срабатывает на первой загрузке и после успешного
-  // сохранения (ответ PATCH несёт свежий updatedAt), но не перезатирает то,
-  // что учитель печатает между сохранениями.
-  useEffect(() => {
-    setForm(toForm(savedReminder(settings)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- нужен именно updatedAt, не весь объект settings
-  }, [settings?.updatedAt]);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -112,7 +110,7 @@ export function usePaymentReminderSection(
     setPending(true);
     setError(null);
     try {
-      await update({ paymentReminder: changed });
+      await submit(form, () => update({ paymentReminder: changed }));
     } catch (err) {
       setError(errorFrom(err, SAVE_ERROR));
     } finally {

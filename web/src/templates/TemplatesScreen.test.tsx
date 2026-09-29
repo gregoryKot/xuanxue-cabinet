@@ -321,11 +321,9 @@ describe('TemplatesScreen — адрес сайта школы', () => {
     renderScreen();
     await screen.findByRole('heading', { name: 'Анонс занятия' });
 
-    // SchoolSiteField синхронизирует поле своим эффектом на кадр позже
-    // заголовка выше (useSchoolSiteField.ts) — без ожидания «Очистить» могло
-    // бы сработать раньше синхронизации, и эффект тут же вернул бы старое
-    // значение обратно поверх правки учителя.
-    const field = await screen.findByDisplayValue('https://xuanxue.su');
+    // Сохранённое значение стоит в поле с первого рендера секции
+    // (useSavedDraft.ts), ждать эффекта синхронизации не нужно.
+    const field = screen.getByDisplayValue('https://xuanxue.su');
     await user.clear(field);
 
     mockByPath({
@@ -457,10 +455,9 @@ describe('TemplatesScreen — напоминание ученикам о зан�
     renderScreen();
     await screen.findByRole('heading', { name: 'Анонс занятия' });
 
-    // Поле стоит на экране раньше ответа /settings и до него пустое
-    // (useSettingsTextField: useState('')); findByLabelText находит его сразу
-    // и проверяет пустоту. Ждём значение, а не поле.
-    await waitFor(() => expect(screen.getByLabelText(LABEL)).toHaveValue('60'));
+    // Секция «Школа» рисуется уже с сохранённым значением (useSavedDraft.ts),
+    // а не пустой с догрузкой эффектом.
+    expect(screen.getByLabelText(LABEL)).toHaveValue('60');
   });
 
   it('сохранённое значение показано в поле', async () => {

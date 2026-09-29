@@ -10,7 +10,7 @@
 // становятся «сохранённым» текстом, а не потерянным черновиком. Сохраняем
 // только изменённые шаблоны (pr-k3-fixes.md п.4) — нечего сохранять, когда
 // оба текста совпадают с сохранёнными, кнопка неактивна и запроса нет.
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { TEMPLATE_KINDS, type TemplateKind } from '@xuanxue/shared';
 import { Button } from '../components/Button';
 import {
@@ -28,6 +28,7 @@ import { NewcomerContactField } from './NewcomerContactField';
 import { PaymentReminderSection } from './PaymentReminderSection';
 import { SchoolSiteField } from './SchoolSiteField';
 import { useNextLessons } from './useNextLessons';
+import { useSavedDraft } from './useSavedDraft';
 import { TemplateEditor } from './TemplateEditor';
 import { distributeTemplateServerError } from './templateServerError';
 import { validateTemplateText } from './templateValidation';
@@ -55,19 +56,16 @@ function changedTemplates(
 export default function TemplatesScreen() {
   const settingsState = useSettings();
   const lessonsState = useNextLessons();
-  const [texts, setTexts] = useState<Record<TemplateKind, string> | null>(null);
+  const settings = settingsState.settings;
+  // Сверка с сохранённым по `updatedAt` — на первой загрузке и после любого
+  // сохранения настроек, в том числе соседнего поля («Школа», «Оплаты»), но
+  // набранное и ещё не сохранённое она не перезатирает (useSavedDraft.ts).
+  const [texts, setTexts, submit] = useSavedDraft<Record<TemplateKind, string> | null>(
+    settings?.templates ?? null,
+    settings?.updatedAt,
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<FormError | null>(null);
-
-  const settings = settingsState.settings;
-
-  // Синхронизация с сохранённым — по `updatedAt`: сработает и на первой
-  // загрузке, и заново после успешного «Сохранить» (reload внутри update),
-  // но не перезатирает то, что учитель ещё печатает между сохранениями.
-  useEffect(() => {
-    if (settings) setTexts(settings.templates);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- нужен именно updatedAt, не весь объект settings
-  }, [settings?.updatedAt]);
 
   const changed = texts && settings ? changedTemplates(texts, settings.templates) : {};
   const hasChanges = Object.keys(changed).length > 0;
@@ -80,7 +78,7 @@ export default function TemplatesScreen() {
     setPending(true);
     setError(null);
     try {
-      await settingsState.update({ templates: changed });
+      await submit(texts, () => settingsState.update({ templates: changed }));
     } catch (err) {
       setError(errorFrom(err, SAVE_ERROR));
     } finally {
