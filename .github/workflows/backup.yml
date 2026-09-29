@@ -4,6 +4,11 @@ name: Backup Mongo
 # (CLAUDE.md, «Данные (MongoDB)»; docs/RUNBOOK.md §7). 03:17 UTC — вне пиков
 # нагрузки на бесплатный кластер, минута смещена от ровного часа, чтобы не
 # попадать в одну секунду с чужими cron-джобами GitHub на *:00.
+#
+# Хранение — приватный бакет Cloudflare R2 в EU-юрисдикции (ADR-0152). Артефакты
+# Actions публичного репозитория скачивает любой вошедший в GitHub, поэтому это
+# только запасной путь на время, пока владелец не завёл бакет: тогда бэкап всё
+# равно делается, но с предупреждением и напоминанием в Telegram каждую ночь.
 on:
   schedule:
     - cron: '17 3 * * *'
@@ -21,6 +26,16 @@ on:
         required: true
       TELEGRAM_ALERT_CHAT_ID:
         required: true
+      # required: false — release.yml зовёт этот workflow с `secrets: inherit`, а
+      # пока секретов нет, бэкап не должен падать: он уйдёт в артефакт (ADR-0152).
+      BACKUP_R2_ENDPOINT:
+        required: false
+      BACKUP_R2_BUCKET:
+        required: false
+      BACKUP_R2_ACCESS_KEY_ID:
+        required: false
+      BACKUP_R2_SECRET_ACCESS_KEY:
+        required: false
 
 env:
   # Версия mongodb-database-tools закреплена явно — «латест» ломается без
@@ -69,15 +84,66 @@ jobs:
         id: backup_file
         run: echo "path=$(ls backups/*.archive.gz.enc)" >> "$GITHUB_OUTPUT"
 
-      # Внешнее хранилище на первое время — артефакты Actions (retention
-      # 90 дней). S3/аналог — отдельный PR при появлении реальных данных,
-      # отмечено в RUNBOOK §7.
-      - name: загрузить бэкап как artifact
+      # Куда класть файл, решает scripts/backup-destination.mjs (с тестом, который
+      # заодно сверяет этот файл), а не шелл: все четыре секрета R2 заданы — target=r2,
+      # иначе target=artifact. Значения секретов скрипт не печатает.
+      - name: куда класть бэкап
+        id: destination
+        env:
+          BACKUP_R2_ENDPOINT: ${{ secrets.BACKUP_R2_ENDPOINT }}
+          BACKUP_R2_BUCKET: ${{ secrets.BACKUP_R2_BUCKET }}
+          BACKUP_R2_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          BACKUP_R2_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          BACKUP_FILE: ${{ steps.backup_file.outputs.path }}
+        run: node scripts/backup-destination.mjs plan "$BACKUP_FILE"
+
+      # Штатный путь: приватный бакет R2 (EU), артефакт не создаётся. Срок хранения
+      # 90 дней держит правило жизненного цикла бакета (RUNBOOK §7.1), не код.
+      # Упал aws s3 cp — упал шаг и весь прогон, алерт ниже: молча откатываться в
+      # публичный артефакт нельзя. Контрольные суммы только «по требованию» —
+      # рекомендация Cloudflare для новых версий AWS CLI, иначе R2 может отвергнуть
+      # загрузку с расширенной контрольной суммой.
+      - name: загрузить бэкап в приватный бакет R2
+        if: steps.destination.outputs.target == 'r2'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          BACKUP_R2_ENDPOINT: ${{ secrets.BACKUP_R2_ENDPOINT }}
+          BACKUP_R2_BUCKET: ${{ secrets.BACKUP_R2_BUCKET }}
+          BACKUP_FILE: ${{ steps.backup_file.outputs.path }}
+          BACKUP_KEY: ${{ steps.destination.outputs.key }}
+        run: |
+          aws --version
+          aws s3 cp "$BACKUP_FILE" "s3://$BACKUP_R2_BUCKET/$BACKUP_KEY" \
+            --endpoint-url "$BACKUP_R2_ENDPOINT" --no-progress
+
+      # Запасной путь на время, пока R2 не настроен (ADR-0152). Файл зашифрован, но
+      # лежит в публичном репозитории — поэтому следующий шаг шумит.
+      - name: загрузить бэкап как artifact (запасной путь, R2 не настроен)
+        if: steps.destination.outputs.target == 'artifact'
         uses: actions/upload-artifact@v7
         with:
           name: mongo-backup-${{ github.run_id }}
           path: ${{ steps.backup_file.outputs.path }}
           retention-days: 90
+
+      # Напоминание владельцу, пока бэкапы едут в публичный артефакт: аннотация на
+      # странице прогона + Telegram каждую ночь (тот же канал, что у алерта ниже).
+      # shell: bash — pipefail, как в шаге алерта.
+      - name: напомнить, что R2 для бэкапов не настроен
+        if: steps.destination.outputs.target == 'artifact'
+        shell: bash
+        env:
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_CHAT_ID: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          BACKUP_R2_MISSING: ${{ steps.destination.outputs.missing }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node scripts/backup-destination.mjs warning
+          node scripts/backup-destination.mjs notice | node scripts/notify-telegram.mjs
 
       # Упавший ночью бэкап раньше не доходил ни до кого (docs/adr/0111,
       # RUNBOOK §10.2) — тот же канал и скрипт, что у страховки uptime.yml.
