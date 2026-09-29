@@ -2,14 +2,14 @@
 // потолок email из RFC 5321 §4.5.3.1.3 (254 символа). inviteCode — код
 // ссылки-приглашения школы (ADR-0030) со страницы /join/:code, опционален.
 import { IsEmail, IsOptional, Matches, MaxLength } from 'class-validator';
-import { INVITE_CODE_RE, type RequestEmailLoginInput } from '@xuanxue/shared';
+import { INVITE_CODE_RE, type ApiRouteBody } from '@xuanxue/shared';
 
 // Экспортирован — тем же числом пользуется VerifyEmailCodeDto
 // (verify-email-code.dto.ts): длина поля email не пишется в коде дважды.
 export const EMAIL_MAX_LENGTH = 254;
 const INVALID_INVITE_CODE_MESSAGE = 'Ссылка повреждена. Скопируйте её ещё раз.';
 
-export class RequestEmailLoginDto implements RequestEmailLoginInput {
+export class RequestEmailLoginDto implements ApiRouteBody<'POST /auth/email/request'> {
   @IsEmail()
   @MaxLength(EMAIL_MAX_LENGTH)
   email!: string;

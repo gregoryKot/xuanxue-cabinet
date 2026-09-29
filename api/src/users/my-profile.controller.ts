@@ -6,6 +6,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Patch } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import type { MeDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import { CurrentUser } from '../auth/auth.decorators';
 import { toMeDto } from '../auth/user.mapper';
 import type { UserLean } from './users.service';
@@ -27,6 +28,7 @@ export class MyProfileController {
   // (@CurrentUser()), никогда из тела или пути: SECURITY §2 требует, чтобы
   // маршрут `/me/*` скоупился по userId из сессии — иначе один человек мог
   // бы переписать имя другому, просто отправив чужой id.
+  @ApiRoute('PATCH /me/profile')
   @Patch()
   @HttpCode(HttpStatus.OK)
   async update(

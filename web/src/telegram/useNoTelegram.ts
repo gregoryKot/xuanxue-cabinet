@@ -9,11 +9,8 @@
 // страницы (read-after-write, CLAUDE.md).
 import { useCallback, useState } from 'react';
 import type { MeDto, SetNoTelegramInput } from '@xuanxue/shared';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
-
-// Не в api/apiPaths.ts: там живут только GET-пути, общие с предзагрузкой
-// (см. шапку файла) — у мутации своего экрана предзагрузки нет.
-const NO_TELEGRAM_PATH = '/me/no-telegram';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 
 export interface UseNoTelegramResult {
   pending: boolean;
@@ -31,7 +28,7 @@ export function useNoTelegram(applyMe: (next: MeDto) => void): UseNoTelegramResu
       setError(null);
       try {
         const body: SetNoTelegramInput = { noTelegram };
-        const next = await apiFetch<MeDto>(NO_TELEGRAM_PATH, { method: 'PUT', body });
+        const next = await apiRoute('PUT /me/no-telegram', { body });
         applyMe(next);
         setPending(false);
       } catch (err) {

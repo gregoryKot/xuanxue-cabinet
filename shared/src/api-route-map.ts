@@ -8,6 +8,7 @@ import {
   type AnswerVideosRoutes,
 } from './answer-videos-routes';
 import { APP_ERRORS_ROUTE_KEYS, type AppErrorsRoutes } from './app-errors-routes';
+import { AUTH_ROUTE_KEYS, type AuthRoutes } from './auth-routes';
 import { CHANNELS_ROUTE_KEYS, type ChannelsRoutes } from './channels-routes';
 import { CLASSES_ROUTE_KEYS, type ClassesRoutes } from './classes-routes';
 import {
@@ -20,6 +21,7 @@ import { GRADING_ROUTE_KEYS, type GradingRoutes } from './grading-routes';
 import { INBOX_ROUTE_KEYS, type InboxRoutes } from './inbox-routes';
 import { LESSONS_ROUTE_KEYS, type LessonsRoutes } from './lessons-routes';
 import { MATERIALS_ROUTE_KEYS, type MaterialsRoutes } from './materials-routes';
+import { ME_ROUTE_KEYS, type MeRoutes } from './me-routes';
 import {
   NOTIFICATIONS_ROUTE_KEYS,
   type NotificationsRoutes,
@@ -31,6 +33,7 @@ import { USERS_ROUTE_KEYS, type UsersRoutes } from './users-routes';
 export type ApiRouteMap = AnalyticsRoutes &
   AnswerVideosRoutes &
   AppErrorsRoutes &
+  AuthRoutes &
   ChannelsRoutes &
   ClassesRoutes &
   ExamAttemptsRoutes &
@@ -40,6 +43,7 @@ export type ApiRouteMap = AnalyticsRoutes &
   InboxRoutes &
   LessonsRoutes &
   MaterialsRoutes &
+  MeRoutes &
   NotificationsRoutes &
   PaymentsRoutes &
   TagsRoutes &
@@ -49,6 +53,7 @@ export const API_ROUTE_KEY_SET: Record<keyof ApiRouteMap, true> = {
   ...ANALYTICS_ROUTE_KEYS,
   ...ANSWER_VIDEOS_ROUTE_KEYS,
   ...APP_ERRORS_ROUTE_KEYS,
+  ...AUTH_ROUTE_KEYS,
   ...CHANNELS_ROUTE_KEYS,
   ...CLASSES_ROUTE_KEYS,
   ...EXAM_ATTEMPTS_ROUTE_KEYS,
@@ -58,6 +63,7 @@ export const API_ROUTE_KEY_SET: Record<keyof ApiRouteMap, true> = {
   ...INBOX_ROUTE_KEYS,
   ...LESSONS_ROUTE_KEYS,
   ...MATERIALS_ROUTE_KEYS,
+  ...ME_ROUTE_KEYS,
   ...NOTIFICATIONS_ROUTE_KEYS,
   ...PAYMENTS_ROUTE_KEYS,
   ...TAGS_ROUTE_KEYS,

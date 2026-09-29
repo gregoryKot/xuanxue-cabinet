@@ -6,6 +6,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post, Res } from '@nestjs/commo
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
 import type { MeDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import { PersonalChats } from '../telegram/personal-chats';
 import type { ResponseLike } from '../common/http-headers';
 import { Public } from './auth.decorators';
@@ -23,6 +24,7 @@ export class EmailCodeController {
 
   @Public()
   @Throttle(EMAIL_LOGIN_THROTTLE)
+  @ApiRoute('POST /auth/email/code')
   @Post('email/code')
   @HttpCode(HttpStatus.OK)
   async verifyEmailCode(

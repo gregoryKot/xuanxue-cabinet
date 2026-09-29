@@ -3,9 +3,9 @@
 // (../users/email-link-token.service.ts) — тот же приём, что у токена входа
 // (VerifyEmailLoginDto), но другое хранилище (email-link-token.schema.ts).
 import { Matches } from 'class-validator';
-import { EMAIL_CONFIRM_TOKEN_RE, type ConfirmEmailInput } from '@xuanxue/shared';
+import { EMAIL_CONFIRM_TOKEN_RE, type ApiRouteBody } from '@xuanxue/shared';
 
-export class ConfirmEmailDto implements ConfirmEmailInput {
+export class ConfirmEmailDto implements ApiRouteBody<'POST /auth/email/confirm'> {
   @Matches(EMAIL_CONFIRM_TOKEN_RE, {
     message: 'Ссылка повреждена. Скопируйте её из письма ещё раз.',
   })

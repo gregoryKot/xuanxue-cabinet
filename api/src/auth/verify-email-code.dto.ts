@@ -10,13 +10,13 @@ import {
   EMAIL_LOGIN_CODE_INVALID_MESSAGE,
   EMAIL_LOGIN_CODE_RE,
   INVITE_CODE_RE,
-  type VerifyEmailCodeInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 import { EMAIL_MAX_LENGTH } from './request-email-login.dto';
 
 const INVALID_INVITE_CODE_MESSAGE = 'Ссылка повреждена. Скопируйте её ещё раз.';
 
-export class VerifyEmailCodeDto implements VerifyEmailCodeInput {
+export class VerifyEmailCodeDto implements ApiRouteBody<'POST /auth/email/code'> {
   @IsEmail()
   @MaxLength(EMAIL_MAX_LENGTH)
   email!: string;

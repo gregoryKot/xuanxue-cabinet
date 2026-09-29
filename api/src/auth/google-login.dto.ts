@@ -6,10 +6,10 @@ import {
   GOOGLE_LOGIN_FAILED_MESSAGE,
   GOOGLE_OAUTH_CODE_RE,
   GOOGLE_OAUTH_STATE_RE,
-  type GoogleLoginInput,
+  type ApiRouteBody,
 } from '@xuanxue/shared';
 
-export class GoogleLoginDto implements GoogleLoginInput {
+export class GoogleLoginDto implements ApiRouteBody<'POST /auth/google'> {
   @Matches(GOOGLE_OAUTH_CODE_RE, { message: GOOGLE_LOGIN_FAILED_MESSAGE })
   code!: string;
 

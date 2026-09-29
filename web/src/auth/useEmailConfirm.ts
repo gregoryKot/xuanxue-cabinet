@@ -8,7 +8,8 @@
 // объясняет это же комментарием у себя) — success только меняет статус,
 // куда идти дальше, решает сам экран (кнопка «Открыть кабинет»).
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 
 type EmailConfirmStatus = 'pending' | 'success' | 'error';
 
@@ -36,7 +37,7 @@ export function useEmailConfirm(token: string | null): UseEmailConfirmResult {
     if (token === null) return;
     startedRef.current = true;
 
-    apiFetch<void>('/auth/email/confirm', { method: 'POST', body: { token } })
+    apiRoute('POST /auth/email/confirm', { body: { token } })
       .then(() => setStatus('success'))
       .catch((err: unknown) => {
         setError(err instanceof ApiError ? err.message : NETWORK_ERROR_MESSAGE);

@@ -8,8 +8,9 @@
 // храповик — компонент иначе не помещается в лимит).
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { INVITE_QUERY_PARAM, type TelegramLoginInput } from '@xuanxue/shared';
-import { ApiError, apiFetch } from '../api/http';
+import { INVITE_QUERY_PARAM, type MeDto, type TelegramLoginInput } from '@xuanxue/shared';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError } from '../api/http';
 import { postLoginPath } from './returnTo';
 import { readTelegramAuthResult } from './telegramAuthResult';
 
@@ -24,11 +25,11 @@ const LOGIN_FAILED_MESSAGE = 'Не удалось войти. Попробуйт
 function postTelegramLogin(
   user: TelegramLoginInput,
   inviteCode: string | undefined,
-): Promise<void> {
-  const query = inviteCode
-    ? `?${INVITE_QUERY_PARAM}=${encodeURIComponent(inviteCode)}`
-    : '';
-  return apiFetch(`/auth/telegram${query}`, { method: 'POST', body: user });
+): Promise<MeDto> {
+  return apiRoute('POST /auth/telegram', {
+    query: { [INVITE_QUERY_PARAM]: inviteCode },
+    body: user,
+  });
 }
 
 export interface UseTelegramAuthResultLoginResult {

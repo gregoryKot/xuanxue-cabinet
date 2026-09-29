@@ -13,7 +13,8 @@ import {
   type ReactNode,
 } from 'react';
 import type { MeDto } from '@xuanxue/shared';
-import { ApiError, apiFetch, setUnauthorizedListener } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, setUnauthorizedListener } from '../api/http';
 
 /** loading — идёт запрос; guest — 401, сессии нет; offline — сетевой сбой
  * (apiFetch status 0) — это не «вы вышли», отдельный экран с повтором, не
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const thisRequest = (requestId.current += 1);
     setStatus('loading');
     try {
-      const dto = await apiFetch<MeDto>('/auth/me');
+      const dto = await apiRoute('GET /auth/me');
       if (requestId.current !== thisRequest) return; // пришёл более новый refresh()
       setMe(dto);
       setStatus('ok');

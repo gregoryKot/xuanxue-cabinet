@@ -5,10 +5,10 @@
 // фамилию, joinPersonName отбрасывает её из склеенного имени вместе с
 // пробелом-разделителем.
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
-import { PERSON_NAME_PART_MAX, type UpdateMyProfileInput } from '@xuanxue/shared';
+import { PERSON_NAME_PART_MAX, type ApiRouteBody } from '@xuanxue/shared';
 import { OptionalNotNull, TrimString } from '../../common/validation';
 
-export class UpdateMyProfileDto implements UpdateMyProfileInput {
+export class UpdateMyProfileDto implements ApiRouteBody<'PATCH /me/profile'> {
   @TrimString()
   @IsString()
   @IsNotEmpty()

@@ -3,11 +3,11 @@
 // потолок email из RFC 5321 §4.5.3.1.3 (254 символа), как у
 // RequestEmailLoginDto.
 import { IsEmail, MaxLength } from 'class-validator';
-import type { LinkEmailInput } from '@xuanxue/shared';
+import type { ApiRouteBody } from '@xuanxue/shared';
 
 const EMAIL_MAX_LENGTH = 254;
 
-export class LinkEmailDto implements LinkEmailInput {
+export class LinkEmailDto implements ApiRouteBody<'POST /auth/email/link'> {
   @IsEmail()
   @MaxLength(EMAIL_MAX_LENGTH)
   email!: string;

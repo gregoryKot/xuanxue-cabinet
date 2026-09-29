@@ -68,7 +68,7 @@ describe('JoinScreen — сессия уже есть (ADR-0036: вход уже
       '/auth/join/check',
       expect.anything(),
     );
-    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/config');
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/config', expect.anything());
   });
 
   // Задача 3: заблокированный (сессия жива, /auth/me отвечает 403) тоже
@@ -95,6 +95,6 @@ describe('JoinScreen — сессия уже есть (ADR-0036: вход уже
       '/auth/join/check',
       expect.anything(),
     );
-    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/config');
+    expect(mockedApiFetch).not.toHaveBeenCalledWith('/auth/config', expect.anything());
   });
 });

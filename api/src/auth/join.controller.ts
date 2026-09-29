@@ -9,6 +9,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { CheckInviteResultDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import { InviteLinkService } from '../users/invite-link.service';
 import { Public } from './auth.decorators';
 import { JoinByInviteDto } from './join-by-invite.dto';
@@ -23,6 +24,7 @@ export class JoinController {
 
   @Public()
   @Throttle(INVITE_CHECK_THROTTLE)
+  @ApiRoute('POST /auth/join/check')
   @Post('join/check')
   @HttpCode(HttpStatus.OK)
   async checkInvite(@Body() body: JoinByInviteDto): Promise<CheckInviteResultDto> {

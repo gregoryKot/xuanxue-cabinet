@@ -26,6 +26,7 @@ import {
   INVITE_QUERY_PARAM,
   type MeDto,
 } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import { PersonalChats } from '../telegram/personal-chats';
 import {
   asSingleHeader,
@@ -77,6 +78,7 @@ export class GoogleAuthController {
 
   @Public()
   @Throttle(GOOGLE_LOGIN_THROTTLE)
+  @ApiRoute('POST /auth/google')
   @Post()
   @HttpCode(HttpStatus.OK)
   async login(

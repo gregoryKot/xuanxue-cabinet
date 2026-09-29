@@ -84,7 +84,12 @@ describe('FirstScreenPrefetch', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith('/auth/me'));
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/auth/me',
+        expect.objectContaining({ method: 'GET' }),
+      ),
+    );
     expect(countCallsTo(lessonsListPath())).toBe(0);
     expect(countCallsTo(CLASSES_LIST_PATH)).toBe(0);
   });

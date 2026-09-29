@@ -13,7 +13,8 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { MeDto, VerifyEmailCodeInput } from '@xuanxue/shared';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 import { postLoginPath } from './returnTo';
 
 type EmailCodeLoginStatus = 'idle' | 'pending' | 'error';
@@ -48,7 +49,7 @@ export function useEmailCodeLogin(
         ? { email, code, inviteCode }
         : { email, code };
       try {
-        const me = await apiFetch<MeDto>('/auth/email/code', { method: 'POST', body });
+        const me = await apiRoute('POST /auth/email/code', { body });
         applyMe(me);
         void navigate(postLoginPath(), { replace: true });
       } catch (err) {

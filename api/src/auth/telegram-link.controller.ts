@@ -7,6 +7,7 @@ import { Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { DateTime } from 'luxon';
 import type { TelegramLinkCodeDto } from '@xuanxue/shared';
+import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from '../users/users.service';
 import { TelegramLinkCodeService } from '../users/telegram-link-code.service';
 import { CurrentUser } from './auth.decorators';
@@ -22,6 +23,7 @@ export class TelegramLinkController {
   constructor(private readonly linkCodeService: TelegramLinkCodeService) {}
 
   @Throttle(TELEGRAM_LINK_CODE_THROTTLE)
+  @ApiRoute('POST /auth/telegram/link-code')
   @Post('telegram/link-code')
   @HttpCode(HttpStatus.OK)
   async issueLinkCode(@CurrentUser() user: UserLean): Promise<TelegramLinkCodeDto> {

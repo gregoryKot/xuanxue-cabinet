@@ -177,7 +177,12 @@ describe('TelegramLinkButton — возврат из Telegram (read-after-write)
     });
     document.dispatchEvent(new Event('visibilitychange'));
 
-    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith('/auth/me'));
+    await waitFor(() =>
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        '/auth/me',
+        expect.objectContaining({ method: 'GET' }),
+      ),
+    );
   });
 });
 

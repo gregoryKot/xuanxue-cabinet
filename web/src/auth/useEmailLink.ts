@@ -10,7 +10,8 @@
 // осталось бы без адреса до следующей перезагрузки.
 import { useCallback, useState } from 'react';
 import type { LinkEmailInput, MeDto } from '@xuanxue/shared';
-import { ApiError, apiFetch, NETWORK_ERROR_MESSAGE } from '../api/http';
+import { apiRoute } from '../api/apiRoute';
+import { ApiError, NETWORK_ERROR_MESSAGE } from '../api/http';
 
 type EmailLinkStatus = 'idle' | 'pending' | 'sent' | 'error';
 
@@ -30,7 +31,7 @@ export function useEmailLink(applyMe: (next: MeDto) => void): UseEmailLinkResult
       setError(null);
       try {
         const body: LinkEmailInput = { email };
-        const next = await apiFetch<MeDto>('/auth/email/link', { method: 'POST', body });
+        const next = await apiRoute('POST /auth/email/link', { body });
         applyMe(next);
         setStatus('sent');
       } catch (err) {
