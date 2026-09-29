@@ -2902,6 +2902,19 @@ spec, который сверяет карту с маршрутами, заре
    push (`notifications` 5), служебное (`analytics`, `app`, `dev-errors`, `errors`
    — по 1). Первыми — маршруты из #345 (`POST /auth/email/link`,
    `PUT /me/no-telegram`, `PATCH /me/profile`, `PUT /attempts/:id/grading`).
+
+   Как переносится домен:
+   - записи — в `shared/src/<домен>-routes.ts` (`…Routes` и `…_ROUTE_KEYS`), две
+     строки в `shared/src/api-route-map.ts`; 204 — `response: void`, сырые байты
+     файла — `body: RawBody`;
+   - контроллер — `@ApiRoute(ключ)` у каждого обработчика из карты, DTO —
+     `implements ApiRouteBody<ключ>`/`ApiRouteQuery<ключ>`;
+   - web — `apiRoute(ключ, { params, query, body })`; путь для предзагрузки —
+     `apiRoutePath`, ставшие ненужными помощники `apiPaths.ts` удаляются;
+   - в карту не идёт то, что ходит мимо `apiFetch`: `<img src>`, редирект на
+     скачивание, загрузка через XHR (`uploadWithProgress.ts`);
+   - бейслайн храповика — `--update` прямо перед мержем.
+
 3. Последний PR удаляет строковый `apiFetch`, храповик и `check-editor-routes.mjs`,
    `web/src/api/apiPaths.ts` — вместе с ним.
 

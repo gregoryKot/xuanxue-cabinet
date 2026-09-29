@@ -14,55 +14,22 @@
 // (api/src/common/api-route.decorator.ts), а e2e на настоящем AppModule
 // сверяет ключи карты с маршрутами Nest (api/test/api-routes.e2e-spec.ts).
 //
-// Карта растёт по доменам (PLAN §17.1, шаг 2) — новый маршрут приезжает
-// сразу записью здесь.
+// Записи живут по доменам — `<домен>-routes.ts` рядом с типами домена, общий
+// список собирает api-route-map.ts: один файл на всю карту перерос бы
+// храповик размера и собирал бы конфликты параллельных PR. Новый маршрут,
+// который зовёт кабинет, приезжает сразу записью (PLAN §17.1, шаг 2).
 
-import type { InboxPageDto, ListInboxQuery } from './inbox';
-import type { MyPaymentDto, MyPaymentsPageDto } from './payments';
+import { API_ROUTE_KEY_SET, type ApiRouteMap } from './api-route-map';
 
 export const API_ROUTE_METHODS = ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'] as const;
 type ApiRouteMethod = (typeof API_ROUTE_METHODS)[number];
 
 /** Форма записи. `undefined` у `query`/`body` — у маршрута их нет, и вызов
- * их передать не сможет; `response: undefined` — честный 204. */
+ * их передать не сможет; `response: void` — честный 204. */
 interface ApiRouteShape {
   query: object | undefined;
   body: unknown;
   response: unknown;
-}
-
-interface ApiRouteMap {
-  // Лента уведомлений (ADR-0061, ADR-0063) — образцовый домен шага 1. Три
-  // действия отдают страницу ленты, а не 204: так чинил #345 и закрепил
-  // ADR-0087, теперь это держит карта.
-  'GET /me/inbox': { query: ListInboxQuery; body: undefined; response: InboxPageDto };
-  'POST /me/inbox/:id/read': {
-    query: undefined;
-    body: undefined;
-    response: InboxPageDto;
-  };
-  'POST /me/inbox/read-all': {
-    query: undefined;
-    body: undefined;
-    response: InboxPageDto;
-  };
-  'DELETE /me/inbox/:id': { query: undefined; body: undefined; response: InboxPageDto };
-  // Абонемент ученика (PLAN §15, слой 2.4). Снимок уходит сырым телом
-  // картинки (ADR-0050), ответ — строка месяца: кабинет вписывает её без
-  // второго GET (ADR-0087).
-  'GET /me/payments': { query: undefined; body: undefined; response: MyPaymentsPageDto };
-  'POST /me/payments/:month/screenshot': {
-    query: undefined;
-    body: RawImageBody;
-    response: MyPaymentDto;
-  };
-}
-
-/** Сырое тело картинки — `Blob` браузера. Своим описанием, а не `Blob`:
- * `shared` собирается без DOM-типов, а структурно `Blob` сюда подходит. */
-interface RawImageBody {
-  readonly size: number;
-  readonly type: string;
 }
 
 /** Проверка формы карты на уровне типов: ключ начинается с метода и `/`,
@@ -91,20 +58,8 @@ export type ApiRouteQuery<K extends ApiRouteKey> = ApiRoutes[K]['query'];
 export type ApiRouteBody<K extends ApiRouteKey> = ApiRoutes[K]['body'];
 export type ApiRouteResponse<K extends ApiRouteKey> = ApiRoutes[K]['response'];
 
-/** Ключи карты в рантайме — для e2e-сверки с Nest: типы до теста не
- * доживают. `Record` заставляет `tsc` держать список ровно равным карте — ни
- * забытого ключа, ни лишнего. */
-const API_ROUTE_KEY_SET: Record<ApiRouteKey, true> = {
-  'GET /me/inbox': true,
-  'POST /me/inbox/:id/read': true,
-  'POST /me/inbox/read-all': true,
-  'DELETE /me/inbox/:id': true,
-  'GET /me/payments': true,
-  'POST /me/payments/:month/screenshot': true,
-};
-
 // Каст — Object.keys типизирован string[]; множество ключей выше
-// проверено Record-ом.
+// проверено Record-ом (api-route-map.ts).
 export const API_ROUTE_KEYS = Object.keys(API_ROUTE_KEY_SET) as ApiRouteKey[];
 
 /** Метод и шаблон пути ключа: `'POST /me/inbox/:id/read'` →
