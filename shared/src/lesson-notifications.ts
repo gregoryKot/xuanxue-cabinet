@@ -31,13 +31,42 @@ export interface LessonScopeClassDto {
   slots: { weekday: number; time: string; durationMin: number }[];
 }
 
+// «За сколько напомнить» (ADR-0162, п. 3): короткий список вместо свободного
+// числа — это выбор из четырёх пунктов, а не поле, в которое надо думать.
+// Покрывает путь от «успеть подключиться» (15) до «успеть доехать» (120).
+export const LESSON_REMINDER_CHOICES = [15, 30, 60, 120] as const;
+
+export interface LessonReminderDto {
+  /** Свой выбор человека, минуты до начала. `null` — «как в школе». */
+  minutes: number | null;
+  /** Школьное значение (`settings.lessonReminderMinutes`): экран подписывает
+   * им пункт «как в школе» и не ходит за настройками школы отдельно. */
+  schoolMinutes: number;
+}
+
 export interface MyLessonNotificationsDto {
   scope: LessonScope;
   /** Активные занятия расписания — из них человек ставит галочки. */
   classes: LessonScopeClassDto[];
+  reminder: LessonReminderDto;
 }
 
 export type UpdateLessonScopeInput = LessonScope;
+
+/** `null` — снять свой выбор, вернуться к «как в школе». */
+export interface UpdateLessonReminderInput {
+  minutes: number | null;
+}
+
+/** За сколько минут до занятия напоминать человеку: его выбор, а если он не
+ * выбирал — значение школы. Единственное место, где это решается: тик и
+ * экран не должны разойтись в ответе на «когда придёт». */
+export function effectiveReminderMinutes(
+  own: number | null | undefined,
+  school: number,
+): number {
+  return own ?? school;
+}
 
 /** Касается ли выбор человека этого занятия. «Выбранные» без единой галочки —
  * честное «ни о каких» (ADR-0162): пустой список не превращается в «все». */

@@ -1,6 +1,6 @@
-// Против настоящей Mongo (CLAUDE.md «Тесты»): выбор «о каких занятиях»
-// (ADR-0162) — read-after-write, режим «все» не стирает галочки, пачка одним
-// запросом, повтор записи идемпотентен.
+// Против настоящей Mongo (CLAUDE.md «Тесты»): выбор «о каких занятиях» и «за
+// сколько минут» (ADR-0162) — read-after-write, режим «все» не стирает галочки,
+// пачка одним запросом, повтор записи идемпотентен.
 import type { Model } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { NotificationPrefsRecord } from './notification-prefs.schema';
@@ -100,33 +100,109 @@ describe('LessonScopeService', () => {
     expect(await service.get('u2')).toEqual({ mode: 'selected', classIds: ['c2'] });
   });
 
-  describe('getMany', () => {
+  describe('getManyLessonPrefs', () => {
     it('пустой список — пустая карта', async () => {
-      expect(await service.getMany([])).toEqual(new Map());
+      expect(await service.getManyLessonPrefs([])).toEqual(new Map());
     });
 
-    it('пачка одним запросом: у каждого входного id есть запись, у людей без документа — «все»', async () => {
+    it('пачка одним запросом: у каждого входного id есть запись, у людей без документа — «все» и «как в школе»', async () => {
       await service.set('u1', { mode: 'selected', classIds: ['c1'] });
       await new NotificationPrefsService(model).set('u2', 'exam_result', false);
 
-      const result = await service.getMany(['u1', 'u2', 'u3']);
+      const result = await service.getManyLessonPrefs(['u1', 'u2', 'u3']);
 
       expect(result).toEqual(
         new Map([
-          ['u1', { mode: 'selected', classIds: ['c1'] }],
-          ['u2', { mode: 'all', classIds: [] }],
-          ['u3', { mode: 'all', classIds: [] }],
+          ['u1', { scope: { mode: 'selected', classIds: ['c1'] } }],
+          ['u2', { scope: { mode: 'all', classIds: [] } }],
+          ['u3', { scope: { mode: 'all', classIds: [] } }],
         ]),
       );
+    });
+
+    it('«за сколько» приезжает вместе с выбором занятий, тем же запросом', async () => {
+      await service.set('u1', { mode: 'selected', classIds: ['c1'] });
+      await service.setReminderMinutes('u1', 120);
+      await service.setReminderMinutes('u2', 15);
+
+      const result = await service.getManyLessonPrefs(['u1', 'u2', 'u3']);
+
+      expect(result.get('u1')).toEqual({
+        scope: { mode: 'selected', classIds: ['c1'] },
+        reminderMinutes: 120,
+      });
+      expect(result.get('u2')).toEqual({
+        scope: { mode: 'all', classIds: [] },
+        reminderMinutes: 15,
+      });
+      expect(result.get('u3')).toEqual({ scope: { mode: 'all', classIds: [] } });
     });
 
     it('чужих людей в результате нет', async () => {
       await service.set('u1', { mode: 'selected', classIds: ['c1'] });
       await service.set('u9', { mode: 'selected', classIds: ['c9'] });
 
-      const result = await service.getMany(['u1']);
+      const result = await service.getManyLessonPrefs(['u1']);
 
       expect([...result.keys()]).toEqual(['u1']);
+    });
+  });
+
+  describe('своё «за сколько минут»', () => {
+    it('без документа и без выбора — «как в школе» (undefined)', async () => {
+      expect(await service.getReminderMinutes('u1')).toBeUndefined();
+      await service.set('u1', { mode: 'all', classIds: [] });
+      expect(await service.getReminderMinutes('u1')).toBeUndefined();
+    });
+
+    it('выбрал → прочитал: значение на месте (read-after-write)', async () => {
+      await service.setReminderMinutes('u1', 30);
+
+      expect(await service.getReminderMinutes('u1')).toBe(30);
+    });
+
+    it('новое значение заменяет прежнее, второй раз то же — документ один', async () => {
+      await service.setReminderMinutes('u1', 30);
+      await service.setReminderMinutes('u1', 120);
+      await service.setReminderMinutes('u1', 120);
+
+      expect(await service.getReminderMinutes('u1')).toBe(120);
+      expect(await model.countDocuments({ userId: 'u1' })).toBe(1);
+    });
+
+    it('null снимает выбор полем, а не нулём: возвращается «как в школе»', async () => {
+      await service.setReminderMinutes('u1', 60);
+      await service.setReminderMinutes('u1', null);
+
+      expect(await service.getReminderMinutes('u1')).toBeUndefined();
+      const stored = await model.findOne({ userId: 'u1' }).lean();
+      expect(stored).not.toHaveProperty('lessonReminderMinutes');
+    });
+
+    it('сброс там, где ничего не выбирали, документ не заводит', async () => {
+      await service.setReminderMinutes('u1', null);
+
+      expect(await model.countDocuments({ userId: 'u1' })).toBe(0);
+    });
+
+    it('выбор «за сколько» не трогает выбор занятий и переключатели, и наоборот', async () => {
+      const prefs = new NotificationPrefsService(model);
+      await prefs.set('u1', 'exam_result', false);
+      await service.set('u1', { mode: 'selected', classIds: ['c1'] });
+      await service.setReminderMinutes('u1', 15);
+      await service.set('u1', { mode: 'all', classIds: ['c1'] });
+
+      expect(await service.getReminderMinutes('u1')).toBe(15);
+      expect(await service.get('u1')).toEqual({ mode: 'all', classIds: ['c1'] });
+      expect((await prefs.get('u1', [])).enabled).not.toContain('exam_result');
+    });
+
+    it('у двух людей выбор не пересекается', async () => {
+      await service.setReminderMinutes('u1', 15);
+      await service.setReminderMinutes('u2', 120);
+
+      expect(await service.getReminderMinutes('u1')).toBe(15);
+      expect(await service.getReminderMinutes('u2')).toBe(120);
     });
   });
 });

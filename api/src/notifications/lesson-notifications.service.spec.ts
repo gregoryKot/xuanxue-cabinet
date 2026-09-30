@@ -1,8 +1,11 @@
-// Против настоящей Mongo: GET/PUT «о каких занятиях» (ADR-0162) на сервисе, без
-// HTTP. Главное — несуществующее занятие отклоняется, и ничего не записано.
+// Против настоящей Mongo: GET/PUT «о каких занятиях» и «за сколько минут»
+// (ADR-0162) на сервисе, без HTTP. Главное — несуществующее занятие отклоняется
+// и ничего не записано, а своё «за сколько» читается рядом со школьным.
 import { Types, type Model } from 'mongoose';
+import type { SettingsDto } from '@xuanxue/shared';
 import { ClassRecord } from '../classes/class.schema';
 import { InvalidInputError } from '../common/errors';
+import type { SettingsService } from '../settings/settings.service';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';
 import { LessonNotificationsService } from './lesson-notifications.service';
 import { LessonScopeService } from './lesson-scope.service';
@@ -13,6 +16,7 @@ describe('LessonNotificationsService', () => {
   let classModel: Model<ClassRecord>;
   let prefsModel: Model<NotificationPrefsRecord>;
   let service: LessonNotificationsService;
+  let schoolMinutes = 60;
 
   beforeAll(async () => {
     memory = await openMemoryMongo();
@@ -23,6 +27,10 @@ describe('LessonNotificationsService', () => {
     service = new LessonNotificationsService(
       classModel,
       new LessonScopeService(prefsModel),
+      {
+        get: () =>
+          Promise.resolve({ lessonReminderMinutes: schoolMinutes } as SettingsDto),
+      } as unknown as SettingsService,
     );
   }, 60_000);
 
@@ -31,6 +39,7 @@ describe('LessonNotificationsService', () => {
   });
 
   afterEach(async () => {
+    schoolMinutes = 60;
     await Promise.all([classModel.deleteMany({}), prefsModel.deleteMany({})]);
   });
 
@@ -100,5 +109,57 @@ describe('LessonNotificationsService', () => {
     const written = await service.update('u1', { mode: 'selected', classIds: [] });
 
     expect(written.scope).toEqual({ mode: 'selected', classIds: [] });
+  });
+
+  describe('«за сколько напомнить»', () => {
+    it('без выбора: minutes = null и школьное значение рядом', async () => {
+      schoolMinutes = 45;
+
+      const result = await service.get('u1');
+
+      expect(result.reminder).toEqual({ minutes: null, schoolMinutes: 45 });
+    });
+
+    it('PUT отвечает тем, что потом покажет GET (read-after-write, ADR-0087)', async () => {
+      const written = await service.updateReminder('u1', { minutes: 30 });
+
+      expect(written.reminder).toEqual({ minutes: 30, schoolMinutes: 60 });
+      expect(await service.get('u1')).toEqual(written);
+    });
+
+    it('null возвращает «как в школе»', async () => {
+      await service.updateReminder('u1', { minutes: 120 });
+
+      const written = await service.updateReminder('u1', { minutes: null });
+
+      expect(written.reminder.minutes).toBeNull();
+      expect((await service.get('u1')).reminder.minutes).toBeNull();
+    });
+
+    it('школа поменяла своё значение — у человека без выбора это видно сразу, свой выбор не тронут', async () => {
+      await service.updateReminder('u1', { minutes: 15 });
+      schoolMinutes = 90;
+
+      expect((await service.get('u1')).reminder).toEqual({
+        minutes: 15,
+        schoolMinutes: 90,
+      });
+      expect((await service.get('u2')).reminder).toEqual({
+        minutes: null,
+        schoolMinutes: 90,
+      });
+    });
+
+    it('выбор «за сколько» и выбор занятий живут вместе и друг друга не затирают', async () => {
+      const cls = await createClass();
+      await service.update('u1', { mode: 'selected', classIds: [cls._id.toString()] });
+      await service.updateReminder('u1', { minutes: 120 });
+      await service.update('u1', { mode: 'all', classIds: [cls._id.toString()] });
+
+      const result = await service.get('u1');
+
+      expect(result.reminder.minutes).toBe(120);
+      expect(result.scope).toEqual({ mode: 'all', classIds: [cls._id.toString()] });
+    });
   });
 });

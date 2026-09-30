@@ -441,12 +441,16 @@ export type {
   LessonScope,
   LessonScopeClassDto,
   LessonScopeMode,
+  LessonReminderDto,
   MyLessonNotificationsDto,
+  UpdateLessonReminderInput,
   UpdateLessonScopeInput,
 } from './lesson-notifications';
 export {
+  LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_CLASS_IDS_MAX,
   LESSON_SCOPE_MODES,
+  effectiveReminderMinutes,
   isLessonInScope,
 } from './lesson-notifications';
 export type { NotificationDto, ListInboxQuery, InboxPageDto } from './inbox';

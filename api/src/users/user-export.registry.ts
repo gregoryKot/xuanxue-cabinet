@@ -89,7 +89,13 @@ export const USER_EXPORT_SECTIONS: Record<ExportedModel, ExportSectionSpec> = {
   NotificationPrefsRecord: {
     title: 'Настройки уведомлений',
     retention: ACCOUNT_RETENTION,
-    include: ['overrides', 'paymentReminderDay', 'lessonScopeMode', 'lessonClassIds'],
+    include: [
+      'overrides',
+      'paymentReminderDay',
+      'lessonScopeMode',
+      'lessonClassIds',
+      'lessonReminderMinutes',
+    ],
     omit: {},
   },
   ExamAttemptRecord: {

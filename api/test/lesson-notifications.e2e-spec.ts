@@ -1,6 +1,8 @@
 // e2e «о каких занятиях напоминать» (ADR-0162) на настоящем AppModule:
-// GET/PUT /me/notifications/lessons — без сессии 401, выбор по владельцу из
-// сессии (ученик Б чужого не видит и не меняет), PUT → GET (read-after-write),
+// GET/PUT /me/notifications/lessons — без сессии 401 (и на соседнем
+// reminder-minutes, остальное про него — lesson-reminder-minutes.e2e-spec.ts),
+// выбор по владельцу из сессии (ученик Б чужого не видит и не меняет),
+// PUT → GET (read-after-write),
 // несуществующее занятие и не-ObjectId — 400, а ответ не выдаёт ссылку Zoom,
 // пароль, каналы и теги (его видит любой вошедший, включая ученика).
 // Данные человека, не школы (ADR-0010) — владение по сессии, не по роли.
@@ -25,6 +27,7 @@ const ZOOM_LINK = 'https://us02web.zoom.us/j/555';
 const ZOOM_PASSWORD = 'секретный-пароль';
 const LESSONS_PATH = '/api/me/notifications/lessons';
 const SCOPE_PATH = `${LESSONS_PATH}/scope`;
+const REMINDER_PATH = `${LESSONS_PATH}/reminder-minutes`;
 const PUBLIC_CLASS_KEYS = ['groupLabel', 'id', 'slots', 'title', 'tz'];
 
 describe('Выбор «о каких занятиях» (e2e)', () => {
@@ -91,15 +94,19 @@ describe('Выбор «о каких занятиях» (e2e)', () => {
     return cookie;
   }
 
-  it('без сессии — 401 на оба маршрута', async () => {
+  it('без сессии — 401 на все три маршрута', async () => {
     const get = await request(server()).get(LESSONS_PATH);
     const put = await withCsrf(request(server()).put(SCOPE_PATH)).send({
       mode: 'all',
       classIds: [],
     });
+    const reminder = await withCsrf(request(server()).put(REMINDER_PATH)).send({
+      minutes: 30,
+    });
 
     expect(get.status).toBe(401);
     expect(put.status).toBe(401);
+    expect(reminder.status).toBe(401);
   });
 
   it('по умолчанию — обо всех занятиях; в списке только активные', async () => {
