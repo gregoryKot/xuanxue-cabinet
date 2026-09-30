@@ -13,6 +13,7 @@ import {
 import { GRADING_QUEUE_PATH, attemptPath } from '../api/gradingPaths';
 import type * as HttpModule from '../api/http';
 import { apiFetch } from '../api/http';
+import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { firstScreenPaths, prefetchFirstScreen } from './prefetchFirstScreen';
 
 vi.mock('../api/http', async () => {
@@ -93,10 +94,26 @@ describe('firstScreenPaths', () => {
     ]);
   });
 
-  it('ученик на /profile — общий для всех ролей маршрут (ADR-0045)', () => {
-    expect(firstScreenPaths('/profile', makeMe({ roles: [] }))).toEqual([
+  it('ученик на /profile — общий для всех ролей маршрут (ADR-0045), греть нечего (ADR-0162)', () => {
+    expect(firstScreenPaths('/profile', makeMe({ roles: [] }))).toEqual([]);
+  });
+
+  it('ученик на /notifications/settings — греются виды уведомлений и занятия для выбора', () => {
+    expect(firstScreenPaths('/notifications/settings', makeMe({ roles: [] }))).toEqual([
       '/me/notifications',
+      MY_LESSON_NOTIFICATIONS_PATH,
     ]);
+  });
+
+  // Блок «О каких занятиях» у штата не рисуется (у него нет вида про занятие,
+  // ADR-0162) — промис за занятиями остался бы в prefetchCache, забрать его
+  // было бы некому.
+  it('штат на /notifications/settings — греются только виды уведомлений, без занятий', () => {
+    for (const role of ['teacher', 'assistant', 'admin', 'accountant'] as const) {
+      expect(
+        firstScreenPaths('/notifications/settings', makeMe({ roles: [role] })),
+      ).toEqual(['/me/notifications']);
+    }
   });
 
   // Новые задания считаются только у ученика (ADR-0074): у штата школы

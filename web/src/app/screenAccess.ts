@@ -14,6 +14,10 @@
 // этого кода не доходит (RequireAuth показывает отказ).
 import type { MeDto } from '@xuanxue/shared';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
+import {
+  NOTIFICATIONS_SCREEN_PATH,
+  NOTIFICATION_SETTINGS_PATH,
+} from '../notifications/notificationPaths';
 
 const TEACHER_ROLES = new Set(['teacher', 'assistant', 'admin']);
 // Экспортирован — routeMatch.ts строит из него EMPTY_PATH_FALLBACK, чтобы
@@ -29,10 +33,6 @@ const STUDENT_ARCHIVE_PATH = '/archive';
 // STUDENT_ARCHIVE_PATH: вход карточкой, но маршрут открывается явно.
 const STUDENT_LIBRARY_PATH = '/library';
 const PROFILE_PATH = '/profile';
-// Лента событий и новых заданий (ADR-0063) — личное место человека, как
-// «/profile» выше: адрес свободен с тех пор, как ADR-0045 увёл настройки
-// уведомлений в «Профиль».
-const NOTIFICATIONS_PATH = '/notifications';
 const ATTEMPT_PATH_PREFIX = '/attempts/';
 
 /** teacher/assistant/admin — штат школы: ему навигация и маршруты штата;
@@ -52,8 +52,9 @@ export function rootPathFor(me: MeDto | null): string {
 
 /** «/tasks»/«/lessons»/«/archive»/«/library» (экраны ученика), «/profile»
  * (личный экран, ADR-0045), «/install» (инструкция установки, docs/PWA.md),
- * «/notifications» (лента событий, ADR-0063) и «/attempts/:id» (экран сдачи)
- * — открыты любой роли; остальные маршруты
+ * «/notifications» (лента событий, ADR-0063), «/notifications/settings»
+ * (настройки уведомлений, ADR-0162) и «/attempts/:id» (экран сдачи) — открыты
+ * любой роли; остальные маршруты
  * кабинета — только teacher/assistant/admin, иначе AppShell уводит
  * редиректом на rootPathFor(me) (ADR-0025, ТЗ student-exams.md). */
 export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
@@ -65,7 +66,8 @@ export function canSeeRoute(me: MeDto | null, pathname: string): boolean {
     pathname === STUDENT_LIBRARY_PATH ||
     pathname === PROFILE_PATH ||
     pathname === INSTALL_SCREEN_PATH ||
-    pathname === NOTIFICATIONS_PATH ||
+    pathname === NOTIFICATIONS_SCREEN_PATH ||
+    pathname === NOTIFICATION_SETTINGS_PATH ||
     pathname.startsWith(ATTEMPT_PATH_PREFIX)
   );
 }

@@ -102,6 +102,13 @@ describe('canSeeRoute', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/notifications')).toBe(true);
   });
 
+  it('ученик на «/notifications/settings» — true, настройки уведомлений доступны всем (ADR-0162)', () => {
+    expect(canSeeRoute(makeMe({ roles: [] }), '/notifications/settings')).toBe(true);
+    expect(
+      canSeeRoute(makeMe({ roles: ['accountant'] }), '/notifications/settings'),
+    ).toBe(true);
+  });
+
   it('ученик на «/attempts/:id» — true, экран сдачи доступен всем', () => {
     expect(canSeeRoute(makeMe({ roles: [] }), '/attempts/a1')).toBe(true);
   });

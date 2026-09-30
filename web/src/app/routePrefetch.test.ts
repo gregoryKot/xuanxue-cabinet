@@ -28,6 +28,7 @@ import {
   GRADING_QUEUE_PATH,
   attemptPath,
 } from '../api/gradingPaths';
+import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { TAGS_LIST_PATH } from '../api/tagsApiPaths';
 import { matchRoute } from './routeMatch';
 
@@ -103,8 +104,17 @@ describe('RouteModule.prefetch — маршруты без параметра', 
     expect(prefetchAt('/grading')).toEqual([GRADING_QUEUE_PATH, GRADED_ATTEMPTS_PATH]);
   });
 
-  it('/profile — настройки уведомлений', () => {
-    expect(prefetchAt('/profile')).toEqual([NOTIFICATION_PREFS_PATH]);
+  // «Профиль» больше не показывает переключатели уведомлений (ADR-0162) — за
+  // ними он в сеть не ходит, греть нечего.
+  it('/profile — данных первого экрана нет', () => {
+    expect(prefetchAt('/profile')).toEqual([]);
+  });
+
+  it('/notifications/settings — виды уведомлений и список занятий для выбора', () => {
+    expect(prefetchAt('/notifications/settings')).toEqual([
+      NOTIFICATION_PREFS_PATH,
+      MY_LESSON_NOTIFICATIONS_PATH,
+    ]);
   });
 
   it('/notifications — лента событий и список своих экзаменов (новые задания)', () => {
@@ -267,6 +277,7 @@ describe('RouteModule.prefetch — форма путей', () => {
       '/grading/652f00000000000000000006',
       '/profile',
       '/notifications',
+      '/notifications/settings',
       '/tasks',
       '/lessons',
       '/archive',

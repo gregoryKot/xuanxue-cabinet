@@ -1,9 +1,10 @@
 // Что предзагрузить для роли и адреса — решение отдельно от «кто это запускает»
 // (FirstScreenPrefetch.tsx), чтобы проверить его без React (CLAUDE.md, ревью
 // «это можно протестировать без DOM?»).
-import type { MeDto } from '@xuanxue/shared';
+import { defaultNotifications, hasLessonScopedKinds, type MeDto } from '@xuanxue/shared';
 import { MY_EXAMS_PATH } from '../api/apiPaths';
 import { apiFetch } from '../api/http';
+import { MY_LESSON_NOTIFICATIONS_PATH } from '../api/lessonScopePaths';
 import { putPrefetched } from '../api/prefetchCache';
 import { matchRoute } from './routeMatch';
 import { ROUTE_MODULES } from './routeModules';
@@ -27,7 +28,17 @@ export function firstScreenPaths(pathname: string, me: MeDto): string[] {
   // prefetchCache. На «Заданиях» формы запрашивает любая роль (TasksScreen
   // зовёт useMyExams без опций) — там прогрев остаётся для всех.
   const skipsExams = route === ROUTE_MODULES.notifications && isTeacher(me);
-  const needed = skipsExams ? paths.filter((path) => path !== MY_EXAMS_PATH) : paths;
+  // То же на «Настройках уведомлений»: блок «О каких занятиях» у человека без
+  // вида про занятие не рисуется (LessonScopeSection.tsx, ADR-0162) и за
+  // списком занятий не пойдёт.
+  const skipsLessonScope =
+    route === ROUTE_MODULES.notificationSettings &&
+    !hasLessonScopedKinds(defaultNotifications(me.roles));
+  const skipped = new Set([
+    ...(skipsExams ? [MY_EXAMS_PATH] : []),
+    ...(skipsLessonScope ? [MY_LESSON_NOTIFICATIONS_PATH] : []),
+  ]);
+  const needed = paths.filter((path) => !skipped.has(path));
 
   return [...new Set(needed)];
 }

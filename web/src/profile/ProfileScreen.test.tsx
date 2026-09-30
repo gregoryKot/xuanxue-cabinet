@@ -1,15 +1,16 @@
-// Экран «Профиль» (ADR-0045) — сборка шапки, имени, уведомлений, Telegram и
-// «Выйти». Проверки уведомлений/Telegram/«Выйти» перенесены дословно из теста
-// удалённого экрана «Уведомления» (CLAUDE.md «Отказались от механики —
-// удаляем с концами»); форма имени в изоляции — ProfileNameSection.test.tsx,
-// здесь только то, что она открывается уже с разобранным me.name.
+// Экран «Профиль» (ADR-0045) — сборка шапки, имени, входа в настройки
+// уведомлений, Telegram и «Выйти». Переключатели видов и push переехали на
+// экран «Настройки уведомлений» (ADR-0162), их проверки — в
+// notifications/NotificationSettingsScreen.test.tsx; здесь только карточка-вход
+// и то, что самих переключателей на «Профиле» больше нет. Форма имени в
+// изоляции — ProfileNameSection.test.tsx, здесь только то, что она открывается
+// уже с разобранным me.name.
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeDto } from '@xuanxue/shared';
 import type * as HttpModule from '../api/http';
-import { ApiError } from '../api/http';
 import { mockedApiFetch, resetApiFetchBetweenTests } from '../test-support/apiFetchMock';
 import { AuthProvider } from '../auth/AuthProvider';
 import type * as GoogleAuthRedirectModule from '../auth/googleAuthRedirect';
@@ -69,23 +70,10 @@ const STUDENT: MeDto = {
   googleLinked: false,
 };
 
-function renderScreen(
-  me: MeDto,
-  notificationsResponse: unknown = { enabled: [] },
-  authConfig: unknown = {},
-) {
+function renderScreen(me: MeDto, authConfig: unknown = {}) {
   mockedApiFetch.mockImplementation((path: string) => {
     if (path === '/auth/me') return Promise.resolve(me);
     if (path === '/auth/config') return Promise.resolve(authConfig);
-    if (path === '/me/notifications') {
-      return notificationsResponse instanceof Error
-        ? Promise.reject(notificationsResponse)
-        : Promise.resolve(notificationsResponse);
-    }
-    // publicKey: null — push выключен на сервере (риск за флагом, ADR-0092):
-    // PushNotificationsSection.tsx не рисует ничего, экран остаётся тем же,
-    // что и до неё. Сами состояния раздела — PushNotificationsSection.test.tsx.
-    if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
     // Абонемент есть только у ученика (PLAN §15, слой 2.4); сам блок —
     // student/MyPaymentsSection.test.tsx, здесь лишь его присутствие.
     if (path === '/me/payments') return Promise.resolve(MY_PAYMENTS_PAGE);
@@ -108,7 +96,57 @@ describe('ProfileScreen — шапка', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Профиль' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Ниже — что присылать и куда.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Имя, способы входа и настройки уведомлений.'),
+    ).toBeInTheDocument();
+  });
+});
+
+// Переключатели видов и push живут на «Настройках уведомлений» (ADR-0162):
+// «Профиль» остался входом и не ходит за ними в сеть.
+describe('ProfileScreen — вход в настройки уведомлений (ADR-0162)', () => {
+  it('ученику — карточка «Уведомления» ведёт на /notifications/settings и называет три блока', async () => {
+    renderScreen(STUDENT);
+
+    const card = await screen.findByRole('link', { name: /Уведомления/ });
+    expect(card).toHaveAttribute('href', '/notifications/settings');
+    expect(card).toHaveTextContent(
+      'Что присылать, о каких занятиях и на какое устройство',
+    );
+  });
+
+  it('штату — та же карточка, но без «о каких занятиях»: такого выбора у него нет', async () => {
+    renderScreen({ ...STUDENT, id: 't1', roles: ['teacher'] });
+
+    const card = await screen.findByRole('link', { name: /Уведомления/ });
+    expect(card).toHaveAttribute('href', '/notifications/settings');
+    expect(card).toHaveTextContent('Что присылать и на какое устройство');
+    expect(card).not.toHaveTextContent('о каких занятиях');
+  });
+
+  it('пока me не пришёл — карточки с угаданной припиской нет', () => {
+    mockedApiFetch.mockImplementation(() => new Promise(() => undefined));
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ProfileScreen />
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('link', { name: /Уведомления/ })).not.toBeInTheDocument();
+  });
+
+  it('переключателей видов и push на «Профиле» больше нет, и за ними в сеть не ходят', async () => {
+    renderScreen(STUDENT);
+
+    await screen.findByRole('link', { name: /Уведомления/ });
+    expect(screen.queryByText('Результат экзамена')).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText('Push-уведомления')).not.toBeInTheDocument();
+    for (const path of ['/me/notifications', '/push/public-key']) {
+      expect(mockedApiFetch).not.toHaveBeenCalledWith(path, expect.anything());
+    }
   });
 });
 
@@ -137,85 +175,9 @@ describe('ProfileScreen — имя', () => {
   });
 });
 
-describe('ProfileScreen — список уведомлений по роли', () => {
-  it('ученик видит один вид уведомлений — результат экзамена (ADR-0062)', async () => {
-    renderScreen(STUDENT, { enabled: ['exam_result'] });
-
-    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Придёт, когда учитель проверит вашу работу и выставит результат.',
-      ),
-    ).toBeInTheDocument();
-    // «Черновик поста» — вид для учителя, ученику его показывать незачем.
-    expect(screen.queryByText('Черновик поста')).not.toBeInTheDocument();
-  });
-
-  // Бот и «Профиль» переключают одно и то же (ADR-0065) — строка про бота
-  // рядом с самими переключателями, не только в справке. Строка зависит от
-  // botChatActive (отзыв владельца 2026-09-22, регрессия — раньше рисовалась
-  // безусловно и спорила с блоком «Второй способ входа» на этом же экране).
-  it('есть личный чат с ботом — подсказка про команду /notifications на месте', async () => {
-    renderScreen(
-      { ...STUDENT, telegramLinked: true, botChatActive: true },
-      { enabled: ['exam_result'] },
-    );
-
-    expect(
-      await screen.findByText(/То же самое можно переключить в боте/),
-    ).toBeInTheDocument();
-    // ADR-0124: команда бота выделена акцентом — RichText рисует её
-    // отдельным <strong>.
-    expect(screen.getByText('/notifications').tagName).toBe('STRONG');
-  });
-
-  it('нет личного чата с ботом — подсказки про команду /notifications нет', async () => {
-    renderScreen(STUDENT, { enabled: ['exam_result'] });
-
-    await screen.findByText('Результат экзамена');
-    expect(
-      screen.queryByText(
-        'То же самое можно переключить в боте — командой /notifications.',
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  // «Telegram у меня нет» — тем более нет чата с ботом, команда так же
-  // недоступна (отзыв владельца 2026-09-22).
-  it('отметка «Telegram у меня нет» — подсказки про команду /notifications нет', async () => {
-    renderScreen({ ...STUDENT, noTelegram: true }, { enabled: ['exam_result'] });
-
-    await screen.findByText('Результат экзамена');
-    expect(
-      screen.queryByText(
-        'То же самое можно переключить в боте — командой /notifications.',
-      ),
-    ).not.toBeInTheDocument();
-  });
-
-  it('включённый вид — переключатель отмечен', async () => {
-    renderScreen(STUDENT, { enabled: ['exam_result'] });
-    await screen.findByText('Результат экзамена');
-
-    expect(screen.getByRole('checkbox', { name: 'Результат экзамена' })).toBeChecked();
-  });
-
-  it('выключенный вид — переключатель не отмечен', async () => {
-    renderScreen(STUDENT, { enabled: [] });
-    await screen.findByText('Результат экзамена');
-
-    expect(
-      screen.getByRole('checkbox', { name: 'Результат экзамена' }),
-    ).not.toBeChecked();
-  });
-});
-
 describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
   it('Telegram связан, почта тоже — оба ключа на месте, блока нет вовсе', async () => {
-    renderScreen(
-      { ...STUDENT, telegramLinked: true, botChatActive: true },
-      { enabled: [] },
-    );
+    renderScreen({ ...STUDENT, telegramLinked: true, botChatActive: true });
 
     await screen.findByRole('heading', { level: 1, name: 'Профиль' });
     expect(screen.queryByText('Второй способ входа')).not.toBeInTheDocument();
@@ -225,7 +187,7 @@ describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
   });
 
   it('Telegram не связан — блок «Второй способ входа» с кнопкой связки (ADR-0059)', async () => {
-    renderScreen(STUDENT, { enabled: [] });
+    renderScreen(STUDENT);
 
     expect(await screen.findByText('Второй способ входа')).toBeInTheDocument();
     // ADR-0124: что даст связка — выделено акцентом, RichText рисует его
@@ -236,63 +198,6 @@ describe('ProfileScreen — связка Telegram (ADR-0034)', () => {
         'доступ к ящику, войдёте через него.',
     );
     expect(screen.getByRole('button', { name: 'Связать Telegram' })).toBeInTheDocument();
-  });
-});
-
-describe('ProfileScreen — переключение уведомлений (read-after-write)', () => {
-  it('клик шлёт PATCH с нужным телом и перерисовывает состояние', async () => {
-    renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
-    expect(toggle).not.toBeChecked();
-
-    // Один ответ на одно действие: PATCH /me/notifications возвращает полный
-    // NotificationPrefsDto, и экран берёт состояние прямо из него (ADR-0087).
-    // Прежняя заглушка `undefined` на сам PATCH оставила бы переключатель без
-    // значения.
-    mockedApiFetch.mockResolvedValueOnce({ enabled: ['exam_result'] });
-    toggle.click();
-
-    await waitFor(() => expect(toggle).toBeChecked());
-    expect(mockedApiFetch).toHaveBeenCalledWith(
-      '/me/notifications',
-      expect.objectContaining({
-        method: 'PATCH',
-        body: { kind: 'exam_result', enabled: true },
-      }),
-    );
-  });
-
-  it('ошибка сети — сообщение под списком, переключатель остаётся в прежнем положении', async () => {
-    renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
-
-    mockedApiFetch.mockRejectedValueOnce(
-      new ApiError(
-        'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
-        0,
-        'network',
-      ),
-    );
-    toggle.click();
-
-    expect(
-      await screen.findByText(
-        'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.',
-      ),
-    ).toBeInTheDocument();
-    expect(toggle).not.toBeChecked();
-  });
-
-  it('неопознанная ошибка (не ApiError) — общий текст, не текст исключения', async () => {
-    renderScreen(STUDENT, { enabled: [] });
-    const toggle = await screen.findByRole('checkbox', { name: 'Результат экзамена' });
-
-    mockedApiFetch.mockRejectedValueOnce(new Error('boom'));
-    toggle.click();
-
-    expect(
-      await screen.findByText('Не удалось изменить уведомление. Попробуйте ещё раз.'),
-    ).toBeInTheDocument();
   });
 });
 
@@ -386,7 +291,7 @@ describe('ProfileScreen — сводка «Способы входа»', () => {
 
 describe('ProfileScreen — привязка Google (ADR-0145)', () => {
   it('googleLoginEnabled: false — блока нет вовсе', async () => {
-    renderScreen(STUDENT, { enabled: [] }, { googleLoginEnabled: false });
+    renderScreen(STUDENT, { googleLoginEnabled: false });
 
     await screen.findByRole('heading', { level: 1, name: 'Профиль' });
     expect(screen.queryByText(/Второй путь входа/)).not.toBeInTheDocument();
@@ -396,7 +301,7 @@ describe('ProfileScreen — привязка Google (ADR-0145)', () => {
   });
 
   it('googleLoginEnabled: true, googleLinked: false — объяснение и кнопка «Привязать Google»', async () => {
-    renderScreen(STUDENT, { enabled: [] }, { googleLoginEnabled: true });
+    renderScreen(STUDENT, { googleLoginEnabled: true });
 
     expect(
       await screen.findByRole('button', { name: 'Привязать Google' }),
@@ -410,11 +315,7 @@ describe('ProfileScreen — привязка Google (ADR-0145)', () => {
   });
 
   it('googleLoginEnabled: true, googleLinked: true — в сводке «привязан», кнопки нет', async () => {
-    renderScreen(
-      { ...STUDENT, googleLinked: true },
-      { enabled: [] },
-      { googleLoginEnabled: true },
-    );
+    renderScreen({ ...STUDENT, googleLinked: true }, { googleLoginEnabled: true });
 
     const label = await screen.findByText('Google');
     expect(label.nextElementSibling).toHaveTextContent('привязан');
@@ -425,44 +326,12 @@ describe('ProfileScreen — привязка Google (ADR-0145)', () => {
 
   it('клик по кнопке уводит вкладку (redirectToGoogleLink) и оставляет кнопку занятой', async () => {
     const user = userEvent.setup();
-    renderScreen(STUDENT, { enabled: [] }, { googleLoginEnabled: true });
+    renderScreen(STUDENT, { googleLoginEnabled: true });
 
     const button = await screen.findByRole('button', { name: 'Привязать Google' });
     await user.click(button);
 
     expect(redirectToGoogleLinkSpy).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(button).toBeDisabled());
-  });
-});
-
-describe('ProfileScreen — ошибка загрузки уведомлений', () => {
-  it('баннер с кнопкой повтора вместо списка, повтор перечитывает список', async () => {
-    mockedApiFetch.mockImplementation((path: string) => {
-      if (path === '/auth/me') return Promise.resolve(STUDENT);
-      if (path === '/auth/config') return Promise.resolve({});
-      if (path === '/me/notifications')
-        return Promise.reject(new Error('сеть недоступна'));
-      if (path === '/push/public-key') return Promise.resolve({ publicKey: null });
-      if (path === '/me/payments') return Promise.resolve(MY_PAYMENTS_PAGE);
-      return Promise.reject(new Error(`неожиданный путь: ${path}`));
-    });
-    render(
-      <MemoryRouter>
-        <AuthProvider>
-          <ProfileScreen />
-        </AuthProvider>
-      </MemoryRouter>,
-    );
-
-    const alert = await screen.findByRole('alert');
-    const retryButton = within(alert).getByRole('button', {
-      name: 'Попробовать ещё раз',
-    });
-
-    mockedApiFetch.mockImplementationOnce(() => Promise.resolve({ enabled: [] }));
-    retryButton.click();
-
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-    expect(await screen.findByText('Результат экзамена')).toBeInTheDocument();
   });
 });

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { defaultNotifications, NOTIFICATION_KINDS } from './notifications';
 import {
   effectiveReminderMinutes,
+  hasLessonScopedKinds,
   isLessonInScope,
   LESSON_REMINDER_CHOICES,
   LESSON_SCOPE_MODES,
+  LESSON_SCOPED_KINDS,
 } from './lesson-notifications';
 
 describe('isLessonInScope', () => {
@@ -54,5 +57,28 @@ describe('effectiveReminderMinutes', () => {
 describe('LESSON_REMINDER_CHOICES', () => {
   it('четыре пункта по возрастанию: от «успеть подключиться» до «успеть доехать»', () => {
     expect(LESSON_REMINDER_CHOICES).toEqual([15, 30, 60, 120]);
+  });
+});
+
+describe('hasLessonScopedKinds', () => {
+  it('ученик — «Занятие скоро» у него есть, выбор занятий нужен', () => {
+    expect(hasLessonScopedKinds(defaultNotifications([]))).toBe(true);
+  });
+
+  it.each(['teacher', 'assistant', 'admin', 'accountant'] as const)(
+    'штат (%s) — видов про занятие нет, выбор не показывается',
+    (role) => {
+      expect(hasLessonScopedKinds(defaultNotifications([role]))).toBe(false);
+    },
+  );
+
+  it('пустой список — выбирать не из чего', () => {
+    expect(hasLessonScopedKinds([])).toBe(false);
+  });
+
+  it('каждый вид «про занятие» — настоящий вид уведомления', () => {
+    for (const kind of LESSON_SCOPED_KINDS) {
+      expect(NOTIFICATION_KINDS).toContain(kind);
+    }
   });
 });

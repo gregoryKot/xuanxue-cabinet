@@ -6,10 +6,9 @@
 import type { CSSProperties } from 'react';
 import type { MeDto } from '@xuanxue/shared';
 import { useAuthConfig } from '../auth/useAuthConfig';
-import { LoadErrorBanner } from '../components/LoadErrorBanner';
+import { LoadableSection } from '../components/LoadableSection';
 import { dividedListStyle } from '../components/listCardStyles';
-import { RichText } from '../components/RichText';
-import { noteStyle, screenExplanationStyle } from '../components/screenLayout';
+import { noteStyle } from '../components/screenLayout';
 import { SkeletonList } from '../components/Skeleton';
 import { MyPaymentScreenshotAction } from './MyPaymentScreenshotAction';
 import { myPaymentLines, type MonthLine } from './myPaymentLines';
@@ -22,8 +21,7 @@ const EXPLANATION =
   'Оплату отмечает **школа**, когда видит ваш перевод. ' +
   'Скриншот не обязателен — пришлите, если хотите показать чек сами.';
 
-const sectionStyle: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 10 };
-// У `<h2>`/`<h3>` свои отступы от браузера — расстояние держит `gap` колонки.
+// У `<h3>` свои отступы от браузера — расстояние держит `gap` колонки.
 const headingStyle: CSSProperties = { margin: 0 };
 // Название месяца и статус — колонкой: на 360 px две строки в одну линию с
 // переносом читались бы кашей.
@@ -56,15 +54,12 @@ export function MyPaymentsSection({ me }: MyPaymentsSectionProps) {
   const lines = page ? myPaymentLines(page) : null;
 
   return (
-    <section style={sectionStyle}>
-      <h2 className="xuanxue-eyebrow" style={headingStyle}>
-        {HEADING}
-      </h2>
-      <p style={screenExplanationStyle}>
-        <RichText text={EXPLANATION} />
-      </p>
-
-      {error && <LoadErrorBanner message={error} onRetry={() => void reload()} />}
+    <LoadableSection
+      heading={HEADING}
+      explanation={EXPLANATION}
+      error={error}
+      onRetry={() => void reload()}
+    >
       {loading && !error && <SkeletonList rows={2} h={56} />}
 
       {lines && !error && (
@@ -99,6 +94,6 @@ export function MyPaymentsSection({ me }: MyPaymentsSectionProps) {
           )}
         </>
       )}
-    </section>
+    </LoadableSection>
   );
 }

@@ -20,6 +20,7 @@ import { showsTelegramOffer } from '../telegram/showsTelegramOffer';
 import { TELEGRAM_CHAT_EXPLANATION } from '../telegram/telegramChatExplanation';
 import { TelegramLinkButton } from '../telegram/TelegramLinkButton';
 import { NewTaskCard } from './NewTaskCard';
+import { NotificationSettingsLink } from './NotificationSettingsLink';
 import { NotificationGroup } from './NotificationGroup';
 import { groupByDay } from './notificationFeed';
 import { useNotifications } from './NotificationsProvider';
@@ -136,6 +137,8 @@ export default function NotificationsScreen() {
       {!isEmpty && telegramSuggestion && (
         <div style={telegramRowStyle}>{telegramSuggestion}</div>
       )}
+
+      <NotificationSettingsLink />
     </section>
   );
 }

@@ -1,14 +1,13 @@
 // Личный экран человека (`/profile`, ADR-0045, заменяет «Уведомления»,
-// ADR-0025) — имя, переключатели уведомлений, второй способ входа и «Выйти» в
-// одном месте: два похожих личных места за одним значком владелец счёл
+// ADR-0025) — имя, вход в настройки уведомлений, второй способ входа и «Выйти»
+// в одном месте: два похожих личных места за одним значком владелец счёл
 // лишним (отзыв 2026-09-18, тот же повод убрать имя из шапки телефона —
 // AppShellBrandRow.tsx). Имя — та же форма и тот же хук, что на первом входе
 // (`/welcome`, ADR-0044), но человек остаётся на месте
-// (ProfileNameSection.tsx). Переключатели — NotificationPrefsSection.tsx,
-// перенесены из удалённого экрана «Уведомления» дословно (CLAUDE.md
-// «Отказались от механики — удаляем с концами»). Сразу под ними —
-// PushNotificationsSection.tsx (ADR-0092, ПР №5): кнопка «Включить
-// уведомления», добавка к тем же видам, не отдельный список. Связка Telegram
+// (ProfileNameSection.tsx). Переключатели уведомлений и push жили здесь
+// (ADR-0045, ADR-0092) и переехали на свой экран «Настройки уведомлений»
+// (`/notifications/settings`, ADR-0162): на «Профиле» от них осталась
+// карточка-переход (NotificationSettingsCard.tsx). Связка Telegram
 // живёт в SecondLoginKey.tsx (ADR-0059, общий с welcome/WelcomeScreen.tsx) —
 // раньше она была подана как способ получать уведомления, теперь это про то,
 // чтобы вход не зависел от одного приложения. Над ней — сводка «Способы
@@ -32,14 +31,13 @@ import {
   isMyPaymentsVisible,
   isPaymentContactVisible,
 } from '../student/myPaymentsVisibility';
-import { NotificationPrefsSection } from '../notifications/NotificationPrefsSection';
-import { PushNotificationsSection } from '../notifications/PushNotificationsSection';
 import { isStandalone } from '../pwa/installEnvironment';
 import { INSTALL_SCREEN_PATH } from '../install/installPath';
+import { NotificationSettingsCard } from './NotificationSettingsCard';
 import { ProfileNameSection } from './ProfileNameSection';
 
 const TITLE = 'Профиль';
-const EXPLANATION = 'Ниже — что присылать и куда.';
+const EXPLANATION = 'Имя, способы входа и настройки уведомлений.';
 const INSTALL_TITLE = 'Приложение на телефоне';
 const INSTALL_HINT = 'Как поставить кабинет на рабочий стол телефона';
 const DEV_ERRORS_TITLE = 'Сбои';
@@ -47,7 +45,7 @@ const DEV_ERRORS_HINT =
   'Тексты ошибок из браузера и сервера — те же коды, что приходят в Telegram.';
 
 // «Выйти» и (у admin) «Сбои» — отдельные блоки, отбитые волосяной линией:
-// раздел разработчика и выход из аккаунта, не настройки уведомлений над ними.
+// раздел разработчика и выход из аккаунта, не личные настройки над ними.
 const dividerRowStyle: CSSProperties = {
   paddingTop: 20,
   borderTop: '1px solid var(--line)',
@@ -82,8 +80,8 @@ export default function ProfileScreen() {
           перевода (ADR-0159): контакт бухгалтера из настроек школы. */}
       {isPaymentContactVisible(me) && <PaymentContactNote />}
 
-      <NotificationPrefsSection />
-      <PushNotificationsSection />
+      {/* Переключатели и push — на своём экране (ADR-0162), здесь вход. */}
+      <NotificationSettingsCard me={me} />
 
       {/* Инструкция установки (docs/PWA.md) — только пока кабинет не стоит
           на этом телефоне уже: standalone-режиму ставить больше некуда. */}

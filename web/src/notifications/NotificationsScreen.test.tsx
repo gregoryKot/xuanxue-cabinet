@@ -125,6 +125,45 @@ describe('NotificationsScreen — шапка', () => {
   });
 });
 
+// Вход в «Настройки уведомлений» (ADR-0162): в ленту приходят с вопросом «почему
+// мне это пишут», и настройка должна быть под рукой — и при событиях, и при
+// пустой ленте.
+describe('NotificationsScreen — ссылка на настройки (ADR-0162)', () => {
+  it('в ленте с событиями — тихая ссылка «Настройки уведомлений» ведёт на /notifications/settings', async () => {
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    await screen.findByText('Текст события');
+    expect(screen.getByRole('link', { name: 'Настройки уведомлений' })).toHaveAttribute(
+      'href',
+      '/notifications/settings',
+    );
+  });
+
+  it('при пустой ленте ссылка тоже есть', async () => {
+    renderScreen();
+
+    await screen.findByText('Уведомлений пока нет.');
+    expect(screen.getByRole('link', { name: 'Настройки уведомлений' })).toHaveAttribute(
+      'href',
+      '/notifications/settings',
+    );
+  });
+
+  it('ссылка стоит после ленты, а не над ней', async () => {
+    renderScreen({
+      [NOTIFICATIONS_FEED_PATH]: { items: [makeNotification()], unreadCount: 1 },
+    });
+
+    const row = await screen.findByText('Текст события');
+    const link = screen.getByRole('link', { name: 'Настройки уведомлений' });
+    expect(
+      row.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});
+
 describe('NotificationsScreen — рубрики ленты', () => {
   it('сегодняшняя строка — рубрика «Сегодня», «Раньше» не рисуется', async () => {
     renderScreen({

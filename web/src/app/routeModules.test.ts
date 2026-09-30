@@ -27,6 +27,9 @@ describe('matchRoute', () => {
     expect(loaderAt('/people')).toBe(ROUTE_MODULES.people.load);
     expect(loaderAt('/welcome')).toBe(ROUTE_MODULES.welcome.load);
     expect(loaderAt('/notifications')).toBe(ROUTE_MODULES.notifications.load);
+    expect(loaderAt('/notifications/settings')).toBe(
+      ROUTE_MODULES.notificationSettings.load,
+    );
     expect(loaderAt('/install')).toBe(ROUTE_MODULES.install.load);
     expect(loaderAt('/tasks')).toBe(ROUTE_MODULES.tasks.load);
     expect(loaderAt('/lessons')).toBe(ROUTE_MODULES.studentLessons.load);
@@ -66,6 +69,16 @@ describe('matchRoute', () => {
   it('экран «Уведомления» — свой чанк, греется в фоне (ADR-0063)', async () => {
     expect(ROUTE_MODULES.notifications.warm).toBe(true);
     await expect(ROUTE_MODULES.notifications.load()).resolves.toHaveProperty('default');
+  });
+
+  // «Настройки уведомлений» (ADR-0162) — свой чанк, греется в фоне, как лента,
+  // из которой на него ведут. Загрузчик зовём по-настоящему: опечатка в пути
+  // модуля иначе всплыла бы только в браузере.
+  it('экран «Настройки уведомлений» — свой чанк, греется в фоне (ADR-0162)', async () => {
+    expect(ROUTE_MODULES.notificationSettings.warm).toBe(true);
+    await expect(ROUTE_MODULES.notificationSettings.load()).resolves.toHaveProperty(
+      'default',
+    );
   });
 
   // Инструкция установки (docs/PWA.md) — свой чанк, греется в фоне, как
