@@ -78,17 +78,19 @@
 - Гейты: spec сервиса на mongodb-memory-server (read-after-write выбора, пачка), spec
   напоминания («выбрал другое — не пришло», «все — пришло»), e2e маршрутов с 401 без
   сессии и 400 на чужой id.
-- Личное «за сколько» (п. 3): `notification_prefs.lessonReminderMinutes` (нет поля — «как в
-  школе»), `PUT /me/notifications/lessons/reminder-minutes` (`{ minutes: 15 | 30 | 60 | 120
-| null }`, ответ тот же, что у `GET /me/notifications/lessons`, куда добавлено
-  `reminder: { minutes, schoolMinutes }`). Тик берёт окно по самому раннему из людей, а
-  «пора ли этому человеку» решает чистая `planReminders` (`effectiveReminderMinutes`).
-- Отметка «напомнили» — строка ленты, а не поле занятия: `studentReminderSentAt` удалена
-  вместе с `claimAndRun` в этом шаге. Строку вставляет `insertNotificationRowOnce` (обычная
-  вставка под уникальный индекс `(userId, kind, lessonId)`, а не upsert — тот поднял бы
-  прочитанную строку заново), и push уходит только тому, чей вызов строку вставил: два тика
-  или два инстанса при деплое не пришлют дубль. Строки, которые успел написать прежний код,
-  тоже блокируют повтор: деплой расширяющий, сжимать нечего.
+- Личное «за сколько» (п. 3): `notification_prefs.lessonReminderMinutes` (нет поля — «как
+  в школе»), `PUT /me/notifications/lessons/reminder-minutes` с телом `{ minutes }`, где
+  `minutes` — 15, 30, 60, 120 или `null` («как в школе»). Ответ тот же, что у
+  `GET /me/notifications/lessons`, куда добавлено `reminder: { minutes, schoolMinutes }`.
+  Тик берёт окно по самому раннему из людей, а «пора ли этому человеку» решает чистая
+  `planReminders` (`effectiveReminderMinutes`).
+- Отметка «напомнили» — строка ленты, а не поле занятия: `studentReminderSentAt` удалена, тик
+  больше не берёт `claimAndRun` (им по-прежнему пользуются другие шаги). Строку вставляет
+  `insertNotificationRowOnce` (обычная вставка под уникальный индекс
+  `(userId, kind, lessonId)`, а не upsert: он трогал бы `updatedAt` уже прочитанной строки и
+  поднимал её в ленте), и push уходит только тому, чей вызов строку вставил: два тика или
+  два инстанса при деплое не пришлют дубль. Строки, которые успел написать прежний код, тоже
+  блокируют повтор: деплой расширяющий, сжимать нечего.
 - Гейты п. 3: spec `planReminders` (у каждого своё, границы окна, переход на летнее время
   Asia/Jerusalem), spec тика на mongodb-memory-server (два `remind()` разом, передумал
   15 → 120, строка прежнего кода, сбой одного человека), e2e маршрута с 401, 400 на
