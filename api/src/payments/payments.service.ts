@@ -132,7 +132,7 @@ export class PaymentsService {
       month: monthKeyOf(now, settings.tz),
       rows: docs.map((doc) => toMyPaymentDto(decryptPayment(doc))),
       contact: settings.paymentContact,
-      // Поля нет, пока школа напоминание не включила (ADR-0160, ADR-0069).
+      // Поля нет, пока школа напоминание не включила (ADR-0161, ADR-0069).
       ...(reminder && { reminder }),
     };
   }

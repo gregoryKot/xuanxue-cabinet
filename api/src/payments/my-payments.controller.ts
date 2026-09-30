@@ -5,7 +5,7 @@
 // сервер, потому что кабинет пояса школы не знает, а 1-го числа в Сиднее уже
 // октябрь, пока в Израиле сентябрь (ADR-0049).
 //
-// PUT /me/payments/reminder-day — свой день напоминания об оплате (ADR-0160).
+// PUT /me/payments/reminder-day — свой день напоминания об оплате (ADR-0161).
 //
 // POST /me/payments/:month/screenshot — снимок перевода сырым телом
 // (ADR-0050, слой 2.2): запасной путь тому, чей Telegram с кабинетом не
@@ -57,7 +57,7 @@ export class MyPaymentsController {
     return this.paymentsService.listMine(user.id, DateTime.utc());
   }
 
-  // Свой день напоминания (ADR-0160): владелец — сессия, ответ — то, что
+  // Свой день напоминания (ADR-0161): владелец — сессия, ответ — то, что
   // теперь видит ученик в `GET /me/payments`, без второго запроса (ADR-0087).
   @Put('reminder-day')
   @ApiRoute('PUT /me/payments/reminder-day')

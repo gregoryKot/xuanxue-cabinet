@@ -1,4 +1,4 @@
-// Перевод выбора дня напоминания туда и обратно (ADR-0160).
+// Перевод выбора дня напоминания туда и обратно (ADR-0161).
 import { describe, expect, it } from 'vitest';
 import type { MyPaymentReminderDto } from '@xuanxue/shared';
 import {

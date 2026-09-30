@@ -35,7 +35,7 @@ import { PaymentsService } from './payments.service';
     ]),
     UserModelModule,
     SettingsModule,
-    // NotificationPrefsService — свой день напоминания (ADR-0160).
+    // NotificationPrefsService — свой день напоминания (ADR-0161).
     NotificationsModule,
   ],
   controllers: [PaymentsController, MyPaymentsController],

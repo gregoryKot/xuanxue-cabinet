@@ -24,7 +24,7 @@ export interface UseMyPaymentsResult {
   uploadScreenshot: (month: string, file: File) => Promise<void>;
   uploading: boolean;
   uploadError: string | null;
-  /** Вписывает ответ `PUT /me/payments/reminder-day` в страницу (ADR-0160). */
+  /** Вписывает ответ `PUT /me/payments/reminder-day` в страницу (ADR-0161). */
   applyReminder: (reminder: MyPaymentReminderDto) => void;
 }
 

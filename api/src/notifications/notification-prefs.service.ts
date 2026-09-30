@@ -88,7 +88,7 @@ export class NotificationPrefsService {
     throw new Error(SET_RETRY_EXHAUSTED_MESSAGE);
   }
 
-  /** Свой день напоминания об оплате (ADR-0160) или `undefined` — «как у
+  /** Свой день напоминания об оплате (ADR-0161) или `undefined` — «как у
    * школы». Отдельный метод, а не поле в `get()`: `NotificationPrefsDto` уходит
    * в кабинет и в бот, и лишнее поле поехало бы туда же. */
   async getPaymentReminderDay(userId: string): Promise<number | undefined> {

@@ -1,4 +1,4 @@
-// Свой день напоминания об оплате (ADR-0160) против настоящей Mongo: запись →
+// Свой день напоминания об оплате (ADR-0161) против настоящей Mongo: запись →
 // чтение, сброс в `$unset`, пачка одним запросом, гонка первых записей.
 import type { Model } from 'mongoose';
 import { openMemoryMongo, type MemoryMongo } from '../test-support/mongo-memory';

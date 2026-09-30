@@ -2748,6 +2748,12 @@ Read-after-write обязателен: «подтвердил → `GET /me/payme
 Скриншот перевода пришлите {контакт} в Telegram.
 ```
 
+**День выбирает ученик** (ADR-0161): в «Профиле», секция «Оплата», поле «Напоминать
+об оплате» — «Как у школы» или 1–31 (`notification_prefs.paymentReminderDay`,
+`PUT /me/payments/reminder-day`). Не выбрал — день школы с «Шаблонов» («День по
+умолчанию»). Время, текст и включатель — у школы; пока напоминание выключено, поля в
+«Профиле» нет.
+
 `{контакт}` — настройка школы `paymentContact` («Кому присылать скриншот перевода»
 на «Шаблонах», по умолчанию «Маше @marievyazova», ADR-0159). Сохранённые прежние
 дефолты меняет миграция 0017.
@@ -2764,7 +2770,7 @@ ADR-0150), #471 (секция «Оплаты» на экране «Шаблон�
 тика: `PaymentReminderService` (`payments/payment-reminder.service.ts`, провайдер в
 `SchedulerModule`, после шага «дедлайны экзаменов», в строке `scheduler.tick` —
 `paymentReminders=N`); момент отправки — чистые `paymentReminderDueAt` и
-`isPaymentReminderDue` (`payment-reminder-due.ts`): день и время в поясе школы, 31-е в
+`openReminderDays` (`payment-reminder-due.ts`, ADR-0161): день и время в поясе школы, 31-е в
 коротком месяце — последний день, окно суток после момента ловит пропущенные тики;
 текст — `buildPaymentReminderText` (`payment-reminder-text.ts`), `{ссылка}` — deep link
 `pay_<месяц>` (`telegramStartUrl`, общий с приглашением и связкой Telegram); получатели

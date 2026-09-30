@@ -1,4 +1,4 @@
-// Проверка тела PUT /me/payments/reminder-day (ADR-0160) без HTTP: 1–31 и null
+// Проверка тела PUT /me/payments/reminder-day (ADR-0161) без HTTP: 1–31 и null
 // проходят, всё остальное — нет. Сквозную проверку с кодом 400 держит e2e
 // (api/test/payment-reminder-day.e2e-spec.ts).
 import { plainToInstance } from 'class-transformer';

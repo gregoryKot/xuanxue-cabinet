@@ -70,7 +70,7 @@ describe('PaymentReminderSection', () => {
     expect(screen.getByText(/в последний день месяца/)).toBeInTheDocument();
   });
 
-  it('говорит, что день школы — по умолчанию, а свой ученик выбирает в «Профиле» (ADR-0160)', async () => {
+  it('говорит, что день школы — по умолчанию, а свой ученик выбирает в «Профиле» (ADR-0161)', async () => {
     mockApiByPath({ '/settings': makeSettings() });
     render(<Harness />);
 

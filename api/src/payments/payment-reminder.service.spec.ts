@@ -351,7 +351,7 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
     );
   });
 
-  describe('свой день ученика (ADR-0160)', () => {
+  describe('свой день ученика (ADR-0161)', () => {
     // 12 сентября 2026, 10:00 в Израиле (UTC+3).
     const OWN_DAY_NOW = utc('2026-09-12T07:00:00Z');
 

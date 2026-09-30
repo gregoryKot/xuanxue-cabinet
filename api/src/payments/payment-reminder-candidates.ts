@@ -22,7 +22,7 @@ export interface CandidateDeps {
 }
 
 /** Какие числа месяца сейчас открыты (`openReminderDays`) и какой день у
- * школы — для тех, кто своего дня не выбирал (ADR-0160). */
+ * школы — для тех, кто своего дня не выбирал (ADR-0161). */
 export interface ReminderDays {
   open: ReadonlySet<number>;
   schoolDay: number;

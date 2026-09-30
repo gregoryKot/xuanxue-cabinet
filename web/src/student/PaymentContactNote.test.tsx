@@ -48,7 +48,7 @@ function mockPageAndDay(page: MyPaymentsPageDto, day: unknown): void {
   mockApiByPath({ [DAY_PATH]: day, [PATH]: page });
 }
 
-describe('PaymentContactNote — свой день напоминания (ADR-0160)', () => {
+describe('PaymentContactNote — свой день напоминания (ADR-0161)', () => {
   it('школа напоминание не включила (в ответе нет reminder) — выбора дня нет', async () => {
     mockApiByPath({ [PATH]: PAGE });
     render(<PaymentContactNote />);

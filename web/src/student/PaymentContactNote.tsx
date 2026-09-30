@@ -4,7 +4,7 @@
 // школы (экран «Шаблоны»), ученику он приезжает в его же GET /me/payments:
 // GET /settings ему закрыт. Заголовок — рубрика `.xuanxue-eyebrow`, как у
 // соседних секций профиля. Свой день напоминания — PaymentReminderDayField
-// (ADR-0160). Показ только ученику решает
+// (ADR-0161). Показ только ученику решает
 // isPaymentContactVisible (myPaymentsVisibility.ts), не условие в JSX.
 import type { CSSProperties } from 'react';
 import { LoadErrorBanner } from '../components/LoadErrorBanner';
@@ -39,7 +39,7 @@ export function PaymentContactNote() {
       )}
 
       {/* Выбор дня — только когда школа напоминание включила: сервер тогда
-          присылает `reminder` (ADR-0160, ADR-0069), иначе выбирать нечего. */}
+          присылает `reminder` (ADR-0161, ADR-0069), иначе выбирать нечего. */}
       {page?.reminder && !error && (
         <PaymentReminderDayField reminder={page.reminder} onSaved={applyReminder} />
       )}
