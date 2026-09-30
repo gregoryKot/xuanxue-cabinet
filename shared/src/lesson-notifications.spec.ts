@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isLessonInScope, LESSON_SCOPE_MODES } from './lesson-notifications';
+import {
+  effectiveReminderMinutes,
+  isLessonInScope,
+  LESSON_REMINDER_CHOICES,
+  LESSON_SCOPE_MODES,
+} from './lesson-notifications';
 
 describe('isLessonInScope', () => {
   it('режим «все» — любое занятие, даже если список пуст', () => {
@@ -26,5 +31,28 @@ describe('isLessonInScope', () => {
 
   it('режимов ровно два, дефолт «все» стоит первым', () => {
     expect(LESSON_SCOPE_MODES).toEqual(['all', 'selected']);
+  });
+});
+
+describe('effectiveReminderMinutes', () => {
+  it('свой выбор человека важнее школьного значения', () => {
+    expect(effectiveReminderMinutes(15, 60)).toBe(15);
+    expect(effectiveReminderMinutes(120, 30)).toBe(120);
+  });
+
+  it('не выбирал (нет поля или null) — значение школы', () => {
+    expect(effectiveReminderMinutes(undefined, 45)).toBe(45);
+    expect(effectiveReminderMinutes(null, 45)).toBe(45);
+  });
+
+  it('школьное значение не обязано быть из списка: его задаёт учитель числом', () => {
+    expect(LESSON_REMINDER_CHOICES).not.toContain(45);
+    expect(effectiveReminderMinutes(null, 45)).toBe(45);
+  });
+});
+
+describe('LESSON_REMINDER_CHOICES', () => {
+  it('четыре пункта по возрастанию: от «успеть подключиться» до «успеть доехать»', () => {
+    expect(LESSON_REMINDER_CHOICES).toEqual([15, 30, 60, 120]);
   });
 });

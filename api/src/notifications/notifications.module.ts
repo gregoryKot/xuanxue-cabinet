@@ -11,6 +11,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ClassesModule } from '../classes/classes.module';
+import { SettingsModule } from '../settings/settings.module';
 import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
 import { LessonNotificationsController } from './lesson-notifications.controller';
@@ -33,6 +34,9 @@ import { NotificationRecord, NotificationSchema } from './notification.schema';
     // Модель ClassRecord — список занятий для выбора «о каких» (ADR-0162).
     // Цикла нет: ClassesModule про уведомления не знает.
     ClassesModule,
+    // Школьное «за сколько минут» рядом с личным (SettingsService.get()).
+    // Цикла нет: SettingsModule про уведомления не знает.
+    SettingsModule,
   ],
   controllers: [
     NotificationPrefsController,

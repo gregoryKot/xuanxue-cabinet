@@ -71,13 +71,6 @@ export class LessonRecord {
   @Prop({ type: Date, required: false })
   recordingPromptedAt?: Date;
 
-  // Напоминание ученикам отправлено один раз (LessonReminderService,
-  // ADR-0135) — тот же приём, что recordingPromptedAt выше: условный апдейт
-  // ДО отправки (claimAndRun, api/src/common/claim-once.ts) не даёт второму
-  // тику планировщика или второму инстансу при деплое отправить дубль.
-  @Prop({ type: Date, required: false })
-  studentReminderSentAt?: Date;
-
   // Рубрикация свободным текстом (ADR-0075, уточняет ADR-0058) — у даты
   // занятия, не у занятия расписания: тег описывает конкретный вечер, а не
   // постоянный признак курса. У дат, заведённых до этого поля, документ его

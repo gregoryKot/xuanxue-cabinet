@@ -3,10 +3,12 @@
 // («что присылать»), а не лента `/me/inbox` (inbox-routes.ts). PATCH отдаёт
 // настройки целиком: переключатель на экране не ждёт второго GET (отзыв
 // владельца 2026-09-21). Отписка — 204: endpoint клиент уже знает.
-// `/me/notifications/lessons` — «о каких занятиях» (ADR-0162): выбор и список
-// активных занятий; PUT отдаёт то же, что GET, по той же причине, что PATCH.
+// `/me/notifications/lessons` — «о каких занятиях» и «за сколько напомнить»
+// (ADR-0162): выбор, список активных занятий и своя минута; PUT отдаёт то же,
+// что GET, по той же причине, что PATCH.
 import type {
   MyLessonNotificationsDto,
+  UpdateLessonReminderInput,
   UpdateLessonScopeInput,
 } from './lesson-notifications';
 import type { NotificationPrefsDto, UpdateNotificationPrefsInput } from './notifications';
@@ -38,6 +40,11 @@ export interface NotificationsRoutes {
     body: UpdateLessonScopeInput;
     response: MyLessonNotificationsDto;
   };
+  'PUT /me/notifications/lessons/reminder-minutes': {
+    query: undefined;
+    body: UpdateLessonReminderInput;
+    response: MyLessonNotificationsDto;
+  };
   'GET /push/public-key': {
     query: undefined;
     body: undefined;
@@ -60,6 +67,7 @@ export const NOTIFICATIONS_ROUTE_KEYS: Record<keyof NotificationsRoutes, true> =
   'PATCH /me/notifications': true,
   'GET /me/notifications/lessons': true,
   'PUT /me/notifications/lessons/scope': true,
+  'PUT /me/notifications/lessons/reminder-minutes': true,
   'GET /push/public-key': true,
   'POST /me/push-subscriptions': true,
   'DELETE /me/push-subscriptions': true,

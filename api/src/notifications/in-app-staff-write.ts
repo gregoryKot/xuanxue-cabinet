@@ -57,7 +57,7 @@ export function staffWriteDeps(
 // иначе attemptId (экзаменные виды всегда его несут). Они никогда не приходят
 // вместе — один вызывающий код пишет ровно одно из трёх (in-app-exam-notifier.ts,
 // lesson-reminder.service.ts, payment-reminder.service.ts).
-function identityFilter(input: WriteInput): Record<string, string | undefined> {
+export function identityFilter(input: WriteInput): Record<string, string | undefined> {
   const base = { userId: input.userId, kind: input.kind };
   if (input.lessonId !== undefined) return { ...base, lessonId: input.lessonId };
   if (input.paymentMonth !== undefined) {
@@ -66,22 +66,12 @@ function identityFilter(input: WriteInput): Record<string, string | undefined> {
   return { ...base, attemptId: input.attemptId };
 }
 
-/** Одна строка ленты на связку (userId, kind, attemptId), (userId, kind,
- * lessonId) либо (userId, kind, paymentMonth) — какой из трёх уникальных
- * индексов схемы работает, решает то, что заполнено в `input` (см. комментарий
- * у `WriteInput`). Название формы/класса шифруется той же схемой, какой
- * маппер его расшифровывает (NOTIFICATION_ENCRYPT_SCHEMA) — записать мимо
- * неё значило бы отдать клиенту шифротекст вместо названия. Повторная
- * запись перезаписывает снимок свежим названием и снова поднимает строку
- * непрочитанной: переоценка, присланная после сдачи ссылка (ADR-0084) и
- * повторное напоминание о том же занятии (ADR-0135) — все три повод
- * показать событие заново, а не завести вторую строку о том же. */
-export async function writeNotificationRow(
-  model: Model<NotificationRecord>,
-  input: WriteInput,
-): Promise<void> {
-  const filter = identityFilter(input);
-  const payload = encryptRecord(
+/** Поля строки ленты, общие для «записать поверх» и «записать, только если
+ * нет» (notification-row-once.ts). Название формы/класса шифруется той же
+ * схемой, какой маппер его расшифровывает (NOTIFICATION_ENCRYPT_SCHEMA):
+ * записать мимо неё значило бы отдать клиенту шифротекст вместо названия. */
+export function rowPayload(input: WriteInput): Record<string, unknown> {
+  return encryptRecord(
     {
       ...(input.examId !== undefined ? { examId: input.examId } : {}),
       ...(input.examTitle !== undefined ? { examTitle: input.examTitle } : {}),
@@ -101,6 +91,22 @@ export async function writeNotificationRow(
     },
     NOTIFICATION_ENCRYPT_SCHEMA,
   );
+}
+
+/** Одна строка ленты на связку (userId, kind, attemptId), (userId, kind,
+ * lessonId) либо (userId, kind, paymentMonth) — какой из трёх уникальных
+ * индексов схемы работает, решает то, что заполнено в `input` (см. комментарий
+ * у `WriteInput`). Повторная запись перезаписывает снимок свежим названием и
+ * снова поднимает строку непрочитанной: переоценка и присланная после сдачи
+ * ссылка (ADR-0084) — повод показать событие заново, а не завести вторую
+ * строку о том же. Напоминанию о занятии это не подходит — оно пишет только
+ * одну строку и молчит о повторе (`insertNotificationRowOnce`, ADR-0162). */
+export async function writeNotificationRow(
+  model: Model<NotificationRecord>,
+  input: WriteInput,
+): Promise<void> {
+  const filter = identityFilter(input);
+  const payload = rowPayload(input);
   try {
     await model.findOneAndUpdate(filter, { $set: payload }, { upsert: true });
   } catch (err) {

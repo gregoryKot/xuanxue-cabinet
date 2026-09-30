@@ -8,9 +8,15 @@
 // Срок хранения — пока жив аккаунт: `DELETE /users/:id` удаляет документ
 // целиком через `USER_OWNED_COLLECTIONS` (docs/PLAN.md §4). Кроме переключателей
 // здесь же выбор «о каких занятиях» (`lessonScopeMode`, `lessonClassIds`,
+// ADR-0162), своё «за сколько напомнить о занятии» (`lessonReminderMinutes`,
 // ADR-0162) и свой день напоминания об оплате (`paymentReminderDay`, ADR-0161).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { LESSON_SCOPE_MODES, NOTIFICATION_KINDS, SETTINGS_LIMITS } from '@xuanxue/shared';
+import {
+  LESSON_REMINDER_CHOICES,
+  LESSON_SCOPE_MODES,
+  NOTIFICATION_KINDS,
+  SETTINGS_LIMITS,
+} from '@xuanxue/shared';
 import type { LessonScopeMode, NotificationKind } from '@xuanxue/shared';
 import { plain, type FieldPolicy } from '../common/field-policy';
 
@@ -66,6 +72,15 @@ export class NotificationPrefsRecord {
   // Mongoose иначе подставил бы пустой массив каждому документу настроек.
   @Prop({ type: [String], default: undefined })
   lessonClassIds?: string[];
+
+  // Своё «за сколько минут напомнить о занятии» (ADR-0162). Нет поля — «как в
+  // школе» (`settings.lessonReminderMinutes`): человек ничего не выбирал или
+  // снял выбор. Отдельное поле, как `paymentReminderDay`: число не влезает в
+  // overrides. Значения — только из короткого списка; `enum` ловит запись через
+  // `create`/`save`, а запись через API держит DTO (updateOne валидаторы схемы
+  // не запускает).
+  @Prop({ type: Number, enum: LESSON_REMINDER_CHOICES })
+  lessonReminderMinutes?: number;
 }
 
 export const NotificationPrefsSchema = SchemaFactory.createForClass(
@@ -83,5 +98,8 @@ export const NOTIFICATION_PREFS_FIELD_POLICY: FieldPolicy = {
   lessonScopeMode: plain('перечисление all/selected, не свободный текст'),
   lessonClassIds: plain(
     'id занятий расписания школы, не свободный текст и не персональные данные',
+  ),
+  lessonReminderMinutes: plain(
+    'число из короткого списка 15/30/60/120, не свободный текст и не персональные данные',
   ),
 };
