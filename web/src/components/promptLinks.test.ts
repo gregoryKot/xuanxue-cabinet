@@ -96,4 +96,83 @@ describe('splitPromptLinks', () => {
       { text: 'https://ya.ru', href: 'https://ya.ru' },
     ]);
   });
+
+  describe('Telegram-ник', () => {
+    it('ник посреди фразы — ссылка на чат', () => {
+      expect(splitPromptLinks('Пишите Маше @marievyazova в Telegram')).toEqual([
+        { text: 'Пишите Маше ' },
+        { text: '@marievyazova', href: 'https://t.me/marievyazova' },
+        { text: ' в Telegram' },
+      ]);
+    });
+
+    it('точка и запятая после ника не входят в ссылку', () => {
+      expect(splitPromptLinks('Пишите @marievyazova.')).toEqual([
+        { text: 'Пишите ' },
+        { text: '@marievyazova', href: 'https://t.me/marievyazova' },
+        { text: '.' },
+      ]);
+      expect(splitPromptLinks('@marievyazova, спасибо')).toEqual([
+        { text: '@marievyazova', href: 'https://t.me/marievyazova' },
+        { text: ', спасибо' },
+      ]);
+    });
+
+    it('почта не ссылка', () => {
+      expect(splitPromptLinks('Пишите на name@mail.ru')).toEqual([
+        { text: 'Пишите на name@mail.ru' },
+      ]);
+    });
+
+    it('короче 5 знаков и длиннее 32 — не ник', () => {
+      expect(splitPromptLinks('Пишите @abc')).toEqual([{ text: 'Пишите @abc' }]);
+      expect(splitPromptLinks('@abcd')).toEqual([{ text: '@abcd' }]);
+      const tooLong = `@${'a'.repeat(33)}`;
+      expect(splitPromptLinks(tooLong)).toEqual([{ text: tooLong }]);
+    });
+
+    it('ровно 5 и ровно 32 знака — ник', () => {
+      expect(splitPromptLinks('@abcde')).toEqual([
+        { text: '@abcde', href: 'https://t.me/abcde' },
+      ]);
+      const longest = 'a'.repeat(32);
+      expect(splitPromptLinks(`@${longest}`)).toEqual([
+        { text: `@${longest}`, href: `https://t.me/${longest}` },
+      ]);
+    });
+
+    it('ник внутри адреса не ломает адрес', () => {
+      const url = 'https://t.me/@marievyazova?x=@another_one';
+      expect(splitPromptLinks(`Смотрите ${url} завтра`)).toEqual([
+        { text: 'Смотрите ' },
+        { text: url, href: url },
+        { text: ' завтра' },
+      ]);
+    });
+
+    it('ник и адрес в одной строке — оба ссылки', () => {
+      expect(splitPromptLinks('@marievyazova или https://ya.ru/v.')).toEqual([
+        { text: '@marievyazova', href: 'https://t.me/marievyazova' },
+        { text: ' или ' },
+        { text: 'https://ya.ru/v', href: 'https://ya.ru/v' },
+        { text: '.' },
+      ]);
+    });
+
+    it('перед @ путь или второй @ — не ник', () => {
+      expect(splitPromptLinks('site/@marievyazova')).toEqual([
+        { text: 'site/@marievyazova' },
+      ]);
+      expect(splitPromptLinks('@@marievyazova')).toEqual([{ text: '@@marievyazova' }]);
+    });
+
+    it('склейка кусков даёт исходную строку', () => {
+      const input = 'a @marievyazova, b@mail.ru и https://ya.ru/@x_y_z.';
+      expect(
+        splitPromptLinks(input)
+          .map((part) => part.text)
+          .join(''),
+      ).toBe(input);
+    });
+  });
 });

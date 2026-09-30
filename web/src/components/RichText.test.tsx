@@ -92,4 +92,20 @@ describe('RichText', () => {
     expect(link).toHaveAttribute('href', 'https://a.ru/**path**');
     expect(container.querySelectorAll('strong')).toHaveLength(0);
   });
+
+  it('Telegram-ник — ссылка на чат, точка после ника вне ссылки', () => {
+    const { container } = render(<RichText text="Присылайте Маше @marievyazova." />);
+
+    const link = screen.getByRole('link', { name: '@marievyazova' });
+    expect(link).toHaveAttribute('href', 'https://t.me/marievyazova');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(container).toHaveTextContent('Присылайте Маше @marievyazova.');
+  });
+
+  it('почта остаётся текстом — ссылка не появляется', () => {
+    const { container } = render(<RichText text="Пишите на name@mail.ru" />);
+
+    expect(container.querySelectorAll('a')).toHaveLength(0);
+  });
 });
