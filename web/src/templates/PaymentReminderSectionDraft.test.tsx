@@ -72,7 +72,7 @@ describe('PaymentReminderSection — набранное переживает с�
     );
 
     expect(screen.getByLabelText('Время')).toHaveValue('09:30');
-    expect(screen.getByLabelText('День месяца')).toHaveValue('20');
+    expect(screen.getByLabelText('День по умолчанию')).toHaveValue('20');
     expect(screen.getByRole('button', { name: SAVE })).toBeEnabled();
   });
 });

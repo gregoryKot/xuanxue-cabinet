@@ -1,10 +1,10 @@
-// «Напоминание об оплате» — шаг тика планировщика (ADR-0051, ADR-0150). Работает
-// только внутри окна суток после назначенного школой момента
-// (isPaymentReminderDue): вне его не делает ни одного запроса за учениками.
-// Получатели — payment-reminder-candidates.ts. Идемпотентность — upsert
-// документа оплаты по уникальному (userId, month) и claimAndRun по
-// `reminderSentAt`: второй тик, второй инстанс и повтор после падения получают
-// false и молчат (CLAUDE.md «Доставка идемпотентна»).
+// «Напоминание об оплате» — шаг тика планировщика (ADR-0051, ADR-0150, ADR-0161).
+// Час общий, день у каждого свой: пока ни одно число месяца не в окне суток
+// (openReminderDays), тик не делает ни одного запроса за учениками. Получатели —
+// payment-reminder-candidates.ts. Идемпотентность — upsert документа оплаты по
+// уникальному (userId, month) и claimAndRun по `reminderSentAt`: второй тик,
+// второй инстанс и повтор после падения получают false и молчат (CLAUDE.md
+// «Доставка идемпотентна»).
 //
 // Канал — «в тот, где человек есть»: личный чат бота, а нет его или бот не
 // смог доставить (заблокирован, чат удалён) — строка ленты кабинета и push.
@@ -28,7 +28,7 @@ import type { ActiveStudent } from '../users/list-active-students';
 import { UserRecord } from '../users/user.schema';
 import { findReminderCandidates, PAYMENT_DUE_KIND } from './payment-reminder-candidates';
 import { buildPaymentReminderText } from './payment-reminder-text';
-import { isPaymentReminderDue } from './payment-reminder-due';
+import { openReminderDays } from './payment-reminder-due';
 import { monthKeyOf } from './payment-month';
 import { PaymentRecord } from './payment.schema';
 import { upsertPaymentByFilter } from './payments.write';
@@ -55,11 +55,10 @@ export class PaymentReminderService {
 
   async remind(now: DateTime): Promise<PaymentReminderResult> {
     const settings = await this.settingsService.get();
-    if (!isPaymentReminderDue(now, settings.tz, settings.paymentReminder)) {
-      return { reminded: 0 };
-    }
+    const { enabled, dayOfMonth, time } = settings.paymentReminder;
+    const open = enabled ? openReminderDays(now, settings.tz, time) : new Set<number>();
+    if (open.size === 0) return { reminded: 0 };
     const month = monthKeyOf(now, settings.tz);
-
     let reminded = 0;
     const candidates = await findReminderCandidates(
       {
@@ -69,6 +68,7 @@ export class PaymentReminderService {
         logger: this.logger,
       },
       month,
+      { open, schoolDay: dayOfMonth },
     );
     for (const student of candidates) {
       // Свой try/catch на человека: сбой на одном не должен каждый тик

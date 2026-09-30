@@ -70,6 +70,16 @@ describe('PaymentReminderSection', () => {
     expect(screen.getByText(/в последний день месяца/)).toBeInTheDocument();
   });
 
+  it('говорит, что день школы — по умолчанию, а свой ученик выбирает в «Профиле» (ADR-0161)', async () => {
+    mockApiByPath({ '/settings': makeSettings() });
+    render(<Harness />);
+
+    expect(await screen.findByText(/выбирает сам в «Профиле»/)).toBeInTheDocument();
+    expect(screen.getByText('для тех, кто не выбрал').tagName).toBe('STRONG');
+    expect(screen.getByLabelText('День по умолчанию')).toBeInTheDocument();
+    expect(screen.queryByLabelText('День месяца')).not.toBeInTheDocument();
+  });
+
   it('выключено по умолчанию — включатель доступен по подписи, рядом спокойная строка', async () => {
     mockApiByPath({ '/settings': makeSettings() });
     render(<Harness />);
@@ -130,7 +140,7 @@ describe('PaymentReminderSection', () => {
     mockApiByPath({ '/settings': makeSettings() });
     render(<Harness />);
 
-    const day = await screen.findByLabelText('День месяца');
+    const day = await screen.findByLabelText('День по умолчанию');
     await user.clear(day);
     await user.type(day, '32');
 
@@ -154,7 +164,7 @@ describe('PaymentReminderSection', () => {
     render(<Harness />);
 
     await user.click(await screen.findByLabelText('Напоминать об оплате'));
-    const day = screen.getByLabelText('День месяца');
+    const day = screen.getByLabelText('День по умолчанию');
     await user.clear(day);
     await user.type(day, '31');
 
@@ -179,7 +189,7 @@ describe('PaymentReminderSection', () => {
         screen.getByRole('button', { name: 'Сохранить напоминание' }),
       ).toBeDisabled(),
     );
-    expect(screen.getByLabelText('День месяца')).toHaveValue('31');
+    expect(screen.getByLabelText('День по умолчанию')).toHaveValue('31');
   });
 
   it('сервер отказал — текст ошибки под формой, кнопка остаётся доступной', async () => {
@@ -212,7 +222,7 @@ describe('PaymentReminderSection', () => {
     render(<PaymentReminderSection settings={null} update={vi.fn()} />);
 
     expect(screen.getByLabelText('Напоминать об оплате')).not.toBeChecked();
-    expect(screen.getByLabelText('День месяца')).toHaveValue(
+    expect(screen.getByLabelText('День по умолчанию')).toHaveValue(
       String(DEFAULT_PAYMENT_REMINDER.dayOfMonth),
     );
     expect(screen.queryByText(/По часам школы/)).not.toBeInTheDocument();

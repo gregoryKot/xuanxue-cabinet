@@ -351,6 +351,128 @@ describe('PaymentReminderService.remind (ADR-0150)', () => {
     );
   });
 
+  describe('свой день ученика (ADR-0161)', () => {
+    // 12 сентября 2026, 10:00 в Израиле (UTC+3).
+    const OWN_DAY_NOW = utc('2026-09-12T07:00:00Z');
+
+    it('со своим днём получает в свой день, а в день школы — нет', async () => {
+      const { id, chats } = await withChat();
+      const { service, sendMessage, prefs } = build({ chats });
+      await prefs.setPaymentReminderDay(id, 12);
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 0 });
+      expect(sendMessage).not.toHaveBeenCalled();
+      expect(await paymentModel.countDocuments({})).toBe(0);
+
+      expect(await service.remind(OWN_DAY_NOW)).toEqual({ reminded: 1 });
+      expect(sendMessage).toHaveBeenCalledWith(`chat-${id}`, expect.any(String));
+      const doc = await paymentModel.findOne({ userId: id, month: '2026-09' }).lean();
+      expect(doc?.reminderSentAt).toBeInstanceOf(Date);
+    });
+
+    it('без своего дня получает в день школы, а в чужой — нет', async () => {
+      const { chats } = await withChat();
+      const { service, sendMessage } = build({ chats });
+
+      expect(await service.remind(OWN_DAY_NOW)).toEqual({ reminded: 0 });
+      expect(sendMessage).not.toHaveBeenCalled();
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+    });
+
+    it('двое в один тик: у каждого свой день — каждому в свой', async () => {
+      const own = await withChat('Свой день');
+      const school = await withChat('День школы');
+      const chats = new Map([...own.chats, ...school.chats]);
+      const { service, sendMessage, prefs } = build({ chats });
+      await prefs.setPaymentReminderDay(own.id, 12);
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+      expect(sendMessage).toHaveBeenLastCalledWith(
+        `chat-${school.id}`,
+        expect.any(String),
+      );
+
+      expect(await service.remind(OWN_DAY_NOW)).toEqual({ reminded: 1 });
+      expect(sendMessage).toHaveBeenLastCalledWith(`chat-${own.id}`, expect.any(String));
+    });
+
+    it('сбросил свой день (null) — снова получает в день школы', async () => {
+      const { id, chats } = await withChat();
+      const { service, prefs } = build({ chats });
+      await prefs.setPaymentReminderDay(id, 12);
+      await prefs.setPaymentReminderDay(id, null);
+
+      expect(await service.remind(NOW)).toEqual({ reminded: 1 });
+    });
+
+    it('окно суток работает и для своего дня: день 12 догоняется до 10:00 следующего дня', async () => {
+      const { id, chats } = await withChat();
+      const { service, prefs } = build({ chats });
+      await prefs.setPaymentReminderDay(id, 12);
+
+      expect(await service.remind(OWN_DAY_NOW.plus({ hours: 24 }))).toEqual({
+        reminded: 0,
+      });
+      expect(await service.remind(OWN_DAY_NOW.plus({ hours: 23 }))).toEqual({
+        reminded: 1,
+      });
+    });
+
+    it('оплативший и уже получивший со своим днём в свой день не получают', async () => {
+      const paid = await withChat('Оплатил');
+      const sent = await withChat('Получил');
+      const chats = new Map([...paid.chats, ...sent.chats]);
+      const { service, sendMessage, prefs } = build({ chats });
+      await prefs.setPaymentReminderDay(paid.id, 12);
+      await prefs.setPaymentReminderDay(sent.id, 12);
+      await paymentModel.create({ userId: paid.id, month: '2026-09', status: 'paid' });
+      await paymentModel.create({
+        userId: sent.id,
+        month: '2026-09',
+        status: 'unpaid',
+        reminderSentAt: NOW.toJSDate(),
+      });
+
+      expect(await service.remind(OWN_DAY_NOW)).toEqual({ reminded: 0 });
+
+      expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('свой день 31 в сентябре (30 дней) — сработает 30-го', async () => {
+      const { id, chats } = await withChat();
+      const { service, sendMessage, prefs } = build({ chats });
+      await prefs.setPaymentReminderDay(id, 31);
+
+      expect(await service.remind(utc('2026-09-29T07:00:00Z'))).toEqual({ reminded: 0 });
+      expect(await service.remind(utc('2026-09-30T07:00:00Z'))).toEqual({ reminded: 1 });
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it('выключенный вид payment_due перебивает свой день', async () => {
+      const { id, chats } = await withChat();
+      const { service, sendMessage, prefs } = build({ chats });
+      await prefs.setPaymentReminderDay(id, 12);
+      await prefs.set(id, 'payment_due', false);
+
+      expect(await service.remind(OWN_DAY_NOW)).toEqual({ reminded: 0 });
+      expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('ни одно число не открыто (1-е до 10:00) — ни одного запроса к базе', async () => {
+      await withChat();
+      const findUsers = jest.spyOn(userModel, 'find');
+      const findPrefs = jest.spyOn(prefsModel, 'find');
+      const { service } = build();
+
+      // 1 сентября 00:30 по Израилю = 31 августа 21:30Z.
+      expect(await service.remind(utc('2026-08-31T21:30:00Z'))).toEqual({ reminded: 0 });
+
+      expect(findUsers).not.toHaveBeenCalled();
+      expect(findPrefs).not.toHaveBeenCalled();
+    });
+  });
+
   it('enabled: false — ни отправки, ни запроса за учениками', async () => {
     const { chats } = await withChat();
     const findUsers = jest.spyOn(userModel, 'find');

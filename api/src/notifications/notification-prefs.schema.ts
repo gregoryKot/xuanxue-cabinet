@@ -8,7 +8,7 @@
 // Срок хранения — пока жив аккаунт: `DELETE /users/:id` удаляет документ
 // целиком через `USER_OWNED_COLLECTIONS` (docs/PLAN.md §4).
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { NOTIFICATION_KINDS } from '@xuanxue/shared';
+import { NOTIFICATION_KINDS, SETTINGS_LIMITS } from '@xuanxue/shared';
 import type { NotificationKind } from '@xuanxue/shared';
 import { plain, type FieldPolicy } from '../common/field-policy';
 
@@ -37,6 +37,19 @@ export class NotificationPrefsRecord {
 
   @Prop({ type: [NotificationOverrideSchema], default: [] })
   overrides!: NotificationOverrideSubdoc[];
+
+  // Свой день напоминания об оплате, 1–31 (ADR-0161). Нет поля — «как у
+  // школы»: ученик ничего не выбирал, и день школы берётся при каждом тике
+  // заново, а не копируется сюда. Отдельное поле, а не элемент overrides:
+  // overrides — переключатели «вкл/выкл» по виду уведомления, число в них не
+  // влезает. Диапазон держит DTO записи; в схеме — тот же min/max на случай
+  // записи мимо DTO.
+  @Prop({
+    type: Number,
+    min: SETTINGS_LIMITS.paymentReminderDayMin,
+    max: SETTINGS_LIMITS.paymentReminderDayMax,
+  })
+  paymentReminderDay?: number;
 }
 
 export const NotificationPrefsSchema = SchemaFactory.createForClass(
@@ -48,4 +61,7 @@ NotificationPrefsSchema.index({ userId: 1 }, { unique: true });
 
 export const NOTIFICATION_PREFS_FIELD_POLICY: FieldPolicy = {
   userId: plain('id пользователя — признак владения, не свободный текст'),
+  paymentReminderDay: plain(
+    'число 1–31, выбранный день месяца, не свободный текст и не персональные данные',
+  ),
 };

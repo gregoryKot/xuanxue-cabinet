@@ -3,7 +3,7 @@
 // Ответ POST — уже готовая строка месяца: applyData кладёт её в страницу без
 // перечитывания списка (ADR-0087, check-write-then-reload).
 import { useCallback, useState } from 'react';
-import type { MyPaymentsPageDto } from '@xuanxue/shared';
+import type { MyPaymentReminderDto, MyPaymentsPageDto } from '@xuanxue/shared';
 import { UPLOAD_TIMEOUT_MS } from '../api/http';
 import { apiRoute } from '../api/apiRoute';
 import { useAbortableFetch } from '../hooks/useAbortableFetch';
@@ -24,6 +24,8 @@ export interface UseMyPaymentsResult {
   uploadScreenshot: (month: string, file: File) => Promise<void>;
   uploading: boolean;
   uploadError: string | null;
+  /** Вписывает ответ `PUT /me/payments/reminder-day` в страницу (ADR-0161). */
+  applyReminder: (reminder: MyPaymentReminderDto) => void;
 }
 
 export function useMyPayments(): UseMyPaymentsResult {
@@ -57,5 +59,20 @@ export function useMyPayments(): UseMyPaymentsResult {
     [applyData],
   );
 
-  return { page: data, loading, error, reload, uploadScreenshot, uploading, uploadError };
+  const applyReminder = useCallback(
+    (reminder: MyPaymentReminderDto) =>
+      applyData((prev) => (prev ? { ...prev, reminder } : prev)),
+    [applyData],
+  );
+
+  return {
+    page: data,
+    loading,
+    error,
+    reload,
+    uploadScreenshot,
+    uploading,
+    uploadError,
+    applyReminder,
+  };
 }
