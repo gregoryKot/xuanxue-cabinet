@@ -44,7 +44,6 @@ describe('usePaymentReminderSection — загрузка', () => {
 
     expect(result.current.form).toEqual({
       enabled: false,
-      dayText: String(DEFAULT_PAYMENT_REMINDER.dayOfMonth),
       time: DEFAULT_PAYMENT_REMINDER.time,
       template: DEFAULT_PAYMENT_REMINDER.template,
     });
@@ -53,12 +52,11 @@ describe('usePaymentReminderSection — загрузка', () => {
 
   it('сохранённая настройка — форма показывает её, изменений нет', () => {
     const { result } = setup(
-      makeSettings({ enabled: true, dayOfMonth: 12, time: '09:30', template: 'Привет' }),
+      makeSettings({ enabled: true, time: '09:30', template: 'Привет' }),
     );
 
     expect(result.current.form).toEqual({
       enabled: true,
-      dayText: '12',
       time: '09:30',
       template: 'Привет',
     });
@@ -88,11 +86,11 @@ describe('usePaymentReminderSection — изменение и сохранени
     expect(update).toHaveBeenCalledWith({ paymentReminder: { enabled: true } });
   });
 
-  it('день и время — в PATCH число и строка HH:mm, остальное не трогается', async () => {
+  it('включатель и время — в PATCH булево и строка HH:mm, остальное не трогается', async () => {
     const { result, update } = setup();
 
     act(() => {
-      result.current.setField('dayText', '31');
+      result.current.setField('enabled', true);
       result.current.setField('time', '18:45');
     });
     await act(async () => {
@@ -100,7 +98,7 @@ describe('usePaymentReminderSection — изменение и сохранени
     });
 
     expect(update).toHaveBeenCalledWith({
-      paymentReminder: { dayOfMonth: 31, time: '18:45' },
+      paymentReminder: { enabled: true, time: '18:45' },
     });
   });
 
@@ -120,11 +118,9 @@ describe('usePaymentReminderSection — изменение и сохранени
   it('вернули сохранённое значение — «нечего сохранять», запроса нет', async () => {
     const { result, update } = setup();
 
-    act(() => result.current.setField('dayText', '20'));
+    act(() => result.current.setField('time', '20:00'));
     expect(result.current.hasChanges).toBe(true);
-    act(() =>
-      result.current.setField('dayText', String(DEFAULT_PAYMENT_REMINDER.dayOfMonth)),
-    );
+    act(() => result.current.setField('time', DEFAULT_PAYMENT_REMINDER.time));
     expect(result.current.hasChanges).toBe(false);
 
     await act(async () => {
@@ -137,24 +133,24 @@ describe('usePaymentReminderSection — изменение и сохранени
   it('ответ сервера (новый updatedAt) обновляет форму и гасит «есть изменения»', () => {
     const { result, rerender } = setup();
 
-    act(() => result.current.setField('dayText', '20'));
+    act(() => result.current.setField('time', '20:00'));
     expect(result.current.hasChanges).toBe(true);
 
     rerender({
-      current: makeSettings({ dayOfMonth: 20 }, '2026-09-06T18:05:00.000Z'),
+      current: makeSettings({ time: '20:00' }, '2026-09-06T18:05:00.000Z'),
     });
 
-    expect(result.current.form.dayText).toBe('20');
+    expect(result.current.form.time).toBe('20:00');
     expect(result.current.hasChanges).toBe(false);
   });
 
   it('тот же updatedAt — набранное не перезатирается', () => {
     const { result, rerender } = setup();
 
-    act(() => result.current.setField('dayText', '20'));
+    act(() => result.current.setField('time', '20:00'));
     rerender({ current: makeSettings() });
 
-    expect(result.current.form.dayText).toBe('20');
+    expect(result.current.form.time).toBe('20:00');
   });
 
   it('сервер отказал — ошибка из ApiError, форма остаётся как была', async () => {
@@ -189,30 +185,6 @@ describe('usePaymentReminderSection — изменение и сохранени
 });
 
 describe('usePaymentReminderSection — валидация', () => {
-  it.each(['0', '32', '1.5', '', ' ', 'пятое', '-3'])(
-    'день «%s» — ошибка, сохранить нельзя',
-    async (dayText) => {
-      const { result, update } = setup();
-
-      act(() => result.current.setField('dayText', dayText));
-
-      expect(result.current.dayError).toMatch(/число от 1 до 31/);
-      expect(result.current.hasChanges).toBe(false);
-      await act(async () => {
-        await result.current.save();
-      });
-      expect(update).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(['1', '15', '31'])('день «%s» — допустим', (dayText) => {
-    const { result } = setup();
-
-    act(() => result.current.setField('dayText', dayText));
-
-    expect(result.current.dayError).toBeNull();
-  });
-
   it.each(['', '9:30', '24:00', '10:60', '10.30'])(
     'время «%s» — ошибка, сохранить нельзя',
     (time) => {
@@ -254,13 +226,17 @@ describe('usePaymentReminderSection — валидация', () => {
     expect(result.current.hasChanges).toBe(true);
   });
 
-  it('неверный день блокирует и сохранение исправной соседней правки', () => {
-    const { result } = setup();
+  it('неверное время блокирует и сохранение исправной соседней правки', async () => {
+    const { result, update } = setup();
 
     act(() => {
       result.current.setField('enabled', true);
-      result.current.setField('dayText', '40');
+      result.current.setField('time', '40:00');
     });
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(update).not.toHaveBeenCalled();
 
     expect(result.current.hasChanges).toBe(false);
   });

@@ -55,7 +55,7 @@ describe('Напоминание об оплате — запись и чтен�
     const res = await withCsrf(request(server()).patch('/api/settings'))
       .set('Cookie', adminCookie)
       .send({
-        paymentReminder: { enabled: true, dayOfMonth: REMINDER_DAY, time: REMINDER_TIME },
+        paymentReminder: { enabled: true, time: REMINDER_TIME },
       });
     expect(res.status).toBe(200);
     const { tz } = res.body as SettingsDto;
@@ -63,6 +63,16 @@ describe('Напоминание об оплате — запись и чтен�
       { year: 2026, month: 9, day: REMINDER_DAY, hour: 10, minute: 0 },
       { zone: tz },
     ).toUTC();
+  }
+
+  /** Общего дня у школы нет (ADR-0161): напоминание приходит только тому, кто
+   * сам выбрал день, — как ученик в «Профиле». Школа к этому моменту уже
+   * включила напоминание, иначе запись даёт 409. */
+  async function chooseDay(cookie: string): Promise<void> {
+    const res = await withCsrf(request(server()).put('/api/me/payments/reminder-day'))
+      .set('Cookie', cookie)
+      .send({ dayOfMonth: REMINDER_DAY });
+    expect(res.status).toBe(200);
   }
 
   async function inboxOf(cookie: string): Promise<InboxPageDto> {
@@ -81,6 +91,8 @@ describe('Напоминание об оплате — запись и чтен�
       name: 'Ученик Б',
       roles: [],
     });
+    await chooseDay(cookieA);
+    await chooseDay(cookieB);
     // Б выключил вид: его строки в ленте быть не должно вовсе.
     const off = await withCsrf(request(server()).patch('/api/me/notifications'))
       .set('Cookie', cookieB)
@@ -106,6 +118,7 @@ describe('Напоминание об оплате — запись и чтен�
       name: 'Ученик',
       roles: [],
     });
+    await chooseDay(cookie);
     const service = testApp.app.get(PaymentReminderService, { strict: false });
 
     await service.remind(dueAt);

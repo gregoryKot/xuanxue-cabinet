@@ -78,13 +78,13 @@ describe('SettingsService — paymentReminder', () => {
   });
 
   it('второй PATCH другого поля не затирает первое (точечные пути)', async () => {
-    await service.update({ paymentReminder: { dayOfMonth: 31 } });
+    await service.update({ paymentReminder: { enabled: true } });
 
     const patched = await service.update({ paymentReminder: { time: '09:30' } });
 
     expect(patched.paymentReminder).toEqual({
       ...DEFAULT_PAYMENT_REMINDER,
-      dayOfMonth: 31,
+      enabled: true,
       time: '09:30',
     });
   });

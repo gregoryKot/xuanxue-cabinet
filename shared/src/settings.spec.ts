@@ -6,13 +6,7 @@ import { PAYMENT_REMINDER_PLACEHOLDERS, findUnknownPlaceholders } from './templa
 describe('DEFAULT_PAYMENT_REMINDER', () => {
   // Дефолт проходит те же проверки, что и PATCH: иначе форма «Шаблоны» на
   // старой базе показала бы значение, которое сама же не даст сохранить.
-  it('день, время и шаблон допустимы для PATCH', () => {
-    expect(DEFAULT_PAYMENT_REMINDER.dayOfMonth).toBeGreaterThanOrEqual(
-      SETTINGS_LIMITS.paymentReminderDayMin,
-    );
-    expect(DEFAULT_PAYMENT_REMINDER.dayOfMonth).toBeLessThanOrEqual(
-      SETTINGS_LIMITS.paymentReminderDayMax,
-    );
+  it('время и шаблон допустимы для PATCH', () => {
     expect(DEFAULT_PAYMENT_REMINDER.time).toMatch(RULE_TIME_RE);
     expect(DEFAULT_PAYMENT_REMINDER.template.length).toBeLessThanOrEqual(
       SETTINGS_LIMITS.templateMaxLength,
@@ -23,6 +17,10 @@ describe('DEFAULT_PAYMENT_REMINDER', () => {
         PAYMENT_REMINDER_PLACEHOLDERS,
       ),
     ).toEqual([]);
+  });
+
+  it('дня у школы нет — день выбирает ученик (ADR-0161)', () => {
+    expect(DEFAULT_PAYMENT_REMINDER).not.toHaveProperty('dayOfMonth');
   });
 
   it('по умолчанию выключено — слои «Оплаты» и ученика ещё не сделаны', () => {

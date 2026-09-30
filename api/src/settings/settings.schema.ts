@@ -30,9 +30,6 @@ class SettingsPaymentReminderSubdoc {
   @Prop({ type: Boolean })
   enabled?: boolean;
 
-  @Prop({ type: Number })
-  dayOfMonth?: number;
-
   @Prop({ type: String })
   time?: string;
 

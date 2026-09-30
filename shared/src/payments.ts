@@ -87,19 +87,17 @@ export interface MyPaymentsPageDto {
 }
 
 /** Когда ученику придёт напоминание об оплате (ADR-0161). `dayOfMonth` — день,
- * который сработает: свой (`isOwnDay`) или школы. Ответ `PUT
- * /me/payments/reminder-day` — тот же тип, кабинет вписывает его без второго
- * GET (ADR-0087). */
+ * который ученик выбрал сам; `null` — не выбрал, напоминание ему не приходит:
+ * общего дня у школы нет. Ответ `PUT /me/payments/reminder-day` — тот же тип,
+ * кабинет вписывает его без второго GET (ADR-0087). */
 export interface MyPaymentReminderDto {
-  dayOfMonth: number;
-  isOwnDay: boolean;
-  schoolDayOfMonth: number;
+  dayOfMonth: number | null;
   /** 'HH:mm' в поясе школы — час один для всех, выбирается только день. */
   time: string;
 }
 
-/** Тело `PUT /me/payments/reminder-day`: 1–31 — свой день, `null` — «как у
- * школы» (личный выбор сбрасывается). */
+/** Тело `PUT /me/payments/reminder-day`: 1–31 — свой день, `null` — «не
+ * напоминать» (выбор снимается). */
 export interface SetPaymentReminderDayInput {
   dayOfMonth: number | null;
 }

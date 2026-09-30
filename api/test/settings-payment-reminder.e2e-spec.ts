@@ -64,12 +64,11 @@ describe('Settings paymentReminder (e2e)', () => {
     const expected = {
       ...DEFAULT_PAYMENT_REMINDER,
       enabled: true,
-      dayOfMonth: 31,
       time: '09:30',
     };
 
     const patched = await patch(cookie, {
-      paymentReminder: { enabled: true, dayOfMonth: 31, time: '09:30' },
+      paymentReminder: { enabled: true, time: '09:30' },
     });
     const got = await request(server()).get('/api/settings').set('Cookie', cookie);
 
@@ -90,15 +89,13 @@ describe('Settings paymentReminder (e2e)', () => {
     expect((res.body as SettingsDto).paymentReminder).toEqual(DEFAULT_PAYMENT_REMINDER);
   });
 
-  // День 0 и 32 — за границами SETTINGS_LIMITS; 1.5 — не целое; время без
-  // ведущего нуля и 24:00 не проходят RULE_TIME_RE; null — сбросить нечем;
-  // `{название}` — подстановка поста, у напоминания её нет; пустой текст и
+  // Дня у школы нет (ADR-0161): `dayOfMonth` в любом виде — лишнее поле, его
+  // не пропускает whitelist. Время без ведущего нуля и 24:00 не проходят
+  // RULE_TIME_RE; `{название}` — подстановка поста, у напоминания её нет; пустой текст и
   // не-булево `enabled` — тоже отказ.
   it.each<[string, object]>([
-    ['день 0', { dayOfMonth: 0 }],
-    ['день 32', { dayOfMonth: 32 }],
-    ['день дробью', { dayOfMonth: 1.5 }],
-    ['день null', { dayOfMonth: null }],
+    ['день школы числом', { dayOfMonth: 5 }],
+    ['день школы null', { dayOfMonth: null }],
     ['время 9:30', { time: '9:30' }],
     ['время 24:00', { time: '24:00' }],
     ['enabled строкой', { enabled: 'yes' }],
@@ -126,10 +123,10 @@ describe('Settings paymentReminder (e2e)', () => {
 
   it('права те же, что у остальных настроек: помощник и админ могут, ученик и аноним — нет', async () => {
     const assistant = await patch(await sessionFor(['assistant']), {
-      paymentReminder: { dayOfMonth: 10 },
+      paymentReminder: { time: '10:00' },
     });
     const admin = await patch(await sessionFor(['admin']), {
-      paymentReminder: { dayOfMonth: 11 },
+      paymentReminder: { time: '11:00' },
     });
     const student = await patch(await sessionFor([]), {
       paymentReminder: { enabled: true },
@@ -147,7 +144,7 @@ describe('Settings paymentReminder (e2e)', () => {
       .set('Cookie', await sessionFor(['teacher']));
     expect((got.body as SettingsDto).paymentReminder).toEqual({
       ...DEFAULT_PAYMENT_REMINDER,
-      dayOfMonth: 11,
+      time: '11:00',
     });
   });
 });

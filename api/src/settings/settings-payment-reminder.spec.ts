@@ -27,15 +27,14 @@ describe('toSettingsDto — paymentReminder', () => {
     expect(dto.paymentReminder).toEqual({ ...DEFAULT_PAYMENT_REMINDER, enabled: true });
   });
 
-  it('сохранённое `enabled: false` и день 1 не подменяются дефолтом', () => {
+  it('сохранённое `enabled: false` и время 00:00 не подменяются дефолтом', () => {
     const dto = toSettingsDto({
       ...BASE,
-      paymentReminder: { enabled: false, dayOfMonth: 1, time: '00:00', template: 'x' },
+      paymentReminder: { enabled: false, time: '00:00', template: 'x' },
     });
 
     expect(dto.paymentReminder).toEqual({
       enabled: false,
-      dayOfMonth: 1,
       time: '00:00',
       template: 'x',
     });
@@ -65,9 +64,9 @@ describe('assertKnownReminderPlaceholders', () => {
 
 describe('paymentReminderSetFrom', () => {
   it('пишет только переданные поля по точечным путям', () => {
-    expect(paymentReminderSetFrom({ enabled: true, dayOfMonth: 31 })).toEqual({
+    expect(paymentReminderSetFrom({ enabled: true, time: '09:30' })).toEqual({
       'paymentReminder.enabled': true,
-      'paymentReminder.dayOfMonth': 31,
+      'paymentReminder.time': '09:30',
     });
   });
 

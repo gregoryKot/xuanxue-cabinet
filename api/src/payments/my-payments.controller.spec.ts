@@ -77,8 +77,6 @@ describe('MyPaymentsController', () => {
   it('setReminderDay() берёт владельца из сессии, а день — из тела; ответ сервиса отдаёт как есть', async () => {
     const reminder: MyPaymentReminderDto = {
       dayOfMonth: 12,
-      isOwnDay: true,
-      schoolDayOfMonth: 5,
       time: '10:00',
     };
     const set = jest.fn().mockResolvedValue(reminder);
@@ -91,7 +89,7 @@ describe('MyPaymentsController', () => {
     expect(set).toHaveBeenCalledWith(STUDENT.id, 12);
   });
 
-  it('setReminderDay() передаёт null сервису — сброс на день школы', async () => {
+  it('setReminderDay() передаёт null сервису — «не напоминать»', async () => {
     const set = jest.fn().mockResolvedValue({});
     const controller = await buildController({}, {}, { set });
 

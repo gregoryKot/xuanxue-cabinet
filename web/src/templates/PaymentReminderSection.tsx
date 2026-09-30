@@ -1,19 +1,18 @@
 // Секция «Оплаты» экрана «Шаблоны» (docs/PLAN.md §15 п. 2.5, ADR-0051,
-// ADR-0150) — ежемесячная напоминалка ученику об оплате (ADR-0157). День здесь —
-// по умолчанию: свой день ученик выбирает в «Профиле» (ADR-0161). Логика
-// в usePaymentReminderSection.ts, компонент только рендерит (CLAUDE.md «Тесты»).
+// ADR-0150) — ежемесячная напоминалка ученику об оплате (ADR-0157). Дня у школы
+// нет: свой день ученик выбирает в «Профиле», не выбравшему напоминание не
+// приходит (ADR-0161). Логика в usePaymentReminderSection.ts, компонент только рендерит (CLAUDE.md «Тесты»).
 // Раздел под волосяной линией, как «Школа» (SchoolSiteField.tsx); кнопка
 // вторичная: заливка терракотой на экране одна, у «Сохранить» под шаблонами
 // постов (docs/adr/0031). Название кнопки своё — «Сохранить» на экране уже есть.
 import type { CSSProperties } from 'react';
 import {
   PAYMENT_REMINDER_PLACEHOLDERS,
-  SETTINGS_LIMITS,
   type SettingsDto,
   type UpdateSettingsInput,
 } from '@xuanxue/shared';
 import { Button } from '../components/Button';
-import { Field, inputStyle, numericInputStyle } from '../components/Field';
+import { Field, inputStyle } from '../components/Field';
 import { FormServerError } from '../components/FormServerError';
 import { RichText } from '../components/RichText';
 import { primaryActionStyle, screenExplanationStyle } from '../components/screenLayout';
@@ -26,13 +25,12 @@ import { PAYMENT_REMINDER_HINTS } from './placeholderHints';
 import { usePaymentReminderSection } from './usePaymentReminderSection';
 
 const EXPLANATION =
-  'В выбранный день и час бот напомнит ученикам **об оплате за месяц**. ' +
-  'Свой день ученик выбирает сам в «Профиле», а день ниже — **для тех, кто не выбрал**. ' +
-  'Нет чата с ботом — напоминание придёт в кабинет. ' +
-  'Нет такого дня в месяце, например 31-го в феврале, — придёт **в последний день месяца**.';
+  'В час ниже бот напомнит ученикам **об оплате за месяц**. ' +
+  'День каждый ученик выбирает сам в «Профиле»: **кому день не выбран, тому напоминание не приходит**. ' +
+  'Нет чата с ботом — напоминание придёт в кабинет.';
 
 const HINT_OFF = 'Сейчас выключено — ученикам ничего не приходит.';
-const HINT_ON = 'Включено — напоминание придёт в день и час ниже.';
+const HINT_ON = 'Включено — тем, кто выбрал день, напоминание придёт в час ниже.';
 
 const sectionStyle: CSSProperties = {
   ...editorSectionStyle,
@@ -75,19 +73,6 @@ export function PaymentReminderSection({
       />
 
       <div style={rowStyle}>
-        <Field
-          label="День по умолчанию"
-          hint={`Число от ${SETTINGS_LIMITS.paymentReminderDayMin} до ${SETTINGS_LIMITS.paymentReminderDayMax}`}
-          error={reminder.dayError ?? undefined}
-        >
-          <input
-            type="text"
-            inputMode="numeric"
-            style={numericInputStyle}
-            value={form.dayText}
-            onChange={(event) => setField('dayText', event.target.value)}
-          />
-        </Field>
         <Field
           label="Время"
           hint={schoolTz ? `По часам школы (**${schoolTz}**)` : undefined}

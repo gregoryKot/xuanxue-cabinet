@@ -67,17 +67,19 @@ describe('PaymentReminderSection', () => {
 
     expect(await screen.findByRole('heading', { name: 'Оплаты' })).toBeInTheDocument();
     expect(screen.getByText(/об оплате за месяц/)).toBeInTheDocument();
-    expect(screen.getByText(/в последний день месяца/)).toBeInTheDocument();
   });
 
-  it('говорит, что день школы — по умолчанию, а свой ученик выбирает в «Профиле» (ADR-0161)', async () => {
+  it('говорит, что день выбирает сам ученик в «Профиле», а кому не выбран — не приходит; поля дня у школы нет (ADR-0161)', async () => {
     mockApiByPath({ '/settings': makeSettings() });
     render(<Harness />);
 
     expect(await screen.findByText(/выбирает сам в «Профиле»/)).toBeInTheDocument();
-    expect(screen.getByText('для тех, кто не выбрал').tagName).toBe('STRONG');
-    expect(screen.getByLabelText('День по умолчанию')).toBeInTheDocument();
-    expect(screen.queryByLabelText('День месяца')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('кому день не выбран, тому напоминание не приходит').tagName,
+    ).toBe('STRONG');
+    expect(screen.queryByLabelText(/День/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/день по умолчанию/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/последний день месяца/)).not.toBeInTheDocument();
   });
 
   it('выключено по умолчанию — включатель доступен по подписи, рядом спокойная строка', async () => {
@@ -102,7 +104,7 @@ describe('PaymentReminderSection', () => {
     await user.keyboard(' ');
 
     expect(toggle).toBeChecked();
-    expect(screen.getByText(/Включено — напоминание придёт/)).toBeInTheDocument();
+    expect(screen.getByText(/Включено — тем, кто выбрал день/)).toBeInTheDocument();
   });
 
   it('кнопка подстановки вставляет {месяц} в текст на место курсора', async () => {
@@ -135,19 +137,6 @@ describe('PaymentReminderSection', () => {
     ).toBeInTheDocument();
   });
 
-  it('неверный день — ошибка под полем, кнопка неактивна', async () => {
-    const user = userEvent.setup();
-    mockApiByPath({ '/settings': makeSettings() });
-    render(<Harness />);
-
-    const day = await screen.findByLabelText('День по умолчанию');
-    await user.clear(day);
-    await user.type(day, '32');
-
-    expect(screen.getByText(/День — число от 1 до 31/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Сохранить напоминание' })).toBeDisabled();
-  });
-
   it('неизвестная подстановка — ошибка с именем под текстом', async () => {
     mockApiByPath({ '/settings': makeSettings() });
     render(<Harness />);
@@ -164,15 +153,10 @@ describe('PaymentReminderSection', () => {
     render(<Harness />);
 
     await user.click(await screen.findByLabelText('Напоминать об оплате'));
-    const day = screen.getByLabelText('День по умолчанию');
-    await user.clear(day);
-    await user.type(day, '31');
+    fireEvent.change(screen.getByLabelText('Время'), { target: { value: '18:45' } });
 
     mockApiByPath({
-      '/settings': makeSettings(
-        { enabled: true, dayOfMonth: 31 },
-        '2026-01-02T00:00:00Z',
-      ),
+      '/settings': makeSettings({ enabled: true, time: '18:45' }, '2026-01-02T00:00:00Z'),
     });
     await user.click(screen.getByRole('button', { name: 'Сохранить напоминание' }));
 
@@ -181,7 +165,7 @@ describe('PaymentReminderSection', () => {
       '/settings',
       expect.objectContaining({
         method: 'PATCH',
-        body: { paymentReminder: { enabled: true, dayOfMonth: 31 } },
+        body: { paymentReminder: { enabled: true, time: '18:45' } },
       }),
     ]);
     await waitFor(() =>
@@ -189,7 +173,7 @@ describe('PaymentReminderSection', () => {
         screen.getByRole('button', { name: 'Сохранить напоминание' }),
       ).toBeDisabled(),
     );
-    expect(screen.getByLabelText('День по умолчанию')).toHaveValue('31');
+    expect(screen.getByLabelText('Время')).toHaveValue('18:45');
   });
 
   it('сервер отказал — текст ошибки под формой, кнопка остаётся доступной', async () => {
@@ -222,9 +206,7 @@ describe('PaymentReminderSection', () => {
     render(<PaymentReminderSection settings={null} update={vi.fn()} />);
 
     expect(screen.getByLabelText('Напоминать об оплате')).not.toBeChecked();
-    expect(screen.getByLabelText('День по умолчанию')).toHaveValue(
-      String(DEFAULT_PAYMENT_REMINDER.dayOfMonth),
-    );
+    expect(screen.getByLabelText('Время')).toHaveValue(DEFAULT_PAYMENT_REMINDER.time);
     expect(screen.queryByText(/По часам школы/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Сохранить напоминание' })).toBeDisabled();
   });

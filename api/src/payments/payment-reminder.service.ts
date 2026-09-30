@@ -55,7 +55,7 @@ export class PaymentReminderService {
 
   async remind(now: DateTime): Promise<PaymentReminderResult> {
     const settings = await this.settingsService.get();
-    const { enabled, dayOfMonth, time } = settings.paymentReminder;
+    const { enabled, time } = settings.paymentReminder;
     const open = enabled ? openReminderDays(now, settings.tz, time) : new Set<number>();
     if (open.size === 0) return { reminded: 0 };
     const month = monthKeyOf(now, settings.tz);
@@ -68,7 +68,7 @@ export class PaymentReminderService {
         logger: this.logger,
       },
       month,
-      { open, schoolDay: dayOfMonth },
+      { open },
     );
     for (const student of candidates) {
       // Свой try/catch на человека: сбой на одном не должен каждый тик

@@ -29,8 +29,8 @@ export function assertKnownReminderPlaceholders(template: string | undefined): v
  * даже для пустого тела) пропускаются. */
 export function paymentReminderSetFrom(
   reminder: Partial<PaymentReminderSettings>,
-): Record<string, boolean | number | string> {
-  const $set: Record<string, boolean | number | string> = {};
+): Record<string, boolean | string> {
+  const $set: Record<string, boolean | string> = {};
   for (const [field, value] of Object.entries(reminder)) {
     if (value !== undefined) $set[`paymentReminder.${field}`] = value;
   }
