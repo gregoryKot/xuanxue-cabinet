@@ -1,11 +1,17 @@
 // Test.createTestingModule с фейком сервиса — образец broadcasts.controller.spec.ts:
 // без HTTP, без Mongo. Роли/CSRF/404 проверяет e2e (users.e2e-spec.ts).
 import { Test } from '@nestjs/testing';
-import type { InviteLinkDto, TeacherOptionDto, UserDto } from '@xuanxue/shared';
+import type {
+  InviteLinkDto,
+  TeacherOptionDto,
+  UserDataExportDto,
+  UserDto,
+} from '@xuanxue/shared';
 import type { UserLean } from './users.service';
 import { InviteLinkService } from './invite-link.service';
 import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
+import { UserExportService } from './user-export.service';
 import { UserRolesService } from './user-roles.service';
 import { UserStatusService } from './user-status.service';
 import { UsersController } from './users.controller';
@@ -30,6 +36,7 @@ async function buildController(
   deletionService: Partial<UserDeletionService> = {},
   inviteLinkService: Partial<InviteLinkService> = {},
   statusService: Partial<UserStatusService> = {},
+  exportService: Partial<UserExportService> = {},
 ): Promise<UsersController> {
   const module = await Test.createTestingModule({
     controllers: [UsersController],
@@ -39,6 +46,7 @@ async function buildController(
       { provide: UserDeletionService, useValue: deletionService },
       { provide: InviteLinkService, useValue: inviteLinkService },
       { provide: UserStatusService, useValue: statusService },
+      { provide: UserExportService, useValue: exportService },
     ],
   }).compile();
   return module.get(UsersController);
@@ -95,6 +103,23 @@ describe('UsersController', () => {
     await controller.remove('u1', ADMIN);
 
     expect(deleteAllUserData).toHaveBeenCalledWith('u1', 'admin-1');
+  });
+
+  it('exportData() передаёт id из пути и id админа из сессии в exportUserData', async () => {
+    const exported: UserDataExportDto = {
+      exportedAt: '2026-09-30T10:00:00.000Z',
+      note: 'Здесь всё, что кабинет школы хранит об этом человеке.',
+      sections: [],
+      references: [],
+    };
+    const exportUserData = jest.fn().mockResolvedValue(exported);
+    const controller = await buildController({}, {}, {}, {}, {}, { exportUserData });
+
+    const result = await controller.exportData('u1', ADMIN);
+
+    // Админ из сессии нужен строке лога «кто выгрузил», не телу запроса.
+    expect(exportUserData).toHaveBeenCalledWith('u1', 'admin-1');
+    expect(result).toBe(exported);
   });
 
   it('listTeachers() делегирует TeachersService.listTeachers()', async () => {

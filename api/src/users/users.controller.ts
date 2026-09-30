@@ -1,8 +1,9 @@
-// GET /users, PATCH /users/:id, PATCH /users/:id/status, DELETE /users/:id —
-// экран «Ученики» (docs/PLAN.md §6, блокер аудита Б3): список вошедших,
-// назначение ролей, блокировка/открытие доступа (ADR-0036, RUNBOOK §8.15) и
-// удаление всех данных (аудит В11). Только admin — назначение ролей,
-// блокировка и удаление не отдаются учителю (SECURITY §3, ADR-0010). GET
+// GET /users, PATCH /users/:id, PATCH /users/:id/status, DELETE /users/:id,
+// GET /users/:id/export — экран «Ученики» (docs/PLAN.md §6, блокер аудита Б3):
+// список вошедших, назначение ролей, блокировка/открытие доступа (ADR-0036,
+// RUNBOOK §8.15), удаление всех данных (аудит В11) и их выгрузка по просьбе
+// человека (ADR-0160, RUNBOOK §8.22). Только admin — назначение ролей,
+// блокировка, удаление и выгрузка не отдаются учителю (SECURITY §3, ADR-0010). GET
 // /users/teachers — исключение: список для select'а «Ведущий» (docs/PLAN.md
 // §6 п.2, аудит В4) виден и teacher, и admin, поэтому у маршрута свой
 // `@Roles`, переопределяющий `@Roles('admin')` класса (Reflector.getAllAndOverride —
@@ -16,25 +17,34 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   Param,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
-import type { InviteLinkDto, TeacherOptionDto, UserDto } from '@xuanxue/shared';
+import type {
+  InviteLinkDto,
+  TeacherOptionDto,
+  UserDataExportDto,
+  UserDto,
+} from '@xuanxue/shared';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import { ApiRoute } from '../common/api-route.decorator';
 import type { UserLean } from './users.service';
 import { InviteLinkService } from './invite-link.service';
 import { TeachersService } from './teachers.service';
 import { UserDeletionService } from './user-deletion.service';
+import { UserExportService } from './user-export.service';
 import { UserRolesService } from './user-roles.service';
 import { UserStatusService } from './user-status.service';
 import { ListUsersDto } from './dto/list-users.dto';
 import { UpdateUserRolesDto } from './dto/update-user-roles.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { toUserDto } from './user.mapper';
+
+const EXPORT_CACHE_CONTROL = 'private, no-store';
 
 @Controller('users')
 @Roles('admin')
@@ -43,6 +53,7 @@ export class UsersController {
     private readonly userRolesService: UserRolesService,
     private readonly teachersService: TeachersService,
     private readonly userDeletionService: UserDeletionService,
+    private readonly userExportService: UserExportService,
     private readonly inviteLinkService: InviteLinkService,
     private readonly userStatusService: UserStatusService,
   ) {}
@@ -116,5 +127,19 @@ export class UsersController {
     @CurrentUser() currentUser: UserLean,
   ): Promise<void> {
     await this.userDeletionService.deleteAllUserData(id, currentUser.id);
+  }
+
+  // Выгрузка — контакты и ответы одного человека целиком: ни браузер, ни
+  // промежуточный кэш её не хранят (`private, no-store`, как скриншот оплаты).
+  // `:id/export` не пересекается с литеральными `teachers`/`invite-link`:
+  // лишний сегмент после параметра (check-route-collisions.mjs).
+  @Get(':id/export')
+  @ApiRoute('GET /users/:id/export')
+  @Header('Cache-Control', EXPORT_CACHE_CONTROL)
+  async exportData(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: UserLean,
+  ): Promise<UserDataExportDto> {
+    return this.userExportService.exportUserData(id, currentUser.id);
   }
 }

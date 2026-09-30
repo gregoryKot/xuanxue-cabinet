@@ -90,6 +90,28 @@ describe('PeopleScreen — шапка', () => {
   });
 });
 
+describe('PeopleScreen — выгрузка данных', () => {
+  // ADR-0160: строка над списком говорит, зачем кнопка «Выгрузить данные» в
+  // строках, и называет срок ответа из той же константы, что и /privacy.
+  it('над списком — зачем выгрузка и срок ответа в 30 дней', async () => {
+    const { queueUsers } = mockPeopleApi();
+    queueUsers([makePerson()]);
+
+    renderScreen();
+
+    expect(await screen.findByText('Гриша')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          el.textContent ===
+            'Человек спросил, какие данные о нём хранит школа? Нажмите «Выгрузить данные» в его строке: ответить нужно за 30 дней.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Выгрузить данные' })).toBeInTheDocument();
+  });
+});
+
 describe('PeopleScreen — загрузка', () => {
   it('показывает скелетон, пока список не пришёл', () => {
     mockedApiFetch.mockReturnValue(new Promise(() => {}));

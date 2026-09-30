@@ -62,6 +62,11 @@ describe('PeopleScreen — учитель', () => {
     expect(
       screen.queryByText('Пока никто, кроме вас, не входил.', { exact: false }),
     ).not.toBeInTheDocument();
+    // Выгрузка данных людей — только у админа (ADR-0160, SECURITY §3).
+    expect(
+      screen.queryByRole('button', { name: 'Выгрузить данные' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Человек спросил, какие данные/)).not.toBeInTheDocument();
     expect(mockedApiFetch).not.toHaveBeenCalledWith(
       expect.stringMatching(/^\/users\?/),
       expect.anything(),

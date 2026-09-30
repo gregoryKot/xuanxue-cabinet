@@ -104,6 +104,7 @@ export function PersonRow({
       </div>
 
       <PersonActions
+        personId={person.id}
         isSelf={isSelf}
         pending={pending}
         status={person.status}

@@ -548,3 +548,10 @@ export {
 } from './app-errors';
 export type { AnalyticsConfigDto } from './analytics';
 export { POSTHOG_HOST } from './analytics';
+export type {
+  ExportRecord,
+  ExportValue,
+  UserDataExportDto,
+  UserDataExportReferenceDto,
+  UserDataExportSectionDto,
+} from './user-export';

@@ -25,6 +25,7 @@ import { TelegramLinkService } from './telegram-link.service';
 import { UserBotChatStatusService } from './user-bot-chat-status.service';
 import { UserDeletionService } from './user-deletion.service';
 import { UserEmailService } from './user-email.service';
+import { UserExportService } from './user-export.service';
 import { UserNamesService } from './user-names.service';
 import { UserNoTelegramService } from './user-no-telegram.service';
 import { UserProfileService } from './user-profile.service';
@@ -66,6 +67,7 @@ import { UsersService } from './users.service';
     UserStatusService,
     TeachersService,
     UserDeletionService,
+    UserExportService,
     UserNamesService,
     UserProfileService,
     UserNoTelegramService,

@@ -12,6 +12,7 @@
 // экрана живут в карточке приглашения, подтверждать на «Людях» больше
 // некого (ADR-0036).
 import type { CSSProperties } from 'react';
+import { PRIVACY_ACCESS_REPLY_DAYS, formatDaysRu } from '@xuanxue/shared';
 import { useAuth } from '../auth/AuthProvider';
 import { hasRole } from '../auth/hasRole';
 import { oneCardListStyle } from '../components/listCardStyles';
@@ -40,6 +41,10 @@ const TEACHER_EXPLANATION =
 // на кабинет» (кабинет по прямой ссылке больше не пускает).
 const EMPTY_MESSAGE =
   'Пока никто, кроме вас, не входил. Отправьте **ссылку-приглашение** из карточки выше.';
+
+// Зачем кнопка «Выгрузить данные» в строке (ADR-0160): без этой строки админ
+// увидел бы её без повода. Срок — та же константа, что обещает /privacy.
+const EXPORT_HINT = `Человек спросил, какие данные о нём хранит школа? Нажмите «Выгрузить данные» в его строке: ответить нужно за **${formatDaysRu(PRIVACY_ACCESS_REPLY_DAYS)}**.`;
 
 const countStyle: CSSProperties = { margin: 0, fontSize: 13, color: 'var(--ink-soft)' };
 
@@ -84,19 +89,24 @@ export default function PeopleScreen() {
       )}
 
       {isAdmin && !error && people && others.length > 0 && (
-        <ul style={oneCardListStyle}>
-          {people.map((person, index, all) => (
-            <PersonRow
-              key={person.id}
-              person={person}
-              isSelf={person.id === me?.id}
-              onChangeRoles={(roles) => updateRoles(person.id, { roles })}
-              onChangeStatus={(status) => updateStatus(person.id, status)}
-              onRemove={() => remove(person.id)}
-              isLast={index === all.length - 1}
-            />
-          ))}
-        </ul>
+        <>
+          <p style={countStyle}>
+            <RichText text={EXPORT_HINT} />
+          </p>
+          <ul style={oneCardListStyle}>
+            {people.map((person, index, all) => (
+              <PersonRow
+                key={person.id}
+                person={person}
+                isSelf={person.id === me?.id}
+                onChangeRoles={(roles) => updateRoles(person.id, { roles })}
+                onChangeStatus={(status) => updateStatus(person.id, status)}
+                onRemove={() => remove(person.id)}
+                isLast={index === all.length - 1}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
